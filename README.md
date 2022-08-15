@@ -50,16 +50,19 @@ cmake --build . --config Release
 ```
 cmake --build . --target [BitTagv6|BitTagv5|BitTagNucleo]
 cmake --build . --target BitTagv6-download
+
 ```
 
 ### Building Base boards
 
 ```
-cmake --build . --target bittag-base-v5
-cmake --build . --target bittag-base-v5-dfu
-cmake --build . --target bittag-base-jlcpcb-v2
-cmake --build . --target bittag-base-jlcpcb-v2-dfu
+cmake --build . --target bittag-base-jlcpcb-v3
+cmake --build . --target bittag-base-jlcpcb-v3-dfu
+cmake --build . --target tag-breakout-base-jlcpcb32-v1
+cmake --build . --target tag-breakout-base-jlcpcb32-v1-dfu
 ```
+
+ The -dfu rule attempts to  program the board.
 
 ## Programming Embedded Hardware
 
@@ -91,14 +94,6 @@ To program from command line
 ```
  ~/Software/STM32CubeProgrammer/bin/STM32_Programmer_CLI -c port=usb1 -d build/ch.elf 
  ```
-
- ## vcpkg linux
-
-sudo apt-get install rfbproxy
-sudo apt-get install libudev-dev
-sudo  apt-get install libx11-dev
-sudo apt-get install libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev
-sudo apt-get install libxcb-xinerama0-dev 
 
 ## Installing protobuf on linux
 

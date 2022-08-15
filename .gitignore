@@ -47,3 +47,7 @@ software/embedded/tags/LuxTag
 software/embeeded/tags/NucleoTag
 hardware/AccelTag
 hardware/LuxTag
+
+software/embedded/proto-c/acceltag-proto-c
+software/embedded/proto-c/bittagng-proto-c 
+software/embedded/proto-c/luxtag-proto-c 

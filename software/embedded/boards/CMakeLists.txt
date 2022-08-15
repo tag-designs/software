@@ -21,9 +21,9 @@ endfunction()
 
 # bases
 
-add_subdirectory(bittag-base-v5a)
-add_subdirectory(bittag-base-v5)
-add_subdirectory(bittag-base-jlcpcb-v2)
+#add_subdirectory(bittag-base-v5a)
+#add_subdirectory(bittag-base-v5)
+#add_subdirectory(bittag-base-jlcpcb-v2)
 add_subdirectory(bittag-base-jlcpcb-v3)
 add_subdirectory(tag-breakout-base-jlcpcb32-v1)
 
@@ -32,4 +32,4 @@ add_subdirectory(tag-breakout-base-jlcpcb32-v1)
 add_subdirectory(BitTagv5)
 add_subdirectory(BitTagv6)
 add_subdirectory(TagSteval)
-add_subdirectory(BitTagNG-proto)
+#add_subdirectory(BitTagNG-proto)
