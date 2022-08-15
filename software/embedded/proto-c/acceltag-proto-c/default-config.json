@@ -1,0 +1,18 @@
+{
+ "tag_type": "ACCELTAG",
+ "active_interval": {
+  "start_epoch": 0,
+  "end_epoch": 2147483647
+ },
+ "hibernate": [
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  },
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  }
+ ],
+ "period" : 10,
+}

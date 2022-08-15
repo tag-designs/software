@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+enum TagType {
+  TAG_UNSPECIFIED = 0;
+  BITTAG = 1;
+  ACCELTAG = 2;
+  PRESTAG = 3;
+  PRESTAG_MX25R = 4;
+  GEOTAG = 5;
+  LUXTAG = 6;
+  BITTAGNG = 7;
+}
+
+message TagInfo {
+  TagType tag_type = 1; // tag type (should match config)
+  // hardware
+  string board_desc = 2; // board description
+  string uuid = 3;       // processor unique id
+  int64 intflashsz = 4;  // internal flash size (bytes)
+  int64 extflashsz = 5;  // external flash size (bytes)
+  // software
+  string firmware = 6;    // firmware description
+  string gitrepo = 7;     // git repo
+  string githash = 8;      // git version hash
+  string source_path = 9; // path to source in repo
+  string build_time = 10;   // build time
+}
+
+enum TestResult {
+  TEST_UNSPECIFIED = 0;
+  TEST_RUNNING = 1;
+  ALL_PASSED = 2;
+  RTC_FAILED = 3;
+  ADXL362_FAILED = 4;
+  LPS_FAILED = 5;
+  EXT_FLASH_FAILED = 6;
+  OPT_FAILED = 7;
+  AIS2_FAILED = 8;
+  MMC5633_FAILED = 9;
+  // command errors
+  SET_RTC_FAILED = 10;
+  TEST_DEBUG_FAILED = 16; // for debugging
+}
+
+// ADXL362 Configuration
+
+enum BitTagLogFmt {
+  BITTAG_UNSPECIFIED = 0;
+  BITTAG_BITPERSEC = 1;
+  BITTAG_BITSPERMIN = 2;
+  BITTAG_BITSPERFOURMIN = 3;
+  BITTAG_BITSPERFIVEMIN = 4;
+}
+
+enum AccelTagLogFmt {
+  ACCELTAG_UNSPECIFIED = 0;
+  ACCELTAG_NONE = 1;
+  ACCELTAG_ADXL362_CONTINUOUS = 2;
+  ACCELTAG_ADXL362_ACTIVE = 3;
+}
+
+message PresTagLogFmt {
+  uint32 period = 1;
+}
+
+message LuxTagLogFmt {
+  uint32 period = 1;
+}
+message Config {
+
+  message Interval {
+    int32 start_epoch = 1;
+    int32 end_epoch = 2;
+  }
+
+  TagType tag_type = 1;
+  // Schedule
+  Interval active_interval = 2;
+  repeated Interval hibernate = 3; // hibernation
+  uint32 period = 7;               // period for synchronous tags
+  // Data
+  BitTagLogFmt bittag_log = 4;     // bittag log format
+  //AccelTagLogFmt acceltag_log = 5; // acceltag log format
+  // Sensors
+  Adxl362 adxl362 = 6;
+}
+
+// change internal_format/external_format to messages
+// so they can be detected in qtmonitor
+
+message Adxl362 {
+  enum Rng {
+    Rng_UNSPECIFIED = 0;
+    R2G = 1;
+    R4G = 2;
+    R8G = 3;
+  }
+  enum Odr {
+    Odr_UNSPECIFIED = 0;
+    S12_5 = 1;
+    S25 = 2;
+    S50 = 3;
+    S100 = 4;
+    S200 = 5;
+    S400 = 6;
+  }
+
+  enum Aa {
+    Aa_UNSPESIFIED = 0;
+    AAhalf = 1;
+    AAquarter = 2;
+  }
+
+  Rng range = 1;
+  Odr freq = 2;
+  Aa filter = 3;
+  float act_thresh_g = 4;   // act/inact thresh (g)
+  float inact_thresh_g = 5; // inactive thresh (g)
+  float inactive_sec = 6;   // inactive time (seconds)
+}
+
+
+
+message BitTagLog { repeated BitTagData data = 1; }
+
+message BitTagData {
+  int32 epoch = 1;
+  float voltage = 2;
+  float temperature = 3;
+  fixed64 rawdata = 4;
+}
+
+message BitTagNgLog {
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated float activity = 4;
+}
+
+message PresTagLog {
+  message PT {
+    float temperature = 1;
+    float pressure = 2;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated PT data = 4;
+}
+
+message LuxTagLog {
+  message LT {
+    float lux = 1;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated LT data = 4;
+}
+
+message AccelTagLog {
+  message AT {
+    float pitch = 1;
+    float power = 2;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated AT data = 4;
+}
+
+message Compass {
+  float ax = 1;
+  float ay = 2;
+  float az = 3;
+  float mx = 4;
+  float my = 5;
+  float mz = 6;
+}
+
+message OptPwr {
+  float lux = 1;
+  float pwr = 2;
+  float pitch = 3;
+}
+
+message GeoTagLog {
+  int32 epoch = 1;
+  float voltage = 2;
+  float temperature = 3;
+  Compass compass = 5;
+  repeated OptPwr optpwr = 4; 
+}

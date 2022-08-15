@@ -1,0 +1,24 @@
+{
+    "tag_type": "BITTAGNG",
+    "active_interval": {
+        "start_epoch": 0,
+        "end_epoch": 2147483647
+    },
+    "hibernate": [{
+            "start_epoch": 0,
+            "end_epoch": 0
+        },
+        {
+            "start_epoch": 0,
+            "end_epoch": 0
+        }
+    ],
+    "adxl362": {
+        "range": "R4G",
+        "freq": "S50",
+        "filter": "AAquarter",
+        "act_thresh_g": 0.5,
+        "inact_thresh_g": 0.5,
+        "inactive_sec": 0.5
+    }
+}

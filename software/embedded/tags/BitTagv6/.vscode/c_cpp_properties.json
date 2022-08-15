@@ -1,0 +1,72 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "path": [
+                    "/usr/arm-none-eabi/include/c++/7.3.1",
+                    "/usr/arm-none-eabi/include/c++/7.3.1/arm-none-eabi",
+                    "/usr/arm-none-eabi/include/c++/7.3.1/backward",
+                    "/usr/lib/gcc/arm-none-eabi/7.3.1/include",
+                    "/usr/lib/gcc/arm-none-eabi/7.3.1/include-fixed",
+                    "/usr/arm-none-eabi/include"
+                ],
+                "intelliSenseMode": "clang-x64",
+                "limitSymbolsToIncludedHeaders": true,
+                "defines": {}
+            },
+            "includePath": [
+                "/usr/arm-none-eabi/include/c++/7.3.1",
+                "/usr/arm-none-eabi/include/c++/7.3.1/arm-none-eabi",
+                "/usr/arm-none-eabi/include/c++/7.3.1/backward",
+                "/usr/lib/gcc/arm-none-eabi/7.3.1/include",
+                "/usr/lib/gcc/arm-none-eabi/7.3.1/include-fixed",
+                "/usr/arm-none-eabi/include",
+                "${workspaceFolder}/Inc",
+                "${workspaceFolder}",
+                "${workspaceFolder}/board",
+                "${workspaceFolder}/build",
+                "${workspaceFolder}/../../../nanopb",
+                "${workspaceFolder}/../../proto",
+
+                "${workspaceFolder}/../../../ChibiOS/os/license",  
+                "${workspaceFolder}/../../../ChibiOS/os/common/portability/GCC",
+                "${workspaceFolder}/../../../ChibiOS/os/common/startup/ARMCMx/compilers/GCC",
+                "${workspaceFolder}/../../../ChibiOS/os/common/startup/ARMCMx/devices/STM32L4xx",
+                "${workspaceFolder}/../../../ChibiOS/os/common/ext/ARM/CMSIS/Core/Include",
+                "${workspaceFolder}/../../../ChibiOS/os/common/ext/ST/STM32L4xx",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/include",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/common/ARMCMx",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/STM32L4xx",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/ADCv3",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/CANv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/DACv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/DMAv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/EXTIv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/GPIOv3",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/I2Cv2",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/OTGv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/QUADSPIv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/RTCv2",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/SDMMCv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/SPIv2",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/TIMv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/USARTv2",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/ports/STM32/LLD/xWDGv1",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/osal/rt",
+                "${workspaceFolder}/../../../ChibiOS/os/rt/include",
+                "${workspaceFolder}/../../../ChibiOS/os/common/oslib/include",
+                "${workspaceFolder}/../../../ChibiOS/os/common/ports/ARMCMx/*",
+                "${workspaceFolder}/../../../ChibiOS/os/common/ports/ARMCMx/compilers/GCC",
+                "${workspaceFolder}/../../../ChibiOS/os/hal/lib/streams"   
+            ],
+            "name": "Linux",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "CHIBIOS": "${workspaceFolder}/../../../ChibiOS"
+        }
+    ]
+}

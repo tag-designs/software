@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Adxl362Config</class>
+ <widget class="QWidget" name="Adxl362Config">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>413</width>
+    <height>489</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="accelgroupBox">
+     <property name="toolTip">
+      <string>Accelerometer Configuration</string>
+     </property>
+     <property name="title">
+      <string>Accelerometer</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_15">
+      <item>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="verticalLayout_9">
+          <item>
+           <widget class="QGroupBox" name="adxlrange">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Data range in units of gravity (g)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="title">
+             <string>Range</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="QRadioButton" name="range2gButton">
+               <property name="toolTip">
+                <string>Dynamic range -2g to +2g</string>
+               </property>
+               <property name="text">
+                <string>+/- 2g</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <attribute name="buttonGroup">
+                <string notr="true">RangeButtons</string>
+               </attribute>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="range4gButton">
+               <property name="toolTip">
+                <string>Dynamic range -4g to +4g (default)</string>
+               </property>
+               <property name="text">
+                <string>+/- 4g</string>
+               </property>
+               <property name="checked">
+                <bool>false</bool>
+               </property>
+               <attribute name="buttonGroup">
+                <string notr="true">RangeButtons</string>
+               </attribute>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="range8gButton">
+               <property name="toolTip">
+                <string>Dynamic range -8g to +8g</string>
+               </property>
+               <property name="text">
+                <string>+/- 8g</string>
+               </property>
+               <attribute name="buttonGroup">
+                <string notr="true">RangeButtons</string>
+               </attribute>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="adxlantialias">
+            <property name="toolTip">
+             <string>Anti-alias filter (use 1/4 unless you understand what you are doing)</string>
+            </property>
+            <property name="title">
+             <string>Anti-alias Filter</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_7">
+             <item>
+              <widget class="QRadioButton" name="quarterrateButton">
+               <property name="toolTip">
+                <string>Anti Alias filter is 1/4 sample rate (default)</string>
+               </property>
+               <property name="text">
+                <string>1/4 Sample Rate</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+               <attribute name="buttonGroup">
+                <string notr="true">AAButtons</string>
+               </attribute>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="halfrateButton">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="toolTip">
+                <string>Anti alias filter is 1/2 sample rate</string>
+               </property>
+               <property name="text">
+                <string>1/2 Sample Rate</string>
+               </property>
+               <property name="checked">
+                <bool>false</bool>
+               </property>
+               <attribute name="buttonGroup">
+                <string notr="true">AAButtons</string>
+               </attribute>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="0">
+         <widget class="QGroupBox" name="adxlsamplerate">
+          <property name="toolTip">
+           <string>Accelerometer Sample Rate</string>
+          </property>
+          <property name="title">
+           <string>Sample Rate</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QRadioButton" name="sample12hzButton">
+             <property name="toolTip">
+              <string>12.5 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>12.5 Hz</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="sample25hzButton">
+             <property name="toolTip">
+              <string>25 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>25 Hz</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="sample50hzButton">
+             <property name="toolTip">
+              <string>50 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>50 Hz</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="sample100hzButton">
+             <property name="toolTip">
+              <string>100 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>100 Hz</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="sample200hzButton">
+             <property name="toolTip">
+              <string>200 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>200 Hz</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="sample400hzButton">
+             <property name="toolTip">
+              <string>400 Samples/second</string>
+             </property>
+             <property name="text">
+              <string>400 Hz</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">SampleButtons</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="ActivityDetection">
+        <property name="title">
+         <string>Activity Detection</string>
+        </property>
+        <layout class="QFormLayout" name="formLayout_7">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_11">
+           <property name="toolTip">
+            <string>Activity Threshold (in units of g)</string>
+           </property>
+           <property name="text">
+            <string>Threshold</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QDoubleSpinBox" name="activity_thresh">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="toolTip">
+              <string>The minimum acceleration magnitude to be considered &quot;active&quot;</string>
+             </property>
+             <property name="maximum">
+              <double>8.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.050000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_13">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string>g</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="toolTip">
+            <string>Inactivity detection time in number of samples</string>
+           </property>
+           <property name="text">
+            <string>Inactivity TIme</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <widget class="QDoubleSpinBox" name="activity_inactTime">
+             <property name="toolTip">
+              <string>The length of time tag acceleration must remain below threshold to be considered &quot;inactive&quot;</string>
+             </property>
+             <property name="maximum">
+              <double>2.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_12">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="text">
+              <string> seconds</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_6">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="RangeButtons"/>
+  <buttongroup name="AAButtons"/>
+  <buttongroup name="SampleButtons"/>
+ </buttongroups>
+</ui>

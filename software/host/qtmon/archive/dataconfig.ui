@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DataConfig</class>
+ <widget class="QWidget" name="DataConfig">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>656</width>
+    <height>481</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>DataConfig</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QGroupBox" name="logFormat">
+       <property name="toolTip">
+        <string>Format of data to be recorded</string>
+       </property>
+       <property name="title">
+        <string>Log Format</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QRadioButton" name="BitPerSecondButton">
+          <property name="toolTip">
+           <string>Store 1 activity bit/second</string>
+          </property>
+          <property name="text">
+           <string>Activity Bit Per Second</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="CntPerMinuteButton">
+          <property name="toolTip">
+           <string>Store count of active second per minute (0-60)</string>
+          </property>
+          <property name="text">
+           <string>Activity Bit Count Per Minute</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="CntPerFourMinuteButton">
+          <property name="text">
+           <string>Activity Bit Count Per Four Minutes</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="CntPerFiveMinuteButton">
+          <property name="text">
+           <string>Activity Bit Count Per Five Minutes</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QGroupBox" name="externalFormat">
+       <property name="toolTip">
+        <string>Storage of Raw Acceleration Data</string>
+       </property>
+       <property name="title">
+        <string>External  Storage</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_10">
+        <item>
+         <widget class="QRadioButton" name="NoneButton">
+          <property name="toolTip">
+           <string>No data to external flash</string>
+          </property>
+          <property name="text">
+           <string>None</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="ContinuousButton">
+          <property name="toolTip">
+           <string>Store Continous Accleration Data</string>
+          </property>
+          <property name="text">
+           <string>Continuous</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="ActiveButton">
+          <property name="toolTip">
+           <string>Store Acceleration Data When Active</string>
+          </property>
+          <property name="text">
+           <string>Active Only</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

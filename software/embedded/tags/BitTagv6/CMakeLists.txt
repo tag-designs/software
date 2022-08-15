@@ -1,0 +1,2 @@
+
+add_embedded_target(BitTagv6 bittag_proto)

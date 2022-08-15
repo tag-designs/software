@@ -1,0 +1,19 @@
+{
+ "tag_type": "LUXTAG",
+ "active_interval": {
+  "start_epoch": 0,
+  "end_epoch": 2147483647
+ },
+ "hibernate": [
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  },
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  }
+ ],
+ "bittag_log": "BITTAG_UNSPECIFIED",
+ "period" : 10,
+}

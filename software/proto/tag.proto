@@ -1,0 +1,136 @@
+syntax = "proto3";
+import "tagdata.proto";
+
+enum TestReq {
+  TESTS_UNSPECIFIED = 0;
+  RUN_ALL = 1;
+  RUN_RTC = 2;
+  RUN_ADXL362 = 3;
+  RUN_LPS = 4;
+  RUN_EXT_FLASH = 5;
+  RUN_OPT = 6;
+  RUN_AIS2 = 7;
+  RUN_MMC5633 = 8;
+}
+
+// Request message
+
+message Req {
+  oneof payload {
+
+    // Information
+
+    Empty get_info = 1;   // static tag information
+    Empty get_status = 2; // current tag status
+    Empty get_config = 3; // current tag configuration
+
+    // control
+
+    Empty erase = 4;   // erase tag (return to Idle)
+    Config start = 5;  // configure & start tag
+    Empty stop = 6;    // stop tag
+    TestReq test = 7;  // start test
+    int64 set_rtc = 8; // set clock (milliseconds)
+
+    // logs -- see log message for types
+
+    LogReq log = 9;
+  }
+}
+
+//  Acknowledgement message
+
+message Ack {
+  enum Err {
+    UNSPECIFIED = 0;
+    OK = 1;
+    // Host Error
+    EMPTY_RETURN = 2; // return type unexpected
+    MONITOR = 3;      // reserved for monitor
+    // Tag Error
+    NODATA = 4; // no data
+    INVAL = 5;  // invalid operand
+    PERM = 6;   // operation not permitted
+    NXIO = 7;   // operation failed
+    NANOPB = 8; // nanopb error
+  }
+
+  Err err = 1;
+  oneof payload {
+
+    TagInfo info = 2;
+    Config config = 3;        // configuration return
+    Status status = 4;        // current status
+    string error_message = 5; // debugging support
+
+    // Log types
+
+    StateLog system_log = 6;
+    BitTagLog bittag_data_log = 7;
+    PresTagLog prestag_data_log = 8;
+    GeoTagLog geotag_data_log = 9;
+    LuxTagLog luxtag_data_log = 10;
+    AccelTagLog acceltag_data_log = 11;
+    BitTagNgLog bittag_ng_data_log = 12;
+  }
+}
+
+message Empty {}
+message LogReq {
+  enum LogDataType {
+    LOG_UNSPECIFIED = 0;
+    SYSTEM_LOG = 1;
+    INTERNAL_DATA = 2;
+    EXTERNAL_DATA = 3;
+  }
+
+  LogDataType fmt = 1; // type of log
+  uint32 index = 2;    // next index
+}
+
+enum TagState {
+  STATE_UNSPECIFIED = 0;
+  TEST = 1;        // self test in progress
+  IDLE = 2;        // ready
+  CONFIGURED = 3;  // configured
+  RUNNING = 4;     // actively collecting data
+  HIBERNATING = 5; // running, but not active
+  ABORTED = 6;     // error, or stop received
+  FINISHED = 7;    // normal termination
+  sRESET = 8;      // reset in progress
+  EXCEPTION = 9;   // unhandled exception
+}
+
+message Status {
+  int64 millis = 1;              // current time in ms
+  TagState state = 2;            // current state
+  TestResult test_status = 3;    // test result
+  int32 internal_data_count = 4; // number of internal data entries
+  int32 external_data_count = 5; // number of external data entries
+  float voltage = 6;             // system voltage
+  float temperature = 7;         // processor Temperature
+}
+
+message State {
+  enum Event {
+    EVENT_UNSPECIFIED = 0;
+    EVENT_OK = 1;
+    EVENT_STARTCMD = 2;      // start event
+    EVENT_ENDTIM = 3;        // programmed end time
+    EVENT_STARTTIM = 4;      // programmed start time
+    EVENT_STARTHIB = 5;      // programmed hibernation time
+    EVENT_ENDHIB = 6;        // programmed end hibernation time
+    EVENT_STOPCMD = 7;       // monitor stop event
+    EVENT_RESETCMD = 8;      // reset
+    EVENT_LOWBATTERY = 9;    // low battery
+    EVENT_INTERNALFULL = 10; // no more internal data space
+    EVENT_EXTERNALFULL = 11; // no more exteral data space
+    EVENT_BROWNOUT = 12;     // brownout event
+    EVENT_POWERFAIL = 13;    // power failure
+    EVENT_UNKNOWN = 14;      // unknown failure
+  }
+  Status status = 1;
+  Event transition_reason = 2; // transition event code
+}
+
+message StateLog { repeated State states = 1; }

@@ -30,3 +30,20 @@
 *.exe
 *.out
 *.app
+
+# Directories
+
+ChibiOS
+nanopb
+public
+docs/themes
+docs-dist
+software/embedded/boards/bittag-base-jlcpcb-v3
+software/embedded/boards/bittag-base-v5*
+software/embedded/boards/BitTagNG-proto
+software/embedded/tags/AccelTag
+software/embedded/tags/BitTagNG-proto
+software/embedded/tags/LuxTag
+software/embeeded/tags/NucleoTag
+hardware/AccelTag
+hardware/LuxTag

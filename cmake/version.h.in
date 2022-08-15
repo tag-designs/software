@@ -1,0 +1,5 @@
+#define VERSION_HASH "@GIT_HASH@"
+#define GIT_DATE "@GIT_DATE@"
+#define GIT_COMMIT_SUBJECT "@GIT_COMMIT_SUBJECT@"
+#define GIT_REPO "@GIT_REPO@"
+#define GIT_SHA "@GIT_SHA@"
