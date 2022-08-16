@@ -22,7 +22,7 @@ you have my deepest sympathy
   * install qt5:x64-windows-static
   * install libusb:x64-windows-static
   * install ms-angle:x64-windows-static
-* install nanopb (submodule in ropo)
+* install nanopb binary  -- unpack in root_dir/nanopb ;   using the binary version is more reliable than using the source version
 
 ### Configure main build
 
