@@ -33,7 +33,7 @@
 
 # Directories
 
-ChibiOS
+# ChibiOS
 nanopb
 public
 docs/themes
