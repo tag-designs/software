@@ -36,7 +36,7 @@
 # ChibiOS
 nanopb
 public
-docs/themes
+docs/themes/docsy
 docs-dist
 software/embedded/boards/bittag-base-jlcpcb-v3
 software/embedded/boards/bittag-base-v5*
