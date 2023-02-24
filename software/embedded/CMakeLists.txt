@@ -32,7 +32,8 @@ else()
     STM32_PROGRAMMER
     NAMES STM32_Programmer_CLI
     HINTS
-      /Users/geobrown/Software/stm32cubeprogrammer/STM32CubeProgrammer.app/Contents/MacOs/bin
+      "/Users/geobrown/Software/stm32cubeprogrammer/STM32CubeProgrammer.app/Contents/MacOs/bin"
+    PATHS "/home/geobrown/Software/STM32CubeProgrammer/bin"
   )
 endif()
 

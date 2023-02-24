@@ -139,6 +139,7 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
     lps27_GetReg(LPS27_STATUS, &tmp, 1);
     lps27_GetReg(LPS27_PRESS_OUT_XL, buf, 5);
     lpsOff();
+
     *pressure = ((int32_t) ((buf[2] << 24) | (buf[1]<<16) | buf[0] << 8))>>15;
     // keep as much accuracy as feasible
     *temperature = (int16_t) ((buf[4]<<8) | ((buf[3])));
