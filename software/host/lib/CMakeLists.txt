@@ -13,6 +13,12 @@ else()
      find_package(libusb-1.0 REQUIRED)
 endif()
 
+
+message("LIBUSB_INCLUDES ${LIBUSB_INCLUDE_DIR}")
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(libusb REQUIRED libusb-1.0)
+
 #
 # Create tag library 
 #
@@ -39,13 +45,17 @@ target_sources(tag
 # add include directories, libraries to tag library 
 #
 
-target_include_directories(tag PRIVATE ${LIBUSB_INCLUDES})
+target_include_directories(tag PRIVATE ${LIBUSB_INCLUDE_DIR})
 target_include_directories(tag PRIVATE /usr/include/libusb-1.0)
 target_include_directories(tag PRIVATE /usr/local/include/libusb-1.0)
+target_include_directories(tag PRIVATE /opt/local/include/libusb-1.0)
 
 if (MSVC)
      target_link_libraries(tag PRIVATE ${libusb})
 else()
+     
+     #string(REPLACE "dylib" "a" LIBUSB_1_LIBRARIES ${LIBUSB_1_LIBRARIES})
+     message("libusb libraries: ${LIBUSB_1_LIBRARIES}")
      target_link_libraries(tag PRIVATE ${LIBUSB_1_LIBRARIES})
 endif()
 

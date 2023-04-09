@@ -45,6 +45,7 @@ int main(int argc, char **argv)
                            "print tag information");
 
   signal(SIGINT, intHandler);
+
   if (parse_options(argc, argv, options, tag, dev) && tag.Attach(dev))
   {
     std::string str;

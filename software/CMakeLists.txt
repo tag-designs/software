@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum OS X deployment version")
+set(CMAKE_OSX_SYSROOT "/Users/geobrown/Software/macos-sdk/MacOSX12.3.sdk")
 
 if (MSVC)
     set(Protobuf_USE_STATIC_LIBS ON)
@@ -17,8 +19,8 @@ endif()
 find_package(Protobuf REQUIRED)
 
 if (DEFINED ENV{NANOPB_ROOT})
-set(NANOPB_SRC_ROOT_FOLDER $ENV{NANOPB_ROOT})
-set(NANOPB_GENERATOR_SOURCE_DIR $ENV{NANOPB_ROOT}/generator-bin)
+set(NANOPB_SRC_ROOT_FOLDER ENV{NANOPB_ROOT})
+set(NANOPB_GENERATOR_SOURCE_DIR ENV{NANOPB_ROOT}/generator-bin)
 else()
 set(NANOPB_SRC_ROOT_FOLDER ${CMAKE_SOURCE_DIR}/nanopb)
 endif()
@@ -32,6 +34,8 @@ add_library(tag_monitor_interface INTERFACE)
 target_include_directories(tag_monitor_interface INTERFACE include/)
 
 # subdirectories
+
+set(CPACK_BUNDLE_APPLE_CERT_APP "Developer ID Application: Indiana University (5J69S77A7G)")
 
 add_subdirectory(proto)
 add_subdirectory(host)

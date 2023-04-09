@@ -23,9 +23,9 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Find the QtWidgets library
 
-find_package(Qt5 COMPONENTS Core Widgets CONFIG)
-if(NOT Qt5_FOUND)
-  message("Qt5 Not found")
+find_package(Qt6 COMPONENTS Core Widgets CONFIG)
+if(NOT Qt6_FOUND)
+  message("Qt6 Not found")
   message("Cannot Build QtMonitor")
   return()
 endif()
@@ -53,7 +53,7 @@ set(qtmonitor_SRCS
     pbenumgroup.cpp
     schedule.cpp)
 
-qt5_wrap_ui(UI_HEADERS mainwindow.ui schedule.ui)
+qt6_wrap_ui(UI_HEADERS mainwindow.ui schedule.ui)
 
 # Tell CMake to create the qtmonitor executable
 
@@ -77,7 +77,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtmonitor PRIVATE tag Qt5::Widgets)
+target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets)
 
 if(WIN32)
   # why the opengle extensions ????

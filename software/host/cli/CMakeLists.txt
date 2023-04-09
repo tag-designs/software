@@ -22,8 +22,8 @@ function(host_cli_tool name)
   # bundle things up properly
 
   if(APPLE)
-    include(DeployQt)
-    macdeployqt(${name})
+    #include(DeployQt)
+    #macdeployqt(${name})
   endif()
 endfunction()
 

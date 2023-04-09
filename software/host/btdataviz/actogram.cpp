@@ -422,7 +422,7 @@ void Actogram::on_pb_load_lightfile_clicked()
     QString inFileName = QFileDialog::getOpenFileName(this, tr("Open Activity CSV Specification"), QDir::homePath(),
                                                     tr("Light Files (*.csv)"));
 
-    if (inFileName == 0)
+    if (inFileName == "")
         return;
 
     QFile infile(inFileName);
