@@ -3,6 +3,8 @@ set(CMAKE_CXX_STANDARD 20)
 
 # set(CMAKE_BUILD_TYPE Debug)
 
+set(Qt6_DIR "/Users/geobrown/Qt/6.5.0/macos")
+
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
