@@ -3,9 +3,9 @@
 
 #define EXT_FLASH_SIZE (1024 * 1024 * 4)
 
-#define FIRMWARE_STRING "PresTag Steval AT25XE, Firmware version 1"
+#define FIRMWARE_STRING "PresTagv3, Firmware version 1"
 #undef  BOARD_NAME
-#define BOARD_NAME "PresTag Steval AT25XE"
+#define BOARD_NAME "PresTagv3"
 #define RV3028_RTC TRUE
 #define LPS_SPI TRUE
 #define LPS_LOW_POWER TRUE

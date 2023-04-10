@@ -50,7 +50,7 @@ typedef struct
 
 } BackupState;
 
-extern volatile BackupState *pState;
+extern volatile BackupState *const pState;
 
 /********************************************************
  *  Persistent Data Formats [ read directly from flash ]
