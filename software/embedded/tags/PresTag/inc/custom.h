@@ -3,7 +3,7 @@
 
 #define EXT_FLASH_SIZE (1024 * 1024 * 4)
 
-#define FIRMWARE_STRING "PresTagv3, Firmware version 1"
+#define FIRMWARE_STRING "PresTagv4, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "PresTagv3"
 #define RV3028_RTC TRUE

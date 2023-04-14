@@ -244,7 +244,7 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin6
-        ID="RTC_SCL"
+        ID="RTC_SDA"
         Type="OpenDrain"
         Level="High"
         Speed="Maximum"
@@ -254,7 +254,7 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin7
-        ID="RTC_SDA"
+        ID="RTC_SCL"
         Type="OpenDrain"
         Level="High"
         Speed="Maximum"
