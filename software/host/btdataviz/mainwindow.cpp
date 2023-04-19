@@ -181,7 +181,8 @@ void MainWindow::on_pb_load_clicked()
 
   QTextStream in(&file);
   voltage.clear();
-  vt_time.clear();
+  voltage_time.clear();
+  temperature_time.clear();
   temperature.clear();
   accel_time.clear();
   accel_count.clear();
@@ -219,7 +220,8 @@ void MainWindow::on_pb_load_clicked()
             // input temperature/voltage
             if (l2.length() > 3)
             {
-              vt_time << (l1[1].toInt());
+              voltage_time << (l1[1].toInt());
+              temperature_time << (l1[1].toInt());
               temperature << (l2[1].toDouble());
               voltage << (l2[3].toDouble());
             }
@@ -245,7 +247,8 @@ void MainWindow::on_pb_load_clicked()
           {
             QStringList v = l1[1].split(':');
             QStringList t = l1[2].split(':');
-            vt_time << l1[0].toDouble();
+            voltage_time << l1[0].toInt();
+            temperature_time << l1[0].toInt();
             temperature << t[1].toDouble();
             voltage << v[1].toDouble();
           }
@@ -319,24 +322,24 @@ void MainWindow::on_pb_load_clicked()
 
   // graph the temperature data
 
-  if (vt_time.size())
+  if (temperature_time.size())
   {
-    QVector<QCPGraphData> temperatureData(vt_time.size());
-    for (i = 0; i < vt_time.size(); i++)
+    QVector<QCPGraphData> temperatureData(temperature_time.size());
+    for (i = 0; i < temperature_time.size(); i++)
     {
-      temperatureData[i].key = vt_time[i];
+      temperatureData[i].key = temperature_time[i];
       temperatureData[i].value = temperature[i];
     }
     ui->plot->graph(1)->data()->set(temperatureData);
   }
 
   // graph voltage data
-  if (vt_time.size())
+  if (voltage_time.size())
   {
-    QVector<QCPGraphData> voltageData(vt_time.size());
-    for (i = 0; i < vt_time.size(); i++)
+    QVector<QCPGraphData> voltageData(voltage_time.size());
+    for (i = 0; i < voltage_time.size(); i++)
     {
-      voltageData[i].key = vt_time[i];
+      voltageData[i].key = voltage_time[i];
       voltageData[i].value = voltage[i];
     }
     ui->plot->graph(2)->data()->set(voltageData);

@@ -76,7 +76,8 @@ private:
     QVector<double> accel_count;
     QVector<double> accel_time_filtered;
     QVector<double> accel_count_filtered;
-    QVector<double> vt_time;
+    QVector<double> voltage_time;
+    QVector<double> temperature_time;
     QVector<double> voltage;
     QVector<double> temperature;
     QString path;
