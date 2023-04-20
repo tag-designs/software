@@ -71,6 +71,7 @@ private slots:
     void on_activityRange_valueChanged(int value);
 
 private:
+    enum TagType {BITTAG, PRESTAG};
     Ui::MainWindow *ui;
     QVector<double> accel_time;
     QVector<double> accel_count;
@@ -87,6 +88,7 @@ private:
     void makeVisible(bool);
     QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
+    TagType tagtype;
 
 };
 

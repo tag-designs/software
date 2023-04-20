@@ -177,7 +177,7 @@ void MainWindow::on_pb_load_clicked()
 
   path = QFileInfo(fileName).path();
 
-  // parse the data file
+  // Initialize data
 
   QTextStream in(&file);
   voltage.clear();
@@ -191,8 +191,9 @@ void MainWindow::on_pb_load_clicked()
   ui->plot->graph(0)->data()->clear();
   ui->plot->graph(1)->data()->clear();
   ui->plot->graph(2)->data()->clear();
+  tagtype = BITTAG;
 
-  // read file
+  // parse the file 
   while (!in.atEnd())
   {
     QString line = in.readLine();
@@ -200,6 +201,10 @@ void MainWindow::on_pb_load_clicked()
     {
       if (!line.startsWith("# Page"))
         ui->te_fileinfo->appendPlainText(line);
+      if (line.contains(QString("PRESTAG"))){
+        tagtype = PRESTAG;
+        //ui->te_fileinfo->appendPlainText("saw PRESTAG");
+      }
     }
     else
     {
@@ -209,80 +214,137 @@ void MainWindow::on_pb_load_clicked()
 
       QStringList l1 = line.split(',');
 
-      if (l1.length() >= 2)
-      {
-        if (l1[0][0] == '\t')
-        { // old style}
-          // temperature/voltage or bit buckets
-          if (l1[2][0] == 't')
+      switch (tagtype) {
+        case BITTAG:
+          if (l1.length() >= 2)
           {
-            QStringList l2 = l1[2].split(' ');
-            // input temperature/voltage
-            if (l2.length() > 3)
-            {
-              voltage_time << (l1[1].toInt());
-              temperature_time << (l1[1].toInt());
-              temperature << (l2[1].toDouble());
-              voltage << (l2[3].toDouble());
-            }
-          }
-          else
-          {
-            double time = l1[1].toDouble();
-            int cnt = l1[2].toInt(nullptr, 16);
-            // decompress bit buckets -- currently only works
-            // for minute bucket data -- will need to be extended
-            // to second buckets
-
-            for (int i = 5; 0 < i; i--)
-            {
-              accel_time << time - i * 60;
-              accel_count << ((cnt >> ((i - 1) * 6)) & 63) / 0.6;
-            }
-          }
-        }
-        else
-        {
-          if (l1.length() > 2 && (l1[1][0] == 'V'))
-          {
-            QStringList v = l1[1].split(':');
-            QStringList t = l1[2].split(':');
-            voltage_time << l1[0].toInt();
-            temperature_time << l1[0].toInt();
-            temperature << t[1].toDouble();
-            voltage << v[1].toDouble();
-          }
-          else
-          {
-            QStringList dat = l1[1].split(':');
-            double time = l1[0].toInt();
-            // SEC data is packed
-            if (dat[0].startsWith(QString("SEC")))
-            {
-              int cnt = dat[1].toInt(nullptr, 16);
-              for (int i = 29; 0 <= i; i--)
+            if (l1[0][0] == '\t')
+            { // old style}
+              // temperature/voltage or bit buckets
+              if (l1[2][0] == 't')
               {
-                accel_time << time - i;
-                accel_count << ((cnt >> (29 - i)) & 1) * 100.0;
+                QStringList l2 = l1[2].split(' ');
+                // input temperature/voltage
+                if (l2.length() > 3)
+                {
+                  voltage_time << (l1[1].toInt());
+                  temperature_time << (l1[1].toInt());
+                  temperature << (l2[1].toDouble());
+                  voltage << (l2[3].toDouble());
+                }
+              }
+              else
+              {
+                double time = l1[1].toDouble();
+                int cnt = l1[2].toInt(nullptr, 16);
+                // decompress bit buckets -- currently only works
+                // for minute bucket data -- will need to be extended
+                // to second buckets
+
+                for (int i = 5; 0 < i; i--)
+                {
+                  accel_time << time - i * 60;
+                  accel_count << ((cnt >> ((i - 1) * 6)) & 63) / 0.6;
+                }
               }
             }
-            if (dat[0].startsWith(QString("MIN")))
+            else
             {
-              accel_time << time;
-              accel_count << dat[1].toDouble();
-            }
-            if (dat[0].startsWith(QString("FOURMIN")))
-            {
-              accel_time << time;
-              accel_count << dat[1].toDouble();
-            }
-            if (dat[0].startsWith(QString("FIVEMIN")))
-            {
-              accel_time << time;
-              accel_count << dat[1].toDouble();
-            }
+              if (l1.length() > 2 && (l1[1][0] == 'V'))
+              {
+                QStringList v = l1[1].split(':');
+                QStringList t = l1[2].split(':');
+                voltage_time << l1[0].toInt();
+                temperature_time << l1[0].toInt();
+                temperature << t[1].toDouble();
+                voltage << v[1].toDouble();
+              }
+              else
+              {
+                QStringList dat = l1[1].split(':');
+                double time = l1[0].toInt();
+                // SEC data is packed
+                if (dat[0].startsWith(QString("SEC")))
+                {
+                  int cnt = dat[1].toInt(nullptr, 16);
+                  for (int i = 29; 0 <= i; i--)
+                  {
+                    accel_time << time - i;
+                    accel_count << ((cnt >> (29 - i)) & 1) * 100.0;
+                  }
+                }
+                if (dat[0].startsWith(QString("MIN")))
+                {
+                  accel_time << time;
+                  accel_count << dat[1].toDouble();
+                }
+                if (dat[0].startsWith(QString("FOURMIN")))
+                {
+                  accel_time << time;
+                  accel_count << dat[1].toDouble();
+                }
+                if (dat[0].startsWith(QString("FIVEMIN")))
+                {
+                  accel_time << time;
+                  accel_count << dat[1].toDouble();
+                }
+              }
           }
         }
+          break;
+        case PRESTAG:
+        if (l1.length() >= 2)
+          {
+              if (l1.length() > 2 && (l1[1][0] == 'V'))
+              {
+                QStringList v = l1[1].split(':');
+                //QStringList t = l1[2].split(':');
+                voltage_time << l1[0].toInt();
+                //temperature_time << l1[0].toInt();
+                //temperature << t[1].toDouble();
+                voltage << v[1].toDouble();
+              }
+              else
+              {
+                QStringList dat = l1[1].split(':');
+                double time = l1[0].toInt();
+                if (dat[0].startsWith(QString("P")))
+                {
+                    accel_time << time;
+                    accel_count << dat[1].toDouble();
+                }
+                if (dat[0].startsWith(QString("T")))
+                {
+                    temperature_time << time;
+                    temperature << dat[1].toDouble();
+                 
+                }
+              }
+          }
+        break;
+      }
+
+      // Customize UI for the tag types
+
+      if (tagtype == PRESTAG) {
+        ui->activityRange->setMaximum(1050);
+        ui->activityRange->setValue(1050);
+        ui->activityRange->setEnabled(false);
+        ui->activityRange->setVisible(false);
+        ui->label->setVisible(false);
+        ui->cb_activity->setText("Pressure");
+        ui->tabConfig->setTabEnabled(1,false);
+        ui->plot->yAxis->setLabel("Pressure (hPa)");
+      }
+      if (tagtype == BITTAG) {
+        ui->activityRange->setMaximum(105);
+        ui->activityRange->setMaximum(100);
+        ui->activityRange->setEnabled(true);
+        ui->activityRange->setVisible(true);
+        ui->label->setVisible(true);
+        ui->cb_activity->setText("Activity");
+        ui->tabConfig->setTabEnabled(1,true);
+       ui->plot->yAxis->setLabel("Activity Percent");
       }
     }
   }
