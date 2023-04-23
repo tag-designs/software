@@ -64,8 +64,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // update temperature/voltage
 
-    adcVDD(&vdd100, &temp10);
-    pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
+    
     pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
 
     // check for battery exhausted
@@ -81,31 +80,36 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       enum LOGERR err;
 
-      struct
-      {
-        int32_t epoch;
-        int16_t temp10;
-        uint16_t vdd100;
+      struct{
         int16_t pressure;
         int16_t temperature;
       } datablock;
 
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
 
-      if (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0)
+      if (pState->external_blocks % (sizeof(t_DataLog)) == 0)
       {
-        // write data including header
-        datablock.epoch = timestamp;
-        datablock.vdd100 = pState->vdd100;
-        datablock.temp10 = pState->temp10;
-        err = writeDataLog((uint16_t *)&datablock, sizeof(datablock) / 2);
-        pState->pages = pState->pages + 1;
+        t_DataHeader dataheader;
+        dataheader.epoch = timestamp;
+        dataheader.vdd100[0] = pState->vdd100;
+        dataheader.vdd100[1] = 0;
+        err = writeDataHeader(&dataheader);
+        stopMilliseconds(false,2);
       }
-      else
+  
+      switch (err)
       {
-        // write data only
-        err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+      case LOGWRITE_FULL:
+      case LOGWRITE_ERROR:
+        return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      case LOGWRITE_BAT:
+        return Finished(T_INIT, State_EVENT_LOWBATTERY);
+      default:
+        break;
       }
+      // write data only
+
+      err = writeDataLog((uint16_t *)&datablock.pressure, 2);
 
       // check error return
 
@@ -117,6 +121,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       default:
         break;
       }
+      
     }
   }
   if (sconfig.lps_period < 10)

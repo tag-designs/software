@@ -19,6 +19,7 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
+#include "datalog.h"
 #include "monitor.h"
 #include "external_flash.h"
 
@@ -33,6 +34,8 @@ CASSERT(sizeof(t_StateMarker) == 24);
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
 t_storedconfig sconfig __attribute__((__aligned__(8))) __attribute__((section(".persistent")))
+__attribute__((__aligned__(8))) __attribute__((no_reorder));
+t_DataHeader vddHeader[256] __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
 
 // erase persistent area of flash

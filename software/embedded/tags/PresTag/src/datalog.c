@@ -94,6 +94,34 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   return LOGWRITE_OK;
 }
 
+extern enum LOGERR writeDataHeader(t_DataHeader *head)
+{
+  uint32_t flashend = (uint32_t)(0x8000000 +
+                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+
+  uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
+
+  chSysLock();
+  FLASH_Unlock();
+  uint32_t flasherr = FLASH_Program_Array(writeptr, (uint32_t *) head, sizeof(t_DataHeader)/4);
+  FLASH_Lock();
+  FLASH_Flush_Data_Cache();
+  chSysUnlock();
+
+ // See if the log file is full
+
+  if ((((uint32_t)writeptr) + 16) >= flashend)
+    return LOGWRITE_FULL;
+  // See if there is still energy to continue
+
+  if (flasherr) 
+    return LOGWRITE_ERROR;
+  if (head->vdd100[0] < 200)
+    return LOGWRITE_BAT;
+  else
+    return LOGWRITE_OK;
+}
+
 //
 // Generate monitor ack for data log request
 //   Executed by the monitor thread
@@ -101,18 +129,21 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
 
 int data_logAck(int index, Ack *ack)
 {
+
   PresTagLog *data = &ack->payload.prestag_data_log;
   ack->err = Ack_Err_OK;
+
+  // read data
   ExFlashPwrUp();
   ExFlashRead(sizeof(databuf)*index, (uint8_t *) &databuf, sizeof(databuf));
   ExFlashPwrDown();
 
-  if (databuf.epoch != -1)
+  if (vddHeader[index].epoch != -1)
   {
     ack->which_payload = Ack_prestag_data_log_tag;
-    data->epoch = databuf.epoch;
-    data->voltage = databuf.vdd100 / 100.0f;
-    data->temperature = databuf.temp10 /10.0f;
+    data->epoch = vddHeader[index].epoch;
+    data->voltage = vddHeader[index].vdd100[0] * 0.01;
+    data->temperature = vddHeader[index].vdd100[1] * 0.01;
     data->data_count = 0;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples

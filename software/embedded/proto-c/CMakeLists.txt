@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# set options for nanopb to find xx.options files function handles building tag
-# nanoproto files with specific options files to prune the result
-
 function(add_nanopb_target name)
 
   include_directories(${NANOPB_PROTO})
@@ -13,23 +10,37 @@ function(add_nanopb_target name)
 
   get_target_property(TAG_PROTO_SOURCES tag-proto-sources INTERFACE_SOURCES)
 
-  message("sources ${TAG_PROTO_SOURCES}")
+  #message("sources ${TAG_PROTO_SOURCES}")
+ 
+  #set(NANOPB_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}"
+  #                   --experimental_allow_proto3_optional)
+  #set(NANOPB_DEPENDS tag.options tagdata.options)
 
-  set(NANOPB_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}"
-                     --experimental_allow_proto3_optional)
-  set(NANOPB_DEPENDS tag.options tagdata.options)
-  nanopb_generate_cpp(NANOPROTO_SRCS NANOPROTO_HDRS ${TAG_PROTO_SOURCES})
-
-  add_custom_target(
-    ${name}_proto_sources ALL
-    DEPENDS ${NANOPROTO_SRCS} ${NANOPROTO_HDRS} tag.options tagdata.options
-            default_config.c)
+  # generate default config
 
   add_custom_command(
     OUTPUT default_config.c
     COMMAND config-gen ${CMAKE_CURRENT_SOURCE_DIR}/default-config.json >
             default_config.c
     DEPENDS config-gen default-config.json)
+
+  #  Generate nanopb files
+
+  foreach(P ${TAG_PROTO_SOURCES})
+    cmake_path(GET P PARENT_PATH parent)
+    cmake_path(GET P STEM stem)
+    #message("add ${stem}.pb.c ${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator -I ${CMAKE_CURRENT_SOURCE_DIR} -D ${CMAKE_CURRENT_BINARY_DIR} ${P}" )
+    add_custom_command(
+      OUTPUT ${stem}.pb.c ${stem}.pb.h
+      COMMAND ${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator -I ${CMAKE_CURRENT_SOURCE_DIR} -I ${parent} -D ${CMAKE_CURRENT_BINARY_DIR} ${stem}.proto
+      DEPENDS ${TAG_PROTO_SOURCES} tag.options tagdata.options
+    )
+  endforeach()
+
+  add_custom_target(
+    ${name}_proto_sources ALL
+    DEPENDS ${NANOPROTO_SRCS} ${NANOPROTO_HDRS} tag.options tagdata.options
+            default_config.c tagdata.pb.c tag.pb.c)
 
   add_library(${name}_proto INTERFACE)
   target_include_directories(${name}_proto INTERFACE ${CMAKE_CURRENT_BINARY_DIR}
