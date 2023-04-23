@@ -21,9 +21,9 @@ if(WIN32)
   install(TARGETS qtmonitor tag-info tag-test tag-test-example tag-dwnld
           DESTINATION .)
 else()
-  install(TARGETS btviz qtmonitor 
-# tag-info tag-test 
-# tag-test-example tag-dwnld
+  install(TARGETS btviz qtmonitor tag-test
+  #tag-info tag-test 
+  #tag-test-example tag-dwnld
           BUNDLE DESTINATION bin)
 endif()
 
