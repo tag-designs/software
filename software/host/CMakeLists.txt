@@ -20,7 +20,7 @@ if(WIN32)
 else()
   install(TARGETS btviz qtmonitor tag-test
           BUNDLE DESTINATION UltralightTags
-          RUNTIME DESTINATION UltralightTags)
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 
 set(CPACK_PACKAGE_NAME "UltralightTags")
