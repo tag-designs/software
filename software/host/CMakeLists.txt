@@ -14,17 +14,13 @@ add_subdirectory(qtmon)
 add_subdirectory(btdataviz)
 
 if(WIN32)
-  install(
-    TARGETS btviz
-    DESTINATION .
-    COMPONENT btviz)
-  install(TARGETS qtmonitor tag-info tag-test tag-test-example tag-dwnld
-          DESTINATION .)
+  install(TARGETS btviz qtmonitor tag-info tag-test tag-test-example tag-dwnld
+          BUNDLE DESTINATION .
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
   install(TARGETS btviz qtmonitor tag-test
-  #tag-info tag-test 
-  #tag-test-example tag-dwnld
-          BUNDLE DESTINATION bin)
+          BUNDLE DESTINATION bin
+          RUNTIME DESTINATION UltralightTags)
 endif()
 
 set(CPACK_PACKAGE_NAME "UltralightTags")
