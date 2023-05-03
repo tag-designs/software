@@ -64,7 +64,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // update temperature/voltage
 
-    
+    adcVDD(&vdd100, &temp10);
     pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
 
     // check for battery exhausted
@@ -87,12 +87,16 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
 
+      if (pState->external_blocks % (sizeof(t_DataLog)) == (sizeof(t_DataLog)/2))
+      {
+        dataheader.vdd100[1] = pState->vdd100;
+      }
+
       if (pState->external_blocks % (sizeof(t_DataLog)) == 0)
       {
         t_DataHeader dataheader;
         dataheader.epoch = timestamp;
         dataheader.vdd100[0] = pState->vdd100;
-        dataheader.vdd100[1] = 0;
         err = writeDataHeader(&dataheader);
         stopMilliseconds(false,2);
       }
@@ -102,7 +106,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       case LOGWRITE_FULL:
       case LOGWRITE_ERROR:
         return Finished(T_INIT, State_EVENT_INTERNALFULL);
-      case LOGWRITE_BAT:
+      case LOGWRITE_BAT:  //redundant?
         return Finished(T_INIT, State_EVENT_LOWBATTERY);
       default:
         break;
