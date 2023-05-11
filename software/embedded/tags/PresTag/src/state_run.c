@@ -86,6 +86,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       } datablock;
 
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
+      t_DataHeader dataheader;
 
       if (pState->external_blocks % (sizeof(t_DataLog)) == (sizeof(t_DataLog)/2))
       {
@@ -94,7 +95,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       if (pState->external_blocks % (sizeof(t_DataLog)) == 0)
       {
-        t_DataHeader dataheader;
+        
         dataheader.epoch = timestamp;
         dataheader.vdd100[0] = pState->vdd100;
         err = writeDataHeader(&dataheader);
