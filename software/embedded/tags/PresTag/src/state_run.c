@@ -71,7 +71,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if ((pState->vdd100) < 200)
     {
-      return Finished(T_INIT, State_EVENT_LOWBATTERY);
+      //return Finished(T_INIT, State_EVENT_LOWBATTERY);
     }
 
     // wakeup timer event ?
@@ -107,7 +107,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       case LOGWRITE_ERROR:
         return Finished(T_INIT, State_EVENT_INTERNALFULL);
       case LOGWRITE_BAT:  //redundant?
-        return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
       default:
         break;
       }
