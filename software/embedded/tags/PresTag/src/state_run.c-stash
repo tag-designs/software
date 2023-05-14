@@ -31,7 +31,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;
-    pState->temp10 = vdd100;//temp10;
+    pState->temp10 = temp10;
 
     // Start the interval timer
     disableAllAlarms();
@@ -65,14 +65,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // update temperature/voltage
 
     adcVDD(&vdd100, &temp10);
-    //pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
-    pState->vdd100 = (pState->vdd100 * 3 + vdd100)/ 4;
+    pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
 
     // check for battery exhausted
 
     if ((pState->vdd100) < 200)
     {
-      //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+      return Finished(T_INIT, State_EVENT_LOWBATTERY);
     }
 
     // wakeup timer event ?
@@ -87,7 +86,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       } datablock;
 
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
-      t_DataHeader dataheader;
 
       if (pState->external_blocks % (sizeof(t_DataLog)) == (sizeof(t_DataLog)/2))
       {
@@ -96,10 +94,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       if (pState->external_blocks % (sizeof(t_DataLog)) == 0)
       {
-        
+       
+        t_DataHeader dataheader;
         dataheader.epoch = timestamp;
         dataheader.vdd100[0] = pState->vdd100;
-        dataheader.vdd100[1] = pState->temp10;
+        dataheader.vdd100[0] = pState->temp10;
         err = writeDataHeader(&dataheader);
         stopMilliseconds(false,2);
       }
@@ -110,7 +109,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       case LOGWRITE_ERROR:
         return Finished(T_INIT, State_EVENT_INTERNALFULL);
       case LOGWRITE_BAT:  //redundant?
-        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        return Finished(T_INIT, State_EVENT_LOWBATTERY);
       default:
         break;
       }
