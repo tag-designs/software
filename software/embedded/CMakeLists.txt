@@ -114,7 +114,7 @@ function(add_embedded_target name proto_target)
   #add_custom_target(${name} ALL DEPENDS ${target_elf})
 
   add_custom_target(${name} ALL
-    #OUTPUT ${target_elf}
+    BYPRODUCTS ${target_elf}
     #COMMAND echo " ${default_opt} ${ARGN}"
     COMMAND make -C ${name} ${default_opt} ${ARGN}
     WORKING_DIRECTORY ${tag_source_dir}
@@ -154,7 +154,7 @@ function(add_embedded_target name proto_target)
     DEPENDS ${name} ${STM32_PROGRAMMER}
     COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf})
 
-  install(FILES ${target_elf} DESTINATION embedded OPTIONAL)
+  install(FILES ${target_elf} TYPE BIN OPTIONAL)
 
 endfunction()
 
