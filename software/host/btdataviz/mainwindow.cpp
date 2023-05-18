@@ -37,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
   ui->plot->graph(2)->setVisible(false);
 
   // set graphranges
+  
   ui->plot->yAxis->setRange(0, ui->activityRange->value());
   ui->plot->yAxis2->setRange(0, 50);
 
@@ -329,12 +330,14 @@ void MainWindow::on_pb_load_clicked()
       if (tagtype == PRESTAG) {
         ui->activityRange->setMaximum(1050);
         ui->activityRange->setValue(1050);
+        ui->activityRange->setMinimum(600);
         ui->activityRange->setEnabled(false);
         ui->activityRange->setVisible(false);
         ui->label->setVisible(false);
         ui->cb_activity->setText("Pressure");
         ui->tabConfig->setTabEnabled(1,false);
         ui->plot->yAxis->setLabel("Pressure (hPa)");
+        ui->plot->yAxis->setRange(700, ui->activityRange->value());
       }
       if (tagtype == BITTAG) {
         ui->activityRange->setMaximum(105);
@@ -501,7 +504,10 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
       accelData[i].key = accel_time[i];
     }
     ui->plot->graph(0)->data()->set(accelData);
-    ui->plot->yAxis->setRange(0, ui->activityRange->value());
+    if (tagtype == PRESTAG)
+      ui->plot->yAxis->setRange(700, ui->activityRange->value());
+    else
+      ui->plot->yAxis->setRange(0, ui->activityRange->value());
     ui->theActogram->setData(accel_time, accel_count,
                              QFileInfo(currentfilename).fileName());
   }
@@ -803,7 +809,10 @@ void MainWindow::on_rbVoltage_clicked()
 
 void MainWindow::on_activityRange_valueChanged(int i) 
 {
-  ui->plot->yAxis->setRange(0, i);
+  if (tagtype == PRESTAG)
+    ui->plot->yAxis->setRange(700, i);
+  else
+    ui->plot->yAxis->setRange(0, ui->activityRange->value());
   ui->plot->replot();
  //std::cerr << "set range\n";
 }

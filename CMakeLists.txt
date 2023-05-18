@@ -9,7 +9,7 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 set(CMAKE_FIND_ROOT 
     "/home/geobrown/Software;/Users/geobrown/Software;c:/Program Files/fmpp/bin;C:/Program Files/STMicroelectronics" )
 
-set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+#set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
 add_subdirectory(software)
 add_subdirectory(hardware)
