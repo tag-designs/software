@@ -103,11 +103,12 @@ include $(CHIBIOS)/os/hal/ports/STM32/STM32F0xx/platform.mk
 include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
-include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/port_v6m.mk
+include $(CHIBIOS)/os/common/ports/ARMv6-M/compilers/GCC/mk/port.mk
 # Other files (optional).
 #include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/os/license/license.mk
 # Define linker script file here
+include $(CHIBIOS)/tools/mk/autobuild.mk
 
 LDSCRIPT= $(STARTUPLD)/STM32F042x6.ld
 
@@ -116,6 +117,8 @@ LDSCRIPT= $(STARTUPLD)/STM32F042x6.ld
 
 include project.mk
 CSRC = 	$(ALLCSRC)
+
+$(info CSRC =  $(CSRC))
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -212,9 +215,10 @@ ULIBS =
 ##############################################################################
 
 RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
+include $(RULESPATH)/arm-none-eabi.mk
 include $(RULESPATH)/rules.mk
 
-VPATH := $(BUILDDIR) ./src ../common/src $(VPATH)
+VPATH := $(BUILDDIR)  ./src ../common/src $(VPATH)
 
 # UNAME_S := $(shell uname -s)
 
