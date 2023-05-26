@@ -28,6 +28,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     int remainder = pState->external_blocks % (sizeof(t_DataLog) / 2);
     if (remainder)
       pState->external_blocks = pState->external_blocks + sizeof(t_DataLog) / 2 - remainder;
+      // need to recover internal block start
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;

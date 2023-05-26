@@ -123,7 +123,8 @@ function(add_embedded_target name proto_target)
   # build version.h file which includes git variables
 
   add_custom_target(${name}_version_h ${CMAKE_COMMAND} -P
-                                      ${CMAKE_SOURCE_DIR}/cmake/version.cmake)
+                                      ${CMAKE_SOURCE_DIR}/cmake/version.cmake
+                    BYPRODUCTS version.h)
 
   add_dependencies(${name} ${name}_version_h)
 
