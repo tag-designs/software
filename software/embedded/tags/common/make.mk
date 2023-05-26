@@ -143,7 +143,7 @@ TCPPSRC =
 ASMSRC =
 ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
-INCDIR = $(CONFDIR) ../common/inc $(ALLINC) $(TESTINC)
+INCDIR = $(CONFDIR) ./inc ../common/inc $(ALLINC) $(TESTINC)
 
 #
 # Project, sources and paths
