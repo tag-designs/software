@@ -7,7 +7,7 @@ message("Configure Tag Library")
 #
 
 if (MSVC)
-     find_path(LIBUSB_INCLUDES libusb.h PATH_SUFFIXES libusb-1.0)
+     find_path(LIBUSB_INCLUDE_DIR libusb.h PATH_SUFFIXES libusb-1.0)
      find_library(libusb libusb-1.0 REQUIRED)
 else()
      find_package(libusb-1.0 REQUIRED)

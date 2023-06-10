@@ -39,5 +39,6 @@ set(CPACK_BUNDLE_APPLE_CERT_APP "Developer ID Application: Indiana University (5
 
 add_subdirectory(proto)
 add_subdirectory(host)
+if (NOT WIN32)
 add_subdirectory(embedded)
-
+endif()

@@ -31,12 +31,12 @@ if(NOT Qt6_FOUND)
 endif()
 
 if(WIN32)
-  find_package(Qt5OpenGLExtensions CONFIG)
-  if(NOT Qt5OpenGLExtensions_FOUND)
-    message("QT5 Open GL Extensions not found")
-    message("Cannot Build QtMonitor")
-    return()
-  endif()
+ # find_package(Qt6OpenGLExtensions CONFIG)
+  #if(NOT Qt6OpenGLExtensions_FOUND)
+  #  message("QT6 Open GL Extensions not found")
+   # message("Cannot Build QtMonitor")
+   # return()
+  #endif()
 endif()
 
 # Populate a CMake variable with the sources
@@ -81,5 +81,5 @@ target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets)
 
 if(WIN32)
   # why the opengle extensions ????
-  target_link_libraries(qtmonitor PRIVATE Qt5::OpenGLExtensions)
+  target_link_libraries(qtmonitor)# PRIVATE Qt6::OpenGLExtensions)
 endif()
