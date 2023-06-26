@@ -185,7 +185,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       case LOGWRITE_FULL:
         return Finished(T_INIT, State_EVENT_INTERNALFULL);
       case LOGWRITE_BAT:
-        return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
       default:
         break;
       }
