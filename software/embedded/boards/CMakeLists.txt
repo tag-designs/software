@@ -26,6 +26,7 @@ endfunction()
 #add_subdirectory(bittag-base-jlcpcb-v2)
 add_subdirectory(bittag-base-jlcpcb-v3)
 add_subdirectory(tag-breakout-base-jlcpcb32-v1)
+add_subdirectory(bittag-base-v7)
 
 # tags
 

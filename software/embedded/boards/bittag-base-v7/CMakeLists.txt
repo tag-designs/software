@@ -1,0 +1,1 @@
+generate_board_files(board-bittag-base-v7)
