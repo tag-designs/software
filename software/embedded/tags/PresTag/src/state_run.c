@@ -90,12 +90,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
       t_DataHeader dataheader;
 
-      if (pState->external_blocks % (sizeof(t_DataLog)) == (sizeof(t_DataLog)/2))
+      if (pState->external_blocks % (DATALOG_SAMPLES*2) == (DATALOG_SAMPLES))
       {
         pState->temp10 = pState->vdd100;
       }
 
-      if (pState->external_blocks % (sizeof(t_DataLog)) == 0)
+      if (pState->external_blocks % (DATALOG_SAMPLES*2) == 0)
       {
         
         dataheader.epoch = timestamp;
