@@ -61,8 +61,8 @@
         Type="PushPull"
         Level="Low"
         Speed="Maximum"
-        Resistor="Floating"
-        Mode="Analog"
+        Resistor="PullDown"
+        Mode="Input"
         Alternate="0" />
      <pin6
         ID="TAG_3V3_EN"
@@ -70,7 +70,7 @@
         Level="Low"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0" />
      <pin7
 	      ID="TAG_VBAT_EN"
@@ -78,7 +78,7 @@
         Level="Low"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0" />
       <pin8
         ID=""
@@ -93,7 +93,7 @@
         Type="PushPull"
         Level="Low"
         Speed="Maximum"
-        Resistor="PullDown"
+        Resistor="Floating"
         Mode="Input"
         Alternate="0" />
       <pin10
@@ -102,7 +102,7 @@
         Level="Low"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Output"
+        Mode="Analog"
         Alternate="0" />
       <pin11
         ID="USB_DM"
