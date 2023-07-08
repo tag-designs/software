@@ -69,8 +69,9 @@ set_target_properties(
              RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 
 if(APPLE)
-  include(DeployQt)
-  macdeployqt(qtmonitor)
+  #include(DeployQt)
+  #macdeployqt(qtmonitor)
+  set_target_properties(qtmonitor PROPERTIES MACOSX_BUNDLE TRUE)
 elseif(WIN32)
   # windeployqt(qtmonitor)
 endif()
