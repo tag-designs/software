@@ -142,8 +142,8 @@ int data_logAck(int index, Ack *ack)
   {
     ack->which_payload = Ack_prestag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100[0] * 0.01;
-    data->temperature = vddHeader[index].vdd100[1] * 0.01;
+    data->voltage = vddHeader[index].vdd100[0] * 0.01f;
+    data->temperature = vddHeader[index].vdd100[1] * 0.01f;
     data->data_count = 0;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
