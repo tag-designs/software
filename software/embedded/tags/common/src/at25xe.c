@@ -135,9 +135,9 @@ int ExSectorSize(void) {
 void ExFlashPwrUp(void)
 {
     FlashSpiOn();
-    stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
+    stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
     spi_cmd(AT25XE_CMD_POWER_UP);
-    stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
+    stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
 }
 
 
