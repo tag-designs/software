@@ -90,12 +90,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
       t_DataHeader dataheader;
 
-      if (pState->external_blocks % (DATALOG_SAMPLES*2) == (DATALOG_SAMPLES))
+      if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))
       {
         pState->temp10 = pState->vdd100;
       }
 
-      if (pState->external_blocks % (DATALOG_SAMPLES*2) == 0)
+      if ((pState->external_blocks % (DATALOG_SAMPLES)) == 0)
       {
         
         dataheader.epoch = timestamp;
@@ -118,6 +118,18 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       // write data only
 
       err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+      switch (err)
+      {
+      case LOGWRITE_FULL:
+      case LOGWRITE_ERROR:
+        return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      case LOGWRITE_BAT:  //redundant?
+        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+      default:
+        break;
+      }
+    
+      pState->external_blocks += 1;
 
       // check error return
 

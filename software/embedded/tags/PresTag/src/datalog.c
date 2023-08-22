@@ -53,9 +53,9 @@ int restoreLog()
   }
   ExFlashPwrDown();
 
-  // treat last block found as full
+  // treat last block found as full -- This needs further work
   pState->pages = addr/blocksize;
-  pState->external_blocks = (addr + blocksize)/2;
+  pState->external_blocks = pState->pages*4+DATALOG_SAMPLES;
   return 0;
 }
 
@@ -65,13 +65,13 @@ int restoreLog()
 
 enum LOGERR writeDataLog(uint16_t *data, int num)
 {
-  if (pState->external_blocks + num > EXT_FLASH_SIZE / 2)
+  if (pState->external_blocks*2 + num > EXT_FLASH_SIZE/2)
   {
     return LOGWRITE_FULL;
   }
 
   int cnt;
-  int addr = pState->external_blocks * 2;
+  int addr = pState->external_blocks * 4;
 
   ExFlashPwrUp();
   for (int i = 0; i < num; i++)
@@ -87,7 +87,7 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
     stopMilliseconds(true,2);
     //SPI1->CR1 |= SPI_CR1_SPE;
     addr += 2;
-    pState->external_blocks = addr/2;
+    //pState->external_blocks = addr/2;
   }
   ExFlashPwrDown();
   
