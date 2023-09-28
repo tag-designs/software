@@ -106,9 +106,14 @@ message Adxl362 {
   }
 
   enum Aa {
-    Aa_UNSPESIFIED = 0;
+    Aa_UNSPESIFIED = 0; // mispelled, but leave alone!
     AAhalf = 1;
     AAquarter = 2;
+  }
+
+  enum AdxlType {
+    AdxlType_362 = 0;
+    AdxlType_375 = 1;
   }
 
   Rng range = 1;
@@ -117,6 +122,7 @@ message Adxl362 {
   float act_thresh_g = 4;   // act/inact thresh (g)
   float inact_thresh_g = 5; // inactive thresh (g)
   float inactive_sec = 6;   // inactive time (seconds)
+  AdxlType accel_type = 7;  // accelerometer type
 }
 
 

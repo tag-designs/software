@@ -423,7 +423,8 @@ void MainWindow::on_internalDownloadButton_clicked()
     {
       len = dumpTagLog(fs, ack, config, tag_log_output_txt);
       total += len;
-      progress.setValue(total % status.internal_data_count());
+      if (status.internal_data_count())
+        progress.setValue(total % status.internal_data_count());
     }
   } while (len && !progress.wasCanceled());
   fs.close();

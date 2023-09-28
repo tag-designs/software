@@ -46,6 +46,7 @@ private:
     QDoubleSpinBox *act_thresh_ = nullptr;
     QDoubleSpinBox *inact_thresh_ = nullptr;
     QDoubleSpinBox *inactive_ = nullptr;
+    Adxl362_AdxlType adxl_type = Adxl362_AdxlType_AdxlType_362;
 };
 
 #endif // ADXL362CONFIG_H

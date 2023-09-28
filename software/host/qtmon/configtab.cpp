@@ -104,7 +104,7 @@ void ConfigTab::Attach(const Config &config)
         "Configure Tag Data Logs", config);
   }
   if (config.has_adxl362())
-    AddConfigItem(qobject_cast<ConfigInterface *>(new Adxl362Config()), "Adxl362", 
+    AddConfigItem(qobject_cast<ConfigInterface *>(new Adxl362Config()), "Adxl362/375", 
          "Configure Accelerometer", config);
 
   // enable tabs

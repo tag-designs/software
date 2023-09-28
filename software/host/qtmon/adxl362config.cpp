@@ -112,13 +112,17 @@ void Adxl362Config::GetConfig(Config &config)
 {
   Adxl362 adxl;
 
-  if (filter_)
+  adxl.set_accel_type(adxl_type);
+
+  if (adxl_type == Adxl362_AdxlType_AdxlType_362)
   {
     int id = filter_->checkedId();
-    if (Adxl362_Aa_IsValid(id))
+    if (Adxl362_Aa_IsValid(id)) {
       adxl.set_filter((Adxl362_Aa)id);
-  }
-
+    } else {
+      adxl.set_filter((Adxl362_Aa)0);
+    }
+  } 
   if (sample_rate_)
   {
     int id = sample_rate_->checkedId();
@@ -150,7 +154,15 @@ void Adxl362Config::SetConfig(const Config &config)
 
   // check supported fields
 
-  filter_->setCheckedId((int)adxl.filter());
+  adxl_type  = adxl.accel_type();
+
+  if (adxl_type == Adxl362_AdxlType_AdxlType_362) {
+    filter_->setCheckedId((int)adxl.filter());
+    filter_->setVisible(true);
+  } else {
+    filter_->setVisible(false);
+  }
+
   sample_rate_->setCheckedId((int)adxl.freq());
   range_->setCheckedId((int)adxl.range());
 
