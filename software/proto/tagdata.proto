@@ -113,7 +113,7 @@ message Adxl362 {
 
   enum AdxlType {
     AdxlType_362 = 0;
-    AdxlType_375 = 1;
+    AdxlType_367 = 1;
   }
 
   Rng range = 1;
