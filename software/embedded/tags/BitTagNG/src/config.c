@@ -41,7 +41,7 @@ void readConfig(Config *config)
 
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
-  config->period = sconfig.lps_period;
+  //config->period = sconfig.lps_period;
 
   config->has_active_interval = true;
   config->active_interval.start_epoch = sconfig.start;
@@ -67,11 +67,14 @@ bool writeConfig(Config *config)
 
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
+
+  /*
   if (config->period) {
     config_tmp.lps_period = config->period;
   } else {
     return false;
   }
+  */
 
   for (int i = 0; i < config->hibernate_count; i++)
   {

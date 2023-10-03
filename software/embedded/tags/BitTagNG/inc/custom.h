@@ -5,9 +5,11 @@
 
 #define FIRMWARE_STRING "BitTagNG, Firmware version 1"
 #undef  BOARD_NAME
-#define BOARD_NAME "BitTagNG"
+#define BOARD_NAME "BitTagNG_Steval"
 #define RV3028_RTC TRUE
-#define ADXL367 TRUE
+#define ADXL362 TRUE
 #define EXTERNAL_FLASH TRUE
+
+#define LINE_ACCEL_CS LINE_ADXL_CS
 
 #endif
