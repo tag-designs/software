@@ -36,6 +36,7 @@
 #include "hal.h"
 #include <limits.h>
 #include "ADXL362.h"
+#include "ADXL367.h"
 #include "app.h"
 
 #include "tag.pb.h"
@@ -278,6 +279,11 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 #if defined(USE_ADXL362)
     accelSpiOn();
     ADXL362_SoftwareReset();
+    accelSpiOff();
+#endif
+#if defined(USE_ADXL367)
+    accelSpiOn();
+    ADXL367_SoftwareReset();
     accelSpiOff();
 #endif
     pState->state = TagState_HIBERNATING;

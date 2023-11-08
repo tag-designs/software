@@ -2,6 +2,7 @@
 #include "app.h"
 #include "tag.pb.h"
 #include "ADXL362.h"
+#include "ADXL367.h"
 #include "config.h"
 #include "persistent.h"
 
@@ -100,6 +101,13 @@ void deviceInit(int force)
 #if defined(USE_ADXL362)
     accelSpiOn();
     ADXL362_SoftwareReset();
+    chThdSleepMilliseconds(2);
+    accelSpiOff();
+#endif
+
+#if defined(USE_ADXL367)
+    accelSpiOn();
+    ADXL367_SoftwareReset();
     chThdSleepMilliseconds(2);
     accelSpiOff();
 #endif

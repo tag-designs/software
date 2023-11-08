@@ -43,10 +43,13 @@ typedef struct
   uint32_t resetCause;      // last reset cause -- deprecated, need to remove
   uint32_t state;           // current run state
   uint32_t pages;           // dirty flash pages
+  int32_t lastactstart; // time of last active start
   uint32_t external_blocks; // external data blocks
   int32_t temp10;           // running average of temperature
   uint32_t vdd100;          // running average of voltage
   uint32_t activity;        // activity data
+  int32_t lastwakeup;   // last wakeup time
+  int32_t lastwrite;    // timestamp of last write
   TestResult test_result;   // test_result
 
 } BackupState;

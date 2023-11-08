@@ -52,7 +52,6 @@ endfunction()
 
 #add_subdirectory(acceltag-proto-c)
 add_subdirectory(bittag-proto-c)
-#add_subdirectory(bittag-ng-proto-c)
+add_subdirectory(bittag-ng-proto-c)
 add_subdirectory(prestag-proto-c)
 #add_subdirectory(luxtag-proto-c)
-#add_subdirectory(bittagng-proto-c)

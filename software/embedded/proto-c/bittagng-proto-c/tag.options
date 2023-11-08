@@ -5,3 +5,4 @@ Ack.prestag_data_log type:FT_IGNORE
 Ack.luxtag_data_log type:FT_IGNORE
 Ack.geotag_data_log type:FT_IGNORE
 Ack.acceltag_data_log type:FT_IGNORE
+Ack.bittag_log type:FT_IGNORE

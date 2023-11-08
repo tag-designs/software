@@ -550,6 +550,7 @@
 
 #define SW_I2C_USE_I2C1 TRUE
 #define SW_I2C_USE_OSAL_DELAY FALSE
+
 #endif /* HALCONF_H */
 
 /** @} */

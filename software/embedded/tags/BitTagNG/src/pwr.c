@@ -6,6 +6,7 @@
 #include "external_flash.h"
 #include "lps.h"
 
+
 /*
  * I2C Devices
  */
@@ -106,6 +107,41 @@ void lpsOff(void)
   chBSemSignal(&SPImutex);
 }
 
+#endif
+
+#if defined(USE_ADXL362) || defined(USE_ADXL367)
+void accelSpiOn()
+{
+  /* grab the mutex */
+
+  chBSemWait(&SPImutex);
+
+  /* configure select line*/
+
+  palSetLine(LINE_ACCEL_CS);
+  toOutput(LINE_ACCEL_CS);
+
+  /* configure SPI1   */
+
+  toAlternate(LINE_ACCEL_SCK);
+  toAlternate(LINE_ACCEL_MOSI);
+  toAlternate(LINE_ACCEL_MISO);
+
+  spiEnable();
+}
+
+void accelSpiOff()
+{
+  palSetLine(LINE_ACCEL_CS);
+  spiDisable();
+
+  //toInput(LINE_ACCEL_CS);
+  toOutput(LINE_ACCEL_SCK);
+  toOutput(LINE_ACCEL_MOSI);
+  toInput(LINE_ACCEL_MISO);
+
+  chBSemSignal(&SPImutex);
+}
 #endif
 
 

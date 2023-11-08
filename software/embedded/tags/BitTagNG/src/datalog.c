@@ -116,7 +116,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
   if (flasherr) 
     return LOGWRITE_ERROR;
-  if (head->vdd100[0] < 200)
+  if (head->vdd100 < 200)
     return LOGWRITE_BAT;
   else
     return LOGWRITE_OK;
@@ -130,7 +130,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 int data_logAck(int index, Ack *ack)
 {
 
-  PresTagLog *data = &ack->payload.prestag_data_log;
+  BitTagNgLog *data = &ack->payload.bittag_ng_data_log;
   ack->err = Ack_Err_OK;
 
   // read data
@@ -140,20 +140,17 @@ int data_logAck(int index, Ack *ack)
 
   if (vddHeader[index].epoch != -1)
   {
-    ack->which_payload = Ack_prestag_data_log_tag;
+    ack->which_payload = Ack_bittag_ng_data_log_tag;
     data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100[0] * 0.01f;
-    data->temperature = vddHeader[index].vdd100[1] * 0.01f;
-    data->data_count = 0;
+    data->voltage = vddHeader[index].vdd100 * 0.01f;
+    data->temperature = vddHeader[index].temp10 * 0.1f;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
     {
       // check for unwritten data
-      if (databuf.data[j].pressure == -1)
+      if (databuf.activity[j] == 0xffff)
         break;
-      data->data[j].pressure = lpsPressure(databuf.data[j].pressure);
-      data->data[j].temperature = lpsTemperature(databuf.data[j].temperature);
-      data->data_count++;
+      data->activity[j] = (float) databuf.activity[j];
     }
   }
   else

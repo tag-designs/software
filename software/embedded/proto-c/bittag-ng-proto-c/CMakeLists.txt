@@ -4,4 +4,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set up protocol buffer 
 
-add_nanopb_target(bittag_ng)
+add_nanopb_target(bittag-ng)

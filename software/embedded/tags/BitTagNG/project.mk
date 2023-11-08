@@ -1,9 +1,9 @@
 # List of all the project related files.
-#USE_HAL_I2C_FALLBACK = yes
-include $(BOARDDIR)/BitTagNG-steval/board.mk
+USE_HAL_I2C_FALLBACK = yes
+include $(BOARDDIR)/BitTagNG/board.mk
 
 ALLCSRC += \
-       ADXL362.c \
+       ADXL367.c \
        at25xe.c \
        config.c \
        datalog.c \
@@ -14,6 +14,8 @@ ALLCSRC += \
        pb_common.c \
        pb_decode.c \
        pb_encode.c  \
+       persistent.c \
+       pwr.c \
        rtc_rv3028.c \
        state_machine.c  \
        state_run.c \

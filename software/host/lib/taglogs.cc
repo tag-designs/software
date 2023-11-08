@@ -243,6 +243,27 @@ static int dumpTagLog(std::ostream &out, const PresTagLog &log,
   return 1;
 }
 
+static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
+                      uint32_t period,
+                      enum TagLogOutput format)
+{
+  int64_t timestamp = log.epoch();
+  out << timestamp << ",";
+  out << "V:" << log.voltage();
+  out << ",TC:" << log.temperature() << std::endl;
+
+
+  for (auto const &activity : log.activity())
+  {
+
+    timestamp += period;
+    out << timestamp << ",";
+    out << "A:" << activity << std::endl;
+
+  }
+  return 1;
+}
+
 static int dumpTagLog(std::ostream &out, const LuxTagLog &log,
                       uint32_t period,
                       enum TagLogOutput format)

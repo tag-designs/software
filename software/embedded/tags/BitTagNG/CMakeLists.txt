@@ -1,3 +1,3 @@
 
-add_embedded_target(BitTagNG bittag_proto)
-add_dependencies(BitTagNG board_bittagng_steval)
+add_embedded_target(BitTagNG bittag-ng_proto)
+add_dependencies(BitTagNG board_bittagng)

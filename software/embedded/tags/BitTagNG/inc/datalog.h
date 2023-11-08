@@ -5,14 +5,13 @@
 
 #define DATALOG_SAMPLES 30
 typedef struct {
-  struct {
-    uint16_t activity;
-  } data[DATALOG_SAMPLES];
+  uint16_t activity[DATALOG_SAMPLES];
 } t_DataLog;
 
 typedef struct {
   int32_t epoch;
-  uint16_t vdd100[2];
+  uint16_t vdd100;
+  uint16_t temp10;
 } t_DataHeader;
 
 extern t_DataHeader vddHeader[];
