@@ -48,20 +48,15 @@ static uint8_t id[3] NOINIT;
 int  adxlavgX(int cnt)
 {
   int i;
-  short x = 0;
+  int16_t x = 0;
   int avg = 0;
-  uint8_t read_val[2];
+  uint8_t data_buf[2];
   for (i = 0; i < cnt; i++)
   {
     chThdSleepMilliseconds(20);
-    ADXL367_GetRegisterValue(read_val, ADXL367_REG_XDATA_H, 2);
-	  x = read_val[0] << 6;
-	  x += read_val[1] >> 2;
-	  // extend sign to 16 bits
-	  if (x & NO_OS_BIT(13))
-		  x |= NO_OS_GENMASK(15, 14);
-    avg += x;
- 
+    ADXL367_GetRegisterValue(data_buf, ADXL367_REG_XDATA_H, 2);
+	  x = ( ( int16_t ) data_buf[ 0 ] << 8 ) | data_buf[ 1 ];
+    avg += x>>2;
   }
   return avg/cnt;
 }
@@ -78,7 +73,9 @@ static void test_adxl367(void)
   {
     // Read DEVID
     ADXL367_GetRegisterValue(id, ADXL367_REG_DEVID_AD, 3);
-    if ((id[0] != 0xAD) || (id[1] != 0x1D) || (id[2] != 0xF7))
+    if ((id[0] != ADXL367_DEVICE_AD) || 
+        (id[1] != ADXL367_DEVICE_MST) || 
+        (id[2] != ADXL367_PART_ID))
       break;
 
     // turn on power, default 2g, 100hz

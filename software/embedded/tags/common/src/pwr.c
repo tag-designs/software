@@ -6,6 +6,7 @@
 #include "external_flash.h"
 #include "lps.h"
 
+
 /*
  * I2C Devices
  */
@@ -108,7 +109,7 @@ void lpsOff(void)
 
 #endif
 
-#if defined(USE_ADXL362)
+#if defined(USE_ADXL362) || defined(USE_ADXL367)
 void accelSpiOn()
 {
   /* grab the mutex */
@@ -142,7 +143,6 @@ void accelSpiOff()
   chBSemSignal(&SPImutex);
 }
 #endif
-
 
 
 #if defined(EXTERNAL_FLASH)
@@ -225,10 +225,17 @@ void godown(enum Sleep sleepmode)
   // Mark the backup register.  Any reset at this point is ok
   // disable sram2 -- only works in standby, and pullup config
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
+  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);  
+
+  // Pull up CS on ACCEL
+
+#ifdef LINE_ACCEL_CS
+  enableLinePullup(LINE_ACCEL_CS);
+#endif
 
 #ifdef EXTERNAL_FLASH
   enableLinePullup(LINE_FLASH_nCS);
+  enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
 #endif
@@ -242,9 +249,39 @@ void godown(enum Sleep sleepmode)
 
   SET_BIT(PWR->CR3, PWR_CR3_APC);
 
+  // Disable wakeup source 4  why ?
+
+  CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk);
+
+  #if defined(LINE_ACCEL_INT)
+  if (isActive)
+  {
+    SET_BIT(PWR->CR4, PWR_CR4_WP4); // falling edge detect
+  }
+  else
+  {
+    CLEAR_BIT(PWR->CR4, PWR_CR4_WP4); // rising edge detect
+  }
+
+  // enable wakeup on adxl input only in running state
+
+  if (pState->state == RUNNING)
+  {
+    SET_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk | PWR_CR3_EIWF_Msk);
+    // if adxl input has changed since read, don't sleep
+    if (isActive != palReadLine(LINE_ACCEL_INT))
+      return;
+  }
+  else
+  {
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  }
+#else
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
+
   // Enable internal wakeup source and set low power mode
 
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
 
   // Set SLEEPDEEP bit of Cortex System Control Register

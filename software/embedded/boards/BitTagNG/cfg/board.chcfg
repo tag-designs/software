@@ -22,7 +22,7 @@
   <ports>
     <GPIOA>
       <pin0
-        ID="ADXL_INT2"
+        ID=""
         Type="PushPull"
         Level="High"
         Speed="Low"
@@ -42,7 +42,7 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin2
-        ID="ADXL_INT1"
+        ID="ACCEL_INT"
         Type="PushPull"
         Level="High"
         Speed="Low"
@@ -67,7 +67,7 @@
         Level="High"
         Speed="High"
         Resistor="PullUp"
-        Mode="Input"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />

@@ -8,5 +8,4 @@
 #define RV3028_RTC TRUE
 #define USE_ADXL367 TRUE
 #define EXTERNAL_FLASH TRUE
-
 #endif

@@ -25,34 +25,104 @@ typedef struct
 static const t_chunk chunks = {15,4,4};  // 15 seconds, 4 chunks, 4 bits
 
 #define UINT16SWAP(x) (((x&0xff)<<8) | ((x>>8)&0xff))
+
 static void adxl367_init(void)
 {
-  // set up ADXL and alarm
+
 
   accelSpiOn();
-  ADXL367_SetRegisterValue(0, ADXL367_REG_POWER_CTL, 1);
+  // set adxl range/rate;  2g, 12.5hz
 
-  // set adxl activity detection parameters
+  #define RANGE_VAL ADXL367_FILTER_I2C_HS | ADXL367_ODR_25HZ
 
-  ADXL367_SetRegisterValue(UINT16SWAP((sconfig.adxl_act_thresh_cnt & 0x1FFF)<<2),ADXL367_REG_THRESH_ACT_H,2);
-  ADXL367_SetRegisterValue(2,ADXL367_REG_TIME_ACT,1); // time is 2 ticks
+  ADXL367_SetRegisterValue(RANGE_VAL,ADXL367_REG_FILTER_CTL, 1);
 
-  // set adxl inactivity detection parameters
+  // interrupt -- caused by AWAKE going active 
 
-  ADXL367_SetRegisterValue(UINT16SWAP((sconfig.adxl_inact_thresh_cnt & 0x1FFF)<<2),ADXL367_REG_THRESH_INACT_H,2);
-  ADXL367_SetRegisterValue(UINT16SWAP(sconfig.adxl_inactive_samples),ADXL367_REG_TIME_INACT_H,2);
+  ADXL367_SetRegisterValue(ADXL367_INTMAP1_AWAKE_INT1 , ADXL367_REG_INTMAP1_LWR, 1);
+
+  // Timer Control Register -- 6 samples/second
+
+  ADXL367_SetRegisterValue(1<<6, ADXL367_REG_TIMER_CTL,1);
+
+  // set inactivity level maximum 4500 = 1.125g for 2G range
+
+  ADXL367_SetRegisterValue(UINT16SWAP(4500<<2),ADXL367_REG_THRESH_INACT_H,2);
+  ADXL367_SetRegisterValue(UINT16SWAP(15),ADXL367_REG_TIME_INACT_H,2);
+
+  // set activity threshold to 500mg -- see p22 ADXL367 data sheet
+
+  ADXL367_SetRegisterValue(UINT16SWAP((2000<<2)),ADXL367_REG_THRESH_ACT_H,2);
 
   // turn on referenced loop mode
 
-  ADXL367_SetRegisterValue(0x3F, ADXL367_REG_ACT_INACT_CTL, 1);
+  #define LOOPMODE ((3<<4) | (3<<2) | 3)
 
-  // interrupt -- caused by AWAKE going active
+  ADXL367_SetRegisterValue(LOOPMODE, ADXL367_REG_ACT_INACT_CTL, 1);
+
+  // set power to measurment mode AUTOSLEEP|MEASUREMENT
+
+  #define POWERCTL (ADXL367_POWER_CTL_AUTOSLEEP | ADXL367_OP_MEASURE)
+
+  ADXL367_SetRegisterValue(POWERCTL, ADXL367_REG_POWER_CTL, 1);
+  accelSpiOff();
+}
+
+static void adxl367_init_old(void)
+{
+
+  // set up ADXL and alarm
+
+  accelSpiOn();
+
+  // set adxl range/rate;
+
+  ADXL367_SetRegisterValue(sconfig.adxl_filter_range_rate,ADXL367_REG_FILTER_CTL, 1);
+
+  // interrupt -- caused by AWAKE going active 
 
   ADXL367_SetRegisterValue(1<<6, ADXL367_REG_INTMAP1_LWR, 1);
 
-  // power
+  // Tmer Control Register -- 3 samples/second
 
-  ADXL367_SetRegisterValue(2 | ADXL367_POWER_CTL_AUTOSLEEP,ADXL367_REG_POWER_CTL, 1);
+  ADXL367_SetRegisterValue(2<<6, ADXL367_REG_TIMER_CTL,1);
+
+  // set inactivity level maximum
+
+  ADXL367_SetRegisterValue(UINT16SWAP(0x1FFF<<2),ADXL367_REG_THRESH_INACT_H,2);
+  ADXL367_SetRegisterValue(UINT16SWAP(0),ADXL367_REG_TIME_INACT_H,2);
+
+  // set activity threshold to 1mg -- see p22 ADXL367 data sheet
+
+   ADXL367_SetRegisterValue(UINT16SWAP((4<<2)),ADXL367_REG_THRESH_ACT_H,2);
+
+  
+
+  // turn on referenced loop mode
+
+  #define LOOPMODE  ((3<<4) | (3<<2) | 3)
+
+  ADXL367_SetRegisterValue(LOOPMODE, ADXL367_REG_ACT_INACT_CTL, 1);
+
+  // set power to measurment mode WAKEUP|AUTOSLEEP|MEASURMENT
+
+  #define POWERCTL ((1<<3)|(1<<2)|2)
+
+  ADXL367_SetRegisterValue(POWERCTL, ADXL367_REG_POWER_CTL, 1);
+
+  // sleep test
+
+  chThdSleepMilliseconds(200);
+
+  // reset adxl inactivity detection parameter
+
+  ADXL367_SetRegisterValue(UINT16SWAP((sconfig.adxl_inact_thresh_cnt)<<2),ADXL367_REG_THRESH_INACT_H,2);
+  ADXL367_SetRegisterValue(UINT16SWAP(sconfig.adxl_inactive_samples),ADXL367_REG_TIME_INACT_H,2);
+
+  // set activity threshold
+
+  ADXL367_SetRegisterValue(UINT16SWAP((sconfig.adxl_act_thresh_cnt & 0x1FFF)<<2),ADXL367_REG_THRESH_ACT_H,2);
+
   accelSpiOff();
 }
 
@@ -108,7 +178,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // sample once ! -- also used in pwr to decide wakeup edge
 
-    isActive = palReadLine(LINE_ADXL_INT1);
+    isActive = palReadLine(LINE_ACCEL_INT);
     
     // flush out current data
     // this is parameterized by the number of bits used for the various

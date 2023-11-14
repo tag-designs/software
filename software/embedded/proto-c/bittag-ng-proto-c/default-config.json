@@ -15,9 +15,9 @@
   }
  ],
  "adxl362": {
-  "range": "R4G",
-  "freq": "S50",
-  "filter": "AAquarter",
+  "accel_type": "AdxlType_367",
+  "range": "R2G",
+  "freq": "S25",
   "act_thresh_g": 0.5,
   "inact_thresh_g": 0.5,
   "inactive_sec": 0.5
