@@ -55,7 +55,7 @@ int restoreLog()
 
   // treat last block found as full -- This needs further work
   pState->pages = addr/blocksize;
-  pState->external_blocks = pState->pages*4+DATALOG_SAMPLES;
+  pState->external_blocks = pState->pages*DATALOG_SAMPLES;
   return 0;
 }
 
@@ -71,26 +71,21 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   }
 
   int cnt;
-  int addr = pState->external_blocks * 4;
+  int addr = pState->external_blocks * 2;
 
   ExFlashPwrUp();
   for (int i = 0; i < num; i++)
   {
     cnt = 2;
     if (!ExFlashWrite(addr, (uint8_t *) &data[i], &cnt)) {
-       //ExFlashPwrDown();
-       //return LOGWRITE_ERROR;
        /* ignore error */
        /* what is right thing to do ? */
     }
-    //SPI1->CR1 &= ~SPI_CR1_SPE;
     stopMilliseconds(true,2);
-    //SPI1->CR1 |= SPI_CR1_SPE;
     addr += 2;
-    //pState->external_blocks = addr/2;
   }
   ExFlashPwrDown();
-  
+  pState->external_blocks += 2;
   return LOGWRITE_OK;
 }
 
@@ -110,7 +105,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
  // See if the log file is full
 
-  if ((((uint32_t)writeptr) + 16) >= flashend)
+  if ((((uint32_t)writeptr) + 8) >= flashend)
     return LOGWRITE_FULL;
   // See if there is still energy to continue
 
@@ -135,7 +130,7 @@ int data_logAck(int index, Ack *ack)
 
   // read data
   ExFlashPwrUp();
-  ExFlashRead(sizeof(databuf)*index, (uint8_t *) &databuf, sizeof(databuf));
+  ExFlashRead(databuf_size*index, (uint8_t *) &databuf, databuf_size);
   ExFlashPwrDown();
 
   if (vddHeader[index].epoch != -1)
@@ -144,18 +139,19 @@ int data_logAck(int index, Ack *ack)
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100 * 0.01f;
     data->temperature = vddHeader[index].temp10 * 0.1f;
+    data->activity_count = 0;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
     {
-      // check for unwritten data
-      if (databuf.activity[j] == 0xffff)
+      if (databuf.activity[j] == 0xffffffffu)
         break;
-      data->activity[j] = (float) databuf.activity[j];
+      data->activity[j] = databuf.activity[j];
+      data->activity_count++;
     }
   }
   else
   {
-    ack->which_payload = 0;
+    ack->which_payload = Ack_error_message_tag;
   }
 
   // encode the ack and return

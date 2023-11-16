@@ -201,7 +201,7 @@ int proto_eval(int len)
 {
   int err;
   bool status;
-
+  bzero(&ack, sizeof(ack));
   pb_istream_t istream = pb_istream_from_buffer(ProtoBuf, len);
 
   // decode request

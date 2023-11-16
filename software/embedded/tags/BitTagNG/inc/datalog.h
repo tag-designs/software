@@ -1,11 +1,15 @@
 #ifndef DATALOG_H
 #define DATALOG_H
+#include "tagdata.pb.h"
 
 // Stored Data Log -- in external memory
 
-#define DATALOG_SAMPLES 30
+#define member_size(type, member) sizeof(((type *)0)->member)
+#define DATALOG_SAMPLES 15
+CASSERT(member_size(BitTagNgLog,activity)/4 == DATALOG_SAMPLES)
+
 typedef struct {
-  uint16_t activity[DATALOG_SAMPLES];
+  uint32_t activity[DATALOG_SAMPLES];
 } t_DataLog;
 
 typedef struct {

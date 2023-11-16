@@ -140,7 +140,7 @@ message BitTagNgLog {
   int32 epoch = 1;
   float voltage  = 2;
   float temperature = 3;
-  repeated float activity = 4;
+  repeated fixed32 activity = 4;
 }
 
 message PresTagLog {

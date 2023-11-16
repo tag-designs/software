@@ -1,6 +1,7 @@
 # List of all the project related files.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/BitTagNG/board.mk
+#include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
 ALLCSRC += \
        ADXL367.c \
@@ -24,4 +25,5 @@ ALLCSRC += \
        tag.pb.c \
        tagdata.pb.c \
        test.c   \
-       time.c        
+       time.c   
+   

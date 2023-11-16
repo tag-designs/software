@@ -61,8 +61,8 @@ MainWindow::MainWindow(QWidget *parent)
 
   dateTicker = QSharedPointer<QCPAxisTickerDateTime>(new QCPAxisTickerDateTime);
   dateTicker->setDateTimeFormat("hh:mm\nMM/dd/yy");
-  dateTicker->setDateTimeSpec(Qt::UTC);
-  dateTicker->setTimeZone(QTimeZone::utc());
+  //dateTicker->setDateTimeSpec(Qt::UTC);
+  dateTicker->setTimeZone(QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
 
   ui->plot->xAxis->setTicker(dateTicker);
 
@@ -102,6 +102,7 @@ void MainWindow::makeVisible(bool visible)
   ui->gb_filterparams->setEnabled(visible);
   ui->gb_activityfilter->setEnabled(visible);
   ui->gb_export->setEnabled(visible);
+  ui->gb_timeoffset->setEnabled(visible);
   // ui->pb_process->setEnabled(visible);
   ui->theActogram->setEnabled(visible);
   //  ui->gb_display->setEnabled(visible);
@@ -204,6 +205,10 @@ void MainWindow::on_pb_load_clicked()
         ui->te_fileinfo->appendPlainText(line);
       if (line.contains(QString("PRESTAG"))){
         tagtype = PRESTAG;
+        //ui->te_fileinfo->appendPlainText("saw PRESTAG");
+      }
+       if (line.contains(QString("BITTAGNG"))){
+        tagtype = BITTAGNG;
         //ui->te_fileinfo->appendPlainText("saw PRESTAG");
       }
     }
@@ -323,6 +328,30 @@ void MainWindow::on_pb_load_clicked()
               }
           }
         break;
+        case BITTAGNG:
+        if (l1.length() >= 2)
+          {
+              if (l1.length() > 2 && (l1[1][0] == 'V'))
+              {
+                QStringList v = l1[1].split(':');
+                QStringList t = l1[2].split(':');
+                voltage_time << l1[0].toInt();
+                temperature_time << l1[0].toInt();
+                temperature << t[1].toDouble();
+                voltage << v[1].toDouble();
+              }
+              else
+              {
+                QStringList dat = l1[1].split(':');
+                double time = l1[0].toInt();
+                if (dat[0].startsWith(QString("A")))
+                {
+                    accel_time << time;
+                    accel_count << dat[1].toDouble();
+                }
+              }
+          }
+        break;
       }
 
       // Customize UI for the tag types
@@ -339,7 +368,7 @@ void MainWindow::on_pb_load_clicked()
         ui->plot->yAxis->setLabel("Pressure (hPa)");
         ui->plot->yAxis->setRange(700, ui->activityRange->value());
       }
-      if (tagtype == BITTAG) {
+      if (tagtype == BITTAG || tagtype == BITTAGNG) {
         ui->activityRange->setMaximum(105);
         ui->activityRange->setMaximum(100);
         ui->activityRange->setEnabled(true);
@@ -448,6 +477,20 @@ void MainWindow::activityLevel(QCPRange range)
 
 // plot data
 
+void MainWindow::on_offsetUTC_valueChanged(int hours)
+{
+  dateTicker->setTimeZone(QTimeZone(3600*hours));
+  if (hours < 0) {
+      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC%1)\nMonth/Day/Year").arg(QString::number(hours)));
+  } else if (hours == 0) {
+      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC)\nMonth/Day/Year"));
+  } else {
+      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC+%1)\nMonth/Day/Year").arg(QString::number(hours)));
+  }
+  dateTicker->setTickOrigin(-3600*hours);
+  ui->plot->replot();
+}
+
 void MainWindow::on_sb_cutoff_valueChanged(double freq)
 {
   const int filter_delay = 50;
@@ -540,6 +583,8 @@ void MainWindow::on_pb_png_clicked()
 void MainWindow::on_pb_export_csv_clicked()
 {
   QMessageBox msgBox;
+  int hours = ui->offsetUTC->value();
+  QTimeZone timezone = QTimeZone(3600*hours);
   QString fileName = QFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.csv",
       tr("Protobuf (*.csv)"));
@@ -551,7 +596,7 @@ void MainWindow::on_pb_export_csv_clicked()
     return;
   }
   QTextStream out(&file);
-  out << "timestamp start,time start,activity percentage,";
+  out << QString("timestamp start,time start (offset hours: %1),activity percentage,").arg(QString::number(hours));
   if (ui->cb_filter_low_pass->isChecked())
   {
     out << "low pass filter cutoff frequency = " << ui->sb_cutoff->value();
@@ -578,7 +623,7 @@ void MainWindow::on_pb_export_csv_clicked()
       break;
     if (begin->key > x_axis_range_lower)
       out << int(begin->key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), Qt::UTC)
+          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
                  .toString(format)
           << "," << QString::number(begin->value, 'f', 2) << "\n";
     ++begin;

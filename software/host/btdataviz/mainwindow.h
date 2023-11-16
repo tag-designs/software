@@ -40,6 +40,10 @@ private slots:
     void on_cb_filter_low_pass_toggled(bool checked);
     void on_sb_cutoff_valueChanged(double freq);
 
+    // plotting
+
+    void on_offsetUTC_valueChanged(int hours);
+
     // export
 
     void on_pb_pdf_clicked();
@@ -71,7 +75,7 @@ private slots:
     void on_activityRange_valueChanged(int value);
 
 private:
-    enum TagType {BITTAG, PRESTAG};
+    enum TagType {BITTAG, BITTAGNG, PRESTAG};
     Ui::MainWindow *ui;
     QVector<double> accel_time;
     QVector<double> accel_count;

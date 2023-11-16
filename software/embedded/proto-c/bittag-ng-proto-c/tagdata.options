@@ -1,6 +1,6 @@
 * long_names:false
 Config.hibernate max_count:2
-BitTagNgLog.activity max_count:30
+BitTagNgLog.activity max_count:15
 TagInfo.monitor max_size:60
 TagInfo.board_desc max_size:60
 TagInfo.uuid max_size:30

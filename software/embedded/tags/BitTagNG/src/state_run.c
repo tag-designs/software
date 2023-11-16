@@ -15,17 +15,12 @@
  * per sample, and this is where the timing and storage parameters are set.
  */
 
-typedef struct
-{
-  int32_t chunk_period; // number of seconds in chunk
-  int32_t chunk_number; // number of chunks in word
-  int32_t chunk_bits;   // bit width of chunk
-} t_chunk;
-
-static const t_chunk chunks = {15,4,4};  // 15 seconds, 4 chunks, 4 bits
+const int32_t chunk_period = 30;  // seconds
+const int32_t chunk_number = 4;   // chunks in activity write
+const int32_t chunk_bits = 8;     // bits per chunk
+const int32_t sample_period = 120; // sampling period between writes
 
 #define UINT16SWAP(x) (((x&0xff)<<8) | ((x>>8)&0xff))
-
 static void adxl367_init(void)
 {
 
@@ -68,6 +63,7 @@ static void adxl367_init(void)
   accelSpiOff();
 }
 
+#if 0
 static void adxl367_init_old(void)
 {
 
@@ -125,6 +121,7 @@ static void adxl367_init_old(void)
 
   accelSpiOff();
 }
+#endif
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
@@ -134,8 +131,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   {
     return Aborted(T_INIT, reason);
   }
-
-  int32_t sample_period =  chunks.chunk_period * chunks.chunk_number;
 
   if (t == T_INIT)
   {
@@ -149,10 +144,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // make sure we're pointing to the next data block in case
     // this is a recovery action -- round up in the case of partial blocks
     // written
-    int remainder = pState->external_blocks % (sizeof(t_DataLog) / 2);
+    int remainder = pState->external_blocks % DATALOG_SAMPLES;
     if (remainder)
-      pState->external_blocks = pState->external_blocks + sizeof(t_DataLog) / 2 - remainder;
+      pState->external_blocks = pState->external_blocks + DATALOG_SAMPLES - remainder;
       // need to recover internal block start
+
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;
@@ -162,31 +158,21 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->state = TagState_RUNNING;
     recordState(reason);
-
-    // Start the interval timer
-    
     enableAlarm(0, ALARM_MINUTE); // turn on minutes alarm
   }
   else
   {
 
 
-    uint64_t activity = pState->activity;
+    uint32_t activity = pState->activity;
     int32_t lastwrite = pState->lastwrite;
-    int32_t lastwakeup = pState->lastwakeup;
+    //int32_t lastwakeup = pState->lastwakeup;
     int32_t lastactstart = pState->lastactstart;
 
     // sample once ! -- also used in pwr to decide wakeup edge
 
     isActive = palReadLine(LINE_ACCEL_INT);
     
-    // flush out current data
-    // this is parameterized by the number of bits used for the various
-    // formats
-
-    uint32_t chunk_period = chunks.chunk_period;
-    uint32_t chunk_number = chunks.chunk_number;
-    uint32_t chunk_bits = chunks.chunk_bits;
 
     // a very rare event is a missed RTC wakeup.  In this case the 
     // timestamp may be beyond the current end of period.  Thus we
@@ -236,7 +222,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       // figure out which chunk needs to be updated
       int index = ((i / chunk_period) % chunk_number) * chunk_bits;
-      activity += (((uint64_t)1) << index);
+      activity += (((uint32_t)1) << index);
     }
 
 
@@ -244,27 +230,32 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if (timestamp == lastwrite + sample_period)
     { // data log write returns an error if battery or space is exhausted
+
+    // write a header every N times -- use internal/external count for this
+    // header lags by one block
     
-     t_DataHeader dataheader;
-     dataheader.epoch = timestamp;
-     dataheader.vdd100 = pState->vdd100;
-     dataheader.temp10 = pState->temp10;
-     enum LOGERR err = writeDataHeader(&dataheader);
+      if ((pState->external_blocks%(DATALOG_SAMPLES*2)) == 0) {
+        t_DataHeader dataheader;
+        dataheader.epoch = timestamp;
+        dataheader.vdd100 = pState->vdd100;
+        dataheader.temp10 = pState->temp10;
+        enum LOGERR err = writeDataHeader(&dataheader);
 
-     // write out data
-
-      // Go to finish if battery is too low or log is full
-
-      switch (err)
-      {
-      case LOGWRITE_FULL:
-        return Finished(T_INIT, State_EVENT_INTERNALFULL);
-      case LOGWRITE_BAT:
-        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-      default:
-        break;
+          switch (err)
+          {
+          case LOGWRITE_FULL:
+            return Finished(T_INIT, State_EVENT_INTERNALFULL);
+          case LOGWRITE_BAT:
+            //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+          default:
+            break;
+          }
       }
 
+      // write external data (activity)
+
+      uint32_t tmp32 = activity;
+      writeDataLog((uint16_t *) &tmp32, 2);
       // update activity status
       lastwrite = (timestamp / sample_period) * sample_period;
       activity = 0;
@@ -285,7 +276,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
-          (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0))
+          ((pState->external_blocks % DATALOG_SAMPLES) == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }

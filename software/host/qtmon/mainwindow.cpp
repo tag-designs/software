@@ -421,11 +421,21 @@ void MainWindow::on_internalDownloadButton_clicked()
     len = 0;
     if (tag.GetDataLog(ack, total))
     {
+      if (ack.has_error_message()) {
+        log_error(ack.error_message().c_str());
+      }
       len = dumpTagLog(fs, ack, config, tag_log_output_txt);
+      if (len == 0) {
+        log_error("no data\n");
+      } else if (len == -1) {
+         log_error("no matching log type\n");
+      } else {
       total += len;
+      log_error("downloaded %d blocks\n",len);
+      }
       if (status.internal_data_count())
         progress.setValue(total % status.internal_data_count());
-    }
+    } 
   } while (len && !progress.wasCanceled());
   fs.close();
   return;

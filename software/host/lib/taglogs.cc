@@ -244,7 +244,6 @@ static int dumpTagLog(std::ostream &out, const PresTagLog &log,
 }
 
 static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
-                      uint32_t period,
                       enum TagLogOutput format)
 {
   int64_t timestamp = log.epoch();
@@ -252,14 +251,15 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
   out << "V:" << log.voltage();
   out << ",TC:" << log.temperature() << std::endl;
 
-
   for (auto const &activity : log.activity())
   {
-
-    timestamp += period;
-    out << timestamp << ",";
-    out << "A:" << activity << std::endl;
-
+      // unpack data
+      // data start 120 seconds (4 30 second blocks) before the header
+    for (int i = 0; i < 4; i++) {
+      out << timestamp-120 << ",";
+      out << "A:" << ((activity>>(i*8))&0xff)/0.30 << std::endl;
+      timestamp += 30;
+    }
   }
   return 1;
 }
@@ -353,6 +353,12 @@ int dumpTagLog(std::ostream &out,
                         config.bittag_log(), format);
     }
     break;
+  case BITTAGNG:
+    if (log.has_bittag_ng_data_log())
+    {
+      return dumpTagLog(out, log.bittag_ng_data_log(), format);
+    }
+    break;
   case ACCELTAG:
     if (log.has_acceltag_data_log())
     {
@@ -378,7 +384,7 @@ int dumpTagLog(std::ostream &out,
     }
     break;
   default:
-    return 0;
+    return -1;
   }
   return 0;
 }
