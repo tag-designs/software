@@ -14,9 +14,7 @@ typedef struct
 {
   // adxl configuration
   uint16_t adxl_act_thresh_cnt;
-  uint16_t adxl_inact_thresh_cnt;
   uint16_t adxl_inactive_samples;
-  uint8_t  adxl_filter_range_rate;
   // data collextion configuration
   int32_t  start;
   int32_t  stop;

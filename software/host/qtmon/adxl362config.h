@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QGroupBox>
 #include <QDoubleSpinBox>
+#include <QLabel>
 #include "pbenumgroup.h"
 #include "tag.pb.h"
 #include "tagclass.h" 
@@ -47,6 +48,8 @@ private:
     QDoubleSpinBox *inact_thresh_ = nullptr;
     QDoubleSpinBox *inactive_ = nullptr;
     Adxl362_AdxlType adxl_type = Adxl362_AdxlType_AdxlType_362;
+    QLabel inact_thresh_label = QLabel("Inactive Threshold");
+    
 };
 
 #endif // ADXL362CONFIG_H

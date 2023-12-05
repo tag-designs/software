@@ -113,17 +113,16 @@ void readConfig(Config *config)
   //config->period = sconfig.lps_period;
 // Sensor configuration
     // convert from adxl values to configuration values
-  int range = ADXL_RANGE(sconfig.adxl_filter_range_rate);
-  int freq = ADXL_RATE(sconfig.adxl_filter_range_rate);
+  int range = ADXL_RANGE(ADXL367_RANGE_2G);
+  int freq = ADXL_RATE(ADXL367_ODR_12P5HZ);
   int act_thresh = sconfig.adxl_act_thresh_cnt;
-  int inact_thresh = sconfig.adxl_inact_thresh_cnt;
   int samples = sconfig.adxl_inactive_samples;   
 
   config->has_adxl362 = true;
-  config->adxl362.range = Adxl367RngToEnum[range];
-  config->adxl362.freq = Adxl367ODRToEnum[freq];
+  //config->adxl362.range = Adxl367RngToEnum[range];
+  //config->adxl362.freq = Adxl367ODRToEnum[freq];
   config->adxl362.act_thresh_g = act_thresh * Sens[range];
-  config->adxl362.inact_thresh_g = inact_thresh * Sens[range];
+  //config->adxl362.inact_thresh_g = inact_thresh * Sens[range];
   config->adxl362.inactive_sec = samples * Tdelta[freq];
   config->adxl362.accel_type = Adxl362_AdxlType_367;
   config->has_active_interval = true;
@@ -148,8 +147,8 @@ bool writeConfig(Config *config)
    if ((config == NULL) || pState->state != TagState_IDLE)
     return false;
 
-  int range = EnumToAdxl367Rng(config->adxl362.range);
-  int freq = EnumToAdxl367ODR(config->adxl362.freq);
+  int range = EnumToAdxl367Rng(Adxl362_R2G);
+  int freq = EnumToAdxl367ODR(Adxl362_S12_5);
 
 
   if ((range < 0) || (freq < 0))
@@ -157,14 +156,14 @@ bool writeConfig(Config *config)
     return false;
   }
 
-  config_tmp.adxl_filter_range_rate = (range << 6) | (1 << 5) | freq;
+  //config_tmp.adxl_filter_range_rate = (range << 6) | (1 << 5) | freq;
   int thresh = config->adxl362.act_thresh_g / Sens[range];
   thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
   config_tmp.adxl_act_thresh_cnt = thresh;
   
-  thresh = config->adxl362.inact_thresh_g / Sens[range];
-  thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
-  config_tmp.adxl_inact_thresh_cnt = thresh;
+  //thresh = config->adxl362.inact_thresh_g / Sens[range];
+  //thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
+  //config_tmp.adxl_inact_thresh_cnt = thresh;
 
   int samples = config->adxl362.inactive_sec / Tdelta[freq];
   samples = samples > 255 ? 255 : samples;

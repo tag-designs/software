@@ -84,7 +84,7 @@ void Adxl362Config::Attach(const Config &config)
   // spinners
 
   f_lower->addRow("Active Threshold", act_thresh_);
-  f_lower->addRow("Inactive Threshold", inact_thresh_);
+  f_lower->addRow(&inact_thresh_label, inact_thresh_);
   f_lower->addRow("Inactivity", inactive_);
 
   spinners_->setLayout(f_lower);
@@ -122,26 +122,30 @@ void Adxl362Config::GetConfig(Config &config)
     } else {
       adxl.set_filter((Adxl362_Aa)0);
     }
-  } 
-  if (sample_rate_)
-  {
-    int id = sample_rate_->checkedId();
-    if (Adxl362_Odr_IsValid(id))
-      adxl.set_freq((Adxl362_Odr)id);
-  }
+    if (sample_rate_)
+    {
+      int id = sample_rate_->checkedId();
+      if (Adxl362_Odr_IsValid(id))
+        adxl.set_freq((Adxl362_Odr)id);
+    }
 
-  if (range_)
-  {
-    int id = range_->checkedId();
-    if (Adxl362_Rng_IsValid(id))
-      adxl.set_range((Adxl362_Rng)id);
-  }
+    if (range_)
+    {
+      int id = range_->checkedId();
+      if (Adxl362_Rng_IsValid(id))
+        adxl.set_range((Adxl362_Rng)id);
+    }
+  } 
+  
 
   // get inactive_ time and threshold
 
   adxl.set_inactive_sec(inactive_->value());
   adxl.set_act_thresh_g(act_thresh_->value());
-  adxl.set_inact_thresh_g(inact_thresh_->value());
+   if (adxl_type == Adxl362_AdxlType_AdxlType_362)
+  {
+    adxl.set_inact_thresh_g(inact_thresh_->value());
+  }
 
   // set config to result
 
@@ -159,12 +163,19 @@ void Adxl362Config::SetConfig(const Config &config)
   if (adxl_type == Adxl362_AdxlType_AdxlType_362) {
     filter_->setCheckedId((int)adxl.filter());
     filter_->setVisible(true);
+    sample_rate_->setCheckedId((int)adxl.freq());
+    range_->setCheckedId((int)adxl.range());
+    inact_thresh_->setVisible(true);
+    inact_thresh_label.setVisible(true);
   } else {
     filter_->setVisible(false);
+    sample_rate_->setVisible(false);
+    range_->setVisible(false);
+    inact_thresh_->setVisible(false);
+    inact_thresh_label.setVisible(false);
   }
 
-  sample_rate_->setCheckedId((int)adxl.freq());
-  range_->setCheckedId((int)adxl.range());
+  
 
   // set legal range of spin boxes
 
@@ -178,7 +189,9 @@ void Adxl362Config::SetConfig(const Config &config)
   // adxl362 threshold
 
   act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
-  inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
+  if (adxl_type == Adxl362_AdxlType_AdxlType_362) {
+     inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
+  }
 }
 
 // ADXL Range Buttons
