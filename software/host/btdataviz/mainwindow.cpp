@@ -596,26 +596,43 @@ void MainWindow::on_pb_export_csv_clicked()
     return;
   }
   QTextStream out(&file);
-  out << QString("timestamp start,time start (offset hours: %1),activity percentage,").arg(QString::number(hours));
+
   if (ui->cb_filter_low_pass->isChecked())
   {
-    out << "low pass filter cutoff frequency = " << ui->sb_cutoff->value();
+    out << "# low pass filter cutoff frequency = " << ui->sb_cutoff->value();
   }
   else
   {
-    out << "raw data";
+    out << "# raw data";
   }
 
   out << "\n";
+  switch (tagtype)
+  {
+  case BITTAG:
+  case BITTAGNG:
 
+    /* code */
+    out << QString("timestamp start,time start (offset hours: %1),activity percentage,temperature,voltage\n").arg(QString::number(hours));
+    break;
+  case PRESTAG:
+    out << QString("timestamp start,time start (offset hours: %1),pressure (hPa),temperature,voltage\n").arg(QString::number(hours));
+    break;
+  default:
+    break;
+  }
+  
+  
   double x_axis_range_lower = ui->plot->xAxis->range().lower;
   double x_axis_range_upper = ui->plot->xAxis->range().upper;
+  const QString format = "MM/dd/yyyy hh:mm:ss";
+
+  // dump activity/pressure data
 
   QCPGraphDataContainer::const_iterator begin =
       ui->plot->graph(0)->data()->constBegin();
   QCPGraphDataContainer::const_iterator end =
       ui->plot->graph(0)->data()->constEnd();
-  const QString format = "MM/dd/yyyy hh:mm:ss";
 
   while (begin != end)
   {
@@ -625,9 +642,44 @@ void MainWindow::on_pb_export_csv_clicked()
       out << int(begin->key) << ","
           << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
                  .toString(format)
-          << "," << QString::number(begin->value, 'f', 2) << "\n";
+          << "," << QString::number(begin->value, 'f', 2) << ",,\n";
     ++begin;
   }
+
+  // dump temperature data
+
+  begin = ui->plot->graph(1)->data()->constBegin();
+  end = ui->plot->graph(1)->data()->constEnd();
+
+  while (begin != end)
+  {
+    if (begin->key > x_axis_range_upper)
+      break;
+    if (begin->key > x_axis_range_lower)
+      out << int(begin->key) << ","
+          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
+                 .toString(format)
+          << ",," << QString::number(begin->value, 'f', 2) << ",\n";
+    ++begin;
+  }
+
+  // dump voltage data
+
+  begin =ui->plot->graph(2)->data()->constBegin();
+  end = ui->plot->graph(2)->data()->constEnd();
+
+  while (begin != end)
+  {
+    if (begin->key > x_axis_range_upper)
+      break;
+    if (begin->key > x_axis_range_lower)
+      out << int(begin->key) << ","
+          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
+                 .toString(format)
+          << ",,," << QString::number(begin->value, 'f', 2) << "\n";
+    ++begin;
+  }
+
 
   file.close();
 }
