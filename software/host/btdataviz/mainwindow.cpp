@@ -6,6 +6,7 @@
 #include <qcustomplot.h>
 #include <iostream>
 #include <FastFIR/FastFIR/qjfastfir.h>
+#include <climits>
 
 #include "mainwindow.h"
 #include "tickerdatetimeoffset.h"
@@ -629,58 +630,87 @@ void MainWindow::on_pb_export_csv_clicked()
 
   // dump activity/pressure data
 
-  QCPGraphDataContainer::const_iterator begin =
-      ui->plot->graph(0)->data()->constBegin();
-  QCPGraphDataContainer::const_iterator end =
-      ui->plot->graph(0)->data()->constEnd();
+  QCPGraphDataContainer::const_iterator activity_begin = ui->plot->graph(0)->data()->findBegin(x_axis_range_lower);
+  QCPGraphDataContainer::const_iterator activity_end = ui->plot->graph(0)->data()->findEnd(x_axis_range_upper);
+  QCPGraphDataContainer::const_iterator temperature_begin = ui->plot->graph(1)->data()->findBegin(x_axis_range_lower);
+  QCPGraphDataContainer::const_iterator temperature_end = ui->plot->graph(1)->data()->findEnd(x_axis_range_upper);
+  QCPGraphDataContainer::const_iterator voltage_begin = ui->plot->graph(2)->data()->findBegin(x_axis_range_lower);
+  QCPGraphDataContainer::const_iterator voltage_end = ui->plot->graph(2)->data()->findEnd(x_axis_range_upper);
 
-  while (begin != end)
+  while ((activity_begin != activity_end) || 
+         (temperature_begin != temperature_end) ||
+         (voltage_begin != voltage_end))
+         {
+             double min = __DBL_MAX__;
+             double activity_key = (activity_begin != activity_end)? activity_begin->key : __DBL_MAX__;
+             double temperature_key = (temperature_begin != temperature_end)? temperature_begin->key : __DBL_MAX__;
+             double voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : __DBL_MAX__;
+             min = activity_key < min ? activity_key : min;
+             min = temperature_key < min ? temperature_key : min;
+             min = voltage_key < min ? voltage_key : min;
+
+             if (min == __DBL_MAX__)
+                break;
+
+             out << int(min) << "," << QDateTime::fromSecsSinceEpoch(qint64(min), timezone).toString(format) << ",";
+
+             if (min == activity_key) {
+               out << QString::number(activity_begin->value, 'f', 2) << ",";
+               ++activity_begin;
+             }
+             if (min == temperature_key) {
+               out << QString::number(temperature_begin->value, 'f', 2) << ",";
+               ++temperature_begin;
+             }
+             if (min == voltage_key) {
+               out << QString::number(voltage_begin->value, 'f', 2);
+               ++voltage_begin;
+             }
+             out << "\n";
+
+         }
+
+
+/*
+  while (activity_begin != activity_end)
   {
-    if (begin->key > x_axis_range_upper)
-      break;
-    if (begin->key > x_axis_range_lower)
-      out << int(begin->key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
+    auto activity_key = activity_begin->key;
+    auto activity_value = activity_begin->value;
+   
+      out << int(activity_key) << ","
+          << QDateTime::fromSecsSinceEpoch(qint64(activity_key), timezone)//Qt::UTC)
                  .toString(format)
-          << "," << QString::number(begin->value, 'f', 2) << ",,\n";
-    ++begin;
+          << "," << QString::number(activity_value, 'f', 2) << ",,\n";
+    ++activity_begin;
   }
 
   // dump temperature data
 
-  begin = ui->plot->graph(1)->data()->constBegin();
-  end = ui->plot->graph(1)->data()->constEnd();
-
-  while (begin != end)
+  while (temperature_begin != temperature_end)
   {
-    if (begin->key > x_axis_range_upper)
-      break;
-    if (begin->key > x_axis_range_lower)
-      out << int(begin->key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
+      auto temperature_key = temperature_begin->key;
+ 
+      out << int(temperature_key) << ","
+          << QDateTime::fromSecsSinceEpoch(qint64(temperature_key), timezone)//Qt::UTC)
                  .toString(format)
-          << ",," << QString::number(begin->value, 'f', 2) << ",\n";
-    ++begin;
+          << ",," << QString::number(temperature_begin->value, 'f', 2) << ",\n";
+    ++temperature_begin;
   }
 
   // dump voltage data
 
-  begin =ui->plot->graph(2)->data()->constBegin();
-  end = ui->plot->graph(2)->data()->constEnd();
-
-  while (begin != end)
+  while (voltage_begin != voltage_end)
   {
-    if (begin->key > x_axis_range_upper)
-      break;
-    if (begin->key > x_axis_range_lower)
-      out << int(begin->key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(begin->key), timezone)//Qt::UTC)
+
+       auto voltage_key = voltage_begin->key;
+      out << int(voltage_key) << ","
+          << QDateTime::fromSecsSinceEpoch(qint64(voltage_key), timezone)//Qt::UTC)
                  .toString(format)
-          << ",,," << QString::number(begin->value, 'f', 2) << "\n";
-    ++begin;
+          << ",,," << QString::number(voltage_begin->value, 'f', 2) << "\n";
+      ++voltage_begin;
   }
 
-
+*/
   file.close();
 }
 
