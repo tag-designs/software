@@ -6,7 +6,7 @@
 #include <qcustomplot.h>
 #include <iostream>
 #include <FastFIR/FastFIR/qjfastfir.h>
-#include <climits>
+#include <float.h>
 
 #include "mainwindow.h"
 #include "tickerdatetimeoffset.h"
@@ -588,7 +588,7 @@ void MainWindow::on_pb_export_csv_clicked()
   QTimeZone timezone = QTimeZone(3600*hours);
   QString fileName = QFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.csv",
-      tr("Protobuf (*.csv)"));
+      tr("CSV (*.csv)"));
   QFile file(fileName);
   if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
   {
@@ -600,14 +600,13 @@ void MainWindow::on_pb_export_csv_clicked()
 
   if (ui->cb_filter_low_pass->isChecked())
   {
-    out << "# low pass filter cutoff frequency = " << ui->sb_cutoff->value();
+    out << "# low pass filter cutoff frequency = " << ui->sb_cutoff->value() <<"\n";
   }
   else
   {
-    out << "# raw data";
+    out << "# raw data\n";
   }
 
-  out << "\n";
   switch (tagtype)
   {
   case BITTAG:
@@ -641,15 +640,15 @@ void MainWindow::on_pb_export_csv_clicked()
          (temperature_begin != temperature_end) ||
          (voltage_begin != voltage_end))
          {
-             double min = __DBL_MAX__;
-             double activity_key = (activity_begin != activity_end)? activity_begin->key : __DBL_MAX__;
-             double temperature_key = (temperature_begin != temperature_end)? temperature_begin->key : __DBL_MAX__;
-             double voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : __DBL_MAX__;
+             double min = DBL_MAX;
+             double activity_key = (activity_begin != activity_end)? activity_begin->key : DBL_MAX;
+             double temperature_key = (temperature_begin != temperature_end)? temperature_begin->key : DBL_MAX;
+             double voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : DBL_MAX;
              min = activity_key < min ? activity_key : min;
              min = temperature_key < min ? temperature_key : min;
              min = voltage_key < min ? voltage_key : min;
 
-             if (min == __DBL_MAX__)
+             if (min == DBL_MAX)
                 break;
 
              out << int(min) << "," << QDateTime::fromSecsSinceEpoch(qint64(min), timezone).toString(format) << ",";
@@ -669,48 +668,6 @@ void MainWindow::on_pb_export_csv_clicked()
              out << "\n";
 
          }
-
-
-/*
-  while (activity_begin != activity_end)
-  {
-    auto activity_key = activity_begin->key;
-    auto activity_value = activity_begin->value;
-   
-      out << int(activity_key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(activity_key), timezone)//Qt::UTC)
-                 .toString(format)
-          << "," << QString::number(activity_value, 'f', 2) << ",,\n";
-    ++activity_begin;
-  }
-
-  // dump temperature data
-
-  while (temperature_begin != temperature_end)
-  {
-      auto temperature_key = temperature_begin->key;
- 
-      out << int(temperature_key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(temperature_key), timezone)//Qt::UTC)
-                 .toString(format)
-          << ",," << QString::number(temperature_begin->value, 'f', 2) << ",\n";
-    ++temperature_begin;
-  }
-
-  // dump voltage data
-
-  while (voltage_begin != voltage_end)
-  {
-
-       auto voltage_key = voltage_begin->key;
-      out << int(voltage_key) << ","
-          << QDateTime::fromSecsSinceEpoch(qint64(voltage_key), timezone)//Qt::UTC)
-                 .toString(format)
-          << ",,," << QString::number(voltage_begin->value, 'f', 2) << "\n";
-      ++voltage_begin;
-  }
-
-*/
   file.close();
 }
 
