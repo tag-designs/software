@@ -3,6 +3,7 @@
 #include <QVector>
 #include <QPrinter>
 #include <QDebug>
+#include <QTextStream>
 #include <qcustomplot.h>
 #include <iostream>
 #include <FastFIR/FastFIR/qjfastfir.h>
@@ -116,9 +117,20 @@ void MainWindow::onMouseMove(QMouseEvent *event)
   QCustomPlot *customPlot = qobject_cast<QCustomPlot *>(sender());
   double x = customPlot->xAxis->pixelToCoord(event->pos().x());
   double y = customPlot->yAxis->pixelToCoord(event->pos().y());
-  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC);
-
-  textItem->setText(QString("(%1)").arg(dt.toString("MM/dd hh:mm")));
+  double t = customPlot->yAxis2->pixelToCoord(event->pos().y());
+  //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
+  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
+  QString s;
+  
+  QTextStream out(&s);
+  out << "(" << dt.toString("MM/dd hh:mm");
+  out << QString(", %1").arg(y,0,'f',1);
+  if (ui->gbVT->isChecked()) {
+    out << QString(", %1").arg(t,0,'f',1);
+    out << (ui->rbTemperature->isChecked() ? "C" : "V");
+  }
+  out << ")";
+  textItem->setText(s);
   textItem->position->setCoords(QPointF(x, y + 5));
   textItem->setFont(QFont(font().family(), 12));
   customPlot->replot(); //QCustomPlot::rpQueuedReplot);
