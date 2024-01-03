@@ -281,7 +281,7 @@ void MainWindow::on_pb_load_clicked()
               else
               {
                 QStringList dat = l1[1].split(':');
-                double time = l1[0].toInt();
+                int time = l1[0].toInt();
                 // SEC data is packed
                 if (dat[0].startsWith(QString("SEC")))
                 {
@@ -356,7 +356,7 @@ void MainWindow::on_pb_load_clicked()
               else
               {
                 QStringList dat = l1[1].split(':');
-                double time = l1[0].toInt();
+                int time = l1[0].toInt();
                 if (dat[0].startsWith(QString("A")))
                 {
                     accel_time << time;
@@ -648,31 +648,41 @@ void MainWindow::on_pb_export_csv_clicked()
   QCPGraphDataContainer::const_iterator voltage_begin = ui->plot->graph(2)->data()->findBegin(x_axis_range_lower);
   QCPGraphDataContainer::const_iterator voltage_end = ui->plot->graph(2)->data()->findEnd(x_axis_range_upper);
 
+  int32_t last_min = INT32_MAX;
+
   while ((activity_begin != activity_end) || 
          (temperature_begin != temperature_end) ||
          (voltage_begin != voltage_end))
          {
-             double min = DBL_MAX;
-             double activity_key = (activity_begin != activity_end)? activity_begin->key : DBL_MAX;
-             double temperature_key = (temperature_begin != temperature_end)? temperature_begin->key : DBL_MAX;
-             double voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : DBL_MAX;
+             int32_t min =  INT32_MAX;
+             int32_t activity_key = (activity_begin != activity_end)? activity_begin->key :  INT32_MAX;
+             int32_t temperature_key = (temperature_begin != temperature_end)? temperature_begin->key :  INT32_MAX;
+             int32_t voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : INT32_MAX;
              min = activity_key < min ? activity_key : min;
              min = temperature_key < min ? temperature_key : min;
              min = voltage_key < min ? voltage_key : min;
 
-             if (min == DBL_MAX)
+             if (min ==  INT32_MAX)
                 break;
 
-             out << int(min) << "," << QDateTime::fromSecsSinceEpoch(qint64(min), timezone).toString(format) << ",";
+             if (activity_key == last_min) {
+                ui->te_fileinfo->appendPlainText("Error:  Repeated activity data time!");
+             } 
+             
+             last_min = min;
+
+             out << min << "," << QDateTime::fromSecsSinceEpoch(qint64(min), timezone).toString(format) << ",";
 
              if (min == activity_key) {
-               out << QString::number(activity_begin->value, 'f', 2) << ",";
+               out << QString::number(activity_begin->value, 'f', 2);
                ++activity_begin;
              }
+             out << ",";
              if (min == temperature_key) {
-               out << QString::number(temperature_begin->value, 'f', 2) << ",";
+               out << QString::number(temperature_begin->value, 'f', 2);
                ++temperature_begin;
              }
+             out << ",";
              if (min == voltage_key) {
                out << QString::number(voltage_begin->value, 'f', 2);
                ++voltage_begin;
