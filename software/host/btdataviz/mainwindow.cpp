@@ -119,6 +119,12 @@ void MainWindow::onMouseMove(QMouseEvent *event)
   double y = customPlot->yAxis->pixelToCoord(event->pos().y());
   double t = customPlot->yAxis2->pixelToCoord(event->pos().y());
   //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
+
+  int index = ui->plot->graph(0)->findBegin(x);
+  if (index) {
+    y = ui->plot->graph(0)->dataMainValue(index);
+  }
+
   QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
   QString s;
   
@@ -126,6 +132,11 @@ void MainWindow::onMouseMove(QMouseEvent *event)
   out << "(" << dt.toString("MM/dd hh:mm");
   out << QString(", %1").arg(y,0,'f',1);
   if (ui->gbVT->isChecked()) {
+    int gi = ui->rbTemperature->isChecked() ? 1 : 2;
+    int index = ui->plot->graph(gi)->findBegin(x);
+    if (index) {
+        t = ui->plot->graph(gi)->dataMainValue(index);
+    }
     out << QString(", %1").arg(t,0,'f',1);
     out << (ui->rbTemperature->isChecked() ? "C" : "V");
   }

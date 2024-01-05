@@ -247,20 +247,29 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
                       enum TagLogOutput format)
 {
   int64_t timestamp = log.epoch();
-  out << timestamp << ",";
-  out << "V:" << log.voltage();
-  out << ",TC:" << log.temperature() << std::endl;
+ 
+  //timestamp += 120;
+
+  bool done = false;
 
   for (auto const &activity : log.activity())
   {
       // unpack data
-      // data start 120 seconds (4 30 second blocks) before the header
-    for (int i = 0; i < 4; i++) {
-      out << timestamp-120 << ",";
-      out << "A:" << ((activity>>(i*8))&0xff)/0.30 << std::endl;
-      timestamp += 30;
+      // data start 120 seconds (6 20 second blocks) before the header
+    for (int i = 0; i < 6; i++) {
+      out << timestamp-100 << ",";
+      out << "A:" << ((activity>>(i*5))&0x1f)/0.20 << std::endl;
+      timestamp += 20;
+    }
+    if (!done){
+      out << timestamp << ",";
+      out << "V:" << log.voltage();
+      out << ",TC:" << log.temperature() << std::endl;
+      done = true;
     }
   }
+
+  
   return 1;
 }
 

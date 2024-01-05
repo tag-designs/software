@@ -15,9 +15,9 @@
  * per sample, and this is where the timing and storage parameters are set.
  */
 
-const int32_t chunk_period = 30;  // seconds
-const int32_t chunk_number = 4;   // chunks in activity write
-const int32_t chunk_bits = 8;     // bits per chunk
+const int32_t chunk_period = 20;  // seconds
+const int32_t chunk_number = 6;   // chunks in activity write
+const int32_t chunk_bits = 5;     // bits per chunk
 const int32_t sample_period = 120; // sampling period between writes
 /*
    Range now hardwired to 2g
