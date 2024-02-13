@@ -9,6 +9,7 @@
 
 using namespace std;
 using namespace google::protobuf;
+using namespace google::protobuf::util;
 
 int main(int argc, char *argv[]) {
     Config configin;
@@ -29,7 +30,7 @@ int main(int argc, char *argv[]) {
 
 
         google::protobuf::util::JsonParseOptions options2;
-        util::Status err = JsonStringToMessage(str, &configin, options2);
+        auto err = JsonStringToMessage(str, &configin, options2);
         if (err.ok()) {
             string output;
             configin.SerializeToString(&output);
