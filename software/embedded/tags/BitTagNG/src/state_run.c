@@ -38,12 +38,12 @@ static void adxl367_init(void)
   ADXL367_SetRegisterValue(ADXL367_INTMAP1_AWAKE_INT1 , ADXL367_REG_INTMAP1_LWR, 1);
 // Timer Control Register -- 6 samples/second
   ADXL367_SetRegisterValue(1<<6, ADXL367_REG_TIMER_CTL,1);
-// set inactivity level maximum 4400 = 1.1g for 2G range
+// set inactivity level maximum 4400 = 1100mg for 2G range (0.25mg resolution)
   ADXL367_SetRegisterValue(UINT16SWAP(4400<<2),ADXL367_REG_THRESH_INACT_H,2);
-// set activity threshold to 1mg -- see p22 ADXL367 data sheet
-  ADXL367_SetRegisterValue(UINT16SWAP((4<<2)),ADXL367_REG_THRESH_ACT_H,2);
-// set inactive time to 0
-  ADXL367_SetRegisterValue(UINT16SWAP(0),ADXL367_REG_TIME_INACT_H,2);
+// set activity threshold to 250mg -- see p22 ADXL367 data sheet
+  ADXL367_SetRegisterValue(UINT16SWAP(1000),ADXL367_REG_THRESH_ACT_H,2);
+// set active time to 0
+// ADXL367_SetRegisterValue(UINT16SWAP(0),ADXL367_REG_TIME_ACT_H,2);
 // turn on referenced loop mode
   ADXL367_SetRegisterValue(0x3F, ADXL367_REG_ACT_INACT_CTL, 1);
 // set power to MEASUREMENT

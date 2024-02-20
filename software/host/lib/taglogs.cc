@@ -248,7 +248,7 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
 {
   int64_t timestamp = log.epoch();
  
-  //timestamp += 120;
+  timestamp -= 120;
 
   bool done = false;
 
@@ -257,7 +257,7 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
       // unpack data
       // data start 120 seconds (6 20 second blocks) before the header
     for (int i = 0; i < 6; i++) {
-      out << timestamp-100 << ",";
+      out << timestamp << ",";
       out << "A:" << ((activity>>(i*5))&0x1f)/0.20 << std::endl;
       timestamp += 20;
     }
