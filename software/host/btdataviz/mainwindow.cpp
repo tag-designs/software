@@ -380,6 +380,8 @@ void MainWindow::on_pb_load_clicked()
 
       // Customize UI for the tag types
 
+      // Set range to 500 hPA
+
       if (tagtype == PRESTAG) {
         ui->activityRange->setMaximum(1050);
         ui->activityRange->setValue(1050);
@@ -390,7 +392,7 @@ void MainWindow::on_pb_load_clicked()
         ui->cb_activity->setText("Pressure");
         ui->tabConfig->setTabEnabled(1,false);
         ui->plot->yAxis->setLabel("Pressure (hPa)");
-        ui->plot->yAxis->setRange(700, ui->activityRange->value());
+        ui->plot->yAxis->setRange(400, ui->activityRange->value());
       }
       if (tagtype == BITTAG || tagtype == BITTAGNG) {
         ui->activityRange->setMaximum(105);
@@ -572,7 +574,7 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
     }
     ui->plot->graph(0)->data()->set(accelData);
     if (tagtype == PRESTAG)
-      ui->plot->yAxis->setRange(700, ui->activityRange->value());
+      ui->plot->yAxis->setRange(500, ui->activityRange->value());
     else
       ui->plot->yAxis->setRange(0, ui->activityRange->value());
     ui->theActogram->setData(accel_time, accel_count,

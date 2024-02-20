@@ -16,7 +16,8 @@ endif()
 
 # Find Protobuf and Nanopb
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf)
 
 if (DEFINED ENV{NANOPB_ROOT})
 set(NANOPB_SRC_ROOT_FOLDER $ENV{NANOPB_ROOT})
