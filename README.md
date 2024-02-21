@@ -6,11 +6,17 @@ See [Documentation](https://geoffreymbrown.github.io/ultralight-tags/) to explor
 
 # building with OS X
 
-Use the "brew" version of QT because it links statically.
 
-Make sure to add /usr/local/Cellar/qt/5.15.1/bin (or current version) to your path so that the various find_program tools work (esp macdeployqt)
+Make sure to add Qt-version/bin (or current version) to your path so that the various find_program tools work (esp macdeployqt)
 
-Building the dmg file
+Macdeploy isn't properly automated so [unless you're using static builds of qt, libusb, protobuf]
+
+macdeployqt path_to/btviz.app
+macdeployqt path_to/qtmonitor.app
+macdeployqt paty_to/tag-test.app
+
+
+Then build the dmg file
 
 cpack -G DragNDrop
 
