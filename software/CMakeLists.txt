@@ -17,13 +17,16 @@ endif()
 
 
 # Find Protobuf and Nanopb
-find_package(Protobuf)
-cmake_print_variables(Protobuf_VERSION)
-if (${Protobuf_VERSION} VERSION_GREATER "3.20.0")
-    find_package(Protobuf CONFIG REQUIRED)
-endif()
 
 
+#if (${Protobuf_VERSION} VERSION_GREATER "3.20.0")
+    find_package(Protobuf CONFIG)
+    cmake_print_variables(Protobuf_VERSION)
+#endif()
+
+find_package(Protobuf REQUIRED)
+
+set(Protobuf_USE_STATIC_LIBS ON)
 
 
 
