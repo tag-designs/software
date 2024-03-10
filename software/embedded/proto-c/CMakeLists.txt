@@ -51,6 +51,7 @@ function(add_nanopb_target name)
 endfunction()
 
 #add_subdirectory(acceltag-proto-c)
+add_subdirectory(acceltag-ng-proto-c)
 add_subdirectory(bittag-proto-c)
 add_subdirectory(bittag-ng-proto-c)
 add_subdirectory(prestag-proto-c)

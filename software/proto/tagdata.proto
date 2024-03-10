@@ -9,6 +9,8 @@ enum TagType {
   GEOTAG = 5;
   LUXTAG = 6;
   BITTAGNG = 7;
+  ACCELTAGNG = 8;
+
 }
 
 message TagInfo {
@@ -88,6 +90,22 @@ message Config {
 // change internal_format/external_format to messages
 // so they can be detected in qtmonitor
 
+enum Adxl367Channel {
+  AdxlChannel_UNSPECIFIED = 0;
+  AdxlChannel_xyz  = 1;
+  AdxlChannel_x    = 2;
+  AdxlChannel_y    = 3;
+  AdxlChannel_z    = 4;
+  AdxlChannel_xyzt = 5;
+  AdxlChannel_xt   = 6;
+  AdxlChannel_yt   = 7;
+  AdxlChannel_zt   = 8;
+  AdxlChannel_xyze = 9;
+  AdxlChannel_xe   = 10;
+  AdxlChannel_ye   = 11;
+  AdxlChannel_ze   = 12;
+}
+
 message Adxl362 {
   enum Rng {
     Rng_UNSPECIFIED = 0;
@@ -116,16 +134,27 @@ message Adxl362 {
     AdxlType_367 = 1;
   }
 
+  // Need to add data format for acceltag
+  //     Also, data source
+  //
+
+  enum Adxl367DataFormat {
+      AdxlDataFormat_UNSPECIFIED = 0;
+      AdxlDataFormat_14          = 1;
+      AdxlDataFormat_12          = 2;
+      AdxlDataFormat_8           = 3;
+  }
+
   Rng range = 1;
   Odr freq = 2;
   Aa filter = 3;
-  float act_thresh_g = 4;   // act/inact thresh (g)
-  float inact_thresh_g = 5; // inactive thresh (g)
-  float inactive_sec = 6;   // inactive time (seconds)
-  AdxlType accel_type = 7;  // accelerometer type
+  float act_thresh_g = 4;            // act/inact thresh (g)
+  float inact_thresh_g = 5;          // inactive thresh (g)
+  float inactive_sec = 6;            // inactive time (seconds)
+  AdxlType accel_type = 7;           // accelerometer 
+  Adxl367DataFormat data_format = 8; // data format, ADXl367 only
+  Adxl367Channel channels = 9;       // channels, ADXL367 only
 }
-
-
 
 message BitTagLog { repeated BitTagData data = 1; }
 
@@ -196,4 +225,10 @@ message GeoTagLog {
   float temperature = 3;
   Compass compass = 5;
   repeated OptPwr optpwr = 4; 
+}
+
+message AccelTagNgLog {
+  int32 epoch = 1;
+  int32 millis = 2;
+  repeated float samples = 4;
 }

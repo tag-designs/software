@@ -72,6 +72,7 @@ message Ack {
     LuxTagLog luxtag_data_log = 10;
     AccelTagLog acceltag_data_log = 11;
     BitTagNgLog bittag_ng_data_log = 12;
+    AccelTagNgLog acceltag_ng_data_log = 13;
   }
 }
 

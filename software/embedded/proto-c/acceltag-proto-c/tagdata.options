@@ -20,3 +20,4 @@ PresTagLog skip_message:true
 BitTagNgLog skip_message:true
 Compass skip_message:true
 OptPwr skip_message:true
+AccelTagNgLog skip_message:true

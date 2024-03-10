@@ -17,5 +17,6 @@ Config.prestag_log type:FT_IGNORE
 GeoTagLog skip_message:true
 AccelTagLog skip_message:true
 BitTagLog skip_message:true
+AccelTagNgLog skip_message:true
 Compass skip_message:true
 OptPwr skip_message:true

@@ -6,3 +6,4 @@ Ack.geotag_data_log type:FT_IGNORE
 Ack.luxtag_data_log type:FT_IGNORE
 Ack.acceltag_data_log type:FT_IGNORE
 Ack.bittag_ng_data_log type:FT_IGNORE
+Ack.acceltag_ng_data_log type:FT_IGNORE

@@ -43,6 +43,9 @@ private:
     PBEnumGroup *sample_rate_ = nullptr;
     PBEnumGroup *range_ = nullptr;
     PBEnumGroup *filter_ = nullptr;
+    PBEnumGroup *data_size_ = nullptr;
+    PBEnumGroup *channels_ = nullptr;
+   
     QGroupBox *spinners_ = nullptr;
     QDoubleSpinBox *act_thresh_ = nullptr;
     QDoubleSpinBox *inact_thresh_ = nullptr;

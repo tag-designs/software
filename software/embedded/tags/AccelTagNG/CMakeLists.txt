@@ -1,0 +1,3 @@
+
+add_embedded_target(AccelTagNG acceltag-ng_proto)
+add_dependencies(AccelTagNG board_bittagng)

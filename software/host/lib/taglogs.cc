@@ -347,6 +347,11 @@ static int dumpTagLog(std::ostream &out, const GeoTagLog &log)
   return 1;
 }
 
+static int dumpTagLog(std::ostream &out, const Config &config,
+                      const AccelTagNgLog &log) {
+  return 1;
+}
+
 int dumpTagLog(std::ostream &out,
                const Ack &log,
                const Config &config,
@@ -390,6 +395,12 @@ int dumpTagLog(std::ostream &out,
     if (log.has_geotag_data_log())
     {
       return dumpTagLog(out, log.geotag_data_log());
+    }
+    break;
+  case ACCELTAGNG:
+    if (log.has_acceltag_ng_data_log())
+    {
+      return dumpTagLog(out, config, log.acceltag_ng_data_log());
     }
     break;
   default:

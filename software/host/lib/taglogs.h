@@ -23,28 +23,5 @@ int dumpTagLog(std::ostream &out,
                 const Config &config,
                 enum TagLogOutput format);
 
-/*
-int dumpTagLog(std::ostream &out,
-               const AccelTagLog &log,
-               uint32_t period,
-               enum TagLogOutput format);
 
-int dumpTagLog(std::ostream &out,
-               const BitTagLog &log,
-               enum BitTagLogFmt dataformat,
-               enum TagLogOutput format);
-
-int dumpTagLog(std::ostream &out,
-                const LuxTagLog &log,
-                uint32_t period,
-                enum TagLogOutput format);
-
-int dumpTagLog(std::ostream &out,
-                const PresTagLog &log,
-                uint32_t period,
-                enum TagLogOutput format);
-
-int dumpTagLog(std::ostream &out,
-                const GeoTagLog &log);
-*/
 #endif /* TAG_LOGS_H */

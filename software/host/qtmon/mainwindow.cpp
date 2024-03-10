@@ -421,7 +421,8 @@ void MainWindow::on_internalDownloadButton_clicked()
     len = 0;
     if (tag.GetDataLog(ack, total))
     {
-      if (ack.has_error_message()) {
+      //if (ack.has_error_message()) {
+      if (ack.error_message() != "") {
         log_error(ack.error_message().c_str());
       }
       len = dumpTagLog(fs, ack, config, tag_log_output_txt);

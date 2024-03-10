@@ -15,6 +15,27 @@
 #include "tagclass.h"
 #include "adxl362config.h"
 
+static const std::vector<PBEnumGroup::binfo> adxl_data_size_buttons {
+    {Adxl362_Adxl367DataFormat_AdxlDataFormat_14, "14-bit data", nullptr},
+    {Adxl362_Adxl367DataFormat_AdxlDataFormat_12,"12-bit data", nullptr},
+    {Adxl362_Adxl367DataFormat_AdxlDataFormat_8, "8-bit data",nullptr}
+};
+
+static const std::vector<PBEnumGroup::binfo> adxl_channels_buttons {
+  {AdxlChannel_xyz,"X,Y,Z Channels", nullptr},
+  {AdxlChannel_x,"X Channel", nullptr},
+  {AdxlChannel_y,"Y Channel", nullptr},
+  {AdxlChannel_z,"Z Channel", nullptr} /*,
+  {AdxlChannel_xyzt,"X,Y,Z,T Channels", nullptr},
+  {AdxlChannel_xt,"X,T Channels", nullptr},
+  {AdxlChannel_yt,"Y,T Channels", nullptr},
+  {AdxlChannel_zt,"Z,T Channels", nullptr},
+  {AdxlChannel_xyze,"X,Y,Z,E Channels", nullptr},
+  {AdxlChannel_xe,"X,E Channels", nullptr},
+  {AdxlChannel_ye,"Y,E Channels", nullptr},
+  {AdxlChannel_ze,"Z,E Channels", nullptr}*/
+};
+
 static const std::vector<PBEnumGroup::binfo> adxl_range_buttons{
     {Adxl362_Rng_R2G, "+/- 2g", nullptr},
     {Adxl362_Rng_R4G, "+/- 4g", nullptr},
@@ -50,17 +71,24 @@ void Adxl362Config::Attach(const Config &config)
   sample_rate_ = new PBEnumGroup("Sample Rate", adxl_odr_buttons);
   range_ = new PBEnumGroup("Range", adxl_range_buttons);
   filter_ = new PBEnumGroup("Filter", adxl_filter_buttons);
+  data_size_ = new PBEnumGroup("Data Size", adxl_data_size_buttons);
+  channels_ = new PBEnumGroup("Channels", adxl_channels_buttons);
+
   spinners_ = new QGroupBox("Activity Detection");
 
   sample_rate_->setToolTip("Set Accelerometer Sample Rate");
   range_->setToolTip("Set Accelerometer Range");
   filter_->setToolTip("Set Accelerometer Anti-Alias Filter");
   spinners_->setToolTip("Set Activity Detection Parameters");
+  channels_->setToolTip("Active Accelerometer Data Channels");
+  data_size_->setToolTip("Accelerometer Data Sample Bits");
   // range and filter
 
-  g_outer->addWidget(sample_rate_, 0, 0, 2, 1);
-  g_outer->addWidget(range_, 0, 1);
+  g_outer->addWidget(sample_rate_, 1, 0, 2, 1);
+  g_outer->addWidget(range_, 0, 0);
   g_outer->addWidget(filter_, 1, 1);
+  g_outer->addWidget(channels_,1,1,2,1);
+  g_outer->addWidget(data_size_,0,1);
 
   // thresh
 
@@ -110,41 +138,55 @@ Adxl362Config::~Adxl362Config(){}
 
 void Adxl362Config::GetConfig(Config &config)
 {
-  Adxl362 adxl;
+  // Parameters common to all tags
 
-  adxl.set_accel_type(adxl_type);
+  int id;
+  Adxl362 adxl(config.adxl362());
 
-  if (adxl_type == Adxl362_AdxlType_AdxlType_362)
-  {
-    int id = filter_->checkedId();
-    if (Adxl362_Aa_IsValid(id)) {
-      adxl.set_filter((Adxl362_Aa)id);
-    } else {
-      adxl.set_filter((Adxl362_Aa)0);
-    }
-    if (sample_rate_)
+  if (sample_rate_)
     {
-      int id = sample_rate_->checkedId();
+      id = sample_rate_->checkedId();
       if (Adxl362_Odr_IsValid(id))
         adxl.set_freq((Adxl362_Odr)id);
     }
 
-    if (range_)
+  if (range_)
     {
-      int id = range_->checkedId();
+      id = range_->checkedId();
       if (Adxl362_Rng_IsValid(id))
         adxl.set_range((Adxl362_Rng)id);
     }
-  } 
-  
 
-  // get inactive_ time and threshold
+  // set the accel type -- this should be deprecated
 
-  adxl.set_inactive_sec(inactive_->value());
-  adxl.set_act_thresh_g(act_thresh_->value());
-   if (adxl_type == Adxl362_AdxlType_AdxlType_362)
-  {
-    adxl.set_inact_thresh_g(inact_thresh_->value());
+  adxl.set_accel_type(adxl_type);
+
+  // set tag specific info
+
+  switch (config.tag_type()) {
+    case BITTAG:
+      id = filter_->checkedId();
+      if (Adxl362_Aa_IsValid(id)) {
+          adxl.set_filter((Adxl362_Aa)id);
+      } else {
+          adxl.set_filter((Adxl362_Aa)0);
+      }
+      adxl.set_inact_thresh_g(inact_thresh_->value());
+      // fall through to BITTAGNG for common part
+    case BITTAGNG:
+      adxl.set_inactive_sec(inactive_->value());
+      adxl.set_act_thresh_g(act_thresh_->value());
+      break;
+    case ACCELTAG:
+      id = channels_->checkedId();
+      if ( Adxl367Channel_IsValid(id)) {
+        adxl.set_channels((Adxl367Channel)id);
+      }
+      id = data_size_->checkedId();
+      if (Adxl362_Adxl367DataFormat_IsValid(id)) {
+        adxl.set_data_format((Adxl362_Adxl367DataFormat)id);
+      }
+      break;
   }
 
   // set config to result
@@ -154,28 +196,44 @@ void Adxl362Config::GetConfig(Config &config)
 
 void Adxl362Config::SetConfig(const Config &config)
 {
+  // save accel type -- should be deprecated
+
   Adxl362 adxl(config.adxl362());
-
-  // check supported fields
-
   adxl_type  = adxl.accel_type();
 
-  if (adxl_type == Adxl362_AdxlType_AdxlType_362) {
-    filter_->setCheckedId((int)adxl.filter());
-    filter_->setVisible(true);
-    sample_rate_->setCheckedId((int)adxl.freq());
-    range_->setCheckedId((int)adxl.range());
-    inact_thresh_->setVisible(true);
-    inact_thresh_label.setVisible(true);
-  } else {
-    filter_->setVisible(false);
-    sample_rate_->setVisible(false);
-    range_->setVisible(false);
-    inact_thresh_->setVisible(false);
-    inact_thresh_label.setVisible(false);
-  }
+  // initialize all widgets default visibility
 
-  
+  filter_->setVisible(false);
+  sample_rate_->setVisible(true);
+  inact_thresh_->setVisible(false);
+  inact_thresh_label.setVisible(false);
+  data_size_->setVisible(false);
+  channels_->setVisible(false);
+  spinners_->setVisible(true);
+  range_->setVisible(true);
+
+  switch(config.tag_type()) {
+    case BITTAG:
+      filter_->setCheckedId((int)adxl.filter());
+      filter_->setVisible(true);
+      sample_rate_->setCheckedId((int)adxl.freq());
+      range_->setCheckedId((int)adxl.range());
+      inact_thresh_->setVisible(true);
+      inact_thresh_label.setVisible(true);
+      break;
+    case BITTAGNG:
+      sample_rate_->setCheckedId((int)adxl.freq());
+      range_->setCheckedId((int)adxl.range());
+      break;
+    case ACCELTAGNG:
+      sample_rate_->setCheckedId((int)adxl.freq());
+      range_->setCheckedId((int)adxl.range());
+      data_size_->setVisible(true);
+      data_size_->setCheckedId((int)adxl.data_format());
+      channels_->setVisible(true);
+      channels_->setCheckedId((int)adxl.channels());
+      spinners_->setVisible(false);
+  }
 
   // set legal range of spin boxes
 
@@ -189,7 +247,7 @@ void Adxl362Config::SetConfig(const Config &config)
   // adxl362 threshold
 
   act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
-  if (adxl_type == Adxl362_AdxlType_AdxlType_362) {
+  if (config.tag_type() == BITTAG){
      inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
   }
 }
