@@ -16,9 +16,9 @@
 #include "adxl362config.h"
 
 static const std::vector<PBEnumGroup::binfo> adxl_data_size_buttons {
-    {Adxl362_Adxl367DataFormat_AdxlDataFormat_14, "14-bit data", nullptr},
-    {Adxl362_Adxl367DataFormat_AdxlDataFormat_12,"12-bit data", nullptr},
-    {Adxl362_Adxl367DataFormat_AdxlDataFormat_8, "8-bit data",nullptr}
+    {Adxl362_Adxl367DataFormat_DF14, "14-bit data", nullptr},
+    {Adxl362_Adxl367DataFormat_DF12,"12-bit data", nullptr},
+    {Adxl362_Adxl367DataFormat_DF8, "8-bit data",nullptr}
 };
 
 static const std::vector<PBEnumGroup::binfo> adxl_channels_buttons {

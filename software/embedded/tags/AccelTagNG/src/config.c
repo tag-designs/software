@@ -35,12 +35,12 @@ void writeStoredConfig(t_storedconfig *s)
   }
 }
 
-// Translation between BitTag constants and ProtoBuf constants
+// Translation between Tag constants and ProtoBuf constants
 
 static const Adxl362_Rng Adxl367RngToEnum[] = {
-    [ADXL367_RANGE_2G] = Adxl362_R2G,
-    [ADXL367_RANGE_4G] = Adxl362_R4G,
-    [ADXL367_RANGE_8G] = Adxl362_R8G};
+    [ADXL367_2G_RANGE] = Adxl362_R2G,
+    [ADXL367_4G_RANGE] = Adxl362_R4G,
+    [ADXL367_8G_RANGE] = Adxl362_R8G};
 
 static const Adxl362_Odr Adxl367ODRToEnum[] = {
     [ADXL367_ODR_12P5HZ] = Adxl362_S12_5,
@@ -49,6 +49,51 @@ static const Adxl362_Odr Adxl367ODRToEnum[] = {
     [ADXL367_ODR_100HZ] = Adxl362_S100,
     [ADXL367_ODR_200HZ] = Adxl362_S200,
     [ADXL367_ODR_400HZ] = Adxl362_S400};
+
+static const Adxl367Channel Adxl367ChannelToEnum[] = {
+  [ADXL367_FIFO_FORMAT_XYZ] = AdxlChannel_xyz,
+	[ADXL367_FIFO_FORMAT_X] = AdxlChannel_x,
+	[ADXL367_FIFO_FORMAT_Y] = AdxlChannel_y,
+	[ADXL367_FIFO_FORMAT_Z] = AdxlChannel_xyz,
+  // other cases not supported
+  [ADXL367_FIFO_FORMAT_ZA] = AdxlChannel_UNSPECIFIED
+};
+
+static const Adxl362_Adxl367DataFormat Adxl367FormatToEnum[] = {
+  [ADXL367_8B]  = Adxl362_DF8,
+  [ADXL367_12B] = Adxl362_DF12,
+  [ADXL367_14B_CHID] = Adxl362_DF14,
+  // other cases not supported
+  [ADXL367_12B_CHID] = Adxl362_DF_UNSPECIFIED,
+};
+
+static int EnumToAdxl367Format(Adxl362_Adxl367DataFormat df){
+  switch(df) {
+    case Adxl362_DF8:
+      return ADXL367_8B;
+    case Adxl362_DF12:
+      return ADXL367_12B;
+    case Adxl362_DF14:
+      return ADXL367_14B_CHID;
+    default:
+      return ADXL367_14B_CHID;
+  }
+};
+
+static int EnumToAdxl367Channel(Adxl367Channel chn) {
+  switch(chn) {
+    case AdxlChannel_xyz:
+      return ADXL367_FIFO_FORMAT_XYZ;
+    case AdxlChannel_x:
+      return ADXL367_FIFO_FORMAT_X;
+    case AdxlChannel_y:
+      return ADXL367_FIFO_FORMAT_Y;
+    case AdxlChannel_z:
+      return ADXL367_FIFO_FORMAT_Z;
+    default:
+      return  ADXL367_FIFO_FORMAT_XYZ;
+  }
+};
 
 static int EnumToAdxl367Rng(Adxl362_Rng rng)
 {
@@ -105,30 +150,27 @@ static const float Sens[] = {[ADXL367_RANGE_2G] = 0.00025,
 
 void readConfig(Config *config)
 {
+
+  // only called if not idle or test -- both of those return
+  // predefined default config
+
   if (config == NULL)
     return;
 
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
-  //config->period = sconfig.lps_period;
-// Sensor configuration
-    // convert from adxl values to configuration values
+  // Sensor configuration
+  // convert from adxl values to configuration values
+  // need stored values
   int range = ADXL_RANGE(ADXL367_RANGE_2G);
   int freq = ADXL_RATE(ADXL367_ODR_12P5HZ);
-  int act_thresh = sconfig.adxl_act_thresh_cnt;
-  int samples = sconfig.adxl_inactive_samples;   
 
   config->has_adxl362 = true;
-  //config->adxl362.range = Adxl367RngToEnum[range];
-  //config->adxl362.freq = Adxl367ODRToEnum[freq];
-  config->adxl362.act_thresh_g = act_thresh * Sens[range];
-  //config->adxl362.inact_thresh_g = inact_thresh * Sens[range];
-  config->adxl362.inactive_sec = samples * Tdelta[freq];
+  config->adxl362.range = Adxl367RngToEnum[range];
+  config->adxl362.freq = Adxl367ODRToEnum[freq];
   config->adxl362.accel_type = Adxl362_AdxlType_367;
-  config->has_active_interval = true;
-  config->active_interval.start_epoch = sconfig.start;
-  config->active_interval.end_epoch = sconfig.stop;
-
+  config->adxl362.data_format = 0; // place holder
+  config->adxl362.channels = 0; // place holder
   config->hibernate_count = 2; // number of hibernation messages
 
   for (int i = 0; i < 2; i++)

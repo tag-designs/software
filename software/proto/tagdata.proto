@@ -139,10 +139,10 @@ message Adxl362 {
   //
 
   enum Adxl367DataFormat {
-      AdxlDataFormat_UNSPECIFIED = 0;
-      AdxlDataFormat_14          = 1;
-      AdxlDataFormat_12          = 2;
-      AdxlDataFormat_8           = 3;
+      DF_UNSPECIFIED = 0;
+      DF14           = 1;
+      DF12           = 2;
+      DF8            = 3;
   }
 
   Rng range = 1;

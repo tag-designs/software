@@ -16,7 +16,7 @@
  ],
  "adxl362": {
   "accel_type": "AdxlType_367",
-  "data_format" : "AdxlDataFormat_14",
+  "data_format" : "DF14",
   "channels" : "AdxlChannel_xyz",
   "range": "R2G",
   "freq": "S50"
