@@ -230,5 +230,5 @@ message GeoTagLog {
 message AccelTagNgLog {
   int32 epoch = 1;
   int32 millis = 2;
-  repeated float samples = 4;
+  bytes samples = 4;
 }

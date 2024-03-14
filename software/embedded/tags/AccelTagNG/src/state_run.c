@@ -7,6 +7,7 @@
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
+#include "testdata.h"
 
 /*
  * Count-Mode Config
@@ -18,7 +19,7 @@
 const int32_t chunk_period = 20;  // seconds
 const int32_t chunk_number = 6;   // chunks in activity write
 const int32_t chunk_bits = 5;     // bits per chunk
-const int32_t sample_period = 120; // sampling period between writes
+const int32_t sample_period = 10; // sampling period between writes
 /*
    Range now hardwired to 2g
    Sample rate now hardwired to 12.5 hz
@@ -83,17 +84,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // make sure we're pointing to the next data block in case
     // this is a recovery action -- round up in the case of partial blocks
     // written
-    int remainder = pState->external_blocks % DATALOG_SAMPLES;
-    if (remainder)
-      pState->external_blocks = pState->external_blocks + DATALOG_SAMPLES - remainder;
-      // need to recover internal block start
-
+   
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;
     pState->temp10 = temp10;
 
-    adxl367_init();
+    //adxl367_init();
 
     pState->state = TagState_RUNNING;
     recordState(reason);
@@ -123,57 +120,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         adcVDD(&vdd100, &temp10);
         pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
         pState->temp10 = (pState->temp10 * 3 + temp10) /4;
-    }
+    
 
-    // Now we should loop over seconds between lastwakeup and now 
-    //   for (uint32_t next = lastwakeup; next <= timestamp; next++) {
-    //       -- if next%60 == 0 -- update temperature, voltage
-    //          if next%sample_period == 0 -- write out data -- check for error and possible break here.
-    //          if next > lastactstart  -- add to activity
-    //    }
-    //    now check hibernation/stop/etc
-    //    update pstate
-
-    if (timestamp > lastwrite + sample_period)
-    {
-      if (timestamp >= lastwrite + 2 * sample_period)
-      {
-         // things are really bad
-        lastwrite = (timestamp / sample_period) * sample_period;
-        if (lastactstart < lastwrite)
-        {
-          lastactstart = lastwrite;
-        }
-        activity = 0;
-      }
-      else
-      {
-        // make the timestamp equal to start of next sample period
-        timestamp = lastwrite + sample_period;
-      }
-    }
-
-    // now we need to collect all bits
-    // lastactstart == INT_MAX if the tag wasn't active at the last wakeup
-    // we don't include the current time (this might be the start of the next sample period)
-
-    for (int i = lastactstart; i < timestamp; i++)
-    {
-      // figure out which chunk needs to be updated
-      int index = ((i / chunk_period) % chunk_number) * chunk_bits;
-      activity += (((uint32_t)1) << index);
-    }
-
-
-     // Write out activity (assuming timestamps are correct)
-
-    if (timestamp == lastwrite + sample_period)
-    { // data log write returns an error if battery or space is exhausted
+    //if (timestamp == lastwrite + sample_period)
+     // data log write returns an error if battery or space is exhausted
 
     // write a header every N times -- use internal/external count for this
     // header lags by one block
     
-      if ((pState->external_blocks%(DATALOG_SAMPLES*2)) == 0) {
         t_DataHeader dataheader;
         dataheader.epoch = timestamp;
         dataheader.vdd100 = pState->vdd100;
@@ -189,16 +143,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
           default:
             break;
           }
+
+          writeDataLog(testdata,sizeof(testdata)/2);
       }
 
       // write external data (activity)
 
-      uint32_t tmp32 = activity;
-      writeDataLog((uint16_t *) &tmp32, 2);
-      // update activity status
-      lastwrite = (timestamp / sample_period) * sample_period;
-      activity = 0;
-    }
+      //lastwrite = (timestamp / sample_period) * sample_period;
 
     // check for completion
 
@@ -226,9 +177,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     //     we've "collected" all the bits since the lastactstart up to, but
     //     not including the current timestamp
 
-    pState->lastactstart = isActive ? timestamp : INT_MAX;
-    pState->activity = activity;
-    pState->lastwrite = lastwrite;
+    //pState->lastactstart = isActive ? timestamp : INT_MAX;
+    //pState->lastwrite = lastwrite;
     pState->lastwakeup = timestamp;
   }
   return SHUTDOWN;

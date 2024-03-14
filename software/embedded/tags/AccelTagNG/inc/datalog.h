@@ -5,11 +5,10 @@
 // Stored Data Log -- in external memory
 
 #define member_size(type, member) sizeof(((type *)0)->member)
-#define DATALOG_SAMPLES 160
-CASSERT(member_size(AccelTagNgLog,samples)/4 == DATALOG_SAMPLES)
+#define DATALOG_SAMPLES member_size(AccelTagNgLog_samples_t,bytes)
 
 typedef struct {
-  uint16_t samples[DATALOG_SAMPLES];
+  uint8_t samples[DATALOG_SAMPLES];
 } t_DataLog;
 
 typedef struct {

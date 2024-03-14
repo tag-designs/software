@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "mmc5633.h": "c",
+        "complex": "cpp",
+        "optional": "cpp",
+        "system_error": "cpp",
+        "regex": "cpp",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "chrono": "cpp",
+        "random": "cpp",
+        "limits": "cpp",
+        "fstream": "cpp"
+    }
+}

@@ -74,18 +74,21 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   int addr = pState->external_blocks * 2;
 
   ExFlashPwrUp();
-  for (int i = 0; i < num; i++)
+
+  for (int i = 0; i++; i < num) 
   {
     cnt = 2;
     if (!ExFlashWrite(addr, (uint8_t *) &data[i], &cnt)) {
        /* ignore error */
        /* what is right thing to do ? */
     }
-    stopMilliseconds(true,2);
+    //stopMilliseconds(true,1);
+    chThdSleepMicroseconds(200);
+
     addr += 2;
   }
   ExFlashPwrDown();
-  pState->external_blocks += 2;
+  pState->external_blocks += num;
   return LOGWRITE_OK;
 }
 
@@ -137,16 +140,15 @@ int data_logAck(int index, Ack *ack)
   {
     ack->which_payload = Ack_acceltag_ng_data_log_tag;
     data->epoch = vddHeader[index].epoch;
+    data->samples.size = 0;
     //data->voltage = vddHeader[index].vdd100 * 0.01f;
     //data->temperature = vddHeader[index].temp10 * 0.1f;
     //data->activity_count = 0;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
     {
-      if (databuf.samples[j] == 0xffffu)
-        break;
-      data->samples[j] = databuf.samples[j];
-      data->samples_count++;
+      data->samples.bytes[j] = databuf.samples[j];
+      data->samples.size++;
     }
   }
   else
