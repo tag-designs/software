@@ -78,7 +78,7 @@ void eraseExternal()
     done = true;
     for (unsigned int i = 0; i< sizeof(pagebuffer); i++) {
       if (pagebuffer[i] != 0xff)
-        done = true;
+        done = false;
     }
     if (done)
       break;
