@@ -74,7 +74,11 @@ bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
 
   fs << "#             Configuration\n#\n";
   if (cfg.has_adxl362())
-  {
+  { 
+    if (cfg.adxl362().accel_type() == 1) {
+      fs << "# ADXL type: adxl367\n";
+    }
+
     fs << "# Range:       "
        << Adxl362_Rng_Name(cfg.adxl362().range()) << "\n";
     fs << "# Frequency:   "
@@ -85,7 +89,7 @@ bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
        << "\n";
     fs << "# Inactive Thresh: " << cfg.adxl362().inact_thresh_g() << "g"
        << "\n";
-    fs << "# thresh Time: " << cfg.adxl362().inactive_sec() << "s"
+    fs << "# Inactive Time: " << cfg.adxl362().inactive_sec() << "s"
        << "\n";
   }
 
@@ -349,6 +353,16 @@ static int dumpTagLog(std::ostream &out, const GeoTagLog &log)
 
 static int dumpTagLog(std::ostream &out, const Config &config,
                       const AccelTagNgLog &log) {
+  int64_t timestamp = log.epoch();
+  out << timestamp << "," << log.millis() << std::endl;
+  const char *data = log.samples().data();
+  for (int i = 0; i < log.samples().size(); i += 6) {
+    int16_t x = data[i]   + (data[i+1]<<8);
+    int16_t y = data[i+2] + (data[i+3] << 8);
+    int16_t z = data[i+4] + (data[i+5] << 8);
+    out << "x:" << x << ",y:" << y << ",z:" << z << std::endl;
+  }
+
   return 1;
 }
 

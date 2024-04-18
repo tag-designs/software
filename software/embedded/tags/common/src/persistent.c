@@ -66,15 +66,21 @@ void erasePersistent(void)
 void eraseExternal()
 {
 #ifdef EXTERNAL_FLASH
+  static uint8_t pagebuffer[256] NOINIT;
   int32_t addr;
-  int32_t buf;
   int32_t size;
   ExFlashPwrUp();
   size = ExCheckID();
+  bool done;
   for (addr = 0; addr < size * 1024; addr += 4096)
   {
-    ExFlashRead(addr, (uint8_t *)&buf, 4);
-    if (buf == -1)
+    ExFlashRead(addr, pagebuffer, sizeof(pagebuffer));
+    done = true;
+    for (unsigned int i = 0; i< sizeof(pagebuffer); i++) {
+      if (pagebuffer[i] != 0xff)
+        done = true;
+    }
+    if (done)
       break;
     ExFlashSectorErase(addr);
   }

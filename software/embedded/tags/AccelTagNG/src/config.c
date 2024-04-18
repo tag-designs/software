@@ -159,6 +159,7 @@ void readConfig(Config *config)
 
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
+  config->triaxis_activity = false;
   // Sensor configuration
   // convert from adxl values to configuration values
   // need stored values
@@ -171,6 +172,11 @@ void readConfig(Config *config)
   config->adxl362.accel_type = Adxl362_AdxlType_367;
   config->adxl362.data_format = 0; // place holder
   config->adxl362.channels = 0; // place holder
+  config->adxl362.active_sec = 1.0; // place holder
+  config->adxl362.inactive_sec = 1.0; // place holder
+  config->adxl362.act_thresh_g = 0.5; // place holder
+  config->adxl362.inact_thresh_g = 1.2; // place holder
+  
   config->hibernate_count = 2; // number of hibernation messages
 
   for (int i = 0; i < 2; i++)
@@ -210,6 +216,9 @@ bool writeConfig(Config *config)
   int samples = config->adxl362.inactive_sec / Tdelta[freq];
   samples = samples > 255 ? 255 : samples;
   config_tmp.adxl_inactive_samples = samples;
+  samples = config->adxl362.active_sec / Tdelta[freq];
+  samples = samples > 65535 ? 65535 : samples;
+  config_tmp.adxl_active_samples = samples;
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
 

@@ -20,5 +20,6 @@
   "channels" : "AdxlChannel_xyz",
   "range": "R2G",
   "freq": "S50"
- }
+ },
+ "triaxis_activity": false
 }

@@ -68,6 +68,7 @@ message PresTagLogFmt {
 message LuxTagLogFmt {
   uint32 period = 1;
 }
+
 message Config {
 
   message Interval {
@@ -80,11 +81,13 @@ message Config {
   Interval active_interval = 2;
   repeated Interval hibernate = 3; // hibernation
   uint32 period = 7;               // period for synchronous tags
+  bool triaxis_activity = 8;       // monitor activity in triaxis mode
   // Data
   BitTagLogFmt bittag_log = 4;     // bittag log format
   //AccelTagLogFmt acceltag_log = 5; // acceltag log format
   // Sensors
   Adxl362 adxl362 = 6;
+ 
 }
 
 // change internal_format/external_format to messages
@@ -96,6 +99,7 @@ enum Adxl367Channel {
   AdxlChannel_x    = 2;
   AdxlChannel_y    = 3;
   AdxlChannel_z    = 4;
+  // should not implement other values
   AdxlChannel_xyzt = 5;
   AdxlChannel_xt   = 6;
   AdxlChannel_yt   = 7;
@@ -154,6 +158,7 @@ message Adxl362 {
   AdxlType accel_type = 7;           // accelerometer 
   Adxl367DataFormat data_format = 8; // data format, ADXl367 only
   Adxl367Channel channels = 9;       // channels, ADXL367 only
+  float active_sec = 10;             // need active seconds for triaxial mode
 }
 
 message BitTagLog { repeated BitTagData data = 1; }
@@ -228,7 +233,7 @@ message GeoTagLog {
 }
 
 message AccelTagNgLog {
-  int32 epoch = 1;
-  int32 millis = 2;
-  bytes samples = 4;
+  int32 epoch    = 1;
+  int32 millis   = 2;
+  bytes samples  = 5;
 }

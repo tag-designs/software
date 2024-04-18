@@ -7,6 +7,7 @@
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
+static uint8_t pagebuffer[256] NOINIT;
 
 extern int encode_ack(void);
 
@@ -16,7 +17,7 @@ int restoreLog()
 {
   uint32_t addr = 0;
   uint32_t next_addr = 0;
-  int32_t buf;
+  bool empty = true;
   const uint32_t blocksize = sizeof(t_DataLog)*1024;
 
   ExFlashPwrUp();
@@ -25,9 +26,16 @@ int restoreLog()
   // read epoch of block 0
 
 
-  ExFlashRead(0,(uint8_t *) &buf, 4);
+  ExFlashRead(0,pagebuffer, 256);
 
-  if (buf == -1) // erased ?
+  for (int i = 0; i < 256; i++) {
+    if (pagebuffer[i] != 0xff ) {
+      empty = false;
+      break;
+    }
+  }
+
+  if (empty) // erased ?
   {
     pState->pages = 0;
     pState->external_blocks = 0;
@@ -44,8 +52,16 @@ int restoreLog()
           next_addr + blocksize <= size; 
           next_addr = addr + step) 
     {
-      ExFlashRead(next_addr,(uint8_t *) &buf,4);
-      if (buf == -1) {
+      empty = true;
+      ExFlashRead(next_addr,pagebuffer,256);
+      for (int i = 0; i < 256; i++) {
+          if (pagebuffer[i] != 0xff ) {
+            empty = false;
+            break;
+        }
+      }
+
+      if (empty) {
         break;
       }
       addr = next_addr;
@@ -74,19 +90,17 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   int addr = pState->external_blocks * 2;
 
   ExFlashPwrUp();
-
+  cnt = num*2;
+  //ExFlashWrite(addr, (uint8_t *) data, &cnt);
+/*
   for (int i = 0; i++; i < num) 
   {
     cnt = 2;
-    if (!ExFlashWrite(addr, (uint8_t *) &data[i], &cnt)) {
-       /* ignore error */
-       /* what is right thing to do ? */
-    }
-    //stopMilliseconds(true,1);
-    chThdSleepMicroseconds(200);
-
-    addr += 2;
+    ExFlashWrite(addr+i*2, (uint8_t *) &data[i], &cnt);
+    stopMilliseconds(true,2);
+    //chThdSleepMicroseconds(200);
   }
+  */
   ExFlashPwrDown();
   pState->external_blocks += num;
   return LOGWRITE_OK;
@@ -114,8 +128,6 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
   if (flasherr) 
     return LOGWRITE_ERROR;
-  if (head->vdd100 < 200)
-    return LOGWRITE_BAT;
   else
     return LOGWRITE_OK;
 }
@@ -131,25 +143,22 @@ int data_logAck(int index, Ack *ack)
   AccelTagNgLog *data = &ack->payload.acceltag_ng_data_log;
   ack->err = Ack_Err_OK;
 
-  // read data
-  ExFlashPwrUp();
-  ExFlashRead(databuf_size*index, (uint8_t *) &databuf, databuf_size);
-  ExFlashPwrDown();
-
+  
   if (vddHeader[index].epoch != -1)
   {
     ack->which_payload = Ack_acceltag_ng_data_log_tag;
     data->epoch = vddHeader[index].epoch;
-    data->samples.size = 0;
+    data->millis = vddHeader[index].millis;
+    data->samples.size = vddHeader[index].shorts*2;
     //data->voltage = vddHeader[index].vdd100 * 0.01f;
     //data->temperature = vddHeader[index].temp10 * 0.1f;
     //data->activity_count = 0;
 
-    for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
-    {
-      data->samples.bytes[j] = databuf.samples[j];
-      data->samples.size++;
-    }
+    // read data
+    ExFlashPwrUp();
+    ExFlashRead(data->samples.size*index, data->samples.bytes, data->samples.size);
+    ExFlashPwrDown();
+
   }
   else
   {

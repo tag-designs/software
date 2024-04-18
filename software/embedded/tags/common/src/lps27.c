@@ -132,9 +132,9 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
     // wait for data
 
 #if defined(LPS_LOW_POWER)
-     sleep(15);
-#else
      sleep(25);
+#else
+     sleep(35);
 #endif
 
     lps27_GetReg(LPS27_STATUS, &tmp, 1);

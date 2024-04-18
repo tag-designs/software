@@ -13,8 +13,8 @@ typedef struct {
 
 typedef struct {
   int32_t epoch;
-  uint16_t vdd100;
-  uint16_t temp10;
+  uint16_t millis;
+  uint16_t shorts;
 } t_DataHeader;
 
 extern t_DataHeader vddHeader[];

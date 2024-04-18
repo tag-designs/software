@@ -9,6 +9,8 @@
 #include "datalog.h"
 #include "testdata.h"
 
+static int16_t shortbuffer[50] NOINIT;
+
 /*
  * Count-Mode Config
  * In this mode, the tag will record activity counts for fixed time intervals
@@ -85,11 +87,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // this is a recovery action -- round up in the case of partial blocks
     // written
    
+   /*
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;
     pState->temp10 = temp10;
-
+    */
     //adxl367_init();
 
     pState->state = TagState_RUNNING;
@@ -98,29 +101,19 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
-
-
     uint32_t activity = pState->activity;
     int32_t lastwrite = pState->lastwrite;
     //int32_t lastwakeup = pState->lastwakeup;
     int32_t lastactstart = pState->lastactstart;
-
-    // sample once ! -- also used in pwr to decide wakeup edge
-
-    isActive = palReadLine(LINE_ACCEL_INT);
     
-
-    // a very rare event is a missed RTC wakeup.  In this case the 
-    // timestamp may be beyond the current end of period.  Thus we
-    // need to "catchup"
-
     //  Check alarm flags  -- update temperature/voltage estimates
 
     if (events & (EVT_RTC_ALRAF | EVT_RTC_ALRBF | EVT_RTC_WUTF )) {
+      /*
         adcVDD(&vdd100, &temp10);
         pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
         pState->temp10 = (pState->temp10 * 3 + temp10) /4;
-    
+      */
 
     //if (timestamp == lastwrite + sample_period)
      // data log write returns an error if battery or space is exhausted
@@ -130,28 +123,23 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     
         t_DataHeader dataheader;
         dataheader.epoch = timestamp;
-        dataheader.vdd100 = pState->vdd100;
-        dataheader.temp10 = pState->temp10;
+        dataheader.millis = timestamp_millis;
+        dataheader.shorts = sizeof(testdata)/2;
         enum LOGERR err = writeDataHeader(&dataheader);
-
-          switch (err)
-          {
-          case LOGWRITE_FULL:
-            return Finished(T_INIT, State_EVENT_INTERNALFULL);
-          case LOGWRITE_BAT:
-            //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-          default:
-            break;
-          }
-
-          writeDataLog(testdata,sizeof(testdata)/2);
+        for (int i = 0; i < 50; i++) {
+            shortbuffer[i] = i+pState->external_blocks-100;
+        }
+        writeDataLog(shortbuffer,50);//sizeof(testdata)/2);
+        switch (err)
+        {
+        case LOGWRITE_FULL:
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case LOGWRITE_BAT:
+          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        default:
+          break;
+        }
       }
-
-      // write external data (activity)
-
-      //lastwrite = (timestamp / sample_period) * sample_period;
-
-    // check for completion
 
     if (sconfig.stop < timestamp)
     {
@@ -171,14 +159,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
     }
-
-
-    // update state
-    //     we've "collected" all the bits since the lastactstart up to, but
-    //     not including the current timestamp
-
-    //pState->lastactstart = isActive ? timestamp : INT_MAX;
-    //pState->lastwrite = lastwrite;
     pState->lastwakeup = timestamp;
   }
   return SHUTDOWN;
