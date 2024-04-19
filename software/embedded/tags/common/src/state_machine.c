@@ -216,12 +216,12 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
     recordState(reason);
   }
 
-  // clean up the persistent state
-
+  // clean up the persistent state -- External First !
+#ifdef EXTERNAL_FLASH
   eraseExternal();
-  pState->external_blocks = 0;
+#endif
   erasePersistent();
-  pState->pages = 0;
+
  // pState->logcnt = 0;
 
   // reset devices (accelerometer)

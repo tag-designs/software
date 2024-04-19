@@ -10,53 +10,59 @@ static t_DataLog databuf NOINIT;
 
 extern int encode_ack(void);
 
+static int countInternalBlocks(void){
+  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t start = ((uint32_t)(&__persistent_start__));
+  int count = 0;
+  while (start < end) {
+
+      if (((uint32_t *) start)[0] == 0xffffffff)
+          break;
+      count++;
+      start += 8;
+  }
+  return count;
+}
+
+// Recover pState from log
+
 // Recover pState from log
 
 int restoreLog()
 {
-  uint32_t addr = 0;
-  uint32_t next_addr = 0;
-  int32_t buf;
-  const uint32_t blocksize = sizeof(t_DataLog)*1024;
-
-  ExFlashPwrUp();
-  uint32_t size = ExCheckID() * 1024;
-
-  // read epoch of block 0
+  pState->pages = countInternalBlocks();
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES*2;
+  return 0;
+}
 
 
-  ExFlashRead(0,(uint8_t *) &buf, 4);
+void eraseExternal()
+{
+  int32_t addr;
+  int32_t size;
 
-  if (buf == -1) // erased ?
-  {
-    pState->pages = 0;
-    pState->external_blocks = 0;
-    ExFlashPwrDown();
-    return 0;
-  }
+  // compute blocks
 
-  // search for end of written blocks
-  // step size  1024*blocksize... 1*blocksize
+  int sectors; 
+  restoreLog();
 
-  for (int i = 10; i > 0; i--) {
-    uint32_t step = (1<<i)*blocksize;
-    for ( next_addr = addr + step; 
-          next_addr + blocksize <= size; 
-          next_addr = addr + step) 
-    {
-      ExFlashRead(next_addr,(uint8_t *) &buf,4);
-      if (buf == -1) {
-        break;
-      }
-      addr = next_addr;
+  // round up to full sector
+  
+  sectors = (pState->external_blocks*2+4095)/4096;
+  pState->external_blocks = sectors*4096/2;
+
+  ExFlashPwrUp();  
+  size = ExCheckID();
+  while (sectors>0) {
+   
+    addr = sectors * 4096;
+    if (addr < size*1024) {
+        ExFlashSectorErase(addr);
     }
+    sectors -= 1;
+    pState->external_blocks = sectors*4096/2;
   }
   ExFlashPwrDown();
-
-  // treat last block found as full -- This needs further work
-  pState->pages = addr/blocksize;
-  pState->external_blocks = pState->pages*DATALOG_SAMPLES;
-  return 0;
 }
 
 // 
@@ -85,7 +91,7 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
     addr += 2;
   }
   ExFlashPwrDown();
-  pState->external_blocks += 2;
+  pState->external_blocks += num;
   return LOGWRITE_OK;
 }
 

@@ -46,7 +46,7 @@ void erasePersistent(void)
 {
   uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
   uint32_t start = ((uint32_t)(&__persistent_start__));
-  eraseExternal();
+
   while (start + 2048 <= end)
   {
     end -= 2048;
@@ -59,35 +59,12 @@ void erasePersistent(void)
     FLASH_Flush_Data_Cache();
     chSysUnlock();
   }
+  pState->pages = 0;
 }
 
 // Erase external
 
-void eraseExternal()
-{
-#ifdef EXTERNAL_FLASH
-  static uint8_t pagebuffer[256] NOINIT;
-  int32_t addr;
-  int32_t size;
-  ExFlashPwrUp();
-  size = ExCheckID();
-  bool done;
-  for (addr = 0; addr < size * 1024; addr += 4096)
-  {
-    ExFlashRead(addr, pagebuffer, sizeof(pagebuffer));
-    done = true;
-    for (unsigned int i = 0; i< sizeof(pagebuffer); i++) {
-      if (pagebuffer[i] != 0xff)
-        done = false;
-    }
-    if (done)
-      break;
-    ExFlashSectorErase(addr);
-  }
-  ExFlashPwrDown();
-#endif
-  pState->external_blocks = 0;
-}
+
 
 void recordState(State_Event reason)
 {
