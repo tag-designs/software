@@ -435,7 +435,7 @@ void MainWindow::on_internalDownloadButton_clicked()
       log_error("downloaded %d blocks\n",len);
       }
       if (status.internal_data_count())
-        progress.setValue(total % status.internal_data_count());
+        progress.setValue(total);// % status.internal_data_count());
     } 
   } while (len && !progress.wasCanceled());
   fs.close();
