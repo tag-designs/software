@@ -3,7 +3,7 @@
 #include "external_flash.h"
 
 #define INTER_WRITE_DELAY 2
-#define SECTOR_ERASE_POLL_INTERVAL 50
+#define SECTOR_ERASE_POLL_INTERVAL 150
 
 #define AT25XE_CMD_READ            0x03
 #define AT25XE_CMD_PAGE_PROG       0x02
