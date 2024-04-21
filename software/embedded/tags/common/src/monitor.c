@@ -150,7 +150,12 @@ static int infoAck(void)
   }
   STR_COPY(buf, ack.payload.info.uuid);
   ack.payload.info.intflashsz = *((uint16_t *)FLASHSIZE_BASE);
-  ack.payload.info.extflashsz = 0;
+#ifdef EXTERNAL_FLASH
+  ack.payload.info.extflashsz = EXT_FLASH_SIZE;
+#else 
+ ack.payload.info.extflashsz = 0;
+#endif
+
   ack.payload.info.tag_type = TAG_TYPE;
   STR_COPY(FIRMWARE_STRING, ack.payload.info.firmware);
   STR_COPY(InfoStrings[REPO_STR], ack.payload.info.gitrepo);

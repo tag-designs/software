@@ -24,6 +24,20 @@ static int countInternalBlocks(void){
   return count;
 }
 
+void eraseExternalBlock(){
+  int32_t addr;
+  int sectors; 
+  
+  // round up to full sector
+
+  addr = pState->external_blocks*2;
+
+  ExFlashPwrUp();  
+  ExFlashSectorErase(addr);
+  ExFlashPwrDown();
+  pState->external_blocks = (addr>>12)*2048;
+}
+
 void eraseExternal()
 {
   int32_t addr;
@@ -40,7 +54,7 @@ void eraseExternal()
   pState->external_blocks = sectors*4096/2;
 
   ExFlashPwrUp();  
-  size = ExCheckID();
+  size = EXT_FLASH_SIZE;
   while (sectors>0) {
    
     addr = sectors * 4096;
@@ -55,7 +69,7 @@ void eraseExternal()
 
 // Recover pState from log
 
-int restoreLog()
+int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
   pState->external_blocks = pState->pages * DATALOG_SAMPLES*2;

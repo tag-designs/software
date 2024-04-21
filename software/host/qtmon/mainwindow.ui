@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>690</width>
-    <height>799</height>
+    <width>1011</width>
+    <height>996</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -368,14 +368,78 @@
                  <string>Tag Information</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
-                 <item row="9" column="1">
+                 <item row="4" column="1">
+                  <widget class="QLabel" name="label_3">
+                   <property name="text">
+                    <string>Ext. Flash Size</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QLineEdit" name="info_tagtype">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>2</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="toolTip">
+                    <string>Type of attached tag</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="1">
                   <widget class="QLabel" name="label_builddate">
                    <property name="text">
                     <string>Build Date</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="9" column="3">
+                 <item row="8" column="1">
+                  <widget class="QLabel" name="label_gitHash">
+                   <property name="text">
+                    <string>Git Hash</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="1">
+                  <widget class="QLabel" name="label_gitURL">
+                   <property name="text">
+                    <string>Git Repo</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="3">
+                  <widget class="QLineEdit" name="info_srcpath">
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLabel" name="label_uuid">
+                   <property name="text">
+                    <string>UUID</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="7" column="1">
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Source Path</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="3">
                   <widget class="QLineEdit" name="info_buildDate">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -391,13 +455,6 @@
                    </property>
                    <property name="readOnly">
                     <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QLabel" name="label_flash">
-                   <property name="text">
-                    <string>Flash Size</string>
                    </property>
                   </widget>
                  </item>
@@ -423,14 +480,42 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
-                  <widget class="QLabel" name="label_descLine">
-                   <property name="text">
-                    <string>Firmware</string>
+                 <item row="1" column="3">
+                  <widget class="QLineEdit" name="info_boardname">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>2</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="3">
+                 <item row="8" column="3">
+                  <widget class="QLineEdit" name="info_gitHash">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                     <horstretch>2</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="toolTip">
+                    <string>A code that can be used to identify the version of firmware currently running on the tag. Corresponds to the first seven characters of the Git commit hash.</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="6" column="3">
                   <widget class="QLineEdit" name="info_gitUrl">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -449,8 +534,35 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="0" column="3">
-                  <widget class="QLineEdit" name="info_tagtype">
+                 <item row="9" column="3">
+                  <spacer name="verticalSpacer_7">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Board Name</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="1">
+                  <widget class="QLabel" name="label_flash">
+                   <property name="text">
+                    <string>Flash Size</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="3">
+                  <widget class="QLineEdit" name="info_uuid">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                      <horstretch>2</horstretch>
@@ -458,20 +570,13 @@
                     </sizepolicy>
                    </property>
                    <property name="toolTip">
-                    <string>Type of attached tag</string>
+                    <string>A unique code embedded in hardware that can be used to identify individual tags.</string>
                    </property>
                    <property name="alignment">
                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                    </property>
                    <property name="readOnly">
                     <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLabel" name="label_tagtype">
-                   <property name="text">
-                    <string>Tag Type</string>
                    </property>
                   </widget>
                  </item>
@@ -494,8 +599,22 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="2" column="1">
+                  <widget class="QLabel" name="label_descLine">
+                   <property name="text">
+                    <string>Firmware</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="label_tagtype">
+                   <property name="text">
+                    <string>Tag Type</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="4" column="3">
-                  <widget class="QLineEdit" name="info_uuid">
+                  <widget class="QLineEdit" name="info_flash_ext">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                      <horstretch>2</horstretch>
@@ -503,106 +622,13 @@
                     </sizepolicy>
                    </property>
                    <property name="toolTip">
-                    <string>A unique code embedded in hardware that can be used to identify individual tags.</string>
+                    <string>Size of tag processor memory</string>
                    </property>
                    <property name="alignment">
                     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                    </property>
                    <property name="readOnly">
                     <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="1">
-                  <widget class="QLabel" name="label_gitURL">
-                   <property name="text">
-                    <string>Git Repo</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLabel" name="label">
-                   <property name="text">
-                    <string>Board Name</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="1">
-                  <widget class="QLabel" name="label_uuid">
-                   <property name="text">
-                    <string>UUID</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="info_boardname">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                     <horstretch>2</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                   </property>
-                   <property name="readOnly">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="8" column="3">
-                  <spacer name="verticalSpacer_7">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                 <item row="7" column="1">
-                  <widget class="QLabel" name="label_gitHash">
-                   <property name="text">
-                    <string>Git Hash</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="7" column="3">
-                  <widget class="QLineEdit" name="info_gitHash">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                     <horstretch>2</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="toolTip">
-                    <string>A code that can be used to identify the version of firmware currently running on the tag. Corresponds to the first seven characters of the Git commit hash.</string>
-                   </property>
-                   <property name="alignment">
-                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                   </property>
-                   <property name="readOnly">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="3">
-                  <widget class="QLineEdit" name="info_srcpath">
-                   <property name="alignment">
-                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                   </property>
-                   <property name="readOnly">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="6" column="1">
-                  <widget class="QLabel" name="label_2">
-                   <property name="text">
-                    <string>Source Path</string>
                    </property>
                   </widget>
                  </item>
@@ -812,7 +838,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>690</width>
+     <width>1011</width>
      <height>24</height>
     </rect>
    </property>

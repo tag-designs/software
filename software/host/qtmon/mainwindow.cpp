@@ -149,6 +149,7 @@ bool MainWindow::Attach()
     ui->info_gitUrl->setText(QString::fromStdString(info.gitrepo()));
     ui->info_uuid->setText(QString::fromStdString(info.uuid()));
     ui->info_flash->setText(QString::number(info.intflashsz()) + "KB");
+    ui->info_flash_ext->setText(QString::number(info.extflashsz()/(1024*1024))+"MB");
     ui->info_buildDate->setText(QString::fromStdString(info.build_time()));
     ui->info_srcpath->setText(QString::fromStdString(info.source_path()));
     TestResult result = status.test_status();
