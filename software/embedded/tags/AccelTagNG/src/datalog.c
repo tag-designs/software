@@ -7,10 +7,78 @@
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
-static uint8_t pagebuffer[256] NOINIT;
+//static uint8_t pagebuffer[256] NOINIT;
 
 extern int encode_ack(void);
 
+static int countInternalBlocks(void){
+  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t start = ((uint32_t)(&__persistent_start__));
+  int count = 0;
+  while (start < end) {
+
+      if (((uint32_t *) start)[0] == 0xffffffff)
+          break;
+      count++;
+      start += 8;
+  }
+  return count;
+}
+
+void eraseExternalBlock(void){
+  int32_t addr;
+  int sectors; 
+  
+  // round up to full sector
+
+  addr = pState->external_blocks*2;
+
+  ExFlashPwrUp();  
+  ExFlashSectorErase(addr);
+  ExFlashPwrDown();
+  pState->external_blocks = (addr>>12)*2048;
+}
+
+void eraseExternal()
+{
+  int32_t addr;
+  int32_t size;
+
+  // compute blocks
+
+  int sectors; 
+  restoreLog();
+
+  // round up to full sector
+  
+  sectors = (pState->external_blocks*2+4095)/4096;
+  pState->external_blocks = sectors*4096/2;
+
+  ExFlashPwrUp();  
+  size = EXT_FLASH_SIZE;
+  while (sectors>0) {
+   
+    addr = sectors * 4096;
+    if (addr < size*1024) {
+        ExFlashSectorErase(addr);
+    }
+    sectors -= 1;
+    pState->external_blocks = sectors*4096/2;
+  }
+  ExFlashPwrDown();
+}
+
+// Recover pState from log
+
+int restoreLog(void)
+{
+  pState->pages = countInternalBlocks();
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES;
+  return 0;
+}
+
+
+/*
 // Recover pState from log
 
 int restoreLog()
@@ -74,7 +142,7 @@ int restoreLog()
   pState->external_blocks = pState->pages*DATALOG_SAMPLES;
   return 0;
 }
-
+*/
 // 
 // Write data to external log
 //
@@ -91,7 +159,7 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
 
   ExFlashPwrUp();
   cnt = num*2;
-  //ExFlashWrite(addr, (uint8_t *) data, &cnt);
+  ExFlashWrite(addr, (uint8_t *) data, &cnt);
 /*
   for (int i = 0; i++; i < num) 
   {
@@ -120,6 +188,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 
+  pState->pages++;
  // See if the log file is full
 
   if ((((uint32_t)writeptr) + 8) >= flashend)
