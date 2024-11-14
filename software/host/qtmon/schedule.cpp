@@ -45,12 +45,12 @@ void Schedule::SetConfig(const Config &config)
   if (config.active_interval().end_epoch() == INT32_MAX)
   {
     ui_->RunIndefinitely->setChecked(true);
-    ui_->EndDateTime->setEnabled(false);
+    //ui_->EndDateTime->setEnabled(false);
   }
   else
   {
     ui_->RunUntil->setChecked(true);
-    ui_->EndDateTime->setEnabled(true);
+    //ui_->EndDateTime->setEnabled(true);
   }
   QDateTime end = QDateTime::fromSecsSinceEpoch(config.active_interval().start_epoch());
   ui_->EndDateTime->setDateTime(end);
@@ -62,13 +62,13 @@ void Schedule::SetConfig(const Config &config)
   if (start < now)
   {
     ui_->StartNow->setChecked(true);
-    ui_->StartDateTime->setEnabled(false);
+    //ui_->StartDateTime->setEnabled(false);
   }
   else
   {
     ui_->StartOn->setChecked(true);
     ui_->StartDateTime->setDateTime(start);
-    ui_->StartDateTime->setEnabled(true);
+    //ui_->StartDateTime->setEnabled(true);
   }
 
   if (ui_->RunIndefinitely->isChecked())
@@ -193,7 +193,7 @@ void Schedule::on_runGroup_clicked()
   if (ui_->RunIndefinitely->isChecked())
   {
     //ui->StartDateTime->setMaximumDateTime(maxdt);
-    ui_->EndDateTime->setEnabled(false);
+    ////ui_->EndDateTime->setEnabled(false);
   }
 
   if (ui_->RunUntil->isChecked())
@@ -202,7 +202,7 @@ void Schedule::on_runGroup_clicked()
     {
       ui_->EndDateTime->setMinimumDateTime(now);
     }
-    ui_->EndDateTime->setEnabled(true);
+    //ui_->EndDateTime->setEnabled(true);
   }
 }
 
@@ -214,7 +214,7 @@ void Schedule::on_startGroup_clicked()
   if (ui_->StartNow->isChecked())
   {
     ui_->StartDateTime->setDateTime(now);
-    ui_->StartDateTime->setEnabled(false);
+    //ui_->StartDateTime->setEnabled(false);
   }
 
   if (ui_->StartOn->isChecked())
@@ -223,7 +223,7 @@ void Schedule::on_startGroup_clicked()
     {
       ui_->StartDateTime->setDateTime(now);
     }
-    ui_->StartDateTime->setEnabled(true);
+    //ui_->StartDateTime->setEnabled(true);
   }
 }
 
@@ -235,5 +235,7 @@ void Schedule::Attach(const Config &config)
 {
  // qDebug() << "schedule saw attach !";
   SetConfig(config);
+  ui_->EndDateTime->setEnabled(true);
+  ui_->StartDateTime->setEnabled(true);
   //this->setEnabled(true);
 }
