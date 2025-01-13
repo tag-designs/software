@@ -8,7 +8,7 @@
 #define BOARD_NAME "PresTagv3"
 #define RV3028_RTC TRUE
 #define LPS_SPI TRUE
-#define LPS_LOW_POWER TRUE
+#define LPS_LOW_POWER FALSE
 #define USE_LPS27 TRUE
 #define EXTERNAL_FLASH TRUE
 

@@ -117,7 +117,7 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
     uint8_t buf[5];
     uint8_t tmp;
     lpsOn();
-    sleep(10);
+    sleep(20);  // extend power up time from 10 to 20ms
     uint8_t cmd;;
 #if defined(LPS_LOW_POWER)
     cmd = LPS27_CTRL_REG2_ONE_SHOT |
@@ -132,9 +132,9 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
     // wait for data
 
 #if defined(LPS_LOW_POWER)
-     sleep(25);
+     sleep(35); // extend time from 25 to 35 ms
 #else
-     sleep(35);
+     sleep(45); // extend time from 35 to 45 ms
 #endif
 
     lps27_GetReg(LPS27_STATUS, &tmp, 1);
