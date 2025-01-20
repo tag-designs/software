@@ -97,7 +97,7 @@ void lpsOn(void)
 
 void lpsOff(void)
 {
-  
+  spiDisable();
   toAnalog(LINE_STEVAL_SCK);
   toAnalog(LINE_STEVAL_MOSI);
   toAnalog(LINE_STEVAL_MISO);

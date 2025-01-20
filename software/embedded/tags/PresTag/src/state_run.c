@@ -71,16 +71,18 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // check for battery exhausted
 
+    /*
     if ((pState->vdd100) < 200)
     {
       //return Finished(T_INIT, State_EVENT_LOWBATTERY);
     }
+    */
 
     // wakeup timer event ?
 
     if (events & EVT_RTC_WUTF)
     {
-      enum LOGERR err;
+      enum LOGERR err = LOGWRITE_OK;
 
       struct{
         int16_t pressure;
@@ -103,19 +105,20 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         dataheader.vdd100[1] = pState->temp10;
         err = writeDataHeader(&dataheader);
         stopMilliseconds(false,2);
+       
+        switch (err)
+        {
+        case LOGWRITE_FULL:
+        case LOGWRITE_ERROR:
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case LOGWRITE_BAT:  //redundant?
+          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        default:
+          break;
+        }
       }
-  
-      switch (err)
-      {
-      case LOGWRITE_FULL:
-      case LOGWRITE_ERROR:
-        return Finished(T_INIT, State_EVENT_INTERNALFULL);
-      case LOGWRITE_BAT:  //redundant?
-        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-      default:
-        break;
-      }
-      // write data only
+
+      // write data 
 
       err = writeDataLog((uint16_t *)&datablock.pressure, 2);
       switch (err)
@@ -132,7 +135,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       pState->external_blocks += 1;
 
       // check error return
-
+      /*
       switch (err)
       {
       case LOGWRITE_FULL:
@@ -141,7 +144,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       default:
         break;
       }
-      
+      */  
     }
   }
   if (sconfig.lps_period < 10)

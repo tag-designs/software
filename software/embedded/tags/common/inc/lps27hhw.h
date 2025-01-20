@@ -55,9 +55,14 @@ enum LPS27_Reg
 
 #define LPS27_WHO_AM_I_VALUE (0xB3)
 
+#define LPS27_CTRL_REG1_BDU (1<<1)
+
 #define LPS27_CTRL_REG2_ONE_SHOT   (1<<0)
 #define LPS27_CTRL_REG2_LOW_NOISE_EN (1<<1)
+#define LPS27_CTRL_REG2_SWRESET (1<<2)
 #define LPS27_CTRL_REG2_IF_ADD_INC (1<<4)
+#define LPS27_CTRL_REG2__BOOT (1<<7)
+
 #define LPS27_CTRL_REG3_DRDY       (1<<2)
 #define LPS27_RES_CONF_LC_EN       (1<<0)
 #define LPS27_IF_CTRL_I2C_DISABLE (1<<0)
