@@ -13,7 +13,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   int16_t temp10;
   uint16_t vdd100;
   if (t == T_ERROR)
-  {
+  { 
+    // recovery code for brownout here?
     return Aborted(T_INIT, reason);
   }
 

@@ -126,18 +126,43 @@ enum Sleep StateMachine(void)
       }
     }
 
-    if (pState->state == TagState_RUNNING || 
-        pState->state == TagState_HIBERNATING)
+    // hand reset conditions for hibernating and running separately
+
+     if (pState->state == TagState_HIBERNATING)
     {
       // goto error
       switch (pState->resetCause)
       {
-      case resetPower:
-        return Running(T_ERROR, State_EVENT_POWERFAIL);
-      case resetBrownout:
-        return Running(T_INIT, State_EVENT_BROWNOUT);
-      default:
-        return Running(T_ERROR, State_EVENT_UNKNOWN);
+        switch (pState->resetCause)
+        {
+          // need to distinguish hibernating from running
+          case resetSleep:
+          case resetStandby:
+          case resetShutdown:
+          case resetException:
+            return Hibernating(T_CONT, State_EVENT_OK);
+          case resetBrownout:
+            return Hibernating(T_INIT, State_EVENT_BROWNOUT);
+          default:
+            return Aborted(T_INIT, State_EVENT_POWERFAIL);
+        }
+      }
+    }
+
+    if (pState->state == TagState_RUNNING)
+    {
+      // goto error
+      switch (pState->resetCause)
+      {
+        case resetSleep:
+        case resetStandby:
+        case resetShutdown:
+        case resetException:
+          return Running(T_CONT, State_EVENT_OK);
+        case resetBrownout:
+          return Running(T_INIT, State_EVENT_BROWNOUT);
+        default:
+          return Aborted(T_INIT, State_EVENT_POWERFAIL);
       }
     }
   }

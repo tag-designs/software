@@ -105,72 +105,57 @@ float lpsTemperature(int16_t temperature){
 
 bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 {
-  {
-    // buffer to capture pressure/temperature;
-    /*
-    struct
-    {
-      uint32_t pressure;
-      int16_t temperature;
-    } buf;
-    */
-    uint8_t buf[5];
-    uint8_t status;
-    lpsOn();    // powered through gpio
-    sleepMS(10);  // 10ms
-    uint8_t cmd;;
-    // reset registers
+ 
+  uint8_t buf[5];
+  uint8_t status;
+  uint8_t cmd;
 
-    cmd = LPS27_CTRL_REG2_SWRESET;
-    lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
+  // default return values
 
-    // set BDU
+  *pressure = SHRT_MIN;
+  *temperature = SHRT_MIN;
 
-    cmd = LPS27_CTRL_REG1_BDU;
-    lps27_SetReg(LPS27_CTRL_REG1, &cmd, 1);
+  lpsOn();      // powered through gpio
+  sleepMS(10);  // 20ms power up
+ 
+  // reset registers
 
-    // start one shot
+  cmd = LPS27_CTRL_REG2_SWRESET;
+  lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
+
+  // set BDU
+
+  cmd = LPS27_CTRL_REG1_BDU;
+  lps27_SetReg(LPS27_CTRL_REG1, &cmd, 1);
+
+  // start one shot
 #if defined(LPS_LOW_POWER)
-    cmd = LPS27_CTRL_REG2_ONE_SHOT |
-          LPS27_CTRL_REG2_IF_ADD_INC;
+  cmd = LPS27_CTRL_REG2_ONE_SHOT |
+        LPS27_CTRL_REG2_IF_ADD_INC;
 #else
-    cmd = LPS27_CTRL_REG2_ONE_SHOT |
-          LPS27_CTRL_REG2_LOW_NOISE_EN |
-          LPS27_CTRL_REG2_IF_ADD_INC;
+  cmd = LPS27_CTRL_REG2_ONE_SHOT |
+        LPS27_CTRL_REG2_LOW_NOISE_EN |
+        LPS27_CTRL_REG2_IF_ADD_INC;
 #endif
-    lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
-     
-    // wait for data
+  lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
+    
+  // wait for data
 
-    for (int i = 0; i < 4; i++) {
-
-#if defined(LPS_LOW_POWER)
-     sleepMS(10); // 10 ms
-#else
-     sleepMS(20); // 20 ms
-#endif
-
+  for (int i = 0; i < 6; i++) {
+    sleepMS(10);
     lps27_GetReg(LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)
       break;
-
-    }
-    
-  
-
-    if ((status & 3) == 3)
-    {
-      lps27_GetReg(LPS27_PRESS_OUT_XL, buf, 5);
-      *pressure = (int16_t) ((buf[2] << 8) | (buf[1]));
-      *temperature = (int16_t) ((buf[4]<<8) | ((buf[3])));
-    } else {
-      *pressure = SHRT_MIN;
-      *temperature = SHRT_MIN;
-    }
-    lpsOff();
-    return (status & 3) == 3;
   }
-  return false;
+  
+  if (status == 3) // don't capture if overrun
+  {
+    lps27_GetReg(LPS27_PRESS_OUT_XL, buf, 5);
+    *pressure =    (int16_t) ((buf[2]<<8) | (buf[1]));
+    *temperature = (int16_t) ((buf[4]<<8) | (buf[3]));
+  }
+  lpsOff();
+  return status == 3;
 }
 
 bool lpsTest(void)
