@@ -12,6 +12,9 @@
         "chrono": "cpp",
         "random": "cpp",
         "limits": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "bitset": "c",
+        "initializer_list": "c",
+        "utility": "c"
     }
 }

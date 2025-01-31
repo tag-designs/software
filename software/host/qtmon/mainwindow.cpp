@@ -428,12 +428,12 @@ void MainWindow::on_internalDownloadButton_clicked()
       }
       len = dumpTagLog(fs, ack, config, tag_log_output_txt);
       if (len == 0) {
-        log_error("no data\n");
+        log_info("no data");
       } else if (len == -1) {
          log_error("no matching log type\n");
       } else {
       total += len;
-      log_error("downloaded %d blocks\n",len);
+      log_info("downloaded %d blocks",len);
       }
       if (status.internal_data_count())
         progress.setValue(total);// % status.internal_data_count());
