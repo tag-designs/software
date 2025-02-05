@@ -198,7 +198,7 @@
             </widget>
            </item>
            <item>
-            <spacer name="horizontalSpacer_3">
+            <spacer name="horizontalSpacer">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
              </property>
@@ -209,6 +209,121 @@
               </size>
              </property>
             </spacer>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="gb_GraphRange">
+             <property name="title">
+              <string>Graph Range</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <item>
+               <widget class="QFrame" name="frameGraphMax">
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Raised</enum>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_10">
+                 <item>
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Max.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="graphMax">
+                   <property name="maximum">
+                    <number>1050</number>
+                   </property>
+                   <property name="singleStep">
+                    <number>25</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameGraphMin">
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Raised</enum>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_11">
+                 <item>
+                  <widget class="QLabel" name="label_9">
+                   <property name="text">
+                    <string>Min.</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="graphMin">
+                   <property name="maximum">
+                    <number>1050</number>
+                   </property>
+                   <property name="singleStep">
+                    <number>25</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <widget class="QFrame" name="frameRange">
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Raised</enum>
+                </property>
+                <layout class="QHBoxLayout" name="horizontalLayout_12">
+                 <item>
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Range</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="activityRange">
+                   <property name="minimum">
+                    <number>25</number>
+                   </property>
+                   <property name="maximum">
+                    <number>125</number>
+                   </property>
+                   <property name="singleStep">
+                    <number>5</number>
+                   </property>
+                   <property name="value">
+                    <number>100</number>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
            </item>
            <item>
             <widget class="QGroupBox" name="gb_graph">
@@ -225,19 +340,6 @@
               <string>Graph</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
-              <item row="2" column="0">
-               <widget class="QCheckBox" name="cb_activity">
-                <property name="toolTip">
-                 <string>Visibility of activity data</string>
-                </property>
-                <property name="text">
-                 <string>Activity</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
               <item row="3" column="0">
                <widget class="QGroupBox" name="gbVT">
                 <property name="title">
@@ -278,31 +380,20 @@
               </item>
               <item row="7" column="0">
                <widget class="QFrame" name="frame_21">
-                <layout class="QHBoxLayout" name="horizontalLayout_6">
-                 <item>
-                  <widget class="QLabel" name="label">
-                   <property name="text">
-                    <string>Range</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QSpinBox" name="activityRange">
-                   <property name="minimum">
-                    <number>25</number>
-                   </property>
-                   <property name="maximum">
-                    <number>125</number>
-                   </property>
-                   <property name="singleStep">
-                    <number>5</number>
-                   </property>
-                   <property name="value">
-                    <number>100</number>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <layout class="QHBoxLayout" name="horizontalLayout_6"/>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QCheckBox" name="cb_activity">
+                <property name="toolTip">
+                 <string>Visibility of activity data</string>
+                </property>
+                <property name="text">
+                 <string>Activity</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
                </widget>
               </item>
              </layout>
@@ -317,64 +408,9 @@
               </sizepolicy>
              </property>
              <property name="title">
-              <string>Cursors</string>
+              <string>Graph Cursors</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_5">
-              <item row="2" column="1">
-               <widget class="QLabel" name="label_7">
-                <property name="toolTip">
-                 <string>Time for right cursor</string>
-                </property>
-                <property name="text">
-                 <string>right</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QCheckBox" name="cb_cursors_visible">
-                <property name="toolTip">
-                 <string>Change cursor visibility</string>
-                </property>
-                <property name="text">
-                 <string>Visible</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="2">
-               <widget class="QDateTimeEdit" name="te_left">
-                <property name="toolTip">
-                 <string>Left cursor date/time</string>
-                </property>
-                <property name="displayFormat">
-                 <string>M/d/yy hh:mm</string>
-                </property>
-                <property name="calendarPopup">
-                 <bool>true</bool>
-                </property>
-                <property name="timeSpec">
-                 <enum>Qt::UTC</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2">
-               <widget class="QDateTimeEdit" name="te_right">
-                <property name="toolTip">
-                 <string>Right cursor date/time</string>
-                </property>
-                <property name="displayFormat">
-                 <string>M/d/yy hh:mm</string>
-                </property>
-                <property name="calendarPopup">
-                 <bool>true</bool>
-                </property>
-                <property name="timeSpec">
-                 <enum>Qt::UTC</enum>
-                </property>
-               </widget>
-              </item>
               <item row="0" column="2">
                <widget class="QPushButton" name="pb_cursor_zoom">
                 <property name="toolTip">
@@ -382,16 +418,6 @@
                 </property>
                 <property name="text">
                  <string>Zoom</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QLabel" name="label_6">
-                <property name="toolTip">
-                 <string>Time for left cursor</string>
-                </property>
-                <property name="text">
-                 <string>left</string>
                 </property>
                </widget>
               </item>
@@ -411,21 +437,73 @@
                 </property>
                </spacer>
               </item>
+              <item row="2" column="2">
+               <widget class="QDateTimeEdit" name="te_right">
+                <property name="toolTip">
+                 <string>Right cursor date/time</string>
+                </property>
+                <property name="displayFormat">
+                 <string>M/d/yy hh:mm</string>
+                </property>
+                <property name="calendarPopup">
+                 <bool>true</bool>
+                </property>
+                <property name="timeSpec">
+                 <enum>Qt::UTC</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="2">
+               <widget class="QDateTimeEdit" name="te_left">
+                <property name="toolTip">
+                 <string>Left cursor date/time</string>
+                </property>
+                <property name="displayFormat">
+                 <string>M/d/yy hh:mm</string>
+                </property>
+                <property name="calendarPopup">
+                 <bool>true</bool>
+                </property>
+                <property name="timeSpec">
+                 <enum>Qt::UTC</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="label_7">
+                <property name="toolTip">
+                 <string>Time for right cursor</string>
+                </property>
+                <property name="text">
+                 <string>right</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLabel" name="label_6">
+                <property name="toolTip">
+                 <string>Time for left cursor</string>
+                </property>
+                <property name="text">
+                 <string>left</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QCheckBox" name="cb_cursors_visible">
+                <property name="toolTip">
+                 <string>Change cursor visibility</string>
+                </property>
+                <property name="text">
+                 <string>Visible</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
              </layout>
             </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
            </item>
            <item>
             <widget class="QGroupBox" name="gb_activityfilter">
@@ -745,7 +823,7 @@
      <x>0</x>
      <y>0</y>
      <width>1091</width>
-     <height>19</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

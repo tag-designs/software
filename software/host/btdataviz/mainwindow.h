@@ -73,6 +73,8 @@ private slots:
     // Range
 
     void on_activityRange_valueChanged(int value);
+    void on_graphMax_valueChanged(int value);
+    void on_graphMin_valueChanged(int value);
 
 private:
     enum TagType {BITTAG, BITTAGNG, PRESTAG};

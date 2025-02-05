@@ -106,9 +106,8 @@ float lpsTemperature(int16_t temperature){
 bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 {
  
-  uint8_t buf[5];
   uint8_t status;
-  uint8_t cmd;
+  uint8_t cmd[2];
 
   // default return values
 
@@ -116,33 +115,23 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   *temperature = SHRT_MIN;
 
   lpsOn();      // powered through gpio
-  sleepMS(10);  // 20ms power up
- 
-  // reset registers
+  sleepMS(10);  // 10ms power up
 
-  cmd = LPS27_CTRL_REG2_SWRESET;
-  lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
+  // set BDU and configure one shot
 
-  // set BDU
+  cmd[0] = LPS27_CTRL_REG1_BDU;
+  cmd[1] = LPS27_CTRL_REG2_ONE_SHOT |
+           LPS27_CTRL_REG2_LOW_NOISE_EN |
+           LPS27_CTRL_REG2_IF_ADD_INC;
 
-  cmd = LPS27_CTRL_REG1_BDU;
-  lps27_SetReg(LPS27_CTRL_REG1, &cmd, 1);
-
-  // start one shot
-#if defined(LPS_LOW_POWER)
-  cmd = LPS27_CTRL_REG2_ONE_SHOT |
-        LPS27_CTRL_REG2_IF_ADD_INC;
-#else
-  cmd = LPS27_CTRL_REG2_ONE_SHOT |
-        LPS27_CTRL_REG2_LOW_NOISE_EN |
-        LPS27_CTRL_REG2_IF_ADD_INC;
-#endif
-  lps27_SetReg(LPS27_CTRL_REG2, &cmd, 1);
+  // write CTRL_REG1 and CTRL_REG2 to start one shot
+  
+  lps27_SetReg(LPS27_CTRL_REG1, cmd, 2);
     
   // wait for data
 
   for (int i = 0; i < 6; i++) {
-    sleepMS(10);
+    sleepMS(15);
     lps27_GetReg(LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)
       break;
@@ -150,9 +139,8 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   
   if (status == 3) // don't capture if overrun
   {
-    lps27_GetReg(LPS27_PRESS_OUT_XL, buf, 5);
-    *pressure =    (int16_t) ((buf[2]<<8) | (buf[1]));
-    *temperature = (int16_t) ((buf[4]<<8) | (buf[3]));
+    lps27_GetReg(LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
+    lps27_GetReg(LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
   }
   lpsOff();
   return status == 3;

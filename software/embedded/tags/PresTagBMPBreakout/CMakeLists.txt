@@ -1,0 +1,3 @@
+
+add_embedded_target(PresTagBMPBreakout prestag_proto)
+add_dependencies(PresTagBMPBreakout board-prestag-breakout)

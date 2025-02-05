@@ -105,6 +105,7 @@ void MainWindow::makeVisible(bool visible)
   ui->gb_activityfilter->setEnabled(visible);
   ui->gb_export->setEnabled(visible);
   ui->gb_timeoffset->setEnabled(visible);
+  ui->gb_GraphRange->setEnabled(visible);
   // ui->pb_process->setEnabled(visible);
   ui->theActogram->setEnabled(visible);
   //  ui->gb_display->setEnabled(visible);
@@ -383,27 +384,40 @@ void MainWindow::on_pb_load_clicked()
       // Set range to 500 hPA
 
       if (tagtype == PRESTAG) {
-        ui->activityRange->setMaximum(1050);
-        ui->activityRange->setValue(1050);
-        ui->activityRange->setMinimum(600);
-        ui->activityRange->setEnabled(false);
-        ui->activityRange->setVisible(false);
-        ui->label->setVisible(false);
+        ui->graphMax->setMaximum(1050);
+        ui->graphMax->setMinimum(600);
+        ui->graphMax->setValue(1050);
+        ui->graphMax->setEnabled(true);
+       
+        ui->graphMin->setMaximum(1050);
+        ui->graphMin->setMinimum(0);
+        ui->graphMin->setValue(600);
+        ui->graphMin->setEnabled(true);
+        ui->frameGraphMin->setVisible(true);
+        ui->frameGraphMax->setVisible(true);
+        //ui->activityRange->setEnabled(false);
+        ui->frameRange->setVisible(false);
+        //ui->label->setVisible(false);
         ui->cb_activity->setText("Pressure");
         ui->tabConfig->setTabEnabled(1,false);
         ui->plot->yAxis->setLabel("Pressure (hPa)");
-        ui->plot->yAxis->setRange(400, ui->activityRange->value());
+        ui->plot->yAxis->setRange(ui->graphMin->value(), ui->graphMax->value());
       }
       if (tagtype == BITTAG || tagtype == BITTAGNG) {
         ui->activityRange->setMaximum(105);
         ui->activityRange->setMaximum(100);
-        ui->activityRange->setEnabled(true);
-        ui->activityRange->setVisible(true);
-        ui->label->setVisible(true);
+        //ui->activityRange->setEnabled(true);
+        ui->frameRange->setVisible(true);
+        //ui->graphMax->setEnabled(false);
+        //ui->graphMin->setEnabled(false);
+        ui->frameGraphMin->setVisible(false);
+        ui->frameGraphMax->setVisible(false);
+        //ui->label->setVisible(true);
         ui->cb_activity->setText("Activity");
         ui->tabConfig->setTabEnabled(1,true);
        ui->plot->yAxis->setLabel("Activity Percent");
       }
+     
     }
   }
 
@@ -574,7 +588,7 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
     }
     ui->plot->graph(0)->data()->set(accelData);
     if (tagtype == PRESTAG)
-      ui->plot->yAxis->setRange(500, ui->activityRange->value());
+      ui->plot->yAxis->setRange(ui->graphMin->value(), ui->graphMax->value());
     else
       ui->plot->yAxis->setRange(0, ui->activityRange->value());
     ui->theActogram->setData(accel_time, accel_count,
@@ -928,10 +942,26 @@ void MainWindow::on_rbVoltage_clicked()
 
 void MainWindow::on_activityRange_valueChanged(int i) 
 {
-  if (tagtype == PRESTAG)
-    ui->plot->yAxis->setRange(700, i);
-  else
+  //if (tagtype == PRESTAG)
+   // ui->plot->yAxis->setRange(700, i);
+  //else
     ui->plot->yAxis->setRange(0, ui->activityRange->value());
   ui->plot->replot();
  //std::cerr << "set range\n";
+}
+
+void MainWindow::on_graphMax_valueChanged(int i)
+{
+  ui->graphMin->setMaximum(i);
+  ui->plot->yAxis->setRange(ui->graphMin->value(),ui->graphMax->value());
+  ui->plot->replot();
+
+}
+
+void MainWindow::on_graphMin_valueChanged(int i)
+{
+  ui->graphMax->setMinimum(i);
+  ui->plot->yAxis->setRange(ui->graphMin->value(),ui->graphMax->value());
+  ui->plot->replot();
+  
 }
