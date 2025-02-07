@@ -26,7 +26,8 @@ message TagInfo {
   string githash = 8;      // git version hash
   string source_path = 9; // path to source in repo
   string build_time = 10;   // build time
-  int32 flash_blocks = 11;  // number of flash blocks for
+  float qtmonitor_min_version = 11; // minimum version of qt monitor
+  int32 flash_blocks = 12;  // number of flash blocks for
                             // block erase
 }
 

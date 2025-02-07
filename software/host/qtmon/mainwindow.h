@@ -79,6 +79,7 @@ private:
   TagState current_state = STATE_UNSPECIFIED;
   ConfigTab *configtab_;
   LogScreen *logtab;
+  const float version = 2.0;
 protected:
 };
 

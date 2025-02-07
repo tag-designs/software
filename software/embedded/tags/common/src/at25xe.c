@@ -2,6 +2,8 @@
 #include "app.h"
 #include "external_flash.h"
 
+#define AT25XE_SECTOR_SIZE                     (4096)
+
 #define INTER_WRITE_DELAY 2
 #define SECTOR_ERASE_POLL_INTERVAL 150
 
@@ -129,7 +131,11 @@ static void spi_cmd_addr_snd(uint8_t cmd, uint32_t address, uint8_t *buf, int nu
 }
 
 int ExSectorSize(void) {
-    return 4*1024;
+    return AT25XE_SECTOR_SIZE;
+}
+
+int ExSectorCount(void) {  
+    return EXT_FLASH_SIZE/AT25XE_SECTOR_SIZE;
 }
 
 void ExFlashPwrUp(void)

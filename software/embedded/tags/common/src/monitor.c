@@ -116,7 +116,11 @@ static int statusAck(void)
   ack.payload.status.test_status = pState->test_result;
   ack.payload.status.voltage = vdd100 * 0.01f;
   ack.payload.status.temperature = temp10 * 0.1f;
-
+#ifdef EXTERNAL_FLASH
+  ack.payload.status.sectors_erased = sectors_erased;
+#else
+  ack.payload.status.sectors_erased = 0;
+#endif
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
@@ -162,6 +166,11 @@ static int infoAck(void)
   STR_COPY(InfoStrings[HASH_STR], ack.payload.info.githash);
   STR_COPY(InfoStrings[BUILDTM_STR], ack.payload.info.build_time);
   STR_COPY(InfoStrings[SOURCE_STR], ack.payload.info.source_path);
+#ifdef QTMONITOR_VERSION
+  ack.payload.info.qtmonitor_min_version = QTMONITOR_VERSION;
+#else
+  ack.payload.info.qtmonitor_min_version = 1.5;
+#endif
   return encode_ack();
 }
 

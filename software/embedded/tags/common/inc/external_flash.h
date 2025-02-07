@@ -12,6 +12,7 @@ void ExFlashPwrUp(void);
 
 int ExCheckID(void);
 int ExSectorSize(void);
+int ExSectorCount(void);
 
 bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt);
 bool ExFlashSectorErase(uint32_t address);

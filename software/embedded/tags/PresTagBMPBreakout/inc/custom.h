@@ -11,5 +11,8 @@
 #define LPS_LOW_POWER FALSE
 #define EXTERNAL_FLASH TRUE
 #define USE_BMP TRUE
+#define QTMONITOR_VERSION 2.0
+
+extern int sectors_erased;
 
 #endif

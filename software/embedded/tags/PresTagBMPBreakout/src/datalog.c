@@ -7,6 +7,7 @@
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
+int sectors_erased NOINIT;
 
 extern int encode_ack(void);
 
@@ -48,14 +49,17 @@ static bool eraseExternalSector(int sector){
 
 void eraseExternal()
 {
+  sectors_erased = 0;
   ExFlashPwrUp();  
   for (int i = 0; i < EXT_FLASH_SIZE/4096; i++) {
     // we could optimize for zero sector
     if (!eraseExternalSector(i))
       break;
+    sectors_erased++;
   }
   ExFlashPwrDown();
   pState->external_blocks = 0;
+  sectors_erased = 0;
 }
 
 // Recover pState from log

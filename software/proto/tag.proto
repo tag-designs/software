@@ -123,6 +123,8 @@ message Status {
   int32 external_data_count = 5; // number of external data entries
   float voltage = 6;             // system voltage
   float temperature = 7;         // processor Temperature
+  int32 sectors_erased = 8;      // during erase operation provides
+                                 // feedback of erased sectors
 }
 
 message State {

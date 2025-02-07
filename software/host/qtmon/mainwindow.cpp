@@ -37,6 +37,12 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
 
+  // Change Main Window
+
+  QString title = QString::fromStdString("Tag Monitor v") + QString::number(version);
+
+  setWindowTitle(title);
+
   // create config and log tab widgets
 
   configtab_ = new ConfigTab(this);
@@ -138,6 +144,22 @@ bool MainWindow::Attach()
 
     TagInfo info;
     tag.GetTagInfo(info);
+
+    float min_version = info.qtmonitor_min_version();
+
+    if (min_version > version) {
+      QMessageBox msgBox;
+      QString message = QString("monitor version %1 less than required version %2").arg(version).arg(min_version);
+      msgBox.setWindowTitle("Warning");
+      msgBox.setText(message);
+      msgBox.setStandardButtons(QMessageBox::Ok);
+      msgBox.exec();
+
+      //timer.stop();
+      //TriggerUpdate();
+      return false;
+    }
+
     tag.GetConfig(config);
     tag.GetStatus(status);
 
@@ -237,6 +259,19 @@ void MainWindow::TriggerUpdate(void)
         // tag tab
         ui->syncButton->setEnabled(false);
         ui->testButton->setEnabled(false);
+      }
+
+      if (status.state() == sRESET)
+      {
+        ui->label_SectorsErased->setVisible(true);
+        ui->info_SectorsErased->setVisible(true);
+        ui->info_SectorsErased->setText(QString::number(status.sectors_erased()));
+      } 
+      else
+      {
+        ui->label_SectorsErased->setVisible(false);
+        ui->info_SectorsErased->setVisible(false);
+
       }
 
       // config tab

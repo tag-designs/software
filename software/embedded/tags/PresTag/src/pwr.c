@@ -78,7 +78,7 @@ void lpsOn(void)
 
   chBSemWait(&SPImutex);
 
-  //toOutput(LINE_STEVAL_PWR);
+  toOutput(LINE_STEVAL_PWR);
   palSetLine(LINE_STEVAL_PWR);
 
   /* configure select line*/
@@ -201,6 +201,10 @@ void godown(enum Sleep sleepmode)
 
   enableLinePullup(LINE_RTC_SCL);
   enableLinePullup(LINE_RTC_SDA);
+
+  // fully discharge Pressure Sensor capacitor
+
+  //enableLinePulldown(LINE_STEVAL_PWR);
 
   // turn on pullups
 
