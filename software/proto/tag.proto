@@ -35,6 +35,12 @@ message Req {
     // logs -- see log message for types
 
     LogReq log = 9;
+
+    // External Flash operations
+
+    int32 erase_block = 10;
+    FlashReadWrite write_bytes = 11;
+    FlashReadWrite read_bytes = 12;
   }
 }
 
@@ -73,6 +79,13 @@ message Ack {
     AccelTagLog acceltag_data_log = 11;
     BitTagNgLog bittag_ng_data_log = 12;
     AccelTagNgLog acceltag_ng_data_log = 13;
+
+    // Flash Memory operation
+    //   Write returns count with empty bytes
+    //   Read  returns count with bytes
+    
+    FlashReadWrite readwrite = 14;
+
   }
 }
 

@@ -26,6 +26,8 @@ message TagInfo {
   string githash = 8;      // git version hash
   string source_path = 9; // path to source in repo
   string build_time = 10;   // build time
+  int32 flash_blocks = 11;  // number of flash blocks for
+                            // block erase
 }
 
 enum TestResult {
@@ -237,3 +239,10 @@ message AccelTagNgLog {
   int32 millis   = 2;
   bytes samples  = 5;
 }
+
+message FlashReadWrite {
+  int32 address = 1;
+  int32 count   = 2;
+  bytes data    = 3;
+}
+

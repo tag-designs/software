@@ -21,3 +21,4 @@ AccelTagNgLog skip_message:true
 BitTagNgLog skip_message:true
 Compass skip_message:true
 OptPwr skip_message:true
+FlashReadWrite.data max_count:1024

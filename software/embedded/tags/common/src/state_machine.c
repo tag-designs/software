@@ -244,7 +244,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
 
   // clean up the persistent state -- External First !
 #ifdef EXTERNAL_FLASH
-  eraseExternalBlock();
+  eraseExternal();
 #endif
   erasePersistent();
 

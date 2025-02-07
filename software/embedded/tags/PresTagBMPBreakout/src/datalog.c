@@ -24,47 +24,38 @@ static int countInternalBlocks(void){
   return count;
 }
 
-void eraseExternalBlock(){
+static bool eraseExternalSector(int sector){
   int32_t addr;
-  int sectors; 
-  
+  uint8_t buf[256];
+
   // round up to full sector
 
-  addr = pState->external_blocks*2;
+  if (sector < 0 || sector >= EXT_FLASH_SIZE/4096)
+    return false;
 
-  ExFlashPwrUp();  
-  ExFlashSectorErase(addr);
-  ExFlashPwrDown();
-  pState->external_blocks = (addr>>12)*2048;
+  addr = sector*4096;
+
+  // read a buffer
+  ExFlashRead(addr, buf, 256);
+  for (int i = 0; i < 256; i++) {
+      if (buf[i] != 255) {
+        ExFlashSectorErase(addr);
+        return true;
+      }
+  }
+  return false;
 }
 
 void eraseExternal()
 {
-  int32_t addr;
-  int32_t size;
-
-  // compute blocks
-
-  int sectors; 
-  restoreLog();
-
-  // round up to full sector
-  
-  sectors = (pState->external_blocks*2+4095)/4096;
-  pState->external_blocks = sectors*4096/2;
-
   ExFlashPwrUp();  
-  size = EXT_FLASH_SIZE;
-  while (sectors>0) {
-   
-    addr = sectors * 4096;
-    if (addr < size*1024) {
-        ExFlashSectorErase(addr);
-    }
-    sectors -= 1;
-    pState->external_blocks = sectors*4096/2;
+  for (int i = 0; i < EXT_FLASH_SIZE/4096; i++) {
+    // we could optimize for zero sector
+    if (!eraseExternalSector(i))
+      break;
   }
   ExFlashPwrDown();
+  pState->external_blocks = 0;
 }
 
 // Recover pState from log

@@ -77,6 +77,7 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   uint8_t status = 0;
   uint8_t cmd;
   uint8_t chip_id;
+  bool power_up;
 
   // default return values
 
@@ -85,12 +86,24 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 
   // power up
 
-  lpsOn();                    
+  lpsOn();  
+
   stopMilliseconds(true,3);  
 
   // read once to enable spi interface
 
   bmp5_GetReg(BMP5_REG_CHIP_ID, &chip_id, 1);
+
+  for (int i = 0; i<4; i++) 
+  {
+      power_up = power_up_check();
+      if (power_up)
+        break;
+      stopMilliseconds(true,3); 
+  }
+
+  if (!power_up)
+    return false;
 
   // do any necessary initialization
 

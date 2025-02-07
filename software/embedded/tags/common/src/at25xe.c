@@ -171,27 +171,25 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
     *cnt = 0;
     while (num)
     {
-        int bytes = num > 4 ? 4 : num; 
+        int max = 256 - address%256;
+        int bytes = num > max ? max : num; 
 
         spi_cmd(AT25XE_CMD_WRITE_ENABLE);
         at25xe_Status(); // check status after wel -- debug
         spi_cmd_addr_snd(AT25XE_CMD_PAGE_PROG, address, buf, bytes);
-        for (i = 0; i < 5; i++)
+        for (i = 0; i < 12; i++)
         {
-            chThdSleepMicroseconds(200);
+            stopMilliseconds(true,1);
             uint8_t status = at25xe_Status();
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
         } 
-        if (i == 5)
+        if (i == 12)
             return false;
         address += bytes;
         buf += bytes;
         num -= bytes;
         *cnt += bytes;
-        if (num) {
-            stopMilliseconds(true,INTER_WRITE_DELAY);
-        } 
     }
     return true;
 }

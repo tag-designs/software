@@ -7,6 +7,7 @@
 //#define AT25XE_SIZE (DID)                      (1<<(DID[1])
 #define AT25XE321_SIZE                          0x08
 #define AT25XE_SECTOR_SIZE                     (4096)
+#define AT25XE321_SECTORS                      (256*4)
 
 #define AT25XE_POWER_DOWN_DELAY_US           (3)
 #define AT25XE_RELEASE_POWER_DOWN_DELAY_US   (24) //16us Typical // 24uS max

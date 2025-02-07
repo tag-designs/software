@@ -97,4 +97,5 @@ extern t_StateMarker sEpoch[sEPOCH_SIZE];
 void recordState(State_Event reason);
 void erasePersistent(void);
 void eraseExternal(void);
+void eraseExternalBlock(void);
 #endif
