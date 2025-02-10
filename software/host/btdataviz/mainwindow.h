@@ -75,6 +75,8 @@ private slots:
     void on_activityRange_valueChanged(int value);
     void on_graphMax_valueChanged(int value);
     void on_graphMin_valueChanged(int value);
+    
+    void on_cb_altitude_toggled(bool checked);
 
 private:
     enum TagType {BITTAG, BITTAGNG, PRESTAG};
@@ -83,6 +85,7 @@ private:
     QVector<double> accel_count;
     QVector<double> accel_time_filtered;
     QVector<double> accel_count_filtered;
+    QVector<double> altitude;
     QVector<double> voltage_time;
     QVector<double> temperature_time;
     QVector<double> voltage;
@@ -95,6 +98,9 @@ private:
     QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
     TagType tagtype;
+
+    int MaxPressure;
+    int MinPressure;
 
 };
 

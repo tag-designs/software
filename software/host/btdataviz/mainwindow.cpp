@@ -13,6 +13,14 @@
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 
+static float pressure_to_altitude(float mbar){
+  return 44330*(1-pow(mbar/1013.25,1/5.257));
+}
+
+static float altitude_to_pressure(float meters) {
+  return 1013.25*pow(1-meters/44307.694,5.25530);
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
@@ -343,6 +351,7 @@ void MainWindow::on_pb_load_clicked()
                 {
                     accel_time << time;
                     accel_count << dat[1].toDouble();
+                    altitude << pressure_to_altitude(dat[1].toDouble());
                 }
                 if (dat[0].startsWith(QString("T")))
                 {
@@ -395,10 +404,16 @@ void MainWindow::on_pb_load_clicked()
         ui->graphMin->setEnabled(true);
         ui->frameGraphMin->setVisible(true);
         ui->frameGraphMax->setVisible(true);
-        //ui->activityRange->setEnabled(false);
+
         ui->frameRange->setVisible(false);
-        //ui->label->setVisible(false);
-        ui->cb_activity->setText("Pressure");
+        ui->gb_activityfilter->setVisible(false);
+        ui->frame_filterparams->setVisible(false);
+        ui->tab_actogram->setVisible(false);
+        ui->cb_altitude->setVisible(true);
+
+        ui->cb_altitude->setChecked(false);
+  
+        ui->cb_activity->setText("Show Pressure/Altitude");
         ui->tabConfig->setTabEnabled(1,false);
         ui->plot->yAxis->setLabel("Pressure (hPa)");
         ui->plot->yAxis->setRange(ui->graphMin->value(), ui->graphMax->value());
@@ -408,6 +423,10 @@ void MainWindow::on_pb_load_clicked()
         ui->activityRange->setMaximum(100);
         //ui->activityRange->setEnabled(true);
         ui->frameRange->setVisible(true);
+        ui->gb_activityfilter->setVisible(true);
+        ui->frame_filterparams->setVisible(true);
+        ui->tab_actogram->setVisible(true);
+        ui->cb_altitude->setVisible(false);
         //ui->graphMax->setEnabled(false);
         //ui->graphMin->setEnabled(false);
         ui->frameGraphMin->setVisible(false);
@@ -596,6 +615,48 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
   }
   ui->plot->replot();
   activityLevel(ui->plot->xAxis->range());
+}
+
+void MainWindow::on_cb_altitude_toggled(bool checked)
+{
+  if (!accel_time.size())
+    return;
+
+  QVector<QCPGraphData> accelData(accel_time.size());
+  if (checked){
+    MinPressure = ui->graphMin->value();
+    MaxPressure = ui->graphMax->value();
+    int MaxAltitude = pressure_to_altitude(ui->graphMin->value());
+    int MinAltitude = pressure_to_altitude(ui->graphMax->value());
+    for (int i = 0; i < accel_time.size(); i++)
+    {
+      accelData[i].value = altitude[i];
+      accelData[i].key = accel_time[i];     
+      ui->plot->yAxis->setLabel("Altitude (M)");
+    }
+    ui->graphMax->setMaximum(10000);
+    ui->graphMax->setMinimum(MinAltitude);
+    ui->graphMin->setMaximum(MaxAltitude);
+    ui->graphMin->setMinimum(0);
+    ui->graphMax->setValue(MaxAltitude);
+    ui->graphMin->setValue(MinAltitude);
+  } else {
+    for (int i = 0; i < accel_time.size(); i++)
+    {
+      accelData[i].value = accel_count[i];
+      accelData[i].key = accel_time[i];
+      ui->plot->yAxis->setLabel("Pressure (hPa)");
+    }
+    ui->graphMax->setMaximum(1050);
+    ui->graphMax->setMinimum(MinPressure);
+    ui->graphMin->setMaximum(MaxPressure);
+    ui->graphMin->setMinimum(0);
+    ui->graphMax->setValue(MaxPressure);
+    ui->graphMin->setValue(MinPressure);
+  }
+  ui->plot->graph(0)->data()->set(accelData);
+  ui->plot->yAxis->setRange(ui->graphMin->value(), ui->graphMax->value());
+  ui->plot->replot();
 }
 
 /*
