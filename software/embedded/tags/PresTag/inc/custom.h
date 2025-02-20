@@ -13,6 +13,6 @@
 #define EXTERNAL_FLASH TRUE
 #define QTMONITOR_VERSION 2.0
 
-extern int sectors_erased;
+extern volatile int sectors_erased;
 
 #endif

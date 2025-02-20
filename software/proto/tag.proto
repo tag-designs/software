@@ -144,6 +144,10 @@ message State {
     EVENT_BROWNOUT = 12;     // brownout event
     EVENT_POWERFAIL = 13;    // power failure
     EVENT_UNKNOWN = 14;      // unknown failure
+    EVENT_SLEEP = 15;        // sleep event
+    EVENT_STANDBY = 16;      // standby event
+    EVENT_SHUTDOWN = 17;     // shutdown event
+    EVENT_EXCEPTION = 18;    // exception event
   }
   Status status = 1;
   Event transition_reason = 2; // transition event code

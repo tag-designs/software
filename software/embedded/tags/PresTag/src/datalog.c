@@ -7,7 +7,7 @@
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
-int sectors_erased NOINIT;
+volatile int sectors_erased NOINIT;
 
 extern int encode_ack(void);
 
@@ -52,9 +52,8 @@ void eraseExternal()
   sectors_erased = 0;
   ExFlashPwrUp();  
   for (int i = 0; i < EXT_FLASH_SIZE/4096; i++) {
-    // we could optimize for zero sector
-    if (!eraseExternalSector(i))
-      break;
+    // check them all
+    eraseExternalSector(i);
     sectors_erased++;
   }
   ExFlashPwrDown();

@@ -263,15 +263,13 @@ void MainWindow::TriggerUpdate(void)
 
       if (status.state() == sRESET)
       {
-        ui->label_SectorsErased->setVisible(true);
-        ui->info_SectorsErased->setVisible(true);
-        ui->info_SectorsErased->setText(QString::number(status.sectors_erased()));
+        ui->progressBar->setVisible(true);
+        ui->progressBar->setMaximum(1000);
+        ui->progressBar->setValue(status.sectors_erased());
       } 
       else
       {
-        ui->label_SectorsErased->setVisible(false);
-        ui->info_SectorsErased->setVisible(false);
-
+        ui->progressBar->setVisible(false);
       }
 
       // config tab
@@ -289,7 +287,8 @@ void MainWindow::TriggerUpdate(void)
         {
           ui->stopButton->setEnabled(false);
           ui->eraseButton->setEnabled((status.state() != IDLE) &&
-                                      (status.state() != TEST));
+                                      (status.state() != TEST) &&
+                                      (status.state() != sRESET));
         }
 
         if ((status.state() == ABORTED) ||
