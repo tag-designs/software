@@ -55,6 +55,9 @@ void eraseExternal()
     // check them all
     eraseExternalSector(i);
     sectors_erased++;
+    // allow monitor a chance
+    if (i%8 == 7)
+      chThdYield();  
   }
   ExFlashPwrDown();
   pState->external_blocks = 0;

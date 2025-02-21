@@ -40,8 +40,8 @@
 #define STM32_PVD_ENABLE                    FALSE
 #define STM32_PLS                           STM32_PLS_LEV0
 #define STM32_HSI_ENABLED                   TRUE
-#define STM32_HSI14_ENABLED                 TRUE
-#define STM32_HSI48_ENABLED                 FALSE
+#define STM32_HSI14_ENABLED                 FALSE
+#define STM32_HSI48_ENABLED                 TRUE
 #define STM32_LSI_ENABLED                   FALSE
 #define STM32_HSE_ENABLED                   FALSE
 #define STM32_LSE_ENABLED                   FALSE
@@ -53,7 +53,7 @@
 #define STM32_PPRE                          STM32_PPRE_DIV1
 #define STM32_MCOSEL                        STM32_MCOSEL_NOCLOCK
 #define STM32_MCOPRE                        STM32_MCOPRE_DIV1
-#define STM32_PLLNODIV                      STM32_PLLNODIV_DIV2
+#define STM32_PLLNODIV                      STM32_PLLNODIV_DIV1
 #define STM32_USBSW                         STM32_USBSW_HSI48
 #define STM32_CECSW                         STM32_CECSW_OFF
 #define STM32_I2C1SW                        STM32_I2C1SW_HSI

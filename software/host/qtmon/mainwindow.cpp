@@ -265,7 +265,10 @@ void MainWindow::TriggerUpdate(void)
       if (status.state() == sRESET)
       {
         ui->progressBar->setValue(status.sectors_erased());
-      } 
+        //log_info("Sectors Read %d \n",status.sectors_erased());
+      } else {
+        ui->progressBar->setVisible(false);
+      }
 
       // config tab
       if (status.state() != current_state)
@@ -397,8 +400,9 @@ void MainWindow::on_eraseButton_clicked()
     {
       qDebug() << "tag reset returned false";
     } else {
-      ui->progressBar->setVisible(true);
       ui->progressBar->setMaximum(1000);
+      ui->progressBar->setValue(0);
+      ui->progressBar->setVisible(true);
     }
   }
 }

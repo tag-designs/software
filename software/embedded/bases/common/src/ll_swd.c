@@ -33,10 +33,11 @@ uint32_t CoreID = 0;
 
 static inline void delay(int i)
 {
+  /*
   for (; i > 0; i--)
   {
     asm("mov r0,r0");
-  }
+  }*/
 }
 
 static inline void toAnalog(ioline_t line)

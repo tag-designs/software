@@ -44,6 +44,7 @@ extern "C"
 #define STLINK_USB_PID_STLINK_V3E_PID 0x374e
 #define STLINK_USB_PID_STLINK_V3S_PID 0x374f
 #define STLINK_USB_PID_STLINK_V3_2VCP_PID 0x3753
+#define STLINK_USB_PID_STLINK_V3_PWR 0x3757
 
 static inline uint8_t *PACK16(uint8_t *buf, uint16_t val)
 {
@@ -200,6 +201,7 @@ static bool isSTlink(uint16_t vid, uint16_t pid)
     case STLINK_USB_PID_STLINK_V2_1:
     case STLINK_USB_PID_STLINK_V3E_PID:
     case STLINK_USB_PID_STLINK_V3S_PID:
+    case STLINK_USB_PID_STLINK_V3_PWR:
         return true;
     default:
         return false;
