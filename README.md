@@ -42,8 +42,7 @@ you have my deepest sympathy
 ## For building host software    
 
 * install vcpkg -- within vcpkg:
-  * install protobuf:x64-window-static
-      vcpkg.exe install protobuf --triplet=x86-windows-static
+  * install protobuf --- vcpkg.exe install protobuf --triplet=x86-windows-static
   * install qt5:x64-windows-static
   * install libusb:x64-windows-static
   * install ms-angle:x64-windows-static
