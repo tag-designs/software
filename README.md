@@ -51,7 +51,7 @@ you have my deepest sympathy
 ### Configure main build
 
 ```
-cmake -G "Visual Studio 17 2022" -Ax64 -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_TOOLCHAIN_FILE="c:/Users/Geoffrey Brown/vcpkg/scripts/buildsystems/vcpkg.cmake" ..
+cmake -G "Visual Studio 17 2022" -Ax64 -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_TOOLCHAIN_FILE="c:/Users/vcpkg/scripts/buildsystems/vcpkg.cmake" ..
 ```
 
 ### Build release/debug
