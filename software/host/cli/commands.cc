@@ -142,7 +142,8 @@ command_dict c = {
     {"info", &info},
     {"stop", &stop},
     {"state", &state},
-    {"voltage", &voltage}};
+    {"voltage", &voltage}
+};
 
 bool cmd_eval(Tag &tag, std::string &name, std::stringstream &args)
 {

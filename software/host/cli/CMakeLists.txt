@@ -27,7 +27,7 @@ function(host_cli_tool name)
   endif()
 endfunction()
 
-host_cli_tool(tag-cli MACOSX_BUNDLE WIN32 cli.cc options.cc commands.cc)
+# host_cli_tool(tag-cli MACOSX_BUNDLE WIN32 cli.cc options.cc commands.cc)
 host_cli_tool(tag-dwnld MACOSX_BUNDLE WIN32 dwnld.cc options.cc)
 host_cli_tool(tag-test MACOSX_BUNDLE WIN32 test.cc options.cc)
 host_cli_tool(tag-test-example MACOSX_BUNDLE WIN32 test-example.cc options.cc)
