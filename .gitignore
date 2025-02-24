@@ -50,3 +50,4 @@ hardware/LuxTag
 software/embedded/proto-c/acceltag-proto-c
 software/embedded/proto-c/bittagng-proto-c 
 software/embedded/proto-c/luxtag-proto-c 
+.vscode
