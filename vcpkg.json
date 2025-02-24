@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "libusb",
+    "ms-angle",
+    "protobuf"
+  ]
+}

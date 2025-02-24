@@ -12,8 +12,10 @@ set(CMAKE_FIND_ROOT
 #set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
 add_subdirectory(software)
+if (NOT WIN32)
 add_subdirectory(hardware)
 add_subdirectory(docs)
+endif()
 
 set(CPACK_PACKAGE_NAME "UltralightTags")
 set(CPACK_PACKAGE_VENDOR "cs.iu.edu")

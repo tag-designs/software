@@ -1,6 +1,8 @@
 
 #ifndef TAG_H
 #define TAG_H
+using namespace std;
+#include <mutex>
 
 #include "tagmonitor.h"
 
@@ -50,7 +52,7 @@ public:
   bool GetDataLog(Ack &data_log, int index);
 
 private:
-  std::mutex mtx;
+  mutex mtx;
   Ack ack;
   Req req;
   TagMonitor monitor;

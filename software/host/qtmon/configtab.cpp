@@ -212,7 +212,7 @@ void ConfigTab::on_saveButton_clicked()
   {
     google::protobuf::util::JsonPrintOptions options;
     options.add_whitespace = true;
-    options.always_print_primitive_fields = true;
+    // deprecated -- options.always_print_primitive_fields = true;
     options.preserve_proto_field_names = true;
 
     std::ofstream fs(fileName.toStdString());
