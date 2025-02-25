@@ -69,6 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
   // Attach to tag
 
   on_Attach_clicked();
+
 }
 
 MainWindow::~MainWindow()
@@ -179,6 +180,7 @@ bool MainWindow::Attach()
     ui->info_testStatus->setText(QString::fromStdString(TestResult_Name(result)));
 
     logtab->setEnabled(true);
+    
 
     // handle tag type specific Status Page setup
 
@@ -207,6 +209,7 @@ bool MainWindow::Attach()
     TriggerUpdate();
     return false;
   }
+  
 }
 
 // While tag is attached, this
@@ -345,6 +348,14 @@ void MainWindow::on_Attach_clicked()
     configtab_->StateUpdate(current_state);
     ui->Attach->setEnabled(false);
     ui->Detach->setEnabled(true);
+  } else {
+    ui->StatusGroup->setEnabled(false);
+    ui->TagInformation->setEnabled(false);
+    ui->ControlGroup->setEnabled(false);
+    ui->Attach->setEnabled(true);
+    ui->Detach->setEnabled(false);
+    ui->progressBar->setVisible(false);
+    ui->datadownloadgroupBox->setEnabled(false);
   }
 }
 
