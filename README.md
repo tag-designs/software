@@ -2,23 +2,30 @@
 See [Documentation](https://geoffreymbrown.github.io/ultralight-tags/) to explore this project and for complete build instructions.
 
 
-
-
 # building with OS X
 
 
+cmake  -DQt6_DIR=/Users/geobrown/Qt/6.5.3/macos  ~/Research/ultralight-tags 
+
 Make sure to add Qt-version/bin (or current version) to your path so that the various find_program tools work (esp macdeployqt)
 
-Macdeploy isn't properly automated so [unless you're using static builds of qt, libusb, protobuf]
+(use your signing authority)
 
-macdeployqt path_to/btviz.app
-macdeployqt path_to/qtmonitor.app
-macdeployqt paty_to/tag-test.app
+macdeployqt bin/btviz.app -codesign="Indiana University"
+macdeployqt bin/qtmonitor.app -codesign="Indiana University"
+macdeployqt bin/tag-test.app -codesign="Indiana University"
+        
+To verify
 
+codesign --verify --deep --verbose xyz.app
 
 Then build the dmg file
 
 cpack -G DragNDrop
+
+
+No longer building qt -- using distributed version
+-------------
 
 Building QT
 

@@ -1,4 +1,8 @@
 
+mac:
+
+
+
 Note: compiling embedded software on windows is broken because of the use of "cat" in chibios make files
 
 Install -

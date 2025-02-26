@@ -44,7 +44,7 @@ target_include_directories(tag_monitor_interface INTERFACE include/)
 
 # subdirectories
 
-set(CPACK_BUNDLE_APPLE_CERT_APP "Developer ID Application: Indiana University (5J69S77A7G)")
+#set(CPACK_BUNDLE_APPLE_CERT_APP "Developer ID Application: Indiana University (5J69S77A7G)")
 
 add_subdirectory(proto)
 add_subdirectory(host)
