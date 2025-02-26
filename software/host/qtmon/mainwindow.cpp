@@ -11,6 +11,10 @@
 #include <QTime>
 #include <QTimer>
 #include <QLayout>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrent>
+#include <QPromise>
+
 #include <ctime>
 #include <fstream>
 #include <iomanip>
@@ -270,7 +274,7 @@ void MainWindow::TriggerUpdate(void)
         ui->progressBar->setValue(status.sectors_erased());
         //log_info("Sectors Read %d \n",status.sectors_erased());
       } else {
-        ui->progressBar->setVisible(false);
+        //ui->progressBar->setVisible(false);
       }
 
       // config tab
@@ -354,9 +358,10 @@ void MainWindow::on_Attach_clicked()
     ui->ControlGroup->setEnabled(false);
     ui->Attach->setEnabled(true);
     ui->Detach->setEnabled(false);
-    ui->progressBar->setVisible(false);
+  
     ui->datadownloadgroupBox->setEnabled(false);
   }
+  ui->progressBar->setVisible(false);
 }
 
 void MainWindow::on_Detach_clicked()
@@ -418,7 +423,46 @@ void MainWindow::on_eraseButton_clicked()
   }
 }
 
-// download tag data --  reads stm32 program flash
+// download tag data 
+
+// helper function for long downloads
+// promise is necessary for QConcurrent::run to be cancellable
+
+void MainWindow::DataDownloadHelper(QPromise<void> &promise,std::fstream &fs){
+  Ack ack;
+  Config config;
+  tag.GetConfig(config);
+  int total = 0;
+  int len = 0;
+
+  do
+  {
+    ack.Clear();
+    len = 0;
+
+    // grab as much data as possible
+
+    if (tag.GetDataLog(ack, total))
+    {
+      if (ack.error_message() != "") {
+        log_error(ack.error_message().c_str());
+      }
+      len = dumpTagLog(fs, ack, config, tag_log_output_txt);
+      if (len == 0) {
+        log_info("no data");
+      } else if (len == -1) {
+        log_error("no matching log type\n");
+      } else {
+      total += len;
+      log_info("downloaded %d blocks",len);
+      }
+    
+      // update progress
+      
+      ui->progressBar->setValue(total); 
+    }
+  } while ((len>0) && !promise.isCanceled());
+}
 
 void MainWindow::on_internalDownloadButton_clicked()
 {
@@ -437,11 +481,11 @@ void MainWindow::on_internalDownloadButton_clicked()
   fd.setNameFilter(tr("Binary (*.txt)"));
   fd.setFileMode(QFileDialog::AnyFile);
   fd.setDirectory(QDir::homePath());
+  fd.setDefaultSuffix("txt");
   QString fileName = fd.getSaveFileName();
 
   if (fileName == "")
     return;
-  //QFile file(fileName);
 
   std::fstream fs;
   fs.open(fileName.toStdString(), std::fstream::out);
@@ -453,40 +497,34 @@ void MainWindow::on_internalDownloadButton_clicked()
 
   dumpTagLogHeader(fs, tag, tag_log_output_txt);
 
-  // Dump Data
+  // Create dialog
 
-  QProgressDialog progress("Downloading data...", "Cancel", 0, status.internal_data_count(), this);
-  progress.setWindowModality(Qt::WindowModal);
+  ui->progressBar->setMaximum(status.internal_data_count());
+  ui->progressBar->setValue(0);
+  ui->progressBar->setVisible(true);
 
-  int total = 0;
-  int len = 0;
+  // create future, message box, and connect signals
 
-  Ack ack;
-  do
-  {
-    qApp->processEvents();
-    ack.Clear();
-    len = 0;
-    if (tag.GetDataLog(ack, total))
-    {
-      //if (ack.has_error_message()) {
-      if (ack.error_message() != "") {
-        log_error(ack.error_message().c_str());
-      }
-      len = dumpTagLog(fs, ack, config, tag_log_output_txt);
-      if (len == 0) {
-        log_info("no data");
-      } else if (len == -1) {
-         log_error("no matching log type\n");
-      } else {
-      total += len;
-      log_info("downloaded %d blocks",len);
-      }
-      if (status.internal_data_count())
-        progress.setValue(total);// % status.internal_data_count());
-    } 
-  } while (len && !progress.wasCanceled());
+  QFutureWatcher<void> futureWatcher;
+  QMessageBox msgBox;
+
+  msgBox.setText("Downloading data ...");
+  msgBox.setStandardButtons(QMessageBox::Cancel);
+
+
+  QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &msgBox, &QMessageBox::reject);
+  QObject::connect(&msgBox, &QMessageBox::finished, &futureWatcher, &QFutureWatcher<void>::cancel);
+  
+  // start task
+
+  futureWatcher.setFuture(QtConcurrent::run(&MainWindow::DataDownloadHelper,this,std::ref(fs)));
+  msgBox.exec();
+  futureWatcher.waitForFinished();
+  
+  // clean up
+
   fs.close();
+  ui->progressBar->setVisible(false);
   return;
 }
 

@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QPromise>
 #include "tag.pb.h"
 
 class QWidget;
@@ -43,6 +44,8 @@ private:
   void SetConfigFromTag();
   void Start();
 
+  void DataDownloadHelper(QPromise<void> &promise,std::fstream &);
+
 private slots:
 
   // attach/detach to tag
@@ -80,6 +83,7 @@ private:
   ConfigTab *configtab_;
   LogScreen *logtab;
   const float version = 2.0;
+  //static void download_data(Tag &, QProgressBar &, std::fstream &,int);
 protected:
 };
 
