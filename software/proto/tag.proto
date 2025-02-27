@@ -38,9 +38,7 @@ message Req {
 
     // External Flash operations
 
-    int32 erase_block = 10;
-    FlashReadWrite write_bytes = 11;
-    FlashReadWrite read_bytes = 12;
+    //int32 erase_block = 10;
   }
 }
 
