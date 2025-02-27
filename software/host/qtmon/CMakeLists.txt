@@ -46,6 +46,7 @@ set(qtmonitor_SRCS
     bittaglog.cpp
     configtab.cpp
     dataconfig.cpp
+    download.cpp
     hibernate.cpp
     logscreen.cpp
     main.cpp

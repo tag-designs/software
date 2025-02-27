@@ -23,6 +23,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "logscreen.h"
+#include "download.h"
 
 #include <taglogs.h>
 #include "configtab.h"
@@ -425,57 +426,9 @@ void MainWindow::on_eraseButton_clicked()
 
 // download tag data 
 
-// helper function for long downloads
-// promise is necessary for QConcurrent::run to be cancellable
-
-void MainWindow::DataDownloadHelper(QPromise<void> &promise,std::fstream &fs){
-  Ack ack;
-  Config config;
-  tag.GetConfig(config);
-  int total = 0;
-  int len = 0;
-
-  do
-  {
-    ack.Clear();
-    len = 0;
-
-    // grab as much data as possible
-
-    if (tag.GetDataLog(ack, total))
-    {
-      if (ack.error_message() != "") {
-        log_error(ack.error_message().c_str());
-      }
-      len = dumpTagLog(fs, ack, config, tag_log_output_txt);
-      if (len == 0) {
-        log_info("no data");
-      } else if (len == -1) {
-        log_error("no matching log type\n");
-      } else {
-      total += len;
-      log_info("downloaded %d blocks",len);
-      }
-    
-      // update progress
-      
-      ui->progressBar->setValue(total); 
-    }
-  } while ((len>0) && !promise.isCanceled());
-}
-
 void MainWindow::on_internalDownloadButton_clicked()
 {
-  Status status;
-  std::string str;
-  if (!tag.GetStatus(status))
-    return;
-
-  Config config;
-  tag.GetConfig(config);
-  TagInfo info;
-
-  // open an output file
+  Download dl;
 
   QFileDialog fd;
   fd.setNameFilter(tr("Binary (*.txt)"));
@@ -484,8 +437,11 @@ void MainWindow::on_internalDownloadButton_clicked()
   fd.setDefaultSuffix("txt");
   QString fileName = fd.getSaveFileName();
 
-  if (fileName == "")
-    return;
+  if (fileName == "") {
+      qDebug() << "Empty file name";
+      return;
+  }
+    
 
   std::fstream fs;
   fs.open(fileName.toStdString(), std::fstream::out);
@@ -495,36 +451,31 @@ void MainWindow::on_internalDownloadButton_clicked()
     return;
   }
 
-  dumpTagLogHeader(fs, tag, tag_log_output_txt);
+  qDebug() <<  "connecting progess dialog";
 
-  // Create dialog
+  // Create Progress Dialog
 
-  ui->progressBar->setMaximum(status.internal_data_count());
-  ui->progressBar->setValue(0);
+  QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
+
+  connect(&dl,&Download::progressRangeChanged, &pd, &QProgressDialog::setRange);
+  connect(&dl,&Download::progressValueChanged, &pd, &QProgressDialog::setValue);
+  connect(&dl,&Download::downloadFinished, &pd, &QProgressDialog::cancel);
+  connect(&pd,&QProgressDialog::canceled,&dl,&Download::cancel);
+
+  connect(&dl,&Download::progressRangeChanged, ui->progressBar, &QProgressBar::setRange);
+  connect(&dl,&Download::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
+
   ui->progressBar->setVisible(true);
 
-  // create future, message box, and connect signals
+  qDebug() <<  "starting download";
 
-  QFutureWatcher<void> futureWatcher;
-  QMessageBox msgBox;
+  dl.start(&tag,&fs);
 
-  msgBox.setText("Downloading data ...");
-  msgBox.setStandardButtons(QMessageBox::Cancel);
+  pd.exec();
 
-
-  QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &msgBox, &QMessageBox::reject);
-  QObject::connect(&msgBox, &QMessageBox::finished, &futureWatcher, &QFutureWatcher<void>::cancel);
-  
-  // start task
-
-  futureWatcher.setFuture(QtConcurrent::run(&MainWindow::DataDownloadHelper,this,std::ref(fs)));
-  msgBox.exec();
-  futureWatcher.waitForFinished();
-  
-  // clean up
-
-  fs.close();
   ui->progressBar->setVisible(false);
+
+  
   return;
 }
 

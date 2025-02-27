@@ -64,6 +64,7 @@ void Tag::Detach()
 
 bool Tag::GitSha(std::string &str)
 {
+  std::lock_guard<std::mutex> lck(mtx);
   return IsAttached() ? monitor.GitShaString(str) : false;
 }
 

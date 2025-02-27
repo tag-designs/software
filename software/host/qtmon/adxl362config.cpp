@@ -187,6 +187,8 @@ void Adxl362Config::GetConfig(Config &config)
         adxl.set_data_format((Adxl362_Adxl367DataFormat)id);
       }
       break;
+    default:
+      break;
   }
 
   // set config to result
@@ -233,6 +235,8 @@ void Adxl362Config::SetConfig(const Config &config)
       channels_->setVisible(true);
       channels_->setCheckedId((int)adxl.channels());
       spinners_->setVisible(false);
+    default:
+      break;
   }
 
   // set legal range of spin boxes
