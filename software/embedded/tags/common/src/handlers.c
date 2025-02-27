@@ -3,6 +3,7 @@
 #include "monitor.h"
 #include "version.h"
 #include "ch.h"
+#include "assert.h"
 
 #define xstr(s) str(s)
 #define str(s) #s
@@ -21,9 +22,18 @@ extern int proto_eval(int);
 
 // buffer for passing protobuf messages
 
-uint8_t ProtoBuf[1024] __attribute__((aligned(4))) NOINIT;
-const uint32_t protobuf_size = sizeof(ProtoBuf);
-//CASSERT(sizeof(ProtoBuf) >= Ack_size)
+#ifndef PROTOBUFSIZE
+#define PROTOBUFSIZE 2056
+#endif
+
+static_assert(Ack_size < PROTOBUFSIZE, "Protocol buffer is too small! " xstr(PROTOBUFSIZE) " " xstr(Ack_size));
+static_assert(Req_size < PROTOBUFSIZE, "Protocol buffer is too small! " xstr(PROTOBUFSIZE) " " xstr(Req_size));
+
+
+uint8_t ProtoBuf[PROTOBUFSIZE] __attribute__((aligned(4))) NOINIT;
+const int protobuf_size = PROTOBUFSIZE;
+
+
 
 // Internal thread
 

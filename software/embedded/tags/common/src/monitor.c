@@ -10,7 +10,7 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 #include <stdint.h>
-#include <string.h>
+#include <strings.h>
 
 #define MAJOR_VERSION "1"
 #define MINOR_VERSION "0"

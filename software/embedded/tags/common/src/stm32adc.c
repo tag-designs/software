@@ -1,6 +1,7 @@
 #include "hal.h"
 #include "ch.h"
 
+
 #ifndef US2RTC
 #define US2RTC(freq, usec) (rtcnt_t)((((freq) + 999999UL) / 1000000UL) * (usec))
 #endif
@@ -10,7 +11,7 @@
 static void adc_lld_vreg_on(void) {
   ADC1->CR = 0;
   ADC1->CR = ADC_CR_ADVREGEN;
-  for (unsigned int i = 0; i < OSAL_US2RTC(STM32_HCLK, 20); i++) asm("nop");
+  for (unsigned int i = 0; i < OSAL_US2RTC(STM32_HCLK, 20); i++) asm("NOP");
 }
 
 static void adc_lld_vreg_off(void) {

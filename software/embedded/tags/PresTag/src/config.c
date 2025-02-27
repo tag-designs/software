@@ -4,7 +4,7 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
-#include "string.h"
+#include "strings.h"
 
 // ram based config (used by monitor to communicate to tag)
 

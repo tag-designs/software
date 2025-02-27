@@ -5,13 +5,13 @@
 #
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -Os -ggdb  --std=gnu99 -fomit-frame-pointer -falign-functions=16 
+  USE_OPT = -Os -ggdb   -fomit-frame-pointer -falign-functions=16 
 endif
 
 
 # C specific options here (added to USE_OPT).
 ifeq ($(USE_COPT),)
-  USE_COPT = -IInc --std=gnu99 -Wdouble-promotion
+  USE_COPT = -IInc -Wdouble-promotion
 endif
 
 # C++ specific options here (added to USE_OPT).

@@ -241,9 +241,9 @@ message AccelTagNgLog {
   bytes samples  = 5;
 }
 
-message FlashReadWrite {
-  int32 address = 1;
-  int32 count   = 2;
-  bytes data    = 3;
-}
+// message FlashReadWrite {
+// int32 address = 1;
+//  int32 count   = 2;
+//  bytes data    = 3;
+//}
 

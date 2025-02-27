@@ -82,7 +82,7 @@ message Ack {
     //   Write returns count with empty bytes
     //   Read  returns count with bytes
     
-    FlashReadWrite readwrite = 14;
+    //FlashReadWrite readwrite = 14;
 
   }
 }

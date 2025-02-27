@@ -22,10 +22,14 @@
 #include "datalog.h"
 #include "monitor.h"
 #include "external_flash.h"
+#include "strings.h"
+#include "assert.h"
 
 // Test data structure sizes !
 
-CASSERT(sizeof(t_StateMarker) == 24);
+//CASSERT(sizeof(t_StateMarker) == 24);
+
+static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
 
 // Data held in flash
 
