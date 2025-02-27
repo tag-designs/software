@@ -12,7 +12,7 @@ Make sure to add Qt-version/bin (or current version) to your path so that the va
 (use your signing authority)
 
 macdeployqt bin/btviz.app -codesign="Indiana University"
-macdeployqt bin/qtmonitor.app -codesign="Indiana University"
+macdeployqt bin/qtmonitor.app -codesign="Indiana University (5J69S77A7G)"
 macdeployqt bin/tag-test.app -codesign="Indiana University"
         
 To verify
