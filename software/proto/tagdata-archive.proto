@@ -1,0 +1,68 @@
+// archive AccelTagLogFmt
+
+enum AccelTagLogFmt {
+  ACCELTAG_UNSPECIFIED = 0;
+  ACCELTAG_NONE = 1;
+  ACCELTAG_ADXL362_CONTINUOUS = 2;
+  ACCELTAG_ADXL362_ACTIVE = 3;
+}
+
+message LuxTagLogFmt {
+  uint32 period = 1;
+}
+
+message LuxTagLog {
+  message LT {
+    float lux = 1;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated LT data = 4;
+}
+
+message Compass {
+  float ax = 1;
+  float ay = 2;
+  float az = 3;
+  float mx = 4;
+  float my = 5;
+  float mz = 6;
+}
+
+message OptPwr {
+  float lux = 1;
+  float pwr = 2;
+  float pitch = 3;
+}
+
+message GeoTagLog {
+  int32 epoch = 1;
+  float voltage = 2;
+  float temperature = 3;
+  Compass compass = 5;
+  repeated OptPwr optpwr = 4; 
+}
+
+message AccelTagNgLog {
+  int32 epoch    = 1;
+  int32 millis   = 2;
+  bytes samples  = 5;
+}
+
+// message FlashReadWrite {
+// int32 address = 1;
+//  int32 count   = 2;
+//  bytes data    = 3;
+//}
+
+message AccelTagLog {
+  message AT {
+    float pitch = 1;
+    float power = 2;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated AT data = 4;
+}

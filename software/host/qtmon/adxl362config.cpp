@@ -177,6 +177,7 @@ void Adxl362Config::GetConfig(Config &config)
       adxl.set_inactive_sec(inactive_->value());
       adxl.set_act_thresh_g(act_thresh_->value());
       break;
+    /*
     case ACCELTAG:
       id = channels_->checkedId();
       if ( Adxl367Channel_IsValid(id)) {
@@ -187,6 +188,7 @@ void Adxl362Config::GetConfig(Config &config)
         adxl.set_data_format((Adxl362_Adxl367DataFormat)id);
       }
       break;
+    */
     default:
       break;
   }
@@ -227,6 +229,7 @@ void Adxl362Config::SetConfig(const Config &config)
       sample_rate_->setCheckedId((int)adxl.freq());
       range_->setCheckedId((int)adxl.range());
       break;
+    /*
     case ACCELTAGNG:
       sample_rate_->setCheckedId((int)adxl.freq());
       range_->setCheckedId((int)adxl.range());
@@ -235,6 +238,7 @@ void Adxl362Config::SetConfig(const Config &config)
       channels_->setVisible(true);
       channels_->setCheckedId((int)adxl.channels());
       spinners_->setVisible(false);
+    */
     default:
       break;
   }

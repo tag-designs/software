@@ -277,6 +277,7 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
   return 1;
 }
 
+/*
 static int dumpTagLog(std::ostream &out, const LuxTagLog &log,
                       uint32_t period,
                       enum TagLogOutput format)
@@ -365,6 +366,7 @@ static int dumpTagLog(std::ostream &out, const Config &config,
 
   return 1;
 }
+  */
 
 int dumpTagLog(std::ostream &out,
                const Ack &log,
@@ -387,16 +389,17 @@ int dumpTagLog(std::ostream &out,
       return dumpTagLog(out, log.bittag_ng_data_log(), format);
     }
     break;
-  case ACCELTAG:
-    if (log.has_acceltag_data_log())
-    {
-      return dumpTagLog(out, log.acceltag_data_log(), config.period(), format);
-    }
-    break;
   case PRESTAG:
     if (log.has_prestag_data_log())
     {
       return dumpTagLog(out, log.prestag_data_log(), config.period(), format);
+    }
+    break;
+/*
+ case ACCELTAG:
+    if (log.has_acceltag_data_log())
+    {
+      return dumpTagLog(out, log.acceltag_data_log(), config.period(), format);
     }
     break;
   case LUXTAG:
@@ -417,6 +420,7 @@ int dumpTagLog(std::ostream &out,
       return dumpTagLog(out, config, log.acceltag_ng_data_log());
     }
     break;
+*/
   default:
     return -1;
   }

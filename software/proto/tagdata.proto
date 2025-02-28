@@ -3,13 +3,13 @@ syntax = "proto3";
 enum TagType {
   TAG_UNSPECIFIED = 0;
   BITTAG = 1;
-  ACCELTAG = 2;
+  //ACCELTAG = 2;
   PRESTAG = 3;
-  PRESTAG_MX25R = 4;
-  GEOTAG = 5;
-  LUXTAG = 6;
+  //PRESTAG_MX25R = 4;
+  //GEOTAG = 5;
+  //LUXTAG = 6;
   BITTAGNG = 7;
-  ACCELTAGNG = 8;
+  //ACCELTAGNG = 8;
 
 }
 
@@ -57,18 +57,7 @@ enum BitTagLogFmt {
   BITTAG_BITSPERFIVEMIN = 4;
 }
 
-enum AccelTagLogFmt {
-  ACCELTAG_UNSPECIFIED = 0;
-  ACCELTAG_NONE = 1;
-  ACCELTAG_ADXL362_CONTINUOUS = 2;
-  ACCELTAG_ADXL362_ACTIVE = 3;
-}
-
 message PresTagLogFmt {
-  uint32 period = 1;
-}
-
-message LuxTagLogFmt {
   uint32 period = 1;
 }
 
@@ -90,7 +79,6 @@ message Config {
   //AccelTagLogFmt acceltag_log = 5; // acceltag log format
   // Sensors
   Adxl362 adxl362 = 6;
- 
 }
 
 // change internal_format/external_format to messages
@@ -191,59 +179,7 @@ message PresTagLog {
   repeated PT data = 4;
 }
 
-message LuxTagLog {
-  message LT {
-    float lux = 1;
-  }
-  int32 epoch = 1;
-  float voltage  = 2;
-  float temperature = 3;
-  repeated LT data = 4;
-}
 
-message AccelTagLog {
-  message AT {
-    float pitch = 1;
-    float power = 2;
-  }
-  int32 epoch = 1;
-  float voltage  = 2;
-  float temperature = 3;
-  repeated AT data = 4;
-}
 
-message Compass {
-  float ax = 1;
-  float ay = 2;
-  float az = 3;
-  float mx = 4;
-  float my = 5;
-  float mz = 6;
-}
 
-message OptPwr {
-  float lux = 1;
-  float pwr = 2;
-  float pitch = 3;
-}
-
-message GeoTagLog {
-  int32 epoch = 1;
-  float voltage = 2;
-  float temperature = 3;
-  Compass compass = 5;
-  repeated OptPwr optpwr = 4; 
-}
-
-message AccelTagNgLog {
-  int32 epoch    = 1;
-  int32 millis   = 2;
-  bytes samples  = 5;
-}
-
-// message FlashReadWrite {
-// int32 address = 1;
-//  int32 count   = 2;
-//  bytes data    = 3;
-//}
 

@@ -1,1 +1,0 @@
-generate_board_files(board_bittagng_steval)

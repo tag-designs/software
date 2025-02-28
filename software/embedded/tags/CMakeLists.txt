@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
 #add_subdirectory(AccelTag)
-add_subdirectory(AccelTagNG)
-add_subdirectory(BitTagv5)
-add_subdirectory(BitTagv6)
+#add_subdirectory(AccelTagNG)
+#add_subdirectory(BitTagv5)
+add_subdirectory(BitTag)
 add_subdirectory(PresTag)
 add_subdirectory(PresTagBreakout)
 add_subdirectory(PresTagBMPBreakout)

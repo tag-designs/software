@@ -30,7 +30,7 @@ add_subdirectory(bittag-base-v7)
 
 # tags
 
-add_subdirectory(BitTagv5)
+#add_subdirectory(BitTagv5)
 add_subdirectory(BitTagv6)
 add_subdirectory(TagSteval)
 add_subdirectory(PresTagv3)
