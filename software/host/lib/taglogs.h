@@ -17,6 +17,7 @@ bool dumpTagLogHeader(std::ostream &out,
 // Type specific procedure for different log types
 // This one is for BitTag data logs
 // returns non-zero until it's done -- repeated calls are expected.
+// negative return is an error
 
 int dumpTagLog(std::ostream &out,
                 const Ack &log,
