@@ -5,16 +5,18 @@
 
 Sensors::Sensors(QWidget *parent) : QWidget(parent)
 {
-
+    scroll.setWidgetResizable(True);
+    inner.setLayout(QVBoxLayout);
+    scroll.setWidget(inner);
+    /*
     vbox_ = new QVBoxLayout();
     setLayout(vbox_);
-
+    */
     // Sensors are added in TagAttach
 }
 
 Sensors::~Sensors()
 {
-    delete adxlconfig_;
 }
 
 void Sensors::SetConfig(const Config &config)
@@ -36,6 +38,11 @@ void Sensors::SetConfig(const Config &config)
 
 void Sensors::GetConfig(Config &config)
 {
+    // need to reting this -- 
+    // so that this is done a per widget basis.  
+    // need a better sensor object type which
+    // accepts GetConfig/SetConfig messages
+    
     if (adxlconfig_)
     {
         Adxl362 adxl;
@@ -49,20 +56,31 @@ void Sensors::Attach(const Config &config)
     if (config.has_adxl362())
     {
         adxlconfig_ = new Adxl362Config("Accelerometer");
-        vbox_->addWidget(adxlconfig_);
+        inner.layout().addwidget(adxlconfig_);
+        //vbox_->addWidget(adxlconfig_);
         adxlconfig_->setEnabled(false);
     }
     // Add to layout
 
-    vbox_->addStretch();
+    inner.addStretch();
     this->setEnabled(true);
 }
+
+// clear the layout 
+//     release all sensors
 
 void Sensors::Detach()
 {
     this->setEnabled(false);
-    if (vbox_)
-    {
+
+    QLayoutItem *item;
+    while ((item = inner.takeAt(0))) {
+        if (QWidget *widget = item->widget()) {
+            widget->deleteLater();
+        }
+    delete item;
+
+        /*
         while (vbox_->count() > 0)
         {
             QLayoutItem *item = vbox_->takeAt(0);
@@ -71,14 +89,13 @@ void Sensors::Detach()
                 delete widget;
             delete item;
         }
-    }
-    delete vbox_;
-    delete adxlconfig_;
-    adxlconfig_ = nullptr;
+        */
 }
 
 void Sensors::StateUpdate(State_TagState state)
 {
-    if (adxlconfig_)
-        adxlconfig_->setEnabled(state == State_TagState_IDLE);
+    QLayoutItem *item;
+    while ((item = inner.takeAt(0))) {
+        if (QWidget *widget = item->widget()) {
+            widget->setEnabled(state == State_TagState_IDLE);
 }

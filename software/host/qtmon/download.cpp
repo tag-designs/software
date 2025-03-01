@@ -50,7 +50,7 @@ void Download::start(Tag *t, std::fstream *file_stream)
 
     // create the progress dialog
 
-    emit progressRangeChanged(0,15000);//max_cnt);
+    emit progressRangeChanged(0,max_cnt);//max_cnt);
     emit progressValueChanged(0);
 
     // trigger worker

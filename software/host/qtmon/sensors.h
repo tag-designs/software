@@ -4,10 +4,16 @@
 #include <configinterface.h>
 #include <QVBoxLayout>
 #include <adxl362config.h>
+#include <QScrollArea>
 
-/* namespace Ui {
-class Sensors;
-} */
+/*
+ * Class for handling the configuration of sensors
+ * currently handles one sensor type -- adxl362
+ * we should split this into adxl362,adxl367 as separate files
+ * 
+ * Learns which sensors are present by reading config passed in Attach()
+ *
+*/
 
 class Sensors : public QWidget, public ConfigInterface
 {
@@ -29,7 +35,8 @@ public slots:
     void StateUpdate(TagState state);
 
 private:
-    QVBoxLayout *vbox_ = nullptr;
+    QScrollArea scroll;
+    QFrame inner;
     Adxl362Config *adxlconfig_ = nullptr;
 };
 

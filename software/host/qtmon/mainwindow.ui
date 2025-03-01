@@ -663,7 +663,7 @@
                  <item>
                   <widget class="QGroupBox" name="InternalLog">
                    <property name="title">
-                    <string>Internal Log </string>
+                    <string>Logs</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_17">
                     <item>
@@ -717,7 +717,7 @@
                  <item>
                   <widget class="QGroupBox" name="ExternalLog">
                    <property name="title">
-                    <string>External Log </string>
+                    <string>External Data</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout">
                     <item>
@@ -852,7 +852,7 @@
      <x>0</x>
      <y>0</y>
      <width>718</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
   </widget>
