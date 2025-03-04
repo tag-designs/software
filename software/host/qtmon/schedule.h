@@ -18,18 +18,24 @@ class Schedule : public QWidget, public ConfigInterface
     public:
         Schedule(QWidget *parent = nullptr);
         ~Schedule();
-
+        
+        //! @copydoc ConfigInterface::SetConfig(const Config &)
         bool SetConfig(const Config &config);
+
+        //! @copydoc ConfigInterface::GetConfig(Config &)
         bool GetConfig(Config &config);
 
     public slots:
 
+        //! @copydoc ConfigInterface::Attach(const Config &)
         bool Attach(const Config &config);
+
+        //! @copydoc ConfigInterface::Detach()
         void Detach();
 
     private slots:
 
-        // start/end configuration
+        // start/end configuration -- slots tied to UI
 
         void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
         void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);

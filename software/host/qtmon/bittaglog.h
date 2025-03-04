@@ -16,7 +16,6 @@ public:
 
     bool GetConfig(Config &config);
     bool SetConfig(const Config &config);
-    bool isActive();
 
 public slots:
 
@@ -26,7 +25,6 @@ public slots:
 private:
     QVBoxLayout *vbox_ = nullptr;
     PBEnumGroup *log_ = nullptr; 
-    bool active = false;
 };
 
 #endif /* BITTAGLOG_H */

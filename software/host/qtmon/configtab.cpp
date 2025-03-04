@@ -35,14 +35,23 @@ ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)
   // Schedule Tab
 
   QVBoxLayout *layout = new QVBoxLayout(&scheduleTab);
+      
+      // add widgets
+
   layout->addWidget(&schedule);
   layout->addWidget(&btlog);
+
+      // configure tab;
   layout->addStretch(1);
   int index = addTab(&scheduleTab,"Schedule");
   setTabToolTip(index,"Configure Tag Schedule");
 
+  // Sensor Tab
+
   layout = new QVBoxLayout(&sensorTab);
+      // add widgets
   layout->addWidget(&adxl);
+        // configure tab
   layout->addStretch(1);
   index = addTab(&sensorTab,"Sensors");
   setTabToolTip(index,"Configure Sensors");
@@ -64,24 +73,36 @@ bool ConfigTab::Attach(const Config &config)
   tag_type_ = config.tag_type();
   setEnabled(true);
   setVisible(true);
-  schedule.Attach(config);
-  btlog.Attach(config);
-  adxl.Attach(config);
-  active = true;
+  if (schedule.Attach(config) && 
+      btlog.Attach(config) &&
+      adxl.Attach(config))
+  {
+    setVisible(true);
+    setEnabled(true);
+    active = true;
+  } else {
+    setVisible(false);
+    setEnabled(false);
+    active = false;
+  }
   return active;
 }
 
 void ConfigTab::Detach()
 {
   setEnabled(false);
-  schedule.setEnabled(false);
+  schedule.Detach();
   btlog.Detach();
   adxl.Detach();
+  setEnabled(false);
+  setVisible(false);
   active = false;
 }
 
 void ConfigTab::StateUpdate(TagState state)
 {
+
+  // should enable/disable here 
   if (old_state_ != state)
   {
     //schedule.StateUpdate(state);
@@ -98,13 +119,14 @@ bool ConfigTab::GetConfig(Config &config)
 {
 
   config.set_tag_type(tag_type_);
+  
   // Get configuration from children
 
   schedule.GetConfig(config);
   btlog.GetConfig(config);
   adxl.GetConfig(config);
 
-  // Sanity check
+  // Sanity check -- should put this in the schedule class
 
   int64_t end = config.active_interval().end_epoch();
 
@@ -123,11 +145,16 @@ bool ConfigTab::GetConfig(Config &config)
 
 bool ConfigTab::SetConfig(const Config &new_config)
 {
-  tag_type_ = new_config.tag_type();
+  active = false;
+  // tag_type_ = new_config.tag_type();
   // we need to sanity check the new and old configs !
-  schedule.SetConfig(new_config);
-  btlog.SetConfig(new_config);
-  adxl.SetConfig(new_config);
+  // if any of these return false, this should return false
+  if (schedule.SetConfig(new_config) &&
+      btlog.SetConfig(new_config) &&
+      adxl.SetConfig(new_config))
+  {
+    active = true;
+  }
   return active;
 }
 

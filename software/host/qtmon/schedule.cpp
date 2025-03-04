@@ -6,17 +6,13 @@
 #include "hibernate.h"
 #include "tag.pb.h"
 
-
-Schedule::Schedule(QWidget *parent) : QWidget(parent) {
-  ui.setupUi(this);
-}
-
-Schedule::~Schedule()
-{
-
-}
-
-// compute time rounded up to nearest number of seconds
+/**
+ * @brief Helper function for rounding epoch up to multiple of seconds
+ * 
+ * @param epoch   epoch to round
+ * @param seconds divisor in seconds
+ * @return int64_t 
+ */
 
 static int64_t roundEpoch(int64_t epoch, int64_t seconds)
 {
@@ -25,16 +21,42 @@ static int64_t roundEpoch(int64_t epoch, int64_t seconds)
   return epoch;
 }
 
+/**
+ * @brief Helper funciton to round date/time up to multiple of seconds
+ * 
+ * @param dateTime time to be rounded
+ * @param seconds  divisor in seconds
+ * @return QDateTime 
+ */
+
 static QDateTime roundDateTime(QDateTime dateTime, int64_t seconds)
 {
   int64_t epoch = roundEpoch(dateTime.toSecsSinceEpoch(), seconds);
   return QDateTime::fromSecsSinceEpoch(epoch);
 }
 
+
+Schedule::Schedule(QWidget *parent) : QWidget(parent) {
+  ui.setupUi(this);
+}
+
+Schedule::~Schedule(){}
+
+
+bool Schedule::Attach(const Config &config)
+{
+  return SetConfig(config);
+}
+
+void Schedule::Detach(){
+  active = false;
+};
+
 bool Schedule::SetConfig(const Config &config)
 {
   QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
   QDateTime start = QDateTime::fromSecsSinceEpoch(roundEpoch(config.active_interval().start_epoch(), 60));
+
 
   if (config.active_interval().end_epoch() == INT32_MAX)
   {
@@ -68,11 +90,12 @@ bool Schedule::SetConfig(const Config &config)
   // Hibernation -- first we throw away old hibernation
   //                groups
 
-  Hibernate *h = nullptr;
+ 
   QLayoutItem *child;
   while ((child = ui.hibernationGroup->layout()->takeAt(0)) != 0)
   {
-    delete child->widget();
+    if (child->widget())
+      child->widget()->deleteLater();
     delete child;
   }
 
@@ -80,7 +103,7 @@ bool Schedule::SetConfig(const Config &config)
 
   for (int i = 0; i < config.hibernate_size(); i++)
   {
-    h = new Hibernate(i);
+    Hibernate *h = new Hibernate(i);
     if ((config.hibernate(i).start_epoch() == INT32_MAX) ||
         (config.hibernate(i).start_epoch() == 0))
     {
@@ -216,14 +239,3 @@ void Schedule::on_startGroup_clicked()
   }
 }
 
-bool Schedule::Attach(const Config &config)
-{
-  return SetConfig(config);
-  //setEnabled(true);
-  //ui.EndDateTime->setEnabled(true);
-  //ui.StartDateTime->setEnabled(true);
-}
-
-void Schedule::Detach(){
-  active = false;
-};

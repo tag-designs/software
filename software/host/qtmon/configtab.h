@@ -41,12 +41,14 @@ private:
     // Schedule tab and components
 
     QWidget scheduleTab;
+
     Schedule schedule;
     BitTagLogTab btlog;
 
     // Sensor tab and components
-    
+
     QWidget sensorTab;
+
     Adxl362Config adxl;
     bool active = false;
     

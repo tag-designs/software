@@ -29,6 +29,17 @@ BitTagLogTab::BitTagLogTab(QWidget *parent) : QWidget(parent)
 
 BitTagLogTab::~BitTagLogTab(){}
 
+bool BitTagLogTab::Attach(const Config &config)
+{
+   return SetConfig(config);
+}
+
+void BitTagLogTab::Detach() 
+{
+    setVisible(false);
+    active = false;
+}
+
 bool BitTagLogTab::SetConfig(const Config &config)
 {
     QAbstractButton *btn;
@@ -70,13 +81,3 @@ bool BitTagLogTab::GetConfig(Config &config)
     return false;
 }
 
-bool BitTagLogTab::Attach(const Config &config)
-{
-   return SetConfig(config);
-}
-
-void BitTagLogTab::Detach() 
-{
-    setVisible(false);
-    active = false;
-}
