@@ -48,7 +48,7 @@ set(qtmonitor_SRCS
     dataconfig.cpp
     download.cpp
     hibernate.cpp
-    logscreen.cpp
+    #logscreen.cpp
     main.cpp
     mainwindow.cpp
     pbenumgroup.cpp

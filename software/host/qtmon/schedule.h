@@ -4,46 +4,42 @@
 #include <QWidget>
 #include <QList>
 #include <configinterface.h>
-#include "tag.pb.h"
+
+//#include "tag.pb.h"
 //#include "host.pb.h"
 //#include "tagclass.h"
-#include "hibernate.h"
 
-namespace Ui
-{
-    class Schedule;
-}
+#include "hibernate.h"
+#include "ui_schedule.h"
 
 class Schedule : public QWidget, public ConfigInterface
 {
-    Q_OBJECT
-    Q_INTERFACES(ConfigInterface)
 
-public:
-    explicit Schedule(QWidget *parent = nullptr);
-    ~Schedule();
+    public:
+        Schedule(QWidget *parent = nullptr);
+        ~Schedule();
 
-    void SetConfig(const Config &config);
-    void GetConfig(Config &config);
-    QWidget *GetWidget(){ return this;}
+        bool SetConfig(const Config &config);
+        bool GetConfig(Config &config);
 
-public slots:
+    public slots:
 
-    void Attach(const Config &config);
+        bool Attach(const Config &config);
+        void Detach();
 
-private slots:
+    private slots:
 
-    // start/end configuration
+        // start/end configuration
 
-    void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
-    void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
-    void on_startGroup_clicked();
-    void on_runGroup_clicked();
+        void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
+        void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
+        void on_startGroup_clicked();
+        void on_runGroup_clicked();
 
-private:
+    private:
 
-    Ui::Schedule *ui_;
-    QList<Hibernate *> hibernate_list_;
+        QList<Hibernate *> hibernate_list_;
+        Ui::Schedule ui;
 
 };
 

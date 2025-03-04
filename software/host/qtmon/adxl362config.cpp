@@ -57,10 +57,6 @@ Adxl362Config::Adxl362Config(QWidget *parent) : QWidget(parent)
 {
   vbox_ = new QVBoxLayout();
   setLayout(vbox_);
-}
-
-void Adxl362Config::Attach(const Config &config)
-{
 
   // Build the interface
 
@@ -130,13 +126,16 @@ void Adxl362Config::Attach(const Config &config)
 
   connect(sample_rate_, &PBEnumGroup::idClicked, this,
           &Adxl362Config::on_adxlfreq_clicked);
+}
 
-  SetConfig(config);
+bool Adxl362Config::Attach(const Config &config)
+{
+  return SetConfig(config);
 }
 
 Adxl362Config::~Adxl362Config(){}
 
-void Adxl362Config::GetConfig(Config &config)
+bool Adxl362Config::GetConfig(Config &config)
 {
   // Parameters common to all tags
 
@@ -196,9 +195,10 @@ void Adxl362Config::GetConfig(Config &config)
   // set config to result
 
   config.set_allocated_adxl362(new Adxl362(adxl));
+  return true;
 }
 
-void Adxl362Config::SetConfig(const Config &config)
+bool Adxl362Config::SetConfig(const Config &config)
 {
   // save accel type -- should be deprecated
 
@@ -258,6 +258,8 @@ void Adxl362Config::SetConfig(const Config &config)
   if (config.tag_type() == BITTAG){
      inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
   }
+  active = true;
+  return active;
 }
 
 // ADXL Range Buttons

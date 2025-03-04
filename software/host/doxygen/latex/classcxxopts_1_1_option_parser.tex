@@ -1,0 +1,138 @@
+\doxysection{cxxopts\+::Option\+Parser Class Reference}
+\hypertarget{classcxxopts_1_1_option_parser}{}\label{classcxxopts_1_1_option_parser}\index{cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff}{Option\+Parser}} (const Option\+Map \&options, const Positional\+List \&positional, bool allow\+\_\+unrecognised)
+\item 
+\mbox{\hyperlink{classcxxopts_1_1_parse_result}{Parse\+Result}} \mbox{\hyperlink{classcxxopts_1_1_option_parser_a4218816ce33c211b54acb9e71603ea0b}{parse}} (int argc, const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}argv)
+\item 
+bool \mbox{\hyperlink{classcxxopts_1_1_option_parser_a4d595d8f6f34760bc2248d1b96af53a4}{consume\+\_\+positional}} (const std\+::string \&a, Positional\+List\+Iterator \&next)
+\item 
+void \mbox{\hyperlink{classcxxopts_1_1_option_parser_a0c093ba32746de7c3b08715eab961aff}{checked\+\_\+parse\+\_\+arg}} (int argc, const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}argv, int \&current, const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&value, const std\+::string \&name)
+\item 
+void \mbox{\hyperlink{classcxxopts_1_1_option_parser_a20b45a90265756b859aec3ebcbee8724}{add\+\_\+to\+\_\+option}} (Option\+Map\+::const\+\_\+iterator iter, const std\+::string \&option, const std\+::string \&arg)
+\item 
+void \mbox{\hyperlink{classcxxopts_1_1_option_parser_a07db7b6bb2095df7b75b50ed2311ffe5}{parse\+\_\+option}} (const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&value, const std\+::string \&name, const std\+::string \&arg="{}"{})
+\item 
+void \mbox{\hyperlink{classcxxopts_1_1_option_parser_a28026f132e532009842f11359fb08373}{parse\+\_\+default}} (const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&details)
+\item 
+\mbox{\hyperlink{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff}{Option\+Parser}} (const Option\+Map \&options, const Positional\+List \&positional, bool allow\+\_\+unrecognised)
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a4218816ce33c211b54acb9e71603ea0b}\label{classcxxopts_1_1_option_parser_a4218816ce33c211b54acb9e71603ea0b} 
+\mbox{\hyperlink{classcxxopts_1_1_parse_result}{Parse\+Result}} {\bfseries parse} (int argc, const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}argv)
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a4d595d8f6f34760bc2248d1b96af53a4}\label{classcxxopts_1_1_option_parser_a4d595d8f6f34760bc2248d1b96af53a4} 
+bool {\bfseries consume\+\_\+positional} (const std\+::string \&a, Positional\+List\+Iterator \&next)
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a0c093ba32746de7c3b08715eab961aff}\label{classcxxopts_1_1_option_parser_a0c093ba32746de7c3b08715eab961aff} 
+void {\bfseries checked\+\_\+parse\+\_\+arg} (int argc, const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}argv, int \&current, const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&value, const std\+::string \&name)
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a20b45a90265756b859aec3ebcbee8724}\label{classcxxopts_1_1_option_parser_a20b45a90265756b859aec3ebcbee8724} 
+void {\bfseries add\+\_\+to\+\_\+option} (Option\+Map\+::const\+\_\+iterator iter, const std\+::string \&option, const std\+::string \&arg)
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a07db7b6bb2095df7b75b50ed2311ffe5}\label{classcxxopts_1_1_option_parser_a07db7b6bb2095df7b75b50ed2311ffe5} 
+void {\bfseries parse\+\_\+option} (const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&value, const std\+::string \&name, const std\+::string \&arg="{}"{})
+\item 
+\Hypertarget{classcxxopts_1_1_option_parser_a28026f132e532009842f11359fb08373}\label{classcxxopts_1_1_option_parser_a28026f132e532009842f11359fb08373} 
+void {\bfseries parse\+\_\+default} (const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&details)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01329}{1329}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!OptionParser@{OptionParser}}
+\index{OptionParser@{OptionParser}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{OptionParser()}{OptionParser()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff} 
+cxxopts\+::\+Option\+Parser\+::\+Option\+Parser (\begin{DoxyParamCaption}\item[{const Option\+Map \&}]{options}{, }\item[{const Positional\+List \&}]{positional}{, }\item[{bool}]{allow\+\_\+unrecognised}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01332}{1332}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!OptionParser@{OptionParser}}
+\index{OptionParser@{OptionParser}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{OptionParser()}{OptionParser()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a0b61e22df2480c2c91f2793f3c1452ff} 
+cxxopts\+::\+Option\+Parser\+::\+Option\+Parser (\begin{DoxyParamCaption}\item[{const Option\+Map \&}]{options}{, }\item[{const Positional\+List \&}]{positional}{, }\item[{bool}]{allow\+\_\+unrecognised}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{lib_2cxxopts_8hpp_source_l01332}{1332}} of file \mbox{\hyperlink{lib_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classcxxopts_1_1_option_parser_a20b45a90265756b859aec3ebcbee8724}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!add\_to\_option@{add\_to\_option}}
+\index{add\_to\_option@{add\_to\_option}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{add\_to\_option()}{add\_to\_option()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a20b45a90265756b859aec3ebcbee8724} 
+void cxxopts\+::\+Option\+Parser\+::add\+\_\+to\+\_\+option (\begin{DoxyParamCaption}\item[{Option\+Map\+::const\+\_\+iterator}]{iter}{, }\item[{const std\+::string \&}]{option}{, }\item[{const std\+::string \&}]{arg}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01820}{1820}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a0c093ba32746de7c3b08715eab961aff}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!checked\_parse\_arg@{checked\_parse\_arg}}
+\index{checked\_parse\_arg@{checked\_parse\_arg}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{checked\_parse\_arg()}{checked\_parse\_arg()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a0c093ba32746de7c3b08715eab961aff} 
+void cxxopts\+::\+Option\+Parser\+::checked\+\_\+parse\+\_\+arg (\begin{DoxyParamCaption}\item[{int}]{argc}{, }\item[{const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}}]{argv}{, }\item[{int \&}]{current}{, }\item[{const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&}]{value}{, }\item[{const std\+::string \&}]{name}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01784}{1784}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a4d595d8f6f34760bc2248d1b96af53a4}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!consume\_positional@{consume\_positional}}
+\index{consume\_positional@{consume\_positional}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{consume\_positional()}{consume\_positional()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a4d595d8f6f34760bc2248d1b96af53a4} 
+bool cxxopts\+::\+Option\+Parser\+::consume\+\_\+positional (\begin{DoxyParamCaption}\item[{const std\+::string \&}]{a}{, }\item[{Positional\+List\+Iterator \&}]{next}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01827}{1827}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a4218816ce33c211b54acb9e71603ea0b}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!parse@{parse}}
+\index{parse@{parse}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{parse()}{parse()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a4218816ce33c211b54acb9e71603ea0b} 
+\mbox{\hyperlink{classcxxopts_1_1_parse_result}{Parse\+Result}} cxxopts\+::\+Option\+Parser\+::parse (\begin{DoxyParamCaption}\item[{int}]{argc}{, }\item[{const char \texorpdfstring{$\ast$}{*}const \texorpdfstring{$\ast$}{*}}]{argv}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01888}{1888}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a28026f132e532009842f11359fb08373}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!parse\_default@{parse\_default}}
+\index{parse\_default@{parse\_default}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{parse\_default()}{parse\_default()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a28026f132e532009842f11359fb08373} 
+void cxxopts\+::\+Option\+Parser\+::parse\+\_\+default (\begin{DoxyParamCaption}\item[{const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&}]{details}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01759}{1759}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+\Hypertarget{classcxxopts_1_1_option_parser_a07db7b6bb2095df7b75b50ed2311ffe5}\index{cxxopts::OptionParser@{cxxopts::OptionParser}!parse\_option@{parse\_option}}
+\index{parse\_option@{parse\_option}!cxxopts::OptionParser@{cxxopts::OptionParser}}
+\doxysubsubsection{\texorpdfstring{parse\_option()}{parse\_option()}}
+{\footnotesize\ttfamily \label{classcxxopts_1_1_option_parser_a07db7b6bb2095df7b75b50ed2311ffe5} 
+void cxxopts\+::\+Option\+Parser\+::parse\+\_\+option (\begin{DoxyParamCaption}\item[{const std\+::shared\+\_\+ptr$<$ \mbox{\hyperlink{classcxxopts_1_1_option_details}{Option\+Details}} $>$ \&}]{value}{, }\item[{const std\+::string \&}]{name}{, }\item[{const std\+::string \&}]{arg}{ = {\ttfamily "{}"{}}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{cli_2cxxopts_8hpp_source_l01768}{1768}} of file \mbox{\hyperlink{cli_2cxxopts_8hpp_source}{cxxopts.\+hpp}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/cli/cxxopts.\+hpp\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/lib/cxxopts.\+hpp\end{DoxyCompactItemize}

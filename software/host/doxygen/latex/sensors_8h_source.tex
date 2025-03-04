@@ -1,0 +1,49 @@
+\doxysection{sensors.\+h}
+\hypertarget{sensors_8h_source}{}\label{sensors_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/archive/sensors.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/archive/sensors.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ SENSORS\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ SENSORS\_H}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <configinterface.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <QVBoxLayout>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <adxl362config.h>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <QScrollArea>}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{comment}{/*}}
+\DoxyCodeLine{00010\ \textcolor{comment}{\ *\ Class\ for\ handling\ the\ configuration\ of\ sensors}}
+\DoxyCodeLine{00011\ \textcolor{comment}{\ *\ currently\ handles\ one\ sensor\ type\ -\/-\/\ adxl362}}
+\DoxyCodeLine{00012\ \textcolor{comment}{\ *\ we\ should\ split\ this\ into\ adxl362,adxl367\ as\ separate\ files}}
+\DoxyCodeLine{00013\ \textcolor{comment}{\ *\ }}
+\DoxyCodeLine{00014\ \textcolor{comment}{\ *\ Learns\ which\ sensors\ are\ present\ by\ reading\ config\ passed\ in\ Attach()}}
+\DoxyCodeLine{00015\ \textcolor{comment}{\ *}}
+\DoxyCodeLine{00016\ \textcolor{comment}{*/}}
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ \textcolor{keyword}{class\ }Sensors\ :\ \textcolor{keyword}{public}\ \mbox{\hyperlink{class_config_interface}{ConfigInterface}}}
+\DoxyCodeLine{00019\ \{}
+\DoxyCodeLine{00020\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{00021\ \ \ \ \ Q\_INTERFACES(\mbox{\hyperlink{class_config_interface}{ConfigInterface}})}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keyword}{explicit}\ Sensors(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00025\ \ \ \ \ \string~Sensors();}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{void}\ SetConfig(\textcolor{keyword}{const}\ Config\ \&config);}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{void}\ GetConfig(Config\ \&config);}
+\DoxyCodeLine{00029\ \ \ \ \ QWidget\ *GetWidget()\{\ \textcolor{keywordflow}{return}\ \textcolor{keyword}{this};\}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{keyword}{public}\ slots:}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordtype}{void}\ Attach(\textcolor{keyword}{const}\ Config\ \&config);}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{void}\ Detach();}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{void}\ StateUpdate(TagState\ state);}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00038\ \ \ \ \ QScrollArea\ scroll;}
+\DoxyCodeLine{00039\ \ \ \ \ QFrame\ inner;}
+\DoxyCodeLine{00040\ \ \ \ \ \mbox{\hyperlink{class_adxl362_config}{Adxl362Config}}\ *adxlconfig\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{00041\ \};}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ SENSORS\_H}}
+
+\end{DoxyCode}

@@ -1,0 +1,102 @@
+\doxysection{actogram.\+h}
+\hypertarget{actogram_8h_source}{}\label{actogram_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/actogram.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/actogram.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ ACTOGRAM\_H}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ ACTOGRAM\_H}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QDateTime>}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <qcustomplot.h>}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <tickerdatetimeoffset.h>}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00009}00009\ \textcolor{keyword}{namespace\ }Ui\ \{}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00010}00010\ \textcolor{keyword}{class\ }Actogram;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00011}00011\ \}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00013}\mbox{\hyperlink{class_actogram}{00013}}\ \textcolor{keyword}{class\ }Actogram\ :\ \textcolor{keyword}{public}\ QWidget}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00014}00014\ \{}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00015}00015\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00017}00017\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00018}00018\ \ \ \ \ \textcolor{keyword}{explicit}\ Actogram(QWidget\ *parent\ =\ 0);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00019}00019\ \ \ \ \ \string~Actogram();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00020}00020\ \ \ \ \ \textcolor{keywordtype}{void}\ setData(QVector<double>\ time,\ QVector<double>\ value,\ QString\ fname);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00021}00021\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00022}00022\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00023}00023\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00024}00024\ \ \ \ \ \textcolor{comment}{//\ Configuration}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00025}00025\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00026}00026\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_startDay\_dateChanged(\textcolor{keyword}{const}\ QDate\ \&date);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00027}00027\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_sb\_actorange\_valueChanged(\textcolor{keyword}{const}\ QString\ \&arg1);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00028}00028\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_sb\_startday\_valueChanged(\textcolor{keywordtype}{int}\ value);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00029}00029\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_days\_valueChanged(\textcolor{keyword}{const}\ QString\ \&arg1);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00030}00030\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00031}00031\ \ \ \ \ \textcolor{comment}{//\ export}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00032}00032\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00033}00033\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_pb\_acto\_png\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00034}00034\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_pb\_acto\_pdf\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00035}00035\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_le\_actogram\_textChanged(\textcolor{keyword}{const}\ QString\ \&arg1);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00037}00037\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_sb\_offset\_valueChanged(\textcolor{keywordtype}{int}\ arg1);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00039}00039\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_cb\_double\_toggled(\textcolor{keywordtype}{bool}\ checked);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00040}00040\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00041}00041\ \ \ \ \ \textcolor{comment}{//\ daylight\ controls}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00042}00042\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00043}00043\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_rb\_no\_light\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00044}00044\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_rb\_natural\_light\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00045}00045\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00046}00046\ \ \ \ \ \textcolor{comment}{//\ location\ controls}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00047}00047\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00048}00048\ \ \ \ \ \textcolor{keywordtype}{void}\ location\_changed();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00049}00049\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00050}00050\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_rb\_lab\_light\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00051}00051\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00052}00052\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_pb\_load\_lightfile\_clicked();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00053}00053\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00054}00054\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00055}00055\ \ \ \ \ Ui::Actogram\ *ui;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00057}00057\ \ \ \ \ \textcolor{comment}{//\ configuration}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00058}00058\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00059}00059\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ agg\_time\ =\ 300;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00060}00060\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00061}00061\ \ \ \ \ \textcolor{comment}{//\ graph\ data}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00062}00062\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00063}00063\ \ \ \ \ QVector<QCPGraph\ *>actos;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00064}00064\ \ \ \ \ QVector<QCPAxisRect\ *>rects;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00065}00065\ \ \ \ \ QVector<QCPItemText\ *>\ labels;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00066}00066\ \ \ \ \ QSharedPointer<TickerDateTimeOffset>\ dateTicker;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00067}00067\ \ \ \ \ QVector<double>\ tmdata;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00068}00068\ \ \ \ \ QVector<double>\ valdata;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00069}00069\ \ \ \ \ QVector<double>\ lightdata;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00070}00070\ \ \ \ \ QVector<double>\ tmLabLight;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00071}00071\ \ \ \ \ QVector<double>\ valLabLight;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00072}00072\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00073}00073\ \ \ \ \ QString\ LabLightFile;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00074}00074\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00075}00075\ \ \ \ \ \textcolor{comment}{//\ graph\ time\ range}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00076}00076\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00077}00077\ \ \ \ \ QDateTime\ startDT;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00078}00078\ \ \ \ \ QDateTime\ endDT;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00079}00079\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00080}00080\ \ \ \ \ \textcolor{comment}{//\ metadata}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00081}00081\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00082}00082\ \ \ \ \ QCPTextElement\ *title;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00083}00083\ \ \ \ \ QCPTextElement\ *footleft;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00084}00084\ \ \ \ \ QCPTextElement\ *footcenter;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00085}00085\ \ \ \ \ QCPTextElement\ *footright;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00086}00086\ \ \ \ \ QString\ fileName;}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00087}00087\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00088}00088\ \ \ \ \ \textcolor{comment}{//\ private\ functions}}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00089}00089\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00090}00090\ \ \ \ \ \textcolor{keywordtype}{void}\ drawActogram();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00091}00091\ \ \ \ \ \textcolor{keywordtype}{void}\ drawMetadata(\textcolor{keywordtype}{int}\ numgraphs);}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00092}00092\ \ \ \ \ \textcolor{keywordtype}{void}\ generateNaturalLightData();}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00093}00093\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00094}00094\ \};}
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00095}00095\ }
+\DoxyCodeLine{\Hypertarget{actogram_8h_source_l00096}00096\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ ACTOGRAM\_H}}
+
+\end{DoxyCode}

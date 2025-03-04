@@ -1,21 +1,24 @@
 #ifndef CONFIG_INTERFACE_H
 #define CONFIG_INTERFACE_H
 
-class Config;
+/**
+ * @brief Abstract class for a configuration interface
+ * 
+ */
 
-class ConfigInterface
+class Config;
+class ConfigInterface 
 {
 
 public:
-    virtual ~ConfigInterface(){};
+    virtual bool Attach(const Config &config) = 0;  
+    virtual void Detach() = 0;
+    virtual bool SetConfig(const Config &config) = 0;
+    virtual bool GetConfig(Config &config) = 0;
+    bool isActive() {return active;}
 
-    virtual void Attach(const Config &config) = 0;  
-    virtual void SetConfig(const Config &config) = 0;
-    virtual void GetConfig(Config &config) = 0;
-    virtual QWidget *GetWidget() = 0;    
+protected:
+    bool active;
 };
-
-Q_DECLARE_INTERFACE(ConfigInterface,"ConfigInterface")
-
 
 #endif

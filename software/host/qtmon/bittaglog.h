@@ -1,15 +1,12 @@
 #ifndef BITTAGLOG_H
 #define BITTAGLOG_H
 #include <QWidget>
+#include <QVBoxLayout>
 #include <configinterface.h>
 
-class QWidget;
-class ConfigInterface;
 class PBEnumGroup;
 class BitTagLogTab : public QWidget, public ConfigInterface
 {
-    Q_OBJECT
-    Q_INTERFACES(ConfigInterface)
 
 public:
     explicit BitTagLogTab(QWidget *parent = nullptr);
@@ -17,17 +14,19 @@ public:
 
     // Set/Get configuration
 
-    void GetConfig(Config &config);
-    void SetConfig(const Config &config);
-    QWidget *GetWidget() { return this; }
+    bool GetConfig(Config &config);
+    bool SetConfig(const Config &config);
+    bool isActive();
 
 public slots:
 
-    void Attach(const Config &config);
+    bool Attach(const Config &config);
+    void Detach();
 
 private:
     QVBoxLayout *vbox_ = nullptr;
-    PBEnumGroup *log_ = nullptr;
+    PBEnumGroup *log_ = nullptr; 
+    bool active = false;
 };
 
 #endif /* BITTAGLOG_H */

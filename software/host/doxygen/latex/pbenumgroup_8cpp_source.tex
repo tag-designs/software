@@ -1,0 +1,69 @@
+\doxysection{pbenumgroup.\+cpp}
+\hypertarget{pbenumgroup_8cpp_source}{}\label{pbenumgroup_8cpp_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/pbenumgroup.cpp@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/pbenumgroup.cpp}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00001}00001\ \textcolor{preprocessor}{\#include\ <QDebug>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <QGroupBox>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <QRadioButton>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QButtonGroup>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QLayout>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00007}00007\ \textcolor{preprocessor}{\#include\ "{}pbenumgroup.h"{}}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00009}00009\ PBEnumGroup::PBEnumGroup(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *title,}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00010}00010\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ std::vector<struct\ binfo>\ \&buttons,}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00011}00011\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ QWidget\ *parent)\ :\ QGroupBox(title,\ parent)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00012}00012\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00013}00013\ \ \ \ \ vbox\ =\ \textcolor{keyword}{new}\ QVBoxLayout;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00014}00014\ \ \ \ \ buttonGroup\ =\ \textcolor{keyword}{new}\ QButtonGroup(\textcolor{keyword}{this});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00015}00015\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00016}00016\ \ \ \ \ setLayout(vbox);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00017}00017\ \ \ \ \ connect(buttonGroup,\ SIGNAL(buttonClicked(\textcolor{keywordtype}{int})),}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00018}00018\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{this},\ SIGNAL(idClicked(\textcolor{keywordtype}{int})));}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00019}00019\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00020}00020\ \ \ \ \ replaceButtons(buttons);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00021}00021\ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00022}00022\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00023}00023\ PBEnumGroup::\string~PBEnumGroup()}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00024}00024\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00025}00025\ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00026}00026\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00027}00027\ \textcolor{keywordtype}{int}\ PBEnumGroup::checkedId()}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00028}00028\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00029}00029\ \ \ \ \ \textcolor{keywordflow}{return}\ buttonGroup-\/>checkedId();}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00030}00030\ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00032}00032\ QAbstractButton\ *PBEnumGroup::button(\textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id})}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00033}00033\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00034}00034\ \ \ \ \ \textcolor{keywordflow}{return}\ buttonGroup-\/>button(\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00035}00035\ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00037}00037\ \textcolor{keywordtype}{void}\ PBEnumGroup::setCheckedId(\textcolor{keywordtype}{int}\ index)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00038}00038\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00039}00039\ \ \ \ \ QAbstractButton\ *button\ =\ buttonGroup-\/>button(index);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00040}00040\ \ \ \ \ \textcolor{keywordflow}{if}\ (button)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00041}00041\ \ \ \ \ \ \ \ \ button-\/>setChecked(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00042}00042\ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00043}00043\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00044}00044\ \textcolor{keywordtype}{void}\ PBEnumGroup::replaceButtons(\textcolor{keyword}{const}\ std::vector<struct\ binfo>\ \&buttons)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00045}00045\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00046}00046\ \ \ \ \ \textcolor{keywordtype}{bool}\ first\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00047}00047\ \ \ \ \ \textcolor{keywordflow}{for}\ (std::size\_t\ i\ =\ 0;\ i\ <\ buttons.size();\ i++)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00048}00048\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00049}00049\ \ \ \ \ \ \ \ \ QRadioButton\ *button\ =\ \textcolor{keyword}{new}\ QRadioButton(buttons[i].label);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00050}00050\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (first)}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00051}00051\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00052}00052\ \ \ \ \ \ \ \ \ \ \ \ \ button-\/>setChecked(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00053}00053\ \ \ \ \ \ \ \ \ \ \ \ \ first\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00054}00054\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00055}00055\ \ \ \ \ \ \ \ \ buttonGroup-\/>addButton(button,\ buttons[i].index);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00056}00056\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (buttons[i].toolTip\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00057}00057\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00058}00058\ \ \ \ \ \ \ \ \ \ \ \ \ button-\/>setToolTip(buttons[i].toolTip);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00059}00059\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00060}00060\ \ \ \ \ \ \ \ \ vbox-\/>addWidget(button);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00061}00061\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00062}00062\ \ \ \ \ vbox-\/>addStretch(1);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8cpp_source_l00063}00063\ \}}
+
+\end{DoxyCode}

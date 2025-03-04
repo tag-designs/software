@@ -1,0 +1,63 @@
+\doxysection{adxl362config.\+h}
+\hypertarget{adxl362config_8h_source}{}\label{adxl362config_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/adxl362config.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/adxl362config.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ ADXL362CONFIG\_H}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ ADXL362CONFIG\_H}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QGroupBox>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QDoubleSpinBox>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <QLabel>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00008}00008\ \textcolor{preprocessor}{\#include\ "{}pbenumgroup.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00009}00009\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00010}00010\ \textcolor{preprocessor}{\#include\ "{}tagclass.h"{}}\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00011}00011\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00012}00012\ \textcolor{preprocessor}{\#include\ "{}configinterface.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00013}00013\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00014}\mbox{\hyperlink{class_adxl362_config}{00014}}\ \textcolor{keyword}{class\ }Adxl362Config\ :\ \textcolor{keyword}{public}\ QWidget,\ \textcolor{keyword}{public}\ \mbox{\hyperlink{class_config_interface}{ConfigInterface}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00015}00015\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00016}00016\ \ \ \ \ \textcolor{comment}{//Q\_OBJECT}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00017}00017\ \ \ \ \ \textcolor{comment}{//Q\_INTERFACES(ConfigInterface)}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00018}00018\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00019}00019\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00020}00020\ \ \ \ \ \textcolor{keyword}{explicit}\ Adxl362Config(QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00021}00021\ \ \ \ \ \string~Adxl362Config();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00022}00022\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00023}00023\ \ \ \ \ \textcolor{comment}{//\ Set/Get\ configuration}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00024}00024\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00025}00025\ \ \ \ \ \textcolor{keywordtype}{bool}\ GetConfig(Config\ \&config);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00026}00026\ \ \ \ \ \textcolor{keywordtype}{void}\ SetConfig(\textcolor{keyword}{const}\ Config\ \&config);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00027}00027\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00028}00028\ \textcolor{keyword}{public}\ slots:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00029}00029\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00030}00030\ \ \ \ \ \textcolor{keywordtype}{void}\ Attach(\textcolor{keyword}{const}\ Config\ \&config);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00031}00031\ \ \ \ \ \textcolor{keywordtype}{void}\ Detach()\{\};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00032}00032\ \ \ \ \ \textcolor{comment}{//void\ StateUpdate(State\_TagState\ state);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00033}00033\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00034}00034\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00036}00036\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_adxlrange\_clicked(\textcolor{keywordtype}{int}\ index);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00037}00037\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_adxlfreq\_clicked(\textcolor{keywordtype}{int}\ index);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00039}00039\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00040}00040\ \ \ \ \ QVBoxLayout\ *vbox\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00041}00041\ \ \ \ \ QGroupBox\ *configbox\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00042}00042\ \ \ \ \ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}\ *sample\_rate\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00043}00043\ \ \ \ \ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}\ *range\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00044}00044\ \ \ \ \ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}\ *filter\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00045}00045\ \ \ \ \ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}\ *data\_size\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00046}00046\ \ \ \ \ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}\ *channels\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00047}00047\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00048}00048\ \ \ \ \ QGroupBox\ *spinners\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00049}00049\ \ \ \ \ QDoubleSpinBox\ *act\_thresh\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00050}00050\ \ \ \ \ QDoubleSpinBox\ *inact\_thresh\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00051}00051\ \ \ \ \ QDoubleSpinBox\ *inactive\_\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00052}00052\ \ \ \ \ Adxl362\_AdxlType\ adxl\_type\ =\ Adxl362\_AdxlType\_AdxlType\_362;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00053}00053\ \ \ \ \ QLabel\ inact\_thresh\_label\ =\ QLabel(\textcolor{stringliteral}{"{}Inactive\ Threshold"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00054}00054\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00055}00055\ \};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8h_source_l00057}00057\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ ADXL362CONFIG\_H}}
+
+\end{DoxyCode}

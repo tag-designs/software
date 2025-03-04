@@ -1,0 +1,596 @@
+\doxysection{QCPItem\+Position Class Reference}
+\hypertarget{class_q_c_p_item_position}{}\label{class_q_c_p_item_position}\index{QCPItemPosition@{QCPItemPosition}}
+
+
+Manages the position of an item.  
+
+
+
+
+Inheritance diagram for QCPItem\+Position\+:
+% FIG 0
+
+
+Collaboration diagram for QCPItem\+Position\+:
+% FIG 1
+\doxysubsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \{ \newline
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}{pt\+Viewport\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}}
+, \newline
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}{pt\+Viewport\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}}
+ \}
+\item 
+enum \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \{ \newline
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}{pt\+Viewport\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}}
+, \newline
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}{pt\+Viewport\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}}
+, \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{class_q_c_p_item_position_a6519a552bd9766354644ec24d1f26622}{QCPItem\+Position}} (\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*}parent\+Plot, \mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*}parent\+Item, const QString \&name)
+\item 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a1415911868835701c04250566bfc681d}\label{class_q_c_p_item_position_a1415911868835701c04250566bfc681d} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries typeX} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ae47bac6f679c58f9e1c78dc63d56f331}\label{class_q_c_p_item_position_ae47bac6f679c58f9e1c78dc63d56f331} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries typeY} () const
+\item 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_afd6993258e88255a6b5e82e98df40d6a}\label{class_q_c_p_item_position_afd6993258e88255a6b5e82e98df40d6a} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries parent\+AnchorX} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a5151572d157fd475c9b2bc9b9df6595b}\label{class_q_c_p_item_position_a5151572d157fd475c9b2bc9b9df6595b} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries parent\+AnchorY} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a6fc519f1b73722a8d0cff7d4d647407e}\label{class_q_c_p_item_position_a6fc519f1b73722a8d0cff7d4d647407e} 
+double {\bfseries key} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_acfcf86f840a7366a4299bff593d5d636}\label{class_q_c_p_item_position_acfcf86f840a7366a4299bff593d5d636} 
+double {\bfseries value} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_aa4ecf5b04c67049c05d37619e090820b}\label{class_q_c_p_item_position_aa4ecf5b04c67049c05d37619e090820b} 
+QPointF {\bfseries coords} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ab6c3afb95511842eee29745480cc8a53}\label{class_q_c_p_item_position_ab6c3afb95511842eee29745480cc8a53} 
+\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*} {\bfseries key\+Axis} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_aaa4dc49c9f142ff00b491272febc1de6}\label{class_q_c_p_item_position_aaa4dc49c9f142ff00b491272febc1de6} 
+\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*} {\bfseries value\+Axis} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ae4081cfe7575f922f403c6e3a2ce7891}\label{class_q_c_p_item_position_ae4081cfe7575f922f403c6e3a2ce7891} 
+\mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} \texorpdfstring{$\ast$}{*} {\bfseries axis\+Rect} () const
+\item 
+virtual QPointF \mbox{\hyperlink{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d}{pixel\+Position}} () const Q\+\_\+\+DECL\+\_\+\+OVERRIDE
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+bool \mbox{\hyperlink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+bool \mbox{\hyperlink{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}{set\+Parent\+AnchorX}} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+bool \mbox{\hyperlink{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}{set\+Parent\+AnchorY}} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords}} (double key, double value)
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_ae2756567f063cd4be41697e105babc49}{set\+Coords}} (const QPointF \&pos)
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}} (\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}key\+Axis, \mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}value\+Axis)
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}} (\mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} \texorpdfstring{$\ast$}{*}axis\+Rect)
+\item 
+void \mbox{\hyperlink{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}{set\+Pixel\+Position}} (const QPointF \&\mbox{\hyperlink{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d}{pixel\+Position}})
+\item 
+\Hypertarget{class_q_c_p_item_position_a6519a552bd9766354644ec24d1f26622}\label{class_q_c_p_item_position_a6519a552bd9766354644ec24d1f26622} 
+{\bfseries QCPItem\+Position} (\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*}parent\+Plot, \mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*}parent\+Item, const QString \&name)
+\item 
+\Hypertarget{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}\label{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries type} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a1415911868835701c04250566bfc681d}\label{class_q_c_p_item_position_a1415911868835701c04250566bfc681d} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries typeX} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ae47bac6f679c58f9e1c78dc63d56f331}\label{class_q_c_p_item_position_ae47bac6f679c58f9e1c78dc63d56f331} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries typeY} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}\label{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries parent\+Anchor} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_afd6993258e88255a6b5e82e98df40d6a}\label{class_q_c_p_item_position_afd6993258e88255a6b5e82e98df40d6a} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries parent\+AnchorX} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a5151572d157fd475c9b2bc9b9df6595b}\label{class_q_c_p_item_position_a5151572d157fd475c9b2bc9b9df6595b} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries parent\+AnchorY} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_a6fc519f1b73722a8d0cff7d4d647407e}\label{class_q_c_p_item_position_a6fc519f1b73722a8d0cff7d4d647407e} 
+double {\bfseries key} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_acfcf86f840a7366a4299bff593d5d636}\label{class_q_c_p_item_position_acfcf86f840a7366a4299bff593d5d636} 
+double {\bfseries value} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_aa4ecf5b04c67049c05d37619e090820b}\label{class_q_c_p_item_position_aa4ecf5b04c67049c05d37619e090820b} 
+QPointF {\bfseries coords} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ab6c3afb95511842eee29745480cc8a53}\label{class_q_c_p_item_position_ab6c3afb95511842eee29745480cc8a53} 
+\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*} {\bfseries key\+Axis} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_aaa4dc49c9f142ff00b491272febc1de6}\label{class_q_c_p_item_position_aaa4dc49c9f142ff00b491272febc1de6} 
+\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*} {\bfseries value\+Axis} () const
+\item 
+\Hypertarget{class_q_c_p_item_position_ae4081cfe7575f922f403c6e3a2ce7891}\label{class_q_c_p_item_position_ae4081cfe7575f922f403c6e3a2ce7891} 
+\mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} \texorpdfstring{$\ast$}{*} {\bfseries axis\+Rect} () const
+\item 
+virtual QPointF \mbox{\hyperlink{class_q_c_p_item_position_a2943e7cc358c017b27ae9f9ca0f55fbc}{pixel\+Position}} () const Q\+\_\+\+DECL\+\_\+\+OVERRIDE
+\item 
+\Hypertarget{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}\label{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad} 
+void {\bfseries set\+Type} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+\Hypertarget{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}\label{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea} 
+void {\bfseries set\+TypeX} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+\Hypertarget{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}\label{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510} 
+void {\bfseries set\+TypeY} (\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} \mbox{\hyperlink{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}{type}})
+\item 
+\Hypertarget{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}\label{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51} 
+bool {\bfseries set\+Parent\+Anchor} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+\Hypertarget{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}\label{class_q_c_p_item_position_add71461a973927c74e42179480916d9c} 
+bool {\bfseries set\+Parent\+AnchorX} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+\Hypertarget{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}\label{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d} 
+bool {\bfseries set\+Parent\+AnchorY} (\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}\mbox{\hyperlink{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}{parent\+Anchor}}, bool keep\+Pixel\+Position=false)
+\item 
+\Hypertarget{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}\label{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f} 
+void {\bfseries set\+Coords} (double key, double value)
+\item 
+\Hypertarget{class_q_c_p_item_position_ae2756567f063cd4be41697e105babc49}\label{class_q_c_p_item_position_ae2756567f063cd4be41697e105babc49} 
+void {\bfseries set\+Coords} (const QPointF \&pos)
+\item 
+\Hypertarget{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}\label{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37} 
+void {\bfseries set\+Axes} (\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}key\+Axis, \mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}value\+Axis)
+\item 
+\Hypertarget{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}\label{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2} 
+void {\bfseries set\+Axis\+Rect} (\mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} \texorpdfstring{$\ast$}{*}axis\+Rect)
+\item 
+\Hypertarget{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}\label{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a} 
+void {\bfseries set\+Pixel\+Position} (const QPointF \&\mbox{\hyperlink{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d}{pixel\+Position}})
+\end{DoxyCompactItemize}
+\doxysubsection*{Public Member Functions inherited from \mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}}}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{class_q_c_p_item_anchor_a32573023c6fa65b4496f1f995e5bfa5f}{QCPItem\+Anchor}} (\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*}parent\+Plot, \mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*}parent\+Item, const QString \&name, int anchor\+Id=-\/1)
+\item 
+QString {\bfseries name} () const
+\item 
+{\bfseries QCPItem\+Anchor} (\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*}parent\+Plot, \mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*}parent\+Item, const QString \&name, int anchor\+Id=-\/1)
+\item 
+QString {\bfseries name} () const
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf}{to\+QCPItem\+Position}} () Q\+\_\+\+DECL\+\_\+\+OVERRIDE
+\item 
+virtual \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf}{to\+QCPItem\+Position}} () Q\+\_\+\+DECL\+\_\+\+OVERRIDE
+\end{DoxyCompactItemize}
+\doxysubsection*{Protected Member Functions inherited from \mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}}}
+\begin{DoxyCompactItemize}
+\item 
+void {\bfseries add\+ChildX} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries remove\+ChildX} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries add\+ChildY} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries remove\+ChildY} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries add\+ChildX} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries remove\+ChildX} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries add\+ChildY} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\item 
+void {\bfseries remove\+ChildY} (\mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*}pos)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_q_c_p_item_position_ae2a617dce057c5f3ec6878c1823aa291}\label{class_q_c_p_item_position_ae2a617dce057c5f3ec6878c1823aa291} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries m\+Position\+TypeX}
+\item 
+\Hypertarget{class_q_c_p_item_position_a47c96c0ef4380e1af4aaa7c2265c260b}\label{class_q_c_p_item_position_a47c96c0ef4380e1af4aaa7c2265c260b} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} {\bfseries m\+Position\+TypeY}
+\item 
+\Hypertarget{class_q_c_p_item_position_a2870d4484bd2a98674531edaeeadabac}\label{class_q_c_p_item_position_a2870d4484bd2a98674531edaeeadabac} 
+QPointer$<$ \mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} $>$ {\bfseries m\+Key\+Axis}
+\item 
+\Hypertarget{class_q_c_p_item_position_a539488a5ca5f7efb5fbc465453dcf97e}\label{class_q_c_p_item_position_a539488a5ca5f7efb5fbc465453dcf97e} 
+QPointer$<$ \mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} $>$ {\bfseries m\+Value\+Axis}
+\item 
+\Hypertarget{class_q_c_p_item_position_a6836c503f112fa0f663154caf4e56993}\label{class_q_c_p_item_position_a6836c503f112fa0f663154caf4e56993} 
+QPointer$<$ \mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} $>$ {\bfseries m\+Axis\+Rect}
+\item 
+\Hypertarget{class_q_c_p_item_position_a4ff3931ad115603dfb4c7000b24bb415}\label{class_q_c_p_item_position_a4ff3931ad115603dfb4c7000b24bb415} 
+double {\bfseries m\+Key}
+\item 
+\Hypertarget{class_q_c_p_item_position_a67bf5df69f587d53731724a7d61c6c3f}\label{class_q_c_p_item_position_a67bf5df69f587d53731724a7d61c6c3f} 
+double {\bfseries m\+Value}
+\item 
+\Hypertarget{class_q_c_p_item_position_a02dbf7a06615195e4f0a807ab5b575a4}\label{class_q_c_p_item_position_a02dbf7a06615195e4f0a807ab5b575a4} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries m\+Parent\+AnchorX}
+\item 
+\Hypertarget{class_q_c_p_item_position_afc6142a6a09c8fa41c44d3d54fadd737}\label{class_q_c_p_item_position_afc6142a6a09c8fa41c44d3d54fadd737} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} {\bfseries m\+Parent\+AnchorY}
+\end{DoxyCompactItemize}
+\doxysubsection*{Protected Attributes inherited from \mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}}}
+\begin{DoxyCompactItemize}
+\item 
+QString {\bfseries m\+Name}
+\item 
+\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*} {\bfseries m\+Parent\+Plot}
+\item 
+\mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*} {\bfseries m\+Parent\+Item}
+\item 
+int {\bfseries m\+Anchor\+Id}
+\item 
+QSet$<$ \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} $>$ {\bfseries m\+ChildrenX}
+\item 
+QSet$<$ \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} $>$ {\bfseries m\+ChildrenY}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Manages the position of an item. 
+
+Every item has at least one public \doxylink{class_q_c_p_item_position}{QCPItem\+Position} member pointer which provides ways to position the item on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface. Some items have multiple positions, for example \doxylink{class_q_c_p_item_rect}{QCPItem\+Rect} has two\+: {\itshape top\+Left} and {\itshape bottom\+Right}.
+
+\doxylink{class_q_c_p_item_position}{QCPItem\+Position} has a type (\doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}) that can be set with \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}. This type defines how coordinates passed to \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} are to be interpreted, e.\+g. as absolute pixel coordinates, as plot coordinates of certain axes (\doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{QCPItem\+Position\+::set\+Axes}), as fractions of the axis rect (\doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{QCPItem\+Position\+::set\+Axis\+Rect}), etc. For more advanced plots it is also possible to assign different types per X/Y coordinate of the position (see \doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}). This way an item could be positioned for example at a fixed pixel distance from the top in the Y direction, while following a plot coordinate in the X direction.
+
+A \doxylink{class_q_c_p_item_position}{QCPItem\+Position} may have a parent \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor}, see \doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}. This way you can tie multiple items together. If the \doxylink{class_q_c_p_item_position}{QCPItem\+Position} has a parent, its coordinates (\doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords}) are considered to be absolute pixels in the reference frame of the parent anchor, where (0, 0) means directly ontop of the parent anchor. For example, You could attach the {\itshape start} position of a \doxylink{class_q_c_p_item_line}{QCPItem\+Line} to the {\itshape bottom} anchor of a \doxylink{class_q_c_p_item_text}{QCPItem\+Text} to make the starting point of the line always be centered under the text label, no matter where the text is moved to. For more advanced plots, it is possible to assign different parent anchors per X/Y coordinate of the position, see \doxylink{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}{set\+Parent\+AnchorX}, \doxylink{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}{set\+Parent\+AnchorY}. This way an item could follow another item in the X direction but stay at a fixed position in the Y direction. Or even follow item A in X, and item B in Y.
+
+Note that every \doxylink{class_q_c_p_item_position}{QCPItem\+Position} inherits from \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor} and thus can itself be used as parent anchor for other positions.
+
+To set the apparent pixel position on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface directly, use \doxylink{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}{set\+Pixel\+Position}. This works no matter what type this \doxylink{class_q_c_p_item_position}{QCPItem\+Position} is or what parent-\/child situation it is in, as \doxylink{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}{set\+Pixel\+Position} transforms the coordinates appropriately, to make the position appear at the specified pixel values. 
+
+\doxysubsection{Member Enumeration Documentation}
+\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}\index{QCPItemPosition@{QCPItemPosition}!PositionType@{PositionType}}
+\index{PositionType@{PositionType}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{PositionType}{PositionType}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8} 
+enum \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{QCPItem\+Position\+::\+Position\+Type}}}
+
+Defines the ways an item position can be specified. Thus it defines what the numbers passed to \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} actually mean.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} 
+\end{DoxySeeAlso}
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAbsolute@{ptAbsolute}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAbsolute@{ptAbsolute}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e} 
+pt\+Absolute&Static positioning in pixels, starting from the top left corner of the viewport/widget. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptViewportRatio@{ptViewportRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptViewportRatio@{ptViewportRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b} 
+pt\+Viewport\+Ratio&Static positioning given by a fraction of the viewport size. For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the viewport/widget. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the viewport/widget, etc. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAxisRectRatio@{ptAxisRectRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAxisRectRatio@{ptAxisRectRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391} 
+pt\+Axis\+Rect\+Ratio&Static positioning given by a fraction of the axis rect size (see \doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}). For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the axis rect. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the axis rect, etc. You can also go beyond the axis rect by providing negative coordinates or coordinates larger than 1. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptPlotCoords@{ptPlotCoords}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptPlotCoords@{ptPlotCoords}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6} 
+pt\+Plot\+Coords&Dynamic positioning at a plot coordinate defined by two axes (see \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}). \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAbsolute@{ptAbsolute}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAbsolute@{ptAbsolute}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e} 
+pt\+Absolute&Static positioning in pixels, starting from the top left corner of the viewport/widget. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptViewportRatio@{ptViewportRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptViewportRatio@{ptViewportRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b} 
+pt\+Viewport\+Ratio&Static positioning given by a fraction of the viewport size. For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the viewport/widget. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the viewport/widget, etc. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAxisRectRatio@{ptAxisRectRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAxisRectRatio@{ptAxisRectRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391} 
+pt\+Axis\+Rect\+Ratio&Static positioning given by a fraction of the axis rect size (see \doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}). For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the axis rect. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the axis rect, etc. You can also go beyond the axis rect by providing negative coordinates or coordinates larger than 1. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptPlotCoords@{ptPlotCoords}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptPlotCoords@{ptPlotCoords}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6} 
+pt\+Plot\+Coords&Dynamic positioning at a plot coordinate defined by two axes (see \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}). \\
+\hline
+
+\end{DoxyEnumFields}
+\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}\index{QCPItemPosition@{QCPItemPosition}!PositionType@{PositionType}}
+\index{PositionType@{PositionType}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{PositionType}{PositionType}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8} 
+enum \mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{QCPItem\+Position\+::\+Position\+Type}}}
+
+Defines the ways an item position can be specified. Thus it defines what the numbers passed to \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} actually mean.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} 
+\end{DoxySeeAlso}
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAbsolute@{ptAbsolute}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAbsolute@{ptAbsolute}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e} 
+pt\+Absolute&Static positioning in pixels, starting from the top left corner of the viewport/widget. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptViewportRatio@{ptViewportRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptViewportRatio@{ptViewportRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b} 
+pt\+Viewport\+Ratio&Static positioning given by a fraction of the viewport size. For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the viewport/widget. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the viewport/widget, etc. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAxisRectRatio@{ptAxisRectRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAxisRectRatio@{ptAxisRectRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391} 
+pt\+Axis\+Rect\+Ratio&Static positioning given by a fraction of the axis rect size (see \doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}). For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the axis rect. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the axis rect, etc. You can also go beyond the axis rect by providing negative coordinates or coordinates larger than 1. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptPlotCoords@{ptPlotCoords}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptPlotCoords@{ptPlotCoords}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6} 
+pt\+Plot\+Coords&Dynamic positioning at a plot coordinate defined by two axes (see \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}). \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAbsolute@{ptAbsolute}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAbsolute@{ptAbsolute}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e} 
+pt\+Absolute&Static positioning in pixels, starting from the top left corner of the viewport/widget. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptViewportRatio@{ptViewportRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptViewportRatio@{ptViewportRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b} 
+pt\+Viewport\+Ratio&Static positioning given by a fraction of the viewport size. For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the viewport/widget. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the viewport/widget, etc. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptAxisRectRatio@{ptAxisRectRatio}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptAxisRectRatio@{ptAxisRectRatio}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391} 
+pt\+Axis\+Rect\+Ratio&Static positioning given by a fraction of the axis rect size (see \doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}). For example, if you call set\+Coords(0, 0), the position will be at the top left corner of the axis rect. set\+Coords(1, 1) will be at the bottom right corner, set\+Coords(0.\+5, 0) will be horizontally centered and vertically at the top of the axis rect, etc. You can also go beyond the axis rect by providing negative coordinates or coordinates larger than 1. \\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{ptPlotCoords@{ptPlotCoords}!QCPItemPosition@{QCPItemPosition}}\index{QCPItemPosition@{QCPItemPosition}!ptPlotCoords@{ptPlotCoords}}}\Hypertarget{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}\label{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6} 
+pt\+Plot\+Coords&Dynamic positioning at a plot coordinate defined by two axes (see \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}). \\
+\hline
+
+\end{DoxyEnumFields}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_q_c_p_item_position_a6519a552bd9766354644ec24d1f26622}\index{QCPItemPosition@{QCPItemPosition}!QCPItemPosition@{QCPItemPosition}}
+\index{QCPItemPosition@{QCPItemPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{QCPItemPosition()}{QCPItemPosition()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a6519a552bd9766354644ec24d1f26622} 
+QCPItem\+Position\+::\+QCPItem\+Position (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_custom_plot}{QCustom\+Plot}} \texorpdfstring{$\ast$}{*}}]{parent\+Plot}{, }\item[{\mbox{\hyperlink{class_q_c_p_abstract_item}{QCPAbstract\+Item}} \texorpdfstring{$\ast$}{*}}]{parent\+Item}{, }\item[{const QString \&}]{name}{}\end{DoxyParamCaption})}
+
+Creates a new \doxylink{class_q_c_p_item_position}{QCPItem\+Position}. You shouldn\textquotesingle{}t create \doxylink{class_q_c_p_item_position}{QCPItem\+Position} instances directly, even if you want to make a new item subclass. Use QCPAbstract\+Item\+::create\+Position instead, as explained in the subclassing section of the \doxylink{class_q_c_p_abstract_item}{QCPAbstract\+Item} documentation. 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6}\index{QCPItemPosition@{QCPItemPosition}!parentAnchor@{parentAnchor}}
+\index{parentAnchor@{parentAnchor}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{parentAnchor()}{parentAnchor()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a0a87f9dce1af6cc9b510785991bcf1c6} 
+\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*} QCPItem\+Position\+::parent\+Anchor (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns the current parent anchor.
+
+If different parent anchors were set for X and Y (\doxylink{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}{set\+Parent\+AnchorX}, \doxylink{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}{set\+Parent\+AnchorY}), this method returns the parent anchor of the Y coordinate. In that case rather use {\itshape parent\+Anchor\+X()} and {\itshape parent\+Anchor\+Y()}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d}\index{QCPItemPosition@{QCPItemPosition}!pixelPosition@{pixelPosition}}
+\index{pixelPosition@{pixelPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{pixelPosition()}{pixelPosition()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d} 
+QPointF QCPItem\+Position\+::pixel\+Position (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Returns the final absolute pixel position of the \doxylink{class_q_c_p_item_position}{QCPItem\+Position} on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface. It includes all effects of type (\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}) and possible parent anchors (\doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}).
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}{set\+Pixel\+Position} 
+\end{DoxySeeAlso}
+
+
+Reimplemented from \mbox{\hyperlink{class_q_c_p_item_anchor_a06dcfb7220d26eee93eef56ae66582cb}{QCPItem\+Anchor}}.
+
+\Hypertarget{class_q_c_p_item_position_a2943e7cc358c017b27ae9f9ca0f55fbc}\index{QCPItemPosition@{QCPItemPosition}!pixelPosition@{pixelPosition}}
+\index{pixelPosition@{pixelPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{pixelPosition()}{pixelPosition()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a2943e7cc358c017b27ae9f9ca0f55fbc} 
+virtual QPointF QCPItem\+Position\+::pixel\+Position (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [virtual]}}
+
+Returns the final absolute pixel position of the \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor} on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface.
+
+The pixel information is internally retrieved via QCPAbstract\+Item\+::anchor\+Pixel\+Position of the parent item, \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor} is just an intermediary. 
+
+Reimplemented from \mbox{\hyperlink{class_q_c_p_item_anchor_a06dcfb7220d26eee93eef56ae66582cb}{QCPItem\+Anchor}}.
+
+\Hypertarget{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}\index{QCPItemPosition@{QCPItemPosition}!setAxes@{setAxes}}
+\index{setAxes@{setAxes}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setAxes()}{setAxes()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37} 
+void QCPItem\+Position\+::set\+Axes (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}}]{key\+Axis}{, }\item[{\mbox{\hyperlink{class_q_c_p_axis}{QCPAxis}} \texorpdfstring{$\ast$}{*}}]{value\+Axis}{}\end{DoxyParamCaption})}
+
+When \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}, this function may be used to specify the axes the coordinates set with \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} relate to. By default they are set to the initial x\+Axis and y\+Axis of the \doxylink{class_q_custom_plot}{QCustom\+Plot}. \Hypertarget{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}\index{QCPItemPosition@{QCPItemPosition}!setAxisRect@{setAxisRect}}
+\index{setAxisRect@{setAxisRect}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setAxisRect()}{setAxisRect()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2} 
+void QCPItem\+Position\+::set\+Axis\+Rect (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_axis_rect}{QCPAxis\+Rect}} \texorpdfstring{$\ast$}{*}}]{axis\+Rect}{}\end{DoxyParamCaption})}
+
+When \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}, this function may be used to specify the axis rect the coordinates set with \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} relate to. By default this is set to the main axis rect of the \doxylink{class_q_custom_plot}{QCustom\+Plot}. \Hypertarget{class_q_c_p_item_position_ae2756567f063cd4be41697e105babc49}\index{QCPItemPosition@{QCPItemPosition}!setCoords@{setCoords}}
+\index{setCoords@{setCoords}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setCoords()}{setCoords()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_ae2756567f063cd4be41697e105babc49} 
+void QCPItem\+Position\+::set\+Coords (\begin{DoxyParamCaption}\item[{const QPointF \&}]{pos}{}\end{DoxyParamCaption})}
+
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
+Sets the coordinates as a QPointF {\itshape pos} where pos.\+x has the meaning of {\itshape key} and pos.\+y the meaning of {\itshape value} of the \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords(double key, double value)} method. \Hypertarget{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}\index{QCPItemPosition@{QCPItemPosition}!setCoords@{setCoords}}
+\index{setCoords@{setCoords}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setCoords()}{setCoords()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f} 
+void QCPItem\+Position\+::set\+Coords (\begin{DoxyParamCaption}\item[{double}]{key}{, }\item[{double}]{value}{}\end{DoxyParamCaption})}
+
+Sets the coordinates of this \doxylink{class_q_c_p_item_position}{QCPItem\+Position}. What the coordinates mean, is defined by the type (\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}, \doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}).
+
+For example, if the type is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}, {\itshape key} and {\itshape value} mean the x and y pixel position on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface. In that case the origin (0, 0) is in the top left corner of the \doxylink{class_q_custom_plot}{QCustom\+Plot} viewport. If the type is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}, {\itshape key} and {\itshape value} mean a point in the plot coordinate system defined by the axes set by \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}. By default those are the \doxylink{class_q_custom_plot}{QCustom\+Plot}\textquotesingle{}s x\+Axis and y\+Axis. See the documentation of \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} for other available coordinate types and their meaning.
+
+If different types were configured for X and Y (\doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}), {\itshape key} and {\itshape value} must also be provided in the different coordinate systems. Here, the X type refers to {\itshape key}, and the Y type refers to {\itshape value}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}{set\+Pixel\+Position} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}\index{QCPItemPosition@{QCPItemPosition}!setParentAnchor@{setParentAnchor}}
+\index{setParentAnchor@{setParentAnchor}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setParentAnchor()}{setParentAnchor()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51} 
+bool QCPItem\+Position\+::set\+Parent\+Anchor (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}}]{parent\+Anchor}{, }\item[{bool}]{keep\+Pixel\+Position}{ = {\ttfamily false}}\end{DoxyParamCaption})}
+
+Sets the parent of this \doxylink{class_q_c_p_item_position}{QCPItem\+Position} to {\itshape parent\+Anchor}. This means the position will now follow any position changes of the anchor. The local coordinate system of positions with a parent anchor always is absolute pixels, with (0, 0) being exactly on top of the parent anchor. (Hence the type shouldn\textquotesingle{}t be set to \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords} for positions with parent anchors.)
+
+if {\itshape keep\+Pixel\+Position} is true, the current pixel position of the \doxylink{class_q_c_p_item_position}{QCPItem\+Position} is preserved during reparenting. If it\textquotesingle{}s set to false, the coordinates are set to (0, 0), i.\+e. the position will be exactly on top of the parent anchor.
+
+To remove this \doxylink{class_q_c_p_item_position}{QCPItem\+Position} from any parent anchor, set {\itshape parent\+Anchor} to {\ttfamily nullptr}.
+
+If the \doxylink{class_q_c_p_item_position}{QCPItem\+Position} previously had no parent and the type is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords}, the type is set to \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}, to keep the position in a valid state.
+
+This method sets the parent anchor for both X and Y directions. It is also possible to set different parents for X and Y, see \doxylink{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}{set\+Parent\+AnchorX}, \doxylink{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}{set\+Parent\+AnchorY}. \Hypertarget{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}\index{QCPItemPosition@{QCPItemPosition}!setParentAnchorX@{setParentAnchorX}}
+\index{setParentAnchorX@{setParentAnchorX}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setParentAnchorX()}{setParentAnchorX()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_add71461a973927c74e42179480916d9c} 
+bool QCPItem\+Position\+::set\+Parent\+AnchorX (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}}]{parent\+Anchor}{, }\item[{bool}]{keep\+Pixel\+Position}{ = {\ttfamily false}}\end{DoxyParamCaption})}
+
+This method sets the parent anchor of the X coordinate to {\itshape parent\+Anchor}.
+
+For a detailed description of what a parent anchor is, see the documentation of \doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}, \doxylink{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}{set\+Parent\+AnchorY} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d}\index{QCPItemPosition@{QCPItemPosition}!setParentAnchorY@{setParentAnchorY}}
+\index{setParentAnchorY@{setParentAnchorY}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setParentAnchorY()}{setParentAnchorY()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_add5ec1db9d19cec58a3b5c9e0a0c3f9d} 
+bool QCPItem\+Position\+::set\+Parent\+AnchorY (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_anchor}{QCPItem\+Anchor}} \texorpdfstring{$\ast$}{*}}]{parent\+Anchor}{, }\item[{bool}]{keep\+Pixel\+Position}{ = {\ttfamily false}}\end{DoxyParamCaption})}
+
+This method sets the parent anchor of the Y coordinate to {\itshape parent\+Anchor}.
+
+For a detailed description of what a parent anchor is, see the documentation of \doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}, \doxylink{class_q_c_p_item_position_add71461a973927c74e42179480916d9c}{set\+Parent\+AnchorX} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a}\index{QCPItemPosition@{QCPItemPosition}!setPixelPosition@{setPixelPosition}}
+\index{setPixelPosition@{setPixelPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setPixelPosition()}{setPixelPosition()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a8d4f858f2089973967cf9cb81970ef0a} 
+void QCPItem\+Position\+::set\+Pixel\+Position (\begin{DoxyParamCaption}\item[{const QPointF \&}]{pixel\+Position}{}\end{DoxyParamCaption})}
+
+Sets the apparent pixel position. This works no matter what type (\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}) this \doxylink{class_q_c_p_item_position}{QCPItem\+Position} is or what parent-\/child situation it is in, as coordinates are transformed appropriately, to make the position finally appear at the specified pixel values.
+
+Only if the type is \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute} and no parent anchor is set, this function\textquotesingle{}s effect is identical to that of \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_a8be9a4787635433edecc75164beb748d}{pixel\+Position}, \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}\index{QCPItemPosition@{QCPItemPosition}!setType@{setType}}
+\index{setType@{setType}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setType()}{setType()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad} 
+void QCPItem\+Position\+::set\+Type (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{QCPItem\+Position\+::\+Position\+Type}}}]{type}{}\end{DoxyParamCaption})}
+
+Sets the type of the position. The type defines how the coordinates passed to \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} should be handled and how the \doxylink{class_q_c_p_item_position}{QCPItem\+Position} should behave in the plot.
+
+The possible values for {\itshape type} can be separated in two main categories\+:
+
+\begin{DoxyItemize}
+\item The position is regarded as a point in plot coordinates. This corresponds to \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords} and requires two axes that define the plot coordinate system. They can be specified with \doxylink{class_q_c_p_item_position_a2185f45c75ac8cb9be89daeaaad50e37}{set\+Axes}. By default, the \doxylink{class_q_custom_plot}{QCustom\+Plot}\textquotesingle{}s x-\/ and y\+Axis are used.\end{DoxyItemize}
+\begin{DoxyItemize}
+\item The position is fixed on the \doxylink{class_q_custom_plot}{QCustom\+Plot} surface, i.\+e. independent of axis ranges. This corresponds to all other types, i.\+e. \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a3702d60f75c3259c625381c9675c053e}{pt\+Absolute}, \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ad2ec2c0f63a73a94c098af9334903f9b}{pt\+Viewport\+Ratio} and \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}. They differ only in the way the absolute position is described, see the documentation of \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type} for details. For \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8a5122cb53066293593ba4445ea9a75391}{pt\+Axis\+Rect\+Ratio}, note that you can specify the axis rect with \doxylink{class_q_c_p_item_position_a0cd9b326fb324710169e92e8ca0041c2}{set\+Axis\+Rect}. By default this is set to the main axis rect.\end{DoxyItemize}
+Note that the position type \doxylink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8ae797603bd91e9561c0f2da044a30e5c6}{pt\+Plot\+Coords} is only available (and sensible) when the position has no parent anchor (\doxylink{class_q_c_p_item_position_ac094d67a95d2dceafa0d50b9db3a7e51}{set\+Parent\+Anchor}).
+
+If the type is changed, the apparent pixel position on the plot is preserved. This means the coordinates as retrieved with coords() and set with \doxylink{class_q_c_p_item_position_aa988ba4e87ab684c9021017dcaba945f}{set\+Coords} may change in the process.
+
+This method sets the type for both X and Y directions. It is also possible to set different types for X and Y, see \doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}. \Hypertarget{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}\index{QCPItemPosition@{QCPItemPosition}!setTypeX@{setTypeX}}
+\index{setTypeX@{setTypeX}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setTypeX()}{setTypeX()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea} 
+void QCPItem\+Position\+::set\+TypeX (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{QCPItem\+Position\+::\+Position\+Type}}}]{type}{}\end{DoxyParamCaption})}
+
+This method sets the position type of the X coordinate to {\itshape type}.
+
+For a detailed description of what a position type is, see the documentation of \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}\index{QCPItemPosition@{QCPItemPosition}!setTypeY@{setTypeY}}
+\index{setTypeY@{setTypeY}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{setTypeY()}{setTypeY()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510} 
+void QCPItem\+Position\+::set\+TypeY (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{QCPItem\+Position\+::\+Position\+Type}}}]{type}{}\end{DoxyParamCaption})}
+
+This method sets the position type of the Y coordinate to {\itshape type}.
+
+For a detailed description of what a position type is, see the documentation of \doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type}, \doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX} 
+\end{DoxySeeAlso}
+\Hypertarget{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf}\index{QCPItemPosition@{QCPItemPosition}!toQCPItemPosition@{toQCPItemPosition}}
+\index{toQCPItemPosition@{toQCPItemPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{toQCPItemPosition()}{toQCPItemPosition()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf} 
+virtual \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} QCPItem\+Position\+::to\+QCPItem\+Position (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}, {\ttfamily [virtual]}}
+
+Returns {\ttfamily nullptr} if this instance is merely a \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor}, and a valid pointer of type QCPItem\+Position\texorpdfstring{$\ast$}{*} if it actually is a \doxylink{class_q_c_p_item_position}{QCPItem\+Position} (which is a subclass of \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor}).
+
+This safe downcast functionality could also be achieved with a dynamic\+\_\+cast. However, \doxylink{class_q_custom_plot}{QCustom\+Plot} avoids dynamic\+\_\+cast to work with projects that don\textquotesingle{}t have RTTI support enabled (e.\+g. -\/fno-\/rtti flag with gcc compiler). 
+
+Reimplemented from \mbox{\hyperlink{class_q_c_p_item_anchor_ab04819cd5bc6dc607a68413828313675}{QCPItem\+Anchor}}.
+
+\Hypertarget{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf}\index{QCPItemPosition@{QCPItemPosition}!toQCPItemPosition@{toQCPItemPosition}}
+\index{toQCPItemPosition@{toQCPItemPosition}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{toQCPItemPosition()}{toQCPItemPosition()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_a0d2c5b823c99207eda710a37a4bb1dbf} 
+virtual \mbox{\hyperlink{class_q_c_p_item_position}{QCPItem\+Position}} \texorpdfstring{$\ast$}{*} QCPItem\+Position\+::to\+QCPItem\+Position (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}, {\ttfamily [virtual]}}
+
+Returns {\ttfamily nullptr} if this instance is merely a \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor}, and a valid pointer of type QCPItem\+Position\texorpdfstring{$\ast$}{*} if it actually is a \doxylink{class_q_c_p_item_position}{QCPItem\+Position} (which is a subclass of \doxylink{class_q_c_p_item_anchor}{QCPItem\+Anchor}).
+
+This safe downcast functionality could also be achieved with a dynamic\+\_\+cast. However, \doxylink{class_q_custom_plot}{QCustom\+Plot} avoids dynamic\+\_\+cast to work with projects that don\textquotesingle{}t have RTTI support enabled (e.\+g. -\/fno-\/rtti flag with gcc compiler). 
+
+Reimplemented from \mbox{\hyperlink{class_q_c_p_item_anchor_ab04819cd5bc6dc607a68413828313675}{QCPItem\+Anchor}}.
+
+\Hypertarget{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f}\index{QCPItemPosition@{QCPItemPosition}!type@{type}}
+\index{type@{type}!QCPItemPosition@{QCPItemPosition}}
+\doxysubsubsection{\texorpdfstring{type()}{type()}}
+{\footnotesize\ttfamily \label{class_q_c_p_item_position_abc1276e2ef603e459a9e48e75966bf8f} 
+\mbox{\hyperlink{class_q_c_p_item_position_aad9936c22bf43e3d358552f6e86dbdc8}{Position\+Type}} QCPItem\+Position\+::type (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const\hspace{0.3cm}{\ttfamily [inline]}}
+
+Returns the current position type.
+
+If different types were set for X and Y (\doxylink{class_q_c_p_item_position_a2113b2351d6d00457fb3559a4e20c3ea}{set\+TypeX}, \doxylink{class_q_c_p_item_position_ac2a454aa5a54c1615c50686601ec4510}{set\+TypeY}), this method returns the type of the X coordinate. In that case rather use {\itshape type\+X()} and {\itshape type\+Y()}.
+
+\begin{DoxySeeAlso}{See also}
+\doxylink{class_q_c_p_item_position_aa476abf71ed8fa4c537457ebb1a754ad}{set\+Type} 
+\end{DoxySeeAlso}
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/qcustomplot-\/source/qcustomplot.\+h\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/qcustomplot.\+h\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/qcustomplot-\/source/qcustomplot.\+cpp\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/qcustomplot.\+cpp\end{DoxyCompactItemize}

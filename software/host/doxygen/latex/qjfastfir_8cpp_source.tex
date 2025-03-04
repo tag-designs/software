@@ -1,0 +1,279 @@
+\doxysection{qjfastfir.\+cpp}
+\hypertarget{qjfastfir_8cpp_source}{}\label{qjfastfir_8cpp_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/FastFIR/qjfastfir.cpp@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/FastFIR/qjfastfir.cpp}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00001}00001\ \textcolor{comment}{//-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00002}00002\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00003}00003\ \textcolor{preprocessor}{\#define\ \_USE\_MATH\_DEFINES}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00004}00004\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00005}00005\ \textcolor{preprocessor}{\#include\ "{}qjfastfir.h"{}}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00007}00007\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00008}00008\ \textcolor{comment}{//c\ files\ we\ need\ to\ compile}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00009}00009\ \textcolor{preprocessor}{\#include\ "{}../kiss\_fft130\_jfork1.0.0/kiss\_fft.c"{}}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00010}00010\ \textcolor{preprocessor}{\#include\ "{}../kiss\_fft130\_jfork1.0.0/tools/kiss\_fastfir.c"{}}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00011}00011\ \textcolor{preprocessor}{\#include\ "{}../kiss\_fft130\_jfork1.0.0/tools/kiss\_fftr.c"{}}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00013}00013\ \textcolor{comment}{//-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00014}00014\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00015}00015\ \textcolor{comment}{//-\/-\/-\/filter\ design}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00017}00017\ \textcolor{keywordtype}{double}\ sinc\_normalized(\textcolor{keywordtype}{double}\ val)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00018}00018\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00019}00019\ \ \ \ \ \textcolor{keywordflow}{if}\ (val==0)\textcolor{keywordflow}{return}\ 1.0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00020}00020\ \ \ \ \ \textcolor{keywordflow}{return}\ (sin(M\_PI*val)/(M\_PI*val));}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00021}00021\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00022}00022\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00023}00023\ QVector<kffsamp\_t>\ QJFilterDesign::LowPassHanning(\textcolor{keywordtype}{double}\ FrequencyCutOff,\ \textcolor{keywordtype}{double}\ SampleRate,\ \textcolor{keywordtype}{int}\ Length)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00024}00024\ \{\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00025}00025\ \ \ \ \ QVector<kffsamp\_t>\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00026}00026\ \ \ \ \ \textcolor{keywordflow}{if}(Length<1)\textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00027}00027\ \ \ \ \ \textcolor{keywordflow}{if}(!(Length\%2))Length++;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00028}00028\ \ \ \ \ \textcolor{keywordtype}{int}\ j=1;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00029}00029\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i=(-\/(Length-\/1)/2);i<=((Length-\/1)/2);i++)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00030}00030\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00031}00031\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{double}\ w=0.5*(1.0-\/cos(2.0*M\_PI*((\textcolor{keywordtype}{double})j)/((\textcolor{keywordtype}{double})(Length))));}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00032}00032\ \ \ \ \ \ \ \ \ h.push\_back(w*(2.0*FrequencyCutOff/SampleRate)*sinc\_normalized(2.0*FrequencyCutOff*((\textcolor{keywordtype}{double})i)/SampleRate));}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00033}00033\ \ \ \ \ \ \ \ \ j++;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00034}00034\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00036}00036\ \ \ \ \ \textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00037}00037\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00038}00038\ \textcolor{comment}{/*\ in\ matlab\ this\ function\ is}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00039}00039\ \textcolor{comment}{idx\ =\ (-\/(Length-\/1)/2:(Length-\/1)/2);}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00040}00040\ \textcolor{comment}{hideal\ =\ (2*FrequencyCutOff/SampleRate)*sinc(2*FrequencyCutOff*idx/SampleRate);}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00041}00041\ \textcolor{comment}{h\ =\ hanning(Length)'\ .*\ hideal;}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00042}00042\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00043}00043\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00044}00044\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00045}00045\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00046}00046\ QVector<kffsamp\_t>\ QJFilterDesign::HighPassHanning(\textcolor{keywordtype}{double}\ FrequencyCutOff,\ \textcolor{keywordtype}{double}\ SampleRate,\ \textcolor{keywordtype}{int}\ Length)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00047}00047\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00048}00048\ \ \ \ \ QVector<kffsamp\_t>\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00049}00049\ \ \ \ \ \textcolor{keywordflow}{if}(Length<1)\textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00050}00050\ \ \ \ \ \textcolor{keywordflow}{if}(!(Length\%2))Length++;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00051}00051\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00052}00052\ \ \ \ \ QVector<kffsamp\_t>\ h1;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00053}00053\ \ \ \ \ QVector<kffsamp\_t>\ h2;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00054}00054\ \ \ \ \ h2.fill(0,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00055}00055\ \ \ \ \ h2[(Length-\/1)/2]=1.0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00057}00057\ \ \ \ \ h1=LowPassHanning(FrequencyCutOff,SampleRate,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00058}00058\ \ \ \ \ \textcolor{keywordflow}{if}((h1.size()==Length)\&\&(h2.size()==Length))}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00059}00059\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00060}00060\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i=0;i<Length;i++)h.push\_back(h2[i]-\/h1[i]);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00061}00061\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00062}00062\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00063}00063\ \ \ \ \ \textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00064}00064\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00065}00065\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00066}00066\ QVector<kffsamp\_t>\ QJFilterDesign::BandPassHanning(\textcolor{keywordtype}{double}\ LowFrequencyCutOff,\textcolor{keywordtype}{double}\ HighFrequencyCutOff,\ \textcolor{keywordtype}{double}\ SampleRate,\ \textcolor{keywordtype}{int}\ Length)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00067}00067\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00068}00068\ \ \ \ \ QVector<kffsamp\_t>\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00069}00069\ \ \ \ \ \textcolor{keywordflow}{if}(Length<1)\textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00070}00070\ \ \ \ \ \textcolor{keywordflow}{if}(!(Length\%2))Length++;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00071}00071\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00072}00072\ \ \ \ \ QVector<kffsamp\_t>\ h1;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00073}00073\ \ \ \ \ QVector<kffsamp\_t>\ h2;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00074}00074\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00075}00075\ \ \ \ \ h2=LowPassHanning(HighFrequencyCutOff,SampleRate,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00076}00076\ \ \ \ \ h1=LowPassHanning(LowFrequencyCutOff,SampleRate,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00077}00077\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00078}00078\ \ \ \ \ \textcolor{keywordflow}{if}((h1.size()==Length)\&\&(h2.size()==Length))}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00079}00079\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00080}00080\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i=0;i<Length;i++)h.push\_back(h2[i]-\/h1[i]);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00081}00081\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00082}00082\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00083}00083\ \ \ \ \ \textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00084}00084\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00085}00085\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00086}00086\ QVector<kffsamp\_t>\ QJFilterDesign::BandStopHanning(\textcolor{keywordtype}{double}\ LowFrequencyCutOff,\textcolor{keywordtype}{double}\ HighFrequencyCutOff,\ \textcolor{keywordtype}{double}\ SampleRate,\ \textcolor{keywordtype}{int}\ Length)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00087}00087\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00088}00088\ \ \ \ \ QVector<kffsamp\_t>\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00089}00089\ \ \ \ \ \textcolor{keywordflow}{if}(Length<1)\textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00090}00090\ \ \ \ \ \textcolor{keywordflow}{if}(!(Length\%2))Length++;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00091}00091\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00092}00092\ \ \ \ \ QVector<kffsamp\_t>\ h1;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00093}00093\ \ \ \ \ QVector<kffsamp\_t>\ h2;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00094}00094\ \ \ \ \ h2.fill(0,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00095}00095\ \ \ \ \ h2[(Length-\/1)/2]=1.0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00096}00096\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00097}00097\ \ \ \ \ h1=BandPassHanning(LowFrequencyCutOff,HighFrequencyCutOff,SampleRate,Length);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00098}00098\ \ \ \ \ \textcolor{keywordflow}{if}((h1.size()==Length)\&\&(h2.size()==Length))}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00099}00099\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00100}00100\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i=0;i<Length;i++)h.push\_back(h2[i]-\/h1[i]);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00101}00101\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00102}00102\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00103}00103\ \ \ \ \ \textcolor{keywordflow}{return}\ h;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00104}00104\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00105}00105\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00106}00106\ \textcolor{comment}{//-\/-\/-\/slow\ FIR}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00107}00107\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00108}00108\ QJSlowFIRFilter::QJSlowFIRFilter(QObject\ *parent)\ :\ QObject(parent)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00109}00109\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00110}00110\ \ \ \ \ Cof.push\_back(1.0);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00111}00111\ \ \ \ \ reset();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00112}00112\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00113}00113\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00114}00114\ \textcolor{keywordtype}{void}\ QJSlowFIRFilter::setKernel(QVector<kffsamp\_t>\ imp\_responce)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00115}00115\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00116}00116\ \ \ \ \ Cof=imp\_responce;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00117}00117\ \ \ \ \ reset();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00118}00118\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00119}00119\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00120}00120\ \textcolor{keywordtype}{void}\ QJSlowFIRFilter::reset()}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00121}00121\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00122}00122\ \ \ \ \ Buf.fill(0,Cof.size());}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00123}00123\ \ \ \ \ BufPtr=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00124}00124\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00125}00125\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00126}00126\ \textcolor{keywordtype}{void}\ QJSlowFIRFilter::Update(QVector<kffsamp\_t>\ \&data)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00127}00127\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00128}00128\ \ \ \ \ Update(data.data(),\ data.size());}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00129}00129\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00130}00130\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00131}00131\ \textcolor{keywordtype}{void}\ QJSlowFIRFilter::Update(kffsamp\_t\ *data,\ \textcolor{keywordtype}{int}\ Size)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00132}00132\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00133}00133\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00134}00134\ \ \ \ \ \textcolor{keywordflow}{if}(Buf.size()!=Cof.size())}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00135}00135\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00136}00136\ \ \ \ \ \ \ \ \ Buf.resize(Cof.size());}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00137}00137\ \ \ \ \ \ \ \ \ BufPtr=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00138}00138\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00139}00139\ \ \ \ \ BufPtr\%=Buf.size();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00140}00140\ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00141}00141\ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ COfsz=Cof.size();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00142}00142\ \ \ \ \ \textcolor{keywordtype}{int}\ Bufsz=Buf.size();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00143}00143\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00144}00144\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ j=0;j<Size;j++)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00145}00145\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00146}00146\ \ \ \ \ \ \ \ \ Buf[BufPtr]=data[j];}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00147}00147\ \ \ \ \ \ \ \ \ BufPtr++;\textcolor{keywordflow}{if}(BufPtr==Bufsz)BufPtr=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00148}00148\ \ \ \ \ \ \ \ \ data[j]=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00149}00149\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(i=0;i<COfsz;i++)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00150}00150\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00151}00151\ \ \ \ \ \ \ \ \ \ \ \ \ data[j]+=Buf[BufPtr]*Cof[i];}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00152}00152\ \ \ \ \ \ \ \ \ \ \ \ \ BufPtr++;\textcolor{keywordflow}{if}(BufPtr==Bufsz)BufPtr=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00153}00153\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00154}00154\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00155}00155\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00156}00156\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00157}00157\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00158}00158\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00159}00159\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00160}00160\ \textcolor{comment}{//-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00161}00161\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00162}00162\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00163}00163\ \textcolor{comment}{//-\/-\/-\/fast\ FIR}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00164}00164\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00165}00165\ QJFastFIRFilter::QJFastFIRFilter(QObject\ *parent)\ :\ QObject(parent)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00166}00166\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00167}00167\ \ \ \ \ QVector<kffsamp\_t>\ tvect;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00168}00168\ \ \ \ \ tvect.push\_back(1.0);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00169}00169\ \ \ \ \ nfft=2;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00170}00170\ \ \ \ \ cfg=kiss\_fastfir\_alloc(tvect.data(),tvect.size(),\&nfft,0,0);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00171}00171\ \ \ \ \ reset();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00172}00172\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00173}00173\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00174}00174\ \textcolor{keywordtype}{int}\ QJFastFIRFilter::setKernel(QVector<kffsamp\_t>\ imp\_responce)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00175}00175\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00176}00176\ \ \ \ \ \textcolor{keywordtype}{int}\ \_nfft=imp\_responce.size()*4;\textcolor{comment}{//rule\ of\ thumb}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00177}00177\ \ \ \ \ \_nfft=pow(2.0,(ceil(log2(\_nfft))));}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00178}00178\ \ \ \ \ \textcolor{keywordflow}{return}\ setKernel(imp\_responce,\_nfft);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00179}00179\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00180}00180\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00181}00181\ \textcolor{keywordtype}{int}\ QJFastFIRFilter::setKernel(QVector<kffsamp\_t>\ imp\_responce,\textcolor{keywordtype}{int}\ \_nfft)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00182}00182\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00183}00183\ \ \ \ \ \textcolor{keywordflow}{if}(!imp\_responce.size())\textcolor{keywordflow}{return}\ nfft;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00184}00184\ \ \ \ \ free(cfg);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00185}00185\ \ \ \ \ \_nfft=pow(2.0,(ceil(log2(\_nfft))));}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00186}00186\ \ \ \ \ nfft=\_nfft;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00187}00187\ \ \ \ \ cfg=kiss\_fastfir\_alloc(imp\_responce.data(),imp\_responce.size(),\&nfft,0,0);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00188}00188\ \ \ \ \ reset();}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00189}00189\ \ \ \ \ \textcolor{keywordflow}{return}\ nfft;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00190}00190\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00191}00191\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00192}00192\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00193}00193\ \textcolor{keywordtype}{void}\ QJFastFIRFilter::reset()}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00194}00194\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00195}00195\ \ \ \ \ remainder.fill(0,nfft*2);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00196}00196\ \ \ \ \ idx\_inbuf=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00197}00197\ \ \ \ \ remainder\_ptr=nfft;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00198}00198\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00199}00199\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00200}00200\ \textcolor{keywordtype}{void}\ QJFastFIRFilter::Update(QVector<kffsamp\_t>\ \&data)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00201}00201\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00202}00202\ \ \ \ \ Update(data.data(),\ data.size());}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00203}00203\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00204}00204\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00205}00205\ \textcolor{keywordtype}{void}\ QJFastFIRFilter::Update(kffsamp\_t\ *data,\textcolor{keywordtype}{int}\ Size)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00206}00206\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00207}00207\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00208}00208\ \ \ \ \ \textcolor{comment}{//ensure\ enough\ storage}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00209}00209\ \ \ \ \ \textcolor{keywordflow}{if}((inbuf.size()-\/idx\_inbuf)<(\textcolor{keywordtype}{size\_t})Size)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00210}00210\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00211}00211\ \ \ \ \ \ \ \ \ inbuf.resize(Size+nfft);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00212}00212\ \ \ \ \ \ \ \ \ outbuf.resize(Size+nfft);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00213}00213\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00214}00214\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00215}00215\ \ \ \ \ \textcolor{comment}{//add\ data\ to\ storage}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00216}00216\ \ \ \ \ memcpy\ (\ inbuf.data()+idx\_inbuf,\ data,\ \textcolor{keyword}{sizeof}(kffsamp\_t)*Size\ );}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00217}00217\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nread=Size;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00218}00218\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00219}00219\ \ \ \ \ \textcolor{comment}{//fast\ fir\ of\ storage}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00220}00220\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nwrite=kiss\_fastfir(cfg,\ inbuf.data(),\ outbuf.data(),nread,\&idx\_inbuf);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00221}00221\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00222}00222\ \ \ \ \ \textcolor{keywordtype}{int}\ currentwantednum=Size;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00223}00223\ \ \ \ \ \textcolor{keywordtype}{int}\ numfromremainder=std::min(currentwantednum,remainder\_ptr);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00224}00224\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00225}00225\ \ \ \ \ \textcolor{comment}{//return\ as\ much\ as\ posible\ from\ remainder\ buffer}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00226}00226\ \ \ \ \ \textcolor{keywordflow}{if}(numfromremainder>0)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00227}00227\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00228}00228\ \ \ \ \ \ \ \ \ memcpy\ (\ data,\ remainder.data(),\ \textcolor{keyword}{sizeof}(kffsamp\_t)*numfromremainder\ );}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00229}00229\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00230}00230\ \ \ \ \ \ \ \ \ currentwantednum-\/=numfromremainder;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00231}00231\ \ \ \ \ \ \ \ \ data+=numfromremainder;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00232}00232\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00233}00233\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(numfromremainder<remainder\_ptr)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00234}00234\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00235}00235\ \ \ \ \ \ \ \ \ \ \ \ \ remainder\_ptr-\/=numfromremainder;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00236}00236\ \ \ \ \ \ \ \ \ \ \ \ \ memcpy\ (\ remainder.data(),\ remainder.data()+numfromremainder,\ \textcolor{keyword}{sizeof}(kffsamp\_t)*remainder\_ptr\ );}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00237}00237\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ remainder\_ptr=0;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00238}00238\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00239}00239\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00240}00240\ \ \ \ \ \textcolor{comment}{//then\ return\ stuff\ from\ output\ buffer}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00241}00241\ \ \ \ \ \textcolor{keywordtype}{int}\ numfromoutbuf=std::min(currentwantednum,(\textcolor{keywordtype}{int})nwrite);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00242}00242\ \ \ \ \ \textcolor{keywordflow}{if}(numfromoutbuf>0)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00243}00243\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00244}00244\ \ \ \ \ \ \ \ \ memcpy\ (\ data,\ outbuf.data(),\ \textcolor{keyword}{sizeof}(kffsamp\_t)*numfromoutbuf\ );}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00245}00245\ \ \ \ \ \ \ \ \ currentwantednum-\/=numfromoutbuf;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00246}00246\ \ \ \ \ \ \ \ \ data+=numfromoutbuf;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00247}00247\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00248}00248\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00249}00249\ \ \ \ \ \textcolor{comment}{//any\ left\ over\ is\ added\ to\ remainder\ buffer}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00250}00250\ \ \ \ \ \textcolor{keywordflow}{if}(((\textcolor{keywordtype}{size\_t})numfromoutbuf<nwrite)\&\&(nwrite>0))}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00251}00251\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00252}00252\ \ \ \ \ \ \ \ \ memcpy\ (\ remainder.data()+remainder\_ptr,\ outbuf.data()+numfromoutbuf,\ \textcolor{keyword}{sizeof}(kffsamp\_t)*(nwrite-\/numfromoutbuf)\ );}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00253}00253\ \ \ \ \ \ \ \ \ remainder\_ptr+=(nwrite-\/numfromoutbuf);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00254}00254\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00255}00255\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00256}00256\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00257}00257\ \ \ \ \ \textcolor{comment}{//if\ currentwantednum>0\ then\ some\ items\ were\ not\ changed,\ this\ should\ not\ happen}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00258}00258\ \ \ \ \ \textcolor{comment}{//we\ should\ anyways\ have\ enough\ to\ return\ but\ if\ we\ dont\ this\ happens.\ this\ should\ be\ avoided\ else\ a\ discontinuity\ of\ frames\ occurs.\ set\ remainder\ to\ zero\ and\ set\ remainder\_ptr\ to\ nfft\ before\ running\ to\ avoid\ this}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00259}00259\ \ \ \ \ \textcolor{keywordflow}{if}(currentwantednum>0)}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00260}00260\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00261}00261\ \ \ \ \ \ \ \ \ qDebug()<<\textcolor{stringliteral}{"{}Error:\ user\ wants\ "{}}<<currentwantednum<<\textcolor{stringliteral}{"{}\ more\ items\ from\ fir\ filter!"{}};}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00262}00262\ \ \ \ \ \ \ \ \ remainder\_ptr+=currentwantednum;}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00263}00263\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00264}00264\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00265}00265\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00266}00266\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00267}00267\ QJFastFIRFilter::\string~QJFastFIRFilter()}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00268}00268\ \{}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00269}00269\ \ \ \ \ free(cfg);}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00270}00270\ \}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00271}00271\ }
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00272}00272\ \textcolor{comment}{//-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/}}
+\DoxyCodeLine{\Hypertarget{qjfastfir_8cpp_source_l00273}00273\ }
+
+\end{DoxyCode}

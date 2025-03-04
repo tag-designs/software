@@ -1,0 +1,130 @@
+\doxysection{kiss\+\_\+fft.\+h}
+\hypertarget{kiss__fft_8h_source}{}\label{kiss__fft_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/kiss\_fft.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/kiss\_fft.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ KISS\_FFT\_H}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ KISS\_FFT\_H}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <stdlib.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <math.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <string.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00009}00009\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00010}00010\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00011}00011\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00013}00013\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00014}00014\ \textcolor{comment}{\ ATTENTION!}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00015}00015\ \textcolor{comment}{\ If\ you\ would\ like\ a\ :}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00016}00016\ \textcolor{comment}{\ -\/-\/\ a\ utility\ that\ will\ handle\ the\ caching\ of\ fft\ objects}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00017}00017\ \textcolor{comment}{\ -\/-\/\ real-\/only\ (no\ imaginary\ time\ component\ )\ FFT}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00018}00018\ \textcolor{comment}{\ -\/-\/\ a\ multi-\/dimensional\ FFT}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00019}00019\ \textcolor{comment}{\ -\/-\/\ a\ command-\/line\ utility\ to\ perform\ ffts}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00020}00020\ \textcolor{comment}{\ -\/-\/\ a\ command-\/line\ utility\ to\ perform\ fast-\/convolution\ filtering}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00021}00021\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00022}00022\ \textcolor{comment}{\ Then\ see\ kfc.h\ kiss\_fftr.h\ kiss\_fftnd.h\ fftutil.c\ kiss\_fastfir.c}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00023}00023\ \textcolor{comment}{\ \ in\ the\ tools/\ directory.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00024}00024\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00025}00025\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00026}00026\ \textcolor{preprocessor}{\#ifdef\ USE\_SIMD}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00027}00027\ \textcolor{preprocessor}{\#\ include\ <xmmintrin.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00028}00028\ \textcolor{preprocessor}{\#\ define\ kiss\_fft\_scalar\ \_\_m128}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00029}00029\ \textcolor{preprocessor}{\#define\ KISS\_FFT\_MALLOC(nbytes)\ \_mm\_malloc(nbytes,16)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00030}00030\ \textcolor{preprocessor}{\#define\ KISS\_FFT\_FREE\ \_mm\_free}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00031}00031\ \textcolor{preprocessor}{\#else\ \ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00032}00032\ \textcolor{preprocessor}{\#define\ KISS\_FFT\_MALLOC\ malloc}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00033}00033\ \textcolor{preprocessor}{\#define\ KISS\_FFT\_FREE\ free}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00034}00034\ \textcolor{preprocessor}{\#endif\ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00037}00037\ \textcolor{preprocessor}{\#ifdef\ FIXED\_POINT}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00038}00038\ \textcolor{preprocessor}{\#include\ <sys/types.h>}\ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00039}00039\ \textcolor{preprocessor}{\#\ if\ (FIXED\_POINT\ ==\ 32)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00040}00040\ \textcolor{preprocessor}{\#\ \ define\ kiss\_fft\_scalar\ int32\_t}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00041}00041\ \textcolor{preprocessor}{\#\ else\ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00042}00042\ \textcolor{preprocessor}{\#\ \ define\ kiss\_fft\_scalar\ int16\_t}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00043}00043\ \textcolor{preprocessor}{\#\ endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00044}00044\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00045}00045\ \textcolor{preprocessor}{\#\ ifndef\ kiss\_fft\_scalar}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00046}00046\ \textcolor{comment}{/*\ \ default\ is\ float\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00047}00047\ \textcolor{preprocessor}{\#\ \ \ define\ kiss\_fft\_scalar\ float}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00048}00048\ \textcolor{preprocessor}{\#\ endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00049}00049\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00050}00050\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00051}\mbox{\hyperlink{structkiss__fft__cpx}{00051}}\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00052}00052\ \ \ \ \ kiss\_fft\_scalar\ r;}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00053}00053\ \ \ \ \ kiss\_fft\_scalar\ i;}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00054}00054\ \}\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}};}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00055}00055\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00056}00056\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structkiss__fft__state}{kiss\_fft\_state}}*\ kiss\_fft\_cfg;}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00057}00057\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00058}00058\ \textcolor{comment}{/*\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00059}00059\ \textcolor{comment}{\ *\ \ kiss\_fft\_alloc}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00060}00060\ \textcolor{comment}{\ *\ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00061}00061\ \textcolor{comment}{\ *\ \ Initialize\ a\ FFT\ (or\ IFFT)\ algorithm's\ cfg/state\ buffer.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00062}00062\ \textcolor{comment}{\ *}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00063}00063\ \textcolor{comment}{\ *\ \ typical\ usage:\ \ \ \ \ \ kiss\_fft\_cfg\ mycfg=kiss\_fft\_alloc(1024,0,NULL,NULL);}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00064}00064\ \textcolor{comment}{\ *}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00065}00065\ \textcolor{comment}{\ *\ \ The\ return\ value\ from\ fft\_alloc\ is\ a\ cfg\ buffer\ used\ internally}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00066}00066\ \textcolor{comment}{\ *\ \ by\ the\ fft\ routine\ or\ NULL.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00067}00067\ \textcolor{comment}{\ *}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00068}00068\ \textcolor{comment}{\ *\ \ If\ lenmem\ is\ NULL,\ then\ kiss\_fft\_alloc\ will\ allocate\ a\ cfg\ buffer\ using\ malloc.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00069}00069\ \textcolor{comment}{\ *\ \ The\ returned\ value\ should\ be\ free()d\ when\ done\ to\ avoid\ memory\ leaks.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00070}00070\ \textcolor{comment}{\ *\ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00071}00071\ \textcolor{comment}{\ *\ \ The\ state\ can\ be\ placed\ in\ a\ user\ supplied\ buffer\ 'mem':}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00072}00072\ \textcolor{comment}{\ *\ \ If\ lenmem\ is\ not\ NULL\ and\ mem\ is\ not\ NULL\ and\ *lenmem\ is\ large\ enough,}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00073}00073\ \textcolor{comment}{\ *\ \ \ \ \ \ then\ the\ function\ places\ the\ cfg\ in\ mem\ and\ the\ size\ used\ in\ *lenmem}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00074}00074\ \textcolor{comment}{\ *\ \ \ \ \ \ and\ returns\ mem.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00075}00075\ \textcolor{comment}{\ *\ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00076}00076\ \textcolor{comment}{\ *\ \ If\ lenmem\ is\ not\ NULL\ and\ (\ mem\ is\ NULL\ or\ *lenmem\ is\ not\ large\ enough),}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00077}00077\ \textcolor{comment}{\ *\ \ \ \ \ \ then\ the\ function\ returns\ NULL\ and\ places\ the\ minimum\ cfg\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00078}00078\ \textcolor{comment}{\ *\ \ \ \ \ \ buffer\ size\ in\ *lenmem.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00079}00079\ \textcolor{comment}{\ *\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00080}00080\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00081}00081\ kiss\_fft\_cfg\ kiss\_fft\_alloc(\textcolor{keywordtype}{int}\ nfft,\textcolor{keywordtype}{int}\ inverse\_fft,\textcolor{keywordtype}{void}\ *\ mem,\textcolor{keywordtype}{size\_t}\ *\ lenmem);\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00082}00082\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00083}00083\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00084}00084\ \textcolor{comment}{\ *\ kiss\_fft(cfg,in\_out\_buf)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00085}00085\ \textcolor{comment}{\ *}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00086}00086\ \textcolor{comment}{\ *\ Perform\ an\ FFT\ on\ a\ complex\ input\ buffer.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00087}00087\ \textcolor{comment}{\ *\ for\ a\ forward\ FFT,}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00088}00088\ \textcolor{comment}{\ *\ fin\ should\ be\ \ f[0]\ ,\ f[1]\ ,\ ...\ ,f[nfft-\/1]}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00089}00089\ \textcolor{comment}{\ *\ fout\ will\ be\ \ \ F[0]\ ,\ F[1]\ ,\ ...\ ,F[nfft-\/1]}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00090}00090\ \textcolor{comment}{\ *\ Note\ that\ each\ element\ is\ complex\ and\ can\ be\ accessed\ like}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00091}00091\ \textcolor{comment}{\ \ \ \ f[k].r\ and\ f[k].i}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00092}00092\ \textcolor{comment}{\ *\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00093}00093\ \textcolor{keywordtype}{void}\ kiss\_fft(kiss\_fft\_cfg\ cfg,\textcolor{keyword}{const}\ \mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ *fin,\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ *fout);}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00094}00094\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00095}00095\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00096}00096\ \textcolor{comment}{\ A\ more\ generic\ version\ of\ the\ above\ function.\ It\ reads\ its\ input\ from\ every\ Nth\ sample.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00097}00097\ \textcolor{comment}{\ *\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00098}00098\ \textcolor{keywordtype}{void}\ kiss\_fft\_stride(kiss\_fft\_cfg\ cfg,\textcolor{keyword}{const}\ \mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ *fin,\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ *fout,\textcolor{keywordtype}{int}\ fin\_stride);}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00099}00099\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00100}00100\ \textcolor{comment}{/*\ If\ kiss\_fft\_alloc\ allocated\ a\ buffer,\ it\ is\ one\ contiguous\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00101}00101\ \textcolor{comment}{\ \ \ buffer\ and\ can\ be\ simply\ free()d\ when\ no\ longer\ needed*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00102}00102\ \textcolor{preprocessor}{\#define\ kiss\_fft\_free\ free}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00103}00103\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00104}00104\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00105}00105\ \textcolor{comment}{\ Cleans\ up\ some\ memory\ that\ gets\ managed\ internally.\ Not\ necessary\ to\ call,\ but\ it\ might\ clean\ up\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00106}00106\ \textcolor{comment}{\ your\ compiler\ output\ to\ call\ this\ before\ you\ exit.}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00107}00107\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00108}00108\ \textcolor{keywordtype}{void}\ kiss\_fft\_cleanup(\textcolor{keywordtype}{void});}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00109}00109\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00110}00110\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00111}00111\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00112}00112\ \textcolor{comment}{\ *\ Returns\ the\ smallest\ integer\ k,\ such\ that\ k>=n\ and\ k\ has\ only\ "{}fast"{}\ factors\ (2,3,5)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00113}00113\ \textcolor{comment}{\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00114}00114\ \textcolor{keywordtype}{int}\ kiss\_fft\_next\_fast\_size(\textcolor{keywordtype}{int}\ n);}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00115}00115\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00116}00116\ \textcolor{comment}{/*\ for\ real\ ffts,\ we\ need\ an\ even\ size\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00117}00117\ \textcolor{preprocessor}{\#define\ kiss\_fftr\_next\_fast\_size\_real(n)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00118}00118\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (kiss\_fft\_next\_fast\_size(\ ((n)+1)>>1)<<1)}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00119}00119\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00120}00120\ \textcolor{preprocessor}{\#ifdef\ \_\_cplusplus}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00121}00121\ \}\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00122}00122\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00123}00123\ }
+\DoxyCodeLine{\Hypertarget{kiss__fft_8h_source_l00124}00124\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

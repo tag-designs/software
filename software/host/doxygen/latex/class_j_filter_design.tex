@@ -1,0 +1,82 @@
+\doxysection{JFilter\+Design Class Reference}
+\hypertarget{class_j_filter_design}{}\label{class_j_filter_design}\index{JFilterDesign@{JFilterDesign}}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static vector$<$ kffsamp\+\_\+t $>$ \mbox{\hyperlink{class_j_filter_design_a179c7c927ce00d757a54139826456afa}{Low\+Pass\+Hanning}} (double Frequency\+Cut\+Off, double Sample\+Rate, int Length)
+\item 
+static vector$<$ kffsamp\+\_\+t $>$ \mbox{\hyperlink{class_j_filter_design_a716bc058879dfe0182578e42cf787d16}{High\+Pass\+Hanning}} (double Frequency\+Cut\+Off, double Sample\+Rate, int Length)
+\item 
+static vector$<$ kffsamp\+\_\+t $>$ \mbox{\hyperlink{class_j_filter_design_adfb9786af1727daa89b9254d12587520}{Band\+Pass\+Hanning}} (double Low\+Frequency\+Cut\+Off, double High\+Frequency\+Cut\+Off, double Sample\+Rate, int Length)
+\item 
+static vector$<$ kffsamp\+\_\+t $>$ \mbox{\hyperlink{class_j_filter_design_a992666b73c5e96a0789816b1e91fd170}{Band\+Stop\+Hanning}} (double Low\+Frequency\+Cut\+Off, double High\+Frequency\+Cut\+Off, double Sample\+Rate, int Length)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8h_source_l00064}{64}} of file \mbox{\hyperlink{jfastfir_8h_source}{jfastfir.\+h}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_j_filter_design_ab160d2061e86509893a6c28ac0d34a81}\index{JFilterDesign@{JFilterDesign}!JFilterDesign@{JFilterDesign}}
+\index{JFilterDesign@{JFilterDesign}!JFilterDesign@{JFilterDesign}}
+\doxysubsubsection{\texorpdfstring{JFilterDesign()}{JFilterDesign()}}
+{\footnotesize\ttfamily \label{class_j_filter_design_ab160d2061e86509893a6c28ac0d34a81} 
+JFilter\+Design\+::\+JFilter\+Design (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8h_source_l00067}{67}} of file \mbox{\hyperlink{jfastfir_8h_source}{jfastfir.\+h}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_j_filter_design_adfb9786af1727daa89b9254d12587520}\index{JFilterDesign@{JFilterDesign}!BandPassHanning@{BandPassHanning}}
+\index{BandPassHanning@{BandPassHanning}!JFilterDesign@{JFilterDesign}}
+\doxysubsubsection{\texorpdfstring{BandPassHanning()}{BandPassHanning()}}
+{\footnotesize\ttfamily \label{class_j_filter_design_adfb9786af1727daa89b9254d12587520} 
+vector$<$ kffsamp\+\_\+t $>$ JFilter\+Design\+::\+Band\+Pass\+Hanning (\begin{DoxyParamCaption}\item[{double}]{Low\+Frequency\+Cut\+Off}{, }\item[{double}]{High\+Frequency\+Cut\+Off}{, }\item[{double}]{Sample\+Rate}{, }\item[{int}]{Length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8cpp_source_l00064}{64}} of file \mbox{\hyperlink{jfastfir_8cpp_source}{jfastfir.\+cpp}}.
+
+\Hypertarget{class_j_filter_design_a992666b73c5e96a0789816b1e91fd170}\index{JFilterDesign@{JFilterDesign}!BandStopHanning@{BandStopHanning}}
+\index{BandStopHanning@{BandStopHanning}!JFilterDesign@{JFilterDesign}}
+\doxysubsubsection{\texorpdfstring{BandStopHanning()}{BandStopHanning()}}
+{\footnotesize\ttfamily \label{class_j_filter_design_a992666b73c5e96a0789816b1e91fd170} 
+vector$<$ kffsamp\+\_\+t $>$ JFilter\+Design\+::\+Band\+Stop\+Hanning (\begin{DoxyParamCaption}\item[{double}]{Low\+Frequency\+Cut\+Off}{, }\item[{double}]{High\+Frequency\+Cut\+Off}{, }\item[{double}]{Sample\+Rate}{, }\item[{int}]{Length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8cpp_source_l00084}{84}} of file \mbox{\hyperlink{jfastfir_8cpp_source}{jfastfir.\+cpp}}.
+
+\Hypertarget{class_j_filter_design_a716bc058879dfe0182578e42cf787d16}\index{JFilterDesign@{JFilterDesign}!HighPassHanning@{HighPassHanning}}
+\index{HighPassHanning@{HighPassHanning}!JFilterDesign@{JFilterDesign}}
+\doxysubsubsection{\texorpdfstring{HighPassHanning()}{HighPassHanning()}}
+{\footnotesize\ttfamily \label{class_j_filter_design_a716bc058879dfe0182578e42cf787d16} 
+vector$<$ kffsamp\+\_\+t $>$ JFilter\+Design\+::\+High\+Pass\+Hanning (\begin{DoxyParamCaption}\item[{double}]{Frequency\+Cut\+Off}{, }\item[{double}]{Sample\+Rate}{, }\item[{int}]{Length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8cpp_source_l00044}{44}} of file \mbox{\hyperlink{jfastfir_8cpp_source}{jfastfir.\+cpp}}.
+
+\Hypertarget{class_j_filter_design_a179c7c927ce00d757a54139826456afa}\index{JFilterDesign@{JFilterDesign}!LowPassHanning@{LowPassHanning}}
+\index{LowPassHanning@{LowPassHanning}!JFilterDesign@{JFilterDesign}}
+\doxysubsubsection{\texorpdfstring{LowPassHanning()}{LowPassHanning()}}
+{\footnotesize\ttfamily \label{class_j_filter_design_a179c7c927ce00d757a54139826456afa} 
+vector$<$ kffsamp\+\_\+t $>$ JFilter\+Design\+::\+Low\+Pass\+Hanning (\begin{DoxyParamCaption}\item[{double}]{Frequency\+Cut\+Off}{, }\item[{double}]{Sample\+Rate}{, }\item[{int}]{Length}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Definition at line \mbox{\hyperlink{jfastfir_8cpp_source_l00021}{21}} of file \mbox{\hyperlink{jfastfir_8cpp_source}{jfastfir.\+cpp}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/\+Fast\+FIR/\+Fast\+FIR/jfastfir.\+h\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/\+Fast\+FIR/\+Fast\+FIR/jfastfir.\+cpp\end{DoxyCompactItemize}

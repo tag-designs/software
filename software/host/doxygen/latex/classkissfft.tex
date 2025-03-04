@@ -1,0 +1,96 @@
+\doxysection{kissfft\texorpdfstring{$<$}{<} T\+\_\+\+Scalar, T\+\_\+traits \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{classkissfft}{}\label{classkissfft}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef T\+\_\+traits \mbox{\hyperlink{classkissfft_aa5a17184447b2a77c41e61f2d491bad5}{traits\+\_\+type}}
+\item 
+typedef traits\+\_\+type\+::scalar\+\_\+type \mbox{\hyperlink{classkissfft_a074a5f74883901c625b6e80660d16ad4}{scalar\+\_\+type}}
+\item 
+typedef traits\+\_\+type\+::cpx\+\_\+type \mbox{\hyperlink{classkissfft_af66664488b0b1b2995f3e4c2f63a8b7d}{cpx\+\_\+type}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classkissfft_a9140ed2cbfe6116eba53256e16084475}{kissfft}} (int nfft, bool inverse, const traits\+\_\+type \&traits=traits\+\_\+type())
+\item 
+void \mbox{\hyperlink{classkissfft_ad2db80b9c9b087fb36fbe8b3b0078df8}{transform}} (const cpx\+\_\+type \texorpdfstring{$\ast$}{*}src, cpx\+\_\+type \texorpdfstring{$\ast$}{*}dst)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$\newline
+class kissfft$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$}
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00060}{60}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+
+
+\doxysubsection{Member Typedef Documentation}
+\Hypertarget{classkissfft_af66664488b0b1b2995f3e4c2f63a8b7d}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}!cpx\_type@{cpx\_type}}
+\index{cpx\_type@{cpx\_type}!kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection{\texorpdfstring{cpx\_type}{cpx\_type}}
+{\footnotesize\ttfamily \label{classkissfft_af66664488b0b1b2995f3e4c2f63a8b7d} 
+template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$ \\
+typedef traits\+\_\+type\+::cpx\+\_\+type \mbox{\hyperlink{classkissfft}{kissfft}}$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$\+::cpx\+\_\+type}
+
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00065}{65}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+\Hypertarget{classkissfft_a074a5f74883901c625b6e80660d16ad4}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}!scalar\_type@{scalar\_type}}
+\index{scalar\_type@{scalar\_type}!kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection{\texorpdfstring{scalar\_type}{scalar\_type}}
+{\footnotesize\ttfamily \label{classkissfft_a074a5f74883901c625b6e80660d16ad4} 
+template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$ \\
+typedef traits\+\_\+type\+::scalar\+\_\+type \mbox{\hyperlink{classkissfft}{kissfft}}$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$\+::scalar\+\_\+type}
+
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00064}{64}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+\Hypertarget{classkissfft_aa5a17184447b2a77c41e61f2d491bad5}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}!traits\_type@{traits\_type}}
+\index{traits\_type@{traits\_type}!kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection{\texorpdfstring{traits\_type}{traits\_type}}
+{\footnotesize\ttfamily \label{classkissfft_aa5a17184447b2a77c41e61f2d491bad5} 
+template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$ \\
+typedef T\+\_\+traits \mbox{\hyperlink{classkissfft}{kissfft}}$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$\+::traits\+\_\+type}
+
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00063}{63}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classkissfft_a9140ed2cbfe6116eba53256e16084475}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}!kissfft@{kissfft}}
+\index{kissfft@{kissfft}!kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection{\texorpdfstring{kissfft()}{kissfft()}}
+{\footnotesize\ttfamily \label{classkissfft_a9140ed2cbfe6116eba53256e16084475} 
+template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$ \\
+\mbox{\hyperlink{classkissfft}{kissfft}}$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$\mbox{\hyperlink{classkissfft}{\+::kissfft}} (\begin{DoxyParamCaption}\item[{int}]{nfft}{, }\item[{bool}]{inverse}{, }\item[{const traits\+\_\+type \&}]{traits}{ = {\ttfamily traits\+\_\+type()}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00067}{67}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classkissfft_ad2db80b9c9b087fb36fbe8b3b0078df8}\index{kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}!transform@{transform}}
+\index{transform@{transform}!kissfft$<$ T\_Scalar, T\_traits $>$@{kissfft$<$ T\_Scalar, T\_traits $>$}}
+\doxysubsubsection{\texorpdfstring{transform()}{transform()}}
+{\footnotesize\ttfamily \label{classkissfft_ad2db80b9c9b087fb36fbe8b3b0078df8} 
+template$<$typename T\+\_\+\+Scalar, typename T\+\_\+traits = kissfft\+\_\+utils\+::traits$<$\+T\+\_\+\+Scalar$>$$>$ \\
+void \mbox{\hyperlink{classkissfft}{kissfft}}$<$ T\+\_\+\+Scalar, T\+\_\+traits $>$\+::transform (\begin{DoxyParamCaption}\item[{const cpx\+\_\+type \texorpdfstring{$\ast$}{*}}]{src}{, }\item[{cpx\+\_\+type \texorpdfstring{$\ast$}{*}}]{dst}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Definition at line \mbox{\hyperlink{kissfft_8hh_source_l00073}{73}} of file \mbox{\hyperlink{kissfft_8hh_source}{kissfft.\+hh}}.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/btdataviz/\+Fast\+FIR/kiss\+\_\+fft130\+\_\+jfork1.\+0.\+0/kissfft.\+hh\end{DoxyCompactItemize}

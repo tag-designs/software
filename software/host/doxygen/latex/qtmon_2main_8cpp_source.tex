@@ -1,0 +1,110 @@
+\doxysection{main.\+cpp}
+\hypertarget{qtmon_2main_8cpp_source}{}\label{qtmon_2main_8cpp_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/main.cpp@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/main.cpp}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00001}00001\ \textcolor{preprocessor}{\#include\ <QApplication>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <QString>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QMainWindow>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QTextEdit>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QTimer>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00008}00008\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00009}00009\ \textcolor{preprocessor}{\#include\ "{}tagclass.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00010}00010\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00011}00011\ \textcolor{comment}{/*\ \#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00012}00012\ \textcolor{comment}{\#include\ "{}host.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00013}00013\ \textcolor{comment}{\#include\ "{}tagclass.h"{}\ */}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00014}00014\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00015}00015\ \textcolor{preprocessor}{\#include\ "{}mainwindow.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00016}00016\ \textcolor{preprocessor}{\#include\ "{}ui\_mainwindow.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00018}00018\ \textcolor{preprocessor}{\#include\ "{}mainwindow.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00019}00019\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00020}00020\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00021}00021\ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00022}00022\ \textcolor{preprocessor}{\#include\ "{}log.h"{}}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00023}00023\ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00024}00024\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00025}00025\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00026}00026\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00027}00027\ \textcolor{comment}{//\ \ Redirect\ log\ messages\ to\ text\ window}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00028}00028\ \textcolor{comment}{//\ \ based\ upon:}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00029}00029\ \textcolor{comment}{//\ \ http://stackoverflow.com/questions/22485208/redirect-\/qdebug-\/to-\/qtextedit}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00030}00030\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00031}00031\ \textcolor{keyword}{extern}\ QTextEdit\ *s\_textEdit;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00032}00032\ \textcolor{keywordtype}{int}\ log\_level\ =\ LOG\_ERROR;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00033}00033\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00034}00034\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ logOutput(\textcolor{keywordtype}{int}\ ll,\ \textcolor{keyword}{const}\ QMessageLogContext\ \&context,}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00035}00035\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ QString\ \&msg)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00036}00036\ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00037}00037\ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *tag;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00039}00039\ \ \ \textcolor{keywordflow}{if}\ ((ll\ <\ log\_level)\ ||\ (s\_textEdit\ ==\ \textcolor{keyword}{nullptr}))}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00040}00040\ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00041}00041\ \ \ tag\ =\ log\_level\_string(ll);\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00042}00042\ \ \ \textcolor{keywordflow}{if}\ (context.line)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00043}00043\ \ \ \ \ s\_textEdit-\/>append(QString(\textcolor{stringliteral}{"{}\%1\ \%2\ \%3:\%4"{}})}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00044}00044\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ .arg(tag)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00045}00045\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ .arg(context.function)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00046}00046\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ .arg(context.line)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00047}00047\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ .arg(msg));}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00048}00048\ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00049}00049\ \ \ \ \ s\_textEdit-\/>append(QString(\textcolor{stringliteral}{"{}\%1\ \%4"{}}).arg(tag).arg(msg));}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00050}00050\ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00051}00051\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00052}00052\ \textcolor{keywordtype}{void}\ log\_log\_callback(\mbox{\hyperlink{structlog___event}{log\_Event}}\ *ev)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00053}00053\ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00054}00054\ \ \ QMessageLogContext\ context;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00055}00055\ \ \ context.file\ =\ ev-\/>file;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00056}00056\ \ \ context.line\ =\ ev-\/>line;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00057}00057\ \ \ context.function\ =\ \textcolor{stringliteral}{"{}"{}};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00058}00058\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00059}00059\ \ \ \textcolor{keywordflow}{if}\ (ev-\/>level\ >=\ log\_level)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00060}00060\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00061}00061\ \ \ \ \ QString\ msg\ =\ QString::vasprintf(ev-\/>fmt,\ ev-\/>ap);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00062}00062\ \ \ \ \ logOutput(ev-\/>level,\ context,\ msg);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00063}00063\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00064}00064\ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00065}00065\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00066}00066\ \textcolor{keywordtype}{void}\ myMessageOutput(QtMsgType\ type,\ \textcolor{keyword}{const}\ QMessageLogContext\ \&context,}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00067}00067\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ QString\ \&msg)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00068}00068\ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00069}00069\ \ \ \textcolor{keywordtype}{int}\ level;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00070}00070\ \ \ \textcolor{keywordflow}{if}\ (s\_textEdit\ !=\ \textcolor{keyword}{nullptr})}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00071}00071\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00072}00072\ \ \ \ \ \textcolor{keywordflow}{switch}\ (type)}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00073}00073\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00074}00074\ \ \ \ \ \textcolor{keywordflow}{case}\ QtInfoMsg:}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00075}00075\ \ \ \ \ \ \ level\ =\ LOG\_INFO;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00076}00076\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00077}00077\ \ \ \ \ \textcolor{keywordflow}{case}\ QtDebugMsg:}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00078}00078\ \ \ \ \ \ \ level\ =\ LOG\_DEBUG;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00079}00079\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00080}00080\ \ \ \ \ \textcolor{keywordflow}{case}\ QtWarningMsg:}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00081}00081\ \ \ \ \ \ \ level\ =\ LOG\_WARN;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00082}00082\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00083}00083\ \ \ \ \ \textcolor{keywordflow}{case}\ QtCriticalMsg:}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00084}00084\ \ \ \ \ \ \ level\ =\ LOG\_ERROR;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00085}00085\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00086}00086\ \ \ \ \ \textcolor{keywordflow}{case}\ QtFatalMsg:}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00087}00087\ \ \ \ \ \ \ abort();}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00088}00088\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00089}00089\ \ \ \ \ logOutput(level,\ context,\ msg);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00090}00090\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00091}00091\ \}}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00092}00092\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00093}00093\ \textcolor{keywordtype}{int}\ main(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ *argv[])}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00094}00094\ \{}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00095}00095\ \ \ QApplication\ a(argc,\ argv);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00096}00096\ }
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00097}00097\ \ \ GOOGLE\_PROTOBUF\_VERIFY\_VERSION;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00098}00098\ \ \ log\_set\_quiet(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00099}00099\ \ \ log\_set\_level(log\_level);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00100}00100\ \ \ log\_add\_callback(log\_log\_callback,\ \textcolor{keyword}{nullptr},\ LOG\_TRACE);}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00101}00101\ \ \ \mbox{\hyperlink{class_main_window}{MainWindow}}\ w;}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00102}00102\ \ \ w.show();}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00103}00103\ \ \ \textcolor{keywordflow}{return}\ a.exec();}
+\DoxyCodeLine{\Hypertarget{qtmon_2main_8cpp_source_l00104}00104\ \}}
+
+\end{DoxyCode}

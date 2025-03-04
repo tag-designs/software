@@ -1,0 +1,324 @@
+\doxysection{adxl362config.\+cpp}
+\hypertarget{adxl362config_8cpp_source}{}\label{adxl362config_8cpp_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/adxl362config.cpp@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/adxl362config.cpp}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00001}00001\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <QWidget>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <QGroupBox>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QDoubleSpinBox>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00005}00005\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QDebug>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <QLayout>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <QVBoxLayout>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00009}00009\ \textcolor{preprocessor}{\#include\ <QFormLayout>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00010}00010\ \textcolor{preprocessor}{\#include\ <QLabel>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00011}00011\ \textcolor{preprocessor}{\#include\ <QAbstractButton>}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00013}00013\ \textcolor{preprocessor}{\#include\ "{}pbenumgroup.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00014}00014\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00015}00015\ \textcolor{preprocessor}{\#include\ "{}tagclass.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00016}00016\ \textcolor{preprocessor}{\#include\ "{}adxl362config.h"{}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00018}00018\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ adxl\_data\_size\_buttons\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00019}00019\ \ \ \ \ \{Adxl362\_Adxl367DataFormat\_DF14,\ \textcolor{stringliteral}{"{}14-\/bit\ data"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00020}00020\ \ \ \ \ \{Adxl362\_Adxl367DataFormat\_DF12,\textcolor{stringliteral}{"{}12-\/bit\ data"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00021}00021\ \ \ \ \ \{Adxl362\_Adxl367DataFormat\_DF8,\ \textcolor{stringliteral}{"{}8-\/bit\ data"{}},\textcolor{keyword}{nullptr}\}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00022}00022\ \};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00023}00023\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00024}00024\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ adxl\_channels\_buttons\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00025}00025\ \ \ \{AdxlChannel\_xyz,\textcolor{stringliteral}{"{}X,Y,Z\ Channels"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00026}00026\ \ \ \{AdxlChannel\_x,\textcolor{stringliteral}{"{}X\ Channel"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00027}00027\ \ \ \{AdxlChannel\_y,\textcolor{stringliteral}{"{}Y\ Channel"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00028}00028\ \ \ \{AdxlChannel\_z,\textcolor{stringliteral}{"{}Z\ Channel"{}},\ \textcolor{keyword}{nullptr}\}\ \textcolor{comment}{/*,}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00029}00029\ \textcolor{comment}{\ \ \{AdxlChannel\_xyzt,"{}X,Y,Z,T\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00030}00030\ \textcolor{comment}{\ \ \{AdxlChannel\_xt,"{}X,T\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00031}00031\ \textcolor{comment}{\ \ \{AdxlChannel\_yt,"{}Y,T\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00032}00032\ \textcolor{comment}{\ \ \{AdxlChannel\_zt,"{}Z,T\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00033}00033\ \textcolor{comment}{\ \ \{AdxlChannel\_xyze,"{}X,Y,Z,E\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00034}00034\ \textcolor{comment}{\ \ \{AdxlChannel\_xe,"{}X,E\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00035}00035\ \textcolor{comment}{\ \ \{AdxlChannel\_ye,"{}Y,E\ Channels"{},\ nullptr\},}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00036}00036\ \textcolor{comment}{\ \ \{AdxlChannel\_ze,"{}Z,E\ Channels"{},\ nullptr\}*/}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00037}00037\ \};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00039}00039\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ adxl\_range\_buttons\{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00040}00040\ \ \ \ \ \{Adxl362\_Rng\_R2G,\ \textcolor{stringliteral}{"{}+/-\/\ 2g"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00041}00041\ \ \ \ \ \{Adxl362\_Rng\_R4G,\ \textcolor{stringliteral}{"{}+/-\/\ 4g"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00042}00042\ \ \ \ \ \{Adxl362\_Rng\_R8G,\ \textcolor{stringliteral}{"{}+/-\/\ 8g"{}},\ \textcolor{keyword}{nullptr}\}\};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00043}00043\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00044}00044\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ adxl\_odr\_buttons\{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00045}00045\ \ \ \ \ \{Adxl362\_Odr\_S12\_5,\ \textcolor{stringliteral}{"{}12.5\ Hz"{}},\ \textcolor{stringliteral}{"{}12.5\ samples/second"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00046}00046\ \ \ \ \ \{Adxl362\_Odr\_S25,\ \textcolor{stringliteral}{"{}25\ Hz"{}},\ \textcolor{stringliteral}{"{}25\ samples/second"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00047}00047\ \ \ \ \ \{Adxl362\_Odr\_S50,\ \textcolor{stringliteral}{"{}50\ Hz"{}},\ \textcolor{stringliteral}{"{}50\ samples/second"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00048}00048\ \ \ \ \ \{Adxl362\_Odr\_S100,\ \textcolor{stringliteral}{"{}100\ Hz"{}},\ \textcolor{stringliteral}{"{}100\ samples/second"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00049}00049\ \ \ \ \ \{Adxl362\_Odr\_S200,\ \textcolor{stringliteral}{"{}200\ Hz"{}},\ \textcolor{stringliteral}{"{}200\ samples/second"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00050}00050\ \ \ \ \ \{Adxl362\_Odr\_S400,\ \textcolor{stringliteral}{"{}400\ Hz"{}},\ \textcolor{stringliteral}{"{}400\ samples/second"{}}\}\};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00051}00051\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00052}00052\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ adxl\_filter\_buttons\{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00053}00053\ \ \ \ \ \{Adxl362\_Aa\_AAquarter,\ \textcolor{stringliteral}{"{}1/4\ Sample\ Rate"{}},\ \textcolor{stringliteral}{"{}filter\ cutoff\ -\/-\/\ 1/4\ sample\ rate"{}}\},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00054}00054\ \ \ \ \ \{Adxl362\_Aa\_AAhalf,\ \textcolor{stringliteral}{"{}1/2\ Sample\ Rate"{}},\ \textcolor{stringliteral}{"{}filter\ cutoff\ -\/-\/\ 1/2\ sample\ rate"{}}\}\};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00055}00055\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00056}00056\ Adxl362Config::Adxl362Config(QWidget\ *parent)\ :\ QWidget(parent)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00057}00057\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00058}00058\ \ \ vbox\_\ =\ \textcolor{keyword}{new}\ QVBoxLayout();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00059}00059\ \ \ setLayout(vbox\_);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00060}00060\ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00061}00061\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00062}00062\ \textcolor{keywordtype}{void}\ Adxl362Config::Attach(\textcolor{keyword}{const}\ Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00063}00063\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00064}00064\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00065}00065\ \ \ \textcolor{comment}{//\ Build\ the\ interface}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00066}00066\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00067}00067\ \ \ configbox\_\ =\ \textcolor{keyword}{new}\ QGroupBox(\textcolor{stringliteral}{"{}Accelerometer"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00068}00068\ \ \ QGridLayout\ *g\_outer\ =\ \textcolor{keyword}{new}\ QGridLayout;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00069}00069\ \ \ QFormLayout\ *f\_lower\ =\ \textcolor{keyword}{new}\ QFormLayout;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00070}00070\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00071}00071\ \ \ sample\_rate\_\ =\ \textcolor{keyword}{new}\ PBEnumGroup(\textcolor{stringliteral}{"{}Sample\ Rate"{}},\ adxl\_odr\_buttons);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00072}00072\ \ \ range\_\ =\ \textcolor{keyword}{new}\ PBEnumGroup(\textcolor{stringliteral}{"{}Range"{}},\ adxl\_range\_buttons);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00073}00073\ \ \ filter\_\ =\ \textcolor{keyword}{new}\ PBEnumGroup(\textcolor{stringliteral}{"{}Filter"{}},\ adxl\_filter\_buttons);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00074}00074\ \ \ data\_size\_\ =\ \textcolor{keyword}{new}\ PBEnumGroup(\textcolor{stringliteral}{"{}Data\ Size"{}},\ adxl\_data\_size\_buttons);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00075}00075\ \ \ channels\_\ =\ \textcolor{keyword}{new}\ PBEnumGroup(\textcolor{stringliteral}{"{}Channels"{}},\ adxl\_channels\_buttons);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00076}00076\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00077}00077\ \ \ spinners\_\ =\ \textcolor{keyword}{new}\ QGroupBox(\textcolor{stringliteral}{"{}Activity\ Detection"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00078}00078\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00079}00079\ \ \ sample\_rate\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ Accelerometer\ Sample\ Rate"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00080}00080\ \ \ range\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ Accelerometer\ Range"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00081}00081\ \ \ filter\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ Accelerometer\ Anti-\/Alias\ Filter"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00082}00082\ \ \ spinners\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ Activity\ Detection\ Parameters"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00083}00083\ \ \ channels\_-\/>setToolTip(\textcolor{stringliteral}{"{}Active\ Accelerometer\ Data\ Channels"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00084}00084\ \ \ data\_size\_-\/>setToolTip(\textcolor{stringliteral}{"{}Accelerometer\ Data\ Sample\ Bits"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00085}00085\ \ \ \textcolor{comment}{//\ range\ and\ filter}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00086}00086\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00087}00087\ \ \ g\_outer-\/>addWidget(sample\_rate\_,\ 1,\ 0,\ 2,\ 1);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00088}00088\ \ \ g\_outer-\/>addWidget(range\_,\ 0,\ 0);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00089}00089\ \ \ g\_outer-\/>addWidget(filter\_,\ 1,\ 1);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00090}00090\ \ \ g\_outer-\/>addWidget(channels\_,1,1,2,1);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00091}00091\ \ \ g\_outer-\/>addWidget(data\_size\_,0,1);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00092}00092\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00093}00093\ \ \ \textcolor{comment}{//\ thresh}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00094}00094\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00095}00095\ \ \ act\_thresh\_\ =\ \textcolor{keyword}{new}\ QDoubleSpinBox();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00096}00096\ \ \ act\_thresh\_-\/>setSuffix(\textcolor{stringliteral}{"{}\ g"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00097}00097\ \ \ act\_thresh\_-\/>setAlignment(Qt::AlignRight);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00098}00098\ \ \ act\_thresh\_-\/>setToolTip(\textcolor{stringliteral}{"{}Wakeup\ threshold"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00099}00099\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00100}00100\ \ \ inact\_thresh\_\ =\ \textcolor{keyword}{new}\ QDoubleSpinBox();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00101}00101\ \ \ inact\_thresh\_-\/>setSuffix(\textcolor{stringliteral}{"{}\ g"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00102}00102\ \ \ inact\_thresh\_-\/>setAlignment(Qt::AlignRight);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00103}00103\ \ \ inact\_thresh\_-\/>setToolTip(\textcolor{stringliteral}{"{}Sleep\ threshold"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00104}00104\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00105}00105\ \ \ \textcolor{comment}{//\ inactive}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00106}00106\ \ \ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00107}00107\ \ \ inactive\_\ =\ \textcolor{keyword}{new}\ QDoubleSpinBox();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00108}00108\ \ \ inactive\_-\/>setSuffix(\textcolor{stringliteral}{"{}\ sec"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00109}00109\ \ \ inactive\_-\/>setAlignment(Qt::AlignRight);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00110}00110\ \ \ inactive\_-\/>setToolTip(\textcolor{stringliteral}{"{}Time\ below\ wakeup\ threshold\ to\ become\ inactive"{}});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00111}00111\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00112}00112\ \ \ \textcolor{comment}{//\ spinners}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00113}00113\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00114}00114\ \ \ f\_lower-\/>addRow(\textcolor{stringliteral}{"{}Active\ Threshold"{}},\ act\_thresh\_);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00115}00115\ \ \ f\_lower-\/>addRow(\&inact\_thresh\_label,\ inact\_thresh\_);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00116}00116\ \ \ f\_lower-\/>addRow(\textcolor{stringliteral}{"{}Inactivity"{}},\ inactive\_);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00117}00117\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00118}00118\ \ \ spinners\_-\/>setLayout(f\_lower);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00119}00119\ \ \ g\_outer-\/>addWidget(spinners\_,\ 3,\ 0);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00120}00120\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00121}00121\ \ \ configbox\_-\/>setLayout(g\_outer);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00122}00122\ \ \ vbox\_-\/>addWidget(configbox\_);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00123}00123\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00124}00124\ \ \ \textcolor{comment}{//\ Track\ range\ to\ set\ threshold\ steps}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00125}00125\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00126}00126\ \ \ connect(range\_,\ \&PBEnumGroup::idClicked,\ \textcolor{keyword}{this},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00127}00127\ \ \ \ \ \ \ \ \ \ \ \&Adxl362Config::on\_adxlrange\_clicked);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00128}00128\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00129}00129\ \ \ \textcolor{comment}{//\ Track\ sample\ rate\ to\ set\ time\ steps}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00130}00130\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00131}00131\ \ \ connect(sample\_rate\_,\ \&PBEnumGroup::idClicked,\ \textcolor{keyword}{this},}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00132}00132\ \ \ \ \ \ \ \ \ \ \ \&Adxl362Config::on\_adxlfreq\_clicked);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00133}00133\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00134}00134\ \ \ SetConfig(config);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00135}00135\ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00136}00136\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00137}00137\ Adxl362Config::\string~Adxl362Config()\{\}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00138}00138\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00139}00139\ \textcolor{keywordtype}{bool}\ Adxl362Config::GetConfig(Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00140}00140\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00141}00141\ \ \ \textcolor{comment}{//\ Parameters\ common\ to\ all\ tags}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00142}00142\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00143}00143\ \ \ \textcolor{keywordtype}{int}\ id;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00144}00144\ \ \ Adxl362\ adxl(config.adxl362());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00145}00145\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00146}00146\ \ \ \textcolor{keywordflow}{if}\ (sample\_rate\_)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00147}00147\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00148}00148\ \ \ \ \ \ \ \textcolor{keywordtype}{id}\ =\ sample\_rate\_-\/>checkedId();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00149}00149\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (Adxl362\_Odr\_IsValid(\textcolor{keywordtype}{id}))}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00150}00150\ \ \ \ \ \ \ \ \ adxl.set\_freq((Adxl362\_Odr)\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00151}00151\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00152}00152\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00153}00153\ \ \ \textcolor{keywordflow}{if}\ (range\_)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00154}00154\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00155}00155\ \ \ \ \ \ \ \textcolor{keywordtype}{id}\ =\ range\_-\/>checkedId();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00156}00156\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (Adxl362\_Rng\_IsValid(\textcolor{keywordtype}{id}))}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00157}00157\ \ \ \ \ \ \ \ \ adxl.set\_range((Adxl362\_Rng)\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00158}00158\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00159}00159\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00160}00160\ \ \ \textcolor{comment}{//\ set\ the\ accel\ type\ -\/-\/\ this\ should\ be\ deprecated}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00161}00161\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00162}00162\ \ \ adxl.set\_accel\_type(adxl\_type);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00163}00163\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00164}00164\ \ \ \textcolor{comment}{//\ set\ tag\ specific\ info}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00165}00165\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00166}00166\ \ \ \textcolor{keywordflow}{switch}\ (config.tag\_type())\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00167}00167\ \ \ \ \ \textcolor{keywordflow}{case}\ BITTAG:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00168}00168\ \ \ \ \ \ \ \textcolor{keywordtype}{id}\ =\ filter\_-\/>checkedId();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00169}00169\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (Adxl362\_Aa\_IsValid(\textcolor{keywordtype}{id}))\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00170}00170\ \ \ \ \ \ \ \ \ \ \ adxl.set\_filter((Adxl362\_Aa)\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00171}00171\ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00172}00172\ \ \ \ \ \ \ \ \ \ \ adxl.set\_filter((Adxl362\_Aa)0);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00173}00173\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00174}00174\ \ \ \ \ \ \ adxl.set\_inact\_thresh\_g(inact\_thresh\_-\/>value());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00175}00175\ \ \ \ \ \ \ \textcolor{comment}{//\ fall\ through\ to\ BITTAGNG\ for\ common\ part}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00176}00176\ \ \ \ \ \textcolor{keywordflow}{case}\ BITTAGNG:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00177}00177\ \ \ \ \ \ \ adxl.set\_inactive\_sec(inactive\_-\/>value());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00178}00178\ \ \ \ \ \ \ adxl.set\_act\_thresh\_g(act\_thresh\_-\/>value());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00179}00179\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00180}00180\ \ \ \ \ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00181}00181\ \textcolor{comment}{\ \ \ \ case\ ACCELTAG:}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00182}00182\ \textcolor{comment}{\ \ \ \ \ \ id\ =\ channels\_-\/>checkedId();}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00183}00183\ \textcolor{comment}{\ \ \ \ \ \ if\ (\ Adxl367Channel\_IsValid(id))\ \{}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00184}00184\ \textcolor{comment}{\ \ \ \ \ \ \ \ adxl.set\_channels((Adxl367Channel)id);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00185}00185\ \textcolor{comment}{\ \ \ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00186}00186\ \textcolor{comment}{\ \ \ \ \ \ id\ =\ data\_size\_-\/>checkedId();}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00187}00187\ \textcolor{comment}{\ \ \ \ \ \ if\ (Adxl362\_Adxl367DataFormat\_IsValid(id))\ \{}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00188}00188\ \textcolor{comment}{\ \ \ \ \ \ \ \ adxl.set\_data\_format((Adxl362\_Adxl367DataFormat)id);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00189}00189\ \textcolor{comment}{\ \ \ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00190}00190\ \textcolor{comment}{\ \ \ \ \ \ break;}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00191}00191\ \textcolor{comment}{\ \ \ \ */}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00192}00192\ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00193}00193\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00194}00194\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00195}00195\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00196}00196\ \ \ \textcolor{comment}{//\ set\ config\ to\ result}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00197}00197\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00198}00198\ \ \ config.set\_allocated\_adxl362(\textcolor{keyword}{new}\ Adxl362(adxl));}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00199}00199\ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00200}00200\ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00201}00201\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00202}00202\ \textcolor{keywordtype}{void}\ Adxl362Config::SetConfig(\textcolor{keyword}{const}\ Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00203}00203\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00204}00204\ \ \ \textcolor{comment}{//\ save\ accel\ type\ -\/-\/\ should\ be\ deprecated}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00205}00205\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00206}00206\ \ \ Adxl362\ adxl(config.adxl362());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00207}00207\ \ \ adxl\_type\ \ =\ adxl.accel\_type();}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00208}00208\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00209}00209\ \ \ \textcolor{comment}{//\ initialize\ all\ widgets\ default\ visibility}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00210}00210\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00211}00211\ \ \ filter\_-\/>setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00212}00212\ \ \ sample\_rate\_-\/>setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00213}00213\ \ \ inact\_thresh\_-\/>setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00214}00214\ \ \ inact\_thresh\_label.setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00215}00215\ \ \ data\_size\_-\/>setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00216}00216\ \ \ channels\_-\/>setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00217}00217\ \ \ spinners\_-\/>setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00218}00218\ \ \ range\_-\/>setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00219}00219\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00220}00220\ \ \ \textcolor{keywordflow}{switch}(config.tag\_type())\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00221}00221\ \ \ \ \ \textcolor{keywordflow}{case}\ BITTAG:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00222}00222\ \ \ \ \ \ \ filter\_-\/>setCheckedId((\textcolor{keywordtype}{int})adxl.filter());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00223}00223\ \ \ \ \ \ \ filter\_-\/>setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00224}00224\ \ \ \ \ \ \ sample\_rate\_-\/>setCheckedId((\textcolor{keywordtype}{int})adxl.freq());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00225}00225\ \ \ \ \ \ \ range\_-\/>setCheckedId((\textcolor{keywordtype}{int})adxl.range());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00226}00226\ \ \ \ \ \ \ inact\_thresh\_-\/>setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00227}00227\ \ \ \ \ \ \ inact\_thresh\_label.setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00228}00228\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00229}00229\ \ \ \ \ \textcolor{keywordflow}{case}\ BITTAGNG:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00230}00230\ \ \ \ \ \ \ sample\_rate\_-\/>setCheckedId((\textcolor{keywordtype}{int})adxl.freq());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00231}00231\ \ \ \ \ \ \ range\_-\/>setCheckedId((\textcolor{keywordtype}{int})adxl.range());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00232}00232\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00233}00233\ \ \ \ \ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00234}00234\ \textcolor{comment}{\ \ \ \ case\ ACCELTAGNG:}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00235}00235\ \textcolor{comment}{\ \ \ \ \ \ sample\_rate\_-\/>setCheckedId((int)adxl.freq());}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00236}00236\ \textcolor{comment}{\ \ \ \ \ \ range\_-\/>setCheckedId((int)adxl.range());}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00237}00237\ \textcolor{comment}{\ \ \ \ \ \ data\_size\_-\/>setVisible(true);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00238}00238\ \textcolor{comment}{\ \ \ \ \ \ data\_size\_-\/>setCheckedId((int)adxl.data\_format());}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00239}00239\ \textcolor{comment}{\ \ \ \ \ \ channels\_-\/>setVisible(true);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00240}00240\ \textcolor{comment}{\ \ \ \ \ \ channels\_-\/>setCheckedId((int)adxl.channels());}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00241}00241\ \textcolor{comment}{\ \ \ \ \ \ spinners\_-\/>setVisible(false);}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00242}00242\ \textcolor{comment}{\ \ \ \ */}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00243}00243\ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00244}00244\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00245}00245\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00246}00246\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00247}00247\ \ \ \textcolor{comment}{//\ set\ legal\ range\ of\ spin\ boxes}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00248}00248\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00249}00249\ \ \ on\_adxlfreq\_clicked((\textcolor{keywordtype}{int})adxl.freq());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00250}00250\ \ \ on\_adxlrange\_clicked((\textcolor{keywordtype}{int})adxl.range());}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00251}00251\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00252}00252\ \ \ \textcolor{comment}{//\ adxl362\ inactive\_\ time}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00253}00253\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00254}00254\ \ \ inactive\_-\/>setValue(\textcolor{keyword}{static\_cast<}\textcolor{keywordtype}{double}\textcolor{keyword}{>}(adxl.inactive\_sec()));}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00255}00255\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00256}00256\ \ \ \textcolor{comment}{//\ adxl362\ threshold}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00257}00257\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00258}00258\ \ \ act\_thresh\_-\/>setValue(\textcolor{keyword}{static\_cast<}\textcolor{keywordtype}{double}\textcolor{keyword}{>}(adxl.act\_thresh\_g()));}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00259}00259\ \ \ \textcolor{keywordflow}{if}\ (config.tag\_type()\ ==\ BITTAG)\{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00260}00260\ \ \ \ \ \ inact\_thresh\_-\/>setValue(\textcolor{keyword}{static\_cast<}\textcolor{keywordtype}{double}\textcolor{keyword}{>}(adxl.inact\_thresh\_g()));}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00261}00261\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00262}00262\ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00263}00263\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00264}00264\ \textcolor{comment}{//\ ADXL\ Range\ Buttons}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00265}00265\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00266}00266\ \textcolor{keywordtype}{void}\ Adxl362Config::on\_adxlrange\_clicked(\textcolor{keywordtype}{int}\ index)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00267}00267\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00268}00268\ \ \ \textcolor{keywordtype}{double}\ range;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00269}00269\ \ \ \textcolor{keywordflow}{switch}\ ((Adxl362\_Rng)index)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00270}00270\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00271}00271\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Rng\_R2G:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00272}00272\ \ \ \ \ range\ =\ 1.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00273}00273\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00274}00274\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Rng\_R4G:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00275}00275\ \ \ \ \ range\ =\ 2.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00276}00276\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00277}00277\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Rng\_R8G:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00278}00278\ \ \ \ \ range\ =\ 4.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00279}00279\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00280}00280\ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00281}00281\ \ \ \ \ range\ =\ 1.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00282}00282\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00283}00283\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00284}00284\ \ \ act\_thresh\_-\/>setRange(range\ /\ 64,\ range);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00285}00285\ \ \ act\_thresh\_-\/>setSingleStep(range\ /\ 64);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00286}00286\ \ \ inact\_thresh\_-\/>setRange(range\ /\ 64,\ range);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00287}00287\ \ \ inact\_thresh\_-\/>setSingleStep(range\ /\ 64);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00288}00288\ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00289}00289\ }
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00290}00290\ \textcolor{keywordtype}{void}\ Adxl362Config::on\_adxlfreq\_clicked(\textcolor{keywordtype}{int}\ index)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00291}00291\ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00292}00292\ \ \ \textcolor{keywordtype}{double}\ delta;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00293}00293\ \ \ \textcolor{keywordflow}{switch}\ ((Adxl362\_Odr)index)}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00294}00294\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00295}00295\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S12\_5:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00296}00296\ \ \ \ \ delta\ =\ 1\ /\ 12.5;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00297}00297\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00298}00298\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S25:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00299}00299\ \ \ \ \ delta\ =\ 1\ /\ 25.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00300}00300\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00301}00301\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S50:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00302}00302\ \ \ \ \ delta\ =\ 1\ /\ 50.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00303}00303\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00304}00304\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S100:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00305}00305\ \ \ \ \ delta\ =\ 1\ /\ 100.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00306}00306\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00307}00307\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S200:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00308}00308\ \ \ \ \ delta\ =\ 1\ /\ 200.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00309}00309\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00310}00310\ \ \ \textcolor{keywordflow}{case}\ Adxl362\_Odr\_S400:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00311}00311\ \ \ \ \ delta\ =\ 1\ /\ 400.0;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00312}00312\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00313}00313\ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00314}00314\ \ \ \ \ delta\ =\ 1\ /\ 12.5;}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00315}00315\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00316}00316\ \ \ inactive\_-\/>setRange(delta,\ delta\ *\ 255);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00317}00317\ \ \ inactive\_-\/>setSingleStep(delta);}
+\DoxyCodeLine{\Hypertarget{adxl362config_8cpp_source_l00318}00318\ \}}
+
+\end{DoxyCode}

@@ -1,0 +1,174 @@
+\doxysection{\+\_\+kiss\+\_\+fft\+\_\+guts.\+h}
+\hypertarget{__kiss__fft__guts_8h_source}{}\label{__kiss__fft__guts_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/\_kiss\_fft\_guts.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/\_kiss\_fft\_guts.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ KISSFFTGUTS\_H}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ KISSFFTGUTS\_H}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00003}00003\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00004}00004\ \textcolor{comment}{Copyright\ (c)\ 2003-\/2010,\ Mark\ Borgerding}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00005}00005\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00006}00006\ \textcolor{comment}{All\ rights\ reserved.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00007}00007\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00008}00008\ \textcolor{comment}{Redistribution\ and\ use\ in\ source\ and\ binary\ forms,\ with\ or\ without\ modification,\ are\ permitted\ provided\ that\ the\ following\ conditions\ are\ met:}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00009}00009\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00010}00010\ \textcolor{comment}{\ \ \ \ *\ Redistributions\ of\ source\ code\ must\ retain\ the\ above\ copyright\ notice,\ this\ list\ of\ conditions\ and\ the\ following\ disclaimer.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00011}00011\ \textcolor{comment}{\ \ \ \ *\ Redistributions\ in\ binary\ form\ must\ reproduce\ the\ above\ copyright\ notice,\ this\ list\ of\ conditions\ and\ the\ following\ disclaimer\ in\ the\ documentation\ and/or\ other\ materials\ provided\ with\ the\ distribution.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00012}00012\ \textcolor{comment}{\ \ \ \ *\ Neither\ the\ author\ nor\ the\ names\ of\ any\ contributors\ may\ be\ used\ to\ endorse\ or\ promote\ products\ derived\ from\ this\ software\ without\ specific\ prior\ written\ permission.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00013}00013\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00014}00014\ \textcolor{comment}{THIS\ SOFTWARE\ IS\ PROVIDED\ BY\ THE\ COPYRIGHT\ HOLDERS\ AND\ CONTRIBUTORS\ "{}AS\ IS"{}\ AND\ ANY\ EXPRESS\ OR\ IMPLIED\ WARRANTIES,\ INCLUDING,\ BUT\ NOT\ LIMITED\ TO,\ THE\ IMPLIED\ WARRANTIES\ OF\ MERCHANTABILITY\ AND\ FITNESS\ FOR\ A\ PARTICULAR\ PURPOSE\ ARE\ DISCLAIMED.\ IN\ NO\ EVENT\ SHALL\ THE\ COPYRIGHT\ OWNER\ OR\ CONTRIBUTORS\ BE\ LIABLE\ FOR\ ANY\ DIRECT,\ INDIRECT,\ INCIDENTAL,\ SPECIAL,\ EXEMPLARY,\ OR\ CONSEQUENTIAL\ DAMAGES\ (INCLUDING,\ BUT\ NOT\ LIMITED\ TO,\ PROCUREMENT\ OF\ SUBSTITUTE\ GOODS\ OR\ SERVICES;\ LOSS\ OF\ USE,\ DATA,\ OR\ PROFITS;\ OR\ BUSINESS\ INTERRUPTION)\ HOWEVER\ CAUSED\ AND\ ON\ ANY\ THEORY\ OF\ LIABILITY,\ WHETHER\ IN\ CONTRACT,\ STRICT\ LIABILITY,\ OR\ TORT\ (INCLUDING\ NEGLIGENCE\ OR\ OTHERWISE)\ ARISING\ IN\ ANY\ WAY\ OUT\ OF\ THE\ USE\ OF\ THIS\ SOFTWARE,\ EVEN\ IF\ ADVISED\ OF\ THE\ POSSIBILITY\ OF\ SUCH\ DAMAGE.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00015}00015\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00017}00017\ \textcolor{comment}{/*\ kiss\_fft.h}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00018}00018\ \textcolor{comment}{\ \ \ defines\ kiss\_fft\_scalar\ as\ either\ short\ or\ a\ float\ type}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00019}00019\ \textcolor{comment}{\ \ \ and\ defines}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00020}00020\ \textcolor{comment}{\ \ \ typedef\ struct\ \{\ kiss\_fft\_scalar\ r;\ kiss\_fft\_scalar\ i;\ \}kiss\_fft\_cpx;\ */}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00021}00021\ \textcolor{preprocessor}{\#include\ "{}kiss\_fft.h"{}}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00022}00022\ \textcolor{preprocessor}{\#include\ <limits.h>}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00023}00023\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00024}00024\ \textcolor{preprocessor}{\#define\ MAXFACTORS\ 32}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00025}00025\ \textcolor{comment}{/*\ e.g.\ an\ fft\ of\ length\ 128\ has\ 4\ factors\ }}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00026}00026\ \textcolor{comment}{\ as\ far\ as\ kissfft\ is\ concerned}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00027}00027\ \textcolor{comment}{\ 4*4*4*2}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00028}00028\ \textcolor{comment}{\ */}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00029}00029\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00030}\mbox{\hyperlink{structkiss__fft__state}{00030}}\ \textcolor{keyword}{struct\ }\mbox{\hyperlink{structkiss__fft__state}{kiss\_fft\_state}}\{}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00031}00031\ \ \ \ \ \textcolor{keywordtype}{int}\ nfft;}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00032}00032\ \ \ \ \ \textcolor{keywordtype}{int}\ inverse;}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00033}00033\ \ \ \ \ \textcolor{keywordtype}{int}\ factors[2*MAXFACTORS];}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00034}00034\ \ \ \ \ \mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ twiddles[1];}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00035}00035\ \};}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00037}00037\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00038}00038\ \textcolor{comment}{\ \ Explanation\ of\ macros\ dealing\ with\ complex\ math:}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00039}00039\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00040}00040\ \textcolor{comment}{\ \ \ C\_MUL(m,a,b)\ \ \ \ \ \ \ \ \ :\ m\ =\ a*b}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00041}00041\ \textcolor{comment}{\ \ \ C\_FIXDIV(\ c\ ,\ div\ )\ \ :\ if\ a\ fixed\ point\ impl.,\ c\ /=\ div.\ noop\ otherwise}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00042}00042\ \textcolor{comment}{\ \ \ C\_SUB(\ res,\ a,b)\ \ \ \ \ :\ res\ =\ a\ -\/\ b}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00043}00043\ \textcolor{comment}{\ \ \ C\_SUBFROM(\ res\ ,\ a)\ \ :\ res\ -\/=\ a}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00044}00044\ \textcolor{comment}{\ \ \ C\_ADDTO(\ res\ ,\ a)\ \ \ \ :\ res\ +=\ a}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00045}00045\ \textcolor{comment}{\ *\ */}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00046}00046\ \textcolor{preprocessor}{\#ifdef\ FIXED\_POINT}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00047}00047\ \textcolor{preprocessor}{\#if\ (FIXED\_POINT==32)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00048}00048\ \textcolor{preprocessor}{\#\ define\ FRACBITS\ 31}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00049}00049\ \textcolor{preprocessor}{\#\ define\ SAMPPROD\ int64\_t}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00050}00050\ \textcolor{preprocessor}{\#define\ SAMP\_MAX\ 2147483647}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00051}00051\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00052}00052\ \textcolor{preprocessor}{\#\ define\ FRACBITS\ 15}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00053}00053\ \textcolor{preprocessor}{\#\ define\ SAMPPROD\ int32\_t\ }}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00054}00054\ \textcolor{preprocessor}{\#define\ SAMP\_MAX\ 32767}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00055}00055\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00057}00057\ \textcolor{preprocessor}{\#define\ SAMP\_MIN\ -\/SAMP\_MAX}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00058}00058\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00059}00059\ \textcolor{preprocessor}{\#if\ defined(CHECK\_OVERFLOW)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00060}00060\ \textcolor{preprocessor}{\#\ \ define\ CHECK\_OVERFLOW\_OP(a,op,b)\ \ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00061}00061\ \textcolor{preprocessor}{\ \ \ \ if\ (\ (SAMPPROD)(a)\ op\ (SAMPPROD)(b)\ >\ SAMP\_MAX\ ||\ (SAMPPROD)(a)\ op\ (SAMPPROD)(b)\ <\ SAMP\_MIN\ )\ \{\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00062}00062\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ fprintf(stderr,"{}WARNING:overflow\ @\ "{}\ \_\_FILE\_\_\ "{}(\%d):\ (\%d\ "{}\ \#op"{}\ \%d)\ =\ \%ld\(\backslash\)n"{},\_\_LINE\_\_,(a),(b),(SAMPPROD)(a)\ op\ (SAMPPROD)(b)\ );\ \ \}}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00063}00063\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00064}00064\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00065}00065\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00066}00066\ \textcolor{preprocessor}{\#\ \ \ define\ smul(a,b)\ (\ (SAMPPROD)(a)*(b)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00067}00067\ \textcolor{preprocessor}{\#\ \ \ define\ sround(\ x\ )\ \ (kiss\_fft\_scalar)(\ (\ (x)\ +\ (1<<(FRACBITS-\/1))\ )\ >>\ FRACBITS\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00068}00068\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00069}00069\ \textcolor{preprocessor}{\#\ \ \ define\ S\_MUL(a,b)\ sround(\ smul(a,b)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00070}00070\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00071}00071\ \textcolor{preprocessor}{\#\ \ \ define\ C\_MUL(m,a,b)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00072}00072\ \textcolor{preprocessor}{\ \ \ \ \ \ do\{\ (m).r\ =\ sround(\ smul((a).r,(b).r)\ -\/\ smul((a).i,(b).i)\ );\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00073}00073\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ \ \ (m).i\ =\ sround(\ smul((a).r,(b).i)\ +\ smul((a).i,(b).r)\ );\ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00074}00074\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00075}00075\ \textcolor{preprocessor}{\#\ \ \ define\ DIVSCALAR(x,k)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00076}00076\ \textcolor{preprocessor}{\ \ \ \ (x)\ =\ sround(\ smul(\ \ x,\ SAMP\_MAX/k\ )\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00077}00077\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00078}00078\ \textcolor{preprocessor}{\#\ \ \ define\ C\_FIXDIV(c,div)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00079}00079\ \textcolor{preprocessor}{\ \ \ \ do\ \{\ \ \ \ DIVSCALAR(\ (c).r\ ,\ div);\ \ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00080}00080\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ DIVSCALAR(\ (c).i\ \ ,\ div);\ \}while\ (0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00081}00081\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00082}00082\ \textcolor{preprocessor}{\#\ \ \ define\ C\_MULBYSCALAR(\ c,\ s\ )\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00083}00083\ \textcolor{preprocessor}{\ \ \ \ do\{\ (c).r\ =\ \ sround(\ smul(\ (c).r\ ,\ s\ )\ )\ ;\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00084}00084\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (c).i\ =\ \ sround(\ smul(\ (c).i\ ,\ s\ )\ )\ ;\ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00085}00085\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00086}00086\ \textcolor{preprocessor}{\#else\ \ }\textcolor{comment}{/*\ not\ FIXED\_POINT*/}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00087}00087\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00088}00088\ \textcolor{preprocessor}{\#\ \ \ define\ S\_MUL(a,b)\ (\ (a)*(b)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00089}00089\ \textcolor{preprocessor}{\#define\ C\_MUL(m,a,b)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00090}00090\ \textcolor{preprocessor}{\ \ \ \ do\{\ (m).r\ =\ (a).r*(b).r\ -\/\ (a).i*(b).i;\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00091}00091\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (m).i\ =\ (a).r*(b).i\ +\ (a).i*(b).r;\ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00092}00092\ \textcolor{preprocessor}{\#\ \ \ define\ C\_FIXDIV(c,div)\ }\textcolor{comment}{/*\ NOOP\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00093}00093\ \textcolor{preprocessor}{\#\ \ \ define\ C\_MULBYSCALAR(\ c,\ s\ )\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00094}00094\ \textcolor{preprocessor}{\ \ \ \ do\{\ (c).r\ *=\ (s);\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00095}00095\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (c).i\ *=\ (s);\ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00096}00096\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00097}00097\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00098}00098\ \textcolor{preprocessor}{\#ifndef\ CHECK\_OVERFLOW\_OP}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00099}00099\ \textcolor{preprocessor}{\#\ \ define\ CHECK\_OVERFLOW\_OP(a,op,b)\ }\textcolor{comment}{/*\ noop\ */}\textcolor{preprocessor}{}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00100}00100\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00101}00101\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00102}00102\ \textcolor{preprocessor}{\#define\ \ C\_ADD(\ res,\ a,b)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00103}00103\ \textcolor{preprocessor}{\ \ \ \ do\ \{\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00104}00104\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((a).r,+,(b).r)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00105}00105\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((a).i,+,(b).i)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00106}00106\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (res).r=(a).r+(b).r;\ \ (res).i=(a).i+(b).i;\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00107}00107\ \textcolor{preprocessor}{\ \ \ \ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00108}00108\ \textcolor{preprocessor}{\#define\ \ C\_SUB(\ res,\ a,b)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00109}00109\ \textcolor{preprocessor}{\ \ \ \ do\ \{\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00110}00110\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((a).r,-\/,(b).r)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00111}00111\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((a).i,-\/,(b).i)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00112}00112\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (res).r=(a).r-\/(b).r;\ \ (res).i=(a).i-\/(b).i;\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00113}00113\ \textcolor{preprocessor}{\ \ \ \ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00114}00114\ \textcolor{preprocessor}{\#define\ C\_ADDTO(\ res\ ,\ a)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00115}00115\ \textcolor{preprocessor}{\ \ \ \ do\ \{\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00116}00116\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((res).r,+,(a).r)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00117}00117\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((res).i,+,(a).i)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00118}00118\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (res).r\ +=\ (a).r;\ \ (res).i\ +=\ (a).i;\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00119}00119\ \textcolor{preprocessor}{\ \ \ \ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00120}00120\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00121}00121\ \textcolor{preprocessor}{\#define\ C\_SUBFROM(\ res\ ,\ a)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00122}00122\ \textcolor{preprocessor}{\ \ \ \ do\ \{\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00123}00123\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((res).r,-\/,(a).r)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00124}00124\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ CHECK\_OVERFLOW\_OP((res).i,-\/,(a).i)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00125}00125\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (res).r\ -\/=\ (a).r;\ \ (res).i\ -\/=\ (a).i;\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00126}00126\ \textcolor{preprocessor}{\ \ \ \ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00127}00127\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00128}00128\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00129}00129\ \textcolor{preprocessor}{\#ifdef\ FIXED\_POINT}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00130}00130\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_COS(phase)\ \ floor(.5+SAMP\_MAX\ *\ cos\ (phase))}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00131}00131\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_SIN(phase)\ \ floor(.5+SAMP\_MAX\ *\ sin\ (phase))}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00132}00132\ \textcolor{preprocessor}{\#\ \ define\ HALF\_OF(x)\ ((x)>>1)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00133}00133\ \textcolor{preprocessor}{\#elif\ defined(USE\_SIMD)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00134}00134\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_COS(phase)\ \_mm\_set1\_ps(\ cos(phase)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00135}00135\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_SIN(phase)\ \_mm\_set1\_ps(\ sin(phase)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00136}00136\ \textcolor{preprocessor}{\#\ \ define\ HALF\_OF(x)\ ((x)*\_mm\_set1\_ps(.5))}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00137}00137\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00138}00138\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_COS(phase)\ (kiss\_fft\_scalar)\ cos(phase)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00139}00139\ \textcolor{preprocessor}{\#\ \ define\ KISS\_FFT\_SIN(phase)\ (kiss\_fft\_scalar)\ sin(phase)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00140}00140\ \textcolor{preprocessor}{\#\ \ define\ HALF\_OF(x)\ ((x)*.5)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00141}00141\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00142}00142\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00143}00143\ \textcolor{preprocessor}{\#define\ \ kf\_cexp(x,phase)\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00144}00144\ \textcolor{preprocessor}{\ \ \ \ do\{\ \(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00145}00145\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (x)-\/>r\ =\ KISS\_FFT\_COS(phase);\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00146}00146\ \textcolor{preprocessor}{\ \ \ \ \ \ \ \ (x)-\/>i\ =\ KISS\_FFT\_SIN(phase);\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00147}00147\ \textcolor{preprocessor}{\ \ \ \ \}while(0)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00148}00148\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00149}00149\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00150}00150\ \textcolor{comment}{/*\ a\ debugging\ function\ */}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00151}00151\ \textcolor{preprocessor}{\#define\ pcpx(c)\(\backslash\)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00152}00152\ \textcolor{preprocessor}{\ \ \ \ fprintf(stderr,"{}\%g\ +\ \%gi\(\backslash\)n"{},(double)((c)-\/>r),(double)((c)-\/>i)\ )}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00153}00153\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00154}00154\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00155}00155\ \textcolor{preprocessor}{\#ifdef\ KISS\_FFT\_USE\_ALLOCA}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00156}00156\ \textcolor{comment}{//\ define\ this\ to\ allow\ use\ of\ alloca\ instead\ of\ malloc\ for\ temporary\ buffers}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00157}00157\ \textcolor{comment}{//\ Temporary\ buffers\ are\ used\ in\ two\ case:\ }}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00158}00158\ \textcolor{comment}{//\ 1.\ FFT\ sizes\ that\ have\ "{}bad"{}\ factors.\ i.e.\ not\ 2,3\ and\ 5}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00159}00159\ \textcolor{comment}{//\ 2.\ "{}in-\/place"{}\ FFTs.\ \ Notice\ the\ quotes,\ since\ kissfft\ does\ not\ really\ do\ an\ in-\/place\ transform.}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00160}00160\ \textcolor{preprocessor}{\#include\ <alloca.h>}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00161}00161\ \textcolor{preprocessor}{\#define\ \ KISS\_FFT\_TMP\_ALLOC(nbytes)\ alloca(nbytes)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00162}00162\ \textcolor{preprocessor}{\#define\ \ KISS\_FFT\_TMP\_FREE(ptr)\ }}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00163}00163\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00164}00164\ \textcolor{preprocessor}{\#define\ \ KISS\_FFT\_TMP\_ALLOC(nbytes)\ KISS\_FFT\_MALLOC(nbytes)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00165}00165\ \textcolor{preprocessor}{\#define\ \ KISS\_FFT\_TMP\_FREE(ptr)\ KISS\_FFT\_FREE(ptr)}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00166}00166\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00167}00167\ }
+\DoxyCodeLine{\Hypertarget{__kiss__fft__guts_8h_source_l00168}00168\ \textcolor{preprocessor}{\#endif\ \ }\textcolor{comment}{//\ KISSFFTGUTS\_H}}
+
+\end{DoxyCode}

@@ -1,0 +1,138 @@
+\doxysection{download.\+cpp}
+\hypertarget{download_8cpp_source}{}\label{download_8cpp_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/download.cpp@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/download.cpp}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00001}00001\ \textcolor{preprocessor}{\#include\ <QObject>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <QTime>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <QTimer>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QDebug>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QElapsedTimer>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QDeadlineTimer>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <QFileDialog>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <QTimer>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00009}00009\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00010}00010\ \textcolor{preprocessor}{\#include\ "{}download.h"{}}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00011}00011\ \textcolor{preprocessor}{\#include\ <taglogs.h>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00012}00012\ \textcolor{preprocessor}{\#include\ <tagclass.h>}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00013}00013\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00014}00014\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00015}00015\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00016}00016\ \textcolor{preprocessor}{\#include\ "{}log.h"{}}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00017}00017\ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00018}00018\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00019}00019\ \textcolor{keyword}{using\ namespace\ }std::chrono\_literals;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00020}00020\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00021}00021\ \textcolor{keywordtype}{void}\ Download::start(\mbox{\hyperlink{class_tag}{Tag}}\ *t,\ std::fstream\ *file\_stream)}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00022}00022\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00023}00023\ \ \ \ \ tag\ =\ t;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00024}00024\ \ \ \ \ fs\ =\ file\_stream;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00025}00025\ \ \ \ \ \textcolor{keywordflow}{if}\ (!tag)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00026}00026\ \ \ \ \ \ \ \ \ downloadError(QString(\textcolor{stringliteral}{"{}Tag\ undefined"{}}));}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00027}00027\ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00028}00028\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00029}00029\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00030}00030\ \ \ \ \ \textcolor{comment}{//\ Get\ tag\ configuration\ and\ status}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00031}00031\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00032}00032\ \ \ \ \ Status\ status;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00033}00033\ \ \ \ \ \textcolor{keywordflow}{if}\ (!tag-\/>GetStatus(status))}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00034}00034\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00035}00035\ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00036}00036\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00037}00037\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00039}00039\ \ \ \ \ cnt\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00040}00040\ \ \ \ \ max\_cnt\ =\ status.internal\_data\_count();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00041}00041\ \ \ \ \ \textcolor{keywordflow}{if}\ (!max\_cnt)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00042}00042\ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00043}00043\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00044}00044\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00045}00045\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00046}00046\ \ \ \ \ tag-\/>GetConfig(config);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00047}00047\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00048}00048\ \ \ \ \ \textcolor{comment}{//\ dump\ the\ file\ header}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00049}00049\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00050}00050\ \ \ \ \ dumpTagLogHeader(*fs,\ *tag,\ tag\_log\_output\_txt);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00051}00051\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00052}00052\ \ \ \ \ \textcolor{comment}{//\ create\ the\ progress\ dialog}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00053}00053\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00054}00054\ \ \ \ \ emit\ progressRangeChanged(0,max\_cnt);\textcolor{comment}{//max\_cnt);}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00055}00055\ \ \ \ \ emit\ progressValueChanged(0);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00057}00057\ \ \ \ \ \textcolor{comment}{//\ trigger\ worker}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00058}00058\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00059}00059\ \ \ \ \ connect(\&trigger\_timer,\ \&QTimer::timeout,\ \textcolor{keyword}{this},\ \&Download::worker);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00060}00060\ \ \ \ \ trigger\_timer.start();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00061}00061\ \ \ \ \ timer.start();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00062}00062\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00063}00063\ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00064}00064\ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00065}00065\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00066}00066\ \textcolor{keywordtype}{void}\ Download::cancel()\{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00067}00067\ \ \ \ \ trigger\_timer.stop();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00068}00068\ \ \ \ \ QString\ tmstr\ =\ QString::number(timer.elapsed()/1000.0,\ \textcolor{charliteral}{'f'},2);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00069}00069\ \ \ \ \ qInfo()\ <<\ \textcolor{stringliteral}{"{}Download\ Elapsed\ time:\ "{}}\ <<\ tmstr\ <<\ \textcolor{stringliteral}{"{}\ seconds"{}};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00070}00070\ \ \ \ \ qInfo()\ <<\ \textcolor{stringliteral}{"{}Downloaded\ "{}}\ <<\ cnt\ <<\ \textcolor{stringliteral}{"{}\ blocks"{}};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00071}00071\ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00072}00072\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00073}00073\ \textcolor{keywordtype}{void}\ Download::worker()\{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00074}00074\ \ \ \ \ QDeadlineTimer\ deadline(300ms);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00075}00075\ \ \ \ \ \textcolor{keywordtype}{int}\ len;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00076}00076\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00077}00077\ \ \ \ \ \textcolor{comment}{//\ do\ as\ much\ work\ as\ possible\ within\ the\ deadline}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00078}00078\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00079}00079\ \ \ \ \ \textcolor{keywordflow}{do}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00080}00080\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00081}00081\ \ \ \ \ \ \ \ \ ack.Clear();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00082}00082\ \ \ \ \ \ \ \ \ len\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00083}00083\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00084}00084\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ grab\ as\ much\ data\ as\ possible}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00085}00085\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00086}00086\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (tag-\/>GetDataLog(ack,\ cnt))}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00087}00087\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00088}00088\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (ack.error\_message()\ !=\ \textcolor{stringliteral}{"{}"{}})\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00089}00089\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ downloadError(QString::fromStdString(ack.error\_message()));}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00090}00090\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00091}00091\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00092}00092\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00093}00093\ \ \ \ \ \ \ \ \ \ \ \ \ len\ =\ dumpTagLog(*fs,\ ack,\ config,\ tag\_log\_output\_txt);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00094}00094\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (len\ ==\ 0)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00095}00095\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ qInfo(\textcolor{stringliteral}{"{}no\ data"{}});}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00096}00096\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00097}00097\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ cancel();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00098}00098\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00099}00099\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (len\ ==\ -\/1)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00100}00100\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ downloadError(\textcolor{stringliteral}{"{}no\ matching\ log\ type"{}});}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00101}00101\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00102}00102\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ cancel();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00103}00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00104}00104\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00105}00105\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ cnt\ +=\ len;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00106}00106\ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00107}00107\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00108}00108\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00109}00109\ \ \ \ \ \ \ \ \ \ \ \ \ downloadError(\textcolor{stringliteral}{"{}Parsing\ log\ failed.\ Unsopported\ tag\ type?"{}});}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00110}00110\ \ \ \ \ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00111}00111\ \ \ \ \ \ \ \ \ \ \ \ \ cancel();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00112}00112\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00113}00113\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00114}00114\ \ \ \ \ \}\ \textcolor{keywordflow}{while}\ ((len>0)\ \&\&\ !deadline.hasExpired());}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00115}00115\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00116}00116\ \ \ \ \ \textcolor{comment}{//\ update\ progress\ info}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00117}00117\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00118}00118\ \ \ \ \ qInfo(\textcolor{stringliteral}{"{}downloaded\ \%d\ blocks"{}},cnt);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00119}00119\ \ \ \ \ emit\ progressValueChanged(cnt);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00120}00120\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00121}00121\ \ \ \ \ \textcolor{keywordflow}{if}\ (len\ ==\ 0)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00122}00122\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ finished}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00123}00123\ \ \ \ \ \ \ \ \ emit\ downloadFinished();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00124}00124\ \ \ \ \ \ \ \ \ cancel();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00125}00125\ \ \ \ \ \}\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00126}00126\ \}}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00127}00127\ }
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00128}00128\ \textcolor{keywordtype}{void}\ Download::downloadError(\textcolor{keyword}{const}\ QString\ \&s)\ \{}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00129}00129\ \ \ \ \ msgBox.setText(s);}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00130}00130\ \ \ \ \ msgBox.exec();}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00131}00131\ \ \ \ \ qDebug()\ <<\ s;}
+\DoxyCodeLine{\Hypertarget{download_8cpp_source_l00132}00132\ \}}
+
+\end{DoxyCode}

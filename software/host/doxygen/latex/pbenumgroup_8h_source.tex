@@ -1,0 +1,61 @@
+\doxysection{pbenumgroup.\+h}
+\hypertarget{pbenumgroup_8h_source}{}\label{pbenumgroup_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/pbenumgroup.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/qtmon/pbenumgroup.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00001}00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00002}00002\ \textcolor{comment}{\ \ \ \ Helper\ class\ for\ building\ group\ boxes\ from\ a\ vector\ of\ button\ definitions.}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00003}00003\ \textcolor{comment}{\ \ \ \ \ \ \ \ buttons\ are\ defined\ by\ their\ index\ (typically\ chosen\ to\ match\ an\ enum),\ and}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00004}00004\ \textcolor{comment}{\ \ \ \ \ \ \ \ label.}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00005}00005\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00007}00007\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00008}00008\ \textcolor{preprocessor}{\#ifndef\ PB\_ENUMGROUP\_H}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00009}00009\ \textcolor{preprocessor}{\#define\ PB\_ENUMGROUP\_H}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00010}00010\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00011}00011\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00012}00012\ \textcolor{preprocessor}{\#include\ <QButtonGroup>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00013}00013\ \textcolor{preprocessor}{\#include\ <QLayout>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00014}00014\ \textcolor{preprocessor}{\#include\ <QGroupBox>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00015}00015\ \textcolor{preprocessor}{\#include\ <QVBoxLayout>}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00016}00016\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00018}00018\ \textcolor{keyword}{using\ namespace\ \ }google::protobuf;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00019}00019\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00020}00020\ \textcolor{comment}{/*\ namespace\ Ui}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00021}00021\ \textcolor{comment}{\{}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00022}00022\ \textcolor{comment}{\ \ \ \ class\ PBEnumGroup;}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00023}00023\ \textcolor{comment}{\}}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00024}00024\ \textcolor{comment}{\ */}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00025}\mbox{\hyperlink{class_p_b_enum_group}{00025}}\ \textcolor{keyword}{class\ }PBEnumGroup\ :\ \textcolor{keyword}{public}\ QGroupBox}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00026}00026\ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00027}00027\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00028}00028\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00029}00029\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00030}\mbox{\hyperlink{struct_p_b_enum_group_1_1binfo}{00030}}\ \ \ \ \ \textcolor{keyword}{struct\ }\mbox{\hyperlink{struct_p_b_enum_group_1_1binfo}{binfo}}}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00031}00031\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00032}00032\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ index;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00033}00033\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *label;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00034}00034\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *toolTip;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00035}00035\ \ \ \ \ \};}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00036}00036\ \ \ \ \ \textcolor{keyword}{explicit}\ PBEnumGroup(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *label,}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00037}00037\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ std::vector<struct\ binfo>\ \&buttons,}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00038}00038\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00039}00039\ \ \ \ \ \string~PBEnumGroup();}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00040}00040\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00041}00041\ \ \ \ \ \textcolor{keywordtype}{void}\ replaceButtons(\textcolor{keyword}{const}\ std::vector<struct\ binfo>\ \&buttons);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00042}00042\ \ \ \ \ \textcolor{keywordtype}{int}\ \ checkedId();}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00043}00043\ \ \ \ \ QAbstractButton\ *button(\textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00044}00044\ \ \ \ \ \textcolor{keywordtype}{void}\ setCheckedId(\textcolor{keywordtype}{int}\ index);}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00045}00045\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00046}00046\ signals:}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00047}00047\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00048}00048\ \ \ \ \ \textcolor{keywordtype}{void}\ idClicked(\textcolor{keywordtype}{int});}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00049}00049\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00050}00050\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00051}00051\ \ \ \ \ QVBoxLayout\ *vbox;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00052}00052\ \ \ \ \ QButtonGroup\ *buttonGroup;}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00053}00053\ \};}
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00054}00054\ }
+\DoxyCodeLine{\Hypertarget{pbenumgroup_8h_source_l00055}00055\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

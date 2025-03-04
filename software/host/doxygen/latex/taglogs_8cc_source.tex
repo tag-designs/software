@@ -1,0 +1,437 @@
+\doxysection{taglogs.\+cc}
+\hypertarget{taglogs_8cc_source}{}\label{taglogs_8cc_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/taglogs.cc@{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/taglogs.cc}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00001}00001\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <list>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <mutex>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <sstream>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00009}00009\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00010}00010\ \textcolor{preprocessor}{\#include\ <tag.pb.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00011}00011\ \textcolor{preprocessor}{\#include\ <tagdata.pb.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00012}00012\ \textcolor{comment}{//\#include\ <host.pb.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00013}00013\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00014}00014\ \textcolor{preprocessor}{\#include\ "{}linkadapt.h"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00015}00015\ \textcolor{preprocessor}{\#include\ "{}tagmonitor.h"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00016}00016\ \textcolor{preprocessor}{\#include\ <tagclass.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00017}00017\ \textcolor{preprocessor}{\#include\ <taglogs.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00018}00018\ \textcolor{preprocessor}{\#include\ <log.h>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00019}00019\ \textcolor{preprocessor}{\#include\ <chrono>}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00020}00020\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00021}00021\ \textcolor{keyword}{static}\ std::string\ fmthex(uint32\_t\ num)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00022}00022\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00023}00023\ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *digits\ =\ \textcolor{stringliteral}{"{}0123456789ABCDEF"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00024}00024\ \ \ std::string\ str\ =\ \textcolor{stringliteral}{"{}0x"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00025}00025\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 32;\ i;\ i\ =\ i\ -\/\ 4)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00026}00026\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00027}00027\ \ \ \ \ str\ +=\ digits[(num\ >>\ (i\ -\/\ 4))\ \&\ 0xf];}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00028}00028\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00029}00029\ \ \ \textcolor{keywordflow}{return}\ str;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00030}00030\ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00032}00032\ \textcolor{keywordtype}{bool}\ dumpTagLogHeader(std::ostream\ \&fs,\ \mbox{\hyperlink{class_tag}{Tag}}\ \&tag,\ \textcolor{keyword}{enum}\ TagLogOutput\ format)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00033}00033\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00034}00034\ \ \ Config\ cfg;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00035}00035\ \ \ Status\ status;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00036}00036\ \ \ StateLog\ state\_log;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00037}00037\ \ \ std::string\ str;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00038}00038\ \ \ TagInfo\ info;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00039}00039\ \ \ int64\_t\ now\ =\ std::chrono::duration\_cast<std::chrono::milliseconds>(std::chrono::system\_clock::now().time\_since\_epoch()).count();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00040}00040\ \ \ \textcolor{comment}{//QDateTime\ now\ =\ QDateTime::currentDateTime();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00041}00041\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00042}00042\ \ \ \textcolor{keywordflow}{if}\ (!tag.GetStatus(status))}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00043}00043\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00044}00044\ \ \ \textcolor{keywordflow}{if}\ (!tag.GetConfig(cfg))}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00045}00045\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00046}00046\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00047}00047\ \ \ tag.GetTagInfo(info);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00048}00048\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00049}00049\ \ \ int64\_t\ timeerr\ =\ status.millis()\ -\/\ now;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00050}00050\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n\#\ Tag\ Read\ time:\ "{}}\ <<\ now\ /\ 1000\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00051}00051\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n\#\ Tag\ Error:\ \ \ \ \ "{}}\ <<\ timeerr\ /\ 1000.0\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00052}00052\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00053}00053\ \ \ \textcolor{comment}{//\ Dump\ tag\ info}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00054}00054\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00055}00055\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n\#\ \ \ \ \ \ \ \ \ \ \ \ \ Tag\ Info\(\backslash\)n\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00056}00056\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Tag\ Type:\ \ \ \ "{}}\ <<\ TagType\_Name(info.tag\_type())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00057}00057\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Tag\ Firmware:"{}}\ <<\ info.firmware()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00058}00058\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Board:\ \ \ \ \ \ \ "{}}\ <<\ info.board\_desc()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00059}00059\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Build\ Date:\ \ "{}}\ <<\ info.build\_time()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00060}00060\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Git\ Repo:\ \ \ \ "{}}\ <<\ info.gitrepo()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00061}00061\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Source\ Path:\ "{}}\ <<\ info.source\_path()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00062}00062\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Git\ Hash:\ \ \ \ "{}}\ <<\ info.githash()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00063}00063\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ UUID:\ \ \ \ \ \ \ \ "{}}\ <<\ info.uuid()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00064}00064\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Internal\ Flash\ Size:\ \ "{}}\ <<\ info.intflashsz()\ <<\ \textcolor{stringliteral}{"{}KB"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00065}00065\ \ \ \ \ \ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00066}00066\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ External\ Flash\ Size:\ \ "{}}\ <<\ info.extflashsz()\ <<\ \textcolor{stringliteral}{"{}KB"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00067}00067\ \ \ \ \ \ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00068}00068\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00069}00069\ \ \ TestResult\ result\ =\ status.test\_status();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00070}00070\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00071}00071\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Test\ Status:\ "{}}\ <<\ TestResult\_Name(result)\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00072}00072\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00073}00073\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00074}00074\ \ \ \textcolor{comment}{//\ Dump\ Configuration\ -\/-\/\ need\ to\ handle}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00075}00075\ \ \ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ alternative\ configurations}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00076}00076\ \ \ \textcolor{comment}{//\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ this\ should\ be\ part\ of\ the\ config\ form}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00077}00077\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00078}00078\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ \ \ \ \ \ \ \ \ \ \ \ \ Configuration\(\backslash\)n\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00079}00079\ \ \ \textcolor{keywordflow}{if}\ (cfg.has\_adxl362())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00080}00080\ \ \ \{\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00081}00081\ \ \ \ \ \textcolor{keywordflow}{if}\ (cfg.adxl362().accel\_type()\ ==\ 1)\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00082}00082\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ ADXL\ type:\ adxl367\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00083}00083\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00084}00084\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00085}00085\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Range:\ \ \ \ \ \ \ "{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00086}00086\ \ \ \ \ \ \ \ <<\ Adxl362\_Rng\_Name(cfg.adxl362().range())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00087}00087\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Frequency:\ \ \ "{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00088}00088\ \ \ \ \ \ \ \ <<\ Adxl362\_Odr\_Name(cfg.adxl362().freq())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00089}00089\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Filter:\ \ \ \ \ \ "{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00090}00090\ \ \ \ \ \ \ \ <<\ Adxl362\_Aa\_Name(cfg.adxl362().filter())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00091}00091\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Active\ Thresh:\ "{}}\ <<\ cfg.adxl362().act\_thresh\_g()\ <<\ \textcolor{stringliteral}{"{}g"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00092}00092\ \ \ \ \ \ \ \ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00093}00093\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Inactive\ Thresh:\ "{}}\ <<\ cfg.adxl362().inact\_thresh\_g()\ <<\ \textcolor{stringliteral}{"{}g"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00094}00094\ \ \ \ \ \ \ \ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00095}00095\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Inactive\ Time:\ "{}}\ <<\ cfg.adxl362().inactive\_sec()\ <<\ \textcolor{stringliteral}{"{}s"{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00096}00096\ \ \ \ \ \ \ \ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00097}00097\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00098}00098\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00099}00099\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Start:\ \ \ \ \ \ \ "{}}\ <<\ cfg.active\_interval().start\_epoch()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00100}00100\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ End:\ \ \ \ \ \ \ \ \ "{}}\ <<\ cfg.active\_interval().end\_epoch()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00101}00101\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00102}00102\ \ \ \textcolor{keywordflow}{if}\ (cfg.bittag\_log()\ !=\ BITTAG\_UNSPECIFIED)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00103}00103\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00104}00104\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ BitTag\ Log\ Format:\ \ \ \ \ \ "{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00105}00105\ \ \ \ \ \ \ \ <<\ cfg.bittag\_log()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00106}00106\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00107}00107\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00108}00108\ \ \ \textcolor{keywordflow}{if}\ (cfg.period())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00109}00109\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00110}00110\ \ \ \ \ \textcolor{comment}{//fs\ <<\ "{}\#\ Pressure\ log\ internal:\ \ \ \ "{}\ <<\ cfg.prestag\_log().internal()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00111}00111\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Sample\ Period:\ \ \ "{}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00112}00112\ \ \ \ \ \ \ \ <<\ cfg.period()\ <<\ \textcolor{stringliteral}{"{}\ seconds\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00113}00113\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00114}00114\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00115}00115\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ cfg.hibernate\_size();\ i++)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00116}00116\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00117}00117\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Hibernate["{}}\ <<\ i\ <<\ \textcolor{stringliteral}{"{}]\ =\ "{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00118}00118\ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\{"{}}\ <<\ cfg.hibernate(i).start\_epoch()\ <<\ \textcolor{stringliteral}{"{},\ "{}}\ <<\ cfg.hibernate(i).end\_epoch()\ <<\ \textcolor{stringliteral}{"{}\}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00119}00119\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00120}00120\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00121}00121\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00122}00122\ \ \ \textcolor{comment}{//\ Dump\ State\ Log}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00123}00123\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00124}00124\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ \ \ \ \ \ \ \ \ \ \ \ \ State\ Log\(\backslash\)n\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00125}00125\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00126}00126\ \ \ \textcolor{comment}{//\ std::list<State>::const\_iterator\ iterator;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00127}00127\ \ \ \textcolor{comment}{//\ for\ (iterator\ =\ state\_log.begin();\ iterator\ !=\ state\_log.end();\ ++iterator)}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00128}00128\ \ \ \textcolor{comment}{//\ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00129}00129\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00130}00130\ \ \ \textcolor{keywordtype}{int}\ next\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00131}00131\ \ \ \textcolor{keywordflow}{while}\ (tag.GetStateLog(state\_log,\ next))}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00132}00132\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00133}00133\ \ \ \ \ next\ +=\ state\_log.states().size();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00134}00134\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ \textcolor{keyword}{const}\ \&state\ :\ state\_log.states())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00135}00135\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00136}00136\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Epoch:\ "{}}\ <<\ state.status().millis()\ /\ 1000\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00137}00137\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ State:\ "{}}\ <<\ TagState\_Name(state.status().state())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00138}00138\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Entry\ Code:\ "{}}\ <<\ State\_Event\_Name(state.transition\_reason())\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00139}00139\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Temperature:\ "{}}\ <<\ state.status().temperature()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00140}00140\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Voltage:\ \ \ \ \ "{}}\ <<\ state.status().voltage()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00141}00141\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ Internal\ Log\ Entries:\ "{}}\ <<\ state.status().internal\_data\_count()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00142}00142\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ External\ Log\ Entries:\ "{}}\ <<\ state.status().external\_data\_count()\ <<\ \textcolor{stringliteral}{"{}\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00143}00143\ \ \ \ \ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00144}00144\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00145}00145\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00146}00146\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00147}00147\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00148}00148\ \ \ fs\ <<\ \textcolor{stringliteral}{"{}\#\ \ \ \ \ \ \ \ \ \ \ \ \ Data\ Log\(\backslash\)n\#\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00149}00149\ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00150}00150\ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00151}00151\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00152}00152\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{int}\ dumpTagLog(std::ostream\ \&out,\ \textcolor{comment}{/*Tag\ \&t,*/}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00153}00153\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ BitTagLog\ \&log,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00154}00154\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum}\ BitTagLogFmt\ dataformat,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00155}00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum}\ TagLogOutput\ format)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00156}00156\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00157}00157\ \ \ BitTagData\ entry;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00158}00158\ \ \ \textcolor{keywordtype}{int}\ count\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00159}00159\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00160}00160\ \ \ \textcolor{keywordtype}{int}\ bucket\_bits,\ bucket\_number,\ bucket\_period;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00161}00161\ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *bucket\_name;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00162}00162\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00163}00163\ \ \ \textcolor{keywordflow}{switch}\ (dataformat)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00164}00164\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00165}00165\ \ \ \textcolor{keywordflow}{case}\ BITTAG\_BITPERSEC:\ \textcolor{comment}{//\ special\ case\ below}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00166}00166\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00167}00167\ \ \ \textcolor{keywordflow}{case}\ BITTAG\_BITSPERMIN:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00168}00168\ \ \ \ \ bucket\_bits\ =\ 6;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00169}00169\ \ \ \ \ bucket\_number\ =\ 10;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00170}00170\ \ \ \ \ bucket\_period\ =\ 60;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00171}00171\ \ \ \ \ bucket\_name\ =\ \textcolor{stringliteral}{"{}MIN:"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00172}00172\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00173}00173\ \ \ \textcolor{keywordflow}{case}\ BITTAG\_BITSPERFOURMIN:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00174}00174\ \ \ \ \ bucket\_bits\ =\ 8;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00175}00175\ \ \ \ \ bucket\_number\ =\ 8;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00176}00176\ \ \ \ \ bucket\_period\ =\ 60\ *\ 4;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00177}00177\ \ \ \ \ bucket\_name\ =\ \textcolor{stringliteral}{"{}FOURMIN:"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00178}00178\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00179}00179\ \ \ \textcolor{keywordflow}{case}\ BITTAG\_BITSPERFIVEMIN:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00180}00180\ \ \ \ \ bucket\_bits\ =\ 9;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00181}00181\ \ \ \ \ bucket\_number\ =\ 7;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00182}00182\ \ \ \ \ bucket\_period\ =\ 60\ *\ 5;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00183}00183\ \ \ \ \ bucket\_name\ =\ \textcolor{stringliteral}{"{}FIVEMIN:"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00184}00184\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00185}00185\ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00186}00186\ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00187}00187\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00188}00188\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00189}00189\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ \textcolor{keyword}{const}\ \&entry\ :\ log.data())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00190}00190\ \ \ \textcolor{comment}{/*\ for\ (std::vector<BitTagData>::iterator\ entry\ =\ log.begin();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00191}00191\ \textcolor{comment}{\ \ \ \ \ \ \ entry\ !=\ log.end();\ ++entry)\ */}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00192}00192\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00193}00193\ \ \ \ \ uint64\_t\ rawdata\ =\ entry.rawdata();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00194}00194\ \ \ \ \ \textcolor{keywordflow}{if}\ (dataformat\ !=\ BITTAG\_BITPERSEC)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00195}00195\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00196}00196\ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ bucket\_number;\ i++)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00197}00197\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00198}00198\ \ \ \ \ \ \ \ \ int64\_t\ timestamp\ =}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00199}00199\ \ \ \ \ \ \ \ \ \ \ \ \ entry.epoch()\ -\/\ bucket\_period\ *\ (bucket\_number\ -\/\ 1\ -\/\ i);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00200}00200\ \ \ \ \ \ \ \ \ uint64\_t\ count\ =}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00201}00201\ \ \ \ \ \ \ \ \ \ \ \ \ (rawdata\ >>\ (i\ *\ bucket\_bits))\ \&\ ((1\ <<\ bucket\_bits)\ -\/\ 1);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00202}00202\ \ \ \ \ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00203}00203\ \ \ \ \ \ \ \ \ out\ <<\ bucket\_name}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00204}00204\ \ \ \ \ \ \ \ \ \ \ \ \ <<\ (count\ *\ 100.0\ /\ bucket\_period)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00205}00205\ \ \ \ \ \ \ \ \ \ \ \ \ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00206}00206\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00207}00207\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00208}00208\ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00209}00209\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00210}00210\ \ \ \ \ \ \ \textcolor{comment}{//\ split\ into\ two\ 30\ bit\ segments\ for\ consistency\ with}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00211}00211\ \ \ \ \ \ \ \textcolor{comment}{//\ old\ form.\ \ Newest\ bit\ 59,\ oldest\ bit\ is\ 0}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00212}00212\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00213}00213\ \ \ \ \ \ \ uint32\_t\ high\ =\ (rawdata\ >>\ 30)\ \&\ 0x3fffffff;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00214}00214\ \ \ \ \ \ \ uint32\_t\ low\ =\ (rawdata)\&0x3fffffff;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00215}00215\ \ \ \ \ \ \ int64\_t\ timestamp\ =\ entry.epoch();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00216}00216\ \ \ \ \ \ \ out\ <<\ timestamp\ -\/\ 30\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00217}00217\ \ \ \ \ \ \ \textcolor{comment}{//fs\ <<\ QString("{}SEC:0x\%1"{}).arg(low,\ 8,\ 16,\ QChar('0')).toStdString()\ <<\ "{}\(\backslash\)n"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00218}00218\ \ \ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}SEC:"{}}\ <<\ fmthex(low)\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00219}00219\ \ \ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00220}00220\ \ \ \ \ \ \ \textcolor{comment}{//fs\ <<\ hex\ <<\ std::showbase\ <<\ std::internal\ <<\ std::setfill('0')\ <<\ std::setw(8);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00221}00221\ \ \ \ \ \ \ \textcolor{comment}{//fs\ <<\ QString("{}SEC:0x\%1"{}).arg(high,\ 8,\ 16,\ QChar('0')).toStdString()\ <<\ "{}\(\backslash\)n"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00222}00222\ \ \ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}SEC:"{}}\ <<\ fmthex(high)\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00223}00223\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00224}00224\ \ \ \ \ out\ <<\ entry.epoch()\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00225}00225\ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}V:"{}}\ <<\ entry.voltage();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00226}00226\ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{},TC:"{}}\ <<\ entry.temperature()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00227}00227\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00228}00228\ \ \ \ \ count++;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00229}00229\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00230}00230\ \ \ \textcolor{keywordflow}{return}\ count;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00231}00231\ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00232}00232\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00233}00233\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{int}\ dumpTagLog(std::ostream\ \&out,\ \textcolor{keyword}{const}\ PresTagLog\ \&log,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00234}00234\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ period,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00235}00235\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum}\ TagLogOutput\ format)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00236}00236\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00237}00237\ \ \ int64\_t\ timestamp\ =\ log.epoch();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00238}00238\ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00239}00239\ \ \ out\ <<\ \textcolor{stringliteral}{"{}V:"{}}\ <<\ log.voltage();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00240}00240\ \ \ out\ <<\ \textcolor{stringliteral}{"{},TC:"{}}\ <<\ log.temperature()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00241}00241\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00242}00242\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ \textcolor{keyword}{const}\ \&entry\ :\ log.data())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00243}00243\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00244}00244\ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00245}00245\ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}P:"{}}\ <<\ entry.pressure()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00246}00246\ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00247}00247\ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}T:"{}}\ <<\ entry.temperature()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00248}00248\ \ \ \ \ timestamp\ +=\ period;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00249}00249\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00250}00250\ \ \ \textcolor{keywordflow}{return}\ 1;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00251}00251\ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00252}00252\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00253}00253\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{int}\ dumpTagLog(std::ostream\ \&out,\ \textcolor{keyword}{const}\ BitTagNgLog\ \&log,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00254}00254\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum}\ TagLogOutput\ format)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00255}00255\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00256}00256\ \ \ int64\_t\ timestamp\ =\ log.epoch();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00257}00257\ \ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00258}00258\ \ \ timestamp\ -\/=\ 120;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00259}00259\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00260}00260\ \ \ \textcolor{keywordtype}{bool}\ done\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00261}00261\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00262}00262\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ \textcolor{keyword}{const}\ \&activity\ :\ log.activity())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00263}00263\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00264}00264\ \ \ \ \ \ \ \textcolor{comment}{//\ unpack\ data}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00265}00265\ \ \ \ \ \ \ \textcolor{comment}{//\ data\ start\ 120\ seconds\ (6\ 20\ second\ blocks)\ before\ the\ header}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00266}00266\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ 6;\ i++)\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00267}00267\ \ \ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00268}00268\ \ \ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}A:"{}}\ <<\ ((activity>>(i*5))\&0x1f)/0.20\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00269}00269\ \ \ \ \ \ \ timestamp\ +=\ 20;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00270}00270\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00271}00271\ \ \ \ \ \textcolor{keywordflow}{if}\ (!done)\{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00272}00272\ \ \ \ \ \ \ out\ <<\ timestamp\ <<\ \textcolor{stringliteral}{"{},"{}};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00273}00273\ \ \ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{}V:"{}}\ <<\ log.voltage();}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00274}00274\ \ \ \ \ \ \ out\ <<\ \textcolor{stringliteral}{"{},TC:"{}}\ <<\ log.temperature()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00275}00275\ \ \ \ \ \ \ done\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00276}00276\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00277}00277\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00278}00278\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00279}00279\ \ \ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00280}00280\ \ \ \textcolor{keywordflow}{return}\ 1;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00281}00281\ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00282}00282\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00283}00283\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00284}00284\ \textcolor{comment}{static\ int\ dumpTagLog(std::ostream\ \&out,\ const\ LuxTagLog\ \&log,}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00285}00285\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ period,}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00286}00286\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ enum\ TagLogOutput\ format)}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00287}00287\ \textcolor{comment}{\{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00288}00288\ \textcolor{comment}{\ \ int64\_t\ timestamp\ =\ log.epoch();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00289}00289\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00290}00290\ \textcolor{comment}{\ \ out\ <<\ "{}V:"{}\ <<\ log.voltage();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00291}00291\ \textcolor{comment}{\ \ out\ <<\ "{},TC:"{}\ <<\ log.temperature()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00292}00292\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00293}00293\ \textcolor{comment}{\ \ for\ (auto\ const\ \&entry\ :\ log.data())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00294}00294\ \textcolor{comment}{\ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00295}00295\ \textcolor{comment}{\ \ \ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00296}00296\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}Lx:"{}\ <<\ entry.lux()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00297}00297\ \textcolor{comment}{\ \ \ \ timestamp\ +=\ period;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00298}00298\ \textcolor{comment}{\ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00299}00299\ \textcolor{comment}{\ \ return\ 1;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00300}00300\ \textcolor{comment}{\}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00301}00301\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00302}00302\ \textcolor{comment}{static\ int\ dumpTagLog(std::ostream\ \&out,\ const\ AccelTagLog\ \&log,}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00303}00303\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ uint32\_t\ period,}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00304}00304\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ enum\ TagLogOutput\ format)}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00305}00305\ \textcolor{comment}{\{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00306}00306\ \textcolor{comment}{\ \ int64\_t\ timestamp\ =\ log.epoch();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00307}00307\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00308}00308\ \textcolor{comment}{\ \ out\ <<\ "{}V:"{}\ <<\ log.voltage();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00309}00309\ \textcolor{comment}{\ \ out\ <<\ "{},TC:"{}\ <<\ log.temperature()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00310}00310\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00311}00311\ \textcolor{comment}{\ \ for\ (auto\ const\ \&entry\ :\ log.data())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00312}00312\ \textcolor{comment}{\ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00313}00313\ \textcolor{comment}{\ \ \ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00314}00314\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}PITCH:"{}\ <<\ entry.pitch()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00315}00315\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}PWR:"{}\ <<\ entry.power()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00316}00316\ \textcolor{comment}{\ \ \ \ timestamp\ +=\ period;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00317}00317\ \textcolor{comment}{\ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00318}00318\ \textcolor{comment}{\ \ return\ 1;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00319}00319\ \textcolor{comment}{\}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00320}00320\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00321}00321\ \textcolor{comment}{static\ int\ dumpTagLog(std::ostream\ \&out,\ const\ GeoTagLog\ \&log)}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00322}00322\ \textcolor{comment}{\{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00323}00323\ \textcolor{comment}{\ \ int\ i;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00324}00324\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00325}00325\ \textcolor{comment}{\ \ //\ Header}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00326}00326\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00327}00327\ \textcolor{comment}{\ \ int64\_t\ timestamp\ =\ log.epoch();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00328}00328\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00329}00329\ \textcolor{comment}{\ \ out\ <<\ "{}V:"{}\ <<\ log.voltage();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00330}00330\ \textcolor{comment}{\ \ out\ <<\ "{},TC:"{}\ <<\ log.temperature()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00331}00331\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00332}00332\ \textcolor{comment}{\ \ //\ Compass\ data}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00333}00333\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00334}00334\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00335}00335\ \textcolor{comment}{\ \ out\ <<\ "{}A:"{}\ <<\ log.compass().ax()\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00336}00336\ \textcolor{comment}{\ \ out\ <<\ log.compass().ay()\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00337}00337\ \textcolor{comment}{\ \ out\ <<\ log.compass().az()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00338}00338\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00339}00339\ \textcolor{comment}{\ \ out\ <<\ "{}M:"{}\ <<\ log.compass().mx()\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00340}00340\ \textcolor{comment}{\ \ out\ <<\ log.compass().my()\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00341}00341\ \textcolor{comment}{\ \ out\ <<\ log.compass().mz()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00342}00342\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00343}00343\ \textcolor{comment}{\ \ //\ loop\ over\ the\ data}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00344}00344\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00345}00345\ \textcolor{comment}{\ \ for\ (int\ i\ =\ 0;\ i\ <\ log.optpwr\_size();\ i++)}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00346}00346\ \textcolor{comment}{\ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00347}00347\ \textcolor{comment}{\ \ \ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00348}00348\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}Lx:"{}\ <<\ log.optpwr(i).lux()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00349}00349\ \textcolor{comment}{\ \ \ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00350}00350\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}Pwr:"{}\ <<\ log.optpwr(i).pwr()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00351}00351\ \textcolor{comment}{\ \ \ \ out\ <<\ timestamp\ <<\ "{},"{};}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00352}00352\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}Pitch:"{}\ <<\ log.optpwr(i).pitch()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00353}00353\ \textcolor{comment}{\ \ \ \ timestamp\ +=\ 60;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00354}00354\ \textcolor{comment}{\ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00355}00355\ \textcolor{comment}{\ \ return\ 1;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00356}00356\ \textcolor{comment}{\}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00357}00357\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00358}00358\ \textcolor{comment}{static\ int\ dumpTagLog(std::ostream\ \&out,\ const\ Config\ \&config,}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00359}00359\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ const\ AccelTagNgLog\ \&log)\ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00360}00360\ \textcolor{comment}{\ \ int64\_t\ timestamp\ =\ log.epoch();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00361}00361\ \textcolor{comment}{\ \ out\ <<\ timestamp\ <<\ "{},"{}\ <<\ log.millis()\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00362}00362\ \textcolor{comment}{\ \ const\ char\ *data\ =\ log.samples().data();}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00363}00363\ \textcolor{comment}{\ \ for\ (int\ i\ =\ 0;\ i\ <\ log.samples().size();\ i\ +=\ 6)\ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00364}00364\ \textcolor{comment}{\ \ \ \ int16\_t\ x\ =\ data[i]\ \ \ +\ (data[i+1]<<8);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00365}00365\ \textcolor{comment}{\ \ \ \ int16\_t\ y\ =\ data[i+2]\ +\ (data[i+3]\ <<\ 8);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00366}00366\ \textcolor{comment}{\ \ \ \ int16\_t\ z\ =\ data[i+4]\ +\ (data[i+5]\ <<\ 8);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00367}00367\ \textcolor{comment}{\ \ \ \ out\ <<\ "{}x:"{}\ <<\ x\ <<\ "{},y:"{}\ <<\ y\ <<\ "{},z:"{}\ <<\ z\ <<\ std::endl;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00368}00368\ \textcolor{comment}{\ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00369}00369\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00370}00370\ \textcolor{comment}{\ \ return\ 1;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00371}00371\ \textcolor{comment}{\}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00372}00372\ \textcolor{comment}{\ \ */}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00373}00373\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00374}00374\ \textcolor{keywordtype}{int}\ dumpTagLog(std::ostream\ \&out,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00375}00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ Ack\ \&log,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00376}00376\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ Config\ \&config,}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00377}00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{enum}\ TagLogOutput\ format)}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00378}00378\ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00379}00379\ }
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00380}00380\ \ \ \textcolor{keywordflow}{switch}\ (config.tag\_type())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00381}00381\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00382}00382\ \ \ \textcolor{keywordflow}{case}\ BITTAG:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00383}00383\ \ \ \ \ \textcolor{keywordflow}{if}\ (log.has\_bittag\_data\_log())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00384}00384\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00385}00385\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ dumpTagLog(out,\ log.bittag\_data\_log(),}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00386}00386\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ config.bittag\_log(),\ format);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00387}00387\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00388}00388\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00389}00389\ \ \ \textcolor{keywordflow}{case}\ BITTAGNG:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00390}00390\ \ \ \ \ \textcolor{keywordflow}{if}\ (log.has\_bittag\_ng\_data\_log())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00391}00391\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00392}00392\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ dumpTagLog(out,\ log.bittag\_ng\_data\_log(),\ format);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00393}00393\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00394}00394\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00395}00395\ \ \ \textcolor{keywordflow}{case}\ PRESTAG:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00396}00396\ \ \ \ \ \textcolor{keywordflow}{if}\ (log.has\_prestag\_data\_log())}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00397}00397\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00398}00398\ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ dumpTagLog(out,\ log.prestag\_data\_log(),\ config.period(),\ format);}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00399}00399\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00400}00400\ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00401}00401\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00402}00402\ \textcolor{comment}{\ case\ ACCELTAG:}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00403}00403\ \textcolor{comment}{\ \ \ \ if\ (log.has\_acceltag\_data\_log())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00404}00404\ \textcolor{comment}{\ \ \ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00405}00405\ \textcolor{comment}{\ \ \ \ \ \ return\ dumpTagLog(out,\ log.acceltag\_data\_log(),\ config.period(),\ format);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00406}00406\ \textcolor{comment}{\ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00407}00407\ \textcolor{comment}{\ \ \ \ break;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00408}00408\ \textcolor{comment}{\ \ case\ LUXTAG:}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00409}00409\ \textcolor{comment}{\ \ \ \ if\ (log.has\_luxtag\_data\_log())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00410}00410\ \textcolor{comment}{\ \ \ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00411}00411\ \textcolor{comment}{\ \ \ \ \ \ return\ dumpTagLog(out,\ log.luxtag\_data\_log(),\ config.period(),\ format);}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00412}00412\ \textcolor{comment}{\ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00413}00413\ \textcolor{comment}{\ \ \ \ break;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00414}00414\ \textcolor{comment}{\ \ case\ GEOTAG:}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00415}00415\ \textcolor{comment}{\ \ \ \ if\ (log.has\_geotag\_data\_log())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00416}00416\ \textcolor{comment}{\ \ \ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00417}00417\ \textcolor{comment}{\ \ \ \ \ \ return\ dumpTagLog(out,\ log.geotag\_data\_log());}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00418}00418\ \textcolor{comment}{\ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00419}00419\ \textcolor{comment}{\ \ \ \ break;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00420}00420\ \textcolor{comment}{\ \ case\ ACCELTAGNG:}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00421}00421\ \textcolor{comment}{\ \ \ \ if\ (log.has\_acceltag\_ng\_data\_log())}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00422}00422\ \textcolor{comment}{\ \ \ \ \{}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00423}00423\ \textcolor{comment}{\ \ \ \ \ \ return\ dumpTagLog(out,\ config,\ log.acceltag\_ng\_data\_log());}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00424}00424\ \textcolor{comment}{\ \ \ \ \}}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00425}00425\ \textcolor{comment}{\ \ \ \ break;}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00426}00426\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00427}00427\ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00428}00428\ \ \ \ \ \textcolor{keywordflow}{return}\ -\/1;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00429}00429\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00430}00430\ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{taglogs_8cc_source_l00431}00431\ \}}
+
+\end{DoxyCode}

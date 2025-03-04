@@ -1,0 +1,433 @@
+\doxysection{kiss\+\_\+fastfir.\+c}
+\hypertarget{kiss__fastfir_8c_source}{}\label{kiss__fastfir_8c_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/tools/kiss\_fastfir.c@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/kiss\_fft130\_jfork1.0.0/tools/kiss\_fastfir.c}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00001}00001\ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00002}00002\ \textcolor{comment}{Copyright\ (c)\ 2003-\/2004,\ Mark\ Borgerding}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00003}00003\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00004}00004\ \textcolor{comment}{All\ rights\ reserved.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00005}00005\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00006}00006\ \textcolor{comment}{Redistribution\ and\ use\ in\ source\ and\ binary\ forms,\ with\ or\ without\ modification,\ are\ permitted\ provided\ that\ the\ following\ conditions\ are\ met:}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00007}00007\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00008}00008\ \textcolor{comment}{\ \ \ \ *\ Redistributions\ of\ source\ code\ must\ retain\ the\ above\ copyright\ notice,\ this\ list\ of\ conditions\ and\ the\ following\ disclaimer.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00009}00009\ \textcolor{comment}{\ \ \ \ *\ Redistributions\ in\ binary\ form\ must\ reproduce\ the\ above\ copyright\ notice,\ this\ list\ of\ conditions\ and\ the\ following\ disclaimer\ in\ the\ documentation\ and/or\ other\ materials\ provided\ with\ the\ distribution.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00010}00010\ \textcolor{comment}{\ \ \ \ *\ Neither\ the\ author\ nor\ the\ names\ of\ any\ contributors\ may\ be\ used\ to\ endorse\ or\ promote\ products\ derived\ from\ this\ software\ without\ specific\ prior\ written\ permission.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00011}00011\ \textcolor{comment}{}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00012}00012\ \textcolor{comment}{THIS\ SOFTWARE\ IS\ PROVIDED\ BY\ THE\ COPYRIGHT\ HOLDERS\ AND\ CONTRIBUTORS\ "{}AS\ IS"{}\ AND\ ANY\ EXPRESS\ OR\ IMPLIED\ WARRANTIES,\ INCLUDING,\ BUT\ NOT\ LIMITED\ TO,\ THE\ IMPLIED\ WARRANTIES\ OF\ MERCHANTABILITY\ AND\ FITNESS\ FOR\ A\ PARTICULAR\ PURPOSE\ ARE\ DISCLAIMED.\ IN\ NO\ EVENT\ SHALL\ THE\ COPYRIGHT\ OWNER\ OR\ CONTRIBUTORS\ BE\ LIABLE\ FOR\ ANY\ DIRECT,\ INDIRECT,\ INCIDENTAL,\ SPECIAL,\ EXEMPLARY,\ OR\ CONSEQUENTIAL\ DAMAGES\ (INCLUDING,\ BUT\ NOT\ LIMITED\ TO,\ PROCUREMENT\ OF\ SUBSTITUTE\ GOODS\ OR\ SERVICES;\ LOSS\ OF\ USE,\ DATA,\ OR\ PROFITS;\ OR\ BUSINESS\ INTERRUPTION)\ HOWEVER\ CAUSED\ AND\ ON\ ANY\ THEORY\ OF\ LIABILITY,\ WHETHER\ IN\ CONTRACT,\ STRICT\ LIABILITY,\ OR\ TORT\ (INCLUDING\ NEGLIGENCE\ OR\ OTHERWISE)\ ARISING\ IN\ ANY\ WAY\ OUT\ OF\ THE\ USE\ OF\ THIS\ SOFTWARE,\ EVEN\ IF\ ADVISED\ OF\ THE\ POSSIBILITY\ OF\ SUCH\ DAMAGE.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00013}00013\ \textcolor{comment}{*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00014}00014\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00015}00015\ \textcolor{preprocessor}{\#include\ "{}kiss\_fastfir.h"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00016}00016\ \textcolor{preprocessor}{\#include\ "{}../\_kiss\_fft\_guts.h"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00018}00018\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00019}00019\ \textcolor{comment}{//static\ int\ verbose=0;}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00020}00020\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00021}00021\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00022}00022\ kiss\_fastfir\_cfg\ kiss\_fastfir\_alloc(}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00023}00023\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ kffsamp\_t\ *\ imp\_resp,\textcolor{keywordtype}{size\_t}\ n\_imp\_resp,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00024}00024\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ *pnfft,\ \textcolor{comment}{/*\ if\ <=\ 0,\ an\ appropriate\ size\ will\ be\ chosen\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00025}00025\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ *\ mem,\textcolor{keywordtype}{size\_t}*lenmem)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00026}00026\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00027}00027\ \ \ \ \ kiss\_fastfir\_cfg\ st\ =\ NULL;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00028}00028\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ len\_fftcfg,len\_ifftcfg;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00029}00029\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ memneeded\ =\ \textcolor{keyword}{sizeof}(\textcolor{keyword}{struct\ }\mbox{\hyperlink{structkiss__fastfir__state}{kiss\_fastfir\_state}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00030}00030\ \ \ \ \ \textcolor{keywordtype}{char}\ *\ ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00031}00031\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ i;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00032}00032\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nfft=0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00033}00033\ \ \ \ \ \textcolor{keywordtype}{float}\ scale;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00034}00034\ \ \ \ \ \textcolor{keywordtype}{int}\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00035}00035\ \ \ \ \ \textcolor{keywordflow}{if}\ (pnfft)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00036}00036\ \ \ \ \ \ \ \ \ nfft=*pnfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00037}00037\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00038}00038\ \ \ \ \ \textcolor{keywordflow}{if}\ (nfft<=0)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00039}00039\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ determine\ fft\ size\ as\ next\ power\ of\ two\ at\ least\ 2x\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00040}00040\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ the\ impulse\ response\ length*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00041}00041\ \ \ \ \ \ \ \ \ i=n\_imp\_resp-\/1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00042}00042\ \ \ \ \ \ \ \ \ nfft=2;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00043}00043\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{do}\{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00044}00044\ \ \ \ \ \ \ \ \ \ \ \ \ \ nfft<<=1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00045}00045\ \ \ \ \ \ \ \ \ \}\textcolor{keywordflow}{while}\ (i>>=1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00046}00046\ \textcolor{preprocessor}{\#ifdef\ MIN\_FFT\_LEN}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00047}00047\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\ nfft\ <\ MIN\_FFT\_LEN\ )}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00048}00048\ \ \ \ \ \ \ \ \ \ \ \ \ nfft=MIN\_FFT\_LEN;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00049}00049\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00050}00050\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00051}00051\ \ \ \ \ \textcolor{keywordflow}{if}\ (pnfft)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00052}00052\ \ \ \ \ \ \ \ \ *pnfft\ =\ nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00053}00053\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00054}00054\ \textcolor{preprocessor}{\#ifdef\ REAL\_FASTFIR}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00055}00055\ \ \ \ \ n\_freq\_bins\ =\ nfft/2\ +\ 1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00056}00056\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00057}00057\ \ \ \ \ n\_freq\_bins\ =\ nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00058}00058\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00059}00059\ \ \ \ \ \textcolor{comment}{/*fftcfg*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00060}00060\ \ \ \ \ FFT\_ALLOC\ (nfft,\ 0,\ NULL,\ \&len\_fftcfg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00061}00061\ \ \ \ \ memneeded\ +=\ len\_fftcfg;\ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00062}00062\ \ \ \ \ \textcolor{comment}{/*ifftcfg*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00063}00063\ \ \ \ \ FFT\_ALLOC\ (nfft,\ 1,\ NULL,\ \&len\_ifftcfg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00064}00064\ \ \ \ \ memneeded\ +=\ len\_ifftcfg;\ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00065}00065\ \ \ \ \ \textcolor{comment}{/*\ tmpbuf\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00066}00066\ \ \ \ \ memneeded\ +=\ \textcolor{keyword}{sizeof}(kffsamp\_t)\ *\ nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00067}00067\ \ \ \ \ \textcolor{comment}{/*\ fir\_freq\_resp\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00068}00068\ \ \ \ \ memneeded\ +=\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}})\ *\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00069}00069\ \ \ \ \ \textcolor{comment}{/*\ freqbuf\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00070}00070\ \ \ \ \ memneeded\ +=\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}})\ *\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00071}00071\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00072}00072\ \ \ \ \ \textcolor{keywordflow}{if}\ (lenmem\ ==\ NULL)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00073}00073\ \ \ \ \ \ \ \ \ st\ =\ (kiss\_fastfir\_cfg)\ malloc\ (memneeded);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00074}00074\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00075}00075\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (*lenmem\ >=\ memneeded)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00076}00076\ \ \ \ \ \ \ \ \ \ \ \ \ st\ =\ (kiss\_fastfir\_cfg)\ mem;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00077}00077\ \ \ \ \ \ \ \ \ *lenmem\ =\ memneeded;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00078}00078\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00079}00079\ \ \ \ \ \textcolor{keywordflow}{if}\ (!st)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00080}00080\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00081}00081\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00082}00082\ \ \ \ \ st-\/>nfft\ =\ nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00083}00083\ \ \ \ \ st-\/>ngood\ =\ nfft\ -\/\ n\_imp\_resp\ +\ 1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00084}00084\ \ \ \ \ st-\/>n\_freq\_bins\ =\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00085}00085\ \ \ \ \ ptr=(\textcolor{keywordtype}{char}*)(st+1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00086}00086\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00087}00087\ \ \ \ \ st-\/>fftcfg\ =\ (kfcfg\_t)ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00088}00088\ \ \ \ \ ptr\ +=\ len\_fftcfg;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00089}00089\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00090}00090\ \ \ \ \ st-\/>ifftcfg\ =\ (kfcfg\_t)ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00091}00091\ \ \ \ \ ptr\ +=\ len\_ifftcfg;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00092}00092\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00093}00093\ \ \ \ \ st-\/>tmpbuf\ =\ (kffsamp\_t*)ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00094}00094\ \ \ \ \ ptr\ +=\ \textcolor{keyword}{sizeof}(kffsamp\_t)\ *\ nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00095}00095\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00096}00096\ \ \ \ \ st-\/>freqbuf\ =\ (\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}*)ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00097}00097\ \ \ \ \ ptr\ +=\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}})\ *\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00098}00098\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00099}00099\ \ \ \ \ st-\/>fir\_freq\_resp\ =\ (\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}*)ptr;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00100}00100\ \ \ \ \ ptr\ +=\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}})\ *\ n\_freq\_bins;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00101}00101\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00102}00102\ \ \ \ \ FFT\_ALLOC\ (nfft,0,st-\/>fftcfg\ ,\ \&len\_fftcfg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00103}00103\ \ \ \ \ FFT\_ALLOC\ (nfft,1,st-\/>ifftcfg\ ,\ \&len\_ifftcfg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00104}00104\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00105}00105\ \ \ \ \ memset(st-\/>tmpbuf,0,\textcolor{keyword}{sizeof}(kffsamp\_t)*nfft);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00106}00106\ \ \ \ \ \textcolor{comment}{/*zero\ pad\ in\ the\ middle\ to\ left-\/rotate\ the\ impulse\ response\ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00107}00107\ \textcolor{comment}{\ \ \ \ \ \ This\ puts\ the\ scrap\ samples\ at\ the\ end\ of\ the\ inverse\ fft'd\ buffer\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00108}00108\ \ \ \ \ st-\/>tmpbuf[0]\ =\ imp\_resp[\ n\_imp\_resp\ -\/\ 1\ ];}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00109}00109\ \ \ \ \ \textcolor{keywordflow}{for}\ (i=0;i<n\_imp\_resp\ -\/\ 1;\ ++i)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00110}00110\ \ \ \ \ \ \ \ \ st-\/>tmpbuf[\ nfft\ -\/\ n\_imp\_resp\ +\ 1\ +\ i\ ]\ =\ imp\_resp[\ i\ ];}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00111}00111\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00112}00112\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00113}00113\ \ \ \ \ FFTFWD(st-\/>fftcfg,st-\/>tmpbuf,st-\/>fir\_freq\_resp);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00114}00114\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00115}00115\ \ \ \ \ \textcolor{comment}{/*\ TODO:\ this\ won't\ work\ for\ fixed\ point\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00116}00116\ \ \ \ \ scale\ =\ 1.0\ /\ st-\/>nfft;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00117}00117\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00118}00118\ \ \ \ \ \textcolor{keywordflow}{for}\ (\ i=0;\ i\ <\ st-\/>n\_freq\_bins;\ ++i\ )\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00119}00119\ \textcolor{preprocessor}{\#ifdef\ USE\_SIMD}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00120}00120\ \ \ \ \ \ \ \ \ st-\/>fir\_freq\_resp[i].r\ *=\ \_mm\_set1\_ps(scale);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00121}00121\ \ \ \ \ \ \ \ \ st-\/>fir\_freq\_resp[i].i\ *=\ \_mm\_set1\_ps(scale);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00122}00122\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00123}00123\ \ \ \ \ \ \ \ \ st-\/>fir\_freq\_resp[i].r\ *=\ scale;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00124}00124\ \ \ \ \ \ \ \ \ st-\/>fir\_freq\_resp[i].i\ *=\ scale;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00125}00125\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00126}00126\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00127}00127\ \ \ \ \ \textcolor{keywordflow}{return}\ st;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00128}00128\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00129}00129\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00130}00130\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ fastconv1buf(\textcolor{keyword}{const}\ kiss\_fastfir\_cfg\ st,\textcolor{keyword}{const}\ kffsamp\_t\ *\ in,kffsamp\_t\ *\ out)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00131}00131\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00132}00132\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ i;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00133}00133\ \ \ \ \ \textcolor{comment}{/*\ multiply\ the\ frequency\ response\ of\ the\ input\ signal\ by}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00134}00134\ \textcolor{comment}{\ \ \ \ \ that\ of\ the\ fir\ filter*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00135}00135\ \ \ \ \ FFTFWD(\ st-\/>fftcfg,\ in\ ,\ st-\/>freqbuf\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00136}00136\ \ \ \ \ \textcolor{keywordflow}{for}\ (\ i=0;\ i<st-\/>n\_freq\_bins;\ ++i\ )\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00137}00137\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{structkiss__fft__cpx}{kiss\_fft\_cpx}}\ tmpsamp;\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00138}00138\ \ \ \ \ \ \ \ \ C\_MUL(tmpsamp,st-\/>freqbuf[i],st-\/>fir\_freq\_resp[i]);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00139}00139\ \ \ \ \ \ \ \ \ st-\/>freqbuf[i]\ =\ tmpsamp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00140}00140\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00141}00141\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00142}00142\ \ \ \ \ \textcolor{comment}{/*\ perform\ the\ inverse\ fft*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00143}00143\ \ \ \ \ FFTINV(st-\/>ifftcfg,st-\/>freqbuf,out);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00144}00144\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00145}00145\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00146}00146\ \textcolor{comment}{/*\ n\ :\ the\ size\ of\ inbuf\ and\ outbuf\ in\ samples}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00147}00147\ \textcolor{comment}{\ \ \ return\ value:\ the\ number\ of\ samples\ completely\ processed}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00148}00148\ \textcolor{comment}{\ \ \ n-\/retval\ samples\ should\ be\ copied\ to\ the\ front\ of\ the\ next\ input\ buffer\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00149}00149\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{size\_t}\ kff\_nocopy(}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00150}00150\ \ \ \ \ \ \ \ \ kiss\_fastfir\_cfg\ st,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00151}00151\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ kffsamp\_t\ *\ inbuf,\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00152}00152\ \ \ \ \ \ \ \ \ kffsamp\_t\ *\ outbuf,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00153}00153\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ n)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00154}00154\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00155}00155\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ norig=n;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00156}00156\ \ \ \ \ \textcolor{keywordflow}{while}\ (n\ >=\ st-\/>nfft\ )\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00157}00157\ \ \ \ \ \ \ \ \ fastconv1buf(st,inbuf,outbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00158}00158\ \ \ \ \ \ \ \ \ inbuf\ +=\ st-\/>ngood;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00159}00159\ \ \ \ \ \ \ \ \ outbuf\ +=\ st-\/>ngood;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00160}00160\ \ \ \ \ \ \ \ \ n\ -\/=\ st-\/>ngood;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00161}00161\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00162}00162\ \ \ \ \ \textcolor{keywordflow}{return}\ norig\ -\/\ n;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00163}00163\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00164}00164\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00165}00165\ \textcolor{keyword}{static}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00166}00166\ \textcolor{keywordtype}{size\_t}\ kff\_flush(kiss\_fastfir\_cfg\ st,\textcolor{keyword}{const}\ kffsamp\_t\ *\ inbuf,kffsamp\_t\ *\ outbuf,\textcolor{keywordtype}{size\_t}\ n)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00167}00167\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00168}00168\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ zpad=0,ntmp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00169}00169\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00170}00170\ \ \ \ \ ntmp\ =\ kff\_nocopy(st,inbuf,outbuf,n);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00171}00171\ \ \ \ \ n\ -\/=\ ntmp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00172}00172\ \ \ \ \ inbuf\ +=\ ntmp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00173}00173\ \ \ \ \ outbuf\ +=\ ntmp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00174}00174\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00175}00175\ \ \ \ \ zpad\ =\ st-\/>nfft\ -\/\ n;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00176}00176\ \ \ \ \ memset(st-\/>tmpbuf,0,\textcolor{keyword}{sizeof}(kffsamp\_t)*st-\/>nfft\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00177}00177\ \ \ \ \ memcpy(st-\/>tmpbuf,inbuf,\textcolor{keyword}{sizeof}(kffsamp\_t)*n\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00178}00178\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00179}00179\ \ \ \ \ fastconv1buf(st,st-\/>tmpbuf,st-\/>tmpbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00180}00180\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00181}00181\ \ \ \ \ memcpy(outbuf,st-\/>tmpbuf,\textcolor{keyword}{sizeof}(kffsamp\_t)*(\ st-\/>ngood\ -\/\ zpad\ ));}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00182}00182\ \ \ \ \ \textcolor{keywordflow}{return}\ ntmp\ +\ st-\/>ngood\ -\/\ zpad;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00183}00183\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00184}00184\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00185}00185\ \textcolor{keywordtype}{size\_t}\ kiss\_fastfir(}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00186}00186\ \ \ \ \ \ \ \ \ kiss\_fastfir\_cfg\ vst,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00187}00187\ \ \ \ \ \ \ \ \ kffsamp\_t\ *\ inbuf,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00188}00188\ \ \ \ \ \ \ \ \ kffsamp\_t\ *\ outbuf,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00189}00189\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ n\_new,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00190}00190\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ *offset)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00191}00191\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00192}00192\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ ntot\ =\ n\_new\ +\ *offset;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00193}00193\ \ \ \ \ \textcolor{keywordflow}{if}\ (n\_new==0)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00194}00194\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ kff\_flush(vst,inbuf,outbuf,ntot);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00195}00195\ \ \ \ \ \}\textcolor{keywordflow}{else}\{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00196}00196\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nwritten\ =\ kff\_nocopy(vst,inbuf,outbuf,ntot);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00197}00197\ \ \ \ \ \ \ \ \ *offset\ =\ ntot\ -\/\ nwritten;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00198}00198\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*save\ the\ unused\ or\ underused\ samples\ at\ the\ front\ of\ the\ input\ buffer\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00199}00199\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(nwritten>0)memcpy(\ inbuf\ ,\ inbuf+nwritten\ ,\ *offset\ *\ \textcolor{keyword}{sizeof}(kffsamp\_t)\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00200}00200\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ nwritten;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00201}00201\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00202}00202\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00203}00203\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00204}00204\ \textcolor{preprocessor}{\#ifdef\ FAST\_FILT\_UTIL}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00205}00205\ \textcolor{preprocessor}{\#include\ <unistd.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00206}00206\ \textcolor{preprocessor}{\#include\ <sys/types.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00207}00207\ \textcolor{preprocessor}{\#include\ <sys/mman.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00208}00208\ \textcolor{preprocessor}{\#include\ <assert.h>}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00209}00209\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00210}00210\ \textcolor{keyword}{static}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00211}00211\ \textcolor{keywordtype}{void}\ direct\_file\_filter(}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00212}00212\ \ \ \ \ \ \ \ \ FILE\ *\ fin,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00213}00213\ \ \ \ \ \ \ \ \ FILE\ *\ fout,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00214}00214\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ kffsamp\_t\ *\ imp\_resp,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00215}00215\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ n\_imp\_resp)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00216}00216\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00217}00217\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nlag\ =\ n\_imp\_resp\ -\/\ 1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00218}00218\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00219}00219\ \ \ \ \ \textcolor{keyword}{const}\ kffsamp\_t\ *tmph;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00220}00220\ \ \ \ \ kffsamp\_t\ *buf,\ *circbuf;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00221}00221\ \ \ \ \ kffsamp\_t\ outval;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00222}00222\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nread;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00223}00223\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nbuf;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00224}00224\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ oldestlag\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00225}00225\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ k,\ tap;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00226}00226\ \textcolor{preprocessor}{\#ifndef\ REAL\_FASTFIR}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00227}00227\ \ \ \ \ kffsamp\_t\ tmp;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00228}00228\ \textcolor{preprocessor}{\#endif\ \ \ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00229}00229\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00230}00230\ \ \ \ \ nbuf\ =\ 4096;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00231}00231\ \ \ \ \ buf\ =\ (kffsamp\_t\ *)\ malloc\ (\ \textcolor{keyword}{sizeof}\ (kffsamp\_t)\ *\ nbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00232}00232\ \ \ \ \ circbuf\ =\ (kffsamp\_t\ *)\ malloc\ (\textcolor{keyword}{sizeof}\ (kffsamp\_t)\ *\ nlag);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00233}00233\ \ \ \ \ \textcolor{keywordflow}{if}\ (!circbuf\ ||\ !buf)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00234}00234\ \ \ \ \ \ \ \ \ perror(\textcolor{stringliteral}{"{}circbuf\ allocation"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00235}00235\ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00236}00236\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00237}00237\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00238}00238\ \ \ \ \ \textcolor{keywordflow}{if}\ (\ fread\ (circbuf,\ \textcolor{keyword}{sizeof}\ (kffsamp\_t),\ nlag,\ fin)\ !=\ \ nlag\ )\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00239}00239\ \ \ \ \ \ \ \ \ perror\ (\textcolor{stringliteral}{"{}insufficient\ data\ to\ overcome\ transient"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00240}00240\ \ \ \ \ \ \ \ \ exit\ (1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00241}00241\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00242}00242\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00243}00243\ \ \ \ \ \textcolor{keywordflow}{do}\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00244}00244\ \ \ \ \ \ \ \ \ nread\ =\ fread\ (buf,\ \textcolor{keyword}{sizeof}\ (kffsamp\_t),\ nbuf,\ fin);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00245}00245\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (nread\ <=\ 0)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00246}00246\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00247}00247\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00248}00248\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (k\ =\ 0;\ k\ <\ nread;\ ++k)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00249}00249\ \ \ \ \ \ \ \ \ \ \ \ \ tmph\ =\ imp\_resp+nlag;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00250}00250\ \textcolor{preprocessor}{\#ifdef\ REAL\_FASTFIR}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00251}00251\ \textcolor{preprocessor}{\#\ ifdef\ USE\_SIMD}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00252}00252\ \ \ \ \ \ \ \ \ \ \ \ \ outval\ =\ \_mm\_set1\_ps(0);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00253}00253\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00254}00254\ \ \ \ \ \ \ \ \ \ \ \ \ outval\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00255}00255\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00256}00256\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (tap\ =\ oldestlag;\ tap\ <\ nlag;\ ++tap)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00257}00257\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ outval\ +=\ circbuf[tap]\ *\ *tmph-\/-\/;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00258}00258\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (tap\ =\ 0;\ tap\ <\ oldestlag;\ ++tap)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00259}00259\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ outval\ +=\ circbuf[tap]\ *\ *tmph-\/-\/;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00260}00260\ \ \ \ \ \ \ \ \ \ \ \ \ outval\ +=\ buf[k]\ *\ *tmph;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00261}00261\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00262}00262\ \textcolor{preprocessor}{\#\ ifdef\ USE\_SIMD}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00263}00263\ \ \ \ \ \ \ \ \ \ \ \ \ outval.r\ =\ outval.i\ =\ \_mm\_set1\_ps(0);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00264}00264\ \textcolor{preprocessor}{\#else\ \ \ \ \ \ \ \ \ \ \ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00265}00265\ \ \ \ \ \ \ \ \ \ \ \ \ outval.r\ =\ outval.i\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00266}00266\ \textcolor{preprocessor}{\#endif\ \ \ \ \ \ \ \ \ \ \ \ }}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00267}00267\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (tap\ =\ oldestlag;\ tap\ <\ nlag;\ ++tap)\{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00268}00268\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ C\_MUL(tmp,circbuf[tap],*tmph);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00269}00269\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ -\/-\/tmph;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00270}00270\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ C\_ADDTO(outval,tmp);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00271}00271\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00272}00272\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00273}00273\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (tap\ =\ 0;\ tap\ <\ oldestlag;\ ++tap)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00274}00274\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ C\_MUL(tmp,circbuf[tap],*tmph);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00275}00275\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ -\/-\/tmph;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00276}00276\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ C\_ADDTO(outval,tmp);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00277}00277\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00278}00278\ \ \ \ \ \ \ \ \ \ \ \ \ C\_MUL(tmp,buf[k],*tmph);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00279}00279\ \ \ \ \ \ \ \ \ \ \ \ \ C\_ADDTO(outval,tmp);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00280}00280\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00281}00281\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00282}00282\ \ \ \ \ \ \ \ \ \ \ \ \ circbuf[oldestlag++]\ =\ buf[k];}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00283}00283\ \ \ \ \ \ \ \ \ \ \ \ \ buf[k]\ =\ outval;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00284}00284\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00285}00285\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (oldestlag\ ==\ nlag)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00286}00286\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ oldestlag\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00287}00287\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00288}00288\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00289}00289\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fwrite\ (buf,\ \textcolor{keyword}{sizeof}\ (buf[0]),\ nread,\ fout)\ !=\ nread)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00290}00290\ \ \ \ \ \ \ \ \ \ \ \ \ perror\ (\textcolor{stringliteral}{"{}short\ write"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00291}00291\ \ \ \ \ \ \ \ \ \ \ \ \ exit\ (1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00292}00292\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00293}00293\ \ \ \ \ \}\ \textcolor{keywordflow}{while}\ (nread);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00294}00294\ \ \ \ \ free\ (buf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00295}00295\ \ \ \ \ free\ (circbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00296}00296\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00297}00297\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00298}00298\ \textcolor{keyword}{static}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00299}00299\ \textcolor{keywordtype}{void}\ do\_file\_filter(}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00300}00300\ \ \ \ \ \ \ \ \ FILE\ *\ fin,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00301}00301\ \ \ \ \ \ \ \ \ FILE\ *\ fout,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00302}00302\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ kffsamp\_t\ *\ imp\_resp,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00303}00303\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ n\_imp\_resp,}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00304}00304\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nfft\ )}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00305}00305\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00306}00306\ \ \ \ \ \textcolor{keywordtype}{int}\ fdout;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00307}00307\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ n\_samps\_buf;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00308}00308\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00309}00309\ \ \ \ \ kiss\_fastfir\_cfg\ cfg;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00310}00310\ \ \ \ \ kffsamp\_t\ *inbuf,*outbuf;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00311}00311\ \ \ \ \ \textcolor{keywordtype}{int}\ nread,nwrite;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00312}00312\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ idx\_inbuf;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00313}00313\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00314}00314\ \ \ \ \ fdout\ =\ fileno(fout);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00315}00315\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00316}00316\ \ \ \ \ cfg=kiss\_fastfir\_alloc(imp\_resp,n\_imp\_resp,\&nfft,0,0);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00317}00317\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00318}00318\ \ \ \ \ \textcolor{comment}{/*\ use\ length\ to\ minimize\ buffer\ shift*/}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00319}00319\ \ \ \ \ n\_samps\_buf\ =\ 8*4096/\textcolor{keyword}{sizeof}(kffsamp\_t);\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00320}00320\ \ \ \ \ n\_samps\_buf\ =\ nfft\ +\ 4*(nfft-\/n\_imp\_resp+1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00321}00321\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00322}00322\ \ \ \ \ \textcolor{keywordflow}{if}\ (verbose)\ fprintf(stderr,\textcolor{stringliteral}{"{}bufsize=\%d\(\backslash\)n"{}},(\textcolor{keywordtype}{int})(\textcolor{keyword}{sizeof}(kffsamp\_t)*n\_samps\_buf)\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00323}00323\ \ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00324}00324\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00325}00325\ \ \ \ \ \textcolor{comment}{/*allocate\ space\ and\ initialize\ pointers\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00326}00326\ \ \ \ \ inbuf\ =\ (kffsamp\_t*)malloc(\textcolor{keyword}{sizeof}(kffsamp\_t)*n\_samps\_buf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00327}00327\ \ \ \ \ outbuf\ =\ (kffsamp\_t*)malloc(\textcolor{keyword}{sizeof}(kffsamp\_t)*n\_samps\_buf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00328}00328\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00329}00329\ \ \ \ \ idx\_inbuf=0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00330}00330\ \ \ \ \ \textcolor{keywordflow}{do}\{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00331}00331\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ start\ reading\ at\ inbuf[idx\_inbuf]\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00332}00332\ \ \ \ \ \ \ \ \ nread\ =\ fread(\ inbuf\ +\ idx\_inbuf,\ \textcolor{keyword}{sizeof}(kffsamp\_t),\ n\_samps\_buf\ -\/\ idx\_inbuf,fin\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00333}00333\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00334}00334\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ If\ nread==0,\ then\ this\ is\ a\ flush.}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00335}00335\ \textcolor{comment}{\ \ \ \ \ \ \ \ \ \ \ \ The\ total\ number\ of\ samples\ in\ input\ is\ idx\_inbuf\ +\ nread\ .\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00336}00336\ \ \ \ \ \ \ \ \ nwrite\ =\ kiss\_fastfir(cfg,\ inbuf,\ outbuf,nread,\&idx\_inbuf)\ *\ \textcolor{keyword}{sizeof}(kffsamp\_t);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00337}00337\ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ kiss\_fastfir\ moved\ any\ unused\ samples\ to\ the\ front\ of\ inbuf\ and\ updated\ idx\_inbuf\ */}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00338}00338\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00339}00339\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\ write(fdout,\ outbuf,\ nwrite)\ !=\ nwrite\ )\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00340}00340\ \ \ \ \ \ \ \ \ \ \ \ \ perror(\textcolor{stringliteral}{"{}short\ write"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00341}00341\ \ \ \ \ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00342}00342\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00343}00343\ \ \ \ \ \}\textcolor{keywordflow}{while}\ (\ nread\ );}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00344}00344\ \ \ \ \ free(cfg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00345}00345\ \ \ \ \ free(inbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00346}00346\ \ \ \ \ free(outbuf);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00347}00347\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00348}00348\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00349}00349\ \textcolor{keywordtype}{int}\ main(\textcolor{keywordtype}{int}\ argc,\textcolor{keywordtype}{char}**argv)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00350}00350\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00351}00351\ \ \ \ \ kffsamp\_t\ *\ h;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00352}00352\ \ \ \ \ \textcolor{keywordtype}{int}\ use\_direct=0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00353}00353\ \ \ \ \ \textcolor{keywordtype}{size\_t}\ nh,nfft=0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00354}00354\ \ \ \ \ FILE\ *fin=stdin;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00355}00355\ \ \ \ \ FILE\ *fout=stdout;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00356}00356\ \ \ \ \ FILE\ *filtfile=NULL;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00357}00357\ \ \ \ \ \textcolor{keywordflow}{while}\ (1)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00358}00358\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ c=getopt(argc,argv,\textcolor{stringliteral}{"{}n:h:i:o:vd"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00359}00359\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (c==-\/1)\ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00360}00360\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{switch}\ (c)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00361}00361\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'v'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00362}00362\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ verbose=1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00363}00363\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00364}00364\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'n'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00365}00365\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ nfft=atoi(optarg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00366}00366\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00367}00367\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'i'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00368}00368\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ fin\ =\ fopen(optarg,\textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00369}00369\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fin==NULL)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00370}00370\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ perror(optarg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00371}00371\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00372}00372\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00373}00373\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00374}00374\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'o'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00375}00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ fout\ =\ fopen(optarg,\textcolor{stringliteral}{"{}w+b"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00376}00376\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fout==NULL)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00377}00377\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ perror(optarg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00378}00378\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00379}00379\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00380}00380\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00381}00381\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'h'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00382}00382\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ filtfile\ =\ fopen(optarg,\textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00383}00383\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (filtfile==NULL)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00384}00384\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ perror(optarg);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00385}00385\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00386}00386\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00387}00387\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00388}00388\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'d'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00389}00389\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ use\_direct=1;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00390}00390\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00391}00391\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \textcolor{charliteral}{'?'}:}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00392}00392\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}usage\ options:\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00393}00393\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/n\ nfft:\ fft\ size\ to\ use\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00394}00394\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/d\ :\ use\ direct\ FIR\ filtering,\ not\ fast\ convolution\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00395}00395\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/i\ filename:\ input\ file\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00396}00396\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/o\ filename:\ output(filtered)\ file\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00397}00397\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/n\ nfft:\ fft\ size\ to\ use\(\backslash\)n"{}}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00398}00398\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}\(\backslash\)t-\/h\ filename:\ impulse\ response\(\backslash\)n"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00399}00399\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ exit\ (1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00400}00400\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:fprintf(stderr,\textcolor{stringliteral}{"{}bad\ \%c\(\backslash\)n"{}},c);\textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00401}00401\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00402}00402\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00403}00403\ \ \ \ \ \textcolor{keywordflow}{if}\ (filtfile==NULL)\ \{}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00404}00404\ \ \ \ \ \ \ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}You\ must\ supply\ the\ FIR\ coeffs\ via\ -\/h\(\backslash\)n"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00405}00405\ \ \ \ \ \ \ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00406}00406\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00407}00407\ \ \ \ \ fseek(filtfile,0,SEEK\_END);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00408}00408\ \ \ \ \ nh\ =\ ftell(filtfile)\ /\ \textcolor{keyword}{sizeof}(kffsamp\_t);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00409}00409\ \ \ \ \ \textcolor{keywordflow}{if}\ (verbose)\ fprintf(stderr,\textcolor{stringliteral}{"{}\%d\ samples\ in\ FIR\ filter\(\backslash\)n"{}},(\textcolor{keywordtype}{int})nh);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00410}00410\ \ \ \ \ h\ =\ (kffsamp\_t*)malloc(\textcolor{keyword}{sizeof}(kffsamp\_t)*nh);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00411}00411\ \ \ \ \ fseek(filtfile,0,SEEK\_SET);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00412}00412\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(h,\textcolor{keyword}{sizeof}(kffsamp\_t),nh,filtfile)\ !=\ nh)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00413}00413\ \ \ \ \ \ \ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}short\ read\ on\ filter\ file\(\backslash\)n"{}});}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00414}00414\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00415}00415\ \ \ \ \ fclose(filtfile);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00416}00416\ \ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00417}00417\ \ \ \ \ \textcolor{keywordflow}{if}\ (use\_direct)}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00418}00418\ \ \ \ \ \ \ \ \ direct\_file\_filter(\ fin,\ fout,\ h,nh);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00419}00419\ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00420}00420\ \ \ \ \ \ \ \ \ do\_file\_filter(\ fin,\ fout,\ h,nh,nfft);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00421}00421\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00422}00422\ \ \ \ \ \textcolor{keywordflow}{if}\ (fout!=stdout)\ fclose(fout);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00423}00423\ \ \ \ \ \textcolor{keywordflow}{if}\ (fin!=stdin)\ fclose(fin);}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00424}00424\ }
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00425}00425\ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00426}00426\ \}}
+\DoxyCodeLine{\Hypertarget{kiss__fastfir_8c_source_l00427}00427\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

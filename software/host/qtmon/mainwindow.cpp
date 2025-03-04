@@ -19,22 +19,34 @@
 #include <fstream>
 #include <iomanip>
 
-#include "flashdownload.h"
+#include <google/protobuf/util/json_util.h>
+#include <streambuf>
+
+
+#include "tagclass.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "logscreen.h"
-#include "download.h"
 
-#include <taglogs.h>
+#include "tag.pb.h"
+
+#include "taglogs.h"
 #include "configtab.h"
+#include "download.h"
 
 extern "C"
 {
 #include "log.h"
 }
 
+// hook into the error logging system
+
+extern int log_level;
+QTextEdit *s_textEdit = nullptr;
+
 extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                             const QString &msg);
+
+// main window
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -42,30 +54,38 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
 
-  // Change Main Window
+  // Change Main Window title
 
   QString title = QString::fromStdString("Tag Monitor v") + QString::number(version);
 
   setWindowTitle(title);
 
-  // create config and log tab widgets
+  // create configuration widgets
 
-  configtab_ = new ConfigTab(this);
-  ui->configTab->layout()->addWidget(configtab_);
+  // initialize error log
+  // create loglevel choices
 
-  logtab = new LogScreen(this);
-  ui->logTab->layout()->addWidget(logtab);
+  QStringList ll;
 
-  // Connect signals & slots
+    // don't include LOG_FATAL in choices
 
-  // connect to buttons on log tab
-  connect(logtab, &LogScreen::printConfig_clicked, this, &MainWindow::on_LogConfigButton_clicked);
-  connect(logtab, &LogScreen::printTagConfig_clicked, this, &MainWindow::on_LogTagConfigButton_clicked);
-  // connect to buttons config tab
-  connect(configtab_, &ConfigTab::start_clicked, this, &MainWindow::Start);
-  connect(configtab_, &ConfigTab::config_restore_clicked, this, &MainWindow::SetConfigFromTag);
+  for (int i = 0; i < LOG_FATAL; i++) {
+    ll << log_level_string(i);
+  }
+
+  ui->loglevelBox->addItems(ll);
+  ui->loglevelBox->setCurrentIndex(LOG_INFO);
+
+  // connect log text edit box to error logging system
+
+  s_textEdit = ui->logtextEdit;
+  qInstallMessageHandler(myMessageOutput);
 
   ui->mainTabWidget->setCurrentIndex(0);
+
+  // get handle to config tab
+
+  configtab_ = ui->config;
 
   // Tag state poll timer
 
@@ -184,7 +204,7 @@ bool MainWindow::Attach()
 
     ui->info_testStatus->setText(QString::fromStdString(TestResult_Name(result)));
 
-    logtab->setEnabled(true);
+    ui->errorLog->setEnabled(true);
     
 
     // handle tag type specific Status Page setup
@@ -197,7 +217,11 @@ bool MainWindow::Attach()
     {
       ui->ExternalLog->setHidden(false);
     }
+
     configtab_->Attach(config);
+
+    //ui->loglevelBox->setCurrentIndex(LOG_INFO);
+    
     TriggerUpdate();
     timer.start(400);
     return true;
@@ -262,12 +286,14 @@ void MainWindow::TriggerUpdate(void)
         ui->syncButton->setEnabled(true);
         ui->testButton->setEnabled(true);
         ui->progressBar->setVisible(false);
+        ui->configControls->setEnabled(true);
       }
       else
       {
         // tag tab
         ui->syncButton->setEnabled(false);
         ui->testButton->setEnabled(false);
+        ui->configControls->setEnabled(false);
       }
 
       if (status.state() == sRESET)
@@ -314,13 +340,11 @@ void MainWindow::TriggerUpdate(void)
   }
 }
 
-void MainWindow::Start()
+void MainWindow::on_startButton_clicked()
 {
   Config config;
   if (configtab_->GetConfig(config))
   {
-
-    //qDebug() << QString::fromStdString(config.DebugString());
     if (!tag.Start(config))
     {
       QMessageBox msgBox;
@@ -329,10 +353,12 @@ void MainWindow::Start()
       msgBox.setStandardButtons(QMessageBox::Ok);
       msgBox.exec();
     }
+  } else {
+    qDebug() << "on_startButton_clicked failed to get config";
   }
 }
 
-void MainWindow::SetConfigFromTag()
+void MainWindow::on_tagConfigReadButton_clicked()
 {
   Config config;
   if (tag.GetConfig(config))
@@ -370,14 +396,15 @@ void MainWindow::on_Detach_clicked()
   tag.Detach();
   timer.stop();
   TriggerUpdate();
-  logtab->clear();
+  ui->logtextEdit->clear();
   ui->Attach->setEnabled(true);
   ui->Detach->setEnabled(false);
   ui->StatusGroup->setEnabled(false);
   ui->TagInformation->setEnabled(false);
   ui->ControlGroup->setEnabled(false);
   configtab_->Detach();
-  logtab->setEnabled(false);
+  ui->errorLog->setEnabled(false);
+  //ui->loglevelBox->setCurrentIndex(LOG_DEBUG);
 }
 
 void MainWindow::on_syncButton_clicked()
@@ -426,7 +453,7 @@ void MainWindow::on_eraseButton_clicked()
 
 // download tag data 
 
-void MainWindow::on_internalDownloadButton_clicked()
+void MainWindow::on_tagLogSaveButton_clicked()
 {
   Download dl;
 
@@ -485,7 +512,7 @@ void MainWindow::on_internalDownloadButton_clicked()
 
 // these help with debugging UI
 // we should disable them in release
-
+/*
 void MainWindow::on_LogConfigButton_clicked()
 {
   Config tmp;
@@ -503,5 +530,139 @@ void MainWindow::on_LogTagConfigButton_clicked()
   else
   {
     qDebug() << "tag.GetConfig() returned false";
+  }
+}
+*/
+
+void MainWindow::on_loglevelBox_currentIndexChanged(int index)
+{
+  log_set_level(index);
+  log_level = index;
+}
+
+// Save the log window contents as a text file
+
+void MainWindow::on_logsaveButton_clicked()
+{
+  QFileDialog fd;
+
+  fd.setDirectory(QDir::homePath());
+  QString nameFile = fd.getSaveFileName();
+  if (nameFile != "")
+  {
+    QFile file(nameFile);
+
+    if (file.open(QIODevice::ReadWrite))
+    {
+      QTextStream stream(&file);
+      stream << ui->logtextEdit->toPlainText();
+      file.flush();
+      file.close();
+    }
+    else
+    {
+      QMessageBox::critical(this, tr("Error"), tr("Cannot open file"));
+      return;
+    }
+  }
+}
+
+/*
+ * configuration file operations
+*/
+
+void MainWindow::on_configSaveButton_clicked()
+{
+  QFileDialog fd;
+  fd.setFileMode(QFileDialog::AnyFile);
+  QString fileName = fd.getSaveFileName(this, tr("Save File"),
+                                        QDir::homePath() + "/untitled.json",
+                                        tr("Protobuf (*.json)"));
+  QString errormsg;
+
+  do
+  {
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = true;
+    // deprecated -- options.always_print_primitive_fields = true;
+    options.preserve_proto_field_names = true;
+
+    std::ofstream fs(fileName.toStdString());
+
+    if (!fs.is_open())
+    {
+      errormsg = "Couldn't Open " + fileName;
+      break;
+    }
+
+    Config configout;
+    configtab_->GetConfig(configout);
+
+    std::string json_string;
+    if (MessageToJsonString(configout, &json_string, options).ok())
+    {
+      fs << json_string;
+      if (fs.bad())
+      {
+        errormsg = "Couldn't Write " + fileName;
+      }
+    }
+    else
+    {
+      errormsg = "Couldn't Create JSON output ";
+    }
+
+    fs.close();
+  } while (0);
+
+  if (!errormsg.isEmpty())
+  {
+    QMessageBox msgBox;
+    msgBox.setText(errormsg);
+    msgBox.exec();
+    qDebug() << errormsg;
+  }
+}
+
+// Restore config from file
+
+void MainWindow::on_configRestoreButton_clicked()
+{
+  QFileDialog fd;
+  QString fileName = fd.getOpenFileName(this, tr("Open File"), QDir::homePath(),
+                                        tr("Protobuf (*.json)"));
+
+  if (fileName == "")
+    return;
+  Config configin;
+  std::ifstream fin(fileName.toStdString());
+
+  if (!fin.is_open())
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Couldn't Open " + fileName);
+    msgBox.exec();
+    qDebug() << "Config file restore couldn't open " << fileName;
+    return;
+  }
+
+  std::string str((std::istreambuf_iterator<char>(fin)),
+                  std::istreambuf_iterator<char>());
+
+  fin.close();
+  google::protobuf::util::JsonParseOptions options2;
+  if (JsonStringToMessage(str, &configin, options2).ok())
+  {
+    // We should check the configuration that is read
+    // against the current configuration to make sure all
+    // the fields are implemented
+    configtab_->SetConfig(configin);
+  }
+  else
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Couldn't Read " + fileName);
+    msgBox.exec();
+    qDebug() << "Config file restore couldn't read " << fileName;
   }
 }

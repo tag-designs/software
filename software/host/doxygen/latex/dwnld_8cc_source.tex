@@ -1,0 +1,100 @@
+\doxysection{dwnld.\+cc}
+\hypertarget{dwnld_8cc_source}{}\label{dwnld_8cc_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/dwnld.cc@{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/dwnld.cc}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00001}00001\ \textcolor{preprocessor}{\#include\ "{}dwnld.h"{}}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <taglogs.h>}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00004}00004\ \textcolor{keyword}{using\ namespace\ }std::chrono\_literals;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00005}00005\ \textcolor{keyword}{using\ namespace\ }google::protobuf;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00007}00007\ \textcolor{preprocessor}{\#ifdef\ \_WIN64}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <csignal>}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00009}00009\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00010}00010\ \textcolor{preprocessor}{\#include\ <signal.h>}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00011}00011\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00013}00013\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{bool}\ parse\_options(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv,\ \mbox{\hyperlink{classcxxopts_1_1_options}{cxxopts::Options}}\ \&options,\ \mbox{\hyperlink{class_tag}{Tag}}\ \&tag,\ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ \&dev);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00014}00014\ std::string\ fname;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00015}00015\ \textcolor{keywordtype}{bool}\ stoptag;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00017}00017\ \textcolor{keyword}{static}\ std::condition\_variable\ cv;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00018}00018\ \textcolor{keyword}{static}\ std::mutex\ cv\_m;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00019}00019\ \textcolor{comment}{//static\ int\ ticks\ =\ 0;}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00020}00020\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00021}00021\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ intHandler(\textcolor{keywordtype}{int}\ dummy)}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00022}00022\ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00023}00023\ \ \ (void)dummy;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00024}00024\ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00025}00025\ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00026}00026\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00027}00027\ \textcolor{keywordtype}{int}\ main(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv)}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00028}00028\ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00029}00029\ \ \ \mbox{\hyperlink{class_tag}{Tag}}\ tag;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00030}00030\ \ \ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ dev;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00031}00031\ \ \ std::string\ input;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00032}00032\ \ \ Status\ s;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00033}00033\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00034}00034\ \ \ \mbox{\hyperlink{classcxxopts_1_1_options}{cxxopts::Options}}\ options(\textcolor{stringliteral}{"{}tag-\/dwnld"{}},\ \textcolor{stringliteral}{"{}Downloads\ data\ from\ file"{}});}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00036}00036\ \ \ \textcolor{comment}{//\ Parse\ options}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00037}00037\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00038}00038\ \ \ \textcolor{keywordflow}{if}\ (parse\_options(argc,\ argv,\ options,\ tag,\ dev)\ \&\&\ tag.Attach(dev))}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00039}00039\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00040}00040\ \ \ \ \ \textcolor{comment}{//\ print\ floating\ point\ as\ \ xxxxx.yy}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00041}00041\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00042}00042\ \ \ \ \ std::cout\ <<\ std::fixed;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00043}00043\ \ \ \ \ std::cout.precision(2);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00044}00044\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00045}00045\ \ \ \ \ \textcolor{comment}{//\ catch\ ctl-\/c}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00046}00046\ \ \ \ \ signal(SIGINT,\ intHandler);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00047}00047\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00048}00048\ \ \ \ \ Status\ s;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00049}00049\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00050}00050\ \ \ \ \ \textcolor{keywordflow}{while}\ (1)}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00051}00051\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00052}00052\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!tag.GetStatus(s))}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00053}00053\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00054}00054\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00055}00055\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00057}00057\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ ((s.state()\ ==\ RUNNING)\ \&\&\ stoptag)}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00058}00058\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00059}00059\ \ \ \ \ \ \ \ \ tag.Stop();}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00060}00060\ \ \ \ \ \ \ \ \ tag.GetStatus(s);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00061}00061\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00062}00062\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00063}00063\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ ((s.state()\ !=\ FINISHED)\ \&\&\ (s.state()\ !=\ ABORTED))}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00064}00064\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00065}00065\ \ \ \ \ \ \ \ \ std::string\ formatted;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00066}00066\ \ \ \ \ \ \ \ \ TextFormat::PrintToString(s,\ \&formatted);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00067}00067\ \ \ \ \ \ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Can't\ dump\ logs\ from\ current\ state\ \(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00068}00068\ \ \ \ \ \ \ \ \ std::cerr\ <<\ formatted\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00069}00069\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00070}00070\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00071}00071\ }
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00072}00072\ \ \ \ \ \ \ dumpTagLogHeader(std::cout,\ tag,\ tag\_log\_output\_txt);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00073}00073\ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ len\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00074}00074\ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ total\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00075}00075\ \ \ \ \ \ \ Config\ config;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00076}00076\ \ \ \ \ \ \ tag.GetConfig(config);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00077}00077\ \ \ \ \ \ \ Ack\ ack;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00078}00078\ \ \ \ \ \ \ \textcolor{keywordflow}{do}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00079}00079\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00080}00080\ \ \ \ \ \ \ \ \ ack.Clear();}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00081}00081\ \ \ \ \ \ \ \ \ len\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00082}00082\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.GetDataLog(ack,\ total))}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00083}00083\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00084}00084\ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//std::cerr\ <<\ ack.DebugString()\ <<\ "{}\(\backslash\)n"{};}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00085}00085\ \ \ \ \ \ \ \ \ \ \ len\ =\ dumpTagLog(std::cout,\ ack,\ config,\ tag\_log\_output\_txt);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00086}00086\ \ \ \ \ \ \ \ \ \ \ total\ +=\ len;}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00087}00087\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00088}00088\ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{while}\ (len);}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00089}00089\ \ \ \ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Downloaded\ "{}}\ <<\ total\ <<\ \textcolor{stringliteral}{"{}\ bytes\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00090}00090\ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00091}00091\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00092}00092\ \ \ \ \ std::cerr\ <<\ \textcolor{stringliteral}{"{}Exit\(\backslash\)n"{}};}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00093}00093\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{dwnld_8cc_source_l00094}00094\ \}}
+
+\end{DoxyCode}

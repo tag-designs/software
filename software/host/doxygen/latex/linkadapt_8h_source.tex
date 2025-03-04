@@ -1,0 +1,61 @@
+\doxysection{linkadapt.\+h}
+\hypertarget{linkadapt_8h_source}{}\label{linkadapt_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/linkadapt.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/linkadapt.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ LINK\_ADAPT\_H}}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ LINK\_ADAPT\_H}}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00005}00005\ \textcolor{keyword}{struct\ }libusb\_device\_handle;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00006}00006\ \textcolor{keyword}{struct\ }libusb\_context;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00007}00007\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00009}\mbox{\hyperlink{struct_usb_dev}{00009}}\ \textcolor{keyword}{struct\ }UsbDev}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00010}00010\ \{}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00011}00011\ \ \ \ \ UsbDev():\ vid(0),pid(0),\ bus(0),\ address(0)\ \{\ \}\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00012}00012\ \ \ \ \ uint16\_t\ vid;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00013}00013\ \ \ \ \ uint16\_t\ pid;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00014}00014\ \ \ \ \ uint8\_t\ bus;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00015}00015\ \ \ \ \ uint8\_t\ address;\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00016}00016\ \};}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00018}\mbox{\hyperlink{class_link_adapt}{00018}}\ \textcolor{keyword}{class\ }LinkAdapt}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00019}00019\ \{}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00020}00020\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00021}00021\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00022}00022\ \ \ \ \ LinkAdapt();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00023}00023\ \ \ \ \ \string~LinkAdapt();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00024}00024\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00025}00025\ \ \ \ \ \textcolor{keywordtype}{bool}\ Available(std::vector<UsbDev>\ \&usbdevs);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00026}00026\ \ \ \ \ \textcolor{keywordtype}{bool}\ Attach(\mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ usbdev\ =\ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}());}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00027}00027\ \ \ \ \ \textcolor{keywordtype}{void}\ Detach();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00028}00028\ \ \ \ \ \textcolor{keywordtype}{bool}\ IsAttached();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00029}00029\ \ \ \ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00030}00030\ \textcolor{keyword}{protected}:}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00032}00032\ \ \ \ \ \textcolor{keywordtype}{bool}\ Voltage(\textcolor{keywordtype}{float}\ \&voltage);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00033}00033\ \ \ \ \ \textcolor{keywordtype}{bool}\ ReadMem32(\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ addr,\ uint8\_t\ *buf,\ uint16\_t\ count);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00034}00034\ \ \ \ \ \textcolor{keywordtype}{bool}\ WriteMem32(\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ addr,\ uint8\_t\ *buf,\ uint16\_t\ count);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00035}00035\ \ \ \ \ \textcolor{keywordtype}{bool}\ ReadDebug32(\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ addr,\ uint32\_t\ *rval);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00036}00036\ \ \ \ \ \textcolor{keywordtype}{bool}\ WriteDebug32(\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{int}\ addr,\ uint32\_t\ val);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00037}00037\ \ \ \ \ \textcolor{keywordtype}{bool}\ WriteReset(\textcolor{keywordtype}{bool}\ active);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00038}00038\ \ \ \ \ \textcolor{keywordtype}{bool}\ AssertReset(\textcolor{keywordtype}{bool}\ high);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00039}00039\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00040}00040\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00041}00041\ \ \ \ \textcolor{keyword}{class\ }\mbox{\hyperlink{class_link_adapt_1_1_link_req}{LinkReq}};}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00042}00042\ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{char}\ ep\_out;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00043}00043\ \ \ \ \ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{char}\ ep\_in;}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00044}00044\ \ \ \ \ libusb\_device\_handle\ *handle\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00045}00045\ \ \ \ \ libusb\_context\ *ctx\ =\ \textcolor{keyword}{nullptr};}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00046}00046\ }
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00047}00047\ \ \ \ \ \textcolor{keywordtype}{bool}\ usb\_xfer(\textcolor{keywordtype}{bool}\ In,\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{char}\ *buf,\ \textcolor{keywordtype}{int}\ length);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00048}00048\ \ \ \ \ \textcolor{keywordtype}{bool}\ cmd\_eval(\mbox{\hyperlink{class_link_adapt_1_1_link_req}{LinkReq}}\ \&req,\ \textcolor{keywordtype}{bool}\ ReadnWrite);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00049}00049\ \ \ \ \ \textcolor{keywordtype}{bool}\ current\_mode(uint16\_t\ \&mode);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00050}00050\ \ \ \ \ \textcolor{keywordtype}{bool}\ enter\_debug\_mode();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00051}00051\ \ \ \ \ \textcolor{keywordtype}{bool}\ exit\_debug\_mode();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00052}00052\ \ \ \ \ \textcolor{keywordtype}{bool}\ exit\_dfu\_mode();}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00053}00053\ \ \ \ \ \textcolor{keywordtype}{bool}\ get\_rw\_status(uint16\_t\ \&status);}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00054}00054\ \};}
+\DoxyCodeLine{\Hypertarget{linkadapt_8h_source_l00055}00055\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

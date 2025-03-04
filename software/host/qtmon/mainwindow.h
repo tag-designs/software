@@ -4,13 +4,15 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QPromise>
-#include "tag.pb.h"
+#include "tagclass.h"
+#include "schedule.h"
 
 class QWidget;
 class QTextEdit;
 class QGroupBox;
 class ConfigTab;
-class Tag;
+
+
 
 extern QTextEdit *s_textEdit;
 class LogScreen;
@@ -31,20 +33,6 @@ public:
 signals:
 
   void StateUpdate(TagState state); 
-  //void TagAttach(const Config &config);
-  //void TagDetach();
-
-private:
-
-  // log tab events
- 
-  void on_LogConfigButton_clicked();    // log current configuration (from UI)
-  void on_LogTagConfigButton_clicked(); // log current tag configuration
-  
-  void SetConfigFromTag();
-  void Start();
-
-  void DataDownloadHelper(QPromise<void> &promise,std::fstream &);
 
 private slots:
 
@@ -64,15 +52,24 @@ private slots:
   void on_eraseButton_clicked();    // reset tag flash
   void on_testButton_clicked();     // run tag self-test
 
-  void on_Attach_clicked();
-  void on_Detach_clicked();
+  void on_Attach_clicked();         // attach to tag
+  void on_Detach_clicked();         // detach from tag
 
   // data events
 
-  void on_internalDownloadButton_clicked(); // download data
-  //void on_externalDownloadButton_clicked();
+  void on_tagLogSaveButton_clicked(); // download data from tag
 
- 
+  // configure events
+
+  void on_configSaveButton_clicked();
+  void on_configRestoreButton_clicked();
+  void on_startButton_clicked();
+  void on_tagConfigReadButton_clicked();
+
+  // error log events
+
+  void on_logsaveButton_clicked();
+  void on_loglevelBox_currentIndexChanged(int);
 
 private:
   Tag tag;
@@ -81,6 +78,9 @@ private:
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
   ConfigTab *configtab_;
+
+  Schedule schedule;
+
   LogScreen *logtab;
   const float version = 2.0;
   //static void download_data(Tag &, QProgressBar &, std::fstream &,int);

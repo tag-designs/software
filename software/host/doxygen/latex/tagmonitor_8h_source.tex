@@ -1,0 +1,41 @@
+\doxysection{tagmonitor.\+h}
+\hypertarget{tagmonitor_8h_source}{}\label{tagmonitor_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/tagmonitor.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/tagmonitor.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ TAGMON\_H}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ TAGMON\_H}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ "{}linkadapt.h"{}}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00005}00005\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00007}\mbox{\hyperlink{class_tag_monitor}{00007}}\ \textcolor{keyword}{class\ }TagMonitor\ :\ \textcolor{keyword}{public}\ LinkAdapt}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00008}00008\ \{}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00009}00009\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00010}00010\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00011}00011\ TagMonitor();}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00012}00012\ \string~TagMonitor();}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00013}00013\ \ \textcolor{keywordtype}{bool}\ Attach(\mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ dev\ =\ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}());}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00014}00014\ \ \textcolor{keywordtype}{void}\ Detach();}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00015}00015\ \ \textcolor{keywordtype}{bool}\ GitShaString(std::string\ \&str);}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00016}00016\ \ \textcolor{keywordtype}{bool}\ Voltage(\textcolor{keywordtype}{float}\ \&voltage);}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00017}00017\ \ \textcolor{keywordtype}{bool}\ Rpc(Req\ \&req,\ Ack\ \&ack);}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00018}00018\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00019}00019\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00020}00020\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00021}00021\ \ \ \textcolor{keywordtype}{size\_t}\ MaxPacket()\ \{\ \textcolor{keywordflow}{return}\ maxpacket;\ \}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00022}00022\ \ \ \textcolor{keywordtype}{char}\ rpcbuf[1024*64];\ \ \textcolor{comment}{//\ communication\ buffer\ }}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00023}00023\ }
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00024}00024\ \ \ \textcolor{keywordtype}{bool}\ Call(uint8\_t\ operation,\ int32\_t\ operand,\ uint32\_t\ *result);}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00025}00025\ \ \ \textcolor{comment}{//\ The\ following\ are\ gathered\ from\ tag\ monitor.}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00026}00026\ \ \ \textcolor{comment}{//\ location\ of\ call\ buf\ in\ tag}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00027}00027\ \ \ uint32\_t\ call\_buf\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00028}00028\ \ \ \textcolor{comment}{//\ maximum\ tag\ packet}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00029}00029\ \ \ \textcolor{keywordtype}{size\_t}\ maxpacket\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00030}00030\ \ \ \textcolor{comment}{//\ tag\ git\ sha\ string}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00031}00031\ \ \ uint8\_t\ sha\_str[48]\ =\ \{0\};}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00032}00032\ \ \ \textcolor{comment}{//\ tag\ monitor\ version}}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00033}00033\ \ \ uint32\_t\ version\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00034}00034\ \};}
+\DoxyCodeLine{\Hypertarget{tagmonitor_8h_source_l00035}00035\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

@@ -1,0 +1,135 @@
+\doxysection{test2.\+cc}
+\hypertarget{test2_8cc_source}{}\label{test2_8cc_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/test2.cc@{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/test2.cc}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00001}00001\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <sys/time.h>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <unistd.h>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <iomanip>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <fstream>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <list>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <mutex>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00009}00009\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00010}00010\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00011}00011\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00012}00012\ \textcolor{preprocessor}{\#include\ <tagdata.pb.h>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00013}00013\ \textcolor{preprocessor}{\#include\ <tagclass.h>}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00014}00014\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00015}00015\ \textcolor{keyword}{using\ namespace\ }google::protobuf;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00017}00017\ \textcolor{keywordtype}{bool}\ rtcDrift(\mbox{\hyperlink{class_tag}{Tag}}\ \&tag,\ \textcolor{keywordtype}{float}\ \&f)\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00018}00018\ \ \ \textcolor{keyword}{struct\ }timeval\ tvBegin;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00019}00019\ \ \ \textcolor{keywordtype}{double}\ start,\ end;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00020}00020\ \ \ int64\_t\ millis;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00021}00021\ \ \ gettimeofday(\&tvBegin,\ NULL);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00022}00022\ \ \ \textcolor{keywordflow}{if}\ (tag.GetRtc(millis))\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00023}00023\ \ \ \ \ start\ =\ tvBegin.tv\_sec\ +\ 0.000001\ *\ tvBegin.tv\_usec;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00024}00024\ \ \ \ \ end\ =\ 0.001\ *\ millis;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00025}00025\ \ \ \ \ f\ =\ end\ -\/\ start;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00026}00026\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00027}00027\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00028}00028\ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00029}00029\ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00030}00030\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00031}00031\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ intHandler(\textcolor{keywordtype}{int}\ dummy)\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00032}00032\ \ \ (void)dummy;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00033}00033\ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00034}00034\ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00036}00036\ \textcolor{keywordtype}{int}\ main(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv)\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00037}00037\ \ \ \mbox{\hyperlink{class_tag}{Tag}}\ tag;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00038}00038\ \ \ std::string\ str;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00039}00039\ \ \ \textcolor{keywordtype}{int}\ size;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00040}00040\ \ \ \textcolor{keywordtype}{float}\ f;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00041}00041\ \ \ \textcolor{keywordtype}{int}\ epoch;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00042}00042\ \ \ \textcolor{keywordtype}{int}\ millis;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00043}00043\ \ \ std::list<State>\ state\_log;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00044}00044\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00045}00045\ \ \ std::string\ uuid;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00046}00046\ \ \ std::ofstream\ outfile;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00047}00047\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00048}00048\ \ \ \textcolor{comment}{//\ print\ floating\ point\ as\ \ xxxxx.yyy}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00049}00049\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00050}00050\ \ \ std::cout\ <<\ std::fixed;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00051}00051\ \ \ std::cout.precision(2);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00052}00052\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00053}00053\ \ \ \textcolor{comment}{//\ catch\ ctl-\/c}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00054}00054\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00055}00055\ \ \ signal(SIGINT,\ intHandler);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00056}00056\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00057}00057\ \ \ \textcolor{comment}{//\ \ debug\_level\ =\ LOG\_LVL\_DEBUG;}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00058}00058\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00059}00059\ \ \ \textcolor{keywordflow}{if}\ (tag.Attach())\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00060}00060\ \ \ \ \ \textcolor{keywordtype}{float}\ tv\ =\ 0;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00061}00061\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00062}00062\ \ \ \ \ \textcolor{comment}{//\ Read\ Tag\ Information}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00063}00063\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00064}00064\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.BoardName(str))\ std::cout\ <<\ \textcolor{stringliteral}{"{}Board\ name:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00065}00065\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.BuildTimeDate(str))}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00066}00066\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Build\ time\ and\ date:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00067}00067\ \ \ \ \ \textcolor{keywordtype}{int}\ cid;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00068}00068\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.FlashSize(size))}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00069}00069\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Flash\ size:\ "{}}\ <<\ size\ <<\ \textcolor{stringliteral}{"{}kb"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00070}00070\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.RepoUrl(str))\ std::cout\ <<\ \textcolor{stringliteral}{"{}Repo:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00071}00071\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.RepoHash(str))\ std::cout\ <<\ \textcolor{stringliteral}{"{}Repo\ hash:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00072}00072\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.Uuid(str))\{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00073}00073\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}UUID:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00074}00074\ \ \ \ \ \ \ uuid\ =\ str;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00075}00075\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00076}00076\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.Voltage(f))\ std::cout\ <<\ \textcolor{stringliteral}{"{}Voltage:\ "{}}\ <<\ f\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00077}00077\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00078}00078\ \ \ \ \ \textcolor{comment}{//\ Read\ RTC}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00079}00079\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00080}00080\ \ \ \ \ \textcolor{comment}{//tag.GetRtc(millis);}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00081}00081\ \ \ \ \ \textcolor{keywordflow}{if}\ (rtcDrift(tag,\ f))\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00082}00082\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Initial\ Clock\ drift:\ "{}}\ <<\ f\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00083}00083\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00084}00084\ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}\#\ \ Checking\ RTC\ (2\ second\ delay)"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00085}00085\ \ \ \ \ tag.SetRtc();}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00086}00086\ \ \ \ \ sleep(2);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00087}00087\ \ \ \ \ \textcolor{keywordflow}{if}\ (rtcDrift(tag,\ f))\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00088}00088\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Clock\ drift\ after\ setting:\ "{}}\ <<\ f\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00089}00089\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00090}00090\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00091}00091\ \ \ \ \ \textcolor{comment}{//\ Read\ state}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00092}00092\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00093}00093\ \ \ \ \ State\ state;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00094}00094\ \ \ \ \ \textcolor{keywordtype}{int}\ pages;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00095}00095\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.GetState(state,\ str))\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00096}00096\ \ \ \ \ \ \ std::cout\ <<\ str;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00097}00097\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}State:\ "{}}\ <<\ TagState\_Name(state.state())\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00098}00098\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00099}00099\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00100}00100\ \ \ \ \ \textcolor{keywordflow}{if}\ (state.state()\ !=\ IDLE)\{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00101}00101\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}\#\ \ State\ not\ idle\ !\ Exiting"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00102}00102\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00103}00103\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00104}00104\ \ \ \ \ \textcolor{comment}{//\ Run\ Test}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00105}00105\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00106}00106\ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}\#\ \ Running\ test"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00107}00107\ \ \ \ \ tag.Test();}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00108}00108\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ 5;\ i++)\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00109}00109\ \ \ \ \ \ \ tag.GetState(state,str);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00110}00110\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (state.state()\ ==\ IDLE)}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00111}00111\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00112}00112\ \ \ \ \ \ \ sleep(1);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00113}00113\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00114}00114\ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00115}00115\ \ \ tag.TestStatus(str);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00116}00116\ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Test\ Result:\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00117}00117\ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00118}00118\ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Attach\ failed"{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00119}00119\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00120}00120\ \ \ }
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00121}00121\ \ \ \textcolor{comment}{//\ Write\ UUID\ plus\ tag\ number\ to\ file}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00122}00122\ \ \ \textcolor{keywordflow}{if}(!uuid.empty()\ \&\&\ argc\ ==\ 3)\{}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00123}00123\ \ \ \ \ outfile.open(argv[1],\ std::ios\_base::app);}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00124}00124\ \ \ \ \ outfile\ <<\ argv[2]\ <<\ \textcolor{stringliteral}{"{},"{}}\ <<\ uuid\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00125}00125\ \ \ \ \ outfile.close();}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00126}00126\ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}UUID\ recorded."{}}\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00127}00127\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00128}00128\ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{test2_8cc_source_l00129}00129\ \}}
+
+\end{DoxyCode}

@@ -1,0 +1,181 @@
+\doxysection{Link\+Adapt Class Reference}
+\hypertarget{class_link_adapt}{}\label{class_link_adapt}\index{LinkAdapt@{LinkAdapt}}
+Inheritance diagram for Link\+Adapt\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_link_adapt}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{class_link_adapt_1_1_link_req}{Link\+Req}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a2d1ae09243e0f59c0d3cc98a2c528f1b}{Available}} (std\+::vector$<$ \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} $>$ \&usbdevs)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_abb52b91b5c46e8f420dbfb9ac012cb6b}{Attach}} (\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} usbdev=\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}())
+\item 
+void \mbox{\hyperlink{class_link_adapt_a6c630dd1c50b700c274af2734f4e32d7}{Detach}} ()
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a8362c896324179a19694959fa3ba9387}{Is\+Attached}} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{class_link_adapt_ad5047a1cfc6d57f9bbe16922dcc34e7e}{Voltage}} (float \&voltage)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a48af8c090fd9fcbfaaa02a1a7cbef9df}{Read\+Mem32}} (unsigned int addr, uint8\+\_\+t \texorpdfstring{$\ast$}{*}buf, uint16\+\_\+t count)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_ab1fddcea43adcf9f6efea9cb9aee59ae}{Write\+Mem32}} (unsigned int addr, uint8\+\_\+t \texorpdfstring{$\ast$}{*}buf, uint16\+\_\+t count)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a51d249f3c390b7dd8bf3c2169bb1965b}{Read\+Debug32}} (unsigned int addr, uint32\+\_\+t \texorpdfstring{$\ast$}{*}rval)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a96b06c1730a4a3866abef6a90e74217c}{Write\+Debug32}} (unsigned int addr, uint32\+\_\+t val)
+\item 
+\Hypertarget{class_link_adapt_ae7549ff5faf81dc8f116181470cc657d}\label{class_link_adapt_ae7549ff5faf81dc8f116181470cc657d} 
+bool {\bfseries Write\+Reset} (bool active)
+\item 
+bool \mbox{\hyperlink{class_link_adapt_a84ca82aa0e8e3ad5bee3c3264f1b144b}{Assert\+Reset}} (bool high)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8h_source_l00018}{18}} of file \mbox{\hyperlink{linkadapt_8h_source}{linkadapt.\+h}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_link_adapt_a5e5056f0ec90342eb647332f5d5707a0}\index{LinkAdapt@{LinkAdapt}!LinkAdapt@{LinkAdapt}}
+\index{LinkAdapt@{LinkAdapt}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{LinkAdapt()}{LinkAdapt()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a5e5056f0ec90342eb647332f5d5707a0} 
+Link\+Adapt\+::\+Link\+Adapt (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00174}{174}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a03850036286a21e38ac914d84a3a6472}\index{LinkAdapt@{LinkAdapt}!````~LinkAdapt@{\texorpdfstring{$\sim$}{\string~}LinkAdapt}}
+\index{````~LinkAdapt@{\texorpdfstring{$\sim$}{\string~}LinkAdapt}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}LinkAdapt()}{\string~LinkAdapt()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a03850036286a21e38ac914d84a3a6472} 
+Link\+Adapt\+::\texorpdfstring{$\sim$}{\string~}\+Link\+Adapt (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00183}{183}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_link_adapt_a84ca82aa0e8e3ad5bee3c3264f1b144b}\index{LinkAdapt@{LinkAdapt}!AssertReset@{AssertReset}}
+\index{AssertReset@{AssertReset}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{AssertReset()}{AssertReset()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a84ca82aa0e8e3ad5bee3c3264f1b144b} 
+bool Link\+Adapt\+::\+Assert\+Reset (\begin{DoxyParamCaption}\item[{bool}]{high}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00579}{579}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_abb52b91b5c46e8f420dbfb9ac012cb6b}\index{LinkAdapt@{LinkAdapt}!Attach@{Attach}}
+\index{Attach@{Attach}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{Attach()}{Attach()}}
+{\footnotesize\ttfamily \label{class_link_adapt_abb52b91b5c46e8f420dbfb9ac012cb6b} 
+bool Link\+Adapt\+::\+Attach (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}}]{usbdev}{ = {\ttfamily \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}()}}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00259}{259}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a2d1ae09243e0f59c0d3cc98a2c528f1b}\index{LinkAdapt@{LinkAdapt}!Available@{Available}}
+\index{Available@{Available}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{Available()}{Available()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a2d1ae09243e0f59c0d3cc98a2c528f1b} 
+bool Link\+Adapt\+::\+Available (\begin{DoxyParamCaption}\item[{std\+::vector$<$ \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} $>$ \&}]{usbdevs}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00211}{211}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a6c630dd1c50b700c274af2734f4e32d7}\index{LinkAdapt@{LinkAdapt}!Detach@{Detach}}
+\index{Detach@{Detach}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{Detach()}{Detach()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a6c630dd1c50b700c274af2734f4e32d7} 
+void Link\+Adapt\+::\+Detach (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00436}{436}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a8362c896324179a19694959fa3ba9387}\index{LinkAdapt@{LinkAdapt}!IsAttached@{IsAttached}}
+\index{IsAttached@{IsAttached}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{IsAttached()}{IsAttached()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a8362c896324179a19694959fa3ba9387} 
+bool Link\+Adapt\+::\+Is\+Attached (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00446}{446}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a51d249f3c390b7dd8bf3c2169bb1965b}\index{LinkAdapt@{LinkAdapt}!ReadDebug32@{ReadDebug32}}
+\index{ReadDebug32@{ReadDebug32}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{ReadDebug32()}{ReadDebug32()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a51d249f3c390b7dd8bf3c2169bb1965b} 
+bool Link\+Adapt\+::\+Read\+Debug32 (\begin{DoxyParamCaption}\item[{unsigned int}]{addr}{, }\item[{uint32\+\_\+t \texorpdfstring{$\ast$}{*}}]{rval}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00530}{530}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a48af8c090fd9fcbfaaa02a1a7cbef9df}\index{LinkAdapt@{LinkAdapt}!ReadMem32@{ReadMem32}}
+\index{ReadMem32@{ReadMem32}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{ReadMem32()}{ReadMem32()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a48af8c090fd9fcbfaaa02a1a7cbef9df} 
+bool Link\+Adapt\+::\+Read\+Mem32 (\begin{DoxyParamCaption}\item[{unsigned int}]{addr}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{buf}{, }\item[{uint16\+\_\+t}]{count}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00486}{486}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_ad5047a1cfc6d57f9bbe16922dcc34e7e}\index{LinkAdapt@{LinkAdapt}!Voltage@{Voltage}}
+\index{Voltage@{Voltage}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{Voltage()}{Voltage()}}
+{\footnotesize\ttfamily \label{class_link_adapt_ad5047a1cfc6d57f9bbe16922dcc34e7e} 
+bool Link\+Adapt\+::\+Voltage (\begin{DoxyParamCaption}\item[{float \&}]{voltage}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00451}{451}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_a96b06c1730a4a3866abef6a90e74217c}\index{LinkAdapt@{LinkAdapt}!WriteDebug32@{WriteDebug32}}
+\index{WriteDebug32@{WriteDebug32}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{WriteDebug32()}{WriteDebug32()}}
+{\footnotesize\ttfamily \label{class_link_adapt_a96b06c1730a4a3866abef6a90e74217c} 
+bool Link\+Adapt\+::\+Write\+Debug32 (\begin{DoxyParamCaption}\item[{unsigned int}]{addr}{, }\item[{uint32\+\_\+t}]{val}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00556}{556}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+\Hypertarget{class_link_adapt_ab1fddcea43adcf9f6efea9cb9aee59ae}\index{LinkAdapt@{LinkAdapt}!WriteMem32@{WriteMem32}}
+\index{WriteMem32@{WriteMem32}!LinkAdapt@{LinkAdapt}}
+\doxysubsubsection{\texorpdfstring{WriteMem32()}{WriteMem32()}}
+{\footnotesize\ttfamily \label{class_link_adapt_ab1fddcea43adcf9f6efea9cb9aee59ae} 
+bool Link\+Adapt\+::\+Write\+Mem32 (\begin{DoxyParamCaption}\item[{unsigned int}]{addr}{, }\item[{uint8\+\_\+t \texorpdfstring{$\ast$}{*}}]{buf}{, }\item[{uint16\+\_\+t}]{count}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{linkadapt_8cc_source_l00508}{508}} of file \mbox{\hyperlink{linkadapt_8cc_source}{linkadapt.\+cc}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/lib/linkadapt.\+h\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/lib/linkadapt.\+cc\end{DoxyCompactItemize}

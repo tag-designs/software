@@ -2,6 +2,7 @@
 #define TAGMON_H
 
 #include "linkadapt.h"
+#include "tag.pb.h"
 
 class TagMonitor : public LinkAdapt
 {

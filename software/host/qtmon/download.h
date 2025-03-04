@@ -8,9 +8,11 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <fstream>
-
 #include "tag.pb.h"
 #include "tagclass.h"
+
+class Ack;
+class Tag;
 
 class Download : public QObject
 {

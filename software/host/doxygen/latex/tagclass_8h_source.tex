@@ -1,0 +1,68 @@
+\doxysection{tagclass.\+h}
+\hypertarget{tagclass_8h_source}{}\label{tagclass_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/tagclass.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/lib/tagclass.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00001}00001\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00002}00002\ \textcolor{preprocessor}{\#ifndef\ TAG\_H}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00003}00003\ \textcolor{preprocessor}{\#define\ TAG\_H}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00004}00004\ \textcolor{keyword}{using\ namespace\ }std;}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <mutex>}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ "{}linkadapt.h"{}}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00008}00008\ \textcolor{preprocessor}{\#include\ "{}tagmonitor.h"{}}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00009}00009\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00010}\mbox{\hyperlink{class_tag}{00010}}\ \textcolor{keyword}{class\ }Tag\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00011}00011\ \{}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00012}00012\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00013}00013\ \ \ \textcolor{comment}{//\ Constructor/Destructor}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00014}00014\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00015}00015\ \ \ Tag();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00016}00016\ \ \ \string~Tag();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00017}00017\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00018}00018\ \ \ \textcolor{comment}{//\ Disable\ copying}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00019}00019\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00020}00020\ \ \ Tag(\textcolor{keyword}{const}\ Tag\ \&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00021}00021\ \ \ \textcolor{keywordtype}{void}\ operator=(\textcolor{keyword}{const}\ Tag\ \&)\ =\ \textcolor{keyword}{delete};}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00022}00022\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00023}00023\ \ \ \textcolor{comment}{//\ Monitor\ interface}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00024}00024\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00025}00025\ \ \ \textcolor{keywordtype}{bool}\ Available(std::vector<UsbDev>\ \&usbdevs);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00026}00026\ \ \ \textcolor{keywordtype}{bool}\ Attach(\mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ usbdev\ =\ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}());}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00027}00027\ \ \ \textcolor{keywordtype}{void}\ Detach();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00028}00028\ \ \ \textcolor{keywordtype}{bool}\ IsAttached();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00029}00029\ \ \ \textcolor{keywordtype}{bool}\ Voltage(\textcolor{keywordtype}{float}\ \&voltage);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00030}00030\ \ \ \textcolor{keywordtype}{bool}\ GitSha(std::string\ \&str);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00032}00032\ \ \ \textcolor{comment}{//\ Tag\ information}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00033}00033\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00034}00034\ \ \ \textcolor{keywordtype}{bool}\ GetTagInfo(TagInfo\ \&info);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00035}00035\ \ \ \textcolor{keywordtype}{bool}\ GetConfig(Config\ \&cfg);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00036}00036\ \ \ \textcolor{keywordtype}{bool}\ GetStatus(Status\ \&status);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00037}00037\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00038}00038\ \ \ \textcolor{comment}{//\ Tag\ control}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00039}00039\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00040}00040\ \ \ \textcolor{keywordtype}{bool}\ Erase();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00041}00041\ \ \ \textcolor{keywordtype}{bool}\ Start(Config\ \&cfg);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00042}00042\ \ \ \textcolor{keywordtype}{bool}\ Stop();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00043}00043\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00044}00044\ \ \ \textcolor{keywordtype}{bool}\ SetRtc();}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00045}00045\ \ \ \textcolor{keywordtype}{bool}\ Test(TestReq\ test);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00046}00046\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00047}00047\ \ \ \textcolor{comment}{//\ Logs}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00048}00048\ \ \ \textcolor{comment}{//\ next\ defines\ next\ log\ entry\ to\ fetch,\ returns\ the\ number\ of\ entries\ fetched}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00049}00049\ \ \ \textcolor{comment}{//\ for\ data\ logs,\ copy\ the\ ack\ structure}}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00050}00050\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00051}00051\ \ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00052}00052\ \ \ \textcolor{keywordtype}{int}\ GetStateLog(StateLog\ \&state\_log,\ \textcolor{keywordtype}{int}\ index);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00053}00053\ \ \ \textcolor{keywordtype}{bool}\ GetDataLog(Ack\ \&data\_log,\ \textcolor{keywordtype}{int}\ index);}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00054}00054\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00055}00055\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00056}00056\ \ \ mutex\ mtx;}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00057}00057\ \ \ Ack\ ack;}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00058}00058\ \ \ Req\ req;}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00059}00059\ \ \ \mbox{\hyperlink{class_tag_monitor}{TagMonitor}}\ monitor;}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00060}00060\ \};}
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00061}00061\ }
+\DoxyCodeLine{\Hypertarget{tagclass_8h_source_l00062}00062\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

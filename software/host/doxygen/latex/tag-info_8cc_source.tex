@@ -1,0 +1,120 @@
+\doxysection{tag-\/info.cc}
+\hypertarget{tag-info_8cc_source}{}\label{tag-info_8cc_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/tag-\/info.cc@{/Users/geobrown/Research/ultralight-\/tags/software/host/cli/tag-\/info.cc}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00001}00001\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00002}00002\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <google/protobuf/message.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <google/protobuf/text\_format.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <map>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <regex>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00008}00008\ \textcolor{keyword}{using\ namespace\ }google::protobuf;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00009}00009\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00010}00010\ \textcolor{preprocessor}{\#include\ <cxxopts.hpp>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00011}00011\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00012}00012\ \textcolor{keyword}{extern}\ \textcolor{stringliteral}{"{}C"{}}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00013}00013\ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00014}00014\ \textcolor{preprocessor}{\#include\ "{}log.h"{}}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00015}00015\ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00017}00017\ \textcolor{preprocessor}{\#ifdef\ \_WIN64}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00018}00018\ \textcolor{preprocessor}{\#include\ <csignal>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00019}00019\ \textcolor{preprocessor}{\#else}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00020}00020\ \textcolor{preprocessor}{\#include\ <signal.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00021}00021\ \textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00022}00022\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00023}00023\ \textcolor{preprocessor}{\#include\ <tag.pb.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00024}00024\ \textcolor{preprocessor}{\#include\ <tagclass.h>}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00025}00025\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00026}00026\ \textcolor{keyword}{extern}\ \textcolor{keywordtype}{bool}\ parse\_options(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv,}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00027}00027\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{classcxxopts_1_1_options}{cxxopts::Options}}\ \&options,}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00028}00028\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{class_tag}{Tag}}\ \&tag,}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00029}00029\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ \&dev);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00030}00030\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00031}00031\ \textcolor{keyword}{static}\ \textcolor{keywordtype}{void}\ intHandler(\textcolor{keywordtype}{int}\ dummy)}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00032}00032\ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00033}00033\ \ \ (void)dummy;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00034}00034\ \ \ exit(1);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00035}00035\ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00037}00037\ \textcolor{keyword}{static}\ std::map<std::string,\ std::string>\ strMap;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00038}00038\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00039}00039\ \textcolor{keywordtype}{int}\ main(\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv)}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00040}00040\ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00041}00041\ \ \ \mbox{\hyperlink{class_tag}{Tag}}\ tag;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00042}00042\ \ \ \mbox{\hyperlink{struct_usb_dev}{UsbDev}}\ dev;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00043}00043\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00044}00044\ \ \ \mbox{\hyperlink{classcxxopts_1_1_options}{cxxopts::Options}}\ options(\textcolor{stringliteral}{"{}tag-\/info"{}},}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00045}00045\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}print\ tag\ information"{}});}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00046}00046\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00047}00047\ \ \ signal(SIGINT,\ intHandler);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00048}00048\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00049}00049\ \ \ \textcolor{keywordflow}{if}\ (parse\_options(argc,\ argv,\ options,\ tag,\ dev)\ \&\&\ tag.Attach(dev))}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00050}00050\ \ \ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00051}00051\ \ \ \ \ std::string\ str;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00052}00052\ \ \ \ \ TagInfo\ info;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00053}00053\ \ \ \ \ \textcolor{keywordflow}{if}\ (tag.GitSha(str))}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00054}00054\ \ \ \ \ \ \ std::cout\ <<\ \textcolor{stringliteral}{"{}Tag\ SHA\ "{}}\ <<\ str\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00055}00055\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00056}00056\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}monitor"{}}]\ =\ \textcolor{stringliteral}{"{}Monitor\ Version"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00057}00057\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}board\_desc"{}}]\ =\ \textcolor{stringliteral}{"{}Board\ Description"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00058}00058\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}uuid"{}}]\ =\ \textcolor{stringliteral}{"{}Chip\ UUID"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00059}00059\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}intflashsz"{}}]\ =\ \textcolor{stringliteral}{"{}Internal\ Flash\ (kB)"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00060}00060\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}extflashsz"{}}]\ =\ \textcolor{stringliteral}{"{}External\ Flash\ (kB)"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00061}00061\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}firmware"{}}]\ =\ \textcolor{stringliteral}{"{}Firmware"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00062}00062\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}gitrepo"{}}]\ =\ \textcolor{stringliteral}{"{}Git\ Repo"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00063}00063\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}githash"{}}]\ =\ \textcolor{stringliteral}{"{}Git\ Hash"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00064}00064\ \ \ \ \ strMap[\textcolor{stringliteral}{"{}build\_time"{}}]\ =\ \textcolor{stringliteral}{"{}Build\ Date"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00065}00065\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00066}00066\ \ \ \ \ tag.GetTagInfo(info);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00067}00067\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00068}00068\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keyword}{auto}\ reflection\ =\ info.GetReflection();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00069}00069\ \ \ \ \ std::string\ formatted;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00070}00070\ \ \ \ \ TextFormat::PrintToString(info,\ \&formatted);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00071}00071\ \ \ \ \ std::cout\ <<\ formatted\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00072}00072\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00073}00073\ \ \ \ \ \textcolor{keyword}{const}\ Descriptor\ *desc\ =\ info.GetDescriptor();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00074}00074\ \ \ \ \ \textcolor{keywordtype}{int}\ fieldCount\ =\ desc-\/>field\_count();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00075}00075\ \ \ \ \ \textcolor{comment}{//fprintf(stderr,\ "{}The\ fullname\ of\ the\ message\ is\ \%s\ \(\backslash\)n"{},\ desc-\/>full\_name().c\_str());}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00076}00076\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ fieldCount;\ i++)}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00077}00077\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00078}00078\ \ \ \ \ \ \ \textcolor{keyword}{const}\ FieldDescriptor\ *field\ =\ desc-\/>field(i);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00079}00079\ \ \ \ \ \ \ std::string\ value;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00080}00080\ \ \ \ \ \ \ std::string\ name\ =\ field-\/>name();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00081}00081\ \ \ \ \ \ \ std::string\ type\_name\ =\ field-\/>type\_name();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00082}00082\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00083}00083\ \ \ \ \ \ \ \textcolor{keywordflow}{switch}\ (field-\/>type())}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00084}00084\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00085}00085\ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ FieldDescriptor::TYPE\_INT64:}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00086}00086\ \ \ \ \ \ \ \ \ value\ =\ std::to\_string(reflection-\/>GetInt64(info,\ field));}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00087}00087\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00088}00088\ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ FieldDescriptor::TYPE\_STRING:}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00089}00089\ \ \ \ \ \ \ \ \ value\ =\ reflection-\/>GetString(info,\ field);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00090}00090\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00091}00091\ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ FieldDescriptor::TYPE\_ENUM:}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00092}00092\ \ \ \ \ \ \ \ \ value\ =\ reflection-\/>GetEnum(info,\ field)-\/>name();}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00093}00093\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00094}00094\ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00095}00095\ \ \ \ \ \ \ \ \ value\ =\ \textcolor{stringliteral}{"{}Unexpected\ Field\ Type"{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00096}00096\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00097}00097\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00098}00098\ \ \ \ \ \ \ std::cout\ <<\ type\_name\ <<\ \textcolor{stringliteral}{"{}:\ "{}};}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00099}00099\ }
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00100}00100\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (strMap.count(name))}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00101}00101\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00102}00102\ \ \ \ \ \ \ \ \ std::cout\ <<\ strMap[name]\ <<\ \textcolor{stringliteral}{"{}\ :\ "{}}\ <<\ value\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00103}00103\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00104}00104\ \ \ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00105}00105\ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00106}00106\ \ \ \ \ \ \ \ \ std::cout\ <<\ name\ <<\ \textcolor{stringliteral}{"{}\ :\ "{}}\ <<\ value\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00107}00107\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00108}00108\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00109}00109\ \ \ \ \ Config\ cfg;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00110}00110\ \ \ \ \ tag.GetConfig(cfg);}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00111}00111\ \ \ \ \ std::cout\ <<\ cfg.DebugString()\ <<\ std::endl;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00112}00112\ \ \ \}}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00113}00113\ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{tag-info_8cc_source_l00114}00114\ \}}
+
+\end{DoxyCode}

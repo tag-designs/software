@@ -1,0 +1,59 @@
+\doxysection{demo.\+h}
+\hypertarget{demo_8h_source}{}\label{demo_8h_source}\index{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/FastFIR/Demo/demo.h@{/Users/geobrown/Research/ultralight-\/tags/software/host/btdataviz/FastFIR/FastFIR/Demo/demo.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00001}00001\ \textcolor{preprocessor}{\#ifndef\ DEMO\_H}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00002}00002\ \textcolor{preprocessor}{\#define\ DEMO\_H}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00003}00003\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QMainWindow>}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00005}00005\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QIODevice>}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ <QAudioFormat>}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00008}00008\ \textcolor{preprocessor}{\#include\ <QAudioOutput>}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00009}00009\ \textcolor{preprocessor}{\#include\ <QTime>}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00010}00010\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00011}00011\ \textcolor{preprocessor}{\#include\ "{}../qjfastfir.h"{}}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00013}00013\ \textcolor{keyword}{namespace\ }Ui\ \{}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00014}00014\ \textcolor{keyword}{class\ }Demo;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00015}00015\ \}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00016}00016\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00017}\mbox{\hyperlink{class_generator}{00017}}\ \textcolor{keyword}{class\ }Generator\ :\ \textcolor{keyword}{public}\ QIODevice}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00018}00018\ \{}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00019}00019\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00020}00020\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00021}00021\ \ \ \ \ Generator(QAudioFormat\ format,QObject\ *parent);}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00022}00022\ \ \ \ \ \string~Generator()\{\}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00023}00023\ \ \ \ \ \textcolor{keywordtype}{void}\ start()\{open(QIODevice::ReadOnly);\}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00024}00024\ \ \ \ \ \textcolor{keywordtype}{void}\ stop()\{close();\}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00025}00025\ \ \ \ \ qint64\ readData(\textcolor{keywordtype}{char}\ *data,\ qint64\ maxlen);}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00026}00026\ \ \ \ \ qint64\ writeData(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ *data,\ qint64\ len)}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00027}00027\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00028}00028\ \ \ \ \ \ \ \ \ Q\_UNUSED(data);}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00029}00029\ \ \ \ \ \ \ \ \ Q\_UNUSED(len);}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00030}00030\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00031}00031\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00032}00032\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00033}00033\ \ \ \ \ QVector<double>\ buf;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00034}00034\ \ \ \ \ \mbox{\hyperlink{class_q_j_fast_f_i_r_filter}{QJFastFIRFilter}}\ *fastfir;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00035}00035\ \};}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00037}\mbox{\hyperlink{class_demo}{00037}}\ \textcolor{keyword}{class\ }Demo\ :\ \textcolor{keyword}{public}\ QMainWindow}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00038}00038\ \{}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00039}00039\ \ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00040}00040\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00041}00041\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00042}00042\ \ \ \ \ \textcolor{keyword}{explicit}\ Demo(QWidget\ *parent\ =\ 0);}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00043}00043\ \ \ \ \ \string~Demo();}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00044}00044\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00045}00045\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00046}00046\ \ \ \ \ Ui::Demo\ *ui;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00047}00047\ \ \ \ \ \mbox{\hyperlink{class_generator}{Generator}}\ *generator;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00048}00048\ \ \ \ \ QTime\ timer;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00049}00049\ \ \ \ \ \textcolor{keywordtype}{int}\ nMilliseconds;}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00050}00050\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00051}00051\ \};}
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00052}00052\ }
+\DoxyCodeLine{\Hypertarget{demo_8h_source_l00053}00053\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ DEMO\_H}}
+
+\end{DoxyCode}

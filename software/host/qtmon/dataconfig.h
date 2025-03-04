@@ -3,14 +3,13 @@
 #define DATACONFIG_H
 
 #include <configinterface.h>
+#include <QVBoxLayout>
 
 class QWidget;
 class ConfigInterface;
 class PBEnumGroup;
 class DataConfig : public QWidget, public ConfigInterface
 {
-    Q_OBJECT
-    Q_INTERFACES(ConfigInterface)
 
 public:
     explicit DataConfig(QWidget *parent = nullptr);
@@ -18,20 +17,18 @@ public:
 
     // Set/Get configuration
 
-    void GetConfig(Config &config);
-    void SetConfig(const Config &config);
-    QWidget *GetWidget(){ return this;}
-
+    bool GetConfig(Config &config);
+    bool SetConfig(const Config &config);
+    
 public slots:
 
-    void Attach(const Config &config);
+    bool Attach(const Config &config);
+    void Detach(){};
 
 private:
-    void AddConfigItem(ConfigInterface *, const Config &config);
+    void AddConfigItem(QWidget *, const Config &config);
     QVBoxLayout *vbox_ = nullptr;
-    QList<ConfigInterface *> configlist_;
-    //PBEnumGroup *internal_log_ = nullptr;
-    //PBEnumGroup *external_log_ = nullptr;
+    QList<QWidget *> configlist_;
 };
 
 #endif /* DATACONFIG_H */

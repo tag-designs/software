@@ -1,0 +1,242 @@
+\doxysection{Tag Class Reference}
+\hypertarget{class_tag}{}\label{class_tag}\index{Tag@{Tag}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_tag_a097dce269b2fcfdc224112ab60d7d012}\label{class_tag_a097dce269b2fcfdc224112ab60d7d012} 
+{\bfseries Tag} (const \mbox{\hyperlink{class_tag}{Tag}} \&)=delete
+\item 
+\Hypertarget{class_tag_a32e15b9a134567c478fb91ba4c668a92}\label{class_tag_a32e15b9a134567c478fb91ba4c668a92} 
+void {\bfseries operator=} (const \mbox{\hyperlink{class_tag}{Tag}} \&)=delete
+\item 
+bool \mbox{\hyperlink{class_tag_ac145da414b5dfc2e363748a21b18d924}{Available}} (std\+::vector$<$ \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} $>$ \&usbdevs)
+\item 
+bool \mbox{\hyperlink{class_tag_afe97a16e8897b0fc6808558dd01e225a}{Attach}} (\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} usbdev=\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}())
+\item 
+void \mbox{\hyperlink{class_tag_afa0a2921aa963d60cc48a3ead6b14f58}{Detach}} ()
+\item 
+bool \mbox{\hyperlink{class_tag_a90f9dfba4d792939590dd991485c5948}{Is\+Attached}} ()
+\item 
+bool \mbox{\hyperlink{class_tag_a16c849e3784b8145a962f27e733ec736}{Voltage}} (float \&voltage)
+\item 
+bool \mbox{\hyperlink{class_tag_a14c8214452cd0498c92634de0021ade8}{Git\+Sha}} (std\+::string \&str)
+\item 
+bool \mbox{\hyperlink{class_tag_afda660b887685d994798ae74f1e0b904}{Get\+Tag\+Info}} (Tag\+Info \&info)
+\item 
+bool \mbox{\hyperlink{class_tag_a7b6c166402682f773e285dc346bf6f18}{Get\+Config}} (Config \&cfg)
+\item 
+bool \mbox{\hyperlink{class_tag_a46c2c38fd990cffbeb528e6dd6154f52}{Get\+Status}} (Status \&status)
+\item 
+bool \mbox{\hyperlink{class_tag_ac8a746f014b3b9d6299fdf368bd8b670}{Erase}} ()
+\item 
+bool \mbox{\hyperlink{class_tag_abd0e54fa67168e1dcbc8023df1b11e89}{Start}} (Config \&cfg)
+\item 
+bool \mbox{\hyperlink{class_tag_aaa08442d76a12fe2ae25ab6d5f15b590}{Stop}} ()
+\item 
+bool \mbox{\hyperlink{class_tag_abbc0902d829495251d13e1b9c2127112}{Set\+Rtc}} ()
+\item 
+bool \mbox{\hyperlink{class_tag_aecd7bd566a158fb18912bc3075ad986f}{Test}} (Test\+Req test)
+\item 
+int \mbox{\hyperlink{class_tag_aeee35fbf14f4a4d0472fd019ad640739}{Get\+State\+Log}} (State\+Log \&state\+\_\+log, int index)
+\item 
+bool \mbox{\hyperlink{class_tag_a1256db1d1ee4272b3053dbe664a00a80}{Get\+Data\+Log}} (Ack \&data\+\_\+log, int index)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+
+
+Definition at line \mbox{\hyperlink{tagclass_8h_source_l00010}{10}} of file \mbox{\hyperlink{tagclass_8h_source}{tagclass.\+h}}.
+
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_tag_af2008705aa18e21efecb9e737b6b1a26}\index{Tag@{Tag}!Tag@{Tag}}
+\index{Tag@{Tag}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Tag()}{Tag()}}
+{\footnotesize\ttfamily \label{class_tag_af2008705aa18e21efecb9e737b6b1a26} 
+Tag\+::\+Tag (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00024}{24}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_aa582ff83996a96e1c7e0fabe9350e166}\index{Tag@{Tag}!````~Tag@{\texorpdfstring{$\sim$}{\string~}Tag}}
+\index{````~Tag@{\texorpdfstring{$\sim$}{\string~}Tag}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{\texorpdfstring{$\sim$}{\string~}Tag()}{\string~Tag()}}
+{\footnotesize\ttfamily \label{class_tag_aa582ff83996a96e1c7e0fabe9350e166} 
+Tag\+::\texorpdfstring{$\sim$}{\string~}\+Tag (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00025}{25}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_tag_afe97a16e8897b0fc6808558dd01e225a}\index{Tag@{Tag}!Attach@{Attach}}
+\index{Attach@{Attach}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Attach()}{Attach()}}
+{\footnotesize\ttfamily \label{class_tag_afe97a16e8897b0fc6808558dd01e225a} 
+bool Tag\+::\+Attach (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}}]{usbdev}{ = {\ttfamily \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}}()}}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00035}{35}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_ac145da414b5dfc2e363748a21b18d924}\index{Tag@{Tag}!Available@{Available}}
+\index{Available@{Available}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Available()}{Available()}}
+{\footnotesize\ttfamily \label{class_tag_ac145da414b5dfc2e363748a21b18d924} 
+bool Tag\+::\+Available (\begin{DoxyParamCaption}\item[{std\+::vector$<$ \mbox{\hyperlink{struct_usb_dev}{Usb\+Dev}} $>$ \&}]{usbdevs}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00029}{29}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_afa0a2921aa963d60cc48a3ead6b14f58}\index{Tag@{Tag}!Detach@{Detach}}
+\index{Detach@{Detach}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Detach()}{Detach()}}
+{\footnotesize\ttfamily \label{class_tag_afa0a2921aa963d60cc48a3ead6b14f58} 
+void Tag\+::\+Detach (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00059}{59}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_ac8a746f014b3b9d6299fdf368bd8b670}\index{Tag@{Tag}!Erase@{Erase}}
+\index{Erase@{Erase}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Erase()}{Erase()}}
+{\footnotesize\ttfamily \label{class_tag_ac8a746f014b3b9d6299fdf368bd8b670} 
+bool Tag\+::\+Erase (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00089}{89}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a7b6c166402682f773e285dc346bf6f18}\index{Tag@{Tag}!GetConfig@{GetConfig}}
+\index{GetConfig@{GetConfig}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GetConfig()}{GetConfig()}}
+{\footnotesize\ttfamily \label{class_tag_a7b6c166402682f773e285dc346bf6f18} 
+bool Tag\+::\+Get\+Config (\begin{DoxyParamCaption}\item[{Config \&}]{cfg}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00120}{120}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a1256db1d1ee4272b3053dbe664a00a80}\index{Tag@{Tag}!GetDataLog@{GetDataLog}}
+\index{GetDataLog@{GetDataLog}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GetDataLog()}{GetDataLog()}}
+{\footnotesize\ttfamily \label{class_tag_a1256db1d1ee4272b3053dbe664a00a80} 
+bool Tag\+::\+Get\+Data\+Log (\begin{DoxyParamCaption}\item[{Ack \&}]{data\+\_\+log}{, }\item[{int}]{index}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00198}{198}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_aeee35fbf14f4a4d0472fd019ad640739}\index{Tag@{Tag}!GetStateLog@{GetStateLog}}
+\index{GetStateLog@{GetStateLog}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GetStateLog()}{GetStateLog()}}
+{\footnotesize\ttfamily \label{class_tag_aeee35fbf14f4a4d0472fd019ad640739} 
+int Tag\+::\+Get\+State\+Log (\begin{DoxyParamCaption}\item[{State\+Log \&}]{state\+\_\+log}{, }\item[{int}]{index}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00180}{180}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a46c2c38fd990cffbeb528e6dd6154f52}\index{Tag@{Tag}!GetStatus@{GetStatus}}
+\index{GetStatus@{GetStatus}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GetStatus()}{GetStatus()}}
+{\footnotesize\ttfamily \label{class_tag_a46c2c38fd990cffbeb528e6dd6154f52} 
+bool Tag\+::\+Get\+Status (\begin{DoxyParamCaption}\item[{Status \&}]{status}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00105}{105}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_afda660b887685d994798ae74f1e0b904}\index{Tag@{Tag}!GetTagInfo@{GetTagInfo}}
+\index{GetTagInfo@{GetTagInfo}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GetTagInfo()}{GetTagInfo()}}
+{\footnotesize\ttfamily \label{class_tag_afda660b887685d994798ae74f1e0b904} 
+bool Tag\+::\+Get\+Tag\+Info (\begin{DoxyParamCaption}\item[{Tag\+Info \&}]{info}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00153}{153}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a14c8214452cd0498c92634de0021ade8}\index{Tag@{Tag}!GitSha@{GitSha}}
+\index{GitSha@{GitSha}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{GitSha()}{GitSha()}}
+{\footnotesize\ttfamily \label{class_tag_a14c8214452cd0498c92634de0021ade8} 
+bool Tag\+::\+Git\+Sha (\begin{DoxyParamCaption}\item[{std\+::string \&}]{str}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00065}{65}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a90f9dfba4d792939590dd991485c5948}\index{Tag@{Tag}!IsAttached@{IsAttached}}
+\index{IsAttached@{IsAttached}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{IsAttached()}{IsAttached()}}
+{\footnotesize\ttfamily \label{class_tag_a90f9dfba4d792939590dd991485c5948} 
+bool Tag\+::\+Is\+Attached (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00057}{57}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_abbc0902d829495251d13e1b9c2127112}\index{Tag@{Tag}!SetRtc@{SetRtc}}
+\index{SetRtc@{SetRtc}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{SetRtc()}{SetRtc()}}
+{\footnotesize\ttfamily \label{class_tag_abbc0902d829495251d13e1b9c2127112} 
+bool Tag\+::\+Set\+Rtc (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00133}{133}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_abd0e54fa67168e1dcbc8023df1b11e89}\index{Tag@{Tag}!Start@{Start}}
+\index{Start@{Start}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Start()}{Start()}}
+{\footnotesize\ttfamily \label{class_tag_abd0e54fa67168e1dcbc8023df1b11e89} 
+bool Tag\+::\+Start (\begin{DoxyParamCaption}\item[{Config \&}]{cfg}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00073}{73}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_aaa08442d76a12fe2ae25ab6d5f15b590}\index{Tag@{Tag}!Stop@{Stop}}
+\index{Stop@{Stop}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Stop()}{Stop()}}
+{\footnotesize\ttfamily \label{class_tag_aaa08442d76a12fe2ae25ab6d5f15b590} 
+bool Tag\+::\+Stop (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00081}{81}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_aecd7bd566a158fb18912bc3075ad986f}\index{Tag@{Tag}!Test@{Test}}
+\index{Test@{Test}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Test()}{Test()}}
+{\footnotesize\ttfamily \label{class_tag_aecd7bd566a158fb18912bc3075ad986f} 
+bool Tag\+::\+Test (\begin{DoxyParamCaption}\item[{Test\+Req}]{test}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00097}{97}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+\Hypertarget{class_tag_a16c849e3784b8145a962f27e733ec736}\index{Tag@{Tag}!Voltage@{Voltage}}
+\index{Voltage@{Voltage}!Tag@{Tag}}
+\doxysubsubsection{\texorpdfstring{Voltage()}{Voltage()}}
+{\footnotesize\ttfamily \label{class_tag_a16c849e3784b8145a962f27e733ec736} 
+bool Tag\+::\+Voltage (\begin{DoxyParamCaption}\item[{float \&}]{voltage}{}\end{DoxyParamCaption})}
+
+
+
+Definition at line \mbox{\hyperlink{tagclass_8cc_source_l00170}{170}} of file \mbox{\hyperlink{tagclass_8cc_source}{tagclass.\+cc}}.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/lib/tagclass.\+h\item 
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/lib/tagclass.\+cc\end{DoxyCompactItemize}
