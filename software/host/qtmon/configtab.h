@@ -6,6 +6,7 @@
 #include <QTabWidget>
 #include <QPushButton>
 #include <QList>
+#include <QMessageBox>
 #include "tag.pb.h"
 //#include "host.pb.h"
 //#include "tagclass.h"
@@ -51,6 +52,10 @@ private:
 
     Adxl362Config adxl;
     bool active = false;
+
+    // for errors
+
+    QMessageBox msgBox;
     
 };
 

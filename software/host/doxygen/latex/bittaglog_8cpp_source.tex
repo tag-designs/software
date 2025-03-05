@@ -7,69 +7,83 @@
 \DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00003}00003\ \textcolor{preprocessor}{\#include\ <QRadioButton>}}
 \DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00004}00004\ \textcolor{preprocessor}{\#include\ <QButtonGroup>}}
 \DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00005}00005\ \textcolor{preprocessor}{\#include\ <QLayout>}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00006}00006\ \textcolor{preprocessor}{\#include\ "{}pbenumgroup.h"{}}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00007}00007\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00008}00008\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00009}00009\ \textcolor{comment}{//\#include\ "{}host.pb.h"{}}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00010}00010\ \textcolor{preprocessor}{\#include\ "{}tagclass.h"{}}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00011}00011\ \textcolor{preprocessor}{\#include\ "{}bittaglog.h"{}}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00012}00012\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00013}00013\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ bittag\_internal\_log\_buttons\{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00014}00014\ \ \ \ \ \{BITTAG\_BITPERSEC,\ \textcolor{stringliteral}{"{}Activity\ Bit\ Per\ Second"{}},\ \textcolor{keyword}{nullptr}\},}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00015}00015\ \ \ \ \ \{BITTAG\_BITSPERMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Minute"{}},\ \textcolor{keyword}{nullptr}\},}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00016}00016\ \ \ \ \ \{BITTAG\_BITSPERFOURMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Four\ Minutes"{}},\ \textcolor{keyword}{nullptr}\},}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00017}00017\ \ \ \ \ \{BITTAG\_BITSPERFIVEMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Five\ Minutes"{}},\ \textcolor{keyword}{nullptr}\}\};}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00018}00018\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00019}00019\ BitTagLogTab::BitTagLogTab(QWidget\ *parent)\ :\ QWidget(parent)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00020}00020\ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00021}00021\ \ \ \ \ vbox\_\ =\ \textcolor{keyword}{new}\ QVBoxLayout();}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00022}00022\ \ \ \ \ setLayout(vbox\_);}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00023}00023\ \ \ \ \ log\_\ =\ \textcolor{keyword}{new}\ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}(\textcolor{stringliteral}{"{}BitTag\ Internal\ Log"{}},\ bittag\_internal\_log\_buttons);}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00024}00024\ \ \ \ \ vbox\_-\/>addWidget(log\_);}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00025}00025\ \ \ \ \ log\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ format\ for\ BitTag\ log"{}});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00026}00026\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00006}00006\ \textcolor{preprocessor}{\#include\ <QMessageBox>}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00007}00007\ \textcolor{preprocessor}{\#include\ "{}pbenumgroup.h"{}}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00009}00009\ \textcolor{preprocessor}{\#include\ "{}tag.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00010}00010\ \textcolor{comment}{//\#include\ "{}host.pb.h"{}}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00011}00011\ \textcolor{preprocessor}{\#include\ "{}tagclass.h"{}}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00012}00012\ \textcolor{preprocessor}{\#include\ "{}bittaglog.h"{}}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00013}00013\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00014}00014\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ std::vector<PBEnumGroup::binfo>\ bittag\_internal\_log\_buttons\{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00015}00015\ \ \ \ \ \{BITTAG\_BITPERSEC,\ \textcolor{stringliteral}{"{}Activity\ Bit\ Per\ Second"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00016}00016\ \ \ \ \ \{BITTAG\_BITSPERMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Minute"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00017}00017\ \ \ \ \ \{BITTAG\_BITSPERFOURMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Four\ Minutes"{}},\ \textcolor{keyword}{nullptr}\},}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00018}00018\ \ \ \ \ \{BITTAG\_BITSPERFIVEMIN,\ \textcolor{stringliteral}{"{}Activity\ Count\ Per\ Five\ Minutes"{}},\ \textcolor{keyword}{nullptr}\}\};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00019}00019\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00020}00020\ BitTagLogTab::BitTagLogTab(QWidget\ *parent)\ :\ QWidget(parent)}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00021}00021\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00022}00022\ \ \ \ \ vbox\_\ =\ \textcolor{keyword}{new}\ QVBoxLayout();}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00023}00023\ \ \ \ \ setLayout(vbox\_);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00024}00024\ \ \ \ \ log\_\ =\ \textcolor{keyword}{new}\ \mbox{\hyperlink{class_p_b_enum_group}{PBEnumGroup}}(\textcolor{stringliteral}{"{}BitTag\ Internal\ Log"{}},\ bittag\_internal\_log\_buttons);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00025}00025\ \ \ \ \ vbox\_-\/>addWidget(log\_);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00026}00026\ \ \ \ \ log\_-\/>setToolTip(\textcolor{stringliteral}{"{}Set\ format\ for\ BitTag\ log"{}});}
 \DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00027}00027\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00028}00028\ BitTagLogTab::\string~BitTagLogTab()\{\}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00028}00028\ \}}
 \DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00029}00029\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00030}00030\ \textcolor{keywordtype}{void}\ BitTagLogTab::SetConfig(\textcolor{keyword}{const}\ Config\ \&config)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00031}00031\ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00032}00032\ \ \ \ \ QAbstractButton\ *btn;}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00033}00033\ \ \ \ \ \textcolor{keywordflow}{if}\ (log\_)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00034}00034\ \ \ \ \ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00035}00035\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (config.bittag\_log()\ !=\ BITTAG\_UNSPECIFIED)\{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00036}00036\ \ \ \ \ \ \ \ \ \ \ \ \ btn\ =\ log\_-\/>button((\textcolor{keywordtype}{int})config.bittag\_log());}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00037}00037\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (btn)\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00038}00038\ \ \ \ \ \ \ \ \ \ \ \ \ btn-\/>setChecked(\textcolor{keyword}{true});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00039}00039\ \ \ \ \ \ \ \ \ setVisible(\textcolor{keyword}{true});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00040}00040\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00041}00041\ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00042}00042\ \ \ \ \ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00043}00043\ \ \ \ \ setVisible(\textcolor{keyword}{false});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00044}00044\ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00045}00045\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00046}00046\ \textcolor{keywordtype}{bool}\ BitTagLogTab::GetConfig(Config\ \&config)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00047}00047\ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00048}00048\ \ \ \ \ \textcolor{keywordflow}{if}\ (log\_)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00049}00049\ \ \ \ \ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00050}00050\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id}\ =\ log\_-\/>checkedId();}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00051}00051\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (BitTagLogFmt\_IsValid(\textcolor{keywordtype}{id}))}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00052}00052\ \ \ \ \ \ \ \ \ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00053}00053\ \ \ \ \ \ \ \ \ \ \ \ \ config.set\_bittag\_log((BitTagLogFmt)\textcolor{keywordtype}{id});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00054}00054\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00055}00055\ \ \ \ \ \ \ \ \ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00056}00056\ \ \ \ \ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00057}00057\ \ \ \ \ config.set\_bittag\_log(BITTAG\_UNSPECIFIED);}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00058}00058\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00059}00059\ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00060}00060\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00061}00061\ \textcolor{keywordtype}{void}\ BitTagLogTab::Attach(\textcolor{keyword}{const}\ Config\ \&config)}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00062}00062\ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00063}00063\ \ \ \ SetConfig(config);}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00064}00064\ \}}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00065}00065\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00066}00066\ \textcolor{keywordtype}{void}\ BitTagLogTab::Detach()\ }
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00067}00067\ \{}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00068}00068\ \ \ \ \ setVisible(\textcolor{keyword}{false});}
-\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00069}00069\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00030}00030\ BitTagLogTab::\string~BitTagLogTab()\{\}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00032}00032\ \textcolor{keywordtype}{bool}\ BitTagLogTab::Attach(\textcolor{keyword}{const}\ Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00033}00033\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00034}00034\ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{class_bit_tag_log_tab_aec2cb8312e13c698350978c229a9c18f}{SetConfig}}(config);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00035}00035\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00036}00036\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00037}00037\ \textcolor{keywordtype}{void}\ BitTagLogTab::Detach()\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00038}00038\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00039}00039\ \ \ \ \ setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00040}00040\ \ \ \ \ active\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00041}00041\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00042}00042\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00043}\mbox{\hyperlink{class_bit_tag_log_tab_aec2cb8312e13c698350978c229a9c18f}{00043}}\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{class_bit_tag_log_tab_aec2cb8312e13c698350978c229a9c18f}{BitTagLogTab::SetConfig}}(\textcolor{keyword}{const}\ Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00044}00044\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00045}00045\ \ \ \ \ QAbstractButton\ *btn;}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00046}00046\ \ \ \ \ \textcolor{keywordflow}{if}\ (config.bittag\_log()\ !=\ BITTAG\_UNSPECIFIED)\{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00047}00047\ \ \ \ \ \ \ \ \ btn\ =\ log\_-\/>button((\textcolor{keywordtype}{int})config.bittag\_log());}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00048}00048\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (btn)\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00049}00049\ \ \ \ \ \ \ \ \ \ \ \ \ btn-\/>setChecked(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00050}00050\ \ \ \ \ \ \ \ \ \ \ \ \ setVisible(\textcolor{keyword}{true});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00051}00051\ \ \ \ \ \ \ \ \ \ \ \ \ active\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00052}00052\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00053}00053\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00054}00054\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00055}00055\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (config.tag\_type()\ ==\ TagType::BITTAG)\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00056}00056\ \ \ \ \ \ \ \ \ \ \ \ \ QMessageBox\ msgBox;}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00057}00057\ \ \ \ \ \ \ \ \ \ \ \ \ QString\ message\ =\ QString(\textcolor{stringliteral}{"{}Configuring\ BitTag\ but\ missing\ log\ specification"{}});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00058}00058\ \ \ \ \ \ \ \ \ \ \ \ \ msgBox.setText(message);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00059}00059\ \ \ \ \ \ \ \ \ \ \ \ \ msgBox.setStandardButtons(QMessageBox::Ok);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00060}00060\ \ \ \ \ \ \ \ \ \ \ \ \ msgBox.exec();}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00061}00061\ \ \ \ \ \ \ \ \ \ \ \ \ qInfo()\ <<\ message;}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00062}00062\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00063}00063\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00064}00064\ \ \ \ \ active\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00065}00065\ \ \ \ \ setVisible(\textcolor{keyword}{false});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00066}00066\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00067}00067\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00068}00068\ }
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00069}\mbox{\hyperlink{class_bit_tag_log_tab_add65b60abc990af907657e9c16e1b7ef}{00069}}\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{class_bit_tag_log_tab_add65b60abc990af907657e9c16e1b7ef}{BitTagLogTab::GetConfig}}(Config\ \&config)}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00070}00070\ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00071}00071\ \ \ \ \ \textcolor{keywordflow}{if}\ (active)}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00072}00072\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00073}00073\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id}\ =\ log\_-\/>checkedId();}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00074}00074\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (BitTagLogFmt\_IsValid(\textcolor{keywordtype}{id}))}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00075}00075\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00076}00076\ \ \ \ \ \ \ \ \ \ \ \ \ config.set\_bittag\_log((BitTagLogFmt)\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00077}00077\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00078}00078\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00079}00079\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00080}00080\ \ \ \ \ config.set\_bittag\_log(BITTAG\_UNSPECIFIED);}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00081}00081\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00082}00082\ \}}
+\DoxyCodeLine{\Hypertarget{bittaglog_8cpp_source_l00083}00083\ }
 
 \end{DoxyCode}

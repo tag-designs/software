@@ -121,8 +121,8 @@ Inheritance diagram for DataConfig:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-slots" name="pub-slots"></a>
 Public Slots</h2></td></tr>
-<tr class="memitem:a02ee483fe717df52ac8b8c5d9a90af07" id="r_a02ee483fe717df52ac8b8c5d9a90af07"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a02ee483fe717df52ac8b8c5d9a90af07">Attach</a> (const Config &amp;config)</td></tr>
-<tr class="separator:a02ee483fe717df52ac8b8c5d9a90af07"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa2140bbb8bae95e88a0903a605d7418f" id="r_aa2140bbb8bae95e88a0903a605d7418f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa2140bbb8bae95e88a0903a605d7418f">Attach</a> (const Config &amp;config)</td></tr>
+<tr class="separator:aa2140bbb8bae95e88a0903a605d7418f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5c77895c4a19ffb5027a92160d1bd340" id="r_a5c77895c4a19ffb5027a92160d1bd340"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5c77895c4a19ffb5027a92160d1bd340">Detach</a> ()</td></tr>
 <tr class="separator:a5c77895c4a19ffb5027a92160d1bd340"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -131,16 +131,28 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a3d968306a2a09e8383e9f05844dbb964" id="r_a3d968306a2a09e8383e9f05844dbb964"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3d968306a2a09e8383e9f05844dbb964">DataConfig</a> (QWidget *parent=nullptr)</td></tr>
 <tr class="separator:a3d968306a2a09e8383e9f05844dbb964"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8de74e2b336a8e71c9a55fa87a594e6d" id="r_a8de74e2b336a8e71c9a55fa87a594e6d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8de74e2b336a8e71c9a55fa87a594e6d">GetConfig</a> (Config &amp;config)</td></tr>
+<tr class="memdesc:a8de74e2b336a8e71c9a55fa87a594e6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the Config object.  <br /></td></tr>
 <tr class="separator:a8de74e2b336a8e71c9a55fa87a594e6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abde897281edacfbe8f8232ea8b8e9704" id="r_abde897281edacfbe8f8232ea8b8e9704"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abde897281edacfbe8f8232ea8b8e9704">SetConfig</a> (const Config &amp;config)</td></tr>
-<tr class="separator:abde897281edacfbe8f8232ea8b8e9704"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b6435766d8b913552c8507d0005885c" id="r_a3b6435766d8b913552c8507d0005885c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3b6435766d8b913552c8507d0005885c">SetConfig</a> (const Config &amp;config)</td></tr>
+<tr class="memdesc:a3b6435766d8b913552c8507d0005885c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the Config object.  <br /></td></tr>
+<tr class="separator:a3b6435766d8b913552c8507d0005885c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_config_interface"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pub_methods_class_config_interface')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_config_interface.html">ConfigInterface</a></td></tr>
-<tr class="memitem:a57ecd7ffd1fe1e29100eb930578442cc inherit pub_methods_class_config_interface" id="r_a57ecd7ffd1fe1e29100eb930578442cc"><td class="memItemLeft" align="right" valign="top">
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Attach</b> (const Config &amp;config)=0</td></tr>
-<tr class="separator:a57ecd7ffd1fe1e29100eb930578442cc inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface" id="r_a66a63069f7be750a120601af9e95a527"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#a66a63069f7be750a120601af9e95a527">Attach</a> (const Config &amp;config)=0</td></tr>
+<tr class="memdesc:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attach is called when a tag is first connected;.  <br /></td></tr>
+<tr class="separator:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface" id="r_a152805ed1a26053459977f1e094c1b8d"><td class="memItemLeft" align="right" valign="top">
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()=0</td></tr>
+<tr class="memdesc:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. <br /></td></tr>
 <tr class="separator:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface" id="r_aa428844efe747447080bc00f68e8d79a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#aa428844efe747447080bc00f68e8d79a">isActive</a> ()</td></tr>
+<tr class="memdesc:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">active if there is some configurable state and no errors in configuration  <br /></td></tr>
+<tr class="separator:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
+Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header pro_attribs_class_config_interface"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pro_attribs_class_config_interface')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="class_config_interface.html">ConfigInterface</a></td></tr>
+<tr class="memitem:ae4b3676721793a69f1267225bb8e3a7f inherit pro_attribs_class_config_interface" id="r_ae4b3676721793a69f1267225bb8e3a7f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#ae4b3676721793a69f1267225bb8e3a7f">active</a></td></tr>
+<tr class="separator:ae4b3676721793a69f1267225bb8e3a7f inherit pro_attribs_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock">
@@ -193,8 +205,8 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a02ee483fe717df52ac8b8c5d9a90af07" name="a02ee483fe717df52ac8b8c5d9a90af07"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a02ee483fe717df52ac8b8c5d9a90af07">&#9670;&#160;</a></span>Attach</h2>
+<a id="aa2140bbb8bae95e88a0903a605d7418f" name="aa2140bbb8bae95e88a0903a605d7418f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa2140bbb8bae95e88a0903a605d7418f">&#9670;&#160;</a></span>Attach</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -203,7 +215,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void DataConfig::Attach </td>
+          <td class="memname">bool DataConfig::Attach </td>
           <td>(</td>
           <td class="paramtype">const Config &amp;</td>          <td class="paramname"><span class="paramname"><em>config</em></span></td><td>)</td>
           <td></td>
@@ -216,7 +228,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00052">52</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00056">56</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
 
 </div>
 </div>
@@ -270,14 +282,25 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p>Implements <a class="el" href="class_config_interface.html">ConfigInterface</a>.</p>
+<p>Get the Config object. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>container to copy program state into </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if there were no errors </dd>
+<dd>
+false if there was an error </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00042">42</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
+<p>Implements <a class="el" href="class_config_interface.html#a3484b05849392d0338a969431fd82d72">ConfigInterface</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00046">46</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
 
 </div>
 </div>
-<a id="abde897281edacfbe8f8232ea8b8e9704" name="abde897281edacfbe8f8232ea8b8e9704"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abde897281edacfbe8f8232ea8b8e9704">&#9670;&#160;</a></span>SetConfig()</h2>
+<a id="a3b6435766d8b913552c8507d0005885c" name="a3b6435766d8b913552c8507d0005885c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3b6435766d8b913552c8507d0005885c">&#9670;&#160;</a></span>SetConfig()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -286,7 +309,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void DataConfig::SetConfig </td>
+          <td class="memname">bool DataConfig::SetConfig </td>
           <td>(</td>
           <td class="paramtype">const Config &amp;</td>          <td class="paramname"><span class="paramname"><em>config</em></span></td><td>)</td>
           <td></td>
@@ -299,9 +322,20 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p>Implements <a class="el" href="class_config_interface.html">ConfigInterface</a>.</p>
+<p>Set the Config object. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>configuration to assign to program state </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if there were no configuration errors </dd>
+<dd>
+false if there was a configuration error </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00033">33</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
+<p>Implements <a class="el" href="class_config_interface.html#a39b74c741868df21ebf00383eba079e7">ConfigInterface</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="dataconfig_8cpp_source.html#l00035">35</a> of file <a class="el" href="dataconfig_8cpp_source.html">dataconfig.cpp</a>.</p>
 
 </div>
 </div>

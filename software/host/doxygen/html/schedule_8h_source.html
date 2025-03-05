@@ -110,7 +110,7 @@ $(function(){initNavTree('schedule_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span> </div>
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &lt;QWidget&gt;</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;QList&gt;</span></div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#include &lt;configinterface.h&gt;</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#include &lt;<a class="code" href="configinterface_8h.html">configinterface.h</a>&gt;</span></div>
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span> </div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment">//#include &quot;tag.pb.h&quot;</span></div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">//#include &quot;host.pb.h&quot;</span></div>
@@ -126,34 +126,41 @@ $(function(){initNavTree('schedule_8h_source.html',''); initResizable(true); });
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span>    <span class="keyword">public</span>:</div>
 <div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>        Schedule(QWidget *parent = <span class="keyword">nullptr</span>);</div>
 <div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>        ~Schedule();</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span> </div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>        <span class="keywordtype">void</span> SetConfig(<span class="keyword">const</span> Config &amp;config);</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        <span class="keywordtype">bool</span> GetConfig(Config &amp;config);</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span> </div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    <span class="keyword">public</span> slots:</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span> </div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>        <span class="keywordtype">void</span> Attach(<span class="keyword">const</span> Config &amp;config);</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>        <span class="keywordtype">void</span> Detach();</div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>    <span class="keyword">private</span> slots:</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span>        <span class="comment">// start/end configuration</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span> </div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>        <span class="keywordtype">void</span> on_StartDateTime_dateTimeChanged(<span class="keyword">const</span> QDateTime &amp;dateTime);</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>        <span class="keywordtype">void</span> on_EndDateTime_dateTimeChanged(<span class="keyword">const</span> QDateTime &amp;dateTime);</div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>        <span class="keywordtype">void</span> on_startGroup_clicked();</div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>        <span class="keywordtype">void</span> on_runGroup_clicked();</div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span> </div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>    <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span> </div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        QList&lt;Hibernate *&gt; hibernate_list_;</div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>        Ui::Schedule ui;</div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span> </div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>};</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>        </div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_schedule.html#ad6a50cb6236e7cc75c72b4fdb1a38222">SetConfig</a>(<span class="keyword">const</span> Config &amp;config);</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>        <span class="keywordtype">bool</span> <a class="code hl_function" href="class_schedule.html#aea5cfc9d7fa9b1e826add4538f69c42e">GetConfig</a>(Config &amp;config);</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>    <span class="keyword">public</span> slots:</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>        <span class="keywordtype">bool</span> <a class="code hl_slot" href="class_schedule.html#af3c6816eec12dde73ddc1f3670df69f0">Attach</a>(<span class="keyword">const</span> Config &amp;config);</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span></div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span>        <span class="keywordtype">void</span> <a class="code hl_slot" href="class_schedule.html#a4cae45bc145bafbdac4a3e71a9a9b7d3">Detach</a>();</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span> </div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>    <span class="keyword">private</span> slots:</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>        <span class="comment">// start/end configuration -- slots tied to UI</span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span> </div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>        <span class="keywordtype">void</span> on_StartDateTime_dateTimeChanged(<span class="keyword">const</span> QDateTime &amp;dateTime);</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>        <span class="keywordtype">void</span> on_EndDateTime_dateTimeChanged(<span class="keyword">const</span> QDateTime &amp;dateTime);</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>        <span class="keywordtype">void</span> on_startGroup_clicked();</div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>        <span class="keywordtype">void</span> on_runGroup_clicked();</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span>    <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span> </div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>        QList&lt;Hibernate *&gt; hibernate_list_;</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>        Ui::Schedule ui;</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>};</div>
 </div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#endif </span><span class="comment">// SCHEDULE_H</span></div>
-<div class="ttc" id="aclass_config_interface_html"><div class="ttname"><a href="class_config_interface.html">ConfigInterface</a></div><div class="ttdef"><b>Definition</b> <a href="configinterface_8h_source.html#l00010">configinterface.h:11</a></div></div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="preprocessor">#endif </span><span class="comment">// SCHEDULE_H</span></div>
+<div class="ttc" id="aclass_config_interface_html"><div class="ttname"><a href="class_config_interface.html">ConfigInterface</a></div><div class="ttdef"><b>Definition</b> <a href="configinterface_8h_source.html#l00011">configinterface.h:12</a></div></div>
+<div class="ttc" id="aclass_schedule_html_a4cae45bc145bafbdac4a3e71a9a9b7d3"><div class="ttname"><a href="class_schedule.html#a4cae45bc145bafbdac4a3e71a9a9b7d3">Schedule::Detach</a></div><div class="ttdeci">void Detach()</div><div class="ttdoc">Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state.</div><div class="ttdef"><b>Definition</b> <a href="schedule_8cpp_source.html#l00051">schedule.cpp:51</a></div></div>
+<div class="ttc" id="aclass_schedule_html_ad6a50cb6236e7cc75c72b4fdb1a38222"><div class="ttname"><a href="class_schedule.html#ad6a50cb6236e7cc75c72b4fdb1a38222">Schedule::SetConfig</a></div><div class="ttdeci">bool SetConfig(const Config &amp;config)</div><div class="ttdoc">Set the Config object.</div><div class="ttdef"><b>Definition</b> <a href="schedule_8cpp_source.html#l00055">schedule.cpp:55</a></div></div>
+<div class="ttc" id="aclass_schedule_html_aea5cfc9d7fa9b1e826add4538f69c42e"><div class="ttname"><a href="class_schedule.html#aea5cfc9d7fa9b1e826add4538f69c42e">Schedule::GetConfig</a></div><div class="ttdeci">bool GetConfig(Config &amp;config)</div><div class="ttdoc">Get the Config object.</div><div class="ttdef"><b>Definition</b> <a href="schedule_8cpp_source.html#l00129">schedule.cpp:129</a></div></div>
+<div class="ttc" id="aclass_schedule_html_af3c6816eec12dde73ddc1f3670df69f0"><div class="ttname"><a href="class_schedule.html#af3c6816eec12dde73ddc1f3670df69f0">Schedule::Attach</a></div><div class="ttdeci">bool Attach(const Config &amp;config)</div><div class="ttdoc">Attach is called when a tag is first connected;.</div><div class="ttdef"><b>Definition</b> <a href="schedule_8cpp_source.html#l00046">schedule.cpp:46</a></div></div>
+<div class="ttc" id="aconfiginterface_8h_html"><div class="ttname"><a href="configinterface_8h.html">configinterface.h</a></div><div class="ttdoc">Abstract class for a configuration interface.</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

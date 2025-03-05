@@ -4,7 +4,7 @@ var dir_aabc1bb6326ed13d08edb536a56d4f56 =
     [ "adxl362config.h", "adxl362config_8h_source.html", null ],
     [ "bittaglog.cpp", "bittaglog_8cpp_source.html", null ],
     [ "bittaglog.h", "bittaglog_8h_source.html", null ],
-    [ "configinterface.h", "configinterface_8h_source.html", null ],
+    [ "configinterface.h", "configinterface_8h.html", "configinterface_8h" ],
     [ "configtab.cpp", "configtab_8cpp_source.html", null ],
     [ "configtab.h", "configtab_8h_source.html", null ],
     [ "dataconfig.cpp", "dataconfig_8cpp_source.html", null ],

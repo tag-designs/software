@@ -9,7 +9,7 @@ Inheritance diagram for Adxl362\+Config\+:\begin{figure}[H]
 \doxysubsubsection*{Public Slots}
 \begin{DoxyCompactItemize}
 \item 
-void \mbox{\hyperlink{class_adxl362_config_ad22a1b8d76ad469a80f5fbf5d62cd5a7}{Attach}} (const Config \&config)
+bool \mbox{\hyperlink{class_adxl362_config_a310473c65060bf731f869da706ab9086}{Attach}} (const Config \&config)
 \item 
 void \mbox{\hyperlink{class_adxl362_config_a27d1e464f18e29282530c101699fe668}{Detach}} ()
 \end{DoxyCompactItemize}
@@ -19,15 +19,23 @@ void \mbox{\hyperlink{class_adxl362_config_a27d1e464f18e29282530c101699fe668}{De
 \mbox{\hyperlink{class_adxl362_config_a0b7d2ffa51ee261b701177b9dfd649df}{Adxl362\+Config}} (QWidget \texorpdfstring{$\ast$}{*}parent=nullptr)
 \item 
 bool \mbox{\hyperlink{class_adxl362_config_ab417041323f3f6f015e572bf5d1f66de}{Get\+Config}} (Config \&config)
-\item 
-void \mbox{\hyperlink{class_adxl362_config_a56d77d11e41252ec23b1c14d41fb7591}{Set\+Config}} (const Config \&config)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Get the Config object. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_adxl362_config_a4a151dddb0f91379a92ce8a95738f23c}{Set\+Config}} (const Config \&config)
+\begin{DoxyCompactList}\small\item\em Set the Config object. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Public Member Functions inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
 \begin{DoxyCompactItemize}
 \item 
-virtual void {\bfseries Attach} (const Config \&config)=0
-\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a66a63069f7be750a120601af9e95a527}{Attach}} (const Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Attach is called when a tag is first connected;. \end{DoxyCompactList}\item 
 virtual void {\bfseries Detach} ()=0
+\begin{DoxyCompactList}\small\item\em Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_config_interface_aa428844efe747447080bc00f68e8d79a}{is\+Active}} ()
+\begin{DoxyCompactList}\small\item\em active if there is some configurable state and no errors in configuration \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Additional Inherited Members}
+\doxysubsection*{Protected Attributes inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f}{active}}
 \end{DoxyCompactItemize}
 
 
@@ -57,20 +65,20 @@ Adxl362\+Config\+::\texorpdfstring{$\sim$}{\string~}\+Adxl362\+Config (\begin{Do
 
 
 
-Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00137}{137}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
+Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00136}{136}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
 
 
 
 \doxysubsection{Member Function Documentation}
-\Hypertarget{class_adxl362_config_ad22a1b8d76ad469a80f5fbf5d62cd5a7}\index{Adxl362Config@{Adxl362Config}!Attach@{Attach}}
+\Hypertarget{class_adxl362_config_a310473c65060bf731f869da706ab9086}\index{Adxl362Config@{Adxl362Config}!Attach@{Attach}}
 \index{Attach@{Attach}!Adxl362Config@{Adxl362Config}}
 \doxysubsubsection{\texorpdfstring{Attach}{Attach}}
-{\footnotesize\ttfamily \label{class_adxl362_config_ad22a1b8d76ad469a80f5fbf5d62cd5a7} 
-void Adxl362\+Config\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
+{\footnotesize\ttfamily \label{class_adxl362_config_a310473c65060bf731f869da706ab9086} 
+bool Adxl362\+Config\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
 
 
 
-Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00062}{62}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
+Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00131}{131}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
 
 \Hypertarget{class_adxl362_config_a27d1e464f18e29282530c101699fe668}\index{Adxl362Config@{Adxl362Config}!Detach@{Detach}}
 \index{Detach@{Detach}!Adxl362Config@{Adxl362Config}}
@@ -90,25 +98,53 @@ bool Adxl362\+Config\+::\+Get\+Config (\begin{DoxyParamCaption}\item[{Config \&}
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Get the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & container to copy program state into \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no errors 
+
+false if there was an error 
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a3484b05849392d0338a969431fd82d72}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00139}{139}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
+Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00138}{138}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
 
-\Hypertarget{class_adxl362_config_a56d77d11e41252ec23b1c14d41fb7591}\index{Adxl362Config@{Adxl362Config}!SetConfig@{SetConfig}}
+\Hypertarget{class_adxl362_config_a4a151dddb0f91379a92ce8a95738f23c}\index{Adxl362Config@{Adxl362Config}!SetConfig@{SetConfig}}
 \index{SetConfig@{SetConfig}!Adxl362Config@{Adxl362Config}}
 \doxysubsubsection{\texorpdfstring{SetConfig()}{SetConfig()}}
-{\footnotesize\ttfamily \label{class_adxl362_config_a56d77d11e41252ec23b1c14d41fb7591} 
-void Adxl362\+Config\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+{\footnotesize\ttfamily \label{class_adxl362_config_a4a151dddb0f91379a92ce8a95738f23c} 
+bool Adxl362\+Config\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Set the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration to assign to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no configuration errors 
+
+false if there was a configuration error 
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a39b74c741868df21ebf00383eba079e7}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00202}{202}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
+Definition at line \mbox{\hyperlink{adxl362config_8cpp_source_l00201}{201}} of file \mbox{\hyperlink{adxl362config_8cpp_source}{adxl362config.\+cpp}}.
 
 
 

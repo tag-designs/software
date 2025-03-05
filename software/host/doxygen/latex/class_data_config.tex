@@ -9,7 +9,7 @@ Inheritance diagram for Data\+Config\+:\begin{figure}[H]
 \doxysubsubsection*{Public Slots}
 \begin{DoxyCompactItemize}
 \item 
-void \mbox{\hyperlink{class_data_config_a02ee483fe717df52ac8b8c5d9a90af07}{Attach}} (const Config \&config)
+bool \mbox{\hyperlink{class_data_config_aa2140bbb8bae95e88a0903a605d7418f}{Attach}} (const Config \&config)
 \item 
 void \mbox{\hyperlink{class_data_config_a5c77895c4a19ffb5027a92160d1bd340}{Detach}} ()
 \end{DoxyCompactItemize}
@@ -19,15 +19,23 @@ void \mbox{\hyperlink{class_data_config_a5c77895c4a19ffb5027a92160d1bd340}{Detac
 \mbox{\hyperlink{class_data_config_a3d968306a2a09e8383e9f05844dbb964}{Data\+Config}} (QWidget \texorpdfstring{$\ast$}{*}parent=nullptr)
 \item 
 bool \mbox{\hyperlink{class_data_config_a8de74e2b336a8e71c9a55fa87a594e6d}{Get\+Config}} (Config \&config)
-\item 
-void \mbox{\hyperlink{class_data_config_abde897281edacfbe8f8232ea8b8e9704}{Set\+Config}} (const Config \&config)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Get the Config object. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_data_config_a3b6435766d8b913552c8507d0005885c}{Set\+Config}} (const Config \&config)
+\begin{DoxyCompactList}\small\item\em Set the Config object. \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Public Member Functions inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
 \begin{DoxyCompactItemize}
 \item 
-virtual void {\bfseries Attach} (const Config \&config)=0
-\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a66a63069f7be750a120601af9e95a527}{Attach}} (const Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Attach is called when a tag is first connected;. \end{DoxyCompactList}\item 
 virtual void {\bfseries Detach} ()=0
+\begin{DoxyCompactList}\small\item\em Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_config_interface_aa428844efe747447080bc00f68e8d79a}{is\+Active}} ()
+\begin{DoxyCompactList}\small\item\em active if there is some configurable state and no errors in configuration \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Additional Inherited Members}
+\doxysubsection*{Protected Attributes inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f}{active}}
 \end{DoxyCompactItemize}
 
 
@@ -62,15 +70,15 @@ Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00022}{22}} of file 
 
 
 \doxysubsection{Member Function Documentation}
-\Hypertarget{class_data_config_a02ee483fe717df52ac8b8c5d9a90af07}\index{DataConfig@{DataConfig}!Attach@{Attach}}
+\Hypertarget{class_data_config_aa2140bbb8bae95e88a0903a605d7418f}\index{DataConfig@{DataConfig}!Attach@{Attach}}
 \index{Attach@{Attach}!DataConfig@{DataConfig}}
 \doxysubsubsection{\texorpdfstring{Attach}{Attach}}
-{\footnotesize\ttfamily \label{class_data_config_a02ee483fe717df52ac8b8c5d9a90af07} 
-void Data\+Config\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
+{\footnotesize\ttfamily \label{class_data_config_aa2140bbb8bae95e88a0903a605d7418f} 
+bool Data\+Config\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
 
 
 
-Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00052}{52}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
+Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00056}{56}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
 
 \Hypertarget{class_data_config_a5c77895c4a19ffb5027a92160d1bd340}\index{DataConfig@{DataConfig}!Detach@{Detach}}
 \index{Detach@{Detach}!DataConfig@{DataConfig}}
@@ -90,25 +98,53 @@ bool Data\+Config\+::\+Get\+Config (\begin{DoxyParamCaption}\item[{Config \&}]{c
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Get the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & container to copy program state into \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no errors 
+
+false if there was an error 
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a3484b05849392d0338a969431fd82d72}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00042}{42}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
+Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00046}{46}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
 
-\Hypertarget{class_data_config_abde897281edacfbe8f8232ea8b8e9704}\index{DataConfig@{DataConfig}!SetConfig@{SetConfig}}
+\Hypertarget{class_data_config_a3b6435766d8b913552c8507d0005885c}\index{DataConfig@{DataConfig}!SetConfig@{SetConfig}}
 \index{SetConfig@{SetConfig}!DataConfig@{DataConfig}}
 \doxysubsubsection{\texorpdfstring{SetConfig()}{SetConfig()}}
-{\footnotesize\ttfamily \label{class_data_config_abde897281edacfbe8f8232ea8b8e9704} 
-void Data\+Config\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+{\footnotesize\ttfamily \label{class_data_config_a3b6435766d8b913552c8507d0005885c} 
+bool Data\+Config\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Set the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration to assign to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no configuration errors 
+
+false if there was a configuration error 
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a39b74c741868df21ebf00383eba079e7}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00033}{33}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
+Definition at line \mbox{\hyperlink{dataconfig_8cpp_source_l00035}{35}} of file \mbox{\hyperlink{dataconfig_8cpp_source}{dataconfig.\+cpp}}.
 
 
 

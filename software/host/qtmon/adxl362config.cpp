@@ -189,7 +189,7 @@ bool Adxl362Config::GetConfig(Config &config)
       break;
     */
     default:
-      break;
+      return false;
   }
 
   // set config to result
@@ -240,7 +240,9 @@ bool Adxl362Config::SetConfig(const Config &config)
       spinners_->setVisible(false);
     */
     default:
-      break;
+      setVisible(false);
+      active = false;
+      return false;
   }
 
   // set legal range of spin boxes
@@ -259,7 +261,8 @@ bool Adxl362Config::SetConfig(const Config &config)
      inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
   }
   active = true;
-  return active;
+  setVisible(true);
+  return true;
 }
 
 // ADXL Range Buttons

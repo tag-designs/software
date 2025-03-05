@@ -7,41 +7,45 @@
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00003}00003\ }
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00004}00004\ \textcolor{keyword}{class\ }QWidget;}
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00005}00005\ \textcolor{keyword}{class\ }QDateTimeEdit;}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00006}\mbox{\hyperlink{class_hibernate}{00006}}\ \textcolor{keyword}{class\ }Hibernate\ :\ \textcolor{keyword}{public}\ QWidget}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00007}00007\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00008}00008\ \ \ \ \ Q\_OBJECT}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00009}00009\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00010}00010\ \textcolor{keyword}{public}:}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00011}00011\ \ \ \ \ \textcolor{keyword}{explicit}\ Hibernate(\textcolor{keywordtype}{int}\ index,\ QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00012}00012\ \ \ \ \ \string~Hibernate();}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00013}00013\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00014}00014\ \ \ \ \ \textcolor{keywordtype}{void}\ start\_dateTime(QDateTime\ \&dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00015}00015\ \ \ \ \ \textcolor{keywordtype}{void}\ end\_dateTime(QDateTime\ \&dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00016}00016\ \ \ \ \ \textcolor{keywordtype}{void}\ setStartEpoch(int32\_t\ epoch);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00017}00017\ \ \ \ \ \textcolor{keywordtype}{void}\ setEndEpoch(int32\_t\ epoch);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00018}00018\ \ \ \ \ int32\_t\ StartEpoch();}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00019}00019\ \ \ \ \ int32\_t\ EndEpoch();}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00020}00020\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00021}00021\ \textcolor{keyword}{public}\ slots:}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00006}00006\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00007}00007\ \textcolor{preprocessor}{\#include\ "{}ui\_hibernate.h"{}}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00008}00008\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00009}\mbox{\hyperlink{class_hibernate}{00009}}\ \textcolor{keyword}{class\ }Hibernate\ :\ \textcolor{keyword}{public}\ QWidget}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00010}00010\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00011}00011\ \ \ \ Q\_OBJECT}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00012}00012\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00013}00013\ \ \ \ \ \textcolor{keyword}{explicit}\ Hibernate(\textcolor{keywordtype}{int}\ index,\ QWidget\ *parent\ =\ \textcolor{keyword}{nullptr});}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00014}00014\ \ \ \ \ \string~Hibernate();}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00015}00015\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00016}00016\ \ \ \ \ \textcolor{keywordtype}{void}\ start\_dateTime(QDateTime\ \&dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00017}00017\ \ \ \ \ \textcolor{keywordtype}{void}\ end\_dateTime(QDateTime\ \&dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00018}00018\ \ \ \ \ \textcolor{keywordtype}{void}\ setStartEpoch(int32\_t\ epoch);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00019}00019\ \ \ \ \ \textcolor{keywordtype}{void}\ setEndEpoch(int32\_t\ epoch);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00020}00020\ \ \ \ \ int32\_t\ StartEpoch();}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00021}00021\ \ \ \ \ int32\_t\ EndEpoch();}
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00022}00022\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00023}00023\ \ \ \ \ \textcolor{keywordtype}{void}\ set\_minimum\_start\_dateTime(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00023}00023\ \textcolor{keyword}{public}\ slots:}
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00024}00024\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00025}00025\ signals:\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00025}00025\ \ \ \ \ \textcolor{keywordtype}{void}\ set\_minimum\_start\_dateTime(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
 \DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00026}00026\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00027}00027\ \ \ \ \ \textcolor{keywordtype}{void}\ startDateTimeChanged(\textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id});}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00028}00028\ \ \ \ \ \textcolor{keywordtype}{void}\ endDateTimeChanged(\textcolor{keywordtype}{int}\ \textcolor{keywordtype}{id});}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00029}00029\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00030}00030\ \textcolor{keyword}{private}\ slots:}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00031}00031\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_hibernate\_start\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00032}00032\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_hibernate\_end\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00033}00033\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00034}00034\ \textcolor{keyword}{private}:}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00035}00035\ \ \ \ \ \textcolor{comment}{//Ui::Hibernate\ *ui;}}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00036}00036\ \ \ \ \ QDateTimeEdit\ *hibernate\_start;}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00037}00037\ \ \ \ \ QDateTimeEdit\ *hibernate\_end;}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00038}00038\ \ \ \ \ \textcolor{keywordtype}{int}\ id;}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00039}00039\ \};}
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00040}00040\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00041}00041\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ HIBERNATE\_H}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00027}00027\ signals:\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00028}00028\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00029}00029\ \ \ \ \ \textcolor{keywordtype}{void}\ startDateTimeChanged(\textcolor{keywordtype}{int});}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00030}00030\ \ \ \ \ \textcolor{keywordtype}{void}\ endDateTimeChanged(\textcolor{keywordtype}{int});}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00031}00031\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00032}00032\ \textcolor{keyword}{private}\ slots:}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00033}00033\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_hibernate\_start\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00034}00034\ \ \ \ \ \textcolor{keywordtype}{void}\ on\_hibernate\_end\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00035}00035\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00036}00036\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00037}00037\ \ \ \ \ Ui::Hibernate\ ui;}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00038}00038\ \ \ \ \ \textcolor{comment}{/*}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00039}00039\ \textcolor{comment}{\ \ \ \ QDateTimeEdit\ *hibernate\_start;}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00040}00040\ \textcolor{comment}{\ \ \ \ QDateTimeEdit\ *hibernate\_end;}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00041}00041\ \textcolor{comment}{\ \ \ \ */}}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00042}00042\ \ \ \ \ \textcolor{keywordtype}{int}\ id;}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00043}00043\ \};}
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00044}00044\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8h_source_l00045}00045\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ HIBERNATE\_H}}
 
 \end{DoxyCode}

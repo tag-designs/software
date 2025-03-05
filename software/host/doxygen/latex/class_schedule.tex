@@ -9,25 +9,33 @@ Inheritance diagram for Schedule\+:\begin{figure}[H]
 \doxysubsubsection*{Public Slots}
 \begin{DoxyCompactItemize}
 \item 
-void \mbox{\hyperlink{class_schedule_a0e94f071cb4aa6ee73071fe54c7b15c2}{Attach}} (const Config \&config)
-\item 
+bool \mbox{\hyperlink{class_schedule_af3c6816eec12dde73ddc1f3670df69f0}{Attach}} (const Config \&config)
+\begin{DoxyCompactList}\small\item\em Attach is called when a tag is first connected;.    \end{DoxyCompactList}\item 
 void \mbox{\hyperlink{class_schedule_a4cae45bc145bafbdac4a3e71a9a9b7d3}{Detach}} ()
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state.    \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
 \mbox{\hyperlink{class_schedule_a7938b8e8acb9b8fac0221b03eadf7325}{Schedule}} (QWidget \texorpdfstring{$\ast$}{*}parent=nullptr)
 \item 
-void \mbox{\hyperlink{class_schedule_ae0f648fe6c4ef32e908d30454c63875c}{Set\+Config}} (const Config \&config)
-\item 
+bool \mbox{\hyperlink{class_schedule_ad6a50cb6236e7cc75c72b4fdb1a38222}{Set\+Config}} (const Config \&config)
+\begin{DoxyCompactList}\small\item\em Set the Config object.    \end{DoxyCompactList}\item 
 bool \mbox{\hyperlink{class_schedule_aea5cfc9d7fa9b1e826add4538f69c42e}{Get\+Config}} (Config \&config)
-\end{DoxyCompactItemize}
+\begin{DoxyCompactList}\small\item\em Get the Config object.    \end{DoxyCompactList}\end{DoxyCompactItemize}
 \doxysubsection*{Public Member Functions inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
 \begin{DoxyCompactItemize}
 \item 
-virtual void {\bfseries Attach} (const Config \&config)=0
-\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a66a63069f7be750a120601af9e95a527}{Attach}} (const Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Attach is called when a tag is first connected;. \end{DoxyCompactList}\item 
 virtual void {\bfseries Detach} ()=0
+\begin{DoxyCompactList}\small\item\em Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_config_interface_aa428844efe747447080bc00f68e8d79a}{is\+Active}} ()
+\begin{DoxyCompactList}\small\item\em active if there is some configurable state and no errors in configuration \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Additional Inherited Members}
+\doxysubsection*{Protected Attributes inherited from \mbox{\hyperlink{class_config_interface}{Config\+Interface}}}
+\begin{DoxyCompactItemize}
+\item 
+bool \mbox{\hyperlink{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f}{active}}
 \end{DoxyCompactItemize}
 
 
@@ -47,7 +55,7 @@ Schedule\+::\+Schedule (\begin{DoxyParamCaption}\item[{QWidget \texorpdfstring{$
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00010}{10}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00039}{39}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
 \Hypertarget{class_schedule_a4806b985197d35c00b9e707c0ed87998}\index{Schedule@{Schedule}!````~Schedule@{\texorpdfstring{$\sim$}{\string~}Schedule}}
 \index{````~Schedule@{\texorpdfstring{$\sim$}{\string~}Schedule}!Schedule@{Schedule}}
@@ -57,20 +65,34 @@ Schedule\+::\texorpdfstring{$\sim$}{\string~}\+Schedule (\begin{DoxyParamCaption
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00014}{14}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00043}{43}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
 
 
 \doxysubsection{Member Function Documentation}
-\Hypertarget{class_schedule_a0e94f071cb4aa6ee73071fe54c7b15c2}\index{Schedule@{Schedule}!Attach@{Attach}}
+\Hypertarget{class_schedule_af3c6816eec12dde73ddc1f3670df69f0}\index{Schedule@{Schedule}!Attach@{Attach}}
 \index{Attach@{Attach}!Schedule@{Schedule}}
 \doxysubsubsection{\texorpdfstring{Attach}{Attach}}
-{\footnotesize\ttfamily \label{class_schedule_a0e94f071cb4aa6ee73071fe54c7b15c2} 
-void Schedule\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
+{\footnotesize\ttfamily \label{class_schedule_af3c6816eec12dde73ddc1f3670df69f0} 
+bool Schedule\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [slot]}}
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00229}{229}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Attach is called when a tag is first connected;.    
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration read from tag to be applied to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if no error occurred 
+
+false if an error occurred    
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00046}{46}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
 \Hypertarget{class_schedule_a4cae45bc145bafbdac4a3e71a9a9b7d3}\index{Schedule@{Schedule}!Detach@{Detach}}
 \index{Detach@{Detach}!Schedule@{Schedule}}
@@ -80,7 +102,11 @@ void Schedule\+::\+Detach (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\h
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00239}{239}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state.    
+
+
+
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00051}{51}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
 \Hypertarget{class_schedule_aea5cfc9d7fa9b1e826add4538f69c42e}\index{Schedule@{Schedule}!GetConfig@{GetConfig}}
 \index{GetConfig@{GetConfig}!Schedule@{Schedule}}
@@ -90,25 +116,53 @@ bool Schedule\+::\+Get\+Config (\begin{DoxyParamCaption}\item[{Config \&}]{confi
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Get the Config object.    
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & container to copy program state into \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no errors 
+
+false if there was an error    
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a3484b05849392d0338a969431fd82d72}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00108}{108}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00129}{129}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
-\Hypertarget{class_schedule_ae0f648fe6c4ef32e908d30454c63875c}\index{Schedule@{Schedule}!SetConfig@{SetConfig}}
+\Hypertarget{class_schedule_ad6a50cb6236e7cc75c72b4fdb1a38222}\index{Schedule@{Schedule}!SetConfig@{SetConfig}}
 \index{SetConfig@{SetConfig}!Schedule@{Schedule}}
 \doxysubsubsection{\texorpdfstring{SetConfig()}{SetConfig()}}
-{\footnotesize\ttfamily \label{class_schedule_ae0f648fe6c4ef32e908d30454c63875c} 
-void Schedule\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
+{\footnotesize\ttfamily \label{class_schedule_ad6a50cb6236e7cc75c72b4fdb1a38222} 
+bool Schedule\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [virtual]}}
 
 
 
-Implements \mbox{\hyperlink{class_config_interface}{Config\+Interface}}.
+Set the Config object.    
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration to assign to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no configuration errors 
+
+false if there was a configuration error    
+\end{DoxyReturn}
+
+
+Implements \mbox{\hyperlink{class_config_interface_a39b74c741868df21ebf00383eba079e7}{Config\+Interface}}.
 
 
 
-Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00034}{34}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
+Definition at line \mbox{\hyperlink{schedule_8cpp_source_l00055}{55}} of file \mbox{\hyperlink{schedule_8cpp_source}{schedule.\+cpp}}.
 
 
 

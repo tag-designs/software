@@ -1,18 +1,18 @@
-#include <QDate>
+//#include <QDate>
 #include <QDateTime>
 #include <QDebug>
-#include <QFile>
-#include <QFileDialog>
+//#include <QFile>
+//#include <QFileDialog>
 #include <QMessageBox>
-#include <QProgressDialog>
-#include <QGroupBox>
-#include <QTextEdit>
-#include <QTime>
-#include <QTimer>
-#include <QtWidgets/QSpacerItem>
-#include <QtWidgets/QSizePolicy>
-#include <ctime>
-#include <fstream>
+// #include <QProgressDialog>
+// #include <QGroupBox>
+// #include <QTextEdit>
+// #include <QTime>
+// #include <QTimer>
+// #include <QtWidgets/QSpacerItem>
+// #include <QtWidgets/QSizePolicy>
+// #include <ctime>
+// #include <fstream>
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
 
@@ -24,24 +24,16 @@
 #include "mainwindow.h"
 
 ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)  
-{/*
-  QVBoxLayout *layout = new QVBoxLayout(this);
-  layout->addWidget(&tabs);
-  setLayout(layout);
-  */
+{
 
-  // build tabs
+  msgBox.setWindowTitle("Error");
+  msgBox.setStandardButtons(QMessageBox::Ok);
 
-  // Schedule Tab
+  // Add Schedule Tab
 
   QVBoxLayout *layout = new QVBoxLayout(&scheduleTab);
-      
-      // add widgets
-
   layout->addWidget(&schedule);
   layout->addWidget(&btlog);
-
-      // configure tab;
   layout->addStretch(1);
   int index = addTab(&scheduleTab,"Schedule");
   setTabToolTip(index,"Configure Tag Schedule");
@@ -49,9 +41,7 @@ ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)
   // Sensor Tab
 
   layout = new QVBoxLayout(&sensorTab);
-      // add widgets
   layout->addWidget(&adxl);
-        // configure tab
   layout->addStretch(1);
   index = addTab(&sensorTab,"Sensors");
   setTabToolTip(index,"Configure Sensors");
@@ -59,9 +49,7 @@ ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)
   setEnabled(false);
 }
 
-ConfigTab::~ConfigTab()
-{
-}
+ConfigTab::~ConfigTab(){}
 
 bool ConfigTab::isActive(){
   return active;
@@ -69,28 +57,25 @@ bool ConfigTab::isActive(){
 
 bool ConfigTab::Attach(const Config &config)
 {
-  SetConfig(config);
   tag_type_ = config.tag_type();
-  setEnabled(true);
-  setVisible(true);
   if (schedule.Attach(config) && 
       btlog.Attach(config) &&
       adxl.Attach(config))
   {
-    setVisible(true);
     setEnabled(true);
+    setVisible(true);
     active = true;
   } else {
     setVisible(false);
     setEnabled(false);
     active = false;
+    qDebug() << "Attach failed\n";
   }
   return active;
 }
 
 void ConfigTab::Detach()
 {
-  setEnabled(false);
   schedule.Detach();
   btlog.Detach();
   adxl.Detach();
@@ -101,12 +86,13 @@ void ConfigTab::Detach()
 
 void ConfigTab::StateUpdate(TagState state)
 {
-
-  // should enable/disable here 
   if (old_state_ != state)
   {
-    //schedule.StateUpdate(state);
-    //bitlog.StateUpdate(state);
+    if (state == IDLE ) {
+      setEnabled(true);
+    } else {
+      setEnabled(false);
+    }
   }
   old_state_ = state;
 }
@@ -122,31 +108,33 @@ bool ConfigTab::GetConfig(Config &config)
   
   // Get configuration from children
 
-  schedule.GetConfig(config);
-  btlog.GetConfig(config);
-  adxl.GetConfig(config);
+  if (schedule.GetConfig(config) &&
+      btlog.GetConfig(config) &&
+      adxl.GetConfig(config))
+  {
+    return true;
+  } else {
+    return false;
+  }
 
   // Sanity check -- should put this in the schedule class
 
-  int64_t end = config.active_interval().end_epoch();
+  // int64_t end = config.active_interval().end_epoch();
 
-  if (end < QDateTime::currentSecsSinceEpoch())
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Error");
-    msgBox.setText("Configuration Error: end time < current time");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-    return false;
-  } else {
-    return true;
-  }
+  // if (end < QDateTime::currentSecsSinceEpoch())
+  // {   
+  //   msgBox.setText("Configuration Error: end time < current time");
+  //   msgBox.exec();
+  //   return false;
+  // } else {
+  //   return true;
+  // }
 }
 
 bool ConfigTab::SetConfig(const Config &new_config)
 {
   active = false;
-  // tag_type_ = new_config.tag_type();
+  tag_type_ = new_config.tag_type();
   // we need to sanity check the new and old configs !
   // if any of these return false, this should return false
   if (schedule.SetConfig(new_config) &&
@@ -154,6 +142,8 @@ bool ConfigTab::SetConfig(const Config &new_config)
       adxl.SetConfig(new_config))
   {
     active = true;
+  } else {
+    qDebug() << "SetConfig failed\n";
   }
   return active;
 }

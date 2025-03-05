@@ -121,26 +121,40 @@ Inheritance diagram for Schedule:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-slots" name="pub-slots"></a>
 Public Slots</h2></td></tr>
-<tr class="memitem:a0e94f071cb4aa6ee73071fe54c7b15c2" id="r_a0e94f071cb4aa6ee73071fe54c7b15c2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0e94f071cb4aa6ee73071fe54c7b15c2">Attach</a> (const Config &amp;config)</td></tr>
-<tr class="separator:a0e94f071cb4aa6ee73071fe54c7b15c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3c6816eec12dde73ddc1f3670df69f0" id="r_af3c6816eec12dde73ddc1f3670df69f0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af3c6816eec12dde73ddc1f3670df69f0">Attach</a> (const Config &amp;config)</td></tr>
+<tr class="memdesc:af3c6816eec12dde73ddc1f3670df69f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attach is called when a tag is first connected;.     <br /></td></tr>
+<tr class="separator:af3c6816eec12dde73ddc1f3670df69f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4cae45bc145bafbdac4a3e71a9a9b7d3" id="r_a4cae45bc145bafbdac4a3e71a9a9b7d3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4cae45bc145bafbdac4a3e71a9a9b7d3">Detach</a> ()</td></tr>
+<tr class="memdesc:a4cae45bc145bafbdac4a3e71a9a9b7d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state.     <br /></td></tr>
 <tr class="separator:a4cae45bc145bafbdac4a3e71a9a9b7d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a7938b8e8acb9b8fac0221b03eadf7325" id="r_a7938b8e8acb9b8fac0221b03eadf7325"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7938b8e8acb9b8fac0221b03eadf7325">Schedule</a> (QWidget *parent=nullptr)</td></tr>
 <tr class="separator:a7938b8e8acb9b8fac0221b03eadf7325"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae0f648fe6c4ef32e908d30454c63875c" id="r_ae0f648fe6c4ef32e908d30454c63875c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae0f648fe6c4ef32e908d30454c63875c">SetConfig</a> (const Config &amp;config)</td></tr>
-<tr class="separator:ae0f648fe6c4ef32e908d30454c63875c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad6a50cb6236e7cc75c72b4fdb1a38222" id="r_ad6a50cb6236e7cc75c72b4fdb1a38222"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad6a50cb6236e7cc75c72b4fdb1a38222">SetConfig</a> (const Config &amp;config)</td></tr>
+<tr class="memdesc:ad6a50cb6236e7cc75c72b4fdb1a38222"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set the Config object.     <br /></td></tr>
+<tr class="separator:ad6a50cb6236e7cc75c72b4fdb1a38222"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aea5cfc9d7fa9b1e826add4538f69c42e" id="r_aea5cfc9d7fa9b1e826add4538f69c42e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aea5cfc9d7fa9b1e826add4538f69c42e">GetConfig</a> (Config &amp;config)</td></tr>
+<tr class="memdesc:aea5cfc9d7fa9b1e826add4538f69c42e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the Config object.     <br /></td></tr>
 <tr class="separator:aea5cfc9d7fa9b1e826add4538f69c42e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_config_interface"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pub_methods_class_config_interface')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_config_interface.html">ConfigInterface</a></td></tr>
-<tr class="memitem:a57ecd7ffd1fe1e29100eb930578442cc inherit pub_methods_class_config_interface" id="r_a57ecd7ffd1fe1e29100eb930578442cc"><td class="memItemLeft" align="right" valign="top">
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Attach</b> (const Config &amp;config)=0</td></tr>
-<tr class="separator:a57ecd7ffd1fe1e29100eb930578442cc inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface" id="r_a66a63069f7be750a120601af9e95a527"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#a66a63069f7be750a120601af9e95a527">Attach</a> (const Config &amp;config)=0</td></tr>
+<tr class="memdesc:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">Attach is called when a tag is first connected;.  <br /></td></tr>
+<tr class="separator:a66a63069f7be750a120601af9e95a527 inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface" id="r_a152805ed1a26053459977f1e094c1b8d"><td class="memItemLeft" align="right" valign="top">
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()=0</td></tr>
+<tr class="memdesc:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. <br /></td></tr>
 <tr class="separator:a152805ed1a26053459977f1e094c1b8d inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface" id="r_aa428844efe747447080bc00f68e8d79a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#aa428844efe747447080bc00f68e8d79a">isActive</a> ()</td></tr>
+<tr class="memdesc:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface"><td class="mdescLeft">&#160;</td><td class="mdescRight">active if there is some configurable state and no errors in configuration  <br /></td></tr>
+<tr class="separator:aa428844efe747447080bc00f68e8d79a inherit pub_methods_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
+Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header pro_attribs_class_config_interface"><td colspan="2" onclick="javascript:dynsection.toggleInherit('pro_attribs_class_config_interface')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="class_config_interface.html">ConfigInterface</a></td></tr>
+<tr class="memitem:ae4b3676721793a69f1267225bb8e3a7f inherit pro_attribs_class_config_interface" id="r_ae4b3676721793a69f1267225bb8e3a7f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_interface.html#ae4b3676721793a69f1267225bb8e3a7f">active</a></td></tr>
+<tr class="separator:ae4b3676721793a69f1267225bb8e3a7f inherit pro_attribs_class_config_interface"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock">
@@ -161,7 +175,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00010">10</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00039">39</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>
@@ -180,13 +194,13 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
       </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00014">14</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00043">43</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a0e94f071cb4aa6ee73071fe54c7b15c2" name="a0e94f071cb4aa6ee73071fe54c7b15c2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0e94f071cb4aa6ee73071fe54c7b15c2">&#9670;&#160;</a></span>Attach</h2>
+<a id="af3c6816eec12dde73ddc1f3670df69f0" name="af3c6816eec12dde73ddc1f3670df69f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3c6816eec12dde73ddc1f3670df69f0">&#9670;&#160;</a></span>Attach</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -195,7 +209,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void Schedule::Attach </td>
+          <td class="memname">bool Schedule::Attach </td>
           <td>(</td>
           <td class="paramtype">const Config &amp;</td>          <td class="paramname"><span class="paramname"><em>config</em></span></td><td>)</td>
           <td></td>
@@ -208,7 +222,18 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00229">229</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p>Attach is called when a tag is first connected;.    </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>configuration read from tag to be applied to program state </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if no error occurred </dd>
+<dd>
+false if an error occurred    </dd></dl>
+
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00046">46</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>
@@ -235,7 +260,9 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00239">239</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p>Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state.    </p>
+
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00051">51</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>
@@ -262,14 +289,25 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p>Implements <a class="el" href="class_config_interface.html">ConfigInterface</a>.</p>
+<p>Get the Config object.    </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>container to copy program state into </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if there were no errors </dd>
+<dd>
+false if there was an error    </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00108">108</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p>Implements <a class="el" href="class_config_interface.html#a3484b05849392d0338a969431fd82d72">ConfigInterface</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00129">129</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>
-<a id="ae0f648fe6c4ef32e908d30454c63875c" name="ae0f648fe6c4ef32e908d30454c63875c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae0f648fe6c4ef32e908d30454c63875c">&#9670;&#160;</a></span>SetConfig()</h2>
+<a id="ad6a50cb6236e7cc75c72b4fdb1a38222" name="ad6a50cb6236e7cc75c72b4fdb1a38222"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad6a50cb6236e7cc75c72b4fdb1a38222">&#9670;&#160;</a></span>SetConfig()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -278,7 +316,7 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">void Schedule::SetConfig </td>
+          <td class="memname">bool Schedule::SetConfig </td>
           <td>(</td>
           <td class="paramtype">const Config &amp;</td>          <td class="paramname"><span class="paramname"><em>config</em></span></td><td>)</td>
           <td></td>
@@ -291,9 +329,20 @@ virtual void&#160;</td><td class="memItemRight" valign="bottom"><b>Detach</b> ()
 </table>
 </div><div class="memdoc">
 
-<p>Implements <a class="el" href="class_config_interface.html">ConfigInterface</a>.</p>
+<p>Set the Config object.    </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>configuration to assign to program state </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if there were no configuration errors </dd>
+<dd>
+false if there was a configuration error    </dd></dl>
 
-<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00034">34</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
+<p>Implements <a class="el" href="class_config_interface.html#a39b74c741868df21ebf00383eba079e7">ConfigInterface</a>.</p>
+
+<p class="definition">Definition at line <a class="el" href="schedule_8cpp_source.html#l00055">55</a> of file <a class="el" href="schedule_8cpp_source.html">schedule.cpp</a>.</p>
 
 </div>
 </div>

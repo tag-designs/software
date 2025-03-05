@@ -10,97 +10,62 @@
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00006}00006\ }
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00007}00007\ Hibernate::Hibernate(\textcolor{keywordtype}{int}\ index,\ QWidget\ *parent)\ :\ QWidget(parent)}
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00008}00008\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00009}00009\ \ \ \ \ \textcolor{keywordtype}{id}\ =\ index;}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00010}00010\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00011}00011\ \ \ \ \ QFormLayout\ *layout\ =\ \textcolor{keyword}{new}\ QFormLayout;}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00012}00012\ \ \ \ \ hibernate\_start\ =\ \textcolor{keyword}{new}\ QDateTimeEdit;}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00013}00013\ \ \ \ \ hibernate\_end\ =\ \textcolor{keyword}{new}\ QDateTimeEdit;}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00009}00009\ \ \ \ \ ui.setupUi(\textcolor{keyword}{this});}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00010}00010\ \ \ \ \ \textcolor{keywordtype}{id}\ =\ index;}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00011}00011\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00012}00012\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00013}00013\ Hibernate::\string~Hibernate()\{\}}
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00014}00014\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00015}00015\ \ \ \ \ hibernate\_start-\/>setCalendarPopup(\textcolor{keyword}{true});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00016}00016\ \ \ \ \ hibernate\_start-\/>setTimeSpec(Qt::TimeSpec::UTC);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00017}00017\ \ \ \ \ hibernate\_start-\/>setDisplayFormat(\textcolor{stringliteral}{"{}M/d/yy\ h:00\ AP"{}});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00018}00018\ \ \ \ \ hibernate\_end-\/>setCalendarPopup(\textcolor{keyword}{true});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00019}00019\ \ \ \ \ hibernate\_end-\/>setTimeSpec(Qt::TimeSpec::UTC);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00020}00020\ \ \ \ \ hibernate\_end-\/>setDisplayFormat(\textcolor{stringliteral}{"{}M/d/yy\ h:00\ AP"{}});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00021}00021\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00022}00022\ \ \ \ \ layout-\/>addRow(\textcolor{stringliteral}{"{}Start"{}},\ hibernate\_start);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00023}00023\ \ \ \ \ layout-\/>addRow(\textcolor{stringliteral}{"{}End"{}},\ hibernate\_end);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00024}00024\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00025}00025\ \ \ \ \ QDateTime\ current\ =\ QDateTime::currentDateTimeUtc();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00026}00026\ \ \ \ \ QTime\ time\ =\ current.time();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00027}00027\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00028}00028\ \ \ \ \ \textcolor{keywordflow}{if}\ (time.minute()\ !=\ 0)\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00029}00029\ \ \ \ \ \ \ \ \ time.setHMS(time.hour()\ +\ 1,\ 0,\ 0,\ 0);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00030}00030\ \ \ \ \ \ \ \ \ current.setTime(time);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00031}00031\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00015}00015\ \textcolor{keywordtype}{void}\ Hibernate::on\_hibernate\_start\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00016}00016\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00017}00017\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ >\ ui.hibernate\_end-\/>dateTime())}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00018}00018\ \ \ \ \ \ \ \ \ ui.hibernate\_end-\/>setDateTime(dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00019}00019\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00020}00020\ \ \ \ \ emit\ startDateTimeChanged(\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00021}00021\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00022}00022\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00023}00023\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00024}00024\ \textcolor{keywordtype}{void}\ Hibernate::on\_hibernate\_end\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00025}00025\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00026}00026\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ <\ ui.hibernate\_start-\/>dateTime())}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00027}00027\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00028}00028\ \ \ \ \ \ \ \ \ ui.hibernate\_start-\/>setDateTime(dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00029}00029\ \ \ \ \ \}\ \ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00030}00030\ \ \ \ \ emit\ endDateTimeChanged(\textcolor{keywordtype}{id});}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00031}00031\ \}}
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00032}00032\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00033}00033\ \ \ \ \ hibernate\_start-\/>setDateTime(current);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00034}00034\ \ \ \ \ hibernate\_end-\/>setDateTime(current);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00035}00035\ \ \ \ \ hibernate\_start-\/>setMinimumDateTime(current);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00036}00036\ \ \ \ \ hibernate\_end-\/>setMinimumDateTime(current);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00037}00037\ \ \ \ \ hibernate\_start-\/>setToolTip(\textcolor{stringliteral}{"{}Start\ hibernating\ at\ date/time\ (UTC)"{}});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00038}00038\ \ \ \ \ hibernate\_end-\/>setToolTip(\textcolor{stringliteral}{"{}Stop\ hibernating\ at\ data/time\ (UTC)"{}});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00039}00039\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00040}00040\ \ \ \ \ setLayout(layout);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00041}00041\ \ \ \ \ connect(hibernate\_start,\ \&QDateTimeEdit::dateTimeChanged,}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00042}00042\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{this},\ \&Hibernate::on\_hibernate\_start\_dateTimeChanged);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00043}00043\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00044}00044\ \ \ \ \ connect(hibernate\_end,\ \&QDateTimeEdit::dateTimeChanged,}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00045}00045\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{this},\ \&Hibernate::on\_hibernate\_end\_dateTimeChanged);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00046}00046\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00047}00047\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00048}00048\ Hibernate::\string~Hibernate()\{\}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00049}00049\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00050}00050\ \textcolor{keywordtype}{void}\ Hibernate::on\_hibernate\_start\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00051}00051\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00052}00052\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ >\ hibernate\_end-\/>dateTime())}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00053}00053\ \ \ \ \ \ \ \ \ hibernate\_end-\/>setDateTime(dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00054}00054\ \ \ \ \ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00055}00055\ \ \ \ \ emit\ startDateTimeChanged(\textcolor{keywordtype}{id});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00056}00056\ \ \ \ \ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00033}00033\ \textcolor{keywordtype}{void}\ Hibernate::set\_minimum\_start\_dateTime(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00034}00034\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00035}00035\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ <\ ui.hibernate\_start-\/>dateTime())}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00036}00036\ \ \ \ \ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00037}00037\ \ \ \ \ \ \ \ \ ui.hibernate\_start-\/>setDateTime(dateTime);}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00038}00038\ \ \ \ \ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00039}00039\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00040}00040\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00041}00041\ \textcolor{keywordtype}{void}\ Hibernate::start\_dateTime(QDateTime\ \&dateTime)}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00042}00042\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00043}00043\ \ \ \ \ dateTime\ =\ ui.hibernate\_start-\/>dateTime();}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00044}00044\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00045}00045\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00046}00046\ \textcolor{keywordtype}{void}\ Hibernate::end\_dateTime(QDateTime\ \&dateTime)}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00047}00047\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00048}00048\ \ \ \ \ dateTime\ =\ ui.hibernate\_end-\/>dateTime();}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00049}00049\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00050}00050\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00051}00051\ \textcolor{keywordtype}{void}\ Hibernate::setStartEpoch(int32\_t\ epoch)\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00052}00052\ \ \ \ \ ui.hibernate\_start-\/>setDateTime(QDateTime::fromSecsSinceEpoch(epoch));}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00053}00053\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00054}00054\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00055}00055\ \textcolor{keywordtype}{void}\ Hibernate::setEndEpoch(int32\_t\ epoch)\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00056}00056\ \ \ \ \ ui.hibernate\_end-\/>setDateTime(QDateTime::fromSecsSinceEpoch(epoch));}
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00057}00057\ \}}
 \DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00058}00058\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00059}00059\ \textcolor{keywordtype}{void}\ Hibernate::on\_hibernate\_end\_dateTimeChanged(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00060}00060\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00061}00061\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ <\ hibernate\_start-\/>dateTime())}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00062}00062\ \ \ \ \ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00063}00063\ \ \ \ \ \ \ \ \ hibernate\_start-\/>setDateTime(dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00064}00064\ \ \ \ \ \}\ \ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00065}00065\ \ \ \ \ emit\ endDateTimeChanged(\textcolor{keywordtype}{id});}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00066}00066\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00067}00067\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00068}00068\ \textcolor{keywordtype}{void}\ Hibernate::set\_minimum\_start\_dateTime(\textcolor{keyword}{const}\ QDateTime\ \&dateTime)}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00069}00069\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00070}00070\ \ \ \ \ \textcolor{keywordflow}{if}\ (dateTime\ <\ hibernate\_start-\/>dateTime())}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00071}00071\ \ \ \ \ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00072}00072\ \ \ \ \ \ \ \ \ hibernate\_start-\/>setDateTime(dateTime);}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00073}00073\ \ \ \ \ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00074}00074\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00075}00075\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00076}00076\ \textcolor{keywordtype}{void}\ Hibernate::start\_dateTime(QDateTime\ \&dateTime)}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00077}00077\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00078}00078\ \ \ \ \ dateTime\ =\ hibernate\_start-\/>dateTime();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00079}00079\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00080}00080\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00081}00081\ \textcolor{keywordtype}{void}\ Hibernate::end\_dateTime(QDateTime\ \&dateTime)}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00082}00082\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00083}00083\ \ \ \ \ dateTime\ =\ hibernate\_end-\/>dateTime();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00084}00084\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00085}00085\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00086}00086\ \textcolor{keywordtype}{void}\ Hibernate::setStartEpoch(int32\_t\ epoch)\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00087}00087\ \ \ \ \ hibernate\_start-\/>setDateTime(QDateTime::fromSecsSinceEpoch(epoch));}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00088}00088\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00089}00089\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00090}00090\ \textcolor{keywordtype}{void}\ Hibernate::setEndEpoch(int32\_t\ epoch)\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00091}00091\ \ \ \ \ hibernate\_end-\/>setDateTime(QDateTime::fromSecsSinceEpoch(epoch));}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00092}00092\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00093}00093\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00094}00094\ int32\_t\ Hibernate::StartEpoch()\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00095}00095\ \ \ \ \ \textcolor{keywordflow}{return}\ (int32\_t)\ hibernate\_start-\/>dateTime().toSecsSinceEpoch();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00096}00096\ \}}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00097}00097\ }
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00098}00098\ int32\_t\ Hibernate::EndEpoch()\ \{}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00099}00099\ \ \ \ \ \textcolor{keywordflow}{return}\ (int32\_t)\ hibernate\_end-\/>dateTime().toSecsSinceEpoch();}
-\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00100}00100\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00059}00059\ int32\_t\ Hibernate::StartEpoch()\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00060}00060\ \ \ \ \ \textcolor{keywordflow}{return}\ (int32\_t)\ ui.hibernate\_start-\/>dateTime().toSecsSinceEpoch();}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00061}00061\ \}}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00062}00062\ }
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00063}00063\ int32\_t\ Hibernate::EndEpoch()\ \{}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00064}00064\ \ \ \ \ \textcolor{keywordflow}{return}\ (int32\_t)\ ui.hibernate\_end-\/>dateTime().toSecsSinceEpoch();}
+\DoxyCodeLine{\Hypertarget{hibernate_8cpp_source_l00065}00065\ \}}
 
 \end{DoxyCode}

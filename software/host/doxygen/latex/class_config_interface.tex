@@ -9,27 +9,134 @@ Inheritance diagram for Config\+Interface\+:\begin{figure}[H]
 \doxysubsubsection*{Public Member Functions}
 \begin{DoxyCompactItemize}
 \item 
-\Hypertarget{class_config_interface_a57ecd7ffd1fe1e29100eb930578442cc}\label{class_config_interface_a57ecd7ffd1fe1e29100eb930578442cc} 
-virtual void {\bfseries Attach} (const Config \&config)=0
-\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a66a63069f7be750a120601af9e95a527}{Attach}} (const Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Attach is called when a tag is first connected;. \end{DoxyCompactList}\item 
 \Hypertarget{class_config_interface_a152805ed1a26053459977f1e094c1b8d}\label{class_config_interface_a152805ed1a26053459977f1e094c1b8d} 
 virtual void {\bfseries Detach} ()=0
+\begin{DoxyCompactList}\small\item\em Detach is called when the tag is disconnected; subclasses may need to reset/clean up internal state. \end{DoxyCompactList}\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a39b74c741868df21ebf00383eba079e7}{Set\+Config}} (const Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Set the Config object. \end{DoxyCompactList}\item 
+virtual bool \mbox{\hyperlink{class_config_interface_a3484b05849392d0338a969431fd82d72}{Get\+Config}} (Config \&config)=0
+\begin{DoxyCompactList}\small\item\em Get the Config object. \end{DoxyCompactList}\item 
+bool \mbox{\hyperlink{class_config_interface_aa428844efe747447080bc00f68e8d79a}{is\+Active}} ()
+\begin{DoxyCompactList}\small\item\em active if there is some configurable state and no errors in configuration \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
 \item 
-\Hypertarget{class_config_interface_a9cbf4cbe66cd17d18a6d53ff95ae0e37}\label{class_config_interface_a9cbf4cbe66cd17d18a6d53ff95ae0e37} 
-virtual void {\bfseries Set\+Config} (const Config \&config)=0
-\item 
-\Hypertarget{class_config_interface_a3484b05849392d0338a969431fd82d72}\label{class_config_interface_a3484b05849392d0338a969431fd82d72} 
-virtual bool {\bfseries Get\+Config} (Config \&config)=0
+bool \mbox{\hyperlink{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f}{active}}
 \end{DoxyCompactItemize}
 
 
 \doxysubsection{Detailed Description}
 
 
-Definition at line \mbox{\hyperlink{configinterface_8h_source_l00010}{10}} of file \mbox{\hyperlink{configinterface_8h_source}{configinterface.\+h}}.
+Definition at line \mbox{\hyperlink{configinterface_8h_source_l00011}{11}} of file \mbox{\hyperlink{configinterface_8h_source}{configinterface.\+h}}.
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_config_interface_a66a63069f7be750a120601af9e95a527}\index{ConfigInterface@{ConfigInterface}!Attach@{Attach}}
+\index{Attach@{Attach}!ConfigInterface@{ConfigInterface}}
+\doxysubsubsection{\texorpdfstring{Attach()}{Attach()}}
+{\footnotesize\ttfamily \label{class_config_interface_a66a63069f7be750a120601af9e95a527} 
+virtual bool Config\+Interface\+::\+Attach (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Attach is called when a tag is first connected;. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration read from tag to be applied to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if no error occurred 
+
+false if an error occurred 
+\end{DoxyReturn}
+\Hypertarget{class_config_interface_a3484b05849392d0338a969431fd82d72}\index{ConfigInterface@{ConfigInterface}!GetConfig@{GetConfig}}
+\index{GetConfig@{GetConfig}!ConfigInterface@{ConfigInterface}}
+\doxysubsubsection{\texorpdfstring{GetConfig()}{GetConfig()}}
+{\footnotesize\ttfamily \label{class_config_interface_a3484b05849392d0338a969431fd82d72} 
+virtual bool Config\+Interface\+::\+Get\+Config (\begin{DoxyParamCaption}\item[{Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Get the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & container to copy program state into \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no errors 
+
+false if there was an error 
+\end{DoxyReturn}
+
+
+Implemented in \mbox{\hyperlink{class_adxl362_config_ab417041323f3f6f015e572bf5d1f66de}{Adxl362\+Config}}, \mbox{\hyperlink{class_bit_tag_log_tab_add65b60abc990af907657e9c16e1b7ef}{Bit\+Tag\+Log\+Tab}}, \mbox{\hyperlink{class_config_tab_a4bb2661db0304d5d98553578db3967c5}{Config\+Tab}}, \mbox{\hyperlink{class_data_config_a8de74e2b336a8e71c9a55fa87a594e6d}{Data\+Config}}, and \mbox{\hyperlink{class_schedule_aea5cfc9d7fa9b1e826add4538f69c42e}{Schedule}}.
+
+\Hypertarget{class_config_interface_aa428844efe747447080bc00f68e8d79a}\index{ConfigInterface@{ConfigInterface}!isActive@{isActive}}
+\index{isActive@{isActive}!ConfigInterface@{ConfigInterface}}
+\doxysubsubsection{\texorpdfstring{isActive()}{isActive()}}
+{\footnotesize\ttfamily \label{class_config_interface_aa428844efe747447080bc00f68e8d79a} 
+bool Config\+Interface\+::is\+Active (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+active if there is some configurable state and no errors in configuration 
+
+\begin{DoxyReturn}{Returns}
+true no errors and there is configured state 
+
+false there is no configured state or there were configuration errors 
+\end{DoxyReturn}
+
+
+Definition at line \mbox{\hyperlink{configinterface_8h_source_l00052}{52}} of file \mbox{\hyperlink{configinterface_8h_source}{configinterface.\+h}}.
+
+\Hypertarget{class_config_interface_a39b74c741868df21ebf00383eba079e7}\index{ConfigInterface@{ConfigInterface}!SetConfig@{SetConfig}}
+\index{SetConfig@{SetConfig}!ConfigInterface@{ConfigInterface}}
+\doxysubsubsection{\texorpdfstring{SetConfig()}{SetConfig()}}
+{\footnotesize\ttfamily \label{class_config_interface_a39b74c741868df21ebf00383eba079e7} 
+virtual bool Config\+Interface\+::\+Set\+Config (\begin{DoxyParamCaption}\item[{const Config \&}]{config}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Set the Config object. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em config} & configuration to assign to program state \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+true if there were no configuration errors 
+
+false if there was a configuration error 
+\end{DoxyReturn}
+
+
+Implemented in \mbox{\hyperlink{class_adxl362_config_a4a151dddb0f91379a92ce8a95738f23c}{Adxl362\+Config}}, \mbox{\hyperlink{class_bit_tag_log_tab_aec2cb8312e13c698350978c229a9c18f}{Bit\+Tag\+Log\+Tab}}, \mbox{\hyperlink{class_config_tab_a180299faf0a95d165bf75ec45e90bae0}{Config\+Tab}}, \mbox{\hyperlink{class_data_config_a3b6435766d8b913552c8507d0005885c}{Data\+Config}}, and \mbox{\hyperlink{class_schedule_ad6a50cb6236e7cc75c72b4fdb1a38222}{Schedule}}.
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f}\index{ConfigInterface@{ConfigInterface}!active@{active}}
+\index{active@{active}!ConfigInterface@{ConfigInterface}}
+\doxysubsubsection{\texorpdfstring{active}{active}}
+{\footnotesize\ttfamily \label{class_config_interface_ae4b3676721793a69f1267225bb8e3a7f} 
+bool Config\+Interface\+::active\hspace{0.3cm}{\ttfamily [protected]}}
+
+
+
+Definition at line \mbox{\hyperlink{configinterface_8h_source_l00055}{55}} of file \mbox{\hyperlink{configinterface_8h_source}{configinterface.\+h}}.
 
 
 
 The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
 \item 
-/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/qtmon/configinterface.\+h\end{DoxyCompactItemize}
+/\+Users/geobrown/\+Research/ultralight-\/tags/software/host/qtmon/\mbox{\hyperlink{configinterface_8h}{configinterface.\+h}}\end{DoxyCompactItemize}
