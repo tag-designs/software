@@ -66,11 +66,6 @@ private slots:
   void on_startButton_clicked();
   void on_tagConfigReadButton_clicked();
 
-  // error log events
-
-  void on_logsaveButton_clicked();
-  void on_loglevelBox_currentIndexChanged(int);
-
 private:
   Tag tag;
   TagType tt = TagType::TAG_UNSPECIFIED;

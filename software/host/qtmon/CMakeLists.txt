@@ -45,16 +45,15 @@ set(qtmonitor_SRCS
     adxl362config.cpp
     bittaglog.cpp
     configtab.cpp
-    dataconfig.cpp
     download.cpp
     hibernate.cpp
-    #logscreen.cpp
+    logwindow.cpp
     main.cpp
     mainwindow.cpp
     pbenumgroup.cpp
     schedule.cpp)
 
-qt6_wrap_ui(UI_HEADERS mainwindow.ui schedule.ui)
+qt6_wrap_ui(UI_HEADERS hibernate.ui mainwindow.ui schedule.ui logwindow.ui)
 
 # Tell CMake to create the qtmonitor executable
 

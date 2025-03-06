@@ -128,9 +128,10 @@ Adxl362Config::Adxl362Config(QWidget *parent) : QWidget(parent)
           &Adxl362Config::on_adxlfreq_clicked);
 }
 
-bool Adxl362Config::Attach(const Config &config)
+bool Adxl362Config::Attach(Tag &tag)
 {
-  return SetConfig(config);
+   return true;
+   //return SetConfig(config);
 }
 
 Adxl362Config::~Adxl362Config(){}

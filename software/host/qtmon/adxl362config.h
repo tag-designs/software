@@ -27,7 +27,7 @@ public:
 
 public slots:
 
-    bool Attach(const Config &config);
+    bool Attach(Tag &tag);
     void Detach(){};
     //void StateUpdate(State_TagState state);
 

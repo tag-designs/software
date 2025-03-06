@@ -29,9 +29,10 @@ BitTagLogTab::BitTagLogTab(QWidget *parent) : QWidget(parent)
 
 BitTagLogTab::~BitTagLogTab(){}
 
-bool BitTagLogTab::Attach(const Config &config)
+bool BitTagLogTab::Attach(Tag &tag)
 {
-   return SetConfig(config);
+   //return SetConfig(config);
+   return true;
 }
 
 void BitTagLogTab::Detach() 

@@ -7,7 +7,7 @@
 
 //#include "tag.pb.h"
 //#include "host.pb.h"
-//#include "tagclass.h"
+#include "tagclass.h"
 
 #include "hibernate.h"
 #include "ui_schedule.h"
@@ -27,8 +27,8 @@ class Schedule : public QWidget, public ConfigInterface
 
     public slots:
 
-        //! @copydoc ConfigInterface::Attach(const Config &)
-        bool Attach(const Config &config);
+        //! @copydoc ConfigInterface::Attach(const Tag &)
+        bool Attach(Tag &tag);
 
         //! @copydoc ConfigInterface::Detach()
         void Detach();

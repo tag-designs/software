@@ -13,8 +13,6 @@
 #include "schedule.h"
 #include "adxl362config.h"
 #include "bittaglog.h"
-#include "dataconfig.h"
-
 
 class ConfigTab :  public QTabWidget, public ConfigInterface {
     Q_OBJECT
@@ -28,7 +26,7 @@ public:
 
 public slots:
 
-    bool Attach(const Config &config);
+    bool Attach(Tag &tag);
     void Detach();
     void StateUpdate(TagState state);
 
@@ -56,6 +54,7 @@ private:
     // for errors
 
     QMessageBox msgBox;
+    Tag *tag;
     
 };
 

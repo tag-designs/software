@@ -43,9 +43,10 @@ Schedule::Schedule(QWidget *parent) : QWidget(parent) {
 Schedule::~Schedule(){}
 
 
-bool Schedule::Attach(const Config &config)
+bool Schedule::Attach(Tag &tag)
 {
-  return SetConfig(config);
+  //return SetConfig(config);
+  return true;
 }
 
 void Schedule::Detach(){

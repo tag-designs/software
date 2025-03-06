@@ -29,22 +29,12 @@
 
 #include "tag.pb.h"
 
-#include "taglogs.h"
+//#include "taglogs.h"
 #include "configtab.h"
 #include "download.h"
 
-extern "C"
-{
-#include "log.h"
-}
 
-// hook into the error logging system
 
-extern int log_level;
-QTextEdit *s_textEdit = nullptr;
-
-extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
-                            const QString &msg);
 
 // main window
 
@@ -60,35 +50,13 @@ MainWindow::MainWindow(QWidget *parent)
 
   setWindowTitle(title);
 
-  // create configuration widgets
-
-  // initialize error log
-  // create loglevel choices
-
-  QStringList ll;
-
-    // don't include LOG_FATAL in choices
-
-  for (int i = 0; i < LOG_FATAL; i++) {
-    ll << log_level_string(i);
-  }
-
-  ui->loglevelBox->addItems(ll);
-  ui->loglevelBox->setCurrentIndex(LOG_INFO);
-
-  // connect log text edit box to error logging system
-
-  s_textEdit = ui->logtextEdit;
-  qInstallMessageHandler(myMessageOutput);
-
-  ui->mainTabWidget->setCurrentIndex(0);
-
   // get handle to config tab
 
   configtab_ = ui->config;
 
   // Tag state poll timer
 
+  connect(this, SIGNAL(StateUpdate()), configtab_, SLOT(ConfigTab::StateUpdate()));
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
 
   // Attach to tag
@@ -99,7 +67,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-  configtab_->Detach();
+  //configtab_->Detach();
   tag.Detach();
   delete ui;
 }
@@ -218,7 +186,8 @@ bool MainWindow::Attach()
       ui->ExternalLog->setHidden(false);
     }
 
-    configtab_->Attach(config);
+    configtab_->Attach(tag);
+    configtab_->SetConfig(config);
 
     //ui->loglevelBox->setCurrentIndex(LOG_INFO);
     
@@ -276,6 +245,8 @@ void MainWindow::TriggerUpdate(void)
       // check the clock error
 
       // State Change
+      
+      ui->fileConfigGroup->setEnabled(true); 
 
       //  --> IDLE
       if (status.state() == IDLE)
@@ -286,15 +257,28 @@ void MainWindow::TriggerUpdate(void)
         ui->syncButton->setEnabled(true);
         ui->testButton->setEnabled(true);
         ui->progressBar->setVisible(false);
-        ui->configControls->setEnabled(true);
+
+        // config tab
+
+        ui->tagConfigGroup->setEnabled(true);
+        ui->configRestoreButton->setEnabled(true);
+       
       }
       else
       {
         // tag tab
         ui->syncButton->setEnabled(false);
         ui->testButton->setEnabled(false);
-        ui->configControls->setEnabled(false);
+
+        // config tab
+ 
+        ui->tagConfigGroup->setEnabled(false);
+        ui->configRestoreButton->setEnabled(false);
       }
+
+      // config tab takes care of its own state
+
+      configtab_->StateUpdate(status.state());
 
       if (status.state() == sRESET)
       {
@@ -334,8 +318,10 @@ void MainWindow::TriggerUpdate(void)
           // tab tag
           ui->datadownloadgroupBox->setEnabled(false);
         }
+       
       }
       current_state = status.state();
+      emit StateUpdate(current_state);
     }
   }
 }
@@ -376,16 +362,18 @@ void MainWindow::on_Attach_clicked()
     ui->StatusGroup->setEnabled(true);
     ui->TagInformation->setEnabled(true);
     ui->ControlGroup->setEnabled(true);
-    configtab_->StateUpdate(current_state);
     ui->Attach->setEnabled(false);
     ui->Detach->setEnabled(true);
+    ui->config->setVisible(true);
+    ui->configControls->setVisible(true);
   } else {
     ui->StatusGroup->setEnabled(false);
     ui->TagInformation->setEnabled(false);
     ui->ControlGroup->setEnabled(false);
     ui->Attach->setEnabled(true);
     ui->Detach->setEnabled(false);
-  
+    ui->config->setVisible(false);
+    ui->configControls->setVisible(false);
     ui->datadownloadgroupBox->setEnabled(false);
   }
   ui->progressBar->setVisible(false);
@@ -504,67 +492,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   
   return;
-}
-
-/********************************************
- *                Log Tab
- ********************************************/
-
-// these help with debugging UI
-// we should disable them in release
-/*
-void MainWindow::on_LogConfigButton_clicked()
-{
-  Config tmp;
-  configtab_->GetConfig(tmp);
-  logtab->append(QString::fromStdString(tmp.DebugString()));
-}
-
-void MainWindow::on_LogTagConfigButton_clicked()
-{
-  Config tmp;
-  if (tag.GetConfig(tmp))
-  {
-    logtab->append(QString::fromStdString(tmp.DebugString()));
-  }
-  else
-  {
-    qDebug() << "tag.GetConfig() returned false";
-  }
-}
-*/
-
-void MainWindow::on_loglevelBox_currentIndexChanged(int index)
-{
-  log_set_level(index);
-  log_level = index;
-}
-
-// Save the log window contents as a text file
-
-void MainWindow::on_logsaveButton_clicked()
-{
-  QFileDialog fd;
-
-  fd.setDirectory(QDir::homePath());
-  QString nameFile = fd.getSaveFileName();
-  if (nameFile != "")
-  {
-    QFile file(nameFile);
-
-    if (file.open(QIODevice::ReadWrite))
-    {
-      QTextStream stream(&file);
-      stream << ui->logtextEdit->toPlainText();
-      file.flush();
-      file.close();
-    }
-    else
-    {
-      QMessageBox::critical(this, tr("Error"), tr("Cannot open file"));
-      return;
-    }
-  }
 }
 
 /*

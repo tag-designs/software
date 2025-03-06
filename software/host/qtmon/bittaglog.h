@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <configinterface.h>
+#include "tagclass.h"
 
 class PBEnumGroup;
 class BitTagLogTab : public QWidget, public ConfigInterface
@@ -19,7 +20,7 @@ public:
 
 public slots:
 
-    bool Attach(const Config &config);
+    bool Attach(Tag &tag);
     void Detach();
 
 private:

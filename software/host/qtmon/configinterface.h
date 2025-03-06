@@ -1,6 +1,8 @@
 #ifndef CONFIG_INTERFACE_H
 #define CONFIG_INTERFACE_H
 
+#include <tagclass.h>
+
 /**
  * @file configinterface.h
  * @brief Abstract class for a configuration interface
@@ -15,11 +17,11 @@ public:
     /**
      * @brief Attach is called when a tag is first connected; 
      * 
-     * @param config configuration read from tag to be applied to program state
+     * @param tag being attached to to be applied to program state
      * @return true if no error occurred
      * @return false if an error occurred
      */
-    virtual bool Attach(const Config &config) = 0;  
+    virtual bool Attach(Tag &tag) = 0;  
 
     /**
      * @brief Detach is called when the tag is disconnected; subclasses

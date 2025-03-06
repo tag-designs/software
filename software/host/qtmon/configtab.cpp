@@ -19,7 +19,7 @@
 #include "hibernate.h"
 #include "configtab.h"
 #include "adxl362config.h"
-#include "dataconfig.h"
+//#include "dataconfig.h"
 #include "bittaglog.h"
 #include "mainwindow.h"
 
@@ -45,8 +45,7 @@ ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)
   layout->addStretch(1);
   index = addTab(&sensorTab,"Sensors");
   setTabToolTip(index,"Configure Sensors");
-
-  setEnabled(false);
+  StateUpdate(STATE_UNSPECIFIED);
 }
 
 ConfigTab::~ConfigTab(){}
@@ -55,23 +54,16 @@ bool ConfigTab::isActive(){
   return active;
 }
 
-bool ConfigTab::Attach(const Config &config)
+bool ConfigTab::Attach(Tag &t)
 {
-  tag_type_ = config.tag_type();
-  if (schedule.Attach(config) && 
-      btlog.Attach(config) &&
-      adxl.Attach(config))
-  {
-    setEnabled(true);
-    setVisible(true);
-    active = true;
+  tag = &t;
+
+  if (schedule.Attach(t) && btlog.Attach(t) && adxl.Attach(t)) {
+    return true;
   } else {
-    setVisible(false);
-    setEnabled(false);
-    active = false;
     qDebug() << "Attach failed\n";
+    return false;
   }
-  return active;
 }
 
 void ConfigTab::Detach()
@@ -86,15 +78,23 @@ void ConfigTab::Detach()
 
 void ConfigTab::StateUpdate(TagState state)
 {
-  if (old_state_ != state)
+  //if (old_state_ != state)
   {
     if (state == IDLE ) {
-      setEnabled(true);
+      if (schedule.isActive())
+        schedule.setEnabled(true);
+      if (btlog.isActive())
+        btlog.setEnabled(true);
+      if (adxl.isActive())
+        adxl.setEnabled(true);
+
     } else {
-      setEnabled(false);
+      schedule.setEnabled(false);
+      btlog.setEnabled(false);
+      adxl.setEnabled(false);
     }
   }
-  old_state_ = state;
+  //old_state_ = state;
 }
 
 /*****************************************************
@@ -133,7 +133,6 @@ bool ConfigTab::GetConfig(Config &config)
 
 bool ConfigTab::SetConfig(const Config &new_config)
 {
-  active = false;
   tag_type_ = new_config.tag_type();
   // we need to sanity check the new and old configs !
   // if any of these return false, this should return false
@@ -142,7 +141,11 @@ bool ConfigTab::SetConfig(const Config &new_config)
       adxl.SetConfig(new_config))
   {
     active = true;
+    setVisible(true);
   } else {
+    setVisible(false);
+    setEnabled(false);
+    active = false;
     qDebug() << "SetConfig failed\n";
   }
   return active;
