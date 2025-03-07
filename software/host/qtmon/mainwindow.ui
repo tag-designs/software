@@ -14,8 +14,8 @@
    <string>NanoLogger Monitor</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="1">
+   <layout class="QVBoxLayout" name="verticalLayout_9">
+    <item>
      <layout class="QHBoxLayout" name="horizontalLayout_7">
       <item>
        <widget class="QTabWidget" name="mainTabWidget">
@@ -35,11 +35,14 @@
          <string/>
         </property>
         <property name="currentIndex">
-         <number>0</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="targetTab">
          <property name="toolTip">
           <string>Tag status and (some) controls</string>
+         </property>
+         <property name="autoFillBackground">
+          <bool>true</bool>
          </property>
          <attribute name="title">
           <string>Tag State</string>
@@ -47,7 +50,7 @@
          <widget class="QWidget" name="widget_3" native="true">
           <property name="geometry">
            <rect>
-            <x>10</x>
+            <x>20</x>
             <y>10</y>
             <width>640</width>
             <height>677</height>
@@ -779,7 +782,7 @@
                   </spacer>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="internalDownloadButton">
+                  <widget class="QPushButton" name="tagLogSaveButton">
                    <property name="toolTip">
                     <string>Download data to file</string>
                    </property>
@@ -810,35 +813,21 @@
           </layout>
          </widget>
         </widget>
-        <widget class="QWidget" name="configTab">
-         <property name="enabled">
+        <widget class="ConfigTab" name="configtab">
+         <property name="autoFillBackground">
           <bool>true</bool>
-         </property>
-         <property name="toolTip">
-          <string>Tag configurating settings and programming</string>
          </property>
          <attribute name="title">
-          <string>Configure</string>
+          <string>Configuration</string>
          </attribute>
-         <layout class="QGridLayout" name="gridLayout_2"/>
         </widget>
-        <widget class="QWidget" name="logTab">
-         <property name="enabled">
+        <widget class="LogWindow" name="errorTab">
+         <property name="autoFillBackground">
           <bool>true</bool>
-         </property>
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="toolTip">
-          <string>Log of apppication messages (information and error)</string>
          </property>
          <attribute name="title">
           <string>Error Log</string>
          </attribute>
-         <layout class="QHBoxLayout" name="horizontalLayout_16"/>
         </widget>
        </widget>
       </item>
@@ -867,6 +856,20 @@
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>ConfigTab</class>
+   <extends>QWidget</extends>
+   <header>configtab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>LogWindow</class>
+   <extends>QWidget</extends>
+   <header>logwindow.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

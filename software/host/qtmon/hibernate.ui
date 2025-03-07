@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Hibernate</class>
+ <widget class="QWidget" name="Hibernate">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>249</width>
+    <height>98</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QFormLayout" name="formLayout">
+   <item row="0" column="0">
+    <widget class="QLabel" name="startLabel">
+     <property name="text">
+      <string>Start</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QDateTimeEdit" name="hibernate_start">
+     <property name="toolTip">
+      <string>Start hibernating at this date/time</string>
+     </property>
+     <property name="time">
+      <time>
+       <hour>20</hour>
+       <minute>0</minute>
+       <second>0</second>
+      </time>
+     </property>
+     <property name="displayFormat">
+      <string>M/d/yy h:00 AP</string>
+     </property>
+     <property name="calendarPopup">
+      <bool>true</bool>
+     </property>
+     <property name="timeSpec">
+      <enum>Qt::UTC</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QLabel" name="stopLabel">
+     <property name="text">
+      <string>End</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QDateTimeEdit" name="hibernate_end">
+     <property name="toolTip">
+      <string>Stop hibernating at this date/time</string>
+     </property>
+     <property name="calendarPopup">
+      <bool>true</bool>
+     </property>
+     <property name="timeSpec">
+      <enum>Qt::UTC</enum>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

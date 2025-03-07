@@ -6,64 +6,65 @@
 #include <QTabWidget>
 #include <QPushButton>
 #include <QList>
-#include "tag.pb.h"
+#include <QMessageBox>
 //#include "host.pb.h"
 //#include "tagclass.h"
-#include "sensors.h"
 #include "schedule.h"
-#include "dataconfig.h"
+#include "adxl362config.h"
+#include "bittaglog.h"
+#include "ui_configtab.h"
+#include "tagclass.h"
 
-/* namespace Ui
-{
-    class ConfigTab;
-}
- */
-class ConfigTab : public QWidget
-{
+class ConfigTab :  public QWidget {
     Q_OBJECT
 
 public:
     explicit ConfigTab(QWidget *parent = nullptr);
     ~ConfigTab();
     bool GetConfig(Config &config);
-    void SetConfig(const Config &config);
-
-signals:
-
-    void start_clicked();
-    void config_restore_clicked();
+    bool SetConfig(const Config &config);
+    bool isActive();
 
 public slots:
 
-    void Attach(const Config &config);
+    bool Attach(Tag &tag);
     void Detach();
     void StateUpdate(TagState state);
 
 private slots:
 
-    void on_saveButton_clicked();       // save configuration to file
-    void on_restoreButton_clicked();    // restore configuration from file
+    void on_configSaveButton_clicked();
+    void on_configRestoreButton_clicked();
+    void on_startButton_clicked();
+    void on_readButton_clicked();
 
 private:
 
     // Helper function
 
     TagType tag_type_ = TAG_UNSPECIFIED;
-
-    void AddConfigItem(ConfigInterface *, const char *title, const char *tip, const Config &config);
-
-    // List of configuration tabs
-
-    QList<ConfigInterface *> configlist_;
     TagState old_state_ = STATE_UNSPECIFIED;
 
-    // User interface 
+    // Schedule tab and components
 
-    QTabWidget *tabwidget_ = nullptr;
-    QPushButton *savebtn_ = nullptr;
-    QPushButton *restorebtn_ = nullptr;
-    QPushButton *readbtn_ = nullptr;
-    QPushButton *startbtn_ = nullptr;
+    //QWidget scheduleTab;
+
+    Schedule schedule;
+    BitTagLogTab btlog;
+
+    // Sensor tab and components
+
+    //QWidget sensorTab;
+
+    Adxl362Config adxl;
+    bool active = false;
+
+    // for errors
+
+    QMessageBox msgBox;
+    Tag *tag;
+    Ui::ConfigTab ui;
+    
 };
 
 #endif // CONFIG_H

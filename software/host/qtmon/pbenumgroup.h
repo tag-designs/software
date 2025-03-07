@@ -11,6 +11,8 @@
 #include <vector>
 #include <QButtonGroup>
 #include <QLayout>
+#include <QGroupBox>
+#include <QVBoxLayout>
 #include "tag.pb.h"
 
 using namespace  google::protobuf;

@@ -6,7 +6,7 @@
 class QWidget;
 class ConfigInterface;
 class PBEnumGroup;
-class PresTagLogTab : public QWidget, public ConfigInterface
+class PresTagLogTab : public ConfigInterface
 {
     Q_OBJECT
     Q_INTERFACES(ConfigInterface)

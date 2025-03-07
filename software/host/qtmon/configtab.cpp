@@ -1,4 +1,4 @@
-#include <QDate>
+//#include <QDate>
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
@@ -6,10 +6,12 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QGroupBox>
-#include <QTextEdit>
-#include <QTime>
-#include <QTimer>
-#include <ctime>
+// #include <QTextEdit>
+// #include <QTime>
+// #include <QTimer>
+// #include <QtWidgets/QSpacerItem>
+// #include <QtWidgets/QSizePolicy>
+// #include <ctime>
 #include <fstream>
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
@@ -17,140 +19,92 @@
 #include "hibernate.h"
 #include "configtab.h"
 #include "adxl362config.h"
-#include "dataconfig.h"
-#include "mainwindow.h"
+//#include "dataconfig.h"
+#include "bittaglog.h"
+#include "ui_configtab.h"
 
-ConfigTab::ConfigTab(QWidget *p) : QWidget(p)
+ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
 
-  // Create Layout and tab components
+  ui.setupUi(this);
 
-  QVBoxLayout *vbox = new QVBoxLayout;
-  tabwidget_ = new QTabWidget;
-  vbox->addWidget(tabwidget_);
+  // initialize message box
 
-  // Create Button Groups
+  msgBox.setWindowTitle("Error");
+  msgBox.setStandardButtons(QMessageBox::Ok);
 
-  QGroupBox *configFileBox = new QGroupBox("Config File");
-  QHBoxLayout *grp1 = new QHBoxLayout();
+  // Build Schedule Tab
 
-  // Save button
-  savebtn_ = new QPushButton("save");
-  savebtn_->setToolTip("Save configuration to a file");
-  grp1->addWidget(savebtn_);
-  configFileBox->setToolTip("Read/Write Configuration from/to a file");
+  QVBoxLayout *layout = new QVBoxLayout();
+  layout->addWidget(&schedule);
+  layout->addWidget(&btlog);
+  layout->addStretch(1);
+  ui.scheduleTab->setLayout(layout);
+  //int index = addTab(&scheduleTab,"Schedule");
+  //setTabToolTip(index,"Configure Tag Schedule");
 
-  // Restore Button
-  restorebtn_ = new QPushButton("restore");
-  restorebtn_->setToolTip("Restore configuration from a file");
-  grp1->addWidget(restorebtn_);
-  configFileBox->setLayout(grp1);
+  // Build Sensor Tab
 
-  // Repeat for Tag config/start
-  
-  QGroupBox *configTagBox = new QGroupBox("Config Tag");
-  QHBoxLayout *grp2 = new QHBoxLayout();
-
-  startbtn_ = new QPushButton("start");
-  startbtn_->setToolTip("Start tag with programmed configuration");
-  readbtn_ = new QPushButton("read");
-  readbtn_->setToolTip("Read configuration from tag");
-
-  grp2->addWidget(readbtn_);
-  grp2->addWidget(startbtn_);
-  configTagBox->setToolTip("Tag Configuration Read/Write(Start)");
-
-  configTagBox->setLayout(grp2);
-
-  QHBoxLayout *buttons = new QHBoxLayout();
-  buttons->addWidget(configFileBox);
-  buttons->addStretch(3);
-  buttons->addWidget(configTagBox);
-
-  vbox->addLayout(buttons);
-  setLayout(vbox);
-
-  // connect buttons
-
-  connect(startbtn_, &QPushButton::clicked, this, &ConfigTab::start_clicked);
-  connect(readbtn_, &QPushButton::clicked, this, &ConfigTab::config_restore_clicked);
-
-  connect(savebtn_, &QPushButton::clicked, this, &ConfigTab::on_saveButton_clicked);
-  connect(restorebtn_, &QPushButton::clicked, this, &ConfigTab::on_restoreButton_clicked);
+  layout = new QVBoxLayout();
+  layout->addWidget(&adxl);
+  layout->addStretch(1);
+  ui.sensorTab->setLayout(layout);
+  //index = addTab(&sensorTab,"Sensors");
+  //setTabToolTip(index,"Configure Sensors");
+  //StateUpdate(STATE_UNSPECIFIED);
 }
 
-ConfigTab::~ConfigTab()
-{
-    Detach();
+ConfigTab::~ConfigTab(){}
+
+bool ConfigTab::isActive(){
+  return active;
 }
 
-void ConfigTab::AddConfigItem(ConfigInterface *item, 
-        const char *title, const char *tip, const Config &config)
+bool ConfigTab::Attach(Tag &t)
 {
-  int index = tabwidget_->addTab(item->GetWidget(), QString(title));
-  tabwidget_->setTabToolTip(index, tip);
-  configlist_.append(item);
-  item->Attach(config);
-}
+  tag = &t;
 
-void ConfigTab::Attach(const Config &config)
-{
-  // add children
-
-  AddConfigItem(qobject_cast<ConfigInterface *>(new Schedule()), "Schedule", 
-        "Configure Tag Schedule", config);
-  if (config.bittag_log() != BITTAG_UNSPECIFIED){
-  AddConfigItem(qobject_cast<ConfigInterface *>(new DataConfig()), "Data", 
-        "Configure Tag Data Logs", config);
+  if (schedule.Attach(t) && btlog.Attach(t) && adxl.Attach(t)) {
+    return true;
+  } else {
+    qDebug() << "Attach failed\n";
+    return false;
   }
-  if (config.has_adxl362()) {
-    Adxl362 adxl(config.adxl362());
-    const char *title = (adxl.accel_type() == Adxl362_AdxlType_AdxlType_367) ? "Adxl367" : "Adxl362";
-    AddConfigItem(qobject_cast<ConfigInterface *>(new Adxl362Config()), title, 
-         "Configure Accelerometer", config);
-  }
-
-  // enable tabs
-
-  tag_type_ = config.tag_type();
-  tabwidget_->setEnabled(true);
 }
 
 void ConfigTab::Detach()
 {
-  // Delete Children
-
-  tabwidget_->clear();
-  while (!configlist_.isEmpty()) {
-    delete configlist_.takeFirst();
-  }
-
-  tabwidget_->setEnabled(false);
+  schedule.Detach();
+  btlog.Detach();
+  adxl.Detach();
+  setEnabled(false);
+  setVisible(false);
+  active = false;
 }
 
 void ConfigTab::StateUpdate(TagState state)
 {
-  if (old_state_ != state)
   {
-    if (state == IDLE)
-    {
-      startbtn_->setEnabled(true);
-      restorebtn_->setEnabled(true);
-      savebtn_->setEnabled(true);
-      readbtn_->setEnabled(true);
-    }
-    else
-    {
-      startbtn_->setEnabled(false);
-      readbtn_->setEnabled(false);
+    if (state == IDLE ) {
+      if (schedule.isActive())
+        schedule.setEnabled(true);
+      if (btlog.isActive())
+        btlog.setEnabled(true);
+      if (adxl.isActive())
+        adxl.setEnabled(true);
+      ui.configRestoreButton->setEnabled(true);
+      ui.startButton->setEnabled(true);
+      ui.readButton->setEnabled(true);
+    } else {
+      schedule.setEnabled(false);
+      btlog.setEnabled(false);
+      adxl.setEnabled(false);
+      ui.configRestoreButton->setEnabled(false);
+      ui.startButton->setEnabled(false);
+      ui.readButton->setEnabled(false);
     }
   }
-  old_state_ = state;
-  
-  for (int i = 0; i < configlist_.size(); i++)
-  {
-     configlist_.at(i)->GetWidget()->setEnabled(state == IDLE);
-  }
+  //qDebug() << "StateUpdate";
 }
 
 /*****************************************************
@@ -161,45 +115,57 @@ bool ConfigTab::GetConfig(Config &config)
 {
 
   config.set_tag_type(tag_type_);
+  
   // Get configuration from children
 
-  for (int i = 0; i < configlist_.size(); i++)
-  {
-    configlist_.at(i)->GetConfig(config);
-  }
-
-  // Sanity check
-
-  int64_t end = config.active_interval().end_epoch();
-
-  if (end < QDateTime::currentSecsSinceEpoch())
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Error");
-    msgBox.setText("Configuration Error: end time < current time");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-    return false;
-  }
-  else
+  if (schedule.GetConfig(config) &&
+      btlog.GetConfig(config) &&
+      adxl.GetConfig(config))
   {
     return true;
+  } else {
+    return false;
   }
+
+  // Sanity check -- should put this in the schedule class
+
+  // int64_t end = config.active_interval().end_epoch();
+
+  // if (end < QDateTime::currentSecsSinceEpoch())
+  // {   
+  //   msgBox.setText("Configuration Error: end time < current time");
+  //   msgBox.exec();
+  //   return false;
+  // } else {
+  //   return true;
+  // }
 }
 
-void ConfigTab::SetConfig(const Config &new_config)
+bool ConfigTab::SetConfig(const Config &new_config)
 {
   tag_type_ = new_config.tag_type();
   // we need to sanity check the new and old configs !
-  for (int i = 0; i < configlist_.size(); i++)
+  // if any of these return false, this should return false
+  if (schedule.SetConfig(new_config) &&
+      btlog.SetConfig(new_config) &&
+      adxl.SetConfig(new_config))
   {
-    configlist_.at(i)->SetConfig(new_config);
+    active = true;
+    setVisible(true);
+  } else {
+    setVisible(false);
+    setEnabled(false);
+    active = false;
+    qDebug() << "SetConfig failed\n";
   }
+  return active;
 }
 
-// Save config to file
+/*
+ * configuration file operations
+*/
 
-void ConfigTab::on_saveButton_clicked()
+void ConfigTab::on_configSaveButton_clicked()
 {
   QFileDialog fd;
   fd.setFileMode(QFileDialog::AnyFile);
@@ -207,6 +173,10 @@ void ConfigTab::on_saveButton_clicked()
                                         QDir::homePath() + "/untitled.json",
                                         tr("Protobuf (*.json)"));
   QString errormsg;
+
+  if (fileName.isNull()) {
+    return;
+  }
 
   do
   {
@@ -248,20 +218,23 @@ void ConfigTab::on_saveButton_clicked()
     QMessageBox msgBox;
     msgBox.setText(errormsg);
     msgBox.exec();
+    qDebug() << errormsg;
   }
 }
 
 // Restore config from file
 
-void ConfigTab::on_restoreButton_clicked()
+void ConfigTab::on_configRestoreButton_clicked()
 {
   QFileDialog fd;
+  Config configin;
+
   QString fileName = fd.getOpenFileName(this, tr("Open File"), QDir::homePath(),
                                         tr("Protobuf (*.json)"));
 
-  if (fileName == "")
+  if (fileName.isNull())
     return;
-  Config configin;
+
   std::ifstream fin(fileName.toStdString());
 
   if (!fin.is_open())
@@ -269,6 +242,7 @@ void ConfigTab::on_restoreButton_clicked()
     QMessageBox msgBox;
     msgBox.setText("Couldn't Open " + fileName);
     msgBox.exec();
+    qDebug() << "Config file restore couldn't open " << fileName;
     return;
   }
 
@@ -289,5 +263,35 @@ void ConfigTab::on_restoreButton_clicked()
     QMessageBox msgBox;
     msgBox.setText("Couldn't Read " + fileName);
     msgBox.exec();
+    qDebug() << "Config file restore couldn't read " << fileName;
   }
+}
+
+void ConfigTab::on_startButton_clicked()
+{
+  Config config;
+  if (GetConfig(config))
+  {
+    if (!tag->Start(config))
+    {
+      msgBox.setText("Start Failed");
+      msgBox.exec();
+    }
+  } else {
+    qDebug() << "on_startButton_clicked failed to get config";
+  }
+}
+
+void ConfigTab::on_readButton_clicked()
+{
+  Config configin;
+  if (tag->GetConfig(configin)) {
+    qDebug()<< configin.DebugString();
+    SetConfig(configin);
+  }
+  else {
+    msgBox.setText("Tag config read failed");
+    msgBox.exec();
+  }
+  qDebug()<< "readButton clicked!";
 }

@@ -15,7 +15,7 @@
  *
 */
 
-class Sensors : public QWidget, public ConfigInterface
+class Sensors : public ConfigInterface
 {
     Q_OBJECT
     Q_INTERFACES(ConfigInterface)

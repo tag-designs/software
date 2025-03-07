@@ -13,47 +13,54 @@
 #include "dataconfig.h"
 #include "bittaglog.h"
 
-DataConfig::DataConfig(QWidget *parent) : QWidget(parent)
+DataConfig::DataConfig(QWidget *parent) : QWidget(parent) 
 {
     vbox_ = new QVBoxLayout;
     setLayout(vbox_);
 }
 
-DataConfig::~DataConfig(){}
+DataConfig::~DataConfig(){
+    active = false;
+}
 
-void DataConfig::AddConfigItem(ConfigInterface *item, const Config &config)
+void DataConfig::AddConfigItem(QWidget *item, const Config &config)
 {
     // helper for adding children to 
     // layout and local list
     configlist_.append(item);
-    item->Attach(config);
-    vbox_->addWidget(item->GetWidget());
+    ((ConfigInterface *) item)->Attach(config);
+    vbox_->addWidget(item);
 }
 
-void DataConfig::SetConfig(const Config &config)
+bool DataConfig::SetConfig(const Config &config)
 {
     // set config for children
     for (int i = 0; i < configlist_.size(); i++)
     {
-        configlist_.at(i)->SetConfig(config);
+        ((ConfigInterface *) configlist_.at(i))->SetConfig(config);
     }
+    active = true;
+    return active;
 }
 
-void DataConfig::GetConfig(Config &config)
+bool DataConfig::GetConfig(Config &config)
 {
     // get config from children
     for (int i = 0; i < configlist_.size(); i++)
     {
-        configlist_.at(i)->GetConfig(config);
+        ((ConfigInterface *) configlist_.at(i))->GetConfig(config);
     }
+    return true;
 }
 
-void DataConfig::Attach(const Config &config)
+bool DataConfig::Attach(const Config &config)
 {
     // create children for any
     // logs that are configured
     if (config.bittag_log() != BITTAG_UNSPECIFIED) {
-        AddConfigItem(qobject_cast<ConfigInterface *>(new BitTagLogTab()), config);
+        AddConfigItem(new BitTagLogTab(), config);
     } 
     vbox_->addStretch(1);
+    active = true;
+    return active;
 }

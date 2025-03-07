@@ -10,6 +10,9 @@
 #include <tag.pb.h>
 #include <tagdata.pb.h>
 //#include <host.pb.h>
+
+#include "linkadapt.h"
+#include "tagmonitor.h"
 #include <tagclass.h>
 #include <taglogs.h>
 #include <log.h>

@@ -4,6 +4,7 @@
 using namespace std;
 #include <mutex>
 
+#include "linkadapt.h"
 #include "tagmonitor.h"
 
 class Tag 

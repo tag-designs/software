@@ -4,46 +4,48 @@
 #include <QWidget>
 #include <QList>
 #include <configinterface.h>
-#include "tag.pb.h"
-//#include "host.pb.h"
-//#include "tagclass.h"
-#include "hibernate.h"
 
-namespace Ui
-{
-    class Schedule;
-}
+//#include "tag.pb.h"
+//#include "host.pb.h"
+#include "tagclass.h"
+
+#include "hibernate.h"
+#include "ui_schedule.h"
 
 class Schedule : public QWidget, public ConfigInterface
 {
-    Q_OBJECT
-    Q_INTERFACES(ConfigInterface)
 
-public:
-    explicit Schedule(QWidget *parent = nullptr);
-    ~Schedule();
+    public:
+        Schedule(QWidget *parent = nullptr);
+        ~Schedule();
+        
+        //! @copydoc ConfigInterface::SetConfig(const Config &)
+        bool SetConfig(const Config &config);
 
-    void SetConfig(const Config &config);
-    void GetConfig(Config &config);
-    QWidget *GetWidget(){ return this;}
+        //! @copydoc ConfigInterface::GetConfig(Config &)
+        bool GetConfig(Config &config);
 
-public slots:
+    public slots:
 
-    void Attach(const Config &config);
+        //! @copydoc ConfigInterface::Attach(const Tag &)
+        bool Attach(Tag &tag);
 
-private slots:
+        //! @copydoc ConfigInterface::Detach()
+        void Detach();
 
-    // start/end configuration
+    private slots:
 
-    void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
-    void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
-    void on_startGroup_clicked();
-    void on_runGroup_clicked();
+        // start/end configuration -- slots tied to UI
 
-private:
+        void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
+        void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
+        void on_startGroup_clicked();
+        void on_runGroup_clicked();
 
-    Ui::Schedule *ui_;
-    QList<Hibernate *> hibernate_list_;
+    private:
+
+        QList<Hibernate *> hibernate_list_;
+        Ui::Schedule ui;
 
 };
 

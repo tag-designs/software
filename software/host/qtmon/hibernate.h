@@ -3,10 +3,12 @@
 
 class QWidget;
 class QDateTimeEdit;
+
+#include "ui_hibernate.h"
+
 class Hibernate : public QWidget
 {
-    Q_OBJECT
-
+   Q_OBJECT
 public:
     explicit Hibernate(int index, QWidget *parent = nullptr);
     ~Hibernate();
@@ -24,17 +26,19 @@ public slots:
 
 signals: 
 
-    void startDateTimeChanged(int id);
-    void endDateTimeChanged(int id);
+    void startDateTimeChanged(int);
+    void endDateTimeChanged(int);
 
 private slots:
     void on_hibernate_start_dateTimeChanged(const QDateTime &dateTime);
     void on_hibernate_end_dateTimeChanged(const QDateTime &dateTime);
 
 private:
-    //Ui::Hibernate *ui;
+    Ui::Hibernate ui;
+    /*
     QDateTimeEdit *hibernate_start;
     QDateTimeEdit *hibernate_end;
+    */
     int id;
 };
 

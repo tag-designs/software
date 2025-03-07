@@ -13,8 +13,8 @@
 
 class Adxl362Config : public QWidget, public ConfigInterface
 {
-    Q_OBJECT
-    Q_INTERFACES(ConfigInterface)
+    //Q_OBJECT
+    //Q_INTERFACES(ConfigInterface)
 
 public:
     explicit Adxl362Config(QWidget *parent = nullptr);
@@ -22,14 +22,13 @@ public:
 
     // Set/Get configuration
 
-    void GetConfig(Config &config);
-    void SetConfig(const Config &config);
-    QWidget *GetWidget() { return this; }
+    bool GetConfig(Config &config);
+    bool SetConfig(const Config &config);
 
 public slots:
 
-    void Attach(const Config &config);
-    //void Detach();
+    bool Attach(Tag &tag);
+    void Detach(){};
     //void StateUpdate(State_TagState state);
 
 private slots:

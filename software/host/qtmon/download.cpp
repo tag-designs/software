@@ -9,6 +9,7 @@
 
 #include "download.h"
 #include <taglogs.h>
+#include <tagclass.h>
 
 extern "C"
 {

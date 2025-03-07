@@ -3,6 +3,7 @@
 #include <QRadioButton>
 #include <QButtonGroup>
 #include <QLayout>
+#include <QMessageBox>
 #include "pbenumgroup.h"
 
 #include "tag.pb.h"
@@ -20,42 +21,64 @@ BitTagLogTab::BitTagLogTab(QWidget *parent) : QWidget(parent)
 {
     vbox_ = new QVBoxLayout();
     setLayout(vbox_);
+    log_ = new PBEnumGroup("BitTag Internal Log", bittag_internal_log_buttons);
+    vbox_->addWidget(log_);
+    log_->setToolTip("Set format for BitTag log");
+
 }
 
 BitTagLogTab::~BitTagLogTab(){}
 
-void BitTagLogTab::SetConfig(const Config &config)
+bool BitTagLogTab::Attach(Tag &tag)
 {
-    QAbstractButton *btn;
-    if (log_)
-    {
-        btn = log_->button((int)config.bittag_log());
-        if (btn)
-            btn->setChecked(true);
-    }
+   //return SetConfig(config);
+   return true;
 }
 
-void BitTagLogTab::GetConfig(Config &config)
+void BitTagLogTab::Detach() 
 {
-    if (log_)
+    setVisible(false);
+    active = false;
+}
+
+bool BitTagLogTab::SetConfig(const Config &config)
+{
+    QAbstractButton *btn;
+    if (config.bittag_log() != BITTAG_UNSPECIFIED){
+        btn = log_->button((int)config.bittag_log());
+        if (btn) {
+            btn->setChecked(true);
+            setVisible(true);
+            active = true;
+            return true;
+        }
+    } else {
+        if (config.tag_type() == TagType::BITTAG) {
+            QMessageBox msgBox;
+            QString message = QString("Configuring BitTag but missing log specification");
+            msgBox.setText(message);
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.exec();
+            qInfo() << message;
+        }
+    }
+    active = false;
+    setVisible(false);
+    return false;
+}
+
+bool BitTagLogTab::GetConfig(Config &config)
+{
+    if (active)
     {
         int id = log_->checkedId();
         if (BitTagLogFmt_IsValid(id))
         {
             config.set_bittag_log((BitTagLogFmt)id);
-            return;
+            return true;
         }
     }
     config.set_bittag_log(BITTAG_UNSPECIFIED);
+    return false;
 }
 
-void BitTagLogTab::Attach(const Config &config)
-{
-    if (config.bittag_log() != BITTAG_UNSPECIFIED)
-    {
-        log_ = new PBEnumGroup("BitTag Internal Log", bittag_internal_log_buttons);
-        vbox_->addWidget(log_);
-        log_->setToolTip("Set format for BitTag log");
-        SetConfig(config);
-    }
-}
