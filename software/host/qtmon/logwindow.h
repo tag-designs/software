@@ -10,7 +10,7 @@ class LogWindow : public QWidget
     Q_OBJECT
 
     public:
-        LogWindow(QWidget *parent = nullptr);
+        explicit LogWindow(QWidget *parent = nullptr);
         ~LogWindow();
 
     public slots:

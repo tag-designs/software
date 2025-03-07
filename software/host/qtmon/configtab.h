@@ -7,14 +7,15 @@
 #include <QPushButton>
 #include <QList>
 #include <QMessageBox>
-#include "tag.pb.h"
 //#include "host.pb.h"
 //#include "tagclass.h"
 #include "schedule.h"
 #include "adxl362config.h"
 #include "bittaglog.h"
+#include "ui_configtab.h"
+#include "tagclass.h"
 
-class ConfigTab :  public QTabWidget, public ConfigInterface {
+class ConfigTab :  public QWidget {
     Q_OBJECT
 
 public:
@@ -30,6 +31,13 @@ public slots:
     void Detach();
     void StateUpdate(TagState state);
 
+private slots:
+
+    void on_configSaveButton_clicked();
+    void on_configRestoreButton_clicked();
+    void on_startButton_clicked();
+    void on_readButton_clicked();
+
 private:
 
     // Helper function
@@ -39,14 +47,14 @@ private:
 
     // Schedule tab and components
 
-    QWidget scheduleTab;
+    //QWidget scheduleTab;
 
     Schedule schedule;
     BitTagLogTab btlog;
 
     // Sensor tab and components
 
-    QWidget sensorTab;
+    //QWidget sensorTab;
 
     Adxl362Config adxl;
     bool active = false;
@@ -55,6 +63,7 @@ private:
 
     QMessageBox msgBox;
     Tag *tag;
+    Ui::ConfigTab ui;
     
 };
 

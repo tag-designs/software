@@ -6,6 +6,7 @@
 #include <QPromise>
 #include "tagclass.h"
 #include "schedule.h"
+#include "ui_mainwindow.h"
 
 class QWidget;
 class QTextEdit;
@@ -32,7 +33,7 @@ public:
 
 signals:
 
-  void StateUpdate(TagState state); 
+  void StateUpdate(TagState state);
 
 private slots:
 
@@ -59,27 +60,14 @@ private slots:
 
   void on_tagLogSaveButton_clicked(); // download data from tag
 
-  // configure events
-
-  void on_configSaveButton_clicked();
-  void on_configRestoreButton_clicked();
-  void on_startButton_clicked();
-  void on_tagConfigReadButton_clicked();
+  
 
 private:
   Tag tag;
-  TagType tt = TagType::TAG_UNSPECIFIED;
-  Ui::MainWindow *ui = nullptr;
+  Ui::MainWindow ui;
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
-  ConfigTab *configtab_;
-
-  Schedule schedule;
-
-  LogScreen *logtab;
   const float version = 2.0;
-  //static void download_data(Tag &, QProgressBar &, std::fstream &,int);
-protected:
 };
 
 #endif // MAINWINDOW_H

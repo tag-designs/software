@@ -15,10 +15,30 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QWidget" name="configTabWidget" native="true">
+    <widget class="QWidget" name="configtabForm" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_6">
       <item>
-       <widget class="ConfigTab" name="config" native="true"/>
+       <widget class="QTabWidget" name="configtabWidget">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="scheduleTab" native="true">
+         <attribute name="title">
+          <string>Schedule</string>
+         </attribute>
+         <attribute name="toolTip">
+          <string>Configure Tag Schedule</string>
+         </attribute>
+        </widget>
+        <widget class="QWidget" name="sensorTab">
+         <attribute name="title">
+          <string>Sensors</string>
+         </attribute>
+         <attribute name="toolTip">
+          <string>Configure Tag Sensors</string>
+         </attribute>
+        </widget>
+       </widget>
       </item>
       <item>
        <spacer name="verticalSpacer_10">
@@ -97,7 +117,7 @@
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_5">
             <item>
-             <widget class="QPushButton" name="tagReadConfigButton">
+             <widget class="QPushButton" name="readButton">
               <property name="toolTip">
                <string>read configuration from tag</string>
               </property>
@@ -127,14 +147,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ConfigTab</class>
-   <extends>QWidget</extends>
-   <header>configtab.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

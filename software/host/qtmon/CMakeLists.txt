@@ -53,7 +53,11 @@ set(qtmonitor_SRCS
     pbenumgroup.cpp
     schedule.cpp)
 
-qt6_wrap_ui(UI_HEADERS hibernate.ui mainwindow.ui schedule.ui logwindow.ui)
+qt6_wrap_ui(UI_HEADERS configtab.ui 
+                       hibernate.ui 
+                       logwindow.ui
+                       mainwindow.ui 
+                       schedule.ui)
 
 # Tell CMake to create the qtmonitor executable
 

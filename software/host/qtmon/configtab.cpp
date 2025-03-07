@@ -1,18 +1,18 @@
 //#include <QDate>
 #include <QDateTime>
 #include <QDebug>
-//#include <QFile>
-//#include <QFileDialog>
+#include <QFile>
+#include <QFileDialog>
 #include <QMessageBox>
-// #include <QProgressDialog>
-// #include <QGroupBox>
+#include <QProgressDialog>
+#include <QGroupBox>
 // #include <QTextEdit>
 // #include <QTime>
 // #include <QTimer>
 // #include <QtWidgets/QSpacerItem>
 // #include <QtWidgets/QSizePolicy>
 // #include <ctime>
-// #include <fstream>
+#include <fstream>
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
 
@@ -21,31 +21,37 @@
 #include "adxl362config.h"
 //#include "dataconfig.h"
 #include "bittaglog.h"
-#include "mainwindow.h"
+#include "ui_configtab.h"
 
-ConfigTab::ConfigTab(QWidget *p) : QTabWidget(p)  
+ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
+
+  ui.setupUi(this);
+
+  // initialize message box
 
   msgBox.setWindowTitle("Error");
   msgBox.setStandardButtons(QMessageBox::Ok);
 
-  // Add Schedule Tab
+  // Build Schedule Tab
 
-  QVBoxLayout *layout = new QVBoxLayout(&scheduleTab);
+  QVBoxLayout *layout = new QVBoxLayout();
   layout->addWidget(&schedule);
   layout->addWidget(&btlog);
   layout->addStretch(1);
-  int index = addTab(&scheduleTab,"Schedule");
-  setTabToolTip(index,"Configure Tag Schedule");
+  ui.scheduleTab->setLayout(layout);
+  //int index = addTab(&scheduleTab,"Schedule");
+  //setTabToolTip(index,"Configure Tag Schedule");
 
-  // Sensor Tab
+  // Build Sensor Tab
 
-  layout = new QVBoxLayout(&sensorTab);
+  layout = new QVBoxLayout();
   layout->addWidget(&adxl);
   layout->addStretch(1);
-  index = addTab(&sensorTab,"Sensors");
-  setTabToolTip(index,"Configure Sensors");
-  StateUpdate(STATE_UNSPECIFIED);
+  ui.sensorTab->setLayout(layout);
+  //index = addTab(&sensorTab,"Sensors");
+  //setTabToolTip(index,"Configure Sensors");
+  //StateUpdate(STATE_UNSPECIFIED);
 }
 
 ConfigTab::~ConfigTab(){}
@@ -78,7 +84,6 @@ void ConfigTab::Detach()
 
 void ConfigTab::StateUpdate(TagState state)
 {
-  //if (old_state_ != state)
   {
     if (state == IDLE ) {
       if (schedule.isActive())
@@ -87,14 +92,19 @@ void ConfigTab::StateUpdate(TagState state)
         btlog.setEnabled(true);
       if (adxl.isActive())
         adxl.setEnabled(true);
-
+      ui.configRestoreButton->setEnabled(true);
+      ui.startButton->setEnabled(true);
+      ui.readButton->setEnabled(true);
     } else {
       schedule.setEnabled(false);
       btlog.setEnabled(false);
       adxl.setEnabled(false);
+      ui.configRestoreButton->setEnabled(false);
+      ui.startButton->setEnabled(false);
+      ui.readButton->setEnabled(false);
     }
   }
-  //old_state_ = state;
+  //qDebug() << "StateUpdate";
 }
 
 /*****************************************************
@@ -151,3 +161,137 @@ bool ConfigTab::SetConfig(const Config &new_config)
   return active;
 }
 
+/*
+ * configuration file operations
+*/
+
+void ConfigTab::on_configSaveButton_clicked()
+{
+  QFileDialog fd;
+  fd.setFileMode(QFileDialog::AnyFile);
+  QString fileName = fd.getSaveFileName(this, tr("Save File"),
+                                        QDir::homePath() + "/untitled.json",
+                                        tr("Protobuf (*.json)"));
+  QString errormsg;
+
+  if (fileName.isNull()) {
+    return;
+  }
+
+  do
+  {
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = true;
+    // deprecated -- options.always_print_primitive_fields = true;
+    options.preserve_proto_field_names = true;
+
+    std::ofstream fs(fileName.toStdString());
+
+    if (!fs.is_open())
+    {
+      errormsg = "Couldn't Open " + fileName;
+      break;
+    }
+
+    Config configout;
+    GetConfig(configout);
+
+    std::string json_string;
+    if (MessageToJsonString(configout, &json_string, options).ok())
+    {
+      fs << json_string;
+      if (fs.bad())
+      {
+        errormsg = "Couldn't Write " + fileName;
+      }
+    }
+    else
+    {
+      errormsg = "Couldn't Create JSON output ";
+    }
+
+    fs.close();
+  } while (0);
+
+  if (!errormsg.isEmpty())
+  {
+    QMessageBox msgBox;
+    msgBox.setText(errormsg);
+    msgBox.exec();
+    qDebug() << errormsg;
+  }
+}
+
+// Restore config from file
+
+void ConfigTab::on_configRestoreButton_clicked()
+{
+  QFileDialog fd;
+  Config configin;
+
+  QString fileName = fd.getOpenFileName(this, tr("Open File"), QDir::homePath(),
+                                        tr("Protobuf (*.json)"));
+
+  if (fileName.isNull())
+    return;
+
+  std::ifstream fin(fileName.toStdString());
+
+  if (!fin.is_open())
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Couldn't Open " + fileName);
+    msgBox.exec();
+    qDebug() << "Config file restore couldn't open " << fileName;
+    return;
+  }
+
+  std::string str((std::istreambuf_iterator<char>(fin)),
+                  std::istreambuf_iterator<char>());
+
+  fin.close();
+  google::protobuf::util::JsonParseOptions options2;
+  if (JsonStringToMessage(str, &configin, options2).ok())
+  {
+    // We should check the configuration that is read
+    // against the current configuration to make sure all
+    // the fields are implemented
+    SetConfig(configin);
+  }
+  else
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Couldn't Read " + fileName);
+    msgBox.exec();
+    qDebug() << "Config file restore couldn't read " << fileName;
+  }
+}
+
+void ConfigTab::on_startButton_clicked()
+{
+  Config config;
+  if (GetConfig(config))
+  {
+    if (!tag->Start(config))
+    {
+      msgBox.setText("Start Failed");
+      msgBox.exec();
+    }
+  } else {
+    qDebug() << "on_startButton_clicked failed to get config";
+  }
+}
+
+void ConfigTab::on_readButton_clicked()
+{
+  Config configin;
+  if (tag->GetConfig(configin)) {
+    qDebug()<< configin.DebugString();
+    SetConfig(configin);
+  }
+  else {
+    msgBox.setText("Tag config read failed");
+    msgBox.exec();
+  }
+  qDebug()<< "readButton clicked!";
+}

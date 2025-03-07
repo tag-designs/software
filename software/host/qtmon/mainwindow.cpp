@@ -38,11 +38,13 @@
 
 // main window
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), ui(new Ui::MainWindow)
-{
-  ui->setupUi(this);
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+  ui.setupUi(this);
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
+
+  // start on main tab
+
+  ui.mainTabWidget->setCurrentIndex(0);
 
   // Change Main Window title
 
@@ -50,13 +52,9 @@ MainWindow::MainWindow(QWidget *parent)
 
   setWindowTitle(title);
 
-  // get handle to config tab
-
-  configtab_ = ui->config;
-
   // Tag state poll timer
 
-  connect(this, SIGNAL(StateUpdate()), configtab_, SLOT(ConfigTab::StateUpdate()));
+  connect(this, SIGNAL(StateUpdate(TagState)), ui.configtab, SLOT(StateUpdate(TagState)));
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
 
   // Attach to tag
@@ -67,9 +65,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-  //configtab_->Detach();
+  //ui.configtab->Detach();
   tag.Detach();
-  delete ui;
 }
 
 bool MainWindow::Attach()
@@ -133,11 +130,12 @@ bool MainWindow::Attach()
     int size;
     Config config;
     Status status;
-
-    // Initialize tag tab with tag info
-
     TagInfo info;
     tag.GetTagInfo(info);
+    tag.GetConfig(config);
+    tag.GetStatus(status);
+
+    // check qtmonitor version 
 
     float min_version = info.qtmonitor_min_version();
 
@@ -148,48 +146,31 @@ bool MainWindow::Attach()
       msgBox.setText(message);
       msgBox.setStandardButtons(QMessageBox::Ok);
       msgBox.exec();
-
-      //timer.stop();
-      //TriggerUpdate();
+      on_Detach_clicked();
       return false;
     }
 
-    tag.GetConfig(config);
-    tag.GetStatus(status);
+   // fill information table
 
-    ui->info_tagtype->setText(
+    ui.info_tagtype->setText(
         QString::fromStdString(TagType_Name(info.tag_type())));
-    ui->info_boardname->setText(QString::fromStdString(info.board_desc()));
-    ui->info_firmware->setText(QString::fromStdString(info.firmware()));
-    ui->info_gitHash->setText(QString::fromStdString(info.githash()));
-    ui->info_gitUrl->setText(QString::fromStdString(info.gitrepo()));
-    ui->info_uuid->setText(QString::fromStdString(info.uuid()));
-    ui->info_flash->setText(QString::number(info.intflashsz()) + "KB");
-    ui->info_flash_ext->setText(QString::number(info.extflashsz()/(1024*1024))+"MB");
-    ui->info_buildDate->setText(QString::fromStdString(info.build_time()));
-    ui->info_srcpath->setText(QString::fromStdString(info.source_path()));
-    TestResult result = status.test_status();
+    ui.info_boardname->setText(QString::fromStdString(info.board_desc()));
+    ui.info_firmware->setText(QString::fromStdString(info.firmware()));
+    ui.info_gitHash->setText(QString::fromStdString(info.githash()));
+    ui.info_gitUrl->setText(QString::fromStdString(info.gitrepo()));
+    ui.info_uuid->setText(QString::fromStdString(info.uuid()));
+    ui.info_flash->setText(QString::number(info.intflashsz()) + "KB");
+    ui.info_flash_ext->setText(QString::number(info.extflashsz()/(1024*1024))+"MB");
+    ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
+    ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
 
-    ui->info_testStatus->setText(QString::fromStdString(TestResult_Name(result)));
+    // connect log and config tabs
 
-    ui->errorLog->setEnabled(true);
-    
+    ui.configtab->Attach(tag);
+    ui.configtab->SetConfig(config);
+    ui.errorTab->Attach(tag);
 
-    // handle tag type specific Status Page setup
-
-    if (config.tag_type() == TagType::BITTAG)
-    {
-      ui->ExternalLog->setHidden(true);
-    }
-    else
-    {
-      ui->ExternalLog->setHidden(false);
-    }
-
-    configtab_->Attach(tag);
-    configtab_->SetConfig(config);
-
-    //ui->loglevelBox->setCurrentIndex(LOG_INFO);
+    // start the StateUpdate timer
     
     TriggerUpdate();
     timer.start(400);
@@ -203,8 +184,8 @@ bool MainWindow::Attach()
     msgBox.setStandardButtons(QMessageBox::Ok);
     msgBox.exec();
 
-    timer.stop();
-    TriggerUpdate();
+    //timer.stop();
+    //TriggerUpdate(); // should this be here?
     return false;
   }
   
@@ -215,8 +196,6 @@ bool MainWindow::Attach()
 
 void MainWindow::TriggerUpdate(void)
 {
-  // check the state & voltage
-  // tag state change affects UI state
 
   Status status;
 
@@ -227,129 +206,90 @@ void MainWindow::TriggerUpdate(void)
     float voltage;
     if (tag.Voltage(voltage))
     {
-      ui->info_Voltage->setText(
+      ui.info_Voltage->setText(
           QString::number(static_cast<double>(voltage), 'f', 2));
     }
 
+    // update status data
+
     if (tag.GetStatus(status))
     {
-      ui->State->setText(QString::fromStdString(TagState_Name(status.state())));
-      ui->internalCount->setText(QString::number(status.internal_data_count()));
-      ui->externalCount->setText(QString::number(status.external_data_count()));
+      int external_count = status.external_data_count();
+      ui.State->setText(QString::fromStdString(TagState_Name(status.state())));
+      ui.internalCount->setText(QString::number(status.internal_data_count()));
+      if (external_count) {
+        ui.externalCount->setText(QString::number(external_count));
+        ui.externalCount->setVisible(true);
+      } else {
+        ui.externalCount->setVisible(false);
+      }
 
       double timeerr = QDateTime::currentMSecsSinceEpoch();
       timeerr = status.millis() - timeerr;
-      ui->timeError->setText(QString::number(timeerr / 1000.0, 'f', 2));
-      ui->info_testStatus->setText(QString::fromStdString(TestResult_Name(status.test_status())));
+      ui.timeError->setText(QString::number(timeerr / 1000.0, 'f', 2));
+      ui.info_testStatus->setText(QString::fromStdString(TestResult_Name(status.test_status())));
 
-      // check the clock error
-
-      // State Change
-      
-      ui->fileConfigGroup->setEnabled(true); 
-
-      //  --> IDLE
       if (status.state() == IDLE)
       {
-
-        // tag tab
-
-        ui->syncButton->setEnabled(true);
-        ui->testButton->setEnabled(true);
-        ui->progressBar->setVisible(false);
+        ui.syncButton->setEnabled(true);
+        ui.testButton->setEnabled(true);
+        ui.progressBar->setVisible(false);
 
         // config tab
 
-        ui->tagConfigGroup->setEnabled(true);
-        ui->configRestoreButton->setEnabled(true);
+        //ui.tagConfigGroup->setEnabled(true);
+        //ui.configRestoreButton->setEnabled(true);
        
       }
       else
       {
-        // tag tab
-        ui->syncButton->setEnabled(false);
-        ui->testButton->setEnabled(false);
 
-        // config tab
- 
-        ui->tagConfigGroup->setEnabled(false);
-        ui->configRestoreButton->setEnabled(false);
-      }
+        ui.syncButton->setEnabled(false);
+        ui.testButton->setEnabled(false);
 
-      // config tab takes care of its own state
-
-      configtab_->StateUpdate(status.state());
-
-      if (status.state() == sRESET)
-      {
-        ui->progressBar->setValue(status.sectors_erased());
-        //log_info("Sectors Read %d \n",status.sectors_erased());
-      } else {
-        //ui->progressBar->setVisible(false);
-      }
-
-      // config tab
-      if (status.state() != current_state)
-      {
-        configtab_->StateUpdate(status.state());
-
-        if ((status.state() == RUNNING) || (status.state() == CONFIGURED) ||
-            (status.state() == HIBERNATING))
+        if (status.state() == sRESET)
         {
-          ui->stopButton->setEnabled(true);
-          ui->eraseButton->setEnabled(false);
-        }
-        else
-        {
-          ui->stopButton->setEnabled(false);
-          ui->eraseButton->setEnabled((status.state() != IDLE) &&
-                                      (status.state() != TEST) &&
-                                      (status.state() != sRESET));
-        }
+          ui.progressBar->setValue(status.sectors_erased());;
+        } 
 
-        if ((status.state() == ABORTED) ||
-            (status.state() == FINISHED))
+        if (status.state() != current_state)
         {
-          // tab tag
-          ui->datadownloadgroupBox->setEnabled(true);
+          if ((status.state() == RUNNING) || (status.state() == CONFIGURED) ||
+              (status.state() == HIBERNATING))
+          {
+            ui.stopButton->setEnabled(true);
+            ui.eraseButton->setEnabled(false);
+          }
+          else
+          {
+            ui.stopButton->setEnabled(false);
+            ui.eraseButton->setEnabled((status.state() != IDLE) &&
+                                        (status.state() != TEST) &&
+                                        (status.state() != sRESET));
+          }
+
+          if ((status.state() == ABORTED) ||
+              (status.state() == FINISHED))
+          {
+            ui.datadownloadgroupBox->setEnabled(true);
+          }
+          else
+          {
+            ui.datadownloadgroupBox->setEnabled(false);
+          }
+        
         }
-        else
-        {
-          // tab tag
-          ui->datadownloadgroupBox->setEnabled(false);
-        }
-       
       }
       current_state = status.state();
-      emit StateUpdate(current_state);
+      // broadcast state change
+     
     }
   }
+  emit StateUpdate(current_state);
 }
 
-void MainWindow::on_startButton_clicked()
-{
-  Config config;
-  if (configtab_->GetConfig(config))
-  {
-    if (!tag.Start(config))
-    {
-      QMessageBox msgBox;
-      msgBox.setWindowTitle("Error");
-      msgBox.setText("Start Failed");
-      msgBox.setStandardButtons(QMessageBox::Ok);
-      msgBox.exec();
-    }
-  } else {
-    qDebug() << "on_startButton_clicked failed to get config";
-  }
-}
 
-void MainWindow::on_tagConfigReadButton_clicked()
-{
-  Config config;
-  if (tag.GetConfig(config))
-    configtab_->SetConfig(config);
-}
+
 
 /********************************************
  *        Status Tab
@@ -359,24 +299,20 @@ void MainWindow::on_Attach_clicked()
 {
   if (Attach())
   {
-    ui->StatusGroup->setEnabled(true);
-    ui->TagInformation->setEnabled(true);
-    ui->ControlGroup->setEnabled(true);
-    ui->Attach->setEnabled(false);
-    ui->Detach->setEnabled(true);
-    ui->config->setVisible(true);
-    ui->configControls->setVisible(true);
+    ui.StatusGroup->setEnabled(true);
+    ui.TagInformation->setEnabled(true);
+    ui.ControlGroup->setEnabled(true);
+    ui.Attach->setEnabled(false);
+    ui.Detach->setEnabled(true);
   } else {
-    ui->StatusGroup->setEnabled(false);
-    ui->TagInformation->setEnabled(false);
-    ui->ControlGroup->setEnabled(false);
-    ui->Attach->setEnabled(true);
-    ui->Detach->setEnabled(false);
-    ui->config->setVisible(false);
-    ui->configControls->setVisible(false);
-    ui->datadownloadgroupBox->setEnabled(false);
+    ui.StatusGroup->setEnabled(false);
+    ui.TagInformation->setEnabled(false);
+    ui.ControlGroup->setEnabled(false);
+    ui.Attach->setEnabled(true);
+    ui.Detach->setEnabled(false);
+    ui.datadownloadgroupBox->setEnabled(false);
   }
-  ui->progressBar->setVisible(false);
+  ui.progressBar->setVisible(false);
 }
 
 void MainWindow::on_Detach_clicked()
@@ -384,15 +320,12 @@ void MainWindow::on_Detach_clicked()
   tag.Detach();
   timer.stop();
   TriggerUpdate();
-  ui->logtextEdit->clear();
-  ui->Attach->setEnabled(true);
-  ui->Detach->setEnabled(false);
-  ui->StatusGroup->setEnabled(false);
-  ui->TagInformation->setEnabled(false);
-  ui->ControlGroup->setEnabled(false);
-  configtab_->Detach();
-  ui->errorLog->setEnabled(false);
-  //ui->loglevelBox->setCurrentIndex(LOG_DEBUG);
+  ui.Attach->setEnabled(true);
+  ui.Detach->setEnabled(false);
+  ui.StatusGroup->setEnabled(false);
+  ui.TagInformation->setEnabled(false);
+  ui.ControlGroup->setEnabled(false);
+  ui.configtab->Detach();
 }
 
 void MainWindow::on_syncButton_clicked()
@@ -411,8 +344,8 @@ void MainWindow::on_testButton_clicked()
   {
     std::string msg;
     tag.Test(RUN_ALL); // need to check return !
-    ui->testButton->setEnabled(false);
-    ui->info_testStatus->setText("Running");
+    ui.testButton->setEnabled(false);
+    ui.info_testStatus->setText("Running");
   }
 }
 
@@ -424,22 +357,21 @@ void MainWindow::on_eraseButton_clicked()
   msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
   msgBox.setDefaultButton(QMessageBox::Cancel);
   int ret = msgBox.exec();
-  // if (ret == QMessageBox::Cancel) qInfo() << "Erase Flash: Cancel";
   if (ret == QMessageBox::Ok)
   {
-    //qInfo() << "Erase Flash: Ok";
     if (!tag.Erase())
     {
       qDebug() << "tag reset returned false";
     } else {
-      ui->progressBar->setMaximum(1000);
-      ui->progressBar->setValue(0);
-      ui->progressBar->setVisible(true);
+      ui.progressBar->setMaximum(1000);
+      ui.progressBar->setValue(0);
+      ui.progressBar->setVisible(true);
     }
   }
 }
 
-// download tag data 
+// download tag data  -- should most of this be moved to the
+// Download class?
 
 void MainWindow::on_tagLogSaveButton_clicked()
 {
@@ -452,11 +384,9 @@ void MainWindow::on_tagLogSaveButton_clicked()
   fd.setDefaultSuffix("txt");
   QString fileName = fd.getSaveFileName();
 
-  if (fileName == "") {
-      qDebug() << "Empty file name";
+  if (fileName.isNull()) {
       return;
   }
-    
 
   std::fstream fs;
   fs.open(fileName.toStdString(), std::fstream::out);
@@ -476,11 +406,10 @@ void MainWindow::on_tagLogSaveButton_clicked()
   connect(&dl,&Download::progressValueChanged, &pd, &QProgressDialog::setValue);
   connect(&dl,&Download::downloadFinished, &pd, &QProgressDialog::cancel);
   connect(&pd,&QProgressDialog::canceled,&dl,&Download::cancel);
+  connect(&dl,&Download::progressRangeChanged, ui.progressBar, &QProgressBar::setRange);
+  connect(&dl,&Download::progressValueChanged, ui.progressBar, &QProgressBar::setValue);
 
-  connect(&dl,&Download::progressRangeChanged, ui->progressBar, &QProgressBar::setRange);
-  connect(&dl,&Download::progressValueChanged, ui->progressBar, &QProgressBar::setValue);
-
-  ui->progressBar->setVisible(true);
+  ui.progressBar->setVisible(true);
 
   qDebug() <<  "starting download";
 
@@ -488,108 +417,9 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   pd.exec();
 
-  ui->progressBar->setVisible(false);
-
-  
+  ui.progressBar->setVisible(false);
   return;
 }
 
-/*
- * configuration file operations
-*/
 
-void MainWindow::on_configSaveButton_clicked()
-{
-  QFileDialog fd;
-  fd.setFileMode(QFileDialog::AnyFile);
-  QString fileName = fd.getSaveFileName(this, tr("Save File"),
-                                        QDir::homePath() + "/untitled.json",
-                                        tr("Protobuf (*.json)"));
-  QString errormsg;
 
-  do
-  {
-    google::protobuf::util::JsonPrintOptions options;
-    options.add_whitespace = true;
-    // deprecated -- options.always_print_primitive_fields = true;
-    options.preserve_proto_field_names = true;
-
-    std::ofstream fs(fileName.toStdString());
-
-    if (!fs.is_open())
-    {
-      errormsg = "Couldn't Open " + fileName;
-      break;
-    }
-
-    Config configout;
-    configtab_->GetConfig(configout);
-
-    std::string json_string;
-    if (MessageToJsonString(configout, &json_string, options).ok())
-    {
-      fs << json_string;
-      if (fs.bad())
-      {
-        errormsg = "Couldn't Write " + fileName;
-      }
-    }
-    else
-    {
-      errormsg = "Couldn't Create JSON output ";
-    }
-
-    fs.close();
-  } while (0);
-
-  if (!errormsg.isEmpty())
-  {
-    QMessageBox msgBox;
-    msgBox.setText(errormsg);
-    msgBox.exec();
-    qDebug() << errormsg;
-  }
-}
-
-// Restore config from file
-
-void MainWindow::on_configRestoreButton_clicked()
-{
-  QFileDialog fd;
-  QString fileName = fd.getOpenFileName(this, tr("Open File"), QDir::homePath(),
-                                        tr("Protobuf (*.json)"));
-
-  if (fileName == "")
-    return;
-  Config configin;
-  std::ifstream fin(fileName.toStdString());
-
-  if (!fin.is_open())
-  {
-    QMessageBox msgBox;
-    msgBox.setText("Couldn't Open " + fileName);
-    msgBox.exec();
-    qDebug() << "Config file restore couldn't open " << fileName;
-    return;
-  }
-
-  std::string str((std::istreambuf_iterator<char>(fin)),
-                  std::istreambuf_iterator<char>());
-
-  fin.close();
-  google::protobuf::util::JsonParseOptions options2;
-  if (JsonStringToMessage(str, &configin, options2).ok())
-  {
-    // We should check the configuration that is read
-    // against the current configuration to make sure all
-    // the fields are implemented
-    configtab_->SetConfig(configin);
-  }
-  else
-  {
-    QMessageBox msgBox;
-    msgBox.setText("Couldn't Read " + fileName);
-    msgBox.exec();
-    qDebug() << "Config file restore couldn't read " << fileName;
-  }
-}
