@@ -5,15 +5,10 @@
 #include <QTimer>
 #include <QPromise>
 #include "tagclass.h"
-#include "schedule.h"
 #include "ui_mainwindow.h"
 
 class QWidget;
 class QTextEdit;
-class QGroupBox;
-class ConfigTab;
-
-
 
 extern QTextEdit *s_textEdit;
 class LogScreen;
@@ -34,8 +29,11 @@ public:
 signals:
 
   void StateUpdate(TagState state);
-  void SectorsErased(int);
-  void IdleState(void);
+
+  void lBar(int currProgress, int total);
+  void DisplayMessage(int msgType, QString str);
+  void logMessage(int msgType, QString str);
+
 
 private slots:
 
@@ -49,20 +47,12 @@ private slots:
 
   // control tab events
 
-  void on_syncButton_clicked();     // synchronize clock
-  void on_stopButton_clicked();     // stop tag
- 
-  void on_eraseButton_clicked();    // reset tag flash
-  void on_testButton_clicked();     // run tag self-test
-
-  void on_Attach_clicked();         // attach to tag
-  void on_Detach_clicked();         // detach from tag
+  void on_programButton_clicked();    // program tag
+  void on_fileSelectButton_clicked(); // select file to program
 
   // data events
 
-  void on_tagLogSaveButton_clicked(); // download data from tag
-
-  
+  //void on_tagLogSaveButton_clicked(); // download data from tag
 
 private:
   Tag tag;
@@ -70,8 +60,6 @@ private:
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
   const float version = 2.0;
-  int external_flash_size = 0;
-  int sector_size = 4096;
 };
 
 #endif // MAINWINDOW_H

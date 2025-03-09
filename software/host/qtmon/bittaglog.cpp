@@ -64,7 +64,7 @@ bool BitTagLogTab::SetConfig(const Config &config)
     }
     active = false;
     setVisible(false);
-    return false;
+    return true;
 }
 
 bool BitTagLogTab::GetConfig(Config &config)
@@ -76,9 +76,11 @@ bool BitTagLogTab::GetConfig(Config &config)
         {
             config.set_bittag_log((BitTagLogFmt)id);
             return true;
+        } else {
+            return false;
         }
     }
-    config.set_bittag_log(BITTAG_UNSPECIFIED);
-    return false;
+    //config.set_bittag_log(BITTAG_UNSPECIFIED);
+    return true;
 }
 

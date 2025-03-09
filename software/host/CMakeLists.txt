@@ -17,14 +17,15 @@ add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 add_subdirectory(lib)
 add_subdirectory(cli)
 add_subdirectory(qtmon)
+add_subdirectory(qtprogram)
 add_subdirectory(btdataviz)
 
 if(WIN32)
-  install(TARGETS btviz qtmonitor tag-info tag-test tag-test-example tag-dwnld
+  install(TARGETS btviz qtmonitor ptprogram tag-info tag-test tag-test-example tag-dwnld
           BUNDLE DESTINATION .
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
-  install(TARGETS btviz qtmonitor tag-test
+  install(TARGETS btviz qtmonitor qtprogram tag-test
           BUNDLE DESTINATION UltralightTags
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()

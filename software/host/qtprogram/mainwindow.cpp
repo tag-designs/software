@@ -29,11 +29,12 @@
 
 #include "tag.pb.h"
 
-//#include "taglogs.h"
-#include "configtab.h"
 #include "download.h"
 
+#include <DisplayManager.h>
+#include <CubeProgrammer_API.h>
 
+#define title_string "Tag Programmer v1.0"
 
 
 // main window
@@ -42,30 +43,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   ui.setupUi(this);
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
 
-  // start on main tab
-
-  ui.mainTabWidget->setCurrentIndex(0);
-
   // Change Main Window title
 
-  QString title = QString::fromStdString("Tag Monitor v") + QString::number(version);
-
-  setWindowTitle(title);
+  setWindowTitle(QString(title_string));
 
   // Tag state poll timer
 
-  connect(this, SIGNAL(StateUpdate(TagState)), ui.configtab, SLOT(StateUpdate(TagState)));
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
 
-  // Attach to tag
+  // attach if possible to collect tag information
 
-  on_Attach_clicked();
+  const char* loaderPath = "./.";
+
+
+    /* Set device loaders path that contains FlashLoader and ExternalLoader folders*/
+	setLoadersPath(loaderPath);
+
+    /* Set the progress bar and message display functions callbacks */
+
+
+  if (Attach())
+    tag.Detach();
 
 }
 
 MainWindow::~MainWindow()
 {
-  //ui.configtab->Detach();
   tag.Detach();
 }
 
@@ -108,7 +111,6 @@ bool MainWindow::Attach()
     }
 
     QInputDialog *inputDialog = new QInputDialog();
-    //inputDialog->setOption(QInputDialog::NoButtons);
     inputDialog->setOption(QInputDialog::UseListViewForComboBoxItems);
     inputDialog->setComboBoxItems(items);
     inputDialog->setWindowTitle("Available Bases");
@@ -132,7 +134,7 @@ bool MainWindow::Attach()
     Status status;
     TagInfo info;
     tag.GetTagInfo(info);
-    tag.GetConfig(config);
+    //tag.GetConfig(config);
     tag.GetStatus(status);
 
     // check qtmonitor version 
@@ -140,13 +142,15 @@ bool MainWindow::Attach()
     float min_version = info.qtmonitor_min_version();
 
     if (min_version > version) {
+      /*
       QMessageBox msgBox;
       QString message = QString("monitor version %1 less than required version %2").arg(version).arg(min_version);
       msgBox.setWindowTitle("Warning");
       msgBox.setText(message);
       msgBox.setStandardButtons(QMessageBox::Ok);
       msgBox.exec();
-      on_Detach_clicked();
+      */
+      tag.Detach();
       return false;
     }
 
@@ -154,22 +158,10 @@ bool MainWindow::Attach()
 
     ui.info_tagtype->setText(
         QString::fromStdString(TagType_Name(info.tag_type())));
-    ui.info_boardname->setText(QString::fromStdString(info.board_desc()));
     ui.info_firmware->setText(QString::fromStdString(info.firmware()));
     ui.info_gitHash->setText(QString::fromStdString(info.githash()));
-    ui.info_gitUrl->setText(QString::fromStdString(info.gitrepo()));
     ui.info_uuid->setText(QString::fromStdString(info.uuid()));
-    ui.info_flash->setText(QString::number(info.intflashsz()) + "KB");
-    ui.info_flash_ext->setText(QString::number(info.extflashsz()/(1024*1024))+"MB");
-    external_flash_size=info.extflashsz();
     ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
-    ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
-
-    // connect log and config tabs
-
-    ui.configtab->Attach(tag);
-    ui.configtab->SetConfig(config);
-    ui.errorTab->Attach(tag);
 
     // start the StateUpdate timer
     
@@ -177,6 +169,7 @@ bool MainWindow::Attach()
     timer.start(400);
     return true;
   }
+  /*
   else
   {
     QMessageBox msgBox;
@@ -189,7 +182,8 @@ bool MainWindow::Attach()
     //TriggerUpdate(); // should this be here?
     return false;
   }
-  
+  */
+ return false;
 }
 
 // While tag is attached, this
@@ -215,15 +209,10 @@ void MainWindow::TriggerUpdate(void)
 
     if (tag.GetStatus(status))
     {
-      int external_count = status.external_data_count();
+      //int external_count = status.external_data_count();
       ui.State->setText(QString::fromStdString(TagState_Name(status.state())));
-      ui.internalCount->setText(QString::number(status.internal_data_count()));
-      if (external_count != 0) {
-        ui.externalCount->setText(QString::number(external_count));
-        ui.ExternalLog->setVisible(true);
-      } else {
-        ui.ExternalLog->setVisible(false);
-      }
+  
+  
 
       double timeerr = QDateTime::currentMSecsSinceEpoch();
       timeerr = status.millis() - timeerr;
@@ -232,11 +221,9 @@ void MainWindow::TriggerUpdate(void)
 
       if (status.state() == IDLE)
       {
-        ui.syncButton->setEnabled(true);
-        ui.testButton->setEnabled(true);
-        ui.eraseButton->setEnabled(false);
-
-        emit IdleState();
+        //ui.syncButton->setEnabled(true);
+        //ui.testButton->setEnabled(true);
+        ui.progressBar->setVisible(false);
 
         // config tab
 
@@ -247,12 +234,12 @@ void MainWindow::TriggerUpdate(void)
       else
       {
 
-        ui.syncButton->setEnabled(false);
-        ui.testButton->setEnabled(false);
+        //ui.syncButton->setEnabled(false);
+        //ui.testButton->setEnabled(false);
 
         if (status.state() == sRESET)
         {
-          emit SectorsErased(status.sectors_erased());
+          ui.progressBar->setValue(status.sectors_erased());;
         } 
 
         if (status.state() != current_state)
@@ -260,25 +247,25 @@ void MainWindow::TriggerUpdate(void)
           if ((status.state() == RUNNING) || (status.state() == CONFIGURED) ||
               (status.state() == HIBERNATING))
           {
-            ui.stopButton->setEnabled(true);
-            ui.eraseButton->setEnabled(false);
+            //ui.stopButton->setEnabled(true);
+            //ui.eraseButton->setEnabled(false);
           }
           else
           {
-            ui.stopButton->setEnabled(false);
-            ui.eraseButton->setEnabled((status.state() != IDLE) &&
-                                        (status.state() != TEST) &&
-                                        (status.state() != sRESET));
+            //ui.stopButton->setEnabled(false);
+            //ui.eraseButton->setEnabled((status.state() != IDLE) &&
+            //                            (status.state() != TEST) &&
+             //                           (status.state() != sRESET));
           }
 
           if ((status.state() == ABORTED) ||
               (status.state() == FINISHED))
           {
-            ui.datadownloadgroupBox->setEnabled(true);
+            //ui.tagLogSaveButton->setEnabled(true);
           }
           else
           {
-            ui.datadownloadgroupBox->setEnabled(false);
+              //ui.tagLogSaveButton->setEnabled(false);
           }
         
         }
@@ -288,7 +275,7 @@ void MainWindow::TriggerUpdate(void)
      
     }
   }
-  emit StateUpdate(current_state);
+  //emit StateUpdate(current_state);
 }
 
 
@@ -297,24 +284,25 @@ void MainWindow::TriggerUpdate(void)
 /********************************************
  *        Status Tab
  ********************************************/
-
+/*
 void MainWindow::on_Attach_clicked()
 {
   if (Attach())
   {
     ui.StatusGroup->setEnabled(true);
     ui.TagInformation->setEnabled(true);
-    ui.ControlGroup->setEnabled(true);
-    ui.Attach->setEnabled(false);
-    ui.Detach->setEnabled(true);
+    //ui.ControlGroup->setEnabled(true);
+    //ui.Attach->setEnabled(false);
+    //ui.Detach->setEnabled(true);
   } else {
     ui.StatusGroup->setEnabled(false);
     ui.TagInformation->setEnabled(false);
-    ui.ControlGroup->setEnabled(false);
-    ui.Attach->setEnabled(true);
-    ui.Detach->setEnabled(false);
-    ui.datadownloadgroupBox->setEnabled(false);
+    //ui.ControlGroup->setEnabled(false);
+    //ui.Attach->setEnabled(true);
+    //ui.Detach->setEnabled(false);
+    //ui.tagLogSaveButton->setEnabled(false);
   }
+  ui.progressBar->setVisible(false);
 }
 
 void MainWindow::on_Detach_clicked()
@@ -322,13 +310,13 @@ void MainWindow::on_Detach_clicked()
   tag.Detach();
   timer.stop();
   TriggerUpdate();
-  ui.Attach->setEnabled(true);
-  ui.Detach->setEnabled(false);
-  ui.StatusGroup->setEnabled(false);
+  //ui.Attach->setEnabled(true);
+  //ui.Detach->setEnabled(false);
+  //ui.StatusGroup->setEnabled(false);
   ui.TagInformation->setEnabled(false);
-  ui.ControlGroup->setEnabled(false);
-  ui.configtab->Detach();
+  //ui.ControlGroup->setEnabled(false);
 }
+
 
 void MainWindow::on_syncButton_clicked()
 {
@@ -346,8 +334,8 @@ void MainWindow::on_testButton_clicked()
   {
     std::string msg;
     tag.Test(RUN_ALL); // need to check return !
-    ui.testButton->setEnabled(false);
-    ui.info_testStatus->setText("Running");
+    //ui.testButton->setEnabled(false);
+    //ui.info_testStatus->setText("Running");
   }
 }
 
@@ -365,13 +353,9 @@ void MainWindow::on_eraseButton_clicked()
     {
       qDebug() << "tag reset returned false";
     } else {
-      if (external_flash_size) {
-      QProgressDialog progress("Erasing flash...", "exit dialog", 0, external_flash_size/sector_size, this);
-      progress.setWindowModality(Qt::WindowModal);
-      connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
-      connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
-      progress.exec();
-      }
+      ui.progressBar->setMaximum(1000);
+      ui.progressBar->setValue(0);
+      ui.progressBar->setVisible(true);
     }
   }
 }
@@ -412,16 +396,65 @@ void MainWindow::on_tagLogSaveButton_clicked()
   connect(&dl,&Download::progressValueChanged, &pd, &QProgressDialog::setValue);
   connect(&dl,&Download::downloadFinished, &pd, &QProgressDialog::cancel);
   connect(&pd,&QProgressDialog::canceled,&dl,&Download::cancel);
-  //connect(&dl,&Download::progressRangeChanged, ui.progressBar, &QProgressBar::setRange);
-  //connect(&dl,&Download::progressValueChanged, ui.progressBar, &QProgressBar::setValue);
+  connect(&dl,&Download::progressRangeChanged, ui.progressBar, &QProgressBar::setRange);
+  connect(&dl,&Download::progressValueChanged, ui.progressBar, &QProgressBar::setValue);
+
+  ui.progressBar->setVisible(true);
 
   qDebug() <<  "starting download";
 
   dl.start(&tag,&fs);
 
   pd.exec();
+
+  ui.progressBar->setVisible(false);
   return;
+}
+
+*/
+
+void MainWindow::on_programButton_clicked(){
+  qDebug() << qgetenv("STM32CUBEPROGRAMMER");
+  qDebug() << "run program";
+  if (current_state != IDLE){
+    if (current_state == ABORTED || current_state == FINISHED){
+      QMessageBox msgBox;
+      msgBox.setWindowTitle("Tag state is not erased");
+      msgBox.setText("Erase tag state and data ?");
+      msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
+      msgBox.setDefaultButton(QMessageBox::Cancel);
+      int ret = msgBox.exec();
+      if (ret == QMessageBox::Ok)
+      {
+        if (!tag.Erase())
+        {
+          qDebug() << "tag reset returned false";
+        } else {
+          ui.progressBar->setMaximum(1000);
+          ui.progressBar->setValue(0);
+          ui.progressBar->setVisible(true);
+        }
+      } else {
+        tag.Detach();
+        return; 
+      }
+    }
+  }
+  tag.Detach();
 }
 
 
 
+void MainWindow::on_fileSelectButton_clicked()
+{
+ 
+  QString filename = QFileDialog::getOpenFileName(this,tr("binary file to program"), 
+                                                 QDir::homePath(),
+                                                 tr("Binary (*.bin *.elf)"));
+  if (!filename.isNull())
+    ui.fileName->setText(filename);
+}
+
+//void MainWindow::lBar(int currProgress, int total){}
+//void MainWindow::DisplayMessage(int msgType, QString str){}
+//void MainWindow::logMessage(int msgType, QString str){}

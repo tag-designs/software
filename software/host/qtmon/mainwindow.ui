@@ -35,7 +35,7 @@
          <string/>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="targetTab">
          <property name="toolTip">
@@ -81,13 +81,6 @@
                  <string>Status</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_6">
-                 <item row="4" column="0">
-                  <widget class="QLabel" name="label_selftest">
-                   <property name="text">
-                    <string>Test Status</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="0" column="0">
                   <widget class="QLabel" name="State_Label">
                    <property name="text">
@@ -144,6 +137,27 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="ClockError">
+                   <property name="text">
+                    <string>Clock Error</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="Voltage">
+                   <property name="text">
+                    <string>Voltage</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="label_selftest">
+                   <property name="text">
+                    <string>Test Status</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="0" column="1">
                   <widget class="QLineEdit" name="State">
                    <property name="sizePolicy">
@@ -185,20 +199,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="ClockError">
-                   <property name="text">
-                    <string>Clock Error</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="Voltage">
-                   <property name="text">
-                    <string>Voltage</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="6" column="1">
                   <spacer name="verticalSpacer_2">
                    <property name="orientation">
@@ -211,19 +211,6 @@
                     </size>
                    </property>
                   </spacer>
-                 </item>
-                 <item row="7" column="1">
-                  <widget class="QProgressBar" name="progressBar">
-                   <property name="enabled">
-                    <bool>true</bool>
-                   </property>
-                   <property name="value">
-                    <number>24</number>
-                   </property>
-                   <property name="textVisible">
-                    <bool>true</bool>
-                   </property>
-                  </widget>
                  </item>
                 </layout>
                </widget>

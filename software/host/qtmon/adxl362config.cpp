@@ -140,6 +140,9 @@ bool Adxl362Config::GetConfig(Config &config)
 {
   // Parameters common to all tags
 
+  if (!active)
+    return true;
+
   int id;
   Adxl362 adxl(config.adxl362());
 
@@ -242,8 +245,8 @@ bool Adxl362Config::SetConfig(const Config &config)
     */
     default:
       setVisible(false);
-      active = false;
-      return false;
+      //active = false;
+      return true;
   }
 
   // set legal range of spin boxes
