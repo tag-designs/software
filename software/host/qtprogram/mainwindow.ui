@@ -29,6 +29,12 @@
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="QPushButton" name="programButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTipDuration">
+             <number>-1</number>
+            </property>
             <property name="text">
              <string>Program</string>
             </property>
@@ -82,6 +88,39 @@
              <string>Status</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_7">
+             <item row="0" column="0">
+              <widget class="QLabel" name="State_Label_2">
+               <property name="text">
+                <string>State</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="Voltage">
+               <property name="text">
+                <string>Voltage</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="State">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <horstretch>1</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>Run &quot;state&quot; of attached tag</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
              <item row="3" column="1">
               <widget class="QLineEdit" name="info_Voltage">
                <property name="sizePolicy">
@@ -95,6 +134,36 @@
                </property>
                <property name="maxLength">
                 <number>4</number>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="ClockError">
+               <property name="text">
+                <string>Clock Error</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_selftest">
+               <property name="text">
+                <string>Test Status</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLineEdit" name="info_testStatus">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>2</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
                </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -125,93 +194,20 @@
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QPushButton" name="syncButton">
-                 <property name="toolTip">
-                  <string>Set target clock equal to PC clock (only enabled when tag is &quot;Idle&quot;)</string>
-                 </property>
-                 <property name="text">
-                  <string>Sync</string>
-                 </property>
-                </widget>
-               </item>
               </layout>
              </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="State_Label_2">
-               <property name="text">
-                <string>State</string>
+             <item row="5" column="1">
+              <spacer name="verticalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
                </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_selftest">
-               <property name="text">
-                <string>Test Status</string>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
                </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QLineEdit" name="info_testStatus">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>2</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="Voltage">
-               <property name="text">
-                <string>Voltage</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="ClockError">
-               <property name="text">
-                <string>Clock Error</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QLineEdit" name="State">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>1</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="toolTip">
-                <string>Run &quot;state&quot; of attached tag</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="6" column="1">
-              <widget class="QProgressBar" name="progressBar">
-               <property name="enabled">
-                <bool>true</bool>
-               </property>
-               <property name="value">
-                <number>24</number>
-               </property>
-               <property name="textVisible">
-                <bool>true</bool>
-               </property>
-              </widget>
+              </spacer>
              </item>
             </layout>
            </widget>
@@ -244,15 +240,8 @@
              <string>Tag Information</string>
             </property>
             <layout class="QGridLayout" name="gridLayout">
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_gitHash">
-               <property name="text">
-                <string>Git Hash</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QLineEdit" name="info_uuid">
+             <item row="0" column="2">
+              <widget class="QLineEdit" name="info_tagtype">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                  <horstretch>2</horstretch>
@@ -260,7 +249,7 @@
                 </sizepolicy>
                </property>
                <property name="toolTip">
-                <string>A unique code embedded in hardware that can be used to identify individual tags.</string>
+                <string>Type of attached tag</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -270,36 +259,7 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
-              <widget class="QLineEdit" name="info_firmware">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>2</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="toolTip">
-                <string>Description from Tag: Generally the tag type</string>
-               </property>
-               <property name="frame">
-                <bool>true</bool>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_tagtype">
-               <property name="text">
-                <string>Tag Type</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
+             <item row="3" column="2">
               <widget class="QLineEdit" name="info_gitHash">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -325,7 +285,76 @@
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_uuid">
+               <property name="text">
+                <string>UUID</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_tagtype">
+               <property name="text">
+                <string>Tag Type</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_builddate">
+               <property name="text">
+                <string>Build Date</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_gitHash">
+               <property name="text">
+                <string>Git Hash</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLineEdit" name="info_firmware">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>2</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>Description from Tag: Generally the tag type</string>
+               </property>
+               <property name="frame">
+                <bool>true</bool>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLineEdit" name="info_uuid">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>2</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>A unique code embedded in hardware that can be used to identify individual tags.</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="2">
               <widget class="QLineEdit" name="info_buildDate">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -344,38 +373,18 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="1">
-              <widget class="QLineEdit" name="info_tagtype">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>2</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
+             <item row="5" column="2">
+              <spacer name="verticalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
                </property>
-               <property name="toolTip">
-                <string>Type of attached tag</string>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
                </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_builddate">
-               <property name="text">
-                <string>Build Date</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_uuid">
-               <property name="text">
-                <string>UUID</string>
-               </property>
-              </widget>
+              </spacer>
              </item>
             </layout>
            </widget>

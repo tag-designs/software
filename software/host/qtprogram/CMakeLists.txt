@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure qtprogram")
+
+#set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE INTERNAL "" FORCE)
 # Find includes in corresponding build directories
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -60,10 +62,14 @@ message(${STM32_PROGRAMMER_BIN_DIR})
 message(${STM32_PROGRAMMER_API_INCLUDE_DIR})
 message(${STM32_PROGRAMMER_API_LIB_DIR})
 
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
+
+else()
 find_library(CUBE_PROGRAMMER_API_LIB 
              NAMES "CubeProgrammer_API" 
              PATHS ${STM32_PROGRAMMER_API_LIB_DIR}
                    ${STM32_PROGRAMMER_BIN_DIR})
+endif()
 
 if(WIN32)
  # find_package(Qt6OpenGLExtensions CONFIG)

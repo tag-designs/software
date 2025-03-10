@@ -16,15 +16,18 @@
 #include "ui_mainwindow.h"
 
 #include "mainwindow.h"
+
+#ifndef __arm64__
 #include <CubeProgrammer_API.h>
 #include <DisplayManager.h>
+#endif
 
 extern "C"
 {
 #include "log.h"
 }
 
-displayCallBacks vsLogMsg;
+//displayCallBacks vsLogMsg;
 
 //  Redirect log messages to text window
 //  based upon:
@@ -98,12 +101,19 @@ int main(int argc, char *argv[])
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;
 	//vsLogMsg.loadBar = lBar;
-  //setDisplayCallbacks(vsLogMsg);
+ 
 
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  #ifndef __arm64__
+  const char* loaderPath = "./.";
+  /* Set device loaders path that contains FlashLoader and ExternalLoader folders*/
+	setLoadersPath(loaderPath);
+  setDisplayCallbacks(vsLogMsg);
   log_set_quiet(true);
   log_set_level(log_level);
   log_add_callback(log_log_callback, nullptr, LOG_TRACE);
+  #endif
   MainWindow w;
   w.show();
   return a.exec();
