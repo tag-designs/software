@@ -21,11 +21,11 @@ add_subdirectory(qtprogram)
 add_subdirectory(btdataviz)
 
 if(WIN32)
-  install(TARGETS btviz qtmonitor ptprogram tag-info tag-test tag-test-example tag-dwnld
+  install(TARGETS btviz qtmonitor ptprogram 
           BUNDLE DESTINATION .
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
-  install(TARGETS btviz qtmonitor qtprogram tag-test
+  install(TARGETS btviz qtmonitor qtprogram 
           BUNDLE DESTINATION UltralightTags
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
