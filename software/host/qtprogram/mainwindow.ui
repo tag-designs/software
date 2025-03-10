@@ -32,6 +32,9 @@
             <property name="enabled">
              <bool>false</bool>
             </property>
+            <property name="toolTip">
+             <string>Flash Tag: not enabled if no file is selected</string>
+            </property>
             <property name="toolTipDuration">
              <number>-1</number>
             </property>
@@ -55,6 +58,9 @@
           </item>
           <item>
            <widget class="QPushButton" name="fileSelectButton">
+            <property name="toolTip">
+             <string>Select binary file to flash onto tag</string>
+            </property>
             <property name="text">
              <string>File Select</string>
             </property>
@@ -64,6 +70,25 @@
            <widget class="QLineEdit" name="fileName">
             <property name="readOnly">
              <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Programming Tool</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QLineEdit" name="programmingTool">
+            <property name="toolTip">
+             <string>Path to STM32 programmer</string>
+            </property>
+            <property name="readOnly">
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -240,6 +265,20 @@
              <string>Tag Information</string>
             </property>
             <layout class="QGridLayout" name="gridLayout">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_tagtype">
+               <property name="text">
+                <string>Tag Type</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_gitHash">
+               <property name="text">
+                <string>Git Hash</string>
+               </property>
+              </widget>
+             </item>
              <item row="0" column="2">
               <widget class="QLineEdit" name="info_tagtype">
                <property name="sizePolicy">
@@ -259,59 +298,18 @@
                </property>
               </widget>
              </item>
-             <item row="3" column="2">
-              <widget class="QLineEdit" name="info_gitHash">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                 <horstretch>2</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
+             <item row="5" column="2">
+              <spacer name="verticalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
                </property>
-               <property name="toolTip">
-                <string>A code that can be used to identify the version of firmware currently running on the tag. Corresponds to the first seven characters of the Git commit hash.</string>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
                </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="label_descLine">
-               <property name="text">
-                <string>Firmware</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_uuid">
-               <property name="text">
-                <string>UUID</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_tagtype">
-               <property name="text">
-                <string>Tag Type</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_builddate">
-               <property name="text">
-                <string>Build Date</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_gitHash">
-               <property name="text">
-                <string>Git Hash</string>
-               </property>
-              </widget>
+              </spacer>
              </item>
              <item row="1" column="2">
               <widget class="QLineEdit" name="info_firmware">
@@ -354,6 +352,39 @@
                </property>
               </widget>
              </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_descLine">
+               <property name="text">
+                <string>Firmware</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QLineEdit" name="info_gitHash">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                 <horstretch>2</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="toolTip">
+                <string>A code that can be used to identify the version of firmware currently running on the tag. Corresponds to the first seven characters of the Git commit hash.</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_builddate">
+               <property name="text">
+                <string>Build Date</string>
+               </property>
+              </widget>
+             </item>
              <item row="4" column="2">
               <widget class="QLineEdit" name="info_buildDate">
                <property name="sizePolicy">
@@ -373,18 +404,12 @@
                </property>
               </widget>
              </item>
-             <item row="5" column="2">
-              <spacer name="verticalSpacer_3">
-               <property name="orientation">
-                <enum>Qt::Vertical</enum>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_uuid">
+               <property name="text">
+                <string>UUID</string>
                </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>20</width>
-                 <height>40</height>
-                </size>
-               </property>
-              </spacer>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -393,20 +418,7 @@
         </widget>
        </item>
        <item>
-        <widget class="LogWindow" name="widget" native="true"/>
-       </item>
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
+        <widget class="LogWindow" name="logwindow" native="true"/>
        </item>
       </layout>
      </widget>

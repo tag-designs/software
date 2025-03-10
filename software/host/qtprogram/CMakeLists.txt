@@ -85,6 +85,7 @@ endif()
 # Populate a CMake variable with the sources
 
 set(qtprogram_SRCS
+    custommessagebox.cpp
     download.cpp
     logwindow.cpp
     main.cpp

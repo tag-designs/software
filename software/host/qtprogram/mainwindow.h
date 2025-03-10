@@ -20,7 +20,8 @@ class LogScreen;
      ERASING,
      PROGRAMMING,
      TESTING,
-     FINISHED
+     FINISHED,
+     FAILED
   };
 
 namespace Ui {
@@ -70,13 +71,10 @@ private slots:
   // Programming helpers
 
   void programStateMachine();
-
   void processOutput();
+  int flashTag();
 
 private:
-
- 
-
 
   Tag tag;
   Ui::MainWindow ui;
@@ -89,7 +87,6 @@ private:
   UsbDev usbdev;
   QProcess *process;
   QString program;
-  bool attached = false;
 };
 
 #endif // MAINWINDOW_H
