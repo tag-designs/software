@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure qtprogram")
-
-#set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE INTERNAL "" FORCE)
 # Find includes in corresponding build directories
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -32,45 +30,6 @@ if(NOT Qt6_FOUND)
   return()
 endif()
 
-if(MSVC)
-  find_program(
-    STM32_PROGRAMMER
-    NAMES STM32_Programmer_CLI STM32_Programmer_CLI.exe
-    PATHS
-      "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin")
-else()
-  find_program(
-    STM32_PROGRAMMER
-    NAMES STM32_Programmer_CLI
-    HINTS
-      "/Users/geobrown/Software/stm32cubeprogrammer/STM32CubeProgrammer.app/Contents/MacOs/bin"
-    PATHS "/home/geobrown/Software/STM32CubeProgrammer/bin"
-  )
-endif()
-
-if(NOT DEFINED STM32_PROGRAMMER)
-  message(
-    "To program embedded boards install https://www.st.com/en/development-tools/stm32cubeprog.html"
-  )
-endif()
-
-get_filename_component(STM32_PROGRAMMER_BIN_DIR ${STM32_PROGRAMMER} DIRECTORY)
-SET(STM32_PROGRAMMER_API_INCLUDE_DIR "${STM32_PROGRAMMER_BIN_DIR}/../api/include")
-SET(STM32_PROGRAMMER_API_LIB_DIR "${STM32_PROGRAMMER_BIN_DIR}/../api/lib/x64")
-
-message(${STM32_PROGRAMMER_BIN_DIR})
-message(${STM32_PROGRAMMER_API_INCLUDE_DIR})
-message(${STM32_PROGRAMMER_API_LIB_DIR})
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
-
-else()
-find_library(CUBE_PROGRAMMER_API_LIB 
-             NAMES "CubeProgrammer_API" 
-             PATHS ${STM32_PROGRAMMER_API_LIB_DIR}
-                   ${STM32_PROGRAMMER_BIN_DIR})
-endif()
-
 if(WIN32)
  # find_package(Qt6OpenGLExtensions CONFIG)
   #if(NOT Qt6OpenGLExtensions_FOUND)
@@ -80,13 +39,10 @@ if(WIN32)
   #endif()
 endif()
 
-
-
 # Populate a CMake variable with the sources
 
 set(qtprogram_SRCS
     custommessagebox.cpp
-    download.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp)
@@ -114,8 +70,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtprogram PRIVATE tag Qt6::Widgets ${CCUBE_PROGRAMMER_API_LIB})
-target_include_directories(qtprogram PRIVATE ${STM32_PROGRAMMER_API_INCLUDE_DIR})
+target_link_libraries(qtprogram PRIVATE tag Qt6::Widgets)
 
 if(WIN32)
   # why the opengle extensions ????

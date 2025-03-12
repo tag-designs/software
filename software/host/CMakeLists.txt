@@ -8,7 +8,7 @@ set(Qt6_DIR "/Users/geobrown/Qt/6.8.2s/macos")
 endif()
 
 if (WIN32)
-set(Qt6_DIR "d:/Qt/x64-static")
+set(Qt6_DIR "d:/msys64/mingw64/qt6-static/bin")
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -21,7 +21,8 @@ add_subdirectory(qtprogram)
 add_subdirectory(btdataviz)
 
 if(WIN32)
-  install(TARGETS btviz qtmonitor ptprogram 
+  #add_dependencies(qtmonitor BitTag PresTag)
+  install(TARGETS btviz qtmonitor qtprogram 
           BUNDLE DESTINATION .
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()

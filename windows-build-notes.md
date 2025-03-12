@@ -1,4 +1,11 @@
+cmake -B build -S  c:/users/geobrown/ultralight-tags --preset default
+cmake --build . --config Release
 
+
+
+qt-cmake -G "MinGW Makefiles" -DVCPKG_TARGET_TRIPLET="x64-mingw-static" -DCMAKE_TOOLCHAIN_FILE="d:/vcpkg/scripts/buildsystems/vcpkg.cmake"  c:/users/geobrown/ultralight-tags
+
+Protobuf_DIR=d:/vcpkg/installed/x64-mingw-static/tools/protobuf
 mac:
 
 
@@ -49,7 +56,16 @@ C:\Qt\6.8.2\src\configure.bat -static -debug-and-release -opensource -static-run
 ```
 
 ```
+in the build directory do this:
+
 D:\Qt\src\configure.bat -static -debug-and-release -opensource -static-runtime -platform win32-msvc -nomake examples -nomake tests -prefix d:/Qt/x64-static
+cmake --build .
+cmake -DCMAKE_INSTALL_PREFIX=d:/Qt/x64-static install .
+
+
+or
+
+D:\Qt\src\configure.bat -static -debug-and-release -opensource -static-runtime -platform win32-g++ -nomake examples -nomake tests -prefix d:/Qt/x64-mingw-static
 cmake --build .
 cmake -DCMAKE_INSTALL_PREFIX=d:/Qt/x64-static install .
 ```

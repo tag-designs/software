@@ -35,11 +35,6 @@
 #include "custommessagebox.h"
 
 
-#ifndef __arm64__
-#include <DisplayManager.h>
-#include <CubeProgrammer_API.h>
-#endif
-
 #define title_string "Tag Programmer v1.0"
 
 
@@ -415,6 +410,15 @@ void MainWindow::on_fileSelectButton_clicked()
     ui.programButton->setEnabled(true);
   } else {
     ui.programButton->setEnabled(false);
+  }
+}
+
+void MainWindow::on_toolSelectButton_clicked()
+{
+ 
+  QString filename = QFileDialog::getOpenFileName(this,tr("STM32 Programming CLI Tool"), QDir::homePath());
+  if (!filename.isNull()) {
+    ui.programmingTool->setText(filename);
   }
 }
 
