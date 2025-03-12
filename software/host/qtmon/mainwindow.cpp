@@ -137,7 +137,7 @@ bool MainWindow::Attach()
 
     // check qtmonitor version 
 
-    float min_version = info.qtmonitor_min_version();
+    float min_version = 2.0;//info.qtmonitor_min_version();
 
     if (min_version > version) {
       QMessageBox msgBox;

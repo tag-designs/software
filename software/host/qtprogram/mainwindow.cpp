@@ -143,7 +143,7 @@ bool MainWindow::Attach()
 
     float min_version = info.qtmonitor_min_version();
 
-    if (min_version > version) {
+    if (0) { //min_version > version) {
       tag.Detach();
       return false;
     }
