@@ -9,3 +9,5 @@
 #define USE_ADXL367 TRUE
 #define EXTERNAL_FLASH TRUE
 #endif
+
+extern volatile int sectors_erased;

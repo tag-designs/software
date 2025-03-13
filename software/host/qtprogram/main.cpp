@@ -99,6 +99,9 @@ int main(int argc, char *argv[])
  
 
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+  log_set_quiet(true);
+  log_set_level(log_level);
+  log_add_callback(log_log_callback, nullptr, LOG_TRACE);
 
   MainWindow w;
   w.show();

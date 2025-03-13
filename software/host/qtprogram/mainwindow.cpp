@@ -435,6 +435,7 @@ void MainWindow::on_toolSelectButton_clicked()
   QString filename = QFileDialog::getOpenFileName(this,tr("STM32 Programming CLI Tool"), QDir::homePath());
   if (!filename.isNull()) {
     ui.programmingTool->setText(filename);
+    program = filename;
   }
 }
 

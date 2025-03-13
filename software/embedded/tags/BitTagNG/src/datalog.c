@@ -8,6 +8,8 @@
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 
+volatile int sectors_erased NOINIT;
+
 extern int encode_ack(void);
 
 static int countInternalBlocks(void){

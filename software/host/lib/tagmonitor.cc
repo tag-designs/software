@@ -178,6 +178,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!ReadDebug32(DEMCR, &demcr))
     {
       log_error("Read failed");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -192,6 +193,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
     {
 
       log_error("Monitor attach failed: write returned");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -200,6 +202,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!AssertReset(true))
     {
       log_error("Monitor attach failed: Reset assert");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -216,12 +219,14 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!Call(TAG_MONITORINFO, MONITORVERSION, &version))
     {
       log_error("couldn't fetch monitor version information");
+      LinkAdapt::Detach();
       break;
     }
 
     if (!Call(TAG_MONITORINFO, MONITORBUF, &call_buf))
     {
       log_error("couldn't fetch monitor buffer location");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -230,12 +235,14 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!Call(TAG_MONITORINFO, TAGSHASTR, &tmp))
     {
       log_error("Couldn't find the address of the sha string");
+      LinkAdapt::Detach();
     }
     else
     {
       if (!ReadMem32(tmp, (uint8_t *)sha_str, sizeof(sha_str)))
       {
         log_error("read_mem failed\n");
+        LinkAdapt::Detach();
         return false;
       }
     }
@@ -243,6 +250,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!Call(TAG_MONITORINFO, MONITORBUFSIZE, &tmp))
     {
       log_error("couldn't fetch monitor buffer length");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -250,6 +258,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
 
     if (maxpacket > sizeof(rpcbuf)) {
       log_error("RPC buffer is too small");
+      LinkAdapt::Detach();
       break;
     }
 
@@ -257,6 +266,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
     if (!Call(MONITORSTART, 0, &success) || !success)
     {
       log_error("Monitor Start failed");
+      LinkAdapt::Detach();
       break;
     }
 
