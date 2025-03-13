@@ -251,9 +251,10 @@ int MainWindow::flashTag(){
     return 1;
 }
 
-void MainWindow::programStateMachine()
+void MainWindow::programStateMachine(bool erase_only)
 {
   bool attached = tag.IsAttached();
+  Config config;
   switch (programming_state) {
      case ProgrammingState::READY:
         qDebug() << "Ready";
@@ -287,8 +288,15 @@ void MainWindow::programStateMachine()
         if (attached){
           Detach();
         }
-        programming_state = ProgrammingState::PROGRAMMING;
-        qDebug() << "Programming";
+        // Here we check if this is an erase only run (no programming or testing)
+        if (erase_only) {
+          programming_state = ProgrammingState::FINISHED;
+          qDebug() << "Finished";
+          break;
+        } else {
+          programming_state = ProgrammingState::PROGRAMMING;
+          qDebug() << "Programming";
+        }
       case ProgrammingState::PROGRAMMING:
         if (flashTag()) {
           programming_state = ProgrammingState::FAILED;
@@ -318,7 +326,16 @@ void MainWindow::programStateMachine()
           tag.SetRtc();
         }
         qDebug() << "Tests Complete";
-        programming_state = ProgrammingState::FINISHED;
+       
+        if (tag.GetConfig(config)) {
+          tag.Start(config);
+          programming_state = ProgrammingState::READY;
+          erase_only = true; 
+        } else {
+          programming_state = ProgrammingState::FAILED;
+        }
+        break;
+        //programming_state = ProgrammingState::FINISHED;
       case ProgrammingState::FINISHED:
         qDebug() << "Finished";
         Detach();
@@ -329,9 +346,8 @@ void MainWindow::programStateMachine()
 
   emit ProgrammingStateUpdate(programming_state);
   if ((programming_state != ProgrammingState::FINISHED) && (programming_state != ProgrammingState::FAILED))
-     QTimer::singleShot(1000, this, &MainWindow::programStateMachine);
+     QTimer::singleShot(1000, [this, erase_only](){this->MainWindow::programStateMachine(erase_only);});
 }
-
 
 void MainWindow::on_programButton_clicked(){
   programming_state = ProgrammingState::READY;
@@ -358,7 +374,7 @@ void MainWindow::on_programButton_clicked(){
   }
 
   connect(&msgBox, &CustomMessageBox::OkButtonClicked, 
-          this, &MainWindow::programStateMachine);
+          [this](){this->MainWindow::programStateMachine(false);});
 
   connect(this,&MainWindow::ProgrammingStateUpdate, this, [&msgBox](ProgrammingState newstate){
      switch (newstate) {

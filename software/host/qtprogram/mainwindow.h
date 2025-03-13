@@ -72,7 +72,7 @@ private slots:
 
   // Programming helpers
 
-  void programStateMachine();
+  void programStateMachine(bool erase);
   void processOutput();
   int flashTag();
 
