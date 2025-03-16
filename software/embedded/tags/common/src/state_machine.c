@@ -131,8 +131,7 @@ enum Sleep StateMachine(void)
      if (pState->state == TagState_HIBERNATING)
     {
       // goto error
-      switch (pState->resetCause)
-      {
+  
         switch (pState->resetCause)
         {
           // need to distinguish hibernating from running
@@ -146,7 +145,7 @@ enum Sleep StateMachine(void)
           default:
             return Aborted(T_INIT, State_EVENT_POWERFAIL);
         }
-      }
+  
     }
 
     if (pState->state == TagState_RUNNING)
