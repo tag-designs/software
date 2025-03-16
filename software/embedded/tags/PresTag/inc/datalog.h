@@ -3,7 +3,7 @@
 
 // Stored Data Log -- in external memory
 
-#define DATALOG_SAMPLES 30
+#define DATALOG_SAMPLES 60
 typedef struct {
   struct {
     int16_t pressure;

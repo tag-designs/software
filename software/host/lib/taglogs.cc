@@ -398,32 +398,7 @@ int dumpTagLog(std::ostream &out,
       return dumpTagLog(out, log.prestag_data_log(), config.period(), format);
     }
     break;
-/*
- case ACCELTAG:
-    if (log.has_acceltag_data_log())
-    {
-      return dumpTagLog(out, log.acceltag_data_log(), config.period(), format);
-    }
-    break;
-  case LUXTAG:
-    if (log.has_luxtag_data_log())
-    {
-      return dumpTagLog(out, log.luxtag_data_log(), config.period(), format);
-    }
-    break;
-  case GEOTAG:
-    if (log.has_geotag_data_log())
-    {
-      return dumpTagLog(out, log.geotag_data_log());
-    }
-    break;
-  case ACCELTAGNG:
-    if (log.has_acceltag_ng_data_log())
-    {
-      return dumpTagLog(out, config, log.acceltag_ng_data_log());
-    }
-    break;
-*/
+
   default:
     return -1;
   }

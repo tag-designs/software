@@ -72,11 +72,8 @@ message Ack {
     StateLog system_log = 6;
     BitTagLog bittag_data_log = 7;
     PresTagLog prestag_data_log = 8;
-    //GeoTagLog geotag_data_log = 9;
-    //LuxTagLog luxtag_data_log = 10;
-    //AccelTagLog acceltag_data_log = 11;
+    PresTagRawLog prestag_raw_data_log = 9;
     BitTagNgLog bittag_ng_data_log = 12;
-    //AccelTagNgLog acceltag_ng_data_log = 13;
 
     // Flash Memory operation
     //   Write returns count with empty bytes

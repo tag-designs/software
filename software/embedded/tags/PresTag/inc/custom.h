@@ -12,6 +12,7 @@
 #define USE_LPS27 TRUE
 #define EXTERNAL_FLASH TRUE
 #define QTMONITOR_VERSION 2.0
+#define PROTOBUFSIZE 4096
 
 extern volatile int sectors_erased;
 

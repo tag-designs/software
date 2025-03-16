@@ -3,14 +3,8 @@ syntax = "proto3";
 enum TagType {
   TAG_UNSPECIFIED = 0;
   BITTAG = 1;
-  //ACCELTAG = 2;
   PRESTAG = 3;
-  //PRESTAG_MX25R = 4;
-  //GEOTAG = 5;
-  //LUXTAG = 6;
   BITTAGNG = 7;
-  //ACCELTAGNG = 8;
-
 }
 
 message TagInfo {
@@ -179,7 +173,18 @@ message PresTagLog {
   repeated PT data = 4;
 }
 
+message PT_RAW {
+    int32 epoch = 1;
+    float voltage = 2;
+    float temperature = 3;
+    bytes samples = 4;
+  }
 
+message PresTagRawLog {
+  float temp_constant = 1;
+  float pres_constant = 2;
+  repeated PT_RAW data = 3;
+}
 
 
 
