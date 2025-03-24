@@ -194,22 +194,22 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin1
-        ID=""
+        ID="ProtoHandler"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin2
-        ID=""
+        ID="LogEncode"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />

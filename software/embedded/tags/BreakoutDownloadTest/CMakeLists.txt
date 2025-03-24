@@ -1,0 +1,3 @@
+
+add_embedded_target(BreakoutDownloadTest prestag_proto)
+add_dependencies(BreakoutDownloadTest board-prestag-breakout)

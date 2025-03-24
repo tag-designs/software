@@ -1,5 +1,6 @@
 #include "dwnld.h"
 #include <taglogs.h>
+#include <time.h>
 
 using namespace std::chrono_literals;
 using namespace google::protobuf;
@@ -24,12 +25,16 @@ static void intHandler(int dummy)
   exit(1);
 }
 
+clock_t elapsed = 0;
+int downloads = 0;
+
 int main(int argc, char **argv)
 {
   Tag tag;
   UsbDev dev;
   std::string input;
   Status s;
+  clock_t start,end;
 
   cxxopts::Options options("tag-dwnld", "Downloads data from file");
 
@@ -79,14 +84,25 @@ int main(int argc, char **argv)
       {
         ack.Clear();
         len = 0;
-        if (tag.GetDataLog(ack, total))
+        bool ret;
+
+  
+        ret = tag.GetDataLog(ack,total);
+   
+    
+        downloads++;
+        if (ret)
         {
+          start = clock();
           //std::cerr << ack.DebugString() << "\n";
           len = dumpTagLog(std::cout, ack, config, tag_log_output_txt);
           total += len;
+          end = clock();
+          elapsed += (end-start);
         }
       } while (len);
-      std::cerr << "Downloaded " << total << " bytes\n";
+      std::cerr << "Downloaded " << total << " logs\n";
+      std::cerr << "Decoding time"  << (((double) elapsed)/CLOCKS_PER_SEC) << " seconds\n";
       break;
     }
     std::cerr << "Exit\n";

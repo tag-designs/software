@@ -65,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 MainWindow::~MainWindow()
 {
-  //ui.configtab->Detach();
+  ui.configtab->Detach();
   tag.Detach();
 }
 
@@ -229,66 +229,28 @@ void MainWindow::TriggerUpdate(void)
       timeerr = status.millis() - timeerr;
       ui.timeError->setText(QString::number(timeerr / 1000.0, 'f', 2));
       ui.info_testStatus->setText(QString::fromStdString(TestResult_Name(status.test_status())));
+         
+      ui.syncButton->setEnabled(status.state() == IDLE);
+      ui.testButton->setEnabled(status.state() == IDLE);
+      ui.eraseButton->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
+      ui.datadownloadgroupBox->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
+      ui.stopButton->setEnabled((status.state() == RUNNING) || (status.state() == HIBERNATING));
 
       if (status.state() == IDLE)
       {
-        ui.syncButton->setEnabled(true);
-        ui.testButton->setEnabled(true);
-        ui.eraseButton->setEnabled(false);
-
-        emit IdleState();
-
-        // config tab
-
-        //ui.tagConfigGroup->setEnabled(true);
-        //ui.configRestoreButton->setEnabled(true);
-       
+        emit IdleState();    
       }
-      else
-      {
-
-        ui.syncButton->setEnabled(false);
-        ui.testButton->setEnabled(false);
-
-        if (status.state() == sRESET)
-        {
-          emit SectorsErased(status.sectors_erased());
-        } 
-
-        if (status.state() != current_state)
-        {
-          if ((status.state() == RUNNING) || (status.state() == CONFIGURED) ||
-              (status.state() == HIBERNATING))
-          {
-            ui.stopButton->setEnabled(true);
-            ui.eraseButton->setEnabled(false);
-          }
-          else
-          {
-            ui.stopButton->setEnabled(false);
-            ui.eraseButton->setEnabled((status.state() != IDLE) &&
-                                        (status.state() != TEST) &&
-                                        (status.state() != sRESET));
-          }
-
-          if ((status.state() == ABORTED) ||
-              (status.state() == FINISHED))
-          {
-            ui.datadownloadgroupBox->setEnabled(true);
-          }
-          else
-          {
-            ui.datadownloadgroupBox->setEnabled(false);
-          }
-        
-        }
-      }
-      current_state = status.state();
-      // broadcast state change
      
+
+      if (status.state() == sRESET)
+      {
+        emit SectorsErased(status.sectors_erased());
+      } 
+
+      current_state = status.state();  
+      emit StateUpdate(current_state);   
     }
   }
-  emit StateUpdate(current_state);
 }
 
 
@@ -327,6 +289,7 @@ void MainWindow::on_Detach_clicked()
   ui.StatusGroup->setEnabled(false);
   ui.TagInformation->setEnabled(false);
   ui.ControlGroup->setEnabled(false);
+  ui.datadownloadgroupBox->setEnabled(false);
   ui.configtab->Detach();
 }
 

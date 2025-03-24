@@ -13,7 +13,7 @@
 
 class Adxl362Config : public QWidget, public ConfigInterface
 {
-    //Q_OBJECT
+    Q_OBJECT
     //Q_INTERFACES(ConfigInterface)
 
 public:

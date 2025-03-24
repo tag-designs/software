@@ -14,6 +14,7 @@
 
 class Schedule : public QWidget, public ConfigInterface
 {
+    Q_OBJECT
 
     public:
         Schedule(QWidget *parent = nullptr);

@@ -43,6 +43,9 @@ public:
     QAbstractButton *button(int id);
     void setCheckedId(int index);
 
+private:
+    void buttonClicked(QAbstractButton *button);
+
 signals:
 
     void idClicked(int);

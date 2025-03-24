@@ -14,8 +14,10 @@ PBEnumGroup::PBEnumGroup(const char *title,
     buttonGroup = new QButtonGroup(this);
 
     setLayout(vbox);
-    connect(buttonGroup, SIGNAL(buttonClicked(int)),
-            this, SIGNAL(idClicked(int)));
+
+    assert(connect(buttonGroup,&QButtonGroup::buttonClicked,
+        this, &PBEnumGroup::buttonClicked));
+
 
     replaceButtons(buttons);
 }
@@ -60,4 +62,9 @@ void PBEnumGroup::replaceButtons(const std::vector<struct binfo> &buttons)
         vbox->addWidget(button);
     }
     vbox->addStretch(1);
+}
+
+void PBEnumGroup::buttonClicked(QAbstractButton *button){
+    int id = buttonGroup->id(button);
+    emit idClicked(id);
 }

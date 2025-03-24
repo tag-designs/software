@@ -118,14 +118,22 @@ bool ConfigTab::GetConfig(Config &config)
   
   // Get configuration from children
 
-  if (schedule.GetConfig(config) &&
-      btlog.GetConfig(config) &&
-      adxl.GetConfig(config))
-  {
-    return true;
-  } else {
+  if (!schedule.GetConfig(config)){
+    qDebug() << "failed to get schedule config";
     return false;
   }
+
+  if (!btlog.GetConfig(config)){
+    qDebug() << "failed to get btlog config";
+    return false;
+  }
+
+  if (!adxl.GetConfig(config)){
+    qDebug() << "failed to get adxl config";
+    return false;
+  }
+  
+  return true;
 
   // Sanity check -- should put this in the schedule class
 
@@ -152,6 +160,7 @@ bool ConfigTab::SetConfig(const Config &new_config)
   {
     active = true;
     setVisible(true);
+    setEnabled(true);
   } else {
     setVisible(false);
     setEnabled(false);
@@ -286,7 +295,7 @@ void ConfigTab::on_readButton_clicked()
 {
   Config configin;
   if (tag->GetConfig(configin)) {
-    qDebug()<< configin.DebugString();
+    //qDebug()<< QString(configin.DebugString());
     SetConfig(configin);
   }
   else {

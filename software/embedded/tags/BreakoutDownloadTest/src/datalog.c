@@ -13,6 +13,15 @@ volatile int sectors_erased NOINIT;
 
 static void fast_msi(void){
   // change to 24Mhz doesn't require VOS change
+  // Program VOS bits to "10" in PWR_CR1 register
+
+  //PWR->CR1 = (PWR->CR1 & ~(3<<9)) | (2<<9);
+
+  // Wait until VOSF flag is cleared in PWR_SR2 register
+
+ // while ((PWR->SR2 & PWR_SR2_VOSF) != 0)    /* Wait until regulator is      */
+  //
+
   // Adjust Wait States
 
   FLASH->ACR = (FLASH->ACR & ~(7)) | 3;
@@ -30,14 +39,19 @@ static void fast_msi(void){
 
 static void slow_msi(void){
 
- 
-   // Restore MSI frequency P 197 RM0394
+  // Change MSI frequency
+
+   // Change MSI frequency P 197 RM0394
 
    RCC->CR = (RCC->CR & ~(15<<4)) | (5<<4);
 
   // Adjust Wait States
 
   FLASH->ACR = FLASH->ACR & ~(7);
+
+  // Program VOS bits to "10" in PWR_CR1 register
+
+  //PWR->CR1 = (PWR->CR1 & ~(3<<9)) | (1<<9);
 
   // Restore TIM2 Prescaler
 
@@ -127,6 +141,21 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
 
   ExFlashPwrUp();
   ExFlashWrite(addr, (uint8_t *) data, &cnt);
+  /*
+  for (int i = 0; i < num; i++)
+  {
+    cnt = 2;
+    if (!ExFlashWrite(addr, (uint8_t *) &data[i], &cnt)) {
+       //ExFlashPwrDown();
+       //return LOGWRITE_ERROR;
+    }
+    //SPI1->CR1 &= ~SPI_CR1_SPE;
+    stopMilliseconds(true,2);
+    //SPI1->CR1 |= SPI_CR1_SPE;
+    addr += 2;
+    //pState->external_blocks = addr/2;
+  }
+    */
   ExFlashPwrDown();
   
   return LOGWRITE_OK;
@@ -169,7 +198,7 @@ int data_logAck(int index, Ack *ack)
 {
   int ret;
   chThdSetPriority(HIGHPRIO);
-  fast_msi();
+  //fast_msi();
   PresTagLog *data = &ack->payload.prestag_data_log;
   ack->err = Ack_Err_OK;
   
@@ -191,7 +220,7 @@ int data_logAck(int index, Ack *ack)
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
     {
       if (databuf.data[j].pressure == -1)
-        break;
+       break;
       data->data[j].pressure = lpsPressure(databuf.data[j].pressure);
       data->data[j].temperature = lpsTemperature(databuf.data[j].temperature);
       data->data_count++;
@@ -204,7 +233,7 @@ int data_logAck(int index, Ack *ack)
 
   // encode the ack and return
   ret = encode_ack();
-  slow_msi();
+  //slow_msi();
   chThdSetPriority(NORMALPRIO);
   return ret;
 }

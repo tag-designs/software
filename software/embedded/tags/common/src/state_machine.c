@@ -206,6 +206,8 @@ enum Sleep StateMachine(void)
 
   switch (pState->state)
   {
+  case TagState_TEST:
+    return SelfTest(T_CONT, State_EVENT_OK);
   case TagState_IDLE:
     return Idle(T_CONT, State_EVENT_OK);
   case TagState_CONFIGURED:
@@ -220,6 +222,8 @@ enum Sleep StateMachine(void)
     return Aborted(T_CONT, State_EVENT_OK);
   case TagState_sRESET:
     return Reset(T_CONT, State_EVENT_OK);
+  case TagState_EXCEPTION:
+    return Aborted(T_INIT, State_EVENT_EXCEPTION);
   default:
     // this is an error case and should never reach here
     return Aborted(T_INIT, State_EVENT_UNKNOWN);
@@ -288,9 +292,9 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
   }
   else
   {
-    if (sconfig.start < 0) // sanity check !
-      return Aborted(T_INIT, State_EVENT_UNKNOWN);
-    if (timestamp >= sconfig.start) // look at stored value --
+    //if (sconfig.start < 0) // sanity check !
+   //   return Aborted(T_INIT, State_EVENT_STARTTIM);
+    //if (timestamp >= sconfig.start) // look at stored value --
       return Running(T_INIT, State_EVENT_STARTTIM);
   }
   return SHUTDOWN;

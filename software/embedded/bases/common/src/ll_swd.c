@@ -98,7 +98,7 @@ static inline uint32_t SWDIO_IN(void)
 
   b = palReadLine(LINE_TGT_SWDIO);
   palSetLine(LINE_TGT_SWCLK);
-  delay(DELCNT);
+  //delay(DELCNT);
   palClearLine(LINE_TGT_SWCLK);
 
   return b;
@@ -142,21 +142,35 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
     else
       palClearLine(LINE_TGT_SWDIO);
     palSetLine(LINE_TGT_SWCLK);
-    delay(DELCNT);
+    //delay(DELCNT);
     data = data >> 1;
     palClearLine(LINE_TGT_SWCLK);
   }
 }
 
+static const bool ParityTable256[256] = 
+{
+#   define P2(n) n, n^1, n^1, n
+#   define P4(n) P2(n), P2(n^1), P2(n^1), P2(n)
+#   define P6(n) P4(n), P4(n^1), P4(n^1), P4(n)
+    P6(0), P6(1), P6(1), P6(0)
+};
+
+
 static inline uint32_t Parity(uint32_t x)
 {
   uint32_t y;
+  /*
   y = x ^ (x >> 1);
   y = y ^ (y >> 2);
   y = y ^ (y >> 4);
   y = y ^ (y >> 8);
   y = y ^ (y >> 16);
   return y & 1;
+  */
+  x ^= x>>16;
+  x ^= x>>8;
+  return ParityTable256[x&0xff];
 }
 
 static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)

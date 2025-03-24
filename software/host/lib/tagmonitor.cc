@@ -109,13 +109,13 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
   // wait for result by polling MON_REQ bit
 
-  for (i = 0; i < TIMEOUT; i++)
+  for (i = 0; i < TIMEOUT*5; i++)
   {
     if (!ReadDebug32(DEMCR, &demcr))
       log_error("read_mem failed\n");
     else if (!(demcr & MON_REQ))
       break;
-    std::this_thread::sleep_for(MS(5));
+    std::this_thread::sleep_for(MS(1));
   }
 
   // check for timeout
