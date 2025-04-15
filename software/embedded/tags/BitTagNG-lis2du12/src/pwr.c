@@ -4,7 +4,8 @@
 #include "config.h"
 #include "persistent.h"
 #include "external_flash.h"
-#include "lps.h"
+#include "board.h"
+#include "lis2du12.h"
 
 
 /*
@@ -71,8 +72,8 @@ static void spiDisable(void)
 }
 
 
-#ifdef LPS_SPI
-void lpsOn(void)
+#ifdef USE_LIS2DU12
+void accelSpiOn(void)
 {
 
   /* grab the mutex */
@@ -80,7 +81,7 @@ void lpsOn(void)
   chBSemWait(&SPImutex);
 
   //toOutput(LINE_STEVAL_PWR);
-  palSetLine(LINE_STEVAL_PWR);
+  //palSetLine(LINE_STEVAL_PWR);
 
   /* configure select line*/
 
@@ -96,53 +97,19 @@ void lpsOn(void)
   spiEnable();
 }
 
-void lpsOff(void)
+void accelSpiOff(void)
 {
   
   toAnalog(LINE_STEVAL_SCK);
   toAnalog(LINE_STEVAL_MOSI);
   toAnalog(LINE_STEVAL_MISO);
   toAnalog(LINE_STEVAL_CS);
-  palClearLine(LINE_STEVAL_PWR);
+  //palClearLine(LINE_STEVAL_PWR);
   chBSemSignal(&SPImutex);
 }
 
 #endif
 
-#if defined(USE_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
-void accelSpiOn()
-{
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-
-  /* configure select line*/
-
-  palSetLine(LINE_ACCEL_CS);
-  toOutput(LINE_ACCEL_CS);
-
-  /* configure SPI1   */
-
-  toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_ACCEL_MOSI);
-  toAlternate(LINE_ACCEL_MISO);
-
-  spiEnable();
-}
-
-void accelSpiOff()
-{
-  palSetLine(LINE_ACCEL_CS);
-  spiDisable();
-
-  //toInput(LINE_ACCEL_CS);
-  toOutput(LINE_ACCEL_SCK);
-  toOutput(LINE_ACCEL_MOSI);
-  toInput(LINE_ACCEL_MISO);
-
-  chBSemSignal(&SPImutex);
-}
-#endif
 
 
 #if defined(EXTERNAL_FLASH)
@@ -227,17 +194,17 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);  
 
-  // Pull up CS on ACCEL
-
-#ifdef LINE_ACCEL_CS
-  enableLinePullup(LINE_ACCEL_CS);
-#endif
 
 #ifdef EXTERNAL_FLASH
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
+#endif
+
+#ifdef USE_LIS2DU12
+  enableLinePulldown(LINE_STEVAL_SCK);
+  enableLinePulldown(LINE_STEVAL_MOSI);
 #endif
 
   // Pull up SCL and SDA on RTC

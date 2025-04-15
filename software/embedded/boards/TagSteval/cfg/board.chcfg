@@ -123,10 +123,10 @@
         PinLock="Disabled" />
       <pin10
         ID="STEVAL_SDA"
-        Type="OpenDrain"
+        Type="PushPull"
         Level="High"
         Speed="Maximum"
-        Resistor="PullUp"
+        Resistor="Floating"
         Mode="Analog"
         Alternate="0"
         AnalogSwitch="Disabled"

@@ -112,6 +112,10 @@ void deviceInit(int force)
     accelSpiOff();
 #endif
 
+#if defined(USE_LIS2DU12)
+    lis2du12_deinit();
+#endif
+
     // turn off all alarms
 
     disableAllAlarms();

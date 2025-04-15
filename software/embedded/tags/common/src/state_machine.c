@@ -315,6 +315,9 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     ADXL367_SoftwareReset();
     accelSpiOff();
 #endif
+#if defined(USE_LIS2DU12)
+    lis2du12_deinit();
+#endif
     pState->state = TagState_HIBERNATING;
     recordState(reason);
     // set 1 hour wakeup interval
