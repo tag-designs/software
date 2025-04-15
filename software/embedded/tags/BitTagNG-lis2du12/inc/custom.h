@@ -11,6 +11,6 @@
 #endif
 
 #define LINE_ACCEL_CS LINE_STEVAL_CS
-#define LINE_ACCEL_INT LINE_INT2
+#define LINE_ACCEL_INT LINE_INT1
 
 extern volatile int sectors_erased;

@@ -44,17 +44,17 @@
       <pin2
         ID="INT1"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Low"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Input"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin3
-        ID=""
+        ID="TEST"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="High"
         Resistor="Floating"
         Mode="Analog"

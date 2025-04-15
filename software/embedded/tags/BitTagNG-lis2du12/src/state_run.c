@@ -108,7 +108,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   else
   {
 
-
     uint32_t activity = pState->activity;
     int32_t lastwrite = pState->lastwrite;
     //int32_t lastwakeup = pState->lastwakeup;
