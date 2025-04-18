@@ -405,9 +405,9 @@ void MainWindow::on_pb_load_clicked()
         ui->frameGraphMin->setVisible(true);
         ui->frameGraphMax->setVisible(true);
 
-        ui->frameRange->setVisible(false);
+        ui->gb_GraphRange->setVisible(false);
         ui->gb_activityfilter->setVisible(false);
-        ui->frame_filterparams->setVisible(false);
+        ui->gb_filterparams->setVisible(false);
         ui->tab_actogram->setVisible(false);
         ui->cb_altitude->setVisible(true);
 
@@ -422,9 +422,9 @@ void MainWindow::on_pb_load_clicked()
         ui->activityRange->setMaximum(105);
         ui->activityRange->setMaximum(100);
         //ui->activityRange->setEnabled(true);
-        ui->frameRange->setVisible(true);
+        ui->gb_GraphRange->setVisible(true);
         ui->gb_activityfilter->setVisible(true);
-        ui->frame_filterparams->setVisible(true);
+        ui->gb_filterparams->setVisible(true);
         ui->tab_actogram->setVisible(true);
         ui->cb_altitude->setVisible(false);
         //ui->graphMax->setEnabled(false);
