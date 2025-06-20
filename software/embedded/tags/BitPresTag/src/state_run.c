@@ -1,0 +1,155 @@
+#include "hal.h"
+#include <limits.h>
+#include "app.h"
+
+#include "tag.pb.h"
+#include "config.h"
+#include "persistent.h"
+#include "datalog.h"
+#include "lps.h"
+
+enum Sleep Running(enum StateTrans t, State_Event reason)
+{
+  int16_t temp10;
+  uint16_t vdd100;
+  if (t == T_ERROR)
+  { 
+    // recovery code for brownout here?
+    return Aborted(T_INIT, reason);
+  }
+
+  if (t == T_INIT)
+  {
+    // initialize the persistent state
+    pState->state = TagState_RUNNING;
+    recordState(reason);
+    // make sure we're pointing to the next data block in case
+    // this is a recovery action -- round up in the case of partial blocks
+    // written
+    int remainder = pState->external_blocks % (sizeof(t_DataLog) / 2);
+    if (remainder)
+      pState->external_blocks = pState->external_blocks + sizeof(t_DataLog) / 2 - remainder;
+      // need to recover internal block start
+    adcVDD(&vdd100, &temp10);
+
+    pState->vdd100 = vdd100;
+    pState->temp10 = vdd100;//temp10;
+
+    // Start the interval timer
+    disableAllAlarms();
+    disableTicker();
+    enableTicker(sconfig.lps_period > 0 ? sconfig.lps_period : 1);
+  }
+  else
+  {
+
+    // check for completion
+
+    if (sconfig.stop < timestamp)
+    {
+      return Finished(T_INIT, State_EVENT_ENDTIM);
+    }
+
+    //
+    // Check for hibernation
+    //     Only hibernate on datalog block boundary.
+
+    for (size_t i = 0; i < sizeof(sconfig.hibernate) / sizeof(Config_Interval); i++)
+    {
+      if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
+          (timestamp < sconfig.hibernate[i].end_epoch) &&
+          (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0))
+      {
+        return Hibernating(T_INIT, State_EVENT_STARTHIB);
+      }
+    }
+
+    // update temperature/voltage
+
+    adcVDD(&vdd100, &temp10);
+    //pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
+    pState->vdd100 = (pState->vdd100 * 3 + vdd100)/ 4;
+
+    // check for battery exhausted
+
+    /*
+    if ((pState->vdd100) < 200)
+    {
+      //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+    }
+    */
+
+    // wakeup timer event ?
+
+    if (events & EVT_RTC_WUTF)
+    {
+      enum LOGERR err = LOGWRITE_OK;
+
+      struct{
+        int16_t pressure;
+        int16_t temperature;
+      } datablock;
+
+      lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
+      t_DataHeader dataheader;
+
+      if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))
+      {
+        pState->temp10 = pState->vdd100;
+      }
+
+      if ((pState->external_blocks % (DATALOG_SAMPLES)) == 0)
+      {
+        
+        dataheader.epoch = timestamp;
+        dataheader.vdd100[0] = pState->vdd100;
+        dataheader.vdd100[1] = pState->temp10;
+        err = writeDataHeader(&dataheader);
+        stopMilliseconds(false,2);
+       
+        switch (err)
+        {
+        case LOGWRITE_FULL:
+        case LOGWRITE_ERROR:
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case LOGWRITE_BAT:  //redundant?
+          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        default:
+          break;
+        }
+      }
+
+      // write data 
+
+      err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+      switch (err)
+      {
+      case LOGWRITE_FULL:
+      case LOGWRITE_ERROR:
+        return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      case LOGWRITE_BAT:  //redundant?
+        //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+      default:
+        break;
+      }
+    
+      pState->external_blocks += 1;
+
+      // check error return
+      /*
+      switch (err)
+      {
+      case LOGWRITE_FULL:
+      case LOGWRITE_ERROR:
+        return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      default:
+        break;
+      }
+      */  
+    }
+  }
+  if (sconfig.lps_period < 10)
+    return STOP2;
+  else
+    return STANDBY;
+}

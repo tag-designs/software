@@ -38,7 +38,7 @@ int lps27_SetReg(enum LPS27_Reg reg, unsigned char *val, int num)
 #endif
 
 #if defined(LPS_SPI) && defined(USE_LPS27)
-static inline void spiSendPolled(uint32_t n, uint8_t *buf)
+static inline void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
   while (n--)
@@ -50,7 +50,7 @@ static inline void spiSendPolled(uint32_t n, uint8_t *buf)
   }
 }
 
-static inline void spiReceivePolled(uint32_t n, uint8_t *buf)
+static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
   while (n--)
@@ -62,13 +62,43 @@ static inline void spiReceivePolled(uint32_t n, uint8_t *buf)
   }
 }
 
+#endif
+
+#if defined(LPS_USART) && defined(USE_LPS27)
+static inline void SendPolled(uint32_t n, uint8_t *buf)
+{
+  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
+  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
+  while (n--)
+  {
+    *tdr = *buf++;
+    while ((USART2->ISR & USART_ISR_RXNE) == 0)
+      ;
+    *rdr;
+  }
+}
+
+static inline void ReceivePolled(uint32_t n, uint8_t *buf)
+{
+  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
+  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
+  while (n--)
+  {
+    *tdr = 0xff;
+     while ((USART2->ISR & USART_ISR_RXNE) == 0)
+      ;
+    *buf++ = *rdr;
+  }
+}
+#endif
+
 void lps27_SetReg(enum LPS27_Reg reg, uint8_t *val, int num)
 {
   unsigned char buffer = ((uint8_t)reg);
 
   palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiSendPolled(num, val);
+  SendPolled(1, &buffer);
+  SendPolled(num, val);
   palSetLine(LINE_STEVAL_CS);
 }
 
@@ -76,12 +106,12 @@ void lps27_GetReg(enum LPS27_Reg reg, uint8_t *val, int num)
 {
   unsigned char buffer = 0x80 | ((uint8_t)reg);
   palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiReceivePolled(num, val);
+  SendPolled(1, &buffer);
+  ReceivePolled(num, val);
   palSetLine(LINE_STEVAL_CS);
 }
 
-#endif
+#
 
 static inline void sleepMS(int ms) {
 #if defined(LPS_SPI)
