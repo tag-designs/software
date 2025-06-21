@@ -2,7 +2,7 @@
 Config.hibernate max_count:2
 #BitTagLog.data max_count:30
 BitTagLog skip_message:true
-BitTagNGLog skip_message:true
+#BitTagNGLog skip_message:true
 TagInfo.board_desc max_size:60
 TagInfo.uuid max_size:30
 TagInfo.firmware max_size:60
@@ -14,7 +14,9 @@ PresTagLog.data max_count:60
 Adxl362 skip_message:true
 Config.adxl362 type:FT_IGNORE
 BitTagData skip_message:true
-BitTagNgLog skip_message:true
+#BitTagNgLog skip_message:true
 PresTagRawLog.data max_count:15
 PT_RAW.samples max_size:240
+BitPresTagLog skip_message:true
+#BitPresTagLog.data max_count:12
 

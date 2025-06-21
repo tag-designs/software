@@ -1,7 +1,7 @@
 * long_names:false
 Config.hibernate max_count:2
 BitTagLog.data max_count:30
-TagInfo.monitor max_size:60
+#TagInfo.monitor max_size:60
 TagInfo.board_desc max_size:60
 TagInfo.uuid max_size:30
 TagInfo.firmware max_size:60
@@ -10,5 +10,7 @@ TagInfo.githash max_size:30
 TagInfo.build_time max_size:30
 TagInfo.source_path max_size:100
 PresTagLogFmt skip_message:true
-PresTagLog.pressure max_count:124
+#PresTagLog.pressure max_count:124
 BitTagNgLog skip_message:true
+BitPresTagLog skip_message:true
+#BitPresTagLog.data max_count:12

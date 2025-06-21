@@ -15,3 +15,4 @@ PresTagLog.pressure max_count:124
 PresTagLog skip_message:true
 Config.prestag_log type:FT_IGNORE
 BitTagLog skip_message:true
+BitPresTagLog skip_message:true

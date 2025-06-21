@@ -5,6 +5,7 @@ enum TagType {
   BITTAG = 1;
   PRESTAG = 3;
   BITTAGNG = 7;
+  BITPRESTAG = 8;
 }
 
 message TagInfo {
@@ -173,6 +174,18 @@ message PresTagLog {
   repeated PT data = 4;
 }
 
+message BitPresTagLog{
+  message BPT {
+    fixed32 activity = 1;
+    float temperature = 2;
+    float pressure = 3;
+  }
+  int32 epoch = 1;
+  float voltage  = 2;
+  float temperature = 3;
+  repeated BPT data = 4;
+}
+
 message PT_RAW {
     int32 epoch = 1;
     float voltage = 2;
@@ -185,6 +198,4 @@ message PresTagRawLog {
   float pres_constant = 2;
   repeated PT_RAW data = 3;
 }
-
-
 

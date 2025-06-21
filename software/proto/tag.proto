@@ -74,6 +74,7 @@ message Ack {
     PresTagLog prestag_data_log = 8;
     PresTagRawLog prestag_raw_data_log = 9;
     BitTagNgLog bittag_ng_data_log = 12;
+    BitPresTagLog bitprestag_data_log = 10;
 
     // Flash Memory operation
     //   Write returns count with empty bytes
