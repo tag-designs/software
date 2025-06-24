@@ -3,7 +3,7 @@
 
 // Stored Configuration
 
-#define TAG_TYPE PRESTAG
+#define TAG_TYPE BITPRESTAG
 
 typedef struct {
   int32_t start_epoch;
@@ -12,11 +12,15 @@ typedef struct {
 
 typedef struct
 {
+  uint16_t adxl_act_thresh_cnt;
+  uint16_t adxl_inact_thresh_cnt;
+  uint16_t adxl_inactive_samples;
+  uint8_t  adxl_filter_range_rate;
+  uint8_t  fill1;
   int32_t  start;
   int32_t  stop;
   hibernate_t hibernate[2];
-  uint32_t lps_period;
-  bool internal;
+  //bool internal;
 } t_storedconfig __attribute__ ((aligned (8)));
 
 extern t_storedconfig sconfig;

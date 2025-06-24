@@ -304,13 +304,45 @@ void godown(enum Sleep sleepmode)
 
   //enableLinePulldown(LINE_STEVAL_PWR);
 
-  // turn on pullups
+   // Disable wakeup source 4  why ?
 
-  SET_BIT(PWR->CR3, PWR_CR3_APC);
+   CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk);
+
+   // should disable PWR_EIWF_Msk  also ?   | PWR_CR3_EIWF_Msk
+   // clear alarm flag ?
+   // clear PWR_FLAG_WU ?
+   // https://cpp.hotexamples.com/examples/-/-/HAL_PWR_EnterSTANDBYMode/cpp-hal_pwr_enterstandbymode-function-examples.html
+ 
+   // set wakeup edge
+ 
+ #if defined(LINE_ACCEL_INT)
+   if (isActive)
+   {
+     SET_BIT(PWR->CR4, PWR_CR4_WP4); // falling edge detect
+   }
+   else
+   {
+     CLEAR_BIT(PWR->CR4, PWR_CR4_WP4); // rising edge detect
+   }
+ 
+   // enable wakeup on adxl input only in running state
+ 
+   if (pState->state == RUNNING)
+   {
+     SET_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk | PWR_CR3_EIWF_Msk);
+     // if adxl input has changed since read, don't sleep
+     if (isActive != palReadLine(LINE_ACCEL_INT))
+       return;
+   }
+   else
+   {
+     SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+   }
+ #else
+   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+ #endif
 
   // Enable internal wakeup source and set low power mode
-
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
 
   // Set SLEEPDEEP bit of Cortex System Control Register

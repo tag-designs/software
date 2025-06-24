@@ -170,7 +170,7 @@ int data_logAck(int index, Ack *ack)
   int ret;
   chThdSetPriority(HIGHPRIO);
   fast_msi();
-  PresTagLog *data = &ack->payload.prestag_data_log;
+  BitPresTagLog *data = &ack->payload.bitprestag_data_log;
   ack->err = Ack_Err_OK;
   
   // read data
@@ -182,7 +182,7 @@ int data_logAck(int index, Ack *ack)
 
   if (vddHeader[index].epoch != -1)
   {
-    ack->which_payload = Ack_prestag_data_log_tag;
+    ack->which_payload = Ack_bitprestag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100[0] * 0.01f;
     data->temperature = vddHeader[index].vdd100[1] * 0.01f;

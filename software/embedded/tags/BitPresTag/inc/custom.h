@@ -3,9 +3,9 @@
 
 #define EXT_FLASH_SIZE (1024 * 1024 * 4)
 
-#define FIRMWARE_STRING "PresTagv4, Firmware version 1"
+#define FIRMWARE_STRING "BitPresTagv4, Firmware version 1"
 #undef  BOARD_NAME
-#define BOARD_NAME "PresTagv3"
+#define BOARD_NAME "BitPresTagv1"
 #define RV3028_RTC TRUE
 #define LPS_USART TRUE
 #define LPS_LOW_POWER FALSE
@@ -17,5 +17,6 @@
 
 extern volatile int sectors_erased;
 #define LINE_STEVAL_CS LINE_LPS_CS
+#define LINE_ACCEL_INT LINE_WKUP1
 
 #endif

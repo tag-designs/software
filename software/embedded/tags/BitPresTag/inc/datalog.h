@@ -3,9 +3,10 @@
 
 // Stored Data Log -- in external memory
 
-#define DATALOG_SAMPLES 60
+#define DATALOG_SAMPLES 12
 typedef struct {
   struct {
+    uint32_t activity;
     int16_t pressure;
     int16_t temperature;
   } data[DATALOG_SAMPLES];
