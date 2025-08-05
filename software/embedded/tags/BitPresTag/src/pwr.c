@@ -293,6 +293,7 @@ void godown(enum Sleep sleepmode)
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
+ // enableLinePulldown(LINE_FLASH_MISO);
 #endif
 
   // Pull up SCL and SDA on RTC
@@ -304,9 +305,11 @@ void godown(enum Sleep sleepmode)
 
   //enableLinePulldown(LINE_STEVAL_PWR);
 
-   // Disable wakeup source 4  why ?
+   // Disable wakeup source 1  why ?
 
-   CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk);
+   PWR->CR3 = 0x8000;  // reset wakeup register
+
+   //CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP1_Msk);
 
    // should disable PWR_EIWF_Msk  also ?   | PWR_CR3_EIWF_Msk
    // clear alarm flag ?
@@ -318,18 +321,18 @@ void godown(enum Sleep sleepmode)
  #if defined(LINE_ACCEL_INT)
    if (isActive)
    {
-     SET_BIT(PWR->CR4, PWR_CR4_WP4); // falling edge detect
+     SET_BIT(PWR->CR4, PWR_CR4_WP1); // falling edge detect
    }
    else
    {
-     CLEAR_BIT(PWR->CR4, PWR_CR4_WP4); // rising edge detect
+     CLEAR_BIT(PWR->CR4, PWR_CR4_WP1); // rising edge detect
    }
  
    // enable wakeup on adxl input only in running state
  
    if (pState->state == RUNNING)
    {
-     SET_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk | PWR_CR3_EIWF_Msk);
+     SET_BIT(PWR->CR3, PWR_CR3_EWUP1_Msk | PWR_CR3_EIWF_Msk);
      // if adxl input has changed since read, don't sleep
      if (isActive != palReadLine(LINE_ACCEL_INT))
        return;
@@ -341,6 +344,10 @@ void godown(enum Sleep sleepmode)
  #else
    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
  #endif
+
+ // turn on pullups/pulldowns
+
+ SET_BIT(PWR->CR3, PWR_CR3_APC);
 
   // Enable internal wakeup source and set low power mode
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
