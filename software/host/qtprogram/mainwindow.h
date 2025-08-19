@@ -68,6 +68,8 @@ private slots:
   void on_programButton_clicked();    // program tag
   void on_fileSelectButton_clicked(); // select file to program
   void on_toolSelectButton_clicked(); // select programming tool
+  void on_connectButton_clicked();
+  void on_disconnectButton_clicked();
 
 
   // Programming helpers

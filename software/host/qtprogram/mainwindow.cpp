@@ -150,6 +150,9 @@ bool MainWindow::Attach()
 
    // fill information table
 
+    ui.StatusGroup->setEnabled(true);
+    ui.TagInformation->setEnabled(true);
+
     ui.info_tagtype->setText(
         QString::fromStdString(TagType_Name(info.tag_type())));
     ui.info_firmware->setText(QString::fromStdString(info.firmware()));
@@ -159,6 +162,8 @@ bool MainWindow::Attach()
     external_flash_size=info.extflashsz();
     // start the StateUpdate timer
     
+    ui.connectButton->setEnabled(false);
+    ui.disconnectButton->setEnabled(true);
     TriggerUpdate();
     timer.start(400);
     return true;
@@ -171,6 +176,10 @@ void MainWindow::Detach()
 {
   timer.stop();
   tag.Detach();
+  ui.connectButton->setEnabled(true);
+  ui.disconnectButton->setEnabled(false);
+  ui.StatusGroup->setEnabled(false);
+  ui.TagInformation->setEnabled(false);
 }
 
 // While tag is attached, this
@@ -449,4 +458,11 @@ void MainWindow::processOutput(){
   QStringList lines = output.split('\n', Qt::SkipEmptyParts);
   s_textEdit->append(lines.join('\n'));
   //qInfo().noquote() << output;;  / read error channel 
+}
+
+void MainWindow::on_connectButton_clicked(){
+  Attach();
+}
+void MainWindow::on_disconnectButton_clicked(){
+  Detach();
 }
