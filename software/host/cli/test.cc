@@ -74,7 +74,9 @@ int main(int argc, char **argv)
     tag.GetTagInfo(info);
 
     // Write  Tag Information
+    
 
+    std::cout << "Tag Type: " << info.tag_type() <<std::endl;
     std::cout << "Board name: " << info.board_desc() << std::endl;
     std::cout << "Build time and date: " << info.build_time() << std::endl;
     std::cout << "Internal Flash size: " << info.intflashsz() << "kb" << std::endl;

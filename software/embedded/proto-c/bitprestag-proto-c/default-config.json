@@ -1,5 +1,5 @@
 {
- "tag_type": "BITTAG",
+ "tag_type": "BITPRESTAG",
  "active_interval": {
   "start_epoch": 0,
   "end_epoch": 2147483647

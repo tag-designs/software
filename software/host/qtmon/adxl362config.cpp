@@ -168,6 +168,7 @@ bool Adxl362Config::GetConfig(Config &config)
 
   switch (config.tag_type()) {
     case BITTAG:
+    case BITPRESTAG:
       id = filter_->checkedId();
       if (Adxl362_Aa_IsValid(id)) {
           adxl.set_filter((Adxl362_Aa)id);
@@ -222,6 +223,7 @@ bool Adxl362Config::SetConfig(const Config &config)
 
   switch(config.tag_type()) {
     case BITTAG:
+    case BITPRESTAG:
       filter_->setCheckedId((int)adxl.filter());
       filter_->setVisible(true);
       sample_rate_->setCheckedId((int)adxl.freq());
@@ -261,7 +263,7 @@ bool Adxl362Config::SetConfig(const Config &config)
   // adxl362 threshold
 
   act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
-  if (config.tag_type() == BITTAG){
+  if ((config.tag_type() == BITTAG) || (config.tag_type() == BITPRESTAG)){
      inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
   }
   active = true;

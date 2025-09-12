@@ -101,6 +101,11 @@ void Download::worker(){
                 emit downloadFinished();
                 cancel();
                 return;
+            } else if (len == -2) {
+                downloadError("no log message");
+                emit downloadFinished();
+                cancel();
+                return;   
             } else {
                 cnt += len;
          

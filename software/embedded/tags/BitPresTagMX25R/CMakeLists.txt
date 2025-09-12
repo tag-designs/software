@@ -1,0 +1,3 @@
+
+add_embedded_target(BitPresTagMX25R bitprestag_proto)
+add_dependencies(BitPresTagMX25R board-bitprestag)
