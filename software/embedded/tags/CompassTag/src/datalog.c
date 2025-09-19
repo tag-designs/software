@@ -1,5 +1,4 @@
 #include "app.h"
-#include "lps.h"
 #include "datalog.h"
 #include <tag.pb.h>
 #include "persistent.h"
@@ -170,7 +169,7 @@ int data_logAck(int index, Ack *ack)
   int ret;
   chThdSetPriority(HIGHPRIO);
   fast_msi();
-  BitPresTagLog *data = &ack->payload.bitprestag_data_log;
+  CompassTagLog *data = &ack->payload.compasstag_data_log;
   ack->err = Ack_Err_OK;
   
   // read data
@@ -180,12 +179,12 @@ int data_logAck(int index, Ack *ack)
 
   if (vddHeader[index].epoch != -1)
   {
-    ack->which_payload = Ack_bitprestag_data_log_tag;
+    ack->which_payload = Ack_compasstag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100[0] * 0.01f;
     data->temperature = vddHeader[index].vdd100[1] * 0.01f;
     data->data_count = 0;
-
+/*
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
     {
       if (databuf.data[j].pressure == -1)
@@ -195,6 +194,7 @@ int data_logAck(int index, Ack *ack)
       data->data[j].temperature = lpsTemperature(databuf.data[j].temperature);
       data->data_count++;
     }
+      */
   }
   else
   {

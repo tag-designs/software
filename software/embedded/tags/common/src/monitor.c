@@ -124,6 +124,11 @@ static int statusAck(void)
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
+#ifdef SENSOR_CALIBRATION
+  if (pState->state == TagState_CALIBRATE) {
+    ack.payload.status.has_sensors = sensorSample(&ack.payload.status.sensors);
+  }
+#endif
 
   return encode_ack();
 }
@@ -290,6 +295,11 @@ int proto_eval(int len)
     }
     // Unimplemented request
 
+#ifdef SENSOR_CALIBRATION
+  case Req_calibrate_tag:
+    chEvtSignal(tpMain, EVT_CALIBRATE);
+    return errAck(Ack_OK);
+#endif
   default:
     return errAck(Ack_Err_PERM);
   }

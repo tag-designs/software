@@ -54,6 +54,7 @@ bool isActive = false;
 static enum Sleep Reset(enum StateTrans, State_Event);
 static enum Sleep Idle(enum StateTrans, State_Event);
 static enum Sleep SelfTest(enum StateTrans, State_Event);
+static enum Sleep Calibrate(enum StateTrans, State_Event);
 
 /*******************************************************************
  *   State machine provides tag execution logic
@@ -191,6 +192,10 @@ enum Sleep StateMachine(void)
     {
       return Finished(T_INIT, State_EVENT_STOPCMD);
     }
+    if (pState->state == TagState_CALIBRATE)
+    {
+      return Idle(T_INIT, State_EVENT_OK);
+    }
   }
   if (events & EVT_RESET)
   {
@@ -199,6 +204,13 @@ enum Sleep StateMachine(void)
         (pState->state == TagState_sRESET))
     {
       return Reset(T_INIT, State_EVENT_RESETCMD);
+    }
+  }
+  if (events & EVT_CALIBRATE)
+  {
+    if (pState->state == TagState_IDLE)
+    {
+      return Calibrate(T_INIT, State_EVENT_OK);
     }
   }
 
@@ -224,6 +236,11 @@ enum Sleep StateMachine(void)
     return Reset(T_CONT, State_EVENT_OK);
   case TagState_EXCEPTION:
     return Aborted(T_INIT, State_EVENT_EXCEPTION);
+#ifdef SENSOR_CALIBRATION
+  case TagState_CALIBRATE:
+    return Calibrate(T_CONT, State_EVENT_OK);
+#endif
+
   default:
     // this is an error case and should never reach here
     return Aborted(T_INIT, State_EVENT_UNKNOWN);
@@ -316,7 +333,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     accelSpiOff();
 #endif
 #if defined(USE_LIS2DU12)
-    lis2du12_deinit();
+    accelDeinit();
 #endif
     pState->state = TagState_HIBERNATING;
     recordState(reason);
@@ -381,3 +398,25 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   }
   return Idle(T_INIT, State_EVENT_OK);
 }
+
+#ifdef SENSOR_CALIBRATION
+static enum Sleep Calibrate(enum StateTrans t, State_Event reason)
+{
+  (void)reason;
+
+  if (t == T_INIT)
+  {
+    initSensors();
+    // start sensors
+    pState->state = TagState_CALIBRATE;
+  }
+  if (MONCONNECTED)
+    return SHUTDOWN;
+  else
+  {
+    // shutdown sensors
+    deinitSensors();
+    return  Idle(T_INIT, State_EVENT_OK);
+  }
+}
+#endif

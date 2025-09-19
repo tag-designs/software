@@ -63,7 +63,8 @@ typedef enum
 #define MD2_CFG_INT2_SLEEP_CHANGE (1<<7)
 
 
-static void spiSendPolled(uint32_t n, uint8_t *buf)
+#if defined(ACCEL_USE_SPI)
+static void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
   while (n--)
@@ -75,7 +76,7 @@ static void spiSendPolled(uint32_t n, uint8_t *buf)
   }
 }
 
-static void spiReceivePolled(uint32_t n, uint8_t *buf)
+static void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
   while (n--)
@@ -87,74 +88,124 @@ static void spiReceivePolled(uint32_t n, uint8_t *buf)
   }
 }
 
+#endif
+
+#if defined(ACCEL_USART)
+static inline void SendPolled(uint32_t n, uint8_t *buf)
+{
+  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
+  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
+  while (n--)
+  {
+    *tdr = *buf++;
+    while ((USART2->ISR & USART_ISR_RXNE) == 0)
+      ;
+    *rdr;
+  }
+}
+
+static inline void ReceivePolled(uint32_t n, uint8_t *buf)
+{
+  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
+  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
+  while (n--)
+  {
+    *tdr = 0xff;
+     while ((USART2->ISR & USART_ISR_RXNE) == 0)
+      ;
+    *buf++ = *rdr;
+  }
+}
+#endif
+
 static int32_t LIS2DU12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
-  unsigned char buffer = ((uint8_t)reg);
+  uint8_t buffer = ((uint8_t)reg);
   palClearLine(LINE_ACCEL_CS);
-  spiSendPolled(1, &buffer);
-  spiSendPolled(len, bufp);
+  SendPolled(1, &buffer);
+  SendPolled(len, bufp);
   palSetLine(LINE_ACCEL_CS);
   return 0;
+}
+
+static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
+{
+  uint8_t buffer[2] = {reg,val};
+  palClearLine(LINE_ACCEL_CS);
+  SendPolled(2,&buffer);
+  palSetLine(LINE_ACCEL_CS);
 }
 
 static int32_t LIS2DU12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   unsigned char buffer = 0x80 | reg;
   palClearLine(LINE_ACCEL_CS);
-  spiSendPolled(1, &buffer);
-  spiReceivePolled(len, bufp);
+  SendPolled(1, &buffer);
+  ReceivePolled(len, bufp);
   palSetLine(LINE_ACCEL_CS);
   return 0;
 }
 
-static inline int32_t lis2_reg_write(uint8_t regnum, uint8_t val)
-{
-  return LIS2DU12_write(regnum, &val, 1);
-}
+
 /*
 void lis2du12_init(bool lpf)
 {
   accelSpiOn();
   // set block data update, automatic register increment, turn off cs pullup, turn off i2c interface
-  lis2_reg_write(LIS2DU12_CTRL2, (15 << 1));
+  LIS2DU12_write(LIS2DU12_CTRL2, (15 << 1));
   // Set full scale, lpf, filter odr/20
   if (lpf)
   {
     // lpf output
-    lis2_reg_write(LIS2DU12_CTRL6, (3 << 6));
+    LIS2DU12_write(LIS2DU12_CTRL6, (3 << 6));
   }
   else
   {
     // hpf output
-    lis2_reg_write(LIS2DU12_CTRL6, (3 << 6) | (1 << 3));
+    LIS2DU12_write(LIS2DU12_CTRL6, (3 << 6) | (1 << 3));
   }
   // set odr (25hz), operating mode (continuous), power mode 2 //4
-  lis2_reg_write(LIS2DU12_CTRL1, (3 << 4) | 1); //3
+  LIS2DU12_write(LIS2DU12_CTRL1, (3 << 4) | 1); //3
   accelSpiOff();
 }
   */
 
-void lis2du12_deinit(void)
+void accelDeinit(void)
 {
   // soft reset
-  accelSpiOn();
-  lis2_reg_write(LIS2DU12_CTRL5, (0));  /* power down */
-  lis2_reg_write(LIS2DU12_CTRL1,0x20U); /* reset */
-  accelSpiOff();
+  accelOn();
+  LIS2DU12_write_byte(LIS2DU12_CTRL5, (0));  /* power down */
+  LIS2DU12_write_byte(LIS2DU12_CTRL1,0x20U); /* reset */
+  accelOff();
 }
 
-void lis2du12_init(void)
+void accelInit(void)
 {
   /* send sleep state on pin, so activity bit is reversed */
-  accelSpiOn();
-  lis2_reg_write(LIS2DU12_CTRL1, 0x17U);
-  lis2_reg_write(LIS2DU12_CTRL4, 0xA0U);
-  lis2_reg_write(LIS2DU12_INTERRUPT_CFG,0x1U); /* was 0x09???*/
-  lis2_reg_write(LIS2DU12_WAKE_UP_DUR, 0x42U);
-  lis2_reg_write(LIS2DU12_WAKE_UP_THS,0x42U);
-  lis2_reg_write(LIS2DU12_MD1_CFG,0x20U); /* was 0x80U*/
-  lis2_reg_write(LIS2DU12_CTRL5, 0x20U);
-  accelSpiOff();
+  accelOn();
+  LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x17U); // ADD_INC, Wkup x,y,z
+  LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
+  LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
+  LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, 0x20U); // was 42 
+  LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U); 
+  LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin
+  LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
+  accelOff();
+}
+
+bool accelSample(uint8_t *data)
+{
+  uint8_t status;
+  bool res = false;
+  accelOn();
+  LIS2DU12_read(LIS2DU12_STATUS, &status, 1);
+  if (status & 1){
+    LIS2DU12_read(LIS2DU12_OUT_X_L,data,6);
+    res = true;
+  }
+
+  accelOff();
+  return res;
 }
 
 /*
@@ -177,10 +228,10 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   // read low-pass samples
   LIS2DU12_read(LIS2DU12_OUT_X_L, (uint8_t *)orientation, 6);
   // switch filter path
-  lis2_reg_write(LIS2DU12_CTRL6, (3 << 6) | (1 << 3));
+  LIS2DU12_write(LIS2DU12_CTRL6, (3 << 6) | (1 << 3));
 
   // switch to fifo mode and then sleep
-  lis2_reg_write(LIS2DU12_FIFO_CTRL, 6 << 5 | 31);
+  LIS2DU12_write(LIS2DU12_FIFO_CTRL, 6 << 5 | 31);
 
   //SPI1->CR1 &= ~SPI_CR1_SPE;
   stopMilliseconds(true,(samples + 5) * 1000 / odr);
@@ -206,10 +257,10 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 }
   */
 
-bool lis2du12_test(void) {
+bool accelTest(void) {
   uint8_t val;
-  accelSpiOn();
+  accelOn();
   LIS2DU12_read(LIS2DU12_WHO_AM_I,&val, 1);
-  accelSpiOff();
+  accelOff();
   return val == LIS2DU12_ID;
 }

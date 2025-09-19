@@ -4,7 +4,7 @@
 #define MX25R_MANUFACTURE_ID                  ((uint8_t) 0xC2)
 #define MX25R_MEMORY_TYPE_ID                  ((uint8_t) 0x28)
 #define MX25R_MEMORY_TYPE                     (DID[0])
-#define MX25R_SIZE (DID)                      (1<<(DID[1])
+
 #define MX25R_SECTOR_SIZE                     (4096)
 #define MX25R_SIZE                            (0x17)
 

@@ -35,10 +35,10 @@
 [/#if]
 # List of all the board related files.
 
-BOARDSRC = $(BOARDDIR)/BitPresTagv1/board.c
+BOARDSRC = $(BOARDDIR)/CompassTagv1/board.c
 
 # Required include directories
-BOARDINC = $(BOARDDIR)/BitPresTagv1/
+BOARDINC = $(BOARDDIR)/CompassTagv1/
 
 # Shared variables
 ALLCSRC += $(BOARDSRC)

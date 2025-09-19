@@ -6,44 +6,14 @@
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
-#include "lps.h"
-#include "ADXL362.h"
+
 
 static const int32_t sample_period = 300;
 static const int32_t chunk_period = 60;
 static const int32_t chunk_number = 5;
 static const int32_t chunk_bits = 6;
 
-static void adxl362_init(void)
-{
-  // set up ADXL and alarm
 
-  accelSpiOn();
-  ADXL362_SetRegisterValue(0, ADXL362_REG_POWER_CTL, 1);
-
-  // set adxl filter;
-
-  ADXL362_SetRegisterValue(sconfig.adxl_filter_range_rate,
-                           ADXL362_REG_FILTER_CTL, 1);
-  // set adxl activity detection
-
-  ADXL362_SetupActivityDetection(1, sconfig.adxl_act_thresh_cnt, 2);
-
-  // set adxl inactivity detection
-
-  ADXL362_SetupInactivityDetection(1, sconfig.adxl_inact_thresh_cnt, sconfig.adxl_inactive_samples);
-
-  // ADXL362_SetupInactivityDetection(1, ACTIVE_THRESH,INACTIVE_TIME);
-
-  ADXL362_SetRegisterValue(0x3F, ADXL362_REG_ACT_INACT_CTL, 1);
-
-  // interrupt -- caused by AWAKE going active
-  ADXL362_SetRegisterValue(ADXL362_INTMAP2_AWAKE, ADXL362_REG_INTMAP2, 1);
-  // power
-  ADXL362_SetRegisterValue(2 | ADXL362_POWER_CTL_AUTOSLEEP,
-                           ADXL362_REG_POWER_CTL, 1);
-  accelSpiOff();
-}
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
@@ -96,7 +66,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->state = TagState_RUNNING;
     recordState(reason);
 
-    adxl362_init();
+   
 
     // Start the interval timer
 
@@ -162,14 +132,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         int16_t temperature;
       } datablock;
 
-      lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
+      //lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
       //datablock.pressure = SHRT_MIN;
       //datablock.temperature = SHRT_MAX;
       datablock.activity = activity;
       activity = 0;
 
       // write data 
-
+      /*
       err = writeDataLog((uint16_t *)&datablock.activity, sizeof(datablock)/2);
       switch (err)
       {
@@ -180,7 +150,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         //return Finished(T_INIT, State_EVENT_LOWBATTERY);
       default:
         break;
-      }
+      }*/
 
       pState->external_blocks += 1;
 

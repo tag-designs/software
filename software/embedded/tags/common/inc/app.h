@@ -176,7 +176,8 @@ extern eventmask_t events;
 #define EVT_STOP  EVENT_MASK(13)
 #define EVT_RESET EVENT_MASK(14)
 #define EVT_SELFTEST EVENT_MASK(15)
-#define EVT_MONITOR_ALL (EVT_START | EVT_STOP | EVT_RESET | EVT_SELFTEST)
+#define EVT_CALIBRATE EVENT_MASK(16)
+#define EVT_MONITOR_ALL (EVT_START | EVT_STOP | EVT_RESET | EVT_SELFTEST | EVT_CALIBRATE)
 
 // State from main.c
 
@@ -210,5 +211,16 @@ extern TestReq test_to_run;
 
 void spi1On(void);
 void spi1Off(void);
+
+// Accel (generic)
+
+void accelOn(void);
+void accelOff(void);
+
+// Sensor Calibration
+
+bool sensorSample(SensorData *sensors);
+bool initSensors(void);
+bool deinitSensors(void);
 
 #endif

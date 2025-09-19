@@ -232,9 +232,10 @@ void MainWindow::TriggerUpdate(void)
          
       ui.syncButton->setEnabled(status.state() == IDLE);
       ui.testButton->setEnabled(status.state() == IDLE);
+      ui.calibrateButton->setEnabled(status.state() == IDLE);
       ui.eraseButton->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
       ui.datadownloadgroupBox->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
-      ui.stopButton->setEnabled((status.state() == RUNNING) || (status.state() == HIBERNATING));
+      ui.stopButton->setEnabled((status.state() == RUNNING) || (status.state() == HIBERNATING) || (status.state() == CALIBRATE));
 
       if (status.state() == IDLE)
       {
@@ -246,6 +247,12 @@ void MainWindow::TriggerUpdate(void)
       {
         emit SectorsErased(status.sectors_erased());
       } 
+
+      if ((status.state() == CALIBRATE)  && status.has_sensors()){
+        QString sensors = QString::fromStdString(status.sensors().DebugString());
+        sensors = sensors.replace("\n",", ");
+        qInfo() << "Sensors: " << sensors;
+      }
 
       current_state = status.state();  
       emit StateUpdate(current_state);   
@@ -301,6 +308,11 @@ void MainWindow::on_syncButton_clicked()
 void MainWindow::on_stopButton_clicked()
 {
   tag.Stop();
+}
+
+void MainWindow::on_calibrateButton_clicked()
+{
+  tag.Calibrate();
 }
 
 void MainWindow::on_testButton_clicked()

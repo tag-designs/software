@@ -194,7 +194,7 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin1
-        ID="MAG_PWR"
+        ID="MAG_CS"
         Type="PushPull"
         Level="Low"
         Speed="Low"

@@ -5,6 +5,7 @@
 #include "ADXL367.h"
 #include "config.h"
 #include "persistent.h"
+#include "lis2du12.h"
 
 // synchronization variables
 
@@ -113,7 +114,7 @@ void deviceInit(int force)
 #endif
 
 #if defined(USE_LIS2DU12)
-    lis2du12_deinit();
+    accelDeinit();
 #endif
 
     // turn off all alarms

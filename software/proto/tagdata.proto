@@ -6,6 +6,7 @@ enum TagType {
   PRESTAG = 3;
   BITTAGNG = 7;
   BITPRESTAG = 8;
+  COMPASSTAG = 9;
 }
 
 message TagInfo {
@@ -39,6 +40,8 @@ enum TestResult {
   MMC5633_FAILED = 9;
   // command errors
   SET_RTC_FAILED = 10;
+  AK09940A_FAILED = 11;
+  LIS2DU12_FAILED = 12;
   TEST_DEBUG_FAILED = 16; // for debugging
 }
 
@@ -184,6 +187,16 @@ message BitPresTagLog{
   float voltage  = 2;
   float temperature = 3;
   repeated BPT data = 4;
+}
+
+message CompassTagLog{
+  message Compass {
+    bool raw_data = 1; // activity, mag[9], acc[6]
+  }
+  int32 epoch = 1;
+  float voltage = 2;
+  float temperature = 3;
+  repeated Compass data = 4;
 }
 
 message PT_RAW {

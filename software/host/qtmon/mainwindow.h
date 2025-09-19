@@ -54,6 +54,7 @@ private slots:
  
   void on_eraseButton_clicked();    // reset tag flash
   void on_testButton_clicked();     // run tag self-test
+  void on_calibrateButton_clicked(); // enter calibration state
 
   void on_Attach_clicked();         // attach to tag
   void on_Detach_clicked();         // detach from tag

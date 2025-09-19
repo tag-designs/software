@@ -5,4 +5,3 @@ Ack.bittag_data_log type:FT_IGNORE
 #Ack.acceltag_data_log type:FT_IGNORE
 Ack.bittag_ng_data_log type:FT_IGNORE
 Ack.bitprestag_data_log type:FT_IGNORE
-Ack.compasstag_data_log type:FT_IGNORE

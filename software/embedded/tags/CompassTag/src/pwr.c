@@ -4,7 +4,7 @@
 #include "config.h"
 #include "persistent.h"
 #include "external_flash.h"
-#include "lps.h"
+#include "ak09940a.h"
 
 /*
  * I2C Devices
@@ -96,115 +96,83 @@ static void usartDisable(void)
   USART2->CR3 = 0;
 }
 
-#ifdef LPS_USART
+#ifdef USE_AK09940A
 
-void lpsOn(void)
-{
-
-  /* grab the mutex */
-
-  toOutput(LINE_LPS_PWR);
-  palSetLine(LINE_LPS_PWR);
-
-  /* configure select line*/
-
-  palSetLine(LINE_LPS_CS);
-  toOutput(LINE_LPS_CS);
-
-  /* configure USART1   */
-
-  toAlternate(LINE_LPS_SCK);
-  toAlternate(LINE_LPS_TX);
-  toAlternate(LINE_LPS_RX);
-
-  usartEnable();
-}
-
-void lpsOff(void)
-{
-  usartDisable();
-  toAnalog(LINE_LPS_SCK);
-  toAnalog(LINE_LPS_TX);
-  toAnalog(LINE_LPS_RX);
-  toAnalog(LINE_LPS_CS);
-  palClearLine(LINE_LPS_PWR);
-  //chBSemSignal(&SPImutex);
-}
-#endif
-
-
-#ifdef LPS_SPI
-void lpsOn(void)
-{
+void magOn(void){
 
   /* grab the mutex */
 
   chBSemWait(&SPImutex);
 
-  toOutput(LINE_STEVAL_PWR);
-  palSetLine(LINE_STEVAL_PWR);
+  toOutput(LINE_MAG_PWR);
+  palSetLine(LINE_MAG_PWR);
+
+  toOutput(LINE_MAG_RSTN);
+  palSetLine(LINE_MAG_RSTN);
 
   /* configure select line*/
 
-  palSetLine(LINE_STEVAL_CS);
-  toOutput(LINE_STEVAL_CS);
+  palSetLine(LINE_MAG_CS);
+  toOutput(LINE_MAG_CS);
+
+  /* configure ready line */
+
+  // not on breakout board
 
   /* configure SPI1   */
 
-  toAlternate(LINE_STEVAL_SCK);
-  toAlternate(LINE_STEVAL_MISO);
-  toAlternate(LINE_STEVAL_MOSI);
+  toAlternate(LINE_MAG_SCK);
+  toAlternate(LINE_MAG_MISO);
+  toAlternate(LINE_MAG_MOSI);
 
   spiEnable();
+
 }
 
-void lpsOff(void)
-{
+void magOff(void){
+
   spiDisable();
-  toAnalog(LINE_STEVAL_SCK);
-  toAnalog(LINE_STEVAL_MOSI);
-  toAnalog(LINE_STEVAL_MISO);
-  toAnalog(LINE_STEVAL_CS);
-  palClearLine(LINE_STEVAL_PWR);
+  toAnalog(LINE_MAG_SCK);
+  toAnalog(LINE_MAG_MOSI);
+  toAnalog(LINE_MAG_MISO);
+  toAnalog(LINE_MAG_CS);
+  toAnalog(LINE_MAG_PWR);
+  palClearLine(LINE_MAG_PWR);
   chBSemSignal(&SPImutex);
 }
 
 #endif
 
-#if defined(USE_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
-void accelSpiOn()
-{
-  /* grab the mutex */
+#ifdef ACCEL_USART
 
-  chBSemWait(&SPImutex);
+void accelOn(void)
+{
 
   /* configure select line*/
 
   palSetLine(LINE_ACCEL_CS);
   toOutput(LINE_ACCEL_CS);
 
-  /* configure SPI1   */
+  /* configure USART1   */
 
   toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_ACCEL_MOSI);
-  toAlternate(LINE_ACCEL_MISO);
+  toAlternate(LINE_ACCEL_TX);
+  toAlternate(LINE_ACCEL_RX);
 
-  spiEnable();
+  usartEnable();
 }
 
-void accelSpiOff()
+void accelOff(void)
 {
-  palSetLine(LINE_ACCEL_CS);
-  spiDisable();
+  usartDisable();
+  toAnalog(LINE_ACCEL_SCK);
+  toAnalog(LINE_ACCEL_TX);
+  toAnalog(LINE_ACCEL_RX);
+  toAnalog(LINE_ACCEL_CS);
 
-  //toInput(LINE_ACCEL_CS);
-  toOutput(LINE_ACCEL_SCK);
-  toOutput(LINE_ACCEL_MOSI);
-  toInput(LINE_ACCEL_MISO);
-
-  chBSemSignal(&SPImutex);
 }
 #endif
+
 
 
 #if defined(EXTERNAL_FLASH)

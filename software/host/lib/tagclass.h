@@ -40,6 +40,7 @@ public:
   bool Erase();
   bool Start(Config &cfg);
   bool Stop();
+  bool Calibrate();
 
   bool SetRtc();
   bool Test(TestReq test);

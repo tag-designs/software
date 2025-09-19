@@ -3,7 +3,7 @@
 
 // Stored Configuration
 
-#define TAG_TYPE BITPRESTAG
+#define TAG_TYPE COMPASSTAG
 
 typedef struct {
   int32_t start_epoch;
@@ -12,11 +12,6 @@ typedef struct {
 
 typedef struct
 {
-  uint16_t adxl_act_thresh_cnt;
-  uint16_t adxl_inact_thresh_cnt;
-  uint16_t adxl_inactive_samples;
-  uint8_t  adxl_filter_range_rate;
-  uint8_t  fill1;
   int32_t  start;
   int32_t  stop;
   hibernate_t hibernate[2];

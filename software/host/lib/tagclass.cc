@@ -86,6 +86,13 @@ bool Tag::Stop()
   return monitor.Rpc(req,ack);
 }
 
+bool Tag::Calibrate()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  req.Clear();
+  req.set_allocated_calibrate(new Empty);
+  return monitor.Rpc(req,ack);
+}
 bool Tag::Erase()
 {
   std::lock_guard<std::mutex> lck(mtx);
