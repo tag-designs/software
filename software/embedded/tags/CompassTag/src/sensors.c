@@ -36,14 +36,14 @@ bool sensorSample(SensorData *sensors)
         z += ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
         t += ((int)(buf[9]));
     }
-    x = ((x/samples) + 2) >> 2;
-    y = ((y/samples) + 2) >> 2;
-    z = ((z/samples) + 2) >> 2;
+    x = ((x/samples) + 2);
+    y = ((y/samples) + 2);
+    z = ((z/samples) + 2);
     t = t/samples;
 
-    sensors->mag.mx = x/25.0f;
-    sensors->mag.my = y/25.0f;
-    sensors->mag.mz = z/25.0f;
+    sensors->mag.mx = x/100.0f;
+    sensors->mag.my = y/100.0f;
+    sensors->mag.mz = z/100.0f;
     sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
