@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 # set(CMAKE_BUILD_TYPE Debug)
 
 if (apple)
-set(Qt6_DIR "/Users/geobrown/Qt/6.8.2s/macos")
+#set(Qt6_DIR "$ENV{HOME}/Qt/6.8.2/macos/lib/cmake/Qt6")
 endif()
 
 if (WIN32)
@@ -18,15 +18,16 @@ add_subdirectory(lib)
 add_subdirectory(cli)
 add_subdirectory(qtmon)
 add_subdirectory(qtprogram)
+add_subdirectory(qtcalibrate)
 add_subdirectory(btdataviz)
 
 if(WIN32)
   #add_dependencies(qtmonitor BitTag PresTag)
-  install(TARGETS btviz qtmonitor qtprogram 
+  install(TARGETS btviz qtmonitor qtprogram qtcalibrate
           BUNDLE DESTINATION .
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
-  install(TARGETS btviz qtmonitor qtprogram 
+  install(TARGETS btviz qtmonitor qtprogram qtcalibrate
           BUNDLE DESTINATION UltralightTags
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
