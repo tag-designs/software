@@ -25,6 +25,8 @@ message TagInfo {
   float qtmonitor_min_version = 11; // minimum version of qt monitor
   int32 flash_blocks = 12;  // number of flash blocks for
                             // block erase
+  float accelconstant = 13; // constant for converting accel data
+  float magconstant = 14;   // constant for converting mag data
 }
 
 enum TestResult {
@@ -77,8 +79,7 @@ message Config {
   //AccelTagLogFmt acceltag_log = 5; // acceltag log format
   // Sensors
   Adxl362 adxl362 = 6;
-  float accelconstant = 9;         // constant for converting accel data
-  float magconstant = 10;          // constant for converting mag data
+  
 }
 
 // change internal_format/external_format to messages

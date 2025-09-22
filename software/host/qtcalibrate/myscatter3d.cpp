@@ -2,7 +2,9 @@
 #include "myscatter3d.h"
 #include <QDebug>
 #include <QVBoxLayout>
-#include <QtDataVisualization/QValue3DAxis>
+#include <QScatterDataItem>
+
+//#include <QtDataVisualization/QValue3DAxis>
 
 
 
@@ -11,9 +13,11 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 {
     QVBoxLayout *layout = new QVBoxLayout();
     setLayout(layout);
+    QQuickWidget *quickWidget = new QQuickWidget();
 
-    graph = new Q3DScatter();
-    series = new QScatter3DSeries;
+    graph = new Q3DScatterWidgetItem();
+    graph->setWidget(quickWidget);
+    series = new QScatter3DSeries();
 
 
     graph->setAspectRatio(1.0);
@@ -21,8 +25,8 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 
     series->setItemSize(0.1f);
 
-    QWidget *container = QWidget::createWindowContainer(graph);
-    layout->addWidget(container, 1);
+    //QWidget *container = QWidget::createWindowContainer(graph);
+    layout->addWidget(quickWidget, 1);
 
     // 2. Create and configure a QValue3DAxis for each dimension
     QValue3DAxis *axisX = new QValue3DAxis;
@@ -60,14 +64,14 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     //graph->activeTheme()->setType(Q3DTheme::ThemePrimaryColors);
     //graph->activeTheme()->setBaseColor(Qt::red);
 
-    graph->activeTheme()->setType(Q3DTheme::ThemePrimaryColors);
+    //graph->activeTheme()->setType(Q3DTheme::ThemePrimaryColors);
 
-    QColor transparentBlue(0, 0, 255, 64);
+    QColor transparentBlue(0, 0, 255, 156);
  
     series->setBaseColor(transparentBlue);
     
     QScatterDataArray data;
-    data << QVector3D(0.5f, 0.5f, 0.5f) << QVector3D(-0.3f, -0.5f, -0.4f) << QVector3D(0.0f, -0.3f, 0.2f);
+    data << QScatterDataItem(0.5f, 0.5f, 0.5f) << QScatterDataItem(-0.3f, -0.5f, -0.4f) << QScatterDataItem(0.0f, -0.3f, 0.2f);
     
     series->dataProxy()->addItems(data);
     graph->addSeries(series);
@@ -80,5 +84,6 @@ MyScatter3D::~MyScatter3D()
 }
 
 void MyScatter3D::addData(float x, float y, float z){
-    series->dataProxy()->addItem(QScatterDataItem(QVector3D(x,y,z)));
+    QScatterDataItem item(x,y,z);
+    series->dataProxy()->addItem(item);
 }

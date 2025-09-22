@@ -16,12 +16,7 @@
 #include <QProcessEnvironment>
 
 #include <QVector3D>
-#include <QtDataVisualization>
-#include <QtDataVisualization/Q3DScatter>
-#include <QtDataVisualization/QtDataVisualization>
-#include <Q3DScatterWidgetItem>
-#include <QtGraphs/qscatter3dseries.h>
-#include <QtGraphs/qscatterdataproxy.h>
+
 
 #include <QFuture>
 

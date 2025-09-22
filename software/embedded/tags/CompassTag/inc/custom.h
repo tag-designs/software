@@ -14,9 +14,13 @@
 #define SENSOR_CALIBRATION TRUE
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
+#define SENSOR_CONSTANTS TRUE
 
 extern volatile int sectors_erased;
 
 #define LINE_ACCEL_INT LINE_WKUP1
+
+#define ACCEL_CONSTANT 0.976f
+#define MAG_CONSTANT 0.01
 
 #endif

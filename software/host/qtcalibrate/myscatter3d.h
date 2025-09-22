@@ -3,10 +3,10 @@
 
 #include <QWidget>
 #include <QTimer>
-#include <QtDataVisualization/Q3DScatter>
+//#include <QtDataVisualization/Q3DScatter>
 #include <QVector3D>
-#include <QtDataVisualization>
-#include <QtDataVisualization/QtDataVisualization>
+//#include <QtGraphs/Q3DGraphsItem>
+//#include <QtDataVisualization/QtDataVisualization>
 #include <Q3DScatterWidgetItem>
 #include <QtGraphs/qscatter3dseries.h>
 #include <QtGraphs/qscatterdataproxy.h>
@@ -21,7 +21,7 @@ public:
     void addData(float x, float y, float z);
 
 private:
-    Q3DScatter *graph = nullptr;
+    Q3DScatterWidgetItem *graph = nullptr;
     QScatter3DSeries *series = nullptr;
 };
 

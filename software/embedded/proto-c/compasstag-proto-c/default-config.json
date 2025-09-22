@@ -1,5 +1,5 @@
 {
-    "tag_type": "PRESTAG",
+    "tag_type": "COMPASSTAG",
     "active_interval": {
         "start_epoch": 0,
         "end_epoch": 2147483647
@@ -14,5 +14,4 @@
         }
     ],
     "bittag_log": "BITTAG_UNSPECIFIED",
-    "period": 60,
 }

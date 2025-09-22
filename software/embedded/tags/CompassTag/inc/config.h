@@ -25,4 +25,6 @@ extern void writeStoredConfig(t_storedconfig *s);
 extern bool writeConfig(Config *config);
 extern void readConfig(Config *config);
 
+
+
 #endif /* CONFIG_H */

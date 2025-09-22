@@ -176,6 +176,10 @@ static int infoAck(void)
 #else
   ack.payload.info.qtmonitor_min_version = 1.5;
 #endif
+#ifdef SENSOR_CONSTANTS
+  ack.payload.info.accelconstant = ACCEL_CONSTANT;
+  ack.payload.info.magconstant = MAG_CONSTANT;
+#endif
   return encode_ack();
 }
 
