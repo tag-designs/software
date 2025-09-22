@@ -16,7 +16,12 @@
 #include <QProcessEnvironment>
 
 #include <QVector3D>
-
+#include <QtDataVisualization>
+#include <QtDataVisualization/Q3DScatter>
+#include <QtDataVisualization/QtDataVisualization>
+#include <Q3DScatterWidgetItem>
+#include <QtGraphs/qscatter3dseries.h>
+#include <QtGraphs/qscatterdataproxy.h>
 
 #include <QFuture>
 
@@ -117,10 +122,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   // Tag state poll timer
 
-
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
-  //if (Attach())
-    //tag.Detach();
+
+  //TriggerUpdate();
+  
+  //Attach();
+   // tag.Detach();
 }
 
 MainWindow::~MainWindow()
@@ -144,11 +151,11 @@ bool MainWindow::Attach()
     int size;
     Status status;
     //Info info;
-    tag.GetTagInfo(info);
+    //tag.GetTagInfo(info);
 
     tag.GetConfig(config);
     tag.GetStatus(status);
-    qInfo() << "magconstant: " << float(info.magconstant());
+    qInfo() < "magconstant: " << config.magconstant();
 
     ui.connectButton->setEnabled(false);
     ui.disconnectButton->setEnabled(true);
@@ -184,11 +191,11 @@ void MainWindow::TriggerUpdate(void)
     if (status.has_sensors()) {
           SensorData sdata = status.sensors();
           if (sdata.has_mag()){
-              float x = sdata.mag().mx()*info.magconstant();
-              float y = sdata.mag().my()*info.magconstant();
-              float z = sdata.mag().mz()*info.magconstant();
-              //qInfo() << x << "," << y << "," << z;
-              ui.graphWidget->addData(x,y,z);
+              float x = sdata.mag().mx()*config.magconstant();
+              float y = sdata.mag().my()*config.magconstant();
+              float z = sdata.mag().mz()*config.magconstant();
+              qInfo() << x << "," << y << "," << z;
+              ui.graphWidget->addData(QVector3D(x,y,z));
           }
     }
 
@@ -263,7 +270,7 @@ void MainWindow::on_addButton_clicked()
   float x = generator->generateDouble()*5000.0-2500.0;
   float y = generator->generateDouble()*5000.0-2500.0;
   float z = generator->generateDouble()*5000.0-2500.0;
-  ui.graphWidget->addData(x,y,z);
+  ui.graphWidget->addData(QVector3D(x,y,z));
 }
 
 void MainWindow::on_clearButton_clicked()

@@ -22,11 +22,76 @@
       </property>
       <widget class="QWidget" name="calTab">
        <attribute name="title">
-        <string>Magcal</string>
+        <string>Calibrate</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="MyScatter3D" name="graphWidget" native="true"/>
+         <widget class="QFrame" name="frame_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::Shape::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Shadow::Raised</enum>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <item>
+            <widget class="MyScatter3D" name="graphWidget" native="true">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>500</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="frame_3">
+             <property name="minimumSize">
+              <size>
+               <width>100</width>
+               <height>178</height>
+              </size>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::Shape::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_7">
+              <property name="sizeConstraint">
+               <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+              </property>
+              <item>
+               <widget class="QLabel" name="label">
+                <property name="minimumSize">
+                 <size>
+                  <width>80</width>
+                  <height>80</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>some stuff</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
         <item>
          <widget class="QFrame" name="frame">
@@ -58,9 +123,12 @@
             </spacer>
            </item>
            <item>
-            <widget class="QPushButton" name="removeButton">
+            <widget class="QPushButton" name="clearButton">
+             <property name="toolTip">
+              <string>Clear calibration data</string>
+             </property>
              <property name="text">
-              <string>Remove</string>
+              <string>Clear</string>
              </property>
             </widget>
            </item>
@@ -82,7 +150,7 @@
               <item>
                <widget class="QPushButton" name="connectButton">
                 <property name="text">
-                 <string>Connect</string>
+                 <string>Calibrate</string>
                 </property>
                </widget>
               </item>
@@ -105,7 +173,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="text">
-                 <string>Disconnect</string>
+                 <string>Stop</string>
                 </property>
                 <property name="default">
                  <bool>false</bool>
@@ -119,6 +187,17 @@
          </widget>
         </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="orientationTab">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>5</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <attribute name="title">
+        <string>Orientation</string>
+       </attribute>
       </widget>
       <widget class="QWidget" name="logTab">
        <attribute name="title">
@@ -206,6 +285,14 @@
      <height>24</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionSave_Calibration"/>
+    <addaction name="actionRead_Data_File"/>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -216,6 +303,16 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionSave_Calibration">
+   <property name="text">
+    <string>Save Calibration</string>
+   </property>
+  </action>
+  <action name="actionRead_Data_File">
+   <property name="text">
+    <string>Read Data File</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>

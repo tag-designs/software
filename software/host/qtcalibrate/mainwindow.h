@@ -9,6 +9,8 @@
 #include "tagclass.h"
 #include "ui_mainwindow.h"
 
+#include "tag.pb.h"
+
 
 
 class QWidget;
@@ -28,7 +30,7 @@ class MainWindow : public QMainWindow {
 
 public:
 
-  explicit MainWindow(QWidget *parent = nullptr);
+  MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
  
 
@@ -57,13 +59,14 @@ private slots:
 
   // control tab events
 
-  //void on_connectButton_clicked();
-  //void on_disconnectButton_clicked();
+  void on_connectButton_clicked();
+  void on_disconnectButton_clicked();
 
   void on_logsaveButton_clicked();
   void on_logclearButton_clicked();
   void on_loglevelBox_currentIndexChanged(int index);
   void on_addButton_clicked();
+  void on_clearButton_clicked();
 
 
   // Programming helpers
@@ -76,6 +79,8 @@ private:
   QRandomGenerator *generator;
 
   Tag tag;
+  Config config;
+  TagInfo info;
   Ui::MainWindow ui;
   QTimer timer;
   UsbDev usbdev;

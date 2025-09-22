@@ -2,10 +2,7 @@
 #include "myscatter3d.h"
 #include <QDebug>
 #include <QVBoxLayout>
-#include <QScatterDataItem>
-
-
-//#include <QtDataVisualization/QValue3DAxis>
+#include <QtDataVisualization/QValue3DAxis>
 
 
 
@@ -14,21 +11,19 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 {
     QVBoxLayout *layout = new QVBoxLayout();
     setLayout(layout);
-    QQuickWidget *quickWidget = new QQuickWidget();
 
-    graph = new Q3DScatterWidgetItem();
-    graph->setWidget(quickWidget);
-    series = new QScatter3DSeries();
-    graph->setShadowQuality(QtGraphs3D::ShadowQuality::SoftMedium);
+    graph = new Q3DScatter();
+    series = new QScatter3DSeries;
 
 
     graph->setAspectRatio(1.0);
     graph->setHorizontalAspectRatio(1.0); 
 
-    series->setItemSize(0.05f);
+    series->setItemSize(0.08f);
 
-    //QWidget *container = QWidget::createWindowContainer(graph);
-    layout->addWidget(quickWidget, 1);
+    QWidget *container = QWidget::createWindowContainer(graph);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(container);
 
     // 2. Create and configure a QValue3DAxis for each dimension
     QValue3DAxis *axisX = new QValue3DAxis;
@@ -53,30 +48,39 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     axisY->setLabelFormat("");
     axisZ->setLabelFormat("");
     
+    // Set ranges for the axes
+    //axisX->setRange(0, 10);
+    //axisY->setRange(0, 10);
+    //axisZ->setRange(0, 10);
 
     // 3. Assign the new axes to the graph
     graph->setAxisX(axisX);
     graph->setAxisY(axisY);
     graph->setAxisZ(axisZ);
 
-    //QColor transparentBlue(0, 0, 255, 156);
+    //graph->activeTheme()->setType(Q3DTheme::ThemePrimaryColors);
+    //graph->activeTheme()->setBaseColor(Qt::red);
+
+    graph->activeTheme()->setType(Q3DTheme::ThemePrimaryColors);
+
+    QColor transparentBlue(0, 0, 255, 64);
  
-    series->setBaseColor(Qt::blue);
+    series->setBaseColor(transparentBlue);
     
-    //QScatterDataArray data;
-    //data << QScatterDataItem(0.5f, 0.5f, 0.5f) << QScatterDataItem(-0.3f, -0.5f, -0.4f) << QScatterDataItem(0.0f, -0.3f, 0.2f);
+    QScatterDataArray data;
+    //data << QVector3D(0.5f, 0.5f, 0.5f) << QVector3D(-0.3f, -0.5f, -0.4f) << QVector3D(0.0f, -0.3f, 0.2f);
+    
     //series->dataProxy()->addItems(data);
-    // create data at the origin
+    graph->addSeries(series);
+
+    // create origin 
 
     QScatter3DSeries *originSeries = new QScatter3DSeries;
-    //QScatterDataArray originData;
-    QScatterDataItem origin(0.0,0.0,0.0);
-    originSeries->dataProxy()->addItem(origin);
+    QScatterDataArray originData;
+    originData << QVector3D(0.0f, 0.0f, 0.0f); // The origin
+    originSeries->dataProxy()->addItems(originData);
     originSeries->setBaseColor(Qt::red); // Example: make the origin red
     originSeries->setItemSize(0.1f); // Example: adjust the size
-    
-  
-    graph->addSeries(series);
     graph->addSeries(originSeries);
 }
 
@@ -86,11 +90,10 @@ MyScatter3D::~MyScatter3D()
     delete series;
 }
 
-void MyScatter3D::addData(float x, float y, float z){
-    QScatterDataItem item(x,y,z);
-    series->dataProxy()->addItem(item);
+void MyScatter3D::addData(QVector3D item){
+    series->dataProxy()->addItem(QScatterDataItem(item));
 }
 
 void MyScatter3D::clearData(){
-    series->dataProxy()->resetArray();//resetArray(new QScatterDataArray());
+    series->dataProxy()->resetArray(new QScatterDataArray());
 }
