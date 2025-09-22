@@ -41,17 +41,17 @@ bool sensorSample(SensorData *sensors)
     z = ((z/samples) + 2);
     t = t/samples;
 
-    sensors->mag.mx = x/100.0f;
-    sensors->mag.my = y/100.0f;
-    sensors->mag.mz = z/100.0f;
+    sensors->mag.mx = x;
+    sensors->mag.my = y;
+    sensors->mag.mz = z;
     sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
-        sensors->accel.ax = (accel_data.x/16)*0.976f;
-        sensors->accel.ay = (accel_data.y/16)*0.976f;
-        sensors->accel.az = (accel_data.z/16)*0.976f;
+        sensors->accel.ax = (accel_data.x/16);
+        sensors->accel.ay = (accel_data.y/16);
+        sensors->accel.az = (accel_data.z/16);
 
     }
 

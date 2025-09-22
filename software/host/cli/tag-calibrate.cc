@@ -73,17 +73,17 @@ int main(int argc, char **argv)
                     SensorData sdata = status.sensors();
                     std::cout << "Raw:";
                     if (sdata.has_accel()){
-                        std::cout << ((int) sdata.accel().ax()) << ",";
-                        std::cout << ((int) sdata.accel().ay()) << ",";
-                        std::cout << ((int) sdata.accel().az()) << ",";
+                        std::cout << sdata.accel().ax() << ",";
+                        std::cout << sdata.accel().ay() << ",";
+                        std::cout << sdata.accel().az() << ",";
                     } else {
                         std::cout << "0,0,0,";
                     }
                     std::cout << "0,0,0,";
                     if (sdata.has_mag()){
-                        std::cout << ((int) (sdata.mag().mx()*10.0)) << ",";
-                        std::cout << ((int) (sdata.mag().my()*10.0)) << ",";
-                        std::cout << ((int) (sdata.mag().mz()*10.0));
+                        std::cout <<  sdata.mag().mx()*10.0 << ",";
+                        std::cout <<  sdata.mag().my()*10.0 << ",";
+                        std::cout <<  sdata.mag().mz()*10.0;
                     } else {
                         std::cout << "0,0,0";
                     }

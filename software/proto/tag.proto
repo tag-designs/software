@@ -117,14 +117,14 @@ enum TagState {
 
 message SensorData {
   message AccelData {
-    float ax = 1;
-    float ay = 2;
-    float az = 3;
+    int32 ax = 1;
+    int32 ay = 2;
+    int32 az = 3;
   } 
   message MagData {
-    float mx = 1;
-    float my = 2;
-    float mz = 3;
+    int32 mx = 1;
+    int32 my = 2;
+    int32 mz = 3;
     float temperature = 4;
   }
   message BaroData {
