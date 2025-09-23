@@ -20,10 +20,19 @@ public:
     ~MyScatter3D();
     void addData(float x, float y, float z);
     void clearData();
+    void drawSphere(float radius);
+    void adjustRange(float radius);
 
 private:
     Q3DScatterWidgetItem *graph = nullptr;
     QScatter3DSeries *series = nullptr;
+    QScatter3DSeries *originSeries = nullptr;
+    QScatter3DSeries *sphereSeries = nullptr;
+    QValue3DAxis *axisX = nullptr;
+    QValue3DAxis *axisY = nullptr;
+    QValue3DAxis *axisZ = nullptr;
+    float maxRange = 50.0;
+    float sphereRange = 50.0;
 };
 
 #endif // MYSCATTER3D_H

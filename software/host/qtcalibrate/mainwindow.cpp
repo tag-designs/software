@@ -119,6 +119,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
+
   //if (Attach())
     //tag.Detach();
 }
@@ -153,7 +154,7 @@ bool MainWindow::Attach()
     ui.connectButton->setEnabled(false);
     ui.disconnectButton->setEnabled(true);
     TriggerUpdate();
-    timer.start(100);
+    timer.start(50);
     return true;
   }
   qInfo() << "Attach failed";
@@ -277,6 +278,7 @@ void MainWindow::on_connectButton_clicked(){
     tag.GetStatus(status);
       if (status.state() == IDLE) {
         on_logclearButton_clicked();
+        ui.graphWidget->drawSphere(54.0);
         tag.SetRtc();
         tag.Calibrate();
       } else {

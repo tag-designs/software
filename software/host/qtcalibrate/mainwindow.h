@@ -78,6 +78,7 @@ private:
   void scatterGraphInit(void);
   QRandomGenerator *generator;
 
+
   Tag tag;
   Config config;
   TagInfo info;
