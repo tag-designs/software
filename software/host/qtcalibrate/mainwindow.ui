@@ -78,7 +78,7 @@
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_10">
                  <item>
-                  <widget class="QLabel" name="label_3">
+                  <widget class="QLabel" name="v0Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -93,7 +93,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label_2">
+                  <widget class="QLabel" name="v1Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -108,7 +108,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label">
+                  <widget class="QLabel" name="v2Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -132,7 +132,7 @@
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_12">
                  <item>
-                  <widget class="QLabel" name="label_4">
+                  <widget class="QLabel" name="a0Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -144,7 +144,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label_6">
+                  <widget class="QLabel" name="a1Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -156,7 +156,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label_7">
+                  <widget class="QLabel" name="a2Label">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -177,7 +177,7 @@
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_13">
                  <item>
-                  <widget class="QLabel" name="label_8">
+                  <widget class="QLabel" name="bLabel">
                    <property name="font">
                     <font>
                      <family>Courier New</family>
@@ -212,6 +212,9 @@
                 <layout class="QVBoxLayout" name="verticalLayout_2">
                  <item>
                   <widget class="QPushButton" name="connectButton">
+                   <property name="toolTip">
+                    <string>Start Data Collection</string>
+                   </property>
                    <property name="text">
                     <string>Start</string>
                    </property>

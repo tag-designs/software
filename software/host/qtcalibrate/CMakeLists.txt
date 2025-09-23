@@ -48,9 +48,14 @@ endif()
 # Populate a CMake variable with the sources
 
 set(qtcalibrate_SRCS
+    compassdata.cpp
+    magcal.c
     main.cpp
     mainwindow.cpp
-    myscatter3d.cpp)
+    matrix.c
+    myscatter3d.cpp
+    quality.c
+    rawdata.c)
 
 qt6_wrap_ui(UI_HEADERS 
             mainwindow.ui)

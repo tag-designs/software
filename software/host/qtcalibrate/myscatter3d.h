@@ -21,7 +21,7 @@ public:
     void addData(float x, float y, float z);
     void clearData();
     void drawSphere(float radius);
-    void adjustRange(float radius);
+  
 
 private:
     Q3DScatterWidgetItem *graph = nullptr;
@@ -33,6 +33,8 @@ private:
     QValue3DAxis *axisZ = nullptr;
     float maxRange = 50.0;
     float sphereRange = 50.0;
+
+    void adjustRange(float radius);
 };
 
 #endif // MYSCATTER3D_H

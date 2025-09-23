@@ -119,6 +119,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
 
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
+  QObject::connect(&magnetic, &CompassData::calibration_update, this, &MainWindow::calibration_update);
+  calibration_update();
 
   //if (Attach())
     //tag.Detach();
@@ -161,6 +163,8 @@ bool MainWindow::Attach()
   return false;
 }
 
+// Detach from tag
+
 void MainWindow::Detach()
 {
   timer.stop();
@@ -176,7 +180,6 @@ void MainWindow::Detach()
 
 void MainWindow::TriggerUpdate(void)
 {
-
   Status status;
 
   if (tag.IsAttached())
@@ -189,16 +192,20 @@ void MainWindow::TriggerUpdate(void)
               float y = sdata.mag().my()*info.magconstant();
               float z = sdata.mag().mz()*info.magconstant();
               //qInfo() << x << "," << y << "," << z;
+
+              magnetic.addData(x,y,z);
               ui.graphWidget->addData(x,y,z);
+
           }
     }
 
   } else {
+    timer.stop();
     qInfo() << "tag not attached";
   }
-
- 
 }
+
+// Logging of error messages
 
 void MainWindow::logWindowInit(void)
 {
@@ -259,13 +266,8 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
-void MainWindow::on_addButton_clicked()
-{
-  float x = generator->generateDouble()*5000.0-2500.0;
-  float y = generator->generateDouble()*5000.0-2500.0;
-  float z = generator->generateDouble()*5000.0-2500.0;
-  ui.graphWidget->addData(x,y,z);
-}
+
+//  Calibration data collection
 
 void MainWindow::on_clearButton_clicked()
 {
@@ -291,4 +293,28 @@ void MainWindow::on_connectButton_clicked(){
 void MainWindow::on_disconnectButton_clicked(){
   tag.Stop();
   Detach();
+}
+
+
+void MainWindow::calibration_update(void)
+{
+    
+  float B;
+  float V[3];
+  float A[3][3];
+
+  qInfo() << "Calibration upstate in mainwindow";
+
+  magnetic.calibration_constants(&B, V, A);
+
+  ui.bLabel->setText(QString::asprintf("%.2f",B));
+
+  ui.a0Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[0][0],A[0][1],A[0][2]));
+  ui.a1Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[1][0],A[1][1],A[1][2]));
+  ui.a2Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[2][0],A[2][1],A[2][2]));
+
+  ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
+  ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
+  ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
+  
 }

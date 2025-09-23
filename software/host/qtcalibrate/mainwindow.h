@@ -10,6 +10,7 @@
 #include "ui_mainwindow.h"
 
 #include "tag.pb.h"
+#include "compassdata.h"
 
 
 
@@ -65,12 +66,9 @@ private slots:
   void on_logsaveButton_clicked();
   void on_logclearButton_clicked();
   void on_loglevelBox_currentIndexChanged(int index);
-  void on_addButton_clicked();
+
   void on_clearButton_clicked();
-
-
-  // Programming helpers
-
+  void calibration_update(void);
 
 private:
 
@@ -78,7 +76,7 @@ private:
   void scatterGraphInit(void);
   QRandomGenerator *generator;
 
-
+  CompassData magnetic;
   Tag tag;
   Config config;
   TagInfo info;
