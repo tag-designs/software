@@ -21,6 +21,7 @@ public:
     void addData(float x, float y, float z);
     void clearData();
     void drawSphere(float radius);
+    void setData(QScatterDataArray& data);
   
 
 private:

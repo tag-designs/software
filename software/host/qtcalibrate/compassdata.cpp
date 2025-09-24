@@ -3,7 +3,7 @@
 
 CompassData::CompassData(QObject *parent) : QObject{parent}
 {
-    raw_data_reset();
+    clear();
 }
 
 bool CompassData::addData(float& x, float& y, float &z) 
@@ -16,7 +16,7 @@ bool CompassData::addData(float& x, float& y, float &z)
     }
     if (magcal.ValidMagCal)
     {
-        Point_t out;
+        Point_t out = {x,y,z};
         apply_calibration(x,y,z,&out);
         x = out.x;
         y = out.y;
@@ -24,6 +24,22 @@ bool CompassData::addData(float& x, float& y, float &z)
         return true;
     }
     return false;
+}
+
+void CompassData::getData(QScatterDataArray& data)
+{
+    Point_t point;
+    for (int i=0; i < MAGBUFFSIZE; i++) {
+        if (magcal.valid[i]) {
+            apply_calibration(magcal.BpFast[0][i], 
+                magcal.BpFast[1][i],
+                magcal.BpFast[2][i], &point);
+            //data.push_back(QScatterDataItem
+            QScatterDataItem item(point.x,point.y,point.z);
+            data << item;
+        }
+    }       
+
 }
 
 bool CompassData::calibration_constants(float *B, float *V, float (*A)[3])
@@ -41,4 +57,26 @@ bool CompassData::calibration_constants(float *B, float *V, float (*A)[3])
 void CompassData::clear()
 {
     raw_data_reset();
+    quality_reset();
+}
+
+void CompassData::calibration_quality(float& gaps,float& variance, float& wobble, float& fiterror)
+{ 
+    gaps = quality_surface_gap_error();
+    variance = quality_magnitude_variance_error();
+    wobble = quality_wobble_error();
+    fiterror = quality_spherical_fit_error();
+}
+
+void CompassData::qualityUpdate(){
+    Point_t point;
+    quality_reset();
+    for (int i=0; i < MAGBUFFSIZE; i++) {
+        if (magcal.valid[i]) {
+            apply_calibration(magcal.BpFast[0][i], 
+                magcal.BpFast[1][i],
+                magcal.BpFast[2][i], &point);
+            quality_update(&point);
+        }
+    }       
 }

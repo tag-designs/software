@@ -136,6 +136,10 @@ void quality_update(const Point_t *point)
 	z = point->z;
 	magnitude[count] = sqrtf(x * x + y * y + z * z);
 	region = sphere_region(x, y, z);
+	if ((region > 99) || (region < 0)) {
+		log_debug("Region out of range %d\n", region);
+		return;
+	}
 	spheredist[region]++;
 	spheredata[region].x += x;
 	spheredata[region].y += y;

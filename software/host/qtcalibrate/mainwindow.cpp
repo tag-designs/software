@@ -68,9 +68,37 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   generator = QRandomGenerator::global();
 
+  // Tag state poll timer
+
+
+  connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
+  QObject::connect(&magnetic, &CompassData::calibration_update, this, &MainWindow::calibration_update);
+  connect(&qualitytimer, SIGNAL(timeout()), this, SLOT(TriggerQualityUpdate()));
+  //calibration_update();
+
+  //if (Attach())
+    //tag.Detach();
+}
+
+MainWindow::~MainWindow()
+{
+  tag.Detach();
+}
+
+// attach to tag
+
+bool MainWindow::Attach()
+{
+  if (tag.IsAttached())
+  {
+    qInfo() << "Already attached to tag";
+    return false;
+  }
+
   // Find base
 
   std::vector<UsbDev> usbdevs;
+
   if (!tag.Available(usbdevs) || (usbdevs.size() == 0))
   {
     QMessageBox msgBox;
@@ -79,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     msgBox.setStandardButtons(QMessageBox::Ok);
     msgBox.exec();
     qInfo() << "No Tag Bases Found";
+    return false;
     //QTimer::singleShot(0, this, SLOT(close()));;
   }
 
@@ -115,32 +144,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     usbdev = usbdevs[index];
   }
 
-  // Tag state poll timer
-
-
-  connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
-  QObject::connect(&magnetic, &CompassData::calibration_update, this, &MainWindow::calibration_update);
-  calibration_update();
-
-  //if (Attach())
-    //tag.Detach();
-}
-
-MainWindow::~MainWindow()
-{
-  tag.Detach();
-}
-
-// attach to tag
-
-bool MainWindow::Attach()
-{
-  if (tag.IsAttached())
-  {
-    qInfo() << "Already attached to tag";
-    return false;
-  }
-
   if (tag.Attach(usbdev))
   {
     std::string str;
@@ -155,8 +158,9 @@ bool MainWindow::Attach()
 
     ui.connectButton->setEnabled(false);
     ui.disconnectButton->setEnabled(true);
-    TriggerUpdate();
+    //TriggerUpdate();
     timer.start(50);
+    qualitytimer.start(200);
     return true;
   }
   qInfo() << "Attach failed";
@@ -168,6 +172,7 @@ bool MainWindow::Attach()
 void MainWindow::Detach()
 {
   timer.stop();
+  qualitytimer.stop();
   tag.Detach();
   ui.connectButton->setEnabled(true);
   ui.disconnectButton->setEnabled(false);
@@ -275,18 +280,20 @@ void MainWindow::on_clearButton_clicked()
 }
 
 void MainWindow::on_connectButton_clicked(){
+
   if (Attach()) {
     Status status;
     tag.GetStatus(status);
       if (status.state() == IDLE) {
         on_logclearButton_clicked();
-        ui.graphWidget->drawSphere(54.0);
+        ui.graphWidget->drawSphere(50.0);
         tag.SetRtc();
         tag.Calibrate();
       } else {
         qInfo() << "Tag not in idle state";
         Detach();
       }
+      magnetic.clear();    
   }
 }
   
@@ -298,7 +305,7 @@ void MainWindow::on_disconnectButton_clicked(){
 
 void MainWindow::calibration_update(void)
 {
-    
+  QScatterDataArray data;
   float B;
   float V[3];
   float A[3][3];
@@ -317,4 +324,15 @@ void MainWindow::calibration_update(void)
   ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
   ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
   
+  float gaps, variance, wobble, fiterror;
+  magnetic.calibration_quality(gaps, variance, wobble, fiterror);
+  ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
+  magnetic.getData(data);
+  ui.graphWidget->setData(data);
+
+}
+
+void MainWindow::TriggerQualityUpdate()
+{
+  magnetic.qualityUpdate(); 
 }

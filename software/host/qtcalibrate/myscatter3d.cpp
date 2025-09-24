@@ -20,6 +20,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 
     graph = new Q3DScatterWidgetItem();
     graph->setWidget(quickWidget);
+    graph->setMaxCameraYRotation(180.0);
 
     //graph->setShadowQuality(QtGraphs3D::ShadowQuality::SoftMedium);
 
@@ -33,6 +34,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     layout->addWidget(quickWidget, 1);
 
     // Create and configure a QValue3DAxis for each dimension
+
     axisX = new QValue3DAxis;
     axisY = new QValue3DAxis;
     axisZ = new QValue3DAxis;
@@ -58,6 +60,12 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     axisX->setRange(-75.0,75.0);
     axisY->setRange(-75.0,75.0);
     axisZ->setRange(-75.0,75.0);
+    // hide grid lines
+    axisX->setSegmentCount(0);
+    axisY->setSegmentCount(0);
+    axisZ->setSegmentCount(0);
+    
+
     maxRange = 65.0;
     graph->setAxisX(axisX);
     graph->setAxisY(axisY);
@@ -66,7 +74,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     //QColor transparentBlue(0, 0, 255, 156);
 
     series = new QScatter3DSeries();
-    series->setItemSize(0.01f);
+    series->setItemSize(0.02f);
  
     series->setBaseColor(Qt::blue);
 
@@ -88,13 +96,14 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     originSeries->dataProxy()->addItem(origin);
     originSeries->dataProxy()->addItem(origin);
     originSeries->setBaseColor(Qt::red); // Example: make the origin red
-    originSeries->setItemSize(0.05f); // Example: adjust the size
+    originSeries->setItemSize(0.04f); // Example: adjust the size
 
     // Create series for for sphere
 
+    QColor transparentGreen(0, 255, 0, 128);
     sphereSeries = new QScatter3DSeries;
-    sphereSeries->setBaseColor(Qt::yellow);
-    sphereSeries->setItemSize(0.01f);
+    sphereSeries->setBaseColor(transparentGreen);
+    sphereSeries->setItemSize(0.02f);
     
     // add series to graph
   
@@ -105,17 +114,17 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     // Disable the background
     QGraphsTheme *theme = graph->activeTheme();
     theme->setBackgroundVisible(false);
-    theme->setGridVisible(true);
+    theme->setGridVisible(false);
     theme->setLabelBackgroundVisible(false);
     theme->setLabelBorderVisible(false);
-    //theme->setPlotAreaBackgroundVisible(false);
+    theme->setPlotAreaBackgroundVisible(false);
 
 }
 
 MyScatter3D::~MyScatter3D()
 {
-    delete graph;
-    delete series;
+    //delete graph;
+    //delete series;
 }
 
 void MyScatter3D::addData(float x, float y, float z){
@@ -127,6 +136,20 @@ void MyScatter3D::addData(float x, float y, float z){
     adjustRange(abs(z));
 }
 
+#define MAX(a,b) a > b ? a : b
+void MyScatter3D::setData(QScatterDataArray& data)
+{
+    clearData();
+    series->dataProxy()->addItems(data);
+    float maxval = 0.0;
+    for (QScatterDataItem item : data){
+        maxval = MAX(maxval,abs(item.x()));
+        maxval = MAX(maxval,abs(item.y()));
+        maxval = MAX(maxval,abs(item.z()));
+    } 
+    adjustRange(maxval);
+}
+
 void MyScatter3D::clearData(){
     series->dataProxy()->resetArray();
     maxRange = 0.0;
@@ -135,8 +158,8 @@ void MyScatter3D::clearData(){
 
 void MyScatter3D::drawSphere(float radius){
     sphereSeries->dataProxy()->resetArray();
-    for (int i = 0; i < 360; i += 5){
-        for (int j = 0; j < 360; j+= 5) {
+    for (int i = 0; i < 360; i += 9){
+        for (int j = 0; j < 360; j+= 9) {
             float theta = i * (M_PI / 180.0);
             float phi = j * (M_PI /180.0);
             float x = radius*sin(phi)*cos(theta);

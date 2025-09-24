@@ -57,6 +57,7 @@ private slots:
   // timer tick
 
   void TriggerUpdate();
+  void TriggerQualityUpdate();
 
   // control tab events
 
@@ -82,6 +83,7 @@ private:
   TagInfo info;
   Ui::MainWindow ui;
   QTimer timer;
+  QTimer qualitytimer;
   UsbDev usbdev;
 
 

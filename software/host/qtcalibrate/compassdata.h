@@ -18,7 +18,10 @@ public:
     explicit CompassData(QObject *parent = nullptr);
     bool addData(float& x, float &y, float &z);
     bool calibration_constants(float *B, float *V, float (*A)[3]);
+    void calibration_quality(float& gaps,float& variance, float& wobble, float& fiterror);
+    void qualityUpdate();
     void clear();
+    void getData(QScatterDataArray& data);
 
 signals:
 
