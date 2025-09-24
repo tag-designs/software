@@ -1,6 +1,8 @@
 #include "hal.h"
 #include "monitor.h"
 #include "app.h"
+#include "persistent.h"
+
 #include "lis2du12.h"
 #include "ak09940a.h"
 #include <tag.pb.h>
@@ -41,18 +43,17 @@ bool sensorSample(SensorData *sensors)
     z = ((z/samples) + 2);
     t = t/samples;
 
-    sensors->mag.mx = x;
-    sensors->mag.my = y;
-    sensors->mag.mz = z;
+    sensors->mag.mx = x * 0.01f;
+    sensors->mag.my = y * 0.01f;
+    sensors->mag.mz = z * 0.01f;
     sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
-        sensors->accel.ax = (accel_data.x/16);
-        sensors->accel.ay = (accel_data.y/16);
-        sensors->accel.az = (accel_data.z/16);
-
+        sensors->accel.ax = (accel_data.x/16) * 0.976f;
+        sensors->accel.ay = (accel_data.y/16) * 0.976f;
+        sensors->accel.az = (accel_data.z/16) * 0.976f;
     }
 
     return true;
@@ -68,6 +69,29 @@ bool deinitSensors(void) {
     //magOff();
     accelDeinit();
     return true;
+}
+
+
+
+enum Sleep Calibrating(enum StateTrans t, State_Event reason)
+{
+  (void)reason;
+
+  if (t == T_INIT)
+  {
+    initSensors();
+    // start sensors
+    pState->state = TagState_CALIBRATE;
+  }
+  if (MONCONNECTED)
+    return SHUTDOWN;
+  else
+  {
+    // shutdown sensors
+    deinitSensors();
+    pState->state = TagState_IDLE;
+    return SHUTDOWN;
+  }
 }
 
 

@@ -130,9 +130,9 @@ static int32_t LIS2DU12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
 
 static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
 {
-  uint8_t buffer[2] = {reg,val};
+  uint8_t buffer[] = {reg,val};
   palClearLine(LINE_ACCEL_CS);
-  SendPolled(2,&buffer);
+  SendPolled(2,(uint8_t *) &buffer);
   palSetLine(LINE_ACCEL_CS);
 }
 

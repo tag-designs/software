@@ -204,6 +204,7 @@ extern enum Sleep Running(enum StateTrans,  State_Event reason);
 extern enum Sleep Finished(enum StateTrans, State_Event reason);
 extern enum Sleep Aborted(enum StateTrans, State_Event reason);
 extern enum Sleep Hibernating(enum StateTrans,  State_Event reason);
+extern enum Sleep Calibrating(enum StateTrans, State_Event reason);
 
 // Tests
 

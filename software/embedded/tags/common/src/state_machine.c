@@ -54,7 +54,6 @@ bool isActive = false;
 static enum Sleep Reset(enum StateTrans, State_Event);
 static enum Sleep Idle(enum StateTrans, State_Event);
 static enum Sleep SelfTest(enum StateTrans, State_Event);
-static enum Sleep Calibrate(enum StateTrans, State_Event);
 
 /*******************************************************************
  *   State machine provides tag execution logic
@@ -210,7 +209,7 @@ enum Sleep StateMachine(void)
   {
     if (pState->state == TagState_IDLE)
     {
-      return Calibrate(T_INIT, State_EVENT_OK);
+      return Calibrating(T_INIT, State_EVENT_OK);
     }
   }
 
@@ -238,7 +237,7 @@ enum Sleep StateMachine(void)
     return Aborted(T_INIT, State_EVENT_EXCEPTION);
 #ifdef SENSOR_CALIBRATION
   case TagState_CALIBRATE:
-    return Calibrate(T_CONT, State_EVENT_OK);
+    return Calibrating(T_CONT, State_EVENT_OK);
 #endif
 
   default:
@@ -399,24 +398,5 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   return Idle(T_INIT, State_EVENT_OK);
 }
 
-#ifdef SENSOR_CALIBRATION
-static enum Sleep Calibrate(enum StateTrans t, State_Event reason)
-{
-  (void)reason;
 
-  if (t == T_INIT)
-  {
-    initSensors();
-    // start sensors
-    pState->state = TagState_CALIBRATE;
-  }
-  if (MONCONNECTED)
-    return SHUTDOWN;
-  else
-  {
-    // shutdown sensors
-    deinitSensors();
-    return  Idle(T_INIT, State_EVENT_OK);
-  }
-}
-#endif
+

@@ -23,4 +23,6 @@ extern volatile int sectors_erased;
 #define ACCEL_CONSTANT 0.976f
 #define MAG_CONSTANT 0.01
 
+#include "lis2du12.h"
+
 #endif

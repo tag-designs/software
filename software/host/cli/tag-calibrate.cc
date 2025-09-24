@@ -81,9 +81,9 @@ int main(int argc, char **argv)
                     }
                     std::cout << "0,0,0,";
                     if (sdata.has_mag()){
-                        std::cout <<  sdata.mag().mx()*10.0 << ",";
-                        std::cout <<  sdata.mag().my()*10.0 << ",";
-                        std::cout <<  sdata.mag().mz()*10.0;
+                        std::cout <<  sdata.mag().mx() << ",";
+                        std::cout <<  sdata.mag().my() << ",";
+                        std::cout <<  sdata.mag().mz();
                     } else {
                         std::cout << "0,0,0";
                     }

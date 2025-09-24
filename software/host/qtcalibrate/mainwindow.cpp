@@ -193,9 +193,9 @@ void MainWindow::TriggerUpdate(void)
     if (status.has_sensors()) {
           SensorData sdata = status.sensors();
           if (sdata.has_mag()){
-              float x = sdata.mag().mx()*info.magconstant();
-              float y = sdata.mag().my()*info.magconstant();
-              float z = sdata.mag().mz()*info.magconstant();
+              float x = sdata.mag().mx();//*info.magconstant();
+              float y = sdata.mag().my();//*info.magconstant();
+              float z = sdata.mag().mz();//*info.magconstant();
               //qInfo() << x << "," << y << "," << z;
 
               magnetic.addData(x,y,z);
