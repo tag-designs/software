@@ -7,7 +7,7 @@
 //static int pr=0;
 
 // return 0 to 99 - which region on the sphere (100 of equal surface area)
-static int sphere_region(float x, float y, float z)
+int sphere_region(float x, float y, float z)
 {
 	float latitude, longitude;
 	int region;
@@ -62,7 +62,7 @@ static int sphere_region(float x, float y, float z)
 static int count=0;
 static int spheredist[100];
 static Point_t spheredata[100];
-static Point_t sphereideal[100];
+Point_t sphereideal[100];
 static int sphereideal_initialized=0;
 static float magnitude[MAGBUFFSIZE];
 static float quality_gaps_buffer;

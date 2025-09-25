@@ -28,6 +28,8 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     graph->setAspectRatio(1.0);
     graph->setHorizontalAspectRatio(1.0); 
 
+    connect(graph, &Q3DScatterWidgetItem::cameraXRotationChanged, this, &MyScatter3D::cameraXRotationChanged);
+
     
 
     //QWidget *container = QWidget::createWindowContainer(graph);
@@ -78,9 +80,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
  
     series->setBaseColor(Qt::blue);
 
-    //QLinearGradient gradient(-100,-100,100,100);
-    //gradient.setColorAt(0.0, Qt::blue);
-    //gradient.setColorAt(1.0, Qt::green);
+    
 
      // Apply the gradient and set the color style
     //series->setBaseGradient(gradient);
@@ -100,16 +100,33 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 
     // Create series for for sphere
 
-    QColor transparentGreen(0, 255, 0, 128);
+    //QLinearGradient gradient(-60,-60,60,60);
+    //gradient.setColorAt(0.0, QColor(212, 20, 26));
+    //gradient.setColorAt(1.0, QColor(97, 20, 212));//Qt::green);
+
     sphereSeries = new QScatter3DSeries;
+
+    //sphereSeries->setBaseGradient(gradient);
+    //sphereSeries->setColorStyle(QGraphsTheme::ColorStyle::RangeGradient);
+    
+    QColor transparentGreen(0, 255, 0, 128);
     sphereSeries->setBaseColor(transparentGreen);
     sphereSeries->setItemSize(0.02f);
+
+
+    // missing regions
+
+    regionSeries = new QScatter3DSeries;
+    regionSeries->setBaseColor(Qt::black); 
+    regionSeries->setItemSize(0.01f); 
+    
     
     // add series to graph
   
     graph->addSeries(series);
     graph->addSeries(originSeries);
     graph->addSeries(sphereSeries);
+    graph->addSeries(regionSeries);
 
     // Disable the background
     QGraphsTheme *theme = graph->activeTheme();
@@ -127,6 +144,7 @@ MyScatter3D::~MyScatter3D()
     //delete series;
 }
 
+
 void MyScatter3D::addData(float x, float y, float z){
     QScatterDataItem item(x,y,z);
     series->dataProxy()->addItem(item);
@@ -134,7 +152,33 @@ void MyScatter3D::addData(float x, float y, float z){
     adjustRange(abs(x));
     adjustRange(abs(y));
     adjustRange(abs(z));
+    // modify camera
+
+    QVector3D in = QVector3D(x,y,z).normalized();
+    float pitch, yaw, roll;
+    QQuaternion q = QQuaternion(1.0,item.position());
+    q.getEulerAngles(&pitch,&yaw,&roll);
+    
+    //graph->setCameraTargetPosition(vec);
+    /*
+    float xr = graph->cameraXRotation() + 0.5;
+    if (xr > 360.0) xr = 0.0;
+    graph->setCameraXRotation(xr); // 90 degrees for a top-down angle
+    */
+
+    /*
+    qInfo() << "camera angles x roll yaw pitch " << xr << roll << " " << yaw << " " << pitch;
+    */
+    ///graph->setCameraYRotation(-yaw);
+    //graph->setCameraTargetPosition(in);
+    //graph->setCameraXRotation(0);
+    //graph->setCameraYRotation(0);
+    //graph->setCameraTargetPosition(QVector3D(0.0,0.0,0.0));
+
+    
+
 }
+
 
 #define MAX(a,b) a > b ? a : b
 void MyScatter3D::setData(QScatterDataArray& data)
@@ -149,6 +193,12 @@ void MyScatter3D::setData(QScatterDataArray& data)
     } 
     adjustRange(maxval);
 }
+
+void MyScatter3D::setRegionData(QScatterDataArray &data){
+    regionSeries->dataProxy()->resetArray();
+    regionSeries->dataProxy()->addItems(data);
+}
+
 
 void MyScatter3D::clearData(){
     series->dataProxy()->resetArray();
@@ -182,4 +232,14 @@ void MyScatter3D::adjustRange(float radius){
         axisY->setRange(-radius-10.0,radius+10.0);
         axisZ->setRange(-radius-10.0,radius+10.0);
     }
+}
+
+
+void MyScatter3D::cameraXRotationChanged(float rotation){
+    float pitch,yaw,row;
+    QScatterDataItem item = originSeries->dataProxy()->itemAt(1);
+    QQuaternion q = QQuaternion(1.0,item.position());
+
+    q.getEulerAngles(&pitch,&yaw,&row);
+   // qInfo() << "target changed: " << rotation << " " << pitch << " " << yaw << " " << row;
 }

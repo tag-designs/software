@@ -35,6 +35,7 @@ public:
   bool GetConfig(Config &cfg);
   bool GetStatus(Status &status);
 
+
   // Tag control
 
   bool Erase();
@@ -52,6 +53,7 @@ public:
  
   int GetStateLog(StateLog &state_log, int index);
   bool GetDataLog(Ack &data_log, int index);
+  bool GetCalibrationLog(Ack &calibration_log);
 
 private:
   mutex mtx;

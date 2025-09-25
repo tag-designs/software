@@ -42,6 +42,15 @@ void CompassData::getData(QScatterDataArray& data)
 
 }
 
+void CompassData::getRegionData(QScatterDataArray& data, float magnitude){
+    for (int i=0; i < SPHERE_REGIONS; i++){
+        QScatterDataItem item(sphereideal[i].x*magnitude,
+                              sphereideal[i].y*magnitude,
+                              sphereideal[i].z*magnitude);
+        data << item;
+    }
+}
+
 bool CompassData::calibration_constants(float *B, float *V, float (*A)[3])
 {
     *B = magcal.B;

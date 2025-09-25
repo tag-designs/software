@@ -5,7 +5,7 @@
 #include "ADXL367.h"
 #include "config.h"
 #include "persistent.h"
-#include "lis2du12.h"
+//#include "lis2du12.h"
 
 // synchronization variables
 

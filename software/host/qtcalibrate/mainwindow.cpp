@@ -186,23 +186,43 @@ void MainWindow::Detach()
 void MainWindow::TriggerUpdate(void)
 {
   Status status;
+  Ack ack;
 
   if (tag.IsAttached())
   {
-    tag.GetStatus(status);
-    if (status.has_sensors()) {
-          SensorData sdata = status.sensors();
+    tag.GetCalibrationLog(ack);
+    if (ack.has_calibration_log()) {
+        for(auto const &sdata : ack.calibration_log().data())
+        {
           if (sdata.has_mag()){
-              float x = sdata.mag().mx();//*info.magconstant();
-              float y = sdata.mag().my();//*info.magconstant();
-              float z = sdata.mag().mz();//*info.magconstant();
+              float x = sdata.mag().mx();
+              float y = sdata.mag().my();
+              float z = sdata.mag().mz();
               //qInfo() << x << "," << y << "," << z;
 
               magnetic.addData(x,y,z);
               ui.graphWidget->addData(x,y,z);
 
           }
-    }
+
+            //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
+        }
+    }   
+    /*
+    tag.GetStatus(status);
+    if (status.has_sensors()) {
+          SensorData sdata = status.sensors();
+          if (sdata.has_mag()){
+              float x = sdata.mag().mx(); 
+              float y = sdata.mag().my(); 
+              float z = sdata.mag().mz(); 
+              //qInfo() << x << "," << y << "," << z;
+
+              magnetic.addData(x,y,z);
+              ui.graphWidget->addData(x,y,z);
+
+          }
+      */
 
   } else {
     timer.stop();
@@ -287,6 +307,9 @@ void MainWindow::on_connectButton_clicked(){
       if (status.state() == IDLE) {
         on_logclearButton_clicked();
         ui.graphWidget->drawSphere(50.0);
+        QScatterDataArray data;
+        magnetic.getRegionData(data,50.0);
+        ui.graphWidget->setRegionData(data);
         tag.SetRtc();
         tag.Calibrate();
       } else {

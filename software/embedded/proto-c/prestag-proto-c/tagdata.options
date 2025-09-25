@@ -19,4 +19,5 @@ PresTagRawLog.data max_count:15
 PT_RAW.samples max_size:240
 BitPresTagLog skip_message:true
 #BitPresTagLog.data max_count:12
+Ack.calibration_log type:FT_IGNORE
 

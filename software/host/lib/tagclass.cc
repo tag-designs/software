@@ -220,6 +220,21 @@ bool Tag::GetDataLog(Ack &data_log, int index)
   }
 }
 
+bool Tag::GetCalibrationLog(Ack &calibration_log)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  req.Clear();
+  req.set_allocated_caldata(new Empty);
+  if (monitor.Rpc(req,ack)) {
+     calibration_log.CopyFrom(ack);
+     return true;
+  }
+  else 
+  {
+    return false;
+  }
+}
+
 // instantiate GetLog for bittags
 #if 0
 template <>

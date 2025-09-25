@@ -16,6 +16,7 @@
 #define MINOR_VERSION "0"
 
 extern int data_logAck(int index, Ack *ack);
+extern int calibration_logAck(Ack *ack);
 extern const Config defaultConfig;
 extern const uint32_t protobuf_size;
 extern uint8_t ProtoBuf[];
@@ -124,11 +125,6 @@ static int statusAck(void)
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
-#ifdef SENSOR_CALIBRATION
-  if (pState->state == TagState_CALIBRATE) {
-    ack.payload.status.has_sensors = sensorSample(&ack.payload.status.sensors);
-  }
-#endif
 
   return encode_ack();
 }
@@ -303,6 +299,9 @@ int proto_eval(int len)
   case Req_calibrate_tag:
     chEvtSignal(tpMain, EVT_CALIBRATE);
     return errAck(Ack_OK);
+  case Req_caldata_tag:
+    return  calibration_logAck(&ack);
+
 #endif
   default:
     return errAck(Ack_Err_PERM);

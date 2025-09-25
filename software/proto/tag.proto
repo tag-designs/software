@@ -40,7 +40,8 @@ message Req {
 
     //int32 erase_block = 10;
 
-    Empty calibrate = 11; // go to sensor calibrate state
+    Empty calibrate = 11;       // go to sensor calibrate state
+    Empty caldata   = 12;  // request calibration log
   }
 }
 
@@ -75,15 +76,19 @@ message Ack {
     BitTagLog bittag_data_log = 7;
     PresTagLog prestag_data_log = 8;
     PresTagRawLog prestag_raw_data_log = 9;
-    BitTagNgLog bittag_ng_data_log = 12;
+
     BitPresTagLog bitprestag_data_log = 10;
     CompassTagLog compasstag_data_log = 11;
+    BitTagNgLog bittag_ng_data_log = 12;
+
+    CalibrationLog calibration_log = 13;
 
     // Flash Memory operation
     //   Write returns count with empty bytes
     //   Read  returns count with bytes
     
     //FlashReadWrite readwrite = 14;
+ 
 
   }
 }
@@ -115,26 +120,7 @@ enum TagState {
   CALIBRATE = 10;  // state for calibration of sensors
 }
 
-message SensorData {
-  message AccelData {
-    float ax = 1;
-    float ay = 2;
-    float az = 3;
-  } 
-  message MagData {
-    float mx = 1;
-    float my = 2;
-    float mz = 3;
-    float temperature = 4;
-  }
-  message BaroData {
-    float pressure = 1;
-    float temperature = 2;
-  }
-  AccelData accel = 1;
-  MagData mag = 2;
-  BaroData baro = 3;
-}
+
 
 message Status {
   int64 millis = 1;              // current time in ms
@@ -146,7 +132,6 @@ message Status {
   float temperature = 7;         // processor Temperature
   int32 sectors_erased = 8;      // during erase operation provides
                                  // feedback of erased sectors
-  optional SensorData sensors = 9;        // data from sensors, only in calibration state
 }
 
 message State {

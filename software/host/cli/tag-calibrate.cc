@@ -39,6 +39,7 @@ int main(int argc, char **argv)
     
     UsbDev dev;
     Tag tag;
+    Ack ack;
 
     cxxopts::Options options("tag-calibrate", "starts calibration mode");
 
@@ -68,30 +69,32 @@ int main(int argc, char **argv)
 
             tag.Calibrate();
             while (execute) {
-                tag.GetStatus(status);
-                if (status.has_sensors()) {
-                    SensorData sdata = status.sensors();
-                    std::cout << "Raw:";
-                    if (sdata.has_accel()){
-                        std::cout << sdata.accel().ax() << ",";
-                        std::cout << sdata.accel().ay() << ",";
-                        std::cout << sdata.accel().az() << ",";
-                    } else {
+                tag.GetCalibrationLog(ack);
+                if (ack.has_calibration_log()) {
+                    for(auto const &sdata : ack.calibration_log().data())
+                    {
+                        std::cout << "Raw:";
+                        if (sdata.has_accel()){
+                            std::cout << sdata.accel().ax() << ",";
+                            std::cout << sdata.accel().ay() << ",";
+                            std::cout << sdata.accel().az() << ",";
+                        } else {
+                            std::cout << "0,0,0,";
+                        }
                         std::cout << "0,0,0,";
-                    }
-                    std::cout << "0,0,0,";
-                    if (sdata.has_mag()){
-                        std::cout <<  sdata.mag().mx() << ",";
-                        std::cout <<  sdata.mag().my() << ",";
-                        std::cout <<  sdata.mag().mz();
-                    } else {
-                        std::cout << "0,0,0";
-                    }
-                    std::cout << "\r\n";
+                        if (sdata.has_mag()){
+                            std::cout <<  sdata.mag().mx() << ",";
+                            std::cout <<  sdata.mag().my() << ",";
+                            std::cout <<  sdata.mag().mz();
+                        } else {
+                            std::cout << "0,0,0";
+                        }
+                        std::cout << "\r\n";
 
-                    //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
+                        //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
+                    }
                 }
-              
+                
                 //std::this_thread::sleep_for(MS(50));
 
             }

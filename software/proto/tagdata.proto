@@ -215,3 +215,23 @@ message PresTagRawLog {
   repeated PT_RAW data = 3;
 }
 
+
+message SensorData {
+    message AccelData {
+      float ax = 1;
+      float ay = 2;
+      float az = 3;
+    } 
+    message MagData {
+      float mx = 1;
+      float my = 2;
+      float mz = 3;
+    }
+    AccelData accel = 1;
+    MagData mag = 2;
+}
+
+message CalibrationLog { 
+  repeated SensorData data = 1;
+}
+

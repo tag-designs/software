@@ -22,6 +22,7 @@ public:
     void qualityUpdate();
     void clear();
     void getData(QScatterDataArray& data);
+    void getRegionData(QScatterDataArray& data, float magnitude);
 
 signals:
 

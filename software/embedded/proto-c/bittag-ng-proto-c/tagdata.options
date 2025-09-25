@@ -16,3 +16,4 @@ PresTagLog skip_message:true
 Config.prestag_log type:FT_IGNORE
 BitTagLog skip_message:true
 BitPresTagLog skip_message:true
+Ack.calibration_log type:FT_IGNORE

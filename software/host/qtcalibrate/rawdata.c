@@ -81,7 +81,7 @@ static int choose_discard_magcal(void)
 	} else {
 		runcount = 0;
 	}
-	// When solid info isn't availabe, find 2 points closest to each other,
+	// When solid info isn't available, find 2 points closest to each other,
 	// and randomly discard one.  When we don't have good coverage, this
 	// approach tends to add points into previously unmeasured areas while
 	// discarding info from areas with highly redundant info.

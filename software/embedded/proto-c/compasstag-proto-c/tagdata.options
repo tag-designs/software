@@ -21,4 +21,5 @@ BitPresTagLog skip_message:true
 #BitPresTagLog.data max_count:12
 CompassTagLog.data max_count:60
 Compass.rawdata max_count:16
+CalibrationLog.data max_count:25
 

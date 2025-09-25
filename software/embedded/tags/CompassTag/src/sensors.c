@@ -43,16 +43,18 @@ bool sensorSample(SensorData *sensors)
     z = ((z/samples) + 2);
     t = t/samples;
 
-    sensors->mag.mx = x * 0.01f;
-    sensors->mag.my = y * 0.01f;
+    // orientation for compass proto board
+
+    sensors->mag.mx = -x * 0.01f;
+    sensors->mag.my = -y * 0.01f;
     sensors->mag.mz = z * 0.01f;
-    sensors->mag.temperature = 30.0f - t/1.7f;
+    //sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
-        sensors->accel.ax = (accel_data.x/16) * 0.976f;
-        sensors->accel.ay = (accel_data.y/16) * 0.976f;
+        sensors->accel.ay = (accel_data.x/16) * 0.976f;
+        sensors->accel.ax = -(accel_data.y/16) * 0.976f;
         sensors->accel.az = (accel_data.z/16) * 0.976f;
     }
 
@@ -92,6 +94,18 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
     pState->state = TagState_IDLE;
     return SHUTDOWN;
   }
+}
+
+
+extern int encode_ack(void);
+
+int calibration_logAck(Ack *ack){
+  CalibrationLog *data = &ack->payload.calibration_log;
+  ack->err = Ack_Err_PERM;
+  ack->which_payload = Ack_calibration_log_tag;
+  data->data_count = 1;
+  sensorSample(&data->data[0]);
+  return encode_ack();
 }
 
 

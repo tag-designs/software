@@ -98,6 +98,10 @@ float quality_magnitude_variance_error(void);
 float quality_wobble_error(void);
 float quality_spherical_fit_error(void);
 
+#define SPHERE_REGIONS 100
+extern Point_t sphereideal[SPHERE_REGIONS];
+int sphere_region(float x, float y, float z);
+
 
 #ifdef __cplusplus
 } // extern "C"
