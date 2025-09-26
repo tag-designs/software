@@ -18,7 +18,6 @@ void magOff(void);
 bool sensorSample(SensorData *sensors)
 {
     uint8_t buf[11];
-    const int samples = 1;
     struct {
         int16_t x;
         int16_t y;
@@ -28,26 +27,22 @@ bool sensorSample(SensorData *sensors)
     int x = 0;
     int y = 0;
     int z = 0;
-    int t = 0;
+    //int t = 0;
    
-    sensors->has_mag = true;
-    for (int i=0;i<samples;i++) {
-        while (!magSample(buf));
-        x += ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
-        y += ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
-        z += ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
-        t += ((int)(buf[9]));
+    if (magSample(false,buf))
+    {
+      sensors->has_mag = true;
+      x = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
+      y = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
+      z = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
+      //t = ((int)(buf[9]));
+
+      // orientation for compass proto board
+
+      sensors->mag.mx = -x * 0.01f;
+      sensors->mag.my = -y * 0.01f;
+      sensors->mag.mz = z * 0.01f;
     }
-    x = ((x/samples) + 2);
-    y = ((y/samples) + 2);
-    z = ((z/samples) + 2);
-    t = t/samples;
-
-    // orientation for compass proto board
-
-    sensors->mag.mx = -x * 0.01f;
-    sensors->mag.my = -y * 0.01f;
-    sensors->mag.mz = z * 0.01f;
     //sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
@@ -61,14 +56,12 @@ bool sensorSample(SensorData *sensors)
     return true;
 }
 bool initSensors(void){
-    accelInit();
-
-    //magOn();
-    //stopMilliseconds(true,3);
+    accelInit(SAMPLE_100HZ);
+    magInit(AK09940A_CNTL3_100HZ);
     return true;
 }
 bool deinitSensors(void) {
-    //magOff();
+    magOff();
     accelDeinit();
     return true;
 }

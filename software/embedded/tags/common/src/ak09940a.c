@@ -74,29 +74,35 @@ static void AK09940A_GetReg(enum AK09940A_Reg reg, uint8_t *val, int num)
     3) Read all data include ST1 to clear
 */
 
-bool magSample(uint8_t *xyz){
+bool magSample(bool single, uint8_t *xyz){
   uint8_t raw[11];
   uint8_t status = 0;
   uint8_t command = AK09940A_CNTL3_SINGLE_MEASURE |
                     AK09940A_CNTL3_LN2;  // Single measurement, low nose 2
 
-  magOn();
-  stopMilliseconds(true,1);                  
-  AK09940A_SetReg(AK09940A_CNTL3,&command,1);
-  for (int i = 0; i < 1; i++) { 
-    stopMilliseconds(true,4);
+ 
+  if (single)                 
+        AK09940A_SetReg(AK09940A_CNTL3,&command,1);
+  for (int i = 0; i < 2; i++) { 
     AK09940A_GetReg(AK09940A_ST,&status,1);
-    if (status==1){
+    if ((status&1)==1){
       AK09940A_GetReg(AK09940A_HXL,raw,11);
       memcpy(xyz,raw,10);
-      magOff();
       return true;
     }
+    stopMilliseconds(true,4);
   }
-  magOff();
   return false;
 }
 
+void magInit(uint8_t mode){
+  uint8_t command = mode | AK09940A_CNTL3_LN2;
+  magOn();
+  stopMilliseconds(true,1); 
+  if (mode > AK09940A_CNTL3_SINGLE_MEASURE)
+    AK09940A_SetReg(AK09940A_CNTL3,&command,1);
+
+}
 // Self test
 /* 
     1) Set power down

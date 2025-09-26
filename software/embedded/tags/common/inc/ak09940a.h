@@ -81,6 +81,11 @@ AK09940A_I2CDIS =  (0x36),
 
 #define AK09940A_CNTL3_PWRDOWN  (0x00)
 #define AK09940A_CNTL3_SINGLE_MEASURE (0x01)
+#define AK09940A_CNTL3_10HZ (0x02)
+#define AK09940A_CNTL3_20HZ (0x04)
+#define AK09940A_CNTL3_50HZ (0x06)
+#define AK09940A_CNTL3_100HZ (0x08)
+
 #define AK09940A_CNTL3_SELF_TEST_MODE (0x20)
 
 #define AK09940A_CNTL3_FIFO_EN (0x1<<7)
@@ -95,8 +100,8 @@ AK09940A_I2CDIS =  (0x36),
 
 bool magTest(void);
      // sample elements are 3 bytes so 9 bytes total
-bool  magSample(uint8_t *xyz);
-int  magInit(void);
+bool  magSample(bool single, uint8_t *xyz);
+void  magInit(uint8_t mode);
 
 void magOn(void);
 void magOff(void);

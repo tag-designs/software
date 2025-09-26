@@ -179,17 +179,34 @@ void accelDeinit(void)
   accelOff();
 }
 
-void accelInit(void)
+void accelInit(lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
   accelOn();
-  LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x17U); // ADD_INC, Wkup x,y,z
-  LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
-  LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
-  LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, 0x20U); // was 42 
-  LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U); 
-  LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin
-  LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
+
+  switch (mode) {
+  
+    case WAKEUP: 
+      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x17U); // ADD_INC, Wkup x,y,z
+      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
+      LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
+      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, 0x20U); // was 42 
+      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U); 
+      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin
+      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
+      break;
+    case SAMPLE_50HZ:
+      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
+      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
+      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x74U); // ODR = 50hz, BW = 12.5hz
+      break;
+    case SAMPLE_100HZ:
+      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
+      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
+      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x84U); // ODR = 100hz, BW = 25hz
+      break;
+  }
+
   accelOff();
 }
 
