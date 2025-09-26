@@ -76,6 +76,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   connect(&qualitytimer, SIGNAL(timeout()), this, SLOT(TriggerQualityUpdate()));
   //calibration_update();
 
+  //ui.graphWidget->drawSphere(50.0);
+ // timer.start(100);
+
   //if (Attach())
     //tag.Detach();
 }
@@ -176,8 +179,6 @@ void MainWindow::Detach()
   tag.Detach();
   ui.connectButton->setEnabled(true);
   ui.disconnectButton->setEnabled(false);
-  //ui.StatusGroup->setEnabled(false);
-  //ui.TagInformation->setEnabled(false);
 }
 
 // While tag is attached, this
@@ -188,6 +189,46 @@ void MainWindow::TriggerUpdate(void)
   Status status;
   Ack ack;
 
+  /*
+  float radius = 50.0;
+  static float i;
+  static float j;
+
+
+  if  (i >= 360.0){
+    i = 0.0;
+    j = j + 10.0;
+  }
+  if (j >= 60.0)
+  {
+    timer.stop();
+    return;
+  }
+
+  i = i + 10.0;
+
+  float theta = i * (M_PI / 180.0);
+  float phi = (j + 90) * (M_PI /180.0);
+  float x = radius*sin(phi)*cos(theta);
+  float y = radius*sin(phi)*sin(theta);
+  float z = radius*cos(phi);
+ 
+  //qInfo() << "(theta, phi):" << theta << "," << phi;
+   ui.graphWidget->addData(x,y,z);
+*/
+  /*
+  QVector3D initial(0.0,0.0,50.0);
+  QQuaternion rotation = QQuaternion::fromEulerAngles(pitch, roll, 0.0);
+  QVector3D final = rotation*initial;
+  float x,y,z;
+  x = final.x();
+  y = final.y();
+  z = final.z();
+
+  qInfo() << "Pitch " << pitch << "Roll " << roll << "point " << final;
+  ui.graphWidget->addData(x,y,z);
+  */
+  
   if (tag.IsAttached())
   {
     tag.GetCalibrationLog(ack);
@@ -208,26 +249,28 @@ void MainWindow::TriggerUpdate(void)
             //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
         }
     }   
-    /*
-    tag.GetStatus(status);
-    if (status.has_sensors()) {
-          SensorData sdata = status.sensors();
-          if (sdata.has_mag()){
-              float x = sdata.mag().mx(); 
-              float y = sdata.mag().my(); 
-              float z = sdata.mag().mz(); 
-              //qInfo() << x << "," << y << "," << z;
+        
+                        /*
+                        tag.GetStatus(status);
+                        if (status.has_sensors()) {
+                              SensorData sdata = status.sensors();
+                              if (sdata.has_mag()){
+                                  float x = sdata.mag().mx(); 
+                                  float y = sdata.mag().my(); 
+                                  float z = sdata.mag().mz(); 
+                                  //qInfo() << x << "," << y << "," << z;
 
-              magnetic.addData(x,y,z);
-              ui.graphWidget->addData(x,y,z);
+                                  magnetic.addData(x,y,z);
+                                  ui.graphWidget->addData(x,y,z);
 
-          }
-      */
+                              }
+                          */
 
   } else {
     timer.stop();
     qInfo() << "tag not attached";
   }
+    
 }
 
 // Logging of error messages
@@ -300,6 +343,8 @@ void MainWindow::on_clearButton_clicked()
 }
 
 void MainWindow::on_connectButton_clicked(){
+  timer.start(200);
+  magnetic.clear();
 
   if (Attach()) {
     Status status;
@@ -318,6 +363,7 @@ void MainWindow::on_connectButton_clicked(){
       }
       magnetic.clear();    
   }
+      
 }
   
 void MainWindow::on_disconnectButton_clicked(){
