@@ -20,7 +20,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
 
     graph = new Q3DScatterWidgetItem();
     graph->setWidget(quickWidget);
-    graph->setMaxCameraYRotation(180.0);
+    //graph->setMaxCameraYRotation(180.0);
 
     //graph->setShadowQuality(QtGraphs3D::ShadowQuality::SoftMedium);
 
@@ -28,7 +28,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     graph->setAspectRatio(1.0);
     graph->setHorizontalAspectRatio(1.0); 
 
-    connect(graph, &Q3DScatterWidgetItem::cameraXRotationChanged, this, &MyScatter3D::cameraXRotationChanged);
+    // connect(graph, &Q3DScatterWidgetItem::cameraXRotationChanged, this, &MyScatter3D::cameraXRotationChanged);
 
     
 
@@ -154,46 +154,33 @@ void MyScatter3D::addData(float x, float y, float z){
     adjustRange(abs(z));
     // modify camera
 
-    return;
+    //return;
 
-    //QVector3D in = QVector3D(x,y,z).normalized();
-    float pitch,yaw,roll;
+    float pitch, yaw, roll;
+
+    // v is point to track -- convert to up y
+
     QVector3D v = QVector3D(x,y,z);
-    //v.normalize();
-    QVector3D originalUp = QVector3D(0.0, 1.0, 0.0);
-    //originalUp.normalize();
-    //QQuaternion rotation = QQuaternion::fromDirection(originalUp, v);
-    QQuaternion rotation = QQuaternion::rotationTo(originalUp, v);
-    //QQuaternion rotation = QQuaternion(0.0,v);
+    v.normalize();
+
+    // camera vector
+   
+    QVector3D camera = QVector3D(0,0,-1);  // camera along z axis
+
+    // compute rotation
+
+    QQuaternion rotation = QQuaternion::rotationTo(camera,v);
     rotation.getEulerAngles(&pitch,&yaw,&roll);
 
-    /*
-    QVector3D cp = QVector3D(0,0,-1.0);
+    // set camera rotation
+    //  50,0,0 has yaw of -90. -- (0,-90,0)
+    //.  0,0,0 as pitch of 90.  -- (90,0,0)
+    //. 30,30,0                 --  (45,-90,45)
 
-    QVector3D direction = v - QVector3D(0,0,-1.0);
-    float y_rotation = atan2(direction.x(), direction.z()) * 180.0f / M_PI;
-    float xz_length = sqrt(direction.x() * direction.x() + direction.z() * direction.z());
-    float x_rotation = atan2(direction.y(), xz_length) * 180.0f / M_PI;
-    */
-
-    /*
-    qInfo() << "camera angles x roll yaw pitch " << xr << roll << " " << yaw << " " << pitch;
-    */
-    ///graph->setCameraYRotation(-yaw);
-    //graph->setCameraTargetPosition(in);
-    //graph->setCameraXRotation(0.0);
-  
-    //qInfo() << "add point " << x << "," << y << "," << z;
-    qInfo() << "Pitch,yaw,roll " << pitch << "," << yaw << "," << roll;
-    //graph->setCameraYRotation(yaw);
-    //graph->setCameraXRotation(roll);
-    //graph->setCameraTargetPosition(v);
-    graph->setCameraYRotation(yaw );
-    graph->setCameraXRotation(pitch);
+    graph->setCameraXRotation(yaw);
+    graph->setCameraYRotation(pitch);
+ 
    
-    graph->setCameraTargetPosition(v);
-    
-
 }
 
 
@@ -258,5 +245,5 @@ void MyScatter3D::cameraXRotationChanged(float rotation){
     QQuaternion q = QQuaternion(1.0,item.position());
 
     q.getEulerAngles(&pitch,&yaw,&row);
-   qInfo() << "target changed: " << rotation << " " << pitch << " " << yaw << " " << row;
+    qInfo() << "target changed: " << graph->cameraXRotation() << graph->cameraYRotation();
 }

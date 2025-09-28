@@ -188,6 +188,7 @@ void MainWindow::TriggerUpdate(void)
 {
   Status status;
   Ack ack;
+  static bool done;
 
   /*
   float radius = 50.0;
@@ -230,7 +231,12 @@ void MainWindow::TriggerUpdate(void)
   */
   
   if (tag.IsAttached())
-  {
+  { /*
+    if (!done) {
+      ui.graphWidget->addData(30,30,30);
+      done = true;
+    }
+    return;*/
     tag.GetCalibrationLog(ack);
     if (ack.has_calibration_log()) {
         for(auto const &sdata : ack.calibration_log().data())
