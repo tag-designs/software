@@ -40,8 +40,10 @@ message Req {
 
     //int32 erase_block = 10;
 
-    Empty calibrate = 11;       // go to sensor calibrate state
+    Empty calibrate = 11;  // go to sensor calibrate state
     Empty caldata   = 12;  // request calibration log
+    CalibrationConstants write_calibration = 13;
+    Empty read_calibration = 14;
   }
 }
 
@@ -82,14 +84,7 @@ message Ack {
     BitTagNgLog bittag_ng_data_log = 12;
 
     CalibrationLog calibration_log = 13;
-
-    // Flash Memory operation
-    //   Write returns count with empty bytes
-    //   Read  returns count with bytes
-    
-    //FlashReadWrite readwrite = 14;
- 
-
+    CalibrationConstants calibration_constants = 14;
   }
 }
 

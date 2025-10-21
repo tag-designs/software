@@ -73,7 +73,7 @@ int encode_ack(void)
 
 // Message Generators
 
-static int errAck(Ack_Err err)
+int errAck(Ack_Err err)
 {
   ack.err = err;
   ack.which_payload = 0;
@@ -302,6 +302,12 @@ int proto_eval(int len)
   case Req_caldata_tag:
     return  calibration_logAck(&ack);
 
+#endif
+#ifdef CALIBRATION_CONSTANTS
+  case Req_write_calibration_tag:
+    return write_calibration(&req.payload.write_calibration);
+  case Req_read_calibration_tag:
+    return read_calibration(&ack);
 #endif
   default:
     return errAck(Ack_Err_PERM);

@@ -15,6 +15,7 @@
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 #define SENSOR_CONSTANTS TRUE
+#define CALIBRATION_CONSTANTS TRUE;
 
 extern volatile int sectors_erased;
 

@@ -34,7 +34,6 @@ static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
 // Data held in flash
 
 // extern uint32_t __persistent_start__;
-
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
 t_storedconfig sconfig __attribute__((__aligned__(8))) __attribute__((section(".persistent")))

@@ -1,18 +1,23 @@
+
+#include <tag.pb.h>
+#include <stdint.h>
+#include <strings.h>
 #include "hal.h"
 #include "monitor.h"
 #include "app.h"
 #include "persistent.h"
+#include "config.h"
 
 #include "lis2du12.h"
 #include "ak09940a.h"
-#include <tag.pb.h>
 
-#include <stdint.h>
-#include <strings.h>
 
 void magOn(void);
 void magOff(void);
 
+// calibration constants on page boundary
+
+CalibrationConstants_MagConstants calConstants[42] __attribute__((aligned (2048)));
 
 
 bool sensorSample(SensorData *sensors)
@@ -66,8 +71,6 @@ bool deinitSensors(void) {
     return true;
 }
 
-
-
 enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -91,15 +94,54 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 
 
 extern int encode_ack(void);
+extern int errAck(Ack_Err err);
 
 int calibration_logAck(Ack *ack){
   CalibrationLog *data = &ack->payload.calibration_log;
-  ack->err = Ack_Err_PERM;
+  ack->err = Ack_OK;
   ack->which_payload = Ack_calibration_log_tag;
   data->data_count = 1;
   sensorSample(&data->data[0]);
   return encode_ack();
 }
+
+int write_calibration(CalibrationConstants *constants){
+  if (!constants->has_magnetometer)
+    return errAck(Ack_INVAL);
+  if ((*((int32_t *) &calConstants[0])) != -1)
+  {
+    // erase block
+    chSysLock();
+    FLASH_Unlock();
+    FLASH_PageErase((uint32_t) calConstants);
+    FLASH_Lock();
+    FLASH_Flush_Data_Cache();
+    chSysUnlock();
+  }
+
+  // write constants
+
+  chSysLock();
+  FLASH_Unlock();
+  FLASH_Program_Array((uint32_t *) calConstants, 
+                      (uint32_t *) &(constants->magnetometer),
+                      sizeof(CalibrationConstants_MagConstants)/4);
+  FLASH_Lock();
+  FLASH_Flush_Data_Cache();
+  chSysUnlock();
+  return errAck(Ack_OK);
+}
+
+int read_calibration(Ack *ack){
+  if ((*((int32_t *) &calConstants[0])) == -1)
+    return errAck(Ack_NODATA);
+  ack->err = Ack_OK;
+  ack->which_payload = Ack_calibration_constants_tag;
+  ack->payload.calibration_constants.has_magnetometer = true;
+  memcpy(&ack->payload.calibration_constants.magnetometer, calConstants,  sizeof(CalibrationConstants_MagConstants));
+  return encode_ack();
+}
+
 
 
 

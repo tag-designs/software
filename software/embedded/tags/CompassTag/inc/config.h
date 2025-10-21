@@ -25,6 +25,7 @@ extern void writeStoredConfig(t_storedconfig *s);
 extern bool writeConfig(Config *config);
 extern void readConfig(Config *config);
 
-
+extern int write_calibration(CalibrationConstants *);
+extern int read_calibration(Ack *);
 
 #endif /* CONFIG_H */

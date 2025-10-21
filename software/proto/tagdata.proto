@@ -235,3 +235,21 @@ message CalibrationLog {
   repeated SensorData data = 1;
 }
 
+message CalibrationConstants {
+  message MagConstants {
+    float b0 = 1;
+    float b1 = 2;
+    float b2 = 3;
+    float A00 = 4;
+    float A01 = 5;
+    float A02 = 6;
+    float A10 = 7;
+    float A11 = 8;
+    float A12 = 9;
+    float A20 = 10;
+    float A21 = 11;
+    float A22 = 12;
+  }
+  MagConstants magnetometer = 1;
+}
+

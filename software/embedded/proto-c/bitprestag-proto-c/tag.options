@@ -7,3 +7,5 @@ Ack.bittag_ng_data_log type:FT_IGNORE
 Ack.bittag_data_log type:FT_IGNORE
 Ack.compasstag_data_log type:FT_IGNORE
 Ack.calibration_log type:FT_IGNORE
+Ack.calibration_constants type:FT_IGNORE
+Req.write_calibration type:FT_IGNORE
