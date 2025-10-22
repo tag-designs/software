@@ -77,6 +77,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // attach to tag if possible
 
   Attach();
+  ui.hi_graphicsView->redraw();
   
 }
 
@@ -258,6 +259,8 @@ void MainWindow::TriggerUpdate(void)
               ui.pitchEdit->setText(QString::asprintf("%.1f",pitch));
               ui.rollEdit->setText(QString::asprintf("%.1f",roll));
               ui.dipEdit->setText(QString::asprintf("%.1f",dip));
+              ui.hi_graphicsView->setHeading(yaw);
+              ui.hi_graphicsView->redraw();
             }
           }
 

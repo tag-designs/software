@@ -385,10 +385,10 @@
           <widget class="QFrame" name="frame">
            <property name="geometry">
             <rect>
-             <x>20</x>
-             <y>10</y>
-             <width>791</width>
-             <height>621</height>
+             <x>21</x>
+             <y>100</y>
+             <width>671</width>
+             <height>391</height>
             </rect>
            </property>
            <property name="sizePolicy">
@@ -405,7 +405,29 @@
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_6">
             <item>
+             <widget class="qfi_HI" name="hi_graphicsView">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="baseSize">
+               <size>
+                <width>256</width>
+                <height>256</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox_9">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="title">
                <string>Sensors</string>
               </property>
@@ -650,6 +672,11 @@
    <extends>QWidget</extends>
    <header>myscatter3d.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>qfi_HI</class>
+   <extends>QGraphicsView</extends>
+   <header>qfi_HI.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

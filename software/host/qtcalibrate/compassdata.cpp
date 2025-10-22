@@ -116,7 +116,7 @@ bool CompassData::eCompass(float mx, float my, float mz,
         float Bx_horiz = mx * cosPitch + my * sinRoll * sinPitch + mz * cosRoll * sinPitch;
         float By_horiz = my * cosRoll - mz * sinRoll;
 
-        float Bz_horiz = -mx * sinPitch + my * sinRoll * cosPitch + z * cosRoll * cosPitch;
+        float Bz_horiz = -mx * sinPitch + my * sinRoll * cosPitch + mz * cosRoll * cosPitch;
 
         yaw = atan2(By_horiz, Bx_horiz); // Yaw in radians
 

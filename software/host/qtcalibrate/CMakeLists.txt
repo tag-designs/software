@@ -29,7 +29,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 #set(Qt6_Root "$ENV{HOME}/Qt/6.8.3/gcc_64/bin")
 #set(Qt6_DIR "ENV{HOME}/Qt/6.8.3/gcc_64/lib/cmake/Qt6/")
 #endif()
-find_package(Qt6 COMPONENTS Core Widgets Graphs GraphsWidgets  CONFIG)   #DataVisualization
+find_package(Qt6 COMPONENTS Core Widgets Graphs GraphsWidgets Svg SvgWidgets CONFIG)   #DataVisualization
 if(NOT Qt6_FOUND)
   message("Qt6 Not found")
   message("Cannot Build qtcalibrate")
@@ -54,11 +54,17 @@ set(qtcalibrate_SRCS
     mainwindow.cpp
     matrix.c
     myscatter3d.cpp
+    qfi_AI.cpp
+    qfi_HI.cpp
     quality.c
     rawdata.c)
 
 qt6_wrap_ui(UI_HEADERS 
             mainwindow.ui)
+
+
+qt_add_resources(qtcalibrate_SRCS qfi.qrc)
+
 
 # Tell CMake to create the qtmonitor executable
 
@@ -81,7 +87,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtcalibrate PRIVATE tag Qt6::Widgets Qt6::Graphs Qt6::GraphsWidgets)  # Qt6::DataVisualization )#
+target_link_libraries(qtcalibrate PRIVATE tag Qt6::Widgets Qt6::Graphs Qt6::GraphsWidgets Qt6::Svg Qt6::SvgWidgets)  # Qt6::DataVisualization )#
 if(WIN32)
   # why the opengle extensions ????
   #target_link_libraries(qtprogram) )

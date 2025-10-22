@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/qfi/">
+        
+        <file>images/ai/ai_back.svg</file>
+        <file>images/ai/ai_case.svg</file>
+        <file>images/ai/ai_face.svg</file>
+        <file>images/ai/ai_ring.svg</file>
+        
+        <file>images/hi/hi_case.svg</file>
+        <file>images/hi/hi_face.svg</file>
+
+    </qresource>
+</RCC>
