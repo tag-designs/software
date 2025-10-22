@@ -61,15 +61,33 @@ private slots:
 
   // control tab events
 
-  void on_connectButton_clicked();
-  void on_disconnectButton_clicked();
+  void on_attachButton_clicked();
+  void on_detachButton_clicked();
+  void on_streamCheckBox_toggled(bool);
+
+  // calibration 
+
+
+  void on_startButton_clicked();
+  void on_stopButton_clicked();
+  void on_clearButton_clicked();
+  void calibration_update(void);
+  //void on_saveButton_clicked();
+  //void on_restoreButton_clicked();
+
+  // orientation
+
+  //void on_orientstartButton_clicked();
+  //void on_oreientstopButton_clicked();
+
+  //void on_connectButton_clicked();
+  //void on_disconnectButton_clicked();
 
   void on_logsaveButton_clicked();
   void on_logclearButton_clicked();
   void on_loglevelBox_currentIndexChanged(int index);
 
-  void on_clearButton_clicked();
-  void calibration_update(void);
+
 
 private:
 
@@ -85,6 +103,10 @@ private:
   QTimer timer;
   QTimer qualitytimer;
   UsbDev usbdev;
+
+  bool isCalibrating = false;
+  bool isOrienting = false;
+  bool isStreaming = false;
 
 
 };

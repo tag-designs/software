@@ -1,3 +1,4 @@
+#include <cmath>
 #include "compassdata.h"
 
 
@@ -88,4 +89,47 @@ void CompassData::qualityUpdate(){
             quality_update(&point);
         }
     }       
+}
+
+
+bool CompassData::eCompass(float mx, float my, float mz, 
+                  float ax, float ay, float az,
+                  float& yaw, float& pitch, float& roll, float &dip)
+{
+
+    if (magcal.ValidMagCal)
+    {
+        Point_t out = {mx,my,mz};
+        apply_calibration(mx,my,mz,&out);
+        mx = out.x;
+        my = out.y;
+        mz = out.z;
+
+        roll = atan2(ay, az);                        // Roll in radians
+        pitch = atan2(-ax, sqrt(ay * ay + az * az)); // Pitch in radians
+
+        float sinRoll = sin(roll);
+        float cosRoll = cos(roll);
+        float sinPitch = sin(pitch);
+        float cosPitch = cos(pitch);
+
+        float Bx_horiz = mx * cosPitch + my * sinRoll * sinPitch + mz * cosRoll * sinPitch;
+        float By_horiz = my * cosRoll - mz * sinRoll;
+
+        float Bz_horiz = -mx * sinPitch + my * sinRoll * cosPitch + z * cosRoll * cosPitch;
+
+        yaw = atan2(By_horiz, Bx_horiz); // Yaw in radians
+
+        float mag_horizontal = sqrt(Bx_horiz * Bx_horiz + By_horiz * By_horiz);
+        float dip_angle_rad = atan2(Bz_horiz, mag_horizontal);
+
+        yaw = yaw * 180.0f / M_PI;
+        pitch = pitch * 180.0f / M_PI;
+        roll = roll * 180.0f / M_PI;
+        dip = dip_angle_rad*180.0f/M_PI;
+
+        return true;
+    }
+    return false;
+
 }

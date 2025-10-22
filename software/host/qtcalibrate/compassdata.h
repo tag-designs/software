@@ -23,6 +23,9 @@ public:
     void clear();
     void getData(QScatterDataArray& data);
     void getRegionData(QScatterDataArray& data, float magnitude);
+    bool eCompass(float mx, float my, float mz, 
+                  float ax, float ay, float az,
+                  float& yaw, float& pitch, float& roll, float& dip);
 
 signals:
 

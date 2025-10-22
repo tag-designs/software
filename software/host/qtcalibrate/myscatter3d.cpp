@@ -96,7 +96,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     originSeries->dataProxy()->addItem(origin);
     originSeries->dataProxy()->addItem(origin);
     originSeries->setBaseColor(Qt::red); // Example: make the origin red
-    originSeries->setItemSize(0.04f); // Example: adjust the size
+    originSeries->setItemSize(0.03f); // Example: adjust the size
 
     // Create series for for sphere
 
@@ -126,7 +126,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     graph->addSeries(series);
     graph->addSeries(originSeries);
     graph->addSeries(sphereSeries);
-    graph->addSeries(regionSeries);
+    //graph->addSeries(regionSeries);
 
     // Disable the background
     QGraphsTheme *theme = graph->activeTheme();
@@ -199,8 +199,8 @@ void MyScatter3D::setData(QScatterDataArray& data)
 }
 
 void MyScatter3D::setRegionData(QScatterDataArray &data){
-    regionSeries->dataProxy()->resetArray();
-    regionSeries->dataProxy()->addItems(data);
+    //regionSeries->dataProxy()->resetArray();
+    //regionSeries->dataProxy()->addItems(data);
 }
 
 

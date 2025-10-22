@@ -68,19 +68,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   generator = QRandomGenerator::global();
 
-  // Tag state poll timer
-
+  // Connect Timers to slots
 
   connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
   QObject::connect(&magnetic, &CompassData::calibration_update, this, &MainWindow::calibration_update);
   connect(&qualitytimer, SIGNAL(timeout()), this, SLOT(TriggerQualityUpdate()));
-  //calibration_update();
 
-  //ui.graphWidget->drawSphere(50.0);
- // timer.start(100);
+  // attach to tag if possible
 
-  //if (Attach())
-    //tag.Detach();
+  Attach();
+  
 }
 
 MainWindow::~MainWindow()
@@ -157,13 +154,24 @@ bool MainWindow::Attach()
 
     tag.GetConfig(config);
     tag.GetStatus(status);
-    qInfo() << "magconstant: " << float(info.magconstant());
 
-    ui.connectButton->setEnabled(false);
-    ui.disconnectButton->setEnabled(true);
-    //TriggerUpdate();
-    timer.start(50);
-    qualitytimer.start(200);
+    if (status.state() != IDLE) 
+    {
+        qInfo() << "Tag not in idle state";
+        Detach();
+        return false;
+    }
+
+    // setup UI
+
+    ui.attachButton->setEnabled(false);
+    ui.detachButton->setEnabled(true);
+    ui.streamCheckBox->setEnabled(true);
+    ui.streamCheckBox->setChecked(false);
+    magnetic.clear();
+    ui.graphWidget->clearData();
+    ui.graphWidget->drawSphere(50.0);
+    qInfo() << "Attach succeeded";
     return true;
   }
   qInfo() << "Attach failed";
@@ -177,11 +185,45 @@ void MainWindow::Detach()
   timer.stop();
   qualitytimer.stop();
   tag.Detach();
-  ui.connectButton->setEnabled(true);
-  ui.disconnectButton->setEnabled(false);
+  ui.attachButton->setEnabled(true);
+  ui.detachButton->setEnabled(false);
+  ui.streamCheckBox->setChecked(false);
+  ui.streamCheckBox->setEnabled(false);
+  isCalibrating = false;
+  isOrienting = false;
+  isStreaming = false;
 }
 
-// While tag is attached, this
+void MainWindow::on_streamCheckBox_toggled(bool checked){
+  qInfo() << "Stream checkbox " << checked;
+  if(checked){
+    tag.SetRtc();
+    tag.Calibrate();
+    timer.start(100);
+    isStreaming = true;
+    ui.startButton->setEnabled(true);
+    ui.stopButton->setEnabled(false);
+    ui.clearButton->setEnabled(true);
+  } else {
+    tag.Stop();
+    timer.stop();
+    qualitytimer.stop();
+    isStreaming = false;
+    ui.startButton->setEnabled(false);
+    ui.stopButton->setEnabled(false);
+    ui.clearButton->setEnabled(false);
+  }
+}
+
+void MainWindow::on_attachButton_clicked(){
+  Attach();
+}
+
+void MainWindow::on_detachButton_clicked(){
+  Detach();
+}
+
+// While tag is attached and streaming is enabled, this
 // method is called at regular intervals
 
 void MainWindow::TriggerUpdate(void)
@@ -189,94 +231,111 @@ void MainWindow::TriggerUpdate(void)
   Status status;
   Ack ack;
   static bool done;
-
-  /*
-  float radius = 50.0;
-  static float i;
-  static float j;
-
-
-  if  (i >= 360.0){
-    i = 0.0;
-    j = j + 10.0;
-  }
-  if (j >= 60.0)
-  {
-    timer.stop();
-    return;
-  }
-
-  i = i + 10.0;
-
-  float theta = i * (M_PI / 180.0);
-  float phi = (j + 90) * (M_PI /180.0);
-  float x = radius*sin(phi)*cos(theta);
-  float y = radius*sin(phi)*sin(theta);
-  float z = radius*cos(phi);
- 
-  //qInfo() << "(theta, phi):" << theta << "," << phi;
-   ui.graphWidget->addData(x,y,z);
-*/
-  /*
-  QVector3D initial(0.0,0.0,50.0);
-  QQuaternion rotation = QQuaternion::fromEulerAngles(pitch, roll, 0.0);
-  QVector3D final = rotation*initial;
-  float x,y,z;
-  x = final.x();
-  y = final.y();
-  z = final.z();
-
-  qInfo() << "Pitch " << pitch << "Roll " << roll << "point " << final;
-  ui.graphWidget->addData(x,y,z);
-  */
+  float mx,my,mz,ax,ay,az;
+  float pitch, roll, yaw, dip;
   
-  if (tag.IsAttached())
-  { /*
-    if (!done) {
-      ui.graphWidget->addData(30,30,30);
-      done = true;
-    }
-    return;*/
+  if (isStreaming)
+  { 
     tag.GetCalibrationLog(ack);
     if (ack.has_calibration_log()) {
         for(auto const &sdata : ack.calibration_log().data())
         {
           if (sdata.has_mag()){
-              float x = sdata.mag().mx();
-              float y = sdata.mag().my();
-              float z = sdata.mag().mz();
+              mx = sdata.mag().mx();
+              my = sdata.mag().my();
+              mz = sdata.mag().mz();
+          } else {
+            continue;
+          }
               //qInfo() << x << "," << y << "," << z;
 
-              magnetic.addData(x,y,z);
-              ui.graphWidget->addData(x,y,z);
-
+          if (sdata.has_accel()){
+            ax = sdata.accel().ax();
+            ay = sdata.accel().ay();
+            az = sdata.accel().az();
+            if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip)) {
+              ui.yawEdit->setText(QString::asprintf("%.1f",yaw));
+              ui.pitchEdit->setText(QString::asprintf("%.1f",pitch));
+              ui.rollEdit->setText(QString::asprintf("%.1f",roll));
+              ui.dipEdit->setText(QString::asprintf("%.1f",dip));
+            }
           }
 
-            //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
+          if (isCalibrating) {
+            magnetic.addData(mx,my,mz);
+            ui.graphWidget->addData(mx,my,mz);
+          }
         }
     }   
-        
-                        /*
-                        tag.GetStatus(status);
-                        if (status.has_sensors()) {
-                              SensorData sdata = status.sensors();
-                              if (sdata.has_mag()){
-                                  float x = sdata.mag().mx(); 
-                                  float y = sdata.mag().my(); 
-                                  float z = sdata.mag().mz(); 
-                                  //qInfo() << x << "," << y << "," << z;
+  } 
+}
 
-                                  magnetic.addData(x,y,z);
-                                  ui.graphWidget->addData(x,y,z);
+// called from compassdata (magnetic) when data is added
 
-                              }
-                          */
+void MainWindow::calibration_update(void)
+{
+  QScatterDataArray data;
+  float B;
+  float V[3];
+  float A[3][3];
+  //qInfo() << "Calibration update in mainwindow";
 
-  } else {
-    timer.stop();
-    qInfo() << "tag not attached";
-  }
+  magnetic.calibration_constants(&B, V, A);
+
+  ui.bLabel->setText(QString::asprintf("%.2f",B));
+
+  ui.a0Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[0][0],A[0][1],A[0][2]));
+  ui.a1Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[1][0],A[1][1],A[1][2]));
+  ui.a2Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[2][0],A[2][1],A[2][2]));
+
+  ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
+  ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
+  ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
+  
+  float gaps, variance, wobble, fiterror;
+  magnetic.calibration_quality(gaps, variance, wobble, fiterror);
+  ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
+  magnetic.getData(data);
+  ui.graphWidget->setData(data);
+}
+
+void MainWindow::TriggerQualityUpdate()
+{
+  magnetic.qualityUpdate(); 
+}
+
+
+//  Calibration data collection
+
+void MainWindow::on_clearButton_clicked()
+{
+  //qInfo() << "clear clicked";
+  ui.graphWidget->clearData();
+  magnetic.clear();
+}
+
+void MainWindow::on_startButton_clicked(){
+  if (isStreaming) {
+    isCalibrating = true;
+  //qInfo() << "connect clicked";
     
+    QScatterDataArray data;
+    //magnetic.getRegionData(data,50.0);
+    //ui.graphWidget->setRegionData(data);
+    ui.startButton->setEnabled(false);
+    ui.stopButton->setEnabled(true);
+    ui.clearButton->setEnabled(false);
+    qualitytimer.start(200);
+  }
+}
+
+  
+void MainWindow::on_stopButton_clicked(){
+  isCalibrating = false;
+  qualitytimer.stop();
+  ui.startButton->setEnabled(true);
+  ui.stopButton->setEnabled(false);
+  ui.clearButton->setEnabled(true);
 }
 
 // Logging of error messages
@@ -341,73 +400,8 @@ void MainWindow::on_logclearButton_clicked()
 }
 
 
-//  Calibration data collection
-
-void MainWindow::on_clearButton_clicked()
-{
-  ui.graphWidget->clearData();
-}
-
-void MainWindow::on_connectButton_clicked(){
-  timer.start(200);
-  magnetic.clear();
-
-  if (Attach()) {
-    Status status;
-    tag.GetStatus(status);
-      if (status.state() == IDLE) {
-        on_logclearButton_clicked();
-        ui.graphWidget->drawSphere(50.0);
-        QScatterDataArray data;
-        magnetic.getRegionData(data,50.0);
-        ui.graphWidget->setRegionData(data);
-        tag.SetRtc();
-        tag.Calibrate();
-      } else {
-        qInfo() << "Tag not in idle state";
-        Detach();
-      }
-      magnetic.clear();    
-  }
-      
-}
-  
-void MainWindow::on_disconnectButton_clicked(){
-  tag.Stop();
-  Detach();
-}
 
 
-void MainWindow::calibration_update(void)
-{
-  QScatterDataArray data;
-  float B;
-  float V[3];
-  float A[3][3];
 
-  qInfo() << "Calibration upstate in mainwindow";
 
-  magnetic.calibration_constants(&B, V, A);
 
-  ui.bLabel->setText(QString::asprintf("%.2f",B));
-
-  ui.a0Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[0][0],A[0][1],A[0][2]));
-  ui.a1Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[1][0],A[1][1],A[1][2]));
-  ui.a2Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[2][0],A[2][1],A[2][2]));
-
-  ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
-  ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
-  ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
-  
-  float gaps, variance, wobble, fiterror;
-  magnetic.calibration_quality(gaps, variance, wobble, fiterror);
-  ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
-  magnetic.getData(data);
-  ui.graphWidget->setData(data);
-
-}
-
-void MainWindow::TriggerQualityUpdate()
-{
-  magnetic.qualityUpdate(); 
-}

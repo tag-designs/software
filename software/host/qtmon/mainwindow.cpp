@@ -248,11 +248,12 @@ void MainWindow::TriggerUpdate(void)
         emit SectorsErased(status.sectors_erased());
       } 
 
+      /*
       if ((status.state() == CALIBRATE)  && status.has_sensors()){
         QString sensors = QString::fromStdString(status.sensors().DebugString());
         sensors = sensors.replace("\n",", ");
         qInfo() << "Sensors: " << sensors;
-      }
+      }*/
 
       current_state = status.state();  
       emit StateUpdate(current_state);   
