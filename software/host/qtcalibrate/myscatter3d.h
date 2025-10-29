@@ -10,6 +10,7 @@
 #include <Q3DScatterWidgetItem>
 #include <QtGraphs/qscatter3dseries.h>
 #include <QtGraphs/qscatterdataproxy.h>
+#include "sinbin.h"
 
 class MyScatter3D : public QWidget
 {
@@ -18,7 +19,7 @@ class MyScatter3D : public QWidget
 public:
     explicit MyScatter3D(QWidget *parent = nullptr);
     ~MyScatter3D();
-    void addData(float x, float y, float z);
+    void addData(QVector3D point);
     void clearData();
     void drawSphere(float radius);
     void setData(QScatterDataArray& data);
@@ -43,6 +44,8 @@ private:
     float sphereRange = 50.0;
 
     void adjustRange(float radius);
+
+    SinBin bins = SinBin(10);
 };
 
 #endif // MYSCATTER3D_H

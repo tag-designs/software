@@ -72,8 +72,8 @@ private slots:
   void on_stopButton_clicked();
   void on_clearButton_clicked();
   void calibration_update(void);
-  //void on_saveButton_clicked();
-  //void on_restoreButton_clicked();
+  void on_saveButton_clicked();
+  void on_loadButton_clicked();
 
   // orientation
 

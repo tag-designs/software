@@ -13,6 +13,7 @@
 extern "C"
 {
 #include "monitor.h"
+#include "log.h"
 }
 
 using namespace google::protobuf;
@@ -233,6 +234,30 @@ bool Tag::GetCalibrationLog(Ack &calibration_log)
   {
     return false;
   }
+}
+
+bool Tag::ReadCalibration(Ack &constants)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  req.Clear();
+  req.set_allocated_read_calibration(new Empty);
+  if (monitor.Rpc(req,ack)) {
+     constants.CopyFrom(ack);
+     return true;
+  }
+  else 
+  {
+    return false;
+  }
+}
+
+bool Tag::WriteCalibration(CalibrationConstants &constants)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  req.Clear();
+  req.set_allocated_write_calibration(new CalibrationConstants(constants));
+  //log_info("%s",req.DebugString().c_str());
+  return monitor.Rpc(req,ack);
 }
 
 // instantiate GetLog for bittags

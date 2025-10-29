@@ -57,7 +57,7 @@ set(qtcalibrate_SRCS
     qfi_AI.cpp
     qfi_HI.cpp
     quality.c
-    rawdata.c)
+    sinbin.cpp)
 
 qt6_wrap_ui(UI_HEADERS 
             mainwindow.ui)

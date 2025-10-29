@@ -88,6 +88,10 @@ INCLUDE rules.ld
 
 SECTIONS
 {
+  .calibration (NOLOAD): ALIGN(2048)
+  {
+    *(.calibration)
+  } > flash0
   .persistent (NOLOAD): ALIGN(2048)
   {
    __persistent_start__	= .;

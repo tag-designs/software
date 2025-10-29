@@ -169,6 +169,9 @@ bool MainWindow::Attach()
     ui.detachButton->setEnabled(true);
     ui.streamCheckBox->setEnabled(true);
     ui.streamCheckBox->setChecked(false);
+    ui.saveButton->setEnabled(true);
+    ui.loadButton->setEnabled(true);
+
     magnetic.clear();
     ui.graphWidget->clearData();
     ui.graphWidget->drawSphere(50.0);
@@ -190,6 +193,8 @@ void MainWindow::Detach()
   ui.detachButton->setEnabled(false);
   ui.streamCheckBox->setChecked(false);
   ui.streamCheckBox->setEnabled(false);
+  ui.saveButton->setEnabled(false);
+  ui.loadButton->setEnabled(false);
   isCalibrating = false;
   isOrienting = false;
   isStreaming = false;
@@ -205,6 +210,8 @@ void MainWindow::on_streamCheckBox_toggled(bool checked){
     ui.startButton->setEnabled(true);
     ui.stopButton->setEnabled(false);
     ui.clearButton->setEnabled(true);
+    ui.saveButton->setEnabled(false);
+    ui.loadButton->setEnabled(false);
   } else {
     tag.Stop();
     timer.stop();
@@ -213,6 +220,8 @@ void MainWindow::on_streamCheckBox_toggled(bool checked){
     ui.startButton->setEnabled(false);
     ui.stopButton->setEnabled(false);
     ui.clearButton->setEnabled(false);
+    ui.saveButton->setEnabled(true);
+    ui.loadButton->setEnabled(true);
   }
 }
 
@@ -233,7 +242,7 @@ void MainWindow::TriggerUpdate(void)
   Ack ack;
   static bool done;
   float mx,my,mz,ax,ay,az;
-  float pitch, roll, yaw, dip;
+  float pitch, roll, yaw, dip, field;
   
   if (isStreaming)
   { 
@@ -254,11 +263,12 @@ void MainWindow::TriggerUpdate(void)
             ax = sdata.accel().ax();
             ay = sdata.accel().ay();
             az = sdata.accel().az();
-            if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip)) {
+            if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip,field)) {
               ui.yawEdit->setText(QString::asprintf("%.1f",yaw));
               ui.pitchEdit->setText(QString::asprintf("%.1f",pitch));
               ui.rollEdit->setText(QString::asprintf("%.1f",roll));
               ui.dipEdit->setText(QString::asprintf("%.1f",dip));
+              ui.fieldEdit->setText(QString::asprintf("%.1f",field));
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
             }
@@ -266,7 +276,7 @@ void MainWindow::TriggerUpdate(void)
 
           if (isCalibrating) {
             magnetic.addData(mx,my,mz);
-            ui.graphWidget->addData(mx,my,mz);
+            ui.graphWidget->addData(QVector3D(mx,my,mz));
           }
         }
     }   
@@ -283,7 +293,7 @@ void MainWindow::calibration_update(void)
   float A[3][3];
   //qInfo() << "Calibration update in mainwindow";
 
-  magnetic.calibration_constants(&B, V, A);
+  magnetic.getCalibrationConstants(&B, V, A);
 
   ui.bLabel->setText(QString::asprintf("%.2f",B));
 
@@ -296,7 +306,7 @@ void MainWindow::calibration_update(void)
   ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
   
   float gaps, variance, wobble, fiterror;
-  magnetic.calibration_quality(gaps, variance, wobble, fiterror);
+  magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
   ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
   magnetic.getData(data);
   ui.graphWidget->setData(data);
@@ -339,6 +349,88 @@ void MainWindow::on_stopButton_clicked(){
   ui.startButton->setEnabled(true);
   ui.stopButton->setEnabled(false);
   ui.clearButton->setEnabled(true);
+}
+
+// save/restore calibration
+
+void MainWindow::on_saveButton_clicked(){
+  CalibrationConstants constants;
+  CalibrationConstants_MagConstants magconstants;
+  Ack ack;
+
+  float B;
+  float V[3];
+  float A[3][3];
+  if (magnetic.getCalibrationConstants(&B, V, A)){
+    magconstants.set_b(B);
+    magconstants.set_v0(V[0]);
+    magconstants.set_v1(V[1]);
+    magconstants.set_v2(V[2]);
+    magconstants.set_a00(A[0][0]);
+    magconstants.set_a01(A[0][1]);
+    magconstants.set_a02(A[0][2]);
+    magconstants.set_a10(A[1][0]);
+    magconstants.set_a11(A[1][1]);
+    magconstants.set_a12(A[1][2]);
+    magconstants.set_a20(A[2][0]);
+    magconstants.set_a21(A[2][1]);
+    magconstants.set_a22(A[2][2]);
+    constants.set_allocated_magnetometer(new ::CalibrationConstants_MagConstants(magconstants));
+    if (!tag.WriteCalibration(constants))
+    {
+      qInfo() << "WriteCalibration failed";
+    }
+    //qInfo() << magconstants.DebugString();
+
+  } else {
+    qInfo() << "save failed";
+  }
+
+}
+
+void MainWindow::on_loadButton_clicked(){
+   Ack ack;
+   float B;
+   float V[3];
+   float A[3][3];
+
+   if (tag.ReadCalibration(ack) 
+        && ack.has_calibration_constants() 
+        && ack.calibration_constants().has_magnetometer())
+   {
+      const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
+      B = mag.b();
+      V[0] = mag.v0();
+      V[1] = mag.v1();
+      V[2] = mag.v2();
+      A[0][0] = mag.a00();
+      A[0][1] = mag.a01();
+      A[0][2] = mag.a02();
+      A[1][0] = mag.a10();
+      A[1][1] = mag.a11();
+      A[1][2] = mag.a12();
+      A[2][0] = mag.a20();
+      A[2][1] = mag.a21();
+      A[2][2] = mag.a22();
+      magnetic.setCalibrationConstants(B,V,A);
+      magnetic.getCalibrationConstants(&B, V, A);
+
+      ui.bLabel->setText(QString::asprintf("%.2f",B));
+
+      ui.a0Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[0][0],A[0][1],A[0][2]));
+      ui.a1Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[1][0],A[1][1],A[1][2]));
+      ui.a2Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[2][0],A[2][1],A[2][2]));
+
+      ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
+      ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
+      ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
+     
+   } else {
+      qInfo() << "Read calibration failed";
+   }
+
+
+
 }
 
 // Logging of error messages

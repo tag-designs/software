@@ -236,19 +236,20 @@ message CalibrationLog {
 }
 
 message CalibrationConstants {
-  message MagConstants {
-    float b0 = 1;
-    float b1 = 2;
-    float b2 = 3;
-    float A00 = 4;
-    float A01 = 5;
-    float A02 = 6;
-    float A10 = 7;
-    float A11 = 8;
-    float A12 = 9;
-    float A20 = 10;
-    float A21 = 11;
-    float A22 = 12;
+  message MagConstants { // M' = A(M-V)
+    float b   = 1;  // field magnetude (at calibration)
+    float v0  = 2;  // offset vector
+    float v1  = 3;
+    float v2  = 4;
+    float a00 = 5;  // inverted scale array
+    float a01 = 6;
+    float a02 = 7;
+    float a10 = 8;
+    float a11 = 9;
+    float a12 = 10;
+    float a20 = 11;
+    float a21 = 12;
+    float a22 = 13;
   }
   MagConstants magnetometer = 1;
 }

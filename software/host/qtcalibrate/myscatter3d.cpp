@@ -109,7 +109,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     //sphereSeries->setBaseGradient(gradient);
     //sphereSeries->setColorStyle(QGraphsTheme::ColorStyle::RangeGradient);
     
-    QColor transparentGreen(0, 255, 0, 128);
+    QColor transparentGreen(0, 255, 0, 200);
     sphereSeries->setBaseColor(transparentGreen);
     sphereSeries->setItemSize(0.02f);
 
@@ -135,6 +135,7 @@ MyScatter3D::MyScatter3D(QWidget *parent)
     theme->setLabelBackgroundVisible(false);
     theme->setLabelBorderVisible(false);
     theme->setPlotAreaBackgroundVisible(false);
+  
 
 }
 
@@ -145,22 +146,16 @@ MyScatter3D::~MyScatter3D()
 }
 
 
-void MyScatter3D::addData(float x, float y, float z){
-    QScatterDataItem item(x,y,z);
+void MyScatter3D::addData(QVector3D point){
+    float pitch, yaw, roll;
+    QScatterDataItem item(point);
     series->dataProxy()->addItem(item);
     originSeries->dataProxy()->setItem(1,item);
-    adjustRange(abs(x));
-    adjustRange(abs(y));
-    adjustRange(abs(z));
-    // modify camera
-
-    //return;
-
-    float pitch, yaw, roll;
+    adjustRange(point.length());
 
     // v is point to track -- convert to up y
 
-    QVector3D v = QVector3D(x,y,z);
+    QVector3D v = point;
     v.normalize();
 
     // camera vector
@@ -172,15 +167,8 @@ void MyScatter3D::addData(float x, float y, float z){
     QQuaternion rotation = QQuaternion::rotationTo(camera,v);
     rotation.getEulerAngles(&pitch,&yaw,&roll);
 
-    // set camera rotation
-    //  50,0,0 has yaw of -90. -- (0,-90,0)
-    //.  0,0,0 as pitch of 90.  -- (90,0,0)
-    //. 30,30,0                 --  (45,-90,45)
-
     graph->setCameraXRotation(yaw);
     graph->setCameraYRotation(pitch);
- 
-   
 }
 
 
@@ -191,9 +179,10 @@ void MyScatter3D::setData(QScatterDataArray& data)
     series->dataProxy()->addItems(data);
     float maxval = 0.0;
     for (QScatterDataItem item : data){
-        maxval = MAX(maxval,abs(item.x()));
-        maxval = MAX(maxval,abs(item.y()));
-        maxval = MAX(maxval,abs(item.z()));
+        maxval = MAX(maxval,abs(item.position().length()));
+       //maxval = MAX(maxval,abs(item.x()));
+        //maxval = MAX(maxval,abs(item.y()));
+       // maxval = MAX(maxval,abs(item.z()));
     } 
     adjustRange(maxval);
 }
@@ -211,7 +200,24 @@ void MyScatter3D::clearData(){
 }
 
 void MyScatter3D::drawSphere(float radius){
+     // https://oceancolor.gsfc.nasa.gov/images/resources/seawifs/PreLVol32.pdf
+   
     sphereSeries->dataProxy()->resetArray();
+
+    for (int i = 0 ; i < bins.bins(); i++){
+        /*
+        float lat, lon;
+        bins.bin2latlon(i,lat,lon);
+        float x = radius * cos(lat*M_PI/180.0) * cos(lon*M_PI/180.0);
+        float y = radius * cos(lat*M_PI/180.0) * sin(lon*M_PI/180.0);
+        float z = radius *sin(lat*M_PI/180.0);
+        */
+        float x,y,z;
+        bins.bin2point(i,x,y,z);
+        QScatterDataItem item(x*radius,y*radius,z*radius);
+        sphereSeries->dataProxy()->addItem(item);
+    }
+    /*
     for (int i = 0; i < 360; i += 9){
         for (int j = 0; j < 360; j+= 9) {
             float theta = i * (M_PI / 180.0);
@@ -224,8 +230,10 @@ void MyScatter3D::drawSphere(float radius){
 
         }
     }
+    */
     sphereRange = radius;
     adjustRange(sphereRange);
+    qInfo() << "bins " << bins.bins();
 
 }
 

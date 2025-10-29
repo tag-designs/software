@@ -20,25 +20,7 @@ typedef struct {
 	float x;
 	float y;
 	float z;
-	//int valid;
 } Point_t;
-
-/*
-typedef struct {
-	float q0; // w
-	float q1; // x
-	float q2; // y
-	float q3; // z
-} Quaternion_t;
- */
-
-typedef struct
-{
-	float Bc[3];           // slow (typically 25Hz) averaged calibrated readings (uT)
-	float BcFast[3];       // fast (typically 200Hz) calibrated readings (uT)
-} MagSensor_t;
-
-//extern Quaternion_t current_orientation;
 
 // magnetic calibration & buffer structure
 typedef struct {
@@ -78,18 +60,10 @@ void fmatrixAeqInvA(float *A[], int8_t iColInd[], int8_t iRowInd[], int8_t iPivo
 void fmatrixAeqRenormRotA(float A[][3]);
 
 void raw_data_reset(void);
-void cal1_data(const float *data);
-void cal2_data(const float *data);
-bool raw_data(const float *data);
-
-void raw_data_reset(void);
-void cal1_data(const float *data);
-void cal2_data(const float *data);
-void calibration_confirmed(void);
 bool raw_data(const float *data);
 
 void apply_calibration(float rawx, float rawy, float rawz, Point_t *out);
-bool MagCal_Run(void);
+bool MagCal_Run(MagCalibration_t *magcal);
 
 void quality_reset(void);
 void quality_update(const Point_t *point);

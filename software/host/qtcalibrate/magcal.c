@@ -55,7 +55,7 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal);
 MagCalibration_t magcal;
 
 // run the magnetic calibration
-bool MagCal_Run(void)
+bool MagCal_Run(MagCalibration_t *magcal)
 {
 	int i, j;			// loop counters
 	int isolver;		// magnetic solver used
@@ -68,62 +68,62 @@ bool MagCal_Run(void)
 
 	// count number of data points
 	for (i=0; i < MAGBUFFSIZE; i++) {
-		if (magcal.valid[i]) count++;
+		if (magcal->valid[i]) count++;
 	}
 
 	if (count < MINMEASUREMENTS4CAL) return false;
 
 	//log_info("running calibration routine");
 
-	if (magcal.ValidMagCal) {
+	if (magcal->ValidMagCal) {
 		// age the existing fit error to avoid one good calibration locking out future updates
-		magcal.FitErrorAge *= 1.02f;
+		magcal->FitErrorAge *= 1.02f;
 	}
 
 	// is enough data collected
 	if (count < MINMEASUREMENTS7CAL) {
 		isolver = 4;
-		fUpdateCalibration4INV(&magcal); // 4 element matrix inversion calibration
-		if (magcal.trFitErrorpc < 12.0f) magcal.trFitErrorpc = 12.0f;
+		fUpdateCalibration4INV(magcal); // 4 element matrix inversion calibration
+		if (magcal->trFitErrorpc < 12.0f) magcal->trFitErrorpc = 12.0f;
 	} else if (count < MINMEASUREMENTS10CAL) {
 		isolver = 7;
-		fUpdateCalibration7EIG(&magcal); // 7 element eigenpair calibration
-		if (magcal.trFitErrorpc < 7.5f) magcal.trFitErrorpc = 7.5f;
+		fUpdateCalibration7EIG(magcal); // 7 element eigenpair calibration
+		if (magcal->trFitErrorpc < 7.5f) magcal->trFitErrorpc = 7.5f;
 	} else {
 		isolver = 10;
-		fUpdateCalibration10EIG(&magcal); // 10 element eigenpair calibration
+		fUpdateCalibration10EIG(magcal); // 10 element eigenpair calibration
 	}
 
 	// the trial geomagnetic field must be in range (earth is 22uT to 67uT)
-	if ((magcal.trB >= MINBFITUT) && (magcal.trB <= MAXBFITUT))	{
+	if ((magcal->trB >= MINBFITUT) && (magcal->trB <= MAXBFITUT))	{
 		// always accept the calibration if
 		//  1: no previous calibration exists
 		//  2: the calibration fit is reduced or
 		//  3: an improved solver was used giving a good trial calibration (4% or under)
-		if ((magcal.ValidMagCal == 0) ||
-				(magcal.trFitErrorpc <= magcal.FitErrorAge) ||
-				((isolver > magcal.ValidMagCal) && (magcal.trFitErrorpc <= 4.0F))) {
+		if ((magcal->ValidMagCal == 0) ||
+				(magcal->trFitErrorpc <= magcal->FitErrorAge) ||
+				((isolver > magcal->ValidMagCal) && (magcal->trFitErrorpc <= 4.0F))) {
 			// accept the new calibration solution
-			//printf("new magnetic cal, B=%.2f uT\n", magcal.trB);
-			magcal.ValidMagCal = isolver;
-			magcal.FitError = magcal.trFitErrorpc;
-			if (magcal.trFitErrorpc > 2.0f) {
-				magcal.FitErrorAge = magcal.trFitErrorpc;
+			//printf("new magnetic cal, B=%.2f uT\n", magcal->trB);
+			magcal->ValidMagCal = isolver;
+			magcal->FitError = magcal->trFitErrorpc;
+			if (magcal->trFitErrorpc > 2.0f) {
+				magcal->FitErrorAge = magcal->trFitErrorpc;
 			} else {
-				magcal.FitErrorAge = 2.0f;
+				magcal->FitErrorAge = 2.0f;
 			}
-			magcal.B = magcal.trB;
-			magcal.FourBsq = 4.0F * magcal.trB * magcal.trB;
+			magcal->B = magcal->trB;
+			magcal->FourBsq = 4.0F * magcal->trB * magcal->trB;
 			for (i = X; i <= Z; i++) {
-				magcal.V[i] = magcal.trV[i];
+				magcal->V[i] = magcal->trV[i];
 				for (j = X; j <= Z; j++) {
-					magcal.invW[i][j] = magcal.trinvW[i][j];
+					magcal->invW[i][j] = magcal->trinvW[i][j];
 				}
 			}
 			return true; // indicates new calibration applied
 		}
 	} else {
-		//log_info("magical failed; trB %f\n", magcal.trB);
+		//log_info("magical failed; trB %f\n", magcal->trB);
 	}
 	return false;
 }

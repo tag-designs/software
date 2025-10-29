@@ -5,6 +5,7 @@
 #include <QVector3D>
 #include <QScatter3DSeries>
 #include "magcal.h"
+#include "ema.h"
 
 
 
@@ -17,15 +18,17 @@ public:
 
     explicit CompassData(QObject *parent = nullptr);
     bool addData(float& x, float &y, float &z);
-    bool calibration_constants(float *B, float *V, float (*A)[3]);
-    void calibration_quality(float& gaps,float& variance, float& wobble, float& fiterror);
+    bool getCalibrationConstants(float *B, float *V, float (*A)[3]);
+    void setCalibrationConstants(float B, float *V, float(*A)[3]);
+    void calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror);
     void qualityUpdate();
     void clear();
     void getData(QScatterDataArray& data);
     void getRegionData(QScatterDataArray& data, float magnitude);
     bool eCompass(float mx, float my, float mz, 
                   float ax, float ay, float az,
-                  float& yaw, float& pitch, float& roll, float& dip);
+                  float& yaw, float& pitch, float& roll, float& dip,
+                  float& field);
 
 signals:
 
@@ -33,8 +36,12 @@ signals:
 
 private:
 
-        //MagCalibration_t magcal;
-
+    void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
+    void raw_data_reset();
+    int choose_discard_magcal(void);
+    void add_magcal_data(const float *data);
+    bool raw_data(const float *data);
+    Ema r,p,y,d;
 };
 
 #endif

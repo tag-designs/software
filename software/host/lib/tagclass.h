@@ -49,11 +49,16 @@ public:
   // Logs
   // next defines next log entry to fetch, returns the number of entries fetched
   // for data logs, copy the ack structure
-
  
   int GetStateLog(StateLog &state_log, int index);
   bool GetDataLog(Ack &data_log, int index);
   bool GetCalibrationLog(Ack &calibration_log);
+
+  // Calibration Constants
+  
+  bool ReadCalibration(Ack &constants);
+  bool WriteCalibration(CalibrationConstants &constants);
+
 
 private:
   mutex mtx;

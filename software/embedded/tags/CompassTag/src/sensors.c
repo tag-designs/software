@@ -15,9 +15,13 @@
 void magOn(void);
 void magOff(void);
 
-// calibration constants on page boundary
 
-CalibrationConstants_MagConstants calConstants[42] __attribute__((aligned (2048)));
+
+#define CONSTANT_CNT (2048/sizeof(CalibrationConstants_MagConstants))
+
+// calibration constants in reserved flash section
+
+CalibrationConstants_MagConstants calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
 
 bool sensorSample(SensorData *sensors)
@@ -114,7 +118,7 @@ int write_calibration(CalibrationConstants *constants){
     // erase block
     chSysLock();
     FLASH_Unlock();
-    FLASH_PageErase((uint32_t) calConstants);
+    FLASH_PageErase(((((uint32_t) calConstants)-0x8000000)) / 2048);
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();
