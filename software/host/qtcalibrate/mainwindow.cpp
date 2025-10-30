@@ -78,6 +78,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   Attach();
   ui.hi_graphicsView->redraw();
+  ui.tagWidget->setSource(QUrl("qrc:/qfi/images/main.qml"));
+  qInfo() << ui.tagWidget->errors();
+  ui.tagWidget->show();
+  qInfo() << ui.tagWidget->errors();
+  rootObject = ui.tagWidget->rootObject();
+
+  
   
 }
 
@@ -271,6 +278,7 @@ void MainWindow::TriggerUpdate(void)
               ui.fieldEdit->setText(QString::asprintf("%.1f",field));
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
+              rotateImage(pitch,roll);
             }
           }
 
@@ -494,7 +502,13 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
+void MainWindow::rotateImage(float pitch, float roll){
+    QMetaObject::invokeMethod(rootObject, "setRotation",
+        //Q_RETURN_ARG(QString, returnedValue),
+        Q_ARG(QVariant, pitch),
+        Q_ARG(QVariant, roll));
 
+}
 
 
 

@@ -9,5 +9,8 @@
         <file>images/hi/hi_case.svg</file>
         <file>images/hi/hi_face.svg</file>
 
+        <file>images/main.qml</file>
+        <file>images/CompassTag.gltf</file>
+
     </qresource>
 </RCC>

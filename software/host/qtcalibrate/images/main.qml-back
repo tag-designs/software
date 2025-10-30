@@ -1,0 +1,68 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick3D
+import QtQuick3D.AssetUtils
+import QtQuick3D.Helpers
+
+//Window {
+//    width: 300
+//    height: 300
+//    visible: true
+//    title: "Qt Quick 3D Model Viewer"
+
+    View3D {
+        id: view3d
+        anchors.fill: parent
+
+        // Set up a camera for viewing the scene.
+        PerspectiveCamera {
+            id: camera
+            position: Qt.vector3d(0, 200, 300)
+            eulerRotation.x: -30
+            fieldOfView: 90
+            //lookAt: Qt.vector3d(0, 0, 0)
+        }
+
+        // Add a directional light.
+        
+        DirectionalLight {}
+
+        // Load a 3D model.
+        //Model {
+        // Use the built-in sphere primitive
+        //source: "qrc:/qfi/images/CompassTag.gltf" 
+        
+        // Assign a material to color the sphere
+        //materials: PrincipledMaterial {
+        //    baseColor: "red"
+        //}
+
+        RuntimeLoader {
+            id : myNode
+            // Replace with the actual path to your glTF file
+            source: "qrc:/qfi/images/CompassTag.gltf"
+            //position.x: -2.5
+            position.x: -200
+            position.z: 75
+            position.y: -10
+            //pivot.z: 20
+
+            scale: Qt.vector3d(20, 20, 20) // Adjust scale as needed
+            //pivot: Qt.vector3d(-10,0,10 )
+            //eulerRotation.y: 45
+            //eulerRotation.x: 45
+            //eulerRotation.z: 45
+            Component.onCompleted: console.log(myNode.pivot)
+        }
+    AxisHelper {
+    }
+    Model {
+            position: myNode.pivot + Qt.vector3d(0,20,0) // Position the sphere at the Node's pivot
+            //scale: Qt.vector3d(0.5, 0.5, 0.5)
+            source: "#Sphere"
+            materials: PrincipledMaterial {
+                baseColor: "blue"
+            }
+    }
+
+}

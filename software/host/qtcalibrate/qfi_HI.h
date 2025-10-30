@@ -63,6 +63,7 @@ protected:
 
     /** */
     void resizeEvent( QResizeEvent *event );
+    QSize sizeHint();
 
 private:
 

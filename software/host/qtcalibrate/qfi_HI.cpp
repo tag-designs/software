@@ -27,6 +27,7 @@
 #endif
 
 #include <cmath>
+#include <QResizeEvent>
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -108,6 +109,10 @@ void qfi_HI::setHeading( double heading )
 
 void qfi_HI::resizeEvent( QResizeEvent *event )
 {
+
+    int newSize = qMin(event->size().width(), event->size().height());
+    // Set the new geometry to a square based on the smaller dimension
+    //this->setGeometry(x(), y(), newSize, newSize);
     ////////////////////////////////////
     QGraphicsView::resizeEvent( event );
     ////////////////////////////////////
@@ -124,6 +129,10 @@ void qfi_HI::init()
 
     reset();
 
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    fitInView(scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
+
     _itemFace = new QGraphicsSvgItem( ":/qfi/images/hi/hi_face.svg" );
     _itemFace->setCacheMode( QGraphicsItem::NoCache );
     _itemFace->setZValue( _faceZ );
@@ -138,6 +147,7 @@ void qfi_HI::init()
     _scene->addItem( _itemCase );
 
     centerOn( width() / 2.0 , height() / 2.0 );
+    
 
     updateView();
 }
@@ -159,4 +169,12 @@ void qfi_HI::updateView()
     _itemFace->setRotation( - _heading );
 
     _scene->update();
+}
+
+
+QSize qfi_HI::sizeHint() {
+    int size = qMin(width(), height());
+    size = qMin(size,256);
+    // For layouts, this helps provide a useful size hint
+    return QSize(size, size);
 }

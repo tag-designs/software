@@ -6,6 +6,7 @@
 #include <QPromise>
 #include <QProcess>
 #include <QRandomGenerator>
+#include<QQuickItem>
 #include "tagclass.h"
 #include "ui_mainwindow.h"
 
@@ -93,6 +94,7 @@ private:
 
   void logWindowInit(void);
   void scatterGraphInit(void);
+  void rotateImage(float pitch, float roll);
   QRandomGenerator *generator;
 
   CompassData magnetic;
@@ -103,6 +105,7 @@ private:
   QTimer timer;
   QTimer qualitytimer;
   UsbDev usbdev;
+  QQuickItem *rootObject;
 
   bool isCalibrating = false;
   bool isOrienting = false;
