@@ -26,6 +26,6 @@ extern bool writeConfig(Config *config);
 extern void readConfig(Config *config);
 
 extern int write_calibration(CalibrationConstants *);
-extern int read_calibration(Ack *);
+extern int read_calibration(int32_t, Ack *);
 
 #endif /* CONFIG_H */

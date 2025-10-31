@@ -113,17 +113,19 @@ bool CompassData::eCompass(float mx, float my, float mz,
 
     if (magcal.ValidMagCal)
     {
+		// apply magnetometer calibration
         Point_t out = {mx,my,mz};
         apply_calibration(mx,my,mz,&out);
         mx = out.x;
         my = out.y;
         mz = out.z;
 
+		//compute field, roll, pitch
 		field = sqrt(mx*mx + my*my + mz*mz);
-
         roll =  atan2(ay, az);                        // Roll in radians
         pitch = atan2(-ax, sqrt(ay * ay + az * az)); // Pitch in radians
 
+		// align magnetometer
         float sinRoll = sin(roll);
         float cosRoll = cos(roll);
         float sinPitch = sin(pitch);
@@ -131,19 +133,28 @@ bool CompassData::eCompass(float mx, float my, float mz,
 
         float Bx_horiz = mx * cosPitch + my * sinRoll * sinPitch + mz * cosRoll * sinPitch;
         float By_horiz = my * cosRoll - mz * sinRoll;
-
         float Bz_horiz = -mx * sinPitch + my * sinRoll * cosPitch + mz * cosRoll * cosPitch;
 
-        yaw = atan2(By_horiz, Bx_horiz); // Yaw in radians
+		// compute yaw, dip
 
+        yaw = atan2(By_horiz, Bx_horiz); // Yaw in radians
         float mag_horizontal = sqrt(Bx_horiz * Bx_horiz + By_horiz * By_horiz);
         float dip_angle_rad = atan2(Bz_horiz, mag_horizontal);
+
+		// convert to degrees
 
         yaw = yaw * 180.0f / M_PI;
         pitch = pitch * 180.0f / M_PI;
         roll = roll * 180.0f / M_PI;
         dip = dip_angle_rad*180.0f/M_PI;
 
+		//yaw = y + yaw;
+		//pitch = p + pitch;
+		//roll = r + roll;
+		//dip = d + dip;
+		//field = f + field;
+
+		// to do -- low pass filter data
 
         return true;
     }

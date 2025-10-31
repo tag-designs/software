@@ -41,7 +41,7 @@ private:
     int choose_discard_magcal(void);
     void add_magcal_data(const float *data);
     bool raw_data(const float *data);
-    Ema r,p,y,d;
+    Ema r,p,y,d,f;
 };
 
 #endif

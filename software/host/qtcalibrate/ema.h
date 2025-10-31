@@ -3,7 +3,7 @@ class Ema {
 
 public:
 
-    Ema(float a=0.4):alpha(a){};
+    Ema(float a=0.3):alpha(a){};
     float operator+(float v) { value = alpha*v + (1-alpha)*value; return value; };
     float val(){ return value;};
 

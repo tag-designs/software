@@ -15,13 +15,20 @@
 void magOn(void);
 void magOff(void);
 
+typedef struct {
+    int32_t timestamp;
+    CalibrationConstants_MagConstants constants;
+} sensor_constants_t __attribute__((aligned(8))); 
+
+sensor_constants_t constants_tmp NOINIT;
 
 
-#define CONSTANT_CNT (2048/sizeof(CalibrationConstants_MagConstants))
+
+#define CONSTANT_CNT (2048/sizeof(sensor_constants_t))
 
 // calibration constants in reserved flash section
 
-CalibrationConstants_MagConstants calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
+sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
 
 bool sensorSample(SensorData *sensors)
@@ -111,9 +118,21 @@ int calibration_logAck(Ack *ack){
 }
 
 int write_calibration(CalibrationConstants *constants){
+  unsigned int index;
+
+  
   if (!constants->has_magnetometer)
     return errAck(Ack_INVAL);
-  if ((*((int32_t *) &calConstants[0])) != -1)
+
+  // search for first empty slot
+
+  for (index = 0; index < CONSTANT_CNT; index++){
+    if  ((*((int32_t *) &calConstants[index])) == -1)
+      break;
+  }
+
+  // if all slots are free, erase current constants
+  if (index >= CONSTANT_CNT)
   {
     // erase block
     chSysLock();
@@ -122,28 +141,43 @@ int write_calibration(CalibrationConstants *constants){
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();
+    index = 0;
   }
 
   // write constants
 
+  memcpy(&constants_tmp.constants, 
+         &(constants->magnetometer), 
+        sizeof(constants->magnetometer));
+  constants_tmp.timestamp = constants->timestamp;
+
   chSysLock();
   FLASH_Unlock();
-  FLASH_Program_Array((uint32_t *) calConstants, 
-                      (uint32_t *) &(constants->magnetometer),
-                      sizeof(CalibrationConstants_MagConstants)/4);
+  FLASH_Program_Array((uint32_t *) &calConstants[index], 
+                      (uint32_t *) &(constants_tmp),
+                      sizeof(constants_tmp)/4);
   FLASH_Lock();
   FLASH_Flush_Data_Cache();
   chSysUnlock();
   return errAck(Ack_OK);
 }
 
-int read_calibration(Ack *ack){
-  if ((*((int32_t *) &calConstants[0])) == -1)
+int read_calibration(int32_t index, Ack *ack){
+  // if index < 0, search for last written
+  if (index < 0) {
+    for (index = (int32_t) CONSTANT_CNT - 1 ; index > -1 ; index--){
+      if ((*((int32_t *) &calConstants[index])) != -1)
+        break;
+    }
+  }
+  if ((index < 0) || (index >= (int32_t) CONSTANT_CNT ) || ((*((int32_t *) &calConstants[index])) == -1))
     return errAck(Ack_NODATA);
   ack->err = Ack_OK;
   ack->which_payload = Ack_calibration_constants_tag;
   ack->payload.calibration_constants.has_magnetometer = true;
-  memcpy(&ack->payload.calibration_constants.magnetometer, calConstants,  sizeof(CalibrationConstants_MagConstants));
+  memcpy(&ack->payload.calibration_constants.magnetometer, &calConstants[index].constants,  
+      sizeof(CalibrationConstants_MagConstants));
+  ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
 }
 

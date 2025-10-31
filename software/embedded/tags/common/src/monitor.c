@@ -307,7 +307,7 @@ int proto_eval(int len)
   case Req_write_calibration_tag:
     return write_calibration(&req.payload.write_calibration);
   case Req_read_calibration_tag:
-    return read_calibration(&ack);
+    return read_calibration(req.payload.read_calibration, &ack);
 #endif
   default:
     return errAck(Ack_Err_PERM);

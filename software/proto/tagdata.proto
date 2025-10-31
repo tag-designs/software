@@ -251,6 +251,9 @@ message CalibrationConstants {
     float a21 = 12;
     float a22 = 13;
   }
-  MagConstants magnetometer = 1;
+
+  sfixed32 timestamp = 1;
+  MagConstants magnetometer = 2;
+ 
 }
 

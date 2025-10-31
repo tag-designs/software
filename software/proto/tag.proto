@@ -43,7 +43,8 @@ message Req {
     Empty calibrate = 11;  // go to sensor calibrate state
     Empty caldata   = 12;  // request calibration log
     CalibrationConstants write_calibration = 13;
-    Empty read_calibration = 14;
+    int32 read_calibration = 14;  // read index, < 0 means last written, > -1 means specific
+                                  // calibration constant write
   }
 }
 

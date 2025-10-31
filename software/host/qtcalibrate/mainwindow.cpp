@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QTime>
+#include <QDateTime>
 #include <QTimer>
 #include <QLayout>
 #include <QFutureWatcher>
@@ -182,6 +183,7 @@ bool MainWindow::Attach()
     magnetic.clear();
     ui.graphWidget->clearData();
     ui.graphWidget->drawSphere(50.0);
+    on_loadButton_clicked();
     qInfo() << "Attach succeeded";
     return true;
   }
@@ -271,11 +273,11 @@ void MainWindow::TriggerUpdate(void)
             ay = sdata.accel().ay();
             az = sdata.accel().az();
             if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip,field)) {
-              ui.yawEdit->setText(QString::asprintf("%.1f",yaw));
-              ui.pitchEdit->setText(QString::asprintf("%.1f",pitch));
-              ui.rollEdit->setText(QString::asprintf("%.1f",roll));
-              ui.dipEdit->setText(QString::asprintf("%.1f",dip));
-              ui.fieldEdit->setText(QString::asprintf("%.1f",field));
+              ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
+              ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
+              ui.rollEdit->setText(QString::asprintf("%.0f",roll));
+              ui.dipEdit->setText(QString::asprintf("%.0f",dip));
+              ui.fieldEdit->setText(QString::asprintf("%.0f",field));
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
               rotateImage(pitch,roll);
@@ -384,6 +386,7 @@ void MainWindow::on_saveButton_clicked(){
     magconstants.set_a21(A[2][1]);
     magconstants.set_a22(A[2][2]);
     constants.set_allocated_magnetometer(new ::CalibrationConstants_MagConstants(magconstants));
+    constants.set_timestamp(QDateTime::currentSecsSinceEpoch());
     if (!tag.WriteCalibration(constants))
     {
       qInfo() << "WriteCalibration failed";
@@ -402,7 +405,7 @@ void MainWindow::on_loadButton_clicked(){
    float V[3];
    float A[3][3];
 
-   if (tag.ReadCalibration(ack) 
+   if (tag.ReadCalibration(ack,-1)
         && ack.has_calibration_constants() 
         && ack.calibration_constants().has_magnetometer())
    {
@@ -432,6 +435,8 @@ void MainWindow::on_loadButton_clicked(){
       ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
       ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
       ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
+
+      qInfo() << "Read timestamp " << ack.calibration_constants().timestamp();
      
    } else {
       qInfo() << "Read calibration failed";

@@ -236,11 +236,11 @@ bool Tag::GetCalibrationLog(Ack &calibration_log)
   }
 }
 
-bool Tag::ReadCalibration(Ack &constants)
+bool Tag::ReadCalibration(Ack &constants, uint32_t index)
 {
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
-  req.set_allocated_read_calibration(new Empty);
+  req.set_read_calibration(index);
   if (monitor.Rpc(req,ack)) {
      constants.CopyFrom(ack);
      return true;
