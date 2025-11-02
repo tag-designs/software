@@ -408,7 +408,7 @@ void Actogram::generateNaturalLightData() {
       break;
     }
     // add civil twilight angle (6 degrees)
-    lightdata << posData.elevref + 6.0;
+    lightdata << posData.elevref; // + 6.0;
   }
 }
 
