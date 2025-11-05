@@ -36,6 +36,10 @@ private:
     float field = 60.0;
         // zoom factor set by wheel
     float zoom = 1.0;
+
+    // radius of center circle
+    const float centerRadius = 2.0;
+
         // calibration data
     QList<QVector3D> points;
         // all items rotated by focusQ
@@ -51,11 +55,10 @@ private:
 
     // drawing helpers
 
-    void drawAxes(QPainter *e);
-    void drawAxis(QPainter *e, QVector3D pt, QColor color);
+    void drawAxis(QPainter *e, QVector3D pt, QColor color, QString& text);
 
     // if resize is true, points with -z are resized
-    void drawPoint(QPainter *p, QVector3D pt, QColor color, float size, bool resize=true);
+    void drawPoint(QPainter *p, QVector3D pt, QColor color, float size);
 
 };
 

@@ -55,11 +55,18 @@ void magPlot::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform,true);
 
+    // change text size
+
+    QFont font = painter.font();
+    font.setPixelSize(6);
+    painter.setFont(font);
+
     // fill background
 
     painter.fillRect(rect(), Qt::white);
 
     // translate zero point to center
+
     painter.translate(width()/2.0,height()/2.0);
 
     // set initial scaling
@@ -67,70 +74,136 @@ void magPlot::paintEvent(QPaintEvent *event)
     float scale = zoom*height()/(field*2.5);
     painter.scale(scale,scale);
 
-    // draw circle
+    // Compute points
 
-    painter.setPen(QPen(Qt::gray, 0.1));
-    QPointF center(0.0,0.0);
-    painter.drawEllipse(center,field,field);
-
-    // draw the axes
-
-    drawAxes(&painter);
-
-    // draw data
-
+    QList<QVector3D> translated_points;
     QList<QVector3D>:: iterator i;
     for (i = points.begin(); i != points.end(); ++i){
-        drawPoint(&painter, focusQ.rotatedVector(*i*field), Qt::magenta, 1.0);
+        QVector3D pt = focusQ.rotatedVector(*i*field);
+        // x up, y right, z down for NED system
+        float x = pt.x();
+        pt.setX(pt.y());
+        pt.setY(-x);
+        pt.setZ(-pt.z());
+        translated_points.append(pt);
     }
-}
 
-   // draw a point with given color and size.  If resize, rescale for points with z < 0
+    // Draw background points
 
-void magPlot::drawPoint(QPainter *p, QVector3D pt, QColor color, float size, bool resize)
-{
-    p->setPen(Qt::NoPen);
-    if (pt.z()<0.0) {
-        color.setAlphaF(0.2);    // translucent for negative z
-        if (resize)
-            size = size*0.7;     // smaller for negative z
+    painter.save();
+    for (i = translated_points.begin(); i != translated_points.end(); ++i){
+        if ((*i).z() >= 0) {
+            drawPoint(&painter, *i, Qt::darkMagenta, 1.0);
+        }
     }
-    p->setBrush(QBrush(color,Qt::SolidPattern));
-    p->drawEllipse(QPointF(pt.x(),pt.y()),size/2,size/2);
+    painter.restore();
 
-}
+    // Compute Axes
 
-  // draw a single axis with given color and end point (pt)
-
-void magPlot::drawAxis(QPainter *p, QVector3D pt, QColor color){
-    drawPoint(p,pt,color,1.5,false);
-    p->setPen(QPen(color, 0.1));
-    if (pt.z()<0.0)
-        color.setAlphaF(0.2);
-    p->drawLine(QPointF(pt.x(),pt.y()),QPointF(0.0,0.0));
-
-}
-
-   // draw axes rotated by focusQ
-   // following QML Axis helper:The X axis is red, the Y axis is green, and the Z axis is blue.
-
-void magPlot::drawAxes(QPainter *P)
-{
-    P->save();
-
-    QVector3D x1(field,0.0,0.0);
-    QVector3D y1(0.0,field,0.0);
-    QVector3D z1(0.0,0.0,field);
+    QVector3D x1(0.0,1.0,0.0);
+    QVector3D y1(1.0,0.0,0.0);
+    QVector3D z1(0.0,0.0,1.0);
 
     x1 = focusQ.rotatedVector(x1);
     y1 = focusQ.rotatedVector(y1);
     z1 = focusQ.rotatedVector(z1);
 
-    drawAxis(P,x1,Qt::red);
-    drawAxis(P,y1,Qt::green);
-    drawAxis(P,z1,Qt::blue);
+    QString xlabel = QString("x");
+    QString ylabel = QString("y");
+    QString zlabel = QString("z");
 
-    P->restore();
+    // Draw Axes in background (positive z)
+
+    if (x1.z() >= 0)
+        drawAxis(&painter,x1,Qt::red,xlabel);
+    if (y1.z() >= 0)
+        drawAxis(&painter,y1,Qt::green,ylabel);
+    if (z1.z() >= 0)
+        drawAxis(&painter,z1,Qt::blue,zlabel);
+
+    // draw sphere center
+    QPointF center(0.0,0.0);
+    painter.save();
+
+    painter.setPen(Qt::NoPen);
+    QRadialGradient radGrad(QPointF(0.0,0.0),1.5);
+    radGrad.setColorAt(1.0,Qt::darkCyan);
+    radGrad.setColorAt(0.0,Qt::cyan);
+    painter.setBrush(QBrush(radGrad));
+    painter.drawEllipse(center,2.0,2.0);
+
+    painter.restore();
+
+
+    // draw circle -- Use gradient fill based on very light gray
+
+    painter.save();
+    painter.setPen(QPen(Qt::gray, 0.1));
+
+      // gradient
+
+    radGrad.setCenterRadius(field);
+    radGrad.setColorAt(1.0,QColor(240,240,240,60));
+    radGrad.setColorAt(0.0,QColor(240,240,240,150));
+    painter.setBrush(QBrush(radGrad));
+
+    // draw boundary ellipse
+
+    painter.drawEllipse(center,field,field);
+    painter.restore();
+
+
+    // draw the axes in forground -- z axis points down!
+
+    if (x1.z() < 0)
+        drawAxis(&painter,x1,Qt::red,xlabel);
+    if (y1.z() < 0)
+        drawAxis(&painter,y1,Qt::green,ylabel);
+    if (z1.z() < 0)
+        drawAxis(&painter,z1,Qt::blue,zlabel);
+
+    // Draw foreground points (negative z)
+
+    painter.save();
+    for (i = translated_points.begin(); i != translated_points.end(); ++i){
+        if ((*i).z() < 0) {
+            drawPoint(&painter, *i, Qt::darkMagenta, 1.0);
+        }
+    }
+    painter.restore();
+}
+
+   // draw a point with given color and size.
+
+void magPlot::drawPoint(QPainter *p, QVector3D pt, QColor color, float size)
+{
+    p->setPen(Qt::NoPen);
+    // scale based upon z distance
+    size = size - pt.z()/(pt.length()*size*4.0);
+    p->setBrush(QBrush(color,Qt::SolidPattern));
+    p->drawEllipse(QPointF(pt.x(),-pt.y()),size/2,size/2);
+}
+
+  // draw a single axis with given color and end point (pt)
+
+void magPlot::drawAxis(QPainter *p, QVector3D pt, QColor color, QString &text){
+    QPointF pt2(pt.x(),-pt.y());
+    p->save();
+    QLineF line = QLineF(pt2*field, pt2*centerRadius);
+    drawPoint(p,pt*field,color,1.5);
+    p->setPen(QPen(color, 0.1));
+    if (pt.z()<0.0)
+        color.setAlphaF(0.2);
+    p->drawLine(line); // QPointF(pt.x(),pt.y()),QPointF(0.0,0.0));
+    //pt = pt*field*1.05;
+    p->translate(pt2*field*1.05);
+    //p->rotate(line.angle());
+    QFontMetrics fm(p->font());
+    QRect textRect = fm.boundingRect(text);
+    p->translate(textRect.center());
+    p->drawText(0.0,0.0,text);
+    p->restore();
+
 }
 
 // Mouse controls
@@ -146,7 +219,6 @@ void magPlot::wheelEvent(QWheelEvent *event)
         zoom = zoom/1.15;
     }
     update();
-
 }
 
 void magPlot::mousePressEvent(QMouseEvent *event)
@@ -163,8 +235,8 @@ void magPlot::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_isDragging && (event->buttons() & Qt::RightButton)) {
         QPointF delta = event->position() - m_lastPos;
-        float yaw_change = qBound(-90.0,90.0*delta.x()/width(),90.0);
-        float pitch_change = qBound(-90.0,-90.0*delta.y()/height(),90.0);
+        float pitch_change = qBound(-90.0,90.0*delta.x()/width(),90.0);
+        float yaw_change = qBound(-90.0,-90.0*delta.y()/height(),90.0);
         setFocusQuaternion(QQuaternion::fromEulerAngles(pitch_change,yaw_change,0.0)*old_rotationQ);
     }
     QFrame::mouseMoveEvent(event);
