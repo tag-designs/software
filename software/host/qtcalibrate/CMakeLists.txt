@@ -50,10 +50,11 @@ endif()
 set(qtcalibrate_SRCS
     compassdata.cpp
     magcal.c
+    magplot.cpp
     main.cpp
     mainwindow.cpp
     matrix.c
-    myscatter3d.cpp
+    #myscatter3d.cpp
     qfi_AI.cpp
     qfi_HI.cpp
     quality.c

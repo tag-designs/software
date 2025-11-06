@@ -7,16 +7,17 @@
 #include <QList>
 #include <QQuaternion>
 
-class magPlot : public QFrame
+class magPlot : public QWidget
 {
     Q_OBJECT
 public:
-    explicit magPlot(QFrame *parent = nullptr);
+    explicit magPlot(QWidget *parent = nullptr);
     void setField(float f);
     void setZoom(float z);
     void setFocusQuaternion(QQuaternion);
     void setPoints(QList<QVector3D>);
     void addPoint(QVector3D);
+    void reset();
 
 signals:
 
@@ -32,26 +33,28 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
-        // magnetic field
-    float field = 60.0;
-        // zoom factor set by wheel
-    float zoom = 1.0;
 
-    // radius of center circle
     const float centerRadius = 2.0;
+    const float dataPointSize = 0.5;
+    const float highlightSize = 2.0;
+    const float axisPointSize = 1.0;
+    const float axisFontPixelSize = 4.0;
 
-        // calibration data
-    QList<QVector3D> points;
-        // all items rotated by focusQ
-    QQuaternion focusQ = QQuaternion(1.0,0.0,0.0,0.0);
-        // rotation without rotationQ [ focusQ = rotationQ*savedQ ]
-    QQuaternion savedQ = QQuaternion(1.0,0.0,0.0,0.0);
-        // external rotation through mouse events
-    QQuaternion rotationQ = QQuaternion(1.0,0.0,0.0,0.0);
-        // state for mouse tracking
+    float field; // magnetic field
+    float zoom ; // zoom factor set by wheel
+
+
+    QList<QVector3D> points; // data to plot
+    QQuaternion focusQ;      // rotation to focal point
+    QQuaternion savedQ;      // rotation of latest data
+    QQuaternion rotationQ;   // added rotation through mouse or setFocusQuaternion
+
+    // temporary state for mouse tracking
+
     QQuaternion old_rotationQ;
     bool m_isDragging = false;
     QPointF m_lastPos;
+
 
     // drawing helpers
 

@@ -50,7 +50,7 @@
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_8">
                  <item>
-                  <widget class="MyScatter3D" name="graphWidget" native="true">
+                  <widget class="magPlot" name="graphWidget" native="true">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                      <horstretch>0</horstretch>
@@ -789,15 +789,15 @@
    <header location="global">QtQuickWidgets/QQuickWidget</header>
   </customwidget>
   <customwidget>
-   <class>MyScatter3D</class>
-   <extends>QWidget</extends>
-   <header>myscatter3d.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>qfi_HI</class>
    <extends>QGraphicsView</extends>
    <header>qfi_HI.h</header>
+  </customwidget>
+  <customwidget>
+   <class>magPlot</class>
+   <extends>QWidget</extends>
+   <header>magplot.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

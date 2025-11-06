@@ -181,8 +181,8 @@ bool MainWindow::Attach()
     ui.loadButton->setEnabled(true);
 
     magnetic.clear();
-    ui.graphWidget->clearData();
-    ui.graphWidget->drawSphere(50.0);
+    ui.graphWidget->reset();
+    //ui.graphWidget->drawSphere(50.0);
     on_loadButton_clicked();
     qInfo() << "Attach succeeded";
     return true;
@@ -280,13 +280,14 @@ void MainWindow::TriggerUpdate(void)
               ui.fieldEdit->setText(QString::asprintf("%.0f",field));
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
-              rotateImage(pitch,roll);
+              rotateImage(yaw,pitch,roll);
             }
           }
 
           if (isCalibrating) {
             magnetic.addData(mx,my,mz);
-            ui.graphWidget->addData(QVector3D(mx,my,mz));
+            //ui.graphWidget->addData(QVector3D(mx,my,mz));
+            ui.graphWidget->addPoint(QVector3D(mx,my,mz));
           }
         }
     }   
@@ -319,7 +320,13 @@ void MainWindow::calibration_update(void)
   magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
   ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
   magnetic.getData(data);
-  ui.graphWidget->setData(data);
+  //ui.graphWidget->setData(data);
+  QList<QVector3D> points;
+  for (QScatterDataItem item : data){
+    points.append(item.position());
+  }
+  ui.graphWidget->setPoints(points);
+  ui.graphWidget->setField(magnetic.getField());
 }
 
 void MainWindow::TriggerQualityUpdate()
@@ -333,7 +340,7 @@ void MainWindow::TriggerQualityUpdate()
 void MainWindow::on_clearButton_clicked()
 {
   //qInfo() << "clear clicked";
-  ui.graphWidget->clearData();
+  ui.graphWidget->reset();
   magnetic.clear();
 }
 
@@ -341,8 +348,8 @@ void MainWindow::on_startButton_clicked(){
   if (isStreaming) {
     isCalibrating = true;
   //qInfo() << "connect clicked";
-    
-    QScatterDataArray data;
+    ui.graphWidget->setFocusQuaternion(QQuaternion(1.0,0.0,0.0,0.0));
+    //QScatterDataArray data;
     //magnetic.getRegionData(data,50.0);
     //ui.graphWidget->setRegionData(data);
     ui.startButton->setEnabled(false);
@@ -507,9 +514,10 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
-void MainWindow::rotateImage(float pitch, float roll){
+void MainWindow::rotateImage(float yaw, float pitch, float roll){
     QMetaObject::invokeMethod(rootObject, "setRotation",
         //Q_RETURN_ARG(QString, returnedValue),
+        Q_ARG(QVariant, yaw),
         Q_ARG(QVariant, pitch),
         Q_ARG(QVariant, roll));
 

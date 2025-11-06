@@ -29,6 +29,7 @@ public:
                   float ax, float ay, float az,
                   float& yaw, float& pitch, float& roll, float& dip,
                   float& field);
+    float getField();
 
 signals:
 

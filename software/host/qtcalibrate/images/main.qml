@@ -6,9 +6,10 @@ import QtQuick3D.Helpers
 
 View3D {
 
-    function setRotation(pitch, roll){
-        myGroup.eulerRotation.z = -pitch
-        myGroup.eulerRotation.x = roll+180
+    function setRotation(yaw, pitch, roll){
+       // myGroup.eulerRotation.y = -yaw-90    // green
+        myGroup.eulerRotation.z = -pitch    // red
+        myGroup.eulerRotation.x = -roll+180 // blue
         //return "ok"
     }
     id: view3d
@@ -17,7 +18,7 @@ View3D {
     // Set up a camera for viewing the scene.
     OrthographicCamera {
         id: camera
-        position: Qt.vector3d(0,0, 500)
+        position: Qt.vector3d(-500,0, 0)
         //eulerRotation.x: -30
         lookAtNode: myGroup
     }
@@ -31,7 +32,7 @@ View3D {
     Node {
         id: myGroup
         position: Qt.vector3d(0, 0, 0)
-        eulerRotation.y: 90 // Rotate the entire group
+        //eulerRotation.y: 90 // Rotate the entire group
 
         Model {
             source: "#Cube"
@@ -46,7 +47,10 @@ View3D {
             position: Qt.vector3d(100, 18, 0)
             scale: Qt.vector3d(1.1,0.3,1.1)
         }
+         AxisHelper {
+        }
     }
 }
+   
 
 

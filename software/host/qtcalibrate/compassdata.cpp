@@ -111,7 +111,7 @@ bool CompassData::eCompass(float mx, float my, float mz,
 				  float& field)
 {
 
-    if (magcal.ValidMagCal)
+    if (magcal.ValidMagCal) // only compute if magnetometer is calibrated
     {
 		// apply magnetometer calibration
         Point_t out = {mx,my,mz};
@@ -298,6 +298,11 @@ bool CompassData::raw_data(const float *data)
 	
 	return MagCal_Run(&magcal) != 0;
 
+}
+
+float CompassData::getField()
+{
+	return magcal.B;
 }
 
 
