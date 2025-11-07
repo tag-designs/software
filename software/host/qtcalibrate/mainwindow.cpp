@@ -1,7 +1,5 @@
 
 #include <QMainWindow>
-#include <QDate>
-#include <QDateTime>
 #include <QDebug>
 #include <QFile>
 #include <QFileDialog>
@@ -12,24 +10,12 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QLayout>
-#include <QFutureWatcher>
-#include <QtConcurrent/QtConcurrent>
-#include <QProcessEnvironment>
+
 
 #include <QVector3D>
 
-
-#include <QFuture>
-
 #include <ctime>
 #include <fstream>
-#include <iomanip>
-
-#include <google/protobuf/util/json_util.h>
-#include <streambuf>
-
-#include <QRandomGenerator>
-
 
 #include "tagclass.h"
 #include "mainwindow.h"
@@ -65,9 +51,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   setWindowTitle(QString(title_string));
 
+  // initialize logging window
+
   logWindowInit();
 
-  generator = QRandomGenerator::global();
 
   // Connect Timers to slots
 
@@ -84,8 +71,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   ui.tagWidget->show();
   qInfo() << ui.tagWidget->errors();
   rootObject = ui.tagWidget->rootObject();
-
-  
   
 }
 
@@ -129,8 +114,8 @@ bool MainWindow::Attach()
     {
       QString bus = QString::number(usbdevs[j].bus).rightJustified(3, '0');
       QString address = QString::number(usbdevs[j].address).rightJustified(3, '0');
-      QString vid = QString::number(usbdevs[j].vid, 16); //.rightJustified(4,'0');
-      QString pid = QString::number(usbdevs[j].pid, 16); //.rightJustified(4,'0');
+      QString vid = QString::number(usbdevs[j].vid, 16);
+      QString pid = QString::number(usbdevs[j].pid, 16); 
       QString s = QString("%1:%2    0x%3:0x%4").arg(bus, address, vid, pid);
       items << s;
     }
@@ -250,6 +235,7 @@ void MainWindow::TriggerUpdate(void)
   Status status;
   Ack ack;
   static bool done;
+  QVector3D mag, accel;
   float mx,my,mz,ax,ay,az;
   float pitch, roll, yaw, dip, field;
   
@@ -263,15 +249,16 @@ void MainWindow::TriggerUpdate(void)
               mx = sdata.mag().mx();
               my = sdata.mag().my();
               mz = sdata.mag().mz();
+              mag = QVector3D(mx,my,mz);
           } else {
             continue;
           }
-              //qInfo() << x << "," << y << "," << z;
 
           if (sdata.has_accel()){
             ax = sdata.accel().ax();
             ay = sdata.accel().ay();
             az = sdata.accel().az();
+            accel = QVector3D(ax,ay,az);
             if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip,field)) {
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
               ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
@@ -281,13 +268,20 @@ void MainWindow::TriggerUpdate(void)
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
               rotateImage(yaw,pitch,roll);
+              qInfo() << "Old" << yaw << pitch << roll << dip << field;
+              QQuaternion q;
+              float tmp;
+              magnetic.eCompass(mag, accel, q, yaw, dip, field);
+              q.getEulerAngles(&pitch,&roll,&yaw);
+              qInfo() << "New" << yaw << pitch << roll << dip << field;
+              //rotateImage(yaw,pitch,roll);
             }
           }
 
           if (isCalibrating) {
-            magnetic.addData(mx,my,mz);
-            //ui.graphWidget->addData(QVector3D(mx,my,mz));
-            ui.graphWidget->addPoint(QVector3D(mx,my,mz));
+            mag = QVector3D(mx,my,mz);
+            magnetic.addData(mag);
+            ui.graphWidget->addPoint(mag);
           }
         }
     }   
@@ -298,7 +292,6 @@ void MainWindow::TriggerUpdate(void)
 
 void MainWindow::calibration_update(void)
 {
-  QScatterDataArray data;
   float B;
   float V[3];
   float A[3][3];
@@ -319,12 +312,13 @@ void MainWindow::calibration_update(void)
   float gaps, variance, wobble, fiterror;
   magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
   ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
-  magnetic.getData(data);
+
   //ui.graphWidget->setData(data);
   QList<QVector3D> points;
-  for (QScatterDataItem item : data){
-    points.append(item.position());
-  }
+  //for (QScatterDataItem item : data){
+  //  points.append(item.position());
+  //}
+  magnetic.getData(points);
   ui.graphWidget->setPoints(points);
   ui.graphWidget->setField(magnetic.getField());
 }

@@ -95,7 +95,6 @@ private:
   void logWindowInit(void);
   void scatterGraphInit(void);
   void rotateImage(float yaw, float pitch, float roll);
-  QRandomGenerator *generator;
 
   CompassData magnetic;
   Tag tag;

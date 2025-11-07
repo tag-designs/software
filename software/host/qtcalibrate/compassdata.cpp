@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cfloat>
 #include "compassdata.h"
 
 
@@ -7,42 +8,31 @@ CompassData::CompassData(QObject *parent) : QObject{parent}
     clear();
 }
 
-bool CompassData::addData(float& x, float& y, float &z) 
+bool CompassData::addData(QVector3D &mag) 
 {
-    float data[] = {x,y,z};
-    bool result = raw_data(data);
+    bool result = raw_data(mag);
     if (result) {
         emit calibration_update();
-        //qInfo() << result << ", ValidMagCal: " << magcal.ValidMagCal ;
     }
     if (magcal.ValidMagCal)
     {
-        Point_t out = {x,y,z};
-        apply_calibration(x,y,z,&out);
-        x = out.x;
-        y = out.y;
-        z = out.z;
+        apply_calibration(mag);
         return true;
     }
     return false;
 }
 
-void CompassData::getData(QScatterDataArray& data)
+void CompassData::getData(QList<QVector3D> &data)
 {
-    Point_t point;
     for (int i=0; i < MAGBUFFSIZE; i++) {
         if (magcal.valid[i]) {
-            apply_calibration(magcal.BpFast[0][i], 
-                magcal.BpFast[1][i],
-                magcal.BpFast[2][i], &point);
-            //data.push_back(QScatterDataItem
-            QScatterDataItem item(point.x,point.y,point.z);
-            data << item;
+			QVector3D point = BpFast(i);
+			apply_calibration(point);
+			data.append(point);
         }
     }       
-
 }
-
+/*
 void CompassData::getRegionData(QScatterDataArray& data, float magnitude){
     for (int i=0; i < SPHERE_REGIONS; i++){
         QScatterDataItem item(sphereideal[i].x*magnitude,
@@ -51,6 +41,7 @@ void CompassData::getRegionData(QScatterDataArray& data, float magnitude){
         data << item;
     }
 }
+*/
 
 bool CompassData::getCalibrationConstants(float *B, float *V, float (*A)[3])
 {
@@ -92,18 +83,16 @@ void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble,
 }
 
 void CompassData::qualityUpdate(){
-    Point_t point;
     quality_reset();
     for (int i=0; i < MAGBUFFSIZE; i++) {
         if (magcal.valid[i]) {
-            apply_calibration(magcal.BpFast[0][i], 
-                magcal.BpFast[1][i],
-                magcal.BpFast[2][i], &point);
-            quality_update(&point);
+			QVector3D point = BpFast(i);
+			apply_calibration(point);
+			Point_t pt = {point.x(),point.y(),point.z()};
+            quality_update(&pt);
         }
     }       
 }
-
 
 bool CompassData::eCompass(float mx, float my, float mz, 
                   float ax, float ay, float az,
@@ -162,6 +151,134 @@ bool CompassData::eCompass(float mx, float my, float mz,
 
 }
 
+float CompassData::getField()
+{
+	return magcal.B;
+}
+/*
+void ComplementaryFilter::getMeasurement(double ax, double ay, double az,
+                                         double mx, double my, double mz,
+                                         double& q0_meas, double& q1_meas,
+                                         double& q2_meas, double& q3_meas)
+{
+    // q_acc is the quaternion obtained from the acceleration vector
+    // representing the orientation of the Global frame wrt the Local frame with
+    // arbitrary yaw (intermediary frame). q3_acc is defined as 0.
+    double q0_acc, q1_acc, q2_acc, q3_acc;
+
+    // Normalize acceleration vector.
+    normalizeVector(ax, ay, az);
+    if (az >= 0)
+    {
+        q0_acc = sqrt((az + 1) * 0.5);
+        q1_acc = -ay / (2.0 * q0_acc);
+        q2_acc = ax / (2.0 * q0_acc);
+        q3_acc = 0;
+    } else
+    {
+        double X = sqrt((1 - az) * 0.5);
+        q0_acc = -ay / (2.0 * X);
+        q1_acc = X;
+        q2_acc = 0;
+        q3_acc = ax / (2.0 * X);
+    }
+
+    // [lx, ly, lz] is the magnetic field reading, rotated into the intermediary
+    // frame by the inverse of q_acc.
+    // l = R(q_acc)^-1 m
+    double lx = (q0_acc * q0_acc + q1_acc * q1_acc - q2_acc * q2_acc) * mx +
+                2.0 * (q1_acc * q2_acc) * my - 2.0 * (q0_acc * q2_acc) * mz;
+    double ly = 2.0 * (q1_acc * q2_acc) * mx +
+                (q0_acc * q0_acc - q1_acc * q1_acc + q2_acc * q2_acc) * my +
+                2.0 * (q0_acc * q1_acc) * mz;
+
+    // q_mag is the quaternion that rotates the Global frame (North West Up)
+    // into the intermediary frame. q1_mag and q2_mag are defined as 0.
+    double gamma = lx * lx + ly * ly;
+    double beta = sqrt(gamma + lx * sqrt(gamma));
+    double q0_mag = beta / (sqrt(2.0 * gamma));
+    double q3_mag = ly / (sqrt(2.0) * beta);
+
+    // The quaternion multiplication between q_acc and q_mag represents the
+    // quaternion, orientation of the Global frame wrt the local frame.
+    // q = q_acc times q_mag
+    quaternionMultiplication(q0_acc, q1_acc, q2_acc, q3_acc, q0_mag, 0, 0,
+                             q3_mag, q0_meas, q1_meas, q2_meas, q3_meas);
+    // q0_meas = q0_acc*q0_mag;
+    // q1_meas = q1_acc*q0_mag + q2_acc*q3_mag;
+    // q2_meas = q2_acc*q0_mag - q1_acc*q3_mag;
+    // q3_meas = q0_acc*q3_mag;
+}
+	*/
+
+bool CompassData::eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
+                  float& heading, float& dip, float& field)
+{
+	// qacc is the quaternion obtained from the acceleration vector
+    // representing the orientation of the Global frame wrt the Local frame with
+    // arbitrary yaw (intermediary frame). qacc[3] is defined as 0.
+
+	QQuaternion qacc;
+	float q0,q1,q2,q3;
+	accel[0] = -accel[0];
+	accel[1] = -accel[1];
+	accel[2] = -accel[2];
+	
+	accel.normalize();
+    if (accel.z() >= 0)
+    {
+		float tmp =  sqrt((accel.z() + 1) * 0.5);
+        q0 = tmp;
+        q1 = -accel.y() / (2.0 * tmp);
+        q2 = accel.x() / (2.0 * tmp);
+        q3 = 0;
+    } else
+    {
+        double X = sqrt((1 - accel.z()) * 0.5);
+        q0 = -accel.y() / (2.0 * X);
+        q1 = X;
+        q2 = 0;
+        q3 = accel.x() / (2.0 * X);
+    }
+
+	// create accelerometer Quaternion and convert to NEDform
+
+	//qacc = QQuaternion(q0,q2,q1,q3);
+	qacc = QQuaternion(q0,q2,q1,q3);;
+	
+	// compute magnetic properties
+
+	apply_calibration(mag);
+
+	float gamma = mag[0]*mag[0] + mag[1]*mag[1];
+	float beta  = sqrt(gamma + mag[0] * sqrt(gamma));
+	float betaneg = sqrt(gamma - mag[0]* sqrt(gamma));
+	float q0_mag, q3_mag;
+
+	if (mag[0] < 0.0) {
+		q0_mag =  beta/sqrt(2.0*gamma);
+		q3_mag = mag[1]/(sqrt(2.0) * beta);
+	} else {
+		q0_mag = mag[0]/(sqrt(2.0) * betaneg);
+		q3_mag = betaneg/sqrt(2.0*gamma);
+	}
+
+	QQuaternion qmag(q0_mag,0,0,q3_mag);
+
+	field = mag.length();
+
+	QVector3D mtmp = qacc.rotatedVector(mag);
+	heading = atan2(mtmp.y(),mtmp.x())*180.0/M_PI;
+	qInfo() << heading;
+	float mag_horizontal = sqrt(mtmp.x()*mtmp.x() + mtmp.y()*mtmp.y());
+	dip = atan2(mtmp.z(),mag_horizontal)*180.0/M_PI;
+
+	// compute full quaternion
+
+    q = qacc*qmag;
+	return true;
+}
+
 // the following are from magical
 
 
@@ -175,6 +292,17 @@ void CompassData::apply_calibration(float rawx, float rawy, float rawz, Point_t 
 	out->x = x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2];
 	out->y = x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2];
 	out->z = x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2];
+}
+
+void CompassData::apply_calibration(QVector3D &mag){
+	float x, y, z;
+
+	x = mag[0] - magcal.V[0];
+	y = mag[1] - magcal.V[1];
+	z = mag[2] - magcal.V[2];
+	mag[0] = (x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2]);
+	mag[1] = (x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2]);
+	mag[2] = (x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2]);
 }
 
 void CompassData::raw_data_reset(void)
@@ -192,17 +320,18 @@ void CompassData::raw_data_reset(void)
 
 int CompassData::choose_discard_magcal(void)
 {
-	int32_t rawx, rawy, rawz;
-	int32_t dx, dy, dz;
-	float x, y, z;
-	uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFFull;
+	//int32_t rawx, rawy, rawz;
+	//int32_t dx, dy, dz;
+	//float x, y, z;
+	float dist, mindist=FLT_MAX;
+	//uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFFull;
 	static int runcount=0;
 	int i, j, minindex=0;
 	Point_t point;
 	float gaps, field, error, errormax;
 
 	// When enough data is collected (gaps error is low), assume we
-	// have a pretty good coverage and the field stregth is known.
+	// have a pretty good coverage and the field stregth is knownn.
 	gaps = quality_surface_gap_error();
 	if (gaps < 25.0f) {
 		// occasionally look for points farthest from average field strength
@@ -213,14 +342,9 @@ int CompassData::choose_discard_magcal(void)
 			j = MAGBUFFSIZE;
 			errormax = 0.0f;
 			for (i=0; i < MAGBUFFSIZE; i++) {
-				rawx = magcal.BpFast[0][i];
-				rawy = magcal.BpFast[1][i];
-				rawz = magcal.BpFast[2][i];
-				apply_calibration(rawx, rawy, rawz, &point);
-				x = point.x;
-				y = point.y;
-				z = point.z;
-				field = sqrtf(x * x + y * y + z * z);
+				QVector3D point = BpFast(i);
+				apply_calibration(point);
+				field = point.length();
 				// if magcal.B is bad, things could go horribly wrong
 				error = fabsf(field - magcal.B);
 				if (error > errormax) {
@@ -243,14 +367,11 @@ int CompassData::choose_discard_magcal(void)
 	// discarding info from areas with highly redundant info.
 	for (i=0; i < MAGBUFFSIZE; i++) {
 		for (j=i+1; j < MAGBUFFSIZE; j++) {
-			dx = magcal.BpFast[0][i] - magcal.BpFast[0][j];
-			dy = magcal.BpFast[1][i] - magcal.BpFast[1][j];
-			dz = magcal.BpFast[2][i] - magcal.BpFast[2][j];
-			distsq = (int64_t)dx * (int64_t)dx;
-			distsq += (int64_t)dy * (int64_t)dy;
-			distsq += (int64_t)dz * (int64_t)dz;
-			if (distsq < minsum) {
-				minsum = distsq;
+			QVector3D pt1 = BpFast(i);
+			QVector3D pt2 = BpFast(j);
+			dist = pt1.distanceToPoint(pt2);
+			if (dist < mindist) {
+				mindist = dist;
 				minindex = (random() & 1) ? i : j;
 			}
 		}
@@ -259,7 +380,7 @@ int CompassData::choose_discard_magcal(void)
 }
 
 
-void CompassData::add_magcal_data(const float *data)
+void CompassData::add_magcal_data(QVector3D data)
 {
 	int i;
 
@@ -291,18 +412,24 @@ void CompassData::add_magcal_data(const float *data)
 }
 
 
-bool CompassData::raw_data(const float *data)
+bool CompassData::raw_data(QVector3D data)
 {
-	
 	add_magcal_data(data);
-	
 	return MagCal_Run(&magcal) != 0;
-
 }
 
-float CompassData::getField()
-{
-	return magcal.B;
+
+
+QVector3D CompassData::BpFast(int i){
+	if ((i < 0) || (i >= MAGBUFFSIZE)){
+		return QVector3D();
+	}
+	else {
+		return QVector3D(magcal.BpFast[0][i], 
+                		 magcal.BpFast[1][i],
+                		 magcal.BpFast[2][i]);
+	}
+
 }
 
 

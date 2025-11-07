@@ -2,8 +2,11 @@
 #define COMPASS_DATA_H
 
 #include <QWidget>
+#include <QList>
 #include <QVector3D>
-#include <QScatter3DSeries>
+#include <QQuaternion>
+#include <QMatrix3x3>
+
 #include "magcal.h"
 #include "ema.h"
 
@@ -17,18 +20,22 @@ class CompassData : public QObject
 public:
 
     explicit CompassData(QObject *parent = nullptr);
-    bool addData(float& x, float &y, float &z);
+    bool addData(QVector3D &mag);//float& x, float &y, float &z);
+    void getData(QList<QVector3D> &data);
     bool getCalibrationConstants(float *B, float *V, float (*A)[3]);
     void setCalibrationConstants(float B, float *V, float(*A)[3]);
     void calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror);
     void qualityUpdate();
     void clear();
-    void getData(QScatterDataArray& data);
-    void getRegionData(QScatterDataArray& data, float magnitude);
+ 
+    //void getRegionData(QScatterDataArray& data, float magnitude);
     bool eCompass(float mx, float my, float mz, 
                   float ax, float ay, float az,
                   float& yaw, float& pitch, float& roll, float& dip,
                   float& field);
+
+    bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
+                  float& heading, float& dip, float& field);
     float getField();
 
 signals:
@@ -37,11 +44,13 @@ signals:
 
 private:
 
+    void apply_calibration(QVector3D &mag);
     void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
     void raw_data_reset();
     int choose_discard_magcal(void);
-    void add_magcal_data(const float *data);
-    bool raw_data(const float *data);
+    void add_magcal_data(QVector3D);
+    bool raw_data(QVector3D);
+    QVector3D BpFast(int i);
     Ema r,p,y,d,f;
 };
 

@@ -6,7 +6,6 @@
  *
  */
 
-
 #include "magplot.h"
 #include <QPainter>
 #include <QPen>
@@ -236,7 +235,7 @@ void magPlot::drawPoint(QPainter *p, QVector3D pt, QColor color, float size)
   // draw a single axis with given color and end point (pt)
 
 void magPlot::drawAxis(QPainter *p, QVector3D pt, QColor color, QString &text){
-    QPointF pt2(pt.x(),pt.y());
+    QPointF pt2 = pt.toPointF();//(pt.x(),pt.y());
     pt.setY(-pt.y());
     p->save();
 
