@@ -12,6 +12,13 @@ View3D {
         myGroup.eulerRotation.x = -roll+180 // blue
         //return "ok"
     }
+
+    function setRotationQuaternion(qt){
+       // myGroup.eulerRotation.y = -yaw-90    // green
+        myGroup.eulerRotation = qt    // red
+        //return "ok"
+    }
+
     id: view3d
     anchors.fill: parent
 
@@ -19,7 +26,7 @@ View3D {
     OrthographicCamera {
         id: camera
         position: Qt.vector3d(-500,0, 0)
-        //eulerRotation.x: -30
+        //eulerRotation.z: -30
         lookAtNode: myGroup
     }
 

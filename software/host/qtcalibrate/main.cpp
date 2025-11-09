@@ -72,7 +72,9 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
     switch (type)
     {
     case QtInfoMsg:
-      level = LOG_INFO;
+      //level = LOG_INFO;
+      s_textEdit->append(msg);
+      return;
       break;
     case QtDebugMsg:
       level = LOG_DEBUG;

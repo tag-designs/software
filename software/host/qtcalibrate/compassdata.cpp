@@ -211,7 +211,7 @@ void ComplementaryFilter::getMeasurement(double ax, double ay, double az,
 }
 	*/
 
-bool CompassData::eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
+bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q, 
                   float& heading, float& dip, float& field)
 {
 	// qacc is the quaternion obtained from the acceleration vector
@@ -220,17 +220,16 @@ bool CompassData::eCompass(QVector3D mag, QVector3D accel, QQuaternion &q,
 
 	QQuaternion qacc;
 	float q0,q1,q2,q3;
-	accel[0] = -accel[0];
-	accel[1] = -accel[1];
-	accel[2] = -accel[2];
-	
+
+	// AQUA assumes north west up frame 
+
 	accel.normalize();
+
     if (accel.z() >= 0)
     {
-		float tmp =  sqrt((accel.z() + 1) * 0.5);
-        q0 = tmp;
-        q1 = -accel.y() / (2.0 * tmp);
-        q2 = accel.x() / (2.0 * tmp);
+        q0 =  sqrt((accel.z() + 1) * 0.5);;
+        q1 = -accel.y() / (2.0 * q0);
+        q2 = accel.x() / (2.0 * q0);
         q3 = 0;
     } else
     {
@@ -241,41 +240,58 @@ bool CompassData::eCompass(QVector3D mag, QVector3D accel, QQuaternion &q,
         q3 = accel.x() / (2.0 * X);
     }
 
-	// create accelerometer Quaternion and convert to NEDform
+	// frame orientation was left handed!
+	//qacc = QQuaternion(q0,q1,q2,q3);
+	//qacc = QQuaternion(q0,-q1,-q2,-q3);
+	qacc = QQuaternion(q0,q2,-q1,q3);
+	//qacc.normalize();
 
-	//qacc = QQuaternion(q0,q2,q1,q3);
-	qacc = QQuaternion(q0,q2,q1,q3);;
+	//qInfo() << "A In:  " << accel;
+	//qInfo() << "A Out: " << qacc.rotatedVector(accel);
 	
 	// compute magnetic properties
 
-	apply_calibration(mag);
+	apply_calibration(magin);
+	field = magin.length();
+
+	
+	magin.normalize();
+	QVector3D mag = magin;
+	mag = qacc.rotatedVector(mag);
+	
+	// computer magnetometer quaternion
 
 	float gamma = mag[0]*mag[0] + mag[1]*mag[1];
 	float beta  = sqrt(gamma + mag[0] * sqrt(gamma));
 	float betaneg = sqrt(gamma - mag[0]* sqrt(gamma));
 	float q0_mag, q3_mag;
 
-	if (mag[0] < 0.0) {
+	if (mag[0] >= 0.0) {
 		q0_mag =  beta/sqrt(2.0*gamma);
 		q3_mag = mag[1]/(sqrt(2.0) * beta);
 	} else {
-		q0_mag = mag[0]/(sqrt(2.0) * betaneg);
+		q0_mag = mag[1]/(sqrt(2.0) * betaneg);
 		q3_mag = betaneg/sqrt(2.0*gamma);
 	}
 
+	dip = -atan2(mag[2],gamma)*180.0/M_PI;
+
+	
+	// Quaternion was left-handed!
+
 	QQuaternion qmag(q0_mag,0,0,q3_mag);
+	qmag.normalize();
 
-	field = mag.length();
 
-	QVector3D mtmp = qacc.rotatedVector(mag);
-	heading = atan2(mtmp.y(),mtmp.x())*180.0/M_PI;
-	qInfo() << heading;
-	float mag_horizontal = sqrt(mtmp.x()*mtmp.x() + mtmp.y()*mtmp.y());
-	dip = atan2(mtmp.z(),mag_horizontal)*180.0/M_PI;
+	q = qmag*qacc;
+ 
+	//qInfo() << "A final:" << q.rotatedVector(accel);
+	//qInfo() << "M In:  " << magin;
+	//qInfo() << "M Out: " << q.rotatedVector(magin);
 
-	// compute full quaternion
-
-    q = qacc*qmag;
+	//q = QQuaternion(q.scalar(),-q.y(),q.x(),q.z());
+	
+	//q = qacc;
 	return true;
 }
 

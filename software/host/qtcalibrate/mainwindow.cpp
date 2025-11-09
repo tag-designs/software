@@ -260,6 +260,11 @@ void MainWindow::TriggerUpdate(void)
             az = sdata.accel().az();
             accel = QVector3D(ax,ay,az);
             if (magnetic.eCompass(mx,my,mz,ax,ay,az,yaw,pitch,roll,dip,field)) {
+              QQuaternion q;
+              qInfo() << "Old" << yaw << pitch << roll << dip;
+              magnetic.eCompass(mag, accel, q, yaw, dip, field);
+              q.getEulerAngles(&pitch,&roll,&yaw);
+              qInfo() << "New" << yaw << pitch << roll << dip;
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
               ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
               ui.rollEdit->setText(QString::asprintf("%.0f",roll));
@@ -268,13 +273,7 @@ void MainWindow::TriggerUpdate(void)
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
               rotateImage(yaw,pitch,roll);
-              qInfo() << "Old" << yaw << pitch << roll << dip << field;
-              QQuaternion q;
-              float tmp;
-              magnetic.eCompass(mag, accel, q, yaw, dip, field);
-              q.getEulerAngles(&pitch,&roll,&yaw);
-              qInfo() << "New" << yaw << pitch << roll << dip << field;
-              //rotateImage(yaw,pitch,roll);
+              //rotateImage(q);
             }
           }
 
@@ -515,6 +514,12 @@ void MainWindow::rotateImage(float yaw, float pitch, float roll){
         Q_ARG(QVariant, pitch),
         Q_ARG(QVariant, roll));
 
+}
+
+void MainWindow::rotateImage(QQuaternion qt){
+    QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
+        //Q_RETURN_ARG(QString, returnedValue),
+        Q_ARG(QVariant, qt));
 }
 
 
