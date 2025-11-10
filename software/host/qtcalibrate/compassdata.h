@@ -29,8 +29,7 @@ public:
     void clear();
  
     //void getRegionData(QScatterDataArray& data, float magnitude);
-    bool eCompass(float mx, float my, float mz, 
-                  float ax, float ay, float az,
+    bool eCompass(QVector3D mag, QVector3D accel,
                   float& yaw, float& pitch, float& roll, float& dip,
                   float& field);
 
@@ -52,6 +51,7 @@ private:
     bool raw_data(QVector3D);
     QVector3D BpFast(int i);
     Ema r,p,y,d,f;
+    QVector3D acc_filt, mag_filt;
 };
 
 #endif

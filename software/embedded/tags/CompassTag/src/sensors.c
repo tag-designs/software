@@ -53,21 +53,27 @@ bool sensorSample(SensorData *sensors)
       z = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
       //t = ((int)(buf[9]));
 
-      // orientation for compass proto board
+      // sensors in ENU order
 
-      sensors->mag.mx = y * 0.01f;
-      sensors->mag.my = x * 0.01f;
-      sensors->mag.mz = -z * 0.01f;
+      sensors->mag.mx = x * 0.01f;
+      sensors->mag.my = y * 0.01f;
+      sensors->mag.mz = z * 0.01f;
     }
     //sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
-        // reorder for proto board
-        sensors->accel.ay = (accel_data.y/16) * 0.976f;
-        sensors->accel.ax = -(accel_data.x/16) * 0.976f;
-        sensors->accel.az = -(accel_data.z/16) * 0.976f;
+        
+        // convert to ENU -- when Z is pointing up, this is +1g
+        
+        //sensors->accel.ax = (accel_data.y/16) * 0.976f;
+        //sensors->accel.ay = -(accel_data.x/16) * 0.976f;
+        //sensors->accel.az = (accel_data.z/16) * 0.976f;
+        
+        sensors->accel.ax = (accel_data.x/16) * 0.976f;
+        sensors->accel.ay = -(accel_data.y/16) * 0.976f;
+        sensors->accel.az = (accel_data.z/16) * 0.976f;
     }
 
     return true;
