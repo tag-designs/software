@@ -99,14 +99,15 @@ bool CompassData::eCompass(QVector3D mag, QVector3D accel,
 				  float& field)
 {
     const float alpha = 0.4;
+	static QVector3D acc_filt, mag_filt;
     if (magcal.ValidMagCal) // only compute if magnetometer is calibrated
     {
 		// apply magnetometer calibration
 
 		acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
-		accel = acc_filt;
+		//accel = acc_filt;
 		mag_filt = alpha * mag_filt + (1.0-alpha) * mag;
-		mag = mag_filt;
+		//mag = mag_filt;
  
 		apply_calibration(mag);
 		QVector3D h(accel[0],accel[1],0);
@@ -114,15 +115,18 @@ bool CompassData::eCompass(QVector3D mag, QVector3D accel,
 		//compute field, roll, pitch
 		field = mag.length();
 		accel.normalize();
-        roll =  atan2(accel.x(), accel.z());                        // Roll in radians
-        pitch = atan2(accel.y(), QVector2D(accel).length()); // Pitch in radians
+    	roll =  atan2(accel.y(), accel.z());                 // Roll in radians
+        pitch = atan2(accel.x(), accel.z());//QVector2D(accel).length()); // Pitch in radians
  		pitch = pitch * 180.0f / M_PI;
         roll = roll * 180.0f / M_PI;
-		QQuaternion aq = QQuaternion::fromEulerAngles(pitch,0.0,roll);
+		QQuaternion aq = QQuaternion::fromEulerAngles(pitch,roll,0.0);
 		aq.normalize();
 
-		/*
+		
 		// align magnetometer
+        /*
+		mag = QVector3D(mag.y(),mag.x(),mag.z());
+		
         float sinRoll = sin(roll);
         float cosRoll = cos(roll);
         float sinPitch = sin(pitch);
@@ -133,8 +137,11 @@ bool CompassData::eCompass(QVector3D mag, QVector3D accel,
         float Bz_horiz = -mag.x() * sinPitch + mag.y() * sinRoll * cosPitch + mag.z() * cosRoll * cosPitch;
 
 		// compute yaw, dip
+
+		QVector3D ma(Bx_horiz,By_horiz,Bz_horiz);
 		*/
 
+		mag.setZ(-mag.z());
 		QVector3D ma = aq.rotatedVector(mag);
 		ma.normalize();
 
@@ -218,6 +225,8 @@ void ComplementaryFilter::getMeasurement(double ax, double ay, double az,
 }
 	*/
 
+#undef DEBUG
+
 bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q, 
                   float& heading, float& dip, float& field)
 {
@@ -226,19 +235,27 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
     // arbitrary yaw (intermediary frame). qacc[3] is defined as 0.
 
 	QQuaternion qacc;
-	float alpha = 0.4;
+	float alpha = 0.4; // filter coefficient
 	float q0,q1,q2,q3;
 
-	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
-	accel = acc_filt;
-	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
-	//magin = mag_filt;
-
 	apply_calibration(magin);
+
+	// lowpass filter inputs
+
+	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
+	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
+
+	// convert inputs to NWU format
+
+	accel = acc_filt;
+	accel.setZ(-accel.z());
+	magin = QVector3D(mag_filt[1],-mag_filt[0],mag_filt[2]);
+	
 	field = magin.length();
 	magin.normalize();
 	accel.normalize(); 
 
+	// Compute qacc
 	// AQUA assumes north west up frame 
 
     if (accel.z() >= 0)
@@ -257,25 +274,24 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
     }
 
 	qacc = QQuaternion(q0,q1,q2,q3);
+	qacc.normalize();
 
 	// test the quaternion
 
 	QVector3D atest =  qacc.rotatedVector(QVector3D(0,0,1));
 
+#ifdef DEBUG
 	qInfo() << "A In:  " << accel;
 	qInfo() << "A test:" << accel << " == " << atest;
 	qInfo() << "A Out: " << qacc.rotatedVector(accel);
+#endif
 	
 
 	// note this step!  Apply inverted quarternion for calculating
 	// qmag
 
-	QVector3D mag = magin;
-	//mag.setX(-mag.x());
-	mag = QVector3D(mag.y(),mag.x(),mag.z());
-	//mag = qacc.inverted().rotatedVector(mag);
-	//mag = QVector3D(1,2,3);
-	mag.normalize();
+	QVector3D mag = qacc.inverted().rotatedVector(magin);
+	
 
 
 	// computer magnetometer quaternion
@@ -293,28 +309,41 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 		q3_mag = betaneg/sqrt(2.0*gamma);
 	}
 
-	// q3_mag, q0_mag backwards in paper!
+	// invert q3_mag for left handed system
 
-	QQuaternion qmag(q3_mag,0,0,q0_mag);
+	QQuaternion qmag(q0_mag,0,0,-q3_mag);
 
+	//qmag = qmag*QQuaternion(0,1,0,0);
+
+#ifdef DEBUG
+	QVector3D magtest(sqrt(gamma), 0, mag[2]);
+	qInfo() << "Mag test: " << qmag.rotatedVector(mag) << " == " << magtest;
+#endif
+	// Compute final quaternion and convert to ENU
 	q = qacc*qmag;
 	q.normalize();
+
+#ifdef DEBUG
+	// run some tests
 	qInfo() << "A test 2" << accel << " == " << q.rotatedVector(QVector3D(0,0,1));
-	//q = QQuaternion(q.scalar(),q.y(),q.x(),q.z());
 	qInfo() << "A final: " << q.rotatedVector(accel);
-	QVector3D magtest(sqrt(gamma), 0, mag.z());
-	qInfo() << "Mag test: " << qmag.rotatedVector(mag) << " == " << magtest;
 	qInfo() << "M In:  " << magin;
-	qInfo() << "M int  " << qmag.rotatedVector(mag);
 	qInfo() << "M Out: " << q.rotatedVector(magin);
+#endif
 
-	//q = QQuaternion(q.scalar(),-q.y(),q.x(),q.z());
+	// convert to right handed coordinate system
+
 	
-	//q = qacc;
 
-	magin = q.rotatedVector(magin);
-	dip = -atan2(magin[2],magin[1])*180.0/M_PI;
+	// Computing heading and dip angle
 
+	QVector3D magint = qacc.rotatedVector(magin);
+	heading = atan2(magint[0],magint[1])*180.0/M_PI;
+	dip = -atan2(magin[2],magin[0])*180.0/M_PI;
+
+	// convert to right handed system
+
+	q = QQuaternion(q.scalar(),q.y(),-q.x(),q.z())*QQuaternion(0,-1,0,0);
 	return true;
 }
 

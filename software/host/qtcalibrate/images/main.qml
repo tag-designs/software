@@ -6,10 +6,10 @@ import QtQuick3D.Helpers
 
 View3D {
 
-    function setRotation(yaw, pitch, roll){
-       // myGroup.eulerRotation.y = -yaw-90    // green
-        myGroup.eulerRotation.y = -pitch    // red
-        myGroup.eulerRotation.x = -roll // blue
+    function setRotation(yaw, pitch, roll){ 
+        myGroup.eulerRotation.x = -pitch  
+        myGroup.eulerRotation.y = -roll  
+        //myGroup.eulerRotation: Qt.vector3d(yaw,pitch,roll)
         //return "ok"
     }
 
@@ -21,64 +21,71 @@ View3D {
 
     id: view3d
     anchors.fill: parent
+   
+ 
+    Node {
+        id: viewNode
 
+           
          Node {
             id: originNode
             x: 0
             y: 0
             z: 0
+           
+            eulerRotation.x: -90  
             PerspectiveCamera {
                 id: cameraNode
-                y: -500
-                z: 100
-                lookAtNode: myGroup
+                x: -500
+                y: 20
+                lookAtNode: myGroup   
             }
-        }
+         
+            OrbitCameraController {
+                anchors.fill: parent
+                origin: originNode
+                camera: cameraNode
+                mouseEnabled: true
+                panEnabled: true
+            }
 
-        OrbitCameraController {
-            anchors.fill: parent
-            origin: originNode
-            camera: cameraNode
-            mouseEnabled: true
-            panEnabled: true
-        }
+            DirectionalLight {
+                eulerRotation.x: 30
+            }
 
-          DirectionalLight {
-              eulerRotation.x: 30
-        }
+            DirectionalLight {
+                eulerRotation.x: -30
+            }
 
-         DirectionalLight {
-              eulerRotation.x: -30
-        }
-
-             AxisHelper {
-    }
-   
-
+                AxisHelper {
+                    enableXZGrid: false
+            }
+         }
         
-       Node {
-            id: myGroup
-            position: Qt.vector3d(0, 0, 0)
-            //eulerRotation.y: 90 // Rotate the entire group
-
-            Model {
-                source: "#Cube"
-                materials: [ PrincipledMaterial { baseColor: "green" } ]
+        Node {
+                id: myGroup
                 position: Qt.vector3d(0, 0, 0)
-                scale: Qt.vector3d(1, 2, .1)
-            }
 
-            Model {
-                source: "#Cylinder"
-                materials: [ PrincipledMaterial { baseColor: "silver" } ]
-                position: Qt.vector3d(0, 100, 20)
-                scale: Qt.vector3d(1.1,0.3,1.1)
-                eulerRotation: Qt.vector3d(90, 0, 0)
-            }
+                    Model {
+                        source: "#Cube"
+                        materials: [ PrincipledMaterial { baseColor: "green" } ]
+                        position: Qt.vector3d(0, 0, 0)
+                        scale: Qt.vector3d(2,1,0.1)
+                    }
 
-        }
-        
+                    Model {
+                        source: "#Cylinder"
+                        materials: [ PrincipledMaterial { baseColor: "silver" } ]
+                        position: Qt.vector3d(100, 0, -20)
+                        scale: Qt.vector3d(1.1,0.3,1.1)
+                        eulerRotation: Qt.vector3d(90, 0, 0)
+                    }
+
+            }
+   
     }
+    
+}
 
    
 

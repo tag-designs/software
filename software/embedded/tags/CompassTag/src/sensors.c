@@ -72,7 +72,7 @@ bool sensorSample(SensorData *sensors)
         //sensors->accel.az = (accel_data.z/16) * 0.976f;
         
         sensors->accel.ax = (accel_data.x/16) * 0.976f;
-        sensors->accel.ay = -(accel_data.y/16) * 0.976f;
+        sensors->accel.ay = (accel_data.y/16) * 0.976f;
         sensors->accel.az = (accel_data.z/16) * 0.976f;
     }
 

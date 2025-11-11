@@ -261,10 +261,11 @@ void MainWindow::TriggerUpdate(void)
             accel = QVector3D(ax,ay,az);
             if (magnetic.eCompass(mag,accel,yaw,pitch,roll,dip,field)) {
               QQuaternion q;
+              float heading;
               //qInfo() << "Old" << yaw << pitch << roll << dip;
-              magnetic.eCompass(mag, accel, q, yaw, dip, field);
-              q.getEulerAngles(&pitch,&roll,&yaw);
-              //qInfo() << "New" << yaw << pitch << roll << dip;
+              magnetic.eCompass(mag, accel, q, heading, dip, field);
+              q.getEulerAngles(&roll,&pitch,&yaw);
+             // qInfo() << "New" << yaw << pitch << roll << dip;
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
               ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
               ui.rollEdit->setText(QString::asprintf("%.0f",roll));
@@ -272,8 +273,8 @@ void MainWindow::TriggerUpdate(void)
               ui.fieldEdit->setText(QString::asprintf("%.0f",field));
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
-              rotateImage(yaw,pitch,roll);
-              //rotateImage(q);
+              //rotateImage(yaw,pitch,roll);
+              rotateImage(q);
             }
           }
 
