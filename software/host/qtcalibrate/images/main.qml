@@ -32,19 +32,19 @@ View3D {
             x: 0
             y: 0
             z: 0
-           
-            eulerRotation.x: -90  
+            
+          
             PerspectiveCamera {
-                id: cameraNode
-                x: -500
-                y: 20
-                lookAtNode: myGroup   
+                id: camera
+                position: Qt.vector3d(0, 500, 20)
+                eulerRotation.z: 180
+                lookAtNode: myGroup  
             }
          
             OrbitCameraController {
                 anchors.fill: parent
                 origin: originNode
-                camera: cameraNode
+                camera: camera
                 mouseEnabled: true
                 panEnabled: true
             }
@@ -57,7 +57,7 @@ View3D {
                 eulerRotation.x: -30
             }
 
-                AxisHelper {
+                   AxisHelper {
                     enableXZGrid: false
             }
          }
@@ -70,21 +70,24 @@ View3D {
                         source: "#Cube"
                         materials: [ PrincipledMaterial { baseColor: "green" } ]
                         position: Qt.vector3d(0, 0, 0)
-                        scale: Qt.vector3d(2,1,0.1)
+                        scale: Qt.vector3d(1,2,0.1)
                     }
 
                     Model {
                         source: "#Cylinder"
                         materials: [ PrincipledMaterial { baseColor: "silver" } ]
-                        position: Qt.vector3d(100, 0, -20)
+                        position: Qt.vector3d(0, 100, 20)
                         scale: Qt.vector3d(1.1,0.3,1.1)
                         eulerRotation: Qt.vector3d(90, 0, 0)
                     }
+                 
 
             }
    
     }
-    
+    WasdController {
+        controlledObject : camera
+    }
 }
 
    

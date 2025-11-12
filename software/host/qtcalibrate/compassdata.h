@@ -29,12 +29,9 @@ public:
     void clear();
  
     //void getRegionData(QScatterDataArray& data, float magnitude);
-    bool eCompass(QVector3D mag, QVector3D accel,
-                  float& yaw, float& pitch, float& roll, float& dip,
-                  float& field);
 
     bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
-                  float& heading, float& dip, float& field);
+                  float& dip, float& field);
     float getField();
 
 signals:
@@ -44,7 +41,7 @@ signals:
 private:
 
     void apply_calibration(QVector3D &mag);
-    void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
+    //void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
     void raw_data_reset();
     int choose_discard_magcal(void);
     void add_magcal_data(QVector3D);

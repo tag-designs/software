@@ -68,172 +68,42 @@ void CompassData::setCalibrationConstants(float B, float *V, float (*A)[3])
 	magcal.ValidMagCal = 4;
 }
 
-void CompassData::clear()
-{
-    raw_data_reset();
-    quality_reset();
+void CompassData::apply_calibration(QVector3D &mag){
+	float x, y, z;
+
+	x = mag[0] - magcal.V[0];
+	y = mag[1] - magcal.V[1];
+	z = mag[2] - magcal.V[2];
+	mag[0] = (x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2]);
+	mag[1] = (x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2]);
+	mag[2] = (x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2]);
 }
 
-void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror)
-{ 
-    gaps = quality_surface_gap_error();
-    variance = quality_magnitude_variance_error();
-    wobble = quality_wobble_error();
-    fiterror = quality_spherical_fit_error();
-}
-
-void CompassData::qualityUpdate(){
-    quality_reset();
-    for (int i=0; i < MAGBUFFSIZE; i++) {
-        if (magcal.valid[i]) {
-			QVector3D point = BpFast(i);
-			apply_calibration(point);
-			Point_t pt = {point.x(),point.y(),point.z()};
-            quality_update(&pt);
-        }
-    }       
-}
-
-bool CompassData::eCompass(QVector3D mag, QVector3D accel, 
-                  float& yaw, float& pitch, float& roll, float& dip,
-				  float& field)
-{
-    const float alpha = 0.4;
-	static QVector3D acc_filt, mag_filt;
-    if (magcal.ValidMagCal) // only compute if magnetometer is calibrated
-    {
-		// apply magnetometer calibration
-
-		acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
-		//accel = acc_filt;
-		mag_filt = alpha * mag_filt + (1.0-alpha) * mag;
-		//mag = mag_filt;
- 
-		apply_calibration(mag);
-		QVector3D h(accel[0],accel[1],0);
-
-		//compute field, roll, pitch
-		field = mag.length();
-		accel.normalize();
-    	roll =  atan2(accel.y(), accel.z());                 // Roll in radians
-        pitch = atan2(accel.x(), accel.z());//QVector2D(accel).length()); // Pitch in radians
- 		pitch = pitch * 180.0f / M_PI;
-        roll = roll * 180.0f / M_PI;
-		QQuaternion aq = QQuaternion::fromEulerAngles(pitch,roll,0.0);
-		aq.normalize();
-
-		
-		// align magnetometer
-        /*
-		mag = QVector3D(mag.y(),mag.x(),mag.z());
-		
-        float sinRoll = sin(roll);
-        float cosRoll = cos(roll);
-        float sinPitch = sin(pitch);
-        float cosPitch = cos(pitch);
-
-        float Bx_horiz = mag.x() * cosPitch + mag.y() * sinRoll * sinPitch + mag.z() * cosRoll * sinPitch;
-        float By_horiz = mag.y() * cosRoll - mag.z() * sinRoll;
-        float Bz_horiz = -mag.x() * sinPitch + mag.y() * sinRoll * cosPitch + mag.z() * cosRoll * cosPitch;
-
-		// compute yaw, dip
-
-		QVector3D ma(Bx_horiz,By_horiz,Bz_horiz);
-		*/
-
-		mag.setZ(-mag.z());
-		QVector3D ma = aq.rotatedVector(mag);
-		ma.normalize();
-
-        yaw = atan2(ma.x(), ma.y()); // Yaw in radians
-        //float mag_horizontal = sqrt(Bx_horiz * Bx_horiz + By_horiz * By_horiz);
-        //float dip_angle_rad = atan2(Bz_horiz, mag_horizontal);
-
-		float dip_angle_rad = atan2(ma.z(), QVector2D(ma).length());
-
-		// convert to degrees
-
-        yaw = yaw * 180.0f / M_PI;
-		if (yaw < 0.0)
-			yaw += 360.0;
-       
-        dip = dip_angle_rad*180.0f/M_PI;
-
-        return true;
-    }
-    return false;
-
-}
 
 float CompassData::getField()
 {
 	return magcal.B;
 }
+
+
 /*
-void ComplementaryFilter::getMeasurement(double ax, double ay, double az,
-                                         double mx, double my, double mz,
-                                         double& q0_meas, double& q1_meas,
-                                         double& q2_meas, double& q3_meas)
-{
-    // q_acc is the quaternion obtained from the acceleration vector
-    // representing the orientation of the Global frame wrt the Local frame with
-    // arbitrary yaw (intermediary frame). q3_acc is defined as 0.
-    double q0_acc, q1_acc, q2_acc, q3_acc;
+Keeping a Good Attitude: A Quaternion-Based Orientation Filter for IMUs and MARGs
+Authors
+Roberto G. Valenti, CUNY City College
+Ivan Dryanovski, CUNY Graduate Center
+Jizhong Xiao, CUNY City College
 
-    // Normalize acceleration vector.
-    normalizeVector(ax, ay, az);
-    if (az >= 0)
-    {
-        q0_acc = sqrt((az + 1) * 0.5);
-        q1_acc = -ay / (2.0 * q0_acc);
-        q2_acc = ax / (2.0 * q0_acc);
-        q3_acc = 0;
-    } else
-    {
-        double X = sqrt((1 - az) * 0.5);
-        q0_acc = -ay / (2.0 * X);
-        q1_acc = X;
-        q2_acc = 0;
-        q3_acc = ax / (2.0 * X);
-    }
-
-    // [lx, ly, lz] is the magnetic field reading, rotated into the intermediary
-    // frame by the inverse of q_acc.
-    // l = R(q_acc)^-1 m
-    double lx = (q0_acc * q0_acc + q1_acc * q1_acc - q2_acc * q2_acc) * mx +
-                2.0 * (q1_acc * q2_acc) * my - 2.0 * (q0_acc * q2_acc) * mz;
-    double ly = 2.0 * (q1_acc * q2_acc) * mx +
-                (q0_acc * q0_acc - q1_acc * q1_acc + q2_acc * q2_acc) * my +
-                2.0 * (q0_acc * q1_acc) * mz;
-
-    // q_mag is the quaternion that rotates the Global frame (North West Up)
-    // into the intermediary frame. q1_mag and q2_mag are defined as 0.
-    double gamma = lx * lx + ly * ly;
-    double beta = sqrt(gamma + lx * sqrt(gamma));
-    double q0_mag = beta / (sqrt(2.0 * gamma));
-    double q3_mag = ly / (sqrt(2.0) * beta);
-
-    // The quaternion multiplication between q_acc and q_mag represents the
-    // quaternion, orientation of the Global frame wrt the local frame.
-    // q = q_acc times q_mag
-    quaternionMultiplication(q0_acc, q1_acc, q2_acc, q3_acc, q0_mag, 0, 0,
-                             q3_mag, q0_meas, q1_meas, q2_meas, q3_meas);
-    // q0_meas = q0_acc*q0_mag;
-    // q1_meas = q1_acc*q0_mag + q2_acc*q3_mag;
-    // q2_meas = q2_acc*q0_mag - q1_acc*q3_mag;
-    // q3_meas = q0_acc*q3_mag;
-}
-	*/
+Algorithm assumes north west up global frame 
+*/
 
 #undef DEBUG
+#define DEBUG 1
+
 
 bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q, 
-                  float& heading, float& dip, float& field)
+                            float& dip, float& field)
 {
-	// qacc is the quaternion obtained from the acceleration vector
-    // representing the orientation of the Global frame wrt the Local frame with
-    // arbitrary yaw (intermediary frame). qacc[3] is defined as 0.
-
+	
 	QQuaternion qacc;
 	float alpha = 0.4; // filter coefficient
 	float q0,q1,q2,q3;
@@ -245,19 +115,26 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
 	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
 
-	// convert inputs to NWU format
+	// convert accelerometer to NWU (positive Z pointing down)
 
-	accel = acc_filt;
 	accel.setZ(-accel.z());
+
+	// convert magnetometer coordinates from ENU to NWU 
+	// coordinate system
+
 	magin = QVector3D(mag_filt[1],-mag_filt[0],mag_filt[2]);
+
+	if ((magin.length() == 0.0) || (accel.length() == 0.0))
+		return false;
 	
 	field = magin.length();
 	magin.normalize();
 	accel.normalize(); 
 
-	// Compute qacc
-	// AQUA assumes north west up frame 
-
+	// qacc is the quaternion obtained from the acceleration vector
+    // representing the orientation of the Global frame wrt the Local frame with
+    // arbitrary yaw (intermediary frame).
+	
     if (accel.z() >= 0)
     {
         q0 =  sqrt((accel.z() + 1) * 0.5);;
@@ -286,6 +163,9 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	qInfo() << "A Out: " << qacc.rotatedVector(accel);
 #endif
 	
+	// computer magnetometer quaternion
+	// q_mag is the quaternion that rotates the Global frame (North West Up)
+    // into the intermediary frame. q1_mag and q2_mag are defined as 0.
 
 	// note this step!  Apply inverted quarternion for calculating
 	// qmag
@@ -293,8 +173,6 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	QVector3D mag = qacc.inverted().rotatedVector(magin);
 	
 
-
-	// computer magnetometer quaternion
 
 	float gamma = mag[0]*mag[0] + mag[1]*mag[1];
 	float beta  = sqrt(gamma + mag[0] * sqrt(gamma));
@@ -309,11 +187,9 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 		q3_mag = betaneg/sqrt(2.0*gamma);
 	}
 
-	// invert q3_mag for left handed system
+	QQuaternion qmag(q0_mag,0,0,q3_mag);
 
-	QQuaternion qmag(q0_mag,0,0,-q3_mag);
-
-	//qmag = qmag*QQuaternion(0,1,0,0);
+	dip = atan2(mag[2],sqrt(gamma))*180.0/M_PI;
 
 #ifdef DEBUG
 	QVector3D magtest(sqrt(gamma), 0, mag[2]);
@@ -331,46 +207,43 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	qInfo() << "M Out: " << q.rotatedVector(magin);
 #endif
 
-	// convert to right handed coordinate system
+	// convert NWU to ENU
+ 
+	//q = QQuaternion(-q.scalar(),q.y(),q.x(),q.z())*QQuaternion(0,0,1,0);
+	q = QQuaternion(q.scalar(),q.x(),-q.y(),-q.z())*QQuaternion(0,0,1,0);
+	q = QQuaternion(0,0,0,1) * q;
 
-	
-
-	// Computing heading and dip angle
-
-	QVector3D magint = qacc.rotatedVector(magin);
-	heading = atan2(magint[0],magint[1])*180.0/M_PI;
-	dip = -atan2(magin[2],magin[0])*180.0/M_PI;
-
-	// convert to right handed system
-
-	q = QQuaternion(q.scalar(),q.y(),-q.x(),q.z())*QQuaternion(0,-1,0,0);
+	//q = q;
 	return true;
 }
 
-// the following are from magical
+// the following are from magical; they handle data management for
+// the NXP calibration routines
 
-
-void CompassData::apply_calibration(float rawx, float rawy, float rawz, Point_t *out)
+void CompassData::clear()
 {
-	float x, y, z;
-
-	x = rawx - magcal.V[0];
-	y = rawy - magcal.V[1];
-	z = rawz - magcal.V[2];
-	out->x = x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2];
-	out->y = x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2];
-	out->z = x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2];
+    raw_data_reset();
+    quality_reset();
 }
 
-void CompassData::apply_calibration(QVector3D &mag){
-	float x, y, z;
+void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror)
+{ 
+    gaps = quality_surface_gap_error();
+    variance = quality_magnitude_variance_error();
+    wobble = quality_wobble_error();
+    fiterror = quality_spherical_fit_error();
+}
 
-	x = mag[0] - magcal.V[0];
-	y = mag[1] - magcal.V[1];
-	z = mag[2] - magcal.V[2];
-	mag[0] = (x * magcal.invW[0][0] + y * magcal.invW[0][1] + z * magcal.invW[0][2]);
-	mag[1] = (x * magcal.invW[1][0] + y * magcal.invW[1][1] + z * magcal.invW[1][2]);
-	mag[2] = (x * magcal.invW[2][0] + y * magcal.invW[2][1] + z * magcal.invW[2][2]);
+void CompassData::qualityUpdate(){
+    quality_reset();
+    for (int i=0; i < MAGBUFFSIZE; i++) {
+        if (magcal.valid[i]) {
+			QVector3D point = BpFast(i);
+			apply_calibration(point);
+			Point_t pt = {point.x(),point.y(),point.z()};
+            quality_update(&pt);
+        }
+    }       
 }
 
 void CompassData::raw_data_reset(void)

@@ -238,6 +238,7 @@ void MainWindow::TriggerUpdate(void)
   QVector3D mag, accel;
   float mx,my,mz,ax,ay,az;
   float pitch, roll, yaw, dip, field;
+  QQuaternion q;
   
   if (isStreaming)
   { 
@@ -259,21 +260,19 @@ void MainWindow::TriggerUpdate(void)
             ay = sdata.accel().ay();
             az = sdata.accel().az();
             accel = QVector3D(ax,ay,az);
-            if (magnetic.eCompass(mag,accel,yaw,pitch,roll,dip,field)) {
-              QQuaternion q;
-              float heading;
-              //qInfo() << "Old" << yaw << pitch << roll << dip;
-              magnetic.eCompass(mag, accel, q, heading, dip, field);
+            if (magnetic.eCompass(mag, accel, q, dip, field)) {
+              // display angles
               q.getEulerAngles(&roll,&pitch,&yaw);
-             // qInfo() << "New" << yaw << pitch << roll << dip;
+              if (yaw < 0.0) yaw += 360.0;
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
               ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
               ui.rollEdit->setText(QString::asprintf("%.0f",roll));
               ui.dipEdit->setText(QString::asprintf("%.0f",dip));
               ui.fieldEdit->setText(QString::asprintf("%.0f",field));
+              // draw compass
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
-              //rotateImage(yaw,pitch,roll);
+              // update rotated image of tag
               rotateImage(q);
             }
           }
