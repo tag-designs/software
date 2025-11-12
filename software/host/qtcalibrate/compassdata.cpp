@@ -207,13 +207,28 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	qInfo() << "M Out: " << q.rotatedVector(magin);
 #endif
 
-	// convert NWU to ENU
- 
-	//q = QQuaternion(-q.scalar(),q.y(),q.x(),q.z())*QQuaternion(0,0,1,0);
-	q = QQuaternion(q.scalar(),q.x(),-q.y(),-q.z())*QQuaternion(0,0,1,0);
-	q = QQuaternion(0,0,0,1) * q;
+	// convert quaternion to ENU
 
-	//q = q;
+	/*
+	𝑖𝑗=𝑘,
+	𝑗𝑘=𝑖,
+	𝑘𝑖=𝑗,
+	𝑗𝑖=−𝑘,
+	𝑘𝑗=−𝑖,
+	𝑖𝑘=−𝑗
+	
+
+	
+	q = QQuaternion(q.scalar(),q.x(),-q.y(),-q.z())*QQuaternion(0,0,1,0);
+				(w,x,y,z)* j == (-y,-z,w,x)
+	//  simplified
+     q = QQuaternion(q.y(),q.z(),q.scalar(),q.x());
+	 q =  QQuaternion(0,0,0,1) * q
+    // k*(w + xi + yj + zk) = (-z + -yi + xj + wx)
+	*/
+	q = QQuaternion(-q.x(),-q.scalar(),q.z(),q.y());
+	// swap y,x
+	
 	return true;
 }
 

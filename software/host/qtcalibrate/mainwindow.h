@@ -94,8 +94,7 @@ private:
 
   void logWindowInit(void);
   void scatterGraphInit(void);
-  void rotateImage(float yaw, float pitch, float roll);
-  void rotateImage(QQuaternion qt);
+  void rotateImage(QQuaternion qt, float yaw);
 
   CompassData magnetic;
   Tag tag;

@@ -273,7 +273,7 @@ void MainWindow::TriggerUpdate(void)
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
               // update rotated image of tag
-              rotateImage(q);
+              rotateImage(q,yaw);
             }
           }
 
@@ -507,20 +507,13 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
-void MainWindow::rotateImage(float yaw, float pitch, float roll){
-    QMetaObject::invokeMethod(rootObject, "setRotation",
-        //Q_RETURN_ARG(QString, returnedValue),
-        Q_ARG(QVariant, yaw),
-        Q_ARG(QVariant, pitch),
-        Q_ARG(QVariant, roll));
-
-}
-
-void MainWindow::rotateImage(QQuaternion qt){
+void MainWindow::rotateImage(QQuaternion qt, float yaw){
+    // modify quaternion for the display
     qt = QQuaternion(qt.scalar(),qt.y(),qt.x(),qt.z());
     QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
         //Q_RETURN_ARG(QString, returnedValue),
-        Q_ARG(QVariant, qt));
+        Q_ARG(QVariant, qt),
+        Q_ARG(QVariant, yaw));
 }
 
 
