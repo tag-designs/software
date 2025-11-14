@@ -7,42 +7,48 @@ import QtQuick.Scene3D
 
 View3D {
 
-    function setRotationQuaternion(qt,yaw){
+    id: view3d
+    anchors.fill: parent   
+
+    function setRotationQuaternion(qt){
         myGroup.rotation = qt 
-        //originNode.eulerRotation.z = yaw/20
-        //viewNode.eulerRotation.z = yaw/10
     }
 
-    id: view3d
-    anchors.fill: parent
-   
- 
+    function setScreenDirection(direction){
+        originNode.eulerRotation = Qt.vector3d(0.0,0.0,direction)
+    }
+
+    function setBatteryForward(isBatteryForward){
+        if (isBatteryForward) {
+            myGroup.eulerRotation = Qt.vector3d(0.0,0.0,0.0)
+        } else {
+        }
+    }
+    
+    
     Node {
         id: viewNode
-        AxisHelper {
-                enableXZGrid: false
-
-            }
            
-         Node {
+        Node {
             id: originNode
             position: Qt.vector3d(0,0,0)
-          
-
+         
+            
             PerspectiveCamera {
                 id: camera
-                position: Qt.vector3d(0, 500, 20)
-                pivot: QtVector3d(0,0,0)
-                eulerRotation.z: 180
-                lookAtNode: myGroup  
+                position: Qt.vector3d(0, 500, 40)
+                pivot: Qt.vector3d(0,0,0)
+
+                eulerRotation.x: -90
+                eulerRotation.y: -180
             }
-         
+            
             OrbitCameraController {
                 anchors.fill: parent
                 origin: originNode
                 camera: camera
-               mouseEnabled: true
-               panEnabled: true
+                mouseEnabled: true
+                panEnabled: true
             }
 
             DirectionalLight {
@@ -52,37 +58,37 @@ View3D {
             DirectionalLight {
                 eulerRotation.x: -30
             }
-          
-           }
         
-        Node {
-                id: myGroup
+        }
+        
+    Node {
+            id: myGroup
+
+            Model {
+                source: "#Cube"
+                materials: [ PrincipledMaterial { baseColor: "green" } ]
                 position: Qt.vector3d(0, 0, 0)
+                scale: Qt.vector3d(1,2,0.1)
+            }
 
-                    Model {
-                        source: "#Cube"
-                        materials: [ PrincipledMaterial { baseColor: "green" } ]
-                        position: Qt.vector3d(0, 0, 0)
-                        scale: Qt.vector3d(1,2,0.1)
-                    }
+            Model {
+                source: "#Cylinder"
+                materials: [ PrincipledMaterial { baseColor: "silver" } ]
+                position: Qt.vector3d(0, -100, 20)
+                scale: Qt.vector3d(1.1,0.3,1.1)
+                eulerRotation: Qt.vector3d(90, 0, 0)
+            }
+        }
+   
+      AxisHelper {
+                enableXZGrid: true
+            }
 
-                    Model {
-                        source: "#Cylinder"
-                        materials: [ PrincipledMaterial { baseColor: "silver" } ]
-                        position: Qt.vector3d(0, 100, 20)
-                        scale: Qt.vector3d(1.1,0.3,1.1)
-                        eulerRotation: Qt.vector3d(90, 0, 0)
-                    }
-               
-       
     }
-   
-    }
-    
-   
    WasdController {
       controlledObject : camera
   }
+ 
 }
 
    

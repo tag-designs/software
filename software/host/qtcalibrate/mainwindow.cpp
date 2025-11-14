@@ -62,6 +62,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   QObject::connect(&magnetic, &CompassData::calibration_update, this, &MainWindow::calibration_update);
   connect(&qualitytimer, SIGNAL(timeout()), this, SLOT(TriggerQualityUpdate()));
 
+  // Connect ui
+
+  //connect(ui.screenDirection,SIGNAL(valueChanged()),this, SLOT(on_screenDirection_valueChanged()));
+
   // attach to tag if possible
 
   Attach();
@@ -261,12 +265,16 @@ void MainWindow::TriggerUpdate(void)
             az = sdata.accel().az();
             accel = QVector3D(ax,ay,az);
             if (magnetic.eCompass(mag, accel, q, dip, field)) {
-              // display angles
-              q.getEulerAngles(&roll,&pitch,&yaw);
+              // display angles -- note that QT getEulerAngles uses a strange convention
+              // pitch around x axis, yaw around y axis, and roll around z axis.  Order is YXZ for Q->angles, ZXY for angles->Q
+              // we want x:pitch,y:roll,z:yaw
+              // note that pitch and roll both have signs reversed.
+
+              q.getEulerAngles(&pitch,&roll,&yaw);
               if (yaw < 0.0) yaw += 360.0;
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
-              ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
-              ui.rollEdit->setText(QString::asprintf("%.0f",roll));
+              ui.pitchEdit->setText(QString::asprintf("%.0f",-pitch));
+              ui.rollEdit->setText(QString::asprintf("%.0f",-roll));
               ui.dipEdit->setText(QString::asprintf("%.0f",dip));
               ui.fieldEdit->setText(QString::asprintf("%.0f",field));
               // draw compass
@@ -509,12 +517,17 @@ void MainWindow::on_logclearButton_clicked()
 
 void MainWindow::rotateImage(QQuaternion qt, float yaw){
     // modify quaternion for the display
-    qt = QQuaternion(qt.scalar(),qt.y(),qt.x(),qt.z());
+    //qt = QQuaternion(qt.scalar(),qt.y(),qt.x(),-qt.z());
     QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
         //Q_RETURN_ARG(QString, returnedValue),
-        Q_ARG(QVariant, qt),
-        Q_ARG(QVariant, yaw));
+        Q_ARG(QVariant, qt));
 }
+
+ void MainWindow::on_screenDirection_valueChanged(double direction){
+    qInfo() << "screen direction " << direction;
+    QMetaObject::invokeMethod(rootObject, "setScreenDirection",
+        Q_ARG(QVariant, direction));
+ }
 
 
 

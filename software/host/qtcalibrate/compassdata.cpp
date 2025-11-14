@@ -220,15 +220,29 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 
 	
 	q = QQuaternion(q.scalar(),q.x(),-q.y(),-q.z())*QQuaternion(0,0,1,0);
-				(w,x,y,z)* j == (-y,-z,w,x)
+				(w,x,y,z)* j = wj + xk - y - zi
+				== (-y,-z,w,x)
 	//  simplified
      q = QQuaternion(q.y(),q.z(),q.scalar(),q.x());
 	 q =  QQuaternion(0,0,0,1) * q
     // k*(w + xi + yj + zk) = (-z + -yi + xj + wx)
 	*/
-	q = QQuaternion(-q.x(),-q.scalar(),q.z(),q.y());
-	// swap y,x
+	//q = QQuaternion(-q.x(),-q.scalar(),q.z(),q.y());
+
+	//q = QQuaternion(0,0,0,1)*q*QQuaternion(0,0,1,0);
 	
+	// Convert from NWU to ENU
+
+	//q = QQuaternion(q.scalar(),q.y(),q.x(),-q.z())*QQuaternion(0,0,1,0);;
+
+	//q = QQuaternion(sqrt(2)/2,0,0,sqrt(2)/2)*q;
+
+	// convert from NWU to ENU
+
+	//q = QQuaternion(0,0,1,0)*QQuaternion(q.scalar(),q.y(),-q.x(),q.z());
+
+	q = QQuaternion(0,0,0,1)*q*QQuaternion(0,0,1,0);
+	q = QQuaternion(q.scalar(),q.y(),-q.x(),q.z());
 	return true;
 }
 
