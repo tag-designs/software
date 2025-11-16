@@ -269,12 +269,15 @@ void MainWindow::TriggerUpdate(void)
               // pitch around x axis, yaw around y axis, and roll around z axis.  Order is YXZ for Q->angles, ZXY for angles->Q
               // we want x:pitch,y:roll,z:yaw
               // note that pitch and roll both have signs reversed.
-
-              q.getEulerAngles(&pitch,&roll,&yaw);
-              if (yaw < 0.0) yaw += 360.0;
+              QVector3D angles = q.toEulerAngles();
+	            if (angles[2] < 0.0) angles[2] += 360.0;
+              pitch = angles[0];
+              roll = angles[1];
+              yaw = angles[2];
+              qInfo() << "Pitch: " << pitch << " Roll " << roll << " Yaw " << yaw;
               ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
-              ui.pitchEdit->setText(QString::asprintf("%.0f",-pitch));
-              ui.rollEdit->setText(QString::asprintf("%.0f",-roll));
+              ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
+              ui.rollEdit->setText(QString::asprintf("%.0f",roll));
               ui.dipEdit->setText(QString::asprintf("%.0f",dip));
               ui.fieldEdit->setText(QString::asprintf("%.0f",field));
               // draw compass

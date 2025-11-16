@@ -20,6 +20,7 @@ add_subdirectory(qtmon)
 add_subdirectory(qtprogram)
 add_subdirectory(qtcalibrate)
 add_subdirectory(btdataviz)
+add_subdirectory(tag-orientation)
 
 if(WIN32)
   #add_dependencies(qtmonitor BitTag PresTag)

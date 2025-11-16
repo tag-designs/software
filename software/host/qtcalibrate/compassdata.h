@@ -1,11 +1,11 @@
 #ifndef COMPASS_DATA_H
 #define COMPASS_DATA_H
 
-#include <QWidget>
 #include <QList>
 #include <QVector3D>
 #include <QQuaternion>
 #include <QMatrix3x3>
+#include <QObject>
 
 #include "magcal.h"
 #include "ema.h"

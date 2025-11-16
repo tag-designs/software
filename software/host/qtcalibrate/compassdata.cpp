@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cfloat>
 #include "compassdata.h"
+#include <iostream>
 
 
 CompassData::CompassData(QObject *parent) : QObject{parent}
@@ -115,25 +116,39 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
 	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
 
-	// convert accelerometer to NWU (positive Z pointing down)
+	// convert accelerometer to NWU (positive Z pointing down, pos x facing north, pos y facing west
+	//accel[0] = acc_filt[1];
+	//accel[1] = acc_filt[0];
+	//accel[2] = -acc_filt[2];
 
-	accel.setZ(-accel.z());
+//#ifndef DEBUG
+	accel = acc_filt;
+	magin = mag_filt;
+//#endif
 
-	// convert magnetometer coordinates from ENU to NWU 
-	// coordinate system
-
-	magin = QVector3D(mag_filt[1],-mag_filt[0],mag_filt[2]);
+	// algorithm uses positive g as up, accelerometer measures this as negative g, swapping all three
+	// changes handedness of vector
 
 	if ((magin.length() == 0.0) || (accel.length() == 0.0))
 		return false;
 	
 	field = magin.length();
-	magin.normalize();
 	accel.normalize(); 
+	magin.normalize();
+
+	// switch to NWU convention with gravity positive (accel measures opposite sign)
+
+	//accel[2] = -accel[2];
+	accel = QVector3D(accel[0],accel[1],accel[2]);
+	magin = QVector3D(magin[1],magin[0],magin[2]);
+	
+	
 
 	// qacc is the quaternion obtained from the acceleration vector
     // representing the orientation of the Global frame wrt the Local frame with
     // arbitrary yaw (intermediary frame).
+
+	
 	
     if (accel.z() >= 0)
     {
@@ -150,28 +165,37 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
         q3 = accel.x() / (2.0 * X);
     }
 
-	qacc = QQuaternion(q0,q1,q2,q3);
+	// need to correct quaternion for  directional difference in gravity
+	//qacc = QQuaternion(0,1,0,0)*QQuaternion(q0,q1,q2,q3)*QQuaternion(0,0,1,0);
+	qacc = QQuaternion(q3,-q2,-q1,q0);
 	qacc.normalize();
+    QVector3D angles;
+#ifdef DEBUG_
+	// Tests
+	angles = qacc.toEulerAngles();
+	//fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f", angles[1], angles[0]);
+	std::cerr <<  "\rPitch: " << angles[1] << " Roll: " << angles[0];
+	//return false;
 
-	// test the quaternion
-
-	QVector3D atest =  qacc.rotatedVector(QVector3D(0,0,1));
-
-#ifdef DEBUG
-	qInfo() << "A In:  " << accel;
-	qInfo() << "A test:" << accel << " == " << atest;
-	qInfo() << "A Out: " << qacc.rotatedVector(accel);
-#endif
 	
-	// computer magnetometer quaternion
+    QVector3D atest1 =  qacc.conjugated().rotatedVector(accel);
+	QVector3D atest2 =  qacc.rotatedVector(QVector3D(0,0,1));
+	qInfo() << "A In:  " << accel;
+	qInfo() << "A test1" << atest1 << " == " << QVector3D(0,0,1);
+	qInfo() << "A test2" << accel << " == " << atest2;
+	qInfo() << "A Out: " << qacc.rotatedVector(accel);
+	
+#endif
+//
 	// q_mag is the quaternion that rotates the Global frame (North West Up)
     // into the intermediary frame. q1_mag and q2_mag are defined as 0.
 
-	// note this step!  Apply inverted quarternion for calculating
+	// note this step!  Apply conjugated quarternion for calculating
 	// qmag
 
-	QVector3D mag = qacc.inverted().rotatedVector(magin);
-	
+   
+	//QVector3D mag = qacc.conjugated().rotatedVector(magin);
+	QVector3D mag = qacc.rotatedVector(magin);
 
 
 	float gamma = mag[0]*mag[0] + mag[1]*mag[1];
@@ -188,23 +212,43 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	}
 
 	QQuaternion qmag(q0_mag,0,0,q3_mag);
+	qmag.normalize();
 
-	dip = atan2(mag[2],sqrt(gamma))*180.0/M_PI;
-
-#ifdef DEBUG
-	QVector3D magtest(sqrt(gamma), 0, mag[2]);
-	qInfo() << "Mag test: " << qmag.rotatedVector(mag) << " == " << magtest;
-#endif
-	// Compute final quaternion and convert to ENU
 	q = qacc*qmag;
 	q.normalize();
 
+	dip = atan2(mag[2],sqrt(gamma))*180.0/M_PI;
 #ifdef DEBUG
+	angles = q.toEulerAngles();
+	//if (angles[2] < 0.0) angles[2] += 360.0;
+	//fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f Yaw: %3.2f", angles[1], angles[0],angles[2]);
+	//return false;
+	//qInfo() << "Pitch:" << angles[1] << " Roll: " << angles[0] << " Yaw:" << angles[2];
+	QVector3D magtest(sqrt(gamma), 0, mag[2]);
+	qInfo() << "Mag test: " << qmag.rotatedVector(mag) << " == " << magtest;
+#endif
+	// Compute final quaternion
+
+	//q = QQuaternion(q.scalar(),q.y(),q.x(),q.z());
+	//* QQuaternion(0,1,0,0)*QQuaternion(0,0,0,1);
+
+#ifdef DEBUG
+	QVector3D mtmp = qacc.rotatedVector(magin);
+	float yaw = atan2(mtmp[1],mtmp[0])*180.0/M_PI;
+	float yaw2 = asin(q3_mag)*360.0/M_PI;
 	// run some tests
-	qInfo() << "A test 2" << accel << " == " << q.rotatedVector(QVector3D(0,0,1));
-	qInfo() << "A final: " << q.rotatedVector(accel);
-	qInfo() << "M In:  " << magin;
-	qInfo() << "M Out: " << q.rotatedVector(magin);
+	//qInfo() << "A test 3" << accel << " == " << q.rotatedVector(QVector3D(0,0,1));
+	//qInfo() << "A final: " << q.rotatedVector(accel);
+	//qInfo() << "M In:  " << magin;
+	//qInfo() << "M acc:" << qacc.rotatedVector(magin);
+	//qInfo() << "M Out: " << q.rotatedVector(magin);
+#endif
+#ifdef DEBUG
+	qInfo() << "yaw " << yaw << " yaw2 " << yaw2;
+	qInfo() << "qac: " << qacc.vector();
+	qInfo() << "qmag " << qmag.vector();
+	//qInfo() << "q: " << q.vector();
+	
 #endif
 
 	// convert quaternion to ENU
@@ -218,31 +262,14 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	𝑖𝑘=−𝑗
 	
 
-	
-	q = QQuaternion(q.scalar(),q.x(),-q.y(),-q.z())*QQuaternion(0,0,1,0);
-				(w,x,y,z)* j = wj + xk - y - zi
-				== (-y,-z,w,x)
+
 	//  simplified
-     q = QQuaternion(q.y(),q.z(),q.scalar(),q.x());
-	 q =  QQuaternion(0,0,0,1) * q
-    // k*(w + xi + yj + zk) = (-z + -yi + xj + wx)
+    To swap the X and Y axes in a quaternion, swap the x and y components 
+	and negate the w component.  This conversion changes the 
+	handedness of the coordinate system, and negating 
+	w corrects the rotation for this change.
 	*/
-	//q = QQuaternion(-q.x(),-q.scalar(),q.z(),q.y());
-
-	//q = QQuaternion(0,0,0,1)*q*QQuaternion(0,0,1,0);
-	
-	// Convert from NWU to ENU
-
-	//q = QQuaternion(q.scalar(),q.y(),q.x(),-q.z())*QQuaternion(0,0,1,0);;
-
-	//q = QQuaternion(sqrt(2)/2,0,0,sqrt(2)/2)*q;
-
-	// convert from NWU to ENU
-
-	//q = QQuaternion(0,0,1,0)*QQuaternion(q.scalar(),q.y(),-q.x(),q.z());
-
-	q = QQuaternion(0,0,0,1)*q*QQuaternion(0,0,1,0);
-	q = QQuaternion(q.scalar(),q.y(),-q.x(),q.z());
+	//q = QQuaternion(q.scalar(),q.y(),q.x(),-q.z());
 	return true;
 }
 
