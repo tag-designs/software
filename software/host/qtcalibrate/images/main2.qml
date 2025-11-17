@@ -22,7 +22,7 @@ View3D {
     }
 
     function setScreenDirection(direction){
-        goNode.eulerRotation = Qt.vector3d(0.0,direction,0.0)
+        orientationNode.eulerRotation = Qt.vector3d(0.0,0.0,direction)
         //originNode.rotation = Qt.Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), direction)
     }
 
@@ -35,22 +35,32 @@ View3D {
     
     Node {
         id: viewNode    
-        eulerRotation.x: -90
+        //eulerRotation.x: -90
         
 
         Node {
             id: originNode
             position: Qt.vector3d(0,0,0)
-                eulerRotation.x: 90
-                eulerRotation.y: 90
-              
+            eulerRotation.y:-90
+            eulerRotation.x:-90
+           AxisHelper {
+                enableXYGrid: true
+                enableXZGrid: false
+                }
+           
 
             Node {
                 id: orientationNode
+                //eulerRotation.y: 180
+               
                 PerspectiveCamera {
                     id: camera
-                    position: Qt.vector3d(0, 40, -500)
-                    lookAtNode: orientationNode
+                    position: Qt.vector3d(0, -20, -500)
+                    //pivot: Qt.vector3d(0,0,0)
+                    //eulerRotation.z: 180
+                    //eulerRotation.x: 90 
+
+                    lookAtNode: originNode
                 }
                 
                 OrbitCameraController {
@@ -62,23 +72,11 @@ View3D {
                 }
 
                 DirectionalLight {
-                  eulerRotation.x: 90
-                  scale: vector3d(4,4,-4)
+                    eulerRotation.y: 30
                 }
 
                 DirectionalLight {
-                    eulerRotation.x: -90
-                    scale: vector3d(4,4,4)
-                }
-
-                 DirectionalLight {
-                    eulerRotation.y: -90
-                    scale: vector3d(4,4,4)
-                }
-
-                DirectionalLight {
-                    eulerRotation.y: 90
-                    scale: vector3d(4,4,4)
+                    eulerRotation.y: -30
                 }
             }
 
@@ -100,19 +98,18 @@ View3D {
                     Model {
                         source: "#Cylinder"
                         materials: [ PrincipledMaterial { baseColor: "silver" } ]
-                        position: Qt.vector3d(0,20, 100)
+                        position: Qt.vector3d(20,0, 100)
                         scale: Qt.vector3d(1.1,0.3,1.1)
                         //eulerRotation: Qt.vector3d(90, 0, 0)
                         castsShadows: true
                         castsReflections: true
                     }
-            
-                }         
-                AxisHelper {
-                    enableXYGrid: true
-                }
-            
+                   
             }
+            
+        }  
+            
+        }
        
         
     }
@@ -121,7 +118,6 @@ View3D {
         controlledObject : camera
     }
  
-    }
 }
 //}
 

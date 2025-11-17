@@ -284,7 +284,10 @@ void MainWindow::TriggerUpdate(void)
               ui.hi_graphicsView->setHeading(yaw);
               ui.hi_graphicsView->redraw();
               // update rotated image of tag
-              rotateImage(q,yaw);
+              // qtquick -- roll around z, pitch around x, yaw around y
+              //. this is really strange
+              QQuaternion Qprime = QQuaternion::fromEulerAngles(-pitch,yaw,roll);
+              rotateImage(Qprime,yaw);
             }
           }
 

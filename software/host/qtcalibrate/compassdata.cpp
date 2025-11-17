@@ -98,7 +98,7 @@ Algorithm assumes north west up global frame
 */
 
 #undef DEBUG
-#define DEBUG 1
+//#define DEBUG 1
 
 
 bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q, 
@@ -138,9 +138,8 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 
 	// switch to NWU convention with gravity positive (accel measures opposite sign)
 
-	//accel[2] = -accel[2];
-	accel = QVector3D(accel[0],accel[1],accel[2]);
-	magin = QVector3D(magin[1],magin[0],magin[2]);
+	accel = QVector3D(accel[0],-accel[1],accel[2]);
+	magin = QVector3D(magin[0],magin[1],-magin[2]);
 	
 	
 
@@ -167,15 +166,16 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 
 	// need to correct quaternion for  directional difference in gravity
 	//qacc = QQuaternion(0,1,0,0)*QQuaternion(q0,q1,q2,q3)*QQuaternion(0,0,1,0);
-	qacc = QQuaternion(q3,-q2,-q1,q0);
+	//qacc = QQuaternion(q3,-q2,-q1,q0);
+	qacc = QQuaternion(q0,q2,q1,q3);
 	qacc.normalize();
     QVector3D angles;
 #ifdef DEBUG_
 	// Tests
 	angles = qacc.toEulerAngles();
-	//fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f", angles[1], angles[0]);
+	fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f", angles[1], angles[0]);
 	std::cerr <<  "\rPitch: " << angles[1] << " Roll: " << angles[0];
-	//return false;
+	return false;
 
 	
     QVector3D atest1 =  qacc.conjugated().rotatedVector(accel);
@@ -211,26 +211,28 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 		q3_mag = betaneg/sqrt(2.0*gamma);
 	}
 
-	QQuaternion qmag(q0_mag,0,0,q3_mag);
+	// tweak rotation direction and heading
+
+	QQuaternion qmag(q0_mag,0,0,-q3_mag);
+	qmag = QQuaternion(sqrt(2)/2,0,0,sqrt(2)/2) * qmag;
 	qmag.normalize();
 
 	q = qacc*qmag;
 	q.normalize();
+	q.setX(-q.x());
+	q.setY(-q.y());
 
 	dip = atan2(mag[2],sqrt(gamma))*180.0/M_PI;
 #ifdef DEBUG
 	angles = q.toEulerAngles();
-	//if (angles[2] < 0.0) angles[2] += 360.0;
-	//fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f Yaw: %3.2f", angles[1], angles[0],angles[2]);
-	//return false;
+	if (angles[2] < 0.0) angles[2] += 360.0;
+	fprintf(stderr, "\rPitch: %3.2f Roll: %3.2f Yaw: %3.2f Dip: %3.2f", 
+			angles[0], angles[1],angles[2],dip);
+	return false;
 	//qInfo() << "Pitch:" << angles[1] << " Roll: " << angles[0] << " Yaw:" << angles[2];
 	QVector3D magtest(sqrt(gamma), 0, mag[2]);
 	qInfo() << "Mag test: " << qmag.rotatedVector(mag) << " == " << magtest;
 #endif
-	// Compute final quaternion
-
-	//q = QQuaternion(q.scalar(),q.y(),q.x(),q.z());
-	//* QQuaternion(0,1,0,0)*QQuaternion(0,0,0,1);
 
 #ifdef DEBUG
 	QVector3D mtmp = qacc.rotatedVector(magin);
@@ -250,26 +252,6 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	//qInfo() << "q: " << q.vector();
 	
 #endif
-
-	// convert quaternion to ENU
-
-	/*
-	𝑖𝑗=𝑘,
-	𝑗𝑘=𝑖,
-	𝑘𝑖=𝑗,
-	𝑗𝑖=−𝑘,
-	𝑘𝑗=−𝑖,
-	𝑖𝑘=−𝑗
-	
-
-
-	//  simplified
-    To swap the X and Y axes in a quaternion, swap the x and y components 
-	and negate the w component.  This conversion changes the 
-	handedness of the coordinate system, and negating 
-	w corrects the rotation for this change.
-	*/
-	//q = QQuaternion(q.scalar(),q.y(),q.x(),-q.z());
 	return true;
 }
 
