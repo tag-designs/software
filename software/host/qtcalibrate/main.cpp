@@ -94,6 +94,8 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 
 int main(int argc, char *argv[])
 {
+
+  qInstallMessageHandler(myMessageOutput);
   QApplication a(argc, argv);
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;

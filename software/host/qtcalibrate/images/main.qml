@@ -18,20 +18,32 @@ View3D {
     anchors.fill: parent   
 
     function setRotationQuaternion(qt){
-        myGroup.rotation = qt 
+        if (myGroup.batteryForward) {
+            myGroup.rotation = qt;
+        } else {
+            myGroup.rotation = qt.inverted();
+        }
+        console.info("setRotationQuaternion Called");
     }
 
     function setScreenDirection(direction){
-        goNode.eulerRotation = Qt.vector3d(0.0,direction,0.0)
-        //originNode.rotation = Qt.Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), direction)
+        goNode.eulerRotation = Qt.vector3d(0.0,direction,0.0);
+        console.info("setScreenDirection called");
     }
 
     function setBatteryForward(isBatteryForward){
+
+        myGroup.batteryForward = isBatteryForward;
+       
         if (isBatteryForward) {
-            myGroup.eulerRotation = Qt.vector3d(0.0,0.0,0.0)
+            myGroup.batteryPosition = 100;
+            console.info("setting battery forward");
         } else {
+            myGroup.batteryPosition = -100;
+            console.info("clearing battery forward");
         }
-    }   
+    } 
+   
     
     Node {
         id: viewNode    
@@ -63,22 +75,22 @@ View3D {
 
                 DirectionalLight {
                   eulerRotation.x: 90
-                  scale: vector3d(4,4,-4)
+                  scale: Qt.vector3d(4,4,-4)
                 }
 
                 DirectionalLight {
                     eulerRotation.x: -90
-                    scale: vector3d(4,4,4)
+                    scale: Qt.vector3d(4,4,4)
                 }
 
                  DirectionalLight {
                     eulerRotation.y: -90
-                    scale: vector3d(4,4,4)
+                    scale: Qt.vector3d(4,4,4)
                 }
 
                 DirectionalLight {
                     eulerRotation.y: 90
-                    scale: vector3d(4,4,4)
+                    scale: Qt.vector3d(4,4,4)
                 }
             }
 
@@ -88,6 +100,8 @@ View3D {
 
                 Node {
                     id: myGroup
+                    property bool batteryForward: true
+                    property int batteryPosition: 100
                     //position: Qt.vector3d(0, 0, 0) 
                     Model {
                         //eulerRotation: Qt.vector3d(0,0,180)
@@ -100,7 +114,7 @@ View3D {
                     Model {
                         source: "#Cylinder"
                         materials: [ PrincipledMaterial { baseColor: "silver" } ]
-                        position: Qt.vector3d(0,20, 100)
+                        position: Qt.vector3d(0,20,myGroup.batteryPosition)
                         scale: Qt.vector3d(1.1,0.3,1.1)
                         //eulerRotation: Qt.vector3d(90, 0, 0)
                         castsShadows: true

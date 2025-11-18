@@ -79,6 +79,7 @@ private slots:
   // orientation
 
   void on_screenDirection_valueChanged(double);
+  void on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState);
 
   //void on_orientstartButton_clicked();
   //void on_oreientstopButton_clicked();

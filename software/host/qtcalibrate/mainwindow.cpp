@@ -286,7 +286,9 @@ void MainWindow::TriggerUpdate(void)
               // update rotated image of tag
               // qtquick -- roll around z, pitch around x, yaw around y
               //. this is really strange
-              QQuaternion Qprime = QQuaternion::fromEulerAngles(-pitch,yaw,roll);
+              //QQuaternion Qprime = QQuaternion::fromEulerAngles(-pitch,yaw,roll);
+              //https://stackoverflow.com/questions/28673777/convert-quaternion-from-right-handed-to-left-handed-coordinate-system
+              QQuaternion Qprime(q.scalar(),q.x(),q.z(),-q.y());
               rotateImage(Qprime,yaw);
             }
           }
@@ -522,8 +524,6 @@ void MainWindow::on_logclearButton_clicked()
 }
 
 void MainWindow::rotateImage(QQuaternion qt, float yaw){
-    // modify quaternion for the display
-    //qt = QQuaternion(qt.scalar(),qt.y(),qt.x(),-qt.z());
     QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
         //Q_RETURN_ARG(QString, returnedValue),
         Q_ARG(QVariant, qt));
@@ -534,6 +534,13 @@ void MainWindow::rotateImage(QQuaternion qt, float yaw){
     QMetaObject::invokeMethod(rootObject, "setScreenDirection",
         Q_ARG(QVariant, direction));
  }
+
+ void MainWindow::on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState state){
+    bool isForward = (state == Qt::Checked);
+    qInfo() << "Battery Forward " << isForward;
+    QMetaObject::invokeMethod(rootObject, "setBatteryForward",
+        Q_ARG(QVariant, isForward));
+  }
 
 
 
