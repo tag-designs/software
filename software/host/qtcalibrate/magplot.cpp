@@ -9,7 +9,7 @@
 #include "magplot.h"
 #include <QPainter>
 #include <QPen>
-#include <QtMinMax>
+//#include <QtMinMax>
 
 /*
 static void ENU_NED(QQuaternion &qt)

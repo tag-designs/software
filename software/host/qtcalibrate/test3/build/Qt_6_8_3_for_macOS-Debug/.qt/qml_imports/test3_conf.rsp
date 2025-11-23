@@ -1,0 +1,9 @@
+-rootPath
+/Users/geobrown/tmp/qtquicktest/test3
+-cmake-output
+-output-file
+/Users/geobrown/tmp/qtquicktest/test3/build/Qt_6_8_3_for_macOS-Debug/.qt/qml_imports/test3_conf.cmake
+-importPath
+/Users/geobrown/tmp/qtquicktest/test3/build/Qt_6_8_3_for_macOS-Debug
+-importPath
+/Users/geobrown/Qt/6.8.3/macos/qml
