@@ -45,6 +45,7 @@ QTextEdit *s_textEdit = nullptr;
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   ui.setupUi(this);
+ 
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
 
   // Change Main Window title
@@ -69,8 +70,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // attach to tag if possible
 
   Attach();
-  ui.hi_graphicsView->redraw();
-  ui.tagWidget->setSource(QUrl("qrc:/qfi/images/main.qml"));
+  //ui.hi_graphicsView->redraw();
+  ui.tagWidget->setSource(QUrl("qrc:/qfi/orientation_frame/orientation.qml"));
+  //ui.tagWidget->setSource(QUrl("qrc:/qfi/images/main.qml"));
   qInfo() << ui.tagWidget->errors();
   ui.tagWidget->show();
   qInfo() << ui.tagWidget->errors();
@@ -269,27 +271,31 @@ void MainWindow::TriggerUpdate(void)
               // pitch around x axis, yaw around y axis, and roll around z axis.  Order is YXZ for Q->angles, ZXY for angles->Q
               // we want x:pitch,y:roll,z:yaw
               // note that pitch and roll both have signs reversed.
+
+              // Orientation is ENU
               QVector3D angles = q.toEulerAngles();
 	            if (angles[2] < 0.0) angles[2] += 360.0;
               pitch = angles[0];
               roll = angles[1];
               yaw = angles[2];
               qInfo() << "Pitch: " << pitch << " Roll " << roll << " Yaw " << yaw;
-              ui.yawEdit->setText(QString::asprintf("%.0f",yaw));
-              ui.pitchEdit->setText(QString::asprintf("%.0f",pitch));
-              ui.rollEdit->setText(QString::asprintf("%.0f",roll));
-              ui.dipEdit->setText(QString::asprintf("%.0f",dip));
-              ui.fieldEdit->setText(QString::asprintf("%.0f",field));
-              // draw compass
-              ui.hi_graphicsView->setHeading(yaw);
-              ui.hi_graphicsView->redraw();
+              setOrientation(yaw,pitch,roll,dip,field);
               // update rotated image of tag
               // qtquick -- roll around z, pitch around x, yaw around y
               //. this is really strange
               //QQuaternion Qprime = QQuaternion::fromEulerAngles(-pitch,yaw,roll);
               //https://stackoverflow.com/questions/28673777/convert-quaternion-from-right-handed-to-left-handed-coordinate-system
-              QQuaternion Qprime(q.scalar(),q.x(),q.z(),-q.y());
-              rotateImage(Qprime,yaw);
+              //QQuaternion Qprime(q.scalar(),q.x(),q.z(),-q.y());
+
+              // convert from ENU to NED
+
+              QQuaternion qx = QQuaternion::fromAxisAndAngle(QVector3D(1,0,0),pitch);
+              QQuaternion qy = QQuaternion::fromAxisAndAngle(QVector3D(0,1,0),roll);
+              QQuaternion qz = QQuaternion::fromAxisAndAngle(QVector3D(0,0,1),yaw);
+
+
+
+              rotateImage(qz*qy*qx);
             }
           }
 
@@ -523,23 +529,20 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
-void MainWindow::rotateImage(QQuaternion qt, float yaw){
+void MainWindow::rotateImage(QQuaternion qt){
     QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
         //Q_RETURN_ARG(QString, returnedValue),
         Q_ARG(QVariant, qt));
 }
 
- void MainWindow::on_screenDirection_valueChanged(double direction){
-    qInfo() << "screen direction " << direction;
-    QMetaObject::invokeMethod(rootObject, "setScreenDirection",
-        Q_ARG(QVariant, direction));
- }
-
- void MainWindow::on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState state){
-    bool isForward = (state == Qt::Checked);
-    qInfo() << "Battery Forward " << isForward;
-    QMetaObject::invokeMethod(rootObject, "setBatteryForward",
-        Q_ARG(QVariant, isForward));
+void MainWindow::setOrientation(float h, float p, float r, float d, float f){
+    QMetaObject::invokeMethod(rootObject, "setOrientation",
+          //Q_RETURN_ARG(QString, returnedValue),
+          Q_ARG(QVariant, h),
+          Q_ARG(QVariant, p),
+          Q_ARG(QVariant, r),
+          Q_ARG(QVariant, d),
+          Q_ARG(QVariant, f));
   }
 
 

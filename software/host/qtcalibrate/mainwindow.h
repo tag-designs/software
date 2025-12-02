@@ -78,8 +78,8 @@ private slots:
 
   // orientation
 
-  void on_screenDirection_valueChanged(double);
-  void on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState);
+  //void on_screenDirection_valueChanged(double);
+  //void on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState);
 
   //void on_orientstartButton_clicked();
   //void on_oreientstopButton_clicked();
@@ -97,7 +97,8 @@ private:
 
   void logWindowInit(void);
   void scatterGraphInit(void);
-  void rotateImage(QQuaternion qt, float yaw);
+  void rotateImage(QQuaternion qt);
+  void setOrientation(float h, float p, float r, float d, float f);
 
   CompassData magnetic;
   Tag tag;

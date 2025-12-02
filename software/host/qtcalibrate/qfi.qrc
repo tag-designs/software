@@ -1,15 +1,9 @@
 <RCC>
     <qresource prefix="/qfi/">
-        
-        <file>images/ai/ai_back.svg</file>
-        <file>images/ai/ai_case.svg</file>
-        <file>images/ai/ai_face.svg</file>
-        <file>images/ai/ai_ring.svg</file>
-        
-        <file>images/hi/hi_case.svg</file>
-        <file>images/hi/hi_face.svg</file>
-
-        <file>images/main.qml</file>
-
+        <file>orientation_frame/MyAttitude.qml</file>
+        <file>orientation_frame/MyCompass.qml</file>
+        <file>orientation_frame/hi_case.svg</file>
+        <file>orientation_frame/hi_face.svg</file>
+        <file>orientation_frame/orientation.qml</file>
     </qresource>
 </RCC>
