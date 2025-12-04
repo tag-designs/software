@@ -221,8 +221,6 @@ void accelOff(void);
 // Sensor Calibration
 
 #ifdef SENSOR_CALIBRATION
-bool sensorSample(SensorData *sensors);
-bool initSensors(void);
-bool deinitSensors(void);
+#include "sensors.h"
 #endif
 #endif

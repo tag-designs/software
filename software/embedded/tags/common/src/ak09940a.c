@@ -81,8 +81,8 @@ bool magSample(bool single, uint8_t *xyz){
                     AK09940A_CNTL3_LN2;  // Single measurement, low nose 2
 
  
-  if (single)                 
-        AK09940A_SetReg(AK09940A_CNTL3,&command,1);
+  if (single)
+      AK09940A_SetReg(AK09940A_CNTL3,&command,1);
   for (int i = 0; i < 2; i++) { 
     AK09940A_GetReg(AK09940A_ST,&status,1);
     if ((status&1)==1){
@@ -95,8 +95,8 @@ bool magSample(bool single, uint8_t *xyz){
   return false;
 }
 
-void magInit(uint8_t mode){
-  uint8_t command = mode | AK09940A_CNTL3_LN2;
+void magInit(ak09940_mode_t mode){
+  uint8_t command = ((uint8_t) mode) | AK09940A_CNTL3_LN2;
   magOn();
   stopMilliseconds(true,1); 
   if (mode > AK09940A_CNTL3_SINGLE_MEASURE)

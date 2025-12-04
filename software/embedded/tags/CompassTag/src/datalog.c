@@ -106,7 +106,7 @@ void eraseExternal()
 int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES*2;
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES*sizeof(t_DataLog)/2;
   return 0;
 }
 
@@ -153,7 +153,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
   if (flasherr) 
     return LOGWRITE_ERROR;
-  if (head->vdd100[0] < 200)
+  if (head->vdd100 < 200)
     return LOGWRITE_BAT;
   else
     return LOGWRITE_OK;
@@ -181,8 +181,8 @@ int data_logAck(int index, Ack *ack)
   {
     ack->which_payload = Ack_compasstag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100[0] * 0.01f;
-    data->temperature = vddHeader[index].vdd100[1] * 0.01f;
+    data->voltage = vddHeader[index].vdd100 * 0.01f;
+    data->temperature = vddHeader[index].temp10 * 0.0f;
     data->data_count = 0;
 /*
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples

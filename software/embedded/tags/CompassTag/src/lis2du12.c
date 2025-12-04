@@ -186,7 +186,7 @@ void accelInit(lis2du12mode_t mode)
 
   switch (mode) {
   
-    case WAKEUP: 
+    case ACCEL_WAKEUP_MODE: 
       LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x17U); // ADD_INC, Wkup x,y,z
       LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
       LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
@@ -195,12 +195,12 @@ void accelInit(lis2du12mode_t mode)
       LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin
       LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
       break;
-    case SAMPLE_50HZ:
+    case ACCEL_SAMPLE_50HZ_MODE:
       LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
       LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
       LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x74U); // ODR = 50hz, BW = 12.5hz
       break;
-    case SAMPLE_100HZ:
+    case ACCEL_SAMPLE_100HZ_MODE:
       LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
       LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
       LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x84U); // ODR = 100hz, BW = 25hz

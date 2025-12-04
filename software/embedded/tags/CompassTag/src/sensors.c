@@ -10,6 +10,7 @@
 
 #include "lis2du12.h"
 #include "ak09940a.h"
+#include "sensors.h"
 
 
 void magOn(void);
@@ -30,8 +31,41 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+bool sensorSample(RawSensorData *data){
+  bool ok = true;
+  uint8_t buf[11];
+  struct {
+      int16_t x;
+      int16_t y;
+      int16_t z;
+  } accel_data;
 
-bool sensorSample(SensorData *sensors)
+  memset(data,0,sizeof(*data));
+
+  magInit(MAG_SAMPLE_SINGLE_MODE);
+  if (magSample(true,buf)) {
+      data->mx = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>16;
+      data->my = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>16;
+      data->mz = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>16;
+  } else {
+    ok = false;
+  }
+  magOff();
+
+
+ if (accelSample((uint8_t *) &accel_data))
+    {
+        data->ax = (accel_data.x/16);
+        data->ay = (accel_data.y/16);
+        data->az = (accel_data.z/16);
+    } else {
+      ok = false;
+    }
+    return ok;
+}
+
+
+bool sensorCalibrationSample(SensorData *sensors)
 {
     uint8_t buf[11];
     struct {
@@ -51,25 +85,15 @@ bool sensorSample(SensorData *sensors)
       x = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
       y = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
       z = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
-      //t = ((int)(buf[9]));
-
-      // sensors in ENU order
-
+     
       sensors->mag.mx = x * 0.01f;
       sensors->mag.my = y * 0.01f;
       sensors->mag.mz = z * 0.01f;
     }
-    //sensors->mag.temperature = 30.0f - t/1.7f;
 
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
-        
-        // convert to ENU -- when Z is pointing up, this is +1g
-        
-        //sensors->accel.ax = (accel_data.y/16) * 0.976f;
-        //sensors->accel.ay = -(accel_data.x/16) * 0.976f;
-        //sensors->accel.az = (accel_data.z/16) * 0.976f;
         
         sensors->accel.ax = (accel_data.x/16) * 0.976f;
         sensors->accel.ay = (accel_data.y/16) * 0.976f;
@@ -78,11 +102,13 @@ bool sensorSample(SensorData *sensors)
 
     return true;
 }
+
 bool initSensors(void){
-    accelInit(SAMPLE_100HZ);
-    magInit(AK09940A_CNTL3_100HZ);
+    accelInit(ACCEL_SAMPLE_100HZ_MODE);
+    magInit(MAG_SAMPLE_100HZ_MODE);
     return true;
 }
+
 bool deinitSensors(void) {
     magOff();
     accelDeinit();
@@ -119,7 +145,7 @@ int calibration_logAck(Ack *ack){
   ack->err = Ack_OK;
   ack->which_payload = Ack_calibration_log_tag;
   data->data_count = 1;
-  sensorSample(&data->data[0]);
+  sensorCalibrationSample(&data->data[0]);
   return encode_ack();
 }
 

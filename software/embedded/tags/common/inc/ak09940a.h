@@ -98,10 +98,17 @@ AK09940A_I2CDIS =  (0x36),
 #define AK09940A_CNTL4_SRST (1)
 #define AK09940A_I2CDIS_DISABLE (0x1B)
 
+typedef enum { MAG_SAMPLE_SINGLE_MODE = AK09940A_CNTL3_SINGLE_MEASURE , 
+               MAG_SAMPLE_10HZ_MODE   = AK09940A_CNTL3_10HZ,
+               MAG_SAMPLE_20HZ_MODE   = AK09940A_CNTL3_20HZ,
+               MAG_SAMPLE_50HZ_MODE   = AK09940A_CNTL3_50HZ,
+               MAG_SAMPLE_100HZ_MODE  = AK09940A_CNTL3_100HZ 
+               } ak09940_mode_t;
+
 bool magTest(void);
      // sample elements are 3 bytes so 9 bytes total
 bool  magSample(bool single, uint8_t *xyz);
-void  magInit(uint8_t mode);
+void  magInit(ak09940_mode_t mode);
 
 void magOn(void);
 void magOff(void);

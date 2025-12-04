@@ -248,6 +248,36 @@ void MainWindow::TriggerUpdate(void)
         emit SectorsErased(status.sectors_erased());
       } 
 
+      if (status.state() == CALIBRATE)
+      {
+        Ack ack;
+        float mx,my,mz,ax,ay,az;
+        tag.GetCalibrationLog(ack);
+        if (ack.has_calibration_log()) {
+            for(auto const &sdata : ack.calibration_log().data())
+            {
+              if (sdata.has_mag()){
+                  mx = sdata.mag().mx();
+                  my = sdata.mag().my();
+                  mz = sdata.mag().mz();
+                  qInfo() << "Mag: " << mx << my << mz;
+              } else {
+                continue;
+              }
+
+              if (sdata.has_accel()){
+                ax = sdata.accel().ax();
+                ay = sdata.accel().ay();
+                az = sdata.accel().az();
+                qInfo() << "Accel: " << ax << ay << az;
+              }
+            }
+        }
+        else {
+          qInfo() << "No calibration log";
+        }
+      }
+
       /*
       if ((status.state() == CALIBRATE)  && status.has_sensors()){
         QString sensors = QString::fromStdString(status.sensors().DebugString());

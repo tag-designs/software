@@ -292,9 +292,6 @@ void MainWindow::TriggerUpdate(void)
               QQuaternion qx = QQuaternion::fromAxisAndAngle(QVector3D(1,0,0),pitch);
               QQuaternion qy = QQuaternion::fromAxisAndAngle(QVector3D(0,1,0),roll);
               QQuaternion qz = QQuaternion::fromAxisAndAngle(QVector3D(0,0,1),yaw);
-
-
-
               rotateImage(qz*qy*qx);
             }
           }
