@@ -116,13 +116,13 @@ int restoreLog(void)
 
 enum LOGERR writeDataLog(uint16_t *data, int num)
 {
-  if (pState->external_blocks*2 + num > EXT_FLASH_SIZE/2)
+  if (pState->external_blocks + num > EXT_FLASH_SIZE/2)
   {
     return LOGWRITE_FULL;
   }
 
   int cnt = num*2;
-  int addr = pState->external_blocks * cnt;
+  int addr = pState->external_blocks * 2;
 
   ExFlashPwrUp();
   ExFlashWrite(addr, (uint8_t *) data, &cnt);
@@ -182,19 +182,36 @@ int data_logAck(int index, Ack *ack)
     ack->which_payload = Ack_compasstag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100 * 0.01f;
-    data->temperature = vddHeader[index].temp10 * 0.0f;
+    data->temperature = vddHeader[index].temp10 * 0.1f;
     data->data_count = 0;
-/*
-    for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
-    {
-      if (databuf.data[j].pressure == -1)
-        break;
-      data->data[j].activity = databuf.data[j].activity;
-      data->data[j].pressure = lpsPressure(databuf.data[j].pressure);
-      data->data[j].temperature = lpsTemperature(databuf.data[j].temperature);
-      data->data_count++;
+
+    // For each databuf[i]
+    //.   check if activity != 0xffff (erased), finished if erased
+    //.   for i = 1..4
+    //.       write activity. [extract bits and divide by 16.0f]
+    //.       write a[x,y,z], m[x,y,z]. -- convert to float with appropriate constants
+    //.       increment data_count;
+
+    // loop over records
+    for (int i = 0; i < DATALOG_SAMPLES; i++){
+      uint16_t activity = databuf.data[i].activity;
+      // check for erased activity
+      if (activity == 0xffff) continue;
+      for (int j = 0; j < 4; j++){
+        int cnt = data->data_count;
+        // extract activity bits and convert to percentage
+        data->data[cnt].activity = ((activity >> (j*4)) & 0xf) * 100.0f/16.0f;
+        // get accelerometer data 
+        data->data[cnt].ax = databuf.data[i].sensors[j].ax * 0.976f;
+        data->data[cnt].ay = databuf.data[i].sensors[j].ay * 0.976f;
+        data->data[cnt].az = databuf.data[i].sensors[j].az * 0.976f;
+        // get magnetometer data
+        data->data[cnt].mx = databuf.data[i].sensors[j].mx * 0.04f;
+        data->data[cnt].my = databuf.data[i].sensors[j].my * 0.04f;
+        data->data[cnt].mz = databuf.data[i].sensors[j].mz * 0.04f;
+        data->data_count++;
+      }
     }
-      */
   }
   else
   {

@@ -192,16 +192,6 @@ message BitPresTagLog{
   repeated BPT data = 4;
 }
 
-message CompassTagLog{
-  message Compass {
-    bool raw_data = 1; // activity, mag[9], acc[6]
-  }
-  int32 epoch = 1;
-  float voltage = 2;
-  float temperature = 3;
-  repeated Compass data = 4;
-}
-
 message PT_RAW {
     int32 epoch = 1;
     float voltage = 2;
@@ -213,6 +203,23 @@ message PresTagRawLog {
   float temp_constant = 1;
   float pres_constant = 2;
   repeated PT_RAW data = 3;
+}
+
+message CompassTagLog {
+  message Compass {
+    float activity = 1;
+    float ax = 2;
+    float ay = 3;
+    float az = 4;
+    float mx = 5;
+    float my = 6;
+    float mz = 7;
+  }
+
+  int32 epoch = 1;
+  float voltage = 2;
+  float temperature = 3;
+  repeated Compass data = 4;
 }
 
 

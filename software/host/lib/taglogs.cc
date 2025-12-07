@@ -29,6 +29,22 @@ static std::string fmthex(uint32_t num)
   return str;
 }
 
+bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
+  Ack ack;
+  if (tag.ReadCalibration(ack,-1)
+        && ack.has_calibration_constants() 
+        && ack.calibration_constants().has_magnetometer())
+   {
+      const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
+      fs << "# Calibration B: " << mag.b() << std::endl;
+      fs << "# Calibration V: " << mag.v0() << "," << mag.v1() << "," << mag.v2() << std::endl;
+      fs << "# Calibration A[0]: " << mag.a00() << "," << mag.a01() << "," << mag.a02() << std::endl;
+      fs << "# Calibration A[1]: " << mag.a10() << "," << mag.a11() << "," << mag.a12() << std::endl;
+      fs << "# Calibration A[2]: " << mag.a20() << "," << mag.a21() << "," << mag.a22() << std::endl;
+   }
+
+}
+
 bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
 {
   Config cfg;
@@ -65,6 +81,10 @@ bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
      << "\n";
   fs << "# External Flash Size:  " << info.extflashsz() << "KB"
      << "\n";
+
+  // Dump Calibration
+
+  dumpTagCalibration(fs,tag,format);
 
   TestResult result = status.test_status();
 
@@ -312,6 +332,28 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
   return 1;
 }
 
+static int dumpTagLog(std::ostream &out, const CompassTagLog &log,
+                      enum TagLogOutput format)
+{
+  int64_t timestamp = log.epoch();
+
+  out << timestamp << ",";
+  out << "V:" << log.voltage();
+  out << ",TC:" << log.temperature() << std::endl;
+
+  // loop over the data
+  for (auto const &entry : log.data()) {
+    timestamp += 15;
+    out << timestamp << ",";
+    out << "ACTIVITY:" << entry.activity() << std::endl;
+    out << timestamp << ",";
+    out << "ACCEL:" << entry.ax() << "," << entry.ay() << "," << entry.az() << std::endl;
+    out << timestamp << ",";
+    out << "MAG:" << entry.mx() << "," << entry.my() << "," << entry.mz() << std::endl;
+  }
+  return 1;
+}
+
 /*
 static int dumpTagLog(std::ostream &out, const LuxTagLog &log,
                       uint32_t period,
@@ -434,6 +476,12 @@ int dumpTagLog(std::ostream &out,
     if (log.has_bitprestag_data_log())
     {
        return dumpTagLog(out, log.bitprestag_data_log(), format);
+    } 
+    break;
+  case COMPASSTAG:
+    if (log.has_compasstag_data_log())
+    {
+        return dumpTagLog(out, log.compasstag_data_log(), format);
     } 
     break;
   default:

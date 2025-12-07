@@ -15,9 +15,9 @@
 // 16 bits/minute
 
 static const uint32_t sample_period = 15;
-static const uint32_t chunk_period = 15;
-static const uint32_t chunk_number = 4;
-static const uint32_t chunk_bits = 4;
+//static const uint32_t chunk_period = 15;
+//static const uint32_t chunk_number = 4;
+//static const uint32_t chunk_bits = 4;
 static const uint32_t max_cycles = DATALOG_SAMPLES * 4;
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
@@ -41,7 +41,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->cycle_count = 0;
     pState->activity = 0;
-    pState->lastwakeup = timestamp;
+    //pState->lastwakeup = timestamp;
     pState->lastwrite = timestamp;
     pState->lastactstart = INT_MAX;
 
@@ -96,7 +96,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     uint64_t activity = pState->activity;
     int32_t lastwrite = pState->lastwrite;
-    int32_t lastwakeup = pState->lastwakeup;
+    //int32_t lastwakeup = pState->lastwakeup;
     int32_t lastactstart = pState->lastactstart;
     uint32_t cycle_count = pState->cycle_count;
 
@@ -110,8 +110,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     for (int i = lastactstart; i < timestamp; i++)
     {
-      // figure out which chunk needs to be updated
-      int index = ((i / chunk_period) % chunk_number) * chunk_bits;
+      // figure out which chunk needs to be update
+      // use cycle count to determine
+
+      int index = (cycle_count % 4) ;
       activity += (((uint64_t)1) << index);
     }
 
@@ -223,7 +225,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastactstart = isActive ? timestamp : INT_MAX;
     pState->activity = activity;
     pState->lastwrite = lastwrite;
-    pState->lastwakeup = timestamp;
+    //pState->lastwakeup = timestamp;
   }
   return SHUTDOWN;
 }
