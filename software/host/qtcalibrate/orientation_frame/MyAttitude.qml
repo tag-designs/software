@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls.macOS
+//import QtQuick.Controls.macOS
 import QtQuick.Controls
 import QtQuick3D
 import QtQuick3D.AssetUtils
@@ -11,7 +11,7 @@ Rectangle {
     id: root
     Layout.alignment: Qt.AlignHCenter
     Layout.preferredWidth: 300
-    Layout.preferredHeight: 550
+    Layout.preferredHeight: 600
     color: "#F5F5F5"
     border.color: "black"
     border.width: 1

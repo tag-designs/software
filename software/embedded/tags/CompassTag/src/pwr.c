@@ -269,6 +269,13 @@ void godown(enum Sleep sleepmode)
   enableLinePullup(LINE_RTC_SCL);
   enableLinePullup(LINE_RTC_SDA);
 
+  // Pull I/O pins
+
+  enableLinePulldown(LINE_MAG_PWR);
+  enableLinePullup(LINE_ACCEL_CS);
+  enableLinePulldown(LINE_ACCEL_TX);
+  enableLinePulldown(LINE_ACCEL_SCK);
+
   // fully discharge Pressure Sensor capacitor
 
   //enableLinePulldown(LINE_STEVAL_PWR);

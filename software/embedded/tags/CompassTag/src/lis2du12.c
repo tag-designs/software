@@ -179,6 +179,18 @@ void accelDeinit(void)
   accelOff();
 }
 
+/*
+ *  Notes on wakeup duration and threshold
+ *
+ *   Default case, each bit of threshold (2g range) = 2/64 = 0.03g
+ *                                                    max_value of thresh is 127 = 2g
+ *   bittag has threshold of 0.5g  which is 16*0.03.
+ *   not clear we want that level, try 8*0.03
+ *   here we need wakeup threshold of 0x10
+ * 
+ *  
+*/
+
 void accelInit(lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
@@ -191,8 +203,8 @@ void accelInit(lis2du12mode_t mode)
       LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
       LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
       LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, 0x20U); // was 42 
-      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U); 
-      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin
+      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U);  // was 42
+      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
       LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
       break;
     case ACCEL_SAMPLE_50HZ_MODE:

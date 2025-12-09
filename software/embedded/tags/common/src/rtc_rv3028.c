@@ -109,27 +109,27 @@ bool initRTC(void)
 
     bool result = false;
     rtcOn();
+    rv3028_GetReg(RV3028_CTRL1, &ctrl1, 1);
+    ctrl1 |= RV3028_CTRL1_EERD;
+    rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
     do
     {
         int i;
         clkout = 0;
+
+        // check if clkout register is already correctly configured
+
         if (rv3028_GetReg(RV3028_CLKOUT, &clkout, 1) != MSG_OK)
             break;
         rv3028_EEPROM_Exec(RV3028_CLKOUT, &tmp, RV3028_EEPROM_CMD_READ);
-        if (tmp == (0xC0 | (RV3028_CLKOUT_VAL)))
+        if ((tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 | (RV3028_CLKOUT_VAL))))
         {
             result = true;
             break;
         }
 
-        // Write to EEPROM mirror
-
-        rv3028_GetReg(RV3028_CTRL1, &ctrl1, 1);
-
-        // disable automatic refresh
-
-        ctrl1 |= RV3028_CTRL1_EERD;
-        rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
+       /*
         for (i = 0; i < 10; i++)
         {
             chThdSleepMilliseconds(10);
@@ -139,13 +139,14 @@ bool initRTC(void)
         }
         if (i == 10)
             break;
+        */
 
         //clkout = 0xC0 | (RV3028_CLKOUT_VAL&7);
         //rv3028_SetReg(RV3028_CLKOUT, &clkout, 1);
 
-        clkout = 0;
-        if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
-            break;
+        //clkout = 0;
+       // if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
+        //    break;
 
         clkout = 0xC0 | (RV3028_CLKOUT_VAL & 7);
         if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
@@ -153,18 +154,17 @@ bool initRTC(void)
 
         if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_REFRESH))
             break;
-
-        // reenable EEPROM->Ram refresh
-
-        ctrl1 &= ~RV3028_CTRL1_EERD;
-        rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
+        
         rv3028_EEPROM_Exec(RV3028_CLKOUT, &tmp, RV3028_EEPROM_CMD_READ);
-
+        rv3028_GetReg(RV3028_CLKOUT, &clkout, 1);
         if ((tmp == clkout) && (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
         {
             result = true;
         }
     } while (0);
+     // reenable EEPROM->Ram refresh
+    ctrl1 &= ~RV3028_CTRL1_EERD;
+    rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
     rtcOff();
 
     // Check RTC dividers !

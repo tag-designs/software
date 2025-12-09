@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls.macOS
+//import QtQuick.Controls.macOS
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -12,7 +12,7 @@ Rectangle {
 
     Layout.alignment: Qt.AlignHCenter
     Layout.preferredWidth: 300
-    Layout.preferredHeight: 550
+    Layout.preferredHeight: 600
 
     property alias heading: headingText.text
     property alias dip: dipText.text
@@ -34,7 +34,7 @@ Rectangle {
         // spacer
 
         Item {
-            Layout.preferredHeight: 10
+            Layout.preferredHeight: 5
         }
 
         Rectangle {
@@ -48,15 +48,19 @@ Rectangle {
                 id: dialface
                 source: "qrc:/qfi/orientation_frame/hi_face.svg"
                 rotation: -45
+                width: 225
+                height: 225
             }
             Image {
                 id: dialCase
                 source: "qrc:/qfi/orientation_frame/hi_case.svg"
+                width: 225
+                height: 225
             }
         }
 
          Item {
-            Layout.preferredHeight: 10
+            Layout.preferredHeight: 5
         }
         
         GroupBox {
@@ -132,7 +136,7 @@ Rectangle {
                
             }
              Item {
-            Layout.preferredHeight: 10
+            Layout.preferredHeight: 5
         }
         GroupBox {
 

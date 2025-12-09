@@ -45,7 +45,7 @@
         ID="ACCEL_TX"
         Type="PushPull"
         Level="High"
-        Speed="HIgh"
+        Speed="High"
         Resistor="Floating"
         Mode="Analog"
         Alternate="7"

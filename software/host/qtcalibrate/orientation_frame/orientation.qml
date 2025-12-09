@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls.macOS
+//import QtQuick.Controls.macOS
 import QtQuick.Controls
 import QtQuick3D
 import QtQuick3D.AssetUtils
