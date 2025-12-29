@@ -54,13 +54,29 @@ typedef enum
 
 #define LIS2DU12_ID            0x45U
 
+#define CTRL1_SOFT_RESET (1<<5)
 #define CTRL1_IF_ADD_INC (1<<4)
 #define CTRL1_WU_EN (7)
 #define CTRL4_BDU (1<<5)
 #define CTRL5_1_6HZ (1<<4)
-#define INTERRUPT_CFG_SLEEP_STATUS_ON_INT (1<<3)
-#define INTERRUPT_CFG_ENABLE (1)
+#define CTRL5_6HZ_3HZ ((4<<4)|(3<<2))
+#define CTRL5_POWER_DOWN (0)
+#define INT_CFG_SLEEP_STATUS_ON_INT (1<<3)
+#define INT_CFG_ENABLE (1)
+#define MD1_CFG_INT1_SLEEP_CHANGE (1<<7)
+#define MD1_CFG_WKUP (1<<5)
 #define MD2_CFG_INT2_SLEEP_CHANGE (1<<7)
+#define WAKE_UP_DUR_7ODR (1<<5)
+#define WAKE_UP_THS_0_5G (1<<4)
+
+/* 
+Wakeup threshold
+
+each bit is (1/64)*2 g = 1/32 g
+0.5 g = 0x10
+
+
+*/
 
 
 #if defined(ACCEL_USE_SPI)
@@ -199,13 +215,17 @@ void accelInit(lis2du12mode_t mode)
   switch (mode) {
   
     case ACCEL_WAKEUP_MODE: 
-      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x17U); // ADD_INC, Wkup x,y,z
-      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // was A0, now block data update
-      LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,0x1U); // Sleep status on interrupt
-      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, 0x20U); // was 42 
-      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x42U);  // was 42
-      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,0x20U); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
-      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x3CU); // ODR = 6hz, BW = 3hz
+      LIS2DU12_write_byte(LIS2DU12_CTRL5, CTRL5_POWER_DOWN);  /* power down */
+      LIS2DU12_write_byte(LIS2DU12_CTRL1, CTRL1_SOFT_RESET); // Software reset
+      LIS2DU12_write_byte(LIS2DU12_CTRL1, CTRL1_IF_ADD_INC | CTRL1_WU_EN); // ADD_INC, Wkup x,y,z
+      //LIS2DU12_write_byte(LIS2DU12_CTRL2, 0x0U);  // Make sure CTRL2 is reset
+      //LIS2DU12_write_byte(LIS2DU12_CTRL3, 0x0U);  // Make sure CTRL3 is reset
+      LIS2DU12_write_byte(LIS2DU12_CTRL4, CTRL4_BDU); // was A0, now block data update
+      LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,INT_CFG_ENABLE); // Sleep status on interrupt
+      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, WAKE_UP_DUR_7ODR); // Wakeup duration = 7 sample times, Sleep duration = 16 samples times
+      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x4);//WAKE_UP_THS_0_5G);  // was 42
+      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,MD1_CFG_WKUP); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
+      LIS2DU12_write_byte(LIS2DU12_CTRL5, CTRL5_6HZ_3HZ); // ODR = 6hz, BW = 3hz -- was 3C which is ultralow power mode
       break;
     case ACCEL_SAMPLE_50HZ_MODE:
       LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC

@@ -168,7 +168,7 @@ void accelOff(void)
   toAnalog(LINE_ACCEL_SCK);
   toAnalog(LINE_ACCEL_TX);
   toAnalog(LINE_ACCEL_RX);
-  toAnalog(LINE_ACCEL_CS);
+  //toAnalog(LINE_ACCEL_CS);
 
 }
 #endif

@@ -42,6 +42,7 @@ bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
       fs << "# Calibration A[1]: " << mag.a10() << "," << mag.a11() << "," << mag.a12() << std::endl;
       fs << "# Calibration A[2]: " << mag.a20() << "," << mag.a21() << "," << mag.a22() << std::endl;
    }
+   return true;
 
 }
 
