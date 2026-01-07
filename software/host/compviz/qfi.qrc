@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/qfi/">
+        <file>orientation_frame/MyCompass.qml</file>
+        <file>orientation_frame/hi_case.svg</file>
+        <file>orientation_frame/hi_face.svg</file>
+    </qresource>
+</RCC>

@@ -20,6 +20,7 @@ add_subdirectory(qtmon)
 add_subdirectory(qtprogram)
 add_subdirectory(qtcalibrate)
 add_subdirectory(btdataviz)
+add_subdirectory(compviz)
 add_subdirectory(tag-orientation)
 
 if(WIN32)
