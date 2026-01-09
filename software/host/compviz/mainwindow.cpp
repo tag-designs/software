@@ -170,7 +170,7 @@ void MainWindow::on_pb_redraw_clicked()
 void MainWindow::on_actionAbout_triggered()
 {
   QMessageBox msgBox;
-  msgBox.setText("BitTag Visualization Tool\nWritten by Geoffrey Brown\n2019");
+  msgBox.setText("Compass CompassVisualization Tool\nWritten by Geoffrey Brown\n2026");
   msgBox.exec();
 }
 
@@ -210,30 +210,128 @@ void MainWindow::on_pb_load_clicked()
   temperature_time.clear();
   temperature.clear();
   accel_time.clear();
-  accel_count.clear();
+  accel.clear();
   ui->te_fileinfo->clear();
   ui->te_fileinfo->appendPlainText(fileName);
   ui->plot->graph(0)->data()->clear();
   ui->plot->graph(1)->data()->clear();
   ui->plot->graph(2)->data()->clear();
-  tagtype = BITTAG;
 
-  // parse the file 
+  // parse the file header
+
+
   while (!in.atEnd())
   {
     QString line = in.readLine();
     if (line[0] == '#')
     {
+      if (line.startsWith("# CompassType")) {
+        QStringList ln = line.split(" ");
+        if (ln[3] != QString("COMPASSTAG"))
+        {
+          qInfo() << "Not compass tag: " << line;
+          file.close();
+          return;
+        }
+      }
+      if (line.startsWith("# Calibration"))
+      {
+
+        //qInfo() << line;
+        
+        QStringList cal = line.split(" ");
+        if (cal.length() < 3) {
+          //qInfo() << "too few items " << cal.length();
+          continue;
+        }
+     
+        if (cal[2].startsWith("V:")) {
+         
+          if (cal.length() < 6){
+            //qInfo() << "too few data items " << data.length();
+            continue;
+          }
+          Vcal[0] = cal[3].toFloat(nullptr);
+          Vcal[1] = cal[4].toFloat(nullptr);
+          Vcal[2] = cal[5].toFloat(nullptr);
+          //qInfo() << "V " << Vcal[0] << Vcal[1] << Vcal[2];
+        }
+
+        if (cal[2].startsWith("A[0]:")) {
+         
+          if (cal.length() < 6)
+            continue;
+          Acal[0][0] = cal[3].toFloat(nullptr);
+          Acal[0][1] = cal[4].toFloat(nullptr);
+          Acal[0][2] = cal[4].toFloat(nullptr);
+          //qInfo() << "A[0] " << Acal[0][0] << Acal[0][1] << Acal[0][2];
+        }
+
+        if (cal[2].startsWith("A[1]:")) { 
+          if (cal.length() < 6)
+            continue;
+          Acal[1][0] = cal[3].toFloat(nullptr);
+          Acal[1][1] = cal[4].toFloat(nullptr);
+          Acal[1][2] = cal[5].toFloat(nullptr);
+        }
+
+         if (cal[2].startsWith("A[2]:")) { 
+          if (cal.length() < 6)
+            continue;
+          Acal[2][0] = cal[3].toFloat(nullptr);
+          Acal[2][1] = cal[4].toFloat(nullptr);
+          Acal[2][2] = cal[5].toFloat(nullptr);
+     
+          //ui->te_fileinfo->appendPlainText("Set Calibration Constants");
+
+
+        }
+        continue;
+      }
       if (!line.startsWith("# Page"))
         ui->te_fileinfo->appendPlainText(line);
+    } else {
+      break;
     }
-    else
-    {
-      // parse non-comment strings
-      // currently assumes the old data format
-      // and only works for minute buckets
+  }
+
+  // parse data
+    
+  while (!in.atEnd())
+  {
+    QString line = in.readLine();
+
+    // read in data
+
+      // data line
 
       QStringList l1 = line.split(',');
+
+      int timestamp = l1[0].toInt();
+
+      // cases
+
+      // l1[1] == 'V'
+      // l1[1] == 'TC'
+      // l1[1] == 'ACTIVITY'
+      // l1[1] == 'AM'
+
+      if (l1[1] == "V") {     
+         // voltage
+              
+      } else if (l1[1] == "TC") {
+        // temperature
+         
+      } else if (l1[1] == "ACTIVITY") {
+        // activity
+
+      } else if (l1[1] == "AM") {
+        // orientation
+
+
+      }
+      /*
+
 
       switch (tagtype) {
         case BITTAG:
@@ -313,13 +411,15 @@ void MainWindow::on_pb_load_clicked()
           }
         }
         break;
-      }
+      } */
 
-      // Customize UI for the tag types
+      // Customize UI for the Compasstypes
 
       // Set range to 500 hPA
 
-      if (tagtype == BITTAG || tagtype == BITTAGNG) {
+  /*
+
+      if (tagtype == BITCompass|| tagtype == BITTAGNG) {
         ui->activityRange->setMaximum(105);
         ui->activityRange->setMaximum(100);
         //ui->activityRange->setEnabled(true);
@@ -335,8 +435,8 @@ void MainWindow::on_pb_load_clicked()
         ui->tabConfig->setTabEnabled(1,true);
        ui->plot->yAxis->setLabel("Activity Percent");
       }
+       */
      
-    }
   }
 
   file.close();
@@ -416,13 +516,13 @@ void MainWindow::on_offsetUTC_valueChanged(int hours)
 void MainWindow::on_sb_cutoff_valueChanged(double freq)
 {
   const int filter_delay = 50;
-  if (accel_count.size() > filter_delay)
+  if (accel.size() > filter_delay)
   {
 
     // warning -- switched to slow fir because fast fir 
     // introduced unpredictable delay
     
-    QVector<double> filterData(accel_count);
+    QVector<double> filterData(accel);
     QJSlowFIRFilter *fastfir;
 
     //create FastFIR filter
@@ -432,11 +532,11 @@ void MainWindow::on_sb_cutoff_valueChanged(double freq)
     delete fastfir;
 
     accel_time_filtered.resize(filterData.size() - filter_delay);
-    accel_count_filtered.resize(filterData.size() - filter_delay);
+    accel_filtered.resize(filterData.size() - filter_delay);
 
     for (int i = 0; i < accel_time_filtered.size(); i++) {
       accel_time_filtered[i] = accel_time[i];
-      accel_count_filtered[i] = filterData[i+filter_delay];
+      accel_filtered[i] = filterData[i+filter_delay];
     }
     on_cb_filter_low_pass_toggled(ui->cb_filter_low_pass->isChecked());
   }
@@ -452,7 +552,7 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
       QVector<QCPGraphData> accelData(accel_time_filtered.size());
       for (int i = 0; i <accel_time_filtered.size(); i++)
       {
-        accelData[i].value = accel_count_filtered[i];
+        accelData[i].value = accel_filtered[i];
         accelData[i].key = accel_time_filtered[i];
       }
       //ui->plot->yAxis->setRange(0, 25);
@@ -463,7 +563,7 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
     QVector<QCPGraphData> accelData(accel_time.size());
     for (int i = 0; i < accel_time.size(); i++)
     {
-      accelData[i].value = accel_count[i];
+      accelData[i].value = accel[i];
       accelData[i].key = accel_time[i];
     }
     ui->plot->graph(0)->data()->set(accelData);
@@ -755,7 +855,7 @@ void MainWindow::on_pb_process_clicked()
         if (accel_time[i] < start_time)
           continue;
         count++;
-        avg += accel_count[i];
+        avg += accel[i];
       }
       if (count)
       {

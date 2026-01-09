@@ -817,7 +817,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="VTGroup"/>
   <buttongroup name="headingGroup"/>
+  <buttongroup name="VTGroup"/>
  </buttongroups>
 </ui>

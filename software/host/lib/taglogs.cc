@@ -37,10 +37,10 @@ bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
    {
       const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
       fs << "# Calibration B: " << mag.b() << std::endl;
-      fs << "# Calibration V: " << mag.v0() << "," << mag.v1() << "," << mag.v2() << std::endl;
-      fs << "# Calibration A[0]: " << mag.a00() << "," << mag.a01() << "," << mag.a02() << std::endl;
-      fs << "# Calibration A[1]: " << mag.a10() << "," << mag.a11() << "," << mag.a12() << std::endl;
-      fs << "# Calibration A[2]: " << mag.a20() << "," << mag.a21() << "," << mag.a22() << std::endl;
+      fs << "# Calibration V: " << mag.v0() << " " << mag.v1() << " " << mag.v2() << std::endl;
+      fs << "# Calibration A[0]: " << mag.a00() << " " << mag.a01() << " " << mag.a02() << std::endl;
+      fs << "# Calibration A[1]: " << mag.a10() << " " << mag.a11() << " " << mag.a12() << std::endl;
+      fs << "# Calibration A[2]: " << mag.a20() << " " << mag.a21() << " " << mag.a22() << std::endl;
    }
    return true;
 
@@ -339,18 +339,18 @@ static int dumpTagLog(std::ostream &out, const CompassTagLog &log,
   int64_t timestamp = log.epoch();
 
   out << timestamp << ",";
-  out << "V:" << log.voltage();
-  out << ",TC:" << log.temperature() << std::endl;
+  out << "V," << log.voltage() << std::endl;
+  out << timestamp << ",";
+  out << "TC," << log.temperature() << std::endl;
 
   // loop over the data
   for (auto const &entry : log.data()) {
     timestamp += 15;
     out << timestamp << ",";
-    out << "ACTIVITY:" << entry.activity() << std::endl;
+    out << "ACTIVITY," << entry.activity() << std::endl;
     out << timestamp << ",";
-    out << "ACCEL:" << entry.ax() << "," << entry.ay() << "," << entry.az() << std::endl;
-    out << timestamp << ",";
-    out << "MAG:" << entry.mx() << "," << entry.my() << "," << entry.mz() << std::endl;
+    out << "AM," << entry.ax() << "," << entry.ay() << "," << entry.az() << ",";
+    out << entry.mx() << "," << entry.my() << "," << entry.mz() << std::endl;
   }
   return 1;
 }

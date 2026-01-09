@@ -36,7 +36,11 @@ set(compviz_SRCS
   qcustomplot-source/qcustomplot.cpp
   tickerdatetimeoffset.cpp
   FastFIR/FastFIR/qjfastfir.cpp
-  main.cpp)
+  main.cpp
+  compassdata.cpp
+  )
+
+set_source_files_properties(compassdata.cpp PROPERTIES SKIP_AUTOMOC TRUE)
 
 qt_add_resources(compviz_SRCS qfi.qrc)
 

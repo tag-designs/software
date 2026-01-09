@@ -50,7 +50,7 @@ bool CompassData::getCalibrationConstants(float *B, float *V, float (*A)[3])
     for (int i = 0; i < 3; i++){
         V[i] = magcal.V[i];
         for (int j = 0; j < 3; j++){
-            A[i][j] = magcal.A[i][j];
+            A[i][j] = magcal.invW[i][j];
         }
     }
     return (magcal.ValidMagCal);
@@ -61,7 +61,7 @@ void CompassData::setCalibrationConstants(float B, float *V, float (*A)[3])
 	 for (int i = 0; i < 3; i++){
         magcal.V[i] = V[i];
         for (int j = 0; j < 3; j++){
-            magcal.A[i][j] = A[i][j] ;
+            magcal.invW[i][j] = A[i][j] ;
         }
 		
     }

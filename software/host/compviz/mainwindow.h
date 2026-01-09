@@ -6,6 +6,12 @@
 #include <QPrinter>
 #include <qcustomplot.h>
 #include<QQuickItem>
+#include <QVector3D>
+#include <QQuaternion>
+
+typedef struct {
+    QVector3D mag, accel;
+} sensor;
 
 namespace Ui {
 class MainWindow;
@@ -77,17 +83,34 @@ private slots:
     
 
 private:
-    enum TagType {BITTAG, BITTAGNG, PRESTAG};
+
+    // ecompass
+
+    bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
+                  float& dip, float& field, float& mg); 
+
+    void apply_calibration(QVector3D &mag);  
+    
+    float Vcal[3];
+    float Acal[3][3];
+
+    // gui state
+
+      
+    enum TagType {BITTAG, BITTAGNG, PRESTAG, COMPASSTAG};
+    TagType tagtype;
+
     Ui::MainWindow *ui;
     QVector<double> accel_time;
-    QVector<double> accel_count;
+    QVector<double> accel;
     QVector<double> accel_time_filtered;
-    QVector<double> accel_count_filtered;
-    QVector<double> altitude;
+    QVector<double> accel_filtered;
     QVector<double> voltage_time;
     QVector<double> temperature_time;
     QVector<double> voltage;
     QVector<double> temperature;
+    QVector<sensor> orientation;
+    QVector<double> orientation_time;
     QString path;
     QCPItemLine *left;
     QCPItemLine *right;
@@ -95,7 +118,7 @@ private:
     void makeVisible(bool);
     QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
-    TagType tagtype;
+
 };
 
 #endif // MAINWINDOW_H
