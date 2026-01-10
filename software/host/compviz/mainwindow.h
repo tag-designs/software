@@ -33,6 +33,12 @@ private slots:
     void on_pb_redraw_clicked();
     void on_pb_load_clicked();
     void on_actionAbout_triggered();
+    void on_actionLoad_triggered(){ on_pb_load_clicked();};
+    void on_actionPNG_triggered(){ on_pb_png_clicked();};
+    void on_actionPDF_triggered(){ on_pb_pdf_clicked();};
+    void on_actionReset_triggered(){on_pb_redraw_clicked();};
+    void on_actionPrint_triggered(){on_pb_print_clicked();};
+
 
     // helper
 
@@ -53,18 +59,14 @@ private slots:
 
     void on_pb_pdf_clicked();
     void on_pb_png_clicked();
-    void on_pb_export_csv_clicked();
     void on_pb_print_clicked();
     void renderPlot(QPrinter*);
-    void on_pb_process_clicked();
 
     // cursors
 
     void on_pb_cursor_zoom_clicked();
     void on_cb_cursors_visible_clicked(bool checked);
     void plot_doubleclick(QMouseEvent *event);
-    void on_te_left_dateTimeChanged(const QDateTime &dateTime);
-    void on_te_right_dateTimeChanged(const QDateTime &dateTime);
 
     // mouse move
 
@@ -74,12 +76,6 @@ private slots:
     void on_gbVT_clicked();
     void on_rbVoltage_clicked();
     void on_rbTemperature_clicked();
-
-    // Range
-
-    void on_activityRange_valueChanged(int value);
-    void on_graphMax_valueChanged(int value);
-    void on_graphMin_valueChanged(int value);
     
 
 private:

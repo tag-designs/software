@@ -41,7 +41,6 @@ MainWindow::MainWindow(QWidget *parent)
 
   // set graphranges
   
-  ui->plot->yAxis->setRange(0, ui->activityRange->value());
   ui->plot->yAxis2->setRange(0, 50);
 
   // enable horizontal drag
@@ -98,81 +97,15 @@ MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::makeVisible(bool visible)
 {
-  ui->pb_redraw->setEnabled(visible);
-  ui->pb_print->setEnabled(visible);
   ui->gb_graph->setEnabled(visible);
-  ui->gb_cursors->setEnabled(visible);
   ui->gb_filterparams->setEnabled(visible);
-  ui->gb_export->setEnabled(visible);
   ui->gb_timeoffset->setEnabled(visible);
-  ui->gb_GraphRange->setEnabled(visible);
-  // ui->pb_process->setEnabled(visible);
-  //  ui->gb_display->setEnabled(visible);
+  ui->actionPNG->setEnabled(visible);
+  ui->actionPDF->setEnabled(visible);
+  ui->actionPrint->setEnabled(visible);
+  ui->actionReset->setEnabled(visible);
 }
 
-// Track mouse in plot and display time of location
-
-void MainWindow::onMouseMove(QMouseEvent *event)
-{
-  QCustomPlot *customPlot = qobject_cast<QCustomPlot *>(sender());
-  double x = customPlot->xAxis->pixelToCoord(event->pos().x());
-  double y = customPlot->yAxis->pixelToCoord(event->pos().y());
-  double t = customPlot->yAxis2->pixelToCoord(event->pos().y());
-  //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
-
-  int index = ui->plot->graph(0)->findBegin(x);
-  if (index) {
-    y = ui->plot->graph(0)->dataMainValue(index);
-  }
-
-  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
-  QString s;
-  
-  QTextStream out(&s);
-  out << "(" << dt.toString("MM/dd hh:mm");
-  out << QString(", %1").arg(y,0,'f',1);
-  if (ui->gbVT->isChecked()) {
-    int gi = ui->rbTemperature->isChecked() ? 1 : 2;
-    int index = ui->plot->graph(gi)->findBegin(x);
-    if (index) {
-        t = ui->plot->graph(gi)->dataMainValue(index);
-    }
-    out << QString(", %1").arg(t,0,'f',1);
-    out << (ui->rbTemperature->isChecked() ? "C" : "V");
-  }
-  out << ")";
-  textItem->setText(s);
-  textItem->position->setCoords(QPointF(x, y + 5));
-  textItem->setFont(QFont(font().family(), 12));
-  customPlot->replot(); //QCustomPlot::rpQueuedReplot);
-}
-
-// Set Visibility on graphs
-
-void MainWindow::on_cb_activity_clicked(bool checked)
-{
-  ui->plot->graph(0)->setVisible(checked);
-  ui->plot->yAxis->setVisible(checked);
-  ui->plot->replot();
-}
-
-// Redraw full graph
-
-void MainWindow::on_pb_redraw_clicked()
-{
-  // refresh
-  ui->plot->xAxis->setRange(accel_time[0], accel_time[accel_time.size() - 1]);
-  ui->plot->replot();
-}
-
-// Pop up About window
-
-void MainWindow::on_actionAbout_triggered()
-{
-  QMessageBox msgBox;
-  msgBox.setText("Compass CompassVisualization Tool\nWritten by Geoffrey Brown\n2026");
-  msgBox.exec();
-}
 
 // Load a data file
 
@@ -448,20 +381,6 @@ void MainWindow::on_pb_load_clicked()
     // reset cursors
     double size = accel_time.size();
 
-    // left
-    ui->te_left->setMinimumDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), Qt::UTC));
-    ui->te_left->setDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), Qt::UTC));
-    left->setVisible(true);
-
-    // right
-    ui->te_right->setMaximumDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]), Qt::UTC));
-    ui->te_right->setDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]), Qt::UTC));
-    right->setVisible(true);
-
     // set range
 
     ui->plot->xAxis->setRange(accel_time[0], accel_time[size - 1]);
@@ -497,232 +416,6 @@ void MainWindow::on_pb_load_clicked()
 }
 
 
-// plot data
-
-void MainWindow::on_offsetUTC_valueChanged(int hours)
-{
-  dateTicker->setTimeZone(QTimeZone(3600*hours));
-  if (hours < 0) {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC%1)\nMonth/Day/Year").arg(QString::number(hours)));
-  } else if (hours == 0) {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC)\nMonth/Day/Year"));
-  } else {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC+%1)\nMonth/Day/Year").arg(QString::number(hours)));
-  }
-  dateTicker->setTickOrigin(-3600*hours);
-  ui->plot->replot();
-}
-
-void MainWindow::on_sb_cutoff_valueChanged(double freq)
-{
-  const int filter_delay = 50;
-  if (accel.size() > filter_delay)
-  {
-
-    // warning -- switched to slow fir because fast fir 
-    // introduced unpredictable delay
-    
-    QVector<double> filterData(accel);
-    QJSlowFIRFilter *fastfir;
-
-    //create FastFIR filter
-    fastfir = new QJSlowFIRFilter(this);
-    fastfir->setKernel(QJFilterDesign::LowPassHanning(ui->sb_cutoff->value(), 1.0, 2*filter_delay+1));
-    fastfir->Update(filterData);
-    delete fastfir;
-
-    accel_time_filtered.resize(filterData.size() - filter_delay);
-    accel_filtered.resize(filterData.size() - filter_delay);
-
-    for (int i = 0; i < accel_time_filtered.size(); i++) {
-      accel_time_filtered[i] = accel_time[i];
-      accel_filtered[i] = filterData[i+filter_delay];
-    }
-    on_cb_filter_low_pass_toggled(ui->cb_filter_low_pass->isChecked());
-  }
-}
-
-void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
-{
-  ui->plot->graph(0)->setBrush(QBrush(QColor(0, 0, 0, 0)));
-  if (!accel_time.size())
-    return;
-  if (checked) /* filter */
-  {
-      QVector<QCPGraphData> accelData(accel_time_filtered.size());
-      for (int i = 0; i <accel_time_filtered.size(); i++)
-      {
-        accelData[i].value = accel_filtered[i];
-        accelData[i].key = accel_time_filtered[i];
-      }
-      //ui->plot->yAxis->setRange(0, 25);
-      ui->plot->graph(0)->data()->set(accelData);
-  }
-  else
-  {
-    QVector<QCPGraphData> accelData(accel_time.size());
-    for (int i = 0; i < accel_time.size(); i++)
-    {
-      accelData[i].value = accel[i];
-      accelData[i].key = accel_time[i];
-    }
-    ui->plot->graph(0)->data()->set(accelData);
-      ui->plot->yAxis->setRange(0, ui->activityRange->value());
-  }
-  ui->plot->replot();
-}
-
-
-/*
- * Export
- */
-
-void MainWindow::on_pb_pdf_clicked()
-{
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.pdf",
-      tr("Protobuf (*.pdf)"));
-
-  ui->plot->savePdf(fileName);
-}
-
-void MainWindow::on_pb_png_clicked()
-{
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.png",
-      tr("Protobuf (*.png)"));
-
-  ui->plot->savePng(fileName, 0, 0, 1.0, -1, 300);
-}
-
-void MainWindow::on_pb_export_csv_clicked()
-{
-  QMessageBox msgBox;
-  int hours = ui->offsetUTC->value();
-  QTimeZone timezone = QTimeZone(3600*hours);
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.csv",
-      tr("CSV (*.csv)"));
-  QFile file(fileName);
-  if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-  {
-    msgBox.setText("couldn't open:" + fileName);
-    msgBox.exec();
-    return;
-  }
-  QTextStream out(&file);
-
-  if (ui->cb_filter_low_pass->isChecked())
-  {
-    out << "# low pass filter cutoff frequency = " << ui->sb_cutoff->value() <<"\n";
-  }
-  else
-  {
-    out << "# raw data\n";
-  }
-
-  switch (tagtype)
-  {
-  case BITTAG:
-  case BITTAGNG:
-
-    /* code */
-    out << QString("timestamp start,time start (offset hours: %1),activity percentage,temperature,voltage\n").arg(QString::number(hours));
-    break;
-  default:
-    break;
-  }
-  
-  
-  double x_axis_range_lower = ui->plot->xAxis->range().lower;
-  double x_axis_range_upper = ui->plot->xAxis->range().upper;
-  const QString format = "MM/dd/yyyy hh:mm:ss";
-
-  // dump activity/pressure data
-
-  QCPGraphDataContainer::const_iterator activity_begin = ui->plot->graph(0)->data()->findBegin(x_axis_range_lower);
-  QCPGraphDataContainer::const_iterator activity_end = ui->plot->graph(0)->data()->findEnd(x_axis_range_upper);
-  QCPGraphDataContainer::const_iterator temperature_begin = ui->plot->graph(1)->data()->findBegin(x_axis_range_lower);
-  QCPGraphDataContainer::const_iterator temperature_end = ui->plot->graph(1)->data()->findEnd(x_axis_range_upper);
-  QCPGraphDataContainer::const_iterator voltage_begin = ui->plot->graph(2)->data()->findBegin(x_axis_range_lower);
-  QCPGraphDataContainer::const_iterator voltage_end = ui->plot->graph(2)->data()->findEnd(x_axis_range_upper);
-
-  int32_t last_min = INT32_MAX;
-
-  while ((activity_begin != activity_end) || 
-         (temperature_begin != temperature_end) ||
-         (voltage_begin != voltage_end))
-         {
-             int32_t min =  INT32_MAX;
-             int32_t activity_key = (activity_begin != activity_end)? activity_begin->key :  INT32_MAX;
-             int32_t temperature_key = (temperature_begin != temperature_end)? temperature_begin->key :  INT32_MAX;
-             int32_t voltage_key = (voltage_begin != voltage_end)? voltage_begin->key : INT32_MAX;
-             min = activity_key < min ? activity_key : min;
-             min = temperature_key < min ? temperature_key : min;
-             min = voltage_key < min ? voltage_key : min;
-
-             if (min ==  INT32_MAX)
-                break;
-
-             if (activity_key == last_min) {
-                ui->te_fileinfo->appendPlainText("Error:  Repeated activity data time!");
-             } 
-             
-             last_min = min;
-
-             out << min << "," << QDateTime::fromSecsSinceEpoch(qint64(min), timezone).toString(format) << ",";
-
-             if (min == activity_key) {
-               out << QString::number(activity_begin->value, 'f', 2);
-               ++activity_begin;
-             }
-             out << ",";
-             if (min == temperature_key) {
-               out << QString::number(temperature_begin->value, 'f', 2);
-               ++temperature_begin;
-             }
-             out << ",";
-             if (min == voltage_key) {
-               out << QString::number(voltage_begin->value, 'f', 2);
-               ++voltage_begin;
-             }
-             out << "\n";
-
-         }
-  file.close();
-}
-
-// Print current graph
-
-void MainWindow::on_pb_print_clicked()
-{
-  QPrinter printer;
-  QPrintPreviewDialog previewDialog(&printer, this);
-  connect(&previewDialog, SIGNAL(paintRequested(QPrinter *)),
-          SLOT(renderPlot(QPrinter *)));
-  previewDialog.exec();
-}
-
-void MainWindow::renderPlot(QPrinter *printer)
-{
-  printer->setPageSize(QPageSize(QPageSize::Letter));
-  QCPPainter painter(printer);
-  QRectF pageRect = printer->pageRect(QPrinter::DevicePixel);
-
-  int plotWidth = ui->plot->viewport().width();
-  int plotHeight = ui->plot->viewport().height();
-  double scale = pageRect.width() / (double)plotWidth;
-
-  painter.setMode(QCPPainter::pmVectorized);
-  painter.setMode(QCPPainter::pmNoCaching);
-  painter.setMode(
-      QCPPainter::pmNonCosmetic); // comment this out if you want cosmetic
-                                  // thin lines (always 1 pixel thick
-                                  // independent of pdf zoom level)
-
-  painter.scale(scale, scale);
-  ui->plot->toPainter(&painter, plotWidth, plotHeight);
-}
 
 /*
  *  Cursors  -- handle clicks and spinboxes
@@ -737,15 +430,13 @@ void MainWindow::plot_doubleclick(QMouseEvent *event)
     if ((x < right->start->coords().x()) &&
         (event->button() & Qt::LeftButton))
     {
-      ui->te_left->setDateTime(
-          QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+    
     }
 
     if ((x > left->start->coords().x()) &&
         (event->button() & Qt::RightButton))
     {
-      ui->te_right->setDateTime(
-          QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+    
     }
   }
 }
@@ -770,169 +461,8 @@ void MainWindow::on_cb_cursors_visible_clicked(bool checked)
   }
 }
 
-void MainWindow::on_te_left_dateTimeChanged(const QDateTime &dateTime)
-{
-  double x = dateTime.toSecsSinceEpoch();
 
-  ui->te_right->setMinimumDateTime(dateTime);
-  left->start->setCoords(x, QCPRange::minRange);
-  left->end->setCoords(x, QCPRange::maxRange);
-  ui->plot->replot();
-}
 
-void MainWindow::on_te_right_dateTimeChanged(const QDateTime &dateTime)
-{
-  double x = dateTime.toSecsSinceEpoch();
-  ui->te_left->setMaximumDateTime(dateTime);
-  right->start->setCoords(x, QCPRange::minRange);
-  right->end->setCoords(x, QCPRange::maxRange);
-  ui->plot->replot();
-}
 
-void MainWindow::on_pb_process_clicked()
-{
-  QMessageBox msgBox;
-  const QString format = "MM/dd/yyyy hh:mm:ss";
 
-  QString inFileName =
-      QFileDialog::getOpenFileName(this, tr("Open Activity CSV Specification"),
-                                   path, tr("Data Files (*.csv)"));
 
-  if (inFileName.isNull())
-    return;
-  QFile infile(inFileName);
-  if (!infile.open(QIODevice::ReadOnly | QIODevice::Text))
-  {
-    msgBox.setText("couldn't open:" + inFileName);
-    msgBox.exec();
-    return;
-  }
-
-  QString outFileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.csv",
-      tr("Protobuf (*.csv)"));
-  QFile outfile(outFileName);
-  if (!outfile.open(QIODevice::WriteOnly | QIODevice::Text))
-  {
-    msgBox.setText("couldn't open:" + outFileName);
-    msgBox.exec();
-    infile.close();
-    return;
-  }
-  QTextStream out(&outfile);
-  out << "start,stop,activity percent," << currentfilename << "\n";
-
-  while (!infile.atEnd())
-  {
-    QString line = infile.readLine();
-    if (!line.startsWith("#"))
-    {
-      QStringList l1 = line.trimmed().split(',');
-      QDateTime start = QDateTime::fromString(l1[0], format);
-      if (start.isNull())
-      {
-        msgBox.setText("couldn't parse start: " + l1[0] + " format: " + format);
-        msgBox.exec();
-        break;
-      }
-      start.setTimeSpec((Qt::UTC));
-
-      QDateTime stop = QDateTime::fromString(l1[1], format);
-      if (stop.isNull())
-      {
-        msgBox.setText("couldn't parse stop: " + l1[1] + " format: " + format);
-        msgBox.exec();
-        break;
-      }
-      stop.setTimeSpec(Qt::UTC);
-      qint64 start_time = start.toSecsSinceEpoch();
-      qint64 stop_time = stop.toSecsSinceEpoch();
-      int count = 0;
-      double avg = 0.0;
-      for (int i = 0; i < accel_time.length() && accel_time[i] < stop_time;
-           i++)
-      {
-        if (accel_time[i] < start_time)
-          continue;
-        count++;
-        avg += accel[i];
-      }
-      if (count)
-      {
-        out << start.toString(format) << ",";
-        out << stop.toString(format) << ","
-            << QString::number(avg / count, 'f', 2) << "\n";
-      }
-    }
-  }
-
-  infile.close();
-  outfile.close();
-}
-
-void MainWindow::on_gbVT_clicked()
-{
-  if (ui->gbVT->isChecked())
-  {
-    if (ui->rbTemperature->isChecked())
-    {
-      ui->plot->graph(1)->setVisible(true);
-      ui->plot->graph(2)->setVisible(false);
-    }
-    else
-    {
-      ui->plot->graph(1)->setVisible(false);
-      ui->plot->graph(2)->setVisible(true);
-    }
-    ui->plot->yAxis2->setVisible(true);
-  }
-  else
-  {
-    ui->plot->graph(2)->setVisible(false);
-    ui->plot->graph(1)->setVisible(false);
-    ui->plot->yAxis2->setVisible(false);
-  }
-  ui->plot->replot();
-}
-
-void MainWindow::on_rbTemperature_clicked()
-{
-  ui->plot->yAxis2->setRange(0, 50);
-  ui->plot->yAxis2->setLabel("Temperature C");
-  ui->plot->yAxis2->setLabelColor(Qt::red);
-  on_gbVT_clicked();
-}
-
-void MainWindow::on_rbVoltage_clicked()
-{
-  ui->plot->yAxis2->setRange(1.5, 3.5);
-  ui->plot->yAxis2->setLabel("Voltage");
-  ui->plot->yAxis2->setLabelColor(Qt::darkGreen);
-  on_gbVT_clicked();
-}
-
-void MainWindow::on_activityRange_valueChanged(int i) 
-{
-  //if (tagtype == PRESTAG)
-   // ui->plot->yAxis->setRange(700, i);
-  //else
-    ui->plot->yAxis->setRange(0, ui->activityRange->value());
-  ui->plot->replot();
- //std::cerr << "set range\n";
-}
-
-void MainWindow::on_graphMax_valueChanged(int i)
-{
-  ui->graphMin->setMaximum(i);
-  ui->plot->yAxis->setRange(ui->graphMin->value(),ui->graphMax->value());
-  ui->plot->replot();
-
-}
-
-void MainWindow::on_graphMin_valueChanged(int i)
-{
-  ui->graphMax->setMinimum(i);
-  ui->plot->yAxis->setRange(ui->graphMin->value(),ui->graphMax->value());
-  ui->plot->replot();
-  
-}

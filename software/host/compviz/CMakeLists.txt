@@ -32,15 +32,16 @@ if (NOT Qt6_FOUND)
 # Populate a CMake variable with the sources
 
 set(compviz_SRCS
+  compassdata.cpp 
+  controls.cpp
+  FastFIR/FastFIR/qjfastfir.cpp
+  main.cpp
   mainwindow.cpp
   qcustomplot-source/qcustomplot.cpp
   tickerdatetimeoffset.cpp
-  FastFIR/FastFIR/qjfastfir.cpp
-  main.cpp
-  compassdata.cpp
   )
 
-set_source_files_properties(compassdata.cpp PROPERTIES SKIP_AUTOMOC TRUE)
+set_source_files_properties(compassdata.cpp controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)
 
 qt_add_resources(compviz_SRCS qfi.qrc)
 
