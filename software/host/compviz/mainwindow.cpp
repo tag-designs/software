@@ -20,10 +20,15 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   makeVisible(false);
 
+  vt_group = new QActionGroup(this);
+  vt_group->addAction(ui->actionTemperature);
+  vt_group->addAction(ui->actionVoltage);
+  vt_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
+
   ui->plot->setBufferDevicePixelRatio(1.0);
 
   // activity graph
-  ui->plot->addGraph(); // ui->plot->yAxis, ui->plot->xAxis);
+  ui->plot->addGraph(); 
 
   // temperature graph
   ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
@@ -97,13 +102,11 @@ MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::makeVisible(bool visible)
 {
-  ui->gb_graph->setEnabled(visible);
-  ui->gb_filterparams->setEnabled(visible);
-  ui->gb_timeoffset->setEnabled(visible);
-  ui->actionPNG->setEnabled(visible);
-  ui->actionPDF->setEnabled(visible);
-  ui->actionPrint->setEnabled(visible);
-  ui->actionReset->setEnabled(visible);
+  //ui->gb_graph->setEnabled(visible);
+  //ui->gb_filterparams->setEnabled(visible);
+  //ui->gb_timeoffset->setEnabled(visible);
+  //ui->actionPrint->setEnabled(visible);
+  //ui->actionReset->setEnabled(visible);
 }
 
 

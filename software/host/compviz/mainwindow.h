@@ -8,6 +8,7 @@
 #include<QQuickItem>
 #include <QVector3D>
 #include <QQuaternion>
+#include <QActionGroup>
 
 typedef struct {
     QVector3D mag, accel;
@@ -34,10 +35,8 @@ private slots:
     void on_pb_load_clicked();
     void on_actionAbout_triggered();
     void on_actionLoad_triggered(){ on_pb_load_clicked();};
-    void on_actionPNG_triggered(){ on_pb_png_clicked();};
-    void on_actionPDF_triggered(){ on_pb_pdf_clicked();};
-    void on_actionReset_triggered(){on_pb_redraw_clicked();};
-    void on_actionPrint_triggered(){on_pb_print_clicked();};
+    void on_actionReset_triggered(){};
+    void on_actionPrint_triggered();
 
 
     // helper
@@ -57,9 +56,6 @@ private slots:
 
     // export
 
-    void on_pb_pdf_clicked();
-    void on_pb_png_clicked();
-    void on_pb_print_clicked();
     void renderPlot(QPrinter*);
 
     // cursors
@@ -97,6 +93,7 @@ private:
     TagType tagtype;
 
     Ui::MainWindow *ui;
+    QActionGroup* vt_group;
     QVector<double> accel_time;
     QVector<double> accel;
     QVector<double> accel_time_filtered;

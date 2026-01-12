@@ -165,8 +165,6 @@ void MainWindow::on_offsetUTC_valueChanged(int hours)
   ui->plot->replot();
 }
 
-
-
 void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
 {
   ui->plot->graph(0)->setBrush(QBrush(QColor(0, 0, 0, 0)));
@@ -196,34 +194,14 @@ void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
   ui->plot->replot();
 }
 
-
-/*
- * Export
- */
-
-void MainWindow::on_pb_pdf_clicked()
-{
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.pdf",
-      tr("Protobuf (*.pdf)"));
-
-  ui->plot->savePdf(fileName);
-}
-
-void MainWindow::on_pb_png_clicked()
-{
-  QString fileName = QFileDialog::getSaveFileName(
-      this, tr("Save File"), QDir::homePath() + "/untitled.png",
-      tr("Protobuf (*.png)"));
-
-  ui->plot->savePng(fileName, 0, 0, 1.0, -1, 300);
-}
-
 // Print current graph
 
-void MainWindow::on_pb_print_clicked()
+void MainWindow::on_actionPrint_triggered()
 {
-  QPrinter printer;
+  QPrinter printer(QPrinter::HighResolution);
+  printer.setOutputFormat(QPrinter::NativeFormat); 
+  printer.setPageOrientation(QPageLayout::Landscape);
+  printer.setPageSize(QPageSize(QPageSize::Letter));
   QPrintPreviewDialog previewDialog(&printer, this);
   connect(&previewDialog, SIGNAL(paintRequested(QPrinter *)),
           SLOT(renderPlot(QPrinter *)));
@@ -232,21 +210,22 @@ void MainWindow::on_pb_print_clicked()
 
 void MainWindow::renderPlot(QPrinter *printer)
 {
-  printer->setPageSize(QPageSize(QPageSize::Letter));
+  
   QCPPainter painter(printer);
-  QRectF pageRect = printer->pageRect(QPrinter::DevicePixel);
 
-  int plotWidth = ui->plot->viewport().width();
-  int plotHeight = ui->plot->viewport().height();
-  double scale = pageRect.width() / (double)plotWidth;
-
+  const auto pageLayout = printer->pageLayout();
+  const auto pageRect = pageLayout.paintRectPixels(printer->resolution());
+  const auto paperRect = pageLayout.fullRectPixels(printer->resolution());
+  double xscale = pageRect.width() / double(ui->plotWindow->width());
+  double yscale = pageRect.height() / double(ui->plotWindow->height());
+  double scale = qMin(xscale, yscale);
+  //painter.translate(pageRect.x() + paperRect.width() / 2.,
+   //                 pageRect.y() + paperRect.height() / 2.);
+  painter.scale(scale, scale);
   painter.setMode(QCPPainter::pmVectorized);
   painter.setMode(QCPPainter::pmNoCaching);
-  painter.setMode(
-      QCPPainter::pmNonCosmetic); // comment this out if you want cosmetic
-                                  // thin lines (always 1 pixel thick
-                                  // independent of pdf zoom level)
+  painter.setMode(QCPPainter::pmNonCosmetic); 
 
-  painter.scale(scale, scale);
-  ui->plot->toPainter(&painter, plotWidth, plotHeight);
+  //painter.scale(scale, scale);
+  ui->plotWindow->render(&painter);//, plotWidth, plotHeight);
 }
