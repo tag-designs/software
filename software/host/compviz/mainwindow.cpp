@@ -20,6 +20,10 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   makeVisible(false);
 
+  Acal[0][0] = 1.0;
+  Acal[1][1] = 1.0;
+  Acal[2][2] = 1.0;
+
   vt_group = new QActionGroup(this);
   vt_group->addAction(ui->actionTemperature);
   vt_group->addAction(ui->actionVoltage);
@@ -69,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
   dateTicker = QSharedPointer<QCPAxisTickerDateTime>(new QCPAxisTickerDateTime);
   dateTicker->setDateTimeFormat("hh:mm\nMM/dd/yy");
   //dateTicker->setDateTimeSpec(Qt::UTC);
-  dateTicker->setTimeZone(QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
+  dateTicker->setTimeZone(QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
 
   ui->plot->xAxis->setTicker(dateTicker);
 
@@ -87,6 +91,7 @@ MainWindow::MainWindow(QWidget *parent)
   right->setVisible(false);
 
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
+  rootObject = ui->quickWidget->rootObject();
 
   // connect slots
 
@@ -94,6 +99,9 @@ MainWindow::MainWindow(QWidget *parent)
           SLOT(onMouseMove(QMouseEvent *)));
   connect(ui->plot, SIGNAL(mouseDoubleClick(QMouseEvent *)),
           SLOT(plot_doubleclick(QMouseEvent *)));
+
+  connect(ui->actionCompass_Declination, &QAction::triggered, 
+          this, &MainWindow::on_actionCompass_Declination);
 }
 
 MainWindow::~MainWindow() { delete ui; }

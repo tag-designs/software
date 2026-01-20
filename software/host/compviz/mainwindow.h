@@ -37,6 +37,13 @@ private slots:
     void on_actionLoad_triggered(){ on_pb_load_clicked();};
     void on_actionReset_triggered(){};
     void on_actionPrint_triggered();
+    void on_actionVoltage_triggered(bool checked = false);
+    void on_actionTemperature_triggered(bool checked = false);
+    void on_actionCompass_Declination();
+    void on_actionBattery_Forward_triggered(bool checked = false);
+    void on_actionUTC_Offset_triggered();
+    void on_actionCalibration_Constants_triggered();
+    //void on_actionEnable_Filter_triggered(bool checked = false);
 
 
     // helper
@@ -49,10 +56,6 @@ private slots:
 
     void on_cb_filter_low_pass_toggled(bool checked);
     void on_sb_cutoff_valueChanged(double freq);
-
-    // plotting
-
-    void on_offsetUTC_valueChanged(int hours);
 
     // export
 
@@ -67,11 +70,6 @@ private slots:
     // mouse move
 
     void onMouseMove(QMouseEvent* event);
-
-   
-    void on_gbVT_clicked();
-    void on_rbVoltage_clicked();
-    void on_rbTemperature_clicked();
     
 
 private:
@@ -85,6 +83,9 @@ private:
     
     float Vcal[3];
     float Acal[3][3];
+
+    float declination;
+    int utc_offset = 0;
 
     // gui state
 
@@ -111,6 +112,8 @@ private:
     void makeVisible(bool);
     QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
+
+    QQuickItem *rootObject;
 
 };
 

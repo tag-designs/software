@@ -12,6 +12,7 @@
 #include "mainwindow.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
+#include "constants_dialog.h"
 
 // Track mouse in plot and display time of location
 
@@ -28,20 +29,25 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     y = ui->plot->graph(0)->dataMainValue(index);
   }
 
-  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(ui->offsetUTC->value())));//QTimeZone::utc());
+  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
   QString s;
+  int gi = 0;
   
   QTextStream out(&s);
   out << "(" << dt.toString("MM/dd hh:mm");
   out << QString(", %1").arg(y,0,'f',1);
-  if (ui->gbVT->isChecked()) {
-    int gi = ui->rbTemperature->isChecked() ? 1 : 2;
+
+  if (ui->actionTemperature->isChecked())
+    gi = 2;
+  if (ui->actionVoltage->isChecked())
+    gi = 1;
+  if (gi) {
     int index = ui->plot->graph(gi)->findBegin(x);
     if (index) {
         t = ui->plot->graph(gi)->dataMainValue(index);
     }
     out << QString(", %1").arg(t,0,'f',1);
-    out << (ui->rbTemperature->isChecked() ? "C" : "V");
+    out << (gi ? "C" : "V");
   }
   out << ")";
   textItem->setText(s);
@@ -106,64 +112,44 @@ void MainWindow::on_sb_cutoff_valueChanged(double freq)
   }
 }
 
-
-void MainWindow::on_rbTemperature_clicked()
+void MainWindow::on_actionVoltage_triggered(bool checked)
 {
-  ui->plot->yAxis2->setRange(0, 50);
-  ui->plot->yAxis2->setLabel("Temperature C");
-  ui->plot->yAxis2->setLabelColor(Qt::red);
-  on_gbVT_clicked();
-}
-
-void MainWindow::on_rbVoltage_clicked()
-{
-  ui->plot->yAxis2->setRange(1.5, 3.5);
-  ui->plot->yAxis2->setLabel("Voltage");
-  ui->plot->yAxis2->setLabelColor(Qt::darkGreen);
-  on_gbVT_clicked();
-}
-
-
-void MainWindow::on_gbVT_clicked()
-{
-  if (ui->gbVT->isChecked())
-  {
-    if (ui->rbTemperature->isChecked())
-    {
-      ui->plot->graph(1)->setVisible(true);
-      ui->plot->graph(2)->setVisible(false);
+    if (checked) {
+        ui->plot->yAxis2->setRange(1.5, 3.5);
+        ui->plot->yAxis2->setLabel("Voltage");
+        ui->plot->yAxis2->setLabelColor(Qt::darkGreen);
+        ui->plot->graph(1)->setVisible(false);
+        ui->plot->graph(2)->setVisible(true);
+        ui->plot->yAxis2->setVisible(true);
+    } else {
+        ui->plot->graph(2)->setVisible(false);
+        ui->plot->yAxis2->setVisible(false);
     }
-    else
-    {
-      ui->plot->graph(1)->setVisible(false);
-      ui->plot->graph(2)->setVisible(true);
-    }
-    ui->plot->yAxis2->setVisible(true);
-  }
-  else
-  {
-    ui->plot->graph(2)->setVisible(false);
-    ui->plot->graph(1)->setVisible(false);
-    ui->plot->yAxis2->setVisible(false);
-  }
-  ui->plot->replot();
+    ui->plot->replot();
 }
 
-// plot data
-
-void MainWindow::on_offsetUTC_valueChanged(int hours)
+void MainWindow::on_actionTemperature_triggered(bool checked)
 {
-  dateTicker->setTimeZone(QTimeZone(3600*hours));
-  if (hours < 0) {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC%1)\nMonth/Day/Year").arg(QString::number(hours)));
-  } else if (hours == 0) {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC)\nMonth/Day/Year"));
-  } else {
-      ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC+%1)\nMonth/Day/Year").arg(QString::number(hours)));
-  }
-  dateTicker->setTickOrigin(-3600*hours);
-  ui->plot->replot();
+    if (checked) {
+        ui->plot->yAxis2->setRange(0, 50.0);
+        ui->plot->yAxis2->setLabel("Temperature C");
+        ui->plot->yAxis2->setLabelColor(Qt::red);
+        ui->plot->graph(1)->setVisible(true);
+        ui->plot->graph(2)->setVisible(false);
+        ui->plot->yAxis2->setVisible(true);
+    } else {
+        ui->plot->graph(1)->setVisible(false);
+        ui->plot->yAxis2->setVisible(false);
+    }
+    ui->plot->replot();
 }
+
+/*
+void MainWindow::on_actionEnable_Filter_triggered(bool checked)
+{
+    on_cb_filter_low_pass_toggled(checked);
+}
+    */
 
 void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
 {
@@ -229,3 +215,47 @@ void MainWindow::renderPlot(QPrinter *printer)
   //painter.scale(scale, scale);
   ui->plotWindow->render(&painter);//, plotWidth, plotHeight);
 }
+
+void MainWindow::on_actionCompass_Declination(){
+    bool ok;
+    double tmp = QInputDialog::getDouble(this, "Compass Declination", "Declination", declination, -180.0, 180.0, 2, &ok);
+    if (ok){
+        declination = tmp;
+        QMetaObject::invokeMethod(rootObject, "setDeclination",
+                                    Q_ARG(QVariant, declination));
+  }
+}
+
+
+void MainWindow::on_actionBattery_Forward_triggered(bool checked) {
+    QMetaObject::invokeMethod(rootObject, "setBatteryForward",
+                                    Q_ARG(QVariant, checked));
+
+}
+
+void MainWindow::on_actionUTC_Offset_triggered() {
+    bool ok;
+    int hours = QInputDialog::getInt(this,"Time Offset from UTC","Offset",utc_offset,-12,12,1,&ok);
+    if (ok) {
+        utc_offset = hours;
+        dateTicker->setTimeZone(QTimeZone(3600*hours));
+        if (hours < 0) {
+            ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC%1)\nMonth/Day/Year").arg(QString::number(hours)));
+        } else if (hours == 0) {
+            ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC)\nMonth/Day/Year"));
+        } else {
+            ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC+%1)\nMonth/Day/Year").arg(QString::number(hours)));
+        }
+        dateTicker->setTickOrigin(-3600*hours);
+        ui->plot->replot();
+    }
+}
+
+  void MainWindow::on_actionCalibration_Constants_triggered(){
+    ConstantsDialog dialog;
+
+    dialog.SetConstants(Vcal, Acal);
+
+    dialog.exec();
+
+  }

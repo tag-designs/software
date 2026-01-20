@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>240</width>
+    <height>305</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Compass Constants</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Calibration</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_9">
+      <item>
+       <widget class="QGroupBox" name="groupBox_5">
+        <property name="title">
+         <string>Magnetic Offset</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_10">
+         <item>
+          <widget class="QLabel" name="v0Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>12.41</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="v1Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>-13.82</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="v2Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>-119.93</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox_6">
+        <property name="title">
+         <string>Magnetic Mapping</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_12">
+         <item>
+          <widget class="QLabel" name="a0Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>+0.980 -0.018 -0.002</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="a1Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>-0.018 +1.007 +0.014</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="a2Label">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>-0.002 +0.014 +1.014</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

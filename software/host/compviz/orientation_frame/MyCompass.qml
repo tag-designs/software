@@ -21,32 +21,58 @@ Rectangle {
     property alias roll: rollText.text
     property alias pitch: pitchText.text
     property alias field: fieldText.text
+    property alias gravity: gravityText.text
     property alias rotation: dialface.rotation
 
     property bool batteryForward: true
     property double declination: 0.0
+    property double heading_value : 0.0
 
-    function setOrientation(h,p,r,d,f) {
+    function setHeading() {
+        var h = heading_value + declination
+        if (!batteryForward){
+            h = h + 180
+        }
+        h = h%360
+        rotation = -h
+        heading = Number(h).toLocaleString(Qt.locale(), 'f', 0)
+    }
+
+    function setOrientation(h,p,r,d,f,g) {
         if (!batteryForward) {
-            h = (h + 180)%360
+            heading_value = h
+            h = (h + declination + 180)%360
             p = -p
             r = -r
         }
-        rotation = -h
-        heading = Number(h).toLocaleString(Qt.locale(), 'f', 0)
+       
+        setHeading()
+        
         pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)
         roll = Number(r).toLocaleString(Qt.locale(), 'f', 0)
         dip = Number(d).toLocaleString(Qt.locale(), 'f', 0)
         field = Number(f).toLocaleString(Qt.locale(), 'f', 0)
+        gravity = Number(g).toLocaleString(Qt.locale(), 'f', 0)
         //console.info("setoreintation called");
     }
 
     function setBatteryForward(f){
-        batteryFoward = f
+        //console.info(f)
+        batteryForward = f
+        if (f){
+            batteryText.text = "forward"
+            //console.info("forward")
+        } else {
+            batteryText.text = "backward"
+            //console.info("backward")
+        }
+        setHeading()
     }
 
     function setDeclination(d) {
         declination = d
+        declinationText.text = Number(d).toLocaleString(Qt.locale(), 'f', 2)
+        setHeading()
     }
 
     //color: "#fffae7"
@@ -138,7 +164,7 @@ Rectangle {
                         readOnly: true
                     }
                     Text {
-                        text: "Dip Angle:"
+                        text: "Dip Angle:  "
                     }
 
                     TextField {
@@ -158,45 +184,63 @@ Rectangle {
                         horizontalAlignment: TextInput.AlignRight
                         readOnly: true
                     }
+
+                    Text {
+                        text: "Gravity:"
+                    }
+
+                    TextField {
+                        id: gravityText
+                        text: "1.0"
+                        horizontalAlignment: TextInput.AlignRight
+                        readOnly: true
+                    }
                 }
                
             }
              Item {
             Layout.preferredHeight: 5
         }
-        /*
+
         GroupBox {
 
                     Layout.alignment: Qt.AlignHCenter
                     //border.color: "black"
                     //border.width: 1
-                    title: "Tag Position"
-                RowLayout {
-                                Text {
-                                    text: "Battery Direction:"
-                                    Layout.alignment: Qt.AlignTop
-                                }
-                                ColumnLayout {
-                                    RadioButton {
-                                        checked: true
-                                        text: qsTr("Forward")
-                                        onCheckedChanged: {
-                                            if (checked) {
-                                                root.batteryForward = true
-                                            }
-                                        }
-                                    }
-                                    RadioButton {
-                                        text: qsTr("Backward")
-                                        onCheckedChanged: {
-                                            if (checked) {
-                                                root.batteryForward = false
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-        }*/
+                    title: "Configuration"
+                GridLayout {
+
+                    id: configurationgrid
+                    //anchors.fill: parent
+                    columns: 2 // Defines a grid with 2 columns
+                    rowSpacing: 5
+                    columnSpacing: 5
+                    Layout.alignment: Qt.AlignHCenter
+
+                    Text {
+                        text: "Declination:"
+                    }
+
+                    TextField {
+                        id: declinationText
+                        text: "0.0"
+                        horizontalAlignment: TextInput.AlignRight
+                        readOnly: true
+                    }
+
+                    Text {
+                        text: "Battery:"
+                    }
+
+                    TextField {
+                        id: batteryText
+                        text: "forward"
+                        horizontalAlignment: TextInput.AlignRight
+                        readOnly: true
+                    }
+                }
+
+        }
         Item {
             //This acts as a flexible horizontal spacer
             Layout.fillHeight: true
