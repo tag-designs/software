@@ -12,6 +12,9 @@
 
 typedef struct {
     QVector3D mag, accel;
+    QQuaternion q;
+    float dip, field, mg;
+    float pitch,roll,yaw;
 } sensor;
 
 namespace Ui {
@@ -37,6 +40,7 @@ private slots:
     void on_actionLoad_triggered(){ on_pb_load_clicked();};
     void on_actionReset_triggered(){};
     void on_actionPrint_triggered();
+    void on_actionHeading_triggered(bool checked = false);
     void on_actionVoltage_triggered(bool checked = false);
     void on_actionTemperature_triggered(bool checked = false);
     void on_actionCompass_Declination();
@@ -74,6 +78,8 @@ private slots:
 
 private:
 
+    void createGraphs();
+
     // ecompass
 
     bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
@@ -82,7 +88,7 @@ private:
     void apply_calibration(QVector3D &mag);  
     
     float Vcal[3];
-    float Acal[3][3];
+    float Acal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
 
     float declination;
     int utc_offset = 0;
@@ -93,8 +99,16 @@ private:
     enum TagType {BITTAG, BITTAGNG, PRESTAG, COMPASSTAG};
     TagType tagtype;
 
+    QString path;
+    QString currentfilename;
+    void makeVisible(bool);
+
     Ui::MainWindow *ui;
+    QQuickItem *rootObject;
+
     QActionGroup* vt_group;
+
+    // data 
     QVector<double> accel_time;
     QVector<double> accel;
     QVector<double> accel_time_filtered;
@@ -104,16 +118,26 @@ private:
     QVector<double> voltage;
     QVector<double> temperature;
     QVector<sensor> orientation;
+    QVector<double> heading;
     QVector<double> orientation_time;
-    QString path;
+
+    // custom plot
+   
     QCPItemLine *left;
     QCPItemLine *right;
-    QString currentfilename;
-    void makeVisible(bool);
+
     QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
 
-    QQuickItem *rootObject;
+    QCPGraph *activityGraph;
+    QCPGraph *temperatureGraph;
+    QCPGraph *voltageGraph;
+    QCPGraph *headingGraph;
+
+    QCPAxis *activityAxis;
+    QCPAxis *temperatureAxis;
+    QCPAxis *voltageAxis;
+    QCPAxis *headingAxis;
 
 };
 

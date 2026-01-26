@@ -40,12 +40,10 @@ Rectangle {
 
     function setOrientation(h,p,r,d,f,g) {
         if (!batteryForward) {
-            heading_value = h
-            h = (h + declination + 180)%360
             p = -p
             r = -r
         }
-       
+        heading_value = h
         setHeading()
         
         pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)

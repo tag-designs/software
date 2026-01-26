@@ -20,76 +20,13 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   makeVisible(false);
 
-  Acal[0][0] = 1.0;
-  Acal[1][1] = 1.0;
-  Acal[2][2] = 1.0;
-
   vt_group = new QActionGroup(this);
   vt_group->addAction(ui->actionTemperature);
   vt_group->addAction(ui->actionVoltage);
   vt_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
 
-  ui->plot->setBufferDevicePixelRatio(1.0);
-
-  // activity graph
-  ui->plot->addGraph(); 
-
-  // temperature graph
-  ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
-
-  // voltage graph
-  ui->plot->addGraph(ui->plot->xAxis, ui->plot->yAxis2);
-
-  // set colors -- make a constant
-  ui->plot->graph(0)->setPen(QPen(Qt::blue));
-  ui->plot->graph(1)->setPen(QPen(Qt::red));
-  ui->plot->graph(2)->setPen(QPen(Qt::darkGreen));
-
-  ui->plot->graph(1)->setVisible(false);
-  ui->plot->graph(2)->setVisible(false);
-
-  // set graphranges
+  createGraphs();
   
-  ui->plot->yAxis2->setRange(0, 50);
-
-  // enable horizontal drag
-  ui->plot->setInteraction(QCP::Interaction::iRangeDrag);
-  ui->plot->axisRect()->setRangeDrag(Qt::Horizontal);
-
-  // enable zoom (horizontal only)
-  ui->plot->axisRect()->setRangeZoom(Qt::Horizontal);
-  ui->plot->setInteraction(QCP::Interaction::iRangeZoom);
-
-  // set axes
-  ui->plot->xAxis->setLabel("Hour:Minute (UTC)\nMonth/Day/Year");
-  ui->plot->yAxis->setLabel("Activity Percent");
-  ui->plot->yAxis->setLabelColor(Qt::darkBlue);
-  ui->plot->yAxis2->setLabel("Temperature C");
-  ui->plot->yAxis2->setLabelColor(Qt::red);
-  ui->plot->yAxis2->setVisible(false);
-
-  // format time on x axis
-
-  dateTicker = QSharedPointer<QCPAxisTickerDateTime>(new QCPAxisTickerDateTime);
-  dateTicker->setDateTimeFormat("hh:mm\nMM/dd/yy");
-  //dateTicker->setDateTimeSpec(Qt::UTC);
-  dateTicker->setTimeZone(QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
-
-  ui->plot->xAxis->setTicker(dateTicker);
-
-  // set mouse cursor
-  ui->plot->setCursor(QCursor(Qt::CrossCursor));
-  textItem = new QCPItemText(ui->plot); // mouse text
-
-  // set path
-  path = QDir::homePath();
-
-  // cursors
-  left = new QCPItemLine(ui->plot);
-  left->setVisible(false);
-  right = new QCPItemLine(ui->plot);
-  right->setVisible(false);
-
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   rootObject = ui->quickWidget->rootObject();
 
@@ -105,6 +42,101 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() { delete ui; }
+
+void MainWindow::createGraphs(){
+
+  // configure customplot
+
+  ui->plot->setBufferDevicePixelRatio(1.0);
+
+  QCPAxisRect *axisRect = ui->plot->axisRect(0);
+
+  activityAxis = ui->plot->yAxis;
+  temperatureAxis = ui->plot->yAxis2;
+  voltageAxis = axisRect->addAxis(QCPAxis::atRight);
+  headingAxis = axisRect->addAxis(QCPAxis::atLeft);
+
+  // create graphs
+
+  activityGraph = ui->plot->addGraph(ui->plot->xAxis, activityAxis); 
+  temperatureGraph =  ui->plot->addGraph(ui->plot->xAxis, temperatureAxis);
+  voltageGraph = ui->plot->addGraph(ui->plot->xAxis, voltageAxis);
+  headingGraph = ui->plot->addGraph(ui->plot->xAxis, headingAxis);
+
+  temperatureGraph->setVisible(false);
+  voltageGraph->setVisible(false);
+  headingGraph->setVisible(false);
+
+  // set colors -- make a constant
+
+  activityGraph->setPen(QPen(Qt::blue));
+  temperatureGraph->setPen(QPen(Qt::red));
+  voltageGraph->setPen(QPen(Qt::darkGreen));
+  headingGraph->setPen(QPen(Qt::magenta));
+
+  // set graphranges
+  
+  
+
+  // enable horizontal drag
+
+  ui->plot->setInteraction(QCP::Interaction::iRangeDrag);
+  ui->plot->axisRect()->setRangeDrag(Qt::Horizontal);
+
+  // enable zoom (horizontal only)
+  ui->plot->axisRect()->setRangeZoom(Qt::Horizontal);
+  ui->plot->setInteraction(QCP::Interaction::iRangeZoom);
+
+  // set up axes
+
+  ui->plot->xAxis->setLabel("Hour:Minute (UTC)\nMonth/Day/Year");
+
+  activityAxis->setLabel("Activity Percent");
+  activityAxis->setLabelColor(Qt::darkBlue);
+  activityAxis->setRange(0,100.0);
+  //activityAxis->setTickLabelColor(Qt::darkBlue);
+
+  temperatureAxis->setLabel("Temperature C");
+  temperatureAxis->setLabelColor(Qt::red);
+  //temperatureAxis->setTickLabelColor(Qt::red);
+  temperatureAxis->setVisible(false);
+  temperatureAxis->setRange(0, 50);
+
+  voltageAxis->setLabel("Voltage");
+  voltageAxis->setLabelColor(Qt::darkGreen);
+  //voltageAxis->setTickLabelColor(Qt::green);
+  voltageAxis->setVisible(false);
+  voltageAxis->setRange(0,3.5);
+
+  headingAxis->setLabel("Heading");
+  headingAxis->setLabelColor(Qt::magenta);
+  //voltageAxis->setTickLabelColor(Qt::green);
+  headingAxis->setVisible(false);
+  headingAxis->setRange(0,360);
+
+  // format time on x axis
+
+  dateTicker = QSharedPointer<QCPAxisTickerDateTime>(new QCPAxisTickerDateTime);
+  dateTicker->setDateTimeFormat("hh:mm\nMM/dd/yy");
+  dateTicker->setTimeZone(QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
+
+  ui->plot->xAxis->setTicker(dateTicker);
+
+  // set mouse cursor
+
+  ui->plot->setCursor(QCursor(Qt::CrossCursor));
+  textItem = new QCPItemText(ui->plot); // mouse text
+
+  // set path
+  path = QDir::homePath();
+
+  // cursors
+  left = new QCPItemLine(ui->plot);
+  left->setVisible(false);
+  right = new QCPItemLine(ui->plot);
+  right->setVisible(false);
+
+}
 
 // Enable on/off
 
@@ -155,6 +187,9 @@ void MainWindow::on_pb_load_clicked()
   temperature.clear();
   accel_time.clear();
   accel.clear();
+  orientation.clear();
+  orientation_time.clear();
+  heading.clear();
   ui->te_fileinfo->clear();
   ui->te_fileinfo->appendPlainText(fileName);
   ui->plot->graph(0)->data()->clear();
@@ -262,100 +297,37 @@ void MainWindow::on_pb_load_clicked()
 
       if (l1[1] == "V") {     
          // voltage
-              
+         voltage_time << timestamp;
+         voltage << l1[2].toDouble();           
       } else if (l1[1] == "TC") {
         // temperature
+         temperature_time << timestamp;
+         temperature << l1[2].toDouble(); 
          
       } else if (l1[1] == "ACTIVITY") {
+         accel_time << timestamp;
+         accel << l1[2].toDouble(); 
         // activity
 
       } else if (l1[1] == "AM") {
-        // orientation
-
-
+        sensor s;
+        s.accel.setX(l1[2].toDouble());
+        s.accel.setY(l1[3].toDouble());
+        s.accel.setZ(l1[4].toDouble());
+        s.mag.setX(l1[5].toDouble());
+        s.mag.setY(l1[6].toDouble());
+        s.mag.setZ(l1[7].toDouble());
+        eCompass(s.mag,s.accel,s.q,s.dip,s.field,s.mg);
+        QVector3D angles = s.q.toEulerAngles();
+	      if (angles[2] < 0.0) angles[2] += 360.0;
+        s.pitch = angles[0];
+        s.roll = angles[1];
+        s.yaw = angles[2];
+        orientation_time << timestamp;
+        orientation << s;
+        heading << s.yaw + declination;
       }
-      /*
-
-
-      switch (tagtype) {
-        case BITTAG:
-          if (l1.length() >= 2)
-          {
-            if (l1[0][0] == '\t')
-            { // old style}
-              // temperature/voltage or bit buckets
-              if (l1[2][0] == 't')
-              {
-                QStringList l2 = l1[2].split(' ');
-                // input temperature/voltage
-                if (l2.length() > 3)
-                {
-                  voltage_time << (l1[1].toInt());
-                  temperature_time << (l1[1].toInt());
-                  temperature << (l2[1].toDouble());
-                  voltage << (l2[3].toDouble());
-                }
-              }
-              else
-              {
-                double time = l1[1].toDouble();
-                int cnt = l1[2].toInt(nullptr, 16);
-                // decompress bit buckets -- currently only works
-                // for minute bucket data -- will need to be extended
-                // to second buckets
-
-                for (int i = 5; 0 < i; i--)
-                {
-                  accel_time << time - i * 60;
-                  accel_count << ((cnt >> ((i - 1) * 6)) & 63) / 0.6;
-                }
-              }
-            }
-            else
-            {
-              if (l1.length() > 2 && (l1[1][0] == 'V'))
-              {
-                QStringList v = l1[1].split(':');
-                QStringList t = l1[2].split(':');
-                voltage_time << l1[0].toInt();
-                temperature_time << l1[0].toInt();
-                temperature << t[1].toDouble();
-                voltage << v[1].toDouble();
-              }
-              else
-              {
-                QStringList dat = l1[1].split(':');
-                int time = l1[0].toInt();
-                // SEC data is packed
-                if (dat[0].startsWith(QString("SEC")))
-                {
-                  int cnt = dat[1].toInt(nullptr, 16);
-                  for (int i = 29; 0 <= i; i--)
-                  {
-                    accel_time << time - i;
-                    accel_count << ((cnt >> (29 - i)) & 1) * 100.0;
-                  }
-                }
-                if (dat[0].startsWith(QString("MIN")))
-                {
-                  accel_time << time;
-                  accel_count << dat[1].toDouble();
-                }
-                if (dat[0].startsWith(QString("FOURMIN")))
-                {
-                  accel_time << time;
-                  accel_count << dat[1].toDouble();
-                }
-                if (dat[0].startsWith(QString("FIVEMIN")))
-                {
-                  accel_time << time;
-                  accel_count << dat[1].toDouble();
-                }
-              }
-          }
-        }
-        break;
-      } */
+      
 
       // Customize UI for the Compasstypes
 
@@ -400,6 +372,12 @@ void MainWindow::on_pb_load_clicked()
 
   // graph the temperature data
 
+  temperatureGraph->setData(temperature_time,temperature,true);
+  voltageGraph->setData(voltage_time,voltage,true);
+  activityGraph->setData(accel_time,accel,true);
+  headingGraph->setData(orientation_time,heading,true);
+  /*
+
   if (temperature_time.size())
   {
     QVector<QCPGraphData> temperatureData(temperature_time.size());
@@ -408,7 +386,7 @@ void MainWindow::on_pb_load_clicked()
       temperatureData[i].key = temperature_time[i];
       temperatureData[i].value = temperature[i];
     }
-    ui->plot->graph(1)->data()->set(temperatureData);
+    temperatureGraph->data()->set(temperatureData);
   }
 
   // graph voltage data
@@ -420,8 +398,8 @@ void MainWindow::on_pb_load_clicked()
       voltageData[i].key = voltage_time[i];
       voltageData[i].value = voltage[i];
     }
-    ui->plot->graph(2)->data()->set(voltageData);
-  }
+    voltageGraph->data()->set(voltageData);
+  }*/
   on_sb_cutoff_valueChanged(ui->sb_cutoff->value());
   //on_cb_filter_low_pass_toggled(ui->cb_filter_low_pass->isChecked());
 }

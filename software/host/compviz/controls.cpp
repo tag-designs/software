@@ -19,40 +19,69 @@
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
   QCustomPlot *customPlot = qobject_cast<QCustomPlot *>(sender());
-  double x = customPlot->xAxis->pixelToCoord(event->pos().x());
-  double y = customPlot->yAxis->pixelToCoord(event->pos().y());
-  double t = customPlot->yAxis2->pixelToCoord(event->pos().y());
+  double x = ui->plot->xAxis->pixelToCoord(event->pos().x());
+  double y = activityAxis->pixelToCoord(event->pos().y());
+  double t = temperatureAxis->pixelToCoord(event->pos().y());
+  double v = voltageAxis->pixelToCoord(event->pos().y());
+  double h = headingAxis->pixelToCoord(event->pos().y());
   //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
 
-  int index = ui->plot->graph(0)->findBegin(x);
-  if (index) {
-    y = ui->plot->graph(0)->dataMainValue(index);
-  }
+  
 
   QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
   QString s;
-  int gi = 0;
-  
   QTextStream out(&s);
+
+  // Generate data for mouseover string
+
+  int index = activityGraph->findBegin(x);
+  if (index) {
+    y = activityGraph->dataMainValue(index);
+  }
+
   out << "(" << dt.toString("MM/dd hh:mm");
   out << QString(", %1").arg(y,0,'f',1);
 
-  if (ui->actionTemperature->isChecked())
-    gi = 2;
-  if (ui->actionVoltage->isChecked())
-    gi = 1;
-  if (gi) {
-    int index = ui->plot->graph(gi)->findBegin(x);
-    if (index) {
-        t = ui->plot->graph(gi)->dataMainValue(index);
+  if (ui->actionTemperature->isChecked()){
+     index = temperatureGraph->findBegin(x);
+     if (index) {
+        t = temperatureGraph->dataMainValue(index);
     }
     out << QString(", %1").arg(t,0,'f',1);
-    out << (gi ? "C" : "V");
+    out << "C";
+  }
+
+  if (ui->actionVoltage->isChecked()){
+     index = voltageGraph->findBegin(x);
+     if (index) {
+        v = voltageGraph->dataMainValue(index);
+    }
+    out << QString(", %1").arg(v,0,'f',1);
+    out << "V";
+  }
+
+  
+    index = headingGraph->findBegin(x);
+  if (index) {
+    h = headingGraph->dataMainValue(index);
+    out << QString(", %1").arg(h,0,'f',1);
+    sensor s = orientation[index];
+    QMetaObject::invokeMethod(rootObject, "setOrientation",
+        Q_ARG(QVariant, s.yaw),
+        Q_ARG(QVariant, s.pitch),
+        Q_ARG(QVariant, s.roll),
+        Q_ARG(QVariant, s.dip),
+        Q_ARG(QVariant, s.field),
+        Q_ARG(QVariant, s.mg));
   }
   out << ")";
+
+  // write mouse over string
+
   textItem->setText(s);
   textItem->position->setCoords(QPointF(x, y + 5));
   textItem->setFont(QFont(font().family(), 12));
+
   customPlot->replot(); //QCustomPlot::rpQueuedReplot);
 }
 
@@ -69,7 +98,6 @@ void MainWindow::on_cb_activity_clicked(bool checked)
 
 void MainWindow::on_pb_redraw_clicked()
 {
-  // refresh
   ui->plot->xAxis->setRange(accel_time[0], accel_time[accel_time.size() - 1]);
   ui->plot->replot();
 }
@@ -115,15 +143,13 @@ void MainWindow::on_sb_cutoff_valueChanged(double freq)
 void MainWindow::on_actionVoltage_triggered(bool checked)
 {
     if (checked) {
-        ui->plot->yAxis2->setRange(1.5, 3.5);
-        ui->plot->yAxis2->setLabel("Voltage");
-        ui->plot->yAxis2->setLabelColor(Qt::darkGreen);
-        ui->plot->graph(1)->setVisible(false);
-        ui->plot->graph(2)->setVisible(true);
-        ui->plot->yAxis2->setVisible(true);
+        voltageGraph->setVisible(true);
+        voltageAxis->setVisible(true);
+        temperatureGraph->setVisible(false);
+        temperatureAxis->setVisible(false);
     } else {
-        ui->plot->graph(2)->setVisible(false);
-        ui->plot->yAxis2->setVisible(false);
+        voltageGraph->setVisible(false);
+        voltageAxis->setVisible(false);
     }
     ui->plot->replot();
 }
@@ -131,15 +157,25 @@ void MainWindow::on_actionVoltage_triggered(bool checked)
 void MainWindow::on_actionTemperature_triggered(bool checked)
 {
     if (checked) {
-        ui->plot->yAxis2->setRange(0, 50.0);
-        ui->plot->yAxis2->setLabel("Temperature C");
-        ui->plot->yAxis2->setLabelColor(Qt::red);
-        ui->plot->graph(1)->setVisible(true);
-        ui->plot->graph(2)->setVisible(false);
-        ui->plot->yAxis2->setVisible(true);
+        temperatureGraph->setVisible(true);
+        temperatureAxis->setVisible(true);
+        voltageGraph->setVisible(false);
+        voltageAxis->setVisible(false);
     } else {
-        ui->plot->graph(1)->setVisible(false);
-        ui->plot->yAxis2->setVisible(false);
+        temperatureGraph->setVisible(false);
+        temperatureAxis->setVisible(false);
+    }
+    ui->plot->replot();
+}
+
+void MainWindow::on_actionHeading_triggered(bool checked)
+{
+    if (checked) {
+        headingGraph->setVisible(true);
+        headingAxis->setVisible(true);
+    } else {
+        headingGraph->setVisible(false);
+        headingAxis->setVisible(false);
     }
     ui->plot->replot();
 }
@@ -218,7 +254,8 @@ void MainWindow::renderPlot(QPrinter *printer)
 
 void MainWindow::on_actionCompass_Declination(){
     bool ok;
-    double tmp = QInputDialog::getDouble(this, "Compass Declination", "Declination", declination, -180.0, 180.0, 2, &ok);
+    double tmp = QInputDialog::getDouble(this, "Compass Declination", "Declination", 
+                                            declination, -180.0, 180.0, 2, &ok);
     if (ok){
         declination = tmp;
         QMetaObject::invokeMethod(rootObject, "setDeclination",
@@ -255,7 +292,5 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     ConstantsDialog dialog;
 
     dialog.SetConstants(Vcal, Acal);
-
     dialog.exec();
-
   }
