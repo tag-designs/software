@@ -27,27 +27,31 @@ Rectangle {
     property bool batteryForward: true
     property double declination: 0.0
     property double heading_value : 0.0
+    property double pitch_value : 0.0
+    property double roll_value : 0.0
 
-    function setHeading() {
+    function setAttitude() {
         var h = heading_value + declination
+        var p = pitch_value
+        var r = roll_value
         if (!batteryForward){
             h = h + 180
+            p = -p
+            r = -r
         }
         h = h%360
         rotation = -h
         heading = Number(h).toLocaleString(Qt.locale(), 'f', 0)
+        pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)
+        roll = Number(r).toLocaleString(Qt.locale(), 'f', 0)
     }
 
     function setOrientation(h,p,r,d,f,g) {
-        if (!batteryForward) {
-            p = -p
-            r = -r
-        }
+        pitch_value = p
+        roll_value = r
         heading_value = h
-        setHeading()
-        
-        pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)
-        roll = Number(r).toLocaleString(Qt.locale(), 'f', 0)
+        setAttitude()
+       
         dip = Number(d).toLocaleString(Qt.locale(), 'f', 0)
         field = Number(f).toLocaleString(Qt.locale(), 'f', 0)
         gravity = Number(g).toLocaleString(Qt.locale(), 'f', 0)
@@ -64,13 +68,13 @@ Rectangle {
             batteryText.text = "backward"
             //console.info("backward")
         }
-        setHeading()
+        setAttitude()
     }
 
     function setDeclination(d) {
         declination = d
         declinationText.text = Number(d).toLocaleString(Qt.locale(), 'f', 2)
-        setHeading()
+        setAttitude()
     }
 
     //color: "#fffae7"

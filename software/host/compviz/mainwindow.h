@@ -86,6 +86,7 @@ private:
                   float& dip, float& field, float& mg); 
 
     void apply_calibration(QVector3D &mag);  
+    void updateHeadingGraph();
     
     float Vcal[3];
     float Acal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};

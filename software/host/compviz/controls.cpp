@@ -261,10 +261,12 @@ void MainWindow::on_actionCompass_Declination(){
         QMetaObject::invokeMethod(rootObject, "setDeclination",
                                     Q_ARG(QVariant, declination));
   }
+  updateHeadingGraph();
 }
 
 
 void MainWindow::on_actionBattery_Forward_triggered(bool checked) {
+    updateHeadingGraph();
     QMetaObject::invokeMethod(rootObject, "setBatteryForward",
                                     Q_ARG(QVariant, checked));
 
@@ -293,4 +295,19 @@ void MainWindow::on_actionUTC_Offset_triggered() {
 
     dialog.SetConstants(Vcal, Acal);
     dialog.exec();
+  }
+
+  void MainWindow::updateHeadingGraph(){
+    qsizetype i;
+    qsizetype len = orientation.length();
+    bool forward = ui->actionBattery_Forward->isChecked();
+    for (i = 0; i < len; i++) {
+        double h = orientation[i].yaw + declination;
+        if (!forward) {
+            h = h + 180;
+        }
+        heading[i] = std::fmod(h,360.0);
+    }
+    headingGraph->setData(orientation_time,heading,true);
+    ui->plot->replot();
   }

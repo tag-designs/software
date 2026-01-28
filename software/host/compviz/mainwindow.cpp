@@ -325,7 +325,7 @@ void MainWindow::on_pb_load_clicked()
         s.yaw = angles[2];
         orientation_time << timestamp;
         orientation << s;
-        heading << s.yaw + declination;
+        heading << std::fmod(s.yaw + declination,360.0);
       }
       
 
