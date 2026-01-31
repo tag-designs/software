@@ -8,18 +8,18 @@ include(CMakePrintHelpers)
 #
 
 if (MSVC)
-     find_path(LIBUSB_INCLUDE_DIR libusb.h PATH_SUFFIXES libusb-1.0)
-     find_library(libusb libusb-1.0 REQUIRED)
+     #find_path(LIBUSB_INCLUDE_DIR libusb.h PATH_SUFFIXES libusb-1.0)
+     #find_library(libusb libusb-1.0 REQUIRED)
 else()
      #find_package(libusb-1.0 REQUIRED)
 endif()
 
 
+#find_package(libusb-1.0 CONFIG REQUIRED)
 
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(libusb REQUIRED libusb-1.0)
-find_package(libusb-1.0)
+pkg_check_modules(LIBUSB_1_0 REQUIRED IMPORTED_TARGET libusb-1.0)
 cmake_print_variables(LIBUSB_INCLUDES)
 
 #
@@ -27,6 +27,9 @@ cmake_print_variables(LIBUSB_INCLUDES)
 #
 
 add_library(tag STATIC)
+target_link_libraries(tag PRIVATE PkgConfig::LIBUSB_1_0)
+#target_include_directories(tag PRIVATE ${LIBUSB_INCLUDE_DIRS})
+#target_link_libraries(tag PRIVATE ${LIBUSB_LIBRARIES})
 
 target_sources(tag
     PRIVATE

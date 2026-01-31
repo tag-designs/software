@@ -2,6 +2,7 @@
 #include <cfloat>
 #include "compassdata.h"
 #include <iostream>
+#include <random>
 
 
 CompassData::CompassData(QObject *parent) : QObject{parent}
@@ -351,7 +352,7 @@ int CompassData::choose_discard_magcal(void)
 			dist = pt1.distanceToPoint(pt2);
 			if (dist < mindist) {
 				mindist = dist;
-				minindex = (random() & 1) ? i : j;
+				minindex = (std::rand() & 1) ? i : j;
 			}
 		}
 	}
@@ -380,7 +381,7 @@ void CompassData::add_magcal_data(QVector3D data)
 	if (i >= MAGBUFFSIZE) {
 		i = choose_discard_magcal();
 		if (i < 0 || i >= MAGBUFFSIZE) {
-			i = random() % MAGBUFFSIZE;
+			i = std::rand() % MAGBUFFSIZE;
 		}
 	}
 	// add it to the cal buffer

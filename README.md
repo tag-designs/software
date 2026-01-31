@@ -54,6 +54,7 @@ you have my deepest sympathy
   * install libusb:x64-windows-static
   * install ms-angle:x64-windows-static
 * install nanopb binary  -- unpack in root_dir/nanopb ;   using the binary version is more reliable than using the source version
+* install pkg-config choco install pkgconfiglite -y
 
 **Note** cmake now understands vcpkg so the direct installation within vcpkg is no longer needed.   Instead there are json files in the ultralight-tags directory that cmake uses in install vcpkg files.
 
@@ -62,6 +63,10 @@ you have my deepest sympathy
 cmake -DVCPKG_TARGET_TRIPLET="x64-mingw-static" -G "MinGW Makefiles" -DCMAKE_TOOLCHAIN_FILE="d:/vcpkg/scripts/buildsystems/vcpkg.cmake" c:/Users/geobrown/ultralight-tags
 
 **Note** cmake has trouble on windows finding Qt.  The workaround is to use qt-cmake from the qt installation.
+
+```
+  cmake -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_TOOLCHAIN_FILE="c:/users/geoff/vcpkg/scripts/buildsystems/vcpkg.cmake" c:/Users/geoff/ultralight-tags
+```
 
 ```
 qt-cmake -B Build -S c:\users\geobrown\ultralight-tags --preset default -G "Visual Studio 17 2022"

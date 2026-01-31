@@ -13,6 +13,18 @@
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 
+extern "C"
+{
+#include "log.h"
+}
+
+// hook into the error logging system
+
+extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
+                            const QString &msg);
+extern int log_level;
+QTextEdit *s_textEdit = nullptr;
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -20,10 +32,16 @@ MainWindow::MainWindow(QWidget *parent)
   ui->setupUi(this);
   makeVisible(false);
 
+
+
   vt_group = new QActionGroup(this);
   vt_group->addAction(ui->actionTemperature);
   vt_group->addAction(ui->actionVoltage);
   vt_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
+
+  s_textEdit = ui->te_fileinfo;
+  qInstallMessageHandler(myMessageOutput);
+  qInfo() << "Loading QML";
 
   createGraphs();
   
@@ -39,6 +57,8 @@ MainWindow::MainWindow(QWidget *parent)
 
   connect(ui->actionCompass_Declination, &QAction::triggered, 
           this, &MainWindow::on_actionCompass_Declination);
+
+  
 }
 
 MainWindow::~MainWindow() { delete ui; }
@@ -191,7 +211,7 @@ void MainWindow::on_pb_load_clicked()
   orientation_time.clear();
   heading.clear();
   ui->te_fileinfo->clear();
-  ui->te_fileinfo->appendPlainText(fileName);
+  ui->te_fileinfo->append(fileName);
   ui->plot->graph(0)->data()->clear();
   ui->plot->graph(1)->data()->clear();
   ui->plot->graph(2)->data()->clear();
@@ -268,7 +288,7 @@ void MainWindow::on_pb_load_clicked()
         continue;
       }
       if (!line.startsWith("# Page"))
-        ui->te_fileinfo->appendPlainText(line);
+        ui->te_fileinfo->append(line);
     } else {
       break;
     }

@@ -69,7 +69,7 @@ qt_add_resources(qtcalibrate_SRCS qfi.qrc)
 
 # Tell CMake to create the qtmonitor executable
 
-add_executable(
+qt_add_executable(
   qtcalibrate MACOSX_BUNDLE WIN32 ${qtcalibrate_SRCS} ${UI_HEADERS} ${PROTO_HDRS}
 )# resources/resources.qrc)
 
@@ -88,7 +88,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtcalibrate PRIVATE tag Qt6::Core Qt6::Widgets Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
+target_link_libraries(qtcalibrate PRIVATE tag Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Qml Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
 if(WIN32)
   # why the opengle extensions ????
   #target_link_libraries(qtprogram) )

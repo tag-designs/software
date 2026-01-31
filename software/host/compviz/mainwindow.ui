@@ -33,7 +33,7 @@
     <item>
      <widget class="QTabWidget" name="tabConfig">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab_graph">
        <attribute name="title">
@@ -238,14 +238,7 @@
        </attribute>
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="0">
-         <widget class="QPlainTextEdit" name="te_fileinfo">
-          <property name="undoRedoEnabled">
-           <bool>false</bool>
-          </property>
-          <property name="textInteractionFlags">
-           <set>Qt::TextInteractionFlag::TextSelectableByKeyboard|Qt::TextInteractionFlag::TextSelectableByMouse</set>
-          </property>
-         </widget>
+         <widget class="QTextEdit" name="te_fileinfo"/>
         </item>
        </layout>
       </widget>
@@ -259,7 +252,7 @@
      <x>0</x>
      <y>0</y>
      <width>1351</width>
-     <height>24</height>
+     <height>33</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -445,8 +438,4 @@
  </customwidgets>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="VTGroup"/>
-  <buttongroup name="headingGroup"/>
- </buttongroups>
 </ui>

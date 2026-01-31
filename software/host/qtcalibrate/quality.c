@@ -1,4 +1,7 @@
 #include "magcal.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 // Discussion of what these 4 quality metrics really do
 // https://forum.pjrc.com/threads/59277-Motion-Sensor-Calibration-Tool-Parameter-Understanding

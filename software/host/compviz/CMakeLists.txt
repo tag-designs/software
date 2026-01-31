@@ -20,7 +20,7 @@ set(CMAKE_AUTOUIC ON)
 
 # Find the QtWidgets library
 
-find_package(Qt6 COMPONENTS Core Widgets Svg SvgWidgets Quick QuickWidgets PrintSupport CONFIG)
+find_package(Qt6 COMPONENTS Core Widgets Svg SvgWidgets Qml Quick QuickWidgets PrintSupport CONFIG)
 
 if (NOT Qt6_FOUND) 
     message("Qt6 not found")
@@ -47,7 +47,9 @@ set_source_files_properties(compassdata.cpp controls.cpp PROPERTIES SKIP_AUTOMOC
 qt_add_resources(compviz_SRCS qfi.qrc)
 
 
-add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
+
+qt_add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
+#qt_import_qml_plugins(compviz)
 target_include_directories(compviz PRIVATE FastFIR qcustomplot-source)
 set_target_properties(compviz
     PROPERTIES
@@ -66,7 +68,8 @@ elseif(WIN32)
 #windeployqt(compviz)
 endif()
 
-target_link_libraries(compviz PRIVATE Qt6::Widgets Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick Qt6::PrintSupport)
+
+target_link_libraries(compviz PRIVATE tag Qt6::Widgets Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick Qt6::PrintSupport)
 
 
 

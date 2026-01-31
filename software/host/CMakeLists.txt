@@ -8,7 +8,7 @@ if (apple)
 endif()
 
 if (WIN32)
-set(Qt6_DIR "d:/msys64/mingw64/qt6-static/bin")
+#set(Qt6_DIR "c:Qt/6.10.2/msvc2022_64/lib/cmake/Qt6")
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -25,11 +25,11 @@ add_subdirectory(tag-orientation)
 
 if(WIN32)
   #add_dependencies(qtmonitor BitTag PresTag)
-  install(TARGETS btviz qtmonitor qtprogram qtcalibrate
-          BUNDLE DESTINATION .
+  install(TARGETS btviz compviz qtmonitor qtprogram qtcalibrate
+          BUNDLE DESTINATION UltralightTags
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
-  install(TARGETS btviz qtmonitor qtprogram qtcalibrate
+  install(TARGETS btviz compviz qtmonitor qtprogram qtcalibrate
           BUNDLE DESTINATION UltralightTags
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()

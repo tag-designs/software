@@ -1,8 +1,7 @@
 import QtQuick
-//import QtQuick.Controls.macOS
 import QtQuick.Controls
+//import QtQuick.Controls.fusion
 import QtQuick.Layouts
-
 
 
 Rectangle {

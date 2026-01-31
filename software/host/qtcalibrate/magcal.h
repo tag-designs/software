@@ -15,6 +15,7 @@ extern "C"{
 #include <stdlib.h>
 #include <string.h>
 #include <log.h>
+#include <math.h>
 
 typedef struct {
 	float x;

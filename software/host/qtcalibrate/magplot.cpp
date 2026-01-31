@@ -9,6 +9,7 @@
 #include "magplot.h"
 #include <QPainter>
 #include <QPen>
+#include <random>
 //#include <QtMinMax>
 
 /*
