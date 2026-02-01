@@ -28,6 +28,8 @@ if(NOT Qt6_FOUND)
   message("Qt6 Not found")
   message("Cannot Build QtMonitor")
   return()
+else()
+  message(STATUS "Qt6 found in directory: ${Qt6_DIR}")
 endif()
 
 if(WIN32)

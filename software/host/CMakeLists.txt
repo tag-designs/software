@@ -8,7 +8,7 @@ if (apple)
 endif()
 
 if (WIN32)
-#set(Qt6_DIR "c:Qt/6.10.2/msvc2022_64/lib/cmake/Qt6")
+set(Qt6_DIR "c:/Qt6_static/lib/cmake/Qt6")
 endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)

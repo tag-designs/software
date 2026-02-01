@@ -203,4 +203,27 @@ libusb
  protobuf
 
  ./configure CFLAGS="-arch x86_64 -arch arm64" CXXFLAGS="-arch x86_64 -arch arm64"
- 
+
+
+ # Notes on Building Static qt for windows
+
+ - Download sources
+ - use ""x64 Native Tools Command Prompt for VS 2022" for building !!  This is important because otherwise the powershell window will build a 32bit binary
+ - 
+ - ..\Qt\6.10.2\Src\configure.bat -prefix C:\QT-build\ -static -static-runtime -release -nomake examples -nomake tests --skip qtquick3dphysics --skip qtopcua
+ - cmake --build .
+ - cmake --install . --prefix c:\Qt6-static
+
+
+ Fucking Windows 11 opens 32 bit developer powershell by default!  Have to find the 64 bit version in visual studio tools-commandline
+
+
+ Open the Start Menu and search for the "x64 Native Tools Command Prompt" for your installed version of Visual Studio (e.g., "x64 Native Tools Command Prompt for VS 2022"). This ensures your environment variables are correctly set for a 64-bit build.
+
+ Building for windows 2/1/26
+
+- $env:Qt6_DIR = "C:\Qt6-static\lib\cmake\Qt6\"  
+- cmake -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DCMAKE_TOOLCHAIN_FILE="c:/users/geoff/vcpkg/scripts/buildsystems/vcpkg.cmake" -D Qt6_DIR="c:/Qt6-static/lib/cmake/Qt6" c:/Users/geoff/ultralight-tags
+
+- cmake --Build . --config Release  
+- cmake --install . --prefix install-directory-path
