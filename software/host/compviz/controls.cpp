@@ -242,11 +242,12 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     qsizetype len = orientation.length();
     bool forward = ui->actionBattery_Forward->isChecked();
     for (i = 0; i < len; i++) {
-        double h = orientation[i].yaw + declination;
+        double h = orientation[i].yaw - declination;
         if (!forward) {
             h = h + 180;
         }
         heading[i] = std::fmod(h,360.0);
+        //qInfo() << heading[i];
     }
     headingGraph->setData(orientation_time,heading,true);
     ui->plot->replot();
