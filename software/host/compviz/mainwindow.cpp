@@ -39,9 +39,11 @@ MainWindow::MainWindow(QWidget *parent)
   vt_group->addAction(ui->actionVoltage);
   vt_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
 
+  connect(ui->plot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showPlotContextMenu(QPoint)));
+  connect(ui->quickWidget, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showCompassContextMenu(QPoint)));  
   s_textEdit = ui->te_fileinfo;
   qInstallMessageHandler(myMessageOutput);
-  qInfo() << "Loading QML";
+  //qInfo() << "Loading QML";
 
   createGraphs();
   
@@ -85,7 +87,7 @@ void MainWindow::createGraphs(){
 
   temperatureGraph->setVisible(false);
   voltageGraph->setVisible(false);
-  headingGraph->setVisible(false);
+  headingGraph->setVisible(true);
 
   // set colors -- make a constant
 
@@ -131,7 +133,7 @@ void MainWindow::createGraphs(){
   headingAxis->setLabel("Heading");
   headingAxis->setLabelColor(Qt::magenta);
   //voltageAxis->setTickLabelColor(Qt::green);
-  headingAxis->setVisible(false);
+  headingAxis->setVisible(true);
   headingAxis->setRange(0,360);
 
   // format time on x axis
@@ -145,16 +147,10 @@ void MainWindow::createGraphs(){
   // set mouse cursor
 
   ui->plot->setCursor(QCursor(Qt::CrossCursor));
-  textItem = new QCPItemText(ui->plot); // mouse text
+  //textItem = new QCPItemText(ui->plot); // mouse text
 
   // set path
   path = QDir::homePath();
-
-  // cursors
-  left = new QCPItemLine(ui->plot);
-  left->setVisible(false);
-  right = new QCPItemLine(ui->plot);
-  right->setVisible(false);
 
 }
 
@@ -346,33 +342,7 @@ void MainWindow::on_pb_load_clicked()
         orientation_time << timestamp;
         orientation << s;
         heading << std::fmod(s.yaw + declination,360.0);
-      }
-      
-
-      // Customize UI for the Compasstypes
-
-      // Set range to 500 hPA
-
-  /*
-
-      if (tagtype == BITCompass|| tagtype == BITTAGNG) {
-        ui->activityRange->setMaximum(105);
-        ui->activityRange->setMaximum(100);
-        //ui->activityRange->setEnabled(true);
-        ui->gb_GraphRange->setVisible(true);
-
-        ui->gb_filterparams->setVisible(true);
-        //ui->graphMax->setEnabled(false);
-        //ui->graphMin->setEnabled(false);
-        ui->frameGraphMin->setVisible(false);
-        ui->frameGraphMax->setVisible(false);
-        //ui->label->setVisible(true);
-        ui->cb_activity->setText("Activity");
-        ui->tabConfig->setTabEnabled(1,true);
-       ui->plot->yAxis->setLabel("Activity Percent");
-      }
-       */
-     
+      }    
   }
 
   file.close();
@@ -387,6 +357,7 @@ void MainWindow::on_pb_load_clicked()
     // set range
 
     ui->plot->xAxis->setRange(accel_time[0], accel_time[size - 1]);
+    ui->plot->xAxis->scaleRange(1.1, ui->plot->xAxis->range().center()); // 10% margin
   }
 
 
@@ -396,79 +367,10 @@ void MainWindow::on_pb_load_clicked()
   voltageGraph->setData(voltage_time,voltage,true);
   activityGraph->setData(accel_time,accel,true);
   headingGraph->setData(orientation_time,heading,true);
-  /*
-
-  if (temperature_time.size())
-  {
-    QVector<QCPGraphData> temperatureData(temperature_time.size());
-    for (i = 0; i < temperature_time.size(); i++)
-    {
-      temperatureData[i].key = temperature_time[i];
-      temperatureData[i].value = temperature[i];
-    }
-    temperatureGraph->data()->set(temperatureData);
-  }
-
-  // graph voltage data
-  if (voltage_time.size())
-  {
-    QVector<QCPGraphData> voltageData(voltage_time.size());
-    for (i = 0; i < voltage_time.size(); i++)
-    {
-      voltageData[i].key = voltage_time[i];
-      voltageData[i].value = voltage[i];
-    }
-    voltageGraph->data()->set(voltageData);
-  }*/
-  on_sb_cutoff_valueChanged(ui->sb_cutoff->value());
-  //on_cb_filter_low_pass_toggled(ui->cb_filter_low_pass->isChecked());
 }
 
 
 
-/*
- *  Cursors  -- handle clicks and spinboxes
- */
-
-void MainWindow::plot_doubleclick(QMouseEvent *event)
-{
-  QPoint point = event->pos();
-  double x = ui->plot->xAxis->pixelToCoord(point.x());
-  if (left && right)
-  {
-    if ((x < right->start->coords().x()) &&
-        (event->button() & Qt::LeftButton))
-    {
-    
-    }
-
-    if ((x > left->start->coords().x()) &&
-        (event->button() & Qt::RightButton))
-    {
-    
-    }
-  }
-}
-
-void MainWindow::on_pb_cursor_zoom_clicked()
-{
-  if (left && right)
-  {
-    ui->plot->xAxis->setRange(left->start->coords().x(),
-                              right->start->coords().x());
-    ui->plot->replot();
-  }
-}
-
-void MainWindow::on_cb_cursors_visible_clicked(bool checked)
-{
-  if (left && right)
-  {
-    left->setVisible(checked);
-    right->setVisible(checked);
-    ui->plot->replot();
-  }
-}
 
 
 

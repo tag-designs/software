@@ -38,7 +38,7 @@ private slots:
     void on_pb_load_clicked();
     void on_actionAbout_triggered();
     void on_actionLoad_triggered(){ on_pb_load_clicked();};
-    void on_actionReset_triggered(){};
+    void on_actionReset_triggered();
     void on_actionPrint_triggered();
     void on_actionHeading_triggered(bool checked = false);
     void on_actionVoltage_triggered(bool checked = false);
@@ -49,6 +49,11 @@ private slots:
     void on_actionCalibration_Constants_triggered();
     //void on_actionEnable_Filter_triggered(bool checked = false);
 
+    // context menus
+
+    void showPlotContextMenu(QPoint pos);
+    void showCompassContextMenu(QPoint pos);
+
 
     // helper
 
@@ -56,20 +61,9 @@ private slots:
 
     void on_cb_activity_clicked(bool checked);
 
-    // data filters
-
-    void on_cb_filter_low_pass_toggled(bool checked);
-    void on_sb_cutoff_valueChanged(double freq);
-
     // export
 
     void renderPlot(QPrinter*);
-
-    // cursors
-
-    void on_pb_cursor_zoom_clicked();
-    void on_cb_cursors_visible_clicked(bool checked);
-    void plot_doubleclick(QMouseEvent *event);
 
     // mouse move
 
@@ -112,8 +106,6 @@ private:
     // data 
     QVector<double> accel_time;
     QVector<double> accel;
-    QVector<double> accel_time_filtered;
-    QVector<double> accel_filtered;
     QVector<double> voltage_time;
     QVector<double> temperature_time;
     QVector<double> voltage;
@@ -127,7 +119,7 @@ private:
     QCPItemLine *left;
     QCPItemLine *right;
 
-    QCPItemText *textItem;
+    //QCPItemText *textItem;
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
 
     QCPGraph *activityGraph;

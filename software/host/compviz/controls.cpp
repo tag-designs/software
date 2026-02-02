@@ -78,9 +78,14 @@ void MainWindow::onMouseMove(QMouseEvent *event)
 
   // write mouse over string
 
-  textItem->setText(s);
-  textItem->position->setCoords(QPointF(x, y + 5));
-  textItem->setFont(QFont(font().family(), 12));
+  //textItem->setText(s);
+  //textItem->position->setCoords(QPointF(x, y + 5));
+  //textItem
+  //textItem->setFont(QFont(font().family(), 12));
+
+  //QTextCursor cursor = cursorForPosition(event->pos());
+  QPoint globalPos = mapToGlobal(event->pos());
+  QToolTip::showText(globalPos,out.readAll());
 
   customPlot->replot(); //QCustomPlot::rpQueuedReplot);
 }
@@ -109,35 +114,6 @@ void MainWindow::on_actionAbout_triggered()
   QMessageBox msgBox;
   msgBox.setText("Compass CompassVisualization Tool\nWritten by Geoffrey Brown\n2026");
   msgBox.exec();
-}
-
-void MainWindow::on_sb_cutoff_valueChanged(double freq)
-{
-  const int filter_delay = 50;
-  if (accel.size() > filter_delay)
-  {
-
-    // warning -- switched to slow fir because fast fir 
-    // introduced unpredictable delay
-    
-    QVector<double> filterData(accel);
-    QJSlowFIRFilter *fastfir;
-
-    //create FastFIR filter
-    fastfir = new QJSlowFIRFilter(this);
-    fastfir->setKernel(QJFilterDesign::LowPassHanning(ui->sb_cutoff->value(), 1.0, 2*filter_delay+1));
-    fastfir->Update(filterData);
-    delete fastfir;
-
-    accel_time_filtered.resize(filterData.size() - filter_delay);
-    accel_filtered.resize(filterData.size() - filter_delay);
-
-    for (int i = 0; i < accel_time_filtered.size(); i++) {
-      accel_time_filtered[i] = accel_time[i];
-      accel_filtered[i] = filterData[i+filter_delay];
-    }
-    on_cb_filter_low_pass_toggled(ui->cb_filter_low_pass->isChecked());
-  }
 }
 
 void MainWindow::on_actionVoltage_triggered(bool checked)
@@ -178,42 +154,6 @@ void MainWindow::on_actionHeading_triggered(bool checked)
         headingAxis->setVisible(false);
     }
     ui->plot->replot();
-}
-
-/*
-void MainWindow::on_actionEnable_Filter_triggered(bool checked)
-{
-    on_cb_filter_low_pass_toggled(checked);
-}
-    */
-
-void MainWindow::on_cb_filter_low_pass_toggled(bool checked)
-{
-  ui->plot->graph(0)->setBrush(QBrush(QColor(0, 0, 0, 0)));
-  if (!accel_time.size())
-    return;
-  if (checked) /* filter */
-  {
-      QVector<QCPGraphData> accelData(accel_time_filtered.size());
-      for (int i = 0; i <accel_time_filtered.size(); i++)
-      {
-        accelData[i].value = accel_filtered[i];
-        accelData[i].key = accel_time_filtered[i];
-      }
-      //ui->plot->yAxis->setRange(0, 25);
-      ui->plot->graph(0)->data()->set(accelData);
-  }
-  else
-  {
-    QVector<QCPGraphData> accelData(accel_time.size());
-    for (int i = 0; i < accel_time.size(); i++)
-    {
-      accelData[i].value = accel[i];
-      accelData[i].key = accel_time[i];
-    }
-    ui->plot->graph(0)->data()->set(accelData);
-  }
-  ui->plot->replot();
 }
 
 // Print current graph
@@ -310,4 +250,44 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     }
     headingGraph->setData(orientation_time,heading,true);
     ui->plot->replot();
+  }
+
+  void MainWindow::on_actionReset_triggered(){
+    // Rescale both axes to fit all data
+
+    ui->plot->xAxis->rescale(true);
+    ui->plot->xAxis->scaleRange(1.1, ui->plot->xAxis->range().center()); // 10% margin
+    ui->plot->replot();
+  }
+
+  // context menus
+
+  void MainWindow::showPlotContextMenu(QPoint pos){
+    QMenu menu(this);
+    // Add actions
+    menu.addAction(ui->actionReset);
+    menu.addSeparator();
+    menu.addAction(ui->actionActivity);
+    menu.addAction(ui->actionHeading);
+    menu.addAction(ui->actionVoltage);
+    menu.addAction(ui->actionTemperature);
+    menu.addSeparator();
+    menu.addAction(ui->actionUTC_Offset);
+    menu.addSeparator();
+    menu.addAction(ui->actionLoad);
+    menu.addAction(ui->actionPrint);
+    // Display the menu at the global position
+    menu.exec(ui->plot->mapToGlobal(pos));
+
+  }
+
+  void MainWindow::showCompassContextMenu(QPoint pos) {
+     QMenu menu(this);
+    // Add actions
+    menu.addAction(ui->actionBattery_Forward);
+    menu.addAction(ui->actionCompass_Declination);
+    menu.addSeparator();
+    menu.addAction(ui->actionCalibration_Constants);
+    // Display the menu at the global position
+    menu.exec(ui->quickWidget->mapToGlobal(pos));
   }

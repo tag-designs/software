@@ -20,7 +20,7 @@
    <string>CompassTag Data Visualization</string>
   </property>
   <property name="toolTip">
-   <string>Export activity data in current graph as CSV</string>
+   <string/>
   </property>
   <widget class="QWidget" name="centralWidget">
    <property name="sizePolicy">
@@ -33,7 +33,7 @@
     <item>
      <widget class="QTabWidget" name="tabConfig">
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab_graph">
        <attribute name="title">
@@ -66,6 +66,9 @@
                   <height>250</height>
                  </size>
                 </property>
+                <property name="contextMenuPolicy">
+                 <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+                </property>
                </widget>
               </item>
              </layout>
@@ -79,6 +82,9 @@
                <height>400</height>
               </size>
              </property>
+             <property name="contextMenuPolicy">
+              <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+             </property>
              <property name="resizeMode">
               <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
              </property>
@@ -86,149 +92,6 @@
            </item>
           </layout>
          </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="tab_config">
-       <attribute name="title">
-        <string>Configuration</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
-        <item>
-         <widget class="QWidget" name="widget_4" native="true">
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <item>
-            <spacer name="horizontalSpacer">
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox">
-             <property name="title">
-              <string>Display</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_9">
-              <item>
-               <widget class="QGroupBox" name="gb_filterparams">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="toolTip">
-                 <string>Data filter parameters</string>
-                </property>
-                <property name="title">
-                 <string>Activity Filter Params</string>
-                </property>
-                <layout class="QVBoxLayout" name="verticalLayout_10">
-                 <item>
-                  <widget class="QCheckBox" name="cb_filter_low_pass">
-                   <property name="toolTip">
-                    <string>Enable Low Pass Filter (Henning Window, 101 tap FIR)</string>
-                   </property>
-                   <property name="text">
-                    <string>Low Pass Filter</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QWidget" name="widget_3" native="true">
-                   <layout class="QHBoxLayout" name="horizontalLayout_4">
-                    <item>
-                     <widget class="QLabel" name="label_8">
-                      <property name="text">
-                       <string>Cutoff Frequency</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QDoubleSpinBox" name="sb_cutoff">
-                      <property name="minimumSize">
-                       <size>
-                        <width>0</width>
-                        <height>20</height>
-                       </size>
-                      </property>
-                      <property name="toolTip">
-                       <string>Set Cutoff Frequency  ( 0.01... 0.1)</string>
-                      </property>
-                      <property name="decimals">
-                       <number>3</number>
-                      </property>
-                      <property name="minimum">
-                       <double>0.010000000000000</double>
-                      </property>
-                      <property name="maximum">
-                       <double>0.100000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>0.005000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>0.050000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                </layout>
-               </widget>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_7">
-                <property name="orientation">
-                 <enum>Qt::Orientation::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_2">
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer">
-          <property name="orientation">
-           <enum>Qt::Orientation::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
         </item>
        </layout>
       </widget>
@@ -252,7 +115,7 @@
      <x>0</x>
      <y>0</y>
      <width>1351</width>
-     <height>33</height>
+     <height>24</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -279,15 +142,12 @@
     <addaction name="separator"/>
     <addaction name="actionReset"/>
     <addaction name="actionCalibration_Constants"/>
-    <addaction name="separator"/>
-    <addaction name="actionEnable_Filter"/>
    </widget>
    <widget class="QMenu" name="menuConfiguration">
     <property name="title">
      <string>Configuration</string>
     </property>
     <addaction name="actionUTC_Offset"/>
-    <addaction name="actionFilter_Cutoff"/>
     <addaction name="separator"/>
     <addaction name="actionCompass_Declination"/>
     <addaction name="actionBattery_Forward"/>
@@ -344,14 +204,6 @@
     <string>Zoom Full</string>
    </property>
   </action>
-  <action name="actionEnable_Filter">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Filter Enable</string>
-   </property>
-  </action>
   <action name="actionActivity">
    <property name="checkable">
     <bool>true</bool>
@@ -382,11 +234,6 @@
     <string>Temperature</string>
    </property>
   </action>
-  <action name="actionFilter_Cutoff">
-   <property name="text">
-    <string>Filter Cutoff</string>
-   </property>
-  </action>
   <action name="actionCompass_Declination">
    <property name="text">
     <string>Compass Declination</string>
@@ -415,6 +262,9 @@
   </action>
   <action name="actionHeading">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="text">

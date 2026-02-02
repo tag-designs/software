@@ -35,7 +35,6 @@ set(compviz_SRCS
   compassdata.cpp 
   constants_dialog.cpp
   controls.cpp
-  FastFIR/FastFIR/qjfastfir.cpp
   main.cpp
   mainwindow.cpp
   qcustomplot-source/qcustomplot.cpp
