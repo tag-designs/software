@@ -30,7 +30,7 @@ Rectangle {
     property double roll_value : 0.0
 
     function setAttitude() {
-        var h = heading_value - declination
+        var h = heading_value + declination
         var p = pitch_value
         var r = roll_value
         if (!batteryForward){
