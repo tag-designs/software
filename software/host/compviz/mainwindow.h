@@ -40,6 +40,7 @@ private slots:
     void on_actionLoad_triggered(){ on_pb_load_clicked();};
     void on_actionReset_triggered();
     void on_actionPrint_triggered();
+    void on_actionActivity_triggered(bool checked = false);
     void on_actionHeading_triggered(bool checked = false);
     void on_actionVoltage_triggered(bool checked = false);
     void on_actionTemperature_triggered(bool checked = false);

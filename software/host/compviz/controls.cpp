@@ -144,6 +144,18 @@ void MainWindow::on_actionTemperature_triggered(bool checked)
     ui->plot->replot();
 }
 
+void MainWindow::on_actionActivity_triggered(bool checked){
+ if (checked) {
+        activityGraph->setVisible(true);
+        activityAxis->setVisible(true);
+    } else {
+        activityGraph->setVisible(false);
+        activityAxis->setVisible(false);
+    }
+    ui->plot->replot();
+
+}
+
 void MainWindow::on_actionHeading_triggered(bool checked)
 {
     if (checked) {
