@@ -7,6 +7,7 @@
 #include <QProgressDialog>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QTSql>
 #include <fstream>
 #include "tag.pb.h"
 #include "tagclass.h"
@@ -19,7 +20,7 @@ class Download : public QObject
     Q_OBJECT
 public:
     explicit Download(QObject *parent = 0): QObject(parent) {};
-    void start(Tag *, std::fstream *);
+    void start(Tag *, std::fstream *, QSqlDatabase *);
     int  total(void) { return cnt;};
 
 signals:
@@ -35,10 +36,12 @@ private slots:
 
 private:
     void downloadError(const QString &);
+    void run();
     int max_cnt;
     int cnt;
     Config config;
     std::fstream *fs;
+    QSqlDatabase *db;
     QMessageBox msgBox;
     Ack ack;
     QElapsedTimer timer;

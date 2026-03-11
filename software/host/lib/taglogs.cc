@@ -29,13 +29,14 @@ static std::string fmthex(uint32_t num)
   return str;
 }
 
+
+
 bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
-  Ack ack;
-  if (tag.ReadCalibration(ack,-1)
-        && ack.has_calibration_constants() 
-        && ack.calibration_constants().has_magnetometer())
+  CalibrationConstants constants;
+  if (tag.ReadCalibration(constants,-1)
+        && constants.has_magnetometer())
    {
-      const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
+      const CalibrationConstants_MagConstants mag = constants.magnetometer();
       fs << "# Calibration B: " << mag.b() << std::endl;
       fs << "# Calibration V: " << mag.v0() << " " << mag.v1() << " " << mag.v2() << std::endl;
       fs << "# Calibration A[0]: " << mag.a00() << " " << mag.a01() << " " << mag.a02() << std::endl;

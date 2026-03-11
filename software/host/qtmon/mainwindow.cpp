@@ -14,6 +14,7 @@
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
 #include <QPromise>
+#include <QtSql>
 
 #include <ctime>
 #include <fstream>
@@ -31,7 +32,8 @@
 
 //#include "taglogs.h"
 #include "configtab.h"
-#include "download.h"
+//#include "download.h"
+#include "txtdownload.h"
 
 
 
@@ -164,12 +166,15 @@ bool MainWindow::Attach()
     external_flash_size=info.extflashsz();
     ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
     ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
+    tag_type = info.tag_type();
 
     // connect log and config tabs
 
     ui.configtab->Attach(tag);
     ui.configtab->SetConfig(config);
     ui.errorTab->Attach(tag);
+
+     
 
     // start the StateUpdate timer
     
@@ -387,26 +392,54 @@ void MainWindow::on_eraseButton_clicked()
 
 void MainWindow::on_tagLogSaveButton_clicked()
 {
-  Download dl;
+  //Download dl;
 
   QFileDialog fd;
-  fd.setNameFilter(tr("Binary (*.txt)"));
-  fd.setFileMode(QFileDialog::AnyFile);
-  fd.setDirectory(QDir::homePath());
-  fd.setDefaultSuffix("txt");
-  QString fileName = fd.getSaveFileName();
+  QString filter;
+  QString initial_path;
+  
+  //if (tag_type == COMPASSTAG) {
+  //  filter = tr("Binary (*.db3)");
+  //  initial_path = QDir::homePath() + "/untitled.db3";
+  //} else {
+    filter = tr("Binary (*.txt)");
+    initial_path = QDir::homePath() + "/untitled.txt";
+  //}
 
-  if (fileName.isNull()) {
+
+  QString fileName = fd.getSaveFileName(this, tr("Save File"), 
+                                        initial_path, filter,
+                                        nullptr, 
+                                        QFileDialog::DontUseNativeDialog);
+
+  if (fileName.isEmpty()) {
+      qDebug() << "null filename";
       return;
   }
+  
 
-  std::fstream fs;
-  fs.open(fileName.toStdString(), std::fstream::out);
-  if (!fs.is_open())
-  {
-    qDebug() << "couldn't open %s" << fileName;
-    return;
+  //std::fstream fs;
+  //QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+
+  /*
+  if (tag_type == COMPASSTAG){
+    QFile::remove(fileName);
+    db.setDatabaseName(fileName);
+    if (db.open()){
+      qDebug() << "Database connected successfully!";
+    } else {
+      qDebug() << "couldn't open database file " << fileName << " error " << db.lastError().text();;
+      return;
+    }
+  } else {
+    fs.open(fileName.toStdString(), std::fstream::out);
+    if (!fs.is_open())
+    {
+      qDebug() << "couldn't open %s" << fileName;
+      return;
+    }
   }
+    */
 
   qDebug() <<  "connecting progess dialog";
 
@@ -414,18 +447,24 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
 
-  connect(&dl,&Download::progressRangeChanged, &pd, &QProgressDialog::setRange);
-  connect(&dl,&Download::progressValueChanged, &pd, &QProgressDialog::setValue);
-  connect(&dl,&Download::downloadFinished, &pd, &QProgressDialog::cancel);
-  connect(&pd,&QProgressDialog::canceled,&dl,&Download::cancel);
-  //connect(&dl,&Download::progressRangeChanged, ui.progressBar, &QProgressBar::setRange);
-  //connect(&dl,&Download::progressValueChanged, ui.progressBar, &QProgressBar::setValue);
+  TxtDownload dl(tag,fileName);
+
+  connect(&dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
+  connect(&dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
+  connect(&dl,&AbstractDownload::downloadFinished, &pd, &QProgressDialog::cancel);
+  connect(&pd,&QProgressDialog::canceled,&dl,&AbstractDownload::cancel);
 
   qDebug() <<  "starting download";
 
-  dl.start(&tag,&fs);
-
-  pd.exec();
+  //if (tag_type == COMPASSTAG) {
+  //  dl.start(&tag,nullptr,&db);
+   // pd.exec();
+   // db.close();
+  //} else {
+  //  dl.start(&tag,&fs,nullptr);
+    dl.exec();
+    pd.exec();
+  //}
   return;
 }
 

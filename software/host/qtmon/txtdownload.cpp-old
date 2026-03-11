@@ -6,10 +6,12 @@
 #include <QDeadlineTimer>
 #include <QFileDialog>
 #include <QTimer>
+#include <QTSql>
 
 #include "download.h"
 #include <taglogs.h>
 #include <tagclass.h>
+#include "sqllog.h"
 
 extern "C"
 {
@@ -18,10 +20,15 @@ extern "C"
 
 using namespace std::chrono_literals;
 
-void Download::start(Tag *t, std::fstream *file_stream)
+void Download::start(Tag *t, std::fstream *file_stream, QSqlDatabase *database)
 {
     tag = t;
     fs = file_stream;
+    db = database;
+    run();
+}
+
+void Download::run() {
     if (!tag) {
         downloadError(QString("Tag undefined"));
         emit downloadFinished();
@@ -47,7 +54,11 @@ void Download::start(Tag *t, std::fstream *file_stream)
 
     // dump the file header
 
-    dumpTagLogHeader(*fs, *tag, tag_log_output_txt);
+    if (fs) 
+        dumpTagLogHeader(*fs, *tag, tag_log_output_txt);
+    if (db){
+        dumpTagSQLHeader(db, *tag);
+    }
 
     // create the progress dialog
 
@@ -90,7 +101,10 @@ void Download::worker(){
                 emit downloadFinished();
                 return;
             }
-            len = dumpTagLog(*fs, ack, config, tag_log_output_txt);
+            if (fs)
+                len = dumpTagLog(*fs, ack, config, tag_log_output_txt);
+            if (db)
+                qInfo() << "dumpTagLog to db";
             if (len == 0) {
                 qInfo("no data");
                 emit downloadFinished();

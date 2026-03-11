@@ -23,7 +23,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Find the QtWidgets library
 
-find_package(Qt6 COMPONENTS Core Widgets CONFIG)
+find_package(Qt6 COMPONENTS Core Widgets Sql CONFIG)
 if(NOT Qt6_FOUND)
   message("Qt6 Not found")
   message("Cannot Build QtMonitor")
@@ -44,16 +44,20 @@ endif()
 # Populate a CMake variable with the sources
 
 set(qtmonitor_SRCS
+    abstractDownload.cpp
     adxl362config.cpp
     bittaglog.cpp
     configtab.cpp
-    download.cpp
+    #download.cpp
     hibernate.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp
     pbenumgroup.cpp
-    schedule.cpp)
+    schedule.cpp
+    sqllog.cpp
+    txtdownload.cpp
+    )
 
 qt6_wrap_ui(UI_HEADERS configtab.ui 
                        hibernate.ui 
@@ -84,7 +88,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets)
+target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets Qt6::Sql)
 
 if(WIN32)
   # why the opengle extensions ????

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QPromise>
+#include <QSqlDatabase>
 #include "tagclass.h"
 #include "schedule.h"
 #include "ui_mainwindow.h"
@@ -67,12 +68,14 @@ private slots:
 
 private:
   Tag tag;
+  TagType tag_type;
   Ui::MainWindow ui;
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
   const float version = 2.0;
   int external_flash_size = 0;
   int sector_size = 4096;
+  QSqlDatabase db  = QSqlDatabase::addDatabase("QSQLITE");
 };
 
 #endif // MAINWINDOW_H

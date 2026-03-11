@@ -56,7 +56,7 @@ public:
 
   // Calibration Constants
   
-  bool ReadCalibration(Ack &constants, uint32_t index);
+  bool ReadCalibration(CalibrationConstants &constants, uint32_t index);
   bool WriteCalibration(CalibrationConstants &constants);
 
 
