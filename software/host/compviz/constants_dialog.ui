@@ -23,7 +23,7 @@
       <item>
        <widget class="QGroupBox" name="groupBox_5">
         <property name="title">
-         <string>Magnetic Offset</string>
+         <string>Magnetic Offset (hard iron)</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_10">
          <item>
@@ -77,7 +77,7 @@
       <item>
        <widget class="QGroupBox" name="groupBox_6">
         <property name="title">
-         <string>Magnetic Mapping</string>
+         <string>Magnetic Mapping (soft iron)</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_12">
          <item>

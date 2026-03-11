@@ -33,7 +33,9 @@
 //#include "taglogs.h"
 #include "configtab.h"
 //#include "download.h"
+#include "abstractdownload.h"
 #include "txtdownload.h"
+#include "sqlitedownload.h"
 
 
 
@@ -398,13 +400,13 @@ void MainWindow::on_tagLogSaveButton_clicked()
   QString filter;
   QString initial_path;
   
-  //if (tag_type == COMPASSTAG) {
-  //  filter = tr("Binary (*.db3)");
-  //  initial_path = QDir::homePath() + "/untitled.db3";
-  //} else {
+  if (tag_type == COMPASSTAG) {
+    filter = tr("Binary (*.db3)");
+    initial_path = QDir::homePath() + "/untitled.db3";
+  } else {
     filter = tr("Binary (*.txt)");
     initial_path = QDir::homePath() + "/untitled.txt";
-  //}
+  }
 
 
   QString fileName = fd.getSaveFileName(this, tr("Save File"), 
@@ -441,18 +443,29 @@ void MainWindow::on_tagLogSaveButton_clicked()
   }
     */
 
+ 
+
   qDebug() <<  "connecting progess dialog";
 
   // Create Progress Dialog
 
   QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
 
-  TxtDownload dl(tag,fileName);
+  //AbstractDownload& dl;
+  AbstractDownload *dl;
 
-  connect(&dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
-  connect(&dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
-  connect(&dl,&AbstractDownload::downloadFinished, &pd, &QProgressDialog::cancel);
-  connect(&pd,&QProgressDialog::canceled,&dl,&AbstractDownload::cancel);
+  if (tag_type == COMPASSTAG) {
+    dl = new SqliteDownload(tag,fileName);
+  } else {
+    dl = new TxtDownload(tag,fileName);
+  }
+
+  //TxtDownload dl(tag,fileName);
+
+  connect(dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
+  connect(dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
+  connect(dl,&AbstractDownload::downloadFinished, &pd, &QProgressDialog::cancel);
+  connect(&pd,&QProgressDialog::canceled,dl,&AbstractDownload::cancel);
 
   qDebug() <<  "starting download";
 
@@ -462,9 +475,10 @@ void MainWindow::on_tagLogSaveButton_clicked()
    // db.close();
   //} else {
   //  dl.start(&tag,&fs,nullptr);
-    dl.exec();
+    dl->exec();
     pd.exec();
   //}
+  delete(dl);
   return;
 }
 

@@ -16,12 +16,12 @@
 void MainWindow::apply_calibration(QVector3D &mag){
 	float x, y, z;
 
-	x = mag[0] - Vcal[0];
-	y = mag[1] - Vcal[1];
-	z = mag[2] - Vcal[2];
-	mag[0] = (x * Acal[0][0] + y * Acal[0][1] + z * Acal[0][2]);
-	mag[1] = (x * Acal[1][0] + y * Acal[1][1] + z * Acal[1][2]);
-	mag[2] = (x * Acal[2][0] + y * Acal[2][1] + z * Acal[2][2]);
+	x = mag[0] - Hcal[0];
+	y = mag[1] - Hcal[1];
+	z = mag[2] - Hcal[2];
+	mag[0] = (x * Scal[0][0] + y * Scal[0][1] + z * Scal[0][2]);
+	mag[1] = (x * Scal[1][0] + y * Scal[1][1] + z * Scal[1][2]);
+	mag[2] = (x * Scal[2][0] + y * Scal[2][1] + z * Scal[2][2]);
 }
 
 

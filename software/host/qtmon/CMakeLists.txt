@@ -55,7 +55,8 @@ set(qtmonitor_SRCS
     mainwindow.cpp
     pbenumgroup.cpp
     schedule.cpp
-    sqllog.cpp
+    #sqllog.cpp
+    sqlitedownload.cpp
     txtdownload.cpp
     )
 

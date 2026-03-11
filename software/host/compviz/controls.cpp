@@ -6,7 +6,7 @@
 #include <QTextStream>
 #include <qcustomplot.h>
 #include <iostream>
-#include <FastFIR/FastFIR/qjfastfir.h>
+
 #include <float.h>
 
 #include "mainwindow.h"
@@ -245,7 +245,7 @@ void MainWindow::on_actionUTC_Offset_triggered() {
   void MainWindow::on_actionCalibration_Constants_triggered(){
     ConstantsDialog dialog;
 
-    dialog.SetConstants(Vcal, Acal);
+    dialog.SetConstants(Hcal, Scal);
     dialog.exec();
   }
 

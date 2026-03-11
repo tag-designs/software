@@ -39,6 +39,7 @@ set(compviz_SRCS
   mainwindow.cpp
   qcustomplot-source/qcustomplot.cpp
   tickerdatetimeoffset.cpp
+  txtload.cpp
   )
 
 set_source_files_properties(compassdata.cpp controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)

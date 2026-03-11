@@ -82,9 +82,11 @@ private:
 
     void apply_calibration(QVector3D &mag);  
     void updateHeadingGraph();
+
+    // Hard (Hcal) and Soft (Scal) Iron calibration constants
     
-    float Vcal[3];
-    float Acal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
+    float Hcal[3];
+    float Scal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
 
     float declination;
     int utc_offset = 0;
