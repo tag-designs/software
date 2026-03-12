@@ -206,6 +206,7 @@ int data_logAck(int index, Ack *ack)
         data->data[cnt].ay = databuf.data[i].sensors[j].ay * 0.976f;
         data->data[cnt].az = databuf.data[i].sensors[j].az * 0.976f;
         // get magnetometer data
+        // 0.04f = 0.01f * 4 because we discarded to lower bits
         data->data[cnt].mx = databuf.data[i].sensors[j].mx * 0.04f;
         data->data[cnt].my = databuf.data[i].sensors[j].my * 0.04f;
         data->data[cnt].mz = databuf.data[i].sensors[j].mz * 0.04f;

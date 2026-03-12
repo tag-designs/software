@@ -85,7 +85,7 @@ private:
 
     // Hard (Hcal) and Soft (Scal) Iron calibration constants
     
-    float Hcal[3];
+    float Hcal[3] = {0.0,0.0,0.0};
     float Scal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
 
     float declination;

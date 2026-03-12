@@ -69,6 +69,13 @@ bool SqliteDownload::dumpHeader(void) {
         }
 
         tag.GetTagInfo(info);
+
+        query.bindValue(":fieldname","uuid");
+        query.bindValue(":value",QString::fromStdString(info.uuid()));
+        if (!query.exec()){
+            qDebug() << "insert failed";
+            return false;
+        }
         std::string info_json;
         std::string config_json;
         std::string constants_json;
@@ -243,7 +250,7 @@ int SqliteDownload::dumpTagLog(const CompassTagLog &log){
         query.bindValue(":ay", entry.ay());
         query.bindValue(":az", entry.az());
         query.bindValue(":mx", entry.mx());
-        query.bindValue(":my", entry.mx());
+        query.bindValue(":my", entry.my());
         query.bindValue(":mz", entry.mz());
         query.exec();
     }

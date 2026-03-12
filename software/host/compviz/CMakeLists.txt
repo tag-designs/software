@@ -4,8 +4,6 @@ cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-include_directories(FastFIR)
-
 message("Configure compviz")
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
@@ -20,7 +18,8 @@ set(CMAKE_AUTOUIC ON)
 
 # Find the QtWidgets library
 
-find_package(Qt6 COMPONENTS Core Widgets Svg SvgWidgets Qml Quick QuickWidgets PrintSupport CONFIG)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql Svg SvgWidgets Qml Quick 
+                            QuickWidgets PrintSupport)
 
 if (NOT Qt6_FOUND) 
     message("Qt6 not found")
@@ -39,7 +38,7 @@ set(compviz_SRCS
   mainwindow.cpp
   qcustomplot-source/qcustomplot.cpp
   tickerdatetimeoffset.cpp
-  txtload.cpp
+  sqliteload.cpp
   )
 
 set_source_files_properties(compassdata.cpp controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)
@@ -69,7 +68,11 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE tag Qt6::Widgets Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick Qt6::PrintSupport)
+target_link_libraries(compviz PRIVATE tag Qt6::Widgets Qt6::Sql 
+                               Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
+                               Qt6::Quick Qt6::PrintSupport)
+
+#target_include_directories(compviz PRIVATE ${Qt6Sql_INCLUDE_DIRS})
 
 
 

@@ -1,15 +1,12 @@
 #include <QtCore>
+#include <QtSql>
+#include <QtSql/QSqlDatabase>
 #include <QtGui>
 #include <QVector>
-#include <QPrinter>
 #include <QDebug>
-#include <QTextStream>
-#include <QtSql>
-#include <QSqlDatabase>
 #include <qcustomplot.h>
-#include <iostream>
+#include <stdexcept>
 #include <float.h>
-#include 
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -20,10 +17,11 @@ void MainWindow::on_pb_load_clicked()
     QSqlDatabase db =  QSqlDatabase::addDatabase("QSQLITE");
     QSqlQuery query(db);
 
-    int i;
+    // load database
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open Data"), path,
                                                     tr("Data Files (*.db3)"));
+    
     if (fileName.isNull())
         return;
 
@@ -31,43 +29,155 @@ void MainWindow::on_pb_load_clicked()
     if (db.open()){
         qDebug() << "Database connected successfully";
     } else {
-        qDebug() << "Couldn't open database file " << p <<  " error: " << db.lastError().text();
+        qDebug() << "Couldn't open database file " << fileName <<  " error: " << db.lastError().text();
         return;
     }
 
+    // clear data vectors
+
+    voltage.clear();
+    voltage_time.clear();
+    temperature_time.clear();
+    temperature.clear();
+    accel_time.clear();
+    accel.clear();
+    orientation.clear();
+    orientation_time.clear();
+    heading.clear();
+
+    // clear reset UI
+
+    ui->plot->graph(0)->data()->clear();
+    ui->plot->graph(1)->data()->clear();
+    ui->plot->graph(2)->data()->clear();
+    ui->te_fileinfo->clear();
+    ui->te_fileinfo->append(fileName);
+
     // Load information table
 
-    query.exec("SELECT (fieldname, value) FROM info");
+    query.exec("SELECT fieldname, value FROM Info");
+    qDebug() << "loading info: " << db.lastError().text();
    
     while (query.next()){
         QString fieldname = query.value(0).toString();
         QString value = query.value(1).toString();
 
-        switch (fieldname) {
-            case: "tagtype":
-                break;
-            case: "info":
-                break;
-            case: "config":
-                break;
-            case: "calibration":
-                break;
+        qDebug() << fieldname;
+
+        // check tag type
+
+        if (fieldname == "tagtype") {
+                if (value != "COMPASSTAG"){
+                    msgBox.setText("unexpected tag type: " + value);
+                    msgBox.exec();
+                    return;
+                }
+            }
+
+        // load calibration data
+
+        if (fieldname == "calibration"){
+           QJsonObject constants = QJsonDocument::fromJson(value.toUtf8()).object();
+           if (constants.contains("magnetometer")){  
+                Hcal[0] = constants["magnetometer"].toObject()["v0"].toDouble();
+                Hcal[1] = constants["magnetometer"].toObject()["v1"].toDouble();
+                Hcal[2] = constants["magnetometer"].toObject()["v2"].toDouble();
+                Scal[0][0] = constants["magnetometer"].toObject()["a00"].toDouble();
+                Scal[0][1] = constants["magnetometer"].toObject()["a01"].toDouble();
+                Scal[0][2] = constants["magnetometer"].toObject()["a02"].toDouble();
+                Scal[1][0] = constants["magnetometer"].toObject()["a10"].toDouble();
+                Scal[1][1] = constants["magnetometer"].toObject()["a11"].toDouble();
+                Scal[1][2] = constants["magnetometer"].toObject()["a12"].toDouble();
+                Scal[2][0] = constants["magnetometer"].toObject()["a20"].toDouble();
+                Scal[2][1] = constants["magnetometer"].toObject()["a21"].toDouble();
+                Scal[2][2] = constants["magnetometer"].toObject()["a22"].toDouble();
+           } else {
+                msgBox.setText("Warning: no calibration constants");
+                msgBox.exec();
+           }
+
         }
     }
 
+    // load Core Temperature
 
+    query.exec("SELECT Epoch, Temperature FROM CoreTemperature");
+    while (query.next()){
+        qint64 timestamp = query.value(0).toLongLong();
+        double value = query.value(1).toDouble();
 
-    // Load the config string and check tag type
+        temperature_time << timestamp;
+        temperature << value;
+    }
 
-    // Load the calibration constants
+    // load voltage
 
-    // Load temperature
+    query.exec("SELECT Epoch, Voltage FROM Voltage");
+    while (query.next()){
+        qint64 timestamp = query.value(0).toLongLong();
+        double value = query.value(1).toDouble();
 
-    // Load voltage
+        voltage_time << timestamp;
+        voltage << value;
+    }
 
-    // Load Activity
+    // load activty
 
-    // Load Compass Data
+    query.exec("SELECT Epoch, Activity FROM Activity");
+    while (query.next()){
+        qint64 timestamp = query.value(0).toLongLong();
+        double value = query.value(1).toDouble();
 
+        accel_time << timestamp;
+        accel << value;
+    }
+
+    // load compass data
+
+    query.exec("SELECT Epoch, ax, ay, az, mx, my, mz FROM Compass");
+    while (query.next()){
+        sensor s;
+        qint64 timestamp = query.value(0).toLongLong();
+        
+        // load accelerometer and magnetometer raw data
+        s.accel.setX(query.value(1).toDouble());
+        s.accel.setY(query.value(2).toDouble());
+        s.accel.setZ(query.value(3).toDouble());
+        s.mag.setX(query.value(4).toDouble());
+        s.mag.setY(query.value(5).toDouble());
+        s.mag.setZ(query.value(6).toDouble());
+        
+        // compute orientation quaternion
+        eCompass(s.mag,s.accel,s.q,s.dip,s.field,s.mg);
+        
+        // save orientation pitch, roll, yaw
+        QVector3D angles = s.q.toEulerAngles();
+    
+	    if (angles[2] < 0.0) angles[2] += 360.0;
+        s.pitch = angles[0];
+        s.roll = angles[1];
+        s.yaw = angles[2];
+        orientation_time << timestamp;
+        // save the sensor data and computed orientation
+        orientation << s;
+        // store the heading for graph
+        heading << std::fmod(s.yaw + declination,360.0);
+    }
+
+    if (accel_time.size())
+    {
+        // reset cursors
+        double size = accel_time.size();
+
+        // set range
+
+        ui->plot->xAxis->setRange(accel_time[0], accel_time[size - 1]);
+        ui->plot->xAxis->scaleRange(1.1, ui->plot->xAxis->range().center()); // 10% margin
+    }
+
+    temperatureGraph->setData(temperature_time,temperature,true);
+    voltageGraph->setData(voltage_time,voltage,true);
+    activityGraph->setData(accel_time,accel,true);
+    headingGraph->setData(orientation_time,heading,true);
 
 }

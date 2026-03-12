@@ -13,7 +13,7 @@ extern "C"
 //  http://stackoverflow.com/questions/22485208/redirect-qdebug-to-qtextedit
 
 extern QTextEdit *s_textEdit;
-int log_level = LOG_ERROR;
+int log_level = LOG_DEBUG;
 
 static void logOutput(int ll, const QMessageLogContext &context,
                const QString &msg)

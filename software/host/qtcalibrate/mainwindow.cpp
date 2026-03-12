@@ -419,16 +419,17 @@ void MainWindow::on_saveButton_clicked(){
 }
 
 void MainWindow::on_loadButton_clicked(){
+   CalibrationConstants constants;
    Ack ack;
    float B;
    float V[3];
    float A[3][3];
 
-   if (tag.ReadCalibration(ack,-1)
-        && ack.has_calibration_constants() 
-        && ack.calibration_constants().has_magnetometer())
+   if (tag.ReadCalibration(constants,-1)
+       // && ack.has_calibration_constants() 
+        && constants.has_magnetometer())
    {
-      const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
+      const CalibrationConstants_MagConstants mag = constants.magnetometer();
       B = mag.b();
       V[0] = mag.v0();
       V[1] = mag.v1();
@@ -455,7 +456,7 @@ void MainWindow::on_loadButton_clicked(){
       ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
       ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
 
-      qInfo() << "Read timestamp " << ack.calibration_constants().timestamp();
+      qInfo() << "Read timestamp " << constants.timestamp();
      
    } else {
       qInfo() << "Read calibration failed";

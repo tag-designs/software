@@ -44,6 +44,8 @@ bool sensorSample(RawSensorData *data){
 
   magInit(MAG_SAMPLE_SINGLE_MODE);
   if (magSample(true,buf)) {
+
+      // keep only 16 bits
       data->mx = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>16;
       data->my = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>16;
       data->mz = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>16;
@@ -81,6 +83,7 @@ bool sensorCalibrationSample(SensorData *sensors)
    
     if (magSample(false,buf))
     {
+      // keep all 18 bits
       sensors->has_mag = true;
       x = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
       y = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
