@@ -104,27 +104,48 @@ bool SqliteDownload::dumpHeader(void) {
             qDebug() << "insert failed";
             return false;
         }
-        
+
+        // Build calibration table
+
+        createTableSQL = "CREATE TABLE Calibration ("
+                                "Epoch INTEGER,"
+                                "Magnetometer STRING);";
+                                
+         if (!query.exec(createTableSQL)) {
+            qDebug() << "Failed to create calibration table:" << query.lastError().text();
+            return false;
+        }
 
         if (tag.ReadCalibration(constants,-1))
         {
-            if (!MessageToJsonString(constants,&constants_json,options).ok())
+            
+        }
+
+        query.prepare("INSERT INTO Calibration (Epoch, Magnetometer) "
+                      "VALUES (:epoch, :value) ");
+
+
+        for (int i = 0; tag.ReadCalibration(constants,i); i++){
+            constants_json = "";
+            if (!MessageToJsonString(constants.magnetometer(),&constants_json,options).ok())
             {
                 qDebug() << "Couldn't create json string for tag calibration constants";
+                return false;
+            } 
+            query.bindValue(":epoch",constants.timestamp());
+            query.bindValue(":value", QString::fromStdString(constants_json));
+            if (!query.exec()){
+                qDebug() << "Calibration constants insert failed";
                 return false;
             }
         }
 
-        query.bindValue(":fieldname", "calibration");
-        query.bindValue(":value",QString::fromStdString(constants_json));
-        if (!query.exec()){
-            qDebug() << "insert failed";
-            return false;
-        }
+        // create states table
+
         
-       createTableSQL = "CREATE TABLE states ("
+        createTableSQL = "CREATE TABLE states ("
                                 "Epoch INTEGER,"
-                                "State STRING,"
+                                "Calibration STRING,"
                                 "EntryCode STRING,"
                                 "Temperature FLOAT,"
                                 "Voltage FLOAT,"

@@ -73,31 +73,35 @@ void MainWindow::on_pb_load_clicked()
                     return;
                 }
             }
-
-        // load calibration data
-
-        if (fieldname == "calibration"){
-           QJsonObject constants = QJsonDocument::fromJson(value.toUtf8()).object();
-           if (constants.contains("magnetometer")){  
-                Hcal[0] = constants["magnetometer"].toObject()["v0"].toDouble();
-                Hcal[1] = constants["magnetometer"].toObject()["v1"].toDouble();
-                Hcal[2] = constants["magnetometer"].toObject()["v2"].toDouble();
-                Scal[0][0] = constants["magnetometer"].toObject()["a00"].toDouble();
-                Scal[0][1] = constants["magnetometer"].toObject()["a01"].toDouble();
-                Scal[0][2] = constants["magnetometer"].toObject()["a02"].toDouble();
-                Scal[1][0] = constants["magnetometer"].toObject()["a10"].toDouble();
-                Scal[1][1] = constants["magnetometer"].toObject()["a11"].toDouble();
-                Scal[1][2] = constants["magnetometer"].toObject()["a12"].toDouble();
-                Scal[2][0] = constants["magnetometer"].toObject()["a20"].toDouble();
-                Scal[2][1] = constants["magnetometer"].toObject()["a21"].toDouble();
-                Scal[2][2] = constants["magnetometer"].toObject()["a22"].toDouble();
-           } else {
-                msgBox.setText("Warning: no calibration constants");
-                msgBox.exec();
-           }
-
-        }
     }
+
+    // Load calibration data -- use last entry in table
+
+    if (!query.exec("SELECT Epoch, Magnetometer FROM Calibration ORDER BY Epoch DESC LIMIT 1")){
+        msgBox.setText("Warning: no calibration constants:" + db.lastError().text());
+        msgBox.exec();
+    }
+
+    if (query.next()){
+        QJsonObject constants = QJsonDocument::fromJson(query.value("Magnetometer").toString().toUtf8()).object();
+        Hcal[0]    = constants["v0"].toDouble();
+        Hcal[1]    = constants["v1"].toDouble();
+        Hcal[2]    = constants["v2"].toDouble();
+        Scal[0][0] = constants["a00"].toDouble();
+        Scal[0][1] = constants["a01"].toDouble();
+        Scal[0][2] = constants["a02"].toDouble();
+        Scal[1][0] = constants["a10"].toDouble();
+        Scal[1][1] = constants["a11"].toDouble();
+        Scal[1][2] = constants["a12"].toDouble();
+        Scal[2][0] = constants["a20"].toDouble();
+        Scal[2][1] = constants["a21"].toDouble();
+        Scal[2][2] = constants["a22"].toDouble();
+        qDebug() << "calibration timestamp:" << query.value("Epoch").toLongLong();
+    } else {
+        msgBox.setText("Warning: no calibration constants:" + db.lastError().text());
+        msgBox.exec();
+    }
+    
 
     // load Core Temperature
 
@@ -179,5 +183,4 @@ void MainWindow::on_pb_load_clicked()
     voltageGraph->setData(voltage_time,voltage,true);
     activityGraph->setData(accel_time,accel,true);
     headingGraph->setData(orientation_time,heading,true);
-
 }
