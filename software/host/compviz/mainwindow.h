@@ -42,6 +42,7 @@ private slots:
     void on_actionPrint_triggered();
     void on_actionActivity_triggered(bool checked = false);
     void on_actionHeading_triggered(bool checked = false);
+    void on_actionAcceleration_triggered(bool checked = false);
     void on_actionVoltage_triggered(bool checked = false);
     void on_actionTemperature_triggered(bool checked = false);
     void on_actionCompass_Declination();
@@ -88,7 +89,7 @@ private:
     float Hcal[3] = {0.0,0.0,0.0};
     float Scal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
 
-    float declination;
+    float declination = 0.0;
     int utc_offset = 0;
 
     // gui state
@@ -105,10 +106,11 @@ private:
     QQuickItem *rootObject;
 
     QActionGroup* vt_group;
+    QActionGroup* aa_group;
 
     // data 
-    QVector<double> accel_time;
-    QVector<double> accel;
+    QVector<double> activity_time;
+    QVector<double> activity;
     QVector<double> voltage_time;
     QVector<double> temperature_time;
     QVector<double> voltage;
@@ -116,6 +118,7 @@ private:
     QVector<sensor> orientation;
     QVector<double> heading;
     QVector<double> orientation_time;
+    QVector<double> accel;  // use orientation_time
 
     // custom plot
    
@@ -129,11 +132,13 @@ private:
     QCPGraph *temperatureGraph;
     QCPGraph *voltageGraph;
     QCPGraph *headingGraph;
+    QCPGraph *accelGraph;
 
     QCPAxis *activityAxis;
     QCPAxis *temperatureAxis;
     QCPAxis *voltageAxis;
     QCPAxis *headingAxis;
+    QCPAxis *accelAxis;
 
 };
 

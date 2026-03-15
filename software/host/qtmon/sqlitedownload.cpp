@@ -109,7 +109,7 @@ bool SqliteDownload::dumpHeader(void) {
 
         createTableSQL = "CREATE TABLE Calibration ("
                                 "Epoch INTEGER,"
-                                "Magnetometer STRING);";
+                                "Constants STRING);";
                                 
          if (!query.exec(createTableSQL)) {
             qDebug() << "Failed to create calibration table:" << query.lastError().text();
@@ -121,13 +121,13 @@ bool SqliteDownload::dumpHeader(void) {
             
         }
 
-        query.prepare("INSERT INTO Calibration (Epoch, Magnetometer) "
+        query.prepare("INSERT INTO Calibration (Epoch, Constants) "
                       "VALUES (:epoch, :value) ");
 
 
         for (int i = 0; tag.ReadCalibration(constants,i); i++){
             constants_json = "";
-            if (!MessageToJsonString(constants.magnetometer(),&constants_json,options).ok())
+            if (!MessageToJsonString(constants,&constants_json,options).ok())
             {
                 qDebug() << "Couldn't create json string for tag calibration constants";
                 return false;

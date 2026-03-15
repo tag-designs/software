@@ -39,7 +39,8 @@ void MainWindow::on_pb_load_clicked()
     voltage_time.clear();
     temperature_time.clear();
     temperature.clear();
-    accel_time.clear();
+    activity_time.clear();
+    activity.clear();
     accel.clear();
     orientation.clear();
     orientation_time.clear();
@@ -47,9 +48,11 @@ void MainWindow::on_pb_load_clicked()
 
     // clear reset UI
 
-    ui->plot->graph(0)->data()->clear();
-    ui->plot->graph(1)->data()->clear();
-    ui->plot->graph(2)->data()->clear();
+    activityGraph->data()->clear();
+    temperatureGraph->data()->clear();
+    voltageGraph->data()->clear();
+    headingGraph->data()->clear();
+    accelGraph->data()->clear();
     ui->te_fileinfo->clear();
     ui->te_fileinfo->append(fileName);
 
@@ -77,13 +80,14 @@ void MainWindow::on_pb_load_clicked()
 
     // Load calibration data -- use last entry in table
 
-    if (!query.exec("SELECT Epoch, Magnetometer FROM Calibration ORDER BY Epoch DESC LIMIT 1")){
+    if (!query.exec("SELECT Epoch, Constants FROM Calibration ORDER BY Epoch DESC LIMIT 1")){
         msgBox.setText("Warning: no calibration constants:" + db.lastError().text());
         msgBox.exec();
     }
 
     if (query.next()){
-        QJsonObject constants = QJsonDocument::fromJson(query.value("Magnetometer").toString().toUtf8()).object();
+        QJsonObject constants = QJsonDocument::fromJson(query.value("Constants").toString().toUtf8()).object();
+        constants = constants["magnetometer"].toObject();
         Hcal[0]    = constants["v0"].toDouble();
         Hcal[1]    = constants["v1"].toDouble();
         Hcal[2]    = constants["v2"].toDouble();
@@ -132,8 +136,8 @@ void MainWindow::on_pb_load_clicked()
         qint64 timestamp = query.value(0).toLongLong();
         double value = query.value(1).toDouble();
 
-        accel_time << timestamp;
-        accel << value;
+        activity_time << timestamp;
+        activity << value;
     }
 
     // load compass data
@@ -164,23 +168,28 @@ void MainWindow::on_pb_load_clicked()
         orientation_time << timestamp;
         // save the sensor data and computed orientation
         orientation << s;
+        accel << s.mg;  // save total acceleration
         // store the heading for graph
         heading << std::fmod(s.yaw + declination,360.0);
+        //qDebug() << s.yaw << std::fmod(s.yaw + declination,360.0) << declination;
     }
 
-    if (accel_time.size())
+    if (activity_time.size())
     {
         // reset cursors
-        double size = accel_time.size();
+        double size = activity_time.size();
 
         // set range
 
-        ui->plot->xAxis->setRange(accel_time[0], accel_time[size - 1]);
+        ui->plot->xAxis->setRange(activity_time[0], activity_time[size - 1]);
         ui->plot->xAxis->scaleRange(1.1, ui->plot->xAxis->range().center()); // 10% margin
     }
 
     temperatureGraph->setData(temperature_time,temperature,true);
     voltageGraph->setData(voltage_time,voltage,true);
-    activityGraph->setData(accel_time,accel,true);
+    activityGraph->setData(activity_time,activity,true);
     headingGraph->setData(orientation_time,heading,true);
+    accelGraph->setData(orientation_time, accel,true);
+    //accelGraph->setVisible(false);
+    ui->plot->replot();
 }

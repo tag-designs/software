@@ -38,6 +38,11 @@ MainWindow::MainWindow(QWidget *parent)
   vt_group->addAction(ui->actionVoltage);
   vt_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
 
+  aa_group = new QActionGroup(this);
+  aa_group->addAction(ui->actionActivity);
+  aa_group->addAction(ui->actionAcceleration);
+  aa_group->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
+
   connect(ui->plot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showPlotContextMenu(QPoint)));
   connect(ui->quickWidget, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showCompassContextMenu(QPoint)));  
   s_textEdit = ui->te_fileinfo;
@@ -72,10 +77,11 @@ void MainWindow::createGraphs(){
 
   QCPAxisRect *axisRect = ui->plot->axisRect(0);
 
-  activityAxis = ui->plot->yAxis;
+  headingAxis = ui->plot->yAxis;
   temperatureAxis = ui->plot->yAxis2;
   voltageAxis = axisRect->addAxis(QCPAxis::atRight);
-  headingAxis = axisRect->addAxis(QCPAxis::atLeft);
+  activityAxis = axisRect->addAxis(QCPAxis::atLeft);
+  accelAxis = axisRect->addAxis(QCPAxis::atLeft);
 
   // create graphs
 
@@ -83,17 +89,20 @@ void MainWindow::createGraphs(){
   temperatureGraph =  ui->plot->addGraph(ui->plot->xAxis, temperatureAxis);
   voltageGraph = ui->plot->addGraph(ui->plot->xAxis, voltageAxis);
   headingGraph = ui->plot->addGraph(ui->plot->xAxis, headingAxis);
+  accelGraph = ui->plot->addGraph(ui->plot->xAxis, accelAxis);
 
   temperatureGraph->setVisible(false);
   voltageGraph->setVisible(false);
   headingGraph->setVisible(true);
+  accelGraph->setVisible(false);
 
   // set colors -- make a constant
 
-  activityGraph->setPen(QPen(Qt::blue));
+  activityGraph->setPen(QPen(Qt::darkBlue));
   temperatureGraph->setPen(QPen(Qt::red));
   voltageGraph->setPen(QPen(Qt::darkGreen));
   headingGraph->setPen(QPen(Qt::magenta));
+  accelGraph->setPen(QPen(Qt::blue));
 
   // enable horizontal drag
 
@@ -111,6 +120,11 @@ void MainWindow::createGraphs(){
   activityAxis->setLabel("Activity Percent");
   activityAxis->setLabelColor(Qt::darkBlue);
   activityAxis->setRange(0,100.0);
+
+  accelAxis->setLabel("Acceleration mg");
+  accelAxis->setLabelColor(Qt::blue);
+  accelAxis->setRange(800.0,1200.0);
+  accelAxis->setVisible(false);
   //activityAxis->setTickLabelColor(Qt::darkBlue);
 
   temperatureAxis->setLabel("Temperature C");

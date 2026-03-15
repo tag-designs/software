@@ -94,8 +94,8 @@ void MainWindow::onMouseMove(QMouseEvent *event)
 
 void MainWindow::on_cb_activity_clicked(bool checked)
 {
-  ui->plot->graph(0)->setVisible(checked);
-  ui->plot->yAxis->setVisible(checked);
+  activityGraph->setVisible(checked);
+  activityAxis->setVisible(checked);
   ui->plot->replot();
 }
 
@@ -103,7 +103,7 @@ void MainWindow::on_cb_activity_clicked(bool checked)
 
 void MainWindow::on_pb_redraw_clicked()
 {
-  ui->plot->xAxis->setRange(accel_time[0], accel_time[accel_time.size() - 1]);
+  ui->plot->xAxis->setRange(activity_time[0], activity_time[activity_time.size() - 1]);
   ui->plot->replot();
 }
 
@@ -148,9 +148,25 @@ void MainWindow::on_actionActivity_triggered(bool checked){
  if (checked) {
         activityGraph->setVisible(true);
         activityAxis->setVisible(true);
+        accelGraph->setVisible(false);
+        accelAxis->setVisible(false);
     } else {
         activityGraph->setVisible(false);
         activityAxis->setVisible(false);
+    }
+    ui->plot->replot();
+
+}
+
+void MainWindow::on_actionAcceleration_triggered(bool checked){
+ if (checked) {
+        accelGraph->setVisible(true);
+        accelAxis->setVisible(true);
+        activityGraph->setVisible(false);
+        activityAxis->setVisible(false);
+    } else {
+        accelGraph->setVisible(false);
+        accelAxis->setVisible(false);
     }
     ui->plot->replot();
 
@@ -281,7 +297,11 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     menu.addAction(ui->actionReset);
     menu.addSeparator();
     menu.addAction(ui->actionActivity);
+    menu.addAction(ui->actionAcceleration);
+    menu.addSeparator();
     menu.addAction(ui->actionHeading);
+ 
+    menu.addSeparator();
     menu.addAction(ui->actionVoltage);
     menu.addAction(ui->actionTemperature);
     menu.addSeparator();
