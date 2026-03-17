@@ -307,6 +307,9 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     menu.addSeparator();
     menu.addAction(ui->actionUTC_Offset);
     menu.addSeparator();
+    menu.addAction(ui->actionReset);
+    menu.addAction(ui->actionZoom_to_Cursors);
+    menu.addSeparator();
     menu.addAction(ui->actionLoad);
     menu.addAction(ui->actionPrint);
     // Display the menu at the global position
@@ -323,4 +326,46 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     menu.addAction(ui->actionCalibration_Constants);
     // Display the menu at the global position
     menu.exec(ui->quickWidget->mapToGlobal(pos));
+  }
+
+  void MainWindow::plot_doubleclick(QMouseEvent *event){
+    QPoint point = event->pos();
+    double x = ui->plot->xAxis->pixelToCoord(event->pos().x());
+    double y = ui->plot->yAxis->pixelToCoord(event->pos().y());
+    qDebug() << "Double Clicked at:" << x << y;
+    if (left && right)
+    {
+      if ((x <= right->start->coords().x()) &&
+          (event->button() & Qt::LeftButton) &&
+          !(event->modifiers() & Qt::ShiftModifier))
+      {
+        left->start->setCoords(x, QCPRange::minRange);
+        left->end->setCoords(x, QCPRange::maxRange);
+        //ui->te_left->setDateTime(
+         //   QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+         qDebug() << "move left cursor: " << x;
+      }
+
+      if ((x >= left->start->coords().x()) &&
+          (event->button() & Qt::LeftButton) &&
+          (event->modifiers() & Qt::ShiftModifier))
+      {
+        right->start->setCoords(x, QCPRange::minRange);
+        right->end->setCoords(x, QCPRange::maxRange);
+        qDebug() << "move right cursor: " << x;
+        //ui->te_right->setDateTime(
+            //QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+      }
+    }
+    ui->plot->replot();
+  }
+
+  void MainWindow::on_actionZoom_to_Cursors_triggered(){
+    if (left && right)
+    {
+      ui->plot->xAxis->setRange(left->start->coords().x(),
+                                right->start->coords().x());
+      ui->plot->replot();
+
+    }
   }

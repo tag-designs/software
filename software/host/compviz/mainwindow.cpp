@@ -54,6 +54,14 @@ MainWindow::MainWindow(QWidget *parent)
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   rootObject = ui->quickWidget->rootObject();
 
+  // cursors
+
+   // cursors
+  left = new QCPItemLine(ui->plot);
+  left->setVisible(true);
+  right = new QCPItemLine(ui->plot);
+  right->setVisible(true);
+
   // connect slots
 
   connect(ui->plot, SIGNAL(mouseMove(QMouseEvent *)),
@@ -168,6 +176,8 @@ void MainWindow::createGraphs(){
 void MainWindow::makeVisible(bool visible)
 {
 }
+
+
 
 
 

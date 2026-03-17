@@ -143,6 +143,8 @@
     <addaction name="actionTemperature"/>
     <addaction name="separator"/>
     <addaction name="actionReset"/>
+    <addaction name="actionZoom_to_Cursors"/>
+    <addaction name="separator"/>
     <addaction name="actionCalibration_Constants"/>
    </widget>
    <widget class="QMenu" name="menuConfiguration">
@@ -279,6 +281,11 @@
    </property>
    <property name="text">
     <string>Acceleration</string>
+   </property>
+  </action>
+  <action name="actionZoom_to_Cursors">
+   <property name="text">
+    <string>Zoom to Cursors</string>
    </property>
   </action>
  </widget>

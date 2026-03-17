@@ -191,5 +191,10 @@ void MainWindow::on_pb_load_clicked()
     headingGraph->setData(orientation_time,heading,true);
     accelGraph->setData(orientation_time, accel,true);
     //accelGraph->setVisible(false);
+
+    left->start->setCoords(ui->plot->xAxis->range().lower, QCPRange::minRange);
+    left->end->setCoords(ui->plot->xAxis->range().lower, QCPRange::maxRange);
+    right->start->setCoords(ui->plot->xAxis->range().upper, QCPRange::minRange);
+    right->end->setCoords(ui->plot->xAxis->range().upper, QCPRange::maxRange);
     ui->plot->replot();
 }

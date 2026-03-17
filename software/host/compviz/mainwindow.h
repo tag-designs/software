@@ -49,6 +49,7 @@ private slots:
     void on_actionBattery_Forward_triggered(bool checked = false);
     void on_actionUTC_Offset_triggered();
     void on_actionCalibration_Constants_triggered();
+    void on_actionZoom_to_Cursors_triggered();
     //void on_actionEnable_Filter_triggered(bool checked = false);
 
     // context menus
@@ -57,7 +58,9 @@ private slots:
     void showCompassContextMenu(QPoint pos);
 
 
-    // helper
+    // cursors
+
+    void plot_doubleclick(QMouseEvent *event);
 
     // toggle visibility
 
