@@ -15,11 +15,12 @@
 * See the License for the specific language governing permissions and     *
 * limitations under the License.                                          *
 **************************************************************************/
-
+#include "ch.h"
 #include "hal.h"
 #include "stm32f0xx_ll_crs.h"
 #include "usbcfg.h"
 #include "app.h"
+#include "chprintf.h"
 
 #define RCC_APB1ENR_CRSN ((uint32_t)0x08000000U)
 
@@ -41,6 +42,13 @@ const uint16_t *ADC_VREF_CAL = ((uint16_t *)0x1FFFF7BA);
 volatile uint32_t vlipo100;
 static uint32_t vref100;
 
+static const SerialConfig sdcfg = {
+  .speed = 115200, // e.g., 115200 baud
+  .cr1 = 0,
+  .cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN,
+  .cr3 = 0
+};
+
 // Charger LED thread
 
 static THD_WORKING_AREA(waThread1, 512);
@@ -48,11 +56,16 @@ static THD_FUNCTION(Thread1, arg)
 {
 
   (void)arg;
+  int i = 0;
 
   //  chRegSetThreadName("charger");
   while (true)
   {
     chThdSleepMilliseconds(100);
+    i++;
+    if ((i%16) == 0) {
+      //chprintf((BaseSequentialStream*)&SD1, "Ping %d\r\n", i);
+    }
 
     // don't read ADC if external power connected
 #if 0
@@ -100,6 +113,7 @@ int main(void)
 {
 
   halInit();
+  sdStart(&SD1, &sdcfg);
 
   // Remap the USB pins PA11,PA12 onto the default PA9,PA10
 
