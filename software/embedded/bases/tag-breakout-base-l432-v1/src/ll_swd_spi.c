@@ -39,157 +39,189 @@ static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGST
 uint32_t CoreID = 0;
 
 static bool isOutput = true;
-static int  spiSize = 8;
-
-static void SW_ShiftReset(void);
-
-static inline void delay(int i)
-{
-  (void) i;
-  /*
-  for (; i > 0; i--)
-  {
-    asm("mov r0,r0");
-  }*/
-}
-
-static inline void toAnalog(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 3 << (pin * 2));
-}
-static inline void toAlternate(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  ;
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 2 << (pin * 2));
-}
-
-static inline void toInput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 0);
-}
-
-static inline void toOutput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 1 << (pin * 2));
-}
-
+static unsigned int  spiSize = 0;
 
 static void _SetSWPinsIdle(void)
 {
+  EPRINTF("_SetSWPinsIdle\r\n");
   palClearLine(LINE_TGT_SWCLK);
   palClearLine(LINE_TGT_SWDIO);
 
   isOutput = true;
-  spiSize = 8;
+  spiSize = 0;
 
   toOutput(LINE_TGT_SWDIO);
-  toOutput(LINE_TGT_SWCLK);
+  //toOutput(LINE_TGT_SWCLK);
 }
 
 static void _ResetDebugPins(void)
 {
-  toAnalog(LINE_TGT_SWDIO); //was input
-  toAnalog(LINE_TGT_SWCLK); //was output
+   //EPRINTF("_ResetDebugPins\r\n");
+  palClearLine(LINE_TGT_SWCLK);
+  palClearLine(LINE_TGT_SWDIO);
+  palClearLine(LINE_TGT_SWDIO_IN);
+  toInput(LINE_TGT_SWCLK);
+  toInput(LINE_TGT_SWDIO);
+  toInput(LINE_TGT_SWDIO_IN);
+
+  rccResetSPI1();
+  rccDisableSPI1();
+  //toAnalog(LINE_TGT_SWDIO); //was input
+ // toAnalog(LINE_TGT_SWCLK); //was output
 }
+
+
+static void spiInit(void)
+{
+  EPRINTF("spiInit\r\n");
+
+  uint32_t br = 6<<3;
+  palClearLine(LINE_TGT_SWCLK);
+  palClearLine(LINE_TGT_SWDIO);
+  palClearLine(LINE_TGT_SWDIO_IN);
+
+  rccEnableSPI1(true);
+  rccResetSPI1(); 
+
+  toAlternate(LINE_TGT_SWCLK);
+  toAlternate(LINE_TGT_SWDIO);
+  toAlternate(LINE_TGT_SWDIO_IN);
+
+  SPI1->CR1  = 0;
+  SPI1->CR1  = SPI_CR1_LSBFIRST | br | SPI_CR1_MSTR;
+  SPI1->CR2  = SPI_CR2_SSOE | (7<<8);
+  SPI1->CR1 |= SPI_CR1_SPE;
+  //spiSize = 8;
+  //isOutput = true;
+  EPRINTF("CR1 %x CR2 %x\n\r",SPI1->CR1, SPI1->CR2);
+}
+
+static void spiSwitch(bool output, unsigned int size)
+{
+
+  if (output == isOutput && size == spiSize)
+    return;
+
+  if ((size < 4) || (size > 16))
+    return;
+
+  unsigned int ds = (size - 1) << 8;
+  unsigned int frxth = size > 8 ? 0 : 1 << 12;
+
+  SPI1->CR1 &= ~SPI_CR1_SPE;
+
+  // fifo threshold, 8-bit data size
+
+  SPI1->CR2 = frxth | SPI_CR2_SSOE | ds;
+
+  // master, enable spi device
+
+  
+  if (output) { 
+    toAlternate(LINE_TGT_SWDIO);
+    //SPI1->CR1 &= ~SPI_CR1_CPHA;
+  } else {
+   toAnalog(LINE_TGT_SWDIO);
+    //SPI1->CR1 |= SPI_CR1_CPHA;
+  }
+
+  SPI1->CR1 |= SPI_CR1_SPE;
+  spiSize = size;
+  isOutput = output;
+ // EPRINTF("CR1 %x CR2 %x\n\r",SPI1->CR1, SPI1->CR2);
+}
+
+static void spiDisable(void)
+{
+  SPI1->CR1 = 0;
+  SPI1->CR2 = 0;
+  spiSize = 0;
+  _SetSWPinsIdle();
+}
+
 
 static inline void _SetSWDIOasOutput(uint32_t size)
 {
-  spiSize =  size;
-  if (!isOutput){
-    toOutput(LINE_TGT_SWDIO);
-    isOutput = true;
-  }
+  spiSwitch(true,size);
 }
 static inline void _SetSWDIOasInput(uint32_t size)
 {
-  spiSize = size;
-  if (isOutput){
-    toInput(LINE_TGT_SWDIO);
-    isOutput = false;
-  }
-}
-
-static inline uint32_t SWDIO_IN(void)
-{
-  uint8_t b;
-
-  b = palReadLine(LINE_TGT_SWDIO);
-  palSetLine(LINE_TGT_SWCLK);
-  //delay(DELCNT);
-  palClearLine(LINE_TGT_SWCLK);
-
-  return b;
+  spiSwitch(false,size);
 }
 
 static inline uint32_t SW_ShiftIn(uint8_t bits)
 {
-  int i;
-  uint32_t in = 0;
-
+  //EPRINTF("SW_ShiftIn(%d)\r\n",bits);
+  uint16_t tmp16;
+  uint8_t tmp8;
   _SetSWDIOasInput(bits);
-  for (i = 0; i < bits; i++)
-  {
-    in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+
+  //uint16_t junk = *((volatile uint16_t *) &SPI1->DR);
+  if (bits > 8) {
+    *(volatile uint16_t *) &SPI1->DR = (uint16_t) 0;
+    while (!(SPI1->SR & SPI_SR_RXNE));
+    tmp16 =  *((volatile uint16_t *) &SPI1->DR);
+    return tmp16;
+  } else {
+    *(volatile uint8_t *) &SPI1->DR = (uint8_t) 0;
+    while (!(SPI1->SR & SPI_SR_RXNE));
+    tmp8 =  *((volatile uint8_t *) &SPI1->DR); 
+    //EPRINTF("Shiftin %d bits 0x%x\n\r",bits,tmp8);
+    return tmp8;
   }
-  return in;
+
 }
 
 static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
 {
   int i;
-  uint32_t tmp;
-  _SetSWDIOasInput(8);
+  uint32_t tmp = 0;
+  uint8_t *buf =  (uint8_t *) &tmp;
+  //EPRINTF("SW_ShiftInBytes(%d)\r\n",bytes);
+  
   if (bytes > 4)
     return 0;
-
+  _SetSWDIOasInput(8);
+  
   for (i = 0; i < bytes; i++)
   {
-    ((uint8_t *)&tmp)[i] = SW_ShiftIn(8);
+    *(volatile uint8_t*) &SPI1->DR = 0 ;
   }
+  //EPRINTF("zeros sent\r\n");
+  for (i = 0; i < bytes; i++){
+    while (!(SPI1->SR & SPI_SR_RXNE));
+    buf[i] = *((volatile uint8_t *) &SPI1->DR);
+  }
+  //EPRINTF("data received %d\r\n",tmp);
   return tmp;
-}
-
-static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
-{
-  _SetSWDIOasOutput(bits);
-  for (int i = 0; i < bits; i++){
-    if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
-    else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
-    //delay(DELCNT);
-    data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
-  }
 }
 
 static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
 {
   int i;
-  _SetSWDIOasOutput(8);
+  uint8_t tmp;
+  uint8_t *buf = (uint8_t *) &data;
+  //EPRINTF("_SW_ShiftOutBytes(%x,%d)\r\n",data,bytes);
+  //EPRINTF("CR1 %x CR2 %x\n\r",SPI1->CR1, SPI1->CR2);
   if (bytes > 4)
     return;
+  _SetSWDIOasOutput(8);
+ 
 
-  for (i = 0; i < bytes * 8; i++)
+ for (i = 0; i < bytes; i++)
   {
-    if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
-    else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
-    //delay(DELCNT);
-    data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
+    *(volatile uint8_t *) &SPI1->DR = buf[i];
   }
+  //EPRINTF("Data sent\r\n");
+  
+  for (i = 0; i < bytes; i++){
+    while (!(SPI1->SR & SPI_SR_RXNE));
+    tmp = *((volatile uint8_t *) &SPI1->DR);
+  }
+  //while((SPI1->SR & SPI_SR_BSY));
+  //EPRINTF("loopback received \r\n");
+  return tmp;
+
 }
 
 static const bool ParityTable256[256] = 
@@ -224,11 +256,17 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   uint32_t pbit;
   uint32_t d0_bit;
   uint32_t tmp;   
+  //uint8_t ack_reverse[] = {0,4,2,6,1,5,3,7};
 
   SW_ShiftOutBytes(req, 1);     // Send header  
+  //chThdSleepMilliseconds(4);
   ack_bits = SW_ShiftIn(5);     // read trn,ack,(trn|data0)
   ack = (ack_bits >> 1) & 7;    // ACK, toss the turnaround bit and possible first data
   d0_bit = (ack_bits >> 4) & 1; // Save possible data bit 0
+ // ack = ack_reverse[ack];
+
+ // EPRINTF("Transaction req: %x data: %x ack %x ack_bits %x\r\n",req,*data,ack,ack_bits);
+  //chThdSleepMilliseconds(4);
 
   switch (ack)
   {
@@ -244,11 +282,12 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
 
   
 
-      if (pbit ^ Parity(*data))
+      if (0 &&(pbit ^ Parity(*data)))
       { // parity check
         ack = SW_ACK_PARITY_ERR;
-        EPRINTF("parity error data 0x%x pbit %x\r\n", *data, pbit);
+        EPRINTF("parity error data 0x%x pbit %x dataparity %x\r\n", *data, pbit, Parity(*data));
       }
+      //EPRINTF("received data %x\r\n", *data);
     }
     else
     {        
@@ -269,6 +308,7 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   }
    SW_ShiftOutBytes(0,1); // drive line to idle state
  // _SetSWDIOasOutput(8); // Set pin direction  
+  //chThdSleepMilliseconds(1);
   return ack;
 }
 
@@ -296,6 +336,7 @@ static void SW_ShiftReset(void)
 uint32_t SWD_LineReset(uint32_t *idcode)
 {
   uint32_t ack;
+  *idcode = 0;
 
   // SWD reset sequence:
   //          56 1's, 8 0's, Read IDcode
@@ -304,17 +345,23 @@ uint32_t SWD_LineReset(uint32_t *idcode)
   SW_ShiftReset();
   SW_ShiftOutBytes(0, 1);
   ack = SWD_Transaction(SW_IDCODE_RD, idcode, 0);
+  //EPRINTF("line reset idcode: 0x%x ack: %d\r\n",*idcode,ack);
   return ack;
 }
 
 static uint32_t SWD_Connect(uint32_t *idcode)
 {
   // Init Pins
-  _SetSWPinsIdle();
+  //_SetSWPinsIdle();
+  spiInit();
+  //EPRINTF("Connect\r\n");
+  
   // Select SWD Port
   //_SetSWDIOasOutput();
   SW_ShiftReset();
   SW_ShiftOutBytes(0xE79E, 2);
+
+
   // Finish with Line reset
   return SWD_LineReset(idcode);
 }
@@ -329,6 +376,7 @@ static void SWD_Disconnect(void)
   SW_ShiftOutBytes(0xE73C, 2); 
   SW_ShiftReset();
   // Release pins (except nReset)
+  _SetSWPinsIdle();
   _ResetDebugPins();
 }
 
@@ -631,15 +679,20 @@ int32_t SWD_Open()
   uint32_t tmp;
   int tries;
 
+  EPRINTF("Open\r\n");
+
   //
   if (SWD_Connect(&CoreID) != SW_ACK_OK)
   {
     SW_ShiftReset();
     if (SWD_Connect(&CoreID) != SW_ACK_OK)
     {
+      EPRINTF("Open failed\r\n");
       return 1;
     }
   }
+
+
 
   // clear any pending errors
   //   EPRINTF("write clear ok\r\n");

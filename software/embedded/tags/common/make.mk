@@ -14,9 +14,10 @@ ifeq ($(USE_COPT),)
   USE_COPT = -IInc -Wdouble-promotion
 endif
 
+SWAP_I2C=0
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT =
+  USE_CPPOPT = -DSWAP_I2C=$(SWAP_I2C)
 endif
 
 # Enable this if you want the linker to remove unused code and data

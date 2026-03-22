@@ -56,7 +56,7 @@ void test(void)
   if ((test_to_run == RUN_ALL) ||
       (test_to_run == RUN_RTC))
   {
-     if (0 && !test_rtc())
+     if (!test_rtc())
     {
       pState->test_result = RTC_FAILED;
       return;

@@ -16,11 +16,19 @@ static void delay(void){
 
 // I2C interface to rtc
 
+#ifdef SWAP_I2C
+const I2CConfig rtci2cConfig = {
+    .delay = delay,
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA
+};
+#else
 const I2CConfig rtci2cConfig = {
     .delay = delay,
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL
 };
+#endif
 
 void rtcOn(void)
 {

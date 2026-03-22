@@ -59,7 +59,7 @@
      <pin5
 	      ID="TGT_SWCLK"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
         Resistor="Floating"
         Mode="Analog"
@@ -187,7 +187,7 @@
         Mode="Analog"
         Alternate="0" />
       <pin5
-        ID=""
+        ID="TGT_SWDIO_LOOPBACK"
         Type="PushPull"
         Level="High"
         Speed="Low"

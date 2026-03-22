@@ -4,6 +4,7 @@
 #include <tag.pb.h>
 #include "persistent.h"
 #include "external_flash.h"
+#include "custom.h"
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
@@ -15,15 +16,15 @@ static void fast_msi(void){
   // change to 24Mhz doesn't require VOS change
   // Adjust Wait States
 
-  FLASH->ACR = (FLASH->ACR & ~(7)) | 3;
+  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_FAST;
 
   // Change MSI frequency P 197 RM0394
 
-  RCC->CR = (RCC->CR & ~(15<<4)) | (9<<4);
+  RCC->CR = (RCC->CR & ~(15<<4)) |  STM32_MSIRANGE_FAST;
 
   // Change TIM2 Prescaler
 
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC * 12;
+  STM32_ST_TIM->PSC =  ((STM32_TIMCLK2 * RANGE_MULTIPLIER)/ OSAL_ST_FREQUENCY) - 1;;
 
 }
 
@@ -33,15 +34,15 @@ static void slow_msi(void){
  
    // Restore MSI frequency P 197 RM0394
 
-   RCC->CR = (RCC->CR & ~(15<<4)) | (5<<4);
+   RCC->CR = (RCC->CR & ~(15<<4)) | STM32_MSIRANGE;
 
   // Adjust Wait States
 
-  FLASH->ACR = FLASH->ACR & ~(7);
+  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_SLOW;
 
   // Restore TIM2 Prescaler
 
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC/12;
+  STM32_ST_TIM->PSC =  (STM32_TIMCLK2 / OSAL_ST_FREQUENCY) - 1;
 
 }
 

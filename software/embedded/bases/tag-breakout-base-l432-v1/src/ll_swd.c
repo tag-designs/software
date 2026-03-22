@@ -53,34 +53,6 @@ static inline void delay(int i)
   }*/
 }
 
-static inline void toAnalog(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 3 << (pin * 2));
-}
-static inline void toAlternate(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  ;
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 2 << (pin * 2));
-}
-
-static inline void toInput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 0);
-}
-
-static inline void toOutput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 1 << (pin * 2));
-}
-
 
 static void _SetSWPinsIdle(void)
 {
@@ -137,7 +109,8 @@ static inline uint32_t SW_ShiftIn(uint8_t bits)
   _SetSWDIOasInput(bits);
   for (i = 0; i < bits; i++)
   {
-    in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+    //in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+    in |= ((SWDIO_IN() & 1) << i);
   }
   return in;
 }
@@ -223,8 +196,7 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   uint32_t ack_bits;
   uint32_t pbit;
   uint32_t d0_bit;
-  uint32_t tmp;   
-
+  uint32_t tmp;  
   SW_ShiftOutBytes(req, 1);     // Send header  
   ack_bits = SW_ShiftIn(5);     // read trn,ack,(trn|data0)
   ack = (ack_bits >> 1) & 7;    // ACK, toss the turnaround bit and possible first data

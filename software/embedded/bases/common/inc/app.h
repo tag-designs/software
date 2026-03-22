@@ -18,8 +18,12 @@
 
 #ifndef APP_H
 #define APP_H
+
+#ifdef USEEPRINTF
+#define EPRINTF(...) chprintf((BaseSequentialStream *)&SD1,__VA_ARGS__)
+#else
 #define EPRINTF(...) while(0){}
-//#define EPRINTF(...) chprintf((BaseSequentialStream *)&SDU1,__VA_ARGS__)
+#endif
 extern void adcVDD(uint32_t *vdd100, uint32_t *vlipo100, int32_t *temp10);
 
 
@@ -39,5 +43,37 @@ void adc1DisableTS(void);
 
 extern volatile uint32_t vlipo100;
 int stlink_eval(uint8_t *buf);
+
+//
+// Pin modification functions
+//
+// We assume the alterate function number is set in board.h
+// so mode configuration is a matter of setting a few bits
+//
+
+static inline void toInput(ioline_t line) {
+  stm32_gpio_t *port = PAL_PORT(line);
+  uint32_t pin = PAL_PAD(line);
+  MODIFY_REG(port->MODER, 3 << (pin * 2), 0);
+}
+
+static inline void toOutput(ioline_t line) {
+  stm32_gpio_t *port = PAL_PORT(line);
+  uint32_t pin = PAL_PAD(line);
+  MODIFY_REG(port->MODER, 3 << (pin * 2), 1 << (pin * 2));
+}
+
+static inline void toAlternate(ioline_t line) {
+  stm32_gpio_t *port = PAL_PORT(line);
+  uint32_t pin = PAL_PAD(line);
+  MODIFY_REG(port->MODER, 3 << (pin * 2), 2 << (pin * 2));
+}
+
+static inline void toAnalog(ioline_t line) {
+  stm32_gpio_t *port = PAL_PORT(line);
+  uint32_t pin = PAL_PAD(line);
+  MODIFY_REG(port->MODER, 3 << (pin * 2), 3 << (pin * 2));
+}
+
 
 #endif

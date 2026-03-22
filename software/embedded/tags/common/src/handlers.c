@@ -33,6 +33,45 @@ static_assert(Req_size < PROTOBUFSIZE, "Protocol buffer is too small! " xstr(PRO
 uint8_t ProtoBuf[PROTOBUFSIZE] __attribute__((aligned(4))) NOINIT;
 const int protobuf_size = PROTOBUFSIZE;
 
+// Optional speed up during debug
+
+#ifdef RANGE_MULTIPLIER
+
+static void fast_msi(void){
+  // change to 24Mhz doesn't require VOS change
+  // Adjust Wait States
+
+  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_FAST;
+
+  // Change MSI frequency P 197 RM0394
+
+  RCC->CR = (RCC->CR & ~(15<<4)) |  STM32_MSIRANGE_FAST;
+
+  // Change TIM2 Prescaler
+
+  STM32_ST_TIM->PSC =  ((STM32_TIMCLK2 * RANGE_MULTIPLIER)/ OSAL_ST_FREQUENCY) - 1;;
+
+}
+
+
+static void slow_msi(void){
+
+ 
+   // Restore MSI frequency P 197 RM0394
+
+   RCC->CR = (RCC->CR & ~(15<<4)) | STM32_MSIRANGE;
+
+  // Adjust Wait States
+
+  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_SLOW;
+
+  // Restore TIM2 Prescaler
+
+  STM32_ST_TIM->PSC =  (STM32_TIMCLK2 / OSAL_ST_FREQUENCY) - 1;
+
+}
+
+#endif
 
 
 // Internal thread
@@ -66,6 +105,10 @@ static THD_FUNCTION(MonitorThread, arg) {
 
   // system locked !!
 
+  #ifdef RANGE_MULTIPLIER
+  fast_msi();
+  #endif
+
   while (1) {
     // system locked !!
 
@@ -86,6 +129,10 @@ static THD_FUNCTION(MonitorThread, arg) {
     (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
     // system locked !!
   }
+
+  #ifdef RANGE_MULTIPLIER
+  slow_msi();
+  #endif
 
   // system locked
   //   clear monitor thread pointers

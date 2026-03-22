@@ -21,6 +21,8 @@
 #include "usbcfg.h"
 #include "app.h"
 #include "chprintf.h"
+#include "board.h"
+#include "dp_swd.h"
 
 #define RCC_APB1ENR_CRSN ((uint32_t)0x08000000U)
 
@@ -64,7 +66,13 @@ static THD_FUNCTION(Thread1, arg)
     chThdSleepMilliseconds(100);
     i++;
     if ((i%16) == 0) {
-      //chprintf((BaseSequentialStream*)&SD1, "Ping %d\r\n", i);
+      //chprintf("\n%4d Open \r\n\n",i);
+      //SWD_Open();
+      //chprintf("\n%4d Close \r\n\n",i);
+      //SWD_Close();
+
+     // chprintf((BaseSequentialStream*)&SD1, "Ping %d %d\r\n", i, SWD_Open());
+      // *(volatile uint8_t *)&SPI1->DR =  0xfA;
     }
 
     // don't read ADC if external power connected
@@ -104,8 +112,9 @@ static THD_FUNCTION(Thread1, arg)
     vlipo100 = (vref100 * adc1DR()) / 4096;
     if (vlipo100 < 200)
       vlipo100 = 330;
-  }
 }
+}
+
 
 uint8_t bulkbuf[64]; // stlink input buffer
 
@@ -113,7 +122,7 @@ int main(void)
 {
 
   halInit();
-  sdStart(&SD1, &sdcfg);
+
 
   // Remap the USB pins PA11,PA12 onto the default PA9,PA10
 
@@ -135,6 +144,8 @@ int main(void)
   LL_CRS_EnableAutoTrimming();
   LL_CRS_EnableFreqErrorCounter();
 
+  
+
   // disable swd line
 
   //palSetLine(LINE_TGT_SWDIO_EN); // polarity is reversed
@@ -150,6 +161,29 @@ int main(void)
   chThdSleepMilliseconds(1500);
   usbStart(&USBD1, &usbcfg);
   usbConnectBus(&USBD1);
+
+  /* debug */
+  sdStart(&SD1, &sdcfg);
+  chprintf("Main loop\n\r",0);
+
+  /*
+
+  palClearLine(LINE_TGT_SWCLK);
+  palClearLine(LINE_TGT_SWDIO);
+
+  toAlternate(LINE_TGT_SWCLK);
+  toAlternate(LINE_TGT_SWDIO);
+
+  rccEnableSPI1(0);
+  rccResetSPI1();
+
+  SPI1->CR1 = 0;
+  SPI1->CR2 =  SPI_CR2_SSOE;
+
+  SPI1->CR1 = SPI_CR1_LSBFIRST | (3<<3) | SPI_CR1_MSTR;
+  SPI1->CR1 |= SPI_CR1_SPE;
+  
+*/
 
   // Create the charger thread
 

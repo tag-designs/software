@@ -16,6 +16,7 @@
 * limitations under the License.                                          *
 **************************************************************************/
 
+#define USEEPRINTF 1
 #include <stdint.h>
 #include <dp_swd.h>
 #include <debug_cm.h>
@@ -23,6 +24,10 @@
 #include "usbcfg.h"
 #include "app.h"
 #include "board.h"
+#ifdef USEEPRINTF
+#include "ch.h"
+#include "chprintf.h"
+#endif
 
 #define REGRETRIES 20
 #define DELCNT 1
@@ -129,6 +134,20 @@ static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
   return tmp;
 }
 
+static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
+{
+  for (int i = 0; i < bits; i++){
+    if (data & 1)
+      palSetLine(LINE_TGT_SWDIO);
+    else
+      palClearLine(LINE_TGT_SWDIO);
+    palSetLine(LINE_TGT_SWCLK);
+    //delay(DELCNT);
+    data = data >> 1;
+    palClearLine(LINE_TGT_SWCLK);
+  }
+}
+
 static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
 {
   int i;
@@ -159,7 +178,6 @@ static const bool ParityTable256[256] =
 
 static inline uint32_t Parity(uint32_t x)
 {
-  uint32_t y;
   /*
   y = x ^ (x >> 1);
   y = y ^ (y >> 2);
@@ -286,7 +304,8 @@ static void SWD_Disconnect(void)
 /*
  *   Public Debug Port access functions
  *     TRANSACTION macro used to catch errors and
- *     clear error condition
+ *     clear error condition.   Passes errors back up
+ *     to stlink protocol
  */
 
 #define TRANSACTION(reg, op)                                       \
@@ -295,7 +314,7 @@ static void SWD_Disconnect(void)
     int ack = errorClear(SWD_Transaction(reg, op, MAX_SWD_RETRY)); \
     if (ack)                                                       \
     {                                                              \
-      EPRINTF("trans fail %d reg %x op %x\r\n", ack, reg, op);     \
+      EPRINTF("trans fail %d reg %x op %x line %d\r\n", ack, reg, op,__LINE__);     \
       return ack;                                                  \
     }                                                              \
   } while (0)
