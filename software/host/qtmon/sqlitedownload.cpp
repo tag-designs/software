@@ -132,7 +132,7 @@ bool SqliteDownload::dumpHeader(void) {
                 qDebug() << "Couldn't create json string for tag calibration constants";
                 return false;
             } 
-            query.bindValue(":epoch",constants.timestamp());
+            query.bindValue(":epoch",static_cast<qlonglong>(constants.timestamp()));
             query.bindValue(":value", QString::fromStdString(constants_json));
             if (!query.exec()){
                 qDebug() << "Calibration constants insert failed";
@@ -169,7 +169,7 @@ bool SqliteDownload::dumpHeader(void) {
             next += state_log.states().size();
             for (auto const &state : state_log.states())
             {
-                query.bindValue(":epoch", state.status().millis()/1000);
+                query.bindValue(":epoch", static_cast<qlonglong>(state.status().millis())/1000);
                 query.bindValue(":state", QString::fromStdString(TagState_Name(state.status().state())));
                 query.bindValue(":entry",QString::fromStdString(State_Event_Name(state.transition_reason())));
                 query.bindValue(":t", state.status().temperature());
@@ -236,7 +236,7 @@ int SqliteDownload::dumpTagLog(const CompassTagLog &log){
         logTableCreated = true;
  
     }
-    int64_t timestamp = log.epoch();
+    qlonglong timestamp = log.epoch();
 
     // voltage
 

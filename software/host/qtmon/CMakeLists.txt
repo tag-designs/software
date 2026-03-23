@@ -44,18 +44,16 @@ endif()
 # Populate a CMake variable with the sources
 
 set(qtmonitor_SRCS
-    abstractDownload.cpp
+    abstractdownload.cpp
     adxl362config.cpp
     bittaglog.cpp
     configtab.cpp
-    #download.cpp
     hibernate.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp
     pbenumgroup.cpp
     schedule.cpp
-    #sqllog.cpp
     sqlitedownload.cpp
     txtdownload.cpp
     )
