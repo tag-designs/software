@@ -6,7 +6,7 @@ CXXFLAGS += -DUSEEPRINTF
 ALLCSRC += \
        main.c \
 	   usbcfg.c \
-	   ll_swd.c \
+	   ll_swd_spi.c \
 	   stlink.c \
 	   stm32adc.c
 
