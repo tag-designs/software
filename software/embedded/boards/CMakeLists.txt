@@ -28,6 +28,7 @@ add_subdirectory(bittag-base-jlcpcb-v3)
 add_subdirectory(tag-breakout-base-jlcpcb32-v1)
 add_subdirectory(tag-breakout-base-l432-v1)
 add_subdirectory(bittag-base-v7)
+add_subdirectory(tag-base-c071-v1)
 
 # tags
 
