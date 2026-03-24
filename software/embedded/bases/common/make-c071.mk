@@ -1,16 +1,16 @@
-##############################################################################
+#############################################################################
 # Build global options
 # NOTE: Can be overridden externally.
 #
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+  USE_OPT = -O2 -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
 ifeq ($(USE_COPT),)
-  USE_COPT = 
+  USE_COPT = -IInc
 endif
 
 # C++ specific options here (added to USE_OPT).
@@ -18,7 +18,7 @@ ifeq ($(USE_CPPOPT),)
   USE_CPPOPT = -fno-rtti
 endif
 
-# Enable this if you want the linker to remove unused code and data.
+# Enable this if you want the linker to remove unused code and data
 ifeq ($(USE_LINK_GC),)
   USE_LINK_GC = yes
 endif
@@ -28,9 +28,14 @@ ifeq ($(USE_LDOPT),)
   USE_LDOPT = 
 endif
 
-# Enable this if you want link time optimizations (LTO).
+# Enable this if you want link time optimizations (LTO)
 ifeq ($(USE_LTO),)
   USE_LTO = yes
+endif
+
+# If enabled, this option allows to compile the application in THUMB mode.
+ifeq ($(USE_THUMB),)
+  USE_THUMB = yes
 endif
 
 # Enable this if you want to see the full log while compiling.
@@ -69,79 +74,121 @@ ifeq ($(USE_FPU),)
   USE_FPU = no
 endif
 
-# FPU-related options.
-ifeq ($(USE_FPU_OPT),)
-  USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16
-endif
-
 #
 # Architecture or project specific options
 ##############################################################################
 
 ##############################################################################
-# Project, target, sources and paths
+# Project, sources and paths
 #
 
 # Define project name here
 PROJECT = ch
 
-# Target settings.
-MCU  = cortex-m0
+MCU_FAMILY = STM32
+MCU_SERIES = STM32C0xx
+MCU_STARTUP = stm32c0xx
+ARMV = 6
+MCU_LDSCRIPT = STM32C071xB
 
-# Imported source files and paths.
-CHIBIOS  := ../../..
-CONFDIR  := ./cfg
-#BUILDDIR := ./build/stm32c071rb_nucleo64
-#DEPDIR   := ./.dep/stm32c071rb_nucleo64
-
-# Licensing files.
-include $(CHIBIOS)/os/license/license.mk
+# Imported source files and paths
+CONFDIR = ./cfg
 # Startup files.
 include $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk/startup_stm32c0xx.mk
 # HAL-OSAL files (optional).
 include $(CHIBIOS)/os/hal/hal.mk
+# stm32f0xx platform
 include $(CHIBIOS)/os/hal/ports/STM32/STM32C0xx/platform.mk
-#include $(CHIBIOS)/os/hal/boards/ST_NUCLEO64_C071RB/board.mk
+# this board
 include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files (optional).
 include $(CHIBIOS)/os/rt/rt.mk
 include $(CHIBIOS)/os/common/ports/ARMv6-M/compilers/GCC/mk/port.mk
-# Auto-build files in ./source recursively.
-include $(CHIBIOS)/tools/mk/autobuild.mk
 # Other files (optional).
 #include $(CHIBIOS)/os/hal/lib/streams/streams.mk
-#include $(CHIBIOS)/os/various/shell/shell.mk
-
+include $(CHIBIOS)/os/license/license.mk
 # Define linker script file here
+include $(CHIBIOS)/tools/mk/autobuild.mk
+
 LDSCRIPT= $(STARTUPLD)/STM32C071xB.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
-# setting
+# setting.
 
 include project.mk
-CSRC = $(ALLCSRC) 
+CSRC = 	$(ALLCSRC)
+
+$(info CSRC =  $(CSRC))
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CPPSRC =
 
-# List ASM source files here.
-ASMSRC = 
+# C sources to be compiled in ARM mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+ACSRC =
 
-# List ASM with preprocessor source files here.
-ASMXSRC = 
+# C++ sources to be compiled in ARM mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+ACPPSRC =
 
-# Inclusion directories.
-INCDIR = ./inc $(CONFDIR) $(ALLINC)
+# C sources to be compiled in THUMB mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+TCSRC =
 
-# Define C warning options here.
-CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes -Wcast-align=strict
+# C sources to be compiled in THUMB mode regardless of the global setting.
+# NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
+#       option that results in lower performance and larger code size.
+TCPPSRC =
 
-# Define C++ warning options here.
+# List ASM source files here
+ASMSRC =
+ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
+
+INCDIR = ./inc $(CONFDIR) $(ALLINC) 
+
+#
+# Project, sources and paths
+##############################################################################
+
+##############################################################################
+# Compiler settings
+#
+
+MCU  = cortex-m0
+TRGT = arm-none-eabi-
+CC   = $(TRGT)gcc
+CPPC = $(TRGT)g++
+# Enable loading with g++ only if you need C++ runtime support.
+# NOTE: You can use C++ even without C++ support if you are careful. C++
+#       runtime support makes code size explode.
+LD   = $(TRGT)gcc
+#LD   = $(TRGT)g++
+CP   = $(TRGT)objcopy
+AS   = $(TRGT)gcc -x assembler-with-cpp
+AR   = $(TRGT)ar
+OD   = $(TRGT)objdump
+SZ   = $(TRGT)size
+HEX  = $(CP) -O ihex
+BIN  = $(CP) -O binary
+
+# ARM-specific options here
+AOPT =
+
+# THUMB-specific options here
+TOPT = -mthumb -DTHUMB
+
+# Define C warning options here
+CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
+
+# Define C++ warning options here
 CPPWARN = -Wall -Wextra -Wundef
 
 #
-# Project, target, sources and paths
+# Compiler settings
 ##############################################################################
 
 ##############################################################################
@@ -149,10 +196,10 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DUSE_FULL_LL_DRIVER=1 
 
 # Define ASM defines here
-UADEFS =
+UADEFS = 
 
 # List all user directories here
 UINCDIR = ../common/inc
@@ -164,27 +211,30 @@ ULIBDIR =
 ULIBS =
 
 #
-# End of user section
+# End of user defines
 ##############################################################################
-
-##############################################################################
-# Common rules
-#
 
 RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
 include $(RULESPATH)/arm-none-eabi.mk
 include $(RULESPATH)/rules.mk
 
-
 VPATH := $(BUILDDIR)  ./src ../common/src $(VPATH)
-#
-# Common rules
-##############################################################################
 
-##############################################################################
-# Custom rules
-#
+# UNAME_S := $(shell uname -s)
 
-#
-# Custom rules
-##############################################################################
+# ifeq ($(UNAME_S),Darwin)
+# 	OPENOCD := /usr/local/bin/openocd
+# 	OCDSCRIPTS := /usr/local/share/openocd/scripts
+# 	DFU	:= /usr/local/bin/dfu-util
+# else
+# 	OPENOCD := /usr/bin/openocd
+# 	OCDSCRIPTS := /usr/share/openocd/scripts
+# 	DFU	:= /usr/bin/dfu-util
+# endif
+
+# download: $(BUILDDIR)/ch.elf
+# 	$(OPENOCD) -s $(OCDSCRIPTS) -f stm32f04.cfg \
+# 	    -c "program $(BUILDDIR)/ch.elf verify reset exit"
+
+# dfu: $(BUILDDIR)/ch.bin
+# 	 $(DFU)  -a 0 -d 0483:df11 -s 0x08000000:leave -D $(BUILDDIR)/ch.bin 

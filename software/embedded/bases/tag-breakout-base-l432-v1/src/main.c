@@ -17,7 +17,7 @@
 **************************************************************************/
 #include "ch.h"
 #include "hal.h"
-#include "stm32f0xx_ll_crs.h"
+//#include "stm32f0xx_ll_crs.h"
 #include "usbcfg.h"
 #include "app.h"
 #include "chprintf.h"
@@ -130,9 +130,25 @@ int main(void)
 
   // Initialize clock recovery system
 
-  rccEnableAPB1(RCC_APB1ENR_CRSEN, 0);
+
+
+    // 1. Enable CRS clock in APB1
+
+  RCC->APB1ENR |= RCC_APB1ENR_CRSEN;
+
+  // 2. Configure CRS: Source = USB SOF (10), Sync polarity = Rising
+
+  CRS->CFGR = (2 << CRS_CFGR_SYNCSRC_Pos) | (34 << CRS_CFGR_FELIM_Pos) | 48000;
+
+  // 3. Enable Automatic Trimming and the Counter
+
+  CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
+
+  /*
   rccResetAPB1(RCC_APB1RSTR_CRSRST);
 
+  /*
+  rccEnableAPB1(RCC_APB1ENR_CRSEN, 0);
   LL_CRS_SetSyncDivider(LL_CRS_SYNC_DIV_1);
   LL_CRS_SetSyncPolarity(LL_CRS_SYNC_POLARITY_RISING);
   LL_CRS_SetSyncSignalSource(LL_CRS_SYNC_SOURCE_USB);
@@ -143,7 +159,7 @@ int main(void)
 
   LL_CRS_EnableAutoTrimming();
   LL_CRS_EnableFreqErrorCounter();
-
+ */
   
 
   // disable swd line
@@ -163,8 +179,8 @@ int main(void)
   usbConnectBus(&USBD1);
 
   /* debug */
-  sdStart(&SD1, &sdcfg);
-  chprintf("Main loop\n\r",0);
+  //sdStart(&SD1, &sdcfg);
+  //chprintf("Main loop\n\r",0);
 
   /*
 

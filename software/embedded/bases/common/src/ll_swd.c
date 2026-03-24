@@ -17,6 +17,7 @@
 **************************************************************************/
 
 //#define USEEPRINTF 0
+#undef USEEPRINTF
 #include <stdint.h>
 #include <dp_swd.h>
 #include <debug_cm.h>

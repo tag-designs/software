@@ -17,7 +17,6 @@
 **************************************************************************/
 #include "ch.h"
 #include "hal.h"
-#include "stm32c0xx_ll_crs.h"
 #include "usbcfg.h"
 #include "app.h"
 #include "chprintf.h"
@@ -123,28 +122,19 @@ int main(void)
 
   halInit();
 
-
-  // Remap the USB pins PA11,PA12 onto the default PA9,PA10
-
-  SYSCFG->CFGR1 |= SYSCFG_CFGR1_PA12_RMP;
-
   // Initialize clock recovery system
 
-  rccEnableAPB1(RCC_APB1ENR_CRSN, 0);
-  rccResetAPB1(RCC_APBRSTR1_CRSRST);
+  // 1. Enable CRS clock in APB1
 
-  LL_CRS_SetSyncDivider(LL_CRS_SYNC_DIV_1);
-  LL_CRS_SetSyncPolarity(LL_CRS_SYNC_POLARITY_RISING);
-  LL_CRS_SetSyncSignalSource(LL_CRS_SYNC_SOURCE_USB);
-  LL_CRS_SetReloadCounter(__LL_CRS_CALC_CALCULATE_RELOADVALUE(48000000,
-                                                              1000));
-  LL_CRS_SetFreqErrorLimit(34);
-  LL_CRS_SetHSI48SmoothTrimming(32);
+  RCC->APBENR1 |= RCC_APBENR1_CRSEN;
 
-  LL_CRS_EnableAutoTrimming();
-  LL_CRS_EnableFreqErrorCounter();
+  // 2. Configure CRS: Source = USB SOF (10), Sync polarity = Rising
 
-  
+  CRS->CFGR = (2 << CRS_CFGR_SYNCSRC_Pos) | (34 << CRS_CFGR_FELIM_Pos) | 48000;
+
+  // 3. Enable Automatic Trimming and the Counter
+
+  CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
 
   // disable swd line
 
@@ -163,7 +153,7 @@ int main(void)
   usbConnectBus(&USBD1);
 
   /* debug */
-  sdStart(&SD2, &sdcfg);
+  //sdStart(&SD2, &sdcfg);
   //chprintf("Main loop\n\r",0);
 
   /*

@@ -17,7 +17,7 @@
 **************************************************************************/
 
 #include "hal.h"
-#include "stm32f0xx_ll_crs.h"
+//#include "stm32f0xx_ll_crs.h"
 #include "usbcfg.h"
 #include "app.h"
 #include "board.h"
@@ -135,6 +135,20 @@ int main(void) {
 
   // Initialize clock recovery system
 
+  // 1. Enable CRS clock in APB1
+
+  RCC->APB1ENR |= RCC_APB1ENR_CRSEN;
+
+  // 2. Configure CRS: Source = USB SOF (10), Sync polarity = Rising
+
+  CRS->CFGR = (2 << CRS_CFGR_SYNCSRC_Pos) | (34 << CRS_CFGR_FELIM_Pos) | 48000;
+
+  // 3. Enable Automatic Trimming and the Counter
+
+  CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
+
+  /*
+
   rccEnableAPB1(RCC_APB1ENR_CRSEN,0);
   rccResetAPB1(RCC_APB1RSTR_CRSRST);
 
@@ -148,6 +162,7 @@ int main(void) {
 
   LL_CRS_EnableAutoTrimming();
   LL_CRS_EnableFreqErrorCounter();
+  */
 
   // disable swd line
 
