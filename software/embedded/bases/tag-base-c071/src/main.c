@@ -18,8 +18,12 @@
 #include "ch.h"
 #include "hal.h"
 #include "usbcfg.h"
+//#define USEEPRINTF 
 #include "app.h"
+#ifdef USEEPRINTF
+#include "ch.h"
 #include "chprintf.h"
+#endif
 #include "board.h"
 #include "dp_swd.h"
 
@@ -60,6 +64,7 @@ static THD_FUNCTION(Thread1, arg)
   int i = 0;
 
   //  chRegSetThreadName("charger");
+    palClearLine(LINE_LED_BLUE);
   while (true)
   {
     chThdSleepMilliseconds(100);
@@ -69,8 +74,13 @@ static THD_FUNCTION(Thread1, arg)
       //SWD_Open();
       //chprintf("\n%4d Close \r\n\n",i);
       //SWD_Close();
+      if (i&(1<<4)){
+        palClearLine(LINE_LED_BLUE);
+      } else {
+        palSetLine(LINE_LED_BLUE);
+      }
 
-     // chprintf((BaseSequentialStream*)&SD1, "Ping %d %d\r\n", i, SWD_Open());
+      //chprintf((BaseSequentialStream*)&SD1, "Ping %d %d\r\n", i, SWD_Open());
       // *(volatile uint8_t *)&SPI1->DR =  0xfA;
     }
 
@@ -86,7 +96,7 @@ static THD_FUNCTION(Thread1, arg)
     {
       //palSetLine(LINE_TAG_3V3_EN);
     }
-#endif
+
 
     adc1Start();
     adc1EnableVREF();
@@ -111,6 +121,7 @@ static THD_FUNCTION(Thread1, arg)
     vlipo100 = (vref100 * adc1DR()) / 4096;
     if (vlipo100 < 200)
       vlipo100 = 330;
+#endif
 }
 }
 
@@ -147,19 +158,29 @@ int main(void)
 
   // Activate USB driver
 
+  palClearLine(LINE_LED_GREEN);
+
   usbDisconnectBus(&USBD1);
   chThdSleepMilliseconds(1500);
   usbStart(&USBD1, &usbcfg);
   usbConnectBus(&USBD1);
+  palSetLine(LINE_LED_GREEN);
+ 
+
+ 
 
   /* debug */
-  //sdStart(&SD2, &sdcfg);
-  //chprintf("Main loop\n\r",0);
+  sdStart(&SD1, &sdcfg);
 
-  /*
+  //chprintf("Main loop %d\n\r",0);
+
+  
 
   palClearLine(LINE_TGT_SWCLK);
   palClearLine(LINE_TGT_SWDIO);
+
+
+  /*
 
   toAlternate(LINE_TGT_SWCLK);
   toAlternate(LINE_TGT_SWDIO);
@@ -180,12 +201,23 @@ int main(void)
   chThdCreateStatic(waThread1, sizeof(waThread1),
                     NORMALPRIO, Thread1, NULL);
 
+                    /*
+  for (int i = 0; i < 10; i++){
+      palClearLine(LINE_LED_BLUE);
+      chThdSleepSeconds(1);
+      palSetLine(LINE_LED_BLUE);
+      chThdSleepSeconds(1);
+
+  }
+      */
+
+  EPRINTF("starting loop %d\n\r",0);
+
   // process stlink commands
 
   while (true)
   {
-    int n = 0;
-    n = BULK_Receive(bulkbuf, 64);
+    int n = BULK_Receive(bulkbuf, 64);
     if (n != 16)
     {
       EPRINTF("received %d bytes expected 16\r\n", n);
@@ -194,6 +226,7 @@ int main(void)
     else
     {
       //palSetLine(LINE_TGT_SWDIO_EN);
+      EPRINTF("Received swd packet - %d bytes\r\n",n);
       stlink_eval(bulkbuf);
       //palClearLine(LINE_TGT_SWDIO_EN);
     }

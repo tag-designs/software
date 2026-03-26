@@ -15,8 +15,10 @@
 * See the License for the specific language governing permissions and     *
 * limitations under the License.                                          *
 **************************************************************************/
+// Rewrite to use bitwidths compatible with SPI
+// specifically, arrays of bytes, 5-bit words, and 9-bit words
 
-#define USEEPRINTF 0
+#define USEEPRINTF 1
 //#undef USEEPRINTF
 #include <stdint.h>
 #include <dp_swd.h>
@@ -37,49 +39,31 @@ static const int AUTO_INCREMENT_PAGE_SIZE = 1024;
 static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
 uint32_t CoreID = 0;
 
+static bool isOutput = true;
+static int  spiSize = 8;
+
+static void SW_ShiftReset(void);
+
 static inline void delay(int i)
 {
+  (void) i;
   /*
   for (; i > 0; i--)
   {
     asm("mov r0,r0");
   }*/
 }
-/*
-static inline void toAnalog(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 3 << (pin * 2));
-}
-static inline void toAlternate(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  ;
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 2 << (pin * 2));
-}
 
-static inline void toInput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 0);
-}
-
-static inline void toOutput(ioline_t line)
-{
-  stm32_gpio_t *port = PAL_PORT(line);
-  uint32_t pin = PAL_PAD(line);
-  MODIFY_REG(port->MODER, 3 << (pin * 2), 1 << (pin * 2));
-}*/
 
 static void _SetSWPinsIdle(void)
 {
   palClearLine(LINE_TGT_SWCLK);
-  palSetLine(LINE_TGT_SWDIO);
+  palClearLine(LINE_TGT_SWDIO);
 
-  toInput(LINE_TGT_SWDIO);
+  isOutput = true;
+  spiSize = 8;
+
+  toOutput(LINE_TGT_SWDIO);
   toOutput(LINE_TGT_SWCLK);
 }
 
@@ -89,13 +73,21 @@ static void _ResetDebugPins(void)
   toAnalog(LINE_TGT_SWCLK); //was output
 }
 
-static inline void _SetSWDIOasOutput(void)
+static inline void _SetSWDIOasOutput(uint32_t size)
 {
-  toOutput(LINE_TGT_SWDIO);
+  spiSize =  size;
+  //if (!isOutput){
+    toOutput(LINE_TGT_SWDIO);
+    isOutput = true;
+ // }
 }
-static inline void _SetSWDIOasInput(void)
+static inline void _SetSWDIOasInput(uint32_t size)
 {
-  toInput(LINE_TGT_SWDIO);
+  spiSize = size;
+ // if (isOutput){
+    toInput(LINE_TGT_SWDIO);
+    isOutput = false;
+  //}
 }
 
 static inline uint32_t SWDIO_IN(void)
@@ -114,9 +106,12 @@ static inline uint32_t SW_ShiftIn(uint8_t bits)
 {
   int i;
   uint32_t in = 0;
+
+  _SetSWDIOasInput(bits);
   for (i = 0; i < bits; i++)
   {
-    in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+    //in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+    in |= ((SWDIO_IN() & 1) << i);
   }
   return in;
 }
@@ -125,6 +120,7 @@ static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
 {
   int i;
   uint32_t tmp;
+  _SetSWDIOasInput(8);
   if (bytes > 4)
     return 0;
 
@@ -137,6 +133,7 @@ static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
 
 static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
 {
+  _SetSWDIOasOutput(bits);
   for (int i = 0; i < bits; i++){
     if (data & 1)
       palSetLine(LINE_TGT_SWDIO);
@@ -152,6 +149,7 @@ static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
 static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
 {
   int i;
+  _SetSWDIOasOutput(8);
   if (bytes > 4)
     return;
 
@@ -196,49 +194,54 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
 {
 
   uint32_t ack;
+  uint32_t ack_bits;
   uint32_t pbit;
-
-  _SetSWDIOasOutput();      // Set pin direction
-  SW_ShiftOutBytes(req, 1); // Send header
-
-  _SetSWDIOasInput();             // Set pin direction
-  ack = (SW_ShiftIn(4) >> 1) & 7; // ACK, toss the turnaround bit
+  uint32_t d0_bit;
+  uint32_t tmp;  
+  SW_ShiftOutBytes(req, 1);     // Send header  
+  ack_bits = SW_ShiftIn(5);     // read trn,ack,(trn|data0)
+  ack = (ack_bits >> 1) & 7;    // ACK, toss the turnaround bit and possible first data
+  d0_bit = (ack_bits >> 4) & 1; // Save possible data bit 0
 
   switch (ack)
   {
   case SW_ACK_OK: // good to go
     if (req & SW_REQ_RnW)
-    {                             // read
-      *data = SW_ShiftInBytes(4); // get data
-      pbit = SW_ShiftIn(2) & 1;   // get parity bit, toss turnaround
+    {        
+      *data = SW_ShiftInBytes(3); // get 24 bits data
+       tmp = SW_ShiftIn(9);        // get 8 bits data + trn
+      // combine data, parity
+      pbit = (tmp >> 8) & 1;
+      *data = (tmp << 24) | (*data & 0xffffff);    //combine
+      *data = (*data << 1) | d0_bit;
+
+  
+
       if (pbit ^ Parity(*data))
       { // parity check
         ack = SW_ACK_PARITY_ERR;
         EPRINTF("parity error data 0x%x pbit %x\r\n", *data, pbit);
       }
-      _SetSWDIOasOutput(); // restore direction
     }
     else
-    {                                     // write
-      SW_ShiftIn(1);                      // turnaround
-      _SetSWDIOasOutput();                // restore direction
-      SW_ShiftOutBytes(*data, 4);         // data
-      SW_ShiftOutBytes(Parity(*data), 1); // parity
+    {        
+      SW_ShiftOutBytes(*data,3); // send 24 bits
+      tmp = ((*data >> 24)&0xff)|(Parity(*data)<<8);
+      SW_ShiftOutBytes(tmp,2);  // send 8 bits + parity + plus extra zeros
+                                // per STM32 documentation for writes
+                                // to ensure they are completed internally
     }
     break;
 
-  case SW_ACK_WAIT:
-  case SW_ACK_FAULT:
-    SW_ShiftIn(1);       // turnaround
-    _SetSWDIOasOutput(); // restore direction
-    break;
+    // check out this error recovery
+    // may need to finish transaction for overrun
 
-  default:               // no ack, back off in case of data phase
-    SW_ShiftInBytes(4);  // data
-    SW_ShiftIn(2);       // parity + turn
-    _SetSWDIOasOutput(); // restore direction
+  case SW_ACK_FAULT:
+  case SW_ACK_WAIT:
+  default:             
   }
-  _SetSWDIOasInput(); // Set pin direction
+   SW_ShiftOutBytes(0,1); // drive line to idle state
+ // _SetSWDIOasOutput(8); // Set pin direction  
   return ack;
 }
 
@@ -270,7 +273,7 @@ uint32_t SWD_LineReset(uint32_t *idcode)
   // SWD reset sequence:
   //          56 1's, 8 0's, Read IDcode
   //          SW_IDCODE_RD not allowed to wait or fault
-  _SetSWDIOasOutput();
+  //_SetSWDIOasOutput();
   SW_ShiftReset();
   SW_ShiftOutBytes(0, 1);
   ack = SWD_Transaction(SW_IDCODE_RD, idcode, 0);
@@ -282,7 +285,7 @@ static uint32_t SWD_Connect(uint32_t *idcode)
   // Init Pins
   _SetSWPinsIdle();
   // Select SWD Port
-  _SetSWDIOasOutput();
+  //_SetSWDIOasOutput();
   SW_ShiftReset();
   SW_ShiftOutBytes(0xE79E, 2);
   // Finish with Line reset
@@ -292,11 +295,11 @@ static uint32_t SWD_Connect(uint32_t *idcode)
 static void SWD_Disconnect(void)
 {
   // set pins to idle state
-  _SetSWPinsIdle();
+  //_SetSWPinsIdle();
   // select JTAG port
-  _SetSWDIOasOutput();
+ // _SetSWDIOasOutput();
   SW_ShiftReset();
-  SW_ShiftOutBytes(0xE73C, 2);
+  SW_ShiftOutBytes(0xE73C, 2); 
   SW_ShiftReset();
   // Release pins (except nReset)
   _ResetDebugPins();
@@ -312,7 +315,7 @@ static void SWD_Disconnect(void)
 #define TRANSACTION(reg, op)                                       \
   do                                                               \
   {                                                                \
-    int ack = errorClear(SWD_Transaction(reg, op, MAX_SWD_RETRY)); \
+    int ack = errorClear(SWD_Transaction(reg, op, MAX_SWD_RETRY),__LINE__); \
     if (ack)                                                       \
     {                                                              \
       EPRINTF("trans fail %d reg %x op %x line %d\r\n", ack, reg, op,__LINE__);     \
@@ -320,7 +323,7 @@ static void SWD_Disconnect(void)
     }                                                              \
   } while (0)
 
-static uint32_t errorClear(uint32_t ack)
+static uint32_t errorClear(uint32_t ack, int line)
 {
   uint32_t tmp;
   if (ack == SW_ACK_OK)
@@ -335,14 +338,14 @@ static uint32_t errorClear(uint32_t ack)
 
   if (ack == 7)
   { // nothing came back !
-    EPRINTF("transaction returned 7\r\n");
+    SWD_LineReset(&tmp);
     return ack;
   }
 
-  EPRINTF("Error clear %d\r\n", ack);
+  EPRINTF("Error clear %d line %d\r\n", ack,line);
   if (SW_ACK_OK != SWD_Transaction(SW_CTRLSTAT_RD, &tmp, 0))
   {
-    EPRINTF("Error clear line reset\r\n");
+    EPRINTF("Error clear line reset line %d\r\n",line);
     SWD_LineReset(&tmp);
   }
 
@@ -394,6 +397,7 @@ uint32_t SWD_writeMem32(uint32_t address, uint32_t *data,
           (address & (AUTO_INCREMENT_PAGE_SIZE - 1));
     if (size < len)
       len = size;
+      // let it fail once
     if ((err = _SWD_writeMem32(address, data, len)))
       if ((err = _SWD_writeMem32(address, data, len)))
         return err;
@@ -435,6 +439,7 @@ uint32_t SWD_readMem32(uint32_t address, uint32_t *data,
           (address & (AUTO_INCREMENT_PAGE_SIZE - 1));
     if (size < len)
       len = size;
+      // let it fail once
     if ((err = _SWD_readMem32(address, data, len)))
       if ((err = _SWD_readMem32(address, data, len)))
         return err;
@@ -502,10 +507,12 @@ uint32_t SWD_readMem16(uint32_t address, uint16_t *data, uint32_t size)
   // Write CSW register
   tmp = CSW_VALUE | CSW_SIZE16;
   TRANSACTION(SW_CSW_WR, &tmp);
-  for (i = 0; i < size / 2; i++)
+  for (i = 0; i < size / 2; i++){
+    // let it fail once
     if ((err = SWD_readHalf(address + 2 * i, data + i)))
       if ((err = SWD_readHalf(address + 2 * i, data + i)))
         break;
+  }
   if (err)
     EPRINTF("SWD_readMem8 failed\r\n");
   tmp = CSW_VALUE | CSW_SIZE32;
@@ -566,10 +573,12 @@ uint32_t SWD_readMem8(uint32_t address, uint8_t *data, uint32_t size)
   // Write CSW register
   tmp = CSW_VALUE | CSW_SIZE8;
   TRANSACTION(SW_CSW_WR, &tmp);
-  for (i = 0; i < size; i++)
+  for (i = 0; i < size; i++){
+    // let it fail once
     if ((err = SWD_readByte(address + i, data + i)))
       if ((err = SWD_readByte(address + i, data + i)))
         break;
+  }
   if (err)
     EPRINTF("SWD_readMem8 failed\r\n");
   tmp = CSW_VALUE | CSW_SIZE32;
@@ -594,6 +603,8 @@ int32_t SWD_Open()
 {
   uint32_t tmp;
   int tries;
+
+  EPRINTF("SWD Open\r\n",0);
 
   //
   if (SWD_Connect(&CoreID) != SW_ACK_OK)
