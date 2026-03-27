@@ -31,17 +31,24 @@
 #include "chprintf.h"
 #endif
 
+
+/**
+ * @brief   Disables the SPI2 peripheral clock.
+ *
+ * @api
+ */
+
 #define rccEnableSPI2(lp) rccEnableAPBR1(RCC_APBENR1_SPI2EN, lp)
 
 /**
- * @brief   Disables the SPI1 peripheral clock.
+ * @brief   Disables the SPI2 peripheral clock.
  *
  * @api
  */
 #define rccDisableSPI2() rccDisableAPBR1(RCC_APBENR1_SPI2EN)
 
 /**
- * @brief   Resets the SPI1 peripheral.
+ * @brief   Resets the SPI2 peripheral.
  *
  * @api
  */
