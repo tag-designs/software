@@ -33,6 +33,7 @@
 
 #define STM32C0xx_MCUCONF
 #define STM32C071_MCUCONF
+#define STM32C071xx
 
 /*
  * HAL driver general settings.
@@ -183,6 +184,7 @@
  * SPI driver system settings.
  */
 #define STM32_SPI_USE_SPI1                  FALSE
+#define STM32_SPI_USE_SPI2                  TRUE
 #define STM32_SPI_SPI1_RX_DMA_STREAM        STM32_DMA_STREAM_ID_ANY
 #define STM32_SPI_SPI1_TX_DMA_STREAM        STM32_DMA_STREAM_ID_ANY
 #define STM32_SPI_SPI1_DMA_PRIORITY         1

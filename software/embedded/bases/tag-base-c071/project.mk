@@ -6,7 +6,7 @@ CXXFLAGS += -DLINE_TAG_SWCLK=LINE_SPI1_SCK -DLINE_TAG_SWDIO=LINE_SPI1_MOSI -DLIN
 ALLCSRC += \
        main.c \
 	   usbcfg.c \
-	   ll_swd.c \
+	   ll_swd_spi.c \
 	   stlink-local.c \
 	   stm32adc.c
 

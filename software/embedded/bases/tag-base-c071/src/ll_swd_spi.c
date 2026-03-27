@@ -31,6 +31,23 @@
 #include "chprintf.h"
 #endif
 
+#define rccEnableSPI2(lp) rccEnableAPBR1(RCC_APBENR1_SPI2EN, lp)
+
+/**
+ * @brief   Disables the SPI1 peripheral clock.
+ *
+ * @api
+ */
+#define rccDisableSPI2() rccDisableAPBR1(RCC_APBENR1_SPI2EN)
+
+/**
+ * @brief   Resets the SPI1 peripheral.
+ *
+ * @api
+ */
+#define rccResetSPI2() rccResetAPBR1(RCC_APBRSTR1_SPI2RST)
+
+
 #define REGRETRIES 20
 #define DELCNT 1
 
@@ -50,19 +67,19 @@ static void spiInit(void)
   uint32_t br = 2<<3; // baud rate 24/8 = 3Mhz
   palClearLine(LINE_TGT_SWCLK);
   palClearLine(LINE_TGT_SWDIO);
-  palClearLine(LINE_TGT_SWDIO_IN);
+  //palClearLine(LINE_TGT_SWDIO_IN);
 
-  rccEnableSPI1(true);
-  rccResetSPI1(); 
+  rccEnableSPI2(true);
+  rccResetSPI2(); 
 
   toAlternate(LINE_TGT_SWCLK);
   toAlternate(LINE_TGT_SWDIO);
-  toInput(LINE_TGT_SWDIO_IN);
+  //toInput(LINE_TGT_SWDIO_IN);
 
   //SPI1->CR1  = 0;
-  SPI1->CR1  = SPI_CR1_LSBFIRST | br | SPI_CR1_MSTR;
-  SPI1->CR2  = SPI_CR2_SSOE | (7<<8);
-  SPI1->CR1 |= SPI_CR1_SPE;
+  SPI2->CR1  = SPI_CR1_LSBFIRST | br | SPI_CR1_MSTR;
+  SPI2->CR2  = SPI_CR2_SSOE | (7<<8);
+  SPI2->CR1 |= SPI_CR1_SPE;
 
   isOutput = true;
   spiReady = true;
@@ -72,9 +89,9 @@ static void spiDeInit(void)
 {
   toAnalog(LINE_TGT_SWDIO); //was input
   toAnalog(LINE_TGT_SWCLK); //was output
-  toAnalog(LINE_TGT_SWDIO_IN);
-  rccResetSPI1();
-  rccDisableSPI1();
+  //toAnalog(LINE_TGT_SWDIO_IN);
+  rccResetSPI2();
+  rccDisableSPI2();
   spiReady = false;
   isOutput = true;
 }
@@ -95,15 +112,15 @@ static inline void _SetSWDIOasInput(void)
 {
   if (isOutput) {
     toOutput(LINE_TGT_SWCLK);
-    toAnalog(LINE_TGT_SWDIO);
-    toInput(LINE_TGT_SWDIO_IN);
+    toInput(LINE_TGT_SWDIO);
+    //toInput(LINE_TGT_SWDIO_IN);
     isOutput = false;
   }
 }
 
 static inline uint32_t SWDIO_IN(void)
 {
-  uint8_t b = palReadLine(LINE_TGT_SWDIO_IN);
+  uint8_t b = palReadLine(LINE_TGT_SWDIO);
   palSetLine(LINE_TGT_SWCLK);
   palClearLine(LINE_TGT_SWCLK);
   return b;
@@ -138,7 +155,7 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
 
  for (i = 0; i < bytes; i++)
   {
-    *(volatile uint8_t *) &SPI1->DR = buf[i];
+    *(volatile uint8_t *) &SPI2->DR = buf[i];
   }
   //EPRINTF("Data sent\r\n");
 
@@ -150,7 +167,7 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
     EPRINTF("Received byte\r\n",0);
   }
     */
-  while((SPI1->SR & SPI_SR_BSY));
+  while((SPI2->SR & SPI_SR_BSY));
   //EPRINTF("loopback received \r\n");
   return;
 }

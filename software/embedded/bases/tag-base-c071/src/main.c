@@ -96,6 +96,7 @@ static THD_FUNCTION(Thread1, arg)
     {
       //palSetLine(LINE_TAG_3V3_EN);
     }
+#endif
 
 
     adc1Start();
@@ -121,7 +122,6 @@ static THD_FUNCTION(Thread1, arg)
     vlipo100 = (vref100 * adc1DR()) / 4096;
     if (vlipo100 < 200)
       vlipo100 = 330;
-#endif
 }
 }
 

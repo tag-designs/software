@@ -16,20 +16,20 @@
   <ports>
     <GPIOA>
       <pin0
-        ID="SPI2_SCK"
-        Type="PushPull"
-        Level="High"
-        Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Input"
-        Alternate="0" />
-      <pin1
         ID="TGT_SWCLK"
         Type="PushPull"
         Level="High"
         Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Input"
+        Resistor="Floating"
+        Mode="Analog"
+        Alternate="0" />
+      <pin1
+        ID="SPI1_SWCLK"
+        Type="PushPull"
+        Level="Low"
+        Speed="Maximum"
+        Resistor="Floating"
+        Mode="Analog"
         Alternate="0" />
       <pin2
         ID="STLK_RX"
@@ -48,17 +48,17 @@
         Mode="Alternate"
         Alternate="1"/>
       <pin4
-        ID="TGT_RESET"
-        Type="OpenDrain"
+        ID=""
+        Type="PushPull"
         Level="High"
-        Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Output"
+        Speed="Low"
+        Resistor="Floating"
+        Mode="Analog"
         Alternate="0" />
       <pin5
         ID="LED_GREEN"
         Type="PushPull"
-        Level="Low"
+        Level="High"
         Speed="Maximum"
         Resistor="Floating"
         Mode="Output"
@@ -72,12 +72,12 @@
         Mode="Input"
         Alternate="0" />
       <pin7
-        ID="TGT_SWDIO"
+        ID="TGT_SWDIO_IN"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Input"
+        Resistor="Floating"
+        Mode="Analog"
         Alternate="0" />
       <pin8
         ID=""
@@ -93,15 +93,15 @@
         Level="High"
         Speed="Maximum"
         Resistor="PullUp"
-        Mode="Input"
+        Mode="Analog"
         Alternate="0" />
       <pin10
-        ID="TGT_SWDIO_IN"
+        ID="TGT_SWDIO"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Input"
+        Resistor="Floating"
+        Mode="Analog"
         Alternate="0" />
       <pin11
         ID="USB_D_N"
@@ -186,20 +186,20 @@
         Mode="Input"
         Alternate="0" />
       <pin5
-        ID=""
+        ID="TGT_RESET"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="Maximum"
-        Resistor="PullUp"
-        Mode="Input"
+        Resistor="Floating"
+        Mode="Output"
         Alternate="0" />
       <pin6
-        ID=""
+        ID="UART1_TX"
         Type="PushPull"
         Level="High"
         Speed="Maximum"
         Resistor="PullUp"
-        Mode="Input"
+        Mode="Alternate"
         Alternate="0" />
       <pin7
         ID=""
@@ -348,12 +348,12 @@
         Mode="Input"
         Alternate="0" />
       <pin9
-        ID=""
+        ID="LED_BLUE"
         Type="PushPull"
         Level="High"
         Speed="Maximum"
         Resistor="PullUp"
-        Mode="Input"
+        Mode="Output"
         Alternate="0" />
       <pin10
         ID=""

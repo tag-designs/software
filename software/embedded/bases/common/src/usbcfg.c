@@ -127,6 +127,10 @@ static const uint8_t vcom_string4[16] = {
     USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
     'S', 0, 'T', 0, ' ', 0, 'L', 0, 'i', 0, 'n', 0, 'k', 0};
 
+
+    // what purpose does vcom_string5 serve???
+    // doesn't look like it can be returned
+    
 static const uint8_t vcom_string5[26] = {
     USB_DESC_BYTE(26), /* bLength.                         */
     USB_DESC_BYTE(USB_DESCRIPTOR_STRING),
