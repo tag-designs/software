@@ -98,15 +98,14 @@ void MainClass::Detach()
 
 bool MainClass::load_calibration(){
    Ack ack;
+   CalibrationConstants constants;
    float B;
    float V[3];
    float A[3][3];
 
-   if (tag.ReadCalibration(ack,-1)
-        && ack.has_calibration_constants() 
-        && ack.calibration_constants().has_magnetometer())
-   {
-      const CalibrationConstants_MagConstants mag = ack.calibration_constants().magnetometer();
+   if (tag.ReadCalibration(constants,-1) && constants.has_magnetometer())
+    {
+      const CalibrationConstants_MagConstants mag = constants.magnetometer();
       B = mag.b();
       V[0] = mag.v0();
       V[1] = mag.v1();
