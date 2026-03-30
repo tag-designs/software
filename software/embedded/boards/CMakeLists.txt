@@ -30,6 +30,7 @@ add_subdirectory(tag-breakout-base-l432-v1)
 add_subdirectory(bittag-base-v7)
 add_subdirectory(tag-base-c071-v1)
 
+
 # tags
 
 #add_subdirectory(BitTagv5)
@@ -41,3 +42,4 @@ add_subdirectory(PresTagBreakout)
 add_subdirectory(BitTagNG)
 add_subdirectory(BitPresTagv1)
 add_subdirectory(CompassTagv1)
+add_subdirectory(IMUTagv1)
