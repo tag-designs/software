@@ -1,0 +1,7 @@
+* long_names:false
+Ack.error_message max_size:64
+StateLog.states max_count:18
+Ack.bittag_data_log type:FT_IGNORE
+#Ack.acceltag_data_log type:FT_IGNORE
+Ack.bittag_ng_data_log type:FT_IGNORE
+Ack.bitprestag_data_log type:FT_IGNORE
