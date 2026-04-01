@@ -32,12 +32,12 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin1
-        ID=""
+        ID="LED1"
         Type="PushPull"
         Level="High"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
@@ -72,7 +72,7 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin5
-        ID="LPS_CK"
+        ID="LSM_CK"
         Type="PushPull"
         Level="Low"
         Speed="Maximum"
@@ -194,12 +194,12 @@
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin1
-        ID=""
+        ID="LED2"
         Type="PushPull"
-        Level="Low"
+        Level="High"
         Speed="Low"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />

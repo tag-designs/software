@@ -78,7 +78,6 @@ static void spiDisable(void)
 }
 
 
-#ifdef USE_AK09940A
 
 void magOn(void){
 
@@ -90,7 +89,7 @@ void magOn(void){
 
   /* configure SPI1   */
 
-  toAlternate(LINE_LSM_SCK);
+  toAlternate(LINE_LSM_CK);
   toAlternate(LINE_LPS_MISO);
   toAlternate(LINE_LSM_MOSI);
 
@@ -102,15 +101,11 @@ void magOff(void){
 
   palSetLine(LINE_AK_CS);
   spiDisable();
-  toAnalog(LINE_LSM_SCK);
+  toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LSM_MOSI);
   toAnalog(LINE_LPS_MISO);
   chBSemSignal(&SPImutex);
 }
-
-#endif
-
-#ifdef USE_LPS22
 
 void lpsOn(void){
 
@@ -121,7 +116,7 @@ void lpsOn(void){
 
   /* configure SPI1   */
 
-  toAlternate(LINE_LPS_SCK);
+  toAlternate(LINE_LSM_CK);
   toAlternate(LINE_LPS_MISO);
   toAlternate(LINE_LPS_MOSI);
 
@@ -133,26 +128,22 @@ void lpsOff(void){
 
   palSetLine(LINE_LPS_CS);
   spiDisable();
-  toAnalog(LINE_LPS_SCK);
+  toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LPS_MOSI);
   toAnalog(LINE_LPS_MISO);
   chBSemSignal(&SPImutex);
 }
-
-#endif
-
-#ifdef USE_LSM6
 
 void lsm6On(void){
 
   /* grab the mutex */
 
   chBSemWait(&SPImutex);
-  palSetLine(LINE_LMS_CS);
+  palSetLine(LINE_LSM_CS);
 
   /* configure SPI1   */
 
-  toAlternate(LINE_LSM_SCK);
+  toAlternate(LINE_LSM_CK);
   toAlternate(LINE_LSM_MISO);
   toAlternate(LINE_LSM_MOSI);
 
@@ -164,18 +155,12 @@ void lsm6Off(void){
 
   palSetLine(LINE_LSM_CS);
   spiDisable();
-  toAnalog(LINE_LSM_SCK);
+  toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LSM_MOSI);
   toAnalog(LINE_LSM_MISO);
   chBSemSignal(&SPImutex);
 }
 
-#endif
-
-
-
-
-#if defined(EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
   /* grab the mutex */
@@ -199,7 +184,7 @@ void FlashSpiOff(void)
   toAnalog(LINE_MX_MISO);
   chBSemSignal(&SPImutex);
 }
-#endif
+
 
 /*
  * Standby/Shutdown modes
@@ -257,12 +242,6 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#ifdef EXTERNAL_FLASH
-  enableLinePullup(LINE_MX_nCS);
-  enableLinePulldown(LINE_MX_SCK);
-  enableLinePulldown(LINE_MX_MOSI);
-#endif
-
   // Pull up SCL and SDA on RTC
 
   enableLinePullup(LINE_RTC_SCL);
@@ -270,10 +249,17 @@ void godown(enum Sleep sleepmode)
 
   // Pull I/O pins
 
-  enableLinePulldown(LINE_MAG_PWR);
-  enableLinePullup(LINE_ACCEL_CS);
-  enableLinePulldown(LINE_ACCEL_TX);
-  enableLinePulldown(LINE_ACCEL_SCK);
+  enableLinePullup(LINE_LSM_CS);
+  enableLinePullup(LINE_AK_CS);
+  enableLinePullup(LINE_LPS_CS);
+  enableLinePulldown(LINE_LSM_MOSI);
+  enableLinePulldown(LINE_LSM_CK);
+
+  enableLinePullup(LINE_MX_nCS);
+  enableLinePulldown(LINE_MX_SCK);
+  enableLinePulldown(LINE_MX_MOSI);
+
+
 
   // fully discharge Pressure Sensor capacitor
 
