@@ -220,7 +220,8 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(EXTERNAL_FLASH)
+#if 0
+//#if defined(EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
@@ -278,7 +279,9 @@ void godown(enum Sleep sleepmode)
  
    // set wakeup edge
  
- #if defined(LINE_ACCEL_INT)
+
+ #if 0
+ //#if defined(LINE_ACCEL_INT)
    if (isActive)
    {
      SET_BIT(PWR->CR4, PWR_CR4_WP1); // falling edge detect

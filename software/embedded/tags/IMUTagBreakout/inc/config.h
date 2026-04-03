@@ -3,7 +3,7 @@
 
 // Stored Configuration
 
-#define TAG_TYPE COMPASSTAG
+#define TAG_TYPE IMUTAG
 
 typedef struct {
   int32_t start_epoch;

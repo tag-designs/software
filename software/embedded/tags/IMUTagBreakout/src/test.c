@@ -83,11 +83,21 @@ void test(void)
   }
 #endif
 
-#if defined(USE_LIS2DU12)
+#if defined(USE_LPS22HH)
   {
-    if (!accelTest())
+    if (!lpsTest())
     {
-      pState->test_result = LIS2DU12_FAILED;
+      pState->test_result = LPS_FAILED;
+      return;
+    }
+  }
+#endif
+
+#if defined(USE_MX25L)
+  {
+    if (!mx25_test())
+    {
+      pState->test_result = EXT_FLASH_FAILED;
       return;
     }
   }

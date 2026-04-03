@@ -47,8 +47,8 @@
 #define STM32_HSE_ENABLED                   FALSE
 #define STM32_LSE_ENABLED                   TRUE
 #define STM32_MSIPLL_ENABLED                FALSE
-#define STM32_MSIRANGE                      STM32_MSIRANGE_2M
-#define STM32_MSISRANGE                     STM32_MSISRANGE_2M
+#define STM32_MSIRANGE                      STM32_MSIRANGE_16M
+#define STM32_MSISRANGE                     STM32_MSISRANGE_4M
 #define STM32_SW                            STM32_SW_MSI
 #define STM32_PLLSRC                        STM32_PLLSRC_NOCLOCK
 #define STM32_PLLM_VALUE                    1

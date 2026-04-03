@@ -10,7 +10,9 @@ ALLCSRC += \
        datalog.c \
        default_config.c \
        handlers.c  \
+       lps22hh.c \
        main.c \
+       mx25l.c \
        monitor.c pb_common.c \
        pb_decode.c \
        pb_encode.c  \
@@ -25,4 +27,5 @@ ALLCSRC += \
        tag.pb.c \
        tagdata.pb.c \
        test.c   \
-       time.c        
+       time.c  \
+       stubs.c      

@@ -35,7 +35,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     disableAllAlarms();
     disableTicker();
-    accelDeinit();
+    //accelDeinit();
 
     // reset state variables
 
@@ -73,7 +73,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // start accelerometer
 
-    accelInit(ACCEL_WAKEUP_MODE);
+    //accelInit(ACCEL_WAKEUP_MODE);
     pState->state = TagState_RUNNING;
     recordState(reason);
 
@@ -102,7 +102,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // sample once ! -- also used in pwr to decide wakeup edge
 
-    isActive = palReadLine(LINE_ACCEL_INT);
+    //isActive = palReadLine(LINE_ACCEL_INT);
 
     // now we need to collect all bits
     // lastactstart == INT_MAX if the tag wasn't active at the last wakeup
