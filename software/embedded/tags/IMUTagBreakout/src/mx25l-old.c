@@ -4,6 +4,7 @@
 #include "app.h"
 #include "math.h"
 #include "stdint.h"
+#include "external_flash.h"
 
 // Flash command set
 #define MX25_CMD_READ_ID            0x9FU
@@ -14,6 +15,17 @@
 #define MX25_CMD_SECTOR_ERASE       0x20U
 #define MX25_CMD_DEEP_POWER_DOWN    0xB9U
 #define MX25_CMD_RELEASE_POWER_DOWN 0xABU
+#define MX25_CMD_RESET_ENABLE       0x66U
+#define MX25_CMD_RESET_MEMORY       0x99U
+
+/* Status Register */
+
+#define MX25_FLAGS_SR_WIP                    ((uint8_t)0x01)    /* Write in progress */
+#define MX25_FLAGS_SR_WEL                    ((uint8_t)0x02)    /* Write enable latch */
+#define MX25_FLAGS_SR_BP                     ((uint8_t)0x3C)    /* Block protect */
+#define MX25_FLAGS_SR_QE                     ((uint8_t)0x40)    /* Quad enable */
+#define MX25_FLAGS_SR_SRWD                   ((uint8_t)0x80)    /* Status register write disable */
+
 
 /*
  * SPI Hooks
@@ -59,6 +71,7 @@ static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 // ============================================================
 // Platform hooks
 // ============================================================
+
 #define spi_cs_low() palClearLine(LINE_MX_nCS)
 #define spi_cs_high() palSetLine(LINE_MX_nCS)
 #define spi_tx(txbuf, len) SendPolled(len,txbuf)

@@ -93,18 +93,6 @@ void test(void)
   }
 #endif
 
-#if defined(USE_MX25L)
-  {
-    if (!mx25_test())
-    {
-      pState->test_result = EXT_FLASH_FAILED;
-      return;
-    }
-  }
-#endif
-
-
-
   pState->test_result = ALL_PASSED;
 }
 

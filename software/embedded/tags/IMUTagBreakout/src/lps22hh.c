@@ -4,6 +4,9 @@
 #include "app.h"
 #include "math.h"
 
+extern void lpsOn(void);
+extern void lpsOff(void);
+
 /* WHO_AM_I value for the LPS22HH device. */
 #define LPS22HH_WHO_AM_I_VAL    0xB3
 
@@ -54,29 +57,42 @@
  * --------------------------------------------------------------------------
  */
 
-static inline void SendPolled(uint32_t n, uint8_t *buf)
+static inline void SendPolled(uint32_t n, const uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
+  uint32_t rn = n;
+  while (n || rn)
   {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
+    while (n && (SPI1->SR & SPI_SR_TXE)){
+        *spidr = *buf++;
+        n--;
+    }
+    while (rn && (SPI1->SR & SPI_SR_RXNE))
+    {
+        *spidr;
+        rn--;
+    }
   }
 }
 
-static void inline ReceivePolled(uint32_t n, uint8_t *buf)
+static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
+  uint32_t rn = n;
+  while (n || rn)
   {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
+    while (n && (SPI1->SR & SPI_SR_TXE)){
+        *spidr = 0xff;
+        n--;
+    }
+    while (rn && (SPI1->SR & SPI_SR_RXNE))
+    {
+        *buf++ = *spidr;
+        rn--;
+    }
   }
 }
+
 
 
 /* Write one register. */
