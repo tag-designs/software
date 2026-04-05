@@ -45,6 +45,8 @@ message Req {
     CalibrationConstants write_calibration = 13;
     int32 read_calibration = 14;  // read index, < 0 means last written, > -1 means specific
                                   // calibration constant write
+
+    Empty debug = 20;  // request debug string
   }
 }
 
@@ -72,6 +74,7 @@ message Ack {
     Config config = 3;        // configuration return
     Status status = 4;        // current status
     string error_message = 5; // debugging support
+   
 
     // Log types
 
@@ -86,6 +89,8 @@ message Ack {
 
     CalibrationLog calibration_log = 13;
     CalibrationConstants calibration_constants = 14;
+
+    string debug_message = 20;
   
   }
 }
@@ -129,6 +134,7 @@ message Status {
   float temperature = 7;         // processor Temperature
   int32 sectors_erased = 8;      // during erase operation provides
                                  // feedback of erased sectors
+  bool debug_available = 20;     // debug string data available
 }
 
 message State {

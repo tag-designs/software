@@ -1,6 +1,7 @@
 # List of all the project related files.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/IMUTagv1/board.mk
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
 #ak09940a.c 
 # mx25l.c 

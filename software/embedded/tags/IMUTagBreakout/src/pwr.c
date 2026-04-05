@@ -220,7 +220,7 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if 0
+
 //#if defined(EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
@@ -230,10 +230,10 @@ void godown(enum Sleep sleepmode)
       (pState->state == HIBERNATING))
   {
     ExFlashPwrUp();
-    stopMilliseconds(true,1);
+    //stopMilliseconds(true,1);
     ExFlashPwrDown();
   }
-#endif
+
   // Make sure debug power is off
   __disable_irq();
   DBGMCU->CR = 0;

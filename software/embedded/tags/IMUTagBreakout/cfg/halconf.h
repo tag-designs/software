@@ -565,6 +565,7 @@
 
 #define SW_I2C_USE_I2C1 TRUE 
 #define SW_I2C_USE_OSAL_DELAY FALSE
+#define HAL_USE_MEM_STREAMS TRUE
 #endif /* HALCONF_H */
 
 /** @} */

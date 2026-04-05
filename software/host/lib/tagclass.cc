@@ -261,6 +261,19 @@ bool Tag::WriteCalibration(CalibrationConstants &constants)
   return monitor.Rpc(req,ack);
 }
 
+std::string Tag::DebugMessage(){
+  std::lock_guard<std::mutex> lck(mtx);
+  req.Clear();
+  req.set_allocated_debug(new Empty);
+  if (monitor.Rpc(req,ack) && ack.has_debug_message())
+  {
+    return ack.debug_message();
+  }
+  //std::cerr << "info failed\n";
+  return std::string();
+}
+
+
 // instantiate GetLog for bittags
 #if 0
 template <>

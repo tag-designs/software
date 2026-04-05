@@ -25,6 +25,6 @@ extern volatile int sectors_erased;
 #define MAG_CONSTANT 0.01
 #define SWAP_I2C TRUE
 
-#include "lis2du12.h"
+#define DEBUG_MESSAGES TRUE
 
 #endif

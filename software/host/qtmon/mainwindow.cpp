@@ -232,6 +232,11 @@ void MainWindow::TriggerUpdate(void)
         ui.ExternalLog->setVisible(false);
       }
 
+      if (status.debug_available()){
+        QString ds = QString::fromStdString(tag.DebugMessage());
+        qDebug() << "Log: " << ds;
+      }
+
       double timeerr = QDateTime::currentMSecsSinceEpoch();
       timeerr = status.millis() - timeerr;
       ui.timeError->setText(QString::number(timeerr / 1000.0, 'f', 2));

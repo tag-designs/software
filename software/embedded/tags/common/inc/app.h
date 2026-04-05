@@ -10,6 +10,10 @@
 #include "custom.h"
 #include "mcuconf.h"
 
+#ifdef DEBUG_MESSAGES
+#include "memstreams.h"
+#endif
+
 // Compile time checks
 
 #define CASSERT(predicate) _impl_CASSERT_LINE(predicate, __LINE__, __FILE__)
@@ -223,4 +227,9 @@ void accelOff(void);
 #ifdef SENSOR_CALIBRATION
 #include "sensors.h"
 #endif
+
+#ifdef DEBUG_MESSAGES
+extern MemoryStream ds;
+#endif
+
 #endif

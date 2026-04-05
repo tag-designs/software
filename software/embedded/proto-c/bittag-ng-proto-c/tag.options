@@ -7,4 +7,5 @@ Ack.prestag_raw_data_log type:FT_IGNORE
 Ack.compasstag_data_log type:FT_IGNORE
 Ack.calibration_constants type:FT_IGNORE
 Req.write_calibration type:FT_IGNORE
+Ack.debug_message max_size:512
 

@@ -59,6 +59,8 @@ public:
   bool ReadCalibration(CalibrationConstants &constants, uint32_t index);
   bool WriteCalibration(CalibrationConstants &constants);
 
+  std::string DebugMessage();
+
 
 private:
   mutex mtx;
