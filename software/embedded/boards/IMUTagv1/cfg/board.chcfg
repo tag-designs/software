@@ -47,7 +47,7 @@
         Level="High"
         Speed="Medium"
         Resistor="Floating"
-        Mode="Output"
+        Mode="Analog"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
@@ -57,7 +57,7 @@
         Level="High"
         Speed="High"
         Resistor="Floating"
-        Mode="Medium"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />

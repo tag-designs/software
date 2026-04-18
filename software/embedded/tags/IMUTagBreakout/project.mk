@@ -7,6 +7,7 @@ include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 # mx25l.c 
 
 ALLCSRC += \
+       ak09940.c \
        config.c \
        datalog.c \
        default_config.c \

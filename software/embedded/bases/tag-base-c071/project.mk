@@ -7,6 +7,6 @@ ALLCSRC += \
        main.c \
 	   usbcfg.c \
 	   ll_swd_spi.c \
-	   stlink-local.c \
+	   stlink.c \
 	   stm32adc.c
 

@@ -3,5 +3,105 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": []
+    "configurations": [
+
+
+
+
+    {
+        "name": "(gdb) Pipe Launch",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "enter program name, for example ${workspaceFolder}/a.out",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "pipeTransport": {
+            "debuggerPath": "/usr/bin/gdb",
+            "pipeProgram": "/usr/bin/ssh",
+            "pipeArgs": [],
+            "pipeCwd": ""
+        },
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    }
+
+    {
+        "name": "CompassTag Debug",
+        "type": "cortex-debug",
+        "request": "launch",
+        "servertype": "stutil",
+        "interface": "swd",
+        "serverArgs": [
+            "--connect-under-reset"
+        ]
+        "executable": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "program": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "device": "STM32L432", // Replace with your MCU
+        "cortex-debug.gdbPath": "/usr/local/arm/bin/arm-none-eabi-gdb",
+        "svdFile": "${workspaceRoot}/software/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
+    }
+
+      {
+        "name": "CompassTag Debug OpenOCD",
+        "type": "cortex-debug",
+        "request": "launch",
+        "servertype": "openocd",
+        "interface": "swd",
+        "serverArgs": [
+           
+        ],
+        "postAttachCommands": [
+            "monitor reset" 
+        ]
+        "configFiles": [
+                "interface/stlink.cfg", // Your programmer
+                "target/stm32l4x.cfg"   // Your target chip
+            ],
+        "executable": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "program": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "device": "STM32L432", // Replace with your MCU
+        "cortex-debug.gdbPath": "/usr/local/arm/bin/arm-none-eabi-gdb",
+        "svdFile": "${workspaceRoot}/software/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
+    }
+
+
+    {
+        "name": "(gdb) Launch",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "/home/geobrown/Build/ultralight-tags/Debug/bin/qtmonitor",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description": "Set Disassembly Flavor to Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    }
+    ]
 }

@@ -27,6 +27,7 @@ extern "C"
 // ARM Defined debug addresses
 
 #define DBG_HCSR 0xE000EDF0U
+#define DHCSR DBG_HCSR
 #define DCRDR 0xE000EDF8U
 #define DEMCR 0xE000EDFCU
 
@@ -72,7 +73,7 @@ bool TagMonitor::Voltage(float &voltage){
 bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 {
   static const int TIMEOUT = 500;
-  uint32_t demcr;
+  uint32_t demcr, dhcsr;
   int err;
   int i;
 
@@ -81,6 +82,16 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     log_error("monitor not attached");
     return false;
   }
+
+  /*
+   if (!ReadDebug32(DHCSR, &dhcsr))
+  {
+    log_error("read reg failed %d\n",dhcsr);
+    return false;
+  } else {
+    log_debug("read dhcsr 0x%x\n",dhcsr);
+  }
+    */
 
   // write debug request data (operand,operation)
 
@@ -97,7 +108,12 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
   if (!ReadDebug32(DEMCR, &demcr))
   {
-    log_error("read reg failed %d\n");
+    log_error("read reg failed %d\n",demcr);
+    return false;
+  }
+
+  if (demcr & (MON_PEND | MON_REQ)){
+    log_error("monitor pending bit already set");
     return false;
   }
 
@@ -120,11 +136,17 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
   // check for timeout
 
-  if (i == TIMEOUT)
+  if (i == TIMEOUT*5)
   {
     log_error("monitor call timed out\n");
     return false;
   }
+
+  if (demcr & MON_REQ){
+    log_error("monitor pending bit still set");
+    return false;
+  }
+
 
   // read result value if pointer to destination is not NULL
 
@@ -140,12 +162,13 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
     // check for a timeout
 
-    if (i == TIMEOUT)
+    if (i == TIMEOUT-1)
     {
       log_error("monitor call timed out\n");
       return false;
     }
   }
+  log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
   return true;
 }
 
@@ -223,6 +246,8 @@ bool TagMonitor::Attach(UsbDev usbdev)
       break;
     }
 
+    log_debug("Monitor Version 0x%x", version);
+
     if (!Call(TAG_MONITORINFO, MONITORBUF, &call_buf))
     {
       log_error("couldn't fetch monitor buffer location");
@@ -246,6 +271,8 @@ bool TagMonitor::Attach(UsbDev usbdev)
         return false;
       }
     }
+
+    log_debug("Tag Hash String 0x%x, %s\n", tmp, sha_str);
 
     if (!Call(TAG_MONITORINFO, MONITORBUFSIZE, &tmp))
     {

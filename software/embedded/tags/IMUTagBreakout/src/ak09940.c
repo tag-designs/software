@@ -15,6 +15,9 @@
  */
 
 #include "ak09940.h"
+#include "custom.h"
+#include "app.h"
+
 
 /* ------------------------- Register map ------------------------- */
 #define REG_WIA1      0x00
@@ -70,19 +73,7 @@
 #define MODE_EXT_TRG    0x18
 #define MODE_SELF_TEST  0x10
 
-typedef struct {
-    volatile bool drdy_flag;   /* Latched by ISR wrapper. */
-    ak09940_drdy_cb_t user_cb; /* Optional user callback. */
-    void *user_arg;            /* Callback argument. */
-} ak09940_state_t;
 
-/* The driver stores a tiny state blob behind user_arg to avoid changing the
- * public object layout with additional hidden fields.
- */
-static ak09940_state_t *state(ak09940_t *dev)
-{
-    return (ak09940_state_t *)dev->user_arg;
-}
 
 /* Convert human-friendly rate enum to the device's continuous-mode code. */
 static uint8_t rate_to_mode(ak09940_rate_t rate)
@@ -131,40 +122,72 @@ static void pack_drive(ak09940_drive_t drive, uint8_t *cntl1, uint8_t *cntl3)
     }
 }
 
-/* Low-level SPI helpers.
- *
- * ChibiOS SPI transactions are wrapped here so the higher-level code reads like
- * a straightforward sensor driver rather than a bus-transaction script.
+/* low level spi helpers */
+
+/* --------------------------------------------------------------------------
+ * Common SPI helpers
+ * --------------------------------------------------------------------------
  */
-static msg_t spi_write_regs(ak09940_t *dev, uint8_t reg, const uint8_t *buf, size_t n)
+
+static inline void SendPolled(uint32_t n, const uint8_t *buf)
+{
+  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  uint32_t rn = n;
+  while (n || rn)
+  {
+    while (n && (SPI1->SR & SPI_SR_TXE)){
+        *spidr = *buf++;
+        n--;
+    }
+    while (rn && (SPI1->SR & SPI_SR_RXNE))
+    {
+        *spidr;
+        rn--;
+    }
+  }
+}
+
+static inline void ReceivePolled(uint32_t n, uint8_t *buf)
+{
+  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  uint32_t rn = n;
+  while (n || rn)
+  {
+    while (n && (SPI1->SR & SPI_SR_TXE)){
+        *spidr = 0xff;
+        n--;
+    }
+    while (rn && (SPI1->SR & SPI_SR_RXNE))
+    {
+        *buf++ = *spidr;
+        rn--;
+    }
+  }
+}
+
+static msg_t spi_write_regs(uint8_t reg, const uint8_t *buf, size_t n)
 {
     uint8_t hdr = reg & 0x7FU; /* write transaction */
 
-    spiAcquireBus(dev->spip);
-    spiSelect(dev->spip);
+    palClearLine(LINE_AK_CS);
 
-    spiSend(dev->spip, 1, &hdr);
-    if (n != 0U) {
-        spiSend(dev->spip, n, buf);
-    }
+    SendPolled(1, &hdr);
+    SendPolled(n, buf);
 
-    spiUnselect(dev->spip);
-    spiReleaseBus(dev->spip);
+    palSetLine(LINE_AK_CS);
     return MSG_OK;
 }
 
-static msg_t spi_read_regs(ak09940_t *dev, uint8_t reg, uint8_t *buf, size_t n)
+static msg_t spi_read_regs(uint8_t reg, uint8_t *buf, size_t n)
 {
     uint8_t hdr = (uint8_t)(0x80U | (reg & 0x7FU)); /* read transaction */
 
-    spiAcquireBus(dev->spip);
-    spiSelect(dev->spip);
+    palClearLine(LINE_AK_CS);
 
-    spiSend(dev->spip, 1, &hdr);
-    spiReceive(dev->spip, n, buf);
+    SendPolled(1, &hdr);
+    ReceivePolled(n, buf);
 
-    spiUnselect(dev->spip);
-    spiReleaseBus(dev->spip);
+    palSetLine(LINE_AK_CS);
     return MSG_OK;
 }
 
@@ -185,42 +208,20 @@ static int32_t convert_18bit(uint8_t l, uint8_t m, uint8_t h)
     return raw;
 }
 
-void ak09940ObjectInit(ak09940_t *dev, SPIDriver *spip, const SPIConfig *spicfg, ioline_t drdy_trg_line)
-{
-    static ak09940_state_t s;
-
-    dev->spip = spip;
-    dev->spicfg = spicfg;
-    dev->drdy_trg_line = drdy_trg_line;
-    dev->irq_enabled = false;
-
-    s.drdy_flag = false;
-    s.user_cb = NULL;
-    s.user_arg = NULL;
-    dev->user_arg = &s;
-}
-
-void ak09940SetDrdyCallback(ak09940_t *dev, ak09940_drdy_cb_t cb, void *arg)
-{
-    ak09940_state_t *s = state(dev);
-    s->user_cb = cb;
-    s->user_arg = arg;
-}
-
-bool ak09940_check_whoami(ak09940_t *dev)
+bool ak09940_check_whoami()
 {
     uint8_t v = 0U;
-    if (spi_read_regs(dev, REG_WIA2, &v, 1U) != MSG_OK) {
+    if (spi_read_regs(REG_WIA2, &v, 1U) != MSG_OK) {
         return false;
     }
     return (v == WIA2_EXPECTED);
 }
 
 /* Power-down is the safest state for configuration changes. */
-msg_t ak09940_init_power_down(ak09940_t *dev)
+msg_t ak09940_init_power_down()
 {
     uint8_t cntl3 = MODE_POWER_DOWN;
-    return spi_write_regs(dev, REG_CNTL3, &cntl3, 1U);
+    return spi_write_regs(REG_CNTL3, &cntl3, 1U);
 }
 
 /* Continuous mode:
@@ -228,23 +229,22 @@ msg_t ak09940_init_power_down(ak09940_t *dev)
  * - Firmware can poll or use an EXTI event from that line.
  * - The sensor produces samples at the requested ODR.
  */
-msg_t ak09940_init_continuous(ak09940_t *dev,
-                              ak09940_rate_t rate,
+msg_t ak09940_init_continuous(ak09940_rate_t rate,
                               ak09940_drive_t drive,
                               ak09940_temp_mode_t temp_mode)
 {
     uint8_t cntl1, cntl2, cntl3;
 
     /* In continuous mode, the MCU should treat the pin as an input. */
-    palSetLineMode(dev->drdy_trg_line, PAL_MODE_INPUT_PULLUP);
+    toInput(LINE_AK_TRG);
 
     pack_drive(drive, &cntl1, &cntl3);
     cntl2 = (temp_mode == AK09940_TEMP_ENABLED) ? CNTL2_TEM : 0U;
     cntl3 |= rate_to_mode(rate);
 
-    if (spi_write_regs(dev, REG_CNTL1, &cntl1, 1U) != MSG_OK) return MSG_RESET;
-    if (spi_write_regs(dev, REG_CNTL2, &cntl2, 1U) != MSG_OK) return MSG_RESET;
-    if (spi_write_regs(dev, REG_CNTL3, &cntl3, 1U) != MSG_OK) return MSG_RESET;
+    spi_write_regs(REG_CNTL1, &cntl1, 1U);
+    spi_write_regs(REG_CNTL2, &cntl2, 1U);
+    spi_write_regs(REG_CNTL3, &cntl3, 1U);
 
     return MSG_OK;
 }
@@ -254,74 +254,52 @@ msg_t ak09940_init_continuous(ak09940_t *dev,
  * - Firmware pulses the line to request a measurement.
  * - The sensor then performs a single conversion using the configured drive.
  */
-msg_t ak09940_init_triggered(ak09940_t *dev,
-                             ak09940_drive_t drive,
+msg_t ak09940_init_triggered(ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode)
 {
     uint8_t cntl1, cntl2, cntl3;
 
-    palSetLineMode(dev->drdy_trg_line, PAL_MODE_OUTPUT_PUSHPULL);
-    palClearLine(dev->drdy_trg_line);
+    palClearLine(LINE_AK_TRG);
+    toOutput(LINE_AK_TRG);
 
     pack_drive(drive, &cntl1, &cntl3);
     cntl1 |= CNTL1_DTSET;      /* trigger input path select */
     cntl2 = (temp_mode == AK09940_TEMP_ENABLED) ? CNTL2_TEM : 0U;
     cntl3 |= MODE_EXT_TRG;
 
-    if (spi_write_regs(dev, REG_CNTL1, &cntl1, 1U) != MSG_OK) return MSG_RESET;
-    if (spi_write_regs(dev, REG_CNTL2, &cntl2, 1U) != MSG_OK) return MSG_RESET;
-    if (spi_write_regs(dev, REG_CNTL3, &cntl3, 1U) != MSG_OK) return MSG_RESET;
+    spi_write_regs(REG_CNTL1, &cntl1, 1U);
+    spi_write_regs(REG_CNTL2, &cntl2, 1U);
+    spi_write_regs(REG_CNTL3, &cntl3, 1U);
 
     return MSG_OK;
 }
 
-void ak09940_enable_drdy_interrupt(ak09940_t *dev, bool enable)
+
+/* 
+ * Pulse trigger line
+ */
+msg_t ak09940_trigger(void)
 {
-    ak09940_state_t *s = state(dev);
+    palSetLine(LINE_AK_TRG);
+    palClearLine(LINE_AK_TRG);
 
-    s->drdy_flag = false;
-    dev->irq_enabled = enable;
+    return MSG_OK;
+}
 
-    if (enable) {
-        palSetLineMode(dev->drdy_trg_line, PAL_MODE_INPUT_PULLUP);
-        palEnableLineEvent(dev->drdy_trg_line, PAL_EVENT_MODE_RISING_EDGE);
-    } else {
-        palDisableLineEvent(dev->drdy_trg_line);
+
+bool ak09940_data_ready(bool isContinuous)
+{
+    if (isContinuous){
+        return (palReadLine(LINE_AK_TRG) == PAL_HIGH);
+    }
+    else {
+        uint8_t st1 = 0U;
+        spi_read_regs(REG_ST1, &st1, 1U); 
+        return ((st1 & ST1_DRDY) != 0U);
     }
 }
 
-/* Lightweight ISR hook. Call this from your board EXTI handler. */
-void ak09940_handle_drdy_isr(ak09940_t *dev)
-{
-    ak09940_state_t *s = state(dev);
-    s->drdy_flag = true;
-
-    if (s->user_cb != NULL) {
-        s->user_cb(s->user_arg);
-    }
-}
-
-bool ak09940_data_ready(ak09940_t *dev)
-{
-    ak09940_state_t *s = state(dev);
-
-    if (dev->irq_enabled) {
-        if (s->drdy_flag) {
-            return true;
-        }
-        return (palReadLine(dev->drdy_trg_line) == PAL_HIGH);
-    }
-
-    uint8_t st1 = 0U;
-    if (spi_read_regs(dev, REG_ST1, &st1, 1U) != MSG_OK) {
-        return false;
-    }
-
-    return ((st1 & ST1_DRDY) != 0U);
-}
-
-bool ak09940_read_sample(ak09940_t *dev,
-                         int32_t *mx_raw,
+bool ak09940_read_sample(int32_t *mx_raw,
                          int32_t *my_raw,
                          int32_t *mz_raw,
                          int16_t *temp_raw)
@@ -330,9 +308,7 @@ bool ak09940_read_sample(ak09940_t *dev,
     uint8_t buf[11];
 
     /* ST1 confirms that a new sample is ready. */
-    if (spi_read_regs(dev, REG_ST1, &st1, 1U) != MSG_OK) {
-        return false;
-    }
+    spi_read_regs(REG_ST1, &st1, 1U);
     if ((st1 & ST1_DRDY) == 0U) {
         return false;
     }
@@ -346,9 +322,7 @@ bool ak09940_read_sample(ak09940_t *dev,
      * ST2 must be the final byte in the burst. This is what releases the
      * sensor's internal latch and allows the next conversion to be exposed.
      */
-    if (spi_read_regs(dev, REG_HXL, buf, sizeof(buf)) != MSG_OK) {
-        return false;
-    }
+    spi_read_regs(REG_HXL, buf, sizeof(buf));
 
     *mx_raw = convert_18bit(buf[0], buf[1], buf[2]);
     *my_raw = convert_18bit(buf[3], buf[4], buf[5]);
@@ -359,12 +333,10 @@ bool ak09940_read_sample(ak09940_t *dev,
     if ((buf[10] & (ST2_HOFL | ST2_INV)) != 0U) {
         return false;
     }
-
-    state(dev)->drdy_flag = false;
     return true;
 }
 
-bool ak09940_self_test(ak09940_t *dev)
+bool ak09940_self_test()
 {
     uint8_t cntl1, cntl2, cntl3;
     int32_t mx, my, mz;
@@ -385,16 +357,13 @@ bool ak09940_self_test(ak09940_t *dev)
     cntl2 = CNTL2_TEM;
     cntl3 = (uint8_t)(cntl3 | MODE_SELF_TEST);
 
-    if (spi_write_regs(dev, REG_CNTL1, &cntl1, 1U) != MSG_OK) return false;
-    if (spi_write_regs(dev, REG_CNTL2, &cntl2, 1U) != MSG_OK) return false;
-    if (spi_write_regs(dev, REG_CNTL3, &cntl3, 1U) != MSG_OK) return false;
+    spi_write_regs(REG_CNTL1, &cntl1, 1U);
+    spi_write_regs(REG_CNTL2, &cntl2, 1U);
+    spi_write_regs(REG_CNTL3, &cntl3, 1U);
 
     chThdSleepMilliseconds(10);
 
-    if (!ak09940_read_sample(dev, &mx, &my, &mz, &temp)) {
-        return false;
-    }
-
+    ak09940_read_sample(&mx, &my, &mz, &temp);
     if (mx < -20000 || mx > 20000) return false;
     if (my < -20000 || my > 20000) return false;
     if (mz < -20000 || mz > 20000) return false;
@@ -416,12 +385,4 @@ void ak09940_convert_to_nT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
     if (mx_nT) *mx_nT = mx_raw * AK09940_SENSITIVITY_NT_PER_LSB;
     if (my_nT) *my_nT = my_raw * AK09940_SENSITIVITY_NT_PER_LSB;
     if (mz_nT) *mz_nT = mz_raw * AK09940_SENSITIVITY_NT_PER_LSB;
-}
-
-void ak09940_convert_to_q16(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
-                            int32_t *mx_q16, int32_t *my_q16, int32_t *mz_q16)
-{
-    if (mx_q16) *mx_q16 = mx_raw * AK09940_SENSITIVITY_Q16_PER_LSB;
-    if (my_q16) *my_q16 = my_raw * AK09940_SENSITIVITY_Q16_PER_LSB;
-    if (mz_q16) *mz_q16 = mz_raw * AK09940_SENSITIVITY_Q16_PER_LSB;
 }

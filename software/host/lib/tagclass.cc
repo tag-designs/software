@@ -170,6 +170,7 @@ bool Tag::GetTagInfo(TagInfo &info)
     return true;
   }
   //std::cerr << "info failed\n";
+  //std::cerr << ack.err() << "\n";
   return false;
 }
 

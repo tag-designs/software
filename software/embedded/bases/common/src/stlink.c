@@ -287,7 +287,12 @@ int stlink_eval(uint8_t *buf)
     PACK32(txbuf, CoreID);
     BULK_Transmit(txbuf, 4); // return 4 bytes
     break;
-
+  case STLINK_DEBUG_APIV2_READ_IDCODES:
+    PACK32(txbuf, STLINK_DEBUG_ERR_OK);
+    PACK32(txbuf+4, CoreID);
+    PACK32(txbuf+8, 0);
+    BULK_Transmit(txbuf, 12);
+    break;
   case STLINK_DEBUG_APIV2_ENTER: // here's where we enter swd
     if (*buf == STLINK_DEBUG_ENTER_SWD)
     {

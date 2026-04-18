@@ -6,10 +6,11 @@ function(host_cli_tool name)
 
   add_executable(${name} ${ARGN})
   if(WIN32)
-    target_link_libraries(${name} tag)
+    target_link_libraries(${name} tag tag_monitor_interface)
   else()
-    target_link_libraries(${name} tag pthread)
+    target_link_libraries(${name} tag pthread tag_monitor_interface)
   endif()
+
 
   set_target_properties(
     ${name}
@@ -27,6 +28,8 @@ function(host_cli_tool name)
   endif()
 endfunction()
 
+
+#target_link_libraries(tag-monitor-test PRIVATE tag_monitor_interface)
 # host_cli_tool(tag-cli MACOSX_BUNDLE WIN32 cli.cc options.cc commands.cc)
 host_cli_tool(tag-dwnld MACOSX_BUNDLE WIN32 dwnld.cc options.cc)
 host_cli_tool(tag-test MACOSX_BUNDLE WIN32 test.cc options.cc)
@@ -35,3 +38,5 @@ host_cli_tool(tag-info MACOSX_BUNDLE WIN32 tag-info.cc options.cc)
 host_cli_tool(tag-reset MACOSX_BUNDLE WIN32 tag-reset.cc options.cc)
 host_cli_tool(tag-start MACOSX_BUNDLE WIN32 tag-start.cc options.cc)
 host_cli_tool(tag-cal MACOSX_BUNDLE WIN32 tag-calibrate.cc options.cc)
+host_cli_tool(tag-monitor-test MACOSX_BUNDLE WIN32 tag-monitor-test.cc options.cc)
+
