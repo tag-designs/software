@@ -24,6 +24,7 @@ public:
 
     bool Available(std::vector<UsbDev> &usbdevs);
     bool Attach(UsbDev usbdev = UsbDev());
+    bool Attach(bool assertReset, UsbDev usbdev= UsbDev());
     void Detach();
     bool IsAttached();
    

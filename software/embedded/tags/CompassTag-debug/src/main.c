@@ -22,6 +22,7 @@
 
 extern bool initRTC(void);
 volatile uint32_t demcr;
+extern int call_count;
 binary_semaphore_t I2Cmutex;
 
 static void delay(void){
@@ -110,17 +111,18 @@ int main(void)
   char *hashstr;
   halInit();
   chSysInit();
+  call_count = 0;
 
   initRTC();
 
-  enable_monitor();
+  //enable_monitor();
 
   while (1)
   {
       
-     Call(TAG_MONITORINFO, TAGSHASTR, (uint32_t *) &hashstr);
+     //Call(TAG_MONITORINFO, TAGSHASTR, (uint32_t *) &hashstr);
       chThdSleepMilliseconds(1);
-      Call(TAG_MONITORINFO, MONITORVERSION,&version);
+      //Call(TAG_MONITORINFO, MONITORVERSION,&version);
       chThdSleepMilliseconds(1);
   }
 }

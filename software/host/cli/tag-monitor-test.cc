@@ -46,6 +46,9 @@ using MS = std::chrono::milliseconds;
 #define MON_REQ (1 << 19)
 #define MON_PEND (1 << 17)
 #define MON_EN (1 << 16)
+#define TRCENA (1 << 24)
+
+#define RCC_CSR 0x0C000600
 
 // Debug Handler RPC
 
@@ -54,6 +57,7 @@ size_t maxpacket = 0;
 uint8_t sha_str[48] = {0};
   // tag monitor version
 uint32_t version = 0;
+uint32_t rcc_csr = 0;
 
 class TestMonitor : public LinkAdapt
 {
@@ -73,55 +77,33 @@ class TestMonitor : public LinkAdapt
             return false;
         }
 
-        /*
-        if (!ReadDebug32(DHCSR, &dhcsr))
-        {
-            log_error("read reg failed %d\n",dhcsr);
-            return false;
-        } else {
-            log_debug("read dhcsr 0x%x\n",dhcsr);
-        }
-            */
-
+    
         // write debug request data (operand,operation)
 
-        if (!WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff)))
-        {
-            log_error("write reg failed");
-            return false;
-        }
-
+        WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff));
+    
+        std::this_thread::sleep_for(MS(1));
         // write debug interrupt request -- Set MON_PEND, MON_REQ in DEMCR
         // VC_CORERESET is used as attachment flag to embedded app.
         // This also causes core to halt in reset vector after reset
         // Read/Modify/Write DEMCR
 
+        /*
         if (!ReadDebug32(DEMCR, &demcr))
         {
             log_error("read reg failed %d\n",demcr);
             return false;
         }
-/*
-        if (demcr & (MON_PEND | MON_REQ)){
-            log_error("monitor pending bit already set");
-            return false;
-        }
-*/
+        */
 
-        if (!WriteDebug32(DEMCR, (demcr | MON_PEND | MON_EN)))// | MON_REQ)))// | VC_CORERESET)))
-        {
-            log_error("write reg failed");
-            return false;
-        }
+        WriteDebug32(DEMCR, TRCENA | MON_PEND | MON_REQ | MON_EN | VC_CORERESET);
 
-        // wait for result by polling MON_REQ bit
 
         for (i = 0; i < TIMEOUT*5; i++)
         {
-            if (!ReadDebug32(DEMCR, &demcr))
-            log_error("read_mem failed\n");
-            else if (demcr & MON_REQ) //(!(demcr & MON_REQ))
-            break;
+            ReadDebug32(DEMCR, &demcr);
+            if (~(demcr & (MON_EN | MON_REQ)))
+               break;
             std::this_thread::sleep_for(MS(1));
         }
 
@@ -132,35 +114,12 @@ class TestMonitor : public LinkAdapt
             log_error("monitor call timed out\n");
             return false;
         }
-/*
-        if (demcr & MON_REQ){
-            log_error("monitor pending bit still set");
-            return false;
-        }
-            */
-
-
-        // read result value if pointer to destination is not NULL
-
+            
         if (result)
         {
-            for (i = 0; i < 5; i++)
-            {
-            if (ReadDebug32(DCRDR, result))
-                break;
-            log_error("read_mem failed");
-            std::this_thread::sleep_for(MS(1));
-            }
-
-            // check for a timeout
-
-            if (i == 5)
-            {
-            log_error("monitor call timed out\n");
-            return false;
-            }
+           ReadDebug32(DCRDR, result);
+            log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
         }
-        log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
         return true;
     }
 
@@ -180,52 +139,61 @@ class TestMonitor : public LinkAdapt
         {
             // connect to stlink
 
-            if (!LinkAdapt::Attach(usbdev))
+            if (!LinkAdapt::Attach(false,usbdev))
             {
             log_error("Attach failed");
             return false;
             }
 
-            // read control register
-
-            if (!ReadDebug32(DEMCR, &demcr))
-            {
-            log_error("Read failed");
-            LinkAdapt::Detach();
-            break;
-            }
 
             // Write debug magic key and
-            // Set VC_CORERESET (halt in reset)
+            // Set VC_CORERESET 
             // Set MON_EN (enable handler); clear request bits
 
-            if (!(WriteDebug32(DBG_HCSR, DBGKEY | 1) &&
-                WriteDebug32(DEMCR,
-                    ((demcr | MON_EN) & // | VC_CORERESET) & 
-                        ~MON_REQ & ~MON_PEND))))
-            {
+            WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
+            //WriteDebug32(DBG_HCSR, DBGKEY | C_HALT | C_DEBUGEN);
+            //WriteDebug32(DEMCR, (TRCENA | VC_CORERESET));
+            //AssertReset(true);
+            //WriteDebug32(DBG_HCSR, DBGKEY | C_MASKINTS | C_STEP | C_DEBUGEN);
+            //WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
 
-            log_error("Monitor attach failed: write returned");
-            LinkAdapt::Detach();
-            break;
-            }
-
+            std::this_thread::sleep_for(MS(2));
             // remove reset
 
-            if (!AssertReset(true))
-            {
-            log_error("Monitor attach failed: Reset assert");
-            LinkAdapt::Detach();
-            break;
-            }
-
             // give time for reset to complete
+                // clear the halt
 
-            std::this_thread::sleep_for(MS(5));
+           // WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
+           // std::this_thread::sleep_for(MS(2));
 
-            // clear the halt
 
-            WriteDebug32(DBG_HCSR, DBGKEY);// | 1);
+            uint32_t dhcsr;
+            ReadDebug32(DHCSR, &dhcsr);
+            log_debug("read dhcsr 0x%x\n",dhcsr);
+        
+
+            // do a simple test
+            WriteDebug32(DCRDR,4);
+            WriteDebug32(DEMCR, 0x1030001U);
+            uint32_t tmp2;
+            ReadDebug32(DEMCR, &tmp2);
+            log_debug("tmp = 0x%x\n",tmp2);
+            ReadDebug32(DCRDR, &tmp2);
+            log_debug("tmp = 0x%x\n",tmp2);
+
+            WriteDebug32(DCRDR,0x200);
+            WriteDebug32(DEMCR, 0x1030001U);
+            ReadDebug32(DEMCR, &tmp2);
+            log_debug("tmp = 0x%x\n",tmp2);
+            ReadDebug32(DCRDR, &tmp2);
+            log_debug("tmp (2) = 0x%x\n",tmp2);
+
+            WriteDebug32(DCRDR,0x300);
+            WriteDebug32(DEMCR, 0x1030001U);
+            ReadDebug32(DEMCR, &tmp2);
+            log_debug("tmp = 0x%x\n",tmp2);
+            ReadDebug32(DCRDR, &tmp2);
+            log_debug("tmp (3) = 0x%x\n",tmp2);
 
             // Call monitor to get pointer to information block
 
@@ -290,13 +258,13 @@ class TestMonitor : public LinkAdapt
 
         if (!IsAttached())
             return;
-        maxpacket = 0;
+       // maxpacket = 0;
 
-        memset(sha_str,0, sizeof(sha_str));
-        version = 0;
+        //memset(sha_str,0, sizeof(sha_str));
+        //version = 0;
         // Detach call to mon->handler
 
-        Call(MONITORSTOP, 0, 0);
+        //Call(MONITORSTOP, 0, 0);
         // Clear debug register bits
         ReadDebug32(DEMCR, &demcr);
         WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN)));

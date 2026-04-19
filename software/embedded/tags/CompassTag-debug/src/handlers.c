@@ -15,6 +15,8 @@
 
 static const char SHAStr[64] __attribute__((aligned(4))) = GIT_SHA ;
 
+int call_count = 0;
+
 
 CH_IRQ_HANDLER(DebugMon_Handler) {
   CH_IRQ_PROLOGUE();
@@ -24,10 +26,10 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
   int operand = (input >> 8);
   uint32_t demcr = CoreDebug->DEMCR;
   CoreDebug->DCRDR = 3333;
-
+  call_count++;
   // could use operand for packet length
 
-  if ((demcr & CoreDebug_DEMCR_MON_REQ_Msk)) {
+  if (demcr & ((CoreDebug_DEMCR_MON_EN_Msk) | (CoreDebug_DEMCR_MON_REQ_Msk))) {
     CoreDebug->DCRDR = 4444;
 
     switch (operation) {
@@ -37,10 +39,10 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
             CoreDebug->DCRDR = (uint32_t)DEBUGVERSION;
             break;
           case (MONITORBUF):
-            CoreDebug->DCRDR = (uint32_t)0;
+            CoreDebug->DCRDR = (uint32_t)1111;
             break;
           case (MONITORBUFSIZE):
-            CoreDebug->DCRDR = (uint32_t)0;
+            CoreDebug->DCRDR = (uint32_t)2222;
             break;
           case (TAGSHASTR):
             CoreDebug->DCRDR = (uint32_t) SHAStr;
@@ -50,7 +52,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
       case MONITORSTOP:
       case PROTOBUF:  // execute with helper thread
       default:
-        (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        CoreDebug->DEMCR = demcr & ~(CoreDebug_DEMCR_MON_EN_Msk | CoreDebug_DEMCR_MON_REQ_Msk);
         break;
     }
   }

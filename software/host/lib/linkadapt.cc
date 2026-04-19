@@ -257,7 +257,10 @@ bool LinkAdapt::Available(std::vector<UsbDev> &usbdevs)
     return true;
 }
 
-bool LinkAdapt::Attach(UsbDev usbdev)
+bool LinkAdapt::Attach(UsbDev usbdev){
+    return Attach(true, usbdev);
+}
+bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
 {
 
     libusb_device **devs = nullptr;
@@ -412,7 +415,8 @@ bool LinkAdapt::Attach(UsbDev usbdev)
                     log_error("exit dfu mode failed");
                     break;
                 }
-                AssertReset(false);
+                if (assertReset)
+                    AssertReset(false);
                 enter_debug_mode();
                 // is this the right test ??  perhaps our stlink implementation
                 // is wrong.  != 4 left to work with existing bases
