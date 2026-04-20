@@ -1,0 +1,3 @@
+
+add_embedded_target(CompassTagAT25 compasstag_proto)
+add_dependencies(CompassTagAT25 board-compasstag)

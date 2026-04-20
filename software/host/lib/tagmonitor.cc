@@ -168,7 +168,7 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
       return false;
     }
   }
-  log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
+  //log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
   return true;
 }
 
@@ -195,6 +195,8 @@ bool TagMonitor::Attach(UsbDev usbdev)
       log_error("Attach failed");
       return false;
     }
+
+    std::this_thread::sleep_for(MS(20));
 
     // read control register
 
@@ -231,7 +233,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
 
     // give time for reset to complete
 
-    std::this_thread::sleep_for(MS(5));
+    std::this_thread::sleep_for(MS(50));
 
     // clear the halt
 

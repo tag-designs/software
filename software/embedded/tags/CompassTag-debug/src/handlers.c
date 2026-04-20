@@ -29,8 +29,9 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
   call_count++;
   // could use operand for packet length
 
-  if (demcr & ((CoreDebug_DEMCR_MON_EN_Msk) | (CoreDebug_DEMCR_MON_REQ_Msk))) {
-    CoreDebug->DCRDR = 4444;
+  //if (demcr & ((CoreDebug_DEMCR_MON_EN_Msk) | (CoreDebug_DEMCR_MON_REQ_Msk))) {
+   if (demcr & ((CoreDebug_DEMCR_MON_REQ_Msk))) { 
+   CoreDebug->DCRDR = 4444;
 
     switch (operation) {
       case TAG_MONITORINFO:
@@ -52,7 +53,8 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
       case MONITORSTOP:
       case PROTOBUF:  // execute with helper thread
       default:
-        CoreDebug->DEMCR = demcr & ~(CoreDebug_DEMCR_MON_EN_Msk | CoreDebug_DEMCR_MON_REQ_Msk);
+        //CoreDebug->DEMCR = demcr & ~(CoreDebug_DEMCR_MON_EN_Msk | CoreDebug_DEMCR_MON_REQ_Msk);
+        CoreDebug->DEMCR = demcr & ~(CoreDebug_DEMCR_MON_REQ_Msk);
         break;
     }
   }

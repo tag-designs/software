@@ -102,7 +102,7 @@ class TestMonitor : public LinkAdapt
         for (i = 0; i < TIMEOUT*5; i++)
         {
             ReadDebug32(DEMCR, &demcr);
-            if (~(demcr & (MON_EN | MON_REQ)))
+            if (~(demcr & (MON_REQ)))
                break;
             std::this_thread::sleep_for(MS(1));
         }
@@ -138,26 +138,34 @@ class TestMonitor : public LinkAdapt
         do
         {
             // connect to stlink
-
+#if 0
             if (!LinkAdapt::Attach(false,usbdev))
             {
             log_error("Attach failed");
             return false;
             }
-
-
-            // Write debug magic key and
-            // Set VC_CORERESET 
-            // Set MON_EN (enable handler); clear request bits
-
             WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
-            //WriteDebug32(DBG_HCSR, DBGKEY | C_HALT | C_DEBUGEN);
+#endif
+//#if 0
+            if (!LinkAdapt::Attach(true,usbdev))
+            {
+            log_error("Attach failed");
+            return false;
+            }
+            std::this_thread::sleep_for(MS(20));
+            AssertReset(true);
+         
+            WriteDebug32(DBG_HCSR, DBGKEY | C_HALT| C_DEBUGEN);
+           
+            std::this_thread::sleep_for(MS(50));
+//#endif
+            WriteDebug32(DBG_HCSR, DBGKEY | C_MASKINTS | C_STEP | C_DEBUGEN);
+            WriteDebug32(DEMCR, (TRCENA | VC_CORERESET));
             //WriteDebug32(DEMCR, (TRCENA | VC_CORERESET));
-            //AssertReset(true);
-            //WriteDebug32(DBG_HCSR, DBGKEY | C_MASKINTS | C_STEP | C_DEBUGEN);
-            //WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
+            WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
+            
 
-            std::this_thread::sleep_for(MS(2));
+            //std::this_thread::sleep_for(MS(2));
             // remove reset
 
             // give time for reset to complete
@@ -174,7 +182,7 @@ class TestMonitor : public LinkAdapt
 
             // do a simple test
             WriteDebug32(DCRDR,4);
-            WriteDebug32(DEMCR, 0x1030001U);
+            WriteDebug32(DEMCR, 0x10B0001U);
             uint32_t tmp2;
             ReadDebug32(DEMCR, &tmp2);
             log_debug("tmp = 0x%x\n",tmp2);
@@ -182,14 +190,14 @@ class TestMonitor : public LinkAdapt
             log_debug("tmp = 0x%x\n",tmp2);
 
             WriteDebug32(DCRDR,0x200);
-            WriteDebug32(DEMCR, 0x1030001U);
+            WriteDebug32(DEMCR, 0x10B0001U);
             ReadDebug32(DEMCR, &tmp2);
             log_debug("tmp = 0x%x\n",tmp2);
             ReadDebug32(DCRDR, &tmp2);
             log_debug("tmp (2) = 0x%x\n",tmp2);
 
             WriteDebug32(DCRDR,0x300);
-            WriteDebug32(DEMCR, 0x1030001U);
+            WriteDebug32(DEMCR, 0x10B0001U);
             ReadDebug32(DEMCR, &tmp2);
             log_debug("tmp = 0x%x\n",tmp2);
             ReadDebug32(DCRDR, &tmp2);
