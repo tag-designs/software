@@ -27,4 +27,6 @@ extern volatile int sectors_erased;
 
 #include "lis2du12.h"
 
+#define DEBUG_MESSAGES TRUE
+
 #endif

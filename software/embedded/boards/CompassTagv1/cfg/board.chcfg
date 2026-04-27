@@ -37,17 +37,17 @@
         Level="High"
         Speed="Maximum"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
       <pin2
         ID="ACCEL_TX"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="High"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="7"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
@@ -64,10 +64,10 @@
       <pin4
         ID="ACCEL_SCK"
         Type="PushPull"
-        Level="High"
+        Level="Low"
         Speed="High"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="7"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />
@@ -117,7 +117,7 @@
         Level="Low"
         Speed="Low"
         Resistor="Floating"
-        Mode="Analog"
+        Mode="Output"
         Alternate="0"
         AnalogSwitch="Disabled"
         PinLock="Disabled" />

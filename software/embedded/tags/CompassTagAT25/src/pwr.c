@@ -141,11 +141,11 @@ void magOn(void){
 void magOff(void){
 
   spiDisable();
+  palClearLine(LINE_MAG_RSTN);
   toAnalog(LINE_MAG_SCK);
   toAnalog(LINE_MAG_MOSI);
   toAnalog(LINE_MAG_MISO);
   toAnalog(LINE_MAG_CS);
-  toAnalog(LINE_MAG_PWR);
   palClearLine(LINE_MAG_PWR);
   chBSemSignal(&SPImutex);
 }
@@ -173,9 +173,10 @@ void accelOn(void)
 
 void accelOff(void)
 {
+  palSetLine(LINE_ACCEL_CS);
   usartDisable();
-  toAnalog(LINE_ACCEL_SCK);
-  toAnalog(LINE_ACCEL_TX);
+  toOutput(LINE_ACCEL_SCK);
+  toOutput(LINE_ACCEL_TX);
   toAnalog(LINE_ACCEL_RX);
   //toAnalog(LINE_ACCEL_CS);
 
@@ -266,12 +267,11 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#ifdef EXTERNAL_FLASH
+
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
  // enableLinePulldown(LINE_FLASH_MISO);
-#endif
 
   // Pull up SCL and SDA on RTC
 
@@ -281,6 +281,11 @@ void godown(enum Sleep sleepmode)
   // Pull I/O pins
 
   enableLinePulldown(LINE_MAG_PWR);
+  enableLinePulldown(LINE_MAG_RSTN);
+  enableLinePulldown(LINE_MAG_CS);
+  enableLinePulldown(LINE_MAG_SCK);
+  enableLinePulldown(LINE_MAG_MOSI);
+  
   enableLinePullup(LINE_ACCEL_CS);
   enableLinePulldown(LINE_ACCEL_TX);
   enableLinePulldown(LINE_ACCEL_SCK);

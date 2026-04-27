@@ -210,7 +210,16 @@ msg_t setRTCDateTime(RTCDateTime *tm)
         uint8_t status = 0;
         ret = rv3028_SetReg(RV3028_STATUS, &status, 1);
     } while (0);
+
+
     rtcOff();
+
+#ifdef DEBUG_MESSAGES
+    if (ret != MSG_OK){
+        chprintf((BaseSequentialStream *) &ds, "Error in rv3028 setRTCDateTime\r\n");
+
+    }
+#endif
     return ret;
 }
 
@@ -243,6 +252,16 @@ msg_t getRTCDateTime(RTCDateTime *tm)
         tm->month = bcd2bin(date[RV3028_MONTH] & 0x3f);
         tm->year = bcd2bin(date[RV3028_YEAR]);
     } while (0);
+
+  
     rtcOff();
+
+
+#ifdef DEBUG_MESSAGES
+    if (ret != MSG_OK){
+        chprintf((BaseSequentialStream *) &ds, "Error in rv3028 gettRTCDateTime\r\n");
+
+    }
+#endif
     return ret;
 }
