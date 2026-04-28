@@ -179,7 +179,7 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 bool lpsTest(void)
 {
   uint8_t who;
-  uint16_t temperature,pressure;
+  int16_t temperature,pressure;
   bool status;
   lpsOn();
   chThdSleepMilliseconds(10);

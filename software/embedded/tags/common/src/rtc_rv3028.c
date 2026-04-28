@@ -1,5 +1,8 @@
 #include "hal.h"
 #include "app.h"
+#ifdef DEBUG_MESSAGES
+#include "chprintf.h"
+#endif
 
 #define RTC_TIMEOUT 100
 
@@ -114,7 +117,7 @@ bool initRTC(void)
     rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
     do
     {
-        int i;
+     
         clkout = 0;
 
         // check if clkout register is already correctly configured

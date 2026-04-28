@@ -215,12 +215,12 @@ static int system_logAck(int index)
 }
 
 #ifdef DEBUG_MESSAGES
-static int debugMessageAck()
+static int debugMessageAck(void)
 {
 
   ack.err = Ack_Err_OK;
   ack.which_payload = Ack_debug_message_tag;
-  streamRead(&ds,ack.payload.debug_message, sizeof(ack.payload.debug_message));
+  streamRead(&ds,(uint8_t *) ack.payload.debug_message, sizeof(ack.payload.debug_message));
   return encode_ack();
 }
 
