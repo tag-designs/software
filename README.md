@@ -147,6 +147,49 @@ PATH=/path/to/Qt/6.x/platform/bin:/path/to/gcc-arm/bin:/path/to/fmpp/bin:$PATH
 ```
 
 
+# Embedded nanopb Options
+
+Embedded protocol C files are generated from the host `.proto` files using
+nanopb. Each embedded tag protocol target is created with `add_nanopb_target`
+under `software/embedded/proto-c`.
+
+Nanopb options are split into two layers:
+
+| File | Purpose |
+| --- | --- |
+| `software/embedded/proto-c/default-options/tag.options` | Shared defaults for `tag.proto`. |
+| `software/embedded/proto-c/default-options/tagdata.options` | Shared defaults for `tagdata.proto`. |
+| `software/embedded/proto-c/<tag>-proto-c/tag.override.options` | Tag-specific overrides for `tag.proto`. |
+| `software/embedded/proto-c/<tag>-proto-c/tagdata.override.options` | Tag-specific overrides for `tagdata.proto`. |
+
+At build time, CMake combines the default file and the tag override file into
+the conventional nanopb file names in the build tree:
+
+```
+<build>/software/embedded/proto-c/<tag>-proto-c/tag.options
+<build>/software/embedded/proto-c/<tag>-proto-c/tagdata.options
+```
+
+The combined files are then passed to `nanopb_generator` by adding the tag's
+build directory to the generator include path. Defaults hold the shared
+string sizes, repeated-field counts, and the conservative set of disabled
+tag-specific messages. Tag override files hold the protocol choices that make
+a tag different, such as enabled acknowledgement payloads, enabled data
+messages, or tag-specific repeated-field bounds. During combination, CMake
+omits default field bounds for messages that remain disabled for that tag, so
+nanopb does not warn about options for skipped messages.
+
+To add a new embedded tag protocol target:
+
+1. Create `software/embedded/proto-c/<tag>-proto-c/CMakeLists.txt`.
+2. Call `add_nanopb_target(<tag>)`.
+3. Add `tag.override.options`, `tagdata.override.options`, and
+   `default-config.json`.
+4. Add the subdirectory from `software/embedded/proto-c/CMakeLists.txt`.
+5. Reference the generated interface target as `<tag>_proto` from the embedded
+   firmware target.
+
+
 # Building and Packaging on macOS
 
 Make sure the Qt `bin` directory for the version being used is on your
