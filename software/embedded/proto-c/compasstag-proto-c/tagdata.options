@@ -1,8 +1,8 @@
+// Common definitions
+
 * long_names:false
-Config.hibernate max_count:2
-#BitTagLog.data max_count:30
-BitTagLog skip_message:true
-#BitTagNGLog skip_message:true
+
+  // TagInfo
 TagInfo.board_desc max_size:60
 TagInfo.uuid max_size:30
 TagInfo.firmware max_size:60
@@ -10,15 +10,26 @@ TagInfo.gitrepo max_size:128
 TagInfo.githash max_size:30
 TagInfo.build_time max_size:30
 TagInfo.source_path max_size:100
-PresTagLog.data max_count:60
-Adxl362 skip_message:true
+
+  // Config
+Config.hibernate max_count:2
 Config.adxl362 type:FT_IGNORE
-BitTagData skip_message:true
-#BitTagNgLog skip_message:true
+Adxl362 skip_message:true
+
+  // Log messages
+PresTagLog.data max_count:60
 PresTagRawLog.data max_count:15
-PT_RAW.samples max_size:240
-BitPresTagLog skip_message:true
-#BitPresTagLog.data max_count:12
 CompassTagLog.data max_count:40
 CalibrationLog.data max_count:25
+PT_RAW.samples max_size:240
+
+*Log skip_message:true
+BitTagData skip_message:true
+
+// Override
+
+CompassTagLog skip_message:false
+SensorData skip_message:false
+CalibrationLog skip_message:false
+CalibrationConstants skip_message:false
 

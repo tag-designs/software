@@ -21,7 +21,10 @@ This subdirectory contains nanopb options for the protocol definitions
 that define the maximum number of repeated messages and messages that should be elided from the library for that tag -- for
 example, datalog messages for other tag types.
 
-Finally, the `config-defaults` directory includes a `json` file for each tag type that defines the default configuration 
-message for that tag.  The directory includes a program to translate the `json` file into a binary message definition.  When
-an unconfigured tag is asked for its configuration, this binary file is returned and decoded by the host libraries.  Host
+Finally, the tag sub-directory includes a `json` file for that defines the default configuration 
+message for that tag.  
+
+This directory includes a program, `config-get` to translate the `json` file into a binary message definition.  When an unconfigured tag is asked for its configuration, this binary file is returned and decoded by the host libraries.  Host
 applications can use this message to determine the "capabilities" of a specific tag.
+
+

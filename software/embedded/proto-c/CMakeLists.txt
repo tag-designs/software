@@ -2,6 +2,17 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#
+# Create a tool for translating json tag configuration files to 
+# C code
+#
+
+add_executable(config-gen config-gen.cc)
+target_link_libraries(config-gen PRIVATE proto)
+
+#
+# Helper function to create nanopb pb.h pb.c files
+#
 function(add_nanopb_target name)
 
   include_directories(${NANOPB_PROTO})

@@ -20,9 +20,9 @@ target_link_libraries(proto PUBLIC protobuf::libprotobuf)
 # C code
 #
 
-add_executable(config-gen config-gen.cc)
-target_include_directories(config-gen PRIVATE ${Protobuf_INCLUDE_DIRS})
-target_link_libraries(config-gen PRIVATE proto)
+#add_executable(config-gen config-gen.cc)
+#target_include_directories(config-gen PRIVATE ${Protobuf_INCLUDE_DIRS})
+#target_link_libraries(config-gen PRIVATE proto)
 
 #
 # Create a library of tag protocol sources for 
