@@ -2,6 +2,151 @@
 See [Documentation](https://geoffreymbrown.github.io/ultralight-tags/) to explore this project and for complete build instructions.
 
 
+# CMake Build Options
+
+The top-level CMake build is controlled with cache options passed at configure
+time using `-DNAME=VALUE`. For example:
+
+```
+cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
+cmake -S . -B build-package -DBUILD_QT_APPS=ON -DMACOS_SIGN_APPS=ON
+```
+
+The main build-shape options are:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `BUILD_HOST` | `ON` | Build the host-side libraries, command-line tools, and host support code. |
+| `BUILD_QT_APPS` | `ON` | Build the Qt GUI applications under `software/host`. This requires Qt to be available to CMake. |
+| `BUILD_EMBEDDED` | `ON` | Build the embedded firmware targets. This requires the ARM toolchain, ChibiOS, nanopb, Java, `fmpp`, and `make`. |
+
+Useful configure combinations:
+
+```
+# Host tools and Qt apps only
+cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
+
+# Embedded firmware only
+cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF
+
+# Everything
+cmake -S . -B build-all
+```
+
+Dependency and platform cache variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CMAKE_INSTALL_PREFIX` | build directory | Install and package staging location. The project defaults this to the active build directory. |
+| `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version used when building host software on macOS. |
+| `Protobuf_USE_STATIC_LIBS` | `ON` | Prefer static Protobuf libraries when CMake searches for Protobuf. |
+| `NANOPB_SRC_ROOT_FOLDER` | `$NANOPB_ROOT`, then `nanopb` | Root of the nanopb installation used by embedded builds. |
+| `NANOPB_GENERATOR_SOURCE_DIR` | `${NANOPB_SRC_ROOT_FOLDER}/generator-bin` | Location of the nanopb generator scripts or packaged generator. |
+| `CHIBIOS_DIR` | `$CHIBIOS_DIR`, then `ChibiOS` | ChibiOS source tree used by embedded firmware targets. |
+
+On Windows, pass the vcpkg toolchain and triplet when configuring if CMake is
+not being run through a preset:
+
+```
+cmake -S . -B build ^
+  -DCMAKE_TOOLCHAIN_FILE=c:/users/geoff/vcpkg/scripts/buildsystems/vcpkg.cmake ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+
+macOS packaging and signing options:
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `MACOS_SIGN_APPS` | `ON` | Sign `.app` bundles during package staging. |
+| `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity passed to `codesign` or `macdeployqt -codesign`. |
+| `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |
+| `MACOS_USE_MACDEPLOYQT_DEPLOYMENT` | `ON` | Let `macdeployqt` handle Qt deployment and signing during package staging. |
+| `MACOS_DEPLOY_APPSTORE_COMPLIANT` | `ON` | Pass `-appstore-compliant` to `macdeployqt`, which skips Qt plugins that are not App Store compliant. |
+| `MACOS_MACDEPLOYQT_EXTRA_OPTIONS` | empty | Extra command-line options appended to each `macdeployqt` invocation. |
+| `MACOS_DEPLOY_QT_PLUGINS_MANUALLY` | `ON` | Used by the fallback manual deploy path when `MACOS_USE_MACDEPLOYQT_DEPLOYMENT=OFF`. |
+| `MACOS_KEEP_ONLY_QSQLITE_PLUGIN` | `ON` | Remove non-SQLite Qt SQL driver plugins before signing in the manual deploy path. |
+| `MACOS_FIXUP_BUNDLE_DEPENDENCIES` | `ON` | Copy and rewrite non-system dylib dependencies into bundles in the manual deploy path. |
+| `MACOS_BUNDLE_FIXUP_EXTRA_DIRS` | empty | Extra library directories searched by the manual bundle dependency fixup step. |
+
+For normal macOS DMG packaging, use the default package flags and set the
+signing identity if the default does not match the local keychain:
+
+```
+cmake -S . -B build-package \
+  -DBUILD_QT_APPS=ON \
+  -DMACOS_CODE_SIGN_IDENTITY="Indiana University (5J69S77A7G)"
+```
+
+
+# Build Prerequisites and Environment
+
+Several builds assume external tools and libraries are available either on
+`PATH`, through CMake package discovery, or through the cache variables listed
+above.
+
+Common requirements:
+
+| Requirement | Used by | How CMake finds it |
+| --- | --- | --- |
+| CMake 3.20 or newer | all builds | Run directly as `cmake`. |
+| C++ compiler with C++20 support | host tools, Qt apps, proto helpers | Selected by the CMake generator or toolchain file. |
+| Protobuf | all builds | `find_package(Protobuf)`, with `Protobuf_USE_STATIC_LIBS=ON`. |
+| Git | embedded version header generation | `find_package(Git)` in `cmake/version.cmake`. |
+
+Host library and command-line tools:
+
+| Requirement | Notes |
+| --- | --- |
+| `pkg-config` | Required by `software/host/lib` to locate `libusb-1.0`. |
+| `libusb-1.0` | Required for the host `tag` library. If installed in a non-standard prefix, set `PKG_CONFIG_PATH` so `pkg-config` can find `libusb-1.0.pc`. |
+
+Qt applications:
+
+| Requirement | Notes |
+| --- | --- |
+| Qt 6 | Required when `BUILD_QT_APPS=ON`. The apps use Qt components including `Core`, `Gui`, `Widgets`, `PrintSupport`, `Sql`, `Svg`, `SvgWidgets`, `Qml`, `Quick`, and `QuickWidgets`. |
+| `Qt6_DIR` or `CMAKE_PREFIX_PATH` | Set one of these if CMake cannot find Qt automatically. `Qt6_DIR` should point at the Qt `lib/cmake/Qt6` directory. |
+| Qt `bin` directory on `PATH` | Needed for packaging tools such as `macdeployqt` and `windeployqt`. |
+
+macOS packaging:
+
+| Requirement | Notes |
+| --- | --- |
+| `macdeployqt` | Required when packaging Qt apps on macOS. It is usually found from the selected Qt installation. |
+| `codesign` | Required when `MACOS_SIGN_APPS=ON`. The signing identity must be available in the local keychain. |
+| `install_name_tool` | Used by the fallback bundle fixup path when `MACOS_USE_MACDEPLOYQT_DEPLOYMENT=OFF`. |
+
+Windows packaging:
+
+| Requirement | Notes |
+| --- | --- |
+| `windeployqt` | Required when packaging Qt apps on Windows. It is usually found from the selected Qt installation. |
+| vcpkg toolchain | Recommended for Protobuf, Qt, and libusb on Windows. Pass `CMAKE_TOOLCHAIN_FILE` and `VCPKG_TARGET_TRIPLET` at configure time. |
+| Static Qt location | The current Windows host CMake file assumes `c:/Qt6_static/lib/cmake/Qt6` for Qt unless the build is adjusted. |
+
+Embedded firmware:
+
+| Requirement | Notes |
+| --- | --- |
+| `arm-none-eabi-gcc` | Required when `BUILD_EMBEDDED=ON`; must be on `PATH`. |
+| `make` | Required for the ChibiOS-based firmware builds; must be on `PATH`. |
+| `fmpp` | Required for board file generation; must be on `PATH`. On Windows, CMake also searches `c:/Program Files/fmpp/bin`. |
+| Java runtime | Required by `fmpp`. Make sure `java` is available on `PATH`. |
+| ChibiOS | Set `CHIBIOS_DIR`, or place the ChibiOS tree at `ChibiOS` in the repository root. |
+| nanopb | Set `NANOPB_ROOT`, or place nanopb at `nanopb` in the repository root. Embedded proto generation expects the generator under `${NANOPB_SRC_ROOT_FOLDER}/generator-bin`. |
+| STM32CubeProgrammer | Optional for building, required for generated download/DFU targets. CMake looks for `STM32_Programmer_CLI` on `PATH` and in common install locations. |
+
+Useful environment variables:
+
+```
+CHIBIOS_DIR=/path/to/ChibiOS
+NANOPB_ROOT=/path/to/nanopb
+PKG_CONFIG_PATH=/path/to/libusb/lib/pkgconfig:$PKG_CONFIG_PATH
+Qt6_DIR=/path/to/Qt/6.x/platform/lib/cmake/Qt6
+PATH=/path/to/Qt/6.x/platform/bin:/path/to/gcc-arm/bin:/path/to/fmpp/bin:$PATH
+```
+
+
 # Building and Packaging on macOS
 
 Make sure the Qt `bin` directory for the version being used is on your
