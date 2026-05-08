@@ -1,31 +1,20 @@
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_CXX_STANDARD 14)
-
 # Tools for building embedded code
 
 find_program(GCCARM arm-none-eabi-gcc REQUIRED)
+find_program(MAKE_EXECUTABLE make REQUIRED)
 if(MSVC)
   find_program(FMPP fmpp fmpp.bat PATHS "c:/Program Files/fmpp/bin" REQUIRED)
 else()
   find_program(FMPP fmpp REQUIRED)
 endif()
 
-if((NOT DEFINED GCCARM) OR (NOT DEFINED FMPP))
-  message("Couldn't find GCCARM and FMPP")
-  message("Cannot configure embedded")
-  return()
+set(CHIBIOS_DIR "$ENV{CHIBIOS_DIR}" CACHE PATH "ChibiOS source directory")
+if(NOT CHIBIOS_DIR)
+  set(CHIBIOS_DIR "${CMAKE_SOURCE_DIR}/ChibiOS" CACHE PATH "ChibiOS source directory" FORCE)
 endif()
-
-IF(DEFINED ENV{CHIBIOS_DIR})
-    MESSAGE("CHIBIOS_DIR IS $ENV{CHIBIOS_DIR}")
-    set(CHIBIOS_DIR $ENV{CHIBIOS_DIR})
-ELSE()
-    set(CHIBIOS_DIR "${CMAKE_SOURCE_DIR}/ChibiOS")
-ENDIF()
-MESSAGE("CHIBIOS_DIR is ${CMAKE_SOURCE_DIR}/ChibiOS")
-
-
+message(STATUS "CHIBIOS_DIR is ${CHIBIOS_DIR}")
 
 # Tools for programming hardware
 
@@ -45,8 +34,8 @@ else()
   )
 endif()
 
-if(NOT DEFINED STM32_PROGRAMMER)
-  message(
+if(NOT STM32_PROGRAMMER)
+  message(STATUS
     "To program embedded boards install https://www.st.com/en/development-tools/stm32cubeprog.html"
   )
 endif()
@@ -59,7 +48,7 @@ function(add_embedded_target name proto_target)
 
   # get some paths
 
-  message("proto target ${proto_target}")
+  message(STATUS "Embedded target ${name} proto target: ${proto_target}")
 
   set(tag_source_dir
       ${CMAKE_CURRENT_LIST_DIR}/..
@@ -78,7 +67,11 @@ function(add_embedded_target name proto_target)
 
   # these just affect tags with nanopb
 
-  if(NOT ${proto_target} EQUAL 0)
+  set(protopaths "")
+  if(NOT proto_target STREQUAL "0")
+    if(NOT TARGET ${proto_target})
+      message(FATAL_ERROR "Embedded target ${name} references missing proto target ${proto_target}")
+    endif()
     get_target_property(protopaths ${proto_target}
                         INTERFACE_INCLUDE_DIRECTORIES)
   endif()
@@ -93,7 +86,7 @@ function(add_embedded_target name proto_target)
   # the following only in recent versions of cmake cmake_path(RELATIVE_PATH
   # src_path ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
-  message("Current Source Dir ${src_path}")
+  message(STATUS "Current Source Dir ${src_path}")
 
   # create options for make
 
@@ -116,7 +109,7 @@ function(add_embedded_target name proto_target)
   add_custom_target(${name} ALL
     BYPRODUCTS ${target_elf}
     #COMMAND echo " ${default_opt} ${ARGN}"
-    COMMAND make -C ${name} ${default_opt} ${ARGN}
+    COMMAND ${MAKE_EXECUTABLE} -C ${name} ${default_opt} ${ARGN}
     WORKING_DIRECTORY ${tag_source_dir}
     COMMENT "Building ${name}")
 
@@ -135,25 +128,27 @@ function(add_embedded_target name proto_target)
   # add proto files as dependency for tags
   #
 
-  if(NOT ${proto_target} EQUAL 0)
+  if(NOT proto_target STREQUAL "0")
     add_dependencies(${name} ${proto_target}_sources)
   endif()
 
   # create download target
 
-  add_custom_target(
-    ${name}-download
-    DEPENDS ${name}
-    COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR -d ${target_elf} -g
-            0x08000000)
+  if(STM32_PROGRAMMER)
+    add_custom_target(
+      ${name}-download
+      DEPENDS ${name}
+      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR -d ${target_elf} -g
+              0x08000000)
 
-  add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
-                                          mode=UR -e all)
+    add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
+                                            mode=UR -e all)
 
-  add_custom_target(
-    ${name}-dfu
-    DEPENDS ${name} ${STM32_PROGRAMMER}
-    COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf})
+    add_custom_target(
+      ${name}-dfu
+      DEPENDS ${name}
+      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf})
+  endif()
 
   install(FILES ${target_elf} TYPE BIN OPTIONAL)
 

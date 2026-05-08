@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_minimum_required(VERSION 3.20)
 
 #
 # Create a tool for translating json tag configuration files to 
@@ -8,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #
 
 add_executable(config-gen config-gen.cc)
+target_compile_features(config-gen PRIVATE cxx_std_20)
 target_link_libraries(config-gen PRIVATE proto)
 
 #
@@ -15,49 +14,55 @@ target_link_libraries(config-gen PRIVATE proto)
 #
 function(add_nanopb_target name)
 
-  include_directories(${NANOPB_PROTO})
-  include_directories(${Protobuf_INCLUDE_DIRS})
-  include_directories(${NANOPB_INCLUDE_DIRS})
-
   get_target_property(TAG_PROTO_SOURCES tag-proto-sources INTERFACE_SOURCES)
-
-  #message("sources ${TAG_PROTO_SOURCES}")
- 
-  #set(NANOPB_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}"
-  #                   --experimental_allow_proto3_optional)
-  #set(NANOPB_DEPENDS tag.options tagdata.options)
 
   # generate default config
 
+  set(default_config "${CMAKE_CURRENT_BINARY_DIR}/default_config.c")
   add_custom_command(
-    OUTPUT default_config.c
-    COMMAND config-gen ${CMAKE_CURRENT_SOURCE_DIR}/default-config.json >
-            default_config.c
-    DEPENDS config-gen default-config.json)
+    OUTPUT "${default_config}"
+    COMMAND $<TARGET_FILE:config-gen>
+            "${CMAKE_CURRENT_SOURCE_DIR}/default-config.json"
+            "${default_config}"
+    DEPENDS config-gen "${CMAKE_CURRENT_SOURCE_DIR}/default-config.json"
+    VERBATIM)
 
   #  Generate nanopb files
+
+  set(nanopb_sources)
+  set(nanopb_headers)
+  set(nanopb_options
+      "${CMAKE_CURRENT_SOURCE_DIR}/tag.options"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tagdata.options")
 
   foreach(P ${TAG_PROTO_SOURCES})
     cmake_path(GET P PARENT_PATH parent)
     cmake_path(GET P STEM stem)
-    #message("add ${stem}.pb.c ${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator -I ${CMAKE_CURRENT_SOURCE_DIR} -D ${CMAKE_CURRENT_BINARY_DIR} ${P}" )
+    set(generated_source "${CMAKE_CURRENT_BINARY_DIR}/${stem}.pb.c")
+    set(generated_header "${CMAKE_CURRENT_BINARY_DIR}/${stem}.pb.h")
+    list(APPEND nanopb_sources "${generated_source}")
+    list(APPEND nanopb_headers "${generated_header}")
+
     add_custom_command(
-      OUTPUT ${stem}.pb.c ${stem}.pb.h
-      COMMAND ${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator -I ${CMAKE_CURRENT_SOURCE_DIR} -I ${parent} -D ${CMAKE_CURRENT_BINARY_DIR} ${stem}.proto
-      DEPENDS ${TAG_PROTO_SOURCES} tag.options tagdata.options
-    )
+      OUTPUT "${generated_source}" "${generated_header}"
+      COMMAND "${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator"
+              -I "${CMAKE_CURRENT_SOURCE_DIR}"
+              -I "${parent}"
+              -D "${CMAKE_CURRENT_BINARY_DIR}"
+              "${stem}.proto"
+      DEPENDS ${TAG_PROTO_SOURCES} ${nanopb_options}
+      VERBATIM)
   endforeach()
 
   add_custom_target(
     ${name}_proto_sources ALL
-    DEPENDS ${NANOPROTO_SRCS} ${NANOPROTO_HDRS} tag.options tagdata.options
-            default_config.c tagdata.pb.c tag.pb.c)
+    DEPENDS ${nanopb_sources} ${nanopb_headers} "${default_config}")
 
   add_library(${name}_proto INTERFACE)
   target_include_directories(${name}_proto INTERFACE ${CMAKE_CURRENT_BINARY_DIR}
                                                      ${NANOPB_SRC_ROOT_FOLDER})
 
-  target_sources(${name}_proto INTERFACE ${NANOPROTO_SRCS})
+  target_sources(${name}_proto INTERFACE ${nanopb_sources} "${default_config}")
 
 endfunction()
 
