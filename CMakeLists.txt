@@ -1,10 +1,42 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
 
-set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/")
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
+option(BUILD_HOST "Build host libraries and tools" ON)
+option(BUILD_QT_APPS "Build Qt host applications" ON)
+option(BUILD_EMBEDDED "Build embedded firmware targets" ON)
+option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
+option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment and signing" ON)
+option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
+option(MACOS_KEEP_ONLY_QSQLITE_PLUGIN "Remove non-SQLite Qt SQL driver plugins before signing" ON)
+option(MACOS_DEPLOY_QT_PLUGINS_MANUALLY "Deploy a curated macOS Qt plugin set instead of letting macdeployqt scan all plugins" ON)
+option(MACOS_FIXUP_BUNDLE_DEPENDENCIES "Copy and rewrite non-system dylib dependencies into macOS app bundles" ON)
+
+set(
+  MACOS_CODE_SIGN_IDENTITY
+  "Developer ID Application: Indiana University (5J69S77A7G)"
+  CACHE STRING
+  "codesign identity used for macOS app bundles")
+set(
+  MACOS_CODE_SIGN_ENTITLEMENTS
+  ""
+  CACHE FILEPATH
+  "Optional entitlements plist used when signing macOS app bundles")
+set(
+  MACOS_MACDEPLOYQT_EXTRA_OPTIONS
+  ""
+  CACHE STRING
+  "Extra options passed to macdeployqt during package staging")
+set(
+  MACOS_BUNDLE_FIXUP_EXTRA_DIRS
+  ""
+  CACHE STRING
+  "Extra library directories searched by fixup_bundle while packaging macOS apps")
+
+set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/" CACHE PATH "Install prefix")
+list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+include(GNUInstallDirs)
 
 set(CMAKE_FIND_ROOT 
     "/home/geobrown/Software;/Users/geobrown/Software;c:/Program Files/fmpp/bin;C:/Program Files/STMicroelectronics" )
@@ -20,23 +52,16 @@ set(CPACK_PACKAGE_VERSION_MAJOR 2)
 set(CPACK_PACKAGE_VERSION_MINOR 1)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
 
-if(FALSE)
-set(CPACK_BUNDLE_APPLE_CERT_APP "Developer ID Application: Indiana University (5J69S77A7G)")
-set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development")
-set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "5J69S77A7G")
-endif()
-
-
-
 if(WIN32)
-  set(CPACK_GENERATOR ${CPACK_BINARY_WIX})
+  set(CPACK_GENERATOR WIX)
 endif()
 
 if(APPLE)
-  set(CPACK_GENERATOR ${CPACK_BINARY_DRAGNDROP})
+  set(CPACK_GENERATOR DragNDrop)
+  if(MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY)
+    set(CPACK_BUNDLE_APPLE_CERT_APP "${MACOS_CODE_SIGN_IDENTITY}")
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_CODE_SIGN_IDENTITY}")
+  endif()
 endif()
 
 include(CPack)
-
-
-

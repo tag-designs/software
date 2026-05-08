@@ -2,26 +2,61 @@
 See [Documentation](https://geoffreymbrown.github.io/ultralight-tags/) to explore this project and for complete build instructions.
 
 
-# building with OS X
+# Building and Packaging on macOS
 
+Make sure the Qt `bin` directory for the version being used is on your
+`PATH`. CMake needs to find tools such as `macdeployqt`.
 
-cmake  -DQt6_DIR=/Users/geobrown/Qt/6.5.3/macos  ~/Research/ultralight-tags 
+Configure a package build:
 
-Make sure to add Qt-version/bin (or current version) to your path so that the various find_program tools work (esp macdeployqt)
+```
+cmake -S . -B build-package \
+  -DBUILD_QT_APPS=ON \
+  -DMACOS_CODE_SIGN_IDENTITY="Indiana University (5J69S77A7G)"
+```
 
-(use your signing authority)
+Build the applications and create the DMG:
 
-macdeployqt bin/btviz.app -codesign="Indiana University"
-macdeployqt bin/qtmonitor.app -codesign="Indiana University (5J69S77A7G)"
-macdeployqt bin/tag-test.app -codesign="Indiana University"
-        
-To verify
+```
+cmake --build build-package --parallel
+cmake --build build-package --target package
+```
 
-codesign --verify --deep --verbose xyz.app
+The macOS package flow runs `macdeployqt` during package staging, then CPack
+creates the DragNDrop DMG. These package-related options default to `ON`:
 
-Then build the dmg file
+```
+MACOS_SIGN_APPS
+MACOS_USE_MACDEPLOYQT_DEPLOYMENT
+MACOS_DEPLOY_APPSTORE_COMPLIANT
+MACOS_KEEP_ONLY_QSQLITE_PLUGIN
+MACOS_DEPLOY_QT_PLUGINS_MANUALLY
+MACOS_FIXUP_BUNDLE_DEPENDENCIES
+```
 
-cpack -G DragNDrop
+With the defaults, the package step runs `macdeployqt` with the configured
+signing identity and `-appstore-compliant`. A few warnings about skipped
+non-app-store-compliant SQL plugins, or missing optional Mimer client
+libraries, can appear during packaging. They are expected as long as the apps
+start and only the SQLite Qt SQL driver is needed.
+
+To verify a packaged app:
+
+```
+codesign --verify --deep --verbose path/to/App.app
+```
+
+To override or disable signing:
+
+```
+cmake -S . -B build-package \
+  -DBUILD_QT_APPS=ON \
+  -DMACOS_CODE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+
+cmake -S . -B build-package \
+  -DBUILD_QT_APPS=ON \
+  -DMACOS_SIGN_APPS=OFF
+```
 
 
 No longer building qt -- using distributed version
