@@ -164,13 +164,13 @@ void MainWindow::on_pb_load_clicked()
 	    if (angles[2] < 0.0) angles[2] += 360.0;
         s.pitch = angles[0];
         s.roll = angles[1];
-        s.yaw = angles[2];
+        s.yaw = std::fmod(360-angles[2],360.0);
         orientation_time << timestamp;
         // save the sensor data and computed orientation
         orientation << s;
         accel << s.mg;  // save total acceleration
         // store the heading for graph
-        heading << std::fmod(s.yaw + declination,360.0);
+        heading << std::fmod(720 + s.yaw + declination,360.0);
         //qDebug() << s.yaw << std::fmod(s.yaw + declination,360.0) << declination;
     }
 

@@ -62,6 +62,8 @@ MainWindow::MainWindow(QWidget *parent)
   right = new QCPItemLine(ui->plot);
   right->setVisible(true);
 
+  //textItem = new QCPItemText(ui->plot); 
+
   // connect slots
 
   connect(ui->plot, SIGNAL(mouseMove(QMouseEvent *)),

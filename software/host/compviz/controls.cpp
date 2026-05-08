@@ -19,75 +19,73 @@
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
   QCustomPlot *customPlot = qobject_cast<QCustomPlot *>(sender());
-  double x = ui->plot->xAxis->pixelToCoord(event->pos().x());
-  double y = activityAxis->pixelToCoord(event->pos().y());
-  double t = temperatureAxis->pixelToCoord(event->pos().y());
-  double v = voltageAxis->pixelToCoord(event->pos().y());
-  double h = headingAxis->pixelToCoord(event->pos().y());
-  //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
+  if (customPlot->axisRect()->rect().contains(event->pos())) {
+    double x = ui->plot->xAxis->pixelToCoord(event->pos().x());
+    double y = activityAxis->pixelToCoord(event->pos().y());
+    double t = temperatureAxis->pixelToCoord(event->pos().y());
+    double v = voltageAxis->pixelToCoord(event->pos().y());
+    double h = headingAxis->pixelToCoord(event->pos().y());
+    //double v = customPlot->yAxis3->pixelToCoord(event->pos().y());
 
-  
+    
 
-  QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
-  QString s;
-  QTextStream out(&s);
+    QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x),QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
+    QString s;
+    QTextStream out(&s);
 
-  // Generate data for mouseover string
+    // Generate data for mouseover string
 
-  int index = activityGraph->findBegin(x);
-  if (index) {
-    y = activityGraph->dataMainValue(index);
-  }
-
-  out << "(" << dt.toString("MM/dd hh:mm");
-  out << QString(", %1").arg(y,0,'f',1);
-
-  if (ui->actionTemperature->isChecked()){
-     index = temperatureGraph->findBegin(x);
-     if (index) {
-        t = temperatureGraph->dataMainValue(index);
+    int index = activityGraph->findBegin(x);
+    if (index) {
+      y = activityGraph->dataMainValue(index);
     }
-    out << QString(", %1").arg(t,0,'f',1);
-    out << "C";
-  }
 
-  if (ui->actionVoltage->isChecked()){
-     index = voltageGraph->findBegin(x);
-     if (index) {
-        v = voltageGraph->dataMainValue(index);
+    out << "(" << dt.toString("MM/dd hh:mm");
+    out << QString(", %1").arg(y,0,'f',1);
+
+    if (ui->actionTemperature->isChecked()){
+      index = temperatureGraph->findBegin(x);
+      if (index) {
+          t = temperatureGraph->dataMainValue(index);
+      }
+      out << QString(", %1").arg(t,0,'f',1);
+      out << "C";
     }
-    out << QString(", %1").arg(v,0,'f',1);
-    out << "V";
-  }
 
-  
-    index = headingGraph->findBegin(x);
-  if (index) {
-    h = headingGraph->dataMainValue(index);
-    out << QString(", %1").arg(h,0,'f',1);
-    sensor s = orientation[index];
-    QMetaObject::invokeMethod(rootObject, "setOrientation",
-        Q_ARG(QVariant, s.yaw),
-        Q_ARG(QVariant, s.pitch),
-        Q_ARG(QVariant, s.roll),
-        Q_ARG(QVariant, s.dip),
-        Q_ARG(QVariant, s.field),
-        Q_ARG(QVariant, s.mg));
-  }
-  out << ")";
+    if (ui->actionVoltage->isChecked()){
+      index = voltageGraph->findBegin(x);
+      if (index) {
+          v = voltageGraph->dataMainValue(index);
+      }
+      out << QString(", %1").arg(v,0,'f',1);
+      out << "V";
+    }
 
-  // write mouse over string
+    
+      index = headingGraph->findBegin(x);
+    if (index) {
+      h = headingGraph->dataMainValue(index);
+      out << QString(", %1").arg(h,0,'f',1);
+      sensor s = orientation[index];
+      QMetaObject::invokeMethod(rootObject, "setOrientation",
+          Q_ARG(QVariant, s.yaw),
+          Q_ARG(QVariant, s.pitch),
+          Q_ARG(QVariant, s.roll),
+          Q_ARG(QVariant, s.dip),
+          Q_ARG(QVariant, s.field),
+          Q_ARG(QVariant, s.mg));
+    }
+    out << ")";
 
-  //textItem->setText(s);
-  //textItem->position->setCoords(QPointF(x, y + 5));
-  //textItem
-  //textItem->setFont(QFont(font().family(), 12));
+    // write mouse over string
 
-  //QTextCursor cursor = cursorForPosition(event->pos());
-  QPoint globalPos = mapToGlobal(event->pos());
-  QToolTip::showText(globalPos,out.readAll());
 
-  customPlot->replot(); //QCustomPlot::rpQueuedReplot);
+    //QTextCursor cursor = cursorForPosition(event->pos());
+    QPoint globalPos = mapToGlobal(event->pos());
+    QToolTip::showText(globalPos,out.readAll(),this, QRect(),3000);
+
+    customPlot->replot(); //QCustomPlot::rpQueuedReplot);
+  } 
 }
 
 // Set Visibility on graphs

@@ -25,11 +25,13 @@ Rectangle  {
     }
 
     function setOrientation(h,p,r,d,f) {
+        h = -h
         if (!compass.batteryForward) {
             h = (h + 180)%360
             p = -p
             r = -r
         }
+        h = (h+360)%360
         compass.rotation = -h
         compass.heading = Number(h).toLocaleString(Qt.locale(), 'f', 0)
         compass.pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)

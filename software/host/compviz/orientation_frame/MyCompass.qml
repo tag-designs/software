@@ -33,12 +33,13 @@ Rectangle {
         var h = heading_value + declination
         var p = pitch_value
         var r = roll_value
+        //h = -h
         if (!batteryForward){
             h = h + 180
             p = -p
             r = -r
         }
-        h = h%360
+        h = (h+360)%360
         rotation = -h
         heading = Number(h).toLocaleString(Qt.locale(), 'f', 0)
         pitch = Number(p).toLocaleString(Qt.locale(), 'f', 0)
