@@ -3,12 +3,22 @@
 #include "ch.h"
 #include "hal.h"
 #include "monitor.h"
-#include "rv8803.h"
-#include "rv3028.h"
-#include "rv3032.h"
-#include "tag.pb.h"
 #include "custom.h"
 #include "mcuconf.h"
+
+#if defined(RV8803_RTC)
+#include "rv8803.h"
+#endif
+
+#if defined(RV3028_RTC)
+#include "rv3028.h"
+#endif
+
+#if defined(RV3032_RTC)
+#include "rv3032.h"
+#endif
+
+#include "tag.pb.h"
 
 #ifdef DEBUG_MESSAGES
 #include "memstreams.h"
@@ -104,8 +114,15 @@ void adc1DisableTS(void);
 
 void rtcOn(void);
 void rtcOff(void);
+
+#if defined(RV8803_RTC)
 int rv8803_GetReg(enum RV8803Reg reg, uint8_t *val, int num);
+#endif
+
+#if defined(RV3028_RTC)
 int rv3028_GetReg(enum RV3028Reg reg, uint8_t *val, int num);
+#endif
+
 //int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned char cmd);
 //void setRTCUnixEpoch(int32_t epoch);
 //void getRTCUnixEpoch(int32_t *epoch);

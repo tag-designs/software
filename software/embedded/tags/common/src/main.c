@@ -1,8 +1,15 @@
 #include "hal.h"
 #include "app.h"
 #include "tag.pb.h"
+
+#if defined(USE_ADXL362)
 #include "ADXL362.h"
+#endif
+
+#if defined(USE_ADXL367)
 #include "ADXL367.h"
+#endif
+
 #include "config.h"
 #include "persistent.h"
 //#include "lis2du12.h"

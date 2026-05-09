@@ -35,9 +35,15 @@
 
 #include "hal.h"
 #include <limits.h>
-#include "ADXL362.h"
-#include "ADXL367.h"
 #include "app.h"
+
+#if defined(USE_ADXL362)
+#include "ADXL362.h"
+#endif
+
+#if defined(USE_ADXL367)
+#include "ADXL367.h"
+#endif
 
 #include "tag.pb.h"
 #include "config.h"
@@ -400,6 +406,4 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   }
   return Idle(T_INIT, State_EVENT_OK);
 }
-
-
 

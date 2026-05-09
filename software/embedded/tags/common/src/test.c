@@ -2,7 +2,11 @@
 #include "hal.h"
 #include "custom.h"
 #include "app.h"
+
+#if defined(USE_ADXL362)
 #include "ADXL362.h"
+#endif
+
 #include "tagdata.pb.h"
 #include "config.h"
 #include "persistent.h"
