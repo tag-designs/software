@@ -60,7 +60,6 @@ function(windeployqt target)
             env PATH="${_qt_bin_dir}" "${WINDEPLOYQT_EXECUTABLE}"
                 --verbose 0
                 --no-compiler-runtime
-                --no-angle
                 --no-opengl-sw
                 \"$<TARGET_FILE:${target}>\"
         COMMENT "Deploying Qt..."
@@ -103,6 +102,10 @@ function(install_windeployqt target)
     if(NOT _target_output_name)
         set(_target_output_name ${target})
     endif()
+    set(_windeployqt_qml_options "")
+    foreach(_qml_dir IN LISTS ARGN)
+        string(APPEND _windeployqt_qml_options "                    --qmldir \"${_qml_dir}\"\n")
+    endforeach()
 
     install(CODE "
         message(STATUS \"Deploying Qt runtime for ${_target_output_name}\")
@@ -110,8 +113,9 @@ function(install_windeployqt target)
             COMMAND \"${CMAKE_COMMAND}\" -E env \"PATH=${_qt_bin_dir}\" \"${WINDEPLOYQT_EXECUTABLE}\"
                     --verbose 0
                     --no-compiler-runtime
-                    --no-angle
                     --no-opengl-sw
+                    --dir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
+${_windeployqt_qml_options}
                     \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/${_target_output_name}${CMAKE_EXECUTABLE_SUFFIX}\"
             RESULT_VARIABLE _windeployqt_result)
         if(NOT _windeployqt_result EQUAL 0)
@@ -119,17 +123,6 @@ function(install_windeployqt target)
         endif()
     ")
 
-    if((MSVC_VERSION VERSION_EQUAL 1900 OR MSVC_VERSION VERSION_GREATER 1900)
-            AND CMAKE_VERSION VERSION_LESS "3.6")
-        message(WARNING "Deploying with MSVC 2015+ requires CMake 3.6+")
-    endif()
-
-    set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
-    include(InstallRequiredSystemLibraries)
-    foreach(lib ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
-        get_filename_component(filename "${lib}" NAME)
-        install(FILES "${lib}" DESTINATION "${CMAKE_INSTALL_BINDIR}")
-    endforeach()
 endfunction()
 
 function(install_macdeployqt target)

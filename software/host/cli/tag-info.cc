@@ -81,8 +81,8 @@ int main(int argc, char **argv)
       {
         const FieldDescriptor *field = desc->field(i);
         std::string value;
-        std::string name = field->name();
-        std::string type_name = field->type_name();
+        std::string name(field->name());
+        std::string type_name(field->type_name());
 
         switch (field->type())
         {

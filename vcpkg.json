@@ -1,7 +1,10 @@
 {
   "dependencies": [
+    {
+      "name": "pkgconf",
+      "host": true
+    },
     "libusb",
-    "ms-angle",
     "protobuf"
   ]
 }

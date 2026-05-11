@@ -69,3 +69,13 @@ D:\Qt\src\configure.bat -static -debug-and-release -opensource -static-runtime -
 cmake --build .
 cmake -DCMAKE_INSTALL_PREFIX=d:/Qt/x64-static install .
 ```
+
+
+5-10-26 install on vmware instance
+
+c:\Users\geoff\build-software>cmake -G "Visual Studio 18 2026" -Ax64 -DVCPKG_TARGET_TRIPLET="x64-windows-static" -DQt6_DIR="c:/Qt/x64-static" -DQT_ADDITIONAL_PACKAGES_PREFIX_PATH="c:/Qt/x64-static" --preset=default ../software
+
+changed ms-angle to angle
+updated visual studio
+changed vcpkg baseline
+

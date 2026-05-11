@@ -1,14 +1,46 @@
 {
-    "version": 2,
-    "configurePresets": [
-      {
-        "name": "vcpkg",
-        "generator": "Visual Studio 17 2022",
-        "binaryDir": "d:/ultralight-tags-build",
-        "cacheVariables": {
-          "CMAKE_TOOLCHAIN_FILE": "d:/vcpkg/scripts/buildsystems/vcpkg.cmake",
-          "VCPKG_TARGET_TRIPLET" : "x64-windows-static"   
-        }
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Windows Visual Studio dynamic with installed Qt",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "c:/software-build-external-qt",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.10.2/msvc2022_64",
+        "CMAKE_INSTALL_PREFIX": "c:/software-build-external-qt/install",
+        "BUILD_HOST": "ON",
+        "BUILD_QT_APPS": "ON",
+        "BUILD_EMBEDDED": "OFF"
       }
-    ]
-  }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "configuration": "Release"
+    },
+    {
+      "name": "release",
+      "configurePreset": "default",
+      "configuration": "Release"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "package",
+      "configurePreset": "default",
+      "configuration": "Release",
+      "targets": [
+        "package"
+      ]
+    }
+  ]
+}

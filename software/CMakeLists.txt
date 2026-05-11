@@ -4,20 +4,13 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum OS X deployment ver
 include(CMakePrintHelpers)
 
 if (MSVC)
-    set(Protobuf_USE_STATIC_LIBS ON)
     find_program(rc rc.exe)
-    add_compile_options(
-            $<$<CONFIG:>:/MT> #---------|
-            $<$<CONFIG:Debug>:/MTd> #---|-- Statically link the runtime libraries
-            $<$<CONFIG:Release>:/MT> #--|
-        )
      add_link_options(/VERBOSE:LIB)
 endif()
 
 
 # Find Protobuf and Nanopb
 
-set(Protobuf_USE_STATIC_LIBS ON)
 set(protobuf_MODULE_COMPATIBLE TRUE)
 find_package(Protobuf CONFIG QUIET)
 if(NOT Protobuf_FOUND)

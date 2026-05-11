@@ -3,9 +3,23 @@ cmake_minimum_required(VERSION 3.20)
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
 
+if(WIN32)
+  set(_build_embedded_default OFF)
+else()
+  set(_build_embedded_default ON)
+endif()
+
+if(MSVC)
+  set(
+    CMAKE_MSVC_RUNTIME_LIBRARY
+    "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+    CACHE STRING
+    "Use the dynamic MSVC runtime")
+endif()
+
 option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
-option(BUILD_EMBEDDED "Build embedded firmware targets" ON)
+option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment and signing" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
@@ -34,9 +48,20 @@ set(
   CACHE STRING
   "Extra library directories searched by fixup_bundle while packaging macOS apps")
 
-set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/" CACHE PATH "Install prefix")
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/install" CACHE PATH "Install prefix" FORCE)
+endif()
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(GNUInstallDirs)
+
+if(WIN32)
+  set(CMAKE_INSTALL_BINDIR "tag-tools" CACHE PATH "Windows runtime tools directory" FORCE)
+  install(CODE [[
+    if(NOT CMAKE_INSTALL_CONFIG_NAME STREQUAL "Release")
+      message(FATAL_ERROR "Windows install/package is Release-only. Build Debug with `cmake --build --preset debug`, but install/package with Release.")
+    endif()
+  ]])
+endif()
 
 set(CMAKE_FIND_ROOT 
     "/home/geobrown/Software;/Users/geobrown/Software;c:/Program Files/fmpp/bin;C:/Program Files/STMicroelectronics" )
@@ -53,7 +78,7 @@ set(CPACK_PACKAGE_VERSION_MINOR 1)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
 
 if(WIN32)
-  set(CPACK_GENERATOR WIX)
+  set(CPACK_GENERATOR ZIP)
 endif()
 
 if(APPLE)
