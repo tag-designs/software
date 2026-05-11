@@ -117,6 +117,23 @@ if(host_install_targets)
     endforeach()
   endif()
 
+  if(WIN32 AND TARGET Qt6::qmake)
+    get_target_property(host_qmake_executable Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(host_qt_bin_dir "${host_qmake_executable}" DIRECTORY)
+    set(host_windows_debugger_path "${host_qt_bin_dir}")
+    if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+      string(APPEND host_windows_debugger_path "$<SEMICOLON>$<IF:$<CONFIG:Debug>,${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/bin,${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin>")
+    endif()
+    string(APPEND host_windows_debugger_path "$<SEMICOLON>%PATH%")
+    foreach(target_name ${host_qt_install_targets})
+      if(TARGET ${target_name})
+        set_property(
+            TARGET ${target_name}
+            PROPERTY VS_DEBUGGER_ENVIRONMENT "PATH=${host_windows_debugger_path}")
+      endif()
+    endforeach()
+  endif()
+
   if(WIN32)
     install(
       TARGETS ${host_install_targets}

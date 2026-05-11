@@ -75,6 +75,24 @@ Build Debug only when needed:
 cmake --build --preset debug
 ```
 
+Visual Studio launches Qt apps with the right runtime `PATH` through the
+generated `VS_DEBUGGER_ENVIRONMENT` setting. If running Qt apps directly from
+the build tree in PowerShell, set `PATH` first.
+
+Release build tree:
+
+```
+$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;c:\software-build-external-qt\vcpkg_installed\x64-windows\bin;$env:PATH"
+c:\software-build-external-qt\Release\bin\qtmonitor.exe
+```
+
+Debug build tree:
+
+```
+$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;c:\software-build-external-qt\vcpkg_installed\x64-windows\debug\bin;$env:PATH"
+c:\software-build-external-qt\Debug\bin\qtmonitor.exe
+```
+
 Install and package Release:
 
 ```
