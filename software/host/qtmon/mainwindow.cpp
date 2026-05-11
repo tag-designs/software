@@ -27,6 +27,7 @@
 #include "tagclass.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qtfiledialog.h"
 
 #include "tag.pb.h"
 
@@ -401,7 +402,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
 {
   //Download dl;
 
-  QFileDialog fd;
   QString filter;
   QString initial_path;
   
@@ -414,10 +414,8 @@ void MainWindow::on_tagLogSaveButton_clicked()
   }
 
 
-  QString fileName = fd.getSaveFileName(this, tr("Save File"), 
-                                        initial_path, filter,
-                                        nullptr, 
-                                        QFileDialog::DontUseNativeDialog);
+  QString fileName = HostFileDialog::getSaveFileName(
+      this, tr("Save File"), initial_path, filter);
 
   if (fileName.isEmpty()) {
       qDebug() << "null filename";
@@ -486,6 +484,5 @@ void MainWindow::on_tagLogSaveButton_clicked()
   delete(dl);
   return;
 }
-
 
 

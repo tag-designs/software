@@ -1,6 +1,7 @@
 #include <QDate>
 #include <QDateTime>
 #include <QDebug>
+#include <QTimeZone>
 #include "schedule.h"
 #include "ui_schedule.h"
 #include "hibernate.h"
@@ -38,6 +39,8 @@ static QDateTime roundDateTime(QDateTime dateTime, int64_t seconds)
 
 Schedule::Schedule(QWidget *parent) : QWidget(parent) {
   ui.setupUi(this);
+  ui.StartDateTime->setTimeZone(QTimeZone::UTC);
+  ui.EndDateTime->setTimeZone(QTimeZone::UTC);
 }
 
 Schedule::~Schedule(){}
@@ -239,4 +242,3 @@ void Schedule::on_startGroup_clicked()
     }
   }
 }
-

@@ -22,6 +22,7 @@
 //#include "dataconfig.h"
 #include "bittaglog.h"
 #include "ui_configtab.h"
+#include "../qtfiledialog.h"
 
 ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
@@ -176,11 +177,9 @@ bool ConfigTab::SetConfig(const Config &new_config)
 
 void ConfigTab::on_configSaveButton_clicked()
 {
-  QFileDialog fd;
-  fd.setFileMode(QFileDialog::AnyFile);
-  QString fileName = fd.getSaveFileName(this, tr("Save File"),
-                                        QDir::homePath() + "/untitled.json",
-                                        tr("Protobuf (*.json)"));
+  QString fileName = HostFileDialog::getSaveFileName(
+      this, tr("Save File"), QDir::homePath() + "/untitled.json",
+      tr("Protobuf (*.json);;All Files (*)"));
   QString errormsg;
 
   if (fileName.isNull()) {
@@ -235,11 +234,11 @@ void ConfigTab::on_configSaveButton_clicked()
 
 void ConfigTab::on_configRestoreButton_clicked()
 {
-  QFileDialog fd;
   Config configin;
 
-  QString fileName = fd.getOpenFileName(this, tr("Open File"), QDir::homePath(),
-                                        tr("Protobuf (*.json)"));
+  QString fileName = HostFileDialog::getOpenFileName(
+      this, tr("Open File"), QDir::homePath(),
+      tr("Protobuf (*.json);;All Files (*)"));
 
   if (fileName.isNull())
     return;

@@ -15,7 +15,7 @@
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
-    <widget class="QCustomPlot" name="actoplot" native="true">
+    <widget class="QCustomPlot" name="actoplot">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Ignored">
        <horstretch>0</horstretch>
@@ -103,9 +103,6 @@
              </property>
              <property name="currentSectionIndex">
               <number>2</number>
-             </property>
-             <property name="timeSpec">
-              <enum>Qt::UTC</enum>
              </property>
             </widget>
            </item>

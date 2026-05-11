@@ -2,13 +2,16 @@
 #include "solpos00.h"
 #include "ui_actogram.h"
 #include <FastFIR/FastFIR/qjfastfir.h>
+#include <QTimeZone>
 #include <iostream>
+#include "../qtfiledialog.h"
 
 static QBrush SunBrush = QBrush(QColor(255,255,0,50));   // yellow transparent
 static QBrush BarBrush = QBrush(QColor(0, 0, 175, 100)); // light blue
 
 Actogram::Actogram(QWidget *parent) : QWidget(parent), ui(new Ui::Actogram) {
   ui->setupUi(this);
+  ui->startDay->setTimeZone(QTimeZone::UTC);
 
   // Create the shared objects
 
@@ -55,8 +58,8 @@ void Actogram::setData(QVector<double> time, QVector<double> value,
 
   // initialize the date ranges
 
-  startDT = QDateTime::fromSecsSinceEpoch(qint64(tmdata[0]), Qt::UTC);
-  endDT = QDateTime::fromSecsSinceEpoch(qint64(tmdata.last()), Qt::UTC);
+  startDT = QDateTime::fromSecsSinceEpoch(qint64(tmdata[0]), QTimeZone::UTC);
+  endDT = QDateTime::fromSecsSinceEpoch(qint64(tmdata.last()), QTimeZone::UTC);
   ui->startDay->setMinimumDateTime(startDT);
   ui->startDay->setMaximumDateTime(endDT);
   ui->sb_startday->setMaximum(startDT.daysTo(endDT));
@@ -247,9 +250,9 @@ void Actogram::on_startDay_dateChanged(const QDate &date) {
 
     // a bit of a mess to get utc from date !
     // qint64 start = QDateTime(date, QTime(),
-    // Qt::OffsetFromUTC,offset).toSecsSinceEpoch();
+    // QTimeZone(offset)).toSecsSinceEpoch();
 
-    qint64 start = QDateTime(date, QTime(), Qt::UTC).toSecsSinceEpoch()
+    qint64 start = QDateTime(date, QTime(), QTimeZone::UTC).toSecsSinceEpoch()
                    - offset;
 
     // update ticker for (possibly) new UTC offset
@@ -267,7 +270,7 @@ void Actogram::on_startDay_dateChanged(const QDate &date) {
       xAxis->setRange(start, start + width);
     labels[i]->setText(
    // yAxis->setLabel(
-          QDateTime::fromSecsSinceEpoch(start, Qt::OffsetFromUTC, offset)
+          QDateTime::fromSecsSinceEpoch(start, QTimeZone(offset))
               .toString("M/d  "));
       start += 3600 * 24;
     }
@@ -337,7 +340,7 @@ void Actogram::on_cb_double_toggled(bool checked) {
 //
 
 void Actogram::on_pb_acto_png_clicked() {
-  QString fileName = QFileDialog::getSaveFileName(
+  QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.png",
       tr("Actogram (*.png)"));
 
@@ -345,7 +348,7 @@ void Actogram::on_pb_acto_png_clicked() {
 }
 
 void Actogram::on_pb_acto_pdf_clicked() {
-  QString fileName = QFileDialog::getSaveFileName(
+  QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.pdf",
       tr("Protobuf (*.pdf)"));
 
@@ -393,7 +396,7 @@ void Actogram::generateNaturalLightData() {
   // generate some test data
 
   for (int i = 0; i < tmdata.size(); i++) {
-    QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(tmdata[i]), Qt::UTC);
+    QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(tmdata[i]), QTimeZone::UTC);
     posData.daynum = dt.date().dayOfYear();
     posData.year = dt.date().year();
     posData.hour = dt.time().hour();
@@ -419,8 +422,9 @@ void Actogram::on_pb_load_lightfile_clicked()
     const QString format = "MM/dd/yyyy hh:mm:ss";
     int i;
 
-    QString inFileName = QFileDialog::getOpenFileName(this, tr("Open Activity CSV Specification"), QDir::homePath(),
-                                                    tr("Light Files (*.csv)"));
+    QString inFileName = HostFileDialog::getOpenFileName(
+        this, tr("Open Activity CSV Specification"), QDir::homePath(),
+        tr("Light Files (*.csv);;All Files (*)"));
 
     if (inFileName == "")
         return;
@@ -459,8 +463,8 @@ void Actogram::on_pb_load_lightfile_clicked()
            break;
       }
 
-      start.setTimeSpec(Qt::UTC);
-      stop.setTimeSpec(Qt::UTC);
+      start.setTimeZone(QTimeZone::UTC);
+      stop.setTimeZone(QTimeZone::UTC);
       double start_time = double(start.toSecsSinceEpoch());
       double stop_time = double(stop.toSecsSinceEpoch());
 
@@ -489,6 +493,3 @@ void Actogram::on_pb_load_lightfile_clicked()
     infile.close();
 
 }
-
-
-

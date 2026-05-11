@@ -14,6 +14,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qthoststyle.h"
 
 #include "mainwindow.h"
 
@@ -93,6 +94,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
+  HostStyle::apply(a);
 
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   log_set_quiet(true);

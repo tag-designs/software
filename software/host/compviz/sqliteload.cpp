@@ -10,6 +10,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qtfiledialog.h"
 
 void MainWindow::on_pb_load_clicked()
 {
@@ -19,8 +20,8 @@ void MainWindow::on_pb_load_clicked()
 
     // load database
 
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Open Data"), path,
-                                                    tr("Data Files (*.db3)"));
+    QString fileName = HostFileDialog::getOpenFileName(
+        this, tr("Open Data"), path, tr("Data Files (*.db3);;All Files (*)"));
     
     if (fileName.isNull())
         return;

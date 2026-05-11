@@ -14,6 +14,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qthoststyle.h"
 
 #include "mainwindow.h"
 
@@ -93,6 +94,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
+  HostStyle::apply(a);
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;
 	//vsLogMsg.loadBar = lBar;

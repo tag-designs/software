@@ -7,6 +7,7 @@
 #include <QStringList>
 
 #include "taglogs.h"
+#include "../qtfiledialog.h"
 
 
 extern "C"
@@ -61,10 +62,8 @@ void LogWindow::on_loglevelBox_currentIndexChanged(int index)
 
 void LogWindow::on_logsaveButton_clicked()
 {
-  QFileDialog fd;
-
-  fd.setDirectory(QDir::homePath());
-  QString nameFile = fd.getSaveFileName();
+  QString nameFile = HostFileDialog::getSaveFileName(
+      this, tr("Save Log"), QDir::homePath());
   if (nameFile != "")
   {
     QFile file(nameFile);

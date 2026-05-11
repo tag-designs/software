@@ -1,12 +1,15 @@
 #include <QWidget>
 #include <QDateTimeEdit>
 #include <QFormLayout>
+#include <QTimeZone>
 
 #include "hibernate.h"
 
 Hibernate::Hibernate(int index, QWidget *parent) : QWidget(parent)
 {
     ui.setupUi(this);
+    ui.hibernate_start->setTimeZone(QTimeZone::UTC);
+    ui.hibernate_end->setTimeZone(QTimeZone::UTC);
     id = index;
 }
 

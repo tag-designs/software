@@ -20,6 +20,7 @@
 #include "tagclass.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qtfiledialog.h"
 
 #include "tag.pb.h"
 
@@ -499,10 +500,8 @@ void MainWindow::on_loglevelBox_currentIndexChanged(int index)
 
 void MainWindow::on_logsaveButton_clicked()
 {
-  QFileDialog fd;
-
-  fd.setDirectory(QDir::homePath());
-  QString nameFile = fd.getSaveFileName();
+  QString nameFile = HostFileDialog::getSaveFileName(
+      this, tr("Save Log"), QDir::homePath());
   if (nameFile != "")
   {
     QFile file(nameFile);
@@ -542,7 +541,6 @@ void MainWindow::setOrientation(float h, float p, float r, float d, float f){
           Q_ARG(QVariant, d),
           Q_ARG(QVariant, f));
   }
-
 
 
 

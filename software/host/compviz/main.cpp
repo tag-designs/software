@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include "../qthoststyle.h"
 
 extern "C"
 {
@@ -79,8 +80,8 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
 
-    QApplication::setStyle("fusion");
     QApplication a(argc, argv);
+    HostStyle::apply(a);
     MainWindow w;
     w.show();
 

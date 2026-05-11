@@ -4,6 +4,7 @@
 #include <QPrinter>
 #include <QDebug>
 #include <QTextStream>
+#include <QTimeZone>
 #include <qcustomplot.h>
 #include <iostream>
 #include <FastFIR/FastFIR/qjfastfir.h>
@@ -12,6 +13,7 @@
 #include "mainwindow.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
+#include "../qtfiledialog.h"
 
 static float pressure_to_altitude(float mbar){
   return 44330*(1-pow(mbar/1013.25,1/5.257));
@@ -25,6 +27,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
   ui->setupUi(this);
+  ui->te_left->setTimeZone(QTimeZone::UTC);
+  ui->te_right->setTimeZone(QTimeZone::UTC);
   makeVisible(false);
 
   ui->plot->setBufferDevicePixelRatio(1.0);
@@ -191,8 +195,8 @@ void MainWindow::on_pb_load_clicked()
   QMessageBox msgBox;
   int i;
 
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open Data"), path,
-                                                  tr("Data Files (*.txt)"));
+  QString fileName = HostFileDialog::getOpenFileName(
+      this, tr("Open Data"), path, tr("Data Files (*.txt);;All Files (*)"));
 
   if (fileName.isNull())
     return;
@@ -451,16 +455,18 @@ void MainWindow::on_pb_load_clicked()
 
     // left
     ui->te_left->setMinimumDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), Qt::UTC));
+        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), QTimeZone::UTC));
     ui->te_left->setDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), Qt::UTC));
+        QDateTime::fromSecsSinceEpoch(qint64(accel_time[0]), QTimeZone::UTC));
     left->setVisible(true);
 
     // right
     ui->te_right->setMaximumDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]), Qt::UTC));
+        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]),
+                                      QTimeZone::UTC));
     ui->te_right->setDateTime(
-        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]), Qt::UTC));
+        QDateTime::fromSecsSinceEpoch(qint64(accel_time[size - 1]),
+                                      QTimeZone::UTC));
     right->setVisible(true);
 
     // set range
@@ -665,7 +671,7 @@ void MainWindow::on_cb_altitude_toggled(bool checked)
 
 void MainWindow::on_pb_pdf_clicked()
 {
-  QString fileName = QFileDialog::getSaveFileName(
+  QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.pdf",
       tr("Protobuf (*.pdf)"));
 
@@ -674,7 +680,7 @@ void MainWindow::on_pb_pdf_clicked()
 
 void MainWindow::on_pb_png_clicked()
 {
-  QString fileName = QFileDialog::getSaveFileName(
+  QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.png",
       tr("Protobuf (*.png)"));
 
@@ -686,7 +692,7 @@ void MainWindow::on_pb_export_csv_clicked()
   QMessageBox msgBox;
   int hours = ui->offsetUTC->value();
   QTimeZone timezone = QTimeZone(3600*hours);
-  QString fileName = QFileDialog::getSaveFileName(
+  QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.csv",
       tr("CSV (*.csv)"));
   QFile file(fileName);
@@ -827,14 +833,14 @@ void MainWindow::plot_doubleclick(QMouseEvent *event)
         (event->button() & Qt::LeftButton))
     {
       ui->te_left->setDateTime(
-          QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+          QDateTime::fromSecsSinceEpoch(qint64(x), QTimeZone::UTC));
     }
 
     if ((x > left->start->coords().x()) &&
         (event->button() & Qt::RightButton))
     {
       ui->te_right->setDateTime(
-          QDateTime::fromSecsSinceEpoch(qint64(x), Qt::UTC));
+          QDateTime::fromSecsSinceEpoch(qint64(x), QTimeZone::UTC));
     }
   }
 }
@@ -885,8 +891,9 @@ void MainWindow::on_pb_process_clicked()
   const QString format = "MM/dd/yyyy hh:mm:ss";
 
   QString inFileName =
-      QFileDialog::getOpenFileName(this, tr("Open Activity CSV Specification"),
-                                   path, tr("Data Files (*.csv)"));
+      HostFileDialog::getOpenFileName(
+          this, tr("Open Activity CSV Specification"), path,
+          tr("Data Files (*.csv);;All Files (*)"));
 
   if (inFileName.isNull())
     return;
@@ -898,7 +905,7 @@ void MainWindow::on_pb_process_clicked()
     return;
   }
 
-  QString outFileName = QFileDialog::getSaveFileName(
+  QString outFileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.csv",
       tr("Protobuf (*.csv)"));
   QFile outfile(outFileName);
@@ -925,7 +932,7 @@ void MainWindow::on_pb_process_clicked()
         msgBox.exec();
         break;
       }
-      start.setTimeSpec((Qt::UTC));
+      start.setTimeZone(QTimeZone::UTC);
 
       QDateTime stop = QDateTime::fromString(l1[1], format);
       if (stop.isNull())
@@ -934,7 +941,7 @@ void MainWindow::on_pb_process_clicked()
         msgBox.exec();
         break;
       }
-      stop.setTimeSpec(Qt::UTC);
+      stop.setTimeZone(QTimeZone::UTC);
       qint64 start_time = start.toSecsSinceEpoch();
       qint64 stop_time = stop.toSecsSinceEpoch();
       int count = 0;

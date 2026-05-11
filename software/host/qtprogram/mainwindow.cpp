@@ -33,6 +33,7 @@
 
 #include "download.h"
 #include "custommessagebox.h"
+#include "../qtfiledialog.h"
 
 
 #define title_string "Tag Programmer v1.0"
@@ -427,9 +428,9 @@ void MainWindow::on_programButton_clicked(){
 void MainWindow::on_fileSelectButton_clicked()
 {
  
-  QString filename = QFileDialog::getOpenFileName(this,tr("binary file to program"), 
-                                                 QDir::homePath(),
-                                                 tr("Binary (*.bin *.elf)"));
+  QString filename = HostFileDialog::getOpenFileName(
+      this, tr("binary file to program"), QDir::homePath(),
+      tr("Binary (*.bin *.elf);;All Files (*)"));
   if (!filename.isNull()) {
     ui.fileName->setText(filename);
     ui.programButton->setEnabled(true);
@@ -441,7 +442,8 @@ void MainWindow::on_fileSelectButton_clicked()
 void MainWindow::on_toolSelectButton_clicked()
 {
  
-  QString filename = QFileDialog::getOpenFileName(this,tr("STM32 Programming CLI Tool"), QDir::homePath());
+  QString filename = HostFileDialog::getOpenFileName(
+      this, tr("STM32 Programming CLI Tool"), QDir::homePath());
   if (!filename.isNull()) {
     ui.programmingTool->setText(filename);
     program = filename;

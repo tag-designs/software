@@ -10,6 +10,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "../qtfiledialog.h"
 
 
 // Load a data file
@@ -19,8 +20,8 @@ void MainWindow::on_pb_load_clicked()
   QMessageBox msgBox;
   int i;
 
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open Data"), path,
-                                                  tr("Data Files (*.txt)"));
+  QString fileName = HostFileDialog::getOpenFileName(
+      this, tr("Open Data"), path, tr("Data Files (*.txt);;All Files (*)"));
 
   if (fileName.isNull())
     return;
@@ -214,4 +215,3 @@ void MainWindow::on_pb_load_clicked()
   activityGraph->setData(accel_time,accel,true);
   headingGraph->setData(orientation_time,heading,true);
 }
-

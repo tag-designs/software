@@ -41,7 +41,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QCustomPlot" name="plot" native="true">
+         <widget class="QCustomPlot" name="plot">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
@@ -604,9 +604,6 @@
                 <property name="calendarPopup">
                  <bool>true</bool>
                 </property>
-                <property name="timeSpec">
-                 <enum>Qt::TimeSpec::UTC</enum>
-                </property>
                </widget>
               </item>
               <item row="1" column="2">
@@ -619,9 +616,6 @@
                 </property>
                 <property name="calendarPopup">
                  <bool>true</bool>
-                </property>
-                <property name="timeSpec">
-                 <enum>Qt::TimeSpec::UTC</enum>
                 </property>
                </widget>
               </item>
@@ -770,7 +764,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <item>
-         <widget class="Actogram" name="theActogram" native="true">
+         <widget class="Actogram" name="theActogram">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
             <horstretch>0</horstretch>
