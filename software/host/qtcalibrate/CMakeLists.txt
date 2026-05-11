@@ -74,7 +74,7 @@ qt_add_executable(
 )# resources/resources.qrc)
 
 target_include_directories(qtcalibrate PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-set_property(TARGET qtcalibrate PROPERTY WINDOWS_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
+set_property(TARGET qtcalibrate PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
 
 set_target_properties(
   qtcalibrate

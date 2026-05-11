@@ -50,7 +50,7 @@ qt_add_resources(compviz_SRCS qfi.qrc)
 qt_add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
 #qt_import_qml_plugins(compviz)
 target_include_directories(compviz PRIVATE FastFIR qcustomplot-source)
-set_property(TARGET compviz PROPERTY WINDOWS_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
+set_property(TARGET compviz PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
 set_target_properties(compviz
     PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin
@@ -74,6 +74,5 @@ target_link_libraries(compviz PRIVATE tag Qt6::Widgets Qt6::Sql
                                Qt6::Quick Qt6::PrintSupport)
 
 #target_include_directories(compviz PRIVATE ${Qt6Sql_INCLUDE_DIRS})
-
 
 

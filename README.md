@@ -157,8 +157,10 @@ cmake --build build-package --parallel
 cmake --build build-package --target package
 ```
 
-The macOS package flow runs `macdeployqt` during package staging, then CPack
-creates the DragNDrop DMG. These package-related options default to `ON`:
+The macOS package flow runs `macdeployqt` during package staging, including
+the QML import directories registered on each Qt target with
+`QT_DEPLOY_QML_DIRS`, then CPack creates the DragNDrop DMG. These
+package-related options default to `ON`:
 
 ```
 MACOS_SIGN_APPS
