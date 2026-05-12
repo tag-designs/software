@@ -19,7 +19,6 @@
 #include "hibernate.h"
 #include "configtab.h"
 #include "adxl362config.h"
-//#include "dataconfig.h"
 #include "bittaglog.h"
 #include "ui_configtab.h"
 #include "../qtfiledialog.h"
