@@ -14,7 +14,6 @@
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
 #include <QPromise>
-#include <QtSql>
 
 #include <ctime>
 #include <fstream>
@@ -423,31 +422,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
   }
   
 
-  //std::fstream fs;
-  //QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-
-  /*
-  if (tag_type == COMPASSTAG){
-    QFile::remove(fileName);
-    db.setDatabaseName(fileName);
-    if (db.open()){
-      qDebug() << "Database connected successfully!";
-    } else {
-      qDebug() << "couldn't open database file " << fileName << " error " << db.lastError().text();;
-      return;
-    }
-  } else {
-    fs.open(fileName.toStdString(), std::fstream::out);
-    if (!fs.is_open())
-    {
-      qDebug() << "couldn't open %s" << fileName;
-      return;
-    }
-  }
-    */
-
- 
-
   qDebug() <<  "connecting progess dialog";
 
   // Create Progress Dialog
@@ -472,17 +446,9 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   qDebug() <<  "starting download";
 
-  //if (tag_type == COMPASSTAG) {
-  //  dl.start(&tag,nullptr,&db);
-   // pd.exec();
-   // db.close();
-  //} else {
-  //  dl.start(&tag,&fs,nullptr);
-    dl->exec();
-    pd.exec();
-  //}
+  dl->exec();
+  pd.exec();
   delete(dl);
   return;
 }
-
 

@@ -6,6 +6,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 message("Configure compviz")
 
+find_package(SQLite3 REQUIRED)
+
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
 # Create code from a list of Qt designer ui files
@@ -18,7 +20,7 @@ set(CMAKE_AUTOUIC ON)
 
 # Find the QtWidgets library
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Sql Svg SvgWidgets Qml Quick 
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Svg SvgWidgets Qml Quick
                             QuickWidgets PrintSupport)
 
 if (NOT Qt6_FOUND) 
@@ -36,7 +38,6 @@ set(compviz_SRCS
   controls.cpp
   main.cpp
   mainwindow.cpp
-  qcustomplot-source/qcustomplot.cpp
   tickerdatetimeoffset.cpp
   sqliteload.cpp
   )
@@ -49,7 +50,7 @@ qt_add_resources(compviz_SRCS qfi.qrc)
 
 qt_add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
 #qt_import_qml_plugins(compviz)
-target_include_directories(compviz PRIVATE FastFIR qcustomplot-source)
+target_include_directories(compviz PRIVATE FastFIR)
 set_property(TARGET compviz PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
 set_target_properties(compviz
     PROPERTIES
@@ -69,10 +70,6 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE tag Qt6::Widgets Qt6::Sql 
+target_link_libraries(compviz PRIVATE tag SQLite::SQLite3 qcustomplot Qt6::Widgets
                                Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
                                Qt6::Quick Qt6::PrintSupport)
-
-#target_include_directories(compviz PRIVATE ${Qt6Sql_INCLUDE_DIRS})
-
-

@@ -25,6 +25,10 @@
 
 #include "qcustomplot.h"
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#  include <QtCore/QTimeZone>
+#endif
+
 
 /* including file 'src/vector2d.cpp'       */
 /* modified 2022-11-06T12:45:56, size 7973 */
@@ -6723,7 +6727,20 @@ QString QCPAxisTickerDateTime::getTickLabel(double tick, const QLocale &locale, 
   if (mDateTimeSpec == Qt::TimeZone)
     return locale.toString(keyToDateTime(tick).toTimeZone(mTimeZone), mDateTimeFormat);
   else
+#  if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+  {
+    const QDateTime tickDateTime = keyToDateTime(tick);
+    if (mDateTimeSpec == Qt::UTC)
+      return locale.toString(tickDateTime.toUTC(), mDateTimeFormat);
+    if (mDateTimeSpec == Qt::LocalTime)
+      return locale.toString(tickDateTime.toLocalTime(), mDateTimeFormat);
+    if (mDateTimeSpec == Qt::OffsetFromUTC)
+      return locale.toString(tickDateTime.toOffsetFromUtc(0), mDateTimeFormat);
+    return locale.toString(tickDateTime, mDateTimeFormat);
+  }
+#  else
     return locale.toString(keyToDateTime(tick).toTimeSpec(mDateTimeSpec), mDateTimeFormat);
+#  endif
 # else
   return locale.toString(keyToDateTime(tick).toTimeSpec(mDateTimeSpec), mDateTimeFormat);
 # endif
@@ -6827,8 +6844,15 @@ double QCPAxisTickerDateTime::dateTimeToKey(const QDate &date, Qt::TimeSpec time
   return QDateTime(date, QTime(0, 0), timeSpec).toTime_t();
 # elif QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
   return QDateTime(date, QTime(0, 0), timeSpec).toMSecsSinceEpoch()/1000.0;
-# else
+# elif QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   return date.startOfDay(timeSpec).toMSecsSinceEpoch()/1000.0;
+# else
+  QTimeZone timeZone(QTimeZone::LocalTime);
+  if (timeSpec == Qt::UTC)
+    timeZone = QTimeZone(QTimeZone::UTC);
+  else if (timeSpec == Qt::OffsetFromUTC)
+    timeZone = QTimeZone::fromSecondsAheadOfUtc(0);
+  return date.startOfDay(timeZone).toMSecsSinceEpoch()/1000.0;
 # endif
 }
 /* end of 'src/axis/axistickerdatetime.cpp' */
@@ -35525,5 +35549,4 @@ QVector<QPointF> QCPPolarGraph::dataToLines(const QVector<QCPGraphData> &data) c
   return result;
 }
 /* end of 'src/polar/polargraph.cpp' */
-
 

@@ -23,7 +23,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Find the QtWidgets library
 
-find_package(Qt6 COMPONENTS Core Widgets Sql CONFIG)
+find_package(Qt6 COMPONENTS Core Widgets CONFIG)
 if(NOT Qt6_FOUND)
   message("Qt6 Not found")
   message("Cannot Build QtMonitor")
@@ -87,7 +87,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets Qt6::Sql)
+target_link_libraries(qtmonitor PRIVATE tag Qt6::Widgets)
 
 if(WIN32)
   # why the opengle extensions ????

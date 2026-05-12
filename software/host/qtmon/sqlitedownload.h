@@ -2,7 +2,10 @@
 #define SQLITEDOWNLOAD_H
 
 #include "abstractdownload.h"
-#include <QSqlDatabase>
+
+#include <memory>
+
+class SqliteTagLogWriter;
 
 class SqliteDownload: public AbstractDownload
 {
@@ -13,10 +16,9 @@ class SqliteDownload: public AbstractDownload
         ~SqliteDownload();
 
     private:
-        bool logTableCreated = false;
+        std::unique_ptr<SqliteTagLogWriter> writer;
         bool dumpHeader(void) override; 
         int dumpLog(Ack &ack) override;
-        int dumpTagLog(const CompassTagLog &log);
 };
 
 #endif

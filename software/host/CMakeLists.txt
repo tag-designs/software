@@ -13,6 +13,7 @@ set(HOST_BUNDLE_INSTALL_DIR UltralightTags)
 add_subdirectory(lib)
 add_subdirectory(cli)
 if(BUILD_QT_APPS)
+  add_subdirectory(qcustomplot)
   add_subdirectory(qtmon)
   add_subdirectory(qtprogram)
   add_subdirectory(qtcalibrate)
@@ -107,7 +108,7 @@ set(host_cli_install_targets
     tag-start
     tag-cal
     tag-monitor-test)
-set(host_qt_install_targets btviz compviz qtmonitor qtprogram qtcalibrate tag-orientation)
+set(host_qt_install_targets btviz compviz qtmonitor qtprogram qtcalibrate)
 set(host_install_targets)
 if(WIN32)
   set(host_candidate_install_targets ${host_cli_install_targets} ${host_qt_install_targets})
@@ -191,9 +192,13 @@ if(host_install_targets)
         else()
           install_macdeployqt(${target_name})
         endif()
-        if(NOT MACOS_USE_MACDEPLOYQT_DEPLOYMENT)
+        if(MACOS_DEPLOY_QT_PLUGINS_MANUALLY)
+          # macdeployqt is run with -no-plugins in this mode, so copy only the
+          # curated plugin set from DeployQt.cmake. This intentionally excludes
+          # Qt SQL drivers.
           install_macos_qt_plugins(${target_name})
-          install_macos_prune_qt_sql_drivers(${target_name})
+        endif()
+        if(NOT MACOS_USE_MACDEPLOYQT_DEPLOYMENT)
           install_macos_remove_bundle_signatures(${target_name})
           install_macos_fixup_bundle(${target_name})
           install_macos_codesign(${target_name})

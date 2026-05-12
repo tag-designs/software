@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Configure Tag Library")
 
+find_package(SQLite3 REQUIRED)
+
 if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   set(LIBUSB_1_0_ROOT "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
   set(LIBUSB_1_0_INCLUDE_DIR "${LIBUSB_1_0_ROOT}/include/libusb-1.0")
@@ -41,6 +43,7 @@ target_sources(tag
          tagmonitor.cc 
          tagclass.cc   
          taglogs.cc 
+         sqlitelog.cc
          linkadapt.cc
          log.c
          linkadapt.h
@@ -49,6 +52,7 @@ target_sources(tag
          tagmonitor.h
          tagclass.h
          taglogs.h
+         sqlitelog.h
          linkadapt.h
    )
 
@@ -56,4 +60,4 @@ target_include_directories(tag PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(tag PUBLIC proto)
 target_link_libraries(tag PRIVATE tag_monitor_interface)
-
+target_link_libraries(tag PRIVATE SQLite::SQLite3)

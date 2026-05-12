@@ -5,6 +5,7 @@
       "host": true
     },
     "libusb",
-    "protobuf"
+    "protobuf",
+    "sqlite3"
   ]
 }

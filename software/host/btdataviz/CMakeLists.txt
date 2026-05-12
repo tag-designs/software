@@ -33,7 +33,6 @@ if (NOT Qt6_FOUND)
 
 set(btviz_SRCS
   mainwindow.cpp
-  qcustomplot-source/qcustomplot.cpp
   actogram.cpp
   tickerdatetimeoffset.cpp
   solpos.c
@@ -42,7 +41,7 @@ set(btviz_SRCS
 
 
 add_executable(btviz MACOSX_BUNDLE WIN32 ${btviz_SRCS} ${UI_HEADERS} )
-target_include_directories(btviz PRIVATE FastFIR qcustomplot-source)
+target_include_directories(btviz PRIVATE FastFIR)
 set_target_properties(btviz
     PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin
@@ -60,7 +59,6 @@ elseif(WIN32)
 #windeployqt(btviz)
 endif()
 
-target_link_libraries(btviz PRIVATE Qt6::Widgets Qt6::PrintSupport)
-
+target_link_libraries(btviz PRIVATE qcustomplot Qt6::Widgets Qt6::PrintSupport)
 
 

@@ -23,7 +23,6 @@ option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_defaul
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment and signing" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
-option(MACOS_KEEP_ONLY_QSQLITE_PLUGIN "Remove non-SQLite Qt SQL driver plugins before signing" ON)
 option(MACOS_DEPLOY_QT_PLUGINS_MANUALLY "Deploy a curated macOS Qt plugin set instead of letting macdeployqt scan all plugins" ON)
 option(MACOS_FIXUP_BUNDLE_DEPENDENCIES "Copy and rewrite non-system dylib dependencies into macOS app bundles" ON)
 

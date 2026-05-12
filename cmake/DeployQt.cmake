@@ -134,11 +134,11 @@ function(install_macdeployqt target)
         set(HOST_BUNDLE_INSTALL_DIR ".")
     endif()
     set(_macdeployqt_options -always-overwrite)
+    if(MACOS_DEPLOY_QT_PLUGINS_MANUALLY)
+        list(APPEND _macdeployqt_options -no-plugins)
+    endif()
     if(MACOS_USE_MACDEPLOYQT_DEPLOYMENT AND MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY)
         list(APPEND _macdeployqt_options "-codesign=${MACOS_CODE_SIGN_IDENTITY}")
-    endif()
-    if((NOT MACOS_USE_MACDEPLOYQT_DEPLOYMENT) AND MACOS_DEPLOY_QT_PLUGINS_MANUALLY)
-        list(APPEND _macdeployqt_options -no-plugins)
     endif()
     if(MACOS_DEPLOY_APPSTORE_COMPLIANT)
         list(APPEND _macdeployqt_options -appstore-compliant)
@@ -187,7 +187,6 @@ function(install_macos_qt_plugins target)
 
         set(_plugin_files
             \"${_qt_plugins_dir}/platforms/libqcocoa.dylib\"
-            \"${_qt_plugins_dir}/sqldrivers/libqsqlite.dylib\"
             \"${_qt_plugins_dir}/printsupport/libcocoaprintersupport.dylib\"
             \"${_qt_plugins_dir}/iconengines/libqsvgicon.dylib\")
 
@@ -202,34 +201,6 @@ function(install_macos_qt_plugins target)
                 file(COPY \"\${_plugin_file}\" DESTINATION \"\${_bundle_plugins_dir}/\${_plugin_type}\")
             endif()
         endforeach()
-    ")
-endfunction()
-
-function(install_macos_prune_qt_sql_drivers target)
-    if(NOT MACOS_KEEP_ONLY_QSQLITE_PLUGIN)
-        return()
-    endif()
-
-    get_target_property(_target_output_name ${target} OUTPUT_NAME)
-    if(NOT _target_output_name)
-        set(_target_output_name ${target})
-    endif()
-    if(NOT HOST_BUNDLE_INSTALL_DIR)
-        set(HOST_BUNDLE_INSTALL_DIR ".")
-    endif()
-
-    install(CODE "
-        set(_sqldrivers_dir \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app/Contents/PlugIns/sqldrivers\")
-        if(EXISTS \"\${_sqldrivers_dir}\")
-            file(GLOB _sql_plugins \"\${_sqldrivers_dir}/libqsql*.dylib\")
-            foreach(_sql_plugin IN LISTS _sql_plugins)
-                get_filename_component(_sql_plugin_name \"\${_sql_plugin}\" NAME)
-                if(NOT _sql_plugin_name STREQUAL \"libqsqlite.dylib\")
-                    message(STATUS \"Removing unused Qt SQL driver \${_sql_plugin_name} from ${_target_output_name}.app\")
-                    file(REMOVE \"\${_sql_plugin}\")
-                endif()
-            endforeach()
-        endif()
     ")
 endfunction()
 

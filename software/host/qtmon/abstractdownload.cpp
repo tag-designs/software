@@ -22,7 +22,11 @@ void AbstractDownload::exec() {
 
     tag.GetConfig(config);
 
-    dumpHeader();
+    if (!dumpHeader()) {
+        downloadError("Download header write failed");
+        emit downloadFinished();
+        return;
+    }
 
     // create the progress dialog
 
