@@ -158,7 +158,11 @@ function(install_macdeployqt target)
     if(MACOS_DEPLOY_QT_PLUGINS_MANUALLY)
         list(APPEND _macdeployqt_options -no-plugins)
     endif()
-    if(MACOS_USE_MACDEPLOYQT_DEPLOYMENT AND MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY)
+    if(MACOS_USE_MACDEPLOYQT_DEPLOYMENT
+            AND MACOS_SIGN_APPS
+            AND MACOS_CODE_SIGN_IDENTITY
+            AND NOT MACOS_DEPLOY_QT_PLUGINS_MANUALLY
+            AND NOT MACOS_CODE_SIGN_ENTITLEMENTS)
         list(APPEND _macdeployqt_options "-codesign=${MACOS_CODE_SIGN_IDENTITY}")
     endif()
     if(MACOS_DEPLOY_APPSTORE_COMPLIANT)
