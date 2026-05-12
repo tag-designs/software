@@ -54,7 +54,6 @@ set(qtcalibrate_SRCS
     main.cpp
     mainwindow.cpp
     matrix.c
-    #myscatter3d.cpp
     #qfi_AI.cpp
     #qfi_HI.cpp
     quality.c

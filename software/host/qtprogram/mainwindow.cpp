@@ -31,7 +31,6 @@
 
 #include "tag.pb.h"
 
-#include "download.h"
 #include "custommessagebox.h"
 #include "../qtfiledialog.h"
 

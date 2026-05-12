@@ -32,7 +32,6 @@
 
 //#include "taglogs.h"
 #include "configtab.h"
-//#include "download.h"
 #include "abstractdownload.h"
 #include "txtdownload.h"
 #include "sqlitedownload.h"
@@ -394,13 +393,10 @@ void MainWindow::on_eraseButton_clicked()
   }
 }
 
-// download tag data  -- should most of this be moved to the
-// Download class?
+// download tag data
 
 void MainWindow::on_tagLogSaveButton_clicked()
 {
-  //Download dl;
-
   QString filter;
   QString initial_path;
   
@@ -428,7 +424,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
 
-  //AbstractDownload& dl;
   AbstractDownload *dl;
 
   if (tag_type == COMPASSTAG) {
@@ -436,8 +431,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
   } else {
     dl = new TxtDownload(tag,fileName);
   }
-
-  //TxtDownload dl(tag,fileName);
 
   connect(dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
   connect(dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
@@ -451,4 +444,3 @@ void MainWindow::on_tagLogSaveButton_clicked()
   delete(dl);
   return;
 }
-
