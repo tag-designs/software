@@ -108,21 +108,20 @@ dependency DLLs, Qt plugins, and QML runtime files:
 UltralightTags-2.0.0-win64/
   tag-tools/
     *.exe
-    apps/
-      *.exe
-      qt.conf
     lib/
+      *.exe
       *.dll
+      qt.conf
     plugins/
     qml/
 ```
 
-The top-level executables are lightweight launchers. They add the package-local
-`lib` directory to the child process `PATH` before starting the real executable
-from `apps`, which keeps DLLs out of the top-level directory without requiring
-users to set environment variables. `windeployqt` is configured with explicit
-`--libdir`, `--plugindir`, and `--qml-deploy-dir` paths. Translations are
-skipped with `--no-translations`.
+The top-level executables are lightweight launchers that start the same-named
+real executable from `lib`. Keeping the real executables beside the DLLs lets
+Windows find package-local dependencies with its normal DLL search rules while
+keeping DLLs out of the top-level directory. `windeployqt` is configured with
+explicit `--libdir`, `--plugindir`, and `--qml-deploy-dir` paths. Translations
+are skipped with `--no-translations`.
 
 If CMake is not being run through the preset, pass the Windows dependencies
 explicitly:

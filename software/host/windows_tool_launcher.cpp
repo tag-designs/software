@@ -13,11 +13,12 @@
 //
 //   tag-tools/
 //     qtmonitor.exe        launcher, same name users run
-//     apps/qtmonitor.exe   real program with normal DLL imports
+//     lib/qtmonitor.exe    real program with normal DLL imports
 //     lib/*.dll            Qt, vcpkg, and runtime DLLs
 //
-// The launcher prepends tag-tools/lib to PATH in the child process environment
-// and starts the matching executable from tag-tools/apps.
+// The launcher starts the matching executable from tag-tools/lib. Because the
+// real executable lives beside the DLLs, the standard Windows DLL search order
+// finds the package-local dependencies without global environment changes.
 
 namespace {
 
@@ -120,25 +121,11 @@ int runLauncher()
   const std::wstring launcherPath(modulePath.data(), pathLength);
   const std::wstring rootDir = directoryName(launcherPath);
   const std::wstring appName = fileName(launcherPath);
-  const std::wstring appPath = rootDir + L"\\apps\\" + appName;
-  const std::wstring libPath = rootDir + L"\\lib";
-
-  // Prepend the package-local DLL directory for the child process. PATH is used
-  // instead of AddDllDirectory because the real program's imports are resolved
-  // before its main() can run.
-  DWORD pathSize = GetEnvironmentVariableW(L"PATH", nullptr, 0);
-  std::wstring newPath = libPath;
-  if (pathSize > 0) {
-    std::vector<wchar_t> oldPath(pathSize);
-    GetEnvironmentVariableW(L"PATH", oldPath.data(), pathSize);
-    newPath += L";";
-    newPath += oldPath.data();
-  }
-  SetEnvironmentVariableW(L"PATH", newPath.c_str());
+  const std::wstring appPath = rootDir + L"\\lib\\" + appName;
 
   // Preserve user arguments exactly, replacing only argv[0] with the real
   // executable path. This keeps console tools behaving as if the user launched
-  // apps/<tool>.exe directly.
+  // lib/<tool>.exe directly.
   int argc = 0;
   wchar_t **argv = CommandLineToArgvW(GetCommandLineW(), &argc);
   if (argv == nullptr) {
