@@ -252,6 +252,11 @@ inline void apply(QApplication &app)
     return;
 #endif
 
+#ifdef Q_OS_LINUX
+  if (mode.isEmpty())
+    return;
+#endif
+
 #ifdef Q_OS_WIN
   if (mode.isEmpty()) {
     QStyle *fusion = QStyleFactory::create(QStringLiteral("Fusion"));
