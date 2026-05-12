@@ -114,13 +114,22 @@ function(install_windeployqt target)
                     --verbose 0
                     --no-compiler-runtime
                     --no-opengl-sw
+                    --no-translations
                     --dir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
+                    --libdir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
+                    --plugindir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/plugins\"
+                    --qml-deploy-dir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/qml\"
 ${_windeployqt_qml_options}
                     \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/${_target_output_name}${CMAKE_EXECUTABLE_SUFFIX}\"
             RESULT_VARIABLE _windeployqt_result)
         if(NOT _windeployqt_result EQUAL 0)
             message(FATAL_ERROR \"windeployqt failed for ${_target_output_name}\")
         endif()
+        file(WRITE \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/qt.conf\"
+\"[Paths]
+Plugins=plugins
+Qml2Imports=qml
+\")
     ")
 
 endfunction()

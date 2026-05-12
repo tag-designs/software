@@ -109,9 +109,16 @@ UltralightTags-2.0.0-win64/
   tag-tools/
     *.exe
     *.dll
-    platforms/
+    qt.conf
+    plugins/
     qml/
 ```
+
+The Qt DLLs stay beside the executables because Windows must find linked DLLs
+when the process starts. `windeployqt` is configured with explicit
+`--libdir`, `--plugindir`, and `--qml-deploy-dir` paths so plugins and QML
+imports are kept in predictable subdirectories. Translations are skipped with
+`--no-translations`.
 
 If CMake is not being run through the preset, pass the Windows dependencies
 explicitly:
