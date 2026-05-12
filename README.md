@@ -169,8 +169,9 @@ cmake --build build-package --target package
 
 The macOS package flow runs `macdeployqt` during package staging, including
 the QML import directories registered on each Qt target with
-`QT_DEPLOY_QML_DIRS`, then CPack creates the DragNDrop DMG. These
-package-related options default to `ON`:
+`QT_DEPLOY_QML_DIRS`, copies the curated Qt plug-ins, signs the final app
+bundles, then CPack creates the DragNDrop DMG. These package-related options
+default to `ON`:
 
 ```
 MACOS_SIGN_APPS
@@ -184,6 +185,7 @@ To verify a packaged app:
 
 ```
 codesign --verify --deep --verbose path/to/App.app
+spctl -a -vvv path/to/App.app
 ```
 
 To override or disable signing:
