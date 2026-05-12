@@ -34,8 +34,14 @@ cmake -S . -B build-all
 
 # Host Tools
 
-Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git, and
-`libusb-1.0`. Qt 6 is required when `BUILD_QT_APPS=ON`.
+Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git,
+SQLite 3 development files, and `libusb-1.0` development files. On
+non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
+Qt 6 is required when `BUILD_QT_APPS=ON`.
+
+The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
+PrintSupport, Svg, SvgWidgets, Qml, Quick, and QuickWidgets. A minimal CLI-only
+host build can disable Qt applications with `-DBUILD_QT_APPS=OFF`.
 
 ## Windows Prerequisites
 
@@ -46,7 +52,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | Visual Studio 2026 Community or newer | Install the Desktop development with C++ workload. The default preset uses the `Visual Studio 18 2026` generator. |
 | CMake 3.20 or newer | Used for configure, build, install, and CPack ZIP packaging. |
 | Git | Used by CMake version-generation helpers. |
-| vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. |
+| vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The default preset expects `C:/Qt/6.10.2/msvc2022_64`. |
 
 The default Windows preset uses:
@@ -142,8 +148,10 @@ cmake -S . -B build ^
 | Xcode or command-line tools | Provides the Apple compiler toolchain. |
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
 | Qt 6 | Required for Qt host applications and `macdeployqt`. |
+| `pkg-config` | Used to locate `libusb-1.0` for non-vcpkg builds. |
 | `libusb-1.0` | Install with a package manager or provide a CMake/pkg-config discoverable installation. |
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
+| SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
@@ -208,7 +216,22 @@ cmake -S . -B build-package \
 | `pkg-config` | Used to locate `libusb-1.0`. |
 | `libusb-1.0` | Install development headers and libraries. |
 | Protobuf | Install `protoc` and development libraries. |
+| SQLite 3 | Install development headers and libraries, for example `libsqlite3-dev`. |
 | Git | Used by version-generation helpers. |
+
+Example Debian/Ubuntu package set for host builds:
+
+```
+sudo apt install build-essential cmake git pkg-config \
+  libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev
+```
+
+For Qt applications on Debian/Ubuntu, also install Qt 6 development packages
+that provide the modules listed above, commonly:
+
+```
+sudo apt install qt6-base-dev qt6-svg-dev qt6-declarative-dev
+```
 
 ## Linux Build
 
@@ -241,6 +264,10 @@ boards.
 
 | Requirement | Notes |
 | --- | --- |
+| CMake 3.20 or newer | Required by the top-level build and embedded nanopb helper targets. |
+| Native C++20 compiler | Builds host-side generation helpers used by embedded protocol targets. |
+| Protobuf | Install `protoc` and development libraries; the embedded build still configures shared protocol targets. |
+| Git | Used by version-generation helpers. |
 | Arm GNU Toolchain | Provides `arm-none-eabi-gcc`; it must be on `PATH`. |
 | ChibiOS | Set `CHIBIOS_DIR`, or place the tree at `ChibiOS` in the repository root. |
 | nanopb | Set `NANOPB_ROOT`, or place the tree at `nanopb` in the repository root. |
