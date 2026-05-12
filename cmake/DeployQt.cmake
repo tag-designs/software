@@ -98,6 +98,18 @@ function(macdeployqt target)
 endfunction()
 
 function(install_windeployqt target)
+    if(NOT HOST_WINDOWS_APPDIR)
+        set(HOST_WINDOWS_APPDIR "${CMAKE_INSTALL_BINDIR}")
+    endif()
+    if(NOT HOST_WINDOWS_LIBDIR)
+        set(HOST_WINDOWS_LIBDIR "${CMAKE_INSTALL_BINDIR}")
+    endif()
+    if(NOT HOST_WINDOWS_PLUGINDIR)
+        set(HOST_WINDOWS_PLUGINDIR "${CMAKE_INSTALL_BINDIR}/plugins")
+    endif()
+    if(NOT HOST_WINDOWS_QMLDIR)
+        set(HOST_WINDOWS_QMLDIR "${CMAKE_INSTALL_BINDIR}/qml")
+    endif()
     get_target_property(_target_output_name ${target} OUTPUT_NAME)
     if(NOT _target_output_name)
         set(_target_output_name ${target})
@@ -116,19 +128,19 @@ function(install_windeployqt target)
                     --no-opengl-sw
                     --no-translations
                     --dir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
-                    --libdir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
-                    --plugindir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/plugins\"
-                    --qml-deploy-dir \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/qml\"
+                    --libdir \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_LIBDIR}\"
+                    --plugindir \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_PLUGINDIR}\"
+                    --qml-deploy-dir \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_QMLDIR}\"
 ${_windeployqt_qml_options}
-                    \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/${_target_output_name}${CMAKE_EXECUTABLE_SUFFIX}\"
+                    \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_APPDIR}/${_target_output_name}${CMAKE_EXECUTABLE_SUFFIX}\"
             RESULT_VARIABLE _windeployqt_result)
         if(NOT _windeployqt_result EQUAL 0)
             message(FATAL_ERROR \"windeployqt failed for ${_target_output_name}\")
         endif()
-        file(WRITE \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/qt.conf\"
+        file(WRITE \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_APPDIR}/qt.conf\"
 \"[Paths]
-Plugins=plugins
-Qml2Imports=qml
+Plugins=../plugins
+Qml2Imports=../qml
 \")
     ")
 

@@ -23,6 +23,21 @@ if(BUILD_QT_APPS)
 endif()
 
 if(WIN32)
+  set(HOST_WINDOWS_APPDIR "${CMAKE_INSTALL_BINDIR}/apps")
+  set(HOST_WINDOWS_LIBDIR "${CMAKE_INSTALL_BINDIR}/lib")
+  set(HOST_WINDOWS_PLUGINDIR "${CMAKE_INSTALL_BINDIR}/plugins")
+  set(HOST_WINDOWS_QMLDIR "${CMAKE_INSTALL_BINDIR}/qml")
+
+  add_executable(tag_tools_launcher_console windows_tool_launcher.cpp)
+  add_executable(tag_tools_launcher_gui WIN32 windows_tool_launcher.cpp)
+  target_compile_definitions(tag_tools_launcher_gui PRIVATE TAG_TOOLS_GUI_LAUNCHER)
+  set_target_properties(
+    tag_tools_launcher_console
+    tag_tools_launcher_gui
+    PROPERTIES
+      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/launcher)
+
   function(install_windows_runtime_dependencies)
     set(runtime_targets ${ARGN})
     if(NOT runtime_targets)
@@ -69,7 +84,7 @@ ${runtime_directories_block}
             UNRESOLVED_DEPENDENCIES_VAR host_unresolved_runtime_deps)
         if(host_runtime_deps)
             file(INSTALL
-                DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}\"
+                DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${HOST_WINDOWS_LIBDIR}\"
                 TYPE SHARED_LIBRARY
                 FILES \${host_runtime_deps})
         endif()
@@ -79,10 +94,10 @@ ${runtime_directories_block}
     ")
 
     set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
-    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${HOST_WINDOWS_LIBDIR}")
     include(InstallRequiredSystemLibraries)
     foreach(runtime_lib ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
-      install(FILES "${runtime_lib}" DESTINATION "${CMAKE_INSTALL_BINDIR}")
+      install(FILES "${runtime_lib}" DESTINATION "${HOST_WINDOWS_LIBDIR}")
     endforeach()
   endfunction()
 endif()
@@ -150,7 +165,23 @@ if(host_install_targets)
   if(WIN32)
     install(
       TARGETS ${host_install_targets}
-      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+      RUNTIME DESTINATION ${HOST_WINDOWS_APPDIR})
+    foreach(target_name ${host_cli_install_targets})
+      if(TARGET ${target_name})
+        install(
+          PROGRAMS "$<TARGET_FILE:tag_tools_launcher_console>"
+          DESTINATION ${CMAKE_INSTALL_BINDIR}
+          RENAME "${target_name}${CMAKE_EXECUTABLE_SUFFIX}")
+      endif()
+    endforeach()
+    foreach(target_name ${host_qt_install_targets})
+      if(TARGET ${target_name})
+        install(
+          PROGRAMS "$<TARGET_FILE:tag_tools_launcher_gui>"
+          DESTINATION ${CMAKE_INSTALL_BINDIR}
+          RENAME "${target_name}${CMAKE_EXECUTABLE_SUFFIX}")
+      endif()
+    endforeach()
   else()
     install(
       TARGETS ${host_install_targets}

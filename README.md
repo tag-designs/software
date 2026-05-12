@@ -101,24 +101,28 @@ cmake --build --preset package
 ```
 
 Windows install and packaging are Release-only. The ZIP contains one shared
-`tag-tools` directory with host executables, dependency DLLs, Qt plugins, and
-QML runtime files:
+`tag-tools` directory with launcher executables, the real applications,
+dependency DLLs, Qt plugins, and QML runtime files:
 
 ```
 UltralightTags-2.0.0-win64/
   tag-tools/
     *.exe
-    *.dll
-    qt.conf
+    apps/
+      *.exe
+      qt.conf
+    lib/
+      *.dll
     plugins/
     qml/
 ```
 
-The Qt DLLs stay beside the executables because Windows must find linked DLLs
-when the process starts. `windeployqt` is configured with explicit
-`--libdir`, `--plugindir`, and `--qml-deploy-dir` paths so plugins and QML
-imports are kept in predictable subdirectories. Translations are skipped with
-`--no-translations`.
+The top-level executables are lightweight launchers. They add the package-local
+`lib` directory to the child process `PATH` before starting the real executable
+from `apps`, which keeps DLLs out of the top-level directory without requiring
+users to set environment variables. `windeployqt` is configured with explicit
+`--libdir`, `--plugindir`, and `--qml-deploy-dir` paths. Translations are
+skipped with `--no-translations`.
 
 If CMake is not being run through the preset, pass the Windows dependencies
 explicitly:
