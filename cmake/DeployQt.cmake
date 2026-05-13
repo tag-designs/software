@@ -307,9 +307,18 @@ function(install_macos_fixup_bundle target)
             file(MAKE_DIRECTORY \"\${_bundle_frameworks_dir}\")
             set(_bundle_dependency_dirs
                 ${_bundle_dependency_dirs_code})
+            if(POLICY CMP0009)
+                cmake_policy(PUSH)
+                cmake_policy(SET CMP0009 NEW)
+                set(_bundle_pushed_cmp0009_policy TRUE)
+            endif()
             file(GLOB_RECURSE _bundle_libraries
                 \"\${_bundle_path}/Contents/Frameworks/*.dylib\"
                 \"\${_bundle_path}/Contents/PlugIns/*.dylib\")
+            if(_bundle_pushed_cmp0009_policy)
+                cmake_policy(POP)
+                unset(_bundle_pushed_cmp0009_policy)
+            endif()
             file(GET_RUNTIME_DEPENDENCIES
                 EXECUTABLES \"\${_bundle_path}/Contents/MacOS/${_target_output_name}\"
                 LIBRARIES \${_bundle_libraries}
@@ -321,10 +330,11 @@ function(install_macos_fixup_bundle target)
                     \"^/usr/lib/.*\")
             foreach(_runtime_dependency IN LISTS _resolved_runtime_dependencies)
                 if(_runtime_dependency MATCHES \"^(/opt/homebrew|/usr/local)/.*\\\\.dylib$\")
+                    get_filename_component(_runtime_dependency_realpath \"\${_runtime_dependency}\" REALPATH)
                     file(INSTALL
                         DESTINATION \"\${_bundle_frameworks_dir}\"
                         TYPE SHARED_LIBRARY
-                        FILES \"\${_runtime_dependency}\")
+                        FILES \"\${_runtime_dependency_realpath}\")
                 endif()
             endforeach()
             foreach(_runtime_dependency IN LISTS _unresolved_runtime_dependencies)
@@ -338,10 +348,11 @@ function(install_macos_fixup_bundle target)
                         endif()
                     endforeach()
                     if(_runtime_dependency_source)
+                        get_filename_component(_runtime_dependency_realpath \"\${_runtime_dependency_source}\" REALPATH)
                         file(INSTALL
                             DESTINATION \"\${_bundle_frameworks_dir}\"
                             TYPE SHARED_LIBRARY
-                            FILES \"\${_runtime_dependency_source}\")
+                            FILES \"\${_runtime_dependency_realpath}\")
                         list(REMOVE_ITEM _unresolved_runtime_dependencies \"\${_runtime_dependency}\")
                     endif()
                 endif()
@@ -351,10 +362,18 @@ function(install_macos_fixup_bundle target)
                     list(REMOVE_ITEM _unresolved_runtime_dependencies \"\${_runtime_dependency}\")
                 endif()
             endforeach()
+            if(POLICY CMP0009)
+                cmake_policy(PUSH)
+                cmake_policy(SET CMP0009 NEW)
+                set(_bundle_pushed_cmp0009_policy TRUE)
+            endif()
             file(GLOB_RECURSE _bundle_rewrite_items
                 \"\${_bundle_path}/Contents/Frameworks/*.dylib\"
                 \"\${_bundle_path}/Contents/PlugIns/*.dylib\"
                 \"\${_bundle_path}/Contents/PlugIns/*/*.dylib\")
+            if(_bundle_pushed_cmp0009_policy)
+                cmake_policy(POP)
+            endif()
             foreach(_bundle_rewrite_item IN LISTS _bundle_rewrite_items)
                 get_filename_component(_bundle_rewrite_name \"\${_bundle_rewrite_item}\" NAME)
                 if(_bundle_rewrite_item MATCHES \"\\\\.dylib$\")
@@ -418,21 +437,101 @@ function(install_macos_codesign target)
     if(MACOS_CODE_SIGN_ENTITLEMENTS)
         set(_entitlements_args "--entitlements" "${MACOS_CODE_SIGN_ENTITLEMENTS}")
     endif()
+    set(_entitlements_lines "")
+    foreach(_entitlements_arg IN LISTS _entitlements_args)
+        string(APPEND _entitlements_lines "                    \"${_entitlements_arg}\"\n")
+    endforeach()
 
     install(CODE "
+        set(_bundle_path \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\")
+        if(NOT EXISTS \"\${_bundle_path}\")
+            message(FATAL_ERROR \"Cannot sign missing bundle: \${_bundle_path}\")
+        endif()
+
         message(STATUS \"Signing ${_target_output_name}.app\")
+        if(POLICY CMP0009)
+            cmake_policy(PUSH)
+            cmake_policy(SET CMP0009 NEW)
+            set(_bundle_pushed_cmp0009_policy TRUE)
+        endif()
+        file(GLOB _bundle_frameworks
+            \"\${_bundle_path}/Contents/Frameworks/*.framework\")
+        file(GLOB_RECURSE _bundle_macho_files
+            \"\${_bundle_path}/Contents/Frameworks/*.dylib\"
+            \"\${_bundle_path}/Contents/PlugIns/*.dylib\"
+            \"\${_bundle_path}/Contents/PlugIns/*.so\"
+            \"\${_bundle_path}/Contents/Resources/qml/*.dylib\"
+            \"\${_bundle_path}/Contents/Resources/qml/*.so\")
+        file(GLOB _bundle_executables
+            \"\${_bundle_path}/Contents/MacOS/*\")
+        if(_bundle_pushed_cmp0009_policy)
+            cmake_policy(POP)
+        endif()
+
+        set(_bundle_signing_items
+            \${_bundle_macho_files}
+            \${_bundle_frameworks}
+            \${_bundle_executables})
+        if(_bundle_signing_items)
+            list(REMOVE_DUPLICATES _bundle_signing_items)
+        endif()
+
+        foreach(_bundle_signing_item IN LISTS _bundle_signing_items)
+            if(EXISTS \"\${_bundle_signing_item}\" AND NOT IS_SYMLINK \"\${_bundle_signing_item}\")
+                execute_process(
+                    COMMAND \"${CODESIGN_EXECUTABLE}\" --remove-signature \"\${_bundle_signing_item}\"
+                    ERROR_QUIET)
+            endif()
+        endforeach()
+        execute_process(
+            COMMAND \"${CODESIGN_EXECUTABLE}\" --remove-signature \"\${_bundle_path}\"
+            ERROR_QUIET)
+
+        foreach(_bundle_signing_item IN LISTS _bundle_signing_items)
+            if(EXISTS \"\${_bundle_signing_item}\" AND NOT IS_SYMLINK \"\${_bundle_signing_item}\")
+                execute_process(
+                    COMMAND \"${CODESIGN_EXECUTABLE}\"
+                            --force
+                            --timestamp=none
+                            --options runtime
+                            --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
+                            \"\${_bundle_signing_item}\"
+                    RESULT_VARIABLE _codesign_result)
+                if(NOT _codesign_result EQUAL 0)
+                    message(FATAL_ERROR \"codesign failed for \${_bundle_signing_item}\")
+                endif()
+            endif()
+        endforeach()
+
         execute_process(
             COMMAND \"${CODESIGN_EXECUTABLE}\"
                     --force
-                    --deep
                     --timestamp
                     --options runtime
-                    ${_entitlements_args}
+${_entitlements_lines}
                     --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
-                    \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\"
+                    \"\${_bundle_path}\"
             RESULT_VARIABLE _codesign_result)
         if(NOT _codesign_result EQUAL 0)
             message(FATAL_ERROR \"codesign failed for ${_target_output_name}.app\")
+        endif()
+
+        execute_process(
+            COMMAND \"${CODESIGN_EXECUTABLE}\"
+                    --verify
+                    --deep
+                    --strict
+                    \"\${_bundle_path}\"
+            RESULT_VARIABLE _codesign_verify_result)
+        if(NOT _codesign_verify_result EQUAL 0)
+            execute_process(
+                COMMAND \"${CODESIGN_EXECUTABLE}\"
+                        --verify
+                        --deep
+                        --strict
+                        --verbose=4
+                        \"\${_bundle_path}\")
+            message(FATAL_ERROR \"codesign verification failed for ${_target_output_name}.app\")
         endif()
     ")
 endfunction()

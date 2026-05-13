@@ -67,14 +67,14 @@ set(CMAKE_FIND_ROOT
 
 #set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
-add_subdirectory(software)
-
 set(CPACK_PACKAGE_NAME "UltralightTags")
 set(CPACK_PACKAGE_VENDOR "cs.iu.edu")
 set(CPACK_PACKAGE_VERSION "2.0.0")
 set(CPACK_PACKAGE_VERSION_MAJOR 2)
 set(CPACK_PACKAGE_VERSION_MINOR 1)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
+
+add_subdirectory(software)
 
 if(WIN32)
   set(CPACK_GENERATOR ZIP)
