@@ -67,8 +67,21 @@ function(install_build_report)
     set(BUILD_REPORT_SQLITE3_INCLUDE_DIRS "${SQLite3_INCLUDE_DIRS}")
     set(BUILD_REPORT_LIBUSB_VERSION "${BUILD_REPORT_LIBUSB_VERSION}")
     set(BUILD_REPORT_LIBUSB_INCLUDE_DIRS "${BUILD_REPORT_LIBUSB_INCLUDE_DIRS}")
+    set(_build_report_vcpkg_library_linkage "${VCPKG_LIBRARY_LINKAGE}")
+    if(NOT _build_report_vcpkg_library_linkage AND VCPKG_TARGET_TRIPLET MATCHES "(^|-)static($|-)")
+        set(_build_report_vcpkg_library_linkage "static")
+    endif()
+
     set(BUILD_REPORT_VCPKG_INSTALLED_DIR "${VCPKG_INSTALLED_DIR}")
     set(BUILD_REPORT_VCPKG_TARGET_TRIPLET "${VCPKG_TARGET_TRIPLET}")
+    set(BUILD_REPORT_VCPKG_HOST_TRIPLET "${VCPKG_HOST_TRIPLET}")
+    set(BUILD_REPORT_VCPKG_LIBRARY_LINKAGE "${_build_report_vcpkg_library_linkage}")
+    set(BUILD_REPORT_PKG_CONFIG_EXECUTABLE "${PKG_CONFIG_EXECUTABLE}")
+    if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+        set(BUILD_REPORT_PKG_CONFIG_PATH "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/pkgconfig")
+    else()
+        set(BUILD_REPORT_PKG_CONFIG_PATH "")
+    endif()
 
     configure_file(
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/GenerateBuildReport.cmake.in"

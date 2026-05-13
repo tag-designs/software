@@ -142,6 +142,8 @@ cmake -S . -B build ^
 | Xcode or command-line tools | Provides the Apple compiler toolchain. |
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
 | Qt 6 | Required for Qt host applications and `macdeployqt`. |
+| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects `/Users/geobrown/Software/vcpkg`. |
+| Homebrew autotools | Required by vcpkg's `libusb` port on macOS: `brew install autoconf autoconf-archive automake libtool`. These are build-only tools, not packaged runtime dependencies. |
 | `libusb-1.0` | Install with a package manager or provide a CMake/pkg-config discoverable installation. |
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | Git | Used by version-generation helpers. |
@@ -151,6 +153,25 @@ Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
 CMake can find `macdeployqt`.
 
 ## macOS Build
+
+The preferred packaged host build uses vcpkg for static non-Qt libraries and
+the standard dynamic Qt distribution:
+
+```
+cmake --preset macos-vcpkg
+cmake --build --preset macos-vcpkg-package
+```
+
+This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
+of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
+`macdeployqt`.
+
+Before using this preset, install the host autotools required by vcpkg's
+`libusb` build:
+
+```
+brew install autoconf autoconf-archive automake libtool
+```
 
 Configure a package build:
 
