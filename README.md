@@ -49,66 +49,79 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 
 | Software | Notes |
 | --- | --- |
-| Visual Studio 2026 Community or newer | Install the Desktop development with C++ workload. The default preset uses the `Visual Studio 18 2026` generator. |
+| Visual Studio 2026 Community or newer | Install the Desktop development with C++ workload. The Windows presets use the `Visual Studio 18 2026` generator. |
 | CMake 3.20 or newer | Used for configure, build, install, and CPack ZIP packaging. |
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
-| Qt 6 for MSVC | Install Qt separately. The default preset expects `C:/Qt/6.10.2/msvc2022_64`. |
+| Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
 
-The default Windows preset uses:
+When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
+before configuring:
+
+```
+$env:VCPKG_ROOT = "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg"
+```
+
+The preferred Windows preset uses static vcpkg libraries for non-Qt
+dependencies and the standard dynamic Qt distribution:
 
 | Setting | Value |
 | --- | --- |
 | Generator | `Visual Studio 18 2026` |
-| vcpkg triplet | `x64-windows` |
+| Preset | `windows-vcpkg-static` |
+| vcpkg triplet | `x64-windows-static-md` from `cmake/vcpkg-triplets` |
 | Qt source | Installed Qt at `C:/Qt/6.10.2/msvc2022_64` |
 | MSVC runtime | Dynamic runtime, `/MD` and `/MDd` |
 | Embedded build | `OFF` |
-| Release install directory | `c:/software-build-external-qt/install/tag-tools` |
+| Release install directory | `c:/software-build-static-vcpkg-qt/install/tag-tools` |
 
 ## Windows Build
 
 Configure and build Release:
 
 ```
-cmake --preset default
-cmake --build --preset default
+cmake --preset windows-vcpkg-static
+cmake --build --preset windows-vcpkg-static-release
 ```
 
 Build Debug only when needed:
 
 ```
-cmake --build --preset debug
+cmake --build --preset windows-vcpkg-static-debug
 ```
 
 Visual Studio launches Qt apps with the right runtime `PATH` through the
 generated `VS_DEBUGGER_ENVIRONMENT` setting. If running Qt apps directly from
-the build tree in PowerShell, set `PATH` first.
+the build tree in PowerShell, put the Qt `bin` directory on `PATH` first.
+The vcpkg dependencies are linked statically by this preset.
 
 Release build tree:
 
 ```
-$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;c:\software-build-external-qt\vcpkg_installed\x64-windows\bin;$env:PATH"
-c:\software-build-external-qt\Release\bin\qtmonitor.exe
+$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;$env:PATH"
+c:\software-build-static-vcpkg-qt\Release\bin\qtmonitor.exe
 ```
 
 Debug build tree:
 
 ```
-$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;c:\software-build-external-qt\vcpkg_installed\x64-windows\debug\bin;$env:PATH"
-c:\software-build-external-qt\Debug\bin\qtmonitor.exe
+$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;$env:PATH"
+c:\software-build-static-vcpkg-qt\Debug\bin\qtmonitor.exe
 ```
 
 Install and package Release:
 
 ```
-cmake --install c:/software-build-external-qt --config Release
-cmake --build --preset package
+cmake --install c:/software-build-static-vcpkg-qt --config Release
+cmake --build --preset windows-vcpkg-static-package
 ```
 
 Windows install and packaging are Release-only. The ZIP contains one shared
-`tag-tools` directory with launcher executables, the real applications,
-dependency DLLs, Qt plugins, and QML runtime files:
+`tag-tools` directory with Qt application launcher executables, the real Qt
+applications, Qt DLLs, MSVC runtime DLLs, Qt plugins, and QML runtime files.
+The command-line tools are built but not included in the install package.
+Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies are linked
+statically and are not packaged as separate DLLs:
 
 ```
 UltralightTags-2.0.0-win64/
@@ -135,9 +148,11 @@ explicitly:
 ```
 cmake -S . -B build ^
   -DCMAKE_TOOLCHAIN_FILE=c:/users/geoff/vcpkg/scripts/buildsystems/vcpkg.cmake ^
-  -DVCPKG_TARGET_TRIPLET=x64-windows ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows-static-md ^
   -DVCPKG_HOST_TRIPLET=x64-windows ^
+  -DVCPKG_OVERLAY_TRIPLETS=c:/Users/geoff/software/cmake/vcpkg-triplets ^
   -DCMAKE_PREFIX_PATH=C:/Qt/6.10.2/msvc2022_64 ^
+  -DCMAKE_INSTALL_PREFIX=c:/software-build-static-vcpkg-qt/install ^
   -DBUILD_EMBEDDED=OFF
 ```
 

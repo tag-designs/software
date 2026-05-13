@@ -18,6 +18,23 @@
       }
     },
     {
+      "name": "windows-vcpkg-static",
+      "displayName": "Windows Visual Studio with static vcpkg libraries and installed Qt",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "c:/software-build-static-vcpkg-qt",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg-triplets",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.10.2/msvc2022_64",
+        "CMAKE_INSTALL_PREFIX": "c:/software-build-static-vcpkg-qt/install",
+        "BUILD_HOST": "ON",
+        "BUILD_QT_APPS": "ON",
+        "BUILD_EMBEDDED": "OFF"
+      }
+    },
+    {
       "name": "macos-vcpkg-base",
       "hidden": true,
       "generator": "Unix Makefiles",
@@ -74,6 +91,24 @@
     {
       "name": "package",
       "configurePreset": "default",
+      "configuration": "Release",
+      "targets": [
+        "package"
+      ]
+    },
+    {
+      "name": "windows-vcpkg-static-release",
+      "configurePreset": "windows-vcpkg-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-vcpkg-static-debug",
+      "configurePreset": "windows-vcpkg-static",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-vcpkg-static-package",
+      "configurePreset": "windows-vcpkg-static",
       "configuration": "Release",
       "targets": [
         "package"

@@ -6,7 +6,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 message("Configure compviz")
 
-find_package(SQLite3 REQUIRED)
+if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+  find_package(unofficial-sqlite3 CONFIG REQUIRED)
+  set(HOST_SQLITE_INCLUDE_DIRS "")
+  set(HOST_SQLITE_TARGET unofficial::sqlite3::sqlite3)
+else()
+  find_package(SQLite3 REQUIRED)
+  set(HOST_SQLITE_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
+  set(HOST_SQLITE_TARGET SQLite::SQLite3)
+endif()
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
@@ -51,7 +59,7 @@ qt_add_resources(compviz_SRCS qfi.qrc)
 qt_add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
 #qt_import_qml_plugins(compviz)
 target_include_directories(compviz PRIVATE FastFIR)
-target_include_directories(compviz PRIVATE ${SQLite3_INCLUDE_DIRS})
+target_include_directories(compviz PRIVATE ${HOST_SQLITE_INCLUDE_DIRS})
 set_property(TARGET compviz PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
 set_target_properties(compviz
     PROPERTIES
@@ -71,6 +79,6 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE tag qcustomplot Qt6::Widgets
+target_link_libraries(compviz PRIVATE tag ${HOST_SQLITE_TARGET} qcustomplot Qt6::Widgets
                                Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
                                Qt6::Quick Qt6::PrintSupport)

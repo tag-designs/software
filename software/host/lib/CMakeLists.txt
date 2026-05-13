@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Configure Tag Library")
 
-find_package(SQLite3 REQUIRED)
+if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+  find_package(unofficial-sqlite3 CONFIG REQUIRED)
+  set(HOST_SQLITE_TARGET unofficial::sqlite3::sqlite3)
+else()
+  find_package(SQLite3 REQUIRED)
+  set(HOST_SQLITE_TARGET SQLite::SQLite3)
+endif()
 
 if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   set(LIBUSB_1_0_ROOT "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
@@ -71,4 +77,4 @@ target_include_directories(tag PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(tag PUBLIC proto)
 target_link_libraries(tag PRIVATE tag_monitor_interface)
-target_link_libraries(tag PRIVATE SQLite::SQLite3)
+target_link_libraries(tag PRIVATE ${HOST_SQLITE_TARGET})
