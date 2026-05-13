@@ -8,12 +8,16 @@ message("Configure compviz")
 
 if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
-  set(HOST_SQLITE_INCLUDE_DIRS "")
+  set(HOST_SQLITE_INCLUDE_DIRS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
   set(HOST_SQLITE_TARGET unofficial::sqlite3::sqlite3)
 else()
   find_package(SQLite3 REQUIRED)
   set(HOST_SQLITE_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
   set(HOST_SQLITE_TARGET SQLite::SQLite3)
+endif()
+set(COMPVIZ_SQLITE_LINK_TARGET ${HOST_SQLITE_TARGET})
+if(APPLE)
+  set(COMPVIZ_SQLITE_LINK_TARGET "")
 endif()
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
@@ -79,6 +83,6 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE tag ${HOST_SQLITE_TARGET} qcustomplot Qt6::Widgets
+target_link_libraries(compviz PRIVATE tag ${COMPVIZ_SQLITE_LINK_TARGET} qcustomplot Qt6::Widgets
                                Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
                                Qt6::Quick Qt6::PrintSupport)
