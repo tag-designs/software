@@ -16,6 +16,43 @@
         "BUILD_QT_APPS": "ON",
         "BUILD_EMBEDDED": "OFF"
       }
+    },
+    {
+      "name": "macos-vcpkg-base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{HOME}/Software/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-static",
+        "VCPKG_HOST_TRIPLET": "arm64-osx",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg-triplets",
+        "CMAKE_PREFIX_PATH": "$env{HOME}/qt/6.8.2/macos",
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg/install",
+        "BUILD_HOST": "ON",
+        "BUILD_QT_APPS": "ON",
+        "BUILD_EMBEDDED": "OFF",
+        "MACOS_FIXUP_BUNDLE_DEPENDENCIES": "ON"
+      }
+    },
+    {
+      "name": "macos-vcpkg",
+      "displayName": "macOS arm64 Release with static vcpkg libraries and installed Qt",
+      "inherits": "macos-vcpkg-base",
+      "binaryDir": "$env{HOME}/Build/tag-designs/software-vcpkg-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg-release/install"
+      }
+    },
+    {
+      "name": "macos-vcpkg-debug",
+      "displayName": "macOS arm64 Debug with static vcpkg libraries and installed Qt",
+      "inherits": "macos-vcpkg-base",
+      "binaryDir": "$env{HOME}/Build/tag-designs/software-vcpkg-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg-debug/install"
+      }
     }
   ],
   "buildPresets": [
@@ -37,6 +74,24 @@
     {
       "name": "package",
       "configurePreset": "default",
+      "configuration": "Release",
+      "targets": [
+        "package"
+      ]
+    },
+    {
+      "name": "macos-vcpkg-release",
+      "configurePreset": "macos-vcpkg",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-vcpkg-debug",
+      "configurePreset": "macos-vcpkg-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-vcpkg-package",
+      "configurePreset": "macos-vcpkg",
       "configuration": "Release",
       "targets": [
         "package"

@@ -20,7 +20,18 @@ if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   endif()
 else()
   find_package(PkgConfig REQUIRED)
+  set(_pkg_config_argn_saved "${PKG_CONFIG_ARGN}")
+  if(APPLE AND VCPKG_TARGET_TRIPLET)
+    set(PKG_CONFIG_ARGN --static)
+  endif()
   pkg_check_modules(LIBUSB_1_0 REQUIRED IMPORTED_TARGET libusb-1.0)
+  if(APPLE AND VCPKG_TARGET_TRIPLET AND TARGET PkgConfig::LIBUSB_1_0)
+    # CMake's pkg-config importer can turn repeated -framework flags from
+    # static .pc files into malformed leading link options. The framework
+    # entries are already present in the imported target's link libraries.
+    set_property(TARGET PkgConfig::LIBUSB_1_0 PROPERTY INTERFACE_LINK_OPTIONS "")
+  endif()
+  set(PKG_CONFIG_ARGN "${_pkg_config_argn_saved}")
 endif()
 
 #

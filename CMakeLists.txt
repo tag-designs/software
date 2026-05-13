@@ -21,7 +21,7 @@ option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
-option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment and signing" ON)
+option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
 option(MACOS_DEPLOY_QT_PLUGINS_MANUALLY "Deploy a curated macOS Qt plugin set instead of letting macdeployqt scan all plugins" ON)
 option(MACOS_FIXUP_BUNDLE_DEPENDENCIES "Copy and rewrite non-system dylib dependencies into macOS app bundles" ON)
@@ -67,14 +67,14 @@ set(CMAKE_FIND_ROOT
 
 #set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
-add_subdirectory(software)
-
 set(CPACK_PACKAGE_NAME "UltralightTags")
 set(CPACK_PACKAGE_VENDOR "cs.iu.edu")
 set(CPACK_PACKAGE_VERSION "2.0.0")
 set(CPACK_PACKAGE_VERSION_MAJOR 2)
 set(CPACK_PACKAGE_VERSION_MINOR 1)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
+
+add_subdirectory(software)
 
 if(WIN32)
   set(CPACK_GENERATOR ZIP)

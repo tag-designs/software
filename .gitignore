@@ -37,6 +37,7 @@ nanopb
 public
 docs/themes/docsy
 docs-dist
+vcpkg_installed
 software/embedded/boards/bittag-base-jlcpcb-v3
 software/embedded/boards/bittag-base-v5*
 software/embedded/boards/BitTagNG-proto

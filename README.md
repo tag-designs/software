@@ -149,6 +149,8 @@ cmake -S . -B build ^
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
 | Qt 6 | Required for Qt host applications and `macdeployqt`. |
 | `pkg-config` | Used to locate `libusb-1.0` for non-vcpkg builds. |
+| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects `/Users/geobrown/Software/vcpkg`. |
+| Homebrew autotools | Required by vcpkg's `libusb` port on macOS: `brew install autoconf autoconf-archive automake libtool`. These are build-only tools, not packaged runtime dependencies. |
 | `libusb-1.0` | Install with a package manager or provide a CMake/pkg-config discoverable installation. |
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
@@ -159,6 +161,25 @@ Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
 CMake can find `macdeployqt`.
 
 ## macOS Build
+
+The preferred packaged host build uses vcpkg for static non-Qt libraries and
+the standard dynamic Qt distribution:
+
+```
+cmake --preset macos-vcpkg
+cmake --build --preset macos-vcpkg-package
+```
+
+This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
+of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
+`macdeployqt`.
+
+Before using this preset, install the host autotools required by vcpkg's
+`libusb` build:
+
+```
+brew install autoconf autoconf-archive automake libtool
+```
 
 Configure a package build:
 
@@ -177,8 +198,9 @@ cmake --build build-package --target package
 
 The macOS package flow runs `macdeployqt` during package staging, including
 the QML import directories registered on each Qt target with
-`QT_DEPLOY_QML_DIRS`, then CPack creates the DragNDrop DMG. These
-package-related options default to `ON`:
+`QT_DEPLOY_QML_DIRS`, copies the curated Qt plug-ins, signs the final app
+bundles, then CPack creates the DragNDrop DMG. These package-related options
+default to `ON`:
 
 ```
 MACOS_SIGN_APPS
@@ -192,6 +214,7 @@ To verify a packaged app:
 
 ```
 codesign --verify --deep --verbose path/to/App.app
+spctl -a -vvv path/to/App.app
 ```
 
 To override or disable signing:
