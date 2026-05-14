@@ -42,14 +42,11 @@ private:
     PBEnumGroup *sample_rate_ = nullptr;
     PBEnumGroup *range_ = nullptr;
     PBEnumGroup *filter_ = nullptr;
-    PBEnumGroup *data_size_ = nullptr;
-    PBEnumGroup *channels_ = nullptr;
    
     QGroupBox *spinners_ = nullptr;
     QDoubleSpinBox *act_thresh_ = nullptr;
     QDoubleSpinBox *inact_thresh_ = nullptr;
     QDoubleSpinBox *inactive_ = nullptr;
-    Adxl362_AdxlType adxl_type = Adxl362_AdxlType_AdxlType_362;
     QLabel inact_thresh_label = QLabel("Inactive Threshold");
     
 };

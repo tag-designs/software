@@ -102,11 +102,7 @@ bool TextTagLogWriter::dumpHeader(Tag &tag)
 
   fs << "#             Configuration\n#\n";
   if (cfg.has_adxl362())
-  { 
-    if (cfg.adxl362().accel_type() == 1) {
-      fs << "# ADXL type: adxl367\n";
-    }
-
+  {
     fs << "# Range:       "
        << Adxl362_Rng_Name(cfg.adxl362().range()) << "\n";
     fs << "# Frequency:   "
