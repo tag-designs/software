@@ -16,6 +16,31 @@
 
 #include "sensorstream.h"
 
+// MainWindow is the coordination object for sensorViz. It owns the loaded
+// SensorLog, the stream list currently available to the user, the menu actions
+// that select those streams, and the QCustomPlot state used to draw them.
+//
+// The code is split across several .cpp files to keep bug hunting manageable:
+//
+// - mainwindow.cpp builds static UI objects: menus, tabs, plot widget, file-info
+//   pane, status bar, and cursor items. If a widget is missing, a signal is not
+//   connected, or a menu action needs to exist at startup, start there.
+//
+// - dataloading.cpp handles the "File -> Load" workflow. It asks the SQLite
+//   loader for a SensorLog, replaces the current stream list, creates the View
+//   menu actions for each stream, updates the File Info tab, and refreshes the
+//   plot. If a file loads incorrectly or default stream visibility feels wrong,
+//   start there.
+//
+// - sqlite_loader.cpp knows the on-disk SQLite schema. It maps optional tables
+//   like Pressure, Activity, Temperature, and Voltage into SensorStream objects.
+//   If a new log table or sensor type needs to become visible in sensorViz,
+//   that is usually the first file to touch.
+//
+// - controls.cpp contains runtime behavior after a file is loaded: stream
+//   bookkeeping, pressure/activity transforms, tag-dependent menu visibility,
+//   plotting, axes, cursors, mouse readout, UTC offset, and printing. If a menu
+//   item does the wrong thing or the plot looks wrong, start there.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -39,10 +64,22 @@ private slots:
     void showMousePosition(QMouseEvent *event);
 
 private:
+    // UI construction. These run once from the constructor before any log is
+    // loaded. Later code updates visibility and checked state, but does not
+    // recreate these static menus or widgets.
     void createUi();
     void createActions();
+
+    // Log metadata and tag-dependent menu state. updateTransformActions() is
+    // called whenever streams are added/removed because transform availability
+    // is inferred from actual stream ids rather than tag type strings.
     void updateMetadata();
     void updateTransformActions();
+
+    // Streams are the single source of truth for both raw and derived data.
+    // QAction checked state determines which streams are currently plotted.
+    // This means a stream bug may live in two places: the SensorStream data in
+    // streams_, or the matching QAction in stream_actions_.
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
     void clearStreamActions();
@@ -51,6 +88,10 @@ private:
     bool hasStream(const QString &id) const;
     const SensorStream *streamById(const QString &id) const;
     QVector<SensorStream> visibleStreams() const;
+
+    // Plot layout and cursor helpers. refreshPlot() is intentionally rebuilt
+    // from current actions each time, which keeps stream toggles simple and
+    // avoids stale graph/axis state after transforms are added or removed.
     void refreshPlot();
     void clearDynamicAxes();
     QCPAxis *axisForStream(int visible_index, const SensorStream &stream);
@@ -81,6 +122,8 @@ private:
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
+    QAction *configuration_sensor_separator_ = nullptr;
+    QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QVector<QAction *> stream_actions_;

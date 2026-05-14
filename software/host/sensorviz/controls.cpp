@@ -19,14 +19,35 @@
 #include <algorithm>
 #include <cmath>
 
+// Runtime behavior for sensorViz lives here. The important idea is that the UI
+// is stream driven:
+//
+// - Raw streams are loaded from SQLite in dataloading.cpp/sqlite_loader.cpp.
+// - Derived streams, such as altitude and low-pass activity, are created here.
+// - Every stream has a checkable View menu action. Checked actions define what
+//   refreshPlot() draws.
+// - Transform and range menu items are shown only when their input stream exists.
+//
+// Practical debugging guide:
+// - Wrong/missing menu item: check updateTransformActions() or addStreamAction().
+// - Transform gives odd values: check pressureToAltitude(), lowPass(), or the
+//   corresponding toggled slot.
+// - Plot axes/ranges look wrong: check refreshPlot(), axisForStream(), and
+//   custom_axis_ranges_.
+// - Cursor or zoom behavior is wrong: check plotDoubleClick(), zoomToCursors(),
+//   resetCursorsToView(), and resetZoom().
 namespace
 {
 
+// Barometric altitude approximation used only for display. It is intentionally
+// parameterized by sea-level pressure so the user can tune local conditions.
 double pressureToAltitude(double pressure_mbar, double sea_level_mbar)
 {
     return 44330.0 * (1.0 - std::pow(pressure_mbar / sea_level_mbar, 1.0 / 5.257));
 }
 
+// First-order low-pass filter for activity display. The input time vector is in
+// epoch seconds, so the filter can handle uneven sample spacing.
 QVector<double> lowPass(
     const QVector<double> &time,
     const QVector<double> &value,
@@ -58,6 +79,9 @@ QString unitsSuffix(const SensorStream &stream)
     return stream.units.isEmpty() ? QString() : " " + stream.units;
 }
 
+// Several code paths need to synchronize QAction state with stream state.
+// Blocking signals prevents those synchronization updates from recursively
+// calling the slots that create/remove transforms.
 void setActionCheckedSilently(QAction *action, bool checked)
 {
     if (!action) {
@@ -69,6 +93,10 @@ void setActionCheckedSilently(QAction *action, bool checked)
 }
 
 } // namespace
+
+// ---------------------------------------------------------------------------
+// General actions and tag-dependent menu visibility
+// ---------------------------------------------------------------------------
 
 void MainWindow::showAbout()
 {
@@ -82,14 +110,34 @@ void MainWindow::updateTransformActions()
 {
     const bool has_pressure = hasStream("pressure");
     const bool has_activity = hasStream("activity");
+    const bool has_sensor_configuration = has_pressure || has_activity;
 
-    altitude_action_->setEnabled(has_pressure);
-    activity_filter_action_->setEnabled(has_activity);
+    // Menus are driven by available streams instead of tag type names so logs
+    // from future tags automatically expose only the relevant transforms.
+    pressure_range_action_->setVisible(has_pressure);
     pressure_range_action_->setEnabled(has_pressure);
+
+    altitude_action_->setVisible(has_pressure);
+    altitude_action_->setEnabled(has_pressure);
+
+    activity_filter_action_->setVisible(has_activity);
+    activity_filter_action_->setEnabled(has_activity);
+
+    configuration_sensor_separator_->setVisible(has_sensor_configuration);
+    configuration_transform_separator_->setVisible(has_pressure);
 
     setActionCheckedSilently(altitude_action_, hasStream("altitude"));
     setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
 }
+
+// ---------------------------------------------------------------------------
+// Stream/action bookkeeping
+// ---------------------------------------------------------------------------
+//
+// streams_ contains both raw streams from the database and derived streams
+// created by transforms. stream_actions_ mirrors streams_ with checkable menu
+// entries. refreshPlot() consults the actions, not a separate visibility flag,
+// so one toggle path serves both top-level and context menus.
 
 bool MainWindow::hasStream(const QString &id) const
 {
@@ -122,6 +170,8 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
         }
     }
 
+    // Derived streams are treated like loaded streams once created: they get a
+    // checkable View action, an axis, cursor readouts, and context-menu entry.
     streams_.append(stream);
     addStreamAction(stream, checked);
     refreshPlot();
@@ -183,6 +233,18 @@ QAction *MainWindow::streamActionById(const QString &id) const
     return nullptr;
 }
 
+// ---------------------------------------------------------------------------
+// Derived streams and sensor-specific configuration
+// ---------------------------------------------------------------------------
+//
+// Transforms are currently display-only. They do not change log_ and they are
+// not written back to disk; they just add/remove derived SensorStream objects.
+// New transforms should follow the same pattern:
+// - guard against a missing input stream
+// - ask for any parameters
+// - build a SensorStream with derived=true
+// - addOrReplaceStream() so the rest of the UI treats it like any other stream
+
 void MainWindow::altitudeToggled(bool checked)
 {
     if (!checked) {
@@ -212,6 +274,8 @@ void MainWindow::altitudeToggled(bool checked)
     }
     sea_level_pressure_ = sea_level;
 
+    // Altitude is a derived pressure stream. It stays linked by convention to
+    // the pressure axis range when the user changes Pressure Range.
     SensorStream altitude;
     altitude.id = "altitude";
     altitude.label = tr("Altitude");
@@ -256,6 +320,8 @@ void MainWindow::activityFilterToggled(bool checked)
     }
     activity_low_pass_seconds_ = seconds;
 
+    // The filter is intentionally simple and display-only. Raw activity remains
+    // available as its own stream so users can compare filtered/unfiltered data.
     SensorStream filtered;
     filtered.id = "activity_lowpass";
     filtered.label = tr("Activity filter");
@@ -321,6 +387,7 @@ void MainWindow::setPressureRange()
     }
 
     custom_axis_ranges_["pressure"] = QCPRange(lower, upper);
+    // Keep altitude visually comparable to pressure when both are displayed.
     const double lower_altitude = pressureToAltitude(upper, sea_level_pressure_);
     const double upper_altitude = pressureToAltitude(lower, sea_level_pressure_);
     custom_axis_ranges_["altitude"] = QCPRange(lower_altitude, upper_altitude);
@@ -330,6 +397,14 @@ void MainWindow::setPressureRange()
     }
     refreshPlot();
 }
+
+// ---------------------------------------------------------------------------
+// Plot construction and axis management
+// ---------------------------------------------------------------------------
+//
+// QCustomPlot graphs and dynamic axes are rebuilt on every refresh. That is
+// simpler than trying to mutate old graph state when stream actions change, and
+// it keeps derived-stream removal straightforward.
 
 QVector<SensorStream> MainWindow::visibleStreams() const
 {
@@ -353,6 +428,8 @@ void MainWindow::clearDynamicAxes()
         axis_rect->removeAxis(axis);
     }
     dynamic_axes_.clear();
+    // The first two axes are built into QCustomPlot, so hide rather than remove
+    // them when no stream is currently assigned to that side.
     plot_->yAxis->setVisible(false);
     plot_->yAxis2->setVisible(false);
 }
@@ -365,6 +442,7 @@ QCPAxis *MainWindow::axisForStream(int visible_index, const SensorStream &stream
     } else if (visible_index == 1) {
         axis = plot_->yAxis2;
     } else {
+        // Additional streams get extra axes alternating between right and left.
         const QCPAxis::AxisType side = visible_index % 2
             ? QCPAxis::atRight
             : QCPAxis::atLeft;
@@ -398,6 +476,8 @@ void MainWindow::refreshPlot()
         if (custom_axis_ranges_.contains(stream.id)) {
             axis->setRange(custom_axis_ranges_[stream.id]);
         } else {
+            // Each stream owns its value axis because sensors use different
+            // units and ranges.
             graph->rescaleValueAxis(true);
         }
     }
@@ -425,6 +505,10 @@ void MainWindow::resetZoom()
     plot_->replot();
 }
 
+// ---------------------------------------------------------------------------
+// Cursors, print support, UTC offset, and context menu
+// ---------------------------------------------------------------------------
+
 void MainWindow::resetCursorsToView()
 {
     if (!left_cursor_ || !right_cursor_) {
@@ -444,6 +528,7 @@ void MainWindow::plotDoubleClick(QMouseEvent *event)
     }
 
     const double x = plot_->xAxis->pixelToCoord(event->pos().x());
+    // Double-click sets the left cursor; shift-double-click sets the right.
     if ((event->button() & Qt::LeftButton)
         && !(event->modifiers() & Qt::ShiftModifier)
         && x <= right_cursor_->start->coords().x()) {
@@ -494,6 +579,8 @@ void MainWindow::renderPlot(QPrinter *printer)
     const auto page_rect = page_layout.paintRectPixels(printer->resolution());
     const double xscale = page_rect.width() / double(plot_->width());
     const double yscale = page_rect.height() / double(plot_->height());
+    // Preserve the on-screen aspect ratio and let QCustomPlot render vector
+    // output where the platform print backend supports it.
     painter.scale(qMin(xscale, yscale), qMin(xscale, yscale));
     painter.setMode(QCPPainter::pmVectorized);
     painter.setMode(QCPPainter::pmNoCaching);
@@ -533,6 +620,8 @@ void MainWindow::setUtcOffset()
 void MainWindow::showPlotContextMenu(const QPoint &pos)
 {
     QMenu menu(this);
+    // The context menu mirrors the top-level menus, after filtering actions
+    // that are not meaningful for the loaded log.
     for (QAction *action : stream_actions_) {
         menu.addAction(action);
     }
@@ -541,12 +630,21 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     }
     menu.addAction(reset_action_);
     menu.addAction(zoom_to_cursors_action_);
-    menu.addSeparator();
     menu.addAction(utc_offset_action_);
-    menu.addAction(pressure_range_action_);
-    menu.addSeparator();
-    menu.addAction(altitude_action_);
-    menu.addAction(activity_filter_action_);
+    if (pressure_range_action_->isVisible()
+        || altitude_action_->isVisible()
+        || activity_filter_action_->isVisible()) {
+        menu.addSeparator();
+        if (pressure_range_action_->isVisible()) {
+            menu.addAction(pressure_range_action_);
+        }
+        if (altitude_action_->isVisible()) {
+            menu.addAction(altitude_action_);
+        }
+        if (activity_filter_action_->isVisible()) {
+            menu.addAction(activity_filter_action_);
+        }
+    }
     menu.addSeparator();
     menu.addAction(load_action_);
     menu.addAction(print_action_);

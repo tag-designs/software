@@ -6,6 +6,8 @@
 
 extern QTextEdit *s_textEdit;
 
+// Qt messages are routed to the File Info tab so load/plot diagnostics can be
+// saved with the same workflow as compViz.
 void sensorVizMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     if (!s_textEdit) {

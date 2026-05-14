@@ -2,9 +2,22 @@
 
 #include <sqlite3.h>
 
+// SQLite logs from different tag types share a small set of table conventions,
+// but no single tag is expected to write every table. This file is the adapter
+// from that sparse on-disk schema to sensorViz's uniform SensorStream model.
+//
+// To add support for a new table:
+// - confirm the table has an Epoch column and one numeric value column
+// - add one loadStream() call in SqliteLoader::load()
+// - choose a stable stream id; controls.cpp uses ids for transforms and ranges
+//
+// If a table needs multiple value columns or special decoding, add a sibling to
+// loadStream() here and still return one or more SensorStream objects.
 namespace
 {
 
+// Small RAII wrappers keep the SQLite C API localized to this file. sensorViz
+// only needs read-only queries, so these wrappers intentionally stay minimal.
 class Database
 {
 public:
@@ -149,6 +162,10 @@ bool tableExistsRaw(Database &db, const QString &table_name)
     return exists;
 }
 
+// Convert one optional SQLite table into a SensorStream. A missing table is not
+// an error because each tag type writes a different subset of sensor tables.
+// A present-but-invalid table is an error because that usually means the log
+// was produced with a schema this viewer does not understand yet.
 bool loadStream(
     Database &db,
     const QString &table_name,
@@ -184,6 +201,7 @@ bool loadStream(
         stream.value.append(stmt.doubleColumn(1));
     }
 
+    // Empty tables do not contribute menu items or axes.
     if (stream.time.isEmpty()) {
         return true;
     }
@@ -205,6 +223,8 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
     SensorLog loaded;
     loaded.path = path;
 
+    // Preserve the info table for the File Info tab and use tagtype only as
+    // metadata. Feature availability is inferred from actual tables/streams.
     Statement info_query(db, "SELECT fieldname, value FROM info");
     if (info_query.valid()) {
         while (info_query.next()) {
@@ -217,6 +237,9 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         }
     }
 
+    // Known stream tables across the currently supported sensor tags. Adding a
+    // future sensor type should usually mean adding another loadStream entry
+    // here; the rest of the UI will pick it up from SensorLog::streams.
     if (!loadStream(db, "Activity", "Activity", "activity", "Activity", "%", QColor(30, 90, 180), loaded, error)
         || !loadStream(db, "Pressure", "Pressure", "pressure", "Pressure", "mbar", QColor(25, 130, 105), loaded, error)
         || !loadStream(db, "Temperature", "Temperature", "sensor_temperature", "Sensor temperature", "C", QColor(210, 95, 35), loaded, error)
