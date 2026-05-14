@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include "taglogwriter.h"
 #include "tag.pb.h"
 
 class Tag;
@@ -22,11 +23,11 @@ class Tag;
  *   Qt host applications show messages through their existing log window hook.
  *
  * The current data-log writer supports CompassTag records because that is the
- * schema consumed by compviz today. dumpLog() preserves the existing download
+ * schema consumed by compviz today. writeLog() preserves the shared download
  * convention: positive values mean records were consumed, 0 means no matching
  * log payload in the Ack, and negative values mean an error or unsupported tag.
  */
-class SqliteTagLogWriter
+class SqliteTagLogWriter : public TagLogWriter
 {
 public:
     /**
@@ -42,21 +43,24 @@ public:
     SqliteTagLogWriter(const SqliteTagLogWriter &) = delete;
     SqliteTagLogWriter &operator=(const SqliteTagLogWriter &) = delete;
 
-    bool isOpen() const;
-    const std::string &lastError() const;
+    bool isOpen() const override;
+    const std::string &lastError() const override;
 
     /**
      * Creates metadata tables and writes tag info, config, calibration history,
      * and state history. Must be called once before dumpLog().
      */
-    bool dumpHeader(Tag &tag);
+    bool writeHeader(Tag &tag) override;
 
     /**
      * Appends one Ack of tag data to the SQLite log tables.
      *
-     * Returns the number of download records consumed using the same convention
-     * as dumpTagLog() in taglogs.cc.
+     * Returns the number of download records consumed using the shared
+     * TagLogWriter convention.
      */
+    int writeLog(const Ack &ack, const Config &config) override;
+
+    bool dumpHeader(Tag &tag);
     int dumpLog(const Ack &ack, const Config &config);
 
 private:

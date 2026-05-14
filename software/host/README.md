@@ -50,7 +50,7 @@ SQLite support lives in two places:
 | Area | Purpose |
 | --- | --- |
 | `lib/sqlitelog.*` | Qt-free SQLite log read/write helpers shared by host tools. |
-| app-specific SQLite files | UI/application glue such as `qtmon/sqlitedownload.cpp` and `compviz/sqliteload.cpp`. |
+| app-specific SQLite files | UI/application glue such as `compviz/sqliteload.cpp`. Download writing is shared through `lib/taglogwriter.*`. |
 
 The codebase intentionally uses the native SQLite C API instead of QtSql.
 
@@ -132,7 +132,7 @@ Notable components:
 - `mainwindow.*`, `mainwindow.ui`: main application window.
 - `configtab.*`, `configtab.ui`: tag configuration UI.
 - `schedule.*`, `hibernate.*`: configuration panels.
-- `abstractdownload.*`, `txtdownload.*`, `sqlitedownload.*`: data download paths.
+- `abstractdownload.*`: data download workflow backed by the shared host-log writer interface.
 - `bittaglog.*`: Qt-side tag log UI support.
 - `logwindow.*`: Qt log display.
 

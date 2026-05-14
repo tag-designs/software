@@ -456,10 +456,20 @@ const std::string &SqliteTagLogWriter::lastError() const
 
 bool SqliteTagLogWriter::dumpHeader(Tag &tag)
 {
-    return impl_->dumpHeader(tag);
+    return writeHeader(tag);
 }
 
 int SqliteTagLogWriter::dumpLog(const Ack &ack, const Config &config)
+{
+    return writeLog(ack, config);
+}
+
+bool SqliteTagLogWriter::writeHeader(Tag &tag)
+{
+    return impl_->dumpHeader(tag);
+}
+
+int SqliteTagLogWriter::writeLog(const Ack &ack, const Config &config)
 {
     return impl_->dumpLog(ack, config);
 }

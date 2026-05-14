@@ -7,8 +7,11 @@
 #include <QProgressDialog>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <memory>
+
 #include "tag.pb.h"
 #include "tagclass.h"
+#include "taglogwriter.h"
 
 class AbstractDownload : public QObject
 {
@@ -16,7 +19,7 @@ class AbstractDownload : public QObject
 
     public:
 
-        AbstractDownload(Tag &t, QObject *parent = 0) : tag(t), QObject(parent){}
+        AbstractDownload(Tag &t, std::unique_ptr<TagLogWriter> log_writer, QObject *parent = 0);
         virtual ~AbstractDownload() = default;
         void exec(void);
         int total(void){return cnt;};
@@ -45,14 +48,15 @@ class AbstractDownload : public QObject
     private:
 
         void downloadError(const QString &);
-        virtual bool dumpHeader(void) = 0;
-        virtual int dumpLog(Ack &ack) = 0;
+        bool dumpHeader(void);
+        int dumpLog(Ack &ack);
         
         
         QMessageBox msgBox;
         QElapsedTimer timer;
         QTimer trigger_timer;
         QProgressDialog *pd;
+        std::unique_ptr<TagLogWriter> writer;
        
 };
 

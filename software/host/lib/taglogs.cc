@@ -1,7 +1,9 @@
 
 #include <string>
+#include <fstream>
 #include <iostream>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -490,4 +492,60 @@ int dumpTagLog(std::ostream &out,
     return -1;
   }
   return 0;
+}
+
+TextTagLogWriter::TextTagLogWriter(std::ostream &out) : out_(&out)
+{
+}
+
+TextTagLogWriter::TextTagLogWriter(const std::string &path)
+    : owned_stream_(std::make_unique<std::ofstream>(path))
+{
+  if (!owned_stream_->is_open())
+  {
+    last_error_ = "Could not open text log file: " + path;
+    out_ = nullptr;
+  }
+  else
+  {
+    out_ = owned_stream_.get();
+  }
+}
+
+TextTagLogWriter::~TextTagLogWriter() = default;
+
+bool TextTagLogWriter::isOpen() const
+{
+  return out_ != nullptr && out_->good();
+}
+
+const std::string &TextTagLogWriter::lastError() const
+{
+  return last_error_;
+}
+
+bool TextTagLogWriter::writeHeader(Tag &tag)
+{
+  if (!isOpen())
+  {
+    if (last_error_.empty())
+    {
+      last_error_ = "Text log output is not open";
+    }
+    return false;
+  }
+  return dumpTagLogHeader(*out_, tag, tag_log_output_txt);
+}
+
+int TextTagLogWriter::writeLog(const Ack &ack, const Config &config)
+{
+  if (!isOpen())
+  {
+    if (last_error_.empty())
+    {
+      last_error_ = "Text log output is not open";
+    }
+    return -2;
+  }
+  return dumpTagLog(*out_, ack, config, tag_log_output_txt);
 }

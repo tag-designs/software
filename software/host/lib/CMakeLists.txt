@@ -59,6 +59,7 @@ target_sources(tag
     PRIVATE
          tagmonitor.cc 
          tagclass.cc   
+         taglogwriter.cc
          taglogs.cc 
          sqlitelog.cc
          linkadapt.cc
@@ -68,6 +69,7 @@ target_sources(tag
          log.h
          tagmonitor.h
          tagclass.h
+         taglogwriter.h
          taglogs.h
          sqlitelog.h
          linkadapt.h

@@ -74,7 +74,17 @@ int main(int argc, char **argv)
         break;
       }
 
-      dumpTagLogHeader(std::cout, tag, tag_log_output_txt);
+      TextTagLogWriter writer(std::cout);
+      if (!writer.writeHeader(tag))
+      {
+        std::cerr << "Could not write log header";
+        if (!writer.lastError().empty())
+        {
+          std::cerr << ": " << writer.lastError();
+        }
+        std::cerr << std::endl;
+        break;
+      }
       int len = 0;
       int total = 0;
       Config config;
@@ -95,7 +105,7 @@ int main(int argc, char **argv)
         {
           start = clock();
           //std::cerr << ack.DebugString() << "\n";
-          len = dumpTagLog(std::cout, ack, config, tag_log_output_txt);
+          len = writer.writeLog(ack, config);
           total += len;
           end = clock();
           elapsed += (end-start);

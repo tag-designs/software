@@ -18,6 +18,7 @@
 #include <ctime>
 #include <fstream>
 #include <iomanip>
+#include <utility>
 
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
@@ -30,11 +31,9 @@
 
 #include "tag.pb.h"
 
-//#include "taglogs.h"
 #include "configtab.h"
 #include "abstractdownload.h"
-#include "txtdownload.h"
-#include "sqlitedownload.h"
+#include "taglogwriter.h"
 
 
 
@@ -397,18 +396,12 @@ void MainWindow::on_eraseButton_clicked()
 
 void MainWindow::on_tagLogSaveButton_clicked()
 {
-  QString filter;
-  QString initial_path;
+  const TagLogStorageFormat storage_format = defaultTagLogStorageFormat(tag_type);
+  QString filter = QString::fromStdString(tagLogFileFilter(storage_format));
+  QString initial_path = QDir::homePath()
+      + "/untitled"
+      + QString::fromStdString(defaultTagLogExtension(storage_format));
   
-  if (tag_type == COMPASSTAG) {
-    filter = tr("Binary (*.db3)");
-    initial_path = QDir::homePath() + "/untitled.db3";
-  } else {
-    filter = tr("Binary (*.txt)");
-    initial_path = QDir::homePath() + "/untitled.txt";
-  }
-
-
   QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), initial_path, filter);
 
@@ -424,13 +417,8 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
 
-  AbstractDownload *dl;
-
-  if (tag_type == COMPASSTAG) {
-    dl = new SqliteDownload(tag,fileName);
-  } else {
-    dl = new TxtDownload(tag,fileName);
-  }
+  auto writer = createTagLogWriter(storage_format, fileName.toStdString());
+  AbstractDownload *dl = new AbstractDownload(tag, std::move(writer));
 
   connect(dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
   connect(dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);

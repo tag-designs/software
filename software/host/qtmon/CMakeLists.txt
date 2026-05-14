@@ -54,8 +54,6 @@ set(qtmonitor_SRCS
     mainwindow.cpp
     pbenumgroup.cpp
     schedule.cpp
-    sqlitedownload.cpp
-    txtdownload.cpp
     )
 
 qt6_wrap_ui(UI_HEADERS configtab.ui 
