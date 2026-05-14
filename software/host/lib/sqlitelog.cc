@@ -119,7 +119,7 @@ public:
         return last_error_;
     }
 
-    bool dumpHeader(Tag &tag)
+    bool writeHeader(Tag &tag)
     {
         if (!db_) {
             setLastError("Database is not open");
@@ -272,7 +272,7 @@ public:
         return true;
     }
 
-    int dumpLog(const Ack &ack)
+    int writeLog(const Ack &ack)
     {
         if (!db_) {
             setLastError("Database is not open");
@@ -594,22 +594,12 @@ const std::string &SqliteTagLogWriter::lastError() const
     return impl_->lastError();
 }
 
-bool SqliteTagLogWriter::dumpHeader(Tag &tag)
-{
-    return writeHeader(tag);
-}
-
-int SqliteTagLogWriter::dumpLog(const Ack &ack)
-{
-    return writeLog(ack);
-}
-
 bool SqliteTagLogWriter::writeHeader(Tag &tag)
 {
-    return impl_->dumpHeader(tag);
+    return impl_->writeHeader(tag);
 }
 
 int SqliteTagLogWriter::writeLog(const Ack &ack)
 {
-    return impl_->dumpLog(ack);
+    return impl_->writeLog(ack);
 }

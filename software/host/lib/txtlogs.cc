@@ -49,7 +49,7 @@ static bool dumpTagCalibration(std::ostream &fs, Tag &tag){
 
 }
 
-bool TextTagLogWriter::dumpHeader(Tag &tag)
+bool TextTagLogWriter::writeTextHeader(Tag &tag)
 {
   std::ostream &fs = *out_;
   Config cfg;
@@ -439,7 +439,7 @@ static int dumpTagLog(std::ostream &out, const Config &config,
 }
   */
 
-int TextTagLogWriter::dumpLog(const Ack &log)
+int TextTagLogWriter::writeTextLog(const Ack &log)
 {
   std::ostream &out = *out_;
 
@@ -523,7 +523,7 @@ bool TextTagLogWriter::writeHeader(Tag &tag)
     }
     return false;
   }
-  return dumpHeader(tag);
+  return writeTextHeader(tag);
 }
 
 int TextTagLogWriter::writeLog(const Ack &ack)
@@ -536,5 +536,5 @@ int TextTagLogWriter::writeLog(const Ack &ack)
     }
     return -2;
   }
-  return dumpLog(ack);
+  return writeTextLog(ack);
 }

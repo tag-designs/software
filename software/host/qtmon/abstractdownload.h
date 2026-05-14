@@ -67,10 +67,10 @@ class AbstractDownload : public QObject
     private:
 
         void downloadError(const QString &);
-        bool dumpHeader(void);
+        bool writeHeader(void);
         // Returns the number of records consumed, 0 at end/no matching payload,
         // and negative values for errors. See TagLogWriter::writeLog().
-        int dumpLog(Ack &ack);
+        int writeLog(Ack &ack);
         
         
         QMessageBox msgBox;

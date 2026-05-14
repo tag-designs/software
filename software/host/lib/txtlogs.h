@@ -34,8 +34,8 @@ private:
     // These are class methods so all public writing goes through the stream
     // owned/borrowed by this writer. File-local helpers in txtlogs.cc format
     // individual protobuf payloads.
-    bool dumpHeader(Tag &tag);
-    int dumpLog(const Ack &ack);
+    bool writeTextHeader(Tag &tag);
+    int writeTextLog(const Ack &ack);
 
     std::unique_ptr<std::ofstream> owned_stream_;
     std::ostream *out_ = nullptr;

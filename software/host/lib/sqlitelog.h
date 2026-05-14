@@ -63,10 +63,6 @@ public:
      */
     int writeLog(const Ack &ack) override;
 
-    // Compatibility names for older callers. Prefer writeHeader/writeLog.
-    bool dumpHeader(Tag &tag);
-    int dumpLog(const Ack &ack);
-
 private:
     // Hide sqlite3.h and statement-management details from public consumers.
     class Impl;

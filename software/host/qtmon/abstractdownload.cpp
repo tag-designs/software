@@ -51,7 +51,7 @@ void AbstractDownload::exec() {
         return;
     }
 
-    if (!dumpHeader()) {
+    if (!writeHeader()) {
         const QString error = writer && !writer->lastError().empty()
             ? QString::fromStdString(writer->lastError())
             : QStringLiteral("Download header write failed");
@@ -101,7 +101,7 @@ void AbstractDownload::worker(){
 
             // The writer hides text-vs-SQLite details but preserves the common
             // return convention used by the download loop.
-            len = dumpLog(ack);
+            len = writeLog(ack);
             if (len == 0) {
                 qInfo("no data");
                 emit downloadFinished();
@@ -151,12 +151,12 @@ void AbstractDownload::downloadError(const QString &s) {
     msgBox.exec();
 }
 
-bool AbstractDownload::dumpHeader()
+bool AbstractDownload::writeHeader()
 {
     return writer && writer->writeHeader(tag);
 }
 
-int AbstractDownload::dumpLog(Ack &ack)
+int AbstractDownload::writeLog(Ack &ack)
 {
     if (!writer) {
         return -2;
