@@ -37,7 +37,8 @@ cmake -S . -B build-all
 Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git,
 SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
-Qt 6 is required when `BUILD_QT_APPS=ON`.
+Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
+required when `BUILD_HOST_DOCS=ON`.
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
 PrintSupport, Svg, SvgWidgets, Qml, Quick, and QuickWidgets. A minimal CLI-only
@@ -54,6 +55,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `py -m pip install -r software/host/docs/requirements.txt`. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -73,7 +75,7 @@ dependencies and the standard dynamic Qt distribution:
 | Qt source | Installed Qt at `C:/Qt/6.10.2/msvc2022_64` |
 | MSVC runtime | Dynamic runtime, `/MD` and `/MDd` |
 | Embedded build | `OFF` |
-| Release install directory | `c:/software-build-static-vcpkg-qt/install/tag-tools` |
+| Release install directory | `c:/software-build-static-vcpkg-qt/install/tag_tools` |
 
 ## Windows Build
 
@@ -117,7 +119,7 @@ cmake --build --preset windows-vcpkg-static-package
 ```
 
 Windows install and packaging are Release-only. The ZIP contains one shared
-`tag-tools` directory with Qt application launcher executables, the real Qt
+`tag_tools` directory with Qt application launcher executables, the real Qt
 applications, Qt DLLs, MSVC runtime DLLs, Qt plugins, and QML runtime files.
 The command-line tools are built but not included in the install package.
 Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies are linked
@@ -125,7 +127,7 @@ statically and are not packaged as separate DLLs:
 
 ```
 UltralightTags-2.0.0-win64/
-  tag-tools/
+  tag_tools/
     *.exe
     lib/
       *.exe
@@ -170,6 +172,7 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r software/host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
 Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
@@ -256,6 +259,7 @@ cmake -S . -B build-package \
 | Protobuf | Install `protoc` and development libraries. |
 | SQLite 3 | Install development headers and libraries, for example `libsqlite3-dev`. |
 | Git | Used by version-generation helpers. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r software/host/docs/requirements.txt`. |
 
 Example Debian/Ubuntu package set for host builds:
 
@@ -287,6 +291,7 @@ installed in a standard location.
 | --- | --- | --- |
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version for host software. |
+| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build and install the host application user guide from `software/host/docs`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |

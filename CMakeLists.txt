@@ -19,6 +19,7 @@ endif()
 
 option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
+option(BUILD_HOST_DOCS "Build and install host application user guides" ${BUILD_QT_APPS})
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
@@ -54,7 +55,7 @@ list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(GNUInstallDirs)
 
 if(WIN32)
-  set(CMAKE_INSTALL_BINDIR "tag-tools" CACHE PATH "Windows runtime tools directory" FORCE)
+  set(CMAKE_INSTALL_BINDIR "tag_tools" CACHE PATH "Windows runtime tools directory" FORCE)
   install(CODE [[
     if(NOT CMAKE_INSTALL_CONFIG_NAME STREQUAL "Release")
       message(FATAL_ERROR "Windows install/package is Release-only. Build Debug with `cmake --build --preset debug`, but install/package with Release.")

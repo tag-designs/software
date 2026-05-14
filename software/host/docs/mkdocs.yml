@@ -4,9 +4,12 @@ site_author: Indiana University
 
 docs_dir: src
 site_dir: site
+use_directory_urls: false
 
 theme:
   name: material
+  icon:
+    logo: material/bird
   features:
     - navigation.sections
     - navigation.top

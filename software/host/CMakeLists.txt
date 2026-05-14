@@ -8,7 +8,7 @@ endif()
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
-set(HOST_BUNDLE_INSTALL_DIR UltralightTags)
+set(HOST_BUNDLE_INSTALL_DIR tag_tools)
 
 add_subdirectory(lib)
 add_subdirectory(cli)
@@ -136,6 +136,47 @@ foreach(target_name ${host_candidate_install_targets})
   endif()
 endforeach()
 
+if(APPLE)
+  set(host_package_support_destination "${HOST_BUNDLE_INSTALL_DIR}")
+elseif(WIN32)
+  set(host_package_support_destination "${CMAKE_INSTALL_BINDIR}")
+else()
+  set(host_package_support_destination "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}")
+endif()
+
+set(build_host_docs OFF)
+if(BUILD_HOST_DOCS AND host_install_targets)
+  set(build_host_docs ON)
+endif()
+
+if(build_host_docs)
+  find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
+  if(NOT MKDOCS_EXECUTABLE)
+    message(FATAL_ERROR "BUILD_HOST_DOCS=ON requires MkDocs. Install the tools with `python3 -m pip install -r software/host/docs/requirements.txt`, or configure with -DBUILD_HOST_DOCS=OFF.")
+  endif()
+
+  set(HOST_DOCS_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/docs")
+  set(HOST_DOCS_CONFIG "${HOST_DOCS_SOURCE_DIR}/mkdocs.yml")
+  set(HOST_DOCS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs/site")
+  file(
+    GLOB_RECURSE host_docs_sources
+    CONFIGURE_DEPENDS
+    "${HOST_DOCS_CONFIG}"
+    "${HOST_DOCS_SOURCE_DIR}/src/*")
+
+  add_custom_target(
+    host_docs ALL
+    COMMAND
+      "${MKDOCS_EXECUTABLE}" build
+      --config-file "${HOST_DOCS_CONFIG}"
+      --site-dir "${HOST_DOCS_BUILD_DIR}"
+      --clean
+    DEPENDS ${host_docs_sources}
+    WORKING_DIRECTORY "${HOST_DOCS_SOURCE_DIR}"
+    COMMENT "Building host application user guide"
+    VERBATIM)
+endif()
+
 if(host_install_targets)
   if(APPLE)
     foreach(target_name ${host_qt_install_targets})
@@ -232,15 +273,27 @@ if(host_install_targets)
     endif()
   endif()
 
-  include(BuildReport)
-  if(APPLE)
-    set(host_build_report_destination "${HOST_BUNDLE_INSTALL_DIR}")
-  elseif(WIN32)
-    set(host_build_report_destination "${CMAKE_INSTALL_BINDIR}")
-  else()
-    set(host_build_report_destination "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}")
+  if(build_host_docs)
+    install(CODE "
+      message(STATUS \"Building host application user guide\")
+      execute_process(
+        COMMAND \"${MKDOCS_EXECUTABLE}\" build
+          --config-file \"${HOST_DOCS_CONFIG}\"
+          --site-dir \"${HOST_DOCS_BUILD_DIR}\"
+          --clean
+        WORKING_DIRECTORY \"${HOST_DOCS_SOURCE_DIR}\"
+        RESULT_VARIABLE host_docs_result)
+      if(NOT host_docs_result EQUAL 0)
+        message(FATAL_ERROR \"Failed to build host application user guide\")
+      endif()
+    ")
+    install(
+      DIRECTORY "${HOST_DOCS_BUILD_DIR}/"
+      DESTINATION "${host_package_support_destination}/docs")
   endif()
+
+  include(BuildReport)
   install_build_report(
-    DESTINATION "${host_build_report_destination}"
+    DESTINATION "${host_package_support_destination}"
     TARGETS ${host_install_targets})
 endif()
