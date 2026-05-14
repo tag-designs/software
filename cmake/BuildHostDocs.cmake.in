@@ -1,0 +1,16 @@
+set(HOST_MKDOCS_COMMAND [==[@HOST_MKDOCS_COMMAND@]==])
+set(HOST_DOCS_CONFIG [==[@HOST_DOCS_CONFIG@]==])
+set(HOST_DOCS_BUILD_DIR [==[@HOST_DOCS_BUILD_DIR@]==])
+set(HOST_DOCS_SOURCE_DIR [==[@HOST_DOCS_SOURCE_DIR@]==])
+
+message(STATUS "Building host application user guide")
+execute_process(
+  COMMAND ${HOST_MKDOCS_COMMAND} build
+    --config-file "${HOST_DOCS_CONFIG}"
+    --site-dir "${HOST_DOCS_BUILD_DIR}"
+    --clean
+  WORKING_DIRECTORY "${HOST_DOCS_SOURCE_DIR}"
+  RESULT_VARIABLE host_docs_result)
+if(NOT host_docs_result EQUAL 0)
+  message(FATAL_ERROR "Failed to build host application user guide")
+endif()

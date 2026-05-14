@@ -55,7 +55,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `py -m pip install -r software/host/docs/requirements.txt`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python -m pip install -r software/host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -292,6 +292,7 @@ installed in a standard location.
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version for host software. |
 | `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build and install the host application user guide from `software/host/docs`. |
+| `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |

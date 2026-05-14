@@ -149,15 +149,49 @@ if(BUILD_HOST_DOCS AND host_install_targets)
   set(build_host_docs ON)
 endif()
 
+set(
+  HOST_MKDOCS_COMMAND
+  ""
+  CACHE STRING
+        "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs")
+
 if(build_host_docs)
-  find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
-  if(NOT MKDOCS_EXECUTABLE)
-    message(FATAL_ERROR "BUILD_HOST_DOCS=ON requires MkDocs. Install the tools with `python3 -m pip install -r software/host/docs/requirements.txt`, or configure with -DBUILD_HOST_DOCS=OFF.")
+  if(NOT HOST_MKDOCS_COMMAND)
+    find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
+    if(MKDOCS_EXECUTABLE)
+      set(
+        HOST_MKDOCS_COMMAND
+        "${MKDOCS_EXECUTABLE}"
+        CACHE STRING
+              "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
+              FORCE)
+    else()
+      find_package(Python3 COMPONENTS Interpreter QUIET)
+      if(Python3_Interpreter_FOUND)
+        set(
+          HOST_MKDOCS_COMMAND
+          "${Python3_EXECUTABLE};-m;mkdocs"
+          CACHE STRING
+                "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
+                FORCE)
+      endif()
+    endif()
   endif()
+
+  if(NOT HOST_MKDOCS_COMMAND)
+    message(FATAL_ERROR "BUILD_HOST_DOCS=ON requires MkDocs. Install the tools with `python3 -m pip install -r software/host/docs/requirements.txt`, set HOST_MKDOCS_COMMAND to a CMake command list such as `python;-m;mkdocs`, or configure with -DBUILD_HOST_DOCS=OFF.")
+  endif()
+  string(REPLACE ";" " " HOST_MKDOCS_COMMAND_DISPLAY "${HOST_MKDOCS_COMMAND}")
+  message(STATUS "Using MkDocs command: ${HOST_MKDOCS_COMMAND_DISPLAY}")
 
   set(HOST_DOCS_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/docs")
   set(HOST_DOCS_CONFIG "${HOST_DOCS_SOURCE_DIR}/mkdocs.yml")
   set(HOST_DOCS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs/site")
+  set(HOST_DOCS_INSTALL_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/BuildHostDocs.cmake")
+  configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/BuildHostDocs.cmake.in"
+    "${HOST_DOCS_INSTALL_SCRIPT}"
+    @ONLY)
   file(
     GLOB_RECURSE host_docs_sources
     CONFIGURE_DEPENDS
@@ -167,7 +201,7 @@ if(build_host_docs)
   add_custom_target(
     host_docs ALL
     COMMAND
-      "${MKDOCS_EXECUTABLE}" build
+      ${HOST_MKDOCS_COMMAND} build
       --config-file "${HOST_DOCS_CONFIG}"
       --site-dir "${HOST_DOCS_BUILD_DIR}"
       --clean
@@ -274,19 +308,7 @@ if(host_install_targets)
   endif()
 
   if(build_host_docs)
-    install(CODE "
-      message(STATUS \"Building host application user guide\")
-      execute_process(
-        COMMAND \"${MKDOCS_EXECUTABLE}\" build
-          --config-file \"${HOST_DOCS_CONFIG}\"
-          --site-dir \"${HOST_DOCS_BUILD_DIR}\"
-          --clean
-        WORKING_DIRECTORY \"${HOST_DOCS_SOURCE_DIR}\"
-        RESULT_VARIABLE host_docs_result)
-      if(NOT host_docs_result EQUAL 0)
-        message(FATAL_ERROR \"Failed to build host application user guide\")
-      endif()
-    ")
+    install(SCRIPT "${HOST_DOCS_INSTALL_SCRIPT}")
     install(
       DIRECTORY "${HOST_DOCS_BUILD_DIR}/"
       DESTINATION "${host_package_support_destination}/docs")
