@@ -321,6 +321,9 @@ void MainWindow::setPressureRange()
     }
 
     custom_axis_ranges_["pressure"] = QCPRange(lower, upper);
+    const double lower_altitude = pressureToAltitude(upper, sea_level_pressure_);
+    const double upper_altitude = pressureToAltitude(lower, sea_level_pressure_);
+    custom_axis_ranges_["altitude"] = QCPRange(lower_altitude, upper_altitude);
     QAction *pressure_action = streamActionById("pressure");
     if (pressure_action) {
         pressure_action->setChecked(true);

@@ -32,7 +32,7 @@ void MainWindow::loadLog()
 
     clearStreamActions();
     for (const SensorStream &stream : streams_) {
-        addStreamAction(stream, true);
+        addStreamAction(stream, stream.id != "core_temperature" && stream.id != "voltage");
     }
 
     updateMetadata();

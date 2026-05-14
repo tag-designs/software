@@ -433,7 +433,10 @@ private:
 
     bool createPresTagLogTables()
     {
-        if (!createCommonSampleTables()
+        if (!exec("CREATE TABLE Voltage ("
+                  "Epoch INTEGER,"
+                  "Voltage REAL"
+                  ");")
             || !exec("CREATE TABLE Pressure ("
                      "Epoch INTEGER,"
                      "Pressure REAL"
@@ -615,16 +618,12 @@ private:
         sqlite3_int64 timestamp = log.epoch();
 
         Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
-        Statement core_temperature_insert(
-            db_,
-            "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
         Statement pressure_insert(db_, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
         Statement temperature_insert(
             db_,
             "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
 
         if (!voltage_insert.valid()
-            || !core_temperature_insert.valid()
             || !pressure_insert.valid()
             || !temperature_insert.valid()) {
             setLastSqliteError("Could not prepare PresTag log insert");
@@ -633,10 +632,7 @@ private:
 
         if (!voltage_insert.bindInt64(1, timestamp)
             || !voltage_insert.bindDouble(2, log.voltage())
-            || !voltage_insert.stepDone()
-            || !core_temperature_insert.bindInt64(1, timestamp)
-            || !core_temperature_insert.bindDouble(2, log.temperature())
-            || !core_temperature_insert.stepDone()) {
+            || !voltage_insert.stepDone()) {
             setLastSqliteError("PresTag log header insert failed");
             return -2;
         }
