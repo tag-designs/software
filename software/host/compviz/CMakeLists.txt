@@ -16,9 +16,6 @@ else()
   set(HOST_SQLITE_TARGET SQLite::SQLite3)
 endif()
 set(COMPVIZ_SQLITE_LINK_TARGET ${HOST_SQLITE_TARGET})
-if(APPLE)
-  set(COMPVIZ_SQLITE_LINK_TARGET "")
-endif()
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
@@ -83,6 +80,6 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE tag ${COMPVIZ_SQLITE_LINK_TARGET} qcustomplot Qt6::Widgets
+target_link_libraries(compviz PRIVATE ${COMPVIZ_SQLITE_LINK_TARGET} qcustomplot Qt6::Widgets
                                Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
                                Qt6::Quick Qt6::PrintSupport)

@@ -12,16 +12,6 @@
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 
-extern "C"
-{
-#include "log.h"
-}
-
-// hook into the error logging system
-
-extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
-                            const QString &msg);
-extern int log_level;
 QTextEdit *s_textEdit = nullptr;
 
 
@@ -46,7 +36,6 @@ MainWindow::MainWindow(QWidget *parent)
   connect(ui->plot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showPlotContextMenu(QPoint)));
   connect(ui->quickWidget, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showCompassContextMenu(QPoint)));  
   s_textEdit = ui->te_fileinfo;
-  qInstallMessageHandler(myMessageOutput);
   //qInfo() << "Loading QML";
 
   createGraphs();
@@ -178,8 +167,6 @@ void MainWindow::createGraphs(){
 void MainWindow::makeVisible(bool visible)
 {
 }
-
-
 
 
 

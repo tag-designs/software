@@ -274,7 +274,6 @@ Build dependencies:
 
 | Dependency | Notes |
 | --- | --- |
-| `tag` | Shared host library and tag data types. |
 | `SQLite::SQLite3` | Native SQLite C API. |
 | `qcustomplot` | Shared plotting library. |
 | `Qt6::Widgets` | Widget UI. |
