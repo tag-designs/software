@@ -88,7 +88,7 @@ Targets:
 
 | Target | Sources | App Function |
 | --- | --- | --- |
-| `tag-dwnld` | `dwnld.cc`, `options.cc` | TODO: describe what this tool downloads and expected output formats. |
+| `tag-dwnld` | `dwnld.cc`, `options.cc` | Downloads tag log data using the default supported writer for the tag type, with optional `--format` and `--output`. |
 | `tag-test` | `test.cc`, `options.cc` | TODO: describe the test workflow. |
 | `tag-test-example` | `test-example.cc`, `options.cc` | TODO: describe how this differs from `tag-test`. |
 | `tag-info` | `tag-info.cc`, `options.cc` | TODO: describe reported tag/base information. |

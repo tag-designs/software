@@ -269,7 +269,9 @@ public:
         }
 
         if (!ack.has_compasstag_data_log()) {
-            setLastError("Ack does not contain a CompassTag data log");
+            // The tag signals end-of-log by returning an Ack without another
+            // data-log payload. That is a normal termination condition, not a
+            // SQLite/write error.
             return 0;
         }
 
