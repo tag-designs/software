@@ -280,6 +280,12 @@ public:
         }
 
         switch (config_.tag_type()) {
+        case BITTAG:
+            if (!ack.has_bittag_data_log()) {
+                return 0;
+            }
+            return dumpBitTagLog(ack.bittag_data_log());
+
         case COMPASSTAG:
             if (!ack.has_compasstag_data_log()) {
                 // The tag signals end-of-log by returning an Ack without
@@ -346,6 +352,11 @@ private:
         }
 
         switch (config_.tag_type()) {
+        case BITTAG:
+            if (!createBitTagLogTables()) {
+                return false;
+            }
+            break;
         case COMPASSTAG:
             if (!createCompassTagLogTables()) {
                 return false;
@@ -406,6 +417,20 @@ private:
         return true;
     }
 
+    bool createBitTagLogTables()
+    {
+        if (!createCommonSampleTables()
+            || !exec("CREATE TABLE Activity ("
+                     "Epoch INTEGER,"
+                     "Activity REAL"
+                     ");")) {
+            return false;
+        }
+
+        log_debug("Created SQLite BitTag log tables");
+        return true;
+    }
+
     bool createPresTagLogTables()
     {
         if (!createCommonSampleTables()
@@ -422,6 +447,98 @@ private:
 
         log_debug("Created SQLite PresTag log tables");
         return true;
+    }
+
+    int dumpBitTagLog(const BitTagLog &log)
+    {
+        if (!createLogTables()) {
+            return -2;
+        }
+
+        int bucket_bits = 0;
+        int bucket_number = 0;
+        int bucket_period = 0;
+
+        switch (config_.bittag_log()) {
+        case BITTAG_BITPERSEC:
+            break;
+        case BITTAG_BITSPERMIN:
+            bucket_bits = 6;
+            bucket_number = 10;
+            bucket_period = 60;
+            break;
+        case BITTAG_BITSPERFOURMIN:
+            bucket_bits = 8;
+            bucket_number = 8;
+            bucket_period = 60 * 4;
+            break;
+        case BITTAG_BITSPERFIVEMIN:
+            bucket_bits = 9;
+            bucket_number = 7;
+            bucket_period = 60 * 5;
+            break;
+        default:
+            setLastError("BitTag SQLite output requires a configured log format");
+            return -2;
+        }
+
+        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+        Statement temperature_insert(
+            db_,
+            "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
+        Statement activity_insert(db_, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
+
+        if (!voltage_insert.valid()
+            || !temperature_insert.valid()
+            || !activity_insert.valid()) {
+            setLastSqliteError("Could not prepare BitTag log insert");
+            return -2;
+        }
+
+        for (auto const &entry : log.data()) {
+            const sqlite3_int64 timestamp = entry.epoch();
+
+            if (!voltage_insert.bindInt64(1, timestamp)
+                || !voltage_insert.bindDouble(2, entry.voltage())
+                || !voltage_insert.stepDone()
+                || !temperature_insert.bindInt64(1, timestamp)
+                || !temperature_insert.bindDouble(2, entry.temperature())
+                || !temperature_insert.stepDone()) {
+                setLastSqliteError("BitTag log header insert failed");
+                return -2;
+            }
+
+            const uint64_t rawdata = entry.rawdata();
+            if (config_.bittag_log() == BITTAG_BITPERSEC) {
+                for (int i = 0; i < 60; i++) {
+                    const sqlite3_int64 sample_timestamp = timestamp - (59 - i);
+                    const double activity = ((rawdata >> i) & 1) * 100.0;
+                    if (!activity_insert.bindInt64(1, sample_timestamp)
+                        || !activity_insert.bindDouble(2, activity)
+                        || !activity_insert.stepDone()) {
+                        setLastSqliteError("BitTag activity insert failed");
+                        return -2;
+                    }
+                }
+            } else {
+                for (int i = 0; i < bucket_number; i++) {
+                    const sqlite3_int64 sample_timestamp =
+                        timestamp - bucket_period * (bucket_number - 1 - i);
+                    const uint64_t count =
+                        (rawdata >> (i * bucket_bits)) & ((1 << bucket_bits) - 1);
+                    const double activity = count * 100.0 / bucket_period;
+
+                    if (!activity_insert.bindInt64(1, sample_timestamp)
+                        || !activity_insert.bindDouble(2, activity)
+                        || !activity_insert.stepDone()) {
+                        setLastSqliteError("BitTag activity insert failed");
+                        return -2;
+                    }
+                }
+            }
+        }
+
+        return log.data().size();
     }
 
     int dumpCompassTagLog(const CompassTagLog &log)
