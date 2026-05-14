@@ -16,7 +16,7 @@
 #include "linkadapt.h"
 #include "tagmonitor.h"
 #include <tagclass.h>
-#include <taglogs.h>
+#include <txtlogs.h>
 #include <log.h>
 #include <chrono>
 
@@ -33,7 +33,7 @@ static std::string fmthex(uint32_t num)
 
 
 
-bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
+static bool dumpTagCalibration(std::ostream &fs, Tag &tag){
   CalibrationConstants constants;
   if (tag.ReadCalibration(constants,-1)
         && constants.has_magnetometer())
@@ -49,8 +49,9 @@ bool dumpTagCalibration(std::ostream &fs, Tag &tag, enum TagLogOutput format){
 
 }
 
-bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
+bool TextTagLogWriter::dumpHeader(Tag &tag)
 {
+  std::ostream &fs = *out_;
   Config cfg;
   Status status;
   StateLog state_log;
@@ -88,7 +89,7 @@ bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
 
   // Dump Calibration
 
-  dumpTagCalibration(fs,tag,format);
+  dumpTagCalibration(fs, tag);
 
   TestResult result = status.test_status();
 
@@ -175,8 +176,7 @@ bool dumpTagLogHeader(std::ostream &fs, Tag &tag, enum TagLogOutput format)
 
 static int dumpTagLog(std::ostream &out, /*Tag &t,*/
                       const BitTagLog &log,
-                      enum BitTagLogFmt dataformat,
-                      enum TagLogOutput format)
+                      enum BitTagLogFmt dataformat)
 {
   BitTagData entry;
   int count = 0;
@@ -255,8 +255,7 @@ static int dumpTagLog(std::ostream &out, /*Tag &t,*/
 }
 
 static int dumpTagLog(std::ostream &out, const PresTagLog &log,
-                      uint32_t period,
-                      enum TagLogOutput format)
+                      uint32_t period)
 {
   int64_t timestamp = log.epoch();
   out << timestamp << ",";
@@ -275,8 +274,7 @@ static int dumpTagLog(std::ostream &out, const PresTagLog &log,
 }
 
 
-static int dumpTagLog(std::ostream &out, const BitPresTagLog &log,
-                      enum TagLogOutput format)
+static int dumpTagLog(std::ostream &out, const BitPresTagLog &log)
 {
   const int bucket_number = 5;
   const int bucket_bits = 6;
@@ -306,8 +304,7 @@ static int dumpTagLog(std::ostream &out, const BitPresTagLog &log,
   return 1;
 }
 
-static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
-                      enum TagLogOutput format)
+static int dumpTagLog(std::ostream &out, const BitTagNgLog &log)
 {
   int64_t timestamp = log.epoch();
  
@@ -336,8 +333,7 @@ static int dumpTagLog(std::ostream &out, const BitTagNgLog &log,
   return 1;
 }
 
-static int dumpTagLog(std::ostream &out, const CompassTagLog &log,
-                      enum TagLogOutput format)
+static int dumpTagLog(std::ostream &out, const CompassTagLog &log)
 {
   int64_t timestamp = log.epoch();
 
@@ -360,8 +356,7 @@ static int dumpTagLog(std::ostream &out, const CompassTagLog &log,
 
 /*
 static int dumpTagLog(std::ostream &out, const LuxTagLog &log,
-                      uint32_t period,
-                      enum TagLogOutput format)
+                      uint32_t period)
 {
   int64_t timestamp = log.epoch();
   out << timestamp << ",";
@@ -378,8 +373,7 @@ static int dumpTagLog(std::ostream &out, const LuxTagLog &log,
 }
 
 static int dumpTagLog(std::ostream &out, const AccelTagLog &log,
-                      uint32_t period,
-                      enum TagLogOutput format)
+                      uint32_t period)
 {
   int64_t timestamp = log.epoch();
   out << timestamp << ",";
@@ -449,11 +443,9 @@ static int dumpTagLog(std::ostream &out, const Config &config,
 }
   */
 
-int dumpTagLog(std::ostream &out,
-               const Ack &log,
-               const Config &config,
-               enum TagLogOutput format)
+int TextTagLogWriter::dumpLog(const Ack &log, const Config &config)
 {
+  std::ostream &out = *out_;
 
   switch (config.tag_type())
   {
@@ -461,31 +453,31 @@ int dumpTagLog(std::ostream &out,
     if (log.has_bittag_data_log())
     {
       return dumpTagLog(out, log.bittag_data_log(),
-                        config.bittag_log(), format);
+                        config.bittag_log());
     }
     break;
   case BITTAGNG:
     if (log.has_bittag_ng_data_log())
     {
-      return dumpTagLog(out, log.bittag_ng_data_log(), format);
+      return dumpTagLog(out, log.bittag_ng_data_log());
     }
     break;
   case PRESTAG:
     if (log.has_prestag_data_log())
     {
-      return dumpTagLog(out, log.prestag_data_log(), config.period(), format);
+      return dumpTagLog(out, log.prestag_data_log(), config.period());
     }
     break;
   case BITPRESTAG:
     if (log.has_bitprestag_data_log())
     {
-       return dumpTagLog(out, log.bitprestag_data_log(), format);
+       return dumpTagLog(out, log.bitprestag_data_log());
     } 
     break;
   case COMPASSTAG:
     if (log.has_compasstag_data_log())
     {
-        return dumpTagLog(out, log.compasstag_data_log(), format);
+        return dumpTagLog(out, log.compasstag_data_log());
     } 
     break;
   default:
@@ -534,7 +526,7 @@ bool TextTagLogWriter::writeHeader(Tag &tag)
     }
     return false;
   }
-  return dumpTagLogHeader(*out_, tag, tag_log_output_txt);
+  return dumpHeader(tag);
 }
 
 int TextTagLogWriter::writeLog(const Ack &ack, const Config &config)
@@ -547,5 +539,5 @@ int TextTagLogWriter::writeLog(const Ack &ack, const Config &config)
     }
     return -2;
   }
-  return dumpTagLog(*out_, ack, config, tag_log_output_txt);
+  return dumpLog(ack, config);
 }

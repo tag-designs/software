@@ -24,7 +24,7 @@
 
 #include "tag.pb.h"
 
-#include "taglogs.h"
+#include "txtlogs.h"
 
 
 extern "C"

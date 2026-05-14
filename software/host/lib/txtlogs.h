@@ -1,36 +1,23 @@
-#ifndef TAG_LOGS_H
-#define TAG_LOGS_H
+#ifndef TXT_LOGS_H
+#define TXT_LOGS_H
 
 #include <fstream>
 #include <memory>
-#include <ostream>
 #include <string>
 
 #include "tag.pb.h"
 #include "taglogwriter.h"
 
-enum TagLogOutput
-{
-    tag_log_output_txt,
-    tag_log_output_json
-};
-
-// Single procedure for dumping general tag information and state.
-bool dumpTagLogHeader(std::ostream &out,
-                      Tag &t,
-                      enum TagLogOutput format);
-
-// Type specific procedure for different log types. Returns the number of
-// records consumed, zero when the Ack has no matching payload, and a negative
-// value on error.
-int dumpTagLog(std::ostream &out,
-               const Ack &log,
-               const Config &config,
-               enum TagLogOutput format);
-
 class TextTagLogWriter : public TagLogWriter
 {
 public:
+    /**
+     * Writes tag downloads to the legacy text log format.
+     *
+     * TextTagLogWriter owns or borrows an output stream, writes the same
+     * metadata header as the old text download path, and appends decoded log
+     * records using the shared TagLogWriter return convention.
+     */
     explicit TextTagLogWriter(std::ostream &out);
     explicit TextTagLogWriter(const std::string &path);
     ~TextTagLogWriter() override;
@@ -44,9 +31,15 @@ public:
     int writeLog(const Ack &ack, const Config &config) override;
 
 private:
+    // These are class methods so all public writing goes through the stream
+    // owned/borrowed by this writer. File-local helpers in txtlogs.cc format
+    // individual protobuf payloads.
+    bool dumpHeader(Tag &tag);
+    int dumpLog(const Ack &ack, const Config &config);
+
     std::unique_ptr<std::ofstream> owned_stream_;
     std::ostream *out_ = nullptr;
     std::string last_error_;
 };
 
-#endif /* TAG_LOGS_H */
+#endif /* TXT_LOGS_H */

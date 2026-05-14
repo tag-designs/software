@@ -392,7 +392,10 @@ void MainWindow::on_eraseButton_clicked()
   }
 }
 
-// download tag data
+// Start a tag-data download from the UI. The window chooses a default storage
+// format for the current tag type and owns only the user interaction. The
+// download loop and file/database writing are delegated to AbstractDownload and
+// the host-lib TagLogWriter implementations.
 
 void MainWindow::on_tagLogSaveButton_clicked()
 {
@@ -417,6 +420,9 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
 
+  // This is deliberately an explicit format value instead of a hidden
+  // tag-type switch inside AbstractDownload. A future UI can replace the
+  // default with a user-selected format for tags that support more than one.
   auto writer = createTagLogWriter(storage_format, fileName.toStdString());
   AbstractDownload *dl = new AbstractDownload(tag, std::move(writer));
 

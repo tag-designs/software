@@ -48,7 +48,7 @@ public:
 
     /**
      * Creates metadata tables and writes tag info, config, calibration history,
-     * and state history. Must be called once before dumpLog().
+     * and state history. Must be called once before writeLog().
      */
     bool writeHeader(Tag &tag) override;
 
@@ -60,6 +60,7 @@ public:
      */
     int writeLog(const Ack &ack, const Config &config) override;
 
+    // Compatibility names for older callers. Prefer writeHeader/writeLog.
     bool dumpHeader(Tag &tag);
     int dumpLog(const Ack &ack, const Config &config);
 

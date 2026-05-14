@@ -6,7 +6,7 @@
 #include <QFileDialog>
 #include <QStringList>
 
-#include "taglogs.h"
+#include "txtlogs.h"
 #include "../qtfiledialog.h"
 
 

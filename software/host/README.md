@@ -63,7 +63,7 @@ The `tag` static library is the core host interface.
 Internal responsibilities:
 
 - USB/tag communication: `tagclass.*`, `tagmonitor.*`, `linkadapt.*`
-- Log decoding and data structures: `taglogs.*`
+- Log decoding and data structures: `txtlogs.*`
 - SQLite log storage: `sqlitelog.*`
 - Host logging: `log.*`
 - Shared command definitions: `commands.h`

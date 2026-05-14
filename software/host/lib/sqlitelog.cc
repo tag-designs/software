@@ -262,7 +262,7 @@ public:
         }
 
         // Keep this explicit until the schema grows support for the other tag
-        // log formats handled by the text logger in taglogs.cc.
+        // log formats handled by the text logger in txtlogs.cc.
         if (config.tag_type() != COMPASSTAG) {
             setLastError("SQLite log output only supports CompassTag logs");
             return -1;

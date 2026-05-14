@@ -1,5 +1,5 @@
 #include "dwnld.h"
-#include <taglogs.h>
+#include <txtlogs.h>
 #include <time.h>
 
 using namespace std::chrono_literals;

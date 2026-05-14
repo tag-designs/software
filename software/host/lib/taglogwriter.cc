@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "sqlitelog.h"
-#include "taglogs.h"
+#include "txtlogs.h"
 
 TagLogStorageFormat defaultTagLogStorageFormat(TagType tag_type)
 {

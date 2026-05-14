@@ -10,8 +10,8 @@ AbstractDownload::AbstractDownload(Tag &t, std::unique_ptr<TagLogWriter> log_wri
 }
 
 void AbstractDownload::exec() {
-    // Get tag configuration and status
-    
+    // The tag reports the total number of internal log records in status. The
+    // writer also needs the config to decode each Ack into the right schema.
     Status status;
     if (!tag.GetStatus(status))
     {
@@ -43,13 +43,11 @@ void AbstractDownload::exec() {
         return;
     }
 
-    // create the progress dialog
-
     emit progressRangeChanged(0,max_cnt);//max_cnt);
     emit progressValueChanged(0);
 
-    // trigger worker
-
+    // Keep the modal progress dialog responsive by doing bounded work in the
+    // event loop instead of downloading the whole log in this call.
     connect(&trigger_timer, &QTimer::timeout, this, &AbstractDownload::worker);
     trigger_timer.start();
     timer.start();
@@ -68,14 +66,13 @@ void AbstractDownload::worker(){
     QDeadlineTimer deadline(300ms);
     int len;
 
-    // do as much work as possible within the deadline
-
+    // Process as many records as we can within a short deadline. Each
+    // successful writer call returns the number of records consumed from the
+    // current Ack, which becomes the offset for the next tag.GetDataLog().
     do
     {
         ack.Clear();
         len = 0;
-
-        // grab as much data as possible
 
         if (tag.GetDataLog(ack, cnt))
         {
@@ -85,6 +82,8 @@ void AbstractDownload::worker(){
                 return;
             }
 
+            // The writer hides text-vs-SQLite details but preserves the common
+            // return convention used by the download loop.
             len = dumpLog(ack);
             if (len == 0) {
                 qInfo("no data");
@@ -119,8 +118,6 @@ void AbstractDownload::worker(){
         }
     } while ((len>0) && !deadline.hasExpired());
 
-    // update progress info
-    
     qInfo("downloaded %d blocks",cnt);
     emit progressValueChanged(cnt);
 

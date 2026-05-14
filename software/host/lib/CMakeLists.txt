@@ -60,7 +60,7 @@ target_sources(tag
          tagmonitor.cc 
          tagclass.cc   
          taglogwriter.cc
-         taglogs.cc 
+         txtlogs.cc
          sqlitelog.cc
          linkadapt.cc
          log.c
@@ -70,7 +70,7 @@ target_sources(tag
          tagmonitor.h
          tagclass.h
          taglogwriter.h
-         taglogs.h
+         txtlogs.h
          sqlitelog.h
          linkadapt.h
    )
