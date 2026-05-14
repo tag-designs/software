@@ -20,6 +20,7 @@ applications are added when `BUILD_QT_APPS=ON`.
 | `qtcalibrate` | `qtcalibrate` | Qt calibration application. |
 | `btdataviz` | `btviz` | Qt visualization application using QCustomPlot and FastFIR filtering. |
 | `compviz` | `compviz` | Qt visualization application for compass/tag SQLite data. |
+| `sensorviz` | `sensorviz` | Qt visualization application for scalar sensor SQLite data and derived streams. |
 | `tag-orientation` | `tag-orientation` | Qt orientation experiment/tool. Built with Qt apps, but not included in the deployed package. |
 
 ## Shared Architecture
@@ -34,10 +35,11 @@ host/lib/tag
 qcustomplot
   -> btviz
   -> compviz
+  -> sensorviz
 ```
 
-`btviz` and `compviz` both consume `qcustomplot`; they do not depend on each
-other.
+`btviz`, `compviz`, and `sensorviz` consume `qcustomplot`; they do not depend on
+each other.
 
 Qt applications should keep tag/device access in `lib` where possible. This
 keeps command-line tools usable without linking Qt and lets shared routines use
@@ -121,6 +123,7 @@ Consumers:
 
 - `btdataviz`
 - `compviz`
+- `sensorviz`
 
 ### `qtmon`
 
@@ -290,6 +293,27 @@ TODO: Describe compviz from a user's point of view.
 - Notes/caveats:
 ```
 
+### `sensorviz`
+
+`sensorviz` builds a scalar sensor visualization application for SQLite logs.
+It loads available streams such as pressure, activity, temperature, and voltage,
+then plots selected raw or derived streams with QCustomPlot.
+
+Notable components:
+
+- `mainwindow.*`: programmatic Qt UI, stream selection, transforms, and plotting.
+- `sqlite_loader.*`: native SQLite input path for sensor log tables.
+- `sensorstream.h`: shared in-memory stream/log data structures.
+
+Build dependencies:
+
+| Dependency | Notes |
+| --- | --- |
+| `SQLite::SQLite3` | Native SQLite C API. |
+| `qcustomplot` | Shared plotting library. |
+| `Qt6::Widgets` | Widget UI. |
+| `Qt6::PrintSupport` | QCustomPlot dependency. |
+
 ### `tag-orientation`
 
 `tag-orientation` builds a Qt orientation tool. It is currently built when
@@ -348,6 +372,7 @@ Current deployed Qt apps:
 
 - `btviz`
 - `compviz`
+- `sensorviz`
 - `qtmonitor`
 - `qtprogram`
 - `qtcalibrate`

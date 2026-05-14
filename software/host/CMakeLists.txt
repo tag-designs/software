@@ -19,6 +19,7 @@ if(BUILD_QT_APPS)
   add_subdirectory(qtcalibrate)
   add_subdirectory(btdataviz)
   add_subdirectory(compviz)
+  add_subdirectory(sensorviz)
   add_subdirectory(tag-orientation)
 endif()
 
@@ -127,7 +128,7 @@ set(host_cli_install_targets
     tag-start
     tag-cal
     tag-monitor-test)
-set(host_qt_install_targets btviz compviz qtmonitor qtprogram qtcalibrate)
+set(host_qt_install_targets btviz compviz sensorviz qtmonitor qtprogram qtcalibrate)
 set(host_install_targets)
 set(host_candidate_install_targets ${host_qt_install_targets})
 foreach(target_name ${host_candidate_install_targets})
