@@ -31,7 +31,7 @@
 
 #include "tag.pb.h"
 
-#include "configtab.h"
+#include "tagconfiguration/configtab.h"
 #include "abstractdownload.h"
 #include "taglogwriter.h"
 

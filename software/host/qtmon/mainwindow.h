@@ -5,7 +5,6 @@
 #include <QTimer>
 #include <QPromise>
 #include "tagclass.h"
-#include "schedule.h"
 #include "ui_mainwindow.h"
 
 class QWidget;

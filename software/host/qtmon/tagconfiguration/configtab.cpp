@@ -21,7 +21,7 @@
 #include "adxl362config.h"
 #include "bittaglog.h"
 #include "ui_configtab.h"
-#include "../qtfiledialog.h"
+#include "../../qtfiledialog.h"
 
 ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {

@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QList>
-#include <configinterface.h>
+#include "configinterface.h"
 
 //#include "tag.pb.h"
 //#include "host.pb.h"

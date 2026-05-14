@@ -857,7 +857,7 @@
   <customwidget>
    <class>ConfigTab</class>
    <extends>QWidget</extends>
-   <header>configtab.h</header>
+   <header>tagconfiguration/configtab.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

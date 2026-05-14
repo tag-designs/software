@@ -2,7 +2,7 @@
 #define BITTAGLOG_H
 #include <QWidget>
 #include <QVBoxLayout>
-#include <configinterface.h>
+#include "configinterface.h"
 #include "tagclass.h"
 
 class PBEnumGroup;

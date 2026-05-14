@@ -1,4 +1,5 @@
 #include <abstractdownload.h>
+#include <QDebug>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QDeadlineTimer>
@@ -38,7 +39,10 @@ void AbstractDownload::exec() {
     }
 
     if (!dumpHeader()) {
-        downloadError("Download header write failed");
+        const QString error = writer && !writer->lastError().empty()
+            ? QString::fromStdString(writer->lastError())
+            : QStringLiteral("Download header write failed");
+        downloadError(error);
         emit downloadFinished();
         return;
     }
@@ -129,9 +133,9 @@ void AbstractDownload::worker(){
 }
 
 void AbstractDownload::downloadError(const QString &s) {
+    qCritical().noquote() << s;
     msgBox.setText(s);
     msgBox.exec();
-    qDebug() << s;
 }
 
 bool AbstractDownload::dumpHeader()

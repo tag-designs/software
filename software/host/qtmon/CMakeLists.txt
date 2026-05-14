@@ -19,7 +19,9 @@ set(QT_USE_QTXML TRUE)
 
 add_definitions(${QT_DEFINITIONS})
 
-set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
+set(CMAKE_AUTOUIC_SEARCH_PATHS
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tagconfiguration)
 
 # Find the QtWidgets library
 
@@ -45,22 +47,22 @@ endif()
 
 set(qtmonitor_SRCS
     abstractdownload.cpp
-    adxl362config.cpp
-    bittaglog.cpp
-    configtab.cpp
-    hibernate.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp
-    pbenumgroup.cpp
-    schedule.cpp
+    tagconfiguration/adxl362config.cpp
+    tagconfiguration/bittaglog.cpp
+    tagconfiguration/configtab.cpp
+    tagconfiguration/hibernate.cpp
+    tagconfiguration/pbenumgroup.cpp
+    tagconfiguration/schedule.cpp
     )
 
-qt6_wrap_ui(UI_HEADERS configtab.ui 
-                       hibernate.ui 
+qt6_wrap_ui(UI_HEADERS tagconfiguration/configtab.ui
+                       tagconfiguration/hibernate.ui
                        logwindow.ui
-                       mainwindow.ui 
-                       schedule.ui)
+                       mainwindow.ui
+                       tagconfiguration/schedule.ui)
 
 # Tell CMake to create the qtmonitor executable
 
@@ -68,7 +70,12 @@ add_executable(
   qtmonitor MACOSX_BUNDLE WIN32 ${qtmonitor_SRCS} ${UI_HEADERS} ${PROTO_HDRS}
 )# resources/resources.qrc)
 
-target_include_directories(qtmonitor PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_include_directories(
+  qtmonitor
+  PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tagconfiguration")
 
 set_target_properties(
   qtmonitor
