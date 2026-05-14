@@ -5,8 +5,15 @@
 #include <QDeadlineTimer>
 #include <utility>
 
-AbstractDownload::AbstractDownload(Tag &t, std::unique_ptr<TagLogWriter> log_writer, QObject *parent)
-    : QObject(parent), tag(t), writer(std::move(log_writer))
+AbstractDownload::AbstractDownload(
+    Tag &t,
+    TagLogStorageFormat storage_format,
+    std::string output_path,
+    QObject *parent)
+    : QObject(parent),
+      tag(t),
+      storage_format(storage_format),
+      output_path(std::move(output_path))
 {
 }
 
@@ -27,7 +34,13 @@ void AbstractDownload::exec() {
         return;
     }
 
-    tag.GetConfig(config);
+    if (!tag.GetConfig(config)) {
+        downloadError(QStringLiteral("Could not read tag config"));
+        emit downloadFinished();
+        return;
+    }
+
+    writer = createTagLogWriter(storage_format, output_path, config);
 
     if (!writer || !writer->isOpen()) {
         const QString error = writer
@@ -148,5 +161,5 @@ int AbstractDownload::dumpLog(Ack &ack)
     if (!writer) {
         return -2;
     }
-    return writer->writeLog(ack, config);
+    return writer->writeLog(ack);
 }

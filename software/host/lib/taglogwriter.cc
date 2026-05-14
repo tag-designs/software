@@ -9,6 +9,8 @@
 
 TagLogStorageFormat defaultTagLogStorageFormat(TagType tag_type)
 {
+    // Prefer structured output when a SQLite schema exists, but keep text as
+    // the universal fallback for older and simpler tag types.
     if (isTagLogStorageFormatSupported(tag_type, TagLogStorageFormat::Sqlite)) {
         return TagLogStorageFormat::Sqlite;
     }
@@ -19,7 +21,9 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
 {
     switch (format) {
     case TagLogStorageFormat::Sqlite:
-        return tag_type == COMPASSTAG;
+        // SQLite support is explicit because each tag type needs a schema and
+        // dump routine. Text remains the catch-all implementation below.
+        return tag_type == COMPASSTAG || tag_type == PRESTAG;
     case TagLogStorageFormat::Text:
         return true;
     default:
@@ -65,13 +69,14 @@ std::string tagLogFileFilter(TagLogStorageFormat format)
 
 std::unique_ptr<TagLogWriter> createTagLogWriter(
     TagLogStorageFormat format,
-    const std::string &path)
+    const std::string &path,
+    const Config &config)
 {
     switch (format) {
     case TagLogStorageFormat::Sqlite:
-        return std::make_unique<SqliteTagLogWriter>(path);
+        return std::make_unique<SqliteTagLogWriter>(path, config);
     case TagLogStorageFormat::Text:
     default:
-        return std::make_unique<TextTagLogWriter>(path);
+        return std::make_unique<TextTagLogWriter>(path, config);
     }
 }

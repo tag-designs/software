@@ -8,6 +8,7 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <memory>
+#include <string>
 
 #include "tag.pb.h"
 #include "tagclass.h"
@@ -16,10 +17,10 @@
 /**
  * Drives a tag data download without knowing the output file format.
  *
- * The download object owns a TagLogWriter, which handles text/SQLite-specific
- * persistence. AbstractDownload handles the shared mechanics: read status,
- * fetch log chunks by index, keep the UI responsive by processing bounded
- * batches on a timer, and report progress/errors to the caller.
+ * AbstractDownload reads the tag config, creates the selected TagLogWriter,
+ * then handles the shared mechanics: read status, fetch log chunks by index,
+ * keep the UI responsive by processing bounded batches on a timer, and report
+ * progress/errors to the caller.
  */
 class AbstractDownload : public QObject
 {
@@ -27,7 +28,11 @@ class AbstractDownload : public QObject
 
     public:
 
-        AbstractDownload(Tag &t, std::unique_ptr<TagLogWriter> log_writer, QObject *parent = 0);
+        AbstractDownload(
+            Tag &t,
+            TagLogStorageFormat storage_format,
+            std::string output_path,
+            QObject *parent = 0);
         virtual ~AbstractDownload() = default;
         // Starts the timer-driven download. The call returns after the first
         // setup step; work continues through worker() until finished/canceled.
@@ -72,6 +77,8 @@ class AbstractDownload : public QObject
         QElapsedTimer timer;
         QTimer trigger_timer;
         QProgressDialog *pd;
+        TagLogStorageFormat storage_format;
+        std::string output_path;
         std::unique_ptr<TagLogWriter> writer;
        
 };

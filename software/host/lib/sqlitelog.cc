@@ -84,8 +84,15 @@ private:
 class SqliteTagLogWriter::Impl
 {
 public:
-    Impl(const std::string &path, bool replace_existing)
+    Impl(const std::string &path, const Config &config, bool replace_existing)
+        : config_(config)
     {
+        if (!isSupportedTag()) {
+            setLastError("SQLite log output does not support tag type "
+                         + TagType_Name(config_.tag_type()));
+            return;
+        }
+
         if (replace_existing) {
             std::error_code ec;
             std::filesystem::remove(path, ec);
@@ -119,9 +126,25 @@ public:
             return false;
         }
 
+        if (!isSupportedTag()) {
+            setLastError("SQLite log output does not support tag type "
+                         + TagType_Name(config_.tag_type()));
+            return false;
+        }
+
         TagInfo info;
         Config config;
         CalibrationConstants constants;
+
+        if (!tag.GetConfig(config)) {
+            setLastError("Could not read tag config");
+            return false;
+        }
+
+        if (config.tag_type() != config_.tag_type()) {
+            setLastError("Tag config changed while preparing SQLite log output");
+            return false;
+        }
 
         google::protobuf::util::JsonPrintOptions options;
         options.add_whitespace = true;
@@ -137,11 +160,6 @@ public:
             return false;
         }
         log_debug("Created SQLite info table");
-
-        if (!tag.GetConfig(config)) {
-            setLastError("Could not read tag config");
-            return false;
-        }
 
         if (!insertInfo("tagtype", TagType_Name(config.tag_type()))) {
             return false;
@@ -254,31 +272,42 @@ public:
         return true;
     }
 
-    int dumpLog(const Ack &ack, const Config &config)
+    int dumpLog(const Ack &ack)
     {
         if (!db_) {
             setLastError("Database is not open");
             return -2;
         }
 
-        // Keep this explicit until the schema grows support for the other tag
-        // log formats handled by the text logger in txtlogs.cc.
-        if (config.tag_type() != COMPASSTAG) {
-            setLastError("SQLite log output only supports CompassTag logs");
+        switch (config_.tag_type()) {
+        case COMPASSTAG:
+            if (!ack.has_compasstag_data_log()) {
+                // The tag signals end-of-log by returning an Ack without
+                // another data-log payload. That is a normal termination
+                // condition, not a SQLite/write error.
+                return 0;
+            }
+            return dumpCompassTagLog(ack.compasstag_data_log());
+
+        case PRESTAG:
+            if (!ack.has_prestag_data_log()) {
+                return 0;
+            }
+            return dumpPresTagLog(ack.prestag_data_log());
+
+        default:
+            setLastError("SQLite log output does not support tag type "
+                         + TagType_Name(config_.tag_type()));
             return -1;
         }
-
-        if (!ack.has_compasstag_data_log()) {
-            // The tag signals end-of-log by returning an Ack without another
-            // data-log payload. That is a normal termination condition, not a
-            // SQLite/write error.
-            return 0;
-        }
-
-        return dumpCompassTagLog(ack.compasstag_data_log());
     }
 
 private:
+    bool isSupportedTag() const
+    {
+        return isTagLogStorageFormatSupported(config_.tag_type(), TagLogStorageFormat::Sqlite);
+    }
+
     bool exec(const char *sql)
     {
         char *error = nullptr;
@@ -316,8 +345,29 @@ private:
             return true;
         }
 
-        // These names and columns are the existing CompassTag database contract
-        // used by compviz/sqliteload.cpp.
+        switch (config_.tag_type()) {
+        case COMPASSTAG:
+            if (!createCompassTagLogTables()) {
+                return false;
+            }
+            break;
+        case PRESTAG:
+            if (!createPresTagLogTables()) {
+                return false;
+            }
+            break;
+        default:
+            setLastError("SQLite log output does not support tag type "
+                         + TagType_Name(config_.tag_type()));
+            return false;
+        }
+
+        log_tables_created_ = true;
+        return true;
+    }
+
+    bool createCommonSampleTables()
+    {
         if (!exec("CREATE TABLE CoreTemperature ("
                   "Epoch INTEGER,"
                   "Temperature REAL"
@@ -325,7 +375,17 @@ private:
             || !exec("CREATE TABLE Voltage ("
                      "Epoch INTEGER,"
                      "Voltage REAL"
-                     ");")
+                     ");")) {
+            return false;
+        }
+        return true;
+    }
+
+    bool createCompassTagLogTables()
+    {
+        // These names and columns are the existing CompassTag database contract
+        // used by compviz/sqliteload.cpp.
+        if (!createCommonSampleTables()
             || !exec("CREATE TABLE Activity ("
                      "Epoch INTEGER,"
                      "Activity REAL"
@@ -342,8 +402,25 @@ private:
             return false;
         }
 
-        log_tables_created_ = true;
         log_debug("Created SQLite CompassTag log tables");
+        return true;
+    }
+
+    bool createPresTagLogTables()
+    {
+        if (!createCommonSampleTables()
+            || !exec("CREATE TABLE Pressure ("
+                     "Epoch INTEGER,"
+                     "Pressure REAL"
+                     ");")
+            || !exec("CREATE TABLE Temperature ("
+                     "Epoch INTEGER,"
+                     "Temperature REAL"
+                     ");")) {
+            return false;
+        }
+
+        log_debug("Created SQLite PresTag log tables");
         return true;
     }
 
@@ -407,6 +484,63 @@ private:
         return 1;
     }
 
+    int dumpPresTagLog(const PresTagLog &log)
+    {
+        if (!createLogTables()) {
+            return -2;
+        }
+
+        if (config_.period() == 0) {
+            setLastError("PresTag SQLite output requires a nonzero sample period");
+            return -2;
+        }
+
+        sqlite3_int64 timestamp = log.epoch();
+
+        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+        Statement core_temperature_insert(
+            db_,
+            "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
+        Statement pressure_insert(db_, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
+        Statement temperature_insert(
+            db_,
+            "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
+
+        if (!voltage_insert.valid()
+            || !core_temperature_insert.valid()
+            || !pressure_insert.valid()
+            || !temperature_insert.valid()) {
+            setLastSqliteError("Could not prepare PresTag log insert");
+            return -2;
+        }
+
+        if (!voltage_insert.bindInt64(1, timestamp)
+            || !voltage_insert.bindDouble(2, log.voltage())
+            || !voltage_insert.stepDone()
+            || !core_temperature_insert.bindInt64(1, timestamp)
+            || !core_temperature_insert.bindDouble(2, log.temperature())
+            || !core_temperature_insert.stepDone()) {
+            setLastSqliteError("PresTag log header insert failed");
+            return -2;
+        }
+
+        for (auto const &entry : log.data()) {
+            if (!pressure_insert.bindInt64(1, timestamp)
+                || !pressure_insert.bindDouble(2, entry.pressure())
+                || !pressure_insert.stepDone()
+                || !temperature_insert.bindInt64(1, timestamp)
+                || !temperature_insert.bindDouble(2, entry.temperature())
+                || !temperature_insert.stepDone()) {
+                setLastSqliteError("PresTag log data insert failed");
+                return -2;
+            }
+
+            timestamp += config_.period();
+        }
+
+        return 1;
+    }
+
     void setLastError(const std::string &error)
     {
         last_error_ = error;
@@ -435,12 +569,16 @@ private:
     }
 
     sqlite3 *db_ = nullptr;
+    Config config_;
     bool log_tables_created_ = false;
     std::string last_error_;
 };
 
-SqliteTagLogWriter::SqliteTagLogWriter(const std::string &path, bool replace_existing)
-    : impl_(std::make_unique<Impl>(path, replace_existing))
+SqliteTagLogWriter::SqliteTagLogWriter(
+    const std::string &path,
+    const Config &config,
+    bool replace_existing)
+    : impl_(std::make_unique<Impl>(path, config, replace_existing))
 {
 }
 
@@ -461,9 +599,9 @@ bool SqliteTagLogWriter::dumpHeader(Tag &tag)
     return writeHeader(tag);
 }
 
-int SqliteTagLogWriter::dumpLog(const Ack &ack, const Config &config)
+int SqliteTagLogWriter::dumpLog(const Ack &ack)
 {
-    return writeLog(ack, config);
+    return writeLog(ack);
 }
 
 bool SqliteTagLogWriter::writeHeader(Tag &tag)
@@ -471,7 +609,7 @@ bool SqliteTagLogWriter::writeHeader(Tag &tag)
     return impl_->dumpHeader(tag);
 }
 
-int SqliteTagLogWriter::writeLog(const Ack &ack, const Config &config)
+int SqliteTagLogWriter::writeLog(const Ack &ack)
 {
-    return impl_->dumpLog(ack, config);
+    return impl_->dumpLog(ack);
 }

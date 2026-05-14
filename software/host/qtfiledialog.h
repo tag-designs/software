@@ -38,7 +38,8 @@ inline QString getOpenFileName(QWidget *parent, const QString &caption,
 
 inline QString getSaveFileName(QWidget *parent, const QString &caption,
                                const QString &directory,
-                               const QString &filter = QString())
+                               const QString &filter = QString(),
+                               QString *selectedFilter = nullptr)
 {
   QFileDialog dialog(parent);
   setMacDialogOptions(dialog);
@@ -56,6 +57,8 @@ inline QString getSaveFileName(QWidget *parent, const QString &caption,
   dialog.setFileMode(QFileDialog::AnyFile);
   if (dialog.exec() != QDialog::Accepted)
     return QString();
+  if (selectedFilter)
+    *selectedFilter = dialog.selectedNameFilter();
   return dialog.selectedFiles().value(0);
 }
 

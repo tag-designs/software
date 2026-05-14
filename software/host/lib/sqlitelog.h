@@ -22,22 +22,25 @@ class Tag;
  * - the implementation also emits through log_error()/log_debug(), which lets
  *   Qt host applications show messages through their existing log window hook.
  *
- * The current data-log writer supports CompassTag records because that is the
- * schema consumed by compviz today. writeLog() preserves the shared download
- * convention: positive values mean records were consumed, 0 means no matching
- * log payload in the Ack, and negative values mean an error or unsupported tag.
+ * The current data-log writer supports CompassTag and PresTag records. writeLog()
+ * preserves the shared download convention: positive values mean records were
+ * consumed, 0 means no matching log payload in the Ack, and negative values mean
+ * an error or unsupported tag.
  */
 class SqliteTagLogWriter : public TagLogWriter
 {
 public:
     /**
-     * Opens path as a SQLite database.
+     * Opens path as a SQLite database for the tag type described by config.
      *
      * When replace_existing is true, any existing file at path is removed
      * before opening. Removal errors are ignored so sqlite3_open() remains the
      * final authority on whether the path can be created or reused.
      */
-    explicit SqliteTagLogWriter(const std::string &path, bool replace_existing = true);
+    SqliteTagLogWriter(
+        const std::string &path,
+        const Config &config,
+        bool replace_existing = true);
     ~SqliteTagLogWriter();
 
     SqliteTagLogWriter(const SqliteTagLogWriter &) = delete;
@@ -58,11 +61,11 @@ public:
      * Returns the number of download records consumed using the shared
      * TagLogWriter convention.
      */
-    int writeLog(const Ack &ack, const Config &config) override;
+    int writeLog(const Ack &ack) override;
 
     // Compatibility names for older callers. Prefer writeHeader/writeLog.
     bool dumpHeader(Tag &tag);
-    int dumpLog(const Ack &ack, const Config &config);
+    int dumpLog(const Ack &ack);
 
 private:
     // Hide sqlite3.h and statement-management details from public consumers.

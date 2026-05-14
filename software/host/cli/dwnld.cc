@@ -170,7 +170,7 @@ int main(int argc, char **argv)
     output_path = defaultOutputPath(storage_format);
   }
 
-  auto writer = createTagLogWriter(storage_format, output_path);
+  auto writer = createTagLogWriter(storage_format, output_path, config);
   if (!writer || !writer->isOpen()) {
     if (writer) {
       printWriterError("Could not open output", *writer);
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
     }
 
     const clock_t start = clock();
-    len = writer->writeLog(ack, config);
+    len = writer->writeLog(ack);
     elapsed += (clock() - start);
 
     if (len < 0) {

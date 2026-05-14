@@ -439,17 +439,17 @@ static int dumpTagLog(std::ostream &out, const Config &config,
 }
   */
 
-int TextTagLogWriter::dumpLog(const Ack &log, const Config &config)
+int TextTagLogWriter::dumpLog(const Ack &log)
 {
   std::ostream &out = *out_;
 
-  switch (config.tag_type())
+  switch (config_.tag_type())
   {
   case BITTAG:
     if (log.has_bittag_data_log())
     {
       return dumpTagLog(out, log.bittag_data_log(),
-                        config.bittag_log());
+                        config_.bittag_log());
     }
     break;
   case BITTAGNG:
@@ -461,7 +461,7 @@ int TextTagLogWriter::dumpLog(const Ack &log, const Config &config)
   case PRESTAG:
     if (log.has_prestag_data_log())
     {
-      return dumpTagLog(out, log.prestag_data_log(), config.period());
+      return dumpTagLog(out, log.prestag_data_log(), config_.period());
     }
     break;
   case BITPRESTAG:
@@ -482,12 +482,13 @@ int TextTagLogWriter::dumpLog(const Ack &log, const Config &config)
   return 0;
 }
 
-TextTagLogWriter::TextTagLogWriter(std::ostream &out) : out_(&out)
+TextTagLogWriter::TextTagLogWriter(std::ostream &out, const Config &config)
+    : out_(&out), config_(config)
 {
 }
 
-TextTagLogWriter::TextTagLogWriter(const std::string &path)
-    : owned_stream_(std::make_unique<std::ofstream>(path))
+TextTagLogWriter::TextTagLogWriter(const std::string &path, const Config &config)
+    : owned_stream_(std::make_unique<std::ofstream>(path)), config_(config)
 {
   if (!owned_stream_->is_open())
   {
@@ -525,7 +526,7 @@ bool TextTagLogWriter::writeHeader(Tag &tag)
   return dumpHeader(tag);
 }
 
-int TextTagLogWriter::writeLog(const Ack &ack, const Config &config)
+int TextTagLogWriter::writeLog(const Ack &ack)
 {
   if (!isOpen())
   {
@@ -535,5 +536,5 @@ int TextTagLogWriter::writeLog(const Ack &ack, const Config &config)
     }
     return -2;
   }
-  return dumpLog(ack, config);
+  return dumpLog(ack);
 }

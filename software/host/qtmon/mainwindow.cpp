@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QProgressDialog>
@@ -400,17 +401,50 @@ void MainWindow::on_eraseButton_clicked()
 void MainWindow::on_tagLogSaveButton_clicked()
 {
   const TagLogStorageFormat storage_format = defaultTagLogStorageFormat(tag_type);
-  QString filter = QString::fromStdString(tagLogFileFilter(storage_format));
+  const std::vector<TagLogStorageFormat> formats = supportedTagLogStorageFormats(tag_type);
+  QStringList filter_list;
+  for (TagLogStorageFormat format : formats) {
+    filter_list << QString::fromStdString(tagLogFileFilter(format));
+  }
+  QString selected_filter;
+  QString filter = filter_list.join(";;");
   QString initial_path = QDir::homePath()
       + "/untitled"
       + QString::fromStdString(defaultTagLogExtension(storage_format));
   
   QString fileName = HostFileDialog::getSaveFileName(
-      this, tr("Save File"), initial_path, filter);
+      this, tr("Save File"), initial_path, filter, &selected_filter);
 
   if (fileName.isEmpty()) {
       qDebug() << "null filename";
       return;
+  }
+
+  TagLogStorageFormat selected_storage_format = storage_format;
+  for (TagLogStorageFormat format : formats) {
+    if (selected_filter == QString::fromStdString(tagLogFileFilter(format))) {
+      selected_storage_format = format;
+      break;
+    }
+  }
+
+  const QString selected_extension =
+      QString::fromStdString(defaultTagLogExtension(selected_storage_format));
+  const QString selected_suffix = selected_extension.mid(1);
+  const QFileInfo file_info(fileName);
+  bool suffix_matches_supported_format = false;
+  for (TagLogStorageFormat format : formats) {
+    const QString suffix = QString::fromStdString(defaultTagLogExtension(format)).mid(1);
+    if (file_info.suffix().compare(suffix, Qt::CaseInsensitive) == 0) {
+      suffix_matches_supported_format = true;
+      break;
+    }
+  }
+  if (file_info.suffix().isEmpty()) {
+    fileName += selected_extension;
+  } else if (suffix_matches_supported_format
+             && file_info.suffix().compare(selected_suffix, Qt::CaseInsensitive) != 0) {
+    fileName = file_info.path() + "/" + file_info.completeBaseName() + selected_extension;
   }
   
 
@@ -423,8 +457,7 @@ void MainWindow::on_tagLogSaveButton_clicked()
   // This is deliberately an explicit format value instead of a hidden
   // tag-type switch inside AbstractDownload. A future UI can replace the
   // default with a user-selected format for tags that support more than one.
-  auto writer = createTagLogWriter(storage_format, fileName.toStdString());
-  AbstractDownload *dl = new AbstractDownload(tag, std::move(writer));
+  AbstractDownload *dl = new AbstractDownload(tag, selected_storage_format, fileName.toStdString());
 
   connect(dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
   connect(dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
