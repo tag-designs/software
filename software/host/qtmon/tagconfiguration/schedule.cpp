@@ -132,6 +132,9 @@ bool Schedule::SetConfig(const Config &config)
 
 bool Schedule::GetConfig(Config &config)
 {
+  if (!active)
+    return true;
+
   QDateTime now = QDateTime::currentDateTime();
   QDateTime start = ui.StartDateTime->dateTime();
   QDateTime end = ui.EndDateTime->dateTime();

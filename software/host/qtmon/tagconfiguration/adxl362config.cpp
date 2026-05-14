@@ -154,6 +154,13 @@ bool Adxl362Config::GetConfig(Config &config)
 
 bool Adxl362Config::SetConfig(const Config &config)
 {
+  if (!config.has_adxl362())
+  {
+    active = false;
+    setVisible(false);
+    return true;
+  }
+
   Adxl362 adxl(config.adxl362());
 
   // initialize all widgets default visibility

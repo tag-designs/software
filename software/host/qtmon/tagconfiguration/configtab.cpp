@@ -118,17 +118,17 @@ bool ConfigTab::GetConfig(Config &config)
   
   // Get configuration from children
 
-  if (!schedule.GetConfig(config)){
+  if (schedule.isActive() && !schedule.GetConfig(config)){
     qDebug() << "failed to get schedule config";
     return false;
   }
 
-  if (!btlog.GetConfig(config)){
+  if (btlog.isActive() && !btlog.GetConfig(config)){
     qDebug() << "failed to get btlog config";
     return false;
   }
 
-  if (!adxl.GetConfig(config)){
+  if (adxl.isActive() && !adxl.GetConfig(config)){
     qDebug() << "failed to get adxl config";
     return false;
   }

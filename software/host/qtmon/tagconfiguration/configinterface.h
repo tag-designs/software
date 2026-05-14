@@ -54,7 +54,7 @@ public:
     bool isActive() {return active;}
 
 protected:
-    bool active;
+    bool active = false;
 };
 
 #endif
