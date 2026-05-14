@@ -133,6 +133,7 @@ UltralightTags-2.0.0-win64/
       *.exe
       *.dll
       qt.conf
+    docs/
     plugins/
     qml/
 ```
