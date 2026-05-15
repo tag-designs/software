@@ -25,7 +25,6 @@ if(BUILD_QT_APPS)
   add_subdirectory(applications/btdataviz)
   add_subdirectory(applications/compviz)
   add_subdirectory(applications/sensorviz)
-  add_subdirectory(applications/tag-orientation)
 endif()
 
 if(WIN32)
@@ -133,7 +132,7 @@ set(host_cli_install_targets
     tag-start
     tag-cal
     tag-monitor-test)
-set(host_qt_install_targets btviz compviz sensorviz qtmonitor qtprogram qtcalibrate)
+set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)
 set(host_install_targets)
 set(host_candidate_install_targets ${host_qt_install_targets})
 foreach(target_name ${host_candidate_install_targets})
@@ -150,71 +149,9 @@ else()
   set(host_package_support_destination "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}")
 endif()
 
-set(build_host_docs OFF)
+set(install_host_docs OFF)
 if(BUILD_HOST_DOCS AND host_install_targets)
-  set(build_host_docs ON)
-endif()
-
-set(
-  HOST_MKDOCS_COMMAND
-  ""
-  CACHE STRING
-        "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs")
-
-if(build_host_docs)
-  if(NOT HOST_MKDOCS_COMMAND)
-    find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
-    if(MKDOCS_EXECUTABLE)
-      set(
-        HOST_MKDOCS_COMMAND
-        "${MKDOCS_EXECUTABLE}"
-        CACHE STRING
-              "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
-              FORCE)
-    else()
-      find_package(Python3 COMPONENTS Interpreter QUIET)
-      if(Python3_Interpreter_FOUND)
-        set(
-          HOST_MKDOCS_COMMAND
-          "${Python3_EXECUTABLE};-m;mkdocs"
-          CACHE STRING
-                "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
-                FORCE)
-      endif()
-    endif()
-  endif()
-
-  if(NOT HOST_MKDOCS_COMMAND)
-    message(FATAL_ERROR "BUILD_HOST_DOCS=ON requires MkDocs. Install the tools with `python3 -m pip install -r host/docs/requirements.txt`, set HOST_MKDOCS_COMMAND to a CMake command list such as `python;-m;mkdocs`, or configure with -DBUILD_HOST_DOCS=OFF.")
-  endif()
-  string(REPLACE ";" " " HOST_MKDOCS_COMMAND_DISPLAY "${HOST_MKDOCS_COMMAND}")
-  message(STATUS "Using MkDocs command: ${HOST_MKDOCS_COMMAND_DISPLAY}")
-
-  set(HOST_DOCS_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/docs")
-  set(HOST_DOCS_CONFIG "${HOST_DOCS_SOURCE_DIR}/mkdocs.yml")
-  set(HOST_DOCS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs/site")
-  set(HOST_DOCS_INSTALL_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/BuildHostDocs.cmake")
-  configure_file(
-    "${PROJECT_SOURCE_DIR}/cmake/BuildHostDocs.cmake.in"
-    "${HOST_DOCS_INSTALL_SCRIPT}"
-    @ONLY)
-  file(
-    GLOB_RECURSE host_docs_sources
-    CONFIGURE_DEPENDS
-    "${HOST_DOCS_CONFIG}"
-    "${HOST_DOCS_SOURCE_DIR}/src/*")
-
-  add_custom_target(
-    host_docs ALL
-    COMMAND
-      ${HOST_MKDOCS_COMMAND} build
-      --config-file "${HOST_DOCS_CONFIG}"
-      --site-dir "${HOST_DOCS_BUILD_DIR}"
-      --clean
-    DEPENDS ${host_docs_sources}
-    WORKING_DIRECTORY "${HOST_DOCS_SOURCE_DIR}"
-    COMMENT "Building host application user guide"
-    VERBATIM)
+  set(install_host_docs ON)
 endif()
 
 if(host_install_targets)
@@ -313,7 +250,7 @@ if(host_install_targets)
     endif()
   endif()
 
-  if(build_host_docs)
+  if(install_host_docs)
     install(SCRIPT "${HOST_DOCS_INSTALL_SCRIPT}")
     install(
       DIRECTORY "${HOST_DOCS_BUILD_DIR}/"

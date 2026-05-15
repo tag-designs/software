@@ -9,9 +9,8 @@ application-specific SQLite/UI glue.
 | `qtprogram/` | `qtprogram` | Program tags. |
 | `qtcalibrate/` | `qtcalibrate` | Calibration tool. |
 | `btdataviz/` | `btviz` | Legacy BitTag visualization. |
-| `compviz/` | `compviz` | CompassTag visualization. |
-| `sensorviz/` | `sensorviz` | General sensor SQLite log visualization. |
-| `tag-orientation/` | `tag-orientation` | Orientation experiment/tool; built with Qt apps but not packaged. |
+| `compviz/` | `compviz` | Legacy/specialized CompassTag visualization; built for reference but not packaged. |
+| `sensorviz/` | `sensorviz` | General sensor SQLite log visualization, including CompassTag logs. |
 
 Shared Qt helpers are exposed through the `host_common` CMake target from
 `../common`. Reusable plotting and sensor widgets should come from

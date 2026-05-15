@@ -15,5 +15,4 @@ Use this page for retrieving logged data from a tag.
 Link to the relevant visualizer:
 
 - [Bit Tag Visualizer](../apps/btdataviz.md)
-- [Compass Visualizer](../apps/compviz.md)
-
+- [SensorViz](../apps/sensorviz.md)

@@ -1,8 +1,10 @@
 # SensorViz
 
-Use SensorViz to inspect SQLite sensor logs from pressure and activity tags.
+Use SensorViz to inspect SQLite sensor logs from pressure, activity, and
+CompassTag logs.
 The application is intended for comparing raw sensor streams and derived views,
-such as altitude computed from pressure or filtered activity.
+such as altitude computed from pressure, filtered activity, and compass-derived
+heading/orientation streams.
 
 ## Open a Data File
 
@@ -24,7 +26,7 @@ Add notes for transform-specific controls here:
 
 - Altitude from pressure, including sea-level pressure.
 - Activity low-pass filtering, including the time constant.
-- Any future derived streams that are added to SensorViz.
+- CompassTag derived streams, declination, and battery direction.
 
 ## Adjust Plot Ranges
 

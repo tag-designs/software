@@ -11,7 +11,7 @@ The layout is organized by role:
 | `applications/` | Qt applications such as `qtmonitor`, `qtprogram`, `qtcalibrate`, `btviz`, `compviz`, and `sensorviz`. |
 | `commandline/` | CLI tools built on the low-level tag library. |
 | `common/` | Small Qt helpers shared by applications, but not part of the low-level tag library. |
-| `docs/` | MkDocs user-guide sources installed with the host tools when enabled. |
+| `docs/` | MkDocs user-guide sources. Build them with the CMake `docs` target; install them with packages when `BUILD_HOST_DOCS=ON`. |
 
 ## Dependency Direction
 
@@ -36,6 +36,9 @@ host code do not need Qt. Qt-only helpers belong in `common/` or
   built.
 - Qt support libraries and applications are added when `BUILD_QT_APPS=ON`.
 - A small `host_common` interface target exposes `common/` headers to Qt apps.
+- The `docs` target builds the MkDocs user guide for local preview. The
+  `BUILD_HOST_DOCS` option adds that target to the default build and package
+  install.
 
 The CMake target names are intentionally stable across the directory move:
 `tagcore`, `qcustomplot`, `sensoranalysis`, `sensorui`, `qtmonitor`,
@@ -47,6 +50,8 @@ Install/package target selection still lives in `host/CMakeLists.txt`.
 `host_qt_install_targets` controls which Qt apps are included in the package.
 Applications that use QML set `QT_DEPLOY_QML_DIRS` so deployment tooling can
 collect the required QML imports and resources.
+`compviz` is still built as a reference/specialized tool, but it is no longer
+installed in packages now that `sensorviz` handles CompassTag logs.
 
 ## Maintenance Guidelines
 

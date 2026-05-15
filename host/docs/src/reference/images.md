@@ -10,7 +10,7 @@ Use short, stable names that identify the app and screen:
 - `qtcalibrate-collection.png`
 - `qtmonitor-live-view.png`
 - `btdataviz-plot-view.png`
-- `compviz-plot-view.png`
+- `sensorviz-compass-view.png`
 
 ## Image Guidelines
 
@@ -24,4 +24,3 @@ Use short, stable names that identify the app and screen:
 ```md
 ![Qt Program main window](../images/qtprogram-main-window.png)
 ```
-

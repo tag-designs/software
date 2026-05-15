@@ -49,7 +49,6 @@ nav:
       - Tag Monitor: apps/qtmonitor.md
       - Bit Tag Visualizer: apps/btdataviz.md
       - SensorViz: apps/sensorviz.md
-      - Compass Visualizer: apps/compviz.md
   - Workflows:
       - First Setup: workflows/first-setup.md
       - Firmware Programming: workflows/firmware-programming.md

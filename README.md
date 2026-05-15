@@ -38,7 +38,7 @@ Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git,
 SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
 Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
-required when `BUILD_HOST_DOCS=ON`.
+required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
 PrintSupport, Svg, SvgWidgets, Qml, Quick, and QuickWidgets. A minimal CLI-only
@@ -55,7 +55,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -173,7 +173,7 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
 Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
@@ -260,7 +260,7 @@ cmake -S . -B build-package \
 | Protobuf | Install `protoc` and development libraries. |
 | SQLite 3 | Install development headers and libraries, for example `libsqlite3-dev`. |
 | Git | Used by version-generation helpers. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 
 Example Debian/Ubuntu package set for host builds:
 
@@ -292,7 +292,7 @@ installed in a standard location.
 | --- | --- | --- |
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version for host software. |
-| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build and install the host application user guide from `host/docs`. |
+| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |

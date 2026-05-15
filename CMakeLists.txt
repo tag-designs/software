@@ -24,13 +24,94 @@ endif()
 
 option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
-option(BUILD_HOST_DOCS "Build and install host application user guides" ${BUILD_QT_APPS})
+option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ${BUILD_QT_APPS})
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
 option(MACOS_DEPLOY_QT_PLUGINS_MANUALLY "Deploy a curated macOS Qt plugin set instead of letting macdeployqt scan all plugins" ON)
 option(MACOS_FIXUP_BUNDLE_DEPENDENCIES "Copy and rewrite non-system dylib dependencies into macOS app bundles" ON)
+
+set(
+  HOST_MKDOCS_COMMAND
+  ""
+  CACHE STRING
+        "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs")
+
+set(HOST_DOCS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/host/docs")
+set(HOST_DOCS_CONFIG "${HOST_DOCS_SOURCE_DIR}/mkdocs.yml")
+set(HOST_DOCS_BUILD_DIR "${CMAKE_BINARY_DIR}/host/docs/site")
+set(HOST_DOCS_INSTALL_SCRIPT "${CMAKE_BINARY_DIR}/host/BuildHostDocs.cmake")
+
+if(NOT HOST_MKDOCS_COMMAND)
+  find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
+  if(MKDOCS_EXECUTABLE)
+    set(
+      HOST_MKDOCS_COMMAND
+      "${MKDOCS_EXECUTABLE}"
+      CACHE STRING
+            "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
+            FORCE)
+  else()
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+      set(
+        HOST_MKDOCS_COMMAND
+        "${Python3_EXECUTABLE};-m;mkdocs"
+        CACHE STRING
+              "Command used to run MkDocs, as a CMake list; for example python;-m;mkdocs"
+              FORCE)
+    endif()
+  endif()
+endif()
+
+if(NOT HOST_MKDOCS_COMMAND AND BUILD_HOST_DOCS)
+  message(FATAL_ERROR "BUILD_HOST_DOCS=ON requires MkDocs. Install the tools with `python3 -m pip install -r host/docs/requirements.txt`, set HOST_MKDOCS_COMMAND to a CMake command list such as `python;-m;mkdocs`, or configure with -DBUILD_HOST_DOCS=OFF.")
+endif()
+
+file(
+  GLOB_RECURSE host_docs_sources
+  CONFIGURE_DEPENDS
+  "${HOST_DOCS_CONFIG}"
+  "${HOST_DOCS_SOURCE_DIR}/src/*")
+
+set(host_docs_all)
+if(BUILD_HOST_DOCS)
+  set(host_docs_all ALL)
+endif()
+
+if(HOST_MKDOCS_COMMAND)
+  string(REPLACE ";" " " HOST_MKDOCS_COMMAND_DISPLAY "${HOST_MKDOCS_COMMAND}")
+  message(STATUS "Using MkDocs command: ${HOST_MKDOCS_COMMAND_DISPLAY}")
+
+  configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/BuildHostDocs.cmake.in"
+    "${HOST_DOCS_INSTALL_SCRIPT}"
+    @ONLY)
+
+  add_custom_target(
+    docs ${host_docs_all}
+    COMMAND
+      ${HOST_MKDOCS_COMMAND} build
+      --config-file "${HOST_DOCS_CONFIG}"
+      --site-dir "${HOST_DOCS_BUILD_DIR}"
+      --clean
+    DEPENDS ${host_docs_sources}
+    WORKING_DIRECTORY "${HOST_DOCS_SOURCE_DIR}"
+    COMMENT "Building host application user guide"
+    VERBATIM)
+else()
+  add_custom_target(
+    docs
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "MkDocs is required to build host docs. Install with: python3 -m pip install -r host/docs/requirements.txt"
+    COMMAND ${CMAKE_COMMAND} -E false
+    COMMENT "MkDocs is not available for host documentation"
+    VERBATIM)
+endif()
+
+add_custom_target(host_docs DEPENDS docs)
 
 set(
   MACOS_CODE_SIGN_IDENTITY
