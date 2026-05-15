@@ -5,6 +5,8 @@
 
 #include <QQuickItem>
 
+// Thin C++ facade for orientation_frame/MyCompass.qml. Keeping this adapter
+// small avoids leaking QML method names into plotting and menu code.
 class CompassDisplay
 {
 public:

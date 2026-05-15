@@ -14,15 +14,14 @@
 
 QTextEdit *s_textEdit = nullptr;
 
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
   ui->setupUi(this);
   makeVisible(false);
 
-
-
+  // Temperature/voltage and activity/acceleration occupy the same visual lanes.
+  // ExclusiveOptional lets the user choose either stream, or hide both.
   vt_group = new QActionGroup(this);
   vt_group->addAction(ui->actionTemperature);
   vt_group->addAction(ui->actionVoltage);
@@ -35,26 +34,24 @@ MainWindow::MainWindow(QWidget *parent)
 
   connect(ui->plot, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showPlotContextMenu(QPoint)));
   connect(ui->quickWidget, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(showCompassContextMenu(QPoint)));  
+
+  // main.cpp's Qt message handler appends to this widget once the window exists.
   s_textEdit = ui->te_fileinfo;
-  //qInfo() << "Loading QML";
 
   createGraphs();
   
+  // Keep all direct QML interaction behind CompassDisplay so the rest of the
+  // app only deals with compass samples and display settings.
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   compassDisplay.setRootObject(ui->quickWidget->rootObject());
 
-  // cursors
-
-   // cursors
+  // Two full-height vertical cursors mark the region used by Zoom to Cursors.
   left = new QCPItemLine(ui->plot);
   left->setVisible(true);
   right = new QCPItemLine(ui->plot);
   right->setVisible(true);
 
-  //textItem = new QCPItemText(ui->plot); 
-
-  // connect slots
-
+  // Plot movement drives both the tooltip and the QML compass orientation.
   connect(ui->plot, SIGNAL(mouseMove(QMouseEvent *)),
           SLOT(onMouseMove(QMouseEvent *)));
   connect(ui->plot, SIGNAL(mouseDoubleClick(QMouseEvent *)),
@@ -70,19 +67,19 @@ MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::createGraphs(){
 
-  // configure customplot
-
+  // On macOS/Retina, the default backing-store scaling can make exported plots
+  // look different from the on-screen plot. Keep the plot buffer deterministic.
   ui->plot->setBufferDevicePixelRatio(1.0);
 
   QCPAxisRect *axisRect = ui->plot->axisRect(0);
 
+  // The default y-axis is reserved for heading. Extra axes are added for the
+  // scalar streams so each stream keeps its own physical units and range.
   headingAxis = ui->plot->yAxis;
   temperatureAxis = ui->plot->yAxis2;
   voltageAxis = axisRect->addAxis(QCPAxis::atRight);
   activityAxis = axisRect->addAxis(QCPAxis::atLeft);
   accelAxis = axisRect->addAxis(QCPAxis::atLeft);
-
-  // create graphs
 
   activityGraph = ui->plot->addGraph(ui->plot->xAxis, activityAxis); 
   temperatureGraph =  ui->plot->addGraph(ui->plot->xAxis, temperatureAxis);
@@ -95,24 +92,19 @@ void MainWindow::createGraphs(){
   headingGraph->setVisible(true);
   accelGraph->setVisible(false);
 
-  // set colors -- make a constant
-
+  // Match graph pens and axis labels so overlapping axes remain readable.
   activityGraph->setPen(QPen(Qt::darkBlue));
   temperatureGraph->setPen(QPen(Qt::red));
   voltageGraph->setPen(QPen(Qt::darkGreen));
   headingGraph->setPen(QPen(Qt::magenta));
   accelGraph->setPen(QPen(Qt::blue));
 
-  // enable horizontal drag
-
+  // Time is the shared independent variable, so drag and wheel zoom are limited
+  // to the x-axis. Y ranges remain fixed for easier comparison while scanning.
   ui->plot->setInteraction(QCP::Interaction::iRangeDrag);
   ui->plot->axisRect()->setRangeDrag(Qt::Horizontal);
-
-  // enable zoom (horizontal only)
   ui->plot->axisRect()->setRangeZoom(Qt::Horizontal);
   ui->plot->setInteraction(QCP::Interaction::iRangeZoom);
-
-  // set up axes
 
   ui->plot->xAxis->setLabel("Hour:Minute (UTC)\nMonth/Day/Year");
 
@@ -144,20 +136,17 @@ void MainWindow::createGraphs(){
   headingAxis->setVisible(true);
   headingAxis->setRange(0,360);
 
-  // format time on x axis
-
+  // The ticker is retained so the UTC offset menu can update it without
+  // rebuilding the graph objects.
   dateTicker = QSharedPointer<QCPAxisTickerDateTime>(new QCPAxisTickerDateTime);
   dateTicker->setDateTimeFormat("hh:mm\nMM/dd/yy");
   dateTicker->setTimeZone(QTimeZone(3600*(utc_offset)));//QTimeZone::utc());
 
   ui->plot->xAxis->setTicker(dateTicker);
 
-  // set mouse cursor
-
   ui->plot->setCursor(QCursor(Qt::CrossCursor));
-  //textItem = new QCPItemText(ui->plot); // mouse text
 
-  // set path
+  // Initial file-dialog location.
   path = QDir::homePath();
 
 }
@@ -167,7 +156,6 @@ void MainWindow::createGraphs(){
 void MainWindow::makeVisible(bool visible)
 {
 }
-
 
 
 

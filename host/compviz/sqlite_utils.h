@@ -5,6 +5,14 @@
 
 #include <sqlite3.h>
 
+/*
+ * Minimal RAII wrappers for sqlite3.
+ *
+ * These are intentionally small: CompViz only needs read-only database access,
+ * forward-only statements, and simple typed column access. Keeping them in one
+ * header prevents each loader from hand-writing sqlite3_open/prepare/finalize
+ * cleanup code.
+ */
 class SqliteDatabase
 {
 public:

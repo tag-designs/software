@@ -18,6 +18,8 @@ public:
     explicit ConstantsDialog(QWidget *parent = nullptr);
     ~ConstantsDialog();
 
+    // The dialog is read-only: it gives the user visibility into the calibration
+    // constants read from the log but does not edit or save them.
     void setConstants(const CompassCalibration &calibration);
 
 private:

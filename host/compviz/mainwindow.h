@@ -75,6 +75,8 @@ private:
 
     void createGraphs();
 
+    // Rebuild the plotted heading vector from magnetic yaw plus current view
+    // settings. Loaded orientation samples are not changed by this operation.
     void updateHeadingGraph();
 
     // Current hard/soft iron constants displayed by the calibration dialog
@@ -84,9 +86,8 @@ private:
     float declination = 0.0;
     int utc_offset = 0;
 
-    // gui state
-
-      
+    // The loader currently accepts only CompassTag logs, but this enum is kept
+    // with the other host tools' tag vocabulary for future shared UI paths.
     enum TagType {BITTAG, BITTAGNG, PRESTAG, COMPASSTAG};
     TagType tagtype;
 
@@ -97,29 +98,37 @@ private:
     Ui::MainWindow *ui;
     CompassDisplay compassDisplay;
 
+    // View menus expose mutually exclusive choices for the right-side scalar
+    // axis and the left-side activity/acceleration axis.
     QActionGroup* vt_group;
     QActionGroup* aa_group;
 
-    // data 
+    // Loaded scalar streams are stored as parallel time/value vectors because
+    // QCustomPlot accepts that form directly.
     QVector<double> activity_time;
     QVector<double> activity;
     QVector<double> voltage_time;
     QVector<double> temperature_time;
     QVector<double> voltage;
     QVector<double> temperature;
+
+    // Compass samples are derived once from the log. The heading vector is
+    // display-only and is rebuilt when declination or battery direction changes.
     QVector<CompassDerivedSample> orientation;
     QVector<double> heading;
     QVector<double> orientation_time;
     QVector<double> accel;  // use orientation_time
 
-    // custom plot
-   
+    // Vertical cursor pair used to mark and zoom into a time interval.
     QCPItemLine *left;
     QCPItemLine *right;
 
-    //QCPItemText *textItem;
+    // Shared x-axis ticker; changing UTC offset updates this object in place.
     QSharedPointer<QCPAxisTickerDateTime> dateTicker;
 
+    // One graph/axis pair per displayable stream. Activity and acceleration
+    // share the left side by menu convention; temperature and voltage share the
+    // right side; heading uses the default left axis.
     QCPGraph *activityGraph;
     QCPGraph *temperatureGraph;
     QCPGraph *voltageGraph;

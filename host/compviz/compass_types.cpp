@@ -22,6 +22,8 @@ CompassCalibration CompassCalibration::fromMagnetometerJson(const QJsonObject &c
 {
     CompassCalibration calibration;
 
+    // The embedded calibration JSON uses historical names: v* is the hard-iron
+    // offset vector, and a** is the soft-iron correction matrix.
     calibration.hardIron_ = QVector3D(
         jsonDouble(constants, "v0", 0.0),
         jsonDouble(constants, "v1", 0.0),

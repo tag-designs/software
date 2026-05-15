@@ -15,7 +15,9 @@
 #include "ui_mainwindow.h"
 #include "constants_dialog.h"
 
-// Track mouse in plot and display time of location
+// Track the plot cursor, display a compact tooltip, and update the QML compass
+// with the nearest orientation sample. This is the only place where the plot
+// position drives the compass widget.
 
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
@@ -34,8 +36,7 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     QString s;
     QTextStream out(&s);
 
-    // Generate data for mouseover string
-
+    // Start with activity because it is the default left-axis stream.
     int index = activityGraph->findBegin(x);
     if (index) {
       y = activityGraph->dataMainValue(index);
@@ -62,8 +63,9 @@ void MainWindow::onMouseMove(QMouseEvent *event)
       out << "V";
     }
 
-    
-      index = headingGraph->findBegin(x);
+    // Heading and orientation use the same time vector. The heading graph feeds
+    // the tooltip while the derived sample feeds the QML compass display.
+    index = headingGraph->findBegin(x);
     if (index) {
       h = headingGraph->dataMainValue(index);
       out << QString(", %1").arg(h,0,'f',1);
@@ -72,10 +74,6 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     }
     out << ")";
 
-    // write mouse over string
-
-
-    //QTextCursor cursor = cursorForPosition(event->pos());
     QPoint globalPos = mapToGlobal(event->pos());
     QToolTip::showText(globalPos,out.readAll(),this, QRect(),3000);
 
@@ -83,7 +81,8 @@ void MainWindow::onMouseMove(QMouseEvent *event)
   } 
 }
 
-// Set Visibility on graphs
+// Legacy checkbox slot retained for the UI file. Menu actions are the main
+// visibility controls, but this keeps older connections harmless.
 
 void MainWindow::on_cb_activity_clicked(bool checked)
 {
@@ -111,6 +110,8 @@ void MainWindow::on_actionAbout_triggered()
 
 void MainWindow::on_actionVoltage_triggered(bool checked)
 {
+    // Voltage and core temperature share the right-side lane, so enabling one
+    // hides the other.
     if (checked) {
         voltageGraph->setVisible(true);
         voltageAxis->setVisible(true);
@@ -125,6 +126,8 @@ void MainWindow::on_actionVoltage_triggered(bool checked)
 
 void MainWindow::on_actionTemperature_triggered(bool checked)
 {
+    // Temperature and voltage are mutually exclusive through vt_group; the
+    // explicit graph visibility here keeps the axis state in sync.
     if (checked) {
         temperatureGraph->setVisible(true);
         temperatureAxis->setVisible(true);
@@ -138,6 +141,7 @@ void MainWindow::on_actionTemperature_triggered(bool checked)
 }
 
 void MainWindow::on_actionActivity_triggered(bool checked){
+ // Activity and acceleration share the left-side lane.
  if (checked) {
         activityGraph->setVisible(true);
         activityAxis->setVisible(true);
@@ -152,6 +156,8 @@ void MainWindow::on_actionActivity_triggered(bool checked){
 }
 
 void MainWindow::on_actionAcceleration_triggered(bool checked){
+ // Acceleration is derived from compass accelerometer magnitude and uses the
+ // orientation time vector.
  if (checked) {
         accelGraph->setVisible(true);
         accelAxis->setVisible(true);
@@ -196,6 +202,8 @@ void MainWindow::renderPlot(QPrinter *printer)
   
   QCPPainter painter(printer);
 
+  // Render the framed plot window rather than only the QCustomPlot so printed
+  // output matches the visible Plot tab.
   const auto pageLayout = printer->pageLayout();
   const auto pageRect = pageLayout.paintRectPixels(printer->resolution());
   const auto paperRect = pageLayout.fullRectPixels(printer->resolution());
@@ -226,6 +234,8 @@ void MainWindow::on_actionCompass_Declination(){
 
 
 void MainWindow::on_actionBattery_Forward_triggered(bool checked) {
+    // Battery direction is a view convention. Rebuild the plotted heading and
+    // tell QML how to draw the compass, but leave loaded samples unchanged.
     updateHeadingGraph();
     compassDisplay.setBatteryForward(checked);
 
@@ -236,6 +246,9 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     int hours = QInputDialog::getInt(this,"Time Offset from UTC","Offset",utc_offset,-12,12,1,&ok);
     if (ok) {
         utc_offset = hours;
+
+        // Only the labels/ticks change. Stored timestamps remain Unix epoch
+        // seconds in UTC.
         dateTicker->setTimeZone(QTimeZone(3600*hours));
         if (hours < 0) {
             ui->plot->xAxis->setLabel(QString("Hour:Minute (UTC%1)\nMonth/Day/Year").arg(QString::number(hours)));
@@ -260,6 +273,10 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     qsizetype i;
     qsizetype len = orientation.length();
     bool forward = ui->actionBattery_Forward->isChecked();
+
+    // Orientation samples are stored relative to magnetic north. Apply the
+    // user-selected view transforms here so declination and battery direction
+    // can be changed without reloading or recalibrating the log.
     for (i = 0; i < len; i++) {
         double h = CompassProcessor::headingFromYaw(orientation[i].yaw, declination);
         if (!forward) {
@@ -284,7 +301,8 @@ void MainWindow::on_actionUTC_Offset_triggered() {
 
   void MainWindow::showPlotContextMenu(QPoint pos){
     QMenu menu(this);
-    // Add actions
+    // Mirror the main menus in the plot context menu so graph operations are
+    // available near the data.
     menu.addAction(ui->actionReset);
     menu.addSeparator();
     menu.addAction(ui->actionActivity);
@@ -310,7 +328,7 @@ void MainWindow::on_actionUTC_Offset_triggered() {
 
   void MainWindow::showCompassContextMenu(QPoint pos) {
      QMenu menu(this);
-    // Add actions
+    // Compass-specific context menu; plot stream controls belong on the plot.
     menu.addAction(ui->actionBattery_Forward);
     menu.addAction(ui->actionCompass_Declination);
     menu.addSeparator();
@@ -326,6 +344,8 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     qDebug() << "Double Clicked at:" << x << y;
     if (left && right)
     {
+      // Left-click places the left cursor. Shift-left-click places the right
+      // cursor. Each cursor is constrained not to cross the other.
       if ((x <= right->start->coords().x()) &&
           (event->button() & Qt::LeftButton) &&
           !(event->modifiers() & Qt::ShiftModifier))
@@ -354,6 +374,7 @@ void MainWindow::on_actionUTC_Offset_triggered() {
   void MainWindow::on_actionZoom_to_Cursors_triggered(){
     if (left && right)
     {
+      // The cursors define a time window only; y-axis ranges are unchanged.
       ui->plot->xAxis->setRange(left->start->coords().x(),
                                 right->start->coords().x());
       ui->plot->replot();

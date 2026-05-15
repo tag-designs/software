@@ -16,6 +16,8 @@
 namespace
 {
 
+// Convert statement-preparation failures into the same modal error style used
+// by the rest of this older UI path.
 bool requireStatement(QMessageBox &msgBox, SqliteStatement &stmt, const QString &context)
 {
     if (stmt.valid()) {
@@ -33,7 +35,9 @@ void MainWindow::on_pb_load_clicked()
 {
     QMessageBox msgBox;
 
-    // load database
+    // All vectors and graphs below are MainWindow-owned. The compass-specific
+    // parsing/math is delegated, but this function still coordinates the whole
+    // "choose a file and display it" workflow.
 
     QString fileName = HostFileDialog::getOpenFileName(
         this, tr("Open Data"), path, tr("Data Files (*.db3);;All Files (*)"));
@@ -49,8 +53,8 @@ void MainWindow::on_pb_load_clicked()
         return;
     }
 
-    // clear data vectors
-
+    // Clear all old data before validating the new file. If the new load fails,
+    // the UI should not leave stale plots from the previous log.
     voltage.clear();
     voltage_time.clear();
     temperature_time.clear();
@@ -62,8 +66,6 @@ void MainWindow::on_pb_load_clicked()
     orientation_time.clear();
     heading.clear();
 
-    // clear reset UI
-
     activityGraph->data()->clear();
     temperatureGraph->data()->clear();
     voltageGraph->data()->clear();
@@ -72,7 +74,8 @@ void MainWindow::on_pb_load_clicked()
     ui->te_fileinfo->clear();
     ui->te_fileinfo->append(fileName);
 
-    // Load information table
+    // The CompViz UI currently only understands CompassTag schemas. Other tag
+    // types should be routed through SensorViz or a future shared viewer.
 
     SqliteStatement info_query(db, "SELECT fieldname, value FROM Info");
     if (!requireStatement(msgBox, info_query, "Failed to load info")) {
@@ -96,7 +99,8 @@ void MainWindow::on_pb_load_clicked()
         }
     }
 
-    // load Core Temperature
+    // Scalar streams are simple time/value tables, so they remain local to this
+    // UI loader. The compass table is richer and is handled below by a helper.
 
     SqliteStatement temperature_query(db, "SELECT Epoch, Temperature FROM CoreTemperature");
     if (!requireStatement(msgBox, temperature_query, "Failed to load core temperature")) {
@@ -110,8 +114,6 @@ void MainWindow::on_pb_load_clicked()
         temperature << value;
     }
 
-    // load voltage
-
     SqliteStatement voltage_query(db, "SELECT Epoch, Voltage FROM Voltage");
     if (!requireStatement(msgBox, voltage_query, "Failed to load voltage")) {
         return;
@@ -123,8 +125,6 @@ void MainWindow::on_pb_load_clicked()
         voltage_time << timestamp;
         voltage << value;
     }
-
-    // load activity
 
     SqliteStatement activity_query(db, "SELECT Epoch, Activity FROM Activity");
     if (!requireStatement(msgBox, activity_query, "Failed to load activity")) {
@@ -154,6 +154,9 @@ void MainWindow::on_pb_load_clicked()
     orientation = compassLog.orientation;
     orientation_time = compassLog.orientationTime;
     accel = compassLog.acceleration;
+
+    // Heading is not loaded from the file. It is derived from magnetic yaw plus
+    // current display settings, and must be rebuilt when those settings change.
     heading.resize(orientation.size());
     updateHeadingGraph();
 
@@ -164,11 +167,10 @@ void MainWindow::on_pb_load_clicked()
 
     if (activity_time.size())
     {
-        // reset cursors
         double size = activity_time.size();
 
-        // set range
-
+        // Use activity timestamps as the main x range because activity exists
+        // in all current CompassTag logs.
         ui->plot->xAxis->setRange(activity_time[0], activity_time[size - 1]);
         ui->plot->xAxis->scaleRange(1.1, ui->plot->xAxis->range().center()); // 10% margin
     }
@@ -177,8 +179,7 @@ void MainWindow::on_pb_load_clicked()
     voltageGraph->setData(voltage_time, voltage, true);
     activityGraph->setData(activity_time, activity, true);
     accelGraph->setData(orientation_time, accel, true);
-    //accelGraph->setVisible(false);
-
+    // Initialize the zoom cursors to bracket the loaded time range.
     left->start->setCoords(ui->plot->xAxis->range().lower, QCPRange::minRange);
     left->end->setCoords(ui->plot->xAxis->range().lower, QCPRange::maxRange);
     right->start->setCoords(ui->plot->xAxis->range().upper, QCPRange::minRange);

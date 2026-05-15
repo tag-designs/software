@@ -8,8 +8,13 @@ class CompassProcessor
 public:
     explicit CompassProcessor(const CompassCalibration &calibration);
 
+    // Convert one raw database row into magnetic-frame orientation data. This
+    // deliberately does not apply declination or battery direction; those are
+    // display settings handled by MainWindow::updateHeadingGraph().
     CompassDerivedSample deriveSample(const CompassRawSample &sample) const;
 
+    // Shared helper for UI code that needs to turn magnetic yaw into displayed
+    // heading using a user-selected angular offset.
     static double headingFromYaw(double yaw, double declinationDegrees);
 
 private:

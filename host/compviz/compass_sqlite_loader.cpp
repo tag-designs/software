@@ -47,6 +47,9 @@ bool loadCompassData(
     error.clear();
     log = CompassLogData();
 
+    // The loader owns database interpretation only. The returned samples remain
+    // magnetic-frame samples; declination and battery direction are view state
+    // applied later by MainWindow.
     loadCalibration(db, log.calibration, warning);
 
     SqliteStatement compassQuery(db, "SELECT Epoch, ax, ay, az, mx, my, mz FROM Compass");
