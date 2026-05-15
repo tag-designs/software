@@ -42,6 +42,11 @@ void MainWindow::createActions()
     altitude_action_->setCheckable(true);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
+    compass_derived_action_ = new QAction(tr("&Compass Derived Streams"), this);
+    compass_derived_action_->setCheckable(true);
+    declination_action_ = new QAction(tr("&Declination..."), this);
+    declination_action_->setVisible(false);
+    declination_action_->setEnabled(false);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
@@ -56,6 +61,8 @@ void MainWindow::createActions()
         &MainWindow::showCalibrationConstants);
     connect(altitude_action_, &QAction::toggled, this, &MainWindow::altitudeToggled);
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
+    connect(compass_derived_action_, &QAction::toggled, this, &MainWindow::compassDerivedToggled);
+    connect(declination_action_, &QAction::triggered, this, &MainWindow::setDeclination);
 
     // The menu layout follows compViz: File for file-level actions, View for
     // plot/stream visibility and Configuration for transform parameters.
@@ -80,6 +87,8 @@ void MainWindow::createActions()
     configuration_transform_separator_ = configuration_menu_->addSeparator();
     configuration_menu_->addAction(altitude_action_);
     configuration_menu_->addAction(activity_filter_action_);
+    configuration_menu_->addAction(compass_derived_action_);
+    configuration_menu_->addAction(declination_action_);
 }
 
 void MainWindow::createUi()

@@ -8,7 +8,7 @@ reconstructing the whole conversation from git history.
 `sensorviz` is a Qt/QCustomPlot application for viewing SQLite sensor logs from
 multiple tag types. It currently handles scalar streams such as pressure,
 activity, voltage, and temperature, plus display-only transforms such as
-altitude and low-pass activity.
+altitude, low-pass activity, and CompassTag-derived scalar streams.
 
 Recent checkpoint:
 
@@ -45,7 +45,11 @@ The important architecture pieces are:
 
 - `transforms.cpp`: display-only derived streams.
   - Handles altitude and activity low-pass transform toggles.
-  - Derived streams are controlled from Configuration only, not View.
+  - Handles the CompassTag derived-stream family from `compass_raw` plus
+    calibration metadata.
+  - Altitude and activity filter are controlled from Configuration only, while
+    CompassTag derived streams are generated from Configuration and then exposed
+    individually in View.
 
 - `plotting.cpp`: QCustomPlot graph and axis rebuilds.
   - Normal redraws preserve the current x-axis range; load/reset use full range
@@ -67,6 +71,10 @@ The important architecture pieces are:
 - Cursors are hidden until data is loaded.
 - Altitude and Activity Filter live under Configuration and are not duplicated
   in the View menu.
+- Compass Derived Streams lives under Configuration and creates individual View
+  actions for heading, acceleration, pitch, roll, dip, and magnetic field.
+- Declination is a CompassTag-only Configuration action that adjusts the
+  displayed heading stream without reloading the file.
 
 ## Future Compass / compViz Integration
 
@@ -80,17 +88,9 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
 3. Load the latest CompassTag calibration row into typed `SensorLog` metadata.
 4. Use the shared `sensoranalysis` eCompass/orientation helpers from a transform
    module.
-5. Add a compass transform that consumes:
-   - `compass_raw`
-   - calibration constants from the SQLite log
-   - declination/configuration parameters
-6. Have that transform produce scalar streams such as:
-   - heading
-   - acceleration magnitude
-   - pitch
-   - roll
-   - dip
-   - magnetic field strength
+5. Generate scalar streams for heading, acceleration magnitude, pitch, roll,
+   dip, and magnetic field strength.
+6. Later, add a battery-direction display setting for heading.
 7. Later, add an optional specialized orientation panel analogous to the current
    `compviz` QML compass view.
 

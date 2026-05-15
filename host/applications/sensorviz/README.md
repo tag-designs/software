@@ -14,6 +14,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 - Provides display transforms such as:
   - altitude from pressure
   - low-pass filtered activity
+  - CompassTag heading, acceleration magnitude, pitch, roll, dip, and magnetic
+    field strength
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
 - Shows CompassTag calibration constants from the View menu when a log contains
   calibration data.
@@ -104,9 +106,13 @@ Adding a simple one-column sensor table should usually start in
 Raw streams get checkable entries in the View menu. The checked state of those
 actions is the source of truth for which raw streams are plotted.
 
-Derived streams, such as altitude and low-pass activity, are controlled by
-Configuration actions instead of duplicated in the View menu. Once enabled, they
-are treated like streams for plotting, mouse readout, and range controls.
+Derived display streams such as altitude and low-pass activity are controlled by
+Configuration actions instead of duplicated in the View menu. Compass derived
+streams are the exception: the Configuration action generates the derived family
+from one raw record set, then each stream gets its own View action so heading,
+acceleration, pitch, roll, dip, and field strength can be shown independently.
+For CompassTag logs, Configuration > Declination adjusts only the displayed
+heading stream; raw orientation-derived values remain magnetic-frame data.
 
 The View > Ranges submenu and the plot context-menu Ranges submenu are rebuilt
 from the currently displayed streams. Each range action stores the stream id in
@@ -127,6 +133,9 @@ range and altitude does not, SensorViz derives an altitude range from the
 pressure range so the two views stay visually comparable. Once the user sets an
 altitude range directly, that altitude range is treated as independent.
 
+Activity and Activity Filter share the same units, so their custom ranges are
+kept equal until the user gives one of them an explicit range of its own.
+
 ## Adding A Display Transform
 
 The current transforms are still hardcoded in `transforms.cpp`, but they follow a
@@ -139,8 +148,8 @@ consistent pattern:
 5. Remove the derived stream when the transform action is unchecked.
 
 Future transforms should keep computation separate from file loading. The
-SQLite loader should only normalize on-disk data into streams and record sets;
-display math belongs in transform code.
+SQLite loader should only normalize on-disk data into streams, record sets, and
+typed metadata; display math belongs in transform code.
 
 ## Future Direction
 
@@ -150,9 +159,7 @@ The next major goal is to prepare for compass-like logs without copying all of
 1. Load multi-column compass data as a `SensorRecordSet` and load calibration
    constants as typed `SensorLog` metadata.
 2. Use the shared `sensoranalysis` compass helpers for eCompass/orientation math.
-3. Add transforms that produce scalar streams such as heading, acceleration
-   magnitude, pitch, roll, dip, and field strength.
-4. Add an optional orientation panel later, analogous to the current `compviz`
+3. Add an optional orientation panel later, analogous to the current `compviz`
    QML compass view.
 
 ## Build Check

@@ -51,4 +51,4 @@ if (APPLE)
   set_target_properties(sensorviz PROPERTIES MACOSX_BUNDLE TRUE)
 endif()
 
-target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot sensoranalysis sensorui Qt6::Widgets Qt6::PrintSupport)
+target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot sensorui Qt6::Widgets Qt6::PrintSupport)

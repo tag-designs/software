@@ -30,6 +30,16 @@ const SensorStream *MainWindow::streamById(const QString &id) const
     return nullptr;
 }
 
+const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
+{
+    for (const SensorRecordSet &record_set : log_.recordSets) {
+        if (record_set.id == id) {
+            return &record_set;
+        }
+    }
+    return nullptr;
+}
+
 void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
 {
     // This path is used both for replacing a raw stream and for refreshing a
@@ -285,6 +295,15 @@ void MainWindow::setStreamRange(const QString &id)
     if (id == "pressure" && hasStream("altitude") && !explicit_axis_ranges_.contains("altitude")) {
         custom_axis_ranges_["altitude"] =
             QCPRange(pressureToAltitude(upper), pressureToAltitude(lower));
+    }
+    if (id == "activity"
+        && hasStream("activity_lowpass")
+        && !explicit_axis_ranges_.contains("activity_lowpass")) {
+        custom_axis_ranges_["activity_lowpass"] = QCPRange(lower, upper);
+    } else if (id == "activity_lowpass"
+               && hasStream("activity")
+               && !explicit_axis_ranges_.contains("activity")) {
+        custom_axis_ranges_["activity"] = QCPRange(lower, upper);
     }
     refreshPlot();
 }

@@ -154,13 +154,21 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
         }
     }
     if (altitude_action_->isVisible()
-        || activity_filter_action_->isVisible()) {
+        || activity_filter_action_->isVisible()
+        || compass_derived_action_->isVisible()
+        || declination_action_->isVisible()) {
         menu.addSeparator();
         if (altitude_action_->isVisible()) {
             menu.addAction(altitude_action_);
         }
         if (activity_filter_action_->isVisible()) {
             menu.addAction(activity_filter_action_);
+        }
+        if (compass_derived_action_->isVisible()) {
+            menu.addAction(compass_derived_action_);
+        }
+        if (declination_action_->isVisible()) {
+            menu.addAction(declination_action_);
         }
     }
     menu.addSeparator();

@@ -66,6 +66,8 @@ private slots:
     void setUtcOffset();
     void altitudeToggled(bool checked);
     void activityFilterToggled(bool checked);
+    void compassDerivedToggled(bool checked);
+    void setDeclination();
     void showCalibrationConstants();
     void setStreamRangeFromAction();
     void printPlot();
@@ -102,6 +104,7 @@ private:
     QAction *streamActionById(const QString &id) const;
     bool hasStream(const QString &id) const;
     const SensorStream *streamById(const QString &id) const;
+    const SensorRecordSet *recordSetById(const QString &id) const;
     QVector<SensorStream> visibleStreams() const;
 
     // Range actions are rebuilt from visibleStreams() whenever stream
@@ -135,6 +138,7 @@ private:
     int utc_offset_ = 0;
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;
+    double declination_degrees_ = 0.0;
 
     // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
     // altitude range derived from pressure; explicit_axis_ranges_ records only
@@ -155,6 +159,8 @@ private:
     QAction *utc_offset_action_ = nullptr;
     QAction *altitude_action_ = nullptr;
     QAction *activity_filter_action_ = nullptr;
+    QAction *compass_derived_action_ = nullptr;
+    QAction *declination_action_ = nullptr;
     QAction *calibration_constants_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;

@@ -48,13 +48,21 @@ void MainWindow::loadLog()
         addStreamAction(stream, stream.defaultVisible);
     }
 
-    // Order matters here: menu visibility depends on streams_, and refreshPlot()
-    // depends on the stream actions that were just rebuilt.
-    updateMetadata();
     calibration_constants_action_->setVisible(log_.hasCompassCalibration);
     calibration_constants_action_->setEnabled(log_.hasCompassCalibration);
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
+
+    // CompassTag logs are mostly useful once raw compass rows are converted
+    // into scalar streams. Generate that derived family automatically, while
+    // leaving the Configuration action checked so users can turn it off.
+    if (log_.hasCompassCalibration && recordSetById("compass_raw")) {
+        compass_derived_action_->setChecked(true);
+    }
+
+    // Order matters here: menu visibility depends on streams_, and refreshPlot()
+    // depends on the stream actions that were just rebuilt.
+    updateMetadata();
     refreshPlotFullRange();
 }
 
