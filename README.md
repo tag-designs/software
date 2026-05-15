@@ -305,6 +305,10 @@ installed in a standard location.
 Embedded builds produce firmware and programming targets for tags and base
 boards.
 
+For an overview of the embedded source tree and how `bases`, `boards`,
+`proto-c`, and `tags` relate to each other, see
+[embedded/docs/README.md](embedded/docs/README.md).
+
 ## Embedded Prerequisites
 
 | Requirement | Notes |
