@@ -32,6 +32,7 @@ set(sensorviz_SRCS
   dataloading.cpp
   main.cpp
   mainwindow.cpp
+  sensorprofile.cpp
   sqlite_loader.cpp)
 
 qt_add_executable(sensorviz MACOSX_BUNDLE WIN32 ${sensorviz_SRCS})

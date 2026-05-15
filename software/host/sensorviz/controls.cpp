@@ -92,6 +92,21 @@ void setActionCheckedSilently(QAction *action, bool checked)
     action->setChecked(checked);
 }
 
+void setPaddedAxisRange(QCPAxis *axis, const QCPRange &range)
+{
+    double lower = range.lower;
+    double upper = range.upper;
+    double span = upper - lower;
+    if (span <= 0.0) {
+        span = std::max(1.0, std::abs(range.center()) * 0.1);
+        lower = range.center() - span * 0.5;
+        upper = range.center() + span * 0.5;
+    }
+
+    const double margin = span * 0.05;
+    axis->setRange(lower - margin, upper + margin);
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -135,9 +150,9 @@ void MainWindow::updateTransformActions()
 // ---------------------------------------------------------------------------
 //
 // streams_ contains both raw streams from the database and derived streams
-// created by transforms. stream_actions_ mirrors streams_ with checkable menu
-// entries. refreshPlot() consults the actions, not a separate visibility flag,
-// so one toggle path serves both top-level and context menus.
+// created by transforms. Raw streams get checkable View menu entries. Derived
+// streams are controlled only from Configuration, so transforms such as
+// Altitude do not appear in both View and Configuration.
 
 bool MainWindow::hasStream(const QString &id) const
 {
@@ -170,10 +185,12 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
         }
     }
 
-    // Derived streams are treated like loaded streams once created: they get a
-    // checkable View action, an axis, cursor readouts, and context-menu entry.
+    // Derived streams are plotted while they exist, but are not added to the
+    // View menu. Their on/off state lives in the Configuration transform action.
     streams_.append(stream);
-    addStreamAction(stream, checked);
+    if (!stream.derived) {
+        addStreamAction(stream, checked);
+    }
     refreshPlot();
     updateTransformActions();
 }
@@ -330,6 +347,8 @@ void MainWindow::activityFilterToggled(bool checked)
     filtered.value = lowPass(activity->time, activity->value, activity_low_pass_seconds_);
     filtered.color = QColor(20, 60, 120);
     filtered.derived = true;
+    filtered.axisSide = activity->axisSide;
+    filtered.axisRange = activity->axisRange;
 
     addOrReplaceStream(filtered, true);
 }
@@ -418,6 +437,11 @@ QVector<SensorStream> MainWindow::visibleStreams() const
             visible.append(*stream);
         }
     }
+    for (const SensorStream &stream : streams_) {
+        if (stream.derived) {
+            visible.append(stream);
+        }
+    }
     return visible;
 }
 
@@ -434,19 +458,24 @@ void MainWindow::clearDynamicAxes()
     plot_->yAxis2->setVisible(false);
 }
 
-QCPAxis *MainWindow::axisForStream(int visible_index, const SensorStream &stream)
+QCPAxis *MainWindow::axisForStream(
+    SensorAxisSide side,
+    int side_index,
+    const SensorStream &stream)
 {
     QCPAxis *axis = nullptr;
-    if (visible_index == 0) {
-        axis = plot_->yAxis;
-    } else if (visible_index == 1) {
-        axis = plot_->yAxis2;
+    if (side == SensorAxisSide::Right) {
+        axis = side_index == 0
+            ? plot_->yAxis2
+            : plot_->axisRect()->addAxis(QCPAxis::atRight);
     } else {
-        // Additional streams get extra axes alternating between right and left.
-        const QCPAxis::AxisType side = visible_index % 2
-            ? QCPAxis::atRight
-            : QCPAxis::atLeft;
-        axis = plot_->axisRect()->addAxis(side);
+        axis = side_index == 0
+            ? plot_->yAxis
+            : plot_->axisRect()->addAxis(QCPAxis::atLeft);
+    }
+
+    if ((side == SensorAxisSide::Right && side_index > 0)
+        || (side == SensorAxisSide::Left && side_index > 0)) {
         dynamic_axes_.append(axis);
     }
 
@@ -462,30 +491,58 @@ QCPAxis *MainWindow::axisForStream(int visible_index, const SensorStream &stream
 
 void MainWindow::refreshPlot()
 {
+    rebuildPlot(false);
+}
+
+void MainWindow::refreshPlotFullRange()
+{
+    rebuildPlot(true);
+}
+
+void MainWindow::rebuildPlot(bool reset_x_range)
+{
+    const bool preserve_x_range = !reset_x_range && plot_->graphCount() > 0;
+    const QCPRange old_x_range = plot_->xAxis->range();
+
     plot_->clearGraphs();
     clearDynamicAxes();
 
     const QVector<SensorStream> visible = visibleStreams();
-    for (int i = 0; i < visible.size(); i++) {
-        const SensorStream &stream = visible[i];
-        QCPAxis *axis = axisForStream(i, stream);
+    int left_axis_count = 0;
+    int right_axis_count = 0;
+    for (const SensorStream &stream : visible) {
+        const SensorAxisSide side = stream.axisSide;
+        const int side_index = side == SensorAxisSide::Right
+            ? right_axis_count++
+            : left_axis_count++;
+        QCPAxis *axis = axisForStream(side, side_index, stream);
         QCPGraph *graph = plot_->addGraph(plot_->xAxis, axis);
         graph->setName(stream.label);
         graph->setPen(QPen(stream.color, stream.derived ? 2 : 1));
         graph->setData(stream.time, stream.value, true);
         if (custom_axis_ranges_.contains(stream.id)) {
             axis->setRange(custom_axis_ranges_[stream.id]);
+        } else if (stream.axisRange.enabled) {
+            axis->setRange(stream.axisRange.lower, stream.axisRange.upper);
         } else {
             // Each stream owns its value axis because sensors use different
             // units and ranges.
             graph->rescaleValueAxis(true);
+            setPaddedAxisRange(axis, axis->range());
         }
     }
 
     if (!visible.isEmpty()) {
-        plot_->xAxis->rescale(true);
-        plot_->xAxis->scaleRange(1.05, plot_->xAxis->range().center());
+        if (preserve_x_range) {
+            plot_->xAxis->setRange(old_x_range);
+        } else {
+            plot_->xAxis->rescale(true);
+            plot_->xAxis->scaleRange(1.05, plot_->xAxis->range().center());
+        }
         resetCursorsToView();
+    } else {
+        left_cursor_->setVisible(false);
+        right_cursor_->setVisible(false);
     }
     plot_->replot();
 }
@@ -496,13 +553,7 @@ void MainWindow::resetZoom()
         return;
     }
 
-    plot_->xAxis->rescale(true);
-    for (int i = 0; i < plot_->graphCount(); i++) {
-        plot_->graph(i)->rescaleValueAxis(i > 0);
-    }
-    plot_->xAxis->scaleRange(1.05, plot_->xAxis->range().center());
-    resetCursorsToView();
-    plot_->replot();
+    refreshPlotFullRange();
 }
 
 // ---------------------------------------------------------------------------
@@ -515,6 +566,8 @@ void MainWindow::resetCursorsToView()
         return;
     }
 
+    left_cursor_->setVisible(true);
+    right_cursor_->setVisible(true);
     left_cursor_->start->setCoords(plot_->xAxis->range().lower, QCPRange::minRange);
     left_cursor_->end->setCoords(plot_->xAxis->range().lower, QCPRange::maxRange);
     right_cursor_->start->setCoords(plot_->xAxis->range().upper, QCPRange::minRange);
@@ -523,7 +576,7 @@ void MainWindow::resetCursorsToView()
 
 void MainWindow::plotDoubleClick(QMouseEvent *event)
 {
-    if (!left_cursor_ || !right_cursor_) {
+    if (!left_cursor_ || !right_cursor_ || !left_cursor_->visible()) {
         return;
     }
 
@@ -548,7 +601,7 @@ void MainWindow::plotDoubleClick(QMouseEvent *event)
 
 void MainWindow::zoomToCursors()
 {
-    if (!left_cursor_ || !right_cursor_) {
+    if (!left_cursor_ || !right_cursor_ || !left_cursor_->visible()) {
         return;
     }
 

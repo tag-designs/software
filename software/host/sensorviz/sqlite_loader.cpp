@@ -1,18 +1,21 @@
 #include "sqlite_loader.h"
 
+#include "sensorprofile.h"
+
 #include <sqlite3.h>
 
-// SQLite logs from different tag types share a small set of table conventions,
-// but no single tag is expected to write every table. This file is the adapter
-// from that sparse on-disk schema to sensorViz's uniform SensorStream model.
+// SQLite logs from different tag types share table conventions, but no single
+// tag is expected to write every table. This file is the adapter from that
+// sparse on-disk schema to sensorViz's normalized SensorLog model.
 //
-// To add support for a new table:
+// To add support for a new scalar table:
 // - confirm the table has an Epoch column and one numeric value column
-// - add one loadStream() call in SqliteLoader::load()
+// - add one ScalarStreamDefinition in sensorprofile.cpp
 // - choose a stable stream id; controls.cpp uses ids for transforms and ranges
 //
-// If a table needs multiple value columns or special decoding, add a sibling to
-// loadStream() here and still return one or more SensorStream objects.
+// To add support for a multi-column table, add a RecordSetDefinition. Later
+// transform code can consume that record set and produce plottable streams.
+
 namespace
 {
 
@@ -168,33 +171,31 @@ bool tableExistsRaw(Database &db, const QString &table_name)
 // was produced with a schema this viewer does not understand yet.
 bool loadStream(
     Database &db,
-    const QString &table_name,
-    const QString &value_column,
-    const QString &id,
-    const QString &label,
-    const QString &units,
-    const QColor &color,
+    const ScalarStreamDefinition &definition,
     SensorLog &log,
     QString &error)
 {
-    if (!tableExistsRaw(db, table_name)) {
+    if (!tableExistsRaw(db, definition.table)) {
         return true;
     }
 
     const QString sql = QString("SELECT Epoch, %1 FROM %2 ORDER BY Epoch")
-                            .arg(value_column, table_name);
+                            .arg(definition.valueColumn, definition.table);
     const QByteArray utf8_sql = sql.toUtf8();
     Statement stmt(db, utf8_sql.constData());
     if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2").arg(label, stmt.lastError());
+        error = QString("Failed to load %1: %2").arg(definition.label, stmt.lastError());
         return false;
     }
 
     SensorStream stream;
-    stream.id = id;
-    stream.label = label;
-    stream.units = units;
-    stream.color = color;
+    stream.id = definition.id;
+    stream.label = definition.label;
+    stream.units = definition.units;
+    stream.color = definition.color;
+    stream.defaultVisible = definition.defaultVisible;
+    stream.axisSide = definition.axisSide;
+    stream.axisRange = definition.axisRange;
 
     while (stmt.next()) {
         stream.time.append(stmt.int64Column(0));
@@ -207,6 +208,53 @@ bool loadStream(
     }
 
     log.streams.append(stream);
+    return true;
+}
+
+// Multi-column record sets are loaded but not plotted directly. They are the
+// extension point for compass-style data, where one table can later produce
+// several computed streams and/or a specialized visualization panel.
+bool loadRecordSet(
+    Database &db,
+    const RecordSetDefinition &definition,
+    SensorLog &log,
+    QString &error)
+{
+    if (!tableExistsRaw(db, definition.table)) {
+        return true;
+    }
+
+    QStringList select_columns;
+    select_columns << "Epoch";
+    select_columns << definition.valueColumns;
+    const QString sql = QString("SELECT %1 FROM %2 ORDER BY Epoch")
+                            .arg(select_columns.join(", "), definition.table);
+    const QByteArray utf8_sql = sql.toUtf8();
+    Statement stmt(db, utf8_sql.constData());
+    if (!stmt.valid()) {
+        error = QString("Failed to load %1: %2").arg(definition.label, stmt.lastError());
+        return false;
+    }
+
+    SensorRecordSet record_set;
+    record_set.id = definition.id;
+    record_set.label = definition.label;
+    for (const QString &column : definition.valueColumns) {
+        record_set.columns.insert(column, QVector<double>());
+    }
+
+    while (stmt.next()) {
+        record_set.time.append(stmt.int64Column(0));
+        for (int i = 0; i < definition.valueColumns.size(); i++) {
+            record_set.columns[definition.valueColumns[i]].append(stmt.doubleColumn(i + 1));
+        }
+    }
+
+    if (record_set.time.isEmpty()) {
+        return true;
+    }
+
+    log.recordSets.append(record_set);
     return true;
 }
 
@@ -237,19 +285,23 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         }
     }
 
-    // Known stream tables across the currently supported sensor tags. Adding a
-    // future sensor type should usually mean adding another loadStream entry
-    // here; the rest of the UI will pick it up from SensorLog::streams.
-    if (!loadStream(db, "Activity", "Activity", "activity", "Activity", "%", QColor(30, 90, 180), loaded, error)
-        || !loadStream(db, "Pressure", "Pressure", "pressure", "Pressure", "mbar", QColor(25, 130, 105), loaded, error)
-        || !loadStream(db, "Temperature", "Temperature", "sensor_temperature", "Sensor temperature", "C", QColor(210, 95, 35), loaded, error)
-        || !loadStream(db, "CoreTemperature", "Temperature", "core_temperature", "Core temperature", "C", QColor(180, 55, 55), loaded, error)
-        || !loadStream(db, "Voltage", "Voltage", "voltage", "Voltage", "V", QColor(60, 145, 75), loaded, error)) {
-        return false;
+    // The profile is selected after reading metadata, but table availability is
+    // still the source of truth. Definitions for missing tables are ignored.
+    const SensorProfile profile = sensorProfileForTag(loaded.tagType);
+    loaded.profileName = profile.displayName;
+    for (const ScalarStreamDefinition &definition : profile.scalarStreams) {
+        if (!loadStream(db, definition, loaded, error)) {
+            return false;
+        }
+    }
+    for (const RecordSetDefinition &definition : profile.recordSets) {
+        if (!loadRecordSet(db, definition, loaded, error)) {
+            return false;
+        }
     }
 
-    if (loaded.streams.isEmpty()) {
-        error = "No supported sensor streams found in database";
+    if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {
+        error = "No supported sensor streams or record sets found in database";
         return false;
     }
 

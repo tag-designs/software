@@ -29,13 +29,16 @@
 // - dataloading.cpp handles the "File -> Load" workflow. It asks the SQLite
 //   loader for a SensorLog, replaces the current stream list, creates the View
 //   menu actions for each stream, updates the File Info tab, and refreshes the
-//   plot. If a file loads incorrectly or default stream visibility feels wrong,
-//   start there.
+//   plot. If a file opens but the app state is wrong after loading, start there.
 //
-// - sqlite_loader.cpp knows the on-disk SQLite schema. It maps optional tables
-//   like Pressure, Activity, Temperature, and Voltage into SensorStream objects.
-//   If a new log table or sensor type needs to become visible in sensorViz,
-//   that is usually the first file to touch.
+// - sensorprofile.cpp describes known log tables, default stream visibility,
+//   future record sets, and transform metadata. If a new tag type or table needs
+//   to be recognized, start there.
+//
+// - sqlite_loader.cpp applies the profile definitions to the on-disk SQLite
+//   schema. It maps scalar tables into SensorStream objects and multi-column
+//   tables into SensorRecordSet objects. If a table definition exists but does
+//   not load correctly, start there.
 //
 // - controls.cpp contains runtime behavior after a file is loaded: stream
 //   bookkeeping, pressure/activity transforms, tag-dependent menu visibility,
@@ -89,12 +92,17 @@ private:
     const SensorStream *streamById(const QString &id) const;
     QVector<SensorStream> visibleStreams() const;
 
-    // Plot layout and cursor helpers. refreshPlot() is intentionally rebuilt
-    // from current actions each time, which keeps stream toggles simple and
-    // avoids stale graph/axis state after transforms are added or removed.
+    // Plot layout and cursor helpers. refreshPlot() rebuilds from current
+    // actions while preserving the visible time window; refreshPlotFullRange()
+    // is used after a new file is loaded or the user explicitly resets zoom.
     void refreshPlot();
+    void refreshPlotFullRange();
+    void rebuildPlot(bool reset_x_range);
     void clearDynamicAxes();
-    QCPAxis *axisForStream(int visible_index, const SensorStream &stream);
+    QCPAxis *axisForStream(
+        SensorAxisSide side,
+        int side_index,
+        const SensorStream &stream);
     QString streamValueAt(const SensorStream &stream, double epoch) const;
     void resetCursorsToView();
 

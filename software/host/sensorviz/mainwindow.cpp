@@ -101,13 +101,13 @@ void MainWindow::createUi()
     date_ticker_->setTimeZone(QTimeZone::UTC);
     plot_->xAxis->setTicker(date_ticker_);
 
-    // Cursors are always present and simply move into the current x-axis range
-    // whenever the plot is refreshed or reset.
+    // Cursor items exist from startup, but stay hidden until data has been
+    // loaded and refreshPlot() can place them on the time axis.
     left_cursor_ = new QCPItemLine(plot_);
-    left_cursor_->setVisible(true);
+    left_cursor_->setVisible(false);
     left_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
     right_cursor_ = new QCPItemLine(plot_);
-    right_cursor_->setVisible(true);
+    right_cursor_->setVisible(false);
     right_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
 
     QWidget *plot_tab = new QWidget;

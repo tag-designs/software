@@ -3,14 +3,27 @@
 
 #include <QColor>
 #include <QMap>
-#include <QVector>
 #include <QString>
+#include <QVector>
+
+enum class SensorAxisSide
+{
+    Left,
+    Right,
+};
+
+struct SensorAxisRange
+{
+    bool enabled = false;
+    double lower = 0.0;
+    double upper = 0.0;
+};
 
 // sensorViz has two layers of data:
 //
 // 1. SqliteLoader reads whatever optional tables exist in the database.
-// 2. The UI consumes SensorStream objects and does not care which tag type
-//    produced them.
+// 2. The UI consumes normalized SensorStream and SensorRecordSet objects and
+//    does not care which tag type produced them.
 //
 // A SensorStream is therefore the main handoff type between file loading and
 // plotting. When adding a new sensor, prefer converting its table into a new
@@ -33,6 +46,28 @@ struct SensorStream
     // directly from the database; they are drawn slightly heavier.
     QColor color;
     bool derived = false;
+
+    // Initial View menu state after a log is loaded. Runtime visibility still
+    // lives in the QAction so top-level and context menus stay synchronized.
+    bool defaultVisible = true;
+
+    // Stable plotting defaults. These keep diagnostic streams such as voltage
+    // and core temperature on the right and let profiles set sane default
+    // ranges, while still allowing user-configured ranges to override them.
+    SensorAxisSide axisSide = SensorAxisSide::Left;
+    SensorAxisRange axisRange;
+};
+
+// Multi-column sensor data that is not itself a single plottable y-axis series.
+// Compass data is the motivating future case: one Compass table has accel and
+// magnetometer columns, and later transforms can turn those columns into scalar
+// streams such as heading, pitch, roll, and acceleration magnitude.
+struct SensorRecordSet
+{
+    QString id;
+    QString label;
+    QVector<double> time;
+    QMap<QString, QVector<double>> columns;
 };
 
 // Loaded SQLite log plus the streams sensorViz knows how to display. Tag type
@@ -41,11 +76,13 @@ struct SensorLog
 {
     QString path;
     QString tagType;
+    QString profileName;
 
     // Raw info table values, with large opaque config/info blobs filtered out
     // only when the File Info tab is rendered.
     QMap<QString, QString> info;
     QVector<SensorStream> streams;
+    QVector<SensorRecordSet> recordSets;
 };
 
 #endif

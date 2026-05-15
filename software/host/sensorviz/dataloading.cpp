@@ -15,8 +15,8 @@
 // 4. Update File Info, tag-dependent menus, and the plot.
 //
 // If the application opens a file but does not show the expected streams, check
-// sqlite_loader.cpp first to see whether the table was converted into a stream,
-// then check the default visibility loop in loadLog().
+// sensorprofile.cpp first to see whether the table has a definition, then check
+// sqlite_loader.cpp to see whether that definition was loaded successfully.
 void MainWindow::loadLog()
 {
     const QString path = HostFileDialog::getOpenFileName(
@@ -40,11 +40,11 @@ void MainWindow::loadLog()
     streams_ = log.streams;
     custom_axis_ranges_.clear();
 
-    // Core temperature and voltage are useful diagnostic streams, but pressure
-    // and activity are the primary view for most sensor logs.
+    // Default visibility comes from sensorprofile.cpp. The QAction state is the
+    // runtime source of truth after this point.
     clearStreamActions();
     for (const SensorStream &stream : streams_) {
-        addStreamAction(stream, stream.id != "core_temperature" && stream.id != "voltage");
+        addStreamAction(stream, stream.defaultVisible);
     }
 
     // Order matters here: menu visibility depends on streams_, and refreshPlot()
@@ -52,7 +52,7 @@ void MainWindow::loadLog()
     updateMetadata();
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
-    refreshPlot();
+    refreshPlotFullRange();
 }
 
 void MainWindow::updateMetadata()
@@ -68,6 +68,16 @@ void MainWindow::updateMetadata()
     if (!log_.tagType.isEmpty()) {
         lines << "Tag type: " + log_.tagType;
     }
+    if (!log_.profileName.isEmpty()) {
+        lines << "Profile: " + log_.profileName;
+    }
+    if (!log_.recordSets.isEmpty()) {
+        QStringList record_sets;
+        for (const SensorRecordSet &record_set : log_.recordSets) {
+            record_sets << record_set.label;
+        }
+        lines << "Record sets: " + record_sets.join(", ");
+    }
     for (auto it = log_.info.cbegin(); it != log_.info.cend(); ++it) {
         // The raw protobuf/config blobs are too large for the summary pane.
         if (it.key() == "config" || it.key() == "info") {
@@ -77,5 +87,11 @@ void MainWindow::updateMetadata()
     }
     info_->setPlainText(lines.join("\n"));
 
-    status_->setText(tr("%1 streams loaded").arg(streams_.size()));
+    if (log_.recordSets.isEmpty()) {
+        status_->setText(tr("%1 streams loaded").arg(streams_.size()));
+    } else {
+        status_->setText(tr("%1 streams, %2 record sets loaded")
+                             .arg(streams_.size())
+                             .arg(log_.recordSets.size()));
+    }
 }
