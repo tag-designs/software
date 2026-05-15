@@ -7,6 +7,8 @@ depend on this library.
 Current contents:
 
 - `CompassDisplay`: adapter between C++ compass samples and the QML compass.
+- `AttitudeDisplay`: adapter between C++ orientation quaternions and the QML
+  3D tag attitude view.
 - `CompassCalibrationDialog`: read-only dialog for loaded calibration constants.
 - `orientation_frame/`: QML/SVG compass display assets.
 - `sensorui_resources.*`: explicit resource initialization for static-library

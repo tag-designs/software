@@ -384,11 +384,22 @@
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_14">
            <item>
-            <widget class="QQuickWidget" name="tagWidget">
-             <property name="resizeMode">
-              <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="orientationDisplayLayout">
+             <item>
+              <widget class="QQuickWidget" name="tagWidget">
+               <property name="resizeMode">
+                <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QQuickWidget" name="attitudeWidget">
+               <property name="resizeMode">
+                <enum>QQuickWidget::ResizeMode::SizeRootObjectToView</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>

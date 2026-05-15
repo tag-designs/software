@@ -61,9 +61,6 @@ qt6_wrap_ui(UI_HEADERS
             mainwindow.ui)
 
 
-qt_add_resources(qtcalibrate_SRCS qfi.qrc)
-
-
 # Tell CMake to create the qtmonitor executable
 
 qt_add_executable(
@@ -71,7 +68,9 @@ qt_add_executable(
 )# resources/resources.qrc)
 
 target_include_directories(qtcalibrate PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-set_property(TARGET qtcalibrate PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
+set_property(
+  TARGET qtcalibrate
+  PROPERTY QT_DEPLOY_QML_DIRS "${PROJECT_SOURCE_DIR}/host/libraries/sensorui/orientation_frame")
 
 set_target_properties(
   qtcalibrate
@@ -86,7 +85,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtcalibrate PRIVATE tagcore host_common Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Qml Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
+target_link_libraries(qtcalibrate PRIVATE tagcore host_common sensorui Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Qml Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
 if(WIN32)
   # why the opengle extensions ????
   #target_link_libraries(qtprogram) )

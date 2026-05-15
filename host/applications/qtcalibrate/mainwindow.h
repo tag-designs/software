@@ -6,16 +6,19 @@
 #include <QPromise>
 #include <QProcess>
 #include <QRandomGenerator>
-#include<QQuickItem>
 #include "tagclass.h"
 #include "ui_mainwindow.h"
 
+#include "attitude_display.h"
+#include "compass_display.h"
 #include "tag.pb.h"
 #include "compassdata.h"
 
 
 
 class QWidget;
+class QAction;
+class QMenu;
 class QTextEdit;
 
 extern int log_level;
@@ -90,6 +93,9 @@ private slots:
   void on_logsaveButton_clicked();
   void on_logclearButton_clicked();
   void on_loglevelBox_currentIndexChanged(int index);
+  void setDeclination();
+  void batteryForwardToggled(bool checked);
+  void showOrientationContextMenu(const QPoint &pos);
 
 
 
@@ -97,10 +103,14 @@ private:
 
   void logWindowInit(void);
   void scatterGraphInit(void);
+  void orientationControlsInit(void);
+  void updateDeclinationActionText();
   void rotateImage(QQuaternion qt);
-  void setOrientation(float h, float p, float r, float d, float f);
+  void setOrientation(float h, float p, float r, float d, float f, float g);
 
   CompassData magnetic;
+  CompassDisplay compassDisplay;
+  AttitudeDisplay attitudeDisplay;
   Tag tag;
   Config config;
   TagInfo info;
@@ -108,7 +118,11 @@ private:
   QTimer timer;
   QTimer qualitytimer;
   UsbDev usbdev;
-  QQuickItem *rootObject;
+  QMenu *configurationMenu = nullptr;
+  QAction *declinationAction = nullptr;
+  QAction *batteryForwardAction = nullptr;
+  double declinationDegrees = 0.0;
+  bool batteryForward = true;
 
   bool isCalibrating = false;
   bool isOrienting = false;

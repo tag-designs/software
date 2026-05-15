@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QMenu>
 #include <QProgressDialog>
 #include <QTime>
 #include <QDateTime>
@@ -22,6 +23,7 @@
 #include "ui_mainwindow.h"
 #include "qtfiledialog.h"
 
+#include "sensorui_resources.h"
 #include "tag.pb.h"
 
 #include "txtlogs.h"
@@ -56,6 +58,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // initialize logging window
 
   logWindowInit();
+  orientationControlsInit();
 
 
   // Connect Timers to slots
@@ -71,13 +74,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // attach to tag if possible
 
   Attach();
-  //ui.hi_graphicsView->redraw();
-  ui.tagWidget->setSource(QUrl("qrc:/qfi/orientation_frame/orientation.qml"));
-  //ui.tagWidget->setSource(QUrl("qrc:/qfi/images/main.qml"));
+  initializeSensorUiResources();
+  ui.tagWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   qInfo() << ui.tagWidget->errors();
   ui.tagWidget->show();
   qInfo() << ui.tagWidget->errors();
-  rootObject = ui.tagWidget->rootObject();
+  compassDisplay.setRootObject(ui.tagWidget->rootObject());
+  compassDisplay.setDeclination(declinationDegrees);
+  compassDisplay.setBatteryForward(batteryForward);
+
+  ui.attitudeWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyAttitude.qml"));
+  qInfo() << ui.attitudeWidget->errors();
+  ui.attitudeWidget->show();
+  qInfo() << ui.attitudeWidget->errors();
+  attitudeDisplay.setRootObject(ui.attitudeWidget->rootObject());
+  attitudeDisplay.setBatteryForward(batteryForward);
   
 }
 
@@ -280,7 +291,7 @@ void MainWindow::TriggerUpdate(void)
               roll = angles[1];
               yaw = angles[2];
               qInfo() << "Pitch: " << pitch << " Roll " << roll << " Yaw " << yaw;
-              setOrientation(yaw,pitch,roll,dip,field);
+              setOrientation(yaw,pitch,roll,dip,field,accel.length());
               // update rotated image of tag
               // qtquick -- roll around z, pitch around x, yaw around y
               //. this is really strange
@@ -526,22 +537,105 @@ void MainWindow::on_logclearButton_clicked()
   ui.logTextEdit->clear();
 }
 
-void MainWindow::rotateImage(QQuaternion qt){
-    QMetaObject::invokeMethod(rootObject, "setRotationQuaternion",
-        //Q_RETURN_ARG(QString, returnedValue),
-        Q_ARG(QVariant, qt));
+void MainWindow::orientationControlsInit()
+{
+  ui.menuBar->setNativeMenuBar(false);
+
+  configurationMenu = ui.menuBar->addMenu(tr("&Configuration"));
+
+  declinationAction = new QAction(this);
+  updateDeclinationActionText();
+  connect(declinationAction, &QAction::triggered, this, &MainWindow::setDeclination);
+  configurationMenu->addAction(declinationAction);
+
+  batteryForwardAction = new QAction(tr("&Battery Forward"), this);
+  batteryForwardAction->setCheckable(true);
+  batteryForwardAction->setChecked(batteryForward);
+  connect(
+      batteryForwardAction,
+      &QAction::toggled,
+      this,
+      &MainWindow::batteryForwardToggled);
+  configurationMenu->addAction(batteryForwardAction);
+
+  ui.tagWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+  ui.attitudeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(
+      ui.tagWidget,
+      &QWidget::customContextMenuRequested,
+      this,
+      &MainWindow::showOrientationContextMenu);
+  connect(
+      ui.attitudeWidget,
+      &QWidget::customContextMenuRequested,
+      this,
+      &MainWindow::showOrientationContextMenu);
 }
 
-void MainWindow::setOrientation(float h, float p, float r, float d, float f){
-    QMetaObject::invokeMethod(rootObject, "setOrientation",
-          //Q_RETURN_ARG(QString, returnedValue),
-          Q_ARG(QVariant, h),
-          Q_ARG(QVariant, p),
-          Q_ARG(QVariant, r),
-          Q_ARG(QVariant, d),
-          Q_ARG(QVariant, f));
+void MainWindow::updateDeclinationActionText()
+{
+  if (!declinationAction) {
+    return;
   }
 
+  declinationAction->setText(
+      tr("&Declination... (%1 deg)").arg(declinationDegrees, 0, 'f', 2));
+}
 
+void MainWindow::setDeclination()
+{
+  bool ok = false;
+  const double declination = QInputDialog::getDouble(
+      this,
+      tr("Declination"),
+      tr("Declination angle (degrees)"),
+      declinationDegrees,
+      -180.0,
+      180.0,
+      2,
+      &ok);
+  if (!ok) {
+    return;
+  }
+
+  declinationDegrees = declination;
+  updateDeclinationActionText();
+  compassDisplay.setDeclination(declinationDegrees);
+}
+
+void MainWindow::batteryForwardToggled(bool checked)
+{
+  batteryForward = checked;
+  compassDisplay.setBatteryForward(batteryForward);
+  attitudeDisplay.setBatteryForward(batteryForward);
+}
+
+void MainWindow::showOrientationContextMenu(const QPoint &pos)
+{
+  QWidget *widget = qobject_cast<QWidget *>(sender());
+  if (!widget) {
+    return;
+  }
+
+  QMenu menu(this);
+  menu.addAction(declinationAction);
+  menu.addAction(batteryForwardAction);
+  menu.exec(widget->mapToGlobal(pos));
+}
+
+void MainWindow::rotateImage(QQuaternion qt){
+    attitudeDisplay.setRotationQuaternion(qt);
+}
+
+void MainWindow::setOrientation(float h, float p, float r, float d, float f, float g){
+  CompassDerivedSample sample;
+  sample.yaw = h;
+  sample.pitch = p;
+  sample.roll = r;
+  sample.dip = d;
+  sample.field = f;
+  sample.mg = g;
+  compassDisplay.showSample(sample);
+}
 
 

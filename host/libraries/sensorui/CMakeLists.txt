@@ -10,6 +10,7 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Qml Quick QuickWidgets Svg)
 
 set(sensorui_SRCS
+  attitude_display.cpp
   compass_calibration_dialog.cpp
   compass_calibration_dialog.ui
   compass_display.cpp
