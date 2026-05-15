@@ -2,21 +2,12 @@
 #include <QMainWindow>
 #include <QDebug>
 #include <QFile>
-#include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QMenu>
-#include <QProgressDialog>
-#include <QTime>
 #include <QDateTime>
-#include <QTimer>
-#include <QLayout>
-
 
 #include <QVector3D>
-
-#include <ctime>
-#include <fstream>
 
 #include "tagclass.h"
 #include "mainwindow.h"
@@ -158,8 +149,6 @@ bool MainWindow::Attach()
 
   if (tag.Attach(usbdev))
   {
-    std::string str;
-    int size;
     Status status;
     //Info info;
     tag.GetTagInfo(info);
@@ -250,9 +239,7 @@ void MainWindow::on_detachButton_clicked(){
 
 void MainWindow::TriggerUpdate(void)
 {
-  Status status;
   Ack ack;
-  static bool done;
   QVector3D mag, accel;
   float mx,my,mz,ax,ay,az;
   float pitch, roll, yaw, dip, field;
@@ -397,7 +384,6 @@ void MainWindow::on_stopButton_clicked(){
 void MainWindow::on_saveButton_clicked(){
   CalibrationConstants constants;
   CalibrationConstants_MagConstants magconstants;
-  Ack ack;
 
   float B;
   float V[3];
@@ -432,7 +418,6 @@ void MainWindow::on_saveButton_clicked(){
 
 void MainWindow::on_loadButton_clicked(){
    CalibrationConstants constants;
-   Ack ack;
    float B;
    float V[3];
    float A[3][3];

@@ -4,11 +4,9 @@
 #include <QList>
 #include <QVector3D>
 #include <QQuaternion>
-#include <QMatrix3x3>
 #include <QObject>
 
-#include "magcal.h"
-#include "ema.h"
+#include "magcal/magcal.h"
 
 
 
@@ -47,7 +45,6 @@ private:
     void add_magcal_data(QVector3D);
     bool raw_data(QVector3D);
     QVector3D BpFast(int i);
-    Ema r,p,y,d,f;
     QVector3D acc_filt, mag_filt;
 };
 

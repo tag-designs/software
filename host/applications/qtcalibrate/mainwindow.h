@@ -3,9 +3,6 @@
 
 #include <QMainWindow>
 #include <QTimer>
-#include <QPromise>
-#include <QProcess>
-#include <QRandomGenerator>
 #include "tagclass.h"
 #include "ui_mainwindow.h"
 
@@ -16,19 +13,10 @@
 
 
 
-class QWidget;
 class QAction;
 class QMenu;
-class QTextEdit;
 
 extern int log_level;
-
-class LogScreen;
-
-
-namespace Ui {
-class MainWindow;
-}
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
