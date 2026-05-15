@@ -77,20 +77,21 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
    - table: `Compass`
    - columns: `ax`, `ay`, `az`, `mx`, `my`, `mz`
    - record id: `compass_raw`
-3. Move eCompass/orientation math out of `compviz/MainWindow` into a reusable
-   helper or transform module.
-4. Add a compass transform that consumes:
+3. Load the latest CompassTag calibration row into typed `SensorLog` metadata.
+4. Use the shared `sensoranalysis` eCompass/orientation helpers from a transform
+   module.
+5. Add a compass transform that consumes:
    - `compass_raw`
    - calibration constants from the SQLite log
    - declination/configuration parameters
-5. Have that transform produce scalar streams such as:
+6. Have that transform produce scalar streams such as:
    - heading
    - acceleration magnitude
    - pitch
    - roll
    - dip
    - magnetic field strength
-6. Later, add an optional specialized orientation panel analogous to the current
+7. Later, add an optional specialized orientation panel analogous to the current
    `compviz` QML compass view.
 
 ## Likely Next Refactors

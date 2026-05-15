@@ -15,6 +15,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
   - altitude from pressure
   - low-pass filtered activity
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
+- Shows CompassTag calibration constants from the View menu when a log contains
+  calibration data.
 - Supports print preview, UTC offset display, cursors, and zoom-to-cursor.
 
 ## Current Architecture
@@ -73,6 +75,11 @@ and View menu operate on.
 `SensorRecordSet` is a multi-column time-indexed table that is loaded but not
 plotted directly. It exists so future data such as compass accel/magnetometer
 samples can be loaded first, then converted into streams by transforms.
+
+Compass calibration constants are stored as typed metadata on `SensorLog`.
+Keeping calibration beside the raw compass record set lets future compass
+transforms derive heading, pitch, roll, and related streams without reparsing
+the SQLite JSON.
 
 `SensorProfile` describes how SQLite tables map into those data structures.
 Adding a simple one-column sensor table should usually start in
@@ -140,8 +147,9 @@ display math belongs in transform code.
 The next major goal is to prepare for compass-like logs without copying all of
 `compviz` into this application at once. The intended path is:
 
-1. Load multi-column compass data as a `SensorRecordSet`.
-2. Move eCompass/orientation math into reusable helper code.
+1. Load multi-column compass data as a `SensorRecordSet` and load calibration
+   constants as typed `SensorLog` metadata.
+2. Use the shared `sensoranalysis` compass helpers for eCompass/orientation math.
 3. Add transforms that produce scalar streams such as heading, acceleration
    magnitude, pitch, roll, dip, and field strength.
 4. Add an optional orientation panel later, analogous to the current `compviz`

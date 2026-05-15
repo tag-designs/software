@@ -35,6 +35,9 @@ void MainWindow::createActions()
     reset_action_ = new QAction(tr("&Reset Zoom"), this);
     zoom_to_cursors_action_ = new QAction(tr("&Zoom to Cursors"), this);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
+    calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
+    calibration_constants_action_->setVisible(false);
+    calibration_constants_action_->setEnabled(false);
     altitude_action_ = new QAction(tr("&Altitude"), this);
     altitude_action_->setCheckable(true);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
@@ -46,6 +49,11 @@ void MainWindow::createActions()
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
+    connect(
+        calibration_constants_action_,
+        &QAction::triggered,
+        this,
+        &MainWindow::showCalibrationConstants);
     connect(altitude_action_, &QAction::toggled, this, &MainWindow::altitudeToggled);
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
 
@@ -64,6 +72,8 @@ void MainWindow::createActions()
     range_menu_->menuAction()->setVisible(false);
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
+    view_menu_->addSeparator();
+    view_menu_->addAction(calibration_constants_action_);
 
     configuration_menu_ = menuBar()->addMenu(tr("&Configuration"));
     configuration_menu_->addAction(utc_offset_action_);

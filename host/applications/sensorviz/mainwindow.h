@@ -66,6 +66,7 @@ private slots:
     void setUtcOffset();
     void altitudeToggled(bool checked);
     void activityFilterToggled(bool checked);
+    void showCalibrationConstants();
     void setStreamRangeFromAction();
     void printPlot();
     void renderPlot(QPrinter *printer);
@@ -154,6 +155,7 @@ private:
     QAction *utc_offset_action_ = nullptr;
     QAction *altitude_action_ = nullptr;
     QAction *activity_filter_action_ = nullptr;
+    QAction *calibration_constants_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;

@@ -2,6 +2,10 @@
 
 #include "sensorprofile.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+
 #include <sqlite3.h>
 
 // SQLite logs from different tag types share table conventions, but no single
@@ -258,6 +262,48 @@ bool loadRecordSet(
     return true;
 }
 
+bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
+{
+    if (!tableExistsRaw(db, "Calibration")) {
+        return true;
+    }
+
+    Statement stmt(db, "SELECT Epoch, Constants FROM Calibration ORDER BY Epoch DESC LIMIT 1");
+    if (!stmt.valid()) {
+        error = "Failed to load compass calibration: " + stmt.lastError();
+        return false;
+    }
+
+    if (!stmt.next()) {
+        log.compassCalibrationWarning = "Calibration table is present but empty";
+        return true;
+    }
+
+    QJsonParseError parse_error;
+    const QJsonDocument document =
+        QJsonDocument::fromJson(stmt.textColumn(1).toUtf8(), &parse_error);
+    if (parse_error.error != QJsonParseError::NoError || !document.isObject()) {
+        log.compassCalibrationWarning =
+            QString("Compass calibration constants are not valid JSON: %1")
+                .arg(parse_error.errorString());
+        return true;
+    }
+
+    const QJsonObject root = document.object();
+    const QJsonObject magnetometer = root.value("magnetometer").toObject();
+    if (magnetometer.isEmpty()) {
+        log.compassCalibrationWarning =
+            "Compass calibration constants do not contain a magnetometer object";
+        return true;
+    }
+
+    log.compassCalibrationEpoch = stmt.int64Column(0);
+    log.compassCalibration = CompassCalibration::fromMagnetometerJson(magnetometer);
+    log.hasCompassCalibration = true;
+    log.compassCalibrationWarning.clear();
+    return true;
+}
+
 } // namespace
 
 bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
@@ -298,6 +344,10 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         if (!loadRecordSet(db, definition, loaded, error)) {
             return false;
         }
+    }
+    if ((tableExistsRaw(db, "Compass") || tableExistsRaw(db, "Calibration"))
+        && !loadCompassCalibration(db, loaded, error)) {
+        return false;
     }
 
     if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {

@@ -51,6 +51,8 @@ void MainWindow::loadLog()
     // Order matters here: menu visibility depends on streams_, and refreshPlot()
     // depends on the stream actions that were just rebuilt.
     updateMetadata();
+    calibration_constants_action_->setVisible(log_.hasCompassCalibration);
+    calibration_constants_action_->setEnabled(log_.hasCompassCalibration);
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
     refreshPlotFullRange();
@@ -78,6 +80,12 @@ void MainWindow::updateMetadata()
             record_sets << record_set.label;
         }
         lines << "Record sets: " + record_sets.join(", ");
+    }
+    if (log_.hasCompassCalibration) {
+        lines << "Compass calibration: loaded";
+        lines << QString("Compass calibration epoch: %1").arg(log_.compassCalibrationEpoch);
+    } else if (!log_.compassCalibrationWarning.isEmpty()) {
+        lines << "Compass calibration: " + log_.compassCalibrationWarning;
     }
     for (auto it = log_.info.cbegin(); it != log_.info.cend(); ++it) {
         // The raw protobuf/config blobs are too large for the summary pane.

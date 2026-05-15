@@ -6,6 +6,8 @@
 #include <QString>
 #include <QVector>
 
+#include "compass_types.h"
+
 enum class SensorAxisSide
 {
     Left,
@@ -83,6 +85,14 @@ struct SensorLog
     QMap<QString, QString> info;
     QVector<SensorStream> streams;
     QVector<SensorRecordSet> recordSets;
+
+    // CompassTag logs carry calibration constants in a separate table. Keep
+    // them typed here rather than hiding them in the generic info map so the
+    // next layer can derive heading/pitch/roll streams without reparsing JSON.
+    bool hasCompassCalibration = false;
+    qint64 compassCalibrationEpoch = 0;
+    CompassCalibration compassCalibration;
+    QString compassCalibrationWarning;
 };
 
 #endif

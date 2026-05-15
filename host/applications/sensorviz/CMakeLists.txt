@@ -19,7 +19,7 @@ add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets PrintSupport)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets PrintSupport Qml Quick QuickWidgets Svg)
 
 if (NOT Qt6_FOUND)
   message("Qt6 not found")
@@ -51,4 +51,4 @@ if (APPLE)
   set_target_properties(sensorviz PROPERTIES MACOSX_BUNDLE TRUE)
 endif()
 
-target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot Qt6::Widgets Qt6::PrintSupport)
+target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot sensoranalysis sensorui Qt6::Widgets Qt6::PrintSupport)

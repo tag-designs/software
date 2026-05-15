@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include "compass_calibration_dialog.h"
+
 #include <QMessageBox>
 
 #include <cmath>
@@ -28,4 +30,19 @@ void MainWindow::showAbout()
         this,
         tr("About sensorViz"),
         tr("sensorViz\nSQLite sensor log visualization tool"));
+}
+
+void MainWindow::showCalibrationConstants()
+{
+    if (!log_.hasCompassCalibration) {
+        QMessageBox::information(
+            this,
+            tr("Calibration Constants"),
+            tr("No compass calibration constants are available for this log."));
+        return;
+    }
+
+    CompassCalibrationDialog dialog(this);
+    dialog.setConstants(log_.compassCalibration);
+    dialog.exec();
 }
