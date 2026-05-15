@@ -10,9 +10,23 @@ else()
   find_program(FMPP fmpp REQUIRED)
 endif()
 
-set(CHIBIOS_DIR "$ENV{CHIBIOS_DIR}" CACHE PATH "ChibiOS source directory")
+set(_repo_chibios_dir "${CMAKE_SOURCE_DIR}/ChibiOS")
+set(CHIBIOS_DIR "" CACHE PATH "ChibiOS source directory")
 if(NOT CHIBIOS_DIR)
-  set(CHIBIOS_DIR "${CMAKE_SOURCE_DIR}/ChibiOS" CACHE PATH "ChibiOS source directory" FORCE)
+  if(EXISTS "${_repo_chibios_dir}/os")
+    set(CHIBIOS_DIR "${_repo_chibios_dir}" CACHE PATH "ChibiOS source directory" FORCE)
+  elseif(DEFINED ENV{CHIBIOS_DIR} AND EXISTS "$ENV{CHIBIOS_DIR}/os")
+    message(STATUS
+      "Using CHIBIOS_DIR from the environment; initialize the ChibiOS submodule for reproducible builds")
+    set(CHIBIOS_DIR "$ENV{CHIBIOS_DIR}" CACHE PATH "ChibiOS source directory" FORCE)
+  else()
+    message(FATAL_ERROR
+      "ChibiOS was not found. Run `git submodule update --init --recursive ChibiOS`, "
+      "or configure with -DCHIBIOS_DIR=/path/to/ChibiOS.")
+  endif()
+endif()
+if(NOT EXISTS "${CHIBIOS_DIR}/os")
+  message(FATAL_ERROR "CHIBIOS_DIR does not look like a ChibiOS source tree: ${CHIBIOS_DIR}")
 endif()
 message(STATUS "CHIBIOS_DIR is ${CHIBIOS_DIR}")
 

@@ -32,7 +32,7 @@
 *.app
 
 # Directories
-ChibiOS
+# ChibiOS is tracked as a git submodule at ./ChibiOS.
 nanopb
 public
 docs/themes/docsy

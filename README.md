@@ -314,17 +314,30 @@ boards.
 | Protobuf | Install `protoc` and development libraries; the embedded build still configures shared protocol targets. |
 | Git | Used by version-generation helpers. |
 | Arm GNU Toolchain | Provides `arm-none-eabi-gcc`; it must be on `PATH`. |
-| ChibiOS | Set `CHIBIOS_DIR`, or place the tree at `ChibiOS` in the repository root. |
+| ChibiOS | Tracked as the `ChibiOS` git submodule on branch `stable_21.11.x`. |
 | nanopb | Set `NANOPB_ROOT`, or place the tree at `nanopb` in the repository root. |
 | Java runtime | Required by `fmpp`. |
 | `fmpp` | Required for board file generation; it must be on `PATH`. |
 | `make` | Required for ChibiOS-based firmware builds. |
 | STM32CubeProgrammer | Optional for building, required for generated download/DFU targets. |
 
+Before configuring an embedded build, initialize the ChibiOS submodule. This is
+required after a fresh clone, and may also be needed after pulling changes that
+update the submodule pointer:
+
+```
+git submodule update --init --recursive ChibiOS
+```
+
+If `ChibiOS` is missing or uninitialized, CMake will stop during embedded
+configuration and ask you to initialize the submodule. A developer can still
+override the dependency explicitly with `-DCHIBIOS_DIR=/path/to/ChibiOS`, but
+normal builds should use the checked-out submodule so every platform builds
+against the same ChibiOS revision.
+
 Useful environment variables:
 
 ```
-CHIBIOS_DIR=/path/to/ChibiOS
 NANOPB_ROOT=/path/to/nanopb
 PATH=/path/to/gcc-arm/bin:/path/to/fmpp/bin:$PATH
 ```
@@ -340,15 +353,15 @@ cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF -DBUILD_EMBEDD
 Build tag firmware:
 
 ```
-cmake --build build-embedded --target BitTagv6
-cmake --build build-embedded --target BitTagv5
-cmake --build build-embedded --target BitTagNucleo
+cmake --build build-embedded --target BitTag
+cmake --build build-embedded --target PresTag
 ```
 
 Build and download tag firmware:
 
 ```
-cmake --build build-embedded --target BitTagv6-download
+cmake --build build-embedded --target BitTag-download
+cmake --build build-embedded --target PresTag-download
 ```
 
 Build base-board targets:
