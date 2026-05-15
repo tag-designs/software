@@ -10,6 +10,8 @@ namespace
 
 CompassCalibration calibrationFromMagcal()
 {
+	// Convert the inherited global magcal representation into the shared
+	// sensoranalysis calibration type used by CompassProcessor and log viewers.
 	CompassCalibration::Matrix softIron;
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -32,6 +34,9 @@ CompassData::CompassData(QObject *parent) : QObject{parent}
 
 bool CompassData::addData(QVector3D &mag) 
 {
+    // raw_data() updates the inherited solver. When it produces a usable
+    // calibration, emit a UI update and return the calibrated sample for
+    // plotting.
     bool result = raw_data(mag);
     if (result) {
         emit calibration_update();
@@ -108,20 +113,13 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 
 	apply_calibration(magin);
 
-	// lowpass filter inputs
-
+	// qtcalibrate filters live vectors before solving orientation. Log viewers
+	// use unfiltered samples and call CompassProcessor directly.
 	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
 	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
 
-	// convert accelerometer to NWU (positive Z pointing down, pos x facing north, pos y facing west
-	//accel[0] = acc_filt[1];
-	//accel[1] = acc_filt[0];
-	//accel[2] = -acc_filt[2];
-
-//#ifndef DEBUG
 	accel = acc_filt;
 	magin = mag_filt;
-//#endif
 
 	CompassRawSample raw;
 	raw.accel = accel;
@@ -140,8 +138,8 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	return true;
 }
 
-// the following are from magical; they handle data management for
-// the NXP calibration routines
+// The remaining methods manage the inherited magcal sample buffer and quality
+// metrics. The solver itself lives in magcal/.
 
 void CompassData::clear()
 {

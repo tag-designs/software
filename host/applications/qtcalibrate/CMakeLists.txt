@@ -23,6 +23,7 @@ endif()
 
 set(qtcalibrate_SRCS
     compassdata.cpp
+    # Inherited C magnetometer calibration solver and support routines.
     magcal/magcal.c
     magcal/matrix.c
     magcal/quality.c
@@ -39,6 +40,8 @@ qt_add_executable(
 )
 
 target_include_directories(qtcalibrate PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+# qtcalibrate embeds the shared sensorui QML compass and 3D attitude widgets.
 set_property(
   TARGET qtcalibrate
   PROPERTY QT_DEPLOY_QML_DIRS "${PROJECT_SOURCE_DIR}/host/libraries/sensorui/orientation_frame")

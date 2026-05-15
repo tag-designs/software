@@ -8,8 +8,9 @@
 
 #include "magcal/magcal.h"
 
-
-
+// CompassData is the adapter between qtcalibrate and the inherited C magcal
+// solver. It owns the live calibration buffer and exposes a Qt-friendly API for
+// MainWindow and magPlot. Orientation math itself lives in sensoranalysis.
 class CompassData : public QObject
 {
     Q_OBJECT

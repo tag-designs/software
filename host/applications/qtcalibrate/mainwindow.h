@@ -18,6 +18,9 @@ class QMenu;
 
 extern int log_level;
 
+// MainWindow owns the live application workflow: USB/tag attachment,
+// calibration controls, log display, and the embedded shared sensorui QML
+// widgets used to preview compass and attitude.
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
@@ -67,16 +70,7 @@ private slots:
   void on_saveButton_clicked();
   void on_loadButton_clicked();
 
-  // orientation
-
-  //void on_screenDirection_valueChanged(double);
-  //void on_batteryForwardCheckBox_checkStateChanged(Qt::CheckState);
-
-  //void on_orientstartButton_clicked();
-  //void on_oreientstopButton_clicked();
-
-  //void on_connectButton_clicked();
-  //void on_disconnectButton_clicked();
+  // log and orientation display actions
 
   void on_logsaveButton_clicked();
   void on_logclearButton_clicked();
@@ -93,9 +87,13 @@ private:
   void scatterGraphInit(void);
   void orientationControlsInit(void);
   void updateDeclinationActionText();
+  // These methods bridge live orientation results into the shared sensorui
+  // facades. They intentionally avoid direct QML method calls in MainWindow.
   void rotateImage(QQuaternion qt);
   void setOrientation(float h, float p, float r, float d, float f, float g);
 
+  // CompassData owns the inherited calibration solver state. MainWindow owns
+  // the tag connection and decides when to feed samples into that state.
   CompassData magnetic;
   CompassDisplay compassDisplay;
   AttitudeDisplay attitudeDisplay;

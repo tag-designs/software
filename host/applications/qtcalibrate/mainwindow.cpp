@@ -25,7 +25,8 @@ extern "C"
 #include "log.h"
 }
 
-// hook into the error logging system
+// main.cpp installs a Qt message handler that appends log output to this text
+// edit. MainWindow sets it once the generated UI exists.
 
 extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                             const QString &msg);
@@ -34,8 +35,6 @@ QTextEdit *s_textEdit = nullptr;
 
 #define title_string "Tag Calibrator v0.1"
 
-
-// main window
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   ui.setupUi(this);
@@ -62,9 +61,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   //connect(ui.screenDirection,SIGNAL(valueChanged()),this, SLOT(on_screenDirection_valueChanged()));
 
-  // attach to tag if possible
-
   Attach();
+
+  // The compass and attitude views are shared sensorui QML resources. The
+  // small C++ facades keep the rest of qtcalibrate independent of QML method
+  // names and resource details.
   initializeSensorUiResources();
   ui.tagWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   qInfo() << ui.tagWidget->errors();
@@ -87,8 +88,6 @@ MainWindow::~MainWindow()
 {
   tag.Detach();
 }
-
-// attach to tag
 
 bool MainWindow::Attach()
 {

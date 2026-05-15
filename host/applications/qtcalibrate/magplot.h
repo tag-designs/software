@@ -7,6 +7,9 @@
 #include <QList>
 #include <QQuaternion>
 
+// magPlot draws the calibrated magnetometer cloud during calibration. It is a
+// lightweight custom widget, separate from the QML compass/attitude displays,
+// because it visualizes solver input coverage rather than tag orientation.
 class magPlot : public QWidget
 {
     Q_OBJECT
