@@ -15,7 +15,12 @@
 
 #include <qcustomplot.h>
 
+#include "compass_display.h"
+#include "compass_types.h"
 #include "sensorstream.h"
+
+class QQuickWidget;
+class QSplitter;
 
 // MainWindow is the coordination object for sensorViz. It owns the loaded
 // SensorLog, the stream list currently available to the user, the menu actions
@@ -68,6 +73,7 @@ private slots:
     void activityFilterToggled(bool checked);
     void compassDerivedToggled(bool checked);
     void setDeclination();
+    void batteryForwardToggled(bool checked);
     void showCalibrationConstants();
     void setStreamRangeFromAction();
     void printPlot();
@@ -116,6 +122,7 @@ private:
     void addRangeAction(const SensorStream &stream);
     void setStreamRange(const QString &id);
     QCPRange defaultRangeForStream(const SensorStream &stream) const;
+    void updateCompassDisplay(double epoch);
 
     // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
     // from current actions while preserving the visible time window;
@@ -139,6 +146,8 @@ private:
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;
     double declination_degrees_ = 0.0;
+    bool battery_forward_ = true;
+    QVector<CompassDerivedSample> compass_samples_;
 
     // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
     // altitude range derived from pressure; explicit_axis_ranges_ records only
@@ -149,6 +158,9 @@ private:
 
     QWidget *central_ = nullptr;
     QCustomPlot *plot_ = nullptr;
+    QSplitter *plot_splitter_ = nullptr;
+    QQuickWidget *compass_widget_ = nullptr;
+    CompassDisplay compass_display_;
     QTextEdit *info_ = nullptr;
     QLabel *status_ = nullptr;
     QTabWidget *tabs_ = nullptr;
@@ -161,12 +173,14 @@ private:
     QAction *activity_filter_action_ = nullptr;
     QAction *compass_derived_action_ = nullptr;
     QAction *declination_action_ = nullptr;
+    QAction *battery_forward_action_ = nullptr;
     QAction *calibration_constants_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
     QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;
+    QMenu *visible_streams_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QMenu *range_menu_ = nullptr;
     QVector<QAction *> stream_actions_;

@@ -4,10 +4,15 @@
 #include <QFrame>
 #include <QMenu>
 #include <QMenuBar>
+#include <QQuickWidget>
+#include <QSplitter>
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTimeZone>
+#include <QUrl>
 #include <QVBoxLayout>
+
+#include "sensorui_resources.h"
 
 QTextEdit *s_textEdit = nullptr;
 
@@ -47,6 +52,11 @@ void MainWindow::createActions()
     declination_action_ = new QAction(tr("&Declination..."), this);
     declination_action_->setVisible(false);
     declination_action_->setEnabled(false);
+    battery_forward_action_ = new QAction(tr("&Battery Forward"), this);
+    battery_forward_action_->setCheckable(true);
+    battery_forward_action_->setChecked(true);
+    battery_forward_action_->setVisible(false);
+    battery_forward_action_->setEnabled(false);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
@@ -63,6 +73,7 @@ void MainWindow::createActions()
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
     connect(compass_derived_action_, &QAction::toggled, this, &MainWindow::compassDerivedToggled);
     connect(declination_action_, &QAction::triggered, this, &MainWindow::setDeclination);
+    connect(battery_forward_action_, &QAction::toggled, this, &MainWindow::batteryForwardToggled);
 
     // The menu layout follows compViz: File for file-level actions, View for
     // plot/stream visibility and Configuration for transform parameters.
@@ -74,6 +85,9 @@ void MainWindow::createActions()
     file_menu->addAction(about_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
+    visible_streams_menu_ = view_menu_->addMenu(tr("Visible &Streams"));
+    visible_streams_menu_->menuAction()->setVisible(false);
+    visible_streams_menu_->setEnabled(false);
     view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
     range_menu_->menuAction()->setVisible(false);
@@ -89,6 +103,7 @@ void MainWindow::createActions()
     configuration_menu_->addAction(activity_filter_action_);
     configuration_menu_->addAction(compass_derived_action_);
     configuration_menu_->addAction(declination_action_);
+    configuration_menu_->addAction(battery_forward_action_);
 }
 
 void MainWindow::createUi()
@@ -99,6 +114,8 @@ void MainWindow::createUi()
     tabs_ = new QTabWidget;
     info_ = new QTextEdit;
     plot_ = new QCustomPlot;
+    plot_splitter_ = new QSplitter(Qt::Horizontal);
+    compass_widget_ = new QQuickWidget;
     status_ = new QLabel(tr("No log loaded"));
 
     // Plot tab: the frame matches the visual treatment in compViz. The plot
@@ -112,6 +129,17 @@ void MainWindow::createUi()
     plot_->axisRect()->setRangeDrag(Qt::Horizontal);
     plot_->axisRect()->setRangeZoom(Qt::Horizontal);
     plot_->xAxis->setLabel(tr("Hour:Minute (UTC)\nMonth/Day/Year"));
+
+    initializeSensorUiResources();
+    compass_widget_->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    compass_widget_->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
+    compass_widget_->setMinimumWidth(220);
+    compass_widget_->setMaximumWidth(320);
+    compass_widget_->setContextMenuPolicy(Qt::CustomContextMenu);
+    compass_widget_->setVisible(false);
+    compass_display_.setRootObject(compass_widget_->rootObject());
+    compass_display_.setDeclination(declination_degrees_);
+    compass_display_.setBatteryForward(battery_forward_);
 
     date_ticker_.reset(new QCPAxisTickerDateTime);
     date_ticker_->setDateTimeFormat("hh:mm\nMM/dd/yy");
@@ -133,7 +161,11 @@ void MainWindow::createUi()
     plot_frame->setFrameShape(QFrame::StyledPanel);
     plot_frame->setFrameShadow(QFrame::Raised);
     QVBoxLayout *plot_frame_layout = new QVBoxLayout;
-    plot_frame_layout->addWidget(plot_);
+    plot_splitter_->addWidget(plot_);
+    plot_splitter_->addWidget(compass_widget_);
+    plot_splitter_->setStretchFactor(0, 1);
+    plot_splitter_->setStretchFactor(1, 0);
+    plot_frame_layout->addWidget(plot_splitter_);
     plot_frame->setLayout(plot_frame_layout);
     plot_layout->addWidget(plot_frame);
     plot_tab->setLayout(plot_layout);

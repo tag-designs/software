@@ -84,7 +84,7 @@ void MainWindow::removeStream(const QString &id)
     for (qsizetype i = 0; i < stream_actions_.size(); i++) {
         QAction *action = stream_actions_[i];
         if (action->data().toString() == id) {
-            view_menu_->removeAction(action);
+            visible_streams_menu_->removeAction(action);
             stream_actions_.removeAt(i);
             delete action;
             break;
@@ -101,10 +101,12 @@ void MainWindow::removeStream(const QString &id)
 void MainWindow::clearStreamActions()
 {
     for (QAction *action : stream_actions_) {
-        view_menu_->removeAction(action);
+        visible_streams_menu_->removeAction(action);
         delete action;
     }
     stream_actions_.clear();
+    visible_streams_menu_->menuAction()->setVisible(false);
+    visible_streams_menu_->setEnabled(false);
     clearRangeActions();
     updateTransformActions();
 }
@@ -120,7 +122,9 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
         rebuildRangeActions();
     });
     stream_actions_.append(action);
-    view_menu_->insertAction(view_stream_separator_, action);
+    visible_streams_menu_->addAction(action);
+    visible_streams_menu_->menuAction()->setVisible(true);
+    visible_streams_menu_->setEnabled(true);
 }
 
 QAction *MainWindow::streamActionById(const QString &id) const

@@ -19,6 +19,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
 - Shows CompassTag calibration constants from the View menu when a log contains
   calibration data.
+- Shows a narrow CompassTag orientation panel beside the plot when compass data
+  is loaded.
 - Supports print preview, UTC offset display, cursors, and zoom-to-cursor.
 
 ## Current Architecture
@@ -41,6 +43,8 @@ The code is split by responsibility:
 - `interaction.cpp`: cursors, print preview, UTC offset, context menus, and
   mouse readout.
 - `controls.cpp`: small shared display helpers and general actions.
+- `sensorui`: provides the shared CompassTag calibration dialog and QML
+  orientation display used by both `sensorviz` and `compviz`.
 
 ## Maintenance Map
 
@@ -103,8 +107,8 @@ Adding a simple one-column sensor table should usually start in
 
 ## Stream Actions and Ranges
 
-Raw streams get checkable entries in the View menu. The checked state of those
-actions is the source of truth for which raw streams are plotted.
+Raw streams get checkable entries under View > Visible Streams. The checked
+state of those actions is the source of truth for which raw streams are plotted.
 
 Derived display streams such as altitude and low-pass activity are controlled by
 Configuration actions instead of duplicated in the View menu. Compass derived
@@ -112,7 +116,8 @@ streams are the exception: the Configuration action generates the derived family
 from one raw record set, then each stream gets its own View action so heading,
 acceleration, pitch, roll, dip, and field strength can be shown independently.
 For CompassTag logs, Configuration > Declination adjusts only the displayed
-heading stream; raw orientation-derived values remain magnetic-frame data.
+heading stream; Configuration > Battery Forward applies the matching 180 degree
+display convention. Raw orientation-derived values remain magnetic-frame data.
 
 The View > Ranges submenu and the plot context-menu Ranges submenu are rebuilt
 from the currently displayed streams. Each range action stores the stream id in

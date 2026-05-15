@@ -75,6 +75,10 @@ The important architecture pieces are:
   actions for heading, acceleration, pitch, roll, dip, and magnetic field.
 - Declination is a CompassTag-only Configuration action that adjusts the
   displayed heading stream without reloading the file.
+- Battery Forward is a CompassTag-only Configuration action that rotates the
+  heading display and QML compass convention without changing loaded samples.
+- A narrow CompassTag orientation panel appears beside the plot when compass
+  data is loaded and follows the nearest sample under the mouse.
 
 ## Future Compass / compViz Integration
 
@@ -90,9 +94,7 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
    module.
 5. Generate scalar streams for heading, acceleration magnitude, pitch, roll,
    dip, and magnetic field strength.
-6. Later, add a battery-direction display setting for heading.
-7. Later, add an optional specialized orientation panel analogous to the current
-   `compviz` QML compass view.
+6. Later, split the compass transform helpers out of `transforms.cpp`.
 
 ## Likely Next Refactors
 

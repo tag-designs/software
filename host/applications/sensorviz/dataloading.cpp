@@ -38,6 +38,7 @@ void MainWindow::loadLog()
     current_path_ = QFileInfo(path).absolutePath();
     log_ = log;
     streams_ = log.streams;
+    compass_samples_.clear();
     custom_axis_ranges_.clear();
     explicit_axis_ranges_.clear();
 

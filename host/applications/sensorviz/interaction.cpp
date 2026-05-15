@@ -132,11 +132,11 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // that are not meaningful for the loaded log. Range actions are temporary
     // here because QMenu owns them only for the lifetime of this popup; the
     // persistent View -> Ranges actions are managed by range_actions_.
-    for (QAction *action : stream_actions_) {
-        menu.addAction(action);
-    }
     if (!stream_actions_.isEmpty()) {
-        menu.addSeparator();
+        QMenu *visible_streams = menu.addMenu(tr("Visible Streams"));
+        for (QAction *action : stream_actions_) {
+            visible_streams->addAction(action);
+        }
     }
     menu.addAction(reset_action_);
     menu.addAction(zoom_to_cursors_action_);
@@ -156,7 +156,8 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     if (altitude_action_->isVisible()
         || activity_filter_action_->isVisible()
         || compass_derived_action_->isVisible()
-        || declination_action_->isVisible()) {
+        || declination_action_->isVisible()
+        || battery_forward_action_->isVisible()) {
         menu.addSeparator();
         if (altitude_action_->isVisible()) {
             menu.addAction(altitude_action_);
@@ -169,6 +170,9 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
         }
         if (declination_action_->isVisible()) {
             menu.addAction(declination_action_);
+        }
+        if (battery_forward_action_->isVisible()) {
+            menu.addAction(battery_forward_action_);
         }
     }
     menu.addSeparator();
@@ -197,6 +201,29 @@ QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) cons
         .arg(unitsSuffix(stream));
 }
 
+void MainWindow::updateCompassDisplay(double epoch)
+{
+    if (compass_samples_.isEmpty()) {
+        return;
+    }
+
+    auto it = std::lower_bound(
+        compass_samples_.cbegin(),
+        compass_samples_.cend(),
+        epoch,
+        [](const CompassDerivedSample &sample, double value) {
+            return sample.epoch < value;
+        });
+    qsizetype index = it == compass_samples_.cend()
+        ? compass_samples_.size() - 1
+        : std::distance(compass_samples_.cbegin(), it);
+    if (index < 0 || index >= compass_samples_.size()) {
+        return;
+    }
+
+    compass_display_.showSample(compass_samples_[index]);
+}
+
 void MainWindow::showMousePosition(QMouseEvent *event)
 {
     if (!plot_->axisRect()->rect().contains(event->pos())) {
@@ -213,5 +240,6 @@ void MainWindow::showMousePosition(QMouseEvent *event)
             parts << value;
         }
     }
+    updateCompassDisplay(x);
     QToolTip::showText(plot_->mapToGlobal(event->pos()), parts.join("\n"), this, QRect(), 3000);
 }

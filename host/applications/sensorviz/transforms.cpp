@@ -5,6 +5,7 @@
 #include <QAction>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QQuickWidget>
 #include <QSignalBlocker>
 
 #include <algorithm>
@@ -107,29 +108,18 @@ bool compassRecordHasExpectedColumns(const SensorRecordSet &compass)
 }
 
 QVector<double> compassHeadingValues(
-    const SensorRecordSet &compass,
-    const CompassCalibration &calibration,
-    double declination_degrees)
+    const QVector<CompassDerivedSample> &samples,
+    double declination_degrees,
+    bool battery_forward)
 {
-    const QVector<double> ax = compass.columns.value("ax");
-    const QVector<double> ay = compass.columns.value("ay");
-    const QVector<double> az = compass.columns.value("az");
-    const QVector<double> mx = compass.columns.value("mx");
-    const QVector<double> my = compass.columns.value("my");
-    const QVector<double> mz = compass.columns.value("mz");
-
     QVector<double> heading;
-    heading.reserve(compass.time.size());
-
-    CompassProcessor processor(calibration);
-    for (qsizetype i = 0; i < compass.time.size(); i++) {
-        CompassRawSample raw;
-        raw.epoch = compass.time[i];
-        raw.accel = QVector3D(ax[i], ay[i], az[i]);
-        raw.mag = QVector3D(mx[i], my[i], mz[i]);
-
-        const CompassDerivedSample sample = processor.deriveSample(raw);
-        heading.append(CompassProcessor::headingFromYaw(sample.yaw, declination_degrees));
+    heading.reserve(samples.size());
+    for (const CompassDerivedSample &sample : samples) {
+        double value = CompassProcessor::headingFromYaw(sample.yaw, declination_degrees);
+        if (!battery_forward) {
+            value = CompassProcessor::headingFromYaw(value, 180.0);
+        }
+        heading.append(value);
     }
 
     return heading;
@@ -169,7 +159,12 @@ void MainWindow::updateTransformActions()
     compass_derived_action_->setEnabled(has_compass);
     declination_action_->setVisible(has_compass);
     declination_action_->setEnabled(has_compass);
+    battery_forward_action_->setVisible(has_compass);
+    battery_forward_action_->setEnabled(has_compass);
     updateDeclinationActionText(declination_action_, declination_degrees_);
+    if (compass_widget_) {
+        compass_widget_->setVisible(has_compass);
+    }
 
     configuration_transform_separator_->setVisible(has_pressure || has_activity || has_compass);
 
@@ -317,12 +312,13 @@ void MainWindow::compassDerivedToggled(bool checked)
     QVector<double> roll;
     QVector<double> dip;
     QVector<double> field;
-    heading = compassHeadingValues(*compass, log_.compassCalibration, declination_degrees_);
     acceleration.reserve(sample_count);
     pitch.reserve(sample_count);
     roll.reserve(sample_count);
     dip.reserve(sample_count);
     field.reserve(sample_count);
+    compass_samples_.clear();
+    compass_samples_.reserve(sample_count);
 
     const QVector<double> ax = compass->columns.value("ax");
     const QVector<double> ay = compass->columns.value("ay");
@@ -339,11 +335,16 @@ void MainWindow::compassDerivedToggled(bool checked)
         raw.mag = QVector3D(mx[i], my[i], mz[i]);
 
         const CompassDerivedSample sample = processor.deriveSample(raw);
+        compass_samples_.append(sample);
         acceleration.append(sample.mg);
         pitch.append(sample.pitch);
         roll.append(sample.roll);
         dip.append(sample.dip);
         field.append(sample.field);
+    }
+    heading = compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_);
+    if (!compass_samples_.isEmpty()) {
+        compass_display_.showSample(compass_samples_.first());
     }
 
     addOrReplaceStream(
@@ -430,12 +431,13 @@ void MainWindow::setDeclination()
 
     declination_degrees_ = declination;
     updateDeclinationActionText(declination_action_, declination_degrees_);
+    compass_display_.setDeclination(declination_degrees_);
 
     const SensorRecordSet *compass = recordSetById("compass_raw");
     if (!compass || !log_.hasCompassCalibration || !hasStream("compass_heading")) {
         return;
     }
-    if (!compassRecordHasExpectedColumns(*compass)) {
+    if (!compassRecordHasExpectedColumns(*compass) || compass_samples_.isEmpty()) {
         return;
     }
 
@@ -448,8 +450,33 @@ void MainWindow::setDeclination()
             tr("deg"),
             QColor(195, 40, 175),
             compass->time,
-            compassHeadingValues(*compass, log_.compassCalibration, declination_degrees_),
+            compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
             true,
             {true, 0.0, 360.0}),
         checked);
+}
+
+void MainWindow::batteryForwardToggled(bool checked)
+{
+    battery_forward_ = checked;
+    compass_display_.setBatteryForward(battery_forward_);
+
+    const SensorRecordSet *compass = recordSetById("compass_raw");
+    if (!compass || !hasStream("compass_heading") || compass_samples_.isEmpty()) {
+        return;
+    }
+
+    const QAction *heading_action = streamActionById("compass_heading");
+    const bool heading_checked = heading_action ? heading_action->isChecked() : true;
+    addOrReplaceStream(
+        makeCompassStream(
+            "compass_heading",
+            tr("Heading"),
+            tr("deg"),
+            QColor(195, 40, 175),
+            compass->time,
+            compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
+            true,
+            {true, 0.0, 360.0}),
+        heading_checked);
 }
