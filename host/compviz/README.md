@@ -15,24 +15,25 @@ and MainWindow UI coordination stay separate.
 - `sqlite_utils.h` contains the small RAII wrappers around `sqlite3` database
   and statement handles. These wrappers are intentionally UI-free and shared by
   the MainWindow load path and the compass loader.
-- `compass_types.h/.cpp` defines the data passed between layers:
+- `../sensoranalysis/compass_types.h/.cpp` defines the data passed between layers:
   `CompassCalibration`, `CompassRawSample`, `CompassDerivedSample`, and
   `CompassLogData`.
 - `compass_sqlite_loader.cpp/.h` reads the CompassTag calibration and compass
   sample tables. It returns magnetic-frame derived samples and does not know
   about graphs, menus, QML, declination, or battery direction.
-- `compass_processor.cpp/.h` owns calibration application and the eCompass
-  quaternion algorithm. It is the only place that should contain compass
-  orientation math.
-- `compass_display.cpp/.h` is a thin adapter between C++ samples and
-  `orientation_frame/MyCompass.qml`. It hides QML method names from
+- `../sensoranalysis/compass_processor.cpp/.h` owns calibration application and
+  the eCompass quaternion algorithm. It is the only place that should contain
+  compass orientation math.
+- `../sensorui/compass_display.cpp/.h` is a thin adapter between C++ samples and
+  `../sensorui/orientation_frame/MyCompass.qml`. It hides QML method names from
   `MainWindow` and `controls.cpp`.
 - `controls.cpp` owns user actions after data is loaded: graph visibility,
   declination changes, battery-forward changes, cursor zooming, printing, and
   mouse-over display updates.
-- `constants_dialog.cpp/.h/.ui` displays the currently loaded magnetometer
-  calibration constants.
-- `orientation_frame/` contains the QML compass display and image assets.
+- `../sensorui/compass_calibration_dialog.cpp/.h/.ui` displays the currently
+  loaded magnetometer calibration constants.
+- `../sensorui/orientation_frame/` contains the QML compass display and image
+  assets.
 
 ## Data Flow
 
@@ -73,15 +74,15 @@ Calibration is represented by `CompassCalibration`, not by loose `Hcal` and
 share a single type.
 
 The QML compass widget is isolated behind `CompassDisplay`. If the QML method
-names or properties change, update `compass_display.cpp` rather than spreading
-`QMetaObject::invokeMethod()` calls through the app.
+names or properties change, update `../sensorui/compass_display.cpp` rather
+than spreading `QMetaObject::invokeMethod()` calls through the app.
 
 ## Common Maintenance Tasks
 
 To change how SQLite rows are read, start in `compass_sqlite_loader.cpp`.
 
 To change orientation math, calibration application, yaw convention, or computed
-field values, start in `compass_processor.cpp`.
+field values, start in `../sensoranalysis/compass_processor.cpp`.
 
 To change how declination or battery direction affects the plotted heading,
 start with `MainWindow::updateHeadingGraph()` in `controls.cpp`.
@@ -89,14 +90,16 @@ start with `MainWindow::updateHeadingGraph()` in `controls.cpp`.
 To change what appears in the mouse-over tooltip or when the QML compass updates,
 look at `MainWindow::onMouseMove()` in `controls.cpp`.
 
-To change the visual QML compass itself, edit `orientation_frame/MyCompass.qml`.
-If only the C++ to QML bridge changes, edit `compass_display.cpp`.
+To change the visual QML compass itself, edit
+`../sensorui/orientation_frame/MyCompass.qml`. If only the C++ to QML bridge
+changes, edit `../sensorui/compass_display.cpp`.
 
 ## Future Refactoring Notes
 
-The compass processor and types are deliberately UI-free. If SensorViz later
-absorbs compass support, these files are the likely candidates to move into a
-shared host library.
+The compass processor and types are deliberately UI-free and now live in
+`../sensoranalysis`. Reusable Qt UI pieces live in `../sensorui`. SensorViz
+should depend on those libraries when it absorbs CompassTag support rather than
+copying CompViz-specific code.
 
 The simple scalar-stream loading in `sqliteload.cpp` is still MainWindow-owned.
 If CompViz grows beyond CompassTag logs, those streams could be moved into a

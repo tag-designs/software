@@ -1,19 +1,20 @@
 
 #include <QString>
-#include "constants_dialog.h"
+#include "compass_calibration_dialog.h"
+#include "ui_compass_calibration_dialog.h"
 
-ConstantsDialog::ConstantsDialog(QWidget *parent) :
+CompassCalibrationDialog::CompassCalibrationDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui_Dialog)
 {
     ui->setupUi(this); // This sets up all widgets and layouts
 }
 
-ConstantsDialog::~ConstantsDialog(){
+CompassCalibrationDialog::~CompassCalibrationDialog(){
     delete ui;
 }
 
-void ConstantsDialog::setConstants(const CompassCalibration &calibration){
+void CompassCalibrationDialog::setConstants(const CompassCalibration &calibration){
     const CompassCalibration::Matrix &S = calibration.softIron();
     const QVector3D H = calibration.hardIron();
 

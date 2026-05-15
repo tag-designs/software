@@ -13,7 +13,7 @@
 #include "compass_processor.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
-#include "constants_dialog.h"
+#include "compass_calibration_dialog.h"
 
 // Track the plot cursor, display a compact tooltip, and update the QML compass
 // with the nearest orientation sample. This is the only place where the plot
@@ -263,7 +263,7 @@ void MainWindow::on_actionUTC_Offset_triggered() {
 }
 
   void MainWindow::on_actionCalibration_Constants_triggered(){
-    ConstantsDialog dialog;
+    CompassCalibrationDialog dialog;
 
     dialog.setConstants(calibration);
     dialog.exec();

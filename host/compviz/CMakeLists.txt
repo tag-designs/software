@@ -42,11 +42,7 @@ if (NOT Qt6_FOUND)
 # Populate a CMake variable with the sources
 
 set(compviz_SRCS
-  compass_display.cpp
-  compass_processor.cpp
   compass_sqlite_loader.cpp
-  compass_types.cpp
-  constants_dialog.cpp
   controls.cpp
   main.cpp
   mainwindow.cpp
@@ -56,15 +52,13 @@ set(compviz_SRCS
 
 set_source_files_properties(controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)
 
-qt_add_resources(compviz_SRCS qfi.qrc)
-
 
 
 qt_add_executable(compviz MACOSX_BUNDLE WIN32 ${compviz_SRCS} ${UI_HEADERS} )
 #qt_import_qml_plugins(compviz)
 target_include_directories(compviz PRIVATE FastFIR)
 target_include_directories(compviz PRIVATE ${HOST_SQLITE_INCLUDE_DIRS})
-set_property(TARGET compviz PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/orientation_frame")
+set_property(TARGET compviz PROPERTY QT_DEPLOY_QML_DIRS "${CMAKE_CURRENT_LIST_DIR}/../sensorui/orientation_frame")
 set_target_properties(compviz
     PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin
@@ -83,6 +77,6 @@ elseif(WIN32)
 endif()
 
 
-target_link_libraries(compviz PRIVATE ${COMPVIZ_SQLITE_LINK_TARGET} qcustomplot Qt6::Widgets
+target_link_libraries(compviz PRIVATE ${COMPVIZ_SQLITE_LINK_TARGET} sensorui qcustomplot Qt6::Widgets
                                Qt6::Svg Qt6::QuickWidgets Qt6::SvgWidgets 
                                Qt6::Quick Qt6::PrintSupport)

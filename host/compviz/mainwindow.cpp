@@ -9,6 +9,7 @@
 #include <float.h>
 
 #include "mainwindow.h"
+#include "sensorui_resources.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 
@@ -42,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
   
   // Keep all direct QML interaction behind CompassDisplay so the rest of the
   // app only deals with compass samples and display settings.
+  initializeSensorUiResources();
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
   compassDisplay.setRootObject(ui->quickWidget->rootObject());
 
@@ -156,7 +158,6 @@ void MainWindow::createGraphs(){
 void MainWindow::makeVisible(bool visible)
 {
 }
-
 
 
 
