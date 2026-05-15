@@ -10,12 +10,8 @@
 #include <QQuaternion>
 #include <QActionGroup>
 
-typedef struct {
-    QVector3D mag, accel;
-    QQuaternion q;
-    float dip, field, mg;
-    float pitch,roll,yaw;
-} sensor;
+#include "compass_display.h"
+#include "compass_types.h"
 
 namespace Ui {
 class MainWindow;
@@ -79,18 +75,11 @@ private:
 
     void createGraphs();
 
-    // ecompass
-
-    bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
-                  float& dip, float& field, float& mg); 
-
-    void apply_calibration(QVector3D &mag);  
     void updateHeadingGraph();
 
-    // Hard (Hcal) and Soft (Scal) Iron calibration constants
-    
-    float Hcal[3] = {0.0,0.0,0.0};
-    float Scal[3][3] = {1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0};
+    // Current hard/soft iron constants displayed by the calibration dialog
+    // and used by the compass loader when deriving orientation samples.
+    CompassCalibration calibration;
 
     float declination = 0.0;
     int utc_offset = 0;
@@ -106,7 +95,7 @@ private:
     void makeVisible(bool);
 
     Ui::MainWindow *ui;
-    QQuickItem *rootObject;
+    CompassDisplay compassDisplay;
 
     QActionGroup* vt_group;
     QActionGroup* aa_group;
@@ -118,7 +107,7 @@ private:
     QVector<double> temperature_time;
     QVector<double> voltage;
     QVector<double> temperature;
-    QVector<sensor> orientation;
+    QVector<CompassDerivedSample> orientation;
     QVector<double> heading;
     QVector<double> orientation_time;
     QVector<double> accel;  // use orientation_time

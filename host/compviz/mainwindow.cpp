@@ -41,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent)
   createGraphs();
   
   ui->quickWidget->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
-  rootObject = ui->quickWidget->rootObject();
+  compassDisplay.setRootObject(ui->quickWidget->rootObject());
 
   // cursors
 
@@ -167,7 +167,6 @@ void MainWindow::createGraphs(){
 void MainWindow::makeVisible(bool visible)
 {
 }
-
 
 
 

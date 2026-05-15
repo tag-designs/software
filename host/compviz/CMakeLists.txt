@@ -42,7 +42,10 @@ if (NOT Qt6_FOUND)
 # Populate a CMake variable with the sources
 
 set(compviz_SRCS
-  compassdata.cpp 
+  compass_display.cpp
+  compass_processor.cpp
+  compass_sqlite_loader.cpp
+  compass_types.cpp
   constants_dialog.cpp
   controls.cpp
   main.cpp
@@ -51,7 +54,7 @@ set(compviz_SRCS
   sqliteload.cpp
   )
 
-set_source_files_properties(compassdata.cpp controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)
+set_source_files_properties(controls.cpp PROPERTIES SKIP_AUTOMOC TRUE)
 
 qt_add_resources(compviz_SRCS qfi.qrc)
 

@@ -4,6 +4,7 @@
 
 #include <QDialog>
 #include "ui_constants_dialog.h" // Include the auto-generated UI header
+#include "compass_types.h"
 
 namespace Ui {
 class ConstantsDialog;
@@ -17,7 +18,7 @@ public:
     explicit ConstantsDialog(QWidget *parent = nullptr);
     ~ConstantsDialog();
 
-    void SetConstants(float *V, float (*A)[3]);
+    void setConstants(const CompassCalibration &calibration);
 
 private:
     Ui_Dialog *ui;

@@ -10,6 +10,7 @@
 #include <float.h>
 
 #include "mainwindow.h"
+#include "compass_processor.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 #include "constants_dialog.h"
@@ -66,14 +67,8 @@ void MainWindow::onMouseMove(QMouseEvent *event)
     if (index) {
       h = headingGraph->dataMainValue(index);
       out << QString(", %1").arg(h,0,'f',1);
-      sensor s = orientation[index];
-      QMetaObject::invokeMethod(rootObject, "setOrientation",
-          Q_ARG(QVariant, s.yaw),
-          Q_ARG(QVariant, s.pitch),
-          Q_ARG(QVariant, s.roll),
-          Q_ARG(QVariant, s.dip),
-          Q_ARG(QVariant, s.field),
-          Q_ARG(QVariant, s.mg));
+      CompassDerivedSample s = orientation[index];
+      compassDisplay.showSample(s);
     }
     out << ")";
 
@@ -224,8 +219,7 @@ void MainWindow::on_actionCompass_Declination(){
                                             declination, -180.0, 180.0, 2, &ok);
     if (ok){
         declination = tmp;
-        QMetaObject::invokeMethod(rootObject, "setDeclination",
-                                    Q_ARG(QVariant, declination));
+        compassDisplay.setDeclination(declination);
   }
   updateHeadingGraph();
 }
@@ -233,8 +227,7 @@ void MainWindow::on_actionCompass_Declination(){
 
 void MainWindow::on_actionBattery_Forward_triggered(bool checked) {
     updateHeadingGraph();
-    QMetaObject::invokeMethod(rootObject, "setBatteryForward",
-                                    Q_ARG(QVariant, checked));
+    compassDisplay.setBatteryForward(checked);
 
 }
 
@@ -259,7 +252,7 @@ void MainWindow::on_actionUTC_Offset_triggered() {
   void MainWindow::on_actionCalibration_Constants_triggered(){
     ConstantsDialog dialog;
 
-    dialog.SetConstants(Hcal, Scal);
+    dialog.setConstants(calibration);
     dialog.exec();
   }
 
@@ -268,11 +261,11 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     qsizetype len = orientation.length();
     bool forward = ui->actionBattery_Forward->isChecked();
     for (i = 0; i < len; i++) {
-        double h = orientation[i].yaw + declination;
+        double h = CompassProcessor::headingFromYaw(orientation[i].yaw, declination);
         if (!forward) {
-            h = h + 180;
+            h = CompassProcessor::headingFromYaw(h, 180.0);
         }
-        heading[i] = std::fmod(h,360.0);
+        heading[i] = h;
         //qInfo() << heading[i];
     }
     headingGraph->setData(orientation_time,heading,true);
