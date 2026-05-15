@@ -9,6 +9,12 @@
 #include "ak09940a.h"
 #include "lis2du12.h"
 
+#ifdef DEBUG_MESSAGES
+#include <chprintf.h>
+#endif
+
+extern bool lpsTest(void);
+
 #define DEBUGTEST 0
 
 // no init

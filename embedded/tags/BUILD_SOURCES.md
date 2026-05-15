@@ -9,23 +9,18 @@ Generated build files, generated nanopb files, generated board files, ChibiOS
 files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
-Skipped active CMake tag targets:
+The active embedded tag targets in `embedded/tags/CMakeLists.txt` were rebuilt
+from `/Users/geobrown/Build/tag-designs/software-embedded-submodule` after
+regenerating that build tree.
 
-| Target | Reason |
-| --- | --- |
-| `BitPresTagMX25R` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `PresTagBreakout` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `PresTagBMPBreakout` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `BreakoutDownloadTest` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `BitTagNG` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `BitTagNG-lis2du12` | Fails in board/ChibiOS configuration with `obsolete or unknown configuration file`. |
-| `IMUTagBreakout` | Fails compiling `mx25l.c` due to an implicit `chprintf` declaration. |
+All active embedded tag targets now build successfully in that configuration.
 
 ## BitTag
 
 ### C Files
 
 ```text
+embedded/tags/BitTag/src/hal_lld.c
 embedded/tags/common/src/ADXL362.c
 embedded/tags/common/src/bt_config.c
 embedded/tags/common/src/bt_monitor.c
@@ -41,12 +36,15 @@ embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/test.c
 embedded/tags/common/src/time.c
-embedded/tags/BitTag/src/hal_lld.c
 ```
 
 ### Header Files
 
 ```text
+embedded/tags/BitTag/Inc/custom.h
+embedded/tags/BitTag/cfg/chconf.h
+embedded/tags/BitTag/cfg/halconf.h
+embedded/tags/BitTag/cfg/mcuconf.h
 embedded/tags/common/inc/ADXL362.h
 embedded/tags/common/inc/ais2dw12.h
 embedded/tags/common/inc/app.h
@@ -58,10 +56,6 @@ embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
 embedded/tags/common/inc/persistent.h
 embedded/tags/common/inc/rv3028.h
-embedded/tags/BitTag/Inc/custom.h
-embedded/tags/BitTag/cfg/chconf.h
-embedded/tags/BitTag/cfg/halconf.h
-embedded/tags/BitTag/cfg/mcuconf.h
 ```
 
 ## PresTag
@@ -69,6 +63,10 @@ embedded/tags/BitTag/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/tags/PresTag/src/config.c
+embedded/tags/PresTag/src/datalog.c
+embedded/tags/PresTag/src/pwr.c
+embedded/tags/PresTag/src/state_run.c
 embedded/tags/common/src/at25xe.c
 embedded/tags/common/src/hal_rtc_lld.c
 embedded/tags/common/src/handlers.c
@@ -82,15 +80,18 @@ embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/test.c
 embedded/tags/common/src/time.c
-embedded/tags/PresTag/src/config.c
-embedded/tags/PresTag/src/datalog.c
-embedded/tags/PresTag/src/pwr.c
-embedded/tags/PresTag/src/state_run.c
 ```
 
 ### Header Files
 
 ```text
+embedded/tags/PresTag/Inc/config.h
+embedded/tags/PresTag/Inc/custom.h
+embedded/tags/PresTag/Inc/datalog.h
+embedded/tags/PresTag/Inc/persistent.h
+embedded/tags/PresTag/cfg/chconf.h
+embedded/tags/PresTag/cfg/halconf.h
+embedded/tags/PresTag/cfg/mcuconf.h
 embedded/tags/common/inc/ais2dw12.h
 embedded/tags/common/inc/app.h
 embedded/tags/common/inc/external_flash.h
@@ -100,13 +101,6 @@ embedded/tags/common/inc/lps27hhw.h
 embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
 embedded/tags/common/inc/rv3028.h
-embedded/tags/PresTag/Inc/config.h
-embedded/tags/PresTag/Inc/custom.h
-embedded/tags/PresTag/Inc/datalog.h
-embedded/tags/PresTag/Inc/persistent.h
-embedded/tags/PresTag/cfg/chconf.h
-embedded/tags/PresTag/cfg/halconf.h
-embedded/tags/PresTag/cfg/mcuconf.h
 ```
 
 ## BitPresTag
@@ -114,6 +108,11 @@ embedded/tags/PresTag/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/tags/BitPresTag/src/config.c
+embedded/tags/BitPresTag/src/datalog.c
+embedded/tags/BitPresTag/src/pwr.c
+embedded/tags/BitPresTag/src/state_run.c
+embedded/tags/BitPresTag/src/test.c
 embedded/tags/common/src/ADXL362.c
 embedded/tags/common/src/at25xe.c
 embedded/tags/common/src/hal_rtc_lld.c
@@ -127,16 +126,18 @@ embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/time.c
-embedded/tags/BitPresTag/src/config.c
-embedded/tags/BitPresTag/src/datalog.c
-embedded/tags/BitPresTag/src/pwr.c
-embedded/tags/BitPresTag/src/state_run.c
-embedded/tags/BitPresTag/src/test.c
 ```
 
 ### Header Files
 
 ```text
+embedded/tags/BitPresTag/Inc/config.h
+embedded/tags/BitPresTag/Inc/custom.h
+embedded/tags/BitPresTag/Inc/datalog.h
+embedded/tags/BitPresTag/Inc/persistent.h
+embedded/tags/BitPresTag/cfg/chconf.h
+embedded/tags/BitPresTag/cfg/halconf.h
+embedded/tags/BitPresTag/cfg/mcuconf.h
 embedded/tags/common/inc/ADXL362.h
 embedded/tags/common/inc/ais2dw12.h
 embedded/tags/common/inc/app.h
@@ -147,13 +148,6 @@ embedded/tags/common/inc/lps27hhw.h
 embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
 embedded/tags/common/inc/rv3028.h
-embedded/tags/BitPresTag/Inc/config.h
-embedded/tags/BitPresTag/Inc/custom.h
-embedded/tags/BitPresTag/Inc/datalog.h
-embedded/tags/BitPresTag/Inc/persistent.h
-embedded/tags/BitPresTag/cfg/chconf.h
-embedded/tags/BitPresTag/cfg/halconf.h
-embedded/tags/BitPresTag/cfg/mcuconf.h
 ```
 
 ## CompassTag
@@ -161,6 +155,13 @@ embedded/tags/BitPresTag/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/tags/CompassTag/src/config.c
+embedded/tags/CompassTag/src/datalog.c
+embedded/tags/CompassTag/src/lis2du12.c
+embedded/tags/CompassTag/src/pwr.c
+embedded/tags/CompassTag/src/sensors.c
+embedded/tags/CompassTag/src/state_run.c
+embedded/tags/CompassTag/src/test.c
 embedded/tags/common/src/ak09940a.c
 embedded/tags/common/src/hal_rtc_lld.c
 embedded/tags/common/src/handlers.c
@@ -173,22 +174,11 @@ embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/time.c
-embedded/tags/CompassTag/src/config.c
-embedded/tags/CompassTag/src/datalog.c
-embedded/tags/CompassTag/src/lis2du12.c
-embedded/tags/CompassTag/src/pwr.c
-embedded/tags/CompassTag/src/sensors.c
-embedded/tags/CompassTag/src/state_run.c
-embedded/tags/CompassTag/src/test.c
 ```
 
 ### Header Files
 
 ```text
-embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
-embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
 embedded/tags/CompassTag/Inc/config.h
 embedded/tags/CompassTag/Inc/custom.h
 embedded/tags/CompassTag/Inc/datalog.h
@@ -198,6 +188,10 @@ embedded/tags/CompassTag/Inc/sensors.h
 embedded/tags/CompassTag/cfg/chconf.h
 embedded/tags/CompassTag/cfg/halconf.h
 embedded/tags/CompassTag/cfg/mcuconf.h
+embedded/tags/common/inc/ak09940a.h
+embedded/tags/common/inc/app.h
+embedded/tags/common/inc/external_flash.h
+embedded/tags/common/inc/rv3028.h
 ```
 
 ## CompassTagAT25Breakout
@@ -205,6 +199,13 @@ embedded/tags/CompassTag/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/tags/CompassTagAT25Breakout/src/config.c
+embedded/tags/CompassTagAT25Breakout/src/datalog.c
+embedded/tags/CompassTagAT25Breakout/src/lis2du12.c
+embedded/tags/CompassTagAT25Breakout/src/pwr.c
+embedded/tags/CompassTagAT25Breakout/src/sensors.c
+embedded/tags/CompassTagAT25Breakout/src/state_run.c
+embedded/tags/CompassTagAT25Breakout/src/test.c
 embedded/tags/common/src/ak09940a.c
 embedded/tags/common/src/at25xe.c
 embedded/tags/common/src/hal_rtc_lld.c
@@ -217,22 +218,11 @@ embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/time.c
-embedded/tags/CompassTagAT25Breakout/src/config.c
-embedded/tags/CompassTagAT25Breakout/src/datalog.c
-embedded/tags/CompassTagAT25Breakout/src/lis2du12.c
-embedded/tags/CompassTagAT25Breakout/src/pwr.c
-embedded/tags/CompassTagAT25Breakout/src/sensors.c
-embedded/tags/CompassTagAT25Breakout/src/state_run.c
-embedded/tags/CompassTagAT25Breakout/src/test.c
 ```
 
 ### Header Files
 
 ```text
-embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
-embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
 embedded/tags/CompassTagAT25Breakout/Inc/config.h
 embedded/tags/CompassTagAT25Breakout/Inc/custom.h
 embedded/tags/CompassTagAT25Breakout/Inc/datalog.h
@@ -242,6 +232,10 @@ embedded/tags/CompassTagAT25Breakout/Inc/sensors.h
 embedded/tags/CompassTagAT25Breakout/cfg/chconf.h
 embedded/tags/CompassTagAT25Breakout/cfg/halconf.h
 embedded/tags/CompassTagAT25Breakout/cfg/mcuconf.h
+embedded/tags/common/inc/ak09940a.h
+embedded/tags/common/inc/app.h
+embedded/tags/common/inc/external_flash.h
+embedded/tags/common/inc/rv3028.h
 ```
 
 ## CompassTagAT25
@@ -249,6 +243,13 @@ embedded/tags/CompassTagAT25Breakout/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/tags/CompassTagAT25/src/config.c
+embedded/tags/CompassTagAT25/src/datalog.c
+embedded/tags/CompassTagAT25/src/lis2du12.c
+embedded/tags/CompassTagAT25/src/pwr.c
+embedded/tags/CompassTagAT25/src/sensors.c
+embedded/tags/CompassTagAT25/src/state_run.c
+embedded/tags/CompassTagAT25/src/test.c
 embedded/tags/common/src/ak09940a.c
 embedded/tags/common/src/at25xe.c
 embedded/tags/common/src/hal_rtc_lld.c
@@ -261,22 +262,11 @@ embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/time.c
-embedded/tags/CompassTagAT25/src/config.c
-embedded/tags/CompassTagAT25/src/datalog.c
-embedded/tags/CompassTagAT25/src/lis2du12.c
-embedded/tags/CompassTagAT25/src/pwr.c
-embedded/tags/CompassTagAT25/src/sensors.c
-embedded/tags/CompassTagAT25/src/state_run.c
-embedded/tags/CompassTagAT25/src/test.c
 ```
 
 ### Header Files
 
 ```text
-embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
-embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
 embedded/tags/CompassTagAT25/Inc/config.h
 embedded/tags/CompassTagAT25/Inc/custom.h
 embedded/tags/CompassTagAT25/Inc/datalog.h
@@ -286,29 +276,55 @@ embedded/tags/CompassTagAT25/Inc/sensors.h
 embedded/tags/CompassTagAT25/cfg/chconf.h
 embedded/tags/CompassTagAT25/cfg/halconf.h
 embedded/tags/CompassTagAT25/cfg/mcuconf.h
+embedded/tags/common/inc/ak09940a.h
+embedded/tags/common/inc/app.h
+embedded/tags/common/inc/external_flash.h
+embedded/tags/common/inc/rv3028.h
 ```
 
-## CompassTag-debug
+## IMUTagBreakout
 
 ### C Files
 
 ```text
+embedded/tags/IMUTagBreakout/src/ak09940.c
+embedded/tags/IMUTagBreakout/src/config.c
+embedded/tags/IMUTagBreakout/src/datalog.c
+embedded/tags/IMUTagBreakout/src/lps22hh.c
+embedded/tags/IMUTagBreakout/src/pwr.c
+embedded/tags/IMUTagBreakout/src/sensors.c
+embedded/tags/IMUTagBreakout/src/state_run.c
+embedded/tags/IMUTagBreakout/src/stubs.c
+embedded/tags/IMUTagBreakout/src/test.c
 embedded/tags/common/src/hal_rtc_lld.c
+embedded/tags/common/src/handlers.c
+embedded/tags/common/src/main.c
+embedded/tags/common/src/monitor.c
+embedded/tags/common/src/mx25l.c
+embedded/tags/common/src/persistent.c
 embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/src/state_machine.c
+embedded/tags/common/src/stm32adc.c
+embedded/tags/common/src/stm32flash.c
 embedded/tags/common/src/time.c
-embedded/tags/CompassTag-debug/src/handlers.c
-embedded/tags/CompassTag-debug/src/main.c
 ```
 
 ### Header Files
 
 ```text
+embedded/tags/IMUTagBreakout/Inc/ak09940.h
+embedded/tags/IMUTagBreakout/Inc/config.h
+embedded/tags/IMUTagBreakout/Inc/custom.h
+embedded/tags/IMUTagBreakout/Inc/datalog.h
+embedded/tags/IMUTagBreakout/Inc/lis2du12.h
+embedded/tags/IMUTagBreakout/Inc/lps22hh.h
+embedded/tags/IMUTagBreakout/Inc/persistent.h
+embedded/tags/IMUTagBreakout/Inc/sensors.h
+embedded/tags/IMUTagBreakout/cfg/chconf.h
+embedded/tags/IMUTagBreakout/cfg/halconf.h
+embedded/tags/IMUTagBreakout/cfg/mcuconf.h
+embedded/tags/common/inc/ak09940a.h
 embedded/tags/common/inc/app.h
+embedded/tags/common/inc/external_flash.h
 embedded/tags/common/inc/rv3028.h
-embedded/tags/CompassTag-debug/Inc/custom.h
-embedded/tags/CompassTag-debug/Inc/lis2du12.h
-embedded/tags/CompassTag-debug/Inc/sensors.h
-embedded/tags/CompassTag-debug/cfg/chconf.h
-embedded/tags/CompassTag-debug/cfg/halconf.h
-embedded/tags/CompassTag-debug/cfg/mcuconf.h
 ```

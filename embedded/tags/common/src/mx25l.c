@@ -1,6 +1,9 @@
 #include "hal.h"
 #include "app.h"
 #include "external_flash.h"
+#ifdef DEBUG_MESSAGES
+#include <chprintf.h>
+#endif
 
 #define LINE_FLASH_nCS LINE_MX_nCS
 
