@@ -61,6 +61,7 @@ void erasePersistent(void)
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();
+    pState->pages = 0;
   }
 }
 
