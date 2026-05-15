@@ -15,16 +15,16 @@ describes the compact protocol structures used by tag firmware, and `bases` and
 
 ```text
 embedded/
-  boards/      Hardware signal and pin definitions
-       |       Generates board.h, board.c, and board.mk
-       |
-       +-----> bases/    Programmer/base-board firmware targets
-       |
-       +-----> tags/     Tag firmware targets
-
-  proto-c/     nanopb protocol bindings and default tag configuration
-       |
-       +-----> tags/     Tag firmware communication structures
+       boards/      Hardware signal and pin definitions
+          |       Generates board.h, board.c, and board.mk
+          |
+       bases/    Programmer/base-board firmware targets
+          |
+        tags/     Tag firmware targets
+          |
+     proto-c/     nanopb protocol bindings and default tag configuration
+          |
+          +-----> various tags/     Tag firmware communication structures
 ```
 
 The CMake build wires these relationships together. A firmware target usually

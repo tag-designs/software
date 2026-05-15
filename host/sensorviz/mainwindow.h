@@ -7,6 +7,7 @@
 #include <QMap>
 #include <QMenu>
 #include <QPrinter>
+#include <QSet>
 #include <QSharedPointer>
 #include <QTabWidget>
 #include <QTextEdit>
@@ -40,10 +41,17 @@
 //   tables into SensorRecordSet objects. If a table definition exists but does
 //   not load correctly, start there.
 //
-// - controls.cpp contains runtime behavior after a file is loaded: stream
-//   bookkeeping, pressure/activity transforms, tag-dependent menu visibility,
-//   plotting, axes, cursors, mouse readout, UTC offset, and printing. If a menu
-//   item does the wrong thing or the plot looks wrong, start there.
+// - stream_actions.cpp owns stream visibility and range menu actions.
+//
+// - transforms.cpp owns display-only derived streams such as altitude and
+//   activity low-pass.
+//
+// - plotting.cpp rebuilds QCustomPlot graphs and dynamic axes.
+//
+// - interaction.cpp owns cursors, print preview, UTC offset, context menus, and
+//   mouse readout.
+//
+// - controls.cpp contains small shared display helpers and general actions.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -58,7 +66,7 @@ private slots:
     void setUtcOffset();
     void altitudeToggled(bool checked);
     void activityFilterToggled(bool checked);
-    void setPressureRange();
+    void setStreamRangeFromAction();
     void printPlot();
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
@@ -72,6 +80,8 @@ private:
     // recreate these static menus or widgets.
     void createUi();
     void createActions();
+    QString unitsSuffix(const SensorStream &stream) const;
+    double pressureToAltitude(double pressure_mbar) const;
 
     // Log metadata and tag-dependent menu state. updateTransformActions() is
     // called whenever streams are added/removed because transform availability
@@ -80,9 +90,10 @@ private:
     void updateTransformActions();
 
     // Streams are the single source of truth for both raw and derived data.
-    // QAction checked state determines which streams are currently plotted.
-    // This means a stream bug may live in two places: the SensorStream data in
-    // streams_, or the matching QAction in stream_actions_.
+    // Raw streams have checkable QAction objects in stream_actions_; derived
+    // streams are enabled by transform actions and intentionally do not get
+    // duplicated in the View menu. If a stream exists but is not visible, first
+    // check streams_, then the matching QAction or transform action.
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
     void clearStreamActions();
@@ -92,9 +103,20 @@ private:
     const SensorStream *streamById(const QString &id) const;
     QVector<SensorStream> visibleStreams() const;
 
-    // Plot layout and cursor helpers. refreshPlot() rebuilds from current
-    // actions while preserving the visible time window; refreshPlotFullRange()
-    // is used after a new file is loaded or the user explicitly resets zoom.
+    // Range actions are rebuilt from visibleStreams() whenever stream
+    // visibility or derived-stream availability changes. Custom ranges are
+    // keyed by stable stream id, so adding a new stream normally requires no
+    // new range UI code.
+    void clearRangeActions();
+    void rebuildRangeActions();
+    void addRangeAction(const SensorStream &stream);
+    void setStreamRange(const QString &id);
+    QCPRange defaultRangeForStream(const SensorStream &stream) const;
+
+    // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
+    // from current actions while preserving the visible time window;
+    // refreshPlotFullRange() is used after a new file is loaded or after Reset
+    // Zoom clears custom y-axis ranges.
     void refreshPlot();
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
@@ -112,7 +134,13 @@ private:
     int utc_offset_ = 0;
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;
+
+    // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
+    // altitude range derived from pressure; explicit_axis_ranges_ records only
+    // ranges the user set directly so pressure can stop driving altitude once
+    // altitude has its own manual range.
     QMap<QString, QCPRange> custom_axis_ranges_;
+    QSet<QString> explicit_axis_ranges_;
 
     QWidget *central_ = nullptr;
     QCustomPlot *plot_ = nullptr;
@@ -126,15 +154,15 @@ private:
     QAction *utc_offset_action_ = nullptr;
     QAction *altitude_action_ = nullptr;
     QAction *activity_filter_action_ = nullptr;
-    QAction *pressure_range_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
-    QAction *configuration_sensor_separator_ = nullptr;
     QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
+    QMenu *range_menu_ = nullptr;
     QVector<QAction *> stream_actions_;
+    QVector<QAction *> range_actions_;
 
     QSharedPointer<QCPAxisTickerDateTime> date_ticker_;
     QVector<QCPAxis *> dynamic_axes_;

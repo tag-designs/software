@@ -39,7 +39,6 @@ void MainWindow::createActions()
     altitude_action_->setCheckable(true);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
-    pressure_range_action_ = new QAction(tr("&Pressure Range"), this);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
@@ -49,10 +48,9 @@ void MainWindow::createActions()
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
     connect(altitude_action_, &QAction::toggled, this, &MainWindow::altitudeToggled);
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
-    connect(pressure_range_action_, &QAction::triggered, this, &MainWindow::setPressureRange);
 
     // The menu layout follows compViz: File for file-level actions, View for
-    // plot/stream visibility, and Configuration for display parameters.
+    // plot/stream visibility and Configuration for transform parameters.
     // Separators are stored when later code needs to hide empty groups.
     QMenu *file_menu = menuBar()->addMenu(tr("&File"));
     file_menu->addAction(load_action_);
@@ -62,13 +60,13 @@ void MainWindow::createActions()
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_stream_separator_ = view_menu_->addSeparator();
+    range_menu_ = view_menu_->addMenu(tr("&Ranges"));
+    range_menu_->menuAction()->setVisible(false);
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
 
     configuration_menu_ = menuBar()->addMenu(tr("&Configuration"));
     configuration_menu_->addAction(utc_offset_action_);
-    configuration_sensor_separator_ = configuration_menu_->addSeparator();
-    configuration_menu_->addAction(pressure_range_action_);
     configuration_transform_separator_ = configuration_menu_->addSeparator();
     configuration_menu_->addAction(altitude_action_);
     configuration_menu_->addAction(activity_filter_action_);

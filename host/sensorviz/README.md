@@ -23,14 +23,47 @@ The code is split by responsibility:
 
 - `main.cpp`: application startup and Qt message logging.
 - `mainwindow.*`: static Qt UI construction and application state.
-- `dataloading.cpp`: file-open workflow, stream action creation, and metadata
+- `dataloading.cpp`: file-open workflow, stream replacement, and metadata
   display.
 - `sqlite_loader.*`: SQLite read-only adapter.
 - `sensorstream.h`: normalized in-memory data model.
 - `sensorprofile.*`: known stream/table definitions, default visibility, axis
   defaults, record-set definitions, and transform metadata.
-- `controls.cpp`: plotting, stream visibility, transform actions, ranges,
-  cursors, printing, context menus, and mouse readout.
+- `stream_actions.cpp`: stream visibility, View actions, and per-stream range
+  actions.
+- `transforms.cpp`: display-only derived streams such as altitude and activity
+  low-pass.
+- `plotting.cpp`: QCustomPlot graph and axis rebuilds.
+- `interaction.cpp`: cursors, print preview, UTC offset, context menus, and
+  mouse readout.
+- `controls.cpp`: small shared display helpers and general actions.
+
+## Maintenance Map
+
+Most SensorViz changes should start in one of four places:
+
+- New SQLite table or tag family:
+  update `sensorprofile.cpp` first. Add a scalar stream definition for
+  one-value time series, or a record-set definition for multi-column data that
+  will later feed transforms.
+- Table exists but does not load:
+  check `sqlite_loader.cpp`. The loader applies profile definitions to the
+  actual SQLite schema and decides which missing tables are harmless.
+- File loads but menu state, default visibility, or metadata is wrong:
+  check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
+  actions, clears old custom ranges, and updates File Info.
+- Stream visibility or range behavior is wrong:
+  check `stream_actions.cpp`.
+- Transform behavior is wrong:
+  check `transforms.cpp`.
+- Plot axis layout or scaling is wrong:
+  check `plotting.cpp`.
+- Cursor, print, UTC, mouse readout, or context-menu behavior is wrong:
+  check `interaction.cpp`.
+
+`MainWindow` intentionally remains the coordination object. Avoid adding tag
+type checks there when the behavior can be driven from stream ids, table
+definitions, or transform definitions.
 
 ## Data Model
 
@@ -53,8 +86,54 @@ Adding a simple one-column sensor table should usually start in
   `0-50 C`.
 - Other streams default to the left axis unless the profile says otherwise.
 - Autoscaled y-axes get a 5% margin.
+- Displayed streams can have explicit y-axis ranges set from the View menu or
+  plot context menu.
 - Normal redraws preserve the current x-axis range.
-- Loading a new file and Reset Zoom expand to the full data range.
+- Loading a new file and Reset Zoom expand to the full data range and restore
+  default y-axis ranges.
+
+## Stream Actions and Ranges
+
+Raw streams get checkable entries in the View menu. The checked state of those
+actions is the source of truth for which raw streams are plotted.
+
+Derived streams, such as altitude and low-pass activity, are controlled by
+Configuration actions instead of duplicated in the View menu. Once enabled, they
+are treated like streams for plotting, mouse readout, and range controls.
+
+The View > Ranges submenu and the plot context-menu Ranges submenu are rebuilt
+from the currently displayed streams. Each range action stores the stream id in
+`QAction::data()`, and `stream_actions.cpp` uses that id to find the matching
+`SensorStream`.
+
+Range precedence is:
+
+1. A user-set custom range in `custom_axis_ranges_`.
+2. A fixed profile range from `SensorStream::axisRange`.
+3. The data min/max padded by 5%.
+
+`Reset Zoom` clears custom y-axis ranges and restores defaults. It also resets
+the x-axis to the full loaded time range.
+
+Pressure and altitude have one special relationship: if pressure has a custom
+range and altitude does not, SensorViz derives an altitude range from the
+pressure range so the two views stay visually comparable. Once the user sets an
+altitude range directly, that altitude range is treated as independent.
+
+## Adding A Display Transform
+
+The current transforms are still hardcoded in `transforms.cpp`, but they follow a
+consistent pattern:
+
+1. Check that required input streams or record sets exist.
+2. Prompt for transform-specific parameters.
+3. Build a derived `SensorStream`.
+4. Call `addOrReplaceStream()` so plotting, ranges, and context menus update.
+5. Remove the derived stream when the transform action is unchecked.
+
+Future transforms should keep computation separate from file loading. The
+SQLite loader should only normalize on-disk data into streams and record sets;
+display math belongs in transform code.
 
 ## Future Direction
 

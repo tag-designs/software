@@ -38,12 +38,24 @@ The important architecture pieces are:
   - Builds View menu actions from loaded streams.
   - Uses stream metadata for default visibility.
 
-- `controls.cpp`: runtime behavior.
-  - Handles transform toggles, pressure range, plotting, axes, cursors, printing,
-    UTC offset, mouse readout, and context menus.
+- `stream_actions.cpp`: stream visibility and range actions.
+  - Builds and clears View stream actions.
+  - Builds View > Ranges from currently displayed streams.
+  - Owns custom y-axis range dialogs and pressure/altitude range coupling.
+
+- `transforms.cpp`: display-only derived streams.
+  - Handles altitude and activity low-pass transform toggles.
   - Derived streams are controlled from Configuration only, not View.
-  - Normal redraws preserve the current x-axis range; load/reset use full range.
+
+- `plotting.cpp`: QCustomPlot graph and axis rebuilds.
+  - Normal redraws preserve the current x-axis range; load/reset use full range
+    and restore default y-axis ranges.
   - Autoscaled y-axes receive a 5% margin.
+
+- `interaction.cpp`: post-load user interaction.
+  - Handles cursors, printing, UTC offset, mouse readout, and context menus.
+
+- `controls.cpp`: shared display helpers and general actions.
 
 ## Current UI Decisions
 

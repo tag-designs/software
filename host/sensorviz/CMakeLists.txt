@@ -30,10 +30,14 @@ endif()
 set(sensorviz_SRCS
   controls.cpp
   dataloading.cpp
+  interaction.cpp
   main.cpp
   mainwindow.cpp
+  plotting.cpp
   sensorprofile.cpp
-  sqlite_loader.cpp)
+  sqlite_loader.cpp
+  stream_actions.cpp
+  transforms.cpp)
 
 qt_add_executable(sensorviz MACOSX_BUNDLE WIN32 ${sensorviz_SRCS})
 target_include_directories(sensorviz PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})

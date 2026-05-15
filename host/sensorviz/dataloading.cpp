@@ -39,6 +39,7 @@ void MainWindow::loadLog()
     log_ = log;
     streams_ = log.streams;
     custom_axis_ranges_.clear();
+    explicit_axis_ranges_.clear();
 
     // Default visibility comes from sensorprofile.cpp. The QAction state is the
     // runtime source of truth after this point.
