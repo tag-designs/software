@@ -303,6 +303,8 @@ Notable components:
 - `mainwindow.*`: programmatic Qt UI, stream selection, transforms, and plotting.
 - `sqlite_loader.*`: native SQLite input path for sensor log tables.
 - `sensorstream.h`: shared in-memory stream/log data structures.
+- `sensorprofile.*`: stream/profile definitions used by the loader and plot.
+- `README.md`, `ROADMAP.md`: local developer notes and future compass-view plan.
 
 Build dependencies:
 
