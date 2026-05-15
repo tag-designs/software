@@ -86,7 +86,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtcalibrate PRIVATE tag host_common Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Qml Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
+target_link_libraries(qtcalibrate PRIVATE tagcore host_common Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Qml Qt6::QuickWidgets Qt6::SvgWidgets Qt6::Quick)  # Qt6::DataVisualization )#
 if(WIN32)
   # why the opengle extensions ????
   #target_link_libraries(qtprogram) )

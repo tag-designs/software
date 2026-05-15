@@ -75,7 +75,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(tag-orientation PRIVATE tag Qt6::Core Qt6::Gui) 
+target_link_libraries(tag-orientation PRIVATE tagcore Qt6::Core Qt6::Gui)
 if(WIN32)
   # why the opengle extensions ????
   #target_link_libraries(qtprogram) )

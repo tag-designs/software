@@ -70,7 +70,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtprogram PRIVATE tag host_common Qt6::Widgets)
+target_link_libraries(qtprogram PRIVATE tagcore host_common Qt6::Widgets)
 
 if(WIN32)
   # why the opengle extensions ????

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-message("Configure Tag Library")
+message("Configure TagCore Library")
 
 if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
@@ -41,21 +41,21 @@ else()
 endif()
 
 #
-# Create tag library 
+# Create tagcore library
 #
 
-add_library(tag STATIC)
+add_library(tagcore STATIC)
 if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
-  target_include_directories(tag PRIVATE "${LIBUSB_1_0_INCLUDE_DIR}")
-  target_link_libraries(tag PRIVATE
+  target_include_directories(tagcore PRIVATE "${LIBUSB_1_0_INCLUDE_DIR}")
+  target_link_libraries(tagcore PRIVATE
     "$<$<CONFIG:Debug>:${LIBUSB_1_0_DEBUG_LIB}>"
     "$<$<NOT:$<CONFIG:Debug>>:${LIBUSB_1_0_RELEASE_LIB}>")
 else()
-  target_link_libraries(tag PRIVATE PkgConfig::LIBUSB_1_0)
+  target_link_libraries(tagcore PRIVATE PkgConfig::LIBUSB_1_0)
 endif()
-target_compile_features(tag PUBLIC cxx_std_20)
+target_compile_features(tagcore PUBLIC cxx_std_20)
 
-target_sources(tag
+target_sources(tagcore
     PRIVATE
          tagmonitor.cc 
          tagclass.cc   
@@ -75,8 +75,8 @@ target_sources(tag
          linkadapt.h
    )
 
-target_include_directories(tag PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(tagcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(tag PUBLIC proto)
-target_link_libraries(tag PRIVATE tag_monitor_interface)
-target_link_libraries(tag PRIVATE ${HOST_SQLITE_TARGET})
+target_link_libraries(tagcore PUBLIC proto)
+target_link_libraries(tagcore PRIVATE tag_monitor_interface)
+target_link_libraries(tagcore PRIVATE ${HOST_SQLITE_TARGET})

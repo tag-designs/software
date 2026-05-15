@@ -6,9 +6,9 @@ function(host_cli_tool name)
 
   add_executable(${name} ${ARGN})
   if(WIN32)
-    target_link_libraries(${name} tag tag_monitor_interface)
+    target_link_libraries(${name} tagcore tag_monitor_interface)
   else()
-    target_link_libraries(${name} tag pthread tag_monitor_interface)
+    target_link_libraries(${name} tagcore pthread tag_monitor_interface)
   endif()
 
 

@@ -14,7 +14,7 @@ add_library(host_common INTERFACE)
 target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
 
 add_subdirectory(libraries/tagcore)
-add_subdirectory(commandline/cli)
+add_subdirectory(commandline)
 if(BUILD_QT_APPS)
   add_subdirectory(libraries/qcustomplot)
   add_subdirectory(libraries/sensoranalysis)

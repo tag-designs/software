@@ -19,7 +19,7 @@ Keep dependencies flowing from applications toward libraries:
 
 ```text
 applications/*       -> libraries/* and common/
-commandline/cli      -> libraries/tagcore
+commandline          -> libraries/tagcore
 libraries/sensorui   -> libraries/sensoranalysis
 libraries/tagcore    -> proto and tag_monitor_interface
 ```
@@ -32,14 +32,14 @@ host code do not need Qt. Qt-only helpers belong in `common/` or
 
 `host/CMakeLists.txt` wires the layout together:
 
-- `libraries/tagcore` and `commandline/cli` are added whenever host tools are
+- `libraries/tagcore` and `commandline` are added whenever host tools are
   built.
 - Qt support libraries and applications are added when `BUILD_QT_APPS=ON`.
 - A small `host_common` interface target exposes `common/` headers to Qt apps.
 
 The CMake target names are intentionally stable across the directory move:
-`tag`, `qcustomplot`, `sensoranalysis`, `sensorui`, `qtmonitor`, `qtprogram`,
-`qtcalibrate`, `btviz`, `compviz`, and `sensorviz`.
+`tagcore`, `qcustomplot`, `sensoranalysis`, `sensorui`, `qtmonitor`,
+`qtprogram`, `qtcalibrate`, `btviz`, `compviz`, and `sensorviz`.
 
 ## Packaging Notes
 

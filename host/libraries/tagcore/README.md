@@ -1,7 +1,7 @@
 # TagCore Library
 
-`tagcore` contains the low-level host interface. The CMake target is still named
-`tag` to avoid a noisy target rename.
+`tagcore` contains the low-level host interface. The CMake target is also named
+`tagcore`, so the library name matches the directory and its role.
 
 Responsibilities:
 

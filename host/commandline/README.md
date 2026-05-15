@@ -1,7 +1,7 @@
 # Command-Line Tools
 
-Command-line host tools live under `cli/`. They link the Qt-free `tag` target
-from `../libraries/tagcore`.
+Command-line host tools live here. They link the Qt-free `tagcore` target from
+`../libraries/tagcore`.
 
 Current tools:
 
