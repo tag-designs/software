@@ -290,7 +290,7 @@ void MainWindow::TriggerUpdate(void)
               pitch = angles[0];
               roll = angles[1];
               yaw = angles[2];
-              qInfo() << "Pitch: " << pitch << " Roll " << roll << " Yaw " << yaw;
+              log_trace("Pitch: %.2f Roll %.2f Yaw %.2f", pitch, roll, yaw);
               setOrientation(yaw,pitch,roll,dip,field,accel.length());
               // update rotated image of tag
               // qtquick -- roll around z, pitch around x, yaw around y
@@ -456,7 +456,6 @@ void MainWindow::on_loadButton_clicked(){
       A[2][1] = mag.a21();
       A[2][2] = mag.a22();
       magnetic.setCalibrationConstants(B,V,A);
-      magnetic.getCalibrationConstants(&B, V, A);
 
       ui.bLabel->setText(QString::asprintf("%.2f",B));
 
@@ -629,7 +628,7 @@ void MainWindow::rotateImage(QQuaternion qt){
 
 void MainWindow::setOrientation(float h, float p, float r, float d, float f, float g){
   CompassDerivedSample sample;
-  sample.yaw = h;
+  sample.yaw = 360 - h;
   sample.pitch = p;
   sample.roll = r;
   sample.dip = d;
@@ -637,5 +636,3 @@ void MainWindow::setOrientation(float h, float p, float r, float d, float f, flo
   sample.mg = g;
   compassDisplay.showSample(sample);
 }
-
-

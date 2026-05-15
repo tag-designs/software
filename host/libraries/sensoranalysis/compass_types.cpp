@@ -42,6 +42,16 @@ CompassCalibration CompassCalibration::fromMagnetometerJson(const QJsonObject &c
     return calibration;
 }
 
+CompassCalibration CompassCalibration::fromMagnetometerConstants(
+    const QVector3D &hardIron,
+    const Matrix &softIron)
+{
+    CompassCalibration calibration;
+    calibration.hardIron_ = hardIron;
+    calibration.softIron_ = softIron;
+    return calibration;
+}
+
 QVector3D CompassCalibration::apply(const QVector3D &mag) const
 {
     const double x = mag.x() - hardIron_.x();

@@ -28,6 +28,9 @@ public:
     CompassCalibration();
 
     static CompassCalibration fromMagnetometerJson(const QJsonObject &constants);
+    static CompassCalibration fromMagnetometerConstants(
+        const QVector3D &hardIron,
+        const Matrix &softIron);
 
     QVector3D apply(const QVector3D &mag) const;
 

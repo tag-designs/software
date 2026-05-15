@@ -10,12 +10,51 @@ CompassProcessor::CompassProcessor(const CompassCalibration &calibration)
 CompassDerivedSample CompassProcessor::deriveSample(const CompassRawSample &sample) const
 {
     CompassDerivedSample derived;
+    deriveSample(sample, derived);
+    return derived;
+}
+
+bool CompassProcessor::deriveSample(
+    const CompassRawSample &sample,
+    CompassDerivedSample &derived) const
+{
+    return deriveSample(sample, true, derived);
+}
+
+CompassDerivedSample CompassProcessor::deriveCalibratedSample(const CompassRawSample &sample) const
+{
+    CompassDerivedSample derived;
+    deriveCalibratedSample(sample, derived);
+    return derived;
+}
+
+bool CompassProcessor::deriveCalibratedSample(
+    const CompassRawSample &sample,
+    CompassDerivedSample &derived) const
+{
+    return deriveSample(sample, false, derived);
+}
+
+bool CompassProcessor::deriveSample(
+    const CompassRawSample &sample,
+    bool applyCalibration,
+    CompassDerivedSample &derived) const
+{
+    derived = CompassDerivedSample();
     derived.epoch = sample.epoch;
     derived.accel = sample.accel;
     derived.mag = sample.mag;
 
-    computeOrientation(
-        derived.mag, derived.accel, derived.q, derived.dip, derived.field, derived.mg);
+    if (!computeOrientation(
+            derived.mag,
+            derived.accel,
+            derived.q,
+            derived.dip,
+            derived.field,
+            derived.mg,
+            applyCalibration)) {
+        return false;
+    }
 
     QVector3D angles = derived.q.toEulerAngles();
     if (angles[2] < 0.0) {
@@ -25,7 +64,7 @@ CompassDerivedSample CompassProcessor::deriveSample(const CompassRawSample &samp
     derived.roll = angles[1];
     derived.yaw = std::fmod(360 - angles[2], 360.0);
 
-    return derived;
+    return true;
 }
 
 double CompassProcessor::headingFromYaw(double yaw, double declinationDegrees)
@@ -50,12 +89,15 @@ bool CompassProcessor::computeOrientation(
     QQuaternion &q,
     float &dip,
     float &field,
-    float &mg) const
+    float &mg,
+    bool applyCalibration) const
 {
     QQuaternion qacc;
     float q0, q1, q2, q3;
 
-    mag = calibration_.apply(mag);
+    if (applyCalibration) {
+        mag = calibration_.apply(mag);
+    }
 
     if ((mag.length() == 0.0) || (accel.length() == 0.0)) {
         return false;

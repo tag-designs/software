@@ -5,11 +5,13 @@ applications.
 
 Current contents:
 
-- `CompassCalibration`: hard-iron and soft-iron magnetometer calibration.
+- `CompassCalibration`: hard-iron and soft-iron magnetometer calibration from
+  SQLite calibration JSON or live qtcalibrate constants.
 - `CompassRawSample`: raw accelerometer/magnetometer row data.
 - `CompassDerivedSample`: magnetic-frame orientation, field, dip, and
   acceleration magnitude derived from raw samples.
-- `CompassProcessor`: eCompass orientation computation.
+- `CompassProcessor`: eCompass orientation computation for raw log samples and
+  already-calibrated live samples.
 
 Keep this library independent of widgets, dialogs, QML, plotting, and SQLite.
 Those concerns belong in applications or `../sensorui`.
