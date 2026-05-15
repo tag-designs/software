@@ -43,8 +43,9 @@ The important architecture pieces are:
   - Builds View > Ranges from currently displayed streams.
   - Owns custom y-axis range dialogs and pressure/altitude range coupling.
 
-- `transforms.cpp`: display-only derived streams.
+- `transforms.cpp`: scalar display transforms.
   - Handles altitude and activity low-pass transform toggles.
+- `compass_transforms.cpp`: CompassTag record-set transforms.
   - Handles the CompassTag derived-stream family from `compass_raw` plus
     calibration metadata.
   - Altitude and activity filter are controlled from Configuration only, while
@@ -94,7 +95,7 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
    module.
 5. Generate scalar streams for heading, acceleration magnitude, pitch, roll,
    dip, and magnetic field strength.
-6. Later, split the compass transform helpers out of `transforms.cpp`.
+6. Continue validating CompassTag defaults against real logs.
 
 ## Likely Next Refactors
 

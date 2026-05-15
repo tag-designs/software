@@ -28,6 +28,7 @@ if (NOT Qt6_FOUND)
 endif()
 
 set(sensorviz_SRCS
+  compass_transforms.cpp
   controls.cpp
   dataloading.cpp
   interaction.cpp

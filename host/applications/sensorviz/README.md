@@ -37,8 +37,10 @@ The code is split by responsibility:
   defaults, record-set definitions, and transform metadata.
 - `stream_actions.cpp`: stream visibility, View actions, and per-stream range
   actions.
-- `transforms.cpp`: display-only derived streams such as altitude and activity
+- `transforms.cpp`: scalar display transforms such as altitude and activity
   low-pass.
+- `compass_transforms.cpp`: CompassTag record-set transforms, heading display
+  settings, and QML compass sample updates.
 - `plotting.cpp`: QCustomPlot graph and axis rebuilds.
 - `interaction.cpp`: cursors, print preview, UTC offset, context menus, and
   mouse readout.
@@ -62,8 +64,10 @@ Most SensorViz changes should start in one of four places:
   actions, clears old custom ranges, and updates File Info.
 - Stream visibility or range behavior is wrong:
   check `stream_actions.cpp`.
-- Transform behavior is wrong:
+- Scalar transform behavior is wrong:
   check `transforms.cpp`.
+- CompassTag derived streams, declination, or battery direction are wrong:
+  check `compass_transforms.cpp`.
 - Plot axis layout or scaling is wrong:
   check `plotting.cpp`.
 - Cursor, print, UTC, mouse readout, or context-menu behavior is wrong:
@@ -143,8 +147,8 @@ kept equal until the user gives one of them an explicit range of its own.
 
 ## Adding A Display Transform
 
-The current transforms are still hardcoded in `transforms.cpp`, but they follow a
-consistent pattern:
+Transforms are still hardcoded in `transforms.cpp` and
+`compass_transforms.cpp`, but they follow a consistent pattern:
 
 1. Check that required input streams or record sets exist.
 2. Prompt for transform-specific parameters.
