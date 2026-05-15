@@ -152,14 +152,14 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/geobrown/Research/abt-tag && $(CMAKE_COMMAND) -E cmake_progress_start /home/geobrown/Research/abt-tag/CMakeFiles /home/geobrown/Research/abt-tag/software/embedded/boards/bittag-base-jlcpcb-v3//CMakeFiles/progress.marks
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 software/embedded/boards/bittag-base-jlcpcb-v3/all
+	cd /home/geobrown/Research/abt-tag && $(CMAKE_COMMAND) -E cmake_progress_start /home/geobrown/Research/abt-tag/CMakeFiles /home/geobrown/Research/abt-tag/embedded/boards/bittag-base-jlcpcb-v3//CMakeFiles/progress.marks
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 embedded/boards/bittag-base-jlcpcb-v3/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/geobrown/Research/abt-tag/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 software/embedded/boards/bittag-base-jlcpcb-v3/clean
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 embedded/boards/bittag-base-jlcpcb-v3/clean
 .PHONY : clean
 
 # The main clean target
@@ -168,12 +168,12 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 software/embedded/boards/bittag-base-jlcpcb-v3/preinstall
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 embedded/boards/bittag-base-jlcpcb-v3/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 software/embedded/boards/bittag-base-jlcpcb-v3/preinstall
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 embedded/boards/bittag-base-jlcpcb-v3/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
@@ -182,17 +182,17 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule:
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
-.PHONY : software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
+embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule:
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
+.PHONY : embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
 
 # Convenience name for target.
-board-bittag-base-jlcpcb-v3: software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
+board-bittag-base-jlcpcb-v3: embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/rule
 .PHONY : board-bittag-base-jlcpcb-v3
 
 # fast build rule for target.
 board-bittag-base-jlcpcb-v3/fast:
-	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/build.make software/embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/build
+	cd /home/geobrown/Research/abt-tag && $(MAKE) $(MAKESILENT) -f embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/build.make embedded/boards/bittag-base-jlcpcb-v3/CMakeFiles/board-bittag-base-jlcpcb-v3.dir/build
 .PHONY : board-bittag-base-jlcpcb-v3/fast
 
 # Help Target

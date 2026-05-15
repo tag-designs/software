@@ -48,11 +48,11 @@
         "serverArgs": [
             "--connect-under-reset"
         ]
-        "executable": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
-        "program": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "executable": "/home/geobrown/Build/ultralight-tags-21.11/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "program": "/home/geobrown/Build/ultralight-tags-21.11/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
         "device": "STM32L432", // Replace with your MCU
         "cortex-debug.gdbPath": "/usr/local/arm/bin/arm-none-eabi-gdb",
-        "svdFile": "${workspaceRoot}/software/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
+        "svdFile": "${workspaceRoot}/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
     }
 
       {
@@ -71,11 +71,11 @@
                 "interface/stlink.cfg", // Your programmer
                 "target/stm32l4x.cfg"   // Your target chip
             ],
-        "executable": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
-        "program": "/home/geobrown/Build/ultralight-tags-21.11/software/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "executable": "/home/geobrown/Build/ultralight-tags-21.11/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
+        "program": "/home/geobrown/Build/ultralight-tags-21.11/embedded/tags/CompassTag-debug/build/CompassTag-debug.elf",
         "device": "STM32L432", // Replace with your MCU
         "cortex-debug.gdbPath": "/usr/local/arm/bin/arm-none-eabi-gdb",
-        "svdFile": "${workspaceRoot}/software/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
+        "svdFile": "${workspaceRoot}/embedded/tags/CompassTag/STM32L432.svd" // For register inspection
     }
 
 

@@ -15,7 +15,7 @@ The top-level CMake build is controlled with cache options:
 | Option | Default | Description |
 | --- | --- | --- |
 | `BUILD_HOST` | `ON` | Build host-side libraries, command-line tools, and support code. |
-| `BUILD_QT_APPS` | `ON` | Build Qt GUI applications under `software/host`. |
+| `BUILD_QT_APPS` | `ON` | Build Qt GUI applications under `host`. |
 | `BUILD_EMBEDDED` | `OFF` on Windows, `ON` elsewhere | Build embedded firmware targets. |
 
 Useful configure combinations:
@@ -55,7 +55,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python -m pip install -r software/host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -173,7 +173,7 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r software/host/docs/requirements.txt`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
 Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
@@ -260,7 +260,7 @@ cmake -S . -B build-package \
 | Protobuf | Install `protoc` and development libraries. |
 | SQLite 3 | Install development headers and libraries, for example `libsqlite3-dev`. |
 | Git | Used by version-generation helpers. |
-| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r software/host/docs/requirements.txt`. |
+| Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON`. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 
 Example Debian/Ubuntu package set for host builds:
 
@@ -292,7 +292,7 @@ installed in a standard location.
 | --- | --- | --- |
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version for host software. |
-| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build and install the host application user guide from `software/host/docs`. |
+| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build and install the host application user guide from `host/docs`. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
@@ -366,31 +366,31 @@ The `-dfu` targets attempt to program the board.
 
 Embedded protocol C files are generated from the host `.proto` files using
 nanopb. Each embedded tag protocol target is created with `add_nanopb_target`
-under `software/embedded/proto-c`.
+under `embedded/proto-c`.
 
 Nanopb options are split into two layers:
 
 | File | Purpose |
 | --- | --- |
-| `software/embedded/proto-c/default-options/tag.options` | Shared defaults for `tag.proto`. |
-| `software/embedded/proto-c/default-options/tagdata.options` | Shared defaults for `tagdata.proto`. |
-| `software/embedded/proto-c/<tag>-proto-c/tag.override.options` | Tag-specific overrides for `tag.proto`. |
-| `software/embedded/proto-c/<tag>-proto-c/tagdata.override.options` | Tag-specific overrides for `tagdata.proto`. |
+| `embedded/proto-c/default-options/tag.options` | Shared defaults for `tag.proto`. |
+| `embedded/proto-c/default-options/tagdata.options` | Shared defaults for `tagdata.proto`. |
+| `embedded/proto-c/<tag>-proto-c/tag.override.options` | Tag-specific overrides for `tag.proto`. |
+| `embedded/proto-c/<tag>-proto-c/tagdata.override.options` | Tag-specific overrides for `tagdata.proto`. |
 
 At build time, CMake combines the default file and the tag override file into
 the conventional nanopb file names in the build tree:
 
 ```
-<build>/software/embedded/proto-c/<tag>-proto-c/tag.options
-<build>/software/embedded/proto-c/<tag>-proto-c/tagdata.options
+<build>/embedded/proto-c/<tag>-proto-c/tag.options
+<build>/embedded/proto-c/<tag>-proto-c/tagdata.options
 ```
 
 To add a new embedded tag protocol target:
 
-1. Create `software/embedded/proto-c/<tag>-proto-c/CMakeLists.txt`.
+1. Create `embedded/proto-c/<tag>-proto-c/CMakeLists.txt`.
 2. Call `add_nanopb_target(<tag>)`.
 3. Add `tag.override.options`, `tagdata.override.options`, and `default-config.json`.
-4. Add the subdirectory from `software/embedded/proto-c/CMakeLists.txt`.
+4. Add the subdirectory from `embedded/proto-c/CMakeLists.txt`.
 5. Reference the generated interface target as `<tag>_proto` from the embedded firmware target.
 
 ## Programming Embedded Hardware

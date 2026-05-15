@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum OS X deployment version")
+#set(CMAKE_OSX_SYSROOT "/Users/geobrown/Software/macos-sdk/MacOSX12.3.sdk")
+include(CMakePrintHelpers)
 
 if(WIN32)
   set(_build_embedded_default OFF)
@@ -15,6 +18,8 @@ if(MSVC)
     "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     CACHE STRING
     "Use the dynamic MSVC runtime")
+  find_program(rc rc.exe)
+  add_link_options(/VERBOSE:LIB)
 endif()
 
 option(BUILD_HOST "Build host libraries and tools" ON)
@@ -54,6 +59,29 @@ endif()
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(GNUInstallDirs)
 
+# Find Protobuf and Nanopb
+
+set(protobuf_MODULE_COMPATIBLE TRUE)
+find_package(Protobuf CONFIG QUIET)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf REQUIRED)
+endif()
+cmake_print_variables(Protobuf_VERSION)
+
+if(BUILD_EMBEDDED)
+  set(NANOPB_SRC_ROOT_FOLDER "$ENV{NANOPB_ROOT}" CACHE PATH "Nanopb source root")
+  if(NOT NANOPB_SRC_ROOT_FOLDER)
+    set(NANOPB_SRC_ROOT_FOLDER "${CMAKE_SOURCE_DIR}/nanopb" CACHE PATH "Nanopb source root" FORCE)
+  endif()
+  set(NANOPB_GENERATOR_SOURCE_DIR "${NANOPB_SRC_ROOT_FOLDER}/generator-bin" CACHE PATH "Nanopb generator directory")
+  list(APPEND CMAKE_MODULE_PATH "${NANOPB_SRC_ROOT_FOLDER}/extra/")
+endif()
+
+# create common include for low-level monitor
+
+add_library(tag_monitor_interface INTERFACE)
+target_include_directories(tag_monitor_interface INTERFACE "${CMAKE_CURRENT_LIST_DIR}/include")
+
 if(WIN32)
   set(CMAKE_INSTALL_BINDIR "tag_tools" CACHE PATH "Windows runtime tools directory" FORCE)
   install(CODE [[
@@ -75,7 +103,13 @@ set(CPACK_PACKAGE_VERSION_MAJOR 2)
 set(CPACK_PACKAGE_VERSION_MINOR 1)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
 
-add_subdirectory(software)
+add_subdirectory(proto)
+if(BUILD_HOST)
+  add_subdirectory(host)
+endif()
+if(BUILD_EMBEDDED)
+  add_subdirectory(embedded)
+endif()
 
 if(WIN32)
   set(CPACK_GENERATOR ZIP)

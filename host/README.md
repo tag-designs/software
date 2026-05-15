@@ -5,7 +5,7 @@ applications for working with Ultralight Tags. The host code is organized around
 one shared hardware/protocol library, a set of small CLI tools, and several Qt
 applications for programming, monitoring, calibration, and visualization.
 
-The top-level `software/host/CMakeLists.txt` always adds `lib` and `cli`. Qt
+The top-level `host/CMakeLists.txt` always adds `lib` and `cli`. Qt
 applications are added when `BUILD_QT_APPS=ON`.
 
 ## Build Layout
@@ -79,7 +79,7 @@ Build dependencies:
 | `SQLite::SQLite3` | Private |
 | `libusb-1.0` | Private, through pkg-config or vcpkg |
 
-Public include directory: `software/host/lib`.
+Public include directory: `host/lib`.
 
 ### `cli`
 
@@ -362,7 +362,7 @@ usable by CLI tools without linking Qt.
 
 ## Packaging Notes
 
-Install/package selection is controlled in `software/host/CMakeLists.txt`.
+Install/package selection is controlled in `host/CMakeLists.txt`.
 
 | Platform | Installed host targets |
 | --- | --- |
