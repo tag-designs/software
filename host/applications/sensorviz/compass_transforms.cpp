@@ -7,9 +7,15 @@
 #include <QMessageBox>
 #include <QSignalBlocker>
 
+// compass_transforms.cpp owns CompassTag-specific display derivation. It is the
+// bridge between SensorRecordSet compass_raw, sensoranalysis::CompassProcessor,
+// ordinary SensorStream plots, and the optional QML compass panel.
+
 namespace
 {
 
+// The generated stream ids are kept together so disabling the Compass Derived
+// Streams action can remove the whole family without duplicating strings.
 const QStringList compassDerivedStreamIds()
 {
     return {
@@ -24,6 +30,8 @@ const QStringList compassDerivedStreamIds()
 
 void setActionCheckedSilently(QAction *action, bool checked)
 {
+    // Synchronize check state from model state without recursively invoking the
+    // toggled slot that creates/removes streams.
     if (!action) {
         return;
     }
@@ -34,6 +42,8 @@ void setActionCheckedSilently(QAction *action, bool checked)
 
 void updateDeclinationActionText(QAction *action, double declination_degrees)
 {
+    // Keep the current numeric declination visible in both the top-level menu
+    // and any popup menu that reuses this QAction.
     if (!action) {
         return;
     }
@@ -50,6 +60,8 @@ SensorStream makeCompassStream(
     bool default_visible,
     const SensorAxisRange &range = {})
 {
+    // Construct the normal SensorStream objects that plotting, range controls,
+    // tooltips, and View > Visible Streams already understand.
     SensorStream stream;
     stream.id = id;
     stream.label = label;
@@ -64,6 +76,8 @@ SensorStream makeCompassStream(
 
 bool compassRecordHasExpectedColumns(const SensorRecordSet &compass)
 {
+    // Validate the loaded record set before indexing parallel columns. Missing
+    // columns usually mean a schema drift that needs loader/profile work.
     const qsizetype sample_count = compass.time.size();
     return compass.columns.value("ax").size() == sample_count
         && compass.columns.value("ay").size() == sample_count
@@ -78,6 +92,9 @@ QVector<double> compassHeadingValues(
     double declination_degrees,
     bool battery_forward)
 {
+    // Heading is the only CompassTag stream affected by display settings.
+    // Samples remain magnetic-frame; declination and battery direction are
+    // layered on here and in the QML panel.
     QVector<double> heading;
     heading.reserve(samples.size());
     for (const CompassDerivedSample &sample : samples) {
@@ -100,6 +117,8 @@ QVector<double> compassHeadingValues(
 
 void MainWindow::compassDerivedToggled(bool checked)
 {
+    // Turn the raw compass record set into plot-ready streams. The first enable
+    // also fills compass_samples_, which the QML panel uses on mouse movement.
     if (!checked) {
         for (const QString &id : compassDerivedStreamIds()) {
             removeStream(id);
@@ -237,6 +256,8 @@ void MainWindow::compassDerivedToggled(bool checked)
 
 void MainWindow::setDeclination()
 {
+    // Update the user-selected true-north offset. Only the heading stream and
+    // QML display change; raw derived samples in compass_samples_ are preserved.
     bool ok = false;
     const double declination = QInputDialog::getDouble(
         this,
@@ -280,6 +301,8 @@ void MainWindow::setDeclination()
 
 void MainWindow::batteryForwardToggled(bool checked)
 {
+    // Battery direction is a display convention inherited from compviz. It
+    // rotates heading by 180 degrees and tells QML how to orient the tag model.
     battery_forward_ = checked;
     compass_display_.setBatteryForward(battery_forward_);
 

@@ -23,6 +23,8 @@ QTextEdit *s_textEdit = nullptr;
 // label, shortcut, or connection here affects both places.
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
+    // Construct the static shell first. Data-dependent menus are hidden until
+    // loadLog() has real streams/record sets to advertise.
     createActions();
     createUi();
     updateTransformActions();
@@ -30,6 +32,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
 void MainWindow::createActions()
 {
+    // Create persistent QAction objects once so top-level menus and context
+    // menus can share checked state. Stream-specific actions are added later by
+    // stream_actions.cpp after each load.
     menuBar()->setNativeMenuBar(false);
 
     // Top-level commands. Stream-specific View actions are added later by
@@ -108,6 +113,8 @@ void MainWindow::createActions()
 
 void MainWindow::createUi()
 {
+    // Build the two-tab layout: Plot contains QCustomPlot plus the optional
+    // compass panel, File Info holds metadata and Qt log messages.
     central_ = new QWidget(this);
     setCentralWidget(central_);
 

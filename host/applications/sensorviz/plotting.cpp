@@ -8,6 +8,8 @@ namespace
 
 void setPaddedAxisRange(QCPAxis *axis, const QCPRange &range)
 {
+    // QCustomPlot's rescale can put max/min exactly on the frame. Add a small
+    // margin so peaks remain visible and flat signals still get a useful span.
     double lower = range.lower;
     double upper = range.upper;
     double span = upper - lower;
@@ -29,6 +31,8 @@ void setPaddedAxisRange(QCPAxis *axis, const QCPRange &range)
 
 void MainWindow::clearDynamicAxes()
 {
+    // Remove axes created for previous stream combinations before rebuilding
+    // the plot. Built-in yAxis/yAxis2 are hidden because QCustomPlot owns them.
     QCPAxisRect *axis_rect = plot_->axisRect();
     for (QCPAxis *axis : dynamic_axes_) {
         axis_rect->removeAxis(axis);
@@ -45,6 +49,9 @@ QCPAxis *MainWindow::axisForStream(
     int side_index,
     const SensorStream &stream)
 {
+    // Allocate one value axis per visible stream so unrelated units do not
+    // compete for a single y scale. The first left/right axes reuse QCustomPlot
+    // defaults; additional axes are tracked in dynamic_axes_ for removal.
     QCPAxis *axis = nullptr;
     if (side == SensorAxisSide::Right) {
         axis = side_index == 0
@@ -73,11 +80,13 @@ QCPAxis *MainWindow::axisForStream(
 
 void MainWindow::refreshPlot()
 {
+    // Normal redraw path: keep the user's current x-axis window.
     rebuildPlot(false);
 }
 
 void MainWindow::refreshPlotFullRange()
 {
+    // Full-range redraw path used after load and Reset Zoom.
     rebuildPlot(true);
 }
 
@@ -135,6 +144,8 @@ void MainWindow::rebuildPlot(bool reset_x_range)
 
 void MainWindow::resetZoom()
 {
+    // User-visible command: clear all manual y ranges and show the full loaded
+    // time span again.
     if (plot_->graphCount() == 0) {
         return;
     }

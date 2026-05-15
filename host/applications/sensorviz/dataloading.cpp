@@ -19,6 +19,9 @@
 // sqlite_loader.cpp to see whether that definition was loaded successfully.
 void MainWindow::loadLog()
 {
+    // This is the only file-open path. It asks SqliteLoader for a fresh
+    // SensorLog, replaces all stream/action state, and then lets transform
+    // actions auto-enable any derived streams that should exist on load.
     const QString path = HostFileDialog::getOpenFileName(
         this,
         tr("Open Sensor Log"),
@@ -69,6 +72,9 @@ void MainWindow::loadLog()
 
 void MainWindow::updateMetadata()
 {
+    // Rebuild the File Info tab and status bar from the current SensorLog.
+    // Large protobuf/config blobs stay in log_.info but are omitted here so the
+    // pane remains readable and useful for bug reports.
     info_->clear();
     if (log_.path.isEmpty()) {
         status_->setText(tr("No log loaded"));

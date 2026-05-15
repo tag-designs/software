@@ -8,12 +8,22 @@
 
 #include "compass_types.h"
 
+// sensorstream.h defines the normalized data model used everywhere after the
+// SQLite loader finishes. The rest of sensorViz should work with these types
+// rather than with database table names, so new tags can be added mostly by
+// extending sensorprofile.cpp and sqlite_loader.cpp.
+
+// Which side of the plot a stream's value axis should occupy. Profiles use
+// this to keep diagnostics such as voltage/temperature on the right while most
+// sensor data stays on the left.
 enum class SensorAxisSide
 {
     Left,
     Right,
 };
 
+// Optional fixed y-axis range for a stream. When enabled, plotting.cpp uses
+// this as the default range until the user sets a custom range.
 struct SensorAxisRange
 {
     bool enabled = false;
@@ -66,9 +76,16 @@ struct SensorStream
 // streams such as heading, pitch, roll, and acceleration magnitude.
 struct SensorRecordSet
 {
+    // Stable id used by transform code, for example "compass_raw".
     QString id;
+
+    // Human-readable label shown in File Info.
     QString label;
+
+    // Epoch seconds shared by all columns.
     QVector<double> time;
+
+    // Column name to values. Transform code owns interpretation of each column.
     QMap<QString, QVector<double>> columns;
 };
 
@@ -76,14 +93,24 @@ struct SensorRecordSet
 // is metadata for the File Info pane; UI features are driven by actual streams.
 struct SensorLog
 {
+    // Original database path, used for File Info and default directory state.
     QString path;
+
+    // Metadata read from the Info table. Feature availability is still driven
+    // by actual streams/record sets, not this string.
     QString tagType;
+
+    // Human-readable profile name selected from tagType.
     QString profileName;
 
     // Raw info table values, with large opaque config/info blobs filtered out
     // only when the File Info tab is rendered.
     QMap<QString, QString> info;
+
+    // Scalar series available to the View menu and plot.
     QVector<SensorStream> streams;
+
+    // Multi-column tables available to transform code.
     QVector<SensorRecordSet> recordSets;
 
     // CompassTag logs carry calibration constants in a separate table. Keep

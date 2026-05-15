@@ -30,6 +30,7 @@ class Database
 public:
     explicit Database(const QString &path)
     {
+        // Open read-only so visualizing a log can never mutate it.
         const QByteArray utf8_path = path.toUtf8();
         if (sqlite3_open_v2(utf8_path.constData(), &db_, SQLITE_OPEN_READONLY, nullptr)
             != SQLITE_OK) {
@@ -40,6 +41,7 @@ public:
 
     ~Database()
     {
+        // Always close the sqlite handle even on early-return error paths.
         close();
     }
 
@@ -48,16 +50,21 @@ public:
 
     bool isOpen() const
     {
+        // Used by the public loader to report open failures before preparing
+        // statements.
         return db_ != nullptr;
     }
 
     sqlite3 *get() const
     {
+        // Exposes the raw handle only inside this adapter file.
         return db_;
     }
 
     QString lastError() const
     {
+        // Prefer the error captured at failure time; sqlite3_errmsg can change
+        // after later API calls.
         if (!last_error_.isEmpty()) {
             return last_error_;
         }
@@ -67,11 +74,13 @@ public:
 private:
     QString errorString() const
     {
+        // Normalize sqlite's C string error into QString.
         return QString::fromUtf8(db_ ? sqlite3_errmsg(db_) : "database is not open");
     }
 
     void close()
     {
+        // Idempotent close helper used by the destructor and failed open path.
         if (db_) {
             sqlite3_close(db_);
             db_ = nullptr;
@@ -87,6 +96,7 @@ class Statement
 public:
     Statement(Database &db, const char *sql) : db_(db.get())
     {
+        // Prepare immediately so valid() can be checked before stepping.
         if (sqlite3_prepare_v2(db_, sql, -1, &stmt_, nullptr) != SQLITE_OK) {
             last_error_ = errorString();
             stmt_ = nullptr;
@@ -95,6 +105,7 @@ public:
 
     ~Statement()
     {
+        // Finalize prepared statements on all paths.
         if (stmt_) {
             sqlite3_finalize(stmt_);
         }
@@ -105,11 +116,14 @@ public:
 
     bool valid() const
     {
+        // A failed prepare leaves stmt_ null and last_error_ populated.
         return stmt_ != nullptr;
     }
 
     bool next()
     {
+        // Advance to the next row. Non-DONE failures are retained for callers
+        // that need an error message.
         const int rc = sqlite3_step(stmt_);
         if (rc == SQLITE_ROW) {
             return true;
@@ -122,22 +136,26 @@ public:
 
     qint64 int64Column(int column) const
     {
+        // Epoch columns are read through this helper.
         return sqlite3_column_int64(stmt_, column);
     }
 
     double doubleColumn(int column) const
     {
+        // Sensor values are read as doubles even when sqlite stores integers.
         return sqlite3_column_double(stmt_, column);
     }
 
     QString textColumn(int column) const
     {
+        // Info values and JSON blobs are UTF-8 text in current logs.
         const unsigned char *text = sqlite3_column_text(stmt_, column);
         return QString::fromUtf8(reinterpret_cast<const char *>(text ? text : (const unsigned char *)""));
     }
 
     QString lastError() const
     {
+        // Return the prepare/step error captured closest to the failing call.
         if (!last_error_.isEmpty()) {
             return last_error_;
         }
@@ -147,6 +165,7 @@ public:
 private:
     QString errorString() const
     {
+        // Convert sqlite statement errors into QString for UI messages.
         return QString::fromUtf8(db_ ? sqlite3_errmsg(db_) : "database is not open");
     }
 
@@ -157,6 +176,8 @@ private:
 
 bool tableExistsRaw(Database &db, const QString &table_name)
 {
+    // Case-insensitive optional-table test. Missing optional tables are normal;
+    // this check avoids preparing SELECTs against tables a tag never wrote.
     sqlite3_stmt *stmt = nullptr;
     const char *sql = "SELECT 1 FROM sqlite_master WHERE type='table' AND lower(name)=lower(?)";
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -264,6 +285,9 @@ bool loadRecordSet(
 
 bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 {
+    // CompassTag calibration is stored as JSON in the latest Calibration row.
+    // Load it as typed metadata so compass_transforms.cpp can derive streams
+    // without re-querying or reparsing.
     if (!tableExistsRaw(db, "Calibration")) {
         return true;
     }
@@ -308,6 +332,9 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 
 bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
 {
+    // Public load orchestration: open the database, read metadata, apply the
+    // selected profile's optional table definitions, then atomically replace
+    // the caller's SensorLog on success.
     Database db(path);
     if (!db.isOpen()) {
         error = "Could not open database: " + db.lastError();

@@ -16,16 +16,20 @@
 
 QString MainWindow::unitsSuffix(const SensorStream &stream) const
 {
+    // Shared label helper used by menus, axes, range dialogs, and tooltips.
     return stream.units.isEmpty() ? QString() : " " + stream.units;
 }
 
 double MainWindow::pressureToAltitude(double pressure_mbar) const
 {
+    // Display transform for pressure-derived altitude. sea_level_pressure_ is
+    // configured from the Altitude action in transforms.cpp.
     return 44330.0 * (1.0 - std::pow(pressure_mbar / sea_level_pressure_, 1.0 / 5.257));
 }
 
 void MainWindow::showAbout()
 {
+    // Keep the About action here with other small general-purpose actions.
     QMessageBox::about(
         this,
         tr("About sensorViz"),
@@ -34,6 +38,8 @@ void MainWindow::showAbout()
 
 void MainWindow::showCalibrationConstants()
 {
+    // Compass calibration is loaded in sqlite_loader.cpp and stored as typed
+    // SensorLog metadata. This dialog is read-only and shared with compviz.
     if (!log_.hasCompassCalibration) {
         QMessageBox::information(
             this,

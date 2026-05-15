@@ -4,6 +4,10 @@
 #include "mainwindow.h"
 #include "qthoststyle.h"
 
+// main.cpp owns process startup only. UI construction lives in mainwindow.cpp,
+// while this file installs the shared host style and the message handler that
+// feeds Qt diagnostics into the File Info tab.
+
 extern QTextEdit *s_textEdit;
 
 // Qt messages are routed to the File Info tab so load/plot diagnostics can be
@@ -45,6 +49,8 @@ void sensorVizMessageOutput(QtMsgType type, const QMessageLogContext &context, c
 
 int main(int argc, char *argv[])
 {
+    // Keep startup deliberately small: after QApplication and styling, the
+    // MainWindow constructor owns all menu/widget creation.
     QApplication app(argc, argv);
     HostStyle::apply(app);
     qInstallMessageHandler(sensorVizMessageOutput);

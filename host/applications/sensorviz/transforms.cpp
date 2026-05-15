@@ -7,6 +7,11 @@
 
 #include <algorithm>
 
+// transforms.cpp owns scalar display transforms that start from existing
+// SensorStream objects. CompassTag record-set transforms live in
+// compass_transforms.cpp because they create a family of streams and update the
+// QML orientation panel.
+
 namespace
 {
 
@@ -25,6 +30,8 @@ void setActionCheckedSilently(QAction *action, bool checked)
 
 void updateDeclinationActionText(QAction *action, double declination_degrees)
 {
+    // The action is created in mainwindow.cpp but updated here because
+    // transform availability and display settings are refreshed together.
     if (!action) {
         return;
     }
@@ -76,6 +83,9 @@ QVector<double> lowPass(
 
 void MainWindow::updateTransformActions()
 {
+    // Centralize all data-dependent action visibility. loadLog(),
+    // addOrReplaceStream(), and removeStream() call this so menus never expose
+    // transforms whose inputs are missing.
     const bool has_pressure = hasStream("pressure");
     const bool has_activity = hasStream("activity");
     const bool has_compass =
@@ -109,6 +119,8 @@ void MainWindow::updateTransformActions()
 
 void MainWindow::altitudeToggled(bool checked)
 {
+    // Add/remove the pressure-derived altitude stream. The source pressure
+    // stream remains visible independently so users can compare both views.
     if (!checked) {
         removeStream("altitude");
         return;
@@ -163,6 +175,8 @@ void MainWindow::altitudeToggled(bool checked)
 
 void MainWindow::activityFilterToggled(bool checked)
 {
+    // Add/remove a first-order low-pass view of Activity. This is display-only:
+    // it does not alter the raw Activity stream loaded from the database.
     if (!checked) {
         removeStream("activity_lowpass");
         return;

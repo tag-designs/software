@@ -5,6 +5,9 @@
 
 #include "sensorstream.h"
 
+// SqliteLoader is the only public entry point for turning an on-disk tag log
+// into sensorViz's normalized SensorLog. MainWindow calls this from
+// dataloading.cpp; the rest of the app should not issue SQLite queries.
 class SqliteLoader
 {
 public:

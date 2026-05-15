@@ -17,6 +17,8 @@
 
 void MainWindow::resetCursorsToView()
 {
+    // Keep the two zoom cursors bracketing whatever time window is currently
+    // visible. Called after plot rebuilds and full-range resets.
     if (!left_cursor_ || !right_cursor_) {
         return;
     }
@@ -31,6 +33,8 @@ void MainWindow::resetCursorsToView()
 
 void MainWindow::plotDoubleClick(QMouseEvent *event)
 {
+    // Mouse convention inherited from compviz: double-click moves the left
+    // cursor, shift-double-click moves the right cursor.
     if (!left_cursor_ || !right_cursor_ || !left_cursor_->visible()) {
         return;
     }
@@ -56,6 +60,7 @@ void MainWindow::plotDoubleClick(QMouseEvent *event)
 
 void MainWindow::zoomToCursors()
 {
+    // Apply the cursor interval to the x-axis without changing y ranges.
     if (!left_cursor_ || !right_cursor_ || !left_cursor_->visible()) {
         return;
     }
@@ -70,6 +75,8 @@ void MainWindow::zoomToCursors()
 
 void MainWindow::printPlot()
 {
+    // Open a print preview for the current plot frame. The actual rendering is
+    // delegated to renderPlot() because Qt calls it from the preview dialog.
     QPrinter printer(QPrinter::HighResolution);
     printer.setOutputFormat(QPrinter::NativeFormat);
     printer.setPageOrientation(QPageLayout::Landscape);
@@ -82,6 +89,8 @@ void MainWindow::printPlot()
 
 void MainWindow::renderPlot(QPrinter *printer)
 {
+    // Render QCustomPlot into the print device using vector-friendly painter
+    // settings. Page scaling preserves the on-screen aspect ratio.
     QCPPainter painter(printer);
     const auto page_layout = printer->pageLayout();
     const auto page_rect = page_layout.paintRectPixels(printer->resolution());
@@ -98,6 +107,8 @@ void MainWindow::renderPlot(QPrinter *printer)
 
 void MainWindow::setUtcOffset()
 {
+    // Change only tick labels and x-axis title. Stored stream times remain Unix
+    // epoch seconds in UTC.
     bool ok = false;
     const int hours = QInputDialog::getInt(
         this,
@@ -127,6 +138,8 @@ void MainWindow::setUtcOffset()
 
 void MainWindow::showPlotContextMenu(const QPoint &pos)
 {
+    // Build a fresh popup each time so it reflects the current set of visible
+    // streams, enabled transforms, and tag-specific controls.
     QMenu menu(this);
     // The context menu mirrors the top-level menus, after filtering actions
     // that are not meaningful for the loaded log. Range actions are temporary
@@ -183,6 +196,9 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
 
 QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) const
 {
+    // Return a tooltip-ready value near the requested epoch. This is intentionally
+    // nearest-at-or-after rather than interpolated, matching QCustomPlot's
+    // sample-oriented interaction style.
     if (stream.time.isEmpty()) {
         return QString();
     }
@@ -203,6 +219,8 @@ QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) cons
 
 void MainWindow::updateCompassDisplay(double epoch)
 {
+    // Feed the QML compass with the nearest loaded magnetic-frame sample. The
+    // CompassDisplay facade applies declination/battery-forward in QML.
     if (compass_samples_.isEmpty()) {
         return;
     }
@@ -226,6 +244,8 @@ void MainWindow::updateCompassDisplay(double epoch)
 
 void MainWindow::showMousePosition(QMouseEvent *event)
 {
+    // Hovering over the plot drives both the text tooltip and, for CompassTag
+    // logs, the orientation panel.
     if (!plot_->axisRect()->rect().contains(event->pos())) {
         return;
     }

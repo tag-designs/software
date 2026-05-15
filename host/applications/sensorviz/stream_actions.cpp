@@ -17,11 +17,14 @@
 
 bool MainWindow::hasStream(const QString &id) const
 {
+    // Convenience predicate used by transform availability checks.
     return streamById(id) != nullptr;
 }
 
 const SensorStream *MainWindow::streamById(const QString &id) const
 {
+    // Look up the current stream by stable id. Returned pointers are valid only
+    // until streams_ is modified.
     for (const SensorStream &stream : streams_) {
         if (stream.id == id) {
             return &stream;
@@ -32,6 +35,7 @@ const SensorStream *MainWindow::streamById(const QString &id) const
 
 const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
 {
+    // Look up a raw multi-column record set loaded by sqlite_loader.cpp.
     for (const SensorRecordSet &record_set : log_.recordSets) {
         if (record_set.id == id) {
             return &record_set;
@@ -100,6 +104,7 @@ void MainWindow::removeStream(const QString &id)
 
 void MainWindow::clearStreamActions()
 {
+    // Remove all View > Visible Streams actions before loading a new file.
     for (QAction *action : stream_actions_) {
         visible_streams_menu_->removeAction(action);
         delete action;
@@ -113,6 +118,8 @@ void MainWindow::clearStreamActions()
 
 void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
 {
+    // Create a persistent checkable action for one raw or generated stream.
+    // The action's data stores the stable stream id used by visibleStreams().
     QAction *action = new QAction(stream.label + unitsSuffix(stream), this);
     action->setCheckable(true);
     action->setChecked(checked);
@@ -129,6 +136,8 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
 
 QAction *MainWindow::streamActionById(const QString &id) const
 {
+    // Find the QAction that controls a stream's visibility. Used when transforms
+    // need to preserve checked state while replacing stream data.
     for (QAction *action : stream_actions_) {
         if (action->data().toString() == id) {
             return action;
@@ -139,6 +148,8 @@ QAction *MainWindow::streamActionById(const QString &id) const
 
 QVector<SensorStream> MainWindow::visibleStreams() const
 {
+    // Convert QAction state back into the stream list consumed by plotting,
+    // range menus, tooltips, and printing.
     QVector<SensorStream> visible;
     // Raw streams are visible only when their View action is checked.
     for (QAction *action : stream_actions_) {
@@ -162,6 +173,8 @@ QVector<SensorStream> MainWindow::visibleStreams() const
 
 void MainWindow::clearRangeActions()
 {
+    // Remove persistent View > Ranges entries. Context-menu ranges are built
+    // separately as temporary popup actions.
     for (QAction *action : range_actions_) {
         range_menu_->removeAction(action);
         delete action;
@@ -188,6 +201,7 @@ void MainWindow::rebuildRangeActions()
 
 void MainWindow::addRangeAction(const SensorStream &stream)
 {
+    // Add one persistent range action for a currently displayed stream.
     QAction *action = new QAction(tr("%1 Range...").arg(stream.label), this);
     action->setData(stream.id);
     connect(action, &QAction::triggered, this, &MainWindow::setStreamRangeFromAction);
@@ -227,6 +241,8 @@ QCPRange MainWindow::defaultRangeForStream(const SensorStream &stream) const
 
 void MainWindow::setStreamRangeFromAction()
 {
+    // Slot used by persistent View > Ranges actions. QAction::data carries the
+    // stream id so one slot can handle all streams.
     QAction *action = qobject_cast<QAction *>(sender());
     if (!action) {
         return;

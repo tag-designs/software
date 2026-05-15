@@ -1,8 +1,15 @@
 #include "sensorprofile.h"
 
+// sensorprofile.cpp is the declarative catalog of log tables sensorViz knows
+// how to read. Add simple scalar tables here first; only move to loader/UI code
+// when a table needs special parsing or multi-stream derivation.
+
 namespace
 {
 
+// Common scalar table definitions shared by current SQLite tag logs. The loader
+// treats every entry as optional, so it is safe for one catalog to cover PresTag,
+// BitTag, and CompassTag subsets.
 QVector<ScalarStreamDefinition> commonScalarStreams()
 {
     return {
@@ -44,6 +51,8 @@ QVector<ScalarStreamDefinition> commonScalarStreams()
     };
 }
 
+// Multi-column tables are loaded as SensorRecordSet and consumed later by
+// transform code. Compass raw samples are the first concrete use.
 QVector<RecordSetDefinition> commonRecordSets()
 {
     return {
@@ -51,6 +60,9 @@ QVector<RecordSetDefinition> commonRecordSets()
     };
 }
 
+// Transform metadata documents the expected inputs and user parameters. The
+// current implementation still wires actions manually, but this keeps the
+// future generic transform UI shape visible in one place.
 QVector<SensorTransformDefinition> commonTransforms()
 {
     return {
@@ -73,6 +85,8 @@ QVector<SensorTransformDefinition> commonTransforms()
     };
 }
 
+// Build the base profile before tag-type naming. If a future tag needs different
+// defaults or tables, branch in sensorProfileForTag and adjust this copy.
 SensorProfile commonProfile()
 {
     SensorProfile profile;
@@ -85,6 +99,9 @@ SensorProfile commonProfile()
 
 } // namespace
 
+// Select a display profile from Info.tagtype. A missing or unknown tag type
+// still gets the common table catalog so experimental logs can load if their
+// tables match known schemas.
 SensorProfile sensorProfileForTag(const QString &tagType)
 {
     SensorProfile profile = commonProfile();
