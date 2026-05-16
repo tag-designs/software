@@ -45,6 +45,7 @@ void MainWindow::loadLog()
     custom_axis_ranges_.clear();
     explicit_axis_ranges_.clear();
     custom_stream_colors_.clear();
+    custom_axis_sides_.clear();
 
     // Default visibility comes from the database streams metadata. The QAction
     // state is the runtime source of truth after this point.

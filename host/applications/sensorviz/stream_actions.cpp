@@ -6,9 +6,12 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
@@ -17,8 +20,8 @@
 
 // Stream actions are the bridge between loaded data and the plot. Raw streams
 // get checkable View actions; derived streams are controlled by their transform
-// actions. Range and color actions are rebuilt from visibleStreams(), keeping
-// the menus focused on what is currently on the plot.
+// actions. Range, color, and axis-side controls are rebuilt from
+// visibleStreams(), keeping menus focused on what is currently on the plot.
 
 bool MainWindow::hasStream(const QString &id) const
 {
@@ -65,6 +68,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
             refreshPlot();
             rebuildRangeActions();
             rebuildColorActions();
+            updateAxisSidesAction();
             updateTransformActions();
             return;
         }
@@ -77,6 +81,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     refreshPlot();
     rebuildRangeActions();
     rebuildColorActions();
+    updateAxisSidesAction();
     updateTransformActions();
 }
 
@@ -106,6 +111,7 @@ void MainWindow::removeStream(const QString &id)
     refreshPlot();
     rebuildRangeActions();
     rebuildColorActions();
+    updateAxisSidesAction();
     updateTransformActions();
 }
 
@@ -120,6 +126,7 @@ void MainWindow::clearStreamActions()
     visible_streams_action_->setEnabled(false);
     clearRangeActions();
     clearColorActions();
+    updateAxisSidesAction();
     updateTransformActions();
 }
 
@@ -136,10 +143,12 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
         refreshPlot();
         rebuildRangeActions();
         rebuildColorActions();
+        updateAxisSidesAction();
     });
     stream_actions_.append(action);
     visible_streams_action_->setVisible(true);
     visible_streams_action_->setEnabled(true);
+    updateAxisSidesAction();
 }
 
 QAction *MainWindow::streamActionById(const QString &id) const
@@ -178,6 +187,7 @@ void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
     refreshPlot();
     rebuildRangeActions();
     rebuildColorActions();
+    updateAxisSidesAction();
 }
 
 void MainWindow::showVisibleStreamsDialog()
@@ -261,6 +271,104 @@ QVector<SensorStream> MainWindow::visibleStreams() const
         }
     }
     return visible;
+}
+
+SensorAxisSide MainWindow::effectiveAxisSide(const SensorStream &stream) const
+{
+    // Plotting asks this helper for axis placement. Keeping overrides outside
+    // SensorStream preserves the loaded metadata default for reset/new-file
+    // behavior.
+    const auto it = custom_axis_sides_.constFind(stream.id);
+    return it == custom_axis_sides_.cend() ? stream.axisSide : it.value();
+}
+
+void MainWindow::updateAxisSidesAction()
+{
+    // The side chooser edits only visible streams, so hide it until there is at
+    // least one stream on the plot.
+    const bool has_visible_streams = !visibleStreams().isEmpty();
+    axis_sides_action_->setVisible(has_visible_streams);
+    axis_sides_action_->setEnabled(has_visible_streams);
+}
+
+void MainWindow::showAxisSidesDialog()
+{
+    // Batch editor for value-axis placement. This is intentionally viewer-only:
+    // choosing left/right here does not mutate SensorStream metadata or the log.
+    const QVector<SensorStream> visible = visibleStreams();
+    if (visible.isEmpty()) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Axis Sides"));
+
+    QGridLayout *grid = new QGridLayout;
+    grid->addWidget(new QLabel(tr("Stream"), &dialog), 0, 0);
+    grid->addWidget(new QLabel(tr("Axis Side"), &dialog), 0, 1);
+
+    QVector<QPair<QString, QRadioButton *>> right_buttons;
+    right_buttons.reserve(visible.size());
+    for (qsizetype i = 0; i < visible.size(); i++) {
+        const SensorStream &stream = visible[i];
+        QLabel *label = new QLabel(stream.label + unitsSuffix(stream), &dialog);
+        QWidget *side_widget = new QWidget(&dialog);
+        QHBoxLayout *side_layout = new QHBoxLayout;
+        side_layout->setContentsMargins(0, 0, 0, 0);
+        QRadioButton *left_button = new QRadioButton(tr("Left"), side_widget);
+        QRadioButton *right_button = new QRadioButton(tr("Right"), side_widget);
+        side_layout->addWidget(left_button);
+        side_layout->addWidget(right_button);
+        side_layout->addStretch();
+        side_widget->setLayout(side_layout);
+        if (effectiveAxisSide(stream) == SensorAxisSide::Right) {
+            right_button->setChecked(true);
+        } else {
+            left_button->setChecked(true);
+        }
+        grid->addWidget(label, int(i) + 1, 0);
+        grid->addWidget(side_widget, int(i) + 1, 1);
+        right_buttons.append(qMakePair(stream.id, right_button));
+    }
+
+    QDialogButtonBox *buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton *defaults_button =
+        buttons->addButton(tr("Defaults"), QDialogButtonBox::ResetRole);
+
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addLayout(grid);
+    layout->addWidget(buttons);
+    dialog.setLayout(layout);
+
+    connect(defaults_button, &QPushButton::clicked, this, [&visible, &right_buttons]() {
+        for (qsizetype i = 0; i < visible.size() && i < right_buttons.size(); i++) {
+            right_buttons[i].second->setChecked(visible[i].axisSide == SensorAxisSide::Right);
+        }
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    for (const auto &entry : right_buttons) {
+        const QString &id = entry.first;
+        const SensorStream *stream = streamById(id);
+        if (!stream) {
+            continue;
+        }
+        const SensorAxisSide chosen_side =
+            entry.second->isChecked() ? SensorAxisSide::Right : SensorAxisSide::Left;
+        if (chosen_side == stream->axisSide) {
+            custom_axis_sides_.remove(id);
+        } else {
+            custom_axis_sides_[id] = chosen_side;
+        }
+    }
+
+    refreshPlot();
 }
 
 QColor MainWindow::effectiveStreamColor(const SensorStream &stream) const

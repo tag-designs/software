@@ -73,6 +73,7 @@ private slots:
     void batteryForwardToggled(bool checked);
     void showCalibrationConstants();
     void showVisibleStreamsDialog();
+    void showAxisSidesDialog();
     void setStreamRangeFromAction();
     void setStreamColorFromAction();
     void printPlot();
@@ -124,6 +125,13 @@ private:
     void setStreamRange(const QString &id);
     QCPRange defaultRangeForStream(const SensorStream &stream) const;
 
+    // Axis side choices are viewer preferences layered over stream defaults.
+    // The metadata/default remains in SensorStream::axisSide; this override is
+    // useful when a particular data combination reads better with a different
+    // left/right arrangement.
+    SensorAxisSide effectiveAxisSide(const SensorStream &stream) const;
+    void updateAxisSidesAction();
+
     // Color actions are viewer preferences. The SQLite log supplies default
     // colors through sqlite_loader.cpp; users can override them for the current
     // session without changing stream metadata or saved logs.
@@ -166,6 +174,7 @@ private:
     QMap<QString, QCPRange> custom_axis_ranges_;
     QSet<QString> explicit_axis_ranges_;
     QMap<QString, QColor> custom_stream_colors_;
+    QMap<QString, SensorAxisSide> custom_axis_sides_;
 
     QWidget *central_ = nullptr;
     QCustomPlot *plot_ = nullptr;
@@ -189,6 +198,7 @@ private:
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *visible_streams_action_ = nullptr;
+    QAction *axis_sides_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
     QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;

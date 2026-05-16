@@ -148,6 +148,9 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     if (!stream_actions_.isEmpty()) {
         menu.addAction(visible_streams_action_);
     }
+    if (axis_sides_action_->isVisible()) {
+        menu.addAction(axis_sides_action_);
+    }
     menu.addAction(reset_action_);
     menu.addAction(zoom_to_cursors_action_);
     menu.addAction(utc_offset_action_);

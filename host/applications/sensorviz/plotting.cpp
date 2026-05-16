@@ -107,7 +107,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
     int left_axis_count = 0;
     int right_axis_count = 0;
     for (const SensorStream &stream : visible) {
-        const SensorAxisSide side = stream.axisSide;
+        const SensorAxisSide side = effectiveAxisSide(stream);
         const int side_index = side == SensorAxisSide::Right
             ? right_axis_count++
             : left_axis_count++;
