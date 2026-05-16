@@ -18,6 +18,7 @@
 
 #include "compass_display.h"
 #include "compass_types.h"
+#include "sensor_preferences.h"
 #include "sensorstream.h"
 
 class QQuickWidget;
@@ -99,6 +100,9 @@ private:
     void updateTransformActions();
     void createAltitudeStream();
     void createCompassPlotStreams();
+    QString preferenceKey() const;
+    void rememberCurrentPreferences();
+    void applyPreferencesForCurrentTag();
 
     // Streams are the single source of truth for both raw and derived data.
     // Raw and generated compass streams have checkable QAction objects in
@@ -174,6 +178,8 @@ private:
     QSet<QString> explicit_axis_ranges_;
     QMap<QString, QColor> custom_stream_colors_;
     QMap<QString, SensorAxisSide> custom_axis_sides_;
+    QMap<QString, SensorVizPreferences> preferences_by_tag_type_;
+    bool suppress_preference_updates_ = false;
 
     QWidget *central_ = nullptr;
     QCustomPlot *plot_ = nullptr;

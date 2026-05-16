@@ -35,6 +35,7 @@ set(sensorviz_SRCS
   main.cpp
   mainwindow.cpp
   plotting.cpp
+  sensor_preferences.cpp
   sqlite_loader.cpp
   stream_actions.cpp
   transforms.cpp)

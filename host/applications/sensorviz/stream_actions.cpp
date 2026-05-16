@@ -155,6 +155,7 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
         rebuildRangeActions();
         updateColorsAction();
         updateAxisSidesAction();
+        rememberCurrentPreferences();
     });
     stream_actions_.append(action);
     visible_streams_action_->setVisible(true);
@@ -199,6 +200,7 @@ void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
     rebuildRangeActions();
     updateColorsAction();
     updateAxisSidesAction();
+    rememberCurrentPreferences();
 }
 
 void MainWindow::showVisibleStreamsDialog()
@@ -380,6 +382,7 @@ void MainWindow::showAxisSidesDialog()
     }
 
     refreshPlot();
+    rememberCurrentPreferences();
 }
 
 QColor MainWindow::effectiveStreamColor(const SensorStream &stream) const
@@ -655,4 +658,5 @@ void MainWindow::showStreamColorsDialog()
     }
 
     refreshPlot();
+    rememberCurrentPreferences();
 }

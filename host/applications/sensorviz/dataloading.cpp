@@ -38,6 +38,8 @@ void MainWindow::loadLog()
         return;
     }
 
+    rememberCurrentPreferences();
+
     current_path_ = QFileInfo(path).absolutePath();
     log_ = log;
     streams_ = log.streams;
@@ -72,6 +74,8 @@ void MainWindow::loadLog()
     if (log_.hasCompassCalibration && recordSetById("compass_raw")) {
         createCompassPlotStreams();
     }
+
+    applyPreferencesForCurrentTag();
 
     // Order matters here: menu visibility depends on streams_, and refreshPlot()
     // depends on the stream actions that were just rebuilt.
