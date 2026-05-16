@@ -1,14 +1,36 @@
 #include "mainwindow.h"
 
 #include <QAction>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMessageBox>
 
-// This file owns in-memory sensorViz preferences. Preferences are keyed by tag
-// type and survive loading another log during the same run. File persistence is
-// intentionally left for a later step; session calculation parameters such as
-// sea-level pressure and declination stay on MainWindow and are not captured.
+#include "qtfiledialog.h"
+
+// This file owns sensorViz viewer preferences. The runtime map is keyed by tag
+// type so choices for a BitTag log do not bleed into a CompassTag or PresTag
+// log. The JSON file format mirrors that map and stores only overrides from
+// defaults, keeping preference files short enough to edit by hand.
+//
+// Persisted:
+// - stream visibility when it differs from SensorStream::defaultVisible
+// - stream colors chosen by the user
+// - stream axis sides chosen by the user
+//
+// Not persisted:
+// - y-axis ranges, because those are analysis/session state
+// - sea-level pressure and declination, because they are calculation inputs
+// - UTC offset and battery-forward, because they describe the current viewing
+//   context rather than a tag-type preference
 
 namespace
 {
+
+constexpr int kPreferencesVersion = 1;
 
 QSet<QString> currentStreamIds(const QVector<SensorStream> &streams)
 {
@@ -17,6 +39,164 @@ QSet<QString> currentStreamIds(const QVector<SensorStream> &streams)
         ids.insert(stream.id);
     }
     return ids;
+}
+
+QSet<QString> defaultVisibleStreamIds(const QVector<SensorStream> &streams)
+{
+    QSet<QString> ids;
+    for (const SensorStream &stream : streams) {
+        if (stream.defaultVisible) {
+            ids.insert(stream.id);
+        }
+    }
+    return ids;
+}
+
+bool hasPreferenceOverrides(const SensorVizPreferences &preferences)
+{
+    return preferences.hasVisibleStreamOverride
+        || !preferences.streamColors.isEmpty()
+        || !preferences.axisSides.isEmpty();
+}
+
+QStringList sortedStrings(const QSet<QString> &values)
+{
+    QStringList sorted;
+    for (const QString &value : values) {
+        sorted.append(value);
+    }
+    sorted.sort();
+    return sorted;
+}
+
+QString axisSideToString(SensorAxisSide side)
+{
+    return side == SensorAxisSide::Right ? QStringLiteral("right") : QStringLiteral("left");
+}
+
+bool axisSideFromString(const QString &text, SensorAxisSide &side)
+{
+    const QString normalized = text.trimmed().toLower();
+    if (normalized == QStringLiteral("left")) {
+        side = SensorAxisSide::Left;
+        return true;
+    }
+    if (normalized == QStringLiteral("right")) {
+        side = SensorAxisSide::Right;
+        return true;
+    }
+    return false;
+}
+
+QJsonObject preferencesToJson(const SensorVizPreferences &preferences)
+{
+    QJsonObject object;
+    if (preferences.hasVisibleStreamOverride) {
+        QJsonArray visible;
+        for (const QString &id : sortedStrings(preferences.visibleStreamIds)) {
+            visible.append(id);
+        }
+        object.insert(QStringLiteral("visible_streams"), visible);
+    }
+
+    if (!preferences.streamColors.isEmpty()) {
+        QJsonObject colors;
+        for (auto it = preferences.streamColors.cbegin(); it != preferences.streamColors.cend(); ++it) {
+            colors.insert(it.key(), it.value().name(QColor::HexRgb));
+        }
+        object.insert(QStringLiteral("colors"), colors);
+    }
+
+    if (!preferences.axisSides.isEmpty()) {
+        QJsonObject axis_sides;
+        for (auto it = preferences.axisSides.cbegin(); it != preferences.axisSides.cend(); ++it) {
+            axis_sides.insert(it.key(), axisSideToString(it.value()));
+        }
+        object.insert(QStringLiteral("axis_sides"), axis_sides);
+    }
+
+    return object;
+}
+
+bool jsonToPreferences(
+    const QString &tag_type,
+    const QJsonObject &object,
+    SensorVizPreferences &preferences,
+    QString &error)
+{
+    preferences = SensorVizPreferences();
+    preferences.tagType = tag_type;
+
+    if (object.contains(QStringLiteral("visible_streams"))) {
+        const QJsonValue value = object.value(QStringLiteral("visible_streams"));
+        if (!value.isArray()) {
+            error = QStringLiteral("visible_streams for %1 must be an array").arg(tag_type);
+            return false;
+        }
+        preferences.hasVisibleStreamOverride = true;
+        const QJsonArray visible = value.toArray();
+        for (const QJsonValue &entry : visible) {
+            if (!entry.isString()) {
+                error = QStringLiteral("visible_streams for %1 must contain only strings")
+                            .arg(tag_type);
+                return false;
+            }
+            preferences.visibleStreamIds.insert(entry.toString());
+        }
+    }
+
+    if (object.contains(QStringLiteral("colors"))) {
+        const QJsonValue value = object.value(QStringLiteral("colors"));
+        if (!value.isObject()) {
+            error = QStringLiteral("colors for %1 must be an object").arg(tag_type);
+            return false;
+        }
+        const QJsonObject colors = value.toObject();
+        for (auto it = colors.constBegin(); it != colors.constEnd(); ++it) {
+            if (!it.value().isString()) {
+                error = QStringLiteral("colors.%1 for %2 must be a color string")
+                            .arg(it.key(), tag_type);
+                return false;
+            }
+            const QColor color(it.value().toString());
+            if (!color.isValid()) {
+                error = QStringLiteral("colors.%1 for %2 is not a valid color")
+                            .arg(it.key(), tag_type);
+                return false;
+            }
+            preferences.streamColors.insert(it.key(), color);
+        }
+    }
+
+    if (object.contains(QStringLiteral("axis_sides"))) {
+        const QJsonValue value = object.value(QStringLiteral("axis_sides"));
+        if (!value.isObject()) {
+            error = QStringLiteral("axis_sides for %1 must be an object").arg(tag_type);
+            return false;
+        }
+        const QJsonObject axis_sides = value.toObject();
+        for (auto it = axis_sides.constBegin(); it != axis_sides.constEnd(); ++it) {
+            if (!it.value().isString()) {
+                error = QStringLiteral("axis_sides.%1 for %2 must be left or right")
+                            .arg(it.key(), tag_type);
+                return false;
+            }
+            SensorAxisSide side = SensorAxisSide::Left;
+            if (!axisSideFromString(it.value().toString(), side)) {
+                error = QStringLiteral("axis_sides.%1 for %2 must be left or right")
+                            .arg(it.key(), tag_type);
+                return false;
+            }
+            preferences.axisSides.insert(it.key(), side);
+        }
+    }
+
+    return true;
+}
+
+QString preferencesDirectory(const QString &current_path)
+{
+    return current_path.isEmpty() ? QDir::homePath() : current_path;
 }
 
 } // namespace
@@ -47,15 +227,22 @@ void MainWindow::rememberCurrentPreferences()
 
     SensorVizPreferences preferences;
     preferences.tagType = key;
+    QSet<QString> visible_stream_ids;
     for (QAction *action : stream_actions_) {
         if (action->isChecked()) {
-            preferences.visibleStreamIds.insert(action->data().toString());
+            visible_stream_ids.insert(action->data().toString());
         }
+    }
+    const QSet<QString> default_visible_ids = defaultVisibleStreamIds(streams_);
+    if (visible_stream_ids != default_visible_ids) {
+        preferences.hasVisibleStreamOverride = true;
+        preferences.visibleStreamIds = visible_stream_ids;
     }
 
     const QSet<QString> stream_ids = currentStreamIds(streams_);
     for (auto it = custom_stream_colors_.cbegin(); it != custom_stream_colors_.cend(); ++it) {
-        if (stream_ids.contains(it.key())) {
+        const SensorStream *stream = streamById(it.key());
+        if (stream_ids.contains(it.key()) && stream && it.value() != stream->color) {
             preferences.streamColors[it.key()] = it.value();
         }
     }
@@ -66,17 +253,21 @@ void MainWindow::rememberCurrentPreferences()
         }
     }
 
-    preferences_by_tag_type_[key] = preferences;
+    if (hasPreferenceOverrides(preferences)) {
+        preferences_by_tag_type_[key] = preferences;
+    } else {
+        preferences_by_tag_type_.remove(key);
+    }
 }
 
 void MainWindow::applyPreferencesForCurrentTag()
 {
     const QString key = preferenceKey();
-    if (key.isEmpty() || !preferences_by_tag_type_.contains(key)) {
+    if (key.isEmpty() || streams_.isEmpty()) {
         return;
     }
 
-    const SensorVizPreferences preferences = preferences_by_tag_type_[key];
+    const SensorVizPreferences preferences = preferences_by_tag_type_.value(key);
     const QSet<QString> stream_ids = currentStreamIds(streams_);
 
     suppress_preference_updates_ = true;
@@ -94,11 +285,147 @@ void MainWindow::applyPreferencesForCurrentTag()
         }
     }
 
-    applyStreamVisibility(preferences.visibleStreamIds);
+    if (preferences.hasVisibleStreamOverride) {
+        applyStreamVisibility(preferences.visibleStreamIds);
+    } else {
+        applyStreamVisibility(defaultVisibleStreamIds(streams_));
+    }
     suppress_preference_updates_ = false;
 
     rebuildRangeActions();
     updateColorsAction();
     updateAxisSidesAction();
     refreshPlot();
+}
+
+void MainWindow::loadPreferences()
+{
+    const QString path = HostFileDialog::getOpenFileName(
+        this,
+        tr("Load sensorViz Preferences"),
+        preferencesDirectory(current_path_),
+        tr("sensorViz Preferences (*.json);;JSON Files (*.json);;All Files (*)"));
+    if (path.isEmpty()) {
+        return;
+    }
+
+    QString error;
+    if (!loadPreferencesFromFile(path, error)) {
+        QMessageBox::critical(this, tr("Load Preferences Failed"), error);
+        return;
+    }
+
+    applyPreferencesForCurrentTag();
+    qInfo().noquote() << "Loaded sensorViz preferences from" << path;
+}
+
+void MainWindow::savePreferences()
+{
+    rememberCurrentPreferences();
+
+    QString initial_path = preferencesDirectory(current_path_);
+    if (!initial_path.endsWith(QStringLiteral(".json"), Qt::CaseInsensitive)) {
+        initial_path = QDir(initial_path).filePath(QStringLiteral("sensorviz-preferences.json"));
+    }
+    QString path = HostFileDialog::getSaveFileName(
+        this,
+        tr("Save sensorViz Preferences"),
+        initial_path,
+        tr("sensorViz Preferences (*.json);;JSON Files (*.json);;All Files (*)"));
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path += QStringLiteral(".json");
+    }
+
+    QString error;
+    if (!savePreferencesToFile(path, error)) {
+        QMessageBox::critical(this, tr("Save Preferences Failed"), error);
+        return;
+    }
+
+    qInfo().noquote() << "Saved sensorViz preferences to" << path;
+}
+
+bool MainWindow::loadPreferencesFromFile(const QString &path, QString &error)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        error = tr("Could not open %1: %2").arg(path, file.errorString());
+        return false;
+    }
+
+    QJsonParseError parse_error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parse_error);
+    if (parse_error.error != QJsonParseError::NoError) {
+        error = tr("Could not parse %1: %2 at offset %3")
+                    .arg(path, parse_error.errorString())
+                    .arg(parse_error.offset);
+        return false;
+    }
+    if (!document.isObject()) {
+        error = tr("Preference file %1 must contain a JSON object").arg(path);
+        return false;
+    }
+
+    const QJsonObject root = document.object();
+    if (root.contains(QStringLiteral("version"))
+        && root.value(QStringLiteral("version")).toInt() != kPreferencesVersion) {
+        error = tr("Unsupported sensorViz preferences version in %1").arg(path);
+        return false;
+    }
+
+    const QJsonValue tags_value = root.value(QStringLiteral("tags"));
+    if (!tags_value.isObject()) {
+        error = tr("Preference file %1 must contain a tags object").arg(path);
+        return false;
+    }
+
+    QMap<QString, SensorVizPreferences> loaded_preferences;
+    const QJsonObject tags = tags_value.toObject();
+    for (auto it = tags.constBegin(); it != tags.constEnd(); ++it) {
+        if (!it.value().isObject()) {
+            error = tr("Preferences for %1 must be a JSON object").arg(it.key());
+            return false;
+        }
+
+        SensorVizPreferences preferences;
+        if (!jsonToPreferences(it.key(), it.value().toObject(), preferences, error)) {
+            return false;
+        }
+        if (hasPreferenceOverrides(preferences)) {
+            loaded_preferences.insert(it.key(), preferences);
+        }
+    }
+
+    preferences_by_tag_type_ = loaded_preferences;
+    return true;
+}
+
+bool MainWindow::savePreferencesToFile(const QString &path, QString &error)
+{
+    QJsonObject tags;
+    for (auto it = preferences_by_tag_type_.cbegin(); it != preferences_by_tag_type_.cend(); ++it) {
+        if (hasPreferenceOverrides(it.value())) {
+            tags.insert(it.key(), preferencesToJson(it.value()));
+        }
+    }
+
+    QJsonObject root;
+    root.insert(QStringLiteral("version"), kPreferencesVersion);
+    root.insert(QStringLiteral("tags"), tags);
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        error = tr("Could not write %1: %2").arg(path, file.errorString());
+        return false;
+    }
+
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    if (file.error() != QFileDevice::NoError) {
+        error = tr("Could not write %1: %2").arg(path, file.errorString());
+        return false;
+    }
+    return true;
 }

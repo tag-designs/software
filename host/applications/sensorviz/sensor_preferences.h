@@ -9,13 +9,20 @@
 #include "sensorstream.h"
 
 // SensorVizPreferences contains viewer layout choices that should follow a tag
-// type across log loads. These are deliberately separate from session
-// parameters such as sea-level pressure and declination, which affect
-// calculations for the current run but should not be written to preference
-// files later.
+// type across log loads and may be saved to a JSON preference file. It stores
+// only overrides from sensorViz defaults:
+//
+// - visibleStreamIds is meaningful only when hasVisibleStreamOverride is true.
+// - streamColors contains only colors chosen by the user.
+// - axisSides contains only left/right choices that differ from stream metadata.
+//
+// Session calculation parameters such as sea-level pressure, declination,
+// battery-forward, UTC offset, and manual y-axis ranges stay on MainWindow and
+// are deliberately not written to preference files.
 struct SensorVizPreferences
 {
     QString tagType;
+    bool hasVisibleStreamOverride = false;
     QSet<QString> visibleStreamIds;
     QMap<QString, QColor> streamColors;
     QMap<QString, SensorAxisSide> axisSides;

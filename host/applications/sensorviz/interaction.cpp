@@ -147,6 +147,9 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // the lifetime of this popup; the persistent View -> Ranges actions are
     // managed by range_actions_.
     menu.addAction(load_action_);
+    menu.addAction(load_preferences_action_);
+    menu.addAction(save_preferences_action_);
+    menu.addSeparator();
     menu.addAction(print_action_);
     menu.addSeparator();
     menu.addAction(about_action_);

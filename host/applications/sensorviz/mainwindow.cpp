@@ -40,6 +40,8 @@ void MainWindow::createActions()
     // Top-level commands. Stream-specific View actions are added later by
     // dataloading.cpp because they depend on the tables present in a file.
     load_action_ = new QAction(tr("&Load"), this);
+    load_preferences_action_ = new QAction(tr("Load &Preferences..."), this);
+    save_preferences_action_ = new QAction(tr("Save P&references..."), this);
     print_action_ = new QAction(tr("&Print"), this);
     about_action_ = new QAction(tr("&About"), this);
     visible_streams_action_ = new QAction(tr("Visible &Streams..."), this);
@@ -72,6 +74,8 @@ void MainWindow::createActions()
     battery_forward_action_->setEnabled(false);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
+    connect(load_preferences_action_, &QAction::triggered, this, &MainWindow::loadPreferences);
+    connect(save_preferences_action_, &QAction::triggered, this, &MainWindow::savePreferences);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
     connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
     connect(
@@ -99,6 +103,9 @@ void MainWindow::createActions()
     // Separators are stored when later code needs to hide empty groups.
     QMenu *file_menu = menuBar()->addMenu(tr("&File"));
     file_menu->addAction(load_action_);
+    file_menu->addAction(load_preferences_action_);
+    file_menu->addAction(save_preferences_action_);
+    file_menu->addSeparator();
     file_menu->addAction(print_action_);
     file_menu->addSeparator();
     file_menu->addAction(about_action_);
@@ -131,6 +138,8 @@ void MainWindow::createActions()
         const char *text;
     } menu_tooltips[] = {
         {load_action_, QT_TR_NOOP("Open a sensorViz SQLite log file.")},
+        {load_preferences_action_, QT_TR_NOOP("Load saved stream visibility, color, and axis-side preferences.")},
+        {save_preferences_action_, QT_TR_NOOP("Save stream visibility, color, and axis-side preferences as formatted JSON.")},
         {print_action_, QT_TR_NOOP("Print or preview the current plot.")},
         {about_action_, QT_TR_NOOP("Show sensorViz version and application information.")},
         {visible_streams_action_, QT_TR_NOOP("Choose which loaded streams are displayed.")},

@@ -64,6 +64,8 @@ public:
 
 private slots:
     void loadLog();
+    void loadPreferences();
+    void savePreferences();
     void showAbout();
     void resetZoom();
     void setUtcOffset();
@@ -103,6 +105,8 @@ private:
     QString preferenceKey() const;
     void rememberCurrentPreferences();
     void applyPreferencesForCurrentTag();
+    bool loadPreferencesFromFile(const QString &path, QString &error);
+    bool savePreferencesToFile(const QString &path, QString &error);
 
     // Streams are the single source of truth for both raw and derived data.
     // Raw and generated compass streams have checkable QAction objects in
@@ -191,6 +195,8 @@ private:
     QTabWidget *tabs_ = nullptr;
 
     QAction *load_action_ = nullptr;
+    QAction *load_preferences_action_ = nullptr;
+    QAction *save_preferences_action_ = nullptr;
     QAction *about_action_ = nullptr;
     QAction *reset_action_ = nullptr;
     QAction *utc_offset_action_ = nullptr;
