@@ -141,18 +141,23 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // Build a fresh popup each time so it reflects the current set of visible
     // streams, enabled transforms, and tag-specific controls.
     QMenu menu(this);
-    // The context menu mirrors the top-level File, View, and Configuration menu
+    // The context menu mirrors the top-level File, Preferences, View, and
+    // Configuration menu
     // order, while filtering actions that are not meaningful for the loaded
     // log. Range actions are temporary here because QMenu owns them only for
     // the lifetime of this popup; the persistent View -> Ranges actions are
     // managed by range_actions_.
     menu.addAction(load_action_);
-    menu.addAction(load_preferences_action_);
-    menu.addAction(save_preferences_action_);
-    menu.addSeparator();
     menu.addAction(print_action_);
     menu.addSeparator();
     menu.addAction(about_action_);
+    menu.addSeparator();
+
+    QMenu *preferences = menu.addMenu(tr("Preferences"));
+    preferences->addAction(load_preferences_action_);
+    preferences->addAction(save_preferences_action_);
+    preferences->addSeparator();
+    preferences->addAction(default_preferences_action_);
     menu.addSeparator();
 
     if (!stream_actions_.isEmpty()) {

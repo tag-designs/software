@@ -66,6 +66,7 @@ private slots:
     void loadLog();
     void loadPreferences();
     void savePreferences();
+    void loadDefaultPreferences();
     void showAbout();
     void resetZoom();
     void setUtcOffset();
@@ -98,6 +99,7 @@ private:
     // Log metadata and tag-dependent menu state. updateTransformActions() is
     // called whenever streams are added/removed because transform availability
     // is inferred from actual stream ids rather than tag type strings.
+    void updateLoadedStateActions();
     void updateMetadata();
     void updateTransformActions();
     void createAltitudeStream();
@@ -142,9 +144,9 @@ private:
     SensorAxisSide effectiveAxisSide(const SensorStream &stream) const;
     void updateAxisSidesAction();
 
-    // Color actions are viewer preferences. The SQLite log supplies default
-    // colors through sqlite_loader.cpp; users can override them for the current
-    // session without changing stream metadata or saved logs.
+    // Color actions are viewer preferences. sensor_preferences.cpp supplies
+    // default colors; users can override them for the current session without
+    // changing stream metadata or saved logs.
     QColor effectiveStreamColor(const SensorStream &stream) const;
     void updateColorsAction();
     void updateCompassDisplay(double epoch);
@@ -197,6 +199,7 @@ private:
     QAction *load_action_ = nullptr;
     QAction *load_preferences_action_ = nullptr;
     QAction *save_preferences_action_ = nullptr;
+    QAction *default_preferences_action_ = nullptr;
     QAction *about_action_ = nullptr;
     QAction *reset_action_ = nullptr;
     QAction *utc_offset_action_ = nullptr;

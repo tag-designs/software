@@ -40,42 +40,49 @@ void MainWindow::createActions()
     // Top-level commands. Stream-specific View actions are added later by
     // dataloading.cpp because they depend on the tables present in a file.
     load_action_ = new QAction(tr("&Load"), this);
-    load_preferences_action_ = new QAction(tr("Load &Preferences..."), this);
-    save_preferences_action_ = new QAction(tr("Save P&references..."), this);
+    load_preferences_action_ = new QAction(tr("&Load..."), this);
+    load_preferences_action_->setEnabled(false);
+    save_preferences_action_ = new QAction(tr("&Store..."), this);
+    save_preferences_action_->setEnabled(false);
+    default_preferences_action_ = new QAction(tr("Load &Defaults"), this);
+    default_preferences_action_->setEnabled(false);
     print_action_ = new QAction(tr("&Print"), this);
+    print_action_->setEnabled(false);
     about_action_ = new QAction(tr("&About"), this);
     visible_streams_action_ = new QAction(tr("Visible &Streams..."), this);
-    visible_streams_action_->setVisible(false);
     visible_streams_action_->setEnabled(false);
     axis_sides_action_ = new QAction(tr("&Axis Sides..."), this);
-    axis_sides_action_->setVisible(false);
     axis_sides_action_->setEnabled(false);
     colors_action_ = new QAction(tr("&Colors..."), this);
-    colors_action_->setVisible(false);
     colors_action_->setEnabled(false);
     reset_action_ = new QAction(tr("&Reset Zoom"), this);
+    reset_action_->setEnabled(false);
     zoom_to_cursors_action_ = new QAction(tr("&Zoom to Cursors"), this);
+    zoom_to_cursors_action_->setEnabled(false);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
+    utc_offset_action_->setEnabled(false);
     calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
-    calibration_constants_action_->setVisible(false);
     calibration_constants_action_->setEnabled(false);
     sea_level_pressure_action_ = new QAction(tr("Sea-level &Pressure..."), this);
-    sea_level_pressure_action_->setVisible(false);
     sea_level_pressure_action_->setEnabled(false);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
+    activity_filter_action_->setEnabled(false);
     declination_action_ = new QAction(tr("&Declination..."), this);
-    declination_action_->setVisible(false);
     declination_action_->setEnabled(false);
     battery_forward_action_ = new QAction(tr("&Battery Forward"), this);
     battery_forward_action_->setCheckable(true);
     battery_forward_action_->setChecked(true);
-    battery_forward_action_->setVisible(false);
     battery_forward_action_->setEnabled(false);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
     connect(load_preferences_action_, &QAction::triggered, this, &MainWindow::loadPreferences);
     connect(save_preferences_action_, &QAction::triggered, this, &MainWindow::savePreferences);
+    connect(
+        default_preferences_action_,
+        &QAction::triggered,
+        this,
+        &MainWindow::loadDefaultPreferences);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
     connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
     connect(
@@ -103,12 +110,15 @@ void MainWindow::createActions()
     // Separators are stored when later code needs to hide empty groups.
     QMenu *file_menu = menuBar()->addMenu(tr("&File"));
     file_menu->addAction(load_action_);
-    file_menu->addAction(load_preferences_action_);
-    file_menu->addAction(save_preferences_action_);
-    file_menu->addSeparator();
     file_menu->addAction(print_action_);
     file_menu->addSeparator();
     file_menu->addAction(about_action_);
+
+    QMenu *preferences_menu = menuBar()->addMenu(tr("&Preferences"));
+    preferences_menu->addAction(load_preferences_action_);
+    preferences_menu->addAction(save_preferences_action_);
+    preferences_menu->addSeparator();
+    preferences_menu->addAction(default_preferences_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_menu_->addAction(visible_streams_action_);
@@ -116,7 +126,7 @@ void MainWindow::createActions()
     view_menu_->addAction(colors_action_);
     view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
-    range_menu_->menuAction()->setVisible(false);
+    range_menu_->setEnabled(false);
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
     view_menu_->addSeparator();
@@ -139,7 +149,8 @@ void MainWindow::createActions()
     } menu_tooltips[] = {
         {load_action_, QT_TR_NOOP("Open a sensorViz SQLite log file.")},
         {load_preferences_action_, QT_TR_NOOP("Load saved stream visibility, color, and axis-side preferences.")},
-        {save_preferences_action_, QT_TR_NOOP("Save stream visibility, color, and axis-side preferences as formatted JSON.")},
+        {save_preferences_action_, QT_TR_NOOP("Store stream visibility, color, and axis-side preferences as formatted JSON.")},
+        {default_preferences_action_, QT_TR_NOOP("Restore sensorViz default visibility, colors, and axis sides for the current tag type.")},
         {print_action_, QT_TR_NOOP("Print or preview the current plot.")},
         {about_action_, QT_TR_NOOP("Show sensorViz version and application information.")},
         {visible_streams_action_, QT_TR_NOOP("Choose which loaded streams are displayed.")},
@@ -161,6 +172,22 @@ void MainWindow::createActions()
         entry.action->setStatusTip(text);
         entry.action->setWhatsThis(text);
     }
+}
+
+void MainWindow::updateLoadedStateActions()
+{
+    // Startup should be discoverable but inert: only Load and About are useful
+    // before a log exists. After a load, general plot/preference controls are
+    // enabled here while tag-specific controls remain governed by the stream
+    // availability helpers.
+    const bool has_log = !log_.path.isEmpty();
+    load_preferences_action_->setEnabled(has_log);
+    save_preferences_action_->setEnabled(has_log);
+    default_preferences_action_->setEnabled(has_log);
+    print_action_->setEnabled(has_log);
+    reset_action_->setEnabled(has_log);
+    zoom_to_cursors_action_->setEnabled(has_log);
+    utc_offset_action_->setEnabled(has_log);
 }
 
 void MainWindow::createUi()

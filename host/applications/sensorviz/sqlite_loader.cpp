@@ -8,6 +8,8 @@
 
 #include <sqlite3.h>
 
+#include "sensor_preferences.h"
+
 // SQLite logs are self-describing: tagcore writes a mandatory streams metadata
 // table alongside the sensor tables. This file is the adapter from that on-disk
 // metadata to sensorViz's normalized SensorLog model. Derived display features
@@ -208,14 +210,6 @@ struct StreamMetadata
     QString units;
 };
 
-struct StreamDisplayDefaults
-{
-    QColor color = QColor(80, 100, 140);
-    bool defaultVisible = true;
-    SensorAxisSide axisSide = SensorAxisSide::Left;
-    SensorAxisRange axisRange;
-};
-
 // ---------------------------------------------------------------------------
 // Generic Helpers
 // ---------------------------------------------------------------------------
@@ -245,29 +239,6 @@ QString quotedIdentifier(const QString &identifier)
     QString escaped = identifier;
     escaped.replace("\"", "\"\"");
     return "\"" + escaped + "\"";
-}
-
-StreamDisplayDefaults displayDefaultsForStream(const QString &stream_id)
-{
-    // These are viewer presentation choices, not part of the SQLite scientific
-    // data contract. Keep them keyed by stable stream id so future viewers can
-    // choose their own colors/ranges while tagcore logs remain tool-neutral.
-    if (stream_id == "activity") {
-        return {QColor(30, 90, 180), true, SensorAxisSide::Left, {true, 0.0, 100.0}};
-    }
-    if (stream_id == "pressure") {
-        return {QColor(25, 130, 105), true, SensorAxisSide::Left, {}};
-    }
-    if (stream_id == "sensor_temperature") {
-        return {QColor(210, 95, 35), true, SensorAxisSide::Left, {}};
-    }
-    if (stream_id == "core_temperature") {
-        return {QColor(180, 55, 55), false, SensorAxisSide::Right, {true, 0.0, 50.0}};
-    }
-    if (stream_id == "voltage") {
-        return {QColor(60, 145, 75), false, SensorAxisSide::Right, {true, 0.0, 5.0}};
-    }
-    return {};
 }
 
 bool tableExistsRaw(Database &db, const QString &table_name)
@@ -381,9 +352,9 @@ bool loadStream(
     stream.id = definition.id;
     stream.label = definition.displayName;
     stream.units = definition.units;
-    const StreamDisplayDefaults defaults = displayDefaultsForStream(definition.id);
+    const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(definition.id);
     stream.color = defaults.color;
-    stream.defaultVisible = defaults.defaultVisible;
+    stream.defaultVisible = defaults.visible;
     stream.axisSide = defaults.axisSide;
     stream.axisRange = defaults.axisRange;
 

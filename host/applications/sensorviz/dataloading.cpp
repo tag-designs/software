@@ -42,6 +42,7 @@ void MainWindow::loadLog()
 
     current_path_ = QFileInfo(path).absolutePath();
     log_ = log;
+    updateLoadedStateActions();
     streams_ = log.streams;
     compass_samples_.clear();
     custom_axis_ranges_.clear();
@@ -49,8 +50,9 @@ void MainWindow::loadLog()
     custom_stream_colors_.clear();
     custom_axis_sides_.clear();
 
-    // Default visibility comes from the database streams metadata. The QAction
-    // state is the runtime source of truth after this point.
+    // Default visibility comes from sensorViz display defaults applied by the
+    // SQLite loader. The QAction state is the runtime source of truth after
+    // this point.
     clearStreamActions();
     for (const SensorStream &stream : streams_) {
         addStreamAction(stream, stream.defaultVisible);

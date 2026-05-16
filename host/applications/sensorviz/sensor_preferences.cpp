@@ -16,6 +16,11 @@
 // log. The JSON file format mirrors that map and stores only overrides from
 // defaults, keeping preference files short enough to edit by hand.
 //
+// Stream display defaults are also kept here. The SQLite loader reads id/name/
+// units/sample data from logs, then asks this module how sensorViz should draw
+// each stream by default. Keeping defaults and overrides together gives one
+// place to edit display policy.
+//
 // Persisted:
 // - stream visibility when it differs from SensorStream::defaultVisible
 // - stream colors chosen by the user
@@ -31,6 +36,47 @@ namespace
 {
 
 constexpr int kPreferencesVersion = 1;
+
+// ---------------------------------------------------------------------------
+// Stream Display Defaults
+// ---------------------------------------------------------------------------
+//
+// Add new stored or derived stream ids here when they need a specific initial
+// color, visibility state, axis side, or fixed y-axis range. These defaults are
+// sensorViz display policy; saved preference files contain only user overrides
+// from this table.
+
+} // namespace
+
+SensorStreamDisplayDefaults defaultDisplayForStream(const QString &stream_id)
+{
+    // These are viewer presentation choices, not part of the SQLite scientific
+    // data contract. Keep them keyed by stable stream id so future viewers can
+    // choose their own colors/ranges while tagcore logs remain tool-neutral.
+    if (stream_id == "activity") {
+        return {QColor(30, 90, 180), true, SensorAxisSide::Left, {true, 0.0, 100.0}};
+    }
+    if (stream_id == "pressure") {
+        return {QColor(25, 130, 105), true, SensorAxisSide::Left, {}};
+    }
+    if (stream_id == "sensor_temperature") {
+        return {QColor(210, 95, 35), true, SensorAxisSide::Left, {}};
+    }
+    if (stream_id == "core_temperature") {
+        return {QColor(180, 55, 55), false, SensorAxisSide::Right, {true, 0.0, 50.0}};
+    }
+    if (stream_id == "voltage") {
+        return {QColor(60, 145, 75), false, SensorAxisSide::Right, {true, 0.0, 5.0}};
+    }
+    return {};
+}
+
+namespace
+{
+
+// ---------------------------------------------------------------------------
+// Preference Helpers
+// ---------------------------------------------------------------------------
 
 QSet<QString> currentStreamIds(const QVector<SensorStream> &streams)
 {
@@ -346,6 +392,18 @@ void MainWindow::savePreferences()
     }
 
     qInfo().noquote() << "Saved sensorViz preferences to" << path;
+}
+
+void MainWindow::loadDefaultPreferences()
+{
+    const QString key = preferenceKey();
+    if (key.isEmpty() || streams_.isEmpty()) {
+        return;
+    }
+
+    preferences_by_tag_type_.remove(key);
+    applyPreferencesForCurrentTag();
+    qInfo().noquote() << "Loaded default sensorViz preferences for" << key;
 }
 
 bool MainWindow::loadPreferencesFromFile(const QString &path, QString &error)
