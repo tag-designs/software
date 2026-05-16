@@ -44,6 +44,7 @@ void MainWindow::loadLog()
     compass_samples_.clear();
     custom_axis_ranges_.clear();
     explicit_axis_ranges_.clear();
+    custom_stream_colors_.clear();
 
     // Default visibility comes from the database streams metadata. The QAction
     // state is the runtime source of truth after this point.
@@ -51,6 +52,7 @@ void MainWindow::loadLog()
     for (const SensorStream &stream : streams_) {
         addStreamAction(stream, stream.defaultVisible);
     }
+    rebuildColorActions();
 
     calibration_constants_action_->setVisible(log_.hasCompassCalibration);
     calibration_constants_action_->setEnabled(log_.hasCompassCalibration);

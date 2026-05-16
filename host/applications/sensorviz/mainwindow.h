@@ -2,6 +2,7 @@
 #define SENSORVIZ_MAINWINDOW_H
 
 #include <QAction>
+#include <QColor>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMap>
@@ -72,6 +73,7 @@ private slots:
     void batteryForwardToggled(bool checked);
     void showCalibrationConstants();
     void setStreamRangeFromAction();
+    void setStreamColorFromAction();
     void printPlot();
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
@@ -118,6 +120,15 @@ private:
     void addRangeAction(const SensorStream &stream);
     void setStreamRange(const QString &id);
     QCPRange defaultRangeForStream(const SensorStream &stream) const;
+
+    // Color actions are viewer preferences. The SQLite log supplies default
+    // colors through sqlite_loader.cpp; users can override them for the current
+    // session without changing stream metadata or saved logs.
+    QColor effectiveStreamColor(const SensorStream &stream) const;
+    void clearColorActions();
+    void rebuildColorActions();
+    void addColorAction(const SensorStream &stream);
+    void setStreamColor(const QString &id);
     void updateCompassDisplay(double epoch);
 
     // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
@@ -151,6 +162,7 @@ private:
     // altitude has its own manual range.
     QMap<QString, QCPRange> custom_axis_ranges_;
     QSet<QString> explicit_axis_ranges_;
+    QMap<QString, QColor> custom_stream_colors_;
 
     QWidget *central_ = nullptr;
     QCustomPlot *plot_ = nullptr;
@@ -179,8 +191,10 @@ private:
     QMenu *visible_streams_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QMenu *range_menu_ = nullptr;
+    QMenu *color_menu_ = nullptr;
     QVector<QAction *> stream_actions_;
     QVector<QAction *> range_actions_;
+    QVector<QAction *> color_actions_;
 
     QSharedPointer<QCPAxisTickerDateTime> date_ticker_;
     QVector<QCPAxis *> dynamic_axes_;

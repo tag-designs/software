@@ -96,6 +96,9 @@ void MainWindow::createActions()
     view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
     range_menu_->menuAction()->setVisible(false);
+    color_menu_ = view_menu_->addMenu(tr("&Colors"));
+    color_menu_->menuAction()->setVisible(false);
+    color_menu_->setEnabled(false);
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
     view_menu_->addSeparator();

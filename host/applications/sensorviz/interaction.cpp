@@ -166,6 +166,13 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
             });
         }
     }
+    if (!color_actions_.isEmpty()) {
+        menu.addSeparator();
+        QMenu *colors = menu.addMenu(tr("Colors"));
+        for (QAction *action : color_actions_) {
+            colors->addAction(action);
+        }
+    }
     if (altitude_action_->isVisible()
         || activity_filter_action_->isVisible()
         || compass_derived_action_->isVisible()

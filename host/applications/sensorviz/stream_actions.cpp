@@ -1,19 +1,21 @@
 #include "mainwindow.h"
 
 #include <QAction>
+#include <QColorDialog>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QMessageBox>
+#include <QPushButton>
 
 #include <algorithm>
 #include <cmath>
 
 // Stream actions are the bridge between loaded data and the plot. Raw streams
 // get checkable View actions; derived streams are controlled by their transform
-// actions. The range submenu is rebuilt from visibleStreams(), so adding a new
-// stream normally needs no menu-specific code.
+// actions. Range and color actions are rebuilt from visibleStreams(), keeping
+// the menus focused on what is currently on the plot.
 
 bool MainWindow::hasStream(const QString &id) const
 {
@@ -59,6 +61,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
             }
             refreshPlot();
             rebuildRangeActions();
+            rebuildColorActions();
             updateTransformActions();
             return;
         }
@@ -70,6 +73,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     }
     refreshPlot();
     rebuildRangeActions();
+    rebuildColorActions();
     updateTransformActions();
 }
 
@@ -99,6 +103,7 @@ void MainWindow::removeStream(const QString &id)
     explicit_axis_ranges_.remove(id);
     refreshPlot();
     rebuildRangeActions();
+    rebuildColorActions();
     updateTransformActions();
 }
 
@@ -113,6 +118,7 @@ void MainWindow::clearStreamActions()
     visible_streams_menu_->menuAction()->setVisible(false);
     visible_streams_menu_->setEnabled(false);
     clearRangeActions();
+    clearColorActions();
     updateTransformActions();
 }
 
@@ -127,6 +133,7 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
     connect(action, &QAction::toggled, this, [this]() {
         refreshPlot();
         rebuildRangeActions();
+        rebuildColorActions();
     });
     stream_actions_.append(action);
     visible_streams_menu_->addAction(action);
@@ -169,6 +176,15 @@ QVector<SensorStream> MainWindow::visibleStreams() const
         }
     }
     return visible;
+}
+
+QColor MainWindow::effectiveStreamColor(const SensorStream &stream) const
+{
+    // Plotting asks this helper for every graph/axis color. Keeping the
+    // override lookup here avoids mutating SensorStream, which still represents
+    // the defaults loaded from SQLite metadata.
+    const auto it = custom_stream_colors_.constFind(stream.id);
+    return it == custom_stream_colors_.cend() ? stream.color : it.value();
 }
 
 void MainWindow::clearRangeActions()
@@ -325,5 +341,101 @@ void MainWindow::setStreamRange(const QString &id)
                && !explicit_axis_ranges_.contains("activity")) {
         custom_axis_ranges_["activity"] = QCPRange(lower, upper);
     }
+    refreshPlot();
+}
+
+void MainWindow::clearColorActions()
+{
+    // Remove persistent View > Colors entries. The user's custom color choices
+    // live in custom_stream_colors_ and are cleared only when a new file is
+    // loaded, so toggled derived streams keep their color if re-enabled.
+    for (QAction *action : color_actions_) {
+        color_menu_->removeAction(action);
+        delete action;
+    }
+    color_actions_.clear();
+    color_menu_->menuAction()->setVisible(false);
+    color_menu_->setEnabled(false);
+}
+
+void MainWindow::rebuildColorActions()
+{
+    // Colors belong to displayed streams. Hidden streams keep any previous
+    // custom color in custom_stream_colors_, but they do not occupy menu space.
+    clearColorActions();
+    const QVector<SensorStream> visible = visibleStreams();
+    for (const SensorStream &stream : visible) {
+        addColorAction(stream);
+    }
+    const bool has_colors = !color_actions_.isEmpty();
+    color_menu_->menuAction()->setVisible(has_colors);
+    color_menu_->setEnabled(has_colors);
+}
+
+void MainWindow::addColorAction(const SensorStream &stream)
+{
+    // Add one persistent color action for a loaded or generated stream. The
+    // stream id in QAction::data keeps the action independent of labels/units.
+    QAction *action = new QAction(tr("%1 Color...").arg(stream.label), this);
+    action->setData(stream.id);
+    connect(action, &QAction::triggered, this, &MainWindow::setStreamColorFromAction);
+    color_actions_.append(action);
+    color_menu_->addAction(action);
+}
+
+void MainWindow::setStreamColorFromAction()
+{
+    // Slot used by persistent View > Colors actions. QAction::data carries the
+    // stable stream id so one slot can serve all stream color actions.
+    QAction *action = qobject_cast<QAction *>(sender());
+    if (!action) {
+        return;
+    }
+    setStreamColor(action->data().toString());
+}
+
+void MainWindow::setStreamColor(const QString &id)
+{
+    // The color workflow intentionally has three exits: choose a new color,
+    // return to the metadata default, or cancel without changing anything.
+    const SensorStream *stream = streamById(id);
+    if (!stream) {
+        return;
+    }
+
+    QMessageBox prompt(this);
+    prompt.setWindowTitle(tr("%1 Color").arg(stream->label));
+    prompt.setText(tr("Choose a display color for %1.").arg(stream->label));
+    QPushButton *choose_button =
+        prompt.addButton(tr("Choose Color..."), QMessageBox::AcceptRole);
+    QPushButton *default_button =
+        prompt.addButton(tr("Default"), QMessageBox::ResetRole);
+    QPushButton *cancel_button =
+        prompt.addButton(QMessageBox::Cancel);
+    prompt.exec();
+
+    if (prompt.clickedButton() == cancel_button) {
+        return;
+    }
+
+    if (prompt.clickedButton() == default_button) {
+        custom_stream_colors_.remove(id);
+        refreshPlot();
+        return;
+    }
+
+    if (prompt.clickedButton() != choose_button) {
+        return;
+    }
+
+    const QColor color = QColorDialog::getColor(
+        effectiveStreamColor(*stream),
+        this,
+        tr("%1 Color").arg(stream->label));
+    if (!color.isValid()) {
+        return;
+    }
+
+    custom_stream_colors_[id] = color;
     refreshPlot();
 }

@@ -52,6 +52,7 @@ QCPAxis *MainWindow::axisForStream(
     // Allocate one value axis per visible stream so unrelated units do not
     // compete for a single y scale. The first left/right axes reuse QCustomPlot
     // defaults; additional axes are tracked in dynamic_axes_ for removal.
+    const QColor color = effectiveStreamColor(stream);
     QCPAxis *axis = nullptr;
     if (side == SensorAxisSide::Right) {
         axis = side_index == 0
@@ -70,11 +71,11 @@ QCPAxis *MainWindow::axisForStream(
 
     axis->setVisible(true);
     axis->setLabel(stream.label + unitsSuffix(stream));
-    axis->setLabelColor(stream.color);
-    axis->setTickLabelColor(stream.color);
-    axis->setBasePen(QPen(stream.color));
-    axis->setTickPen(QPen(stream.color));
-    axis->setSubTickPen(QPen(stream.color));
+    axis->setLabelColor(color);
+    axis->setTickLabelColor(color);
+    axis->setBasePen(QPen(color));
+    axis->setTickPen(QPen(color));
+    axis->setSubTickPen(QPen(color));
     return axis;
 }
 
@@ -113,7 +114,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
         QCPAxis *axis = axisForStream(side, side_index, stream);
         QCPGraph *graph = plot_->addGraph(plot_->xAxis, axis);
         graph->setName(stream.label);
-        graph->setPen(QPen(stream.color, stream.derived ? 2 : 1));
+        graph->setPen(QPen(effectiveStreamColor(stream), stream.derived ? 2 : 1));
         graph->setData(stream.time, stream.value, true);
         if (custom_axis_ranges_.contains(stream.id)) {
             axis->setRange(custom_axis_ranges_[stream.id]);
