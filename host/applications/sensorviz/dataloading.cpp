@@ -53,7 +53,7 @@ void MainWindow::loadLog()
     for (const SensorStream &stream : streams_) {
         addStreamAction(stream, stream.defaultVisible);
     }
-    rebuildColorActions();
+    updateColorsAction();
 
     calibration_constants_action_->setVisible(log_.hasCompassCalibration);
     calibration_constants_action_->setEnabled(log_.hasCompassCalibration);
@@ -61,10 +61,10 @@ void MainWindow::loadLog()
     updateTransformActions();
 
     // CompassTag logs are mostly useful once raw compass rows are converted
-    // into scalar streams. Generate that derived family automatically, while
-    // leaving the Configuration action checked so users can turn it off.
+    // into scalar streams. Generate that family automatically; the resulting
+    // streams are ordinary entries in the Visible Streams dialog.
     if (log_.hasCompassCalibration && recordSetById("compass_raw")) {
-        compass_derived_action_->setChecked(true);
+        createCompassPlotStreams();
     }
 
     // Order matters here: menu visibility depends on streams_, and refreshPlot()

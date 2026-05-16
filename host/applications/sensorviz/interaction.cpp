@@ -141,41 +141,55 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // Build a fresh popup each time so it reflects the current set of visible
     // streams, enabled transforms, and tag-specific controls.
     QMenu menu(this);
-    // The context menu mirrors the top-level menus, after filtering actions
-    // that are not meaningful for the loaded log. Range actions are temporary
-    // here because QMenu owns them only for the lifetime of this popup; the
-    // persistent View -> Ranges actions are managed by range_actions_.
+    // The context menu mirrors the top-level File, View, and Configuration menu
+    // order, while filtering actions that are not meaningful for the loaded
+    // log. Range actions are temporary here because QMenu owns them only for
+    // the lifetime of this popup; the persistent View -> Ranges actions are
+    // managed by range_actions_.
+    menu.addAction(load_action_);
+    menu.addAction(print_action_);
+    menu.addSeparator();
+    menu.addAction(about_action_);
+    menu.addSeparator();
+
     if (!stream_actions_.isEmpty()) {
         menu.addAction(visible_streams_action_);
     }
     if (axis_sides_action_->isVisible()) {
         menu.addAction(axis_sides_action_);
     }
-    menu.addAction(reset_action_);
-    menu.addAction(zoom_to_cursors_action_);
-    menu.addAction(utc_offset_action_);
+    if (colors_action_->isVisible()) {
+        menu.addAction(colors_action_);
+    }
+
     const QVector<SensorStream> visible = visibleStreams();
     if (!visible.isEmpty()) {
         menu.addSeparator();
         QMenu *ranges = menu.addMenu(tr("Ranges"));
         for (const SensorStream &stream : visible) {
             QAction *range_action = ranges->addAction(tr("%1 Range...").arg(stream.label));
+            const QString help =
+                tr("Set the displayed y-axis range for %1.").arg(stream.label);
+            range_action->setToolTip(help);
+            range_action->setStatusTip(help);
+            range_action->setWhatsThis(help);
             range_action->setData(stream.id);
             connect(range_action, &QAction::triggered, this, [this, id = stream.id]() {
                 setStreamRange(id);
             });
         }
     }
-    if (!color_actions_.isEmpty()) {
+    menu.addAction(reset_action_);
+    menu.addAction(zoom_to_cursors_action_);
+    if (calibration_constants_action_->isVisible()) {
         menu.addSeparator();
-        QMenu *colors = menu.addMenu(tr("Colors"));
-        for (QAction *action : color_actions_) {
-            colors->addAction(action);
-        }
+        menu.addAction(calibration_constants_action_);
     }
+
+    menu.addSeparator();
+    menu.addAction(utc_offset_action_);
     if (altitude_action_->isVisible()
         || activity_filter_action_->isVisible()
-        || compass_derived_action_->isVisible()
         || declination_action_->isVisible()
         || battery_forward_action_->isVisible()) {
         menu.addSeparator();
@@ -185,9 +199,6 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
         if (activity_filter_action_->isVisible()) {
             menu.addAction(activity_filter_action_);
         }
-        if (compass_derived_action_->isVisible()) {
-            menu.addAction(compass_derived_action_);
-        }
         if (declination_action_->isVisible()) {
             menu.addAction(declination_action_);
         }
@@ -195,9 +206,6 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
             menu.addAction(battery_forward_action_);
         }
     }
-    menu.addSeparator();
-    menu.addAction(load_action_);
-    menu.addAction(print_action_);
     menu.exec(plot_->mapToGlobal(pos));
 }
 

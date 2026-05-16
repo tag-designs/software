@@ -77,9 +77,8 @@ QVector<double> lowPass(
 // - addOrReplaceStream() so the rest of the UI treats it like any other stream
 //
 // Single-output transforms such as altitude use derived=true and are controlled
-// entirely by their Configuration action. Compass output is a generated family
-// of normal View-selectable streams, so users can show heading, acceleration,
-// pitch, roll, dip, and field independently after the family is enabled.
+// entirely by their Configuration action. Compass output is generated on load
+// as a family of normal View-selectable streams.
 
 void MainWindow::updateTransformActions()
 {
@@ -99,8 +98,6 @@ void MainWindow::updateTransformActions()
     activity_filter_action_->setVisible(has_activity);
     activity_filter_action_->setEnabled(has_activity);
 
-    compass_derived_action_->setVisible(has_compass);
-    compass_derived_action_->setEnabled(has_compass);
     declination_action_->setVisible(has_compass);
     declination_action_->setEnabled(has_compass);
     battery_forward_action_->setVisible(has_compass);
@@ -114,7 +111,6 @@ void MainWindow::updateTransformActions()
 
     setActionCheckedSilently(altitude_action_, hasStream("altitude"));
     setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
-    setActionCheckedSilently(compass_derived_action_, hasStream("compass_heading"));
 }
 
 void MainWindow::altitudeToggled(bool checked)

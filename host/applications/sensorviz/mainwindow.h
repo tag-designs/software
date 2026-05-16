@@ -68,14 +68,13 @@ private slots:
     void setUtcOffset();
     void altitudeToggled(bool checked);
     void activityFilterToggled(bool checked);
-    void compassDerivedToggled(bool checked);
     void setDeclination();
     void batteryForwardToggled(bool checked);
     void showCalibrationConstants();
     void showVisibleStreamsDialog();
     void showAxisSidesDialog();
+    void showStreamColorsDialog();
     void setStreamRangeFromAction();
-    void setStreamColorFromAction();
     void printPlot();
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
@@ -97,13 +96,14 @@ private:
     // is inferred from actual stream ids rather than tag type strings.
     void updateMetadata();
     void updateTransformActions();
+    void createCompassPlotStreams();
 
     // Streams are the single source of truth for both raw and derived data.
-    // Raw streams have checkable QAction objects in stream_actions_; the
-    // Visible Streams dialog edits those actions as a batch. Derived streams
-    // are enabled by transform actions and intentionally do not get duplicated
-    // there. If a stream exists but is not visible, first check streams_, then
-    // the matching QAction or transform action.
+    // Raw and generated compass streams have checkable QAction objects in
+    // stream_actions_; the Visible Streams dialog edits those actions as a
+    // batch. Single-output transforms such as altitude and low-pass activity
+    // are enabled by transform actions. If a stream exists but is not visible,
+    // first check streams_, then the matching QAction or transform action.
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
     void clearStreamActions();
@@ -136,10 +136,7 @@ private:
     // colors through sqlite_loader.cpp; users can override them for the current
     // session without changing stream metadata or saved logs.
     QColor effectiveStreamColor(const SensorStream &stream) const;
-    void clearColorActions();
-    void rebuildColorActions();
-    void addColorAction(const SensorStream &stream);
-    void setStreamColor(const QString &id);
+    void updateColorsAction();
     void updateCompassDisplay(double epoch);
 
     // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
@@ -191,7 +188,6 @@ private:
     QAction *utc_offset_action_ = nullptr;
     QAction *altitude_action_ = nullptr;
     QAction *activity_filter_action_ = nullptr;
-    QAction *compass_derived_action_ = nullptr;
     QAction *declination_action_ = nullptr;
     QAction *battery_forward_action_ = nullptr;
     QAction *calibration_constants_action_ = nullptr;
@@ -199,15 +195,14 @@ private:
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *visible_streams_action_ = nullptr;
     QAction *axis_sides_action_ = nullptr;
+    QAction *colors_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
     QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QMenu *range_menu_ = nullptr;
-    QMenu *color_menu_ = nullptr;
     QVector<QAction *> stream_actions_;
     QVector<QAction *> range_actions_;
-    QVector<QAction *> color_actions_;
 
     QSharedPointer<QCPAxisTickerDateTime> date_ticker_;
     QVector<QCPAxis *> dynamic_axes_;

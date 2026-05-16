@@ -70,8 +70,8 @@ The important architecture pieces are:
 - Cursors are hidden until data is loaded.
 - Altitude and Activity Filter live under Configuration and are not duplicated
   in the View menu.
-- Compass Derived Streams lives under Configuration and creates individual View
-  actions for heading, acceleration, pitch, roll, dip, and magnetic field.
+- CompassTag plot streams are created automatically on load and appear in
+  Visible Streams with the other plotted series.
 - Declination is a CompassTag-only Configuration action that adjusts the
   displayed heading stream without reloading the file.
 - Battery Forward is a CompassTag-only Configuration action that rotates the

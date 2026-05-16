@@ -18,6 +18,17 @@
 #include <algorithm>
 #include <cmath>
 
+namespace
+{
+
+void setColorSwatch(QLabel *swatch, const QColor &color)
+{
+    swatch->setStyleSheet(
+        QString("background-color: %1; border: 1px solid #555;").arg(color.name(QColor::HexRgb)));
+}
+
+} // namespace
+
 // Stream actions are the bridge between loaded data and the plot. Raw streams
 // get checkable View actions; derived streams are controlled by their transform
 // actions. Range, color, and axis-side controls are rebuilt from
@@ -67,7 +78,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
             }
             refreshPlot();
             rebuildRangeActions();
-            rebuildColorActions();
+            updateColorsAction();
             updateAxisSidesAction();
             updateTransformActions();
             return;
@@ -80,7 +91,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     }
     refreshPlot();
     rebuildRangeActions();
-    rebuildColorActions();
+    updateColorsAction();
     updateAxisSidesAction();
     updateTransformActions();
 }
@@ -110,7 +121,7 @@ void MainWindow::removeStream(const QString &id)
     explicit_axis_ranges_.remove(id);
     refreshPlot();
     rebuildRangeActions();
-    rebuildColorActions();
+    updateColorsAction();
     updateAxisSidesAction();
     updateTransformActions();
 }
@@ -125,7 +136,7 @@ void MainWindow::clearStreamActions()
     visible_streams_action_->setVisible(false);
     visible_streams_action_->setEnabled(false);
     clearRangeActions();
-    clearColorActions();
+    updateColorsAction();
     updateAxisSidesAction();
     updateTransformActions();
 }
@@ -142,7 +153,7 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
     connect(action, &QAction::toggled, this, [this]() {
         refreshPlot();
         rebuildRangeActions();
-        rebuildColorActions();
+        updateColorsAction();
         updateAxisSidesAction();
     });
     stream_actions_.append(action);
@@ -186,7 +197,7 @@ void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
 
     refreshPlot();
     rebuildRangeActions();
-    rebuildColorActions();
+    updateColorsAction();
     updateAxisSidesAction();
 }
 
@@ -412,6 +423,10 @@ void MainWindow::addRangeAction(const SensorStream &stream)
 {
     // Add one persistent range action for a currently displayed stream.
     QAction *action = new QAction(tr("%1 Range...").arg(stream.label), this);
+    const QString help = tr("Set the displayed y-axis range for %1.").arg(stream.label);
+    action->setToolTip(help);
+    action->setStatusTip(help);
+    action->setWhatsThis(help);
     action->setData(stream.id);
     connect(action, &QAction::triggered, this, &MainWindow::setStreamRangeFromAction);
     range_actions_.append(action);
@@ -537,98 +552,107 @@ void MainWindow::setStreamRange(const QString &id)
     refreshPlot();
 }
 
-void MainWindow::clearColorActions()
+void MainWindow::updateColorsAction()
 {
-    // Remove persistent View > Colors entries. The user's custom color choices
-    // live in custom_stream_colors_ and are cleared only when a new file is
-    // loaded, so toggled derived streams keep their color if re-enabled.
-    for (QAction *action : color_actions_) {
-        color_menu_->removeAction(action);
-        delete action;
-    }
-    color_actions_.clear();
-    color_menu_->menuAction()->setVisible(false);
-    color_menu_->setEnabled(false);
+    // The color dialog edits only visible streams, so hide the command until
+    // there is something on the plot.
+    const bool has_visible_streams = !visibleStreams().isEmpty();
+    colors_action_->setVisible(has_visible_streams);
+    colors_action_->setEnabled(has_visible_streams);
 }
 
-void MainWindow::rebuildColorActions()
+void MainWindow::showStreamColorsDialog()
 {
-    // Colors belong to displayed streams. Hidden streams keep any previous
-    // custom color in custom_stream_colors_, but they do not occupy menu space.
-    clearColorActions();
+    // Batch editor for display colors. Edits are staged in a local map so
+    // Cancel can discard all choices, including default resets.
     const QVector<SensorStream> visible = visibleStreams();
+    if (visible.isEmpty()) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Stream Colors"));
+
+    QMap<QString, QColor> staged_colors = custom_stream_colors_;
+    QGridLayout *grid = new QGridLayout;
+    grid->addWidget(new QLabel(tr("Stream"), &dialog), 0, 0);
+    grid->addWidget(new QLabel(tr("Color"), &dialog), 0, 1);
+
+    QVector<QPushButton *> stream_default_buttons;
+    stream_default_buttons.reserve(visible.size());
+    for (qsizetype i = 0; i < visible.size(); i++) {
+        const SensorStream &stream = visible[i];
+        const QString id = stream.id;
+        const QString label_text = stream.label;
+        const QColor default_color = stream.color;
+        QLabel *label = new QLabel(stream.label + unitsSuffix(stream), &dialog);
+        QLabel *swatch = new QLabel(&dialog);
+        swatch->setFixedSize(36, 18);
+        setColorSwatch(swatch, effectiveStreamColor(stream));
+
+        QPushButton *choose_button = new QPushButton(tr("Choose..."), &dialog);
+        QPushButton *default_button = new QPushButton(tr("Default"), &dialog);
+
+        QWidget *controls = new QWidget(&dialog);
+        QHBoxLayout *controls_layout = new QHBoxLayout;
+        controls_layout->setContentsMargins(0, 0, 0, 0);
+        controls_layout->addWidget(swatch);
+        controls_layout->addWidget(choose_button);
+        controls_layout->addWidget(default_button);
+        controls_layout->addStretch();
+        controls->setLayout(controls_layout);
+
+        connect(choose_button, &QPushButton::clicked, this, [=, &dialog, &staged_colors]() {
+            const QColor initial = staged_colors.contains(id) ? staged_colors[id] : default_color;
+            const QColor color =
+                QColorDialog::getColor(initial, &dialog, tr("%1 Color").arg(label_text));
+            if (!color.isValid()) {
+                return;
+            }
+            staged_colors[id] = color;
+            setColorSwatch(swatch, color);
+        });
+        connect(default_button, &QPushButton::clicked, this, [=, &staged_colors]() {
+            staged_colors.remove(id);
+            setColorSwatch(swatch, default_color);
+        });
+        stream_default_buttons.append(default_button);
+
+        grid->addWidget(label, int(i) + 1, 0);
+        grid->addWidget(controls, int(i) + 1, 1);
+    }
+
+    QDialogButtonBox *buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton *defaults_button =
+        buttons->addButton(tr("Defaults"), QDialogButtonBox::ResetRole);
+
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addLayout(grid);
+    layout->addWidget(buttons);
+    dialog.setLayout(layout);
+
+    connect(defaults_button, &QPushButton::clicked, this, [stream_default_buttons]() {
+        for (QPushButton *button : stream_default_buttons) {
+            if (button) {
+                button->click();
+            }
+        }
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
     for (const SensorStream &stream : visible) {
-        addColorAction(stream);
-    }
-    const bool has_colors = !color_actions_.isEmpty();
-    color_menu_->menuAction()->setVisible(has_colors);
-    color_menu_->setEnabled(has_colors);
-}
-
-void MainWindow::addColorAction(const SensorStream &stream)
-{
-    // Add one persistent color action for a loaded or generated stream. The
-    // stream id in QAction::data keeps the action independent of labels/units.
-    QAction *action = new QAction(tr("%1 Color...").arg(stream.label), this);
-    action->setData(stream.id);
-    connect(action, &QAction::triggered, this, &MainWindow::setStreamColorFromAction);
-    color_actions_.append(action);
-    color_menu_->addAction(action);
-}
-
-void MainWindow::setStreamColorFromAction()
-{
-    // Slot used by persistent View > Colors actions. QAction::data carries the
-    // stable stream id so one slot can serve all stream color actions.
-    QAction *action = qobject_cast<QAction *>(sender());
-    if (!action) {
-        return;
-    }
-    setStreamColor(action->data().toString());
-}
-
-void MainWindow::setStreamColor(const QString &id)
-{
-    // The color workflow intentionally has three exits: choose a new color,
-    // return to the metadata default, or cancel without changing anything.
-    const SensorStream *stream = streamById(id);
-    if (!stream) {
-        return;
+        if (staged_colors.contains(stream.id)) {
+            custom_stream_colors_[stream.id] = staged_colors[stream.id];
+        } else {
+            custom_stream_colors_.remove(stream.id);
+        }
     }
 
-    QMessageBox prompt(this);
-    prompt.setWindowTitle(tr("%1 Color").arg(stream->label));
-    prompt.setText(tr("Choose a display color for %1.").arg(stream->label));
-    QPushButton *choose_button =
-        prompt.addButton(tr("Choose Color..."), QMessageBox::AcceptRole);
-    QPushButton *default_button =
-        prompt.addButton(tr("Default"), QMessageBox::ResetRole);
-    QPushButton *cancel_button =
-        prompt.addButton(QMessageBox::Cancel);
-    prompt.exec();
-
-    if (prompt.clickedButton() == cancel_button) {
-        return;
-    }
-
-    if (prompt.clickedButton() == default_button) {
-        custom_stream_colors_.remove(id);
-        refreshPlot();
-        return;
-    }
-
-    if (prompt.clickedButton() != choose_button) {
-        return;
-    }
-
-    const QColor color = QColorDialog::getColor(
-        effectiveStreamColor(*stream),
-        this,
-        tr("%1 Color").arg(stream->label));
-    if (!color.isValid()) {
-        return;
-    }
-
-    custom_stream_colors_[id] = color;
     refreshPlot();
 }

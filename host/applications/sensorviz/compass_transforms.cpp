@@ -5,7 +5,6 @@
 #include <QAction>
 #include <QInputDialog>
 #include <QMessageBox>
-#include <QSignalBlocker>
 
 // compass_transforms.cpp owns CompassTag-specific display derivation. It is the
 // bridge between SensorRecordSet compass_raw, sensoranalysis::CompassProcessor,
@@ -13,32 +12,6 @@
 
 namespace
 {
-
-// The generated stream ids are kept together so disabling the Compass Derived
-// Streams action can remove the whole family without duplicating strings.
-const QStringList compassDerivedStreamIds()
-{
-    return {
-        "compass_heading",
-        "compass_acceleration",
-        "compass_pitch",
-        "compass_roll",
-        "compass_dip",
-        "compass_field",
-    };
-}
-
-void setActionCheckedSilently(QAction *action, bool checked)
-{
-    // Synchronize check state from model state without recursively invoking the
-    // toggled slot that creates/removes streams.
-    if (!action) {
-        return;
-    }
-
-    QSignalBlocker blocker(action);
-    action->setChecked(checked);
-}
 
 void updateDeclinationActionText(QAction *action, double declination_degrees)
 {
@@ -116,24 +89,16 @@ QVector<double> compassHeadingValues(
 // a specialized QML display. Loaded samples remain magnetic-frame; declination
 // and battery direction are display choices applied to heading and to QML.
 
-void MainWindow::compassDerivedToggled(bool checked)
+void MainWindow::createCompassPlotStreams()
 {
-    // Turn the raw compass record set into plot-ready streams. The first enable
-    // also fills compass_samples_, which the QML panel uses on mouse movement.
-    if (!checked) {
-        for (const QString &id : compassDerivedStreamIds()) {
-            removeStream(id);
-        }
-        return;
-    }
-
+    // Turn the raw compass record set into plot-ready streams and fill
+    // compass_samples_, which the QML panel uses on mouse movement.
     const SensorRecordSet *compass = recordSetById("compass_raw");
     if (!compass || !log_.hasCompassCalibration) {
         QMessageBox::warning(
             this,
-            tr("Compass Derived Streams"),
+            tr("Compass Streams"),
             tr("Compass raw samples and calibration constants are required."));
-        setActionCheckedSilently(compass_derived_action_, false);
         return;
     }
 
@@ -141,9 +106,8 @@ void MainWindow::compassDerivedToggled(bool checked)
     if (!compassRecordHasExpectedColumns(*compass)) {
         QMessageBox::warning(
             this,
-            tr("Compass Derived Streams"),
+            tr("Compass Streams"),
             tr("The compass raw record set is missing one or more expected columns."));
-        setActionCheckedSilently(compass_derived_action_, false);
         return;
     }
 

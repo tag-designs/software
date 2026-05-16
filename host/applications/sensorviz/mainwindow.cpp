@@ -48,6 +48,9 @@ void MainWindow::createActions()
     axis_sides_action_ = new QAction(tr("&Axis Sides..."), this);
     axis_sides_action_->setVisible(false);
     axis_sides_action_->setEnabled(false);
+    colors_action_ = new QAction(tr("&Colors..."), this);
+    colors_action_->setVisible(false);
+    colors_action_->setEnabled(false);
     reset_action_ = new QAction(tr("&Reset Zoom"), this);
     zoom_to_cursors_action_ = new QAction(tr("&Zoom to Cursors"), this);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
@@ -58,8 +61,6 @@ void MainWindow::createActions()
     altitude_action_->setCheckable(true);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
-    compass_derived_action_ = new QAction(tr("&Compass Derived Streams"), this);
-    compass_derived_action_->setCheckable(true);
     declination_action_ = new QAction(tr("&Declination..."), this);
     declination_action_->setVisible(false);
     declination_action_->setEnabled(false);
@@ -78,6 +79,7 @@ void MainWindow::createActions()
         this,
         &MainWindow::showVisibleStreamsDialog);
     connect(axis_sides_action_, &QAction::triggered, this, &MainWindow::showAxisSidesDialog);
+    connect(colors_action_, &QAction::triggered, this, &MainWindow::showStreamColorsDialog);
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
@@ -88,7 +90,6 @@ void MainWindow::createActions()
         &MainWindow::showCalibrationConstants);
     connect(altitude_action_, &QAction::toggled, this, &MainWindow::altitudeToggled);
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
-    connect(compass_derived_action_, &QAction::toggled, this, &MainWindow::compassDerivedToggled);
     connect(declination_action_, &QAction::triggered, this, &MainWindow::setDeclination);
     connect(battery_forward_action_, &QAction::toggled, this, &MainWindow::batteryForwardToggled);
 
@@ -104,12 +105,10 @@ void MainWindow::createActions()
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_menu_->addAction(visible_streams_action_);
     view_menu_->addAction(axis_sides_action_);
+    view_menu_->addAction(colors_action_);
     view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
     range_menu_->menuAction()->setVisible(false);
-    color_menu_ = view_menu_->addMenu(tr("&Colors"));
-    color_menu_->menuAction()->setVisible(false);
-    color_menu_->setEnabled(false);
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
     view_menu_->addSeparator();
@@ -120,9 +119,38 @@ void MainWindow::createActions()
     configuration_transform_separator_ = configuration_menu_->addSeparator();
     configuration_menu_->addAction(altitude_action_);
     configuration_menu_->addAction(activity_filter_action_);
-    configuration_menu_->addAction(compass_derived_action_);
     configuration_menu_->addAction(declination_action_);
     configuration_menu_->addAction(battery_forward_action_);
+
+    // User-facing help for every persistent menu action lives here. Keep these
+    // text fields editable and close to action construction so menu wording,
+    // status-bar hints, and tooltips stay synchronized.
+    const struct MenuToolTip {
+        QAction *action;
+        const char *text;
+    } menu_tooltips[] = {
+        {load_action_, QT_TR_NOOP("Open a sensorViz SQLite log file.")},
+        {print_action_, QT_TR_NOOP("Print or preview the current plot.")},
+        {about_action_, QT_TR_NOOP("Show sensorViz version and application information.")},
+        {visible_streams_action_, QT_TR_NOOP("Choose which loaded streams are displayed.")},
+        {axis_sides_action_, QT_TR_NOOP("Assign visible stream axes to the left or right side of the plot.")},
+        {colors_action_, QT_TR_NOOP("Choose display colors for visible streams.")},
+        {range_menu_->menuAction(), QT_TR_NOOP("Set y-axis ranges for visible streams.")},
+        {reset_action_, QT_TR_NOOP("Restore the full time range and default y-axis ranges.")},
+        {zoom_to_cursors_action_, QT_TR_NOOP("Zoom the time axis to the interval between the two cursors.")},
+        {calibration_constants_action_, QT_TR_NOOP("Show the compass calibration constants stored in the log.")},
+        {utc_offset_action_, QT_TR_NOOP("Set the UTC offset used for time-axis labels.")},
+        {altitude_action_, QT_TR_NOOP("Show or hide altitude derived from pressure.")},
+        {activity_filter_action_, QT_TR_NOOP("Show or hide a low-pass filtered activity stream.")},
+        {declination_action_, QT_TR_NOOP("Set magnetic declination for true-heading display.")},
+        {battery_forward_action_, QT_TR_NOOP("Toggle whether the tag battery end points forward in heading display.")},
+    };
+    for (const MenuToolTip &entry : menu_tooltips) {
+        const QString text = tr(entry.text);
+        entry.action->setToolTip(text);
+        entry.action->setStatusTip(text);
+        entry.action->setWhatsThis(text);
+    }
 }
 
 void MainWindow::createUi()
