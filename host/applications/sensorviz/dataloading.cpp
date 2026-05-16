@@ -41,6 +41,9 @@ void MainWindow::loadLog()
     rememberCurrentPreferences();
 
     current_path_ = QFileInfo(path).absolutePath();
+    graph_title_ = QFileInfo(path).fileName();
+    graph_title_visible_ = true;
+    show_title_action_->setChecked(true);
     log_ = log;
     updateLoadedStateActions();
     streams_ = log.streams;

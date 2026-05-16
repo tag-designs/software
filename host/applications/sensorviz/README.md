@@ -22,6 +22,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 - Shows a narrow CompassTag orientation panel beside the plot when compass data
   is loaded.
 - Supports print preview, UTC offset display, cursors, and zoom-to-cursor.
+- Shows an editable graph title above the plot. The title defaults to the
+  loaded file name and can be hidden from the View menu or plot context menu.
 
 ## Current Architecture
 
@@ -78,6 +80,9 @@ Most SensorViz changes should start in one of four places:
   check `plotting.cpp`.
 - Cursor, print, UTC, mouse readout, or context-menu behavior is wrong:
   check `interaction.cpp`.
+- Graph title editing or visibility is wrong:
+  check `controls.cpp` for the dialog/state update and `mainwindow.cpp` for the
+  title element created in the static plot layout.
 
 `MainWindow` intentionally remains the coordination object. Avoid adding tag
 type checks there when the behavior can be driven from stream ids, table
@@ -115,6 +120,8 @@ structures. Adding a simple one-column sensor table should usually start in
 - Normal redraws preserve the current x-axis range.
 - Loading a new file and Reset Zoom expand to the full data range and restore
   default y-axis ranges.
+- Each loaded file starts with a visible graph title using the file name rather
+  than the full path. The title is current-view state, not a saved preference.
 
 ## Preferences
 
@@ -129,7 +136,7 @@ default visibility, axis side, or preferred fixed display range. Those defaults
 belong to sensorViz so another analysis tool can interpret the same SQLite file
 without inheriting this application's UI choices.
 
-The Preferences menu contains:
+The File > Preferences submenu contains:
 
 - `Load...`: replace the current in-memory preference set from a JSON file.
 - `Store...`: write formatted JSON containing only overrides from defaults.

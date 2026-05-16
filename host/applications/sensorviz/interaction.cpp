@@ -141,39 +141,37 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // Build a fresh popup each time so it reflects the current set of visible
     // streams, enabled transforms, and tag-specific controls.
     QMenu menu(this);
-    // The context menu mirrors the top-level File, Preferences, View, and
-    // Configuration menu
-    // order, while filtering actions that are not meaningful for the loaded
-    // log. Range actions are temporary here because QMenu owns them only for
-    // the lifetime of this popup; the persistent View -> Ranges actions are
-    // managed by range_actions_.
-    menu.addAction(load_action_);
-    menu.addAction(print_action_);
-    menu.addSeparator();
-    menu.addAction(about_action_);
-    menu.addSeparator();
-
-    QMenu *preferences = menu.addMenu(tr("Preferences"));
+    // The context menu mirrors the top-level File, View, and Configuration
+    // menus. Keeping the same structure avoids a long flat popup as more
+    // stream/preference controls are added. Range actions are temporary here
+    // because QMenu owns them only for the lifetime of this popup; the
+    // persistent View -> Ranges actions are managed by range_actions_.
+    QMenu *file = menu.addMenu(tr("File"));
+    file->addAction(load_action_);
+    QMenu *preferences = file->addMenu(tr("Preferences"));
     preferences->addAction(load_preferences_action_);
     preferences->addAction(save_preferences_action_);
     preferences->addSeparator();
     preferences->addAction(default_preferences_action_);
-    menu.addSeparator();
+    file->addSeparator();
+    file->addAction(print_action_);
+    file->addSeparator();
+    file->addAction(about_action_);
 
+    QMenu *view = menu.addMenu(tr("View"));
     if (!stream_actions_.isEmpty()) {
-        menu.addAction(visible_streams_action_);
+        view->addAction(visible_streams_action_);
     }
     if (axis_sides_action_->isVisible()) {
-        menu.addAction(axis_sides_action_);
+        view->addAction(axis_sides_action_);
     }
     if (colors_action_->isVisible()) {
-        menu.addAction(colors_action_);
+        view->addAction(colors_action_);
     }
 
     const QVector<SensorStream> visible = visibleStreams();
     if (!visible.isEmpty()) {
-        menu.addSeparator();
-        QMenu *ranges = menu.addMenu(tr("Ranges"));
+        QMenu *ranges = view->addMenu(tr("Ranges"));
         for (const SensorStream &stream : visible) {
             QAction *range_action = ranges->addAction(tr("%1 Range...").arg(stream.label));
             const QString help =
@@ -187,31 +185,35 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
             });
         }
     }
-    menu.addAction(reset_action_);
-    menu.addAction(zoom_to_cursors_action_);
+    view->addSeparator();
+    view->addAction(reset_action_);
+    view->addAction(zoom_to_cursors_action_);
     if (calibration_constants_action_->isVisible()) {
-        menu.addSeparator();
-        menu.addAction(calibration_constants_action_);
+        view->addSeparator();
+        view->addAction(calibration_constants_action_);
     }
 
-    menu.addSeparator();
-    menu.addAction(utc_offset_action_);
+    QMenu *configuration = menu.addMenu(tr("Configuration"));
+    configuration->addAction(edit_title_action_);
+    configuration->addAction(show_title_action_);
+    configuration->addSeparator();
+    configuration->addAction(utc_offset_action_);
     if (sea_level_pressure_action_->isVisible()
         || activity_filter_action_->isVisible()
         || declination_action_->isVisible()
         || battery_forward_action_->isVisible()) {
-        menu.addSeparator();
+        configuration->addSeparator();
         if (sea_level_pressure_action_->isVisible()) {
-            menu.addAction(sea_level_pressure_action_);
+            configuration->addAction(sea_level_pressure_action_);
         }
         if (activity_filter_action_->isVisible()) {
-            menu.addAction(activity_filter_action_);
+            configuration->addAction(activity_filter_action_);
         }
         if (declination_action_->isVisible()) {
-            menu.addAction(declination_action_);
+            configuration->addAction(declination_action_);
         }
         if (battery_forward_action_->isVisible()) {
-            menu.addAction(battery_forward_action_);
+            configuration->addAction(battery_forward_action_);
         }
     }
     menu.exec(plot_->mapToGlobal(pos));

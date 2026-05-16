@@ -128,20 +128,20 @@ void MainWindow::updateTransformActions()
     // addOrReplaceStream(), and removeStream() call this so menus never expose
     // transforms whose inputs are missing.
     if (log_.path.isEmpty()) {
-        sea_level_pressure_action_->setVisible(true);
+        sea_level_pressure_action_->setVisible(false);
         sea_level_pressure_action_->setEnabled(false);
         updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
 
-        activity_filter_action_->setVisible(true);
+        activity_filter_action_->setVisible(false);
         activity_filter_action_->setEnabled(false);
 
-        declination_action_->setVisible(true);
+        declination_action_->setVisible(false);
         declination_action_->setEnabled(false);
-        battery_forward_action_->setVisible(true);
+        battery_forward_action_->setVisible(false);
         battery_forward_action_->setEnabled(false);
         updateDeclinationActionText(declination_action_, declination_degrees_);
 
-        configuration_transform_separator_->setVisible(true);
+        configuration_transform_separator_->setVisible(false);
         setActionCheckedSilently(activity_filter_action_, false);
         return;
     }

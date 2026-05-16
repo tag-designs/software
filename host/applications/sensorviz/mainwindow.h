@@ -71,6 +71,8 @@ private slots:
     void savePreferences();
     void loadDefaultPreferences();
     void showAbout();
+    void editGraphTitle();
+    void setGraphTitleVisible(bool visible);
     void resetZoom();
     void setUtcOffset();
     void setSeaLevelPressure();
@@ -96,6 +98,7 @@ private:
     void createUi();
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
+    void updateGraphTitle();
     double pressureToAltitude(double pressure_mbar) const;
     double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
@@ -174,6 +177,8 @@ private:
     SensorLog log_;
     QVector<SensorStream> streams_;
     QString current_path_;
+    QString graph_title_;
+    bool graph_title_visible_ = true;
     int utc_offset_ = 0;
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;
@@ -211,6 +216,8 @@ private:
     QAction *save_preferences_action_ = nullptr;
     QAction *default_preferences_action_ = nullptr;
     QAction *about_action_ = nullptr;
+    QAction *edit_title_action_ = nullptr;
+    QAction *show_title_action_ = nullptr;
     QAction *reset_action_ = nullptr;
     QAction *utc_offset_action_ = nullptr;
     QAction *sea_level_pressure_action_ = nullptr;
@@ -235,6 +242,7 @@ private:
     QVector<QCPAxis *> dynamic_axes_;
     QCPItemLine *left_cursor_ = nullptr;
     QCPItemLine *right_cursor_ = nullptr;
+    QCPTextElement *plot_title_ = nullptr;
     QCPItemText *declination_label_ = nullptr;
     QCPItemText *sea_level_pressure_label_ = nullptr;
 };

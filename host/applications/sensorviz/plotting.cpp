@@ -100,6 +100,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
     const bool preserve_x_range = !reset_x_range && plot_->graphCount() > 0;
     const QCPRange old_x_range = plot_->xAxis->range();
 
+    updateGraphTitle();
     plot_->clearGraphs();
     clearDynamicAxes();
 

@@ -49,6 +49,12 @@ void MainWindow::createActions()
     print_action_ = new QAction(tr("&Print"), this);
     print_action_->setEnabled(false);
     about_action_ = new QAction(tr("&About"), this);
+    edit_title_action_ = new QAction(tr("Graph &Title..."), this);
+    edit_title_action_->setEnabled(false);
+    show_title_action_ = new QAction(tr("Show Graph T&itle"), this);
+    show_title_action_->setCheckable(true);
+    show_title_action_->setChecked(false);
+    show_title_action_->setEnabled(false);
     visible_streams_action_ = new QAction(tr("Visible &Streams..."), this);
     visible_streams_action_->setEnabled(false);
     axis_sides_action_ = new QAction(tr("&Axis Sides..."), this);
@@ -62,17 +68,22 @@ void MainWindow::createActions()
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
     utc_offset_action_->setEnabled(false);
     calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
+    calibration_constants_action_->setVisible(false);
     calibration_constants_action_->setEnabled(false);
     sea_level_pressure_action_ = new QAction(tr("Sea-level &Pressure..."), this);
+    sea_level_pressure_action_->setVisible(false);
     sea_level_pressure_action_->setEnabled(false);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
+    activity_filter_action_->setVisible(false);
     activity_filter_action_->setEnabled(false);
     declination_action_ = new QAction(tr("&Declination..."), this);
+    declination_action_->setVisible(false);
     declination_action_->setEnabled(false);
     battery_forward_action_ = new QAction(tr("&Battery Forward"), this);
     battery_forward_action_->setCheckable(true);
     battery_forward_action_->setChecked(true);
+    battery_forward_action_->setVisible(false);
     battery_forward_action_->setEnabled(false);
 
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
@@ -85,6 +96,8 @@ void MainWindow::createActions()
         &MainWindow::loadDefaultPreferences);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
     connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
+    connect(edit_title_action_, &QAction::triggered, this, &MainWindow::editGraphTitle);
+    connect(show_title_action_, &QAction::toggled, this, &MainWindow::setGraphTitleVisible);
     connect(
         visible_streams_action_,
         &QAction::triggered,
@@ -110,29 +123,32 @@ void MainWindow::createActions()
     // Separators are stored when later code needs to hide empty groups.
     QMenu *file_menu = menuBar()->addMenu(tr("&File"));
     file_menu->addAction(load_action_);
-    file_menu->addAction(print_action_);
-    file_menu->addSeparator();
-    file_menu->addAction(about_action_);
-
-    QMenu *preferences_menu = menuBar()->addMenu(tr("&Preferences"));
+    QMenu *preferences_menu = file_menu->addMenu(tr("&Preferences"));
     preferences_menu->addAction(load_preferences_action_);
     preferences_menu->addAction(save_preferences_action_);
     preferences_menu->addSeparator();
     preferences_menu->addAction(default_preferences_action_);
+    file_menu->addSeparator();
+    file_menu->addAction(print_action_);
+    file_menu->addSeparator();
+    file_menu->addAction(about_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_menu_->addAction(visible_streams_action_);
     view_menu_->addAction(axis_sides_action_);
     view_menu_->addAction(colors_action_);
-    view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
     range_menu_->setEnabled(false);
+    view_stream_separator_ = view_menu_->addSeparator();
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
     view_menu_->addSeparator();
     view_menu_->addAction(calibration_constants_action_);
 
     configuration_menu_ = menuBar()->addMenu(tr("&Configuration"));
+    configuration_menu_->addAction(edit_title_action_);
+    configuration_menu_->addAction(show_title_action_);
+    configuration_menu_->addSeparator();
     configuration_menu_->addAction(utc_offset_action_);
     configuration_transform_separator_ = configuration_menu_->addSeparator();
     configuration_menu_->addAction(sea_level_pressure_action_);
@@ -153,6 +169,8 @@ void MainWindow::createActions()
         {default_preferences_action_, QT_TR_NOOP("Restore sensorViz default visibility, colors, and axis sides for the current tag type.")},
         {print_action_, QT_TR_NOOP("Print or preview the current plot.")},
         {about_action_, QT_TR_NOOP("Show sensorViz version and application information.")},
+        {edit_title_action_, QT_TR_NOOP("Edit the plot title shown above the graph.")},
+        {show_title_action_, QT_TR_NOOP("Show or hide the plot title.")},
         {visible_streams_action_, QT_TR_NOOP("Choose which loaded streams are displayed.")},
         {axis_sides_action_, QT_TR_NOOP("Assign visible stream axes to the left or right side of the plot.")},
         {colors_action_, QT_TR_NOOP("Choose display colors for visible streams.")},
@@ -188,6 +206,8 @@ void MainWindow::updateLoadedStateActions()
     reset_action_->setEnabled(has_log);
     zoom_to_cursors_action_->setEnabled(has_log);
     utc_offset_action_->setEnabled(has_log);
+    edit_title_action_->setEnabled(has_log);
+    show_title_action_->setEnabled(has_log);
 }
 
 void MainWindow::createUi()
@@ -215,6 +235,10 @@ void MainWindow::createUi()
     plot_->axisRect()->setRangeDrag(Qt::Horizontal);
     plot_->axisRect()->setRangeZoom(Qt::Horizontal);
     plot_->xAxis->setLabel(tr("Hour:Minute (UTC)\nMonth/Day/Year"));
+    plot_title_ = new QCPTextElement(plot_, QString(), QFont(font().family(), 12, QFont::Bold));
+    plot_title_->setVisible(false);
+    plot_->plotLayout()->insertRow(0);
+    plot_->plotLayout()->addElement(0, 0, plot_title_);
 
     initializeSensorUiResources();
     compass_widget_->setResizeMode(QQuickWidget::SizeRootObjectToView);
