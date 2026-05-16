@@ -66,7 +66,7 @@ private slots:
     void showAbout();
     void resetZoom();
     void setUtcOffset();
-    void altitudeToggled(bool checked);
+    void setSeaLevelPressure();
     void activityFilterToggled(bool checked);
     void setDeclination();
     void batteryForwardToggled(bool checked);
@@ -90,12 +90,14 @@ private:
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
     double pressureToAltitude(double pressure_mbar) const;
+    double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
     // Log metadata and tag-dependent menu state. updateTransformActions() is
     // called whenever streams are added/removed because transform availability
     // is inferred from actual stream ids rather than tag type strings.
     void updateMetadata();
     void updateTransformActions();
+    void createAltitudeStream();
     void createCompassPlotStreams();
 
     // Streams are the single source of truth for both raw and derived data.
@@ -186,7 +188,7 @@ private:
     QAction *about_action_ = nullptr;
     QAction *reset_action_ = nullptr;
     QAction *utc_offset_action_ = nullptr;
-    QAction *altitude_action_ = nullptr;
+    QAction *sea_level_pressure_action_ = nullptr;
     QAction *activity_filter_action_ = nullptr;
     QAction *declination_action_ = nullptr;
     QAction *battery_forward_action_ = nullptr;
@@ -208,6 +210,8 @@ private:
     QVector<QCPAxis *> dynamic_axes_;
     QCPItemLine *left_cursor_ = nullptr;
     QCPItemLine *right_cursor_ = nullptr;
+    QCPItemText *declination_label_ = nullptr;
+    QCPItemText *sea_level_pressure_label_ = nullptr;
 };
 
 #endif

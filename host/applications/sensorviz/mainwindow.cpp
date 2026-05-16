@@ -57,8 +57,9 @@ void MainWindow::createActions()
     calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
     calibration_constants_action_->setVisible(false);
     calibration_constants_action_->setEnabled(false);
-    altitude_action_ = new QAction(tr("&Altitude"), this);
-    altitude_action_->setCheckable(true);
+    sea_level_pressure_action_ = new QAction(tr("Sea-level &Pressure..."), this);
+    sea_level_pressure_action_->setVisible(false);
+    sea_level_pressure_action_->setEnabled(false);
     activity_filter_action_ = new QAction(tr("Activity &Filter"), this);
     activity_filter_action_->setCheckable(true);
     declination_action_ = new QAction(tr("&Declination..."), this);
@@ -88,7 +89,7 @@ void MainWindow::createActions()
         &QAction::triggered,
         this,
         &MainWindow::showCalibrationConstants);
-    connect(altitude_action_, &QAction::toggled, this, &MainWindow::altitudeToggled);
+    connect(sea_level_pressure_action_, &QAction::triggered, this, &MainWindow::setSeaLevelPressure);
     connect(activity_filter_action_, &QAction::toggled, this, &MainWindow::activityFilterToggled);
     connect(declination_action_, &QAction::triggered, this, &MainWindow::setDeclination);
     connect(battery_forward_action_, &QAction::toggled, this, &MainWindow::batteryForwardToggled);
@@ -117,7 +118,7 @@ void MainWindow::createActions()
     configuration_menu_ = menuBar()->addMenu(tr("&Configuration"));
     configuration_menu_->addAction(utc_offset_action_);
     configuration_transform_separator_ = configuration_menu_->addSeparator();
-    configuration_menu_->addAction(altitude_action_);
+    configuration_menu_->addAction(sea_level_pressure_action_);
     configuration_menu_->addAction(activity_filter_action_);
     configuration_menu_->addAction(declination_action_);
     configuration_menu_->addAction(battery_forward_action_);
@@ -140,7 +141,7 @@ void MainWindow::createActions()
         {zoom_to_cursors_action_, QT_TR_NOOP("Zoom the time axis to the interval between the two cursors.")},
         {calibration_constants_action_, QT_TR_NOOP("Show the compass calibration constants stored in the log.")},
         {utc_offset_action_, QT_TR_NOOP("Set the UTC offset used for time-axis labels.")},
-        {altitude_action_, QT_TR_NOOP("Show or hide altitude derived from pressure.")},
+        {sea_level_pressure_action_, QT_TR_NOOP("Set mean sea-level pressure used to derive altitude.")},
         {activity_filter_action_, QT_TR_NOOP("Show or hide a low-pass filtered activity stream.")},
         {declination_action_, QT_TR_NOOP("Set magnetic declination for true-heading display.")},
         {battery_forward_action_, QT_TR_NOOP("Toggle whether the tag battery end points forward in heading display.")},
@@ -203,6 +204,24 @@ void MainWindow::createUi()
     right_cursor_ = new QCPItemLine(plot_);
     right_cursor_->setVisible(false);
     right_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
+    declination_label_ = new QCPItemText(plot_);
+    declination_label_->setVisible(false);
+    declination_label_->setClipToAxisRect(false);
+    declination_label_->position->setType(QCPItemPosition::ptAxisRectRatio);
+    declination_label_->position->setAxisRect(plot_->axisRect());
+    declination_label_->position->setCoords(0.0, 1.08);
+    declination_label_->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
+    declination_label_->setPadding(QMargins(0, 0, 0, 0));
+    declination_label_->setColor(Qt::black);
+    sea_level_pressure_label_ = new QCPItemText(plot_);
+    sea_level_pressure_label_->setVisible(false);
+    sea_level_pressure_label_->setClipToAxisRect(false);
+    sea_level_pressure_label_->position->setType(QCPItemPosition::ptAxisRectRatio);
+    sea_level_pressure_label_->position->setAxisRect(plot_->axisRect());
+    sea_level_pressure_label_->position->setCoords(0.0, 1.14);
+    sea_level_pressure_label_->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
+    sea_level_pressure_label_->setPadding(QMargins(0, 0, 0, 0));
+    sea_level_pressure_label_->setColor(Qt::black);
 
     QWidget *plot_tab = new QWidget;
     QVBoxLayout *plot_layout = new QVBoxLayout;

@@ -104,9 +104,13 @@ void MainWindow::rebuildPlot(bool reset_x_range)
     clearDynamicAxes();
 
     const QVector<SensorStream> visible = visibleStreams();
+    bool heading_visible = false;
+    bool altitude_visible = false;
     int left_axis_count = 0;
     int right_axis_count = 0;
     for (const SensorStream &stream : visible) {
+        heading_visible = heading_visible || stream.id == "compass_heading";
+        altitude_visible = altitude_visible || stream.id == "altitude";
         const SensorAxisSide side = effectiveAxisSide(stream);
         const int side_index = side == SensorAxisSide::Right
             ? right_axis_count++
@@ -126,6 +130,23 @@ void MainWindow::rebuildPlot(bool reset_x_range)
             graph->rescaleValueAxis(true);
             setPaddedAxisRange(axis, axis->range());
         }
+    }
+
+    int status_label_row = 0;
+    if (declination_label_) {
+        declination_label_->setVisible(heading_visible);
+        declination_label_->setText(
+            tr("Declination: %1 deg").arg(declination_degrees_, 0, 'f', 2));
+        declination_label_->position->setCoords(0.0, 1.08 + 0.06 * status_label_row);
+        if (heading_visible) {
+            status_label_row++;
+        }
+    }
+    if (sea_level_pressure_label_) {
+        sea_level_pressure_label_->setVisible(altitude_visible);
+        sea_level_pressure_label_->setText(
+            tr("Sea-level pressure: %1 mbar").arg(sea_level_pressure_, 0, 'f', 2));
+        sea_level_pressure_label_->position->setCoords(0.0, 1.08 + 0.06 * status_label_row);
     }
 
     if (!visible.isEmpty()) {

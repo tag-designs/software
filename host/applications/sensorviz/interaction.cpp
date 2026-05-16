@@ -188,13 +188,13 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
 
     menu.addSeparator();
     menu.addAction(utc_offset_action_);
-    if (altitude_action_->isVisible()
+    if (sea_level_pressure_action_->isVisible()
         || activity_filter_action_->isVisible()
         || declination_action_->isVisible()
         || battery_forward_action_->isVisible()) {
         menu.addSeparator();
-        if (altitude_action_->isVisible()) {
-            menu.addAction(altitude_action_);
+        if (sea_level_pressure_action_->isVisible()) {
+            menu.addAction(sea_level_pressure_action_);
         }
         if (activity_filter_action_->isVisible()) {
             menu.addAction(activity_filter_action_);

@@ -41,13 +41,13 @@ The important architecture pieces are:
   - Owns custom y-axis range dialogs and pressure/altitude range coupling.
 
 - `transforms.cpp`: scalar display transforms.
-  - Handles altitude and activity low-pass transform toggles.
+  - Generates altitude as a selectable stream and handles activity low-pass
+    transform toggles.
 - `compass_transforms.cpp`: CompassTag record-set transforms.
   - Handles the CompassTag derived-stream family from `compass_raw` plus
     calibration metadata.
-  - Altitude and activity filter are controlled from Configuration only, while
-    CompassTag derived streams are generated from Configuration and then exposed
-    individually in View.
+  - Altitude and CompassTag plot streams are generated automatically and exposed
+    individually in Visible Streams.
 
 - `plotting.cpp`: QCustomPlot graph and axis rebuilds.
   - Normal redraws preserve the current x-axis range; load/reset use full range
@@ -68,8 +68,10 @@ The important architecture pieces are:
 - Other streams default to the left axis unless the SQLite stream metadata says
   otherwise.
 - Cursors are hidden until data is loaded.
-- Altitude and Activity Filter live under Configuration and are not duplicated
-  in the View menu.
+- Altitude is created automatically and appears in Visible Streams; sea-level
+  pressure lives under Configuration.
+- Activity Filter lives under Configuration and is not duplicated in the View
+  menu.
 - CompassTag plot streams are created automatically on load and appear in
   Visible Streams with the other plotted series.
 - Declination is a CompassTag-only Configuration action that adjusts the

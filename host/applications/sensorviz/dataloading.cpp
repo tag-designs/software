@@ -60,6 +60,12 @@ void MainWindow::loadLog()
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
 
+    // Altitude is a generated stream controlled from Visible Streams; mean
+    // sea-level pressure is the Configuration value that changes its samples.
+    if (hasStream("pressure")) {
+        createAltitudeStream();
+    }
+
     // CompassTag logs are mostly useful once raw compass rows are converted
     // into scalar streams. Generate that family automatically; the resulting
     // streams are ordinary entries in the Visible Streams dialog.

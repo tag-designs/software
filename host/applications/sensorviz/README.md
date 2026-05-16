@@ -114,11 +114,13 @@ structures. Adding a simple one-column sensor table should usually start in
 Raw streams get checkable entries under View > Visible Streams. The checked
 state of those actions is the source of truth for which raw streams are plotted.
 
-Derived display streams such as altitude and low-pass activity are controlled by
-Configuration actions instead of duplicated in the View menu. CompassTag plot
-streams are generated automatically from the raw compass record set on load, and
-then appear in Visible Streams so heading, acceleration, pitch, roll, dip, and
-field strength can be shown independently.
+Altitude is generated automatically from pressure and appears in Visible
+Streams; Configuration > Sea-level Pressure changes the mean sea-level pressure
+used for that calculation. Low-pass activity is controlled by Configuration
+instead of duplicated in the View menu. CompassTag plot streams are generated
+automatically from the raw compass record set on load, and then appear in
+Visible Streams so heading, acceleration, pitch, roll, dip, and field strength
+can be shown independently.
 For CompassTag logs, Configuration > Declination adjusts only the displayed
 heading stream; Configuration > Battery Forward applies the matching 180 degree
 display convention. Raw orientation-derived values remain magnetic-frame data.

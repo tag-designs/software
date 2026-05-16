@@ -38,6 +38,16 @@ void updateDeclinationActionText(QAction *action, double declination_degrees)
     action->setText(QObject::tr("&Declination... (%1 deg)").arg(declination_degrees, 0, 'f', 2));
 }
 
+void updateSeaLevelPressureActionText(QAction *action, double sea_level_pressure)
+{
+    // Keep the active altitude parameter visible in menus and popups.
+    if (!action) {
+        return;
+    }
+    action->setText(QObject::tr("Sea-level &Pressure... (%1 mbar)")
+                        .arg(sea_level_pressure, 0, 'f', 2));
+}
+
 // First-order low-pass filter for activity display. The input time vector is in
 // epoch seconds, so the filter can handle uneven sample spacing.
 QVector<double> lowPass(
@@ -66,6 +76,37 @@ QVector<double> lowPass(
     return filtered;
 }
 
+bool nearestStreamValue(const SensorStream &stream, double epoch, double *value)
+{
+    // Return the nearest sample in a stream at the requested epoch. Pressure
+    // and pressure-sensor temperature are normally sampled together, but this
+    // keeps altitude robust if a future log stores them at slightly different
+    // times.
+    if (!value || stream.time.isEmpty() || stream.value.isEmpty()) {
+        return false;
+    }
+
+    auto it = std::lower_bound(stream.time.cbegin(), stream.time.cend(), epoch);
+    qsizetype index = 0;
+    if (it == stream.time.cend()) {
+        index = stream.time.size() - 1;
+    } else if (it == stream.time.cbegin()) {
+        index = 0;
+    } else {
+        const qsizetype after = std::distance(stream.time.cbegin(), it);
+        const qsizetype before = after - 1;
+        index = std::abs(stream.time[after] - epoch) < std::abs(epoch - stream.time[before])
+            ? after
+            : before;
+    }
+    if (index < 0 || index >= stream.value.size()) {
+        return false;
+    }
+
+    *value = stream.value[index];
+    return true;
+}
+
 } // namespace
 
 // Transforms are display-only. They do not change log_ and they are not written
@@ -76,9 +117,10 @@ QVector<double> lowPass(
 // - build one or more SensorStream objects
 // - addOrReplaceStream() so the rest of the UI treats it like any other stream
 //
-// Single-output transforms such as altitude use derived=true and are controlled
-// entirely by their Configuration action. Compass output is generated on load
-// as a family of normal View-selectable streams.
+// Single-output transforms such as activity low-pass use derived=true and are
+// controlled by their Configuration action. Altitude and Compass output are
+// generated as normal View-selectable streams; their parameters live under
+// Configuration.
 
 void MainWindow::updateTransformActions()
 {
@@ -92,8 +134,9 @@ void MainWindow::updateTransformActions()
 
     // Menus are driven by available streams instead of tag type names so logs
     // from future tags automatically expose only the relevant transforms.
-    altitude_action_->setVisible(has_pressure);
-    altitude_action_->setEnabled(has_pressure);
+    sea_level_pressure_action_->setVisible(has_pressure);
+    sea_level_pressure_action_->setEnabled(has_pressure);
+    updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
 
     activity_filter_action_->setVisible(has_activity);
     activity_filter_action_->setEnabled(has_activity);
@@ -109,53 +152,41 @@ void MainWindow::updateTransformActions()
 
     configuration_transform_separator_->setVisible(has_pressure || has_activity || has_compass);
 
-    setActionCheckedSilently(altitude_action_, hasStream("altitude"));
     setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
 }
 
-void MainWindow::altitudeToggled(bool checked)
+void MainWindow::createAltitudeStream()
 {
-    // Add/remove the pressure-derived altitude stream. The source pressure
-    // stream remains visible independently so users can compare both views.
-    if (!checked) {
-        removeStream("altitude");
-        return;
-    }
-
+    // Generate the pressure-derived altitude stream. It is intentionally a
+    // normal View-selectable stream; sea-level pressure is the Configuration
+    // value that controls its calculation.
     const SensorStream *pressure = streamById("pressure");
     if (!pressure) {
-        setActionCheckedSilently(altitude_action_, false);
         return;
     }
 
-    bool ok = false;
-    const double sea_level = QInputDialog::getDouble(
-        this,
-        tr("Altitude"),
-        tr("Sea-level pressure (mbar)"),
-        sea_level_pressure_,
-        800.0,
-        1200.0,
-        2,
-        &ok);
-    if (!ok) {
-        setActionCheckedSilently(altitude_action_, hasStream("altitude"));
-        return;
-    }
-    sea_level_pressure_ = sea_level;
+    const QAction *altitude_action = streamActionById("altitude");
+    const bool checked = altitude_action ? altitude_action->isChecked() : false;
 
-    // Altitude is a derived pressure stream. It stays linked by convention to
-    // the pressure axis range unless the user sets an explicit altitude range.
     SensorStream altitude;
     altitude.id = "altitude";
     altitude.label = tr("Altitude");
     altitude.units = "m";
     altitude.time = pressure->time;
     altitude.color = QColor(110, 70, 180);
-    altitude.derived = true;
+    altitude.defaultVisible = false;
     altitude.value.reserve(pressure->value.size());
-    for (double pressure_mbar : pressure->value) {
-        altitude.value.append(pressureToAltitude(pressure_mbar));
+    const SensorStream *sensor_temperature = streamById("sensor_temperature");
+    for (qsizetype i = 0; i < pressure->value.size(); i++) {
+        const double pressure_mbar = pressure->value[i];
+        double temperature_c = 0.0;
+        if (sensor_temperature
+            && i < pressure->time.size()
+            && nearestStreamValue(*sensor_temperature, pressure->time[i], &temperature_c)) {
+            altitude.value.append(pressureToAltitude(pressure_mbar, temperature_c));
+        } else {
+            altitude.value.append(pressureToAltitude(pressure_mbar));
+        }
     }
 
     if (custom_axis_ranges_.contains("pressure") && !explicit_axis_ranges_.contains("altitude")) {
@@ -166,7 +197,30 @@ void MainWindow::altitudeToggled(bool checked)
                 pressureToAltitude(pressure_range.lower));
     }
 
-    addOrReplaceStream(altitude, true);
+    addOrReplaceStream(altitude, checked);
+}
+
+void MainWindow::setSeaLevelPressure()
+{
+    // Update the altitude parameter. The altitude stream is regenerated, but
+    // its current Visible Streams checked state is preserved.
+    bool ok = false;
+    const double sea_level = QInputDialog::getDouble(
+        this,
+        tr("Sea-level Pressure"),
+        tr("Mean sea-level pressure (mbar)"),
+        sea_level_pressure_,
+        800.0,
+        1200.0,
+        2,
+        &ok);
+    if (!ok) {
+        return;
+    }
+
+    sea_level_pressure_ = sea_level;
+    updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
+    createAltitudeStream();
 }
 
 void MainWindow::activityFilterToggled(bool checked)
