@@ -6,8 +6,11 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSignalBlocker>
+#include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
@@ -92,7 +95,6 @@ void MainWindow::removeStream(const QString &id)
     for (qsizetype i = 0; i < stream_actions_.size(); i++) {
         QAction *action = stream_actions_[i];
         if (action->data().toString() == id) {
-            visible_streams_menu_->removeAction(action);
             stream_actions_.removeAt(i);
             delete action;
             break;
@@ -109,14 +111,13 @@ void MainWindow::removeStream(const QString &id)
 
 void MainWindow::clearStreamActions()
 {
-    // Remove all View > Visible Streams actions before loading a new file.
+    // Remove all raw-stream state actions before loading a new file.
     for (QAction *action : stream_actions_) {
-        visible_streams_menu_->removeAction(action);
         delete action;
     }
     stream_actions_.clear();
-    visible_streams_menu_->menuAction()->setVisible(false);
-    visible_streams_menu_->setEnabled(false);
+    visible_streams_action_->setVisible(false);
+    visible_streams_action_->setEnabled(false);
     clearRangeActions();
     clearColorActions();
     updateTransformActions();
@@ -124,8 +125,9 @@ void MainWindow::clearStreamActions()
 
 void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
 {
-    // Create a persistent checkable action for one raw or generated stream.
-    // The action's data stores the stable stream id used by visibleStreams().
+    // Create a persistent checkable state action for one raw stream. These
+    // actions are not placed directly in menus; the Visible Streams dialog edits
+    // them and visibleStreams() reads them.
     QAction *action = new QAction(stream.label + unitsSuffix(stream), this);
     action->setCheckable(true);
     action->setChecked(checked);
@@ -136,9 +138,8 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
         rebuildColorActions();
     });
     stream_actions_.append(action);
-    visible_streams_menu_->addAction(action);
-    visible_streams_menu_->menuAction()->setVisible(true);
-    visible_streams_menu_->setEnabled(true);
+    visible_streams_action_->setVisible(true);
+    visible_streams_action_->setEnabled(true);
 }
 
 QAction *MainWindow::streamActionById(const QString &id) const
@@ -151,6 +152,90 @@ QAction *MainWindow::streamActionById(const QString &id) const
         }
     }
     return nullptr;
+}
+
+void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
+{
+    // Apply a batch of visibility edits without letting each QAction emit its
+    // toggled signal. The plot and dependent menus are rebuilt once at the end,
+    // which keeps the multi-select dialog responsive for large stream lists.
+    bool changed = false;
+    for (QAction *action : stream_actions_) {
+        const bool should_be_checked = visible_ids.contains(action->data().toString());
+        if (action->isChecked() == should_be_checked) {
+            continue;
+        }
+
+        changed = true;
+        const QSignalBlocker blocker(action);
+        action->setChecked(should_be_checked);
+    }
+
+    if (!changed) {
+        return;
+    }
+
+    refreshPlot();
+    rebuildRangeActions();
+    rebuildColorActions();
+}
+
+void MainWindow::showVisibleStreamsDialog()
+{
+    // Batch editor for raw stream visibility. Derived streams remain under
+    // Configuration because their visibility is tied to transform parameters.
+    if (stream_actions_.isEmpty()) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Visible Streams"));
+
+    QListWidget *stream_list = new QListWidget(&dialog);
+    for (QAction *action : stream_actions_) {
+        QListWidgetItem *item = new QListWidgetItem(action->text(), stream_list);
+        item->setData(Qt::UserRole, action->data());
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(action->isChecked() ? Qt::Checked : Qt::Unchecked);
+    }
+
+    QDialogButtonBox *buttons =
+        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton *select_all_button =
+        buttons->addButton(tr("Select All"), QDialogButtonBox::ActionRole);
+    QPushButton *clear_all_button =
+        buttons->addButton(tr("Clear All"), QDialogButtonBox::ActionRole);
+
+    QVBoxLayout *layout = new QVBoxLayout;
+    layout->addWidget(stream_list);
+    layout->addWidget(buttons);
+    dialog.setLayout(layout);
+
+    connect(select_all_button, &QPushButton::clicked, stream_list, [stream_list]() {
+        for (int row = 0; row < stream_list->count(); row++) {
+            stream_list->item(row)->setCheckState(Qt::Checked);
+        }
+    });
+    connect(clear_all_button, &QPushButton::clicked, stream_list, [stream_list]() {
+        for (int row = 0; row < stream_list->count(); row++) {
+            stream_list->item(row)->setCheckState(Qt::Unchecked);
+        }
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QSet<QString> visible_ids;
+    for (int row = 0; row < stream_list->count(); row++) {
+        QListWidgetItem *item = stream_list->item(row);
+        if (item->checkState() == Qt::Checked) {
+            visible_ids.insert(item->data(Qt::UserRole).toString());
+        }
+    }
+    applyStreamVisibility(visible_ids);
 }
 
 QVector<SensorStream> MainWindow::visibleStreams() const

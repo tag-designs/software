@@ -146,10 +146,7 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     // here because QMenu owns them only for the lifetime of this popup; the
     // persistent View -> Ranges actions are managed by range_actions_.
     if (!stream_actions_.isEmpty()) {
-        QMenu *visible_streams = menu.addMenu(tr("Visible Streams"));
-        for (QAction *action : stream_actions_) {
-            visible_streams->addAction(action);
-        }
+        menu.addAction(visible_streams_action_);
     }
     menu.addAction(reset_action_);
     menu.addAction(zoom_to_cursors_action_);

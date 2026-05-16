@@ -42,6 +42,9 @@ void MainWindow::createActions()
     load_action_ = new QAction(tr("&Load"), this);
     print_action_ = new QAction(tr("&Print"), this);
     about_action_ = new QAction(tr("&About"), this);
+    visible_streams_action_ = new QAction(tr("Visible &Streams..."), this);
+    visible_streams_action_->setVisible(false);
+    visible_streams_action_->setEnabled(false);
     reset_action_ = new QAction(tr("&Reset Zoom"), this);
     zoom_to_cursors_action_ = new QAction(tr("&Zoom to Cursors"), this);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
@@ -66,6 +69,11 @@ void MainWindow::createActions()
     connect(load_action_, &QAction::triggered, this, &MainWindow::loadLog);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
     connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
+    connect(
+        visible_streams_action_,
+        &QAction::triggered,
+        this,
+        &MainWindow::showVisibleStreamsDialog);
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
@@ -90,9 +98,7 @@ void MainWindow::createActions()
     file_menu->addAction(about_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
-    visible_streams_menu_ = view_menu_->addMenu(tr("Visible &Streams"));
-    visible_streams_menu_->menuAction()->setVisible(false);
-    visible_streams_menu_->setEnabled(false);
+    view_menu_->addAction(visible_streams_action_);
     view_stream_separator_ = view_menu_->addSeparator();
     range_menu_ = view_menu_->addMenu(tr("&Ranges"));
     range_menu_->menuAction()->setVisible(false);

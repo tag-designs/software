@@ -72,6 +72,7 @@ private slots:
     void setDeclination();
     void batteryForwardToggled(bool checked);
     void showCalibrationConstants();
+    void showVisibleStreamsDialog();
     void setStreamRangeFromAction();
     void setStreamColorFromAction();
     void printPlot();
@@ -97,15 +98,17 @@ private:
     void updateTransformActions();
 
     // Streams are the single source of truth for both raw and derived data.
-    // Raw streams have checkable QAction objects in stream_actions_; derived
-    // streams are enabled by transform actions and intentionally do not get
-    // duplicated in the View menu. If a stream exists but is not visible, first
-    // check streams_, then the matching QAction or transform action.
+    // Raw streams have checkable QAction objects in stream_actions_; the
+    // Visible Streams dialog edits those actions as a batch. Derived streams
+    // are enabled by transform actions and intentionally do not get duplicated
+    // there. If a stream exists but is not visible, first check streams_, then
+    // the matching QAction or transform action.
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
     void clearStreamActions();
     void addStreamAction(const SensorStream &stream, bool checked);
     QAction *streamActionById(const QString &id) const;
+    void applyStreamVisibility(const QSet<QString> &visible_ids);
     bool hasStream(const QString &id) const;
     const SensorStream *streamById(const QString &id) const;
     const SensorRecordSet *recordSetById(const QString &id) const;
@@ -185,10 +188,10 @@ private:
     QAction *calibration_constants_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
+    QAction *visible_streams_action_ = nullptr;
     QAction *view_stream_separator_ = nullptr;
     QAction *configuration_transform_separator_ = nullptr;
     QMenu *view_menu_ = nullptr;
-    QMenu *visible_streams_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QMenu *range_menu_ = nullptr;
     QMenu *color_menu_ = nullptr;
