@@ -30,10 +30,19 @@ The important architecture pieces are:
   - Loads grouped `record_column` rows into `SensorRecordSet`.
   - Missing metadata or referenced tables are schema errors.
 
+- `sensor_preferences.*`: display defaults and per-tag user preferences.
+  - Owns default color, initial visibility, axis side, and fixed display range
+    for known stream ids.
+  - Stores in-memory per-tag overrides for visible streams, colors, and axis
+    sides.
+  - Loads/stores formatted JSON preference files containing only overrides.
+  - Does not persist session parameters such as sea-level pressure,
+    declination, UTC offset, battery-forward, or y-axis ranges.
+
 - `dataloading.cpp`: file load workflow.
   - Replaces current `SensorLog`.
   - Builds View menu actions from loaded streams.
-  - Uses stream metadata for default visibility.
+  - Uses sensorViz display defaults for initial visibility and styling.
 
 - `stream_actions.cpp`: stream visibility and range actions.
   - Builds and clears View stream actions.
@@ -65,9 +74,14 @@ The important architecture pieces are:
 - Voltage defaults off, stays on the right axis, and uses fixed `0-5 V`.
 - Core temperature defaults off, stays on the right axis, and uses fixed
   `0-50 C`.
-- Other streams default to the left axis unless the SQLite stream metadata says
-  otherwise.
+- Other streams default to the left axis unless `defaultDisplayForStream()`
+  says otherwise.
 - Cursors are hidden until data is loaded.
+- Startup menus are visible but disabled except for File > Load and File >
+  About; data-dependent actions enable after a log is loaded.
+- Preferences are tag-type dependent. Built-in defaults live in
+  `defaultDisplayForStream()`, while saved JSON contains only user overrides
+  from those defaults.
 - Altitude is created automatically and appears in Visible Streams; sea-level
   pressure lives under Configuration.
 - Activity Filter lives under Configuration and is not duplicated in the View

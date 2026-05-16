@@ -170,6 +170,10 @@ bool jsonToPreferences(
     SensorVizPreferences &preferences,
     QString &error)
 {
+    // Convert one tag entry from the JSON file into the same sparse override
+    // structure used at runtime. Unknown stream ids are allowed here because a
+    // preference file may be loaded before its matching tag type is opened; ids
+    // are filtered against actual loaded streams when preferences are applied.
     preferences = SensorVizPreferences();
     preferences.tagType = tag_type;
 
@@ -273,6 +277,10 @@ void MainWindow::rememberCurrentPreferences()
 
     SensorVizPreferences preferences;
     preferences.tagType = key;
+
+    // Store visibility only when it differs from built-in stream defaults. The
+    // separate boolean is necessary because an empty set can be a real user
+    // choice: all streams hidden.
     QSet<QString> visible_stream_ids;
     for (QAction *action : stream_actions_) {
         if (action->isChecked()) {
@@ -308,6 +316,9 @@ void MainWindow::rememberCurrentPreferences()
 
 void MainWindow::applyPreferencesForCurrentTag()
 {
+    // Rebuild the effective UI state for the current tag type. Missing
+    // preferences are treated as "load defaults", which is what lets Load
+    // Defaults remove one tag entry and then reuse this function.
     const QString key = preferenceKey();
     if (key.isEmpty() || streams_.isEmpty()) {
         return;
@@ -408,6 +419,9 @@ void MainWindow::loadDefaultPreferences()
 
 bool MainWindow::loadPreferencesFromFile(const QString &path, QString &error)
 {
+    // Preference files replace the in-memory preference map. That keeps the
+    // operation predictable: Load means "use exactly this preference file" and
+    // Store writes the currently remembered override set back out.
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         error = tr("Could not open %1: %2").arg(path, file.errorString());
@@ -463,6 +477,8 @@ bool MainWindow::loadPreferencesFromFile(const QString &path, QString &error)
 
 bool MainWindow::savePreferencesToFile(const QString &path, QString &error)
 {
+    // Write stable, hand-editable JSON. The per-tag entries are already sparse;
+    // this function only emits entries that still contain at least one override.
     QJsonObject tags;
     for (auto it = preferences_by_tag_type_.cbegin(); it != preferences_by_tag_type_.cend(); ++it) {
         if (hasPreferenceOverrides(it.value())) {

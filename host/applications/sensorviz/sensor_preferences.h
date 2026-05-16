@@ -20,6 +20,11 @@ struct SensorStreamDisplayDefaults
     SensorAxisRange axisRange;
 };
 
+// Return the built-in display policy for a stable stream id. Unknown streams
+// use conservative defaults: visible, left axis, neutral color, no fixed range.
+// This is intentionally independent of tag type so stream ids remain the
+// extension point; if a future tag emits "voltage", it should inherit the same
+// voltage display policy unless there is a strong reason to introduce a new id.
 SensorStreamDisplayDefaults defaultDisplayForStream(const QString &stream_id);
 
 // SensorVizPreferences contains viewer layout choices that should follow a tag
@@ -35,9 +40,18 @@ SensorStreamDisplayDefaults defaultDisplayForStream(const QString &stream_id);
 // are deliberately not written to preference files.
 struct SensorVizPreferences
 {
+    // Preference key, normally SensorLog::tagType. Stored here so JSON parsing
+    // and diagnostics can carry the key with the override record.
     QString tagType;
+
+    // False means use the default visibility from SensorStream::defaultVisible.
+    // True means visibleStreamIds is the complete set of visible raw streams,
+    // including the valid case where the user has hidden every stream.
     bool hasVisibleStreamOverride = false;
     QSet<QString> visibleStreamIds;
+
+    // Sparse stream-id maps. Entries are present only when the user selected a
+    // non-default color or axis side.
     QMap<QString, QColor> streamColors;
     QMap<QString, SensorAxisSide> axisSides;
 };

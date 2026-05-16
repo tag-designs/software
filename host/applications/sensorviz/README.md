@@ -33,6 +33,8 @@ The code is split by responsibility:
   display.
 - `sqlite_loader.*`: SQLite read-only adapter that consumes tagcore stream
   metadata.
+- `sensor_preferences.*`: sensorViz display defaults, per-tag preference
+  overrides, and JSON load/store for those overrides.
 - `sensorstream.h`: normalized in-memory data model.
 - `stream_actions.cpp`: stream visibility, View actions, and per-stream range
   actions.
@@ -61,6 +63,11 @@ Most SensorViz changes should start in one of four places:
 - File loads but menu state, default visibility, or metadata is wrong:
   check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
   actions, clears old custom ranges, and updates File Info.
+- Default stream color, initial visibility, axis side, or fixed range is wrong:
+  check `sensor_preferences.cpp`, especially `defaultDisplayForStream()`.
+- Preference files load/store incorrectly:
+  check `sensor_preferences.cpp`. Preference files are formatted JSON and store
+  only overrides from the sensorViz defaults.
 - Stream visibility or range behavior is wrong:
   check `stream_actions.cpp`.
 - Scalar transform behavior is wrong:
@@ -100,14 +107,48 @@ structures. Adding a simple one-column sensor table should usually start in
 - Voltage defaults off, stays on the right axis, and uses fixed `0-5 V`.
 - Core temperature defaults off, stays on the right axis, and uses fixed
   `0-50 C`.
-- Other streams default to the left axis unless the database metadata says
-  otherwise.
+- Other streams default to the left axis unless `defaultDisplayForStream()`
+  assigns a different display policy.
 - Autoscaled y-axes get a 5% margin.
 - Displayed streams can have explicit y-axis ranges set from the View menu or
   plot context menu.
 - Normal redraws preserve the current x-axis range.
 - Loading a new file and Reset Zoom expand to the full data range and restore
   default y-axis ranges.
+
+## Preferences
+
+sensorViz has two layers of display preference:
+
+1. Built-in defaults in `defaultDisplayForStream()`.
+2. Per-tag user overrides stored in memory and optionally written to JSON.
+
+The SQLite log describes the data contract: stream id, label, units, table, time
+column, and value column. It does not describe viewer policy such as color,
+default visibility, axis side, or preferred fixed display range. Those defaults
+belong to sensorViz so another analysis tool can interpret the same SQLite file
+without inheriting this application's UI choices.
+
+The Preferences menu contains:
+
+- `Load...`: replace the current in-memory preference set from a JSON file.
+- `Store...`: write formatted JSON containing only overrides from defaults.
+- `Load Defaults`: remove overrides for the currently loaded tag type and
+  reapply built-in defaults.
+
+Saved preference files may contain:
+
+- `visible_streams`: present only when visibility differs from defaults.
+- `colors`: stream id to color string for user-chosen colors.
+- `axis_sides`: stream id to `left` or `right` for user-chosen axis placement.
+
+Saved preference files intentionally do not contain y-axis ranges, sea-level
+pressure, declination, UTC offset, or battery-forward. Those are session or
+analysis context rather than durable tag-type display preferences.
+
+At startup, only `File > Load` and `File > About` are enabled. The rest of the
+menu structure remains visible but disabled so users can see what controls will
+be available after a log is loaded.
 
 ## Stream Actions and Ranges
 

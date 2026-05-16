@@ -44,6 +44,9 @@ class QSplitter;
 //   grouped record-column rows into SensorRecordSet objects. If a table exists
 //   but does not load correctly, start there.
 //
+// - sensor_preferences.cpp owns viewer display policy: built-in stream
+//   defaults, per-tag user overrides, and JSON preference load/store.
+//
 // - stream_actions.cpp owns stream visibility and range menu actions.
 //
 // - transforms.cpp owns display-only derived streams such as altitude and
@@ -96,9 +99,11 @@ private:
     double pressureToAltitude(double pressure_mbar) const;
     double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
-    // Log metadata and tag-dependent menu state. updateTransformActions() is
-    // called whenever streams are added/removed because transform availability
-    // is inferred from actual stream ids rather than tag type strings.
+    // Log metadata and tag-dependent menu state. updateLoadedStateActions()
+    // keeps startup discoverable but disabled except for Load/About.
+    // updateTransformActions() is called whenever streams are added/removed
+    // because transform availability is inferred from actual stream ids rather
+    // than tag type strings.
     void updateLoadedStateActions();
     void updateMetadata();
     void updateTransformActions();
@@ -184,6 +189,11 @@ private:
     QSet<QString> explicit_axis_ranges_;
     QMap<QString, QColor> custom_stream_colors_;
     QMap<QString, SensorAxisSide> custom_axis_sides_;
+
+    // Preferences are keyed by tag type/profile and store only differences from
+    // sensorViz display defaults. The currently loaded tag's effective choices
+    // are reflected into stream QAction checked state, custom_stream_colors_,
+    // and custom_axis_sides_.
     QMap<QString, SensorVizPreferences> preferences_by_tag_type_;
     bool suppress_preference_updates_ = false;
 
