@@ -2,8 +2,10 @@
 
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <sqlite3.h>
 #include <string>
+#include <vector>
 
 #include <google/protobuf/util/json_util.h>
 #include <tagclass.h>
@@ -59,6 +61,11 @@ public:
         return sqlite3_bind_text(stmt_, index, value.c_str(), -1, SQLITE_TRANSIENT) == SQLITE_OK;
     }
 
+    bool bindNull(int index)
+    {
+        return sqlite3_bind_null(stmt_, index) == SQLITE_OK;
+    }
+
     bool stepDone()
     {
         const bool done = sqlite3_step(stmt_) == SQLITE_DONE;
@@ -75,6 +82,231 @@ private:
     sqlite3 *db_ = nullptr;
     sqlite3_stmt *stmt_ = nullptr;
 };
+
+struct SqlColumnDefinition
+{
+    const char *name;
+    const char *type;
+};
+
+struct SqlStreamDefinition
+{
+    const char *id;
+    const char *group_id;
+    const char *group_name;
+    const char *table;
+    const char *time_column;
+    const char *value_column;
+    const char *kind;
+    const char *display_name;
+    const char *units;
+    const char *quantity;
+    const char *comment;
+};
+
+struct SqlTableDefinition
+{
+    const char *name;
+    std::vector<SqlColumnDefinition> columns;
+    std::vector<SqlStreamDefinition> streams;
+};
+
+struct SqlTagProfile
+{
+    bool has_calibration_table;
+    std::vector<SqlTableDefinition> tables;
+};
+
+SqlTableDefinition voltageTable();
+SqlTableDefinition coreTemperatureTable();
+SqlTableDefinition activityTable();
+SqlTableDefinition pressureTable();
+SqlTableDefinition sensorTemperatureTable();
+SqlTableDefinition compassTable();
+
+// ---------------------------------------------------------------------------
+// Schema Profiles
+// ---------------------------------------------------------------------------
+//
+// This is the top-level schema switch for SQLite log output. Adding a new tag
+// type should start here: choose which persisted tables it writes and whether it
+// has calibration history. The table definitions below own the SQL columns and
+// stream metadata for those tables.
+SqlTagProfile sqliteProfileForTag(TagType tag_type)
+{
+    switch (tag_type) {
+    case BITTAG:
+        return {false, {voltageTable(), coreTemperatureTable(), activityTable()}};
+    case COMPASSTAG:
+        return {
+            true,
+            {voltageTable(), coreTemperatureTable(), activityTable(), compassTable()}};
+    case PRESTAG:
+        return {false, {voltageTable(), pressureTable(), sensorTemperatureTable()}};
+    default:
+        return {false, {}};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Table Definitions
+// ---------------------------------------------------------------------------
+//
+// The SQLite writer owns the persisted schema contract. Each table definition
+// creates one SQLite table and emits the stream metadata that external tools can
+// use to understand the table without reading sensorViz source code.
+SqlTableDefinition voltageTable()
+{
+    return {
+        "Voltage",
+        {{"Epoch", "INTEGER"}, {"Voltage", "REAL"}},
+        {{
+            "voltage",
+            nullptr,
+            nullptr,
+            "Voltage",
+            "Epoch",
+            "Voltage",
+            "scalar",
+            "Voltage",
+            "V",
+            "voltage",
+            "Tag supply voltage.",
+        }},
+    };
+}
+
+SqlTableDefinition coreTemperatureTable()
+{
+    return {
+        "CoreTemperature",
+        {{"Epoch", "INTEGER"}, {"Temperature", "REAL"}},
+        {{
+            "core_temperature",
+            nullptr,
+            nullptr,
+            "CoreTemperature",
+            "Epoch",
+            "Temperature",
+            "scalar",
+            "Core temperature",
+            "C",
+            "temperature",
+            "Internal tag temperature. Pressure tags use the source field for another voltage measurement and do not write this stream.",
+        }},
+    };
+}
+
+SqlTableDefinition activityTable()
+{
+    return {
+        "Activity",
+        {{"Epoch", "INTEGER"}, {"Activity", "REAL"}},
+        {{
+            "activity",
+            nullptr,
+            nullptr,
+            "Activity",
+            "Epoch",
+            "Activity",
+            "scalar",
+            "Activity",
+            "%",
+            "activity",
+            "Percent activity over the sample interval.",
+        }},
+    };
+}
+
+SqlTableDefinition pressureTable()
+{
+    return {
+        "Pressure",
+        {{"Epoch", "INTEGER"}, {"Pressure", "REAL"}},
+        {{
+            "pressure",
+            nullptr,
+            nullptr,
+            "Pressure",
+            "Epoch",
+            "Pressure",
+            "scalar",
+            "Pressure",
+            "mbar",
+            "pressure",
+            "Absolute pressure from the pressure sensor.",
+        }},
+    };
+}
+
+SqlTableDefinition sensorTemperatureTable()
+{
+    return {
+        "Temperature",
+        {{"Epoch", "INTEGER"}, {"Temperature", "REAL"}},
+        {{
+            "sensor_temperature",
+            nullptr,
+            nullptr,
+            "Temperature",
+            "Epoch",
+            "Temperature",
+            "scalar",
+            "Sensor temperature",
+            "C",
+            "temperature",
+            "Temperature reported by the pressure sensor.",
+        }},
+    };
+}
+
+SqlTableDefinition compassTable()
+{
+    return {
+        "Compass",
+        {
+            {"Epoch", "INTEGER"},
+            {"ax", "REAL"},
+            {"ay", "REAL"},
+            {"az", "REAL"},
+            {"mx", "REAL"},
+            {"my", "REAL"},
+            {"mz", "REAL"},
+        },
+        {
+            {
+                "compass_ax", "compass_raw", "Compass raw", "Compass", "Epoch", "ax",
+                "record_column", "Acceleration X", "mg", "acceleration_x",
+                "Raw accelerometer X sample used for compass orientation.",
+            },
+            {
+                "compass_ay", "compass_raw", "Compass raw", "Compass", "Epoch", "ay",
+                "record_column", "Acceleration Y", "mg", "acceleration_y",
+                "Raw accelerometer Y sample used for compass orientation.",
+            },
+            {
+                "compass_az", "compass_raw", "Compass raw", "Compass", "Epoch", "az",
+                "record_column", "Acceleration Z", "mg", "acceleration_z",
+                "Raw accelerometer Z sample used for compass orientation.",
+            },
+            {
+                "compass_mx", "compass_raw", "Compass raw", "Compass", "Epoch", "mx",
+                "record_column", "Magnetic field X", "uT", "magnetic_field_x",
+                "Raw magnetometer X sample used for compass orientation.",
+            },
+            {
+                "compass_my", "compass_raw", "Compass raw", "Compass", "Epoch", "my",
+                "record_column", "Magnetic field Y", "uT", "magnetic_field_y",
+                "Raw magnetometer Y sample used for compass orientation.",
+            },
+            {
+                "compass_mz", "compass_raw", "Compass raw", "Compass", "Epoch", "mz",
+                "record_column", "Magnetic field Z", "uT", "magnetic_field_z",
+                "Raw magnetometer Z sample used for compass orientation.",
+            },
+        },
+    };
+}
 
 } // namespace
 
@@ -165,6 +397,10 @@ public:
             return false;
         }
 
+        if (!createSchemaInfoTable() || !createStreamsTable()) {
+            return false;
+        }
+
         tag.GetTagInfo(info);
         if (!insertInfo("uuid", info.uuid())) {
             return false;
@@ -190,36 +426,40 @@ public:
             return false;
         }
 
-        // Store calibration entries separately so viewers can choose the latest
-        // constants or inspect historical calibration updates.
-        if (!exec("CREATE TABLE Calibration ("
-                  "Epoch INTEGER,"
-                  "Constants TEXT"
-                  ");")) {
-            return false;
-        }
-        log_debug("Created SQLite calibration table");
-
-        Statement calibration_insert(
-            db_,
-            "INSERT INTO Calibration (Epoch, Constants) VALUES (?, ?)");
-        if (!calibration_insert.valid()) {
-            setLastSqliteError("Could not prepare calibration insert");
-            return false;
-        }
-
-        // ReadCalibration(index) returns false when there are no more entries.
-        for (int i = 0; tag.ReadCalibration(constants, i); i++) {
-            constants_json.clear();
-            if (!MessageToJsonString(constants, &constants_json, options).ok()) {
-                setLastError("Could not create JSON string for tag calibration constants");
+        const SqlTagProfile profile = sqliteProfileForTag(config_.tag_type());
+        if (profile.has_calibration_table) {
+            // Store calibration entries separately so viewers can choose the
+            // latest constants or inspect historical calibration updates.
+            if (!exec("CREATE TABLE Calibration ("
+                      "Epoch INTEGER,"
+                      "Constants TEXT"
+                      ");")) {
                 return false;
             }
-            if (!calibration_insert.bindInt64(1, constants.timestamp())
-                || !calibration_insert.bindText(2, constants_json)
-                || !calibration_insert.stepDone()) {
-                setLastSqliteError("Calibration constants insert failed");
+            log_debug("Created SQLite calibration table");
+
+            Statement calibration_insert(
+                db_,
+                "INSERT INTO Calibration (Epoch, Constants) VALUES (?, ?)");
+            if (!calibration_insert.valid()) {
+                setLastSqliteError("Could not prepare calibration insert");
                 return false;
+            }
+
+            // ReadCalibration(index) returns false when there are no more
+            // entries.
+            for (int i = 0; tag.ReadCalibration(constants, i); i++) {
+                constants_json.clear();
+                if (!MessageToJsonString(constants, &constants_json, options).ok()) {
+                    setLastError("Could not create JSON string for tag calibration constants");
+                    return false;
+                }
+                if (!calibration_insert.bindInt64(1, constants.timestamp())
+                    || !calibration_insert.bindText(2, constants_json)
+                    || !calibration_insert.stepDone()) {
+                    setLastSqliteError("Calibration constants insert failed");
+                    return false;
+                }
             }
         }
 
@@ -309,6 +549,14 @@ public:
     }
 
 private:
+    // ---------------------------------------------------------------------
+    // Basic SQLite Helpers
+    // ---------------------------------------------------------------------
+    //
+    // These small helpers keep direct sqlite3 API handling localized. They do
+    // not know about tag schemas; they only execute SQL and report errors in
+    // the TagLogWriter/logging style used by the rest of tagcore.
+
     bool isSupportedTag() const
     {
         return isTagLogStorageFormatSupported(config_.tag_type(), TagLogStorageFormat::Sqlite);
@@ -326,6 +574,128 @@ private:
         }
         return true;
     }
+
+    // ---------------------------------------------------------------------
+    // Generic Schema Creation
+    // ---------------------------------------------------------------------
+    //
+    // These functions create the metadata tables and sensor data tables from
+    // the schema profile. They are intentionally separate from the tag-specific
+    // payload writers below: table existence and stream meaning are defined by
+    // SqlTagProfile/SqlTableDefinition, while protobuf unpacking still depends
+    // on each tag's log message format.
+
+    bool createSchemaInfoTable()
+    {
+        if (!exec("CREATE TABLE schema_info ("
+                  "key TEXT PRIMARY KEY,"
+                  "value TEXT"
+                  ");")) {
+            return false;
+        }
+
+        return insertKeyValue("schema_info", "log_schema_version", "1")
+            && insertKeyValue("schema_info", "producer", "tagcore.SqliteTagLogWriter");
+    }
+
+    bool createStreamsTable()
+    {
+        if (!exec("CREATE TABLE streams ("
+                  "stream_id TEXT PRIMARY KEY,"
+                  "group_id TEXT,"
+                  "group_name TEXT,"
+                  "table_name TEXT NOT NULL,"
+                  "time_column TEXT NOT NULL,"
+                  "value_column TEXT NOT NULL,"
+                  "stream_kind TEXT NOT NULL,"
+                  "display_name TEXT NOT NULL,"
+                  "units TEXT,"
+                  "quantity TEXT,"
+                  "comment TEXT"
+                  ");")) {
+            return false;
+        }
+
+        Statement insert(
+            db_,
+            "INSERT INTO streams ("
+            "stream_id, group_id, group_name, table_name, time_column, value_column, "
+            "stream_kind, display_name, units, quantity, comment"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        if (!insert.valid()) {
+            setLastSqliteError("Could not prepare stream metadata insert");
+            return false;
+        }
+
+        const SqlTagProfile profile = sqliteProfileForTag(config_.tag_type());
+        for (const SqlTableDefinition &table : profile.tables) {
+            for (const SqlStreamDefinition &stream : table.streams) {
+                if (!insert.bindText(1, stream.id)
+                    || !bindNullableText(insert, 2, stream.group_id)
+                    || !bindNullableText(insert, 3, stream.group_name)
+                    || !insert.bindText(4, stream.table)
+                    || !insert.bindText(5, stream.time_column)
+                    || !insert.bindText(6, stream.value_column)
+                    || !insert.bindText(7, stream.kind)
+                    || !insert.bindText(8, stream.display_name)
+                    || !bindNullableText(insert, 9, stream.units)
+                    || !bindNullableText(insert, 10, stream.quantity)
+                    || !bindNullableText(insert, 11, stream.comment)
+                    || !insert.stepDone()) {
+                    setLastSqliteError("Stream metadata insert failed");
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    bool createLogTables()
+    {
+        if (log_tables_created_) {
+            return true;
+        }
+
+        const SqlTagProfile profile = sqliteProfileForTag(config_.tag_type());
+        if (profile.tables.empty()) {
+            setLastError("SQLite log output does not support tag type "
+                         + TagType_Name(config_.tag_type()));
+            return false;
+        }
+
+        for (const SqlTableDefinition &table : profile.tables) {
+            if (!createTable(table)) {
+                return false;
+            }
+        }
+
+        log_tables_created_ = true;
+        return true;
+    }
+
+    bool createTable(const SqlTableDefinition &table)
+    {
+        std::ostringstream sql;
+        sql << "CREATE TABLE " << table.name << " (";
+        for (size_t i = 0; i < table.columns.size(); i++) {
+            if (i > 0) {
+                sql << ",";
+            }
+            sql << table.columns[i].name << " " << table.columns[i].type;
+        }
+        sql << ");";
+
+        return exec(sql.str().c_str());
+    }
+
+    // ---------------------------------------------------------------------
+    // Generic Row Writers
+    // ---------------------------------------------------------------------
+    //
+    // These write rows to metadata tables created above. They are generic in
+    // the sense that they do not decode tag log payloads; they only persist
+    // key/value fields and stream catalog rows.
 
     // Record the metadata table's common insert pattern in one place. SQLite
     // parameter indexes are 1-based.
@@ -345,112 +715,42 @@ private:
         return true;
     }
 
-    bool createLogTables()
+    bool insertKeyValue(
+        const char *table,
+        const std::string &key,
+        const std::string &value)
     {
-        if (log_tables_created_) {
-            return true;
-        }
-
-        switch (config_.tag_type()) {
-        case BITTAG:
-            if (!createBitTagLogTables()) {
-                return false;
-            }
-            break;
-        case COMPASSTAG:
-            if (!createCompassTagLogTables()) {
-                return false;
-            }
-            break;
-        case PRESTAG:
-            if (!createPresTagLogTables()) {
-                return false;
-            }
-            break;
-        default:
-            setLastError("SQLite log output does not support tag type "
-                         + TagType_Name(config_.tag_type()));
+        const std::string sql =
+            std::string("INSERT INTO ") + table + " (key, value) VALUES (?, ?)";
+        Statement insert(db_, sql.c_str());
+        if (!insert.valid()) {
+            setLastSqliteError(std::string("Could not prepare ") + table + " insert");
             return false;
         }
-
-        log_tables_created_ = true;
-        return true;
-    }
-
-    bool createCommonSampleTables()
-    {
-        if (!exec("CREATE TABLE CoreTemperature ("
-                  "Epoch INTEGER,"
-                  "Temperature REAL"
-                  ");")
-            || !exec("CREATE TABLE Voltage ("
-                     "Epoch INTEGER,"
-                     "Voltage REAL"
-                     ");")) {
+        if (!insert.bindText(1, key)
+            || !insert.bindText(2, value)
+            || !insert.stepDone()) {
+            setLastSqliteError(std::string(table) + " insert failed");
             return false;
         }
         return true;
     }
 
-    bool createCompassTagLogTables()
+    bool bindNullableText(Statement &statement, int index, const char *value)
     {
-        // These names and columns are the existing CompassTag database contract
-        // used by compviz/sqliteload.cpp.
-        if (!createCommonSampleTables()
-            || !exec("CREATE TABLE Activity ("
-                     "Epoch INTEGER,"
-                     "Activity REAL"
-                     ");")
-            || !exec("CREATE TABLE Compass ("
-                     "Epoch INTEGER,"
-                     "ax REAL,"
-                     "ay REAL,"
-                     "az REAL,"
-                     "mx REAL,"
-                     "my REAL,"
-                     "mz REAL"
-                     ");")) {
-            return false;
+        if (value) {
+            return statement.bindText(index, value);
         }
-
-        log_debug("Created SQLite CompassTag log tables");
-        return true;
+        return statement.bindNull(index);
     }
 
-    bool createBitTagLogTables()
-    {
-        if (!createCommonSampleTables()
-            || !exec("CREATE TABLE Activity ("
-                     "Epoch INTEGER,"
-                     "Activity REAL"
-                     ");")) {
-            return false;
-        }
-
-        log_debug("Created SQLite BitTag log tables");
-        return true;
-    }
-
-    bool createPresTagLogTables()
-    {
-        if (!exec("CREATE TABLE Voltage ("
-                  "Epoch INTEGER,"
-                  "Voltage REAL"
-                  ");")
-            || !exec("CREATE TABLE Pressure ("
-                     "Epoch INTEGER,"
-                     "Pressure REAL"
-                     ");")
-            || !exec("CREATE TABLE Temperature ("
-                     "Epoch INTEGER,"
-                     "Temperature REAL"
-                     ");")) {
-            return false;
-        }
-
-        log_debug("Created SQLite PresTag log tables");
-        return true;
-    }
+    // ---------------------------------------------------------------------
+    // Tag-Specific Payload Writers
+    // ---------------------------------------------------------------------
+    //
+    // The schema catalog decides which tables exist, but each tag protobuf has
+    // different timing and packing rules. These functions decode those payloads
+    // and write rows into the already-created schema tables.
 
     int dumpBitTagLog(const BitTagLog &log)
     {

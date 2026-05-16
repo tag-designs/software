@@ -77,7 +77,8 @@ SensorStream makeCompassStream(
 bool compassRecordHasExpectedColumns(const SensorRecordSet &compass)
 {
     // Validate the loaded record set before indexing parallel columns. Missing
-    // columns usually mean a schema drift that needs loader/profile work.
+    // columns usually mean a schema drift in tagcore's streams metadata or the
+    // loader's record-set handling.
     const qsizetype sample_count = compass.time.size();
     return compass.columns.value("ax").size() == sample_count
         && compass.columns.value("ay").size() == sample_count

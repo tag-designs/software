@@ -212,7 +212,7 @@ void MainWindow::addRangeAction(const SensorStream &stream)
 QCPRange MainWindow::defaultRangeForStream(const SensorStream &stream) const
 {
     // Default y-axis range priority:
-    // 1. fixed profile range, such as activity 0-100 or voltage 0-5;
+    // 1. fixed metadata range, such as activity 0-100 or voltage 0-5;
     // 2. data-derived range with 5% padding.
     // Custom user ranges are handled by setStreamRange()/rebuildPlot() before
     // this helper is consulted.

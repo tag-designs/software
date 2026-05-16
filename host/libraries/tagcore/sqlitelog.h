@@ -23,9 +23,12 @@ class Tag;
  *   Qt host applications show messages through their existing log window hook.
  *
  * The current data-log writer supports BitTag, CompassTag, and PresTag records.
- * writeLog() preserves the shared download convention: positive values mean
- * records were consumed, 0 means no matching log payload in the Ack, and
- * negative values mean an error or unsupported tag.
+ * New databases include schema_info and streams metadata tables so external
+ * tools can discover stream ids, labels, units, ranges, and source columns
+ * without depending on sensorViz source code. writeLog() preserves the shared
+ * download convention: positive values mean records were consumed, 0 means no
+ * matching log payload in the Ack, and negative values mean an error or
+ * unsupported tag.
  */
 class SqliteTagLogWriter : public TagLogWriter
 {

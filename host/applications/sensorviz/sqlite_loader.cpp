@@ -1,27 +1,29 @@
 #include "sqlite_loader.h"
 
-#include "sensorprofile.h"
-
+#include <QColor>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QMap>
 
 #include <sqlite3.h>
 
-// SQLite logs from different tag types share table conventions, but no single
-// tag is expected to write every table. This file is the adapter from that
-// sparse on-disk schema to sensorViz's normalized SensorLog model.
-//
-// To add support for a new scalar table:
-// - confirm the table has an Epoch column and one numeric value column
-// - add one ScalarStreamDefinition in sensorprofile.cpp
-// - choose a stable stream id; controls.cpp uses ids for transforms and ranges
-//
-// To add support for a multi-column table, add a RecordSetDefinition. Later
-// transform code can consume that record set and produce plottable streams.
+// SQLite logs are self-describing: tagcore writes a mandatory streams metadata
+// table alongside the sensor tables. This file is the adapter from that on-disk
+// metadata to sensorViz's normalized SensorLog model. Derived display features
+// such as altitude, activity filtering, and compass orientation still live in
+// sensorViz; the database describes the stored streams and record-set columns.
 
 namespace
 {
+
+// ---------------------------------------------------------------------------
+// SQLite RAII Wrappers
+// ---------------------------------------------------------------------------
+//
+// These classes are intentionally tiny and private to this file. They hide the
+// sqlite3 C API from the rest of sensorViz while preserving enough error detail
+// for the File -> Load failure dialog.
 
 // Small RAII wrappers keep the SQLite C API localized to this file. sensorViz
 // only needs read-only queries, so these wrappers intentionally stay minimal.
@@ -146,6 +148,16 @@ public:
         return sqlite3_column_double(stmt_, column);
     }
 
+    int intColumn(int column) const
+    {
+        return sqlite3_column_int(stmt_, column);
+    }
+
+    bool isNull(int column) const
+    {
+        return sqlite3_column_type(stmt_, column) == SQLITE_NULL;
+    }
+
     QString textColumn(int column) const
     {
         // Info values and JSON blobs are UTF-8 text in current logs.
@@ -174,10 +186,93 @@ private:
     QString last_error_;
 };
 
+// ---------------------------------------------------------------------------
+// Loader Metadata Types
+// ---------------------------------------------------------------------------
+//
+// StreamMetadata is the in-memory copy of one row from tagcore's streams table.
+// Rows with kind="scalar" become SensorStream objects. Rows with
+// kind="record_column" are grouped by groupId and become SensorRecordSet
+// objects for transform code such as CompassTag orientation derivation.
+
+struct StreamMetadata
+{
+    QString id;
+    QString groupId;
+    QString groupName;
+    QString table;
+    QString timeColumn;
+    QString valueColumn;
+    QString kind;
+    QString displayName;
+    QString units;
+};
+
+struct StreamDisplayDefaults
+{
+    QColor color = QColor(80, 100, 140);
+    bool defaultVisible = true;
+    SensorAxisSide axisSide = SensorAxisSide::Left;
+    SensorAxisRange axisRange;
+};
+
+// ---------------------------------------------------------------------------
+// Generic Helpers
+// ---------------------------------------------------------------------------
+//
+// Helpers in this section normalize SQLite/schema vocabulary into sensorViz
+// model values. They do not query sensor data rows.
+
+QString displayNameForTag(const QString &tag_type)
+{
+    if (tag_type.compare("PRESTAG", Qt::CaseInsensitive) == 0) {
+        return "PresTag";
+    }
+    if (tag_type.compare("BITTAG", Qt::CaseInsensitive) == 0) {
+        return "BitTag";
+    }
+    if (tag_type.compare("COMPASSTAG", Qt::CaseInsensitive) == 0) {
+        return "CompassTag";
+    }
+    if (!tag_type.isEmpty()) {
+        return tag_type;
+    }
+    return "Sensor log";
+}
+
+QString quotedIdentifier(const QString &identifier)
+{
+    QString escaped = identifier;
+    escaped.replace("\"", "\"\"");
+    return "\"" + escaped + "\"";
+}
+
+StreamDisplayDefaults displayDefaultsForStream(const QString &stream_id)
+{
+    // These are viewer presentation choices, not part of the SQLite scientific
+    // data contract. Keep them keyed by stable stream id so future viewers can
+    // choose their own colors/ranges while tagcore logs remain tool-neutral.
+    if (stream_id == "activity") {
+        return {QColor(30, 90, 180), true, SensorAxisSide::Left, {true, 0.0, 100.0}};
+    }
+    if (stream_id == "pressure") {
+        return {QColor(25, 130, 105), true, SensorAxisSide::Left, {}};
+    }
+    if (stream_id == "sensor_temperature") {
+        return {QColor(210, 95, 35), true, SensorAxisSide::Left, {}};
+    }
+    if (stream_id == "core_temperature") {
+        return {QColor(180, 55, 55), false, SensorAxisSide::Right, {true, 0.0, 50.0}};
+    }
+    if (stream_id == "voltage") {
+        return {QColor(60, 145, 75), false, SensorAxisSide::Right, {true, 0.0, 5.0}};
+    }
+    return {};
+}
+
 bool tableExistsRaw(Database &db, const QString &table_name)
 {
-    // Case-insensitive optional-table test. Missing optional tables are normal;
-    // this check avoids preparing SELECTs against tables a tag never wrote.
+    // Case-insensitive table test used before loading metadata-described data.
     sqlite3_stmt *stmt = nullptr;
     const char *sql = "SELECT 1 FROM sqlite_master WHERE type='table' AND lower(name)=lower(?)";
     if (sqlite3_prepare_v2(db.get(), sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -190,37 +285,107 @@ bool tableExistsRaw(Database &db, const QString &table_name)
     return exists;
 }
 
-// Convert one optional SQLite table into a SensorStream. A missing table is not
-// an error because each tag type writes a different subset of sensor tables.
-// A present-but-invalid table is an error because that usually means the log
-// was produced with a schema this viewer does not understand yet.
+// ---------------------------------------------------------------------------
+// Metadata Loading
+// ---------------------------------------------------------------------------
+//
+// The streams table is mandatory for new SQLite logs. Loading it first gives
+// sensorViz the table names, column names, labels, and units needed to read the
+// actual sensor samples.
+
+bool loadStreamMetadata(Database &db, QVector<StreamMetadata> &metadata, QString &error)
+{
+    if (!tableExistsRaw(db, "streams")) {
+        error = "SQLite log does not contain required stream metadata";
+        return false;
+    }
+
+    Statement stmt(
+        db,
+        "SELECT stream_id, group_id, group_name, table_name, time_column, "
+        "value_column, stream_kind, display_name, units "
+        "FROM streams ORDER BY rowid");
+    if (!stmt.valid()) {
+        error = "Failed to load stream metadata: " + stmt.lastError();
+        return false;
+    }
+
+    while (stmt.next()) {
+        StreamMetadata stream;
+        stream.id = stmt.textColumn(0);
+        stream.groupId = stmt.textColumn(1);
+        stream.groupName = stmt.textColumn(2);
+        stream.table = stmt.textColumn(3);
+        stream.timeColumn = stmt.textColumn(4);
+        stream.valueColumn = stmt.textColumn(5);
+        stream.kind = stmt.textColumn(6);
+        stream.displayName = stmt.textColumn(7);
+        stream.units = stmt.textColumn(8);
+
+        if (stream.id.isEmpty()
+            || stream.table.isEmpty()
+            || stream.timeColumn.isEmpty()
+            || stream.valueColumn.isEmpty()
+            || stream.kind.isEmpty()
+            || stream.displayName.isEmpty()) {
+            error = "Stream metadata contains an incomplete row";
+            return false;
+        }
+
+        metadata.append(stream);
+    }
+
+    if (metadata.isEmpty()) {
+        error = "SQLite log contains no stream metadata rows";
+        return false;
+    }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Sensor Data Loading
+// ---------------------------------------------------------------------------
+//
+// These functions use StreamMetadata to query the referenced tables. Scalar
+// rows become plottable streams. Record-column rows are loaded together as one
+// multi-column record set for later transform code.
+
+// Convert one metadata-described SQLite column into a SensorStream. Metadata is
+// mandatory in the new schema, so a missing referenced table/column is a schema
+// error rather than a normal optional-table condition.
 bool loadStream(
     Database &db,
-    const ScalarStreamDefinition &definition,
+    const StreamMetadata &definition,
     SensorLog &log,
     QString &error)
 {
     if (!tableExistsRaw(db, definition.table)) {
-        return true;
+        error = QString("Stream metadata references missing table %1").arg(definition.table);
+        return false;
     }
 
-    const QString sql = QString("SELECT Epoch, %1 FROM %2 ORDER BY Epoch")
-                            .arg(definition.valueColumn, definition.table);
+    const QString sql = QString("SELECT %1, %2 FROM %3 ORDER BY %1")
+                            .arg(
+                                quotedIdentifier(definition.timeColumn),
+                                quotedIdentifier(definition.valueColumn),
+                                quotedIdentifier(definition.table));
     const QByteArray utf8_sql = sql.toUtf8();
     Statement stmt(db, utf8_sql.constData());
     if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2").arg(definition.label, stmt.lastError());
+        error = QString("Failed to load %1: %2").arg(definition.displayName, stmt.lastError());
         return false;
     }
 
     SensorStream stream;
     stream.id = definition.id;
-    stream.label = definition.label;
+    stream.label = definition.displayName;
     stream.units = definition.units;
-    stream.color = definition.color;
-    stream.defaultVisible = definition.defaultVisible;
-    stream.axisSide = definition.axisSide;
-    stream.axisRange = definition.axisRange;
+    const StreamDisplayDefaults defaults = displayDefaultsForStream(definition.id);
+    stream.color = defaults.color;
+    stream.defaultVisible = defaults.defaultVisible;
+    stream.axisSide = defaults.axisSide;
+    stream.axisRange = defaults.axisRange;
 
     while (stmt.next()) {
         stream.time.append(stmt.int64Column(0));
@@ -241,37 +406,55 @@ bool loadStream(
 // several computed streams and/or a specialized visualization panel.
 bool loadRecordSet(
     Database &db,
-    const RecordSetDefinition &definition,
+    const QString &group_id,
+    const QVector<StreamMetadata> &columns,
     SensorLog &log,
     QString &error)
 {
-    if (!tableExistsRaw(db, definition.table)) {
+    if (columns.isEmpty()) {
         return true;
     }
 
+    const StreamMetadata first = columns.first();
+    if (!tableExistsRaw(db, first.table)) {
+        error = QString("Stream metadata references missing table %1").arg(first.table);
+        return false;
+    }
+
     QStringList select_columns;
-    select_columns << "Epoch";
-    select_columns << definition.valueColumns;
-    const QString sql = QString("SELECT %1 FROM %2 ORDER BY Epoch")
-                            .arg(select_columns.join(", "), definition.table);
+    select_columns << quotedIdentifier(first.timeColumn);
+    for (const StreamMetadata &column : columns) {
+        if (column.table != first.table || column.timeColumn != first.timeColumn) {
+            error = QString("Record set %1 mixes tables or time columns").arg(group_id);
+            return false;
+        }
+        select_columns << quotedIdentifier(column.valueColumn);
+    }
+
+    const QString sql = QString("SELECT %1 FROM %2 ORDER BY %3")
+                            .arg(
+                                select_columns.join(", "),
+                                quotedIdentifier(first.table),
+                                quotedIdentifier(first.timeColumn));
     const QByteArray utf8_sql = sql.toUtf8();
     Statement stmt(db, utf8_sql.constData());
     if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2").arg(definition.label, stmt.lastError());
+        error = QString("Failed to load %1: %2")
+                    .arg(first.groupName.isEmpty() ? group_id : first.groupName, stmt.lastError());
         return false;
     }
 
     SensorRecordSet record_set;
-    record_set.id = definition.id;
-    record_set.label = definition.label;
-    for (const QString &column : definition.valueColumns) {
-        record_set.columns.insert(column, QVector<double>());
+    record_set.id = group_id;
+    record_set.label = first.groupName.isEmpty() ? group_id : first.groupName;
+    for (const StreamMetadata &column : columns) {
+        record_set.columns.insert(column.valueColumn, QVector<double>());
     }
 
     while (stmt.next()) {
         record_set.time.append(stmt.int64Column(0));
-        for (int i = 0; i < definition.valueColumns.size(); i++) {
-            record_set.columns[definition.valueColumns[i]].append(stmt.doubleColumn(i + 1));
+        for (int i = 0; i < columns.size(); i++) {
+            record_set.columns[columns[i].valueColumn].append(stmt.doubleColumn(i + 1));
         }
     }
 
@@ -282,6 +465,14 @@ bool loadRecordSet(
     log.recordSets.append(record_set);
     return true;
 }
+
+// ---------------------------------------------------------------------------
+// Specialized Metadata Loading
+// ---------------------------------------------------------------------------
+//
+// Calibration constants are not ordinary plottable streams, but CompassTag
+// derived streams need them. Keep this parsing isolated so the public loader can
+// assemble SensorLog without exposing SQLite details to transform code.
 
 bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 {
@@ -330,11 +521,20 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 
 } // namespace
 
+// ---------------------------------------------------------------------------
+// Public Loader
+// ---------------------------------------------------------------------------
+//
+// This is the only function called by the rest of sensorViz. It orchestrates
+// opening the database, copying file metadata, loading stream metadata, loading
+// data tables, and publishing a complete SensorLog only after all required
+// pieces have succeeded.
+
 bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
 {
-    // Public load orchestration: open the database, read metadata, apply the
-    // selected profile's optional table definitions, then atomically replace
-    // the caller's SensorLog on success.
+    // Public load orchestration: open the database, read metadata, load the
+    // self-described streams/record sets, then atomically replace the caller's
+    // SensorLog on success.
     Database db(path);
     if (!db.isOpen()) {
         error = "Could not open database: " + db.lastError();
@@ -358,17 +558,34 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         }
     }
 
-    // The profile is selected after reading metadata, but table availability is
-    // still the source of truth. Definitions for missing tables are ignored.
-    const SensorProfile profile = sensorProfileForTag(loaded.tagType);
-    loaded.profileName = profile.displayName;
-    for (const ScalarStreamDefinition &definition : profile.scalarStreams) {
-        if (!loadStream(db, definition, loaded, error)) {
+    loaded.profileName = displayNameForTag(loaded.tagType);
+
+    QVector<StreamMetadata> stream_metadata;
+    if (!loadStreamMetadata(db, stream_metadata, error)) {
+        return false;
+    }
+
+    QMap<QString, QVector<StreamMetadata>> record_sets;
+    for (const StreamMetadata &definition : stream_metadata) {
+        if (definition.kind.compare("scalar", Qt::CaseInsensitive) == 0) {
+            if (!loadStream(db, definition, loaded, error)) {
+                return false;
+            }
+        } else if (definition.kind.compare("record_column", Qt::CaseInsensitive) == 0) {
+            if (definition.groupId.isEmpty()) {
+                error = QString("Record column %1 does not specify a group").arg(definition.id);
+                return false;
+            }
+            record_sets[definition.groupId].append(definition);
+        } else {
+            error = QString("Unsupported stream kind %1 for stream %2")
+                        .arg(definition.kind, definition.id);
             return false;
         }
     }
-    for (const RecordSetDefinition &definition : profile.recordSets) {
-        if (!loadRecordSet(db, definition, loaded, error)) {
+
+    for (auto it = record_sets.cbegin(); it != record_sets.cend(); ++it) {
+        if (!loadRecordSet(db, it.key(), it.value(), loaded, error)) {
             return false;
         }
     }

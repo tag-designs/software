@@ -15,8 +15,8 @@
 // 4. Update File Info, tag-dependent menus, and the plot.
 //
 // If the application opens a file but does not show the expected streams, check
-// sensorprofile.cpp first to see whether the table has a definition, then check
-// sqlite_loader.cpp to see whether that definition was loaded successfully.
+// the database streams table first, then sqlite_loader.cpp to see whether that
+// metadata was loaded successfully.
 void MainWindow::loadLog()
 {
     // This is the only file-open path. It asks SqliteLoader for a fresh
@@ -45,8 +45,8 @@ void MainWindow::loadLog()
     custom_axis_ranges_.clear();
     explicit_axis_ranges_.clear();
 
-    // Default visibility comes from sensorprofile.cpp. The QAction state is the
-    // runtime source of truth after this point.
+    // Default visibility comes from the database streams metadata. The QAction
+    // state is the runtime source of truth after this point.
     clearStreamActions();
     for (const SensorStream &stream : streams_) {
         addStreamAction(stream, stream.defaultVisible);

@@ -37,14 +37,10 @@ class QSplitter;
 //   menu actions for each stream, updates the File Info tab, and refreshes the
 //   plot. If a file opens but the app state is wrong after loading, start there.
 //
-// - sensorprofile.cpp describes known log tables, default stream visibility,
-//   future record sets, and transform metadata. If a new tag type or table needs
-//   to be recognized, start there.
-//
-// - sqlite_loader.cpp applies the profile definitions to the on-disk SQLite
-//   schema. It maps scalar tables into SensorStream objects and multi-column
-//   tables into SensorRecordSet objects. If a table definition exists but does
-//   not load correctly, start there.
+// - sqlite_loader.cpp reads tagcore's streams metadata table from the on-disk
+//   SQLite schema. It maps scalar stream rows into SensorStream objects and
+//   grouped record-column rows into SensorRecordSet objects. If a table exists
+//   but does not load correctly, start there.
 //
 // - stream_actions.cpp owns stream visibility and range menu actions.
 //

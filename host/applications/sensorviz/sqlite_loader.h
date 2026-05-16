@@ -11,11 +11,9 @@
 class SqliteLoader
 {
 public:
-    // Load a tag SQLite log into display streams. The loader treats sensor
-    // tables as optional: a PresTag may have Pressure without Activity, while a
-    // BitTag may have Activity without Pressure. Missing tables are ignored,
-    // malformed present tables are errors, and at least one supported stream is
-    // required for success.
+    // Load a tag SQLite log into display streams. New SQLite logs are expected
+    // to contain tagcore's mandatory streams metadata table; malformed or
+    // missing metadata is an error because the database is the schema authority.
     static bool load(const QString &path, SensorLog &log, QString &error);
 };
 

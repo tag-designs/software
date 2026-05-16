@@ -10,8 +10,8 @@
 
 // sensorstream.h defines the normalized data model used everywhere after the
 // SQLite loader finishes. The rest of sensorViz should work with these types
-// rather than with database table names, so new tags can be added mostly by
-// extending sensorprofile.cpp and sqlite_loader.cpp.
+// rather than with database table names. New stored streams are described by
+// the SQLite streams metadata written by tagcore.
 
 // Which side of the plot a stream's value axis should occupy. Profiles use
 // this to keep diagnostics such as voltage/temperature on the right while most
@@ -33,7 +33,8 @@ struct SensorAxisRange
 
 // sensorViz has two layers of data:
 //
-// 1. SqliteLoader reads whatever optional tables exist in the database.
+// 1. SqliteLoader reads the database streams metadata and the tables it
+//    references.
 // 2. The UI consumes normalized SensorStream and SensorRecordSet objects and
 //    does not care which tag type produced them.
 //
@@ -64,8 +65,9 @@ struct SensorStream
     bool defaultVisible = true;
 
     // Stable plotting defaults. These keep diagnostic streams such as voltage
-    // and core temperature on the right and let profiles set sane default
-    // ranges, while still allowing user-configured ranges to override them.
+    // and core temperature on the right and let database metadata set sane
+    // default ranges, while still allowing user-configured ranges to override
+    // them.
     SensorAxisSide axisSide = SensorAxisSide::Left;
     SensorAxisRange axisRange;
 };
@@ -100,7 +102,7 @@ struct SensorLog
     // by actual streams/record sets, not this string.
     QString tagType;
 
-    // Human-readable profile name selected from tagType.
+    // Human-readable tag/log family name selected from Info.tagtype.
     QString profileName;
 
     // Raw info table values, with large opaque config/info blobs filtered out

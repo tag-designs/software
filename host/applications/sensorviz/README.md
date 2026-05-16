@@ -9,7 +9,7 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 ## What It Does
 
 - Loads SQLite log files produced by host tag download tools.
-- Discovers available streams from the tables present in the file.
+- Discovers available streams from the SQLite `streams` metadata table.
 - Plots scalar streams such as pressure, activity, voltage, and temperature.
 - Provides display transforms such as:
   - altitude from pressure
@@ -31,10 +31,9 @@ The code is split by responsibility:
 - `mainwindow.*`: static Qt UI construction and application state.
 - `dataloading.cpp`: file-open workflow, stream replacement, and metadata
   display.
-- `sqlite_loader.*`: SQLite read-only adapter.
+- `sqlite_loader.*`: SQLite read-only adapter that consumes tagcore stream
+  metadata.
 - `sensorstream.h`: normalized in-memory data model.
-- `sensorprofile.*`: known stream/table definitions, default visibility, axis
-  defaults, record-set definitions, and transform metadata.
 - `stream_actions.cpp`: stream visibility, View actions, and per-stream range
   actions.
 - `transforms.cpp`: scalar display transforms such as altitude and activity
@@ -53,12 +52,12 @@ The code is split by responsibility:
 Most SensorViz changes should start in one of four places:
 
 - New SQLite table or tag family:
-  update `sensorprofile.cpp` first. Add a scalar stream definition for
-  one-value time series, or a record-set definition for multi-column data that
-  will later feed transforms.
+  update the tagcore SQLite stream/table catalog first. Add scalar stream
+  metadata for one-value time series, or grouped `record_column` metadata for
+  multi-column data that will later feed transforms.
 - Table exists but does not load:
-  check `sqlite_loader.cpp`. The loader applies profile definitions to the
-  actual SQLite schema and decides which missing tables are harmless.
+  check `sqlite_loader.cpp`. The loader applies the database `streams` metadata
+  to the actual SQLite schema; missing referenced tables are schema errors.
 - File loads but menu state, default visibility, or metadata is wrong:
   check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
   actions, clears old custom ranges, and updates File Info.
@@ -91,9 +90,9 @@ Keeping calibration beside the raw compass record set lets future compass
 transforms derive heading, pitch, roll, and related streams without reparsing
 the SQLite JSON.
 
-`SensorProfile` describes how SQLite tables map into those data structures.
-Adding a simple one-column sensor table should usually start in
-`sensorprofile.cpp`, not in `MainWindow`.
+The SQLite `streams` table describes how stored tables map into these data
+structures. Adding a simple one-column sensor table should usually start in
+`host/libraries/tagcore/sqlitelog.cc`, not in `MainWindow`.
 
 ## Plotting Rules
 
@@ -101,7 +100,8 @@ Adding a simple one-column sensor table should usually start in
 - Voltage defaults off, stays on the right axis, and uses fixed `0-5 V`.
 - Core temperature defaults off, stays on the right axis, and uses fixed
   `0-50 C`.
-- Other streams default to the left axis unless the profile says otherwise.
+- Other streams default to the left axis unless the database metadata says
+  otherwise.
 - Autoscaled y-axes get a 5% margin.
 - Displayed streams can have explicit y-axis ranges set from the View menu or
   plot context menu.
@@ -131,7 +131,7 @@ from the currently displayed streams. Each range action stores the stream id in
 Range precedence is:
 
 1. A user-set custom range in `custom_axis_ranges_`.
-2. A fixed profile range from `SensorStream::axisRange`.
+2. A fixed metadata range from `SensorStream::axisRange`.
 3. The data min/max padded by 5%.
 
 `Reset Zoom` clears custom y-axis ranges and restores defaults. It also resets

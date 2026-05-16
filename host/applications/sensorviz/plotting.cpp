@@ -150,7 +150,7 @@ void MainWindow::resetZoom()
         return;
     }
 
-    // Reset Zoom means "return to the profile/data defaults", not merely
+    // Reset Zoom means "return to the metadata/data defaults", not merely
     // "show the full time window". Clear both manual ranges and linked ranges
     // such as the altitude range derived from pressure.
     custom_axis_ranges_.clear();

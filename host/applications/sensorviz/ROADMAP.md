@@ -13,6 +13,8 @@ altitude, low-pass activity, and CompassTag-derived scalar streams.
 Recent checkpoint:
 
 - `9b7bba8 Refactor sensorviz profiles and plot ranges`
+- SQLite log stream/table definitions have moved into tagcore. New logs carry
+  a mandatory `streams` table that sensorViz uses as the schema authority.
 
 The important architecture pieces are:
 
@@ -22,16 +24,11 @@ The important architecture pieces are:
     as compass accel/magnetometer samples.
   - `SensorLog` contains metadata, streams, and record sets.
 
-- `sensorprofile.*`: profile and table definitions.
-  - Defines scalar stream table mappings.
-  - Defines record set mappings such as future `compass_raw`.
-  - Defines transform metadata for altitude and activity low-pass.
-  - Owns default visibility, axis side, and fixed axis ranges.
-
 - `sqlite_loader.*`: SQLite adapter.
-  - Reads profile definitions and loads optional tables when present.
-  - Missing tables are normal; present malformed tables are errors.
-  - Loads multi-column record sets but does not process them yet.
+  - Reads tagcore's mandatory `streams` metadata table.
+  - Loads scalar stream rows into `SensorStream`.
+  - Loads grouped `record_column` rows into `SensorRecordSet`.
+  - Missing metadata or referenced tables are schema errors.
 
 - `dataloading.cpp`: file load workflow.
   - Replaces current `SensorLog`.
@@ -68,7 +65,8 @@ The important architecture pieces are:
 - Voltage defaults off, stays on the right axis, and uses fixed `0-5 V`.
 - Core temperature defaults off, stays on the right axis, and uses fixed
   `0-50 C`.
-- Other streams default to the left axis unless the profile says otherwise.
+- Other streams default to the left axis unless the SQLite stream metadata says
+  otherwise.
 - Cursors are hidden until data is loaded.
 - Altitude and Activity Filter live under Configuration and are not duplicated
   in the View menu.
@@ -88,8 +86,9 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
 1. Keep `compviz` working as-is for now.
 2. Use `SensorRecordSet` to load compass raw data:
    - table: `Compass`
+   - metadata kind: `record_column`
    - columns: `ax`, `ay`, `az`, `mx`, `my`, `mz`
-   - record id: `compass_raw`
+   - group id: `compass_raw`
 3. Load the latest CompassTag calibration row into typed `SensorLog` metadata.
 4. Use the shared `sensoranalysis` eCompass/orientation helpers from a transform
    module.
@@ -99,8 +98,6 @@ The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
 
 ## Likely Next Refactors
 
-- Generate transform actions from `SensorTransformDefinition` instead of keeping
-  altitude/activity filter actions hardcoded in `MainWindow`.
 - Move transform parameter dialogs behind transform-specific configuration
   helpers.
 - Add persistent transform/display settings with `QSettings`.
