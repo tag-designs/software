@@ -1,6 +1,7 @@
 #include "hal.h"
 #include "ch.h"
 
+#include "adc.h"
 
 #ifndef US2RTC
 #define US2RTC(freq, usec) (rtcnt_t)((((freq) + 999999UL) / 1000000UL) * (usec))
@@ -96,4 +97,3 @@ void adc1DisableVREF(void) { ADC1_COMMON->CCR &= ~ADC_CCR_VREFEN; }
 void adc1EnableTS(void) { ADC1_COMMON->CCR |= ADC_CCR_TSEN; }
 
 void adc1DisableTS(void) { ADC1_COMMON->CCR &= ~ADC_CCR_TSEN; }
-

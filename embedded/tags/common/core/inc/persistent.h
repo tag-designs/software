@@ -1,7 +1,11 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
-//#include "tagdata.pb.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "tag.pb.h"
+#include "config.h"
 
 // Reset causes
 

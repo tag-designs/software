@@ -1,6 +1,9 @@
 #include "hal.h"
-#include "app.h"
 #include "hal_rtc_lld.h"
+
+#include "core_types.h"
+#include "rtc_api.h"
+#include "timekeeping.h"
 
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
 

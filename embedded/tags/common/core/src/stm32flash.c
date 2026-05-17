@@ -1,5 +1,6 @@
 #include "hal.h"
-#include "app.h"
+
+#include "flash_internal.h"
 
 #define FLASH_KEY1 ((uint32_t)0x45670123U) /*!< Flash key1 */
 #define FLASH_KEY2 \
@@ -110,4 +111,3 @@ uint32_t FLASH_Program_Array(uint32_t *Address, uint32_t *array, int words) {
     }
     return 0;
 }
-

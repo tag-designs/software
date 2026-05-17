@@ -13,14 +13,17 @@
  *
  ****************************************************************/
 #include <stdint.h>
+#include <stdbool.h>
 #include "hal.h"
 
-#include "app.h"
+#include "adc.h"
 #include "tag.pb.h"
 #include "config.h"
+#include "core_sync.h"
+#include "custom.h"
+#include "flash_internal.h"
 #include "persistent.h"
 #include "datalog.h"
-#include "monitor.h"
 #include "external_flash.h"
 #include "strings.h"
 #include "assert.h"

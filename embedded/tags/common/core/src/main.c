@@ -1,6 +1,16 @@
 #include "hal.h"
-#include "app.h"
 #include "tag.pb.h"
+
+#include "adc.h"
+#include "core_events.h"
+#include "core_runtime.h"
+#include "core_sync.h"
+#include "core_types.h"
+#include "custom.h"
+#include "persistent.h"
+#include "power.h"
+#include "rtc_api.h"
+#include "timekeeping.h"
 
 #if defined(USE_ADXL362)
 #include "ADXL362.h"
@@ -11,7 +21,6 @@
 #endif
 
 #include "config.h"
-#include "persistent.h"
 //#include "lis2du12.h"
 
 // synchronization variables

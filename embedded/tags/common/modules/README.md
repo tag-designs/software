@@ -115,7 +115,9 @@ hooks in `pwr.c`; current active tags provide local `src/pwr.c` overrides, so
 they no longer list `pwr.c` directly in `ALLCSRC`. The old monolithic
 `app.h` now acts as a compatibility umbrella over topic-specific headers such
 as `adc.h`, `core_events.h`, `power.h`, and `timekeeping.h`. New code should
-prefer the narrow header for the subsystem it uses.
+prefer the narrow header for the subsystem it uses. Shared code under
+`common/core/src` should not include `app.h`; that keeps header dependencies
+visible and lets `app.h` shrink over time.
 
 Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
 `flash_mx25l`, and `flash_mx25r` select the external-memory implementation used

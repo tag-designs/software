@@ -1,8 +1,9 @@
 #ifndef APP_H
 #define APP_H
 
-// Compatibility umbrella for tag firmware. New code should prefer including
-// the narrower topic headers below.
+// Compatibility umbrella for tag firmware. Shared common code should include
+// the narrower topic headers below directly; this remains for tag-local code
+// that has not yet been migrated.
 #include "ch.h"
 #include "hal.h"
 #include "monitor.h"

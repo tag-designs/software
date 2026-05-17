@@ -1,15 +1,24 @@
 #include "hal.h"
 #include "monitor.h"
-#include "app.h"
 #include <tag.pb.h>
 
+#include "adc.h"
 #include "config.h"
+#include "core_events.h"
+#include "core_sync.h"
+#include "core_types.h"
+#include "custom.h"
+#include "debug_log.h"
 #include "persistent.h"
+#include "sensor_calibration.h"
+#include "test_support.h"
+#include "timekeeping.h"
 #include "version.h"
 
 #include <pb_decode.h>
 #include <pb_encode.h>
 #include <stdint.h>
+#include <string.h>
 #include <strings.h>
 
 #define MAJOR_VERSION "1"
