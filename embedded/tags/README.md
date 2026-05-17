@@ -33,9 +33,8 @@ grouped by sensor family.
 
 When selecting a module is the same as enabling a firmware capability, the
 module fragment defines that capability through `UDEFS`. For example,
-`rtc_rv3028` defines `TAG_RTC_RV3028` and compatibility switch `RV3028_RTC`,
-while `sensor_accel_adxl362` defines `TAG_SENSOR_ACCEL_ADXL362` and
-compatibility switch `USE_ADXL362`. Keep those module-selection switches out of
+`rtc_rv3028` defines `TAG_RTC_RV3028`, while `sensor_accel_adxl362` defines
+`TAG_SENSOR_ACCEL_ADXL362`. Keep those module-selection switches out of
 `inc/custom.h`; reserve `custom.h` for tag identity, constants, bus choices,
 pin aliases, and behavior that is not equivalent to adding a module.
 
