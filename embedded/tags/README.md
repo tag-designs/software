@@ -45,6 +45,107 @@ module to enable the in-firmware debug-message buffer and monitor `Req_debug`
 support; do not enable debug logging by defining `DEBUG_MESSAGES` in
 `custom.h`.
 
+## Diagnostic Architecture
+
+The tag diagnostic code has two separate pieces:
+
+- `debug_log`: an optional in-firmware text buffer that the monitor can drain.
+- `tag_test`: the shared self-test command entry point used by active tags.
+
+### Debug Logging
+
+`debug_log` is intentionally a build module, not a `custom.h` define. A tag that
+wants monitor-readable diagnostic text lists the module in `TAG_MODULES`:
+
+```make
+TAG_MODULES += \
+       tag_core \
+       debug_log
+```
+
+The module compiles `common/core/src/debug_log.c`, adds the ChibiOS stream
+helpers, and defines `TAG_DEBUG_LOG` plus the legacy compatibility name
+`DEBUG_MESSAGES`. New code should test `TAG_DEBUG_LOG` or, preferably, include
+`debug_log.h` and call the public helpers without adding local preprocessor
+guards.
+
+The runtime flow is:
+
+1. `common/core/src/handlers.c` calls `debug_log_init()` when the monitor
+   handling thread starts.
+2. Driver or runtime code writes optional messages with `debug_log_printf()`.
+3. `common/core/src/monitor.c` reports `Ack.status.debug_available`.
+4. A host `Req_debug` request drains one `Ack.debug_message` payload with
+   `debug_log_read()`.
+
+When the module is absent, `debug_log.h` provides no-op inline helpers. That
+lets shared drivers keep low-cost diagnostic calls in place while tags that do
+not select `debug_log` pay no buffer or stream cost. The implementation also
+guards against the early-boot case: reads and writes return `0` until
+`debug_log_init()` has initialized the backing memory stream.
+
+Use debug logging for short diagnostics that may help explain hardware
+bring-up, intermittent device failures, or self-test results. It is not a
+general event log; the buffer is sized to one protobuf debug-message payload
+and is drained by the monitor protocol.
+
+### Self Tests
+
+`tag_test` provides the shared monitor-facing diagnostic entry point. Active
+targets should list it in `TAG_MODULES` when they want monitor self-test
+support:
+
+```make
+TAG_MODULES += \
+       tag_core \
+       tag_test
+```
+
+The shared driver lives in `common/test/src/test.c`. It does not know how to
+exercise each device directly. Instead, it maps monitor `TestReq` values onto
+small hook functions declared in `common/core/inc/test_support.h` and provided
+by the module, tag family, or tag-local code that owns the hardware.
+
+Current hook examples:
+
+- `tag_test_adxl362()` lives with the ADXL362 accelerometer module.
+- `tag_test_rtc()` lives with the RV-3028 RTC module.
+- `tag_test_external_flash()` lives with the external-flash support code.
+- `tag_test_lis2du12()` lives in the CompassTag family, because those variants
+  share the LIS2DU12 implementation.
+- `tag_test_lps22hh()` and `tag_test_ak09940a()` live in `IMUTagBreakout/src`,
+  because that target currently owns those local driver variants.
+
+The compile-time `TAG_*` switches decide which hooks are compiled into the
+shared driver. If a tag selects `sensor_accel_adxl362`, for example, the module
+defines `TAG_SENSOR_ACCEL_ADXL362`, compiles `adxl362_test.c`, and the shared
+driver calls `tag_test_adxl362()` when the monitor requests the ADXL362 test or
+`RUN_ALL`.
+
+Some monitor request names still reflect older hardware:
+
+- `RUN_AIS2` is currently mapped to the LIS2DU12 hook.
+- `RUN_MMC5633` is currently mapped to the AK09940A hook.
+- `RUN_LPS` is shared by the pressure-sensor hooks.
+
+Keep those protocol names stable until the protobuf monitor interface is
+changed. The hook names should still describe the actual device being tested.
+
+When adding a device self-test:
+
+1. Put the test source beside the driver that owns the device, in the relevant
+   module, family, or tag-local `src` directory.
+2. Name the hook for the actual device, for example `tag_test_newsensor()`.
+3. Declare the hook in `test_support.h` under the same `TAG_*` guard used by
+   the module or family manifest.
+4. Add the hook source basename to the owning module or family manifest.
+5. Add the request-to-hook mapping in `common/test/src/test.c`.
+6. Update `CUSTOM_DEFINES.md` and rebuild the active tag targets.
+
+Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point
+really must be replaced. Most tags should share `common/test/src/test.c` and
+only provide device-specific hooks.
+
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
 in `BitTag/src` because they preserve that older firmware behavior and are not
 shared by the active tag targets. Its local `src/monitor.c` and
