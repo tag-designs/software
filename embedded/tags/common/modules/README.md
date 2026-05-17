@@ -35,8 +35,21 @@ up. Current examples:
 
 ```text
 ../core/
+  inc/adc.h
   inc/app.h
+  inc/core_events.h
+  inc/core_runtime.h
+  inc/core_state.h
+  inc/core_sync.h
+  inc/core_types.h
+  inc/debug_log.h
+  inc/flash_internal.h
+  inc/gpio_utils.h
   inc/persistent.h
+  inc/power.h
+  inc/sensor_calibration.h
+  inc/test_support.h
+  inc/timekeeping.h
   src/handlers.c
   src/main.c
   src/monitor.c
@@ -48,6 +61,7 @@ up. Current examples:
   src/time.c
 
 ../rtc/
+  inc/rtc_api.h
   inc/rv3028.h
   inc/rv3032.h
   inc/rv8803.h
@@ -95,11 +109,16 @@ the repo-local override before the ChibiOS HAL implementation.
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
 hooks in `pwr.c`; current active tags provide local `src/pwr.c` overrides, so
-they no longer list `pwr.c` directly in `ALLCSRC`. Storage owns the
-external-memory interface and chip drivers. `flash_at25xe`, `flash_mx25l`, and
-`flash_mx25r` select the external-memory implementation used by a particular
-tag. `storage_paths.mk` is a guarded helper included by those modules and by
-`tag_core`; it is not intended to be listed directly in `TAG_MODULES`.
+they no longer list `pwr.c` directly in `ALLCSRC`. The old monolithic
+`app.h` now acts as a compatibility umbrella over topic-specific headers such
+as `adc.h`, `core_events.h`, `power.h`, and `timekeeping.h`. New code should
+prefer the narrow header for the subsystem it uses.
+
+Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
+`flash_mx25l`, and `flash_mx25r` select the external-memory implementation used
+by a particular tag. `storage_paths.mk` is a guarded helper included by those
+modules and by `tag_core`; it is not intended to be listed directly in
+`TAG_MODULES`.
 
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
