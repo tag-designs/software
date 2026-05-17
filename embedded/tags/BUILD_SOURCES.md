@@ -10,8 +10,8 @@ files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
 The active embedded tag targets in `embedded/tags/CMakeLists.txt` were rebuilt
-from `/Users/geobrown/Build/tag-designs/software-embedded-submodule` after
-regenerating that build tree.
+from `/private/tmp/tag-software-embedded-common-layout-build` after regenerating
+that build tree.
 
 All active embedded tag targets now build successfully in that configuration.
 
@@ -30,7 +30,7 @@ embedded/tags/common/src/bt_state_run.c
 embedded/tags/common/src/hal_rtc_lld.c
 embedded/tags/common/src/handlers.c
 embedded/tags/common/src/main.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -55,7 +55,7 @@ embedded/tags/common/inc/lps.h
 embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
 embedded/tags/common/inc/persistent.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## PresTag
@@ -74,7 +74,7 @@ embedded/tags/common/src/lps27.c
 embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -100,7 +100,7 @@ embedded/tags/common/inc/lps.h
 embedded/tags/common/inc/lps27hhw.h
 embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## BitPresTag
@@ -121,7 +121,7 @@ embedded/tags/common/src/lps27.c
 embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -147,7 +147,7 @@ embedded/tags/common/inc/lps.h
 embedded/tags/common/inc/lps27hhw.h
 embedded/tags/common/inc/mmc5633.h
 embedded/tags/common/inc/opt3002.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## CompassTag
@@ -169,7 +169,7 @@ embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/mx25r.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -191,7 +191,7 @@ embedded/tags/CompassTag/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
 embedded/tags/common/inc/app.h
 embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## CompassTagAT25Breakout
@@ -213,7 +213,7 @@ embedded/tags/common/src/handlers.c
 embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -235,7 +235,7 @@ embedded/tags/CompassTagAT25Breakout/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
 embedded/tags/common/inc/app.h
 embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## CompassTagAT25
@@ -257,7 +257,7 @@ embedded/tags/common/src/handlers.c
 embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -279,7 +279,7 @@ embedded/tags/CompassTagAT25/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
 embedded/tags/common/inc/app.h
 embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## IMUTagBreakout
@@ -302,7 +302,7 @@ embedded/tags/common/src/main.c
 embedded/tags/common/src/monitor.c
 embedded/tags/common/src/mx25l.c
 embedded/tags/common/src/persistent.c
-embedded/tags/common/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/src/state_machine.c
 embedded/tags/common/src/stm32adc.c
 embedded/tags/common/src/stm32flash.c
@@ -326,5 +326,5 @@ embedded/tags/IMUTagBreakout/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
 embedded/tags/common/inc/app.h
 embedded/tags/common/inc/external_flash.h
-embedded/tags/common/inc/rv3028.h
+embedded/tags/common/rtc/inc/rv3028.h
 ```

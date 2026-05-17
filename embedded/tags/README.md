@@ -27,8 +27,14 @@ ALLCSRC += \
 ```
 
 The module fragments are a first step toward making the shared tag runtime more
-understandable. They do not yet move the underlying source files; common source
-files still live in `common/src` and common headers in `common/inc`.
+understandable. Most shared source files still live in `common/src` and common
+headers in `common/inc`; modules can also own real `src` and `inc`
+subdirectories when a subsystem has been split out. For example, the RV3028 RTC
+driver lives under `common/rtc`.
+
+Build-time feature switches live in each target's `inc/custom.h`. See
+[`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
+paths affected by each define.
 
 ## Template Tag Directory
 
@@ -119,16 +125,20 @@ tagdata.pb.c
 The shared tag makefile uses this search order:
 
 ```make
-INCDIR = $(CONFDIR) ./inc ../common/inc $(ALLINC) $(TESTINC)
-VPATH := $(BUILDDIR) ./src ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
+INCDIR = $(CONFDIR) ./inc $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
+VPATH := $(BUILDDIR) ./src $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
 ```
 
-That means tag-local files can override shared defaults by using the same
-basename:
+That means tag-local files can override module or shared defaults by using the
+same basename:
 
 - `./inc/config.h` is found before `../common/inc/config.h`.
 - `./inc/custom.h` is found before any shared `custom.h`.
+- `./inc/rv3028.h` would be found before
+  `../common/rtc/inc/rv3028.h`.
 - `./src/test.c` is found before `../common/src/test.c`.
+- `./src/rtc_rv3028.c` would be found before
+  `../common/rtc/src/rtc_rv3028.c`.
 - `./src/state_machine.c` is found before `../common/src/state_machine.c`.
 
 This ordering is deliberate. ChibiOS `rules.mk` normally sorts include paths and
