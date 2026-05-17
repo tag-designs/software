@@ -78,6 +78,9 @@ up. Current examples:
   src/mx25l.c
   src/mx25r.c
 
+../test/
+  src/test.c
+
 ../sensors/
   accel/
     inc/ADXL362.h
@@ -126,6 +129,11 @@ modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_paths.mk` is a broader guarded helper for shared diagnostic code that
 has compile-time branches for multiple sensor families; it is not intended to
 be listed directly in `TAG_MODULES`.
+
+Test owns the shared factory/diagnostic command implementation. `tag_test`
+adds `../test/src` to the source search path and lists the basename `test.c`,
+so a target can still provide `src/test.c` when its diagnostics are
+tag-specific.
 
 When adding a shared source file:
 

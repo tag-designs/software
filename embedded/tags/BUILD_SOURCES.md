@@ -34,7 +34,7 @@ embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
-embedded/tags/common/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/core/src/time.c
 ```
 
@@ -92,7 +92,7 @@ embedded/tags/common/rtc/src/rtc_rv3028.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
-embedded/tags/common/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/core/src/time.c
 ```
 

@@ -146,7 +146,7 @@ same basename:
 - `./inc/custom.h` is found before any shared `custom.h`.
 - `./inc/rv3028.h` would be found before
   `../common/rtc/inc/rv3028.h`.
-- `./src/test.c` is found before `../common/src/test.c`.
+- `./src/test.c` is found before `../common/test/src/test.c`.
 - `./src/handlers.c` would be found before
   `../common/core/src/handlers.c`.
 - `./src/monitor.c` would be found before
@@ -165,7 +165,7 @@ rules so tag-local `inc` and `src` files can override shared defaults.
 The module fragments intentionally list source basenames rather than full paths
 so this override behavior still works. For example, `tag_test.mk` adds
 `test.c`; a tag with `src/test.c` gets its local test file, while a tag without
-one gets `common/src/test.c`.
+one gets `common/test/src/test.c`.
 
 A few targets rely on this while being split out, notably local `test.c` and,
 for some development targets, local state-machine code. Prefer avoiding new
