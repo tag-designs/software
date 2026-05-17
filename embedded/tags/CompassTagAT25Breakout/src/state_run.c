@@ -47,7 +47,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // round up external short count
 
-    pState->external_blocks = pState->pages*DATALOG_SAMPLES*sizeof(t_DataLog)/2;
+    pState->external_blocks = pState->pages*max_cycles;
 
     // get voltage, internal temperature
 

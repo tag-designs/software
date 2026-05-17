@@ -47,7 +47,7 @@ static void slow_msi(void){
 
 
 extern int encode_ack(void);
-
+/*
 static int countInternalBlocks(void){
   uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
   uint32_t start = ((uint32_t)(&__persistent_start__));
@@ -60,6 +60,17 @@ static int countInternalBlocks(void){
       start += 8;
   }
   return count;
+}
+  */
+
+static int countInternalBlocks(void){
+  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  int i;
+  for (i = 0; &vddHeader[i] < end;i++){
+    if (vddHeader[i].epoch == -1)
+      break;
+  }
+  return i;
 }
 
 static bool eraseExternalSector(int sector){
@@ -102,12 +113,26 @@ void eraseExternal()
 }
 
 // Recover pState from log
+// first check for finished state
 
 int restoreLog(void)
 {
+  // first check if computation was finished
+
+  for (unsigned int i = 0; i < sEPOCH_SIZE; i++){
+     if (sEpoch[i].epoch == -1)
+        break;
+      if (sEpoch[i].state == FINISHED){
+         pState->pages = sEpoch[i].internal_pages;
+         pState->external_blocks = sEpoch[i].external_pages;
+         return sEpoch[i].epoch;
+      }
+  }
+
   pState->pages = countInternalBlocks();
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES*sizeof(t_DataLog)/2;
-  return 0;
+  // we really should read the external page a search it
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES*4;
+  return vddHeader[pState->pages].epoch;
 }
 
 // 

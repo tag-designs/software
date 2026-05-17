@@ -1,135 +1,156 @@
 # sensorViz Development Notes
 
-This note captures the current design state so future work can resume without
-reconstructing the whole conversation from git history.
+This note captures the current `sensorviz` design state and the work that still
+belongs in future passes. The shorter user/maintainer overview is in
+[README.md](README.md).
 
 ## Current State
 
-`sensorviz` is a Qt/QCustomPlot application for viewing SQLite sensor logs from
-multiple tag types. It currently handles scalar streams such as pressure,
-activity, voltage, and temperature, plus display-only transforms such as
-altitude, low-pass activity, and CompassTag-derived scalar streams.
+`sensorviz` is the general Qt/QCustomPlot viewer for SQLite sensor logs produced
+by the host download tools. It currently supports:
 
-Recent checkpoint:
+- scalar streams discovered from the SQLite `streams` metadata table;
+- pressure, activity, voltage, core temperature, and sensor temperature streams;
+- pressure-derived altitude, using ambient sensor temperature when available;
+- activity low-pass display;
+- CompassTag raw record sets converted into heading, acceleration magnitude,
+  pitch, roll, dip, and magnetic field strength streams;
+- CompassTag calibration-constant display;
+- a narrow shared QML compass/orientation panel beside the plot;
+- editable graph title, print preview, UTC offset, cursors, zoom-to-cursors,
+  stream visibility, colors, axis sides, and per-stream y-axis ranges;
+- per-tag display preferences stored as sparse, formatted JSON overrides.
 
-- `9b7bba8 Refactor sensorviz profiles and plot ranges`
-- SQLite log stream/table definitions have moved into tagcore. New logs carry
-  a mandatory `streams` table that sensorViz uses as the schema authority.
+`compviz` remains buildable as a specialized/reference tool, but `sensorviz` is
+now the intended general viewer for BitTag, PresTag, and CompassTag SQLite logs.
 
-The important architecture pieces are:
+## Current Architecture
 
-- `sensorstream.h`: loaded data model.
-  - `SensorStream` is a plottable scalar time series.
-  - `SensorRecordSet` is a multi-column time-indexed table for future data such
-    as compass accel/magnetometer samples.
-  - `SensorLog` contains metadata, streams, and record sets.
+- `main.cpp`: application startup and Qt message logging.
+- `mainwindow.*`: static Qt UI construction, persistent actions, and shared
+  application state.
+- `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
+  default graph title, stream-action creation, File Info updates, and initial
+  plot refresh.
+- `sqlite_loader.*`: read-only SQLite adapter. It consumes tagcore's mandatory
+  `streams` metadata table, loads scalar streams, groups multi-column
+  `record_column` rows into `SensorRecordSet`, and loads CompassTag calibration
+  metadata.
+- `sensorstream.h`: normalized loaded-data model:
+  - `SensorStream`: plottable scalar time series;
+  - `SensorRecordSet`: loaded multi-column data for transforms;
+  - `SensorLog`: file metadata, streams, record sets, and typed calibration.
+- `sensor_preferences.*`: sensorViz display policy:
+  - built-in defaults from `defaultDisplayForStream()`;
+  - in-memory per-tag overrides;
+  - JSON load/store for sparse preference files.
+- `stream_actions.cpp`: visible-stream dialog, axis-side dialog, color dialog,
+  range dialog, and range coupling between related streams.
+- `transforms.cpp`: scalar display transforms such as altitude and activity
+  low-pass.
+- `compass_transforms.cpp`: CompassTag record-set transforms, heading
+  declination, battery-forward convention, and compass-panel sample updates.
+- `plotting.cpp`: QCustomPlot graph rebuild, dynamic axes, labels, title
+  placement, cursor placement, and range reset behavior.
+- `interaction.cpp`: context menu, print preview, cursor interaction, UTC
+  offset, and mouse readout.
+- `controls.cpp`: general actions and small shared helpers, including graph
+  title editing and calibration-constant display.
 
-- `sqlite_loader.*`: SQLite adapter.
-  - Reads tagcore's mandatory `streams` metadata table.
-  - Loads scalar stream rows into `SensorStream`.
-  - Loads grouped `record_column` rows into `SensorRecordSet`.
-  - Missing metadata or referenced tables are schema errors.
+## Design Rules
 
-- `sensor_preferences.*`: display defaults and per-tag user preferences.
-  - Owns default color, initial visibility, axis side, and fixed display range
-    for known stream ids.
-  - Stores in-memory per-tag overrides for visible streams, colors, and axis
-    sides.
-  - Loads/stores formatted JSON preference files containing only overrides.
-  - Does not persist session parameters such as sea-level pressure,
-    declination, UTC offset, battery-forward, or y-axis ranges.
-
-- `dataloading.cpp`: file load workflow.
-  - Replaces current `SensorLog`.
-  - Builds View menu actions from loaded streams.
-  - Uses sensorViz display defaults for initial visibility and styling.
-
-- `stream_actions.cpp`: stream visibility and range actions.
-  - Builds and clears View stream actions.
-  - Builds View > Ranges from currently displayed streams.
-  - Owns custom y-axis range dialogs and pressure/altitude range coupling.
-
-- `transforms.cpp`: scalar display transforms.
-  - Generates altitude as a selectable stream and handles activity low-pass
-    transform toggles.
-- `compass_transforms.cpp`: CompassTag record-set transforms.
-  - Handles the CompassTag derived-stream family from `compass_raw` plus
-    calibration metadata.
-  - Altitude and CompassTag plot streams are generated automatically and exposed
-    individually in Visible Streams.
-
-- `plotting.cpp`: QCustomPlot graph and axis rebuilds.
-  - Normal redraws preserve the current x-axis range; load/reset use full range
-    and restore default y-axis ranges.
-  - Autoscaled y-axes receive a 5% margin.
-
-- `interaction.cpp`: post-load user interaction.
-  - Handles cursors, printing, UTC offset, mouse readout, and context menus.
-
-- `controls.cpp`: shared display helpers and general actions.
+- SQLite logs describe the data contract: stream ids, labels, units, table
+  names, time columns, value columns, and stream kind.
+- Viewer policy belongs in `sensorviz`, not in the SQLite file. Colors, default
+  visibility, axis side, and fixed display ranges live in
+  `defaultDisplayForStream()`.
+- Per-tag preference files store only user overrides from those defaults:
+  visible streams, colors, and axis sides.
+- Preference files intentionally do not store y-axis ranges, sea-level
+  pressure, declination, UTC offset, battery-forward, or graph title. Those are
+  current-view or analysis-session state.
+- Feature availability should be driven by loaded stream ids, record sets, or
+  calibration metadata rather than hardcoded tag-type checks.
+- The menu bar and plot context menu should use the same organization:
+  `File`, `View`, and `Configuration`, with `File > Preferences` as a submenu.
+- Tag-specific controls should be hidden unless the loaded log supports them.
 
 ## Current UI Decisions
 
-- Activity defaults to visible and uses a fixed `0-100` axis.
-- Voltage defaults off, stays on the right axis, and uses fixed `0-5 V`.
-- Core temperature defaults off, stays on the right axis, and uses fixed
+- At startup, only File > Load and File > About are enabled. Other menu
+  structure is visible but disabled where it is broadly applicable.
+- Tag-specific controls are hidden until relevant:
+  - Sea-level Pressure appears when pressure data exists.
+  - Activity Filter appears when activity data exists.
+  - Declination and Battery Forward appear for CompassTag logs.
+  - Calibration Constants appears only when calibration metadata exists.
+- View groups stream-display controls together: Visible Streams, Axis Sides,
+  Colors, and Ranges.
+- Configuration owns current-view/session parameters: graph title, UTC offset,
+  sea-level pressure, activity filter, declination, and battery-forward.
+- The graph title defaults to the loaded file name, not the full path, and can
+  be edited or hidden.
+- Activity defaults to visible and uses fixed range `0-100`.
+- Voltage defaults off, uses the right axis, and uses fixed range `0-5 V`.
+- Core temperature defaults off, uses the right axis, and uses fixed range
   `0-50 C`.
-- Other streams default to the left axis unless `defaultDisplayForStream()`
-  says otherwise.
-- Cursors are hidden until data is loaded.
-- Startup menus are visible but disabled except for File > Load and File >
-  About; data-dependent actions enable after a log is loaded.
-- Preferences are tag-type dependent. Built-in defaults live in
-  `defaultDisplayForStream()`, while saved JSON contains only user overrides
-  from those defaults.
-- Altitude is created automatically and appears in Visible Streams; sea-level
-  pressure lives under Configuration.
-- Activity Filter lives under Configuration and is not duplicated in the View
-  menu.
-- CompassTag plot streams are created automatically on load and appear in
-  Visible Streams with the other plotted series.
-- Declination is a CompassTag-only Configuration action that adjusts the
-  displayed heading stream without reloading the file.
-- Battery Forward is a CompassTag-only Configuration action that rotates the
-  heading display and QML compass convention without changing loaded samples.
-- A narrow CompassTag orientation panel appears beside the plot when compass
-  data is loaded and follows the nearest sample under the mouse.
+- Autoscaled y-axes receive a 5% margin.
+- Reset Zoom clears custom y-axis ranges and restores the full x-axis range.
+- Pressure and altitude ranges are coupled unless altitude has an explicit
+  custom range.
+- Activity and activity-filter ranges are coupled unless one has an explicit
+  custom range.
 
-## Future Compass / compViz Integration
+## Known Limitations
 
-The plan is not to copy `compviz` wholesale into `sensorviz`. Instead:
+- Transform definitions are still mostly hardcoded in `transforms.cpp` and
+  `compass_transforms.cpp`.
+- Transform parameter dialogs are simple action-specific dialogs, not a common
+  transform configuration framework.
+- Display preferences are loaded/stored manually from JSON files; there is no
+  automatic recent/default preference file mechanism.
+- Current-view session parameters are intentionally not persisted. That is
+  correct for now, but future workflows may want optional project/session files.
+- Multi-column record sets are currently used mainly for CompassTag data. More
+  record-set users may reveal patterns that should be generalized.
+- There are no automated GUI tests for menu organization, preference load/store,
+  or plot-title behavior.
 
-1. Keep `compviz` working as-is for now.
-2. Use `SensorRecordSet` to load compass raw data:
-   - table: `Compass`
-   - metadata kind: `record_column`
-   - columns: `ax`, `ay`, `az`, `mx`, `my`, `mz`
-   - group id: `compass_raw`
-3. Load the latest CompassTag calibration row into typed `SensorLog` metadata.
-4. Use the shared `sensoranalysis` eCompass/orientation helpers from a transform
-   module.
-5. Generate scalar streams for heading, acceleration magnitude, pitch, roll,
-   dip, and magnetic field strength.
-6. Continue validating CompassTag defaults against real logs.
+## Future Work
 
-## Likely Next Refactors
+Near-term cleanup:
 
-- Move transform parameter dialogs behind transform-specific configuration
-  helpers.
-- Add persistent transform/display settings with `QSettings`.
-- If more multi-column tables appear, generalize record-set transforms before
-  adding new UI-specific code.
+- Keep validating CompassTag derived streams against real logs and against
+  `compviz` behavior where it remains the reference.
+- Add new stream display defaults to `defaultDisplayForStream()` as new tag
+  streams appear.
+- Improve transform-specific configuration structure if more transforms are
+  added.
+- Consider a small shared helper for building mirrored menu-bar/context-menu
+  sections if more actions are added.
+
+Possible larger refactors:
+
+- Introduce a transform registry that declares:
+  - required input stream ids or record-set ids;
+  - generated stream ids;
+  - default display policy;
+  - configuration UI factory.
+- Generalize record-set transforms before adding more multi-column sensor
+  families.
+- Add optional session/project files if users need to persist graph title,
+  ranges, sea-level pressure, declination, or other current-view state.
+- Add light GUI regression tests around menu enable/visibility rules and
+  preference JSON round trips.
 
 ## Testing Notes
 
-The usual local verification command has been:
+Typical local verification:
 
 ```sh
 cmake --build /Users/geobrown/Build/tag-designs/software-vcpkg-release --target sensorviz
-```
-
-Also run:
-
-```sh
 git diff --check
 ```
+
+When changing SQLite loading or stream metadata, also test with representative
+BitTag, PresTag, and CompassTag logs.
