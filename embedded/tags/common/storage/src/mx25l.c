@@ -1,6 +1,10 @@
 #include "hal.h"
-#include "app.h"
+#include "core_types.h"
+#include "custom.h"
+#include "debug_log.h"
 #include "external_flash.h"
+#include "power.h"
+#include "rtc_api.h"
 #ifdef DEBUG_MESSAGES
 #include <chprintf.h>
 #endif

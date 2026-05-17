@@ -1,15 +1,19 @@
 #include <stdint.h>
 #include "hal.h"
 #include "custom.h"
-#include "app.h"
 
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
 #include "ADXL362.h"
 #endif
 
+#include "core_types.h"
+#include "tag.pb.h"
 #include "tagdata.pb.h"
 #include "config.h"
 #include "persistent.h"
+#include "power.h"
+#include "rtc_api.h"
+#include "test_support.h"
 #include "external_flash.h"
 #include "lps.h"
 #include  "opt3002.h"

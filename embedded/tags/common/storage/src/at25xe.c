@@ -1,6 +1,8 @@
 #include "hal.h"
-#include "app.h"
+#include "custom.h"
 #include "external_flash.h"
+#include "power.h"
+#include "rtc_api.h"
 
 #define AT25XE_SECTOR_SIZE                     (4096)
 

@@ -1,5 +1,6 @@
 #include "hal.h"
-#include "app.h"
+#include "power.h"
+#include "rtc_api.h"
 #include "rv3032.h"
 
 #define RTC_TIMEOUT 100
