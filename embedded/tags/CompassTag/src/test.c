@@ -16,7 +16,7 @@
 
 static bool failed NOINIT;
 
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
 static bool test_flash(void){
   bool result;
   ExFlashPwrUp();
@@ -62,7 +62,7 @@ void test(void)
       return;
     } 
   }
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
   if ((test_to_run == RUN_ALL)||(test_to_run == RUN_EXT_FLASH))
   {
     if (!test_flash())

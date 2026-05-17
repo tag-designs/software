@@ -42,7 +42,7 @@ static bool test_rtc(void)
   return true;
 }
 
-#ifdef USE_ADXL362
+#ifdef TAG_SENSOR_ACCEL_ADXL362
 static uint8_t id[3] NOINIT;
 static int xyz[3] NOINIT;
 static int testxyz[3] NOINIT;
@@ -118,7 +118,7 @@ static void test_adxl362(void)
 extern bool ais2_test(void);
 #endif
 
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
 static bool test_flash(void){
   bool result;
   ExFlashPwrUp();
@@ -132,7 +132,7 @@ void test(void)
 {
   pState->test_result = TEST_RUNNING;
   failed = false;
-#if defined(USE_ADXL362)
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
   if ((test_to_run == RUN_ALL) ||
       (test_to_run == RUN_ADXL362))
   {
@@ -199,7 +199,7 @@ void test(void)
       return;
     } 
   }
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
   if ((test_to_run == RUN_ALL)||(test_to_run == RUN_EXT_FLASH))
   {
     if (!test_flash())
@@ -210,7 +210,7 @@ void test(void)
   }
 #endif
 
-#if defined(USE_LPS33) || defined(USE_LPS27) || defined(USE_LPS22)
+#if defined(USE_LPS33) || defined(TAG_SENSOR_PRESSURE_LPS27) || defined(USE_LPS22)
   if ((test_to_run == RUN_ALL)||(test_to_run == RUN_LPS))
   {
     if (!lpsTest())

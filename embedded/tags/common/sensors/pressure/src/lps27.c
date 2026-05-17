@@ -7,7 +7,7 @@
 
 #define LPS27HW_ADR (0x5C)
 
-#if defined(LPS_I2C) && defined(USE_LPS27)
+#if defined(LPS_I2C) && defined(TAG_SENSOR_PRESSURE_LPS27)
 //extern const I2CConfig i2cfg1;
 #define LPS27_TIMEOUT 100
 
@@ -37,7 +37,7 @@ int lps27_SetReg(enum LPS27_Reg reg, unsigned char *val, int num)
 
 #endif
 
-#if defined(LPS_SPI) && defined(USE_LPS27)
+#if defined(LPS_SPI) && defined(TAG_SENSOR_PRESSURE_LPS27)
 static inline void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -64,7 +64,7 @@ static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 
 #endif
 
-#if defined(LPS_USART) && defined(USE_LPS27)
+#if defined(LPS_USART) && defined(TAG_SENSOR_PRESSURE_LPS27)
 static inline void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
@@ -122,7 +122,7 @@ static inline void sleepMS(int ms) {
 #endif
 }
 
-#if defined(USE_LPS27)
+#if defined(TAG_SENSOR_PRESSURE_LPS27)
 
 float lpsPressure(int16_t pressure) {
   return pressure/16.0f;

@@ -220,8 +220,6 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-
-//#if defined(EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||

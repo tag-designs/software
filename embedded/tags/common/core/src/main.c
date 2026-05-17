@@ -12,7 +12,7 @@
 #include "rtc_api.h"
 #include "timekeeping.h"
 
-#if defined(USE_ADXL362)
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
 #include "ADXL362.h"
 #endif
 
@@ -115,7 +115,7 @@ void deviceInit(int force)
 
     // Reset Accelerometer
 
-#if defined(USE_ADXL362)
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
     accelSpiOn();
     ADXL362_SoftwareReset();
     chThdSleepMilliseconds(2);

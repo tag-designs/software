@@ -13,7 +13,7 @@
 #include "rv8803.h"
 #endif
 
-#if defined(RV3028_RTC)
+#if defined(TAG_RTC_RV3028)
 #include "rv3028.h"
 #endif
 
@@ -25,7 +25,7 @@
 int rv8803_GetReg(enum RV8803Reg reg, uint8_t *val, int num);
 #endif
 
-#if defined(RV3028_RTC)
+#if defined(TAG_RTC_RV3028)
 int rv3028_GetReg(enum RV3028Reg reg, uint8_t *val, int num);
 #endif
 

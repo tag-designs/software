@@ -46,7 +46,8 @@ shared by the active tag targets. Its local `src/monitor.c` and
 Legacy inactive targets that once reused those files should be updated to the
 common core before being revived.
 
-Build-time feature switches live in each target's `inc/custom.h`. See
+Tag-specific build constants live in each target's `inc/custom.h`; module-owned
+feature switches come from `TAG_MODULES`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
 paths affected by each define.
 
@@ -61,7 +62,7 @@ embedded/tags/NewTag/
   project.mk          Board include, TAG_MODULES, and tag-local source list
   cfg/                ChibiOS chconf.h, halconf.h, mcuconf.h
   inc/                tag-local headers and overrides
-    custom.h          build/profile feature defines for this firmware image
+    custom.h          tag identity, constants, bus choices, and pin aliases
     config.h          stored configuration type and tag type
     datalog.h         log record layout, if the tag logs data
   src/                tag-local implementation and overrides

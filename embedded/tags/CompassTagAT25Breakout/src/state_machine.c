@@ -37,7 +37,7 @@
 #include <limits.h>
 #include "app.h"
 
-#if defined(USE_ADXL362)
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
 #include "ADXL362.h"
 #endif
 
@@ -278,7 +278,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   }
 
   // clean up the persistent state -- External First !
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   eraseExternal();
 #endif
   erasePersistent();
@@ -337,7 +337,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
   if (t == T_INIT)
   {
     // disable I/O devices
-#if defined(USE_ADXL362)
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
     accelSpiOn();
     ADXL362_SoftwareReset();
     accelSpiOff();

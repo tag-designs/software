@@ -104,7 +104,7 @@ static void usartDisable(void)
   USART2->CR3 = 0;
 }
 
-#ifdef USE_AK09940A
+#ifdef TAG_SENSOR_MAG_AK09940A
 
 void magOn(void){
 
@@ -183,7 +183,7 @@ void accelOff(void)
 
 
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
   /* grab the mutex */
@@ -243,7 +243,7 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
@@ -265,7 +265,7 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);

@@ -114,7 +114,7 @@ void lpsOff(void)
 
 #endif
 
-#if defined(USE_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
+#if defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
 void accelSpiOn()
 {
   /* grab the mutex */
@@ -150,7 +150,7 @@ void accelSpiOff()
 #endif
 
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
   /* grab the mutex */
@@ -210,7 +210,7 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
@@ -238,7 +238,7 @@ void godown(enum Sleep sleepmode)
   enableLinePullup(LINE_ACCEL_CS);
 #endif
 
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_SCK);

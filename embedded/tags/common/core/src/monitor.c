@@ -126,7 +126,7 @@ static int statusAck(void)
   ack.payload.status.test_status = pState->test_result;
   ack.payload.status.voltage = vdd100 * 0.01f;
   ack.payload.status.temperature = temp10 * 0.1f;
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   ack.payload.status.sectors_erased = sectors_erased;
 #else
   ack.payload.status.sectors_erased = 0;
@@ -167,7 +167,7 @@ static int infoAck(void)
   }
   STR_COPY(buf, ack.payload.info.uuid);
   ack.payload.info.intflashsz = *((uint16_t *)FLASHSIZE_BASE);
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   ack.payload.info.extflashsz = EXT_FLASH_SIZE;
 #else 
  ack.payload.info.extflashsz = 0;
