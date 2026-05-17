@@ -1,0 +1,17 @@
+# BitTagNG Family
+
+Shared application code for the `BitTagNG` and `BitTagNG-lis2du12` build
+variants lives here.
+
+The variants currently share configuration, logging type declarations, and
+persistent-state declarations.  They intentionally keep separate local source
+for:
+
+- accelerometer selection and driver support
+- runtime `state_run.c`
+- download/logging implementation details in `datalog.c`
+- self-test behavior in `test.c`
+- `custom.h` tag constants and board-specific aliases
+
+If those local files converge later, move the common implementation here and
+remove the duplicate variant copies.

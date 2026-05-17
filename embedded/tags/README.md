@@ -66,6 +66,12 @@ include:
 include ../families/CompassTag/family.mk
 ```
 
+The inactive `BitTagNG` variants follow the same pattern with:
+
+```make
+include ../families/BitTagNG/family.mk
+```
+
 The family manifest adds shared include/source directories and lists the shared
 source basenames.  The target directories still own board selection, ChibiOS
 configuration, `custom.h`, storage-module selection, and any intentionally

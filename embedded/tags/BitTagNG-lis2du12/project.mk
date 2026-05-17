@@ -3,9 +3,10 @@ USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/TagSteval/board.mk
 #include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
+include ../families/BitTagNG/family.mk
+
 ALLCSRC += \
        at25xe.c \
-       config.c \
        datalog.c \
        default_config.c \
        handlers.c  \
