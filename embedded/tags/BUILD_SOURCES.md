@@ -29,6 +29,7 @@ embedded/tags/BitTag/src/persistent.c
 embedded/tags/BitTag/src/pwr.c
 embedded/tags/BitTag/src/bt_state_run.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
@@ -86,6 +87,7 @@ embedded/tags/PresTag/src/state_run.c
 embedded/tags/common/storage/src/at25xe.c
 embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
@@ -150,6 +152,7 @@ embedded/tags/common/sensors/accel/src/adxl362_test.c
 embedded/tags/common/storage/src/at25xe.c
 embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
@@ -209,7 +212,7 @@ embedded/tags/common/rtc/inc/rv3028.h
 embedded/tags/CompassTag/src/config.c
 embedded/tags/CompassTag/src/datalog.c
 embedded/tags/CompassTag/src/lis2du12.c
-embedded/tags/CompassTag/src/pwr.c
+embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTag/src/sensors.c
 embedded/tags/CompassTag/src/state_run.c
 embedded/tags/common/test/src/test.c
@@ -217,6 +220,7 @@ embedded/tags/common/sensors/mag/src/ak09940a.c
 embedded/tags/common/sensors/mag/src/ak09940a_test.c
 embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
@@ -271,7 +275,7 @@ embedded/tags/common/rtc/inc/rv3028.h
 embedded/tags/CompassTagAT25Breakout/src/config.c
 embedded/tags/CompassTagAT25Breakout/src/datalog.c
 embedded/tags/CompassTagAT25Breakout/src/lis2du12.c
-embedded/tags/CompassTagAT25Breakout/src/pwr.c
+embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTagAT25Breakout/src/sensors.c
 embedded/tags/CompassTagAT25Breakout/src/state_run.c
 embedded/tags/common/test/src/test.c
@@ -281,6 +285,7 @@ embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/storage/src/at25xe.c
 embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
@@ -333,7 +338,7 @@ embedded/tags/common/rtc/inc/rv3028.h
 embedded/tags/CompassTagAT25/src/config.c
 embedded/tags/CompassTagAT25/src/datalog.c
 embedded/tags/CompassTagAT25/src/lis2du12.c
-embedded/tags/CompassTagAT25/src/pwr.c
+embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTagAT25/src/sensors.c
 embedded/tags/CompassTagAT25/src/state_run.c
 embedded/tags/common/test/src/test.c
@@ -343,6 +348,7 @@ embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/storage/src/at25xe.c
 embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c
@@ -405,6 +411,7 @@ embedded/tags/IMUTagBreakout/src/state_run.c
 embedded/tags/IMUTagBreakout/src/stubs.c
 embedded/tags/common/test/src/test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c

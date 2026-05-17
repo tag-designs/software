@@ -122,6 +122,9 @@ Near-term cleanup:
 
 - Keep validating CompassTag derived streams against real logs and against
   `compviz` behavior where it remains the reference.
+- Warn the user when a load succeeds but an expected stream or derived stream is
+  skipped, for example when CompassTag data lacks calibration metadata needed
+  for heading/orientation streams.
 - Add new stream display defaults to `defaultDisplayForStream()` as new tag
   streams appear.
 - Improve transform-specific configuration structure if more transforms are

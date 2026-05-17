@@ -64,6 +64,7 @@ up. Current examples:
   inc/sensor_calibration.h
   inc/test_support.h
   inc/timekeeping.h
+  src/bus_power.c
   src/handlers.c
   src/debug_log.c
   src/main.c
@@ -131,13 +132,19 @@ the repo-local override before the ChibiOS HAL implementation.
 
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
-hooks in `pwr.c`; current active tags provide local `src/pwr.c` overrides, so
-they no longer list `pwr.c` directly in `ALLCSRC`. The old monolithic
-`app.h` now acts as a compatibility umbrella over topic-specific headers such
-as `adc.h`, `core_events.h`, `power.h`, and `timekeeping.h`. New code should
-prefer the narrow header for the subsystem it uses. Shared code under
-`common/core/src` should not include `app.h`; that keeps header dependencies
-visible and lets `app.h` shrink over time.
+orchestration in `pwr.c`; current active tags provide local `src/pwr.c`
+overrides, so they no longer list `pwr.c` directly in `ALLCSRC`. Shared
+bus/pin mechanics live in `bus_power.c`: SPI/I2C descriptor helpers, the
+default SPI1 controller setup, and STM32 standby pullup/pulldown helpers that
+operate on board-provided `LINE_xxx` names. Device-specific power descriptors
+can live in tag-local code today and should eventually move beside their device
+modules as the power code is split up.
+
+The old monolithic `app.h` now acts as a compatibility umbrella over
+topic-specific headers such as `adc.h`, `core_events.h`, `power.h`, and
+`timekeeping.h`. New code should prefer the narrow header for the subsystem it
+uses. Shared code under `common/core/src` should not include `app.h`; that
+keeps header dependencies visible and lets `app.h` shrink over time.
 
 The optional debug-log implementation also lives in core because it is consumed
 by the monitor path and may be written by low-level drivers. The public

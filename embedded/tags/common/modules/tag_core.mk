@@ -7,6 +7,7 @@ include $(TAG_COMMON_MODULE_DIR)/storage_paths.mk
 include $(TAG_COMMON_MODULE_DIR)/sensor_paths.mk
 
 ALLCSRC += \
+       bus_power.c \
        handlers.c \
        main.c \
        monitor.c \

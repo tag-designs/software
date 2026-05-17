@@ -268,10 +268,18 @@ tagdata.pb.c
 ## Local Overrides
 
 `tag_core` contributes default runtime sources such as `main.c`, `monitor.c`,
-`persistent.c`, `pwr.c`, and the state-machine framework. If a target provides
-a same-named source in its local `src` directory, the repaired VPATH order makes
-that local file override the common default. Local override files should not be
-listed again in `ALLCSRC`; the module source basename is enough.
+`persistent.c`, `pwr.c`, `bus_power.c`, and the state-machine framework. If a
+target provides a same-named source in its local `src` directory, the repaired
+VPATH order makes that local file override the common default. Local override
+files should not be listed again in `ALLCSRC`; the module source basename is
+enough.
+
+`bus_power.c` is intentionally separate from `pwr.c`. It provides generic
+SPI/I2C descriptor helpers, the default SPI1 controller setup, and standby
+pullup/pulldown helpers that operate directly on board-defined `LINE_xxx`
+names. Tag-local or module-local power code should describe a device's pins and
+off/sleep policy with those helpers instead of duplicating SPI register setup
+and STM32 standby-pull register writes.
 
 The shared tag makefile uses this search order:
 

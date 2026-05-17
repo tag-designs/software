@@ -12,7 +12,10 @@ TAG_FAMILY_SRC_DIRS += $(COMPASSTAG_FAMILY_DIR)/src
 
 UDEFS += -DTAG_SENSOR_ACCEL_LIS2DU12=1
 
+ALLCSRC := $(filter-out pwr.c,$(ALLCSRC))
+
 ALLCSRC += \
        config.c \
        lis2du12.c \
-       lis2du12_test.c
+       lis2du12_test.c \
+       $(COMPASSTAG_FAMILY_DIR)/src/pwr.c

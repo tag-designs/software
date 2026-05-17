@@ -1,158 +1,96 @@
 #include "hal.h"
-#include "custom.h"
 #include "app.h"
-#include "config.h"
-#include "persistent.h"
 #include "external_flash.h"
 #include "lps.h"
+#include "persistent.h"
+#include "power.h"
 
 /*
- * I2C Devices
+ * Device bus descriptors.
+ *
+ * PresTag keeps the existing public wrapper names (rtcOn/lpsOn/FlashSpiOn),
+ * but the repetitive bus and sleep-pin mechanics now live in the shared
+ * descriptor helpers from common/core.
  */
 
 static void delay(void){
   __NOP();
 }
 
-// I2C interface to rtc
-
-const I2CConfig rtci2cConfig = {
-    .delay = delay,
+static const TagI2cDevice rtc_bus = {
+    .driver = &I2CD1,
+    .mutex = &I2Cmutex,
+    .config = {
+        .delay = delay,
+        .sda = LINE_RTC_SDA,
+        .scl = LINE_RTC_SCL,
+    },
     .sda = LINE_RTC_SDA,
-    .scl = LINE_RTC_SCL
+    .scl = LINE_RTC_SCL,
+    .pwr = TAG_NO_LINE,
 };
+
+#ifdef LPS_SPI
+static const TagSpiDevice lps_bus = {
+    .controller = &tagSpi1DefaultController,
+    .mutex = &SPImutex,
+    .cs = LINE_STEVAL_CS,
+    .sck = LINE_STEVAL_SCK,
+    .miso = LINE_STEVAL_MISO,
+    .mosi = LINE_STEVAL_MOSI,
+    .pwr = LINE_STEVAL_PWR,
+    .off_policy = TAG_SPI_OFF_FLOAT,
+    .sleep_policy = TAG_SPI_SLEEP_FLOAT,
+};
+#endif
+
+#if defined(TAG_HAS_EXTERNAL_FLASH)
+static const TagSpiDevice flash_bus = {
+    .controller = &tagSpi1DefaultController,
+    .mutex = &SPImutex,
+    .cs = LINE_FLASH_nCS,
+    .sck = LINE_FLASH_SCK,
+    .miso = LINE_FLASH_MISO,
+    .mosi = LINE_FLASH_MOSI,
+    .pwr = TAG_NO_LINE,
+    .off_policy = TAG_SPI_OFF_SAFE_IDLE,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+#endif
 
 void rtcOn(void)
 {
-  chBSemWait(&I2Cmutex); 
-  palSetLine(LINE_RTC_SDA);
-  palSetLine(LINE_RTC_SCL);
-  toOutput(LINE_RTC_SCL);
-  toOutput(LINE_RTC_SDA);
-  i2cStart(&I2CD1, &rtci2cConfig);
+  tagI2cDeviceOn(&rtc_bus);
 }
 
 void rtcOff(void)
 {
-  i2cStop(&I2CD1);
-  chBSemSignal(&I2Cmutex); 
+  tagI2cDeviceOff(&rtc_bus);
 }
-
-// SPI Devices
-
-static void spiEnable(void)
-{
-  rccEnableSPI1(0);
-  rccResetSPI1();
-
-  // Disable spi device
-
-  SPI1->CR1 = 0;
-
-  // Reset spi device
-
-  // 1/4 fifo threshold, 8-bit data size
-
-  SPI1->CR2 =
-      SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 
-                     | SPI_CR2_DS_1 | SPI_CR2_DS_0;
-
-  // master, enable spi device
-
-  SPI1->CR1 = SPI_CR1_MSTR;
-  SPI1->CR1 |= SPI_CR1_SPE;
-}
-
-static void spiDisable(void)
-{
-  SPI1->CR1 = 0;
-  SPI1->CR2 = 0;
-}
-
 
 #ifdef LPS_SPI
 void lpsOn(void)
 {
-
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-
-  toOutput(LINE_STEVAL_PWR);
-  palSetLine(LINE_STEVAL_PWR);
-
-  /* configure select line*/
-
-  palSetLine(LINE_STEVAL_CS);
-  toOutput(LINE_STEVAL_CS);
-
-  /* configure SPI1   */
-
-  toAlternate(LINE_STEVAL_SCK);
-  toAlternate(LINE_STEVAL_MISO);
-  toAlternate(LINE_STEVAL_MOSI);
-
-  spiEnable();
+  tagSpiDeviceOn(&lps_bus);
 }
 
 void lpsOff(void)
 {
-  spiDisable();
-  toAnalog(LINE_STEVAL_SCK);
-  toAnalog(LINE_STEVAL_MOSI);
-  toAnalog(LINE_STEVAL_MISO);
-  toAnalog(LINE_STEVAL_CS);
-  palClearLine(LINE_STEVAL_PWR);
-  chBSemSignal(&SPImutex);
+  tagSpiDeviceOff(&lps_bus);
 }
-
 #endif
-
 
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-  palSetLine(LINE_FLASH_nCS);
-  /* configure SPI1   */
-  toAlternate(LINE_FLASH_SCK);
-  toAlternate(LINE_FLASH_MOSI);
-  toAlternate(LINE_FLASH_MISO);
-
-  spiEnable();
+  tagSpiDeviceOn(&flash_bus);
 }
 
 void FlashSpiOff(void)
 {
-  palSetLine(LINE_FLASH_nCS);
-  spiDisable();
-  toAnalog(LINE_FLASH_SCK);
-  toAnalog(LINE_FLASH_MOSI);
-  toAnalog(LINE_FLASH_MISO);
-  chBSemSignal(&SPImutex);
+  tagSpiDeviceOff(&flash_bus);
 }
 #endif
-
-/*
- * Standby/Shutdown modes
- */
-
-static void enableLinePullup(ioline_t line)
-{
-  if ((PAL_PAD(line) != (14)) && (PAL_PORT(line) == GPIOA))
-    SET_BIT(PWR->PUCRA, 1 << PAL_PAD(line));
-  if (PAL_PORT(line) == GPIOB)
-    SET_BIT(PWR->PUCRB, 1 << PAL_PAD(line));
-}
-static void enableLinePulldown(ioline_t line)
-{
-  if ((PAL_PAD(line) != (13)) && (PAL_PAD(line) != (15)) && (PAL_PORT(line) == GPIOA))
-    SET_BIT(PWR->PDCRA, 1 << PAL_PAD(line));
-  if (PAL_PORT(line) == GPIOB)
-    SET_BIT(PWR->PDCRB, 1 << PAL_PAD(line));
-}
 
 /*
  * Steps for entering standby
@@ -192,15 +130,12 @@ void godown(enum Sleep sleepmode)
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
 #ifdef TAG_HAS_EXTERNAL_FLASH
-  enableLinePullup(LINE_FLASH_nCS);
-  enableLinePulldown(LINE_FLASH_SCK);
-  enableLinePulldown(LINE_FLASH_MOSI);
+  tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 
   // Pull up SCL and SDA on RTC
 
-  enableLinePullup(LINE_RTC_SCL);
-  enableLinePullup(LINE_RTC_SDA);
+  tagI2cDevicePrepareSleep(&rtc_bus);
 
   // fully discharge Pressure Sensor capacitor
 
