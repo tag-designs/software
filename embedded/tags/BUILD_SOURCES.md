@@ -10,8 +10,8 @@ files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
 The active embedded tag targets in `embedded/tags/CMakeLists.txt` were rebuilt
-from `/private/tmp/tag-software-embedded-common-layout-build` after regenerating
-that build tree.
+from `/private/tmp/tag-software-embedded-core-rtc-layout-build` after
+regenerating that build tree.
 
 All active embedded tag targets now build successfully in that configuration.
 
@@ -22,20 +22,20 @@ All active embedded tag targets now build successfully in that configuration.
 ```text
 embedded/tags/BitTag/src/hal_lld.c
 embedded/tags/common/src/ADXL362.c
-embedded/tags/common/src/bt_config.c
-embedded/tags/common/src/bt_monitor.c
-embedded/tags/common/src/bt_persistent.c
-embedded/tags/common/src/bt_pwr.c
-embedded/tags/common/src/bt_state_run.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
-embedded/tags/common/src/main.c
+embedded/tags/BitTag/src/bt_config.c
+embedded/tags/BitTag/src/monitor.c
+embedded/tags/BitTag/src/bt_persistent.c
+embedded/tags/BitTag/src/bt_pwr.c
+embedded/tags/BitTag/src/bt_state_run.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/main.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
 embedded/tags/common/src/test.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -47,7 +47,7 @@ embedded/tags/BitTag/cfg/halconf.h
 embedded/tags/BitTag/cfg/mcuconf.h
 embedded/tags/common/inc/ADXL362.h
 embedded/tags/common/inc/ais2dw12.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/config.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/inc/lis2dtw12.h
@@ -68,18 +68,18 @@ embedded/tags/PresTag/src/datalog.c
 embedded/tags/PresTag/src/pwr.c
 embedded/tags/PresTag/src/state_run.c
 embedded/tags/common/src/at25xe.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
 embedded/tags/common/src/lps27.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
 embedded/tags/common/src/test.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -93,7 +93,7 @@ embedded/tags/PresTag/cfg/chconf.h
 embedded/tags/PresTag/cfg/halconf.h
 embedded/tags/PresTag/cfg/mcuconf.h
 embedded/tags/common/inc/ais2dw12.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/inc/lis2dtw12.h
 embedded/tags/common/inc/lps.h
@@ -115,17 +115,17 @@ embedded/tags/BitPresTag/src/state_run.c
 embedded/tags/BitPresTag/src/test.c
 embedded/tags/common/src/ADXL362.c
 embedded/tags/common/src/at25xe.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
 embedded/tags/common/src/lps27.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -140,7 +140,7 @@ embedded/tags/BitPresTag/cfg/halconf.h
 embedded/tags/BitPresTag/cfg/mcuconf.h
 embedded/tags/common/inc/ADXL362.h
 embedded/tags/common/inc/ais2dw12.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/inc/lis2dtw12.h
 embedded/tags/common/inc/lps.h
@@ -163,17 +163,17 @@ embedded/tags/CompassTag/src/sensors.c
 embedded/tags/CompassTag/src/state_run.c
 embedded/tags/CompassTag/src/test.c
 embedded/tags/common/src/ak09940a.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/mx25r.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -189,7 +189,7 @@ embedded/tags/CompassTag/cfg/chconf.h
 embedded/tags/CompassTag/cfg/halconf.h
 embedded/tags/CompassTag/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```
@@ -208,16 +208,16 @@ embedded/tags/CompassTagAT25Breakout/src/state_run.c
 embedded/tags/CompassTagAT25Breakout/src/test.c
 embedded/tags/common/src/ak09940a.c
 embedded/tags/common/src/at25xe.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -233,7 +233,7 @@ embedded/tags/CompassTagAT25Breakout/cfg/chconf.h
 embedded/tags/CompassTagAT25Breakout/cfg/halconf.h
 embedded/tags/CompassTagAT25Breakout/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```
@@ -252,16 +252,16 @@ embedded/tags/CompassTagAT25/src/state_run.c
 embedded/tags/CompassTagAT25/src/test.c
 embedded/tags/common/src/ak09940a.c
 embedded/tags/common/src/at25xe.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -277,7 +277,7 @@ embedded/tags/CompassTagAT25/cfg/chconf.h
 embedded/tags/CompassTagAT25/cfg/halconf.h
 embedded/tags/CompassTagAT25/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```
@@ -296,17 +296,17 @@ embedded/tags/IMUTagBreakout/src/sensors.c
 embedded/tags/IMUTagBreakout/src/state_run.c
 embedded/tags/IMUTagBreakout/src/stubs.c
 embedded/tags/IMUTagBreakout/src/test.c
-embedded/tags/common/src/hal_rtc_lld.c
-embedded/tags/common/src/handlers.c
-embedded/tags/common/src/main.c
-embedded/tags/common/src/monitor.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
 embedded/tags/common/src/mx25l.c
 embedded/tags/common/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/src/state_machine.c
-embedded/tags/common/src/stm32adc.c
-embedded/tags/common/src/stm32flash.c
-embedded/tags/common/src/time.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files
@@ -324,7 +324,7 @@ embedded/tags/IMUTagBreakout/cfg/chconf.h
 embedded/tags/IMUTagBreakout/cfg/halconf.h
 embedded/tags/IMUTagBreakout/cfg/mcuconf.h
 embedded/tags/common/inc/ak09940a.h
-embedded/tags/common/inc/app.h
+embedded/tags/common/core/inc/app.h
 embedded/tags/common/inc/external_flash.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```

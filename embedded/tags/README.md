@@ -12,7 +12,6 @@ Example:
 TAG_MODULES += \
        protocol_nanopb \
        tag_core \
-       monitor \
        rtc_rv3028 \
        flash_at25xe \
        storage_persistent
@@ -27,10 +26,16 @@ ALLCSRC += \
 ```
 
 The module fragments are a first step toward making the shared tag runtime more
-understandable. Most shared source files still live in `common/src` and common
-headers in `common/inc`; modules can also own real `src` and `inc`
-subdirectories when a subsystem has been split out. For example, the RV3028 RTC
-driver lives under `common/rtc`.
+understandable. Common runtime code is being moved out of the flat `common/src`
+and `common/inc` directories into subsystem directories. The first split-out
+areas are `common/core`, for the tag execution framework, and `common/rtc`, for
+RTC drivers.
+
+BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
+in `BitTag/src` because they preserve that older firmware behavior and are not
+shared by the active tag targets. Its local `src/monitor.c` overrides the
+generic monitor supplied by `tag_core`. Legacy inactive targets that once reused
+those files should be updated to the common core before being revived.
 
 Build-time feature switches live in each target's `inc/custom.h`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
@@ -82,7 +87,6 @@ TAG_MODULES += \
        protocol_nanopb \
        tag_core \
        tag_test \
-       monitor \
        rtc_rv3028 \
        flash_at25xe \
        storage_persistent
@@ -137,9 +141,15 @@ same basename:
 - `./inc/rv3028.h` would be found before
   `../common/rtc/inc/rv3028.h`.
 - `./src/test.c` is found before `../common/src/test.c`.
+- `./src/handlers.c` would be found before
+  `../common/core/src/handlers.c`.
+- `./src/monitor.c` would be found before
+  `../common/core/src/monitor.c`.
 - `./src/rtc_rv3028.c` would be found before
   `../common/rtc/src/rtc_rv3028.c`.
-- `./src/state_machine.c` is found before `../common/src/state_machine.c`.
+- `../common/rtc/src/hal_rtc_lld.c` is found before the ChibiOS HAL RTC
+  implementation because the RTC module adds that directory to `VPATH`.
+- `./src/state_machine.c` is found before `../common/core/src/state_machine.c`.
 
 This ordering is deliberate. ChibiOS `rules.mk` normally sorts include paths and
 source search paths while building its internal variables. `common/make.mk`

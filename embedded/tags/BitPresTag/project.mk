@@ -6,7 +6,6 @@ TAG_MODULES += \
        protocol_nanopb \
        tag_core \
        tag_test \
-       monitor \
        rtc_rv3028 \
        flash_at25xe \
        storage_persistent \

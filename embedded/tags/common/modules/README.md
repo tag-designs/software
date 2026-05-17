@@ -29,15 +29,30 @@ included. ChibiOS sorts its generated include flags and source paths; the common
 tag makefile rebuilds `IINCDIR` and `VPATH` so local override directories stay
 ahead of shared defaults.
 
-Most physical shared sources still live in `../src` and headers in `../inc`.
-Subsystems can be moved into real common-code directories as they are cleaned
-up; the RV3028 RTC driver is the first example:
+Some physical shared sources still live in `../src` and headers in `../inc`.
+Subsystems are being moved into real common-code directories as they are cleaned
+up. Current examples:
 
 ```text
+../core/
+  inc/app.h
+  src/handlers.c
+  src/main.c
+  src/monitor.c
+  src/state_machine.c
+  src/stm32adc.c
+  src/stm32flash.c
+  src/time.c
+
 ../rtc/
   inc/rv3028.h
+  src/hal_rtc_lld.c
   src/rtc_rv3028.c
 ```
+
+`hal_rtc_lld.c` is a special case: ChibiOS adds that source basename itself,
+and the RTC module supplies the local source directory so the tag build finds
+the repo-local override before the ChibiOS HAL implementation.
 
 When adding a shared source file:
 
