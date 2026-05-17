@@ -6,10 +6,8 @@
 #define FIRMWARE_STRING "IMUTagBreakoutv1, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "IMUTagBreakoutv1"
-#define RV3028_RTC TRUE
 #define USE_LPS22HH TRUE
 //#define USE_AK09940A TRUE
-#define EXTERNAL_FLASH TRUE
 //#define USE_MX25L TRUE
 #define SENSOR_CALIBRATION TRUE
 #define QTMONITOR_VERSION 2.0

@@ -6,12 +6,8 @@
 #define FIRMWARE_STRING "BitPresTagv4, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "BitPresTagv1"
-#define RV3028_RTC TRUE
 #define LPS_USART TRUE
 #define LPS_LOW_POWER FALSE
-#define USE_LPS27 TRUE
-#define USE_ADXL362 TRUE
-#define EXTERNAL_FLASH TRUE
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 

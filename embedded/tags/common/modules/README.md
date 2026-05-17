@@ -18,6 +18,10 @@ include ../common/modules/modules.mk
 The module fragments in this directory append source basenames to `ALLCSRC`.
 They deliberately do not use full paths. A module that owns source or header
 files also appends its directories to `MODULE_SRC_DIRS` and `MODULE_INC_DIRS`.
+Modules also add their feature switches to `UDEFS` when selecting the module is
+equivalent to enabling a compile-time capability. The preferred switches use
+`TAG_*` names, while older compatibility switches such as `USE_ADXL362` remain
+defined until the C sources are migrated.
 The ChibiOS makefile's repaired `VPATH` searches the tag-local `src` directory
 before module source directories and `../common/src`, so a tag can override a
 shared default by providing a same-named local source file. Likewise, tag-local
@@ -140,6 +144,8 @@ tag-specific.
 When adding a shared source file:
 
 - add it to the narrowest module that owns the behavior;
+- define module-owned feature switches through `UDEFS` when the module selects
+  hardware or behavior that shared C code tests with preprocessor guards;
 - create a new module if no existing group fits cleanly;
 - add module-owned source/include directories through `MODULE_SRC_DIRS` and
   `MODULE_INC_DIRS` when the files live under the module directory;

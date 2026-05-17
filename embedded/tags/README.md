@@ -31,6 +31,14 @@ STM32-flash state, `common/rtc`, for RTC drivers, `common/storage`, for
 external flash drivers, and `common/sensors`, for reusable sensor drivers
 grouped by sensor family.
 
+When selecting a module is the same as enabling a firmware capability, the
+module fragment defines that capability through `UDEFS`. For example,
+`rtc_rv3028` defines `TAG_RTC_RV3028` and compatibility switch `RV3028_RTC`,
+while `sensor_accel_adxl362` defines `TAG_SENSOR_ACCEL_ADXL362` and
+compatibility switch `USE_ADXL362`. Keep those module-selection switches out of
+`inc/custom.h`; reserve `custom.h` for tag identity, constants, bus choices,
+pin aliases, and behavior that is not equivalent to adding a module.
+
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
 in `BitTag/src` because they preserve that older firmware behavior and are not
 shared by the active tag targets. Its local `src/monitor.c` and
