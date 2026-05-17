@@ -8,8 +8,7 @@ TAG_MODULES += \
        tag_core \
        tag_test \
        rtc_rv3028 \
-       flash_mx25l \
-       storage_persistent
+       flash_mx25l
 
 include ../common/modules/modules.mk
 
@@ -20,7 +19,6 @@ ALLCSRC += \
        config.c \
        datalog.c \
        lps22hh.c \
-       pwr.c \
        sensors.c \
        state_run.c \
        stubs.c      

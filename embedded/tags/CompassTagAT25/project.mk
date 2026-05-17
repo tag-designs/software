@@ -9,7 +9,6 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_at25xe \
-       storage_persistent \
        sensor_mag_ak09940a
 
 include ../common/modules/modules.mk
@@ -20,6 +19,5 @@ ALLCSRC += \
        config.c \
        datalog.c \
        lis2du12.c \
-       pwr.c \
        sensors.c \
        state_run.c

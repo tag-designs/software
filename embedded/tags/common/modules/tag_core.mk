@@ -3,10 +3,14 @@
 MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/core/src
 MODULE_INC_DIRS += $(TAG_COMMON_DIR)/core/inc
 
+include $(TAG_COMMON_MODULE_DIR)/storage_paths.mk
+
 ALLCSRC += \
        handlers.c \
        main.c \
        monitor.c \
+       persistent.c \
+       pwr.c \
        state_machine.c \
        stm32adc.c \
        stm32flash.c \

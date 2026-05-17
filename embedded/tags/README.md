@@ -13,29 +13,30 @@ TAG_MODULES += \
        protocol_nanopb \
        tag_core \
        rtc_rv3028 \
-       flash_at25xe \
-       storage_persistent
+       flash_at25xe
 
 include ../common/modules/modules.mk
 
 ALLCSRC += \
        config.c \
        datalog.c \
-       pwr.c \
        state_run.c
 ```
 
 The module fragments are a first step toward making the shared tag runtime more
 understandable. Common runtime code is being moved out of the flat `common/src`
 and `common/inc` directories into subsystem directories. The first split-out
-areas are `common/core`, for the tag execution framework, and `common/rtc`, for
-RTC drivers.
+areas are `common/core`, for the tag execution framework and persistent
+STM32-flash state, `common/rtc`, for RTC drivers, `common/storage`, for
+external flash drivers, and `common/sensors`, for reusable sensor drivers
+grouped by sensor family.
 
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
 in `BitTag/src` because they preserve that older firmware behavior and are not
-shared by the active tag targets. Its local `src/monitor.c` overrides the
-generic monitor supplied by `tag_core`. Legacy inactive targets that once reused
-those files should be updated to the common core before being revived.
+shared by the active tag targets. Its local `src/monitor.c` and
+`src/persistent.c` override the generic implementations supplied by `tag_core`.
+Legacy inactive targets that once reused those files should be updated to the
+common core before being revived.
 
 Build-time feature switches live in each target's `inc/custom.h`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
@@ -58,7 +59,7 @@ embedded/tags/NewTag/
   src/                tag-local implementation and overrides
     config.c
     datalog.c
-    pwr.c
+    pwr.c            optional override for common/core/src/pwr.c
     state_run.c
 ```
 
@@ -89,14 +90,13 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_at25xe \
-       storage_persistent
+       sensor_pressure_lps27
 
 include ../common/modules/modules.mk
 
 ALLCSRC += \
        config.c \
        datalog.c \
-       pwr.c \
        state_run.c
 ```
 
@@ -125,6 +125,12 @@ tagdata.pb.c
 ```
 
 ## Local Overrides
+
+`tag_core` contributes default runtime sources such as `main.c`, `monitor.c`,
+`persistent.c`, `pwr.c`, and the state-machine framework. If a target provides
+a same-named source in its local `src` directory, the repaired VPATH order makes
+that local file override the common default. Local override files should not be
+listed again in `ALLCSRC`; the module source basename is enough.
 
 The shared tag makefile uses this search order:
 

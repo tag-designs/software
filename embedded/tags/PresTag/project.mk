@@ -8,7 +8,6 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_at25xe \
-       storage_persistent \
        sensor_pressure_lps27
 
 include ../common/modules/modules.mk
@@ -17,5 +16,4 @@ include ../common/modules/modules.mk
 ALLCSRC += \
        config.c \
        datalog.c \
-       pwr.c \
        state_run.c
