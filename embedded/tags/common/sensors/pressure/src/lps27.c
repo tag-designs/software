@@ -1,6 +1,7 @@
 
 #include "hal.h"
-#include "app.h"
+#include "custom.h"
+#include "rtc_api.h"
 #include "lps27hhw.h"
 #include "lps.h"
 #include "limits.h"

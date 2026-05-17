@@ -1,8 +1,10 @@
 #include <stdint.h>
+#include <string.h>
 
 
 #include "hal.h"
-#include "app.h"
+#include "custom.h"
+#include "rtc_api.h"
 #include "limits.h"
 #include "ak09940a.h"
 

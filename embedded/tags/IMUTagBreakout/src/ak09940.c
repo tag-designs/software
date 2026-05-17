@@ -16,7 +16,7 @@
 
 #include "ak09940.h"
 #include "custom.h"
-#include "app.h"
+#include "gpio_utils.h"
 
 
 /* ------------------------- Register map ------------------------- */

@@ -1,5 +1,6 @@
 #include "hal.h"
-#include "app.h"
+#include "ak09940a.h"
+#include "rtc_api.h"
 #include "mmc5633.h"
 
 extern const I2CConfig i2cfg_mmc5633;

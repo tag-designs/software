@@ -1,9 +1,5 @@
 #include "hal.h"
-#include "custom.h"
-#include "app.h"
-#include "config.h"
-#include "persistent.h"
-#include "external_flash.h"
+#include "rtc_api.h"
 #include "opt3002.h"
 
 #define OPT3002_TIMEOUT 500

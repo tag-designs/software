@@ -1,7 +1,6 @@
 #include "hal.h"
 #include "custom.h"
-#include "app.h"
-#include "math.h"
+#include "power.h"
 #include "lis2du12.h"
 
 typedef enum

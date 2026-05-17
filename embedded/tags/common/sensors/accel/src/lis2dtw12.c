@@ -1,6 +1,8 @@
 #include "hal.h"
 #include "custom.h"
-#include "app.h"
+#include "core_types.h"
+#include "power.h"
+#include "rtc_api.h"
 #include "math.h"
 
 typedef enum

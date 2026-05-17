@@ -1,12 +1,12 @@
 
 #include <tag.pb.h>
 #include <stdint.h>
-#include <strings.h>
+#include <string.h>
+
 #include "hal.h"
-#include "monitor.h"
-#include "app.h"
+#include "core_types.h"
+#include "flash_internal.h"
 #include "persistent.h"
-#include "config.h"
 
 #include "lis2du12.h"
 #include "ak09940a.h"
@@ -218,7 +218,6 @@ int read_calibration(int32_t index, Ack *ack){
   return encode_ack();
   */
 }
-
 
 
 

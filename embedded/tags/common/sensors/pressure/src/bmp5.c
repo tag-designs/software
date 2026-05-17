@@ -1,5 +1,6 @@
 #include "hal.h"
-#include "app.h"
+#include "custom.h"
+#include "rtc_api.h"
 #include "bmp5.h"
 #include "lps.h"
 #include "limits.h"

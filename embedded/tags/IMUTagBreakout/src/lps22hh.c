@@ -1,8 +1,6 @@
 #include "lps22hh.h"
 #include "hal.h"
 #include "custom.h"
-#include "app.h"
-#include "math.h"
 
 extern void lpsOn(void);
 extern void lpsOff(void);

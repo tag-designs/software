@@ -1,6 +1,9 @@
 #ifndef LIS2DU12_H
 #define LIS2DU12_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 typedef enum {ACCEL_WAKEUP_MODE, 
             ACCEL_SAMPLE_50HZ_MODE, 
             ACCEL_SAMPLE_100HZ_MODE} lis2du12mode_t;

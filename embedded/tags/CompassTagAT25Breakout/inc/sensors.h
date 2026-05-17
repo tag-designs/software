@@ -1,8 +1,11 @@
 #ifndef _SENSORS_H
 #define _SENSORS_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #include <tag.pb.h>
-#include <app.h>
+#include "core_state.h"
 
 typedef struct {
     int16_t ax, ay, az, mx, my, mz;
