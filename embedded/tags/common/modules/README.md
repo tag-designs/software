@@ -55,6 +55,7 @@ up. Current examples:
   inc/test_support.h
   inc/timekeeping.h
   src/handlers.c
+  src/debug_log.c
   src/main.c
   src/monitor.c
   src/persistent.c
@@ -71,6 +72,7 @@ up. Current examples:
   inc/rv8803.h
   src/hal_rtc_lld.c
   src/rtc_rv3028.c
+  src/rtc_test.c
   src/rtc_rv3032.c
   src/rtc_rv8803.c
 
@@ -79,6 +81,7 @@ up. Current examples:
   inc/external_flash.h
   inc/mx25r.h
   src/at25xe.c
+  src/external_flash_test.c
   src/mx25l.c
   src/mx25r.c
 
@@ -92,6 +95,7 @@ up. Current examples:
     inc/ais2dw12.h
     inc/lis2dtw12.h
     src/ADXL362.c
+    src/adxl362_test.c
     src/ADXL367.c
     src/ais2dw12.c
     src/lis2dtw12.c
@@ -99,10 +103,12 @@ up. Current examples:
     inc/lps.h
     inc/lps27hhw.h
     src/lps27.c
+    src/lps27_test.c
   mag/
     inc/ak09940a.h
     inc/mmc5633.h
     src/ak09940a.c
+    src/ak09940a_test.c
     src/mmc5633.c
   light/
     inc/opt3002.h
@@ -132,14 +138,14 @@ modules and by `tag_core`; it is not intended to be listed directly in
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_mag_ak09940a` add only the family paths and source files they compile.
-`sensor_paths.mk` is a broader guarded helper for shared diagnostic code that
-has compile-time branches for multiple sensor families; it is not intended to
-be listed directly in `TAG_MODULES`.
+`sensor_paths.mk` is a broader guarded helper used by core power code while
+that code still has compile-time branches for multiple sensor families; it is
+not intended to be listed directly in `TAG_MODULES`.
 
 Test owns the shared factory/diagnostic command implementation. `tag_test`
-adds `../test/src` to the source search path and lists the basename `test.c`,
-so a target can still provide `src/test.c` when its diagnostics are
-tag-specific.
+adds `../test/src` to the source search path and lists the shared `test.c`
+driver. Device-specific checks should live with the device module, tag family,
+or tag-local driver as small `*_test.c` hooks called by that shared driver.
 
 When adding a shared source file:
 

@@ -5,7 +5,5 @@
 
 MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/test/src
 
-include $(TAG_COMMON_MODULE_DIR)/sensor_paths.mk
-
 ALLCSRC += \
        test.c

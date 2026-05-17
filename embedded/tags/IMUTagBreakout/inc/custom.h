@@ -21,6 +21,4 @@ extern volatile int sectors_erased;
 #define MAG_CONSTANT 0.01
 #define SWAP_I2C TRUE
 
-#define DEBUG_MESSAGES TRUE
-
 #endif

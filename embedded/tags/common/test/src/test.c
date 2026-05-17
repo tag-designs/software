@@ -1,239 +1,104 @@
-#include <stdint.h>
-#include "hal.h"
-#include "custom.h"
-
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
-#include "ADXL362.h"
-#endif
-
-#include "core_types.h"
+#include "app.h"
+#include "persistent.h"
 #include "tag.pb.h"
 #include "tagdata.pb.h"
-#include "config.h"
-#include "persistent.h"
-#include "power.h"
-#include "rtc_api.h"
 #include "test_support.h"
-#include "external_flash.h"
-#include "lps.h"
-#include  "opt3002.h"
-#include "ais2dw12.h"
-#include "lis2dtw12.h"
-#include "mmc5633.h"
 
-#define DEBUGTEST 0
+/*
+ * Shared self-test orchestrator.
+ *
+ * Device-specific tests live with the device modules that know how to power,
+ * identify, and exercise that hardware. This file only maps monitor TestReq
+ * values onto the compiled-in test hooks and records the first failing
+ * TestResult.
+ */
 
-// no init
-
-
-static bool failed NOINIT;
-
-static bool test_rtc(void)
+static bool test_requested(TestReq request)
 {
+  return (test_to_run == RUN_ALL) || (test_to_run == request);
+}
 
-  if (!initRTC())
+static bool run_test(TestReq request, TestResult failure, bool (*test_fn)(void))
+{
+  if (!test_requested(request))
   {
-    return false;
+    return true;
   }
 
-  RTCDateTime tim;
-  if (MSG_OK != getRTCDateTime(&tim))
+  if (!test_fn())
   {
-    return false;
-  }
-  rtcSetTime(&RTCD1, &tim); 
-  uint32_t prer = RTCD1.rtc->PRER;
-  if (prer != STM32_RTC_PRER_BITS)
-  {
+    pState->test_result = failure;
     return false;
   }
   return true;
 }
 
-#ifdef TAG_SENSOR_ACCEL_ADXL362
-static uint8_t id[3] NOINIT;
-static int xyz[3] NOINIT;
-static int testxyz[3] NOINIT;
-
-// should collect error bits for individual tests
-
-static void adxlavg(int val[3])
-{
-  int i;
-  short x, y, z;
-  val[0] = 0;
-  val[1] = 0;
-  val[2] = 0;
-  for (i = 0; i < 16; i++)
-  {
-    ADXL362_GetXyz(&x, &y, &z);
-    val[0] += x;
-    val[1] += y;
-    val[2] += z;
-    chThdSleepMilliseconds(20);
-  }
-  val[0] /= 16;
-  val[1] /= 16;
-  val[2] /= 16;
-}
-
-static void test_adxl362(void)
-{
-  // Test adxl
-  accelSpiOn();
-  failed = true;
-
-  ADXL362_SoftwareReset();
-  do
-  {
-    chThdSleepMilliseconds(100);
-    // Read DEVID
-    ADXL362_GetRegisterValue(id, ADXL362_REG_DEVID_AD, 3);
-    if ((id[0] != 0xAD) || (id[1] != 0x1D) || (id[2] != 0xF2))
-      break;
-    // set 8g range,100hz
-    ADXL362_SetRegisterValue(0x83, 0x2C, 1);
-    // turn on power
-    ADXL362_SetRegisterValue(0x02, 0x2D, 1);
-    chThdSleepMilliseconds(200);
-    adxlavg(xyz);
-    // turn off power
-    ADXL362_SetRegisterValue(0x00, 0x2D, 1);
-    // turn on self test
-    ADXL362_SetRegisterValue(0x01, 0x2E, 1);
-    ADXL362_SetRegisterValue(0x02, 0x2D, 1);
-    chThdSleepMilliseconds(200);
-    adxlavg(testxyz);
-    // turn off power
-    ADXL362_SetRegisterValue(0x00, 0x2D, 1);
-    int tmp = testxyz[0] - xyz[0];
-    if ((tmp < 50) || (tmp > 700))
-      break;
-    tmp = testxyz[1] - xyz[1];
-    if ((tmp < -700) || (tmp > -50))
-      break;
-    tmp = testxyz[2] - xyz[2];
-    if ((tmp < 50) || (tmp > 700))
-      break;
-    failed = false;
-  } while (0);
-  ADXL362_SoftwareReset();
-  accelSpiOff();
-}
-#endif
-
-#if defined(USE_AIS2)
-extern bool ais2_test(void);
-#endif
-
-#ifdef TAG_HAS_EXTERNAL_FLASH
-static bool test_flash(void){
-  bool result;
-  ExFlashPwrUp();
-  result = (ExCheckID() > -1);
-  ExFlashPwrDown();
-  return result;
-}
-#endif
-
 void test(void)
 {
   pState->test_result = TEST_RUNNING;
-  failed = false;
+
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
-  if ((test_to_run == RUN_ALL) ||
-      (test_to_run == RUN_ADXL362))
+  if (!run_test(RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362))
   {
-    test_adxl362();
-    if (failed)
-    {
-      pState->test_result = ADXL362_FAILED;
-      return;
-    }
+    return;
   }
 #endif
-#if defined(USE_AIS2) 
-  if ((test_to_run == RUN_ALL) ||
-      (test_to_run == RUN_AIS2))
+
+#if defined(TAG_SENSOR_ACCEL_LIS2DU12)
+  /*
+   * The protocol still uses RUN_AIS2 for newer low-power accelerometer tests.
+   * Keep that mapping until the monitor protocol grows a generic RUN_ACCEL.
+   */
+  if (!run_test(RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12))
   {
-    failed = !ais2_test();
-    if (failed)
-    {
-      pState->test_result = AIS2_FAILED;
-      return;
-    }
+    return;
   }
 #endif
-#if defined(USE_LIS2) 
-  if ((test_to_run == RUN_ALL) ||
-      (test_to_run == RUN_AIS2))
+
+#if defined(TAG_SENSOR_MAG_AK09940A)
+  /*
+   * The protocol predates AK09940A and still exposes RUN_MMC5633 for
+   * magnetometer tests. Keep the request stable and report the specific
+   * AK09940A failure result.
+   */
+  if (!run_test(RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a))
   {
-    failed = !lis2_test();
-    if (failed)
-    {
-      pState->test_result = AIS2_FAILED;
-      return;
-    }
+    return;
   }
 #endif
-#if defined(USE_OPT3002)
-  if ((test_to_run == RUN_ALL)||(test_to_run == RUN_OPT))
+
+#if defined(TAG_RTC_RV3028)
+  if (!run_test(RUN_RTC, RTC_FAILED, tag_test_rtc))
   {
-    if (!opt3002_test())
-    {
-      pState->test_result = OPT_FAILED;
-      return;
-    }
+    return;
   }
 #endif
-#if defined(USE_MAG)
-  if ((test_to_run == RUN_ALL) ||
-      (test_to_run == RUN_MMC5633))
-  {
-    failed = !mmc5633_test();
-    if (failed)
-    {
-      pState->test_result = MMC5633_FAILED;
-      return;
-    }
-  }
-#endif
-  if ((test_to_run == RUN_ALL) ||
-      (test_to_run == RUN_RTC))
-  {
-     if (!test_rtc())
-    {
-      pState->test_result = RTC_FAILED;
-      return;
-    } 
-  }
+
 #if defined(TAG_HAS_EXTERNAL_FLASH)
-  if ((test_to_run == RUN_ALL)||(test_to_run == RUN_EXT_FLASH))
+  if (!run_test(RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash))
   {
-    if (!test_flash())
-    {
-      pState->test_result = EXT_FLASH_FAILED;
-      return;
-    }
+    return;
   }
 #endif
 
-#if defined(USE_LPS33) || defined(TAG_SENSOR_PRESSURE_LPS27) || defined(USE_LPS22)
-  if ((test_to_run == RUN_ALL)||(test_to_run == RUN_LPS))
+#if defined(TAG_SENSOR_PRESSURE_LPS27)
+  if (!run_test(RUN_LPS, LPS_FAILED, tag_test_lps27))
   {
-    if (!lpsTest())
-    {
-      pState->test_result = LPS_FAILED;
-      return;
-    }
+    return;
   }
 #endif
 
+#if defined(TAG_SENSOR_PRESSURE_LPS22HH)
+  if (!run_test(RUN_LPS, LPS_FAILED, tag_test_lps22hh))
+  {
+    return;
+  }
+#endif
 
   pState->test_result = ALL_PASSED;
 }
 
-TestResult testreport()
+TestResult testreport(void)
 {
-  return (pState->test_result);
+  return pState->test_result;
 }

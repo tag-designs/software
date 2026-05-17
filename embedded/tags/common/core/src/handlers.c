@@ -38,13 +38,6 @@ uint8_t ProtoBuf[PROTOBUFSIZE] __attribute__((aligned(4))) NOINIT;
 const int protobuf_size = PROTOBUFSIZE;
 
 
-// Debug Messages
-
-#ifdef DEBUG_MESSAGES
-MemoryStream ds;
-uint8_t DebugMessageBuf[sizeof(((Ack *)0)->payload.debug_message)] NOINIT;
-#endif
-
 // Optional speed up during debug
 
 #ifdef RANGE_MULTIPLIER
@@ -115,9 +108,7 @@ static THD_FUNCTION(MonitorThread, arg) {
   CoreDebug->DCRDR = 1;
   (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
 
-#ifdef DEBUG_MESSAGES
-  msObjectInit(&ds, DebugMessageBuf, sizeof(DebugMessageBuf),0);
-#endif
+  debug_log_init();
 
   // system locked !!
 

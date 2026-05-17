@@ -2,9 +2,6 @@
 #include "debug_log.h"
 #include "power.h"
 #include "rtc_api.h"
-#ifdef DEBUG_MESSAGES
-#include "chprintf.h"
-#endif
 
 #define RTC_TIMEOUT 100
 
@@ -219,12 +216,10 @@ msg_t setRTCDateTime(RTCDateTime *tm)
 
     rtcOff();
 
-#ifdef DEBUG_MESSAGES
     if (ret != MSG_OK){
-        chprintf((BaseSequentialStream *) &ds, "Error in rv3028 setRTCDateTime\r\n");
+        debug_log_printf("Error in rv3028 setRTCDateTime\r\n");
 
     }
-#endif
     return ret;
 }
 
@@ -262,11 +257,9 @@ msg_t getRTCDateTime(RTCDateTime *tm)
     rtcOff();
 
 
-#ifdef DEBUG_MESSAGES
     if (ret != MSG_OK){
-        chprintf((BaseSequentialStream *) &ds, "Error in rv3028 gettRTCDateTime\r\n");
+        debug_log_printf("Error in rv3028 gettRTCDateTime\r\n");
 
     }
-#endif
     return ret;
 }

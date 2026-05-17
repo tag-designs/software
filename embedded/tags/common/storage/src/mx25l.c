@@ -5,9 +5,6 @@
 #include "external_flash.h"
 #include "power.h"
 #include "rtc_api.h"
-#ifdef DEBUG_MESSAGES
-#include <chprintf.h>
-#endif
 
 #define LINE_FLASH_nCS LINE_MX_nCS
 
@@ -206,12 +203,10 @@ static uint8_t MX25L_Status(void)
 int ExCheckID(void) {
     uint8_t id[3];
     spi_cmd_rcv(MX25L_CMD_READ_ID, id, 3);
-#ifdef DEBUG_MESSAGES
     if (MONCONNECTED){
-        chprintf((BaseSequentialStream *) &ds,"Flash: MID 0x%x DID 0x%x SIZE 0x%x", id[0],id[1],id[2]);
+        debug_log_printf("Flash: MID 0x%x DID 0x%x SIZE 0x%x", id[0], id[1], id[2]);
 
     }
-#endif
     if (id[0] != 0xC2)
         return -1;
     if (id[1] != 0x20)

@@ -1,11 +1,11 @@
 # CompassTagAT25 build manifest.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/CompassTagv1/board.mk
-include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
 TAG_MODULES += \
        protocol_nanopb \
        tag_core \
+       debug_log \
        tag_test \
        rtc_rv3028 \
        flash_at25xe \

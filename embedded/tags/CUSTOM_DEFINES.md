@@ -24,9 +24,9 @@ the next section, not in this table.
 | `PresTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `LPS_SPI`, `LPS_LOW_POWER`, `QTMONITOR_VERSION`, `PROTOBUFSIZE` |
 | `BitPresTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `LPS_USART`, `LPS_LOW_POWER`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `LINE_STEVAL_CS`, `LINE_ACCEL_INT`, `STM32_MSIRANGE_FAST`, `RANGE_MULTIPLIER`, `FLASH_WS_SLOW`, `FLASH_WS_FAST` |
 | `CompassTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LIS2DU12`, `ACCEL_USART`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT` |
-| `CompassTagAT25` | Same compass set as `CompassTag`, plus `COMPASS_TAG` and `DEBUG_MESSAGES` |
+| `CompassTagAT25` | Same compass set as `CompassTag`, plus `COMPASS_TAG` |
 | `CompassTagAT25Breakout` | Same compass set as `CompassTag`, plus `SWAP_I2C` |
-| `IMUTagBreakout` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LPS22HH`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT`, `SWAP_I2C`, `DEBUG_MESSAGES` |
+| `IMUTagBreakout` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LPS22HH`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT`, `SWAP_I2C` |
 
 Other tag directories still have `custom.h` files, but those targets are not
 currently built by `embedded/tags/CMakeLists.txt`. Their defines are useful as
@@ -48,6 +48,9 @@ active tag code.
 | `sensor_accel_adxl362` | `TAG_SENSOR_ACCEL_ADXL362` |
 | `sensor_pressure_lps27` | `TAG_SENSOR_PRESSURE_LPS27` |
 | `sensor_mag_ak09940a` | `TAG_SENSOR_MAG_AK09940A` |
+| `debug_log` | `TAG_DEBUG_LOG`, `DEBUG_MESSAGES` |
+| `CompassTag` family | `TAG_SENSOR_ACCEL_LIS2DU12` |
+| `IMUTagBreakout` local manifest | `TAG_SENSOR_MAG_AK09940A`, `TAG_SENSOR_PRESSURE_LPS22HH` |
 
 ## Define Reference
 
@@ -59,19 +62,21 @@ active tag code.
 | `PROTOBUFSIZE` | Size of the shared protobuf request/ack buffer. | `common/core/src/handlers.c` allocates `ProtoBuf`, publishes `protobuf_size`, and statically checks `Ack_size` and `Req_size` against this value. Defaults to `2056` if absent. |
 | `TAG_RTC_RV3028` | Selects the Micro Crystal RV-3028 RTC implementation. | `common/rtc/inc/rtc_api.h` includes `rv3028.h` from `common/rtc/inc`; `common/rtc/src/rtc_rv3028.c` compiles RV-3028 register access and initialization. |
 | `EXT_FLASH_SIZE` | External flash capacity in bytes. | External-flash log bounds in tag-local `datalog.c` files; `common/core/src/monitor.c` reports `Ack.info.extflashsz`; `common/storage/src/at25xe.c`, `common/storage/src/mx25l.c`, and `common/storage/src/mx25r.c` derive sector counts from it. |
-| `TAG_HAS_EXTERNAL_FLASH` | Enables external-flash support paths. | Power setup and low-power handling in `common/core/src/pwr.c` and `BitTag/src/pwr.c`; erase/recovery paths in `common/core/src/state_machine.c`; self-test in `common/test/src/test.c`; monitor status/info fields in `common/core/src/monitor.c`; local tag `pwr.c`, `state_machine.c`, `test.c`, and `datalog.c` variants use the same switch. |
+| `TAG_HAS_EXTERNAL_FLASH` | Enables external-flash support paths. | Power setup and low-power handling in `common/core/src/pwr.c` and `BitTag/src/pwr.c`; erase/recovery paths in `common/core/src/state_machine.c`; self-test hook in `common/storage/src/external_flash_test.c`; monitor status/info fields in `common/core/src/monitor.c`; local tag `pwr.c`, `state_machine.c`, and `datalog.c` variants use the same switch. |
 | `TAG_FLASH_AT25XE`, `TAG_FLASH_MX25L`, `TAG_FLASH_MX25R` | Selects the external flash chip driver compiled by the module. | Driver modules in `common/storage/src`; use these for chip-specific code rather than testing the generic flash capability. |
-| `TAG_SENSOR_ACCEL_ADXL362` | Selects ADXL362 accelerometer support. | Includes and reset paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; SPI power path in `common/core/src/pwr.c` and `BitTag/src/pwr.c`; ADXL362 self-test in `common/test/src/test.c`; local state machines and tests use the same guard. |
+| `TAG_SENSOR_ACCEL_ADXL362` | Selects ADXL362 accelerometer support. | Includes and reset paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; SPI power path in `common/core/src/pwr.c` and `BitTag/src/pwr.c`; ADXL362 self-test hook in `common/sensors/accel/src/adxl362_test.c`; local state machines use the same guard. |
 | `USE_ADXL367` | Selects ADXL367 accelerometer support in older BitTagNG-style code. | Includes and reset paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; shared power setup in `common/core/src/pwr.c`; older `BitTagNG` tests and local state logic. |
-| `USE_LIS2DU12` | Selects LIS2DU12 accelerometer support. | Reset/deinit paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; shared power setup in `common/core/src/pwr.c`; compass/IMU local `lis2du12.c`, `test.c`, `state_machine.c`, and `pwr.c`. |
+| `TAG_SENSOR_ACCEL_LIS2DU12` | Selects the CompassTag-family LIS2DU12 self-test hook. | Generated by the CompassTag family manifest. `families/CompassTag/src/lis2du12_test.c` provides the hook called by the shared test driver. |
+| `USE_LIS2DU12` | Selects LIS2DU12 accelerometer support. | Reset/deinit paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; shared power setup in `common/core/src/pwr.c`; compass/IMU local `lis2du12.c`, `state_machine.c`, and `pwr.c`. |
 | `LINE_ACCEL_CS` | Pin alias for the accelerometer chip-select line. | Used by `common/sensors/accel/src/ADXL362.c`, `common/sensors/accel/src/ADXL367.c`, `common/core/src/pwr.c`, `BitTag/src/pwr.c`, and local LIS2DU12 drivers. Some tags rely on the board file for this line instead of defining it locally. |
 | `LINE_ACCEL_INT` | Pin alias for the accelerometer interrupt/wakeup line. | Used by `common/core/src/pwr.c`, `BitTag/src/pwr.c`, `BitTag/src/bt_state_run.c`, and local `state_run.c`/`pwr.c` files to configure wakeup edge handling. |
-| `TAG_SENSOR_PRESSURE_LPS27` | Selects LPS27 pressure sensor support. | `common/sensors/pressure/src/lps27.c` compiles LPS27 access paths; `common/test/src/test.c` includes the LPS self-test when this or related LPS switches are present. |
+| `TAG_SENSOR_PRESSURE_LPS27` | Selects LPS27 pressure sensor support. | `common/sensors/pressure/src/lps27.c` compiles LPS27 access paths; `common/sensors/pressure/src/lps27_test.c` provides the self-test hook. |
 | `LPS_SPI` | Selects SPI access for supported LPS pressure sensors. | `common/sensors/pressure/src/lps27.c`, `common/sensors/pressure/src/lps22.c`, and older `common/sensors/pressure/src/lps33.c`; `common/core/src/pwr.c` and `BitTag/src/pwr.c` add the LPS SPI power/chip-select path. |
 | `LPS_USART` | Selects USART-style bit access for LPS27. | `common/sensors/pressure/src/lps27.c` compiles the USART send/receive helpers used by `BitPresTag`-style builds. |
 | `LPS_LOW_POWER` | Enables low-power behavior in older LPS22/LPS33 drivers. | `common/sensors/pressure/src/lps22.c` and `common/sensors/pressure/src/lps33.c`. Current active LPS27 code does not use this switch. Because the code uses `#ifdef`, defining it as `FALSE` still enables the guarded block where it is used. |
-| `USE_LPS22HH` | Selects the LPS22HH self-test path in `IMUTagBreakout`. | Used by `IMUTagBreakout/src/test.c`. The common LPS22 driver uses `USE_LPS22`, not `USE_LPS22HH`, so this is currently a tag-local convention. |
-| `TAG_SENSOR_MAG_AK09940A` | Selects AK09940A magnetometer support. | Compass local `pwr.c` files use it to power/configure the magnetometer bus. The AK09940A source itself is selected by the module list. |
+| `TAG_SENSOR_PRESSURE_LPS22HH` | Selects the IMUTagBreakout LPS22HH self-test hook. | Generated by `IMUTagBreakout/project.mk`; `IMUTagBreakout/src/lps22hh_test.c` provides the hook called by the shared test driver. |
+| `USE_LPS22HH` | Selects the LPS22HH pressure path in `IMUTagBreakout`. | Used by IMUTagBreakout-local sensor code. The common LPS22 driver uses `USE_LPS22`, not `USE_LPS22HH`, so this is currently a tag-local convention. |
+| `TAG_SENSOR_MAG_AK09940A` | Selects AK09940A magnetometer support. | Compass local `pwr.c` files use it to power/configure the magnetometer bus. The common AK09940A module supplies `common/sensors/mag/src/ak09940a_test.c`; IMUTagBreakout supplies its local hook in `IMUTagBreakout/src/ak09940_test.c`. |
 | `USE_BMP` | Selects BMP pressure sensor support in an older prototype. | `PresTagBMPBreakout/src/test.c`; older BMP driver code uses `LINE_STEVAL_CS` for chip select. Not used by active targets. |
 | `ACCEL_USART` | Selects the USART-backed LIS2DU12 transfer variant. | Compass/IMU local `lis2du12.c` and `pwr.c` files. |
 | `SENSOR_CALIBRATION` | Enables the runtime sensor calibration command/state. | `common/core/src/state_machine.c` exposes and enters `TagState_CALIBRATE`; `common/core/src/monitor.c` accepts `Req_calibrate` and `Req_caldata`; `common/core/inc/app.h` exposes calibration declarations. |
@@ -81,7 +86,8 @@ active tag code.
 | `MAG_CONSTANT` | Magnetometer scale constant reported to host tools. | Only read when `SENSOR_CONSTANTS` is defined, in `common/core/src/monitor.c`. |
 | `COMPASS_TAG` | Enables compass-tag-specific sample handling in the AT25 compass variant. | `CompassTagAT25/src/sensors.c`. This is not currently set in every compass target, so treat it as local to that implementation rather than a general compass capability flag. |
 | `SWAP_I2C` | Selects swapped I2C line behavior for some breakout layouts. | Local `pwr.c` variants use it for I2C line assignment. Some local files also define it internally when absent, so review the local `pwr.c` before assuming `custom.h` is the only control point. |
-| `DEBUG_MESSAGES` | Enables in-firmware debug message buffering and retrieval. | `common/core/inc/app.h` includes memory stream support; `common/core/src/handlers.c` allocates the debug buffer and logs protobuf activity; `common/core/src/monitor.c` reports/debugs messages; some drivers emit extra debug output. |
+| `TAG_DEBUG_LOG` | Enables in-firmware debug message buffering and retrieval. | Generated by the `debug_log` module. `common/core/src/debug_log.c` owns the memory stream buffer; `common/core/src/handlers.c` initializes it; `common/core/src/monitor.c` reports availability and serves `Req_debug`; drivers can emit optional messages through `debug_log_printf()`. |
+| `DEBUG_MESSAGES` | Legacy compatibility alias for debug logging. | Generated by the `debug_log` module for older source that still checks this name. Do not add it to new `custom.h` files; select the `debug_log` module instead. |
 | `STM32_MSIRANGE_FAST` | Fast MSI clock setting used during monitor/protobuf operations. | Used with `RANGE_MULTIPLIER` by `common/core/src/handlers.c` and `BitPresTag/src/datalog.c` to temporarily speed up the MCU. |
 | `RANGE_MULTIPLIER` | Timer prescaler multiplier for the fast MSI mode. | Enables the optional fast/slow MSI switch blocks in `common/core/src/handlers.c`; `BitPresTag/src/datalog.c` also uses it directly. |
 | `FLASH_WS_SLOW` | Flash wait-state setting for the normal clock mode. | Used with `RANGE_MULTIPLIER` in `common/core/src/handlers.c` and `BitPresTag/src/datalog.c`. |

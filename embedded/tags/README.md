@@ -40,6 +40,11 @@ module fragment defines that capability through `UDEFS`. For example,
 `inc/custom.h`; reserve `custom.h` for tag identity, constants, bus choices,
 pin aliases, and behavior that is not equivalent to adding a module.
 
+Optional firmware diagnostics follow the same rule. Select the `debug_log`
+module to enable the in-firmware debug-message buffer and monitor `Req_debug`
+support; do not enable debug logging by defining `DEBUG_MESSAGES` in
+`custom.h`.
+
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
 in `BitTag/src` because they preserve that older firmware behavior and are not
 shared by the active tag targets. Its local `src/monitor.c` and
@@ -183,7 +188,6 @@ same basename:
 - `./inc/rv3028.h` would be found before
   `../common/rtc/inc/rv3028.h`.
 - `./src/config.c` is found before a family `config.c`.
-- `./src/test.c` is found before `../common/test/src/test.c`.
 - `./src/handlers.c` would be found before
   `../common/core/src/handlers.c`.
 - `./src/monitor.c` would be found before
@@ -200,16 +204,15 @@ therefore recomputes `IINCDIR` and restores `VPATH` after including ChibiOS
 rules so tag-local `inc` and `src` files can override shared defaults.
 
 The module fragments intentionally list source basenames rather than full paths
-so this override behavior still works. For example, `tag_test.mk` adds
-`test.c`; a tag with `src/test.c` gets its local test file, while a tag without
-one gets `common/test/src/test.c`. A family can also provide `test.c`; in that
-case the family manifest should not add `test.c` to `ALLCSRC`, because the
-module already owns the source basename and VPATH will choose the family copy.
+so this override behavior still works. Prefer avoiding new same-name overrides
+when practical; add a clearly named tag-local file instead if the behavior is
+not truly an override of a shared default.
 
-A few targets rely on this while being split out, notably local `test.c` and,
-for some development targets, local state-machine code. Prefer avoiding new
-same-name overrides when practical; add a clearly named tag-local file instead
-if the behavior is not truly an override of a shared default.
+The active tag targets use the shared `tag_test` driver in
+`common/test/src/test.c`. Device modules, tag families, or tag-local drivers
+provide named self-test hooks such as `tag_test_adxl362()` or
+`tag_test_lis2du12()`; do not add a new local `src/test.c` unless the target
+truly needs to replace the shared diagnostic entry point.
 
 ## Adding Shared Code
 

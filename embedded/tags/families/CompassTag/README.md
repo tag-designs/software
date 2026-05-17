@@ -7,12 +7,12 @@ The variants currently share:
 
 - configuration handling
 - LIS2DU12 accelerometer support
+- the LIS2DU12 self-test hook used by the shared test driver
 - shared headers for logging, persistence, sensors, and configuration
 
-The family also supplies `test.c`, but the family manifest does not list it in
-`ALLCSRC` because the `tag_test` module already adds the `test.c` basename.  The
-common makefile's VPATH order lets this family copy override the common test
-module for these variants.
+The family does not override the shared test driver. Instead,
+`lis2du12_test.c` supplies the `tag_test_lis2du12()` hook used by
+`common/test/src/test.c`.
 
 The variants still keep their own `custom.h`, `project.mk`, ChibiOS `cfg/`
 files, and any source files that have intentionally diverged during board

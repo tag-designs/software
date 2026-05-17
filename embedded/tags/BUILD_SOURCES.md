@@ -10,8 +10,8 @@ files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
 The active embedded tag targets in `embedded/tags/CMakeLists.txt` were rebuilt
-from `/private/tmp/tag-software-embedded-core-rtc-power-layout-build` after
-regenerating that build tree.
+from `/private/tmp/tag-software-embedded-testrefactor` after regenerating that
+build tree.
 
 All active embedded tag targets now build successfully in that configuration.
 
@@ -22,6 +22,7 @@ All active embedded tag targets now build successfully in that configuration.
 ```text
 embedded/tags/BitTag/src/hal_lld.c
 embedded/tags/common/sensors/accel/src/ADXL362.c
+embedded/tags/common/sensors/accel/src/adxl362_test.c
 embedded/tags/BitTag/src/bt_config.c
 embedded/tags/BitTag/src/monitor.c
 embedded/tags/BitTag/src/persistent.c
@@ -31,6 +32,7 @@ embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -82,13 +84,16 @@ embedded/tags/PresTag/src/datalog.c
 embedded/tags/PresTag/src/pwr.c
 embedded/tags/PresTag/src/state_run.c
 embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/sensors/pressure/src/lps27.c
+embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -140,19 +145,23 @@ embedded/tags/BitPresTag/src/config.c
 embedded/tags/BitPresTag/src/datalog.c
 embedded/tags/BitPresTag/src/pwr.c
 embedded/tags/BitPresTag/src/state_run.c
-embedded/tags/BitPresTag/src/test.c
 embedded/tags/common/sensors/accel/src/ADXL362.c
+embedded/tags/common/sensors/accel/src/adxl362_test.c
 embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/sensors/pressure/src/lps27.c
+embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/core/src/time.c
 ```
 
@@ -203,15 +212,19 @@ embedded/tags/CompassTag/src/lis2du12.c
 embedded/tags/CompassTag/src/pwr.c
 embedded/tags/CompassTag/src/sensors.c
 embedded/tags/CompassTag/src/state_run.c
-embedded/tags/CompassTag/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
+embedded/tags/common/sensors/mag/src/ak09940a_test.c
+embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/storage/src/mx25r.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -261,15 +274,19 @@ embedded/tags/CompassTagAT25Breakout/src/lis2du12.c
 embedded/tags/CompassTagAT25Breakout/src/pwr.c
 embedded/tags/CompassTagAT25Breakout/src/sensors.c
 embedded/tags/CompassTagAT25Breakout/src/state_run.c
-embedded/tags/CompassTagAT25Breakout/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
+embedded/tags/common/sensors/mag/src/ak09940a_test.c
+embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -319,15 +336,20 @@ embedded/tags/CompassTagAT25/src/lis2du12.c
 embedded/tags/CompassTagAT25/src/pwr.c
 embedded/tags/CompassTagAT25/src/sensors.c
 embedded/tags/CompassTagAT25/src/state_run.c
-embedded/tags/CompassTagAT25/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
+embedded/tags/common/sensors/mag/src/ak09940a_test.c
+embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -372,21 +394,26 @@ embedded/tags/common/rtc/inc/rv3028.h
 
 ```text
 embedded/tags/IMUTagBreakout/src/ak09940.c
+embedded/tags/IMUTagBreakout/src/ak09940_test.c
 embedded/tags/IMUTagBreakout/src/config.c
 embedded/tags/IMUTagBreakout/src/datalog.c
 embedded/tags/IMUTagBreakout/src/lps22hh.c
+embedded/tags/IMUTagBreakout/src/lps22hh_test.c
 embedded/tags/IMUTagBreakout/src/pwr.c
 embedded/tags/IMUTagBreakout/src/sensors.c
 embedded/tags/IMUTagBreakout/src/state_run.c
 embedded/tags/IMUTagBreakout/src/stubs.c
-embedded/tags/IMUTagBreakout/src/test.c
+embedded/tags/common/test/src/test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/storage/src/mx25l.c
+embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
