@@ -11,12 +11,12 @@ TAG_MODULES += \
        sensor_mag_ak09940a
 
 include ../common/modules/modules.mk
+include ../families/CompassTag/family.mk
 
-# Tag-local application and sensor sources. Local state_machine.c and test.c
-# shadow the shared modules through VPATH while this target is being split out.
+# Variant-specific application sources. Shared CompassTag family sources come
+# from ../families/CompassTag unless this directory provides a local source with
+# the same name.
 ALLCSRC += \
-       config.c \
        datalog.c \
-       lis2du12.c \
        sensors.c \
        state_run.c

@@ -4,7 +4,9 @@ Tag firmware targets share a ChibiOS makefile scaffold from `common/make.mk`.
 Each target's `project.mk` now separates two concerns:
 
 1. `TAG_MODULES`: shared source groups from `common/modules`.
-2. `ALLCSRC`: tag-local application files from that target's `src` directory.
+2. Optional tag-family manifests from `families/`, when multiple targets share
+   application code.
+3. `ALLCSRC`: tag-local application files from that target's `src` directory.
 
 Example:
 
@@ -16,9 +18,9 @@ TAG_MODULES += \
        flash_at25xe
 
 include ../common/modules/modules.mk
+include ../families/SomeTagFamily/family.mk
 
 ALLCSRC += \
-       config.c \
        datalog.c \
        state_run.c
 ```
@@ -49,6 +51,25 @@ Tag-specific build constants live in each target's `inc/custom.h`; module-owned
 feature switches come from `TAG_MODULES`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
 paths affected by each define.
+
+## Tag Families
+
+Some hardware comes up first as a breakout and later as a production tag.  Those
+variants often need separate board files and `custom.h` values, but most of the
+application code should remain identical.  Put that shared application code in a
+family directory under `embedded/tags/families`.
+
+For example, `CompassTag`, `CompassTagAT25`, and `CompassTagAT25Breakout`
+include:
+
+```make
+include ../families/CompassTag/family.mk
+```
+
+The family manifest adds shared include/source directories and lists the shared
+source basenames.  The target directories still own board selection, ChibiOS
+configuration, `custom.h`, storage-module selection, and any intentionally
+divergent sources.
 
 ## Template Tag Directory
 
@@ -101,17 +122,17 @@ TAG_MODULES += \
        sensor_pressure_lps27
 
 include ../common/modules/modules.mk
+include ../families/NewTagFamily/family.mk  # only when this target is a variant
 
 ALLCSRC += \
-       config.c \
        datalog.c \
        state_run.c
 ```
 
 `common/make.mk` supplies the ChibiOS build plumbing. It includes ChibiOS
-startup, HAL, OSAL/RTOS, platform, and rules makefiles, adds generated nanopb
-and board include paths, and points the build at the repository `ChibiOS`
-submodule through the `CHIBIOS` variable passed by CMake.
+startup, HAL, OSAL/RTOS, platform, and rules makefiles, adds family, module,
+generated nanopb, and board include paths, and points the build at the
+repository `ChibiOS` submodule through the `CHIBIOS` variable passed by CMake.
 
 Board code is generated under the CMake build tree by `embedded/boards` and
 included through the board fragment selected in `project.mk`:
@@ -143,8 +164,8 @@ listed again in `ALLCSRC`; the module source basename is enough.
 The shared tag makefile uses this search order:
 
 ```make
-INCDIR = $(CONFDIR) ./inc $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
-VPATH := $(BUILDDIR) ./src $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
+INCDIR = $(CONFDIR) ./inc $(TAG_FAMILY_INC_DIRS) $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
+VPATH := $(BUILDDIR) ./src $(TAG_FAMILY_SRC_DIRS) $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
 ```
 
 That means tag-local files can override module or shared defaults by using the
@@ -152,8 +173,10 @@ same basename:
 
 - `./inc/config.h` is found before `../common/inc/config.h`.
 - `./inc/custom.h` is found before any shared `custom.h`.
+- `./inc/sensors.h` is found before a family `sensors.h`.
 - `./inc/rv3028.h` would be found before
   `../common/rtc/inc/rv3028.h`.
+- `./src/config.c` is found before a family `config.c`.
 - `./src/test.c` is found before `../common/test/src/test.c`.
 - `./src/handlers.c` would be found before
   `../common/core/src/handlers.c`.
@@ -173,7 +196,9 @@ rules so tag-local `inc` and `src` files can override shared defaults.
 The module fragments intentionally list source basenames rather than full paths
 so this override behavior still works. For example, `tag_test.mk` adds
 `test.c`; a tag with `src/test.c` gets its local test file, while a tag without
-one gets `common/test/src/test.c`.
+one gets `common/test/src/test.c`. A family can also provide `test.c`; in that
+case the family manifest should not add `test.c` to `ALLCSRC`, because the
+module already owns the source basename and VPATH will choose the family copy.
 
 A few targets rely on this while being split out, notably local `test.c` and,
 for some development targets, local state-machine code. Prefer avoiding new

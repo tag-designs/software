@@ -144,7 +144,7 @@ TCPPSRC =
 ASMSRC =
 ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
-INCDIR = $(CONFDIR) ./inc $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
+INCDIR = $(CONFDIR) ./inc $(TAG_FAMILY_INC_DIRS) $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
 
 #
 # Project, sources and paths
@@ -232,7 +232,7 @@ IINCDIR := $(patsubst %,-I%,$(INCDIR) $(DINCDIR) $(UINCDIR))
 # ChibiOS rules.mk also derives VPATH from sorted source directories. Restore the
 # source lookup order used by the common module manifests so ./src can override
 # same-named files from module source directories and ../common/src.
-VPATH := $(BUILDDIR) ./src $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
+VPATH := $(BUILDDIR) ./src $(TAG_FAMILY_SRC_DIRS) $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
 
 UNAME_S := $(shell uname -s)
 
