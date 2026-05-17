@@ -12,6 +12,8 @@ ownership, ChibiOS usage, and build/documentation expectations.
   data generated from JSON.
 - `tags/`: tag firmware applications.
 - `tags/common/`: shared tag firmware support code and drivers.
+- `tags/common/modules/`: ChibiOS makefile fragments that group shared tag
+  sources into named modules used by each tag's `project.mk`.
 - `docs/`: embedded source-layout documentation.
 
 ## Layer Relationships
@@ -31,6 +33,30 @@ Fix bugs at the layer that owns them:
 - runtime tag behavior and sensor logging: `tags/`;
 - base/programmer USB/SWD/programming behavior: `bases/`;
 - shared tag drivers/helpers: `tags/common/`.
+
+## Tag Build Manifests
+
+Each active tag target has a `project.mk` that should separate shared modules
+from tag-local application files:
+
+```make
+TAG_MODULES += \
+       protocol_nanopb \
+       tag_core \
+       monitor \
+       rtc_rv3028
+
+include ../common/modules/modules.mk
+
+ALLCSRC += \
+       config.c \
+       datalog.c \
+       state_run.c
+```
+
+Prefer adding shared sources to a narrow module under `tags/common/modules/`
+instead of adding many individual common filenames to each tag. Keep genuinely
+tag-specific code listed directly in the tag's `project.mk`.
 
 ## ChibiOS
 
@@ -83,4 +109,3 @@ CMake build tree, not in source directories.
   changes.
 - Keep target-specific design notes near the target, for example
   `tags/<target>/DesignNotes.md`.
-

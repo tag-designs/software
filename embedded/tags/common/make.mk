@@ -223,6 +223,15 @@ ULIBS =
 RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
 include $(RULESPATH)/rules.mk
 
+# ChibiOS rules.mk sorts IINCDIR while building compiler include flags. That is
+# usually harmless, but these tag builds intentionally let ./inc override
+# ../common/inc. Rebuild the include flags in our declared order after including
+# rules.mk so tag-local headers keep priority over shared defaults.
+IINCDIR := $(patsubst %,-I%,$(INCDIR) $(DINCDIR) $(UINCDIR))
+
+# ChibiOS rules.mk also derives VPATH from sorted source directories. Restore the
+# source lookup order used by the common module manifests so ./src can override
+# same-named files from ../common/src.
 VPATH := $(BUILDDIR) ./src ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
 
 UNAME_S := $(shell uname -s)
@@ -267,4 +276,3 @@ UNAME_S := $(shell uname -s)
 print-% : ; @echo $* = $($*)
 
 PRE_MAKE_ALL_RULE_HOOK: $(BUILDDIR) #$(BUILDDIR)/version.h
-

@@ -1,29 +1,25 @@
-# List of all the project related files.
+# CompassTagAT25Breakout build manifest.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/CompassTagv1/board.mk
 
+TAG_MODULES += \
+       protocol_nanopb \
+       tag_core \
+       tag_test \
+       monitor \
+       rtc_rv3028 \
+       flash_at25xe \
+       storage_persistent \
+       sensor_mag_ak09940a
+
+include ../common/modules/modules.mk
+
+# Tag-local application and sensor sources. Local state_machine.c and test.c
+# shadow the shared modules through VPATH while this target is being split out.
 ALLCSRC += \
-       ak09940a.c \
        config.c \
        datalog.c \
-       default_config.c \
-       handlers.c  \
        lis2du12.c \
-       main.c \
-       monitor.c \
-       at25xe.c \
-       pb_common.c \
-       pb_decode.c \
-       pb_encode.c  \
-       persistent.c \
        pwr.c \
-       rtc_rv3028.c \
        sensors.c \
-       state_machine.c  \
-       state_run.c \
-       stm32adc.c \
-       stm32flash.c \
-       tag.pb.c \
-       tagdata.pb.c \
-       test.c   \
-       time.c        
+       state_run.c
