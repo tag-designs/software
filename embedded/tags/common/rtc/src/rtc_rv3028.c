@@ -1,5 +1,6 @@
 #include "hal.h"
 #include "debug_log.h"
+#include "i2c_bus.h"
 #include "power.h"
 #include "rtc_api.h"
 
@@ -15,28 +16,20 @@ static inline uint8_t bin2bcd(uint8_t val)
     return ((val / 10) << 4) | (val % 10);
 }
 
-static int I2C1_MemWrite(uint8_t device, uint8_t reg, unsigned char *buffer,
-                         uint16_t size, uint32_t timeout)
-{
-    uint8_t txbuf[10];
-    txbuf[0] = reg;
-    for (int i = 0; i < 8 && i < size; i++)
-    {
-        txbuf[i + 1] = buffer[i];
-    }
-    return i2cMasterTransmitTimeout(&I2CD1, device, txbuf, size + 1, 0, 0,
-                                    timeout);
-}
+static const TagI2cRegisterBus rv3028_i2c = {
+    .driver = &I2CD1,
+    .address = RV3028_ADR,
+    .timeout = RTC_TIMEOUT,
+};
 
 int rv3028_GetReg(enum RV3028Reg reg, uint8_t *val, int num)
 {
-    return i2cMasterTransmitTimeout(&I2CD1, RV3028_ADR, &reg, 1, val, num,
-                                    RTC_TIMEOUT);
+    return tagI2cReadRegister(&rv3028_i2c, reg, val, num);
 }
 
 static int rv3028_SetReg(enum RV3028Reg reg, unsigned char *val, int num)
 {
-    return I2C1_MemWrite(RV3028_ADR, reg, val, num, RTC_TIMEOUT);
+    return tagI2cWriteRegister(&rv3028_i2c, reg, val, num);
 }
 
 static int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned char cmd)

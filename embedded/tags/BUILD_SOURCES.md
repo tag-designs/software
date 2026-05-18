@@ -33,6 +33,7 @@ embedded/tags/BitTag/src/rtc_rv3028.c
 embedded/tags/BitTag/src/rtc_test.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
@@ -63,6 +64,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
@@ -91,6 +93,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/pressure/src/lps.c
 embedded/tags/common/sensors/pressure/src/lps27.c
@@ -128,6 +131,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h
@@ -159,6 +163,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/pressure/src/lps.c
 embedded/tags/common/sensors/pressure/src/lps27.c
@@ -197,6 +202,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h
@@ -231,6 +237,7 @@ embedded/tags/families/CompassTag/src/lis2du12_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/storage/src/mx25r.c
@@ -267,6 +274,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h
@@ -297,6 +305,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
@@ -331,6 +340,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h
@@ -361,6 +371,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
@@ -396,6 +407,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h
@@ -426,6 +438,7 @@ embedded/tags/common/test/src/test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/core/src/debug_log.c
 embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/monitor.c
@@ -465,6 +478,7 @@ embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/test_support.h

@@ -1,4 +1,5 @@
 #include "hal.h"
+#include "i2c_bus.h"
 #include "power.h"
 #include "rtc_api.h"
 
@@ -14,28 +15,20 @@ static inline uint8_t bin2bcd(uint8_t val)
     return ((val / 10) << 4) | (val % 10);
 }
 
-static int I2C1_MemWrite(uint8_t device, uint8_t reg, unsigned char *buffer,
-                         uint16_t size, uint32_t timeout)
-{
-    uint8_t txbuf[10];
-    txbuf[0] = reg;
-    for (int i = 0; i < 8 && i < size; i++)
-    {
-        txbuf[i + 1] = buffer[i];
-    }
-    return i2cMasterTransmitTimeout(&I2CD1, device, txbuf, size + 1, 0, 0,
-                                    timeout);
-}
+static const TagI2cRegisterBus rv8803_i2c = {
+    .driver = &I2CD1,
+    .address = RV8803_ADR,
+    .timeout = RTC_TIMEOUT,
+};
 
 int rv8803_GetReg(enum RV8803Reg reg, uint8_t *val, int num)
 {
-    return i2cMasterTransmitTimeout(&I2CD1, RV8803_ADR, &reg, 1, val, num,
-                                    RTC_TIMEOUT);
+    return tagI2cReadRegister(&rv8803_i2c, reg, val, num);
 }
 
 static int rv8803_SetReg(enum RV8803Reg reg, unsigned char *val, int num)
 {
-    return I2C1_MemWrite(RV8803_ADR, reg, val, num, RTC_TIMEOUT);
+    return tagI2cWriteRegister(&rv8803_i2c, reg, val, num);
 }
 
 bool initRTC(void)

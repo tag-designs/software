@@ -59,18 +59,22 @@ up. Current examples:
   inc/debug_log.h
   inc/flash_internal.h
   inc/gpio_utils.h
+  inc/i2c_bus.h
   inc/persistent.h
   inc/power.h
   inc/sensor_calibration.h
+  inc/spi_bus.h
   inc/test_support.h
   inc/timekeeping.h
   src/bus_power.c
   src/handlers.c
   src/debug_log.c
+  src/i2c_bus.c
   src/main.c
   src/monitor.c
   src/persistent.c
   src/pwr.c
+  src/spi_bus.c
   src/state_machine.c
   src/stm32adc.c
   src/stm32flash.c
@@ -182,13 +186,14 @@ modules and by `tag_core`; it is not intended to be listed directly in
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_mag_ak09940a` add only the family paths and source files they compile.
-Core owns the low-level SPI byte-transfer helper in `core/src/spi_bus.c`
-because the same polled SPI bus is useful to sensors and storage drivers.
-Shared sensor-side register mechanics live at the top of `../sensors`: for
-example, `sensor_io.c` owns conventional I2C register reads/writes, USART
-synchronous-mode byte-transfer loops, and the ST-style register helpers used by
-the LPS pressure drivers. Keep bus power, SPI/USART controller setup, and sleep
-pin policy in the tag power layer; keep sensor command formats and register
+Core owns shared bus helpers when they are useful outside one sensor family:
+`core/src/spi_bus.c` owns the low-level polled SPI byte-transfer helper, and
+`core/src/i2c_bus.c` owns conventional I2C register reads/writes used by RTC
+and sensor drivers. Shared sensor-side register mechanics live at the top of
+`../sensors`: for example, `sensor_io.c` owns USART synchronous-mode
+byte-transfer loops and the ST-style SPI register helpers used by the LPS
+pressure drivers. Keep bus power, SPI/USART controller setup, and sleep pin
+policy in the tag power layer; keep sensor command formats and register
 transactions beside the sensor drivers.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
