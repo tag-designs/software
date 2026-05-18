@@ -62,8 +62,10 @@ static bool ak09940a_default_data_ready_line(void)
 
 static const TagMagDevice ak09940a_default_device = {
   .registers = &ak09940a_registers,
-  .on = magOn,
-  .off = magOff,
+  .power_on = magPowerOn,
+  .power_off = magPowerOff,
+  .bus_begin = magBusBegin,
+  .bus_end = magBusEnd,
   .sleep_ms = ak09940a_default_sleep,
 #ifdef AK09940A_HAS_DEFAULT_TRG
   .set_trigger_output = ak09940a_default_trigger_mode,
@@ -75,6 +77,36 @@ static const TagMagDevice ak09940a_default_device = {
   .data_ready_line = 0,
 #endif
 };
+
+void __attribute__((weak)) magPowerOn(void) {}
+
+void __attribute__((weak)) magPowerOff(void) {}
+
+void __attribute__((weak)) magBusBegin(void)
+{
+  magOn();
+}
+
+void __attribute__((weak)) magBusEnd(void)
+{
+  magOff();
+}
+
+void ak09940aDeviceBegin(const TagMagDevice *device)
+{
+  if (device->power_on)
+    device->power_on();
+  if (device->bus_begin)
+    device->bus_begin();
+}
+
+void ak09940aDeviceEnd(const TagMagDevice *device)
+{
+  if (device->bus_end)
+    device->bus_end();
+  if (device->power_off)
+    device->power_off();
+}
 
 static msg_t AK09940A_SetReg(const TagMagDevice *device, enum AK09940A_Reg reg,
                              const uint8_t *val, uint32_t num)
@@ -189,7 +221,7 @@ void magInit(ak09940_mode_t mode)
 void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode)
 {
   uint8_t command = ((uint8_t)mode) | AK09940A_CNTL3_LN2;
-  device->on();
+  ak09940aDeviceBegin(device);
   device->sleep_ms(1);
   if (mode > AK09940A_CNTL3_SINGLE_MEASURE)
     (void)AK09940A_SetReg(device, AK09940A_CNTL3, &command, 1);
@@ -203,10 +235,10 @@ bool magTest(void)
 bool ak09940aTest(const TagMagDevice *device)
 {
   bool ok;
-  device->on();
+  ak09940aDeviceBegin(device);
   device->sleep_ms(1);
   ok = ak09940aCheckWhoami(device);
-  device->off();
+  ak09940aDeviceEnd(device);
   return ok;
 }
 

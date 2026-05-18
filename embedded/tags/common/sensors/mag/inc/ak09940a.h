@@ -122,8 +122,10 @@ typedef bool (*TagMagDataReadyLine)(void);
 
 typedef struct {
   const TagRegisterDevice *registers;
-  TagMagPower on;
-  TagMagPower off;
+  TagMagPower power_on;
+  TagMagPower power_off;
+  TagMagPower bus_begin;
+  TagMagPower bus_end;
   TagMagSleep sleep_ms;
   TagMagTriggerMode set_trigger_output;
   TagMagTrigger trigger;
@@ -160,6 +162,8 @@ void  magInit(ak09940_mode_t mode);
 bool ak09940aTest(const TagMagDevice *device);
 bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz);
 void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode);
+void ak09940aDeviceBegin(const TagMagDevice *device);
+void ak09940aDeviceEnd(const TagMagDevice *device);
 
 bool ak09940aCheckWhoami(const TagMagDevice *device);
 msg_t ak09940aInitPowerDown(const TagMagDevice *device);
@@ -192,6 +196,10 @@ void ak09940_convert_to_uT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
 void ak09940_convert_to_nT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
                            int32_t *mx_nT, int32_t *my_nT, int32_t *mz_nT);
 
+void magPowerOn(void);
+void magPowerOff(void);
+void magBusBegin(void);
+void magBusEnd(void);
 void magOn(void);
 void magOff(void);
 

@@ -8,13 +8,6 @@
 
 #define TAG_NO_LINE ((ioline_t)0)
 
-// SPI pin state after the device wrapper releases the bus.
-typedef enum {
-  TAG_SPI_OFF_FLOAT,
-  TAG_SPI_OFF_SAFE_IDLE,
-  TAG_SPI_OFF_CUSTOM
-} TagSpiOffPolicy;
-
 // Standby pull policy applied while preparing the MCU for deep sleep.
 typedef enum {
   TAG_SPI_SLEEP_FLOAT,
@@ -29,6 +22,7 @@ typedef struct {
 } TagSpiController;
 
 // Board-line description for one SPI device attached to a shared controller.
+// Power helpers own device idle pin state; bus helpers own controller setup.
 typedef struct {
   const TagSpiController *controller;
   binary_semaphore_t *mutex;
@@ -37,7 +31,6 @@ typedef struct {
   ioline_t miso;
   ioline_t mosi;
   ioline_t pwr;
-  TagSpiOffPolicy off_policy;
   TagSpiSleepPolicy sleep_policy;
 } TagSpiDevice;
 
@@ -59,8 +52,10 @@ void tagMarkSpi1On(void);
 void tagMarkSpi1Off(void);
 void tagEnableStandbyPullup(ioline_t line);
 void tagEnableStandbyPulldown(ioline_t line);
-void tagSpiDeviceOn(const TagSpiDevice *device);
-void tagSpiDeviceOff(const TagSpiDevice *device);
+void tagSpiDevicePowerOn(const TagSpiDevice *device);
+void tagSpiDevicePowerOff(const TagSpiDevice *device);
+void tagSpiBusBegin(const TagSpiDevice *device);
+void tagSpiBusEnd(const TagSpiDevice *device);
 void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
 void tagI2cDeviceOn(const TagI2cDevice *device);
 void tagI2cDeviceOff(const TagI2cDevice *device);

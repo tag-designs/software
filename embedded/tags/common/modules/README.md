@@ -147,9 +147,12 @@ orchestration in `pwr.c`; current active tags provide local `src/pwr.c`
 overrides, so they no longer list `pwr.c` directly in `ALLCSRC`. Shared
 bus/pin mechanics live in `bus_power.c`: SPI/I2C descriptor helpers, the
 default SPI1 controller setup, and STM32 standby pullup/pulldown helpers that
-operate on board-provided `LINE_xxx` names. Device-specific power descriptors
-can live in tag-local code today and should eventually move beside their device
-modules as the power code is split up.
+operate on board-provided `LINE_xxx` names. SPI power and SPI bus ownership are
+separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
+power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
+optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
+`tagSpiBusEnd()` own the mutex, pin alternate functions, and controller
+enable/disable sequence.
 The default SPI1 controller also tracks whether SPI1 is logically on; short
 Stop2 sleeps query `isSpi1On()` so callers no longer need to know whether an
 SPI device is active before calling `stopMilliseconds()`. Older tag-local SPI
@@ -188,13 +191,14 @@ keep sensor command formats and register transactions beside the sensor
 drivers.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
-`TagPressureDevice`, which combines a `TagRegisterDevice` with the tag-specific
-power-on, power-off, and sleep callbacks. The legacy `lpsGetPressureTemp()` and
-`lpsTest()` APIs live in `pressure/src/lps.c`; that shim selects the compiled
-pressure driver, owns the tag's default descriptor, and delegates to the
-device-specific parameterized functions. Keep sensor register sequences in the
-individual driver files and keep tag-selection or bus-selection conditionals in
-the shim.
+`TagPressureDevice`, which combines a `TagRegisterDevice` with tag-specific
+device power, bus-session, and sleep callbacks. The split matters because a
+sensor can remain powered while the MCU releases or re-enables the SPI bus for
+low-power sleeps. The legacy `lpsGetPressureTemp()` and `lpsTest()` APIs live
+in `pressure/src/lps.c`; that shim selects the compiled pressure driver, owns
+the tag's default descriptor, and delegates to the device-specific
+parameterized functions. Keep sensor register sequences in the individual
+driver files and keep tag-selection or bus-selection conditionals in the shim.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

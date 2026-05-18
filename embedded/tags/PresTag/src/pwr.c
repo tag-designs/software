@@ -39,7 +39,6 @@ static const TagSpiDevice lps_bus = {
     .miso = LINE_STEVAL_MISO,
     .mosi = LINE_STEVAL_MOSI,
     .pwr = LINE_STEVAL_PWR,
-    .off_policy = TAG_SPI_OFF_FLOAT,
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 #endif
@@ -53,7 +52,6 @@ static const TagSpiDevice flash_bus = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
-    .off_policy = TAG_SPI_OFF_SAFE_IDLE,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 #endif
@@ -69,26 +67,48 @@ void rtcOff(void)
 }
 
 #ifdef LPS_SPI
+void lpsPowerOn(void)
+{
+  tagSpiDevicePowerOn(&lps_bus);
+}
+
+void lpsPowerOff(void)
+{
+  tagSpiDevicePowerOff(&lps_bus);
+}
+
+void lpsBusBegin(void)
+{
+  tagSpiBusBegin(&lps_bus);
+}
+
+void lpsBusEnd(void)
+{
+  tagSpiBusEnd(&lps_bus);
+}
+
 void lpsOn(void)
 {
-  tagSpiDeviceOn(&lps_bus);
+  lpsPowerOn();
+  lpsBusBegin();
 }
 
 void lpsOff(void)
 {
-  tagSpiDeviceOff(&lps_bus);
+  lpsBusEnd();
+  lpsPowerOff();
 }
 #endif
 
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
-  tagSpiDeviceOn(&flash_bus);
+  tagSpiBusBegin(&flash_bus);
 }
 
 void FlashSpiOff(void)
 {
-  tagSpiDeviceOff(&flash_bus);
+  tagSpiBusEnd(&flash_bus);
 }
 #endif
 

@@ -34,7 +34,7 @@ bool lps33GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
       int16_t temperature;
     } buf;
     uint8_t tmp;
-    device->on();
+    tagPressureDeviceBegin(device);
     // wait for power to stabilize
     device->sleep_ms(10);
 #ifdef LPS_LOW_POWER
@@ -65,7 +65,7 @@ bool lps33GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
       *pressure = 0;
       *temperature = SHRT_MIN;
     }
-    device->off();
+    tagPressureDeviceEnd(device);
 
     return (tmp & 3) == 3;
   }
@@ -75,9 +75,9 @@ bool lps33GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
 bool lps33Test(const TagPressureDevice *device)
 {
   uint8_t who;
-  device->on();
+  tagPressureDeviceBegin(device);
   device->sleep_ms(10);
   lps33_GetRegDevice(device, LPS33_WHO_AM_I, &who, 1);
-  device->off();
+  tagPressureDeviceEnd(device);
   return who == LPS33_WHO_AM_I_VALUE;
 }

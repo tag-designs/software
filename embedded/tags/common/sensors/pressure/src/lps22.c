@@ -34,7 +34,7 @@ bool lps22GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
       int16_t temperature;
     } buf;
     uint8_t tmp;
-    device->on();
+    tagPressureDeviceBegin(device);
 #if defined(LPS_SPI)
     // SPI1->CR1 &= ~SPI_CR1_SPE;
 #endif
@@ -79,7 +79,7 @@ bool lps22GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
     lps22_GetReg(device, LPS22_PRESS_OUT_XL, &((uint8_t *)&buf)[1], 5);
     *pressure = buf.pressure >> 16;
     *temperature = buf.temperature;
-    device->off();
+    tagPressureDeviceEnd(device);
     if (!(tmp & 1))
       *pressure = 0;
     if (!(tmp & 2))
@@ -92,9 +92,9 @@ bool lps22GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
 bool lps22Test(const TagPressureDevice *device)
 {
   uint8_t who;
-  device->on();
+  tagPressureDeviceBegin(device);
   device->sleep_ms(10);
   lps22_GetReg(device, LPS22_WHO_AM_I, &who, 1);
-  device->off();
+  tagPressureDeviceEnd(device);
   return who == LPS22_WHO_AM_I_VALUE;
 }

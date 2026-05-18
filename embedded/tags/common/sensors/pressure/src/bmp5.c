@@ -59,7 +59,7 @@ bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
 
   // power up
 
-  device->on();
+  tagPressureDeviceBegin(device);
 
   device->sleep_ms(3);
 
@@ -76,7 +76,7 @@ bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   }
 
   if (!power_up) {
-    device->off();
+    tagPressureDeviceEnd(device);
     return false;
   }
 
@@ -122,7 +122,7 @@ bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
     bmp5_GetReg(device, BMP5_REG_PRESS_DATA_LSB, (uint8_t *) pressure, 2);
   }
 
-  device->off();  // power down
+  tagPressureDeviceEnd(device);  // power down
   return status & BMP5_INT_ASSERTED_DRDY;
 }
 
@@ -130,7 +130,7 @@ bool bmp5Test(const TagPressureDevice *device)
 {
   uint8_t chip_id;
   bool power_check;
-  device->on();
+  tagPressureDeviceBegin(device);
   device->sleep_ms(3);
 
   // read twice because first read just forces SPI 
@@ -142,6 +142,6 @@ bool bmp5Test(const TagPressureDevice *device)
   
   power_check = power_up_check(device);
 
-  device->off();
+  tagPressureDeviceEnd(device);
   return ((chip_id == BMP5_CHIP_ID_VALUE) && power_check);
 }

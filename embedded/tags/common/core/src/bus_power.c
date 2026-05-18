@@ -92,13 +92,8 @@ const TagSpiController tagSpi1DefaultController = {
     .disable = spi1DefaultDisable,
 };
 
-void tagSpiDeviceOn(const TagSpiDevice *device)
+void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
-  if (device->mutex)
-  {
-    chBSemWait(device->mutex);
-  }
-
   if (tagLineIsValid(device->pwr))
   {
     toOutput(device->pwr);
@@ -107,6 +102,27 @@ void tagSpiDeviceOn(const TagSpiDevice *device)
 
   palSetLine(device->cs);
   toOutput(device->cs);
+}
+
+void tagSpiDevicePowerOff(const TagSpiDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    palClearLine(device->pwr);
+  }
+
+  toAnalog(device->sck);
+  toAnalog(device->mosi);
+  toAnalog(device->miso);
+  toAnalog(device->cs);
+}
+
+void tagSpiBusBegin(const TagSpiDevice *device)
+{
+  if (device->mutex)
+  {
+    chBSemWait(device->mutex);
+  }
 
   toAlternate(device->sck);
   toAlternate(device->miso);
@@ -118,39 +134,13 @@ void tagSpiDeviceOn(const TagSpiDevice *device)
   }
 }
 
-void tagSpiDeviceOff(const TagSpiDevice *device)
+void tagSpiBusEnd(const TagSpiDevice *device)
 {
   palSetLine(device->cs);
 
   if (device->controller && device->controller->disable)
   {
     device->controller->disable();
-  }
-
-  switch (device->off_policy)
-  {
-  case TAG_SPI_OFF_SAFE_IDLE:
-    toOutput(device->cs);
-    palClearLine(device->sck);
-    toOutput(device->sck);
-    palClearLine(device->mosi);
-    toOutput(device->mosi);
-    toInput(device->miso);
-    break;
-
-  case TAG_SPI_OFF_FLOAT:
-    toAnalog(device->sck);
-    toAnalog(device->mosi);
-    toAnalog(device->miso);
-    toAnalog(device->cs);
-    if (tagLineIsValid(device->pwr))
-    {
-      palClearLine(device->pwr);
-    }
-    break;
-
-  case TAG_SPI_OFF_CUSTOM:
-    break;
   }
 
   if (device->mutex)

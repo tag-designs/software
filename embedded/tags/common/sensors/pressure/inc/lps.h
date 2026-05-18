@@ -20,11 +20,20 @@ typedef void (*TagPressureSleep)(int ms);
  */
 typedef struct {
   const TagRegisterDevice *registers;
-  TagPressurePower on;
-  TagPressurePower off;
+  TagPressurePower power_on;
+  TagPressurePower power_off;
+  TagPressurePower bus_begin;
+  TagPressurePower bus_end;
   TagPressureSleep sleep_ms;
 } TagPressureDevice;
 
+void tagPressureDeviceBegin(const TagPressureDevice *device);
+void tagPressureDeviceEnd(const TagPressureDevice *device);
+
+void lpsPowerOn(void);
+void lpsPowerOff(void);
+void lpsBusBegin(void);
+void lpsBusEnd(void);
 void lpsOn(void);
 void lpsInit(void);
 void lpsOff(void);

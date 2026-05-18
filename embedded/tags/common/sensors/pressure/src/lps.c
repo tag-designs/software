@@ -173,12 +173,44 @@ static void lps_default_sleep(int ms)
   stopMilliseconds(false, ms);
 }
 
+void __attribute__((weak)) lpsPowerOn(void) {}
+
+void __attribute__((weak)) lpsPowerOff(void) {}
+
+void __attribute__((weak)) lpsBusBegin(void)
+{
+  lpsOn();
+}
+
+void __attribute__((weak)) lpsBusEnd(void)
+{
+  lpsOff();
+}
+
 static const TagPressureDevice lps_device = {
   .registers = &lps_registers,
-  .on = lpsOn,
-  .off = lpsOff,
+  .power_on = lpsPowerOn,
+  .power_off = lpsPowerOff,
+  .bus_begin = lpsBusBegin,
+  .bus_end = lpsBusEnd,
   .sleep_ms = lps_default_sleep,
 };
+
+void tagPressureDeviceBegin(const TagPressureDevice *device)
+{
+  if (device->power_on)
+    device->power_on();
+  if (device->bus_begin)
+    device->bus_begin();
+}
+
+void tagPressureDeviceEnd(const TagPressureDevice *device)
+{
+  if (device->bus_end)
+    device->bus_end();
+  if (device->power_off)
+    device->power_off();
+}
 
 void lpsInit(void) {}
 

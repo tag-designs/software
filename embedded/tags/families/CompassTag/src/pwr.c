@@ -48,7 +48,6 @@ static const TagSpiDevice mag_bus = {
     .miso = LINE_MAG_MISO,
     .mosi = LINE_MAG_MOSI,
     .pwr = LINE_MAG_PWR,
-    .off_policy = TAG_SPI_OFF_FLOAT,
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 #endif
@@ -62,7 +61,6 @@ static const TagSpiDevice flash_bus = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
-    .off_policy = TAG_SPI_OFF_SAFE_IDLE,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 #endif
@@ -96,20 +94,42 @@ static void usartDisable(void)
 }
 
 #ifdef TAG_SENSOR_MAG_AK09940A
-void magOn(void)
+void magPowerOn(void)
 {
-  tagSpiDeviceOn(&mag_bus);
+  tagSpiDevicePowerOn(&mag_bus);
+}
+
+void magPowerOff(void)
+{
+#ifdef COMPASS_TAG
+  palClearLine(LINE_MAG_RSTN);
+#endif
+  tagSpiDevicePowerOff(&mag_bus);
+}
+
+void magBusBegin(void)
+{
+  tagSpiBusBegin(&mag_bus);
 
   toOutput(LINE_MAG_RSTN);
   palSetLine(LINE_MAG_RSTN);
 }
 
+void magBusEnd(void)
+{
+  tagSpiBusEnd(&mag_bus);
+}
+
+void magOn(void)
+{
+  magPowerOn();
+  magBusBegin();
+}
+
 void magOff(void)
 {
-#ifdef COMPASS_TAG
-  palClearLine(LINE_MAG_RSTN);
-#endif
-  tagSpiDeviceOff(&mag_bus);
+  magBusEnd();
+  magPowerOff();
 }
 #endif
 
@@ -146,12 +166,12 @@ void accelOff(void)
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
-  tagSpiDeviceOn(&flash_bus);
+  tagSpiBusBegin(&flash_bus);
 }
 
 void FlashSpiOff(void)
 {
-  tagSpiDeviceOff(&flash_bus);
+  tagSpiBusEnd(&flash_bus);
 }
 #endif
 

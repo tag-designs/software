@@ -41,7 +41,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   *pressure = SHRT_MIN;
   *temperature = SHRT_MIN;
 
-  device->on();         // powered through gpio
+  tagPressureDeviceBegin(device);         // powered through gpio
   device->sleep_ms(10); // 10ms power up
 
   // set BDU and configure one shot
@@ -69,7 +69,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
     lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
     lps27_GetReg(device, LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
   }
-  device->off();
+  tagPressureDeviceEnd(device);
   return status == 3;
 }
 
@@ -78,10 +78,10 @@ bool lps27Test(const TagPressureDevice *device)
   uint8_t who;
   int16_t temperature,pressure;
   bool status;
-  device->on();
+  tagPressureDeviceBegin(device);
   device->sleep_ms(10);
   lps27_GetReg(device, LPS27_WHO_AM_I, &who, 1);
-  device->off();
+  tagPressureDeviceEnd(device);
   status = lps27GetPressureTemp(device, &pressure, &temperature);
 
 
