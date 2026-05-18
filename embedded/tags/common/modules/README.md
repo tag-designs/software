@@ -100,6 +100,8 @@ up. Current examples:
   src/test.c
 
 ../sensors/
+  inc/sensor_io.h
+  src/sensor_io.c
   accel/
     inc/ADXL362.h
     inc/ADXL367.h
@@ -111,10 +113,16 @@ up. Current examples:
     src/ais2dw12.c
     src/lis2dtw12.c
   pressure/
+    inc/bmp5.h
     inc/lps.h
+    inc/lps22hhw.h
     inc/lps27hhw.h
+    inc/lps33hw.h
+    src/bmp5.c
+    src/lps22.c
     src/lps27.c
     src/lps27_test.c
+    src/lps33.c
   mag/
     inc/ak09940a.h
     inc/mmc5633.h
@@ -163,6 +171,13 @@ modules and by `tag_core`; it is not intended to be listed directly in
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_mag_ak09940a` add only the family paths and source files they compile.
+Shared sensor-side transport mechanics live at the top of `../sensors`: for
+example, `sensor_io.c` owns conventional I2C register reads/writes, repeated
+polling SPI1 byte-transfer loops, USART synchronous-mode byte-transfer loops,
+and the ST-style register helpers used by the LPS27 pressure driver. Keep bus
+power, SPI/USART controller setup, and sleep pin policy in the tag power layer;
+keep sensor command formats and register transactions beside the sensor
+drivers.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

@@ -89,6 +89,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
@@ -131,6 +132,7 @@ embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/storage/inc/external_flash.h
 embedded/tags/common/sensors/accel/inc/lis2dtw12.h
+embedded/tags/common/sensors/inc/sensor_io.h
 embedded/tags/common/sensors/pressure/inc/lps.h
 embedded/tags/common/sensors/pressure/inc/lps27hhw.h
 embedded/tags/common/sensors/mag/inc/mmc5633.h
@@ -154,6 +156,7 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
@@ -197,6 +200,7 @@ embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/storage/inc/external_flash.h
 embedded/tags/common/sensors/accel/inc/lis2dtw12.h
+embedded/tags/common/sensors/inc/sensor_io.h
 embedded/tags/common/sensors/pressure/inc/lps.h
 embedded/tags/common/sensors/pressure/inc/lps27hhw.h
 embedded/tags/common/sensors/mag/inc/mmc5633.h
@@ -403,6 +407,7 @@ embedded/tags/IMUTagBreakout/src/ak09940.c
 embedded/tags/IMUTagBreakout/src/ak09940_test.c
 embedded/tags/IMUTagBreakout/src/config.c
 embedded/tags/IMUTagBreakout/src/datalog.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/IMUTagBreakout/src/lps22hh.c
 embedded/tags/IMUTagBreakout/src/lps22hh_test.c
 embedded/tags/IMUTagBreakout/src/pwr.c
@@ -458,5 +463,6 @@ embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/storage/inc/external_flash.h
+embedded/tags/common/sensors/inc/sensor_io.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```

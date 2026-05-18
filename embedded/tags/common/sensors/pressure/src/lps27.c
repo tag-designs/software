@@ -5,114 +5,60 @@
 #include "lps27hhw.h"
 #include "lps.h"
 #include "limits.h"
+#include "sensor_io.h"
 
 #define LPS27HW_ADR (0x5C)
 
 #if defined(LPS_I2C) && defined(TAG_SENSOR_PRESSURE_LPS27)
-//extern const I2CConfig i2cfg1;
 #define LPS27_TIMEOUT 100
 
-static int I2C1_MemWrite(uint8_t device, uint8_t reg, unsigned char *buffer,
-                         uint16_t size, uint32_t timeout)
-{
-  uint8_t txbuf[10];
-  txbuf[0] = reg;
-  for (int i = 0; i < 8 && i < size; i++)
-  {
-    txbuf[i + 1] = buffer[i];
-  }
-  return i2cMasterTransmitTimeout(&I2CD1, device, txbuf, size + 1, 0, 0,
-                                  timeout);
-}
-
-int lps27_GetReg(enum LPS27_Reg reg, uint8_t *val, int num)
-{
-  return i2cMasterTransmitTimeout(&I2CD1, LPS27HW_ADR, &reg, 1, val, num,
-                                  LPS27_TIMEOUT);
-}
-
-int lps27_SetReg(enum LPS27_Reg reg, unsigned char *val, int num)
-{
-  return I2C1_MemWrite(LPS27HW_ADR, reg, val, num, LPS27_TIMEOUT);
-}
+static const TagI2cRegisterIO lps27_i2c = {
+  .driver = &I2CD1,
+  .address = LPS27HW_ADR,
+  .timeout = LPS27_TIMEOUT,
+};
+#define LPS27_REGISTER_DEVICE \
+  { tagI2cReadRegister, tagI2cWriteRegister, &lps27_i2c }
 
 #endif
 
 #if defined(LPS_SPI) && defined(TAG_SENSOR_PRESSURE_LPS27)
-static inline void SendPolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
-  }
-}
-
-static inline void ReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
-  }
-}
+static const TagStSpiRegisterIO lps27_spi = {
+  .cs = LINE_STEVAL_CS,
+  .read_mask = 0x80,
+  .write_mask = 0x00,
+};
+#define LPS27_REGISTER_DEVICE \
+  { tagStSpiReadRegister, tagStSpiWriteRegister, &lps27_spi }
 
 #endif
 
 #if defined(LPS_USART) && defined(TAG_SENSOR_PRESSURE_LPS27)
-static inline void SendPolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
-  while (n--)
-  {
-    *tdr = *buf++;
-    while ((USART2->ISR & USART_ISR_RXNE) == 0)
-      ;
-    *rdr;
-  }
-}
+static const TagStUsartRegisterIO lps27_usart = {
+  .usart = USART2,
+  .cs = LINE_STEVAL_CS,
+  .read_mask = 0x80,
+  .write_mask = 0x00,
+  .dummy = 0xff,
+};
+#define LPS27_REGISTER_DEVICE \
+  { tagStUsartReadRegister, tagStUsartWriteRegister, &lps27_usart }
 
-static inline void ReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
-  while (n--)
-  {
-    *tdr = 0xff;
-     while ((USART2->ISR & USART_ISR_RXNE) == 0)
-      ;
-    *buf++ = *rdr;
-  }
-}
 #endif
 
-void lps27_SetReg(enum LPS27_Reg reg, uint8_t *val, int num)
-{
-  unsigned char buffer = ((uint8_t)reg);
+static const TagRegisterDevice lps27_registers = LPS27_REGISTER_DEVICE;
 
-  palClearLine(LINE_STEVAL_CS);
-  SendPolled(1, &buffer);
-  SendPolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+static void lps27_SetReg(enum LPS27_Reg reg, uint8_t *val, int num)
+{
+  (void)lps27_registers.write_register(lps27_registers.context, (uint8_t)reg,
+                                       val, num);
 }
 
-void lps27_GetReg(enum LPS27_Reg reg, uint8_t *val, int num)
+static void lps27_GetReg(enum LPS27_Reg reg, uint8_t *val, int num)
 {
-  unsigned char buffer = 0x80 | ((uint8_t)reg);
-  palClearLine(LINE_STEVAL_CS);
-  SendPolled(1, &buffer);
-  ReceivePolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+  (void)lps27_registers.read_register(lps27_registers.context, (uint8_t)reg,
+                                      val, num);
 }
-
-#
 
 static inline void sleepMS(int ms) {
 #if defined(LPS_SPI)

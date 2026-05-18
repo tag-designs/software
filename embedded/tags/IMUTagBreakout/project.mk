@@ -11,6 +11,7 @@ TAG_MODULES += \
        flash_mx25l
 
 include ../common/modules/modules.mk
+include $(TAG_COMMON_MODULE_DIR)/sensor_pressure_paths.mk
 
 UDEFS += -DTAG_SENSOR_MAG_AK09940A=1 -DTAG_SENSOR_PRESSURE_LPS22HH=1
 
@@ -21,6 +22,7 @@ ALLCSRC += \
        ak09940_test.c \
        config.c \
        datalog.c \
+       sensor_io.c \
        lps22hh.c \
        lps22hh_test.c \
        sensors.c \

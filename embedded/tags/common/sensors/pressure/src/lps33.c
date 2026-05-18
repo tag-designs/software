@@ -4,81 +4,46 @@
 #include "lps33hw.h"
 #include "lps.h"
 #include "limits.h"
+#include "sensor_io.h"
 
 #define LPS33HW_ADR (0x5C)
 
 #ifdef LPS_I2C
-extern const I2CConfig i2cfg1;
 #define LPS33_TIMEOUT 100
 
-static int I2C1_MemWrite(uint8_t device, uint8_t reg, unsigned char *buffer,
-                         uint16_t size, uint32_t timeout)
+static const TagI2cRegisterIO lps33_i2c = {
+  .driver = &I2CD1,
+  .address = LPS33HW_ADR,
+  .timeout = LPS33_TIMEOUT,
+};
+
+void lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
 {
-  uint8_t txbuf[10];
-  txbuf[0] = reg;
-  for (int i = 0; i < 8 && i < size; i++)
-  {
-    txbuf[i + 1] = buffer[i];
-  }
-  return i2cMasterTransmitTimeout(&I2CD1, device, txbuf, size + 1, 0, 0,
-                                  timeout);
+  (void)tagI2cReadRegister(&lps33_i2c, (uint8_t)reg, val, num);
 }
 
-int lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
+void lps33_SetReg(enum LPS33_Reg reg, unsigned char *val, int num)
 {
-  return i2cMasterTransmitTimeout(&I2CD1, LPS33HW_ADR, &reg, 1, val, num,
-                                  LPS33_TIMEOUT);
-}
-
-int lps33_SetReg(enum LPS33_Reg reg, unsigned char *val, int num)
-{
-  return I2C1_MemWrite(LPS33HW_ADR, reg, val, num, LPS33_TIMEOUT);
+  (void)tagI2cWriteRegister(&lps33_i2c, (uint8_t)reg, val, num);
 }
 
 #endif
 
 #ifdef LPS_SPI
-static inline void spiSendPolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
-  }
-}
-
-static inline void spiReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
-  }
-}
+static const TagStSpiRegisterIO lps33_spi = {
+  .cs = LINE_STEVAL_CS,
+  .read_mask = 0x80,
+  .write_mask = 0x00,
+};
 
 void lps33_SetReg(enum LPS33_Reg reg, uint8_t *val, int num)
 {
-  unsigned char buffer = ((uint8_t)reg);
-
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiSendPolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+  (void)tagStSpiWriteRegister(&lps33_spi, (uint8_t)reg, val, num);
 }
 
 void lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
 {
-  unsigned char buffer = 0x80 | ((uint8_t)reg);
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiReceivePolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+  (void)tagStSpiReadRegister(&lps33_spi, (uint8_t)reg, val, num);
 }
 
 #endif

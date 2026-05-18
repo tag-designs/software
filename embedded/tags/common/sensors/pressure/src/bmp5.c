@@ -4,48 +4,22 @@
 #include "bmp5.h"
 #include "lps.h"
 #include "limits.h"
+#include "sensor_io.h"
 
-static inline void spiSendPolled(uint32_t n, uint8_t *buf)
+static const TagStSpiRegisterIO bmp5_spi = {
+  .cs = LINE_STEVAL_CS,
+  .read_mask = BMP5_SPI_RD_MASK,
+  .write_mask = 0x00,
+};
+
+static void bmp5_SetReg(enum BMP5_Reg reg, uint8_t *val, int num)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
-  }
+  (void)tagStSpiWriteRegister(&bmp5_spi, (uint8_t)reg, val, num);
 }
 
-static inline void spiReceivePolled(uint32_t n, uint8_t *buf)
+static void bmp5_GetReg(enum BMP5_Reg reg, uint8_t *val, int num)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
-  }
-}
-
-void bmp5_SetReg(enum BMP5_Reg reg, uint8_t *val, int num)
-{
-  unsigned char buffer = ((uint8_t)reg);
-
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiSendPolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
-}
-
-void bmp5_GetReg(enum BMP5_Reg reg, uint8_t *val, int num)
-{
-  unsigned char buffer = 0x80 | ((uint8_t)reg);
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiReceivePolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+  (void)tagStSpiReadRegister(&bmp5_spi, (uint8_t)reg, val, num);
 }
 
 float lpsPressure(int16_t pressure) {

@@ -4,82 +4,47 @@
 #include "lps22hhw.h"
 #include "lps.h"
 #include "limits.h"
+#include "sensor_io.h"
 
 #define LPS22HW_ADR (0x5C)
 
 #if defined(LPS_I2C) && defined(USE_LPS22)
-//extern const I2CConfig i2cfg1;
 #define LPS22_TIMEOUT 100
 
-static int I2C1_MemWrite(uint8_t device, uint8_t reg, unsigned char *buffer,
-                         uint16_t size, uint32_t timeout)
+static const TagI2cRegisterIO lps22_i2c = {
+  .driver = &I2CD1,
+  .address = LPS22HW_ADR,
+  .timeout = LPS22_TIMEOUT,
+};
+
+static void lps22_GetReg(enum LPS22_Reg reg, uint8_t *val, int num)
 {
-  uint8_t txbuf[10];
-  txbuf[0] = reg;
-  for (int i = 0; i < 8 && i < size; i++)
-  {
-    txbuf[i + 1] = buffer[i];
-  }
-  return i2cMasterTransmitTimeout(&I2CD1, device, txbuf, size + 1, 0, 0,
-                                  timeout);
+  (void)tagI2cReadRegister(&lps22_i2c, (uint8_t)reg, val, num);
 }
 
-int lps22_GetReg(enum LPS22_Reg reg, uint8_t *val, int num)
+static void lps22_SetReg(enum LPS22_Reg reg, uint8_t *val, int num)
 {
-  return i2cMasterTransmitTimeout(&I2CD1, LPS22HW_ADR, &reg, 1, val, num,
-                                  LPS22_TIMEOUT);
-}
-
-int lps22_SetReg(enum LPS22_Reg reg, unsigned char *val, int num)
-{
-  return I2C1_MemWrite(LPS22HW_ADR, reg, val, num, LPS22_TIMEOUT);
+  (void)tagI2cWriteRegister(&lps22_i2c, (uint8_t)reg, val, num);
 }
 
 #endif
 
 #if defined(LPS_SPI) && defined(USE_LPS22)
 // needs to be re-written to use three wire format
-static inline void spiSendPolled(uint32_t n, uint8_t *buf)
+static const TagStSpiRegisterIO lps22_spi = {
+  .cs = LINE_STEVAL_CS,
+  .read_mask = 0x80,
+  .write_mask = 0x00,
+};
+
+static void lps22_SetReg(enum LPS22_Reg reg, uint8_t *val, int num)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
-  }
+  (void)tagStSpiWriteRegister(&lps22_spi, (uint8_t)reg, val, num);
 }
 
-static inline void spiReceivePolled(uint32_t n, uint8_t *buf)
+static void lps22_GetReg(enum LPS22_Reg reg, uint8_t *val, int num)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
-  }
-}
-
-void lps22_SetReg(enum LPS22_Reg reg, uint8_t *val, int num)
-{
-  unsigned char buffer = ((uint8_t)reg);
-
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiSendPolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
-}
-
-void lps22_GetReg(enum LPS22_Reg reg, uint8_t *val, int num)
-{
-  unsigned char buffer = 0x80 | ((uint8_t)reg);
-  palClearLine(LINE_STEVAL_CS);
-  spiSendPolled(1, &buffer);
-  spiReceivePolled(num, val);
-  palSetLine(LINE_STEVAL_CS);
+  (void)tagStSpiReadRegister(&lps22_spi, (uint8_t)reg, val, num);
 }
 
 #endif

@@ -1,6 +1,7 @@
 #include "lps22hh.h"
 #include "hal.h"
 #include "custom.h"
+#include "sensor_io.h"
 
 extern void lpsOn(void);
 extern void lpsOff(void);
@@ -50,57 +51,16 @@ extern void lpsOff(void);
 #define LPS22HH_PRESSURE_SENSITIVITY ((float) 1.0/4096)
 #define LPS22HH_TEMPERATURE_SENSITIVITY ((float) 1.0/100)
 
-/* --------------------------------------------------------------------------
- * Common SPI helpers
- * --------------------------------------------------------------------------
- */
-
-static inline void SendPolled(uint32_t n, const uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  uint32_t rn = n;
-  while (n || rn)
-  {
-    while (n && (SPI1->SR & SPI_SR_TXE)){
-        *spidr = *buf++;
-        n--;
-    }
-    while (rn && (SPI1->SR & SPI_SR_RXNE))
-    {
-        *spidr;
-        rn--;
-    }
-  }
-}
-
-static inline void ReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  uint32_t rn = n;
-  while (n || rn)
-  {
-    while (n && (SPI1->SR & SPI_SR_TXE)){
-        *spidr = 0xff;
-        n--;
-    }
-    while (rn && (SPI1->SR & SPI_SR_RXNE))
-    {
-        *buf++ = *spidr;
-        rn--;
-    }
-  }
-}
-
-
+static const TagStSpiRegisterIO lps22hh_spi = {
+    .cs = LINE_LPS_CS,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
 
 /* Write one register. */
 static int write_reg(uint8_t reg, uint8_t val)
 {
-    uint8_t buffer[] = {reg,val};
-    palClearLine(LINE_LPS_CS);
-    SendPolled(2,(uint8_t *) &buffer);
-    palSetLine(LINE_LPS_CS);
-    return 0;
+    return tagStSpiWriteRegister(&lps22hh_spi, reg, &val, 1);
 }
 
 /*
@@ -111,12 +71,7 @@ static int write_reg(uint8_t reg, uint8_t val)
  */
 static int read_block(uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    unsigned char buffer = 0x80 | reg;
-    palClearLine(LINE_LPS_CS);
-    SendPolled(1, &buffer);
-    ReceivePolled(len, buf);
-    palSetLine(LINE_LPS_CS);
-    return 0;
+    return tagStSpiReadRegister(&lps22hh_spi, reg, buf, len);
 }
 
 #define read_reg(reg,val) read_block(reg,val,1)
