@@ -8,7 +8,8 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_mx25r \
-       sensor_mag_ak09940a
+       sensor_mag_ak09940a \
+       sensor_accel_lis2du12
 
 include ../common/modules/modules.mk
 include ../families/CompassTag/family.mk

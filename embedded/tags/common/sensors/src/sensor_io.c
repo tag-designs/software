@@ -20,6 +20,11 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                              spi->write_mask);
 
   tagSpiSelect(spi->bus);
+  /*
+   * Keep the register command and payload in one CS-framed transaction. Some
+   * SPI-like sensors latch the command on CS rising, so callers must not split
+   * a register write into separately selected command and data transfers.
+   */
   tagSpiWrite(spi->bus->spi, &command, 1);
   tagSpiWrite(spi->bus->spi, buf, len);
   tagSpiDeselect(spi->bus);
@@ -41,38 +46,6 @@ int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   return 0;
 }
 
-/*
- * USART synchronous-mode byte transfers for tags that use USART2 as an
- * SPI-like sensor bus. The power layer owns clocking and register setup; these
- * helpers only move bytes through the already-configured peripheral.
- */
-void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&usart->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&usart->RDR;
-
-  while (len--) {
-    *tdr = *buf++;
-    while ((usart->ISR & USART_ISR_RXNE) == 0)
-      ;
-    (void)*rdr;
-  }
-}
-
-void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
-                  uint32_t len)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&usart->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&usart->RDR;
-
-  while (len--) {
-    *tdr = dummy;
-    while ((usart->ISR & USART_ISR_RXNE) == 0)
-      ;
-    *buf++ = *rdr;
-  }
-}
-
 int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                             uint32_t len)
 {
@@ -80,10 +53,14 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
   uint8_t command = (uint8_t)((reg & (uint8_t)~usart->read_mask) |
                              usart->write_mask);
 
-  palClearLine(usart->cs);
-  tagUsartWrite(usart->usart, &command, 1);
-  tagUsartWrite(usart->usart, buf, len);
-  palSetLine(usart->cs);
+  tagUsartSelect(usart->bus);
+  /*
+   * Synchronous-USART devices use CS for the same transaction framing as SPI;
+   * the command byte and payload must stay under the same assertion.
+   */
+  tagUsartWrite(usart->bus->usart, &command, 1);
+  tagUsartWrite(usart->bus->usart, buf, len);
+  tagUsartDeselect(usart->bus);
 
   return 0;
 }
@@ -94,10 +71,10 @@ int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   const TagStUsartRegisterBus *usart = (const TagStUsartRegisterBus *)io;
   uint8_t command = (uint8_t)(reg | usart->read_mask);
 
-  palClearLine(usart->cs);
-  tagUsartWrite(usart->usart, &command, 1);
-  tagUsartRead(usart->usart, usart->dummy, buf, len);
-  palSetLine(usart->cs);
+  tagUsartSelect(usart->bus);
+  tagUsartWrite(usart->bus->usart, &command, 1);
+  tagUsartRead(usart->bus->usart, usart->bus->dummy, buf, len);
+  tagUsartDeselect(usart->bus);
 
   return 0;
 }

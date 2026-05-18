@@ -1,6 +1,7 @@
 #include "hal.h"
 #include "custom.h"
 #include "power.h"
+#include "sensor_io.h"
 #include "lis2du12.h"
 
 typedef enum
@@ -78,87 +79,66 @@ each bit is (1/64)*2 g = 1/32 g
 */
 
 
-#if defined(ACCEL_USE_SPI)
-static void SendPolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *spidr;
-  }
-}
-
-static void ReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-  while (n--)
-  {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
-  }
-}
-
-#endif
-
 #if defined(ACCEL_USART)
-static inline void SendPolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
-  while (n--)
-  {
-    *tdr = *buf++;
-    while ((USART2->ISR & USART_ISR_RXNE) == 0)
-      ;
-    *rdr;
-  }
-}
+static const TagUsartBus lis2du12_usart_bus = {
+    .usart = USART2,
+    .cs = LINE_ACCEL_CS,
+    .dummy = 0xff,
+};
 
-static inline void ReceivePolled(uint32_t n, uint8_t *buf)
-{
-  volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
-  volatile uint8_t *rdr = (volatile uint8_t *)&USART2->RDR;
-  while (n--)
-  {
-    *tdr = 0xff;
-     while ((USART2->ISR & USART_ISR_RXNE) == 0)
-      ;
-    *buf++ = *rdr;
-  }
-}
+static const TagStUsartRegisterBus lis2du12_register_bus = {
+    .bus = &lis2du12_usart_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus lis2du12_registers = {
+    .read_register = tagStUsartReadRegister,
+    .write_register = tagStUsartWriteRegister,
+    .context = &lis2du12_register_bus,
+};
+#elif defined(ACCEL_USE_SPI)
+static const TagSpiBus lis2du12_spi_bus = {
+    .spi = SPI1,
+    .cs = LINE_ACCEL_CS,
+    .dummy = 0xff,
+};
+
+static const TagStSpiRegisterBus lis2du12_register_bus = {
+    .bus = &lis2du12_spi_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus lis2du12_registers = {
+    .read_register = tagStSpiReadRegister,
+    .write_register = tagStSpiWriteRegister,
+    .context = &lis2du12_register_bus,
+};
+#else
+#error "LIS2DU12 requires ACCEL_USART or ACCEL_USE_SPI"
 #endif
-
-static int32_t LIS2DU12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
-{
-  uint8_t buffer = ((uint8_t)reg);
-  palClearLine(LINE_ACCEL_CS);
-  SendPolled(1, &buffer);
-  SendPolled(len, bufp);
-  palSetLine(LINE_ACCEL_CS);
-  return 0;
-}
 
 static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
 {
-  uint8_t buffer[] = {reg,val};
-  palClearLine(LINE_ACCEL_CS);
-  SendPolled(2,(uint8_t *) &buffer);
-  palSetLine(LINE_ACCEL_CS);
+  /*
+   * The wakeup setup is a sequence of single-register writes. Keep those byte
+   * writes as one selected transaction, matching the original CompassTag
+   * driver exactly; some synchronous-USART parts are fussier about transaction
+   * shape than their SPI-like command format suggests.
+   */
+  uint8_t buffer[] = {reg, val};
+
+#if defined(ACCEL_USART)
+  tagUsartBusWrite(lis2du12_register_bus.bus, buffer, sizeof(buffer));
+#elif defined(ACCEL_USE_SPI)
+  tagSpiBusWrite(lis2du12_register_bus.bus, buffer, sizeof(buffer));
+#endif
 }
 
 static int32_t LIS2DU12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
-  unsigned char buffer = 0x80 | reg;
-  palClearLine(LINE_ACCEL_CS);
-  SendPolled(1, &buffer);
-  ReceivePolled(len, bufp);
-  palSetLine(LINE_ACCEL_CS);
-  return 0;
+  return tagRegisterRead(&lis2du12_registers, reg, bufp, len);
 }
 
 

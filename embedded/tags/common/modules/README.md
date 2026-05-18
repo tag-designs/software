@@ -66,6 +66,7 @@ up. Current examples:
   inc/spi_bus.h
   inc/test_support.h
   inc/timekeeping.h
+  inc/usart_bus.h
   src/bus_power.c
   src/handlers.c
   src/debug_log.c
@@ -79,6 +80,7 @@ up. Current examples:
   src/stm32adc.c
   src/stm32flash.c
   src/time.c
+  src/usart_bus.c
 
 ../rtc/
   inc/rtc_device.h
@@ -112,11 +114,14 @@ up. Current examples:
     inc/ADXL362.h
     inc/ADXL367.h
     inc/ais2dw12.h
+    inc/lis2du12.h
     inc/lis2dtw12.h
     src/ADXL362.c
     src/adxl362_test.c
     src/ADXL367.c
     src/ais2dw12.c
+    src/lis2du12.c
+    src/lis2du12_test.c
     src/lis2dtw12.c
   pressure/
     inc/bmp5.h

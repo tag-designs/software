@@ -64,12 +64,15 @@ static const TagRegisterBus lps_registers = {
   &lps_spi,
 };
 #elif defined(LPS_USART)
-static const TagStUsartRegisterBus lps_usart = {
+static const TagUsartBus lps_usart_bus = {
   .usart = USART2,
   .cs = LINE_STEVAL_CS,
+  .dummy = 0xff,
+};
+static const TagStUsartRegisterBus lps_usart = {
+  .bus = &lps_usart_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-  .dummy = 0xff,
 };
 static const TagRegisterBus lps_registers = {
   tagStUsartReadRegister,

@@ -6,16 +6,14 @@ Shared application code for the `CompassTag`, `CompassTagAT25`, and
 The variants currently share:
 
 - configuration handling
-- LIS2DU12 accelerometer support
 - sensor sampling, calibration flash storage, and calibration ACK handling
-- the LIS2DU12 self-test hook used by the shared test driver
 - power and bus control for the RTC, magnetometer, accelerometer USART path,
   external flash SPI, and standby pin pulls
 - shared headers for logging, persistence, sensors, and configuration
 
-The family does not override the shared test driver. Instead,
-`lis2du12_test.c` supplies the `tag_test_lis2du12()` hook used by
-`common/test/src/test.c`.
+The LIS2DU12 accelerometer driver and its `tag_test_lis2du12()` hook now live
+in the common `sensor_accel_lis2du12` module. The family still owns the board
+power/control code for the CompassTag USART-style accelerometer path.
 
 The variants still keep their own `custom.h`, `project.mk`, ChibiOS `cfg/`
 files, and any source files that have intentionally diverged during board

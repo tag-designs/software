@@ -4,6 +4,7 @@
 #include "hal.h"
 #include "i2c_bus.h"
 #include "spi_bus.h"
+#include "usart_bus.h"
 
 #include <stdint.h>
 
@@ -35,11 +36,9 @@ typedef struct {
 } TagStSpiRegisterBus;
 
 typedef struct {
-  USART_TypeDef *usart;
-  ioline_t cs;
+  const TagUsartBus *bus;
   uint8_t read_mask;
   uint8_t write_mask;
-  uint8_t dummy;
 } TagStUsartRegisterBus;
 
 typedef int (*TagRegisterWrite)(const void *io, uint8_t reg,
@@ -62,10 +61,6 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg,
                           const uint8_t *buf, uint32_t len);
 int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                          uint32_t len);
-
-void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len);
-void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
-                  uint32_t len);
 
 int tagStUsartWriteRegister(const void *io, uint8_t reg,
                             const uint8_t *buf, uint32_t len);
