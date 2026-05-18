@@ -23,6 +23,7 @@
 #endif
 
 static const TagStSpiRegisterIO ak09940a_spi = {
+  .spi = SPI1,
   .cs = AK09940A_DEFAULT_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,

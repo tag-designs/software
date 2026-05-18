@@ -32,11 +32,13 @@ typedef struct {
  * pass the hardware USART registers and the ST-style command masks.
  */
 typedef struct {
+  SPI_TypeDef *spi;
   ioline_t cs;
   uint8_t dummy;
 } TagSpiDeviceIO;
 
 typedef struct {
+  SPI_TypeDef *spi;
   ioline_t cs;
   uint8_t read_mask;
   uint8_t write_mask;
@@ -66,8 +68,8 @@ int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
 int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len);
 
-void tagSpiWrite(const uint8_t *buf, uint32_t len);
-void tagSpiRead(uint8_t *buf, uint32_t len);
+void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len);
+void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len);
 void tagSpiSelect(const TagSpiDeviceIO *io);
 void tagSpiDeselect(const TagSpiDeviceIO *io);
 void tagSpiDeviceWrite(const TagSpiDeviceIO *io, const uint8_t *buf,

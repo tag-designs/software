@@ -35,34 +35,44 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
 }
 
 /*
- * Polling SPI1 byte transfers shared by simple sensor drivers.
+ * Polling SPI byte transfers shared by simple sensor drivers.
  *
- * Existing sensor code drives SPI1 directly rather than through ChibiOS SPI
- * transactions, so these helpers preserve that behavior while centralizing the
- * repeated full-duplex drain/read loops. Bus power, SPI configuration, and
- * sleep-state pin policy remain in the tag power layer.
+ * Existing sensor code drives SPI controller registers directly rather than
+ * through ChibiOS SPI transactions, so these helpers preserve that behavior
+ * while centralizing the repeated full-duplex drain/read loops. Bus power, SPI
+ * configuration, and sleep-state pin policy remain in the tag power layer.
  */
-void tagSpiWrite(const uint8_t *buf, uint32_t len)
+void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+  uint32_t read_len = len;
 
-  while (len--) {
-    *spidr = *buf++;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    (void)*spidr;
+  while (len || read_len) {
+    while (len && (spi->SR & SPI_SR_TXE)) {
+      *spidr = *buf++;
+      len--;
+    }
+    while (read_len && (spi->SR & SPI_SR_RXNE)) {
+      (void)*spidr;
+      read_len--;
+    }
   }
 }
 
-void tagSpiRead(uint8_t *buf, uint32_t len)
+void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+  uint32_t read_len = len;
 
-  while (len--) {
-    *spidr = 0xff;
-    while ((SPI1->SR & SPI_SR_RXNE) == 0)
-      ;
-    *buf++ = *spidr;
+  while (len || read_len) {
+    while (len && (spi->SR & SPI_SR_TXE)) {
+      *spidr = 0xff;
+      len--;
+    }
+    while (read_len && (spi->SR & SPI_SR_RXNE)) {
+      *buf++ = *spidr;
+      read_len--;
+    }
   }
 }
 
@@ -80,14 +90,14 @@ void tagSpiDeviceWrite(const TagSpiDeviceIO *io, const uint8_t *buf,
                        uint32_t len)
 {
   tagSpiSelect(io);
-  tagSpiWrite(buf, len);
+  tagSpiWrite(io->spi, buf, len);
   tagSpiDeselect(io);
 }
 
 void tagSpiDeviceRead(const TagSpiDeviceIO *io, uint8_t *buf, uint32_t len)
 {
   tagSpiSelect(io);
-  tagSpiRead(buf, len);
+  tagSpiRead(io->spi, buf, len);
   tagSpiDeselect(io);
 }
 
@@ -99,8 +109,8 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                              spi->write_mask);
 
   palClearLine(spi->cs);
-  tagSpiWrite(&command, 1);
-  tagSpiWrite(buf, len);
+  tagSpiWrite(spi->spi, &command, 1);
+  tagSpiWrite(spi->spi, buf, len);
   palSetLine(spi->cs);
 
   return 0;
@@ -113,8 +123,8 @@ int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   uint8_t command = (uint8_t)(reg | spi->read_mask);
 
   palClearLine(spi->cs);
-  tagSpiWrite(&command, 1);
-  tagSpiRead(buf, len);
+  tagSpiWrite(spi->spi, &command, 1);
+  tagSpiRead(spi->spi, buf, len);
   palSetLine(spi->cs);
 
   return 0;

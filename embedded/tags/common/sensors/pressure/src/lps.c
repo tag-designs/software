@@ -49,6 +49,7 @@ static const TagRegisterDevice lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagStSpiRegisterIO lps_spi = {
+  .spi = SPI1,
   .cs = LINE_STEVAL_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,
@@ -78,6 +79,7 @@ static const TagRegisterDevice lps_registers = {
 #elif defined(LPS_SHIM_LPS22HH)
 
 static const TagStSpiRegisterIO lps_spi = {
+  .spi = SPI1,
   .cs = LINE_LPS_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,
@@ -105,6 +107,7 @@ static const TagRegisterDevice lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagStSpiRegisterIO lps_spi = {
+  .spi = SPI1,
   .cs = LINE_STEVAL_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,
@@ -135,6 +138,7 @@ static const TagRegisterDevice lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagStSpiRegisterIO lps_spi = {
+  .spi = SPI1,
   .cs = LINE_STEVAL_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,
@@ -151,6 +155,7 @@ static const TagRegisterDevice lps_registers = {
 #elif defined(LPS_SHIM_BMP5)
 
 static const TagStSpiRegisterIO lps_spi = {
+  .spi = SPI1,
   .cs = LINE_STEVAL_CS,
   .read_mask = BMP5_SPI_RD_MASK,
   .write_mask = 0x00,
