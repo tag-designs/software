@@ -7,6 +7,7 @@ The variants currently share:
 
 - configuration handling
 - LIS2DU12 accelerometer support
+- sensor sampling, calibration flash storage, and calibration ACK handling
 - the LIS2DU12 self-test hook used by the shared test driver
 - power and bus control for the RTC, magnetometer, accelerometer USART path,
   external flash SPI, and standby pin pulls

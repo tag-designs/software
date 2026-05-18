@@ -164,6 +164,7 @@ bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz);
 void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode);
 void ak09940aDeviceBegin(const TagMagDevice *device);
 void ak09940aDeviceEnd(const TagMagDevice *device);
+const TagMagDevice *tagAk09940aDevice(void);
 
 bool ak09940aCheckWhoami(const TagMagDevice *device);
 msg_t ak09940aInitPowerDown(const TagMagDevice *device);

@@ -50,6 +50,30 @@ static const TagSpiDevice mag_bus = {
     .pwr = LINE_MAG_PWR,
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
+
+/*
+ * Register-transfer descriptor for the AK09940A driver. `mag_bus` above owns
+ * power, mutex, pin modes, and SPI controller lifetime; this smaller
+ * descriptor is only the selected SPI registers and chip select used while the
+ * bus is already enabled.
+ */
+static const TagSpiBus mag_register_bus = {
+    .spi = SPI1,
+    .cs = LINE_MAG_CS,
+    .dummy = 0xff,
+};
+
+static const TagStSpiRegisterBus mag_register_spi = {
+    .bus = &mag_register_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus mag_registers = {
+    .read_register = tagStSpiReadRegister,
+    .write_register = tagStSpiWriteRegister,
+    .context = &mag_register_spi,
+};
 #endif
 
 #if defined(TAG_HAS_EXTERNAL_FLASH)
@@ -130,6 +154,55 @@ void magOff(void)
 {
   magBusEnd();
   magPowerOff();
+}
+
+static void magSleepMilliseconds(int ms)
+{
+  stopMilliseconds(false, ms);
+}
+
+#if defined(LINE_MAG_TRG)
+static void magTriggerMode(bool output)
+{
+  if (output)
+    toOutput(LINE_MAG_TRG);
+  else
+    toInput(LINE_MAG_TRG);
+}
+
+static void magTrigger(void)
+{
+  palSetLine(LINE_MAG_TRG);
+  palClearLine(LINE_MAG_TRG);
+}
+
+static bool magDataReadyLine(void)
+{
+  return palReadLine(LINE_MAG_TRG) == PAL_HIGH;
+}
+#endif
+
+static const TagMagDevice compass_tag_mag = {
+    .registers = &mag_registers,
+    .power_on = magPowerOn,
+    .power_off = magPowerOff,
+    .bus_begin = magBusBegin,
+    .bus_end = magBusEnd,
+    .sleep_ms = magSleepMilliseconds,
+#if defined(LINE_MAG_TRG)
+    .set_trigger_output = magTriggerMode,
+    .trigger = magTrigger,
+    .data_ready_line = magDataReadyLine,
+#else
+    .set_trigger_output = 0,
+    .trigger = 0,
+    .data_ready_line = 0,
+#endif
+};
+
+const TagMagDevice *tagAk09940aDevice(void)
+{
+  return &compass_tag_mag;
 }
 #endif
 

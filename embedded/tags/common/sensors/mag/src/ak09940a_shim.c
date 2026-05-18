@@ -10,6 +10,8 @@
  * about AK09940A register sequences. This shim is the one place that maps the
  * historical `mag*` and `ak09940_*` entry points onto a default CompassTag
  * SPI/register descriptor, power callbacks, trigger line, and sleep helper.
+ * Tag families can bypass this binding by providing a strong
+ * tagAk09940aDevice() implementation.
  */
 
 #if defined(LINE_MAG_CS)
@@ -104,62 +106,67 @@ static const TagMagDevice ak09940a_default_device = {
 #endif
 };
 
+const TagMagDevice *__attribute__((weak)) tagAk09940aDevice(void)
+{
+  return &ak09940a_default_device;
+}
+
 bool magSample(bool single, uint8_t *xyz)
 {
-  return ak09940aSample(&ak09940a_default_device, single, xyz);
+  return ak09940aSample(tagAk09940aDevice(), single, xyz);
 }
 
 void magInit(ak09940_mode_t mode)
 {
-  ak09940aInit(&ak09940a_default_device, mode);
+  ak09940aInit(tagAk09940aDevice(), mode);
 }
 
 bool magTest(void)
 {
-  return ak09940aTest(&ak09940a_default_device);
+  return ak09940aTest(tagAk09940aDevice());
 }
 
 bool ak09940_check_whoami(void)
 {
-  return ak09940aCheckWhoami(&ak09940a_default_device);
+  return ak09940aCheckWhoami(tagAk09940aDevice());
 }
 
 msg_t ak09940_init_power_down(void)
 {
-  return ak09940aInitPowerDown(&ak09940a_default_device);
+  return ak09940aInitPowerDown(tagAk09940aDevice());
 }
 
 msg_t ak09940_init_continuous(ak09940_rate_t rate, ak09940_drive_t drive,
                               ak09940_temp_mode_t temp_mode)
 {
-  return ak09940aInitContinuous(&ak09940a_default_device, rate, drive,
+  return ak09940aInitContinuous(tagAk09940aDevice(), rate, drive,
                                 temp_mode);
 }
 
 msg_t ak09940_init_triggered(ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode)
 {
-  return ak09940aInitTriggered(&ak09940a_default_device, drive, temp_mode);
+  return ak09940aInitTriggered(tagAk09940aDevice(), drive, temp_mode);
 }
 
 msg_t ak09940_trigger(void)
 {
-  return ak09940aTrigger(&ak09940a_default_device);
+  return ak09940aTrigger(tagAk09940aDevice());
 }
 
 bool ak09940_data_ready(bool is_continuous)
 {
-  return ak09940aDataReady(&ak09940a_default_device, is_continuous);
+  return ak09940aDataReady(tagAk09940aDevice(), is_continuous);
 }
 
 bool ak09940_read_sample(int32_t *mx_raw, int32_t *my_raw, int32_t *mz_raw,
                          int16_t *temp_raw)
 {
-  return ak09940aReadSample(&ak09940a_default_device, mx_raw, my_raw, mz_raw,
+  return ak09940aReadSample(tagAk09940aDevice(), mx_raw, my_raw, mz_raw,
                             temp_raw);
 }
 
 bool ak09940_self_test(void)
 {
-  return ak09940aSelfTest(&ak09940a_default_device);
+  return ak09940aSelfTest(tagAk09940aDevice());
 }

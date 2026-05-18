@@ -227,7 +227,7 @@ embedded/tags/CompassTag/src/config.c
 embedded/tags/CompassTag/src/datalog.c
 embedded/tags/CompassTag/src/lis2du12.c
 embedded/tags/families/CompassTag/src/pwr.c
-embedded/tags/CompassTag/src/sensors.c
+embedded/tags/families/CompassTag/src/sensors.c
 embedded/tags/CompassTag/src/state_run.c
 embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/src/sensor_io.c
@@ -294,7 +294,7 @@ embedded/tags/CompassTagAT25Breakout/src/config.c
 embedded/tags/CompassTagAT25Breakout/src/datalog.c
 embedded/tags/CompassTagAT25Breakout/src/lis2du12.c
 embedded/tags/families/CompassTag/src/pwr.c
-embedded/tags/CompassTagAT25Breakout/src/sensors.c
+embedded/tags/families/CompassTag/src/sensors.c
 embedded/tags/CompassTagAT25Breakout/src/state_run.c
 embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/src/sensor_io.c
@@ -361,7 +361,7 @@ embedded/tags/CompassTagAT25/src/config.c
 embedded/tags/CompassTagAT25/src/datalog.c
 embedded/tags/CompassTagAT25/src/lis2du12.c
 embedded/tags/families/CompassTag/src/pwr.c
-embedded/tags/CompassTagAT25/src/sensors.c
+embedded/tags/families/CompassTag/src/sensors.c
 embedded/tags/CompassTagAT25/src/state_run.c
 embedded/tags/common/test/src/test.c
 embedded/tags/common/sensors/src/sensor_io.c

@@ -18,5 +18,4 @@ include ../families/CompassTag/family.mk
 # the same name.
 ALLCSRC += \
        datalog.c \
-       sensors.c \
        state_run.c

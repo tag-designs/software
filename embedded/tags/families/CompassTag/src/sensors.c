@@ -10,11 +10,19 @@
 
 #include "lis2du12.h"
 #include "ak09940a.h"
+#include "custom.h"
 #include "sensors.h"
 
-
-void magOn(void);
-void magOff(void);
+/*
+ * Shared CompassTag sensor/calibration path.
+ *
+ * The three active CompassTag variants share the magnetometer, accelerometer,
+ * calibration flash layout, and monitor ACK handling. The production tag and
+ * breakout boards mount the sensors in different orientations, so axis
+ * orientation is still selected by the variant custom.h. Currently
+ * CompassTagAT25 defines COMPASS_TAG to select the production-tag transform;
+ * breakout variants leave it unset.
+ */
 
 typedef struct {
     int32_t timestamp;
@@ -31,6 +39,31 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+static void orient_mag_values(int *x, int *y, int *z)
+{
+#ifdef COMPASS_TAG
+  int tmp = -*y;
+  *y = -*x;
+  *x = tmp;
+  *z = -*z;
+#else
+  (void)x;
+  (void)y;
+  (void)z;
+#endif
+}
+
+static void orient_accel_raw(int16_t *x, int16_t *y)
+{
+#ifdef COMPASS_TAG
+  *x = -*x;
+  *y = -*y;
+#else
+  (void)x;
+  (void)y;
+#endif
+}
+
 bool sensorSample(RawSensorData *data){
   bool ok = true;
   uint8_t buf[11];
@@ -39,24 +72,33 @@ bool sensorSample(RawSensorData *data){
       int16_t y;
       int16_t z;
   } accel_data;
+  const TagMagDevice *mag;
+  int mx = 0;
+  int my = 0;
+  int mz = 0;
 
   memset(data,0,sizeof(*data));
 
-  magInit(MAG_SAMPLE_SINGLE_MODE);
-  if (magSample(true,buf)) {
+  mag = tagAk09940aDevice();
+  ak09940aInit(mag, MAG_SAMPLE_SINGLE_MODE);
+  if (ak09940aSample(mag, true, buf)) {
 
       // keep only 16 bits
-      data->mx = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>16;
-      data->my = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>16;
-      data->mz = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>16;
+      mx = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>16;
+      my = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>16;
+      mz = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>16;
+      orient_mag_values(&mx, &my, &mz);
+      data->mx = mx;
+      data->my = my;
+      data->mz = mz;
   } else {
     ok = false;
   }
-  magOff();
-
+  ak09940aDeviceEnd(mag);
 
  if (accelSample((uint8_t *) &accel_data))
     {
+        orient_accel_raw(&accel_data.x, &accel_data.y);
         data->ax = (accel_data.x/16);
         data->ay = (accel_data.y/16);
         data->az = (accel_data.z/16);
@@ -81,13 +123,15 @@ bool sensorCalibrationSample(SensorData *sensors)
     int z = 0;
     //int t = 0;
    
-    if (magSample(false,buf))
+    if (ak09940aSample(tagAk09940aDevice(), false, buf))
     {
       // keep all 18 bits
       sensors->has_mag = true;
       x = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
       y = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
       z = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
+
+      orient_mag_values(&x, &y, &z);
      
       sensors->mag.mx = x * 0.01f;
       sensors->mag.my = y * 0.01f;
@@ -97,6 +141,8 @@ bool sensorCalibrationSample(SensorData *sensors)
     if (accelSample((uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
+
+        orient_accel_raw(&accel_data.x, &accel_data.y);
         
         sensors->accel.ax = (accel_data.x/16) * 0.976f;
         sensors->accel.ay = (accel_data.y/16) * 0.976f;
@@ -108,12 +154,12 @@ bool sensorCalibrationSample(SensorData *sensors)
 
 bool initSensors(void){
     accelInit(ACCEL_SAMPLE_100HZ_MODE);
-    magInit(MAG_SAMPLE_100HZ_MODE);
+    ak09940aInit(tagAk09940aDevice(), MAG_SAMPLE_100HZ_MODE);
     return true;
 }
 
 bool deinitSensors(void) {
-    magOff();
+    ak09940aDeviceEnd(tagAk09940aDevice());
     accelDeinit();
     return true;
 }
@@ -215,6 +261,3 @@ int read_calibration(int32_t index, Ack *ack){
   ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
 }
-
-
-

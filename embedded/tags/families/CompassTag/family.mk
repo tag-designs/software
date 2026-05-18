@@ -18,4 +18,5 @@ ALLCSRC += \
        config.c \
        lis2du12.c \
        lis2du12_test.c \
-       $(COMPASSTAG_FAMILY_DIR)/src/pwr.c
+       $(COMPASSTAG_FAMILY_DIR)/src/pwr.c \
+       $(COMPASSTAG_FAMILY_DIR)/src/sensors.c

@@ -199,7 +199,9 @@ transactions beside the sensor drivers.
 The AK09940A magnetometer follows the same driver/shim split as the pressure
 path: `mag/src/ak09940a.c` is the descriptor-driven register implementation,
 while `mag/src/ak09940a_shim.c` binds the default CompassTag SPI descriptor and
-legacy `mag*`/`ak09940_*` APIs.
+legacy `mag*`/`ak09940_*` APIs. Active CompassTag firmware bypasses the shim by
+exporting `tagAk09940aDevice()` from the family power file and calling the
+descriptor API directly from its sensor code and self-test hook.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific

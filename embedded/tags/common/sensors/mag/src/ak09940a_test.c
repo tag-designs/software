@@ -5,5 +5,5 @@
 
 bool tag_test_ak09940a(void)
 {
-  return magTest();
+  return ak09940aTest(tagAk09940aDevice());
 }
