@@ -47,7 +47,7 @@
 /***************************** Include Files **********************************/
 /******************************************************************************/
 //#include "Communication.h"
-#include "sensor_io.h"
+#include "spi_bus.h"
 
 /******************************************************************************/
 /********************************* ADXL362 ************************************/
@@ -205,7 +205,7 @@ typedef void (*TagAdxl362Power)(void);
 typedef void (*TagAdxl362Sleep)(int ms);
 
 typedef struct {
-  const TagSpiDeviceIO *spi;
+  const TagSpiBus *spi;
   TagAdxl362Power power_on;
   TagAdxl362Power power_off;
   TagAdxl362Power bus_begin;

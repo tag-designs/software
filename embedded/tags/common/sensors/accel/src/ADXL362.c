@@ -49,7 +49,6 @@
 #include "board.h"
 #include "custom.h"
 #include "power.h"
-#include "sensor_io.h"
 
 /******************************************************************************/
 /************************* Variables Declarations *****************************/
@@ -60,7 +59,7 @@ char selectedRange = 0;
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
 
-static const TagSpiDeviceIO adxl362_spi = {
+static const TagSpiBus adxl362_spi = {
   .spi = SPI1,
   .cs = LINE_ACCEL_CS,
   .dummy = 0xff,
@@ -162,7 +161,7 @@ void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
   buffer[2] = (registerValue & 0x00FF);
   buffer[3] = (registerValue >> 8);
   
-  tagSpiDeviceWrite(device->spi, buffer, bytesNumber + 2);
+  tagSpiBusWrite(device->spi, buffer, bytesNumber + 2);
 }
 
 /***************************************************************************//**

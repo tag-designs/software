@@ -9,7 +9,7 @@
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len)
 {
-  const TagI2cRegisterIO *i2c = (const TagI2cRegisterIO *)io;
+  const TagI2cRegisterBus *i2c = (const TagI2cRegisterBus *)io;
   uint8_t txbuf[TAG_I2C_REGISTER_MAX_WRITE + 1];
 
   if (len > TAG_I2C_REGISTER_MAX_WRITE) {
@@ -28,90 +28,23 @@ int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
 int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
-  const TagI2cRegisterIO *i2c = (const TagI2cRegisterIO *)io;
+  const TagI2cRegisterBus *i2c = (const TagI2cRegisterBus *)io;
 
   return i2cMasterTransmitTimeout(i2c->driver, i2c->address, &reg, 1, buf,
                                   len, i2c->timeout);
 }
 
-/*
- * Polling SPI byte transfers shared by simple sensor drivers.
- *
- * Existing sensor code drives SPI controller registers directly rather than
- * through ChibiOS SPI transactions, so these helpers preserve that behavior
- * while centralizing the repeated full-duplex drain/read loops. Bus power, SPI
- * configuration, and sleep-state pin policy remain in the tag power layer.
- */
-void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
-  uint32_t read_len = len;
-
-  while (len || read_len) {
-    while (len && (spi->SR & SPI_SR_TXE)) {
-      *spidr = *buf++;
-      len--;
-    }
-    while (read_len && (spi->SR & SPI_SR_RXNE)) {
-      (void)*spidr;
-      read_len--;
-    }
-  }
-}
-
-void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len)
-{
-  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
-  uint32_t read_len = len;
-
-  while (len || read_len) {
-    while (len && (spi->SR & SPI_SR_TXE)) {
-      *spidr = 0xff;
-      len--;
-    }
-    while (read_len && (spi->SR & SPI_SR_RXNE)) {
-      *buf++ = *spidr;
-      read_len--;
-    }
-  }
-}
-
-void tagSpiSelect(const TagSpiDeviceIO *io)
-{
-  palClearLine(io->cs);
-}
-
-void tagSpiDeselect(const TagSpiDeviceIO *io)
-{
-  palSetLine(io->cs);
-}
-
-void tagSpiDeviceWrite(const TagSpiDeviceIO *io, const uint8_t *buf,
-                       uint32_t len)
-{
-  tagSpiSelect(io);
-  tagSpiWrite(io->spi, buf, len);
-  tagSpiDeselect(io);
-}
-
-void tagSpiDeviceRead(const TagSpiDeviceIO *io, uint8_t *buf, uint32_t len)
-{
-  tagSpiSelect(io);
-  tagSpiRead(io->spi, buf, len);
-  tagSpiDeselect(io);
-}
-
 int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                           uint32_t len)
 {
-  const TagStSpiRegisterIO *spi = (const TagStSpiRegisterIO *)io;
+  const TagStSpiRegisterBus *spi = (const TagStSpiRegisterBus *)io;
   uint8_t command = (uint8_t)((reg & (uint8_t)~spi->read_mask) |
                              spi->write_mask);
 
-  palClearLine(spi->cs);
-  tagSpiWrite(spi->spi, &command, 1);
-  tagSpiWrite(spi->spi, buf, len);
-  palSetLine(spi->cs);
+  tagSpiSelect(spi->bus);
+  tagSpiWrite(spi->bus->spi, &command, 1);
+  tagSpiWrite(spi->bus->spi, buf, len);
+  tagSpiDeselect(spi->bus);
 
   return 0;
 }
@@ -119,13 +52,13 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
 int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                          uint32_t len)
 {
-  const TagStSpiRegisterIO *spi = (const TagStSpiRegisterIO *)io;
+  const TagStSpiRegisterBus *spi = (const TagStSpiRegisterBus *)io;
   uint8_t command = (uint8_t)(reg | spi->read_mask);
 
-  palClearLine(spi->cs);
-  tagSpiWrite(spi->spi, &command, 1);
-  tagSpiRead(spi->spi, buf, len);
-  palSetLine(spi->cs);
+  tagSpiSelect(spi->bus);
+  tagSpiWrite(spi->bus->spi, &command, 1);
+  tagSpiRead(spi->bus->spi, buf, len);
+  tagSpiDeselect(spi->bus);
 
   return 0;
 }
@@ -165,7 +98,7 @@ void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
 int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                             uint32_t len)
 {
-  const TagStUsartRegisterIO *usart = (const TagStUsartRegisterIO *)io;
+  const TagStUsartRegisterBus *usart = (const TagStUsartRegisterBus *)io;
   uint8_t command = (uint8_t)((reg & (uint8_t)~usart->read_mask) |
                              usart->write_mask);
 
@@ -180,7 +113,7 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
 int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                            uint32_t len)
 {
-  const TagStUsartRegisterIO *usart = (const TagStUsartRegisterIO *)io;
+  const TagStUsartRegisterBus *usart = (const TagStUsartRegisterBus *)io;
   uint8_t command = (uint8_t)(reg | usart->read_mask);
 
   palClearLine(usart->cs);

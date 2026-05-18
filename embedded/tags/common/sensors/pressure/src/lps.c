@@ -37,37 +37,41 @@
 
 #if defined(LPS_I2C)
 #define LPS27_TIMEOUT 100
-static const TagI2cRegisterIO lps_i2c = {
+static const TagI2cRegisterBus lps_i2c = {
   .driver = &I2CD1,
   .address = LPS27HW_ADR,
   .timeout = LPS27_TIMEOUT,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,
   tagI2cWriteRegister,
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagStSpiRegisterIO lps_spi = {
+static const TagSpiBus lps_spi_bus = {
   .spi = SPI1,
   .cs = LINE_STEVAL_CS,
+  .dummy = 0xff,
+};
+static const TagStSpiRegisterBus lps_spi = {
+  .bus = &lps_spi_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &lps_spi,
 };
 #elif defined(LPS_USART)
-static const TagStUsartRegisterIO lps_usart = {
+static const TagStUsartRegisterBus lps_usart = {
   .usart = USART2,
   .cs = LINE_STEVAL_CS,
   .read_mask = 0x80,
   .write_mask = 0x00,
   .dummy = 0xff,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStUsartReadRegister,
   tagStUsartWriteRegister,
   &lps_usart,
@@ -78,13 +82,17 @@ static const TagRegisterDevice lps_registers = {
 
 #elif defined(LPS_SHIM_LPS22HH)
 
-static const TagStSpiRegisterIO lps_spi = {
+static const TagSpiBus lps_spi_bus = {
   .spi = SPI1,
   .cs = LINE_LPS_CS,
+  .dummy = 0xff,
+};
+static const TagStSpiRegisterBus lps_spi = {
+  .bus = &lps_spi_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &lps_spi,
@@ -95,24 +103,28 @@ static const TagRegisterDevice lps_registers = {
 
 #if defined(LPS_I2C)
 #define LPS22_TIMEOUT 100
-static const TagI2cRegisterIO lps_i2c = {
+static const TagI2cRegisterBus lps_i2c = {
   .driver = &I2CD1,
   .address = LPS22HW_ADR,
   .timeout = LPS22_TIMEOUT,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,
   tagI2cWriteRegister,
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagStSpiRegisterIO lps_spi = {
+static const TagSpiBus lps_spi_bus = {
   .spi = SPI1,
   .cs = LINE_STEVAL_CS,
+  .dummy = 0xff,
+};
+static const TagStSpiRegisterBus lps_spi = {
+  .bus = &lps_spi_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &lps_spi,
@@ -126,24 +138,28 @@ static const TagRegisterDevice lps_registers = {
 
 #if defined(LPS_I2C)
 #define LPS33_TIMEOUT 100
-static const TagI2cRegisterIO lps_i2c = {
+static const TagI2cRegisterBus lps_i2c = {
   .driver = &I2CD1,
   .address = LPS33HW_ADR,
   .timeout = LPS33_TIMEOUT,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,
   tagI2cWriteRegister,
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagStSpiRegisterIO lps_spi = {
+static const TagSpiBus lps_spi_bus = {
   .spi = SPI1,
   .cs = LINE_STEVAL_CS,
+  .dummy = 0xff,
+};
+static const TagStSpiRegisterBus lps_spi = {
+  .bus = &lps_spi_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &lps_spi,
@@ -154,13 +170,17 @@ static const TagRegisterDevice lps_registers = {
 
 #elif defined(LPS_SHIM_BMP5)
 
-static const TagStSpiRegisterIO lps_spi = {
+static const TagSpiBus lps_spi_bus = {
   .spi = SPI1,
   .cs = LINE_STEVAL_CS,
+  .dummy = 0xff,
+};
+static const TagStSpiRegisterBus lps_spi = {
+  .bus = &lps_spi_bus,
   .read_mask = BMP5_SPI_RD_MASK,
   .write_mask = 0x00,
 };
-static const TagRegisterDevice lps_registers = {
+static const TagRegisterBus lps_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &lps_spi,

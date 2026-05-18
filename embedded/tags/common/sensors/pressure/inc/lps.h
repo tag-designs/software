@@ -19,7 +19,7 @@ typedef void (*TagPressureSleep)(int ms);
  * with different board wiring or power policy.
  */
 typedef struct {
-  const TagRegisterDevice *registers;
+  const TagRegisterBus *registers;
   TagPressurePower power_on;
   TagPressurePower power_off;
   TagPressurePower bus_begin;

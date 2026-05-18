@@ -182,16 +182,17 @@ modules and by `tag_core`; it is not intended to be listed directly in
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_mag_ak09940a` add only the family paths and source files they compile.
-Shared sensor-side transport mechanics live at the top of `../sensors`: for
-example, `sensor_io.c` owns conventional I2C register reads/writes, repeated
-polling SPI1 byte-transfer loops, USART synchronous-mode byte-transfer loops,
-and the ST-style register helpers used by the LPS27 pressure driver. Keep bus
-power, SPI/USART controller setup, and sleep pin policy in the tag power layer;
-keep sensor command formats and register transactions beside the sensor
-drivers.
+Core owns the low-level SPI byte-transfer helper in `core/src/spi_bus.c`
+because the same polled SPI bus is useful to sensors and storage drivers.
+Shared sensor-side register mechanics live at the top of `../sensors`: for
+example, `sensor_io.c` owns conventional I2C register reads/writes, USART
+synchronous-mode byte-transfer loops, and the ST-style register helpers used by
+the LPS pressure drivers. Keep bus power, SPI/USART controller setup, and sleep
+pin policy in the tag power layer; keep sensor command formats and register
+transactions beside the sensor drivers.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
-`TagPressureDevice`, which combines a `TagRegisterDevice` with tag-specific
+`TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific
 device power, bus-session, and sleep callbacks. The split matters because a
 sensor can remain powered while the MCU releases or re-enables the SPI bus for
 low-power sleeps. The legacy `lpsGetPressureTemp()` and `lpsTest()` APIs live

@@ -22,14 +22,19 @@
 #define AK09940A_HAS_DEFAULT_TRG 1
 #endif
 
-static const TagStSpiRegisterIO ak09940a_spi = {
+static const TagSpiBus ak09940a_spi_bus = {
   .spi = SPI1,
   .cs = AK09940A_DEFAULT_CS,
+  .dummy = 0xff,
+};
+
+static const TagStSpiRegisterBus ak09940a_spi = {
+  .bus = &ak09940a_spi_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
 
-static const TagRegisterDevice ak09940a_registers = {
+static const TagRegisterBus ak09940a_registers = {
   tagStSpiReadRegister,
   tagStSpiWriteRegister,
   &ak09940a_spi,

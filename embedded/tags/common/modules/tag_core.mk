@@ -13,6 +13,7 @@ ALLCSRC += \
        monitor.c \
        persistent.c \
        pwr.c \
+       spi_bus.c \
        state_machine.c \
        stm32adc.c \
        stm32flash.c \

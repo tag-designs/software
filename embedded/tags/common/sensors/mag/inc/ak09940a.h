@@ -121,7 +121,7 @@ typedef void (*TagMagTrigger)(void);
 typedef bool (*TagMagDataReadyLine)(void);
 
 typedef struct {
-  const TagRegisterDevice *registers;
+  const TagRegisterBus *registers;
   TagMagPower power_on;
   TagMagPower power_off;
   TagMagPower bus_begin;
