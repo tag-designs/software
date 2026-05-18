@@ -114,14 +114,11 @@ up. Current examples:
     inc/ADXL362.h
     inc/ADXL367.h
     inc/ais2dw12.h
-    inc/lis2du12.h
     inc/lis2dtw12.h
     src/ADXL362.c
     src/adxl362_test.c
     src/ADXL367.c
     src/ais2dw12.c
-    src/lis2du12.c
-    src/lis2du12_test.c
     src/lis2dtw12.c
   pressure/
     inc/bmp5.h

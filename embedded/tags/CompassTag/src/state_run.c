@@ -35,7 +35,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     disableAllAlarms();
     disableTicker();
-    accelDeinit();
+    lis2du12Deinit(tagLis2du12Device());
 
     // reset state variables
 
@@ -73,7 +73,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // start accelerometer
 
-    accelInit(ACCEL_WAKEUP_MODE);
+    lis2du12Init(tagLis2du12Device(), ACCEL_WAKEUP_MODE);
     pState->state = TagState_RUNNING;
     recordState(reason);
 

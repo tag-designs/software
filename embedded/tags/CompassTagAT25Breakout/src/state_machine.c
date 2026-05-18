@@ -348,7 +348,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     accelSpiOff();
 #endif
 #if defined(USE_LIS2DU12)
-    accelDeinit();
+    lis2du12Deinit(tagLis2du12Device());
 #endif
     pState->state = TagState_HIBERNATING;
     recordState(reason);
@@ -413,4 +413,3 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   }
   return Idle(T_INIT, State_EVENT_OK);
 }
-

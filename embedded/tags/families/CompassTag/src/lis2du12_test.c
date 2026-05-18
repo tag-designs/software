@@ -4,5 +4,5 @@
 
 bool tag_test_lis2du12(void)
 {
-  return accelTest();
+  return lis2du12Test(tagLis2du12Device());
 }

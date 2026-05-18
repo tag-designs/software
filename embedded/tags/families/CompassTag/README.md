@@ -11,9 +11,10 @@ The variants currently share:
   external flash SPI, and standby pin pulls
 - shared headers for logging, persistence, sensors, and configuration
 
-The LIS2DU12 accelerometer driver and its `tag_test_lis2du12()` hook now live
-in the common `sensor_accel_lis2du12` module. The family still owns the board
-power/control code for the CompassTag USART-style accelerometer path.
+The LIS2DU12 accelerometer driver and its `tag_test_lis2du12()` hook live here
+because the wakeup setup and USART-style transaction framing are currently
+specialized to this tag family rather than a general accelerometer driver. The
+family also owns the board power/control code for that accelerometer path.
 
 The variants still keep their own `custom.h`, `project.mk`, ChibiOS `cfg/`
 files, and any source files that have intentionally diverged during board

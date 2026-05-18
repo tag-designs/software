@@ -111,7 +111,7 @@ Current hook examples:
 - `tag_test_adxl362()` lives with the ADXL362 accelerometer module.
 - `tag_test_rtc()` lives with the RV-3028 RTC module.
 - `tag_test_external_flash()` lives with the external-flash support code.
-- `tag_test_lis2du12()` lives with the common LIS2DU12 accelerometer module.
+- `tag_test_lis2du12()` lives with the CompassTag family LIS2DU12 code.
 - `tag_test_lps22hh()` and `tag_test_ak09940a()` live in `IMUTagBreakout/src`,
   because that target currently owns those local driver variants.
 

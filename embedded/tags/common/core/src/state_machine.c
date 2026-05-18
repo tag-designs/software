@@ -46,6 +46,10 @@
 #include "ADXL367.h"
 #endif
 
+#if defined(USE_LIS2DU12)
+#include "lis2du12.h"
+#endif
+
 #include "tag.pb.h"
 #include "config.h"
 #include "core_events.h"
@@ -350,7 +354,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     accelSpiOff();
 #endif
 #if defined(USE_LIS2DU12)
-    accelDeinit();
+    lis2du12Deinit(tagLis2du12Device());
 #endif
     pState->state = TagState_HIBERNATING;
     recordState(reason);

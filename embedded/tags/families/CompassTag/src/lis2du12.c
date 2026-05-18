@@ -1,7 +1,3 @@
-#include "hal.h"
-#include "custom.h"
-#include "power.h"
-#include "sensor_io.h"
 #include "lis2du12.h"
 
 typedef enum
@@ -79,66 +75,28 @@ each bit is (1/64)*2 g = 1/32 g
 */
 
 
-#if defined(ACCEL_USART)
-static const TagUsartBus lis2du12_usart_bus = {
-    .usart = USART2,
-    .cs = LINE_ACCEL_CS,
-    .dummy = 0xff,
-};
-
-static const TagStUsartRegisterBus lis2du12_register_bus = {
-    .bus = &lis2du12_usart_bus,
-    .read_mask = 0x80,
-    .write_mask = 0x00,
-};
-
-static const TagRegisterBus lis2du12_registers = {
-    .read_register = tagStUsartReadRegister,
-    .write_register = tagStUsartWriteRegister,
-    .context = &lis2du12_register_bus,
-};
-#elif defined(ACCEL_USE_SPI)
-static const TagSpiBus lis2du12_spi_bus = {
-    .spi = SPI1,
-    .cs = LINE_ACCEL_CS,
-    .dummy = 0xff,
-};
-
-static const TagStSpiRegisterBus lis2du12_register_bus = {
-    .bus = &lis2du12_spi_bus,
-    .read_mask = 0x80,
-    .write_mask = 0x00,
-};
-
-static const TagRegisterBus lis2du12_registers = {
-    .read_register = tagStSpiReadRegister,
-    .write_register = tagStSpiWriteRegister,
-    .context = &lis2du12_register_bus,
-};
-#else
-#error "LIS2DU12 requires ACCEL_USART or ACCEL_USE_SPI"
-#endif
-
-static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
+static void lis2du12DeviceBegin(const TagLis2du12Device *device)
 {
-  /*
-   * The wakeup setup is a sequence of single-register writes. Keep those byte
-   * writes as one selected transaction, matching the original CompassTag
-   * driver exactly; some synchronous-USART parts are fussier about transaction
-   * shape than their SPI-like command format suggests.
-   */
-  uint8_t buffer[] = {reg, val};
-
-#if defined(ACCEL_USART)
-  tagUsartBusWrite(lis2du12_register_bus.bus, buffer, sizeof(buffer));
-#elif defined(ACCEL_USE_SPI)
-  tagSpiBusWrite(lis2du12_register_bus.bus, buffer, sizeof(buffer));
-#endif
+  if (device->bus_begin)
+    device->bus_begin();
 }
 
-static int32_t LIS2DU12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
+static void lis2du12DeviceEnd(const TagLis2du12Device *device)
 {
-  return tagRegisterRead(&lis2du12_registers, reg, bufp, len);
+  if (device->bus_end)
+    device->bus_end();
+}
+
+static void LIS2DU12_write_byte(const TagLis2du12Device *device, uint8_t reg,
+                                uint8_t val)
+{
+  device->write_register_byte(device->write_register_byte_context, reg, val);
+}
+
+static int32_t LIS2DU12_read(const TagLis2du12Device *device, uint8_t reg,
+                             uint8_t *bufp, uint16_t len)
+{
+  return tagRegisterRead(device->registers, reg, bufp, len);
 }
 
 
@@ -165,13 +123,13 @@ void lis2du12_init(bool lpf)
 }
   */
 
-void accelDeinit(void)
+void lis2du12Deinit(const TagLis2du12Device *device)
 {
   // soft reset
-  accelOn();
-  LIS2DU12_write_byte(LIS2DU12_CTRL5, (0));  /* power down */
-  LIS2DU12_write_byte(LIS2DU12_CTRL1,0x20U); /* reset */
-  accelOff();
+  lis2du12DeviceBegin(device);
+  LIS2DU12_write_byte(device, LIS2DU12_CTRL5, (0));  /* power down */
+  LIS2DU12_write_byte(device, LIS2DU12_CTRL1,0x20U); /* reset */
+  lis2du12DeviceEnd(device);
 }
 
 /*
@@ -186,53 +144,53 @@ void accelDeinit(void)
  *  
 */
 
-void accelInit(lis2du12mode_t mode)
+void lis2du12Init(const TagLis2du12Device *device, lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
-  accelOn();
+  lis2du12DeviceBegin(device);
 
   switch (mode) {
   
     case ACCEL_WAKEUP_MODE: 
-      LIS2DU12_write_byte(LIS2DU12_CTRL5, CTRL5_POWER_DOWN);  /* power down */
-      LIS2DU12_write_byte(LIS2DU12_CTRL1, CTRL1_SOFT_RESET); // Software reset
-      LIS2DU12_write_byte(LIS2DU12_CTRL1, CTRL1_IF_ADD_INC | CTRL1_WU_EN); // ADD_INC, Wkup x,y,z
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, CTRL5_POWER_DOWN);  /* power down */
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL1, CTRL1_SOFT_RESET); // Software reset
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL1, CTRL1_IF_ADD_INC | CTRL1_WU_EN); // ADD_INC, Wkup x,y,z
       //LIS2DU12_write_byte(LIS2DU12_CTRL2, 0x0U);  // Make sure CTRL2 is reset
       //LIS2DU12_write_byte(LIS2DU12_CTRL3, 0x0U);  // Make sure CTRL3 is reset
-      LIS2DU12_write_byte(LIS2DU12_CTRL4, CTRL4_BDU); // was A0, now block data update
-      LIS2DU12_write_byte(LIS2DU12_INTERRUPT_CFG,INT_CFG_ENABLE); // Sleep status on interrupt
-      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_DUR, WAKE_UP_DUR_7ODR); // Wakeup duration = 7 sample times, Sleep duration = 16 samples times
-      LIS2DU12_write_byte(LIS2DU12_WAKE_UP_THS,0x4);//WAKE_UP_THS_0_5G);  // was 42
-      LIS2DU12_write_byte(LIS2DU12_MD1_CFG,MD1_CFG_WKUP); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
-      LIS2DU12_write_byte(LIS2DU12_CTRL5, CTRL5_6HZ_3HZ); // ODR = 6hz, BW = 3hz -- was 3C which is ultralow power mode
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL4, CTRL4_BDU); // was A0, now block data update
+      LIS2DU12_write_byte(device, LIS2DU12_INTERRUPT_CFG,INT_CFG_ENABLE); // Sleep status on interrupt
+      LIS2DU12_write_byte(device, LIS2DU12_WAKE_UP_DUR, WAKE_UP_DUR_7ODR); // Wakeup duration = 7 sample times, Sleep duration = 16 samples times
+      LIS2DU12_write_byte(device, LIS2DU12_WAKE_UP_THS,0x4);//WAKE_UP_THS_0_5G);  // was 42
+      LIS2DU12_write_byte(device, LIS2DU12_MD1_CFG,MD1_CFG_WKUP); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, CTRL5_6HZ_3HZ); // ODR = 6hz, BW = 3hz -- was 3C which is ultralow power mode
       break;
     case ACCEL_SAMPLE_50HZ_MODE:
-      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
-      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
-      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x74U); // ODR = 50hz, BW = 12.5hz
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL1, 0x10U); // ADD_INC
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL4, 0x20U); // Block data update
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, 0x74U); // ODR = 50hz, BW = 12.5hz
       break;
     case ACCEL_SAMPLE_100HZ_MODE:
-      LIS2DU12_write_byte(LIS2DU12_CTRL1, 0x10U); // ADD_INC
-      LIS2DU12_write_byte(LIS2DU12_CTRL4, 0x20U); // Block data update
-      LIS2DU12_write_byte(LIS2DU12_CTRL5, 0x84U); // ODR = 100hz, BW = 25hz
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL1, 0x10U); // ADD_INC
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL4, 0x20U); // Block data update
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, 0x84U); // ODR = 100hz, BW = 25hz
       break;
   }
 
-  accelOff();
+  lis2du12DeviceEnd(device);
 }
 
-bool accelSample(uint8_t *data)
+bool lis2du12Sample(const TagLis2du12Device *device, uint8_t *data)
 {
   uint8_t status;
   bool res = false;
-  accelOn();
-  LIS2DU12_read(LIS2DU12_STATUS, &status, 1);
+  lis2du12DeviceBegin(device);
+  LIS2DU12_read(device, LIS2DU12_STATUS, &status, 1);
   if (status & 1){
-    LIS2DU12_read(LIS2DU12_OUT_X_L,data,6);
+    LIS2DU12_read(device, LIS2DU12_OUT_X_L,data,6);
     res = true;
   }
 
-  accelOff();
+  lis2du12DeviceEnd(device);
   return res;
 }
 
@@ -285,10 +243,40 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 }
   */
 
-bool accelTest(void) {
+bool lis2du12Test(const TagLis2du12Device *device) {
   uint8_t val;
-  accelOn();
-  LIS2DU12_read(LIS2DU12_WHO_AM_I,&val, 1);
-  accelOff();
+  lis2du12DeviceBegin(device);
+  LIS2DU12_read(device, LIS2DU12_WHO_AM_I,&val, 1);
+  lis2du12DeviceEnd(device);
   return val == LIS2DU12_ID;
+}
+
+void lis2du12Reset(const TagLis2du12Device *device)
+{
+  lis2du12Deinit(device);
+}
+
+void accelInit(lis2du12mode_t mode)
+{
+  lis2du12Init(tagLis2du12Device(), mode);
+}
+
+void accelDeinit(void)
+{
+  lis2du12Deinit(tagLis2du12Device());
+}
+
+void accelReset(void)
+{
+  lis2du12Reset(tagLis2du12Device());
+}
+
+bool accelSample(uint8_t *data)
+{
+  return lis2du12Sample(tagLis2du12Device(), data);
+}
+
+bool accelTest(void)
+{
+  return lis2du12Test(tagLis2du12Device());
 }
