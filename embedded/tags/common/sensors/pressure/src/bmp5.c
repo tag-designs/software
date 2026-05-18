@@ -4,31 +4,6 @@
 #include "bmp5.h"
 #include "lps.h"
 #include "limits.h"
-#include "sensor_io.h"
-
-static const TagStSpiRegisterIO bmp5_spi = {
-  .cs = LINE_STEVAL_CS,
-  .read_mask = BMP5_SPI_RD_MASK,
-  .write_mask = 0x00,
-};
-
-static const TagRegisterDevice bmp5_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &bmp5_spi,
-};
-
-static void bmp5_default_sleep(int ms)
-{
-  stopMilliseconds(true, ms);
-}
-
-static const TagPressureDevice bmp5_default_device = {
-  .registers = &bmp5_registers,
-  .on = lpsOn,
-  .off = lpsOff,
-  .sleep_ms = bmp5_default_sleep,
-};
 
 static void bmp5_SetReg(const TagPressureDevice *device, enum BMP5_Reg reg,
                         uint8_t *val, int num)
@@ -44,11 +19,11 @@ static void bmp5_GetReg(const TagPressureDevice *device, enum BMP5_Reg reg,
                                          (uint8_t)reg, val, num);
 }
 
-float lpsPressure(int16_t pressure) {
+float bmp5Pressure(int16_t pressure) {
   return ((uint16_t) pressure)*0.04f;
 }
 
-float lpsTemperature(int16_t temperature){
+float bmp5Temperature(int16_t temperature){
   return temperature/256.0f;
 }
 
@@ -66,11 +41,6 @@ static bool power_up_check(const TagPressureDevice *device) {
 
   bmp5_GetReg(device, BMP5_REG_INT_STATUS, &por_status,1);
   return por_status & BMP5_INT_ASSERTED_POR_SOFTRESET_COMPLETE;
-}
-
-bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
-{
-  return bmp5GetPressureTemp(&bmp5_default_device, pressure, temperature);
 }
 
 bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
@@ -154,11 +124,6 @@ bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
 
   device->off();  // power down
   return status & BMP5_INT_ASSERTED_DRDY;
-}
-
-bool lpsTest(void)
-{
-  return bmp5Test(&bmp5_default_device);
 }
 
 bool bmp5Test(const TagPressureDevice *device)

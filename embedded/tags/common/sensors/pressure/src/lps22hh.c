@@ -1,11 +1,6 @@
 #include "lps22hh.h"
 #include "hal.h"
 #include "custom.h"
-#include "rtc_api.h"
-#include "sensor_io.h"
-
-extern void lpsOn(void);
-extern void lpsOff(void);
 
 /* WHO_AM_I value for the LPS22HH device. */
 #define LPS22HH_WHO_AM_I_VAL    0xB3
@@ -51,30 +46,6 @@ extern void lpsOff(void);
 
 #define LPS22HH_PRESSURE_SENSITIVITY ((float) 1.0/4096)
 #define LPS22HH_TEMPERATURE_SENSITIVITY ((float) 1.0/100)
-
-static const TagStSpiRegisterIO lps22hh_spi = {
-    .cs = LINE_LPS_CS,
-    .read_mask = 0x80,
-    .write_mask = 0x00,
-};
-
-static const TagRegisterDevice lps22hh_registers = {
-    tagStSpiReadRegister,
-    tagStSpiWriteRegister,
-    &lps22hh_spi,
-};
-
-static void lps22hh_default_sleep(int ms)
-{
-    stopMilliseconds(true, ms);
-}
-
-static const TagPressureDevice lps22hh_default_device = {
-    .registers = &lps22hh_registers,
-    .on = lpsOn,
-    .off = lpsOff,
-    .sleep_ms = lps22hh_default_sleep,
-};
 
 /* Write one register. */
 static int write_reg(const TagPressureDevice *device, uint8_t reg, uint8_t val)
@@ -143,11 +114,6 @@ static int lps22hh_config_int_drdy(const TagPressureDevice *device)
     return 0;
 }
 
-bool lps22hh_check_who_am_i(void)
-{
-    return lps22hh_check_who_am_i_device(&lps22hh_default_device);
-}
-
 bool lps22hh_check_who_am_i_device(const TagPressureDevice *device)
 {
     uint8_t v = 0;
@@ -156,11 +122,6 @@ bool lps22hh_check_who_am_i_device(const TagPressureDevice *device)
     read_block(device, LPS22HH_REG_WHO_AM_I, &v, 1);
     device->off();
     return v == LPS22HH_WHO_AM_I_VAL;
-}
-
-int lps22hh_set_idle(void)
-{
-    return lps22hh_set_idle_device(&lps22hh_default_device);
 }
 
 int lps22hh_set_idle_device(const TagPressureDevice *device)
@@ -185,11 +146,6 @@ int lps22hh_set_idle_device(const TagPressureDevice *device)
     
     device->off();
     return 0;
-}
-
-int lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf)
-{
-    return lps22hh_config_continuous_device(&lps22hh_default_device, odr, lpf);
 }
 
 int lps22hh_config_continuous_device(const TagPressureDevice *device,
@@ -222,11 +178,6 @@ int lps22hh_config_continuous_device(const TagPressureDevice *device,
     return 0;
 }
 
-int lps22hh_config_triggered(lps22hh_lpf_t lpf)
-{
-    return lps22hh_config_triggered_device(&lps22hh_default_device, lpf);
-}
-
 int lps22hh_config_triggered_device(const TagPressureDevice *device,
                                     lps22hh_lpf_t lpf)
 {
@@ -253,11 +204,6 @@ int lps22hh_config_triggered_device(const TagPressureDevice *device,
     return 0;
 }
 
-int lps22hh_trigger_one_shot(void)
-{
-    return lps22hh_trigger_one_shot_device(&lps22hh_default_device);
-}
-
 int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
 {
     /*
@@ -273,11 +219,6 @@ int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
     return 0;
 }
 
-bool lps22hh_data_ready(void)
-{
-    return lps22hh_data_ready_device(&lps22hh_default_device);
-}
-
 bool lps22hh_data_ready_device(const TagPressureDevice *device)
 {
     /*
@@ -291,12 +232,6 @@ bool lps22hh_data_ready_device(const TagPressureDevice *device)
     device->off();
 
     return (s & (LPS22HH_STATUS_P_DA | LPS22HH_STATUS_T_DA)) != 0;
-}
-
-int lps22hh_read_raw(int32_t *pressure, int32_t *temperature)
-{
-    return lps22hh_read_raw_device(&lps22hh_default_device, pressure,
-                                   temperature);
 }
 
 int lps22hh_read_raw_device(const TagPressureDevice *device, int32_t *pressure,
@@ -338,10 +273,4 @@ float lps22hh_raw_pressure_hPA(int32_t pressure){
 }
 float lps22hh_raw_temperature_c(int32_t temperature){
     return temperature *LPS22HH_TEMPERATURE_SENSITIVITY;
-}
-// Wrappers
-
-void lpsInit(void){}
-bool lpsTest(void){
-    return lps22hh_check_who_am_i();
 }

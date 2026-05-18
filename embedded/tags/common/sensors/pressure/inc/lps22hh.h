@@ -68,8 +68,8 @@ float lps22hh_raw_temperature_c(int32_t temperature);
 
 /*
  * Parameterized API for tags that want to provide their own pressure-device
- * descriptor. The legacy functions above call these with the module's default
- * descriptor so existing tag code does not need to change all at once.
+ * descriptor. The legacy functions above are implemented by the lps.c shim and
+ * call these with the selected tag's default descriptor.
  */
 bool lps22hh_check_who_am_i_device(const TagPressureDevice *device);
 int  lps22hh_set_idle_device(const TagPressureDevice *device);

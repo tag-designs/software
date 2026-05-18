@@ -6,4 +6,5 @@ UDEFS += -DTAG_SENSOR_PRESSURE_LPS22HH=1
 
 ALLCSRC += \
        sensor_io.c \
+       lps.c \
        lps22hh.c

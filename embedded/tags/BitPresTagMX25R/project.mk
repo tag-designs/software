@@ -1,6 +1,8 @@
 # List of all the project related files.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/BitPresTagv1/board.mk
+TAG_COMMON_DIR ?= ../common
+include ../common/modules/sensor_pressure_paths.mk
 
 ALLCSRC += \
        mx25r.c \
@@ -9,6 +11,8 @@ ALLCSRC += \
        datalog.c \
        default_config.c \
        handlers.c  \
+       sensor_io.c \
+       lps.c \
        lps27.c \
        main.c \
        monitor.c \

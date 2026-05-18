@@ -120,6 +120,7 @@ up. Current examples:
     inc/lps27hhw.h
     inc/lps33hw.h
     src/bmp5.c
+    src/lps.c
     src/lps22.c
     src/lps22hh.c
     src/lps27.c
@@ -184,9 +185,11 @@ drivers.
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterDevice` with the tag-specific
 power-on, power-off, and sleep callbacks. The legacy `lpsGetPressureTemp()` and
-`lpsTest()` APIs still use each driver's default descriptor, while newer code
-can call the device-specific parameterized functions when the same pressure
-driver is reused with different board wiring or power policy.
+`lpsTest()` APIs live in `pressure/src/lps.c`; that shim selects the compiled
+pressure driver, owns the tag's default descriptor, and delegates to the
+device-specific parameterized functions. Keep sensor register sequences in the
+individual driver files and keep tag-selection or bus-selection conditionals in
+the shim.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

@@ -4,52 +4,6 @@
 #include "lps22hhw.h"
 #include "lps.h"
 #include "limits.h"
-#include "sensor_io.h"
-
-#define LPS22HW_ADR (0x5C)
-
-#if defined(LPS_I2C) && defined(USE_LPS22)
-#define LPS22_TIMEOUT 100
-
-static const TagI2cRegisterIO lps22_i2c = {
-  .driver = &I2CD1,
-  .address = LPS22HW_ADR,
-  .timeout = LPS22_TIMEOUT,
-};
-#define LPS22_REGISTER_DEVICE \
-  { tagI2cReadRegister, tagI2cWriteRegister, &lps22_i2c }
-
-#endif
-
-#if defined(LPS_SPI) && defined(USE_LPS22)
-// needs to be re-written to use three wire format
-static const TagStSpiRegisterIO lps22_spi = {
-  .cs = LINE_STEVAL_CS,
-  .read_mask = 0x80,
-  .write_mask = 0x00,
-};
-#define LPS22_REGISTER_DEVICE \
-  { tagStSpiReadRegister, tagStSpiWriteRegister, &lps22_spi }
-
-#endif
-
-static const TagRegisterDevice lps22_registers = LPS22_REGISTER_DEVICE;
-
-static void lps22_default_sleep(int ms)
-{
-#if defined(LPS_SPI)
-  stopMilliseconds(true, ms);
-#else
-  stopMilliseconds(false, ms);
-#endif
-}
-
-static const TagPressureDevice lps22_default_device = {
-  .registers = &lps22_registers,
-  .on = lpsOn,
-  .off = lpsOff,
-  .sleep_ms = lps22_default_sleep,
-};
 
 static void lps22_SetReg(const TagPressureDevice *device, enum LPS22_Reg reg,
                          uint8_t *val, int num)
@@ -65,11 +19,9 @@ static void lps22_GetReg(const TagPressureDevice *device, enum LPS22_Reg reg,
                                          (uint8_t)reg, val, num);
 }
 
-#if defined(USE_LPS22)
-bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
-{
-  return lps22GetPressureTemp(&lps22_default_device, pressure, temperature);
-}
+float lps22Pressure(int16_t pressure) { return pressure / 16.0f; }
+
+float lps22Temperature(int16_t temperature) { return temperature / 100.0f; }
 
 bool lps22GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
                           int16_t *temperature)
@@ -137,13 +89,6 @@ bool lps22GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   return false;
 }
 
-void lpsInit(void){}
-
-bool lpsTest(void)
-{
-  return lps22Test(&lps22_default_device);
-}
-
 bool lps22Test(const TagPressureDevice *device)
 {
   uint8_t who;
@@ -153,4 +98,3 @@ bool lps22Test(const TagPressureDevice *device)
   device->off();
   return who == LPS22_WHO_AM_I_VALUE;
 }
-#endif
