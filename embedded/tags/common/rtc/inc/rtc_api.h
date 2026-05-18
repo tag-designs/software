@@ -37,6 +37,13 @@ enum ALARM_TYPE { ALARM_SECOND, ALARM_MINUTE, ALARM_HOUR };
 void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype);
 void disableAlarm(unsigned int alarm);
 void disableAllAlarms(void);
+/*
+ * Sleep for a short interval using Stop2 when the monitor is disconnected.
+ *
+ * The first argument is retained for source compatibility with older callers;
+ * the implementation now queries isSpi1On() and suspends/resumes SPI1
+ * automatically when the shared SPI1 controller is active.
+ */
 void stopMilliseconds(bool spiEnabled, unsigned int interval);
 bool initRTC(void);
 void enableTicker(uint16_t interval);

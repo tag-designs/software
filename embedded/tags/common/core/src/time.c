@@ -2,6 +2,7 @@
 #include "hal_rtc_lld.h"
 
 #include "core_types.h"
+#include "power.h"
 #include "rtc_api.h"
 #include "timekeeping.h"
 
@@ -215,13 +216,17 @@ void disableTicker(void)
 
 void stopMilliseconds(bool spiEnabled,unsigned int ms)
 {
+  (void)spiEnabled;
+
   if (MONCONNECTED)
   {
     chThdSleepMilliseconds(ms);
   }
   else
   {
-    if (spiEnabled){
+    bool spi1_was_on = isSpi1On();
+
+    if (spi1_was_on){
        SPI1->CR1 &= ~SPI_CR1_SPE;
     }
     // enable lptim1
@@ -267,7 +272,7 @@ void stopMilliseconds(bool spiEnabled,unsigned int ms)
     
     // reenable SPI if necessary
     
-    if (spiEnabled){
+    if (spi1_was_on){
        SPI1->CR1 |= SPI_CR1_SPE;
     }
   }

@@ -11,9 +11,26 @@
  * still own the descriptor and any device-specific delays or reset handling.
  */
 
+static bool spi1_on = false;
+
 bool tagLineIsValid(ioline_t line)
 {
   return line != TAG_NO_LINE;
+}
+
+bool isSpi1On(void)
+{
+  return spi1_on;
+}
+
+void tagMarkSpi1On(void)
+{
+  spi1_on = true;
+}
+
+void tagMarkSpi1Off(void)
+{
+  spi1_on = false;
 }
 
 void tagEnableStandbyPullup(ioline_t line)
@@ -60,12 +77,14 @@ static void spi1DefaultEnable(void)
               SPI_CR2_DS_1 | SPI_CR2_DS_0;
   SPI1->CR1 = SPI_CR1_MSTR;
   SPI1->CR1 |= SPI_CR1_SPE;
+  tagMarkSpi1On();
 }
 
 static void spi1DefaultDisable(void)
 {
   SPI1->CR1 = 0;
   SPI1->CR2 = 0;
+  tagMarkSpi1Off();
 }
 
 const TagSpiController tagSpi1DefaultController = {

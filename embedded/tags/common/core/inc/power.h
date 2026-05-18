@@ -54,6 +54,9 @@ typedef struct {
 extern const TagSpiController tagSpi1DefaultController;
 
 bool tagLineIsValid(ioline_t line);
+bool isSpi1On(void);
+void tagMarkSpi1On(void);
+void tagMarkSpi1Off(void);
 void tagEnableStandbyPullup(ioline_t line);
 void tagEnableStandbyPulldown(ioline_t line);
 void tagSpiDeviceOn(const TagSpiDevice *device);

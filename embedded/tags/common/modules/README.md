@@ -150,6 +150,11 @@ default SPI1 controller setup, and STM32 standby pullup/pulldown helpers that
 operate on board-provided `LINE_xxx` names. Device-specific power descriptors
 can live in tag-local code today and should eventually move beside their device
 modules as the power code is split up.
+The default SPI1 controller also tracks whether SPI1 is logically on; short
+Stop2 sleeps query `isSpi1On()` so callers no longer need to know whether an
+SPI device is active before calling `stopMilliseconds()`. Older tag-local SPI
+controller code that does not use `TagSpiDevice` should call
+`tagMarkSpi1On()` and `tagMarkSpi1Off()` in its local enable/disable helpers.
 
 The old monolithic `app.h` now acts as a compatibility umbrella over
 topic-specific headers such as `adc.h`, `core_events.h`, `power.h`, and
