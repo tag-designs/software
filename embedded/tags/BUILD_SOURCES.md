@@ -28,12 +28,13 @@ embedded/tags/BitTag/src/monitor.c
 embedded/tags/BitTag/src/persistent.c
 embedded/tags/BitTag/src/pwr.c
 embedded/tags/BitTag/src/bt_state_run.c
-embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/BitTag/src/hal_rtc_lld.c
+embedded/tags/BitTag/src/rtc_rv3028.c
+embedded/tags/BitTag/src/rtc_test.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/main.c
-embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_test.c
+embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
@@ -49,6 +50,8 @@ embedded/tags/BitTag/cfg/chconf.h
 embedded/tags/BitTag/cfg/halconf.h
 embedded/tags/BitTag/cfg/mcuconf.h
 embedded/tags/BitTag/inc/ADXL362.h
+embedded/tags/BitTag/inc/rtc_api.h
+embedded/tags/BitTag/inc/rv3028.h
 embedded/tags/common/sensors/accel/inc/ais2dw12.h
 embedded/tags/common/core/inc/app.h
 embedded/tags/common/core/inc/adc.h
@@ -62,9 +65,9 @@ embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/spi_bus.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
-embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/inc/config.h
 embedded/tags/common/storage/inc/external_flash.h
 embedded/tags/common/sensors/accel/inc/lis2dtw12.h
@@ -72,7 +75,6 @@ embedded/tags/common/sensors/pressure/inc/lps.h
 embedded/tags/common/sensors/mag/inc/mmc5633.h
 embedded/tags/common/sensors/light/inc/opt3002.h
 embedded/tags/common/core/inc/persistent.h
-embedded/tags/common/rtc/inc/rv3028.h
 ```
 
 ## PresTag
