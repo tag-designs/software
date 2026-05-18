@@ -48,6 +48,13 @@
 extern void FlashSpiOn(void);
 extern void FlashSpiOff(void);
 
+/*
+ * Storage still predates the descriptor-based bus model used by newer sensor
+ * drivers. These helpers intentionally preserve the AT25XE command framing:
+ * chip select stays asserted across command, address, and data phases. When
+ * storage is refactored, keep that transaction shape in the chip driver while
+ * moving the SPI bus descriptor and optimized byte loops out of this file.
+ */
 static void spiSendPolled(uint32_t n, uint8_t *buf)
 {
     volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;

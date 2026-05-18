@@ -2,6 +2,12 @@
 
 #define TAG_I2C_REGISTER_MAX_WRITE 16
 
+/*
+ * Conventional register-oriented I2C transfers shared by sensors and RTCs.
+ * Power sequencing, mutex ownership, and fallback-I2C line configuration stay
+ * in the tag/family device descriptor; this file only knows how to emit
+ * register-addressed transactions once the bus is available.
+ */
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len)
 {

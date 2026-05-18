@@ -45,7 +45,18 @@ ahead of shared defaults.
 
 Some physical shared sources still live in `../src` and headers in `../inc`.
 Subsystems are being moved into real common-code directories as they are cleaned
-up. Current examples:
+up. Each subsystem directory has a maintainer README with the ownership model
+and current cleanup notes:
+
+- `../README.md` gives the high-level map.
+- `../core/README.md` covers runtime, monitor, power, and shared bus helpers.
+- `../rtc/README.md` covers the RTC API and descriptor TODO.
+- `../storage/README.md` covers external flash drivers and the planned storage
+  I/O cleanup.
+- `../sensors/README.md` covers the sensor descriptor/shim pattern.
+- `../test/README.md` covers self-test hooks.
+
+Current examples:
 
 ```text
 ../core/
@@ -199,6 +210,13 @@ Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
 by a particular tag. `storage_paths.mk` is a guarded helper included by those
 modules and by `tag_core`; it is not intended to be listed directly in
 `TAG_MODULES`.
+
+TODO: clean up the storage-driver I/O structure so AT25XE, MX25L, and MX25R
+use the same descriptor-driven SPI transaction model as newer sensors. The
+storage drivers still carry chip-specific SPI access patterns and direct bus
+assumptions; the common pieces should move toward a small external-flash device
+descriptor that owns the SPI bus, chip select framing, and optimized
+read/write helpers without hiding chip-specific command formats.
 
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
