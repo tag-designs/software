@@ -24,6 +24,7 @@ embedded/tags/BitTag/src/hal_lld.c
 embedded/tags/BitTag/src/ADXL362.c
 embedded/tags/BitTag/src/adxl362_test.c
 embedded/tags/BitTag/src/bt_config.c
+embedded/tags/BitTag/src/main.c
 embedded/tags/BitTag/src/monitor.c
 embedded/tags/BitTag/src/persistent.c
 embedded/tags/BitTag/src/pwr.c
@@ -31,16 +32,15 @@ embedded/tags/BitTag/src/bt_state_run.c
 embedded/tags/BitTag/src/hal_rtc_lld.c
 embedded/tags/BitTag/src/rtc_rv3028.c
 embedded/tags/BitTag/src/rtc_test.c
+embedded/tags/BitTag/src/state_machine.c
+embedded/tags/BitTag/src/time.c
 embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/i2c_bus.c
-embedded/tags/common/core/src/main.c
 embedded/tags/common/core/src/spi_bus.c
-embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
 embedded/tags/common/test/src/test.c
-embedded/tags/common/core/src/time.c
 ```
 
 ### Header Files

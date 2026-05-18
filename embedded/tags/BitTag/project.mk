@@ -14,9 +14,10 @@ UDEFS += -DTAG_RTC_RV3028=1
 
 # Historical BitTag runtime. These files predate the generic monitor/power/log
 # structure and are kept local to BitTag so the shared common modules describe
-# only code used across multiple current tag families. BitTag's local monitor.c
-# persistent.c, pwr.c, ADXL362 driver, and RV3028 RTC files override or freeze
-# code that is generic for newer tags but historically part of BitTag firmware.
+# only code used across multiple current tag families. BitTag's local monitor.c,
+# persistent.c, pwr.c, main.c, time.c, state_machine.c, ADXL362 driver, and
+# RV3028 RTC files override or freeze code that is generic for newer tags but
+# historically part of BitTag firmware.
 ALLCSRC += \
        ADXL362.c \
        adxl362_test.c \
