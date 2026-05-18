@@ -115,11 +115,13 @@ up. Current examples:
   pressure/
     inc/bmp5.h
     inc/lps.h
+    inc/lps22hh.h
     inc/lps22hhw.h
     inc/lps27hhw.h
     inc/lps33hw.h
     src/bmp5.c
     src/lps22.c
+    src/lps22hh.c
     src/lps27.c
     src/lps27_test.c
     src/lps33.c

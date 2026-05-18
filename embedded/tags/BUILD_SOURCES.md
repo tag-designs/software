@@ -408,7 +408,7 @@ embedded/tags/IMUTagBreakout/src/ak09940_test.c
 embedded/tags/IMUTagBreakout/src/config.c
 embedded/tags/IMUTagBreakout/src/datalog.c
 embedded/tags/common/sensors/src/sensor_io.c
-embedded/tags/IMUTagBreakout/src/lps22hh.c
+embedded/tags/common/sensors/pressure/src/lps22hh.c
 embedded/tags/IMUTagBreakout/src/lps22hh_test.c
 embedded/tags/IMUTagBreakout/src/pwr.c
 embedded/tags/IMUTagBreakout/src/sensors.c
@@ -440,7 +440,7 @@ embedded/tags/IMUTagBreakout/Inc/config.h
 embedded/tags/IMUTagBreakout/Inc/custom.h
 embedded/tags/IMUTagBreakout/Inc/datalog.h
 embedded/tags/IMUTagBreakout/Inc/lis2du12.h
-embedded/tags/IMUTagBreakout/Inc/lps22hh.h
+embedded/tags/common/sensors/pressure/inc/lps22hh.h
 embedded/tags/IMUTagBreakout/Inc/persistent.h
 embedded/tags/IMUTagBreakout/Inc/sensors.h
 embedded/tags/IMUTagBreakout/cfg/chconf.h
