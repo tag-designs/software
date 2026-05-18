@@ -165,11 +165,12 @@ static const TagRegisterDevice lps_registers = {
 
 static void lps_default_sleep(int ms)
 {
-#if defined(LPS_SPI) || defined(LPS_SHIM_LPS22HH) || defined(LPS_SHIM_BMP5)
-  stopMilliseconds(true, ms);
-#else
+  /*
+   * stopMilliseconds() now queries isSpi1On() internally. The boolean is
+   * retained only for source compatibility, so the pressure shim no longer
+   * needs to know which transport is active.
+   */
   stopMilliseconds(false, ms);
-#endif
 }
 
 static const TagPressureDevice lps_device = {

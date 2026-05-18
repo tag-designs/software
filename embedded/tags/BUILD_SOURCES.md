@@ -222,6 +222,7 @@ embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTag/src/sensors.c
 embedded/tags/CompassTag/src/state_run.c
 embedded/tags/common/test/src/test.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
 embedded/tags/common/sensors/mag/src/ak09940a_test.c
 embedded/tags/families/CompassTag/src/lis2du12_test.c
@@ -285,6 +286,7 @@ embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTagAT25Breakout/src/sensors.c
 embedded/tags/CompassTagAT25Breakout/src/state_run.c
 embedded/tags/common/test/src/test.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
 embedded/tags/common/sensors/mag/src/ak09940a_test.c
 embedded/tags/families/CompassTag/src/lis2du12_test.c
@@ -348,6 +350,7 @@ embedded/tags/families/CompassTag/src/pwr.c
 embedded/tags/CompassTagAT25/src/sensors.c
 embedded/tags/CompassTagAT25/src/state_run.c
 embedded/tags/common/test/src/test.c
+embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
 embedded/tags/common/sensors/mag/src/ak09940a_test.c
 embedded/tags/families/CompassTag/src/lis2du12_test.c
