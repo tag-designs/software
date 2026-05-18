@@ -230,7 +230,13 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 *******************************************************************************/
 void ADXL362_SoftwareReset(void)
 {
-    ADXL362_SetRegisterValue(ADXL362_RESET_KEY, ADXL362_REG_SOFT_RESET, 1);
+    ADXL362_SoftwareResetDevice(&adxl362_default_device);
+}
+
+void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device)
+{
+    ADXL362_SetRegisterValueDevice(device, ADXL362_RESET_KEY,
+                                   ADXL362_REG_SOFT_RESET, 1);
 }
 
 /***************************************************************************//**
@@ -244,14 +250,22 @@ void ADXL362_SoftwareReset(void)
 *******************************************************************************/
 void ADXL362_SetPowerMode(unsigned char pwrMode)
 {
+    ADXL362_SetPowerModeDevice(&adxl362_default_device, pwrMode);
+}
+
+void ADXL362_SetPowerModeDevice(const TagAdxl362Device *device,
+                                unsigned char pwrMode)
+{
     unsigned char oldPowerCtl = 0;
     unsigned char newPowerCtl = 0;
 
-    ADXL362_GetRegisterValue(&oldPowerCtl, ADXL362_REG_POWER_CTL, 1);
+    ADXL362_GetRegisterValueDevice(device, &oldPowerCtl,
+                                   ADXL362_REG_POWER_CTL, 1);
     newPowerCtl = oldPowerCtl & ~ADXL362_POWER_CTL_MEASURE(0x3);
     newPowerCtl = newPowerCtl |
                   (pwrMode * ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON));
-    ADXL362_SetRegisterValue(newPowerCtl, ADXL362_REG_POWER_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, newPowerCtl,
+                                   ADXL362_REG_POWER_CTL, 1);
 }
 
 /***************************************************************************//**
@@ -266,13 +280,21 @@ void ADXL362_SetPowerMode(unsigned char pwrMode)
 *******************************************************************************/
 void ADXL362_SetRange(unsigned char gRange)
 {
+    ADXL362_SetRangeDevice(&adxl362_default_device, gRange);
+}
+
+void ADXL362_SetRangeDevice(const TagAdxl362Device *device,
+                            unsigned char gRange)
+{
     unsigned char oldFilterCtl = 0;
     unsigned char newFilterCtl = 0;
 
-    ADXL362_GetRegisterValue(&oldFilterCtl, ADXL362_REG_FILTER_CTL, 1);
+    ADXL362_GetRegisterValueDevice(device, &oldFilterCtl,
+                                   ADXL362_REG_FILTER_CTL, 1);
     newFilterCtl = oldFilterCtl & ~ADXL362_FILTER_CTL_RANGE(0x3);
     newFilterCtl = newFilterCtl | ADXL362_FILTER_CTL_RANGE(gRange);
-    ADXL362_SetRegisterValue(newFilterCtl, ADXL362_REG_FILTER_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, newFilterCtl,
+                                   ADXL362_REG_FILTER_CTL, 1);
     selectedRange = (1 << gRange) * 2;
 }
 
@@ -291,13 +313,21 @@ void ADXL362_SetRange(unsigned char gRange)
 *******************************************************************************/
 void ADXL362_SetOutputRate(unsigned char outRate)
 {
+    ADXL362_SetOutputRateDevice(&adxl362_default_device, outRate);
+}
+
+void ADXL362_SetOutputRateDevice(const TagAdxl362Device *device,
+                                 unsigned char outRate)
+{
     unsigned char oldFilterCtl = 0;
     unsigned char newFilterCtl = 0;
 
-    ADXL362_GetRegisterValue(&oldFilterCtl, ADXL362_REG_FILTER_CTL, 1);
+    ADXL362_GetRegisterValueDevice(device, &oldFilterCtl,
+                                   ADXL362_REG_FILTER_CTL, 1);
     newFilterCtl = oldFilterCtl & ~ADXL362_FILTER_CTL_ODR(0x7);
     newFilterCtl = newFilterCtl | ADXL362_FILTER_CTL_ODR(outRate);
-    ADXL362_SetRegisterValue(newFilterCtl, ADXL362_REG_FILTER_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, newFilterCtl,
+                                   ADXL362_REG_FILTER_CTL, 1);
 }
 
 /***************************************************************************//**
@@ -311,9 +341,15 @@ void ADXL362_SetOutputRate(unsigned char outRate)
 *******************************************************************************/
 void ADXL362_GetXyz(short* x, short* y, short* z)
 {
+    ADXL362_GetXyzDevice(&adxl362_default_device, x, y, z);
+}
+
+void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
+                          short *z)
+{
     unsigned char xyzValues[6] = {0, 0, 0, 0, 0, 0};
 
-    ADXL362_GetRegisterValue(xyzValues, ADXL362_REG_XDATA_L, 6);
+    ADXL362_GetRegisterValueDevice(device, xyzValues, ADXL362_REG_XDATA_L, 6);
     *x = ((short)xyzValues[1] << 8) + xyzValues[0];
     *y = ((short)xyzValues[3] << 8) + xyzValues[2];
     *z = ((short)xyzValues[5] << 8) + xyzValues[4];
@@ -332,9 +368,15 @@ void ADXL362_GetXyz(short* x, short* y, short* z)
 #ifdef INCLUDE_FLOAT
 void ADXL362_GetGxyz(float* x, float* y, float* z)
 {
+    ADXL362_GetGxyzDevice(&adxl362_default_device, x, y, z);
+}
+
+void ADXL362_GetGxyzDevice(const TagAdxl362Device *device, float *x, float *y,
+                           float *z)
+{
     unsigned char xyzValues[6] = {0, 0, 0, 0, 0, 0};
 
-    ADXL362_GetRegisterValue(xyzValues, ADXL362_REG_XDATA_L, 6);
+    ADXL362_GetRegisterValueDevice(device, xyzValues, ADXL362_REG_XDATA_L, 6);
     *x = ((short)xyzValues[1] << 8) + xyzValues[0];
     *x /= (1000 / (selectedRange / 2));
     *y = ((short)xyzValues[3] << 8) + xyzValues[2];
@@ -351,11 +393,16 @@ void ADXL362_GetGxyz(float* x, float* y, float* z)
 
 float ADXL362_ReadTemperature(void)
 {
+    return ADXL362_ReadTemperatureDevice(&adxl362_default_device);
+}
+
+float ADXL362_ReadTemperatureDevice(const TagAdxl362Device *device)
+{
     unsigned char rawTempData[2] = {0, 0};
     short         signedTemp     = 0;
     float         tempCelsius    = 0;
 
-    ADXL362_GetRegisterValue(rawTempData, ADXL362_REG_TEMP_L, 2);
+    ADXL362_GetRegisterValueDevice(device, rawTempData, ADXL362_REG_TEMP_L, 2);
     signedTemp = (short)(rawTempData[1] << 8) + rawTempData[0];
     tempCelsius = (float)signedTemp * 0.065f;
     
@@ -382,13 +429,22 @@ void ADXL362_FifoSetup(unsigned char  mode,
                        unsigned short waterMarkLvl,
                        unsigned char  enTempRead)
 {
+    ADXL362_FifoSetupDevice(&adxl362_default_device, mode, waterMarkLvl,
+                            enTempRead);
+}
+
+void ADXL362_FifoSetupDevice(const TagAdxl362Device *device,
+                             unsigned char mode, unsigned short waterMarkLvl,
+                             unsigned char enTempRead)
+{
     unsigned char writeVal = 0;
 
     writeVal = ADXL362_FIFO_CTL_FIFO_MODE(mode) |
                (enTempRead * ADXL362_FIFO_CTL_FIFO_TEMP) |
                ADXL362_FIFO_CTL_AH;
-    ADXL362_SetRegisterValue(writeVal, ADXL362_REG_FIFO_CTL, 1);
-    ADXL362_SetRegisterValue(waterMarkLvl, ADXL362_REG_FIFO_SAMPLES, 2);
+    ADXL362_SetRegisterValueDevice(device, writeVal, ADXL362_REG_FIFO_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, waterMarkLvl,
+                                   ADXL362_REG_FIFO_SAMPLES, 2);
 }
 
 /***************************************************************************//**
@@ -409,19 +465,31 @@ void ADXL362_SetupActivityDetection(unsigned char  refOrAbs,
                                     unsigned short threshold,
                                     unsigned char  time)
 {
+    ADXL362_SetupActivityDetectionDevice(&adxl362_default_device, refOrAbs,
+                                         threshold, time);
+}
+
+void ADXL362_SetupActivityDetectionDevice(const TagAdxl362Device *device,
+                                          unsigned char refOrAbs,
+                                          unsigned short threshold,
+                                          unsigned char time)
+{
     unsigned char oldActInactReg = 0;
     unsigned char newActInactReg = 0;
 
     /* Configure motion threshold and activity timer. */
-    ADXL362_SetRegisterValue((threshold & 0x7FF), ADXL362_REG_THRESH_ACT_L, 2);
-    ADXL362_SetRegisterValue(time, ADXL362_REG_TIME_ACT, 1);
+    ADXL362_SetRegisterValueDevice(device, (threshold & 0x7FF),
+                                   ADXL362_REG_THRESH_ACT_L, 2);
+    ADXL362_SetRegisterValueDevice(device, time, ADXL362_REG_TIME_ACT, 1);
     /* Enable activity interrupt and select a referenced or absolute
        configuration. */
-    ADXL362_GetRegisterValue(&oldActInactReg, ADXL362_REG_ACT_INACT_CTL, 1);
+    ADXL362_GetRegisterValueDevice(device, &oldActInactReg,
+                                   ADXL362_REG_ACT_INACT_CTL, 1);
     newActInactReg = oldActInactReg & ~ADXL362_ACT_INACT_CTL_ACT_REF;
     newActInactReg |= ADXL362_ACT_INACT_CTL_ACT_EN |
                      (refOrAbs * ADXL362_ACT_INACT_CTL_ACT_REF);
-    ADXL362_SetRegisterValue(newActInactReg, ADXL362_REG_ACT_INACT_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, newActInactReg,
+                                   ADXL362_REG_ACT_INACT_CTL, 1);
 }
 
 /***************************************************************************//**
@@ -442,19 +510,29 @@ void ADXL362_SetupInactivityDetection(unsigned char  refOrAbs,
                                       unsigned short threshold,
                                       unsigned short time)
 {
+    ADXL362_SetupInactivityDetectionDevice(&adxl362_default_device, refOrAbs,
+                                           threshold, time);
+}
+
+void ADXL362_SetupInactivityDetectionDevice(const TagAdxl362Device *device,
+                                            unsigned char refOrAbs,
+                                            unsigned short threshold,
+                                            unsigned short time)
+{
     unsigned char oldActInactReg = 0;
     unsigned char newActInactReg = 0;
     
     /* Configure motion threshold and inactivity timer. */
-    ADXL362_SetRegisterValue((threshold & 0x7FF),
-                              ADXL362_REG_THRESH_INACT_L,
-                              2);
-    ADXL362_SetRegisterValue(time, ADXL362_REG_TIME_INACT_L, 2);
+    ADXL362_SetRegisterValueDevice(device, (threshold & 0x7FF),
+                                   ADXL362_REG_THRESH_INACT_L, 2);
+    ADXL362_SetRegisterValueDevice(device, time, ADXL362_REG_TIME_INACT_L, 2);
     /* Enable inactivity interrupt and select a referenced or absolute
        configuration. */
-    ADXL362_GetRegisterValue(&oldActInactReg, ADXL362_REG_ACT_INACT_CTL, 1);
+    ADXL362_GetRegisterValueDevice(device, &oldActInactReg,
+                                   ADXL362_REG_ACT_INACT_CTL, 1);
     newActInactReg = oldActInactReg & ~ADXL362_ACT_INACT_CTL_INACT_REF;
     newActInactReg |= ADXL362_ACT_INACT_CTL_INACT_EN |
                      (refOrAbs * ADXL362_ACT_INACT_CTL_INACT_REF);
-    ADXL362_SetRegisterValue(newActInactReg, ADXL362_REG_ACT_INACT_CTL, 1);
+    ADXL362_SetRegisterValueDevice(device, newActInactReg,
+                                   ADXL362_REG_ACT_INACT_CTL, 1);
 }

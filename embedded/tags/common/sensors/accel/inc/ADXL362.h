@@ -246,38 +246,61 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 
 /*! Resets the device via SPI communication bus. */
 void ADXL362_SoftwareReset(void);
+void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device);
 
 /*! Places the device into standby/measure mode. */
 void ADXL362_SetPowerMode(unsigned char pwrMode);
+void ADXL362_SetPowerModeDevice(const TagAdxl362Device *device,
+                                unsigned char pwrMode);
 
 /*! Selects the measurement range. */
 void ADXL362_SetRange(unsigned char gRange);
+void ADXL362_SetRangeDevice(const TagAdxl362Device *device,
+                            unsigned char gRange);
 
 /*! Selects the Output Data Rate of the device. */
 void ADXL362_SetOutputRate(unsigned char outRate);
+void ADXL362_SetOutputRateDevice(const TagAdxl362Device *device,
+                                 unsigned char outRate);
 
 /*! Reads the 3-axis raw data from the accelerometer. */
 void ADXL362_GetXyz(short *x, short *y, short *z);
+void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
+                          short *z);
 
 /*! Reads the 3-axis raw data from the accelerometer and converts it to g. */
 void ADXL362_GetGxyz(float* x, float* y, float* z);
+void ADXL362_GetGxyzDevice(const TagAdxl362Device *device, float *x, float *y,
+                           float *z);
 
 /*! Reads the temperature of the device. */
 float ADXL362_ReadTemperature(void);
+float ADXL362_ReadTemperatureDevice(const TagAdxl362Device *device);
 
 /*! Configures the FIFO feature. */
 void ADXL362_FifoSetup(unsigned char  mode,
                        unsigned short waterMarkLvl,
                        unsigned char  enTempRead);
+void ADXL362_FifoSetupDevice(const TagAdxl362Device *device,
+                             unsigned char mode, unsigned short waterMarkLvl,
+                             unsigned char enTempRead);
 
 /*! Configures activity detection. */
 void ADXL362_SetupActivityDetection(unsigned char  refOrAbs,
                                     unsigned short threshold,
                                     unsigned char  time);
+void ADXL362_SetupActivityDetectionDevice(const TagAdxl362Device *device,
+                                          unsigned char refOrAbs,
+                                          unsigned short threshold,
+                                          unsigned char time);
 
 /*! Configures inactivity detection. */
 void ADXL362_SetupInactivityDetection(unsigned char  refOrAbs,
                                       unsigned short threshold,
                                       unsigned short time);
+void ADXL362_SetupInactivityDetectionDevice(const TagAdxl362Device *device,
+                                            unsigned char refOrAbs,
+                                            unsigned short threshold,
+                                            unsigned short time);
 
 #endif /* __ADXL362_H__ */
