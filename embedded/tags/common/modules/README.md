@@ -134,6 +134,7 @@ up. Current examples:
     inc/ak09940a.h
     inc/mmc5633.h
     src/ak09940a.c
+    src/ak09940a_shim.c
     src/ak09940a_test.c
     src/mmc5633.c
   light/
@@ -195,6 +196,10 @@ byte-transfer loops and the ST-style SPI register helpers used by the LPS
 pressure drivers. Keep bus power, SPI/USART controller setup, and sleep pin
 policy in the tag power layer; keep sensor command formats and register
 transactions beside the sensor drivers.
+The AK09940A magnetometer follows the same driver/shim split as the pressure
+path: `mag/src/ak09940a.c` is the descriptor-driven register implementation,
+while `mag/src/ak09940a_shim.c` binds the default CompassTag SPI descriptor and
+legacy `mag*`/`ak09940_*` APIs.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific

@@ -11,4 +11,5 @@ endif
 
 ALLCSRC += \
        ak09940a.c \
+       ak09940a_shim.c \
        ak09940a_test.c
