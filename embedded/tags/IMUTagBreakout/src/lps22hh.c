@@ -57,10 +57,17 @@ static const TagStSpiRegisterIO lps22hh_spi = {
     .write_mask = 0x00,
 };
 
+static const TagRegisterDevice lps22hh_registers = {
+    tagStSpiReadRegister,
+    tagStSpiWriteRegister,
+    &lps22hh_spi,
+};
+
 /* Write one register. */
 static int write_reg(uint8_t reg, uint8_t val)
 {
-    return tagStSpiWriteRegister(&lps22hh_spi, reg, &val, 1);
+    return lps22hh_registers.write_register(lps22hh_registers.context, reg,
+                                            &val, 1);
 }
 
 /*
@@ -71,7 +78,8 @@ static int write_reg(uint8_t reg, uint8_t val)
  */
 static int read_block(uint8_t reg, uint8_t *buf, uint16_t len)
 {
-    return tagStSpiReadRegister(&lps22hh_spi, reg, buf, len);
+    return lps22hh_registers.read_register(lps22hh_registers.context, reg, buf,
+                                           len);
 }
 
 #define read_reg(reg,val) read_block(reg,val,1)

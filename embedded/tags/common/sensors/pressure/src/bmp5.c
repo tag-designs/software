@@ -12,14 +12,22 @@ static const TagStSpiRegisterIO bmp5_spi = {
   .write_mask = 0x00,
 };
 
+static const TagRegisterDevice bmp5_registers = {
+  tagStSpiReadRegister,
+  tagStSpiWriteRegister,
+  &bmp5_spi,
+};
+
 static void bmp5_SetReg(enum BMP5_Reg reg, uint8_t *val, int num)
 {
-  (void)tagStSpiWriteRegister(&bmp5_spi, (uint8_t)reg, val, num);
+  (void)bmp5_registers.write_register(bmp5_registers.context, (uint8_t)reg,
+                                      val, num);
 }
 
 static void bmp5_GetReg(enum BMP5_Reg reg, uint8_t *val, int num)
 {
-  (void)tagStSpiReadRegister(&bmp5_spi, (uint8_t)reg, val, num);
+  (void)bmp5_registers.read_register(bmp5_registers.context, (uint8_t)reg,
+                                     val, num);
 }
 
 float lpsPressure(int16_t pressure) {

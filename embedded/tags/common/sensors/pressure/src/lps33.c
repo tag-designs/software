@@ -16,16 +16,8 @@ static const TagI2cRegisterIO lps33_i2c = {
   .address = LPS33HW_ADR,
   .timeout = LPS33_TIMEOUT,
 };
-
-void lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
-{
-  (void)tagI2cReadRegister(&lps33_i2c, (uint8_t)reg, val, num);
-}
-
-void lps33_SetReg(enum LPS33_Reg reg, unsigned char *val, int num)
-{
-  (void)tagI2cWriteRegister(&lps33_i2c, (uint8_t)reg, val, num);
-}
+#define LPS33_REGISTER_DEVICE \
+  { tagI2cReadRegister, tagI2cWriteRegister, &lps33_i2c }
 
 #endif
 
@@ -35,18 +27,24 @@ static const TagStSpiRegisterIO lps33_spi = {
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
+#define LPS33_REGISTER_DEVICE \
+  { tagStSpiReadRegister, tagStSpiWriteRegister, &lps33_spi }
 
-void lps33_SetReg(enum LPS33_Reg reg, uint8_t *val, int num)
+#endif
+
+static const TagRegisterDevice lps33_registers = LPS33_REGISTER_DEVICE;
+
+void lps33_SetReg(enum LPS33_Reg reg, unsigned char *val, int num)
 {
-  (void)tagStSpiWriteRegister(&lps33_spi, (uint8_t)reg, val, num);
+  (void)lps33_registers.write_register(lps33_registers.context, (uint8_t)reg,
+                                       val, num);
 }
 
 void lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
 {
-  (void)tagStSpiReadRegister(&lps33_spi, (uint8_t)reg, val, num);
+  (void)lps33_registers.read_register(lps33_registers.context, (uint8_t)reg,
+                                      val, num);
 }
-
-#endif
 
 #if defined(USE_LPS33)
 bool GetPressureTemp(int16_t *pressure, int16_t *temperature)
