@@ -103,7 +103,6 @@ embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
@@ -175,7 +174,6 @@ embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
@@ -250,7 +248,6 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
@@ -319,7 +316,6 @@ embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
@@ -389,7 +385,6 @@ embedded/tags/common/core/src/monitor.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
@@ -460,7 +455,6 @@ embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/core/src/persistent.c
 embedded/tags/common/rtc/src/rtc_device.c
 embedded/tags/common/rtc/src/rtc_rv3028.c
-embedded/tags/common/rtc/src/rtc_rv3028_shim.c
 embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c

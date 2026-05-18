@@ -1,5 +1,37 @@
 #include "rtc_device.h"
 
+#if defined(TAG_RTC_RV3028)
+#include "power.h"
+#include "rv3028.h"
+
+#define RTC_TIMEOUT 100
+
+/*
+ * Default RV3028 device binding.
+ *
+ * The RTC driver itself is parameterized by TagRtcDevice. Most tags use the
+ * standard RV3028 wiring on I2CD1, so the common module provides a weak
+ * descriptor here. A tag with unusual RTC wiring can override tagRtcDevice()
+ * locally without carrying a private copy of the RV3028 register driver.
+ */
+static const TagI2cRegisterBus rtc_i2c = {
+    .driver = &I2CD1,
+    .address = RV3028_ADR,
+    .timeout = RTC_TIMEOUT,
+};
+
+static const TagRtcDevice rtc_device = {
+    .registers = &rtc_i2c,
+    .device_on = rtcOn,
+    .device_off = rtcOff,
+};
+
+const TagRtcDevice *__attribute__((weak)) tagRtcDevice(void)
+{
+  return &rtc_device;
+}
+#endif
+
 void tagRtcDeviceBegin(const TagRtcDevice *device)
 {
   if (device->device_on)

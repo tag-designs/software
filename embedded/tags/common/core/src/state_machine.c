@@ -114,7 +114,7 @@ enum Sleep StateMachine(void)
     // try to recover the time from the external RTC
 
     RTCDateTime tim;
-    getRTCDateTime(&tim);
+    tagRtcGetDateTime(&tim);
     // set it even if get failed (might still be valid)
     rtcSetTime(&RTCD1, &tim);
     timestamp = GetTimeUnixSec(&timestamp_millis);

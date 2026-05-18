@@ -26,11 +26,40 @@ int rv8803_GetReg(enum RV8803Reg reg, uint8_t *val, int num);
 #endif
 
 #if defined(TAG_RTC_RV3028)
-int rv3028_GetReg(enum RV3028Reg reg, uint8_t *val, int num);
-#endif
+static inline bool tagRtcInit(void)
+{
+  return rv3028Init(tagRtcDevice());
+}
 
+static inline msg_t tagRtcGetDateTime(RTCDateTime *tm)
+{
+  return rv3028GetDateTime(tagRtcDevice(), tm);
+}
+
+static inline msg_t tagRtcSetDateTime(RTCDateTime *tm)
+{
+  return rv3028SetDateTime(tagRtcDevice(), tm);
+}
+#else
 msg_t getRTCDateTime(RTCDateTime *tm);
 msg_t setRTCDateTime(RTCDateTime *tm);
+bool initRTC(void);
+
+static inline bool tagRtcInit(void)
+{
+  return initRTC();
+}
+
+static inline msg_t tagRtcGetDateTime(RTCDateTime *tm)
+{
+  return getRTCDateTime(tm);
+}
+
+static inline msg_t tagRtcSetDateTime(RTCDateTime *tm)
+{
+  return setRTCDateTime(tm);
+}
+#endif
 
 enum ALARM_TYPE { ALARM_SECOND, ALARM_MINUTE, ALARM_HOUR };
 
@@ -45,7 +74,6 @@ void disableAllAlarms(void);
  * automatically when the shared SPI1 controller is active.
  */
 void stopMilliseconds(bool spiEnabled, unsigned int interval);
-bool initRTC(void);
 void enableTicker(uint16_t interval);
 void disableTicker(void);
 

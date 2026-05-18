@@ -23,13 +23,13 @@ static bool failed NOINIT;
 static bool test_rtc(void)
 {
 
-  if (!initRTC())
+  if (!tagRtcInit())
   {
     return false;
   }
 
   RTCDateTime tim;
-  if (MSG_OK != getRTCDateTime(&tim))
+  if (MSG_OK != tagRtcGetDateTime(&tim))
   {
     return false;
   }

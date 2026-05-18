@@ -111,7 +111,7 @@ void deviceInit(int force)
   
     // configure RTC
 
-    initRTC();
+    tagRtcInit();
 
     // Reset Accelerometer
 

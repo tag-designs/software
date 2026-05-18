@@ -111,8 +111,8 @@ int SetTimeUnixSec(int32_t unix_time)
   // this order minimizes error if the RTC has already
   // been initialized.
   rtcSetTime(&RTCD1, &tim);
-  initRTC();
-  if (MSG_OK != setRTCDateTime(&tim))
+  tagRtcInit();
+  if (MSG_OK != tagRtcSetDateTime(&tim))
   {
     //pState->test_result = SET_RTC_FAILED;
   }
