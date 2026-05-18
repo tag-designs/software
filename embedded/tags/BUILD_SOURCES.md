@@ -21,8 +21,8 @@ All active embedded tag targets now build successfully in that configuration.
 
 ```text
 embedded/tags/BitTag/src/hal_lld.c
-embedded/tags/common/sensors/accel/src/ADXL362.c
-embedded/tags/common/sensors/accel/src/adxl362_test.c
+embedded/tags/BitTag/src/ADXL362.c
+embedded/tags/BitTag/src/adxl362_test.c
 embedded/tags/BitTag/src/bt_config.c
 embedded/tags/BitTag/src/monitor.c
 embedded/tags/BitTag/src/persistent.c
@@ -48,7 +48,7 @@ embedded/tags/BitTag/Inc/custom.h
 embedded/tags/BitTag/cfg/chconf.h
 embedded/tags/BitTag/cfg/halconf.h
 embedded/tags/BitTag/cfg/mcuconf.h
-embedded/tags/common/sensors/accel/inc/ADXL362.h
+embedded/tags/BitTag/inc/ADXL362.h
 embedded/tags/common/sensors/accel/inc/ais2dw12.h
 embedded/tags/common/core/inc/app.h
 embedded/tags/common/core/inc/adc.h

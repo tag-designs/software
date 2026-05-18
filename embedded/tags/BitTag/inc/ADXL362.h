@@ -47,7 +47,6 @@
 /***************************** Include Files **********************************/
 /******************************************************************************/
 //#include "Communication.h"
-#include "sensor_io.h"
 
 /******************************************************************************/
 /********************************* ADXL362 ************************************/
@@ -201,48 +200,21 @@
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
 
-typedef void (*TagAdxl362Power)(void);
-typedef void (*TagAdxl362Sleep)(int ms);
-
-typedef struct {
-  const TagSpiDeviceIO *spi;
-  TagAdxl362Power power_on;
-  TagAdxl362Power power_off;
-  TagAdxl362Power bus_begin;
-  TagAdxl362Power bus_end;
-  TagAdxl362Sleep sleep_ms;
-} TagAdxl362Device;
-
-void ADXL362_DeviceBegin(const TagAdxl362Device *device);
-void ADXL362_DeviceEnd(const TagAdxl362Device *device);
-
 /*! Initializes the device. */
 char ADXL362_Init(void);
-char ADXL362_InitDevice(const TagAdxl362Device *device);
 
 /*! Writes data into a register. */
 void ADXL362_SetRegisterValue(unsigned short registerValue,
                               unsigned char  registerAddress,
                               unsigned char  bytesNumber);
-void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
-                                    unsigned short registerValue,
-                                    unsigned char registerAddress,
-                                    unsigned char bytesNumber);
 
 /*! Performs a burst read of a specified number of registers. */
 void ADXL362_GetRegisterValue(unsigned char *pReadData,
                               unsigned char  registerAddress,
                               unsigned char  bytesNumber);
-void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
-                                    unsigned char *pReadData,
-                                    unsigned char registerAddress,
-                                    unsigned char bytesNumber);
 
 /*! Reads multiple bytes from the device's FIFO buffer. */
 void ADXL362_GetFifoValue(unsigned char *pBuffer, unsigned short bytesNumber);
-void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
-                                unsigned char *pBuffer,
-                                unsigned short bytesNumber);
 
 /*! Resets the device via SPI communication bus. */
 void ADXL362_SoftwareReset(void);

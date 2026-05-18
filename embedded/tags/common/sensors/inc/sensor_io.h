@@ -15,10 +15,10 @@
  *   write command: register address
  *   read command:  register address OR read_mask
  *
- * The SPI and USART register helpers own the chip-select line for one complete
- * transaction. The raw transfer helpers only transfer bytes; they are
- * available for drivers that need to build a larger command sequence while
- * managing chip select themselves.
+ * `TagSpiDeviceIO` is the middle layer for SPI devices that use custom command
+ * frames: it exposes explicit chip-select helpers while leaving the command
+ * bytes in the device driver. The ST-style SPI and USART register helpers build
+ * on the same raw transfer helpers for sensors that use simple register masks.
  */
 typedef struct {
   I2CDriver *driver;
@@ -31,6 +31,11 @@ typedef struct {
  * Keep the protocol shape separate from normal ChibiOS serial use: callers
  * pass the hardware USART registers and the ST-style command masks.
  */
+typedef struct {
+  ioline_t cs;
+  uint8_t dummy;
+} TagSpiDeviceIO;
+
 typedef struct {
   ioline_t cs;
   uint8_t read_mask;
@@ -63,6 +68,11 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
 
 void tagSpiWrite(const uint8_t *buf, uint32_t len);
 void tagSpiRead(uint8_t *buf, uint32_t len);
+void tagSpiSelect(const TagSpiDeviceIO *io);
+void tagSpiDeselect(const TagSpiDeviceIO *io);
+void tagSpiDeviceWrite(const TagSpiDeviceIO *io, const uint8_t *buf,
+                       uint32_t len);
+void tagSpiDeviceRead(const TagSpiDeviceIO *io, uint8_t *buf, uint32_t len);
 
 int tagStSpiWriteRegister(const void *io, uint8_t reg,
                           const uint8_t *buf, uint32_t len);

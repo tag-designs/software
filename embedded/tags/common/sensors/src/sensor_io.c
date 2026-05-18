@@ -66,6 +66,31 @@ void tagSpiRead(uint8_t *buf, uint32_t len)
   }
 }
 
+void tagSpiSelect(const TagSpiDeviceIO *io)
+{
+  palClearLine(io->cs);
+}
+
+void tagSpiDeselect(const TagSpiDeviceIO *io)
+{
+  palSetLine(io->cs);
+}
+
+void tagSpiDeviceWrite(const TagSpiDeviceIO *io, const uint8_t *buf,
+                       uint32_t len)
+{
+  tagSpiSelect(io);
+  tagSpiWrite(buf, len);
+  tagSpiDeselect(io);
+}
+
+void tagSpiDeviceRead(const TagSpiDeviceIO *io, uint8_t *buf, uint32_t len)
+{
+  tagSpiSelect(io);
+  tagSpiRead(buf, len);
+  tagSpiDeselect(io);
+}
+
 int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                           uint32_t len)
 {

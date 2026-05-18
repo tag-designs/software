@@ -48,8 +48,6 @@
 #include "hal.h"
 #include "board.h"
 #include "custom.h"
-#include "power.h"
-#include "sensor_io.h"
 
 /******************************************************************************/
 /************************* Variables Declarations *****************************/
@@ -60,48 +58,22 @@ char selectedRange = 0;
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
 
-static const TagSpiDeviceIO adxl362_spi = {
-  .cs = LINE_ACCEL_CS,
-  .dummy = 0xff,
-};
-
-void __attribute__((weak)) accelPowerOn(void) {}
-
-void __attribute__((weak)) accelPowerOff(void) {}
-
-void __attribute__((weak)) accelBusBegin(void)
-{
-  accelSpiOn();
+static inline void spiSendPolled(uint32_t n, uint8_t *buf) {
+  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  while (n--) {
+    *spidr = *buf++;
+    while ((SPI1->SR & SPI_SR_RXNE) == 0);
+    *spidr;
+  }
 }
 
-void __attribute__((weak)) accelBusEnd(void)
-{
-  accelSpiOff();
-}
-
-static const TagAdxl362Device adxl362_default_device = {
-  .spi = &adxl362_spi,
-  .power_on = accelPowerOn,
-  .power_off = accelPowerOff,
-  .bus_begin = accelBusBegin,
-  .bus_end = accelBusEnd,
-  .sleep_ms = 0,
-};
-
-void ADXL362_DeviceBegin(const TagAdxl362Device *device)
-{
-  if (device->power_on)
-    device->power_on();
-  if (device->bus_begin)
-    device->bus_begin();
-}
-
-void ADXL362_DeviceEnd(const TagAdxl362Device *device)
-{
-  if (device->bus_end)
-    device->bus_end();
-  if (device->power_off)
-    device->power_off();
+static inline void spiReceivePolled(uint32_t n, uint8_t *buf) {
+  volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
+  while (n--) {
+    *spidr = 0xff;
+    while ((SPI1->SR & SPI_SR_RXNE) == 0);
+    *buf++ = *spidr;
+  }
 }
 
 /***************************************************************************//**
@@ -113,16 +85,11 @@ void ADXL362_DeviceEnd(const TagAdxl362Device *device)
 *******************************************************************************/
 char ADXL362_Init(void)
 {
-  return ADXL362_InitDevice(&adxl362_default_device);
-}
-
-char ADXL362_InitDevice(const TagAdxl362Device *device)
-{
     unsigned char regValue = 0;
     char          status   = -1;
 
     //    status = SPI_Init(0, 4000000, 0, 1);
-    ADXL362_GetRegisterValueDevice(device, &regValue, ADXL362_REG_PARTID, 1);
+    ADXL362_GetRegisterValue(&regValue, ADXL362_REG_PARTID, 1);
     if((regValue != ADXL362_PART_ID))
     {
         status = -1;
@@ -145,15 +112,6 @@ void ADXL362_SetRegisterValue(unsigned short registerValue,
                               unsigned char  registerAddress,
                               unsigned char  bytesNumber)
 {
-  ADXL362_SetRegisterValueDevice(&adxl362_default_device, registerValue,
-                                 registerAddress, bytesNumber);
-}
-
-void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
-                                    unsigned short registerValue,
-                                    unsigned char registerAddress,
-                                    unsigned char bytesNumber)
-{
   unsigned char buffer[4];
 
   buffer[0] = ADXL362_WRITE_REG;
@@ -161,7 +119,17 @@ void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
   buffer[2] = (registerValue & 0x00FF);
   buffer[3] = (registerValue >> 8);
   
-  tagSpiDeviceWrite(device->spi, buffer, bytesNumber + 2);
+  //  spiSelect(&SPID1);
+  palClearLine(LINE_ACCEL_CS);
+  spiSendPolled(bytesNumber + 2, buffer);
+  palSetLine(LINE_ACCEL_CS);
+  //  spiUnselect(&SPID1);
+  /*
+  SPI_Select(ADXL362_SLAVE_ID);
+  SPI_Write(buffer, bytesNumber + 2);
+  SPI_Deselect(ADXL362_SLAVE_ID);
+  */
+
 }
 
 /***************************************************************************//**
@@ -177,24 +145,27 @@ void ADXL362_GetRegisterValue(unsigned char* pReadData,
                               unsigned char  registerAddress,
                               unsigned char  bytesNumber)
 {
-    ADXL362_GetRegisterValueDevice(&adxl362_default_device, pReadData,
-                                   registerAddress, bytesNumber);
-}
-
-void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
-                                    unsigned char *pReadData,
-                                    unsigned char registerAddress,
-                                    unsigned char bytesNumber)
-{
     unsigned char buffer[2];
     
     buffer[0] = ADXL362_READ_REG;
     buffer[1] = registerAddress;
 
-    tagSpiSelect(device->spi);
-    tagSpiWrite(buffer, 2);
-    tagSpiRead(pReadData, bytesNumber);
-    tagSpiDeselect(device->spi);
+    //    spiSelect(&SPID1);
+    palClearLine(LINE_ACCEL_CS);
+    spiSendPolled(2, buffer);
+    //    if (bytesNumber > 8)
+    //      spiReceive(&SPID1, bytesNumber, pReadData);
+    //    else
+    spiReceivePolled(bytesNumber, pReadData);
+    //    spiUnselect(&SPID1);
+    palSetLine(LINE_ACCEL_CS);
+
+    /*
+    SPI_Select(ADXL362_SLAVE_ID);
+    SPI_Write(buffer, 2);
+    SPI_Read(pReadData, bytesNumber);
+    SPI_Deselect(ADXL362_SLAVE_ID);
+    */
 }
 
 /***************************************************************************//**
@@ -207,20 +178,21 @@ void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
 *******************************************************************************/
 void ADXL362_GetFifoValue(unsigned char* pBuffer, unsigned short bytesNumber)
 {
-  ADXL362_GetFifoValueDevice(&adxl362_default_device, pBuffer, bytesNumber);
-}
-
-void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
-                                unsigned char *pBuffer,
-                                unsigned short bytesNumber)
-{
   unsigned char  buffer[1];
 
   buffer[0] = ADXL362_WRITE_FIFO;
-  tagSpiSelect(device->spi);
-  tagSpiWrite(buffer, 1);
-  tagSpiRead(pBuffer, bytesNumber);
-  tagSpiDeselect(device->spi);
+  //  spiSelect(&SPID1);
+  palClearLine(LINE_ACCEL_CS);
+  spiSendPolled(1,buffer);
+  spiReceivePolled(bytesNumber, pBuffer);
+  palSetLine(LINE_ACCEL_CS);
+  //  spiUnselect(&SPID1);
+    /*
+    SPI_Select(ADXL362_SLAVE_ID);
+    SPI_Write(buffer, 1);
+    SPI_Read(pBuffer, bytesNumber);
+    SPI_Deselect(ADXL362_SLAVE_ID);
+    */
 }
 
 /***************************************************************************//**
