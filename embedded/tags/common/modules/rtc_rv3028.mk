@@ -10,5 +10,7 @@ MODULE_INC_DIRS += $(TAG_COMMON_DIR)/rtc/inc
 UDEFS += -DTAG_RTC_RV3028=1
 
 ALLCSRC += \
+       rtc_device.c \
        rtc_rv3028.c \
+       rtc_rv3028_shim.c \
        rtc_test.c

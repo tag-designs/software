@@ -1,6 +1,11 @@
 #ifndef RV3028_H
 #define RV3028_H
 
+#include "rtc_device.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+
 #define RV3028_ADR (0x52)
 
 #define BIT(x) (1<<(x))
@@ -57,5 +62,11 @@ enum RV3028Reg {
 #define RV3028_EEPROM_CMD_WRITE		0x21
 #define RV3028_EEPROM_CMD_READ		0x22
 #define RV3028_EEPROM_CMD_REFRESH   0x12
+
+int rv3028GetReg(const TagRtcDevice *device, enum RV3028Reg reg,
+                 uint8_t *val, int num);
+bool rv3028Init(const TagRtcDevice *device);
+msg_t rv3028SetDateTime(const TagRtcDevice *device, RTCDateTime *tm);
+msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm);
 
 #endif

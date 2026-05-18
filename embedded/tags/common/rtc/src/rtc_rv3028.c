@@ -1,10 +1,6 @@
 #include "hal.h"
 #include "debug_log.h"
-#include "i2c_bus.h"
-#include "power.h"
 #include "rtc_api.h"
-
-#define RTC_TIMEOUT 100
 
 static inline uint8_t bcd2bin(uint8_t val)
 {
@@ -16,23 +12,20 @@ static inline uint8_t bin2bcd(uint8_t val)
     return ((val / 10) << 4) | (val % 10);
 }
 
-static const TagI2cRegisterBus rv3028_i2c = {
-    .driver = &I2CD1,
-    .address = RV3028_ADR,
-    .timeout = RTC_TIMEOUT,
-};
-
-int rv3028_GetReg(enum RV3028Reg reg, uint8_t *val, int num)
+int rv3028GetReg(const TagRtcDevice *device, enum RV3028Reg reg,
+                 uint8_t *val, int num)
 {
-    return tagI2cReadRegister(&rv3028_i2c, reg, val, num);
+    return tagRtcReadRegister(device, reg, val, num);
 }
 
-static int rv3028_SetReg(enum RV3028Reg reg, unsigned char *val, int num)
+static int rv3028SetReg(const TagRtcDevice *device, enum RV3028Reg reg,
+                        const unsigned char *val, int num)
 {
-    return tagI2cWriteRegister(&rv3028_i2c, reg, val, num);
+    return tagRtcWriteRegister(device, reg, val, num);
 }
 
-static int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned char cmd)
+static int rv3028EEPROMExec(const TagRtcDevice *device, unsigned char addr,
+                            unsigned char *val, unsigned char cmd)
 {
     int i;
     unsigned char tmp;
@@ -40,7 +33,7 @@ static int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned c
     for (i = 0; i < 10; i++)
     { 
         chThdSleepMilliseconds(10);
-        rv3028_GetReg(RV3028_STATUS, &tmp, 1);
+        rv3028GetReg(device, RV3028_STATUS, &tmp, 1);
         if (!(tmp & RV3028_STATUS_EEBUSY))
             break;
         
@@ -52,19 +45,19 @@ static int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned c
 
     if ((cmd == RV3028_EEPROM_CMD_WRITE) ||
         (cmd == RV3028_EEPROM_CMD_READ))
-        rv3028_SetReg(RV3028_EEPROM_ADDR, &addr, 1);
+        rv3028SetReg(device, RV3028_EEPROM_ADDR, &addr, 1);
     if (cmd == RV3028_EEPROM_CMD_WRITE)
     {
-        rv3028_SetReg(RV3028_EEPROM_DATA, val, 1);
+        rv3028SetReg(device, RV3028_EEPROM_DATA, val, 1);
     }
     tmp = 0;
-    rv3028_SetReg(RV3028_EEPROM_CMD, &tmp, 1);
-    rv3028_SetReg(RV3028_EEPROM_CMD, &cmd, 1);
+    rv3028SetReg(device, RV3028_EEPROM_CMD, &tmp, 1);
+    rv3028SetReg(device, RV3028_EEPROM_CMD, &cmd, 1);
 
     for (i = 0; i < 10; i++)
     {
         chThdSleepMilliseconds(10);
-        rv3028_GetReg(RV3028_STATUS, &tmp, 1);
+        rv3028GetReg(device, RV3028_STATUS, &tmp, 1);
         if (!(tmp & RV3028_STATUS_EEBUSY))
             break;
     }
@@ -77,7 +70,7 @@ static int rv3028_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned c
     {
         if (cmd == RV3028_EEPROM_CMD_READ)
         {
-            rv3028_GetReg(RV3028_EEPROM_DATA, val, 1);
+            rv3028GetReg(device, RV3028_EEPROM_DATA, val, 1);
         }
         return MSG_OK;
     }
@@ -96,17 +89,17 @@ When the transfer is finished (EEbusy = 0), the user can enable again the auto r
 writing 0 into the EERD bit in the Control 1 register.
 */
 
-bool initRTC(void)
+bool rv3028Init(const TagRtcDevice *device)
 {
     unsigned char tmp;
     unsigned char clkout;
     unsigned char ctrl1;
 
     bool result = false;
-    rtcOn();
-    rv3028_GetReg(RV3028_CTRL1, &ctrl1, 1);
+    tagRtcDeviceBegin(device);
+    rv3028GetReg(device, RV3028_CTRL1, &ctrl1, 1);
     ctrl1 |= RV3028_CTRL1_EERD;
-    rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
+    rv3028SetReg(device, RV3028_CTRL1, &ctrl1, 1);
     do
     {
      
@@ -114,9 +107,10 @@ bool initRTC(void)
 
         // check if clkout register is already correctly configured
 
-        if (rv3028_GetReg(RV3028_CLKOUT, &clkout, 1) != MSG_OK)
+        if (rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1) != MSG_OK)
             break;
-        rv3028_EEPROM_Exec(RV3028_CLKOUT, &tmp, RV3028_EEPROM_CMD_READ);
+        rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
+                         RV3028_EEPROM_CMD_READ);
         if ((tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
             (clkout == (0xC0 | (RV3028_CLKOUT_VAL))))
         {
@@ -128,7 +122,7 @@ bool initRTC(void)
         for (i = 0; i < 10; i++)
         {
             chThdSleepMilliseconds(10);
-            rv3028_GetReg(RV3028_STATUS, &tmp, 1);
+            rv3028GetReg(device, RV3028_STATUS, &tmp, 1);
             if (!(tmp & RV3028_STATUS_EEBUSY))
                 break;
         }
@@ -137,21 +131,24 @@ bool initRTC(void)
         */
 
         //clkout = 0xC0 | (RV3028_CLKOUT_VAL&7);
-        //rv3028_SetReg(RV3028_CLKOUT, &clkout, 1);
+        //rv3028SetReg(device, RV3028_CLKOUT, &clkout, 1);
 
         //clkout = 0;
-       // if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
+       // if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
         //    break;
 
         clkout = 0xC0 | (RV3028_CLKOUT_VAL & 7);
-        if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
+        if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout,
+                             RV3028_EEPROM_CMD_WRITE))
             break;
 
-        if (rv3028_EEPROM_Exec(RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_REFRESH))
+        if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout,
+                             RV3028_EEPROM_CMD_REFRESH))
             break;
         
-        rv3028_EEPROM_Exec(RV3028_CLKOUT, &tmp, RV3028_EEPROM_CMD_READ);
-        rv3028_GetReg(RV3028_CLKOUT, &clkout, 1);
+        rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
+                         RV3028_EEPROM_CMD_READ);
+        rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1);
         if ((tmp == clkout) && (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
         {
             result = true;
@@ -159,8 +156,8 @@ bool initRTC(void)
     } while (0);
      // reenable EEPROM->Ram refresh
     ctrl1 &= ~RV3028_CTRL1_EERD;
-    rv3028_SetReg(RV3028_CTRL1, &ctrl1, 1);
-    rtcOff();
+    rv3028SetReg(device, RV3028_CTRL1, &ctrl1, 1);
+    tagRtcDeviceEnd(device);
 
     // Check RTC dividers !
 
@@ -179,13 +176,13 @@ bool initRTC(void)
     return result;
 }
 
-msg_t setRTCDateTime(RTCDateTime *tm)
+msg_t rv3028SetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 {
     int ret = MSG_OK;
 
     uint8_t date[7];
 
-    rtcOn();
+    tagRtcDeviceBegin(device);
     do
     {
         uint32_t seconds = tm->millisecond / 1000;
@@ -198,16 +195,16 @@ msg_t setRTCDateTime(RTCDateTime *tm)
         date[RV3028_DAY] = bin2bcd(tm->day);
         date[RV3028_MONTH] = bin2bcd(tm->month);
         date[RV3028_YEAR] = bin2bcd(tm->year);
-        ret = rv3028_SetReg(RV3028_SEC, date, sizeof(date));
+        ret = rv3028SetReg(device, RV3028_SEC, date, sizeof(date));
         if (ret != MSG_OK)
             break;
 
         uint8_t status = 0;
-        ret = rv3028_SetReg(RV3028_STATUS, &status, 1);
+        ret = rv3028SetReg(device, RV3028_STATUS, &status, 1);
     } while (0);
 
 
-    rtcOff();
+    tagRtcDeviceEnd(device);
 
     if (ret != MSG_OK){
         debug_log_printf("Error in rv3028 setRTCDateTime\r\n");
@@ -216,22 +213,22 @@ msg_t setRTCDateTime(RTCDateTime *tm)
     return ret;
 }
 
-msg_t getRTCDateTime(RTCDateTime *tm)
+msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 {
     int ret = MSG_OK;
 
     uint8_t status = 0;
     uint8_t date[7];
-    rtcOn();
+    tagRtcDeviceBegin(device);
     do
     {
-        ret = rv3028_GetReg(RV3028_STATUS, &status, 1);
+        ret = rv3028GetReg(device, RV3028_STATUS, &status, 1);
         if ((ret != MSG_OK) || (status & RV3028_STATUS_PORF))
         {
             ret = (ret == MSG_OK) ? -1 : ret;
             break;
         }
-        ret = rv3028_GetReg(RV3028_SEC, date, sizeof(date));
+        ret = rv3028GetReg(device, RV3028_SEC, date, sizeof(date));
         if (ret != MSG_OK)
         {
             break;
@@ -247,7 +244,7 @@ msg_t getRTCDateTime(RTCDateTime *tm)
     } while (0);
 
   
-    rtcOff();
+    tagRtcDeviceEnd(device);
 
 
     if (ret != MSG_OK){

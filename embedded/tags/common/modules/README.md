@@ -81,12 +81,15 @@ up. Current examples:
   src/time.c
 
 ../rtc/
+  inc/rtc_device.h
   inc/rtc_api.h
   inc/rv3028.h
   inc/rv3032.h
   inc/rv8803.h
   src/hal_rtc_lld.c
+  src/rtc_device.c
   src/rtc_rv3028.c
+  src/rtc_rv3028_shim.c
   src/rtc_test.c
   src/rtc_rv3032.c
   src/rtc_rv8803.c
@@ -145,6 +148,9 @@ up. Current examples:
 `hal_rtc_lld.c` is a special case: ChibiOS adds that source basename itself,
 and the RTC module supplies the local source directory so the tag build finds
 the repo-local override before the ChibiOS HAL implementation.
+The active RV3028 driver follows the same descriptor/shim split as sensors: the
+driver implementation takes a `TagRtcDevice`, while `rtc_rv3028_shim.c` binds
+the default I2C register bus and legacy `initRTC()`/`getRTCDateTime()` APIs.
 
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
