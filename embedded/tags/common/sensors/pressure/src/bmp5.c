@@ -18,16 +18,30 @@ static const TagRegisterDevice bmp5_registers = {
   &bmp5_spi,
 };
 
-static void bmp5_SetReg(enum BMP5_Reg reg, uint8_t *val, int num)
+static void bmp5_default_sleep(int ms)
 {
-  (void)bmp5_registers.write_register(bmp5_registers.context, (uint8_t)reg,
-                                      val, num);
+  stopMilliseconds(true, ms);
 }
 
-static void bmp5_GetReg(enum BMP5_Reg reg, uint8_t *val, int num)
+static const TagPressureDevice bmp5_default_device = {
+  .registers = &bmp5_registers,
+  .on = lpsOn,
+  .off = lpsOff,
+  .sleep_ms = bmp5_default_sleep,
+};
+
+static void bmp5_SetReg(const TagPressureDevice *device, enum BMP5_Reg reg,
+                        uint8_t *val, int num)
 {
-  (void)bmp5_registers.read_register(bmp5_registers.context, (uint8_t)reg,
-                                     val, num);
+  (void)device->registers->write_register(device->registers->context,
+                                          (uint8_t)reg, val, num);
+}
+
+static void bmp5_GetReg(const TagPressureDevice *device, enum BMP5_Reg reg,
+                        uint8_t *val, int num)
+{
+  (void)device->registers->read_register(device->registers->context,
+                                         (uint8_t)reg, val, num);
 }
 
 float lpsPressure(int16_t pressure) {
@@ -38,23 +52,29 @@ float lpsTemperature(int16_t temperature){
   return temperature/256.0f;
 }
 
-static bool power_up_check(void) {
+static bool power_up_check(const TagPressureDevice *device) {
   uint8_t nvm_status;
   uint8_t por_status;
 
   // check NVM
 
-  bmp5_GetReg(BMP5_REG_STATUS, &nvm_status, 1);
+  bmp5_GetReg(device, BMP5_REG_STATUS, &nvm_status, 1);
   if (!((nvm_status & BMP5_INT_NVM_RDY) && (!(nvm_status & BMP5_INT_NVM_ERR))))
     return false;
 
   //  check if power-on complete
 
-  bmp5_GetReg(BMP5_REG_INT_STATUS, &por_status,1);
+  bmp5_GetReg(device, BMP5_REG_INT_STATUS, &por_status,1);
   return por_status & BMP5_INT_ASSERTED_POR_SOFTRESET_COMPLETE;
 }
 
 bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
+{
+  return bmp5GetPressureTemp(&bmp5_default_device, pressure, temperature);
+}
+
+bool bmp5GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
+                         int16_t *temperature)
 {
  
   uint8_t status = 0;
@@ -69,24 +89,26 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 
   // power up
 
-  lpsOn();  
+  device->on();
 
-  stopMilliseconds(true,3);  
+  device->sleep_ms(3);
 
   // read once to enable spi interface
 
-  bmp5_GetReg(BMP5_REG_CHIP_ID, &chip_id, 1);
+  bmp5_GetReg(device, BMP5_REG_CHIP_ID, &chip_id, 1);
 
   for (int i = 0; i<4; i++) 
   {
-      power_up = power_up_check();
+      power_up = power_up_check(device);
       if (power_up)
         break;
-      stopMilliseconds(true,3); 
+      device->sleep_ms(3);
   }
 
-  if (!power_up)
+  if (!power_up) {
+    device->off();
     return false;
+  }
 
   // do any necessary initialization
 
@@ -99,7 +121,7 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   // Enable Pressure
 
   cmd = 1<< BMP5_PRESS_EN_POS;
-  bmp5_SetReg( BMP5_REG_OSR_CONFIG, &cmd, 1);
+  bmp5_SetReg(device, BMP5_REG_OSR_CONFIG, &cmd, 1);
 
   // Enable Interrupt -- not needed for software read of status register
 
@@ -109,16 +131,16 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   // Set Interrupt Source
 
   cmd = 1; // data rdy interrupt
-  bmp5_SetReg(BMP5_REG_INT_SOURCE,&cmd,1);
+  bmp5_SetReg(device, BMP5_REG_INT_SOURCE,&cmd,1);
 
   // trigger sample -- set powermode to forced
 
   cmd = 2;
-  bmp5_SetReg(BMP5_REG_ODR_CONFIG,&cmd,1);
+  bmp5_SetReg(device, BMP5_REG_ODR_CONFIG,&cmd,1);
 
   for (int i = 0; i < 5; i++){
-    stopMilliseconds(true,5);
-    bmp5_GetReg(BMP5_REG_INT_STATUS, &status,1);
+    device->sleep_ms(5);
+    bmp5_GetReg(device, BMP5_REG_INT_STATUS, &status,1);
     if (status & BMP5_INT_ASSERTED_DRDY)
       break;
   }
@@ -126,30 +148,35 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   // read data if datardy bit is set
 
   if (status & BMP5_INT_ASSERTED_DRDY) {
-    bmp5_GetReg(BMP5_REG_TEMP_DATA_LSB,(uint8_t *) temperature, 2);
-    bmp5_GetReg(BMP5_REG_PRESS_DATA_LSB, (uint8_t *) pressure, 2);
+    bmp5_GetReg(device, BMP5_REG_TEMP_DATA_LSB,(uint8_t *) temperature, 2);
+    bmp5_GetReg(device, BMP5_REG_PRESS_DATA_LSB, (uint8_t *) pressure, 2);
   }
 
-  lpsOff();  // power down
+  device->off();  // power down
   return status & BMP5_INT_ASSERTED_DRDY;
 }
 
 bool lpsTest(void)
 {
+  return bmp5Test(&bmp5_default_device);
+}
+
+bool bmp5Test(const TagPressureDevice *device)
+{
   uint8_t chip_id;
   bool power_check;
-  lpsOn();
-  chThdSleepMilliseconds(3); 
+  device->on();
+  device->sleep_ms(3);
 
   // read twice because first read just forces SPI 
   
-  bmp5_GetReg(BMP5_REG_CHIP_ID, &chip_id, 1);
-  bmp5_GetReg(BMP5_REG_CHIP_ID, &chip_id, 1);
+  bmp5_GetReg(device, BMP5_REG_CHIP_ID, &chip_id, 1);
+  bmp5_GetReg(device, BMP5_REG_CHIP_ID, &chip_id, 1);
 
   // do power on check
   
-  power_check = power_up_check();
+  power_check = power_up_check(device);
 
-  lpsOff();
+  device->off();
   return ((chip_id == BMP5_CHIP_ID_VALUE) && power_check);
 }

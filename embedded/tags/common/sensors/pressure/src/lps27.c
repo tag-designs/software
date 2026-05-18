@@ -48,25 +48,34 @@ static const TagStUsartRegisterIO lps27_usart = {
 
 static const TagRegisterDevice lps27_registers = LPS27_REGISTER_DEVICE;
 
-static void lps27_SetReg(enum LPS27_Reg reg, uint8_t *val, int num)
-{
-  (void)lps27_registers.write_register(lps27_registers.context, (uint8_t)reg,
-                                       val, num);
-}
-
-static void lps27_GetReg(enum LPS27_Reg reg, uint8_t *val, int num)
-{
-  (void)lps27_registers.read_register(lps27_registers.context, (uint8_t)reg,
-                                      val, num);
-}
-
-static inline void sleepMS(int ms) {
+static inline void lps27_default_sleep(int ms) {
 #if defined(LPS_SPI)
  //    SPI1->CR1 &= ~SPI_CR1_SPE;
  stopMilliseconds(true,ms);
 #else
  stopMilliseconds(false,ms);
 #endif
+}
+
+static const TagPressureDevice lps27_default_device = {
+  .registers = &lps27_registers,
+  .on = lpsOn,
+  .off = lpsOff,
+  .sleep_ms = lps27_default_sleep,
+};
+
+static void lps27_SetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
+                         uint8_t *val, int num)
+{
+  (void)device->registers->write_register(device->registers->context,
+                                          (uint8_t)reg, val, num);
+}
+
+static void lps27_GetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
+                         uint8_t *val, int num)
+{
+  (void)device->registers->read_register(device->registers->context,
+                                         (uint8_t)reg, val, num);
 }
 
 #if defined(TAG_SENSOR_PRESSURE_LPS27)
@@ -82,6 +91,12 @@ float lpsTemperature(int16_t temperature){
 
 bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 {
+  return lps27GetPressureTemp(&lps27_default_device, pressure, temperature);
+}
+
+bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
+                          int16_t *temperature)
+{
  
   uint8_t status;
   uint8_t cmd[2];
@@ -91,8 +106,8 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
   *pressure = SHRT_MIN;
   *temperature = SHRT_MIN;
 
-  lpsOn();      // powered through gpio
-  sleepMS(10);  // 10ms power up
+  device->on();         // powered through gpio
+  device->sleep_ms(10); // 10ms power up
 
   // set BDU and configure one shot
 
@@ -103,36 +118,41 @@ bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature)
 
   // write CTRL_REG1 and CTRL_REG2 to start one shot
   
-  lps27_SetReg(LPS27_CTRL_REG1, cmd, 2);
+  lps27_SetReg(device, LPS27_CTRL_REG1, cmd, 2);
     
   // wait for data
 
   for (int i = 0; i < 6; i++) {
-    sleepMS(15);
-    lps27_GetReg(LPS27_STATUS, &status, 1);
+    device->sleep_ms(15);
+    lps27_GetReg(device, LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)
       break;
   }
   
   if (status == 3) // don't capture if overrun
   {
-    lps27_GetReg(LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
-    lps27_GetReg(LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
+    lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
+    lps27_GetReg(device, LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
   }
-  lpsOff();
+  device->off();
   return status == 3;
 }
 
 bool lpsTest(void)
 {
+  return lps27Test(&lps27_default_device);
+}
+
+bool lps27Test(const TagPressureDevice *device)
+{
   uint8_t who;
   int16_t temperature,pressure;
   bool status;
-  lpsOn();
-  chThdSleepMilliseconds(10);
-  lps27_GetReg(LPS27_WHO_AM_I, &who, 1);
-  lpsOff();
-  status = lpsGetPressureTemp(&pressure, &temperature);
+  device->on();
+  device->sleep_ms(10);
+  lps27_GetReg(device, LPS27_WHO_AM_I, &who, 1);
+  device->off();
+  status = lps27GetPressureTemp(device, &pressure, &temperature);
 
 
   return (who == LPS27_WHO_AM_I_VALUE) && status;

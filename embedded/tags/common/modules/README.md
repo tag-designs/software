@@ -180,6 +180,13 @@ and the ST-style register helpers used by the LPS27 pressure driver. Keep bus
 power, SPI/USART controller setup, and sleep pin policy in the tag power layer;
 keep sensor command formats and register transactions beside the sensor
 drivers.
+
+Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
+`TagPressureDevice`, which combines a `TagRegisterDevice` with the tag-specific
+power-on, power-off, and sleep callbacks. The legacy `lpsGetPressureTemp()` and
+`lpsTest()` APIs still use each driver's default descriptor, while newer code
+can call the device-specific parameterized functions when the same pressure
+driver is reused with different board wiring or power policy.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

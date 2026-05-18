@@ -19,6 +19,8 @@
 #ifndef LPS22HH_H
 #define LPS22HH_H
 
+#include "lps.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -63,6 +65,22 @@ bool lps22hh_data_ready(void);
 int  lps22hh_read_raw(int32_t *pressure, int32_t *temperature);
 float lps22hh_raw_pressure_hPA(int32_t pressure);
 float lps22hh_raw_temperature_c(int32_t temperature);
+
+/*
+ * Parameterized API for tags that want to provide their own pressure-device
+ * descriptor. The legacy functions above call these with the module's default
+ * descriptor so existing tag code does not need to change all at once.
+ */
+bool lps22hh_check_who_am_i_device(const TagPressureDevice *device);
+int  lps22hh_set_idle_device(const TagPressureDevice *device);
+int  lps22hh_config_continuous_device(const TagPressureDevice *device,
+                                      lps22hh_odr_t odr, lps22hh_lpf_t lpf);
+int  lps22hh_config_triggered_device(const TagPressureDevice *device,
+                                     lps22hh_lpf_t lpf);
+int  lps22hh_trigger_one_shot_device(const TagPressureDevice *device);
+bool lps22hh_data_ready_device(const TagPressureDevice *device);
+int  lps22hh_read_raw_device(const TagPressureDevice *device, int32_t *pressure,
+                             int32_t *temperature);
 
 void lpsInit(void);
 bool lpsTest(void);

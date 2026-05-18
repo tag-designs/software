@@ -1,6 +1,7 @@
 #include "lps22hh.h"
 #include "hal.h"
 #include "custom.h"
+#include "rtc_api.h"
 #include "sensor_io.h"
 
 extern void lpsOn(void);
@@ -63,11 +64,23 @@ static const TagRegisterDevice lps22hh_registers = {
     &lps22hh_spi,
 };
 
-/* Write one register. */
-static int write_reg(uint8_t reg, uint8_t val)
+static void lps22hh_default_sleep(int ms)
 {
-    return lps22hh_registers.write_register(lps22hh_registers.context, reg,
-                                            &val, 1);
+    stopMilliseconds(true, ms);
+}
+
+static const TagPressureDevice lps22hh_default_device = {
+    .registers = &lps22hh_registers,
+    .on = lpsOn,
+    .off = lpsOff,
+    .sleep_ms = lps22hh_default_sleep,
+};
+
+/* Write one register. */
+static int write_reg(const TagPressureDevice *device, uint8_t reg, uint8_t val)
+{
+    return device->registers->write_register(device->registers->context, reg,
+                                             &val, 1);
 }
 
 /*
@@ -76,13 +89,12 @@ static int write_reg(uint8_t reg, uint8_t val)
  * For SPI, the MSB of the register address is set to request incrementing
  * address access across successive bytes.
  */
-static int read_block(uint8_t reg, uint8_t *buf, uint16_t len)
+static int read_block(const TagPressureDevice *device, uint8_t reg,
+                      uint8_t *buf, uint16_t len)
 {
-    return lps22hh_registers.read_register(lps22hh_registers.context, reg, buf,
-                                           len);
+    return device->registers->read_register(device->registers->context, reg,
+                                            buf, len);
 }
-
-#define read_reg(reg,val) read_block(reg,val,1)
 
 /*
  * Read-modify-write helper.
@@ -90,15 +102,16 @@ static int read_block(uint8_t reg, uint8_t *buf, uint16_t len)
  * This preserves unrelated fields in a register when only one bitfield needs
  * to change.
  */
-static int update_reg(uint8_t reg, uint8_t mask, uint8_t value)
+static int update_reg(const TagPressureDevice *device, uint8_t reg,
+                      uint8_t mask, uint8_t value)
 {
     uint8_t cur = 0;
-    if (read_reg(reg, &cur) != 0) {
+    if (read_block(device, reg, &cur, 1) != 0) {
         return -1;
     }
 
     cur = (uint8_t)((cur & (uint8_t)~mask) | (value & mask));
-    return write_reg(reg, cur);
+    return write_reg(device, reg, cur);
 }
 
 /* --------------------------------------------------------------------------
@@ -119,28 +132,38 @@ static int update_reg(uint8_t reg, uint8_t mask, uint8_t value)
  * 
  * NOTE: does not turn on spi
  */
-static int lps22hh_config_int_drdy(void)
+static int lps22hh_config_int_drdy(const TagPressureDevice *device)
 {
     uint8_t ctrl2 = (uint8_t)(LPS22HH_CTRL2_IF_ADD_INC);
     uint8_t ctrl3 = (uint8_t)(LPS22HH_CTRL3_DRDY);
 
-    write_reg(LPS22HH_REG_CTRL_REG2, ctrl2);
-    write_reg(LPS22HH_REG_CTRL_REG3, ctrl3);
+    write_reg(device, LPS22HH_REG_CTRL_REG2, ctrl2);
+    write_reg(device, LPS22HH_REG_CTRL_REG3, ctrl3);
 
     return 0;
 }
 
 bool lps22hh_check_who_am_i(void)
 {
+    return lps22hh_check_who_am_i_device(&lps22hh_default_device);
+}
+
+bool lps22hh_check_who_am_i_device(const TagPressureDevice *device)
+{
     uint8_t v = 0;
 
-    lpsOn();
-    read_reg(LPS22HH_REG_WHO_AM_I, &v);
-    lpsOff();
+    device->on();
+    read_block(device, LPS22HH_REG_WHO_AM_I, &v, 1);
+    device->off();
     return v == LPS22HH_WHO_AM_I_VAL;
 }
 
 int lps22hh_set_idle(void)
+{
+    return lps22hh_set_idle_device(&lps22hh_default_device);
+}
+
+int lps22hh_set_idle_device(const TagPressureDevice *device)
 {
     /*
      * Idle / lowest-power state:
@@ -154,17 +177,23 @@ int lps22hh_set_idle(void)
     uint8_t ctrl2 = LPS22HH_CTRL2_IF_ADD_INC;
     uint8_t ctrl3 = 0;
 
-    lpsOn();
+    device->on();
 
-    write_reg(LPS22HH_REG_CTRL_REG2, ctrl2);
-    write_reg(LPS22HH_REG_CTRL_REG3, ctrl3);
-    write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
+    write_reg(device, LPS22HH_REG_CTRL_REG2, ctrl2);
+    write_reg(device, LPS22HH_REG_CTRL_REG3, ctrl3);
+    write_reg(device, LPS22HH_REG_CTRL_REG1, ctrl1);
     
-    lpsOff();
+    device->off();
     return 0;
 }
 
 int lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf)
+{
+    return lps22hh_config_continuous_device(&lps22hh_default_device, odr, lpf);
+}
+
+int lps22hh_config_continuous_device(const TagPressureDevice *device,
+                                     lps22hh_odr_t odr, lps22hh_lpf_t lpf)
 {
     if ((unsigned)odr > (unsigned)LPS22HH_ODR_200HZ) {
         return -1;
@@ -185,15 +214,21 @@ int lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf)
         ctrl1 |= (uint8_t)(((uint8_t)lpf << 2) & LPS22HH_CTRL1_LPFP_CFG_MASK);
     }
 
-    lpsOn();
+    device->on();
 
-    lps22hh_config_int_drdy();
-    write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
-    lpsOff();
+    lps22hh_config_int_drdy(device);
+    write_reg(device, LPS22HH_REG_CTRL_REG1, ctrl1);
+    device->off();
     return 0;
 }
 
 int lps22hh_config_triggered(lps22hh_lpf_t lpf)
+{
+    return lps22hh_config_triggered_device(&lps22hh_default_device, lpf);
+}
+
+int lps22hh_config_triggered_device(const TagPressureDevice *device,
+                                    lps22hh_lpf_t lpf)
 {
     /*
      * One-shot mode configuration:
@@ -209,31 +244,41 @@ int lps22hh_config_triggered(lps22hh_lpf_t lpf)
 
     (void)lpf;
 
-    lpsOn();
+    device->on();
 
-    lps22hh_config_int_drdy();
-    write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
+    lps22hh_config_int_drdy(device);
+    write_reg(device, LPS22HH_REG_CTRL_REG1, ctrl1);
 
-    lpsOff();
+    device->off();
     return 0;
 }
 
 int lps22hh_trigger_one_shot(void)
+{
+    return lps22hh_trigger_one_shot_device(&lps22hh_default_device);
+}
+
+int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
 {
     /*
      * The ONE_SHOT bit starts a single conversion when ODR = 0.
      * The device clears the bit automatically after the measurement is taken.
      */
 
-    lpsOn();
-    update_reg(LPS22HH_REG_CTRL_REG2,
-                      LPS22HH_CTRL2_ONE_SHOT,
-                      LPS22HH_CTRL2_ONE_SHOT);
-    lpsOff();
+    device->on();
+    update_reg(device, LPS22HH_REG_CTRL_REG2,
+               LPS22HH_CTRL2_ONE_SHOT,
+               LPS22HH_CTRL2_ONE_SHOT);
+    device->off();
     return 0;
 }
 
 bool lps22hh_data_ready(void)
+{
+    return lps22hh_data_ready_device(&lps22hh_default_device);
+}
+
+bool lps22hh_data_ready_device(const TagPressureDevice *device)
 {
     /*
      * The status register reports whether pressure and/or temperature samples
@@ -241,14 +286,21 @@ bool lps22hh_data_ready(void)
      * after an interrupt.
      */
     uint8_t s = 0;
-    lpsOn();
-    read_reg(LPS22HH_REG_STATUS, &s);
-    lpsOff();
+    device->on();
+    read_block(device, LPS22HH_REG_STATUS, &s, 1);
+    device->off();
 
     return (s & (LPS22HH_STATUS_P_DA | LPS22HH_STATUS_T_DA)) != 0;
 }
 
 int lps22hh_read_raw(int32_t *pressure, int32_t *temperature)
+{
+    return lps22hh_read_raw_device(&lps22hh_default_device, pressure,
+                                   temperature);
+}
+
+int lps22hh_read_raw_device(const TagPressureDevice *device, int32_t *pressure,
+                            int32_t *temperature)
 {
     if ((pressure == NULL) || (temperature == NULL)) {
         return -1;
@@ -261,9 +313,9 @@ int lps22hh_read_raw(int32_t *pressure, int32_t *temperature)
      *   - temperature: 2 bytes, little-endian, 16-bit signed value
      */
     uint8_t b[5] = {0};
-    lpsOn();
-    read_block(LPS22HH_REG_PRESS_OUT_XL, b, 5);
-    lpsOff();
+    device->on();
+    read_block(device, LPS22HH_REG_PRESS_OUT_XL, b, 5);
+    device->off();
 
     int32_t p = (int32_t)(((uint32_t)b[2] << 16) |
                           ((uint32_t)b[1] << 8) |
