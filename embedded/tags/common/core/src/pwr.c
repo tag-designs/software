@@ -74,39 +74,6 @@ void rtcOff(void)
 
 // SPI Devices
 
-#if defined(LPS_SPI) || ((defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)) && !defined(ACCEL_USART))
-static void spiEnable(void)
-{
-  rccEnableSPI1(0);
-  rccResetSPI1();
-
-  // Disable spi device
-
-  SPI1->CR1 = 0;
-
-  // Reset spi device
-
-  // 1/4 fifo threshold, 8-bit data size
-
-  SPI1->CR2 =
-      SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 
-                     | SPI_CR2_DS_1 | SPI_CR2_DS_0;
-
-  // master, enable spi device
-
-  SPI1->CR1 = SPI_CR1_MSTR;
-  SPI1->CR1 |= SPI_CR1_SPE;
-  tagMarkSpi1On();
-}
-
-static void spiDisable(void)
-{
-  SPI1->CR1 = 0;
-  SPI1->CR2 = 0;
-  tagMarkSpi1Off();
-}
-#endif
-
 #ifdef TAG_SENSOR_MAG_AK09940A
 #if defined(LINE_MAG_CS) && defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
 #define AK09940A_CS LINE_MAG_CS
@@ -289,75 +256,81 @@ void lpsOff(void)
 #endif
 
 #ifdef LPS_SPI
+static const TagSpiDevice lps_bus = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_STEVAL_CS,
+    .sck = LINE_STEVAL_SCK,
+    .miso = LINE_STEVAL_MISO,
+    .mosi = LINE_STEVAL_MOSI,
+    .pwr = LINE_STEVAL_PWR,
+    .sleep_policy = TAG_SPI_SLEEP_FLOAT,
+};
+
+void lpsPowerOn(void)
+{
+  tagSpiDevicePowerOn(&lps_bus);
+}
+
+void lpsPowerOff(void)
+{
+  tagSpiDevicePowerOff(&lps_bus);
+}
+
+void lpsBusBegin(void)
+{
+  tagSpiBusBegin(&lps_bus);
+}
+
+void lpsBusEnd(void)
+{
+  tagSpiBusEnd(&lps_bus);
+}
+
 void lpsOn(void)
 {
-
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-
-  //toOutput(LINE_STEVAL_PWR);
-  palSetLine(LINE_STEVAL_PWR);
-
-  /* configure select line*/
-
-  palSetLine(LINE_STEVAL_CS);
-  toOutput(LINE_STEVAL_CS);
-
-  /* configure SPI1   */
-
-  toAlternate(LINE_STEVAL_SCK);
-  toAlternate(LINE_STEVAL_MISO);
-  toAlternate(LINE_STEVAL_MOSI);
-
-  spiEnable();
+  lpsPowerOn();
+  lpsBusBegin();
 }
 
 void lpsOff(void)
 {
-  
-  toAnalog(LINE_STEVAL_SCK);
-  toAnalog(LINE_STEVAL_MOSI);
-  toAnalog(LINE_STEVAL_MISO);
-  toAnalog(LINE_STEVAL_CS);
-  palClearLine(LINE_STEVAL_PWR);
-  chBSemSignal(&SPImutex);
+  lpsBusEnd();
+  lpsPowerOff();
 }
 
 #endif
 
 #if (defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)) && !defined(ACCEL_USART)
+static const TagSpiDevice accel_bus = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_ACCEL_CS,
+    .sck = LINE_ACCEL_SCK,
+    .miso = LINE_ACCEL_MISO,
+    .mosi = LINE_ACCEL_MOSI,
+    .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+
 void accelSpiOn()
 {
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-
-  /* configure select line*/
-
-  palSetLine(LINE_ACCEL_CS);
-  toOutput(LINE_ACCEL_CS);
-
-  /* configure SPI1   */
-
-  toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_ACCEL_MOSI);
-  toAlternate(LINE_ACCEL_MISO);
-
-  spiEnable();
+  tagSpiBusBegin(&accel_bus);
 }
 
 void accelSpiOff()
 {
-  palSetLine(LINE_ACCEL_CS);
-  spiDisable();
+  tagSpiBusEnd(&accel_bus);
+}
 
-  //toInput(LINE_ACCEL_CS);
-  toOutput(LINE_ACCEL_SCK);
-  toOutput(LINE_ACCEL_MOSI);
-  toInput(LINE_ACCEL_MISO);
+void accelBusBegin(void)
+{
+  accelSpiOn();
+}
 
-  chBSemSignal(&SPImutex);
+void accelBusEnd(void)
+{
+  accelSpiOff();
 }
 #endif
 
