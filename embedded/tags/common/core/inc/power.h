@@ -2,6 +2,8 @@
 #define TAG_CORE_POWER_H
 
 #include "hal.h"
+#include "spi_bus.h"
+#include "usart_bus.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,12 +16,6 @@ typedef enum {
   TAG_SPI_SLEEP_SAFE_IDLE,
   TAG_SPI_SLEEP_CUSTOM
 } TagSpiSleepPolicy;
-
-// SPI controller register setup. Tags can override this when SPI1 differs.
-typedef struct {
-  void (*enable)(void);
-  void (*disable)(void);
-} TagSpiController;
 
 // Board-line description for one SPI device attached to a shared controller.
 // Power helpers own device idle pin state; bus helpers own controller setup.
@@ -44,15 +40,7 @@ typedef struct {
   ioline_t pwr;
 } TagI2cDevice;
 
-extern const TagSpiController tagSpi1DefaultController;
-
 bool tagLineIsValid(ioline_t line);
-bool isSpi1On(void);
-void tagMarkSpi1On(void);
-void tagMarkSpi1Off(void);
-bool isUsart2On(void);
-void tagMarkUsart2On(void);
-void tagMarkUsart2Off(void);
 void tagDisableActiveBusesForStop(void);
 void tagEnableActiveBusesAfterStop(void);
 void tagEnableStandbyPullup(ioline_t line);

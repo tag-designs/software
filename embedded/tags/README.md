@@ -341,3 +341,18 @@ truly needs to replace the shared diagnostic entry point.
   targets truly share it.
 - Update `BUILD_SOURCES.md` after changing build membership and rebuilding the
   active targets.
+
+## Future Cleanup
+
+Some older tags still configure or coordinate sensors directly from
+`state_run.c`. That keeps the main acquisition state crowded with device setup
+details and makes it harder to compare related tags. The CompassTag family has
+started to separate that responsibility into a family-owned `sensors.c` file,
+although that name is historical and really means "how this tag family uses its
+sensors" rather than "a reusable sensor driver."
+
+When touching older `state_run.c` files, look for sensor configuration,
+orientation transforms, calibration handling, and sensor-specific wake/sleep
+flow that could move into an analogous tag- or family-owned orchestration file.
+Pick a clearer name if a new file is created, and leave reusable sensor
+drivers under `common/sensors`.

@@ -16,10 +16,10 @@ active tags unless a tag provides a same-named local override.
 - `pwr.c`: default power policy for tags that do not provide local/family
   power code.
 - `bus_power.c`: board-line descriptor helpers for SPI/I2C device power,
-  bus-session setup, standby pulls, active-bus tracking, and Stop2 bus
-  suspend/resume.
+  bus-session setup, standby pulls, and Stop2 bus suspend/resume orchestration.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level byte/register transfers
-  that are useful outside a single sensor family.
+  that are useful outside a single sensor family. SPI and USART also own their
+  controller setup, active-state tracking, and Stop2 suspend/resume mechanics.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
@@ -34,9 +34,11 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
-and `tagEnableActiveBusesAfterStop()` after wake. The common helper currently
-suspends any active SPI1 or USART2 controller without changing device power,
-chip-select ownership, or pin alternate-function setup. Code that bypasses
+and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates
+those calls, while `spi_bus.c` and `usart_bus.c` own the controller-specific
+active/suspended state and register bit changes. The stop path suspends any
+active SPI1 or USART2 controller without changing device power, chip-select
+ownership, or pin alternate-function setup. Code that bypasses
 `tagSpiBusBegin/End()` must call `tagMarkSpi1On()` and `tagMarkSpi1Off()`
 itself. Tag-local synchronous-USART setup must do the same with
 `tagMarkUsart2On()` and `tagMarkUsart2Off()`.

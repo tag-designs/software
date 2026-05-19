@@ -1,84 +1,33 @@
 #include "power.h"
 
 #include "gpio_utils.h"
+#include "spi_bus.h"
+#include "usart_bus.h"
 
 /*
  * Shared bus and standby-pin helpers.
  *
  * Device modules describe their board-provided LINE_xxx pins with small
- * descriptors. These helpers provide the common STM32 mechanics for SPI/I2C
- * enable/disable sequencing and standby pull configuration; device modules
- * still own the descriptor and any device-specific delays or reset handling.
+ * descriptors. These helpers provide common device power sequencing and
+ * standby pull configuration; bus-specific modules own controller state and
+ * register-level stop/resume handling.
  */
-
-static bool spi1_on = false;
-static bool spi1_suspended_for_stop = false;
-static bool usart2_on = false;
-static bool usart2_suspended_for_stop = false;
 
 bool tagLineIsValid(ioline_t line)
 {
   return line != TAG_NO_LINE;
 }
 
-bool isSpi1On(void)
-{
-  return spi1_on;
-}
-
-void tagMarkSpi1On(void)
-{
-  spi1_on = true;
-}
-
-void tagMarkSpi1Off(void)
-{
-  spi1_on = false;
-}
-
-bool isUsart2On(void)
-{
-  return usart2_on;
-}
-
-void tagMarkUsart2On(void)
-{
-  usart2_on = true;
-}
-
-void tagMarkUsart2Off(void)
-{
-  usart2_on = false;
-}
-
 void tagDisableActiveBusesForStop(void)
 {
-  if (spi1_on)
-  {
-    SPI1->CR1 &= ~SPI_CR1_SPE;
-    spi1_suspended_for_stop = true;
-  }
-
-  if (usart2_on)
-  {
-    USART2->CR1 &= ~USART_CR1_UE;
-    usart2_suspended_for_stop = true;
-  }
+  tagSpiDisableActiveForStop();
+  tagUsartDisableActiveForStop();
 }
 
 void tagEnableActiveBusesAfterStop(void)
 {
-  if (spi1_suspended_for_stop)
-  {
-    SPI1->CR1 |= SPI_CR1_SPE;
-    spi1_suspended_for_stop = false;
-  }
-
-  if (usart2_suspended_for_stop)
-  {
-    USART2->CR1 |= USART_CR1_UE;
-    usart2_suspended_for_stop = false;
-  }
+  tagSpiEnableActiveAfterStop();
+  tagUsartEnableActiveAfterStop();
 }
 
 void tagEnableStandbyPullup(ioline_t line)
@@ -114,31 +63,6 @@ void tagEnableStandbyPulldown(ioline_t line)
     SET_BIT(PWR->PDCRB, 1 << PAL_PAD(line));
   }
 }
-
-static void spi1DefaultEnable(void)
-{
-  rccEnableSPI1(0);
-  rccResetSPI1();
-
-  SPI1->CR1 = 0;
-  SPI1->CR2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
-              SPI_CR2_DS_1 | SPI_CR2_DS_0;
-  SPI1->CR1 = SPI_CR1_MSTR;
-  SPI1->CR1 |= SPI_CR1_SPE;
-  tagMarkSpi1On();
-}
-
-static void spi1DefaultDisable(void)
-{
-  SPI1->CR1 = 0;
-  SPI1->CR2 = 0;
-  tagMarkSpi1Off();
-}
-
-const TagSpiController tagSpi1DefaultController = {
-    .enable = spi1DefaultEnable,
-    .disable = spi1DefaultDisable,
-};
 
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {

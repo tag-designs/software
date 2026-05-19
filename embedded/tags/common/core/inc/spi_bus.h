@@ -3,7 +3,14 @@
 
 #include "hal.h"
 
+#include <stdbool.h>
 #include <stdint.h>
+
+// SPI controller register setup. Tags can override this when SPI1 differs.
+typedef struct {
+  void (*enable)(void);
+  void (*disable)(void);
+} TagSpiController;
 
 /*
  * Generic SPI bus helpers for devices that drive the STM32 SPI registers
@@ -15,6 +22,14 @@ typedef struct {
   ioline_t cs;
   uint8_t dummy;
 } TagSpiBus;
+
+extern const TagSpiController tagSpi1DefaultController;
+
+bool isSpi1On(void);
+void tagMarkSpi1On(void);
+void tagMarkSpi1Off(void);
+void tagSpiDisableActiveForStop(void);
+void tagSpiEnableActiveAfterStop(void);
 
 void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len);
 void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len);

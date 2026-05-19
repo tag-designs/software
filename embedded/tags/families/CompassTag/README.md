@@ -21,6 +21,13 @@ CompassTag now uses the standard binding in `common/core/src/pwr.c`. Any
 remaining family-specific standby pin policy lives in `devices.c` through the
 `tagPrepareDevicesForStandby()` hook.
 
+The family `sensors.c` file is not a reusable sensor driver. It is the
+CompassTag application layer that decides how this tag family uses its sensors:
+orientation transforms, sampling flow, calibration storage/ack handling, and
+the coupling between magnetometer and accelerometer data. The name is
+historical and may eventually be made more explicit, for example
+`sensor_runtime.c` or `sensor_orchestration.c`.
+
 The variants still keep their own `custom.h`, `project.mk`, and any source or
 configuration files that have intentionally diverged during board bring-up. In
 particular, the storage module choice stays in each variant's `project.mk`: the

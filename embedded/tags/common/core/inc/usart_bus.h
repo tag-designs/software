@@ -3,6 +3,7 @@
 
 #include "hal.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /*
@@ -18,6 +19,14 @@ typedef struct {
   ioline_t cs;
   uint8_t dummy;
 } TagUsartBus;
+
+bool isUsart2On(void);
+void tagMarkUsart2On(void);
+void tagMarkUsart2Off(void);
+void tagUsart2SyncEnable(void);
+void tagUsart2SyncDisable(void);
+void tagUsartDisableActiveForStop(void);
+void tagUsartEnableActiveAfterStop(void);
 
 void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len);
 void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,

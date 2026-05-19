@@ -8,6 +8,86 @@
  * while centralizing the repeated full-duplex drain/read loops. Bus power, SPI
  * configuration, and sleep-state pin policy remain in the tag power layer.
  */
+
+static bool spi1_on = false;
+static bool spi1_suspended_for_stop = false;
+
+bool isSpi1On(void)
+{
+  return spi1_on;
+}
+
+void tagMarkSpi1On(void)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  spi1_on = true;
+#endif
+}
+
+void tagMarkSpi1Off(void)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  spi1_on = false;
+#endif
+}
+
+void tagSpiDisableActiveForStop(void)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  if (spi1_on)
+  {
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+    spi1_suspended_for_stop = true;
+  }
+#endif
+}
+
+void tagSpiEnableActiveAfterStop(void)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  if (spi1_suspended_for_stop)
+  {
+    SPI1->CR1 |= SPI_CR1_SPE;
+    spi1_suspended_for_stop = false;
+  }
+#endif
+}
+
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+static void spi1DefaultEnable(void)
+{
+  rccEnableSPI1(0);
+  rccResetSPI1();
+
+  SPI1->CR1 = 0;
+  SPI1->CR2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
+              SPI_CR2_DS_1 | SPI_CR2_DS_0;
+  SPI1->CR1 = SPI_CR1_MSTR;
+  SPI1->CR1 |= SPI_CR1_SPE;
+  tagMarkSpi1On();
+}
+
+static void spi1DefaultDisable(void)
+{
+  SPI1->CR1 = 0;
+  SPI1->CR2 = 0;
+  tagMarkSpi1Off();
+}
+#else
+static void spi1DefaultEnable(void)
+{
+}
+
+static void spi1DefaultDisable(void)
+{
+}
+#endif
+
+const TagSpiController tagSpi1DefaultController = {
+    .enable = spi1DefaultEnable,
+    .disable = spi1DefaultDisable,
+};
+
 void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;

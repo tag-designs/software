@@ -177,9 +177,11 @@ Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
 orchestration in `pwr.c`; current active tags provide local `src/pwr.c`
 overrides, so they no longer list `pwr.c` directly in `ALLCSRC`. Shared
-bus/pin mechanics live in `bus_power.c`: SPI/I2C descriptor helpers, the
-default SPI1 controller setup, and STM32 standby pullup/pulldown helpers that
-operate on board-provided `LINE_xxx` names. SPI power and SPI bus ownership are
+bus/pin mechanics are split between `bus_power.c` and the bus modules:
+`bus_power.c` owns SPI/I2C descriptor helpers and STM32 standby
+pullup/pulldown helpers that operate on board-provided `LINE_xxx` names, while
+`spi_bus.c` and `usart_bus.c` own controller setup, active-state tracking, and
+Stop2-specific register suspend/resume. SPI power and SPI bus ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
@@ -196,8 +198,8 @@ emit the standard names when feasible. Family code should only override
 Tags or families that need extra standby pin policy can provide a strong
 `tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
 its built-in flash and AK09940A standby preparation.
-The default SPI1 controller also tracks whether SPI1 is logically on. Short
-Stop2 sleeps call `tagDisableActiveBusesForStop()` and
+The default SPI1 controller marks SPI1 logically on/off from `spi_bus.c`.
+Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
 SPI or synchronous-USART device is active before calling `stopMilliseconds()`.
 Older tag-local controller code that does not use `TagSpiDevice` should call

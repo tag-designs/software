@@ -260,29 +260,6 @@ static const TagSpiDevice flash_bus = {
 #endif
 
 #ifdef LPS_USART
-static void usartEnable(void)
-{
-  rccEnableUSART2(true);
-  rccResetUSART2();
-
-  // Synchronous USART mode, MSB first. The LPS USART path uses USART2 as a
-  // three-wire SPI-like bus for boards that did not route the pressure sensor
-  // to the hardware SPI peripheral.
-  USART2->BRR = 0x10;
-  USART2->CR2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL;
-  USART2->CR3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT;
-  USART2->CR1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
-  tagMarkUsart2On();
-}
-
-static void usartDisable(void)
-{
-  USART2->CR1 = 0;
-  USART2->CR2 = 0;
-  USART2->CR3 = 0;
-  tagMarkUsart2Off();
-}
-
 void lpsOn(void)
 {
   toOutput(LINE_LPS_PWR);
@@ -295,12 +272,12 @@ void lpsOn(void)
   toAlternate(LINE_LPS_TX);
   toAlternate(LINE_LPS_RX);
 
-  usartEnable();
+  tagUsart2SyncEnable();
 }
 
 void lpsOff(void)
 {
-  usartDisable();
+  tagUsart2SyncDisable();
   toAnalog(LINE_LPS_SCK);
   toAnalog(LINE_LPS_TX);
   toAnalog(LINE_LPS_RX);
