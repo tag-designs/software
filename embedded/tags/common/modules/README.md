@@ -184,13 +184,18 @@ separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
 `tagSpiBusEnd()` own the mutex, pin alternate functions, and controller
-enable/disable sequence.
+enable/disable sequence. The default flash SPI path uses the same descriptor
+flow, so flash standby pulls come from `tagSpiDevicePrepareSleep()` instead of
+a separate hand-written block.
 The default power file also carries the standard AK09940A magnetometer binding
 for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names. If an older board file uses historical names, add
 tag-local aliases in that target's `inc/custom.h` and update the board file to
 emit the standard names when feasible. Family code should only override
 `tagAk09940aDevice()` when the board needs non-standard sequencing.
+Tags or families that need extra standby pin policy can provide a strong
+`tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
+its built-in flash and AK09940A standby preparation.
 The default SPI1 controller also tracks whether SPI1 is logically on. Short
 Stop2 sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an

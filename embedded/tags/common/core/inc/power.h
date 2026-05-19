@@ -65,6 +65,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
 void tagI2cDeviceOn(const TagI2cDevice *device);
 void tagI2cDeviceOff(const TagI2cDevice *device);
 void tagI2cDevicePrepareSleep(const TagI2cDevice *device);
+void tagPrepareDevicesForStandby(void);
 
 void rtcOn(void);
 void rtcOff(void);

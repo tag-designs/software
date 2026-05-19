@@ -244,6 +244,19 @@ const TagMagDevice *tagAk09940aDevice(void)
 }
 #endif
 
+#if defined(TAG_HAS_EXTERNAL_FLASH)
+static const TagSpiDevice flash_bus = {
+    .controller = &tagSpi1DefaultController,
+    .mutex = &SPImutex,
+    .cs = LINE_FLASH_nCS,
+    .sck = LINE_FLASH_SCK,
+    .miso = LINE_FLASH_MISO,
+    .mosi = LINE_FLASH_MOSI,
+    .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+#endif
+
 #ifdef LPS_USART
 static void usartEnable(void)
 {
@@ -371,47 +384,18 @@ void accelSpiOff()
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-  palSetLine(LINE_FLASH_nCS);
-  /* configure SPI1   */
-  toAlternate(LINE_FLASH_SCK);
-  toAlternate(LINE_FLASH_MOSI);
-  toAlternate(LINE_FLASH_MISO);
-
-  spiEnable();
+  tagSpiBusBegin(&flash_bus);
 }
 
 void FlashSpiOff(void)
 {
-  palSetLine(LINE_FLASH_nCS);
-  spiDisable();
-  toAnalog(LINE_FLASH_SCK);
-  toAnalog(LINE_FLASH_MOSI);
-  toAnalog(LINE_FLASH_MISO);
-  chBSemSignal(&SPImutex);
+  tagSpiBusEnd(&flash_bus);
 }
 #endif
 
 /*
  * Standby/Shutdown modes
  */
-
-static void enableLinePullup(ioline_t line)
-{
-  if ((PAL_PAD(line) != (14)) && (PAL_PORT(line) == GPIOA))
-    SET_BIT(PWR->PUCRA, 1 << PAL_PAD(line));
-  if (PAL_PORT(line) == GPIOB)
-    SET_BIT(PWR->PUCRB, 1 << PAL_PAD(line));
-}
-static void enableLinePulldown(ioline_t line)
-{
-  if ((PAL_PAD(line) != (13)) && (PAL_PAD(line) != (15)) && (PAL_PORT(line) == GPIOA))
-    SET_BIT(PWR->PDCRA, 1 << PAL_PAD(line));
-  if (PAL_PORT(line) == GPIOB)
-    SET_BIT(PWR->PDCRB, 1 << PAL_PAD(line));
-}
 
 /*
  * Steps for entering standby
@@ -453,27 +437,26 @@ void godown(enum Sleep sleepmode)
   // Pull up CS on ACCEL
 
 #ifdef LINE_ACCEL_CS
-  enableLinePullup(LINE_ACCEL_CS);
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
 #endif
 
 #ifdef TAG_HAS_EXTERNAL_FLASH
-  enableLinePullup(LINE_FLASH_nCS);
-  enableLinePulldown(LINE_FLASH_SCK);
-  enableLinePulldown(LINE_FLASH_SCK);
-  enableLinePulldown(LINE_FLASH_MOSI);
+  tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 
 #ifdef TAG_SENSOR_MAG_AK09940A
 #if defined(LINE_MAG_RSTN)
-  enableLinePulldown(LINE_MAG_RSTN);
+  tagEnableStandbyPulldown(LINE_MAG_RSTN);
 #endif
   tagSpiDevicePrepareSleep(&ak09940a_bus);
 #endif
 
+  tagPrepareDevicesForStandby();
+
   // Pull up SCL and SDA on RTC
 
-  enableLinePullup(LINE_RTC_SCL);
-  enableLinePullup(LINE_RTC_SDA);
+  tagEnableStandbyPullup(LINE_RTC_SCL);
+  tagEnableStandbyPullup(LINE_RTC_SDA);
 
   // turn on pullups
 
@@ -531,4 +514,8 @@ void _unhandled_exception(void)
 {
   pState->state = EXCEPTION;
   godown(STANDBY);
+}
+
+void __attribute__((weak)) tagPrepareDevicesForStandby(void)
+{
 }

@@ -101,4 +101,11 @@ const TagLis2du12Device *tagLis2du12Device(void)
 {
   return &compass_tag_accel;
 }
+
+void tagPrepareDevicesForStandby(void)
+{
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+  tagEnableStandbyPulldown(LINE_ACCEL_TX);
+  tagEnableStandbyPulldown(LINE_ACCEL_SCK);
+}
 #endif
