@@ -185,11 +185,13 @@ power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
 `tagSpiBusEnd()` own the mutex, pin alternate functions, and controller
 enable/disable sequence.
-The default SPI1 controller also tracks whether SPI1 is logically on; short
-Stop2 sleeps query `isSpi1On()` so callers no longer need to know whether an
-SPI device is active before calling `stopMilliseconds()`. Older tag-local SPI
-controller code that does not use `TagSpiDevice` should call
-`tagMarkSpi1On()` and `tagMarkSpi1Off()` in its local enable/disable helpers.
+The default SPI1 controller also tracks whether SPI1 is logically on. Short
+Stop2 sleeps call `tagDisableActiveBusesForStop()` and
+`tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
+SPI or synchronous-USART device is active before calling `stopMilliseconds()`.
+Older tag-local controller code that does not use `TagSpiDevice` should call
+`tagMarkSpi1On()`/`tagMarkSpi1Off()` or
+`tagMarkUsart2On()`/`tagMarkUsart2Off()` in its local enable/disable helpers.
 
 The old monolithic `app.h` now acts as a compatibility umbrella over
 topic-specific headers such as `adc.h`, `core_events.h`, `power.h`, and

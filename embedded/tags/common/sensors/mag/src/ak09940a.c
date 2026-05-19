@@ -20,6 +20,16 @@ void ak09940aDeviceEnd(const TagMagDevice *device)
     device->power_off();
 }
 
+static void ak09940aPowerUpAndBeginBus(const TagMagDevice *device)
+{
+  if (device->power_on)
+    device->power_on();
+  if (device->sleep_ms)
+    device->sleep_ms(1);
+  if (device->bus_begin)
+    device->bus_begin();
+}
+
 static msg_t ak09940a_write_register(const TagMagDevice *device,
                                      enum AK09940A_Reg reg,
                                      const uint8_t *val, uint32_t num)
@@ -124,8 +134,7 @@ bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz)
 void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode)
 {
   uint8_t command = ((uint8_t)mode) | AK09940A_CNTL3_LN2;
-  ak09940aDeviceBegin(device);
-  device->sleep_ms(1);
+  ak09940aPowerUpAndBeginBus(device);
   if (mode > AK09940A_CNTL3_SINGLE_MEASURE)
     (void)ak09940a_write_register(device, AK09940A_CNTL3, &command, 1);
 }
@@ -133,8 +142,7 @@ void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode)
 bool ak09940aTest(const TagMagDevice *device)
 {
   bool ok;
-  ak09940aDeviceBegin(device);
-  device->sleep_ms(1);
+  ak09940aPowerUpAndBeginBus(device);
   ok = ak09940aCheckWhoami(device);
   ak09940aDeviceEnd(device);
   return ok;

@@ -109,6 +109,7 @@ static void usartEnable(void)
   USART2->CR2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL;
   USART2->CR3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT;
   USART2->CR1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+  tagMarkUsart2On();
 }
 
 static void usartDisable(void)
@@ -116,6 +117,7 @@ static void usartDisable(void)
   USART2->CR1 = 0;
   USART2->CR2 = 0;
   USART2->CR3 = 0;
+  tagMarkUsart2Off();
 }
 
 #ifdef TAG_SENSOR_MAG_AK09940A

@@ -194,9 +194,9 @@ static const TagRegisterBus lps_registers = {
 static void lps_default_sleep(int ms)
 {
   /*
-   * stopMilliseconds() now queries isSpi1On() internally. The boolean is
-   * retained only for source compatibility, so the pressure shim no longer
-   * needs to know which transport is active.
+   * stopMilliseconds() now suspends active bus controllers internally. The
+   * boolean is retained only for source compatibility, so the pressure shim no
+   * longer needs to know which transport is active.
    */
   stopMilliseconds(false, ms);
 }

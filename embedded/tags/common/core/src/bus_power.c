@@ -12,6 +12,9 @@
  */
 
 static bool spi1_on = false;
+static bool spi1_suspended_for_stop = false;
+static bool usart2_on = false;
+static bool usart2_suspended_for_stop = false;
 
 bool tagLineIsValid(ioline_t line)
 {
@@ -31,6 +34,51 @@ void tagMarkSpi1On(void)
 void tagMarkSpi1Off(void)
 {
   spi1_on = false;
+}
+
+bool isUsart2On(void)
+{
+  return usart2_on;
+}
+
+void tagMarkUsart2On(void)
+{
+  usart2_on = true;
+}
+
+void tagMarkUsart2Off(void)
+{
+  usart2_on = false;
+}
+
+void tagDisableActiveBusesForStop(void)
+{
+  if (spi1_on)
+  {
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+    spi1_suspended_for_stop = true;
+  }
+
+  if (usart2_on)
+  {
+    USART2->CR1 &= ~USART_CR1_UE;
+    usart2_suspended_for_stop = true;
+  }
+}
+
+void tagEnableActiveBusesAfterStop(void)
+{
+  if (spi1_suspended_for_stop)
+  {
+    SPI1->CR1 |= SPI_CR1_SPE;
+    spi1_suspended_for_stop = false;
+  }
+
+  if (usart2_suspended_for_stop)
+  {
+    USART2->CR1 |= USART_CR1_UE;
+    usart2_suspended_for_stop = false;
+  }
 }
 
 void tagEnableStandbyPullup(ioline_t line)
