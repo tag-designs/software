@@ -22,7 +22,8 @@ by the host download tools. It currently supports:
 - per-tag display preferences stored as sparse, formatted JSON overrides.
 
 `compviz` remains buildable as a specialized/reference tool, but `sensorviz` is
-now the intended general viewer for BitTag, PresTag, and CompassTag SQLite logs.
+now the intended general viewer for BitTag, BitPresTag, PresTag, and CompassTag
+SQLite logs.
 
 ## Current Architecture
 
@@ -156,4 +157,4 @@ git diff --check
 ```
 
 When changing SQLite loading or stream metadata, also test with representative
-BitTag, PresTag, and CompassTag logs.
+BitTag, BitPresTag, PresTag, and CompassTag logs.

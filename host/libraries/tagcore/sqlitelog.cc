@@ -143,6 +143,8 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
             {voltageTable(), coreTemperatureTable(), activityTable(), compassTable()}};
     case PRESTAG:
         return {false, {voltageTable(), pressureTable(), sensorTemperatureTable()}};
+    case BITPRESTAG:
+        return {false, {voltageTable(), activityTable(), pressureTable(), sensorTemperatureTable()}};
     default:
         return {false, {}};
     }
@@ -541,6 +543,12 @@ public:
             }
             return dumpPresTagLog(ack.prestag_data_log());
 
+        case BITPRESTAG:
+            if (!ack.has_bitprestag_data_log()) {
+                return 0;
+            }
+            return dumpBitPresTagLog(ack.bitprestag_data_log());
+
         default:
             setLastError("SQLite log output does not support tag type "
                          + TagType_Name(config_.tag_type()));
@@ -897,6 +905,75 @@ private:
                 || !compass_insert.bindDouble(7, entry.mz())
                 || !compass_insert.stepDone()) {
                 setLastSqliteError("Log data insert failed");
+                return -2;
+            }
+        }
+
+        return 1;
+    }
+
+    int dumpBitPresTagLog(const BitPresTagLog &log)
+    {
+        if (!createLogTables()) {
+            return -2;
+        }
+
+        // BitPresTag text logs define each packet as one voltage header sample
+        // followed by one-minute pressure/temperature records. Activity is
+        // packed as five 6-bit buckets in each record and reported as percent
+        // active over a 60-second interval.
+        constexpr int bucket_number = 5;
+        constexpr int bucket_bits = 6;
+        constexpr int bucket_period = 60;
+
+        sqlite3_int64 timestamp = log.epoch();
+
+        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+        Statement activity_insert(db_, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
+        Statement pressure_insert(db_, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
+        Statement temperature_insert(
+            db_,
+            "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
+
+        if (!voltage_insert.valid()
+            || !activity_insert.valid()
+            || !pressure_insert.valid()
+            || !temperature_insert.valid()) {
+            setLastSqliteError("Could not prepare BitPresTag log insert");
+            return -2;
+        }
+
+        if (!voltage_insert.bindInt64(1, timestamp)
+            || !voltage_insert.bindDouble(2, log.voltage())
+            || !voltage_insert.stepDone()) {
+            setLastSqliteError("BitPresTag log header insert failed");
+            return -2;
+        }
+
+        for (auto const &entry : log.data()) {
+            timestamp += bucket_period;
+
+            const uint32_t raw_activity = entry.activity();
+            for (int i = 0; i < bucket_number; i++) {
+                const uint32_t count =
+                    (raw_activity >> (i * bucket_bits)) & ((1U << bucket_bits) - 1U);
+                const double activity = count * 100.0 / bucket_period;
+
+                if (!activity_insert.bindInt64(1, timestamp)
+                    || !activity_insert.bindDouble(2, activity)
+                    || !activity_insert.stepDone()) {
+                    setLastSqliteError("BitPresTag activity insert failed");
+                    return -2;
+                }
+            }
+
+            if (!pressure_insert.bindInt64(1, timestamp)
+                || !pressure_insert.bindDouble(2, entry.pressure())
+                || !pressure_insert.stepDone()
+                || !temperature_insert.bindInt64(1, timestamp)
+                || !temperature_insert.bindDouble(2, entry.temperature())
+                || !temperature_insert.stepDone()) {
+                setLastSqliteError("BitPresTag pressure/temperature insert failed");
                 return -2;
             }
         }

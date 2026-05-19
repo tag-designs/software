@@ -23,7 +23,10 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
     case TagLogStorageFormat::Sqlite:
         // SQLite support is explicit because each tag type needs a schema and
         // dump routine. Text remains the catch-all implementation below.
-        return tag_type == COMPASSTAG || tag_type == PRESTAG || tag_type == BITTAG;
+        return tag_type == COMPASSTAG
+            || tag_type == PRESTAG
+            || tag_type == BITPRESTAG
+            || tag_type == BITTAG;
     case TagLogStorageFormat::Text:
         return true;
     default:

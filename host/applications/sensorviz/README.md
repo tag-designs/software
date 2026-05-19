@@ -10,7 +10,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 
 - Loads SQLite log files produced by host tag download tools.
 - Discovers available streams from the SQLite `streams` metadata table.
-- Plots scalar streams such as pressure, activity, voltage, and temperature.
+- Plots scalar streams such as pressure, activity, voltage, and temperature
+  from BitTag, BitPresTag, PresTag, and CompassTag SQLite logs.
 - Provides display transforms such as:
   - altitude from pressure
   - low-pass filtered activity
