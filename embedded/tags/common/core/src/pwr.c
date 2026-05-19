@@ -11,6 +11,19 @@
 #include "external_flash.h"
 #include "lps.h"
 
+#ifndef ACCEL_WAKEUP_SOURCE
+#define ACCEL_WAKEUP_SOURCE 4
+#endif
+
+#if ACCEL_WAKEUP_SOURCE == 1
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
+#elif ACCEL_WAKEUP_SOURCE == 4
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
+#else
+#error "Unsupported ACCEL_WAKEUP_SOURCE"
+#endif
 
 /*
  * I2C Devices
@@ -87,6 +100,55 @@ static void spiDisable(void)
   tagMarkSpi1Off();
 }
 
+#ifdef LPS_USART
+static void usartEnable(void)
+{
+  rccEnableUSART2(true);
+  rccResetUSART2();
+
+  // Synchronous USART mode, MSB first. The LPS USART path uses USART2 as a
+  // three-wire SPI-like bus for boards that did not route the pressure sensor
+  // to the hardware SPI peripheral.
+  USART2->BRR = 0x10;
+  USART2->CR2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL;
+  USART2->CR3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT;
+  USART2->CR1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+  tagMarkUsart2On();
+}
+
+static void usartDisable(void)
+{
+  USART2->CR1 = 0;
+  USART2->CR2 = 0;
+  USART2->CR3 = 0;
+  tagMarkUsart2Off();
+}
+
+void lpsOn(void)
+{
+  toOutput(LINE_LPS_PWR);
+  palSetLine(LINE_LPS_PWR);
+
+  palSetLine(LINE_LPS_CS);
+  toOutput(LINE_LPS_CS);
+
+  toAlternate(LINE_LPS_SCK);
+  toAlternate(LINE_LPS_TX);
+  toAlternate(LINE_LPS_RX);
+
+  usartEnable();
+}
+
+void lpsOff(void)
+{
+  usartDisable();
+  toAnalog(LINE_LPS_SCK);
+  toAnalog(LINE_LPS_TX);
+  toAnalog(LINE_LPS_RX);
+  toAnalog(LINE_LPS_CS);
+  palClearLine(LINE_LPS_PWR);
+}
+#endif
 
 #ifdef LPS_SPI
 void lpsOn(void)
@@ -268,23 +330,23 @@ void godown(enum Sleep sleepmode)
 
   // Disable wakeup source 4  why ?
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk);
+  CLEAR_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT);
 
   #if defined(LINE_ACCEL_INT)
   if (isActive)
   {
-    SET_BIT(PWR->CR4, PWR_CR4_WP4); // falling edge detect
+    SET_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT); // falling edge detect
   }
   else
   {
-    CLEAR_BIT(PWR->CR4, PWR_CR4_WP4); // rising edge detect
+    CLEAR_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT); // rising edge detect
   }
 
   // enable wakeup on adxl input only in running state
 
   if (pState->state == RUNNING)
   {
-    SET_BIT(PWR->CR3, PWR_CR3_EWUP4_Msk | PWR_CR3_EIWF_Msk);
+    SET_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
     // if adxl input has changed since read, don't sleep
     if (isActive != palReadLine(LINE_ACCEL_INT))
       return;

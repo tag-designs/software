@@ -22,7 +22,7 @@ the next section, not in this table.
 | --- | --- |
 | `BitTag` | `FIRMWARE_STRING`, `BITTAG_V6`, `BOARD_NAME` |
 | `PresTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `LPS_SPI`, `LPS_LOW_POWER`, `QTMONITOR_VERSION`, `PROTOBUFSIZE` |
-| `BitPresTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `SWAP_I2C`, `LPS_USART`, `LPS_LOW_POWER`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `LINE_STEVAL_CS`, `LINE_ACCEL_INT`, `STM32_MSIRANGE_FAST`, `RANGE_MULTIPLIER`, `FLASH_WS_SLOW`, `FLASH_WS_FAST` |
+| `BitPresTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `SWAP_I2C`, `ACCEL_WAKEUP_SOURCE`, `LPS_USART`, `LPS_LOW_POWER`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `LINE_STEVAL_CS`, `LINE_ACCEL_INT`, `STM32_MSIRANGE_FAST`, `RANGE_MULTIPLIER`, `FLASH_WS_SLOW`, `FLASH_WS_FAST` |
 | `BitPresTagMX25R` | Same BitPresTag set as `BitPresTag`, plus retired compatibility names `RV3028_RTC`, `USE_LPS27`, `USE_ADXL362`, and `EXTERNAL_FLASH` |
 | `CompassTag` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LIS2DU12`, `ACCEL_USART`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT` |
 | `CompassTagAT25` | Same compass set as `CompassTag`, plus `COMPASS_TAG` |
@@ -75,6 +75,7 @@ switch inventory.
 | `USE_LIS2DU12` | Selects LIS2DU12 accelerometer support in older/common runtime branches. | Reset/deinit paths in `common/core/src/main.c` and `common/core/src/state_machine.c`; shared power setup in `common/core/src/pwr.c`; compass family `pwr.c` and older IMU/local code. |
 | `LINE_ACCEL_CS` | Pin alias for the accelerometer chip-select line. | Used by `common/sensors/accel/src/ADXL362.c`, `common/sensors/accel/src/ADXL367.c`, `common/core/src/pwr.c`, `BitTag/src/pwr.c`, and local LIS2DU12 drivers. Some tags rely on the board file for this line instead of defining it locally. |
 | `LINE_ACCEL_INT` | Pin alias for the accelerometer interrupt/wakeup line. | Used by `common/core/src/pwr.c`, `BitTag/src/pwr.c`, `BitTag/src/bt_state_run.c`, and local `state_run.c`/`pwr.c` files to configure wakeup edge handling. |
+| `ACCEL_WAKEUP_SOURCE` | Selects which STM32 wakeup source is connected to `LINE_ACCEL_INT`; defaults to `4` when absent. | `common/core/src/pwr.c` uses it to select the matching `PWR_CR4_WP*` edge bit and `PWR_CR3_EWUP*` enable bit. BitPresTag breakout hardware uses wakeup source `1`. |
 | `TAG_SENSOR_PRESSURE_LPS27` | Selects LPS27 pressure sensor support. | `common/sensors/pressure/src/lps27.c` compiles LPS27 access paths; `common/sensors/pressure/src/lps27_test.c` provides the self-test hook. |
 | `LPS_SPI` | Selects SPI access for supported LPS pressure sensors. | `common/sensors/pressure/src/lps27.c`, `common/sensors/pressure/src/lps22.c`, and older `common/sensors/pressure/src/lps33.c`; `common/core/src/pwr.c` and `BitTag/src/pwr.c` add the LPS SPI power/chip-select path. |
 | `LPS_USART` | Selects USART-style bit access for LPS27. | `common/sensors/pressure/src/lps27.c` selects the USART register descriptor; `common/sensors/src/sensor_io.c` provides the USART synchronous-mode transfer helpers used by `BitPresTag`-style builds. |
