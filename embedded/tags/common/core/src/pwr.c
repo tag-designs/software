@@ -20,12 +20,22 @@ static void delay(void){
   __NOP();
 }
 
-// I2C interface to rtc
-
+/*
+ * I2C interface to the RTC.
+ *
+ * Some breakout/base-board revisions were fabricated with RTC_SDA and RTC_SCL
+ * swapped. Define SWAP_I2C in the tag's custom.h for those boards so the
+ * software I2C fallback drives the physical lines in the corrected order.
+ */
 const I2CConfig rtci2cConfig = {
     .delay = delay,
+#if defined(SWAP_I2C) && SWAP_I2C
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA
+#else
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL
+#endif
 };
 
 void rtcOn(void)

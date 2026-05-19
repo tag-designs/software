@@ -15,12 +15,22 @@ static void delay(void){
   __NOP();
 }
 
-// I2C interface to rtc
-
+/*
+ * I2C interface to the RTC.
+ *
+ * The BitPresTag breakout/base-board layout has RTC_SDA and RTC_SCL swapped.
+ * The affected variants define SWAP_I2C in custom.h so the software I2C
+ * fallback drives the physical lines in the corrected order.
+ */
 const I2CConfig rtci2cConfig = {
     .delay = delay,
+#if defined(SWAP_I2C) && SWAP_I2C
     .sda = LINE_RTC_SCL,
     .scl = LINE_RTC_SDA
+#else
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL
+#endif
 };
 
 void rtcOn(void)

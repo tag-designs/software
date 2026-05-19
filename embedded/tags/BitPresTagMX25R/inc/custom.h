@@ -6,6 +6,7 @@
 #define FIRMWARE_STRING "BitPresTagv4, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "BitPresTagMX25Rv1"
+#define SWAP_I2C TRUE
 #define RV3028_RTC TRUE
 #define LPS_USART TRUE
 #define LPS_LOW_POWER FALSE
