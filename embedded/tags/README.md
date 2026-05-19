@@ -177,10 +177,10 @@ The inactive `BitTagNG` variants follow the same pattern with:
 include ../families/BitTagNG/family.mk
 ```
 
-The family manifest adds shared include/source directories and lists the shared
-source basenames.  The target directories still own board selection, ChibiOS
-configuration, `custom.h`, storage-module selection, and any intentionally
-divergent sources.
+The family manifest adds shared config/include/source directories and lists the
+shared source basenames. The target directories still own board selection,
+`custom.h`, storage-module selection, and any intentionally divergent local
+configuration or sources.
 
 ## Template Tag Directory
 
@@ -191,7 +191,7 @@ embedded/tags/NewTag/
   CMakeLists.txt      CMake target and board/proto dependencies
   Makefile            Usually just: include ../common/make.mk
   project.mk          Board include, TAG_MODULES, and tag-local source list
-  cfg/                ChibiOS chconf.h, halconf.h, mcuconf.h
+  cfg/                ChibiOS overrides, only if this target differs from family
   inc/                tag-local headers and overrides
     custom.h          tag identity, constants, bus choices, and pin aliases
     config.h          stored configuration type and tag type
@@ -241,9 +241,12 @@ ALLCSRC += \
 ```
 
 `common/make.mk` supplies the ChibiOS build plumbing. It includes ChibiOS
-startup, HAL, OSAL/RTOS, platform, and rules makefiles, adds family, module,
-generated nanopb, and board include paths, and points the build at the
+startup, HAL, OSAL/RTOS, platform, and rules makefiles, adds local/family,
+module, generated nanopb, and board include paths, and points the build at the
 repository `ChibiOS` submodule through the `CHIBIOS` variable passed by CMake.
+The config include order is variant `cfg/` first and family `cfg/` second, so a
+variant can override a shared `chconf.h`, `halconf.h`, or `mcuconf.h` without
+copying the family defaults.
 
 Board code is generated under the CMake build tree by `embedded/boards` and
 included through the board fragment selected in `project.mk`:

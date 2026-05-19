@@ -1,14 +1,15 @@
 # Shared application code for BitPresTag flash variants.
 #
 # BitPresTag and BitPresTagMX25R share board wiring, sensor choices, runtime
-# state code, logging, tests, and power/bus control.  Variant project.mk files
-# select the external flash module (AT25XE or MX25R) and keep their local
-# custom.h/cfg files for firmware strings and build constants.
+# state code, logging, tests, power/bus control, and ChibiOS configuration.
+# Variant project.mk files select the external flash module (AT25XE or MX25R)
+# and keep their local custom.h files for firmware strings and build constants.
 
 BITPRESTAG_FAMILY_DIR := ../families/BitPresTag
 
 TAG_FAMILY_INC_DIRS += $(BITPRESTAG_FAMILY_DIR)/inc
 TAG_FAMILY_SRC_DIRS += $(BITPRESTAG_FAMILY_DIR)/src
+TAG_FAMILY_CFG_DIRS += $(BITPRESTAG_FAMILY_DIR)/cfg
 
 ALLCSRC := $(filter-out pwr.c test.c,$(ALLCSRC))
 

@@ -89,8 +89,16 @@ PROJECT = ch
 include project.mk
 # Imported source files and paths
 #CHIBIOS = ../../../../ChibiOS
-# find halconf.h chconf.h mcuconf.h
+# Find halconf.h, chconf.h, and mcuconf.h. ChibiOS uses CHCONFDIR/HALCONFDIR
+# as single directories when it scans chconf.h and halconf.h, while the compiler
+# can use an ordered include path. Keep the local cfg directory first, then fall
+# back to the family cfg directory when the tag does not provide a local config.
+TAG_CFG_DIRS := ./cfg $(TAG_FAMILY_CFG_DIRS)
+TAG_CHCONF_DIR := $(firstword $(foreach dir,$(TAG_CFG_DIRS),$(if $(wildcard $(dir)/chconf.h),$(dir))))
+TAG_HALCONF_DIR := $(firstword $(foreach dir,$(TAG_CFG_DIRS),$(if $(wildcard $(dir)/halconf.h),$(dir))))
 CONFDIR = ./cfg
+CHCONFDIR := $(TAG_CHCONF_DIR)
+HALCONFDIR := $(TAG_HALCONF_DIR)
 #../common/Inc
 include $(CHIBIOS)/os/license/license.mk
 # Startup files.
@@ -144,7 +152,7 @@ TCPPSRC =
 ASMSRC =
 ASMXSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 
-INCDIR = $(CONFDIR) ./inc $(TAG_FAMILY_INC_DIRS) $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
+INCDIR = $(CONFDIR) $(TAG_FAMILY_CFG_DIRS) ./inc $(TAG_FAMILY_INC_DIRS) $(MODULE_INC_DIRS) ../common/inc $(ALLINC) $(TESTINC)
 
 #
 # Project, sources and paths
@@ -206,7 +214,7 @@ UADEFS =  -DCRT0_INIT_STACKS=0
 # List all user directories here
 
 UINCDIR = $(NANOPBDIR) $(BUILDDIR) $(BUILDDIR)/.. 
-UINCDIR += inc cfg ../common/inc ${MONITORINCDIR} $(PROTODIR)
+UINCDIR += inc cfg $(TAG_FAMILY_CFG_DIRS) ../common/inc ${MONITORINCDIR} $(PROTODIR)
 
 # List the user directory to look for the libraries here
 
