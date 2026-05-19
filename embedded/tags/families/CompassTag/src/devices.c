@@ -1,10 +1,12 @@
 #include "hal.h"
 
 #include "custom.h"
+#include "device.h"
 #include "gpio_utils.h"
 #include "lis2du12.h"
 #include "power.h"
 #include "storage_device.h"
+#include "storage_flash.h"
 
 #if defined(TAG_FLASH_AT25XE)
 #include "at25xe.h"
@@ -50,6 +52,21 @@ const TagStorageDevice tagExternalFlash = {
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };
+
+static const TagDevice external_flash_device = {
+    .context = &tagExternalFlash,
+    .on = tagStorageDeviceOn,
+    .off = tagStorageDeviceOff,
+    .prepare_standby = tagStorageDevicePrepareStandby,
+    .apply_standby_pulls = tagStorageDeviceApplyStandbyPulls,
+};
+
+const TagDeviceTableEntry tagDeviceTable[] = {
+    {&external_flash_device,
+     TAG_DEVICE_PREPARE_STANDBY | TAG_DEVICE_APPLY_STANDBY_PULLS},
+};
+
+const size_t tagDeviceCount = sizeof(tagDeviceTable) / sizeof(tagDeviceTable[0]);
 
 #ifdef ACCEL_USART
 static const TagUsartBus accel_usart_bus = {

@@ -1,12 +1,10 @@
 #include "hal.h"
 #include "app.h"
+#include "device.h"
 #include "external_flash.h"
 #include "lps.h"
 #include "persistent.h"
 #include "power.h"
-#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
-#include "storage_flash.h"
-#endif
 
 /*
  * Device bus descriptors.
@@ -130,7 +128,9 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+  tagDeviceTablePrepareStandby(pState->state);
+#elif defined(TAG_HAS_EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
@@ -152,9 +152,9 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
-  tagStoragePrepareSleep(&tagExternalFlash);
-#elif defined(TAG_HAS_EXTERNAL_FLASH)
+  tagDeviceTableApplyStandbyPulls();
+
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
   tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 

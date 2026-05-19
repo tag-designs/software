@@ -1,5 +1,16 @@
 #include "external_flash.h"
+#include "rtc_api.h"
 #include "storage_flash.h"
+#include "tag.pb.h"
+
+static bool tagStorageShouldSleepForStandby(uint32_t state)
+{
+  return state == IDLE ||
+         state == ABORTED ||
+         state == FINISHED ||
+         state == EXCEPTION ||
+         state == HIBERNATING;
+}
 
 int tagStorageSectorSize(const TagStorageDevice *dev)
 {
@@ -24,6 +35,35 @@ void tagStorageSleep(const TagStorageDevice *dev)
 void tagStoragePrepareSleep(const TagStorageDevice *dev)
 {
   tagStorageDevicePrepareSleep(dev);
+}
+
+void tagStorageDeviceOn(const void *context)
+{
+  tagStorageWake((const TagStorageDevice *)context);
+}
+
+void tagStorageDeviceOff(const void *context)
+{
+  tagStorageSleep((const TagStorageDevice *)context);
+}
+
+void tagStorageDevicePrepareStandby(const void *context, uint32_t state)
+{
+  const TagStorageDevice *dev = (const TagStorageDevice *)context;
+
+  if (!tagStorageShouldSleepForStandby(state))
+  {
+    return;
+  }
+
+  tagStorageWake(dev);
+  stopMilliseconds(true, 1);
+  tagStorageSleep(dev);
+}
+
+void tagStorageDeviceApplyStandbyPulls(const void *context)
+{
+  tagStoragePrepareSleep((const TagStorageDevice *)context);
 }
 
 int tagStorageCheckID(const TagStorageDevice *dev)

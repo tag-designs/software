@@ -15,6 +15,10 @@ int tagStorageSectorCount(const TagStorageDevice *dev);
 void tagStorageWake(const TagStorageDevice *dev);
 void tagStorageSleep(const TagStorageDevice *dev);
 void tagStoragePrepareSleep(const TagStorageDevice *dev);
+void tagStorageDeviceOn(const void *context);
+void tagStorageDeviceOff(const void *context);
+void tagStorageDevicePrepareStandby(const void *context, uint32_t state);
+void tagStorageDeviceApplyStandbyPulls(const void *context);
 int tagStorageCheckID(const TagStorageDevice *dev);
 bool tagStorageWrite(const TagStorageDevice *dev, uint32_t address,
                      uint8_t *buf, int *cnt);

@@ -4,14 +4,12 @@
 #include "config.h"
 #include "core_runtime.h"
 #include "core_sync.h"
+#include "device.h"
 #include "gpio_utils.h"
 #include "persistent.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "external_flash.h"
-#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
-#include "storage_flash.h"
-#endif
 #include "lps.h"
 #ifdef TAG_SENSOR_MAG_AK09940A
 #include "ak09940a.h"
@@ -394,7 +392,9 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+  tagDeviceTablePrepareStandby(pState->state);
+#elif defined(TAG_HAS_EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
@@ -422,9 +422,9 @@ void godown(enum Sleep sleepmode)
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 #endif
 
-#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
-  tagStoragePrepareSleep(&tagExternalFlash);
-#elif defined(TAG_HAS_EXTERNAL_FLASH)
+  tagDeviceTableApplyStandbyPulls();
+
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
   tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 

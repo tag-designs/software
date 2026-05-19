@@ -2,8 +2,10 @@
 
 #include "at25xe.h"
 #include "custom.h"
+#include "device.h"
 #include "power.h"
 #include "storage_device.h"
+#include "storage_flash.h"
 
 /*
  * PresTag board bindings for shared external-flash storage code.
@@ -36,3 +38,18 @@ const TagStorageDevice tagExternalFlash = {
     .sector_size = AT25XE_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };
+
+static const TagDevice external_flash_device = {
+    .context = &tagExternalFlash,
+    .on = tagStorageDeviceOn,
+    .off = tagStorageDeviceOff,
+    .prepare_standby = tagStorageDevicePrepareStandby,
+    .apply_standby_pulls = tagStorageDeviceApplyStandbyPulls,
+};
+
+const TagDeviceTableEntry tagDeviceTable[] = {
+    {&external_flash_device,
+     TAG_DEVICE_PREPARE_STANDBY | TAG_DEVICE_APPLY_STANDBY_PULLS},
+};
+
+const size_t tagDeviceCount = sizeof(tagDeviceTable) / sizeof(tagDeviceTable[0]);

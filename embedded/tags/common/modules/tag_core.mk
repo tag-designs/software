@@ -8,6 +8,7 @@ include $(TAG_COMMON_MODULE_DIR)/sensor_paths.mk
 
 ALLCSRC += \
        bus_power.c \
+       device.c \
        handlers.c \
        i2c_bus.c \
        main.c \
