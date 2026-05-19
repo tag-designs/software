@@ -3,6 +3,7 @@
 #include "external_flash.h"
 #include "power.h"
 #include "rtc_api.h"
+#include "storage_spi.h"
 
 #define AT25XE_SECTOR_SIZE                     (4096)
 
@@ -48,96 +49,11 @@
 extern void FlashSpiOn(void);
 extern void FlashSpiOff(void);
 
-/*
- * Storage still predates the descriptor-based bus model used by newer sensor
- * drivers. These helpers intentionally preserve the AT25XE command framing:
- * chip select stays asserted across command, address, and data phases. When
- * storage is refactored, keep that transaction shape in the chip driver while
- * moving the SPI bus descriptor and optimized byte loops out of this file.
- */
-static void spiSendPolled(uint32_t n, uint8_t *buf)
-{
-    volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-    while (n--)
-    {
-        *spidr = *buf++;
-        while ((SPI1->SR & SPI_SR_RXNE) == 0)
-            ;
-        *spidr;
-    }
-}
-
-static void spiReceivePolled(uint32_t n, uint8_t *buf)
-{
-    volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-    while (n--)
-    {
-        *spidr = 0xff;
-        while ((SPI1->SR & SPI_SR_RXNE) == 0)
-            ;
-        *buf++ = *spidr;
-    }
-}
-
-static void spi_addr(uint32_t address)
-{
-    uint8_t buf[3];
-    buf[0] = address >> 16;
-    buf[1] = address >> 8;
-    buf[2] = address & 0xff;
-    spiSendPolled(3, buf);
-}
-
-static void spi_cmd(uint8_t cmd)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_addr(uint8_t cmd, uint32_t address)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_rcv(uint8_t cmd, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spiReceivePolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_addr_rcv(uint8_t cmd, uint32_t address, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    spiReceivePolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-/*
-static void spi_cmd_snd(uint8_t cmd, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spiSendPolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-*/
-
-static void spi_cmd_addr_snd(uint8_t cmd, uint32_t address, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    spiSendPolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
+static const TagSpiBus at25xe_spi_bus = {
+    .spi = SPI1,
+    .cs = LINE_FLASH_nCS,
+    .dummy = 0xff,
+};
 
 int ExSectorSize(void) {
     return AT25XE_SECTOR_SIZE;
@@ -151,27 +67,28 @@ void ExFlashPwrUp(void)
 {
     FlashSpiOn();
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
-    spi_cmd(AT25XE_CMD_POWER_UP);
+    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_POWER_UP);
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
 }
 
 
 void ExFlashPwrDown()
 {
-    spi_cmd(AT25XE_CMD_DEEP_POWER_DOWN);
+    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_DEEP_POWER_DOWN);
     FlashSpiOff();
 }
 
 static uint8_t at25xe_Status(void)
 {
     uint8_t buf;
-    spi_cmd_rcv(AT25XE_CMD_READ_STATUS_REG, &buf, 1);
+    tagStorageSpiCommandReceive(&at25xe_spi_bus, AT25XE_CMD_READ_STATUS_REG,
+                                &buf, 1);
     return buf;
 }
 
 int ExCheckID(void) {
     uint8_t id[3];
-    spi_cmd_rcv(AT25XE_CMD_READ_ID, id, 3);
+    tagStorageSpiCommandReceive(&at25xe_spi_bus, AT25XE_CMD_READ_ID, id, 3);
     if (id[0] != 0x1F)
         return -1;
     if (id[1] != 0x47)
@@ -189,9 +106,11 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
         int max = 256 - address%256;
         int bytes = num > max ? max : num; 
 
-        spi_cmd(AT25XE_CMD_WRITE_ENABLE);
+        tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_WRITE_ENABLE);
         at25xe_Status(); // check status after wel -- debug
-        spi_cmd_addr_snd(AT25XE_CMD_PAGE_PROG, address, buf, bytes);
+        tagStorageSpiCommandAddressSend(&at25xe_spi_bus,
+                                        AT25XE_CMD_PAGE_PROG, address, buf,
+                                        bytes);
         for (i = 0; i < 12; i++)
         {
             stopMilliseconds(true,1);
@@ -217,8 +136,9 @@ bool ExFlashSectorErase(uint32_t address)
     status = at25xe_Status();
     if (status & (AT25XE_FLAGS_SR_WIP))
         return false;
-    spi_cmd(AT25XE_CMD_WRITE_ENABLE);
-    spi_cmd_addr(AT25XE_CMD_SECTOR_ERASE, address);
+    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_WRITE_ENABLE);
+    tagStorageSpiCommandAddress(&at25xe_spi_bus, AT25XE_CMD_SECTOR_ERASE,
+                                address);
     for (i = 0; i < 5; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
@@ -235,5 +155,6 @@ bool ExFlashSectorErase(uint32_t address)
 
 void ExFlashRead(uint32_t address, uint8_t *buf, int num)
 {
-    spi_cmd_addr_rcv(AT25XE_CMD_READ, address, buf, num);
+    tagStorageSpiCommandAddressReceive(&at25xe_spi_bus, AT25XE_CMD_READ,
+                                       address, buf, num);
 }

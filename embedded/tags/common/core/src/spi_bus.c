@@ -10,6 +10,10 @@
  * while centralizing the repeated full-duplex drain/read loops. This file also
  * owns the shared SPI controller configuration, active-state tracking, and bus
  * mutex for descriptor-backed SPI devices.
+ *
+ * Storage flash drivers can be more sensitive to command/address/data pacing.
+ * They should use storage_spi.h when they need byte-at-a-time transfers with
+ * chip select held across a complete flash transaction.
  */
 
 static bool spi1_on = false;

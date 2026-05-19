@@ -28,16 +28,23 @@ The selected storage module chooses the chip implementation:
 Storage drivers still mix three concerns:
 
 - chip command formats and polling rules;
-- SPI transaction framing and optimized polled byte transfers;
 - assumptions about the tag's flash bus and chip-select line.
 
-That is older than the sensor descriptor model. It works, but it is harder to
-maintain than the newer split where tag/family code owns the board descriptor
-and the chip driver owns only chip commands.
+The AT25XE driver has started moving toward the newer model by using
+`storage_spi.h` for command/address/data transaction framing. That helper
+intentionally uses conservative byte-at-a-time SPI transfers, even though the
+core SPI layer also has pipelined stream helpers. The flash command path keeps
+chip select asserted across tightly ordered command, address, and data phases,
+and the byte-paced transfer matches the behavior that has tested correctly for
+erase/write/read operations. MX25R and MX25L still carry local copies of similar
+helpers. All storage drivers still assume the tag's flash bus and chip-select
+line directly, which is older than the sensor descriptor model. It works, but it
+is harder to maintain than the newer split where tag/family code owns the board
+descriptor and the chip driver owns only chip commands.
 
 ## Planned Cleanup
 
-Move toward a small external-flash device descriptor that carries the SPI bus,
-chip-select framing, and optimized read/write helpers. Keep each chip's command
-format in its own driver. The cleanup should preserve the current `Ex*` API
-until datalog users are migrated.
+Move toward a small external-flash device descriptor that carries the SPI bus
+and chip-select line. Keep each chip's command format in its own driver and
+use `storage_spi.h` for common command framing. The cleanup should preserve the
+current `Ex*` API until datalog users are migrated.
