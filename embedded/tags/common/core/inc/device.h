@@ -16,13 +16,26 @@ typedef struct {
   const void *context;
   void (*on)(const void *context);
   void (*off)(const void *context);
+  /*
+   * State-aware device quiescing before standby.
+   *
+   * This hook is for device protocol work, such as putting external flash into
+   * deep sleep for final states. It runs before the MCU standby pin pulls are
+   * configured.
+   */
   void (*prepare_standby)(const void *context, uint32_t state);
-  void (*apply_standby_pulls)(const void *context);
+  /*
+   * MCU standby pin configuration for this device.
+   *
+   * This hook should not talk to the device. It only configures the PWR standby
+   * pullup/pulldown registers for the already-described device pins.
+   */
+  void (*apply_standby_pins)(const void *context);
 } TagDevice;
 
 typedef enum {
   TAG_DEVICE_PREPARE_STANDBY = 1u << 0,
-  TAG_DEVICE_APPLY_STANDBY_PULLS = 1u << 1,
+  TAG_DEVICE_APPLY_STANDBY_PINS = 1u << 1,
 } TagDeviceFlags;
 
 typedef struct {
@@ -36,8 +49,8 @@ extern const size_t tagDeviceCount;
 void tagDeviceOn(const TagDevice *device);
 void tagDeviceOff(const TagDevice *device);
 void tagDevicePrepareStandby(const TagDevice *device, uint32_t state);
-void tagDeviceApplyStandbyPulls(const TagDevice *device);
+void tagDeviceApplyStandbyPins(const TagDevice *device);
 void tagDeviceTablePrepareStandby(uint32_t state);
-void tagDeviceTableApplyStandbyPulls(void);
+void tagDeviceTableApplyStandbyPins(void);
 
 #endif

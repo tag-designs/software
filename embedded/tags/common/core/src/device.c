@@ -37,16 +37,22 @@ void tagDevicePrepareStandby(const TagDevice *device, uint32_t state)
   }
 }
 
-void tagDeviceApplyStandbyPulls(const TagDevice *device)
+void tagDeviceApplyStandbyPins(const TagDevice *device)
 {
-  if (device && device->apply_standby_pulls)
+  if (device && device->apply_standby_pins)
   {
-    device->apply_standby_pulls(device->context);
+    device->apply_standby_pins(device->context);
   }
 }
 
 void tagDeviceTablePrepareStandby(uint32_t state)
 {
+  /*
+   * Protocol-level standby preparation.
+   *
+   * Examples: tell external flash to enter deep sleep, but only for system
+   * states where the tag will remain asleep long enough to benefit.
+   */
   for (size_t i = 0; i < tagDeviceCount; i++)
   {
     if (tagDeviceTable[i].flags & TAG_DEVICE_PREPARE_STANDBY)
@@ -56,13 +62,21 @@ void tagDeviceTablePrepareStandby(uint32_t state)
   }
 }
 
-void tagDeviceTableApplyStandbyPulls(void)
+void tagDeviceTableApplyStandbyPins(void)
 {
+  /*
+   * MCU standby pin preparation.
+   *
+   * These callbacks should only program standby pullup/pulldown state for the
+   * device's pins. They are separate from prepare_standby because some devices
+   * need protocol commands before standby, while every board still needs safe
+   * GPIO state before entering the processor low-power mode.
+   */
   for (size_t i = 0; i < tagDeviceCount; i++)
   {
-    if (tagDeviceTable[i].flags & TAG_DEVICE_APPLY_STANDBY_PULLS)
+    if (tagDeviceTable[i].flags & TAG_DEVICE_APPLY_STANDBY_PINS)
     {
-      tagDeviceApplyStandbyPulls(tagDeviceTable[i].device);
+      tagDeviceApplyStandbyPins(tagDeviceTable[i].device);
     }
   }
 }

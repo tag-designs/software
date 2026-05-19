@@ -422,7 +422,7 @@ void godown(enum Sleep sleepmode)
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 #endif
 
-  tagDeviceTableApplyStandbyPulls();
+  tagDeviceTableApplyStandbyPins();
 
 #if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
   tagSpiDevicePrepareSleep(&flash_bus);

@@ -152,7 +152,7 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-  tagDeviceTableApplyStandbyPulls();
+  tagDeviceTableApplyStandbyPins();
 
 #if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
   tagSpiDevicePrepareSleep(&flash_bus);

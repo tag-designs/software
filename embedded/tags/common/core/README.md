@@ -15,6 +15,9 @@ active tags unless a tag provides a same-named local override.
 - `time.c`: RTC/ticker/alarm helpers and low-power sleep entry.
 - `pwr.c`: default power policy for tags that do not provide local/family
   power code.
+- `device.c`: generic table walker for tag/family device descriptors. It lets
+  `pwr.c` ask each converted device to prepare for standby without knowing the
+  device type.
 - `bus_power.c`: board-line descriptor helpers for SPI/I2C device power,
   bus-session setup, standby pulls, and Stop2 bus suspend/resume orchestration.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level byte/register transfers
@@ -24,6 +27,19 @@ active tags unless a tag provides a same-named local override.
   the `debug_log` module.
 
 ## Power And Bus Ownership
+
+The standby path has two layers:
+
+- `TagDevice.prepare_standby`: protocol-level work before standby. For example,
+  external flash may be woken briefly and then commanded into its chip-level
+  sleep mode for final states.
+- `TagDevice.apply_standby_pins`: MCU pin policy before standby. This should
+  only program standby pullup/pulldown state for the device pins. The lower
+  bus helpers, such as `tagSpiDevicePrepareSleep()`, translate a device
+  descriptor's sleep policy into the actual PWR pull registers.
+
+Tag or family `devices.c` files provide `tagDeviceTable[]`; older tags can
+omit the table and use the weak empty default while the migration continues.
 
 Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 

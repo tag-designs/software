@@ -56,12 +56,12 @@ static const TagDevice external_flash_device = {
     .on = tagStorageDeviceOn,
     .off = tagStorageDeviceOff,
     .prepare_standby = tagStorageDevicePrepareStandby,
-    .apply_standby_pulls = tagStorageDeviceApplyStandbyPulls,
+    .apply_standby_pins = tagStorageDeviceApplyStandbyPins,
 };
 
 const TagDeviceTableEntry tagDeviceTable[] = {
     {&external_flash_device,
-     TAG_DEVICE_PREPARE_STANDBY | TAG_DEVICE_APPLY_STANDBY_PULLS},
+     TAG_DEVICE_PREPARE_STANDBY | TAG_DEVICE_APPLY_STANDBY_PINS},
 };
 
 const size_t tagDeviceCount = sizeof(tagDeviceTable) / sizeof(tagDeviceTable[0]);

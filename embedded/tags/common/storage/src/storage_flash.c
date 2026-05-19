@@ -37,6 +37,13 @@ void tagStoragePrepareSleep(const TagStorageDevice *dev)
   tagStorageDevicePrepareSleep(dev);
 }
 
+/*
+ * TagDevice adapter callbacks for external flash.
+ *
+ * The storage layer still owns chip-level command dispatch. The generic device
+ * table calls these wrappers with a void context so pwr.c can iterate over
+ * board devices without knowing about TagStorageDevice internals.
+ */
 void tagStorageDeviceOn(const void *context)
 {
   tagStorageWake((const TagStorageDevice *)context);
@@ -61,8 +68,12 @@ void tagStorageDevicePrepareStandby(const void *context, uint32_t state)
   tagStorageSleep(dev);
 }
 
-void tagStorageDeviceApplyStandbyPulls(const void *context)
+void tagStorageDeviceApplyStandbyPins(const void *context)
 {
+  /*
+   * For SPI flash this bottoms out in tagSpiDevicePrepareSleep(), where the
+   * SPI descriptor's sleep_policy maps pins to standby pullup/pulldown state.
+   */
   tagStoragePrepareSleep((const TagStorageDevice *)context);
 }
 
