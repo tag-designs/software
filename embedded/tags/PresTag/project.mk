@@ -16,4 +16,5 @@ include ../common/modules/modules.mk
 ALLCSRC += \
        config.c \
        datalog.c \
+       devices.c \
        state_run.c

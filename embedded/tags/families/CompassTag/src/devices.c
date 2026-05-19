@@ -4,6 +4,20 @@
 #include "gpio_utils.h"
 #include "lis2du12.h"
 #include "power.h"
+#include "external_flash.h"
+#include "storage_device.h"
+
+#if defined(TAG_FLASH_AT25XE)
+#include "at25xe.h"
+#define EXTERNAL_FLASH_OPS (&at25xeStorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE AT25XE_SECTOR_SIZE
+#elif defined(TAG_FLASH_MX25R)
+#include "mx25r.h"
+#define EXTERNAL_FLASH_OPS (&mx25rStorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE MX25R_SECTOR_SIZE
+#else
+#error "CompassTag family requires a supported external flash module"
+#endif
 
 /*
  * CompassTag-family device bindings that are not yet general tag drivers.
@@ -12,6 +26,21 @@
  * and sampling needs, so keep its TagLis2du12Device descriptor beside the
  * family code instead of burying it in the shared power file.
  */
+
+static const TagSpiBus external_flash_spi_bus = {
+    .spi = SPI1,
+    .cs = LINE_FLASH_nCS,
+    .dummy = 0xff,
+};
+
+const TagStorageDevice tagExternalFlash = {
+    .ops = EXTERNAL_FLASH_OPS,
+    .spi = &external_flash_spi_bus,
+    .enable = FlashSpiOn,
+    .disable = FlashSpiOff,
+    .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
+    .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
+};
 
 #ifdef ACCEL_USART
 static const TagUsartBus accel_usart_bus = {

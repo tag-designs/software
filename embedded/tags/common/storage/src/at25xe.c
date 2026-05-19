@@ -1,7 +1,7 @@
 #include "hal.h"
 #include "custom.h"
-#include "power.h"
 #include "rtc_api.h"
+#include "at25xe.h"
 #include "storage_device.h"
 #include "storage_spi.h"
 
@@ -45,15 +45,6 @@
 #define AT25XE_FLAGS_SECR_ESB                  ((uint8_t)0x08)    /* Erase suspend bit */
 #define AT25XE_FLAGS_SECR_P_FAIL               ((uint8_t)0x20)    /* Program fail flag */
 #define AT25XE_FLAGS_SECR_E_FAIL               ((uint8_t)0x40)    /* Erase fail flag */
-
-extern void FlashSpiOn(void);
-extern void FlashSpiOff(void);
-
-static const TagSpiBus at25xe_spi_bus = {
-    .spi = SPI1,
-    .cs = LINE_FLASH_nCS,
-    .dummy = 0xff,
-};
 
 static void at25xeWake(const TagStorageDevice *dev)
 {
@@ -150,20 +141,11 @@ static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
                                        num);
 }
 
-static const TagStorageOps at25xe_ops = {
+const TagStorageOps at25xeStorageOps = {
     .wake = at25xeWake,
     .sleep = at25xeSleep,
     .check_id = at25xeCheckID,
     .write = at25xeWrite,
     .sector_erase = at25xeSectorErase,
     .read = at25xeRead,
-};
-
-const TagStorageDevice tagExternalFlash = {
-    .ops = &at25xe_ops,
-    .spi = &at25xe_spi_bus,
-    .enable = FlashSpiOn,
-    .disable = FlashSpiOff,
-    .sector_size = AT25XE_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };

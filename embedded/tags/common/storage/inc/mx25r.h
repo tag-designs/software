@@ -1,6 +1,8 @@
 #ifndef _MX25R_H_
 #define _MX25R_H_
 
+#include "storage_device.h"
+
 #define MX25R_MANUFACTURE_ID                  ((uint8_t) 0xC2)
 #define MX25R_MEMORY_TYPE_ID                  ((uint8_t) 0x28)
 #define MX25R_MEMORY_TYPE                     (DID[0])
@@ -32,5 +34,7 @@
 #define MX25R_FLAGS_SECR_ESB                  ((uint8_t)0x08)    /* Erase suspend bit */
 #define MX25R_FLAGS_SECR_P_FAIL               ((uint8_t)0x20)    /* Program fail flag */
 #define MX25R_FLAGS_SECR_E_FAIL               ((uint8_t)0x40)    /* Erase fail flag */
+
+extern const TagStorageOps mx25rStorageOps;
 
 #endif 

@@ -16,5 +16,6 @@ ALLCSRC := $(filter-out test.c,$(ALLCSRC))
 ALLCSRC += \
        $(BITPRESTAG_FAMILY_DIR)/src/config.c \
        $(BITPRESTAG_FAMILY_DIR)/src/datalog.c \
+       $(BITPRESTAG_FAMILY_DIR)/src/devices.c \
        $(BITPRESTAG_FAMILY_DIR)/src/state_run.c \
        $(BITPRESTAG_FAMILY_DIR)/src/test.c

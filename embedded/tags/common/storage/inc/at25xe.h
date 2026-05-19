@@ -1,6 +1,8 @@
 #ifndef _AT25XE_H_
 #define _AT25XE_H_
 
+#include "storage_device.h"
+
 #define AT25XE_MANUFACTURE_ID                  ((uint8_t) 0x1F)
 #define AT25XE_MEMORY_TYPE_ID                  ((uint8_t) 0x47)
 #define AT25XE_MEMORY_TYPE                     (DID[0])
@@ -60,5 +62,6 @@ void at25xe_deepPwrUp(void);
 
 // Write Status and Config registers
 
+extern const TagStorageOps at25xeStorageOps;
   
 #endif 
