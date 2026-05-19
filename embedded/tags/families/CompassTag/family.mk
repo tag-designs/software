@@ -13,12 +13,9 @@ TAG_FAMILY_CFG_DIRS += $(COMPASSTAG_FAMILY_DIR)/cfg
 
 UDEFS += -DTAG_SENSOR_ACCEL_LIS2DU12=1
 
-ALLCSRC := $(filter-out pwr.c,$(ALLCSRC))
-
 ALLCSRC += \
        config.c \
        devices.c \
        lis2du12.c \
        lis2du12_test.c \
-       $(COMPASSTAG_FAMILY_DIR)/src/pwr.c \
        $(COMPASSTAG_FAMILY_DIR)/src/sensors.c

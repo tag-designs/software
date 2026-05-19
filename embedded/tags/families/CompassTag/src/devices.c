@@ -104,6 +104,12 @@ const TagLis2du12Device *tagLis2du12Device(void)
 
 void tagPrepareDevicesForStandby(void)
 {
+#if defined(TAG_SENSOR_MAG_AK09940A) && defined(COMPASS_TAG)
+  tagEnableStandbyPulldown(LINE_MAG_CS);
+  tagEnableStandbyPulldown(LINE_MAG_SCK);
+  tagEnableStandbyPulldown(LINE_MAG_MOSI);
+#endif
+
   tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagEnableStandbyPulldown(LINE_ACCEL_TX);
   tagEnableStandbyPulldown(LINE_ACCEL_SCK);

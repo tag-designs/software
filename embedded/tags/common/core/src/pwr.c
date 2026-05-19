@@ -72,6 +72,7 @@ void rtcOff(void)
 
 // SPI Devices
 
+#if defined(LPS_SPI) || ((defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)) && !defined(ACCEL_USART))
 static void spiEnable(void)
 {
   rccEnableSPI1(0);
@@ -102,6 +103,7 @@ static void spiDisable(void)
   SPI1->CR2 = 0;
   tagMarkSpi1Off();
 }
+#endif
 
 #ifdef TAG_SENSOR_MAG_AK09940A
 #if defined(LINE_MAG_CS) && defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
