@@ -147,6 +147,9 @@ void tagSpiBusBegin(const TagSpiDevice *device)
     chBSemWait(controller->mutex);
   }
 
+  palSetLine(device->cs);
+  toOutput(device->cs);
+
   toAlternate(device->sck);
   toAlternate(device->miso);
   toAlternate(device->mosi);
