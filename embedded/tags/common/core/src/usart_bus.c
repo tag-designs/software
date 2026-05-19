@@ -11,6 +11,13 @@
 static bool usart2_on = false;
 static bool usart2_suspended_for_stop = false;
 
+const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
+    .brr = 0x10,
+    .cr1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE,
+    .cr2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL,
+    .cr3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT,
+};
+
 bool isUsart2On(void)
 {
   return usart2_on;
@@ -30,19 +37,26 @@ void tagMarkUsart2Off(void)
 #endif
 }
 
-void tagUsart2SyncEnable(void)
+void tagUsart2SyncEnable(const TagUsartSyncConfig *config)
 {
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
+  if (!config)
+  {
+    config = &tagUsart2SyncDefaultConfig;
+  }
+
   rccEnableUSART2(true);
   rccResetUSART2();
 
   // Synchronous USART mode, MSB first. Several tags use USART2 as a
   // three-wire SPI-like sensor bus when the device is not routed to SPI.
-  USART2->BRR = 0x10;
-  USART2->CR2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL;
-  USART2->CR3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT;
-  USART2->CR1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+  USART2->BRR = config->brr;
+  USART2->CR2 = config->cr2;
+  USART2->CR3 = config->cr3;
+  USART2->CR1 = config->cr1;
   tagMarkUsart2On();
+#else
+  (void)config;
 #endif
 }
 

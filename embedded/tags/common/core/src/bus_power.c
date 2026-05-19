@@ -104,7 +104,7 @@ void tagSpiBusBegin(const TagSpiDevice *device)
 
   if (controller && controller->enable)
   {
-    controller->enable();
+    controller->enable(device->config);
   }
 }
 

@@ -16,6 +16,7 @@
 #ifdef ACCEL_USART
 static const TagUsartBus accel_usart_bus = {
     .usart = USART2,
+    .config = &tagUsart2SyncDefaultConfig,
     .cs = LINE_ACCEL_CS,
     .dummy = 0xff,
 };
@@ -41,7 +42,7 @@ void accelOn(void)
   toAlternate(LINE_ACCEL_TX);
   toAlternate(LINE_ACCEL_RX);
 
-  tagUsart2SyncEnable();
+  tagUsart2SyncEnable(accel_usart_bus.config);
 }
 
 void accelOff(void)

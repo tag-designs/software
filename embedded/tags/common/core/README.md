@@ -30,8 +30,13 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 - `tagSpiDevicePowerOn/Off()` handles optional switched device power and safe
   pin states.
 - `tagSpiBusBegin/End()` handles alternate functions and delegates mutex plus
-  SPI controller enable/disable to the shared controller descriptor.
+  SPI controller enable/disable to the shared controller descriptor. The
+  device descriptor supplies the `TagSpiConfig` used for that bus session.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
+
+USART-backed sensor buses follow the same split: the device-side
+`TagUsartBus` descriptor supplies a `TagUsartSyncConfig`, while `usart_bus.c`
+owns the USART2 register setup and stop/resume mechanics.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
 and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates

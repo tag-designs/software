@@ -186,10 +186,13 @@ separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
 `tagSpiBusEnd()` own pin alternate functions and use the shared controller
-descriptor for the bus mutex plus controller enable/disable sequence. The
+descriptor for the bus mutex plus controller enable/disable sequence. Each SPI
+device descriptor also points at the `TagSpiConfig` for that session. The
 default flash SPI path uses the same descriptor flow, so flash standby pulls
 come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
-block.
+block. USART-style sensor buses use the same idea: the `TagUsartBus`
+descriptor carries a `TagUsartSyncConfig` while `usart_bus.c` owns the
+register write mechanics.
 The default power file also carries the standard AK09940A magnetometer binding
 for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names. If an older board file uses historical names, add

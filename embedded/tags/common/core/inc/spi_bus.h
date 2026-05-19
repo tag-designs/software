@@ -6,10 +6,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Register settings used when a device opens an SPI bus session.
+typedef struct {
+  uint32_t cr1;
+  uint32_t cr2;
+} TagSpiConfig;
+
 // SPI controller register setup and bus arbitration.
 typedef struct {
   binary_semaphore_t *mutex;
-  void (*enable)(void);
+  void (*enable)(const TagSpiConfig *config);
   void (*disable)(void);
 } TagSpiController;
 
@@ -24,6 +30,7 @@ typedef struct {
   uint8_t dummy;
 } TagSpiBus;
 
+extern const TagSpiConfig tagSpiDefaultConfig;
 extern const TagSpiController tagSpi1DefaultController;
 
 bool isSpi1On(void);

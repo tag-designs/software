@@ -57,15 +57,25 @@ void tagSpiEnableActiveAfterStop(void)
 }
 
 #if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-static void spi1DefaultEnable(void)
+const TagSpiConfig tagSpiDefaultConfig = {
+    .cr1 = SPI_CR1_MSTR,
+    .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
+           SPI_CR2_DS_1 | SPI_CR2_DS_0,
+};
+
+static void spi1DefaultEnable(const TagSpiConfig *config)
 {
+  if (!config)
+  {
+    config = &tagSpiDefaultConfig;
+  }
+
   rccEnableSPI1(0);
   rccResetSPI1();
 
   SPI1->CR1 = 0;
-  SPI1->CR2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
-              SPI_CR2_DS_1 | SPI_CR2_DS_0;
-  SPI1->CR1 = SPI_CR1_MSTR;
+  SPI1->CR2 = config->cr2;
+  SPI1->CR1 = config->cr1;
   SPI1->CR1 |= SPI_CR1_SPE;
   tagMarkSpi1On();
 }
@@ -77,8 +87,14 @@ static void spi1DefaultDisable(void)
   tagMarkSpi1Off();
 }
 #else
-static void spi1DefaultEnable(void)
+const TagSpiConfig tagSpiDefaultConfig = {
+    .cr1 = 0,
+    .cr2 = 0,
+};
+
+static void spi1DefaultEnable(const TagSpiConfig *config)
 {
+  (void)config;
 }
 
 static void spi1DefaultDisable(void)

@@ -66,6 +66,7 @@ static const TagRegisterBus lps_registers = {
 #elif defined(LPS_USART)
 static const TagUsartBus lps_usart_bus = {
   .usart = USART2,
+  .config = &tagUsart2SyncDefaultConfig,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
 };

@@ -125,6 +125,7 @@ static void spiDisable(void)
 
 static const TagSpiDevice ak09940a_bus = {
     .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
     .cs = AK09940A_CS,
     .sck = AK09940A_SCK,
     .miso = AK09940A_MISO,
@@ -248,6 +249,7 @@ const TagMagDevice *tagAk09940aDevice(void)
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 static const TagSpiDevice flash_bus = {
     .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,
@@ -270,7 +272,7 @@ void lpsOn(void)
   toAlternate(LINE_LPS_TX);
   toAlternate(LINE_LPS_RX);
 
-  tagUsart2SyncEnable();
+  tagUsart2SyncEnable(&tagUsart2SyncDefaultConfig);
 }
 
 void lpsOff(void)

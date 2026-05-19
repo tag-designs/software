@@ -15,15 +15,25 @@
  * protocols on top of this layer through sensor_io.
  */
 typedef struct {
+  uint32_t brr;
+  uint32_t cr1;
+  uint32_t cr2;
+  uint32_t cr3;
+} TagUsartSyncConfig;
+
+typedef struct {
   USART_TypeDef *usart;
+  const TagUsartSyncConfig *config;
   ioline_t cs;
   uint8_t dummy;
 } TagUsartBus;
 
+extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
+
 bool isUsart2On(void);
 void tagMarkUsart2On(void);
 void tagMarkUsart2Off(void);
-void tagUsart2SyncEnable(void);
+void tagUsart2SyncEnable(const TagUsartSyncConfig *config);
 void tagUsart2SyncDisable(void);
 void tagUsartDisableActiveForStop(void);
 void tagUsartEnableActiveAfterStop(void);

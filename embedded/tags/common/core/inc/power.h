@@ -22,6 +22,7 @@ typedef enum {
 // and register setup.
 typedef struct {
   const TagSpiController *controller;
+  const TagSpiConfig *config;
   ioline_t cs;
   ioline_t sck;
   ioline_t miso;
