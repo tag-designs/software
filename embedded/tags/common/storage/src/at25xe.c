@@ -3,6 +3,7 @@
 #include "external_flash.h"
 #include "power.h"
 #include "rtc_api.h"
+#include "storage_device.h"
 #include "storage_spi.h"
 
 #define AT25XE_SECTOR_SIZE                     (4096)
@@ -55,40 +56,49 @@ static const TagSpiBus at25xe_spi_bus = {
     .dummy = 0xff,
 };
 
-int ExSectorSize(void) {
-    return AT25XE_SECTOR_SIZE;
-}
+static const TagStorageDevice at25xe_device = {
+    .spi = &at25xe_spi_bus,
+    .enable = FlashSpiOn,
+    .disable = FlashSpiOff,
+    .sector_size = AT25XE_SECTOR_SIZE,
+    .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
+};
 
-int ExSectorCount(void) {  
-    return EXT_FLASH_SIZE/AT25XE_SECTOR_SIZE;
-}
-
-void ExFlashPwrUp(void)
+static int at25xeSectorSize(const TagStorageDevice *dev)
 {
-    FlashSpiOn();
+    return dev->sector_size;
+}
+
+static int at25xeSectorCount(const TagStorageDevice *dev)
+{
+    return dev->sector_count;
+}
+
+static void at25xePowerUp(const TagStorageDevice *dev)
+{
+    tagStorageDeviceEnable(dev);
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
-    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_POWER_UP);
+    tagStorageSpiCommand(dev->spi, AT25XE_CMD_POWER_UP);
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
 }
 
-
-void ExFlashPwrDown()
+static void at25xePowerDown(const TagStorageDevice *dev)
 {
-    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_DEEP_POWER_DOWN);
-    FlashSpiOff();
+    tagStorageSpiCommand(dev->spi, AT25XE_CMD_DEEP_POWER_DOWN);
+    tagStorageDeviceDisable(dev);
 }
 
-static uint8_t at25xe_Status(void)
+static uint8_t at25xeStatus(const TagStorageDevice *dev)
 {
     uint8_t buf;
-    tagStorageSpiCommandReceive(&at25xe_spi_bus, AT25XE_CMD_READ_STATUS_REG,
-                                &buf, 1);
+    tagStorageSpiCommandReceive(dev->spi, AT25XE_CMD_READ_STATUS_REG, &buf, 1);
     return buf;
 }
 
-int ExCheckID(void) {
+static int at25xeCheckID(const TagStorageDevice *dev)
+{
     uint8_t id[3];
-    tagStorageSpiCommandReceive(&at25xe_spi_bus, AT25XE_CMD_READ_ID, id, 3);
+    tagStorageSpiCommandReceive(dev->spi, AT25XE_CMD_READ_ID, id, 3);
     if (id[0] != 0x1F)
         return -1;
     if (id[1] != 0x47)
@@ -96,7 +106,8 @@ int ExCheckID(void) {
     return (1<<((id[1]& 0x1f)+9));
 }
 
-bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
+static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
+                        uint8_t *buf, int *cnt)
 {
     int num = *cnt;
     int i;
@@ -106,15 +117,14 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
         int max = 256 - address%256;
         int bytes = num > max ? max : num; 
 
-        tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_WRITE_ENABLE);
-        at25xe_Status(); // check status after wel -- debug
-        tagStorageSpiCommandAddressSend(&at25xe_spi_bus,
-                                        AT25XE_CMD_PAGE_PROG, address, buf,
-                                        bytes);
+        tagStorageSpiCommand(dev->spi, AT25XE_CMD_WRITE_ENABLE);
+        at25xeStatus(dev); // check status after wel -- debug
+        tagStorageSpiCommandAddressSend(dev->spi, AT25XE_CMD_PAGE_PROG,
+                                        address, buf, bytes);
         for (i = 0; i < 12; i++)
         {
             stopMilliseconds(true,1);
-            uint8_t status = at25xe_Status();
+            uint8_t status = at25xeStatus(dev);
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
         } 
@@ -128,21 +138,20 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
     return true;
 }
 
-bool ExFlashSectorErase(uint32_t address)
+static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
 {
     uint8_t status;
     int i;
 
-    status = at25xe_Status();
+    status = at25xeStatus(dev);
     if (status & (AT25XE_FLAGS_SR_WIP))
         return false;
-    tagStorageSpiCommand(&at25xe_spi_bus, AT25XE_CMD_WRITE_ENABLE);
-    tagStorageSpiCommandAddress(&at25xe_spi_bus, AT25XE_CMD_SECTOR_ERASE,
-                                address);
+    tagStorageSpiCommand(dev->spi, AT25XE_CMD_WRITE_ENABLE);
+    tagStorageSpiCommandAddress(dev->spi, AT25XE_CMD_SECTOR_ERASE, address);
     for (i = 0; i < 5; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
-        status = at25xe_Status();
+        status = at25xeStatus(dev);
         if (!(status & AT25XE_FLAGS_SR_WIP))
             break;
     }
@@ -153,8 +162,47 @@ bool ExFlashSectorErase(uint32_t address)
     return true;
 }
 
+static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
+                       uint8_t *buf, int num)
+{
+    tagStorageSpiCommandAddressReceive(dev->spi, AT25XE_CMD_READ, address, buf,
+                                       num);
+}
+
+int ExSectorSize(void) {
+    return at25xeSectorSize(&at25xe_device);
+}
+
+int ExSectorCount(void) {
+    return at25xeSectorCount(&at25xe_device);
+}
+
+void ExFlashPwrUp(void)
+{
+    at25xePowerUp(&at25xe_device);
+}
+
+void ExFlashPwrDown()
+{
+    at25xePowerDown(&at25xe_device);
+}
+
+int ExCheckID(void)
+{
+    return at25xeCheckID(&at25xe_device);
+}
+
+bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
+{
+    return at25xeWrite(&at25xe_device, address, buf, cnt);
+}
+
+bool ExFlashSectorErase(uint32_t address)
+{
+    return at25xeSectorErase(&at25xe_device, address);
+}
+
 void ExFlashRead(uint32_t address, uint8_t *buf, int num)
 {
-    tagStorageSpiCommandAddressReceive(&at25xe_spi_bus, AT25XE_CMD_READ,
-                                       address, buf, num);
+    at25xeRead(&at25xe_device, address, buf, num);
 }

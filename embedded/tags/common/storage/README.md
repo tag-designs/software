@@ -42,6 +42,11 @@ line directly, which is older than the sensor descriptor model. It works, but it
 is harder to maintain than the newer split where tag/family code owns the board
 descriptor and the chip driver owns only chip commands.
 
+`storage_device.h` is the first step toward that split. It describes the board
+side of an external flash device: SPI bus, board-level enable/disable hooks, and
+sector geometry. AT25XE already routes its internal chip operations through that
+descriptor while preserving the existing `Ex*` API used by datalog code.
+
 ## Planned Cleanup
 
 Move toward a small external-flash device descriptor that carries the SPI bus
