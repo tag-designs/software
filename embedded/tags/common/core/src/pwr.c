@@ -125,7 +125,6 @@ static void spiDisable(void)
 
 static const TagSpiDevice ak09940a_bus = {
     .controller = &tagSpi1DefaultController,
-    .mutex = &SPImutex,
     .cs = AK09940A_CS,
     .sck = AK09940A_SCK,
     .miso = AK09940A_MISO,
@@ -249,7 +248,6 @@ const TagMagDevice *tagAk09940aDevice(void)
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 static const TagSpiDevice flash_bus = {
     .controller = &tagSpi1DefaultController,
-    .mutex = &SPImutex,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,

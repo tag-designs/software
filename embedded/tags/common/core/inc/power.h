@@ -18,10 +18,10 @@ typedef enum {
 } TagSpiSleepPolicy;
 
 // Board-line description for one SPI device attached to a shared controller.
-// Power helpers own device idle pin state; bus helpers own controller setup.
+// Power helpers own device idle pin state; the controller owns bus arbitration
+// and register setup.
 typedef struct {
   const TagSpiController *controller;
-  binary_semaphore_t *mutex;
   ioline_t cs;
   ioline_t sck;
   ioline_t miso;

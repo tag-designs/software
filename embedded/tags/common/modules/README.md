@@ -185,10 +185,11 @@ Stop2-specific register suspend/resume. SPI power and SPI bus ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
-`tagSpiBusEnd()` own the mutex, pin alternate functions, and controller
-enable/disable sequence. The default flash SPI path uses the same descriptor
-flow, so flash standby pulls come from `tagSpiDevicePrepareSleep()` instead of
-a separate hand-written block.
+`tagSpiBusEnd()` own pin alternate functions and use the shared controller
+descriptor for the bus mutex plus controller enable/disable sequence. The
+default flash SPI path uses the same descriptor flow, so flash standby pulls
+come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
+block.
 The default power file also carries the standard AK09940A magnetometer binding
 for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names. If an older board file uses historical names, add

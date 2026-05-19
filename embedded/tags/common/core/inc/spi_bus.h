@@ -6,8 +6,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// SPI controller register setup. Tags can override this when SPI1 differs.
+// SPI controller register setup and bus arbitration.
 typedef struct {
+  binary_semaphore_t *mutex;
   void (*enable)(void);
   void (*disable)(void);
 } TagSpiController;

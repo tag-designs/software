@@ -33,7 +33,6 @@ static const TagI2cDevice rtc_bus = {
 #ifdef LPS_SPI
 static const TagSpiDevice lps_bus = {
     .controller = &tagSpi1DefaultController,
-    .mutex = &SPImutex,
     .cs = LINE_STEVAL_CS,
     .sck = LINE_STEVAL_SCK,
     .miso = LINE_STEVAL_MISO,
@@ -46,7 +45,6 @@ static const TagSpiDevice lps_bus = {
 #if defined(TAG_HAS_EXTERNAL_FLASH)
 static const TagSpiDevice flash_bus = {
     .controller = &tagSpi1DefaultController,
-    .mutex = &SPImutex,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,

@@ -1,12 +1,15 @@
 #include "spi_bus.h"
 
+#include "core_sync.h"
+
 /*
  * Polling SPI byte transfers shared by simple peripheral drivers.
  *
  * Existing tag code drives SPI controller registers directly rather than
  * through ChibiOS SPI transactions, so these helpers preserve that behavior
- * while centralizing the repeated full-duplex drain/read loops. Bus power, SPI
- * configuration, and sleep-state pin policy remain in the tag power layer.
+ * while centralizing the repeated full-duplex drain/read loops. This file also
+ * owns the shared SPI controller configuration, active-state tracking, and bus
+ * mutex for descriptor-backed SPI devices.
  */
 
 static bool spi1_on = false;
@@ -84,6 +87,7 @@ static void spi1DefaultDisable(void)
 #endif
 
 const TagSpiController tagSpi1DefaultController = {
+    .mutex = &SPImutex,
     .enable = spi1DefaultEnable,
     .disable = spi1DefaultDisable,
 };

@@ -29,8 +29,8 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 
 - `tagSpiDevicePowerOn/Off()` handles optional switched device power and safe
   pin states.
-- `tagSpiBusBegin/End()` handles the mutex, alternate functions, and SPI
-  controller enable/disable.
+- `tagSpiBusBegin/End()` handles alternate functions and delegates mutex plus
+  SPI controller enable/disable to the shared controller descriptor.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2

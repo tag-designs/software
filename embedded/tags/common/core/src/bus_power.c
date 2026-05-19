@@ -91,33 +91,37 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
 
 void tagSpiBusBegin(const TagSpiDevice *device)
 {
-  if (device->mutex)
+  const TagSpiController *controller = device->controller;
+
+  if (controller && controller->mutex)
   {
-    chBSemWait(device->mutex);
+    chBSemWait(controller->mutex);
   }
 
   toAlternate(device->sck);
   toAlternate(device->miso);
   toAlternate(device->mosi);
 
-  if (device->controller && device->controller->enable)
+  if (controller && controller->enable)
   {
-    device->controller->enable();
+    controller->enable();
   }
 }
 
 void tagSpiBusEnd(const TagSpiDevice *device)
 {
+  const TagSpiController *controller = device->controller;
+
   palSetLine(device->cs);
 
-  if (device->controller && device->controller->disable)
+  if (controller && controller->disable)
   {
-    device->controller->disable();
+    controller->disable();
   }
 
-  if (device->mutex)
+  if (controller && controller->mutex)
   {
-    chBSemSignal(device->mutex);
+    chBSemSignal(controller->mutex);
   }
 }
 
