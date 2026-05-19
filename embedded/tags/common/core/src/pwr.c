@@ -44,31 +44,32 @@ static void delay(void){
  * swapped. Define SWAP_I2C in the tag's custom.h for those boards so the
  * software I2C fallback drives the physical lines in the corrected order.
  */
-const I2CConfig rtci2cConfig = {
-    .delay = delay,
+static const TagI2cDevice rtc_bus = {
+    .driver = &I2CD1,
+    .mutex = &I2Cmutex,
+    .config = {
+        .delay = delay,
 #if defined(SWAP_I2C) && SWAP_I2C
-    .sda = LINE_RTC_SCL,
-    .scl = LINE_RTC_SDA
+        .sda = LINE_RTC_SCL,
+        .scl = LINE_RTC_SDA,
 #else
-    .sda = LINE_RTC_SDA,
-    .scl = LINE_RTC_SCL
+        .sda = LINE_RTC_SDA,
+        .scl = LINE_RTC_SCL,
 #endif
+    },
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+    .pwr = TAG_NO_LINE,
 };
 
 void rtcOn(void)
 {
-  chBSemWait(&I2Cmutex); 
-  palSetLine(LINE_RTC_SDA);
-  palSetLine(LINE_RTC_SCL);
-  toOutput(LINE_RTC_SCL);
-  toOutput(LINE_RTC_SDA);
-  i2cStart(&I2CD1, &rtci2cConfig);
+  tagI2cDeviceOn(&rtc_bus);
 }
 
 void rtcOff(void)
 {
-  i2cStop(&I2CD1);
-  chBSemSignal(&I2Cmutex); 
+  tagI2cDeviceOff(&rtc_bus);
 }
 
 // SPI Devices
@@ -439,8 +440,7 @@ void godown(enum Sleep sleepmode)
 
   // Pull up SCL and SDA on RTC
 
-  tagEnableStandbyPullup(LINE_RTC_SCL);
-  tagEnableStandbyPullup(LINE_RTC_SDA);
+  tagI2cDevicePrepareSleep(&rtc_bus);
 
   // turn on pullups
 
