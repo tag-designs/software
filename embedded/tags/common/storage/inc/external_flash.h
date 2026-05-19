@@ -1,6 +1,9 @@
 #ifndef _EXTERNAL_FLASH_H_
 #define _EXTERNAL_FLASH_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
 void FlashSpiOff(void);
 void FlashSpiOn(void);
 

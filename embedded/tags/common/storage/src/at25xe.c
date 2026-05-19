@@ -1,6 +1,5 @@
 #include "hal.h"
 #include "custom.h"
-#include "external_flash.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "storage_device.h"
@@ -56,25 +55,7 @@ static const TagSpiBus at25xe_spi_bus = {
     .dummy = 0xff,
 };
 
-static const TagStorageDevice at25xe_device = {
-    .spi = &at25xe_spi_bus,
-    .enable = FlashSpiOn,
-    .disable = FlashSpiOff,
-    .sector_size = AT25XE_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
-};
-
-static int at25xeSectorSize(const TagStorageDevice *dev)
-{
-    return dev->sector_size;
-}
-
-static int at25xeSectorCount(const TagStorageDevice *dev)
-{
-    return dev->sector_count;
-}
-
-static void at25xePowerUp(const TagStorageDevice *dev)
+static void at25xeWake(const TagStorageDevice *dev)
 {
     tagStorageDeviceEnable(dev);
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
@@ -82,7 +63,7 @@ static void at25xePowerUp(const TagStorageDevice *dev)
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
 }
 
-static void at25xePowerDown(const TagStorageDevice *dev)
+static void at25xeSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(dev->spi, AT25XE_CMD_DEEP_POWER_DOWN);
     tagStorageDeviceDisable(dev);
@@ -169,40 +150,20 @@ static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
                                        num);
 }
 
-int ExSectorSize(void) {
-    return at25xeSectorSize(&at25xe_device);
-}
+static const TagStorageOps at25xe_ops = {
+    .wake = at25xeWake,
+    .sleep = at25xeSleep,
+    .check_id = at25xeCheckID,
+    .write = at25xeWrite,
+    .sector_erase = at25xeSectorErase,
+    .read = at25xeRead,
+};
 
-int ExSectorCount(void) {
-    return at25xeSectorCount(&at25xe_device);
-}
-
-void ExFlashPwrUp(void)
-{
-    at25xePowerUp(&at25xe_device);
-}
-
-void ExFlashPwrDown()
-{
-    at25xePowerDown(&at25xe_device);
-}
-
-int ExCheckID(void)
-{
-    return at25xeCheckID(&at25xe_device);
-}
-
-bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
-{
-    return at25xeWrite(&at25xe_device, address, buf, cnt);
-}
-
-bool ExFlashSectorErase(uint32_t address)
-{
-    return at25xeSectorErase(&at25xe_device, address);
-}
-
-void ExFlashRead(uint32_t address, uint8_t *buf, int num)
-{
-    at25xeRead(&at25xe_device, address, buf, num);
-}
+const TagStorageDevice tagExternalFlash = {
+    .ops = &at25xe_ops,
+    .spi = &at25xe_spi_bus,
+    .enable = FlashSpiOn,
+    .disable = FlashSpiOff,
+    .sector_size = AT25XE_SECTOR_SIZE,
+    .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
+};

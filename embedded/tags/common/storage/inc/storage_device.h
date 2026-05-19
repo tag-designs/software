@@ -3,7 +3,29 @@
 
 #include "storage_spi.h"
 
+#include <stdbool.h>
 #include <stdint.h>
+
+typedef struct TagStorageDevice TagStorageDevice;
+
+/*
+ * Chip-facing operations for an external flash device.
+ *
+ * The device descriptor below carries board-level wiring and geometry. This
+ * table carries the chip-specific command implementation. Keeping the two
+ * separate lets the generic storage API dispatch to AT25XE, MX25R, etc. without
+ * teaching datalog code about chip command sets.
+ */
+typedef struct {
+  void (*wake)(const TagStorageDevice *dev);
+  void (*sleep)(const TagStorageDevice *dev);
+  int (*check_id)(const TagStorageDevice *dev);
+  bool (*write)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
+                int *cnt);
+  bool (*sector_erase)(const TagStorageDevice *dev, uint32_t address);
+  void (*read)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
+               int num);
+} TagStorageOps;
 
 /*
  * Board-facing description of an external flash device.
@@ -13,13 +35,14 @@
  * transaction bus, optional board-level enable/disable hooks, and the geometry
  * used by higher-level logging code.
  */
-typedef struct {
+struct TagStorageDevice {
+  const TagStorageOps *ops;
   const TagSpiBus *spi;
   void (*enable)(void);
   void (*disable)(void);
   uint32_t sector_size;
   uint32_t sector_count;
-} TagStorageDevice;
+};
 
 static inline void tagStorageDeviceEnable(const TagStorageDevice *dev)
 {

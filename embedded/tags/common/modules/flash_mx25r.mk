@@ -6,4 +6,5 @@ UDEFS += -DTAG_HAS_EXTERNAL_FLASH=1 -DTAG_FLASH_MX25R=1
 
 ALLCSRC += \
        mx25r.c \
+       storage_flash.c \
        external_flash_test.c

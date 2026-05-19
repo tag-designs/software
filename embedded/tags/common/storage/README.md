@@ -49,6 +49,13 @@ sector geometry. AT25XE already routes its internal chip operations through that
 descriptor while preserving the existing `Ex*` API used by datalog code. MX25R
 follows the same pattern.
 
+`storage_flash.c` owns the compatibility `Ex*` functions for converted drivers.
+The selected chip driver exports `tagExternalFlash`, which pairs a board-facing
+`TagStorageDevice` descriptor with the chip-specific operation table. Chip
+operations use `wake`/`sleep` for flash low-power commands so they are not
+confused with board-level power enable/disable hooks. MX25L has not yet moved
+to this path, so its module still provides `Ex*` directly.
+
 ## Planned Cleanup
 
 Move toward a small external-flash device descriptor that carries the SPI bus
