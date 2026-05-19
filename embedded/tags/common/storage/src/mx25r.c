@@ -3,6 +3,8 @@
 #include "external_flash.h"
 #include "power.h"
 #include "rtc_api.h"
+#include "storage_device.h"
+#include "storage_spi.h"
 
 #define MX25R_SECTOR_SIZE                     (4096)
 
@@ -52,123 +54,55 @@
 extern void FlashSpiOn(void);
 extern void FlashSpiOff(void);
 
-static void spiSendPolled(uint32_t n, uint8_t *buf)
+static const TagSpiBus mx25r_spi_bus = {
+    .spi = SPI1,
+    .cs = LINE_FLASH_nCS,
+    .dummy = 0xff,
+};
+
+static const TagStorageDevice mx25r_device = {
+    .spi = &mx25r_spi_bus,
+    .enable = FlashSpiOn,
+    .disable = FlashSpiOff,
+    .sector_size = MX25R_SECTOR_SIZE,
+    .sector_count = EXT_FLASH_SIZE / MX25R_SECTOR_SIZE,
+};
+
+static int mx25rSectorSize(const TagStorageDevice *dev)
 {
-    volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-    while (n--)
-    {
-        *spidr = *buf++;
-        while ((SPI1->SR & SPI_SR_RXNE) == 0)
-            ;
-        *spidr;
-    }
+    return dev->sector_size;
 }
 
-static void spiReceivePolled(uint32_t n, uint8_t *buf)
+static int mx25rSectorCount(const TagStorageDevice *dev)
 {
-    volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
-    while (n--)
-    {
-        *spidr = 0xff;
-        while ((SPI1->SR & SPI_SR_RXNE) == 0)
-            ;
-        *buf++ = *spidr;
-    }
+    return dev->sector_count;
 }
 
-static void spi_addr(uint32_t address)
+static void mx25rPowerUp(const TagStorageDevice *dev)
 {
-    uint8_t buf[3];
-    buf[0] = address >> 16;
-    buf[1] = address >> 8;
-    buf[2] = address & 0xff;
-    spiSendPolled(3, buf);
-}
-
-static void spi_cmd(uint8_t cmd)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_addr(uint8_t cmd, uint32_t address)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_rcv(uint8_t cmd, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spiReceivePolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-static void spi_cmd_addr_rcv(uint8_t cmd, uint32_t address, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    spiReceivePolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-/*
-static void spi_cmd_snd(uint8_t cmd, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spiSendPolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-*/
-
-static void spi_cmd_addr_snd(uint8_t cmd, uint32_t address, uint8_t *buf, int num)
-{
-    palClearLine(LINE_FLASH_nCS);
-    spiSendPolled(1, &cmd);
-    spi_addr(address);
-    spiSendPolled(num, buf);
-    palSetLine(LINE_FLASH_nCS);
-}
-
-int ExSectorSize(void) {
-    return MX25R_SECTOR_SIZE;
-}
-
-int ExSectorCount(void) {  
-    return EXT_FLASH_SIZE/MX25R_SECTOR_SIZE;
-}
-
-void ExFlashPwrUp(void)
-{
-    FlashSpiOn();
+    tagStorageDeviceEnable(dev);
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
-    spi_cmd(MX25R_CMD_NOP);
+    tagStorageSpiCommand(dev->spi, MX25R_CMD_NOP);
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
 }
 
-
-void ExFlashPwrDown()
+static void mx25rPowerDown(const TagStorageDevice *dev)
 {
-    spi_cmd(MX25R_CMD_DEEP_POWER_DOWN);
-    FlashSpiOff();
+    tagStorageSpiCommand(dev->spi, MX25R_CMD_DEEP_POWER_DOWN);
+    tagStorageDeviceDisable(dev);
 }
 
-static uint8_t MX25R_Status(void)
+static uint8_t mx25rStatus(const TagStorageDevice *dev)
 {
     uint8_t buf;
-    spi_cmd_rcv(MX25R_CMD_READ_STATUS_REG, &buf, 1);
+    tagStorageSpiCommandReceive(dev->spi, MX25R_CMD_READ_STATUS_REG, &buf, 1);
     return buf;
 }
 
-int ExCheckID(void) {
+static int mx25rCheckID(const TagStorageDevice *dev)
+{
     uint8_t id[3];
-    spi_cmd_rcv(MX25R_CMD_READ_ID, id, 3);
+    tagStorageSpiCommandReceive(dev->spi, MX25R_CMD_READ_ID, id, 3);
     if (id[0] != 0xC2)
         return -1;
     if (id[1] != 0x28)
@@ -176,7 +110,8 @@ int ExCheckID(void) {
     return (0);
 }
 
-bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
+static bool mx25rWrite(const TagStorageDevice *dev, uint32_t address,
+                       uint8_t *buf, int *cnt)
 {
     int num = *cnt;
     int i;
@@ -186,13 +121,14 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
         int max = 256 - address%256;
         int bytes = num > max ? max : num; 
 
-        spi_cmd(MX25R_CMD_WRITE_ENABLE);
-        MX25R_Status(); // check status after wel -- debug
-        spi_cmd_addr_snd(MX25R_CMD_PAGE_PROG, address, buf, bytes);
+        tagStorageSpiCommand(dev->spi, MX25R_CMD_WRITE_ENABLE);
+        mx25rStatus(dev); // check status after wel -- debug
+        tagStorageSpiCommandAddressSend(dev->spi, MX25R_CMD_PAGE_PROG,
+                                        address, buf, bytes);
         for (i = 0; i < 12; i++)
         {
             stopMilliseconds(true,1);
-            uint8_t status = MX25R_Status();
+            uint8_t status = mx25rStatus(dev);
             if ((status & MX25R_FLAGS_SR_WIP) == 0)
                 break;
         } 
@@ -206,20 +142,20 @@ bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
     return true;
 }
 
-bool ExFlashSectorErase(uint32_t address)
+static bool mx25rSectorErase(const TagStorageDevice *dev, uint32_t address)
 {
     uint8_t status;
     int i;
 
-    status = MX25R_Status();
+    status = mx25rStatus(dev);
     if (status & (MX25R_FLAGS_SR_WIP))
         return false;
-    spi_cmd(MX25R_CMD_WRITE_ENABLE);
-    spi_cmd_addr(MX25R_CMD_SECTOR_ERASE, address);
+    tagStorageSpiCommand(dev->spi, MX25R_CMD_WRITE_ENABLE);
+    tagStorageSpiCommandAddress(dev->spi, MX25R_CMD_SECTOR_ERASE, address);
     for (i = 0; i < 5; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
-        status = MX25R_Status();
+        status = mx25rStatus(dev);
         if (!(status & MX25R_FLAGS_SR_WIP))
             break;
     }
@@ -230,7 +166,47 @@ bool ExFlashSectorErase(uint32_t address)
     return true;
 }
 
+static void mx25rRead(const TagStorageDevice *dev, uint32_t address,
+                      uint8_t *buf, int num)
+{
+    tagStorageSpiCommandAddressReceive(dev->spi, MX25R_CMD_READ, address, buf,
+                                       num);
+}
+
+int ExSectorSize(void) {
+    return mx25rSectorSize(&mx25r_device);
+}
+
+int ExSectorCount(void) {
+    return mx25rSectorCount(&mx25r_device);
+}
+
+void ExFlashPwrUp(void)
+{
+    mx25rPowerUp(&mx25r_device);
+}
+
+void ExFlashPwrDown()
+{
+    mx25rPowerDown(&mx25r_device);
+}
+
+int ExCheckID(void)
+{
+    return mx25rCheckID(&mx25r_device);
+}
+
+bool ExFlashWrite(uint32_t address, uint8_t *buf, int *cnt)
+{
+    return mx25rWrite(&mx25r_device, address, buf, cnt);
+}
+
+bool ExFlashSectorErase(uint32_t address)
+{
+    return mx25rSectorErase(&mx25r_device, address);
+}
+
 void ExFlashRead(uint32_t address, uint8_t *buf, int num)
 {
-    spi_cmd_addr_rcv(MX25R_CMD_READ, address, buf, num);
+    mx25rRead(&mx25r_device, address, buf, num);
 }
