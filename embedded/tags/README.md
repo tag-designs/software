@@ -157,6 +157,14 @@ feature switches come from `TAG_MODULES`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
 paths affected by each define.
 
+Shared device code expects standard semantic line names such as `LINE_MAG_CS`,
+`LINE_MAG_SCK`, `LINE_MAG_MISO`, and `LINE_MAG_MOSI` for an AK09940A
+magnetometer. Older board files sometimes use historical names from the first
+tag that carried the bus. If renaming the board file is not immediately
+practical, put compatibility aliases in that target's `inc/custom.h` so the
+translation is local to the tag. Prefer updating the board file to emit the
+standard names when the hardware definition is next touched.
+
 ## Tag Families
 
 Some hardware comes up first as a breakout and later as a production tag.  Those

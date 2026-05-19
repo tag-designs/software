@@ -21,4 +21,16 @@ extern volatile int sectors_erased;
 #define MAG_CONSTANT 0.01
 #define SWAP_I2C TRUE
 
+/*
+ * The IMUTagBreakout board file predates the standard magnetometer line names
+ * used by shared power code. Keep the aliases local to this tag; update the
+ * board file to emit LINE_MAG_* directly if this target is revived for more
+ * active development.
+ */
+#define LINE_MAG_CS LINE_AK_CS
+#define LINE_MAG_SCK LINE_LSM_CK
+#define LINE_MAG_MISO LINE_LPS_MISO
+#define LINE_MAG_MOSI LINE_LSM_MOSI
+#define LINE_MAG_TRG LINE_AK_TRG
+
 #endif

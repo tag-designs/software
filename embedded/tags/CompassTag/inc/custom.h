@@ -17,6 +17,7 @@
 extern volatile int sectors_erased;
 
 #define LINE_ACCEL_INT LINE_WKUP1
+#define ACCEL_WAKEUP_SOURCE 1
 
 #define ACCEL_CONSTANT 0.976f
 #define MAG_CONSTANT 0.01

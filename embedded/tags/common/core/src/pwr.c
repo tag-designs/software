@@ -10,6 +10,9 @@
 #include "rtc_api.h"
 #include "external_flash.h"
 #include "lps.h"
+#ifdef TAG_SENSOR_MAG_AK09940A
+#include "ak09940a.h"
+#endif
 
 #ifndef ACCEL_WAKEUP_SOURCE
 #define ACCEL_WAKEUP_SOURCE 4
@@ -100,6 +103,147 @@ static void spiDisable(void)
   tagMarkSpi1Off();
 }
 
+#ifdef TAG_SENSOR_MAG_AK09940A
+#if defined(LINE_MAG_CS) && defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
+#define AK09940A_CS LINE_MAG_CS
+#define AK09940A_SCK LINE_MAG_SCK
+#define AK09940A_MISO LINE_MAG_MISO
+#define AK09940A_MOSI LINE_MAG_MOSI
+#else
+#error "AK09940A power binding needs LINE_MAG_CS/SCK/MISO/MOSI aliases"
+#endif
+
+#if defined(LINE_MAG_PWR)
+#define AK09940A_PWR LINE_MAG_PWR
+#define AK09940A_SLEEP_POLICY TAG_SPI_SLEEP_FLOAT
+#else
+#define AK09940A_PWR TAG_NO_LINE
+#define AK09940A_SLEEP_POLICY TAG_SPI_SLEEP_SAFE_IDLE
+#endif
+
+static const TagSpiDevice ak09940a_bus = {
+    .controller = &tagSpi1DefaultController,
+    .mutex = &SPImutex,
+    .cs = AK09940A_CS,
+    .sck = AK09940A_SCK,
+    .miso = AK09940A_MISO,
+    .mosi = AK09940A_MOSI,
+    .pwr = AK09940A_PWR,
+    .sleep_policy = AK09940A_SLEEP_POLICY,
+};
+
+static const TagSpiBus ak09940a_register_bus = {
+    .spi = SPI1,
+    .cs = AK09940A_CS,
+    .dummy = 0xff,
+};
+
+static const TagStSpiRegisterBus ak09940a_register_spi = {
+    .bus = &ak09940a_register_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus ak09940a_registers = {
+    .read_register = tagStSpiReadRegister,
+    .write_register = tagStSpiWriteRegister,
+    .context = &ak09940a_register_spi,
+};
+
+void magPowerOn(void)
+{
+  tagSpiDevicePowerOn(&ak09940a_bus);
+}
+
+void magPowerOff(void)
+{
+#if defined(LINE_MAG_RSTN)
+  palClearLine(LINE_MAG_RSTN);
+#endif
+  tagSpiDevicePowerOff(&ak09940a_bus);
+}
+
+void magBusBegin(void)
+{
+  tagSpiBusBegin(&ak09940a_bus);
+
+#if defined(LINE_MAG_RSTN)
+  toOutput(LINE_MAG_RSTN);
+  palSetLine(LINE_MAG_RSTN);
+#endif
+}
+
+void magBusEnd(void)
+{
+  tagSpiBusEnd(&ak09940a_bus);
+}
+
+void magOn(void)
+{
+  magPowerOn();
+  magBusBegin();
+}
+
+void magOff(void)
+{
+  magBusEnd();
+  magPowerOff();
+}
+
+static void magSleepMilliseconds(int ms)
+{
+  stopMilliseconds(false, ms);
+}
+
+#if defined(LINE_MAG_TRG)
+#define AK09940A_TRG LINE_MAG_TRG
+#endif
+
+#if defined(AK09940A_TRG)
+static void magTriggerMode(bool output)
+{
+  if (output)
+    toOutput(AK09940A_TRG);
+  else
+    toInput(AK09940A_TRG);
+}
+
+static void magTrigger(void)
+{
+  palSetLine(AK09940A_TRG);
+  palClearLine(AK09940A_TRG);
+}
+
+static bool magDataReadyLine(void)
+{
+  return palReadLine(AK09940A_TRG) == PAL_HIGH;
+}
+#endif
+
+static const TagMagDevice ak09940a_device = {
+    .registers = &ak09940a_registers,
+    .power_on = magPowerOn,
+    .power_off = magPowerOff,
+    .bus_begin = magBusBegin,
+    .bus_end = magBusEnd,
+    .sleep_ms = magSleepMilliseconds,
+#if defined(AK09940A_TRG)
+    .set_trigger_output = magTriggerMode,
+    .trigger = magTrigger,
+    .data_ready_line = magDataReadyLine,
+#else
+    .set_trigger_output = 0,
+    .trigger = 0,
+    .data_ready_line = 0,
+#endif
+};
+
+const TagMagDevice *tagAk09940aDevice(void)
+{
+  return &ak09940a_device;
+}
+#endif
+
 #ifdef LPS_USART
 static void usartEnable(void)
 {
@@ -188,7 +332,7 @@ void lpsOff(void)
 
 #endif
 
-#if defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
+#if (defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)) && !defined(ACCEL_USART)
 void accelSpiOn()
 {
   /* grab the mutex */
@@ -317,6 +461,13 @@ void godown(enum Sleep sleepmode)
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
+#endif
+
+#ifdef TAG_SENSOR_MAG_AK09940A
+#if defined(LINE_MAG_RSTN)
+  enableLinePulldown(LINE_MAG_RSTN);
+#endif
+  tagSpiDevicePrepareSleep(&ak09940a_bus);
 #endif
 
   // Pull up SCL and SDA on RTC

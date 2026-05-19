@@ -17,6 +17,7 @@ ALLCSRC := $(filter-out pwr.c,$(ALLCSRC))
 
 ALLCSRC += \
        config.c \
+       devices.c \
        lis2du12.c \
        lis2du12_test.c \
        $(COMPASSTAG_FAMILY_DIR)/src/pwr.c \
