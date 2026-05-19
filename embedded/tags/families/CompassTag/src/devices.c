@@ -53,20 +53,15 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };
 
-static const TagDevice external_flash_device = {
-    .context = &tagExternalFlash,
-    .on = tagStorageDeviceOn,
-    .off = tagStorageDeviceOff,
-    .prepare_standby = tagStorageDevicePrepareStandby,
-    .apply_standby_pins = tagStorageDeviceApplyStandbyPins,
-};
+void tagDevicesPrepareStandby(uint32_t state)
+{
+  tagStoragePrepareStandby(&tagExternalFlash, state);
+}
 
-const TagDeviceTableEntry tagDeviceTable[] = {
-    {&external_flash_device,
-     TAG_DEVICE_PREPARE_STANDBY | TAG_DEVICE_APPLY_STANDBY_PINS},
-};
-
-const size_t tagDeviceCount = sizeof(tagDeviceTable) / sizeof(tagDeviceTable[0]);
+void tagDevicesApplyStandbyPins(void)
+{
+  tagStorageApplyStandbyPins(&tagExternalFlash);
+}
 
 #ifdef ACCEL_USART
 static const TagUsartBus accel_usart_bus = {

@@ -57,11 +57,11 @@ flash geometry. Chip operations use `wake`/`sleep` for flash low-power commands
 so they are not confused with board-level power enable/disable hooks. MX25L has
 not yet moved to this path, so its module still provides `Ex*` directly.
 
-Converted storage also supplies adapter callbacks for the core `TagDevice`
-table. `tagStorageDevicePrepareStandby()` handles chip-level standby behavior
-such as entering flash sleep only for the system states where that is useful.
-`tagStorageDeviceApplyStandbyPins()` handles the separate MCU standby-pin
-phase by delegating through the storage descriptor to the SPI sleep policy in
+Converted storage also supplies helpers used by tag/family `devices.c` standby
+hooks. `tagStoragePrepareStandby()` handles chip-level standby behavior such as
+entering flash sleep only for the system states where that is useful.
+`tagStorageApplyStandbyPins()` handles the separate MCU standby-pin phase by
+delegating through the storage descriptor to the SPI sleep policy in
 `bus_power.c`. Keeping those phases separate avoids hiding device commands in
 the GPIO pull configuration path.
 
