@@ -12,10 +12,7 @@ TAG_MODULES += \
        sensor_accel_adxl362
 
 include ../common/modules/modules.mk
+include ../families/BitPresTag/family.mk
 
-# Tag-local application sources. Local test.c shadows the shared test module
-# through VPATH.
-ALLCSRC += \
-       config.c \
-       datalog.c \
-       state_run.c
+# Shared BitPresTag family sources come from ../families/BitPresTag. This
+# variant differs from BitPresTagMX25R only by selecting flash_at25xe above.

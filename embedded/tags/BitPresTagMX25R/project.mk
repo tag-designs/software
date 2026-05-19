@@ -1,32 +1,18 @@
-# List of all the project related files.
+# BitPresTagMX25R build manifest.
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/BitPresTagv1/board.mk
-TAG_COMMON_DIR ?= ../common
-include ../common/modules/sensor_pressure_paths.mk
 
-ALLCSRC += \
-       mx25r.c \
-       ADXL362.c \
-       config.c \
-       datalog.c \
-       default_config.c \
-       handlers.c  \
-       sensor_io.c \
-       lps.c \
-       lps27.c \
-       main.c \
-       monitor.c \
-       pb_common.c \
-       pb_decode.c \
-       pb_encode.c  \
-       persistent.c \
-       pwr.c \
-       rtc_rv3028.c \
-       state_machine.c  \
-       state_run.c \
-       stm32adc.c \
-       stm32flash.c \
-       tag.pb.c \
-       tagdata.pb.c \
-       test.c   \
-       time.c        
+TAG_MODULES += \
+       protocol_nanopb \
+       tag_core \
+       tag_test \
+       rtc_rv3028 \
+       flash_mx25r \
+       sensor_pressure_lps27 \
+       sensor_accel_adxl362
+
+include ../common/modules/modules.mk
+include ../families/BitPresTag/family.mk
+
+# Shared BitPresTag family sources come from ../families/BitPresTag. This
+# variant differs from BitPresTag only by selecting flash_mx25r above.

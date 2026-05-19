@@ -19,4 +19,9 @@ extern volatile int sectors_erased;
 #define LINE_STEVAL_CS LINE_LPS_CS
 #define LINE_ACCEL_INT LINE_WKUP1
 
+#define STM32_MSIRANGE_FAST STM32_MSIRANGE_24M
+#define RANGE_MULTIPLIER 12
+#define FLASH_WS_SLOW 0
+#define FLASH_WS_FAST 3
+
 #endif

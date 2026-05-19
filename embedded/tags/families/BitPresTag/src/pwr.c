@@ -5,6 +5,7 @@
 #include "persistent.h"
 #include "external_flash.h"
 #include "lps.h"
+#include "power.h"
 
 /*
  * I2C Devices
@@ -18,8 +19,8 @@ static void delay(void){
 
 const I2CConfig rtci2cConfig = {
     .delay = delay,
-    .sda = LINE_RTC_SDA,
-    .scl = LINE_RTC_SCL
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA
 };
 
 void rtcOn(void)
@@ -61,12 +62,14 @@ static void spiEnable(void)
 
   SPI1->CR1 = SPI_CR1_MSTR;
   SPI1->CR1 |= SPI_CR1_SPE;
+  tagMarkSpi1On();
 }
 
 static void spiDisable(void)
 {
   SPI1->CR1 = 0;
   SPI1->CR2 = 0;
+  tagMarkSpi1Off();
 }
 
 // USART Device 
@@ -87,6 +90,7 @@ static void usartEnable(void)
   USART2->CR3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT;
   // enable x8 oversampling, tx, rx, device
   USART2->CR1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+  tagMarkUsart2On();
 }
 
 static void usartDisable(void)
@@ -94,6 +98,7 @@ static void usartDisable(void)
   USART2->CR1 = 0;
   USART2->CR2 = 0;
   USART2->CR3 = 0;
+  tagMarkUsart2Off();
 }
 
 #ifdef LPS_USART
@@ -171,7 +176,7 @@ void lpsOff(void)
 
 #endif
 
-#if defined(USE_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
+#if defined(TAG_SENSOR_ACCEL_ADXL362) || defined(USE_ADXL367) || defined(USE_LIS2DU12)
 void accelSpiOn()
 {
   /* grab the mutex */
@@ -207,7 +212,7 @@ void accelSpiOff()
 #endif
 
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
 void FlashSpiOn(void)
 {
   /* grab the mutex */
@@ -267,13 +272,12 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH)
   // Make sure flash is in low power mode
   if ((pState->state == IDLE) ||
       (pState->state == ABORTED) ||
       (pState->state == FINISHED) ||
       (pState->state == EXCEPTION) ||
-      //(pState->state == RUNNING) ||
       (pState->state == HIBERNATING))
   {
     ExFlashPwrUp();
@@ -288,13 +292,9 @@ void godown(enum Sleep sleepmode)
   // Mark the backup register.  Any reset at this point is ok
   // disable sram2 -- only works in standby, and pullup config
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);   
-  
-#ifdef LINE_ACCEL_CS
-  enableLinePullup(LINE_ACCEL_CS);
-#endif
+  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#ifdef EXTERNAL_FLASH
+#ifdef TAG_HAS_EXTERNAL_FLASH
   enableLinePullup(LINE_FLASH_nCS);
   enableLinePulldown(LINE_FLASH_SCK);
   enableLinePulldown(LINE_FLASH_MOSI);
