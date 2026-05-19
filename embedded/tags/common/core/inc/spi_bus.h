@@ -19,6 +19,25 @@ typedef struct {
   void (*disable)(void);
 } TagSpiController;
 
+// Standby pull policy applied while preparing the MCU for deep sleep.
+typedef enum {
+  TAG_SPI_SLEEP_FLOAT,
+  TAG_SPI_SLEEP_SAFE_IDLE,
+  TAG_SPI_SLEEP_CUSTOM
+} TagSpiSleepPolicy;
+
+// Board-line description for one SPI device attached to a shared controller.
+typedef struct {
+  const TagSpiController *controller;
+  const TagSpiConfig *config;
+  ioline_t cs;
+  ioline_t sck;
+  ioline_t miso;
+  ioline_t mosi;
+  ioline_t pwr;
+  TagSpiSleepPolicy sleep_policy;
+} TagSpiDevice;
+
 /*
  * Generic SPI bus helpers for devices that drive the STM32 SPI registers
  * directly. Higher-level sensor and storage drivers own their command formats;
@@ -38,6 +57,12 @@ void tagMarkSpi1On(void);
 void tagMarkSpi1Off(void);
 void tagSpiDisableActiveForStop(void);
 void tagSpiEnableActiveAfterStop(void);
+
+void tagSpiDevicePowerOn(const TagSpiDevice *device);
+void tagSpiDevicePowerOff(const TagSpiDevice *device);
+void tagSpiBusBegin(const TagSpiDevice *device);
+void tagSpiBusEnd(const TagSpiDevice *device);
+void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
 
 void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len);
 void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len);

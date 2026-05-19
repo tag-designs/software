@@ -1,16 +1,11 @@
 #include "power.h"
 
-#include "gpio_utils.h"
-#include "spi_bus.h"
-#include "usart_bus.h"
-
 /*
  * Shared bus and standby-pin helpers.
  *
- * Device modules describe their board-provided LINE_xxx pins with small
- * descriptors. These helpers provide common device power sequencing and
- * standby pull configuration; bus-specific modules own controller state and
- * register-level stop/resume handling.
+ * This file owns behavior that crosses bus types: line validation, MCU
+ * standby pull registers, and Stop2 suspend/resume orchestration. SPI, I2C,
+ * and USART-specific device/session mechanics live in their bus files.
  */
 
 bool tagLineIsValid(ioline_t line)
@@ -62,127 +57,4 @@ void tagEnableStandbyPulldown(ioline_t line)
   {
     SET_BIT(PWR->PDCRB, 1 << PAL_PAD(line));
   }
-}
-
-void tagSpiDevicePowerOn(const TagSpiDevice *device)
-{
-  if (tagLineIsValid(device->pwr))
-  {
-    toOutput(device->pwr);
-    palSetLine(device->pwr);
-  }
-
-  palSetLine(device->cs);
-  toOutput(device->cs);
-}
-
-void tagSpiDevicePowerOff(const TagSpiDevice *device)
-{
-  if (tagLineIsValid(device->pwr))
-  {
-    palClearLine(device->pwr);
-  }
-
-  toAnalog(device->sck);
-  toAnalog(device->mosi);
-  toAnalog(device->miso);
-  toAnalog(device->cs);
-}
-
-void tagSpiBusBegin(const TagSpiDevice *device)
-{
-  const TagSpiController *controller = device->controller;
-
-  if (controller && controller->mutex)
-  {
-    chBSemWait(controller->mutex);
-  }
-
-  toAlternate(device->sck);
-  toAlternate(device->miso);
-  toAlternate(device->mosi);
-
-  if (controller && controller->enable)
-  {
-    controller->enable(device->config);
-  }
-}
-
-void tagSpiBusEnd(const TagSpiDevice *device)
-{
-  const TagSpiController *controller = device->controller;
-
-  palSetLine(device->cs);
-
-  if (controller && controller->disable)
-  {
-    controller->disable();
-  }
-
-  if (controller && controller->mutex)
-  {
-    chBSemSignal(controller->mutex);
-  }
-}
-
-void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
-{
-  switch (device->sleep_policy)
-  {
-  case TAG_SPI_SLEEP_SAFE_IDLE:
-    tagEnableStandbyPullup(device->cs);
-    tagEnableStandbyPulldown(device->sck);
-    tagEnableStandbyPulldown(device->mosi);
-    break;
-
-  case TAG_SPI_SLEEP_FLOAT:
-    tagEnableStandbyPulldown(device->pwr);
-    break;
-
-  case TAG_SPI_SLEEP_CUSTOM:
-    break;
-  }
-}
-
-void tagI2cDeviceOn(const TagI2cDevice *device)
-{
-  if (device->mutex)
-  {
-    chBSemWait(device->mutex);
-  }
-
-  if (tagLineIsValid(device->pwr))
-  {
-    toOutput(device->pwr);
-    palSetLine(device->pwr);
-  }
-
-  palSetLine(device->sda);
-  palSetLine(device->scl);
-  toOutput(device->scl);
-  toOutput(device->sda);
-
-  i2cStart(device->driver, &device->config);
-}
-
-void tagI2cDeviceOff(const TagI2cDevice *device)
-{
-  i2cStop(device->driver);
-
-  if (tagLineIsValid(device->pwr))
-  {
-    palClearLine(device->pwr);
-  }
-
-  if (device->mutex)
-  {
-    chBSemSignal(device->mutex);
-  }
-}
-
-void tagI2cDevicePrepareSleep(const TagI2cDevice *device)
-{
-  tagEnableStandbyPullup(device->scl);
-  tagEnableStandbyPullup(device->sda);
-  tagEnableStandbyPulldown(device->pwr);
 }

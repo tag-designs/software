@@ -5,6 +5,16 @@
 
 #include <stdint.h>
 
+// Board-line and fallback-I2C configuration for one I2C device.
+typedef struct {
+  I2CDriver *driver;
+  binary_semaphore_t *mutex;
+  I2CConfig config;
+  ioline_t sda;
+  ioline_t scl;
+  ioline_t pwr;
+} TagI2cDevice;
+
 /*
  * Generic I2C register helpers for devices that use the common
  * "write register address, then transfer payload" pattern.
@@ -18,6 +28,10 @@ typedef struct {
   uint8_t address;
   uint32_t timeout;
 } TagI2cRegisterBus;
+
+void tagI2cDeviceOn(const TagI2cDevice *device);
+void tagI2cDeviceOff(const TagI2cDevice *device);
+void tagI2cDevicePrepareSleep(const TagI2cDevice *device);
 
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len);

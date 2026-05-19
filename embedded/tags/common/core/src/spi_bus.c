@@ -1,6 +1,7 @@
-#include "spi_bus.h"
+#include "power.h"
 
 #include "core_sync.h"
+#include "gpio_utils.h"
 
 /*
  * Polling SPI byte transfers shared by simple peripheral drivers.
@@ -8,8 +9,8 @@
  * Existing tag code drives SPI controller registers directly rather than
  * through ChibiOS SPI transactions, so these helpers preserve that behavior
  * while centralizing the repeated full-duplex drain/read loops. This file also
- * owns the shared SPI controller configuration, active-state tracking, and bus
- * mutex for descriptor-backed SPI devices.
+ * owns SPI bus-session pin state, shared controller configuration,
+ * active-state tracking, and bus mutex for descriptor-backed SPI devices.
  *
  * Storage flash drivers can be more sensitive to command/address/data pacing.
  * They should use storage_spi.h when they need byte-at-a-time transfers with
@@ -111,6 +112,90 @@ const TagSpiController tagSpi1DefaultController = {
     .enable = spi1DefaultEnable,
     .disable = spi1DefaultDisable,
 };
+
+void tagSpiDevicePowerOn(const TagSpiDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    toOutput(device->pwr);
+    palSetLine(device->pwr);
+  }
+
+  palSetLine(device->cs);
+  toOutput(device->cs);
+}
+
+void tagSpiDevicePowerOff(const TagSpiDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    palClearLine(device->pwr);
+  }
+
+  toAnalog(device->sck);
+  toAnalog(device->mosi);
+  toAnalog(device->miso);
+  toAnalog(device->cs);
+}
+
+void tagSpiBusBegin(const TagSpiDevice *device)
+{
+  const TagSpiController *controller = device->controller;
+
+  if (controller && controller->mutex)
+  {
+    chBSemWait(controller->mutex);
+  }
+
+  toAlternate(device->sck);
+  toAlternate(device->miso);
+  toAlternate(device->mosi);
+
+  if (controller && controller->enable)
+  {
+    controller->enable(device->config);
+  }
+}
+
+void tagSpiBusEnd(const TagSpiDevice *device)
+{
+  const TagSpiController *controller = device->controller;
+
+  palSetLine(device->cs);
+
+  if (controller && controller->disable)
+  {
+    controller->disable();
+  }
+
+  toAnalog(device->sck);
+  toAnalog(device->mosi);
+  toAnalog(device->miso);
+
+  if (controller && controller->mutex)
+  {
+    chBSemSignal(controller->mutex);
+  }
+}
+
+void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
+{
+  switch (device->sleep_policy)
+  {
+  case TAG_SPI_SLEEP_SAFE_IDLE:
+    tagEnableStandbyPullup(device->cs);
+    tagEnableStandbyPulldown(device->sck);
+    tagEnableStandbyPulldown(device->mosi);
+    break;
+
+  case TAG_SPI_SLEEP_FLOAT:
+    tagEnableStandbyPulldown(device->pwr);
+    break;
+
+  case TAG_SPI_SLEEP_CUSTOM:
+    break;
+  }
+}
 
 void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
 {

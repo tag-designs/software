@@ -18,10 +18,10 @@ active tags unless a tag provides a same-named local override.
 - `device.c`: weak defaults for tag/family device standby hooks. It lets
   `pwr.c` call simple named hooks while tag or family `devices.c` files keep
   the concrete non-universal device behavior.
-- `bus_power.c`: board-line descriptor helpers for SPI/I2C device power,
-  bus-session setup, standby pulls, and Stop2 bus suspend/resume orchestration.
+- `bus_power.c`: common board-line helpers for line validity, standby pulls,
+  and Stop2 bus suspend/resume orchestration.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level byte/register transfers
-  that are useful outside a single sensor family. SPI and USART also own their
+  plus bus-specific device/session mechanics. SPI and USART also own their
   controller setup, active-state tracking, and Stop2 suspend/resume mechanics.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
@@ -43,12 +43,18 @@ the weak empty defaults in `device.c`.
 
 Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 
-- `tagSpiDevicePowerOn/Off()` handles optional switched device power and safe
-  pin states.
-- `tagSpiBusBegin/End()` handles alternate functions and delegates mutex plus
-  SPI controller enable/disable to the shared controller descriptor. The
-  device descriptor supplies the `TagSpiConfig` used for that bus session.
+- `tagSpiDevicePowerOn/Off()` lives in `spi_bus.c` and handles optional
+  switched device power plus SPI pin idle state.
+- `tagSpiBusBegin/End()` lives in `spi_bus.c` and handles SPI alternate
+  functions, mutex ownership, and controller enable/disable. `End` deselects
+  the device, disables the controller, and returns SCK/MOSI/MISO to analog.
+  The device descriptor supplies the `TagSpiConfig` used for that bus session.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
+
+I2C-backed devices follow the same ownership rule: `i2c_bus.c` owns
+`tagI2cDeviceOn/Off()`, `tagI2cDevicePrepareSleep()`, and the register
+transaction helpers. The descriptor supplies the tag-specific software-I2C line
+configuration and optional power line.
 
 USART-backed sensor buses follow the same split: the device-side
 `TagUsartBus` descriptor supplies a `TagUsartSyncConfig`, while `usart_bus.c`
