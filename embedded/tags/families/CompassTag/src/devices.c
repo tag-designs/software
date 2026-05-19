@@ -4,7 +4,6 @@
 #include "gpio_utils.h"
 #include "lis2du12.h"
 #include "power.h"
-#include "external_flash.h"
 #include "storage_device.h"
 
 #if defined(TAG_FLASH_AT25XE)
@@ -33,11 +32,21 @@ static const TagSpiBus external_flash_spi_bus = {
     .dummy = 0xff,
 };
 
+static const TagSpiDevice external_flash_power = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_FLASH_nCS,
+    .sck = LINE_FLASH_SCK,
+    .miso = LINE_FLASH_MISO,
+    .mosi = LINE_FLASH_MOSI,
+    .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .spi = &external_flash_spi_bus,
-    .enable = FlashSpiOn,
-    .disable = FlashSpiOff,
+    .power = &external_flash_power,
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };

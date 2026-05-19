@@ -4,6 +4,9 @@
 #include "lps.h"
 #include "persistent.h"
 #include "power.h"
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+#include "storage_flash.h"
+#endif
 
 /*
  * Device bus descriptors.
@@ -43,7 +46,7 @@ static const TagSpiDevice lps_bus = {
 };
 #endif
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
 static const TagSpiDevice flash_bus = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -100,7 +103,7 @@ void lpsOff(void)
 }
 #endif
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
 void FlashSpiOn(void)
 {
   tagSpiBusBegin(&flash_bus);
@@ -149,7 +152,9 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
 
-#ifdef TAG_HAS_EXTERNAL_FLASH
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+  tagStoragePrepareSleep(&tagExternalFlash);
+#elif defined(TAG_HAS_EXTERNAL_FLASH)
   tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 

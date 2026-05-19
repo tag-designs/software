@@ -9,6 +9,9 @@
 #include "power.h"
 #include "rtc_api.h"
 #include "external_flash.h"
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+#include "storage_flash.h"
+#endif
 #include "lps.h"
 #ifdef TAG_SENSOR_MAG_AK09940A
 #include "ak09940a.h"
@@ -246,7 +249,7 @@ const TagMagDevice *tagAk09940aDevice(void)
 }
 #endif
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
 static const TagSpiDevice flash_bus = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -360,7 +363,7 @@ void accelSpiOff()
 #endif
 
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
+#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
 void FlashSpiOn(void)
 {
   tagSpiBusBegin(&flash_bus);
@@ -419,7 +422,9 @@ void godown(enum Sleep sleepmode)
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 #endif
 
-#ifdef TAG_HAS_EXTERNAL_FLASH
+#if defined(TAG_FLASH_AT25XE) || defined(TAG_FLASH_MX25R)
+  tagStoragePrepareSleep(&tagExternalFlash);
+#elif defined(TAG_HAS_EXTERNAL_FLASH)
   tagSpiDevicePrepareSleep(&flash_bus);
 #endif
 

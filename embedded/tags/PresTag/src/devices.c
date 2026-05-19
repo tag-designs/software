@@ -2,7 +2,7 @@
 
 #include "at25xe.h"
 #include "custom.h"
-#include "external_flash.h"
+#include "power.h"
 #include "storage_device.h"
 
 /*
@@ -18,11 +18,21 @@ static const TagSpiBus external_flash_spi_bus = {
     .dummy = 0xff,
 };
 
+static const TagSpiDevice external_flash_power = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_FLASH_nCS,
+    .sck = LINE_FLASH_SCK,
+    .miso = LINE_FLASH_MISO,
+    .mosi = LINE_FLASH_MOSI,
+    .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+
 const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
     .spi = &external_flash_spi_bus,
-    .enable = FlashSpiOn,
-    .disable = FlashSpiOff,
+    .power = &external_flash_power,
     .sector_size = AT25XE_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };

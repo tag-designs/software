@@ -21,6 +21,11 @@ void tagStorageSleep(const TagStorageDevice *dev)
   dev->ops->sleep(dev);
 }
 
+void tagStoragePrepareSleep(const TagStorageDevice *dev)
+{
+  tagStorageDevicePrepareSleep(dev);
+}
+
 int tagStorageCheckID(const TagStorageDevice *dev)
 {
   return dev->ops->check_id(dev);

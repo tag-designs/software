@@ -1,6 +1,7 @@
 #ifndef TAG_STORAGE_DEVICE_H
 #define TAG_STORAGE_DEVICE_H
 
+#include "power.h"
 #include "storage_spi.h"
 
 #include <stdbool.h>
@@ -38,6 +39,7 @@ typedef struct {
 struct TagStorageDevice {
   const TagStorageOps *ops;
   const TagSpiBus *spi;
+  const TagSpiDevice *power;
   void (*enable)(void);
   void (*disable)(void);
   uint32_t sector_size;
@@ -49,6 +51,12 @@ static inline void tagStorageDeviceEnable(const TagStorageDevice *dev)
   if (dev->enable)
   {
     dev->enable();
+    return;
+  }
+
+  if (dev->power)
+  {
+    tagSpiBusBegin(dev->power);
   }
 }
 
@@ -57,6 +65,20 @@ static inline void tagStorageDeviceDisable(const TagStorageDevice *dev)
   if (dev->disable)
   {
     dev->disable();
+    return;
+  }
+
+  if (dev->power)
+  {
+    tagSpiBusEnd(dev->power);
+  }
+}
+
+static inline void tagStorageDevicePrepareSleep(const TagStorageDevice *dev)
+{
+  if (dev->power)
+  {
+    tagSpiDevicePrepareSleep(dev->power);
   }
 }
 
