@@ -1,5 +1,6 @@
 #include "hal.h"
 
+#include "ak09940a.h"
 #include "custom.h"
 #include "device.h"
 #include "gpio_utils.h"
@@ -7,6 +8,7 @@
 #include "power.h"
 #include "storage_device.h"
 #include "storage_flash.h"
+#include "timekeeping.h"
 
 #if defined(TAG_FLASH_AT25XE)
 #include "at25xe.h"
@@ -23,10 +25,146 @@
 /*
  * CompassTag-family device bindings that are not yet general tag drivers.
  *
- * The LIS2DU12 code in this family is tailored to the CompassTag USART wiring
- * and sampling needs, so keep its TagLis2du12Device descriptor beside the
- * family code instead of burying it in the shared power file.
+ * The LIS2DU12 and AK09940A bindings are tailored to the CompassTag family
+ * wiring and sampling path, so their descriptors live here instead of in the
+ * shared power file.
  */
+
+#if defined(TAG_SENSOR_MAG_AK09940A)
+#if defined(LINE_MAG_CS) && defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
+#define AK09940A_CS LINE_MAG_CS
+#define AK09940A_SCK LINE_MAG_SCK
+#define AK09940A_MISO LINE_MAG_MISO
+#define AK09940A_MOSI LINE_MAG_MOSI
+#else
+#error "CompassTag AK09940A binding needs LINE_MAG_CS/SCK/MISO/MOSI aliases"
+#endif
+
+#if defined(LINE_MAG_PWR)
+#define AK09940A_PWR LINE_MAG_PWR
+#define AK09940A_SLEEP_POLICY TAG_SPI_SLEEP_FLOAT
+#else
+#define AK09940A_PWR TAG_NO_LINE
+#define AK09940A_SLEEP_POLICY TAG_SPI_SLEEP_SAFE_IDLE
+#endif
+
+static const TagSpiDevice ak09940a_bus = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = AK09940A_CS,
+    .sck = AK09940A_SCK,
+    .miso = AK09940A_MISO,
+    .mosi = AK09940A_MOSI,
+    .pwr = AK09940A_PWR,
+    .dummy = 0xff,
+    .sleep_policy = AK09940A_SLEEP_POLICY,
+};
+
+static const TagStSpiRegisterBus ak09940a_register_spi = {
+    .device = &ak09940a_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus ak09940a_registers = {
+    .read_register = tagStSpiReadRegister,
+    .write_register = tagStSpiWriteRegister,
+    .context = &ak09940a_register_spi,
+};
+
+void magPowerOn(void)
+{
+  tagSpiDevicePowerOn(&ak09940a_bus);
+}
+
+void magPowerOff(void)
+{
+#if defined(LINE_MAG_RSTN)
+  palClearLine(LINE_MAG_RSTN);
+#endif
+  tagSpiDevicePowerOff(&ak09940a_bus);
+}
+
+void magBusBegin(void)
+{
+  tagSpiBusBegin(&ak09940a_bus);
+
+#if defined(LINE_MAG_RSTN)
+  toOutput(LINE_MAG_RSTN);
+  palSetLine(LINE_MAG_RSTN);
+#endif
+}
+
+void magBusEnd(void)
+{
+  tagSpiBusEnd(&ak09940a_bus);
+}
+
+void magOn(void)
+{
+  magPowerOn();
+  magBusBegin();
+}
+
+void magOff(void)
+{
+  magBusEnd();
+  magPowerOff();
+}
+
+static void magSleepMilliseconds(int ms)
+{
+  stopMilliseconds(false, ms);
+}
+
+#if defined(LINE_MAG_TRG)
+#define AK09940A_TRG LINE_MAG_TRG
+#endif
+
+#if defined(AK09940A_TRG)
+static void magTriggerMode(bool output)
+{
+  if (output)
+    toOutput(AK09940A_TRG);
+  else
+    toInput(AK09940A_TRG);
+}
+
+static void magTrigger(void)
+{
+  palSetLine(AK09940A_TRG);
+  palClearLine(AK09940A_TRG);
+}
+
+static bool magDataReadyLine(void)
+{
+  return palReadLine(AK09940A_TRG) == PAL_HIGH;
+}
+#endif
+
+static const TagMagDevice ak09940a_device = {
+    .registers = &ak09940a_registers,
+    .power_on = magPowerOn,
+    .power_off = magPowerOff,
+    .bus_begin = magBusBegin,
+    .bus_end = magBusEnd,
+    .sleep_ms = magSleepMilliseconds,
+#if defined(AK09940A_TRG)
+    .set_trigger_output = magTriggerMode,
+    .trigger = magTrigger,
+    .data_ready_line = magDataReadyLine,
+#else
+    .set_trigger_output = 0,
+    .trigger = 0,
+    .data_ready_line = 0,
+#endif
+};
+
+const TagMagDevice *tagAk09940aDevice(void)
+{
+  return &ak09940a_device;
+}
+#endif
 
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
@@ -54,6 +192,19 @@ void tagDevicesPrepareStandby(uint32_t state)
 
 void tagDevicesApplyStandbyPins(void)
 {
+#if defined(TAG_SENSOR_MAG_AK09940A)
+#if defined(LINE_MAG_RSTN)
+  tagEnableStandbyPulldown(LINE_MAG_RSTN);
+#endif
+  tagSpiDevicePrepareSleep(&ak09940a_bus);
+#endif
+
+#ifdef ACCEL_USART
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+  tagEnableStandbyPulldown(LINE_ACCEL_TX);
+  tagEnableStandbyPulldown(LINE_ACCEL_SCK);
+#endif
+
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }
 
@@ -132,16 +283,4 @@ const TagLis2du12Device *tagLis2du12Device(void)
   return &compass_tag_accel;
 }
 
-void tagPrepareDevicesForStandby(void)
-{
-#if defined(TAG_SENSOR_MAG_AK09940A) && defined(COMPASS_TAG)
-  tagEnableStandbyPulldown(LINE_MAG_CS);
-  tagEnableStandbyPulldown(LINE_MAG_SCK);
-  tagEnableStandbyPulldown(LINE_MAG_MOSI);
-#endif
-
-  tagEnableStandbyPullup(LINE_ACCEL_CS);
-  tagEnableStandbyPulldown(LINE_ACCEL_TX);
-  tagEnableStandbyPulldown(LINE_ACCEL_SCK);
-}
 #endif

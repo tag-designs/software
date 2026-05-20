@@ -6,11 +6,26 @@
 #include "persistent.h"
 #include "power.h"
 
+#ifndef ACCEL_WAKEUP_SOURCE
+#define ACCEL_WAKEUP_SOURCE 4
+#endif
+
+#if ACCEL_WAKEUP_SOURCE == 1
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
+#elif ACCEL_WAKEUP_SOURCE == 4
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
+#else
+#error "Unsupported ACCEL_WAKEUP_SOURCE"
+#endif
+
 /*
- * IMUTagBreakout power/standby sequence.
+ * CompassTag-family power/standby sequence.
  *
- * The RTC remains here because it follows the same lifecycle as the other
- * active tags. Local sensor and flash SPI sequencing lives in devices.c.
+ * The RTC remains here because every active tag uses the same RTC lifecycle.
+ * Peripheral bindings such as external flash, AK09940A, and LIS2DU12 live in
+ * devices.c, where descriptors and standby pin policy are easier to audit.
  */
 
 static void delay(void)
@@ -61,12 +76,40 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
 
-  tagI2cDevicePrepareSleep(&rtc_bus);
-  tagDevicesApplyStandbyPins();
+#ifdef LINE_ACCEL_CS
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+#endif
 
-  PWR->CR3 = 0x8000;
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  tagDevicesApplyStandbyPins();
+  tagI2cDevicePrepareSleep(&rtc_bus);
+
   SET_BIT(PWR->CR3, PWR_CR3_APC);
+
+  CLEAR_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT);
+
+#if defined(LINE_ACCEL_INT)
+  if (isActive)
+  {
+    SET_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
+  }
+  else
+  {
+    CLEAR_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
+  }
+
+  if (pState->state == RUNNING)
+  {
+    SET_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
+    if (isActive != palReadLine(LINE_ACCEL_INT))
+      return;
+  }
+  else
+  {
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  }
+#else
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
 
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));

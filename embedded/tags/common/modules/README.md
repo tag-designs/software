@@ -201,15 +201,16 @@ the controller, power/session pins, dummy-byte policy, standby pull policy, and
 `TagUsartSyncConfig`. Sensor I/O and storage helpers use the same device
 descriptor that power code uses, so there is no separate partial bus object to
 keep synchronized.
-The default power file also carries the standard AK09940A magnetometer binding
-for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
-`LINE_MAG_MOSI` names. If an older board file uses historical names, add
-tag-local aliases in that target's `inc/custom.h` and update the board file to
-emit the standard names when feasible. Family code should only override
-`tagAk09940aDevice()` when the board needs non-standard sequencing.
+AK09940A magnetometer bindings live with the tag or family that wires the
+device. Boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
+`LINE_MAG_MOSI` names can use the shared `sensor_mag_ak09940a` shim. If an
+older board file uses historical names, add tag-local aliases in that target's
+`inc/custom.h` and update the board file to emit the standard names when
+feasible. Family code should provide `tagAk09940aDevice()` when the board needs
+non-standard sequencing or wants to call the descriptor API directly.
 Tags or families that need extra standby pin policy can provide a strong
 `tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
-its built-in flash and AK09940A standby preparation.
+its built-in flash standby preparation.
 The default SPI1 controller marks SPI1 logically on/off from `spi_bus.c`.
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
@@ -259,10 +260,11 @@ policy in the tag power layer; keep sensor command formats and register
 transactions beside the sensor drivers.
 The AK09940A magnetometer follows the same driver/shim split as the pressure
 path: `mag/src/ak09940a.c` is the descriptor-driven register implementation,
-while `mag/src/ak09940a_shim.c` binds the default CompassTag SPI descriptor and
-legacy `mag*`/`ak09940_*` APIs. Active CompassTag firmware bypasses the shim by
-exporting `tagAk09940aDevice()` from the family power file and calling the
-descriptor API directly from its sensor code and self-test hook.
+while `mag/src/ak09940a_shim.c` binds a default SPI descriptor and legacy
+`mag*`/`ak09940_*` APIs for tags that still expose `magOn()`/`magOff()`.
+Active CompassTag firmware bypasses the shim by exporting
+`tagAk09940aDevice()` from the family device file and calling the descriptor
+API directly from its sensor code and self-test hook.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific

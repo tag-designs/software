@@ -1,5 +1,6 @@
 #include "hal.h"
 #include "custom.h"
+#include "gpio_utils.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "ak09940a.h"

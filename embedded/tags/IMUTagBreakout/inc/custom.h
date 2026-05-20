@@ -33,4 +33,11 @@ extern volatile int sectors_erased;
 #define LINE_MAG_MOSI LINE_LSM_MOSI
 #define LINE_MAG_TRG LINE_AK_TRG
 
+/*
+ * The LPS22HH shares the same SPI clock as the LSM device on this board.
+ * The shared pressure shim uses standard LINE_LPS_* names, so keep the alias
+ * here with the rest of the legacy board-name compatibility.
+ */
+#define LINE_LPS_SCK LINE_LSM_CK
+
 #endif

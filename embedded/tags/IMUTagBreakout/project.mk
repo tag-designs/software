@@ -9,19 +9,17 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_mx25l \
-       sensor_pressure_lps22hh
+       sensor_pressure_lps22hh \
+       sensor_mag_ak09940a
 
 include ../common/modules/modules.mk
-
-UDEFS += -DTAG_SENSOR_MAG_AK09940A=1
 
 # Tag-local application and sensor sources. Sensor self-test hooks live beside
 # the local drivers and are called by the shared test module.
 ALLCSRC += \
-       ak09940.c \
-       ak09940_test.c \
        config.c \
        datalog.c \
+       devices.c \
        lps22hh_test.c \
        sensors.c \
        state_run.c \
