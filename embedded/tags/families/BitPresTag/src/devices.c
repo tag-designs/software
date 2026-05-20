@@ -52,18 +52,21 @@ const TagStorageDevice tagExternalFlash = {
 
 bool tag_test_external_flash(void)
 {
-  return tagExternalFlashTest();
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  return result;
 }
 
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagStoragePrepareStandby(&tagExternalFlash, state);
+  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
 void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_CS);
-  tagStorageApplyStandbyPins(&tagExternalFlash);
+  tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }
 
 #if defined(LPS_USART)

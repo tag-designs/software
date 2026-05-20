@@ -198,9 +198,9 @@ int data_logAck(int index, Ack *ack)
     {
       if (databuf.data[j].pressure == -1)
         break;
-      data->data[j].pressure = tagPressureValue(databuf.data[j].pressure);
+      data->data[j].pressure = lps27Pressure(databuf.data[j].pressure);
       data->data[j].temperature =
-          tagPressureTemperature(databuf.data[j].temperature);
+          lps27Temperature(databuf.data[j].temperature);
       data->data_count++;
     }
   }
