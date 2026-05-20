@@ -12,15 +12,15 @@
 #include "test_support.h"
 #include "timekeeping.h"
 
-/*
- * PresTag board bindings for non-universal devices.
- *
- * pwr.c owns the universal RTC and standby sequence. This file owns the
- * board-facing descriptors and legacy wrapper functions for peripherals that
- * are specific to this tag: external flash and the SPI pressure sensor.
- */
+static void lpsSleepMilliseconds(int ms);
 
-#ifdef LPS_SPI
+/*
+ * Device descriptors.
+ *
+ * PresTag owns the board-facing bindings for its non-universal devices here:
+ * AT25XE external flash and the SPI LPS27 pressure sensor. Common drivers use
+ * these descriptors instead of hard-coded board wiring.
+ */
 static const TagSpiDevice lps_bus = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -45,21 +45,10 @@ static const TagRegisterBus lps_registers = {
     .context = &lps_register_spi,
 };
 
-static void lpsSleepMilliseconds(int ms)
-{
-  stopMilliseconds(false, ms);
-}
-
 const TagPressureDevice tagPresTagPressureDevice = {
     .registers = &lps_registers,
     .sleep_ms = lpsSleepMilliseconds,
 };
-
-bool tag_test_lps27(void)
-{
-  return tagPressureTest();
-}
-#endif
 
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
@@ -80,6 +69,22 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };
 
+/*
+ * Helper bindings.
+ *
+ * These small functions connect generic self-tests and pressure-driver timing
+ * callbacks to the PresTag descriptors above.
+ */
+static void lpsSleepMilliseconds(int ms)
+{
+  stopMilliseconds(false, ms);
+}
+
+bool tag_test_lps27(void)
+{
+  return tagPressureTest();
+}
+
 bool tag_test_external_flash(void)
 {
   tagStorageWake(TAG_EXTERNAL_FLASH);
@@ -88,15 +93,19 @@ bool tag_test_external_flash(void)
   return result;
 }
 
+/*
+ * Required standby hooks.
+ *
+ * pwr.c calls these hooks while entering standby. PresTag prepares the pressure
+ * sensor pins and applies the external-flash standby pin policy.
+ */
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagStoragePrepareStandby(&tagExternalFlash, state);
+  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
 void tagDevicesApplyStandbyPins(void)
 {
-#ifdef LPS_SPI
   tagSpiDevicePrepareSleep(&lps_bus);
-#endif
-  tagStorageApplyStandbyPins(&tagExternalFlash);
+  tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }

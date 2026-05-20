@@ -23,13 +23,15 @@
 #error "BitPresTag family requires a supported external flash module"
 #endif
 
+static void lpsSleepMilliseconds(int ms);
+
 /*
- * BitPresTag-family board bindings for shared external-flash storage code.
+ * Device descriptors.
  *
- * BitPresTag and BitPresTagMX25R share board wiring and differ only in the
- * flash module selected by project.mk. The selected module chooses the chip
- * operation table above; this family descriptor supplies the common board
- * wiring, enable hooks, and geometry.
+ * BitPresTag and BitPresTagMX25R share board wiring, pressure sensor, and
+ * accelerometer. The only hardware difference in this family is external flash;
+ * project.mk selects the flash module and the descriptor below binds that chip
+ * operation table to the shared board wiring.
  */
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
@@ -50,26 +52,6 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };
 
-bool tag_test_external_flash(void)
-{
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
-  return result;
-}
-
-void tagDevicesPrepareStandby(uint32_t state)
-{
-  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
-}
-
-void tagDevicesApplyStandbyPins(void)
-{
-  tagEnableStandbyPullup(LINE_ACCEL_CS);
-  tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
-}
-
-#if defined(LPS_USART)
 static const TagUsartDevice lps_usart_device = {
     .controller = &tagUsart2SyncController,
     .config = &tagUsart2SyncDefaultConfig,
@@ -94,23 +76,11 @@ static const TagRegisterBus lps_registers = {
     .context = &lps_register_usart,
 };
 
-static void lpsSleepMilliseconds(int ms)
-{
-  stopMilliseconds(false, ms);
-}
-
 const TagPressureDevice tagBitPresTagPressureDevice = {
     .registers = &lps_registers,
     .sleep_ms = lpsSleepMilliseconds,
 };
 
-bool tag_test_lps27(void)
-{
-  return tagPressureTest();
-}
-#endif
-
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
 static const TagSpiDevice accel_bus = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -127,28 +97,50 @@ const TagAdxl362Device tagBitPresTagAccelDevice = {
     .spi = &accel_bus,
 };
 
-bool tag_test_adxl362(void)
+/*
+ * Helper bindings.
+ *
+ * The common pressure and accelerometer drivers are parameterized by device
+ * descriptors. These small bindings connect generic code and self-tests to the
+ * BitPresTag-family descriptors above.
+ */
+static void lpsSleepMilliseconds(int ms)
 {
-  return adxl362Test(TAG_ACCEL_DEVICE);
+  stopMilliseconds(false, ms);
 }
 
-void accelSpiOn(void)
+bool tag_test_external_flash(void)
 {
-  tagSpiBusBegin(&accel_bus);
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  return result;
 }
 
-void accelSpiOff(void)
+bool tag_test_lps27(void)
 {
-  tagSpiBusEnd(&accel_bus);
+  return tagPressureTest();
 }
 
-void accelBusBegin(void)
+const TagAdxl362Device *tagAdxl362Device(void)
 {
-  accelSpiOn();
+  return TAG_ACCEL_DEVICE;
 }
 
-void accelBusEnd(void)
+/*
+ * Required standby hooks.
+ *
+ * pwr.c calls these hooks while entering standby. Device-specific storage logic
+ * prepares external flash only in states where the log should be quiescent, then
+ * this file applies the tag-family standby pin policy.
+ */
+void tagDevicesPrepareStandby(uint32_t state)
 {
-  accelSpiOff();
+  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
-#endif
+
+void tagDevicesApplyStandbyPins(void)
+{
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+  tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+}

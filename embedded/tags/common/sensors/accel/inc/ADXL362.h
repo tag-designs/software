@@ -216,6 +216,7 @@ typedef struct {
 } TagAdxl362Device;
 
 const TagAdxl362Device *ADXL362_DefaultDevice(void);
+const TagAdxl362Device *tagAdxl362Device(void);
 
 void ADXL362_DeviceBegin(const TagAdxl362Device *device);
 void ADXL362_DeviceEnd(const TagAdxl362Device *device);
@@ -252,6 +253,8 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 /*! Resets the device via SPI communication bus. */
 void ADXL362_SoftwareReset(void);
 void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device);
+void ADXL362_Deinit(void);
+void ADXL362_DeinitDevice(const TagAdxl362Device *device);
 
 /*! Places the device into standby/measure mode. */
 void ADXL362_SetPowerMode(unsigned char pwrMode);

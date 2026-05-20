@@ -71,32 +71,19 @@ static const TagSpiDevice adxl362_spi = {
   .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
-void __attribute__((weak)) accelPowerOn(void) {}
-
-void __attribute__((weak)) accelPowerOff(void) {}
-
-void __attribute__((weak)) accelBusBegin(void)
-{
-  accelSpiOn();
-}
-
-void __attribute__((weak)) accelBusEnd(void)
-{
-  accelSpiOff();
-}
-
 static const TagAdxl362Device adxl362_default_device = {
   .spi = &adxl362_spi,
-  .power_on = accelPowerOn,
-  .power_off = accelPowerOff,
-  .bus_begin = accelBusBegin,
-  .bus_end = accelBusEnd,
   .sleep_ms = 0,
 };
 
 const TagAdxl362Device *ADXL362_DefaultDevice(void)
 {
   return &adxl362_default_device;
+}
+
+const TagAdxl362Device *__attribute__((weak)) tagAdxl362Device(void)
+{
+  return ADXL362_DefaultDevice();
 }
 
 void ADXL362_DeviceBegin(const TagAdxl362Device *device)
@@ -274,6 +261,18 @@ void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device)
 {
     ADXL362_SetRegisterValueDevice(device, ADXL362_RESET_KEY,
                                    ADXL362_REG_SOFT_RESET, 1);
+}
+
+void ADXL362_Deinit(void)
+{
+    ADXL362_DeinitDevice(&adxl362_default_device);
+}
+
+void ADXL362_DeinitDevice(const TagAdxl362Device *device)
+{
+    ADXL362_DeviceBegin(device);
+    ADXL362_SoftwareResetDevice(device);
+    ADXL362_DeviceEnd(device);
 }
 
 /***************************************************************************//**

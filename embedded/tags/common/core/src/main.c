@@ -117,10 +117,8 @@ void deviceInit(int force)
     // Reset Accelerometer
 
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
-    accelSpiOn();
-    ADXL362_SoftwareReset();
+    ADXL362_DeinitDevice(tagAdxl362Device());
     chThdSleepMilliseconds(2);
-    accelSpiOff();
 #endif
 
 #if defined(USE_ADXL367)

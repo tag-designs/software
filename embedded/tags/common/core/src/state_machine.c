@@ -344,9 +344,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
   {
     // disable I/O devices
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
-    accelSpiOn();
-    ADXL362_SoftwareReset();
-    accelSpiOff();
+    ADXL362_DeinitDevice(tagAdxl362Device());
 #endif
 #if defined(USE_ADXL367)
     accelSpiOn();

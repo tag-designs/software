@@ -85,5 +85,5 @@ bool adxl362Test(const TagAdxl362Device *device)
 
 bool __attribute__((weak)) tag_test_adxl362(void)
 {
-  return adxl362Test(ADXL362_DefaultDevice());
+  return adxl362Test(tagAdxl362Device());
 }
