@@ -17,6 +17,3 @@ include ../families/CompassTag/family.mk
 # Variant-specific application sources. Shared CompassTag family sources come
 # from ../families/CompassTag unless this directory provides a local source with
 # the same name.
-ALLCSRC += \
-       datalog.c \
-       state_run.c
