@@ -1,17 +1,16 @@
 #include "hal.h"
 #include "app.h"
 #include "device.h"
-#include "external_flash.h"
-#include "lps.h"
 #include "persistent.h"
 #include "power.h"
 
 /*
- * Device bus descriptors.
+ * Universal PresTag power/standby sequence.
  *
- * PresTag keeps the existing public wrapper names (rtcOn/lpsOn/FlashSpiOn),
- * but the repetitive bus and sleep-pin mechanics now live in the shared
- * descriptor helpers from common/core.
+ * The RTC remains here because every active tag uses the same RTC lifecycle.
+ * Non-universal peripherals such as pressure sensors and external flash live
+ * in devices.c, where their board descriptors sit beside the tag/family hooks
+ * used by the standby path.
  */
 
 static void delay(void){
@@ -33,34 +32,6 @@ static const TagI2cDevice rtc_bus = {
     .sleep_policy = TAG_I2C_SLEEP_PULLUP,
 };
 
-#ifdef LPS_SPI
-static const TagSpiDevice lps_bus = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
-    .cs = LINE_STEVAL_CS,
-    .sck = LINE_STEVAL_SCK,
-    .miso = LINE_STEVAL_MISO,
-    .mosi = LINE_STEVAL_MOSI,
-    .pwr = LINE_STEVAL_PWR,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_FLOAT,
-};
-#endif
-
-#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
-static const TagSpiDevice flash_bus = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
-    .cs = LINE_FLASH_nCS,
-    .sck = LINE_FLASH_SCK,
-    .miso = LINE_FLASH_MISO,
-    .mosi = LINE_FLASH_MOSI,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
-};
-#endif
-
 void rtcOn(void)
 {
   tagI2cDevicePowerOn(&rtc_bus);
@@ -72,52 +43,6 @@ void rtcOff(void)
   tagI2cBusEnd(&rtc_bus);
   tagI2cDevicePowerOff(&rtc_bus);
 }
-
-#ifdef LPS_SPI
-void lpsPowerOn(void)
-{
-  tagSpiDevicePowerOn(&lps_bus);
-}
-
-void lpsPowerOff(void)
-{
-  tagSpiDevicePowerOff(&lps_bus);
-}
-
-void lpsBusBegin(void)
-{
-  tagSpiBusBegin(&lps_bus);
-}
-
-void lpsBusEnd(void)
-{
-  tagSpiBusEnd(&lps_bus);
-}
-
-void lpsOn(void)
-{
-  lpsPowerOn();
-  lpsBusBegin();
-}
-
-void lpsOff(void)
-{
-  lpsBusEnd();
-  lpsPowerOff();
-}
-#endif
-
-#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
-void FlashSpiOn(void)
-{
-  tagSpiBusBegin(&flash_bus);
-}
-
-void FlashSpiOff(void)
-{
-  tagSpiBusEnd(&flash_bus);
-}
-#endif
 
 /*
  * Steps for entering standby
@@ -136,19 +61,6 @@ void godown(enum Sleep sleepmode)
 
   tagDevicesPrepareStandby(pState->state);
 
-#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
-  // Make sure flash is in low power mode
-  if ((pState->state == IDLE) ||
-      (pState->state == ABORTED) ||
-      (pState->state == FINISHED) ||
-      (pState->state == EXCEPTION) ||
-      (pState->state == HIBERNATING))
-  {
-    ExFlashPwrUp();
-    stopMilliseconds(true,1);
-    ExFlashPwrDown();
-  }
-#endif
   // Make sure debug power is off
   __disable_irq();
   DBGMCU->CR = 0;
@@ -160,17 +72,9 @@ void godown(enum Sleep sleepmode)
 
   tagDevicesApplyStandbyPins();
 
-#if defined(TAG_HAS_EXTERNAL_FLASH) && !defined(TAG_FLASH_AT25XE) && !defined(TAG_FLASH_MX25R)
-  tagSpiDevicePrepareSleep(&flash_bus);
-#endif
-
   // Pull up SCL and SDA on RTC
 
   tagI2cDevicePrepareSleep(&rtc_bus);
-
-  // fully discharge Pressure Sensor capacitor
-
-  //enableLinePulldown(LINE_STEVAL_PWR);
 
   // turn on pullups
 
