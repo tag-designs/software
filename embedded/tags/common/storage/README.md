@@ -76,3 +76,9 @@ TODO: migrate `mx25l.c` to the same `storage_spi.h` and `TagStorageDevice`
 pattern used by AT25XE and MX25R. Leave this for a separate hardware-tested
 pass because MX25L currently has its own pipelined helper code and monitor debug
 logging.
+
+TODO: find and validate a safe pipelined SPI transfer routine before using
+pipelined transfers as the default for shared SPI device I/O. The conservative
+byte-at-a-time path is currently the known-good behavior for flash erase/write
+and CompassTag calibration sensor access; any faster routine needs hardware
+testing on storage, AK09940A, and LIS2DU12 use cases.

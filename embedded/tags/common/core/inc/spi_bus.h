@@ -78,6 +78,10 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
 
 void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
 void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
+void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
+                          uint32_t len);
+void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
+                         uint32_t len);
 
 void tagSpiSelect(const TagSpiDevice *device);
 void tagSpiDeselect(const TagSpiDevice *device);
