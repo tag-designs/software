@@ -3,6 +3,7 @@
 #include "ak09940a.h"
 #include "custom.h"
 #include "device.h"
+#include "devices.h"
 #include "gpio_utils.h"
 #include "lis2du12.h"
 #include "power.h"
@@ -30,7 +31,6 @@
  * shared power file.
  */
 
-#if defined(TAG_SENSOR_MAG_AK09940A)
 #if defined(LINE_MAG_CS) && defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
 #define AK09940A_CS LINE_MAG_CS
 #define AK09940A_SCK LINE_MAG_SCK
@@ -72,47 +72,23 @@ static const TagRegisterBus ak09940a_registers = {
     .context = &ak09940a_register_spi,
 };
 
-void magPowerOn(void)
-{
-  tagSpiDevicePowerOn(&ak09940a_bus);
-}
-
-void magPowerOff(void)
+void tagCompassMagResetAssert(void)
 {
 #if defined(LINE_MAG_RSTN)
+  toOutput(LINE_MAG_RSTN);
   palClearLine(LINE_MAG_RSTN);
 #endif
-  tagSpiDevicePowerOff(&ak09940a_bus);
 }
 
-void magBusBegin(void)
+void tagCompassMagResetRelease(void)
 {
-  tagSpiBusBegin(&ak09940a_bus);
-
 #if defined(LINE_MAG_RSTN)
   toOutput(LINE_MAG_RSTN);
   palSetLine(LINE_MAG_RSTN);
 #endif
 }
 
-void magBusEnd(void)
-{
-  tagSpiBusEnd(&ak09940a_bus);
-}
-
-void magOn(void)
-{
-  magPowerOn();
-  magBusBegin();
-}
-
-void magOff(void)
-{
-  magBusEnd();
-  magPowerOff();
-}
-
-static void magSleepMilliseconds(int ms)
+static void compassTagMagSleepMilliseconds(int ms)
 {
   stopMilliseconds(false, ms);
 }
@@ -122,7 +98,7 @@ static void magSleepMilliseconds(int ms)
 #endif
 
 #if defined(AK09940A_TRG)
-static void magTriggerMode(bool output)
+static void compassTagMagTriggerMode(bool output)
 {
   if (output)
     toOutput(AK09940A_TRG);
@@ -130,29 +106,29 @@ static void magTriggerMode(bool output)
     toInput(AK09940A_TRG);
 }
 
-static void magTrigger(void)
+static void compassTagMagTrigger(void)
 {
   palSetLine(AK09940A_TRG);
   palClearLine(AK09940A_TRG);
 }
 
-static bool magDataReadyLine(void)
+static bool compassTagMagDataReadyLine(void)
 {
   return palReadLine(AK09940A_TRG) == PAL_HIGH;
 }
 #endif
 
-static const TagMagDevice ak09940a_device = {
+const TagMagDevice tagCompassTagMagDevice = {
     .registers = &ak09940a_registers,
-    .power_on = magPowerOn,
-    .power_off = magPowerOff,
-    .bus_begin = magBusBegin,
-    .bus_end = magBusEnd,
-    .sleep_ms = magSleepMilliseconds,
+    .power_on = 0,
+    .power_off = 0,
+    .bus_begin = 0,
+    .bus_end = 0,
+    .sleep_ms = compassTagMagSleepMilliseconds,
 #if defined(AK09940A_TRG)
-    .set_trigger_output = magTriggerMode,
-    .trigger = magTrigger,
-    .data_ready_line = magDataReadyLine,
+    .set_trigger_output = compassTagMagTriggerMode,
+    .trigger = compassTagMagTrigger,
+    .data_ready_line = compassTagMagDataReadyLine,
 #else
     .set_trigger_output = 0,
     .trigger = 0,
@@ -162,9 +138,8 @@ static const TagMagDevice ak09940a_device = {
 
 const TagMagDevice *tagAk09940aDevice(void)
 {
-  return &ak09940a_device;
+  return &tagCompassTagMagDevice;
 }
-#endif
 
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
@@ -187,17 +162,16 @@ const TagStorageDevice tagExternalFlash = {
 
 void tagDevicesPrepareStandby(uint32_t state)
 {
+  tagCompassMagResetAssert();
   tagStoragePrepareStandby(&tagExternalFlash, state);
 }
 
 void tagDevicesApplyStandbyPins(void)
 {
-#if defined(TAG_SENSOR_MAG_AK09940A)
 #if defined(LINE_MAG_RSTN)
   tagEnableStandbyPulldown(LINE_MAG_RSTN);
 #endif
   tagSpiDevicePrepareSleep(&ak09940a_bus);
-#endif
 
 #ifdef ACCEL_USART
   tagEnableStandbyPullup(LINE_ACCEL_CS);
@@ -206,6 +180,18 @@ void tagDevicesApplyStandbyPins(void)
 #endif
 
   tagStorageApplyStandbyPins(&tagExternalFlash);
+}
+
+bool tag_test_ak09940a(void)
+{
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  if (TAG_MAG_DEVICE->sleep_ms)
+    TAG_MAG_DEVICE->sleep_ms(1);
+  tagCompassMagResetRelease();
+  bool ok = ak09940aCheckWhoami(TAG_MAG_DEVICE);
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+  tagCompassMagResetAssert();
+  return ok;
 }
 
 #ifdef ACCEL_USART

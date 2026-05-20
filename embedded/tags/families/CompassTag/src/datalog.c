@@ -1,8 +1,9 @@
 #include "app.h"
 #include "datalog.h"
+#include "devices.h"
 #include <tag.pb.h>
 #include "persistent.h"
-#include "external_flash.h"
+#include "storage_flash.h"
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
@@ -76,19 +77,21 @@ static int countInternalBlocks(void){
 static bool eraseExternalSector(int sector){
   int32_t addr;
   uint8_t buf[256];
+  int sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  int sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
 
   // round up to full sector
 
-  if (sector < 0 || sector >= EXT_FLASH_SIZE/4096)
+  if (sector < 0 || sector >= sector_count)
     return false;
 
-  addr = sector*4096;
+  addr = sector * sector_size;
 
   // read a buffer
-  ExFlashRead(addr, buf, 256);
+  tagStorageRead(TAG_EXTERNAL_FLASH, addr, buf, 256);
   for (int i = 0; i < 256; i++) {
       if (buf[i] != 255) {
-        ExFlashSectorErase(addr);
+        tagStorageSectorErase(TAG_EXTERNAL_FLASH, addr);
         return true;
       }
   }
@@ -98,8 +101,8 @@ static bool eraseExternalSector(int sector){
 void eraseExternal()
 {
   sectors_erased = 0;
-  ExFlashPwrUp();  
-  for (int i = 0; i < EXT_FLASH_SIZE/4096; i++) {
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  for (int i = 0; i < tagStorageSectorCount(TAG_EXTERNAL_FLASH); i++) {
     // check them all
     eraseExternalSector(i);
     sectors_erased++;
@@ -107,7 +110,7 @@ void eraseExternal()
     if (i%8 == 7)
       chThdYield();  
   }
-  ExFlashPwrDown();
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
   pState->external_blocks = 0;
   sectors_erased = 0;
 }
@@ -141,7 +144,9 @@ int restoreLog(void)
 
 enum LOGERR writeDataLog(uint16_t *data, int num)
 {
-  if (pState->external_blocks + num > EXT_FLASH_SIZE/2)
+  uint32_t flash_capacity = tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
+                            tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+  if (pState->external_blocks + num > flash_capacity / 2)
   {
     return LOGWRITE_FULL;
   }
@@ -149,9 +154,9 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   int cnt = num*2;
   int addr = pState->external_blocks * 2;
 
-  ExFlashPwrUp();
-  ExFlashWrite(addr, (uint8_t *) data, &cnt);
-  ExFlashPwrDown();
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
   
   return LOGWRITE_OK;
 }
@@ -198,9 +203,10 @@ int data_logAck(int index, Ack *ack)
   ack->err = Ack_Err_OK;
   
   // read data
-  ExFlashPwrUp();
-  ExFlashRead(sizeof(databuf)*index, (uint8_t *) &databuf, sizeof(databuf));
-  ExFlashPwrDown();
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf)*index,
+                 (uint8_t *) &databuf, sizeof(databuf));
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
 
   if (vddHeader[index].epoch != -1)
   {
@@ -250,5 +256,4 @@ int data_logAck(int index, Ack *ack)
   chThdSetPriority(NORMALPRIO);
   return ret;
 }
-
 

@@ -5,6 +5,7 @@
 
 #include "hal.h"
 #include "core_types.h"
+#include "devices.h"
 #include "flash_internal.h"
 #include "persistent.h"
 
@@ -80,8 +81,11 @@ bool sensorSample(RawSensorData *data){
 
   memset(data,0,sizeof(*data));
 
-  mag = tagAk09940aDevice();
-  ak09940aInit(mag, MAG_SAMPLE_SINGLE_MODE);
+  mag = TAG_MAG_DEVICE;
+  ak09940aDeviceBegin(mag);
+  if (mag->sleep_ms)
+    mag->sleep_ms(1);
+  tagCompassMagResetRelease();
   if (ak09940aSample(mag, true, buf)) {
 
       // keep only 16 bits
@@ -96,6 +100,7 @@ bool sensorSample(RawSensorData *data){
     ok = false;
   }
   ak09940aDeviceEnd(mag);
+  tagCompassMagResetAssert();
 
   accel = tagLis2du12Device();
   if (lis2du12Sample(accel, (uint8_t *) &accel_data))
@@ -126,7 +131,7 @@ bool sensorCalibrationSample(SensorData *sensors)
     int z = 0;
     //int t = 0;
    
-    if (ak09940aSample(tagAk09940aDevice(), false, buf))
+    if (ak09940aSample(TAG_MAG_DEVICE, false, buf))
     {
       // keep all 18 bits
       sensors->has_mag = true;
@@ -158,12 +163,19 @@ bool sensorCalibrationSample(SensorData *sensors)
 
 bool initSensors(void){
     lis2du12Init(tagLis2du12Device(), ACCEL_SAMPLE_100HZ_MODE);
-    ak09940aInit(tagAk09940aDevice(), MAG_SAMPLE_100HZ_MODE);
+    ak09940aDeviceBegin(TAG_MAG_DEVICE);
+    if (TAG_MAG_DEVICE->sleep_ms)
+      TAG_MAG_DEVICE->sleep_ms(1);
+    tagCompassMagResetRelease();
+    ak09940aInitContinuous(TAG_MAG_DEVICE, AK09940_RATE_100HZ,
+                           AK09940_DRIVE_LOW_NOISE_2,
+                           AK09940_TEMP_DISABLED);
     return true;
 }
 
 bool deinitSensors(void) {
-    ak09940aDeviceEnd(tagAk09940aDevice());
+    ak09940aDeviceEnd(TAG_MAG_DEVICE);
+    tagCompassMagResetAssert();
     lis2du12Deinit(tagLis2du12Device());
     return true;
 }
