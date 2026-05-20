@@ -52,5 +52,86 @@ void tagDevicesPrepareStandby(uint32_t state)
 
 void tagDevicesApplyStandbyPins(void)
 {
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }
+
+#if defined(LPS_USART)
+static const TagUsartDevice lps_usart_device = {
+    .controller = &tagUsart2SyncController,
+    .config = &tagUsart2SyncDefaultConfig,
+    .cs = LINE_LPS_CS,
+    .sck = LINE_LPS_SCK,
+    .tx = LINE_LPS_TX,
+    .rx = LINE_LPS_RX,
+    .pwr = LINE_LPS_PWR,
+    .dummy = 0xff,
+    .sleep_policy = TAG_USART_SLEEP_FLOAT,
+};
+
+void lpsPowerOn(void)
+{
+  tagUsartDevicePowerOn(&lps_usart_device);
+}
+
+void lpsPowerOff(void)
+{
+  tagUsartDevicePowerOff(&lps_usart_device);
+}
+
+void lpsBusBegin(void)
+{
+  tagUsartBusBegin(&lps_usart_device);
+}
+
+void lpsBusEnd(void)
+{
+  tagUsartBusEnd(&lps_usart_device);
+}
+
+void lpsOn(void)
+{
+  lpsPowerOn();
+  lpsBusBegin();
+}
+
+void lpsOff(void)
+{
+  lpsBusEnd();
+  lpsPowerOff();
+}
+#endif
+
+#if defined(TAG_SENSOR_ACCEL_ADXL362)
+static const TagSpiDevice accel_bus = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_ACCEL_CS,
+    .sck = LINE_ACCEL_SCK,
+    .miso = LINE_ACCEL_MISO,
+    .mosi = LINE_ACCEL_MOSI,
+    .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+
+void accelSpiOn(void)
+{
+  tagSpiBusBegin(&accel_bus);
+}
+
+void accelSpiOff(void)
+{
+  tagSpiBusEnd(&accel_bus);
+}
+
+void accelBusBegin(void)
+{
+  accelSpiOn();
+}
+
+void accelBusEnd(void)
+{
+  accelSpiOff();
+}
+#endif
