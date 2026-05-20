@@ -1,26 +1,47 @@
 #include "hal.h"
+
 #include "app.h"
+#include "custom.h"
 #include "device.h"
 #include "persistent.h"
 #include "power.h"
+
+#ifndef ACCEL_WAKEUP_SOURCE
+#define ACCEL_WAKEUP_SOURCE 4
+#endif
+
+#if ACCEL_WAKEUP_SOURCE == 1
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
+#elif ACCEL_WAKEUP_SOURCE == 4
+#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
+#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
+#else
+#error "Unsupported ACCEL_WAKEUP_SOURCE"
+#endif
 
 /*
  * Universal PresTag power/standby sequence.
  *
  * The RTC remains here because every active tag uses the same RTC lifecycle.
- * Non-universal peripherals such as pressure sensors and external flash live
- * in devices.c, where their board descriptors sit beside the tag/family hooks
- * used by the standby path.
+ * Peripheral bindings such as external flash and LPS27 live in devices.c,
+ * where descriptors and standby pin policy are easier to audit.
  */
 
-static void delay(void){
+static void delay(void)
+{
   __NOP();
 }
 
 static const I2CConfig rtc_i2c_config = {
     .delay = delay,
+#if defined(SWAP_I2C) && SWAP_I2C
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA,
+#else
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL,
+#endif
 };
 
 static const TagI2cDevice rtc_bus = {
@@ -44,60 +65,61 @@ void rtcOff(void)
   tagI2cDevicePowerOff(&rtc_bus);
 }
 
-/*
- * Steps for entering standby
- *
- *   Set needed standby pullups
- *
- *   Disable all wakeup sources
- *   Clear all wakeup flags
- *   Re-enable wakeup sources
- *   Enter Standby
- */
-
 void godown(enum Sleep sleepmode)
 {
-  (void) sleepmode;
+  (void)sleepmode;
 
   tagDevicesPrepareStandby(pState->state);
 
-  // Make sure debug power is off
   __disable_irq();
   DBGMCU->CR = 0;
- 
-  // Mark the backup register.  Any reset at this point is ok
-  // disable sram2 -- only works in standby, and pullup config
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);             
+  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+
+#ifdef LINE_ACCEL_CS
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+#endif
 
   tagDevicesApplyStandbyPins();
-
-  // Pull up SCL and SDA on RTC
-
   tagI2cDevicePrepareSleep(&rtc_bus);
-
-  // turn on pullups
 
   SET_BIT(PWR->CR3, PWR_CR3_APC);
 
-  // Enable internal wakeup source and set low power mode
+  CLEAR_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT);
 
+#if defined(LINE_ACCEL_INT)
+  if (isActive)
+  {
+    SET_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
+  }
+  else
+  {
+    CLEAR_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
+  }
+
+  if (pState->state == RUNNING)
+  {
+    SET_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
+    if (isActive != palReadLine(LINE_ACCEL_INT))
+      return;
+  }
+  else
+  {
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  }
+#else
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
+
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
-
-  // Set SLEEPDEEP bit of Cortex System Control Register
-
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
   __DSB();
   __WFI();
 
- __enable_irq();
-  // Should never return !;
+  __enable_irq();
 }
 
-// Non-maskable interrupt
-// Go To Shutdown
 void _unhandled_exception(void)
 {
   pState->state = EXCEPTION;

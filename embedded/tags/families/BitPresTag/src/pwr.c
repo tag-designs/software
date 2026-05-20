@@ -23,9 +23,9 @@
 /*
  * BitPresTag-family power/standby sequence.
  *
- * The RTC remains here because it follows the universal active-tag lifecycle.
- * Family peripherals such as LPS27, ADXL362, and external flash live in
- * devices.c beside their descriptors and standby pin policy.
+ * The RTC remains here because every active tag uses the same RTC lifecycle.
+ * Peripheral bindings such as external flash, LPS27, and ADXL362 live in
+ * devices.c, where descriptors and standby pin policy are easier to audit.
  */
 
 static void delay(void)
@@ -75,6 +75,10 @@ void godown(enum Sleep sleepmode)
   DBGMCU->CR = 0;
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+
+#ifdef LINE_ACCEL_CS
+  tagEnableStandbyPullup(LINE_ACCEL_CS);
+#endif
 
   tagDevicesApplyStandbyPins();
   tagI2cDevicePrepareSleep(&rtc_bus);
