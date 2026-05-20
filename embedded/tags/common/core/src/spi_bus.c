@@ -68,50 +68,62 @@ const TagSpiConfig tagSpiDefaultConfig = {
            SPI_CR2_DS_1 | SPI_CR2_DS_0,
 };
 
-static void spi1DefaultEnable(const TagSpiConfig *config)
-{
-  if (!config)
-  {
-    config = &tagSpiDefaultConfig;
-  }
-
-  rccEnableSPI1(0);
-  rccResetSPI1();
-
-  SPI1->CR1 = 0;
-  SPI1->CR2 = config->cr2;
-  SPI1->CR1 = config->cr1;
-  SPI1->CR1 |= SPI_CR1_SPE;
-  tagMarkSpi1On();
-}
-
-static void spi1DefaultDisable(void)
-{
-  SPI1->CR1 = 0;
-  SPI1->CR2 = 0;
-  tagMarkSpi1Off();
-}
 #else
 const TagSpiConfig tagSpiDefaultConfig = {
     .cr1 = 0,
     .cr2 = 0,
 };
-
-static void spi1DefaultEnable(const TagSpiConfig *config)
-{
-  (void)config;
-}
-
-static void spi1DefaultDisable(void)
-{
-}
 #endif
 
 const TagSpiController tagSpi1DefaultController = {
+    .spi = SPI1,
     .mutex = &SPImutex,
-    .enable = spi1DefaultEnable,
-    .disable = spi1DefaultDisable,
 };
+
+void tagSpiControllerEnable(const TagSpiController *controller,
+                            const TagSpiConfig *config)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  if (!config)
+  {
+    config = &tagSpiDefaultConfig;
+  }
+
+  if (controller->spi == SPI1)
+  {
+    rccEnableSPI1(0);
+    rccResetSPI1();
+  }
+
+  controller->spi->CR1 = 0;
+  controller->spi->CR2 = config->cr2;
+  controller->spi->CR1 = config->cr1;
+  controller->spi->CR1 |= SPI_CR1_SPE;
+
+  if (controller->spi == SPI1)
+  {
+    tagMarkSpi1On();
+  }
+#else
+  (void)controller;
+  (void)config;
+#endif
+}
+
+void tagSpiControllerDisable(const TagSpiController *controller)
+{
+#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  controller->spi->CR1 = 0;
+  controller->spi->CR2 = 0;
+
+  if (controller->spi == SPI1)
+  {
+    tagMarkSpi1Off();
+  }
+#else
+  (void)controller;
+#endif
+}
 
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
@@ -154,9 +166,9 @@ void tagSpiBusBegin(const TagSpiDevice *device)
   toAlternate(device->miso);
   toAlternate(device->mosi);
 
-  if (controller && controller->enable)
+  if (controller)
   {
-    controller->enable(device->config);
+    tagSpiControllerEnable(controller, device->config);
   }
 }
 
@@ -166,9 +178,9 @@ void tagSpiBusEnd(const TagSpiDevice *device)
 
   palSetLine(device->cs);
 
-  if (controller && controller->disable)
+  if (controller)
   {
-    controller->disable();
+    tagSpiControllerDisable(controller);
   }
 
   toAnalog(device->sck);
@@ -247,13 +259,13 @@ void tagSpiDeselect(const TagSpiBus *bus)
 void tagSpiBusWrite(const TagSpiBus *bus, const uint8_t *buf, uint32_t len)
 {
   tagSpiSelect(bus);
-  tagSpiWrite(bus->spi, buf, len);
+  tagSpiWrite(tagSpiBusPeripheral(bus), buf, len);
   tagSpiDeselect(bus);
 }
 
 void tagSpiBusRead(const TagSpiBus *bus, uint8_t *buf, uint32_t len)
 {
   tagSpiSelect(bus);
-  tagSpiRead(bus->spi, buf, len);
+  tagSpiRead(tagSpiBusPeripheral(bus), buf, len);
   tagSpiDeselect(bus);
 }

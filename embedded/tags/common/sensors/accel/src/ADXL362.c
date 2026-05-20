@@ -60,7 +60,7 @@ char selectedRange = 0;
 /******************************************************************************/
 
 static const TagSpiBus adxl362_spi = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_ACCEL_CS,
   .dummy = 0xff,
 };
@@ -192,8 +192,8 @@ void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
     buffer[1] = registerAddress;
 
     tagSpiSelect(device->spi);
-    tagSpiWrite(device->spi->spi, buffer, 2);
-    tagSpiRead(device->spi->spi, pReadData, bytesNumber);
+    tagSpiWrite(tagSpiBusPeripheral(device->spi), buffer, 2);
+    tagSpiRead(tagSpiBusPeripheral(device->spi), pReadData, bytesNumber);
     tagSpiDeselect(device->spi);
 }
 
@@ -218,8 +218,8 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 
   buffer[0] = ADXL362_WRITE_FIFO;
   tagSpiSelect(device->spi);
-  tagSpiWrite(device->spi->spi, buffer, 1);
-  tagSpiRead(device->spi->spi, pBuffer, bytesNumber);
+  tagSpiWrite(tagSpiBusPeripheral(device->spi), buffer, 1);
+  tagSpiRead(tagSpiBusPeripheral(device->spi), pBuffer, bytesNumber);
   tagSpiDeselect(device->spi);
 }
 

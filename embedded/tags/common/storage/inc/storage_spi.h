@@ -23,12 +23,13 @@
 static inline void tagStorageSpiWrite(const TagSpiBus *bus, const uint8_t *buf,
                                       uint32_t n)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&bus->spi->DR;
+  SPI_TypeDef *spi = tagSpiBusPeripheral(bus);
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (n--)
   {
     *spidr = *buf++;
-    while ((bus->spi->SR & SPI_SR_RXNE) == 0)
+    while ((spi->SR & SPI_SR_RXNE) == 0)
     {
       ;
     }
@@ -39,12 +40,13 @@ static inline void tagStorageSpiWrite(const TagSpiBus *bus, const uint8_t *buf,
 static inline void tagStorageSpiRead(const TagSpiBus *bus, uint8_t *buf,
                                      uint32_t n)
 {
-  volatile uint8_t *spidr = (volatile uint8_t *)&bus->spi->DR;
+  SPI_TypeDef *spi = tagSpiBusPeripheral(bus);
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (n--)
   {
     *spidr = bus->dummy;
-    while ((bus->spi->SR & SPI_SR_RXNE) == 0)
+    while ((spi->SR & SPI_SR_RXNE) == 0)
     {
       ;
     }

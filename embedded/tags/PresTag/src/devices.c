@@ -15,7 +15,7 @@
  * and flash geometry.
  */
 static const TagSpiBus external_flash_spi_bus = {
-    .spi = SPI1,
+    .controller = &tagSpi1DefaultController,
     .cs = LINE_FLASH_nCS,
     .dummy = 0xff,
 };

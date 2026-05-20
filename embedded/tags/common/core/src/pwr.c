@@ -104,7 +104,7 @@ static const TagSpiDevice ak09940a_bus = {
 };
 
 static const TagSpiBus ak09940a_register_bus = {
-    .spi = SPI1,
+    .controller = &tagSpi1DefaultController,
     .cs = AK09940A_CS,
     .dummy = 0xff,
 };
@@ -229,29 +229,46 @@ static const TagSpiDevice flash_bus = {
 #endif
 
 #ifdef LPS_USART
+static const TagUsartDevice lps_usart_device = {
+    .controller = &tagUsart2SyncController,
+    .config = &tagUsart2SyncDefaultConfig,
+    .cs = LINE_LPS_CS,
+    .sck = LINE_LPS_SCK,
+    .tx = LINE_LPS_TX,
+    .rx = LINE_LPS_RX,
+    .pwr = LINE_LPS_PWR,
+};
+
+void lpsPowerOn(void)
+{
+  tagUsartDevicePowerOn(&lps_usart_device);
+}
+
+void lpsPowerOff(void)
+{
+  tagUsartDevicePowerOff(&lps_usart_device);
+}
+
+void lpsBusBegin(void)
+{
+  tagUsartBusBegin(&lps_usart_device);
+}
+
+void lpsBusEnd(void)
+{
+  tagUsartBusEnd(&lps_usart_device);
+}
+
 void lpsOn(void)
 {
-  toOutput(LINE_LPS_PWR);
-  palSetLine(LINE_LPS_PWR);
-
-  palSetLine(LINE_LPS_CS);
-  toOutput(LINE_LPS_CS);
-
-  toAlternate(LINE_LPS_SCK);
-  toAlternate(LINE_LPS_TX);
-  toAlternate(LINE_LPS_RX);
-
-  tagUsart2SyncEnable(&tagUsart2SyncDefaultConfig);
+  lpsPowerOn();
+  lpsBusBegin();
 }
 
 void lpsOff(void)
 {
-  tagUsart2SyncDisable();
-  toAnalog(LINE_LPS_SCK);
-  toAnalog(LINE_LPS_TX);
-  toAnalog(LINE_LPS_RX);
-  toAnalog(LINE_LPS_CS);
-  palClearLine(LINE_LPS_PWR);
+  lpsBusEnd();
+  lpsPowerOff();
 }
 #endif
 

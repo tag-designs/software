@@ -25,8 +25,8 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
    * SPI-like sensors latch the command on CS rising, so callers must not split
    * a register write into separately selected command and data transfers.
    */
-  tagSpiWrite(spi->bus->spi, &command, 1);
-  tagSpiWrite(spi->bus->spi, buf, len);
+  tagSpiWrite(tagSpiBusPeripheral(spi->bus), &command, 1);
+  tagSpiWrite(tagSpiBusPeripheral(spi->bus), buf, len);
   tagSpiDeselect(spi->bus);
 
   return 0;
@@ -39,8 +39,8 @@ int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   uint8_t command = (uint8_t)(reg | spi->read_mask);
 
   tagSpiSelect(spi->bus);
-  tagSpiWrite(spi->bus->spi, &command, 1);
-  tagSpiRead(spi->bus->spi, buf, len);
+  tagSpiWrite(tagSpiBusPeripheral(spi->bus), &command, 1);
+  tagSpiRead(tagSpiBusPeripheral(spi->bus), buf, len);
   tagSpiDeselect(spi->bus);
 
   return 0;
@@ -58,8 +58,8 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
    * Synchronous-USART devices use CS for the same transaction framing as SPI;
    * the command byte and payload must stay under the same assertion.
    */
-  tagUsartWrite(usart->bus->usart, &command, 1);
-  tagUsartWrite(usart->bus->usart, buf, len);
+  tagUsartWrite(tagUsartBusPeripheral(usart->bus), &command, 1);
+  tagUsartWrite(tagUsartBusPeripheral(usart->bus), buf, len);
   tagUsartDeselect(usart->bus);
 
   return 0;
@@ -72,8 +72,9 @@ int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   uint8_t command = (uint8_t)(reg | usart->read_mask);
 
   tagUsartSelect(usart->bus);
-  tagUsartWrite(usart->bus->usart, &command, 1);
-  tagUsartRead(usart->bus->usart, usart->bus->dummy, buf, len);
+  tagUsartWrite(tagUsartBusPeripheral(usart->bus), &command, 1);
+  tagUsartRead(tagUsartBusPeripheral(usart->bus), usart->bus->dummy, buf,
+               len);
   tagUsartDeselect(usart->bus);
 
   return 0;

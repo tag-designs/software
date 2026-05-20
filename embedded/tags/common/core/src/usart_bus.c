@@ -1,11 +1,14 @@
 #include "usart_bus.h"
 
+#include "core_sync.h"
+#include "gpio_utils.h"
+#include "power.h"
+
 /*
  * Polling synchronous-USART byte transfers shared by simple sensor drivers.
  *
- * The tag power layer owns GPIO alternate functions and chip-select policy.
- * This file owns the shared USART controller setup, active-state tracking, and
- * raw byte-transfer mechanics.
+ * This file owns USART controller setup, device bus-session pin state,
+ * active-state tracking, and raw byte-transfer mechanics.
  */
 
 static bool usart2_on = false;
@@ -16,6 +19,11 @@ const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
     .cr1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE,
     .cr2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL,
     .cr3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT,
+};
+
+const TagUsartController tagUsart2SyncController = {
+    .usart = USART2,
+    .mutex = &USARTmutex,
 };
 
 bool isUsart2On(void)
@@ -39,34 +47,59 @@ void tagMarkUsart2Off(void)
 
 void tagUsart2SyncEnable(const TagUsartSyncConfig *config)
 {
+  tagUsartControllerEnable(&tagUsart2SyncController, config);
+}
+
+void tagUsart2SyncDisable(void)
+{
+  tagUsartControllerDisable(&tagUsart2SyncController);
+}
+
+void tagUsartControllerEnable(const TagUsartController *controller,
+                              const TagUsartSyncConfig *config)
+{
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
   if (!config)
   {
     config = &tagUsart2SyncDefaultConfig;
   }
 
-  rccEnableUSART2(true);
-  rccResetUSART2();
+  if (controller->usart == USART2)
+  {
+    rccEnableUSART2(true);
+    rccResetUSART2();
+  }
 
   // Synchronous USART mode, MSB first. Several tags use USART2 as a
   // three-wire SPI-like sensor bus when the device is not routed to SPI.
-  USART2->BRR = config->brr;
-  USART2->CR2 = config->cr2;
-  USART2->CR3 = config->cr3;
-  USART2->CR1 = config->cr1;
-  tagMarkUsart2On();
+  controller->usart->BRR = config->brr;
+  controller->usart->CR2 = config->cr2;
+  controller->usart->CR3 = config->cr3;
+  controller->usart->CR1 = config->cr1;
+
+  if (controller->usart == USART2)
+  {
+    tagMarkUsart2On();
+  }
 #else
+  (void)controller;
   (void)config;
 #endif
 }
 
-void tagUsart2SyncDisable(void)
+void tagUsartControllerDisable(const TagUsartController *controller)
 {
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  USART2->CR1 = 0;
-  USART2->CR2 = 0;
-  USART2->CR3 = 0;
-  tagMarkUsart2Off();
+  controller->usart->CR1 = 0;
+  controller->usart->CR2 = 0;
+  controller->usart->CR3 = 0;
+
+  if (controller->usart == USART2)
+  {
+    tagMarkUsart2Off();
+  }
+#else
+  (void)controller;
 #endif
 }
 
@@ -90,6 +123,79 @@ void tagUsartEnableActiveAfterStop(void)
     usart2_suspended_for_stop = false;
   }
 #endif
+}
+
+void tagUsartDevicePowerOn(const TagUsartDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    toOutput(device->pwr);
+    palSetLine(device->pwr);
+  }
+
+  palSetLine(device->cs);
+  toOutput(device->cs);
+}
+
+void tagUsartDevicePowerOff(const TagUsartDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    palClearLine(device->pwr);
+  }
+
+  toAnalog(device->sck);
+  toAnalog(device->tx);
+  toAnalog(device->rx);
+  toAnalog(device->cs);
+}
+
+void tagUsartBusBegin(const TagUsartDevice *device)
+{
+  const TagUsartController *controller = device->controller;
+
+  if (controller && controller->mutex)
+  {
+    chBSemWait(controller->mutex);
+  }
+
+  palSetLine(device->cs);
+  toOutput(device->cs);
+
+  toAlternate(device->sck);
+  toAlternate(device->tx);
+  toAlternate(device->rx);
+
+  if (controller)
+  {
+    tagUsartControllerEnable(controller, device->config);
+  }
+}
+
+void tagUsartBusEnd(const TagUsartDevice *device)
+{
+  const TagUsartController *controller = device->controller;
+
+  palSetLine(device->cs);
+
+  if (controller)
+  {
+    tagUsartControllerDisable(controller);
+  }
+
+  toAnalog(device->sck);
+  toAnalog(device->tx);
+  toAnalog(device->rx);
+
+  if (controller && controller->mutex)
+  {
+    chBSemSignal(controller->mutex);
+  }
+}
+
+void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
+{
+  tagEnableStandbyPulldown(device->pwr);
 }
 
 void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len)
@@ -133,13 +239,13 @@ void tagUsartBusWrite(const TagUsartBus *bus, const uint8_t *buf,
                       uint32_t len)
 {
   tagUsartSelect(bus);
-  tagUsartWrite(bus->usart, buf, len);
+  tagUsartWrite(tagUsartBusPeripheral(bus), buf, len);
   tagUsartDeselect(bus);
 }
 
 void tagUsartBusRead(const TagUsartBus *bus, uint8_t *buf, uint32_t len)
 {
   tagUsartSelect(bus);
-  tagUsartRead(bus->usart, bus->dummy, buf, len);
+  tagUsartRead(tagUsartBusPeripheral(bus), bus->dummy, buf, len);
   tagUsartDeselect(bus);
 }

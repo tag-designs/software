@@ -49,7 +49,7 @@ static const TagRegisterBus lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagSpiBus lps_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
 };
@@ -65,7 +65,7 @@ static const TagRegisterBus lps_registers = {
 };
 #elif defined(LPS_USART)
 static const TagUsartBus lps_usart_bus = {
-  .usart = USART2,
+  .controller = &tagUsart2SyncController,
   .config = &tagUsart2SyncDefaultConfig,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
@@ -87,7 +87,7 @@ static const TagRegisterBus lps_registers = {
 #elif defined(LPS_SHIM_LPS22HH)
 
 static const TagSpiBus lps_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_LPS_CS,
   .dummy = 0xff,
 };
@@ -119,7 +119,7 @@ static const TagRegisterBus lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagSpiBus lps_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
 };
@@ -154,7 +154,7 @@ static const TagRegisterBus lps_registers = {
 };
 #elif defined(LPS_SPI)
 static const TagSpiBus lps_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
 };
@@ -175,7 +175,7 @@ static const TagRegisterBus lps_registers = {
 #elif defined(LPS_SHIM_BMP5)
 
 static const TagSpiBus lps_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = LINE_STEVAL_CS,
   .dummy = 0xff,
 };

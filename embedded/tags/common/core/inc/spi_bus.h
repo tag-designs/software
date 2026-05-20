@@ -14,9 +14,8 @@ typedef struct {
 
 // SPI controller register setup and bus arbitration.
 typedef struct {
+  SPI_TypeDef *spi;
   binary_semaphore_t *mutex;
-  void (*enable)(const TagSpiConfig *config);
-  void (*disable)(void);
 } TagSpiController;
 
 // Standby pull policy applied while preparing the MCU for deep sleep.
@@ -44,7 +43,7 @@ typedef struct {
  * this layer only knows the controller registers and the chip-select line.
  */
 typedef struct {
-  SPI_TypeDef *spi;
+  const TagSpiController *controller;
   ioline_t cs;
   uint8_t dummy;
 } TagSpiBus;
@@ -57,6 +56,14 @@ void tagMarkSpi1On(void);
 void tagMarkSpi1Off(void);
 void tagSpiDisableActiveForStop(void);
 void tagSpiEnableActiveAfterStop(void);
+void tagSpiControllerEnable(const TagSpiController *controller,
+                            const TagSpiConfig *config);
+void tagSpiControllerDisable(const TagSpiController *controller);
+
+static inline SPI_TypeDef *tagSpiBusPeripheral(const TagSpiBus *bus)
+{
+  return bus->controller->spi;
+}
 
 void tagSpiDevicePowerOn(const TagSpiDevice *device);
 void tagSpiDevicePowerOff(const TagSpiDevice *device);

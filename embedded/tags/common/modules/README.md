@@ -175,24 +175,27 @@ sensor-device model more closely.
 
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
-orchestration in `pwr.c`; current active tags provide local `src/pwr.c`
-overrides, so they no longer list `pwr.c` directly in `ALLCSRC`. Shared
-bus/pin mechanics are split between `bus_power.c` and the bus modules:
-`bus_power.c` owns SPI/I2C descriptor helpers and STM32 standby
-pullup/pulldown helpers that operate on board-provided `LINE_xxx` names, while
-`spi_bus.c` and `usart_bus.c` own controller setup, active-state tracking, and
+orchestration in `pwr.c`; tags and families should use that default when their
+board files publish the standard `LINE_xxx` names, and keep local `src/pwr.c`
+overrides only for genuinely non-standard sequencing. Shared bus/pin mechanics
+are split between `bus_power.c` and the bus modules: `bus_power.c` owns shared
+STM32 standby pullup/pulldown helpers that operate on board-provided
+`LINE_xxx` names, while `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own their
+bus-specific descriptor helpers, controller setup, active-state tracking, and
 Stop2-specific register suspend/resume. SPI power and SPI bus ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
 `tagSpiBusEnd()` own pin alternate functions and use the shared controller
-descriptor for the bus mutex plus controller enable/disable sequence. Each SPI
-device descriptor also points at the `TagSpiConfig` for that session. The
+descriptor for the bus mutex. Controller enable/disable is a generic bus-module
+operation that takes both the controller and the device/session config, so each
+SPI device descriptor also points at the `TagSpiConfig` for that session. The
 default flash SPI path uses the same descriptor flow, so flash standby pulls
 come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
-block. USART-style sensor buses use the same idea: the `TagUsartBus`
-descriptor carries a `TagUsartSyncConfig` while `usart_bus.c` owns the
-register write mechanics.
+block. USART-style sensor buses use the same idea: `TagUsartDevice` carries
+the controller, power/session pins, and `TagUsartSyncConfig`, while
+`TagUsartBus` is the smaller register-transfer context passed into sensor I/O
+helpers.
 The default power file also carries the standard AK09940A magnetometer binding
 for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names. If an older board file uses historical names, add

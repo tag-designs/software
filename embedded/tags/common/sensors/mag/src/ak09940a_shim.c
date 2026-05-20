@@ -31,7 +31,7 @@
 #endif
 
 static const TagSpiBus ak09940a_spi_bus = {
-  .spi = SPI1,
+  .controller = &tagSpi1DefaultController,
   .cs = AK09940A_DEFAULT_CS,
   .dummy = 0xff,
 };

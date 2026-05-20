@@ -28,6 +28,7 @@
 binary_semaphore_t ADCmutex;
 binary_semaphore_t SPImutex;
 binary_semaphore_t I2Cmutex;
+binary_semaphore_t USARTmutex;
 
 // main thread
 
@@ -257,6 +258,7 @@ int main(void)
   chBSemObjectInit(&ADCmutex, false);
   chBSemObjectInit(&I2Cmutex, false);
   chBSemObjectInit(&SPImutex, false);
+  chBSemObjectInit(&USARTmutex, false);
   
   tpMain = chThdGetSelfX(); // global pointer to main thread
 

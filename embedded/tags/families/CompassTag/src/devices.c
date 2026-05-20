@@ -29,7 +29,7 @@
  */
 
 static const TagSpiBus external_flash_spi_bus = {
-    .spi = SPI1,
+    .controller = &tagSpi1DefaultController,
     .cs = LINE_FLASH_nCS,
     .dummy = 0xff,
 };
@@ -65,7 +65,7 @@ void tagDevicesApplyStandbyPins(void)
 
 #ifdef ACCEL_USART
 static const TagUsartBus accel_usart_bus = {
-    .usart = USART2,
+    .controller = &tagUsart2SyncController,
     .config = &tagUsart2SyncDefaultConfig,
     .cs = LINE_ACCEL_CS,
     .dummy = 0xff,

@@ -56,9 +56,15 @@ I2C-backed devices follow the same ownership rule: `i2c_bus.c` owns
 transaction helpers. The descriptor supplies the tag-specific software-I2C line
 configuration and optional power line.
 
-USART-backed sensor buses follow the same split: the device-side
-`TagUsartBus` descriptor supplies a `TagUsartSyncConfig`, while `usart_bus.c`
-owns the USART2 register setup and stop/resume mechanics.
+USART-backed sensor buses follow the same split. `TagUsartDevice` describes
+the chip-select, synchronous USART pins, optional power line, controller, and
+`TagUsartSyncConfig` used while opening the bus. SPI and USART controllers
+identify the low-level peripheral and optional mutex; the bus module's generic
+controller-enable function takes the device/session config explicitly. This
+keeps the config dependency visible instead of hiding it behind callback
+pointers. `TagUsartBus` remains the smaller transfer descriptor used by
+register-level sensor code once the bus is already open. `usart_bus.c` owns
+the USART2 register setup and stop/resume mechanics.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
 and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates
