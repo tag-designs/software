@@ -19,31 +19,39 @@ static void adxl362_init(void)
 {
   // set up ADXL and alarm
 
-  accelSpiOn();
-  ADXL362_SetRegisterValue(0, ADXL362_REG_POWER_CTL, 1);
+  ADXL362_DeviceBegin(TAG_ACCEL_DEVICE);
+  ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 0, ADXL362_REG_POWER_CTL,
+                                 1);
 
   // set adxl filter;
 
-  ADXL362_SetRegisterValue(sconfig.adxl_filter_range_rate,
-                           ADXL362_REG_FILTER_CTL, 1);
+  ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 sconfig.adxl_filter_range_rate,
+                                 ADXL362_REG_FILTER_CTL, 1);
   // set adxl activity detection
 
-  ADXL362_SetupActivityDetection(1, sconfig.adxl_act_thresh_cnt, 2);
+  ADXL362_SetupActivityDetectionDevice(TAG_ACCEL_DEVICE, 1,
+                                       sconfig.adxl_act_thresh_cnt, 2);
 
   // set adxl inactivity detection
 
-  ADXL362_SetupInactivityDetection(1, sconfig.adxl_inact_thresh_cnt, sconfig.adxl_inactive_samples);
+  ADXL362_SetupInactivityDetectionDevice(TAG_ACCEL_DEVICE, 1,
+                                         sconfig.adxl_inact_thresh_cnt,
+                                         sconfig.adxl_inactive_samples);
 
   // ADXL362_SetupInactivityDetection(1, ACTIVE_THRESH,INACTIVE_TIME);
 
-  ADXL362_SetRegisterValue(0x3F, ADXL362_REG_ACT_INACT_CTL, 1);
+  ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 0x3F,
+                                 ADXL362_REG_ACT_INACT_CTL, 1);
 
   // interrupt -- caused by AWAKE going active
-  ADXL362_SetRegisterValue(ADXL362_INTMAP2_AWAKE, ADXL362_REG_INTMAP2, 1);
+  ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL362_INTMAP2_AWAKE,
+                                 ADXL362_REG_INTMAP2, 1);
   // power
-  ADXL362_SetRegisterValue(2 | ADXL362_POWER_CTL_AUTOSLEEP,
-                           ADXL362_REG_POWER_CTL, 1);
-  accelSpiOff();
+  ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 2 | ADXL362_POWER_CTL_AUTOSLEEP,
+                                 ADXL362_REG_POWER_CTL, 1);
+  ADXL362_DeviceEnd(TAG_ACCEL_DEVICE);
 }
 
 enum Sleep Running(enum StateTrans t, State_Event reason)

@@ -10,7 +10,7 @@ static uint8_t id[3] NOINIT;
 static int xyz[3] NOINIT;
 static int testxyz[3] NOINIT;
 
-static void adxlavg(int val[3])
+static void adxlavg(const TagAdxl362Device *device, int val[3])
 {
   short x, y, z;
   val[0] = 0;
@@ -19,7 +19,7 @@ static void adxlavg(int val[3])
 
   for (int i = 0; i < 16; i++)
   {
-    ADXL362_GetXyz(&x, &y, &z);
+    ADXL362_GetXyzDevice(device, &x, &y, &z);
     val[0] += x;
     val[1] += y;
     val[2] += z;
@@ -31,33 +31,33 @@ static void adxlavg(int val[3])
   val[2] /= 16;
 }
 
-bool tag_test_adxl362(void)
+bool adxl362Test(const TagAdxl362Device *device)
 {
   bool result = false;
-  accelSpiOn();
+  ADXL362_DeviceBegin(device);
 
-  ADXL362_SoftwareReset();
+  ADXL362_SoftwareResetDevice(device);
   do
   {
     chThdSleepMilliseconds(100);
 
-    ADXL362_GetRegisterValue(id, ADXL362_REG_DEVID_AD, 3);
+    ADXL362_GetRegisterValueDevice(device, id, ADXL362_REG_DEVID_AD, 3);
     if ((id[0] != 0xAD) || (id[1] != 0x1D) || (id[2] != 0xF2))
     {
       break;
     }
 
-    ADXL362_SetRegisterValue(0x83, 0x2C, 1);
-    ADXL362_SetRegisterValue(0x02, 0x2D, 1);
+    ADXL362_SetRegisterValueDevice(device, 0x83, 0x2C, 1);
+    ADXL362_SetRegisterValueDevice(device, 0x02, 0x2D, 1);
     chThdSleepMilliseconds(200);
-    adxlavg(xyz);
+    adxlavg(device, xyz);
 
-    ADXL362_SetRegisterValue(0x00, 0x2D, 1);
-    ADXL362_SetRegisterValue(0x01, 0x2E, 1);
-    ADXL362_SetRegisterValue(0x02, 0x2D, 1);
+    ADXL362_SetRegisterValueDevice(device, 0x00, 0x2D, 1);
+    ADXL362_SetRegisterValueDevice(device, 0x01, 0x2E, 1);
+    ADXL362_SetRegisterValueDevice(device, 0x02, 0x2D, 1);
     chThdSleepMilliseconds(200);
-    adxlavg(testxyz);
-    ADXL362_SetRegisterValue(0x00, 0x2D, 1);
+    adxlavg(device, testxyz);
+    ADXL362_SetRegisterValueDevice(device, 0x00, 0x2D, 1);
 
     int tmp = testxyz[0] - xyz[0];
     if ((tmp < 50) || (tmp > 700))
@@ -78,7 +78,12 @@ bool tag_test_adxl362(void)
     result = true;
   } while (0);
 
-  ADXL362_SoftwareReset();
-  accelSpiOff();
+  ADXL362_SoftwareResetDevice(device);
+  ADXL362_DeviceEnd(device);
   return result;
+}
+
+bool __attribute__((weak)) tag_test_adxl362(void)
+{
+  return adxl362Test(ADXL362_DefaultDevice());
 }

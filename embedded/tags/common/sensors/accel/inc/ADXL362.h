@@ -49,6 +49,8 @@
 //#include "Communication.h"
 #include "spi_bus.h"
 
+#include <stdbool.h>
+
 /******************************************************************************/
 /********************************* ADXL362 ************************************/
 /******************************************************************************/
@@ -213,8 +215,11 @@ typedef struct {
   TagAdxl362Sleep sleep_ms;
 } TagAdxl362Device;
 
+const TagAdxl362Device *ADXL362_DefaultDevice(void);
+
 void ADXL362_DeviceBegin(const TagAdxl362Device *device);
 void ADXL362_DeviceEnd(const TagAdxl362Device *device);
+bool adxl362Test(const TagAdxl362Device *device);
 
 /*! Initializes the device. */
 char ADXL362_Init(void);

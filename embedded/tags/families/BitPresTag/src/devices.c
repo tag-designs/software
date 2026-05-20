@@ -123,6 +123,15 @@ static const TagSpiDevice accel_bus = {
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
+const TagAdxl362Device tagBitPresTagAccelDevice = {
+    .spi = &accel_bus,
+};
+
+bool tag_test_adxl362(void)
+{
+  return adxl362Test(TAG_ACCEL_DEVICE);
+}
+
 void accelSpiOn(void)
 {
   tagSpiBusBegin(&accel_bus);
