@@ -102,7 +102,7 @@ bool sensorSample(RawSensorData *data){
   ak09940aDeviceEnd(mag);
   tagCompassMagResetAssert();
 
-  accel = tagLis2du12Device();
+  accel = TAG_ACCEL_DEVICE;
   if (lis2du12Sample(accel, (uint8_t *) &accel_data))
     {
         orient_accel_raw(&accel_data.x, &accel_data.y);
@@ -146,7 +146,7 @@ bool sensorCalibrationSample(SensorData *sensors)
       sensors->mag.mz = z * 0.01f;
     }
 
-    accel = tagLis2du12Device();
+    accel = TAG_ACCEL_DEVICE;
     if (lis2du12Sample(accel, (uint8_t *) &accel_data))
     {
         sensors->has_accel = true;
@@ -162,7 +162,7 @@ bool sensorCalibrationSample(SensorData *sensors)
 }
 
 bool initSensors(void){
-    lis2du12Init(tagLis2du12Device(), ACCEL_SAMPLE_100HZ_MODE);
+    lis2du12Init(TAG_ACCEL_DEVICE, ACCEL_SAMPLE_100HZ_MODE);
     ak09940aDeviceBegin(TAG_MAG_DEVICE);
     if (TAG_MAG_DEVICE->sleep_ms)
       TAG_MAG_DEVICE->sleep_ms(1);
@@ -176,7 +176,7 @@ bool initSensors(void){
 bool deinitSensors(void) {
     ak09940aDeviceEnd(TAG_MAG_DEVICE);
     tagCompassMagResetAssert();
-    lis2du12Deinit(tagLis2du12Device());
+    lis2du12Deinit(TAG_ACCEL_DEVICE);
     return true;
 }
 

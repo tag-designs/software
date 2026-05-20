@@ -266,6 +266,13 @@ Active CompassTag firmware bypasses the shim by exporting
 `tagAk09940aDevice()` from the family device file and calling the descriptor
 API directly from its sensor code and self-test hook.
 
+TODO: reduce the repeated bus-type dispatch in descriptor-driven drivers such
+as the CompassTag LIS2DU12 path. Today those drivers infer the concrete I2C,
+SPI, or USART device from the `TagRegisterBus` and then call the matching
+`tag*BusBegin()`/`tag*BusEnd()` helper. A future cleanup should add a small
+generic bus/session operation to the register-bus or device descriptor so the
+driver can call one default begin/end path without type-test sequences.
+
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific
 device power, bus-session, and sleep callbacks. The split matters because a

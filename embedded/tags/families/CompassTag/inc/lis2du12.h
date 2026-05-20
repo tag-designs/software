@@ -11,8 +11,6 @@ typedef enum {ACCEL_WAKEUP_MODE,
             ACCEL_SAMPLE_100HZ_MODE} lis2du12mode_t;
 
 typedef void (*TagLis2du12Bus)(void);
-typedef void (*TagLis2du12WriteByte)(const void *context, uint8_t reg,
-                                     uint8_t val);
 
 /*
  * LIS2DU12 instance descriptor.
@@ -20,17 +18,13 @@ typedef void (*TagLis2du12WriteByte)(const void *context, uint8_t reg,
  * The driver owns the LIS2DU12 register sequence. The tag power layer owns the
  * physical bus wiring, USART/SPI controller setup, and chip-select transaction
  * details. Sensor power lifetime is deliberately not part of this descriptor;
- * callers should power devices at the state-machine or board-policy layer.
- * `write_register_byte` is explicit because the wakeup configuration is a
- * series of byte writes that must be framed as one command+value transaction
- * under chip select.
+ * callers should power devices at the state-machine or board-policy layer. The
+ * driver derives byte write framing from the register bus descriptor.
  */
 typedef struct {
   const TagRegisterBus *registers;
   TagLis2du12Bus bus_begin;
   TagLis2du12Bus bus_end;
-  TagLis2du12WriteByte write_register_byte;
-  const void *write_register_byte_context;
 } TagLis2du12Device;
 
 void lis2du12Init(const TagLis2du12Device *device, lis2du12mode_t mode);

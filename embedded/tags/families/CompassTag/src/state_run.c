@@ -6,6 +6,7 @@
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
+#include "devices.h"
 #include "lis2du12.h"
 #include "ak09940a.h"
 #include "sensors.h"
@@ -35,7 +36,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     disableAllAlarms();
     disableTicker();
-    lis2du12Deinit(tagLis2du12Device());
+    lis2du12Deinit(TAG_ACCEL_DEVICE);
 
     // reset state variables
 
@@ -73,7 +74,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // start accelerometer
 
-    lis2du12Init(tagLis2du12Device(), ACCEL_WAKEUP_MODE);
+    lis2du12Init(TAG_ACCEL_DEVICE, ACCEL_WAKEUP_MODE);
     pState->state = TagState_RUNNING;
     recordState(reason);
 
