@@ -6,13 +6,14 @@
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
+#include "devices.h"
 #include "lps.h"
 #include "ADXL362.h"
 
-static const int32_t sample_period = 300;
-static const int32_t chunk_period = 60;
-static const int32_t chunk_number = 5;
-static const int32_t chunk_bits = 6;
+static const int32_t sample_period = 60; //300;
+static const int32_t chunk_period = 15; //60;
+static const int32_t chunk_number = 4;//5;
+static const int32_t chunk_bits = 4; //6;
 
 static void adxl362_init(void)
 {
@@ -162,7 +163,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         int16_t temperature;
       } datablock;
 
-      lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
+      lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
+                           &datablock.temperature);
       //datablock.pressure = SHRT_MIN;
       //datablock.temperature = SHRT_MAX;
       datablock.activity = activity;

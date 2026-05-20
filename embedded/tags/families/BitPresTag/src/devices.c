@@ -2,9 +2,14 @@
 
 #include "custom.h"
 #include "device.h"
+#include "devices.h"
+#include "lps.h"
 #include "power.h"
+#include "sensor_io.h"
 #include "storage_device.h"
 #include "storage_flash.h"
+#include "test_support.h"
+#include "timekeeping.h"
 
 #if defined(TAG_FLASH_AT25XE)
 #include "at25xe.h"
@@ -45,6 +50,11 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };
 
+bool tag_test_external_flash(void)
+{
+  return tagExternalFlashTest();
+}
+
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(&tagExternalFlash, state);
@@ -69,36 +79,31 @@ static const TagUsartDevice lps_usart_device = {
     .sleep_policy = TAG_USART_SLEEP_FLOAT,
 };
 
-void lpsPowerOn(void)
+static const TagStUsartRegisterBus lps_register_usart = {
+    .device = &lps_usart_device,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus lps_registers = {
+    .read_register = tagStUsartReadRegister,
+    .write_register = tagStUsartWriteRegister,
+    .context = &lps_register_usart,
+};
+
+static void lpsSleepMilliseconds(int ms)
 {
-  tagUsartDevicePowerOn(&lps_usart_device);
+  stopMilliseconds(false, ms);
 }
 
-void lpsPowerOff(void)
-{
-  tagUsartDevicePowerOff(&lps_usart_device);
-}
+const TagPressureDevice tagBitPresTagPressureDevice = {
+    .registers = &lps_registers,
+    .sleep_ms = lpsSleepMilliseconds,
+};
 
-void lpsBusBegin(void)
+bool tag_test_lps27(void)
 {
-  tagUsartBusBegin(&lps_usart_device);
-}
-
-void lpsBusEnd(void)
-{
-  tagUsartBusEnd(&lps_usart_device);
-}
-
-void lpsOn(void)
-{
-  lpsPowerOn();
-  lpsBusBegin();
-}
-
-void lpsOff(void)
-{
-  lpsBusEnd();
-  lpsPowerOff();
+  return tagPressureTest();
 }
 #endif
 
