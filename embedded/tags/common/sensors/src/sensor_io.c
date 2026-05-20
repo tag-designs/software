@@ -19,15 +19,15 @@ int tagStSpiWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
   uint8_t command = (uint8_t)((reg & (uint8_t)~spi->read_mask) |
                              spi->write_mask);
 
-  tagSpiSelect(spi->bus);
+  tagSpiSelect(spi->device);
   /*
    * Keep the register command and payload in one CS-framed transaction. Some
    * SPI-like sensors latch the command on CS rising, so callers must not split
    * a register write into separately selected command and data transfers.
    */
-  tagSpiWrite(tagSpiBusPeripheral(spi->bus), &command, 1);
-  tagSpiWrite(tagSpiBusPeripheral(spi->bus), buf, len);
-  tagSpiDeselect(spi->bus);
+  tagSpiWrite(tagSpiDevicePeripheral(spi->device), &command, 1);
+  tagSpiWrite(tagSpiDevicePeripheral(spi->device), buf, len);
+  tagSpiDeselect(spi->device);
 
   return 0;
 }
@@ -38,10 +38,10 @@ int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   const TagStSpiRegisterBus *spi = (const TagStSpiRegisterBus *)io;
   uint8_t command = (uint8_t)(reg | spi->read_mask);
 
-  tagSpiSelect(spi->bus);
-  tagSpiWrite(tagSpiBusPeripheral(spi->bus), &command, 1);
-  tagSpiRead(tagSpiBusPeripheral(spi->bus), buf, len);
-  tagSpiDeselect(spi->bus);
+  tagSpiSelect(spi->device);
+  tagSpiWrite(tagSpiDevicePeripheral(spi->device), &command, 1);
+  tagSpiRead(tagSpiDevicePeripheral(spi->device), buf, len);
+  tagSpiDeselect(spi->device);
 
   return 0;
 }
@@ -53,14 +53,14 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
   uint8_t command = (uint8_t)((reg & (uint8_t)~usart->read_mask) |
                              usart->write_mask);
 
-  tagUsartSelect(usart->bus);
+  tagUsartSelect(usart->device);
   /*
    * Synchronous-USART devices use CS for the same transaction framing as SPI;
    * the command byte and payload must stay under the same assertion.
    */
-  tagUsartWrite(tagUsartBusPeripheral(usart->bus), &command, 1);
-  tagUsartWrite(tagUsartBusPeripheral(usart->bus), buf, len);
-  tagUsartDeselect(usart->bus);
+  tagUsartWrite(tagUsartDevicePeripheral(usart->device), &command, 1);
+  tagUsartWrite(tagUsartDevicePeripheral(usart->device), buf, len);
+  tagUsartDeselect(usart->device);
 
   return 0;
 }
@@ -71,11 +71,11 @@ int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   const TagStUsartRegisterBus *usart = (const TagStUsartRegisterBus *)io;
   uint8_t command = (uint8_t)(reg | usart->read_mask);
 
-  tagUsartSelect(usart->bus);
-  tagUsartWrite(tagUsartBusPeripheral(usart->bus), &command, 1);
-  tagUsartRead(tagUsartBusPeripheral(usart->bus), usart->bus->dummy, buf,
-               len);
-  tagUsartDeselect(usart->bus);
+  tagUsartSelect(usart->device);
+  tagUsartWrite(tagUsartDevicePeripheral(usart->device), &command, 1);
+  tagUsartRead(tagUsartDevicePeripheral(usart->device), usart->device->dummy,
+               buf, len);
+  tagUsartDeselect(usart->device);
 
   return 0;
 }

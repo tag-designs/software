@@ -33,13 +33,12 @@ typedef struct {
  *
  * Chip drivers own command formats, status polling, and timing rules. This
  * descriptor carries the tag-specific pieces needed to reach the chip: the SPI
- * transaction bus, optional board-level enable/disable hooks, and the geometry
+ * device descriptor, optional board-level enable/disable hooks, and the geometry
  * used by higher-level logging code.
  */
 struct TagStorageDevice {
   const TagStorageOps *ops;
-  const TagSpiBus *spi;
-  const TagSpiDevice *power;
+  const TagSpiDevice *spi;
   void (*enable)(void);
   void (*disable)(void);
   uint32_t sector_size;
@@ -54,9 +53,9 @@ static inline void tagStorageDeviceEnable(const TagStorageDevice *dev)
     return;
   }
 
-  if (dev->power)
+  if (dev->spi)
   {
-    tagSpiBusBegin(dev->power);
+    tagSpiBusBegin(dev->spi);
   }
 }
 
@@ -68,17 +67,17 @@ static inline void tagStorageDeviceDisable(const TagStorageDevice *dev)
     return;
   }
 
-  if (dev->power)
+  if (dev->spi)
   {
-    tagSpiBusEnd(dev->power);
+    tagSpiBusEnd(dev->spi);
   }
 }
 
 static inline void tagStorageDevicePrepareSleep(const TagStorageDevice *dev)
 {
-  if (dev->power)
+  if (dev->spi)
   {
-    tagSpiDevicePrepareSleep(dev->power);
+    tagSpiDevicePrepareSleep(dev->spi);
   }
 }
 

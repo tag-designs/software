@@ -193,9 +193,10 @@ SPI device descriptor also points at the `TagSpiConfig` for that session. The
 default flash SPI path uses the same descriptor flow, so flash standby pulls
 come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
 block. USART-style sensor buses use the same idea: `TagUsartDevice` carries
-the controller, power/session pins, and `TagUsartSyncConfig`, while
-`TagUsartBus` is the smaller register-transfer context passed into sensor I/O
-helpers.
+the controller, power/session pins, dummy-byte policy, standby pull policy, and
+`TagUsartSyncConfig`. Sensor I/O and storage helpers use the same device
+descriptor that power code uses, so there is no separate partial bus object to
+keep synchronized.
 The default power file also carries the standard AK09940A magnetometer binding
 for boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names. If an older board file uses historical names, add

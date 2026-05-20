@@ -27,16 +27,16 @@
 /*
  * USART in synchronous mode is used by a few tags as an SPI-like sensor bus.
  * Keep the protocol shape separate from normal ChibiOS serial use: callers
- * pass the hardware USART registers and the ST-style command masks.
+ * pass a tag device descriptor and the ST-style command masks.
  */
 typedef struct {
-  const TagSpiBus *bus;
+  const TagSpiDevice *device;
   uint8_t read_mask;
   uint8_t write_mask;
 } TagStSpiRegisterBus;
 
 typedef struct {
-  const TagUsartBus *bus;
+  const TagUsartDevice *device;
   uint8_t read_mask;
   uint8_t write_mask;
 } TagStUsartRegisterBus;

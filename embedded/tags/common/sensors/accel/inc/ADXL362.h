@@ -205,7 +205,7 @@ typedef void (*TagAdxl362Power)(void);
 typedef void (*TagAdxl362Sleep)(int ms);
 
 typedef struct {
-  const TagSpiBus *spi;
+  const TagSpiDevice *spi;
   TagAdxl362Power power_on;
   TagAdxl362Power power_off;
   TagAdxl362Power bus_begin;

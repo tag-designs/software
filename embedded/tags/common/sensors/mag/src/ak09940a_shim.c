@@ -1,5 +1,6 @@
 #include "hal.h"
 #include "custom.h"
+#include "power.h"
 #include "rtc_api.h"
 #include "ak09940a.h"
 
@@ -22,6 +23,14 @@
 #error "AK09940A default shim needs LINE_MAG_CS or LINE_AK_CS"
 #endif
 
+#if defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
+#define AK09940A_DEFAULT_SCK LINE_MAG_SCK
+#define AK09940A_DEFAULT_MISO LINE_MAG_MISO
+#define AK09940A_DEFAULT_MOSI LINE_MAG_MOSI
+#else
+#error "AK09940A default shim needs LINE_MAG_SCK/MISO/MOSI aliases"
+#endif
+
 #if defined(LINE_MAG_TRG)
 #define AK09940A_DEFAULT_TRG LINE_MAG_TRG
 #define AK09940A_HAS_DEFAULT_TRG 1
@@ -30,14 +39,20 @@
 #define AK09940A_HAS_DEFAULT_TRG 1
 #endif
 
-static const TagSpiBus ak09940a_spi_bus = {
+static const TagSpiDevice ak09940a_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = AK09940A_DEFAULT_CS,
+  .sck = AK09940A_DEFAULT_SCK,
+  .miso = AK09940A_DEFAULT_MISO,
+  .mosi = AK09940A_DEFAULT_MOSI,
+  .pwr = TAG_NO_LINE,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 static const TagStSpiRegisterBus ak09940a_spi = {
-  .bus = &ak09940a_spi_bus,
+  .device = &ak09940a_spi_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };

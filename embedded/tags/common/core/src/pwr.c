@@ -100,17 +100,12 @@ static const TagSpiDevice ak09940a_bus = {
     .miso = AK09940A_MISO,
     .mosi = AK09940A_MOSI,
     .pwr = AK09940A_PWR,
+    .dummy = 0xff,
     .sleep_policy = AK09940A_SLEEP_POLICY,
 };
 
-static const TagSpiBus ak09940a_register_bus = {
-    .controller = &tagSpi1DefaultController,
-    .cs = AK09940A_CS,
-    .dummy = 0xff,
-};
-
 static const TagStSpiRegisterBus ak09940a_register_spi = {
-    .bus = &ak09940a_register_bus,
+    .device = &ak09940a_bus,
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
@@ -224,6 +219,7 @@ static const TagSpiDevice flash_bus = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 #endif
@@ -237,6 +233,8 @@ static const TagUsartDevice lps_usart_device = {
     .tx = LINE_LPS_TX,
     .rx = LINE_LPS_RX,
     .pwr = LINE_LPS_PWR,
+    .dummy = 0xff,
+    .sleep_policy = TAG_USART_SLEEP_FLOAT,
 };
 
 void lpsPowerOn(void)
@@ -281,6 +279,7 @@ static const TagSpiDevice lps_bus = {
     .miso = LINE_STEVAL_MISO,
     .mosi = LINE_STEVAL_MOSI,
     .pwr = LINE_STEVAL_PWR,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 
@@ -327,6 +326,7 @@ static const TagSpiDevice accel_bus = {
     .miso = LINE_ACCEL_MISO,
     .mosi = LINE_ACCEL_MOSI,
     .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 

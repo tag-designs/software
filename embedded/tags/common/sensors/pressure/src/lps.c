@@ -4,6 +4,7 @@
 #include "lps.h"
 #include "lps22hh.h"
 #include "lps33hw.h"
+#include "power.h"
 #include "rtc_api.h"
 #include "sensor_io.h"
 
@@ -48,13 +49,19 @@ static const TagRegisterBus lps_registers = {
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagSpiBus lps_spi_bus = {
+static const TagSpiDevice lps_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_STEVAL_CS,
+  .sck = LINE_STEVAL_SCK,
+  .miso = LINE_STEVAL_MISO,
+  .mosi = LINE_STEVAL_MOSI,
+  .pwr = LINE_STEVAL_PWR,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 static const TagStSpiRegisterBus lps_spi = {
-  .bus = &lps_spi_bus,
+  .device = &lps_spi_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
@@ -64,14 +71,19 @@ static const TagRegisterBus lps_registers = {
   &lps_spi,
 };
 #elif defined(LPS_USART)
-static const TagUsartBus lps_usart_bus = {
+static const TagUsartDevice lps_usart_device = {
   .controller = &tagUsart2SyncController,
   .config = &tagUsart2SyncDefaultConfig,
-  .cs = LINE_STEVAL_CS,
+  .cs = LINE_LPS_CS,
+  .sck = LINE_LPS_SCK,
+  .tx = LINE_LPS_TX,
+  .rx = LINE_LPS_RX,
+  .pwr = LINE_LPS_PWR,
   .dummy = 0xff,
+  .sleep_policy = TAG_USART_SLEEP_FLOAT,
 };
 static const TagStUsartRegisterBus lps_usart = {
-  .bus = &lps_usart_bus,
+  .device = &lps_usart_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
@@ -86,13 +98,19 @@ static const TagRegisterBus lps_registers = {
 
 #elif defined(LPS_SHIM_LPS22HH)
 
-static const TagSpiBus lps_spi_bus = {
+static const TagSpiDevice lps_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_LPS_CS,
+  .sck = LINE_LPS_SCK,
+  .miso = LINE_LPS_MISO,
+  .mosi = LINE_LPS_MOSI,
+  .pwr = TAG_NO_LINE,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 static const TagStSpiRegisterBus lps_spi = {
-  .bus = &lps_spi_bus,
+  .device = &lps_spi_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
@@ -118,13 +136,19 @@ static const TagRegisterBus lps_registers = {
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagSpiBus lps_spi_bus = {
+static const TagSpiDevice lps_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_STEVAL_CS,
+  .sck = LINE_STEVAL_SCK,
+  .miso = LINE_STEVAL_MISO,
+  .mosi = LINE_STEVAL_MOSI,
+  .pwr = LINE_STEVAL_PWR,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 static const TagStSpiRegisterBus lps_spi = {
-  .bus = &lps_spi_bus,
+  .device = &lps_spi_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
@@ -153,13 +177,19 @@ static const TagRegisterBus lps_registers = {
   &lps_i2c,
 };
 #elif defined(LPS_SPI)
-static const TagSpiBus lps_spi_bus = {
+static const TagSpiDevice lps_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_STEVAL_CS,
+  .sck = LINE_STEVAL_SCK,
+  .miso = LINE_STEVAL_MISO,
+  .mosi = LINE_STEVAL_MOSI,
+  .pwr = LINE_STEVAL_PWR,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 static const TagStSpiRegisterBus lps_spi = {
-  .bus = &lps_spi_bus,
+  .device = &lps_spi_device,
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
@@ -174,13 +204,19 @@ static const TagRegisterBus lps_registers = {
 
 #elif defined(LPS_SHIM_BMP5)
 
-static const TagSpiBus lps_spi_bus = {
+static const TagSpiDevice lps_spi_device = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_STEVAL_CS,
+  .sck = LINE_STEVAL_SCK,
+  .miso = LINE_STEVAL_MISO,
+  .mosi = LINE_STEVAL_MOSI,
+  .pwr = LINE_STEVAL_PWR,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 static const TagStSpiRegisterBus lps_spi = {
-  .bus = &lps_spi_bus,
+  .device = &lps_spi_device,
   .read_mask = BMP5_SPI_RD_MASK,
   .write_mask = 0x00,
 };

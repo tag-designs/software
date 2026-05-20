@@ -40,6 +40,7 @@ static const TagSpiDevice lps_bus = {
     .miso = LINE_STEVAL_MISO,
     .mosi = LINE_STEVAL_MOSI,
     .pwr = LINE_STEVAL_PWR,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 #endif
@@ -53,6 +54,7 @@ static const TagSpiDevice flash_bus = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 #endif

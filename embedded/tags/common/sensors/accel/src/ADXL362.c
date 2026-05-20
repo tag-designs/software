@@ -59,10 +59,16 @@ char selectedRange = 0;
 /************************ Functions Definitions *******************************/
 /******************************************************************************/
 
-static const TagSpiBus adxl362_spi = {
+static const TagSpiDevice adxl362_spi = {
   .controller = &tagSpi1DefaultController,
+  .config = &tagSpiDefaultConfig,
   .cs = LINE_ACCEL_CS,
+  .sck = LINE_ACCEL_SCK,
+  .miso = LINE_ACCEL_MISO,
+  .mosi = LINE_ACCEL_MOSI,
+  .pwr = TAG_NO_LINE,
   .dummy = 0xff,
+  .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 void __attribute__((weak)) accelPowerOn(void) {}
@@ -192,8 +198,8 @@ void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
     buffer[1] = registerAddress;
 
     tagSpiSelect(device->spi);
-    tagSpiWrite(tagSpiBusPeripheral(device->spi), buffer, 2);
-    tagSpiRead(tagSpiBusPeripheral(device->spi), pReadData, bytesNumber);
+    tagSpiWrite(tagSpiDevicePeripheral(device->spi), buffer, 2);
+    tagSpiRead(tagSpiDevicePeripheral(device->spi), pReadData, bytesNumber);
     tagSpiDeselect(device->spi);
 }
 
@@ -218,8 +224,8 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 
   buffer[0] = ADXL362_WRITE_FIFO;
   tagSpiSelect(device->spi);
-  tagSpiWrite(tagSpiBusPeripheral(device->spi), buffer, 1);
-  tagSpiRead(tagSpiBusPeripheral(device->spi), pBuffer, bytesNumber);
+  tagSpiWrite(tagSpiDevicePeripheral(device->spi), buffer, 1);
+  tagSpiRead(tagSpiDevicePeripheral(device->spi), pBuffer, bytesNumber);
   tagSpiDeselect(device->spi);
 }
 

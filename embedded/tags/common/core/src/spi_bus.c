@@ -246,26 +246,27 @@ void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len)
   }
 }
 
-void tagSpiSelect(const TagSpiBus *bus)
+void tagSpiSelect(const TagSpiDevice *device)
 {
-  palClearLine(bus->cs);
+  palClearLine(device->cs);
 }
 
-void tagSpiDeselect(const TagSpiBus *bus)
+void tagSpiDeselect(const TagSpiDevice *device)
 {
-  palSetLine(bus->cs);
+  palSetLine(device->cs);
 }
 
-void tagSpiBusWrite(const TagSpiBus *bus, const uint8_t *buf, uint32_t len)
+void tagSpiBusWrite(const TagSpiDevice *device, const uint8_t *buf,
+                    uint32_t len)
 {
-  tagSpiSelect(bus);
-  tagSpiWrite(tagSpiBusPeripheral(bus), buf, len);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagSpiWrite(tagSpiDevicePeripheral(device), buf, len);
+  tagSpiDeselect(device);
 }
 
-void tagSpiBusRead(const TagSpiBus *bus, uint8_t *buf, uint32_t len)
+void tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
-  tagSpiSelect(bus);
-  tagSpiRead(tagSpiBusPeripheral(bus), buf, len);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagSpiRead(tagSpiDevicePeripheral(device), buf, len);
+  tagSpiDeselect(device);
 }

@@ -27,6 +27,13 @@ typedef struct {
   binary_semaphore_t *mutex;
 } TagUsartController;
 
+// Standby pull policy applied while preparing a USART-backed device for sleep.
+typedef enum {
+  TAG_USART_SLEEP_FLOAT,
+  TAG_USART_SLEEP_SAFE_IDLE,
+  TAG_USART_SLEEP_CUSTOM
+} TagUsartSleepPolicy;
+
 // Board-line description for one synchronous-USART device.
 typedef struct {
   const TagUsartController *controller;
@@ -36,18 +43,9 @@ typedef struct {
   ioline_t tx;
   ioline_t rx;
   ioline_t pwr;
-} TagUsartDevice;
-
-/*
- * Lightweight transfer context for drivers that already opened the USART bus.
- * This mirrors TagSpiBus and is intentionally smaller than TagUsartDevice.
- */
-typedef struct {
-  const TagUsartController *controller;
-  const TagUsartSyncConfig *config;
-  ioline_t cs;
   uint8_t dummy;
-} TagUsartBus;
+  TagUsartSleepPolicy sleep_policy;
+} TagUsartDevice;
 
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
 extern const TagUsartController tagUsart2SyncController;
@@ -63,9 +61,10 @@ void tagUsartControllerEnable(const TagUsartController *controller,
                               const TagUsartSyncConfig *config);
 void tagUsartControllerDisable(const TagUsartController *controller);
 
-static inline USART_TypeDef *tagUsartBusPeripheral(const TagUsartBus *bus)
+static inline USART_TypeDef *tagUsartDevicePeripheral(
+    const TagUsartDevice *device)
 {
-  return bus->controller->usart;
+  return device->controller->usart;
 }
 
 void tagUsartDevicePowerOn(const TagUsartDevice *device);
@@ -78,10 +77,10 @@ void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len);
 void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
                   uint32_t len);
 
-void tagUsartSelect(const TagUsartBus *bus);
-void tagUsartDeselect(const TagUsartBus *bus);
-void tagUsartBusWrite(const TagUsartBus *bus, const uint8_t *buf,
+void tagUsartSelect(const TagUsartDevice *device);
+void tagUsartDeselect(const TagUsartDevice *device);
+void tagUsartBusWrite(const TagUsartDevice *device, const uint8_t *buf,
                       uint32_t len);
-void tagUsartBusRead(const TagUsartBus *bus, uint8_t *buf, uint32_t len);
+void tagUsartBusRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len);
 
 #endif

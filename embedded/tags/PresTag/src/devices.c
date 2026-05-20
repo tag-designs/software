@@ -14,12 +14,6 @@
  * descriptor: SPI controller, chip select line, board-level bus enable hooks,
  * and flash geometry.
  */
-static const TagSpiBus external_flash_spi_bus = {
-    .controller = &tagSpi1DefaultController,
-    .cs = LINE_FLASH_nCS,
-    .dummy = 0xff,
-};
-
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -28,13 +22,13 @@ static const TagSpiDevice external_flash_power = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
-    .spi = &external_flash_spi_bus,
-    .power = &external_flash_power,
+    .spi = &external_flash_power,
     .sector_size = AT25XE_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };

@@ -62,9 +62,12 @@ the chip-select, synchronous USART pins, optional power line, controller, and
 identify the low-level peripheral and optional mutex; the bus module's generic
 controller-enable function takes the device/session config explicitly. This
 keeps the config dependency visible instead of hiding it behind callback
-pointers. `TagUsartBus` remains the smaller transfer descriptor used by
-register-level sensor code once the bus is already open. `usart_bus.c` owns
-the USART2 register setup and stop/resume mechanics.
+pointers. Register-level sensor and storage code use the same device
+descriptor, so chip-select and dummy-byte policy stay with the device rather
+than in a second partial bus object. USART devices also carry an explicit
+standby pull policy, mirroring SPI for powered-off, always-powered, and custom
+sleep cases. `usart_bus.c` owns the USART2 register setup and stop/resume
+mechanics.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
 and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates

@@ -195,7 +195,21 @@ void tagUsartBusEnd(const TagUsartDevice *device)
 
 void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
 {
-  tagEnableStandbyPulldown(device->pwr);
+  switch (device->sleep_policy)
+  {
+  case TAG_USART_SLEEP_SAFE_IDLE:
+    tagEnableStandbyPullup(device->cs);
+    tagEnableStandbyPulldown(device->sck);
+    tagEnableStandbyPulldown(device->tx);
+    break;
+
+  case TAG_USART_SLEEP_FLOAT:
+    tagEnableStandbyPulldown(device->pwr);
+    break;
+
+  case TAG_USART_SLEEP_CUSTOM:
+    break;
+  }
 }
 
 void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len)
@@ -225,27 +239,27 @@ void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
   }
 }
 
-void tagUsartSelect(const TagUsartBus *bus)
+void tagUsartSelect(const TagUsartDevice *device)
 {
-  palClearLine(bus->cs);
+  palClearLine(device->cs);
 }
 
-void tagUsartDeselect(const TagUsartBus *bus)
+void tagUsartDeselect(const TagUsartDevice *device)
 {
-  palSetLine(bus->cs);
+  palSetLine(device->cs);
 }
 
-void tagUsartBusWrite(const TagUsartBus *bus, const uint8_t *buf,
+void tagUsartBusWrite(const TagUsartDevice *device, const uint8_t *buf,
                       uint32_t len)
 {
-  tagUsartSelect(bus);
-  tagUsartWrite(tagUsartBusPeripheral(bus), buf, len);
-  tagUsartDeselect(bus);
+  tagUsartSelect(device);
+  tagUsartWrite(tagUsartDevicePeripheral(device), buf, len);
+  tagUsartDeselect(device);
 }
 
-void tagUsartBusRead(const TagUsartBus *bus, uint8_t *buf, uint32_t len)
+void tagUsartBusRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len)
 {
-  tagUsartSelect(bus);
-  tagUsartRead(tagUsartBusPeripheral(bus), bus->dummy, buf, len);
-  tagUsartDeselect(bus);
+  tagUsartSelect(device);
+  tagUsartRead(tagUsartDevicePeripheral(device), device->dummy, buf, len);
+  tagUsartDeselect(device);
 }

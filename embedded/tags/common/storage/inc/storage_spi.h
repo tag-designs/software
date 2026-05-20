@@ -20,10 +20,10 @@
  * that tolerate streaming transactions.
  */
 
-static inline void tagStorageSpiWrite(const TagSpiBus *bus, const uint8_t *buf,
-                                      uint32_t n)
+static inline void tagStorageSpiWrite(const TagSpiDevice *device,
+                                      const uint8_t *buf, uint32_t n)
 {
-  SPI_TypeDef *spi = tagSpiBusPeripheral(bus);
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (n--)
@@ -37,15 +37,15 @@ static inline void tagStorageSpiWrite(const TagSpiBus *bus, const uint8_t *buf,
   }
 }
 
-static inline void tagStorageSpiRead(const TagSpiBus *bus, uint8_t *buf,
+static inline void tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
                                      uint32_t n)
 {
-  SPI_TypeDef *spi = tagSpiBusPeripheral(bus);
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (n--)
   {
-    *spidr = bus->dummy;
+    *spidr = device->dummy;
     while ((spi->SR & SPI_SR_RXNE) == 0)
     {
       ;
@@ -54,67 +54,69 @@ static inline void tagStorageSpiRead(const TagSpiBus *bus, uint8_t *buf,
   }
 }
 
-static inline void tagStorageSpiAddress(const TagSpiBus *bus, uint32_t address)
+static inline void tagStorageSpiAddress(const TagSpiDevice *device,
+                                        uint32_t address)
 {
   uint8_t buf[3];
 
   buf[0] = address >> 16;
   buf[1] = address >> 8;
   buf[2] = address & 0xff;
-  tagStorageSpiWrite(bus, buf, sizeof(buf));
+  tagStorageSpiWrite(device, buf, sizeof(buf));
 }
 
-static inline void tagStorageSpiCommand(const TagSpiBus *bus, uint8_t cmd)
+static inline void tagStorageSpiCommand(const TagSpiDevice *device, uint8_t cmd)
 {
-  tagSpiSelect(bus);
-  tagStorageSpiWrite(bus, &cmd, sizeof(cmd));
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  tagSpiDeselect(device);
 }
 
-static inline void tagStorageSpiCommandAddress(const TagSpiBus *bus,
+static inline void tagStorageSpiCommandAddress(const TagSpiDevice *device,
                                                uint8_t cmd,
                                                uint32_t address)
 {
-  tagSpiSelect(bus);
-  tagStorageSpiWrite(bus, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(bus, address);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  tagStorageSpiAddress(device, address);
+  tagSpiDeselect(device);
 }
 
-static inline void tagStorageSpiCommandReceive(const TagSpiBus *bus,
+static inline void tagStorageSpiCommandReceive(const TagSpiDevice *device,
                                                uint8_t cmd, uint8_t *buf,
                                                uint32_t num)
 {
-  tagSpiSelect(bus);
-  tagStorageSpiWrite(bus, &cmd, sizeof(cmd));
-  tagStorageSpiRead(bus, buf, num);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  tagStorageSpiRead(device, buf, num);
+  tagSpiDeselect(device);
 }
 
-static inline void tagStorageSpiCommandAddressReceive(const TagSpiBus *bus,
+static inline void tagStorageSpiCommandAddressReceive(
+    const TagSpiDevice *device,
                                                       uint8_t cmd,
                                                       uint32_t address,
                                                       uint8_t *buf,
                                                       uint32_t num)
 {
-  tagSpiSelect(bus);
-  tagStorageSpiWrite(bus, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(bus, address);
-  tagStorageSpiRead(bus, buf, num);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  tagStorageSpiAddress(device, address);
+  tagStorageSpiRead(device, buf, num);
+  tagSpiDeselect(device);
 }
 
-static inline void tagStorageSpiCommandAddressSend(const TagSpiBus *bus,
+static inline void tagStorageSpiCommandAddressSend(const TagSpiDevice *device,
                                                    uint8_t cmd,
                                                    uint32_t address,
                                                    const uint8_t *buf,
                                                    uint32_t num)
 {
-  tagSpiSelect(bus);
-  tagStorageSpiWrite(bus, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(bus, address);
-  tagStorageSpiWrite(bus, buf, num);
-  tagSpiDeselect(bus);
+  tagSpiSelect(device);
+  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  tagStorageSpiAddress(device, address);
+  tagStorageSpiWrite(device, buf, num);
+  tagSpiDeselect(device);
 }
 
 #endif

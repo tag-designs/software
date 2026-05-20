@@ -28,12 +28,6 @@
  * family code instead of burying it in the shared power file.
  */
 
-static const TagSpiBus external_flash_spi_bus = {
-    .controller = &tagSpi1DefaultController,
-    .cs = LINE_FLASH_nCS,
-    .dummy = 0xff,
-};
-
 static const TagSpiDevice external_flash_power = {
     .controller = &tagSpi1DefaultController,
     .config = &tagSpiDefaultConfig,
@@ -42,13 +36,13 @@ static const TagSpiDevice external_flash_power = {
     .miso = LINE_FLASH_MISO,
     .mosi = LINE_FLASH_MOSI,
     .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
     .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
-    .spi = &external_flash_spi_bus,
-    .power = &external_flash_power,
+    .spi = &external_flash_power,
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
 };
@@ -64,15 +58,20 @@ void tagDevicesApplyStandbyPins(void)
 }
 
 #ifdef ACCEL_USART
-static const TagUsartBus accel_usart_bus = {
+static const TagUsartDevice accel_usart_device = {
     .controller = &tagUsart2SyncController,
     .config = &tagUsart2SyncDefaultConfig,
     .cs = LINE_ACCEL_CS,
+    .sck = LINE_ACCEL_SCK,
+    .tx = LINE_ACCEL_TX,
+    .rx = LINE_ACCEL_RX,
+    .pwr = TAG_NO_LINE,
     .dummy = 0xff,
+    .sleep_policy = TAG_USART_SLEEP_CUSTOM,
 };
 
 static const TagStUsartRegisterBus accel_register_usart = {
-    .bus = &accel_usart_bus,
+    .device = &accel_usart_device,
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
@@ -92,7 +91,7 @@ void accelOn(void)
   toAlternate(LINE_ACCEL_TX);
   toAlternate(LINE_ACCEL_RX);
 
-  tagUsart2SyncEnable(accel_usart_bus.config);
+  tagUsart2SyncEnable(accel_usart_device.config);
 }
 
 void accelOff(void)
@@ -114,10 +113,10 @@ void accelOff(void)
 static void accelWriteRegisterByte(const void *context, uint8_t reg,
                                    uint8_t val)
 {
-  const TagUsartBus *bus = (const TagUsartBus *)context;
+  const TagUsartDevice *device = (const TagUsartDevice *)context;
   uint8_t buffer[] = {reg, val};
 
-  tagUsartBusWrite(bus, buffer, sizeof(buffer));
+  tagUsartBusWrite(device, buffer, sizeof(buffer));
 }
 
 static const TagLis2du12Device compass_tag_accel = {
@@ -125,7 +124,7 @@ static const TagLis2du12Device compass_tag_accel = {
     .bus_begin = accelOn,
     .bus_end = accelOff,
     .write_register_byte = accelWriteRegisterByte,
-    .write_register_byte_context = &accel_usart_bus,
+    .write_register_byte_context = &accel_usart_device,
 };
 
 const TagLis2du12Device *tagLis2du12Device(void)
