@@ -55,19 +55,52 @@ static inline SPI_TypeDef *tagSpiDevicePeripheral(const TagSpiDevice *device)
   return device->controller->spi;
 }
 
+/*
+ * Device power controls the optional switched power line and safe idle pin
+ * states for the device. It does not start or stop the MCU SPI peripheral.
+ */
 void tagSpiDevicePowerOn(const TagSpiDevice *device);
 void tagSpiDevicePowerOff(const TagSpiDevice *device);
+
+/*
+ * Bus sessions enable or disable the MCU SPI controller using the device's
+ * configuration. Callers normally power the device first, then begin the bus;
+ * shutdown happens in the reverse order.
+ */
 void tagSpiBusBegin(const TagSpiDevice *device);
 void tagSpiBusEnd(const TagSpiDevice *device);
+
+/*
+ * Apply the device's standby pull policy before entering low-power stop or
+ * standby states. This is separate from normal bus-session teardown.
+ */
 void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
 
-void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len);
-void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len);
+void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
+void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
 
 void tagSpiSelect(const TagSpiDevice *device);
 void tagSpiDeselect(const TagSpiDevice *device);
-void tagSpiBusWrite(const TagSpiDevice *device, const uint8_t *buf,
-                    uint32_t len);
-void tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
+
+/*
+ * Convenience transaction wrappers. These assert chip select, perform one raw
+ * byte transfer, then release chip select. Use the lower-level select/write/read
+ * calls directly when a device protocol needs multiple phases under one CS.
+ */
+static inline void tagSpiBusWrite(const TagSpiDevice *device,
+                                  const uint8_t *buf, uint32_t len)
+{
+  tagSpiSelect(device);
+  tagSpiWrite(device, buf, len);
+  tagSpiDeselect(device);
+}
+
+static inline void tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf,
+                                 uint32_t len)
+{
+  tagSpiSelect(device);
+  tagSpiRead(device, buf, len);
+  tagSpiDeselect(device);
+}
 
 #endif

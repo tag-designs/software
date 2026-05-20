@@ -38,10 +38,11 @@
 
 #if defined(LPS_I2C)
 #define LPS27_TIMEOUT 100
-static const TagI2cRegisterBus lps_i2c = {
-  .driver = &I2CD1,
+static const TagI2cDevice lps_i2c = {
+  .controller = &tagI2c1DefaultController,
   .address = LPS27HW_ADR,
   .timeout = LPS27_TIMEOUT,
+  .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,
@@ -125,10 +126,11 @@ static const TagRegisterBus lps_registers = {
 
 #if defined(LPS_I2C)
 #define LPS22_TIMEOUT 100
-static const TagI2cRegisterBus lps_i2c = {
-  .driver = &I2CD1,
+static const TagI2cDevice lps_i2c = {
+  .controller = &tagI2c1DefaultController,
   .address = LPS22HW_ADR,
   .timeout = LPS22_TIMEOUT,
+  .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,
@@ -166,10 +168,11 @@ static const TagRegisterBus lps_registers = {
 
 #if defined(LPS_I2C)
 #define LPS33_TIMEOUT 100
-static const TagI2cRegisterBus lps_i2c = {
-  .driver = &I2CD1,
+static const TagI2cDevice lps_i2c = {
+  .controller = &tagI2c1DefaultController,
   .address = LPS33HW_ADR,
   .timeout = LPS33_TIMEOUT,
+  .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
   tagI2cReadRegister,

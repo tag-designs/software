@@ -67,20 +67,53 @@ static inline USART_TypeDef *tagUsartDevicePeripheral(
   return device->controller->usart;
 }
 
+/*
+ * Device power controls the optional switched power line and safe idle pin
+ * states for the device. It does not start or stop the MCU USART peripheral.
+ */
 void tagUsartDevicePowerOn(const TagUsartDevice *device);
 void tagUsartDevicePowerOff(const TagUsartDevice *device);
+
+/*
+ * Bus sessions enable or disable the MCU USART controller using the device's
+ * synchronous configuration. Callers normally power the device first, then
+ * begin the bus; shutdown happens in the reverse order.
+ */
 void tagUsartBusBegin(const TagUsartDevice *device);
 void tagUsartBusEnd(const TagUsartDevice *device);
+
+/*
+ * Apply the device's standby pull policy before entering low-power stop or
+ * standby states. This is separate from normal bus-session teardown.
+ */
 void tagUsartDevicePrepareSleep(const TagUsartDevice *device);
 
-void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len);
-void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
-                  uint32_t len);
+void tagUsartWrite(const TagUsartDevice *device, const uint8_t *buf,
+                   uint32_t len);
+void tagUsartRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len);
 
 void tagUsartSelect(const TagUsartDevice *device);
 void tagUsartDeselect(const TagUsartDevice *device);
-void tagUsartBusWrite(const TagUsartDevice *device, const uint8_t *buf,
-                      uint32_t len);
-void tagUsartBusRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len);
+
+/*
+ * Convenience transaction wrappers. These assert chip select, perform one raw
+ * byte transfer, then release chip select. Use the lower-level select/write/read
+ * calls directly when a device protocol needs multiple phases under one CS.
+ */
+static inline void tagUsartBusWrite(const TagUsartDevice *device,
+                                    const uint8_t *buf, uint32_t len)
+{
+  tagUsartSelect(device);
+  tagUsartWrite(device, buf, len);
+  tagUsartDeselect(device);
+}
+
+static inline void tagUsartBusRead(const TagUsartDevice *device, uint8_t *buf,
+                                   uint32_t len)
+{
+  tagUsartSelect(device);
+  tagUsartRead(device, buf, len);
+  tagUsartDeselect(device);
+}
 
 #endif

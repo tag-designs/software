@@ -1,7 +1,7 @@
 #ifndef TAG_RTC_DEVICE_H
 #define TAG_RTC_DEVICE_H
 
-#include "i2c_bus.h"
+#include "sensor_io.h"
 
 #include <stdint.h>
 
@@ -15,7 +15,7 @@
 typedef void (*TagRtcPower)(void);
 
 typedef struct {
-  const TagI2cRegisterBus *registers;
+  const TagI2cDevice *registers;
   TagRtcPower device_on;
   TagRtcPower device_off;
 } TagRtcDevice;

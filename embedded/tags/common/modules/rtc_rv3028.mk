@@ -9,6 +9,13 @@ MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/rtc/src
 MODULE_INC_DIRS += $(TAG_COMMON_DIR)/rtc/inc
 UDEFS += -DTAG_RTC_RV3028=1
 
+include $(TAG_COMMON_MODULE_DIR)/sensor_paths.mk
+
+ifndef TAG_SENSOR_IO_SOURCE_INCLUDED
+TAG_SENSOR_IO_SOURCE_INCLUDED := yes
+ALLCSRC += sensor_io.c
+endif
+
 ALLCSRC += \
        rtc_device.c \
        rtc_rv3028.c \

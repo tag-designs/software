@@ -182,7 +182,11 @@ are split between `bus_power.c` and the bus modules: `bus_power.c` owns shared
 STM32 standby pullup/pulldown helpers that operate on board-provided
 `LINE_xxx` names, while `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own their
 bus-specific descriptor helpers, controller setup, active-state tracking, and
-Stop2-specific register suspend/resume. SPI power and SPI bus ownership are
+Stop2-specific register suspend/resume. I2C uses the same controller/device
+shape: `TagI2cController` owns the driver and mutex, while `TagI2cDevice`
+owns the config pointer, SDA/SCL/power lines, address, timeout, and standby
+pull policy used by both power code and register helpers. SPI power and SPI bus
+ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and

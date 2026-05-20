@@ -57,6 +57,11 @@ int tagRegisterWrite(const TagRegisterBus *bus, uint8_t reg,
 int tagRegisterRead(const TagRegisterBus *bus, uint8_t reg, uint8_t *buf,
                     uint32_t len);
 
+int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
+                        uint32_t len);
+int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
+                       uint32_t len);
+
 int tagStSpiWriteRegister(const void *io, uint8_t reg,
                           const uint8_t *buf, uint32_t len);
 int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,

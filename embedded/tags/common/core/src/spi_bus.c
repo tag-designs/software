@@ -212,8 +212,9 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
   }
 }
 
-void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
+void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 {
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t read_len = len;
 
@@ -229,14 +230,15 @@ void tagSpiWrite(SPI_TypeDef *spi, const uint8_t *buf, uint32_t len)
   }
 }
 
-void tagSpiRead(SPI_TypeDef *spi, uint8_t *buf, uint32_t len)
+void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t read_len = len;
 
   while (len || read_len) {
     while (len && (spi->SR & SPI_SR_TXE)) {
-      *spidr = 0xff;
+      *spidr = device->dummy;
       len--;
     }
     while (read_len && (spi->SR & SPI_SR_RXNE)) {
@@ -254,19 +256,4 @@ void tagSpiSelect(const TagSpiDevice *device)
 void tagSpiDeselect(const TagSpiDevice *device)
 {
   palSetLine(device->cs);
-}
-
-void tagSpiBusWrite(const TagSpiDevice *device, const uint8_t *buf,
-                    uint32_t len)
-{
-  tagSpiSelect(device);
-  tagSpiWrite(tagSpiDevicePeripheral(device), buf, len);
-  tagSpiDeselect(device);
-}
-
-void tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
-{
-  tagSpiSelect(device);
-  tagSpiRead(tagSpiDevicePeripheral(device), buf, len);
-  tagSpiDeselect(device);
 }

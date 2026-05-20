@@ -1,8 +1,8 @@
 #include "hal.h"
-#include "i2c_bus.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "rv3032.h"
+#include "sensor_io.h"
 
 #define RTC_TIMEOUT 100
 
@@ -16,10 +16,11 @@ static inline uint8_t bin2bcd(uint8_t val)
     return ((val / 10) << 4) | (val % 10);
 }
 
-static const TagI2cRegisterBus rv3032_i2c = {
-    .driver = &I2CD1,
+static const TagI2cDevice rv3032_i2c = {
+    .controller = &tagI2c1DefaultController,
     .address = RV3032_ADR,
     .timeout = RTC_TIMEOUT,
+    .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 
 static int rv3032_GetReg(enum RV3032Reg reg, uint8_t *val, int num)

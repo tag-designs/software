@@ -14,10 +14,11 @@
  * descriptor here. A tag with unusual RTC wiring can override tagRtcDevice()
  * locally without carrying a private copy of the RV3028 register driver.
  */
-static const TagI2cRegisterBus rtc_i2c = {
-    .driver = &I2CD1,
+static const TagI2cDevice rtc_i2c = {
+    .controller = &tagI2c1DefaultController,
     .address = RV3028_ADR,
     .timeout = RTC_TIMEOUT,
+    .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 
 static const TagRtcDevice rtc_device = {

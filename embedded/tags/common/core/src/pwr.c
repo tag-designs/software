@@ -44,32 +44,36 @@ static void delay(void){
  * swapped. Define SWAP_I2C in the tag's custom.h for those boards so the
  * software I2C fallback drives the physical lines in the corrected order.
  */
-static const TagI2cDevice rtc_bus = {
-    .driver = &I2CD1,
-    .mutex = &I2Cmutex,
-    .config = {
-        .delay = delay,
+static const I2CConfig rtc_i2c_config = {
+    .delay = delay,
 #if defined(SWAP_I2C) && SWAP_I2C
-        .sda = LINE_RTC_SCL,
-        .scl = LINE_RTC_SDA,
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA,
 #else
-        .sda = LINE_RTC_SDA,
-        .scl = LINE_RTC_SCL,
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
 #endif
-    },
+};
+
+static const TagI2cDevice rtc_bus = {
+    .controller = &tagI2c1DefaultController,
+    .config = &rtc_i2c_config,
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL,
     .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_I2C_SLEEP_PULLUP,
 };
 
 void rtcOn(void)
 {
-  tagI2cDeviceOn(&rtc_bus);
+  tagI2cDevicePowerOn(&rtc_bus);
+  tagI2cBusBegin(&rtc_bus);
 }
 
 void rtcOff(void)
 {
-  tagI2cDeviceOff(&rtc_bus);
+  tagI2cBusEnd(&rtc_bus);
+  tagI2cDevicePowerOff(&rtc_bus);
 }
 
 // SPI Devices

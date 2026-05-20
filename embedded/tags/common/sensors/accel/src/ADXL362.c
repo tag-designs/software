@@ -198,8 +198,8 @@ void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
     buffer[1] = registerAddress;
 
     tagSpiSelect(device->spi);
-    tagSpiWrite(tagSpiDevicePeripheral(device->spi), buffer, 2);
-    tagSpiRead(tagSpiDevicePeripheral(device->spi), pReadData, bytesNumber);
+    tagSpiWrite(device->spi, buffer, 2);
+    tagSpiRead(device->spi, pReadData, bytesNumber);
     tagSpiDeselect(device->spi);
 }
 
@@ -224,8 +224,8 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 
   buffer[0] = ADXL362_WRITE_FIFO;
   tagSpiSelect(device->spi);
-  tagSpiWrite(tagSpiDevicePeripheral(device->spi), buffer, 1);
-  tagSpiRead(tagSpiDevicePeripheral(device->spi), pBuffer, bytesNumber);
+  tagSpiWrite(device->spi, buffer, 1);
+  tagSpiRead(device->spi, pBuffer, bytesNumber);
   tagSpiDeselect(device->spi);
 }
 

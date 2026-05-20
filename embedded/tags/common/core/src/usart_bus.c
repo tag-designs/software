@@ -212,8 +212,10 @@ void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
   }
 }
 
-void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len)
+void tagUsartWrite(const TagUsartDevice *device, const uint8_t *buf,
+                   uint32_t len)
 {
+  USART_TypeDef *usart = tagUsartDevicePeripheral(device);
   volatile uint8_t *tdr = (volatile uint8_t *)&usart->TDR;
   volatile uint8_t *rdr = (volatile uint8_t *)&usart->RDR;
 
@@ -225,14 +227,14 @@ void tagUsartWrite(USART_TypeDef *usart, const uint8_t *buf, uint32_t len)
   }
 }
 
-void tagUsartRead(USART_TypeDef *usart, uint8_t dummy, uint8_t *buf,
-                  uint32_t len)
+void tagUsartRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len)
 {
+  USART_TypeDef *usart = tagUsartDevicePeripheral(device);
   volatile uint8_t *tdr = (volatile uint8_t *)&usart->TDR;
   volatile uint8_t *rdr = (volatile uint8_t *)&usart->RDR;
 
   while (len--) {
-    *tdr = dummy;
+    *tdr = device->dummy;
     while ((usart->ISR & USART_ISR_RXNE) == 0)
       ;
     *buf++ = *rdr;
@@ -247,19 +249,4 @@ void tagUsartSelect(const TagUsartDevice *device)
 void tagUsartDeselect(const TagUsartDevice *device)
 {
   palSetLine(device->cs);
-}
-
-void tagUsartBusWrite(const TagUsartDevice *device, const uint8_t *buf,
-                      uint32_t len)
-{
-  tagUsartSelect(device);
-  tagUsartWrite(tagUsartDevicePeripheral(device), buf, len);
-  tagUsartDeselect(device);
-}
-
-void tagUsartBusRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len)
-{
-  tagUsartSelect(device);
-  tagUsartRead(tagUsartDevicePeripheral(device), device->dummy, buf, len);
-  tagUsartDeselect(device);
 }

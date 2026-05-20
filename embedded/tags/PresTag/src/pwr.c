@@ -18,17 +18,19 @@ static void delay(void){
   __NOP();
 }
 
+static const I2CConfig rtc_i2c_config = {
+    .delay = delay,
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+};
+
 static const TagI2cDevice rtc_bus = {
-    .driver = &I2CD1,
-    .mutex = &I2Cmutex,
-    .config = {
-        .delay = delay,
-        .sda = LINE_RTC_SDA,
-        .scl = LINE_RTC_SCL,
-    },
+    .controller = &tagI2c1DefaultController,
+    .config = &rtc_i2c_config,
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL,
     .pwr = TAG_NO_LINE,
+    .sleep_policy = TAG_I2C_SLEEP_PULLUP,
 };
 
 #ifdef LPS_SPI
@@ -61,12 +63,14 @@ static const TagSpiDevice flash_bus = {
 
 void rtcOn(void)
 {
-  tagI2cDeviceOn(&rtc_bus);
+  tagI2cDevicePowerOn(&rtc_bus);
+  tagI2cBusBegin(&rtc_bus);
 }
 
 void rtcOff(void)
 {
-  tagI2cDeviceOff(&rtc_bus);
+  tagI2cBusEnd(&rtc_bus);
+  tagI2cDevicePowerOff(&rtc_bus);
 }
 
 #ifdef LPS_SPI

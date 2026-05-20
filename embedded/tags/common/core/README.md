@@ -51,10 +51,14 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
   The device descriptor supplies the `TagSpiConfig` used for that bus session.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
-I2C-backed devices follow the same ownership rule: `i2c_bus.c` owns
-`tagI2cDeviceOn/Off()`, `tagI2cDevicePrepareSleep()`, and the register
-transaction helpers. The descriptor supplies the tag-specific software-I2C line
-configuration and optional power line.
+I2C-backed devices follow the same ownership rule: `TagI2cController`
+identifies the low-level driver and mutex, while `TagI2cDevice` carries the
+controller, `I2CConfig`, SDA/SCL/power lines, address, timeout, and standby
+pull policy. `i2c_bus.c` owns `tagI2cControllerEnable/Disable()`,
+`tagI2cDevicePowerOn/Off()`, `tagI2cBusBegin/End()`,
+`tagI2cDevicePrepareSleep()`, and the register transaction helpers. Register
+code uses the same device descriptor as power code, so address/timeout and
+driver selection do not live in a second partial bus object.
 
 USART-backed sensor buses follow the same split. `TagUsartDevice` describes
 the chip-select, synchronous USART pins, optional power line, controller, and

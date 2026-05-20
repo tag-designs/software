@@ -8,8 +8,8 @@ sequence should live in that tag family instead.
 ## Layout
 
 - `inc/sensor_io.h`, `src/sensor_io.c`: common register-bus adapters. These
-  wrap low-level bus helpers from `core` into sensor-oriented register reads
-  and writes.
+  wrap low-level bus helpers from `core` into register reads and writes used
+  by sensors and other register devices such as RTCs.
 - `accel/`: accelerometer drivers that are reusable enough to be common.
 - `pressure/`: LPS/BMP pressure drivers plus the `lps.c` compatibility shim.
 - `mag/`: AK09940A descriptor driver, default shim, and legacy MMC5633 code.

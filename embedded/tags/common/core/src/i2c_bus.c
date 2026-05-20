@@ -1,28 +1,54 @@
 #include "power.h"
 
+#include "core_sync.h"
 #include "gpio_utils.h"
 
-#define TAG_I2C_REGISTER_MAX_WRITE 16
-
 /*
- * Conventional register-oriented I2C transfers shared by sensors and RTCs.
- * This file owns I2C device/session setup plus conventional register-oriented
- * transactions. The device descriptor carries the tag-specific lines and
- * ChibiOS/fallback I2C configuration; the register helpers assume the bus has
- * already been enabled by tagI2cDeviceOn().
+ * I2C controller setup, device bus-session pin state, and standby pull policy.
+ * Register-oriented I2C transactions live with the other register adapters in
+ * sensor_io.c.
  */
 
-void tagI2cDeviceOn(const TagI2cDevice *device)
-{
-  if (device->mutex)
-  {
-    chBSemWait(device->mutex);
-  }
+const TagI2cController tagI2c1DefaultController = {
+  .driver = &I2CD1,
+  .mutex = &I2Cmutex,
+};
 
+void tagI2cControllerEnable(const TagI2cController *controller,
+                            const I2CConfig *config)
+{
+  i2cStart(controller->driver, config);
+}
+
+void tagI2cControllerDisable(const TagI2cController *controller)
+{
+  i2cStop(controller->driver);
+}
+
+void tagI2cDevicePowerOn(const TagI2cDevice *device)
+{
   if (tagLineIsValid(device->pwr))
   {
     toOutput(device->pwr);
     palSetLine(device->pwr);
+  }
+}
+
+void tagI2cDevicePowerOff(const TagI2cDevice *device)
+{
+  if (tagLineIsValid(device->pwr))
+  {
+    palClearLine(device->pwr);
+  }
+}
+
+void tagI2cBusBegin(const TagI2cDevice *device)
+{
+  const TagI2cController *controller = device->controller;
+
+  if (controller && controller->mutex)
+  {
+    chBSemWait(controller->mutex);
   }
 
   palSetLine(device->sda);
@@ -30,55 +56,42 @@ void tagI2cDeviceOn(const TagI2cDevice *device)
   toOutput(device->scl);
   toOutput(device->sda);
 
-  i2cStart(device->driver, &device->config);
+  if (controller)
+  {
+    tagI2cControllerEnable(controller, device->config);
+  }
 }
 
-void tagI2cDeviceOff(const TagI2cDevice *device)
+void tagI2cBusEnd(const TagI2cDevice *device)
 {
-  i2cStop(device->driver);
+  const TagI2cController *controller = device->controller;
 
-  if (tagLineIsValid(device->pwr))
+  if (controller)
   {
-    palClearLine(device->pwr);
+    tagI2cControllerDisable(controller);
   }
 
-  if (device->mutex)
+  if (controller && controller->mutex)
   {
-    chBSemSignal(device->mutex);
+    chBSemSignal(controller->mutex);
   }
 }
 
 void tagI2cDevicePrepareSleep(const TagI2cDevice *device)
 {
-  tagEnableStandbyPullup(device->scl);
-  tagEnableStandbyPullup(device->sda);
-  tagEnableStandbyPulldown(device->pwr);
-}
+  switch (device->sleep_policy)
+  {
+  case TAG_I2C_SLEEP_PULLUP:
+    tagEnableStandbyPullup(device->scl);
+    tagEnableStandbyPullup(device->sda);
+    tagEnableStandbyPulldown(device->pwr);
+    break;
 
-int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
-                        uint32_t len)
-{
-  const TagI2cRegisterBus *i2c = (const TagI2cRegisterBus *)io;
-  uint8_t txbuf[TAG_I2C_REGISTER_MAX_WRITE + 1];
+  case TAG_I2C_SLEEP_FLOAT:
+    tagEnableStandbyPulldown(device->pwr);
+    break;
 
-  if (len > TAG_I2C_REGISTER_MAX_WRITE) {
-    return MSG_RESET;
+  case TAG_I2C_SLEEP_CUSTOM:
+    break;
   }
-
-  txbuf[0] = reg;
-  for (uint32_t i = 0; i < len; i++) {
-    txbuf[i + 1] = buf[i];
-  }
-
-  return i2cMasterTransmitTimeout(i2c->driver, i2c->address, txbuf, len + 1,
-                                  0, 0, i2c->timeout);
-}
-
-int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
-                       uint32_t len)
-{
-  const TagI2cRegisterBus *i2c = (const TagI2cRegisterBus *)io;
-
-  return i2cMasterTransmitTimeout(i2c->driver, i2c->address, &reg, 1, buf,
-                                  len, i2c->timeout);
 }
