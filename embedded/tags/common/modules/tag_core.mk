@@ -19,5 +19,6 @@ ALLCSRC += \
        state_machine.c \
        stm32adc.c \
        stm32flash.c \
+       test.c \
        time.c \
        usart_bus.c

@@ -4,6 +4,8 @@
 #include "tagdata.pb.h"
 #include "test_support.h"
 
+#include <stddef.h>
+
 /*
  * Shared self-test orchestrator.
  *
@@ -13,35 +15,17 @@
  * TestResult.
  */
 
-static bool test_requested(TestReq request)
+typedef struct
 {
-  return (test_to_run == RUN_ALL) || (test_to_run == request);
-}
+  TestReq request;
+  TestResult failure;
+  bool (*run)(void);
+} TagTestCase;
 
-static bool run_test(TestReq request, TestResult failure, bool (*test_fn)(void))
+static const TagTestCase tag_tests[] =
 {
-  if (!test_requested(request))
-  {
-    return true;
-  }
-
-  if (!test_fn())
-  {
-    pState->test_result = failure;
-    return false;
-  }
-  return true;
-}
-
-void test(void)
-{
-  pState->test_result = TEST_RUNNING;
-
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
-  if (!run_test(RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362))
-  {
-    return;
-  }
+  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362},
 #endif
 
 #if defined(TAG_SENSOR_ACCEL_LIS2DU12)
@@ -49,10 +33,7 @@ void test(void)
    * The protocol still uses RUN_AIS2 for newer low-power accelerometer tests.
    * Keep that mapping until the monitor protocol grows a generic RUN_ACCEL.
    */
-  if (!run_test(RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12))
-  {
-    return;
-  }
+  {RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12},
 #endif
 
 #if defined(TAG_SENSOR_MAG_AK09940A)
@@ -61,39 +42,55 @@ void test(void)
    * magnetometer tests. Keep the request stable and report the specific
    * AK09940A failure result.
    */
-  if (!run_test(RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a))
-  {
-    return;
-  }
+  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a},
 #endif
 
 #if defined(TAG_RTC_RV3028)
-  if (!run_test(RUN_RTC, RTC_FAILED, tag_test_rtc))
-  {
-    return;
-  }
+  {RUN_RTC, RTC_FAILED, tag_test_rtc},
 #endif
 
 #if defined(TAG_HAS_EXTERNAL_FLASH)
-  if (!run_test(RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash))
-  {
-    return;
-  }
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
 #endif
 
 #if defined(TAG_SENSOR_PRESSURE_LPS27)
-  if (!run_test(RUN_LPS, LPS_FAILED, tag_test_lps27))
-  {
-    return;
-  }
+  {RUN_LPS, LPS_FAILED, tag_test_lps27},
 #endif
 
 #if defined(TAG_SENSOR_PRESSURE_LPS22HH)
-  if (!run_test(RUN_LPS, LPS_FAILED, tag_test_lps22hh))
-  {
-    return;
-  }
+  {RUN_LPS, LPS_FAILED, tag_test_lps22hh},
 #endif
+
+  {RUN_ALL, ALL_PASSED, NULL},
+};
+
+static bool test_requested(TestReq request)
+{
+  return (test_to_run == RUN_ALL) || (test_to_run == request);
+}
+
+void test(void)
+{
+  pState->test_result = TEST_RUNNING;
+
+  for (size_t i = 0; i < sizeof(tag_tests) / sizeof(tag_tests[0]); i++)
+  {
+    if (tag_tests[i].run == NULL)
+    {
+      continue;
+    }
+
+    if (!test_requested(tag_tests[i].request))
+    {
+      continue;
+    }
+
+    if (!tag_tests[i].run())
+    {
+      pState->test_result = tag_tests[i].failure;
+      return;
+    }
+  }
 
   pState->test_result = ALL_PASSED;
 }

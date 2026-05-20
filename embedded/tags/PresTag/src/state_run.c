@@ -6,6 +6,7 @@
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
+#include "devices.h"
 #include "lps.h"
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
@@ -90,7 +91,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         int16_t temperature;
       } datablock;
 
-      lpsGetPressureTemp(&datablock.pressure, &datablock.temperature);
+      lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
+                           &datablock.temperature);
       t_DataHeader dataheader;
 
       if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))

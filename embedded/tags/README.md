@@ -50,7 +50,8 @@ support; do not enable debug logging by defining `DEBUG_MESSAGES` in
 The tag diagnostic code has two separate pieces:
 
 - `debug_log`: an optional in-firmware text buffer that the monitor can drain.
-- `tag_test`: the shared self-test command entry point used by active tags.
+- `tag_core`: the shared self-test command entry point used by active tags.
+  The `tag_test` module is a no-op compatibility marker for existing manifests.
 
 ### Debug Logging
 
@@ -91,9 +92,9 @@ and is drained by the monitor protocol.
 
 ### Self Tests
 
-`tag_test` provides the shared monitor-facing diagnostic entry point. Active
-targets should list it in `TAG_MODULES` when they want monitor self-test
-support:
+`tag_core` provides the shared monitor-facing diagnostic entry point. Existing
+active targets may still list `tag_test` in `TAG_MODULES`, but that module is
+now only a compatibility marker:
 
 ```make
 TAG_MODULES += \
@@ -101,7 +102,7 @@ TAG_MODULES += \
        tag_test
 ```
 
-The shared driver lives in `common/test/src/test.c`. It does not know how to
+The shared driver lives in `common/core/src/test.c`. It does not know how to
 exercise each device directly. Instead, it maps monitor `TestReq` values onto
 small hook functions declared in `common/core/inc/test_support.h` and provided
 by the module, tag family, or tag-local code that owns the hardware.
@@ -138,11 +139,11 @@ When adding a device self-test:
 3. Declare the hook in `test_support.h` under the same `TAG_*` guard used by
    the module or family manifest.
 4. Add the hook source basename to the owning module or family manifest.
-5. Add the request-to-hook mapping in `common/test/src/test.c`.
+5. Add the request-to-hook mapping in `common/core/src/test.c`.
 6. Update `CUSTOM_DEFINES.md` and rebuild the active tag targets.
 
 Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point
-really must be replaced. Most tags should share `common/test/src/test.c` and
+really must be replaced. Most tags should share `common/core/src/test.c` and
 only provide device-specific hooks.
 
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
@@ -327,8 +328,8 @@ so this override behavior still works. Prefer avoiding new same-name overrides
 when practical; add a clearly named tag-local file instead if the behavior is
 not truly an override of a shared default.
 
-The active tag targets use the shared `tag_test` driver in
-`common/test/src/test.c`. Device modules, tag families, or tag-local drivers
+The active tag targets use the shared test driver in `common/core/src/test.c`.
+Device modules, tag families, or tag-local drivers
 provide named self-test hooks such as `tag_test_adxl362()` or
 `tag_test_lis2du12()`; do not add a new local `src/test.c` unless the target
 truly needs to replace the shared diagnostic entry point.

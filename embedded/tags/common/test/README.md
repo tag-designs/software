@@ -1,8 +1,11 @@
 # Shared Self-Test Driver
 
-`test/src/test.c` is the monitor-facing self-test dispatcher selected by the
-`tag_test` module. It maps protobuf `TestReq` values onto device-specific hook
-functions declared in `core/inc/test_support.h`.
+The monitor-facing self-test dispatcher lives in `core/src/test.c` and is
+compiled by the `tag_core` module. It maps protobuf `TestReq` values onto
+device-specific hook functions declared in `core/inc/test_support.h`.
+
+The `tag_test` module is retained as a no-op compatibility marker for older
+project manifests that list it in `TAG_MODULES`.
 
 Device tests should live beside the code that owns the hardware:
 
@@ -17,6 +20,6 @@ The owning module or family manifest is responsible for:
 - documenting the hook in `embedded/tags/README.md` and
   `CUSTOM_DEFINES.md` when a new capability is added.
 
-Avoid replacing `test.c` locally unless a tag needs a completely different
-diagnostic entry point. Most new work should add a small hook and reuse the
-shared dispatcher.
+Avoid replacing the shared dispatcher locally unless a tag needs a completely
+different diagnostic entry point. Most new work should add a small hook and
+reuse the shared dispatcher.

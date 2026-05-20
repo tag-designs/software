@@ -3,10 +3,14 @@
 #include "at25xe.h"
 #include "custom.h"
 #include "device.h"
+#include "devices.h"
 #include "lps.h"
 #include "power.h"
+#include "sensor_io.h"
 #include "storage_device.h"
 #include "storage_flash.h"
+#include "test_support.h"
+#include "timekeeping.h"
 
 /*
  * PresTag board bindings for non-universal devices.
@@ -29,36 +33,31 @@ static const TagSpiDevice lps_bus = {
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 
-void lpsPowerOn(void)
+static const TagStSpiRegisterBus lps_register_spi = {
+    .device = &lps_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+static const TagRegisterBus lps_registers = {
+    .read_register = tagStSpiReadRegister,
+    .write_register = tagStSpiWriteRegister,
+    .context = &lps_register_spi,
+};
+
+static void lpsSleepMilliseconds(int ms)
 {
-  tagSpiDevicePowerOn(&lps_bus);
+  stopMilliseconds(false, ms);
 }
 
-void lpsPowerOff(void)
-{
-  tagSpiDevicePowerOff(&lps_bus);
-}
+const TagPressureDevice tagPresTagPressureDevice = {
+    .registers = &lps_registers,
+    .sleep_ms = lpsSleepMilliseconds,
+};
 
-void lpsBusBegin(void)
+bool tag_test_lps27(void)
 {
-  tagSpiBusBegin(&lps_bus);
-}
-
-void lpsBusEnd(void)
-{
-  tagSpiBusEnd(&lps_bus);
-}
-
-void lpsOn(void)
-{
-  lpsPowerOn();
-  lpsBusBegin();
-}
-
-void lpsOff(void)
-{
-  lpsBusEnd();
-  lpsPowerOff();
+  return tagPressureTest();
 }
 #endif
 
@@ -80,6 +79,14 @@ const TagStorageDevice tagExternalFlash = {
     .sector_size = AT25XE_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
 };
+
+bool tag_test_external_flash(void)
+{
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  return result;
+}
 
 void tagDevicesPrepareStandby(uint32_t state)
 {

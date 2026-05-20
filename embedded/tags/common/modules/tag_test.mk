@@ -1,9 +1,5 @@
-# Shared test/diagnostic entry points.
+# Compatibility marker for shared test/diagnostic entry points.
 #
-# Tags with a local src/test.c intentionally shadow ../common/test/src/test.c
-# through the existing VPATH order.
-
-MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/test/src
-
-ALLCSRC += \
-       test.c
+# The monitor-facing test() dispatcher now lives in tag_core. Device-specific
+# test hooks still live with their device modules. Keep this no-op module so
+# existing TAG_MODULES lists do not need churn while the build structure settles.

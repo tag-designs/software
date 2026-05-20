@@ -14,9 +14,12 @@ typedef void (*TagPressureSleep)(int ms);
  *
  * The register device describes how the sensor is reached on the bus. The
  * power and sleep callbacks describe tag-specific power sequencing around that
- * bus transaction. Legacy pressure APIs use a module-local default descriptor;
- * new tag code can pass an explicit descriptor when the same driver is reused
- * with different board wiring or power policy.
+ * bus transaction. The power/bus callbacks are optional overrides: when they
+ * are NULL, tagPressureDeviceBegin/End() use the register-bus context to apply
+ * the normal SPI, synchronous-USART, or I2C power and bus-session sequence.
+ * Legacy pressure APIs use a module-local default descriptor; new tag code can
+ * pass an explicit descriptor when the same driver is reused with different
+ * board wiring or power policy.
  */
 typedef struct {
   const TagRegisterBus *registers;

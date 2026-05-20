@@ -245,6 +245,10 @@ void __attribute__((weak)) lpsPowerOn(void) {}
 
 void __attribute__((weak)) lpsPowerOff(void) {}
 
+void __attribute__((weak)) lpsOn(void) {}
+
+void __attribute__((weak)) lpsOff(void) {}
+
 void __attribute__((weak)) lpsBusBegin(void)
 {
   lpsOn();
@@ -264,20 +268,173 @@ static const TagPressureDevice lps_device = {
   .sleep_ms = lps_default_sleep,
 };
 
+static const TagSpiDevice *tagPressureSpiDevice(
+    const TagPressureDevice *device)
+{
+  if (device->registers->read_register != tagStSpiReadRegister)
+  {
+    return NULL;
+  }
+
+  const TagStSpiRegisterBus *bus = device->registers->context;
+  return bus->device;
+}
+
+static const TagUsartDevice *tagPressureUsartDevice(
+    const TagPressureDevice *device)
+{
+  if (device->registers->read_register != tagStUsartReadRegister)
+  {
+    return NULL;
+  }
+
+  const TagStUsartRegisterBus *bus = device->registers->context;
+  return bus->device;
+}
+
+static const TagI2cDevice *tagPressureI2cDevice(
+    const TagPressureDevice *device)
+{
+  if (device->registers->read_register != tagI2cReadRegister)
+  {
+    return NULL;
+  }
+
+  return device->registers->context;
+}
+
+static void tagPressureDefaultPowerOn(const TagPressureDevice *device)
+{
+  const TagSpiDevice *spi = tagPressureSpiDevice(device);
+  if (spi)
+  {
+    tagSpiDevicePowerOn(spi);
+    return;
+  }
+
+  const TagUsartDevice *usart = tagPressureUsartDevice(device);
+  if (usart)
+  {
+    tagUsartDevicePowerOn(usart);
+    return;
+  }
+
+  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
+  if (i2c)
+  {
+    tagI2cDevicePowerOn(i2c);
+  }
+}
+
+static void tagPressureDefaultPowerOff(const TagPressureDevice *device)
+{
+  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
+  if (i2c)
+  {
+    tagI2cDevicePowerOff(i2c);
+    return;
+  }
+
+  const TagUsartDevice *usart = tagPressureUsartDevice(device);
+  if (usart)
+  {
+    tagUsartDevicePowerOff(usart);
+    return;
+  }
+
+  const TagSpiDevice *spi = tagPressureSpiDevice(device);
+  if (spi)
+  {
+    tagSpiDevicePowerOff(spi);
+  }
+}
+
+static void tagPressureDefaultBusBegin(const TagPressureDevice *device)
+{
+  const TagSpiDevice *spi = tagPressureSpiDevice(device);
+  if (spi)
+  {
+    tagSpiBusBegin(spi);
+    return;
+  }
+
+  const TagUsartDevice *usart = tagPressureUsartDevice(device);
+  if (usart)
+  {
+    tagUsartBusBegin(usart);
+    return;
+  }
+
+  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
+  if (i2c)
+  {
+    tagI2cBusBegin(i2c);
+  }
+}
+
+static void tagPressureDefaultBusEnd(const TagPressureDevice *device)
+{
+  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
+  if (i2c)
+  {
+    tagI2cBusEnd(i2c);
+    return;
+  }
+
+  const TagUsartDevice *usart = tagPressureUsartDevice(device);
+  if (usart)
+  {
+    tagUsartBusEnd(usart);
+    return;
+  }
+
+  const TagSpiDevice *spi = tagPressureSpiDevice(device);
+  if (spi)
+  {
+    tagSpiBusEnd(spi);
+  }
+}
+
 void tagPressureDeviceBegin(const TagPressureDevice *device)
 {
   if (device->power_on)
+  {
     device->power_on();
+  }
+  else
+  {
+    tagPressureDefaultPowerOn(device);
+  }
+
   if (device->bus_begin)
+  {
     device->bus_begin();
+  }
+  else
+  {
+    tagPressureDefaultBusBegin(device);
+  }
 }
 
 void tagPressureDeviceEnd(const TagPressureDevice *device)
 {
   if (device->bus_end)
+  {
     device->bus_end();
+  }
+  else
+  {
+    tagPressureDefaultBusEnd(device);
+  }
+
   if (device->power_off)
+  {
     device->power_off();
+  }
+  else
+  {
+    tagPressureDefaultPowerOff(device);
+  }
 }
 
 void lpsInit(void) {}

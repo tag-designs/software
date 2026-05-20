@@ -28,9 +28,10 @@ Two diagnostic modules are worth calling out:
 - `debug_log` adds the optional monitor-readable text buffer. It defines
   `TAG_DEBUG_LOG`, compiles `core/src/debug_log.c`, and includes the ChibiOS
   stream support needed by `debug_log_printf()`.
-- `tag_test` adds the shared self-test orchestrator in `test/src/test.c`.
-  Device-specific test hooks are supplied by the modules, families, or local
-  tag sources that own the actual hardware.
+- `tag_test` is now a compatibility marker. The shared self-test orchestrator
+  lives in `core/src/test.c` and is compiled by `tag_core`; device-specific
+  test hooks are supplied by the modules, families, or local tag sources that
+  own the actual hardware.
 
 The ChibiOS makefile's repaired `VPATH` searches the tag-local `src` directory
 before module source directories and `../common/src`, so a tag can override a
@@ -54,7 +55,8 @@ and current cleanup notes:
 - `../storage/README.md` covers external flash drivers and the planned storage
   I/O cleanup.
 - `../sensors/README.md` covers the sensor descriptor/shim pattern.
-- `../test/README.md` covers self-test hooks.
+- `../test/README.md` covers self-test hooks and the compatibility `tag_test`
+  marker.
 
 Current examples:
 
@@ -90,6 +92,7 @@ Current examples:
   src/state_machine.c
   src/stm32adc.c
   src/stm32flash.c
+  src/test.c
   src/time.c
   src/usart_bus.c
 
@@ -114,9 +117,6 @@ Current examples:
   src/external_flash_test.c
   src/mx25l.c
   src/mx25r.c
-
-../test/
-  src/test.c
 
 ../sensors/
   inc/sensor_io.h
@@ -279,9 +279,10 @@ driver files and keep tag-selection or bus-selection conditionals in the shim.
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.
 
-Test owns the shared factory/diagnostic command implementation. `tag_test`
-adds `../test/src` to the source search path and lists the shared `test.c`
-driver. That driver records `TEST_RUNNING`, calls the compiled-in hooks for the
+Test owns the shared factory/diagnostic command implementation. `tag_core`
+compiles `core/src/test.c` as the active self-test dispatcher. `tag_test`
+remains as a no-op compatibility module for existing target manifests. The
+dispatcher records `TEST_RUNNING`, calls the compiled-in hooks for the
 requested monitor `TestReq`, stores the first failing `TestResult`, and reports
 `ALL_PASSED` when the selected checks complete.
 

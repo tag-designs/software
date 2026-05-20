@@ -3,7 +3,7 @@
 This directory contains firmware code shared by tag targets. It is deliberately
 split by ownership rather than by product: common runtime code is in `core`,
 device families are in `sensors`, external memories are in `storage`, RTC
-drivers are in `rtc`, and monitor self-tests are in `test`.
+drivers are in `rtc`, and monitor self-test hooks are described in `test`.
 
 The build entry point is still `make.mk`, with module fragments under
 `modules/`. A tag's `project.mk` selects modules with `TAG_MODULES`, then may
@@ -18,7 +18,7 @@ defined.
 - `rtc/README.md`: RTC API and RV3028 descriptor shape.
 - `storage/README.md`: external flash API and chip drivers.
 - `sensors/README.md`: sensor driver descriptors, shims, and bus register I/O.
-- `test/README.md`: monitor-facing self-test dispatch.
+- `test/README.md`: monitor-facing self-test hooks.
 
 ## Maintenance Rules
 
