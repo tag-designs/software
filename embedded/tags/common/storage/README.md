@@ -25,7 +25,7 @@ The selected storage module chooses the chip implementation:
 
 ## Current Architecture
 
-Storage drivers still mix three concerns:
+Older storage drivers mix two concerns:
 
 - chip command formats and polling rules;
 - assumptions about the tag's flash bus and chip-select line.
@@ -64,6 +64,34 @@ entering flash sleep only for the system states where that is useful.
 delegating through the storage descriptor to the SPI sleep policy in
 `bus_power.c`. Keeping those phases separate avoids hiding device commands in
 the GPIO pull configuration path.
+
+The converted storage path is:
+
+```mermaid
+flowchart TD
+  Datalog["tag datalog code"]
+  ExAPI["external_flash.h Ex* API"]
+  Compat["storage_flash.c compatibility layer"]
+  StorageDev["tagExternalFlash TagStorageDevice"]
+  Ops["chip TagStorageOps"]
+  Chip["at25xe.c / mx25r.c"]
+  SpiHelper["storage_spi.h command framing"]
+  SpiDevice["TagSpiDevice"]
+  SpiCore["spi_bus.c"]
+
+  Datalog --> ExAPI
+  ExAPI --> Compat
+  Compat --> StorageDev
+  StorageDev --> Ops
+  Ops --> Chip
+  Chip --> SpiHelper
+  StorageDev --> SpiDevice
+  SpiHelper --> SpiDevice
+  SpiDevice --> SpiCore
+
+  Standby["tag/family devices.c standby hooks"]
+  Standby --> StorageDev
+```
 
 ## Planned Cleanup
 

@@ -33,6 +33,31 @@ the bus type from function-pointer identity. Keep command bytes and payloads
 under the same chip-select assertion when the datasheet expects one
 transaction.
 
+The common dependency shape is:
+
+```mermaid
+flowchart TD
+  SensorDriver["descriptor-driven sensor driver"]
+  SensorDesc["sensor-specific descriptor"]
+  RegDev["TagRegisterDevice"]
+  BusDev["TagBusDevice"]
+  Adapter["sensor_io.c register adapter"]
+
+  SensorDriver --> SensorDesc
+  SensorDesc --> RegDev
+  SensorDriver --> Adapter
+  Adapter --> RegDev
+  RegDev --> BusDev
+
+  BusDev --> Spi["TagSpiDevice"]
+  BusDev --> I2c["TagI2cDevice"]
+  BusDev --> Usart["TagUsartDevice"]
+
+  Spi --> SpiCore["spi_bus.c"]
+  I2c --> I2cCore["i2c_bus.c"]
+  Usart --> UsartCore["usart_bus.c"]
+```
+
 ## Shims
 
 Some drivers still expose older names such as `lpsGetPressureTemp()` or

@@ -47,6 +47,77 @@ The standby path has two layers:
 Tag or family `devices.c` files override those hooks directly; older tags use
 the weak empty defaults in `device.c`.
 
+The descriptor dependency stack looks like this:
+
+```mermaid
+flowchart TD
+  DeviceFile["tag/family devices.c"]
+  Driver["sensor/storage driver"]
+
+  DeviceFile --> TypedDevice["SPI/I2C/USART device descriptor"]
+  DeviceFile --> BusDevice["TagBusDevice"]
+  BusDevice --> BusOps["TagBusOps"]
+  BusDevice --> TypedDevice
+
+  Driver --> RegisterDevice["TagRegisterDevice or TagStorageDevice"]
+  RegisterDevice --> BusDevice
+
+  TypedDevice --> Controller["SPI/I2C/USART controller descriptor"]
+  BusOps --> BusModule["spi_bus.c / i2c_bus.c / usart_bus.c"]
+  Controller --> BusModule
+  BusModule --> BusPower["bus_power.c"]
+```
+
+## Bus Layer Split
+
+The bus layer is deliberately split between cross-bus policy and concrete bus
+mechanics.
+
+- `bus_power.c` owns helpers that apply to every bus type: valid-line checks,
+  STM32 standby pullup/pulldown programming, and the top-level Stop2
+  suspend/resume fanout.
+- `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own the mechanics that are
+  specific to each bus type: controller enable/disable, device power/session
+  sequencing, bus pin state, standby sleep policy, and raw transfers where the
+  bus supports them.
+- `bus_device.h` is the small generic adapter used by descriptor-backed
+  drivers. It lets a sensor or storage driver call power/session operations
+  without knowing whether the concrete device is SPI, I2C, or USART.
+
+```mermaid
+flowchart TD
+  Driver["sensor/storage/RTC code"]
+  BusDevice["TagBusDevice"]
+  BusOps["TagBusOps"]
+
+  Driver --> BusDevice
+  BusDevice --> BusOps
+
+  BusOps --> SpiBus["spi_bus.c"]
+  BusOps --> I2cBus["i2c_bus.c"]
+  BusOps --> UsartBus["usart_bus.c"]
+
+  SpiBus --> SpiDevice["TagSpiDevice"]
+  I2cBus --> I2cDevice["TagI2cDevice"]
+  UsartBus --> UsartDevice["TagUsartDevice"]
+
+  SpiBus --> Shared["bus_power.c"]
+  I2cBus --> Shared
+  UsartBus --> Shared
+
+  Shared --> StandbyPulls["standby pull registers"]
+  Shared --> Stop2["Stop2 suspend/resume fanout"]
+
+  Stop2 --> SpiStop["tagSpiDisable/EnableActiveForStop"]
+  Stop2 --> UsartStop["tagUsartDisable/EnableActiveForStop"]
+```
+
+When adding a bus feature, put code in the narrowest layer that owns the
+information it needs. Pin pull helpers and Stop2 fanout belong in
+`bus_power.c`; SPI register twiddling belongs in `spi_bus.c`; USART synchronous
+mode setup belongs in `usart_bus.c`; I2C controller configuration belongs in
+`i2c_bus.c`.
+
 Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 
 - `tagSpiDevicePowerOn/Off()` lives in `spi_bus.c` and handles optional
