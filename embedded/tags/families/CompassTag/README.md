@@ -8,9 +8,11 @@ The variants currently share:
 - ChibiOS configuration
 - configuration handling
 - sensor sampling, calibration flash storage, and calibration ACK handling
+  selected by the family build manifest
 - core power and bus control for the RTC, magnetometer, external flash SPI,
   and standby pin pulls
-- a family device binding for the LIS2DU12 USART-style accelerometer path
+- a family device binding for the LIS2DU12 USART-style accelerometer path,
+  including the wakeup line and wake-source selection
 - shared headers for logging, persistence, sensors, and configuration
 
 The LIS2DU12 accelerometer driver, its `tag_test_lis2du12()` hook, and its
@@ -18,8 +20,8 @@ The LIS2DU12 accelerometer driver, its `tag_test_lis2du12()` hook, and its
 transaction framing are currently specialized to this tag family rather than a
 general accelerometer driver. The AK09940A magnetometer is a common sensor, so
 CompassTag now uses the standard binding in `common/core/src/pwr.c`. Any
-remaining family-specific standby pin policy lives in `devices.c` through the
-`tagPrepareDevicesForStandby()` hook.
+remaining family-specific standby and wakeup policy lives in `devices.c`
+through the tag device hooks.
 
 The family `sensors.c` file is not a reusable sensor driver. It is the
 CompassTag application layer that decides how this tag family uses its sensors:

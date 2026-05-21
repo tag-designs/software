@@ -5,8 +5,6 @@
 #include "storage_device.h"
 #include "storage_spi.h"
 
-#define MX25R_SECTOR_SIZE                     (4096)
-
 #define INTER_WRITE_DELAY 2
 #define SECTOR_ERASE_POLL_INTERVAL 150
 

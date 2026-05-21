@@ -9,7 +9,7 @@
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
-volatile int sectors_erased NOINIT;
+static volatile int sectors_erased NOINIT;
 
 // P137 in RM0394
 

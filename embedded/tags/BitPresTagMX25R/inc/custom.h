@@ -1,20 +1,13 @@
 #ifndef CUSTOM_H
 #define CUSTOM_H
 
-#define EXT_FLASH_SIZE (1024 * 1024 * 4)
-
 #define FIRMWARE_STRING "BitPresTagv4, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "BitPresTagMX25Rv1"
-#define SWAP_I2C TRUE
-#define ACCEL_WAKEUP_SOURCE 1
-#define RV3028_RTC TRUE
-#define USE_ADXL362 TRUE
-#define EXTERNAL_FLASH TRUE
+//#define SWAP_I2C TRUE
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 
-extern volatile int sectors_erased;
 #define LINE_STEVAL_CS LINE_LPS_CS
 #define LINE_ACCEL_INT LINE_WKUP1
 

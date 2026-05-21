@@ -16,27 +16,19 @@
 #include "at25xe.h"
 #define EXTERNAL_FLASH_OPS (&at25xeStorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE AT25XE_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT AT25XE_SECTOR_COUNT
 #elif defined(TAG_FLASH_MX25R)
 #include "mx25r.h"
 #define EXTERNAL_FLASH_OPS (&mx25rStorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE MX25R_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT MX25R_SECTOR_COUNT
 #else
 #error "CompassTag family requires a supported external flash module"
 #endif
 
-#ifndef ACCEL_WAKEUP_SOURCE
-#define ACCEL_WAKEUP_SOURCE 4
-#endif
-
-#if ACCEL_WAKEUP_SOURCE == 1
+#define COMPASS_ACCEL_WAKE_LINE LINE_WKUP1
 #define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
 #define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
-#elif ACCEL_WAKEUP_SOURCE == 4
-#define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
-#define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
-#else
-#error "Unsupported ACCEL_WAKEUP_SOURCE"
-#endif
 
 /*
  * CompassTag-family device bindings.
@@ -154,7 +146,7 @@ const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .spi = &external_flash_power,
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
+    .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
 /*
@@ -252,6 +244,11 @@ const TagRegisterDevice *tagLis2du12Device(void)
   return &tagCompassTagAccelDevice;
 }
 
+bool tagCompassAccelWakeActive(void)
+{
+  return palReadLine(COMPASS_ACCEL_WAKE_LINE);
+}
+
 /*
  * Required standby hooks.
  *
@@ -290,7 +287,7 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
   if (state == RUNNING)
   {
     SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
-    return is_active == palReadLine(LINE_ACCEL_INT);
+    return is_active == tagCompassAccelWakeActive();
   }
 
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);

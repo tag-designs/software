@@ -14,16 +14,18 @@
 #include "at25xe.h"
 #define EXTERNAL_FLASH_OPS (&at25xeStorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE AT25XE_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT AT25XE_SECTOR_COUNT
 #elif defined(TAG_FLASH_MX25R)
 #include "mx25r.h"
 #define EXTERNAL_FLASH_OPS (&mx25rStorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE MX25R_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT MX25R_SECTOR_COUNT
 #else
 #error "BitPresTag family requires a supported external flash module"
 #endif
 
 #ifndef ACCEL_WAKEUP_SOURCE
-#define ACCEL_WAKEUP_SOURCE 4
+#define ACCEL_WAKEUP_SOURCE 1
 #endif
 
 #if ACCEL_WAKEUP_SOURCE == 1
@@ -62,7 +64,7 @@ const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .spi = &external_flash_power,
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / EXTERNAL_FLASH_SECTOR_SIZE,
+    .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
 static const TagUsartDevice lps_usart_device = {

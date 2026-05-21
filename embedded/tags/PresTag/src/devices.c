@@ -66,7 +66,7 @@ const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
     .spi = &external_flash_power,
     .sector_size = AT25XE_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / AT25XE_SECTOR_SIZE,
+    .sector_count = AT25XE_SECTOR_COUNT,
 };
 
 /*

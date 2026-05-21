@@ -13,8 +13,6 @@
 #define SENSOR_CONSTANTS TRUE
 #define CALIBRATION_CONSTANTS TRUE;
 
-extern volatile int sectors_erased;
-
 #define LINE_ACCEL_INT LINE_WKUP1
 
 #define ACCEL_CONSTANT 0.976f

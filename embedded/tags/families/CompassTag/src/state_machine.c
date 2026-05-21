@@ -46,16 +46,13 @@
 #include "ADXL367.h"
 #endif
 
-#if defined(USE_LIS2DU12)
-#include "lis2du12.h"
-#endif
-
 #include "tag.pb.h"
 #include "config.h"
 #include "core_events.h"
 #include "core_runtime.h"
 #include "core_state.h"
 #include "core_sync.h"
+#include "devices.h"
 #include "persistent.h"
 #include "power.h"
 #include "rtc_api.h"
@@ -356,9 +353,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     ADXL367_SoftwareReset();
     accelSpiOff();
 #endif
-#if defined(USE_LIS2DU12)
-    lis2du12Deinit(tagLis2du12Device());
-#endif
+    lis2du12Deinit(TAG_ACCEL_DEVICE);
     pState->state = TagState_HIBERNATING;
     recordState(reason);
     // set 1 hour wakeup interval

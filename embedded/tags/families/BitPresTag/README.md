@@ -15,9 +15,9 @@ the small build wrappers so a flash-specific firmware string or board constant
 can still be adjusted without copying application code.
 
 Power and bus control now come from the common `tag_core` module. The
-BitPresTag variants set `SWAP_I2C` and `ACCEL_WAKEUP_SOURCE` in `custom.h` to
-describe the board-specific RTC line swap and wakeup line used by the common
-power code.
+BitPresTag variants keep any RTC line-swap override in `custom.h`; the shared
+family `devices.c` owns the accelerometer wake-source selection and standby pin
+policy.
 
 If a variant needs to experiment with a ChibiOS setting during bring-up, add the
 same-named file under that variant's local `cfg/` directory. The common makefile

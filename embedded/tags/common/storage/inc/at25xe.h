@@ -3,7 +3,9 @@
 
 #include "storage_device.h"
 
-#define AT25XE_SECTOR_SIZE                     (4096)
+#define AT25XE_SIZE                            (1024UL * 1024UL * 4UL)
+#define AT25XE_SECTOR_SIZE                     (4096UL)
+#define AT25XE_SECTOR_COUNT                    (AT25XE_SIZE / AT25XE_SECTOR_SIZE)
 
 extern const TagStorageOps at25xeStorageOps;
   

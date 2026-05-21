@@ -103,7 +103,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // sample once ! -- also used in pwr to decide wakeup edge
 
-    isActive = palReadLine(LINE_ACCEL_INT);
+    isActive = tagCompassAccelWakeActive();
 
     // now we need to collect all bits
     // lastactstart == INT_MAX if the tag wasn't active at the last wakeup

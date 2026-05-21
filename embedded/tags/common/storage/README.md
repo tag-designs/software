@@ -42,12 +42,14 @@ erase/write/read operations. Tag/family code owns the board descriptor and the
 chip driver owns only chip commands.
 
 `storage_device.h` describes the board side of an external flash device: SPI
-bus and sector geometry. AT25XE, MX25L, and MX25R route their internal chip
-operations through that descriptor. Chip drivers export only a `TagStorageOps`
-table, while tag or family `devices.c` files export `tagExternalFlash`. That
-descriptor pairs the selected chip operation table with board wiring and flash
-geometry. Chip operations use `wake`/`sleep` for flash low-power commands so
-they are not confused with SPI bus begin/end.
+bus and sector geometry. AT25XE and MX25R publish their geometry from their
+chip headers, and tag or family `devices.c` files copy that into
+`tagExternalFlash` rather than depending on tag-local capacity defines. Chip
+drivers export only a `TagStorageOps` table, while tag or family `devices.c`
+files export `tagExternalFlash`. That descriptor pairs the selected chip
+operation table with board wiring and flash geometry. Chip operations use
+`wake`/`sleep` for flash low-power commands so they are not confused with SPI
+bus begin/end.
 
 Converted storage also supplies helpers used by tag/family `devices.c` standby
 hooks. `tagStoragePrepareStandby()` handles chip-level standby behavior such as
