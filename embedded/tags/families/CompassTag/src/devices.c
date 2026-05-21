@@ -113,22 +113,17 @@ static const TagUsartDevice accel_usart_device = {
     .sleep_policy = TAG_USART_SLEEP_SAFE_IDLE,
 };
 
-static const TagStUsartRegisterBus accel_register_usart = {
+static const TagBusDevice accel_bus = {
+    .ops = &tagUsartBusOps,
     .device = &accel_usart_device,
+};
+
+const TagRegisterDevice tagCompassTagAccelDevice = {
+    .read_register = tagStUsartReadRegisterDevice,
+    .write_register = tagStUsartWriteRegisterDevice,
+    .bus = &accel_bus,
     .read_mask = 0x80,
     .write_mask = 0x00,
-};
-
-static const TagRegisterBus accel_registers = {
-    .read_register = tagStUsartReadRegister,
-    .write_register = tagStUsartWriteRegister,
-    .context = &accel_register_usart,
-};
-
-const TagLis2du12Device tagCompassTagAccelDevice = {
-    .registers = &accel_registers,
-    .bus_begin = 0,
-    .bus_end = 0,
 };
 
 static const TagSpiDevice external_flash_power = {
@@ -215,7 +210,7 @@ const TagMagDevice *tagAk09940aDevice(void)
   return &tagCompassTagMagDevice;
 }
 
-const TagLis2du12Device *tagLis2du12Device(void)
+const TagRegisterDevice *tagLis2du12Device(void)
 {
   return &tagCompassTagAccelDevice;
 }

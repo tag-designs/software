@@ -1,6 +1,8 @@
 #ifndef TAG_CORE_USART_BUS_H
 #define TAG_CORE_USART_BUS_H
 
+#include "bus_device.h"
+
 #include "hal.h"
 
 #include <stdbool.h>
@@ -49,6 +51,7 @@ typedef struct {
 
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
 extern const TagUsartController tagUsart2SyncController;
+extern const TagBusOps tagUsartBusOps;
 
 bool isUsart2On(void);
 void tagMarkUsart2On(void);

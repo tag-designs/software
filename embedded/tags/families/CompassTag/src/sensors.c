@@ -74,7 +74,7 @@ bool sensorSample(RawSensorData *data){
       int16_t z;
   } accel_data;
   const TagMagDevice *mag;
-  const TagLis2du12Device *accel;
+  const TagRegisterDevice *accel;
   int mx = 0;
   int my = 0;
   int mz = 0;
@@ -124,7 +124,7 @@ bool sensorCalibrationSample(SensorData *sensors)
         int16_t y;
         int16_t z;
     } accel_data;
-    const TagLis2du12Device *accel;
+    const TagRegisterDevice *accel;
 
     int x = 0;
     int y = 0;

@@ -26,6 +26,39 @@ const TagUsartController tagUsart2SyncController = {
     .mutex = &USARTmutex,
 };
 
+static void tagUsartBusOpsPowerOn(const void *device)
+{
+  tagUsartDevicePowerOn((const TagUsartDevice *)device);
+}
+
+static void tagUsartBusOpsPowerOff(const void *device)
+{
+  tagUsartDevicePowerOff((const TagUsartDevice *)device);
+}
+
+static void tagUsartBusOpsBegin(const void *device)
+{
+  tagUsartBusBegin((const TagUsartDevice *)device);
+}
+
+static void tagUsartBusOpsEnd(const void *device)
+{
+  tagUsartBusEnd((const TagUsartDevice *)device);
+}
+
+static void tagUsartBusOpsPrepareSleep(const void *device)
+{
+  tagUsartDevicePrepareSleep((const TagUsartDevice *)device);
+}
+
+const TagBusOps tagUsartBusOps = {
+    .power_on = tagUsartBusOpsPowerOn,
+    .power_off = tagUsartBusOpsPowerOff,
+    .bus_begin = tagUsartBusOpsBegin,
+    .bus_end = tagUsartBusOpsEnd,
+    .prepare_sleep = tagUsartBusOpsPrepareSleep,
+};
+
 bool isUsart2On(void)
 {
   return usart2_on;

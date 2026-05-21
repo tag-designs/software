@@ -80,6 +80,39 @@ const TagSpiController tagSpi1DefaultController = {
     .mutex = &SPImutex,
 };
 
+static void tagSpiBusOpsPowerOn(const void *device)
+{
+  tagSpiDevicePowerOn((const TagSpiDevice *)device);
+}
+
+static void tagSpiBusOpsPowerOff(const void *device)
+{
+  tagSpiDevicePowerOff((const TagSpiDevice *)device);
+}
+
+static void tagSpiBusOpsBegin(const void *device)
+{
+  tagSpiBusBegin((const TagSpiDevice *)device);
+}
+
+static void tagSpiBusOpsEnd(const void *device)
+{
+  tagSpiBusEnd((const TagSpiDevice *)device);
+}
+
+static void tagSpiBusOpsPrepareSleep(const void *device)
+{
+  tagSpiDevicePrepareSleep((const TagSpiDevice *)device);
+}
+
+const TagBusOps tagSpiBusOps = {
+    .power_on = tagSpiBusOpsPowerOn,
+    .power_off = tagSpiBusOpsPowerOff,
+    .bus_begin = tagSpiBusOpsBegin,
+    .bus_end = tagSpiBusOpsEnd,
+    .prepare_sleep = tagSpiBusOpsPrepareSleep,
+};
+
 void tagSpiControllerEnable(const TagSpiController *controller,
                             const TagSpiConfig *config)
 {

@@ -5,13 +5,25 @@
 int tagRegisterWrite(const TagRegisterBus *bus, uint8_t reg,
                      const uint8_t *buf, uint32_t len)
 {
-  return bus->write_register(bus->context, reg, buf, len);
+  const void *context = bus->context ? bus->context : bus;
+  return bus->write_register(context, reg, buf, len);
 }
 
 int tagRegisterRead(const TagRegisterBus *bus, uint8_t reg, uint8_t *buf,
                     uint32_t len)
 {
-  return bus->read_register(bus->context, reg, buf, len);
+  const void *context = bus->context ? bus->context : bus;
+  return bus->read_register(context, reg, buf, len);
+}
+
+void tagRegisterBusBegin(const TagRegisterBus *bus)
+{
+  tagBusBegin(bus->bus);
+}
+
+void tagRegisterBusEnd(const TagRegisterBus *bus)
+{
+  tagBusEnd(bus->bus);
 }
 
 static inline I2CDriver *tagI2cDeviceDriver(const TagI2cDevice *device)
@@ -81,6 +93,37 @@ int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   return 0;
 }
 
+int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
+                                const uint8_t *buf, uint32_t len)
+{
+  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
+  const TagSpiDevice *device = (const TagSpiDevice *)registers->bus->device;
+  uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
+                             registers->write_mask);
+
+  tagSpiSelect(device);
+  tagSpiWrite(device, &command, 1);
+  tagSpiWrite(device, buf, len);
+  tagSpiDeselect(device);
+
+  return 0;
+}
+
+int tagStSpiReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
+                               uint32_t len)
+{
+  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
+  const TagSpiDevice *device = (const TagSpiDevice *)registers->bus->device;
+  uint8_t command = (uint8_t)(reg | registers->read_mask);
+
+  tagSpiSelect(device);
+  tagSpiWrite(device, &command, 1);
+  tagSpiRead(device, buf, len);
+  tagSpiDeselect(device);
+
+  return 0;
+}
+
 int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                             uint32_t len)
 {
@@ -96,6 +139,39 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
   tagUsartWrite(usart->device, &command, 1);
   tagUsartWrite(usart->device, buf, len);
   tagUsartDeselect(usart->device);
+
+  return 0;
+}
+
+int tagStUsartWriteRegisterDevice(const void *io, uint8_t reg,
+                                  const uint8_t *buf, uint32_t len)
+{
+  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
+  const TagUsartDevice *device =
+      (const TagUsartDevice *)registers->bus->device;
+  uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
+                             registers->write_mask);
+
+  tagUsartSelect(device);
+  tagUsartWrite(device, &command, 1);
+  tagUsartWrite(device, buf, len);
+  tagUsartDeselect(device);
+
+  return 0;
+}
+
+int tagStUsartReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
+                                 uint32_t len)
+{
+  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
+  const TagUsartDevice *device =
+      (const TagUsartDevice *)registers->bus->device;
+  uint8_t command = (uint8_t)(reg | registers->read_mask);
+
+  tagUsartSelect(device);
+  tagUsartWrite(device, &command, 1);
+  tagUsartRead(device, buf, len);
+  tagUsartDeselect(device);
 
   return 0;
 }

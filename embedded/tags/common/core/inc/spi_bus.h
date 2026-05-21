@@ -1,6 +1,8 @@
 #ifndef TAG_CORE_SPI_BUS_H
 #define TAG_CORE_SPI_BUS_H
 
+#include "bus_device.h"
+
 #include "hal.h"
 
 #include <stdbool.h>
@@ -40,6 +42,7 @@ typedef struct {
 
 extern const TagSpiConfig tagSpiDefaultConfig;
 extern const TagSpiController tagSpi1DefaultController;
+extern const TagBusOps tagSpiBusOps;
 
 bool isSpi1On(void);
 void tagMarkSpi1On(void);

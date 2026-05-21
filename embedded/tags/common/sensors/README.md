@@ -7,7 +7,7 @@ sequence should live in that tag family instead.
 
 ## Layout
 
-- `inc/sensor_io.h`, `src/sensor_io.c`: common register-bus adapters. These
+- `inc/sensor_io.h`, `src/sensor_io.c`: common register-device adapters. These
   wrap low-level bus helpers from `core` into register reads and writes used
   by sensors and other register devices such as RTCs.
 - `accel/`: accelerometer drivers that are reusable enough to be common.
@@ -20,8 +20,8 @@ sequence should live in that tag family instead.
 Newer reusable drivers take a device descriptor rather than directly naming
 board lines. The descriptor normally contains:
 
-- a `TagRegisterBus` for register reads/writes;
-- bus-session callbacks such as `bus_begin` and `bus_end`;
+- a `TagRegisterDevice` for register reads/writes, usually including its
+  `TagBusDevice` bus-session binding;
 - device power callbacks only when the sensor driver truly controls power
   lifetime;
 - optional sensor-specific callbacks, such as trigger or data-ready lines.

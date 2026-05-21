@@ -14,6 +14,39 @@ const TagI2cController tagI2c1DefaultController = {
   .mutex = &I2Cmutex,
 };
 
+static void tagI2cBusOpsPowerOn(const void *device)
+{
+  tagI2cDevicePowerOn((const TagI2cDevice *)device);
+}
+
+static void tagI2cBusOpsPowerOff(const void *device)
+{
+  tagI2cDevicePowerOff((const TagI2cDevice *)device);
+}
+
+static void tagI2cBusOpsBegin(const void *device)
+{
+  tagI2cBusBegin((const TagI2cDevice *)device);
+}
+
+static void tagI2cBusOpsEnd(const void *device)
+{
+  tagI2cBusEnd((const TagI2cDevice *)device);
+}
+
+static void tagI2cBusOpsPrepareSleep(const void *device)
+{
+  tagI2cDevicePrepareSleep((const TagI2cDevice *)device);
+}
+
+const TagBusOps tagI2cBusOps = {
+    .power_on = tagI2cBusOpsPowerOn,
+    .power_off = tagI2cBusOpsPowerOff,
+    .bus_begin = tagI2cBusOpsBegin,
+    .bus_end = tagI2cBusOpsEnd,
+    .prepare_sleep = tagI2cBusOpsPrepareSleep,
+};
+
 void tagI2cControllerEnable(const TagI2cController *controller,
                             const I2CConfig *config)
 {

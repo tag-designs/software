@@ -19,10 +19,10 @@
  *   write command: register address
  *   read command:  register address OR read_mask
  *
- * Sensor drivers describe register access with a `TagRegisterBus`. The
- * register bus combines a small read/write vtable with the concrete bus context
- * used by that adapter. Driver-level device descriptors then add sensor power,
- * bus-session, and sleep callbacks.
+ * Sensor drivers describe register access with a `TagRegisterDevice`. The
+ * register device combines a small read/write vtable, the concrete register
+ * adapter context, and optionally the bus-session descriptor used to open and
+ * close the physical bus around register transactions.
  */
 /*
  * USART in synchronous mode is used by a few tags as an SPI-like sensor bus.
@@ -50,12 +50,19 @@ typedef struct {
   TagRegisterRead read_register;
   TagRegisterWrite write_register;
   const void *context;
-} TagRegisterBus;
+  const TagBusDevice *bus;
+  uint8_t read_mask;
+  uint8_t write_mask;
+} TagRegisterDevice;
+
+typedef TagRegisterDevice TagRegisterBus;
 
 int tagRegisterWrite(const TagRegisterBus *bus, uint8_t reg,
                      const uint8_t *buf, uint32_t len);
 int tagRegisterRead(const TagRegisterBus *bus, uint8_t reg, uint8_t *buf,
                     uint32_t len);
+void tagRegisterBusBegin(const TagRegisterBus *bus);
+void tagRegisterBusEnd(const TagRegisterBus *bus);
 
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len);
@@ -71,5 +78,15 @@ int tagStUsartWriteRegister(const void *io, uint8_t reg,
                             const uint8_t *buf, uint32_t len);
 int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                            uint32_t len);
+
+int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
+                                const uint8_t *buf, uint32_t len);
+int tagStSpiReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
+                               uint32_t len);
+
+int tagStUsartWriteRegisterDevice(const void *io, uint8_t reg,
+                                  const uint8_t *buf, uint32_t len);
+int tagStUsartReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
+                                 uint32_t len);
 
 #endif

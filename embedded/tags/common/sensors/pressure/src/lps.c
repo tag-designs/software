@@ -45,9 +45,9 @@ static const TagI2cDevice lps_i2c = {
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
-  tagI2cReadRegister,
-  tagI2cWriteRegister,
-  &lps_i2c,
+  .read_register = tagI2cReadRegister,
+  .write_register = tagI2cWriteRegister,
+  .context = &lps_i2c,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -67,9 +67,9 @@ static const TagStSpiRegisterBus lps_spi = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &lps_spi,
+  .read_register = tagStSpiReadRegister,
+  .write_register = tagStSpiWriteRegister,
+  .context = &lps_spi,
 };
 #elif defined(LPS_USART)
 static const TagUsartDevice lps_usart_device = {
@@ -89,9 +89,9 @@ static const TagStUsartRegisterBus lps_usart = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStUsartReadRegister,
-  tagStUsartWriteRegister,
-  &lps_usart,
+  .read_register = tagStUsartReadRegister,
+  .write_register = tagStUsartWriteRegister,
+  .context = &lps_usart,
 };
 #else
 #error "LPS27 selected without LPS_I2C, LPS_SPI, or LPS_USART"
@@ -116,9 +116,9 @@ static const TagStSpiRegisterBus lps_spi = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &lps_spi,
+  .read_register = tagStSpiReadRegister,
+  .write_register = tagStSpiWriteRegister,
+  .context = &lps_spi,
 };
 
 #elif defined(LPS_SHIM_LPS22)
@@ -133,9 +133,9 @@ static const TagI2cDevice lps_i2c = {
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
-  tagI2cReadRegister,
-  tagI2cWriteRegister,
-  &lps_i2c,
+  .read_register = tagI2cReadRegister,
+  .write_register = tagI2cWriteRegister,
+  .context = &lps_i2c,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -155,9 +155,9 @@ static const TagStSpiRegisterBus lps_spi = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &lps_spi,
+  .read_register = tagStSpiReadRegister,
+  .write_register = tagStSpiWriteRegister,
+  .context = &lps_spi,
 };
 #else
 #error "LPS22 selected without LPS_I2C or LPS_SPI"
@@ -175,9 +175,9 @@ static const TagI2cDevice lps_i2c = {
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 static const TagRegisterBus lps_registers = {
-  tagI2cReadRegister,
-  tagI2cWriteRegister,
-  &lps_i2c,
+  .read_register = tagI2cReadRegister,
+  .write_register = tagI2cWriteRegister,
+  .context = &lps_i2c,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -197,9 +197,9 @@ static const TagStSpiRegisterBus lps_spi = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &lps_spi,
+  .read_register = tagStSpiReadRegister,
+  .write_register = tagStSpiWriteRegister,
+  .context = &lps_spi,
 };
 #else
 #error "LPS33 selected without LPS_I2C or LPS_SPI"
@@ -224,9 +224,9 @@ static const TagStSpiRegisterBus lps_spi = {
   .write_mask = 0x00,
 };
 static const TagRegisterBus lps_registers = {
-  tagStSpiReadRegister,
-  tagStSpiWriteRegister,
-  &lps_spi,
+  .read_register = tagStSpiReadRegister,
+  .write_register = tagStSpiWriteRegister,
+  .context = &lps_spi,
 };
 
 #endif

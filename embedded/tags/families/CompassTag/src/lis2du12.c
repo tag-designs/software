@@ -74,107 +74,26 @@ each bit is (1/64)*2 g = 1/32 g
 
 */
 
-static const TagSpiDevice *tagLis2du12SpiDevice(
-    const TagLis2du12Device *device)
+static void lis2du12DeviceBegin(const TagRegisterDevice *device)
 {
-  if (device->registers->read_register != tagStSpiReadRegister)
-    return NULL;
-
-  const TagStSpiRegisterBus *bus = device->registers->context;
-  return bus->device;
+  tagRegisterBusBegin(device);
 }
 
-static const TagUsartDevice *tagLis2du12UsartDevice(
-    const TagLis2du12Device *device)
+static void lis2du12DeviceEnd(const TagRegisterDevice *device)
 {
-  if (device->registers->read_register != tagStUsartReadRegister)
-    return NULL;
-
-  const TagStUsartRegisterBus *bus = device->registers->context;
-  return bus->device;
+  tagRegisterBusEnd(device);
 }
 
-static const TagI2cDevice *tagLis2du12I2cDevice(
-    const TagLis2du12Device *device)
-{
-  if (device->registers->read_register != tagI2cReadRegister)
-    return NULL;
-
-  return device->registers->context;
-}
-
-static void lis2du12DefaultBusBegin(const TagLis2du12Device *device)
-{
-  const TagSpiDevice *spi = tagLis2du12SpiDevice(device);
-  if (spi) {
-    tagSpiBusBegin(spi);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagLis2du12UsartDevice(device);
-  if (usart) {
-    tagUsartBusBegin(usart);
-    return;
-  }
-
-  const TagI2cDevice *i2c = tagLis2du12I2cDevice(device);
-  if (i2c)
-    tagI2cBusBegin(i2c);
-}
-
-static void lis2du12DefaultBusEnd(const TagLis2du12Device *device)
-{
-  const TagI2cDevice *i2c = tagLis2du12I2cDevice(device);
-  if (i2c) {
-    tagI2cBusEnd(i2c);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagLis2du12UsartDevice(device);
-  if (usart) {
-    tagUsartBusEnd(usart);
-    return;
-  }
-
-  const TagSpiDevice *spi = tagLis2du12SpiDevice(device);
-  if (spi)
-    tagSpiBusEnd(spi);
-}
-
-static void lis2du12DeviceBegin(const TagLis2du12Device *device)
-{
-  if (device->bus_begin)
-    device->bus_begin();
-  else
-    lis2du12DefaultBusBegin(device);
-}
-
-static void lis2du12DeviceEnd(const TagLis2du12Device *device)
-{
-  if (device->bus_end)
-    device->bus_end();
-  else
-    lis2du12DefaultBusEnd(device);
-}
-
-static void LIS2DU12_write_byte(const TagLis2du12Device *device, uint8_t reg,
+static void LIS2DU12_write_byte(const TagRegisterDevice *device, uint8_t reg,
                                 uint8_t val)
 {
-  uint8_t buffer[] = {reg, val};
-
-  const TagUsartDevice *usart = tagLis2du12UsartDevice(device);
-  if (usart) {
-    tagUsartBusWrite(usart, buffer, sizeof(buffer));
-    return;
-  }
-
-  (void)tagRegisterWrite(device->registers, reg, &val, 1);
+  (void)tagRegisterWrite(device, reg, &val, 1);
 }
 
-static int32_t LIS2DU12_read(const TagLis2du12Device *device, uint8_t reg,
+static int32_t LIS2DU12_read(const TagRegisterDevice *device, uint8_t reg,
                              uint8_t *bufp, uint16_t len)
 {
-  return tagRegisterRead(device->registers, reg, bufp, len);
+  return tagRegisterRead(device, reg, bufp, len);
 }
 
 
@@ -201,7 +120,7 @@ void lis2du12_init(bool lpf)
 }
   */
 
-void lis2du12Deinit(const TagLis2du12Device *device)
+void lis2du12Deinit(const TagRegisterDevice *device)
 {
   // soft reset
   lis2du12DeviceBegin(device);
@@ -222,7 +141,7 @@ void lis2du12Deinit(const TagLis2du12Device *device)
  *  
 */
 
-void lis2du12Init(const TagLis2du12Device *device, lis2du12mode_t mode)
+void lis2du12Init(const TagRegisterDevice *device, lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
   lis2du12DeviceBegin(device);
@@ -257,7 +176,7 @@ void lis2du12Init(const TagLis2du12Device *device, lis2du12mode_t mode)
   lis2du12DeviceEnd(device);
 }
 
-bool lis2du12Sample(const TagLis2du12Device *device, uint8_t *data)
+bool lis2du12Sample(const TagRegisterDevice *device, uint8_t *data)
 {
   uint8_t status;
   bool res = false;
@@ -321,7 +240,7 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 }
   */
 
-bool lis2du12Test(const TagLis2du12Device *device) {
+bool lis2du12Test(const TagRegisterDevice *device) {
   uint8_t val;
   lis2du12DeviceBegin(device);
   LIS2DU12_read(device, LIS2DU12_WHO_AM_I,&val, 1);
@@ -329,7 +248,7 @@ bool lis2du12Test(const TagLis2du12Device *device) {
   return val == LIS2DU12_ID;
 }
 
-void lis2du12Reset(const TagLis2du12Device *device)
+void lis2du12Reset(const TagRegisterDevice *device)
 {
   lis2du12Deinit(device);
 }

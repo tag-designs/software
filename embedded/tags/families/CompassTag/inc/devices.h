@@ -5,7 +5,7 @@
 #include "lis2du12.h"
 #include "storage_flash.h"
 
-extern const TagLis2du12Device tagCompassTagAccelDevice;
+extern const TagRegisterDevice tagCompassTagAccelDevice;
 extern const TagMagDevice tagCompassTagMagDevice;
 extern const TagStorageDevice tagExternalFlash;
 

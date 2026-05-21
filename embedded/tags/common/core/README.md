@@ -22,6 +22,8 @@ active tags unless a tag provides a same-named local override.
   the concrete non-universal device behavior.
 - `bus_power.c`: common board-line helpers for line validity, standby pulls,
   and Stop2 bus suspend/resume orchestration.
+- `bus_device.h`: a small generic bus-session descriptor that binds a concrete
+  SPI, I2C, or USART device pointer to the matching power/session operations.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level byte/register transfers
   plus bus-specific device/session mechanics. SPI and USART also own their
   controller setup, active-state tracking, and Stop2 suspend/resume mechanics.
