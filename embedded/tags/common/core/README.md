@@ -43,9 +43,13 @@ The standby path has two layers:
   only program standby pullup/pulldown state for the device pins. The lower bus
   helpers, such as `tagSpiDevicePrepareSleep()`, translate a device descriptor's
   sleep policy into the actual PWR pull registers.
+- `tagDevicesDisableWakeupSources()` and
+  `tagDevicesConfigureWakeupSources(state, is_active)`: non-universal wakeup
+  inputs such as accelerometer interrupts. The configure hook can abort the
+  standby attempt if the wake input changes while the MCU is being prepared.
 
 Tag or family `devices.c` files override those hooks directly; older tags use
-the weak empty defaults in `device.c`.
+the weak defaults in `device.c`.
 
 The descriptor dependency stack looks like this:
 

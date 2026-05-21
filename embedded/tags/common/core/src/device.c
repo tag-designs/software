@@ -1,3 +1,5 @@
+#include "hal.h"
+
 #include "device.h"
 
 /*
@@ -14,6 +16,20 @@ void __attribute__((weak)) tagDevicesPrepareStandby(uint32_t state)
 
 void __attribute__((weak)) tagDevicesApplyStandbyPins(void)
 {
+}
+
+void __attribute__((weak)) tagDevicesDisableWakeupSources(void)
+{
+}
+
+bool __attribute__((weak)) tagDevicesConfigureWakeupSources(uint32_t state,
+                                                           bool is_active)
+{
+  (void)state;
+  (void)is_active;
+
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  return true;
 }
 
 void __attribute__((weak)) tagDevicesDeinit(void)

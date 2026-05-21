@@ -6,20 +6,6 @@
 #include "persistent.h"
 #include "power.h"
 
-#ifndef ACCEL_WAKEUP_SOURCE
-#define ACCEL_WAKEUP_SOURCE 4
-#endif
-
-#if ACCEL_WAKEUP_SOURCE == 1
-#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
-#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
-#elif ACCEL_WAKEUP_SOURCE == 4
-#define ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
-#define ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
-#else
-#error "Unsupported ACCEL_WAKEUP_SOURCE"
-#endif
-
 /*
  * Common tag power/standby sequence.
  *
@@ -77,40 +63,18 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
 
-#ifdef LINE_ACCEL_CS
-  tagEnableStandbyPullup(LINE_ACCEL_CS);
-#endif
-
   tagDevicesApplyStandbyPins();
   tagI2cDevicePrepareSleep(&rtc_bus);
 
   SET_BIT(PWR->CR3, PWR_CR3_APC);
 
-  CLEAR_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT);
-
-#if defined(LINE_ACCEL_INT)
-  if (isActive)
-  {
-    SET_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
-  }
-  else
-  {
-    CLEAR_BIT(PWR->CR4, ACCEL_WAKEUP_POLARITY_BIT);
-  }
-
-  if (pState->state == RUNNING)
-  {
-    SET_BIT(PWR->CR3, ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
-    if (isActive != palReadLine(LINE_ACCEL_INT))
-      return;
-  }
-  else
-  {
-    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
-  }
-#else
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
-#endif
+  tagDevicesDisableWakeupSources();
+  /*
+   * TODO(CRITICAL): this abort path returns from godown() with interrupts
+   * disabled. Rework standby entry so all early exits restore IRQ state.
+   */
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+    return;
 
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));

@@ -22,6 +22,20 @@
 #error "BitPresTag family requires a supported external flash module"
 #endif
 
+#ifndef ACCEL_WAKEUP_SOURCE
+#define ACCEL_WAKEUP_SOURCE 4
+#endif
+
+#if ACCEL_WAKEUP_SOURCE == 1
+#define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
+#define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
+#elif ACCEL_WAKEUP_SOURCE == 4
+#define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
+#define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
+#else
+#error "Unsupported ACCEL_WAKEUP_SOURCE"
+#endif
+
 static void lpsSleepMilliseconds(int ms);
 
 /*
@@ -157,6 +171,28 @@ void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+}
+
+void tagDevicesDisableWakeupSources(void)
+{
+  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
+}
+
+bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
+{
+  if (is_active)
+    SET_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
+  else
+    CLEAR_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
+
+  if (state == RUNNING)
+  {
+    SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
+    return is_active == palReadLine(LINE_ACCEL_INT);
+  }
+
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  return true;
 }
 
 void tagDevicesDeinit(void)
