@@ -14,6 +14,9 @@ where-to-look guidance, then read the local README for details.
 - `cmake/`: shared CMake helpers, presets support, vcpkg triplets, and package
   helpers.
 - `ChibiOS/`: ChibiOS submodule. Do not edit it as project source.
+- `archive/` directories contain retired or reference code. Ignore archived
+  code when searching, refactoring, building, or reviewing unless the task
+  explicitly asks about an archive.
 
 ## General Working Rules
 
@@ -66,4 +69,3 @@ Use the target that matches the files changed. For documentation-only changes,
   stored/default configuration JSON. Scope those changes carefully.
 - If CMake source lists change for embedded firmware, update the relevant
   `BUILD_SOURCES.md` under `embedded/tags` or `embedded/bases`.
-

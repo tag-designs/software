@@ -20,27 +20,10 @@
  *   read command:  register address OR read_mask
  *
  * Sensor drivers describe register access with a `TagRegisterDevice`. The
- * register device combines a small read/write vtable, the concrete register
- * adapter context, and optionally the bus-session descriptor used to open and
- * close the physical bus around register transactions.
+ * register device combines a small read/write vtable, the concrete bus-session
+ * descriptor, and the ST-style command masks when the device uses that
+ * convention.
  */
-/*
- * USART in synchronous mode is used by a few tags as an SPI-like sensor bus.
- * Keep the protocol shape separate from normal ChibiOS serial use: callers
- * pass a tag device descriptor and the ST-style command masks.
- */
-typedef struct {
-  const TagSpiDevice *device;
-  uint8_t read_mask;
-  uint8_t write_mask;
-} TagStSpiRegisterBus;
-
-typedef struct {
-  const TagUsartDevice *device;
-  uint8_t read_mask;
-  uint8_t write_mask;
-} TagStUsartRegisterBus;
-
 typedef int (*TagRegisterWrite)(const void *io, uint8_t reg,
                                 const uint8_t *buf, uint32_t len);
 typedef int (*TagRegisterRead)(const void *io, uint8_t reg, uint8_t *buf,
@@ -55,29 +38,17 @@ typedef struct {
   uint8_t write_mask;
 } TagRegisterDevice;
 
-typedef TagRegisterDevice TagRegisterBus;
-
-int tagRegisterWrite(const TagRegisterBus *bus, uint8_t reg,
+int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
                      const uint8_t *buf, uint32_t len);
-int tagRegisterRead(const TagRegisterBus *bus, uint8_t reg, uint8_t *buf,
+int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
                     uint32_t len);
-void tagRegisterBusBegin(const TagRegisterBus *bus);
-void tagRegisterBusEnd(const TagRegisterBus *bus);
+void tagRegisterBusBegin(const TagRegisterDevice *device);
+void tagRegisterBusEnd(const TagRegisterDevice *device);
 
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len);
 int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len);
-
-int tagStSpiWriteRegister(const void *io, uint8_t reg,
-                          const uint8_t *buf, uint32_t len);
-int tagStSpiReadRegister(const void *io, uint8_t reg, uint8_t *buf,
-                         uint32_t len);
-
-int tagStUsartWriteRegister(const void *io, uint8_t reg,
-                            const uint8_t *buf, uint32_t len);
-int tagStUsartReadRegister(const void *io, uint8_t reg, uint8_t *buf,
-                           uint32_t len);
 
 int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
                                 const uint8_t *buf, uint32_t len);

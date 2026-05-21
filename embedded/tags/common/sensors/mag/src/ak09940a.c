@@ -4,158 +4,24 @@
 #include "hal.h"
 #include "ak09940a.h"
 
-static const TagSpiDevice *tagMagSpiDevice(const TagMagDevice *device)
-{
-  if (device->registers->read_register != tagStSpiReadRegister)
-    return NULL;
-
-  const TagStSpiRegisterBus *bus = device->registers->context;
-  return bus->device;
-}
-
-static const TagUsartDevice *tagMagUsartDevice(const TagMagDevice *device)
-{
-  if (device->registers->read_register != tagStUsartReadRegister)
-    return NULL;
-
-  const TagStUsartRegisterBus *bus = device->registers->context;
-  return bus->device;
-}
-
-static const TagI2cDevice *tagMagI2cDevice(const TagMagDevice *device)
-{
-  if (device->registers->read_register != tagI2cReadRegister)
-    return NULL;
-
-  return device->registers->context;
-}
-
-static void tagMagDefaultPowerOn(const TagMagDevice *device)
-{
-  const TagSpiDevice *spi = tagMagSpiDevice(device);
-  if (spi) {
-    tagSpiDevicePowerOn(spi);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagMagUsartDevice(device);
-  if (usart) {
-    tagUsartDevicePowerOn(usart);
-    return;
-  }
-
-  const TagI2cDevice *i2c = tagMagI2cDevice(device);
-  if (i2c)
-    tagI2cDevicePowerOn(i2c);
-}
-
-static void tagMagDefaultPowerOff(const TagMagDevice *device)
-{
-  const TagI2cDevice *i2c = tagMagI2cDevice(device);
-  if (i2c) {
-    tagI2cDevicePowerOff(i2c);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagMagUsartDevice(device);
-  if (usart) {
-    tagUsartDevicePowerOff(usart);
-    return;
-  }
-
-  const TagSpiDevice *spi = tagMagSpiDevice(device);
-  if (spi)
-    tagSpiDevicePowerOff(spi);
-}
-
-static void tagMagDefaultBusBegin(const TagMagDevice *device)
-{
-  const TagSpiDevice *spi = tagMagSpiDevice(device);
-  if (spi) {
-    tagSpiBusBegin(spi);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagMagUsartDevice(device);
-  if (usart) {
-    tagUsartBusBegin(usart);
-    return;
-  }
-
-  const TagI2cDevice *i2c = tagMagI2cDevice(device);
-  if (i2c)
-    tagI2cBusBegin(i2c);
-}
-
-static void tagMagDefaultBusEnd(const TagMagDevice *device)
-{
-  const TagI2cDevice *i2c = tagMagI2cDevice(device);
-  if (i2c) {
-    tagI2cBusEnd(i2c);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagMagUsartDevice(device);
-  if (usart) {
-    tagUsartBusEnd(usart);
-    return;
-  }
-
-  const TagSpiDevice *spi = tagMagSpiDevice(device);
-  if (spi)
-    tagSpiBusEnd(spi);
-}
-
-static void tagMagPowerOn(const TagMagDevice *device)
-{
-  if (device->power_on)
-    device->power_on();
-  else
-    tagMagDefaultPowerOn(device);
-}
-
-static void tagMagPowerOff(const TagMagDevice *device)
-{
-  if (device->power_off)
-    device->power_off();
-  else
-    tagMagDefaultPowerOff(device);
-}
-
-static void tagMagBusBegin(const TagMagDevice *device)
-{
-  if (device->bus_begin)
-    device->bus_begin();
-  else
-    tagMagDefaultBusBegin(device);
-}
-
-static void tagMagBusEnd(const TagMagDevice *device)
-{
-  if (device->bus_end)
-    device->bus_end();
-  else
-    tagMagDefaultBusEnd(device);
-}
-
 void ak09940aDeviceBegin(const TagMagDevice *device)
 {
-  tagMagPowerOn(device);
-  tagMagBusBegin(device);
+  tagBusPowerOn(device->registers->bus);
+  tagRegisterBusBegin(device->registers);
 }
 
 void ak09940aDeviceEnd(const TagMagDevice *device)
 {
-  tagMagBusEnd(device);
-  tagMagPowerOff(device);
+  tagRegisterBusEnd(device->registers);
+  tagBusPowerOff(device->registers->bus);
 }
 
 static void ak09940aPowerUpAndBeginBus(const TagMagDevice *device)
 {
-  tagMagPowerOn(device);
+  tagBusPowerOn(device->registers->bus);
   if (device->sleep_ms)
     device->sleep_ms(1);
-  tagMagBusBegin(device);
+  tagRegisterBusBegin(device->registers);
 }
 
 static msg_t ak09940a_write_register(const TagMagDevice *device,

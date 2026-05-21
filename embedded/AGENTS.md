@@ -15,6 +15,9 @@ ownership, ChibiOS usage, and build/documentation expectations.
 - `tags/common/modules/`: ChibiOS makefile fragments that group shared tag
   sources into named modules used by each tag's `project.mk`.
 - `docs/`: embedded source-layout documentation.
+- Any `archive/` directory contains retired or reference firmware. Ignore it
+  for normal searches, refactors, builds, and reviews unless the task
+  explicitly calls it out.
 
 ## Layer Relationships
 

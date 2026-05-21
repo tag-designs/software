@@ -52,16 +52,17 @@ static const TagSpiDevice ak09940a_spi_device = {
   .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
-static const TagStSpiRegisterBus ak09940a_spi = {
+static const TagBusDevice ak09940a_bus = {
+  .ops = &tagSpiBusOps,
   .device = &ak09940a_spi_device,
-  .read_mask = 0x80,
-  .write_mask = 0x00,
 };
 
-static const TagRegisterBus ak09940a_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &ak09940a_spi,
+static const TagRegisterDevice ak09940a_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &ak09940a_bus,
+  .read_mask = 0x80,
+  .write_mask = 0x00,
 };
 
 static void ak09940a_default_sleep(int ms)
@@ -90,26 +91,8 @@ static bool ak09940a_default_data_ready_line(void)
 }
 #endif
 
-void __attribute__((weak)) magPowerOn(void) {}
-
-void __attribute__((weak)) magPowerOff(void) {}
-
-void __attribute__((weak)) magBusBegin(void)
-{
-  magOn();
-}
-
-void __attribute__((weak)) magBusEnd(void)
-{
-  magOff();
-}
-
 static const TagMagDevice ak09940a_default_device = {
   .registers = &ak09940a_registers,
-  .power_on = magPowerOn,
-  .power_off = magPowerOff,
-  .bus_begin = magBusBegin,
-  .bus_end = magBusEnd,
   .sleep_ms = ak09940a_default_sleep,
 #ifdef AK09940A_HAS_DEFAULT_TRG
   .set_trigger_output = ak09940a_default_trigger_mode,

@@ -114,18 +114,13 @@ typedef enum { MAG_SAMPLE_SINGLE_MODE = AK09940A_CNTL3_SINGLE_MEASURE ,
                MAG_SAMPLE_100HZ_MODE  = AK09940A_CNTL3_100HZ 
                } ak09940_mode_t;
 
-typedef void (*TagMagPower)(void);
 typedef void (*TagMagSleep)(int ms);
 typedef void (*TagMagTriggerMode)(bool output);
 typedef void (*TagMagTrigger)(void);
 typedef bool (*TagMagDataReadyLine)(void);
 
 typedef struct {
-  const TagRegisterBus *registers;
-  TagMagPower power_on;
-  TagMagPower power_off;
-  TagMagPower bus_begin;
-  TagMagPower bus_end;
+  const TagRegisterDevice *registers;
   TagMagSleep sleep_ms;
   TagMagTriggerMode set_trigger_output;
   TagMagTrigger trigger;
@@ -196,15 +191,6 @@ void ak09940_convert_to_uT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
                            float *mx_uT, float *my_uT, float *mz_uT);
 void ak09940_convert_to_nT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
                            int32_t *mx_nT, int32_t *my_nT, int32_t *mz_nT);
-
-void magPowerOn(void);
-void magPowerOff(void);
-void magBusBegin(void);
-void magBusEnd(void);
-void magOn(void);
-void magOff(void);
-
-
 
 // https://github.com/SlimeVR/SlimeVR-Tracker-nRF/blob/master/src/sensor/mag/AK09940.c
 

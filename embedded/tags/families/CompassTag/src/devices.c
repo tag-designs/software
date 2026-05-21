@@ -71,24 +71,21 @@ static const TagSpiDevice ak09940a_bus = {
     .sleep_policy = AK09940A_SLEEP_POLICY,
 };
 
-static const TagStSpiRegisterBus ak09940a_register_spi = {
+static const TagBusDevice ak09940a_register_bus = {
+    .ops = &tagSpiBusOps,
     .device = &ak09940a_bus,
+};
+
+static const TagRegisterDevice ak09940a_registers = {
+    .read_register = tagStSpiReadRegisterDevice,
+    .write_register = tagStSpiWriteRegisterDevice,
+    .bus = &ak09940a_register_bus,
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
 
-static const TagRegisterBus ak09940a_registers = {
-    .read_register = tagStSpiReadRegister,
-    .write_register = tagStSpiWriteRegister,
-    .context = &ak09940a_register_spi,
-};
-
 const TagMagDevice tagCompassTagMagDevice = {
     .registers = &ak09940a_registers,
-    .power_on = 0,
-    .power_off = 0,
-    .bus_begin = 0,
-    .bus_end = 0,
     .sleep_ms = compassTagMagSleepMilliseconds,
 #if defined(LINE_MAG_TRG)
     .set_trigger_output = compassTagMagTriggerMode,
