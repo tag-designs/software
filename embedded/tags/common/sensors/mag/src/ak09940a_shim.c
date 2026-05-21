@@ -40,8 +40,7 @@
 #endif
 
 static const TagSpiDevice ak09940a_spi_device = {
-  .controller = &tagSpi1DefaultController,
-  .config = &tagSpiDefaultConfig,
+  TAG_SPI1_DEVICE_DEFAULTS,
   .cs = AK09940A_DEFAULT_CS,
   .sck = AK09940A_DEFAULT_SCK,
   .miso = AK09940A_DEFAULT_MISO,

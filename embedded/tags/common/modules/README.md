@@ -176,24 +176,23 @@ overrides only for genuinely non-standard sequencing. Shared bus/pin mechanics
 are split between `bus_power.c` and the bus modules: `bus_power.c` owns shared
 STM32 standby pullup/pulldown helpers that operate on board-provided
 `LINE_xxx` names, while `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own their
-bus-specific descriptor helpers, controller setup, active-state tracking, and
-Stop2-specific register suspend/resume. I2C uses the same controller/device
-shape: `TagI2cController` owns the driver and mutex, while `TagI2cDevice`
-owns the config pointer, SDA/SCL/power lines, address, timeout, and standby
-pull policy used by both power code and register helpers. SPI power and SPI bus
+bus-specific descriptor helpers, peripheral setup, active-state tracking, and
+Stop2-specific register suspend/resume. I2C still has a controller/device split:
+`TagI2cController` owns the driver and mutex, while `TagI2cDevice` owns the
+config pointer, SDA/SCL/power lines, address, timeout, and standby pull policy
+used by both power code and register helpers. SPI power and SPI bus
 ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
-`tagSpiBusEnd()` own pin alternate functions and use the shared controller
-descriptor for the bus mutex. Controller enable/disable is a generic bus-module
-operation that takes both the controller and the device/session config, so each
-SPI device descriptor also points at the `TagSpiConfig` for that session. The
+`tagSpiBusEnd()` own pin alternate functions, the bus mutex, and peripheral
+enable/disable. Each SPI device descriptor also points at the `TagSpiConfig`
+for that session. The
 default flash SPI path uses the same descriptor flow, so flash standby pulls
 come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
 block. USART-style sensor buses use the same idea: `TagUsartDevice` carries
-the controller, power/session pins, dummy-byte policy, standby pull policy, and
-`TagUsartSyncConfig`. Sensor I/O and storage helpers use the same device
+the peripheral, mutex, power/session pins, dummy-byte policy, standby pull
+policy, and `TagUsartSyncConfig`. Sensor I/O and storage helpers use the same device
 descriptor that power code uses, so there is no separate partial bus object to
 keep synchronized.
 AK09940A magnetometer bindings live with the tag or family that wires the
@@ -206,11 +205,11 @@ non-standard sequencing or wants to call the descriptor API directly.
 Tags or families that need extra standby pin policy can provide a strong
 `tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
 its built-in flash standby preparation.
-The default SPI1 controller marks SPI1 logically on/off from `spi_bus.c`.
+The default SPI1 descriptor path marks SPI1 logically on/off from `spi_bus.c`.
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
 SPI or synchronous-USART device is active before calling `stopMilliseconds()`.
-Older tag-local controller code that does not use `TagSpiDevice` should call
+Older tag-local peripheral code that does not use `TagSpiDevice` should call
 `tagMarkSpi1On()`/`tagMarkSpi1Off()` or
 `tagMarkUsart2On()`/`tagMarkUsart2Off()` in its local enable/disable helpers.
 
@@ -243,10 +242,10 @@ Retired/reference drivers live under `../sensors/archive/` and should not shape
 active module decisions unless a task explicitly asks about archived code. Core
 owns shared bus helpers when they are useful outside one sensor family:
 `core/src/spi_bus.c`, `core/src/usart_bus.c`, and `core/src/i2c_bus.c` own
-controller setup, bus-session pin policy, standby pull policy, and raw
+peripheral setup, bus-session pin policy, standby pull policy, and raw
 transport mechanics. Shared sensor-side register mechanics live at the top of
 `../sensors`: `sensor_io.c` owns I2C register transactions and the ST-style
-SPI/USART register adapters. Keep bus power, controller setup, and sleep pin
+SPI/USART register adapters. Keep bus power, peripheral setup, and sleep pin
 policy in the core bus layer; keep sensor command formats and register
 transactions beside the sensor drivers.
 The AK09940A magnetometer follows the same driver/shim split as the pressure

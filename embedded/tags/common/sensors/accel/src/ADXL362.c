@@ -60,8 +60,7 @@ char selectedRange = 0;
 /******************************************************************************/
 
 static const TagSpiDevice adxl362_spi = {
-  .controller = &tagSpi1DefaultController,
-  .config = &tagSpiDefaultConfig,
+  TAG_SPI1_DEVICE_DEFAULTS,
   .cs = LINE_ACCEL_CS,
   .sck = LINE_ACCEL_SCK,
   .miso = LINE_ACCEL_MISO,

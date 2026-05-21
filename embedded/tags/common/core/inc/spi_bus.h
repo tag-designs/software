@@ -2,6 +2,7 @@
 #define TAG_CORE_SPI_BUS_H
 
 #include "bus_device.h"
+#include "core_sync.h"
 
 #include "hal.h"
 
@@ -11,10 +12,10 @@
 /*
  * SPI bus helpers.
  *
- * Core owns controller setup, active-state tracking, raw byte transfers, and
+ * Core owns peripheral setup, active-state tracking, raw byte transfers, and
  * standby pin policy for SPI-backed devices. Device drivers should describe
  * register protocols through sensor_io/storage helpers rather than poking the
- * controller directly.
+ * peripheral directly.
  */
 
 // Register settings used when a device opens an SPI bus session.
@@ -23,12 +24,6 @@ typedef struct {
   uint32_t cr2;
 } TagSpiConfig;
 
-// SPI controller register setup and bus arbitration.
-typedef struct {
-  SPI_TypeDef *spi;
-  binary_semaphore_t *mutex;
-} TagSpiController;
-
 // Standby pull policy applied while preparing the MCU for deep sleep.
 typedef enum {
   TAG_SPI_SLEEP_FLOAT,
@@ -36,9 +31,10 @@ typedef enum {
   TAG_SPI_SLEEP_CUSTOM
 } TagSpiSleepPolicy;
 
-// Board-line description for one SPI device attached to a shared controller.
+// Board-line description for one SPI device attached to a hardware peripheral.
 typedef struct {
-  const TagSpiController *controller;
+  SPI_TypeDef *spi;
+  binary_semaphore_t *mutex;
   const TagSpiConfig *config;
   ioline_t cs;
   ioline_t sck;
@@ -50,21 +46,20 @@ typedef struct {
 } TagSpiDevice;
 
 extern const TagSpiConfig tagSpiDefaultConfig;
-extern const TagSpiController tagSpi1DefaultController;
 extern const TagBusOps tagSpiBusOps;
+
+#define TAG_SPI1_DEVICE_DEFAULTS                                             \
+  .spi = SPI1, .mutex = &SPImutex, .config = &tagSpiDefaultConfig
 
 bool isSpi1On(void);
 void tagMarkSpi1On(void);
 void tagMarkSpi1Off(void);
 void tagSpiDisableActiveForStop(void);
 void tagSpiEnableActiveAfterStop(void);
-void tagSpiControllerEnable(const TagSpiController *controller,
-                            const TagSpiConfig *config);
-void tagSpiControllerDisable(const TagSpiController *controller);
 
 static inline SPI_TypeDef *tagSpiDevicePeripheral(const TagSpiDevice *device)
 {
-  return device->controller->spi;
+  return device->spi;
 }
 
 /*
@@ -75,7 +70,7 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device);
 void tagSpiDevicePowerOff(const TagSpiDevice *device);
 
 /*
- * Bus sessions enable or disable the MCU SPI controller using the device's
+ * Bus sessions enable or disable the MCU SPI peripheral using the device's
  * configuration. Callers normally power the device first, then begin the bus;
  * shutdown happens in the reverse order.
  */

@@ -67,8 +67,7 @@ static bool compassTagMagDataReadyLine(void);
  * into drivers or application code.
  */
 static const TagSpiDevice ak09940a_bus = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_MAG_CS,
     .sck = LINE_MAG_SCK,
     .miso = LINE_MAG_MISO,
@@ -106,8 +105,7 @@ const TagMagDevice tagCompassTagMagDevice = {
 };
 
 static const TagUsartDevice accel_usart_device = {
-    .controller = &tagUsart2SyncController,
-    .config = &tagUsart2SyncDefaultConfig,
+    TAG_USART2_SYNC_DEVICE_DEFAULTS,
     .cs = LINE_ACCEL_CS,
     .sck = LINE_ACCEL_SCK,
     .tx = LINE_ACCEL_TX,
@@ -131,8 +129,7 @@ const TagRegisterDevice tagCompassTagAccelDevice = {
 };
 
 static const TagSpiDevice external_flash_power = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,

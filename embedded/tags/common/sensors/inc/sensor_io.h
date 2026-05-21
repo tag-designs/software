@@ -12,7 +12,7 @@
  * Shared sensor register-bus helpers.
  *
  * Device drivers should keep sensor-specific command formats in the driver
- * when they are unusual. Core bus modules own shared controller mechanics;
+ * when they are unusual. Core bus modules own shared peripheral mechanics;
  * this file covers sensor-oriented register adapters including the common
  * ST-style SPI/USART register convention used by several pressure/IMU parts:
  *

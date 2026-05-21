@@ -111,8 +111,7 @@ void lsm6Off(void)
 }
 
 static const TagSpiDevice external_flash_power = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_MX_nCS,
     .sck = LINE_MX_SCK,
     .miso = LINE_MX_MISO,
@@ -130,8 +129,7 @@ const TagStorageDevice tagExternalFlash = {
 };
 
 static const TagSpiDevice lps_spi_device = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_LPS_CS,
     .sck = LINE_LPS_SCK,
     .miso = LINE_LPS_MISO,

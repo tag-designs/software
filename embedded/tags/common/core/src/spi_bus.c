@@ -6,10 +6,10 @@
 /*
  * Polling SPI byte transfers shared by simple peripheral drivers.
  *
- * Existing tag code drives SPI controller registers directly rather than
+ * Existing tag code drives SPI peripheral registers directly rather than
  * through ChibiOS SPI transactions, so these helpers preserve that behavior
  * while centralizing the repeated full-duplex drain/read loops. This file also
- * owns SPI bus-session pin state, shared controller configuration,
+ * owns SPI bus-session pin state, shared peripheral configuration,
  * active-state tracking, and bus mutex for descriptor-backed SPI devices.
  *
  * Storage flash drivers can be more sensitive to command/address/data pacing.
@@ -21,9 +21,9 @@ static bool spi1_on = false;
 static bool spi1_suspended_for_stop = false;
 
 /*
- * Active-controller tracking for Stop2.
+ * Active-peripheral tracking for Stop2.
  *
- * Short sleeps suspend active controllers without changing device power,
+ * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
  */
 bool isSpi1On(void)
@@ -81,11 +81,6 @@ const TagSpiConfig tagSpiDefaultConfig = {
 };
 #endif
 
-const TagSpiController tagSpi1DefaultController = {
-    .spi = SPI1,
-    .mutex = &SPImutex,
-};
-
 /*
  * Generic bus-device adapter.
  *
@@ -125,48 +120,47 @@ const TagBusOps tagSpiBusOps = {
     .prepare_sleep = tagSpiBusOpsPrepareSleep,
 };
 
-void tagSpiControllerEnable(const TagSpiController *controller,
-                            const TagSpiConfig *config)
+static void tagSpiDeviceEnable(const TagSpiDevice *device)
 {
 #if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+  const TagSpiConfig *config = device->config;
   if (!config)
   {
     config = &tagSpiDefaultConfig;
   }
 
-  if (controller->spi == SPI1)
+  if (device->spi == SPI1)
   {
     rccEnableSPI1(0);
     rccResetSPI1();
   }
 
-  controller->spi->CR1 = 0;
-  controller->spi->CR2 = config->cr2;
-  controller->spi->CR1 = config->cr1;
-  controller->spi->CR1 |= SPI_CR1_SPE;
+  device->spi->CR1 = 0;
+  device->spi->CR2 = config->cr2;
+  device->spi->CR1 = config->cr1;
+  device->spi->CR1 |= SPI_CR1_SPE;
 
-  if (controller->spi == SPI1)
+  if (device->spi == SPI1)
   {
     tagMarkSpi1On();
   }
 #else
-  (void)controller;
-  (void)config;
+  (void)device;
 #endif
 }
 
-void tagSpiControllerDisable(const TagSpiController *controller)
+static void tagSpiDeviceDisable(const TagSpiDevice *device)
 {
 #if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-  controller->spi->CR1 = 0;
-  controller->spi->CR2 = 0;
+  device->spi->CR1 = 0;
+  device->spi->CR2 = 0;
 
-  if (controller->spi == SPI1)
+  if (device->spi == SPI1)
   {
     tagMarkSpi1Off();
   }
 #else
-  (void)controller;
+  (void)device;
 #endif
 }
 
@@ -174,7 +168,7 @@ void tagSpiControllerDisable(const TagSpiController *controller)
  * Device power and bus sessions.
  *
  * Power on/off handles optional switched power and safe idle pins. Bus
- * begin/end owns the shared mutex, alternate functions, and controller enable
+ * begin/end owns the shared mutex, alternate functions, and peripheral enable
  * state for one transaction/session.
  */
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
@@ -204,11 +198,9 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
 
 void tagSpiBusBegin(const TagSpiDevice *device)
 {
-  const TagSpiController *controller = device->controller;
-
-  if (controller && controller->mutex)
+  if (device->mutex)
   {
-    chBSemWait(controller->mutex);
+    chBSemWait(device->mutex);
   }
 
   palSetLine(device->cs);
@@ -218,30 +210,22 @@ void tagSpiBusBegin(const TagSpiDevice *device)
   toAlternate(device->miso);
   toAlternate(device->mosi);
 
-  if (controller)
-  {
-    tagSpiControllerEnable(controller, device->config);
-  }
+  tagSpiDeviceEnable(device);
 }
 
 void tagSpiBusEnd(const TagSpiDevice *device)
 {
-  const TagSpiController *controller = device->controller;
-
   palSetLine(device->cs);
 
-  if (controller)
-  {
-    tagSpiControllerDisable(controller);
-  }
+  tagSpiDeviceDisable(device);
 
   toAnalog(device->sck);
   toAnalog(device->mosi);
   toAnalog(device->miso);
 
-  if (controller && controller->mutex)
+  if (device->mutex)
   {
-    chBSemSignal(controller->mutex);
+    chBSemSignal(device->mutex);
   }
 }
 

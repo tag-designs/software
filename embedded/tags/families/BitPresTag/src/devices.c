@@ -49,8 +49,7 @@ static void lpsSleepMilliseconds(int ms);
  * operation table to the shared board wiring.
  */
 static const TagSpiDevice external_flash_power = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,
@@ -68,8 +67,7 @@ const TagStorageDevice tagExternalFlash = {
 };
 
 static const TagUsartDevice lps_usart_device = {
-    .controller = &tagUsart2SyncController,
-    .config = &tagUsart2SyncDefaultConfig,
+    TAG_USART2_SYNC_DEVICE_DEFAULTS,
     .cs = LINE_LPS_CS,
     .sck = LINE_LPS_SCK,
     .tx = LINE_LPS_TX,
@@ -98,8 +96,7 @@ const TagPressureDevice tagBitPresTagPressureDevice = {
 };
 
 static const TagSpiDevice accel_bus = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_ACCEL_CS,
     .sck = LINE_ACCEL_SCK,
     .miso = LINE_ACCEL_MISO,

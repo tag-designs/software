@@ -7,7 +7,7 @@
 /*
  * Polling synchronous-USART byte transfers shared by simple sensor drivers.
  *
- * This file owns USART controller setup, device bus-session pin state,
+ * This file owns USART peripheral setup, device bus-session pin state,
  * active-state tracking, and raw byte-transfer mechanics.
  */
 
@@ -25,11 +25,6 @@ const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
     .cr1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE,
     .cr2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL,
     .cr3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT,
-};
-
-const TagUsartController tagUsart2SyncController = {
-    .usart = USART2,
-    .mutex = &USARTmutex,
 };
 
 /*
@@ -72,9 +67,9 @@ const TagBusOps tagUsartBusOps = {
 };
 
 /*
- * Active-controller tracking for Stop2.
+ * Active-peripheral tracking for Stop2.
  *
- * Short sleeps suspend active controllers without changing device power,
+ * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
  */
 bool isUsart2On(void)
@@ -96,26 +91,16 @@ void tagMarkUsart2Off(void)
 #endif
 }
 
-void tagUsart2SyncEnable(const TagUsartSyncConfig *config)
-{
-  tagUsartControllerEnable(&tagUsart2SyncController, config);
-}
-
-void tagUsart2SyncDisable(void)
-{
-  tagUsartControllerDisable(&tagUsart2SyncController);
-}
-
-void tagUsartControllerEnable(const TagUsartController *controller,
-                              const TagUsartSyncConfig *config)
+static void tagUsartDeviceEnable(const TagUsartDevice *device)
 {
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
+  const TagUsartSyncConfig *config = device->config;
   if (!config)
   {
     config = &tagUsart2SyncDefaultConfig;
   }
 
-  if (controller->usart == USART2)
+  if (device->usart == USART2)
   {
     rccEnableUSART2(true);
     rccResetUSART2();
@@ -123,41 +108,40 @@ void tagUsartControllerEnable(const TagUsartController *controller,
 
   // Synchronous USART mode, MSB first. Several tags use USART2 as a
   // three-wire SPI-like sensor bus when the device is not routed to SPI.
-  controller->usart->BRR = config->brr;
-  controller->usart->CR2 = config->cr2;
-  controller->usart->CR3 = config->cr3;
-  controller->usart->CR1 = config->cr1;
+  device->usart->BRR = config->brr;
+  device->usart->CR2 = config->cr2;
+  device->usart->CR3 = config->cr3;
+  device->usart->CR1 = config->cr1;
 
-  if (controller->usart == USART2)
+  if (device->usart == USART2)
   {
     tagMarkUsart2On();
   }
 #else
-  (void)controller;
-  (void)config;
+  (void)device;
 #endif
 }
 
-void tagUsartControllerDisable(const TagUsartController *controller)
+static void tagUsartDeviceDisable(const TagUsartDevice *device)
 {
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  controller->usart->CR1 = 0;
-  controller->usart->CR2 = 0;
-  controller->usart->CR3 = 0;
+  device->usart->CR1 = 0;
+  device->usart->CR2 = 0;
+  device->usart->CR3 = 0;
 
-  if (controller->usart == USART2)
+  if (device->usart == USART2)
   {
     tagMarkUsart2Off();
   }
 #else
-  (void)controller;
+  (void)device;
 #endif
 }
 
 /*
  * Stop2 suspend/resume hooks.
  *
- * These only toggle the USART enable bit for a controller that was already
+ * These only toggle the USART enable bit for a peripheral that was already
  * open. Normal bus close/open still goes through tagUsartBusEnd/Begin.
  */
 void tagUsartDisableActiveForStop(void)
@@ -186,7 +170,7 @@ void tagUsartEnableActiveAfterStop(void)
  * Device power and bus sessions.
  *
  * Power on/off handles optional switched power and safe idle pins. Bus
- * begin/end owns the shared mutex, alternate functions, and controller enable
+ * begin/end owns the shared mutex, alternate functions, and peripheral enable
  * state for one transaction/session.
  */
 void tagUsartDevicePowerOn(const TagUsartDevice *device)
@@ -216,11 +200,9 @@ void tagUsartDevicePowerOff(const TagUsartDevice *device)
 
 void tagUsartBusBegin(const TagUsartDevice *device)
 {
-  const TagUsartController *controller = device->controller;
-
-  if (controller && controller->mutex)
+  if (device->mutex)
   {
-    chBSemWait(controller->mutex);
+    chBSemWait(device->mutex);
   }
 
   palSetLine(device->cs);
@@ -230,30 +212,22 @@ void tagUsartBusBegin(const TagUsartDevice *device)
   toAlternate(device->tx);
   toAlternate(device->rx);
 
-  if (controller)
-  {
-    tagUsartControllerEnable(controller, device->config);
-  }
+  tagUsartDeviceEnable(device);
 }
 
 void tagUsartBusEnd(const TagUsartDevice *device)
 {
-  const TagUsartController *controller = device->controller;
-
   palSetLine(device->cs);
 
-  if (controller)
-  {
-    tagUsartControllerDisable(controller);
-  }
+  tagUsartDeviceDisable(device);
 
   toAnalog(device->sck);
   toAnalog(device->tx);
   toAnalog(device->rx);
 
-  if (controller && controller->mutex)
+  if (device->mutex)
   {
-    chBSemSignal(controller->mutex);
+    chBSemSignal(device->mutex);
   }
 }
 

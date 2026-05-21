@@ -21,8 +21,7 @@ static void lpsSleepMilliseconds(int ms);
  * these descriptors instead of hard-coded board wiring.
  */
 static const TagSpiDevice lps_bus = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_STEVAL_CS,
     .sck = LINE_STEVAL_SCK,
     .miso = LINE_STEVAL_MISO,
@@ -51,8 +50,7 @@ const TagPressureDevice tagPresTagPressureDevice = {
 };
 
 static const TagSpiDevice external_flash_power = {
-    .controller = &tagSpi1DefaultController,
-    .config = &tagSpiDefaultConfig,
+    TAG_SPI1_DEVICE_DEFAULTS,
     .cs = LINE_FLASH_nCS,
     .sck = LINE_FLASH_SCK,
     .miso = LINE_FLASH_MISO,
