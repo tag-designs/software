@@ -94,6 +94,19 @@ bool tag_test_external_flash(void)
   return result;
 }
 
+static const TagTestCase tag_tests[] =
+{
+  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
+  {RUN_LPS, LPS_FAILED, tag_test_lps27},
+};
+
+const TagTestCase *tagTestCases(size_t *count)
+{
+  *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
+  return tag_tests;
+}
+
 /*
  * Required standby hooks.
  *

@@ -7,12 +7,18 @@
 #include <stddef.h>
 
 /*
- * Shared self-test orchestrator.
+ * Historical BitTag self-test runner.
  *
- * Tag and family devices.c files provide the concrete test list because they
- * own the hardware descriptors. This runner only filters by the monitor's
- * requested TestReq and records the first failing TestResult.
+ * BitTag freezes its ADXL362 and RTC drivers locally, so keep its small test
+ * dispatch local as well while the shared runner moves to tag-owned test
+ * tables in devices.c.
  */
+
+static const TagTestCase tag_tests[] =
+{
+  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+};
 
 static bool test_requested(TestReq request)
 {
@@ -21,18 +27,10 @@ static bool test_requested(TestReq request)
 
 void test(void)
 {
-  size_t count;
-  const TagTestCase *tag_tests = tagTestCases(&count);
-
   pState->test_result = TEST_RUNNING;
 
-  for (size_t i = 0; i < count; i++)
+  for (size_t i = 0; i < sizeof(tag_tests) / sizeof(tag_tests[0]); i++)
   {
-    if (tag_tests[i].run == NULL)
-    {
-      continue;
-    }
-
     if (!test_requested(tag_tests[i].request))
     {
       continue;

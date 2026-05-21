@@ -9,6 +9,7 @@
 #include "power.h"
 #include "storage_device.h"
 #include "storage_flash.h"
+#include "test_support.h"
 #include "timekeeping.h"
 
 #if defined(TAG_FLASH_AT25XE)
@@ -200,6 +201,31 @@ bool tag_test_ak09940a(void)
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
   tagCompassMagResetAssert();
   return ok;
+}
+
+static const TagTestCase tag_tests[] =
+{
+  /*
+   * The protocol predates AK09940A and still exposes RUN_MMC5633 for
+   * magnetometer tests. Keep the request stable and report the specific
+   * AK09940A failure result.
+   */
+  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a},
+
+  /*
+   * The protocol still uses RUN_AIS2 for newer low-power accelerometer tests.
+   * Keep that mapping until the monitor protocol grows a generic RUN_ACCEL.
+   */
+  {RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12},
+
+  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
+};
+
+const TagTestCase *tagTestCases(size_t *count)
+{
+  *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
+  return tag_tests;
 }
 
 const TagMagDevice *tagAk09940aDevice(void)

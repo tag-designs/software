@@ -282,16 +282,18 @@ not intended to be listed directly in `TAG_MODULES`.
 Test owns the shared factory/diagnostic command implementation. `tag_core`
 compiles `core/src/test.c` as the active self-test dispatcher. `tag_test`
 remains as a no-op compatibility module for existing target manifests. The
-dispatcher records `TEST_RUNNING`, calls the compiled-in hooks for the
-requested monitor `TestReq`, stores the first failing `TestResult`, and reports
-`ALL_PASSED` when the selected checks complete.
+dispatcher records `TEST_RUNNING`, asks tag/family `devices.c` for its
+`TagTestCase` table, calls the matching hooks for the requested monitor
+`TestReq`, stores the first failing `TestResult`, and reports `ALL_PASSED` when
+the selected checks complete.
 
 Device-specific checks should live with the device module, tag family, or
-tag-local driver as small `*_test.c` hooks called by that shared driver. The
-module or family that defines a `TAG_*` capability is also responsible for
-adding the matching hook source when that capability has a self-test. This keeps
-test behavior near the driver code and avoids relying on accidental link-time
-selection.
+tag-local driver as small `*_test.c` hooks. The tag or family `devices.c` file
+owns the request-to-hook table because it owns the concrete hardware
+descriptors. The module or family that provides a capability is still
+responsible for adding the matching hook source when that capability has a
+self-test. This keeps test behavior near the driver code and avoids relying on
+accidental link-time selection.
 
 When adding a shared source file:
 

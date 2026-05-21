@@ -103,9 +103,10 @@ TAG_MODULES += \
 ```
 
 The shared driver lives in `common/core/src/test.c`. It does not know how to
-exercise each device directly. Instead, it maps monitor `TestReq` values onto
-small hook functions declared in `common/core/inc/test_support.h` and provided
-by the module, tag family, or tag-local code that owns the hardware.
+exercise each device directly, and it does not select tests with `TAG_*`
+preprocessor branches. Instead, tag or family `devices.c` files export a
+`TagTestCase` table through `tagTestCases()`. Each entry maps a monitor
+`TestReq` value to the hook that exercises a concrete device.
 
 Current hook examples:
 
@@ -116,11 +117,10 @@ Current hook examples:
 - `tag_test_lps22hh()` and `tag_test_ak09940a()` live in `IMUTagBreakout/src`,
   because that target currently owns those local driver variants.
 
-The compile-time `TAG_*` switches decide which hooks are compiled into the
-shared driver. If a tag selects `sensor_accel_adxl362`, for example, the module
-defines `TAG_SENSOR_ACCEL_ADXL362`, compiles `adxl362_test.c`, and the shared
-driver calls `tag_test_adxl362()` when the monitor requests the ADXL362 test or
-`RUN_ALL`.
+Module and project manifests still decide which hook sources are compiled. If a
+tag selects `sensor_accel_adxl362`, for example, the module compiles
+`adxl362_test.c`; the tag or family `devices.c` table decides whether
+`tag_test_adxl362()` is part of that firmware's monitor self-test list.
 
 Some monitor request names still reflect older hardware:
 
@@ -136,15 +136,18 @@ When adding a device self-test:
 1. Put the test source beside the driver that owns the device, in the relevant
    module, family, or tag-local `src` directory.
 2. Name the hook for the actual device, for example `tag_test_newsensor()`.
-3. Declare the hook in `test_support.h` under the same `TAG_*` guard used by
-   the module or family manifest.
+3. Declare the hook in `test_support.h` if a tag or family table needs to call
+   it from another translation unit.
 4. Add the hook source basename to the owning module or family manifest.
-5. Add the request-to-hook mapping in `common/core/src/test.c`.
+5. Add the request-to-hook mapping to the tag or family `devices.c`
+   `TagTestCase` table.
 6. Update `CUSTOM_DEFINES.md` and rebuild the active tag targets.
 
 Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point
 really must be replaced. Most tags should share `common/core/src/test.c` and
-only provide device-specific hooks.
+provide only the `devices.c` test table plus device-specific hooks. BitTag is
+the current exception because it intentionally freezes its older local drivers
+and test hooks.
 
 BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
 in `BitTag/src` because they preserve that older firmware behavior and are not
@@ -328,11 +331,13 @@ so this override behavior still works. Prefer avoiding new same-name overrides
 when practical; add a clearly named tag-local file instead if the behavior is
 not truly an override of a shared default.
 
-The active tag targets use the shared test driver in `common/core/src/test.c`.
-Device modules, tag families, or tag-local drivers
-provide named self-test hooks such as `tag_test_adxl362()` or
-`tag_test_lis2du12()`; do not add a new local `src/test.c` unless the target
-truly needs to replace the shared diagnostic entry point.
+The active tag targets use the shared test driver in `common/core/src/test.c`
+and provide their concrete test lists from tag or family `devices.c` files.
+Device modules, tag families, or tag-local drivers provide named self-test
+hooks such as `tag_test_adxl362()` or `tag_test_lis2du12()`; do not add a new
+local `src/test.c` unless the target truly needs to replace the shared
+diagnostic entry point. BitTag has such a local `test.c` because it is a frozen
+legacy target.
 
 ## Adding Shared Code
 

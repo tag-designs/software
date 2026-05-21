@@ -7,6 +7,7 @@
 #include "gpio_utils.h"
 #include "power.h"
 #include "storage_mx25l.h"
+#include "test_support.h"
 
 /*
  * IMUTagBreakout device bindings.
@@ -122,6 +123,24 @@ const TagStorageDevice tagExternalFlash = {
     .sector_size = MX25L_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / MX25L_SECTOR_SIZE,
 };
+
+static const TagTestCase tag_tests[] =
+{
+  /*
+   * The monitor protocol still exposes RUN_MMC5633 for magnetometer tests.
+   * IMUTagBreakout maps that legacy request to its AK09940 test hook.
+   */
+  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
+  {RUN_LPS, LPS_FAILED, tag_test_lps22hh},
+};
+
+const TagTestCase *tagTestCases(size_t *count)
+{
+  *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
+  return tag_tests;
+}
 
 void tagDevicesPrepareStandby(uint32_t state)
 {

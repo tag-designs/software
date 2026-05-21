@@ -41,7 +41,7 @@ embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
 embedded/tags/common/core/src/usart_bus.c
-embedded/tags/common/core/src/test.c
+embedded/tags/BitTag/src/test.c
 ```
 
 ### Header Files

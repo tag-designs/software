@@ -10,8 +10,8 @@ active tags unless a tag provides a same-named local override.
   state transitions.
 - `handlers.c`, `monitor.c`: protobuf request/ack handling and monitor-facing
   commands.
-- `test.c`: monitor-facing self-test dispatcher. It maps protobuf `TestReq`
-  values onto small device-owned hooks declared in `test_support.h`.
+- `test.c`: monitor-facing self-test dispatcher. It iterates the
+  tag/family-provided `TagTestCase` table from `test_support.h`.
 - `persistent.c`, `stm32flash.c`: persistent state stored in internal STM32
   flash.
 - `time.c`: RTC/ticker/alarm helpers and low-power sleep entry.
