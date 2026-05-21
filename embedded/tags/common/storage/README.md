@@ -1,19 +1,21 @@
 # External Storage
 
 `storage` owns the common external-flash API and chip-specific external-memory
-drivers used by logging tags.
+drivers used by logging tags. All supported external storage parts are SPI
+flash devices, so this layer is intentionally SPI-specific rather than
+transport-polymorphic like the sensor layer.
 
 ## Public Shape
 
-The shared runtime and tag-local datalog code call the legacy `Ex*` API from
-`external_flash.h`, for example:
+The shared runtime and tag-local datalog code call the descriptor-based
+`tagStorage*` API from `storage_flash.h`, for example:
 
-- `ExFlashPwrUp()` / `ExFlashPwrDown()`
-- `ExCheckID()`
-- `ExFlashWrite()`
-- `ExFlashRead()`
-- `ExFlashSectorErase()`
-- `ExSectorSize()` / `ExSectorCount()`
+- `tagStorageWake()` / `tagStorageSleep()`
+- `tagStorageCheckID()`
+- `tagStorageWrite()`
+- `tagStorageRead()`
+- `tagStorageSectorErase()`
+- `tagStorageSectorSize()` / `tagStorageSectorCount()`
 
 The selected storage module chooses the chip implementation:
 
@@ -30,32 +32,22 @@ Older storage drivers mix two concerns:
 - chip command formats and polling rules;
 - assumptions about the tag's flash bus and chip-select line.
 
-The AT25XE driver has started moving toward the newer model by using
-`storage_spi.h` for command/address/data transaction framing. That helper
+The converted drivers use `storage_spi.h` for command/address/data transaction
+framing. That helper
 intentionally uses conservative byte-at-a-time SPI transfers, even though the
 core SPI layer also has pipelined stream helpers. The flash command path keeps
 chip select asserted across tightly ordered command, address, and data phases,
 and the byte-paced transfer matches the behavior that has tested correctly for
-erase/write/read operations. AT25XE and MX25R use this helper now; MX25L still
-carries local copies of similar helpers. All storage drivers still assume the
-tag's flash bus and chip-select line directly, which is older than the sensor
-descriptor model. It works, but it is harder to maintain than the newer split
-where tag/family code owns the board descriptor and the chip driver owns only
-chip commands.
+erase/write/read operations. Tag/family code owns the board descriptor and the
+chip driver owns only chip commands.
 
-`storage_device.h` is the first step toward that split. It describes the board
-side of an external flash device: SPI bus, board-level enable/disable hooks, and
-sector geometry. AT25XE already routes its internal chip operations through that
-descriptor while preserving the existing `Ex*` API used by datalog code. MX25R
-follows the same pattern.
-
-`storage_flash.c` owns the compatibility `Ex*` functions for converted drivers.
-Converted chip drivers export only a `TagStorageOps` table, while tag or family
-`devices.c` files export `tagExternalFlash`. That descriptor pairs the selected
-chip operation table with board wiring, board-level enable/disable hooks, and
-flash geometry. Chip operations use `wake`/`sleep` for flash low-power commands
-so they are not confused with board-level power enable/disable hooks. MX25L has
-not yet moved to this path, so its module still provides `Ex*` directly.
+`storage_device.h` describes the board side of an external flash device: SPI
+bus and sector geometry. AT25XE, MX25L, and MX25R route their internal chip
+operations through that descriptor. Chip drivers export only a `TagStorageOps`
+table, while tag or family `devices.c` files export `tagExternalFlash`. That
+descriptor pairs the selected chip operation table with board wiring and flash
+geometry. Chip operations use `wake`/`sleep` for flash low-power commands so
+they are not confused with SPI bus begin/end.
 
 Converted storage also supplies helpers used by tag/family `devices.c` standby
 hooks. `tagStoragePrepareStandby()` handles chip-level standby behavior such as
@@ -70,18 +62,18 @@ The converted storage path is:
 ```mermaid
 flowchart TD
   Datalog["tag datalog code"]
-  ExAPI["external_flash.h Ex* API"]
-  Compat["storage_flash.c compatibility layer"]
+  PublicAPI["storage_flash.h tagStorage* API"]
+  StorageFlash["storage_flash.c dispatch"]
   StorageDev["tagExternalFlash TagStorageDevice"]
   Ops["chip TagStorageOps"]
-  Chip["at25xe.c / mx25r.c"]
-  SpiHelper["storage_spi.h command framing"]
+  Chip["at25xe.c / mx25l.c / mx25r.c"]
+  SpiHelper["storage_spi.h SPI command framing"]
   SpiDevice["TagSpiDevice"]
   SpiCore["spi_bus.c"]
 
-  Datalog --> ExAPI
-  ExAPI --> Compat
-  Compat --> StorageDev
+  Datalog --> PublicAPI
+  PublicAPI --> StorageFlash
+  StorageFlash --> StorageDev
   StorageDev --> Ops
   Ops --> Chip
   Chip --> SpiHelper
@@ -94,16 +86,6 @@ flowchart TD
 ```
 
 ## Planned Cleanup
-
-Move toward a small external-flash device descriptor that carries the SPI bus
-and chip-select line. Keep each chip's command format in its own driver and
-use `storage_spi.h` for common command framing. The cleanup should preserve the
-current `Ex*` API until datalog users are migrated.
-
-TODO: migrate `mx25l.c` to the same `storage_spi.h` and `TagStorageDevice`
-pattern used by AT25XE and MX25R. Leave this for a separate hardware-tested
-pass because MX25L currently has its own pipelined helper code and monitor debug
-logging.
 
 TODO: find and validate a safe pipelined SPI transfer routine before using
 pipelined transfers as the default for shared SPI device I/O. The conservative

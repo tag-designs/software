@@ -88,44 +88,14 @@ const TagAdxl362Device *__attribute__((weak)) tagAdxl362Device(void)
 
 void ADXL362_DeviceBegin(const TagAdxl362Device *device)
 {
-  if (device->power_on)
-  {
-    device->power_on();
-  }
-  else if (device->spi)
-  {
-    tagSpiDevicePowerOn(device->spi);
-  }
-
-  if (device->bus_begin)
-  {
-    device->bus_begin();
-  }
-  else if (device->spi)
-  {
-    tagSpiBusBegin(device->spi);
-  }
+  tagSpiDevicePowerOn(device->spi);
+  tagSpiBusBegin(device->spi);
 }
 
 void ADXL362_DeviceEnd(const TagAdxl362Device *device)
 {
-  if (device->bus_end)
-  {
-    device->bus_end();
-  }
-  else if (device->spi)
-  {
-    tagSpiBusEnd(device->spi);
-  }
-
-  if (device->power_off)
-  {
-    device->power_off();
-  }
-  else if (device->spi)
-  {
-    tagSpiDevicePowerOff(device->spi);
-  }
+  tagSpiBusEnd(device->spi);
+  tagSpiDevicePowerOff(device->spi);
 }
 
 /***************************************************************************//**

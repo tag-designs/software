@@ -52,7 +52,7 @@
 
 static void mx25rWake(const TagStorageDevice *dev)
 {
-    tagStorageDeviceEnable(dev);
+    tagStorageBusBegin(dev);
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
     tagStorageSpiCommand(dev->spi, MX25R_CMD_NOP);
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
@@ -61,7 +61,7 @@ static void mx25rWake(const TagStorageDevice *dev)
 static void mx25rSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(dev->spi, MX25R_CMD_DEEP_POWER_DOWN);
-    tagStorageDeviceDisable(dev);
+    tagStorageBusEnd(dev);
 }
 
 static uint8_t mx25rStatus(const TagStorageDevice *dev)

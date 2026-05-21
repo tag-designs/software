@@ -48,7 +48,7 @@
 
 static void at25xeWake(const TagStorageDevice *dev)
 {
-    tagStorageDeviceEnable(dev);
+    tagStorageBusBegin(dev);
     //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
     tagStorageSpiCommand(dev->spi, AT25XE_CMD_POWER_UP);
     stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
@@ -57,7 +57,7 @@ static void at25xeWake(const TagStorageDevice *dev)
 static void at25xeSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(dev->spi, AT25XE_CMD_DEEP_POWER_DOWN);
-    tagStorageDeviceDisable(dev);
+    tagStorageBusEnd(dev);
 }
 
 static uint8_t at25xeStatus(const TagStorageDevice *dev)

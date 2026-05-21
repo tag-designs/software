@@ -1,8 +1,7 @@
 #ifndef TAG_STORAGE_DEVICE_H
 #define TAG_STORAGE_DEVICE_H
 
-#include "power.h"
-#include "storage_spi.h"
+#include "spi_bus.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,54 +30,35 @@ typedef struct {
 /*
  * Board-facing description of an external flash device.
  *
+ * External storage is intentionally SPI-only. Sensors need a generic
+ * TagBusDevice because they may be wired over SPI, I2C, or USART; every
+ * supported external flash part is SPI-based, so storage keeps the concrete
+ * TagSpiDevice here instead of adding another generic bus layer.
+ *
  * Chip drivers own command formats, status polling, and timing rules. This
  * descriptor carries the tag-specific pieces needed to reach the chip: the SPI
- * device descriptor, optional board-level enable/disable hooks, and the geometry
- * used by higher-level logging code.
+ * device descriptor and the geometry used by higher-level logging code.
  */
 struct TagStorageDevice {
   const TagStorageOps *ops;
   const TagSpiDevice *spi;
-  void (*enable)(void);
-  void (*disable)(void);
   uint32_t sector_size;
   uint32_t sector_count;
 };
 
-static inline void tagStorageDeviceEnable(const TagStorageDevice *dev)
+static inline void tagStorageBusBegin(const TagStorageDevice *dev)
 {
-  if (dev->enable)
-  {
-    dev->enable();
-    return;
-  }
-
-  if (dev->spi)
-  {
-    tagSpiBusBegin(dev->spi);
-  }
+  tagSpiBusBegin(dev->spi);
 }
 
-static inline void tagStorageDeviceDisable(const TagStorageDevice *dev)
+static inline void tagStorageBusEnd(const TagStorageDevice *dev)
 {
-  if (dev->disable)
-  {
-    dev->disable();
-    return;
-  }
-
-  if (dev->spi)
-  {
-    tagSpiBusEnd(dev->spi);
-  }
+  tagSpiBusEnd(dev->spi);
 }
 
 static inline void tagStorageDevicePrepareSleep(const TagStorageDevice *dev)
 {
-  if (dev->spi)
-  {
-    tagSpiDevicePrepareSleep(dev->spi);
-  }
+  tagSpiDevicePrepareSleep(dev->spi);
 }
 
 #endif

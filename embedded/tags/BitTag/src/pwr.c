@@ -3,7 +3,6 @@
 #include "app.h"
 #include "config.h"
 #include "persistent.h"
-#include "external_flash.h"
 #include "lps.h"
 #include "power.h"
 
@@ -165,32 +164,6 @@ void accelSpiOff()
 }
 #endif
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
-void FlashSpiOn(void)
-{
-  /* grab the mutex */
-
-  chBSemWait(&SPImutex);
-  palSetLine(LINE_FLASH_nCS);
-  /* configure SPI1   */
-  toAlternate(LINE_FLASH_SCK);
-  toAlternate(LINE_FLASH_MOSI);
-  toAlternate(LINE_FLASH_MISO);
-
-  spiEnable();
-}
-
-void FlashSpiOff(void)
-{
-  palSetLine(LINE_FLASH_nCS);
-  spiDisable();
-  toOutput(LINE_FLASH_SCK);
-  toOutput(LINE_FLASH_MOSI);
-  toAnalog(LINE_FLASH_MISO);
-  chBSemSignal(&SPImutex);
-}
-#endif
-
 /*
  * Standby/Shutdown modes
  */
@@ -201,14 +174,6 @@ static void enableLinePullup(ioline_t line)
     SET_BIT(PWR->PUCRA, 1 << PAL_PAD(line));
   if (PAL_PORT(line) == GPIOB)
     SET_BIT(PWR->PUCRB, 1 << PAL_PAD(line));
-}
-
-static void enableLinePulldown(ioline_t line)
-{
-  if ((PAL_PAD(line) != (13)) && (PAL_PAD(line) != (15)) && (PAL_PORT(line) == GPIOA))
-    SET_BIT(PWR->PDCRA, 1 << PAL_PAD(line));
-  if (PAL_PORT(line) == GPIOB)
-    SET_BIT(PWR->PDCRB, 1 << PAL_PAD(line));
 }
 
 /*
@@ -229,17 +194,6 @@ void godown(enum Sleep sleepmode)
 {
   (void) sleepmode;
 
-#if defined(TAG_HAS_EXTERNAL_FLASH)
-  // Make sure flash is in low power mode
-  if ((pState->state == IDLE) ||
-      (pState->state == ABORTED) ||
-      (pState->state == FINISHED) ||
-      (pState->state == HIBERNATING))
-  {
-    ExFlashPwrUp();
-    ExFlashPwrDown();
-  }
-#endif
   // Make sure debug power is off
   __disable_irq();
   DBGMCU->CR = 0;
@@ -253,13 +207,6 @@ void godown(enum Sleep sleepmode)
 
 #ifdef LINE_ACCEL_CS
   enableLinePullup(LINE_ACCEL_CS);
-#endif
-
-#ifdef TAG_HAS_EXTERNAL_FLASH
-  enableLinePullup(LINE_FLASH_nCS);
-  enableLinePulldown(LINE_FLASH_SCK);
-  enableLinePulldown(LINE_FLASH_MOSI);
-  enableLinePulldown(LINE_FLASH_MISO);
 #endif
 
   // Pull up SCL and SDA on RTC

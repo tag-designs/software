@@ -32,7 +32,4 @@ extern uint8_t adxl_status;
 void accelOn(void);
 void accelOff(void);
 
-void FlashSpiOn(void);
-void FlashSpiOff(void);
-
 #endif

@@ -5,8 +5,8 @@
 
 /*
  * Generic external-flash API used between the legacy Ex* callers and the
- * selected chip driver. Each flash module provides tagExternalFlash; this layer
- * dispatches through its operation table.
+ * selected chip driver. Each active tag or family devices.c file provides
+ * tagExternalFlash; this layer dispatches through its operation table.
  */
 extern const TagStorageDevice tagExternalFlash;
 

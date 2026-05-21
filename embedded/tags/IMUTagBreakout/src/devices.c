@@ -3,9 +3,10 @@
 #include "app.h"
 #include "custom.h"
 #include "device.h"
-#include "external_flash.h"
+#include "devices.h"
 #include "gpio_utils.h"
 #include "power.h"
+#include "storage_mx25l.h"
 
 /*
  * IMUTagBreakout device bindings.
@@ -103,39 +104,28 @@ void lsm6Off(void)
   chBSemSignal(&SPImutex);
 }
 
-void FlashSpiOn(void)
-{
-  chBSemWait(&SPImutex);
+static const TagSpiDevice external_flash_power = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_MX_nCS,
+    .sck = LINE_MX_SCK,
+    .miso = LINE_MX_MISO,
+    .mosi = LINE_MX_MOSI,
+    .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
 
-  palSetLine(LINE_MX_nCS);
-  toAlternate(LINE_MX_SCK);
-  toAlternate(LINE_MX_MOSI);
-  toAlternate(LINE_MX_MISO);
-
-  spiEnable();
-}
-
-void FlashSpiOff(void)
-{
-  palSetLine(LINE_MX_nCS);
-  spiDisable();
-  toAnalog(LINE_MX_SCK);
-  toAnalog(LINE_MX_MOSI);
-  toAnalog(LINE_MX_MISO);
-  chBSemSignal(&SPImutex);
-}
+const TagStorageDevice tagExternalFlash = {
+    .ops = &mx25lStorageOps,
+    .spi = &external_flash_power,
+    .sector_size = MX25L_SECTOR_SIZE,
+    .sector_count = EXT_FLASH_SIZE / MX25L_SECTOR_SIZE,
+};
 
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  if ((state == IDLE) ||
-      (state == ABORTED) ||
-      (state == FINISHED) ||
-      (state == EXCEPTION) ||
-      (state == HIBERNATING))
-  {
-    ExFlashPwrUp();
-    ExFlashPwrDown();
-  }
+  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
 void tagDevicesApplyStandbyPins(void)
@@ -146,7 +136,5 @@ void tagDevicesApplyStandbyPins(void)
   tagEnableStandbyPulldown(LINE_LSM_MOSI);
   tagEnableStandbyPulldown(LINE_LSM_CK);
 
-  tagEnableStandbyPullup(LINE_MX_nCS);
-  tagEnableStandbyPulldown(LINE_MX_SCK);
-  tagEnableStandbyPulldown(LINE_MX_MOSI);
+  tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }

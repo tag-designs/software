@@ -24,7 +24,6 @@
 #include "flash_internal.h"
 #include "persistent.h"
 #include "datalog.h"
-#include "external_flash.h"
 #include "strings.h"
 #include "assert.h"
 

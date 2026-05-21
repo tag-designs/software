@@ -112,8 +112,11 @@ Current examples:
 
 ../storage/
   inc/at25xe.h
-  inc/external_flash.h
   inc/mx25r.h
+  inc/storage_device.h
+  inc/storage_flash.h
+  inc/storage_mx25l.h
+  inc/storage_spi.h
   src/at25xe.c
   src/external_flash_test.c
   src/mx25l.c
@@ -237,14 +240,9 @@ Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
 `flash_mx25l`, and `flash_mx25r` select the external-memory implementation used
 by a particular tag. `storage_paths.mk` is a guarded helper included by those
 modules and by `tag_core`; it is not intended to be listed directly in
-`TAG_MODULES`.
-
-TODO: clean up the storage-driver I/O structure so AT25XE, MX25L, and MX25R
-use the same descriptor-driven SPI transaction model as newer sensors. The
-storage drivers still carry chip-specific SPI access patterns and direct bus
-assumptions; the common pieces should move toward a small external-flash device
-descriptor that owns the SPI bus, chip select framing, and optimized
-read/write helpers without hiding chip-specific command formats.
+`TAG_MODULES`. The storage drivers share the descriptor-driven SPI model:
+tag/family `devices.c` files provide `tagExternalFlash`, while chip drivers
+export a `TagStorageOps` table and use `storage_spi.h` for command framing.
 
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
