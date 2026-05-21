@@ -33,16 +33,17 @@ static const TagSpiDevice lps_bus = {
     .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
 
-static const TagStSpiRegisterBus lps_register_spi = {
+static const TagBusDevice lps_register_bus = {
+    .ops = &tagSpiBusOps,
     .device = &lps_bus,
-    .read_mask = 0x80,
-    .write_mask = 0x00,
 };
 
-static const TagRegisterBus lps_registers = {
-    .read_register = tagStSpiReadRegister,
-    .write_register = tagStSpiWriteRegister,
-    .context = &lps_register_spi,
+static const TagRegisterDevice lps_registers = {
+    .read_register = tagStSpiReadRegisterDevice,
+    .write_register = tagStSpiWriteRegisterDevice,
+    .bus = &lps_register_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
 };
 
 const TagPressureDevice tagPresTagPressureDevice = {

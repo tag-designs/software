@@ -50,8 +50,7 @@
 /* Write one register. */
 static int write_reg(const TagPressureDevice *device, uint8_t reg, uint8_t val)
 {
-    return device->registers->write_register(device->registers->context, reg,
-                                             &val, 1);
+    return tagRegisterWrite(device->registers, reg, &val, 1);
 }
 
 /*
@@ -63,8 +62,7 @@ static int write_reg(const TagPressureDevice *device, uint8_t reg, uint8_t val)
 static int read_block(const TagPressureDevice *device, uint8_t reg,
                       uint8_t *buf, uint16_t len)
 {
-    return device->registers->read_register(device->registers->context, reg,
-                                            buf, len);
+    return tagRegisterRead(device->registers, reg, buf, len);
 }
 
 /*

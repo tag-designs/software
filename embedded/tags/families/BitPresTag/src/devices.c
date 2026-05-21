@@ -64,16 +64,17 @@ static const TagUsartDevice lps_usart_device = {
     .sleep_policy = TAG_USART_SLEEP_FLOAT,
 };
 
-static const TagStUsartRegisterBus lps_register_usart = {
+static const TagBusDevice lps_register_bus = {
+    .ops = &tagUsartBusOps,
     .device = &lps_usart_device,
-    .read_mask = 0x80,
-    .write_mask = 0x00,
 };
 
-static const TagRegisterBus lps_registers = {
-    .read_register = tagStUsartReadRegister,
-    .write_register = tagStUsartWriteRegister,
-    .context = &lps_register_usart,
+static const TagRegisterDevice lps_registers = {
+    .read_register = tagStUsartReadRegisterDevice,
+    .write_register = tagStUsartWriteRegisterDevice,
+    .bus = &lps_register_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
 };
 
 const TagPressureDevice tagBitPresTagPressureDevice = {

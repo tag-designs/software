@@ -9,15 +9,13 @@
 static void lps27_SetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
                          uint8_t *val, int num)
 {
-  (void)device->registers->write_register(device->registers->context,
-                                          (uint8_t)reg, val, num);
+  (void)tagRegisterWrite(device->registers, (uint8_t)reg, val, num);
 }
 
 static void lps27_GetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
                          uint8_t *val, int num)
 {
-  (void)device->registers->read_register(device->registers->context,
-                                         (uint8_t)reg, val, num);
+  (void)tagRegisterRead(device->registers, (uint8_t)reg, val, num);
 }
 
 float lps27Pressure(int16_t pressure) {

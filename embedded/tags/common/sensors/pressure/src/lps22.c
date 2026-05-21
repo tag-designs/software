@@ -8,15 +8,13 @@
 static void lps22_SetReg(const TagPressureDevice *device, enum LPS22_Reg reg,
                          uint8_t *val, int num)
 {
-  (void)device->registers->write_register(device->registers->context,
-                                          (uint8_t)reg, val, num);
+  (void)tagRegisterWrite(device->registers, (uint8_t)reg, val, num);
 }
 
 static void lps22_GetReg(const TagPressureDevice *device, enum LPS22_Reg reg,
                          uint8_t *val, int num)
 {
-  (void)device->registers->read_register(device->registers->context,
-                                         (uint8_t)reg, val, num);
+  (void)tagRegisterRead(device->registers, (uint8_t)reg, val, num);
 }
 
 float lps22Pressure(int16_t pressure) { return pressure / 16.0f; }

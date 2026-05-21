@@ -44,10 +44,15 @@ static const TagI2cDevice lps_i2c = {
   .timeout = LPS27_TIMEOUT,
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
-static const TagRegisterBus lps_registers = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagI2cBusOps,
+  .device = &lps_i2c,
+};
+static const TagRegisterDevice lps_registers = {
   .read_register = tagI2cReadRegister,
   .write_register = tagI2cWriteRegister,
   .context = &lps_i2c,
+  .bus = &lps_register_bus,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -61,15 +66,16 @@ static const TagSpiDevice lps_spi_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
-static const TagStSpiRegisterBus lps_spi = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagSpiBusOps,
   .device = &lps_spi_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &lps_spi,
 };
 #elif defined(LPS_USART)
 static const TagUsartDevice lps_usart_device = {
@@ -83,15 +89,16 @@ static const TagUsartDevice lps_usart_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_USART_SLEEP_FLOAT,
 };
-static const TagStUsartRegisterBus lps_usart = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagUsartBusOps,
   .device = &lps_usart_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStUsartReadRegisterDevice,
+  .write_register = tagStUsartWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStUsartReadRegister,
-  .write_register = tagStUsartWriteRegister,
-  .context = &lps_usart,
 };
 #else
 #error "LPS27 selected without LPS_I2C, LPS_SPI, or LPS_USART"
@@ -110,15 +117,16 @@ static const TagSpiDevice lps_spi_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
-static const TagStSpiRegisterBus lps_spi = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagSpiBusOps,
   .device = &lps_spi_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &lps_spi,
 };
 
 #elif defined(LPS_SHIM_LPS22)
@@ -132,10 +140,15 @@ static const TagI2cDevice lps_i2c = {
   .timeout = LPS22_TIMEOUT,
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
-static const TagRegisterBus lps_registers = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagI2cBusOps,
+  .device = &lps_i2c,
+};
+static const TagRegisterDevice lps_registers = {
   .read_register = tagI2cReadRegister,
   .write_register = tagI2cWriteRegister,
   .context = &lps_i2c,
+  .bus = &lps_register_bus,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -149,15 +162,16 @@ static const TagSpiDevice lps_spi_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
-static const TagStSpiRegisterBus lps_spi = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagSpiBusOps,
   .device = &lps_spi_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &lps_spi,
 };
 #else
 #error "LPS22 selected without LPS_I2C or LPS_SPI"
@@ -174,10 +188,15 @@ static const TagI2cDevice lps_i2c = {
   .timeout = LPS33_TIMEOUT,
   .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
-static const TagRegisterBus lps_registers = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagI2cBusOps,
+  .device = &lps_i2c,
+};
+static const TagRegisterDevice lps_registers = {
   .read_register = tagI2cReadRegister,
   .write_register = tagI2cWriteRegister,
   .context = &lps_i2c,
+  .bus = &lps_register_bus,
 };
 #elif defined(LPS_SPI)
 static const TagSpiDevice lps_spi_device = {
@@ -191,15 +210,16 @@ static const TagSpiDevice lps_spi_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
-static const TagStSpiRegisterBus lps_spi = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagSpiBusOps,
   .device = &lps_spi_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = 0x80,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &lps_spi,
 };
 #else
 #error "LPS33 selected without LPS_I2C or LPS_SPI"
@@ -218,15 +238,16 @@ static const TagSpiDevice lps_spi_device = {
   .dummy = 0xff,
   .sleep_policy = TAG_SPI_SLEEP_FLOAT,
 };
-static const TagStSpiRegisterBus lps_spi = {
+static const TagBusDevice lps_register_bus = {
+  .ops = &tagSpiBusOps,
   .device = &lps_spi_device,
+};
+static const TagRegisterDevice lps_registers = {
+  .read_register = tagStSpiReadRegisterDevice,
+  .write_register = tagStSpiWriteRegisterDevice,
+  .bus = &lps_register_bus,
   .read_mask = BMP5_SPI_RD_MASK,
   .write_mask = 0x00,
-};
-static const TagRegisterBus lps_registers = {
-  .read_register = tagStSpiReadRegister,
-  .write_register = tagStSpiWriteRegister,
-  .context = &lps_spi,
 };
 
 #endif
@@ -241,200 +262,21 @@ static void lps_default_sleep(int ms)
   stopMilliseconds(false, ms);
 }
 
-void __attribute__((weak)) lpsPowerOn(void) {}
-
-void __attribute__((weak)) lpsPowerOff(void) {}
-
-void __attribute__((weak)) lpsOn(void) {}
-
-void __attribute__((weak)) lpsOff(void) {}
-
-void __attribute__((weak)) lpsBusBegin(void)
-{
-  lpsOn();
-}
-
-void __attribute__((weak)) lpsBusEnd(void)
-{
-  lpsOff();
-}
-
 static const TagPressureDevice lps_device = {
   .registers = &lps_registers,
-  .power_on = lpsPowerOn,
-  .power_off = lpsPowerOff,
-  .bus_begin = lpsBusBegin,
-  .bus_end = lpsBusEnd,
   .sleep_ms = lps_default_sleep,
 };
 
-static const TagSpiDevice *tagPressureSpiDevice(
-    const TagPressureDevice *device)
-{
-  if (device->registers->read_register != tagStSpiReadRegister)
-  {
-    return NULL;
-  }
-
-  const TagStSpiRegisterBus *bus = device->registers->context;
-  return bus->device;
-}
-
-static const TagUsartDevice *tagPressureUsartDevice(
-    const TagPressureDevice *device)
-{
-  if (device->registers->read_register != tagStUsartReadRegister)
-  {
-    return NULL;
-  }
-
-  const TagStUsartRegisterBus *bus = device->registers->context;
-  return bus->device;
-}
-
-static const TagI2cDevice *tagPressureI2cDevice(
-    const TagPressureDevice *device)
-{
-  if (device->registers->read_register != tagI2cReadRegister)
-  {
-    return NULL;
-  }
-
-  return device->registers->context;
-}
-
-static void tagPressureDefaultPowerOn(const TagPressureDevice *device)
-{
-  const TagSpiDevice *spi = tagPressureSpiDevice(device);
-  if (spi)
-  {
-    tagSpiDevicePowerOn(spi);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagPressureUsartDevice(device);
-  if (usart)
-  {
-    tagUsartDevicePowerOn(usart);
-    return;
-  }
-
-  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
-  if (i2c)
-  {
-    tagI2cDevicePowerOn(i2c);
-  }
-}
-
-static void tagPressureDefaultPowerOff(const TagPressureDevice *device)
-{
-  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
-  if (i2c)
-  {
-    tagI2cDevicePowerOff(i2c);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagPressureUsartDevice(device);
-  if (usart)
-  {
-    tagUsartDevicePowerOff(usart);
-    return;
-  }
-
-  const TagSpiDevice *spi = tagPressureSpiDevice(device);
-  if (spi)
-  {
-    tagSpiDevicePowerOff(spi);
-  }
-}
-
-static void tagPressureDefaultBusBegin(const TagPressureDevice *device)
-{
-  const TagSpiDevice *spi = tagPressureSpiDevice(device);
-  if (spi)
-  {
-    tagSpiBusBegin(spi);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagPressureUsartDevice(device);
-  if (usart)
-  {
-    tagUsartBusBegin(usart);
-    return;
-  }
-
-  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
-  if (i2c)
-  {
-    tagI2cBusBegin(i2c);
-  }
-}
-
-static void tagPressureDefaultBusEnd(const TagPressureDevice *device)
-{
-  const TagI2cDevice *i2c = tagPressureI2cDevice(device);
-  if (i2c)
-  {
-    tagI2cBusEnd(i2c);
-    return;
-  }
-
-  const TagUsartDevice *usart = tagPressureUsartDevice(device);
-  if (usart)
-  {
-    tagUsartBusEnd(usart);
-    return;
-  }
-
-  const TagSpiDevice *spi = tagPressureSpiDevice(device);
-  if (spi)
-  {
-    tagSpiBusEnd(spi);
-  }
-}
-
 void tagPressureDeviceBegin(const TagPressureDevice *device)
 {
-  if (device->power_on)
-  {
-    device->power_on();
-  }
-  else
-  {
-    tagPressureDefaultPowerOn(device);
-  }
-
-  if (device->bus_begin)
-  {
-    device->bus_begin();
-  }
-  else
-  {
-    tagPressureDefaultBusBegin(device);
-  }
+  tagBusPowerOn(device->registers->bus);
+  tagRegisterBusBegin(device->registers);
 }
 
 void tagPressureDeviceEnd(const TagPressureDevice *device)
 {
-  if (device->bus_end)
-  {
-    device->bus_end();
-  }
-  else
-  {
-    tagPressureDefaultBusEnd(device);
-  }
-
-  if (device->power_off)
-  {
-    device->power_off();
-  }
-  else
-  {
-    tagPressureDefaultPowerOff(device);
-  }
+  tagRegisterBusEnd(device->registers);
+  tagBusPowerOff(device->registers->bus);
 }
 
 void lpsInit(void) {}
@@ -560,13 +402,11 @@ bool GetPressureTemp(int16_t *pressure, int16_t *temperature)
 
 void lps33_SetReg(enum LPS33_Reg reg, unsigned char *val, int num)
 {
-  (void)lps_device.registers->write_register(lps_device.registers->context,
-                                             (uint8_t)reg, val, num);
+  (void)tagRegisterWrite(lps_device.registers, (uint8_t)reg, val, num);
 }
 
 void lps33_GetReg(enum LPS33_Reg reg, uint8_t *val, int num)
 {
-  (void)lps_device.registers->read_register(lps_device.registers->context,
-                                            (uint8_t)reg, val, num);
+  (void)tagRegisterRead(lps_device.registers, (uint8_t)reg, val, num);
 }
 #endif

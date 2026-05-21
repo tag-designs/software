@@ -6,40 +6,25 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef void (*TagPressurePower)(void);
 typedef void (*TagPressureSleep)(int ms);
 
 /*
  * Pressure sensor instance descriptor.
  *
- * The register device describes how the sensor is reached on the bus. The
- * power and sleep callbacks describe tag-specific power sequencing around that
- * bus transaction. The power/bus callbacks are optional overrides: when they
- * are NULL, tagPressureDeviceBegin/End() use the register-bus context to apply
- * the normal SPI, synchronous-USART, or I2C power and bus-session sequence.
- * Legacy pressure APIs use a module-local default descriptor; new tag code can
- * pass an explicit descriptor when the same driver is reused with different
- * board wiring or power policy.
+ * The register device describes both register access and the physical bus
+ * session used for that access. Pressure drivers use tagPressureDeviceBegin()
+ * and tagPressureDeviceEnd() to apply the standard power/bus sequence without
+ * inferring whether the device is SPI, synchronous-USART, or I2C at runtime.
  */
 typedef struct {
-  const TagRegisterBus *registers;
-  TagPressurePower power_on;
-  TagPressurePower power_off;
-  TagPressurePower bus_begin;
-  TagPressurePower bus_end;
+  const TagRegisterDevice *registers;
   TagPressureSleep sleep_ms;
 } TagPressureDevice;
 
 void tagPressureDeviceBegin(const TagPressureDevice *device);
 void tagPressureDeviceEnd(const TagPressureDevice *device);
 
-void lpsPowerOn(void);
-void lpsPowerOff(void);
-void lpsBusBegin(void);
-void lpsBusEnd(void);
-void lpsOn(void);
 void lpsInit(void);
-void lpsOff(void);
 bool lpsGetPressureTemp(int16_t *pressure, int16_t *temperature);
 bool lpsTest(void);
 float lpsPressure(int16_t pressure);
