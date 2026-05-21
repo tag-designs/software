@@ -8,6 +8,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/*
+ * SPI bus helpers.
+ *
+ * Core owns controller setup, active-state tracking, raw byte transfers, and
+ * standby pin policy for SPI-backed devices. Device drivers should describe
+ * register protocols through sensor_io/storage helpers rather than poking the
+ * controller directly.
+ */
+
 // Register settings used when a device opens an SPI bus session.
 typedef struct {
   uint32_t cr1;

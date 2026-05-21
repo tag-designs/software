@@ -10,10 +10,9 @@
  *
  * The driver in ak09940a.c is parameterized by TagMagDevice and only knows
  * about AK09940A register sequences. This shim is the one place that maps the
- * historical `mag*` and `ak09940_*` entry points onto a default CompassTag
- * SPI/register descriptor, power callbacks, trigger line, and sleep helper.
- * Tag families can bypass this binding by providing a strong
- * tagAk09940aDevice() implementation.
+ * historical `mag*` and `ak09940_*` entry points onto a default SPI/register
+ * descriptor, trigger line, and sleep helper. Tag families can bypass this
+ * binding by providing a strong tagAk09940aDevice() implementation.
  */
 
 #if defined(LINE_MAG_CS)

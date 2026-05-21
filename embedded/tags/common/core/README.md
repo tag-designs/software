@@ -24,9 +24,11 @@ active tags unless a tag provides a same-named local override.
   and Stop2 bus suspend/resume orchestration.
 - `bus_device.h`: a small generic bus-session descriptor that binds a concrete
   SPI, I2C, or USART device pointer to the matching power/session operations.
-- `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level byte/register transfers
-  plus bus-specific device/session mechanics. SPI and USART also own their
-  controller setup, active-state tracking, and Stop2 suspend/resume mechanics.
+- `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level bus mechanics for
+  descriptor-backed devices. SPI and USART own raw byte transfers, controller
+  setup, active-state tracking, and Stop2 suspend/resume mechanics. I2C owns
+  controller setup and device power/session pin policy; register-level I2C
+  transactions live with the shared register adapters in `sensor_io.c`.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
@@ -59,10 +61,10 @@ I2C-backed devices follow the same ownership rule: `TagI2cController`
 identifies the low-level driver and mutex, while `TagI2cDevice` carries the
 controller, `I2CConfig`, SDA/SCL/power lines, address, timeout, and standby
 pull policy. `i2c_bus.c` owns `tagI2cControllerEnable/Disable()`,
-`tagI2cDevicePowerOn/Off()`, `tagI2cBusBegin/End()`,
-`tagI2cDevicePrepareSleep()`, and the register transaction helpers. Register
-code uses the same device descriptor as power code, so address/timeout and
-driver selection do not live in a second partial bus object.
+`tagI2cDevicePowerOn/Off()`, `tagI2cBusBegin/End()`, and
+`tagI2cDevicePrepareSleep()`. Register-oriented I2C reads and writes live in
+`sensor_io.c` beside the SPI/USART register adapters, so sensor drivers see
+one `TagRegisterDevice` shape across all transports.
 
 USART-backed sensor buses follow the same split. `TagUsartDevice` describes
 the chip-select, synchronous USART pins, optional power line, controller, and

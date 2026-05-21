@@ -9,26 +9,28 @@ sequence should live in that tag family instead.
 
 - `inc/sensor_io.h`, `src/sensor_io.c`: common register-device adapters. These
   wrap low-level bus helpers from `core` into register reads and writes used
-  by sensors and other register devices such as RTCs.
+  by sensors and other register devices such as RTCs. The active shape is
+  `TagRegisterDevice`; older partial ST register-bus structs have been retired.
 - `accel/`: accelerometer drivers that are reusable enough to be common.
 - `pressure/`: LPS/BMP pressure drivers plus the `lps.c` compatibility shim.
-- `mag/`: AK09940A descriptor driver, default shim, and legacy MMC5633 code.
-- `light/`: light sensor drivers.
+- `mag/`: AK09940A descriptor driver and default shim.
+- `archive/`: retired or reference sensor drivers such as MMC5633 and older
+  light-sensor code. Ignore this directory unless specifically asked.
 
 ## Descriptor Pattern
 
-Newer reusable drivers take a device descriptor rather than directly naming
-board lines. The descriptor normally contains:
+Reusable drivers take a device descriptor rather than directly naming board
+lines. The descriptor normally contains:
 
 - a `TagRegisterDevice` for register reads/writes, usually including its
   `TagBusDevice` bus-session binding;
-- device power callbacks only when the sensor driver truly controls power
-  lifetime;
 - optional sensor-specific callbacks, such as trigger or data-ready lines.
 
-The split matters. Bus begin/end is not the same as device power on/off, and
-chip select framing is part of the device protocol. Keep command bytes and
-payloads under the same chip-select assertion when the datasheet expects one
+The split matters. Device power on/off is not the same as bus begin/end, and
+chip select framing is part of the device protocol. Register adapters call
+through the `TagBusDevice` stored in the `TagRegisterDevice`; they do not infer
+the bus type from function-pointer identity. Keep command bytes and payloads
+under the same chip-select assertion when the datasheet expects one
 transaction.
 
 ## Shims

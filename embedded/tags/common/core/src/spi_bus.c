@@ -20,6 +20,12 @@
 static bool spi1_on = false;
 static bool spi1_suspended_for_stop = false;
 
+/*
+ * Active-controller tracking for Stop2.
+ *
+ * Short sleeps suspend active controllers without changing device power,
+ * chip-select ownership, or pin alternate-function setup.
+ */
 bool isSpi1On(void)
 {
   return spi1_on;
@@ -80,6 +86,12 @@ const TagSpiController tagSpi1DefaultController = {
     .mutex = &SPImutex,
 };
 
+/*
+ * Generic bus-device adapter.
+ *
+ * TagRegisterDevice stores a TagBusDevice so register drivers can open a bus
+ * without knowing whether the concrete transport is SPI, USART, or I2C.
+ */
 static void tagSpiBusOpsPowerOn(const void *device)
 {
   tagSpiDevicePowerOn((const TagSpiDevice *)device);
@@ -158,6 +170,13 @@ void tagSpiControllerDisable(const TagSpiController *controller)
 #endif
 }
 
+/*
+ * Device power and bus sessions.
+ *
+ * Power on/off handles optional switched power and safe idle pins. Bus
+ * begin/end owns the shared mutex, alternate functions, and controller enable
+ * state for one transaction/session.
+ */
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
   if (tagLineIsValid(device->pwr))
@@ -245,6 +264,13 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
   }
 }
 
+/*
+ * Raw byte transfers.
+ *
+ * The default read/write routines intentionally use byte-at-a-time
+ * request/response loops. Pipelined variants remain available for cases that
+ * have been proven safe on hardware.
+ */
 void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
                           uint32_t len)
 {

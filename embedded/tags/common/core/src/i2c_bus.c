@@ -14,6 +14,12 @@ const TagI2cController tagI2c1DefaultController = {
   .mutex = &I2Cmutex,
 };
 
+/*
+ * Generic bus-device adapter.
+ *
+ * TagRegisterDevice stores a TagBusDevice so register drivers can open a bus
+ * without knowing whether the concrete transport is SPI, USART, or I2C.
+ */
 static void tagI2cBusOpsPowerOn(const void *device)
 {
   tagI2cDevicePowerOn((const TagI2cDevice *)device);
@@ -47,6 +53,13 @@ const TagBusOps tagI2cBusOps = {
     .prepare_sleep = tagI2cBusOpsPrepareSleep,
 };
 
+/*
+ * Controller and device lifecycle.
+ *
+ * I2C uses ChibiOS I2CConfig directly, so the active device descriptor carries
+ * the config used by tagI2cBusBegin(). Power on/off only handles optional
+ * switched device power; bus begin/end owns the mutex and controller state.
+ */
 void tagI2cControllerEnable(const TagI2cController *controller,
                             const I2CConfig *config)
 {

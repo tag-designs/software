@@ -21,6 +21,7 @@ register access and power/session callbacks.
 
 The default RV3028 binding still lives in common code. The next cleanup is to
 move the complete `TagRtcDevice` descriptor into tag or family board support
-so the descriptor owns the register bus, power callbacks, line configuration,
-and mutex together. That will make RTCs match the newer sensor-device model
-more closely and remove remaining global `rtcOn()`/`rtcOff()` glue.
+so the descriptor owns the register bus and the board support owns the line
+aliases and mutex in one place. That will make RTCs match the newer
+sensor-device model more closely and remove remaining global `rtcOn()`/
+`rtcOff()` glue.

@@ -148,14 +148,13 @@ Current examples:
     src/lps33.c
   mag/
     inc/ak09940a.h
-    inc/mmc5633.h
     src/ak09940a.c
     src/ak09940a_shim.c
     src/ak09940a_test.c
-    src/mmc5633.c
-  light/
-    inc/opt3002.h
-    src/opt3002.c
+  archive/
+    mmc5633.c
+    mmc5633.h
+    light/
 ```
 
 `hal_rtc_lld.c` is a special case: ChibiOS adds that source basename itself,
@@ -169,9 +168,9 @@ code calls the neutral `tagRtcInit()`, `tagRtcGetDateTime()`, and
 route through the descriptor-driven RV3028 implementation.
 
 TODO: move the complete `TagRtcDevice` binding into tag/family board support
-(`pwr.c` or a small `rtc_board.c`) so the descriptor carries the register bus,
-power callbacks, line configuration, and mutex ownership together. That would
-remove the remaining global `rtcOn()`/`rtcOff()` glue and match the newer
+(`pwr.c` or a small `rtc_board.c`) so the descriptor carries the register bus
+and the board support owns line aliases and mutex ownership in one place. That
+would remove the remaining global `rtcOn()`/`rtcOff()` glue and match the newer
 sensor-device model more closely.
 
 Core owns the persistent state layer because that state is stored in STM32
@@ -250,40 +249,34 @@ read/write helpers without hiding chip-specific command formats.
 Sensors are grouped by family rather than by tag type. Production sensor
 modules such as `sensor_pressure_lps27`, `sensor_accel_adxl362`, and
 `sensor_mag_ak09940a` add only the family paths and source files they compile.
-Core owns shared bus helpers when they are useful outside one sensor family:
-`core/src/spi_bus.c` owns the low-level polled SPI byte-transfer helper, and
-`core/src/i2c_bus.c` owns conventional I2C register reads/writes used by RTC
-and sensor drivers. Shared sensor-side register mechanics live at the top of
-`../sensors`: for example, `sensor_io.c` owns USART synchronous-mode
-byte-transfer loops and the ST-style SPI register helpers used by the LPS
-pressure drivers. Keep bus power, SPI/USART controller setup, and sleep pin
-policy in the tag power layer; keep sensor command formats and register
+Retired/reference drivers live under `../sensors/archive/` and should not shape
+active module decisions unless a task explicitly asks about archived code. Core
+owns shared bus helpers when they are useful outside one sensor family:
+`core/src/spi_bus.c`, `core/src/usart_bus.c`, and `core/src/i2c_bus.c` own
+controller setup, bus-session pin policy, standby pull policy, and raw
+transport mechanics. Shared sensor-side register mechanics live at the top of
+`../sensors`: `sensor_io.c` owns I2C register transactions and the ST-style
+SPI/USART register adapters. Keep bus power, controller setup, and sleep pin
+policy in the core bus layer; keep sensor command formats and register
 transactions beside the sensor drivers.
 The AK09940A magnetometer follows the same driver/shim split as the pressure
 path: `mag/src/ak09940a.c` is the descriptor-driven register implementation,
 while `mag/src/ak09940a_shim.c` binds a default SPI descriptor and legacy
-`mag*`/`ak09940_*` APIs for tags that still expose `magOn()`/`magOff()`.
+`mag*`/`ak09940_*` APIs for tags that still use generic magnetometer calls.
 Active CompassTag firmware bypasses the shim by exporting
 `tagAk09940aDevice()` from the family device file and calling the descriptor
 API directly from its sensor code and self-test hook.
 
-TODO: migrate descriptor-driven drivers toward `TagRegisterDevice` with an
-embedded `TagBusDevice`. CompassTag LIS2DU12 now carries one register-device
-descriptor that owns both ST-style register masks and the concrete SPI, USART,
-or I2C bus-session binding. That avoids runtime type-test sequences in drivers,
-tag-local no-argument wrapper functions, and separate ST-register sidecar
-structures. Pressure drivers still use fallback bus inference in `lps.c`; move
-them to the same model once this path has been tested.
-
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
-`TagPressureDevice`, which combines a `TagRegisterBus` with tag-specific
-device power, bus-session, and sleep callbacks. The split matters because a
-sensor can remain powered while the MCU releases or re-enables the SPI bus for
-low-power sleeps. The legacy `lpsGetPressureTemp()` and `lpsTest()` APIs live
-in `pressure/src/lps.c`; that shim selects the compiled pressure driver, owns
-the tag's default descriptor, and delegates to the device-specific
-parameterized functions. Keep sensor register sequences in the individual
-driver files and keep tag-selection or bus-selection conditionals in the shim.
+`TagPressureDevice`, which combines a `TagRegisterDevice` with the pressure
+driver's sleep callback. The `TagRegisterDevice` owns both the register
+read/write operations and the `TagBusDevice` used to power/open/close the
+concrete SPI, USART, or I2C bus. The legacy `lpsGetPressureTemp()` and
+`lpsTest()` APIs live in `pressure/src/lps.c`; that shim selects the compiled
+pressure driver, owns the default descriptor, and delegates to the
+device-specific parameterized functions. Keep sensor register sequences in the
+individual driver files and keep tag-selection conditionals in the shim or the
+tag/family `devices.c` file.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

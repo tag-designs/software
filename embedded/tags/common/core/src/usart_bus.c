@@ -14,6 +14,12 @@
 static bool usart2_on = false;
 static bool usart2_suspended_for_stop = false;
 
+/*
+ * Default synchronous-USART2 binding.
+ *
+ * This is the common "SPI-lite" configuration used by tag-local descriptors
+ * unless they provide a device-specific TagUsartSyncConfig.
+ */
 const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
     .brr = 0x10,
     .cr1 = USART_CR1_OVER8 | USART_CR1_TE | USART_CR1_RE | USART_CR1_UE,
@@ -26,6 +32,12 @@ const TagUsartController tagUsart2SyncController = {
     .mutex = &USARTmutex,
 };
 
+/*
+ * Generic bus-device adapter.
+ *
+ * TagRegisterDevice stores a TagBusDevice so register drivers can open a bus
+ * without knowing whether the concrete transport is SPI, USART, or I2C.
+ */
 static void tagUsartBusOpsPowerOn(const void *device)
 {
   tagUsartDevicePowerOn((const TagUsartDevice *)device);
@@ -59,6 +71,12 @@ const TagBusOps tagUsartBusOps = {
     .prepare_sleep = tagUsartBusOpsPrepareSleep,
 };
 
+/*
+ * Active-controller tracking for Stop2.
+ *
+ * Short sleeps suspend active controllers without changing device power,
+ * chip-select ownership, or pin alternate-function setup.
+ */
 bool isUsart2On(void)
 {
   return usart2_on;
@@ -136,6 +154,12 @@ void tagUsartControllerDisable(const TagUsartController *controller)
 #endif
 }
 
+/*
+ * Stop2 suspend/resume hooks.
+ *
+ * These only toggle the USART enable bit for a controller that was already
+ * open. Normal bus close/open still goes through tagUsartBusEnd/Begin.
+ */
 void tagUsartDisableActiveForStop(void)
 {
 #if defined(STM32_HAS_USART2) && STM32_HAS_USART2
@@ -158,6 +182,13 @@ void tagUsartEnableActiveAfterStop(void)
 #endif
 }
 
+/*
+ * Device power and bus sessions.
+ *
+ * Power on/off handles optional switched power and safe idle pins. Bus
+ * begin/end owns the shared mutex, alternate functions, and controller enable
+ * state for one transaction/session.
+ */
 void tagUsartDevicePowerOn(const TagUsartDevice *device)
 {
   if (tagLineIsValid(device->pwr))
@@ -245,6 +276,12 @@ void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
   }
 }
 
+/*
+ * Raw byte transfers.
+ *
+ * Synchronous USART behaves like an SPI-style full-duplex shifter for these
+ * devices: every transmitted byte produces one received byte.
+ */
 void tagUsartWrite(const TagUsartDevice *device, const uint8_t *buf,
                    uint32_t len)
 {

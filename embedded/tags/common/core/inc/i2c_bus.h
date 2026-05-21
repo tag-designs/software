@@ -7,6 +7,14 @@
 
 #include <stdint.h>
 
+/*
+ * I2C bus helpers.
+ *
+ * Core owns controller setup, device power/session pin policy, and standby
+ * pull policy for I2C-backed devices. Register reads and writes live in
+ * sensor_io so SPI, USART, and I2C register devices share one adapter shape.
+ */
+
 // I2C controller register setup and bus arbitration.
 typedef struct {
   I2CDriver *driver;
