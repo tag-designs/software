@@ -10,6 +10,6 @@ ALLCSRC += sensor_io.c
 endif
 
 ALLCSRC += \
-       lps.c \
+       pressure_device.c \
        lps27.c \
        lps27_test.c

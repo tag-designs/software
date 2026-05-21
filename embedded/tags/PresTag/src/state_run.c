@@ -7,7 +7,7 @@
 #include "persistent.h"
 #include "datalog.h"
 #include "devices.h"
-#include "lps.h"
+#include "lps27hhw.h"
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {

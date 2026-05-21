@@ -5,9 +5,12 @@
 #include "device.h"
 #include "devices.h"
 #include "gpio_utils.h"
+#include "lps.h"
 #include "power.h"
+#include "sensor_io.h"
 #include "storage_mx25l.h"
 #include "test_support.h"
+#include "timekeeping.h"
 
 /*
  * IMUTagBreakout device bindings.
@@ -16,6 +19,8 @@
  * SPI sequencing intact while moving it out of pwr.c. That lets pwr.c focus on
  * RTC and standby entry, matching the newer PresTag/CompassTag split.
  */
+
+static void lpsSleepMilliseconds(int ms);
 
 static void spiEnable(void)
 {
@@ -123,6 +128,41 @@ const TagStorageDevice tagExternalFlash = {
     .sector_size = MX25L_SECTOR_SIZE,
     .sector_count = EXT_FLASH_SIZE / MX25L_SECTOR_SIZE,
 };
+
+static const TagSpiDevice lps_spi_device = {
+    .controller = &tagSpi1DefaultController,
+    .config = &tagSpiDefaultConfig,
+    .cs = LINE_LPS_CS,
+    .sck = LINE_LPS_SCK,
+    .miso = LINE_LPS_MISO,
+    .mosi = LINE_LPS_MOSI,
+    .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
+};
+
+static const TagBusDevice lps_register_bus = {
+    .ops = &tagSpiBusOps,
+    .device = &lps_spi_device,
+};
+
+static const TagRegisterDevice lps_registers = {
+    .read_register = tagStSpiReadRegisterDevice,
+    .write_register = tagStSpiWriteRegisterDevice,
+    .bus = &lps_register_bus,
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+const TagPressureDevice tagImuTagPressureDevice = {
+    .registers = &lps_registers,
+    .sleep_ms = lpsSleepMilliseconds,
+};
+
+static void lpsSleepMilliseconds(int ms)
+{
+  stopMilliseconds(false, ms);
+}
 
 static const TagTestCase tag_tests[] =
 {

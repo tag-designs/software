@@ -8,8 +8,6 @@
 #define BOARD_NAME "BitPresTagv1"
 #define SWAP_I2C TRUE
 #define ACCEL_WAKEUP_SOURCE 1
-#define LPS_USART TRUE
-#define LPS_LOW_POWER FALSE
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 

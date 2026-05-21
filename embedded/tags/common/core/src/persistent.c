@@ -67,9 +67,28 @@ void erasePersistent(void)
   pState->pages = 0;
 }
 
-// Erase external
+/*
+ * Tags with external flash provide these from their datalog.c file. The weak
+ * defaults let core reset code call the external erase path unconditionally on
+ * tags that only have internal persistent state.
+ */
+void __attribute__((weak)) eraseExternal(void)
+{
+}
 
+void __attribute__((weak)) eraseExternalBlock(void)
+{
+}
 
+uint32_t __attribute__((weak)) externalFlashSize(void)
+{
+  return 0;
+}
+
+int __attribute__((weak)) externalFlashSectorsErased(void)
+{
+  return 0;
+}
 
 void recordState(State_Event reason)
 {

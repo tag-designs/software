@@ -35,7 +35,8 @@
 
 #include "hal.h"
 #include <limits.h>
-#include "app.h"
+
+#include "custom.h"
 
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
 #include "ADXL362.h"
@@ -45,9 +46,21 @@
 #include "ADXL367.h"
 #endif
 
+#if defined(USE_LIS2DU12)
+#include "lis2du12.h"
+#endif
+
 #include "tag.pb.h"
 #include "config.h"
+#include "core_events.h"
+#include "core_runtime.h"
+#include "core_state.h"
+#include "core_sync.h"
 #include "persistent.h"
+#include "power.h"
+#include "rtc_api.h"
+#include "test_support.h"
+#include "timekeeping.h"
 
 extern int restoreLog(void);
 
@@ -278,9 +291,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   }
 
   // clean up the persistent state -- External First !
-#ifdef TAG_HAS_EXTERNAL_FLASH
   eraseExternal();
-#endif
   erasePersistent();
 
  // pState->logcnt = 0;
@@ -338,9 +349,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
   {
     // disable I/O devices
 #if defined(TAG_SENSOR_ACCEL_ADXL362)
-    accelSpiOn();
-    ADXL362_SoftwareReset();
-    accelSpiOff();
+    ADXL362_DeinitDevice(tagAdxl362Device());
 #endif
 #if defined(USE_ADXL367)
     accelSpiOn();

@@ -125,6 +125,8 @@ extern t_storedconfig config_tmp;
 void erasePersistent(void);
 void eraseExternal(void);
 void eraseExternalBlock(void);
+uint32_t externalFlashSize(void);
+int externalFlashSectorsErased(void);
 void writeStoredConfig(t_storedconfig *s);
 enum LOGERR writeDataLog(uint64_t activity);
 void recordState(State_Event reason);

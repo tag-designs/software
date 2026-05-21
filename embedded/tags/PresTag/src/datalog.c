@@ -1,7 +1,7 @@
 #include "app.h"
 #include "datalog.h"
 #include "devices.h"
-#include "lps.h"
+#include "lps27hhw.h"
 #include "storage_flash.h"
 #include <tag.pb.h>
 #include "persistent.h"
@@ -103,6 +103,17 @@ void eraseExternal()
   tagStorageSleep(TAG_EXTERNAL_FLASH);
   pState->external_blocks = 0;
   sectors_erased = 0;
+}
+
+uint32_t externalFlashSize(void)
+{
+  return tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
+         tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+}
+
+int externalFlashSectorsErased(void)
+{
+  return sectors_erased;
 }
 
 // Recover pState from log

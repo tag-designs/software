@@ -38,20 +38,9 @@
 
 #include "custom.h"
 
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
-#include "ADXL362.h"
-#endif
-
-#if defined(USE_ADXL367)
-#include "ADXL367.h"
-#endif
-
-#if defined(USE_LIS2DU12)
-#include "lis2du12.h"
-#endif
-
 #include "tag.pb.h"
 #include "config.h"
+#include "device.h"
 #include "core_events.h"
 #include "core_runtime.h"
 #include "core_state.h"
@@ -284,9 +273,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   }
 
   // clean up the persistent state -- External First !
-#ifdef TAG_HAS_EXTERNAL_FLASH
   eraseExternal();
-#endif
   erasePersistent();
 
  // pState->logcnt = 0;
@@ -342,18 +329,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
   {
-    // disable I/O devices
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
-    ADXL362_DeinitDevice(tagAdxl362Device());
-#endif
-#if defined(USE_ADXL367)
-    accelSpiOn();
-    ADXL367_SoftwareReset();
-    accelSpiOff();
-#endif
-#if defined(USE_LIS2DU12)
-    lis2du12Deinit(tagLis2du12Device());
-#endif
+    tagDevicesDeinit();
     pState->state = TagState_HIBERNATING;
     recordState(reason);
     // set 1 hour wakeup interval

@@ -260,3 +260,9 @@ void tagDevicesApplyStandbyPins(void)
   tagUsartDevicePrepareSleep(&accel_usart_device);
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }
+
+void tagDevicesDeinit(void)
+{
+  lis2du12Deinit(TAG_ACCEL_DEVICE);
+  tagCompassMagResetAssert();
+}

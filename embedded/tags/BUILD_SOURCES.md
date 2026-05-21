@@ -96,7 +96,7 @@ embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/sensors/src/sensor_io.c
-embedded/tags/common/sensors/pressure/src/lps.c
+embedded/tags/common/sensors/pressure/src/pressure_device.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
@@ -168,7 +168,7 @@ embedded/tags/common/core/src/bus_power.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/i2c_bus.c
 embedded/tags/common/sensors/src/sensor_io.c
-embedded/tags/common/sensors/pressure/src/lps.c
+embedded/tags/common/sensors/pressure/src/pressure_device.c
 embedded/tags/common/sensors/pressure/src/lps27.c
 embedded/tags/common/sensors/pressure/src/lps27_test.c
 embedded/tags/common/core/src/main.c
@@ -441,7 +441,7 @@ embedded/tags/IMUTagBreakout/src/ak09940_test.c
 embedded/tags/IMUTagBreakout/src/config.c
 embedded/tags/IMUTagBreakout/src/datalog.c
 embedded/tags/common/sensors/src/sensor_io.c
-embedded/tags/common/sensors/pressure/src/lps.c
+embedded/tags/common/sensors/pressure/src/pressure_device.c
 embedded/tags/common/sensors/pressure/src/lps22hh.c
 embedded/tags/IMUTagBreakout/src/lps22hh_test.c
 embedded/tags/IMUTagBreakout/src/pwr.c

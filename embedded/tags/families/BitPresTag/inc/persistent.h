@@ -102,4 +102,6 @@ void recordState(State_Event reason);
 void erasePersistent(void);
 void eraseExternal(void);
 void eraseExternalBlock(void);
+uint32_t externalFlashSize(void);
+int externalFlashSectorsErased(void);
 #endif

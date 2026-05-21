@@ -3,7 +3,6 @@
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
-#include "lps.h"
 #include "power.h"
 #include "sensor_io.h"
 #include "storage_device.h"
@@ -158,4 +157,10 @@ void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+}
+
+void tagDevicesDeinit(void)
+{
+  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
+  chThdSleepMilliseconds(2);
 }

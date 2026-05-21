@@ -15,3 +15,7 @@ void __attribute__((weak)) tagDevicesPrepareStandby(uint32_t state)
 void __attribute__((weak)) tagDevicesApplyStandbyPins(void)
 {
 }
+
+void __attribute__((weak)) tagDevicesDeinit(void)
+{
+}

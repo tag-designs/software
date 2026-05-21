@@ -7,7 +7,7 @@
 #include "persistent.h"
 #include "datalog.h"
 #include "devices.h"
-#include "lps.h"
+#include "lps27hhw.h"
 #include "ADXL362.h"
 
 static const int32_t sample_period = 60; //300;

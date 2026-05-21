@@ -127,28 +127,20 @@ Current examples:
   src/sensor_io.c
   accel/
     inc/ADXL362.h
-    inc/ADXL367.h
     inc/ais2dw12.h
     inc/lis2dtw12.h
     src/ADXL362.c
     src/adxl362_test.c
-    src/ADXL367.c
     src/ais2dw12.c
     src/lis2dtw12.c
   pressure/
-    inc/bmp5.h
     inc/lps.h
     inc/lps22hh.h
-    inc/lps22hhw.h
     inc/lps27hhw.h
-    inc/lps33hw.h
-    src/bmp5.c
-    src/lps.c
-    src/lps22.c
     src/lps22hh.c
     src/lps27.c
     src/lps27_test.c
-    src/lps33.c
+    src/pressure_device.c
   mag/
     inc/ak09940a.h
     src/ak09940a.c
@@ -269,12 +261,10 @@ Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterDevice` with the pressure
 driver's sleep callback. The `TagRegisterDevice` owns both the register
 read/write operations and the `TagBusDevice` used to power/open/close the
-concrete SPI, USART, or I2C bus. The legacy `lpsGetPressureTemp()` and
-`lpsTest()` APIs live in `pressure/src/lps.c`; that shim selects the compiled
-pressure driver, owns the default descriptor, and delegates to the
-device-specific parameterized functions. Keep sensor register sequences in the
-individual driver files and keep tag-selection conditionals in the shim or the
-tag/family `devices.c` file.
+concrete SPI, USART, or I2C bus. Active LPS27 and LPS22HH firmware bind those
+descriptors in tag/family `devices.c` and call the parameterized drivers
+directly. Keep sensor register sequences in the individual driver files and
+keep tag-selection details in the tag/family `devices.c` file.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

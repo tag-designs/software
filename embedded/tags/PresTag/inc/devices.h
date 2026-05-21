@@ -1,7 +1,7 @@
 #ifndef PRESTAG_DEVICES_H
 #define PRESTAG_DEVICES_H
 
-#include "lps.h"
+#include "lps27hhw.h"
 #include "storage_flash.h"
 
 extern const TagPressureDevice tagPresTagPressureDevice;

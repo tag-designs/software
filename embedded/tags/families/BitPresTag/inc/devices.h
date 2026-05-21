@@ -2,7 +2,7 @@
 #define BITPRESTAG_DEVICES_H
 
 #include "ADXL362.h"
-#include "lps.h"
+#include "lps27hhw.h"
 #include "storage_flash.h"
 
 extern const TagAdxl362Device tagBitPresTagAccelDevice;

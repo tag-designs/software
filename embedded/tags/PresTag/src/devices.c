@@ -4,7 +4,6 @@
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
-#include "lps.h"
 #include "power.h"
 #include "sensor_io.h"
 #include "storage_device.h"

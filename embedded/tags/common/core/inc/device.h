@@ -16,5 +16,6 @@
  */
 void tagDevicesPrepareStandby(uint32_t state);
 void tagDevicesApplyStandbyPins(void);
+void tagDevicesDeinit(void);
 
 #endif

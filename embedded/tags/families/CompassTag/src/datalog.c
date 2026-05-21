@@ -115,6 +115,17 @@ void eraseExternal()
   sectors_erased = 0;
 }
 
+uint32_t externalFlashSize(void)
+{
+  return tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
+         tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+}
+
+int externalFlashSectorsErased(void)
+{
+  return sectors_erased;
+}
+
 // Recover pState from log
 // first check for finished state
 
@@ -256,4 +267,3 @@ int data_logAck(int index, Ack *ack)
   chThdSetPriority(NORMALPRIO);
   return ret;
 }
-

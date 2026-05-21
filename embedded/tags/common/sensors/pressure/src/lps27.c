@@ -2,9 +2,27 @@
 #include "hal.h"
 #include "custom.h"
 #include "rtc_api.h"
-#include "lps27hhw.h"
 #include "lps.h"
+#include "lps27hhw.h"
 #include "limits.h"
+
+enum LPS27_Reg
+{
+    LPS27_WHO_AM_I = 0x0F,
+    LPS27_CTRL_REG1 = 0x10,
+    LPS27_CTRL_REG2 = 0x11,
+    LPS27_STATUS = 0x27,
+    LPS27_PRESS_OUT_L = 0x29,
+    LPS27_TEMP_OUT_L = 0x2B,
+};
+
+#define LPS27_WHO_AM_I_VALUE (0xB3)
+
+#define LPS27_CTRL_REG1_BDU (1 << 1)
+
+#define LPS27_CTRL_REG2_ONE_SHOT (1 << 0)
+#define LPS27_CTRL_REG2_LOW_NOISE_EN (1 << 1)
+#define LPS27_CTRL_REG2_IF_ADD_INC (1 << 4)
 
 static void lps27_SetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
                          uint8_t *val, int num)

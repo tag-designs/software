@@ -7,21 +7,13 @@
 #include "core_sync.h"
 #include "core_types.h"
 #include "custom.h"
+#include "device.h"
 #include "persistent.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "timekeeping.h"
 
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
-#include "ADXL362.h"
-#endif
-
-#if defined(USE_ADXL367)
-#include "ADXL367.h"
-#endif
-
 #include "config.h"
-//#include "lis2du12.h"
 
 // synchronization variables
 
@@ -114,23 +106,7 @@ void deviceInit(int force)
 
     tagRtcInit();
 
-    // Reset Accelerometer
-
-#if defined(TAG_SENSOR_ACCEL_ADXL362)
-    ADXL362_DeinitDevice(tagAdxl362Device());
-    chThdSleepMilliseconds(2);
-#endif
-
-#if defined(USE_ADXL367)
-    accelSpiOn();
-    ADXL367_SoftwareReset();
-    chThdSleepMilliseconds(2);
-    accelSpiOff();
-#endif
-
-#if defined(USE_LIS2DU12)
-    accelDeinit();
-#endif
+    tagDevicesDeinit();
 
     // turn off all alarms
 

@@ -12,7 +12,7 @@ sequence should live in that tag family instead.
   by sensors and other register devices such as RTCs. The active shape is
   `TagRegisterDevice`; older partial ST register-bus structs have been retired.
 - `accel/`: accelerometer drivers that are reusable enough to be common.
-- `pressure/`: LPS/BMP pressure drivers plus the `lps.c` compatibility shim.
+- `pressure/`: active LPS27 and LPS22HH pressure drivers.
 - `mag/`: AK09940A descriptor driver and default shim.
 - `archive/`: retired or reference sensor drivers such as MMC5633 and older
   light-sensor code. Ignore this directory unless specifically asked.
@@ -60,11 +60,11 @@ flowchart TD
 
 ## Shims
 
-Some drivers still expose older names such as `lpsGetPressureTemp()` or
-`magSample()`. Those names should live in small shim files that bind the
-compiled tag's default descriptor and call the descriptor-driven implementation.
-This keeps legacy call sites working while allowing new tag/family code to use
-explicit descriptors directly.
+Some drivers still expose older names such as `magSample()`. Those names
+should live in small shim files that bind the compiled tag's default descriptor
+and call the descriptor-driven implementation. This keeps legacy call sites
+working while allowing new tag/family code to use explicit descriptors
+directly.
 
 ## Family-Specific Drivers
 
