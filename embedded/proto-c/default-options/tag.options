@@ -2,8 +2,8 @@
 * long_names:false
 
 Ack.error_message max_size:64
-Ack.debug_message max_size:512
-StateLog.states max_count:18
+Status.debug_message max_size:128
+StateLog.states max_count:10
 
 // Keep common command/status payloads enabled by default, but disable
 // tag-specific log and calibration payloads until a tag override enables them.

@@ -132,10 +132,18 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  if (!status.debug_message().empty()){
+      std::cerr << status.debug_message();
+  }
+
   if ((status.state() == RUNNING) && stop_tag) {
     if (!tag.Stop() || !tag.GetStatus(status)) {
       std::cerr << "Could not stop running tag" << std::endl;
       return 1;
+    }
+
+    if (!status.debug_message().empty()){
+      std::cerr << status.debug_message();
     }
   }
 

@@ -137,6 +137,9 @@ bool MainWindow::Attach()
     tag.GetTagInfo(info);
     tag.GetConfig(config);
     tag.GetStatus(status);
+    if (!status.debug_message().empty()){
+      qDebug() << "Log: " << QString::fromStdString(status.debug_message());
+    }
 
     // check qtmonitor version 
 
@@ -231,8 +234,8 @@ void MainWindow::TriggerUpdate(void)
         ui.ExternalLog->setVisible(false);
       }
 
-      if (status.debug_available()){
-        QString ds = QString::fromStdString(tag.DebugMessage());
+      if (!status.debug_message().empty()){
+        QString ds = QString::fromStdString(status.debug_message());
         qDebug() << "Log: " << ds;
       }
 

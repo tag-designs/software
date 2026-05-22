@@ -130,7 +130,10 @@ static int statusAck(void)
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
-  ack.payload.status.debug_available = debug_log_available();
+  #ifdef TAG_DEBUG_LOG
+   int len = debug_log_read((uint8_t *)ack.payload.status.debug_message, sizeof(ack.payload.status.debug_message-l));
+   ack.payload.status.debug_message[len] = 0;
+  #endif
 
   return encode_ack();
 }
@@ -212,18 +215,6 @@ static int system_logAck(int index)
   ack.payload.system_log.states_count = count;
   return encode_ack();
 }
-
-#ifdef TAG_DEBUG_LOG
-static int debugMessageAck(void)
-{
-
-  ack.err = Ack_Err_OK;
-  ack.which_payload = Ack_debug_message_tag;
-  debug_log_read((uint8_t *)ack.payload.debug_message, sizeof(ack.payload.debug_message));
-  return encode_ack();
-}
-
-#endif
 
 
 
@@ -324,8 +315,6 @@ int proto_eval(int len)
     return read_calibration(req.payload.read_calibration, &ack);
 #endif
 #ifdef TAG_DEBUG_LOG
-  case Req_debug_tag:
-    return debugMessageAck();
 #endif
   default:
     return errAck(Ack_Err_PERM);

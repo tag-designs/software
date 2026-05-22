@@ -29,6 +29,9 @@ bool rtcDrift(Tag &tag, float &f)
   Status status;
   if (tag.GetStatus(status))
   {
+    if (!status.debug_message().empty()){
+      std::cerr << status.debug_message();
+    }
     auto now = std::chrono::system_clock::now();
     auto ts = std::chrono::time_point_cast<MS>(now);
     f = (status.millis() - ts.time_since_epoch().count()) / 1000.0;
@@ -106,6 +109,9 @@ int main(int argc, char **argv)
     int pages;
     if (tag.GetStatus(status))
     {
+      if (!status.debug_message().empty()){
+        std::cerr << status.debug_message();
+      }
       std::cout << "State: " << TagState_Name(status.state()) << std::endl;
     }
 
@@ -139,6 +145,9 @@ int main(int argc, char **argv)
     {
       std::this_thread::sleep_for(MS(1000));
       tag.GetStatus(status);
+      if (!status.debug_message().empty()){
+        std::cerr << status.debug_message();
+      }
       if (status.state() == IDLE)
         break;
     }

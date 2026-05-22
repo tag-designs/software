@@ -53,12 +53,18 @@ int main(int argc, char **argv)
 
         Status status;
         tag.GetStatus(status);
+        if (!status.debug_message().empty()){
+            std::cerr << status.debug_message();
+        }
         std::cout << status.DebugString() << std::endl;
         if (status.state() == RUNNING || status.state() == HIBERNATING)
         {
             tag.Stop();
             std::cout << "State: " << TagState_Name(status.state()) << std::endl;
             tag.GetStatus(status);
+            if (!status.debug_message().empty()){
+                std::cerr << status.debug_message();
+            }
         }
 
         std::cout << "State: " << TagState_Name(status.state()) << std::endl;
@@ -68,6 +74,9 @@ int main(int argc, char **argv)
              std::this_thread::sleep_for(MS(2000));
             tag.GetStatus(status);
             std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+            if (!status.debug_message().empty()){
+                std::cerr << status.debug_message();
+            }
         }
 
         

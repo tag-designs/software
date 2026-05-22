@@ -155,6 +155,11 @@ bool MainWindow::Attach()
     tag.GetConfig(config);
     tag.GetStatus(status);
 
+    if (!status.debug_message().empty()){
+      qDebug() << "Log: " << QString::fromStdString(status.debug_message());
+    }
+
+
     if (status.state() != IDLE) 
     {
         qInfo() << "Tag not in idle state";

@@ -922,9 +922,9 @@ private:
         // followed by one-minute pressure/temperature records. Activity is
         // packed as five 6-bit buckets in each record and reported as percent
         // active over a 60-second interval.
-        constexpr int bucket_number = 5;
-        constexpr int bucket_bits = 6;
-        constexpr int bucket_period = 60;
+        constexpr int bucket_number = 4; //5;
+        constexpr int bucket_bits = 4; //6;
+        constexpr int bucket_period = 15; //60;
 
         sqlite3_int64 timestamp = log.epoch();
 

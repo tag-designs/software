@@ -139,6 +139,10 @@ bool MainWindow::Attach()
     //tag.GetConfig(config);
     tag.GetStatus(status);
 
+    if (!status.debug_message().empty()){
+      qDebug() << "Log: " << QString::fromStdString(status.debug_message());
+    }
+
     // check qtmonitor version 
 
     float min_version = info.qtmonitor_min_version();
@@ -205,6 +209,10 @@ void MainWindow::TriggerUpdate(void)
 
     if (tag.GetStatus(status))
     {
+
+    if (!status.debug_message().empty()){
+      qDebug() << "Log: " << QString::fromStdString(status.debug_message());
+    }
       ui.State->setText(QString::fromStdString(TagState_Name(status.state())));
   
       double timeerr = QDateTime::currentMSecsSinceEpoch();
