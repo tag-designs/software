@@ -1,6 +1,6 @@
 # BitPresTag build manifest.
 USE_HAL_I2C_FALLBACK = yes
-include $(BOARDDIR)/BitPresTagv1/board.mk
+include $(BOARDDIR)/BitPresTag_Test/board.mk
 
 TAG_MODULES += \
        protocol_nanopb \

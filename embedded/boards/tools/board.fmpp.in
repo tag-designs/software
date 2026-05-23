@@ -1,0 +1,11 @@
+sourceRoot: @BOARD_FMPP_SOURCE_ROOT@
+outputRoot: @BOARD_FMPP_OUTPUT_ROOT@
+dataRoot: @BOARD_FMPP_DATA_ROOT@
+
+data : {
+  doc1:xml (
+    board.chcfg
+    {
+    }
+  )
+}
