@@ -27,11 +27,14 @@ endfunction()
 # project-specific changes in embedded/boards/<board>/cfg/*.json.
 #
 # Arguments:
-#   name           CMake target name to create, e.g. board-bitprestag-test.
+#   name           CMake target name to create, e.g. board-bitprestag.
 #   PROCESSOR      ChibiOS processor template family, e.g. stm32l4xx.
 #   BOARD_TYPE     Output board directory and board.mk include name.
 #                  Firmware makefiles include this as
 #                  $(BOARDDIR)/<BOARD_TYPE>/board.mk.
+#                  The JSON board_id should normally match this value because
+#                  stock ChibiOS board.mk.ftl uses board_id for BOARDSRC and
+#                  BOARDINC.
 #   CUSTOMIZATIONS JSON file, relative to the board directory, consumed by
 #                  tools/generate_board_chcfg.py.
 #
@@ -150,6 +153,5 @@ add_subdirectory(PresTagv3)
 #add_subdirectory(BitTagNG-proto)
 #add_subdirectory(BitTagNG)
 add_subdirectory(BitPresTagv1)
-add_subdirectory(BitPresTag-Test)
 add_subdirectory(CompassTagv1)
 add_subdirectory(IMUTagv1)

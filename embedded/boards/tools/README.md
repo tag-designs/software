@@ -17,9 +17,9 @@ Use `generate_configured_board_files()` from `embedded/boards/CMakeLists.txt`
 for generated boards:
 
 ```cmake
-generate_configured_board_files(board-bitprestag-test
+generate_configured_board_files(board-bitprestag
   PROCESSOR stm32l4xx
-  BOARD_TYPE BitPresTag_Test
+  BOARD_TYPE BitPresTagv1
   CUSTOMIZATIONS cfg/board-customizations.json)
 ```
 
@@ -29,7 +29,9 @@ Arguments:
   uses `ChibiOS/tools/ftl/xml/stm32l4board.xml` and
   `ChibiOS/tools/ftl/processors/boards/stm32l4xx/templates`.
 - `BOARD_TYPE`: build-tree board directory and firmware include name. Firmware
-  should include `$(BOARDDIR)/<BOARD_TYPE>/board.mk`.
+  should include `$(BOARDDIR)/<BOARD_TYPE>/board.mk`. The JSON `board_id`
+  should normally match `BOARD_TYPE`, because the stock ChibiOS `board.mk.ftl`
+  uses `board_id` when emitting `BOARDSRC` and `BOARDINC`.
 - `CUSTOMIZATIONS`: JSON file relative to the board source directory.
 
 Generated board files are written beside the other board outputs under

@@ -1,13 +1,13 @@
 {
-  "board_name": "BitPresTag Test",
-  "board_id": "BitPresTag_Test",
+  "board_name": "BitPresTag v1",
+  "board_id": "BitPresTagv1",
   "remove_elements": [
     "ethernet_phy"
   ],
   "elements": {
-    "subtype": "STM32L432xx",
     "configuration_settings/output_path": "..",
-    "configuration_settings/board_files_path": "$(BOARDDIR)"
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32L432xx"
   },
   "attributes": {
     "clocks": {
