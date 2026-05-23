@@ -40,11 +40,10 @@ void disableAllAlarms(void);
 /*
  * Sleep for a short interval using Stop2 when the monitor is disconnected.
  *
- * The first argument is retained for source compatibility with older callers;
- * the implementation now queries isSpi1On() and suspends/resumes SPI1
- * automatically when the shared SPI1 controller is active.
+ * The implementation suspends/resumes any active bus controllers that need to
+ * be quiet across Stop2.
  */
-void stopMilliseconds(bool spiEnabled, unsigned int interval);
+void stopMilliseconds(unsigned int interval);
 bool initRTC(void);
 void enableTicker(uint16_t interval);
 void disableTicker(void);

@@ -1,29 +1,86 @@
+/**
+ * @file rtc_rv3028.c
+ * @brief RV3028 external RTC register driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "debug_log.h"
 #include "rtc_api.h"
 
+/** @name BCD conversion helpers
+ * The RV3028 stores calendar fields as packed BCD while ChibiOS RTCDateTime
+ * uses binary fields.
+ * @{
+ */
+/**
+ * @brief Convert one packed BCD byte to binary.
+ *
+ * @param[in] val Packed BCD value.
+ * @return Binary value.
+ */
 static inline uint8_t bcd2bin(uint8_t val)
 {
     return ((val >> 4) & 0xf) * 10 + (val & 0xf);
 }
 
+/**
+ * @brief Convert one binary byte to packed BCD.
+ *
+ * @param[in] val Binary value.
+ * @return Packed BCD value.
+ */
 static inline uint8_t bin2bcd(uint8_t val)
 {
     return ((val / 10) << 4) | (val % 10);
 }
+/** @} */
 
+/** @name RV3028 register access
+ * Register and EEPROM helpers keep the calendar code independent of the I2C
+ * transaction wrapper used by the current tag.
+ * @{
+ */
+/**
+ * @brief Read one or more RV3028 registers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] reg First register to read.
+ * @param[out] val Destination buffer for register bytes.
+ * @param[in] num Number of bytes to read.
+ * @return MSG_OK on success or a bus error.
+ */
 int rv3028GetReg(const TagRtcDevice *device, enum RV3028Reg reg,
                  uint8_t *val, int num)
 {
     return tagRtcReadRegister(device, reg, val, num);
 }
 
+/**
+ * @brief Write one or more RV3028 registers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] reg First register to write.
+ * @param[in] val Source buffer for register bytes.
+ * @param[in] num Number of bytes to write.
+ * @return MSG_OK on success or a bus error.
+ */
 static int rv3028SetReg(const TagRtcDevice *device, enum RV3028Reg reg,
                         const unsigned char *val, int num)
 {
     return tagRtcWriteRegister(device, reg, val, num);
 }
 
+/**
+ * @brief Execute one RV3028 EEPROM command and wait for completion.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] addr EEPROM address for read/write commands.
+ * @param[in,out] val Byte to write or destination for read commands.
+ * @param[in] cmd RV3028 EEPROM command code.
+ * @return MSG_OK on success or MSG_TIMEOUT if the EEPROM stays busy.
+ */
 static int rv3028EEPROMExec(const TagRtcDevice *device, unsigned char addr,
                             unsigned char *val, unsigned char cmd)
 {
@@ -75,20 +132,18 @@ static int rv3028EEPROMExec(const TagRtcDevice *device, unsigned char addr,
         return MSG_OK;
     }
 }
-/*
-5.WRITE TO ONE EEPROM BYTE (EEDATA (RAM) EEPROM)
-Write to one EEPROM byte of the Configuration EEPROM or User EEPROM registers:
-Before starting to change data stored in the EEPROM, the auto refresh of the registers from the EEPROM
-has to be disabled by writing 1 into the EERD control bit.
-In order to write a single byte to the EEPROM, the address to which the data must be written is entered in
-the EEADDR register and the data to be written is entered in the EEDATA register, then the command 00h
-is written in the EECMD register, then a second command 21h is written in the EECMD register to start the
-EEPROM write.
-The time to write to one EEPROM byte is tWRITE = ~16 ms.
-When the transfer is finished (EEbusy = 0), the user can enable again the auto refresh of the registers by
-writing 0 into the EERD bit in the Control 1 register.
-*/
+/** @} */
 
+/** @name RV3028 lifecycle and calendar access
+ * Public driver operations used by the generic tag RTC shim.
+ * @{
+ */
+/**
+ * @brief Initialize the RV3028 oscillator output and STM32 RTC dividers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @return true when the RTC configuration is usable.
+ */
 bool rv3028Init(const TagRtcDevice *device)
 {
     unsigned char tmp;
@@ -176,6 +231,13 @@ bool rv3028Init(const TagRtcDevice *device)
     return result;
 }
 
+/**
+ * @brief Write date/time to the RV3028.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] tm RTC date/time structure to write.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t rv3028SetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 {
     int ret = MSG_OK;
@@ -213,6 +275,13 @@ msg_t rv3028SetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
     return ret;
 }
 
+/**
+ * @brief Read date/time from the RV3028.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[out] tm RTC date/time structure to populate.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 {
     int ret = MSG_OK;
@@ -253,3 +322,4 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
     }
     return ret;
 }
+/** @} */

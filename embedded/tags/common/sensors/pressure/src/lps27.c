@@ -1,4 +1,11 @@
 
+/**
+ * @file lps27.c
+ * @brief Descriptor-backed ST LPS27HHW one-shot pressure sensor driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "custom.h"
 #include "rtc_api.h"
@@ -24,27 +31,77 @@ enum LPS27_Reg
 #define LPS27_CTRL_REG2_LOW_NOISE_EN (1 << 1)
 #define LPS27_CTRL_REG2_IF_ADD_INC (1 << 4)
 
+/** @name LPS27 register helpers
+ * Register helpers keep the one-shot sampling path independent of the concrete
+ * bus used by the pressure device descriptor.
+ * @{
+ */
+/**
+ * @brief Write one or more LPS27 registers.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] reg First register to write.
+ * @param[in] val Source buffer.
+ * @param[in] num Number of bytes to write.
+ */
 static void lps27_SetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
                          uint8_t *val, int num)
 {
   (void)tagRegisterWrite(device->registers, (uint8_t)reg, val, num);
 }
 
+/**
+ * @brief Read one or more LPS27 registers.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] reg First register to read.
+ * @param[out] val Destination buffer.
+ * @param[in] num Number of bytes to read.
+ */
 static void lps27_GetReg(const TagPressureDevice *device, enum LPS27_Reg reg,
                          uint8_t *val, int num)
 {
   (void)tagRegisterRead(device->registers, (uint8_t)reg, val, num);
 }
+/** @} */
 
+/** @name LPS27 conversion helpers
+ * Convert raw LPS27 outputs into engineering units.
+ * @{
+ */
+/**
+ * @brief Convert raw pressure to hectopascals.
+ *
+ * @param[in] pressure Raw pressure output.
+ * @return Pressure in hPa.
+ */
 float lps27Pressure(int16_t pressure) {
   return pressure/16.0f;
 }
 
+/**
+ * @brief Convert raw temperature to degrees Celsius.
+ *
+ * @param[in] temperature Raw temperature output.
+ * @return Temperature in degrees Celsius.
+ */
 float lps27Temperature(int16_t temperature){
   return temperature/100.0f;
 }
+/** @} */
 
-
+/** @name LPS27 sampling and test
+ * Descriptor-backed one-shot sampling and identity test.
+ * @{
+ */
+/**
+ * @brief Trigger and read one pressure/temperature sample.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[out] pressure Raw pressure output.
+ * @param[out] temperature Raw temperature output.
+ * @return true when a fresh sample was read.
+ */
 bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
                           int16_t *temperature)
 {
@@ -89,6 +146,12 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   return status == 3;
 }
 
+/**
+ * @brief Verify identity and sample readiness for an LPS27HHW device.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return true when identity and sample read pass.
+ */
 bool lps27Test(const TagPressureDevice *device)
 {
   uint8_t who;
@@ -103,3 +166,4 @@ bool lps27Test(const TagPressureDevice *device)
 
   return (who == LPS27_WHO_AM_I_VALUE) && status;
 }
+/** @} */

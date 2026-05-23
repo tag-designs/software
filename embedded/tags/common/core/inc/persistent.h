@@ -1,3 +1,10 @@
+/**
+ * @file persistent.h
+ * @brief Persistent backup state, flash log formats, and storage hooks.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
@@ -7,11 +14,21 @@
 #include "tag.pb.h"
 #include "config.h"
 
-// Reset causes
+/** @name Persistent linker symbols
+ * Linker-provided addresses used to find the internal flash region reserved
+ * for state and configuration persistence.
+ * @{
+ */
 
 extern uint32_t __persistent_start__; // from linker script
 extern uint32_t __flash0_end__; // from linker script
+/** @} */
 
+/** @name Reset and sleep state types
+ * Compact values stored across resets so the firmware can explain why it
+ * restarted and choose the next state-machine transition.
+ * @{
+ */
 typedef enum
 {
   resetSleep,     // return from sleep mode
@@ -22,16 +39,12 @@ typedef enum
   resetPower      // power on event
 } t_resetCause;
 
-// Sleep modes
-
 typedef enum
 {
   modeSleep,
   modeStandby,
   modeShutdown
 } t_sleepMode;
-
-// Statemachine commands
 
 typedef enum
 {
@@ -41,7 +54,13 @@ typedef enum
   SYSRESET,
   MAXCMD
 } t_command;
+/** @} */
 
+/** @name Backup register mirror
+ * Runtime state held in backup/retained storage so reset handling and monitor
+ * status can recover state across low-power transitions.
+ * @{
+ */
 typedef struct
 {
   uint32_t valid;       // backup registers are valid
@@ -61,10 +80,12 @@ typedef struct
 } BackupState;
 
 extern volatile BackupState *const pState;
+/** @} */
 
-/********************************************************
- *  Persistent Data Formats [ read directly from flash ]
- *******************************************************/
+/** @name Persistent data formats
+ * Flash-resident records read directly by boot, monitor, and log recovery code.
+ * @{
+ */
 
 enum LOGERR
 {
@@ -99,12 +120,6 @@ typedef struct
   State_Event reason;
 } t_StateMarker __attribute__((aligned(8))); 
 
-//typedef struct {
- // State state __attribute__((aligned(8)));
-//} t_StateMarker ;
-
-// Stored Data Log
-
 typedef struct
 {
   int32_t epoch;
@@ -121,16 +136,84 @@ extern t_StateMarker sEpoch[sEPOCH_SIZE];
 extern t_storedconfig sconfig;
 extern t_DataLog vddState[];
 extern t_storedconfig config_tmp;
+/** @} */
 
+/** @name Persistent storage operations
+ * Functions that erase, append, and recover the internal/external persistent
+ * records needed by reset handling, monitor commands, and data logging.
+ * @{
+ */
+/**
+ * @brief Erase the internal flash region reserved for persistent records.
+ */
 void erasePersistent(void);
+
+/**
+ * @brief Erase all external data-log storage when a tag provides it.
+ */
 void eraseExternal(void);
+
+/**
+ * @brief Erase one external storage block when a tag provides block erasure.
+ */
 void eraseExternalBlock(void);
+
+/**
+ * @brief Report the size of tag-provided external storage.
+ *
+ * @return External storage capacity in bytes, or 0 when absent.
+ */
 uint32_t externalFlashSize(void);
+
+/**
+ * @brief Report how many external sectors have been erased in the current operation.
+ *
+ * @return Count of erased external sectors, or 0 when absent.
+ */
 int externalFlashSectorsErased(void);
+
+/**
+ * @brief Persist a validated stored-configuration image.
+ *
+ * @param[in] s Stored configuration image to write.
+ */
 void writeStoredConfig(t_storedconfig *s);
+
+/**
+ * @brief Append one activity entry to the data log.
+ *
+ * @param[in] activity Activity bitmap to persist with current status data.
+ * @return Log write status explaining success or the reason writing stopped.
+ */
 enum LOGERR writeDataLog(uint64_t activity);
+
+/**
+ * @brief Append a state transition marker to internal flash.
+ *
+ * @param[in] reason Event that caused the state transition.
+ */
 void recordState(State_Event reason);
+
+/**
+ * @brief Persist the active protobuf configuration.
+ *
+ * @param[in] config Configuration to encode and write.
+ * @return true when the configuration was written successfully.
+ */
 bool writeConfig(Config *config);
+
+/**
+ * @brief Load the active protobuf configuration from persistent storage.
+ *
+ * @param[out] config Configuration object to populate.
+ */
 void readConfig(Config *config);
+
+/**
+ * @brief Recover persistent data-log state after reset.
+ *
+ * @return Restored log position or a tag-specific recovery status.
+ */
 int restoreLog(void);
+/** @} */
 #endif

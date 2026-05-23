@@ -1,3 +1,10 @@
+/**
+ * @file time.c
+ * @brief RTC calendar conversion, alarms, ticker, and Stop2 delay support.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "hal_rtc_lld.h"
 
@@ -30,6 +37,17 @@ static const uint32_t mon_lengths[2][12] = {
     {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
     {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
 
+/** @name RTC calendar conversion
+ * Conversion helpers isolate the STM32 RTC calendar base from the Unix epoch
+ * used by logs, monitor messages, and protobuf configuration.
+ * @{
+ */
+/**
+ * @brief Convert an STM32 RTCDateTime value to Unix seconds.
+ *
+ * @param[in] tim RTC calendar value to convert.
+ * @return Seconds since 1970-01-01 UTC.
+ */
 static time_t RTCDateTimeToEpoch(RTCDateTime *tim)
 {
   int32_t year, month, seconds;
@@ -51,6 +69,13 @@ static time_t RTCDateTimeToEpoch(RTCDateTime *tim)
   return seconds + (days * SECSPERDAY);
 }
 
+/**
+ * @brief Convert Unix seconds into an STM32 RTCDateTime value.
+ *
+ * @param[out] tim RTC calendar value to populate.
+ * @param[in] epoch Seconds since 1970-01-01 UTC.
+ * @return 0 on success, or -1 when the epoch predates the supported base.
+ */
 static int EpochToRTCDateTime(RTCDateTime *tim, int32_t epoch)
 {
   uint32_t dayclock, dayno, month;
@@ -91,7 +116,18 @@ static int EpochToRTCDateTime(RTCDateTime *tim, int32_t epoch)
   tim->day = dayno + 1;
   return 0;
 }
+/** @} */
 
+/** @name RTC timekeeping
+ * Public time helpers used by logging, monitor status, and configuration.
+ * @{
+ */
+/**
+ * @brief Read current RTC time as Unix seconds.
+ *
+ * @param[out] millis Optional millisecond remainder from the RTC calendar time.
+ * @return Current time as seconds since 1970-01-01 UTC.
+ */
 int32_t GetTimeUnixSec(uint32_t *millis)
 {
   RTCDateTime timespec;
@@ -102,6 +138,12 @@ int32_t GetTimeUnixSec(uint32_t *millis)
   return RTCDateTimeToEpoch(&timespec);
 }
 
+/**
+ * @brief Set the RTC from Unix seconds and synchronize the external RTC device.
+ *
+ * @param[in] unix_time Seconds since 1970-01-01 UTC.
+ * @return 0 on success, or -1 when unix_time cannot be represented.
+ */
 int SetTimeUnixSec(int32_t unix_time)
 {
   RTCDateTime tim = {0};
@@ -118,12 +160,17 @@ int SetTimeUnixSec(int32_t unix_time)
   }
   return err;
 }
+/** @} */
 
-/*
+/** @name RTC alarms and ticker
  * Enable/disable timer tick
  * Event mask is set on reset in main.c
+ * @{
  */
 
+/**
+ * @brief Configure RTC alarm A to wake once per second.
+ */
 void enableSecondsAlarm(void)
 {
   chSysLock();
@@ -147,11 +194,12 @@ void enableSecondsAlarm(void)
   chSysUnlock();
 }
 
-/*
- * Enable/disable timer tick
- * Event mask is set on reset in main.c
+/**
+ * @brief Configure one RTC alarm for the requested cadence.
+ *
+ * @param[in] alarm RTC alarm index, 0 or 1.
+ * @param[in] atype Alarm cadence to program.
  */
-
 void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype)
 {
   if (alarm < 2)
@@ -178,6 +226,11 @@ void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype)
   }
 }
 
+/**
+ * @brief Disable one RTC alarm.
+ *
+ * @param[in] alarm RTC alarm index, 0 or 1.
+ */
 void disableAlarm(unsigned int alarm)
 {
   if (alarm < 2)
@@ -188,6 +241,9 @@ void disableAlarm(unsigned int alarm)
   }
 }
 
+/**
+ * @brief Disable all RTC alarm interrupts and alarm slots.
+ */
 void disableAllAlarms(void)
 {
   chSysLock();
@@ -197,6 +253,11 @@ void disableAllAlarms(void)
   chSysUnlock();
 }
 
+/**
+ * @brief Enable the RTC periodic wakeup ticker.
+ *
+ * @param[in] secs Wakeup interval in seconds.
+ */
 void enableTicker(uint16_t secs)
 {
   RTCWakeup wakeup;
@@ -209,11 +270,25 @@ void enableTicker(uint16_t secs)
   rtcSTM32SetPeriodicWakeup(&RTCD1, &wakeup);
 }
 
+/**
+ * @brief Disable the RTC periodic wakeup ticker.
+ */
 void disableTicker(void)
 {
   rtcSTM32SetPeriodicWakeup(&RTCD1, NULL);
 }
+/** @} */
 
+/** @name Low-power delay
+ * Delay helper used by drivers when they need milliseconds to pass without
+ * keeping active buses powered through Stop2 unnecessarily.
+ * @{
+ */
+/**
+ * @brief Sleep for a short interval using Stop2 when no monitor is attached.
+ *
+ * @param[in] ms Delay interval in milliseconds.
+ */
 void stopMilliseconds(unsigned int ms)
 {
   if (MONCONNECTED)
@@ -263,7 +338,8 @@ void stopMilliseconds(unsigned int ms)
     LPTIM1->CR = 0;
     RCC->APB1ENR1 &= ~(1 << 31);
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-    
+
     tagEnableActiveBusesAfterStop();
   }
 }
+/** @} */

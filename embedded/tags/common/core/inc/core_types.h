@@ -1,3 +1,10 @@
+/**
+ * @file core_types.h
+ * @brief Common low-level macros and sleep-mode types for tag firmware.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef TAG_CORE_TYPES_H
 #define TAG_CORE_TYPES_H
 

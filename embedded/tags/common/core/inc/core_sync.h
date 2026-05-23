@@ -1,3 +1,10 @@
+/**
+ * @file core_sync.h
+ * @brief Shared synchronization objects and runtime timestamps.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef TAG_CORE_SYNC_H
 #define TAG_CORE_SYNC_H
 

@@ -2,6 +2,7 @@
  ******************************************************************************
  * @file    ais2dw12_reg.h
  * @author  Sensors Software Solution Team
+ * @date    2026-05-23
  * @brief   This file contains all the functions prototypes for the
  *          ais2dw12_reg.c driver.
  ******************************************************************************

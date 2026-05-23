@@ -1,4 +1,9 @@
-/***************************************************
+/**
+ * @file state_machine.c
+ * @brief Common control state machine for configured, running, and terminal states.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ *
  *  Code to implement the control state machine
  *
  *      RESET     : entered from ABORTED or FINISHED
@@ -31,7 +36,7 @@
  * 
  *      PANIC     : Unexpected system error 
  *
- ***************************************************/
+ */
 
 #include "hal.h"
 #include <limits.h>
@@ -51,23 +56,55 @@
 #include "test_support.h"
 #include "timekeeping.h"
 
+/**
+ * @brief Recover persistent data-log state after reset.
+ *
+ * @return Restored log position or a tag-specific recovery status.
+ */
 extern int restoreLog(void);
 
-// a global variable !!
-// initialized to false here, capture adxl pin in running
-// this is used to determine wakeup edge in pwr.c
-
+/** Shared active-state hint used by standby wake-source configuration. */
 bool isActive = false;
 
-static enum Sleep Reset(enum StateTrans, State_Event);
-static enum Sleep Idle(enum StateTrans, State_Event);
-static enum Sleep SelfTest(enum StateTrans, State_Event);
+/**
+ * @brief Forward declaration for the reset cleanup state.
+ *
+ * @param[in] transition State transition phase.
+ * @param[in] reason Event that caused this state action.
+ * @return Requested sleep mode after reset handling.
+ */
+static enum Sleep Reset(enum StateTrans transition, State_Event reason);
 
-/*******************************************************************
- *   State machine provides tag execution logic
- *******************************************************************/
+/**
+ * @brief Forward declaration for the idle state.
+ *
+ * @param[in] transition State transition phase.
+ * @param[in] reason Event that caused this state action.
+ * @return Requested sleep mode after idle handling.
+ */
+static enum Sleep Idle(enum StateTrans transition, State_Event reason);
 
+/**
+ * @brief Forward declaration for the self-test state.
+ *
+ * @param[in] transition State transition phase.
+ * @param[in] reason Event that caused this state action.
+ * @return Requested sleep mode after self-test handling.
+ */
+static enum Sleep SelfTest(enum StateTrans transition, State_Event reason);
+
+/** @name State-machine dispatch
+ * Dispatch reads pending events, handles reset recovery, accepts monitor
+ * commands, and routes continuation work to the current state handler.
+ * @{
+ */
 eventmask_t events = 0;
+
+/**
+ * @brief Run one state-machine step and return the requested sleep mode.
+ *
+ * @return Sleep mode requested by the selected state handler.
+ */
 enum Sleep StateMachine(void)
 {
   // read the event flags -- we do this here so any later
@@ -256,7 +293,20 @@ enum Sleep StateMachine(void)
     return Aborted(T_INIT, State_EVENT_UNKNOWN);
   }
 }
+/** @} */
 
+/** @name Core state handlers
+ * State handlers own state-entry side effects such as persistent markers,
+ * alarms, erase operations, and device reinitialization.
+ * @{
+ */
+/**
+ * @brief Erase persistent state and return the tag to idle.
+ *
+ * @param[in] t Transition phase for the reset state.
+ * @param[in] reason Event that caused reset entry.
+ * @return Sleep mode requested after reset cleanup.
+ */
 static enum Sleep Reset(enum StateTrans t, State_Event reason)
 {
   // we need some error recovery here.  If the
@@ -284,6 +334,13 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   return Idle(T_INIT, State_EVENT_OK);
 }
 
+/**
+ * @brief Hold the tag in idle until a monitor command starts work.
+ *
+ * @param[in] t Transition phase for the idle state.
+ * @param[in] reason Event that caused idle handling.
+ * @return Shutdown sleep mode while idle.
+ */
 static enum Sleep Idle(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -296,6 +353,13 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
 }
 
 
+/**
+ * @brief Store configuration and wait for the configured start condition.
+ *
+ * @param[in] t Transition phase for the configured state.
+ * @param[in] reason Event that caused configured handling.
+ * @return Shutdown while waiting, or Running entry when the start condition fires.
+ */
 enum Sleep Configured(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -325,6 +389,13 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Keep the tag asleep through configured hibernation intervals.
+ *
+ * @param[in] t Transition phase for the hibernating state.
+ * @param[in] reason Event that caused hibernating handling.
+ * @return Shutdown while hibernating, Running when activity resumes, or Finished.
+ */
 enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -360,6 +431,13 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 // Running() is
 // in state_run.c
 
+/**
+ * @brief Mark collection finished and reset devices for terminal sleep.
+ *
+ * @param[in] t Transition phase for the finished state.
+ * @param[in] reason Event that caused finished handling.
+ * @return Shutdown sleep mode.
+ */
 enum Sleep Finished(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -371,6 +449,13 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Mark collection aborted and reset devices for terminal sleep.
+ *
+ * @param[in] t Transition phase for the aborted state.
+ * @param[in] reason Event that caused aborted handling.
+ * @return Shutdown sleep mode.
+ */
 enum Sleep Aborted(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -382,6 +467,13 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Run tag self-tests and return to idle with the result retained.
+ *
+ * @param[in] t Transition phase for the self-test state.
+ * @param[in] reason Event that caused self-test handling.
+ * @return Sleep mode requested by idle after tests finish.
+ */
 static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -393,3 +485,4 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   }
   return Idle(T_INIT, State_EVENT_OK);
 }
+/** @} */

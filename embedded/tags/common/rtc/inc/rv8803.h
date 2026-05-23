@@ -1,6 +1,17 @@
+/**
+ * @file rv8803.h
+ * @brief Epson RV8803 RTC register definitions and date/time layout.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef RV8803
 #define RV8803
 
+/** @name RV8803 registers and bit definitions
+ * Register addresses and status/control bits used by the legacy RV8803 driver.
+ * @{
+ */
 #define RV8803_ADR (0x32)
 
 enum RV8803Reg {
@@ -42,7 +53,9 @@ enum RV8803Reg {
 #define RX8900_BACKUP_CTRL 0x18
 #define RX8900_FLAG_SWOFF BIT(2)
 #define RX8900_FLAG_VDETOFF BIT(3)
+/** @} */
 
+/** Calendar register image used for block RTC reads and writes. */
 typedef struct {
   uint8_t seconds;
   uint8_t minutes;

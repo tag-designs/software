@@ -1,3 +1,10 @@
+/**
+ * @file monitor.c
+ * @brief Protobuf monitor request evaluation and acknowledgement generation.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "monitor.h"
 #include <tag.pb.h>
@@ -24,15 +31,39 @@
 #define MAJOR_VERSION "1"
 #define MINOR_VERSION "0"
 
+/**
+ * @brief Generate one page of data-log acknowledgements.
+ *
+ * @param[in] index First data-log entry to include.
+ * @param[out] ack Acknowledgement object to populate.
+ * @return Encoded byte count or tag-specific status.
+ */
 extern int data_logAck(int index, Ack *ack);
+
+/**
+ * @brief Generate a calibration-log acknowledgement when calibration is enabled.
+ *
+ * @param[out] ack Acknowledgement object to populate.
+ * @return Encoded byte count or tag-specific status.
+ */
 extern int calibration_logAck(Ack *ack);
+
+/** Default protobuf configuration supplied by the generated/tag build. */
 extern const Config defaultConfig;
+
+/** Size of the shared protobuf monitor buffer. */
 extern const uint32_t protobuf_size;
+
+/** Shared protobuf monitor buffer owned by handlers.c. */
 extern uint8_t ProtoBuf[];
 static Req req NOINIT;
 static Ack ack NOINIT;
 TestReq test_to_run NOINIT;
 
+/** @name Monitor information strings
+ * Static firmware/build strings returned to host tools during monitor discovery.
+ * @{
+ */
 enum
 {
   MONITOR_STR,
@@ -54,10 +85,18 @@ static const char *InfoStrings[ARRAY_SIZE_STR] = {
     [HASH_STR] = VERSION_HASH,
     [BUILDTM_STR] = __DATE__ " : " __TIME__,
     [SOURCE_STR] = xstr(SOURCEDIR)};
+/** @} */
 
-// Wrapper for encoding Ack messages -- catches errors and tries (once) to issue
-//                                      a nanopb error
-
+/** @name Acknowledgement encoding
+ * Encoding helpers keep every monitor response in the shared protobuf buffer
+ * and convert nanopb failures into a best-effort error acknowledgement.
+ * @{
+ */
+/**
+ * @brief Encode the current Ack object into the shared monitor buffer.
+ *
+ * @return Encoded byte count, or 0 if encoding failed twice.
+ */
 int encode_ack(void)
 {
   bool status;
@@ -80,18 +119,33 @@ int encode_ack(void)
   return status ? ostream.bytes_written : 0;
 }
 
-// Message Generators
-
+/**
+ * @brief Build and encode an acknowledgement containing only an error code.
+ *
+ * @param[in] err Error code to place in the acknowledgement.
+ * @return Encoded byte count.
+ */
 int errAck(Ack_Err err)
 {
   ack.err = err;
   ack.which_payload = 0;
   return encode_ack();
 }
+/** @} */
 
 extern const unsigned char tag_default_config[];
 extern const int tag_default_config_len;
 
+/** @name Monitor message generators
+ * Generators populate one Ack payload at a time from retained state, persistent
+ * storage, or firmware metadata before handing it to encode_ack().
+ * @{
+ */
+/**
+ * @brief Generate the active or default configuration response.
+ *
+ * @return Encoded byte count.
+ */
 static int configAck(void)
 {
   ack.err = Ack_OK;
@@ -109,6 +163,11 @@ static int configAck(void)
   return encode_ack();
 }
 
+/**
+ * @brief Generate a current status response for the host monitor.
+ *
+ * @return Encoded byte count.
+ */
 static int statusAck(void)
 {
 
@@ -139,9 +198,12 @@ static int statusAck(void)
   return encode_ack();
 }
 
-// Info
-
 #define STR_COPY(src, dest) strncpy(dest, src, sizeof(dest))
+/**
+ * @brief Generate firmware, board, storage, and unique-ID information.
+ *
+ * @return Encoded byte count.
+ */
 static int infoAck(void)
 {
   static const char *HEX = "0123456789ABCDEF";
@@ -185,8 +247,12 @@ static int infoAck(void)
   return encode_ack();
 }
 
-// System and Data Log functions
-
+/**
+ * @brief Generate one page of persistent system state log entries.
+ *
+ * @param[in] index First state-log entry to include.
+ * @return Encoded byte count.
+ */
 static int system_logAck(int index)
 {
   static const size_t max_count = sizeof(ack.payload.system_log.states) / sizeof(State);
@@ -216,12 +282,21 @@ static int system_logAck(int index)
   ack.payload.system_log.states_count = count;
   return encode_ack();
 }
+/** @} */
 
 
 
-// Protocol Buffer Evaluation
-// This is where request messages are evaluated
-
+/** @name Protocol request evaluation
+ * Decode host requests, perform side effects that are safe in monitor context,
+ * and signal the main thread for state-machine commands.
+ * @{
+ */
+/**
+ * @brief Evaluate one protobuf request from the shared monitor buffer.
+ *
+ * @param[in] len Number of request bytes present in ProtoBuf.
+ * @return Encoded acknowledgement byte count.
+ */
 int proto_eval(int len)
 {
   int err;
@@ -321,3 +396,4 @@ int proto_eval(int len)
     return errAck(Ack_Err_PERM);
   }
 }
+/** @} */

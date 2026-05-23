@@ -1,3 +1,10 @@
+/**
+ * @file adxl362_test.c
+ * @brief ADXL362 identity and self-test helper.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "ADXL362.h"
 #include "core_types.h"
 #include "hal.h"
@@ -10,6 +17,17 @@ static uint8_t id[3] NOINIT;
 static int xyz[3] NOINIT;
 static int testxyz[3] NOINIT;
 
+/** @name ADXL362 self-test helpers
+ * Helpers used by tag test tables to verify communication and physical
+ * self-test response.
+ * @{
+ */
+/**
+ * @brief Average a small batch of acceleration samples.
+ *
+ * @param[in] device ADXL362 device descriptor.
+ * @param[out] val Three-element averaged X/Y/Z output.
+ */
 static void adxlavg(const TagAdxl362Device *device, int val[3])
 {
   short x, y, z;
@@ -31,6 +49,12 @@ static void adxlavg(const TagAdxl362Device *device, int val[3])
   val[2] /= 16;
 }
 
+/**
+ * @brief Run the ADXL362 identity and self-test sequence.
+ *
+ * @param[in] device ADXL362 device descriptor.
+ * @return true when identity and self-test pass.
+ */
 bool adxl362Test(const TagAdxl362Device *device)
 {
   bool result = false;
@@ -83,7 +107,13 @@ bool adxl362Test(const TagAdxl362Device *device)
   return result;
 }
 
+/**
+ * @brief Default ADXL362 self-test binding for the configured tag device.
+ *
+ * @return true when the configured ADXL362 passes self-test.
+ */
 bool __attribute__((weak)) tag_test_adxl362(void)
 {
   return adxl362Test(tagAdxl362Device());
 }
+/** @} */

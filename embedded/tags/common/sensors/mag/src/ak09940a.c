@@ -1,21 +1,48 @@
+/**
+ * @file ak09940a.c
+ * @brief Descriptor-backed AK09940A magnetometer driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include <stdint.h>
 #include <string.h>
 
 #include "hal.h"
 #include "ak09940a.h"
 
+/** @name AK09940A device lifecycle
+ * Helpers bracket magnetometer register access with descriptor-owned bus
+ * power/session behavior.
+ * @{
+ */
+/**
+ * @brief Power and begin the bus session for an AK09940A device.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ */
 void ak09940aDeviceBegin(const TagMagDevice *device)
 {
   tagBusPowerOn(&device->registers->bus);
   tagBusBegin(&device->registers->bus);
 }
 
+/**
+ * @brief End the bus session and power down an AK09940A device.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ */
 void ak09940aDeviceEnd(const TagMagDevice *device)
 {
   tagBusEnd(&device->registers->bus);
   tagBusPowerOff(&device->registers->bus);
 }
 
+/**
+ * @brief Power the AK09940A, wait for rail settling, and begin its bus session.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ */
 static void ak09940aPowerUpAndBeginBus(const TagMagDevice *device)
 {
   tagBusPowerOn(&device->registers->bus);
@@ -23,7 +50,22 @@ static void ak09940aPowerUpAndBeginBus(const TagMagDevice *device)
     device->sleep_ms(1);
   tagBusBegin(&device->registers->bus);
 }
+/** @} */
 
+/** @name AK09940A register helpers
+ * Register helpers adapt the generic TagRegisterDevice interface to the
+ * AK09940A-specific register enum and MSG_OK/MSG_RESET convention.
+ * @{
+ */
+/**
+ * @brief Write one or more AK09940A registers.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] reg First register to write.
+ * @param[in] val Source buffer.
+ * @param[in] num Number of bytes to write.
+ * @return MSG_OK on success or MSG_RESET on register-bus failure.
+ */
 static msg_t ak09940a_write_register(const TagMagDevice *device,
                                      enum AK09940A_Reg reg,
                                      const uint8_t *val, uint32_t num)
@@ -33,6 +75,15 @@ static msg_t ak09940a_write_register(const TagMagDevice *device,
   return MSG_OK;
 }
 
+/**
+ * @brief Read one or more AK09940A registers.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] reg First register to read.
+ * @param[out] val Destination buffer.
+ * @param[in] num Number of bytes to read.
+ * @return MSG_OK on success or MSG_RESET on register-bus failure.
+ */
 static msg_t ak09940a_read_register(const TagMagDevice *device,
                                     enum AK09940A_Reg reg,
                                     uint8_t *val, uint32_t num)
@@ -42,6 +93,12 @@ static msg_t ak09940a_read_register(const TagMagDevice *device,
   return MSG_OK;
 }
 
+/**
+ * @brief Convert public sample-rate selector to CNTL3 mode bits.
+ *
+ * @param[in] rate Public sample-rate selector.
+ * @return CNTL3 mode bits for continuous sampling.
+ */
 static uint8_t ak09940a_rate_to_mode(ak09940_rate_t rate)
 {
   switch (rate) {
@@ -62,6 +119,13 @@ static uint8_t ak09940a_rate_to_mode(ak09940_rate_t rate)
   }
 }
 
+/**
+ * @brief Pack drive/noise selector into CNTL1 and CNTL3 fields.
+ *
+ * @param[in] drive Public drive selector.
+ * @param[out] cntl1 CNTL1 bits to apply.
+ * @param[out] cntl3 CNTL3 bits to apply.
+ */
 static void ak09940a_pack_drive(ak09940_drive_t drive, uint8_t *cntl1,
                                 uint8_t *cntl3)
 {
@@ -91,6 +155,14 @@ static void ak09940a_pack_drive(ak09940_drive_t drive, uint8_t *cntl1,
   }
 }
 
+/**
+ * @brief Sign-extend one AK09940A 18-bit magnetic sample.
+ *
+ * @param[in] l Low byte.
+ * @param[in] m Middle byte.
+ * @param[in] h High byte containing sign and upper data bits.
+ * @return Signed 18-bit sample in a 32-bit integer.
+ */
 static int32_t ak09940a_convert_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
   int32_t raw = ((int32_t)(h & 0x03U) << 16) | ((int32_t)m << 8) | l;
@@ -98,7 +170,20 @@ static int32_t ak09940a_convert_18bit(uint8_t l, uint8_t m, uint8_t h)
     raw |= (int32_t)0xFFFC0000;
   return raw;
 }
+/** @} */
 
+/** @name AK09940A descriptor-backed API
+ * Explicit-device API used by tag/family magnetometer code.
+ * @{
+ */
+/**
+ * @brief Optionally trigger and read one raw sample payload.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] single true to request a single measurement before polling.
+ * @param[out] xyz Ten-byte raw sample payload.
+ * @return true when a fresh sample was read.
+ */
 bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz)
 {
   uint8_t raw[11];
@@ -125,6 +210,12 @@ bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz)
   return false;
 }
 
+/**
+ * @brief Initialize AK09940A for the historical sample mode API.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] mode Historical mode selector.
+ */
 void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode)
 {
   uint8_t command = ((uint8_t)mode) | AK09940A_CNTL3_LN2;
@@ -133,6 +224,12 @@ void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode)
     (void)ak09940a_write_register(device, AK09940A_CNTL3, &command, 1);
 }
 
+/**
+ * @brief Check AK09940A identity using the descriptor binding.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @return true when WHOAMI matches expected values.
+ */
 bool ak09940aTest(const TagMagDevice *device)
 {
   bool ok;
@@ -142,6 +239,12 @@ bool ak09940aTest(const TagMagDevice *device)
   return ok;
 }
 
+/**
+ * @brief Check AK09940A WHOAMI registers.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @return true when company and product IDs match.
+ */
 bool ak09940aCheckWhoami(const TagMagDevice *device)
 {
   uint8_t wia[2];
@@ -151,12 +254,27 @@ bool ak09940aCheckWhoami(const TagMagDevice *device)
           (wia[1] == AK09940A_PRODUCT_ID));
 }
 
+/**
+ * @brief Put AK09940A into power-down mode.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @return MSG_OK on success.
+ */
 msg_t ak09940aInitPowerDown(const TagMagDevice *device)
 {
   uint8_t cntl3 = AK09940A_CNTL3_PWRDOWN;
   return ak09940a_write_register(device, AK09940A_CNTL3, &cntl3, 1);
 }
 
+/**
+ * @brief Configure continuous magnetic sampling.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] rate Sample-rate selector.
+ * @param[in] drive Drive/noise selector.
+ * @param[in] temp_mode Temperature-channel mode.
+ * @return MSG_OK on success.
+ */
 msg_t ak09940aInitContinuous(const TagMagDevice *device, ak09940_rate_t rate,
                              ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode)
@@ -179,6 +297,14 @@ msg_t ak09940aInitContinuous(const TagMagDevice *device, ak09940_rate_t rate,
   return ak09940a_write_register(device, AK09940A_CNTL3, &cntl3, 1);
 }
 
+/**
+ * @brief Configure externally triggered magnetic sampling.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] drive Drive/noise selector.
+ * @param[in] temp_mode Temperature-channel mode.
+ * @return MSG_OK on success.
+ */
 msg_t ak09940aInitTriggered(const TagMagDevice *device, ak09940_drive_t drive,
                             ak09940_temp_mode_t temp_mode)
 {
@@ -201,6 +327,12 @@ msg_t ak09940aInitTriggered(const TagMagDevice *device, ak09940_drive_t drive,
   return ak09940a_write_register(device, AK09940A_CNTL3, &cntl3, 1);
 }
 
+/**
+ * @brief Fire the tag-provided external trigger callback.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @return MSG_OK when a trigger callback exists and was invoked.
+ */
 msg_t ak09940aTrigger(const TagMagDevice *device)
 {
   if (!device->trigger)
@@ -209,6 +341,13 @@ msg_t ak09940aTrigger(const TagMagDevice *device)
   return MSG_OK;
 }
 
+/**
+ * @brief Report whether a magnetic sample is ready.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[in] is_continuous true when a data-ready line may be used.
+ * @return true when a sample is ready.
+ */
 bool ak09940aDataReady(const TagMagDevice *device, bool is_continuous)
 {
   uint8_t st1;
@@ -221,6 +360,16 @@ bool ak09940aDataReady(const TagMagDevice *device, bool is_continuous)
   return ((st1 & AK09940A_ST_DRDY_MSK) != 0);
 }
 
+/**
+ * @brief Read and decode one AK09940A magnetic sample.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @param[out] mx_raw Raw signed X-axis sample.
+ * @param[out] my_raw Raw signed Y-axis sample.
+ * @param[out] mz_raw Raw signed Z-axis sample.
+ * @param[out] temp_raw Raw signed temperature sample.
+ * @return true when a valid sample was decoded.
+ */
 bool ak09940aReadSample(const TagMagDevice *device, int32_t *mx_raw,
                         int32_t *my_raw, int32_t *mz_raw, int16_t *temp_raw)
 {
@@ -245,6 +394,12 @@ bool ak09940aReadSample(const TagMagDevice *device, int32_t *mx_raw,
   return true;
 }
 
+/**
+ * @brief Run AK09940A self-test mode and range-check the result.
+ *
+ * @param[in] device Magnetometer device descriptor.
+ * @return true when the self-test sample is in the expected range.
+ */
 bool ak09940aSelfTest(const TagMagDevice *device)
 {
   uint8_t cntl1;
@@ -277,7 +432,22 @@ bool ak09940aSelfTest(const TagMagDevice *device)
     return false;
   return true;
 }
+/** @} */
 
+/** @name AK09940A conversion helpers
+ * Convert raw magnetic samples into physical units.
+ * @{
+ */
+/**
+ * @brief Convert raw magnetic samples to microtesla.
+ *
+ * @param[in] mx_raw Raw X-axis sample.
+ * @param[in] my_raw Raw Y-axis sample.
+ * @param[in] mz_raw Raw Z-axis sample.
+ * @param[out] mx_uT X-axis field in microtesla.
+ * @param[out] my_uT Y-axis field in microtesla.
+ * @param[out] mz_uT Z-axis field in microtesla.
+ */
 void ak09940_convert_to_uT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
                            float *mx_uT, float *my_uT, float *mz_uT)
 {
@@ -289,6 +459,16 @@ void ak09940_convert_to_uT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
     *mz_uT = mz_raw * AK09940A_SENSITIVITY_UT_PER_LSB;
 }
 
+/**
+ * @brief Convert raw magnetic samples to nanotesla.
+ *
+ * @param[in] mx_raw Raw X-axis sample.
+ * @param[in] my_raw Raw Y-axis sample.
+ * @param[in] mz_raw Raw Z-axis sample.
+ * @param[out] mx_nT X-axis field in nanotesla.
+ * @param[out] my_nT Y-axis field in nanotesla.
+ * @param[out] mz_nT Z-axis field in nanotesla.
+ */
 void ak09940_convert_to_nT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
                            int32_t *mx_nT, int32_t *my_nT, int32_t *mz_nT)
 {
@@ -299,3 +479,4 @@ void ak09940_convert_to_nT(int32_t mx_raw, int32_t my_raw, int32_t mz_raw,
   if (mz_nT)
     *mz_nT = mz_raw * AK09940A_SENSITIVITY_NT_PER_LSB;
 }
+/** @} */

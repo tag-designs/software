@@ -1,3 +1,10 @@
+/**
+ * @file rtc_rv3032.c
+ * @brief Legacy RV3032 external RTC register driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "power.h"
 #include "rtc_api.h"
@@ -6,16 +13,39 @@
 
 #define RTC_TIMEOUT 100
 
+/** @name BCD conversion helpers
+ * The RV3032 stores calendar fields as packed BCD while ChibiOS RTCDateTime
+ * uses binary fields.
+ * @{
+ */
+/**
+ * @brief Convert one packed BCD byte to binary.
+ *
+ * @param[in] val Packed BCD value.
+ * @return Binary value.
+ */
 static inline uint8_t bcd2bin(uint8_t val)
 {
     return ((val >> 4) & 0xf) * 10 + (val & 0xf);
 }
 
+/**
+ * @brief Convert one binary byte to packed BCD.
+ *
+ * @param[in] val Binary value.
+ * @return Packed BCD value.
+ */
 static inline uint8_t bin2bcd(uint8_t val)
 {
     return ((val / 10) << 4) | (val % 10);
 }
+/** @} */
 
+/** @name RV3032 register access
+ * Register and EEPROM helpers keep the calendar code independent of repeated
+ * I2C address and timeout setup.
+ * @{
+ */
 static const TagI2cDevice rv3032_i2c = {
     .controller = &tagI2c1DefaultController,
     .address = RV3032_ADR,
@@ -23,16 +53,40 @@ static const TagI2cDevice rv3032_i2c = {
     .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
 };
 
+/**
+ * @brief Read one or more RV3032 registers.
+ *
+ * @param[in] reg First register to read.
+ * @param[out] val Destination buffer for register bytes.
+ * @param[in] num Number of bytes to read.
+ * @return MSG_OK on success or a bus error.
+ */
 static int rv3032_GetReg(enum RV3032Reg reg, uint8_t *val, int num)
 {
     return tagI2cReadRegister(&rv3032_i2c, reg, val, num);
 }
 
+/**
+ * @brief Write one or more RV3032 registers.
+ *
+ * @param[in] reg First register to write.
+ * @param[in] val Source buffer for register bytes.
+ * @param[in] num Number of bytes to write.
+ * @return MSG_OK on success or a bus error.
+ */
 static int rv3032_SetReg(enum RV3032Reg reg, unsigned char *val, int num)
 {
     return tagI2cWriteRegister(&rv3032_i2c, reg, val, num);
 }
 
+/**
+ * @brief Execute one RV3032 EEPROM command and wait for completion.
+ *
+ * @param[in] addr EEPROM address for read/write commands.
+ * @param[in,out] val Byte to write or destination for read commands.
+ * @param[in] cmd RV3032 EEPROM command code.
+ * @return MSG_OK on success or MSG_TIMEOUT if the EEPROM stays busy.
+ */
 static int rv3032_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned char cmd)
 {
     int i;
@@ -83,7 +137,18 @@ static int rv3032_EEPROM_Exec(unsigned char addr, unsigned char *val, unsigned c
         return MSG_OK;
     }
 }
+/** @} */
 
+/** @name RV3032 lifecycle and calendar access
+ * Legacy global RTC driver operations selected by rtc_api.h when RV3032_RTC is
+ * configured.
+ * @{
+ */
+/**
+ * @brief Initialize the RV3032 clock output and STM32 RTC dividers.
+ *
+ * @return true when the RTC configuration is usable.
+ */
 bool initRTC(void)
 {
     unsigned char tmp;
@@ -160,6 +225,7 @@ bool initRTC(void)
     return result;
 }
 
+/** Calendar register image used for block RTC reads and writes. */
 typedef struct {
     uint8_t seconds;
     uint8_t minutes;
@@ -170,6 +236,12 @@ typedef struct {
     uint8_t year;
 } rv3032_timedate;
 
+/**
+ * @brief Write date/time to the RV3032.
+ *
+ * @param[in] tm RTC date/time structure to write.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t setRTCDateTime(RTCDateTime *tm)
 {
     int ret = MSG_OK;
@@ -201,6 +273,12 @@ msg_t setRTCDateTime(RTCDateTime *tm)
     return ret;
 }
 
+/**
+ * @brief Read date/time from the RV3032.
+ *
+ * @param[out] tm RTC date/time structure to populate.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t getRTCDateTime(RTCDateTime *tm)
 {
     int ret = MSG_OK;
@@ -233,3 +311,4 @@ msg_t getRTCDateTime(RTCDateTime *tm)
     rtcOff();
     return ret;
 }
+/** @} */

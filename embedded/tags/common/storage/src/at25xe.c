@@ -1,3 +1,10 @@
+/**
+ * @file at25xe.c
+ * @brief AT25XE external SPI flash command implementation.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "custom.h"
 #include "rtc_api.h"
@@ -44,6 +51,15 @@
 #define AT25XE_FLAGS_SECR_P_FAIL               ((uint8_t)0x20)    /* Program fail flag */
 #define AT25XE_FLAGS_SECR_E_FAIL               ((uint8_t)0x40)    /* Erase fail flag */
 
+/** @name AT25XE storage operations
+ * Chip-specific operations behind the generic TagStorageOps table.
+ * @{
+ */
+/**
+ * @brief Wake the AT25XE and begin its storage bus session.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
 static void at25xeWake(const TagStorageDevice *dev)
 {
     tagStorageBusBegin(dev);
@@ -52,12 +68,23 @@ static void at25xeWake(const TagStorageDevice *dev)
     stopMilliseconds(2);//chThdSleepMicroseconds(250);
 }
 
+/**
+ * @brief Enter AT25XE deep power-down and end its storage bus session.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
 static void at25xeSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_DEEP_POWER_DOWN);
     tagStorageBusEnd(dev);
 }
 
+/**
+ * @brief Read the AT25XE status register.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return Raw status register value.
+ */
 static uint8_t at25xeStatus(const TagStorageDevice *dev)
 {
     uint8_t buf;
@@ -65,6 +92,12 @@ static uint8_t at25xeStatus(const TagStorageDevice *dev)
     return buf;
 }
 
+/**
+ * @brief Verify the AT25XE JEDEC identity.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return Detected flash size in bytes on success, or -1 on mismatch.
+ */
 static int at25xeCheckID(const TagStorageDevice *dev)
 {
     uint8_t id[3];
@@ -76,6 +109,15 @@ static int at25xeCheckID(const TagStorageDevice *dev)
     return (1<<((id[1]& 0x1f)+9));
 }
 
+/**
+ * @brief Program bytes to AT25XE flash across page boundaries.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Flash byte address to program.
+ * @param[in] buf Source buffer.
+ * @param[in,out] cnt Requested byte count on entry, programmed byte count on return.
+ * @return true when all requested bytes were programmed.
+ */
 static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
                         uint8_t *buf, int *cnt)
 {
@@ -108,6 +150,13 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
     return true;
 }
 
+/**
+ * @brief Erase one AT25XE sector and wait for completion.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Address within the sector to erase.
+ * @return true when the erase completed.
+ */
 static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
 {
     uint8_t status;
@@ -132,6 +181,14 @@ static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
     return true;
 }
 
+/**
+ * @brief Read bytes from AT25XE flash.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Flash byte address to read.
+ * @param[out] buf Destination buffer.
+ * @param[in] num Number of bytes to read.
+ */
 static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
                        uint8_t *buf, int num)
 {
@@ -139,6 +196,7 @@ static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
                                        num);
 }
 
+/** AT25XE operation table consumed by the generic storage layer. */
 const TagStorageOps at25xeStorageOps = {
     .wake = at25xeWake,
     .sleep = at25xeSleep,
@@ -147,3 +205,4 @@ const TagStorageOps at25xeStorageOps = {
     .sector_erase = at25xeSectorErase,
     .read = at25xeRead,
 };
+/** @} */

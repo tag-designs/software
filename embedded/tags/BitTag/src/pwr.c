@@ -38,14 +38,14 @@ static void spiEnable(void)
 
   SPI1->CR1 = SPI_CR1_MSTR;
   SPI1->CR1 |= SPI_CR1_SPE;
-  tagMarkSpi1On();
+  tagMarkSpiOn(SPI1);
 }
 
 static void spiDisable(void)
 {
   SPI1->CR1 = 0;
   SPI1->CR2 = 0;
-  tagMarkSpi1Off();
+  tagMarkSpiOff(SPI1);
 }
 
 void rtcOn(void)

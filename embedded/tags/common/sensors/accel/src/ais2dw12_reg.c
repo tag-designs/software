@@ -2,6 +2,7 @@
  ******************************************************************************
  * @file    ais2dw12_reg.c
  * @author  Sensors Software Solution Team
+ * @date    2026-05-23
  * @brief   AIS2DW12 driver file
  ******************************************************************************
  * @attention
@@ -86,6 +87,13 @@ int32_t ais2dw12_write_reg(stmdev_ctx_t *ctx, uint8_t reg,
   *
   */
 
+/**
+  * @brief  Copy one optional byte between nullable pointers.
+  *
+  * @param[out] target destination byte pointer
+  * @param[in] source source byte pointer
+  *
+  */
 static void bytecpy(uint8_t *target, uint8_t *source)
 {
   if ( (target != NULL) && (source != NULL) ) {

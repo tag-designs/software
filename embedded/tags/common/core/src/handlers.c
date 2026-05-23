@@ -1,3 +1,10 @@
+/**
+ * @file handlers.c
+ * @brief Debug monitor interrupt and helper thread for protobuf request handling.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "monitor.h"
 #include "version.h"
@@ -13,18 +20,22 @@
 #define str(s) #s
 
 
-/***********************************
+/** @name Debug monitor globals
  *  Debug Monitor Interface
- ***********************************/
-
-// GIT SHA string
+ * Shared buffers and monitor metadata used by the DebugMon handler and helper
+ * thread to exchange protobuf packets with the host monitor.
+ * @{
+ */
 
 static const char SHAStr[64] __attribute__((aligned(4))) = GIT_SHA ;
-// evaluation function and buffer
 
+/**
+ * @brief Evaluate one protobuf monitor request from the shared buffer.
+ *
+ * @param[in] len Number of request bytes in ProtoBuf.
+ * @return Encoded acknowledgement byte count.
+ */
 extern int proto_eval(int);
-
-// buffer for passing protobuf messages
 
 #ifndef PROTOBUFSIZE
 #define PROTOBUFSIZE 2056
@@ -36,12 +47,19 @@ static_assert(Req_size < PROTOBUFSIZE, "Protocol buffer is too small! " xstr(PRO
 
 uint8_t ProtoBuf[PROTOBUFSIZE] __attribute__((aligned(4))) NOINIT;
 const int protobuf_size = PROTOBUFSIZE;
+/** @} */
 
-
-// Optional speed up during debug
 
 #ifdef RANGE_MULTIPLIER
 
+/** @name Optional debug clock scaling
+ * Clock helpers speed monitor transfers during debugging and restore the normal
+ * low-power clock before the helper thread exits.
+ * @{
+ */
+/**
+ * @brief Raise MSI and system-tick rates for faster monitor traffic.
+ */
 static void fast_msi(void){
   // change to 24Mhz doesn't require VOS change
   // Adjust Wait States
@@ -58,7 +76,9 @@ static void fast_msi(void){
 
 }
 
-
+/**
+ * @brief Restore MSI and system-tick rates after monitor traffic ends.
+ */
 static void slow_msi(void){
 
  
@@ -75,12 +95,16 @@ static void slow_msi(void){
   STM32_ST_TIM->PSC =  (STM32_TIMCLK2 / OSAL_ST_FREQUENCY) - 1;
 
 }
+/** @} */
 
 #endif
 
 
-// Internal thread
-
+/** @name Monitor helper thread
+ * The DebugMon ISR stays short by waking this thread to run protobuf decoding
+ * and command evaluation outside interrupt context.
+ * @{
+ */
 static thread_t *tpMonitor = NULL;
 static thread_reference_t trp NOINIT;  // for synchronous wait
 
@@ -94,6 +118,11 @@ static const thread_descriptor_t monitor_descriptor = {
     MonitorThread,
     NULL};
 
+/**
+ * @brief Evaluate monitor protobuf requests and acknowledge completion to DebugMon.
+ *
+ * @param[in] arg Unused ChibiOS thread argument.
+ */
 static THD_FUNCTION(MonitorThread, arg) {
   (void)arg;
   msg_t msg;
@@ -149,7 +178,16 @@ static THD_FUNCTION(MonitorThread, arg) {
   (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
   chThdExitS(0);
 }
+/** @} */
 
+/** @name Debug monitor interrupt
+ * Interrupt entry point used by the host monitor to discover buffers, start or
+ * stop the helper thread, and hand protobuf packet lengths to it.
+ * @{
+ */
+/**
+ * @brief Service debug-monitor commands from the host tooling.
+ */
 CH_IRQ_HANDLER(DebugMon_Handler) {
   CH_IRQ_PROLOGUE();
 
@@ -217,3 +255,4 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
   }
   CH_IRQ_EPILOGUE();
 }
+/** @} */

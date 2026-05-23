@@ -214,21 +214,15 @@ void disableTicker(void)
   rtcSTM32SetPeriodicWakeup(&RTCD1, NULL);
 }
 
-void stopMilliseconds(bool spiEnabled,unsigned int ms)
+void stopMilliseconds(unsigned int ms)
 {
-  (void)spiEnabled;
-
   if (MONCONNECTED)
   {
     chThdSleepMilliseconds(ms);
   }
   else
   {
-    bool spi1_was_on = isSpi1On();
-
-    if (spi1_was_on){
-       SPI1->CR1 &= ~SPI_CR1_SPE;
-    }
+    tagDisableActiveBusesForStop();
     // enable lptim1
     // Enter Stop2 mode
 
@@ -270,10 +264,6 @@ void stopMilliseconds(bool spiEnabled,unsigned int ms)
     RCC->APB1ENR1 &= ~(1 << 31);
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
     
-    // reenable SPI if necessary
-    
-    if (spi1_was_on){
-       SPI1->CR1 |= SPI_CR1_SPE;
-    }
+    tagEnableActiveBusesAfterStop();
   }
 }

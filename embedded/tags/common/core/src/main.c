@@ -1,3 +1,10 @@
+/**
+ * @file main.c
+ * @brief Core tag firmware boot, initialization, event polling, and main loop.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "tag.pb.h"
 
@@ -15,27 +22,35 @@
 
 #include "config.h"
 
-// synchronization variables
-
+/** @name Shared runtime synchronization
+ * Semaphores and timestamps shared by core services and device drivers.
+ * @{
+ */
 binary_semaphore_t ADCmutex;
 binary_semaphore_t SPImutex;
 binary_semaphore_t I2Cmutex;
 binary_semaphore_t USARTmutex;
-
-// main thread
 
 thread_t *tpMain = 0;
 int32_t timestamp;
 uint32_t timestamp_millis;
 
 volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
-
-/**********************************************************
- *  Voltage and Temperature Measurement
- **********************************************************/
+/** @} */
 
 #define ADC_SMPR_SMP_47P5 4
 
+/** @name Board health measurement
+ * Helpers used by monitor status and persistent state markers to record supply
+ * voltage and die temperature without exposing ADC channel sequencing.
+ * @{
+ */
+/**
+ * @brief Measure the MCU supply voltage and internal temperature.
+ *
+ * @param[out] vdd100 Supply voltage in hundredths of a volt.
+ * @param[out] temp10 Die temperature in tenths of a degree Celsius.
+ */
 void adcVDD(uint16_t *vdd100, int16_t *temp10)
 {
   uint32_t raw;
@@ -80,13 +95,18 @@ void adcVDD(uint16_t *vdd100, int16_t *temp10)
 
   *temp10 = (tmp - (1300-300) * TS_CAL1)/ (TS_CAL2 - TS_CAL1) + 300;
 }
+/** @} */
 
-// Perform basic hardware initialization if the backup registers
-// have been zeroed (due to power on), or if "forced."  Currently
-// this is test code (timer with alarm, accelerometer continuously
-// sampling
-
-//extern void disableSecondsAlarm(void);
+/** @name Runtime initialization and reset handling
+ * Boot helpers decide whether retained state is usable, reset device state when
+ * needed, and map STM32 reset flags to the state-machine reset vocabulary.
+ * @{
+ */
+/**
+ * @brief Initialize board devices and retained runtime state when needed.
+ *
+ * @param[in] force Nonzero to force reinitialization after reset handling.
+ */
 void deviceInit(int force)
 {
   // it's not clear from the reference manual that this is the correct
@@ -116,11 +136,15 @@ void deviceInit(int force)
   }
 }
 
-/*
+/**
+ * @brief Classify the reset reason from STM32 flags and retained backup state.
+ *
  * Because we use standby mode and because attaching the monitor may
  * trigger a reset, it is important to determine the reset cause
+ *
+ * @param[in] rstFlags STM32 RCC reset flags captured before they are cleared.
+ * @return Persistent reset cause used by the state machine.
  */
-
 t_resetCause getResetCause(uint32_t rstFlags)
 {
   t_resetCause resetCause = resetException; // default case
@@ -171,7 +195,16 @@ t_resetCause getResetCause(uint32_t rstFlags)
 
   return resetCause;
 }
+/** @} */
 
+/** @name Event polling
+ * Event helpers translate hardware wake flags into ChibiOS event bits consumed
+ * by the state machine.
+ * @{
+ */
+/**
+ * @brief Clear wake flags and signal pending RTC events to the main thread.
+ */
 void CheckEvents(void)
 {
   // clear wakeup flag, then check status
@@ -214,8 +247,20 @@ void CheckEvents(void)
 
   chEvtSignal(tpMain, EVT_RTC_MASK(isr));
 }
+/** @} */
 
 uint32_t start_cycles;
+
+/** @name Firmware entry points
+ * Top-level entry points connect ChibiOS startup, reset handling, the state
+ * machine, and low-power entry.
+ * @{
+ */
+/**
+ * @brief Initialize the tag runtime and repeatedly run event/state processing.
+ *
+ * @return Never returns during normal firmware execution.
+ */
 int main(void)
 {
   // read the reset flags
@@ -279,5 +324,13 @@ int main(void)
   }
 }
 
+/**
+ * @brief ChibiOS/vector-table reset entry used as the exception recovery target.
+ */
 extern void Reset_Handler(void);
+
+/**
+ * @brief Route unexpected exceptions through the reset handler.
+ */
 void __unhandled_exception(void) { Reset_Handler(); }
+/** @} */

@@ -1,6 +1,17 @@
+/**
+ * @file rv3032.h
+ * @brief Micro Crystal RV3032 RTC register definitions.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef RV3032_H
 #define RV3032_H
 
+/** @name RV3032 registers and bit definitions
+ * Register addresses and status/control bits used by the legacy RV3032 driver.
+ * @{
+ */
 #define RV3032_ADR (0x51)
 
 #define BIT(x) (1<<(x))
@@ -64,5 +75,6 @@ enum RV3032Reg {
 #define RV3032_EEPROM_CMD_REFRESH   0x12
 
 #define RV3032_CLKOUT_VAL (1<<5)
+/** @} */
 
 #endif

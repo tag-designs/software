@@ -1,3 +1,10 @@
+/**
+ * @file mx25l.c
+ * @brief MX25L external SPI flash command implementation.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "core_types.h"
 #include "custom.h"
@@ -21,6 +28,15 @@
 
 #define MX25L_FLAGS_SR_WIP        ((uint8_t)0x01)
 
+/** @name MX25L storage operations
+ * Chip-specific operations behind the generic TagStorageOps table.
+ * @{
+ */
+/**
+ * @brief Wake the MX25L and begin its storage bus session.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
 static void mx25lWake(const TagStorageDevice *dev)
 {
     tagStorageBusBegin(dev);
@@ -28,12 +44,23 @@ static void mx25lWake(const TagStorageDevice *dev)
     chThdSleepMicroseconds(PWR_UP_DELAY_US);
 }
 
+/**
+ * @brief Enter MX25L deep power-down and end its storage bus session.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
 static void mx25lSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(tagStorageSpiDevice(dev), MX25L_CMD_DEEP_POWER_DOWN);
     tagStorageBusEnd(dev);
 }
 
+/**
+ * @brief Read the MX25L status register.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return Raw status register value.
+ */
 static uint8_t mx25lStatus(const TagStorageDevice *dev)
 {
     uint8_t buf;
@@ -41,6 +68,12 @@ static uint8_t mx25lStatus(const TagStorageDevice *dev)
     return buf;
 }
 
+/**
+ * @brief Verify the MX25L JEDEC identity.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return 0 on expected identity, or -1 on mismatch.
+ */
 static int mx25lCheckID(const TagStorageDevice *dev)
 {
     uint8_t id[3];
@@ -59,6 +92,15 @@ static int mx25lCheckID(const TagStorageDevice *dev)
     return 0;
 }
 
+/**
+ * @brief Program bytes to MX25L flash across page boundaries.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Flash byte address to program.
+ * @param[in] buf Source buffer.
+ * @param[in,out] cnt Requested byte count on entry, programmed byte count on return.
+ * @return true when all requested bytes were programmed.
+ */
 static bool mx25lWrite(const TagStorageDevice *dev, uint32_t address,
                        uint8_t *buf, int *cnt)
 {
@@ -91,6 +133,13 @@ static bool mx25lWrite(const TagStorageDevice *dev, uint32_t address,
     return true;
 }
 
+/**
+ * @brief Erase one MX25L sector and wait for completion.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Address within the sector to erase.
+ * @return true when the erase completed.
+ */
 static bool mx25lSectorErase(const TagStorageDevice *dev, uint32_t address)
 {
     uint8_t status;
@@ -115,6 +164,14 @@ static bool mx25lSectorErase(const TagStorageDevice *dev, uint32_t address)
     return true;
 }
 
+/**
+ * @brief Read bytes from MX25L flash.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Flash byte address to read.
+ * @param[out] buf Destination buffer.
+ * @param[in] num Number of bytes to read.
+ */
 static void mx25lRead(const TagStorageDevice *dev, uint32_t address,
                       uint8_t *buf, int num)
 {
@@ -122,6 +179,7 @@ static void mx25lRead(const TagStorageDevice *dev, uint32_t address,
                                        num);
 }
 
+/** MX25L operation table consumed by the generic storage layer. */
 const TagStorageOps mx25lStorageOps = {
     .wake = mx25lWake,
     .sleep = mx25lSleep,
@@ -130,3 +188,4 @@ const TagStorageOps mx25lStorageOps = {
     .sector_erase = mx25lSectorErase,
     .read = mx25lRead,
 };
+/** @} */

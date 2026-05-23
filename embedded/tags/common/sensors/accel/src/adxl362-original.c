@@ -2,6 +2,7 @@
  *   @file   ADXL362.c
  *   @brief  Implementation of ADXL362 Driver.
  *   @author DNechita(Dan.Nechita@analog.com)
+ *   @date   2026-05-23
 ********************************************************************************
  * Copyright 2012(c) Analog Devices, Inc.
  *
@@ -75,22 +76,42 @@ static const TagAdxl362Device adxl362_default_device = {
   .sleep_ms = 0,
 };
 
+/**
+ * @brief Return the preserved driver's built-in ADXL362 descriptor.
+ *
+ * @return Default ADXL362 descriptor.
+ */
 const TagAdxl362Device *ADXL362_DefaultDevice(void)
 {
   return &adxl362_default_device;
 }
 
+/**
+ * @brief Return the tag-selected descriptor for the preserved ADXL362 API.
+ *
+ * @return Tag-specific descriptor, or the weak default when not overridden.
+ */
 const TagAdxl362Device *__attribute__((weak)) tagAdxl362Device(void)
 {
   return ADXL362_DefaultDevice();
 }
 
+/**
+ * @brief Power and acquire the ADXL362 SPI bus for a grouped transaction.
+ *
+ * @param[in] device ADXL362 descriptor.
+ */
 void ADXL362_DeviceBegin(const TagAdxl362Device *device)
 {
   tagSpiDevicePowerOn(device->spi);
   tagSpiBusBegin(device->spi);
 }
 
+/**
+ * @brief Release and power down the ADXL362 SPI bus.
+ *
+ * @param[in] device ADXL362 descriptor.
+ */
 void ADXL362_DeviceEnd(const TagAdxl362Device *device)
 {
   tagSpiBusEnd(device->spi);
@@ -109,6 +130,12 @@ char ADXL362_Init(void)
   return ADXL362_InitDevice(&adxl362_default_device);
 }
 
+/**
+ * @brief Initialize an ADXL362 descriptor and check the part ID.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @return 0 on success, -1 when the expected part ID is absent.
+ */
 char ADXL362_InitDevice(const TagAdxl362Device *device)
 {
     unsigned char regValue = 0;
@@ -142,6 +169,14 @@ void ADXL362_SetRegisterValue(unsigned short registerValue,
                                  registerAddress, bytesNumber);
 }
 
+/**
+ * @brief Write one or two value bytes to an ADXL362 register.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] registerValue Value to write.
+ * @param[in] registerAddress Register address.
+ * @param[in] bytesNumber Number of value bytes to write.
+ */
 void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
                                     unsigned short registerValue,
                                     unsigned char registerAddress,
@@ -174,6 +209,14 @@ void ADXL362_GetRegisterValue(unsigned char* pReadData,
                                    registerAddress, bytesNumber);
 }
 
+/**
+ * @brief Burst-read registers from an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[out] pReadData Destination buffer.
+ * @param[in] registerAddress First register address.
+ * @param[in] bytesNumber Number of bytes to read.
+ */
 void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
                                     unsigned char *pReadData,
                                     unsigned char registerAddress,
@@ -203,6 +246,13 @@ void ADXL362_GetFifoValue(unsigned char* pBuffer, unsigned short bytesNumber)
   ADXL362_GetFifoValueDevice(&adxl362_default_device, pBuffer, bytesNumber);
 }
 
+/**
+ * @brief Read bytes from an ADXL362 descriptor FIFO.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[out] pBuffer Destination buffer.
+ * @param[in] bytesNumber Number of FIFO bytes to read.
+ */
 void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
                                 unsigned char *pBuffer,
                                 unsigned short bytesNumber)
@@ -226,17 +276,30 @@ void ADXL362_SoftwareReset(void)
     ADXL362_SoftwareResetDevice(&adxl362_default_device);
 }
 
+/**
+ * @brief Reset an ADXL362 descriptor through the software-reset register.
+ *
+ * @param[in] device ADXL362 descriptor.
+ */
 void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device)
 {
     ADXL362_SetRegisterValueDevice(device, ADXL362_RESET_KEY,
                                    ADXL362_REG_SOFT_RESET, 1);
 }
 
+/**
+ * @brief Reset the default ADXL362 and leave it deinitialized.
+ */
 void ADXL362_Deinit(void)
 {
     ADXL362_DeinitDevice(&adxl362_default_device);
 }
 
+/**
+ * @brief Reset an ADXL362 descriptor and release its bus.
+ *
+ * @param[in] device ADXL362 descriptor.
+ */
 void ADXL362_DeinitDevice(const TagAdxl362Device *device)
 {
     ADXL362_DeviceBegin(device);
@@ -258,6 +321,12 @@ void ADXL362_SetPowerMode(unsigned char pwrMode)
     ADXL362_SetPowerModeDevice(&adxl362_default_device, pwrMode);
 }
 
+/**
+ * @brief Place an ADXL362 descriptor in standby or measurement mode.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] pwrMode 0 for standby, nonzero for measurement.
+ */
 void ADXL362_SetPowerModeDevice(const TagAdxl362Device *device,
                                 unsigned char pwrMode)
 {
@@ -288,6 +357,12 @@ void ADXL362_SetRange(unsigned char gRange)
     ADXL362_SetRangeDevice(&adxl362_default_device, gRange);
 }
 
+/**
+ * @brief Select the measurement range for an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] gRange ADXL362_RANGE_* selector.
+ */
 void ADXL362_SetRangeDevice(const TagAdxl362Device *device,
                             unsigned char gRange)
 {
@@ -321,6 +396,12 @@ void ADXL362_SetOutputRate(unsigned char outRate)
     ADXL362_SetOutputRateDevice(&adxl362_default_device, outRate);
 }
 
+/**
+ * @brief Select the output data rate for an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] outRate ADXL362_ODR_* selector.
+ */
 void ADXL362_SetOutputRateDevice(const TagAdxl362Device *device,
                                  unsigned char outRate)
 {
@@ -349,6 +430,14 @@ void ADXL362_GetXyz(short* x, short* y, short* z)
     ADXL362_GetXyzDevice(&adxl362_default_device, x, y, z);
 }
 
+/**
+ * @brief Read raw X/Y/Z samples from an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[out] x X-axis raw sample.
+ * @param[out] y Y-axis raw sample.
+ * @param[out] z Z-axis raw sample.
+ */
 void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
                           short *z)
 {
@@ -376,6 +465,14 @@ void ADXL362_GetGxyz(float* x, float* y, float* z)
     ADXL362_GetGxyzDevice(&adxl362_default_device, x, y, z);
 }
 
+/**
+ * @brief Read X/Y/Z samples from an ADXL362 descriptor and convert them to g.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[out] x X-axis acceleration in g.
+ * @param[out] y Y-axis acceleration in g.
+ * @param[out] z Z-axis acceleration in g.
+ */
 void ADXL362_GetGxyzDevice(const TagAdxl362Device *device, float *x, float *y,
                            float *z)
 {
@@ -401,6 +498,12 @@ float ADXL362_ReadTemperature(void)
     return ADXL362_ReadTemperatureDevice(&adxl362_default_device);
 }
 
+/**
+ * @brief Read temperature from an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @return Temperature in degrees Celsius.
+ */
 float ADXL362_ReadTemperatureDevice(const TagAdxl362Device *device)
 {
     unsigned char rawTempData[2] = {0, 0};
@@ -438,6 +541,14 @@ void ADXL362_FifoSetup(unsigned char  mode,
                             enTempRead);
 }
 
+/**
+ * @brief Configure FIFO mode for an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] mode ADXL362_FIFO_* mode selector.
+ * @param[in] waterMarkLvl FIFO watermark sample count.
+ * @param[in] enTempRead Nonzero to include temperature samples in FIFO.
+ */
 void ADXL362_FifoSetupDevice(const TagAdxl362Device *device,
                              unsigned char mode, unsigned short waterMarkLvl,
                              unsigned char enTempRead)
@@ -474,6 +585,14 @@ void ADXL362_SetupActivityDetection(unsigned char  refOrAbs,
                                          threshold, time);
 }
 
+/**
+ * @brief Configure activity detection for an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] refOrAbs 0 for absolute mode, nonzero for referenced mode.
+ * @param[in] threshold Activity threshold.
+ * @param[in] time Activity timer in output-data-rate ticks.
+ */
 void ADXL362_SetupActivityDetectionDevice(const TagAdxl362Device *device,
                                           unsigned char refOrAbs,
                                           unsigned short threshold,
@@ -519,6 +638,14 @@ void ADXL362_SetupInactivityDetection(unsigned char  refOrAbs,
                                            threshold, time);
 }
 
+/**
+ * @brief Configure inactivity detection for an ADXL362 descriptor.
+ *
+ * @param[in] device ADXL362 descriptor.
+ * @param[in] refOrAbs 0 for absolute mode, nonzero for referenced mode.
+ * @param[in] threshold Inactivity threshold.
+ * @param[in] time Inactivity timer in output-data-rate ticks.
+ */
 void ADXL362_SetupInactivityDetectionDevice(const TagAdxl362Device *device,
                                             unsigned char refOrAbs,
                                             unsigned short threshold,

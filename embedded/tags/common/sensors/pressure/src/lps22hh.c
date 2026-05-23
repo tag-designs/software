@@ -1,3 +1,10 @@
+/**
+ * @file lps22hh.c
+ * @brief Descriptor-backed ST LPS22HH pressure sensor driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "lps22hh.h"
 #include "hal.h"
 #include "custom.h"
@@ -47,17 +54,37 @@
 #define LPS22HH_PRESSURE_SENSITIVITY ((float) 1.0/4096)
 #define LPS22HH_TEMPERATURE_SENSITIVITY ((float) 1.0/100)
 
-/* Write one register. */
+/** @name LPS22HH register helpers
+ * Small helpers keep register operations tied to TagPressureDevice and preserve
+ * unrelated register fields when changing individual bitfields.
+ * @{
+ */
+/**
+ * @brief Write one LPS22HH register.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] val Value to write.
+ * @return 0 on success or a register-bus error.
+ */
 static int write_reg(const TagPressureDevice *device, uint8_t reg, uint8_t val)
 {
     return tagRegisterWrite(device->registers, reg, &val, 1);
 }
 
-/*
+/**
+ * @brief Read a register block using the sensor's auto-increment mechanism.
+ *
  * Read a register block using the sensor's auto-increment mechanism.
  *
  * For SPI, the MSB of the register address is set to request incrementing
  * address access across successive bytes.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] reg First register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0 on success or a register-bus error.
  */
 static int read_block(const TagPressureDevice *device, uint8_t reg,
                       uint8_t *buf, uint16_t len)
@@ -65,11 +92,14 @@ static int read_block(const TagPressureDevice *device, uint8_t reg,
     return tagRegisterRead(device->registers, reg, buf, len);
 }
 
-/*
- * Read-modify-write helper.
+/**
+ * @brief Change selected LPS22HH register bits while preserving other fields.
  *
- * This preserves unrelated fields in a register when only one bitfield needs
- * to change.
+ * @param[in] device Pressure device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] mask Bit mask to update.
+ * @param[in] value New masked value.
+ * @return 0 on success or -1 on read failure.
  */
 static int update_reg(const TagPressureDevice *device, uint8_t reg,
                       uint8_t mask, uint8_t value)
@@ -82,13 +112,15 @@ static int update_reg(const TagPressureDevice *device, uint8_t reg,
     cur = (uint8_t)((cur & (uint8_t)~mask) | (value & mask));
     return write_reg(device, reg, cur);
 }
+/** @} */
 
-/* --------------------------------------------------------------------------
- * LPS22HH implementation
- * --------------------------------------------------------------------------
+/** @name LPS22HH configuration and sampling
+ * Public descriptor-backed operations used by tag pressure code.
+ * @{
  */
-
-/*
+/**
+ * @brief Configure the LPS22HH INT/DRDY pin for data-ready signaling.
+ *
  * Configure the LPS22HH INT/DRDY pin for data-ready signaling.
  *
  * The goal is to expose a stable data-ready indication without requiring the
@@ -100,6 +132,9 @@ static int update_reg(const TagPressureDevice *device, uint8_t reg,
  *   - default active-high, push-pull behavior
  * 
  * NOTE: does not turn on spi
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return 0 on success.
  */
 static int lps22hh_config_int_drdy(const TagPressureDevice *device)
 {
@@ -112,6 +147,12 @@ static int lps22hh_config_int_drdy(const TagPressureDevice *device)
     return 0;
 }
 
+/**
+ * @brief Check the LPS22HH WHO_AM_I register.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return true when the expected identity is present.
+ */
 bool lps22hh_check_who_am_i_device(const TagPressureDevice *device)
 {
     uint8_t v = 0;
@@ -122,6 +163,12 @@ bool lps22hh_check_who_am_i_device(const TagPressureDevice *device)
     return v == LPS22HH_WHO_AM_I_VAL;
 }
 
+/**
+ * @brief Put the LPS22HH into low-power idle mode.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return 0 on success.
+ */
 int lps22hh_set_idle_device(const TagPressureDevice *device)
 {
     /*
@@ -146,6 +193,14 @@ int lps22hh_set_idle_device(const TagPressureDevice *device)
     return 0;
 }
 
+/**
+ * @brief Configure continuous pressure conversion.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] odr Output data rate.
+ * @param[in] lpf Low-pass filter selection.
+ * @return 0 on success or -1 for invalid ODR.
+ */
 int lps22hh_config_continuous_device(const TagPressureDevice *device,
                                      lps22hh_odr_t odr, lps22hh_lpf_t lpf)
 {
@@ -176,6 +231,13 @@ int lps22hh_config_continuous_device(const TagPressureDevice *device,
     return 0;
 }
 
+/**
+ * @brief Configure one-shot pressure conversion with data-ready routing.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] lpf Low-pass filter selection retained for API symmetry.
+ * @return 0 on success.
+ */
 int lps22hh_config_triggered_device(const TagPressureDevice *device,
                                     lps22hh_lpf_t lpf)
 {
@@ -202,6 +264,12 @@ int lps22hh_config_triggered_device(const TagPressureDevice *device,
     return 0;
 }
 
+/**
+ * @brief Start one one-shot pressure/temperature conversion.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return 0 on success.
+ */
 int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
 {
     /*
@@ -217,6 +285,12 @@ int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
     return 0;
 }
 
+/**
+ * @brief Report whether pressure or temperature data is ready.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @return true when a fresh pressure or temperature sample is available.
+ */
 bool lps22hh_data_ready_device(const TagPressureDevice *device)
 {
     /*
@@ -232,6 +306,14 @@ bool lps22hh_data_ready_device(const TagPressureDevice *device)
     return (s & (LPS22HH_STATUS_P_DA | LPS22HH_STATUS_T_DA)) != 0;
 }
 
+/**
+ * @brief Read one coherent raw pressure/temperature sample pair.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[out] pressure Raw signed pressure sample.
+ * @param[out] temperature Raw signed temperature sample.
+ * @return 0 on success or -1 for invalid output pointers.
+ */
 int lps22hh_read_raw_device(const TagPressureDevice *device, int32_t *pressure,
                             int32_t *temperature)
 {
@@ -263,12 +345,29 @@ int lps22hh_read_raw_device(const TagPressureDevice *device, int32_t *pressure,
     *temperature = (int32_t)t;
     return 0;
 }
-/* Converstion Routines*/
+/** @} */
 
-
+/** @name LPS22HH conversion helpers
+ * Convert raw pressure/temperature readings into engineering units.
+ * @{
+ */
+/**
+ * @brief Convert raw pressure to hectopascals.
+ *
+ * @param[in] pressure Raw signed pressure sample.
+ * @return Pressure in hPa.
+ */
 float lps22hh_raw_pressure_hPA(int32_t pressure){
     return pressure * LPS22HH_PRESSURE_SENSITIVITY;
 }
+
+/**
+ * @brief Convert raw temperature to degrees Celsius.
+ *
+ * @param[in] temperature Raw signed temperature sample.
+ * @return Temperature in degrees Celsius.
+ */
 float lps22hh_raw_temperature_c(int32_t temperature){
     return temperature *LPS22HH_TEMPERATURE_SENSITIVITY;
 }
+/** @} */

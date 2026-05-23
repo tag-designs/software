@@ -1,3 +1,10 @@
+/**
+ * @file lis2dtw12.c
+ * @brief Legacy LIS2DTW12 accelerometer sampling and self-test implementation.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "custom.h"
 #include "core_types.h"
@@ -38,6 +45,17 @@ typedef enum
 
 #define LIS2DTW12_ID            0x44U
 
+/** @name Legacy SPI transfer helpers
+ * LIS2DTW12 legacy code talks directly to SPI1 and LINE_ACCEL_CS; these helpers
+ * keep that register pacing localized.
+ * @{
+ */
+/**
+ * @brief Send bytes over the legacy SPI1 accelerometer bus.
+ *
+ * @param[in] n Number of bytes to send.
+ * @param[in] buf Source bytes.
+ */
 static void spiSendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -50,6 +68,12 @@ static void spiSendPolled(uint32_t n, uint8_t *buf)
   }
 }
 
+/**
+ * @brief Receive bytes over the legacy SPI1 accelerometer bus.
+ *
+ * @param[in] n Number of bytes to receive.
+ * @param[out] buf Destination buffer.
+ */
 static void spiReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -62,6 +86,14 @@ static void spiReceivePolled(uint32_t n, uint8_t *buf)
   }
 }
 
+/**
+ * @brief Write one or more LIS2DTW12 registers.
+ *
+ * @param[in] reg First register to write.
+ * @param[in] bufp Source buffer.
+ * @param[in] len Number of bytes to write.
+ * @return 0 on success.
+ */
 static int32_t lis2dtw12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   unsigned char buffer = ((uint8_t)reg);
@@ -72,6 +104,14 @@ static int32_t lis2dtw12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
   return 0;
 }
 
+/**
+ * @brief Read one or more LIS2DTW12 registers.
+ *
+ * @param[in] reg First register to read.
+ * @param[out] bufp Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0 on success.
+ */
 static int32_t lis2dtw12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   unsigned char buffer = 0x80 | reg;
@@ -82,11 +122,28 @@ static int32_t lis2dtw12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
   return 0;
 }
 
+/**
+ * @brief Write one byte to a LIS2DTW12 register.
+ *
+ * @param[in] regnum Register address.
+ * @param[in] val Value to write.
+ * @return 0 on success.
+ */
 static int32_t lis2_reg_write(uint8_t regnum, uint8_t val)
 {
   return lis2dtw12_write(regnum, &val, 1);
 }
+/** @} */
 
+/** @name LIS2DTW12 setup and sampling
+ * Legacy setup helpers used by the simple RMS sampling path.
+ * @{
+ */
+/**
+ * @brief Configure LIS2DTW12 for low-pass or high-pass sampling.
+ *
+ * @param[in] lpf true for low-pass output, false for high-pass output.
+ */
 static void lis2_init(bool lpf)
 {
   // set block data update, automatic register increment, turn off cs pullup, turn off i2c interface
@@ -106,6 +163,9 @@ static void lis2_init(bool lpf)
   lis2_reg_write(LIS2DTW12_CTRL1, (3 << 4) | 1); //3
 }
 
+/**
+ * @brief Soft-reset the LIS2DTW12 after sampling.
+ */
 static void lis2_deinit(void)
 {
   // soft reset
@@ -114,6 +174,13 @@ static void lis2_deinit(void)
 
 static int16_t accelbuf[32 * 3] NOINIT;
 
+/**
+ * @brief Capture LIS2DTW12 samples and compute RMS motion.
+ *
+ * @param[in] samples Number of samples to include in RMS calculation.
+ * @param[out] rms RMS acceleration estimate.
+ * @param[out] orientation Three-axis low-pass orientation sample.
+ */
 void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 {
   float sum;
@@ -158,6 +225,11 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   *rms = sum;
 }
 
+/**
+ * @brief Read the LIS2DTW12 identity register.
+ *
+ * @return true when the expected device ID is present.
+ */
 bool lis2_test(void) {
   uint8_t val;
   accelSpiOn();
@@ -165,3 +237,4 @@ bool lis2_test(void) {
   accelSpiOff();
   return val == LIS2DTW12_ID;
 }
+/** @} */

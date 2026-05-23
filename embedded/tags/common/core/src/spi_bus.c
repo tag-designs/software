@@ -1,9 +1,16 @@
+/**
+ * @file spi_bus.c
+ * @brief SPI descriptor lifecycle, active tracking, and raw transfer helpers.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "power.h"
 
 #include "core_sync.h"
 #include "gpio_utils.h"
 
-/*
+/** @name SPI bus implementation overview
  * Polling SPI byte transfers shared by simple peripheral drivers.
  *
  * Existing tag code drives SPI peripheral registers directly rather than
@@ -15,6 +22,7 @@
  * Storage flash drivers can be more sensitive to command/address/data pacing.
  * They should use storage_spi.h when they need byte-at-a-time transfers with
  * chip select held across a complete flash transaction.
+ * @{
  */
 
 #if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
@@ -41,12 +49,20 @@ static bool spi5_suspended_for_stop = false;
 static bool spi6_on = false;
 static bool spi6_suspended_for_stop = false;
 #endif
+/** @} */
 
-/*
+/** @name SPI active-state tracking
  * Active-peripheral tracking for Stop2.
  *
  * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
+ * @{
+ */
+/**
+ * @brief Return the active-state flag for a configured SPI peripheral.
+ *
+ * @param[in] spi STM32 SPI peripheral to look up.
+ * @return Pointer to the active flag, or NULL when the peripheral is not tracked.
  */
 static bool *tagSpiOnFlag(SPI_TypeDef *spi)
 {
@@ -77,6 +93,12 @@ static bool *tagSpiOnFlag(SPI_TypeDef *spi)
   return 0;
 }
 
+/**
+ * @brief Return the Stop2-suspended flag for a configured SPI peripheral.
+ *
+ * @param[in] spi STM32 SPI peripheral to look up.
+ * @return Pointer to the suspended flag, or NULL when the peripheral is not tracked.
+ */
 static bool *tagSpiSuspendedForStopFlag(SPI_TypeDef *spi)
 {
 #if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
@@ -106,6 +128,11 @@ static bool *tagSpiSuspendedForStopFlag(SPI_TypeDef *spi)
   return 0;
 }
 
+/**
+ * @brief Enable and reset the RCC clock for a configured SPI peripheral.
+ *
+ * @param[in] spi STM32 SPI peripheral whose clock should be prepared.
+ */
 static void tagSpiPeripheralEnableClock(SPI_TypeDef *spi)
 {
 #if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
@@ -159,6 +186,11 @@ static void tagSpiPeripheralEnableClock(SPI_TypeDef *spi)
   (void)spi;
 }
 
+/**
+ * @brief Disable a tracked active SPI peripheral for Stop2.
+ *
+ * @param[in] spi STM32 SPI peripheral to suspend if active.
+ */
 static void tagSpiDisableForStop(SPI_TypeDef *spi)
 {
   bool *on = tagSpiOnFlag(spi);
@@ -171,6 +203,11 @@ static void tagSpiDisableForStop(SPI_TypeDef *spi)
   }
 }
 
+/**
+ * @brief Re-enable a tracked SPI peripheral that was suspended for Stop2.
+ *
+ * @param[in] spi STM32 SPI peripheral to resume if previously suspended.
+ */
 static void tagSpiEnableAfterStop(SPI_TypeDef *spi)
 {
   bool *suspended = tagSpiSuspendedForStopFlag(spi);
@@ -182,6 +219,12 @@ static void tagSpiEnableAfterStop(SPI_TypeDef *spi)
   }
 }
 
+/**
+ * @brief Report whether an SPI peripheral is currently enabled by a bus session.
+ *
+ * @param[in] spi STM32 SPI peripheral to inspect.
+ * @return true when the peripheral is tracked as active.
+ */
 bool tagSpiIsOn(SPI_TypeDef *spi)
 {
   bool *on = tagSpiOnFlag(spi);
@@ -189,6 +232,11 @@ bool tagSpiIsOn(SPI_TypeDef *spi)
   return on && *on;
 }
 
+/**
+ * @brief Mark an SPI peripheral active for Stop2 suspend tracking.
+ *
+ * @param[in] spi STM32 SPI peripheral to mark active.
+ */
 void tagMarkSpiOn(SPI_TypeDef *spi)
 {
   bool *on = tagSpiOnFlag(spi);
@@ -199,6 +247,11 @@ void tagMarkSpiOn(SPI_TypeDef *spi)
   }
 }
 
+/**
+ * @brief Mark an SPI peripheral inactive and clear any suspended state.
+ *
+ * @param[in] spi STM32 SPI peripheral to mark inactive.
+ */
 void tagMarkSpiOff(SPI_TypeDef *spi)
 {
   bool *on = tagSpiOnFlag(spi);
@@ -214,6 +267,9 @@ void tagMarkSpiOff(SPI_TypeDef *spi)
   }
 }
 
+/**
+ * @brief Disable currently active SPI peripherals before Stop2 entry.
+ */
 void tagSpiDisableActiveForStop(void)
 {
 #if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
@@ -236,6 +292,9 @@ void tagSpiDisableActiveForStop(void)
 #endif
 }
 
+/**
+ * @brief Re-enable SPI peripherals suspended by Stop2 entry.
+ */
 void tagSpiEnableActiveAfterStop(void)
 {
 #if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
@@ -257,7 +316,13 @@ void tagSpiEnableActiveAfterStop(void)
   tagSpiEnableAfterStop(SPI6);
 #endif
 }
+/** @} */
 
+/** @name SPI configuration and peripheral enable
+ * Helpers that translate a compile-time device descriptor into the STM32 SPI
+ * register state needed for one bus session.
+ * @{
+ */
 #if (defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1) ||                         \
     (defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2) ||                         \
     (defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3) ||                         \
@@ -277,6 +342,11 @@ const TagSpiConfig tagSpiDefaultConfig = {
 };
 #endif
 
+/**
+ * @brief Configure and enable the SPI peripheral for one device session.
+ *
+ * @param[in] device SPI device descriptor supplying peripheral and config.
+ */
 static void tagSpiDeviceEnable(const TagSpiDevice *device)
 {
   const TagSpiConfig *config = device->config;
@@ -295,6 +365,11 @@ static void tagSpiDeviceEnable(const TagSpiDevice *device)
   tagMarkSpiOn(device->spi);
 }
 
+/**
+ * @brief Disable the SPI peripheral at the end of one device session.
+ *
+ * @param[in] device SPI device descriptor supplying the peripheral.
+ */
 static void tagSpiDeviceDisable(const TagSpiDevice *device)
 {
   device->spi->CR1 = 0;
@@ -302,13 +377,20 @@ static void tagSpiDeviceDisable(const TagSpiDevice *device)
 
   tagMarkSpiOff(device->spi);
 }
+/** @} */
 
-/*
+/** @name SPI device power and bus sessions
  * Device power and bus sessions.
  *
  * Power on/off handles optional switched power and safe idle pins. Bus
  * begin/end owns the shared mutex, alternate functions, and peripheral enable
  * state for one transaction/session.
+ * @{
+ */
+/**
+ * @brief Assert device power and put chip select into a safe idle state.
+ *
+ * @param[in] device SPI device descriptor to power.
  */
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
@@ -322,6 +404,11 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
   toOutput(device->cs);
 }
 
+/**
+ * @brief Remove device power and return SPI pins to analog low-leakage mode.
+ *
+ * @param[in] device SPI device descriptor to power down.
+ */
 void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
   if (tagLineIsValid(device->pwr))
@@ -335,6 +422,11 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
   toAnalog(device->cs);
 }
 
+/**
+ * @brief Claim the shared bus and enable the SPI peripheral for this device.
+ *
+ * @param[in] device SPI device descriptor whose session should begin.
+ */
 void tagSpiBusBegin(const TagSpiDevice *device)
 {
   if (device->mutex)
@@ -352,6 +444,11 @@ void tagSpiBusBegin(const TagSpiDevice *device)
   tagSpiDeviceEnable(device);
 }
 
+/**
+ * @brief Disable the SPI peripheral and release the shared bus.
+ *
+ * @param[in] device SPI device descriptor whose session should end.
+ */
 void tagSpiBusEnd(const TagSpiDevice *device)
 {
   palSetLine(device->cs);
@@ -368,6 +465,11 @@ void tagSpiBusEnd(const TagSpiDevice *device)
   }
 }
 
+/**
+ * @brief Apply standby pull policy for an SPI-backed device.
+ *
+ * @param[in] device SPI device descriptor whose sleep policy should be applied.
+ */
 void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
 {
   switch (device->sleep_policy)
@@ -386,13 +488,22 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
     break;
   }
 }
+/** @} */
 
-/*
+/** @name SPI raw byte transfers
  * Raw byte transfers.
  *
  * The default read/write routines intentionally use byte-at-a-time
  * request/response loops. Pipelined variants remain available for cases that
  * have been proven safe on hardware.
+ * @{
+ */
+/**
+ * @brief Pipelined SPI write for devices proven safe with queued transfers.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] buf Bytes to transmit.
+ * @param[in] len Number of bytes to transmit.
  */
 void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
                           uint32_t len)
@@ -413,6 +524,13 @@ void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
   }
 }
 
+/**
+ * @brief Pipelined SPI read for devices proven safe with queued transfers.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[out] buf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to read.
+ */
 void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
                          uint32_t len)
 {
@@ -432,6 +550,13 @@ void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
   }
 }
 
+/**
+ * @brief Write bytes and discard the full-duplex response stream.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] buf Bytes to transmit.
+ * @param[in] len Number of bytes to transmit.
+ */
 void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
@@ -448,6 +573,13 @@ void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
   }
 }
 
+/**
+ * @brief Read bytes by clocking the descriptor's dummy byte.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[out] buf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to read.
+ */
 void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
@@ -464,12 +596,23 @@ void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
   }
 }
 
+/**
+ * @brief Assert the SPI device chip-select line.
+ *
+ * @param[in] device SPI device descriptor to select.
+ */
 void tagSpiSelect(const TagSpiDevice *device)
 {
   palClearLine(device->cs);
 }
 
+/**
+ * @brief Deassert the SPI device chip-select line.
+ *
+ * @param[in] device SPI device descriptor to deselect.
+ */
 void tagSpiDeselect(const TagSpiDevice *device)
 {
   palSetLine(device->cs);
 }
+/** @} */

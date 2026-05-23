@@ -1,3 +1,10 @@
+/**
+ * @file core_events.h
+ * @brief Shared event-mask definitions for sensors, RTC, wakeup, and monitor commands.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef TAG_CORE_EVENTS_H
 #define TAG_CORE_EVENTS_H
 

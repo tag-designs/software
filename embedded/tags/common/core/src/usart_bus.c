@@ -1,14 +1,22 @@
+/**
+ * @file usart_bus.c
+ * @brief Synchronous-USART lifecycle, active tracking, and raw transfers.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "usart_bus.h"
 
 #include "core_sync.h"
 #include "gpio_utils.h"
 #include "power.h"
 
-/*
+/** @name Synchronous-USART implementation overview
  * Polling synchronous-USART byte transfers shared by simple sensor drivers.
  *
  * This file owns USART peripheral setup, device bus-session pin state,
  * active-state tracking, and raw byte-transfer mechanics.
+ * @{
  */
 
 #if (defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1) ||        \
@@ -31,12 +39,14 @@ static bool usart2_suspended_for_stop = false;
 static bool usart3_on = false;
 static bool usart3_suspended_for_stop = false;
 #endif
+/** @} */
 
-/*
+/** @name Default synchronous-USART configuration
  * Default synchronous-USART2 binding.
  *
  * This is the common "SPI-lite" configuration used by tag-local descriptors
  * unless they provide a device-specific TagUsartSyncConfig.
+ * @{
  */
 const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
     .brr = 0x10,
@@ -44,12 +54,20 @@ const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
     .cr2 = USART_CR2_MSBFIRST | USART_CR2_CLKEN | USART_CR2_LBCL,
     .cr3 = USART_CR3_OVRDIS | USART_CR3_ONEBIT,
 };
+/** @} */
 
-/*
+/** @name USART active-state tracking
  * Active-peripheral tracking for Stop2.
  *
  * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
+ * @{
+ */
+/**
+ * @brief Return the active-state flag for a configured USART peripheral.
+ *
+ * @param[in] usart STM32 USART peripheral to look up.
+ * @return Pointer to the active flag, or NULL when the peripheral is not tracked.
  */
 static bool *tagUsartOnFlag(USART_TypeDef *usart)
 {
@@ -70,6 +88,12 @@ static bool *tagUsartOnFlag(USART_TypeDef *usart)
   return 0;
 }
 
+/**
+ * @brief Return the Stop2-suspended flag for a configured USART peripheral.
+ *
+ * @param[in] usart STM32 USART peripheral to look up.
+ * @return Pointer to the suspended flag, or NULL when the peripheral is not tracked.
+ */
 static bool *tagUsartSuspendedForStopFlag(USART_TypeDef *usart)
 {
   (void)usart;
@@ -89,6 +113,11 @@ static bool *tagUsartSuspendedForStopFlag(USART_TypeDef *usart)
   return 0;
 }
 
+/**
+ * @brief Enable and reset the RCC clock for a configured USART peripheral.
+ *
+ * @param[in] usart STM32 USART peripheral whose clock should be prepared.
+ */
 static void tagUsartPeripheralEnableClock(USART_TypeDef *usart)
 {
 #if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
@@ -119,6 +148,11 @@ static void tagUsartPeripheralEnableClock(USART_TypeDef *usart)
 }
 
 #if TAG_USART_TRACKING_ENABLED
+/**
+ * @brief Disable a tracked active USART peripheral for Stop2.
+ *
+ * @param[in] usart STM32 USART peripheral to suspend if active.
+ */
 static void tagUsartDisableForStop(USART_TypeDef *usart)
 {
   bool *on = tagUsartOnFlag(usart);
@@ -131,6 +165,11 @@ static void tagUsartDisableForStop(USART_TypeDef *usart)
   }
 }
 
+/**
+ * @brief Re-enable a tracked USART peripheral that was suspended for Stop2.
+ *
+ * @param[in] usart STM32 USART peripheral to resume if previously suspended.
+ */
 static void tagUsartEnableAfterStop(USART_TypeDef *usart)
 {
   bool *suspended = tagUsartSuspendedForStopFlag(usart);
@@ -143,6 +182,12 @@ static void tagUsartEnableAfterStop(USART_TypeDef *usart)
 }
 #endif
 
+/**
+ * @brief Report whether a USART peripheral is currently enabled by a bus session.
+ *
+ * @param[in] usart STM32 USART peripheral to inspect.
+ * @return true when the peripheral is tracked as active.
+ */
 bool tagUsartIsOn(USART_TypeDef *usart)
 {
   bool *on = tagUsartOnFlag(usart);
@@ -150,6 +195,11 @@ bool tagUsartIsOn(USART_TypeDef *usart)
   return on && *on;
 }
 
+/**
+ * @brief Mark a USART peripheral active for Stop2 suspend tracking.
+ *
+ * @param[in] usart STM32 USART peripheral to mark active.
+ */
 void tagMarkUsartOn(USART_TypeDef *usart)
 {
   bool *on = tagUsartOnFlag(usart);
@@ -160,6 +210,11 @@ void tagMarkUsartOn(USART_TypeDef *usart)
   }
 }
 
+/**
+ * @brief Mark a USART peripheral inactive and clear any suspended state.
+ *
+ * @param[in] usart STM32 USART peripheral to mark inactive.
+ */
 void tagMarkUsartOff(USART_TypeDef *usart)
 {
   bool *on = tagUsartOnFlag(usart);
@@ -174,7 +229,18 @@ void tagMarkUsartOff(USART_TypeDef *usart)
     *suspended = false;
   }
 }
+/** @} */
 
+/** @name USART configuration and peripheral enable
+ * Helpers that translate a compile-time device descriptor into the STM32 USART
+ * synchronous-mode register state needed for one bus session.
+ * @{
+ */
+/**
+ * @brief Configure and enable the USART peripheral for one device session.
+ *
+ * @param[in] device USART device descriptor supplying peripheral and config.
+ */
 static void tagUsartDeviceEnable(const TagUsartDevice *device)
 {
   const TagUsartSyncConfig *config = device->config;
@@ -195,6 +261,11 @@ static void tagUsartDeviceEnable(const TagUsartDevice *device)
   tagMarkUsartOn(device->usart);
 }
 
+/**
+ * @brief Disable the USART peripheral at the end of one device session.
+ *
+ * @param[in] device USART device descriptor supplying the peripheral.
+ */
 static void tagUsartDeviceDisable(const TagUsartDevice *device)
 {
   device->usart->CR1 = 0;
@@ -203,12 +274,17 @@ static void tagUsartDeviceDisable(const TagUsartDevice *device)
 
   tagMarkUsartOff(device->usart);
 }
+/** @} */
 
-/*
+/** @name USART Stop2 suspend/resume hooks
  * Stop2 suspend/resume hooks.
  *
  * These only toggle the USART enable bit for a peripheral that was already
  * open. Normal bus close/open still goes through tagUsartBusEnd/Begin.
+ * @{
+ */
+/**
+ * @brief Disable currently active USART peripherals before Stop2 entry.
  */
 void tagUsartDisableActiveForStop(void)
 {
@@ -225,6 +301,9 @@ void tagUsartDisableActiveForStop(void)
 #endif
 }
 
+/**
+ * @brief Re-enable USART peripherals suspended by Stop2 entry.
+ */
 void tagUsartEnableActiveAfterStop(void)
 {
 #if TAG_USART_TRACKING_ENABLED
@@ -239,13 +318,20 @@ void tagUsartEnableActiveAfterStop(void)
 #endif
 #endif
 }
+/** @} */
 
-/*
+/** @name USART device power and bus sessions
  * Device power and bus sessions.
  *
  * Power on/off handles optional switched power and safe idle pins. Bus
  * begin/end owns the shared mutex, alternate functions, and peripheral enable
  * state for one transaction/session.
+ * @{
+ */
+/**
+ * @brief Assert device power and put chip select into a safe idle state.
+ *
+ * @param[in] device USART device descriptor to power.
  */
 void tagUsartDevicePowerOn(const TagUsartDevice *device)
 {
@@ -259,6 +345,11 @@ void tagUsartDevicePowerOn(const TagUsartDevice *device)
   toOutput(device->cs);
 }
 
+/**
+ * @brief Remove device power and return USART pins to analog low-leakage mode.
+ *
+ * @param[in] device USART device descriptor to power down.
+ */
 void tagUsartDevicePowerOff(const TagUsartDevice *device)
 {
   if (tagLineIsValid(device->pwr))
@@ -272,6 +363,11 @@ void tagUsartDevicePowerOff(const TagUsartDevice *device)
   toAnalog(device->cs);
 }
 
+/**
+ * @brief Claim the shared bus and enable the USART peripheral for this device.
+ *
+ * @param[in] device USART device descriptor whose session should begin.
+ */
 void tagUsartBusBegin(const TagUsartDevice *device)
 {
   if (device->mutex)
@@ -289,6 +385,11 @@ void tagUsartBusBegin(const TagUsartDevice *device)
   tagUsartDeviceEnable(device);
 }
 
+/**
+ * @brief Disable the USART peripheral and release the shared bus.
+ *
+ * @param[in] device USART device descriptor whose session should end.
+ */
 void tagUsartBusEnd(const TagUsartDevice *device)
 {
   palSetLine(device->cs);
@@ -305,6 +406,11 @@ void tagUsartBusEnd(const TagUsartDevice *device)
   }
 }
 
+/**
+ * @brief Apply standby pull policy for a USART-backed device.
+ *
+ * @param[in] device USART device descriptor whose sleep policy should be applied.
+ */
 void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
 {
   switch (device->sleep_policy)
@@ -323,12 +429,21 @@ void tagUsartDevicePrepareSleep(const TagUsartDevice *device)
     break;
   }
 }
+/** @} */
 
-/*
+/** @name USART raw byte transfers
  * Raw byte transfers.
  *
  * Synchronous USART behaves like an SPI-style full-duplex shifter for these
  * devices: every transmitted byte produces one received byte.
+ * @{
+ */
+/**
+ * @brief Write bytes and discard the full-duplex response stream.
+ *
+ * @param[in] device USART device descriptor.
+ * @param[in] buf Bytes to transmit.
+ * @param[in] len Number of bytes to transmit.
  */
 void tagUsartWrite(const TagUsartDevice *device, const uint8_t *buf,
                    uint32_t len)
@@ -345,6 +460,13 @@ void tagUsartWrite(const TagUsartDevice *device, const uint8_t *buf,
   }
 }
 
+/**
+ * @brief Read bytes by clocking the descriptor's dummy byte.
+ *
+ * @param[in] device USART device descriptor.
+ * @param[out] buf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to read.
+ */
 void tagUsartRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len)
 {
   USART_TypeDef *usart = tagUsartDevicePeripheral(device);
@@ -359,12 +481,23 @@ void tagUsartRead(const TagUsartDevice *device, uint8_t *buf, uint32_t len)
   }
 }
 
+/**
+ * @brief Assert the USART device chip-select line.
+ *
+ * @param[in] device USART device descriptor to select.
+ */
 void tagUsartSelect(const TagUsartDevice *device)
 {
   palClearLine(device->cs);
 }
 
+/**
+ * @brief Deassert the USART device chip-select line.
+ *
+ * @param[in] device USART device descriptor to deselect.
+ */
 void tagUsartDeselect(const TagUsartDevice *device)
 {
   palSetLine(device->cs);
 }
+/** @} */

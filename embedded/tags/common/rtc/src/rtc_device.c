@@ -1,3 +1,10 @@
+/**
+ * @file rtc_device.c
+ * @brief Default RTC descriptor binding and register transaction helpers.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "rtc_device.h"
 
 #if defined(TAG_RTC_RV3028)
@@ -6,13 +13,14 @@
 
 #define RTC_TIMEOUT 100
 
-/*
+/** @name Default RV3028 device binding
  * Default RV3028 device binding.
  *
  * The RTC driver itself is parameterized by TagRtcDevice. Most tags use the
  * standard RV3028 wiring on I2CD1, so the common module provides a weak
  * descriptor here. A tag with unusual RTC wiring can override tagRtcDevice()
  * locally without carrying a private copy of the RV3028 register driver.
+ * @{
  */
 static const TagI2cDevice rtc_i2c = {
     .controller = &tagI2c1DefaultController,
@@ -27,32 +35,72 @@ static const TagRtcDevice rtc_device = {
     .device_off = rtcOff,
 };
 
+/**
+ * @brief Return the default RV3028 RTC descriptor.
+ *
+ * @return Immutable RTC descriptor for the default I2CD1 RV3028 binding.
+ */
 const TagRtcDevice *__attribute__((weak)) tagRtcDevice(void)
 {
   return &rtc_device;
 }
+/** @} */
 #endif
 
+/** @name RTC transaction helpers
+ * Descriptor-based helpers used by chip drivers to bracket register access with
+ * the tag's RTC power/bus policy.
+ * @{
+ */
+/**
+ * @brief Begin an RTC transaction by enabling the device/bus binding.
+ *
+ * @param[in] device RTC device descriptor.
+ */
 void tagRtcDeviceBegin(const TagRtcDevice *device)
 {
   if (device->device_on)
     device->device_on();
 }
 
+/**
+ * @brief End an RTC transaction by disabling the device/bus binding.
+ *
+ * @param[in] device RTC device descriptor.
+ */
 void tagRtcDeviceEnd(const TagRtcDevice *device)
 {
   if (device->device_off)
     device->device_off();
 }
 
+/**
+ * @brief Read consecutive RTC registers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] reg First register address.
+ * @param[out] buf Destination buffer for register bytes.
+ * @param[in] len Number of bytes to read.
+ * @return MSG_OK on success or a bus error.
+ */
 int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
   return tagI2cReadRegister(device->registers, reg, buf, len);
 }
 
+/**
+ * @brief Write consecutive RTC registers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] reg First register address.
+ * @param[in] buf Source buffer for register bytes.
+ * @param[in] len Number of bytes to write.
+ * @return MSG_OK on success or a bus error.
+ */
 int tagRtcWriteRegister(const TagRtcDevice *device, uint8_t reg,
                         const uint8_t *buf, uint32_t len)
 {
   return tagI2cWriteRegister(device->registers, reg, buf, len);
 }
+/** @} */

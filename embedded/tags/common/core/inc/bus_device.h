@@ -1,3 +1,10 @@
+/**
+ * @file bus_device.h
+ * @brief Tagged bus-device union and common bus lifecycle dispatch helpers.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef TAG_CORE_BUS_DEVICE_H
 #define TAG_CORE_BUS_DEVICE_H
 
@@ -5,11 +12,12 @@
 #include "spi_bus.h"
 #include "usart_bus.h"
 
-/*
+/** @name Concrete bus descriptors
  * Concrete bus descriptor.
  *
  * Devices are described at compile time, so this layer preserves the common
  * bus lifecycle API without type-erasing through void pointers or vtables.
+ * @{
  */
 typedef enum {
   TAG_BUS_SPI,
@@ -26,30 +34,68 @@ typedef struct {
   } device;
 } TagBusDevice;
 
+/** Initialize a TagBusDevice that carries a TagSpiDevice descriptor. */
 #define TAG_BUS_SPI_INIT(...) \
   { .kind = TAG_BUS_SPI, .device.spi = { __VA_ARGS__ } }
 
+/** Initialize a TagBusDevice that carries a TagUsartDevice descriptor. */
 #define TAG_BUS_USART_INIT(...) \
   { .kind = TAG_BUS_USART, .device.usart = { __VA_ARGS__ } }
 
+/** Initialize a TagBusDevice that carries a TagI2cDevice descriptor. */
 #define TAG_BUS_I2C_INIT(...) \
   { .kind = TAG_BUS_I2C, .device.i2c = { __VA_ARGS__ } }
+/** @} */
 
+/** @name Typed bus accessors
+ * Accessors keep union member selection localized and make call sites read like
+ * they are still using concrete bus-device descriptors.
+ * @{
+ */
+/**
+ * @brief Return the SPI descriptor stored in a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device whose kind is TAG_BUS_SPI.
+ * @return Pointer to the embedded SPI descriptor.
+ */
 static inline const TagSpiDevice *tagBusSpiDevice(const TagBusDevice *bus)
 {
   return &bus->device.spi;
 }
 
+/**
+ * @brief Return the USART descriptor stored in a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device whose kind is TAG_BUS_USART.
+ * @return Pointer to the embedded USART descriptor.
+ */
 static inline const TagUsartDevice *tagBusUsartDevice(const TagBusDevice *bus)
 {
   return &bus->device.usart;
 }
 
+/**
+ * @brief Return the I2C descriptor stored in a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device whose kind is TAG_BUS_I2C.
+ * @return Pointer to the embedded I2C descriptor.
+ */
 static inline const TagI2cDevice *tagBusI2cDevice(const TagBusDevice *bus)
 {
   return &bus->device.i2c;
 }
+/** @} */
 
+/** @name Common bus lifecycle dispatch
+ * Inline dispatch preserves a compact storage/sensor interface while allowing
+ * each concrete bus layer to own its power, session, and sleep behavior.
+ * @{
+ */
+/**
+ * @brief Power on the physical device represented by a tagged bus descriptor.
+ *
+ * @param[in] bus Tagged bus device to power.
+ */
 static inline void tagBusPowerOn(const TagBusDevice *bus)
 {
   switch (bus->kind) {
@@ -65,6 +111,11 @@ static inline void tagBusPowerOn(const TagBusDevice *bus)
   }
 }
 
+/**
+ * @brief Power off the physical device represented by a tagged bus descriptor.
+ *
+ * @param[in] bus Tagged bus device to power down.
+ */
 static inline void tagBusPowerOff(const TagBusDevice *bus)
 {
   switch (bus->kind) {
@@ -80,6 +131,11 @@ static inline void tagBusPowerOff(const TagBusDevice *bus)
   }
 }
 
+/**
+ * @brief Begin an exclusive transaction session for a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device whose bus session should begin.
+ */
 static inline void tagBusBegin(const TagBusDevice *bus)
 {
   switch (bus->kind) {
@@ -95,6 +151,11 @@ static inline void tagBusBegin(const TagBusDevice *bus)
   }
 }
 
+/**
+ * @brief End an exclusive transaction session for a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device whose bus session should end.
+ */
 static inline void tagBusEnd(const TagBusDevice *bus)
 {
   switch (bus->kind) {
@@ -110,6 +171,11 @@ static inline void tagBusEnd(const TagBusDevice *bus)
   }
 }
 
+/**
+ * @brief Apply the bus-specific sleep policy for a tagged bus device.
+ *
+ * @param[in] bus Tagged bus device to prepare for low-power entry.
+ */
 static inline void tagBusPrepareSleep(const TagBusDevice *bus)
 {
   switch (bus->kind) {
@@ -124,5 +190,6 @@ static inline void tagBusPrepareSleep(const TagBusDevice *bus)
     break;
   }
 }
+/** @} */
 
 #endif

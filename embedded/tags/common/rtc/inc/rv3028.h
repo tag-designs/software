@@ -1,3 +1,10 @@
+/**
+ * @file rv3028.h
+ * @brief Micro Crystal RV3028 RTC register definitions and driver API.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef RV3028_H
 #define RV3028_H
 
@@ -6,6 +13,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/** @name RV3028 registers and bit definitions
+ * Register addresses and status/control bits used by the RV3028 driver.
+ * @{
+ */
 #define RV3028_ADR (0x52)
 
 #define BIT(x) (1<<(x))
@@ -62,11 +73,49 @@ enum RV3028Reg {
 #define RV3028_EEPROM_CMD_WRITE		0x21
 #define RV3028_EEPROM_CMD_READ		0x22
 #define RV3028_EEPROM_CMD_REFRESH   0x12
+/** @} */
 
+/** @name RV3028 driver API
+ * Descriptor-based accessors used by the generic tag RTC wrapper.
+ * @{
+ */
+/**
+ * @brief Read one or more RV3028 registers.
+ *
+ * @param[in] device RTC device descriptor that owns the register bus.
+ * @param[in] reg First RV3028 register to read.
+ * @param[out] val Destination buffer for register bytes.
+ * @param[in] num Number of bytes to read.
+ * @return MSG_OK on success or a bus error.
+ */
 int rv3028GetReg(const TagRtcDevice *device, enum RV3028Reg reg,
                  uint8_t *val, int num);
+
+/**
+ * @brief Initialize the RV3028 oscillator output and STM32 RTC dividers.
+ *
+ * @param[in] device RTC device descriptor.
+ * @return true when the RTC configuration is usable.
+ */
 bool rv3028Init(const TagRtcDevice *device);
+
+/**
+ * @brief Write date/time to the RV3028.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[in] tm RTC date/time structure to write.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t rv3028SetDateTime(const TagRtcDevice *device, RTCDateTime *tm);
+
+/**
+ * @brief Read date/time from the RV3028.
+ *
+ * @param[in] device RTC device descriptor.
+ * @param[out] tm RTC date/time structure to populate.
+ * @return MSG_OK on success or a driver-specific error.
+ */
 msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm);
+/** @} */
 
 #endif

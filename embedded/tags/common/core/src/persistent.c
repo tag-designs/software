@@ -1,17 +1,13 @@
-/***************************************************************
- *    Persistent (in Flash) state
+/**
+ * @file persistent.c
+ * @brief Internal flash persistence for configuration and state history.
+ * @author tag firmware authors
+ * @date 2026-05-23
  *
- *       In a dedicated flash page allocated in section .persistent
- *       see ../common/STM32L432xC.ld
- *
- *       sEpoch :   state history
- *
- *       to do  :  should write adxl configuration here to be
- *                 retreived by the run state
- *
- *              :  log negative events ???
- *
- ****************************************************************/
+ * The persistent region is allocated in section .persistent by the tag linker
+ * script. Core code records state history here while tag/family storage code
+ * may provide external log erasure and recovery hooks.
+ */
 #include <stdint.h>
 #include <stdbool.h>
 #include "hal.h"
@@ -27,26 +23,29 @@
 #include "strings.h"
 #include "assert.h"
 
-// Test data structure sizes !
-
-//CASSERT(sizeof(t_StateMarker) == 24);
-
+/** Ensure state markers keep the flash-log layout expected by existing tags. */
 static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
 
-// Data held in flash
-
-// extern uint32_t __persistent_start__;
+/** @name Persistent flash records
+ * Objects placed in the persistent flash section and read directly after reset.
+ * @{
+ */
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
 t_storedconfig sconfig __attribute__((__aligned__(8))) __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
 t_DataHeader vddHeader[256] __attribute__((section(".persistent")))
 __attribute__((__aligned__(8))) __attribute__((no_reorder));
+/** @} */
 
-// erase persistent area of flash
-
-
-
+/** @name Internal and external persistence operations
+ * Operations used by monitor commands and reset handling to erase persistent
+ * regions and append state markers without knowing tag-specific storage.
+ * @{
+ */
+/**
+ * @brief Erase the internal flash region reserved for persistent records.
+ */
 void erasePersistent(void)
 {
   uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
@@ -67,7 +66,9 @@ void erasePersistent(void)
   pState->pages = 0;
 }
 
-/*
+/**
+ * @brief Default no-op external flash erase for tags without external storage.
+ *
  * Tags with external flash provide these from their datalog.c file. The weak
  * defaults let core reset code call the external erase path unconditionally on
  * tags that only have internal persistent state.
@@ -76,20 +77,38 @@ void __attribute__((weak)) eraseExternal(void)
 {
 }
 
+/**
+ * @brief Default no-op block erase for tags without external storage.
+ */
 void __attribute__((weak)) eraseExternalBlock(void)
 {
 }
 
+/**
+ * @brief Default external storage size for tags without external storage.
+ *
+ * @return 0 because no external storage is present.
+ */
 uint32_t __attribute__((weak)) externalFlashSize(void)
 {
   return 0;
 }
 
+/**
+ * @brief Default erased-sector count for tags without external storage.
+ *
+ * @return 0 because no external storage is present.
+ */
 int __attribute__((weak)) externalFlashSectorsErased(void)
 {
   return 0;
 }
 
+/**
+ * @brief Append a state transition marker to internal flash.
+ *
+ * @param[in] reason Event that caused the state transition.
+ */
 void recordState(State_Event reason)
 {
   t_StateMarker marker;
@@ -124,3 +143,4 @@ void recordState(State_Event reason)
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 }
+/** @} */

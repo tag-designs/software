@@ -1,13 +1,30 @@
+/**
+ * @file sensor_io.c
+ * @brief Register-device dispatch and I2C/SPI/USART sensor register adapters.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "sensor_io.h"
 
 #define TAG_I2C_REGISTER_MAX_WRITE 16
 
-/*
+/** @name Register-device dispatch
  * Register-device dispatch.
  *
  * Descriptor-backed drivers see one TagRegisterDevice shape. The descriptor
  * keeps a concrete bus descriptor by value, so dispatch is an explicit switch
  * over the register protocol and bus kind instead of a type-erased vtable.
+ * @{
+ */
+/**
+ * @brief Write bytes to a sensor register using the descriptor's protocol.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] buf Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return 0/MSG_OK on success or a protocol-specific error.
  */
 int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
                      const uint8_t *buf, uint32_t len)
@@ -34,6 +51,15 @@ int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
   return MSG_RESET;
 }
 
+/**
+ * @brief Read bytes from a sensor register using the descriptor's protocol.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0/MSG_OK on success or a protocol-specific error.
+ */
 int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
                     uint32_t len)
 {
@@ -58,19 +84,36 @@ int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
 
   return MSG_RESET;
 }
+/** @} */
 
-/*
+/** @name I2C register adapter
  * I2C register adapter.
  *
  * I2C register access does not need ST-style read/write command masks. The
  * adapter context is the TagI2cDevice because address and timeout belong to
  * the concrete device descriptor.
+ * @{
+ */
+/**
+ * @brief Return the ChibiOS I2C driver for a register device.
+ *
+ * @param[in] device I2C device descriptor.
+ * @return ChibiOS I2C driver pointer.
  */
 static inline I2CDriver *tagI2cDeviceDriver(const TagI2cDevice *device)
 {
   return device->controller->driver;
 }
 
+/**
+ * @brief Write bytes to an I2C register device.
+ *
+ * @param[in] io TagI2cDevice context.
+ * @param[in] reg Register address.
+ * @param[in] buf Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return MSG_OK on success or a ChibiOS I2C error.
+ */
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len)
 {
@@ -90,6 +133,15 @@ int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                                   txbuf, len + 1, 0, 0, device->timeout);
 }
 
+/**
+ * @brief Read bytes from an I2C register device.
+ *
+ * @param[in] io TagI2cDevice context.
+ * @param[in] reg Register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return MSG_OK on success or a ChibiOS I2C error.
+ */
 int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
@@ -98,13 +150,24 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
   return i2cMasterTransmitTimeout(tagI2cDeviceDriver(device), device->address,
                                   &reg, 1, buf, len, device->timeout);
 }
+/** @} */
 
-/*
+/** @name ST-style SPI register adapter
  * ST-style SPI register adapter.
  *
  * This keeps command and payload under one CS assertion. Several SPI sensors
  * latch the register command on CS rising, so callers must not split a register
  * write into separately selected command and data transfers.
+ * @{
+ */
+/**
+ * @brief Write bytes to an ST-style SPI register device.
+ *
+ * @param[in] registers Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] buf Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return 0 on success.
  */
 int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
                                 uint8_t reg, const uint8_t *buf,
@@ -122,6 +185,15 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
   return 0;
 }
 
+/**
+ * @brief Read bytes from an ST-style SPI register device.
+ *
+ * @param[in] registers Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0 on success.
+ */
 int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
                                uint8_t reg, uint8_t *buf, uint32_t len)
 {
@@ -135,13 +207,24 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
 
   return 0;
 }
+/** @} */
 
-/*
+/** @name ST-style synchronous-USART register adapter
  * ST-style synchronous-USART register adapter.
  *
  * Some tags use USART in synchronous mode as a small SPI-like bus. The
  * register framing mirrors the SPI adapter: assert CS, send command, transfer
  * payload, release CS.
+ * @{
+ */
+/**
+ * @brief Write bytes to an ST-style synchronous-USART register device.
+ *
+ * @param[in] registers Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] buf Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return 0 on success.
  */
 int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
                                   uint8_t reg, const uint8_t *buf,
@@ -159,6 +242,15 @@ int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
   return 0;
 }
 
+/**
+ * @brief Read bytes from an ST-style synchronous-USART register device.
+ *
+ * @param[in] registers Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0 on success.
+ */
 int tagStUsartReadRegisterDevice(const TagRegisterDevice *registers,
                                  uint8_t reg, uint8_t *buf, uint32_t len)
 {
@@ -172,3 +264,4 @@ int tagStUsartReadRegisterDevice(const TagRegisterDevice *registers,
 
   return 0;
 }
+/** @} */

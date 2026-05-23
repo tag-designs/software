@@ -21,6 +21,8 @@
 /**
  * @file    RTCv2/hal_rtc_lld.c
  * @brief   STM32 RTC low level driver.
+ * @author  ChibiOS authors and tag firmware authors
+ * @date    2026-05-23
  *
  * @addtogroup RTC
  * @{
@@ -200,6 +202,12 @@ static uint32_t rtc_encode_date(const RTCDateTime *timespec) {
 }
 
 #if RTC_HAS_STORAGE == TRUE
+/**
+ * @brief Report the byte capacity exposed through the RTC backup storage VMT.
+ *
+ * @param[in] instance RTC driver instance; unused because storage size is fixed.
+ * @return Number of bytes available in backup registers.
+ */
 static size_t _getsize(void *instance) {
 
   (void)instance;
@@ -207,6 +215,15 @@ static size_t _getsize(void *instance) {
   return (size_t)STM32_RTC_STORAGE_SIZE;
 }
 
+/**
+ * @brief Read bytes from STM32 RTC backup registers.
+ *
+ * @param[in] instance RTC driver instance owning the backup registers.
+ * @param[in] offset Byte offset into backup storage.
+ * @param[in] n Number of bytes to read.
+ * @param[out] rp Destination buffer.
+ * @return PS_NO_ERROR when the read completes.
+ */
 static ps_error_t _read(void *instance, ps_offset_t offset,
                         size_t n, uint8_t *rp) {
   volatile uint32_t *bkpr = &((RTCDriver *)instance)->rtc->BKP0R;
@@ -226,6 +243,15 @@ static ps_error_t _read(void *instance, ps_offset_t offset,
   return PS_NO_ERROR;
 }
 
+/**
+ * @brief Write bytes into STM32 RTC backup registers.
+ *
+ * @param[in] instance RTC driver instance owning the backup registers.
+ * @param[in] offset Byte offset into backup storage.
+ * @param[in] n Number of bytes to write.
+ * @param[in] wp Source buffer.
+ * @return PS_NO_ERROR when the write completes.
+ */
 static ps_error_t _write(void *instance, ps_offset_t offset,
                          size_t n, const uint8_t *wp) {
   volatile uint32_t *bkpr = &((RTCDriver *)instance)->rtc->BKP0R;
