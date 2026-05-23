@@ -1,0 +1,1 @@
+generate_board_files(board-tag-breakout-base-l432-v1)

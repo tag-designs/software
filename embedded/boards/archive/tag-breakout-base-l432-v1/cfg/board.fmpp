@@ -1,0 +1,11 @@
+sourceRoot: .
+outputRoot: ../board
+dataRoot: .
+
+data : {
+  doc1:xml (
+    board.chcfg
+    {
+    }
+  )
+}
