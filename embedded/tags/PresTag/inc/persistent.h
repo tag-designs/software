@@ -1,11 +1,19 @@
+/**
+ * @file persistent.h
+ * @brief PresTag persistent runtime state and log metadata layout.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+/** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
+/** End of internal flash, provided by the linker script. */
 extern uint32_t __flash0_end__;       // from linker script
 
-// Reset causes
-
+/** @brief Reset cause classification recorded across low-power transitions. */
 typedef enum
 {
   resetSleep,     // return from sleep mode
@@ -16,8 +24,7 @@ typedef enum
   resetPower      // power on event
 } t_resetCause;
 
-// Sleep modes
-
+/** @brief Low-power mode requested by the state machine. */
 typedef enum
 {
   modeSleep,
@@ -25,8 +32,7 @@ typedef enum
   modeShutdown
 } t_sleepMode;
 
-// Statemachine commands
-
+/** @brief Monitor command values mirrored in persistent RAM. */
 typedef enum
 {
   SYSNOP,
@@ -36,6 +42,7 @@ typedef enum
   MAXCMD
 } t_command;
 
+/** @brief Backup-register runtime state used to recover after resets. */
 typedef struct
 {
   uint32_t valid;           // backup registers are valid
@@ -50,6 +57,7 @@ typedef struct
 
 } BackupState;
 
+/** Pointer to the retained backup-state region. */
 extern volatile BackupState *const pState;
 
 /********************************************************
@@ -64,20 +72,12 @@ enum LOGERR
   LOGWRITE_ERROR
 };
 
-// Stored State Log
-
-/*
- * We use the following structure in STM32 flash
- * to track state information that must persist across a power cycle event.
- * Right now we just write the current epoch on entry to the corresponding
- * state.  e.g. runEpoch is written on entry to the RUN state.
+/**
+ * @brief Internal flash marker for state recovery.
  *
- *  location 0 = Triggered
- *  location 1 = Running
- *  location 2 = Aborted/Finished
- *  location 3 = Reset
+ * The state machine appends one marker on major state transitions so a reset
+ * can recover the last known state and log cursors before resuming or aborting.
  */
-
 typedef struct
 {
   int32_t epoch;
@@ -89,15 +89,23 @@ typedef struct
   State_Event reason;
 } t_StateMarker __attribute__((aligned(8)));
 
+/** Last monitor command seen by the firmware. */
 extern int32_t monitorCMD;
 
 #define sEPOCH_SIZE (10 + (_TagState_MAX) + 2 * sizeof(((Config *)0)->hibernate) / sizeof(Config_Interval))
 
+/** Internal flash state-transition log. */
 extern t_StateMarker sEpoch[sEPOCH_SIZE];
+/** @brief Append the current state to the persistent state log. */
 void recordState(State_Event reason);
+/** @brief Erase internal persistent state and headers. */
 void erasePersistent(void);
+/** @brief Erase all external log storage. */
 void eraseExternal(void);
+/** @brief Erase one external log block, when supported by the target. */
 void eraseExternalBlock(void);
+/** @brief Report external flash capacity in bytes. */
 uint32_t externalFlashSize(void);
+/** @brief Report progress while external sectors are being erased. */
 int externalFlashSectorsErased(void);
 #endif

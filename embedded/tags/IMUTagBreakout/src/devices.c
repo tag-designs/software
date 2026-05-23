@@ -1,3 +1,10 @@
+/**
+ * @file devices.c
+ * @brief IMUTagBreakout device descriptors, legacy SPI helpers, and power hooks.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 
 #include "app.h"
@@ -19,6 +26,9 @@
  * RTC and standby entry, matching the newer PresTag/CompassTag split.
  */
 
+/**
+ * @brief Enable SPI1 using the legacy IMUTagBreakout register sequence.
+ */
 static void spiEnable(void)
 {
   rccEnableSPI1(0);
@@ -34,6 +44,9 @@ static void spiEnable(void)
   tagMarkSpiOn(SPI1);
 }
 
+/**
+ * @brief Disable SPI1 after a legacy local-device transaction.
+ */
 static void spiDisable(void)
 {
   SPI1->CR1 = 0;
@@ -41,6 +54,9 @@ static void spiDisable(void)
   tagMarkSpiOff(SPI1);
 }
 
+/**
+ * @brief Acquire SPI and configure pins for the legacy magnetometer path.
+ */
 void magOn(void)
 {
   chBSemWait(&SPImutex);
@@ -53,6 +69,9 @@ void magOn(void)
   spiEnable();
 }
 
+/**
+ * @brief Release SPI and float pins after the legacy magnetometer path.
+ */
 void magOff(void)
 {
   palSetLine(LINE_AK_CS);
@@ -63,6 +82,9 @@ void magOff(void)
   chBSemSignal(&SPImutex);
 }
 
+/**
+ * @brief Acquire SPI and configure pins for the legacy pressure path.
+ */
 void lpsOn(void)
 {
   chBSemWait(&SPImutex);
@@ -75,6 +97,9 @@ void lpsOn(void)
   spiEnable();
 }
 
+/**
+ * @brief Release SPI and float pins after the legacy pressure path.
+ */
 void lpsOff(void)
 {
   palSetLine(LINE_LPS_CS);
@@ -85,6 +110,9 @@ void lpsOff(void)
   chBSemSignal(&SPImutex);
 }
 
+/**
+ * @brief Acquire SPI and configure pins for the legacy LSM6 path.
+ */
 void lsm6On(void)
 {
   chBSemWait(&SPImutex);
@@ -97,6 +125,9 @@ void lsm6On(void)
   spiEnable();
 }
 
+/**
+ * @brief Release SPI and float pins after the legacy LSM6 path.
+ */
 void lsm6Off(void)
 {
   palSetLine(LINE_LSM_CS);
@@ -153,17 +184,31 @@ static const TagTestCase tag_tests[] =
   {RUN_LPS, LPS_FAILED, tag_test_lps22hh},
 };
 
+/**
+ * @brief Return the IMUTagBreakout self-test table.
+ *
+ * @param[out] count Number of test cases.
+ * @return Pointer to the static test-case table.
+ */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
   return tag_tests;
 }
 
+/**
+ * @brief Prepare IMUTagBreakout devices before entering standby.
+ *
+ * @param[in] state Current state-machine state.
+ */
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
+/**
+ * @brief Apply board pin pulls needed for standby leakage.
+ */
 void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_LSM_CS);

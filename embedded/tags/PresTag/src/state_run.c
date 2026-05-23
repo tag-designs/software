@@ -1,3 +1,10 @@
+/**
+ * @file state_run.c
+ * @brief PresTag RUNNING-state pressure acquisition and logging logic.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include <limits.h>
 #include "app.h"
@@ -9,6 +16,13 @@
 #include "devices.h"
 #include "lps27hhw.h"
 
+/**
+ * @brief Handle the PresTag data-acquisition state.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering or continuing the state.
+ * @return Requested low-power mode after the state handler completes.
+ */
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
   int16_t temp10;

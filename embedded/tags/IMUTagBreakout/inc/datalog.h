@@ -1,13 +1,18 @@
+/**
+ * @file datalog.h
+ * @brief IMUTagBreakout external-log record layout and log IO API.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef DATALOG_H
 #define DATALOG_H
 #include "sensors.h"
 
-// Stored Data Log -- in external memory
-
+/** Number of one-minute sample groups under one internal header. */
 #define DATALOG_SAMPLES 10
 
-// sensors recorded every 15 seconds, activity every minute
-
+/** @brief External-flash payload record for IMUTagBreakout sensor data. */
 typedef struct {
   struct { 
    RawSensorData sensors[4];
@@ -15,16 +20,21 @@ typedef struct {
   } data[DATALOG_SAMPLES];
 } t_DataLog;
 
+/** @brief Internal-flash header that anchors one external log page. */
 typedef struct {
   int32_t epoch;
   uint16_t vdd100;
   uint16_t temp10;
 } t_DataHeader;
 
+/** Internal flash header array placed by the linker script. */
 extern t_DataHeader vddHeader[];
 
+/** @brief Append sample words to the external data log. */
 extern enum LOGERR writeDataLog(uint16_t *data, int num);
+/** @brief Write the next internal-flash log header. */
 extern enum LOGERR writeDataHeader(t_DataHeader *head);
+/** @brief Recover log cursors from internal flash after reset. */
 extern int restoreLog(void);
 
 #endif

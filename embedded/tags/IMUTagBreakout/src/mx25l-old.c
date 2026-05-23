@@ -1,3 +1,10 @@
+/**
+ * @file mx25l-old.c
+ * @brief Legacy polled-SPI MX25L flash driver retained for IMUTagBreakout.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "mx25l.h"
 #include "hal.h"
 #include "custom.h"
@@ -31,6 +38,12 @@
  * SPI Hooks
 */
 
+/**
+ * @brief Transmit bytes using the legacy polled SPI1 path.
+ *
+ * @param[in] n Number of bytes to transmit.
+ * @param[in] buf Bytes to transmit.
+ */
 static inline void SendPolled(uint32_t n, const uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -49,6 +62,12 @@ static inline void SendPolled(uint32_t n, const uint8_t *buf)
   }
 }
 
+/**
+ * @brief Receive bytes using the legacy polled SPI1 path.
+ *
+ * @param[in] n Number of bytes to receive.
+ * @param[out] buf Destination buffer.
+ */
 static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -104,11 +123,21 @@ static const mx25_config_t *g_cfg = &MX25L12845_DEFAULT_CONFIG;
 // ============================================================
 // Config access
 // ============================================================
+/**
+ * @brief Select the active flash configuration.
+ *
+ * @param[in] cfg Configuration to use, or NULL to restore the default.
+ */
 void mx25_set_config(const mx25_config_t *cfg)
 {
     g_cfg = (cfg != 0) ? cfg : &MX25L12845_DEFAULT_CONFIG;
 }
 
+/**
+ * @brief Return the active flash configuration.
+ *
+ * @return Active MX25L configuration.
+ */
 const mx25_config_t *mx25_get_config(void)
 {
     return g_cfg;
@@ -117,6 +146,9 @@ const mx25_config_t *mx25_get_config(void)
 // ============================================================
 // Helpers
 // ============================================================
+/**
+ * @brief Set the flash write-enable latch.
+ */
 static void write_enable(void)
 {
     uint8_t cmd = MX25_CMD_WRITE_ENABLE;
@@ -125,6 +157,11 @@ static void write_enable(void)
     spi_cs_high();
 }
 
+/**
+ * @brief Read the flash status register.
+ *
+ * @return Status register value.
+ */
 static uint8_t read_status(void)
 {
     uint8_t tx = MX25_CMD_READ_STATUS;
@@ -138,6 +175,9 @@ static uint8_t read_status(void)
     return rx;
 }
 
+/**
+ * @brief Poll until the flash write-in-progress bit clears.
+ */
 static void wait_until_ready(void)
 {
     while ((read_status() & MX25_STATUS_WIP) != 0U)
@@ -146,6 +186,13 @@ static void wait_until_ready(void)
     }
 }
 
+/**
+ * @brief Program one page-aligned chunk.
+ *
+ * @param[in] address Flash address to program.
+ * @param[in] data Bytes to write.
+ * @param[in] length Number of bytes in this page chunk.
+ */
 static void page_program(uint32_t address, const uint8_t *data, uint32_t length)
 {
     uint8_t hdr[4];
@@ -168,6 +215,9 @@ static void page_program(uint32_t address, const uint8_t *data, uint32_t length)
 // ============================================================
 // Power control
 // ============================================================
+/**
+ * @brief Put the MX25L into deep power-down mode.
+ */
 void mx25_deep_power_down(void)
 {
     uint8_t cmd = MX25_CMD_DEEP_POWER_DOWN;
@@ -179,6 +229,9 @@ void mx25_deep_power_down(void)
     FlashSpiOff();
 }
 
+/**
+ * @brief Release the MX25L from deep power-down mode.
+ */
 void mx25_release_power_down(void)
 {
     uint8_t cmd = MX25_CMD_RELEASE_POWER_DOWN;
@@ -196,6 +249,15 @@ void mx25_release_power_down(void)
 // ============================================================
 // Identification
 // ============================================================
+/**
+ * @brief Read and validate the MX25L identity bytes.
+ *
+ * @param[out] manufacturer Optional manufacturer ID.
+ * @param[out] memory_type Optional memory type ID.
+ * @param[out] capacity Optional capacity ID.
+ * @param[out] size_mb Optional configured size in megabytes.
+ * @return true when the identity matches the active configuration.
+ */
 bool mx25_read_id(uint8_t *manufacturer, uint8_t *memory_type, uint8_t *capacity, uint32_t *size_mb)
 {
   uint8_t tx = MX25_CMD_READ_ID;
@@ -230,6 +292,13 @@ bool mx25_read_id(uint8_t *manufacturer, uint8_t *memory_type, uint8_t *capacity
 // ============================================================
 // Read / Write / Erase
 // ============================================================
+/**
+ * @brief Read bytes from flash.
+ *
+ * @param[in] address Flash address to read.
+ * @param[out] buffer Destination buffer.
+ * @param[in] length Number of bytes to read.
+ */
 void mx25_read(uint32_t address, uint8_t *buffer, uint32_t length)
 {
     uint8_t hdr[4];
@@ -249,6 +318,13 @@ void mx25_read(uint32_t address, uint8_t *buffer, uint32_t length)
     FlashSpiOff();
 }
 
+/**
+ * @brief Program bytes to flash, splitting writes on page boundaries.
+ *
+ * @param[in] address Flash address to program.
+ * @param[in] data Bytes to write.
+ * @param[in] length Number of bytes to write.
+ */
 void mx25_write(uint32_t address, const uint8_t *data, uint32_t length)
 {
     uint32_t offset = 0U;
@@ -273,6 +349,11 @@ void mx25_write(uint32_t address, const uint8_t *data, uint32_t length)
     FlashSpiOff();
 }
 
+/**
+ * @brief Erase the sector containing an address.
+ *
+ * @param[in] address Address within the sector to erase.
+ */
 void mx25_erase_sector(uint32_t address)
 {
     uint8_t cmd[4];
@@ -296,6 +377,11 @@ void mx25_erase_sector(uint32_t address)
     FlashSpiOff();
 }
 
+/**
+ * @brief Run the legacy MX25L identity self-test.
+ *
+ * @return true when the expected flash responds.
+ */
 bool mx25_test(){
 
     mx25_release_power_down();

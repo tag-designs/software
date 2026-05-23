@@ -1,6 +1,17 @@
+/**
+ * @file custom.h
+ * @brief IMUTagBreakout variant build constants and legacy line aliases.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef CUSTOM_H
 #define CUSTOM_H
 
+/** @name Storage and firmware identity
+ * External flash sizing, strings, protocol sizing, and feature flags.
+ * @{
+ */
 #define EXT_FLASH_SIZE (1024 * 1024 * 4)
 
 #define FIRMWARE_STRING "IMUTagBreakoutv1, Firmware version 1"
@@ -12,12 +23,18 @@
 #define PROTOBUFSIZE 4096
 #define SENSOR_CONSTANTS TRUE
 #define CALIBRATION_CONSTANTS TRUE;
+/** @} */
 
+/** @name Sensor line aliases and conversion constants
+ * Board-level wake lines and sample scale constants used by local code.
+ * @{
+ */
 #define LINE_ACCEL_INT LINE_WKUP1
 
 #define ACCEL_CONSTANT 0.976f
 #define MAG_CONSTANT 0.01
 #define SWAP_I2C TRUE
+/** @} */
 
 /*
  * The IMUTagBreakout board file predates the standard magnetometer line names

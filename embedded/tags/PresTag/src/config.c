@@ -1,3 +1,10 @@
+/**
+ * @file config.c
+ * @brief PresTag configuration persistence and protobuf conversion.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include <stdint.h>
 #include "hal.h"
 #include "app.h"
@@ -10,10 +17,11 @@
 
 t_storedconfig config_tmp;  
 
-/*
- * Write config in ram to flash
+/**
+ * @brief Write the staged configuration to internal flash.
+ *
+ * @param[in] s Configuration image to persist.
  */
-
 void writeStoredConfig(t_storedconfig *s)
 {
   uint32_t *src = (uint32_t *)s;
@@ -30,10 +38,11 @@ void writeStoredConfig(t_storedconfig *s)
   }
 }
 
-/*
- * Read current config
+/**
+ * @brief Export the current stored configuration as a protobuf message.
+ *
+ * @param[out] config Destination configuration message.
  */
-
 void readConfig(Config *config)
 {
   if (config == NULL)
@@ -56,10 +65,12 @@ void readConfig(Config *config)
   }
 }
 
-/*
- * Write config to ram
+/**
+ * @brief Validate and stage a host-provided configuration.
+ *
+ * @param[in] config Host-provided configuration message.
+ * @return true when the configuration can be staged in the current state.
  */
-
 bool writeConfig(Config *config)
 {
   if ((config == NULL) || pState->state != TagState_IDLE)

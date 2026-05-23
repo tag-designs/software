@@ -1,3 +1,10 @@
+/**
+ * @file devices.c
+ * @brief BitPresTag family device descriptors, tests, and power hooks.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 
 #include "custom.h"
@@ -98,6 +105,11 @@ const TagAdxl362Device tagBitPresTagAccelDevice = {
  * descriptors. These small bindings connect generic self-tests to the
  * BitPresTag-family descriptors above.
  */
+/**
+ * @brief Check whether the configured external flash responds.
+ *
+ * @return true when a valid flash ID is read.
+ */
 bool tag_test_external_flash(void)
 {
   tagStorageWake(TAG_EXTERNAL_FLASH);
@@ -106,6 +118,11 @@ bool tag_test_external_flash(void)
   return result;
 }
 
+/**
+ * @brief Run the configured LPS27 pressure-sensor test.
+ *
+ * @return true when the pressure sensor identity is valid.
+ */
 bool tag_test_lps27(void)
 {
   return tagPressureTest();
@@ -119,12 +136,23 @@ static const TagTestCase tag_tests[] =
   {RUN_LPS, LPS_FAILED, tag_test_lps27},
 };
 
+/**
+ * @brief Return the BitPresTag family self-test table.
+ *
+ * @param[out] count Number of test cases.
+ * @return Pointer to the static test-case table.
+ */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
   return tag_tests;
 }
 
+/**
+ * @brief Return the BitPresTag family ADXL362 descriptor.
+ *
+ * @return Accelerometer descriptor used by shared ADXL362 code.
+ */
 const TagAdxl362Device *tagAdxl362Device(void)
 {
   return TAG_ACCEL_DEVICE;
@@ -137,22 +165,40 @@ const TagAdxl362Device *tagAdxl362Device(void)
  * prepares external flash only in states where the log should be quiescent, then
  * this file applies the tag-family standby pin policy.
  */
+/**
+ * @brief Prepare BitPresTag devices before entering standby.
+ *
+ * @param[in] state Current state-machine state.
+ */
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
+/**
+ * @brief Apply board pin pulls needed for standby leakage and wake behavior.
+ */
 void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }
 
+/**
+ * @brief Disable accelerometer wakeup sources before reconfiguration.
+ */
 void tagDevicesDisableWakeupSources(void)
 {
   CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
 }
 
+/**
+ * @brief Configure accelerometer wakeup polarity and enable bits.
+ *
+ * @param[in] state Current state-machine state.
+ * @param[in] is_active Current accelerometer activity level.
+ * @return true when the wake configuration matches the sampled line state.
+ */
 bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 {
   if (is_active)
@@ -170,6 +216,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
   return true;
 }
 
+/**
+ * @brief Reset family sensors before returning to idle or shutdown states.
+ */
 void tagDevicesDeinit(void)
 {
   ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);

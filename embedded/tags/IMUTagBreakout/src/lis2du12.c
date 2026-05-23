@@ -1,3 +1,10 @@
+/**
+ * @file lis2du12.c
+ * @brief Legacy IMUTagBreakout LIS2DU12 accelerometer driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include "custom.h"
 #include "power.h"
@@ -79,6 +86,12 @@ each bit is (1/64)*2 g = 1/32 g
 
 
 #if defined(ACCEL_USE_SPI)
+/**
+ * @brief Send bytes over the legacy SPI accelerometer path.
+ *
+ * @param[in] n Number of bytes to transmit.
+ * @param[in] buf Bytes to transmit.
+ */
 static void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -91,6 +104,12 @@ static void SendPolled(uint32_t n, uint8_t *buf)
   }
 }
 
+/**
+ * @brief Receive bytes over the legacy SPI accelerometer path.
+ *
+ * @param[in] n Number of bytes to receive.
+ * @param[out] buf Destination buffer.
+ */
 static void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *spidr = (volatile uint8_t *)&SPI1->DR;
@@ -106,6 +125,12 @@ static void ReceivePolled(uint32_t n, uint8_t *buf)
 #endif
 
 #if defined(ACCEL_USART)
+/**
+ * @brief Send bytes over the legacy USART accelerometer path.
+ *
+ * @param[in] n Number of bytes to transmit.
+ * @param[in] buf Bytes to transmit.
+ */
 static inline void SendPolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
@@ -119,6 +144,12 @@ static inline void SendPolled(uint32_t n, uint8_t *buf)
   }
 }
 
+/**
+ * @brief Receive bytes over the legacy USART accelerometer path.
+ *
+ * @param[in] n Number of bytes to receive.
+ * @param[out] buf Destination buffer.
+ */
 static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 {
   volatile uint8_t *tdr = (volatile uint8_t *)&USART2->TDR;
@@ -133,6 +164,14 @@ static inline void ReceivePolled(uint32_t n, uint8_t *buf)
 }
 #endif
 
+/**
+ * @brief Write a block to LIS2DU12 registers.
+ *
+ * @param[in] reg First register address.
+ * @param[in] bufp Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return 0 after the write sequence is issued.
+ */
 static int32_t LIS2DU12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   uint8_t buffer = ((uint8_t)reg);
@@ -143,6 +182,12 @@ static int32_t LIS2DU12_write(uint8_t reg, uint8_t *bufp, uint16_t len)
   return 0;
 }
 
+/**
+ * @brief Write one LIS2DU12 register byte.
+ *
+ * @param[in] reg Register address.
+ * @param[in] val Value to write.
+ */
 static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
 {
   uint8_t buffer[] = {reg,val};
@@ -151,6 +196,14 @@ static void LIS2DU12_write_byte(uint8_t reg, uint8_t val)
   palSetLine(LINE_ACCEL_CS);
 }
 
+/**
+ * @brief Read a block from LIS2DU12 registers.
+ *
+ * @param[in] reg First register address.
+ * @param[out] bufp Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return 0 after the read sequence is issued.
+ */
 static int32_t LIS2DU12_read(uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   unsigned char buffer = 0x80 | reg;
@@ -185,6 +238,9 @@ void lis2du12_init(bool lpf)
 }
   */
 
+/**
+ * @brief Power down and reset the legacy LIS2DU12 path.
+ */
 void accelDeinit(void)
 {
   // soft reset
@@ -206,6 +262,11 @@ void accelDeinit(void)
  *  
 */
 
+/**
+ * @brief Configure the legacy LIS2DU12 path for wakeup or sampling.
+ *
+ * @param[in] mode Desired accelerometer mode.
+ */
 void accelInit(lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
@@ -241,6 +302,12 @@ void accelInit(lis2du12mode_t mode)
   accelOff();
 }
 
+/**
+ * @brief Read one accelerometer sample when data is ready.
+ *
+ * @param[out] data Destination for six raw sample bytes.
+ * @return true when a fresh sample was read.
+ */
 bool accelSample(uint8_t *data)
 {
   uint8_t status;
@@ -305,6 +372,11 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 }
   */
 
+/**
+ * @brief Check the legacy LIS2DU12 identity register.
+ *
+ * @return true when the expected identity is present.
+ */
 bool accelTest(void) {
   uint8_t val;
   accelOn();

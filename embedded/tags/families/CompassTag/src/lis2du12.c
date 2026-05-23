@@ -1,3 +1,10 @@
+/**
+ * @file lis2du12.c
+ * @brief CompassTag LIS2DU12 accelerometer register driver.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "lis2du12.h"
 
 typedef enum
@@ -74,22 +81,48 @@ each bit is (1/64)*2 g = 1/32 g
 
 */
 
+/**
+ * @brief Acquire the register bus for an LIS2DU12 transaction group.
+ *
+ * @param[in] device Register-device descriptor.
+ */
 static void lis2du12DeviceBegin(const TagRegisterDevice *device)
 {
   tagBusBegin(&device->bus);
 }
 
+/**
+ * @brief Release the register bus after an LIS2DU12 transaction group.
+ *
+ * @param[in] device Register-device descriptor.
+ */
 static void lis2du12DeviceEnd(const TagRegisterDevice *device)
 {
   tagBusEnd(&device->bus);
 }
 
+/**
+ * @brief Write one LIS2DU12 register byte.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] val Value to write.
+ */
 static void LIS2DU12_write_byte(const TagRegisterDevice *device, uint8_t reg,
                                 uint8_t val)
 {
   (void)tagRegisterWrite(device, reg, &val, 1);
 }
 
+/**
+ * @brief Read one or more LIS2DU12 register bytes.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[in] reg First register address.
+ * @param[out] bufp Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return Register transport status.
+ */
 static int32_t LIS2DU12_read(const TagRegisterDevice *device, uint8_t reg,
                              uint8_t *bufp, uint16_t len)
 {
@@ -120,6 +153,11 @@ void lis2du12_init(bool lpf)
 }
   */
 
+/**
+ * @brief Power down and reset an LIS2DU12 descriptor.
+ *
+ * @param[in] device Register-device descriptor.
+ */
 void lis2du12Deinit(const TagRegisterDevice *device)
 {
   // soft reset
@@ -141,6 +179,12 @@ void lis2du12Deinit(const TagRegisterDevice *device)
  *  
 */
 
+/**
+ * @brief Configure an LIS2DU12 descriptor for wakeup or sampling.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[in] mode Desired accelerometer mode.
+ */
 void lis2du12Init(const TagRegisterDevice *device, lis2du12mode_t mode)
 {
   /* send sleep state on pin, so activity bit is reversed */
@@ -176,6 +220,13 @@ void lis2du12Init(const TagRegisterDevice *device, lis2du12mode_t mode)
   lis2du12DeviceEnd(device);
 }
 
+/**
+ * @brief Read one LIS2DU12 sample when data is ready.
+ *
+ * @param[in] device Register-device descriptor.
+ * @param[out] data Destination for six raw sample bytes.
+ * @return true when a fresh sample was read.
+ */
 bool lis2du12Sample(const TagRegisterDevice *device, uint8_t *data)
 {
   uint8_t status;
@@ -240,6 +291,12 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
 }
   */
 
+/**
+ * @brief Check the LIS2DU12 identity register.
+ *
+ * @param[in] device Register-device descriptor.
+ * @return true when the expected identity is present.
+ */
 bool lis2du12Test(const TagRegisterDevice *device) {
   uint8_t val;
   lis2du12DeviceBegin(device);
@@ -248,31 +305,58 @@ bool lis2du12Test(const TagRegisterDevice *device) {
   return val == LIS2DU12_ID;
 }
 
+/**
+ * @brief Reset an LIS2DU12 descriptor.
+ *
+ * @param[in] device Register-device descriptor.
+ */
 void lis2du12Reset(const TagRegisterDevice *device)
 {
   lis2du12Deinit(device);
 }
 
+/**
+ * @brief Initialize the default family accelerometer descriptor.
+ *
+ * @param[in] mode Desired accelerometer mode.
+ */
 void accelInit(lis2du12mode_t mode)
 {
   lis2du12Init(tagLis2du12Device(), mode);
 }
 
+/**
+ * @brief Deinitialize the default family accelerometer descriptor.
+ */
 void accelDeinit(void)
 {
   lis2du12Deinit(tagLis2du12Device());
 }
 
+/**
+ * @brief Reset the default family accelerometer descriptor.
+ */
 void accelReset(void)
 {
   lis2du12Reset(tagLis2du12Device());
 }
 
+/**
+ * @brief Read a sample from the default family accelerometer descriptor.
+ *
+ * @param[out] data Destination for six raw sample bytes.
+ * @return true when a fresh sample was read.
+ */
 bool accelSample(uint8_t *data)
 {
   return lis2du12Sample(tagLis2du12Device(), data);
 }
 
+/**
+ * @brief Test the default family accelerometer descriptor.
+ *
+ * @return true when the expected identity is present.
+ */
 bool accelTest(void)
 {
   return lis2du12Test(tagLis2du12Device());

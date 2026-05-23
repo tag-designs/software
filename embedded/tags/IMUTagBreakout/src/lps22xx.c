@@ -1,14 +1,11 @@
-/*
- * lps22xx.c
+/**
+ * @file lps22xx.c
+ * @brief Legacy IMUTagBreakout LPS22HH/LPS22DF pressure drivers.
+ * @author tag firmware authors
+ * @date 2026-05-23
  *
- * Implementation of the LPS22HH and LPS22DF drivers declared in lps22xx.h.
- *
- * The code is structured around three small helper layers:
- *   1) generic SPI register access helpers
- *   2) LPS22HH-specific configuration helpers
- *   3) LPS22DF-specific configuration helpers
- *
- * The register definitions and public API live in lps22xx.h.
+ * The code is structured around three helper layers: generic SPI register
+ * access, LPS22HH-specific configuration, and LPS22DF-specific configuration.
  */
 
 #include "lps22xx.h"
@@ -18,34 +15,50 @@
  * --------------------------------------------------------------------------
  */
 
-/* Write one register. */
+/**
+ * @brief Write one pressure-sensor register.
+ *
+ * @param[in] reg Register address.
+ * @param[in] val Value to write.
+ * @return Platform SPI status.
+ */
 static int write_reg(uint8_t reg, uint8_t val)
 {
     return spi_write(reg, &val, 1);
 }
 
-/* Read one register. */
+/**
+ * @brief Read one pressure-sensor register.
+ *
+ * @param[in] reg Register address.
+ * @param[out] val Destination byte.
+ * @return Platform SPI status.
+ */
 static int read_reg(uint8_t reg, uint8_t *val)
 {
     return spi_read(reg, val, 1);
 }
 
-/*
- * Read a register block using the sensor's auto-increment mechanism.
+/**
+ * @brief Read a register block using sensor auto-increment.
  *
- * For SPI, the MSB of the register address is set to request incrementing
- * address access across successive bytes.
+ * @param[in] reg First register address.
+ * @param[out] buf Destination buffer.
+ * @param[in] len Number of bytes to read.
+ * @return Platform SPI status.
  */
 static int read_block(uint8_t reg, uint8_t *buf, uint16_t len)
 {
     return spi_read((uint8_t)(reg | 0x80u), buf, len);
 }
 
-/*
- * Read-modify-write helper.
+/**
+ * @brief Update selected bits in one register while preserving the rest.
  *
- * This preserves unrelated fields in a register when only one bitfield needs
- * to change.
+ * @param[in] reg Register address.
+ * @param[in] mask Bits to replace.
+ * @param[in] value New masked value.
+ * @return 0 on success, -1 on read/write failure.
  */
 static int update_reg(uint8_t reg, uint8_t mask, uint8_t value)
 {
@@ -63,16 +76,10 @@ static int update_reg(uint8_t reg, uint8_t mask, uint8_t value)
  * --------------------------------------------------------------------------
  */
 
-/*
- * Configure the LPS22HH INT/DRDY pin for data-ready signaling.
+/**
+ * @brief Configure the LPS22HH INT/DRDY pin for data-ready signaling.
  *
- * The goal is to expose a stable data-ready indication without requiring the
- * application to perform a manual interrupt-latch reset.
- *
- * The configuration uses:
- *   - auto-increment enabled for multi-byte SPI reads
- *   - DRDY routed to the interrupt pin
- *   - default active-high, push-pull behavior
+ * @return 0 on success, -1 on register write failure.
  */
 static int lps22hh_config_int_drdy(void)
 {
@@ -86,6 +93,11 @@ static int lps22hh_config_int_drdy(void)
     return write_reg(LPS22HH_REG_CTRL_REG3, ctrl3);
 }
 
+/**
+ * @brief Check the LPS22HH identity register.
+ *
+ * @return true when the expected identity is present.
+ */
 bool lps22hh_check_who_am_i(void)
 {
     uint8_t v = 0;
@@ -95,6 +107,11 @@ bool lps22hh_check_who_am_i(void)
     return v == LPS22HH_WHO_AM_I_VAL;
 }
 
+/**
+ * @brief Put the LPS22HH into its idle power-down configuration.
+ *
+ * @return 0 on success, -1 on register write failure.
+ */
 int lps22hh_set_idle(void)
 {
     /*
@@ -118,6 +135,13 @@ int lps22hh_set_idle(void)
     return write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
 }
 
+/**
+ * @brief Configure the LPS22HH for continuous sampling.
+ *
+ * @param[in] odr Output data rate.
+ * @param[in] lpf Low-pass filter selection.
+ * @return 0 on success, -1 on invalid input or register failure.
+ */
 int lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf)
 {
     if ((unsigned)odr > (unsigned)LPS22HH_ODR_200HZ) {
@@ -146,6 +170,12 @@ int lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf)
     return write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
 }
 
+/**
+ * @brief Configure the LPS22HH for one-shot triggered sampling.
+ *
+ * @param[in] lpf Low-pass filter selection.
+ * @return 0 on success, -1 on register failure.
+ */
 int lps22hh_config_triggered(lps22hh_lpf_t lpf)
 {
     /*
@@ -169,6 +199,11 @@ int lps22hh_config_triggered(lps22hh_lpf_t lpf)
     return write_reg(LPS22HH_REG_CTRL_REG1, ctrl1);
 }
 
+/**
+ * @brief Start one LPS22HH one-shot conversion.
+ *
+ * @return 0 on success, -1 on register failure.
+ */
 int lps22hh_trigger_one_shot(void)
 {
     /*
@@ -180,6 +215,11 @@ int lps22hh_trigger_one_shot(void)
                       LPS22HH_CTRL2_ONE_SHOT);
 }
 
+/**
+ * @brief Check whether LPS22HH pressure or temperature data is ready.
+ *
+ * @return true when new sample data is available.
+ */
 bool lps22hh_data_ready(void)
 {
     /*
@@ -194,6 +234,13 @@ bool lps22hh_data_ready(void)
     return (s & (LPS22HH_STATUS_P_DA | LPS22HH_STATUS_T_DA)) != 0;
 }
 
+/**
+ * @brief Read raw LPS22HH pressure and temperature samples.
+ *
+ * @param[out] pressure Raw signed pressure sample.
+ * @param[out] temperature Raw signed temperature sample.
+ * @return 0 on success, -1 on invalid output or register failure.
+ */
 int lps22hh_read_raw(int32_t *pressure, int32_t *temperature)
 {
     if ((pressure == NULL) || (temperature == NULL)) {
@@ -230,15 +277,12 @@ int lps22hh_read_raw(int32_t *pressure, int32_t *temperature)
  * --------------------------------------------------------------------------
  */
 
-/*
- * Configure the LPS22DF INT/DRDY pin to output data-ready information.
+/**
+ * @brief Configure the LPS22DF INT/DRDY pin for data-ready signaling.
  *
- * CTRL_REG3 controls pin polarity / pad type / auto-increment.
- * CTRL_REG4 enables the DRDY function on the interrupt pin.
- *
- * Parameters:
- *   active_low  - true for active-low interrupt polarity
- *   open_drain  - true for open-drain output, false for push-pull
+ * @param[in] active_low true for active-low interrupt polarity.
+ * @param[in] open_drain true for open-drain output.
+ * @return 0 on success, -1 on register write failure.
  */
 static int lps22df_config_int_drdy(bool active_low, bool open_drain)
 {
@@ -263,6 +307,11 @@ static int lps22df_config_int_drdy(bool active_low, bool open_drain)
     return write_reg(LPS22DF_REG_CTRL_REG4, ctrl4);
 }
 
+/**
+ * @brief Check the LPS22DF identity register.
+ *
+ * @return true when the expected identity is present.
+ */
 bool lps22df_check_who_am_i(void)
 {
     uint8_t v = 0;
@@ -272,6 +321,11 @@ bool lps22df_check_who_am_i(void)
     return v == LPS22DF_WHO_AM_I_VAL;
 }
 
+/**
+ * @brief Put the LPS22DF into its idle power-down configuration.
+ *
+ * @return 0 on success, -1 on register write failure.
+ */
 int lps22df_set_idle(void)
 {
     /*
@@ -305,6 +359,13 @@ int lps22df_set_idle(void)
  *   - ODR[3:0] selects the sensor acquisition rate
  *   - AVG[2:0] selects the oversampling/averaging amount
  */
+/**
+ * @brief Write LPS22DF output data rate and averaging fields.
+ *
+ * @param[in] odr Output data rate.
+ * @param[in] avg Averaging selection.
+ * @return 0 on success, -1 on invalid input or register failure.
+ */
 static int lps22df_write_ctrl1(lps22df_odr_t odr, lps22df_avg_t avg)
 {
     if ((unsigned)odr > (unsigned)LPS22DF_ODR_200HZ) {
@@ -323,6 +384,13 @@ static int lps22df_write_ctrl1(lps22df_odr_t odr, lps22df_avg_t avg)
  * The LPF selection is controlled by EN_LPFP and LFPF_CFG.
  * BDU is always enabled for coherent burst reads.
  */
+/**
+ * @brief Write LPS22DF filter and block-data-update fields.
+ *
+ * @param[in] lpf_enable true to enable the low-pass filter path.
+ * @param[in] lpf Low-pass filter selection.
+ * @return 0 on success, -1 on register failure.
+ */
 static int lps22df_write_ctrl2(bool lpf_enable, lps22df_lpf_t lpf)
 {
     uint8_t ctrl2 = LPS22DF_CTRL2_BDU;
@@ -337,6 +405,14 @@ static int lps22df_write_ctrl2(bool lpf_enable, lps22df_lpf_t lpf)
     return write_reg(LPS22DF_REG_CTRL_REG2, ctrl2);
 }
 
+/**
+ * @brief Configure the LPS22DF for continuous sampling.
+ *
+ * @param[in] odr Output data rate.
+ * @param[in] lpf Low-pass filter selection.
+ * @param[in] avg Averaging selection.
+ * @return 0 on success, -1 on invalid input or register failure.
+ */
 int lps22df_config_continuous(lps22df_odr_t odr, lps22df_lpf_t lpf, lps22df_avg_t avg)
 {
     /* Continuous mode requires a non-zero ODR. */
@@ -356,6 +432,13 @@ int lps22df_config_continuous(lps22df_odr_t odr, lps22df_lpf_t lpf, lps22df_avg_
     return lps22df_write_ctrl1(odr, avg);
 }
 
+/**
+ * @brief Configure the LPS22DF for one-shot triggered sampling.
+ *
+ * @param[in] lpf Low-pass filter selection.
+ * @param[in] avg Averaging selection.
+ * @return 0 on success, -1 on register failure.
+ */
 int lps22df_config_triggered(lps22df_lpf_t lpf, lps22df_avg_t avg)
 {
     /*
@@ -375,6 +458,11 @@ int lps22df_config_triggered(lps22df_lpf_t lpf, lps22df_avg_t avg)
     return lps22df_write_ctrl1(LPS22DF_ODR_ONE_SHOT, avg);
 }
 
+/**
+ * @brief Start one LPS22DF one-shot conversion.
+ *
+ * @return 0 on success, -1 on register failure.
+ */
 int lps22df_trigger_one_shot(void)
 {
     /*
@@ -386,6 +474,11 @@ int lps22df_trigger_one_shot(void)
                       LPS22DF_CTRL2_ONESHOT);
 }
 
+/**
+ * @brief Check whether LPS22DF pressure or temperature data is ready.
+ *
+ * @return true when new sample data is available.
+ */
 bool lps22df_data_ready(void)
 {
     uint8_t s = 0;
@@ -395,6 +488,13 @@ bool lps22df_data_ready(void)
     return (s & (LPS22DF_STATUS_P_DA | LPS22DF_STATUS_T_DA)) != 0;
 }
 
+/**
+ * @brief Read raw LPS22DF pressure and temperature samples.
+ *
+ * @param[out] pressure Raw signed pressure sample.
+ * @param[out] temperature Raw signed temperature sample.
+ * @return 0 on success, -1 on invalid output or register failure.
+ */
 int lps22df_read_raw(int32_t *pressure, int32_t *temperature)
 {
     if ((pressure == NULL) || (temperature == NULL)) {

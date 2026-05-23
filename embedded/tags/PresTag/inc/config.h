@@ -1,15 +1,23 @@
+/**
+ * @file config.h
+ * @brief PresTag stored-configuration layout and protobuf translation API.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Stored Configuration
-
+/** Tag type reported in monitor configuration messages. */
 #define TAG_TYPE PRESTAG
 
+/** @brief Hibernation window stored in flash configuration. */
 typedef struct {
   int32_t start_epoch;
   int32_t end_epoch;
 } hibernate_t;
 
+/** @brief Flash-resident PresTag acquisition schedule. */
 typedef struct
 {
   int32_t  start;
@@ -22,8 +30,11 @@ typedef struct
 extern t_storedconfig sconfig;
 extern t_storedconfig config_tmp;
 
+/** @brief Persist a RAM configuration image into the flash configuration slot. */
 extern void writeStoredConfig(t_storedconfig *s);
+/** @brief Translate a host protobuf configuration into the RAM staging image. */
 extern bool writeConfig(Config *config);
+/** @brief Translate the stored flash configuration into a host protobuf message. */
 extern void readConfig(Config *config);
 
 #endif /* CONFIG_H */

@@ -1,3 +1,10 @@
+/**
+ * @file config.c
+ * @brief BitPresTag configuration persistence and protobuf conversion.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include <stdint.h>
 #include "hal.h"
 #include "app.h"
@@ -16,10 +23,14 @@
 
 t_storedconfig config_tmp;  
 
-/*
- * Write config in ram to flash
+/**
+ * @brief Write the staged configuration to internal flash.
+ *
+ * This is called when a start command should make the monitor-supplied
+ * configuration durable across low-power transitions and resets.
+ *
+ * @param[in] s Configuration image to persist.
  */
-
 void writeStoredConfig(t_storedconfig *s)
 {
   uint32_t *src = (uint32_t *)s;
@@ -57,6 +68,12 @@ static const Adxl362_Aa Adxl362FilterToEnum[] = {
 
 // Translation betwee ProtoBuf constants and BitTag constants
 
+/**
+ * @brief Convert protobuf anti-alias setting to the ADXL362 register bit.
+ *
+ * @param[in] a Protobuf anti-alias selector.
+ * @return ADXL362 filter bit value, or -1 for unsupported input.
+ */
 static int EnumToAdxl362Filter(Adxl362_Aa a)
 {
 switch (a)
@@ -70,6 +87,12 @@ default:
 };
 }
 
+/**
+ * @brief Convert protobuf range setting to the ADXL362 register value.
+ *
+ * @param[in] rng Protobuf range selector.
+ * @return ADXL362 range value, or -1 for unsupported input.
+ */
 static int EnumToAdxl362Rng(Adxl362_Rng rng)
 {
 switch (rng)
@@ -85,6 +108,12 @@ default:
 };
 }
 
+/**
+ * @brief Convert protobuf sample-rate setting to the ADXL362 register value.
+ *
+ * @param[in] odr Protobuf output data rate selector.
+ * @return ADXL362 ODR value, or -1 for unsupported input.
+ */
 static int EnumToAdxl362ODR(Adxl362_Odr odr)
 {
 switch (odr)
@@ -121,10 +150,11 @@ static const float Sens[] = {[ADXL362_RANGE_2G] = 0.001,
                            [ADXL362_RANGE_8G] = 0.004};
 
 
-/*
- * Read current config
+/**
+ * @brief Export the current stored configuration as a protobuf message.
+ *
+ * @param[out] config Destination configuration message.
  */
-
 void readConfig(Config *config)
 {
   if (config == NULL)
@@ -163,10 +193,15 @@ void readConfig(Config *config)
   }
 }
 
-/*
- * Write config to ram
+/**
+ * @brief Validate and stage a host-provided configuration.
+ *
+ * The staged image is written to flash later by writeStoredConfig() when the
+ * monitor starts acquisition.
+ *
+ * @param[in] config Host-provided configuration message.
+ * @return true when the configuration can be staged in the current state.
  */
-
 bool writeConfig(Config *config)
 {
   if ((config == NULL) || pState->state != TagState_IDLE)

@@ -1,4 +1,11 @@
 
+/**
+ * @file sensors.c
+ * @brief CompassTag sensor sampling, orientation, and calibration storage.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include <tag.pb.h>
 #include <stdint.h>
 #include <string.h>
@@ -40,6 +47,13 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+/**
+ * @brief Apply the variant-specific magnetometer axis orientation.
+ *
+ * @param[in,out] x X-axis magnetic sample.
+ * @param[in,out] y Y-axis magnetic sample.
+ * @param[in,out] z Z-axis magnetic sample.
+ */
 static void orient_mag_values(int *x, int *y, int *z)
 {
 #ifdef COMPASS_TAG
@@ -54,6 +68,12 @@ static void orient_mag_values(int *x, int *y, int *z)
 #endif
 }
 
+/**
+ * @brief Apply the variant-specific accelerometer axis orientation.
+ *
+ * @param[in,out] x X-axis accelerometer sample.
+ * @param[in,out] y Y-axis accelerometer sample.
+ */
 static void orient_accel_raw(int16_t *x, int16_t *y)
 {
 #ifdef COMPASS_TAG
@@ -65,6 +85,12 @@ static void orient_accel_raw(int16_t *x, int16_t *y)
 #endif
 }
 
+/**
+ * @brief Sample raw accelerometer and magnetometer data for the data log.
+ *
+ * @param[out] data Raw sensor destination.
+ * @return true when all enabled sensors sampled successfully.
+ */
 bool sensorSample(RawSensorData *data){
   bool ok = true;
   uint8_t buf[11];
@@ -116,6 +142,12 @@ bool sensorSample(RawSensorData *data){
 }
 
 
+/**
+ * @brief Sample sensors in engineering units for live calibration.
+ *
+ * @param[out] sensors Protobuf sensor-data payload to populate.
+ * @return true after attempting the calibration sample.
+ */
 bool sensorCalibrationSample(SensorData *sensors)
 {
     uint8_t buf[11];
@@ -161,6 +193,11 @@ bool sensorCalibrationSample(SensorData *sensors)
     return true;
 }
 
+/**
+ * @brief Start sensors in continuous mode for calibration streaming.
+ *
+ * @return true when sensor startup commands have been issued.
+ */
 bool initSensors(void){
     lis2du12Init(TAG_ACCEL_DEVICE, ACCEL_SAMPLE_100HZ_MODE);
     ak09940aDeviceBegin(TAG_MAG_DEVICE);
@@ -173,6 +210,11 @@ bool initSensors(void){
     return true;
 }
 
+/**
+ * @brief Stop calibration sensors and return them to low-power state.
+ *
+ * @return true when shutdown commands have been issued.
+ */
 bool deinitSensors(void) {
     ak09940aDeviceEnd(TAG_MAG_DEVICE);
     tagCompassMagResetAssert();
@@ -180,6 +222,13 @@ bool deinitSensors(void) {
     return true;
 }
 
+/**
+ * @brief Handle the live sensor-calibration state.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering or continuing calibration.
+ * @return Requested low-power mode after handling calibration.
+ */
 enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -205,6 +254,12 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 extern int encode_ack(void);
 extern int errAck(Ack_Err err);
 
+/**
+ * @brief Populate and encode a live calibration sample ACK.
+ *
+ * @param[out] ack ACK message to fill.
+ * @return Encoded ACK length.
+ */
 int calibration_logAck(Ack *ack){
   CalibrationLog *data = &ack->payload.calibration_log;
   ack->err = Ack_OK;
@@ -214,6 +269,12 @@ int calibration_logAck(Ack *ack){
   return encode_ack();
 }
 
+/**
+ * @brief Store magnetometer calibration constants in reserved flash.
+ *
+ * @param[in] constants Host-provided calibration constants.
+ * @return Encoded ACK length or error response length.
+ */
 int write_calibration(CalibrationConstants *constants){
   unsigned int index;
 
@@ -259,6 +320,13 @@ int write_calibration(CalibrationConstants *constants){
   return errAck(Ack_OK);
 }
 
+/**
+ * @brief Read magnetometer calibration constants from reserved flash.
+ *
+ * @param[in] index Calibration slot to read, or negative for the latest slot.
+ * @param[out] ack ACK message to populate.
+ * @return Encoded ACK length or error response length.
+ */
 int read_calibration(int32_t index, Ack *ack){
   // if index < 0, search for last written
   if (index < 0) {

@@ -1,19 +1,11 @@
-/*
- * lps22xx.h
+/**
+ * @file lps22xx.h
+ * @brief Legacy IMUTagBreakout LPS22HH/LPS22DF pressure sensor API.
+ * @author tag firmware authors
+ * @date 2026-05-23
  *
- * Public interface for the ST LPS22HH and LPS22DF pressure sensor drivers.
- *
- * This header is paired with lps22xx.c and contains:
- *   - register definitions
- *   - bit masks
- *   - enums for mode selection
- *   - function prototypes
- *
- * Assumptions:
- *   - The platform provides spi_write() and spi_read().
- *   - The SPI layer handles chip select and bus timing.
- *   - The sensor SPI protocol supports auto-increment reads when the
- *     register address MSB is set.
+ * The platform provides spi_write() and spi_read(), while this driver owns
+ * register definitions, bit masks, mode enums, and device-level helpers.
  */
 
 #ifndef LPS22XX_H
@@ -22,8 +14,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* External SPI interface (provided by the platform). */
+/** @brief Write bytes to the platform pressure-sensor SPI path. */
 int spi_write(uint8_t reg, uint8_t *data, uint16_t len);
+/** @brief Read bytes from the platform pressure-sensor SPI path. */
 int spi_read(uint8_t reg, uint8_t *data, uint16_t len);
 
 /* =====================================================
@@ -100,13 +93,19 @@ typedef enum {
     LPS22HH_LPF_ODR_DIV_20 = 1
 } lps22hh_lpf_t;
 
-/* Public API for LPS22HH. */
+/** @brief Check the LPS22HH identity register. */
 bool lps22hh_check_who_am_i(void);
+/** @brief Put the LPS22HH into idle mode. */
 int  lps22hh_set_idle(void);
+/** @brief Configure the LPS22HH for continuous sampling. */
 int  lps22hh_config_continuous(lps22hh_odr_t odr, lps22hh_lpf_t lpf);
+/** @brief Configure the LPS22HH for one-shot sampling. */
 int  lps22hh_config_triggered(lps22hh_lpf_t lpf);
+/** @brief Trigger one LPS22HH one-shot conversion. */
 int  lps22hh_trigger_one_shot(void);
+/** @brief Check whether LPS22HH sample data is ready. */
 bool lps22hh_data_ready(void);
+/** @brief Read raw LPS22HH pressure and temperature data. */
 int  lps22hh_read_raw(int32_t *pressure, int32_t *temperature);
 
 /* =====================================================
@@ -199,13 +198,19 @@ typedef enum {
     LPS22DF_AVG_512 = 7
 } lps22df_avg_t;
 
-/* Public API for LPS22DF. */
+/** @brief Check the LPS22DF identity register. */
 bool lps22df_check_who_am_i(void);
+/** @brief Put the LPS22DF into idle mode. */
 int  lps22df_set_idle(void);
+/** @brief Configure the LPS22DF for continuous sampling. */
 int  lps22df_config_continuous(lps22df_odr_t odr, lps22df_lpf_t lpf, lps22df_avg_t avg);
+/** @brief Configure the LPS22DF for one-shot sampling. */
 int  lps22df_config_triggered(lps22df_lpf_t lpf, lps22df_avg_t avg);
+/** @brief Trigger one LPS22DF one-shot conversion. */
 int  lps22df_trigger_one_shot(void);
+/** @brief Check whether LPS22DF sample data is ready. */
 bool lps22df_data_ready(void);
+/** @brief Read raw LPS22DF pressure and temperature data. */
 int  lps22df_read_raw(int32_t *pressure, int32_t *temperature);
 
 #endif /* LPS22XX_H */

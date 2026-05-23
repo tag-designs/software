@@ -1,3 +1,10 @@
+/**
+ * @file datalog.c
+ * @brief PresTag log storage, erase support, and monitor ACK export.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "app.h"
 #include "datalog.h"
 #include "devices.h"
@@ -10,8 +17,9 @@ const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 static volatile int sectors_erased NOINIT;
 
-// P137 in RM0394
-
+/**
+ * @brief Raise MSI clock speed while formatting large monitor log responses.
+ */
 static void fast_msi(void){
   // change to 24Mhz doesn't require VOS change
   // Adjust Wait States
@@ -29,6 +37,9 @@ static void fast_msi(void){
 }
 
 
+/**
+ * @brief Restore the normal low-power MSI clock after monitor log export.
+ */
 static void slow_msi(void){
 
  
@@ -50,6 +61,11 @@ static void slow_msi(void){
 
 extern int encode_ack(void);
 
+/**
+ * @brief Count valid internal flash headers after reset.
+ *
+ * @return Number of written internal header blocks.
+ */
 static int countInternalBlocks(void){
   uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
   uint32_t start = ((uint32_t)(&__persistent_start__));
@@ -64,6 +80,12 @@ static int countInternalBlocks(void){
   return count;
 }
 
+/**
+ * @brief Erase one external sector if it contains programmed data.
+ *
+ * @param[in] sector Sector index to inspect.
+ * @return true when the sector was erased.
+ */
 static bool eraseExternalSector(int sector){
   int32_t addr;
   uint8_t buf[256];
@@ -88,6 +110,9 @@ static bool eraseExternalSector(int sector){
   return false;
 }
 
+/**
+ * @brief Erase the external data log and reset log progress.
+ */
 void eraseExternal()
 {
   sectors_erased = 0;
@@ -105,19 +130,32 @@ void eraseExternal()
   sectors_erased = 0;
 }
 
+/**
+ * @brief Return external flash capacity in bytes.
+ *
+ * @return External storage capacity.
+ */
 uint32_t externalFlashSize(void)
 {
   return tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
          tagStorageSectorCount(TAG_EXTERNAL_FLASH);
 }
 
+/**
+ * @brief Report current erase progress for monitor polling.
+ *
+ * @return Number of sectors processed in the active erase.
+ */
 int externalFlashSectorsErased(void)
 {
   return sectors_erased;
 }
 
-// Recover pState from log
-
+/**
+ * @brief Recover persistent log cursors from internal flash headers.
+ *
+ * @return 0 when recovery completes.
+ */
 int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
@@ -125,10 +163,13 @@ int restoreLog(void)
   return 0;
 }
 
-// 
-// Write data to external log
-//
-
+/**
+ * @brief Append sample words to external flash at the current log cursor.
+ *
+ * @param[in] data Words to write.
+ * @param[in] num Number of 16-bit words to write.
+ * @return Log write status.
+ */
 enum LOGERR writeDataLog(uint16_t *data, int num)
 {
   uint32_t flash_capacity = tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
@@ -148,6 +189,12 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   return LOGWRITE_OK;
 }
 
+/**
+ * @brief Persist an internal flash header for the next external log page.
+ *
+ * @param[in] head Header to write.
+ * @return Log write status.
+ */
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
   uint32_t flashend = (uint32_t)(0x8000000 +
@@ -181,6 +228,13 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 //   Executed by the monitor thread
 //
 
+/**
+ * @brief Populate and encode a monitor ACK for one PresTag log page.
+ *
+ * @param[in] index Log page index to export.
+ * @param[out] ack ACK message to fill.
+ * @return Encoded ACK length.
+ */
 int data_logAck(int index, Ack *ack)
 {
   int ret;

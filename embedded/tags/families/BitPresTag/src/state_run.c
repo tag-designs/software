@@ -1,3 +1,10 @@
+/**
+ * @file state_run.c
+ * @brief BitPresTag RUNNING-state acquisition and logging logic.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 #include <limits.h>
 #include "app.h"
@@ -15,6 +22,9 @@ static const int32_t chunk_period = 15; //60;
 static const int32_t chunk_number = 4;//5;
 static const int32_t chunk_bits = 4; //6;
 
+/**
+ * @brief Configure the ADXL362 for activity wakeups during acquisition.
+ */
 static void adxl362_init(void)
 {
   // set up ADXL and alarm
@@ -54,6 +64,13 @@ static void adxl362_init(void)
   ADXL362_DeviceEnd(TAG_ACCEL_DEVICE);
 }
 
+/**
+ * @brief Handle the BitPresTag data-acquisition state.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering or continuing the state.
+ * @return Requested low-power mode after the state handler completes.
+ */
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
   int16_t temp10;

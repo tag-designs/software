@@ -1,37 +1,15 @@
-/***************************************************
- *  Code to implement the control state machine
+/**
+ * @file state_machine.c
+ * @brief CompassTag control state machine and reset recovery.
+ * @author tag firmware authors
+ * @date 2026-05-23
  *
- *      RESET     : entered from ABORTED or FINISHED
- *                  under monitor control.  Marked in
- *                  STM32 Flash.  Power cycle causes return
- *                  to this state.
- *
- *                  Final act is to clear
- *                  the STM32 page holding intermediate
- *                  state information
- *
- *      IDLE      : Default initial state (with clean flash)
- *                  Power cycle enters this state if
- *                  STM32 Flash is clean
- *
- *      CONFIGURED : Countdown to start. 
- *
- *      RUNNING   : Data collection mode.  STM32 Flash has a marker
- *                  Power cycle would return to ABORTED state
- * 
- *      HIBERNATING : shutdown, waiting to return to RUNNING state
- *
- *      FINISHED  : Programmed data collection completed. Exit to
- *                  RESET under monitor control. Power cycle returns
- *                  here.
- *
- *      ABORTED   : Data collection mode exited prematurely.  Data written
- *                  to flash can be recovered.  Power-cycle returns here.
- *                  Transfer under monitor control to RESET
- * 
- *      PANIC     : Unexpected system error 
- *
- ***************************************************/
+ * RESET is entered from ABORTED or FINISHED under monitor control and clears
+ * intermediate persistent state. IDLE is the clean default. CONFIGURED waits
+ * for the programmed start. RUNNING is data collection. HIBERNATING sleeps
+ * through scheduled gaps. FINISHED and ABORTED preserve enough log state for
+ * the monitor to recover data.
+ */
 
 #include "hal.h"
 #include <limits.h>
@@ -76,6 +54,11 @@ static enum Sleep SelfTest(enum StateTrans, State_Event);
  *******************************************************************/
 
 eventmask_t events = 0;
+/**
+ * @brief Dispatch monitor, RTC, reset, and state-continuation events.
+ *
+ * @return Requested low-power mode after the selected state handler runs.
+ */
 enum Sleep StateMachine(void)
 {
   // read the event flags -- we do this here so any later
@@ -272,6 +255,13 @@ enum Sleep StateMachine(void)
   }
 }
 
+/**
+ * @brief Erase persistent data and return the tag to IDLE.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering reset.
+ * @return Requested low-power mode after reset handling.
+ */
 static enum Sleep Reset(enum StateTrans t, State_Event reason)
 {
   // we need some error recovery here.  If the
@@ -299,6 +289,13 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   return Idle(T_INIT, State_EVENT_OK);
 }
 
+/**
+ * @brief Hold the tag in idle until a monitor command arrives.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering idle.
+ * @return Requested low-power mode while idle.
+ */
 static enum Sleep Idle(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -311,6 +308,13 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
 }
 
 
+/**
+ * @brief Persist start configuration and wait for the acquisition start time.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering configured state.
+ * @return Requested low-power mode or transition to RUNNING.
+ */
 enum Sleep Configured(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -340,6 +344,13 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Sleep through configured hibernation windows.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering hibernation.
+ * @return Requested low-power mode or transition back to acquisition.
+ */
 enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -384,6 +395,13 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 // Running() is
 // in state_run.c
 
+/**
+ * @brief Mark the run complete and leave data available for the monitor.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for finishing.
+ * @return Requested low-power mode.
+ */
 enum Sleep Finished(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -395,6 +413,13 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Mark the run aborted while preserving recoverable log state.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for aborting.
+ * @return Requested low-power mode.
+ */
 enum Sleep Aborted(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
@@ -406,6 +431,13 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+/**
+ * @brief Run the configured production self-tests from IDLE.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for self-test entry.
+ * @return Transition back to IDLE after tests complete.
+ */
 static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
 {
   (void)reason;

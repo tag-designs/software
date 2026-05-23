@@ -1,3 +1,10 @@
+/**
+ * @file devices.c
+ * @brief CompassTag family device descriptors, tests, and power hooks.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 
 #include "ak09940a.h"
@@ -131,6 +138,9 @@ const TagStorageDevice tagExternalFlash = {
  * These functions adapt board-specific control lines and legacy self-test
  * entry points to the descriptors above.
  */
+/**
+ * @brief Assert the AK09940A reset line when the board provides one.
+ */
 void tagCompassMagResetAssert(void)
 {
 #if defined(LINE_MAG_RSTN)
@@ -139,6 +149,9 @@ void tagCompassMagResetAssert(void)
 #endif
 }
 
+/**
+ * @brief Release the AK09940A reset line when the board provides one.
+ */
 void tagCompassMagResetRelease(void)
 {
 #if defined(LINE_MAG_RSTN)
@@ -147,12 +160,22 @@ void tagCompassMagResetRelease(void)
 #endif
 }
 
+/**
+ * @brief Delay for magnetometer startup and conversion timing.
+ *
+ * @param[in] ms Delay in milliseconds.
+ */
 static void compassTagMagSleepMilliseconds(int ms)
 {
   stopMilliseconds(ms);
 }
 
 #if defined(LINE_MAG_TRG)
+/**
+ * @brief Select trigger-line direction for external-trigger mode.
+ *
+ * @param[in] output true to drive the trigger line, false to release as input.
+ */
 static void compassTagMagTriggerMode(bool output)
 {
   if (output)
@@ -161,18 +184,31 @@ static void compassTagMagTriggerMode(bool output)
     toInput(LINE_MAG_TRG);
 }
 
+/**
+ * @brief Emit one AK09940A external-trigger pulse.
+ */
 static void compassTagMagTrigger(void)
 {
   palSetLine(LINE_MAG_TRG);
   palClearLine(LINE_MAG_TRG);
 }
 
+/**
+ * @brief Read the AK09940A data-ready line.
+ *
+ * @return true when the line is high.
+ */
 static bool compassTagMagDataReadyLine(void)
 {
   return palReadLine(LINE_MAG_TRG) == PAL_HIGH;
 }
 #endif
 
+/**
+ * @brief Run the CompassTag AK09940A presence test.
+ *
+ * @return true when the magnetometer identity registers are valid.
+ */
 bool tag_test_ak09940a(void)
 {
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
@@ -204,22 +240,43 @@ static const TagTestCase tag_tests[] =
   {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
 };
 
+/**
+ * @brief Return the CompassTag family self-test table.
+ *
+ * @param[out] count Number of test cases.
+ * @return Pointer to the static test-case table.
+ */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
   return tag_tests;
 }
 
+/**
+ * @brief Return the CompassTag AK09940A descriptor.
+ *
+ * @return Magnetometer descriptor used by shared AK09940A code.
+ */
 const TagMagDevice *tagAk09940aDevice(void)
 {
   return &tagCompassTagMagDevice;
 }
 
+/**
+ * @brief Return the CompassTag LIS2DU12 descriptor.
+ *
+ * @return Accelerometer register descriptor used by family code.
+ */
 const TagRegisterDevice *tagLis2du12Device(void)
 {
   return &tagCompassTagAccelDevice;
 }
 
+/**
+ * @brief Read the accelerometer wake line.
+ *
+ * @return true when the line is active high.
+ */
 bool tagCompassAccelWakeActive(void)
 {
   return palReadLine(COMPASS_ACCEL_WAKE_LINE);
@@ -232,12 +289,20 @@ bool tagCompassAccelWakeActive(void)
  * preparation (storage sleep, reset assertion) is separate from MCU standby
  * pin-pull policy.
  */
+/**
+ * @brief Prepare CompassTag devices before entering standby.
+ *
+ * @param[in] state Current state-machine state.
+ */
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagCompassMagResetAssert();
   tagStoragePrepareStandby(&tagExternalFlash, state);
 }
 
+/**
+ * @brief Apply board pin pulls needed for standby leakage and wake behavior.
+ */
 void tagDevicesApplyStandbyPins(void)
 {
 #if defined(LINE_MAG_RSTN)
@@ -248,11 +313,21 @@ void tagDevicesApplyStandbyPins(void)
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }
 
+/**
+ * @brief Disable accelerometer wakeup sources before reconfiguration.
+ */
 void tagDevicesDisableWakeupSources(void)
 {
   CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
 }
 
+/**
+ * @brief Configure accelerometer wakeup polarity and enable bits.
+ *
+ * @param[in] state Current state-machine state.
+ * @param[in] is_active Current accelerometer activity level.
+ * @return true when the wake configuration matches the sampled line state.
+ */
 bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 {
   if (is_active)
@@ -270,6 +345,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
   return true;
 }
 
+/**
+ * @brief Reset family sensors before returning to idle or shutdown states.
+ */
 void tagDevicesDeinit(void)
 {
   lis2du12Deinit(TAG_ACCEL_DEVICE);

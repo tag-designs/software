@@ -1,3 +1,10 @@
+/**
+ * @file devices.c
+ * @brief PresTag device descriptors, tests, and power hooks.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include "hal.h"
 
 #include "at25xe.h"
@@ -57,11 +64,21 @@ const TagStorageDevice tagExternalFlash = {
  * These small functions connect generic self-tests to the PresTag descriptors
  * above.
  */
+/**
+ * @brief Run the configured LPS27 pressure-sensor test.
+ *
+ * @return true when the pressure sensor identity is valid.
+ */
 bool tag_test_lps27(void)
 {
   return tagPressureTest();
 }
 
+/**
+ * @brief Check whether the configured external flash responds.
+ *
+ * @return true when a valid flash ID is read.
+ */
 bool tag_test_external_flash(void)
 {
   tagStorageWake(TAG_EXTERNAL_FLASH);
@@ -77,6 +94,12 @@ static const TagTestCase tag_tests[] =
   {RUN_LPS, LPS_FAILED, tag_test_lps27},
 };
 
+/**
+ * @brief Return the PresTag self-test table.
+ *
+ * @param[out] count Number of test cases.
+ * @return Pointer to the static test-case table.
+ */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);
@@ -89,11 +112,19 @@ const TagTestCase *tagTestCases(size_t *count)
  * pwr.c calls these hooks while entering standby. PresTag prepares the pressure
  * sensor pins and applies the external-flash standby pin policy.
  */
+/**
+ * @brief Prepare PresTag devices before entering standby.
+ *
+ * @param[in] state Current state-machine state.
+ */
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
+/**
+ * @brief Apply board pin pulls needed for standby leakage.
+ */
 void tagDevicesApplyStandbyPins(void)
 {
   tagBusPrepareSleep(&lps_registers.bus);

@@ -1,4 +1,11 @@
 
+/**
+ * @file sensors.c
+ * @brief IMUTagBreakout sensor sampling and calibration storage stubs.
+ * @author tag firmware authors
+ * @date 2026-05-23
+ */
+
 #include <tag.pb.h>
 #include <stdint.h>
 #include <string.h>
@@ -31,6 +38,15 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+/**
+ * @brief Sample raw sensor data for the data log.
+ *
+ * This revived target currently leaves the legacy sensor bodies disabled while
+ * the descriptor-backed shared drivers are wired back in.
+ *
+ * @param[out] data Raw sensor destination.
+ * @return true after clearing the destination.
+ */
 bool sensorSample(RawSensorData *data){
   bool ok = true;
   uint8_t buf[11];
@@ -68,6 +84,15 @@ bool sensorSample(RawSensorData *data){
 }
 
 
+/**
+ * @brief Populate a live calibration sample.
+ *
+ * The legacy sampling body is intentionally disabled for this target until the
+ * descriptor-backed sensors are fully restored.
+ *
+ * @param[out] sensors Protobuf sensor-data payload to populate.
+ * @return true after attempting the calibration sample.
+ */
 bool sensorCalibrationSample(SensorData *sensors)
 {
     uint8_t buf[11];
@@ -120,6 +145,13 @@ bool deinitSensors(void) {
     return true;
 }*/
 
+/**
+ * @brief Handle the live sensor-calibration state.
+ *
+ * @param[in] t State transition phase.
+ * @param[in] reason Reason for entering or continuing calibration.
+ * @return Requested low-power mode after handling calibration.
+ */
 enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 {
   (void)reason;
@@ -145,6 +177,12 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 extern int encode_ack(void);
 extern int errAck(Ack_Err err);
 
+/**
+ * @brief Populate and encode a live calibration sample ACK.
+ *
+ * @param[out] ack ACK message to fill.
+ * @return Encoded ACK length.
+ */
 int calibration_logAck(Ack *ack){
   CalibrationLog *data = &ack->payload.calibration_log;
   ack->err = Ack_OK;
@@ -154,6 +192,15 @@ int calibration_logAck(Ack *ack){
   return encode_ack();
 }
 
+/**
+ * @brief Accept calibration constants from the host.
+ *
+ * The flash write body is disabled with the legacy sensor path, but validation
+ * is retained so the monitor sees the same command shape.
+ *
+ * @param[in] constants Host-provided calibration constants.
+ * @return Encoded ACK length or error response length.
+ */
 int write_calibration(CalibrationConstants *constants){
   unsigned int index;
 
@@ -199,6 +246,15 @@ int write_calibration(CalibrationConstants *constants){
   return errAck(Ack_OK);
 }
 
+/**
+ * @brief Read calibration constants into a host ACK.
+ *
+ * The legacy read body is disabled for this target.
+ *
+ * @param[in] index Calibration slot to read.
+ * @param[out] ack ACK message to populate.
+ * @return Undefined until the legacy calibration read path is restored.
+ */
 int read_calibration(int32_t index, Ack *ack){
   // if index < 0, search for last written
  /* if (index < 0) {
@@ -218,6 +274,5 @@ int read_calibration(int32_t index, Ack *ack){
   return encode_ack();
   */
 }
-
 
 
