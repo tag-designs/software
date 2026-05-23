@@ -40,14 +40,14 @@
  *   SVN Revision: $WCREV$
 *******************************************************************************/
 
-#ifndef __ADXL362_H__
-#define __ADXL362_H__
+#ifndef __ADXL362_ORIGINAL_H__
+#define __ADXL362_ORIGINAL_H__
 
 /******************************************************************************/
 /***************************** Include Files **********************************/
 /******************************************************************************/
 //#include "Communication.h"
-#include "bus_device.h"
+#include "spi_bus.h"
 
 #include <stdbool.h>
 
@@ -61,7 +61,6 @@
 #define ADXL362_WRITE_REG           0x0A
 #define ADXL362_READ_REG            0x0B
 #define ADXL362_WRITE_FIFO          0x0D
-#define ADXL362_READ_FIFO           ADXL362_WRITE_FIFO
 
 /* Registers */
 #define ADXL362_REG_DEVID_AD            0x00
@@ -204,15 +203,14 @@
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
 
+typedef void (*TagAdxl362Sleep)(int ms);
+
 typedef struct {
-  TagBusDevice bus;
+  const TagSpiDevice *spi;
+  TagAdxl362Sleep sleep_ms;
 } TagAdxl362Device;
 
-static inline const TagSpiDevice *tagAdxl362SpiDevice(const TagAdxl362Device *device)
-{
-  return tagBusSpiDevice(&device->bus);
-}
-
+const TagAdxl362Device *ADXL362_DefaultDevice(void);
 const TagAdxl362Device *tagAdxl362Device(void);
 
 void ADXL362_DeviceBegin(const TagAdxl362Device *device);
@@ -220,67 +218,92 @@ void ADXL362_DeviceEnd(const TagAdxl362Device *device);
 bool adxl362Test(const TagAdxl362Device *device);
 
 /*! Initializes the device. */
+char ADXL362_Init(void);
 char ADXL362_InitDevice(const TagAdxl362Device *device);
 
 /*! Writes data into a register. */
+void ADXL362_SetRegisterValue(unsigned short registerValue,
+                              unsigned char  registerAddress,
+                              unsigned char  bytesNumber);
 void ADXL362_SetRegisterValueDevice(const TagAdxl362Device *device,
                                     unsigned short registerValue,
                                     unsigned char registerAddress,
                                     unsigned char bytesNumber);
 
 /*! Performs a burst read of a specified number of registers. */
+void ADXL362_GetRegisterValue(unsigned char *pReadData,
+                              unsigned char  registerAddress,
+                              unsigned char  bytesNumber);
 void ADXL362_GetRegisterValueDevice(const TagAdxl362Device *device,
                                     unsigned char *pReadData,
                                     unsigned char registerAddress,
                                     unsigned char bytesNumber);
 
 /*! Reads multiple bytes from the device's FIFO buffer. */
+void ADXL362_GetFifoValue(unsigned char *pBuffer, unsigned short bytesNumber);
 void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
                                 unsigned char *pBuffer,
                                 unsigned short bytesNumber);
 
 /*! Resets the device via SPI communication bus. */
+void ADXL362_SoftwareReset(void);
 void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device);
+void ADXL362_Deinit(void);
 void ADXL362_DeinitDevice(const TagAdxl362Device *device);
 
 /*! Places the device into standby/measure mode. */
+void ADXL362_SetPowerMode(unsigned char pwrMode);
 void ADXL362_SetPowerModeDevice(const TagAdxl362Device *device,
                                 unsigned char pwrMode);
 
 /*! Selects the measurement range. */
+void ADXL362_SetRange(unsigned char gRange);
 void ADXL362_SetRangeDevice(const TagAdxl362Device *device,
                             unsigned char gRange);
 
 /*! Selects the Output Data Rate of the device. */
+void ADXL362_SetOutputRate(unsigned char outRate);
 void ADXL362_SetOutputRateDevice(const TagAdxl362Device *device,
                                  unsigned char outRate);
 
 /*! Reads the 3-axis raw data from the accelerometer. */
+void ADXL362_GetXyz(short *x, short *y, short *z);
 void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
                           short *z);
 
 /*! Reads the 3-axis raw data from the accelerometer and converts it to g. */
+void ADXL362_GetGxyz(float* x, float* y, float* z);
 void ADXL362_GetGxyzDevice(const TagAdxl362Device *device, float *x, float *y,
                            float *z);
 
 /*! Reads the temperature of the device. */
+float ADXL362_ReadTemperature(void);
 float ADXL362_ReadTemperatureDevice(const TagAdxl362Device *device);
 
 /*! Configures the FIFO feature. */
+void ADXL362_FifoSetup(unsigned char  mode,
+                       unsigned short waterMarkLvl,
+                       unsigned char  enTempRead);
 void ADXL362_FifoSetupDevice(const TagAdxl362Device *device,
                              unsigned char mode, unsigned short waterMarkLvl,
                              unsigned char enTempRead);
 
 /*! Configures activity detection. */
+void ADXL362_SetupActivityDetection(unsigned char  refOrAbs,
+                                    unsigned short threshold,
+                                    unsigned char  time);
 void ADXL362_SetupActivityDetectionDevice(const TagAdxl362Device *device,
                                           unsigned char refOrAbs,
                                           unsigned short threshold,
                                           unsigned char time);
 
 /*! Configures inactivity detection. */
+void ADXL362_SetupInactivityDetection(unsigned char  refOrAbs,
+                                      unsigned short threshold,
+                                      unsigned short time);
 void ADXL362_SetupInactivityDetectionDevice(const TagAdxl362Device *device,
                                             unsigned char refOrAbs,
                                             unsigned short threshold,
                                             unsigned short time);
 
-#endif /* __ADXL362_H__ */
+#endif /* __ADXL362_ORIGINAL_H__ */

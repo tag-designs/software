@@ -70,6 +70,7 @@ flowchart TD
   Ops["chip TagStorageOps"]
   Chip["at25xe.c / mx25l.c / mx25r.c"]
   SpiHelper["storage_spi.h SPI command framing"]
+  BusDevice["TagBusDevice"]
   SpiDevice["TagSpiDevice"]
   SpiCore["spi_bus.c"]
 
@@ -79,7 +80,8 @@ flowchart TD
   StorageDev --> Ops
   Ops --> Chip
   Chip --> SpiHelper
-  StorageDev --> SpiDevice
+  StorageDev --> BusDevice
+  BusDevice --> SpiDevice
   SpiHelper --> SpiDevice
   SpiDevice --> SpiCore
 

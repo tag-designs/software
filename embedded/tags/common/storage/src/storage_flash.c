@@ -44,7 +44,7 @@ void tagStoragePrepareStandby(const TagStorageDevice *dev, uint32_t state)
   }
 
   tagStorageWake(dev);
-  stopMilliseconds(true, 1);
+  stopMilliseconds(1);
   tagStorageSleep(dev);
 }
 

@@ -47,28 +47,28 @@
 static void at25xeWake(const TagStorageDevice *dev)
 {
     tagStorageBusBegin(dev);
-    //stopMilliseconds(true,1);//chThdSleepMicroseconds(250);
-    tagStorageSpiCommand(dev->spi, AT25XE_CMD_POWER_UP);
-    stopMilliseconds(true,2);//chThdSleepMicroseconds(250);
+    //stopMilliseconds(1);//chThdSleepMicroseconds(250);
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_POWER_UP);
+    stopMilliseconds(2);//chThdSleepMicroseconds(250);
 }
 
 static void at25xeSleep(const TagStorageDevice *dev)
 {
-    tagStorageSpiCommand(dev->spi, AT25XE_CMD_DEEP_POWER_DOWN);
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_DEEP_POWER_DOWN);
     tagStorageBusEnd(dev);
 }
 
 static uint8_t at25xeStatus(const TagStorageDevice *dev)
 {
     uint8_t buf;
-    tagStorageSpiCommandReceive(dev->spi, AT25XE_CMD_READ_STATUS_REG, &buf, 1);
+    tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), AT25XE_CMD_READ_STATUS_REG, &buf, 1);
     return buf;
 }
 
 static int at25xeCheckID(const TagStorageDevice *dev)
 {
     uint8_t id[3];
-    tagStorageSpiCommandReceive(dev->spi, AT25XE_CMD_READ_ID, id, 3);
+    tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), AT25XE_CMD_READ_ID, id, 3);
     if (id[0] != 0x1F)
         return -1;
     if (id[1] != 0x47)
@@ -87,13 +87,13 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
         int max = 256 - address%256;
         int bytes = num > max ? max : num; 
 
-        tagStorageSpiCommand(dev->spi, AT25XE_CMD_WRITE_ENABLE);
+        tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_WRITE_ENABLE);
         at25xeStatus(dev); // check status after wel -- debug
-        tagStorageSpiCommandAddressSend(dev->spi, AT25XE_CMD_PAGE_PROG,
+        tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev), AT25XE_CMD_PAGE_PROG,
                                         address, buf, bytes);
         for (i = 0; i < 12; i++)
         {
-            stopMilliseconds(true,1);
+            stopMilliseconds(1);
             uint8_t status = at25xeStatus(dev);
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
@@ -116,8 +116,8 @@ static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
     status = at25xeStatus(dev);
     if (status & (AT25XE_FLAGS_SR_WIP))
         return false;
-    tagStorageSpiCommand(dev->spi, AT25XE_CMD_WRITE_ENABLE);
-    tagStorageSpiCommandAddress(dev->spi, AT25XE_CMD_SECTOR_ERASE, address);
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_WRITE_ENABLE);
+    tagStorageSpiCommandAddress(tagStorageSpiDevice(dev), AT25XE_CMD_SECTOR_ERASE, address);
     for (i = 0; i < 5; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
@@ -135,7 +135,7 @@ static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
 static void at25xeRead(const TagStorageDevice *dev, uint32_t address,
                        uint8_t *buf, int num)
 {
-    tagStorageSpiCommandAddressReceive(dev->spi, AT25XE_CMD_READ, address, buf,
+    tagStorageSpiCommandAddressReceive(tagStorageSpiDevice(dev), AT25XE_CMD_READ, address, buf,
                                        num);
 }
 

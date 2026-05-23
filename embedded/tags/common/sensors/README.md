@@ -22,16 +22,15 @@ sequence should live in that tag family instead.
 Reusable drivers take a device descriptor rather than directly naming board
 lines. The descriptor normally contains:
 
-- a `TagRegisterDevice` for register reads/writes, usually including its
-  `TagBusDevice` bus-session binding;
+- a `TagRegisterDevice` for register reads/writes, including the `TagBusDevice`
+  used by that register protocol;
 - optional sensor-specific callbacks, such as trigger or data-ready lines.
 
 The split matters. Device power on/off is not the same as bus begin/end, and
-chip select framing is part of the device protocol. Register adapters call
-through the `TagBusDevice` stored in the `TagRegisterDevice`; they do not infer
-the bus type from function-pointer identity. Keep command bytes and payloads
-under the same chip-select assertion when the datasheet expects one
-transaction.
+chip select framing is part of the device protocol. Register adapters switch on
+the `TagRegisterDevice` protocol kind, while lifecycle code uses the embedded
+`TagBusDevice`. Keep command bytes and payloads under the same chip-select
+assertion when the datasheet expects one transaction.
 
 The common dependency shape is:
 
@@ -47,8 +46,8 @@ flowchart TD
   SensorDesc --> RegDev
   SensorDriver --> Adapter
   Adapter --> RegDev
-  RegDev --> BusDev
 
+  RegDev --> BusDev
   BusDev --> Spi["TagSpiDevice"]
   BusDev --> I2c["TagI2cDevice"]
   BusDev --> Usart["TagUsartDevice"]

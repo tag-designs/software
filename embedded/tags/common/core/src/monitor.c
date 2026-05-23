@@ -130,10 +130,11 @@ static int statusAck(void)
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
-  #ifdef TAG_DEBUG_LOG
-   int len = debug_log_read((uint8_t *)ack.payload.status.debug_message, sizeof(ack.payload.status.debug_message-l));
+#ifdef TAG_DEBUG_LOG
+   int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
+                            sizeof(ack.payload.status.debug_message) - 1);
    ack.payload.status.debug_message[len] = 0;
-  #endif
+#endif
 
   return encode_ack();
 }

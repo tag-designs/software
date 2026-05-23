@@ -271,7 +271,7 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   // let filter start up
 
   //SPI1->CR1 &= ~SPI_CR1_SPE;
-  stopMilliseconds(true,12 * 1000 / odr);
+  stopMilliseconds(12 * 1000 / odr);
   //SPI1->CR1 |= SPI_CR1_SPE;
   // read low-pass samples
   LIS2DU12_read(LIS2DU12_OUT_X_L, (uint8_t *)orientation, 6);
@@ -282,7 +282,7 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   LIS2DU12_write(LIS2DU12_FIFO_CTRL, 6 << 5 | 31);
 
   //SPI1->CR1 &= ~SPI_CR1_SPE;
-  stopMilliseconds(true,(samples + 5) * 1000 / odr);
+  stopMilliseconds((samples + 5) * 1000 / odr);
   //SPI1->CR1 |= SPI_CR1_SPE;
 
   // read samples and compute sum of squares

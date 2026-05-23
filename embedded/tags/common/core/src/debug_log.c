@@ -5,17 +5,18 @@
 /*
  * Backing store for the monitor debug-message stream.
  *
- * The wire protocol returns one Ack.debug_message payload per Req.debug
- * request, so the stream buffer is sized to exactly one payload. Writers append
- * with debug_log_printf(); monitor.c drains the buffer through debug_log_read().
+ * Treat this as a queue of diagnostic strings. monitor.c drains at most one
+ * Ack.status.debug_message payload at a time, but the backing queue is larger
+ * so several messages can accumulate between host polls.
  */
 #include "core_types.h"
-#include "tag.pb.h"
 
 #include <stdarg.h>
 
+#define DEBUG_LOG_BUFFER_SIZE 1024
+
 static MemoryStream debug_stream;
-static uint8_t debug_message_buffer[sizeof(((Ack *)0)->payload.debug_message)] NOINIT;
+static uint8_t debug_message_buffer[DEBUG_LOG_BUFFER_SIZE] NOINIT;
 static bool debug_log_initialized;
 
 void debug_log_init(void)

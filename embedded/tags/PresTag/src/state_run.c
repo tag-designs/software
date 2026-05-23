@@ -107,7 +107,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         dataheader.vdd100[0] = pState->vdd100;
         dataheader.vdd100[1] = pState->temp10;
         err = writeDataHeader(&dataheader);
-        stopMilliseconds(false,2);
+        stopMilliseconds(2);
        
         switch (err)
         {

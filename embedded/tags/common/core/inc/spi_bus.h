@@ -1,7 +1,6 @@
 #ifndef TAG_CORE_SPI_BUS_H
 #define TAG_CORE_SPI_BUS_H
 
-#include "bus_device.h"
 #include "core_sync.h"
 
 #include "hal.h"
@@ -46,14 +45,14 @@ typedef struct {
 } TagSpiDevice;
 
 extern const TagSpiConfig tagSpiDefaultConfig;
-extern const TagBusOps tagSpiBusOps;
 
 #define TAG_SPI1_DEVICE_DEFAULTS                                             \
   .spi = SPI1, .mutex = &SPImutex, .config = &tagSpiDefaultConfig
 
-bool isSpi1On(void);
-void tagMarkSpi1On(void);
-void tagMarkSpi1Off(void);
+bool tagSpiIsOn(SPI_TypeDef *spi);
+void tagMarkSpiOn(SPI_TypeDef *spi);
+void tagMarkSpiOff(SPI_TypeDef *spi);
+
 void tagSpiDisableActiveForStop(void);
 void tagSpiEnableActiveAfterStop(void);
 

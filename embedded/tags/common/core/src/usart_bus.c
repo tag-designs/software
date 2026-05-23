@@ -11,8 +11,26 @@
  * active-state tracking, and raw byte-transfer mechanics.
  */
 
+#if (defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1) ||        \
+    (defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2) ||        \
+    (defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3)
+#define TAG_USART_TRACKING_ENABLED 1
+#else
+#define TAG_USART_TRACKING_ENABLED 0
+#endif
+
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+static bool usart1_on = false;
+static bool usart1_suspended_for_stop = false;
+#endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
 static bool usart2_on = false;
 static bool usart2_suspended_for_stop = false;
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+static bool usart3_on = false;
+static bool usart3_suspended_for_stop = false;
+#endif
 
 /*
  * Default synchronous-USART2 binding.
@@ -28,114 +46,162 @@ const TagUsartSyncConfig tagUsart2SyncDefaultConfig = {
 };
 
 /*
- * Generic bus-device adapter.
- *
- * TagRegisterDevice stores a TagBusDevice so register drivers can open a bus
- * without knowing whether the concrete transport is SPI, USART, or I2C.
- */
-static void tagUsartBusOpsPowerOn(const void *device)
-{
-  tagUsartDevicePowerOn((const TagUsartDevice *)device);
-}
-
-static void tagUsartBusOpsPowerOff(const void *device)
-{
-  tagUsartDevicePowerOff((const TagUsartDevice *)device);
-}
-
-static void tagUsartBusOpsBegin(const void *device)
-{
-  tagUsartBusBegin((const TagUsartDevice *)device);
-}
-
-static void tagUsartBusOpsEnd(const void *device)
-{
-  tagUsartBusEnd((const TagUsartDevice *)device);
-}
-
-static void tagUsartBusOpsPrepareSleep(const void *device)
-{
-  tagUsartDevicePrepareSleep((const TagUsartDevice *)device);
-}
-
-const TagBusOps tagUsartBusOps = {
-    .power_on = tagUsartBusOpsPowerOn,
-    .power_off = tagUsartBusOpsPowerOff,
-    .bus_begin = tagUsartBusOpsBegin,
-    .bus_end = tagUsartBusOpsEnd,
-    .prepare_sleep = tagUsartBusOpsPrepareSleep,
-};
-
-/*
  * Active-peripheral tracking for Stop2.
  *
  * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
  */
-bool isUsart2On(void)
+static bool *tagUsartOnFlag(USART_TypeDef *usart)
 {
-  return usart2_on;
+  (void)usart;
+
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+  if (usart == USART1)
+    return &usart1_on;
+#endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
+  if (usart == USART2)
+    return &usart2_on;
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+  if (usart == USART3)
+    return &usart3_on;
+#endif
+  return 0;
 }
 
-void tagMarkUsart2On(void)
+static bool *tagUsartSuspendedForStopFlag(USART_TypeDef *usart)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  usart2_on = true;
+  (void)usart;
+
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+  if (usart == USART1)
+    return &usart1_suspended_for_stop;
 #endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
+  if (usart == USART2)
+    return &usart2_suspended_for_stop;
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+  if (usart == USART3)
+    return &usart3_suspended_for_stop;
+#endif
+  return 0;
 }
 
-void tagMarkUsart2Off(void)
+static void tagUsartPeripheralEnableClock(USART_TypeDef *usart)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  usart2_on = false;
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+  if (usart == USART1)
+  {
+    rccEnableUSART1(true);
+    rccResetUSART1();
+    return;
+  }
 #endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
+  if (usart == USART2)
+  {
+    rccEnableUSART2(true);
+    rccResetUSART2();
+    return;
+  }
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+  if (usart == USART3)
+  {
+    rccEnableUSART3(true);
+    rccResetUSART3();
+    return;
+  }
+#endif
+  (void)usart;
+}
+
+#if TAG_USART_TRACKING_ENABLED
+static void tagUsartDisableForStop(USART_TypeDef *usart)
+{
+  bool *on = tagUsartOnFlag(usart);
+  bool *suspended = tagUsartSuspendedForStopFlag(usart);
+
+  if (on && suspended && *on)
+  {
+    usart->CR1 &= ~USART_CR1_UE;
+    *suspended = true;
+  }
+}
+
+static void tagUsartEnableAfterStop(USART_TypeDef *usart)
+{
+  bool *suspended = tagUsartSuspendedForStopFlag(usart);
+
+  if (suspended && *suspended)
+  {
+    usart->CR1 |= USART_CR1_UE;
+    *suspended = false;
+  }
+}
+#endif
+
+bool tagUsartIsOn(USART_TypeDef *usart)
+{
+  bool *on = tagUsartOnFlag(usart);
+
+  return on && *on;
+}
+
+void tagMarkUsartOn(USART_TypeDef *usart)
+{
+  bool *on = tagUsartOnFlag(usart);
+
+  if (on)
+  {
+    *on = true;
+  }
+}
+
+void tagMarkUsartOff(USART_TypeDef *usart)
+{
+  bool *on = tagUsartOnFlag(usart);
+  bool *suspended = tagUsartSuspendedForStopFlag(usart);
+
+  if (on)
+  {
+    *on = false;
+  }
+  if (suspended)
+  {
+    *suspended = false;
+  }
 }
 
 static void tagUsartDeviceEnable(const TagUsartDevice *device)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
   const TagUsartSyncConfig *config = device->config;
   if (!config)
   {
     config = &tagUsart2SyncDefaultConfig;
   }
 
-  if (device->usart == USART2)
-  {
-    rccEnableUSART2(true);
-    rccResetUSART2();
-  }
+  tagUsartPeripheralEnableClock(device->usart);
 
-  // Synchronous USART mode, MSB first. Several tags use USART2 as a
-  // three-wire SPI-like sensor bus when the device is not routed to SPI.
+  // Synchronous USART mode, MSB first. Several tags use USART as a three-wire
+  // SPI-like sensor bus when the device is not routed to SPI.
   device->usart->BRR = config->brr;
   device->usart->CR2 = config->cr2;
   device->usart->CR3 = config->cr3;
   device->usart->CR1 = config->cr1;
 
-  if (device->usart == USART2)
-  {
-    tagMarkUsart2On();
-  }
-#else
-  (void)device;
-#endif
+  tagMarkUsartOn(device->usart);
 }
 
 static void tagUsartDeviceDisable(const TagUsartDevice *device)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
   device->usart->CR1 = 0;
   device->usart->CR2 = 0;
   device->usart->CR3 = 0;
 
-  if (device->usart == USART2)
-  {
-    tagMarkUsart2Off();
-  }
-#else
-  (void)device;
-#endif
+  tagMarkUsartOff(device->usart);
 }
 
 /*
@@ -146,23 +212,31 @@ static void tagUsartDeviceDisable(const TagUsartDevice *device)
  */
 void tagUsartDisableActiveForStop(void)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  if (usart2_on)
-  {
-    USART2->CR1 &= ~USART_CR1_UE;
-    usart2_suspended_for_stop = true;
-  }
+#if TAG_USART_TRACKING_ENABLED
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+  tagUsartDisableForStop(USART1);
+#endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
+  tagUsartDisableForStop(USART2);
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+  tagUsartDisableForStop(USART3);
+#endif
 #endif
 }
 
 void tagUsartEnableActiveAfterStop(void)
 {
-#if defined(STM32_HAS_USART2) && STM32_HAS_USART2
-  if (usart2_suspended_for_stop)
-  {
-    USART2->CR1 |= USART_CR1_UE;
-    usart2_suspended_for_stop = false;
-  }
+#if TAG_USART_TRACKING_ENABLED
+#if defined(STM32_SERIAL_USE_USART1) && STM32_SERIAL_USE_USART1
+  tagUsartEnableAfterStop(USART1);
+#endif
+#if defined(STM32_SERIAL_USE_USART2) && STM32_SERIAL_USE_USART2
+  tagUsartEnableAfterStop(USART2);
+#endif
+#if defined(STM32_SERIAL_USE_USART3) && STM32_SERIAL_USE_USART3
+  tagUsartEnableAfterStop(USART3);
+#endif
 #endif
 }
 

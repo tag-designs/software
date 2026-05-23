@@ -17,8 +17,30 @@
  * chip select held across a complete flash transaction.
  */
 
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
 static bool spi1_on = false;
 static bool spi1_suspended_for_stop = false;
+#endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+static bool spi2_on = false;
+static bool spi2_suspended_for_stop = false;
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+static bool spi3_on = false;
+static bool spi3_suspended_for_stop = false;
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+static bool spi4_on = false;
+static bool spi4_suspended_for_stop = false;
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+static bool spi5_on = false;
+static bool spi5_suspended_for_stop = false;
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+static bool spi6_on = false;
+static bool spi6_suspended_for_stop = false;
+#endif
 
 /*
  * Active-peripheral tracking for Stop2.
@@ -26,48 +48,222 @@ static bool spi1_suspended_for_stop = false;
  * Short sleeps suspend active peripherals without changing device power,
  * chip-select ownership, or pin alternate-function setup.
  */
-bool isSpi1On(void)
+static bool *tagSpiOnFlag(SPI_TypeDef *spi)
 {
-  return spi1_on;
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  if (spi == SPI1)
+    return &spi1_on;
+#endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  if (spi == SPI2)
+    return &spi2_on;
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  if (spi == SPI3)
+    return &spi3_on;
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  if (spi == SPI4)
+    return &spi4_on;
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  if (spi == SPI5)
+    return &spi5_on;
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  if (spi == SPI6)
+    return &spi6_on;
+#endif
+  return 0;
 }
 
-void tagMarkSpi1On(void)
+static bool *tagSpiSuspendedForStopFlag(SPI_TypeDef *spi)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-  spi1_on = true;
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  if (spi == SPI1)
+    return &spi1_suspended_for_stop;
 #endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  if (spi == SPI2)
+    return &spi2_suspended_for_stop;
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  if (spi == SPI3)
+    return &spi3_suspended_for_stop;
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  if (spi == SPI4)
+    return &spi4_suspended_for_stop;
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  if (spi == SPI5)
+    return &spi5_suspended_for_stop;
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  if (spi == SPI6)
+    return &spi6_suspended_for_stop;
+#endif
+  return 0;
 }
 
-void tagMarkSpi1Off(void)
+static void tagSpiPeripheralEnableClock(SPI_TypeDef *spi)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-  spi1_on = false;
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  if (spi == SPI1)
+  {
+    rccEnableSPI1(0);
+    rccResetSPI1();
+    return;
+  }
 #endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  if (spi == SPI2)
+  {
+    rccEnableSPI2(0);
+    rccResetSPI2();
+    return;
+  }
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  if (spi == SPI3)
+  {
+    rccEnableSPI3(0);
+    rccResetSPI3();
+    return;
+  }
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  if (spi == SPI4)
+  {
+    rccEnableSPI4(0);
+    rccResetSPI4();
+    return;
+  }
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  if (spi == SPI5)
+  {
+    rccEnableSPI5(0);
+    rccResetSPI5();
+    return;
+  }
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  if (spi == SPI6)
+  {
+    rccEnableSPI6(0);
+    rccResetSPI6();
+    return;
+  }
+#endif
+  (void)spi;
+}
+
+static void tagSpiDisableForStop(SPI_TypeDef *spi)
+{
+  bool *on = tagSpiOnFlag(spi);
+  bool *suspended = tagSpiSuspendedForStopFlag(spi);
+
+  if (on && suspended && *on)
+  {
+    spi->CR1 &= ~SPI_CR1_SPE;
+    *suspended = true;
+  }
+}
+
+static void tagSpiEnableAfterStop(SPI_TypeDef *spi)
+{
+  bool *suspended = tagSpiSuspendedForStopFlag(spi);
+
+  if (suspended && *suspended)
+  {
+    spi->CR1 |= SPI_CR1_SPE;
+    *suspended = false;
+  }
+}
+
+bool tagSpiIsOn(SPI_TypeDef *spi)
+{
+  bool *on = tagSpiOnFlag(spi);
+
+  return on && *on;
+}
+
+void tagMarkSpiOn(SPI_TypeDef *spi)
+{
+  bool *on = tagSpiOnFlag(spi);
+
+  if (on)
+  {
+    *on = true;
+  }
+}
+
+void tagMarkSpiOff(SPI_TypeDef *spi)
+{
+  bool *on = tagSpiOnFlag(spi);
+  bool *suspended = tagSpiSuspendedForStopFlag(spi);
+
+  if (on)
+  {
+    *on = false;
+  }
+  if (suspended)
+  {
+    *suspended = false;
+  }
 }
 
 void tagSpiDisableActiveForStop(void)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-  if (spi1_on)
-  {
-    SPI1->CR1 &= ~SPI_CR1_SPE;
-    spi1_suspended_for_stop = true;
-  }
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  tagSpiDisableForStop(SPI1);
+#endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  tagSpiDisableForStop(SPI2);
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  tagSpiDisableForStop(SPI3);
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  tagSpiDisableForStop(SPI4);
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  tagSpiDisableForStop(SPI5);
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  tagSpiDisableForStop(SPI6);
 #endif
 }
 
 void tagSpiEnableActiveAfterStop(void)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
-  if (spi1_suspended_for_stop)
-  {
-    SPI1->CR1 |= SPI_CR1_SPE;
-    spi1_suspended_for_stop = false;
-  }
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  tagSpiEnableAfterStop(SPI1);
+#endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  tagSpiEnableAfterStop(SPI2);
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  tagSpiEnableAfterStop(SPI3);
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  tagSpiEnableAfterStop(SPI4);
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  tagSpiEnableAfterStop(SPI5);
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  tagSpiEnableAfterStop(SPI6);
 #endif
 }
 
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
+#if (defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1) ||                         \
+    (defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2) ||                         \
+    (defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3) ||                         \
+    (defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4) ||                         \
+    (defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5) ||                         \
+    (defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6)
 const TagSpiConfig tagSpiDefaultConfig = {
     .cr1 = SPI_CR1_MSTR,
     .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
@@ -81,87 +277,30 @@ const TagSpiConfig tagSpiDefaultConfig = {
 };
 #endif
 
-/*
- * Generic bus-device adapter.
- *
- * TagRegisterDevice stores a TagBusDevice so register drivers can open a bus
- * without knowing whether the concrete transport is SPI, USART, or I2C.
- */
-static void tagSpiBusOpsPowerOn(const void *device)
-{
-  tagSpiDevicePowerOn((const TagSpiDevice *)device);
-}
-
-static void tagSpiBusOpsPowerOff(const void *device)
-{
-  tagSpiDevicePowerOff((const TagSpiDevice *)device);
-}
-
-static void tagSpiBusOpsBegin(const void *device)
-{
-  tagSpiBusBegin((const TagSpiDevice *)device);
-}
-
-static void tagSpiBusOpsEnd(const void *device)
-{
-  tagSpiBusEnd((const TagSpiDevice *)device);
-}
-
-static void tagSpiBusOpsPrepareSleep(const void *device)
-{
-  tagSpiDevicePrepareSleep((const TagSpiDevice *)device);
-}
-
-const TagBusOps tagSpiBusOps = {
-    .power_on = tagSpiBusOpsPowerOn,
-    .power_off = tagSpiBusOpsPowerOff,
-    .bus_begin = tagSpiBusOpsBegin,
-    .bus_end = tagSpiBusOpsEnd,
-    .prepare_sleep = tagSpiBusOpsPrepareSleep,
-};
-
 static void tagSpiDeviceEnable(const TagSpiDevice *device)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
   const TagSpiConfig *config = device->config;
   if (!config)
   {
     config = &tagSpiDefaultConfig;
   }
 
-  if (device->spi == SPI1)
-  {
-    rccEnableSPI1(0);
-    rccResetSPI1();
-  }
+  tagSpiPeripheralEnableClock(device->spi);
 
   device->spi->CR1 = 0;
   device->spi->CR2 = config->cr2;
   device->spi->CR1 = config->cr1;
   device->spi->CR1 |= SPI_CR1_SPE;
 
-  if (device->spi == SPI1)
-  {
-    tagMarkSpi1On();
-  }
-#else
-  (void)device;
-#endif
+  tagMarkSpiOn(device->spi);
 }
 
 static void tagSpiDeviceDisable(const TagSpiDevice *device)
 {
-#if defined(STM32_HAS_SPI1) && STM32_HAS_SPI1
   device->spi->CR1 = 0;
   device->spi->CR2 = 0;
 
-  if (device->spi == SPI1)
-  {
-    tagMarkSpi1Off();
-  }
-#else
-  (void)device;
-#endif
+  tagMarkSpiOff(device->spi);
 }
 
 /*

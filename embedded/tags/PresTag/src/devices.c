@@ -9,9 +9,6 @@
 #include "storage_device.h"
 #include "storage_flash.h"
 #include "test_support.h"
-#include "timekeeping.h"
-
-static void lpsSleepMilliseconds(int ms);
 
 /*
  * Device descriptors.
@@ -20,49 +17,36 @@ static void lpsSleepMilliseconds(int ms);
  * AT25XE external flash and the SPI LPS27 pressure sensor. Common drivers use
  * these descriptors instead of hard-coded board wiring.
  */
-static const TagSpiDevice lps_bus = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_STEVAL_CS,
-    .sck = LINE_STEVAL_SCK,
-    .miso = LINE_STEVAL_MISO,
-    .mosi = LINE_STEVAL_MOSI,
-    .pwr = LINE_STEVAL_PWR,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_FLOAT,
-};
-
-static const TagBusDevice lps_register_bus = {
-    .ops = &tagSpiBusOps,
-    .device = &lps_bus,
-};
-
 static const TagRegisterDevice lps_registers = {
-    .read_register = tagStSpiReadRegisterDevice,
-    .write_register = tagStSpiWriteRegisterDevice,
-    .bus = &lps_register_bus,
+    .kind = TAG_REGISTER_ST,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_STEVAL_CS,
+        .sck = LINE_STEVAL_SCK,
+        .miso = LINE_STEVAL_MISO,
+        .mosi = LINE_STEVAL_MOSI,
+        .pwr = LINE_STEVAL_PWR,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_FLOAT),
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
 
 const TagPressureDevice tagPresTagPressureDevice = {
     .registers = &lps_registers,
-    .sleep_ms = lpsSleepMilliseconds,
-};
-
-static const TagSpiDevice external_flash_power = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_FLASH_nCS,
-    .sck = LINE_FLASH_SCK,
-    .miso = LINE_FLASH_MISO,
-    .mosi = LINE_FLASH_MOSI,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
-    .spi = &external_flash_power,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_FLASH_nCS,
+        .sck = LINE_FLASH_SCK,
+        .miso = LINE_FLASH_MISO,
+        .mosi = LINE_FLASH_MOSI,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
     .sector_size = AT25XE_SECTOR_SIZE,
     .sector_count = AT25XE_SECTOR_COUNT,
 };
@@ -70,14 +54,9 @@ const TagStorageDevice tagExternalFlash = {
 /*
  * Helper bindings.
  *
- * These small functions connect generic self-tests and pressure-driver timing
- * callbacks to the PresTag descriptors above.
+ * These small functions connect generic self-tests to the PresTag descriptors
+ * above.
  */
-static void lpsSleepMilliseconds(int ms)
-{
-  stopMilliseconds(false, ms);
-}
-
 bool tag_test_lps27(void)
 {
   return tagPressureTest();
@@ -117,6 +96,6 @@ void tagDevicesPrepareStandby(uint32_t state)
 
 void tagDevicesApplyStandbyPins(void)
 {
-  tagSpiDevicePrepareSleep(&lps_bus);
+  tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }

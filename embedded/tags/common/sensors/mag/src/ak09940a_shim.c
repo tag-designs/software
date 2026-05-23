@@ -39,33 +39,24 @@
 #define AK09940A_HAS_DEFAULT_TRG 1
 #endif
 
-static const TagSpiDevice ak09940a_spi_device = {
-  TAG_SPI1_DEVICE_DEFAULTS,
-  .cs = AK09940A_DEFAULT_CS,
-  .sck = AK09940A_DEFAULT_SCK,
-  .miso = AK09940A_DEFAULT_MISO,
-  .mosi = AK09940A_DEFAULT_MOSI,
-  .pwr = TAG_NO_LINE,
-  .dummy = 0xff,
-  .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
-};
-
-static const TagBusDevice ak09940a_bus = {
-  .ops = &tagSpiBusOps,
-  .device = &ak09940a_spi_device,
-};
-
 static const TagRegisterDevice ak09940a_registers = {
-  .read_register = tagStSpiReadRegisterDevice,
-  .write_register = tagStSpiWriteRegisterDevice,
-  .bus = &ak09940a_bus,
+  .kind = TAG_REGISTER_ST,
+  .bus = TAG_BUS_SPI_INIT(
+    TAG_SPI1_DEVICE_DEFAULTS,
+    .cs = AK09940A_DEFAULT_CS,
+    .sck = AK09940A_DEFAULT_SCK,
+    .miso = AK09940A_DEFAULT_MISO,
+    .mosi = AK09940A_DEFAULT_MOSI,
+    .pwr = TAG_NO_LINE,
+    .dummy = 0xff,
+    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
 
 static void ak09940a_default_sleep(int ms)
 {
-  stopMilliseconds(false, ms);
+  stopMilliseconds(ms);
 }
 
 #ifdef AK09940A_HAS_DEFAULT_TRG

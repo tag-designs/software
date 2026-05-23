@@ -1,8 +1,6 @@
 #ifndef TAG_CORE_I2C_BUS_H
 #define TAG_CORE_I2C_BUS_H
 
-#include "bus_device.h"
-
 #include "hal.h"
 
 #include <stdint.h>
@@ -41,7 +39,6 @@ typedef struct {
 } TagI2cDevice;
 
 extern const TagI2cController tagI2c1DefaultController;
-extern const TagBusOps tagI2cBusOps;
 
 /*
  * Low-level controller hooks used by tagI2cBusBegin/End.

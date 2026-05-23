@@ -5,8 +5,6 @@
 
 #include <stdint.h>
 
-typedef void (*TagPressureSleep)(int ms);
-
 /*
  * Pressure sensor instance descriptor.
  *
@@ -17,7 +15,6 @@ typedef void (*TagPressureSleep)(int ms);
  */
 typedef struct {
   const TagRegisterDevice *registers;
-  TagPressureSleep sleep_ms;
 } TagPressureDevice;
 
 void tagPressureDeviceBegin(const TagPressureDevice *device);

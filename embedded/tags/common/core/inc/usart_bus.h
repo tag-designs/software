@@ -1,7 +1,6 @@
 #ifndef TAG_CORE_USART_BUS_H
 #define TAG_CORE_USART_BUS_H
 
-#include "bus_device.h"
 #include "core_sync.h"
 
 #include "hal.h"
@@ -46,14 +45,14 @@ typedef struct {
 } TagUsartDevice;
 
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
-extern const TagBusOps tagUsartBusOps;
 
 #define TAG_USART2_SYNC_DEVICE_DEFAULTS                                      \
   .usart = USART2, .mutex = &USARTmutex, .config = &tagUsart2SyncDefaultConfig
 
-bool isUsart2On(void);
-void tagMarkUsart2On(void);
-void tagMarkUsart2Off(void);
+bool tagUsartIsOn(USART_TypeDef *usart);
+void tagMarkUsartOn(USART_TypeDef *usart);
+void tagMarkUsartOff(USART_TypeDef *usart);
+
 void tagUsartDisableActiveForStop(void);
 void tagUsartEnableActiveAfterStop(void);
 

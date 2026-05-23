@@ -5,34 +5,58 @@
 /*
  * Register-device dispatch.
  *
- * New descriptor-backed drivers normally leave context NULL. In that case the
- * read/write adapter receives the TagRegisterDevice itself, including the bus
- * binding and command masks. A non-NULL context is still supported for simple
- * adapters such as I2C, where the register operation only needs the concrete
- * bus device.
+ * Descriptor-backed drivers see one TagRegisterDevice shape. The descriptor
+ * keeps a concrete bus descriptor by value, so dispatch is an explicit switch
+ * over the register protocol and bus kind instead of a type-erased vtable.
  */
 int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
                      const uint8_t *buf, uint32_t len)
 {
-  const void *context = device->context ? device->context : device;
-  return device->write_register(context, reg, buf, len);
+  switch (device->kind) {
+  case TAG_REGISTER_ST:
+    switch (device->bus.kind) {
+    case TAG_BUS_SPI:
+      return tagStSpiWriteRegisterDevice(device, reg, buf, len);
+    case TAG_BUS_USART:
+      return tagStUsartWriteRegisterDevice(device, reg, buf, len);
+    case TAG_BUS_I2C:
+      return MSG_RESET;
+    }
+    return MSG_RESET;
+
+  case TAG_REGISTER_I2C:
+    return tagI2cWriteRegister(tagBusI2cDevice(&device->bus), reg, buf, len);
+
+  case TAG_REGISTER_CUSTOM:
+    return device->custom.write_register(device->custom.context, reg, buf, len);
+  }
+
+  return MSG_RESET;
 }
 
 int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
                     uint32_t len)
 {
-  const void *context = device->context ? device->context : device;
-  return device->read_register(context, reg, buf, len);
-}
+  switch (device->kind) {
+  case TAG_REGISTER_ST:
+    switch (device->bus.kind) {
+    case TAG_BUS_SPI:
+      return tagStSpiReadRegisterDevice(device, reg, buf, len);
+    case TAG_BUS_USART:
+      return tagStUsartReadRegisterDevice(device, reg, buf, len);
+    case TAG_BUS_I2C:
+      return MSG_RESET;
+    }
+    return MSG_RESET;
 
-void tagRegisterBusBegin(const TagRegisterDevice *device)
-{
-  tagBusBegin(device->bus);
-}
+  case TAG_REGISTER_I2C:
+    return tagI2cReadRegister(tagBusI2cDevice(&device->bus), reg, buf, len);
 
-void tagRegisterBusEnd(const TagRegisterDevice *device)
-{
-  tagBusEnd(device->bus);
+  case TAG_REGISTER_CUSTOM:
+    return device->custom.read_register(device->custom.context, reg, buf, len);
+  }
+
+  return MSG_RESET;
 }
 
 /*
@@ -82,11 +106,11 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
  * latch the register command on CS rising, so callers must not split a register
  * write into separately selected command and data transfers.
  */
-int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
-                                const uint8_t *buf, uint32_t len)
+int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
+                                uint8_t reg, const uint8_t *buf,
+                                uint32_t len)
 {
-  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
-  const TagSpiDevice *device = (const TagSpiDevice *)registers->bus->device;
+  const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
                              registers->write_mask);
 
@@ -98,11 +122,10 @@ int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
   return 0;
 }
 
-int tagStSpiReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
-                               uint32_t len)
+int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
+                               uint8_t reg, uint8_t *buf, uint32_t len)
 {
-  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
-  const TagSpiDevice *device = (const TagSpiDevice *)registers->bus->device;
+  const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)(reg | registers->read_mask);
 
   tagSpiSelect(device);
@@ -120,12 +143,11 @@ int tagStSpiReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
  * register framing mirrors the SPI adapter: assert CS, send command, transfer
  * payload, release CS.
  */
-int tagStUsartWriteRegisterDevice(const void *io, uint8_t reg,
-                                  const uint8_t *buf, uint32_t len)
+int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
+                                  uint8_t reg, const uint8_t *buf,
+                                  uint32_t len)
 {
-  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
-  const TagUsartDevice *device =
-      (const TagUsartDevice *)registers->bus->device;
+  const TagUsartDevice *device = tagBusUsartDevice(&registers->bus);
   uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
                              registers->write_mask);
 
@@ -137,12 +159,10 @@ int tagStUsartWriteRegisterDevice(const void *io, uint8_t reg,
   return 0;
 }
 
-int tagStUsartReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
-                                 uint32_t len)
+int tagStUsartReadRegisterDevice(const TagRegisterDevice *registers,
+                                 uint8_t reg, uint8_t *buf, uint32_t len)
 {
-  const TagRegisterDevice *registers = (const TagRegisterDevice *)io;
-  const TagUsartDevice *device =
-      (const TagUsartDevice *)registers->bus->device;
+  const TagUsartDevice *device = tagBusUsartDevice(&registers->bus);
   uint8_t command = (uint8_t)(reg | registers->read_mask);
 
   tagUsartSelect(device);

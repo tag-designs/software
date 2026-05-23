@@ -81,9 +81,9 @@ The runtime flow is:
 
 When the module is absent, `debug_log.h` provides no-op inline helpers. That
 lets shared drivers keep low-cost diagnostic calls in place while tags that do
-not select `debug_log` pay no buffer or stream cost. The implementation also
-guards against the early-boot case: reads and writes return `0` until
-`debug_log_init()` has initialized the backing memory stream.
+not select `debug_log` pay no buffer or stream cost. The implementation uses a
+1024-byte queue and guards against the early-boot case: reads and writes return
+`0` until `debug_log_init()` has initialized the backing memory stream.
 
 Use debug logging for short diagnostics that may help explain hardware
 bring-up, intermittent device failures, or self-test results. It is not a

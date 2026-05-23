@@ -6,22 +6,22 @@
 
 void ak09940aDeviceBegin(const TagMagDevice *device)
 {
-  tagBusPowerOn(device->registers->bus);
-  tagRegisterBusBegin(device->registers);
+  tagBusPowerOn(&device->registers->bus);
+  tagBusBegin(&device->registers->bus);
 }
 
 void ak09940aDeviceEnd(const TagMagDevice *device)
 {
-  tagRegisterBusEnd(device->registers);
-  tagBusPowerOff(device->registers->bus);
+  tagBusEnd(&device->registers->bus);
+  tagBusPowerOff(&device->registers->bus);
 }
 
 static void ak09940aPowerUpAndBeginBus(const TagMagDevice *device)
 {
-  tagBusPowerOn(device->registers->bus);
+  tagBusPowerOn(&device->registers->bus);
   if (device->sleep_ms)
     device->sleep_ms(1);
-  tagRegisterBusBegin(device->registers);
+  tagBusBegin(&device->registers->bus);
 }
 
 static msg_t ak09940a_write_register(const TagMagDevice *device,

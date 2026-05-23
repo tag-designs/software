@@ -8,7 +8,6 @@
 #include "storage_device.h"
 #include "storage_flash.h"
 #include "test_support.h"
-#include "timekeeping.h"
 
 #if defined(TAG_FLASH_AT25XE)
 #include "at25xe.h"
@@ -38,8 +37,6 @@
 #error "Unsupported ACCEL_WAKEUP_SOURCE"
 #endif
 
-static void lpsSleepMilliseconds(int ms);
-
 /*
  * Device descriptors.
  *
@@ -48,80 +45,59 @@ static void lpsSleepMilliseconds(int ms);
  * project.mk selects the flash module and the descriptor below binds that chip
  * operation table to the shared board wiring.
  */
-static const TagSpiDevice external_flash_power = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_FLASH_nCS,
-    .sck = LINE_FLASH_SCK,
-    .miso = LINE_FLASH_MISO,
-    .mosi = LINE_FLASH_MOSI,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
-};
-
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
-    .spi = &external_flash_power,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_FLASH_nCS,
+        .sck = LINE_FLASH_SCK,
+        .miso = LINE_FLASH_MISO,
+        .mosi = LINE_FLASH_MOSI,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
     .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
-static const TagUsartDevice lps_usart_device = {
-    TAG_USART2_SYNC_DEVICE_DEFAULTS,
-    .cs = LINE_LPS_CS,
-    .sck = LINE_LPS_SCK,
-    .tx = LINE_LPS_TX,
-    .rx = LINE_LPS_RX,
-    .pwr = LINE_LPS_PWR,
-    .dummy = 0xff,
-    .sleep_policy = TAG_USART_SLEEP_FLOAT,
-};
-
-static const TagBusDevice lps_register_bus = {
-    .ops = &tagUsartBusOps,
-    .device = &lps_usart_device,
-};
-
 static const TagRegisterDevice lps_registers = {
-    .read_register = tagStUsartReadRegisterDevice,
-    .write_register = tagStUsartWriteRegisterDevice,
-    .bus = &lps_register_bus,
+    .kind = TAG_REGISTER_ST,
+    .bus = TAG_BUS_USART_INIT(
+        TAG_USART2_SYNC_DEVICE_DEFAULTS,
+        .cs = LINE_LPS_CS,
+        .sck = LINE_LPS_SCK,
+        .tx = LINE_LPS_TX,
+        .rx = LINE_LPS_RX,
+        .pwr = LINE_LPS_PWR,
+        .dummy = 0xff,
+        .sleep_policy = TAG_USART_SLEEP_FLOAT),
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
 
 const TagPressureDevice tagBitPresTagPressureDevice = {
     .registers = &lps_registers,
-    .sleep_ms = lpsSleepMilliseconds,
-};
-
-static const TagSpiDevice accel_bus = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_ACCEL_CS,
-    .sck = LINE_ACCEL_SCK,
-    .miso = LINE_ACCEL_MISO,
-    .mosi = LINE_ACCEL_MOSI,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
 };
 
 const TagAdxl362Device tagBitPresTagAccelDevice = {
-    .spi = &accel_bus,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_ACCEL_CS,
+        .sck = LINE_ACCEL_SCK,
+        .miso = LINE_ACCEL_MISO,
+        .mosi = LINE_ACCEL_MOSI,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
 };
 
 /*
  * Helper bindings.
  *
  * The common pressure and accelerometer drivers are parameterized by device
- * descriptors. These small bindings connect generic code and self-tests to the
+ * descriptors. These small bindings connect generic self-tests to the
  * BitPresTag-family descriptors above.
  */
-static void lpsSleepMilliseconds(int ms)
-{
-  stopMilliseconds(false, ms);
-}
-
 bool tag_test_external_flash(void)
 {
   tagStorageWake(TAG_EXTERNAL_FLASH);

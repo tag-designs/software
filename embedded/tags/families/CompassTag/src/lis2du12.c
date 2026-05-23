@@ -76,12 +76,12 @@ each bit is (1/64)*2 g = 1/32 g
 
 static void lis2du12DeviceBegin(const TagRegisterDevice *device)
 {
-  tagRegisterBusBegin(device);
+  tagBusBegin(&device->bus);
 }
 
 static void lis2du12DeviceEnd(const TagRegisterDevice *device)
 {
-  tagRegisterBusEnd(device);
+  tagBusEnd(&device->bus);
 }
 
 static void LIS2DU12_write_byte(const TagRegisterDevice *device, uint8_t reg,
@@ -206,7 +206,7 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   // let filter start up
 
   //SPI1->CR1 &= ~SPI_CR1_SPE;
-  stopMilliseconds(true,12 * 1000 / odr);
+  stopMilliseconds(12 * 1000 / odr);
   //SPI1->CR1 |= SPI_CR1_SPE;
   // read low-pass samples
   LIS2DU12_read(LIS2DU12_OUT_X_L, (uint8_t *)orientation, 6);
@@ -217,7 +217,7 @@ void lis2_sample(int samples, int16_t *rms, int16_t orientation[3])
   LIS2DU12_write(LIS2DU12_FIFO_CTRL, 6 << 5 | 31);
 
   //SPI1->CR1 &= ~SPI_CR1_SPE;
-  stopMilliseconds(true,(samples + 5) * 1000 / odr);
+  stopMilliseconds((samples + 5) * 1000 / odr);
   //SPI1->CR1 |= SPI_CR1_SPE;
 
   // read samples and compute sum of squares

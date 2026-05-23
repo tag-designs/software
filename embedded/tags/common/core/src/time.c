@@ -214,10 +214,8 @@ void disableTicker(void)
   rtcSTM32SetPeriodicWakeup(&RTCD1, NULL);
 }
 
-void stopMilliseconds(bool spiEnabled,unsigned int ms)
+void stopMilliseconds(unsigned int ms)
 {
-  (void)spiEnabled;
-
   if (MONCONNECTED)
   {
     chThdSleepMilliseconds(ms);

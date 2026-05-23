@@ -22,8 +22,8 @@ active tags unless a tag provides a same-named local override.
   the concrete non-universal device behavior.
 - `bus_power.c`: common board-line helpers for line validity, standby pulls,
   and Stop2 bus suspend/resume orchestration.
-- `bus_device.h`: a small generic bus-session descriptor that binds a concrete
-  SPI, I2C, or USART device pointer to the matching power/session operations.
+- `bus_device.h`: a tagged bus descriptor that embeds one concrete SPI, I2C,
+  or USART device and exposes shared power/session/sleep helpers.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level bus mechanics for
   descriptor-backed devices. SPI and USART own raw byte transfers, peripheral
   setup, active-state tracking, and Stop2 suspend/resume mechanics. I2C owns
@@ -58,16 +58,14 @@ flowchart TD
   DeviceFile["tag/family devices.c"]
   Driver["sensor/storage driver"]
 
-  DeviceFile --> TypedDevice["SPI/I2C/USART device descriptor"]
   DeviceFile --> BusDevice["TagBusDevice"]
-  BusDevice --> BusOps["TagBusOps"]
-  BusDevice --> TypedDevice
+  BusDevice --> TypedDevice["SPI/I2C/USART device descriptor"]
+  DeviceFile --> RegisterDevice["TagRegisterDevice"]
 
   Driver --> RegisterDevice["TagRegisterDevice or TagStorageDevice"]
   RegisterDevice --> BusDevice
 
-  BusOps --> BusModule["spi_bus.c / i2c_bus.c / usart_bus.c"]
-  TypedDevice --> BusModule
+  TypedDevice --> BusModule["spi_bus.c / i2c_bus.c / usart_bus.c"]
   BusModule --> BusPower["bus_power.c"]
 ```
 
@@ -83,26 +81,28 @@ mechanics.
   specific to each bus type: peripheral enable/disable, device power/session
   sequencing, bus pin state, standby sleep policy, and raw transfers where the
   bus supports them.
-- `bus_device.h` is the small generic adapter used by descriptor-backed
-  drivers. It lets a sensor or storage driver call power/session operations
-  without knowing whether the concrete device is SPI, I2C, or USART.
+- `bus_device.h` owns cross-bus lifecycle dispatch for descriptor-backed
+  devices. `TagBusDevice` embeds the concrete SPI, I2C, or USART descriptor by
+  value.
+- `sensor_io.c` owns register-protocol dispatch. `TagRegisterDevice` stores the
+  register protocol kind and embeds the `TagBusDevice` used by that protocol.
 
 ```mermaid
 flowchart TD
   Driver["sensor/storage/RTC code"]
+  RegisterDevice["TagRegisterDevice"]
   BusDevice["TagBusDevice"]
-  BusOps["TagBusOps"]
 
-  Driver --> BusDevice
-  BusDevice --> BusOps
+  Driver --> RegisterDevice
+  RegisterDevice --> BusDevice
 
-  BusOps --> SpiBus["spi_bus.c"]
-  BusOps --> I2cBus["i2c_bus.c"]
-  BusOps --> UsartBus["usart_bus.c"]
+  BusDevice --> SpiDevice["TagSpiDevice"]
+  BusDevice --> I2cDevice["TagI2cDevice"]
+  BusDevice --> UsartDevice["TagUsartDevice"]
 
-  SpiBus --> SpiDevice["TagSpiDevice"]
-  I2cBus --> I2cDevice["TagI2cDevice"]
-  UsartBus --> UsartDevice["TagUsartDevice"]
+  SpiDevice --> SpiBus["spi_bus.c"]
+  I2cDevice --> I2cBus["i2c_bus.c"]
+  UsartDevice --> UsartBus["usart_bus.c"]
 
   SpiBus --> Shared["bus_power.c"]
   I2cBus --> Shared
@@ -149,18 +149,21 @@ Register-level sensor and storage code use the same device
 descriptor, so chip-select and dummy-byte policy stay with the device rather
 than in a second partial bus object. USART devices also carry an explicit
 standby pull policy, mirroring SPI for powered-off, always-powered, and custom
-sleep cases. `usart_bus.c` owns the USART2 register setup and stop/resume
-mechanics.
+sleep cases. `usart_bus.c` owns synchronous-USART register setup and
+stop/resume mechanics for peripherals enabled by the tag's
+`STM32_SERIAL_USE_USARTx` settings.
 
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
 and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates
 those calls, while `spi_bus.c` and `usart_bus.c` own the peripheral-specific
-active/suspended state and register bit changes. The stop path suspends any
-active SPI1 or USART2 peripheral without changing device power, chip-select
-ownership, or pin alternate-function setup. Code that bypasses
-`tagSpiBusBegin/End()` must call `tagMarkSpi1On()` and `tagMarkSpi1Off()`
+active/suspended state and register bit changes. SPI and USART tracking are
+compiled for peripherals enabled by the tag's `STM32_SPI_USE_SPIx` and
+`STM32_SERIAL_USE_USARTx` settings. The stop path suspends any active
+configured SPI or synchronous-USART peripheral without changing device power,
+chip-select ownership, or pin alternate-function setup. Code that bypasses
+`tagSpiBusBegin/End()` must call `tagMarkSpiOn()` and `tagMarkSpiOff()`
 itself. Tag-local synchronous-USART setup must do the same with
-`tagMarkUsart2On()` and `tagMarkUsart2Off()`.
+`tagMarkUsartOn()` and `tagMarkUsartOff()`.
 
 ## Header Guidance
 

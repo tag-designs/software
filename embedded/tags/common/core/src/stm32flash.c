@@ -105,7 +105,7 @@ void FLASH_Flush_Data_Cache(void) {
 
 uint32_t FLASH_Program_Array(uint32_t *Address, uint32_t *array, int words) {
     for (int i = 0; i < words; i += 2) {
-      //if (i) stopMilliseconds(false,4);
+      //if (i) stopMilliseconds(4);
       FLASH_Program_DoubleWord(&Address[i], array[i], array[i+1]);
       if (flash_err) return flash_err;
     }

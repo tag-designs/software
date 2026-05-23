@@ -1,10 +1,8 @@
 #ifndef TAG_SENSOR_IO_H
 #define TAG_SENSOR_IO_H
 
+#include "bus_device.h"
 #include "hal.h"
-#include "i2c_bus.h"
-#include "spi_bus.h"
-#include "usart_bus.h"
 
 #include <stdint.h>
 
@@ -20,8 +18,8 @@
  *   read command:  register address OR read_mask
  *
  * Sensor drivers describe register access with a `TagRegisterDevice`. The
- * register device combines a small read/write vtable, the concrete bus-session
- * descriptor, and the ST-style command masks when the device uses that
+ * register device carries the register protocol kind, the bus descriptor used
+ * by that protocol, and the ST-style command masks when the device uses that
  * convention.
  */
 typedef int (*TagRegisterWrite)(const void *io, uint8_t reg,
@@ -32,17 +30,24 @@ typedef int (*TagRegisterRead)(const void *io, uint8_t reg, uint8_t *buf,
 /*
  * Register-device descriptor.
  *
- * `read_register` and `write_register` implement the sensor's register
- * protocol. `bus` tells the driver how to power and open the concrete SPI,
- * USART, or I2C device before register transactions. `context` is optional:
- * leave it NULL for adapters that need the full descriptor, or set it to a
- * smaller bus object when the adapter does not need masks or bus ops.
+ * Most register devices use one of the built-in protocol/bus combinations.
+ * Custom keeps the old callback escape hatch for unusual register protocols
+ * without forcing every normal device through a function-pointer bus wrapper.
  */
+typedef enum {
+  TAG_REGISTER_ST,
+  TAG_REGISTER_I2C,
+  TAG_REGISTER_CUSTOM
+} TagRegisterKind;
+
 typedef struct {
-  TagRegisterRead read_register;
-  TagRegisterWrite write_register;
-  const void *context;
-  const TagBusDevice *bus;
+  TagRegisterKind kind;
+  TagBusDevice bus;
+  struct {
+    TagRegisterRead read_register;
+    TagRegisterWrite write_register;
+    const void *context;
+  } custom;
   uint8_t read_mask;
   uint8_t write_mask;
 } TagRegisterDevice;
@@ -52,8 +57,6 @@ int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
                      const uint8_t *buf, uint32_t len);
 int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
                     uint32_t len);
-void tagRegisterBusBegin(const TagRegisterDevice *device);
-void tagRegisterBusEnd(const TagRegisterDevice *device);
 
 // Simple I2C register transactions. The adapter context is a TagI2cDevice.
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
@@ -62,15 +65,17 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len);
 
 // ST-style register transactions over SPI with one CS assertion per register.
-int tagStSpiWriteRegisterDevice(const void *io, uint8_t reg,
-                                const uint8_t *buf, uint32_t len);
-int tagStSpiReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
-                               uint32_t len);
+int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
+                                uint8_t reg, const uint8_t *buf,
+                                uint32_t len);
+int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
+                               uint8_t reg, uint8_t *buf, uint32_t len);
 
 // ST-style register transactions over synchronous USART used as SPI-lite.
-int tagStUsartWriteRegisterDevice(const void *io, uint8_t reg,
-                                  const uint8_t *buf, uint32_t len);
-int tagStUsartReadRegisterDevice(const void *io, uint8_t reg, uint8_t *buf,
-                                 uint32_t len);
+int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
+                                  uint8_t reg, const uint8_t *buf,
+                                  uint32_t len);
+int tagStUsartReadRegisterDevice(const TagRegisterDevice *registers,
+                                 uint8_t reg, uint8_t *buf, uint32_t len);
 
 #endif

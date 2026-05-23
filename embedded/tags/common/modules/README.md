@@ -205,13 +205,15 @@ non-standard sequencing or wants to call the descriptor API directly.
 Tags or families that need extra standby pin policy can provide a strong
 `tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
 its built-in flash standby preparation.
-The default SPI1 descriptor path marks SPI1 logically on/off from `spi_bus.c`.
+The SPI descriptor path marks the selected SPI peripheral logically on/off from
+`spi_bus.c`; only peripherals enabled by `STM32_SPI_USE_SPIx` are tracked.
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
 SPI or synchronous-USART device is active before calling `stopMilliseconds()`.
 Older tag-local peripheral code that does not use `TagSpiDevice` should call
-`tagMarkSpi1On()`/`tagMarkSpi1Off()` or
-`tagMarkUsart2On()`/`tagMarkUsart2Off()` in its local enable/disable helpers.
+`tagMarkSpiOn()`/`tagMarkSpiOff()`. Tag-local synchronous-USART code should call
+`tagMarkUsartOn()`/`tagMarkUsartOff()` in its local enable/disable helpers.
+USART tracking is limited to peripherals enabled by `STM32_SERIAL_USE_USARTx`.
 
 The old monolithic `app.h` now acts as a compatibility umbrella over
 topic-specific headers such as `adc.h`, `core_events.h`, `power.h`, and
@@ -223,9 +225,11 @@ The optional debug-log implementation also lives in core because it is consumed
 by the monitor path and may be written by low-level drivers. The public
 interface is `core/inc/debug_log.h`; callers should use `debug_log_printf()`,
 `debug_log_available()`, and `debug_log_read()` instead of reaching into the
-ChibiOS `MemoryStream` directly. The header supplies no-op inline helpers when
-`TAG_DEBUG_LOG` is not defined, so module and driver code can keep diagnostics
-localized without surrounding every call site with `#ifdef TAG_DEBUG_LOG`.
+ChibiOS `MemoryStream` directly. The backing stream is a 1024-byte queue that
+the monitor drains one protocol payload at a time. The header supplies no-op
+inline helpers when `TAG_DEBUG_LOG` is not defined, so module and driver code
+can keep diagnostics localized without surrounding every call site with
+`#ifdef TAG_DEBUG_LOG`.
 
 Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
 `flash_mx25l`, and `flash_mx25r` select the external-memory implementation used
@@ -259,11 +263,11 @@ API directly from its sensor code and self-test hook.
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterDevice` with the pressure
 driver's sleep callback. The `TagRegisterDevice` owns both the register
-read/write operations and the `TagBusDevice` used to power/open/close the
-concrete SPI, USART, or I2C bus. Active LPS27 and LPS22HH firmware bind those
-descriptors in tag/family `devices.c` and call the parameterized drivers
-directly. Keep sensor register sequences in the individual driver files and
-keep tag-selection details in the tag/family `devices.c` file.
+read/write protocol kind and the `TagBusDevice` used to power/open/close the
+device. Active LPS27 and LPS22HH firmware bind those descriptors in tag/family
+`devices.c` and call the parameterized drivers directly. Keep sensor register
+sequences in the individual driver files and keep tag-selection details in the
+tag/family `devices.c` file.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

@@ -66,26 +66,17 @@ static bool compassTagMagDataReadyLine(void);
  * bus/register access. Keep board-line names here rather than spreading them
  * into drivers or application code.
  */
-static const TagSpiDevice ak09940a_bus = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_MAG_CS,
-    .sck = LINE_MAG_SCK,
-    .miso = LINE_MAG_MISO,
-    .mosi = LINE_MAG_MOSI,
-    .pwr = AK09940A_PWR,
-    .dummy = 0xff,
-    .sleep_policy = AK09940A_SLEEP_POLICY,
-};
-
-static const TagBusDevice ak09940a_register_bus = {
-    .ops = &tagSpiBusOps,
-    .device = &ak09940a_bus,
-};
-
 static const TagRegisterDevice ak09940a_registers = {
-    .read_register = tagStSpiReadRegisterDevice,
-    .write_register = tagStSpiWriteRegisterDevice,
-    .bus = &ak09940a_register_bus,
+    .kind = TAG_REGISTER_ST,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_MAG_CS,
+        .sck = LINE_MAG_SCK,
+        .miso = LINE_MAG_MISO,
+        .mosi = LINE_MAG_MOSI,
+        .pwr = AK09940A_PWR,
+        .dummy = 0xff,
+        .sleep_policy = AK09940A_SLEEP_POLICY),
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
@@ -104,44 +95,32 @@ const TagMagDevice tagCompassTagMagDevice = {
 #endif
 };
 
-static const TagUsartDevice accel_usart_device = {
-    TAG_USART2_SYNC_DEVICE_DEFAULTS,
-    .cs = LINE_ACCEL_CS,
-    .sck = LINE_ACCEL_SCK,
-    .tx = LINE_ACCEL_TX,
-    .rx = LINE_ACCEL_RX,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_USART_SLEEP_SAFE_IDLE,
-};
-
-static const TagBusDevice accel_bus = {
-    .ops = &tagUsartBusOps,
-    .device = &accel_usart_device,
-};
-
 const TagRegisterDevice tagCompassTagAccelDevice = {
-    .read_register = tagStUsartReadRegisterDevice,
-    .write_register = tagStUsartWriteRegisterDevice,
-    .bus = &accel_bus,
+    .kind = TAG_REGISTER_ST,
+    .bus = TAG_BUS_USART_INIT(
+        TAG_USART2_SYNC_DEVICE_DEFAULTS,
+        .cs = LINE_ACCEL_CS,
+        .sck = LINE_ACCEL_SCK,
+        .tx = LINE_ACCEL_TX,
+        .rx = LINE_ACCEL_RX,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_USART_SLEEP_SAFE_IDLE),
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
 
-static const TagSpiDevice external_flash_power = {
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = LINE_FLASH_nCS,
-    .sck = LINE_FLASH_SCK,
-    .miso = LINE_FLASH_MISO,
-    .mosi = LINE_FLASH_MOSI,
-    .pwr = TAG_NO_LINE,
-    .dummy = 0xff,
-    .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE,
-};
-
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
-    .spi = &external_flash_power,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_FLASH_nCS,
+        .sck = LINE_FLASH_SCK,
+        .miso = LINE_FLASH_MISO,
+        .mosi = LINE_FLASH_MOSI,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
     .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
     .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
@@ -170,7 +149,7 @@ void tagCompassMagResetRelease(void)
 
 static void compassTagMagSleepMilliseconds(int ms)
 {
-  stopMilliseconds(false, ms);
+  stopMilliseconds(ms);
 }
 
 #if defined(LINE_MAG_TRG)
@@ -264,8 +243,8 @@ void tagDevicesApplyStandbyPins(void)
 #if defined(LINE_MAG_RSTN)
   tagEnableStandbyPulldown(LINE_MAG_RSTN);
 #endif
-  tagSpiDevicePrepareSleep(&ak09940a_bus);
-  tagUsartDevicePrepareSleep(&accel_usart_device);
+  tagBusPrepareSleep(&ak09940a_registers.bus);
+  tagBusPrepareSleep(&tagCompassTagAccelDevice.bus);
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }
 
