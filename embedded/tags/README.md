@@ -145,16 +145,14 @@ When adding a device self-test:
 
 Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point
 really must be replaced. Most tags should share `common/core/src/test.c` and
-provide only the `devices.c` test table plus device-specific hooks. BitTag is
-the current exception because it intentionally freezes its older local drivers
-and test hooks.
+provide only the `devices.c` test table plus device-specific hooks.
 
-BitTag predates the current shared runtime shape. Its `bt_*.c` files are kept
-in `BitTag/src` because they preserve that older firmware behavior and are not
-shared by the active tag targets. Its local `src/monitor.c` and
-`src/persistent.c` override the generic implementations supplied by `tag_core`.
-Legacy inactive targets that once reused those files should be updated to the
-common core before being revived.
+`BitTag-legacy` preserves the older BitTag firmware tree, including its local
+runtime, monitor, persistence, ADXL362, RV3028, and test implementations. The
+active `BitTag` target now follows the common-module pattern: its `bt_*.c`
+files keep BitTag-specific activity logging behavior, while `tag_core`,
+`rtc_rv3028`, and `sensor_accel_adxl362` provide shared runtime and driver
+code.
 
 Tag-specific build constants live in each target's `inc/custom.h`; module-owned
 feature switches come from `TAG_MODULES`. See
@@ -336,8 +334,8 @@ and provide their concrete test lists from tag or family `devices.c` files.
 Device modules, tag families, or tag-local drivers provide named self-test
 hooks such as `tag_test_adxl362()` or `tag_test_lis2du12()`; do not add a new
 local `src/test.c` unless the target truly needs to replace the shared
-diagnostic entry point. BitTag has such a local `test.c` because it is a frozen
-legacy target.
+diagnostic entry point. `BitTag-legacy` keeps a local `test.c` because it is a
+frozen legacy target.
 
 ## Adding Shared Code
 

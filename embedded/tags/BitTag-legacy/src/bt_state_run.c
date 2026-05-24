@@ -5,7 +5,6 @@
 
 #include "tag.pb.h"
 #include "config.h"
-#include "devices.h"
 #include "persistent.h"
 extern const Config defaultConfig;
 
@@ -34,34 +33,32 @@ static const t_chunk chunks[] = {
 static void adxl362_init(void)
 {
   // set up ADXL and alarm
-  const TagAdxl362Device *device = TAG_ACCEL_DEVICE;
 
-  ADXL362_DeviceBegin(device);
-  ADXL362_SetRegisterValueDevice(device, 0, ADXL362_REG_POWER_CTL, 1);
+  accelSpiOn();
+  ADXL362_SetRegisterValue(0, ADXL362_REG_POWER_CTL, 1);
 
   // set adxl filter;
 
-  ADXL362_SetRegisterValueDevice(device, sconfig.adxl_filter_range_rate,
-                                 ADXL362_REG_FILTER_CTL, 1);
+  ADXL362_SetRegisterValue(sconfig.adxl_filter_range_rate,
+                           ADXL362_REG_FILTER_CTL, 1);
   // set adxl activity detection
 
-  ADXL362_SetupActivityDetectionDevice(device, 1, sconfig.adxl_act_thresh_cnt, 2);
+  ADXL362_SetupActivityDetection(1, sconfig.adxl_act_thresh_cnt, 2);
 
   // set adxl inactivity detection
 
-  ADXL362_SetupInactivityDetectionDevice(device, 1, sconfig.adxl_inact_thresh_cnt,
-                                         sconfig.adxl_inactive_samples);
+  ADXL362_SetupInactivityDetection(1, sconfig.adxl_inact_thresh_cnt, sconfig.adxl_inactive_samples);
 
   // ADXL362_SetupInactivityDetection(1, ACTIVE_THRESH,INACTIVE_TIME);
 
-  ADXL362_SetRegisterValueDevice(device, 0x3F, ADXL362_REG_ACT_INACT_CTL, 1);
+  ADXL362_SetRegisterValue(0x3F, ADXL362_REG_ACT_INACT_CTL, 1);
 
   // interrupt -- caused by AWAKE going active
-  ADXL362_SetRegisterValueDevice(device, ADXL362_INTMAP2_AWAKE, ADXL362_REG_INTMAP2, 1);
+  ADXL362_SetRegisterValue(ADXL362_INTMAP2_AWAKE, ADXL362_REG_INTMAP2, 1);
   // power
-  ADXL362_SetRegisterValueDevice(device, 2 | ADXL362_POWER_CTL_AUTOSLEEP,
-                                 ADXL362_REG_POWER_CTL, 1);
-  ADXL362_DeviceEnd(device);
+  ADXL362_SetRegisterValue(2 | ADXL362_POWER_CTL_AUTOSLEEP,
+                           ADXL362_REG_POWER_CTL, 1);
+  accelSpiOff();
 }
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
@@ -88,7 +85,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // initialize running average of temperature and voltage
 
-    
+
     adcVDD(&vdd100, &temp10);
 
     pState->vdd100 = vdd100;
@@ -114,7 +111,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     isActive = palReadLine(LINE_ACCEL_INT);
 
-    
+
     // flush out current data
     // this is parameterized by the number of bits used for the various
     // formats
@@ -123,7 +120,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     uint32_t chunk_number = chunks[sconfig.internal_format].chunk_number;
     uint32_t chunk_bits = chunks[sconfig.internal_format].chunk_bits;
 
-    // a very rare event is a missed RTC wakeup.  In this case the 
+    // a very rare event is a missed RTC wakeup.  In this case the
     // timestamp may be beyond the current end of period.  Thus we
     // need to "catchup"
 
@@ -136,7 +133,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     }
 
 
-    // Now we should loop over seconds between lastwakeup and now 
+    // Now we should loop over seconds between lastwakeup and now
     //   for (uint32_t next = lastwakeup; next <= timestamp; next++) {
     //       -- if next%60 == 0 -- update temperature, voltage
     //          if next%sample_period == 0 -- write out data -- check for error and possible break here.

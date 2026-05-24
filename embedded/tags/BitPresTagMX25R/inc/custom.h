@@ -20,14 +20,6 @@
 #define PROTOBUFSIZE 4096
 /** @} */
 
-/** @name Board signal aliases
- * Compatibility names consumed by shared family code and legacy drivers.
- * @{
- */
-#define LINE_STEVAL_CS LINE_LPS_CS
-#define LINE_ACCEL_INT LINE_WKUP1
-/** @} */
-
 /** @name Fast-clock policy
  * MSI and flash wait-state settings used while servicing monitor log reads.
  * @{

@@ -9,63 +9,136 @@ Generated build files, generated nanopb files, generated board files, ChibiOS
 files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
-The active embedded tag targets in `embedded/tags/CMakeLists.txt` were rebuilt
-from `/private/tmp/tag-software-embedded-testrefactor` after regenerating that
-build tree.
-
-All active embedded tag targets now build successfully in that configuration.
+Most active embedded tag target sections were rebuilt from
+`/private/tmp/tag-software-embedded-testrefactor` after regenerating that build
+tree. The BitTag and BitTag-legacy sections were refreshed from
+`/private/tmp/tag-software-bittag-common` after the BitTag common-module
+refactor.
 
 ## BitTag
 
 ### C Files
 
 ```text
-embedded/tags/BitTag/src/hal_lld.c
-embedded/tags/BitTag/src/ADXL362.c
-embedded/tags/BitTag/src/adxl362_test.c
 embedded/tags/BitTag/src/bt_config.c
-embedded/tags/BitTag/src/main.c
-embedded/tags/BitTag/src/monitor.c
-embedded/tags/BitTag/src/persistent.c
-embedded/tags/BitTag/src/pwr.c
 embedded/tags/BitTag/src/bt_state_run.c
-embedded/tags/BitTag/src/hal_rtc_lld.c
-embedded/tags/BitTag/src/rtc_rv3028.c
-embedded/tags/BitTag/src/rtc_test.c
-embedded/tags/BitTag/src/state_machine.c
-embedded/tags/BitTag/src/time.c
+embedded/tags/BitTag/src/datalog.c
+embedded/tags/BitTag/src/devices.c
 embedded/tags/common/core/src/bus_power.c
+embedded/tags/common/core/src/device.c
 embedded/tags/common/core/src/handlers.c
 embedded/tags/common/core/src/i2c_bus.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
+embedded/tags/common/core/src/persistent.c
+embedded/tags/common/core/src/pwr.c
 embedded/tags/common/core/src/spi_bus.c
+embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/test.c
+embedded/tags/common/core/src/time.c
 embedded/tags/common/core/src/usart_bus.c
-embedded/tags/BitTag/src/test.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/rtc/src/rtc_device.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
+embedded/tags/common/sensors/accel/src/ADXL362.c
+embedded/tags/common/sensors/accel/src/adxl362_test.c
+embedded/tags/common/sensors/src/sensor_io.c
 ```
 
 ### Header Files
 
 ```text
-embedded/tags/BitTag/Inc/custom.h
+embedded/tags/BitTag/inc/config.h
+embedded/tags/BitTag/inc/custom.h
+embedded/tags/BitTag/inc/datalog.h
+embedded/tags/BitTag/inc/devices.h
 embedded/tags/BitTag/cfg/chconf.h
 embedded/tags/BitTag/cfg/halconf.h
 embedded/tags/BitTag/cfg/mcuconf.h
-embedded/tags/BitTag/inc/ADXL362.h
-embedded/tags/BitTag/inc/rtc_api.h
-embedded/tags/BitTag/inc/rv3028.h
-embedded/tags/common/sensors/accel/inc/ais2dw12.h
-embedded/tags/common/core/inc/app.h
 embedded/tags/common/core/inc/adc.h
+embedded/tags/common/core/inc/app.h
+embedded/tags/common/core/inc/bus_device.h
 embedded/tags/common/core/inc/core_events.h
 embedded/tags/common/core/inc/core_runtime.h
 embedded/tags/common/core/inc/core_state.h
 embedded/tags/common/core/inc/core_sync.h
 embedded/tags/common/core/inc/core_types.h
 embedded/tags/common/core/inc/debug_log.h
+embedded/tags/common/core/inc/device.h
 embedded/tags/common/core/inc/flash_internal.h
 embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
+embedded/tags/common/core/inc/persistent.h
+embedded/tags/common/core/inc/power.h
+embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/test_support.h
+embedded/tags/common/core/inc/timekeeping.h
+embedded/tags/common/core/inc/usart_bus.h
+embedded/tags/common/rtc/inc/rtc_api.h
+embedded/tags/common/rtc/inc/rtc_device.h
+embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/common/sensors/accel/inc/ADXL362.h
+embedded/tags/common/sensors/inc/sensor_io.h
+```
+
+## BitTag-legacy
+
+### C Files
+
+```text
+embedded/tags/BitTag-legacy/src/ADXL362.c
+embedded/tags/BitTag-legacy/src/adxl362_test.c
+embedded/tags/BitTag-legacy/src/bt_config.c
+embedded/tags/BitTag-legacy/src/bt_state_run.c
+embedded/tags/BitTag-legacy/src/hal_lld.c
+embedded/tags/BitTag-legacy/src/hal_rtc_lld.c
+embedded/tags/BitTag-legacy/src/main.c
+embedded/tags/BitTag-legacy/src/monitor.c
+embedded/tags/BitTag-legacy/src/persistent.c
+embedded/tags/BitTag-legacy/src/pwr.c
+embedded/tags/BitTag-legacy/src/rtc_rv3028.c
+embedded/tags/BitTag-legacy/src/rtc_test.c
+embedded/tags/BitTag-legacy/src/state_machine.c
+embedded/tags/BitTag-legacy/src/test.c
+embedded/tags/BitTag-legacy/src/time.c
+embedded/tags/common/core/src/bus_power.c
+embedded/tags/common/core/src/device.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
+embedded/tags/common/core/src/spi_bus.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/usart_bus.c
+```
+
+### Header Files
+
+```text
+embedded/tags/BitTag-legacy/inc/ADXL362.h
+embedded/tags/BitTag-legacy/inc/custom.h
+embedded/tags/BitTag-legacy/inc/rtc_api.h
+embedded/tags/BitTag-legacy/inc/rv3028.h
+embedded/tags/BitTag-legacy/cfg/chconf.h
+embedded/tags/BitTag-legacy/cfg/halconf.h
+embedded/tags/BitTag-legacy/cfg/mcuconf.h
+embedded/tags/common/core/inc/adc.h
+embedded/tags/common/core/inc/app.h
+embedded/tags/common/core/inc/bus_device.h
+embedded/tags/common/core/inc/core_events.h
+embedded/tags/common/core/inc/core_runtime.h
+embedded/tags/common/core/inc/core_state.h
+embedded/tags/common/core/inc/core_sync.h
+embedded/tags/common/core/inc/core_types.h
+embedded/tags/common/core/inc/debug_log.h
+embedded/tags/common/core/inc/device.h
+embedded/tags/common/core/inc/flash_internal.h
+embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
+embedded/tags/common/core/inc/persistent.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
@@ -73,11 +146,8 @@ embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
 embedded/tags/common/inc/config.h
-embedded/tags/common/sensors/accel/inc/lis2dtw12.h
+embedded/tags/common/sensors/inc/sensor_io.h
 embedded/tags/common/sensors/pressure/inc/lps.h
-embedded/tags/common/sensors/mag/inc/mmc5633.h
-embedded/tags/common/sensors/light/inc/opt3002.h
-embedded/tags/common/core/inc/persistent.h
 ```
 
 ## PresTag

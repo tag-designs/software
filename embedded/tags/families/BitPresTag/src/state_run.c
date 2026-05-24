@@ -148,7 +148,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // sample once ! -- also used in pwr to decide wakeup edge
 
-    isActive = palReadLine(LINE_ACCEL_INT);
+    isActive = palReadLine(LINE_WKUP1);
 
   
     // now we need to collect all bits

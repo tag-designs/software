@@ -209,7 +209,7 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
   if (state == RUNNING)
   {
     SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
-    return is_active == palReadLine(LINE_ACCEL_INT);
+    return is_active == palReadLine(LINE_WKUP1);
   }
 
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);

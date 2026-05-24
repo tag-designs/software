@@ -49,6 +49,16 @@ nav:
       - Tag Monitor: apps/qtmonitor.md
       - Bit Tag Visualizer: apps/btdataviz.md
       - SensorViz: apps/sensorviz.md
+  - Command Line:
+      - Overview: cli/index.md
+      - tag-dwnld: cli/tag-dwnld.md
+      - tag-info: cli/tag-info.md
+      - tag-reset: cli/tag-reset.md
+      - tag-start: cli/tag-start.md
+      - tag-cal: cli/tag-cal.md
+      - tag-test: cli/tag-test.md
+      - tag-test-example: cli/tag-test-example.md
+      - tag-monitor-test: cli/tag-monitor-test.md
   - Workflows:
       - First Setup: workflows/first-setup.md
       - Firmware Programming: workflows/firmware-programming.md

@@ -18,6 +18,11 @@ calibrate, and visualize Ultralight Tags.
 - [Calibration](workflows/calibration.md)
 - [Data Download](workflows/data-download.md)
 
+## Command-Line Tools
+
+- [Command-Line Tools](cli/index.md): reference templates for the host CLI tools,
+  including available options and fill-in sections for usage notes.
+
 ## Writing Notes
 
 Use task-focused pages. Start each page with what the user is trying to do,
