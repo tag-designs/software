@@ -9,17 +9,19 @@
 #include "custom.h"
 #include "gpio_utils.h"
 #include "power.h"
-#include "rtc_api.h"
 #include "ak09940a.h"
 
 /*
  * Default AK09940A binding for the legacy tag firmware API.
  *
- * The driver in ak09940a.c is parameterized by TagMagDevice and only knows
+ * The driver in ak09940a.c is parameterized by TagRegisterDevice and only knows
  * about AK09940A register sequences. This shim is the one place that maps the
  * historical `mag*` and `ak09940_*` entry points onto a default SPI/register
- * descriptor, trigger line, and sleep helper. Tag families can bypass this
- * binding by providing a strong tagAk09940aDevice() implementation.
+ * descriptor. Tag families can bypass this binding by providing a strong
+ * tagAk09940aDevice() implementation.
+ *
+ * TODO: Convert remaining legacy AK09940A users to the TagRegisterDevice-based
+ * API and remove this compatibility shim from the common magnetometer module.
  */
 
 #if defined(LINE_MAG_CS)
@@ -61,16 +63,6 @@ static const TagRegisterDevice ak09940a_registers = {
   .write_mask = 0x00,
 };
 
-/**
- * @brief Sleep for AK09940A timing gaps using the tag stop timer.
- *
- * @param[in] ms Delay in milliseconds.
- */
-static void ak09940a_default_sleep(int ms)
-{
-  stopMilliseconds(ms);
-}
-
 #ifdef AK09940A_HAS_DEFAULT_TRG
 /**
  * @brief Configure the default trigger pin direction for external triggering.
@@ -105,29 +97,15 @@ static bool ak09940a_default_data_ready_line(void)
 }
 #endif
 
-static const TagMagDevice ak09940a_default_device = {
-  .registers = &ak09940a_registers,
-  .sleep_ms = ak09940a_default_sleep,
-#ifdef AK09940A_HAS_DEFAULT_TRG
-  .set_trigger_output = ak09940a_default_trigger_mode,
-  .trigger = ak09940a_default_trigger,
-  .data_ready_line = ak09940a_default_data_ready_line,
-#else
-  .set_trigger_output = 0,
-  .trigger = 0,
-  .data_ready_line = 0,
-#endif
-};
-
 /**
- * @brief Return the default AK09940A descriptor for legacy callers.
+ * @brief Return the default AK09940A register descriptor for legacy callers.
  *
- * @return Default magnetometer descriptor. Tag families may override this weak
- *         binding with a board-specific descriptor.
+ * @return Default magnetometer register descriptor. Tag families may override
+ *         this weak binding with a board-specific descriptor.
  */
-const TagMagDevice *__attribute__((weak)) tagAk09940aDevice(void)
+const TagRegisterDevice *__attribute__((weak)) tagAk09940aDevice(void)
 {
-  return &ak09940a_default_device;
+  return &ak09940a_registers;
 }
 
 /**
@@ -193,6 +171,9 @@ msg_t ak09940_init_power_down(void)
 msg_t ak09940_init_continuous(ak09940_rate_t rate, ak09940_drive_t drive,
                               ak09940_temp_mode_t temp_mode)
 {
+#ifdef AK09940A_HAS_DEFAULT_TRG
+  ak09940a_default_trigger_mode(false);
+#endif
   return ak09940aInitContinuous(tagAk09940aDevice(), rate, drive,
                                 temp_mode);
 }
@@ -207,6 +188,10 @@ msg_t ak09940_init_continuous(ak09940_rate_t rate, ak09940_drive_t drive,
 msg_t ak09940_init_triggered(ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode)
 {
+#ifdef AK09940A_HAS_DEFAULT_TRG
+  palClearLine(AK09940A_DEFAULT_TRG);
+  ak09940a_default_trigger_mode(true);
+#endif
   return ak09940aInitTriggered(tagAk09940aDevice(), drive, temp_mode);
 }
 
@@ -217,7 +202,12 @@ msg_t ak09940_init_triggered(ak09940_drive_t drive,
  */
 msg_t ak09940_trigger(void)
 {
-  return ak09940aTrigger(tagAk09940aDevice());
+#ifdef AK09940A_HAS_DEFAULT_TRG
+  ak09940a_default_trigger();
+  return MSG_OK;
+#else
+  return MSG_RESET;
+#endif
 }
 
 /**
@@ -228,6 +218,10 @@ msg_t ak09940_trigger(void)
  */
 bool ak09940_data_ready(bool is_continuous)
 {
+#ifdef AK09940A_HAS_DEFAULT_TRG
+  if (is_continuous)
+    return ak09940a_default_data_ready_line();
+#endif
   return ak09940aDataReady(tagAk09940aDevice(), is_continuous);
 }
 

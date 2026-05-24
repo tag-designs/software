@@ -15,6 +15,7 @@
 #include "devices.h"
 #include "flash_internal.h"
 #include "persistent.h"
+#include "timekeeping.h"
 
 #include "lis2du12.h"
 #include "ak09940a.h"
@@ -99,7 +100,7 @@ bool sensorSample(RawSensorData *data){
       int16_t y;
       int16_t z;
   } accel_data;
-  const TagMagDevice *mag;
+  const TagRegisterDevice *mag;
   const TagRegisterDevice *accel;
   int mx = 0;
   int my = 0;
@@ -109,8 +110,7 @@ bool sensorSample(RawSensorData *data){
 
   mag = TAG_MAG_DEVICE;
   ak09940aDeviceBegin(mag);
-  if (mag->sleep_ms)
-    mag->sleep_ms(1);
+  stopMilliseconds(1);
   tagCompassMagResetRelease();
   if (ak09940aSample(mag, true, buf)) {
 
@@ -201,8 +201,7 @@ bool sensorCalibrationSample(SensorData *sensors)
 bool initSensors(void){
     lis2du12Init(TAG_ACCEL_DEVICE, ACCEL_SAMPLE_100HZ_MODE);
     ak09940aDeviceBegin(TAG_MAG_DEVICE);
-    if (TAG_MAG_DEVICE->sleep_ms)
-      TAG_MAG_DEVICE->sleep_ms(1);
+    stopMilliseconds(1);
     tagCompassMagResetRelease();
     ak09940aInitContinuous(TAG_MAG_DEVICE, AK09940_RATE_100HZ,
                            AK09940_DRIVE_LOW_NOISE_2,

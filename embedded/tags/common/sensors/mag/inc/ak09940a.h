@@ -130,25 +130,6 @@ typedef enum { MAG_SAMPLE_SINGLE_MODE = AK09940A_CNTL3_SINGLE_MEASURE ,
                } ak09940_mode_t;
 /** @} */
 
-/** @name AK09940A device descriptor
- * Tag-provided callbacks and register descriptor needed to run AK09940A on the
- * current board.
- * @{
- */
-typedef void (*TagMagSleep)(int ms);
-typedef void (*TagMagTriggerMode)(bool output);
-typedef void (*TagMagTrigger)(void);
-typedef bool (*TagMagDataReadyLine)(void);
-
-typedef struct {
-  const TagRegisterDevice *registers;
-  TagMagSleep sleep_ms;
-  TagMagTriggerMode set_trigger_output;
-  TagMagTrigger trigger;
-  TagMagDataReadyLine data_ready_line;
-} TagMagDevice;
-/** @} */
-
 /** @name AK09940A extended configuration types
  * Newer descriptor-backed API selectors for rate, temperature, and drive mode.
  * @{
@@ -179,7 +160,7 @@ typedef enum {
 
 /** @name Legacy magnetometer API
  * Historical global functions kept for tag code that has not moved to explicit
- * TagMagDevice descriptors.
+ * register descriptors.
  * @{
  */
 /**
@@ -206,124 +187,117 @@ bool  magSample(bool single, uint8_t *xyz);
 void  magInit(ak09940_mode_t mode);
 /** @} */
 
-/** @name Descriptor-backed AK09940A API
+/** @name Register-descriptor-backed AK09940A API
  * Explicit device API used by new tag/family code.
  * @{
  */
 /**
- * @brief Test an AK09940A descriptor.
+ * @brief Test an AK09940A register descriptor.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @return true when the expected identity registers are present.
  */
-bool ak09940aTest(const TagMagDevice *device);
+bool ak09940aTest(const TagRegisterDevice *device);
 /**
- * @brief Read one raw 3-axis sample from an AK09940A descriptor.
+ * @brief Read one raw 3-axis sample from an AK09940A register descriptor.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[in] single true to start a single conversion first.
  * @param[out] xyz Destination for X/Y/Z raw sample bytes.
  * @return true when sample data was read.
  */
-bool ak09940aSample(const TagMagDevice *device, bool single, uint8_t *xyz);
+bool ak09940aSample(const TagRegisterDevice *device, bool single, uint8_t *xyz);
 /**
- * @brief Initialize an AK09940A descriptor in a legacy operating mode.
+ * @brief Initialize an AK09940A register descriptor in a legacy operating mode.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[in] mode Legacy sample mode.
  */
-void ak09940aInit(const TagMagDevice *device, ak09940_mode_t mode);
+void ak09940aInit(const TagRegisterDevice *device, ak09940_mode_t mode);
 /**
  * @brief Power and acquire the AK09940A register bus.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  */
-void ak09940aDeviceBegin(const TagMagDevice *device);
+void ak09940aDeviceBegin(const TagRegisterDevice *device);
 /**
  * @brief Release and power down the AK09940A register bus.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  */
-void ak09940aDeviceEnd(const TagMagDevice *device);
+void ak09940aDeviceEnd(const TagRegisterDevice *device);
 /**
- * @brief Return the default AK09940A descriptor.
+ * @brief Return the default AK09940A register descriptor.
  *
- * @return Default magnetometer descriptor for this tag.
+ * @return Default magnetometer register descriptor for this tag.
  */
-const TagMagDevice *tagAk09940aDevice(void);
+const TagRegisterDevice *tagAk09940aDevice(void);
 
 /**
  * @brief Check the AK09940A identity registers.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @return true when the company and product IDs match.
  */
-bool ak09940aCheckWhoami(const TagMagDevice *device);
+bool ak09940aCheckWhoami(const TagRegisterDevice *device);
 /**
  * @brief Put an AK09940A into power-down mode.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @return MSG_OK on success or a register-transport error.
  */
-msg_t ak09940aInitPowerDown(const TagMagDevice *device);
+msg_t ak09940aInitPowerDown(const TagRegisterDevice *device);
 /**
  * @brief Configure an AK09940A for continuous sampling.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[in] rate Output sample rate.
  * @param[in] drive Noise/power drive selection.
  * @param[in] temp_mode Temperature channel enable state.
  * @return MSG_OK on success or a register-transport error.
  */
-msg_t ak09940aInitContinuous(const TagMagDevice *device,
+msg_t ak09940aInitContinuous(const TagRegisterDevice *device,
                              ak09940_rate_t rate,
                              ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode);
 /**
  * @brief Configure an AK09940A for external-trigger sampling.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[in] drive Noise/power drive selection.
  * @param[in] temp_mode Temperature channel enable state.
  * @return MSG_OK on success or a register-transport error.
  */
-msg_t ak09940aInitTriggered(const TagMagDevice *device,
+msg_t ak09940aInitTriggered(const TagRegisterDevice *device,
                             ak09940_drive_t drive,
                             ak09940_temp_mode_t temp_mode);
 /**
- * @brief Trigger one external-trigger conversion.
- *
- * @param[in] device Magnetometer descriptor.
- * @return MSG_OK when a trigger callback is available and used.
- */
-msg_t ak09940aTrigger(const TagMagDevice *device);
-/**
  * @brief Check whether AK09940A sample data is ready.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[in] is_continuous true when using continuous-mode status semantics.
  * @return true when sample data is ready.
  */
-bool ak09940aDataReady(const TagMagDevice *device, bool is_continuous);
+bool ak09940aDataReady(const TagRegisterDevice *device, bool is_continuous);
 /**
  * @brief Read one raw AK09940A sample.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @param[out] mx_raw X-axis magnetic sample.
  * @param[out] my_raw Y-axis magnetic sample.
  * @param[out] mz_raw Z-axis magnetic sample.
  * @param[out] temp_raw Optional raw temperature sample.
  * @return true when a valid sample was read.
  */
-bool ak09940aReadSample(const TagMagDevice *device, int32_t *mx_raw,
+bool ak09940aReadSample(const TagRegisterDevice *device, int32_t *mx_raw,
                         int32_t *my_raw, int32_t *mz_raw, int16_t *temp_raw);
 /**
  * @brief Run the AK09940A self-test flow.
  *
- * @param[in] device Magnetometer descriptor.
+ * @param[in] device Magnetometer register descriptor.
  * @return true when self-test readings are in range.
  */
-bool ak09940aSelfTest(const TagMagDevice *device);
+bool ak09940aSelfTest(const TagRegisterDevice *device);
 /** @} */
 
 /** @name Default-device AK09940A API
@@ -364,7 +338,7 @@ msg_t ak09940_init_triggered(ak09940_drive_t drive,
 /**
  * @brief Trigger one conversion on the default AK09940A.
  *
- * @return MSG_OK when a trigger callback is available and used.
+ * @return MSG_OK when a trigger line is available and used.
  */
 msg_t ak09940_trigger(void);
 /**

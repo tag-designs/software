@@ -55,25 +55,13 @@
 #endif
 
 /*
- * Helper declarations.
- *
- * The descriptor table below is intentionally near the top of the file, so the
- * small tag-specific helper functions are declared here and defined below.
- */
-static void compassTagMagSleepMilliseconds(int ms);
-#if defined(LINE_MAG_TRG)
-static void compassTagMagTriggerMode(bool output);
-static void compassTagMagTrigger(void);
-static bool compassTagMagDataReadyLine(void);
-#endif
-/*
  * Device descriptors.
  *
  * These structures are the single source of truth for family device wiring and
  * bus/register access. Keep board-line names here rather than spreading them
  * into drivers or application code.
  */
-static const TagRegisterDevice ak09940a_registers = {
+const TagRegisterDevice tagCompassTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
@@ -86,20 +74,6 @@ static const TagRegisterDevice ak09940a_registers = {
         .sleep_policy = AK09940A_SLEEP_POLICY),
     .read_mask = 0x80,
     .write_mask = 0x00,
-};
-
-const TagMagDevice tagCompassTagMagDevice = {
-    .registers = &ak09940a_registers,
-    .sleep_ms = compassTagMagSleepMilliseconds,
-#if defined(LINE_MAG_TRG)
-    .set_trigger_output = compassTagMagTriggerMode,
-    .trigger = compassTagMagTrigger,
-    .data_ready_line = compassTagMagDataReadyLine,
-#else
-    .set_trigger_output = 0,
-    .trigger = 0,
-    .data_ready_line = 0,
-#endif
 };
 
 const TagRegisterDevice tagCompassTagAccelDevice = {
@@ -161,50 +135,6 @@ void tagCompassMagResetRelease(void)
 }
 
 /**
- * @brief Delay for magnetometer startup and conversion timing.
- *
- * @param[in] ms Delay in milliseconds.
- */
-static void compassTagMagSleepMilliseconds(int ms)
-{
-  stopMilliseconds(ms);
-}
-
-#if defined(LINE_MAG_TRG)
-/**
- * @brief Select trigger-line direction for external-trigger mode.
- *
- * @param[in] output true to drive the trigger line, false to release as input.
- */
-static void compassTagMagTriggerMode(bool output)
-{
-  if (output)
-    toOutput(LINE_MAG_TRG);
-  else
-    toInput(LINE_MAG_TRG);
-}
-
-/**
- * @brief Emit one AK09940A external-trigger pulse.
- */
-static void compassTagMagTrigger(void)
-{
-  palSetLine(LINE_MAG_TRG);
-  palClearLine(LINE_MAG_TRG);
-}
-
-/**
- * @brief Read the AK09940A data-ready line.
- *
- * @return true when the line is high.
- */
-static bool compassTagMagDataReadyLine(void)
-{
-  return palReadLine(LINE_MAG_TRG) == PAL_HIGH;
-}
-#endif
-
-/**
  * @brief Run the CompassTag AK09940A presence test.
  *
  * @return true when the magnetometer identity registers are valid.
@@ -212,8 +142,7 @@ static bool compassTagMagDataReadyLine(void)
 bool tag_test_ak09940a(void)
 {
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
-  if (TAG_MAG_DEVICE->sleep_ms)
-    TAG_MAG_DEVICE->sleep_ms(1);
+  stopMilliseconds(1);
   tagCompassMagResetRelease();
   bool ok = ak09940aCheckWhoami(TAG_MAG_DEVICE);
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
@@ -255,9 +184,9 @@ const TagTestCase *tagTestCases(size_t *count)
 /**
  * @brief Return the CompassTag AK09940A descriptor.
  *
- * @return Magnetometer descriptor used by shared AK09940A code.
+ * @return Magnetometer register descriptor used by shared AK09940A code.
  */
-const TagMagDevice *tagAk09940aDevice(void)
+const TagRegisterDevice *tagAk09940aDevice(void)
 {
   return &tagCompassTagMagDevice;
 }
@@ -308,7 +237,7 @@ void tagDevicesApplyStandbyPins(void)
 #if defined(LINE_MAG_RSTN)
   tagEnableStandbyPulldown(LINE_MAG_RSTN);
 #endif
-  tagBusPrepareSleep(&ak09940a_registers.bus);
+  tagBusPrepareSleep(&tagCompassTagMagDevice.bus);
   tagBusPrepareSleep(&tagCompassTagAccelDevice.bus);
   tagStorageApplyStandbyPins(&tagExternalFlash);
 }

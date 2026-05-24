@@ -15,7 +15,7 @@
 #include "storage_flash.h"
 
 extern const TagRegisterDevice tagCompassTagAccelDevice;
-extern const TagMagDevice tagCompassTagMagDevice;
+extern const TagRegisterDevice tagCompassTagMagDevice;
 extern const TagStorageDevice tagExternalFlash;
 
 /** Default accelerometer register descriptor for shared LIS2DU12 code. */
