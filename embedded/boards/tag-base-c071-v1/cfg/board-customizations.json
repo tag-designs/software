@@ -1,0 +1,191 @@
+{
+  "board_name": "STMicroelectronics STM32 Nucleo64-C071RB",
+  "board_id": "ST_NUCLEO64_C071RB",
+  "remove_elements": [],
+  "elements": {
+    "configuration_settings/output_path": "..",
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32C071xx"
+  },
+  "attributes": {
+    "clocks": {
+      "HSEFrequency": "48000000",
+      "HSEBypass": "false",
+      "LSEFrequency": "32768",
+      "LSEBypass": "false",
+      "LSEDrive": "3 High Drive (default)"
+    }
+  },
+  "pins": {
+    "GPIOA": {
+      "pin0": {
+        "ID": "TGT_SWCLK",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin1": {
+        "ID": "SPI1_SWCLK",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin2": {
+        "ID": "STLK_RX",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Alternate",
+        "Alternate": "1"
+      },
+      "pin3": {
+        "ID": "STLK_TX",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Alternate",
+        "Alternate": "1"
+      },
+      "pin5": {
+        "ID": "LED_GREEN",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin6": {
+        "ID": "SPI1_MISO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin7": {
+        "ID": "TGT_SWDIO_IN",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin10": {
+        "ID": "TGT_SWDIO",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin11": {
+        "ID": "USB_D_N",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin12": {
+        "ID": "USB_D_P",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin13": {
+        "ID": "SWDIO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      }
+    },
+    "GPIOB": {
+      "pin5": {
+        "ID": "TGT_RESET",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin6": {
+        "ID": "UART1_TX",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      }
+    },
+    "GPIOC": {
+      "pin0": {
+        "ID": "USB_SENSE",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin9": {
+        "ID": "LED_BLUE",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin13": {
+        "ID": "BUTTON",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Input",
+        "Alternate": "0"
+      }
+    },
+    "GPIOF": {
+      "pin0": {
+        "ID": "OSC_IN",
+        "Type": "PushPull",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Level": "High",
+        "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin1": {
+        "ID": "OSC_OUT",
+        "Type": "PushPull",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Level": "High",
+        "Mode": "Input",
+        "Alternate": "0"
+      }
+    }
+  }
+}

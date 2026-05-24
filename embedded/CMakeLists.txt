@@ -43,6 +43,8 @@ else()
     STM32_PROGRAMMER
     NAMES STM32_Programmer_CLI
     HINTS
+      "$ENV{STM32_PRG_PATH}"
+      "/Users/geobrown/Software/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin"
       "/Users/geobrown/Software/stm32cubeprogrammer/STM32CubeProgrammer.app/Contents/MacOs/bin"
     PATHS "/home/geobrown/Software/STM32CubeProgrammer/bin"
   )
