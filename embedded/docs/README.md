@@ -42,16 +42,91 @@ This means the `BitTag` firmware uses the `bittag_proto` nanopb target from
 ## `boards`
 
 `boards` contains the physical board descriptions used by both tag and base
-firmware. Each board subdirectory is centered around `cfg/board.chcfg`,
-`cfg/board.fmpp`, and FreeMarker templates such as `board.h.ftl`,
-`board.c.ftl`, and `board.mk.ftl`.
+firmware. The current preferred workflow is generated from a ChibiOS processor
+template plus a small project JSON file:
 
-During the CMake build, `generate_board_files()` runs `fmpp` with ChibiOS
-templates to produce:
+```text
+embedded/boards/<board>/
+  CMakeLists.txt
+  cfg/board-customizations.json
+```
 
-- `board.h`: logical signal names, GPIO lines, and board-level constants.
-- `board.c`: low-level board initialization code.
-- `board.mk`: makefile fragments consumed by the ChibiOS firmware build.
+The board `CMakeLists.txt` calls `generate_configured_board_files()` from
+`embedded/boards/CMakeLists.txt`:
+
+```cmake
+generate_configured_board_files(board-bitprestag
+  PROCESSOR stm32l4xx
+  BOARD_TYPE BitPresTagv1
+  CUSTOMIZATIONS cfg/board-customizations.json)
+```
+
+The arguments define the board contract:
+
+- `PROCESSOR`: ChibiOS processor-template family. For example, `stm32l4xx`
+  uses the ChibiOS `stm32l4board.xml` template and the matching STM32L4
+  FreeMarker board templates.
+- `BOARD_TYPE`: output board directory name in the CMake build tree and the
+  name firmware makefiles include as `$(BOARDDIR)/<BOARD_TYPE>/board.mk`.
+  The JSON `board_id` should normally match this value because ChibiOS'
+  stock `board.mk.ftl` emits `BOARDSRC` and `BOARDINC` from `board_id`.
+- `CUSTOMIZATIONS`: the board-specific JSON file relative to the board source
+  directory.
+
+The generated-board build has two steps:
+
+1. `embedded/boards/tools/generate_board_chcfg.py` starts from the ChibiOS
+   processor XML template and applies `board-customizations.json` to board
+   metadata, clocks, optional XML elements, and GPIO pin attributes.
+2. CMake runs `fmpp` with the generated `board.chcfg` and ChibiOS'
+   processor-specific `board.c.ftl`, `board.h.ftl`, and `board.mk.ftl`
+   templates.
+
+The outputs are written under the build tree, not the source tree:
+
+```text
+<build>/embedded/boards/<BOARD_TYPE>/board.h
+<build>/embedded/boards/<BOARD_TYPE>/board.c
+<build>/embedded/boards/<BOARD_TYPE>/board.mk
+```
+
+`board.h` defines the board-level `LINE_xxx` names consumed by tag and base
+code. Keep physical signal names in the board customizations whenever possible;
+avoid creating tag-level aliases in `custom.h` just to compensate for a board
+name mismatch. For example, BitPresTag uses the board-generated `LINE_LPS_CS`
+and `LINE_WKUP1` names directly in its family code.
+
+`board.c` contains the low-level board initialization code, and `board.mk` is
+included by firmware `project.mk` files:
+
+```make
+include $(BOARDDIR)/BitPresTagv1/board.mk
+```
+
+The firmware CMake target also declares an explicit dependency on the generated
+board target:
+
+```cmake
+add_embedded_target(BitPresTag bitprestag_proto)
+add_dependencies(BitPresTag board-bitprestag)
+```
+
+This dependency ensures the board files exist before the ChibiOS make-based
+firmware build starts. `common/make.mk` receives `BOARDDIR` from CMake and uses
+the board make fragment selected by `project.mk`.
+
+Some older board directories still use the static-board helper
+`generate_board_files()`. Those boards keep `cfg/board.chcfg`, `cfg/board.fmpp`,
+and local FreeMarker templates in the source tree:
+
+```cmake
+generate_board_files(board-bittag-v6)
+```
+
+That path still renders `board.h`, `board.c`, and `board.mk` into the build
+tree, but new boards should prefer `generate_configured_board_files()` so the
+repository stores only project-specific customizations while ChibiOS owns the
+processor XML and template defaults.
 
 Board directories are shared resources. They do not normally define a complete
 application on their own; instead, a tag or base firmware target declares which
@@ -139,7 +214,9 @@ nanopb sources.
 When adding a new embedded target, decide which layer is changing:
 
 - Add or update a `boards` entry when the physical pinout, signal names, or
-  ChibiOS board configuration changes.
+  ChibiOS board configuration changes. For new boards, add a
+  `cfg/board-customizations.json` file and call
+  `generate_configured_board_files()` from the board `CMakeLists.txt`.
 - Add or update a `proto-c` entry when the tag family needs a new nanopb option
   set or default configuration.
 - Add or update a `tags` entry when creating tag firmware for a tag family or
