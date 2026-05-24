@@ -1,0 +1,169 @@
+{
+  "board_name": "BitTag Base v7",
+  "board_id": "BITTAG_BASE_V7",
+  "remove_elements": [],
+  "elements": {
+    "configuration_settings/output_path": "..",
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32F042x6"
+  },
+  "attributes": {
+    "clocks": {
+      "HSEFrequency": "0",
+      "HSEBypass": "false",
+      "LSEFrequency": "0",
+      "LSEBypass": "false",
+      "LSEDrive": "3 High Drive (default)"
+    }
+  },
+  "pins": {
+    "GPIOA": {
+      "pin0": {
+        "ID": "TGT_RESET",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin1": {
+        "ID": "TGT_SWCLK",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin2": {
+        "ID": "VBAT_ADC",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin3": {
+        "ID": "ADC_EN",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin4": {
+        "ID": "TAG_MIRROR",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin5": {
+        "ID": "EXT_PWR",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "PullDown",
+        "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin6": {
+        "ID": "TAG_3V3_EN",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin7": {
+        "ID": "TAG_VBAT_EN",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin11": {
+        "ID": "USB_DM",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin12": {
+        "ID": "USB_DP",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin13": {
+        "ID": "SWDIO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      }
+    },
+    "GPIOB": {
+      "pin1": {
+        "ID": "LED_GREEN",
+        "Type": "OpenDrain",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin3": {
+        "ID": "LED_RED",
+        "Type": "OpenDrain",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin5": {
+        "ID": "TGT_SWDIO_EN",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0"
+      },
+      "pin6": {
+        "ID": "UART_TX",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      },
+      "pin7": {
+        "ID": "TGT_SWDIO",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      }
+    }
+  }
+}
