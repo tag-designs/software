@@ -43,14 +43,14 @@ const uint16_t *ADC_VREF_CAL = ((uint16_t *)0x1FFFF7BA);
 
 volatile uint32_t vlipo100;
 static uint32_t vref100;
-
+/*
 static const SerialConfig sdcfg = {
   .speed = 115200, // e.g., 115200 baud
   .cr1 = 0,
   .cr2 = USART_CR2_STOP1_BITS | USART_CR2_LINEN,
   .cr3 = 0
 };
-
+*/
 // Charger LED thread
 
 static THD_WORKING_AREA(waThread1, 512);
@@ -144,10 +144,10 @@ int main(void)
 
   CRS->CR |= CRS_CR_AUTOTRIMEN | CRS_CR_CEN;
 
+
   /*
   rccResetAPB1(RCC_APB1RSTR_CRSRST);
 
-  /*
   rccEnableAPB1(RCC_APB1ENR_CRSEN, 0);
   LL_CRS_SetSyncDivider(LL_CRS_SYNC_DIV_1);
   LL_CRS_SetSyncPolarity(LL_CRS_SYNC_POLARITY_RISING);
@@ -182,11 +182,11 @@ int main(void)
   //sdStart(&SD1, &sdcfg);
   //chprintf("Main loop\n\r",0);
 
-  /*
+  
 
   palClearLine(LINE_TGT_SWCLK);
   palClearLine(LINE_TGT_SWDIO);
-
+/*
   toAlternate(LINE_TGT_SWCLK);
   toAlternate(LINE_TGT_SWDIO);
 
@@ -198,8 +198,9 @@ int main(void)
 
   SPI1->CR1 = SPI_CR1_LSBFIRST | (3<<3) | SPI_CR1_MSTR;
   SPI1->CR1 |= SPI_CR1_SPE;
+  */
   
-*/
+
 
   // Create the charger thread
 
@@ -220,7 +221,8 @@ int main(void)
     else
     {
       //palSetLine(LINE_TGT_SWDIO_EN);
-      stlink_eval(bulkbuf);
+      if (usbGetDriverStateI(&USBD1) == USB_ACTIVE)
+          stlink_eval(bulkbuf);
       //palClearLine(LINE_TGT_SWDIO_EN);
     }
   }

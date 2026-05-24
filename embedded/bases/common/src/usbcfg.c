@@ -262,6 +262,20 @@ static void usb_event(USBDriver *usbp, usbevent_t event)
   switch (event)
   {
   case USB_EVENT_RESET:
+      chSysLockFromISR();
+
+      /* 2. Wipe the hardware endpoint configurations.
+       * This safely aborts any active hardware transfers and puts 
+       * the USB peripheral back into its default unconfigured state. */
+      usbDisableEndpointsI(usbp);
+
+      /* 3. Notify the Serial-USB CDC layer about the reset.
+       * This forces ChibiOS to flush the internal input/output ring 
+       * buffers, resetting the read/write queues so they don't block. */
+      //sduConfigureHookI(&SDU1);
+
+      /* 4. Exit the critical section */
+      chSysUnlockFromISR();
     return;
   case USB_EVENT_ADDRESS:
     return;
@@ -277,6 +291,10 @@ static void usb_event(USBDriver *usbp, usbevent_t event)
     chSysUnlockFromISR();
     return;
   case USB_EVENT_UNCONFIGURED:
+    chSysLockFromISR();
+            // Disable endpoints to prevent lockups on next reconnect
+    usbDisableEndpointsI(usbp);
+    chSysUnlockFromISR();
     return;
   case USB_EVENT_SUSPEND:
     return;

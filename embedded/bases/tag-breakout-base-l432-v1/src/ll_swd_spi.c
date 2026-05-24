@@ -18,7 +18,7 @@
 // Rewrite to use bitwidths compatible with SPI
 // specifically, arrays of bytes, 5-bit words, and 9-bit words
 
-#define USEEPRINTF 0
+#undef USEEPRINTF
 #include <stdint.h>
 #include <dp_swd.h>
 #include <debug_cm.h>
