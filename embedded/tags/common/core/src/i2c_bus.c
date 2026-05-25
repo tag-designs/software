@@ -7,21 +7,7 @@
 
 #include "power.h"
 
-#include "core_sync.h"
 #include "gpio_utils.h"
-
-/** @name I2C device model
- * I2C controller setup, device bus-session pin state, and standby pull policy.
- * Register-oriented I2C transactions live with the other register adapters in
- * sensor_io.c.
- * @{
- */
-
-const TagI2cController tagI2c1DefaultController = {
-  .driver = &I2CD1,
-  .mutex = &I2C1mutex,
-};
-/** @} */
 
 /** @name Controller and device lifecycle
  * Controller and device lifecycle.

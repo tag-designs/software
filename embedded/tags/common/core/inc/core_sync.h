@@ -12,7 +12,6 @@
 
 #include "ch.h"
 
-extern binary_semaphore_t I2C1mutex;
 extern binary_semaphore_t SPI1mutex;
 extern binary_semaphore_t USART2mutex;
 extern int32_t timestamp;

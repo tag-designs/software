@@ -18,7 +18,6 @@
  * pwr.c without providing a device binding file.
  * @{
  */
-binary_semaphore_t I2C1mutex __attribute__((weak));
 binary_semaphore_t SPI1mutex __attribute__((weak));
 binary_semaphore_t USART2mutex __attribute__((weak));
 
@@ -27,7 +26,6 @@ binary_semaphore_t USART2mutex __attribute__((weak));
  */
 void __attribute__((weak)) tagDevicesInit(void)
 {
-  chBSemObjectInit(&I2C1mutex, false);
   chBSemObjectInit(&SPI1mutex, false);
   chBSemObjectInit(&USART2mutex, false);
 }

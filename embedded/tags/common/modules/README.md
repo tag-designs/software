@@ -157,16 +157,17 @@ and the RTC module supplies the local source directory so the tag build finds
 the repo-local override before the ChibiOS HAL implementation.
 The active RV3028 driver follows the same descriptor-driven shape as sensors:
 the driver implementation takes a `TagRtcDevice`, and `rtc_device.c` provides a
-weak default RV3028 descriptor for the standard I2CD1 wiring. Common runtime
-code calls the neutral `tagRtcInit()`, `tagRtcGetDateTime()`, and
+weak default RV3028 descriptor for the shared RTC software-I2C bus owned by
+common power code. Common runtime code calls the neutral `tagRtcInit()`,
+`tagRtcGetDateTime()`, and
 `tagRtcSetDateTime()` helpers from `rtc_api.h`; for RV3028 tags those helpers
 route through the descriptor-driven RV3028 implementation.
 
 TODO: move the complete `TagRtcDevice` binding into tag/family board support
-(`pwr.c` or a small `rtc_board.c`) so the descriptor carries the register bus
-and the board support owns line aliases and mutex ownership in one place. That
-would remove the remaining global `rtcOn()`/`rtcOff()` glue and match the newer
-sensor-device model more closely.
+(`pwr.c` or a small `rtc_board.c`) so the descriptor carries both the register
+bus and the board-specific power callbacks. That would remove the remaining
+global `rtcOn()`/`rtcOff()` glue and match the newer sensor-device model more
+closely.
 
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management

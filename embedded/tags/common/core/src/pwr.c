@@ -42,8 +42,16 @@ static const I2CConfig rtc_i2c_config = {
 #endif
 };
 
+static I2CDriver I2CRTC;
+static binary_semaphore_t I2CRTCmutex;
+
+const TagI2cController tagRtcI2cController = {
+    .driver = &I2CRTC,
+    .mutex = &I2CRTCmutex,
+};
+
 static const TagI2cDevice rtc_bus = {
-    .controller = &tagI2c1DefaultController,
+    .controller = &tagRtcI2cController,
     .config = &rtc_i2c_config,
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL,
@@ -56,6 +64,7 @@ static const TagI2cDevice rtc_bus = {
  */
 void tagPowerInit(void)
 {
+  chBSemObjectInit(&I2CRTCmutex, false);
   tagI2cControllerObjectInit(rtc_bus.controller);
 }
 

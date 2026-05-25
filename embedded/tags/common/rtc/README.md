@@ -9,7 +9,7 @@ register access and power/session callbacks.
 
 - `inc/rtc_api.h`: public runtime API used by core code.
 - `inc/rtc_device.h`, `src/rtc_device.c`: default device binding. Today this
-  provides a weak RV3028 descriptor for standard I2CD1 wiring.
+  provides a weak RV3028 descriptor for the shared RTC software-I2C bus.
 - `inc/rv3028.h`, `src/rtc_rv3028.c`: active RV3028 implementation.
 - `src/rtc_test.c`: shared self-test hook.
 - `src/hal_rtc_lld.c`: repo-local ChibiOS RTC low-level override. ChibiOS adds
@@ -21,7 +21,6 @@ register access and power/session callbacks.
 
 The default RV3028 binding still lives in common code. The next cleanup is to
 move the complete `TagRtcDevice` descriptor into tag or family board support
-so the descriptor owns the register bus and the board support owns the line
-aliases and mutex in one place. That will make RTCs match the newer
-sensor-device model more closely and remove remaining global `rtcOn()`/
-`rtcOff()` glue.
+so the descriptor owns both the register bus and the board-specific power
+callbacks in one place. That will make RTCs match the newer sensor-device model
+more closely and remove remaining global `rtcOn()`/`rtcOff()` glue.

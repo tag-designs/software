@@ -21,12 +21,10 @@
 #error "Unsupported ACCEL_WAKEUP_SOURCE"
 #endif
 
-binary_semaphore_t I2C1mutex;
 binary_semaphore_t SPI1mutex;
 
 void tagDevicesInit(void)
 {
-  chBSemObjectInit(&I2C1mutex, false);
   chBSemObjectInit(&SPI1mutex, false);
 }
 

@@ -47,7 +47,7 @@ static inline uint8_t bin2bcd(uint8_t val)
  * @{
  */
 static const TagI2cDevice rv3032_i2c = {
-    .controller = &tagI2c1DefaultController,
+    .controller = &tagRtcI2cController,
     .address = RV3032_ADR,
     .timeout = RTC_TIMEOUT,
     .sleep_policy = TAG_I2C_SLEEP_CUSTOM,

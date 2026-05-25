@@ -17,13 +17,14 @@
  * Default RV3028 device binding.
  *
  * The RTC driver itself is parameterized by TagRtcDevice. Most tags use the
- * standard RV3028 wiring on I2CD1, so the common module provides a weak
- * descriptor here. A tag with unusual RTC wiring can override tagRtcDevice()
- * locally without carrying a private copy of the RV3028 register driver.
+ * shared software-I2C RTC bus owned by common power code, so the common module
+ * provides a weak descriptor here. A tag with unusual RTC wiring can override
+ * tagRtcDevice() locally without carrying a private copy of the RV3028
+ * register driver.
  * @{
  */
 static const TagI2cDevice rtc_i2c = {
-    .controller = &tagI2c1DefaultController,
+    .controller = &tagRtcI2cController,
     .address = RV3028_ADR,
     .timeout = RTC_TIMEOUT,
     .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
@@ -38,7 +39,7 @@ static const TagRtcDevice rtc_device = {
 /**
  * @brief Return the default RV3028 RTC descriptor.
  *
- * @return Immutable RTC descriptor for the default I2CD1 RV3028 binding.
+ * @return Immutable RTC descriptor for the default software-I2C RV3028 binding.
  */
 const TagRtcDevice *__attribute__((weak)) tagRtcDevice(void)
 {

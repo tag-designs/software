@@ -46,7 +46,6 @@ typedef struct {
   TagI2cSleepPolicy sleep_policy;
 } TagI2cDevice;
 
-extern const TagI2cController tagI2c1DefaultController;
 /** @} */
 
 /** @name I2C controller lifecycle

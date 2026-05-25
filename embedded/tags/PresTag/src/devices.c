@@ -25,7 +25,6 @@
  * AT25XE external flash and the SPI LPS27 pressure sensor. Common drivers use
  * these descriptors instead of hard-coded board wiring.
  */
-binary_semaphore_t I2C1mutex;
 binary_semaphore_t SPI1mutex;
 
 /**
@@ -33,7 +32,6 @@ binary_semaphore_t SPI1mutex;
  */
 void tagDevicesInit(void)
 {
-  chBSemObjectInit(&I2C1mutex, false);
   chBSemObjectInit(&SPI1mutex, false);
 }
 

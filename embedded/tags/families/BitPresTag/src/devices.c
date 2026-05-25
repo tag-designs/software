@@ -53,7 +53,6 @@
  * project.mk selects the flash module and the descriptor below binds that chip
  * operation table to the shared board wiring.
  */
-binary_semaphore_t I2C1mutex;
 binary_semaphore_t SPI1mutex;
 binary_semaphore_t USART2mutex;
 
@@ -62,7 +61,6 @@ binary_semaphore_t USART2mutex;
  */
 void tagDevicesInit(void)
 {
-  chBSemObjectInit(&I2C1mutex, false);
   chBSemObjectInit(&SPI1mutex, false);
   chBSemObjectInit(&USART2mutex, false);
 }

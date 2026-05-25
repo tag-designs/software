@@ -41,12 +41,12 @@ active tags unless a tag provides a same-named local override.
 The standby path has two layers:
 
 - `tagPowerInit()`: startup initialization for the shared power/RTC bus state.
-  It initializes the RTC I2C controller through the `TagI2cDevice` descriptor
-  instead of exposing the concrete I2C driver in `main.c`.
+  It initializes the RTC software-I2C driver and mutex owned by `pwr.c`
+  instead of exposing that detail in `main.c`.
 - `tagDevicesInit()`: startup initialization for tag-owned device runtime
   state. Modern tags define the controller semaphore storage they actually use
-  in `devices.c`, such as `I2C1mutex`, `SPI1mutex`, or `USART2mutex`, and
-  initialize those semaphores here after ChibiOS startup.
+  in `devices.c`, such as `SPI1mutex` or `USART2mutex`, and initialize those
+  semaphores here after ChibiOS startup.
 - `tagDevicesPrepareStandby(state)`: protocol-level work before standby. For
   example, external flash may be woken briefly and then commanded into its
   chip-level sleep mode for final states.

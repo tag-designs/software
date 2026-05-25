@@ -66,6 +66,11 @@ void tagPrepareDevicesForStandby(void);
  * @{
  */
 /**
+ * @brief Software-I2C controller used by the shared RTC bus.
+ */
+extern const TagI2cController tagRtcI2cController;
+
+/**
  * @brief Initialize power/RTC bus runtime state.
  */
 void tagPowerInit(void);
