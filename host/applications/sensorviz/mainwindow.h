@@ -71,6 +71,7 @@ private slots:
     void savePreferences();
     void loadDefaultPreferences();
     void showAbout();
+    void showUserGuide();
     void editGraphTitle();
     void setGraphTitleVisible(bool visible);
     void resetZoom();
@@ -216,6 +217,7 @@ private:
     QAction *save_preferences_action_ = nullptr;
     QAction *default_preferences_action_ = nullptr;
     QAction *about_action_ = nullptr;
+    QAction *user_guide_action_ = nullptr;
     QAction *edit_title_action_ = nullptr;
     QAction *show_title_action_ = nullptr;
     QAction *reset_action_ = nullptr;

@@ -73,13 +73,14 @@ SQLite logs.
 - Feature availability should be driven by loaded stream ids, record sets, or
   calibration metadata rather than hardcoded tag-type checks.
 - The menu bar and plot context menu should use the same organization:
-  `File`, `View`, and `Configuration`, with `File > Preferences` as a submenu.
+  `File`, `View`, `Configuration`, and `Help`, with `File > Preferences` as a
+  submenu.
 - Tag-specific controls should be hidden unless the loaded log supports them.
 
 ## Current UI Decisions
 
-- At startup, only File > Load and File > About are enabled. Other menu
-  structure is visible but disabled where it is broadly applicable.
+- At startup, File > Load and the Help menu are enabled. Other menu structure is
+  visible but disabled where it is broadly applicable.
 - Tag-specific controls are hidden until relevant:
   - Sea-level Pressure appears when pressure data exists.
   - Activity Filter appears when activity data exists.

@@ -5,7 +5,7 @@ CompassTag logs. The application is intended for comparing raw sensor streams
 and derived views, such as altitude computed from pressure, filtered activity,
 and compass-derived heading/orientation streams.
 
-At startup, only **File > Load** and **File > About** are useful. Most commands
+At startup, **File > Load** and the **Help** menu are available. Most commands
 become available after you load a SQLite log file. SensorViz enables additional
 menu items when the loaded file contains the streams or metadata needed by those
 features.
@@ -28,8 +28,8 @@ diagnostic messages are also routed to this tab.
 
 ## File Menu
 
-The **File** menu contains log-level actions, preference file commands, printing,
-and application information.
+The **File** menu contains log-level actions, preference file commands, and
+printing.
 
 ![SensorViz File menu placeholder](../images/sensorviz-file-menu.png)
 
@@ -38,7 +38,6 @@ and application information.
 | **Load** | Opens a SensorViz SQLite log file. Loading a file replaces the current stream list, resets manual y-axis ranges, updates the File Info tab, and rebuilds the plot. |
 | **Preferences** | Opens a submenu for loading, storing, or clearing SensorViz display preferences. |
 | **Print** | Opens a print preview for the current plot. The preview can then be printed through the platform print dialog. |
-| **About** | Shows SensorViz application information. |
 
 ## File > Preferences Submenu
 
@@ -56,6 +55,18 @@ after a log is loaded.
 Preference files may include visible stream selections, stream colors, and axis
 side choices. They do not store y-axis ranges, sea-level pressure, declination,
 UTC offset, or battery direction because those are analysis/session settings.
+
+## Help Menu
+
+The **Help** menu opens the SensorViz guide and displays application
+information.
+
+![SensorViz Help placeholder](../images/sensorviz-help-menu.png)
+
+| Menu item | Function |
+| --- | --- |
+| **SensorViz User Guide** | Opens the installed SensorViz user guide in the system browser. In a development build, this command opens the generated MkDocs page when it is available. |
+| **About** | Shows SensorViz application information. |
 
 ## View Menu
 

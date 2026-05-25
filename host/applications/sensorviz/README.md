@@ -154,9 +154,9 @@ Saved preference files intentionally do not contain y-axis ranges, sea-level
 pressure, declination, UTC offset, or battery-forward. Those are session or
 analysis context rather than durable tag-type display preferences.
 
-At startup, only `File > Load` and `File > About` are enabled. The rest of the
-menu structure remains visible but disabled so users can see what controls will
-be available after a log is loaded.
+At startup, `File > Load` and the `Help` menu are enabled. The rest of the menu
+structure remains visible but disabled so users can see what controls will be
+available after a log is loaded.
 
 ## Stream Actions and Ranges
 

@@ -49,6 +49,7 @@ void MainWindow::createActions()
     print_action_ = new QAction(tr("&Print"), this);
     print_action_->setEnabled(false);
     about_action_ = new QAction(tr("&About"), this);
+    user_guide_action_ = new QAction(tr("SensorViz &User Guide"), this);
     edit_title_action_ = new QAction(tr("Graph &Title..."), this);
     edit_title_action_->setEnabled(false);
     show_title_action_ = new QAction(tr("Show Graph T&itle"), this);
@@ -96,6 +97,7 @@ void MainWindow::createActions()
         &MainWindow::loadDefaultPreferences);
     connect(print_action_, &QAction::triggered, this, &MainWindow::printPlot);
     connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
+    connect(user_guide_action_, &QAction::triggered, this, &MainWindow::showUserGuide);
     connect(edit_title_action_, &QAction::triggered, this, &MainWindow::editGraphTitle);
     connect(show_title_action_, &QAction::toggled, this, &MainWindow::setGraphTitleVisible);
     connect(
@@ -130,8 +132,6 @@ void MainWindow::createActions()
     preferences_menu->addAction(default_preferences_action_);
     file_menu->addSeparator();
     file_menu->addAction(print_action_);
-    file_menu->addSeparator();
-    file_menu->addAction(about_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_menu_->addAction(visible_streams_action_);
@@ -156,6 +156,11 @@ void MainWindow::createActions()
     configuration_menu_->addAction(declination_action_);
     configuration_menu_->addAction(battery_forward_action_);
 
+    QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
+    help_menu->addAction(user_guide_action_);
+    help_menu->addSeparator();
+    help_menu->addAction(about_action_);
+
     // User-facing help for every persistent menu action lives here. Keep these
     // text fields editable and close to action construction so menu wording,
     // status-bar hints, and tooltips stay synchronized.
@@ -168,6 +173,7 @@ void MainWindow::createActions()
         {save_preferences_action_, QT_TR_NOOP("Store stream visibility, color, and axis-side preferences as formatted JSON.")},
         {default_preferences_action_, QT_TR_NOOP("Restore sensorViz default visibility, colors, and axis sides for the current tag type.")},
         {print_action_, QT_TR_NOOP("Print or preview the current plot.")},
+        {user_guide_action_, QT_TR_NOOP("Open the SensorViz user guide.")},
         {about_action_, QT_TR_NOOP("Show sensorViz version and application information.")},
         {edit_title_action_, QT_TR_NOOP("Edit the plot title shown above the graph.")},
         {show_title_action_, QT_TR_NOOP("Show or hide the plot title.")},
