@@ -120,7 +120,7 @@ Some older board directories still use the static-board helper
 and local FreeMarker templates in the source tree:
 
 ```cmake
-generate_board_files(board-bittag-v6)
+generate_board_files(board-older-board)
 ```
 
 That path still renders `board.h`, `board.c`, and `board.mk` into the build

@@ -25,7 +25,7 @@ These are the board targets used by active tag and base firmware targets.
 | Board directory | Board target | Generated board include | Generator | Firmware consumers |
 | --- | --- | --- | --- | --- |
 | `BitPresTagv1` | `board-bitprestag` | `BitPresTagv1/board.mk` | `generate_configured_board_files()` | Tags: `BitPresTag`, `BitPresTagMX25R` |
-| `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_board_files()` | Tags: `BitTag`, `BitTag-legacy` |
+| `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_configured_board_files()` | Tags: `BitTag`, `BitTag-legacy` |
 | `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()` | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
 | `IMUTagv1` | `board-imutag-breakout` | `IMUTagv1/board.mk` | `generate_board_files()` | Tags: `IMUTagBreakout` |
 | `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()` | Tags: `PresTag` |
@@ -56,7 +56,6 @@ or `embedded/bases/CMakeLists.txt`.
 | Board directory | Board target | Generator | Notes |
 | --- | --- | --- | --- |
 | `BitTagNG` | `board_bittagng` | `generate_board_files()` | Historical/experimental BitTagNG board description. |
-| `PresTagBreakout` | `board-prestag-breakout` | `generate_board_files()` | Used by archived PresTag breakout firmware. |
 | `TagSteval` | `board-steval` | `generate_board_files()` | Used by archived or prototype STEVAL-based tag firmware. |
 | `bittag-base-jlcpcb-v2` | `board-bittag-base-jlcpcb-v2` | `generate_board_files()` | Older BitTag base board generation path. |
 
