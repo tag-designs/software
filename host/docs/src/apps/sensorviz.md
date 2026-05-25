@@ -159,7 +159,7 @@ directly inside the plot because it exposes loading, preferences, stream
 visibility, ranges, zoom commands, printing, and derived-view settings without
 moving to the menu bar.
 
-![SensorViz plot context menu placeholder](../images/sensorviz-plot-context-menu.png)
+![SensorViz plot context menu placeholder](../images/sensorviz-popup-menu.png)
 
 The context menu only shows data-dependent items that make sense for the current
 file. For example, **View > Ranges** is populated from visible streams, and
