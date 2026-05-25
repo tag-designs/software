@@ -18,13 +18,16 @@
 /**
  * @brief Wake external flash and check its chip identity.
  *
+ * @param[in] context Optional TagStorageDevice descriptor.
  * @return true when the configured flash responds with a valid identity.
  */
-bool __attribute__((weak)) tag_test_external_flash(void)
+bool __attribute__((weak)) tag_test_external_flash(const void *context)
 {
-  tagStorageWake(&tagExternalFlash);
-  bool result = tagStorageCheckID(&tagExternalFlash) > -1;
-  tagStorageSleep(&tagExternalFlash);
+  const TagStorageDevice *device = context ? context : &tagExternalFlash;
+
+  tagStorageWake(device);
+  bool result = tagStorageCheckID(device) > -1;
+  tagStorageSleep(device);
   return result;
 }
 /** @} */

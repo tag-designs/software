@@ -277,13 +277,15 @@ compiles `core/src/test.c` as the active self-test dispatcher. `tag_test`
 remains as a no-op compatibility module for existing target manifests. The
 dispatcher records `TEST_RUNNING`, asks tag/family `devices.c` for its
 `TagTestCase` table, calls the matching hooks for the requested monitor
-`TestReq`, stores the first failing `TestResult`, and reports `ALL_PASSED` when
-the selected checks complete.
+`TestReq` with the entry's descriptor context pointer, stores the first failing
+`TestResult`, and reports `ALL_PASSED` when the selected checks complete.
 
 Device-specific checks should live with the device module, tag family, or
 tag-local driver as small `*_test.c` hooks. The tag or family `devices.c` file
 owns the request-to-hook table because it owns the concrete hardware
-descriptors. The module or family that provides a capability is still
+descriptors. Prefer passing those descriptors through the `TagTestCase` context
+field over adding local no-argument wrappers. The module or family that provides
+a capability is still
 responsible for adding the matching hook source when that capability has a
 self-test. This keeps test behavior near the driver code and avoids relying on
 accidental link-time selection.

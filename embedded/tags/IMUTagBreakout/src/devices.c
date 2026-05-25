@@ -59,7 +59,7 @@ static void spiDisable(void)
  */
 void magOn(void)
 {
-  chBSemWait(&SPImutex);
+  chBSemWait(&SPI1mutex);
 
   palSetLine(LINE_AK_CS);
   toAlternate(LINE_LSM_CK);
@@ -79,7 +79,7 @@ void magOff(void)
   toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LSM_MOSI);
   toAnalog(LINE_LPS_MISO);
-  chBSemSignal(&SPImutex);
+  chBSemSignal(&SPI1mutex);
 }
 
 /**
@@ -87,7 +87,7 @@ void magOff(void)
  */
 void lpsOn(void)
 {
-  chBSemWait(&SPImutex);
+  chBSemWait(&SPI1mutex);
 
   palSetLine(LINE_LPS_CS);
   toAlternate(LINE_LSM_CK);
@@ -107,7 +107,7 @@ void lpsOff(void)
   toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LPS_MOSI);
   toAnalog(LINE_LPS_MISO);
-  chBSemSignal(&SPImutex);
+  chBSemSignal(&SPI1mutex);
 }
 
 /**
@@ -115,7 +115,7 @@ void lpsOff(void)
  */
 void lsm6On(void)
 {
-  chBSemWait(&SPImutex);
+  chBSemWait(&SPI1mutex);
 
   palSetLine(LINE_LSM_CS);
   toAlternate(LINE_LSM_CK);
@@ -135,7 +135,7 @@ void lsm6Off(void)
   toAnalog(LINE_LSM_CK);
   toAnalog(LINE_LSM_MOSI);
   toAnalog(LINE_LSM_MISO);
-  chBSemSignal(&SPImutex);
+  chBSemSignal(&SPI1mutex);
 }
 
 const TagStorageDevice tagExternalFlash = {
@@ -178,10 +178,11 @@ static const TagTestCase tag_tests[] =
    * The monitor protocol still exposes RUN_MMC5633 for magnetometer tests.
    * IMUTagBreakout maps that legacy request to its AK09940 test hook.
    */
-  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
-  {RUN_LPS, LPS_FAILED, tag_test_lps22hh},
+  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a, NULL},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
+   TAG_EXTERNAL_FLASH},
+  {RUN_LPS, LPS_FAILED, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
 };
 
 /**

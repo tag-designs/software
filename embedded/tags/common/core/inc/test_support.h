@@ -23,7 +23,8 @@ typedef struct
 {
   TestReq request;
   TestResult failure;
-  bool (*run)(void);
+  bool (*run)(const void *context);
+  const void *context;
 } TagTestCase;
 /** @} */
 
@@ -63,49 +64,49 @@ const TagTestCase *tagTestCases(size_t *count);
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_adxl362(void);
+bool tag_test_adxl362(const void *context);
 
 /**
  * @brief Test LIS2DU12 accelerometer communication and readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_lis2du12(void);
+bool tag_test_lis2du12(const void *context);
 
 /**
  * @brief Test AK09940A magnetometer communication and readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_ak09940a(void);
+bool tag_test_ak09940a(const void *context);
 
 /**
  * @brief Test RTC communication and timekeeping readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_rtc(void);
+bool tag_test_rtc(const void *context);
 
 /**
  * @brief Test external flash communication and storage readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_external_flash(void);
+bool tag_test_external_flash(const void *context);
 
 /**
  * @brief Test LPS27 pressure sensor communication and readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_lps27(void);
+bool tag_test_lps27(const void *context);
 
 /**
  * @brief Test LPS22HH pressure sensor communication and readiness.
  *
  * @return true when the device passes its tag-specific test.
  */
-bool tag_test_lps22hh(void);
+bool tag_test_lps22hh(const void *context);
 /** @} */
 
 #endif

@@ -15,6 +15,19 @@
 #endif
 
 #define ADC_CCR_CKMODE_AHB_DIV1 (1 << 16)
+#define ADC_SMPR_SMP_47P5 4
+
+static binary_semaphore_t adc_mutex;
+
+/** @name ADC module initialization
+ * Private synchronization for ADC1 users.
+ * @{
+ */
+/**
+ * @brief Initialize ADC module runtime state.
+ */
+void adcInit(void) { chBSemObjectInit(&adc_mutex, false); }
+/** @} */
 
 /** @name ADC analog power sequencing
  * Helpers that keep the STM32 ADC regulator, analog core, and calibration
@@ -169,4 +182,61 @@ void adc1EnableTS(void) { ADC1_COMMON->CCR |= ADC_CCR_TSEN; }
  * @brief Disable the internal temperature-sensor channel.
  */
 void adc1DisableTS(void) { ADC1_COMMON->CCR &= ~ADC_CCR_TSEN; }
+/** @} */
+
+/** @name Board health measurement
+ * Helpers used by monitor status and persistent state markers to record supply
+ * voltage and die temperature without exposing ADC channel sequencing.
+ * @{
+ */
+/**
+ * @brief Measure the MCU supply voltage and internal temperature.
+ *
+ * @param[out] vdd100 Supply voltage in hundredths of a volt.
+ * @param[out] temp10 Die temperature in tenths of a degree Celsius.
+ */
+void adcVDD(uint16_t *vdd100, int16_t *temp10)
+{
+  uint32_t raw;
+  int32_t tmp;
+  uint32_t adc_samples[2];
+
+  uint16_t TS_CAL1 = *((uint16_t *)0x1FFF75A8);
+  uint16_t TS_CAL2 = *((uint16_t *)0x1FFF75CA);
+  uint16_t VREF_CAL = *((uint16_t *)0x1FFF75AA);
+
+  chBSemWait(&adc_mutex);
+  adc1Start();
+  adc1EnableVREF();
+  adc1EnableTS();
+  //chThdSleepMilliseconds(1);
+  adc1StartConversion(0, ADC_SMPR_SMP_47P5);
+  while (adc1Eoc() == false)
+    ;
+  adc_samples[0] = adc1DR();
+  adc1StartConversion(17, ADC_SMPR_SMP_47P5);
+  while (adc1Eoc() == false)
+    ;
+  adc_samples[1] = adc1DR();
+  adc1Stop();
+  chBSemSignal(&adc_mutex);
+
+  // compute vdd*100
+
+  raw = adc_samples[0];
+  tmp = (300 * VREF_CAL) / raw;
+  *vdd100 = (uint16_t) tmp;
+
+  // compute temperature *10
+
+  raw = adc_samples[1];
+
+  // voltage compensated temperature sensor reading
+
+  tmp = (((1300-300)*raw * tmp)/300);
+
+  // temperature * 10
+
+  *temp10 = (tmp - (1300-300) * TS_CAL1)/ (TS_CAL2 - TS_CAL1) + 300;
+}
 /** @} */

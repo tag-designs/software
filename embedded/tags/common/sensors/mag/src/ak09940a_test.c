@@ -13,9 +13,11 @@
 /**
  * @brief Exercise the configured AK09940A as part of tag self-test.
  *
+ * @param[in] context Optional TagRegisterDevice descriptor.
  * @return true when the default AK09940A descriptor reports a valid device.
  */
-bool __attribute__((weak)) tag_test_ak09940a(void)
+bool __attribute__((weak)) tag_test_ak09940a(const void *context)
 {
-  return ak09940aTest(tagAk09940aDevice());
+  const TagRegisterDevice *device = context ? context : tagAk09940aDevice();
+  return ak09940aTest(device);
 }

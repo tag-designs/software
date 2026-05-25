@@ -17,6 +17,11 @@
  * @{
  */
 /**
+ * @brief Initialize ADC module runtime state.
+ */
+void adcInit(void);
+
+/**
  * @brief Measure the MCU supply voltage and internal temperature.
  *
  * This helper exists so status/reporting code can ask for calibrated board

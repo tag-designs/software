@@ -55,7 +55,7 @@ typedef struct {
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
 
 #define TAG_USART2_SYNC_DEVICE_DEFAULTS                                      \
-  .usart = USART2, .mutex = &USARTmutex, .config = &tagUsart2SyncDefaultConfig
+  .usart = USART2, .mutex = &USART2mutex, .config = &tagUsart2SyncDefaultConfig
 /** @} */
 
 /** @name USART active-state tracking

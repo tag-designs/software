@@ -23,14 +23,4 @@ extern const TagStorageDevice tagExternalFlash;
 /** Default external-flash descriptor for shared storage code. */
 #define TAG_EXTERNAL_FLASH (&tagExternalFlash)
 
-/**
- * @brief Run the BitPresTag pressure-sensor presence test.
- *
- * @return true when the LPS27 device responds with the expected identity.
- */
-static inline bool tagPressureTest(void)
-{
-  return lps27Test(TAG_PRESSURE_DEVICE);
-}
-
 #endif

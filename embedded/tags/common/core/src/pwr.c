@@ -52,6 +52,14 @@ static const TagI2cDevice rtc_bus = {
 };
 
 /**
+ * @brief Initialize power/RTC bus runtime state.
+ */
+void tagPowerInit(void)
+{
+  tagI2cControllerObjectInit(rtc_bus.controller);
+}
+
+/**
  * @brief Power and begin the shared RTC bus session.
  */
 void rtcOn(void)

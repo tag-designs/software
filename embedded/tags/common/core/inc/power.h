@@ -66,6 +66,11 @@ void tagPrepareDevicesForStandby(void);
  * @{
  */
 /**
+ * @brief Initialize power/RTC bus runtime state.
+ */
+void tagPowerInit(void);
+
+/**
  * @brief Power and begin the shared RTC bus session.
  */
 void rtcOn(void);

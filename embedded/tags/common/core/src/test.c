@@ -55,7 +55,7 @@ void test(void)
       continue;
     }
 
-    if (!tag_tests[i].run())
+    if (!tag_tests[i].run(tag_tests[i].context))
     {
       pState->test_result = tag_tests[i].failure;
       return;

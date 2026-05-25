@@ -14,12 +14,16 @@ active tags unless a tag provides a same-named local override.
   tag/family-provided `TagTestCase` table from `test_support.h`.
 - `persistent.c`, `stm32flash.c`: persistent state stored in internal STM32
   flash.
+- `stm32adc.c`: ADC1 lifecycle, one-shot conversions, and calibrated VDD/die
+  temperature measurement. It owns the ADC synchronization object internally.
 - `time.c`: RTC/ticker/alarm helpers and low-power sleep entry.
-- `pwr.c`: default power policy for tags that do not provide local/family
-  power code.
-- `device.c`: weak defaults for tag/family device standby hooks. It lets
+- `pwr.c`: default power policy and shared RTC bus lifecycle for tags that do
+  not provide local/family power code.
+- `device.c`: weak defaults for tag/family device lifecycle hooks. It lets
   `pwr.c` call simple named hooks while tag or family `devices.c` files keep
-  the concrete non-universal device behavior.
+  the concrete non-universal device behavior. The weak `tagDevicesInit()`
+  fallback initializes legacy bus mutex globals for tags that have not yet
+  moved that ownership into `devices.c`.
 - `bus_power.c`: common board-line helpers for line validity, standby pulls,
   and Stop2 bus suspend/resume orchestration.
 - `bus_device.h`: a tagged bus descriptor that embeds one concrete SPI, I2C,
@@ -36,6 +40,13 @@ active tags unless a tag provides a same-named local override.
 
 The standby path has two layers:
 
+- `tagPowerInit()`: startup initialization for the shared power/RTC bus state.
+  It initializes the RTC I2C controller through the `TagI2cDevice` descriptor
+  instead of exposing the concrete I2C driver in `main.c`.
+- `tagDevicesInit()`: startup initialization for tag-owned device runtime
+  state. Modern tags define the controller semaphore storage they actually use
+  in `devices.c`, such as `I2C1mutex`, `SPI1mutex`, or `USART2mutex`, and
+  initialize those semaphores here after ChibiOS startup.
 - `tagDevicesPrepareStandby(state)`: protocol-level work before standby. For
   example, external flash may be woken briefly and then commanded into its
   chip-level sleep mode for final states.

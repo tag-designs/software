@@ -12,9 +12,11 @@
 /**
  * @brief Run the legacy AK09940 self-test.
  *
+ * @param[in] context Unused by the legacy shim.
  * @return true when the magnetometer self-test passes.
  */
-bool tag_test_ak09940a(void)
+bool tag_test_ak09940a(const void *context)
 {
+  (void)context;
   return ak09940_self_test();
 }

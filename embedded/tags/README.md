@@ -106,7 +106,8 @@ The shared driver lives in `common/core/src/test.c`. It does not know how to
 exercise each device directly, and it does not select tests with `TAG_*`
 preprocessor branches. Instead, tag or family `devices.c` files export a
 `TagTestCase` table through `tagTestCases()`. Each entry maps a monitor
-`TestReq` value to the hook that exercises a concrete device.
+`TestReq` value to the hook that exercises a concrete device, plus an optional
+descriptor context pointer for reusable descriptor-backed tests.
 
 Current hook examples:
 
@@ -120,7 +121,8 @@ Current hook examples:
 Module and project manifests still decide which hook sources are compiled. If a
 tag selects `sensor_accel_adxl362`, for example, the module compiles
 `adxl362_test.c`; the tag or family `devices.c` table decides whether
-`tag_test_adxl362()` is part of that firmware's monitor self-test list.
+`tag_test_adxl362()` is part of that firmware's monitor self-test list and
+passes the selected accelerometer descriptor as context.
 
 Some monitor request names still reflect older hardware:
 

@@ -8,6 +8,7 @@
 #include "hal.h"
 
 #include "ak09940a.h"
+#include "core_sync.h"
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
@@ -45,6 +46,19 @@
  * and external flash on SPI1. Common drivers consume these descriptors rather
  * than reaching through generic board globals.
  */
+binary_semaphore_t I2C1mutex;
+binary_semaphore_t SPI1mutex;
+binary_semaphore_t USART2mutex;
+
+/**
+ * @brief Initialize CompassTag-family bus synchronization state.
+ */
+void tagDevicesInit(void)
+{
+  chBSemObjectInit(&I2C1mutex, false);
+  chBSemObjectInit(&SPI1mutex, false);
+  chBSemObjectInit(&USART2mutex, false);
+}
 
 #if defined(LINE_MAG_PWR)
 #define AK09940A_PWR LINE_MAG_PWR
@@ -137,15 +151,18 @@ void tagCompassMagResetRelease(void)
 /**
  * @brief Run the CompassTag AK09940A presence test.
  *
+ * @param[in] context Optional TagRegisterDevice descriptor.
  * @return true when the magnetometer identity registers are valid.
  */
-bool tag_test_ak09940a(void)
+bool tag_test_ak09940a(const void *context)
 {
-  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  const TagRegisterDevice *device = context ? context : TAG_MAG_DEVICE;
+
+  ak09940aDeviceBegin(device);
   stopMilliseconds(1);
   tagCompassMagResetRelease();
-  bool ok = ak09940aCheckWhoami(TAG_MAG_DEVICE);
-  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+  bool ok = ak09940aCheckWhoami(device);
+  ak09940aDeviceEnd(device);
   tagCompassMagResetAssert();
   return ok;
 }
@@ -157,16 +174,17 @@ static const TagTestCase tag_tests[] =
    * magnetometer tests. Keep the request stable and report the specific
    * AK09940A failure result.
    */
-  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a},
+  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a, TAG_MAG_DEVICE},
 
   /*
    * The protocol still uses RUN_AIS2 for newer low-power accelerometer tests.
    * Keep that mapping until the monitor protocol grows a generic RUN_ACCEL.
    */
-  {RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12},
+  {RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12, TAG_ACCEL_DEVICE},
 
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
+   TAG_EXTERNAL_FLASH},
 };
 
 /**

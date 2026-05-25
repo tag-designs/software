@@ -13,9 +13,11 @@
 /**
  * @brief Run the default LIS2DU12 presence test.
  *
+ * @param[in] context Optional TagRegisterDevice descriptor.
  * @return true when the accelerometer identity register is valid.
  */
-bool tag_test_lis2du12(void)
+bool tag_test_lis2du12(const void *context)
 {
-  return lis2du12Test(TAG_ACCEL_DEVICE);
+  const TagRegisterDevice *device = context ? context : TAG_ACCEL_DEVICE;
+  return lis2du12Test(device);
 }

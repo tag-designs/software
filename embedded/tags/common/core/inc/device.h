@@ -11,8 +11,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/** @name Standby device hooks
- * Tag/family device standby hooks.
+/** @name Device lifecycle hooks
+ * Tag/family device lifecycle hooks.
  *
  * Core pwr.c owns the universal MCU standby sequence and the universal RTC
  * handling. Tag/family devices.c files own the non-universal peripherals:
@@ -27,6 +27,13 @@
  * changed while entering standby and the caller should abort the sleep attempt.
  * @{
  */
+/**
+ * @brief Initialize tag-owned device runtime state.
+ *
+ * Called after ChibiOS startup, before device descriptors are used.
+ */
+void tagDevicesInit(void);
+
 /**
  * @brief Give tag-specific devices a chance to enter their standby state.
  *

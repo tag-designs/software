@@ -1,5 +1,6 @@
 #include "hal.h"
 
+#include "core_sync.h"
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
@@ -20,6 +21,15 @@
 #error "Unsupported ACCEL_WAKEUP_SOURCE"
 #endif
 
+binary_semaphore_t I2C1mutex;
+binary_semaphore_t SPI1mutex;
+
+void tagDevicesInit(void)
+{
+  chBSemObjectInit(&I2C1mutex, false);
+  chBSemObjectInit(&SPI1mutex, false);
+}
+
 const TagAdxl362Device tagBitTagAccelDevice = {
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
@@ -34,8 +44,8 @@ const TagAdxl362Device tagBitTagAccelDevice = {
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362, TAG_ACCEL_DEVICE},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
 };
 
 const TagTestCase *tagTestCases(size_t *count)

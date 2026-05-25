@@ -13,9 +13,11 @@
 /**
  * @brief Run the configured LPS22HH presence test.
  *
+ * @param[in] context Optional TagPressureDevice descriptor.
  * @return true when the pressure sensor identity is valid.
  */
-bool tag_test_lps22hh(void)
+bool tag_test_lps22hh(const void *context)
 {
-  return lps22hh_check_who_am_i_device(TAG_PRESSURE_DEVICE);
+  const TagPressureDevice *device = context ? context : TAG_PRESSURE_DEVICE;
+  return lps22hh_check_who_am_i_device(device);
 }

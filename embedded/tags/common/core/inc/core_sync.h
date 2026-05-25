@@ -12,10 +12,9 @@
 
 #include "ch.h"
 
-extern binary_semaphore_t ADCmutex;
-extern binary_semaphore_t I2Cmutex;
-extern binary_semaphore_t SPImutex;
-extern binary_semaphore_t USARTmutex;
+extern binary_semaphore_t I2C1mutex;
+extern binary_semaphore_t SPI1mutex;
+extern binary_semaphore_t USART2mutex;
 extern int32_t timestamp;
 extern uint32_t timestamp_millis;
 extern thread_t *tpMain;

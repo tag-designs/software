@@ -22,79 +22,15 @@
 
 #include "config.h"
 
-/** @name Shared runtime synchronization
- * Semaphores and timestamps shared by core services and device drivers.
+/** @name Shared runtime state
+ * Timestamps and main-thread handle shared by runtime services.
  * @{
  */
-binary_semaphore_t ADCmutex;
-binary_semaphore_t SPImutex;
-binary_semaphore_t I2Cmutex;
-binary_semaphore_t USARTmutex;
-
 thread_t *tpMain = 0;
 int32_t timestamp;
 uint32_t timestamp_millis;
 
 volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
-/** @} */
-
-#define ADC_SMPR_SMP_47P5 4
-
-/** @name Board health measurement
- * Helpers used by monitor status and persistent state markers to record supply
- * voltage and die temperature without exposing ADC channel sequencing.
- * @{
- */
-/**
- * @brief Measure the MCU supply voltage and internal temperature.
- *
- * @param[out] vdd100 Supply voltage in hundredths of a volt.
- * @param[out] temp10 Die temperature in tenths of a degree Celsius.
- */
-void adcVDD(uint16_t *vdd100, int16_t *temp10)
-{
-  uint32_t raw;
-  int32_t tmp;
-  uint32_t adc_samples[2];
-
-  uint16_t TS_CAL1 = *((uint16_t *)0x1FFF75A8);
-  uint16_t TS_CAL2 = *((uint16_t *)0x1FFF75CA);
-  uint16_t VREF_CAL = *((uint16_t *)0x1FFF75AA);
-
-  chBSemWait(&ADCmutex);
-  adc1Start();
-  adc1EnableVREF();
-  adc1EnableTS();
-  //chThdSleepMilliseconds(1);
-  adc1StartConversion(0, ADC_SMPR_SMP_47P5);
-  while (adc1Eoc() == false)
-    ;
-  adc_samples[0] = adc1DR();
-  adc1StartConversion(17, ADC_SMPR_SMP_47P5);
-  while (adc1Eoc() == false)
-    ;
-  adc_samples[1] = adc1DR();
-  adc1Stop();
-  chBSemSignal(&ADCmutex);
-
-  // compute vdd*100
-
-  raw = adc_samples[0];
-  tmp = (300 * VREF_CAL) / raw;
-  *vdd100 = (uint16_t) tmp;
-
-  // compute temperature *10
-
-  raw = adc_samples[1];
-
-  // voltage compensated temperature sensor reading
-
-  tmp = (((1300-300)*raw * tmp)/300);
-
-  // temperature * 10
-
-  *temp10 = (tmp - (1300-300) * TS_CAL1)/ (TS_CAL2 - TS_CAL1) + 300;
-}
 /** @} */
 
 /** @name Runtime initialization and reset handling
@@ -269,15 +205,13 @@ int main(void)
   
   halInit();
   chSysInit();
-  i2cObjectInit(&I2CD1);
 
- // low power run mode
- // PWR->CR1 |= PWR_CR1_LPR_Msk;
-  
-  chBSemObjectInit(&ADCmutex, false);
-  chBSemObjectInit(&I2Cmutex, false);
-  chBSemObjectInit(&SPImutex, false);
-  chBSemObjectInit(&USARTmutex, false);
+  // low power run mode
+  // PWR->CR1 |= PWR_CR1_LPR_Msk;
+
+  adcInit();
+  tagPowerInit();
+  tagDevicesInit();
   
   tpMain = chThdGetSelfX(); // global pointer to main thread
 

@@ -55,7 +55,7 @@ typedef struct {
 extern const TagSpiConfig tagSpiDefaultConfig;
 
 #define TAG_SPI1_DEVICE_DEFAULTS                                             \
-  .spi = SPI1, .mutex = &SPImutex, .config = &tagSpiDefaultConfig
+  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig
 /** @} */
 
 /** @name SPI active-state tracking

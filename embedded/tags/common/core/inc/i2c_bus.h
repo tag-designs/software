@@ -60,6 +60,14 @@ extern const TagI2cController tagI2c1DefaultController;
  * @{
  */
 /**
+ * @brief Initialize the ChibiOS I2C driver object for a shared controller.
+ *
+ * @param[in] controller Shared controller whose driver object should be
+ *            initialized before first use.
+ */
+void tagI2cControllerObjectInit(const TagI2cController *controller);
+
+/**
  * @brief Start an I2C controller with the active device configuration.
  *
  * @param[in] controller Shared controller to enable.

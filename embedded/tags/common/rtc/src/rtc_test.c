@@ -19,10 +19,13 @@
 /**
  * @brief Test RTC initialization and date/time readout.
  *
+ * @param[in] context Unused.
  * @return true when the RTC initializes, reads, and leaves expected dividers.
  */
-bool tag_test_rtc(void)
+bool tag_test_rtc(const void *context)
 {
+  (void)context;
+
   if (!tagRtcInit())
   {
     return false;

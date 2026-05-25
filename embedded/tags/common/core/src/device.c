@@ -7,16 +7,31 @@
 
 #include "hal.h"
 
+#include "core_sync.h"
 #include "device.h"
 
-/** @name Weak standby device hooks
- * Weak defaults for optional tag/family device standby hooks.
+/** @name Weak device lifecycle hooks
+ * Weak defaults for optional tag/family device lifecycle hooks.
  *
  * Tags with non-universal peripherals override these from their devices.c file.
  * Keeping the defaults here lets simple or legacy tags continue to use core
  * pwr.c without providing a device binding file.
  * @{
  */
+binary_semaphore_t I2C1mutex __attribute__((weak));
+binary_semaphore_t SPI1mutex __attribute__((weak));
+binary_semaphore_t USART2mutex __attribute__((weak));
+
+/**
+ * @brief Default initialization for legacy tags without device-owned bus state.
+ */
+void __attribute__((weak)) tagDevicesInit(void)
+{
+  chBSemObjectInit(&I2C1mutex, false);
+  chBSemObjectInit(&SPI1mutex, false);
+  chBSemObjectInit(&USART2mutex, false);
+}
+
 /**
  * @brief Default no-op device standby preparation hook.
  *

@@ -17,12 +17,18 @@
  * @{
  */
 /**
- * @brief Default disabled LPS27 self-test binding.
+ * @brief LPS27 self-test binding for a test-case pressure descriptor.
  *
- * @return false because no device descriptor is available here.
+ * @param[in] context TagPressureDevice descriptor.
+ * @return true when the LPS27 device responds and samples correctly.
  */
-bool __attribute__((weak)) tag_test_lps27(void)
+bool __attribute__((weak)) tag_test_lps27(const void *context)
 {
-  return false;
+  if (context == NULL)
+  {
+    return false;
+  }
+
+  return lps27Test((const TagPressureDevice *)context);
 }
 /** @} */

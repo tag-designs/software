@@ -19,7 +19,7 @@
 
 const TagI2cController tagI2c1DefaultController = {
   .driver = &I2CD1,
-  .mutex = &I2Cmutex,
+  .mutex = &I2C1mutex,
 };
 /** @} */
 
@@ -31,6 +31,20 @@ const TagI2cController tagI2c1DefaultController = {
  * switched device power; bus begin/end owns the mutex and controller state.
  * @{
  */
+/**
+ * @brief Initialize the ChibiOS I2C driver object for a shared controller.
+ *
+ * @param[in] controller Shared controller whose driver object should be
+ *            initialized before first use.
+ */
+void tagI2cControllerObjectInit(const TagI2cController *controller)
+{
+  if (controller)
+  {
+    i2cObjectInit(controller->driver);
+  }
+}
+
 /**
  * @brief Start an I2C controller with the active device configuration.
  *

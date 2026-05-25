@@ -8,6 +8,7 @@
 #include "hal.h"
 
 #include "at25xe.h"
+#include "core_sync.h"
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
@@ -24,6 +25,18 @@
  * AT25XE external flash and the SPI LPS27 pressure sensor. Common drivers use
  * these descriptors instead of hard-coded board wiring.
  */
+binary_semaphore_t I2C1mutex;
+binary_semaphore_t SPI1mutex;
+
+/**
+ * @brief Initialize PresTag-owned bus synchronization state.
+ */
+void tagDevicesInit(void)
+{
+  chBSemObjectInit(&I2C1mutex, false);
+  chBSemObjectInit(&SPI1mutex, false);
+}
+
 static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -58,40 +71,12 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = AT25XE_SECTOR_COUNT,
 };
 
-/*
- * Helper bindings.
- *
- * These small functions connect generic self-tests to the PresTag descriptors
- * above.
- */
-/**
- * @brief Run the configured LPS27 pressure-sensor test.
- *
- * @return true when the pressure sensor identity is valid.
- */
-bool tag_test_lps27(void)
-{
-  return tagPressureTest();
-}
-
-/**
- * @brief Check whether the configured external flash responds.
- *
- * @return true when a valid flash ID is read.
- */
-bool tag_test_external_flash(void)
-{
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
-  return result;
-}
-
 static const TagTestCase tag_tests[] =
 {
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
-  {RUN_LPS, LPS_FAILED, tag_test_lps27},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
+   TAG_EXTERNAL_FLASH},
+  {RUN_LPS, LPS_FAILED, tag_test_lps27, TAG_PRESSURE_DEVICE},
 };
 
 /**

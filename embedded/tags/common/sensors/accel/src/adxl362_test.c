@@ -108,12 +108,14 @@ bool adxl362Test(const TagAdxl362Device *device)
 }
 
 /**
- * @brief Default ADXL362 self-test binding for the configured tag device.
+ * @brief ADXL362 self-test binding for a test-case descriptor.
  *
+ * @param[in] context Optional TagAdxl362Device descriptor.
  * @return true when the configured ADXL362 passes self-test.
  */
-bool __attribute__((weak)) tag_test_adxl362(void)
+bool __attribute__((weak)) tag_test_adxl362(const void *context)
 {
-  return adxl362Test(tagAdxl362Device());
+  const TagAdxl362Device *device = context ? context : tagAdxl362Device();
+  return adxl362Test(device);
 }
 /** @} */

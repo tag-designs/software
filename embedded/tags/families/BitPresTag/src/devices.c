@@ -7,6 +7,7 @@
 
 #include "hal.h"
 
+#include "core_sync.h"
 #include "custom.h"
 #include "device.h"
 #include "devices.h"
@@ -52,6 +53,20 @@
  * project.mk selects the flash module and the descriptor below binds that chip
  * operation table to the shared board wiring.
  */
+binary_semaphore_t I2C1mutex;
+binary_semaphore_t SPI1mutex;
+binary_semaphore_t USART2mutex;
+
+/**
+ * @brief Initialize BitPresTag-family bus synchronization state.
+ */
+void tagDevicesInit(void)
+{
+  chBSemObjectInit(&I2C1mutex, false);
+  chBSemObjectInit(&SPI1mutex, false);
+  chBSemObjectInit(&USART2mutex, false);
+}
+
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
@@ -98,42 +113,13 @@ const TagAdxl362Device tagBitPresTagAccelDevice = {
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
 };
 
-/*
- * Helper bindings.
- *
- * The common pressure and accelerometer drivers are parameterized by device
- * descriptors. These small bindings connect generic self-tests to the
- * BitPresTag-family descriptors above.
- */
-/**
- * @brief Check whether the configured external flash responds.
- *
- * @return true when a valid flash ID is read.
- */
-bool tag_test_external_flash(void)
-{
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  bool result = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
-  return result;
-}
-
-/**
- * @brief Run the configured LPS27 pressure-sensor test.
- *
- * @return true when the pressure sensor identity is valid.
- */
-bool tag_test_lps27(void)
-{
-  return tagPressureTest();
-}
-
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash},
-  {RUN_LPS, LPS_FAILED, tag_test_lps27},
+  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362, TAG_ACCEL_DEVICE},
+  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
+   TAG_EXTERNAL_FLASH},
+  {RUN_LPS, LPS_FAILED, tag_test_lps27, TAG_PRESSURE_DEVICE},
 };
 
 /**
