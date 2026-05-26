@@ -22,15 +22,15 @@
  *
  * @param[in] context TagPressureDevice descriptor.
  * @return ALL_PASSED when the LPS27 device responds and samples correctly,
- * otherwise LPS_FAILED.
+ * otherwise LPS27_FAILED.
  */
 TestResult __attribute__((weak)) tag_test_lps27(const void *context)
 {
   if (context == NULL)
   {
-    return LPS_FAILED;
+    return LPS27_FAILED;
   }
 
-  return lps27Test((const TagPressureDevice *)context) ? ALL_PASSED : LPS_FAILED;
+  return lps27Test((const TagPressureDevice *)context) ? ALL_PASSED : LPS27_FAILED;
 }
 /** @} */

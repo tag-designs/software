@@ -46,6 +46,12 @@ enum TestResult {
   AK09940A_FAILED = 11;
   LIS2DU12_FAILED = 12;
   TEST_DEBUG_FAILED = 16; // for debugging
+  LPS27_FAILED = 17;
+  LPS22_FAILED = 18;
+  AT25XE_FAILED = 19;
+  MX25L_FAILED = 20;
+  MX25R_FAILED = 21;
+
 }
 
 // ADXL362 Configuration

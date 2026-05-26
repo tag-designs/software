@@ -11,6 +11,16 @@
 #include "storage_flash.h"
 #include "test_support.h"
 
+#if defined(TAG_FLASH_AT25XE) && TAG_FLASH_AT25XE
+#define TAG_EXTERNAL_FLASH_FAILED AT25XE_FAILED
+#elif defined(TAG_FLASH_MX25L) && TAG_FLASH_MX25L
+#define TAG_EXTERNAL_FLASH_FAILED MX25L_FAILED
+#elif defined(TAG_FLASH_MX25R) && TAG_FLASH_MX25R
+#define TAG_EXTERNAL_FLASH_FAILED MX25R_FAILED
+#else
+#define TAG_EXTERNAL_FLASH_FAILED EXT_FLASH_FAILED
+#endif
+
 /** @name External flash self-test
  * Test helper used by tag self-test tables to verify configured external flash
  * can wake and return the expected identity.
@@ -21,7 +31,7 @@
  *
  * @param[in] context Optional TagStorageDevice descriptor.
  * @return ALL_PASSED when the configured flash responds with a valid identity,
- * otherwise EXT_FLASH_FAILED.
+ * otherwise the selected flash device's failure result.
  */
 TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
 {
@@ -30,6 +40,6 @@ TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
   tagStorageWake(device);
   bool result = tagStorageCheckID(device) > -1;
   tagStorageSleep(device);
-  return result ? ALL_PASSED : EXT_FLASH_FAILED;
+  return result ? ALL_PASSED : TAG_EXTERNAL_FLASH_FAILED;
 }
 /** @} */

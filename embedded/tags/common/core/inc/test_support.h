@@ -92,21 +92,22 @@ TestResult tag_test_rtc(const void *context);
 /**
  * @brief Test external flash communication and storage readiness.
  *
- * @return ALL_PASSED when the flash passes, otherwise EXT_FLASH_FAILED.
+ * @return ALL_PASSED when the flash passes, otherwise the selected flash
+ * device's failure result.
  */
 TestResult tag_test_external_flash(const void *context);
 
 /**
  * @brief Test LPS27 pressure sensor communication and readiness.
  *
- * @return ALL_PASSED when the pressure sensor passes, otherwise LPS_FAILED.
+ * @return ALL_PASSED when the pressure sensor passes, otherwise LPS27_FAILED.
  */
 TestResult tag_test_lps27(const void *context);
 
 /**
  * @brief Test LPS22HH pressure sensor communication and readiness.
  *
- * @return ALL_PASSED when the pressure sensor passes, otherwise LPS_FAILED.
+ * @return ALL_PASSED when the pressure sensor passes, otherwise LPS22_FAILED.
  */
 TestResult tag_test_lps22hh(const void *context);
 /** @} */
