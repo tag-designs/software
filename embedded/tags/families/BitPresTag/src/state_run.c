@@ -101,7 +101,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     // round up external pages
 
-    pState->external_blocks == pState->pages*DATALOG_SAMPLES;
+    pState->external_blocks = pState->pages*DATALOG_SAMPLES;
 
      // write out a new header
 
@@ -143,7 +143,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     uint64_t activity = pState->activity;
     int32_t lastwrite = pState->lastwrite;
-    int32_t lastwakeup = pState->lastwakeup;
     int32_t lastactstart = pState->lastactstart;
 
     // sample once ! -- also used in pwr to decide wakeup edge

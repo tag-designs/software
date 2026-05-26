@@ -48,16 +48,10 @@ sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibrati
  * @return true after clearing the destination.
  */
 bool sensorSample(RawSensorData *data){
-  bool ok = true;
-  uint8_t buf[11];
-  struct {
-      int16_t x;
-      int16_t y;
-      int16_t z;
-  } accel_data;
-
   memset(data,0,sizeof(*data));
 /*
+  bool ok = true;
+  uint8_t buf[11];
   magInit(MAG_SAMPLE_SINGLE_MODE);
   if (magSample(true,buf)) {
 
@@ -72,6 +66,11 @@ bool sensorSample(RawSensorData *data){
   */
 
 /*
+  struct {
+      int16_t x;
+      int16_t y;
+      int16_t z;
+  } accel_data;
  if (accelSample((uint8_t *) &accel_data))
     {
         data->ax = (accel_data.x/16);
@@ -80,7 +79,7 @@ bool sensorSample(RawSensorData *data){
     } else {
       ok = false;
     }*/
-    return ok;
+    return true;
 }
 
 
@@ -95,6 +94,8 @@ bool sensorSample(RawSensorData *data){
  */
 bool sensorCalibrationSample(SensorData *sensors)
 {
+    memset(sensors, 0, sizeof(*sensors));
+   /*
     uint8_t buf[11];
     struct {
         int16_t x;
@@ -106,7 +107,7 @@ bool sensorCalibrationSample(SensorData *sensors)
     int y = 0;
     int z = 0;
     //int t = 0;
-   /*
+
     if (magSample(false,buf))
     {
       // keep all 18 bits
@@ -256,6 +257,8 @@ int write_calibration(CalibrationConstants *constants){
  * @return Undefined until the legacy calibration read path is restored.
  */
 int read_calibration(int32_t index, Ack *ack){
+  (void)index;
+  (void)ack;
   // if index < 0, search for last written
  /* if (index < 0) {
     for (index = (int32_t) CONSTANT_CNT - 1 ; index > -1 ; index--){
@@ -273,6 +276,6 @@ int read_calibration(int32_t index, Ack *ack){
   ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
   */
+  return errAck(Ack_NODATA);
 }
-
 

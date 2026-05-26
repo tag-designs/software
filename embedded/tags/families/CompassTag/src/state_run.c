@@ -149,11 +149,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       // read/write sensors
         
       RawSensorData data;
-      bool error;
 
       // what would we do with a false return???
 
-      error = sensorSample(&data);
+      (void)sensorSample(&data);
 
       switch (writeDataLog((uint16_t *) &data, sizeof(data)/2))
       {
