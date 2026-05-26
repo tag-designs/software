@@ -39,6 +39,7 @@ uint32_t CoreID = 0;
 
 static inline void delay(int i)
 {
+  (void)i;
   /*
   for (; i > 0; i--)
   {

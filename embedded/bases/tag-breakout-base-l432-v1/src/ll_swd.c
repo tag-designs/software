@@ -324,6 +324,7 @@ static void SWD_Disconnect(void)
 
 static uint32_t errorClear(uint32_t ack, int line)
 {
+  (void)line;
   uint32_t tmp;
   if (ack == SW_ACK_OK)
     return 0;
