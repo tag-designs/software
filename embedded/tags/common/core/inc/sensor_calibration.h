@@ -10,7 +10,7 @@
 
 #include "custom.h"
 
-#ifdef SENSOR_CALIBRATION
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
 #include "sensors.h"
 #endif
 

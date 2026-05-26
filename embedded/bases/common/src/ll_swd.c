@@ -25,7 +25,7 @@
 #include "usbcfg.h"
 #include "app.h"
 #include "board.h"
-#ifdef USEEPRINTF
+#if defined(USEEPRINTF) && USEEPRINTF
 #include "ch.h"
 #include "chprintf.h"
 #endif

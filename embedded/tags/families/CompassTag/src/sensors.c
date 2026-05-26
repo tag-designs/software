@@ -57,7 +57,7 @@ sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibrati
  */
 static void orient_mag_values(int *x, int *y, int *z)
 {
-#ifdef COMPASS_TAG
+#if defined(COMPASS_TAG) && COMPASS_TAG
   int tmp = -*y;
   *y = -*x;
   *x = tmp;
@@ -77,7 +77,7 @@ static void orient_mag_values(int *x, int *y, int *z)
  */
 static void orient_accel_raw(int16_t *x, int16_t *y)
 {
-#ifdef COMPASS_TAG
+#if defined(COMPASS_TAG) && COMPASS_TAG
   *x = -*x;
   *y = -*y;
 #else

@@ -17,7 +17,7 @@
 #define BOARD_NAME "CompassTagv1"
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
-#define COMPASS_TAG TRUE
+#define COMPASS_TAG 1
 /** @} */
 
 /** @name Sensor conversion constants

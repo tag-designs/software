@@ -64,7 +64,7 @@ void rtcOff(void)
   chBSemSignal(&I2Cmutex); //i2cReleaseBus(&I2CD1);
 }
 
-#ifdef LPS_I2C
+#if defined(LPS_I2C) && LPS_I2C
 void lpsOn(void)
 {
   chBSemWait(&I2Cmutex);
@@ -93,7 +93,7 @@ void lpsOff(void)
 }
 #endif
 
-#ifdef LPS_SPI
+#if defined(LPS_SPI) && LPS_SPI
 void lpsOn(void)
 {
   /* grab the mutex */

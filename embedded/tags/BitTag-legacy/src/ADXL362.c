@@ -301,7 +301,7 @@ void ADXL362_GetXyz(short* x, short* y, short* z)
  * @return None.
 *******************************************************************************/
 
-#ifdef INCLUDE_FLOAT
+#if defined(INCLUDE_FLOAT) && INCLUDE_FLOAT
 void ADXL362_GetGxyz(float* x, float* y, float* z)
 {
     unsigned char xyzValues[6] = {0, 0, 0, 0, 0, 0};

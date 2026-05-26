@@ -18,7 +18,7 @@
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 
-#define SWAP_I2C TRUE
+#define SWAP_I2C 1
 /** @} */
 
 /** @name Sensor conversion constants

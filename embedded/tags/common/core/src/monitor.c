@@ -189,7 +189,7 @@ static int statusAck(void)
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
-#ifdef TAG_DEBUG_LOG
+#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
    int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
                             sizeof(ack.payload.status.debug_message) - 1);
    ack.payload.status.debug_message[len] = 0;
@@ -240,7 +240,7 @@ static int infoAck(void)
 #else
   ack.payload.info.qtmonitor_min_version = 1.5;
 #endif
-#ifdef SENSOR_CONSTANTS
+#if defined(SENSOR_CONSTANTS) && SENSOR_CONSTANTS
   ack.payload.info.accelconstant = ACCEL_CONSTANT;
   ack.payload.info.magconstant = MAG_CONSTANT;
 #endif
@@ -376,7 +376,7 @@ int proto_eval(int len)
     }
     // Unimplemented request
 
-#ifdef SENSOR_CALIBRATION
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   case Req_calibrate_tag:
     chEvtSignal(tpMain, EVT_CALIBRATE);
     return errAck(Ack_OK);
@@ -384,13 +384,13 @@ int proto_eval(int len)
     return  calibration_logAck(&ack);
 
 #endif
-#ifdef CALIBRATION_CONSTANTS
+#if defined(CALIBRATION_CONSTANTS) && CALIBRATION_CONSTANTS
   case Req_write_calibration_tag:
     return write_calibration(&req.payload.write_calibration);
   case Req_read_calibration_tag:
     return read_calibration(req.payload.read_calibration, &ack);
 #endif
-#ifdef TAG_DEBUG_LOG
+#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
 #endif
   default:
     return errAck(Ack_Err_PERM);

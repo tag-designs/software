@@ -17,12 +17,12 @@
 #define FIRMWARE_STRING "IMUTagBreakoutv1, Firmware version 1"
 #undef  BOARD_NAME
 #define BOARD_NAME "IMUTagBreakoutv1"
-#define USE_LPS22HH TRUE
-#define SENSOR_CALIBRATION TRUE
+#define USE_LPS22HH 1
+#define SENSOR_CALIBRATION 1
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
-#define SENSOR_CONSTANTS TRUE
-#define CALIBRATION_CONSTANTS TRUE;
+#define SENSOR_CONSTANTS 1
+#define CALIBRATION_CONSTANTS 1
 /** @} */
 
 /** @name Sensor line aliases and conversion constants
@@ -33,7 +33,7 @@
 
 #define ACCEL_CONSTANT 0.976f
 #define MAG_CONSTANT 0.01
-#define SWAP_I2C TRUE
+#define SWAP_I2C 1
 /** @} */
 
 /*

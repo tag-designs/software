@@ -18,9 +18,9 @@
 #include "ch.h"
 #include "hal.h"
 #include "usbcfg.h"
-//#define USEEPRINTF 
+//#define USEEPRINTF 1
 #include "app.h"
-#ifdef USEEPRINTF
+#if defined(USEEPRINTF) && USEEPRINTF
 #include "ch.h"
 #include "chprintf.h"
 #endif

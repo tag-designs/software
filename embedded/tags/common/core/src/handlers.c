@@ -50,7 +50,7 @@ const int protobuf_size = PROTOBUFSIZE;
 /** @} */
 
 
-#ifdef RANGE_MULTIPLIER
+#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
 
 /** @name Optional debug clock scaling
  * Clock helpers speed monitor transfers during debugging and restore the normal
@@ -141,7 +141,7 @@ static THD_FUNCTION(MonitorThread, arg) {
 
   // system locked !!
 
-  #ifdef RANGE_MULTIPLIER
+  #if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
   fast_msi();
   #endif
 
@@ -166,7 +166,7 @@ static THD_FUNCTION(MonitorThread, arg) {
     // system locked !!
   }
 
-  #ifdef RANGE_MULTIPLIER
+  #if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
   slow_msi();
   #endif
 

@@ -230,7 +230,7 @@ ChibiOS `MemoryStream` directly. The backing stream is a 1024-byte queue that
 the monitor drains one protocol payload at a time. The header supplies no-op
 inline helpers when `TAG_DEBUG_LOG` is not defined, so module and driver code
 can keep diagnostics localized without surrounding every call site with
-`#ifdef TAG_DEBUG_LOG`.
+`#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG`.
 
 Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
 `flash_mx25l`, and `flash_mx25r` select the external-memory implementation used

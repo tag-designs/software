@@ -7,7 +7,7 @@
 
 #include "debug_log.h"
 
-#ifdef TAG_DEBUG_LOG
+#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
 
 /** @name Debug log queue
  * Backing store for the monitor debug-message stream.

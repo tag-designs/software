@@ -459,7 +459,7 @@ void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
  * @return None.
 *******************************************************************************/
 
-#ifdef INCLUDE_FLOAT
+#if defined(INCLUDE_FLOAT) && INCLUDE_FLOAT
 void ADXL362_GetGxyz(float* x, float* y, float* z)
 {
     ADXL362_GetGxyzDevice(&adxl362_default_device, x, y, z);

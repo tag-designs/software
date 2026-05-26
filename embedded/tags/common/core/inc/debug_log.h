@@ -21,7 +21,7 @@
  * place without carrying local #ifdef blocks.
  * @{
  */
-#ifdef TAG_DEBUG_LOG
+#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
 #include "chprintf.h"
 #include "memstreams.h"
 

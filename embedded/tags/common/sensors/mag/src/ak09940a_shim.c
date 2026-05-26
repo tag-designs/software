@@ -63,7 +63,7 @@ static const TagRegisterDevice ak09940a_registers = {
   .write_mask = 0x00,
 };
 
-#ifdef AK09940A_HAS_DEFAULT_TRG
+#if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
 /**
  * @brief Configure the default trigger pin direction for external triggering.
  *
@@ -171,7 +171,7 @@ msg_t ak09940_init_power_down(void)
 msg_t ak09940_init_continuous(ak09940_rate_t rate, ak09940_drive_t drive,
                               ak09940_temp_mode_t temp_mode)
 {
-#ifdef AK09940A_HAS_DEFAULT_TRG
+#if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
   ak09940a_default_trigger_mode(false);
 #endif
   return ak09940aInitContinuous(tagAk09940aDevice(), rate, drive,
@@ -188,7 +188,7 @@ msg_t ak09940_init_continuous(ak09940_rate_t rate, ak09940_drive_t drive,
 msg_t ak09940_init_triggered(ak09940_drive_t drive,
                              ak09940_temp_mode_t temp_mode)
 {
-#ifdef AK09940A_HAS_DEFAULT_TRG
+#if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
   palClearLine(AK09940A_DEFAULT_TRG);
   ak09940a_default_trigger_mode(true);
 #endif
@@ -202,7 +202,7 @@ msg_t ak09940_init_triggered(ak09940_drive_t drive,
  */
 msg_t ak09940_trigger(void)
 {
-#ifdef AK09940A_HAS_DEFAULT_TRG
+#if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
   ak09940a_default_trigger();
   return MSG_OK;
 #else
@@ -218,7 +218,7 @@ msg_t ak09940_trigger(void)
  */
 bool ak09940_data_ready(bool is_continuous)
 {
-#ifdef AK09940A_HAS_DEFAULT_TRG
+#if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
   if (is_continuous)
     return ak09940a_default_data_ready_line();
 #endif

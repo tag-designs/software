@@ -20,7 +20,7 @@
 #define APP_H
 
 //#undef USEEPRINTF
-#ifdef USEEPRINTF
+#if defined(USEEPRINTF) && USEEPRINTF
 #define EPRINTF(...) chprintf((BaseSequentialStream *)&SD1,__VA_ARGS__)
 #else
 #define EPRINTF(...) while(0){}

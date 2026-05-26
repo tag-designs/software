@@ -278,7 +278,7 @@ void ADXL362_GetXyzDevice(const TagAdxl362Device *device, short *x, short *y,
   *z = (short)(((unsigned short)xyzValues[5] << 8) | xyzValues[4]);
 }
 
-#ifdef INCLUDE_FLOAT
+#if defined(INCLUDE_FLOAT) && INCLUDE_FLOAT
 /**
  * @brief Read acceleration and convert to g.
  *

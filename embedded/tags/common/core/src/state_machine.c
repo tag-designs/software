@@ -251,7 +251,7 @@ enum Sleep StateMachine(void)
     }
   }
 
-  #ifdef SENSOR_CALIBRATION
+  #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   if (events & EVT_CALIBRATE)
   {
     if (pState->state == TagState_IDLE)
@@ -283,7 +283,7 @@ enum Sleep StateMachine(void)
     return Reset(T_CONT, State_EVENT_OK);
   case TagState_EXCEPTION:
     return Aborted(T_INIT, State_EVENT_EXCEPTION);
-#ifdef SENSOR_CALIBRATION
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   case TagState_CALIBRATE:
     return Calibrating(T_CONT, State_EVENT_OK);
 #endif
