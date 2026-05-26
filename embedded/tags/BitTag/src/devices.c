@@ -42,8 +42,8 @@ const TagAdxl362Device tagBitTagAccelDevice = {
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362, TAG_ACCEL_DEVICE},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
+  {RUN_ADXL362, tag_test_adxl362, TAG_ACCEL_DEVICE},
+  {RUN_RTC, tag_test_rtc, NULL},
 };
 
 const TagTestCase *tagTestCases(size_t *count)

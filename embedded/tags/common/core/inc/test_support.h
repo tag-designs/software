@@ -22,8 +22,7 @@
 typedef struct
 {
   TestReq request;
-  TestResult failure;
-  bool (*run)(const void *context);
+  TestResult (*run)(const void *context);
   const void *context;
 } TagTestCase;
 /** @} */
@@ -62,51 +61,54 @@ const TagTestCase *tagTestCases(size_t *count);
 /**
  * @brief Test ADXL362 accelerometer communication and readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the device passes, otherwise a device-specific
+ * failure result.
  */
-bool tag_test_adxl362(const void *context);
+TestResult tag_test_adxl362(const void *context);
 
 /**
  * @brief Test LIS2DU12 accelerometer communication and readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the device passes, otherwise a device-specific
+ * failure result.
  */
-bool tag_test_lis2du12(const void *context);
+TestResult tag_test_lis2du12(const void *context);
 
 /**
  * @brief Test AK09940A magnetometer communication and readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the device passes, otherwise a device-specific
+ * failure result.
  */
-bool tag_test_ak09940a(const void *context);
+TestResult tag_test_ak09940a(const void *context);
 
 /**
  * @brief Test RTC communication and timekeeping readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the RTC passes, otherwise RTC_FAILED.
  */
-bool tag_test_rtc(const void *context);
+TestResult tag_test_rtc(const void *context);
 
 /**
  * @brief Test external flash communication and storage readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the flash passes, otherwise EXT_FLASH_FAILED.
  */
-bool tag_test_external_flash(const void *context);
+TestResult tag_test_external_flash(const void *context);
 
 /**
  * @brief Test LPS27 pressure sensor communication and readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the pressure sensor passes, otherwise LPS_FAILED.
  */
-bool tag_test_lps27(const void *context);
+TestResult tag_test_lps27(const void *context);
 
 /**
  * @brief Test LPS22HH pressure sensor communication and readiness.
  *
- * @return true when the device passes its tag-specific test.
+ * @return ALL_PASSED when the pressure sensor passes, otherwise LPS_FAILED.
  */
-bool tag_test_lps22hh(const void *context);
+TestResult tag_test_lps22hh(const void *context);
 /** @} */
 
 #endif

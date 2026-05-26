@@ -9,6 +9,7 @@
 #include "core_types.h"
 #include "hal.h"
 #include "power.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -111,11 +112,12 @@ bool adxl362Test(const TagAdxl362Device *device)
  * @brief ADXL362 self-test binding for a test-case descriptor.
  *
  * @param[in] context Optional TagAdxl362Device descriptor.
- * @return true when the configured ADXL362 passes self-test.
+ * @return ALL_PASSED when the configured ADXL362 passes self-test, otherwise
+ * ADXL362_FAILED.
  */
-bool __attribute__((weak)) tag_test_adxl362(const void *context)
+TestResult __attribute__((weak)) tag_test_adxl362(const void *context)
 {
   const TagAdxl362Device *device = context ? context : tagAdxl362Device();
-  return adxl362Test(device);
+  return adxl362Test(device) ? ALL_PASSED : ADXL362_FAILED;
 }
 /** @} */

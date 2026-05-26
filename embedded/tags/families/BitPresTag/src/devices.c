@@ -113,11 +113,10 @@ const TagAdxl362Device tagBitPresTagAccelDevice = {
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362, TAG_ACCEL_DEVICE},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
-   TAG_EXTERNAL_FLASH},
-  {RUN_LPS, LPS_FAILED, tag_test_lps27, TAG_PRESSURE_DEVICE},
+  {RUN_ADXL362, tag_test_adxl362, TAG_ACCEL_DEVICE},
+  {RUN_RTC, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+  {RUN_LPS, tag_test_lps27, TAG_PRESSURE_DEVICE},
 };
 
 /**

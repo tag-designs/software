@@ -6,6 +6,7 @@
  */
 
 #include "ak09940.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 
@@ -13,10 +14,11 @@
  * @brief Run the legacy AK09940 self-test.
  *
  * @param[in] context Unused by the legacy shim.
- * @return true when the magnetometer self-test passes.
+ * @return ALL_PASSED when the magnetometer self-test passes, otherwise
+ * AK09940A_FAILED.
  */
-bool tag_test_ak09940a(const void *context)
+TestResult tag_test_ak09940a(const void *context)
 {
   (void)context;
-  return ak09940_self_test();
+  return ak09940_self_test() ? ALL_PASSED : AK09940A_FAILED;
 }

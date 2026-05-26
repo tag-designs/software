@@ -7,6 +7,7 @@
 
 #include "hal.h"
 #include "rtc_api.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -20,24 +21,25 @@
  * @brief Test RTC initialization and date/time readout.
  *
  * @param[in] context Unused.
- * @return true when the RTC initializes, reads, and leaves expected dividers.
+ * @return ALL_PASSED when the RTC initializes, reads, and leaves expected
+ * dividers, otherwise RTC_FAILED.
  */
-bool tag_test_rtc(const void *context)
+TestResult tag_test_rtc(const void *context)
 {
   (void)context;
 
   if (!tagRtcInit())
   {
-    return false;
+    return RTC_FAILED;
   }
 
   RTCDateTime tim;
   if (MSG_OK != tagRtcGetDateTime(&tim))
   {
-    return false;
+    return RTC_FAILED;
   }
 
   rtcSetTime(&RTCD1, &tim);
-  return RTCD1.rtc->PRER == STM32_RTC_PRER_BITS;
+  return (RTCD1.rtc->PRER == STM32_RTC_PRER_BITS) ? ALL_PASSED : RTC_FAILED;
 }
 /** @} */

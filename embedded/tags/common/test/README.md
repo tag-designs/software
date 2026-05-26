@@ -6,7 +6,8 @@ for a `TagTestCase` table, then maps protobuf `TestReq` values onto the
 device-specific hook functions listed in that table. Each table entry can carry
 a descriptor context pointer, so reusable tests can run against the concrete
 device selected by the tag/family without adding a local wrapper only to close
-over a global descriptor.
+over a global descriptor. Hooks return `ALL_PASSED` on success or a
+device-specific `TestResult` on failure.
 
 The `tag_test` module is retained as a no-op compatibility marker for older
 project manifests that list it in `TAG_MODULES`.
@@ -22,6 +23,7 @@ The owning module or family manifest is responsible for:
 - adding the hook source file;
 - adding the hook and descriptor context to the tag/family `devices.c`
   `TagTestCase` table;
+- returning `ALL_PASSED` or a specific `TestResult` from the hook;
 - documenting the hook in `embedded/tags/README.md` and
   `CUSTOM_DEFINES.md` when a new capability is added.
 

@@ -16,8 +16,8 @@
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, ADXL362_FAILED, tag_test_adxl362},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc},
+  {RUN_ADXL362, tag_test_adxl362, NULL},
+  {RUN_RTC, tag_test_rtc, NULL},
 };
 
 static bool test_requested(TestReq request)
@@ -36,9 +36,10 @@ void test(void)
       continue;
     }
 
-    if (!tag_tests[i].run())
+    TestResult result = tag_tests[i].run(tag_tests[i].context);
+    if (result != ALL_PASSED)
     {
-      pState->test_result = tag_tests[i].failure;
+      pState->test_result = result;
       return;
     }
   }

@@ -107,7 +107,9 @@ exercise each device directly, and it does not select tests with `TAG_*`
 preprocessor branches. Instead, tag or family `devices.c` files export a
 `TagTestCase` table through `tagTestCases()`. Each entry maps a monitor
 `TestReq` value to the hook that exercises a concrete device, plus an optional
-descriptor context pointer for reusable descriptor-backed tests.
+descriptor context pointer for reusable descriptor-backed tests. Hooks return
+`ALL_PASSED` or a device-specific `TestResult`, so richer tests can choose the
+failure result themselves.
 
 Current hook examples:
 
@@ -142,7 +144,8 @@ When adding a device self-test:
    it from another translation unit.
 4. Add the hook source basename to the owning module or family manifest.
 5. Add the request-to-hook mapping to the tag or family `devices.c`
-   `TagTestCase` table.
+   `TagTestCase` table. The hook should return `ALL_PASSED` on success and a
+   specific `TestResult` on failure.
 6. Update `CUSTOM_DEFINES.md` and rebuild the active tag targets.
 
 Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point

@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "lps27hhw.h"
+#include "test_support.h"
 
 /** @name LPS27 self-test binding
  * Compatibility default for tags that have not moved their test binding into
@@ -20,15 +21,16 @@
  * @brief LPS27 self-test binding for a test-case pressure descriptor.
  *
  * @param[in] context TagPressureDevice descriptor.
- * @return true when the LPS27 device responds and samples correctly.
+ * @return ALL_PASSED when the LPS27 device responds and samples correctly,
+ * otherwise LPS_FAILED.
  */
-bool __attribute__((weak)) tag_test_lps27(const void *context)
+TestResult __attribute__((weak)) tag_test_lps27(const void *context)
 {
   if (context == NULL)
   {
-    return false;
+    return LPS_FAILED;
   }
 
-  return lps27Test((const TagPressureDevice *)context);
+  return lps27Test((const TagPressureDevice *)context) ? ALL_PASSED : LPS_FAILED;
 }
 /** @} */

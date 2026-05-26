@@ -11,14 +11,15 @@
 #include "tagdata.pb.h"
 #include "test_support.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /** @name Shared self-test orchestration
  * Shared self-test orchestrator.
  *
  * Tag and family devices.c files provide the concrete test list because they
- * own the hardware descriptors. This runner only filters by the monitor's
- * requested TestReq and records the first failing TestResult.
+ * own the hardware descriptors. This runner filters by the monitor's requested
+ * TestReq and records the first non-ALL_PASSED TestResult.
  * @{
  */
 
@@ -55,9 +56,10 @@ void test(void)
       continue;
     }
 
-    if (!tag_tests[i].run(tag_tests[i].context))
+    TestResult result = tag_tests[i].run(tag_tests[i].context);
+    if (result != ALL_PASSED)
     {
-      pState->test_result = tag_tests[i].failure;
+      pState->test_result = result;
       return;
     }
   }

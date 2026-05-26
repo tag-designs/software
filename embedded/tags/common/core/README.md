@@ -11,7 +11,8 @@ active tags unless a tag provides a same-named local override.
 - `handlers.c`, `monitor.c`: protobuf request/ack handling and monitor-facing
   commands.
 - `test.c`: monitor-facing self-test dispatcher. It iterates the
-  tag/family-provided `TagTestCase` table from `test_support.h`.
+  tag/family-provided `TagTestCase` table from `test_support.h` and records
+  the first non-`ALL_PASSED` result returned by a test hook.
 - `persistent.c`, `stm32flash.c`: persistent state stored in internal STM32
   flash.
 - `stm32adc.c`: ADC1 lifecycle, one-shot conversions, and calibrated VDD/die

@@ -71,10 +71,9 @@ const TagStorageDevice tagExternalFlash = {
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
-   TAG_EXTERNAL_FLASH},
-  {RUN_LPS, LPS_FAILED, tag_test_lps27, TAG_PRESSURE_DEVICE},
+  {RUN_RTC, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+  {RUN_LPS, tag_test_lps27, TAG_PRESSURE_DEVICE},
 };
 
 /**

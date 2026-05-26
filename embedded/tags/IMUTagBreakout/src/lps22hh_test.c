@@ -7,6 +7,7 @@
 
 #include "lps22hh.h"
 #include "devices.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 
@@ -14,10 +15,11 @@
  * @brief Run the configured LPS22HH presence test.
  *
  * @param[in] context Optional TagPressureDevice descriptor.
- * @return true when the pressure sensor identity is valid.
+ * @return ALL_PASSED when the pressure sensor identity is valid, otherwise
+ * LPS_FAILED.
  */
-bool tag_test_lps22hh(const void *context)
+TestResult tag_test_lps22hh(const void *context)
 {
   const TagPressureDevice *device = context ? context : TAG_PRESSURE_DEVICE;
-  return lps22hh_check_who_am_i_device(device);
+  return lps22hh_check_who_am_i_device(device) ? ALL_PASSED : LPS_FAILED;
 }

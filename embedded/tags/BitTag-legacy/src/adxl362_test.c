@@ -2,6 +2,7 @@
 #include "core_types.h"
 #include "hal.h"
 #include "power.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,8 +32,9 @@ static void adxlavg(int val[3])
   val[2] /= 16;
 }
 
-bool tag_test_adxl362(void)
+TestResult tag_test_adxl362(const void *context)
 {
+  (void)context;
   bool result = false;
   accelSpiOn();
 
@@ -80,5 +82,5 @@ bool tag_test_adxl362(void)
 
   ADXL362_SoftwareReset();
   accelSpiOff();
-  return result;
+  return result ? ALL_PASSED : ADXL362_FAILED;
 }

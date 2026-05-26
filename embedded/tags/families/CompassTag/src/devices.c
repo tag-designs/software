@@ -150,9 +150,10 @@ void tagCompassMagResetRelease(void)
  * @brief Run the CompassTag AK09940A presence test.
  *
  * @param[in] context Optional TagRegisterDevice descriptor.
- * @return true when the magnetometer identity registers are valid.
+ * @return ALL_PASSED when the magnetometer identity registers are valid,
+ * otherwise AK09940A_FAILED.
  */
-bool tag_test_ak09940a(const void *context)
+TestResult tag_test_ak09940a(const void *context)
 {
   const TagRegisterDevice *device = context ? context : TAG_MAG_DEVICE;
 
@@ -162,7 +163,7 @@ bool tag_test_ak09940a(const void *context)
   bool ok = ak09940aCheckWhoami(device);
   ak09940aDeviceEnd(device);
   tagCompassMagResetAssert();
-  return ok;
+  return ok ? ALL_PASSED : AK09940A_FAILED;
 }
 
 static const TagTestCase tag_tests[] =
@@ -172,17 +173,16 @@ static const TagTestCase tag_tests[] =
    * magnetometer tests. Keep the request stable and report the specific
    * AK09940A failure result.
    */
-  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a, TAG_MAG_DEVICE},
+  {RUN_MMC5633, tag_test_ak09940a, TAG_MAG_DEVICE},
 
   /*
    * The protocol still uses RUN_AIS2 for newer low-power accelerometer tests.
    * Keep that mapping until the monitor protocol grows a generic RUN_ACCEL.
    */
-  {RUN_AIS2, LIS2DU12_FAILED, tag_test_lis2du12, TAG_ACCEL_DEVICE},
+  {RUN_AIS2, tag_test_lis2du12, TAG_ACCEL_DEVICE},
 
-  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
-   TAG_EXTERNAL_FLASH},
+  {RUN_RTC, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
 };
 
 /**

@@ -7,6 +7,7 @@
 
 #include "lis2du12.h"
 #include "devices.h"
+#include "test_support.h"
 
 #include <stdbool.h>
 
@@ -14,10 +15,11 @@
  * @brief Run the default LIS2DU12 presence test.
  *
  * @param[in] context Optional TagRegisterDevice descriptor.
- * @return true when the accelerometer identity register is valid.
+ * @return ALL_PASSED when the accelerometer identity register is valid,
+ * otherwise LIS2DU12_FAILED.
  */
-bool tag_test_lis2du12(const void *context)
+TestResult tag_test_lis2du12(const void *context)
 {
   const TagRegisterDevice *device = context ? context : TAG_ACCEL_DEVICE;
-  return lis2du12Test(device);
+  return lis2du12Test(device) ? ALL_PASSED : LIS2DU12_FAILED;
 }

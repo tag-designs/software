@@ -9,15 +9,17 @@
 #include <stdint.h>
 
 #include "ak09940a.h"
+#include "test_support.h"
 
 /**
  * @brief Exercise the configured AK09940A as part of tag self-test.
  *
  * @param[in] context Optional TagRegisterDevice descriptor.
- * @return true when the default AK09940A descriptor reports a valid device.
+ * @return ALL_PASSED when the AK09940A descriptor reports a valid device,
+ * otherwise AK09940A_FAILED.
  */
-bool __attribute__((weak)) tag_test_ak09940a(const void *context)
+TestResult __attribute__((weak)) tag_test_ak09940a(const void *context)
 {
   const TagRegisterDevice *device = context ? context : tagAk09940aDevice();
-  return ak09940aTest(device);
+  return ak09940aTest(device) ? ALL_PASSED : AK09940A_FAILED;
 }

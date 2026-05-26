@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "storage_flash.h"
+#include "test_support.h"
 
 /** @name External flash self-test
  * Test helper used by tag self-test tables to verify configured external flash
@@ -19,15 +20,16 @@
  * @brief Wake external flash and check its chip identity.
  *
  * @param[in] context Optional TagStorageDevice descriptor.
- * @return true when the configured flash responds with a valid identity.
+ * @return ALL_PASSED when the configured flash responds with a valid identity,
+ * otherwise EXT_FLASH_FAILED.
  */
-bool __attribute__((weak)) tag_test_external_flash(const void *context)
+TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
 {
   const TagStorageDevice *device = context ? context : &tagExternalFlash;
 
   tagStorageWake(device);
   bool result = tagStorageCheckID(device) > -1;
   tagStorageSleep(device);
-  return result;
+  return result ? ALL_PASSED : EXT_FLASH_FAILED;
 }
 /** @} */

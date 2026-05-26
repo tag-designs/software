@@ -178,11 +178,10 @@ static const TagTestCase tag_tests[] =
    * The monitor protocol still exposes RUN_MMC5633 for magnetometer tests.
    * IMUTagBreakout maps that legacy request to its AK09940 test hook.
    */
-  {RUN_MMC5633, AK09940A_FAILED, tag_test_ak09940a, NULL},
-  {RUN_RTC, RTC_FAILED, tag_test_rtc, NULL},
-  {RUN_EXT_FLASH, EXT_FLASH_FAILED, tag_test_external_flash,
-   TAG_EXTERNAL_FLASH},
-  {RUN_LPS, LPS_FAILED, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
+  {RUN_MMC5633, tag_test_ak09940a, NULL},
+  {RUN_RTC, tag_test_rtc, NULL},
+  {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+  {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
 };
 
 /**
