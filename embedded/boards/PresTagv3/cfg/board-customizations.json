@@ -65,8 +65,7 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin7": {
         "ID": "FLASH_MOSI",
@@ -81,7 +80,7 @@
         "Standby": "PULLDOWN"
       },
       "pin10": {
-        "ID": "STEVAL_CS",
+        "ID": "LPS_CS",
         "Type": "PushPull",
         "Level": "High",
         "Speed": "Maximum",
@@ -92,7 +91,7 @@
         "PinLock": "Disabled"
       },
       "pin11": {
-        "ID": "STEVAL_MISO",
+        "ID": "LPS_MISO",
         "Type": "PushPull",
         "Level": "Low",
         "Speed": "Maximum",
@@ -103,7 +102,7 @@
         "PinLock": "Disabled"
       },
       "pin12": {
-        "ID": "STEVAL_MOSI",
+        "ID": "LPS_MOSI",
         "Type": "PushPull",
         "Level": "Low",
         "Speed": "Maxiumum",
@@ -138,7 +137,7 @@
     },
     "GPIOB": {
       "pin3": {
-        "ID": "STEVAL_SCK",
+        "ID": "LPS_SCK",
         "Type": "PushPull",
         "Level": "High",
         "Speed": "Maximum",
@@ -149,7 +148,7 @@
         "PinLock": "Disabled"
       },
       "pin5": {
-        "ID": "STEVAL_PWR",
+        "ID": "LPS_PWR",
         "Type": "PushPull",
         "Level": "High",
         "Speed": "High",
