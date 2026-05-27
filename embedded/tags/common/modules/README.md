@@ -181,21 +181,21 @@ bus-specific descriptor helpers, peripheral setup, active-state tracking, and
 Stop2-specific register suspend/resume. I2C still has a controller/device split:
 `TagI2cController` owns the driver and mutex, while `TagI2cDevice` owns the
 config pointer, SDA/SCL/power lines, address, timeout, and standby pull policy
-used by both power code and register helpers. SPI power and SPI bus
+used by static-board fallback code and register helpers. SPI power and SPI bus
 ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
 optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
 `tagSpiBusEnd()` own pin alternate functions, the bus mutex, and peripheral
 enable/disable. Each SPI device descriptor also points at the `TagSpiConfig`
-for that session. The
-default flash SPI path uses the same descriptor flow, so flash standby pulls
-come from `tagSpiDevicePrepareSleep()` instead of a separate hand-written
-block. USART-style sensor buses use the same idea: `TagUsartDevice` carries
+for that session. Generated boards now keep standby pull policy in
+`board-customizations.json` `Standby` fields and expose it through
+`board_standby.h`; the descriptor sleep-policy helpers remain for static-board
+fallbacks. USART-style sensor buses use the same idea: `TagUsartDevice` carries
 the peripheral, mutex, power/session pins, dummy-byte policy, standby pull
-policy, and `TagUsartSyncConfig`. Sensor I/O and storage helpers use the same device
-descriptor that power code uses, so there is no separate partial bus object to
-keep synchronized.
+policy, and `TagUsartSyncConfig`. Sensor I/O and storage helpers use the same
+device descriptor shape, so there is no separate partial bus object to keep
+synchronized.
 AK09940A magnetometer bindings live with the tag or family that wires the
 device. Boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names can use the shared `sensor_mag_ak09940a` shim. If an
@@ -203,9 +203,9 @@ older board file uses historical names, add tag-local aliases in that target's
 `inc/custom.h` and update the board file to emit the standard names when
 feasible. Family code should provide `tagAk09940aDevice()` when the board needs
 non-standard sequencing or wants to call the descriptor API directly.
-Tags or families that need extra standby pin policy can provide a strong
-`tagPrepareDevicesForStandby()` implementation; core calls the weak hook after
-its built-in flash standby preparation.
+Generated-board tags should add standby pull policy to the board JSON instead
+of tag/family `devices.c`. Static-board tags can still provide a strong
+`tagDevicesApplyStandbyPins()` implementation as a compatibility path.
 The SPI descriptor path marks the selected SPI peripheral logically on/off from
 `spi_bus.c`; only peripherals enabled by `STM32_SPI_USE_SPIx` are tracked.
 Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and

@@ -54,10 +54,12 @@ bus begin/end.
 Converted storage also supplies helpers used by tag/family `devices.c` standby
 hooks. `tagStoragePrepareStandby()` handles chip-level standby behavior such as
 entering flash sleep only for the system states where that is useful.
-`tagStorageApplyStandbyPins()` handles the separate MCU standby-pin phase by
-delegating through the storage descriptor to the SPI sleep policy in
-`bus_power.c`. Keeping those phases separate avoids hiding device commands in
-the GPIO pull configuration path.
+Generated boards handle the separate MCU standby-pin phase through
+`board-customizations.json` `Standby` fields and the generated
+`board_standby.h` masks. `tagStorageApplyStandbyPins()` remains for static-board
+fallbacks that still delegate through the storage descriptor to the SPI sleep
+policy in `bus_power.c`. Keeping those phases separate avoids hiding device
+commands in the GPIO pull configuration path.
 
 The converted storage path is:
 

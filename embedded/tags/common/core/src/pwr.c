@@ -13,6 +13,16 @@
 #include "persistent.h"
 #include "power.h"
 
+#if defined(__has_include)
+#if __has_include("board_standby.h")
+#include "board_standby.h"
+#endif
+#endif
+
+#if !defined(BOARD_STANDBY_HAS_CONFIG)
+#define BOARD_STANDBY_HAS_CONFIG 0
+#endif
+
 /** @name Common tag power sequence
  * Common tag power/standby sequence.
  *
@@ -59,6 +69,30 @@ static const TagI2cDevice rtc_bus = {
     .sleep_policy = TAG_I2C_SLEEP_PULLUP,
 };
 
+#if BOARD_STANDBY_HAS_CONFIG
+static inline void tagApplyBoardStandbyPins(void)
+{
+#if HAS_PULLUPA
+  PWR->PUCRA = PULLUPA;
+#endif
+#if HAS_PULLDWNA
+  PWR->PDCRA = PULLDWNA;
+#endif
+#if HAS_PULLUPB
+  PWR->PUCRB = PULLUPB;
+#endif
+#if HAS_PULLDWNB
+  PWR->PDCRB = PULLDWNB;
+#endif
+#if HAS_PULLUPC
+  PWR->PUCRC = PULLUPC;
+#endif
+#if HAS_PULLDWNC
+  PWR->PDCRC = PULLDWNC;
+#endif
+}
+#endif
+
 /**
  * @brief Initialize power/RTC bus runtime state.
  */
@@ -102,8 +136,12 @@ void godown(enum Sleep sleepmode)
 
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
 
+#if BOARD_STANDBY_HAS_CONFIG
+  tagApplyBoardStandbyPins();
+#else
   tagDevicesApplyStandbyPins();
   tagI2cDevicePrepareSleep(&rtc_bus);
+#endif
 
   // Apply pull-up and pull-down configuration
 

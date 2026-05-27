@@ -10,6 +10,8 @@ copying `board.chcfg`, `board.c.ftl`, `board.h.ftl`, `board.mk.ftl`, and
 
 CMake then generates `board.chcfg` in the build tree and runs `fmpp` against
 the matching ChibiOS templates to produce `board.c`, `board.h`, and `board.mk`.
+It also emits `board_standby.h`, which contains the board-level STM32 standby
+pull masks used by tag firmware.
 
 ## CMake helper
 
@@ -49,7 +51,8 @@ Example:
 python3 embedded/boards/tools/generate_board_chcfg.py \
   --template embedded/boards/BitPresTagv1/cfg/board.chcfg \
   --customizations my-board-pins.json \
-  --output embedded/boards/MyBoard/cfg/board.chcfg
+  --output embedded/boards/MyBoard/cfg/board.chcfg \
+  --standby-header embedded/boards/MyBoard/cfg/board_standby.h
 ```
 
 The JSON file can include board metadata and either a compact pin map:
@@ -62,7 +65,8 @@ The JSON file can include board metadata and either a compact pin map:
     "PA5": {
       "ID": "ACCEL_SCK",
       "Mode": "Alternate",
-      "Alternate": "5"
+      "Alternate": "5",
+      "Standby": "PULLDOWN"
     },
     "GPIOB.pin6": {
       "ID": "RTC_SDA",
@@ -143,6 +147,13 @@ Pin attributes are matched case-insensitively against the attributes already
 present on the template pin, so misspelled fields fail instead of silently
 creating invalid configuration. Use `--allow-new-attributes` only when a new
 ChibiOS board schema attribute is intentionally being introduced.
+
+`Standby` is project metadata, not a ChibiOS XML attribute. It may be placed in
+a pin definition after `PinLock` and accepts `FLOAT`, `PULLUP`, or `PULLDOWN`;
+omitting it is the same as `FLOAT`. The generator strips `Standby` from
+`board.chcfg` and uses it only for `board_standby.h`. Pins with non-floating
+standby state must have a non-empty `ID`, because the generated masks use the
+human-readable `LINE_<ID>` names from `board.h`.
 
 The script validates requested XML paths and pin names with ElementTree, then
 patches the original XML text. This keeps generated `board.chcfg` files close

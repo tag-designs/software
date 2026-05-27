@@ -140,7 +140,8 @@
         "Mode": "Output",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       }
     },
     "GPIOB": {
@@ -164,7 +165,8 @@
         "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin3": {
         "ID": "FLASH_SCK",
@@ -175,7 +177,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin4": {
         "ID": "FLASH_MISO",
@@ -186,7 +189,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin5": {
         "ID": "FLASH_MOSI",
@@ -197,7 +201,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin6": {
         "ID": "RTC_SDA",
@@ -208,7 +213,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin7": {
         "ID": "RTC_SCL",
@@ -219,7 +225,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       }
     },
     "GPIOC": {

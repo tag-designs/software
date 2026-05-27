@@ -91,8 +91,9 @@ const TagTestCase *tagTestCases(size_t *count)
 /*
  * Required standby hooks.
  *
- * pwr.c calls these hooks while entering standby. PresTag prepares the pressure
- * sensor pins and applies the external-flash standby pin policy.
+ * pwr.c calls the protocol hook while entering standby. Generated boards apply
+ * pin pulls through board_standby.h; this file keeps the pin hook as a legacy
+ * fallback for static board builds.
  */
 /**
  * @brief Prepare PresTag devices before entering standby.

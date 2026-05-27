@@ -250,6 +250,7 @@ void tagDevicesPrepareStandby(uint32_t state)
  */
 void tagDevicesApplyStandbyPins(void)
 {
+  /* Legacy static-board fallback; generated CompassTagv1 uses board_standby.h. */
 #if defined(LINE_MAG_RSTN)
   tagEnableStandbyPulldown(LINE_MAG_RSTN);
 #endif

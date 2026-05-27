@@ -74,6 +74,7 @@ function(generate_configured_board_files name)
   # must land beside the normal board build directories, not inside this
   # sample/configuration directory's private build directory.
   set(_board_output_dir "${CMAKE_CURRENT_BINARY_DIR}/../${GCB_BOARD_TYPE}")
+  set(_generated_board_standby "${_board_output_dir}/board_standby.h")
 
   if(NOT EXISTS "${_template_xml}")
     message(FATAL_ERROR "Missing ChibiOS board XML template: ${_template_xml}")
@@ -95,12 +96,15 @@ function(generate_configured_board_files name)
     @ONLY)
 
   add_custom_command(
-    OUTPUT "${_generated_board_chcfg}"
+    OUTPUT
+      "${_generated_board_chcfg}"
+      "${_generated_board_standby}"
     COMMAND ${PYTHON_EXECUTABLE}
             "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
             --template "${_template_xml}"
             --customizations "${_customizations}"
             --output "${_generated_board_chcfg}"
+            --standby-header "${_generated_board_standby}"
     DEPENDS
       "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
       "${_customizations}"
@@ -108,19 +112,24 @@ function(generate_configured_board_files name)
     VERBATIM
     COMMENT "Generating ${GCB_BOARD_TYPE}/board.chcfg")
 
-  set(_board_files
+  set(_fmpp_board_files
     "${_board_output_dir}/board.h"
     "${_board_output_dir}/board.c"
     "${_board_output_dir}/board.mk")
 
+  set(_board_files
+    ${_fmpp_board_files}
+    "${_generated_board_standby}")
+
   add_custom_command(
-    OUTPUT ${_board_files}
+    OUTPUT ${_fmpp_board_files}
     COMMAND ${CMAKE_COMMAND} -E make_directory "${_board_output_dir}"
     COMMAND ${FMPP} --freemarker-links "{lib : ${CHIBIOS_DIR}/tools/ftl/libs}"
             -C "${_generated_board_fmpp}" -v -O "${_board_output_dir}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     DEPENDS
       "${_generated_board_chcfg}"
+      "${_generated_board_standby}"
       "${_generated_board_fmpp}"
       "${_template_dir}/board.c.ftl"
       "${_template_dir}/board.h.ftl"

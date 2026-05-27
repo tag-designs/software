@@ -144,9 +144,9 @@ const TagAdxl362Device *tagAdxl362Device(void)
 /*
  * Required standby hooks.
  *
- * pwr.c calls these hooks while entering standby. Device-specific storage logic
- * prepares external flash only in states where the log should be quiescent, then
- * this file applies the tag-family standby pin policy.
+ * pwr.c calls the protocol hook while entering standby. Generated boards apply
+ * pin pulls through board_standby.h; this file keeps the pin hook as a legacy
+ * fallback for static board builds.
  */
 /**
  * @brief Prepare BitPresTag devices before entering standby.

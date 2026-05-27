@@ -59,6 +59,7 @@ const TagAdxl362Device *tagAdxl362Device(void)
 
 void tagDevicesApplyStandbyPins(void)
 {
+  /* Legacy static-board fallback; generated BitTagv6 uses board_standby.h. */
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 }
 

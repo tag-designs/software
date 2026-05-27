@@ -52,7 +52,8 @@
         "Mode": "Input",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin5": {
         "ID": "ACCEL_SCK",
@@ -131,7 +132,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin7": {
         "ID": "RTC_SDA",
@@ -142,7 +144,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       }
     }
   }

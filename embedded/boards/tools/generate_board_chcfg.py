@@ -25,6 +25,9 @@ from xml.sax.saxutils import escape
 
 
 PIN_LOCATION_RE = re.compile(r"^(?:GPIO)?([A-Z])(?:PIN)?([0-9]|1[0-5])$")
+PIN_METADATA_ATTRIBUTES = {"standby"}
+STANDBY_VALUES = {"FLOAT", "PULLUP", "PULLDOWN"}
+STANDBY_PORTS = ("A", "B", "C")
 
 
 class ConfigError(ValueError):
@@ -86,6 +89,24 @@ def stringify_attributes(attributes: dict[str, Any], label: str) -> dict[str, st
             raise ConfigError(f"{label}: attribute {key!r} must be a scalar value")
         result[str(key)] = "" if value is None else str(value)
     return result
+
+
+def normalize_standby_value(value: str, label: str) -> str:
+    standby = value.strip().upper()
+    if standby not in STANDBY_VALUES:
+        allowed = ", ".join(sorted(STANDBY_VALUES))
+        raise ConfigError(f"{label}: Standby must be one of {allowed}")
+    return standby
+
+
+def strip_pin_metadata(attributes: dict[str, str]) -> dict[str, str]:
+    """Return attributes that should be written into ChibiOS board.chcfg."""
+
+    return {
+        key: value
+        for key, value in attributes.items()
+        if key.lower() not in PIN_METADATA_ATTRIBUTES
+    }
 
 
 def normalize_element_path(path: str) -> str:
@@ -293,7 +314,7 @@ def resolve_pins(
         pin_element = find_pin(root, port, pin)
         attribute_names = {name.lower(): name for name in pin_element.attrib}
         resolved_attributes: dict[str, str] = {}
-        for key, value in attributes.items():
+        for key, value in strip_pin_metadata(attributes).items():
             attribute_name = attribute_names.get(key.lower())
             if attribute_name is None:
                 if not allow_new_attributes:
@@ -306,6 +327,77 @@ def resolve_pins(
         resolved.append((port, pin, resolved_attributes))
 
     return resolved
+
+
+def validate_standby_pin(port: str, pin: int, attributes: dict[str, str]) -> str:
+    label = f"{port}.pin{pin}"
+    standby = normalize_standby_value(attributes.get("Standby", "FLOAT"), label)
+    if standby == "FLOAT":
+        return standby
+
+    port_letter = port[4:] if port.startswith("GPIO") else port
+    if port_letter not in STANDBY_PORTS:
+        raise ConfigError(f"{label}: Standby only supports GPIOA, GPIOB, and GPIOC")
+
+    pin_id = attributes.get("ID", "").strip()
+    if not pin_id:
+        raise ConfigError(f"{label}: Standby={standby} requires a non-empty ID")
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", pin_id):
+        raise ConfigError(f"{label}: ID {pin_id!r} cannot be used as a C identifier")
+
+    if port == "GPIOA" and standby == "PULLUP" and pin == 14:
+        raise ConfigError(f"{label}: PA14 cannot be configured as a standby pull-up")
+    if port == "GPIOA" and standby == "PULLDOWN" and pin in {13, 15}:
+        raise ConfigError(f"{label}: PA{pin} cannot be configured as a standby pull-down")
+
+    return standby
+
+
+def render_standby_mask(pin_ids: list[str]) -> str:
+    if not pin_ids:
+        return "0U"
+    terms = [f"PAL_PORT_BIT(PAL_PAD(LINE_{pin_id}))" for pin_id in pin_ids]
+    expression = " | \\\n  ".join(terms)
+    return f"({expression})"
+
+
+def render_standby_header(records: list[tuple[str, int, dict[str, str]]]) -> str:
+    masks: dict[tuple[str, str], list[str]] = {
+        (kind, port): [] for kind in ("PULLUP", "PULLDWN") for port in STANDBY_PORTS
+    }
+
+    for port, pin, attributes in records:
+        standby = validate_standby_pin(port, pin, attributes)
+        if standby == "FLOAT":
+            continue
+        port_letter = port[4:] if port.startswith("GPIO") else port
+        mask_kind = "PULLUP" if standby == "PULLUP" else "PULLDWN"
+        masks[(mask_kind, port_letter)].append(attributes["ID"].strip())
+
+    lines = [
+        "/*",
+        " * Generated from board-customizations.json. Do not edit by hand.",
+        " */",
+        "",
+        "#ifndef BOARD_STANDBY_H",
+        "#define BOARD_STANDBY_H",
+        "",
+        "#define BOARD_STANDBY_HAS_CONFIG 1",
+        "",
+    ]
+
+    for port in STANDBY_PORTS:
+        pullup = masks[("PULLUP", port)]
+        pulldown = masks[("PULLDWN", port)]
+        lines.append(f"#define HAS_PULLUP{port} {1 if pullup else 0}")
+        lines.append(f"#define HAS_PULLDWN{port} {1 if pulldown else 0}")
+        lines.append(f"#define PULLUP{port} {render_standby_mask(pullup)}")
+        lines.append(f"#define PULLDWN{port} {render_standby_mask(pulldown)}")
+        if port != STANDBY_PORTS[-1]:
+            lines.append("")
+
+    lines.extend(["", "#endif"])
+    return "\n".join(lines)
 
 
 def find_element_span(text: str, path: str) -> tuple[int, int] | None:
@@ -541,6 +633,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Destination board.chcfg. Omit to write to stdout.",
     )
     parser.add_argument(
+        "--standby-header",
+        type=Path,
+        help="Optional destination for generated standby pull masks.",
+    )
+    parser.add_argument(
         "--board-name",
         help="Override <board_name> in the generated file.",
     )
@@ -573,12 +670,16 @@ def main(argv: list[str] | None = None) -> int:
         pins = resolve_pins(root, config.pins, allow_new_attributes=args.allow_new_attributes)
         output_text = render_config(template_text, config, pins)
         write_text(output_text, args.output)
+        if args.standby_header is not None:
+            write_text(render_standby_header(config.pins), args.standby_header)
     except (ConfigError, ET.ParseError, json.JSONDecodeError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
     if args.output is not None:
         print(f"wrote {args.output} with {len(pins)} pin update(s)", file=sys.stderr)
+    if args.standby_header is not None:
+        print(f"wrote {args.standby_header}", file=sys.stderr)
     return 0
 
 

@@ -51,10 +51,11 @@ The standby path has two layers:
 - `tagDevicesPrepareStandby(state)`: protocol-level work before standby. For
   example, external flash may be woken briefly and then commanded into its
   chip-level sleep mode for final states.
-- `tagDevicesApplyStandbyPins()`: MCU pin policy before standby. This should
-  only program standby pullup/pulldown state for the device pins. The lower bus
-  helpers, such as `tagSpiDevicePrepareSleep()`, translate a device descriptor's
-  sleep policy into the actual PWR pull registers.
+- Generated boards define MCU standby pull policy in `board-customizations.json`
+  with each pin's optional `Standby` field. The board build emits
+  `board_standby.h`, and `pwr.c` applies those compile-time masks directly to
+  the STM32 PWR pull registers. Static boards that do not generate
+  `board_standby.h` still use the legacy `tagDevicesApplyStandbyPins()` hook.
 - `tagDevicesDisableWakeupSources()` and
   `tagDevicesConfigureWakeupSources(state, is_active)`: non-universal wakeup
   inputs such as accelerometer interrupts. The configure hook can abort the
@@ -78,7 +79,8 @@ flowchart TD
   RegisterDevice --> BusDevice
 
   TypedDevice --> BusModule["spi_bus.c / i2c_bus.c / usart_bus.c"]
-  BusModule --> BusPower["bus_power.c"]
+  DeviceFile --> BoardStandby["board_standby.h for generated boards"]
+  BoardStandby --> Power["pwr.c"]
 ```
 
 ## Bus Layer Split
@@ -87,8 +89,8 @@ The bus layer is deliberately split between cross-bus policy and concrete bus
 mechanics.
 
 - `bus_power.c` owns helpers that apply to every bus type: valid-line checks,
-  STM32 standby pullup/pulldown programming, and the top-level Stop2
-  suspend/resume fanout.
+  legacy STM32 standby pullup/pulldown programming for static boards, and the
+  top-level Stop2 suspend/resume fanout.
 - `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own the mechanics that are
   specific to each bus type: peripheral enable/disable, device power/session
   sequencing, bus pin state, standby sleep policy, and raw transfers where the
@@ -120,7 +122,8 @@ flowchart TD
   I2cBus --> Shared
   UsartBus --> Shared
 
-  Shared --> StandbyPulls["standby pull registers"]
+  BoardConfig["board_standby.h"] --> StandbyPulls["standby pull registers"]
+  Power["pwr.c"] --> StandbyPulls
   Shared --> Stop2["Stop2 suspend/resume fanout"]
 
   Stop2 --> SpiStop["tagSpiDisable/EnableActiveForStop"]
@@ -128,10 +131,10 @@ flowchart TD
 ```
 
 When adding a bus feature, put code in the narrowest layer that owns the
-information it needs. Pin pull helpers and Stop2 fanout belong in
-`bus_power.c`; SPI register twiddling belongs in `spi_bus.c`; USART synchronous
-mode setup belongs in `usart_bus.c`; I2C controller configuration belongs in
-`i2c_bus.c`.
+information it needs. Board standby pulls belong in board customizations; Stop2
+fanout belongs in `bus_power.c`; SPI register twiddling belongs in `spi_bus.c`;
+USART synchronous mode setup belongs in `usart_bus.c`; I2C controller
+configuration belongs in `i2c_bus.c`.
 
 Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 

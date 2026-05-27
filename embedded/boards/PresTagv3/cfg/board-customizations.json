@@ -41,7 +41,8 @@
         "Mode": "Output",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin5": {
         "ID": "FLASH_SCK",
@@ -52,7 +53,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin6": {
         "ID": "FLASH_MISO",
@@ -63,7 +65,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
         "ID": "FLASH_MOSI",
@@ -74,7 +77,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin10": {
         "ID": "STEVAL_CS",
@@ -153,7 +157,8 @@
         "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin6": {
         "ID": "RTC_SDA",
@@ -164,7 +169,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       },
       "pin7": {
         "ID": "RTC_SCL",
@@ -175,7 +181,8 @@
         "Mode": "Alternate",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLUP"
       }
     }
   }
