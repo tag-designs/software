@@ -119,6 +119,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
 
   // set BDU and configure one shot
 
+  cmd[0] = LPS27_CTRL_REG1_BDU;
 #if defined(LPS_LOW_POWER) && (LPS_LOW_POWER)
   cmd[1] = LPS27_CTRL_REG2_ONE_SHOT |
            LPS27_CTRL_REG2_IF_ADD_INC;
@@ -135,7 +136,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   // wait for data
 
   for (int i = 0; i < 6; i++) {
-    stopMilliseconds(35);
+    stopMilliseconds(15);
     lps27_GetReg(device, LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)
       break;
