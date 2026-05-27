@@ -82,10 +82,16 @@ static void _SetSWPinsIdle(void)
 
   toInput(LINE_TGT_SWDIO);
   toOutput(LINE_TGT_SWCLK);
+  #if defined(TGT_SWDIO_EN)
+  palSetLine(TGT_SWDIO_EN);
+  #endif
 }
 
 static void _ResetDebugPins(void)
 {
+  #if defined(TGT_SWDIO_EN)
+  palClearLine(TGT_SWDIO_EN);
+  #endif
   toAnalog(LINE_TGT_SWDIO); //was input
   toAnalog(LINE_TGT_SWCLK); //was output
 }
@@ -125,7 +131,7 @@ static inline uint32_t SW_ShiftIn(uint8_t bits)
 static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
 {
   int i;
-  uint32_t tmp;
+  uint32_t tmp = 0;
   if (bytes > 4)
     return 0;
 
