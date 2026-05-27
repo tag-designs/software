@@ -185,9 +185,17 @@ The preferred packaged host build uses vcpkg for static non-Qt libraries and
 the standard dynamic Qt distribution:
 
 ```
+# Run these from the repository source directory. The preset writes the
+# build tree to ~/Build/tag-designs/software-vcpkg-release.
 cmake --preset macos-vcpkg
 cmake --build --preset macos-vcpkg-package
 ```
+
+The `macos-vcpkg` configure preset sets the source directory to this checkout
+and the build directory to `~/Build/tag-designs/software-vcpkg-release`; the
+package build preset then builds the `package` target in that same build tree.
+The generated DMG is named from the latest reachable Git tag matching `vX.Y`,
+for example `Ultralight-tags-v3.0.dmg`.
 
 This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
 of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
@@ -200,7 +208,8 @@ Before using this preset, install the host autotools required by vcpkg's
 brew install autoconf autoconf-archive automake libtool
 ```
 
-Configure a package build:
+For a manual package build without the preset, choose the source and build
+directories explicitly:
 
 ```
 cmake -S . -B build-package \

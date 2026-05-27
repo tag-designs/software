@@ -177,11 +177,46 @@ set(CMAKE_FIND_ROOT
 
 #set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 
+set(ULTRALIGHT_PACKAGE_FALLBACK_VERSION "2.0.0")
+set(ULTRALIGHT_PACKAGE_GIT_TAG "")
+find_package(Git QUIET)
+if(Git_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" tag --merged HEAD --list "v[0-9]*.[0-9]*" --sort=-v:refname
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    RESULT_VARIABLE _ultralight_git_tag_result
+    OUTPUT_VARIABLE _ultralight_git_tags
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(_ultralight_git_tag_result EQUAL 0 AND _ultralight_git_tags)
+    string(REPLACE "\n" ";" _ultralight_git_tag_list "${_ultralight_git_tags}")
+    foreach(_ultralight_git_tag IN LISTS _ultralight_git_tag_list)
+      if(_ultralight_git_tag MATCHES "^v[0-9]+\\.[0-9]+$")
+        set(ULTRALIGHT_PACKAGE_GIT_TAG "${_ultralight_git_tag}")
+        break()
+      endif()
+    endforeach()
+  endif()
+endif()
+if(NOT ULTRALIGHT_PACKAGE_GIT_TAG)
+  string(
+    REGEX REPLACE
+    "^([0-9]+)\\.([0-9]+).*$"
+    "v\\1.\\2"
+    ULTRALIGHT_PACKAGE_GIT_TAG
+    "${ULTRALIGHT_PACKAGE_FALLBACK_VERSION}")
+endif()
+string(REGEX REPLACE "^v" "" ULTRALIGHT_PACKAGE_VERSION "${ULTRALIGHT_PACKAGE_GIT_TAG}")
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)$" _ultralight_package_version_match "${ULTRALIGHT_PACKAGE_VERSION}")
+set(ULTRALIGHT_PACKAGE_VERSION_MAJOR "${CMAKE_MATCH_1}")
+set(ULTRALIGHT_PACKAGE_VERSION_MINOR "${CMAKE_MATCH_2}")
+message(STATUS "UltralightTags package tag: ${ULTRALIGHT_PACKAGE_GIT_TAG}")
+
 set(CPACK_PACKAGE_NAME "UltralightTags")
 set(CPACK_PACKAGE_VENDOR "cs.iu.edu")
-set(CPACK_PACKAGE_VERSION "2.0.0")
-set(CPACK_PACKAGE_VERSION_MAJOR 2)
-set(CPACK_PACKAGE_VERSION_MINOR 1)
+set(CPACK_PACKAGE_VERSION "${ULTRALIGHT_PACKAGE_VERSION}")
+set(CPACK_PACKAGE_VERSION_MAJOR "${ULTRALIGHT_PACKAGE_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${ULTRALIGHT_PACKAGE_VERSION_MINOR}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
 
 add_subdirectory(proto)
@@ -198,6 +233,7 @@ endif()
 
 if(APPLE)
   set(CPACK_GENERATOR DragNDrop)
+  set(CPACK_PACKAGE_FILE_NAME "Ultralight-tags-${ULTRALIGHT_PACKAGE_GIT_TAG}")
   if(MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY)
     set(CPACK_BUNDLE_APPLE_CERT_APP "${MACOS_CODE_SIGN_IDENTITY}")
     set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_CODE_SIGN_IDENTITY}")
