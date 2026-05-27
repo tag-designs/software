@@ -32,17 +32,6 @@
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
       },
-      "pin2": {
-        "ID": "INT1",
-        "Type": "PushPull",
-        "Level": "High",
-        "Speed": "Low",
-        "Resistor": "Floating",
-        "Mode": "Analog",
-        "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
-      },
       "pin4": {
         "ID": "FLASH_nCS",
         "Type": "PushPull",
@@ -185,19 +174,6 @@
         "Resistor": "PullUp",
         "Mode": "Alternate",
         "Alternate": "4",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
-      }
-    },
-    "GPIOC": {
-      "pin14": {
-        "ID": "CLKIN",
-        "Type": "PushPull",
-        "Level": "High",
-        "Speed": "Maximum",
-        "Resistor": "Floating",
-        "Mode": "Input",
-        "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
       }

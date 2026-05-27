@@ -414,12 +414,14 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
   if (tagLineIsValid(device->pwr))
   {
     palClearLine(device->pwr);
+    toAnalog(device->sck);
+    toAnalog(device->mosi);
+    toAnalog(device->miso);
+    toAnalog(device->cs);
+  } else {
+    palSetLine(device->cs);
+    toOutput(device->cs);
   }
-
-  toAnalog(device->sck);
-  toAnalog(device->mosi);
-  toAnalog(device->miso);
-  toAnalog(device->cs);
 }
 
 /**
@@ -478,6 +480,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
     tagEnableStandbyPullup(device->cs);
     tagEnableStandbyPulldown(device->sck);
     tagEnableStandbyPulldown(device->mosi);
+    tagEnableStandbyPulldown(device->miso);
     break;
 
   case TAG_SPI_SLEEP_FLOAT:

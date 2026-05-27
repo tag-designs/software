@@ -135,9 +135,12 @@ void tagI2cDevicePrepareSleep(const TagI2cDevice *device)
   switch (device->sleep_policy)
   {
   case TAG_I2C_SLEEP_PULLUP:
-    tagEnableStandbyPullup(device->scl);
-    tagEnableStandbyPullup(device->sda);
-    tagEnableStandbyPulldown(device->pwr);
+    if (!tagLineIsValid(device->pwr)) {
+      tagEnableStandbyPullup(device->scl);
+      tagEnableStandbyPullup(device->sda);
+    } else {
+      tagEnableStandbyPulldown(device->pwr);
+    }
     break;
 
   case TAG_I2C_SLEEP_FLOAT:

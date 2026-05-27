@@ -105,6 +105,8 @@ void godown(enum Sleep sleepmode)
   tagDevicesApplyStandbyPins();
   tagI2cDevicePrepareSleep(&rtc_bus);
 
+  // Apply pull-up and pull-down configuration
+
   SET_BIT(PWR->CR3, PWR_CR3_APC);
 
   tagDevicesDisableWakeupSources();

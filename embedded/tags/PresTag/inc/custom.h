@@ -19,4 +19,6 @@
 #define PROTOBUFSIZE 4096
 /** @} */
 
+#define LPS_LOW_POWER 1
+
 #endif
