@@ -69,6 +69,8 @@ void deviceInit(int force)
     disableAllAlarms();
     disableTicker();
     pState->valid = true;
+
+    // is this the right place to set pullup/pulldowns?
   }
 }
 
@@ -90,6 +92,15 @@ t_resetCause getResetCause(uint32_t rstFlags)
 
   do
   {
+
+    // not an exit from standby, so must be power on
+
+     if (!(PWR->SR1 & PWR_SR1_SBF))
+    {
+      resetCause = resetPower; 
+      break;
+    }
+
     // if the backup registers aren't valid, it doesn't
     // matter how we got here, it's treated as a power
     // on reset
@@ -99,6 +110,8 @@ t_resetCause getResetCause(uint32_t rstFlags)
       resetCause = resetPower; 
       break;
     }
+
+   
 
     // Brownout leaves memory in questionable state
     // but shutdown also causes brownout
@@ -116,6 +129,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
     if ((PWR->SR1 & PWR_SR1_SBF) || pState->safe)
     {
       resetCause = resetStandby;
+      // clear the standby bit
       PWR->SCR = PWR_SCR_CSBF;
       break;
     }

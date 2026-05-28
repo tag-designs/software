@@ -108,8 +108,11 @@ void tagDevicesPrepareStandby(uint32_t state)
 /**
  * @brief Apply board pin pulls needed for standby leakage.
  */
+
+ /*
 void tagDevicesApplyStandbyPins(void)
 {
   tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }
+*/

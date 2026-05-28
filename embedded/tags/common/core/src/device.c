@@ -67,6 +67,8 @@ bool __attribute__((weak)) tagDevicesConfigureWakeupSources(uint32_t state,
   (void)state;
   (void)is_active;
 
+  // Enable internal wakeup source
+
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
   return true;
 }
