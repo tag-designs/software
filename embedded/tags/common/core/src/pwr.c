@@ -132,9 +132,20 @@ void godown(enum Sleep sleepmode)
   tagDevicesPrepareStandby(pState->state);
 
   __disable_irq();
+
+  // disable the debug unit
+
   DBGMCU->CR = 0;
 
+  // disable sram3
+
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+
+  // make sure lsi is off
+
+  CLEAR_BIT(RCC_CSR, RCC_CSR_LSION);
+
+  // Pullup/Pulldown configuration
 
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
