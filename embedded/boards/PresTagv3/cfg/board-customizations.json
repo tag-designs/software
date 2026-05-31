@@ -122,6 +122,17 @@
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
+      },
+        "pin15" {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
       }
     },
     "GPIOB": {
