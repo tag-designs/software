@@ -48,12 +48,11 @@
         "Type": "PushPull",
         "Level": "High",
         "Speed": "High",
-        "Resistor": "PullUp",
-        "Mode": "Input",
+        "Resistor": "Floating",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLUP"
+        "PinLock": "Disabled"
       },
       "pin5": {
         "ID": "ACCEL_SCK",

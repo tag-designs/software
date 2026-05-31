@@ -37,7 +37,7 @@ const TagAdxl362Device tagBitTagAccelDevice = {
         .mosi = LINE_ACCEL_MOSI,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
-        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
+        .sleep_policy = TAG_SPI_SLEEP_FLOAT),
 };
 
 static const TagTestCase tag_tests[] =
