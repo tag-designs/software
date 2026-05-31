@@ -61,9 +61,13 @@ void tagI2cControllerDisable(const TagI2cController *controller)
 void tagI2cDevicePowerOn(const TagI2cDevice *device)
 {
   if (tagLineIsValid(device->pwr))
-  {
-    toOutput(device->pwr);
+  { 
     palSetLine(device->pwr);
+    toOutput(device->pwr);
+    palSetLine(device->sda);
+    palSetLine(device->scl);
+    toOutput(device->scl);
+    toOutput(device->sda);
   }
 }
 
@@ -76,6 +80,8 @@ void tagI2cDevicePowerOff(const TagI2cDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
+    toAnalog(device->sda);
+    toAnalog(device->scl);
     palClearLine(device->pwr);
   }
 }
@@ -144,7 +150,10 @@ void tagI2cDevicePrepareSleep(const TagI2cDevice *device)
     break;
 
   case TAG_I2C_SLEEP_FLOAT:
-    tagEnableStandbyPulldown(device->pwr);
+  
+    if (tagLineIsValid(device->pwr)) {
+      tagEnableStandbyPulldown(device->pwr);
+    }
     break;
 
   case TAG_I2C_SLEEP_CUSTOM:
