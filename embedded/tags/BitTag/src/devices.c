@@ -63,6 +63,12 @@ void tagDevicesApplyStandbyPins(void)
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 }
 
+void tagDevicesPrepareStandby(uint32_t state)
+{
+  if (state != RUNNING)
+    tagDevicesDeinit();
+}
+
 void tagDevicesDisableWakeupSources(void)
 {
   CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
