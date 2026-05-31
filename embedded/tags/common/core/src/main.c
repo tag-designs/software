@@ -216,9 +216,15 @@ int main(void)
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
+
+  
   
   halInit();
   chSysInit();
+
+  // release the standby pullup/pulldown
+
+  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
 
   // low power run mode
   // PWR->CR1 |= PWR_CR1_LPR_Msk;
