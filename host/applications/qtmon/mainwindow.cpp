@@ -270,13 +270,13 @@ void MainWindow::TriggerUpdate(void)
         if (ack.has_calibration_log()) {
             for(auto const &sdata : ack.calibration_log().data())
             {
+              bool saw_sensor_data = false;
               if (sdata.has_mag()){
                   mx = sdata.mag().mx();
                   my = sdata.mag().my();
                   mz = sdata.mag().mz();
                   qInfo() << "Mag: " << mx << my << mz;
-              } else {
-                continue;
+                  saw_sensor_data = true;
               }
 
               if (sdata.has_accel()){
@@ -284,6 +284,11 @@ void MainWindow::TriggerUpdate(void)
                 ay = sdata.accel().ay();
                 az = sdata.accel().az();
                 qInfo() << "Accel: " << ax << ay << az;
+                saw_sensor_data = true;
+              }
+
+              if (!saw_sensor_data) {
+                qInfo() << "Calibration sample had no sensor data";
               }
             }
         }

@@ -12,16 +12,17 @@
 
 #include "hal.h"
 #include "core_types.h"
+#include "debug_log.h"
+#include "devices.h"
 #include "flash_internal.h"
 #include "persistent.h"
 
-#include "lis2du12.h"
 #include "ak09940a.h"
+#include "lsm6dsv16x.h"
 #include "sensors.h"
 
 
-void magOn(void);
-void magOff(void);
+#define IMU_ACCEL_MG_PER_LSB_4G 0.122f
 
 typedef struct {
     int32_t timestamp;
@@ -38,6 +39,16 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+static unsigned int empty_calibration_sample_logs;
+
+static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
+{
+  int32_t raw = ((int32_t)(h & 0x03U) << 16) | ((int32_t)m << 8) | l;
+  if ((raw & 0x20000) != 0)
+    raw |= (int32_t)0xFFFC0000;
+  return raw;
+}
+
 /**
  * @brief Sample raw sensor data for the data log.
  *
@@ -49,102 +60,106 @@ sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibrati
  */
 bool sensorSample(RawSensorData *data){
   memset(data,0,sizeof(*data));
-/*
-  bool ok = true;
-  uint8_t buf[11];
-  magInit(MAG_SAMPLE_SINGLE_MODE);
-  if (magSample(true,buf)) {
-
-      // keep only 16 bits
-      data->mx = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>16;
-      data->my = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>16;
-      data->mz = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>16;
-  } else {
-    ok = false;
-  }
-  magOff();
-  */
-
-/*
-  struct {
-      int16_t x;
-      int16_t y;
-      int16_t z;
-  } accel_data;
- if (accelSample((uint8_t *) &accel_data))
-    {
-        data->ax = (accel_data.x/16);
-        data->ay = (accel_data.y/16);
-        data->az = (accel_data.z/16);
-    } else {
-      ok = false;
-    }*/
-    return true;
+  return true;
 }
 
 
 /**
  * @brief Populate a live calibration sample.
  *
- * The legacy sampling body is intentionally disabled for this target until the
- * descriptor-backed sensors are fully restored.
+ * Magnetometer samples are reported in microtesla. Accelerometer samples are
+ * reported in mg using the calibration-mode +/-4 g scale configured by
+ * initSensors().
  *
  * @param[out] sensors Protobuf sensor-data payload to populate.
  * @return true after attempting the calibration sample.
  */
 bool sensorCalibrationSample(SensorData *sensors)
 {
-    memset(sensors, 0, sizeof(*sensors));
-   /*
     uint8_t buf[11];
-    struct {
-        int16_t x;
-        int16_t y;
-        int16_t z;
-    } accel_data;
+    int16_t ax = 0;
+    int16_t ay = 0;
+    int16_t az = 0;
 
-    int x = 0;
-    int y = 0;
-    int z = 0;
-    //int t = 0;
+    memset(sensors, 0, sizeof(*sensors));
 
-    if (magSample(false,buf))
+    ak09940aDeviceBegin(TAG_MAG_DEVICE);
+    if (ak09940aSample(TAG_MAG_DEVICE, false, buf))
     {
-      // keep all 18 bits
-      sensors->has_mag = true;
-      x = ((int) (buf[2]<<30)|(buf[1]<<22) | (buf[0] << 14))>>14;
-      y = ((int) (buf[5]<<30)|(buf[4]<<22) | (buf[3] << 14))>>14;
-      z = ((int) (buf[8]<<30)|(buf[7]<<22) | (buf[6] << 14))>>14;
-     
-      sensors->mag.mx = x * 0.01f;
-      sensors->mag.my = y * 0.01f;
-      sensors->mag.mz = z * 0.01f;
-    }
+      int32_t mx_raw = decode_mag_18bit(buf[0], buf[1], buf[2]);
+      int32_t my_raw = decode_mag_18bit(buf[3], buf[4], buf[5]);
+      int32_t mz_raw = decode_mag_18bit(buf[6], buf[7], buf[8]);
 
-    if (accelSample((uint8_t *) &accel_data))
+      sensors->has_mag = true;
+      ak09940_convert_to_uT(mx_raw, my_raw, mz_raw,
+                            &sensors->mag.mx,
+                            &sensors->mag.my,
+                            &sensors->mag.mz);
+    }
+    ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+    if (lsm6dsv16x_read_accel(TAG_IMU_DEVICE, &ax, &ay, &az) == 0)
     {
         sensors->has_accel = true;
-        
-        sensors->accel.ax = (accel_data.x/16) * 0.976f;
-        sensors->accel.ay = (accel_data.y/16) * 0.976f;
-        sensors->accel.az = (accel_data.z/16) * 0.976f;
+
+        sensors->accel.ax = ax * IMU_ACCEL_MG_PER_LSB_4G;
+        sensors->accel.ay = ay * IMU_ACCEL_MG_PER_LSB_4G;
+        sensors->accel.az = az * IMU_ACCEL_MG_PER_LSB_4G;
     }
-        */
+
+    if (!sensors->has_mag && !sensors->has_accel &&
+        empty_calibration_sample_logs < 4U)
+    {
+      debug_log_printf("IMUTag calibration: sample had no mag or accel data\r\n");
+      empty_calibration_sample_logs++;
+    }
 
     return true;
 }
-/*
+
+/**
+ * @brief Start magnetometer and IMU accelerometer for live calibration.
+ *
+ * @return true when the calibration sensor configuration completes.
+ */
 bool initSensors(void){
-    accelInit(ACCEL_SAMPLE_100HZ_MODE);
-    magInit(MAG_SAMPLE_100HZ_MODE);
+    lsm6dsv16x_accel_cfg_t accel_cfg = {
+        .odr = LSM6DSV16X_XL_ODR_120Hz,
+    };
+    lsm6dsv16x_range_cfg_t range_cfg = {
+        .xl_fs = LSM6DSV16X_XL_FS_4G,
+        .g_fs = LSM6DSV16X_G_FS_2000DPS,
+    };
+
+    ak09940aDeviceBegin(TAG_MAG_DEVICE);
+    if (ak09940aInitContinuous(TAG_MAG_DEVICE, AK09940_RATE_100HZ,
+                               AK09940_DRIVE_LOW_NOISE_2,
+                               AK09940_TEMP_DISABLED) != MSG_OK)
+    {
+      debug_log_printf("IMUTag calibration: AK09940A continuous init failed\r\n");
+    }
+    ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+    lsm6dsv16x_init_accel_only(TAG_IMU_DEVICE, &accel_cfg);
+    lsm6dsv16x_set_ranges(TAG_IMU_DEVICE, &range_cfg);
+    empty_calibration_sample_logs = 0;
+    debug_log_printf("IMUTag calibration: sensors initialized\r\n");
     return true;
 }
 
+/**
+ * @brief Stop calibration sensors and return them to low-power state.
+ *
+ * @return true when shutdown commands complete.
+ */
 bool deinitSensors(void) {
-    magOff();
-    accelDeinit();
+    ak09940aDeviceBegin(TAG_MAG_DEVICE);
+    (void)ak09940aInitPowerDown(TAG_MAG_DEVICE);
+    ak09940aDeviceEnd(TAG_MAG_DEVICE);
+    lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
+    debug_log_printf("IMUTag calibration: sensors deinitialized\r\n");
     return true;
-}*/
+}
 
 /**
  * @brief Handle the live sensor-calibration state.
@@ -159,16 +174,14 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 
   if (t == T_INIT)
   {
-  //  initSensors();
-    // start sensors
+    initSensors();
     pState->state = TagState_CALIBRATE;
   }
   if (MONCONNECTED)
     return SHUTDOWN;
   else
   {
-    // shutdown sensors
- //   deinitSensors();
+    deinitSensors();
     pState->state = TagState_IDLE;
     return SHUTDOWN;
   }
@@ -278,4 +291,3 @@ int read_calibration(int32_t index, Ack *ack){
   */
   return errAck(Ack_NODATA);
 }
-
