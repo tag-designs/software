@@ -14,6 +14,7 @@
 #include "device.h"
 #include "devices.h"
 #include "gpio_utils.h"
+#include "lsm6dsv16x.h"
 #include "lps.h"
 #include "power.h"
 #include "sensor_io.h"
@@ -174,6 +175,27 @@ const TagPressureDevice tagImuTagPressureDevice = {
     .registers = &lps_registers,
 };
 
+static const TagRegisterDevice imu_registers = {
+    .kind = TAG_REGISTER_ST,
+    .bus = TAG_BUS_SPI_INIT(
+        TAG_SPI1_DEVICE_DEFAULTS,
+        .cs = LINE_ACCEL_CS,
+        .sck = LINE_ACCEL_SCK,
+        .miso = LINE_ACCEL_MISO,
+        .mosi = LINE_ACCEL_MOSI,
+        .pwr = TAG_NO_LINE,
+        .dummy = 0xff,
+        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
+    .read_mask = 0x80,
+    .write_mask = 0x00,
+};
+
+const TagLsm6dsv16xDevice tagImuTagImuDevice = {
+    .registers = &imu_registers,
+    .set_trigger = NULL,
+    .trigger_context = NULL,
+};
+
 const TagRegisterDevice tagImuTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -197,6 +219,7 @@ static const TagTestCase tag_tests[] =
    */
   {RUN_RTC, tag_test_rtc, NULL},
   {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+  {RUN_AIS2, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
   {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
   {RUN_MMC5633, tag_test_ak09940a, TAG_MAG_DEVICE}
 };
@@ -240,6 +263,7 @@ void tagDevicesApplyStandbyPins(void)
 {
   /* Legacy static-board fallback; generated IMUTagv1 uses board_standby.h. */
   tagBusPrepareSleep(&tagImuTagMagDevice.bus);
+  tagBusPrepareSleep(&imu_registers.bus);
   tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }

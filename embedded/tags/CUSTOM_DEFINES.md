@@ -54,6 +54,7 @@ switch inventory.
 | `sensor_accel_adxl362` | `TAG_SENSOR_ACCEL_ADXL362` |
 | `sensor_pressure_lps27` | `TAG_SENSOR_PRESSURE_LPS27` |
 | `sensor_mag_ak09940a` | `TAG_SENSOR_MAG_AK09940A` |
+| `sensor_imu_lsm6dsv16x` | `TAG_SENSOR_IMU_LSM6DSV16X` |
 | `CompassTag` family manifest | `TAG_SENSOR_ACCEL_LIS2DU12` |
 | `debug_log` | `TAG_DEBUG_LOG`, `DEBUG_MESSAGES` |
 
@@ -81,6 +82,7 @@ switch inventory.
 | `USE_LPS22HH` | Selects the LPS22HH pressure path in `IMUTagBreakout`. | Used by IMUTagBreakout-local sensor code. Prefer module-generated `TAG_SENSOR_PRESSURE_LPS22HH` in shared code. |
 | `TAG_SENSOR_MAG_AK09940A` | Selects AK09940A magnetometer support. | The common AK09940A module supplies the register driver, default shim, and weak self-test hook. Active CompassTag variants bind the concrete `TagRegisterDevice` in family `devices.c`; IMUTagBreakout binds its mixed SPI wiring in `IMUTagBreakout/src/devices.c`. |
 | `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, `LINE_MAG_MOSI`, `LINE_MAG_TRG` | Standard magnetometer bus and trigger line names for AK09940A board wiring. | `common/sensors/mag/src/ak09940a_shim.c` uses the full bus-name set only for the weak default legacy binding. Tags with shared or mixed wiring can provide a strong `tagAk09940aDevice()` descriptor from `devices.c` instead of defining board aliases. |
+| `TAG_SENSOR_IMU_LSM6DSV16X` | Selects LSM6DSV16X IMU support. | The common IMU module supplies the descriptor-driven register driver and weak accelerometer self-test hook. IMUTagBreakout binds the concrete `TagLsm6dsv16xDevice` in `IMUTagBreakout/src/devices.c` and maps its self-test to `RUN_AIS2`/`AIS2_FAILED`. |
 | `USE_BMP` | Selects BMP pressure sensor support in an older prototype. | Archived pressure-driver/prototype code only. Not used by active targets. |
 | `ACCEL_USART` | Selects the USART-backed LIS2DU12 transfer variant. | Compass family LIS2DU12/power code and older IMU power-control files. |
 | `SENSOR_CALIBRATION` | Enables the runtime sensor calibration command/state. | `common/core/src/state_machine.c` exposes and enters `TagState_CALIBRATE`; `common/core/src/monitor.c` accepts `Req_calibrate` and `Req_caldata`; `common/core/inc/app.h` exposes calibration declarations. Active CompassTag variants select this from the family manifest rather than `custom.h`. |

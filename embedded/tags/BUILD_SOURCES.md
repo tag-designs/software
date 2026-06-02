@@ -535,6 +535,8 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/sensors/mag/src/ak09940a.c
 embedded/tags/common/sensors/mag/src/ak09940a_shim.c
 embedded/tags/common/sensors/mag/src/ak09940a_test.c
+embedded/tags/common/sensors/imu/lsm6dsv16x.c
+embedded/tags/common/sensors/imu/lsm6dsv16x_test.c
 embedded/tags/common/sensors/pressure/src/lps22hh.c
 embedded/tags/common/sensors/pressure/src/pressure_device.c
 embedded/tags/common/sensors/src/sensor_io.c
@@ -580,6 +582,8 @@ embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rtc_device.h
 embedded/tags/common/rtc/inc/rv3028.h
 embedded/tags/common/sensors/inc/sensor_io.h
+embedded/tags/common/sensors/imu/lsm6dsv16x.h
+embedded/tags/common/sensors/imu/lsm6dsv16x_regs.h
 embedded/tags/common/sensors/mag/inc/ak09940a.h
 embedded/tags/common/sensors/pressure/inc/lps22hh.h
 embedded/tags/common/sensors/pressure/inc/lps.h

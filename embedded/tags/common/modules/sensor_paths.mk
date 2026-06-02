@@ -12,6 +12,7 @@ TAG_SENSOR_PATHS_INCLUDED := yes
 include $(TAG_COMMON_MODULE_DIR)/sensor_accel_paths.mk
 include $(TAG_COMMON_MODULE_DIR)/sensor_pressure_paths.mk
 include $(TAG_COMMON_MODULE_DIR)/sensor_mag_paths.mk
+include $(TAG_COMMON_MODULE_DIR)/sensor_imu_paths.mk
 include $(TAG_COMMON_MODULE_DIR)/sensor_light_paths.mk
 
 endif

@@ -75,6 +75,14 @@ TestResult tag_test_adxl362(const void *context);
 TestResult tag_test_lis2du12(const void *context);
 
 /**
+ * @brief Test LSM6DSV16X IMU accelerometer communication and self-test.
+ *
+ * @return ALL_PASSED when the accelerometer self-test passes, otherwise the
+ * accel-family failure result.
+ */
+TestResult tag_test_lsm6dsv16x(const void *context);
+
+/**
  * @brief Test AK09940A magnetometer communication and readiness.
  *
  * @return ALL_PASSED when the device passes, otherwise a device-specific

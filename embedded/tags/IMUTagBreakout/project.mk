@@ -10,7 +10,8 @@ TAG_MODULES += \
        rtc_rv3028 \
        flash_mx25l \
        sensor_pressure_lps22hh \
-       sensor_mag_ak09940a
+       sensor_mag_ak09940a \
+       sensor_imu_lsm6dsv16x
 
 include ../common/modules/modules.mk
 

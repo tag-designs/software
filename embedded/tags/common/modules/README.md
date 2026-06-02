@@ -146,6 +146,11 @@ Current examples:
     src/ak09940a.c
     src/ak09940a_shim.c
     src/ak09940a_test.c
+  imu/
+    lsm6dsv16x.h
+    lsm6dsv16x_regs.h
+    lsm6dsv16x.c
+    lsm6dsv16x_test.c
   archive/
     mmc5633.c
     mmc5633.h
@@ -196,6 +201,14 @@ the peripheral, mutex, power/session pins, dummy-byte policy, standby pull
 policy, and `TagUsartSyncConfig`. Sensor I/O and storage helpers use the same
 device descriptor shape, so there is no separate partial bus object to keep
 synchronized.
+LSM6DSV16X IMU bindings follow the same descriptor model. The common
+`sensor_imu_lsm6dsv16x` module supplies the register driver and weak
+accelerometer self-test hook, while the owning tag provides a
+`TagLsm6dsv16xDevice` in `devices.c`. Triggered FIFO mode requires an optional
+descriptor callback that controls the board-specific ODR trigger timer; tags
+without that callback can still use shutdown, accel-only, wakeup, and
+accelerometer self-test paths.
+
 AK09940A magnetometer bindings live with the tag or family that wires the
 device. Boards that publish `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, and
 `LINE_MAG_MOSI` names can use the shared `sensor_mag_ak09940a` shim. If an
