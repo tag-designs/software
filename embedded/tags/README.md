@@ -117,8 +117,10 @@ Current hook examples:
 - `tag_test_rtc()` lives with the RV-3028 RTC module.
 - `tag_test_external_flash()` lives with the external-flash support code.
 - `tag_test_lis2du12()` lives with the CompassTag family LIS2DU12 code.
-- `tag_test_lps22hh()` and `tag_test_ak09940a()` live in `IMUTagBreakout/src`,
-  because that target currently owns those local driver variants.
+- `tag_test_lps22hh()` lives in `IMUTagBreakout/src` until the pressure module
+  grows a generic concrete LPS22HH test.
+- `tag_test_ak09940a()` lives with the common AK09940A module and takes the
+  magnetometer descriptor from each tag or family test table.
 
 Module and project manifests still decide which hook sources are compiled. If a
 tag selects `sensor_accel_adxl362`, for example, the module compiles
@@ -164,13 +166,12 @@ feature switches come from `TAG_MODULES`. See
 [`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
 paths affected by each define.
 
-Shared device code expects standard semantic line names such as `LINE_MAG_CS`,
-`LINE_MAG_SCK`, `LINE_MAG_MISO`, and `LINE_MAG_MOSI` for an AK09940A
-magnetometer. Older board files sometimes use historical names from the first
-tag that carried the bus. If renaming the board file is not immediately
-practical, put compatibility aliases in that target's `inc/custom.h` so the
-translation is local to the tag. Prefer updating the board file to emit the
-standard names when the hardware definition is next touched.
+Shared device code should prefer explicit descriptors over preprocessor line
+aliases. Standard semantic line names such as `LINE_MAG_CS`, `LINE_MAG_SCK`,
+`LINE_MAG_MISO`, and `LINE_MAG_MOSI` are still useful when a device owns a
+simple bus. For boards with shared or mixed wiring, bind the exact lines in the
+tag or family `devices.c` descriptor instead of inventing duplicate board names
+or adding aliases in `custom.h`.
 
 ## Tag Families
 

@@ -16,9 +16,11 @@
  *
  * The driver in ak09940a.c is parameterized by TagRegisterDevice and only knows
  * about AK09940A register sequences. This shim is the one place that maps the
- * historical `mag*` and `ak09940_*` entry points onto a default SPI/register
- * descriptor. Tag families can bypass this binding by providing a strong
- * tagAk09940aDevice() implementation.
+ * historical `mag*` and `ak09940_*` entry points onto a tag-provided
+ * SPI/register descriptor. When a board still exposes the standard LINE_MAG_*
+ * names, this shim also provides a weak default descriptor. Tags with mixed or
+ * shared bus wiring should provide a strong tagAk09940aDevice()
+ * implementation from devices.c instead.
  *
  * TODO: Convert remaining legacy AK09940A users to the TagRegisterDevice-based
  * API and remove this compatibility shim from the common magnetometer module.
@@ -28,16 +30,17 @@
 #define AK09940A_DEFAULT_CS LINE_MAG_CS
 #elif defined(LINE_AK_CS)
 #define AK09940A_DEFAULT_CS LINE_AK_CS
-#else
-#error "AK09940A default shim needs LINE_MAG_CS or LINE_AK_CS"
 #endif
 
 #if defined(LINE_MAG_SCK) && defined(LINE_MAG_MISO) && defined(LINE_MAG_MOSI)
 #define AK09940A_DEFAULT_SCK LINE_MAG_SCK
 #define AK09940A_DEFAULT_MISO LINE_MAG_MISO
 #define AK09940A_DEFAULT_MOSI LINE_MAG_MOSI
-#else
-#error "AK09940A default shim needs LINE_MAG_SCK/MISO/MOSI aliases"
+#endif
+
+#if defined(AK09940A_DEFAULT_CS) && defined(AK09940A_DEFAULT_SCK) && \
+    defined(AK09940A_DEFAULT_MISO) && defined(AK09940A_DEFAULT_MOSI)
+#define AK09940A_HAS_DEFAULT_DEVICE 1
 #endif
 
 #if defined(LINE_MAG_TRG)
@@ -48,6 +51,7 @@
 #define AK09940A_HAS_DEFAULT_TRG 1
 #endif
 
+#if defined(AK09940A_HAS_DEFAULT_DEVICE) && AK09940A_HAS_DEFAULT_DEVICE
 static const TagRegisterDevice ak09940a_registers = {
   .kind = TAG_REGISTER_ST,
   .bus = TAG_BUS_SPI_INIT(
@@ -62,6 +66,7 @@ static const TagRegisterDevice ak09940a_registers = {
   .read_mask = 0x80,
   .write_mask = 0x00,
 };
+#endif
 
 #if defined(AK09940A_HAS_DEFAULT_TRG) && AK09940A_HAS_DEFAULT_TRG
 /**
@@ -103,10 +108,12 @@ static bool ak09940a_default_data_ready_line(void)
  * @return Default magnetometer register descriptor. Tag families may override
  *         this weak binding with a board-specific descriptor.
  */
+#if defined(AK09940A_HAS_DEFAULT_DEVICE) && AK09940A_HAS_DEFAULT_DEVICE
 const TagRegisterDevice *__attribute__((weak)) tagAk09940aDevice(void)
 {
   return &ak09940a_registers;
 }
+#endif
 
 /**
  * @brief Sample the default AK09940A device through the legacy API.

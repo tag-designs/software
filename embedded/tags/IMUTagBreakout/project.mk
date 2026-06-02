@@ -14,13 +14,14 @@ TAG_MODULES += \
 
 include ../common/modules/modules.mk
 
-# Tag-local application and sensor sources. Sensor self-test hooks live beside
-# the local drivers and are called by the shared test module.
+# Tag-local application sources. Shared modules provide core runtime, RTC,
+# storage, pressure, and magnetometer drivers; IMUTagBreakout keeps only the
+# LPS22HH self-test hook locally until the pressure module grows a generic
+# concrete test.
 ALLCSRC += \
        config.c \
        datalog.c \
        devices.c \
-       lps22hh_test.c \
        sensors.c \
        state_run.c \
        stubs.c      

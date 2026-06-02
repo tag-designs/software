@@ -60,10 +60,12 @@ flowchart TD
 ## Shims
 
 Some drivers still expose older names such as `magSample()`. Those names
-should live in small shim files that bind the compiled tag's default descriptor
-and call the descriptor-driven implementation. This keeps legacy call sites
-working while allowing new tag/family code to use explicit descriptors
-directly.
+should live in small shim files that call the compiled tag's default descriptor
+and then dispatch to the descriptor-driven implementation. A shim may provide a
+weak default descriptor when the board has straightforward semantic line names;
+tags with shared or mixed wiring should provide a strong descriptor from
+`devices.c`. This keeps legacy call sites working while allowing new
+tag/family code to use explicit descriptors directly.
 
 ## Family-Specific Drivers
 

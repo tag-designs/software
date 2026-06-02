@@ -11,4 +11,5 @@ endif
 
 ALLCSRC += \
        pressure_device.c \
-       lps22hh.c
+       lps22hh.c \
+       lps22hh_test.c

@@ -27,7 +27,7 @@ These are the board targets used by active tag and base firmware targets.
 | `BitPresTagv1` | `board-bitprestag` | `BitPresTagv1/board.mk` | `generate_configured_board_files()` | Tags: `BitPresTag`, `BitPresTagMX25R` |
 | `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_configured_board_files()` | Tags: `BitTag`, `BitTag-legacy` |
 | `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()` | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
-| `IMUTagv1` | `board-imutag-breakout` | `IMUTagv1/board.mk` | `generate_board_files()` | Tags: `IMUTagBreakout` |
+| `IMUTagv1` | `board-imutag-breakout` | `IMUTagv1/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagBreakout` |
 | `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()` | Tags: `PresTag` |
 | `bittag-base-jlcpcb-v3` | `board-bittag-base-jlcpcb-v3` | `bittag-base-jlcpcb-v3/board.mk` | `generate_board_files()` | Bases: `bittag-base-jlcpcb-v3` |
 | `bittag-base-v7` | `board-bittag-base-v7` | `BITTAG_BASE_V7/board.mk` | `generate_configured_board_files()` | Bases: `bittag-base-v7` |
