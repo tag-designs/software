@@ -96,10 +96,10 @@
 /* =========================================================================
  * CTRL10 (0x19) bit masks – self-test control
  * ====================================================================== */
-#define LSM6DSV16X_CTRL10_ST_XL_MASK  0x0CU  /* ST_XL[1:0] field mask             */
+#define LSM6DSV16X_CTRL10_ST_XL_MASK  0x03U  /* ST_XL[1:0] field mask             */
 #define LSM6DSV16X_CTRL10_ST_XL_OFF   0x00U  /* Self-test disabled                */
-#define LSM6DSV16X_CTRL10_ST_XL_POS   0x04U  /* Positive self-test (01b << 2)     */
-#define LSM6DSV16X_CTRL10_ST_XL_NEG   0x08U  /* Negative self-test (10b << 2)     */
+#define LSM6DSV16X_CTRL10_ST_XL_POS   0x01U  /* Positive self-test                */
+#define LSM6DSV16X_CTRL10_ST_XL_NEG   0x02U  /* Negative self-test                */
 
 /* =========================================================================
  * INT1_CTRL (0x0D) bit masks

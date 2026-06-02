@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "debug_log.h"
 #include "hal.h"
 #include "lsm6dsv16x_regs.h"
 #include "timekeeping.h"
@@ -694,6 +695,15 @@ static int st_read_sample(const TagLsm6dsv16xDevice *device,
     return -1;
 }
 
+static void st_log_delta_failure(const char *axis, int32_t delta)
+{
+    debug_log_printf("LSM6DSV16X self-test: %s delta %d outside %d..%d\r\n",
+                     axis,
+                     (int)delta,
+                     (int)LSM6DSV16X_ST_XL_MIN_LSB,
+                     (int)LSM6DSV16X_ST_XL_MAX_LSB);
+}
+
 lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     const TagLsm6dsv16xDevice *device)
 {
@@ -705,12 +715,15 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     uint32_t s;
     int      rc;
     uint8_t  whoami = 0;
+    uint8_t  ctrl10 = 0;
     lsm6dsv16x_self_test_result_t result = LSM6DSV16X_SELF_TEST_PASS;
 
     if (!valid_device(device)) {
+        debug_log_printf("LSM6DSV16X self-test: invalid device descriptor\r\n");
         return LSM6DSV16X_SELF_TEST_FAIL_ID;
     }
 
+    debug_log_printf("LSM6DSV16X self-test: start\r\n");
     trigger_set(device, 0U);
     device_power_on(device);
     device_begin(device);
@@ -718,6 +731,9 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     /* Step 1 – Identity check */
     if (reg_read(device, LSM6DSV16X_WHO_AM_I, &whoami) != 0 ||
         whoami != LSM6DSV16X_WHOAMI_VALUE) {
+        debug_log_printf("LSM6DSV16X self-test: WHO_AM_I 0x%x expected 0x%x\r\n",
+                         whoami,
+                         LSM6DSV16X_WHOAMI_VALUE);
         result = LSM6DSV16X_SELF_TEST_FAIL_ID;
         goto cleanup;
     }
@@ -736,6 +752,7 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     /* Step 4 – Discard first sample (pipeline flush) */
     rc = st_read_sample(device, &ax, &ay, &az);
     if (rc != 0) {
+        debug_log_printf("LSM6DSV16X self-test: timeout waiting for initial sample\r\n");
         result = LSM6DSV16X_SELF_TEST_FAIL_TO;
         goto cleanup;
     }
@@ -745,6 +762,8 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     for (s = 0U; s < LSM6DSV16X_ST_N_AVG; s++) {
         rc = st_read_sample(device, &ax, &ay, &az);
         if (rc != 0) {
+            debug_log_printf("LSM6DSV16X self-test: timeout before ST sample %u\r\n",
+                             (unsigned)s);
             result = LSM6DSV16X_SELF_TEST_FAIL_TO;
             goto cleanup;
         }
@@ -753,16 +772,24 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     nost_x = sum_x / (int32_t)LSM6DSV16X_ST_N_AVG;
     nost_y = sum_y / (int32_t)LSM6DSV16X_ST_N_AVG;
     nost_z = sum_z / (int32_t)LSM6DSV16X_ST_N_AVG;
+    debug_log_printf("LSM6DSV16X self-test: no-st avg x=%d y=%d z=%d\r\n",
+                     (int)nost_x,
+                     (int)nost_y,
+                     (int)nost_z);
 
     /* Step 6 – Enable positive self-test: CTRL10[3:2] = 01b */
     reg_update(device, LSM6DSV16X_CTRL10,
                LSM6DSV16X_CTRL10_ST_XL_MASK,
                LSM6DSV16X_CTRL10_ST_XL_POS);
+    reg_read(device, LSM6DSV16X_CTRL10, &ctrl10);
+    debug_log_printf("LSM6DSV16X self-test: CTRL10 after enable 0x%x\r\n",
+                     ctrl10);
 
     /* Step 7 – Settle, then flush */
     stopMilliseconds(100U);
     rc = st_read_sample(device, &ax, &ay, &az);
     if (rc != 0) {
+        debug_log_printf("LSM6DSV16X self-test: timeout waiting for ST flush sample\r\n");
         result = LSM6DSV16X_SELF_TEST_FAIL_TO;
         goto cleanup;
     }
@@ -772,6 +799,8 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     for (s = 0U; s < LSM6DSV16X_ST_N_AVG; s++) {
         rc = st_read_sample(device, &ax, &ay, &az);
         if (rc != 0) {
+            debug_log_printf("LSM6DSV16X self-test: timeout during ST sample %u\r\n",
+                             (unsigned)s);
             result = LSM6DSV16X_SELF_TEST_FAIL_TO;
             goto cleanup;
         }
@@ -780,6 +809,10 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     st_x = sum_x / (int32_t)LSM6DSV16X_ST_N_AVG;
     st_y = sum_y / (int32_t)LSM6DSV16X_ST_N_AVG;
     st_z = sum_z / (int32_t)LSM6DSV16X_ST_N_AVG;
+    debug_log_printf("LSM6DSV16X self-test: st avg x=%d y=%d z=%d\r\n",
+                     (int)st_x,
+                     (int)st_y,
+                     (int)st_z);
 
     /* Step 9 – Disable self-test */
     reg_update(device, LSM6DSV16X_CTRL10,
@@ -790,21 +823,37 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
     delta_x = st_x - nost_x;  if (delta_x < 0) { delta_x = -delta_x; }
     delta_y = st_y - nost_y;  if (delta_y < 0) { delta_y = -delta_y; }
     delta_z = st_z - nost_z;  if (delta_z < 0) { delta_z = -delta_z; }
+    debug_log_printf("LSM6DSV16X self-test: delta x=%d y=%d z=%d\r\n",
+                     (int)delta_x,
+                     (int)delta_y,
+                     (int)delta_z);
 
     if (delta_x < LSM6DSV16X_ST_XL_MIN_LSB || delta_x > LSM6DSV16X_ST_XL_MAX_LSB) {
+        st_log_delta_failure("X", delta_x);
         result = LSM6DSV16X_SELF_TEST_FAIL_X;
         goto cleanup;
     }
     if (delta_y < LSM6DSV16X_ST_XL_MIN_LSB || delta_y > LSM6DSV16X_ST_XL_MAX_LSB) {
+        st_log_delta_failure("Y", delta_y);
         result = LSM6DSV16X_SELF_TEST_FAIL_Y;
         goto cleanup;
     }
     if (delta_z < LSM6DSV16X_ST_XL_MIN_LSB || delta_z > LSM6DSV16X_ST_XL_MAX_LSB) {
+        st_log_delta_failure("Z", delta_z);
         result = LSM6DSV16X_SELF_TEST_FAIL_Z;
         goto cleanup;
     }
 
 cleanup:
+    if (result == LSM6DSV16X_SELF_TEST_PASS) {
+        debug_log_printf("LSM6DSV16X self-test: pass dx=%d dy=%d dz=%d\r\n",
+                         (int)delta_x,
+                         (int)delta_y,
+                         (int)delta_z);
+    } else {
+        debug_log_printf("LSM6DSV16X self-test: fail result %d\r\n",
+                         (int)result);
+    }
     reg_update(device, LSM6DSV16X_CTRL10,
                LSM6DSV16X_CTRL10_ST_XL_MASK,
                LSM6DSV16X_CTRL10_ST_XL_OFF);

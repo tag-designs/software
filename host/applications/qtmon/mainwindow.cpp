@@ -138,7 +138,7 @@ bool MainWindow::Attach()
     tag.GetConfig(config);
     tag.GetStatus(status);
     if (!status.debug_message().empty()){
-      qDebug() << "Log: " << QString::fromStdString(status.debug_message());
+      qDebug().noquote() << "Log: " << QString::fromStdString(status.debug_message());
     }
 
     // check qtmonitor version 
@@ -236,7 +236,7 @@ void MainWindow::TriggerUpdate(void)
 
       if (!status.debug_message().empty()){
         QString ds = QString::fromStdString(status.debug_message());
-        qDebug() << "Log: " << ds;
+        qDebug().noquote() << "Log: " << ds;
       }
 
       double timeerr = QDateTime::currentMSecsSinceEpoch();
