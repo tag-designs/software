@@ -19,6 +19,7 @@
 #include "hibernate.h"
 #include "configtab.h"
 #include "adxl362config.h"
+#include "lsm6dsvconfig.h"
 #include "bittaglog.h"
 #include "ui_configtab.h"
 #include "qtfiledialog.h"
@@ -47,6 +48,7 @@ ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 
   layout = new QVBoxLayout();
   layout->addWidget(&adxl);
+  layout->addWidget(&lsm);
   layout->addStretch(1);
   ui.sensorTab->setLayout(layout);
   //index = addTab(&sensorTab,"Sensors");
@@ -77,6 +79,7 @@ void ConfigTab::Detach()
   schedule.Detach();
   btlog.Detach();
   adxl.Detach();
+  lsm.Detach();
   setEnabled(false);
   setVisible(false);
   active = false;
@@ -92,6 +95,8 @@ void ConfigTab::StateUpdate(TagState state)
         btlog.setEnabled(true);
       if (adxl.isActive())
         adxl.setEnabled(true);
+      if (lsm.isActive())
+        lsm.setEnabled(true);
       ui.configRestoreButton->setEnabled(true);
       ui.startButton->setEnabled(true);
       ui.readButton->setEnabled(true);
@@ -99,6 +104,7 @@ void ConfigTab::StateUpdate(TagState state)
       schedule.setEnabled(false);
       btlog.setEnabled(false);
       adxl.setEnabled(false);
+      lsm.setEnabled(false);
       ui.configRestoreButton->setEnabled(false);
       ui.startButton->setEnabled(false);
       ui.readButton->setEnabled(false);
@@ -132,6 +138,11 @@ bool ConfigTab::GetConfig(Config &config)
     qDebug() << "failed to get adxl config";
     return false;
   }
+
+  if (lsm.isActive() && !lsm.GetConfig(config)){
+    qDebug() << "failed to get lsm config";
+    return false;
+  }
   
   return true;
 
@@ -156,7 +167,8 @@ bool ConfigTab::SetConfig(const Config &new_config)
   // if any of these return false, this should return false
   if (schedule.SetConfig(new_config) &&
       btlog.SetConfig(new_config) &&
-      adxl.SetConfig(new_config))
+      adxl.SetConfig(new_config) &&
+      lsm.SetConfig(new_config))
   {
     active = true;
     setVisible(true);

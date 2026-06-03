@@ -20,6 +20,7 @@ class LogWindow : public QWidget
     private slots:
 
         void on_logsaveButton_clicked();
+        void on_logclearButton_clicked();
         void on_loglevelBox_currentIndexChanged(int);
 
     private:

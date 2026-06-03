@@ -51,6 +51,7 @@ enum TestResult {
   AT25XE_FAILED = 19;
   MX25L_FAILED = 20;
   MX25R_FAILED = 21;
+  LSM6DSV_FAILED = 22;
 
 }
 
@@ -80,12 +81,16 @@ message Config {
   Interval active_interval = 2;
   repeated Interval hibernate = 3; // hibernation
   uint32 period = 7;               // period for synchronous tags
-  bool triaxis_activity = 8;       // monitor activity in triaxis mode
+ 
   // Data
+
   BitTagLogFmt bittag_log = 4;     // bittag log format
-  //AccelTagLogFmt acceltag_log = 5; // acceltag log format
+ 
   // Sensors
+
   Adxl362 adxl362 = 6;
+  Lsm6dsv lsm6 = 8;
+ 
   
 }
 
@@ -158,6 +163,41 @@ message Adxl362 {
   Adxl367DataFormat data_format = 8; // data format, ADXl367 only
   Adxl367Channel channels = 9;       // channels, ADXL367 only
   float active_sec = 10;             // need active seconds for triaxial mode
+}
+
+//
+
+message Lsm6dsv {
+  enum ODR {
+    ODR_UNSPECIFIED = 0;
+    S50 = 1;
+    S100 = 2;
+    S200 = 3;
+    S400 = 4;
+    S800 = 800;
+  }
+
+  enum ACCEL {
+    ACCEL_UNSPECIFIED = 0;
+    R2G = 1;
+    R4G = 2;
+    R8G = 3;
+    R16G = 4;
+  }
+
+  enum GYRO {
+    GYRO_UNSPECIFIED = 0;
+    R125dps = 1;
+    R250dps = 2;
+    R500dps = 3;
+    R1000dps = 4;
+    R2000dps = 5;
+    R4000dps = 6;
+  }
+
+  ODR odr = 1;
+  ACCEL accel_rng = 2;
+  GYRO gyro_rng = 3;
 }
 
 message BitTagLog { repeated BitTagData data = 1; }

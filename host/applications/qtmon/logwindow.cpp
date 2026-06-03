@@ -108,3 +108,9 @@ void LogWindow::on_logsaveButton_clicked()
     }
   }
 }
+
+void LogWindow::on_logclearButton_clicked()
+{ 
+  qDebug() << "Clearing log";
+  ui.logTextEdit->clear();
+}

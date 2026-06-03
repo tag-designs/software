@@ -56,6 +56,7 @@ set(qtmonitor_SRCS
     tagconfiguration/hibernate.cpp
     tagconfiguration/pbenumgroup.cpp
     tagconfiguration/schedule.cpp
+    tagconfiguration/lsm6dsvconfig.cpp
     )
 
 qt6_wrap_ui(UI_HEADERS tagconfiguration/configtab.ui

@@ -11,6 +11,7 @@
 //#include "tagclass.h"
 #include "schedule.h"
 #include "adxl362config.h"
+#include "lsm6dsvconfig.h"
 #include "bittaglog.h"
 #include "ui_configtab.h"
 #include "tagclass.h"
@@ -57,6 +58,7 @@ private:
     //QWidget sensorTab;
 
     Adxl362Config adxl;
+    Lsm6dsvConfig lsm;
     bool active = false;
 
     // for errors
