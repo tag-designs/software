@@ -32,7 +32,7 @@ int32_t GetTimeUnixSec(uint32_t *millis);
 int SetTimeUnixSec(int32_t unix_time);
 
 /**
- * @brief Sleep for a short interval using Stop2 when no monitor is attached.
+ * @brief Sleep for a short interval using the configured stop mode.
  *
  * @param[in] interval Delay interval in milliseconds.
  */

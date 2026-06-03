@@ -169,7 +169,7 @@ void disableAlarm(unsigned int alarm);
 void disableAllAlarms(void);
 
 /**
- * @brief Sleep for a short interval using Stop2 when the monitor is disconnected.
+ * @brief Sleep for a short interval using the configured stop mode.
  *
  * @param[in] interval Delay interval in milliseconds.
  */

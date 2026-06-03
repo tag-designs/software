@@ -123,11 +123,21 @@ void rtcOff(void)
 /**
  * @brief Enter the requested low-power terminal mode after device preparation.
  *
- * @param[in] sleepmode Requested sleep mode; currently all paths enter standby.
+ * @param[in] sleepmode Requested sleep mode.
  */
 void godown(enum Sleep sleepmode)
 {
-  (void)sleepmode;
+  if (sleepmode == STOP1) {
+    DBGMCU->CR = 0;
+    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP1);
+    SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+    __DSB();
+    __WFI();
+
+    CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+    return;
+  }
 
   tagDevicesPrepareStandby(pState->state);
 

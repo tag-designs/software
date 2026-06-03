@@ -1,6 +1,6 @@
 /**
  * @file time.c
- * @brief RTC calendar conversion, alarms, ticker, and Stop2 delay support.
+ * @brief RTC calendar conversion, alarms, ticker, and stop-mode delay support.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -9,11 +9,22 @@
 #include "hal_rtc_lld.h"
 
 #include "core_types.h"
+#include "custom.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "timekeeping.h"
 
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
+
+#if !defined(USE_STOP1)
+#define USE_STOP1 0
+#endif
+
+#if defined(USE_STOP1) && USE_STOP1
+#define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_STOP1
+#else
+#define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_STOP2
+#endif
 
 // chibios keeps time since 1980, seconds to 1/1/1980
 
@@ -281,11 +292,11 @@ void disableTicker(void)
 
 /** @name Low-power delay
  * Delay helper used by drivers when they need milliseconds to pass without
- * keeping active buses powered through Stop2 unnecessarily.
+ * keeping active buses powered through stop-mode delays unnecessarily.
  * @{
  */
 /**
- * @brief Sleep for a short interval using Stop2 when no monitor is attached.
+ * @brief Sleep for a short interval using the configured stop mode.
  *
  * @param[in] ms Delay interval in milliseconds.
  */
@@ -320,10 +331,10 @@ void stopMilliseconds(unsigned int ms)
 
     LPTIM1->CR |= STM32_LPTIM_CR_SNGSTRT;
 
-    // go into stop2 mode
+    // go into the configured stop mode
 
     DBGMCU->CR = 0;
-    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP2);
+    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, TAG_DELAY_STOP_MODE);
 
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
     __SEV();

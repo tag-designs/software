@@ -221,7 +221,7 @@ of tag/family `devices.c`. Static-board tags can still provide a strong
 `tagDevicesApplyStandbyPins()` implementation as a compatibility path.
 The SPI descriptor path marks the selected SPI peripheral logically on/off from
 `spi_bus.c`; only peripherals enabled by `STM32_SPI_USE_SPIx` are tracked.
-Short Stop2 sleeps call `tagDisableActiveBusesForStop()` and
+Short low-power sleeps call `tagDisableActiveBusesForStop()` and
 `tagEnableActiveBusesAfterStop()` so callers no longer need to know whether an
 SPI or synchronous-USART device is active before calling `stopMilliseconds()`.
 Older tag-local peripheral code that does not use `TagSpiDevice` should call

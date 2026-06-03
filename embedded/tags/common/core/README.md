@@ -168,8 +168,9 @@ sleep cases. `usart_bus.c` owns synchronous-USART register setup and
 stop/resume mechanics for peripherals enabled by the tag's
 `STM32_SERIAL_USE_USARTx` settings.
 
-Short Stop2 sleeps call `tagDisableActiveBusesForStop()` before entering Stop2
-and `tagEnableActiveBusesAfterStop()` after wake. `bus_power.c` coordinates
+Short low-power sleeps call `tagDisableActiveBusesForStop()` before entering the
+configured stop mode and `tagEnableActiveBusesAfterStop()` after wake.
+`bus_power.c` coordinates
 those calls, while `spi_bus.c` and `usart_bus.c` own the peripheral-specific
 active/suspended state and register bit changes. SPI and USART tracking are
 compiled for peripherals enabled by the tag's `STM32_SPI_USE_SPIx` and

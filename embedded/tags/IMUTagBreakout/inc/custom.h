@@ -23,6 +23,7 @@
 #define PROTOBUFSIZE 4096
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
+#define USE_STOP1 1
 /** @} */
 
 /** @name Sensor line aliases and conversion constants
