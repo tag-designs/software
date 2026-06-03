@@ -353,6 +353,10 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
 /**
  * Drain the FIFO and unpack accel+gyro pairs into samples[].
  * Non-sensor tags (temperature, timestamp, etc.) are consumed and discarded.
+ * Gyroscope and accelerometer words are paired by the FIFO tag time-slot
+ * counter, so either sensor may arrive first within a slot. A counter change
+ * closes the previous slot; incomplete or inconsistent slots are returned as
+ * zeroed placeholder samples to preserve stream timing.
  *
  * @param[in]  device Concrete device descriptor. Must not be NULL.
  * @param[out] samples   Destination array.

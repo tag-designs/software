@@ -18,6 +18,9 @@ extern const TagLsm6dsv16xDevice tagImuTagImuDevice;
 extern const TagPressureDevice tagImuTagPressureDevice;
 extern const TagStorageDevice tagExternalFlash;
 
+/** @brief Configure the IMU external trigger output; divider 0 disables it. */
+void tagImuTagSetTrigger(unsigned int divider);
+
 /** Default magnetometer descriptor for shared AK09940A code. */
 #define TAG_MAG_DEVICE (&tagImuTagMagDevice)
 /** Default IMU descriptor for shared LSM6DSV16X code. */

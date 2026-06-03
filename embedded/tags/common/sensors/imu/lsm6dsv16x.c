@@ -419,22 +419,23 @@ void lsm6dsv16x_init_accel_wakeup(
  * Sequence ([AN] Section 3.3, Listing 2):
  *  1.  Software reset.
  *  2.  BDU + IF_INC.
- *  3.  Hold both sensors in power-down; wait at least 500 us ([AN]
+ *  3.  Configure interrupt pins open-drain for bring-up safety.
+ *  4.  Hold both sensors in power-down; wait at least 500 us ([AN]
  *      requirement before writing ODR-triggered configuration registers).
  *      The tag timekeeping API rounds this up to stopMilliseconds(1).
- *  4.  CTRL8: LPF2 disabled, FS = ±2 g.
- *  5.  CTRL6: FS_G = ±2000 dps, LPF1_G_BW = 000 (LPF1 disabled via CTRL7).
- *  6.  CTRL7 = 0x00: LPF1_G_EN = 0 (gyro LPF1 off – minimum filtering).
- *  7.  Write ODR_TRIG_N_ODR (multiplier S): low byte to reg 0x6D,
+ *  5.  CTRL8: LPF2 disabled, FS = ±2 g.
+ *  6.  CTRL6: FS_G = ±2000 dps, LPF1_G_BW = 000 (LPF1 disabled via CTRL7).
+ *  7.  CTRL7 = 0x00: LPF1_G_EN = 0 (gyro LPF1 off – minimum filtering).
+ *  8.  Write ODR_TRIG_N_ODR (multiplier S): low byte to reg 0x6D,
  *      MSB to COUNTER_BDR_REG1[5].
- *  8.  CTRL9: ODR_TRIG_EN = 1.
- *  9.  CTRL4: INT2_IN_LH = 1 (rising edge), DRDY_MASK = 1.
- * 10.  CTRL1 / CTRL2: ODR-triggered mode, gate ODR from table.
- * 11.  FIFO: set default watermark, enable stream mode at matching BDR.
- * 12.  Motion detection (if mot_cfg != NULL).
- * 13.  Master interrupt enable.
- * 14.  Route FIFO watermark + sleep-change to INT1.
- * 15.  Call the trigger callback with D to start the external clock.
+ *  9.  CTRL9: ODR_TRIG_EN = 1.
+ * 10.  CTRL4: INT2_IN_LH = 1 (rising edge), DRDY_MASK = 1.
+ * 11.  CTRL1 / CTRL2: ODR-triggered mode, gate ODR from table.
+ * 12.  FIFO: set default watermark, enable stream mode at matching BDR.
+ * 13.  Motion detection (if mot_cfg != NULL).
+ * 14.  Master interrupt enable.
+ * 15.  Route FIFO watermark + sleep-change to INT1.
+ * 16.  Call the trigger callback with D to start the external clock.
  * ---------------------------------------------------------------------- */
 void lsm6dsv16x_init_accel_gyro_triggered(
     const TagLsm6dsv16xDevice *device,
@@ -457,23 +458,27 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     device_reset(device);
     apply_common_defaults(device);
 
-    /* 3. Hold in power-down per [AN]; 500 us minimum rounded to 1 ms. */
+    /* 3. Open-drain interrupt outputs reduce contention risk during bring-up. */
+    reg_update(device, LSM6DSV16X_CTRL3, LSM6DSV16X_CTRL3_PP_OD,
+               LSM6DSV16X_CTRL3_PP_OD);
+
+    /* 4. Hold in power-down per [AN]; 500 us minimum rounded to 1 ms. */
     reg_write(device, LSM6DSV16X_CTRL1, 0x00U);
     reg_write(device, LSM6DSV16X_CTRL2, 0x00U);
     stopMilliseconds(1);
 
-    /* 4. Accel: LPF2 disabled, default FS = ±2 g */
+    /* 5. Accel: LPF2 disabled, default FS = ±2 g */
     reg_write(device, LSM6DSV16X_CTRL8,
               build_ctrl8_min_filter(LSM6DSV16X_XL_FS_2G));
 
-    /* 5. Gyro: FS = ±2000 dps; LPF1_G_BW irrelevant (LPF1 will be disabled) */
+    /* 6. Gyro: FS = ±2000 dps; LPF1_G_BW irrelevant (LPF1 will be disabled) */
     reg_write(device, LSM6DSV16X_CTRL6,
               (uint8_t)LSM6DSV16X_G_FS_2000DPS & 0x0FU);
 
-    /* 6. Gyro LPF1 disabled – Nyquist-minimum filtering */
+    /* 7. Gyro LPF1 disabled – Nyquist-minimum filtering */
     reg_write(device, LSM6DSV16X_CTRL7, 0x00U);
 
-    /* 7. ODR_TRIG_N_ODR (9-bit multiplier S):
+    /* 8. ODR_TRIG_N_ODR (9-bit multiplier S):
      *    Low 8 bits → ODR_TRIG_CFG (0x6D)
      *    Bit 8      → COUNTER_BDR_REG1[5] (0x0B) */
     reg_write(device, LSM6DSV16X_ODR_TRIG_CFG,
@@ -481,14 +486,14 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     reg_update(device, LSM6DSV16X_COUNTER_BDR_REG1, 0x20U,
                (uint8_t)(((entry->n_odr >> 8U) & 0x01U) << 5U));
 
-    /* 8. Enable ODR-triggered mode */
+    /* 9. Enable ODR-triggered mode */
     reg_write(device, LSM6DSV16X_CTRL9, LSM6DSV16X_CTRL9_ODR_TRIG_EN);
 
-    /* 9. Rising-edge trigger on INT2; mask DRDY until filter settles */
+    /* 10. Rising-edge trigger on INT2; mask DRDY until filter settles */
     reg_write(device, LSM6DSV16X_CTRL4,
               LSM6DSV16X_CTRL4_INT2_IN_LH | LSM6DSV16X_CTRL4_DRDY_MASK);
 
-    /* 10. Both sensors in ODR-triggered mode at the gate ODR */
+    /* 11. Both sensors in ODR-triggered mode at the gate ODR */
     reg_write(device, LSM6DSV16X_CTRL1,
               build_ctrl1(LSM6DSV16X_XL_OP_TRIGGERED,
                           (lsm6dsv16x_xl_odr_t)entry->odr_code));
@@ -496,26 +501,26 @@ void lsm6dsv16x_init_accel_gyro_triggered(
               build_ctrl2(LSM6DSV16X_G_OP_TRIGGERED,
                           (lsm6dsv16x_g_odr_t)entry->odr_code));
 
-    /* 11. FIFO */
+    /* 12. FIFO */
     set_fifo_watermark_registers(device, 32U);
     configure_fifo_stream(device, entry->bdr);
 
-    /* 12. Motion detection */
+    /* 13. Motion detection */
     if (mot_cfg != NULL) {
         reg_write(device, LSM6DSV16X_TAP_CFG0, LSM6DSV16X_TAP_CFG0_LIR);
         apply_motion_cfg(device, mot_cfg);
     }
 
-    /* 13. Master interrupt enable */
+    /* 14. Master interrupt enable */
     reg_write(device, LSM6DSV16X_TAP_CFG2, LSM6DSV16X_TAP_CFG2_INTR_EN);
 
-    /* 14. FIFO watermark + stationary/motion → INT1 */
+    /* 15. FIFO watermark + stationary/motion → INT1 */
     reg_write(device, LSM6DSV16X_INT1_CTRL, LSM6DSV16X_INT1_FIFO_TH);
     reg_write(device, LSM6DSV16X_MD1_CFG,   LSM6DSV16X_MD1_INT1_SLEEP_CHANGE);
 
     device_end(device);
 
-    /* 15. Start the external trigger.  The sensor will begin locking to INT2
+    /* 16. Start the external trigger.  The sensor will begin locking to INT2
      *     edges within one trigger period after this call. */
     trigger_set(device, (unsigned int)entry->mcu_div_d);
 }
@@ -576,23 +581,83 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
  * FIFO read and unpack
  * ====================================================================== */
 /**
- * Each FIFO word is 7 bytes: tag byte (bits [7:3] = sensor ID) + 6 data bytes.
+ * Each FIFO word is 7 bytes: tag byte + 6 data bytes. Tag byte bits [7:3]
+ * identify the sensor and bits [1:0] carry the rotating time-slot counter.
  * Tag 0x01 = gyro, 0x02 = accel; all other tags are consumed and discarded.
- * A gyro word is buffered and paired with the next accel word into one
- * lsm6dsv16x_sample_t.  Unpaired words at burst end are silently dropped.
+ *
+ * Gyro and accel words are paired by the low two counter bits, not by arrival
+ * order. This tolerates either sensor arriving first. A counter change closes
+ * the previous slot; if it was incomplete or otherwise inconsistent, a zeroed
+ * placeholder sample is emitted so the returned stream preserves timing.
  */
+typedef struct {
+    int16_t gx, gy, gz;
+    int16_t ax, ay, az;
+    uint8_t have_gyro;
+    uint8_t have_accel;
+    uint8_t error;
+} fifo_pending_sample_t;
+
+static void fifo_reset_pending(fifo_pending_sample_t *pending)
+{
+    pending->have_gyro = 0U;
+    pending->have_accel = 0U;
+    pending->error = 0U;
+}
+
+static void fifo_write_zero_sample(lsm6dsv16x_sample_t *sample)
+{
+    sample->gyro_x = 0;
+    sample->gyro_y = 0;
+    sample->gyro_z = 0;
+    sample->accel_x = 0;
+    sample->accel_y = 0;
+    sample->accel_z = 0;
+}
+
+static void fifo_write_pending_sample(const fifo_pending_sample_t *pending,
+                                      lsm6dsv16x_sample_t *sample)
+{
+    sample->gyro_x = pending->gx;
+    sample->gyro_y = pending->gy;
+    sample->gyro_z = pending->gz;
+    sample->accel_x = pending->ax;
+    sample->accel_y = pending->ay;
+    sample->accel_z = pending->az;
+}
+
+static uint8_t fifo_emit_pending_or_zero(const fifo_pending_sample_t *pending,
+                                         lsm6dsv16x_sample_t *sample)
+{
+    if (pending->have_gyro && pending->have_accel && !pending->error) {
+        fifo_write_pending_sample(pending, sample);
+        return 0U;
+    }
+
+    fifo_write_zero_sample(sample);
+    return 1U;
+}
+
 uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
                               lsm6dsv16x_sample_t *samples,
                               uint16_t max_pairs)
 {
+    fifo_pending_sample_t pending = {0};
     uint8_t  st1 = 0;
     uint8_t  st2 = 0;
     uint16_t fifo_level;
     uint16_t pairs_out = 0U;
     uint8_t  word[7];
     uint8_t  tag;
-    int16_t  tmp_gx = 0, tmp_gy = 0, tmp_gz = 0;
-    uint8_t  have_gyro = 0U;
+    uint8_t  cnt;
+    int16_t  x;
+    int16_t  y;
+    int16_t  z;
+    uint8_t  current_cnt = 0U;
+    uint8_t  have_current_cnt = 0U;
+    uint8_t  current_slot_closed = 0U;
+    uint8_t  expected_cnt;
+    uint16_t zeroed_slots = 0U;
 
     if (!valid_device(device) || samples == NULL || max_pairs == 0U) {
         return 0U;
@@ -613,29 +678,85 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
         fifo_level--;
 
         tag = (uint8_t)(word[0] >> 3U);
+        cnt = (uint8_t)(word[0] & 0x03U);
+        if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC ||
+            tag == LSM6DSV16X_FIFO_TAG_ACCEL_NC) {
+            if (have_current_cnt == 0U) {
+                current_cnt = cnt;
+                have_current_cnt = 1U;
+            } else if (cnt != current_cnt) {
+                if (pending.have_gyro || pending.have_accel || pending.error) {
+                    zeroed_slots +=
+                        fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
+                    pairs_out++;
+                    fifo_reset_pending(&pending);
+                    if (pairs_out >= max_pairs) {
+                        break;
+                    }
+                }
 
-        if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC) {
-            tmp_gx = (int16_t)((uint16_t)word[2] << 8U | (uint16_t)word[1]);
-            tmp_gy = (int16_t)((uint16_t)word[4] << 8U | (uint16_t)word[3]);
-            tmp_gz = (int16_t)((uint16_t)word[6] << 8U | (uint16_t)word[5]);
-            have_gyro = 1U;
+                expected_cnt = (uint8_t)((current_cnt + 1U) & 0x03U);
+                while (expected_cnt != cnt && pairs_out < max_pairs) {
+                    fifo_write_zero_sample(&samples[pairs_out]);
+                    pairs_out++;
+                    zeroed_slots++;
+                    expected_cnt = (uint8_t)((expected_cnt + 1U) & 0x03U);
+                }
+                if (pairs_out >= max_pairs) {
+                    break;
+                }
 
-        } else if (tag == LSM6DSV16X_FIFO_TAG_ACCEL_NC) {
-            if (have_gyro) {
-                samples[pairs_out].gyro_x  = tmp_gx;
-                samples[pairs_out].gyro_y  = tmp_gy;
-                samples[pairs_out].gyro_z  = tmp_gz;
-                samples[pairs_out].accel_x =
-                    (int16_t)((uint16_t)word[2] << 8U | (uint16_t)word[1]);
-                samples[pairs_out].accel_y =
-                    (int16_t)((uint16_t)word[4] << 8U | (uint16_t)word[3]);
-                samples[pairs_out].accel_z =
-                    (int16_t)((uint16_t)word[6] << 8U | (uint16_t)word[5]);
+                current_cnt = cnt;
+                current_slot_closed = 0U;
+            }
+
+            x = (int16_t)((uint16_t)word[2] << 8U | (uint16_t)word[1]);
+            y = (int16_t)((uint16_t)word[4] << 8U | (uint16_t)word[3]);
+            z = (int16_t)((uint16_t)word[6] << 8U | (uint16_t)word[5]);
+
+            if (current_slot_closed) {
+                pending.error = 1U;
+            }
+
+            if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC) {
+                if (pending.have_gyro) {
+                    pending.error = 1U;
+                }
+                pending.gx = x;
+                pending.gy = y;
+                pending.gz = z;
+                pending.have_gyro = 1U;
+
+            } else {
+                if (pending.have_accel) {
+                    pending.error = 1U;
+                }
+                pending.ax = x;
+                pending.ay = y;
+                pending.az = z;
+                pending.have_accel = 1U;
+            }
+
+            if (pending.have_gyro && pending.have_accel) {
+                zeroed_slots +=
+                    fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
                 pairs_out++;
-                have_gyro = 0U;
+                fifo_reset_pending(&pending);
+                current_slot_closed = 1U;
             }
         }
         /* All other tags silently consumed */
+    }
+
+    if ((pairs_out < max_pairs) &&
+        (pending.have_gyro || pending.have_accel || pending.error)) {
+        zeroed_slots += fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
+        pairs_out++;
+    }
+
+    if (zeroed_slots > 0U) {
+        debug_log_printf("LSM6DSV16X FIFO: zeroed %u slot(s)\r\n",
+                         (unsigned)zeroed_slots);
     }
 
     device_end(device);

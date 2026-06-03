@@ -118,12 +118,26 @@ AN5763 requires the sensors to remain powered down for at least 500 us before
 ODR-triggered configuration registers are written. The driver uses the existing
 tag timekeeping helper and rounds this to `stopMilliseconds(1)`.
 
+Mode 3 configures the LSM6DSV16X interrupt pins as open-drain before enabling
+ODR-triggered mode. This is primarily a bring-up safety choice for boards that
+drive INT2 from an MCU timer: the board should keep the MCU trigger pin high-Z
+until the IMU has been configured to use INT2 as the external trigger input,
+and open-drain interrupt behavior reduces contention risk during transitions.
+
 ## FIFO Policy
 
 FIFO unpacking stays inside the common driver. Each FIFO word contains a tag
-byte and six data bytes. The driver consumes all FIFO words, discards unrelated
-tags, buffers a gyro word, and pairs it with the next accelerometer word into
-one `lsm6dsv16x_sample_t`. Unpaired words at the end of a burst are dropped.
+byte and six data bytes. The driver consumes all FIFO words and discards
+unrelated tags.
+
+For gyro and accelerometer words, tag byte bits `[7:3]` identify the sensor and
+bits `[1:0]` identify a rotating time slot. The driver pairs gyro and accel
+words by this time-slot counter rather than by FIFO arrival order, so either
+sensor may arrive first within a slot. A counter change closes the previous
+slot; if the previous slot is incomplete or otherwise inconsistent, the driver
+returns a zeroed placeholder sample for that slot. Detectable counter jumps also
+produce zeroed placeholders for the missing modulo-4 slots. This preserves the
+sample timeline so host-side decoding can decide how to recover.
 
 Samples are raw two's-complement values. Callers convert to physical units
 using the active full-scale sensitivity.

@@ -72,6 +72,7 @@
  * ====================================================================== */
 #define LSM6DSV16X_CTRL3_SW_RESET     0x01U  /* Software reset (self-clearing)    */
 #define LSM6DSV16X_CTRL3_IF_INC       0x04U  /* Auto-increment register address   */
+#define LSM6DSV16X_CTRL3_PP_OD        0x10U  /* Interrupt pins: 0=push-pull, 1=OD */
 #define LSM6DSV16X_CTRL3_BDU          0x40U  /* Block data update                 */
 #define LSM6DSV16X_CTRL3_BOOT         0x80U  /* Reboot memory content             */
 

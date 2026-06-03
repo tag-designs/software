@@ -190,9 +190,52 @@ static const TagRegisterDevice imu_registers = {
     .write_mask = 0x00,
 };
 
+/**
+ * @brief Configure PA4/LPTIM2_OUT as the temporary IMU trigger test clock.
+ *
+ * LPTIM2 is clocked from the 1024 Hz low-speed source selected in mcuconf.h.
+ * The output frequency is 1024 / divider Hz. For this bring-up test the clock
+ * is routed to PA4, leaving the IMU INT2/ACCEL_TRG line high-Z.
+ */
+void tagImuTagSetTrigger(unsigned int divider)
+{
+  palClearLine(LINE_ACCEL_TRG);
+  toAnalog(LINE_ACCEL_TRG);
+  palClearLine(LINE_IMU_TRG_TEST);
+  toAnalog(LINE_IMU_TRG_TEST);
+
+  if (divider == 0U) {
+    RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
+    return;
+  }
+
+  if (divider < 2U)
+    divider = 2U;
+
+  RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
+  RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
+  RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
+
+  toAlternate(LINE_IMU_TRG_TEST);
+
+  LPTIM2->CFGR = 0U;
+  LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
+
+  LPTIM2->ARR = divider - 1U;
+  LPTIM2->CMP = divider / 2U;
+  LPTIM2->CNT = 0U;
+  LPTIM2->CR |= STM32_LPTIM_CR_CNTSTRT;
+}
+
+static void imuSetTrigger(const void *context, unsigned int divider)
+{
+  (void)context;
+  tagImuTagSetTrigger(divider);
+}
+
 const TagLsm6dsv16xDevice tagImuTagImuDevice = {
     .registers = &imu_registers,
-    .set_trigger = NULL,
+    .set_trigger = imuSetTrigger,
     .trigger_context = NULL,
 };
 

@@ -144,8 +144,9 @@ bool initSensors(void){
 
     lsm6dsv16x_init_accel_only(TAG_IMU_DEVICE, &accel_cfg);
     lsm6dsv16x_set_ranges(TAG_IMU_DEVICE, &range_cfg);
+    tagImuTagSetTrigger(8U);
     empty_calibration_sample_logs = 0;
-    debug_log_printf("IMUTag calibration: sensors initialized\r\n");
+    debug_log_printf("IMUTag calibration: sensors initialized, PA4 trigger divider 8\r\n");
     return true;
 }
 

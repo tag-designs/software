@@ -66,6 +66,17 @@
         "PinLock": "Disabled",
         "Standby": "PULLUP"
       },
+      "pin4": {
+        "ID": "IMU_TRG_TEST",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Medium",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "14",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
       "pin5": {
         "ID": "ACCEL_SCK",
         "Type": "PushPull",
@@ -107,7 +118,7 @@
         "Level": "Low",
         "Speed": "Medium",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "14",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
