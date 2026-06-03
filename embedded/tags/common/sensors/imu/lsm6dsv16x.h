@@ -31,6 +31,16 @@
  * Concrete tag or family code provides a TagLsm6dsv16xDevice descriptor that
  * binds register IO and optional ODR-trigger timer control.
  *
+ * The descriptor's TagRegisterDevice owns bus selection, chip select, power
+ * line, and sleep policy.  Public driver calls bracket register transactions
+ * with tagBusPowerOn()/tagBusBegin()/tagBusEnd().  Active-mode initializers
+ * leave the sensor powered so later reads can succeed; shutdown and self-test
+ * leave the sensor powered down.
+ *
+ * The trigger callback is required only for MODE 3. Tags that do not wire the
+ * LSM6DSV16X external ODR trigger may set it to NULL and still use shutdown,
+ * accel-only, wakeup, direct-read, and accelerometer self-test paths.
+ *
  * Register references
  * -------------------
  *   DS13726 rev 5 - LSM6DSV16X datasheet
@@ -50,7 +60,8 @@
  * @brief Configure the MCU hardware timer used as the external ODR trigger.
  *
  * Passing divider 0 disables the trigger output. Nonzero values configure the
- * output frequency as 1024 / divider Hz.
+ * output frequency as 1024 / divider Hz. The callback belongs to the tag or
+ * family because the timer, pin, and low-power behavior are board-specific.
  */
 typedef void (*TagLsm6dsv16xSetTrigger)(const void *context,
                                         unsigned int divider);
@@ -59,9 +70,9 @@ typedef void (*TagLsm6dsv16xSetTrigger)(const void *context,
  * @brief Concrete LSM6DSV16X hardware binding supplied by a tag/family.
  */
 typedef struct {
-    const TagRegisterDevice *registers;
-    TagLsm6dsv16xSetTrigger set_trigger;
-    const void *trigger_context;
+    const TagRegisterDevice *registers;       /**< Required register-device descriptor. */
+    TagLsm6dsv16xSetTrigger set_trigger;      /**< Optional external-ODR trigger callback. */
+    const void *trigger_context;              /**< Optional context passed to set_trigger. */
 } TagLsm6dsv16xDevice;
 
 /* =========================================================================
@@ -175,6 +186,9 @@ typedef enum {
  * One synchronised sample unpacked from the FIFO.
  * Values are raw two's-complement 16-bit integers.
  * Multiply by the active full-scale sensitivity to get physical units.
+ * For example, accelerometer sensitivity is 0.061 mg/LSB at +/-2 g and
+ * 0.122 mg/LSB at +/-4 g. Gyroscope sensitivity is listed with the
+ * lsm6dsv16x_g_fs_t full-scale options.
  */
 typedef struct {
     int16_t gyro_x;
@@ -193,17 +207,17 @@ typedef struct {
  * in the file header comment).
  * ====================================================================== */
 
-/** MODE 1 - Accelerometer only, high-performance. */
+/** MODE 1 - Accelerometer only, high-performance, internal ODR. */
 typedef struct {
     lsm6dsv16x_xl_odr_t odr;  /**< Output data rate */
 } lsm6dsv16x_accel_cfg_t;
 
-/** MODE 2 - Accelerometer wakeup, low-power. */
+/** MODE 2 - Accelerometer wakeup, low-power, internal ODR. */
 typedef struct {
     lsm6dsv16x_xl_odr_t odr;  /**< Output data rate (low-power range) */
 } lsm6dsv16x_wakeup_mode_cfg_t;
 
-/** MODE 3 - Accel + Gyro, external ODR trigger, FIFO. */
+/** MODE 3 - Accel + gyro, external ODR trigger, FIFO stream. */
 typedef struct {
     lsm6dsv16x_trig_odr_t trig_odr;  /**< Target sample rate (Hz) */
 } lsm6dsv16x_trig_mode_cfg_t;
@@ -249,13 +263,20 @@ int lsm6dsv16x_verify_id(const TagLsm6dsv16xDevice *device);
 
 /**
  * MODE 0: power down both sensors, disable FIFO, disable ODR trigger.
+ *
+ * This call ends its bus transaction and powers the descriptor down.
  */
 void lsm6dsv16x_init_shutdown(const TagLsm6dsv16xDevice *device);
 
 /**
  * MODE 1: accelerometer HP, internal ODR, minimum filtering.
  * Data-ready on INT1. Disables the external ODR trigger.
- * @param cfg  ODR selection.  Must not be NULL.
+ *
+ * The sensor remains powered and configured after this call. Use
+ * lsm6dsv16x_read_accel() to retrieve raw samples.
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param cfg ODR selection. Must not be NULL.
  */
 void lsm6dsv16x_init_accel_only(const TagLsm6dsv16xDevice *device,
                                 const lsm6dsv16x_accel_cfg_t *cfg);
@@ -264,8 +285,13 @@ void lsm6dsv16x_init_accel_only(const TagLsm6dsv16xDevice *device,
  * MODE 2: accelerometer LP, slope-filter wakeup, minimum filtering.
  * Wakeup and stationary/motion events on INT1. Disables the external ODR
  * trigger.
- * @param cfg      ODR selection.  Must not be NULL.
- * @param mot_cfg  Wakeup threshold and duration.  Must not be NULL.
+ *
+ * The sensor remains powered and configured after this call. Read
+ * WAKE_UP_SRC through lsm6dsv16x_read_wakeup_src() to clear latched events.
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param cfg ODR selection. Must not be NULL.
+ * @param mot_cfg Wakeup threshold and duration. Pass NULL to skip setup.
  */
 void lsm6dsv16x_init_accel_wakeup(
     const TagLsm6dsv16xDevice *device,
@@ -279,8 +305,13 @@ void lsm6dsv16x_init_accel_wakeup(
  * The driver calls the descriptor trigger callback with the divisor derived
  * from cfg->trig_odr. The application must not call that callback directly.
  *
- * @param cfg      Trigger ODR selection.  Must not be NULL.
- * @param mot_cfg  Motion detection parameters.  Pass NULL to skip.
+ * If the descriptor has no trigger callback, this function returns without
+ * touching the sensor. The sensor remains powered and configured after a
+ * successful call.
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param cfg Trigger ODR selection. Must not be NULL.
+ * @param mot_cfg Motion detection parameters. Pass NULL to skip.
  */
 void lsm6dsv16x_init_accel_gyro_triggered(
     const TagLsm6dsv16xDevice *device,
@@ -290,6 +321,9 @@ void lsm6dsv16x_init_accel_gyro_triggered(
 /**
  * Update wakeup / stationary-motion parameters at runtime.
  * All three accel axes are used for detection.
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param cfg Wakeup threshold and duration. Must not be NULL.
  */
 void lsm6dsv16x_set_motion_detection(const TagLsm6dsv16xDevice *device,
                                      const lsm6dsv16x_motion_cfg_t *cfg);
@@ -297,13 +331,21 @@ void lsm6dsv16x_set_motion_detection(const TagLsm6dsv16xDevice *device,
 /**
  * Set accelerometer and gyroscope full-scale ranges.
  * Filter configuration is not affected.
+ *
+ * This may be called after an initializer to override the default +/-2 g
+ * accelerometer and +/-2000 dps gyroscope ranges used by the mode setup.
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param cfg Full-scale selection. Must not be NULL.
  */
 void lsm6dsv16x_set_ranges(const TagLsm6dsv16xDevice *device,
                            const lsm6dsv16x_range_cfg_t *cfg);
 
 /**
  * Set FIFO watermark.  INT1 asserts when unread words >= wtm.
- * @param wtm  0-511 FIFO words (each word = 1 tag byte + 6 data bytes).
+ *
+ * @param device Concrete device descriptor. Must not be NULL.
+ * @param wtm 0-511 FIFO words (each word = 1 tag byte + 6 data bytes).
  */
 void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
                                    uint16_t wtm);
@@ -311,6 +353,8 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
 /**
  * Drain the FIFO and unpack accel+gyro pairs into samples[].
  * Non-sensor tags (temperature, timestamp, etc.) are consumed and discarded.
+ *
+ * @param[in]  device Concrete device descriptor. Must not be NULL.
  * @param[out] samples   Destination array.
  * @param[in]  max_pairs Capacity of samples[].
  * @return Number of complete pairs written.
@@ -339,6 +383,9 @@ int lsm6dsv16x_get_trig_params(lsm6dsv16x_trig_odr_t     trig_odr,
  * Re-initialise with the desired mode after checking the result.
  * Typical duration: ~200 ms.
  *
+ * Diagnostic messages are emitted through debug_log_printf() when the
+ * debug_log module is selected. They are no-ops otherwise.
+ *
  * @return lsm6dsv16x_self_test_result_t (PASS = 0, negative on failure).
  */
 lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
@@ -348,6 +395,8 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
  * Read a raw accelerometer sample from the output registers.
  * Polls STATUS_REG.XLDA.  Returns 0 if data was ready, -1 if not.
  * Intended for use in MODE 1 (no FIFO).
+ *
+ * @param[in] device Concrete device descriptor. Must not be NULL.
  * @param[out] x, y, z  Raw 16-bit two's-complement values.
  */
 int lsm6dsv16x_read_accel(const TagLsm6dsv16xDevice *device,
@@ -355,6 +404,7 @@ int lsm6dsv16x_read_accel(const TagLsm6dsv16xDevice *device,
 
 /**
  * Read and return WAKE_UP_SRC (clears latched interrupt when LIR=1).
+ * Returns 0 when the descriptor is invalid or the register read fails.
  *
  * Bit meanings (DS13726 Table 59):
  *   bit 5  SLEEP_STATE   device is in sleep (stationary)
@@ -368,6 +418,8 @@ uint8_t lsm6dsv16x_read_wakeup_src(const TagLsm6dsv16xDevice *device);
 
 /**
  * Read FIFO status; return number of unread words (0-511).
+ *
+ * @param[in] device Concrete device descriptor. Must not be NULL.
  * @param[out] wtm_flag  Set to 1 if watermark reached; 0 otherwise.  Pass NULL if unused.
  * @param[out] ovr_flag  Set to 1 if FIFO overrun occurred; 0 otherwise.  Pass NULL if unused.
  */

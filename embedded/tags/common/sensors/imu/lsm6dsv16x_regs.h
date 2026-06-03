@@ -42,7 +42,7 @@
 #define LSM6DSV16X_CTRL7              0x16U  /* LPF1_G_EN, AH_QVAR               */
 #define LSM6DSV16X_CTRL8              0x17U  /* HP_LPF2_XL_BW[2:0], FS_XL[1:0]  */
 #define LSM6DSV16X_CTRL9              0x18U  /* ODR_TRIG_EN, HP_REF_MODE_XL      */
-#define LSM6DSV16X_CTRL10             0x19U  /* ST_XL[1:0], timestamp enable      */
+#define LSM6DSV16X_CTRL10             0x19U  /* Accel/gyro self-test, timestamp   */
 #define LSM6DSV16X_ALL_INT_SRC        0x1AU  /* Combined interrupt source status  */
 #define LSM6DSV16X_WAKE_UP_SRC        0x1BU  /* Wake-up event source register     */
 #define LSM6DSV16X_STATUS_REG         0x1EU  /* XLDA, GDA, TDA data-ready flags   */
@@ -94,7 +94,10 @@
 #define LSM6DSV16X_CTRL9_ODR_TRIG_EN  0x80U  /* Enable ODR-triggered sampling     */
 
 /* =========================================================================
- * CTRL10 (0x19) bit masks – self-test control
+ * CTRL10 (0x19) bit masks – accelerometer self-test control
+ *
+ * ST_XL occupies the low two bits.  The gyroscope self-test field is separate
+ * and is intentionally not used by this accelerometer self-test driver path.
  * ====================================================================== */
 #define LSM6DSV16X_CTRL10_ST_XL_MASK  0x03U  /* ST_XL[1:0] field mask             */
 #define LSM6DSV16X_CTRL10_ST_XL_OFF   0x00U  /* Self-test disabled                */

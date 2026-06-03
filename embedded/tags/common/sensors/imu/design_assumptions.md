@@ -1,16 +1,14 @@
-# LSM6DSV16X Integration Design Assumptions
+# LSM6DSV16X Driver Design Assumptions
 
-This document captures the final integration assumptions for bringing the
-LSM6DSV16X IMU driver into the current tag device model. The conversation
-transcript in `design_notes.md` is useful design history; this file is the
-target shape for implementation.
+This file captures the implemented design assumptions for the LSM6DSV16X IMU
+driver. The longer conversation transcript in `design_notes.md` remains useful
+as design history; this file describes the current driver contract.
 
-## Driver Ownership
+## Ownership Boundary
 
-The reusable LSM6DSV16X register driver belongs in
-`embedded/tags/common/sensors/imu`. It should not know about tag-local board
-line names, MCU timer registers, ChibiOS semaphores, or global SPI helper
-functions.
+The reusable driver lives in `embedded/tags/common/sensors/imu` and owns the
+LSM6DSV16X register programming sequence. It does not know tag-local board line
+names, MCU timer registers, chip-select macros, or global SPI helper functions.
 
 The tag or family `devices.c` file owns the concrete hardware binding:
 
@@ -20,10 +18,9 @@ The tag or family `devices.c` file owns the concrete hardware binding:
 - standby pin policy for the board;
 - the self-test table entry and test context.
 
-## Descriptor Shape
+## Descriptor Model
 
-The driver should use an explicit IMU descriptor rather than the BSP hooks in
-the current draft header.
+Every public driver call receives a `const TagLsm6dsv16xDevice *`.
 
 ```c
 typedef void (*TagLsm6dsv16xSetTrigger)(const void *context,
@@ -36,68 +33,65 @@ typedef struct {
 } TagLsm6dsv16xDevice;
 ```
 
-`registers` is required. `set_trigger` is optional for tags that never use
-ODR-triggered FIFO mode; if absent, the triggered-mode initializer should fail
-or no-op explicitly rather than silently pretending the trigger is configured.
+`registers` is required. `set_trigger` is optional unless MODE 3
+ODR-triggered FIFO streaming is used. A descriptor without `set_trigger` may
+still use shutdown, accelerometer-only mode, wakeup mode, direct accelerometer
+reads, and accelerometer self-test.
 
-This keeps normal register IO on the existing `TagRegisterDevice` path:
-
-- `tagBusPowerOn(&device->registers->bus)`
-- `tagBusBegin(&device->registers->bus)`
-- `tagRegisterRead(device->registers, reg, buf, len)`
-- `tagRegisterWrite(device->registers, reg, buf, len)`
-- `tagBusEnd(&device->registers->bus)`
-- `tagBusPowerOff(&device->registers->bus)`
-
-## Public API Shape
-
-Every public driver function should take a device descriptor pointer. Avoid
-global default bindings and application-provided SPI/sleep hooks.
-
-Examples:
+Register IO stays on the existing common bus path:
 
 ```c
-int lsm6dsv16x_verify_id(const TagLsm6dsv16xDevice *device);
-void lsm6dsv16x_init_shutdown(const TagLsm6dsv16xDevice *device);
-void lsm6dsv16x_init_accel_only(const TagLsm6dsv16xDevice *device,
-                                const lsm6dsv16x_accel_cfg_t *cfg);
-void lsm6dsv16x_init_accel_wakeup(const TagLsm6dsv16xDevice *device,
-                                  const lsm6dsv16x_wakeup_mode_cfg_t *cfg,
-                                  const lsm6dsv16x_motion_cfg_t *motion);
-void lsm6dsv16x_init_accel_gyro_triggered(
-    const TagLsm6dsv16xDevice *device,
-    const lsm6dsv16x_trig_mode_cfg_t *cfg,
-    const lsm6dsv16x_motion_cfg_t *motion);
+tagBusPowerOn(&device->registers->bus);
+tagBusBegin(&device->registers->bus);
+tagRegisterRead(device->registers, reg, buf, len);
+tagRegisterWrite(device->registers, reg, buf, len);
+tagBusEnd(&device->registers->bus);
+tagBusPowerOff(&device->registers->bus);
 ```
 
-Sleep calls should use the existing tag timekeeping helpers. Use
-`stopMilliseconds()` rather than declaring BSP hooks in the IMU header; the
-500 us ODR-triggered-mode delay is rounded up to `stopMilliseconds(1)`.
+Active-mode initializers leave the sensor powered so later reads can succeed.
+Shutdown and self-test leave the sensor powered down.
+
+## Public Modes
+
+The public API exposes four mode initializers:
+
+- `lsm6dsv16x_init_shutdown()` powers both sensors down, disables FIFO,
+  clears interrupt routing, disables the ODR trigger, and powers the bus down.
+- `lsm6dsv16x_init_accel_only()` configures high-performance accelerometer
+  sampling from the internal ODR and routes data-ready to INT1.
+- `lsm6dsv16x_init_accel_wakeup()` configures low-power accelerometer sampling
+  with slope-filter wakeup and routes wakeup events to INT1.
+- `lsm6dsv16x_init_accel_gyro_triggered()` configures accelerometer and gyro
+  FIFO streaming from an external ODR trigger on INT2 and routes FIFO
+  watermark plus sleep-change events to INT1.
+
+Filter selection is intentionally not exposed. The driver applies the same
+Nyquist-minimum policy in all modes: accelerometer LPF1 at ODR/2, accelerometer
+LPF2 disabled, and gyro optional LPF disabled.
 
 ## Trigger Ownership
 
-The MCU timer output is board/family behavior. The common IMU driver computes
-the required divisor, then calls the descriptor's trigger callback:
+The MCU timer output is board/family behavior. The common driver computes the
+required divisor, then calls:
 
 ```c
 device->set_trigger(device->trigger_context, divider);
 ```
 
 Passing divider `0` disables the trigger. Shutdown, accelerometer-only mode,
-and accelerometer wakeup mode should disable the trigger. Triggered FIFO mode
-should configure the LSM6DSV16X registers first, then enable the MCU trigger at
-the derived divisor.
+wakeup mode, and self-test disable the trigger. Triggered FIFO mode configures
+the sensor first, then enables the MCU trigger at the derived divisor.
 
-The application should not call the trigger callback directly while using this
-driver. If application code needs to inspect the timer parameters, it should
-call an informational query function:
+Application code should not call the trigger callback directly while using the
+driver. If code needs to inspect the timer parameters, it can call:
 
 ```c
 int lsm6dsv16x_get_trig_params(lsm6dsv16x_trig_odr_t odr,
                                lsm6dsv16x_trig_params_t *params);
 ```
 
-## ODR-Triggered Mode Assumptions
+## ODR-Triggered Mode
 
 The MCU timer base is 1024 Hz, and its output frequency is `1024 / D`. The
 LSM6DSV16X internal multiplier is `S`, where `S` may be an integer from 8 to
@@ -117,83 +111,55 @@ The standard requested ODRs are exactly achievable with `S = 25`:
 | 400 Hz | 64 | 16 Hz | 25 | 400 Hz |
 | 800 Hz | 32 | 32 Hz | 25 | 800 Hz |
 
-The query table should also carry the internal gate ODR code and FIFO batch
-data-rate code required by the register programming sequence.
+The driver also supports a 1024 Hz entry with `D = 1` and `S = 1` for bringup
+or specialized uses.
 
-## Register And FIFO Policy
+AN5763 requires the sensors to remain powered down for at least 500 us before
+ODR-triggered configuration registers are written. The driver uses the existing
+tag timekeeping helper and rounds this to `stopMilliseconds(1)`.
 
-The register-level implementation from the draft should be preserved, but its
-read/write helpers should dispatch through `TagRegisterDevice`.
+## FIFO Policy
 
-The default filtering policy remains:
+FIFO unpacking stays inside the common driver. Each FIFO word contains a tag
+byte and six data bytes. The driver consumes all FIFO words, discards unrelated
+tags, buffers a gyro word, and pairs it with the next accelerometer word into
+one `lsm6dsv16x_sample_t`. Unpaired words at the end of a burst are dropped.
 
-- accelerometer LPF1 at the inherent ODR/2 path;
-- accelerometer LPF2 disabled;
-- gyroscope optional LPF disabled;
-- high-performance sampling for mode 1 and triggered mode;
-- low-power slope-filter sampling for wakeup mode.
-
-FIFO unpacking should remain inside the common driver. It should read tagged
-FIFO words, discard unrelated tags, pair gyro and accelerometer words, and
-return raw `lsm6dsv16x_sample_t` values.
+Samples are raw two's-complement values. Callers convert to physical units
+using the active full-scale sensitivity.
 
 ## Self-Test
 
-The common IMU module should provide a descriptor-backed self-test hook:
+The common IMU module provides a descriptor-backed test hook:
 
 ```c
 TestResult tag_test_lsm6dsv16x(const void *context);
 ```
 
-The context is a `const TagLsm6dsv16xDevice *`. The hook should run the mode-1
-accelerometer self-test path, return `ALL_PASSED` on success, and return
+The context is a `const TagLsm6dsv16xDevice *`. The hook runs the mode-1
+accelerometer self-test path, returns `ALL_PASSED` on success, and returns
 `AIS2_FAILED` on failure. This keeps the IMU test on the existing
 accelerometer-family monitor result until a future protocol change adds a more
 specific IMU result.
 
-The low-level self-test routine should leave the device in shutdown and disable
-the ODR trigger before returning. Application code should reinitialize the
-desired mode after a self-test.
+The low-level self-test routine:
 
-## Build Module
+- verifies `WHO_AM_I`;
+- configures HP / 120 Hz / +/-4 g with LPF2 disabled;
+- averages raw accelerometer samples before and after positive self-test;
+- checks each axis against the 50-1700 mg datasheet limits;
+- logs failure points through `debug_log_printf()` when `debug_log` is built;
+- leaves the device in shutdown with the ODR trigger disabled.
 
-Add a common module fragment:
+The accelerometer self-test field is `CTRL10.ST_XL[1:0]`, the low two bits of
+`CTRL10`. The gyro self-test field is separate and is not used by this driver
+path.
 
-```make
-sensor_imu_lsm6dsv16x.mk
-```
+## IMUTagBreakout Binding
 
-It should:
+`IMUTagBreakout` selects the `sensor_imu_lsm6dsv16x` module and exports
+`TAG_IMU_DEVICE` from `embedded/tags/IMUTagBreakout/src/devices.c`.
 
-- include the common sensor paths;
-- define `TAG_SENSOR_IMU_LSM6DSV16X=1`;
-- include `sensor_io.c` only once using the existing guard pattern;
-- add `lsm6dsv16x.c`;
-- add the descriptor-backed self-test source once it exists.
-
-The owning tag's `project.mk` selects the module. The owning tag or family
-`devices.c` exports the descriptor and adds the test table entry.
-
-## IMUTagBreakout Binding Assumption
-
-For `IMUTagBreakout`, bind the IMU in `embedded/tags/IMUTagBreakout/src/devices.c`
-using the standardized `IMUTagv1` board names generated from
-`board-customizations.json`.
-
-The driver should not require the IMU board to expose a dedicated `LINE_IMU_*`
-set if the same physical SPI pins are already named for the accelerometer or
-another board-level role. The descriptor in `devices.c` is the single source of
-truth for mixed/shared wiring.
-
-## Migration Checklist
-
-1. Replace the BSP-hook API in `lsm6dsv16x.h` with descriptor-backed calls.
-2. Move register helpers in `lsm6dsv16x.c` to `tagRegisterRead()` and
-   `tagRegisterWrite()`.
-3. Replace `sleep_ms()` and `sleep_us()` with tag timekeeping helpers.
-4. Add `TagLsm6dsv16xDevice` and trigger callback types.
-5. Add the trigger-parameter query function and keep the exact ODR table.
-6. Add the common module fragment and update `BUILD_SOURCES.md`.
-7. Add the descriptor-backed self-test hook.
-8. Bind `IMUTagBreakout` in `devices.c` and add its test table entry.
-9. Build `IMUTagBreakout` and any other tag that selects the IMU module.
+The IMU shares the tag's normal register-device infrastructure. The descriptor
+is the single source of truth for mixed or shared wiring, so the common driver
+does not require a dedicated set of IMU-specific board-line names.

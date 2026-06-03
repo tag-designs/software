@@ -33,6 +33,7 @@ void example_accel_only(void)
 
     while (1) {
         if (lsm6dsv16x_read_accel(&tagExampleImuDevice, &ax, &ay, &az) == 0) {
+            /* +/-4 g range: accel sensitivity is 0.122 mg/LSB. */
             (void)ax;
             (void)ay;
             (void)az;
@@ -78,6 +79,7 @@ void example_accel_gyro_triggered(void)
         .sleep_dur = LSM6DSV16X_SLEEP_DUR_4,
     };
 
+    /* The descriptor must provide set_trigger for this mode. */
     lsm6dsv16x_init_accel_gyro_triggered(&tagExampleImuDevice,
                                          &trig_cfg,
                                          &motion_cfg);

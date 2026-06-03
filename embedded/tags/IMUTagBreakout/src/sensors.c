@@ -102,8 +102,10 @@ bool sensorCalibrationSample(SensorData *sensors)
     {
         sensors->has_accel = true;
 
-        sensors->accel.ax = ax * IMU_ACCEL_MG_PER_LSB_4G;
-        sensors->accel.ay = ay * IMU_ACCEL_MG_PER_LSB_4G;
+        // fix sensor orientation to match compass tag
+
+        sensors->accel.ax = -ay * IMU_ACCEL_MG_PER_LSB_4G;
+        sensors->accel.ay = ax * IMU_ACCEL_MG_PER_LSB_4G;
         sensors->accel.az = az * IMU_ACCEL_MG_PER_LSB_4G;
     }
 
@@ -172,6 +174,13 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 {
   (void)reason;
 
+  if (t == T_EXIT)
+  {
+    deinitSensors();
+    pState->state = TagState_IDLE;
+    return SHUTDOWN;
+  }
+
   if (t == T_INIT)
   {
     initSensors();
@@ -209,9 +218,6 @@ int calibration_logAck(Ack *ack){
 /**
  * @brief Accept calibration constants from the host.
  *
- * The flash write body is disabled with the legacy sensor path, but validation
- * is retained so the monitor sees the same command shape.
- *
  * @param[in] constants Host-provided calibration constants.
  * @return Encoded ACK length or error response length.
  */
@@ -227,7 +233,7 @@ int write_calibration(CalibrationConstants *constants){
   for (index = 0; index < CONSTANT_CNT; index++){
     if  ((*((int32_t *) &calConstants[index])) == -1)
       break;
-  }/*
+  }
 
   // if all slots are free, erase current constants
   if (index >= CONSTANT_CNT)
@@ -256,24 +262,20 @@ int write_calibration(CalibrationConstants *constants){
                       sizeof(constants_tmp)/4);
   FLASH_Lock();
   FLASH_Flush_Data_Cache();
-  chSysUnlock();*/
+  chSysUnlock();
   return errAck(Ack_OK);
 }
 
 /**
  * @brief Read calibration constants into a host ACK.
  *
- * The legacy read body is disabled for this target.
- *
- * @param[in] index Calibration slot to read.
+ * @param[in] index Calibration slot to read, or negative for the latest slot.
  * @param[out] ack ACK message to populate.
- * @return Undefined until the legacy calibration read path is restored.
+ * @return Encoded ACK length or error response length.
  */
 int read_calibration(int32_t index, Ack *ack){
-  (void)index;
-  (void)ack;
   // if index < 0, search for last written
- /* if (index < 0) {
+  if (index < 0) {
     for (index = (int32_t) CONSTANT_CNT - 1 ; index > -1 ; index--){
       if ((*((int32_t *) &calConstants[index])) != -1)
         break;
@@ -288,6 +290,4 @@ int read_calibration(int32_t index, Ack *ack){
       sizeof(CalibrationConstants_MagConstants));
   ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
-  */
-  return errAck(Ack_NODATA);
 }

@@ -1,6 +1,6 @@
 /**
  * @file    lsm6dsv16x.c
- * @brief   Driver implementation for the STMicroelectronics LSM6DSV16X IMU.
+ * @brief   Descriptor-backed driver for the STMicroelectronics LSM6DSV16X IMU.
  *
  * References
  * ----------
@@ -23,6 +23,17 @@
  *   Gyroscope (MODE 3 only)
  *     The optional LPF1 is disabled (LPF1_G_EN = 0, CTRL7 = 0x00).
  *     Only the ADC's inherent anti-alias response remains active.
+ *
+ * Driver ownership
+ * ----------------
+ * This module owns the LSM6DSV16X register programming sequence.  The concrete
+ * tag/family owns board wiring through TagLsm6dsv16xDevice: register bus,
+ * chip select, bus power policy, and the optional ODR-trigger callback.
+ *
+ * Active-mode initializers leave bus power enabled because later status/read
+ * calls are expected.  Shutdown and self-test finish by powering the device
+ * down.  Direct reads and setters bracket their register transactions with
+ * tagBusBegin()/tagBusEnd().
  *
  * ODR-Triggered Mode Reference Table  (with frequency multiplier)
  * ---------------------------------------------------------------
@@ -408,8 +419,9 @@ void lsm6dsv16x_init_accel_wakeup(
  * Sequence ([AN] Section 3.3, Listing 2):
  *  1.  Software reset.
  *  2.  BDU + IF_INC.
- *  3.  Hold both sensors in power-down; wait 500 µs ([AN] requirement
- *      before writing ODR-triggered configuration registers).
+ *  3.  Hold both sensors in power-down; wait at least 500 us ([AN]
+ *      requirement before writing ODR-triggered configuration registers).
+ *      The tag timekeeping API rounds this up to stopMilliseconds(1).
  *  4.  CTRL8: LPF2 disabled, FS = ±2 g.
  *  5.  CTRL6: FS_G = ±2000 dps, LPF1_G_BW = 000 (LPF1 disabled via CTRL7).
  *  6.  CTRL7 = 0x00: LPF1_G_EN = 0 (gyro LPF1 off – minimum filtering).
@@ -445,7 +457,7 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     device_reset(device);
     apply_common_defaults(device);
 
-    /* 3. Hold in power-down per [AN] before configuring ODR-triggered regs */
+    /* 3. Hold in power-down per [AN]; 500 us minimum rounded to 1 ms. */
     reg_write(device, LSM6DSV16X_CTRL1, 0x00U);
     reg_write(device, LSM6DSV16X_CTRL2, 0x00U);
     stopMilliseconds(1);
@@ -565,7 +577,7 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
  * ====================================================================== */
 /**
  * Each FIFO word is 7 bytes: tag byte (bits [7:3] = sensor ID) + 6 data bytes.
- * Tag 0x01 = gyro, 0x02 = accel; all others are discarded.
+ * Tag 0x01 = gyro, 0x02 = accel; all other tags are consumed and discarded.
  * A gyro word is buffered and paired with the next accel word into one
  * lsm6dsv16x_sample_t.  Unpaired words at burst end are silently dropped.
  */
@@ -777,7 +789,7 @@ lsm6dsv16x_self_test_result_t lsm6dsv16x_self_test_accel(
                      (int)nost_y,
                      (int)nost_z);
 
-    /* Step 6 – Enable positive self-test: CTRL10[3:2] = 01b */
+    /* Step 6 – Enable positive accelerometer self-test: CTRL10.ST_XL = 01b */
     reg_update(device, LSM6DSV16X_CTRL10,
                LSM6DSV16X_CTRL10_ST_XL_MASK,
                LSM6DSV16X_CTRL10_ST_XL_POS);

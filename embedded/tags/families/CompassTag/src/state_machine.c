@@ -199,6 +199,7 @@ enum Sleep StateMachine(void)
     }
     if (pState->state == TagState_CALIBRATE)
     {
+      (void)Calibrating(T_EXIT, State_EVENT_STOPCMD);
       return Idle(T_INIT, State_EVENT_OK);
     }
   }

@@ -13,13 +13,14 @@
 
 /** @name State transitions
  * Transition phase passed into state handlers so each state can separate entry,
- * continuation, and error cleanup behavior.
+ * continuation, normal exit, and error cleanup behavior.
  * @{
  */
 enum StateTrans
 {
   T_INIT,
   T_CONT,
+  T_EXIT,
   T_ERROR
 };
 /** @} */

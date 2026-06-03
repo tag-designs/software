@@ -232,6 +232,14 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
 {
   (void)reason;
 
+  if (t == T_EXIT)
+  {
+    // shutdown sensors
+    deinitSensors();
+    pState->state = TagState_IDLE;
+    return SHUTDOWN;
+  }
+
   if (t == T_INIT)
   {
     initSensors();
