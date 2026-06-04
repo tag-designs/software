@@ -24,6 +24,7 @@
  * Register map – primary interface registers
  * ====================================================================== */
 #define LSM6DSV16X_FUNC_CFG_ACCESS    0x01U  /* Embedded-function bank access     */
+#define LSM6DSV16X_ODR_TRIG_CFG       0x06U  /* ODR_TRIG_N_ODR[7:0] (low byte)   */
 #define LSM6DSV16X_FIFO_CTRL1         0x07U  /* FIFO watermark [7:0]              */
 #define LSM6DSV16X_FIFO_CTRL2         0x08U  /* FIFO watermark [8], mode flags    */
 #define LSM6DSV16X_FIFO_CTRL3         0x09U  /* Batch data rates (XL, G)          */
@@ -43,13 +44,13 @@
 #define LSM6DSV16X_CTRL8              0x17U  /* HP_LPF2_XL_BW[2:0], FS_XL[1:0]  */
 #define LSM6DSV16X_CTRL9              0x18U  /* ODR_TRIG_EN, HP_REF_MODE_XL      */
 #define LSM6DSV16X_CTRL10             0x19U  /* Accel/gyro self-test, timestamp   */
-#define LSM6DSV16X_ALL_INT_SRC        0x1AU  /* Combined interrupt source status  */
-#define LSM6DSV16X_WAKE_UP_SRC        0x1BU  /* Wake-up event source register     */
+#define LSM6DSV16X_FIFO_STATUS1       0x1BU  /* DIFF_FIFO[7:0]                    */
+#define LSM6DSV16X_FIFO_STATUS2       0x1CU  /* FIFO_WTM_IA, OVR_IA, DIFF_FIFO[9:8] */
+#define LSM6DSV16X_ALL_INT_SRC        0x1DU  /* Combined interrupt source status  */
 #define LSM6DSV16X_STATUS_REG         0x1EU  /* XLDA, GDA, TDA data-ready flags   */
 #define LSM6DSV16X_OUTX_L_G           0x22U  /* Gyroscope X output LSB            */
 #define LSM6DSV16X_OUTX_L_A           0x28U  /* Accelerometer X output LSB        */
-#define LSM6DSV16X_FIFO_STATUS1       0x3AU  /* DIFF_FIFO[7:0]                    */
-#define LSM6DSV16X_FIFO_STATUS2       0x3BU  /* FIFO_WTM_IA, OVR_IA, DIFF_FIFO[9:8] */
+#define LSM6DSV16X_WAKE_UP_SRC        0x45U  /* Wake-up event source register     */
 #define LSM6DSV16X_EMB_FUNC_EN_B      0x05U  /* Embedded bank: FIFO_COMPR_EN      */
 #define LSM6DSV16X_TAP_CFG0           0x56U  /* LIR, SLOPE_FDS filter select      */
 #define LSM6DSV16X_TAP_CFG2           0x58U  /* INTERRUPTS_ENABLE master bit      */
@@ -58,7 +59,6 @@
 #define LSM6DSV16X_MD1_CFG            0x5EU  /* INT1 embedded-function routing    */
 #define LSM6DSV16X_MD2_CFG            0x5FU  /* INT2 embedded-function routing    */
 #define LSM6DSV16X_HAODR_CFG          0x62U  /* HAODR_SEL[1:0]                    */
-#define LSM6DSV16X_ODR_TRIG_CFG       0x6DU  /* ODR_TRIG_N_ODR[7:0] (low byte)   */
 #define LSM6DSV16X_FIFO_DATA_OUT_TAG  0x78U  /* Tag byte of next FIFO word        */
 #define LSM6DSV16X_FIFO_DATA_OUT_X_L  0x79U  /* FIFO data word X LSB              */
 
@@ -225,8 +225,8 @@ typedef enum {
  * BDR code, and the MCU timer divisor D.
  * ====================================================================== */
 
-/** Multiplier S = 25 is used for all five standard ODR targets.
- *  25 = 0x019; MSB (bit 8) = 0, so only the low byte reg 0x6D needs writing. */
+/** ODR_TRIG_N_ODR value S = 25 requests 50 samples per reference period.
+ *  25 = 0x019; MSB (bit 8) = 0, so only the low byte reg 0x06 needs writing. */
 #define LSM6DSV16X_ODR_TRIG_N_ODR_S25   0x19U
 
 typedef struct {

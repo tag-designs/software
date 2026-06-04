@@ -123,18 +123,19 @@ typedef enum {
  * The MCU timer base clock is 1024 Hz. The driver uses the IMU's
  * ODR_TRIG_N_ODR multiplier so the standard rates are exact:
  *
- *   f_out = S x (1024 / D)
+ *   f_out = 2S x (1024 / D)
  *
- * The standard rates use S = 25 and the integer timer divisors listed below.
- * The divisor is managed internally and passed to the descriptor trigger
- * callback.
+ * ST defines ODR_TRIG_N_ODR with 2-sample resolution. The standard rates use
+ * S = 25, which requests 50 samples per reference period, and the integer
+ * timer divisors listed below. The divisor is managed internally and passed to
+ * the descriptor trigger callback.
  * ====================================================================== */
 typedef enum {
-    LSM6DSV16X_TRIG_ODR_50HZ   =  50, /**< D=512, f_mcu= 2 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_100HZ  = 100, /**< D=256, f_mcu= 4 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_200HZ  = 200, /**< D=128, f_mcu= 8 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_400HZ  = 400, /**< D= 64, f_mcu=16 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_800HZ  = 800, /**< D= 32, f_mcu=32 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_50HZ   =  50, /**< D=1024, f_mcu= 1 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_100HZ  = 100, /**< D= 512, f_mcu= 2 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_200HZ  = 200, /**< D= 256, f_mcu= 4 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_400HZ  = 400, /**< D= 128, f_mcu= 8 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_800HZ  = 800, /**< D=  64, f_mcu=16 Hz, S=25 */
 } lsm6dsv16x_trig_odr_t;
 
 /* =========================================================================

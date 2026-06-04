@@ -29,8 +29,9 @@
 #define IMU_ACCEL_MG_PER_LSB_4G 0.122f
 #define IMU_FIFO_PAIRS_PER_BLOCK 10U
 #define IMU_FIFO_WORDS_PER_PAIR 2U
-#define IMU_FIFO_WATERMARK_WORDS \
+#define IMU_FIFO_BLOCK_WORDS \
   (IMU_FIFO_PAIRS_PER_BLOCK * IMU_FIFO_WORDS_PER_PAIR)
+#define IMU_FIFO_WATERMARK_WORDS (IMU_FIFO_BLOCK_WORDS + 2U)
 
 typedef struct {
     int32_t timestamp;
@@ -55,6 +56,8 @@ static int16_t latest_my;
 static int16_t latest_mz;
 static bool have_pressure_sample;
 static bool have_mag_sample;
+static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_BLOCK];
+static uint16_t block_sample_count;
 
 static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
@@ -131,6 +134,12 @@ static void reset_environment_cache(void)
   latest_mz = 0;
   have_pressure_sample = false;
   have_mag_sample = false;
+}
+
+static void reset_imu_block_cache(void)
+{
+  memset(block_samples, 0, sizeof(block_samples));
+  block_sample_count = 0;
 }
 
 static bool update_latest_mag(void)
@@ -220,6 +229,7 @@ bool initDataCollection(void)
   mag_rate = select_mag_rate(imu_odr);
   pressure_rate = select_pressure_rate(imu_odr);
   reset_environment_cache();
+  reset_imu_block_cache();
 
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
   if (ak09940aInitContinuous(TAG_MAG_DEVICE, mag_rate,
@@ -273,22 +283,28 @@ bool sampleDataCollection(t_DataLog *data)
   }
 
   pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE, samples,
-                               IMU_FIFO_PAIRS_PER_BLOCK);
-  if (pairs < IMU_FIFO_PAIRS_PER_BLOCK) {
-    debug_log_printf("IMUTag collection: FIFO short read %u/%u pairs\r\n",
-                     (unsigned)pairs,
-                     (unsigned)IMU_FIFO_PAIRS_PER_BLOCK);
+                               IMU_FIFO_PAIRS_PER_BLOCK - block_sample_count);
+  if (pairs == 0U) {
+    return false;
+  }
+
+  for (uint16_t i = 0; i < pairs; i++) {
+    block_samples[block_sample_count++] = samples[i];
+  }
+
+  if (block_sample_count < IMU_FIFO_PAIRS_PER_BLOCK) {
     return false;
   }
 
   for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_BLOCK; i++) {
-    data->raw_data[i].gx = samples[i].gyro_x;
-    data->raw_data[i].gy = samples[i].gyro_y;
-    data->raw_data[i].gz = samples[i].gyro_z;
-    data->raw_data[i].ax = samples[i].accel_x;
-    data->raw_data[i].ay = samples[i].accel_y;
-    data->raw_data[i].az = samples[i].accel_z;
+    data->raw_data[i].gx = block_samples[i].gyro_x;
+    data->raw_data[i].gy = block_samples[i].gyro_y;
+    data->raw_data[i].gz = block_samples[i].gyro_z;
+    data->raw_data[i].ax = block_samples[i].accel_x;
+    data->raw_data[i].ay = block_samples[i].accel_y;
+    data->raw_data[i].az = block_samples[i].accel_z;
   }
+  reset_imu_block_cache();
 
   (void)update_latest_mag();
   (void)update_latest_pressure();
@@ -337,6 +353,7 @@ bool deinitDataCollection(void)
   (void)lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
   lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
   reset_environment_cache();
+  reset_imu_block_cache();
   debug_log_printf("IMUTag collection: sensors deinitialized\r\n");
   return true;
 }

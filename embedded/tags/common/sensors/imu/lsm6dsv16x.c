@@ -37,18 +37,20 @@
  *
  * ODR-Triggered Mode Reference Table
  * ----------------------------------
- * f_out = S x (1024 / D), where D is the MCU timer divisor and S is the
- * internal ODR-trigger multiplier.  The standard rates all use S = 25, which
- * gives exact output rates from integer divisors of the 1024 Hz low-speed
- * timer.  ODR_TRIG_N_ODR is 9 bits: low 8 bits in ODR_TRIG_CFG and bit 8 in
- * COUNTER_BDR_REG1[5].  For S = 25, bit 8 is zero.
+ * f_out = 2S x (1024 / D), where D is the MCU timer divisor and S is the
+ * value written to ODR_TRIG_N_ODR.  ST defines that value with 2-sample
+ * resolution, so S = 25 requests 50 samples per reference period.  The
+ * standard rates all use S = 25, which gives exact output rates from integer
+ * divisors of the 1024 Hz low-speed timer.  ODR_TRIG_N_ODR is 9 bits: low
+ * 8 bits in ODR_TRIG_CFG and bit 8 in COUNTER_BDR_REG1[5].  For S = 25, bit
+ * 8 is zero.
  *
  *  Target  MCU div D  f_mcu     S   f_out   CTRL1/2
- *    50 Hz   D=512     2.000 Hz 25   50 Hz   0x35
- *   100 Hz   D=256     4.000 Hz 25  100 Hz   0x36
- *   200 Hz   D=128     8.000 Hz 25  200 Hz   0x37
- *   400 Hz   D= 64    16.000 Hz 25  400 Hz   0x38
- *   800 Hz   D= 32    32.000 Hz 25  800 Hz   0x39
+ *    50 Hz   D=1024    1.000 Hz 25   50 Hz   0x35
+ *   100 Hz   D= 512    2.000 Hz 25  100 Hz   0x36
+ *   200 Hz   D= 256    4.000 Hz 25  200 Hz   0x37
+ *   400 Hz   D= 128    8.000 Hz 25  400 Hz   0x38
+ *   800 Hz   D=  64   16.000 Hz 25  800 Hz   0x39
  */
 
 #include <stdbool.h>
@@ -111,26 +113,6 @@ static int reg_read_block(const TagLsm6dsv16xDevice *device, uint8_t reg,
                           uint8_t *buf, uint32_t len)
 {
     return tagRegisterRead(device->registers, reg, buf, len);
-}
-
-static int reg_read_block_fast(const TagLsm6dsv16xDevice *device, uint8_t reg,
-                               uint8_t *buf, uint32_t len)
-{
-    const TagRegisterDevice *registers = device->registers;
-
-    if (registers->kind == TAG_REGISTER_ST &&
-        registers->bus.kind == TAG_BUS_SPI) {
-        const TagSpiDevice *spi = tagBusSpiDevice(&registers->bus);
-        uint8_t command = (uint8_t)(reg | registers->read_mask);
-
-        tagSpiSelect(spi);
-        tagSpiWrite(spi, &command, 1U);
-        tagSpiReadPipelined(spi, buf, len);
-        tagSpiDeselect(spi);
-        return 0;
-    }
-
-    return reg_read_block(device, reg, buf, len);
 }
 
 /* Read-modify-write: clear bits in mask, then OR in val. */
@@ -271,16 +253,17 @@ static void shutdown_registers(const TagLsm6dsv16xDevice *device)
 /* =========================================================================
  * ODR-triggered mode lookup table
  *
- * The MCU timer runs from 1024 Hz.  The IMU multiplies the reference clock by
- * ODR_TRIG_N_ODR, so S = 25 gives exact 50/100/200/400/800 Hz rates.
+ * The MCU timer runs from 1024 Hz.  ODR_TRIG_N_ODR has 2-sample resolution,
+ * so S = 25 gives 50 samples per reference period and exact
+ * 50/100/200/400/800 Hz rates with the divisors below.
  * ====================================================================== */
 static const odr_trig_entry_t odr_trig_table[] = {
     /*   hz    odr_code                  n_odr                         bdr                    mcu_div_d */
-    {   50, LSM6DSV16X_G_ODR_60Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_60Hz,    512 },
-    {  100, LSM6DSV16X_G_ODR_120Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_120Hz,   256 },
-    {  200, LSM6DSV16X_G_ODR_240Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_240Hz,   128 },
-    {  400, LSM6DSV16X_G_ODR_480Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_480Hz,    64 },
-    {  800, LSM6DSV16X_G_ODR_960Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_960Hz,    32 },
+    {   50, LSM6DSV16X_G_ODR_60Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_60Hz,   1024 },
+    {  100, LSM6DSV16X_G_ODR_120Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_120Hz,   512 },
+    {  200, LSM6DSV16X_G_ODR_240Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_240Hz,   256 },
+    {  400, LSM6DSV16X_G_ODR_480Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_480Hz,   128 },
+    {  800, LSM6DSV16X_G_ODR_960Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_960Hz,    64 },
 };
 static const size_t odr_trig_table_len =
     sizeof(odr_trig_table) / sizeof(odr_trig_table[0]);
@@ -540,9 +523,9 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     /* 14. Master interrupt enable */
     reg_write(device, LSM6DSV16X_TAP_CFG2, LSM6DSV16X_TAP_CFG2_INTR_EN);
 
-    /* 15. FIFO watermark + stationary/motion → INT1 */
+    /* 15. FIFO watermark only → INT1 */
     reg_write(device, LSM6DSV16X_INT1_CTRL, LSM6DSV16X_INT1_FIFO_TH);
-    reg_write(device, LSM6DSV16X_MD1_CFG,   LSM6DSV16X_MD1_INT1_SLEEP_CHANGE);
+    reg_write(device, LSM6DSV16X_MD1_CFG,   0x00U);
 
     /* 16. Start the external trigger.  The sensor will begin locking to INT2
      *     edges within one trigger period after this call. */
@@ -625,6 +608,8 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
  * placeholder sample is emitted so the returned stream preserves timing.
  */
 #define LSM6DSV16X_FIFO_WORD_BYTES 7U
+#define LSM6DSV16X_FIFO_TRACE_WORDS 32U
+#define LSM6DSV16X_FIFO_TRACE_LIMIT 4U
 
 typedef struct {
     int16_t gx, gy, gz;
@@ -633,6 +618,8 @@ typedef struct {
     uint8_t have_accel;
     uint8_t error;
 } fifo_pending_sample_t;
+
+static uint8_t fifo_trace_logs;
 
 static void fifo_reset_pending(fifo_pending_sample_t *pending)
 {
@@ -692,8 +679,9 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     uint8_t  current_cnt = 0U;
     uint8_t  have_current_cnt = 0U;
     uint8_t  current_slot_closed = 0U;
-    uint8_t  expected_cnt;
     uint16_t zeroed_slots = 0U;
+    uint8_t  trace_tags[LSM6DSV16X_FIFO_TRACE_WORDS];
+    uint8_t  trace_count = 0U;
 
     if (!valid_device(device) || samples == NULL || max_pairs == 0U) {
         return 0U;
@@ -707,11 +695,14 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
 
     while ((fifo_level > 0U) && (pairs_out < max_pairs)) {
 
-        if (reg_read_block_fast(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
-                                word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
+        if (reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
+                           word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
             break;
         }
         fifo_level--;
+        if (trace_count < LSM6DSV16X_FIFO_TRACE_WORDS) {
+            trace_tags[trace_count++] = word[0];
+        }
 
         tag = (uint8_t)(word[0] >> 3U);
         cnt = (uint8_t)(word[0] & 0x03U);
@@ -729,17 +720,6 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
                     if (pairs_out >= max_pairs) {
                         break;
                     }
-                }
-
-                expected_cnt = (uint8_t)((current_cnt + 1U) & 0x03U);
-                while (expected_cnt != cnt && pairs_out < max_pairs) {
-                    fifo_write_zero_sample(&samples[pairs_out]);
-                    pairs_out++;
-                    zeroed_slots++;
-                    expected_cnt = (uint8_t)((expected_cnt + 1U) & 0x03U);
-                }
-                if (pairs_out >= max_pairs) {
-                    break;
                 }
 
                 current_cnt = cnt;
@@ -793,6 +773,32 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     if (zeroed_slots > 0U) {
         debug_log_printf("LSM6DSV16X FIFO: zeroed %u slot(s)\r\n",
                          (unsigned)zeroed_slots);
+        if (fifo_trace_logs < LSM6DSV16X_FIFO_TRACE_LIMIT) {
+            fifo_trace_logs++;
+            debug_log_printf(
+                "LSM6DSV16X FIFO tags[%u]: %x %x %x %x %x %x %x %x\r\n",
+                (unsigned)trace_count,
+                trace_count > 0U ? trace_tags[0] : 0U,
+                trace_count > 1U ? trace_tags[1] : 0U,
+                trace_count > 2U ? trace_tags[2] : 0U,
+                trace_count > 3U ? trace_tags[3] : 0U,
+                trace_count > 4U ? trace_tags[4] : 0U,
+                trace_count > 5U ? trace_tags[5] : 0U,
+                trace_count > 6U ? trace_tags[6] : 0U,
+                trace_count > 7U ? trace_tags[7] : 0U);
+            if (trace_count > 8U) {
+                debug_log_printf(
+                    "LSM6DSV16X FIFO tags: %x %x %x %x %x %x %x %x\r\n",
+                    trace_count > 8U ? trace_tags[8] : 0U,
+                    trace_count > 9U ? trace_tags[9] : 0U,
+                    trace_count > 10U ? trace_tags[10] : 0U,
+                    trace_count > 11U ? trace_tags[11] : 0U,
+                    trace_count > 12U ? trace_tags[12] : 0U,
+                    trace_count > 13U ? trace_tags[13] : 0U,
+                    trace_count > 14U ? trace_tags[14] : 0U,
+                    trace_count > 15U ? trace_tags[15] : 0U);
+            }
+        }
     }
 
     device_end(device);
