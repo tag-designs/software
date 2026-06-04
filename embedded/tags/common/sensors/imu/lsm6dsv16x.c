@@ -35,19 +35,20 @@
  * down.  Direct reads and setters bracket their register transactions with
  * tagBusBegin()/tagBusEnd().
  *
- * ODR-Triggered Mode Reference Table  (with frequency multiplier)
- * ---------------------------------------------------------------
- * f_out = S × (1024 / D)   where D = MCU timer divisor, S = internal multiplier.
- * S = 25 for all five standard ODRs (exact, 0 % error).
- * ODR_TRIG_N_ODR is 9 bits: low 8 bits → reg 0x6D; MSB → COUNTER_BDR_REG1[5].
- * For S = 25 (0x019) the MSB is 0, so only reg 0x6D needs writing.
+ * ODR-Triggered Mode Reference Table
+ * ----------------------------------
+ * f_out = S x (1024 / D), where D is the MCU timer divisor and S is the
+ * internal ODR-trigger multiplier.  The standard rates all use S = 25, which
+ * gives exact output rates from integer divisors of the 1024 Hz low-speed
+ * timer.  ODR_TRIG_N_ODR is 9 bits: low 8 bits in ODR_TRIG_CFG and bit 8 in
+ * COUNTER_BDR_REG1[5].  For S = 25, bit 8 is zero.
  *
- *  Target  MCU div D  f_mcu    S   f_out   CTRL1/2  Gate ODR  Lock window
- *    50 Hz   D=512    2.000 Hz 25   50 Hz   0x05(60)   60 Hz   33–75 Hz  OK
- *   100 Hz   D=256    4.000 Hz 25  100 Hz   0x06(120) 120 Hz   67–149 Hz OK
- *   200 Hz   D=128    8.000 Hz 25  200 Hz   0x07(240) 240 Hz  134–299 Hz OK
- *   400 Hz   D= 64   16.000 Hz 25  400 Hz   0x08(480) 480 Hz  268–597 Hz OK
- *   800 Hz   D= 32   32.000 Hz 25  800 Hz   0x09(960) 960 Hz  536–1194 Hz OK
+ *  Target  MCU div D  f_mcu     S   f_out   CTRL1/2
+ *    50 Hz   D=512     2.000 Hz 25   50 Hz   0x35
+ *   100 Hz   D=256     4.000 Hz 25  100 Hz   0x36
+ *   200 Hz   D=128     8.000 Hz 25  200 Hz   0x37
+ *   400 Hz   D= 64    16.000 Hz 25  400 Hz   0x38
+ *   800 Hz   D= 32    32.000 Hz 25  800 Hz   0x39
  */
 
 #include <stdbool.h>
@@ -110,6 +111,26 @@ static int reg_read_block(const TagLsm6dsv16xDevice *device, uint8_t reg,
                           uint8_t *buf, uint32_t len)
 {
     return tagRegisterRead(device->registers, reg, buf, len);
+}
+
+static int reg_read_block_fast(const TagLsm6dsv16xDevice *device, uint8_t reg,
+                               uint8_t *buf, uint32_t len)
+{
+    const TagRegisterDevice *registers = device->registers;
+
+    if (registers->kind == TAG_REGISTER_ST &&
+        registers->bus.kind == TAG_BUS_SPI) {
+        const TagSpiDevice *spi = tagBusSpiDevice(&registers->bus);
+        uint8_t command = (uint8_t)(reg | registers->read_mask);
+
+        tagSpiSelect(spi);
+        tagSpiWrite(spi, &command, 1U);
+        tagSpiReadPipelined(spi, buf, len);
+        tagSpiDeselect(spi);
+        return 0;
+    }
+
+    return reg_read_block(device, reg, buf, len);
 }
 
 /* Read-modify-write: clear bits in mask, then OR in val. */
@@ -249,16 +270,17 @@ static void shutdown_registers(const TagLsm6dsv16xDevice *device)
 
 /* =========================================================================
  * ODR-triggered mode lookup table
- * (odr_trig_entry_t and LSM6DSV16X_ODR_TRIG_N_ODR_S25 defined in regs.h)
+ *
+ * The MCU timer runs from 1024 Hz.  The IMU multiplies the reference clock by
+ * ODR_TRIG_N_ODR, so S = 25 gives exact 50/100/200/400/800 Hz rates.
  * ====================================================================== */
 static const odr_trig_entry_t odr_trig_table[] = {
-    /*   hz    odr_code                   n_odr                           bdr                     mcu_div_d */
-    {   50, LSM6DSV16X_G_ODR_60Hz,   LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_60Hz,    512 },
-    {  100, LSM6DSV16X_G_ODR_120Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_120Hz,   256 },
-    {  200, LSM6DSV16X_G_ODR_240Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_240Hz,   128 },
-    {  400, LSM6DSV16X_G_ODR_480Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_480Hz,    64 },
-    {  800, LSM6DSV16X_G_ODR_960Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_960Hz,    32 },
-    { 1024, LSM6DSV16X_G_ODR_960Hz,  0x01U,                          LSM6DSV16X_BDR_960Hz,     1 },
+    /*   hz    odr_code                  n_odr                         bdr                    mcu_div_d */
+    {   50, LSM6DSV16X_G_ODR_60Hz,  LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_60Hz,    512 },
+    {  100, LSM6DSV16X_G_ODR_120Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_120Hz,   256 },
+    {  200, LSM6DSV16X_G_ODR_240Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_240Hz,   128 },
+    {  400, LSM6DSV16X_G_ODR_480Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_480Hz,    64 },
+    {  800, LSM6DSV16X_G_ODR_960Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_960Hz,    32 },
 };
 static const size_t odr_trig_table_len =
     sizeof(odr_trig_table) / sizeof(odr_trig_table[0]);
@@ -419,23 +441,25 @@ void lsm6dsv16x_init_accel_wakeup(
  * Sequence ([AN] Section 3.3, Listing 2):
  *  1.  Software reset.
  *  2.  BDU + IF_INC.
- *  3.  Configure interrupt pins open-drain for bring-up safety.
+ *  3.  Leave PA8 analog while INT2 is still an IMU interrupt output.
  *  4.  Hold both sensors in power-down; wait at least 500 us ([AN]
  *      requirement before writing ODR-triggered configuration registers).
  *      The tag timekeeping API rounds this up to stopMilliseconds(1).
- *  5.  CTRL8: LPF2 disabled, FS = ±2 g.
- *  6.  CTRL6: FS_G = ±2000 dps, LPF1_G_BW = 000 (LPF1 disabled via CTRL7).
+ *  5.  CTRL8: LPF2 disabled, configured accelerometer full-scale range.
+ *  6.  CTRL6: configured gyro full-scale range, LPF1_G_BW = 000
+ *      (LPF1 disabled via CTRL7).
  *  7.  CTRL7 = 0x00: LPF1_G_EN = 0 (gyro LPF1 off – minimum filtering).
- *  8.  Write ODR_TRIG_N_ODR (multiplier S): low byte to reg 0x6D,
- *      MSB to COUNTER_BDR_REG1[5].
+ *  8.  Write ODR_TRIG_N_ODR: low byte in ODR_TRIG_CFG, bit 8 in
+ *      COUNTER_BDR_REG1[5].
  *  9.  CTRL9: ODR_TRIG_EN = 1.
- * 10.  CTRL4: INT2_IN_LH = 1 (rising edge), DRDY_MASK = 1.
- * 11.  CTRL1 / CTRL2: ODR-triggered mode, gate ODR from table.
+ * 10.  CTRL1 / CTRL2: ODR-triggered mode with ODRsel still zero.
+ * 11.  CTRL4: INT2_IN_LH = 1 (rising edge).
  * 12.  FIFO: set default watermark, enable stream mode at matching BDR.
  * 13.  Motion detection (if mot_cfg != NULL).
  * 14.  Master interrupt enable.
  * 15.  Route FIFO watermark + sleep-change to INT1.
  * 16.  Call the trigger callback with D to start the external clock.
+ * 17.  CTRL1 / CTRL2: write ODRsel to start sampling.
  * ---------------------------------------------------------------------- */
 void lsm6dsv16x_init_accel_gyro_triggered(
     const TagLsm6dsv16xDevice *device,
@@ -458,48 +482,50 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     device_reset(device);
     apply_common_defaults(device);
 
-    /* 3. Open-drain interrupt outputs reduce contention risk during bring-up. */
-    reg_update(device, LSM6DSV16X_CTRL3, LSM6DSV16X_CTRL3_PP_OD,
-               LSM6DSV16X_CTRL3_PP_OD);
+    /*
+     * 3. PA8 remains analog while INT2 is still an IMU interrupt output. The
+     *    trigger callback is called only after the device is configured for
+     *    ODR-triggered mode, so INT1 can remain push-pull for the wakeup line.
+     */
 
     /* 4. Hold in power-down per [AN]; 500 us minimum rounded to 1 ms. */
     reg_write(device, LSM6DSV16X_CTRL1, 0x00U);
     reg_write(device, LSM6DSV16X_CTRL2, 0x00U);
     stopMilliseconds(1);
 
-    /* 5. Accel: LPF2 disabled, default FS = ±2 g */
+    /* 5. Accel: LPF2 disabled, configured full-scale range */
     reg_write(device, LSM6DSV16X_CTRL8,
-              build_ctrl8_min_filter(LSM6DSV16X_XL_FS_2G));
+              build_ctrl8_min_filter(cfg->xl_fs));
 
-    /* 6. Gyro: FS = ±2000 dps; LPF1_G_BW irrelevant (LPF1 will be disabled) */
+    /* 6. Gyro: configured full-scale range; LPF1_G_BW irrelevant */
     reg_write(device, LSM6DSV16X_CTRL6,
-              (uint8_t)LSM6DSV16X_G_FS_2000DPS & 0x0FU);
+              (uint8_t)cfg->g_fs & 0x0FU);
 
     /* 7. Gyro LPF1 disabled – Nyquist-minimum filtering */
     reg_write(device, LSM6DSV16X_CTRL7, 0x00U);
 
-    /* 8. ODR_TRIG_N_ODR (9-bit multiplier S):
-     *    Low 8 bits → ODR_TRIG_CFG (0x6D)
-     *    Bit 8      → COUNTER_BDR_REG1[5] (0x0B) */
+    /*
+     * 8. ODR_TRIG_N_ODR is the multiplier S.  Bits [7:0] are in
+     *    ODR_TRIG_CFG; bit 8 is COUNTER_BDR_REG1[5].
+     */
     reg_write(device, LSM6DSV16X_ODR_TRIG_CFG,
               (uint8_t)(entry->n_odr & 0xFFU));
     reg_update(device, LSM6DSV16X_COUNTER_BDR_REG1, 0x20U,
-               (uint8_t)(((entry->n_odr >> 8U) & 0x01U) << 5U));
+               (uint8_t)(((entry->n_odr >> 8U) & 0x01U) << 5));
 
     /* 9. Enable ODR-triggered mode */
     reg_write(device, LSM6DSV16X_CTRL9, LSM6DSV16X_CTRL9_ODR_TRIG_EN);
 
-    /* 10. Rising-edge trigger on INT2; mask DRDY until filter settles */
-    reg_write(device, LSM6DSV16X_CTRL4,
-              LSM6DSV16X_CTRL4_INT2_IN_LH | LSM6DSV16X_CTRL4_DRDY_MASK);
-
-    /* 11. Both sensors in ODR-triggered mode at the gate ODR */
+    /* 10. Both sensors in ODR-triggered mode, ODRsel still zero. */
     reg_write(device, LSM6DSV16X_CTRL1,
               build_ctrl1(LSM6DSV16X_XL_OP_TRIGGERED,
-                          (lsm6dsv16x_xl_odr_t)entry->odr_code));
+                          LSM6DSV16X_XL_ODR_POWER_DOWN));
     reg_write(device, LSM6DSV16X_CTRL2,
               build_ctrl2(LSM6DSV16X_G_OP_TRIGGERED,
-                          (lsm6dsv16x_g_odr_t)entry->odr_code));
+                          LSM6DSV16X_G_ODR_POWER_DOWN));
+
+    /* 11. Rising-edge trigger on INT2 */
+    reg_write(device, LSM6DSV16X_CTRL4, LSM6DSV16X_CTRL4_INT2_IN_LH);
 
     /* 12. FIFO */
     set_fifo_watermark_registers(device, 32U);
@@ -518,11 +544,19 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     reg_write(device, LSM6DSV16X_INT1_CTRL, LSM6DSV16X_INT1_FIFO_TH);
     reg_write(device, LSM6DSV16X_MD1_CFG,   LSM6DSV16X_MD1_INT1_SLEEP_CHANGE);
 
-    device_end(device);
-
     /* 16. Start the external trigger.  The sensor will begin locking to INT2
      *     edges within one trigger period after this call. */
     trigger_set(device, (unsigned int)entry->mcu_div_d);
+
+    /* 17. Write ODRsel after the external reference signal has started. */
+    reg_write(device, LSM6DSV16X_CTRL1,
+              build_ctrl1(LSM6DSV16X_XL_OP_TRIGGERED,
+                          (lsm6dsv16x_xl_odr_t)entry->odr_code));
+    reg_write(device, LSM6DSV16X_CTRL2,
+              build_ctrl2(LSM6DSV16X_G_OP_TRIGGERED,
+                          (lsm6dsv16x_g_odr_t)entry->odr_code));
+
+    device_end(device);
 }
 
 /* =========================================================================
@@ -590,6 +624,8 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
  * the previous slot; if it was incomplete or otherwise inconsistent, a zeroed
  * placeholder sample is emitted so the returned stream preserves timing.
  */
+#define LSM6DSV16X_FIFO_WORD_BYTES 7U
+
 typedef struct {
     int16_t gx, gy, gz;
     int16_t ax, ay, az;
@@ -647,7 +683,7 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     uint8_t  st2 = 0;
     uint16_t fifo_level;
     uint16_t pairs_out = 0U;
-    uint8_t  word[7];
+    uint8_t  word[LSM6DSV16X_FIFO_WORD_BYTES];
     uint8_t  tag;
     uint8_t  cnt;
     int16_t  x;
@@ -671,8 +707,8 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
 
     while ((fifo_level > 0U) && (pairs_out < max_pairs)) {
 
-        if (reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
-                           word, 7U) != 0) {
+        if (reg_read_block_fast(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
+                                word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
             break;
         }
         fifo_level--;
@@ -785,11 +821,11 @@ int lsm6dsv16x_get_trig_params(lsm6dsv16x_trig_odr_t     trig_odr,
     params->target_hz     = e->hz;
     params->mcu_div_d     = e->mcu_div_d;
     params->f_mcu_millihz = (uint32_t)1024U * 1000U / (uint32_t)e->mcu_div_d;
-    params->multiplier_s  = (uint16_t)e->n_odr;
-    params->odr_trig_cfg  = (uint8_t)(e->n_odr & 0xFFU);
-    params->cbdr_reg1_msb = (uint8_t)((e->n_odr >> 8U) & 0x01U);
-    params->ctrl_odr_code = e->odr_code;
-    params->fifo_bdr_code = (uint8_t)e->bdr;
+    params->multiplier_s   = e->n_odr;
+    params->cbdr_reg1_msb  = (uint8_t)((e->n_odr >> 8U) & 0x01U);
+    params->odr_trig_cfg   = (uint8_t)(e->n_odr & 0xFFU);
+    params->ctrl_odr_code  = e->odr_code;
+    params->fifo_bdr_code  = (uint8_t)e->bdr;
 
     return 0;
 }

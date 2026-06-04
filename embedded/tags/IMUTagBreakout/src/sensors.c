@@ -7,11 +7,14 @@
  */
 
 #include <tag.pb.h>
+#include <limits.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "hal.h"
+#include "config.h"
 #include "core_types.h"
+#include "datalog.h"
 #include "debug_log.h"
 #include "devices.h"
 #include "flash_internal.h"
@@ -19,10 +22,15 @@
 
 #include "ak09940a.h"
 #include "lsm6dsv16x.h"
+#include "lps22hh.h"
 #include "sensors.h"
 
 
 #define IMU_ACCEL_MG_PER_LSB_4G 0.122f
+#define IMU_FIFO_PAIRS_PER_BLOCK 10U
+#define IMU_FIFO_WORDS_PER_PAIR 2U
+#define IMU_FIFO_WATERMARK_WORDS \
+  (IMU_FIFO_PAIRS_PER_BLOCK * IMU_FIFO_WORDS_PER_PAIR)
 
 typedef struct {
     int32_t timestamp;
@@ -40,6 +48,13 @@ sensor_constants_t constants_tmp NOINIT;
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
 static unsigned int empty_calibration_sample_logs;
+static int16_t latest_pressure;
+static int16_t latest_temp10;
+static int16_t latest_mx;
+static int16_t latest_my;
+static int16_t latest_mz;
+static bool have_pressure_sample;
+static bool have_mag_sample;
 
 static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
@@ -47,6 +62,118 @@ static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
   if ((raw & 0x20000) != 0)
     raw |= (int32_t)0xFFFC0000;
   return raw;
+}
+
+static int16_t clamp_i16(int32_t value)
+{
+  if (value > INT16_MAX)
+    return INT16_MAX;
+  if (value < INT16_MIN)
+    return INT16_MIN;
+  return (int16_t)value;
+}
+
+static int16_t compact_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
+{
+  return clamp_i16(decode_mag_18bit(l, m, h) >> 2);
+}
+
+static int16_t compact_pressure_raw(int32_t pressure)
+{
+  return clamp_i16(pressure >> 8);
+}
+
+static int16_t compact_temperature_raw(int32_t temperature)
+{
+  return clamp_i16(temperature / 10);
+}
+
+static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
+{
+  switch (imu_odr) {
+  case LSM6DSV16X_TRIG_ODR_50HZ:
+    return AK09940_RATE_10HZ;
+  case LSM6DSV16X_TRIG_ODR_100HZ:
+    return AK09940_RATE_20HZ;
+  case LSM6DSV16X_TRIG_ODR_200HZ:
+  case LSM6DSV16X_TRIG_ODR_400HZ:
+    return AK09940_RATE_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return AK09940_RATE_100HZ;
+  default:
+    return AK09940_RATE_200HZ;
+  }
+}
+
+static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
+{
+  switch (imu_odr) {
+  case LSM6DSV16X_TRIG_ODR_50HZ:
+    return LPS22HH_ODR_10HZ;
+  case LSM6DSV16X_TRIG_ODR_100HZ:
+  case LSM6DSV16X_TRIG_ODR_200HZ:
+    return LPS22HH_ODR_25HZ;
+  case LSM6DSV16X_TRIG_ODR_400HZ:
+    return LPS22HH_ODR_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return LPS22HH_ODR_100HZ;
+  default:
+    return LPS22HH_ODR_200HZ;
+  }
+}
+
+static void reset_environment_cache(void)
+{
+  latest_pressure = 0;
+  latest_temp10 = 0;
+  latest_mx = 0;
+  latest_my = 0;
+  latest_mz = 0;
+  have_pressure_sample = false;
+  have_mag_sample = false;
+}
+
+static bool update_latest_mag(void)
+{
+  uint8_t buf[11];
+  bool ok;
+
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  ok = ak09940aSample(TAG_MAG_DEVICE, false, buf);
+  if (ok) {
+    latest_mx = compact_mag_18bit(buf[0], buf[1], buf[2]);
+    latest_my = compact_mag_18bit(buf[3], buf[4], buf[5]);
+    latest_mz = compact_mag_18bit(buf[6], buf[7], buf[8]);
+    have_mag_sample = true;
+  }
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+  return ok;
+}
+
+static bool update_latest_pressure(void)
+{
+  int32_t pressure;
+  int32_t temperature;
+  int rc;
+
+  if (!have_pressure_sample && !lps22hh_data_ready_device(TAG_PRESSURE_DEVICE)) {
+    /*
+     * The first IMU block can arrive before a pressure-ready status edge has
+     * been observed. Read once anyway so the cache has a sensible value.
+     */
+  } else if (!lps22hh_data_ready_device(TAG_PRESSURE_DEVICE)) {
+    return false;
+  }
+
+  rc = lps22hh_read_raw_device(TAG_PRESSURE_DEVICE, &pressure, &temperature);
+  if (rc == 0) {
+    latest_pressure = compact_pressure_raw(pressure);
+    latest_temp10 = compact_temperature_raw(temperature);
+    have_pressure_sample = true;
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -60,6 +187,157 @@ static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
  */
 bool sensorSample(RawSensorData *data){
   memset(data,0,sizeof(*data));
+  return true;
+}
+
+/**
+ * @brief Configure continuous collection sensors.
+ *
+ * The IMU FIFO watermark is the block pacing source. Magnetometer and pressure
+ * run freely at the lowest useful supported rate above one sample per ten IMU
+ * samples, and sampleDataCollection() reads their latest values per block.
+ *
+ * @return true when the configured collection mode was accepted.
+ */
+bool initDataCollection(void)
+{
+  lsm6dsv16x_trig_odr_t imu_odr;
+  lsm6dsv16x_xl_fs_t xl_fs;
+  lsm6dsv16x_g_fs_t g_fs;
+  lsm6dsv16x_trig_mode_cfg_t trig_cfg;
+  ak09940_rate_t mag_rate;
+  lps22hh_odr_t pressure_rate;
+  bool ok = true;
+
+  if (!get_lsm_config(&imu_odr, &xl_fs, &g_fs)) {
+    debug_log_printf("IMUTag collection: invalid LSM6 config\r\n");
+    return false;
+  }
+
+  trig_cfg.trig_odr = imu_odr;
+  trig_cfg.xl_fs = xl_fs;
+  trig_cfg.g_fs = g_fs;
+  mag_rate = select_mag_rate(imu_odr);
+  pressure_rate = select_pressure_rate(imu_odr);
+  reset_environment_cache();
+
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  if (ak09940aInitContinuous(TAG_MAG_DEVICE, mag_rate,
+                             AK09940_DRIVE_LOW_NOISE_2,
+                             AK09940_TEMP_DISABLED) != MSG_OK) {
+    debug_log_printf("IMUTag collection: AK09940A init failed\r\n");
+    ok = false;
+  }
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+  if (lps22hh_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate,
+                                       LPS22HH_LPF_DISABLE) != 0) {
+    debug_log_printf("IMUTag collection: LPS22HH init failed\r\n");
+    ok = false;
+  }
+
+  lsm6dsv16x_init_accel_gyro_triggered(TAG_IMU_DEVICE, &trig_cfg, NULL);
+  lsm6dsv16x_set_fifo_watermark(TAG_IMU_DEVICE, IMU_FIFO_WATERMARK_WORDS);
+
+  debug_log_printf("IMUTag collection: IMU %u Hz, FIFO watermark %u words\r\n",
+                   (unsigned)imu_odr,
+                   (unsigned)IMU_FIFO_WATERMARK_WORDS);
+  return ok;
+}
+
+/**
+ * @brief Fill one log block from the IMU FIFO and latest environment samples.
+ *
+ * @param[out] data Destination log block.
+ * @return true when ten accel/gyro pairs were copied into the block.
+ */
+bool sampleDataCollection(t_DataLog *data)
+{
+  lsm6dsv16x_sample_t samples[IMU_FIFO_PAIRS_PER_BLOCK];
+  uint8_t wtm = 0;
+  uint8_t ovr = 0;
+  uint16_t fifo_words;
+  uint16_t pairs;
+
+  if (data == NULL)
+    return false;
+
+  memset(data, 0, sizeof(*data));
+
+  fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
+  if (ovr != 0U) {
+    debug_log_printf("IMUTag collection: IMU FIFO overrun\r\n");
+  }
+  if (fifo_words < IMU_FIFO_WATERMARK_WORDS) {
+    return false;
+  }
+
+  pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE, samples,
+                               IMU_FIFO_PAIRS_PER_BLOCK);
+  if (pairs < IMU_FIFO_PAIRS_PER_BLOCK) {
+    debug_log_printf("IMUTag collection: FIFO short read %u/%u pairs\r\n",
+                     (unsigned)pairs,
+                     (unsigned)IMU_FIFO_PAIRS_PER_BLOCK);
+    return false;
+  }
+
+  for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_BLOCK; i++) {
+    data->raw_data[i].gx = samples[i].gyro_x;
+    data->raw_data[i].gy = samples[i].gyro_y;
+    data->raw_data[i].gz = samples[i].gyro_z;
+    data->raw_data[i].ax = samples[i].accel_x;
+    data->raw_data[i].ay = samples[i].accel_y;
+    data->raw_data[i].az = samples[i].accel_z;
+  }
+
+  (void)update_latest_mag();
+  (void)update_latest_pressure();
+
+  if (have_mag_sample) {
+    data->mx = latest_mx;
+    data->my = latest_my;
+    data->mz = latest_mz;
+  }
+  if (have_pressure_sample) {
+    data->pressure = latest_pressure;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Return the latest pressure-sensor temperature in tenths of a degree C.
+ *
+ * The cache is refreshed by sampleDataCollection(), which reads pressure and
+ * temperature as one coherent LPS22HH burst.
+ *
+ * @param[out] temp10 Latest cached temperature in 0.1 C units.
+ * @return true once at least one pressure/temperature sample has been read.
+ */
+bool latestDataCollectionTemp10(int16_t *temp10)
+{
+  if (temp10 == NULL || !have_pressure_sample)
+    return false;
+
+  *temp10 = latest_temp10;
+  return true;
+}
+
+/**
+ * @brief Stop collection sensors and return them to low-power state.
+ *
+ * @return true when shutdown commands have been issued.
+ */
+bool deinitDataCollection(void)
+{
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  (void)ak09940aInitPowerDown(TAG_MAG_DEVICE);
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+  (void)lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
+  lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
+  reset_environment_cache();
+  debug_log_printf("IMUTag collection: sensors deinitialized\r\n");
   return true;
 }
 

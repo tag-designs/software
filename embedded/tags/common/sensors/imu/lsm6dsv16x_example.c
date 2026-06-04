@@ -72,6 +72,8 @@ void example_accel_gyro_triggered(void)
     lsm6dsv16x_sample_t samples[64];
     lsm6dsv16x_trig_mode_cfg_t trig_cfg = {
         .trig_odr = LSM6DSV16X_TRIG_ODR_100HZ,
+        .xl_fs = LSM6DSV16X_XL_FS_2G,
+        .g_fs = LSM6DSV16X_G_FS_2000DPS,
     };
     lsm6dsv16x_motion_cfg_t motion_cfg = {
         .threshold = LSM6DSV16X_WK_THS_125mg,

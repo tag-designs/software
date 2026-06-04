@@ -239,6 +239,22 @@ message BitPresTagLog{
   repeated BPT data = 4;
 }
 
+message IMUTagLogData{
+  float pressure = 1;
+  float mx = 2;
+  float my = 3;
+  float mz = 4;
+  bytes data = 5; // packed accel, gyro data 16bit integers
+                           // ax,ay,az,gx,gy,gz
+}
+
+message IMUTagLog{
+  int32 epoch = 1;
+  int32 millisecond = 2;
+  float termperature = 3;
+  repeated IMUTagLogData data = 4;
+}
+
 message PT_RAW {
     int32 epoch = 1;
     float voltage = 2;
@@ -310,4 +326,3 @@ message CalibrationConstants {
   MagConstants magnetometer = 2;
  
 }
-

@@ -12,6 +12,8 @@ PresTagRawLog.data max_count:15
 PT_RAW.samples max_size:240
 CompassTagLog.data max_count:40
 CalibrationLog.data max_count:25
+IMUTagLogData.data max_size:120
+IMUTagLog.data max_count:16
 
 TagInfo.board_desc max_size:60
 TagInfo.uuid max_size:30
@@ -38,3 +40,5 @@ CompassTagLog skip_message:true
 SensorData skip_message:true
 CalibrationLog skip_message:true
 CalibrationConstants skip_message:true
+IMUTagLogData skip_message:true
+IMUTagLog skip_message:true

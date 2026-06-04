@@ -120,18 +120,21 @@ typedef enum {
 /* =========================================================================
  * Mode 3 external trigger ODR
  *
- * The MCU timer base clock is 1024 Hz.  All five ODRs are achieved exactly
- * by the internal sensor multiplier S = 25:   f_out = 25 x (1024 / D)
- * where D is the MCU timer divisor managed internally by the driver and
- * passed to the descriptor trigger callback.
+ * The MCU timer base clock is 1024 Hz. The driver uses the IMU's
+ * ODR_TRIG_N_ODR multiplier so the standard rates are exact:
+ *
+ *   f_out = S x (1024 / D)
+ *
+ * The standard rates use S = 25 and the integer timer divisors listed below.
+ * The divisor is managed internally and passed to the descriptor trigger
+ * callback.
  * ====================================================================== */
 typedef enum {
-    LSM6DSV16X_TRIG_ODR_50HZ   =   50, /**< D=512, f_mcu=  2 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_100HZ  =  100, /**< D=256, f_mcu=  4 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_200HZ  =  200, /**< D=128, f_mcu=  8 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_400HZ  =  400, /**< D= 64, f_mcu= 16 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_800HZ  =  800, /**< D= 32, f_mcu= 32 Hz, S=25 */
-    LSM6DSV16X_TRIG_ODR_1024HZ = 1024, /**< D=  1, f_mcu=1024 Hz, S=1 */
+    LSM6DSV16X_TRIG_ODR_50HZ   =  50, /**< D=512, f_mcu= 2 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_100HZ  = 100, /**< D=256, f_mcu= 4 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_200HZ  = 200, /**< D=128, f_mcu= 8 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_400HZ  = 400, /**< D= 64, f_mcu=16 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_800HZ  = 800, /**< D= 32, f_mcu=32 Hz, S=25 */
 } lsm6dsv16x_trig_odr_t;
 
 /* =========================================================================
@@ -220,6 +223,8 @@ typedef struct {
 /** MODE 3 - Accel + gyro, external ODR trigger, FIFO stream. */
 typedef struct {
     lsm6dsv16x_trig_odr_t trig_odr;  /**< Target sample rate (Hz) */
+    lsm6dsv16x_xl_fs_t    xl_fs;     /**< Accelerometer full-scale range */
+    lsm6dsv16x_g_fs_t     g_fs;      /**< Gyroscope full-scale range */
 } lsm6dsv16x_trig_mode_cfg_t;
 
 /** Wakeup and stationary/motion detection parameters. */
@@ -246,10 +251,9 @@ typedef struct {
     uint16_t target_hz;      /**< Requested ODR in Hz (= enum value)          */
     uint16_t mcu_div_d;      /**< Divisor D passed to trigger callback         */
     uint32_t f_mcu_millihz;  /**< f_mcu in milli-Hz = (1024 x 1000) / D       */
-    uint16_t multiplier_s;   /**< Internal sensor multiplier S (25 for all
-                                   standard targets)                           */
-    uint8_t  odr_trig_cfg;   /**< Low byte of S written to reg 0x6D           */
-    uint8_t  cbdr_reg1_msb;  /**< MSB of S for COUNTER_BDR_REG1[5] (0 if S<256)*/
+    uint16_t multiplier_s;    /**< ODR_TRIG_N_ODR multiplier S                 */
+    uint8_t  cbdr_reg1_msb;   /**< ODR_TRIG_N_ODR bit 8 in COUNTER_BDR_REG1[5] */
+    uint8_t  odr_trig_cfg;    /**< ODR_TRIG_N_ODR low byte in ODR_TRIG_CFG     */
     uint8_t  ctrl_odr_code;  /**< CTRL1[3:0] / CTRL2[3:0] gate ODR code       */
     uint8_t  fifo_bdr_code;  /**< FIFO_CTRL3 BDR field code                   */
 } lsm6dsv16x_trig_params_t;
@@ -310,7 +314,7 @@ void lsm6dsv16x_init_accel_wakeup(
  * successful call.
  *
  * @param device Concrete device descriptor. Must not be NULL.
- * @param cfg Trigger ODR selection. Must not be NULL.
+ * @param cfg Trigger ODR and full-scale selections. Must not be NULL.
  * @param mot_cfg Motion detection parameters. Pass NULL to skip.
  */
 void lsm6dsv16x_init_accel_gyro_triggered(

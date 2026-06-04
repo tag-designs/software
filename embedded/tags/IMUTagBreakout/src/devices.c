@@ -11,6 +11,7 @@
 #include "app.h"
 #include "core_sync.h"
 #include "custom.h"
+#include "debug_log.h"
 #include "device.h"
 #include "devices.h"
 #include "gpio_utils.h"
@@ -191,11 +192,11 @@ static const TagRegisterDevice imu_registers = {
 };
 
 /**
- * @brief Configure PA4/LPTIM2_OUT as the temporary IMU trigger test clock.
+ * @brief Configure PA8/LPTIM2_OUT as the IMU external ODR trigger clock.
  *
  * LPTIM2 is clocked from the 1024 Hz low-speed source selected in mcuconf.h.
- * The output frequency is 1024 / divider Hz. For this bring-up test the clock
- * is routed to PA4, leaving the IMU INT2/ACCEL_TRG line high-Z.
+ * The output frequency is 1024 / divider Hz and is routed to the IMU INT2 /
+ * ACCEL_TRG line.
  */
 void tagImuTagSetTrigger(unsigned int divider)
 {
@@ -206,6 +207,7 @@ void tagImuTagSetTrigger(unsigned int divider)
 
   if (divider == 0U) {
     RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
+    debug_log_printf("IMUTag trigger: disabled\r\n");
     return;
   }
 
@@ -216,7 +218,7 @@ void tagImuTagSetTrigger(unsigned int divider)
   RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
   RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
 
-  toAlternate(LINE_IMU_TRG_TEST);
+  toAlternate(LINE_ACCEL_TRG);
 
   LPTIM2->CFGR = 0U;
   LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
@@ -225,6 +227,8 @@ void tagImuTagSetTrigger(unsigned int divider)
   LPTIM2->CMP = divider / 2U;
   LPTIM2->CNT = 0U;
   LPTIM2->CR |= STM32_LPTIM_CR_CNTSTRT;
+
+  debug_log_printf("IMUTag trigger: divider %u\r\n", divider);
 }
 
 static void imuSetTrigger(const void *context, unsigned int divider)

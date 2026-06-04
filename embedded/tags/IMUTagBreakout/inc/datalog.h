@@ -8,30 +8,33 @@
 #ifndef DATALOG_H
 #define DATALOG_H
 #include "sensors.h"
+#include "assert.h"
 
-/** Number of one-minute sample groups under one internal header. */
-#define DATALOG_SAMPLES 10
+/** @brief basic data log block -- data is written in 128 byte units */
 
-/** @brief External-flash payload record for IMUTagBreakout sensor data. */
-typedef struct {
-  struct { 
-   RawSensorData sensors[4];
-    uint16_t activity;
-  } data[DATALOG_SAMPLES];
+typedef struct t_DataLog {
+   int16_t pressure;    // pressure sensor
+   int16_t mx, my, mz;  // magnetometer
+   RawSensorData raw_data[10];
 } t_DataLog;
+
+static_assert(sizeof(t_DataLog) == 128, "imudata size must be exactly 128 bytes!");
+
+/** Number of datalog blocks under one internal header. */
+#define DATALOG_SAMPLES 16
 
 /** @brief Internal-flash header that anchors one external log page. */
 typedef struct {
   int32_t epoch;
-  uint16_t vdd100;
+  uint16_t millis;
   uint16_t temp10;
 } t_DataHeader;
 
 /** Internal flash header array placed by the linker script. */
 extern t_DataHeader vddHeader[];
 
-/** @brief Append sample words to the external data log. */
-extern enum LOGERR writeDataLog(uint16_t *data, int num);
+/** @brief Append block to datalog */
+extern enum LOGERR writeDataLog(t_DataLog *data);
 /** @brief Write the next internal-flash log header. */
 extern enum LOGERR writeDataHeader(t_DataHeader *head);
 /** @brief Recover log cursors from internal flash after reset. */

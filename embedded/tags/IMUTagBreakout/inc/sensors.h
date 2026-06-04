@@ -14,13 +14,23 @@
 #include <tag.pb.h>
 #include "core_state.h"
 
-/** @brief Raw accelerometer and magnetometer sample stored in the data log. */
+typedef struct t_DataLog t_DataLog;
+
+/** @brief One raw synchronized IMU sample pair stored in the data log. */
 typedef struct {
-    int16_t ax, ay, az, mx, my, mz;
+    int16_t gx, gy, gz, ax, ay, az;
 } RawSensorData;
 
-/** @brief Read one raw accelerometer/magnetometer sample pair. */
+/** @brief Clear one raw sensor sample; retained for legacy RUNNING code. */
 bool sensorSample(RawSensorData *data);
+/** @brief Configure IMU, magnetometer, and pressure sensor for collection. */
+bool initDataCollection(void);
+/** @brief Fill one 128-byte log block when the IMU FIFO has enough samples. */
+bool sampleDataCollection(t_DataLog *data);
+/** @brief Return the latest LPS22HH temperature in tenths of a degree C. */
+bool latestDataCollectionTemp10(int16_t *temp10);
+/** @brief Shut down collection sensors and trigger generation. */
+bool deinitDataCollection(void);
 /** @brief State-machine handler for live calibration mode. */
 enum Sleep Calibrating(enum StateTrans t, State_Event reason);
 /** @brief Populate a monitor ACK with one live calibration sample. */

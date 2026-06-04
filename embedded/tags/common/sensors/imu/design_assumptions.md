@@ -111,18 +111,13 @@ The standard requested ODRs are exactly achievable with `S = 25`:
 | 400 Hz | 64 | 16 Hz | 25 | 400 Hz |
 | 800 Hz | 32 | 32 Hz | 25 | 800 Hz |
 
-The driver also supports a 1024 Hz entry with `D = 1` and `S = 1` for bringup
-or specialized uses.
-
 AN5763 requires the sensors to remain powered down for at least 500 us before
 ODR-triggered configuration registers are written. The driver uses the existing
 tag timekeeping helper and rounds this to `stopMilliseconds(1)`.
 
-Mode 3 configures the LSM6DSV16X interrupt pins as open-drain before enabling
-ODR-triggered mode. This is primarily a bring-up safety choice for boards that
-drive INT2 from an MCU timer: the board should keep the MCU trigger pin high-Z
-until the IMU has been configured to use INT2 as the external trigger input,
-and open-drain interrupt behavior reduces contention risk during transitions.
+Mode 3 leaves the MCU trigger pin high-Z until the IMU has been configured to
+use INT2 as the external trigger input. The IMU interrupt pins remain in their
+normal push-pull configuration so INT1 can continue to act as the wake line.
 
 ## FIFO Policy
 

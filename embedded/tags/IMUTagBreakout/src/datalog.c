@@ -166,17 +166,17 @@ int restoreLog(void)
  * @param[in] num Number of 16-bit words to write.
  * @return Log write status.
  */
-enum LOGERR writeDataLog(uint16_t *data, int num)
+enum LOGERR writeDataLog(t_DataLog *data)
 {
   uint32_t flash_capacity = tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
                             tagStorageSectorCount(TAG_EXTERNAL_FLASH);
 
-  if (pState->external_blocks + num > flash_capacity / 2)
+  if (pState->external_blocks + sizeof(t_DataLog) > flash_capacity / 2)
   {
     return LOGWRITE_FULL;
   }
 
-  int cnt = num*2;
+  int cnt = sizeof(t_DataLog);
   int addr = pState->external_blocks * 2;
 
   tagStorageWake(TAG_EXTERNAL_FLASH);
@@ -214,8 +214,6 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
   if (flasherr) 
     return LOGWRITE_ERROR;
-  if (head->vdd100 < 200)
-    return LOGWRITE_BAT;
   else
     return LOGWRITE_OK;
 }
@@ -237,7 +235,7 @@ int data_logAck(int index, Ack *ack)
   int ret;
   chThdSetPriority(HIGHPRIO);
   fast_msi();
-  CompassTagLog *data = &ack->payload.compasstag_data_log;
+  //CompassTagLog *data = &ack->payload.compasstag_data_log;
   ack->err = Ack_Err_OK;
   
   // read data
@@ -245,12 +243,12 @@ int data_logAck(int index, Ack *ack)
   tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf)*index,
                  (uint8_t *) &databuf, sizeof(databuf));
   tagStorageSleep(TAG_EXTERNAL_FLASH);
-
+#if 0
   if (vddHeader[index].epoch != -1)
   {
     ack->which_payload = Ack_compasstag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100 * 0.01f;
+    data->millis = vddHeader[index].millie;
     data->temperature = vddHeader[index].temp10 * 0.1f;
     data->data_count = 0;
 
@@ -287,6 +285,7 @@ int data_logAck(int index, Ack *ack)
   {
     ack->which_payload = 0;
   }
+  #endif
 
   // encode the ack and return
   ret = encode_ack();

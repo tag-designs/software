@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "lsm6dsv16x.h"   /* for lsm6dsv16x_bdr_t and other shared types  */
+#include "lsm6dsv16x.h"   /* for public configuration and sample types     */
 
 /* =========================================================================
  * Register map – primary interface registers
@@ -72,7 +72,6 @@
  * ====================================================================== */
 #define LSM6DSV16X_CTRL3_SW_RESET     0x01U  /* Software reset (self-clearing)    */
 #define LSM6DSV16X_CTRL3_IF_INC       0x04U  /* Auto-increment register address   */
-#define LSM6DSV16X_CTRL3_PP_OD        0x10U  /* Interrupt pins: 0=push-pull, 1=OD */
 #define LSM6DSV16X_CTRL3_BDU          0x40U  /* Block data update                 */
 #define LSM6DSV16X_CTRL3_BOOT         0x80U  /* Reboot memory content             */
 
@@ -184,7 +183,7 @@ typedef enum {
 typedef enum {
     LSM6DSV16X_XL_OP_HP        = 0x00,  /* High-performance (default)          */
     LSM6DSV16X_XL_OP_LP        = 0x02,  /* Low-power                           */
-    LSM6DSV16X_XL_OP_TRIGGERED = 0x04,  /* ODR-triggered                       */
+    LSM6DSV16X_XL_OP_TRIGGERED = 0x03,  /* ODR-triggered                       */
 } lsm6dsv16x_xl_op_mode_t;
 
 /* =========================================================================
@@ -193,7 +192,7 @@ typedef enum {
 typedef enum {
     LSM6DSV16X_G_OP_HP         = 0x00,  /* High-performance (default)          */
     LSM6DSV16X_G_OP_LP         = 0x02,  /* Low-power                           */
-    LSM6DSV16X_G_OP_TRIGGERED  = 0x04,  /* ODR-triggered                       */
+    LSM6DSV16X_G_OP_TRIGGERED  = 0x03,  /* ODR-triggered                       */
 } lsm6dsv16x_g_op_mode_t;
 
 /* =========================================================================

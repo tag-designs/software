@@ -44,10 +44,6 @@ the local copy from all variants. If a variant needs a temporary board-specific
 power or ChibiOS experiment, add a same-named local `src/pwr.c` or `cfg/*.h`;
 otherwise use the common core implementation as the single source of truth.
 
-## Current TODO
-
-- Consider promoting the family `state_machine.c` to `common/core/src` after
-  the CompassTag behavior has had more test coverage. The family version is
-  currently the shared CompassTag choice because it differs from the core state
-  machine in ways that are useful for these tags but not yet proven for every
-  tag family.
+The CompassTag variants now use the common core state machine. Family-specific
+behavior stays in the tag hooks such as `Running()`, `tagDevicesDeinit()`,
+sensor orchestration, and storage/configuration bindings.
