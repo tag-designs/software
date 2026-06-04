@@ -8,8 +8,13 @@
 #ifndef TAG_CORE_STATE_H
 #define TAG_CORE_STATE_H
 
+#include "custom.h"
 #include "core_types.h"
 #include "tag.pb.h"
+
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
 
 /** @name State transitions
  * Transition phase passed into state handlers so each state can separate entry,
@@ -73,7 +78,9 @@ extern enum Sleep Aborted(enum StateTrans, State_Event reason);
  * @param[in] reason Event that caused this state action.
  * @return Requested sleep mode after handling the state.
  */
+#if CONFIG_HAS_HIBERNATE
 extern enum Sleep Hibernating(enum StateTrans, State_Event reason);
+#endif
 
 /**
  * @brief Handle the sensor calibration state.

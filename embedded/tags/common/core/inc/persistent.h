@@ -11,8 +11,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "tag.pb.h"
+#include "custom.h"
 #include "config.h"
+#include "tag.pb.h"
+
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
 
 /** @name Persistent linker symbols
  * Linker-provided addresses used to find the internal flash region reserved
@@ -130,7 +135,11 @@ typedef struct
 
 extern int32_t monitorCMD;
 
+#if CONFIG_HAS_HIBERNATE
 #define sEPOCH_SIZE (10+(_TagState_MAX) + 2*sizeof(((Config *) 0)->hibernate)/sizeof(Config_Interval))
+#else
+#define sEPOCH_SIZE (10+(_TagState_MAX))
+#endif
 
 extern t_StateMarker sEpoch[sEPOCH_SIZE];
 extern t_storedconfig sconfig;

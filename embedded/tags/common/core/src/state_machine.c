@@ -56,6 +56,10 @@
 #include "test_support.h"
 #include "timekeeping.h"
 
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -173,7 +177,8 @@ enum Sleep StateMachine(void)
 
     // hand reset conditions for hibernating and running separately
 
-     if (pState->state == TagState_HIBERNATING)
+#if CONFIG_HAS_HIBERNATE
+    if (pState->state == TagState_HIBERNATING)
     {
       // goto error
   
@@ -192,6 +197,7 @@ enum Sleep StateMachine(void)
         }
   
     }
+#endif
 
     if (pState->state == TagState_RUNNING)
     {
@@ -230,9 +236,15 @@ enum Sleep StateMachine(void)
   }
   if (events & EVT_STOP)
   {
-    if ((pState->state == TagState_CONFIGURED) ||
-        (pState->state == TagState_RUNNING) ||
-        (pState->state == TagState_HIBERNATING))
+    bool stop_requested =
+        (pState->state == TagState_CONFIGURED) ||
+        (pState->state == TagState_RUNNING);
+#if CONFIG_HAS_HIBERNATE
+    stop_requested = stop_requested ||
+        (pState->state == TagState_HIBERNATING);
+#endif
+
+    if (stop_requested)
     {
       return Finished(T_INIT, State_EVENT_STOPCMD);
     }
@@ -274,8 +286,10 @@ enum Sleep StateMachine(void)
     return Configured(T_CONT, State_EVENT_OK);
   case TagState_RUNNING:
     return Running(T_CONT, State_EVENT_OK);
+#if CONFIG_HAS_HIBERNATE
   case TagState_HIBERNATING:
     return Hibernating(T_CONT, State_EVENT_OK);
+#endif
   case TagState_FINISHED:
     return Finished(T_CONT, State_EVENT_OK);
   case TagState_ABORTED:
@@ -390,6 +404,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
   return SHUTDOWN;
 }
 
+#if CONFIG_HAS_HIBERNATE
 /**
  * @brief Keep the tag asleep through configured hibernation intervals.
  *
@@ -428,6 +443,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     return Finished(T_INIT, State_EVENT_ENDTIM);
   }
 }
+#endif
 
 // Running() is
 // in state_run.c

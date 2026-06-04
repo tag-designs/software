@@ -17,6 +17,9 @@
 #include "ak09940a.h"
 #include "sensors.h"
 
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
 
 // activity data 4 bits/15 seconds
 // 16 bits/minute
@@ -225,6 +228,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // Check for hibernation
     //     Only hibernate on datalog block boundary.
 
+#if CONFIG_HAS_HIBERNATE
     for (size_t i = 0; i < sizeof(sconfig.hibernate) / sizeof(Config_Interval); i++)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
@@ -234,6 +238,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
     }
+#endif
 
     pState->lastactstart = isActive ? timestamp : INT_MAX;
     pState->activity = activity;

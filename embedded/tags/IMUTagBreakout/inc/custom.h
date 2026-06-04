@@ -24,6 +24,7 @@
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
 #define USE_STOP1 1
+#define CONFIG_HAS_HIBERNATE 0
 /** @} */
 
 /** @name Sensor line aliases and conversion constants

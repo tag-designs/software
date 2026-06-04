@@ -13,10 +13,93 @@
 #include "persistent.h"
 #include "strings.h"
 
-
 // ram based config (used by monitor to communicate to tag)
 
 t_storedconfig config_tmp;  
+
+
+// config to lsm6dsv16x conversion routines
+
+static bool lsm6totrig_odr(Lsm6dsv_ODR odr_in, lsm6dsv16x_trig_odr_t *odr){
+  bool rval = true;
+  switch(odr_in) {
+    case Lsm6dsv_ODR_S50:
+      *odr = LSM6DSV16X_TRIG_ODR_50HZ;
+      break;
+    case Lsm6dsv_ODR_S100:
+      *odr = LSM6DSV16X_TRIG_ODR_100HZ;
+      break;
+    case Lsm6dsv_ODR_S200:
+      *odr = LSM6DSV16X_TRIG_ODR_200HZ;
+      break;
+    case Lsm6dsv_ODR_S400:
+      *odr = LSM6DSV16X_TRIG_ODR_400HZ;
+      break;
+    case Lsm6dsv_ODR_S800:
+      *odr = LSM6DSV16X_TRIG_ODR_800HZ;
+      break;
+    default:
+      rval = false;
+  }
+  return rval;
+}
+
+static bool lsm6toxl_fs(Lsm6dsv_ACCEL accel_in,lsm6dsv16x_xl_fs_t *xl_fs)
+{
+  bool rval = true;
+  switch(accel_in) {
+    case Lsm6dsv_ACCEL_R2G:
+      *xl_fs =  LSM6DSV16X_XL_FS_2G;
+      break;
+    case Lsm6dsv_ACCEL_R4G:
+      *xl_fs =  LSM6DSV16X_XL_FS_4G;
+      break;
+    case Lsm6dsv_ACCEL_R8G:
+      *xl_fs =  LSM6DSV16X_XL_FS_8G;
+      break;
+    case Lsm6dsv_ACCEL_R16G:
+      *xl_fs =  LSM6DSV16X_XL_FS_16G;
+      break;
+    default:
+      rval = false;
+  }
+  return rval;
+}
+
+static bool lsm6tog_fs(Lsm6dsv_GYRO gyro_in,lsm6dsv16x_g_fs_t *g_fs){
+  bool rval = true;
+
+  switch(gyro_in) {
+    case Lsm6dsv_GYRO_R125dps:
+      *g_fs = LSM6DSV16X_G_FS_125DPS;
+      break;
+    case Lsm6dsv_GYRO_R250dps:
+      *g_fs = LSM6DSV16X_G_FS_250DPS;
+      break;
+    case Lsm6dsv_GYRO_R500dps:
+      *g_fs = LSM6DSV16X_G_FS_500DPS;
+      break;
+    case Lsm6dsv_GYRO_R1000dps:
+      *g_fs = LSM6DSV16X_G_FS_1000DPS;
+      break;
+    case Lsm6dsv_GYRO_R2000dps:
+      *g_fs = LSM6DSV16X_G_FS_2000DPS;
+      break;
+    case Lsm6dsv_GYRO_R4000dps:
+      *g_fs = LSM6DSV16X_G_FS_4000DPS;
+      break;
+    default:
+      rval = false;
+  }
+  return rval;
+}
+
+bool get_lsm_config(lsm6dsv16x_trig_odr_t *odr,lsm6dsv16x_xl_fs_t *xl_fs, lsm6dsv16x_g_fs_t *g_fs){
+    return lsm6totrig_odr(sconfig.odr, odr)
+           && lsm6toxl_fs(sconfig.accel_range, xl_fs)
+           && lsm6tog_fs(sconfig.gyro_range, g_fs);
+}
+
 
 /**
  * @brief Write the staged configuration to internal flash.
@@ -56,14 +139,10 @@ void readConfig(Config *config)
   config->has_active_interval = true;
   config->active_interval.start_epoch = sconfig.start;
   config->active_interval.end_epoch = sconfig.stop;
-
-  config->hibernate_count = 2; // number of hibernation messages
-
-  for (int i = 0; i < 2; i++)
-  {
-    config->hibernate[i].start_epoch = sconfig.hibernate[i].start_epoch;
-    config->hibernate[i].end_epoch = sconfig.hibernate[i].end_epoch;
-  }
+  config->has_lsm6 = true;
+  config->lsm6.odr = sconfig.odr;
+  config->lsm6.accel_rng = sconfig.accel_range;
+  config->lsm6.gyro_rng = sconfig.gyro_range;
 }
 
 /**
@@ -74,17 +153,28 @@ void readConfig(Config *config)
  */
 bool writeConfig(Config *config)
 {
-  if ((config == NULL) || pState->state != TagState_IDLE)
+  // minimum requirement
+
+  if ((config == NULL) 
+    || pState->state != TagState_IDLE
+    || !config->has_active_interval)
     return false;
+
+  // check for sensor configuration
+
+  if (!config->has_lsm6 
+       || (config->lsm6.odr == 0)
+       || (config->lsm6.accel_rng == 0)
+       || (config->lsm6.gyro_rng == 0))
+    return false;
+
+  // copy into temporary config
 
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
+  config_tmp.odr = config->lsm6.odr;
+  config_tmp.accel_range = config->lsm6.accel_rng;
+  config_tmp.gyro_range = config->lsm6.gyro_rng;
  
-
-  for (int i = 0; i < config->hibernate_count; i++)
-  {
-    config_tmp.hibernate[i].start_epoch = config->hibernate[i].start_epoch;
-    config_tmp.hibernate[i].end_epoch = config->hibernate[i].end_epoch;
-  }
   return true;
 }

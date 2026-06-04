@@ -8,6 +8,13 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+#include "custom.h"
+#include "config.h"
+
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
+
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
 /** End of internal flash, provided by the linker script. */
@@ -97,7 +104,11 @@ typedef struct
 /** Last monitor command seen by the firmware. */
 extern int32_t monitorCMD;
 
+#if CONFIG_HAS_HIBERNATE
 #define sEPOCH_SIZE (10 + (_TagState_MAX) + 2 * sizeof(((Config *)0)->hibernate) / sizeof(Config_Interval))
+#else
+#define sEPOCH_SIZE (10 + (_TagState_MAX))
+#endif
 
 /** Internal flash state-transition log. */
 extern t_StateMarker sEpoch[sEPOCH_SIZE];
