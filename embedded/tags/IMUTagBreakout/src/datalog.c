@@ -15,48 +15,6 @@ const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 static volatile int sectors_erased NOINIT;
 
-/**
- * @brief Raise MSI clock speed while formatting large monitor log responses.
- */
-static void fast_msi(void){
-  // change to 24Mhz doesn't require VOS change
-  // Adjust Wait States
-
-  FLASH->ACR = (FLASH->ACR & ~(7)) | 3;
-
-  // Change MSI frequency P 197 RM0394
-
-  RCC->CR = (RCC->CR & ~(15<<4)) | (9<<4);
-
-  // Change TIM2 Prescaler
-
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC * 12;
-
-}
-
-
-/**
- * @brief Restore the normal low-power MSI clock after monitor log export.
- */
-static void slow_msi(void){
-
- 
-   // Restore MSI frequency P 197 RM0394
-
-   RCC->CR = (RCC->CR & ~(15<<4)) | (5<<4);
-
-  // Adjust Wait States
-
-  FLASH->ACR = FLASH->ACR & ~(7);
-
-  // Restore TIM2 Prescaler
-
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC/12;
-
-}
-
-
-
 extern int encode_ack(void);
 
 /**
@@ -154,7 +112,14 @@ int externalFlashSectorsErased(void)
  */
 int restoreLog(void)
 {
-  pState->pages = countInternalBlocks();
+  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  int i;
+  for (i = 0; (uint32_t) (uint32_t *)&vddHeader[i] < end; i++)
+  {
+    if (vddHeader[i].epoch == -1) 
+      break;
+  }
+  pState->pages = i;
   pState->cycle_count = pState->pages;
   pState->external_blocks = pState->pages * DATALOG_SAMPLES;
   return 0;
@@ -234,7 +199,7 @@ int data_logAck(int index, Ack *ack)
 {
   int ret;
   chThdSetPriority(HIGHPRIO);
-  fast_msi();
+
   //CompassTagLog *data = &ack->payload.compasstag_data_log;
   ack->err = Ack_Err_OK;
   
@@ -289,7 +254,6 @@ int data_logAck(int index, Ack *ack)
 
   // encode the ack and return
   ret = encode_ack();
-  slow_msi();
   chThdSetPriority(NORMALPRIO);
   return ret;
 }

@@ -12,7 +12,7 @@
  * External flash sizing, strings, protocol sizing, and feature flags.
  * @{
  */
-#define EXT_FLASH_SIZE (1024 * 1024 * 4)
+#define EXT_FLASH_SIZE (1024 * 1024 * 16)
 
 #define FIRMWARE_STRING "IMUTagBreakoutv1, Firmware version 1"
 #undef  BOARD_NAME
@@ -24,6 +24,7 @@
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
 #define USE_STOP1 1
+#define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define CONFIG_HAS_HIBERNATE 0
 /** @} */
 

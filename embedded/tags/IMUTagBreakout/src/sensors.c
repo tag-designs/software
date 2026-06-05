@@ -33,6 +33,7 @@
 #define IMU_FIFO_BLOCK_WORDS \
   (IMU_FIFO_PAIRS_PER_BLOCK * IMU_FIFO_WORDS_PER_PAIR)
 #define IMU_FIFO_WATERMARK_WORDS IMU_FIFO_BLOCK_WORDS
+#define IMU_DATA_WAKE_EXTI_MASK (1U << PAL_PAD(LINE_ACCEL_INT))
 
 typedef struct {
     int32_t timestamp;
@@ -61,6 +62,19 @@ static bool have_pressure_sample;
 static bool have_mag_sample;
 static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_BLOCK];
 static uint16_t block_sample_count;
+
+static void enable_data_collection_wake_event(void)
+{
+  extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
+  extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK,
+                   EXTI_MODE_RISING_EDGE | EXTI_MODE_ACTION_EVENT);
+}
+
+static void disable_data_collection_wake_event(void)
+{
+  extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK, EXTI_MODE_DISABLED);
+  extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
+}
 
 static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
@@ -279,6 +293,7 @@ bool initDataCollection(void)
 
   lsm6dsv16x_init_accel_gyro_triggered(TAG_IMU_DEVICE, &trig_cfg, NULL);
   lsm6dsv16x_set_fifo_watermark(TAG_IMU_DEVICE, IMU_FIFO_WATERMARK_WORDS);
+  enable_data_collection_wake_event();
 
   debug_log_printf("IMUTag collection: IMU %u Hz, FIFO watermark %u words\r\n",
                    (unsigned)imu_odr,
@@ -377,6 +392,8 @@ bool latestDataCollectionTemp10(int16_t *temp10)
  */
 bool deinitDataCollection(void)
 {
+  disable_data_collection_wake_event();
+
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
   (void)ak09940aInitPowerDown(TAG_MAG_DEVICE);
   ak09940aDeviceEnd(TAG_MAG_DEVICE);

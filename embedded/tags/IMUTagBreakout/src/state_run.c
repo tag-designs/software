@@ -6,7 +6,6 @@
  */
 
 #include "hal.h"
-#include <limits.h>
 #include "app.h"
 
 #include "tag.pb.h"
@@ -20,14 +19,6 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
-/*
- * Bring-up scaffold: keep the RUNNING write shape visible without touching
- * flash until the IMU log format and host decode path are ready.
- */
-#if !defined(IMUTAG_RUNNING_USE_WRITE_STUBS)
-#define IMUTAG_RUNNING_USE_WRITE_STUBS 1
-#endif
-
 #define IMU_CLOCK_LOCK_SECONDS 2
 #define IMU_LOG_SAMPLES_PER_BLOCK                                           \
   (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
@@ -36,41 +27,6 @@ static uint32_t discard_blocks;
 static uint32_t discarded_blocks;
 static int32_t saved_block_epoch;
 static uint16_t saved_block_millis;
-
-static enum LOGERR runWriteDataHeader(t_DataHeader *header)
-{
-  enum LOGERR err;
-
-#if IMUTAG_RUNNING_USE_WRITE_STUBS
-  (void)header;
-  pState->pages++;
-  err = LOGWRITE_OK;
-#else
-  err = writeDataHeader(header);
-#endif
-
-  if (err == LOGWRITE_OK) {
-    pState->cycle_count++;
-  }
-  return err;
-}
-
-static enum LOGERR runWriteDataBlock(t_DataLog *data)
-{
-  enum LOGERR err;
-
-#if IMUTAG_RUNNING_USE_WRITE_STUBS
-  (void)data;
-  err = LOGWRITE_OK;
-#else
-  err = writeDataLog(data);
-#endif
-
-  if (err == LOGWRITE_OK) {
-    pState->external_blocks++;
-  }
-  return err;
-}
 
 static uint32_t runDiscardBlocks(void)
 {
@@ -168,26 +124,35 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         } else {
           if ((pState->external_blocks % DATALOG_SAMPLES) == 0U) {
             t_DataHeader header;
+            enum LOGERR err;
 
             header.epoch = saved_block_epoch;
             header.millis = saved_block_millis;
             header.temp10 = (uint16_t)pState->temp10;
 
-            switch (runWriteDataHeader(&header)) {
+            err = writeDataHeader(&header);
+            switch (err) {
             case LOGWRITE_FULL:
             case LOGWRITE_ERROR:
               return Finished(T_INIT, State_EVENT_INTERNALFULL);
             default:
               break;
             }
+            if (err == LOGWRITE_OK) {
+              pState->cycle_count++;
+            }
           }
 
-          switch (runWriteDataBlock(&data)) {
+          enum LOGERR err = writeDataLog(&data);
+          switch (err) {
           case LOGWRITE_FULL:
           case LOGWRITE_ERROR:
             return Finished(T_INIT, State_EVENT_EXTERNALFULL);
           default:
             break;
+          }
+          if (err == LOGWRITE_OK) {
+            pState->external_blocks++;
           }
         }
 

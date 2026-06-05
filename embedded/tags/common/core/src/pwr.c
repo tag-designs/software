@@ -23,6 +23,10 @@
 #define BOARD_STANDBY_HAS_CONFIG 0
 #endif
 
+#if !defined(STOP1_WAKE_EXTI_GROUP1_MASK)
+#define STOP1_WAKE_EXTI_GROUP1_MASK 0U
+#endif
+
 /** @name Common tag power sequence
  * Common tag power/standby sequence.
  *
@@ -132,8 +136,13 @@ void godown(enum Sleep sleepmode)
     MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP1);
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
+#if STOP1_WAKE_EXTI_GROUP1_MASK
+    extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
+#endif
     __DSB();
-    __WFI();
+    __SEV();
+    __WFE();
+    __WFE();
 
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
     return;
