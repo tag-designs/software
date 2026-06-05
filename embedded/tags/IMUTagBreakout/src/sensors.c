@@ -181,18 +181,28 @@ static bool pressure_data_ready(void)
 
 static bool read_mag_payload_if_ready(uint8_t *buf)
 {
+  bool ready;
   bool ok;
 
-  if (!mag_data_ready())
-    return false;
+  ready = mag_data_ready();
 
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
-  ok = (tagRegisterRead(TAG_MAG_DEVICE, AK09940A_HXL, buf, 11U) == MSG_OK);
+  if (!ready)
+    ready = ak09940aDataReady(TAG_MAG_DEVICE, true);
+  ok = ready &&
+       (tagRegisterRead(TAG_MAG_DEVICE, AK09940A_HXL, buf, 11U) == MSG_OK);
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
 
   if (!ok)
     return false;
-  return (buf[10] & (AK09940A_ST2_INV_MSK | AK09940A_ST2_DOR_MSK)) == 0;
+
+  /*
+   * The magnetometer is free-running faster than the log block rate, so DOR
+   * is expected when an older sample was skipped. For this path we only need
+   * the latest complete environmental sample; reject invalid FIFO reads, but
+   * accept overrun-marked continuous-mode data.
+   */
+  return (buf[10] & AK09940A_ST2_INV_MSK) == 0;
 }
 
 static bool update_latest_mag(void)
