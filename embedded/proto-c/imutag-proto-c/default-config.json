@@ -1,12 +1,12 @@
 {
-    "tag_type": "IMUTAG",
-    "active_interval": {
-        "start_epoch": 0,
-        "end_epoch": 2147483647
+    "tagType": "IMUTAG",
+    "activeInterval": {
+        "startEpoch": 0,
+        "endEpoch": 2147483647
     },
     "lsm6": {
         "odr": "S100",
-        "accel_rng": "R4G",
-        "gyro_rng": "R1000dps"
+        "accelRng": "R4G",
+        "gyroRng": "R1000dps"
     }
 }

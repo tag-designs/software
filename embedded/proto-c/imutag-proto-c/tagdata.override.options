@@ -1,4 +1,3 @@
-CompassTagLog skip_message:false
 SensorData skip_message:false
 CalibrationLog skip_message:false
 CalibrationConstants skip_message:false

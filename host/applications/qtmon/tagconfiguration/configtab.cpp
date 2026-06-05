@@ -66,7 +66,8 @@ bool ConfigTab::Attach(Tag &t)
 {
   tag = &t;
 
-  if (schedule.Attach(t) && btlog.Attach(t) && adxl.Attach(t)) {
+  if (schedule.Attach(t) && btlog.Attach(t) && adxl.Attach(t) &&
+      lsm.Attach(t)) {
     return true;
   } else {
     qDebug() << "Attach failed\n";
@@ -270,19 +271,29 @@ void ConfigTab::on_configRestoreButton_clicked()
 
   fin.close();
   google::protobuf::util::JsonParseOptions options2;
-  if (JsonStringToMessage(str, &configin, options2).ok())
+  auto status = JsonStringToMessage(str, &configin, options2);
+  if (status.ok())
   {
     // We should check the configuration that is read
     // against the current configuration to make sure all
     // the fields are implemented
-    SetConfig(configin);
+    if (!SetConfig(configin))
+    {
+      QMessageBox msgBox;
+      msgBox.setText("Config file parsed but is not valid for this tag");
+      msgBox.exec();
+      qDebug().noquote() << "Config file restore parsed but SetConfig failed:"
+                         << QString::fromStdString(configin.DebugString());
+    }
   }
   else
   {
+    QString statusText = QString::fromStdString(status.ToString());
     QMessageBox msgBox;
-    msgBox.setText("Couldn't Read " + fileName);
+    msgBox.setText("Couldn't Read " + fileName + "\n\n" + statusText);
     msgBox.exec();
-    qDebug() << "Config file restore couldn't read " << fileName;
+    qDebug().noquote() << "Config file restore couldn't read" << fileName
+                       << statusText;
   }
 }
 
@@ -291,6 +302,8 @@ void ConfigTab::on_startButton_clicked()
   Config config;
   if (GetConfig(config))
   {
+    qDebug().noquote() << "Starting tag with config:"
+                       << QString::fromStdString(config.DebugString());
     if (!tag->Start(config))
     {
       msgBox.setText("Start Failed");

@@ -7,34 +7,18 @@
 
 #include "app.h"
 #include "datalog.h"
+#include <string.h>
 #include <tag.pb.h>
+#include "ak09940a.h"
 #include "devices.h"
+#include "lps22hh.h"
 #include "persistent.h"
 
-const int databuf_size = sizeof(t_DataLog);
-static t_DataLog databuf NOINIT;
+const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
+static t_DataLog databuf[DATALOG_SAMPLES] NOINIT;
 static volatile int sectors_erased NOINIT;
 
 extern int encode_ack(void);
-
-/**
- * @brief Count valid internal flash headers after reset.
- *
- * @return Number of written internal header blocks.
- */
-static int countInternalBlocks(void){
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
-  uint32_t start = ((uint32_t)(&__persistent_start__));
-  int count = 0;
-  while (start < end) {
-
-      if (((uint32_t *) start)[0] == 0xffffffff)
-          break;
-      count++;
-      start += 8;
-  }
-  return count;
-}
 
 /**
  * @brief Erase one external sector if it contains programmed data.
@@ -114,9 +98,9 @@ int restoreLog(void)
 {
   uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
   int i;
-  for (i = 0; (uint32_t) (uint32_t *)&vddHeader[i] < end; i++)
+  for (i = 0; (uint32_t)&vddHeader[i] < end; i++)
   {
-    if (vddHeader[i].epoch == -1) 
+    if (vddHeader[i].epoch == -1)
       break;
   }
   pState->pages = i;
@@ -198,59 +182,60 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 int data_logAck(int index, Ack *ack)
 {
   int ret;
+
   chThdSetPriority(HIGHPRIO);
 
-  //CompassTagLog *data = &ack->payload.compasstag_data_log;
   ack->err = Ack_Err_OK;
-  
-  // read data
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf)*index,
-                 (uint8_t *) &databuf, sizeof(databuf));
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
-#if 0
-  if (vddHeader[index].epoch != -1)
+
+  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+
+  // check for valid header
+
+  if (index >= 0 && ((uint32_t)&vddHeader[index] < end) &&
+      (vddHeader[index].epoch != -1))
   {
-    ack->which_payload = Ack_compasstag_data_log_tag;
-    data->epoch = vddHeader[index].epoch;
-    data->millis = vddHeader[index].millie;
-    data->temperature = vddHeader[index].temp10 * 0.1f;
-    data->data_count = 0;
 
-    // For each databuf[i]
-    //.   check if activity != 0xffff (erased), finished if erased
-    //.   for i = 1..4
-    //.       write activity. [extract bits and divide by 16.0f]
-    //.       write a[x,y,z], m[x,y,z]. -- convert to float with appropriate constants
-    //.       increment data_count;
+    // we have a valid header
 
-    // loop over records
-    for (int i = 0; i < DATALOG_SAMPLES; i++){
-      uint16_t activity = databuf.data[i].activity;
-      // check for erased activity
-      if (activity == 0xffff) continue;
-      for (int j = 0; j < 4; j++){
-        int cnt = data->data_count;
-        // extract activity bits and convert to percentage
-        data->data[cnt].activity = ((activity >> (j*4)) & 0xf) * 100.0f/16.0f;
-        // get accelerometer data 
-        data->data[cnt].ax = databuf.data[i].sensors[j].ax * 0.976f;
-        data->data[cnt].ay = databuf.data[i].sensors[j].ay * 0.976f;
-        data->data[cnt].az = databuf.data[i].sensors[j].az * 0.976f;
-        // get magnetometer data
-        // 0.04f = 0.01f * 4 because we discarded to lower bits
-        data->data[cnt].mx = databuf.data[i].sensors[j].mx * 0.04f;
-        data->data[cnt].my = databuf.data[i].sensors[j].my * 0.04f;
-        data->data[cnt].mz = databuf.data[i].sensors[j].mz * 0.04f;
-        data->data_count++;
-      }
+    ack->which_payload = Ack_imu_data_log_tag;
+    IMUTagLog *log = &ack->payload.imu_data_log;
+
+    log->epoch = vddHeader[index].epoch;
+    log->millisecond = vddHeader[index].millis;
+    log->termperature = vddHeader[index].temp10 * 0.1f;
+    log->data_count = 0;
+
+    // now read the data
+
+    tagStorageWake(TAG_EXTERNAL_FLASH);
+    tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf) * index,
+                   (uint8_t *) &databuf, sizeof(databuf));
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+    for (int i = 0; i < DATALOG_SAMPLES; i++)
+    {
+      if (databuf[i].pressure == -1 || databuf[i].mx == -1)
+        break;
+
+      int cnt = log->data_count;
+      log->data[cnt].pressure =
+          lps22hh_raw_pressure_hPA((int32_t)databuf[i].pressure << 8);
+      ak09940_convert_to_uT((int32_t)databuf[i].mx << 2,
+                            (int32_t)databuf[i].my << 2,
+                            (int32_t)databuf[i].mz << 2,
+                            &log->data[cnt].mx, &log->data[cnt].my,
+                            &log->data[cnt].mz);
+      log->data[cnt].data.size = sizeof(databuf[i].raw_data);
+      memcpy(log->data[cnt].data.bytes, databuf[i].raw_data,
+             sizeof(databuf[i].raw_data));
+      log->data_count++;
     }
+
   }
   else
   {
     ack->which_payload = 0;
   }
-  #endif
 
   // encode the ack and return
   ret = encode_ack();

@@ -94,7 +94,7 @@ bool Lsm6dsvConfig::GetConfig(Config &config){
             lsm.set_gyro_rng((Lsm6dsv_GYRO) id);
     }
 
-    config.set_allocated_lsm6(new Lsm6dsv(lsm));
+    *config.mutable_lsm6() = lsm;
     return true;
 }
 

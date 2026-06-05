@@ -51,8 +51,6 @@ static uint32_t runDiscardBlocks(void)
  */
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
-  int16_t temp10;
-  uint16_t vdd100;
   if (t == T_ERROR)
   { 
     // recovery code for brownout here?
@@ -78,12 +76,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     saved_block_epoch = timestamp;
     saved_block_millis = (uint16_t)timestamp_millis;
 
-    // get voltage, internal temperature
-
-    adcVDD(&vdd100, &temp10);
-
-    pState->vdd100 = vdd100;
-    pState->temp10 = temp10;
+    pState->temp10 = 0;
 
     if (!initDataCollection()) {
       return Aborted(T_INIT, State_EVENT_UNKNOWN);
