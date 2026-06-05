@@ -37,10 +37,10 @@
 #define LPS22HH_CTRL2_ONE_SHOT       (1u << 0)
 
 /* CTRL_REG3 bit definitions. */
-#define LPS22HH_CTRL3_INT_F_FULL     (1u << 2)
-#define LPS22HH_CTRL3_INT_F_WTM      (1u << 3)
-#define LPS22HH_CTRL3_INT_F_OVR      (1u << 4)
-#define LPS22HH_CTRL3_DRDY           (1u << 5) /* data-ready routed to INT/DRDY */
+#define LPS22HH_CTRL3_INT_F_FULL     (1u << 5)
+#define LPS22HH_CTRL3_INT_F_WTM      (1u << 4)
+#define LPS22HH_CTRL3_INT_F_OVR      (1u << 3)
+#define LPS22HH_CTRL3_DRDY           (1u << 2) /* data-ready routed to INT/DRDY */
 #define LPS22HH_CTRL3_INT_S0         (1u << 6)
 #define LPS22HH_CTRL3_INT_S1         (1u << 7)
 #define LPS22HH_CTRL3_INT_S_MASK     (LPS22HH_CTRL3_INT_S0 | LPS22HH_CTRL3_INT_S1)

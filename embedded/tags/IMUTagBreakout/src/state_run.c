@@ -20,18 +20,6 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
-static enum Sleep finishRun(State_Event reason)
-{
-  (void)deinitDataCollection();
-  return Finished(T_INIT, reason);
-}
-
-static enum Sleep abortRun(State_Event reason)
-{
-  (void)deinitDataCollection();
-  return Aborted(T_INIT, reason);
-}
-
 /**
  * @brief Handle the IMUTagBreakout data-acquisition state.
  *
@@ -46,7 +34,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   if (t == T_ERROR)
   { 
     // recovery code for brownout here?
-    return abortRun(reason);
+    return Aborted(T_INIT, reason);
   }
 
   if (t == T_INIT)
@@ -75,7 +63,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->temp10 = temp10;
 
     if (!initDataCollection()) {
-      return abortRun(State_EVENT_UNKNOWN);
+      return Aborted(T_INIT, State_EVENT_UNKNOWN);
     }
 
     pState->state = TagState_RUNNING;
@@ -89,7 +77,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if (sconfig.stop < timestamp)
     {
-      return finishRun(State_EVENT_ENDTIM);
+      return Finished(T_INIT, State_EVENT_ENDTIM);
     }
 
 
@@ -137,7 +125,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if (sconfig.stop < timestamp)
     {
-      return finishRun(State_EVENT_ENDTIM);
+      return Finished(T_INIT, State_EVENT_ENDTIM);
     }
 
     //

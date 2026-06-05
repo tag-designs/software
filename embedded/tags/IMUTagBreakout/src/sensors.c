@@ -18,6 +18,7 @@
 #include "debug_log.h"
 #include "devices.h"
 #include "flash_internal.h"
+#include "gpio_utils.h"
 #include "persistent.h"
 
 #include "ak09940a.h"
@@ -47,6 +48,8 @@ sensor_constants_t constants_tmp NOINIT;
 // calibration constants in reserved flash section
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
+
+// check if these variables can be noinit
 
 static unsigned int empty_calibration_sample_logs;
 static int16_t latest_pressure;
@@ -142,22 +145,54 @@ static void reset_imu_block_cache(void)
   block_sample_count = 0;
 }
 
+static void init_mag_data_ready_line(void)
+{
+  toInput(LINE_MAG_TRG);
+}
+
+static bool mag_data_ready(void)
+{
+  return palReadLine(LINE_MAG_TRG) == PAL_HIGH;
+}
+
+static void init_pressure_data_ready_line(void)
+{
+  toInput(LINE_LPS_DRDY);
+}
+
+static bool pressure_data_ready(void)
+{
+  return palReadLine(LINE_LPS_DRDY) == PAL_HIGH;
+}
+
+static bool read_mag_payload_if_ready(uint8_t *buf)
+{
+  bool ok;
+
+  if (!mag_data_ready())
+    return false;
+
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  ok = (tagRegisterRead(TAG_MAG_DEVICE, AK09940A_HXL, buf, 11U) == MSG_OK);
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+  if (!ok)
+    return false;
+  return (buf[10] & (AK09940A_ST2_INV_MSK | AK09940A_ST2_DOR_MSK)) == 0;
+}
+
 static bool update_latest_mag(void)
 {
   uint8_t buf[11];
-  bool ok;
 
-  ak09940aDeviceBegin(TAG_MAG_DEVICE);
-  ok = ak09940aSample(TAG_MAG_DEVICE, false, buf);
-  if (ok) {
-    latest_mx = compact_mag_18bit(buf[0], buf[1], buf[2]);
-    latest_my = compact_mag_18bit(buf[3], buf[4], buf[5]);
-    latest_mz = compact_mag_18bit(buf[6], buf[7], buf[8]);
-    have_mag_sample = true;
-  }
-  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+  if (!read_mag_payload_if_ready(buf))
+    return false;
 
-  return ok;
+  latest_mx = compact_mag_18bit(buf[0], buf[1], buf[2]);
+  latest_my = compact_mag_18bit(buf[3], buf[4], buf[5]);
+  latest_mz = compact_mag_18bit(buf[6], buf[7], buf[8]);
+  have_mag_sample = true;
+  return true;
 }
 
 static bool update_latest_pressure(void)
@@ -166,14 +201,8 @@ static bool update_latest_pressure(void)
   int32_t temperature;
   int rc;
 
-  if (!have_pressure_sample && !lps22hh_data_ready_device(TAG_PRESSURE_DEVICE)) {
-    /*
-     * The first IMU block can arrive before a pressure-ready status edge has
-     * been observed. Read once anyway so the cache has a sensible value.
-     */
-  } else if (!lps22hh_data_ready_device(TAG_PRESSURE_DEVICE)) {
+  if (!pressure_data_ready())
     return false;
-  }
 
   rc = lps22hh_read_raw_device(TAG_PRESSURE_DEVICE, &pressure, &temperature);
   if (rc == 0) {
@@ -230,6 +259,8 @@ bool initDataCollection(void)
   pressure_rate = select_pressure_rate(imu_odr);
   reset_environment_cache();
   reset_imu_block_cache();
+  init_mag_data_ready_line();
+  init_pressure_data_ready_line();
 
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
   if (ak09940aInitContinuous(TAG_MAG_DEVICE, mag_rate,
@@ -352,8 +383,6 @@ bool deinitDataCollection(void)
 
   (void)lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
   lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
-  reset_environment_cache();
-  reset_imu_block_cache();
   debug_log_printf("IMUTag collection: sensors deinitialized\r\n");
   return true;
 }
@@ -378,8 +407,7 @@ bool sensorCalibrationSample(SensorData *sensors)
 
     memset(sensors, 0, sizeof(*sensors));
 
-    ak09940aDeviceBegin(TAG_MAG_DEVICE);
-    if (ak09940aSample(TAG_MAG_DEVICE, false, buf))
+    if (read_mag_payload_if_ready(buf))
     {
       int32_t mx_raw = decode_mag_18bit(buf[0], buf[1], buf[2]);
       int32_t my_raw = decode_mag_18bit(buf[3], buf[4], buf[5]);
@@ -391,7 +419,6 @@ bool sensorCalibrationSample(SensorData *sensors)
                             &sensors->mag.my,
                             &sensors->mag.mz);
     }
-    ak09940aDeviceEnd(TAG_MAG_DEVICE);
 
     if (lsm6dsv16x_read_accel(TAG_IMU_DEVICE, &ax, &ay, &az) == 0)
     {
@@ -436,6 +463,7 @@ bool initSensors(void){
       debug_log_printf("IMUTag calibration: AK09940A continuous init failed\r\n");
     }
     ak09940aDeviceEnd(TAG_MAG_DEVICE);
+    init_mag_data_ready_line();
 
     lsm6dsv16x_init_accel_only(TAG_IMU_DEVICE, &accel_cfg);
     lsm6dsv16x_set_ranges(TAG_IMU_DEVICE, &range_cfg);

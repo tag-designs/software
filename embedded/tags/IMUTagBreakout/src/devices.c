@@ -19,6 +19,7 @@
 #include "lps.h"
 #include "power.h"
 #include "sensor_io.h"
+#include "sensors.h"
 #include "storage_mx25l.h"
 #include "test_support.h"
 
@@ -301,6 +302,14 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+}
+
+/**
+ * @brief Deinitialize IMUTagBreakout-owned device resources.
+ */
+void tagDevicesDeinit(void)
+{
+  (void)deinitDataCollection();
 }
 
 /**

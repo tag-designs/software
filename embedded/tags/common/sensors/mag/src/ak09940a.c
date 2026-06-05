@@ -10,6 +10,7 @@
 
 #include "hal.h"
 #include "ak09940a.h"
+#include "power.h"
 #include "timekeeping.h"
 
 /** @name AK09940A device lifecycle
@@ -17,6 +18,25 @@
  * power/session behavior.
  * @{
  */
+/**
+ * @brief Report whether the AK09940A descriptor has a switchable power rail.
+ *
+ * @param[in] device Magnetometer register descriptor.
+ * @return true when the descriptor names a valid bus power line.
+ */
+static bool ak09940aHasPowerLine(const TagRegisterDevice *device)
+{
+  switch (device->bus.kind) {
+  case TAG_BUS_SPI:
+    return tagLineIsValid(tagBusSpiDevice(&device->bus)->pwr);
+  case TAG_BUS_USART:
+    return tagLineIsValid(tagBusUsartDevice(&device->bus)->pwr);
+  case TAG_BUS_I2C:
+    return tagLineIsValid(tagBusI2cDevice(&device->bus)->pwr);
+  }
+  return false;
+}
+
 /**
  * @brief Power and begin the bus session for an AK09940A device.
  *
@@ -47,7 +67,8 @@ void ak09940aDeviceEnd(const TagRegisterDevice *device)
 static void ak09940aPowerUpAndBeginBus(const TagRegisterDevice *device)
 {
   tagBusPowerOn(&device->bus);
-  stopMilliseconds(1);
+  if (ak09940aHasPowerLine(device))
+    stopMilliseconds(1);
   tagBusBegin(&device->bus);
 }
 /** @} */

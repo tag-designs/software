@@ -215,13 +215,13 @@ bool ak09940aSample(const TagRegisterDevice *device, bool single, uint8_t *xyz);
  */
 void ak09940aInit(const TagRegisterDevice *device, ak09940_mode_t mode);
 /**
- * @brief Power and acquire the AK09940A register bus.
+ * @brief Acquire the AK09940A register bus and enable its optional power rail.
  *
  * @param[in] device Magnetometer register descriptor.
  */
 void ak09940aDeviceBegin(const TagRegisterDevice *device);
 /**
- * @brief Release and power down the AK09940A register bus.
+ * @brief Release the AK09940A register bus and disable its optional power rail.
  *
  * @param[in] device Magnetometer register descriptor.
  */
