@@ -100,7 +100,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
        * interrupt cadence can be observed on hardware, but do not write the
        * data to external flash yet.
        */
-      for (;;) {
+      while (palReadLine(LINE_ACCEL_INT)) {
         t_DataLog data;
         int16_t env_temp10;
 
