@@ -1,5 +1,6 @@
 #include "sqlitelog.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <sstream>
@@ -123,6 +124,79 @@ SqlTableDefinition activityTable();
 SqlTableDefinition pressureTable();
 SqlTableDefinition sensorTemperatureTable();
 SqlTableDefinition compassTable();
+SqlTableDefinition imuHeaderTable();
+SqlTableDefinition imuPressureTable();
+SqlTableDefinition imuMagTable();
+SqlTableDefinition imuAccelTable();
+SqlTableDefinition imuGyroTable();
+
+constexpr int kImuSamplesPerBlock = 10;
+constexpr int kImuAxesPerSample = 6;
+constexpr int kImuBytesPerSample = kImuAxesPerSample * 2;
+constexpr int kImuRawDataBytes = kImuSamplesPerBlock * kImuBytesPerSample;
+constexpr int kImuDataLogBytes = 128;
+constexpr int kImuRawDataOffset = 8;
+
+int imuOdrHz(Lsm6dsv_ODR odr)
+{
+    switch (odr) {
+    case Lsm6dsv_ODR_S50:
+        return 50;
+    case Lsm6dsv_ODR_S100:
+        return 100;
+    case Lsm6dsv_ODR_S200:
+        return 200;
+    case Lsm6dsv_ODR_S400:
+        return 400;
+    case Lsm6dsv_ODR_S800:
+        return 800;
+    default:
+        return 0;
+    }
+}
+
+double imuAccelMgPerLsb(Lsm6dsv_ACCEL range)
+{
+    switch (range) {
+    case Lsm6dsv_ACCEL_R2G:
+        return 0.061;
+    case Lsm6dsv_ACCEL_R4G:
+        return 0.122;
+    case Lsm6dsv_ACCEL_R8G:
+        return 0.244;
+    case Lsm6dsv_ACCEL_R16G:
+        return 0.488;
+    default:
+        return 1.0;
+    }
+}
+
+double imuGyroDpsPerLsb(Lsm6dsv_GYRO range)
+{
+    switch (range) {
+    case Lsm6dsv_GYRO_R125dps:
+        return 0.004375;
+    case Lsm6dsv_GYRO_R250dps:
+        return 0.00875;
+    case Lsm6dsv_GYRO_R500dps:
+        return 0.0175;
+    case Lsm6dsv_GYRO_R1000dps:
+        return 0.035;
+    case Lsm6dsv_GYRO_R2000dps:
+        return 0.07;
+    case Lsm6dsv_GYRO_R4000dps:
+        return 0.14;
+    default:
+        return 1.0;
+    }
+}
+
+int16_t readLeI16(const uint8_t *p)
+{
+    const uint16_t value = static_cast<uint16_t>(p[0])
+        | (static_cast<uint16_t>(p[1]) << 8);
+    return static_cast<int16_t>(value);
+}
 
 // ---------------------------------------------------------------------------
 // Schema Profiles
@@ -145,6 +219,10 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
         return {false, {voltageTable(), pressureTable(), sensorTemperatureTable()}};
     case BITPRESTAG:
         return {false, {voltageTable(), activityTable(), pressureTable(), sensorTemperatureTable()}};
+    case IMUTAG:
+        return {
+            false,
+            {imuHeaderTable(), imuPressureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
     default:
         return {false, {}};
     }
@@ -305,6 +383,132 @@ SqlTableDefinition compassTable()
                 "compass_mz", "compass_raw", "Compass raw", "Compass", "Epoch", "mz",
                 "record_column", "Magnetic field Z", "uT", "magnetic_field_z",
                 "Raw magnetometer Z sample used for compass orientation.",
+            },
+        },
+    };
+}
+
+SqlTableDefinition imuHeaderTable()
+{
+    return {
+        "ImuHeader",
+        {
+            {"HeaderIndex", "INTEGER"},
+            {"StartElapsedUs", "INTEGER"},
+            {"Epoch", "INTEGER"},
+            {"Millisecond", "INTEGER"},
+            {"Temperature", "REAL"},
+        },
+        {},
+    };
+}
+
+SqlTableDefinition imuPressureTable()
+{
+    return {
+        "ImuPressure",
+        {{"ElapsedUs", "INTEGER"}, {"Pressure", "REAL"}},
+        {{
+            "imu_pressure",
+            nullptr,
+            nullptr,
+            "ImuPressure",
+            "ElapsedUs",
+            "Pressure",
+            "scalar",
+            "Pressure",
+            "mbar",
+            "pressure",
+            "IMUTag pressure sample timestamped by elapsed collection time.",
+        }},
+    };
+}
+
+SqlTableDefinition imuMagTable()
+{
+    return {
+        "ImuMag",
+        {
+            {"ElapsedUs", "INTEGER"},
+            {"mx", "REAL"},
+            {"my", "REAL"},
+            {"mz", "REAL"},
+        },
+        {
+            {
+                "imu_mx", "imu_mag", "IMU magnetometer", "ImuMag", "ElapsedUs", "mx",
+                "scalar", "Magnetic field X", "uT", "magnetic_field_x",
+                "IMUTag magnetometer X sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_my", "imu_mag", "IMU magnetometer", "ImuMag", "ElapsedUs", "my",
+                "scalar", "Magnetic field Y", "uT", "magnetic_field_y",
+                "IMUTag magnetometer Y sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_mz", "imu_mag", "IMU magnetometer", "ImuMag", "ElapsedUs", "mz",
+                "scalar", "Magnetic field Z", "uT", "magnetic_field_z",
+                "IMUTag magnetometer Z sample timestamped by elapsed collection time.",
+            },
+        },
+    };
+}
+
+SqlTableDefinition imuAccelTable()
+{
+    return {
+        "ImuAccel",
+        {
+            {"ElapsedUs", "INTEGER"},
+            {"ax", "REAL"},
+            {"ay", "REAL"},
+            {"az", "REAL"},
+        },
+        {
+            {
+                "imu_ax", "imu_accel", "IMU accelerometer", "ImuAccel", "ElapsedUs", "ax",
+                "scalar", "Acceleration X", "mg", "acceleration_x",
+                "IMUTag accelerometer X sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_ay", "imu_accel", "IMU accelerometer", "ImuAccel", "ElapsedUs", "ay",
+                "scalar", "Acceleration Y", "mg", "acceleration_y",
+                "IMUTag accelerometer Y sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_az", "imu_accel", "IMU accelerometer", "ImuAccel", "ElapsedUs", "az",
+                "scalar", "Acceleration Z", "mg", "acceleration_z",
+                "IMUTag accelerometer Z sample timestamped by elapsed collection time.",
+            },
+        },
+    };
+}
+
+SqlTableDefinition imuGyroTable()
+{
+    return {
+        "ImuGyro",
+        {
+            {"ElapsedUs", "INTEGER"},
+            {"gx", "REAL"},
+            {"gy", "REAL"},
+            {"gz", "REAL"},
+        },
+        {
+            {
+                "imu_gx", "imu_gyro", "IMU gyroscope", "ImuGyro", "ElapsedUs", "gx",
+                "scalar", "Gyroscope X", "dps", "angular_velocity_x",
+                "IMUTag gyroscope X sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_gy", "imu_gyro", "IMU gyroscope", "ImuGyro", "ElapsedUs", "gy",
+                "scalar", "Gyroscope Y", "dps", "angular_velocity_y",
+                "IMUTag gyroscope Y sample timestamped by elapsed collection time.",
+            },
+            {
+                "imu_gz", "imu_gyro", "IMU gyroscope", "ImuGyro", "ElapsedUs", "gz",
+                "scalar", "Gyroscope Z", "dps", "angular_velocity_z",
+                "IMUTag gyroscope Z sample timestamped by elapsed collection time.",
             },
         },
     };
@@ -548,6 +752,12 @@ public:
                 return 0;
             }
             return dumpBitPresTagLog(ack.bitprestag_data_log());
+
+        case IMUTAG:
+            if (!ack.has_imu_data_log()) {
+                return 0;
+            }
+            return dumpIMUTagLog(ack.imu_data_log());
 
         default:
             setLastError("SQLite log output does not support tag type "
@@ -1031,6 +1241,133 @@ private:
         return 1;
     }
 
+    int dumpIMUTagLog(const IMUTagLog &log)
+    {
+        if (!createLogTables()) {
+            return -2;
+        }
+
+        if (!config_.has_lsm6()) {
+            setLastError("IMUTag SQLite output requires an LSM6 configuration");
+            return -2;
+        }
+
+        const int odr_hz = imuOdrHz(config_.lsm6().odr());
+        if (odr_hz <= 0) {
+            setLastError("IMUTag SQLite output requires a valid IMU ODR");
+            return -2;
+        }
+
+        const sqlite3_int64 sample_period_us = 1000000 / odr_hz;
+        const sqlite3_int64 block_period_us = sample_period_us * kImuSamplesPerBlock;
+        const double accel_scale = imuAccelMgPerLsb(config_.lsm6().accel_rng());
+        const double gyro_scale = imuGyroDpsPerLsb(config_.lsm6().gyro_rng());
+
+        Statement header_insert(
+            db_,
+            "INSERT INTO ImuHeader "
+            "(HeaderIndex, StartElapsedUs, Epoch, Millisecond, Temperature) "
+            "VALUES (?, ?, ?, ?, ?)");
+        Statement pressure_insert(
+            db_,
+            "INSERT INTO ImuPressure (ElapsedUs, Pressure) VALUES (?, ?)");
+        Statement mag_insert(
+            db_,
+            "INSERT INTO ImuMag (ElapsedUs, mx, my, mz) VALUES (?, ?, ?, ?)");
+        Statement accel_insert(
+            db_,
+            "INSERT INTO ImuAccel (ElapsedUs, ax, ay, az) VALUES (?, ?, ?, ?)");
+        Statement gyro_insert(
+            db_,
+            "INSERT INTO ImuGyro (ElapsedUs, gx, gy, gz) VALUES (?, ?, ?, ?)");
+
+        if (!header_insert.valid()
+            || !pressure_insert.valid()
+            || !mag_insert.valid()
+            || !accel_insert.valid()
+            || !gyro_insert.valid()) {
+            setLastSqliteError("Could not prepare IMUTag log insert");
+            return -2;
+        }
+
+        const sqlite3_int64 header_start_us =
+            static_cast<sqlite3_int64>(imu_block_count_) * block_period_us;
+        if (!header_insert.bindInt64(1, static_cast<sqlite3_int64>(imu_header_count_))
+            || !header_insert.bindInt64(2, header_start_us)
+            || !header_insert.bindInt64(3, log.epoch())
+            || !header_insert.bindInt64(4, log.millisecond())
+            || !header_insert.bindDouble(5, log.termperature())
+            || !header_insert.stepDone()) {
+            setLastSqliteError("IMUTag header insert failed");
+            return -2;
+        }
+        imu_header_count_++;
+
+        for (auto const &entry : log.data()) {
+            const std::string &payload = entry.data();
+            const uint8_t *raw = reinterpret_cast<const uint8_t *>(payload.data());
+            size_t raw_size = payload.size();
+            if (raw_size == kImuDataLogBytes) {
+                raw += kImuRawDataOffset;
+                raw_size -= kImuRawDataOffset;
+            }
+            if (raw_size != kImuRawDataBytes) {
+                std::ostringstream error;
+                error << "IMUTag data block has " << payload.size()
+                      << " bytes, expected " << kImuRawDataBytes
+                      << " raw bytes or " << kImuDataLogBytes
+                      << " t_DataLog bytes";
+                setLastError(error.str());
+                return -2;
+            }
+
+            const sqlite3_int64 block_start_us =
+                static_cast<sqlite3_int64>(imu_block_count_) * block_period_us;
+
+            if (!pressure_insert.bindInt64(1, block_start_us)
+                || !pressure_insert.bindDouble(2, entry.pressure())
+                || !pressure_insert.stepDone()
+                || !mag_insert.bindInt64(1, block_start_us)
+                || !mag_insert.bindDouble(2, entry.mx())
+                || !mag_insert.bindDouble(3, entry.my())
+                || !mag_insert.bindDouble(4, entry.mz())
+                || !mag_insert.stepDone()) {
+                setLastSqliteError("IMUTag pressure/magnetometer insert failed");
+                return -2;
+            }
+
+            for (int sample = 0; sample < kImuSamplesPerBlock; sample++) {
+                const uint8_t *p = raw + sample * kImuBytesPerSample;
+                const int16_t gx = readLeI16(p);
+                const int16_t gy = readLeI16(p + 2);
+                const int16_t gz = readLeI16(p + 4);
+                const int16_t ax = readLeI16(p + 6);
+                const int16_t ay = readLeI16(p + 8);
+                const int16_t az = readLeI16(p + 10);
+                const sqlite3_int64 sample_elapsed_us =
+                    block_start_us + sample * sample_period_us;
+
+                if (!accel_insert.bindInt64(1, sample_elapsed_us)
+                    || !accel_insert.bindDouble(2, ax * accel_scale)
+                    || !accel_insert.bindDouble(3, ay * accel_scale)
+                    || !accel_insert.bindDouble(4, az * accel_scale)
+                    || !accel_insert.stepDone()
+                    || !gyro_insert.bindInt64(1, sample_elapsed_us)
+                    || !gyro_insert.bindDouble(2, gx * gyro_scale)
+                    || !gyro_insert.bindDouble(3, gy * gyro_scale)
+                    || !gyro_insert.bindDouble(4, gz * gyro_scale)
+                    || !gyro_insert.stepDone()) {
+                    setLastSqliteError("IMUTag IMU sample insert failed");
+                    return -2;
+                }
+            }
+
+            imu_block_count_++;
+        }
+
+        return 1;
+    }
+
     void setLastError(const std::string &error)
     {
         last_error_ = error;
@@ -1061,6 +1398,8 @@ private:
     sqlite3 *db_ = nullptr;
     Config config_;
     bool log_tables_created_ = false;
+    uint64_t imu_block_count_ = 0;
+    uint64_t imu_header_count_ = 0;
     std::string last_error_;
 };
 

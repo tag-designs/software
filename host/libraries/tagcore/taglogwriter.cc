@@ -26,7 +26,8 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
         return tag_type == COMPASSTAG
             || tag_type == PRESTAG
             || tag_type == BITPRESTAG
-            || tag_type == BITTAG;
+            || tag_type == BITTAG
+            || tag_type == IMUTAG;
     case TagLogStorageFormat::Text:
         return true;
     default:
