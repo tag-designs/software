@@ -20,6 +20,72 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
+/*
+ * Bring-up scaffold: keep the RUNNING write shape visible without touching
+ * flash until the IMU log format and host decode path are ready.
+ */
+#if !defined(IMUTAG_RUNNING_USE_WRITE_STUBS)
+#define IMUTAG_RUNNING_USE_WRITE_STUBS 1
+#endif
+
+#define IMU_CLOCK_LOCK_SECONDS 2
+#define IMU_LOG_SAMPLES_PER_BLOCK                                           \
+  (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
+
+static uint32_t discard_blocks;
+static uint32_t discarded_blocks;
+static int32_t saved_block_epoch;
+static uint16_t saved_block_millis;
+
+static enum LOGERR runWriteDataHeader(t_DataHeader *header)
+{
+  enum LOGERR err;
+
+#if IMUTAG_RUNNING_USE_WRITE_STUBS
+  (void)header;
+  pState->pages++;
+  err = LOGWRITE_OK;
+#else
+  err = writeDataHeader(header);
+#endif
+
+  if (err == LOGWRITE_OK) {
+    pState->cycle_count++;
+  }
+  return err;
+}
+
+static enum LOGERR runWriteDataBlock(t_DataLog *data)
+{
+  enum LOGERR err;
+
+#if IMUTAG_RUNNING_USE_WRITE_STUBS
+  (void)data;
+  err = LOGWRITE_OK;
+#else
+  err = writeDataLog(data);
+#endif
+
+  if (err == LOGWRITE_OK) {
+    pState->external_blocks++;
+  }
+  return err;
+}
+
+static uint32_t runDiscardBlocks(void)
+{
+  lsm6dsv16x_trig_odr_t odr;
+  lsm6dsv16x_xl_fs_t xl_fs;
+  lsm6dsv16x_g_fs_t g_fs;
+
+  if (!get_lsm_config(&odr, &xl_fs, &g_fs)) {
+    return 0;
+  }
+
+  return ((uint32_t)odr * IMU_CLOCK_LOCK_SECONDS) /
+         IMU_LOG_SAMPLES_PER_BLOCK;
+}
+
 /**
  * @brief Handle the IMUTagBreakout data-acquisition state.
  *
@@ -48,12 +114,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->pages = 0;
     pState->cycle_count = 0;
-    pState->activity = 0;
     //pState->lastwakeup = timestamp;
-    pState->lastwrite = timestamp;
-    pState->lastactstart = INT_MAX;
 
     pState->external_blocks = 0;
+    discard_blocks = runDiscardBlocks();
+    discarded_blocks = 0;
+    saved_block_epoch = timestamp;
+    saved_block_millis = (uint16_t)timestamp_millis;
 
     // get voltage, internal temperature
 
@@ -68,7 +135,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->state = TagState_RUNNING;
     recordState(reason);
-    debug_log_printf("IMUTag running: collection initialized\r\n");
+    debug_log_printf("IMUTag running: collection initialized, %d s warmup\r\n",
+                     IMU_CLOCK_LOCK_SECONDS);
   }
   else
   {
@@ -81,42 +149,51 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     }
 
 
-    // restore state
-
-    int32_t lastwrite = pState->lastwrite;
-    uint32_t cycle_count = pState->cycle_count;
-
     isActive = palReadLine(LINE_ACCEL_INT);
     if (isActive)
     {
-      //  update temperature/voltage estimates 
+      t_DataLog data;
+      int16_t env_temp10;
+      int32_t entry_epoch = timestamp;
+      uint16_t entry_millis = (uint16_t)timestamp_millis;
 
-      adcVDD(&vdd100, &temp10);
-      pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
-      pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
+      if (sampleDataCollection(&data)) {
 
-      /*
-       * Bring-up path: drain complete IMU FIFO blocks so the watermark
-       * interrupt cadence can be observed on hardware, but do not write the
-       * data to external flash yet.
-       */
-      while (palReadLine(LINE_ACCEL_INT)) {
-        t_DataLog data;
-        int16_t env_temp10;
-
-        if (!sampleDataCollection(&data)) {
-          break;
-        }
         if (latestDataCollectionTemp10(&env_temp10)) {
           pState->temp10 = env_temp10;
         }
-        cycle_count++;
-        pState->pages++;
+
+        if (discarded_blocks < discard_blocks) {
+          discarded_blocks++;
+        } else {
+          if ((pState->external_blocks % DATALOG_SAMPLES) == 0U) {
+            t_DataHeader header;
+
+            header.epoch = saved_block_epoch;
+            header.millis = saved_block_millis;
+            header.temp10 = (uint16_t)pState->temp10;
+
+            switch (runWriteDataHeader(&header)) {
+            case LOGWRITE_FULL:
+            case LOGWRITE_ERROR:
+              return Finished(T_INIT, State_EVENT_INTERNALFULL);
+            default:
+              break;
+            }
+          }
+
+          switch (runWriteDataBlock(&data)) {
+          case LOGWRITE_FULL:
+          case LOGWRITE_ERROR:
+            return Finished(T_INIT, State_EVENT_EXTERNALFULL);
+          default:
+            break;
+          }
+        }
+
+        saved_block_epoch = entry_epoch;
+        saved_block_millis = entry_millis;
       }
-
-      // update the cycle count
-
-      pState->cycle_count = cycle_count;
     }
 
     //
@@ -137,15 +214,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
-          (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0))
+          (pState->external_blocks % DATALOG_SAMPLES == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
     }
 #endif
 
-    pState->lastactstart = isActive ? timestamp : INT_MAX;
-    pState->lastwrite = lastwrite;
     //pState->lastwakeup = timestamp;
   }
   return STOP1;

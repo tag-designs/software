@@ -155,15 +155,15 @@ int externalFlashSectorsErased(void)
 int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES*sizeof(t_DataLog)/2;
+  pState->cycle_count = pState->pages;
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES;
   return 0;
 }
 
 /**
- * @brief Append sample words to external flash at the current log cursor.
+ * @brief Append one data block to external flash at the current log cursor.
  *
- * @param[in] data Words to write.
- * @param[in] num Number of 16-bit words to write.
+ * @param[in] data Data block to write.
  * @return Log write status.
  */
 enum LOGERR writeDataLog(t_DataLog *data)
@@ -171,13 +171,13 @@ enum LOGERR writeDataLog(t_DataLog *data)
   uint32_t flash_capacity = tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
                             tagStorageSectorCount(TAG_EXTERNAL_FLASH);
 
-  if (pState->external_blocks + sizeof(t_DataLog) > flash_capacity / 2)
+  if ((pState->external_blocks + 1U) > flash_capacity / sizeof(t_DataLog))
   {
     return LOGWRITE_FULL;
   }
 
   int cnt = sizeof(t_DataLog);
-  int addr = pState->external_blocks * 2;
+  int addr = pState->external_blocks * sizeof(t_DataLog);
 
   tagStorageWake(TAG_EXTERNAL_FLASH);
   tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
