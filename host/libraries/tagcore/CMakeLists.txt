@@ -62,6 +62,8 @@ target_sources(tagcore
          taglogwriter.cc
          txtlogs.cc
          sqlitelog.cc
+         sqlitelog/imutag.cc
+         sqlitelog/schema.cc
          linkadapt.cc
          log.c
          linkadapt.h
