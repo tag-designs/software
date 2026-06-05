@@ -76,6 +76,16 @@ static void disable_data_collection_wake_event(void)
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
 }
 
+static inline void orient_imu_xyz(int16_t *x, int16_t *y, int16_t *z)
+{
+  int16_t raw_x = *x;
+  int16_t raw_y = *y;
+
+  *x = (int16_t)-raw_y;
+  *y = raw_x;
+  (void)z;
+}
+
 static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
   int32_t raw = ((int32_t)(h & 0x03U) << 16) | ((int32_t)m << 8) | l;
@@ -353,12 +363,22 @@ bool sampleDataCollection(t_DataLog *data)
   }
 
   for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_BLOCK; i++) {
-    data->raw_data[i].gx = block_samples[i].gyro_x;
-    data->raw_data[i].gy = block_samples[i].gyro_y;
-    data->raw_data[i].gz = block_samples[i].gyro_z;
-    data->raw_data[i].ax = block_samples[i].accel_x;
-    data->raw_data[i].ay = block_samples[i].accel_y;
-    data->raw_data[i].az = block_samples[i].accel_z;
+    int16_t gx = block_samples[i].gyro_x;
+    int16_t gy = block_samples[i].gyro_y;
+    int16_t gz = block_samples[i].gyro_z;
+    int16_t ax = block_samples[i].accel_x;
+    int16_t ay = block_samples[i].accel_y;
+    int16_t az = block_samples[i].accel_z;
+
+    orient_imu_xyz(&gx, &gy, &gz);
+    orient_imu_xyz(&ax, &ay, &az);
+
+    data->raw_data[i].gx = gx;
+    data->raw_data[i].gy = gy;
+    data->raw_data[i].gz = gz;
+    data->raw_data[i].ax = ax;
+    data->raw_data[i].ay = ay;
+    data->raw_data[i].az = az;
   }
   reset_imu_block_cache();
 
@@ -450,11 +470,10 @@ bool sensorCalibrationSample(SensorData *sensors)
     if (lsm6dsv16x_read_accel(TAG_IMU_DEVICE, &ax, &ay, &az) == 0)
     {
         sensors->has_accel = true;
+        orient_imu_xyz(&ax, &ay, &az);
 
-        // fix sensor orientation to match compass tag
-
-        sensors->accel.ax = -ay * IMU_ACCEL_MG_PER_LSB_4G;
-        sensors->accel.ay = ax * IMU_ACCEL_MG_PER_LSB_4G;
+        sensors->accel.ax = ax * IMU_ACCEL_MG_PER_LSB_4G;
+        sensors->accel.ay = ay * IMU_ACCEL_MG_PER_LSB_4G;
         sensors->accel.az = az * IMU_ACCEL_MG_PER_LSB_4G;
     }
 
