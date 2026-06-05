@@ -321,8 +321,10 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
     case BITPRESTAG:
         return {false, {voltageTable(), activityTable(), pressureTable(), sensorTemperatureTable()}};
     case IMUTAG:
+        // IMUTag uses the same Calibration table shape as CompassTag for
+        // magnetometer constants; the high-rate data tables remain separate.
         return {
-            false,
+            true,
             {imuHeaderTable(), imuPressureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
     default:
         return {false, {}};
