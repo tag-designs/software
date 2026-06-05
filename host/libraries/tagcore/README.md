@@ -11,5 +11,10 @@ Responsibilities:
 - Host logging helpers: `log.*`
 - Shared protocol-facing definitions used by CLI tools and Qt apps
 
+SQLite log writing is split between the public `sqlitelog.*` wrapper and the
+private `sqlitelog/` implementation directory. `sqlitelog/schema.cc` owns the
+table and stream metadata, while the other files in that directory decode
+individual tag log protobufs into rows.
+
 This library should remain Qt-free. Qt applications can link it, but reusable
 Qt UI code belongs in `../sensorui` or `../../common`.

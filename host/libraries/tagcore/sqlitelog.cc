@@ -227,12 +227,13 @@ public:
             return -2;
         }
 
+        WriterContext context = writerContext();
         switch (config_.tag_type()) {
         case BITTAG:
             if (!ack.has_bittag_data_log()) {
                 return 0;
             }
-            return dumpBitTagLog(ack.bittag_data_log());
+            return dumpBitTagLog(context, ack.bittag_data_log());
 
         case COMPASSTAG:
             if (!ack.has_compasstag_data_log()) {
@@ -241,28 +242,25 @@ public:
                 // condition, not a SQLite/write error.
                 return 0;
             }
-            return dumpCompassTagLog(ack.compasstag_data_log());
+            return dumpCompassTagLog(context, ack.compasstag_data_log());
 
         case PRESTAG:
             if (!ack.has_prestag_data_log()) {
                 return 0;
             }
-            return dumpPresTagLog(ack.prestag_data_log());
+            return dumpPresTagLog(context, ack.prestag_data_log());
 
         case BITPRESTAG:
             if (!ack.has_bitprestag_data_log()) {
                 return 0;
             }
-            return dumpBitPresTagLog(ack.bitprestag_data_log());
+            return dumpBitPresTagLog(context, ack.bitprestag_data_log());
 
         case IMUTAG:
             if (!ack.has_imu_data_log()) {
                 return 0;
             }
-            {
-                WriterContext context = writerContext();
-                return dumpIMUTagLog(context, ack.imu_data_log());
-            }
+            return dumpIMUTagLog(context, ack.imu_data_log());
 
         default:
             setLastError("SQLite log output does not support tag type "
@@ -477,285 +475,6 @@ private:
             return statement.bindText(index, value);
         }
         return statement.bindNull(index);
-    }
-
-    // ---------------------------------------------------------------------
-    // Tag-Specific Payload Writers
-    // ---------------------------------------------------------------------
-    //
-    // The schema catalog decides which tables exist, but each tag protobuf has
-    // different timing and packing rules. These functions decode those payloads
-    // and write rows into the already-created schema tables.
-
-    int dumpBitTagLog(const BitTagLog &log)
-    {
-        if (!createLogTables()) {
-            return -2;
-        }
-
-        int bucket_bits = 0;
-        int bucket_number = 0;
-        int bucket_period = 0;
-
-        switch (config_.bittag_log()) {
-        case BITTAG_BITPERSEC:
-            break;
-        case BITTAG_BITSPERMIN:
-            bucket_bits = 6;
-            bucket_number = 10;
-            bucket_period = 60;
-            break;
-        case BITTAG_BITSPERFOURMIN:
-            bucket_bits = 8;
-            bucket_number = 8;
-            bucket_period = 60 * 4;
-            break;
-        case BITTAG_BITSPERFIVEMIN:
-            bucket_bits = 9;
-            bucket_number = 7;
-            bucket_period = 60 * 5;
-            break;
-        default:
-            setLastError("BitTag SQLite output requires a configured log format");
-            return -2;
-        }
-
-        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
-        Statement temperature_insert(
-            db_,
-            "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
-        Statement activity_insert(db_, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
-
-        if (!voltage_insert.valid()
-            || !temperature_insert.valid()
-            || !activity_insert.valid()) {
-            setLastSqliteError("Could not prepare BitTag log insert");
-            return -2;
-        }
-
-        for (auto const &entry : log.data()) {
-            const sqlite3_int64 timestamp = entry.epoch();
-
-            if (!voltage_insert.bindInt64(1, timestamp)
-                || !voltage_insert.bindDouble(2, entry.voltage())
-                || !voltage_insert.stepDone()
-                || !temperature_insert.bindInt64(1, timestamp)
-                || !temperature_insert.bindDouble(2, entry.temperature())
-                || !temperature_insert.stepDone()) {
-                setLastSqliteError("BitTag log header insert failed");
-                return -2;
-            }
-
-            const uint64_t rawdata = entry.rawdata();
-            if (config_.bittag_log() == BITTAG_BITPERSEC) {
-                for (int i = 0; i < 60; i++) {
-                    const sqlite3_int64 sample_timestamp = timestamp - (59 - i);
-                    const double activity = ((rawdata >> i) & 1) * 100.0;
-                    if (!activity_insert.bindInt64(1, sample_timestamp)
-                        || !activity_insert.bindDouble(2, activity)
-                        || !activity_insert.stepDone()) {
-                        setLastSqliteError("BitTag activity insert failed");
-                        return -2;
-                    }
-                }
-            } else {
-                for (int i = 0; i < bucket_number; i++) {
-                    const sqlite3_int64 sample_timestamp =
-                        timestamp - bucket_period * (bucket_number - 1 - i);
-                    const uint64_t count =
-                        (rawdata >> (i * bucket_bits)) & ((1 << bucket_bits) - 1);
-                    const double activity = count * 100.0 / bucket_period;
-
-                    if (!activity_insert.bindInt64(1, sample_timestamp)
-                        || !activity_insert.bindDouble(2, activity)
-                        || !activity_insert.stepDone()) {
-                        setLastSqliteError("BitTag activity insert failed");
-                        return -2;
-                    }
-                }
-            }
-        }
-
-        return log.data().size();
-    }
-
-    int dumpCompassTagLog(const CompassTagLog &log)
-    {
-        if (!createLogTables()) {
-            return -2;
-        }
-
-        // CompassTag records contain voltage/temperature at the packet epoch,
-        // followed by 15-second sample slots for activity and compass data.
-        sqlite3_int64 timestamp = log.epoch();
-
-        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
-        Statement temperature_insert(
-            db_,
-            "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
-        Statement activity_insert(db_, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
-        Statement compass_insert(
-            db_,
-            "INSERT INTO Compass (Epoch, ax, ay, az, mx, my, mz) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)");
-
-        if (!voltage_insert.valid()
-            || !temperature_insert.valid()
-            || !activity_insert.valid()
-            || !compass_insert.valid()) {
-            setLastSqliteError("Could not prepare log insert");
-            return -2;
-        }
-
-        if (!voltage_insert.bindInt64(1, timestamp)
-            || !voltage_insert.bindDouble(2, log.voltage())
-            || !voltage_insert.stepDone()
-            || !temperature_insert.bindInt64(1, timestamp)
-            || !temperature_insert.bindDouble(2, log.temperature())
-            || !temperature_insert.stepDone()) {
-            setLastSqliteError("Log header insert failed");
-            return -2;
-        }
-
-        for (auto const &entry : log.data()) {
-            timestamp += 15;
-
-            if (!activity_insert.bindInt64(1, timestamp)
-                || !activity_insert.bindDouble(2, entry.activity())
-                || !activity_insert.stepDone()
-                || !compass_insert.bindInt64(1, timestamp)
-                || !compass_insert.bindDouble(2, entry.ax())
-                || !compass_insert.bindDouble(3, entry.ay())
-                || !compass_insert.bindDouble(4, entry.az())
-                || !compass_insert.bindDouble(5, entry.mx())
-                || !compass_insert.bindDouble(6, entry.my())
-                || !compass_insert.bindDouble(7, entry.mz())
-                || !compass_insert.stepDone()) {
-                setLastSqliteError("Log data insert failed");
-                return -2;
-            }
-        }
-
-        return 1;
-    }
-
-    int dumpBitPresTagLog(const BitPresTagLog &log)
-    {
-        if (!createLogTables()) {
-            return -2;
-        }
-
-        // BitPresTag text logs define each packet as one voltage header sample
-        // followed by one-minute pressure/temperature records. Activity is
-        // packed as five 6-bit buckets in each record and reported as percent
-        // active over a 60-second interval.
-        constexpr int bucket_number = 4; //5;
-        constexpr int bucket_bits = 4; //6;
-        constexpr int bucket_period = 15; //60;
-
-        sqlite3_int64 timestamp = log.epoch();
-
-        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
-        Statement activity_insert(db_, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
-        Statement pressure_insert(db_, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
-        Statement temperature_insert(
-            db_,
-            "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
-
-        if (!voltage_insert.valid()
-            || !activity_insert.valid()
-            || !pressure_insert.valid()
-            || !temperature_insert.valid()) {
-            setLastSqliteError("Could not prepare BitPresTag log insert");
-            return -2;
-        }
-
-        if (!voltage_insert.bindInt64(1, timestamp)
-            || !voltage_insert.bindDouble(2, log.voltage())
-            || !voltage_insert.stepDone()) {
-            setLastSqliteError("BitPresTag log header insert failed");
-            return -2;
-        }
-
-        for (auto const &entry : log.data()) {
-            timestamp += bucket_period;
-
-            const uint32_t raw_activity = entry.activity();
-            for (int i = 0; i < bucket_number; i++) {
-                const uint32_t count =
-                    (raw_activity >> (i * bucket_bits)) & ((1U << bucket_bits) - 1U);
-                const double activity = count * 100.0 / bucket_period;
-
-                if (!activity_insert.bindInt64(1, timestamp)
-                    || !activity_insert.bindDouble(2, activity)
-                    || !activity_insert.stepDone()) {
-                    setLastSqliteError("BitPresTag activity insert failed");
-                    return -2;
-                }
-            }
-
-            if (!pressure_insert.bindInt64(1, timestamp)
-                || !pressure_insert.bindDouble(2, entry.pressure())
-                || !pressure_insert.stepDone()
-                || !temperature_insert.bindInt64(1, timestamp)
-                || !temperature_insert.bindDouble(2, entry.temperature())
-                || !temperature_insert.stepDone()) {
-                setLastSqliteError("BitPresTag pressure/temperature insert failed");
-                return -2;
-            }
-        }
-
-        return 1;
-    }
-
-    int dumpPresTagLog(const PresTagLog &log)
-    {
-        if (!createLogTables()) {
-            return -2;
-        }
-
-        if (config_.period() == 0) {
-            setLastError("PresTag SQLite output requires a nonzero sample period");
-            return -2;
-        }
-
-        sqlite3_int64 timestamp = log.epoch();
-
-        Statement voltage_insert(db_, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
-        Statement pressure_insert(db_, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
-        Statement temperature_insert(
-            db_,
-            "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
-
-        if (!voltage_insert.valid()
-            || !pressure_insert.valid()
-            || !temperature_insert.valid()) {
-            setLastSqliteError("Could not prepare PresTag log insert");
-            return -2;
-        }
-
-        if (!voltage_insert.bindInt64(1, timestamp)
-            || !voltage_insert.bindDouble(2, log.voltage())
-            || !voltage_insert.stepDone()) {
-            setLastSqliteError("PresTag log header insert failed");
-            return -2;
-        }
-
-        for (auto const &entry : log.data()) {
-            if (!pressure_insert.bindInt64(1, timestamp)
-                || !pressure_insert.bindDouble(2, entry.pressure())
-                || !pressure_insert.stepDone()
-                || !temperature_insert.bindInt64(1, timestamp)
-                || !temperature_insert.bindDouble(2, entry.temperature())
-                || !temperature_insert.stepDone()) {
-                setLastSqliteError("PresTag log data insert failed");
-                return -2;
-            }
-
-            timestamp += config_.period();
-        }
-
-        return 1;
     }
 
     void setLastError(const std::string &error)

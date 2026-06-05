@@ -62,7 +62,10 @@ target_sources(tagcore
          taglogwriter.cc
          txtlogs.cc
          sqlitelog.cc
+         sqlitelog/bittag.cc
+         sqlitelog/compasstag.cc
          sqlitelog/imutag.cc
+         sqlitelog/pressure.cc
          sqlitelog/schema.cc
          linkadapt.cc
          log.c

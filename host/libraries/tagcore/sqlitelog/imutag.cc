@@ -5,6 +5,10 @@
 
 namespace tagcore::sqlite_log {
 
+// IMUTag blocks carry pressure and magnetometer samples plus a packed ten-sample
+// accelerometer/gyroscope payload. The database keeps those rows on an elapsed
+// microsecond clock measured from the start of data collection.
+
 namespace {
 
 constexpr int kImuSamplesPerBlock = 10;

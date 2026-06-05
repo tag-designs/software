@@ -11,6 +11,11 @@
 
 namespace tagcore::sqlite_log {
 
+// Private helpers shared by the SQLite writer implementation files. This
+// namespace is deliberately not part of the public tagcore API.
+
+// Small RAII wrapper for prepared inserts. A successful step resets the
+// statement so callers can bind the next row without repeating boilerplate.
 class Statement
 {
 public:
@@ -105,12 +110,17 @@ struct SqlTagProfile
     std::vector<SqlTableDefinition> tables;
 };
 
+// IMUTag logs send one absolute timestamp per header, followed by blocks whose
+// sensor samples are decoded in elapsed microseconds from the start of capture.
 struct ImuDecodeState
 {
     uint64_t block_count = 0;
     uint64_t header_count = 0;
 };
 
+// Shared bridge from SqliteTagLogWriter::Impl to the tag-specific decoders.
+// Keeping this narrow lets the per-tag files write rows without depending on
+// the writer class layout.
 struct WriterContext
 {
     sqlite3 *db;
@@ -123,7 +133,11 @@ struct WriterContext
 
 SqlTagProfile sqliteProfileForTag(TagType tag_type);
 
+int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log);
+int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log);
+int dumpBitPresTagLog(WriterContext &ctx, const BitPresTagLog &log);
 int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log);
+int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log);
 
 } // namespace tagcore::sqlite_log
 

@@ -2,6 +2,9 @@
 
 namespace tagcore::sqlite_log {
 
+// Schema catalog for SQLite logs. Payload decoding lives in the tag-specific
+// files; this file only describes tables and stream metadata for each tag type.
+
 namespace {
 
 SqlTableDefinition voltageTable()
