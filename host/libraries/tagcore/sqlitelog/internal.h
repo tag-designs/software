@@ -13,6 +13,15 @@ namespace tagcore::sqlite_log {
 
 // Private helpers shared by the SQLite writer implementation files. This
 // namespace is deliberately not part of the public tagcore API.
+//
+// File ownership:
+// - sqlitelog.cc owns the writer lifecycle, generic metadata, and dispatch.
+// - schema.cc owns declarative table/stream definitions for each tag type.
+// - bittag.cc, compasstag.cc, pressure.cc, and imutag.cc decode protobuf
+//   payloads into rows for their tag families.
+//
+// Keep these helpers small and data-oriented. They are shared implementation
+// details, not a second public API surface.
 
 // Small RAII wrapper for prepared inserts. A successful step resets the
 // statement so callers can bind the next row without repeating boilerplate.
@@ -82,6 +91,9 @@ struct SqlColumnDefinition
     const char *type;
 };
 
+// Viewer-facing metadata for one plottable value. The table/time/value fields
+// point at the SQL table created from SqlTableDefinition. group_id/group_name
+// let related record columns, such as ax/ay/az, be displayed together.
 struct SqlStreamDefinition
 {
     const char *id;
@@ -104,6 +116,9 @@ struct SqlTableDefinition
     std::vector<SqlStreamDefinition> streams;
 };
 
+// Complete schema description for one tag type. The profile drives table
+// creation and stream metadata only; the matching dump*Log() function is still
+// responsible for inserting rows whose columns match these definitions.
 struct SqlTagProfile
 {
     bool has_calibration_table;
@@ -112,6 +127,8 @@ struct SqlTagProfile
 
 // IMUTag logs send one absolute timestamp per header, followed by blocks whose
 // sensor samples are decoded in elapsed microseconds from the start of capture.
+// This state persists across ACK pages so each downloaded header/block sequence
+// keeps a monotonic elapsed timeline in the SQLite database.
 struct ImuDecodeState
 {
     uint64_t block_count = 0;
@@ -120,7 +137,9 @@ struct ImuDecodeState
 
 // Shared bridge from SqliteTagLogWriter::Impl to the tag-specific decoders.
 // Keeping this narrow lets the per-tag files write rows without depending on
-// the writer class layout.
+// the writer class layout. Decoders should report all failures through these
+// callbacks so SqliteTagLogWriter::lastError() remains useful to CLI and Qt
+// callers.
 struct WriterContext
 {
     sqlite3 *db;

@@ -4,6 +4,10 @@ namespace tagcore::sqlite_log {
 
 // Pressure-family tags share pressure and temperature streams, with BitPresTag
 // also unpacking compact activity buckets from each entry.
+//
+// PresTag and BitPresTag have similar environmental streams but different page
+// pacing. Keep them in one file because their table schemas overlap; keep the
+// two dump functions separate because their timestamp reconstruction differs.
 
 int dumpBitPresTagLog(WriterContext &ctx, const BitPresTagLog &log)
 {
@@ -81,6 +85,8 @@ int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log)
         return -2;
     }
 
+    // PresTag entries are already ordered at config.period() spacing starting
+    // at the header epoch.
     sqlite3_int64 timestamp = log.epoch();
 
     Statement voltage_insert(ctx.db, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");

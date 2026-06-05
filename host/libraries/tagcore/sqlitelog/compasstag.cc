@@ -4,6 +4,10 @@ namespace tagcore::sqlite_log {
 
 // CompassTag packets contain one header timestamp followed by 15 second
 // activity and compass samples.
+//
+// The first stored sample is 15 seconds after log.epoch(). This mirrors the
+// embedded log page format, where the header timestamp marks the beginning of
+// the page interval rather than the first data row.
 
 int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log)
 {

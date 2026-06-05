@@ -18,6 +18,24 @@ extern "C"
 
 using namespace tagcore::sqlite_log;
 
+/*
+ * SQLite log writer architecture
+ *
+ * This file is the public SqliteTagLogWriter wrapper and the only file that
+ * talks to Tag objects. It creates the generic metadata tables, reads tag
+ * config/info/calibration/state history, and dispatches each data-log ACK to a
+ * tag-specific decoder in sqlitelog/*.cc.
+ *
+ * The per-tag files are intentionally narrow: they receive an already-open
+ * sqlite3 handle, create their data tables on first use, and unpack one
+ * protobuf log payload into rows. If adding a new tag log type, update:
+ *
+ *   1. schema.cc, to declare tables and stream metadata;
+ *   2. internal.h, to declare the tag decoder;
+ *   3. a tag-specific sqlitelog/<tag>.cc decoder;
+ *   4. writeLog() below, to dispatch the ACK payload.
+ */
+
 // Pimpl keeps the C sqlite3 types out of sqlitelog.h. This matters because the
 // host library is used by Qt and non-Qt tools, and public headers should not
 // force every consumer to include sqlite3.h.
@@ -227,6 +245,12 @@ public:
             return -2;
         }
 
+        /*
+         * writeHeader() builds metadata once. writeLog() is called repeatedly
+         * as the monitor downloads pages. A missing tag-specific payload means
+         * "no more log data" for the current tag rather than failure, so those
+         * cases return 0. Negative returns are reserved for writer errors.
+         */
         WriterContext context = writerContext();
         switch (config_.tag_type()) {
         case BITTAG:

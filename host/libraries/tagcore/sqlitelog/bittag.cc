@@ -4,6 +4,10 @@ namespace tagcore::sqlite_log {
 
 // BitTag logs pack activity buckets into each protobuf entry. The configured
 // log format determines how many buckets are unpacked and their spacing.
+//
+// The voltage and core-temperature values are one row per protobuf entry. The
+// activity value is a compact bitfield/counter history ending at entry.epoch(),
+// so this decoder expands it into individual rows with reconstructed timestamps.
 
 int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log)
 {

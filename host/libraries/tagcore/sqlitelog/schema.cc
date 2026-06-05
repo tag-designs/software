@@ -4,6 +4,15 @@ namespace tagcore::sqlite_log {
 
 // Schema catalog for SQLite logs. Payload decoding lives in the tag-specific
 // files; this file only describes tables and stream metadata for each tag type.
+//
+// The stream catalog is intentionally descriptive rather than prescriptive:
+// it tells viewers what data exists, where to read it, and the physical units.
+// Viewer policy such as colors, axes, default visibility, and plot grouping
+// belongs in the application layer, not in the database schema.
+//
+// When adding or renaming table columns here, update the corresponding INSERT
+// statement in the matching tag decoder. The writer does not infer INSERT
+// layouts from these definitions.
 
 namespace {
 
@@ -162,6 +171,16 @@ SqlTableDefinition compassTable()
 
 SqlTableDefinition imuHeaderTable()
 {
+    /*
+     * IMUTag has two time domains:
+     * - ImuHeader stores the absolute wall-clock timestamp supplied by the tag
+     *   at the start of each 16-block page.
+     * - Sensor rows use elapsed microseconds from the first retained block.
+     *
+     * Sensorviz currently treats time columns generically, so keeping this
+     * origin information explicit gives future viewers enough data to convert
+     * elapsed time to absolute time if they need it.
+     */
     return {
         "ImuHeader",
         {
