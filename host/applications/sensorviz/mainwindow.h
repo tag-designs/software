@@ -88,6 +88,7 @@ private slots:
     void printPlot();
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
+    void setCursorsVisible(bool visible);
     void plotDoubleClick(QMouseEvent *event);
     void showPlotContextMenu(const QPoint &pos);
     void showMousePosition(QMouseEvent *event);
@@ -112,6 +113,7 @@ private:
     void updateMetadata();
     void updateTransformActions();
     void createAltitudeStream();
+    void createImuMagnitudeStreams();
     void createCompassPlotStreams();
     QString preferenceKey() const;
     void rememberCurrentPreferences();
@@ -128,7 +130,7 @@ private:
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
     void clearStreamActions();
-    void addStreamAction(const SensorStream &stream, bool checked);
+    void addStreamAction(const SensorStream &stream, bool checked, int action_index = -1);
     QAction *streamActionById(const QString &id) const;
     void applyStreamVisibility(const QSet<QString> &visible_ids);
     bool hasStream(const QString &id) const;
@@ -159,6 +161,8 @@ private:
     QColor effectiveStreamColor(const SensorStream &stream) const;
     void updateColorsAction();
     void updateCompassDisplay(double epoch);
+    QString formatPlotTime(double time_seconds) const;
+    void updateTimeAxisForLog();
 
     // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
     // from current actions while preserving the visible time window;
@@ -168,12 +172,14 @@ private:
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
     void clearDynamicAxes();
+    QCPAxis *timeAxis() const;
     QCPAxis *axisForStream(
         SensorAxisSide side,
         int side_index,
         const SensorStream &stream);
     QString streamValueAt(const SensorStream &stream, double epoch) const;
     void resetCursorsToView();
+    void applyUtcAxisLabel();
 
     SensorLog log_;
     QVector<SensorStream> streams_;
@@ -229,6 +235,7 @@ private:
     QAction *calibration_constants_action_ = nullptr;
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
+    QAction *show_cursors_action_ = nullptr;
     QAction *visible_streams_action_ = nullptr;
     QAction *axis_sides_action_ = nullptr;
     QAction *colors_action_ = nullptr;
@@ -241,12 +248,12 @@ private:
     QVector<QAction *> range_actions_;
 
     QSharedPointer<QCPAxisTickerDateTime> date_ticker_;
+    QCPAxis *elapsed_x_axis_ = nullptr;
     QVector<QCPAxis *> dynamic_axes_;
     QCPItemLine *left_cursor_ = nullptr;
     QCPItemLine *right_cursor_ = nullptr;
     QCPTextElement *plot_title_ = nullptr;
-    QCPItemText *declination_label_ = nullptr;
-    QCPItemText *sea_level_pressure_label_ = nullptr;
+    QCPItemText *metadata_box_ = nullptr;
 };
 
 #endif

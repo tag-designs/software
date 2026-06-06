@@ -11,6 +11,7 @@
 #include <QToolTip>
 
 #include <algorithm>
+#include <cmath>
 
 // User interaction that depends on an existing plot lives here: cursors,
 // context menus, printing, UTC offset selection, and mouse-position readout.
@@ -23,23 +24,37 @@ void MainWindow::resetCursorsToView()
         return;
     }
 
-    left_cursor_->setVisible(true);
-    right_cursor_->setVisible(true);
-    left_cursor_->start->setCoords(plot_->xAxis->range().lower, QCPRange::minRange);
-    left_cursor_->end->setCoords(plot_->xAxis->range().lower, QCPRange::maxRange);
-    right_cursor_->start->setCoords(plot_->xAxis->range().upper, QCPRange::minRange);
-    right_cursor_->end->setCoords(plot_->xAxis->range().upper, QCPRange::maxRange);
+    QCPAxis *x_axis = timeAxis();
+    left_cursor_->start->setAxes(x_axis, plot_->yAxis);
+    left_cursor_->end->setAxes(x_axis, plot_->yAxis);
+    right_cursor_->start->setAxes(x_axis, plot_->yAxis);
+    right_cursor_->end->setAxes(x_axis, plot_->yAxis);
+
+    const bool show_cursors = !show_cursors_action_ || show_cursors_action_->isChecked();
+    left_cursor_->setVisible(show_cursors);
+    right_cursor_->setVisible(show_cursors);
+    left_cursor_->start->setCoords(x_axis->range().lower, QCPRange::minRange);
+    left_cursor_->end->setCoords(x_axis->range().lower, QCPRange::maxRange);
+    right_cursor_->start->setCoords(x_axis->range().upper, QCPRange::minRange);
+    right_cursor_->end->setCoords(x_axis->range().upper, QCPRange::maxRange);
 }
 
 void MainWindow::plotDoubleClick(QMouseEvent *event)
 {
     // Mouse convention inherited from compviz: double-click moves the left
     // cursor, shift-double-click moves the right cursor.
-    if (!left_cursor_ || !right_cursor_ || !left_cursor_->visible()) {
+    if (!left_cursor_ || !right_cursor_) {
         return;
     }
+    if (show_cursors_action_ && !show_cursors_action_->isChecked()) {
+        show_cursors_action_->setChecked(true);
+    }
+    if (!left_cursor_->visible()) {
+        resetCursorsToView();
+    }
 
-    const double x = plot_->xAxis->pixelToCoord(event->pos().x());
+    QCPAxis *x_axis = timeAxis();
+    const double x = x_axis->pixelToCoord(event->pos().x());
     // Double-click sets the left cursor; shift-double-click sets the right.
     if ((event->button() & Qt::LeftButton)
         && !(event->modifiers() & Qt::ShiftModifier)
@@ -68,7 +83,23 @@ void MainWindow::zoomToCursors()
     const double left = left_cursor_->start->coords().x();
     const double right = right_cursor_->start->coords().x();
     if (left < right) {
-        plot_->xAxis->setRange(left, right);
+        timeAxis()->setRange(left, right);
+        plot_->replot();
+    }
+}
+
+void MainWindow::setCursorsVisible(bool visible)
+{
+    if (!left_cursor_ || !right_cursor_) {
+        return;
+    }
+
+    if (visible) {
+        resetCursorsToView();
+        plot_->replot();
+    } else {
+        left_cursor_->setVisible(false);
+        right_cursor_->setVisible(false);
         plot_->replot();
     }
 }
@@ -107,6 +138,10 @@ void MainWindow::renderPlot(QPrinter *printer)
 
 void MainWindow::setUtcOffset()
 {
+    if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds) {
+        return;
+    }
+
     // Change only tick labels and x-axis title. Stored stream times remain Unix
     // epoch seconds in UTC.
     bool ok = false;
@@ -124,16 +159,76 @@ void MainWindow::setUtcOffset()
     }
 
     utc_offset_ = hours;
-    date_ticker_->setTimeZone(QTimeZone(3600 * hours));
-    date_ticker_->setTickOrigin(-3600 * hours);
-    if (hours == 0) {
+    applyUtcAxisLabel();
+    plot_->replot();
+}
+
+void MainWindow::applyUtcAxisLabel()
+{
+    date_ticker_->setTimeZone(QTimeZone(3600 * utc_offset_));
+    date_ticker_->setTickOrigin(-3600 * utc_offset_);
+    if (utc_offset_ == 0) {
         plot_->xAxis->setLabel(tr("Hour:Minute (UTC)\nMonth/Day/Year"));
     } else {
         plot_->xAxis->setLabel(tr("Hour:Minute (UTC%1%2)\nMonth/Day/Year")
-                                   .arg(hours > 0 ? "+" : "")
-                                   .arg(hours));
+                                   .arg(utc_offset_ > 0 ? "+" : "")
+                                   .arg(utc_offset_));
     }
-    plot_->replot();
+}
+
+QString MainWindow::formatPlotTime(double time_seconds) const
+{
+    if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds) {
+        const bool negative = time_seconds < 0.0;
+        double remaining = std::abs(time_seconds);
+        const int hours = static_cast<int>(remaining / 3600.0);
+        remaining -= hours * 3600.0;
+        const int minutes = static_cast<int>(remaining / 60.0);
+        remaining -= minutes * 60.0;
+        const double seconds = remaining;
+
+        QString prefix = negative ? QStringLiteral("-") : QString();
+        if (hours > 0) {
+            return QString("%1Elapsed %2:%3:%4 s")
+                .arg(prefix)
+                .arg(hours)
+                .arg(minutes, 2, 10, QLatin1Char('0'))
+                .arg(seconds, 6, 'f', 3, QLatin1Char('0'));
+        }
+        return QString("%1Elapsed %2:%3 s")
+            .arg(prefix)
+            .arg(minutes)
+            .arg(seconds, 6, 'f', 3, QLatin1Char('0'));
+    }
+
+    const QDateTime dt =
+        QDateTime::fromSecsSinceEpoch(qint64(time_seconds), QTimeZone(3600 * utc_offset_));
+    return dt.toString("MM/dd hh:mm:ss");
+}
+
+void MainWindow::updateTimeAxisForLog()
+{
+    if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds) {
+        plot_->xAxis->setVisible(false);
+        plot_->xAxis2->setVisible(false);
+        if (elapsed_x_axis_) {
+            elapsed_x_axis_->setVisible(true);
+            plot_->axisRect()->setRangeDragAxes(elapsed_x_axis_, nullptr);
+            plot_->axisRect()->setRangeZoomAxes(elapsed_x_axis_, nullptr);
+        }
+        utc_offset_action_->setEnabled(false);
+        return;
+    }
+
+    plot_->xAxis2->setVisible(false);
+    if (elapsed_x_axis_) {
+        elapsed_x_axis_->setVisible(false);
+    }
+    plot_->xAxis->setVisible(true);
+    plot_->axisRect()->setRangeDragAxes(plot_->xAxis, nullptr);
+    plot_->axisRect()->setRangeZoomAxes(plot_->xAxis, nullptr);
+    applyUtcAxisLabel();
+    utc_offset_action_->setEnabled(!log_.path.isEmpty());
 }
 
 void MainWindow::showPlotContextMenu(const QPoint &pos)
@@ -188,6 +283,7 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     view->addSeparator();
     view->addAction(reset_action_);
     view->addAction(zoom_to_cursors_action_);
+    view->addAction(show_cursors_action_);
     if (calibration_constants_action_->isVisible()) {
         view->addSeparator();
         view->addAction(calibration_constants_action_);
@@ -275,10 +371,9 @@ void MainWindow::showMousePosition(QMouseEvent *event)
         return;
     }
 
-    const double x = plot_->xAxis->pixelToCoord(event->pos().x());
-    const QDateTime dt = QDateTime::fromSecsSinceEpoch(qint64(x), QTimeZone(3600 * utc_offset_));
+    const double x = timeAxis()->pixelToCoord(event->pos().x());
     QStringList parts;
-    parts << dt.toString("MM/dd hh:mm:ss");
+    parts << formatPlotTime(x);
     for (const SensorStream &stream : visibleStreams()) {
         const QString value = streamValueAt(stream, x);
         if (!value.isEmpty()) {

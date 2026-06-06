@@ -11,10 +11,12 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 - Loads SQLite log files produced by host tag download tools.
 - Discovers available streams from the SQLite `streams` metadata table.
 - Plots scalar streams such as pressure, activity, voltage, and temperature
-  from BitTag, BitPresTag, PresTag, and CompassTag SQLite logs.
+  from BitTag, BitPresTag, PresTag, CompassTag, and IMUTag SQLite logs.
+- Supports both epoch-time logs and IMUTag elapsed-time logs.
 - Provides display transforms such as:
   - altitude from pressure
   - low-pass filtered activity
+  - IMUTag acceleration and gyroscope magnitudes
   - CompassTag heading, acceleration magnitude, pitch, roll, dip, and magnetic
     field strength
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
@@ -93,6 +95,10 @@ definitions, or transform definitions.
 
 `SensorStream` is a single plottable scalar time series. This is what the plot
 and View menu operate on.
+
+Streams carry a time domain. Most existing tags use Unix epoch seconds; IMUTag
+uses elapsed seconds converted from SQLite `ElapsedUs` columns. Plotting and
+cursor readout choose the matching x-axis automatically.
 
 `SensorRecordSet` is a multi-column time-indexed table that is loaded but not
 plotted directly. It exists so future data such as compass accel/magnetometer

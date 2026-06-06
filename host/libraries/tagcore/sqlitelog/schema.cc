@@ -190,7 +190,19 @@ SqlTableDefinition imuHeaderTable()
             {"Millisecond", "INTEGER"},
             {"Temperature", "REAL"},
         },
-        {},
+        {{
+            "sensor_temperature",
+            nullptr,
+            nullptr,
+            "ImuHeader",
+            "StartElapsedUs",
+            "Temperature",
+            "scalar",
+            "Sensor temperature",
+            "C",
+            "temperature",
+            "IMUTag header temperature timestamped by elapsed collection time.",
+        }},
     };
 }
 

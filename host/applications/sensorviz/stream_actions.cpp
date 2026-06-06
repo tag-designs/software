@@ -13,6 +13,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSignalBlocker>
+#include <QStringList>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -20,6 +21,69 @@
 
 namespace
 {
+
+QStringList sourceOrderForStream(const QString &stream_id)
+{
+    if (stream_id == "altitude") {
+        return {QStringLiteral("pressure"), QStringLiteral("imu_pressure")};
+    }
+    if (stream_id == "imu_accel_magnitude") {
+        return {
+            QStringLiteral("imu_ax"),
+            QStringLiteral("imu_ay"),
+            QStringLiteral("imu_az"),
+        };
+    }
+    if (stream_id == "imu_gyro_magnitude") {
+        return {
+            QStringLiteral("imu_gx"),
+            QStringLiteral("imu_gy"),
+            QStringLiteral("imu_gz"),
+        };
+    }
+    if (stream_id == "imu_mag_magnitude") {
+        return {
+            QStringLiteral("imu_mx"),
+            QStringLiteral("imu_my"),
+            QStringLiteral("imu_mz"),
+        };
+    }
+    return {};
+}
+
+int streamInsertionIndex(const QVector<SensorStream> &streams, const QString &stream_id)
+{
+    const QStringList sources = sourceOrderForStream(stream_id);
+    if (sources.isEmpty()) {
+        return streams.size();
+    }
+
+    int last_source_index = -1;
+    for (qsizetype i = 0; i < streams.size(); i++) {
+        if (sources.contains(streams[i].id)) {
+            last_source_index = static_cast<int>(i);
+        }
+    }
+
+    return last_source_index >= 0 ? last_source_index + 1 : streams.size();
+}
+
+int actionInsertionIndex(const QVector<QAction *> &actions, const QString &stream_id)
+{
+    const QStringList sources = sourceOrderForStream(stream_id);
+    if (sources.isEmpty()) {
+        return actions.size();
+    }
+
+    int last_source_index = -1;
+    for (qsizetype i = 0; i < actions.size(); i++) {
+        if (sources.contains(actions[i]->data().toString())) {
+            last_source_index = static_cast<int>(i);
+        }
+    }
+
+    return last_source_index >= 0 ? last_source_index + 1 : actions.size();
+}
 
 void setColorSwatch(QLabel *swatch, const QColor &color)
 {
@@ -85,9 +149,10 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
         }
     }
 
-    streams_.append(stream);
+    const int stream_index = streamInsertionIndex(streams_, stream.id);
+    streams_.insert(stream_index, stream);
     if (!stream.derived) {
-        addStreamAction(stream, checked);
+        addStreamAction(stream, checked, actionInsertionIndex(stream_actions_, stream.id));
     }
     refreshPlot();
     rebuildRangeActions();
@@ -141,7 +206,7 @@ void MainWindow::clearStreamActions()
     updateTransformActions();
 }
 
-void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
+void MainWindow::addStreamAction(const SensorStream &stream, bool checked, int action_index)
 {
     // Create a persistent checkable state action for one raw stream. These
     // actions are not placed directly in menus; the Visible Streams dialog edits
@@ -157,7 +222,11 @@ void MainWindow::addStreamAction(const SensorStream &stream, bool checked)
         updateAxisSidesAction();
         rememberCurrentPreferences();
     });
-    stream_actions_.append(action);
+    if (action_index >= 0 && action_index < stream_actions_.size()) {
+        stream_actions_.insert(action_index, action);
+    } else {
+        stream_actions_.append(action);
+    }
     visible_streams_action_->setVisible(true);
     visible_streams_action_->setEnabled(true);
     updateAxisSidesAction();
@@ -539,7 +608,9 @@ void MainWindow::setStreamRange(const QString &id)
     // Altitude is derived directly from pressure. When the user changes the
     // pressure range, keep altitude aligned unless they have explicitly set an
     // altitude range of its own.
-    if (id == "pressure" && hasStream("altitude") && !explicit_axis_ranges_.contains("altitude")) {
+    if ((id == "pressure" || id == "imu_pressure")
+        && hasStream("altitude")
+        && !explicit_axis_ranges_.contains("altitude")) {
         custom_axis_ranges_["altitude"] =
             QCPRange(pressureToAltitude(upper), pressureToAltitude(lower));
     }

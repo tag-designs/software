@@ -210,6 +210,19 @@ struct StreamMetadata
     QString units;
 };
 
+SensorTimeDomain timeDomainForColumn(const QString &time_column)
+{
+    return time_column.compare(QStringLiteral("ElapsedUs"), Qt::CaseInsensitive) == 0
+        ? SensorTimeDomain::ElapsedSeconds
+        : SensorTimeDomain::EpochSeconds;
+}
+
+double normalizedTimeValue(const Statement &stmt, int column, SensorTimeDomain domain)
+{
+    const double value = static_cast<double>(stmt.int64Column(column));
+    return domain == SensorTimeDomain::ElapsedSeconds ? value / 1000000.0 : value;
+}
+
 // ---------------------------------------------------------------------------
 // Generic Helpers
 // ---------------------------------------------------------------------------
@@ -355,6 +368,7 @@ bool loadStream(
     stream.id = definition.id;
     stream.label = definition.displayName;
     stream.units = definition.units;
+    stream.timeDomain = timeDomainForColumn(definition.timeColumn);
     const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(definition.id);
     stream.color = defaults.color;
     stream.defaultVisible = defaults.visible;
@@ -362,7 +376,7 @@ bool loadStream(
     stream.axisRange = defaults.axisRange;
 
     while (stmt.next()) {
-        stream.time.append(stmt.int64Column(0));
+        stream.time.append(normalizedTimeValue(stmt, 0, stream.timeDomain));
         stream.value.append(stmt.doubleColumn(1));
     }
 
@@ -421,12 +435,13 @@ bool loadRecordSet(
     SensorRecordSet record_set;
     record_set.id = group_id;
     record_set.label = first.groupName.isEmpty() ? group_id : first.groupName;
+    record_set.timeDomain = timeDomainForColumn(first.timeColumn);
     for (const StreamMetadata &column : columns) {
         record_set.columns.insert(column.valueColumn, QVector<double>());
     }
 
     while (stmt.next()) {
-        record_set.time.append(stmt.int64Column(0));
+        record_set.time.append(normalizedTimeValue(stmt, 0, record_set.timeDomain));
         for (int i = 0; i < columns.size(); i++) {
             record_set.columns[columns[i].valueColumn].append(stmt.doubleColumn(i + 1));
         }
@@ -491,6 +506,60 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
     log.hasCompassCalibration = true;
     log.compassCalibrationWarning.clear();
     return true;
+}
+
+bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
+{
+    if (!tableExistsRaw(db, "ImuHeader")) {
+        return true;
+    }
+
+    Statement stmt(
+        db,
+        "SELECT Epoch, Millisecond FROM ImuHeader ORDER BY StartElapsedUs LIMIT 1");
+    if (!stmt.valid()) {
+        error = "Failed to load IMUTag collection start: " + stmt.lastError();
+        return false;
+    }
+    if (!stmt.next()) {
+        return true;
+    }
+
+    log.hasCollectionStart = true;
+    log.collectionStartEpochMs = stmt.int64Column(0) * 1000 + stmt.int64Column(1);
+    return true;
+}
+
+void inferEpochCollectionStart(SensorLog &log)
+{
+    if (log.hasCollectionStart) {
+        return;
+    }
+
+    bool have_start = false;
+    double start_seconds = 0.0;
+    auto considerTimeVector = [&](const QVector<double> &time, SensorTimeDomain domain) {
+        if (domain != SensorTimeDomain::EpochSeconds || time.isEmpty()) {
+            return;
+        }
+        const double candidate = time.first();
+        if (!have_start || candidate < start_seconds) {
+            have_start = true;
+            start_seconds = candidate;
+        }
+    };
+
+    for (const SensorStream &stream : log.streams) {
+        considerTimeVector(stream.time, stream.timeDomain);
+    }
+    for (const SensorRecordSet &record_set : log.recordSets) {
+        considerTimeVector(record_set.time, record_set.timeDomain);
+    }
+
+    if (have_start) {
+        log.hasCollectionStart = true;
+        log.collectionStartEpochMs = static_cast<qint64>(start_seconds * 1000.0);
+    }
 }
 
 } // namespace
@@ -563,6 +632,23 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
             return false;
         }
     }
+
+    for (const SensorStream &stream : loaded.streams) {
+        if (stream.timeDomain == SensorTimeDomain::ElapsedSeconds) {
+            loaded.timeDomain = SensorTimeDomain::ElapsedSeconds;
+            break;
+        }
+    }
+    for (const SensorRecordSet &record_set : loaded.recordSets) {
+        if (record_set.timeDomain == SensorTimeDomain::ElapsedSeconds) {
+            loaded.timeDomain = SensorTimeDomain::ElapsedSeconds;
+            break;
+        }
+    }
+    if (!loadImuCollectionStart(db, loaded, error)) {
+        return false;
+    }
+    inferEpochCollectionStart(loaded);
     if ((tableExistsRaw(db, "Compass") || tableExistsRaw(db, "Calibration"))
         && !loadCompassCalibration(db, loaded, error)) {
         return false;

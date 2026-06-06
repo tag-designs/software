@@ -69,7 +69,7 @@ void MainWindow::loadLog()
 
     // Altitude is a generated stream controlled from Visible Streams; mean
     // sea-level pressure is the Configuration value that changes its samples.
-    if (hasStream("pressure")) {
+    if (hasStream("pressure") || hasStream("imu_pressure")) {
         createAltitudeStream();
     }
 
@@ -79,11 +79,13 @@ void MainWindow::loadLog()
     if (log_.hasCompassCalibration && recordSetById("compass_raw")) {
         createCompassPlotStreams();
     }
+    createImuMagnitudeStreams();
 
     applyPreferencesForCurrentTag();
 
     // Order matters here: menu visibility depends on streams_, and refreshPlot()
     // depends on the stream actions that were just rebuilt.
+    updateTimeAxisForLog();
     updateMetadata();
     refreshPlotFullRange();
 }

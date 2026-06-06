@@ -66,6 +66,10 @@ void MainWindow::createActions()
     reset_action_->setEnabled(false);
     zoom_to_cursors_action_ = new QAction(tr("&Zoom to Cursors"), this);
     zoom_to_cursors_action_->setEnabled(false);
+    show_cursors_action_ = new QAction(tr("Show &Cursors"), this);
+    show_cursors_action_->setCheckable(true);
+    show_cursors_action_->setChecked(true);
+    show_cursors_action_->setEnabled(false);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
     utc_offset_action_->setEnabled(false);
     calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
@@ -109,6 +113,7 @@ void MainWindow::createActions()
     connect(colors_action_, &QAction::triggered, this, &MainWindow::showStreamColorsDialog);
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
+    connect(show_cursors_action_, &QAction::toggled, this, &MainWindow::setCursorsVisible);
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
     connect(
         calibration_constants_action_,
@@ -142,6 +147,7 @@ void MainWindow::createActions()
     view_stream_separator_ = view_menu_->addSeparator();
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
+    view_menu_->addAction(show_cursors_action_);
     view_menu_->addSeparator();
     view_menu_->addAction(calibration_constants_action_);
 
@@ -183,6 +189,7 @@ void MainWindow::createActions()
         {range_menu_->menuAction(), QT_TR_NOOP("Set y-axis ranges for visible streams.")},
         {reset_action_, QT_TR_NOOP("Restore the full time range and default y-axis ranges.")},
         {zoom_to_cursors_action_, QT_TR_NOOP("Zoom the time axis to the interval between the two cursors.")},
+        {show_cursors_action_, QT_TR_NOOP("Show or hide the two time cursors; double-click the plot to show them again.")},
         {calibration_constants_action_, QT_TR_NOOP("Show the compass calibration constants stored in the log.")},
         {utc_offset_action_, QT_TR_NOOP("Set the UTC offset used for time-axis labels.")},
         {sea_level_pressure_action_, QT_TR_NOOP("Set mean sea-level pressure used to derive altitude.")},
@@ -211,6 +218,7 @@ void MainWindow::updateLoadedStateActions()
     print_action_->setEnabled(has_log);
     reset_action_->setEnabled(has_log);
     zoom_to_cursors_action_->setEnabled(has_log);
+    show_cursors_action_->setEnabled(has_log);
     utc_offset_action_->setEnabled(has_log);
     edit_title_action_->setEnabled(has_log);
     show_title_action_->setEnabled(has_log);
@@ -241,6 +249,10 @@ void MainWindow::createUi()
     plot_->axisRect()->setRangeDrag(Qt::Horizontal);
     plot_->axisRect()->setRangeZoom(Qt::Horizontal);
     plot_->xAxis->setLabel(tr("Hour:Minute (UTC)\nMonth/Day/Year"));
+    plot_->xAxis2->setVisible(false);
+    elapsed_x_axis_ = plot_->axisRect()->addAxis(QCPAxis::atBottom);
+    elapsed_x_axis_->setVisible(false);
+    elapsed_x_axis_->setLabel(tr("Elapsed Time (s)"));
     plot_title_ = new QCPTextElement(plot_, QString(), QFont(font().family(), 12, QFont::Bold));
     plot_title_->setVisible(false);
     plot_->plotLayout()->insertRow(0);
@@ -270,24 +282,19 @@ void MainWindow::createUi()
     right_cursor_ = new QCPItemLine(plot_);
     right_cursor_->setVisible(false);
     right_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
-    declination_label_ = new QCPItemText(plot_);
-    declination_label_->setVisible(false);
-    declination_label_->setClipToAxisRect(false);
-    declination_label_->position->setType(QCPItemPosition::ptAxisRectRatio);
-    declination_label_->position->setAxisRect(plot_->axisRect());
-    declination_label_->position->setCoords(0.0, 1.08);
-    declination_label_->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
-    declination_label_->setPadding(QMargins(0, 0, 0, 0));
-    declination_label_->setColor(Qt::black);
-    sea_level_pressure_label_ = new QCPItemText(plot_);
-    sea_level_pressure_label_->setVisible(false);
-    sea_level_pressure_label_->setClipToAxisRect(false);
-    sea_level_pressure_label_->position->setType(QCPItemPosition::ptAxisRectRatio);
-    sea_level_pressure_label_->position->setAxisRect(plot_->axisRect());
-    sea_level_pressure_label_->position->setCoords(0.0, 1.14);
-    sea_level_pressure_label_->setPositionAlignment(Qt::AlignLeft | Qt::AlignTop);
-    sea_level_pressure_label_->setPadding(QMargins(0, 0, 0, 0));
-    sea_level_pressure_label_->setColor(Qt::black);
+    metadata_box_ = new QCPItemText(plot_);
+    metadata_box_->setVisible(false);
+    metadata_box_->position->setType(QCPItemPosition::ptAxisRectRatio);
+    metadata_box_->position->setAxisRect(plot_->axisRect());
+    metadata_box_->position->setCoords(0.02, 0.02);
+    metadata_box_->setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+    metadata_box_->setTextAlignment(Qt::AlignLeft);
+    metadata_box_->setFont(QFont("Courier New", 10));
+    metadata_box_->setColor(Qt::black);
+    metadata_box_->setBrush(QBrush(Qt::white));
+    metadata_box_->setPen(QPen(QColor(120, 120, 120)));
+    metadata_box_->setPadding(QMargins(10, 8, 10, 8));
+    metadata_box_->setLayer("overlay");
 
     QWidget *plot_tab = new QWidget;
     QVBoxLayout *plot_layout = new QVBoxLayout;
