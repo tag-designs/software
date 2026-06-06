@@ -62,6 +62,8 @@ static bool have_pressure_sample;
 static bool have_mag_sample;
 static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_BLOCK];
 static uint16_t block_sample_count;
+static uint16_t environment_block_counter;
+static uint16_t environment_block_divisor;
 
 static void enable_data_collection_wake_event(void)
 {
@@ -127,13 +129,11 @@ static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
     return AK09940_RATE_20HZ;
   case LSM6DSV16X_TRIG_ODR_200HZ:
   case LSM6DSV16X_TRIG_ODR_400HZ:
-    return AK09940_RATE_50HZ;
   case LSM6DSV16X_TRIG_ODR_800HZ:
-    return AK09940_RATE_100HZ;
   case LSM6DSV16X_TRIG_ODR_1600HZ:
-    return AK09940_RATE_200HZ;
+    return AK09940_RATE_50HZ;
   default:
-    return AK09940_RATE_200HZ;
+    return AK09940_RATE_50HZ;
   }
 }
 
@@ -146,13 +146,23 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
   case LSM6DSV16X_TRIG_ODR_200HZ:
     return LPS22HH_ODR_25HZ;
   case LSM6DSV16X_TRIG_ODR_400HZ:
-    return LPS22HH_ODR_50HZ;
   case LSM6DSV16X_TRIG_ODR_800HZ:
-    return LPS22HH_ODR_100HZ;
   case LSM6DSV16X_TRIG_ODR_1600HZ:
-    return LPS22HH_ODR_200HZ;
+    return LPS22HH_ODR_50HZ;
   default:
-    return LPS22HH_ODR_200HZ;
+    return LPS22HH_ODR_50HZ;
+  }
+}
+
+static uint16_t select_environment_block_divisor(lsm6dsv16x_trig_odr_t imu_odr)
+{
+  switch (imu_odr) {
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return 2U;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return 4U;
+  default:
+    return 1U;
   }
 }
 
@@ -165,6 +175,8 @@ static void reset_environment_cache(void)
   latest_mz = 0;
   have_pressure_sample = false;
   have_mag_sample = false;
+  environment_block_counter = 0U;
+  environment_block_divisor = 1U;
 }
 
 static void reset_imu_block_cache(void)
@@ -296,6 +308,7 @@ bool initDataCollection(void)
   mag_rate = select_mag_rate(imu_odr);
   pressure_rate = select_pressure_rate(imu_odr);
   reset_environment_cache();
+  environment_block_divisor = select_environment_block_divisor(imu_odr);
   reset_imu_block_cache();
   init_mag_data_ready_line();
   init_pressure_data_ready_line();
@@ -343,6 +356,10 @@ bool sampleDataCollection(t_DataLog *data)
     return false;
 
   memset(data, 0, sizeof(*data));
+  data->pressure = DATALOG_ENV_SKIP;
+  data->mx = DATALOG_ENV_SKIP;
+  data->my = DATALOG_ENV_SKIP;
+  data->mz = DATALOG_ENV_SKIP;
 
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {
@@ -386,17 +403,17 @@ bool sampleDataCollection(t_DataLog *data)
   }
   reset_imu_block_cache();
 
-  (void)update_latest_mag();
-  (void)update_latest_pressure();
-
-  if (have_mag_sample) {
-    data->mx = latest_mx;
-    data->my = latest_my;
-    data->mz = latest_mz;
+  if ((environment_block_counter % environment_block_divisor) == 0U) {
+    if (update_latest_mag()) {
+      data->mx = latest_mx;
+      data->my = latest_my;
+      data->mz = latest_mz;
+    }
+    if (update_latest_pressure()) {
+      data->pressure = latest_pressure;
+    }
   }
-  if (have_pressure_sample) {
-    data->pressure = latest_pressure;
-  }
+  environment_block_counter++;
 
   return true;
 }

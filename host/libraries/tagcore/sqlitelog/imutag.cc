@@ -11,8 +11,8 @@ namespace tagcore::sqlite_log {
 //
 // Firmware writes one t_DataHeader followed by DATALOG_SAMPLES t_DataLog blocks.
 // The protobuf mirrors that page shape: IMUTagLog holds the header fields and
-// repeated IMUTagLogData entries. Each entry has one pressure sample, one
-// magnetometer sample, and either:
+// repeated IMUTagLogData entries. Each entry has compact raw pressure and
+// magnetometer samples, and either:
 //
 // - the raw_data byte array only, or
 // - the entire 128-byte t_DataLog image.
@@ -28,6 +28,7 @@ constexpr int kImuBytesPerSample = kImuAxesPerSample * 2;
 constexpr int kImuRawDataBytes = kImuSamplesPerBlock * kImuBytesPerSample;
 constexpr int kImuDataLogBytes = 128;
 constexpr int kImuRawDataOffset = 8;
+constexpr int kEnvironmentSkip = -1;
 
 // Match proto Lsm6dsv_ODR values to the synchronized sample rate configured by
 // the tag. The elapsed timeline is derived from this value rather than from
@@ -86,6 +87,28 @@ double imuGyroDpsPerLsb(Lsm6dsv_GYRO range)
     default:
         return 1.0;
     }
+}
+
+double pressureRawToHpa(int32_t pressure_raw)
+{
+    return pressure_raw / 16.0;
+}
+
+double magRawToUT(int32_t mag_raw)
+{
+    return mag_raw * 0.04;
+}
+
+bool hasPressureSample(const IMUTagLogData &entry)
+{
+    return entry.pressure_raw() != kEnvironmentSkip;
+}
+
+bool hasMagSample(const IMUTagLogData &entry)
+{
+    return entry.mx_raw() != kEnvironmentSkip
+        || entry.my_raw() != kEnvironmentSkip
+        || entry.mz_raw() != kEnvironmentSkip;
 }
 
 int16_t readLeI16(const uint8_t *p)
@@ -199,16 +222,25 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         const sqlite3_int64 block_start_us =
             static_cast<sqlite3_int64>(ctx.imu->block_count) * block_period_us;
 
-        if (!pressure_insert.bindInt64(1, block_start_us)
-            || !pressure_insert.bindDouble(2, entry.pressure())
-            || !pressure_insert.stepDone()
-            || !mag_insert.bindInt64(1, block_start_us)
-            || !mag_insert.bindDouble(2, entry.mx())
-            || !mag_insert.bindDouble(3, entry.my())
-            || !mag_insert.bindDouble(4, entry.mz())
-            || !mag_insert.stepDone()) {
-            ctx.setLastSqliteError("IMUTag pressure/magnetometer insert failed");
-            return -2;
+        if (hasPressureSample(entry)) {
+            if (!pressure_insert.bindInt64(1, block_start_us)
+                || !pressure_insert.bindDouble(2,
+                                               pressureRawToHpa(entry.pressure_raw()))
+                || !pressure_insert.stepDone()) {
+                ctx.setLastSqliteError("IMUTag pressure insert failed");
+                return -2;
+            }
+        }
+
+        if (hasMagSample(entry)) {
+            if (!mag_insert.bindInt64(1, block_start_us)
+                || !mag_insert.bindDouble(2, magRawToUT(entry.mx_raw()))
+                || !mag_insert.bindDouble(3, magRawToUT(entry.my_raw()))
+                || !mag_insert.bindDouble(4, magRawToUT(entry.mz_raw()))
+                || !mag_insert.stepDone()) {
+                ctx.setLastSqliteError("IMUTag magnetometer insert failed");
+                return -2;
+            }
         }
 
         for (int sample = 0; sample < kImuSamplesPerBlock; sample++) {

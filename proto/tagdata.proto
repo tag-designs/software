@@ -243,12 +243,12 @@ message BitPresTagLog{
 }
 
 message IMUTagLogData{
-  float pressure = 1;
-  float mx = 2;
-  float my = 3;
-  float mz = 4;
+  int32 pressure_raw = 1; // compact t_DataLog pressure; -1 means no sample
+  int32 mx_raw = 2;       // compact t_DataLog magnetometer; all axes -1 means no sample
+  int32 my_raw = 3;
+  int32 mz_raw = 4;
   bytes data = 5; // packed accel, gyro data 16bit integers
-                           // ax,ay,az,gx,gy,gz
+                           // gx,gy,gz,ax,ay,az
 }
 
 message IMUTagLog{

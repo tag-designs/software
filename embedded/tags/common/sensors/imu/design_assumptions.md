@@ -138,6 +138,17 @@ sample timeline so host-side decoding can decide how to recover.
 Samples are raw two's-complement values. Callers convert to physical units
 using the active full-scale sensitivity.
 
+## Environmental Samples
+
+IMUTag data blocks carry one compact pressure sample and one compact
+magnetometer sample alongside ten IMU accel/gyro samples. At high IMU rates the
+environmental sensors are intentionally capped near 50 Hz and sampled sparsely:
+800 Hz IMU records a fresh pressure/mag value every other block, and 1600 Hz
+records a fresh value every fourth block. Blocks without a fresh environmental
+sample store `-1` in the compact pressure field, or `-1, -1, -1` in the compact
+magnetometer fields. The protobuf download keeps these compact raw values and
+the host SQLite writer performs unit conversion while skipping sentinel rows.
+
 ## Self-Test
 
 The common IMU module provides a descriptor-backed test hook:

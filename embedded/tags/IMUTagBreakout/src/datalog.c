@@ -9,9 +9,7 @@
 #include "datalog.h"
 #include <string.h>
 #include <tag.pb.h>
-#include "ak09940a.h"
 #include "devices.h"
-#include "lps22hh.h"
 #include "persistent.h"
 
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
@@ -214,17 +212,11 @@ int data_logAck(int index, Ack *ack)
 
     for (int i = 0; i < DATALOG_SAMPLES; i++)
     {
-      if (databuf[i].pressure == -1 || databuf[i].mx == -1)
-        break;
-
       int cnt = log->data_count;
-      log->data[cnt].pressure =
-          lps22hh_raw_pressure_hPA((int32_t)databuf[i].pressure << 8);
-      ak09940_convert_to_uT((int32_t)databuf[i].mx << 2,
-                            (int32_t)databuf[i].my << 2,
-                            (int32_t)databuf[i].mz << 2,
-                            &log->data[cnt].mx, &log->data[cnt].my,
-                            &log->data[cnt].mz);
+      log->data[cnt].pressure_raw = databuf[i].pressure;
+      log->data[cnt].mx_raw = databuf[i].mx;
+      log->data[cnt].my_raw = databuf[i].my;
+      log->data[cnt].mz_raw = databuf[i].mz;
       log->data[cnt].data.size = sizeof(databuf[i].raw_data);
       memcpy(log->data[cnt].data.bytes, databuf[i].raw_data,
              sizeof(databuf[i].raw_data));
