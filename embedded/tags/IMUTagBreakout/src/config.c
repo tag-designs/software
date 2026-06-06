@@ -139,7 +139,7 @@ void readConfig(Config *config)
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
 
-  config->has_active_interval = true;
+  config->has_active_interval = false;
   //config->active_interval.start_epoch = sconfig.start;
   //config->active_interval.end_epoch = sconfig.stop;
   config->start_delay = sconfig.start_delay;
@@ -159,9 +159,7 @@ bool writeConfig(Config *config)
 {
   // minimum requirement
 
-  if ((config == NULL) 
-    || pState->state != TagState_IDLE
-    || !config->has_active_interval)
+  if ((config == NULL) || pState->state != TagState_IDLE)
     return false;
 
   // check for sensor configuration

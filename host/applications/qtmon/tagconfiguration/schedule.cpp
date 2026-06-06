@@ -61,35 +61,37 @@ bool Schedule::SetConfig(const Config &config)
   QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
   QDateTime start = QDateTime::fromSecsSinceEpoch(roundEpoch(config.active_interval().start_epoch(), 60));
 
+  if (config.has_active_interval()){
 
-  if (config.active_interval().end_epoch() == INT32_MAX)
-  {
-    ui.RunIndefinitely->setChecked(true);
-  }
-  else
-  {
-    ui.RunUntil->setChecked(true);
-  }
-  QDateTime end = QDateTime::fromSecsSinceEpoch(config.active_interval().start_epoch());
-  ui.EndDateTime->setDateTime(end);
+    if (config.active_interval().end_epoch() == INT32_MAX)
+    {
+      ui.RunIndefinitely->setChecked(true);
+    }
+    else
+    {
+      ui.RunUntil->setChecked(true);
+    }
+    QDateTime end = QDateTime::fromSecsSinceEpoch(config.active_interval().start_epoch());
+    ui.EndDateTime->setDateTime(end);
 
-  // Schedule
+    // Schedule
 
-  ui.StartDateTime->setMinimumDateTime(now);
+    ui.StartDateTime->setMinimumDateTime(now);
 
-  if (start < now)
-  {
-    ui.StartNow->setChecked(true);
-  }
-  else
-  {
-    ui.StartOn->setChecked(true);
-    ui.StartDateTime->setDateTime(start);
-  }
+    if (start < now)
+    {
+      ui.StartNow->setChecked(true);
+    }
+    else
+    {
+      ui.StartOn->setChecked(true);
+      ui.StartDateTime->setDateTime(start);
+    }
 
-  if (ui.RunIndefinitely->isChecked())
-  {
-    ui.EndDateTime->setDateTime(ui.StartDateTime->dateTime());
+    if (ui.RunIndefinitely->isChecked())
+    {
+      ui.EndDateTime->setDateTime(ui.StartDateTime->dateTime());
+    }
   }
   // Hibernation -- first we throw away old hibernation
   //                groups
@@ -130,6 +132,8 @@ bool Schedule::SetConfig(const Config &config)
   }
   ui.periodGroup->setVisible(config.period() != 0);
   ui.hibernationGroup->setVisible(config.hibernate_size());
+  ui.startGroup->setVisible(config.has_active_interval());
+  ui.runGroup->setVisible(config.has_active_interval());
   active = true;
   return true;
 }
@@ -144,26 +148,28 @@ bool Schedule::GetConfig(Config &config)
   QDateTime end = ui.EndDateTime->dateTime();
   QDateTime maxdt = QDateTime::fromSecsSinceEpoch(INT32_MAX);
 
-  Config_Interval *active = new Config_Interval();
-  if (ui.StartNow->isChecked() || (start < now))
-  {
-    active->set_start_epoch(0);
-  }
-  else
-  {
-    active->set_start_epoch(static_cast<int32_t>(start.toSecsSinceEpoch()));
-  }
+  if (ui.startGroup->isVisible()){
+    Config_Interval *active = new Config_Interval();
+    if (ui.StartNow->isChecked() || (start < now))
+    {
+      active->set_start_epoch(0);
+    }
+    else
+    {
+      active->set_start_epoch(static_cast<int32_t>(start.toSecsSinceEpoch()));
+    }
 
-  if (ui.RunUntil->isChecked() && (end < maxdt))
-  {
-    active->set_end_epoch(static_cast<int32_t>(end.toSecsSinceEpoch()));
-  }
-  else
-  {
-    active->set_end_epoch(INT32_MAX);
-  }
+    if (ui.RunUntil->isChecked() && (end < maxdt))
+    {
+      active->set_end_epoch(static_cast<int32_t>(end.toSecsSinceEpoch()));
+    }
+    else
+    {
+      active->set_end_epoch(INT32_MAX);
+    }
 
-  config.set_allocated_active_interval(active);
+    config.set_allocated_active_interval(active);
+  }   
   config.clear_hibernate();
 
   for (int i = 0; i < hibernate_list_.size(); i++)
@@ -181,6 +187,10 @@ bool Schedule::GetConfig(Config &config)
   }
   if (ui.startdelayGroup->isVisible()){
     config.set_start_delay(ui.startDelay->value()+1);
+  }
+  else
+  {
+    config.set_start_delay(0);
   }
   return true;
 }
