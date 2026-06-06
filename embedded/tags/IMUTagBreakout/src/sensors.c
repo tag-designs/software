@@ -130,6 +130,8 @@ static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
     return AK09940_RATE_50HZ;
   case LSM6DSV16X_TRIG_ODR_800HZ:
     return AK09940_RATE_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return AK09940_RATE_200HZ;
   default:
     return AK09940_RATE_200HZ;
   }
@@ -147,6 +149,8 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
     return LPS22HH_ODR_50HZ;
   case LSM6DSV16X_TRIG_ODR_800HZ:
     return LPS22HH_ODR_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return LPS22HH_ODR_200HZ;
   default:
     return LPS22HH_ODR_200HZ;
   }

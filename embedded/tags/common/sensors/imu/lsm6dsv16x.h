@@ -136,6 +136,7 @@ typedef enum {
     LSM6DSV16X_TRIG_ODR_200HZ  = 200, /**< D= 256, f_mcu= 4 Hz, S=25 */
     LSM6DSV16X_TRIG_ODR_400HZ  = 400, /**< D= 128, f_mcu= 8 Hz, S=25 */
     LSM6DSV16X_TRIG_ODR_800HZ  = 800, /**< D=  64, f_mcu=16 Hz, S=25 */
+    LSM6DSV16X_TRIG_ODR_1600HZ = 1600, /**< D=  32, f_mcu=32 Hz, S=25 */
 } lsm6dsv16x_trig_odr_t;
 
 /* =========================================================================

@@ -38,6 +38,9 @@ static bool lsm6totrig_odr(Lsm6dsv_ODR odr_in, lsm6dsv16x_trig_odr_t *odr){
     case Lsm6dsv_ODR_S800:
       *odr = LSM6DSV16X_TRIG_ODR_800HZ;
       break;
+    case Lsm6dsv_ODR_S1600:
+      *odr = LSM6DSV16X_TRIG_ODR_1600HZ;
+      break;
     default:
       rval = false;
   }
@@ -137,8 +140,9 @@ void readConfig(Config *config)
   config->tag_type = TAG_TYPE;
 
   config->has_active_interval = true;
-  config->active_interval.start_epoch = sconfig.start;
-  config->active_interval.end_epoch = sconfig.stop;
+  //config->active_interval.start_epoch = sconfig.start;
+  //config->active_interval.end_epoch = sconfig.stop;
+  config->start_delay = sconfig.start_delay;
   config->has_lsm6 = true;
   config->lsm6.odr = sconfig.odr;
   config->lsm6.accel_rng = sconfig.accel_range;
@@ -169,9 +173,11 @@ bool writeConfig(Config *config)
     return false;
 
   // copy into temporary config
-
-  config_tmp.start = config->active_interval.start_epoch;
-  config_tmp.stop = config->active_interval.end_epoch;
+  if (config->start_delay == 0) // force to be > 0
+    config->start_delay = 1;
+  config_tmp.start = (config->start_delay-1)*60 + timestamp; // computed start time
+  config_tmp.start_delay = config->start_delay;       // start delay in seconds (rounded to minute)
+  config_tmp.stop = INT32_MAX;
   config_tmp.odr = config->lsm6.odr;
   config_tmp.accel_range = config->lsm6.accel_rng;
   config_tmp.gyro_range = config->lsm6.gyro_rng;

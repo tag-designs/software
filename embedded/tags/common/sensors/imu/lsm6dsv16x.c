@@ -51,6 +51,7 @@
  *   200 Hz   D= 256    4.000 Hz 25  200 Hz   0x37
  *   400 Hz   D= 128    8.000 Hz 25  400 Hz   0x38
  *   800 Hz   D=  64   16.000 Hz 25  800 Hz   0x39
+ *  1600 Hz   D=  32   32.000 Hz 25 1600 Hz   0x3A
  */
 
 #include <stdbool.h>
@@ -255,7 +256,7 @@ static void shutdown_registers(const TagLsm6dsv16xDevice *device)
  *
  * The MCU timer runs from 1024 Hz.  ODR_TRIG_N_ODR has 2-sample resolution,
  * so S = 25 gives 50 samples per reference period and exact
- * 50/100/200/400/800 Hz rates with the divisors below.
+ * 50/100/200/400/800/1600 Hz rates with the divisors below.
  * ====================================================================== */
 static const odr_trig_entry_t odr_trig_table[] = {
     /*   hz    odr_code                  n_odr                         bdr                    mcu_div_d */
@@ -264,6 +265,7 @@ static const odr_trig_entry_t odr_trig_table[] = {
     {  200, LSM6DSV16X_G_ODR_240Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_240Hz,   256 },
     {  400, LSM6DSV16X_G_ODR_480Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_480Hz,   128 },
     {  800, LSM6DSV16X_G_ODR_960Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_960Hz,    64 },
+    { 1600, LSM6DSV16X_G_ODR_1920Hz, LSM6DSV16X_ODR_TRIG_N_ODR_S25, LSM6DSV16X_BDR_1920Hz,  32 },
 };
 static const size_t odr_trig_table_len =
     sizeof(odr_trig_table) / sizeof(odr_trig_table[0]);

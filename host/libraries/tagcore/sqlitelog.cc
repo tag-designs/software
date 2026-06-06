@@ -24,7 +24,7 @@ using namespace tagcore::sqlite_log;
  * This file is the public SqliteTagLogWriter wrapper and the only file that
  * talks to Tag objects. It creates the generic metadata tables, reads tag
  * config/info/calibration/state history, and dispatches each data-log ACK to a
- * tag-specific decoder in sqlitelog/*.cc.
+ * tag-specific decoder in the sqlitelog subdirectory.
  *
  * The per-tag files are intentionally narrow: they receive an already-open
  * sqlite3 handle, create their data tables on first use, and unpack one

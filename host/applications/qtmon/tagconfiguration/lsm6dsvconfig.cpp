@@ -37,6 +37,7 @@ static const std::vector<PBEnumGroup::binfo> odr_buttons{
     {Lsm6dsv_ODR_S200, "200 Hz", nullptr},
     {Lsm6dsv_ODR_S400, "400 Hz", nullptr},
     {Lsm6dsv_ODR_S800, "800 Hz", nullptr},
+    {Lsm6dsv_ODR_S1600, "1600 Hz", nullptr},
 };
 
 Lsm6dsvConfig::Lsm6dsvConfig(QWidget *parent) : QWidget(parent)

@@ -45,6 +45,8 @@ int imuOdrHz(Lsm6dsv_ODR odr)
         return 400;
     case Lsm6dsv_ODR_S800:
         return 800;
+    case Lsm6dsv_ODR_S1600:
+        return 1600;
     default:
         return 0;
     }

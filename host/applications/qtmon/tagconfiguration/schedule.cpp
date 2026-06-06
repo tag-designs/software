@@ -123,9 +123,13 @@ bool Schedule::SetConfig(const Config &config)
     ui.hibernationGroup->layout()->addWidget(h);
   }
   if (config.period()) {
-    ui.period->setValue(config.period());
+    ui.period->setValue(config.period()); // range is 1.. to force a default value, but interpeted as value-1
+  }
+  if (config.start_delay() > 0){
+    ui.startDelay->setValue(config.start_delay()-1);
   }
   ui.periodGroup->setVisible(config.period() != 0);
+  ui.hibernationGroup->setVisible(config.hibernate_size());
   active = true;
   return true;
 }
@@ -174,6 +178,9 @@ bool Schedule::GetConfig(Config &config)
   else
   {
     config.set_period(0);
+  }
+  if (ui.startdelayGroup->isVisible()){
+    config.set_start_delay(ui.startDelay->value()+1);
   }
   return true;
 }

@@ -94,22 +94,23 @@ int lsm6dsv16x_get_trig_params(lsm6dsv16x_trig_odr_t odr,
 ## ODR-Triggered Mode
 
 The MCU timer base is 1024 Hz, and its output frequency is `1024 / D`. The
-LSM6DSV16X internal multiplier is `S`, where `S` may be an integer from 8 to
-510. The output sample rate is:
+LSM6DSV16X ODR-trigger count is `S`, where `S` may be an integer from 8 to
+510. ST defines this with two-sample resolution, so the output sample rate is:
 
 ```text
-f_out = S * (1024 / D)
+f_out = 2S * (1024 / D)
 ```
 
 The standard requested ODRs are exactly achievable with `S = 25`:
 
 | Target ODR | MCU divisor D | MCU trigger | Multiplier S | Sensor output |
 | --- | ---: | ---: | ---: | ---: |
-| 50 Hz | 512 | 2 Hz | 25 | 50 Hz |
-| 100 Hz | 256 | 4 Hz | 25 | 100 Hz |
-| 200 Hz | 128 | 8 Hz | 25 | 200 Hz |
-| 400 Hz | 64 | 16 Hz | 25 | 400 Hz |
-| 800 Hz | 32 | 32 Hz | 25 | 800 Hz |
+| 50 Hz | 1024 | 1 Hz | 25 | 50 Hz |
+| 100 Hz | 512 | 2 Hz | 25 | 100 Hz |
+| 200 Hz | 256 | 4 Hz | 25 | 200 Hz |
+| 400 Hz | 128 | 8 Hz | 25 | 400 Hz |
+| 800 Hz | 64 | 16 Hz | 25 | 800 Hz |
+| 1600 Hz | 32 | 32 Hz | 25 | 1600 Hz |
 
 AN5763 requires the sensors to remain powered down for at least 500 us before
 ODR-triggered configuration registers are written. The driver uses the existing

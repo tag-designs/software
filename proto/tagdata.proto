@@ -90,6 +90,8 @@ message Config {
 
   Adxl362 adxl362 = 6;
   Lsm6dsv lsm6 = 8;
+
+  uint32 start_delay = 9;           // delay start in minutes
  
   
 }
@@ -175,6 +177,7 @@ message Lsm6dsv {
     S200 = 3;
     S400 = 4;
     S800 = 800;
+    S1600 = 1600;
   }
 
   enum ACCEL {

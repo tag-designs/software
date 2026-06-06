@@ -20,6 +20,7 @@ typedef struct
 {
   int32_t  start;
   int32_t  stop;
+  uint32_t start_delay;
   Lsm6dsv_ODR odr;
   Lsm6dsv_ACCEL accel_range;
   Lsm6dsv_GYRO gyro_range;

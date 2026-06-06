@@ -1,9 +1,6 @@
 {
     "tagType": "IMUTAG",
-    "activeInterval": {
-        "startEpoch": 0,
-        "endEpoch": 2147483647
-    },
+    "start_delay": 1,
     "lsm6": {
         "odr": "S100",
         "accelRng": "R4G",

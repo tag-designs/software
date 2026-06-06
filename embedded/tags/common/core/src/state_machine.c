@@ -55,6 +55,7 @@
 #include "rtc_api.h"
 #include "test_support.h"
 #include "timekeeping.h"
+#include "debug_log.h"
 
 #if !defined(CONFIG_HAS_HIBERNATE)
 #define CONFIG_HAS_HIBERNATE 1
@@ -392,13 +393,15 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
 
     // enable wakeup timer
 
-    enableAlarm(1, ALARM_HOUR);
+    enableAlarm(1, ALARM_MINUTE);
   }
   else
   {
     //if (sconfig.start < 0) // sanity check !
-   //   return Aborted(T_INIT, State_EVENT_STARTTIM);
-    //if (timestamp >= sconfig.start) // look at stored value --
+    //  return Aborted(T_INIT, State_EVENT_STARTTIM);
+
+    debug_log_printf("timestamp %d start %d\n\r",timestamp,sconfig.start);
+    if (timestamp >= sconfig.start) // look at stored value --
       return Running(T_INIT, State_EVENT_STARTTIM);
   }
   return SHUTDOWN;
