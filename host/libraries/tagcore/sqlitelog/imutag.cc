@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <sstream>
 
+#include "imutag_log_format.h"
+
 namespace tagcore::sqlite_log {
 
 // IMUTag blocks carry pressure and magnetometer samples plus a packed ten-sample
@@ -28,30 +30,6 @@ constexpr int kImuBytesPerSample = kImuAxesPerSample * 2;
 constexpr int kImuRawDataBytes = kImuSamplesPerBlock * kImuBytesPerSample;
 constexpr int kImuDataLogBytes = 128;
 constexpr int kImuRawDataOffset = 8;
-constexpr int kEnvironmentSkip = -1;
-
-// Match proto Lsm6dsv_ODR values to the synchronized sample rate configured by
-// the tag. The elapsed timeline is derived from this value rather than from
-// wall-clock timestamps inside each block.
-int imuOdrHz(Lsm6dsv_ODR odr)
-{
-    switch (odr) {
-    case Lsm6dsv_ODR_S50:
-        return 50;
-    case Lsm6dsv_ODR_S100:
-        return 100;
-    case Lsm6dsv_ODR_S200:
-        return 200;
-    case Lsm6dsv_ODR_S400:
-        return 400;
-    case Lsm6dsv_ODR_S800:
-        return 800;
-    case Lsm6dsv_ODR_S1600:
-        return 1600;
-    default:
-        return 0;
-    }
-}
 
 double imuAccelMgPerLsb(Lsm6dsv_ACCEL range)
 {
@@ -91,24 +69,24 @@ double imuGyroDpsPerLsb(Lsm6dsv_GYRO range)
 
 double pressureRawToHpa(int32_t pressure_raw)
 {
-    return pressure_raw / 16.0;
+    return pressure_raw * IMUTAG_COMPACT_PRESSURE_HPA_PER_LSB;
 }
 
 double magRawToUT(int32_t mag_raw)
 {
-    return mag_raw * 0.04;
+    return mag_raw * IMUTAG_COMPACT_MAG_UT_PER_LSB;
 }
 
 bool hasPressureSample(const IMUTagLogData &entry)
 {
-    return entry.pressure_raw() != kEnvironmentSkip;
+    return entry.pressure_raw() != IMUTAG_ENV_SKIP_RAW;
 }
 
 bool hasMagSample(const IMUTagLogData &entry)
 {
-    return entry.mx_raw() != kEnvironmentSkip
-        || entry.my_raw() != kEnvironmentSkip
-        || entry.mz_raw() != kEnvironmentSkip;
+    return entry.mx_raw() != IMUTAG_ENV_SKIP_RAW
+        || entry.my_raw() != IMUTAG_ENV_SKIP_RAW
+        || entry.mz_raw() != IMUTAG_ENV_SKIP_RAW;
 }
 
 int16_t readLeI16(const uint8_t *p)
@@ -135,11 +113,12 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         return -2;
     }
 
-    const int odr_hz = imuOdrHz(ctx.config.lsm6().odr());
-    if (odr_hz <= 0) {
+    const Lsm6dsv_ODR odr = ctx.config.lsm6().odr();
+    if (odr == Lsm6dsv_ODR_ODR_UNSPECIFIED || !Lsm6dsv_ODR_IsValid(odr)) {
         ctx.setLastError("IMUTag SQLite output requires a valid IMU ODR");
         return -2;
     }
+    const int odr_hz = static_cast<int>(odr);
 
     /*
      * IMUTag logs are currently decoded on an integer microsecond grid. The

@@ -356,10 +356,10 @@ bool sampleDataCollection(t_DataLog *data)
     return false;
 
   memset(data, 0, sizeof(*data));
-  data->pressure = DATALOG_ENV_SKIP;
-  data->mx = DATALOG_ENV_SKIP;
-  data->my = DATALOG_ENV_SKIP;
-  data->mz = DATALOG_ENV_SKIP;
+  data->pressure = IMUTAG_ENV_SKIP_RAW;
+  data->mx = IMUTAG_ENV_SKIP_RAW;
+  data->my = IMUTAG_ENV_SKIP_RAW;
+  data->mz = IMUTAG_ENV_SKIP_RAW;
 
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {

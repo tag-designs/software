@@ -172,10 +172,10 @@ message Adxl362 {
 message Lsm6dsv {
   enum ODR {
     ODR_UNSPECIFIED = 0;
-    S50 = 1;
-    S100 = 2;
-    S200 = 3;
-    S400 = 4;
+    S50 = 50;
+    S100 = 100;
+    S200 = 200;
+    S400 = 400;
     S800 = 800;
     S1600 = 1600;
   }
@@ -243,8 +243,8 @@ message BitPresTagLog{
 }
 
 message IMUTagLogData{
-  int32 pressure_raw = 1; // compact t_DataLog pressure; -1 means no sample
-  int32 mx_raw = 2;       // compact t_DataLog magnetometer; all axes -1 means no sample
+  int32 pressure_raw = 1; // compact pressure; hPa = raw / 16; -1 means no sample
+  int32 mx_raw = 2;       // compact mag; uT = raw * 0.04; all axes -1 means no sample
   int32 my_raw = 3;
   int32 mz_raw = 4;
   bytes data = 5; // packed accel, gyro data 16bit integers

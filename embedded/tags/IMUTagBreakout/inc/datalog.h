@@ -9,11 +9,9 @@
 #define DATALOG_H
 #include "sensors.h"
 #include "assert.h"
+#include "imutag_log_format.h"
 
 /** @brief basic data log block -- data is written in 128 byte units */
-
-/** @brief Compact pressure/magnetometer sentinel for intentionally skipped samples. */
-#define DATALOG_ENV_SKIP ((int16_t)-1)
 
 typedef struct t_DataLog {
    int16_t pressure;    // pressure sensor

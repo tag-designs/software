@@ -148,6 +148,8 @@ records a fresh value every fourth block. Blocks without a fresh environmental
 sample store `-1` in the compact pressure field, or `-1, -1, -1` in the compact
 magnetometer fields. The protobuf download keeps these compact raw values and
 the host SQLite writer performs unit conversion while skipping sentinel rows.
+The sentinel and compact-unit conversion constants live in the repository root
+shared include file `include/imutag_log_format.h`.
 
 ## Self-Test
 
