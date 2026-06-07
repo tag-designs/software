@@ -43,6 +43,54 @@ static int  spiSize = 8;
 
 static void SW_ShiftReset(void);
 
+#define SWCLK_PORT PAL_PORT(LINE_TGT_SWCLK)
+#define SWCLK_MASK (1U << PAL_PAD(LINE_TGT_SWCLK))
+#define SWDIO_PORT PAL_PORT(LINE_TGT_SWDIO)
+#define SWDIO_MASK (1U << PAL_PAD(LINE_TGT_SWDIO))
+
+static inline void gpioSet(stm32_gpio_t *port, uint32_t mask)
+{
+  pal_lld_setport(port, mask);
+}
+
+static inline void gpioClear(stm32_gpio_t *port, uint32_t mask)
+{
+  pal_lld_clearport(port, mask);
+}
+
+static inline void swclkHigh(void)
+{
+  gpioSet(SWCLK_PORT, SWCLK_MASK);
+}
+
+static inline void swclkLow(void)
+{
+  gpioClear(SWCLK_PORT, SWCLK_MASK);
+}
+
+static inline void swdioHigh(void)
+{
+  gpioSet(SWDIO_PORT, SWDIO_MASK);
+}
+
+static inline void swdioLow(void)
+{
+  gpioClear(SWDIO_PORT, SWDIO_MASK);
+}
+
+static inline uint32_t swdioRead(void)
+{
+  return (SWDIO_PORT->IDR & SWDIO_MASK) != 0;
+}
+
+#if defined(__GNUC__)
+#define SWD_DO_PRAGMA(x) _Pragma(#x)
+#define SWD_PRAGMA(x) SWD_DO_PRAGMA(x)
+#define SWD_UNROLL(count) SWD_PRAGMA(GCC unroll count)
+#else
+#define SWD_UNROLL(count)
+#endif
+
 static inline void delay(int i)
 {
   (void) i;
@@ -56,8 +104,8 @@ static inline void delay(int i)
 
 static void _SetSWPinsIdle(void)
 {
-  palClearLine(LINE_TGT_SWCLK);
-  palClearLine(LINE_TGT_SWDIO);
+  swclkLow();
+  swdioLow();
 
   isOutput = true;
   spiSize = 8;
@@ -91,12 +139,10 @@ static inline void _SetSWDIOasInput(uint32_t size)
 
 static inline uint32_t SWDIO_IN(void)
 {
-  uint8_t b;
-
-  b = palReadLine(LINE_TGT_SWDIO);
-  palSetLine(LINE_TGT_SWCLK);
+  uint32_t b = swdioRead();
+  swclkHigh();
   //delay(DELCNT);
-  palClearLine(LINE_TGT_SWCLK);
+  swclkLow();
 
   return b;
 }
@@ -118,7 +164,7 @@ static inline uint32_t SW_ShiftIn(uint8_t bits)
 static inline uint32_t SW_ShiftInBytes(uint8_t bytes)
 {
   int i;
-  uint32_t tmp;
+  uint32_t tmp = 0;
   _SetSWDIOasInput(8);
   if (bytes > 4)
     return 0;
@@ -135,13 +181,13 @@ static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
   _SetSWDIOasOutput(bits);
   for (int i = 0; i < bits; i++){
     if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
+      swdioHigh();
     else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
+      swdioLow();
+    swclkHigh();
     //delay(DELCNT);
     data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
+    swclkLow();
   }
 }
 
@@ -155,15 +201,54 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
   for (i = 0; i < bytes * 8; i++)
   {
     if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
+      swdioHigh();
     else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
+      swdioLow();
+    swclkHigh();
     //delay(DELCNT);
     data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
+    swclkLow();
   }
 }
+
+#define DEFINE_SW_SHIFT_IN_FIXED(name, bit_count)              \
+  static inline uint32_t name(void)                            \
+  {                                                            \
+    uint32_t in = 0;                                           \
+    _SetSWDIOasInput(bit_count);                               \
+    SWD_UNROLL(bit_count)                                      \
+    for (int i = 0; i < bit_count; i++)                        \
+    {                                                          \
+      in |= (SWDIO_IN() & 1) << i;                             \
+    }                                                          \
+    return in;                                                 \
+  }
+
+#define DEFINE_SW_SHIFT_OUT_FIXED(name, bit_count)             \
+  static inline void name(uint32_t data)                       \
+  {                                                            \
+    _SetSWDIOasOutput(bit_count);                              \
+    SWD_UNROLL(bit_count)                                      \
+    for (int i = 0; i < bit_count; i++)                        \
+    {                                                          \
+      if (data & 1)                                            \
+        swdioHigh();                                           \
+      else                                                     \
+        swdioLow();                                            \
+      swclkHigh();                                             \
+      data = data >> 1;                                        \
+      swclkLow();                                              \
+    }                                                          \
+  }
+
+DEFINE_SW_SHIFT_IN_FIXED(SW_ShiftIn5, 5)
+DEFINE_SW_SHIFT_IN_FIXED(SW_ShiftIn9, 9)
+DEFINE_SW_SHIFT_IN_FIXED(SW_ShiftIn24, 24)
+
+DEFINE_SW_SHIFT_OUT_FIXED(SW_ShiftOut8, 8)
+DEFINE_SW_SHIFT_OUT_FIXED(SW_ShiftOut16, 16)
+DEFINE_SW_SHIFT_OUT_FIXED(SW_ShiftOut24, 24)
+DEFINE_SW_SHIFT_OUT_FIXED(SW_ShiftOut32, 32)
 
 static const bool ParityTable256[256] = 
 {
@@ -197,8 +282,8 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   uint32_t pbit;
   uint32_t d0_bit;
   uint32_t tmp;  
-  SW_ShiftOutBytes(req, 1);     // Send header  
-  ack_bits = SW_ShiftIn(5);     // read trn,ack,(trn|data0)
+  SW_ShiftOut8(req);            // Send header
+  ack_bits = SW_ShiftIn5();     // read trn,ack,(trn|data0)
   ack = (ack_bits >> 1) & 7;    // ACK, toss the turnaround bit and possible first data
   d0_bit = (ack_bits >> 4) & 1; // Save possible data bit 0
 
@@ -207,8 +292,8 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   case SW_ACK_OK: // good to go
     if (req & SW_REQ_RnW)
     {        
-      *data = SW_ShiftInBytes(3); // get 24 bits data
-       tmp = SW_ShiftIn(9);        // get 8 bits data + trn
+      *data = SW_ShiftIn24(); // get 24 bits data
+       tmp = SW_ShiftIn9();   // get 8 bits data + trn
       // combine data, parity
       pbit = (tmp >> 8) & 1;
       *data = (tmp << 24) | (*data & 0xffffff);    //combine
@@ -224,11 +309,11 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
     }
     else
     {        
-      SW_ShiftOutBytes(*data,3); // send 24 bits
+      SW_ShiftOut24(*data); // send 24 bits
       tmp = ((*data >> 24)&0xff)|(Parity(*data)<<8);
-      SW_ShiftOutBytes(tmp,2);  // send 8 bits + parity + plus extra zeros
-                                // per STM32 documentation for writes
-                                // to ensure they are completed internally
+      SW_ShiftOut16(tmp);  // send 8 bits + parity + plus extra zeros
+                           // per STM32 documentation for writes
+                           // to ensure they are completed internally
     }
     break;
 
@@ -239,7 +324,7 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   case SW_ACK_WAIT:
   default:             
   }
-   SW_ShiftOutBytes(0,1); // drive line to idle state
+   SW_ShiftOut8(0); // drive line to idle state
  // _SetSWDIOasOutput(8); // Set pin direction  
   return ack;
 }
@@ -261,8 +346,8 @@ static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
 
 static void SW_ShiftReset(void)
 {
-  SW_ShiftOutBytes(0xffffffff, 4);
-  SW_ShiftOutBytes(0xffffffff, 3);
+  SW_ShiftOut32(0xffffffff);
+  SW_ShiftOut24(0xffffffff);
 }
 
 uint32_t SWD_LineReset(uint32_t *idcode)
@@ -274,7 +359,7 @@ uint32_t SWD_LineReset(uint32_t *idcode)
   //          SW_IDCODE_RD not allowed to wait or fault
   //_SetSWDIOasOutput();
   SW_ShiftReset();
-  SW_ShiftOutBytes(0, 1);
+  SW_ShiftOut8(0);
   ack = SWD_Transaction(SW_IDCODE_RD, idcode, 0);
   return ack;
 }
@@ -286,7 +371,7 @@ static uint32_t SWD_Connect(uint32_t *idcode)
   // Select SWD Port
   //_SetSWDIOasOutput();
   SW_ShiftReset();
-  SW_ShiftOutBytes(0xE79E, 2);
+  SW_ShiftOut16(0xE79E);
   // Finish with Line reset
   return SWD_LineReset(idcode);
 }
@@ -298,7 +383,7 @@ static void SWD_Disconnect(void)
   // select JTAG port
  // _SetSWDIOasOutput();
   SW_ShiftReset();
-  SW_ShiftOutBytes(0xE73C, 2); 
+  SW_ShiftOut16(0xE73C);
   SW_ShiftReset();
   // Release pins (except nReset)
   _ResetDebugPins();

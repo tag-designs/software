@@ -36,6 +36,47 @@
 static const int AUTO_INCREMENT_PAGE_SIZE = 1024;
 static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
 uint32_t CoreID = 0;
+static bool swdioIsOutput = false;
+
+#define SWCLK_PORT PAL_PORT(LINE_TGT_SWCLK)
+#define SWCLK_MASK (1U << PAL_PAD(LINE_TGT_SWCLK))
+#define SWDIO_PORT PAL_PORT(LINE_TGT_SWDIO)
+#define SWDIO_MASK (1U << PAL_PAD(LINE_TGT_SWDIO))
+
+static inline void gpioSet(stm32_gpio_t *port, uint32_t mask)
+{
+  pal_lld_setport(port, mask);
+}
+
+static inline void gpioClear(stm32_gpio_t *port, uint32_t mask)
+{
+  pal_lld_clearport(port, mask);
+}
+
+static inline void swclkHigh(void)
+{
+  gpioSet(SWCLK_PORT, SWCLK_MASK);
+}
+
+static inline void swclkLow(void)
+{
+  gpioClear(SWCLK_PORT, SWCLK_MASK);
+}
+
+static inline void swdioHigh(void)
+{
+  gpioSet(SWDIO_PORT, SWDIO_MASK);
+}
+
+static inline void swdioLow(void)
+{
+  gpioClear(SWDIO_PORT, SWDIO_MASK);
+}
+
+static inline uint32_t swdioRead(void)
+{
+  return (SWDIO_PORT->IDR & SWDIO_MASK) != 0;
+}
 
 static inline void delay(int i)
 {
@@ -77,10 +118,11 @@ static inline void toOutput(ioline_t line)
 
 static void _SetSWPinsIdle(void)
 {
-  palClearLine(LINE_TGT_SWCLK);
-  palSetLine(LINE_TGT_SWDIO);
+  swclkLow();
+  swdioHigh();
 
   toInput(LINE_TGT_SWDIO);
+  swdioIsOutput = false;
   toOutput(LINE_TGT_SWCLK);
   #if defined(TGT_SWDIO_EN)
   palSetLine(TGT_SWDIO_EN);
@@ -94,25 +136,32 @@ static void _ResetDebugPins(void)
   #endif
   toAnalog(LINE_TGT_SWDIO); //was input
   toAnalog(LINE_TGT_SWCLK); //was output
+  swdioIsOutput = false;
 }
 
 static inline void _SetSWDIOasOutput(void)
 {
-  toOutput(LINE_TGT_SWDIO);
+  if (!swdioIsOutput)
+  {
+    toOutput(LINE_TGT_SWDIO);
+    swdioIsOutput = true;
+  }
 }
 static inline void _SetSWDIOasInput(void)
 {
-  toInput(LINE_TGT_SWDIO);
+  if (swdioIsOutput)
+  {
+    toInput(LINE_TGT_SWDIO);
+    swdioIsOutput = false;
+  }
 }
 
 static inline uint32_t SWDIO_IN(void)
 {
-  uint8_t b;
-
-  b = palReadLine(LINE_TGT_SWDIO);
-  palSetLine(LINE_TGT_SWCLK);
+  uint32_t b = swdioRead();
+  swclkHigh();
   //delay(DELCNT);
-  palClearLine(LINE_TGT_SWCLK);
+  swclkLow();
 
   return b;
 }
@@ -123,7 +172,7 @@ static inline uint32_t SW_ShiftIn(uint8_t bits)
   uint32_t in = 0;
   for (i = 0; i < bits; i++)
   {
-    in = (in >> 1) | ((SWDIO_IN() & 1) << (bits - 1));
+    in |= (SWDIO_IN() & 1) << i;
   }
   return in;
 }
@@ -146,13 +195,13 @@ static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
 {
   for (int i = 0; i < bits; i++){
     if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
+      swdioHigh();
     else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
+      swdioLow();
+    swclkHigh();
     //delay(DELCNT);
     data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
+    swclkLow();
   }
 }
 
@@ -165,13 +214,13 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
   for (i = 0; i < bytes * 8; i++)
   {
     if (data & 1)
-      palSetLine(LINE_TGT_SWDIO);
+      swdioHigh();
     else
-      palClearLine(LINE_TGT_SWDIO);
-    palSetLine(LINE_TGT_SWCLK);
+      swdioLow();
+    swclkHigh();
     //delay(DELCNT);
     data = data >> 1;
-    palClearLine(LINE_TGT_SWCLK);
+    swclkLow();
   }
 }
 
