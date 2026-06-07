@@ -54,7 +54,7 @@ sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibrati
 
 static unsigned int empty_calibration_sample_logs;
 static int16_t latest_pressure;
-static int16_t latest_temp10;
+static int16_t latest_rawtemp;
 static int16_t latest_mx;
 static int16_t latest_my;
 static int16_t latest_mz;
@@ -115,11 +115,6 @@ static int16_t compact_pressure_raw(int32_t pressure)
   return clamp_i16(pressure >> 8);
 }
 
-static int16_t compact_temperature_raw(int32_t temperature)
-{
-  return clamp_i16(temperature / 10);
-}
-
 static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -169,7 +164,7 @@ static uint16_t select_environment_block_divisor(lsm6dsv16x_trig_odr_t imu_odr)
 static void reset_environment_cache(void)
 {
   latest_pressure = 0;
-  latest_temp10 = 0;
+  latest_rawtemp = 0;
   latest_mx = 0;
   latest_my = 0;
   latest_mz = 0;
@@ -257,7 +252,7 @@ static bool update_latest_pressure(void)
   rc = lps22hh_read_raw_device(TAG_PRESSURE_DEVICE, &pressure, &temperature);
   if (rc == 0) {
     latest_pressure = compact_pressure_raw(pressure);
-    latest_temp10 = compact_temperature_raw(temperature);
+    latest_rawtemp = clamp_i16(temperature);
     have_pressure_sample = true;
     return true;
   }
@@ -419,20 +414,21 @@ bool sampleDataCollection(t_DataLog *data)
 }
 
 /**
- * @brief Return the latest pressure-sensor temperature in tenths of a degree C.
+ * @brief Return the latest raw pressure-sensor temperature.
  *
  * The cache is refreshed by sampleDataCollection(), which reads pressure and
- * temperature as one coherent LPS22HH burst.
+ * temperature as one coherent LPS22HH burst. The LPS22HH reports temperature
+ * in hundredths of a degree C; conversion is deferred to the log export path.
  *
- * @param[out] temp10 Latest cached temperature in 0.1 C units.
+ * @param[out] rawtemp Latest cached raw temperature in 0.01 C units.
  * @return true once at least one pressure/temperature sample has been read.
  */
-bool latestDataCollectionTemp10(int16_t *temp10)
+bool latestDataCollectionRawTemp(int16_t *rawtemp)
 {
-  if (temp10 == NULL || !have_pressure_sample)
+  if (rawtemp == NULL || !have_pressure_sample)
     return false;
 
-  *temp10 = latest_temp10;
+  *rawtemp = latest_rawtemp;
   return true;
 }
 

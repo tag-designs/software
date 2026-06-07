@@ -24,7 +24,11 @@ enum class SensorAxisSide
 
 enum class SensorTimeDomain
 {
+    // Seconds since the Unix epoch. Most legacy tag logs use this directly.
     EpochSeconds,
+
+    // Seconds from the beginning of data collection. IMUTag uses this because
+    // high-rate samples are stored as elapsed microseconds in SQLite.
     ElapsedSeconds,
 };
 
@@ -120,7 +124,7 @@ struct SensorLog
 
     // Absolute start time of collection when the log provides it. Elapsed-time
     // logs use this as a human-readable anchor while plotting remains on the
-    // elapsed axis.
+    // elapsed axis; epoch-time logs usually leave it to the x-axis labels.
     bool hasCollectionStart = false;
     qint64 collectionStartEpochMs = 0;
 

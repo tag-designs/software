@@ -200,7 +200,7 @@ int data_logAck(int index, Ack *ack)
 
     log->epoch = vddHeader[index].epoch;
     log->millisecond = vddHeader[index].millis;
-    log->termperature = vddHeader[index].temp10 * 0.1f;
+    log->temperature = vddHeader[index].rawtemp * 0.01f;
     log->data_count = 0;
 
     // now read the data

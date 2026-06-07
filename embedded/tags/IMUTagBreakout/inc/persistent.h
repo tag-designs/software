@@ -59,7 +59,7 @@ typedef struct
   uint32_t pages;           // dirty flash pages
   uint32_t external_blocks;  // external data blocks
   //int32_t lastactstart;     // time of last active start
-  int32_t temp10;           // running average of temperature
+  int32_t rawtemp;          // latest LPS22HH raw temperature in 0.01 C units
   //uint32_t vdd100;          // running average of voltage
   //uint32_t activity;        // track activity "bits"
   //int32_t lastwakeup;       // last wakeup time

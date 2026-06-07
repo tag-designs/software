@@ -16,7 +16,7 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
 - Provides display transforms such as:
   - altitude from pressure
   - low-pass filtered activity
-  - IMUTag acceleration and gyroscope magnitudes
+  - IMUTag acceleration, gyroscope, and magnetic field magnitudes
   - CompassTag heading, acceleration magnitude, pitch, roll, dip, and magnetic
     field strength
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
@@ -24,7 +24,8 @@ For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
   calibration data.
 - Shows a narrow CompassTag orientation panel beside the plot when compass data
   is loaded.
-- Supports print preview, UTC offset display, cursors, and zoom-to-cursor.
+- Supports print preview, UTC offset display, draggable plot metadata, cursors,
+  cursor hiding, and zoom-to-cursor.
 - Shows an editable graph title above the plot. The title defaults to the
   loaded file name and can be hidden from the View menu or plot context menu.
 
@@ -48,8 +49,8 @@ The code is split by responsibility:
 - `compass_transforms.cpp`: CompassTag record-set transforms, heading display
   settings, and QML compass sample updates.
 - `plotting.cpp`: QCustomPlot graph and axis rebuilds.
-- `interaction.cpp`: cursors, print preview, UTC offset, context menus, and
-  mouse readout.
+- `interaction.cpp`: cursors, draggable metadata box, print preview, UTC
+  offset, context menus, and mouse readout.
 - `controls.cpp`: small shared display helpers and general actions.
 - `sensorui`: provides the shared CompassTag calibration dialog and QML
   orientation display used by both `sensorviz` and `compviz`.
@@ -100,6 +101,10 @@ Streams carry a time domain. Most existing tags use Unix epoch seconds; IMUTag
 uses elapsed seconds converted from SQLite `ElapsedUs` columns. Plotting and
 cursor readout choose the matching x-axis automatically.
 
+Elapsed-time logs also carry an absolute collection-start timestamp when the
+SQLite log provides one. SensorViz uses that value only as plot metadata; it
+does not convert high-rate elapsed IMUTag samples back to wall-clock time.
+
 `SensorRecordSet` is a multi-column time-indexed table that is loaded but not
 plotted directly. It exists so future data such as compass accel/magnetometer
 samples can be loaded first, then converted into streams by transforms.
@@ -111,7 +116,7 @@ the SQLite JSON.
 
 The SQLite `streams` table describes how stored tables map into these data
 structures. Adding a simple one-column sensor table should usually start in
-`host/libraries/tagcore/sqlitelog.cc`, not in `MainWindow`.
+`host/libraries/tagcore/sqlitelog/`, not in `MainWindow`.
 
 ## Plotting Rules
 
@@ -121,7 +126,11 @@ structures. Adding a simple one-column sensor table should usually start in
   `0-50 C`.
 - Other streams default to the left axis unless `defaultDisplayForStream()`
   assigns a different display policy.
+- IMUTag raw pressure/temperature and `x/y/z` component streams default hidden
+  on the right axis; derived IMUTag summary streams default visible on the left.
 - Autoscaled y-axes get a 5% margin.
+- Visible IMUTag `x/y/z` families share a y-axis range within each family so
+  component traces are comparable.
 - Displayed streams can have explicit y-axis ranges set from the View menu or
   plot context menu.
 - Normal redraws preserve the current x-axis range.
@@ -129,6 +138,10 @@ structures. Adding a simple one-column sensor table should usually start in
   default y-axis ranges.
 - Each loaded file starts with a visible graph title using the file name rather
   than the full path. The title is current-view state, not a saved preference.
+- The metadata box shows only contextual rows. Start time appears for
+  elapsed-axis logs, declination appears when heading is visible, and sea-level
+  pressure appears when altitude is visible. The box can be dragged within the
+  plot; the position is session state and is not saved.
 
 ## Preferences
 
@@ -171,11 +184,18 @@ state of those actions is the source of truth for which raw streams are plotted.
 
 Altitude is generated automatically from pressure and appears in Visible
 Streams; Configuration > Sea-level Pressure changes the mean sea-level pressure
-used for that calculation. Low-pass activity is controlled by Configuration
-instead of duplicated in the View menu. CompassTag plot streams are generated
-automatically from the raw compass record set on load, and then appear in
-Visible Streams so heading, acceleration, pitch, roll, dip, and field strength
-can be shown independently.
+used for that calculation. For IMUTag logs, altitude is generated from
+`imu_pressure` and uses the elapsed-time header temperature stream when
+available.
+
+IMUTag acceleration, gyroscope, and magnetic field magnitudes are generated
+automatically from their corresponding `x/y/z` streams. They appear adjacent to
+their source axes in Visible Streams.
+
+Low-pass activity is controlled by Configuration instead of duplicated in the
+View menu. CompassTag plot streams are generated automatically from the raw
+compass record set on load, and then appear in Visible Streams so heading,
+acceleration, pitch, roll, dip, and field strength can be shown independently.
 For CompassTag logs, Configuration > Declination adjusts only the displayed
 heading stream; Configuration > Battery Forward applies the matching 180 degree
 display convention. Raw orientation-derived values remain magnetic-frame data.
@@ -217,22 +237,27 @@ Future transforms should keep computation separate from file loading. The
 SQLite loader should only normalize on-disk data into streams, record sets, and
 typed metadata; display math belongs in transform code.
 
+Derived streams that should be listed beside their inputs need an entry in
+`sourceOrderForStream()` in `stream_actions.cpp`; otherwise they append to the
+end of the stream list.
+
 ## Future Direction
 
-The next major goal is to prepare for compass-like logs without copying all of
-`compviz` into this application at once. The intended path is:
+CompassTag and IMUTag now have initial support, but there are still useful
+follow-on passes:
 
-1. Load multi-column compass data as a `SensorRecordSet` and load calibration
-   constants as typed `SensorLog` metadata.
-2. Use the shared `sensoranalysis` compass helpers for eCompass/orientation math.
-3. Add an optional orientation panel later, analogous to the current `compviz`
-   QML compass view.
+- Apply stored magnetometer calibration to IMUTag magnetometer streams when
+  appropriate.
+- Decide whether metadata-box position should remain session-only or become a
+  saved preference.
+- Add richer IMUTag display transforms once the desired analysis views are
+  clearer.
 
 ## Build Check
 
 Typical local check:
 
 ```sh
-cmake --build /Users/geobrown/Build/tag-designs/software-vcpkg-release --target sensorviz
+cmake --build <build-dir> --target sensorviz
 git diff --check
 ```

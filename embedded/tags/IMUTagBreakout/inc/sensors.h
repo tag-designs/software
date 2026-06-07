@@ -27,8 +27,8 @@ bool sensorSample(RawSensorData *data);
 bool initDataCollection(void);
 /** @brief Fill one 128-byte log block when the IMU FIFO has enough samples. */
 bool sampleDataCollection(t_DataLog *data);
-/** @brief Return the latest LPS22HH temperature in tenths of a degree C. */
-bool latestDataCollectionTemp10(int16_t *temp10);
+/** @brief Return the latest raw LPS22HH temperature in hundredths of a degree C. */
+bool latestDataCollectionRawTemp(int16_t *rawtemp);
 /** @brief Shut down collection sensors and trigger generation. */
 bool deinitDataCollection(void);
 /** @brief State-machine handler for live calibration mode. */

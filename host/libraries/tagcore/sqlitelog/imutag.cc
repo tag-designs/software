@@ -168,7 +168,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         || !header_insert.bindInt64(2, header_start_us)
         || !header_insert.bindInt64(3, log.epoch())
         || !header_insert.bindInt64(4, log.millisecond())
-        || !header_insert.bindDouble(5, log.termperature())
+        || !header_insert.bindDouble(5, log.temperature())
         || !header_insert.stepDone()) {
         ctx.setLastSqliteError("IMUTag header insert failed");
         return -2;

@@ -212,7 +212,11 @@ struct StreamMetadata
 
 SensorTimeDomain timeDomainForColumn(const QString &time_column)
 {
-    return time_column.compare(QStringLiteral("ElapsedUs"), Qt::CaseInsensitive) == 0
+    // IMUTag data rows use ElapsedUs, while header-derived streams such as
+    // sensor_temperature use StartElapsedUs. Both are microseconds from the
+    // collection start and must share the elapsed axis for transforms such as
+    // temperature-aware altitude.
+    return time_column.endsWith(QStringLiteral("ElapsedUs"), Qt::CaseInsensitive)
         ? SensorTimeDomain::ElapsedSeconds
         : SensorTimeDomain::EpochSeconds;
 }
@@ -510,6 +514,10 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 
 bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
 {
+    // IMUTag plots use elapsed seconds on the x-axis, but users still need an
+    // absolute anchor for "when did this collection begin?" The first
+    // ImuHeader row supplies that wall-clock timestamp without changing the
+    // plotted time domain.
     if (!tableExistsRaw(db, "ImuHeader")) {
         return true;
     }
@@ -532,6 +540,9 @@ bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
 
 void inferEpochCollectionStart(SensorLog &log)
 {
+    // Epoch-time logs already display date/time on the x-axis. Recording the
+    // earliest epoch sample here keeps SensorLog complete for metadata panes,
+    // while plotting.cpp decides whether it is useful enough to show.
     if (log.hasCollectionStart) {
         return;
     }

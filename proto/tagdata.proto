@@ -254,7 +254,7 @@ message IMUTagLogData{
 message IMUTagLog{
   int32 epoch = 1;
   int32 millisecond = 2;
-  float termperature = 3;
+  float temperature = 3;
   repeated IMUTagLogData data = 4;
 }
 

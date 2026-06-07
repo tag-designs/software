@@ -76,7 +76,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     saved_block_epoch = timestamp;
     saved_block_millis = (uint16_t)timestamp_millis;
 
-    pState->temp10 = 0;
+    pState->rawtemp = 0;
 
     if (!initDataCollection()) {
       return Aborted(T_INIT, State_EVENT_UNKNOWN);
@@ -102,14 +102,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     if (isActive)
     {
       t_DataLog data;
-      int16_t env_temp10;
+      int16_t env_rawtemp;
       int32_t entry_epoch = timestamp;
       uint16_t entry_millis = (uint16_t)timestamp_millis;
 
       if (sampleDataCollection(&data)) {
 
-        if (latestDataCollectionTemp10(&env_temp10)) {
-          pState->temp10 = env_temp10;
+        if (latestDataCollectionRawTemp(&env_rawtemp)) {
+          pState->rawtemp = env_rawtemp;
         }
 
         if (discarded_blocks < discard_blocks) {
@@ -121,7 +121,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
             header.epoch = saved_block_epoch;
             header.millis = saved_block_millis;
-            header.temp10 = (uint16_t)pState->temp10;
+            header.rawtemp = (int16_t)pState->rawtemp;
 
             err = writeDataHeader(&header);
             switch (err) {

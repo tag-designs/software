@@ -191,6 +191,10 @@ private:
     QString current_path_;
     QString graph_title_;
     bool graph_title_visible_ = true;
+
+    // Metadata box placement is intentionally session-only. The box is an
+    // overlay for contextual constants, so dragging it should not mutate log
+    // data or saved per-tag display preferences.
     bool metadata_box_dragging_ = false;
     QPoint metadata_box_drag_start_pixel_;
     QPointF metadata_box_drag_start_coords_;

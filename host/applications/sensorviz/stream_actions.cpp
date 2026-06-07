@@ -24,6 +24,10 @@ namespace
 
 QStringList sourceOrderForStream(const QString &stream_id)
 {
+    // The Visible Streams dialog is easier to scan when derived streams appear
+    // next to their inputs instead of at the end of the log-defined stream
+    // list. This table declares only ordering relationships; transform
+    // creation still lives in transforms.cpp/compass_transforms.cpp.
     if (stream_id == "altitude") {
         return {QStringLiteral("pressure"), QStringLiteral("imu_pressure")};
     }

@@ -106,6 +106,9 @@ void MainWindow::setCursorsVisible(bool visible)
 
 void MainWindow::beginMetadataBoxDrag(QMouseEvent *event)
 {
+    // The metadata box is a movable annotation, not part of the data. While it
+    // is being dragged, temporarily disable QCustomPlot range dragging so the
+    // plot does not pan underneath the user's hand.
     if (!metadata_box_ || !metadata_box_->visible() || event->button() != Qt::LeftButton) {
         return;
     }
@@ -121,6 +124,9 @@ void MainWindow::beginMetadataBoxDrag(QMouseEvent *event)
 
 void MainWindow::dragMetadataBox(QMouseEvent *event)
 {
+    // QCPItemText is positioned in axis-rect-ratio coordinates. Updating by
+    // pixel delta preserves the user's chosen relative placement across later
+    // zooms and pans.
     if (!metadata_box_dragging_ || !metadata_box_) {
         return;
     }

@@ -216,6 +216,9 @@ void MainWindow::rebuildPlot(bool reset_x_range)
     }
 
     if (metadata_box_) {
+        // Keep plot metadata compact and contextual. Epoch-time logs already
+        // have date/time tick labels, so the absolute start time is shown only
+        // when the plot itself uses the elapsed-time axis.
         QStringList metadata_rows;
         if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds && log_.hasCollectionStart) {
             const qint64 rounded_epoch_ms =

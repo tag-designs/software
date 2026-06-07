@@ -28,7 +28,7 @@ static_assert(sizeof(t_DataLog) == 128, "imudata size must be exactly 128 bytes!
 typedef struct {
   int32_t epoch;
   uint16_t millis;
-  uint16_t temp10;
+  int16_t rawtemp;
 } t_DataHeader;
 
 /** Internal flash header array placed by the linker script. */
