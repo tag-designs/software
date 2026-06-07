@@ -329,7 +329,10 @@ void MainWindow::createUi()
     s_textEdit = info_;
 
     connect(plot_, &QCustomPlot::customContextMenuRequested, this, &MainWindow::showPlotContextMenu);
+    connect(plot_, &QCustomPlot::mousePress, this, &MainWindow::beginMetadataBoxDrag);
+    connect(plot_, &QCustomPlot::mouseMove, this, &MainWindow::dragMetadataBox);
     connect(plot_, &QCustomPlot::mouseMove, this, &MainWindow::showMousePosition);
+    connect(plot_, &QCustomPlot::mouseRelease, this, &MainWindow::endMetadataBoxDrag);
     connect(plot_, &QCustomPlot::mouseDoubleClick, this, &MainWindow::plotDoubleClick);
 
     resize(1100, 700);

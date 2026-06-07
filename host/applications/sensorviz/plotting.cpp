@@ -217,7 +217,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
 
     if (metadata_box_) {
         QStringList metadata_rows;
-        if (log_.hasCollectionStart) {
+        if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds && log_.hasCollectionStart) {
             const qint64 rounded_epoch_ms =
                 ((log_.collectionStartEpochMs + 500) / 1000) * 1000;
             const QDateTime start_time =

@@ -7,6 +7,8 @@
 #include <QMainWindow>
 #include <QMap>
 #include <QMenu>
+#include <QPoint>
+#include <QPointF>
 #include <QPrinter>
 #include <QSet>
 #include <QSharedPointer>
@@ -89,6 +91,9 @@ private slots:
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
     void setCursorsVisible(bool visible);
+    void beginMetadataBoxDrag(QMouseEvent *event);
+    void dragMetadataBox(QMouseEvent *event);
+    void endMetadataBoxDrag(QMouseEvent *event);
     void plotDoubleClick(QMouseEvent *event);
     void showPlotContextMenu(const QPoint &pos);
     void showMousePosition(QMouseEvent *event);
@@ -186,6 +191,9 @@ private:
     QString current_path_;
     QString graph_title_;
     bool graph_title_visible_ = true;
+    bool metadata_box_dragging_ = false;
+    QPoint metadata_box_drag_start_pixel_;
+    QPointF metadata_box_drag_start_coords_;
     int utc_offset_ = 0;
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;

@@ -104,6 +104,54 @@ void MainWindow::setCursorsVisible(bool visible)
     }
 }
 
+void MainWindow::beginMetadataBoxDrag(QMouseEvent *event)
+{
+    if (!metadata_box_ || !metadata_box_->visible() || event->button() != Qt::LeftButton) {
+        return;
+    }
+    if (plot_->itemAt(event->pos()) != metadata_box_) {
+        return;
+    }
+
+    metadata_box_dragging_ = true;
+    metadata_box_drag_start_pixel_ = event->pos();
+    metadata_box_drag_start_coords_ = metadata_box_->position->coords();
+    plot_->setInteraction(QCP::iRangeDrag, false);
+}
+
+void MainWindow::dragMetadataBox(QMouseEvent *event)
+{
+    if (!metadata_box_dragging_ || !metadata_box_) {
+        return;
+    }
+
+    const QRect rect = plot_->axisRect()->rect();
+    if (rect.width() <= 0 || rect.height() <= 0) {
+        return;
+    }
+
+    const QPoint delta = event->pos() - metadata_box_drag_start_pixel_;
+    const double x =
+        metadata_box_drag_start_coords_.x() + static_cast<double>(delta.x()) / rect.width();
+    const double y =
+        metadata_box_drag_start_coords_.y() + static_cast<double>(delta.y()) / rect.height();
+    metadata_box_->position->setCoords(
+        std::clamp(x, 0.0, 0.98),
+        std::clamp(y, 0.0, 0.98));
+    plot_->replot();
+}
+
+void MainWindow::endMetadataBoxDrag(QMouseEvent *event)
+{
+    Q_UNUSED(event);
+    if (!metadata_box_dragging_) {
+        return;
+    }
+
+    metadata_box_dragging_ = false;
+    plot_->setInteraction(QCP::iRangeDrag, true);
+}
+
 void MainWindow::printPlot()
 {
     // Open a print preview for the current plot frame. The actual rendering is
@@ -367,6 +415,9 @@ void MainWindow::showMousePosition(QMouseEvent *event)
 {
     // Hovering over the plot drives both the text tooltip and, for CompassTag
     // logs, the orientation panel.
+    if (metadata_box_dragging_) {
+        return;
+    }
     if (!plot_->axisRect()->rect().contains(event->pos())) {
         return;
     }
