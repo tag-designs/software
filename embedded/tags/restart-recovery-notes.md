@@ -69,17 +69,54 @@ BitPresTag, or CompassTag log pages, and IMUTagBreakout can hold 8192 current
 2048-byte pages. The internal trailing header space normally limits complete
 anchored downloads before external flash fills.
 
-Approximate header counts, assuming an 8-byte `t_DataHeader`, are:
+The current number of complete internal-header pages needed to fill external
+flash is:
 
-| Available internal flash after `vddHeader` | Header count |
-| ---: | ---: |
-| 2 KiB | 256 |
-| 4 KiB | 512 |
-| 8 KiB | 1024 |
-| 16 KiB | 2048 |
+| Target | Bytes written per internal header | External flash | Complete headers to fill | Unused tail bytes | First header that cannot fit |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `PresTag` | 240 B | 4 MiB | 17,476 | 64 | 17,477 |
+| `BitPresTag` | 96 B | 4 MiB | 43,690 | 64 | 43,691 |
+| `BitPresTagMX25R` | 96 B | 4 MiB | 43,690 | 64 | 43,691 |
+| `CompassTag` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
+| `CompassTagAT25Breakout` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
+| `CompassTagAT25` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
+| `IMUTagBreakout` | 2,048 B | 16 MiB | 8,192 | 0 | 8,193 |
 
-`BitTag` uses a 16-byte internal data header, so those counts are halved for its
-internal-only log.
+`BitTag` has no external flash. For 256 KiB internal flash builds, external
+flash fills first for `PresTag`, the CompassTag variants, and IMUTagBreakout.
+The internal `vddHeader` region fills first for the BitPresTag variants.
+
+Current linked `vddHeader` limits from
+`/Users/geobrown/Build/tag-designs/software-embedded-clean`, with
+`TAG_FLASH_SIZE=256K`, are:
+
+| Target | `vddHeader` | Header size | `__persistent_end__` | Header limit |
+| --- | ---: | ---: | ---: | ---: |
+| `PresTag` | `0x08007a60` | 8 B | `0x08040000` | 28,852 |
+| `BitPresTag` | `0x08008a60` | 8 B | `0x08040000` | 28,340 |
+| `BitPresTagMX25R` | `0x08008a60` | 8 B | `0x08040000` | 28,340 |
+| `CompassTag` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
+| `CompassTagAT25Breakout` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
+| `CompassTagAT25` | `0x08009a58` | 8 B | `0x08040000` | 27,829 |
+| `IMUTagBreakout` | `0x0800b1f0` | 8 B | `0x08040000` | 27,074 |
+| `BitTag` | `0x08007268` | 16 B | `0x08040000` | 14,553 |
+
+For a 128 KiB build, assuming similar code layout and
+`__persistent_end__ = 0x08020000`, the approximate limits would be:
+
+| Target | Approximate 128 KiB header limit |
+| --- | ---: |
+| `PresTag` | 12,468 |
+| `BitPresTag` | 11,956 |
+| `BitPresTagMX25R` | 11,956 |
+| `CompassTag` | 11,701 |
+| `CompassTagAT25Breakout` | 11,701 |
+| `CompassTagAT25` | 11,445 |
+| `IMUTagBreakout` | 10,690 |
+| `BitTag` | 6,361 |
+
+`BitTag` uses a 16-byte internal data header; the other current active targets
+listed above use 8-byte `t_DataHeader` records.
 
 ## IMUTag Timing Caveat
 
