@@ -115,4 +115,5 @@ void eraseExternalBlock(void);
 uint32_t externalFlashSize(void);
 /** @brief Report progress while external sectors are being erased. */
 int externalFlashSectorsErased(void);
+int externalFlashSectorsToErasePlusOne(void);
 #endif

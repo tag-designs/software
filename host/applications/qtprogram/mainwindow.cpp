@@ -34,6 +34,22 @@
 #include "custommessagebox.h"
 #include "qtfiledialog.h"
 
+namespace
+{
+
+// Fallback for older IMUTag firmware that predates
+// Status.erase_sectors_total_plus_one. New firmware reports the erase total
+// directly, so the UI does not need tag-specific page geometry.
+constexpr int kImuDataLogPageBytes = 2048;
+
+int roundedSectorCount(qint64 bytes, int sector_size)
+{
+  if (bytes <= 0 || sector_size <= 0)
+    return 0;
+  return static_cast<int>((bytes + sector_size - 1) / sector_size);
+}
+
+} // namespace
 
 #define title_string "Tag Programmer v1.0"
 
@@ -118,6 +134,19 @@ MainWindow::~MainWindow()
   tag.Detach();
 }
 
+int MainWindow::eraseSectorMaximum(const Status &status) const
+{
+  if (status.erase_sectors_total_plus_one() > 0)
+    return status.erase_sectors_total_plus_one() - 1;
+
+  if (tag_type == IMUTAG)
+    return roundedSectorCount(
+        static_cast<qint64>(status.internal_data_count()) * kImuDataLogPageBytes,
+        sector_size);
+
+  return roundedSectorCount(external_flash_size, sector_size);
+}
+
 // attach to tag
 
 bool MainWindow::Attach()
@@ -164,6 +193,7 @@ bool MainWindow::Attach()
     ui.info_uuid->setText(QString::fromStdString(info.uuid()));
     ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
     external_flash_size=info.extflashsz();
+    tag_type = info.tag_type();
     // start the StateUpdate timer
     
     ui.connectButton->setEnabled(false);
@@ -386,7 +416,11 @@ void MainWindow::on_programButton_clicked(){
   // connect signals
 
   if (tag.IsAttached()) {
-    msgBox.setMaximum(external_flash_size/sector_size);
+    Status status;
+    int erase_sector_maximum = roundedSectorCount(external_flash_size, sector_size);
+    if (tag.GetStatus(status))
+      erase_sector_maximum = eraseSectorMaximum(status);
+    msgBox.setMaximum(erase_sector_maximum);
     connect(this,&MainWindow::SectorsErased,&msgBox,&CustomMessageBox::setValue);
   }
 

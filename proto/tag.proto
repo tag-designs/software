@@ -133,6 +133,9 @@ message Status {
   float temperature = 7;         // processor Temperature
   int32 sectors_erased = 8;      // during erase operation provides
                                  // feedback of erased sectors
+  int32 erase_sectors_total_plus_one = 9;
+                                 // 0 means unsupported/unknown. Otherwise
+                                 // erase sector total is value - 1.
   string debug_message = 20;     // debug message from buffer
 }
 

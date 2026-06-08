@@ -126,4 +126,5 @@ uint32_t externalFlashSize(void);
  * @return Number of sectors erased in the current erase operation.
  */
 int externalFlashSectorsErased(void);
+int externalFlashSectorsToErasePlusOne(void);
 #endif

@@ -37,7 +37,22 @@
 #include "taglogwriter.h"
 
 
+namespace
+{
 
+// Fallback for older IMUTag firmware that predates
+// Status.erase_sectors_total_plus_one. New firmware reports the erase total
+// directly, so the UI does not need tag-specific page geometry.
+constexpr int kImuDataLogPageBytes = 2048;
+
+int roundedSectorCount(qint64 bytes, int sector_size)
+{
+  if (bytes <= 0 || sector_size <= 0)
+    return 0;
+  return static_cast<int>((bytes + sector_size - 1) / sector_size);
+}
+
+} // namespace
 
 // main window
 
@@ -70,6 +85,19 @@ MainWindow::~MainWindow()
 {
   ui.configtab->Detach();
   tag.Detach();
+}
+
+int MainWindow::eraseSectorMaximum(const Status &status) const
+{
+  if (status.erase_sectors_total_plus_one() > 0)
+    return status.erase_sectors_total_plus_one() - 1;
+
+  if (tag_type == IMUTAG)
+    return roundedSectorCount(
+        static_cast<qint64>(status.internal_data_count()) * kImuDataLogPageBytes,
+        sector_size);
+
+  return roundedSectorCount(external_flash_size, sector_size);
 }
 
 bool MainWindow::Attach()
@@ -386,12 +414,17 @@ void MainWindow::on_eraseButton_clicked()
   int ret = msgBox.exec();
   if (ret == QMessageBox::Ok)
   {
+    Status status;
+    int erase_sector_maximum = roundedSectorCount(external_flash_size, sector_size);
+    if (tag.GetStatus(status))
+      erase_sector_maximum = eraseSectorMaximum(status);
+
     if (!tag.Erase())
     {
       qDebug() << "tag reset returned false";
     } else {
-      if (external_flash_size) {
-      QProgressDialog progress("Erasing flash...", "exit dialog", 0, external_flash_size/sector_size, this);
+      if (erase_sector_maximum > 0) {
+      QProgressDialog progress("Erasing flash...", "exit dialog", 0, erase_sector_maximum, this);
       progress.setWindowModality(Qt::WindowModal);
       connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
       connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));

@@ -88,9 +88,11 @@ private:
   const float version = 2.0;
   int external_flash_size = 0;
   int sector_size = 4096;
+  TagType tag_type = TAG_UNSPECIFIED;
   UsbDev usbdev;
   QProcess *process;
   QString program;
+  int eraseSectorMaximum(const Status &status) const;
 };
 
 #endif // MAINWINDOW_H

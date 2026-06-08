@@ -66,13 +66,14 @@ private slots:
 
 private:
   Tag tag;
-  TagType tag_type;
+  TagType tag_type = TAG_UNSPECIFIED;
   Ui::MainWindow ui;
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
   const float version = 2.0;
   int external_flash_size = 0;
   int sector_size = 4096;
+  int eraseSectorMaximum(const Status &status) const;
 };
 
 #endif // MAINWINDOW_H

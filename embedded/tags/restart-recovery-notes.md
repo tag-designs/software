@@ -139,6 +139,46 @@ For a 128 KiB build, assuming similar code layout and
 `BitTag` uses a 16-byte internal data header; the other current active targets
 listed above use 8-byte `t_DataHeader` records.
 
+## IMUTag Erase Accounting
+
+For IMUTagBreakout, one valid internal `t_DataHeader` corresponds to one
+external log page:
+
+```c
+DATALOG_SAMPLES * sizeof(t_DataLog) == 16 * 128 == 2048 bytes
+```
+
+`restoreLog()` scans checked-readable internal headers and sets:
+
+- `pState->pages` / `Status.internal_data_count` to the valid header count;
+- `pState->external_blocks` / `Status.external_data_count` to
+  `pState->pages * DATALOG_SAMPLES`.
+
+`eraseExternal()` depends on reset calling `restoreLog()` first. It erases
+`pState->pages * 2048`, rounded up to external flash sectors. It does not probe
+or erase sectors beyond the internal header count, because headers are the
+authoritative record of complete IMU log pages that may be downloaded.
+
+The live `Status` message reports:
+
+- `sectors_erased`: sectors completed during the current reset/erase;
+- `erase_sectors_total_plus_one`: total sectors expected plus one.
+
+The plus-one encoding avoids protobuf scalar-presence ambiguity. `0` means
+unsupported or unknown. `1` means supported and zero sectors need erasing. Any
+other value `N + 1` means the actual total is `N`.
+
+Qt monitor/programmer progress should prefer
+`Status.erase_sectors_total_plus_one - 1`. They retain a temporary IMUTag
+fallback of `Status.internal_data_count * 2048`, rounded up to 4096-byte
+sectors, only for older firmware that does not report the new field.
+`TagInfo.extflashsz` remains the physical flash capacity and is not the right
+denominator for dirty-log erase progress.
+
+TODO: once deployed firmware reliably reports `erase_sectors_total_plus_one`,
+remove the host-side IMUTag page-size fallback so Qt monitor/programmer code no
+longer needs to know `DATALOG_SAMPLES * sizeof(t_DataLog)`.
+
 ## IMUTag Timing Caveat
 
 IMUTag FIFO reads are especially sensitive. A reset can leave the hardware FIFO

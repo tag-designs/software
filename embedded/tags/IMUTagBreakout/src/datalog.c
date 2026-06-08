@@ -19,6 +19,29 @@ static volatile int sectors_erased NOINIT;
 
 extern int encode_ack(void);
 
+static uint32_t dirtyExternalSectors(void)
+{
+  const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  const uint32_t sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+  /*
+   * Reset calls restoreLog() before eraseExternal(), so pState->pages is the
+   * count of valid internal headers. For IMUTag each valid header owns exactly
+   * one external page: DATALOG_SAMPLES 128-byte t_DataLog blocks.
+   */
+  const uint64_t dirty_bytes = (uint64_t)pState->pages * (uint64_t)databuf_size;
+  uint32_t dirty_sectors;
+
+  if (sector_size == 0U || sector_count == 0U) {
+    return 0;
+  }
+
+  dirty_sectors = (uint32_t)((dirty_bytes + sector_size - 1U) / sector_size);
+  if (dirty_sectors > sector_count) {
+    dirty_sectors = sector_count;
+  }
+  return dirty_sectors;
+}
+
 static bool readDataHeader(int index, t_DataHeader *header)
 {
   uint32_t end = (uint32_t)&__persistent_end__;
@@ -34,43 +57,29 @@ static bool readDataHeader(int index, t_DataHeader *header)
 }
 
 /**
- * @brief Erase one external sector if it contains programmed data.
- *
- * @param[in] sector Sector index to inspect.
- * @return true when the sector was erased.
- */
-static bool eraseExternalSector(int sector){
-  int32_t addr;
-  uint8_t buf[256];
-
-  // round up to full sector
-
-  if (sector < 0 || sector >= tagStorageSectorCount(TAG_EXTERNAL_FLASH))
-    return false;
-
-  addr = sector * tagStorageSectorSize(TAG_EXTERNAL_FLASH);
-
-  // read a buffer
-  tagStorageRead(TAG_EXTERNAL_FLASH, addr, buf, 256);
-  for (int i = 0; i < 256; i++) {
-      if (buf[i] != 255) {
-        tagStorageSectorErase(TAG_EXTERNAL_FLASH, addr);
-        return true;
-      }
-  }
-  return false;
-}
-
-/**
  * @brief Erase the external data log and reset log progress.
  */
 void eraseExternal()
 {
+  const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  /*
+   * Erase only the sectors touched by pages with valid internal headers.
+   * Walking the whole 16 MiB device would waste time and would make monitor
+   * erase progress misleading. dirtyExternalSectors() is also the status
+   * progress denominator, so firmware erase work and host progress agree.
+   */
+  const uint32_t dirty_sectors = dirtyExternalSectors();
+
+  if (sector_size == 0U || dirty_sectors == 0U) {
+    pState->external_blocks = 0;
+    sectors_erased = 0;
+    return;
+  }
+
   sectors_erased = 0;
   tagStorageWake(TAG_EXTERNAL_FLASH);
-  for (int i = 0; i < tagStorageSectorCount(TAG_EXTERNAL_FLASH); i++) {
-    // check them all
-    eraseExternalSector(i);
+  for (uint32_t i = 0; i < dirty_sectors; i++) {
+    tagStorageSectorErase(TAG_EXTERNAL_FLASH, i * sector_size);
     sectors_erased++;
     // allow monitor a chance
     if (i%8 == 7)
@@ -100,6 +109,11 @@ uint32_t externalFlashSize(void)
 int externalFlashSectorsErased(void)
 {
   return sectors_erased;
+}
+
+int externalFlashSectorsToErasePlusOne(void)
+{
+  return (int)dirtyExternalSectors() + 1;
 }
 
 /**

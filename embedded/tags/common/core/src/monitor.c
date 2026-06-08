@@ -191,6 +191,8 @@ static int statusAck(void)
   ack.payload.status.voltage = vdd100 * 0.01f;
   ack.payload.status.temperature = temp10 * 0.1f;
   ack.payload.status.sectors_erased = externalFlashSectorsErased();
+  ack.payload.status.erase_sectors_total_plus_one =
+      externalFlashSectorsToErasePlusOne();
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;

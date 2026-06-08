@@ -183,6 +183,13 @@ uint32_t externalFlashSize(void);
 int externalFlashSectorsErased(void);
 
 /**
+ * @brief Report total external sectors expected for the current erase, plus one.
+ *
+ * @return 0 when unsupported/unknown, otherwise total sectors + 1.
+ */
+int externalFlashSectorsToErasePlusOne(void);
+
+/**
  * @brief Persist a validated stored-configuration image.
  *
  * @param[in] s Stored configuration image to write.

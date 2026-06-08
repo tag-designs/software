@@ -108,6 +108,19 @@ int __attribute__((weak)) externalFlashSectorsErased(void)
 }
 
 /**
+ * @brief Default total external sectors expected for the current erase.
+ *
+ * The plus-one encoding lets protobuf distinguish unsupported/unknown (0)
+ * from a supported erase with zero sectors to process (1).
+ *
+ * @return 0 because this target does not report an erase total.
+ */
+int __attribute__((weak)) externalFlashSectorsToErasePlusOne(void)
+{
+  return 0;
+}
+
+/**
  * @brief Append a state transition marker to internal flash.
  *
  * @param[in] reason Event that caused the state transition.
