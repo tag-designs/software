@@ -50,6 +50,7 @@
 #include "core_runtime.h"
 #include "core_state.h"
 #include "core_sync.h"
+#include "flash_internal.h"
 #include "persistent.h"
 #include "power.h"
 #include "rtc_api.h"
@@ -124,10 +125,15 @@ enum Sleep StateMachine(void)
   // this needs work !  We probably need to detect whether pState
   // is corrupt, if so we can't count on RTC so we have to abort.
 
-  if ((pState->resetCause == resetPower) ||
-      (pState->resetCause == resetBrownout) ||
+  t_resetCause reset_cause = pState->resetCause;
+
+  if ((reset_cause == resetPower) ||
+      (reset_cause == resetBrownout) ||
       (pState->state == STATE_UNSPECIFIED))
   {
+    if ((reset_cause != resetPower) && (reset_cause != resetBrownout))
+      reset_cause = resetPower;
+
     // figure out what state we're in
     // if we're running, we let the run procedure decide
     // how to handle the possible error/loss of data
@@ -141,10 +147,12 @@ enum Sleep StateMachine(void)
 
     for (size_t i = 0; i < sEPOCH_SIZE; i++)
     {
-      if (sEpoch[i].epoch == -1)
+      t_StateMarker marker;
+      if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
         break;
-      //pState->pages = sEpoch[i].internal_pages;
-      pState->state = sEpoch[i].state;
+      if (marker.epoch == -1)
+        break;
+      pState->state = marker.state;
     }
     // try to recover the time from the external RTC
 
@@ -164,9 +172,17 @@ enum Sleep StateMachine(void)
       timestamp = GetTimeUnixSec(&timestamp_millis);;
     }
 
+    /*
+     * Reset recovery is a one-shot boot decision.  Keep using reset_cause for
+     * this dispatch, but prevent later ordinary state-machine passes from
+     * re-entering recovery and interpreting freshly written state markers as a
+     * new power-fail event.
+     */
+    pState->resetCause = resetStandby;
+
     if (pState->state == TagState_CONFIGURED)
     {
-      if (pState->resetCause == resetBrownout)
+      if (reset_cause == resetBrownout)
       {
         return Configured(T_INIT, State_EVENT_BROWNOUT);
       }
@@ -183,7 +199,7 @@ enum Sleep StateMachine(void)
     {
       // goto error
   
-        switch (pState->resetCause)
+        switch (reset_cause)
         {
           // need to distinguish hibernating from running
           case resetSleep:
@@ -203,7 +219,7 @@ enum Sleep StateMachine(void)
     if (pState->state == TagState_RUNNING)
     {
       // goto error
-      switch (pState->resetCause)
+      switch (reset_cause)
       {
         case resetSleep:
         case resetStandby:

@@ -7,11 +7,18 @@
 
 #include "hal.h"
 
+#include <stdbool.h>
+#include <string.h>
+
 #include "flash_internal.h"
 
 #define FLASH_KEY1 ((uint32_t)0x45670123U) /*!< Flash key1 */
 #define FLASH_KEY2 \
   ((uint32_t)0xCDEF89ABU) /*!< Flash key2: used with FLASH_KEY1 */
+
+#define FLASH_ECC_ERROR_MASK (FLASH_ECCR_ECCC | FLASH_ECCR_ECCD)
+
+extern void _unhandled_exception(void);
 
 /** @name Flash status helpers
  * Small helpers that keep persistent.c from needing to know STM32 status and
@@ -31,19 +38,55 @@ static inline uint32_t FLASH_Errors(void) {
 }
 
 /**
+ * @brief Read the sticky flash ECC error flags.
+ */
+static inline uint32_t FLASH_EccErrors(void) {
+  return FLASH->ECCR & FLASH_ECC_ERROR_MASK;
+}
+
+/**
  * @brief Clear all sticky flash status and ECC error flags before an operation.
  */
+void FLASH_ClearEccErrors(void) {
+  SET_BIT(FLASH->ECCR, FLASH_ECC_ERROR_MASK);
+}
+
 static inline void FLASH_ClearAllErrors(void) {
   SET_BIT(FLASH->SR, FLASH_SR_EOP | FLASH_SR_OPERR | FLASH_SR_PROGERR |
                          FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR |
                          FLASH_SR_PGSERR | FLASH_SR_MISERR | FLASH_SR_FASTERR |
                          FLASH_SR_RDERR | FLASH_SR_OPTVERR);
 
-  SET_BIT(FLASH->ECCR, FLASH_ECCR_ECCC | FLASH_ECCR_ECCD);
+  FLASH_ClearEccErrors();
 }
 /** @} */
 
 uint32_t flash_err = 0;
+volatile uint32_t flash_ecc_flags = 0;
+volatile uint32_t flash_ecc_eccr = 0;
+static volatile bool flash_ecc_probe_active = false;
+static volatile bool flash_ecc_probe_failed = false;
+
+/**
+ * @brief Convert expected flash ECC NMIs into checked-read failures.
+ */
+void NMI_Handler(void) {
+  uint32_t eccr = FLASH->ECCR;
+  uint32_t ecc_errors = eccr & FLASH_ECC_ERROR_MASK;
+
+  if (ecc_errors) {
+    flash_ecc_flags |= ecc_errors;
+    flash_ecc_eccr = eccr;
+    FLASH_ClearEccErrors();
+
+    if (flash_ecc_probe_active) {
+      flash_ecc_probe_failed = true;
+      return;
+    }
+  }
+
+  _unhandled_exception();
+}
 
 /** @name Internal flash programming
  * Operations used by persistent storage to erase pages and append aligned flash
@@ -132,6 +175,56 @@ void FLASH_Flush_Data_Cache(void) {
     SET_BIT(FLASH->ACR, FLASH_ACR_DCRST);   // reset data cache
     SET_BIT(FLASH->ACR, FLASH_ACR_DCEN);    // enable data cache
   }
+}
+
+uint32_t FLASH_Read_DoubleWord_Checked(const uint64_t *Address, uint64_t *Data) {
+  if ((Address == NULL) || (Data == NULL) || (((uintptr_t)Address) & 0x7U)) {
+    return FLASH_READ_ERROR_INVALID_ADDRESS;
+  }
+
+  flash_ecc_flags = 0;
+  flash_ecc_eccr = 0;
+  flash_ecc_probe_failed = false;
+  FLASH_ClearEccErrors();
+
+  flash_ecc_probe_active = true;
+  __DSB();
+  uint64_t value = *(volatile const uint64_t *)Address;
+  __DSB();
+  flash_ecc_probe_active = false;
+
+  uint32_t ecc_errors = flash_ecc_flags | FLASH_EccErrors();
+  if (ecc_errors) {
+    FLASH_ClearEccErrors();
+  }
+
+  if (flash_ecc_probe_failed || ecc_errors) {
+    return ecc_errors ? ecc_errors : FLASH_ECCR_ECCD;
+  }
+
+  *Data = value;
+  return 0;
+}
+
+uint32_t FLASH_Read_Checked(const void *Address, void *Data, size_t Bytes) {
+  if ((Address == NULL) || (Data == NULL) || (((uintptr_t)Address) & 0x7U) ||
+      ((Bytes & 0x7U) != 0U)) {
+    return FLASH_READ_ERROR_INVALID_ADDRESS;
+  }
+
+  const uint64_t *source = (const uint64_t *)Address;
+  uint8_t *dest = (uint8_t *)Data;
+
+  for (size_t offset = 0; offset < Bytes; offset += sizeof(uint64_t)) {
+    uint64_t word;
+    uint32_t error = FLASH_Read_DoubleWord_Checked(source++, &word);
+    if (error) {
+      return error;
+    }
+    memcpy(&dest[offset], &word, sizeof(word));
+  }
+
+  return 0;
 }
 
 /**

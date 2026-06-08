@@ -7,6 +7,7 @@
 
 #include "app.h"
 #include "datalog.h"
+#include "flash_internal.h"
 #include <string.h>
 #include <tag.pb.h>
 #include "devices.h"
@@ -17,6 +18,20 @@ static t_DataLog databuf[DATALOG_SAMPLES] NOINIT;
 static volatile int sectors_erased NOINIT;
 
 extern int encode_ack(void);
+
+static bool readDataHeader(int index, t_DataHeader *header)
+{
+  uint32_t end = (uint32_t)&__persistent_end__;
+
+  if (index < 0)
+    return false;
+
+  uint32_t address = (uint32_t)&vddHeader[index];
+  if ((address + sizeof(*header)) > end)
+    return false;
+
+  return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
+}
 
 /**
  * @brief Erase one external sector if it contains programmed data.
@@ -94,11 +109,11 @@ int externalFlashSectorsErased(void)
  */
 int restoreLog(void)
 {
-  uint32_t end = (uint32_t)&__persistent_end__;
   int i;
-  for (i = 0; (uint32_t)&vddHeader[i] < end; i++)
+  t_DataHeader header;
+  for (i = 0; readDataHeader(i, &header); i++)
   {
-    if (vddHeader[i].epoch == -1)
+    if (header.epoch == -1)
       break;
   }
   pState->pages = i;
@@ -186,11 +201,13 @@ int data_logAck(int index, Ack *ack)
 
   uint32_t end = (uint32_t)&__persistent_end__;
   uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
+  t_DataHeader header;
 
   // check for valid header
 
   if (index >= 0 && ((uint32_t)&vddHeader[index] < end) &&
-      (vddHeader[index].epoch != -1) &&
+      readDataHeader(index, &header) &&
+      (header.epoch != -1) &&
       (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize()))
   {
 
@@ -199,9 +216,9 @@ int data_logAck(int index, Ack *ack)
     ack->which_payload = Ack_imu_data_log_tag;
     IMUTagLog *log = &ack->payload.imu_data_log;
 
-    log->epoch = vddHeader[index].epoch;
-    log->millisecond = vddHeader[index].millis;
-    log->temperature = vddHeader[index].rawtemp * 0.01f;
+    log->epoch = header.epoch;
+    log->millisecond = header.millis;
+    log->temperature = header.rawtemp * 0.01f;
     log->data_count = 0;
 
     // now read the data

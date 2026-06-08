@@ -54,7 +54,10 @@ void erasePersistent(void)
   while (start + 2048 <= end)
   {
     end -= 2048;
-    if ((((uint32_t *)end)[0] == 0xffffffff) && (end != start))
+    uint64_t first_word;
+    uint32_t readerr =
+        FLASH_Read_DoubleWord_Checked((const uint64_t *)end, &first_word);
+    if (!readerr && (((uint32_t)first_word) == 0xffffffff) && (end != start))
       continue;
     chSysLock();
     FLASH_Unlock();
@@ -121,7 +124,10 @@ void recordState(State_Event reason)
   // find next available log slot.
   for (offset = 0; offset < sEPOCH_SIZE; offset++)
   {
-    if (sEpoch[offset].epoch == -1)
+    t_StateMarker existing;
+    if (FLASH_Read_Checked(&sEpoch[offset], &existing, sizeof(existing)))
+      break;
+    if (existing.epoch == -1)
       break;
   }
 

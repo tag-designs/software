@@ -16,6 +16,7 @@
 #include "core_types.h"
 #include "custom.h"
 #include "debug_log.h"
+#include "flash_internal.h"
 #include "persistent.h"
 #include "sensor_calibration.h"
 #include "test_support.h"
@@ -268,18 +269,23 @@ static int system_logAck(int index)
 
   for (size_t i = index; (i < sEPOCH_SIZE) && (count < max_count); i++)
   {
-    if (sEpoch[i].epoch == -1)
+    t_StateMarker marker;
+    if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
+    {
+      break;
+    }
+    if (marker.epoch == -1)
     {
       break;
     }
     states[count].has_status = true;
-    states[count].status.millis = ((int64_t)sEpoch[i].epoch) * 1000;
-    states[count].status.state = sEpoch[i].state;
-    states[count].status.internal_data_count = sEpoch[i].internal_pages;
-    states[count].status.external_data_count = sEpoch[i].external_pages;
-    states[count].status.voltage = sEpoch[i].vdd100 * 0.01f;
-    states[count].status.temperature = sEpoch[i].temp10 * 0.1f;
-    states[count].transition_reason = sEpoch[i].reason;
+    states[count].status.millis = ((int64_t)marker.epoch) * 1000;
+    states[count].status.state = marker.state;
+    states[count].status.internal_data_count = marker.internal_pages;
+    states[count].status.external_data_count = marker.external_pages;
+    states[count].status.voltage = marker.vdd100 * 0.01f;
+    states[count].status.temperature = marker.temp10 * 0.1f;
+    states[count].transition_reason = marker.reason;
     states[count].status.test_status = 0;
     count++;
   }

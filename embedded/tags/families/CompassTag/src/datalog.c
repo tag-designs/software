@@ -8,6 +8,7 @@
 #include "app.h"
 #include "datalog.h"
 #include "devices.h"
+#include "flash_internal.h"
 #include <stdbool.h>
 #include <tag.pb.h>
 #include "persistent.h"
@@ -60,21 +61,20 @@ static void slow_msi(void){
 
 
 extern int encode_ack(void);
-/*
-static int countInternalBlocks(void){
-  uint32_t end = (uint32_t)&__persistent_end__;
-  uint32_t start = ((uint32_t)(&__persistent_start__));
-  int count = 0;
-  while (start < end) {
 
-      if (((uint32_t *) start)[0] == 0xffffffff)
-          break;
-      count++;
-      start += 8;
-  }
-  return count;
+static bool readDataHeader(int index, t_DataHeader *header)
+{
+  uint32_t end = (uint32_t)&__persistent_end__;
+
+  if (index < 0)
+    return false;
+
+  uint32_t address = (uint32_t)&vddHeader[index];
+  if ((address + sizeof(*header)) > end)
+    return false;
+
+  return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
 }
-  */
 
 /**
  * @brief Count valid internal flash headers after reset.
@@ -82,10 +82,10 @@ static int countInternalBlocks(void){
  * @return Number of written internal header blocks.
  */
 static int countInternalBlocks(void){
-  uint32_t end = (uint32_t)&__persistent_end__;
   int i;
-  for (i = 0; ((uint32_t)&vddHeader[i]) < end;i++){
-    if (vddHeader[i].epoch == -1)
+  t_DataHeader header;
+  for (i = 0; readDataHeader(i, &header); i++){
+    if (header.epoch == -1)
       break;
   }
   return i;
@@ -172,19 +172,27 @@ int restoreLog(void)
   // first check if computation was finished
 
   for (unsigned int i = 0; i < sEPOCH_SIZE; i++){
-     if (sEpoch[i].epoch == -1)
-        break;
-      if (sEpoch[i].state == FINISHED){
-         pState->pages = sEpoch[i].internal_pages;
-         pState->external_blocks = sEpoch[i].external_pages;
-         return sEpoch[i].epoch;
-      }
+    t_StateMarker marker;
+    if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
+      break;
+    if (marker.epoch == -1)
+      break;
+    if (marker.state == FINISHED){
+      pState->pages = marker.internal_pages;
+      pState->external_blocks = marker.external_pages;
+      return marker.epoch;
+    }
   }
 
   pState->pages = countInternalBlocks();
   // we really should read the external page a search it
   pState->external_blocks = pState->pages * DATALOG_SAMPLES*4;
-  return vddHeader[pState->pages].epoch;
+  if (pState->pages > 0) {
+    t_DataHeader last_header;
+    if (readDataHeader(pState->pages - 1, &last_header))
+      return last_header.epoch;
+  }
+  return 0;
 }
 
 /**
@@ -268,10 +276,12 @@ int data_logAck(int index, Ack *ack)
 
   uint32_t persistent_end = (uint32_t)&__persistent_end__;
   uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
+  t_DataHeader header;
   bool valid_index =
       (index >= 0) &&
       ((uint32_t)&vddHeader[index] < persistent_end) &&
-      (vddHeader[index].epoch != -1) &&
+      readDataHeader(index, &header) &&
+      (header.epoch != -1) &&
       (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize());
 
   if (valid_index)
@@ -282,9 +292,9 @@ int data_logAck(int index, Ack *ack)
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
     ack->which_payload = Ack_compasstag_data_log_tag;
-    data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100 * 0.01f;
-    data->temperature = vddHeader[index].temp10 * 0.1f;
+    data->epoch = header.epoch;
+    data->voltage = header.vdd100 * 0.01f;
+    data->temperature = header.temp10 * 0.1f;
     data->data_count = 0;
 
     // For each databuf[i]

@@ -8,6 +8,7 @@
 #include "app.h"
 #include "datalog.h"
 #include "devices.h"
+#include "flash_internal.h"
 #include "lps27hhw.h"
 #include "storage_flash.h"
 #include <stdbool.h>
@@ -63,21 +64,33 @@ static void slow_msi(void){
 
 extern int encode_ack(void);
 
+static bool readDataHeader(int index, t_DataHeader *header)
+{
+  uint32_t end = (uint32_t)&__persistent_end__;
+
+  if (index < 0)
+    return false;
+
+  uint32_t address = (uint32_t)&vddHeader[index];
+  if ((address + sizeof(*header)) > end)
+    return false;
+
+  return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
+}
+
 /**
  * @brief Count valid internal flash headers after reset.
  *
  * @return Number of written internal header blocks.
  */
 static int countInternalBlocks(void){
-  uint32_t end = (uint32_t)&__persistent_end__;
-  uint32_t start = ((uint32_t)(&__persistent_start__));
   int count = 0;
-  while (start < end) {
+  t_DataHeader header;
 
-      if (((uint32_t *) start)[0] == 0xffffffff)
-          break;
-      count++;
-      start += 8;
+  while (readDataHeader(count, &header)) {
+    if (header.epoch == -1)
+      break;
+    count++;
   }
   return count;
 }
@@ -246,10 +259,12 @@ int data_logAck(int index, Ack *ack)
 
   uint32_t persistent_end = (uint32_t)&__persistent_end__;
   uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
+  t_DataHeader header;
   bool valid_index =
       (index >= 0) &&
       ((uint32_t)&vddHeader[index] < persistent_end) &&
-      (vddHeader[index].epoch != -1) &&
+      readDataHeader(index, &header) &&
+      (header.epoch != -1) &&
       (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize());
 
   if (valid_index)
@@ -260,9 +275,9 @@ int data_logAck(int index, Ack *ack)
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
     ack->which_payload = Ack_bitprestag_data_log_tag;
-    data->epoch = vddHeader[index].epoch;
-    data->voltage = vddHeader[index].vdd100[0] * 0.01f;
-    data->temperature = vddHeader[index].vdd100[1] * 0.01f;
+    data->epoch = header.epoch;
+    data->voltage = header.vdd100[0] * 0.01f;
+    data->temperature = header.vdd100[1] * 0.01f;
     data->data_count = 0;
 
     for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples

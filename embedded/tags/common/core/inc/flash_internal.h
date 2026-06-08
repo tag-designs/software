@@ -8,7 +8,10 @@
 #ifndef TAG_CORE_FLASH_INTERNAL_H
 #define TAG_CORE_FLASH_INTERNAL_H
 
+#include <stddef.h>
 #include <stdint.h>
+
+#define FLASH_READ_ERROR_INVALID_ADDRESS (1UL << 31)
 
 /** @name Internal flash programming
  * Helpers used by persistent storage code to update flash records while
@@ -46,6 +49,30 @@ void FLASH_Program_DoubleWord(uint32_t *Address, uint32_t Data0,
  * @brief Flush the STM32 data cache after flash contents change.
  */
 void FLASH_Flush_Data_Cache(void);
+
+/**
+ * @brief Clear sticky flash ECC error flags.
+ */
+void FLASH_ClearEccErrors(void);
+
+/**
+ * @brief Read one flash double-word while converting ECC NMIs to errors.
+ *
+ * @param[in] Address Aligned flash source address.
+ * @param[out] Data Destination for the read value.
+ * @return 0 on success, or a flash/ECC error mask.
+ */
+uint32_t FLASH_Read_DoubleWord_Checked(const uint64_t *Address, uint64_t *Data);
+
+/**
+ * @brief Read aligned flash bytes while converting ECC NMIs to errors.
+ *
+ * @param[in] Address Aligned flash source address.
+ * @param[out] Data Destination buffer.
+ * @param[in] Bytes Number of bytes to read; must be a multiple of 8.
+ * @return 0 on success, or a flash/ECC error mask.
+ */
+uint32_t FLASH_Read_Checked(const void *Address, void *Data, size_t Bytes);
 
 /**
  * @brief Program an array of 32-bit words as aligned flash double-words.

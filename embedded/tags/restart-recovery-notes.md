@@ -30,6 +30,27 @@ The download path should eventually combine:
 - retained cursor/sentinel state to decide whether the final pre-reset page is
   complete, abandoned, or should be hidden.
 
+## Header Validation and ECC
+
+Internal flash headers and state markers should be read through the checked
+helpers in `stm32flash.c`, not by direct struct access. Those helpers install a
+narrow `NMI_Handler` path that converts flash ECC NMIs into read errors only
+while an explicit flash probe is active. ECC outside that probe remains an
+unexpected exception.
+
+Recovery scanners should treat checked-read failure the same way they treat an
+erased or invalid header boundary: stop before that record and abandon the
+possibly incomplete page. Download code can additionally defer exposing a page
+until either the following header exists or a terminal state marker proves that
+the final page was completed.
+
+A useful hardware test is to run a tag, interrupt/reset it repeatedly during
+internal header writes, then verify that recovery and monitor download stop at
+the last checked-readable header instead of entering the generic exception path.
+If deliberately producing an ECC-faulted double-word is practical on a bench
+unit, the expected result is that a guarded read returns an ECC error and an
+unguarded read still follows the ordinary exception path.
+
 ## Storage Bounds
 
 The monitor download path should treat the internal flash space from

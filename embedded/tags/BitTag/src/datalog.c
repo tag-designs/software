@@ -7,21 +7,36 @@
 #include "persistent.h"
 #include "tag.pb.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 extern int encode_ack(void);
 
+static bool readDataHeader(int index, t_DataHeader *header)
+{
+  uint32_t end = (uint32_t)&__persistent_end__;
+
+  if (index < 0)
+    return false;
+
+  uint32_t address = (uint32_t)&vddHeader[index];
+  if ((address + sizeof(*header)) > end)
+    return false;
+
+  return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
+}
+
 int restoreLog(void)
 {
-  uint32_t flashend = (uint32_t)&__persistent_end__;
   int i = 0;
   int logtime = 0;
+  t_DataHeader header;
 
-  while (((uint32_t)&vddHeader[i] < flashend))
+  while (readDataHeader(i, &header))
   {
-    if (vddHeader[i].epoch >= 0)
+    if (header.epoch >= 0)
     {
-      logtime = vddHeader[i].epoch;
+      logtime = header.epoch;
       i++;
     }
     else
@@ -65,7 +80,6 @@ enum LOGERR writeDataLog(uint64_t activity)
 
 int data_logAck(int index, Ack *ack)
 {
-  uint64_t *flashend = (uint64_t *)&__persistent_end__;
   static const size_t max_data =
       sizeof(ack->payload.bittag_data_log.data) / sizeof(BitTagData);
   BitTagData *data = ack->payload.bittag_data_log.data;
@@ -80,15 +94,18 @@ int data_logAck(int index, Ack *ack)
     return encode_ack();
   }
 
-  while ((count < max_data) && ((uint64_t *)&vddHeader[count + index] < flashend))
+  while (count < max_data)
   {
-    if ((uint32_t)vddHeader[index].epoch == 0xffffffff)
+    t_DataHeader header;
+    if (!readDataHeader(index, &header))
+      break;
+    if ((uint32_t)header.epoch == 0xffffffff)
       break;
 
-    data[count].epoch = vddHeader[index].epoch;
-    data[count].temperature = vddHeader[index].temp10 * 0.1f;
-    data[count].voltage = vddHeader[index].vdd100 * 0.01f;
-    data[count].rawdata = vddHeader[index].activity;
+    data[count].epoch = header.epoch;
+    data[count].temperature = header.temp10 * 0.1f;
+    data[count].voltage = header.vdd100 * 0.01f;
+    data[count].rawdata = header.activity;
     count++;
     index++;
   }
