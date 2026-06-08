@@ -24,12 +24,44 @@
 #define IMU_LOG_SAMPLES_PER_BLOCK                                           \
   (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
 
+/*
+ * Maintainer notes
+ * ----------------
+ *
+ * IMUTag logging is more timing-sensitive than the lower-rate tags because the
+ * LSM6 FIFO provides an implicit stream of high-rate samples. The log stores
+ * one t_DataHeader per DATALOG_SAMPLES external blocks. The header gives an
+ * absolute timestamp for the first retained block in that page; individual IMU
+ * samples are reconstructed later by sample count and configured ODR.
+ *
+ * A monitor attach uses connect-under-reset. When that happens during RUNNING,
+ * the common state machine re-enters this handler with T_CONT and
+ * State_EVENT_POWERFAIL instead of aborting, but the local FIFO phase and
+ * software block cache must be treated as lost. The recovery policy here is:
+ *
+ * - deinitialize/reinitialize the acquisition hardware;
+ * - discard a short warmup interval so the IMU clock and FIFO stream settle;
+ * - abandon any partial pre-reset page by starting the next header at the first
+ *   post-warmup block timestamp;
+ * - set IMUTAG_HEADER_RESYNC on that next header so host decoders and SensorViz
+ *   can mark the discontinuity.
+ *
+ * Do not use the millisecond field as a normal per-page timing correction.
+ * Only the low ten bits are milliseconds, the upper bits are flags, and the
+ * millisecond value can add jitter. Host decoding uses the header only for
+ * collection start and explicit resync segment anchors.
+ */
 static uint32_t discard_blocks;
 static uint32_t discarded_blocks;
 static int32_t saved_block_epoch;
 static uint16_t saved_block_millis;
 static bool next_header_resync;
 
+/*
+ * Convert the configured IMU ODR into complete t_DataLog blocks to discard
+ * after acquisition starts or restarts. This is deliberately block-based so the
+ * first retained header points at a real logged block boundary.
+ */
 static uint32_t runDiscardBlocks(void)
 {
   lsm6dsv16x_trig_odr_t odr;
@@ -44,6 +76,14 @@ static uint32_t runDiscardBlocks(void)
          IMU_LOG_SAMPLES_PER_BLOCK;
 }
 
+/*
+ * Start or restart the data-collection clock.
+ *
+ * mark_resync is true only for recovery from a monitor connect-under-reset
+ * while already RUNNING. It causes exactly one future internal header to carry
+ * IMUTAG_HEADER_RESYNC. The flag is cleared only after that header write
+ * succeeds, so a write failure cannot silently lose the discontinuity marker.
+ */
 static bool restartDataCollectionClock(bool mark_resync)
 {
   discard_blocks = runDiscardBlocks();
@@ -84,7 +124,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     disableTicker();
     //accelDeinit();
 
-    // reset state variables
+    // Fresh run: reset durable log counters and start a new continuous segment.
 
     pState->pages = 0;
     pState->cycle_count = 0;
@@ -102,6 +142,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    /*
+     * POWERFAIL here is the state machine's recovery token for monitor
+     * connect-under-reset during RUNNING. It is not a normal standby wake.
+     * Restart the FIFO stream and leave pState counters intact so download
+     * continues from the recovered log cursors, with an explicit RESYNC marker
+     * before the next retained page.
+     */
     if (reason == State_EVENT_POWERFAIL) {
       (void)deinitDataCollection();
       if (!restartDataCollectionClock(true)) {
@@ -141,6 +188,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
             t_DataHeader header;
             enum LOGERR err;
 
+            /*
+             * saved_block_* always names the block about to be written under
+             * this header. entry_* captures the next candidate boundary and is
+             * committed after this block has been sampled.
+             */
             header.epoch = saved_block_epoch;
             header.millis =
               (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);

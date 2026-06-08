@@ -192,7 +192,26 @@ enum Sleep StateMachine(void)
       }
     }
 
-    // hand reset conditions for hibernating and running separately
+    /*
+     * Active-state reset recovery
+     * ---------------------------
+     *
+     * pState lives in RTC backup registers, and the state markers in internal
+     * flash tell us whether the interrupted tag was CONFIGURED, RUNNING, or
+     * HIBERNATING. A true power loss while active is still conservative: abort
+     * unless the tag-specific handler has an explicit brownout path.
+     *
+     * Monitor attach is different. The base connects under reset, so a healthy
+     * running tag can arrive here with a resetPower-style cause even though the
+     * monitor is now attached and the sensors should keep running. MONCONNECTED
+     * is therefore used as the filter for "debug reset, not field power loss".
+     *
+     * We pass T_CONT plus State_EVENT_POWERFAIL to RUNNING/HIBERNATING in that
+     * case. T_CONT preserves recovered log cursors; the POWERFAIL reason tells
+     * tag-specific code to repair volatile ownership such as mutexes, muxes,
+     * timers, or FIFO phase, and to mark any data discontinuity. Ordinary
+     * standby/sleep wakeups continue to use State_EVENT_OK.
+     */
 
 #if CONFIG_HAS_HIBERNATE
     if (pState->state == TagState_HIBERNATING)
