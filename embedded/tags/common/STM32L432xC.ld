@@ -17,9 +17,11 @@
 /*
  * STM32L432xC memory setup.
  */
+PROVIDE(TAG_FLASH_SIZE = 256K);
+
 MEMORY
 {
-    flash0  : org = 0x08000000, len = 256k
+    flash0  : org = 0x08000000, len = TAG_FLASH_SIZE
     flash1  : org = 0x08000000, len = 0
     flash2  : org = 0x00000000, len = 0
     flash3  : org = 0x00000000, len = 0

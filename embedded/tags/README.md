@@ -227,6 +227,15 @@ add_embedded_target(NewTag newtag_proto)
 add_dependencies(NewTag board-newtag)
 ```
 
+Targets using the shared STM32L432 linker script default to `TAG_FLASH_SIZE=256K`.
+Boards built on 128 KiB parts can override this in CMake:
+
+```cmake
+add_embedded_target(NewTag newtag_proto TAG_FLASH_SIZE=128K)
+```
+
+The same make variable can be set in `project.mk` or on the make command line.
+
 The `Makefile` normally delegates to the shared ChibiOS scaffold:
 
 ```make

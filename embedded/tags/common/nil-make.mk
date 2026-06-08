@@ -86,6 +86,16 @@ endif
 # Define project name here
 PROJECT = ch
 include project.mk
+
+ifeq ($(TAG_FLASH_SIZE),)
+  TAG_FLASH_SIZE = 256K
+endif
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = --defsym=TAG_FLASH_SIZE=$(TAG_FLASH_SIZE)
+else
+  USE_LDOPT := $(USE_LDOPT),--defsym=TAG_FLASH_SIZE=$(TAG_FLASH_SIZE)
+endif
+
 # Imported source files and paths
 #CHIBIOS = ../../../../ChibiOS
 # find halconf.h chconf.h mcuconf.h
@@ -266,4 +276,3 @@ UNAME_S := $(shell uname -s)
 print-% : ; @echo $* = $($*)
 
 PRE_MAKE_ALL_RULE_HOOK: $(BUILDDIR) #$(BUILDDIR)/version.h
-

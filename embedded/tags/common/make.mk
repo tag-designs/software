@@ -87,6 +87,16 @@ endif
 # Define project name here
 PROJECT = ch
 include project.mk
+
+ifeq ($(TAG_FLASH_SIZE),)
+  TAG_FLASH_SIZE = 256K
+endif
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = --defsym=TAG_FLASH_SIZE=$(TAG_FLASH_SIZE)
+else
+  USE_LDOPT := $(USE_LDOPT),--defsym=TAG_FLASH_SIZE=$(TAG_FLASH_SIZE)
+endif
+
 # Imported source files and paths
 #CHIBIOS = ../../../../ChibiOS
 # Find halconf.h, chconf.h, and mcuconf.h. ChibiOS uses CHCONFDIR/HALCONFDIR
