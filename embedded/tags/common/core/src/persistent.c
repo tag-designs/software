@@ -48,7 +48,7 @@ __attribute__((__aligned__(8))) __attribute__((no_reorder));
  */
 void erasePersistent(void)
 {
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
 
   while (start + 2048 <= end)

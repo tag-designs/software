@@ -197,14 +197,19 @@ static int system_logAck(int index)
 
 static int data_logAck(int index)
 {
-  uint64_t *flashend =
-      (uint64_t *)(0x8000000 + (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint64_t *flashend = (uint64_t *)&__persistent_end__;
 
   static const size_t max_data = sizeof(ack.payload.bittag_data_log.data) / sizeof(BitTagData);
   BitTagData *data = ack.payload.bittag_data_log.data;
   ack.err = Ack_Err_OK;
   ack.which_payload = Ack_bittag_data_log_tag;
   size_t count = 0;
+
+  if (index < 0)
+  {
+    ack.payload.bittag_data_log.data_count = 0;
+    return encode_ack();
+  }
 
   while ((count < max_data) && ((uint64_t *)&vddState[count + index] < flashend))
   {

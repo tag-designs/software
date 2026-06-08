@@ -17,6 +17,8 @@
 
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
+/** End of the internal flash region reserved for persistent state. */
+extern uint32_t __persistent_end__;   // from linker script
 /** End of internal flash, provided by the linker script. */
 extern uint32_t __flash0_end__;       // from linker script
 

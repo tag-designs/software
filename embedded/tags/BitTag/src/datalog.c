@@ -13,8 +13,7 @@ extern int encode_ack(void);
 
 int restoreLog(void)
 {
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                 (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
   int i = 0;
   int logtime = 0;
 
@@ -39,8 +38,7 @@ enum LOGERR writeDataLog(uint64_t activity)
 {
   t_DataHeader dlog;
   uint32_t *dlogptr = (uint32_t *)&dlog;
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
 
   dlog.vdd100 = pState->vdd100;
@@ -67,8 +65,7 @@ enum LOGERR writeDataLog(uint64_t activity)
 
 int data_logAck(int index, Ack *ack)
 {
-  uint64_t *flashend =
-      (uint64_t *)(0x8000000 + (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint64_t *flashend = (uint64_t *)&__persistent_end__;
   static const size_t max_data =
       sizeof(ack->payload.bittag_data_log.data) / sizeof(BitTagData);
   BitTagData *data = ack->payload.bittag_data_log.data;
@@ -76,6 +73,12 @@ int data_logAck(int index, Ack *ack)
 
   ack->err = Ack_Err_OK;
   ack->which_payload = Ack_bittag_data_log_tag;
+
+  if (index < 0)
+  {
+    ack->payload.bittag_data_log.data_count = 0;
+    return encode_ack();
+  }
 
   while ((count < max_data) && ((uint64_t *)&vddHeader[count + index] < flashend))
   {

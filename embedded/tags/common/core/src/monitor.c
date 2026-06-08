@@ -28,6 +28,10 @@
 #include <string.h>
 #include <strings.h>
 
+#if !defined(CONFIG_HAS_HIBERNATE)
+#define CONFIG_HAS_HIBERNATE 1
+#endif
+
 #define MAJOR_VERSION "1"
 #define MINOR_VERSION "0"
 
@@ -282,6 +286,112 @@ static int system_logAck(int index)
   ack.payload.system_log.states_count = count;
   return encode_ack();
 }
+
+/**
+ * @brief Report whether terminal-state data download is safe.
+ *
+ * Data-log export reads external flash pages whose contents may still be under
+ * construction while acquisition is active. Restricting export to terminal
+ * states keeps monitor reads out of the logging critical path.
+ */
+static bool monitor_data_log_allowed(void)
+{
+  return (pState->state == TagState_ABORTED) ||
+         (pState->state == TagState_FINISHED);
+}
+
+/**
+ * @brief Report whether the tag is actively running an acquisition.
+ */
+static bool monitor_acquisition_active(void)
+{
+  if ((pState->state == TagState_CONFIGURED) ||
+      (pState->state == TagState_RUNNING))
+  {
+    return true;
+  }
+#if CONFIG_HAS_HIBERNATE
+  if (pState->state == TagState_HIBERNATING)
+  {
+    return true;
+  }
+#endif
+  return false;
+}
+
+/**
+ * @brief Report whether the monitor may request a runtime stop.
+ */
+static bool monitor_stop_allowed(void)
+{
+  if (monitor_acquisition_active())
+  {
+    return true;
+  }
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
+  if (pState->state == TagState_CALIBRATE)
+  {
+    return true;
+  }
+#endif
+  return false;
+}
+
+/**
+ * @brief Check whether a decoded request is permitted in the current state.
+ *
+ * The main state machine still owns state transitions. This gate prevents the
+ * monitor thread from acknowledging side-effecting requests that the main
+ * thread would later ignore, and prevents direct monitor-context operations
+ * such as log export or calibration sampling from racing active acquisition.
+ */
+static bool monitor_request_allowed(const Req *request)
+{
+  switch (request->which_payload)
+  {
+  case Req_get_info_tag:
+  case Req_get_status_tag:
+  case Req_get_config_tag:
+    return true;
+
+  case Req_erase_tag:
+    return (pState->state == TagState_ABORTED) ||
+           (pState->state == TagState_FINISHED) ||
+           (pState->state == TagState_sRESET);
+
+  case Req_start_tag:
+  case Req_test_tag:
+  case Req_set_rtc_tag:
+    return pState->state == TagState_IDLE;
+
+  case Req_stop_tag:
+    return monitor_stop_allowed();
+
+  case Req_log_tag:
+    if (request->payload.log.fmt == LogReq_INTERNAL_DATA)
+    {
+      return monitor_data_log_allowed();
+    }
+    return true;
+
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
+  case Req_calibrate_tag:
+    return pState->state == TagState_IDLE;
+  case Req_caldata_tag:
+    return pState->state == TagState_CALIBRATE;
+#endif
+
+#if defined(CALIBRATION_CONSTANTS) && CALIBRATION_CONSTANTS
+  case Req_write_calibration_tag:
+    return pState->state == TagState_IDLE;
+  case Req_read_calibration_tag:
+    return true;
+#endif
+
+  default:
+    return true;
+  }
+}
 /** @} */
 
 
@@ -312,6 +422,9 @@ int proto_eval(int len)
     return errAck(Ack_Err_NANOPB);
 
   // local state variables
+
+  if (!monitor_request_allowed(&req))
+    return errAck(Ack_Err_PERM);
 
   // Process requests in order of message fields
 

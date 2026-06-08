@@ -249,11 +249,13 @@ enum Sleep StateMachine(void)
     {
       return Finished(T_INIT, State_EVENT_STOPCMD);
     }
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
     if (pState->state == TagState_CALIBRATE)
     {
       (void)Calibrating(T_EXIT, State_EVENT_STOPCMD);
       return Idle(T_INIT, State_EVENT_OK);
     }
+#endif
   }
   if (events & EVT_RESET)
   {

@@ -97,6 +97,7 @@ SECTIONS
    __persistent_start__	= .;
    *(.persistent)
    . = ALIGN(2048);
+   . = ORIGIN(flash0) + LENGTH(flash0);
    __persistent_end__ = .;
   }  > flash0
 }

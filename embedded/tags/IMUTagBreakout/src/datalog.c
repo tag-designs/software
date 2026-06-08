@@ -94,7 +94,7 @@ int externalFlashSectorsErased(void)
  */
 int restoreLog(void)
 {
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   int i;
   for (i = 0; (uint32_t)&vddHeader[i] < end; i++)
   {
@@ -141,8 +141,7 @@ enum LOGERR writeDataLog(t_DataLog *data)
  */
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
 
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
 
@@ -185,12 +184,14 @@ int data_logAck(int index, Ack *ack)
 
   ack->err = Ack_Err_OK;
 
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
+  uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
 
   // check for valid header
 
   if (index >= 0 && ((uint32_t)&vddHeader[index] < end) &&
-      (vddHeader[index].epoch != -1))
+      (vddHeader[index].epoch != -1) &&
+      (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize()))
   {
 
     // we have a valid header
@@ -206,8 +207,8 @@ int data_logAck(int index, Ack *ack)
     // now read the data
 
     tagStorageWake(TAG_EXTERNAL_FLASH);
-    tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf) * index,
-                   (uint8_t *) &databuf, sizeof(databuf));
+    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                   (uint8_t *)&databuf, sizeof(databuf));
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
     for (int i = 0; i < DATALOG_SAMPLES; i++)

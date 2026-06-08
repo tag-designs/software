@@ -8,6 +8,7 @@
 #include "app.h"
 #include "datalog.h"
 #include "devices.h"
+#include <stdbool.h>
 #include <tag.pb.h>
 #include "persistent.h"
 #include "storage_flash.h"
@@ -61,7 +62,7 @@ static void slow_msi(void){
 extern int encode_ack(void);
 /*
 static int countInternalBlocks(void){
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
   int count = 0;
   while (start < end) {
@@ -81,9 +82,9 @@ static int countInternalBlocks(void){
  * @return Number of written internal header blocks.
  */
 static int countInternalBlocks(void){
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   int i;
-  for (i = 0; &vddHeader[i] < end;i++){
+  for (i = 0; ((uint32_t)&vddHeader[i]) < end;i++){
     if (vddHeader[i].epoch == -1)
       break;
   }
@@ -220,8 +221,7 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
  */
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
 
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
 
@@ -265,15 +265,22 @@ int data_logAck(int index, Ack *ack)
   fast_msi();
   CompassTagLog *data = &ack->payload.compasstag_data_log;
   ack->err = Ack_Err_OK;
-  
-  // read data
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf)*index,
-                 (uint8_t *) &databuf, sizeof(databuf));
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-  if (vddHeader[index].epoch != -1)
+  uint32_t persistent_end = (uint32_t)&__persistent_end__;
+  uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
+  bool valid_index =
+      (index >= 0) &&
+      ((uint32_t)&vddHeader[index] < persistent_end) &&
+      (vddHeader[index].epoch != -1) &&
+      (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize());
+
+  if (valid_index)
   {
+    tagStorageWake(TAG_EXTERNAL_FLASH);
+    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                   (uint8_t *)&databuf, sizeof(databuf));
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+
     ack->which_payload = Ack_compasstag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100 * 0.01f;

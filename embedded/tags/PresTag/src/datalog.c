@@ -10,6 +10,7 @@
 #include "devices.h"
 #include "lps27hhw.h"
 #include "storage_flash.h"
+#include <stdbool.h>
 #include <tag.pb.h>
 #include "persistent.h"
 
@@ -67,7 +68,7 @@ extern int encode_ack(void);
  * @return Number of written internal header blocks.
  */
 static int countInternalBlocks(void){
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
   int count = 0;
   while (start < end) {
@@ -197,8 +198,7 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
  */
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
 
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
 
@@ -242,17 +242,22 @@ int data_logAck(int index, Ack *ack)
   fast_msi();
   PresTagLog *data = &ack->payload.prestag_data_log;
   ack->err = Ack_Err_OK;
-  
-  // read data
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  tagStorageRead(TAG_EXTERNAL_FLASH, sizeof(databuf) * index,
-                 (uint8_t *)&databuf, sizeof(databuf));
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-  // create fake data
+  uint32_t persistent_end = (uint32_t)&__persistent_end__;
+  uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
+  bool valid_index =
+      (index >= 0) &&
+      ((uint32_t)&vddHeader[index] < persistent_end) &&
+      (vddHeader[index].epoch != -1) &&
+      (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize());
 
-  if (vddHeader[index].epoch != -1)
+  if (valid_index)
   {
+    tagStorageWake(TAG_EXTERNAL_FLASH);
+    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                   (uint8_t *)&databuf, sizeof(databuf));
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+
     ack->which_payload = Ack_prestag_data_log_tag;
     data->epoch = vddHeader[index].epoch;
     data->voltage = vddHeader[index].vdd100[0] * 0.01f;

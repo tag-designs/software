@@ -89,7 +89,9 @@ extern enum Sleep Hibernating(enum StateTrans, State_Event reason);
  * @param[in] reason Event that caused this state action.
  * @return Requested sleep mode after handling the state.
  */
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
 extern enum Sleep Calibrating(enum StateTrans, State_Event reason);
+#endif
 /** @} */
 
 #endif

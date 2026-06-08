@@ -48,7 +48,7 @@ void eraseExternal()
 
 void erasePersistent(void)
 {
-  uint32_t end = 0x08000000 + (*((uint16_t *)FLASHSIZE_BASE)) * 1024;
+  uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
   while (start + 2048 <= end)
   {
@@ -66,8 +66,7 @@ void erasePersistent(void)
 }
 
 int restoreLog(){
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                 (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
   int i = 0;
   int logtime = 0;
   //if (pState->pages == 0) {
@@ -87,8 +86,7 @@ enum LOGERR writeDataLog(uint64_t activity)
 {
   t_DataLog dlog;
   uint32_t *dlogptr = (uint32_t *)&dlog;
-  uint32_t flashend = (uint32_t)(0x8000000 +
-                                (*((uint16_t *)FLASHSIZE_BASE) * 1024));
+  uint32_t flashend = (uint32_t)&__persistent_end__;
 
   uint32_t *writeptr = (uint32_t *)&vddState[pState->pages++];
   /* if (((((uint32_t)writeptr) + sizeof(dlog)) >= flashend) ||
@@ -158,4 +156,3 @@ void recordState(State_Event reason)
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 }
-

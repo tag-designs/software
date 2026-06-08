@@ -26,7 +26,8 @@
  */
 
 extern uint32_t __persistent_start__; // from linker script
-extern uint32_t __flash0_end__; // from linker script
+extern uint32_t __persistent_end__;   // from linker script
+extern uint32_t __flash0_end__;       // from linker script
 /** @} */
 
 /** @name Reset and sleep state types
