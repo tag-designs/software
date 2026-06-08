@@ -133,8 +133,11 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     Statement header_insert(
         ctx.db,
         "INSERT INTO ImuHeader "
-        "(HeaderIndex, StartElapsedUs, Epoch, Millisecond, Temperature) "
-        "VALUES (?, ?, ?, ?, ?)");
+        "(HeaderIndex, StartElapsedUs, Epoch, Millisecond, Flags, Temperature) "
+        "VALUES (?, ?, ?, ?, ?, ?)");
+    Statement event_insert(
+        ctx.db,
+        "INSERT INTO ImuEvent (StartElapsedUs, HeaderIndex, Event) VALUES (?, ?, ?)");
     Statement pressure_insert(
         ctx.db,
         "INSERT INTO ImuPressure (ElapsedUs, Pressure) VALUES (?, ?)");
@@ -149,6 +152,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         "INSERT INTO ImuGyro (ElapsedUs, gx, gy, gz) VALUES (?, ?, ?, ?)");
 
     if (!header_insert.valid()
+        || !event_insert.valid()
         || !pressure_insert.valid()
         || !mag_insert.valid()
         || !accel_insert.valid()
@@ -159,18 +163,61 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
 
     /*
      * The header timestamp is absolute, but the high-rate data stream is stored
-     * relative to collection start. header_start_us records where this page
-     * begins on that elapsed-time axis.
+     * relative to collection start. A RESYNC header starts a new timing segment:
+     * the new segment is anchored by the header timestamp, then subsequent data
+     * returns to the smooth sample-count clock until the next RESYNC.
      */
+    const uint32_t raw_millisecond = static_cast<uint32_t>(log.millisecond());
+    const int header_millisecond =
+        static_cast<int>(raw_millisecond & IMUTAG_HEADER_MILLIS_MASK);
+    const int header_flags =
+        static_cast<int>(raw_millisecond & ~IMUTAG_HEADER_MILLIS_MASK);
+    const bool header_resync = (raw_millisecond & IMUTAG_HEADER_RESYNC) != 0;
+    const sqlite3_int64 header_epoch_ms =
+        static_cast<sqlite3_int64>(log.epoch()) * 1000 + header_millisecond;
+
+    if (!ctx.imu->have_collection_anchor) {
+        ctx.imu->collection_anchor_epoch_ms = header_epoch_ms;
+        ctx.imu->elapsed_base_us = 0;
+        ctx.imu->segment_block_count = 0;
+        ctx.imu->have_collection_anchor = true;
+    } else if (header_resync) {
+        const sqlite3_int64 elapsed_from_anchor_us =
+            (header_epoch_ms - ctx.imu->collection_anchor_epoch_ms) * 1000;
+        const sqlite3_int64 current_end_us =
+            ctx.imu->elapsed_base_us
+            + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
+        /*
+         * The resync anchor is only millisecond-resolution. If it rounds below
+         * the samples already emitted for the previous segment, round the new
+         * segment up to the next expected block boundary so elapsed timestamps
+         * remain monotonic.
+         */
+        ctx.imu->elapsed_base_us =
+            elapsed_from_anchor_us > current_end_us ? elapsed_from_anchor_us : current_end_us;
+        ctx.imu->segment_block_count = 0;
+    }
+
     const sqlite3_int64 header_start_us =
-        static_cast<sqlite3_int64>(ctx.imu->block_count) * block_period_us;
+        ctx.imu->elapsed_base_us
+        + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
     if (!header_insert.bindInt64(1, static_cast<sqlite3_int64>(ctx.imu->header_count))
         || !header_insert.bindInt64(2, header_start_us)
         || !header_insert.bindInt64(3, log.epoch())
-        || !header_insert.bindInt64(4, log.millisecond())
-        || !header_insert.bindDouble(5, log.temperature())
+        || !header_insert.bindInt64(4, header_millisecond)
+        || !header_insert.bindInt64(5, header_flags)
+        || !header_insert.bindDouble(6, log.temperature())
         || !header_insert.stepDone()) {
         ctx.setLastSqliteError("IMUTag header insert failed");
+        return -2;
+    }
+
+    if (header_resync
+        && (!event_insert.bindInt64(1, header_start_us)
+            || !event_insert.bindInt64(2, static_cast<sqlite3_int64>(ctx.imu->header_count))
+            || !event_insert.bindText(3, "RESYNC")
+            || !event_insert.stepDone())) {
+        ctx.setLastSqliteError("IMUTag resync event insert failed");
         return -2;
     }
     ctx.imu->header_count++;
@@ -199,7 +246,8 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         // the block start time. Accel/gyro samples are expanded below at the
         // configured IMU sample period.
         const sqlite3_int64 block_start_us =
-            static_cast<sqlite3_int64>(ctx.imu->block_count) * block_period_us;
+            ctx.imu->elapsed_base_us
+            + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
 
         if (hasPressureSample(entry)) {
             if (!pressure_insert.bindInt64(1, block_start_us)
@@ -249,6 +297,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         }
 
         ctx.imu->block_count++;
+        ctx.imu->segment_block_count++;
     }
 
     return 1;

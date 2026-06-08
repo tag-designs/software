@@ -104,6 +104,16 @@ struct SensorRecordSet
     QMap<QString, QVector<double>> columns;
 };
 
+// Discrete log events drawn as vertical plot markers. They are not value
+// streams and do not own a y-axis.
+struct SensorEventMarker
+{
+    QString id;
+    QString label;
+    QVector<double> time;
+    SensorTimeDomain timeDomain = SensorTimeDomain::EpochSeconds;
+};
+
 // Loaded SQLite log plus the streams sensorViz knows how to display. Tag type
 // is metadata for the File Info pane; UI features are driven by actual streams.
 struct SensorLog
@@ -133,6 +143,9 @@ struct SensorLog
 
     // Multi-column tables available to transform code.
     QVector<SensorRecordSet> recordSets;
+
+    // Event markers available to plot overlays.
+    QVector<SensorEventMarker> eventMarkers;
 
     // CompassTag logs carry calibration constants in a separate table. Keep
     // them typed here rather than hiding them in the generic info map so the

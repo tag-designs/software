@@ -132,7 +132,11 @@ struct SqlTagProfile
 struct ImuDecodeState
 {
     uint64_t block_count = 0;
+    uint64_t segment_block_count = 0;
     uint64_t header_count = 0;
+    sqlite3_int64 collection_anchor_epoch_ms = 0;
+    sqlite3_int64 elapsed_base_us = 0;
+    bool have_collection_anchor = false;
 };
 
 // Shared bridge from SqliteTagLogWriter::Impl to the tag-specific decoders.

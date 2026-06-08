@@ -101,6 +101,38 @@ void MainWindow::clearDynamicAxes()
     plot_->yAxis2->setVisible(false);
 }
 
+void MainWindow::clearEventMarkers()
+{
+    for (QCPItemStraightLine *marker : event_marker_items_) {
+        plot_->removeItem(marker);
+    }
+    event_marker_items_.clear();
+}
+
+void MainWindow::addEventMarkers()
+{
+    QCPAxis *x_axis = timeAxis();
+    QPen marker_pen(QColor(190, 65, 55), 1, Qt::DashLine);
+    for (const SensorEventMarker &marker : log_.eventMarkers) {
+        if (marker.timeDomain != log_.timeDomain) {
+            continue;
+        }
+        for (double time : marker.time) {
+            QCPItemStraightLine *line = new QCPItemStraightLine(plot_);
+            line->setClipToAxisRect(true);
+            line->setClipAxisRect(plot_->axisRect());
+            line->setLayer("overlay");
+            line->setPen(marker_pen);
+            line->setSelectable(false);
+            line->point1->setAxes(x_axis, plot_->yAxis);
+            line->point2->setAxes(x_axis, plot_->yAxis);
+            line->point1->setCoords(time, 0.0);
+            line->point2->setCoords(time, 1.0);
+            event_marker_items_.append(line);
+        }
+    }
+}
+
 QCPAxis *MainWindow::axisForStream(
     SensorAxisSide side,
     int side_index,
@@ -160,6 +192,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
 
     updateGraphTitle();
     plot_->clearGraphs();
+    clearEventMarkers();
     clearDynamicAxes();
 
     const QVector<SensorStream> visible = visibleStreams();
@@ -253,6 +286,7 @@ void MainWindow::rebuildPlot(bool reset_x_range)
             x_axis->rescale(true);
             x_axis->scaleRange(1.05, x_axis->range().center());
         }
+        addEventMarkers();
         resetCursorsToView();
     } else {
         left_cursor_->setVisible(false);

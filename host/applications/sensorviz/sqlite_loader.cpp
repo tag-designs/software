@@ -19,6 +19,8 @@
 namespace
 {
 
+constexpr qint64 kImuHeaderMillisMask = 0x03ff;
+
 // ---------------------------------------------------------------------------
 // SQLite RAII Wrappers
 // ---------------------------------------------------------------------------
@@ -534,7 +536,41 @@ bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
     }
 
     log.hasCollectionStart = true;
-    log.collectionStartEpochMs = stmt.int64Column(0) * 1000 + stmt.int64Column(1);
+    log.collectionStartEpochMs =
+        stmt.int64Column(0) * 1000
+        + (stmt.int64Column(1) & kImuHeaderMillisMask);
+    return true;
+}
+
+bool loadImuEvents(Database &db, SensorLog &log, QString &error)
+{
+    if (!tableExistsRaw(db, "ImuEvent")) {
+        return true;
+    }
+
+    Statement stmt(
+        db,
+        "SELECT StartElapsedUs, Event FROM ImuEvent ORDER BY StartElapsedUs");
+    if (!stmt.valid()) {
+        error = "Failed to load IMUTag events: " + stmt.lastError();
+        return false;
+    }
+
+    SensorEventMarker resync_marker;
+    resync_marker.id = QStringLiteral("imu_resync");
+    resync_marker.label = QStringLiteral("IMU resync");
+    resync_marker.timeDomain = SensorTimeDomain::ElapsedSeconds;
+
+    while (stmt.next()) {
+        if (stmt.textColumn(1).compare(QStringLiteral("RESYNC"), Qt::CaseInsensitive) == 0) {
+            resync_marker.time.append(static_cast<double>(stmt.int64Column(0)) / 1000000.0);
+        }
+    }
+
+    if (!resync_marker.time.isEmpty()) {
+        log.eventMarkers.append(resync_marker);
+    }
+
     return true;
 }
 
@@ -657,6 +693,9 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         }
     }
     if (!loadImuCollectionStart(db, loaded, error)) {
+        return false;
+    }
+    if (!loadImuEvents(db, loaded, error)) {
         return false;
     }
     inferEpochCollectionStart(loaded);

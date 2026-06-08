@@ -177,6 +177,8 @@ private:
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
     void clearDynamicAxes();
+    void clearEventMarkers();
+    void addEventMarkers();
     QCPAxis *timeAxis() const;
     QCPAxis *axisForStream(
         SensorAxisSide side,
@@ -266,6 +268,7 @@ private:
     QCPItemLine *right_cursor_ = nullptr;
     QCPTextElement *plot_title_ = nullptr;
     QCPItemText *metadata_box_ = nullptr;
+    QVector<QCPItemStraightLine *> event_marker_items_;
 };
 
 #endif

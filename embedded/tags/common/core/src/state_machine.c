@@ -210,6 +210,8 @@ enum Sleep StateMachine(void)
           case resetBrownout:
             return Hibernating(T_INIT, State_EVENT_BROWNOUT);
           default:
+            if (MONCONNECTED)
+              return Hibernating(T_CONT, State_EVENT_POWERFAIL);
             return Aborted(T_INIT, State_EVENT_POWERFAIL);
         }
   
@@ -229,6 +231,8 @@ enum Sleep StateMachine(void)
         case resetBrownout:
           return Running(T_INIT, State_EVENT_BROWNOUT);
         default:
+          if (MONCONNECTED)
+            return Running(T_CONT, State_EVENT_POWERFAIL);
           return Aborted(T_INIT, State_EVENT_POWERFAIL);
       }
     }

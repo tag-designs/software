@@ -13,6 +13,7 @@
 #include "persistent.h"
 #include "datalog.h"
 #include "debug_log.h"
+#include "imutag_log_format.h"
 #include "sensors.h"
 
 #if !defined(CONFIG_HAS_HIBERNATE)
@@ -27,6 +28,7 @@ static uint32_t discard_blocks;
 static uint32_t discarded_blocks;
 static int32_t saved_block_epoch;
 static uint16_t saved_block_millis;
+static bool next_header_resync;
 
 static uint32_t runDiscardBlocks(void)
 {
@@ -40,6 +42,24 @@ static uint32_t runDiscardBlocks(void)
 
   return ((uint32_t)odr * IMU_CLOCK_LOCK_SECONDS) /
          IMU_LOG_SAMPLES_PER_BLOCK;
+}
+
+static bool restartDataCollectionClock(bool mark_resync)
+{
+  discard_blocks = runDiscardBlocks();
+  discarded_blocks = 0;
+  saved_block_epoch = timestamp;
+  saved_block_millis = (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
+  next_header_resync = mark_resync;
+  pState->rawtemp = 0;
+
+  if (!initDataCollection()) {
+    return false;
+  }
+
+  debug_log_printf("IMUTag running: collection resynced, %d s warmup\r\n",
+                   IMU_CLOCK_LOCK_SECONDS);
+  return true;
 }
 
 /**
@@ -71,14 +91,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     //pState->lastwakeup = timestamp;
 
     pState->external_blocks = 0;
-    discard_blocks = runDiscardBlocks();
-    discarded_blocks = 0;
-    saved_block_epoch = timestamp;
-    saved_block_millis = (uint16_t)timestamp_millis;
-
-    pState->rawtemp = 0;
-
-    if (!initDataCollection()) {
+    if (!restartDataCollectionClock(false)) {
       return Aborted(T_INIT, State_EVENT_UNKNOWN);
     }
 
@@ -89,6 +102,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    if (reason == State_EVENT_POWERFAIL) {
+      (void)deinitDataCollection();
+      if (!restartDataCollectionClock(true)) {
+        return Aborted(T_INIT, State_EVENT_UNKNOWN);
+      }
+      pState->state = TagState_RUNNING;
+      return STOP1;
+    }
 
     // check for completion
 
@@ -104,7 +125,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       t_DataLog data;
       int16_t env_rawtemp;
       int32_t entry_epoch = timestamp;
-      uint16_t entry_millis = (uint16_t)timestamp_millis;
+      uint16_t entry_millis =
+        (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
 
       if (sampleDataCollection(&data)) {
 
@@ -120,7 +142,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
             enum LOGERR err;
 
             header.epoch = saved_block_epoch;
-            header.millis = saved_block_millis;
+            header.millis =
+              (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);
+            if (next_header_resync) {
+              header.millis |= IMUTAG_HEADER_RESYNC;
+            }
             header.rawtemp = (int16_t)pState->rawtemp;
 
             err = writeDataHeader(&header);
@@ -133,6 +159,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
             }
             if (err == LOGWRITE_OK) {
               pState->cycle_count++;
+              next_header_resync = false;
             }
           }
 

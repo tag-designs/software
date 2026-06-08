@@ -188,6 +188,7 @@ SqlTableDefinition imuHeaderTable()
             {"StartElapsedUs", "INTEGER"},
             {"Epoch", "INTEGER"},
             {"Millisecond", "INTEGER"},
+            {"Flags", "INTEGER"},
             {"Temperature", "REAL"},
         },
         {{
@@ -203,6 +204,19 @@ SqlTableDefinition imuHeaderTable()
             "temperature",
             "IMUTag header temperature timestamped by elapsed collection time.",
         }},
+    };
+}
+
+SqlTableDefinition imuEventTable()
+{
+    return {
+        "ImuEvent",
+        {
+            {"StartElapsedUs", "INTEGER"},
+            {"HeaderIndex", "INTEGER"},
+            {"Event", "TEXT"},
+        },
+        {},
     };
 }
 
@@ -337,7 +351,7 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
         // magnetometer constants; the high-rate data tables remain separate.
         return {
             true,
-            {imuHeaderTable(), imuPressureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
+            {imuHeaderTable(), imuEventTable(), imuPressureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
     default:
         return {false, {}};
     }
