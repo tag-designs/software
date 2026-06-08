@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <exception>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -22,6 +24,28 @@ extern "C"
 extern bool parse_options(int argc, char **argv, cxxopts::Options &options, Tag &tag, UsbDev &dev);
 using namespace google::protobuf;
 using MS = std::chrono::milliseconds;
+
+static bool parseTestReq(const std::string &name, TestReq &test)
+{
+  if (TestReq_Parse(name, &test))
+    return true;
+
+  try
+  {
+    size_t parsed = 0;
+    int value = std::stoi(name, &parsed, 0);
+    if ((parsed == name.size()) && TestReq_IsValid(value))
+    {
+      test = static_cast<TestReq>(value);
+      return true;
+    }
+  }
+  catch (const std::exception &)
+  {
+  }
+
+  return false;
+}
 
 bool rtcDrift(Tag &tag, float &f)
 {
@@ -50,12 +74,19 @@ int main(int argc, char **argv)
 {
   Tag tag;
   UsbDev dev;
+  std::string test_name = TestReq_Name(RUN_ALL);
+  TestReq requested_test = RUN_ALL;
 
   cxxopts::Options options("tag-test", "sets the RTC and executes tag self-tests");
+  options.add_options()
+      ("t,test", "Self-test to run by TestReq name or number",
+       cxxopts::value<std::string>(test_name)->default_value(TestReq_Name(RUN_ALL)));
 
   // Parse options
 
-  if (parse_options(argc, argv, options,tag,dev) && tag.Attach(dev))
+  if (parse_options(argc, argv, options,tag,dev) &&
+      parseTestReq(test_name, requested_test) &&
+      tag.Attach(dev))
   {
     TagInfo info;
     std::string str;
@@ -139,8 +170,8 @@ int main(int argc, char **argv)
 
     // Run Test
 
-    std::cout << "#  Running test" << std::endl;
-    tag.Test(RUN_ALL);
+    std::cout << "#  Running test " << TestReq_Name(requested_test) << std::endl;
+    tag.Test(requested_test);
     for (int i = 0; i < 5; i++)
     {
       std::this_thread::sleep_for(MS(1000));
@@ -157,7 +188,14 @@ int main(int argc, char **argv)
   }
   else
   {
-    std::cout << "Attach failed" << std::endl;
+    if (!parseTestReq(test_name, requested_test))
+    {
+      std::cout << "Invalid test: " << test_name << std::endl;
+    }
+    else
+    {
+      std::cout << "Attach failed" << std::endl;
+    }
   }
 
   return 0;

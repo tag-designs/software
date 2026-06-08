@@ -18,6 +18,7 @@ tag-test [options]
 | --- | --- | --- |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
+| `-t`, `--test` | `TestReq` | Runs one requested self-test by enum name or number; default is `RUN_ALL`. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
 ## Preconditions
@@ -36,6 +37,10 @@ tag-test
 
 ```sh
 tag-test --debug
+```
+
+```sh
+tag-test --test RUN_EXT_FLASH --debug
 ```
 
 ## Output
