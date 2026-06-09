@@ -208,6 +208,9 @@ void tagImuTagSetTrigger(unsigned int divider)
 
   if (divider == 0U) {
     RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
+#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
+    RCC->APB1SMENR2 &= ~RCC_APB1SMENR2_LPTIM2SMEN;
+#endif
     debug_log_printf("IMUTag trigger: disabled\r\n");
     return;
   }
@@ -216,6 +219,9 @@ void tagImuTagSetTrigger(unsigned int divider)
     divider = 2U;
 
   RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
+#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
+  RCC->APB1SMENR2 |= RCC_APB1SMENR2_LPTIM2SMEN;
+#endif
   RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
   RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
 

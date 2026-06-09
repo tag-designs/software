@@ -131,6 +131,11 @@ void rtcOff(void)
  */
 void godown(enum Sleep sleepmode)
 {
+  if (sleepmode == SLEEP) {
+    chThdYield();
+    return;
+  }
+
   if (sleepmode == STOP1) {
     DBGMCU->CR = 0;
     MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP1);
@@ -138,6 +143,12 @@ void godown(enum Sleep sleepmode)
 
 #if STOP1_WAKE_EXTI_GROUP1_MASK
     extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
+#if defined(LINE_ACCEL_INT)
+    if (palReadLine(LINE_ACCEL_INT)) {
+      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+      return;
+    }
+#endif
 #endif
     __DSB();
     __SEV();

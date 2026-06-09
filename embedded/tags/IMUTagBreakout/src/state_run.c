@@ -23,6 +23,7 @@
 #define IMU_CLOCK_LOCK_SECONDS 2
 #define IMU_LOG_SAMPLES_PER_BLOCK                                           \
   (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
+#define IMU_MAX_BLOCKS_PER_WAKE 8
 
 /*
  * Maintainer notes
@@ -102,6 +103,81 @@ static bool restartDataCollectionClock(bool mark_resync)
   return true;
 }
 
+typedef enum {
+  IMU_BLOCK_NO_DATA,
+  IMU_BLOCK_HANDLED,
+  IMU_BLOCK_INTERNAL_FULL,
+  IMU_BLOCK_EXTERNAL_FULL
+} ImuBlockStatus;
+
+static ImuBlockStatus sampleAndLogDataBlock(void)
+{
+  t_DataLog data;
+  int16_t env_rawtemp;
+  int32_t entry_epoch = timestamp;
+  uint16_t entry_millis =
+    (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
+
+  if (!sampleDataCollection(&data)) {
+    return IMU_BLOCK_NO_DATA;
+  }
+
+  if (latestDataCollectionRawTemp(&env_rawtemp)) {
+    pState->rawtemp = env_rawtemp;
+  }
+
+  if (discarded_blocks < discard_blocks) {
+    discarded_blocks++;
+  } else {
+    if ((pState->external_blocks % DATALOG_SAMPLES) == 0U) {
+      t_DataHeader header;
+      enum LOGERR err;
+
+      /*
+       * saved_block_* always names the block about to be written under this
+       * header. entry_* captures the next candidate boundary and is committed
+       * after this block has been sampled.
+       */
+      header.epoch = saved_block_epoch;
+      header.millis =
+        (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);
+      if (next_header_resync) {
+        header.millis |= IMUTAG_HEADER_RESYNC;
+      }
+      header.rawtemp = (int16_t)pState->rawtemp;
+
+      err = writeDataHeader(&header);
+      switch (err) {
+      case LOGWRITE_FULL:
+      case LOGWRITE_ERROR:
+        return IMU_BLOCK_INTERNAL_FULL;
+      default:
+        break;
+      }
+      if (err == LOGWRITE_OK) {
+        pState->cycle_count++;
+        next_header_resync = false;
+      }
+    }
+
+    enum LOGERR err = writeDataLog(&data);
+    switch (err) {
+    case LOGWRITE_FULL:
+    case LOGWRITE_ERROR:
+      return IMU_BLOCK_EXTERNAL_FULL;
+    default:
+      break;
+    }
+    if (err == LOGWRITE_OK) {
+      pState->external_blocks++;
+    }
+  }
+
+  saved_block_epoch = entry_epoch;
+  saved_block_millis = entry_millis;
+  return IMU_BLOCK_HANDLED;
+}
+
 /**
  * @brief Handle the IMUTagBreakout data-acquisition state.
  *
@@ -142,6 +218,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    enum Sleep sleepmode = STOP1;
+
     /*
      * POWERFAIL here is the state machine's recovery token for monitor
      * connect-under-reset during RUNNING. It is not a normal standby wake.
@@ -166,71 +244,29 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     }
 
 
-    isActive = palReadLine(LINE_ACCEL_INT);
-    if (isActive)
+    for (uint32_t blocks = 0; blocks < IMU_MAX_BLOCKS_PER_WAKE; blocks++)
     {
-      t_DataLog data;
-      int16_t env_rawtemp;
-      int32_t entry_epoch = timestamp;
-      uint16_t entry_millis =
-        (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
-
-      if (sampleDataCollection(&data)) {
-
-        if (latestDataCollectionRawTemp(&env_rawtemp)) {
-          pState->rawtemp = env_rawtemp;
-        }
-
-        if (discarded_blocks < discard_blocks) {
-          discarded_blocks++;
-        } else {
-          if ((pState->external_blocks % DATALOG_SAMPLES) == 0U) {
-            t_DataHeader header;
-            enum LOGERR err;
-
-            /*
-             * saved_block_* always names the block about to be written under
-             * this header. entry_* captures the next candidate boundary and is
-             * committed after this block has been sampled.
-             */
-            header.epoch = saved_block_epoch;
-            header.millis =
-              (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);
-            if (next_header_resync) {
-              header.millis |= IMUTAG_HEADER_RESYNC;
-            }
-            header.rawtemp = (int16_t)pState->rawtemp;
-
-            err = writeDataHeader(&header);
-            switch (err) {
-            case LOGWRITE_FULL:
-            case LOGWRITE_ERROR:
-              return Finished(T_INIT, State_EVENT_INTERNALFULL);
-            default:
-              break;
-            }
-            if (err == LOGWRITE_OK) {
-              pState->cycle_count++;
-              next_header_resync = false;
-            }
-          }
-
-          enum LOGERR err = writeDataLog(&data);
-          switch (err) {
-          case LOGWRITE_FULL:
-          case LOGWRITE_ERROR:
-            return Finished(T_INIT, State_EVENT_EXTERNALFULL);
-          default:
-            break;
-          }
-          if (err == LOGWRITE_OK) {
-            pState->external_blocks++;
-          }
-        }
-
-        saved_block_epoch = entry_epoch;
-        saved_block_millis = entry_millis;
+      isActive = palReadLine(LINE_ACCEL_INT);
+      if (!isActive) {
+        break;
       }
+
+      switch (sampleAndLogDataBlock()) {
+      case IMU_BLOCK_HANDLED:
+        break;
+      case IMU_BLOCK_INTERNAL_FULL:
+        return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      case IMU_BLOCK_EXTERNAL_FULL:
+        return Finished(T_INIT, State_EVENT_EXTERNALFULL);
+      case IMU_BLOCK_NO_DATA:
+      default:
+        blocks = IMU_MAX_BLOCKS_PER_WAKE;
+        break;
+      }
+    }
+    isActive = palReadLine(LINE_ACCEL_INT);
+    if (isActive) {
+      sleepmode = SLEEP;
     }
 
     //
@@ -259,6 +295,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 #endif
 
     //pState->lastwakeup = timestamp;
+    return sleepmode;
   }
   return STOP1;
 }

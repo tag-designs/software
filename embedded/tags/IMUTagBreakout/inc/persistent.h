@@ -15,6 +15,8 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
+#define BACKUP_STATE_VALID_MAGIC 0x54414742U
+
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
 /** End of the internal flash region reserved for persistent state. */
@@ -54,7 +56,7 @@ typedef enum
 /** @brief Backup-register runtime state used to recover after resets. */
 typedef struct
 {
-  uint32_t valid;           // backup registers are valid
+  uint32_t valid;           // backup registers hold BACKUP_STATE_VALID_MAGIC
   uint32_t safe;            // used to mark regions where reset is safe
   uint32_t resetCause;      // last reset cause -- deprecated, need to remove
   uint32_t state;           // current run state

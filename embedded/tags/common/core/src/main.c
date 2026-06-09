@@ -29,6 +29,7 @@
 thread_t *tpMain = 0;
 int32_t timestamp;
 uint32_t timestamp_millis;
+bool rtcInitializedAtBoot;
 
 volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
 /** @} */
@@ -55,7 +56,7 @@ void deviceInit(int force)
   {
     // make sure everything is zeroed
 
-    pState->valid = false;
+    pState->valid = 0;
     pState->safe = false;
   
     // configure RTC
@@ -68,7 +69,7 @@ void deviceInit(int force)
 
     disableAllAlarms();
     disableTicker();
-    pState->valid = true;
+    pState->valid = BACKUP_STATE_VALID_MAGIC;
 
     // is this the right place to set pullup/pulldowns?
   }
@@ -105,7 +106,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
     // matter how we got here, it's treated as a power
     // on reset
 
-    if (pState->valid == false)
+    if (pState->valid != BACKUP_STATE_VALID_MAGIC)
     {
       resetCause = resetPower; 
       break;
@@ -216,9 +217,8 @@ int main(void)
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
+  rtcInitializedAtBoot = (RTC->ISR & RTC_ISR_INITS) != 0;
 
-  
-  
   halInit();
   chSysInit();
 

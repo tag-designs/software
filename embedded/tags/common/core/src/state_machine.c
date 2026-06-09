@@ -72,6 +72,19 @@ extern int restoreLog(void);
 /** Shared active-state hint used by standby wake-source configuration. */
 bool isActive = false;
 
+static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
+{
+  if (reset_cause == resetBrownout)
+    return true;
+  if (MONCONNECTED && (pState->valid == BACKUP_STATE_VALID_MAGIC))
+    return false;
+  if ((reset_cause == resetPower) && !MONCONNECTED)
+    return true;
+  if (!rtcInitializedAtBoot)
+    return true;
+  return false;
+}
+
 /**
  * @brief Forward declaration for the reset cleanup state.
  *
@@ -154,12 +167,12 @@ enum Sleep StateMachine(void)
         break;
       pState->state = marker.state;
     }
-    // try to recover the time from the external RTC
-
-    RTCDateTime tim;
-    tagRtcGetDateTime(&tim);
-    // set it even if get failed (might still be valid)
-    rtcSetTime(&RTCD1, &tim);
+    if (shouldRecoverRtcFromExternal(reset_cause))
+    {
+      RTCDateTime tim;
+      if (tagRtcGetDateTime(&tim) == MSG_OK)
+        rtcSetTime(&RTCD1, &tim);
+    }
     timestamp = GetTimeUnixSec(&timestamp_millis);
 
     // recover log location

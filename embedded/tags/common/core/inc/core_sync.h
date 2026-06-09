@@ -8,6 +8,7 @@
 #ifndef TAG_CORE_SYNC_H
 #define TAG_CORE_SYNC_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "ch.h"
@@ -16,6 +17,7 @@ extern binary_semaphore_t SPI1mutex;
 extern binary_semaphore_t USART2mutex;
 extern int32_t timestamp;
 extern uint32_t timestamp_millis;
+extern bool rtcInitializedAtBoot;
 extern thread_t *tpMain;
 
 #endif
