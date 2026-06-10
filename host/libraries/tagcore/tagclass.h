@@ -26,6 +26,10 @@ public:
   bool Attach(UsbDev usbdev = UsbDev());
   void Detach();
   bool IsAttached();
+  void ResetLinkStats();
+  LinkAdaptStats GetLinkStats();
+  void ResetMonitorStats();
+  TagMonitorStats GetMonitorStats();
   bool Voltage(float &voltage);
   bool GitSha(std::string &str);
 

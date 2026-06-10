@@ -19,6 +19,28 @@ static volatile int sectors_erased NOINIT;
 
 extern int encode_ack(void);
 
+#if defined(LOG_ACK_MEASURE_LINE)
+static bool log_ack_measure_line_initialized;
+
+static void logAckMeasureBegin(void)
+{
+  if (!log_ack_measure_line_initialized) {
+    palClearLine(LOG_ACK_MEASURE_LINE);
+    palSetLineMode(LOG_ACK_MEASURE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
+    log_ack_measure_line_initialized = true;
+  }
+  palSetLine(LOG_ACK_MEASURE_LINE);
+}
+
+static void logAckMeasureEnd(void)
+{
+  palClearLine(LOG_ACK_MEASURE_LINE);
+}
+#else
+#define logAckMeasureBegin() do { } while (0)
+#define logAckMeasureEnd() do { } while (0)
+#endif
+
 static uint32_t dirtyExternalSectors(void)
 {
   const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
@@ -210,6 +232,7 @@ int data_logAck(int index, Ack *ack)
   int ret;
 
   chThdSetPriority(HIGHPRIO);
+  logAckMeasureBegin();
 
   ack->err = Ack_Err_OK;
 
@@ -263,6 +286,7 @@ int data_logAck(int index, Ack *ack)
 
   // encode the ack and return
   ret = encode_ack();
+  logAckMeasureEnd();
   chThdSetPriority(NORMALPRIO);
   return ret;
 }

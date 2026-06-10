@@ -68,6 +68,26 @@ bool TagMonitor::Voltage(float &voltage){
   return LinkAdapt::Voltage(voltage);
 }
 
+void TagMonitor::ResetMonitorStats()
+{
+  monitor_stats = TagMonitorStats();
+}
+
+TagMonitorStats TagMonitor::GetMonitorStats() const
+{
+  return monitor_stats;
+}
+
+#if TAGCORE_ENABLE_INSTRUMENTATION
+static uint64_t monitor_elapsed_ns(std::chrono::steady_clock::time_point start)
+{
+  return static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::steady_clock::now() - start)
+          .count());
+}
+#endif
+
 // Debug Handler RPC
 
 bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
@@ -335,6 +355,9 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
   uint32_t retval;
   int err = 0;
   uint16_t len;
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  auto rpc_start = std::chrono::steady_clock::now();
+#endif
 
   ack.Clear();
 
@@ -348,7 +371,13 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
     log_error("Request message too big");
     return false;
   }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  auto step_start = std::chrono::steady_clock::now();
+#endif
   req.SerializeToArray(rpcbuf, sizeof(rpcbuf));
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  monitor_stats.serialize_ns += monitor_elapsed_ns(step_start);
+#endif
   len = size;
 
   if ((len + 2) > maxpacket)
@@ -361,7 +390,15 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
   // stlink is faster for word aligned access
   // call_buf is implemented as word aligned
 
-  if (!WriteMem32(call_buf, (uint8_t *)rpcbuf, (len + 3) & ~3))
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  step_start = std::chrono::steady_clock::now();
+#endif
+  const bool write_ok = WriteMem32(call_buf, (uint8_t *)rpcbuf,
+                                  (len + 3) & ~3);
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  monitor_stats.write_request_ns += monitor_elapsed_ns(step_start);
+#endif
+  if (!write_ok)
   {
     log_error("RPC buffer write failed");
     return false;
@@ -371,7 +408,14 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
 
   //std::cerr << "calling\n";
 
-  if (!Call(PROTOBUF, len, &retval))
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  step_start = std::chrono::steady_clock::now();
+#endif
+  const bool call_ok = Call(PROTOBUF, len, &retval);
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  monitor_stats.monitor_call_ns += monitor_elapsed_ns(step_start);
+#endif
+  if (!call_ok)
   {
     log_error("monitor_call failed\n");
     return false;
@@ -382,12 +426,33 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
   // retrieve protocol buffer -- round up to 4 byte boundary
   // stlink is faster for word aligned access
 
-  if (len && !ReadMem32(call_buf, (uint8_t *)rpcbuf, (len + 3) & ~3))
+  bool read_ok = true;
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  step_start = std::chrono::steady_clock::now();
+#endif
+  if (len) {
+    read_ok = ReadMem32(call_buf, (uint8_t *)rpcbuf, (len + 3) & ~3);
+  }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  monitor_stats.read_response_ns += monitor_elapsed_ns(step_start);
+#endif
+  if (!read_ok)
   {
     log_error("Error reading RPC buffer");
     return false;
   }
-  return (ack.ParseFromArray(rpcbuf, len));
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  step_start = std::chrono::steady_clock::now();
+#endif
+  const bool parse_ok = ack.ParseFromArray(rpcbuf, len);
+#if TAGCORE_ENABLE_INSTRUMENTATION
+  monitor_stats.parse_ns += monitor_elapsed_ns(step_start);
+  monitor_stats.rpc_calls++;
+  monitor_stats.request_bytes += size;
+  monitor_stats.response_bytes += len;
+  monitor_stats.rpc_total_ns += monitor_elapsed_ns(rpc_start);
+#endif
+  return parse_ok;
 }
 
 // Return git sha string -- read during attach()

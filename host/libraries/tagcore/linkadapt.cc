@@ -2,6 +2,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <chrono>
 
 extern "C"
 {
@@ -83,17 +84,44 @@ public:
     uint16_t len = 0;
 };
 
+#if TAGCORE_ENABLE_INSTRUMENTATION
+using SteadyClock = std::chrono::steady_clock;
+
+static uint64_t elapsed_ns(SteadyClock::time_point start)
+{
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            SteadyClock::now() - start)
+            .count());
+}
+#endif
+
 bool LinkAdapt::usb_xfer(bool ReadnWrite, unsigned char *buf, int length)
 {
     int err;
     int res;
     unsigned char ep = ReadnWrite ? ep_in : ep_out;
 
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     if ((err = libusb_bulk_transfer(handle, ep, buf, length, &res, USB_TRANSFER_TIMEOUT)))
     {
         log_error("%s", libusb_error_name(err));
         return false;
     }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    const uint64_t ns = elapsed_ns(start);
+    if (ReadnWrite) {
+        stats.usb_in_calls++;
+        stats.usb_in_bytes += static_cast<uint64_t>(res);
+        stats.usb_in_ns += ns;
+    } else {
+        stats.usb_out_calls++;
+        stats.usb_out_bytes += static_cast<uint64_t>(res);
+        stats.usb_out_ns += ns;
+    }
+#endif
     if (res != length)
     {
         log_error("Transferred %d bytes instead of %d", res, length);
@@ -104,6 +132,9 @@ bool LinkAdapt::usb_xfer(bool ReadnWrite, unsigned char *buf, int length)
 
 bool LinkAdapt::cmd_eval(LinkReq &req, bool ReadnWrite)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     if (!usb_xfer(false, req.cmd, sizeof(req.cmd)))
     {
         log_error("cmd_eval request failed");
@@ -114,7 +145,21 @@ bool LinkAdapt::cmd_eval(LinkReq &req, bool ReadnWrite)
         log_error("cmd_eval response failed");
         return false;
     }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    stats.cmd_calls++;
+    stats.cmd_ns += elapsed_ns(start);
+#endif
     return true;
+}
+
+void LinkAdapt::ResetLinkStats()
+{
+    stats = LinkAdaptStats();
+}
+
+LinkAdaptStats LinkAdapt::GetLinkStats() const
+{
+    return stats;
 }
 
 bool LinkAdapt::current_mode(uint16_t &mode)
@@ -474,6 +519,9 @@ bool LinkAdapt::Voltage(float &voltage)
 
 bool LinkAdapt::get_rw_status(uint16_t &status)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     LinkReq req;
     uint8_t result[2];
     req.cmd[0] = STLINK_DEBUG_COMMAND;
@@ -483,6 +531,10 @@ bool LinkAdapt::get_rw_status(uint16_t &status)
     if (cmd_eval(req, true))
     {
         status = UNPACK16(result);
+#if TAGCORE_ENABLE_INSTRUMENTATION
+        stats.rw_status_calls++;
+        stats.rw_status_ns += elapsed_ns(start);
+#endif
         return true;
     }
     return false;
@@ -490,6 +542,9 @@ bool LinkAdapt::get_rw_status(uint16_t &status)
 
 bool LinkAdapt::ReadMem32(unsigned int addr, uint8_t *buf, uint16_t count)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     LinkReq req;
     req.cmd[0] = STLINK_DEBUG_COMMAND;
     req.cmd[1] = STLINK_DEBUG_READMEM_32BIT;
@@ -505,6 +560,11 @@ bool LinkAdapt::ReadMem32(unsigned int addr, uint8_t *buf, uint16_t count)
             log_error("error return %x", status);
             return false;
         }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+        stats.read_mem_calls++;
+        stats.read_mem_bytes += count;
+        stats.read_mem_ns += elapsed_ns(start);
+#endif
         return true;
     }
     return false;
@@ -512,6 +572,9 @@ bool LinkAdapt::ReadMem32(unsigned int addr, uint8_t *buf, uint16_t count)
 
 bool LinkAdapt::WriteMem32(unsigned int addr, uint8_t *buf, uint16_t count)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     LinkReq req;
     req.cmd[0] = STLINK_DEBUG_COMMAND;
     req.cmd[1] = STLINK_DEBUG_WRITEMEM_32BIT;
@@ -527,6 +590,11 @@ bool LinkAdapt::WriteMem32(unsigned int addr, uint8_t *buf, uint16_t count)
             log_error("error return %x", status);
             return false;
         }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+        stats.write_mem_calls++;
+        stats.write_mem_bytes += count;
+        stats.write_mem_ns += elapsed_ns(start);
+#endif
         return true;
     }
     return false;
@@ -534,6 +602,9 @@ bool LinkAdapt::WriteMem32(unsigned int addr, uint8_t *buf, uint16_t count)
 
 bool LinkAdapt::ReadDebug32(unsigned int addr, uint32_t *rval)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     LinkReq req;
     uint8_t result[8];
     req.cmd[0] = STLINK_DEBUG_COMMAND;
@@ -552,6 +623,10 @@ bool LinkAdapt::ReadDebug32(unsigned int addr, uint32_t *rval)
         else
         {
             *rval = UNPACK32(&result[4]);
+#if TAGCORE_ENABLE_INSTRUMENTATION
+            stats.read_debug_calls++;
+            stats.read_debug_ns += elapsed_ns(start);
+#endif
             return true;
         }
     }
@@ -560,6 +635,9 @@ bool LinkAdapt::ReadDebug32(unsigned int addr, uint32_t *rval)
 
 bool LinkAdapt::WriteDebug32(unsigned int addr, uint32_t val)
 {
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    auto start = SteadyClock::now();
+#endif
     LinkReq req;
     uint8_t result[2];
     req.cmd[0] = STLINK_DEBUG_COMMAND;
@@ -576,6 +654,10 @@ bool LinkAdapt::WriteDebug32(unsigned int addr, uint32_t val)
             log_error("error %x", status);
             return false;
         }
+#if TAGCORE_ENABLE_INSTRUMENTATION
+        stats.write_debug_calls++;
+        stats.write_debug_ns += elapsed_ns(start);
+#endif
         return true;
     }
     return false;

@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Configure TagCore Library")
 
+option(TAGCORE_ENABLE_INSTRUMENTATION
+       "Enable host-side tagcore transfer timing instrumentation" ON)
+
 if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
   set(HOST_SQLITE_TARGET unofficial::sqlite3::sqlite3)
@@ -54,6 +57,8 @@ else()
   target_link_libraries(tagcore PRIVATE PkgConfig::LIBUSB_1_0)
 endif()
 target_compile_features(tagcore PUBLIC cxx_std_20)
+target_compile_definitions(tagcore PUBLIC
+  TAGCORE_ENABLE_INSTRUMENTATION=$<BOOL:${TAGCORE_ENABLE_INSTRUMENTATION}>)
 
 target_sources(tagcore
     PRIVATE

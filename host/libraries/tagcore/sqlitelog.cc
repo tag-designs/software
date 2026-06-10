@@ -293,6 +293,36 @@ public:
         }
     }
 
+    bool beginLog()
+    {
+        if (!db_) {
+            setLastError("Database is not open");
+            return false;
+        }
+        if (transaction_active_) {
+            return true;
+        }
+        if (!exec("BEGIN IMMEDIATE TRANSACTION")) {
+            setLastSqliteError("Could not begin log transaction");
+            return false;
+        }
+        transaction_active_ = true;
+        return true;
+    }
+
+    bool endLog()
+    {
+        if (!transaction_active_) {
+            return true;
+        }
+        if (!exec("COMMIT")) {
+            setLastSqliteError("Could not commit log transaction");
+            return false;
+        }
+        transaction_active_ = false;
+        return true;
+    }
+
 private:
     WriterContext writerContext()
     {
@@ -523,6 +553,10 @@ private:
     void close()
     {
         if (db_) {
+            if (transaction_active_) {
+                (void)sqlite3_exec(db_, "ROLLBACK", nullptr, nullptr, nullptr);
+                transaction_active_ = false;
+            }
             sqlite3_close(db_);
             db_ = nullptr;
         }
@@ -531,6 +565,7 @@ private:
     sqlite3 *db_ = nullptr;
     Config config_;
     bool log_tables_created_ = false;
+    bool transaction_active_ = false;
     ImuDecodeState imu_decode_state_;
     std::string last_error_;
 };
@@ -558,6 +593,16 @@ const std::string &SqliteTagLogWriter::lastError() const
 bool SqliteTagLogWriter::writeHeader(Tag &tag)
 {
     return impl_->writeHeader(tag);
+}
+
+bool SqliteTagLogWriter::beginLog()
+{
+    return impl_->beginLog();
+}
+
+bool SqliteTagLogWriter::endLog()
+{
+    return impl_->endLog();
 }
 
 int SqliteTagLogWriter::writeLog(const Ack &ack)

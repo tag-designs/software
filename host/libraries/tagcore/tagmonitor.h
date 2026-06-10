@@ -4,6 +4,20 @@
 #include "linkadapt.h"
 #include "tag.pb.h"
 
+struct TagMonitorStats
+{
+ bool enabled = TAGCORE_ENABLE_INSTRUMENTATION != 0;
+ uint64_t rpc_calls = 0;
+ uint64_t request_bytes = 0;
+ uint64_t response_bytes = 0;
+ uint64_t rpc_total_ns = 0;
+ uint64_t serialize_ns = 0;
+ uint64_t write_request_ns = 0;
+ uint64_t monitor_call_ns = 0;
+ uint64_t read_response_ns = 0;
+ uint64_t parse_ns = 0;
+};
+
 class TagMonitor : public LinkAdapt
 {
 public:
@@ -15,6 +29,8 @@ TagMonitor();
  bool GitShaString(std::string &str);
  bool Voltage(float &voltage);
  bool Rpc(Req &req, Ack &ack);
+ void ResetMonitorStats();
+ TagMonitorStats GetMonitorStats() const;
 
 private:
 
@@ -31,5 +47,6 @@ private:
   uint8_t sha_str[48] = {0};
   // tag monitor version
   uint32_t version = 0;
+  TagMonitorStats monitor_stats;
 };
 #endif

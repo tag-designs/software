@@ -43,6 +43,10 @@ public:
     // Write metadata that is common to the full download.
     virtual bool writeHeader(Tag &tag) = 0;
 
+    // Optional bracket around a sequence of data-log writes.
+    virtual bool beginLog() { return true; }
+    virtual bool endLog() { return true; }
+
     /**
      * Write one downloaded data Ack.
      *

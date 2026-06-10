@@ -57,6 +57,8 @@ public:
      * and state history. Must be called once before writeLog().
      */
     bool writeHeader(Tag &tag) override;
+    bool beginLog() override;
+    bool endLog() override;
 
     /**
      * Appends one Ack of tag data to the SQLite log tables.

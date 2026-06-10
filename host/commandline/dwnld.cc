@@ -94,6 +94,97 @@ void printWriterError(const std::string &context, const TagLogWriter &writer)
   std::cerr << std::endl;
 }
 
+using SteadyClock = std::chrono::steady_clock;
+
+uint64_t elapsedNs(SteadyClock::time_point start)
+{
+  return static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          SteadyClock::now() - start)
+          .count());
+}
+
+double secondsFromNs(uint64_t ns)
+{
+  return static_cast<double>(ns) / 1000000000.0;
+}
+
+void printDurationLine(const char *label, uint64_t total_ns, int count)
+{
+  std::cout << label << ": " << secondsFromNs(total_ns) << " s";
+  if (count > 0) {
+    std::cout << " total, " << (secondsFromNs(total_ns) / count)
+              << " s/request";
+  }
+  std::cout << std::endl;
+}
+
+void printTransferLine(const char *label, uint64_t calls, uint64_t bytes,
+                       uint64_t ns)
+{
+  std::cout << label << ": calls=" << calls
+            << " bytes=" << bytes
+            << " time=" << secondsFromNs(ns) << " s";
+  if (ns > 0) {
+    const double kib_per_sec = (static_cast<double>(bytes) / 1024.0) /
+                               secondsFromNs(ns);
+    std::cout << " rate=" << kib_per_sec << " KiB/s";
+  }
+  std::cout << std::endl;
+}
+
+void printProfile(const LinkAdaptStats &link_stats,
+                  const TagMonitorStats &monitor_stats,
+                  uint64_t get_log_ns,
+                  uint64_t write_log_ns,
+                  int requests)
+{
+  std::cout << "\nDownload profile" << std::endl;
+  printDurationLine("GetDataLog wait", get_log_ns, requests);
+  printDurationLine("Decode/write log", write_log_ns, requests);
+
+  if (!link_stats.enabled || !monitor_stats.enabled) {
+    std::cout << "Host link instrumentation was compiled out" << std::endl;
+    return;
+  }
+
+  std::cout << "\nMonitor RPC" << std::endl;
+  std::cout << "rpc calls=" << monitor_stats.rpc_calls
+            << " request_bytes=" << monitor_stats.request_bytes
+            << " response_bytes=" << monitor_stats.response_bytes
+            << std::endl;
+  printDurationLine("rpc total", monitor_stats.rpc_total_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+  printDurationLine("serialize request", monitor_stats.serialize_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+  printDurationLine("write request buffer", monitor_stats.write_request_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+  printDurationLine("monitor call", monitor_stats.monitor_call_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+  printDurationLine("read response buffer", monitor_stats.read_response_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+  printDurationLine("parse response", monitor_stats.parse_ns,
+                    static_cast<int>(monitor_stats.rpc_calls));
+
+  std::cout << "\nLink transport" << std::endl;
+  printTransferLine("usb out", link_stats.usb_out_calls,
+                    link_stats.usb_out_bytes, link_stats.usb_out_ns);
+  printTransferLine("usb in", link_stats.usb_in_calls,
+                    link_stats.usb_in_bytes, link_stats.usb_in_ns);
+  printDurationLine("stlink command", link_stats.cmd_ns,
+                    static_cast<int>(link_stats.cmd_calls));
+  printTransferLine("read mem32", link_stats.read_mem_calls,
+                    link_stats.read_mem_bytes, link_stats.read_mem_ns);
+  printTransferLine("write mem32", link_stats.write_mem_calls,
+                    link_stats.write_mem_bytes, link_stats.write_mem_ns);
+  printDurationLine("read debug32", link_stats.read_debug_ns,
+                    static_cast<int>(link_stats.read_debug_calls));
+  printDurationLine("write debug32", link_stats.write_debug_ns,
+                    static_cast<int>(link_stats.write_debug_calls));
+  printDurationLine("rw status", link_stats.rw_status_ns,
+                    static_cast<int>(link_stats.rw_status_calls));
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -105,7 +196,9 @@ int main(int argc, char **argv)
   std::string output_path;
   std::string format_name = "default";
   bool stop_tag = false;
-  clock_t elapsed = 0;
+  bool profile = false;
+  uint64_t get_log_ns = 0;
+  uint64_t write_log_ns = 0;
 
   cxxopts::Options options("tag-dwnld", "Downloads data from a tag");
   options.add_options()
@@ -114,7 +207,9 @@ int main(int argc, char **argv)
       ("f,format", "Output format: default, text, sqlite",
        cxxopts::value<std::string>(format_name)->default_value("default"))
       ("s,stop", "Stop a running tag before downloading",
-       cxxopts::value<bool>(stop_tag)->default_value("false"));
+       cxxopts::value<bool>(stop_tag)->default_value("false"))
+      ("profile", "Print download timing and link transport profile",
+       cxxopts::value<bool>(profile)->default_value("false"));
 
   if (!parse_options(argc, argv, options, tag, dev)) {
     return 1;
@@ -207,17 +302,29 @@ int main(int argc, char **argv)
   int downloads = 0;
   Ack ack;
   printProgress(total, max_count);
+  tag.ResetLinkStats();
+  tag.ResetMonitorStats();
+
+  auto start = SteadyClock::now();
+  if (!writer->beginLog()) {
+    finishProgress();
+    printWriterError("Could not begin log download", *writer);
+    return 1;
+  }
+  write_log_ns += elapsedNs(start);
 
   do
   {
     ack.Clear();
     len = 0;
 
+    start = SteadyClock::now();
     if (!tag.GetDataLog(ack, total)) {
       finishProgress();
       std::cerr << "Parsing log failed. Unsupported tag type?" << std::endl;
       return 1;
     }
+    get_log_ns += elapsedNs(start);
 
     downloads++;
     if (!ack.error_message().empty()) {
@@ -226,9 +333,9 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    const clock_t start = clock();
+    start = SteadyClock::now();
     len = writer->writeLog(ack);
-    elapsed += (clock() - start);
+    write_log_ns += elapsedNs(start);
 
     if (len < 0) {
       finishProgress();
@@ -240,9 +347,21 @@ int main(int argc, char **argv)
     printProgress(total, max_count);
   } while (len);
 
+  start = SteadyClock::now();
+  if (!writer->endLog()) {
+    finishProgress();
+    printWriterError("Could not finish log download", *writer);
+    return 1;
+  }
+  write_log_ns += elapsedNs(start);
+
   finishProgress();
   std::cout << "Downloaded " << total << " records in " << downloads << " requests" << std::endl;
-  std::cout << "Decoding time " << (static_cast<double>(elapsed) / CLOCKS_PER_SEC)
+  std::cout << "Decoding time " << secondsFromNs(write_log_ns)
             << " seconds" << std::endl;
+  if (profile) {
+    printProfile(tag.GetLinkStats(), tag.GetMonitorStats(), get_log_ns,
+                 write_log_ns, downloads);
+  }
   return 0;
 }

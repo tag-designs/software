@@ -57,6 +57,30 @@ bool Tag::Attach(UsbDev usbdev)
 
 bool Tag::IsAttached() { return monitor.IsAttached(); }
 
+void Tag::ResetLinkStats()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  monitor.ResetLinkStats();
+}
+
+LinkAdaptStats Tag::GetLinkStats()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.GetLinkStats();
+}
+
+void Tag::ResetMonitorStats()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  monitor.ResetMonitorStats();
+}
+
+TagMonitorStats Tag::GetMonitorStats()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.GetMonitorStats();
+}
+
 void Tag::Detach()
 {
   std::lock_guard<std::mutex> lck(mtx);

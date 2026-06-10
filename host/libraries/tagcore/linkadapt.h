@@ -2,6 +2,11 @@
 #define LINK_ADAPT_H
 #include <stdint.h>
 #include <vector>
+
+#ifndef TAGCORE_ENABLE_INSTRUMENTATION
+#define TAGCORE_ENABLE_INSTRUMENTATION 1
+#endif
+
 struct libusb_device_handle;
 struct libusb_context;
 
@@ -13,6 +18,31 @@ struct UsbDev
     uint16_t pid;
     uint8_t bus;
     uint8_t address; 
+};
+
+struct LinkAdaptStats
+{
+    bool enabled = TAGCORE_ENABLE_INSTRUMENTATION != 0;
+    uint64_t usb_in_calls = 0;
+    uint64_t usb_out_calls = 0;
+    uint64_t usb_in_bytes = 0;
+    uint64_t usb_out_bytes = 0;
+    uint64_t usb_in_ns = 0;
+    uint64_t usb_out_ns = 0;
+    uint64_t cmd_calls = 0;
+    uint64_t cmd_ns = 0;
+    uint64_t read_mem_calls = 0;
+    uint64_t read_mem_bytes = 0;
+    uint64_t read_mem_ns = 0;
+    uint64_t write_mem_calls = 0;
+    uint64_t write_mem_bytes = 0;
+    uint64_t write_mem_ns = 0;
+    uint64_t read_debug_calls = 0;
+    uint64_t read_debug_ns = 0;
+    uint64_t write_debug_calls = 0;
+    uint64_t write_debug_ns = 0;
+    uint64_t rw_status_calls = 0;
+    uint64_t rw_status_ns = 0;
 };
 
 class LinkAdapt
@@ -27,6 +57,8 @@ public:
     bool Attach(bool assertReset, UsbDev usbdev= UsbDev());
     void Detach();
     bool IsAttached();
+    void ResetLinkStats();
+    LinkAdaptStats GetLinkStats() const;
    
 protected:
 
@@ -44,6 +76,7 @@ private:
     unsigned char ep_in;
     libusb_device_handle *handle = nullptr;
     libusb_context *ctx = nullptr;
+    LinkAdaptStats stats;
 
     bool usb_xfer(bool In, unsigned char *buf, int length);
     bool cmd_eval(LinkReq &req, bool ReadnWrite);
