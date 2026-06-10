@@ -1,5 +1,7 @@
 # IMUTagBreakout build manifest.
 USE_HAL_I2C_FALLBACK = yes
+USE_PROCESS_STACKSIZE = 0x800
+USE_EXCEPTIONS_STACKSIZE = 0x800
 include $(BOARDDIR)/IMUTagv1/board.mk
 
 TAG_MODULES += \

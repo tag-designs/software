@@ -173,6 +173,8 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     const int header_flags =
         static_cast<int>(raw_millisecond & ~IMUTAG_HEADER_MILLIS_MASK);
     const bool header_resync = (raw_millisecond & IMUTAG_HEADER_RESYNC) != 0;
+    const bool header_storage_skip =
+        (raw_millisecond & IMUTAG_HEADER_RESYNC_STORAGE_SKIP) != 0;
     const sqlite3_int64 header_epoch_ms =
         static_cast<sqlite3_int64>(log.epoch()) * 1000 + header_millisecond;
 
@@ -215,7 +217,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     if (header_resync
         && (!event_insert.bindInt64(1, header_start_us)
             || !event_insert.bindInt64(2, static_cast<sqlite3_int64>(ctx.imu->header_count))
-            || !event_insert.bindText(3, "RESYNC")
+            || !event_insert.bindText(3, header_storage_skip ? "RESYNC_STORAGE_SKIP" : "RESYNC")
             || !event_insert.stepDone())) {
         ctx.setLastSqliteError("IMUTag resync event insert failed");
         return -2;

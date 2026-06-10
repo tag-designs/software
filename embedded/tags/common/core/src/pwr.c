@@ -201,12 +201,17 @@ void godown(enum Sleep sleepmode)
   __enable_irq();
 }
 
-/**
- * @brief Convert an unexpected exception into a retained state marker and standby.
- */
 void _unhandled_exception(void)
 {
-  pState->state = EXCEPTION;
-  godown(STANDBY);
+  if (pState->valid == BACKUP_STATE_VALID_MAGIC)
+  {
+    pState->exception_count++;
+    pState->resetCause = resetException;
+    pState->state = EXCEPTION;
+  }
+  NVIC_SystemReset();
+  while (true)
+  {
+  }
 }
 /** @} */

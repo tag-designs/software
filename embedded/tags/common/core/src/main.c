@@ -58,7 +58,19 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
-  
+    pState->exception_count = 0;
+    pState->monitor_request_count = 0;
+    pState->monitor_active_request = 0;
+    pState->monitor_active_detail = 0;
+    pState->monitor_active_phase = 0;
+    pState->monitor_active_len = 0;
+    pState->monitor_complete_count = 0;
+    pState->monitor_last_request = 0;
+    pState->monitor_last_detail = 0;
+    pState->monitor_last_phase = 0;
+    pState->monitor_last_len = 0;
+    pState->monitor_last_result_len = 0;
+
     // configure RTC
 
     tagRtcInit();
@@ -94,14 +106,6 @@ t_resetCause getResetCause(uint32_t rstFlags)
   do
   {
 
-    // not an exit from standby, so must be power on
-
-     if (!(PWR->SR1 & PWR_SR1_SBF))
-    {
-      resetCause = resetPower; 
-      break;
-    }
-
     // if the backup registers aren't valid, it doesn't
     // matter how we got here, it's treated as a power
     // on reset
@@ -112,7 +116,21 @@ t_resetCause getResetCause(uint32_t rstFlags)
       break;
     }
 
-   
+    // A firmware-triggered reset is used after unhandled exceptions.
+    // It can happen while the tag is active, so it will not have SBF set.
+    if ((rstFlags & RCC_CSR_SFTRSTF))
+    {
+      resetCause = resetException;
+      break;
+    }
+
+    // not an exit from standby, so must be power on
+
+     if (!(PWR->SR1 & PWR_SR1_SBF))
+    {
+      resetCause = resetPower;
+      break;
+    }
 
     // Brownout leaves memory in questionable state
     // but shutdown also causes brownout
@@ -278,13 +296,4 @@ int main(void)
   }
 }
 
-/**
- * @brief ChibiOS/vector-table reset entry used as the exception recovery target.
- */
-extern void Reset_Handler(void);
-
-/**
- * @brief Route unexpected exceptions through the reset handler.
- */
-void __unhandled_exception(void) { Reset_Handler(); }
 /** @} */

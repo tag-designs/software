@@ -15,6 +15,7 @@
 #include "core_types.h"
 #include "custom.h"
 #include "debug_log.h"
+#include "persistent.h"
 
 #define xstr(s) str(s)
 #define str(s) #s
@@ -109,7 +110,7 @@ static thread_t *tpMonitor = NULL;
 static thread_reference_t trp NOINIT;  // for synchronous wait
 
 static THD_FUNCTION(MonitorThread, arg);
-static THD_WORKING_AREA(waMonitor, 1024) NOINIT;
+static THD_WORKING_AREA(waMonitor, 2048) NOINIT;
 static const thread_descriptor_t monitor_descriptor = {
     "monitor",
     THD_WORKING_AREA_BASE(waMonitor),
@@ -138,6 +139,47 @@ static THD_FUNCTION(MonitorThread, arg) {
   (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
 
   debug_log_init();
+  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
+      (pState->exception_count != 0U))
+  {
+    chSysUnlock();
+    debug_log_printf("Tag unhandled exceptions: %u\r\n",
+                     (unsigned)pState->exception_count);
+    chSysLock();
+  }
+  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
+      (pState->monitor_active_phase != 0U))
+  {
+    pState->monitor_last_request = pState->monitor_active_request;
+    pState->monitor_last_detail = pState->monitor_active_detail;
+    pState->monitor_last_phase = pState->monitor_active_phase;
+    pState->monitor_last_len = pState->monitor_active_len;
+    pState->monitor_last_result_len = 0xffffffffU;
+    chSysUnlock();
+    debug_log_printf(
+        "Tag monitor incomplete: count=%u request=%u detail=%u phase=%u len=%u\r\n",
+        (unsigned)pState->monitor_request_count,
+        (unsigned)pState->monitor_active_request,
+        (unsigned)pState->monitor_active_detail,
+        (unsigned)pState->monitor_active_phase,
+        (unsigned)pState->monitor_active_len);
+    chSysLock();
+    pState->monitor_active_phase = 0;
+  }
+  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
+      (pState->monitor_complete_count != 0U))
+  {
+    chSysUnlock();
+    debug_log_printf(
+        "Tag monitor last: count=%u request=%u detail=%u phase=%u len=%u result=%u\r\n",
+        (unsigned)pState->monitor_complete_count,
+        (unsigned)pState->monitor_last_request,
+        (unsigned)pState->monitor_last_detail,
+        (unsigned)pState->monitor_last_phase,
+        (unsigned)pState->monitor_last_len,
+        (unsigned)pState->monitor_last_result_len);
+    chSysLock();
+  }
 
   // system locked !!
 
@@ -231,15 +273,17 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
         }
         break;
       case MONITORSTOP:
-        if (tpMonitor) {
+        if (tpMonitor && trp) {
           chSysLockFromISR();
           chThdResumeI(&trp, MSG_RESET);  // exit
           chSysUnlockFromISR();
+        } else {
+          (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
         }
         // thread clears req when it exits
         break;
       case PROTOBUF:  // execute with helper thread
-        if (tpMonitor) {
+        if (tpMonitor && trp) {
           chSysLockFromISR();
           CoreDebug->DCRDR = 0;
           chThdResumeI(&trp, (msg_t)operand);  // eval

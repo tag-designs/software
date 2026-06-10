@@ -178,9 +178,14 @@ enum LOGERR writeDataLog(t_DataLog *data)
   int addr = pState->external_blocks * sizeof(t_DataLog);
 
   tagStorageWake(TAG_EXTERNAL_FLASH);
-  tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
+  bool ok = tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
   tagStorageSleep(TAG_EXTERNAL_FLASH);
-  
+
+  if (!ok || cnt != (int)sizeof(t_DataLog))
+  {
+    return LOGWRITE_ERROR;
+  }
+
   return LOGWRITE_OK;
 }
 

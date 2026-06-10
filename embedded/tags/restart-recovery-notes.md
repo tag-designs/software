@@ -189,17 +189,21 @@ post-resync block timestamp.
 
 `t_DataHeader.millis` uses only ten bits for the 0..999 millisecond value. The
 IMUTag log format now reserves bit `0x0400` as `IMUTAG_HEADER_RESYNC`, which
-marks the first header after the FIFO stream has been reinitialized. The host
-decoder should treat that header as the start of a new smooth timing segment:
-anchor the segment to the header epoch/millisecond, then place samples by IMU
-sample count until the next resync marker. Ordinary headers should not
-re-anchor the high-rate data because the millisecond field can introduce
-page-to-page jitter. If the millisecond-resolution resync anchor would place the
-new segment before samples already emitted for the previous segment, the decoder
-rounds the new segment start up to the next expected block boundary so elapsed
-microsecond timestamps remain monotonic.
+marks the first header after the FIFO stream has been reinitialized or the log
+stream has otherwise lost continuity. Bit `0x0800` is
+`IMUTAG_HEADER_RESYNC_STORAGE_SKIP`, which refines `RESYNC` to say that the
+previous segment ended because an external flash block was skipped after a
+storage write failure. The host decoder should treat any `RESYNC` header as the
+start of a new smooth timing segment: anchor the segment to the header
+epoch/millisecond, then place samples by IMU sample count until the next resync
+marker. Ordinary headers should not re-anchor the high-rate data because the
+millisecond field can introduce page-to-page jitter. If the
+millisecond-resolution resync anchor would place the new segment before samples
+already emitted for the previous segment, the decoder rounds the new segment
+start up to the next expected block boundary so elapsed microsecond timestamps
+remain monotonic.
 
 SQLite logs retain the decoded header flags in `ImuHeader.Flags` and write a
-`RESYNC` row to `ImuEvent` at the corresponding elapsed microsecond time.
-SensorViz can draw those event rows as vertical discontinuity markers without
-turning them into y-axis streams.
+`RESYNC` or `RESYNC_STORAGE_SKIP` row to `ImuEvent` at the corresponding
+elapsed microsecond time. SensorViz can draw those event rows as vertical
+discontinuity markers without turning them into y-axis streams.

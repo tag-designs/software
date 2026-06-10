@@ -12,7 +12,6 @@
 #include <stdbool.h>
 #include "hal.h"
 
-#include "adc.h"
 #include "tag.pb.h"
 #include "config.h"
 #include "core_sync.h"
@@ -25,6 +24,16 @@
 
 /** Ensure state markers keep the flash-log layout expected by existing tags. */
 static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
+
+#include "adc.h"
+
+static void tagStatusMeasure(uint16_t *vdd100, int16_t *temp10)
+{
+  adcVDD(vdd100, temp10);
+#if defined(TAG_STATUS_FIXED_VDD100)
+  *vdd100 = TAG_STATUS_FIXED_VDD100;
+#endif
+}
 
 /** @name Persistent flash records
  * Objects placed in the persistent flash section and read directly after reset.
@@ -131,7 +140,7 @@ void recordState(State_Event reason)
   bzero(&marker, sizeof(marker));
   uint16_t vdd100 = 0;
   int16_t temp10 = 0;
-  adcVDD(&vdd100, &temp10);
+  tagStatusMeasure(&vdd100, &temp10);
   size_t offset;
 
   // find next available log slot.

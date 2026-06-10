@@ -61,11 +61,14 @@ static void mx25lSleep(const TagStorageDevice *dev)
  * @param[in] dev Storage device descriptor.
  * @return Raw status register value.
  */
-static uint8_t mx25lStatus(const TagStorageDevice *dev)
+static bool mx25lStatus(const TagStorageDevice *dev, uint8_t *status)
 {
     uint8_t buf;
-    tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), MX25L_CMD_READ_STATUS_REG, &buf, 1);
-    return buf;
+    if (!tagStorageSpiCommandReceive(tagStorageSpiDevice(dev),
+                                     MX25L_CMD_READ_STATUS_REG, &buf, 1))
+        return false;
+    *status = buf;
+    return true;
 }
 
 /**
@@ -77,7 +80,9 @@ static uint8_t mx25lStatus(const TagStorageDevice *dev)
 static int mx25lCheckID(const TagStorageDevice *dev)
 {
     uint8_t id[3];
-    tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), MX25L_CMD_READ_ID, id, 3);
+    if (!tagStorageSpiCommandReceive(tagStorageSpiDevice(dev),
+                                     MX25L_CMD_READ_ID, id, 3))
+        return -1;
     if (MONCONNECTED)
     {
         debug_log_printf("Flash: MID 0x%x DID 0x%x SIZE 0x%x",
@@ -112,14 +117,21 @@ static bool mx25lWrite(const TagStorageDevice *dev, uint32_t address,
         int max = 256 - address % 256;
         int bytes = num > max ? max : num;
 
-        tagStorageSpiCommand(tagStorageSpiDevice(dev), MX25L_CMD_WRITE_ENABLE);
-        mx25lStatus(dev);
-        tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev), MX25L_CMD_PAGE_PROG,
-                                        address, buf, bytes);
+        uint8_t status;
+        if (!tagStorageSpiCommand(tagStorageSpiDevice(dev),
+                                  MX25L_CMD_WRITE_ENABLE))
+            return false;
+        if (!mx25lStatus(dev, &status))
+            return false;
+        if (!tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev),
+                                             MX25L_CMD_PAGE_PROG, address, buf,
+                                             bytes))
+            return false;
         for (i = 0; i < 12; i++)
         {
             stopMilliseconds(1);
-            uint8_t status = mx25lStatus(dev);
+            if (!mx25lStatus(dev, &status))
+                return false;
             if ((status & MX25L_FLAGS_SR_WIP) == 0)
                 break;
         }
@@ -145,15 +157,20 @@ static bool mx25lSectorErase(const TagStorageDevice *dev, uint32_t address)
     uint8_t status;
     int i;
 
-    status = mx25lStatus(dev);
+    if (!mx25lStatus(dev, &status))
+        return false;
     if (status & MX25L_FLAGS_SR_WIP)
         return false;
-    tagStorageSpiCommand(tagStorageSpiDevice(dev), MX25L_CMD_WRITE_ENABLE);
-    tagStorageSpiCommandAddress(tagStorageSpiDevice(dev), MX25L_CMD_SECTOR_ERASE, address);
+    if (!tagStorageSpiCommand(tagStorageSpiDevice(dev), MX25L_CMD_WRITE_ENABLE))
+        return false;
+    if (!tagStorageSpiCommandAddress(tagStorageSpiDevice(dev),
+                                     MX25L_CMD_SECTOR_ERASE, address))
+        return false;
     for (i = 0; i < 5; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
-        status = mx25lStatus(dev);
+        if (!mx25lStatus(dev, &status))
+            return false;
         if (!(status & MX25L_FLAGS_SR_WIP))
             break;
     }
@@ -175,8 +192,8 @@ static bool mx25lSectorErase(const TagStorageDevice *dev, uint32_t address)
 static void mx25lRead(const TagStorageDevice *dev, uint32_t address,
                       uint8_t *buf, int num)
 {
-    tagStorageSpiCommandAddressReceive(tagStorageSpiDevice(dev), MX25L_CMD_READ, address, buf,
-                                       num);
+    tagStorageSpiCommandAddressReceive(tagStorageSpiDevice(dev), MX25L_CMD_READ,
+                                       address, buf, num);
 }
 
 /** MX25L operation table consumed by the generic storage layer. */

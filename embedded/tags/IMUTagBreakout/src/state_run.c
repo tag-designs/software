@@ -56,7 +56,7 @@ static uint32_t discard_blocks;
 static uint32_t discarded_blocks;
 static int32_t saved_block_epoch;
 static uint16_t saved_block_millis;
-static bool next_header_resync;
+static uint16_t next_header_flags;
 
 /*
  * Convert the configured IMU ODR into complete t_DataLog blocks to discard
@@ -82,7 +82,7 @@ static uint32_t runDiscardBlocks(void)
  *
  * mark_resync is true only for recovery from a monitor connect-under-reset
  * while already RUNNING. It causes exactly one future internal header to carry
- * IMUTAG_HEADER_RESYNC. The flag is cleared only after that header write
+ * IMUTAG_HEADER_RESYNC. Header flags are cleared only after that header write
  * succeeds, so a write failure cannot silently lose the discontinuity marker.
  */
 static bool restartDataCollectionClock(bool mark_resync)
@@ -91,7 +91,7 @@ static bool restartDataCollectionClock(bool mark_resync)
   discarded_blocks = 0;
   saved_block_epoch = timestamp;
   saved_block_millis = (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
-  next_header_resync = mark_resync;
+  next_header_flags = mark_resync ? IMUTAG_HEADER_RESYNC : 0U;
   pState->rawtemp = 0;
 
   if (!initDataCollection()) {
@@ -110,9 +110,19 @@ typedef enum {
   IMU_BLOCK_EXTERNAL_FULL
 } ImuBlockStatus;
 
+static enum LOGERR writeDataLogWithRetry(t_DataLog *data)
+{
+  enum LOGERR err = writeDataLog(data);
+
+  if (err == LOGWRITE_ERROR) {
+    err = writeDataLog(data);
+  }
+  return err;
+}
+
 static ImuBlockStatus sampleAndLogDataBlock(void)
 {
-  t_DataLog data;
+  static t_DataLog data;
   int16_t env_rawtemp;
   int32_t entry_epoch = timestamp;
   uint16_t entry_millis =
@@ -141,9 +151,7 @@ static ImuBlockStatus sampleAndLogDataBlock(void)
       header.epoch = saved_block_epoch;
       header.millis =
         (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);
-      if (next_header_resync) {
-        header.millis |= IMUTAG_HEADER_RESYNC;
-      }
+      header.millis |= next_header_flags;
       header.rawtemp = (int16_t)pState->rawtemp;
 
       err = writeDataHeader(&header);
@@ -156,15 +164,21 @@ static ImuBlockStatus sampleAndLogDataBlock(void)
       }
       if (err == LOGWRITE_OK) {
         pState->cycle_count++;
-        next_header_resync = false;
+        next_header_flags = 0U;
       }
     }
 
-    enum LOGERR err = writeDataLog(&data);
+    enum LOGERR err = writeDataLogWithRetry(&data);
     switch (err) {
     case LOGWRITE_FULL:
-    case LOGWRITE_ERROR:
       return IMU_BLOCK_EXTERNAL_FULL;
+    case LOGWRITE_ERROR:
+      pState->external_blocks++;
+      next_header_flags |= IMUTAG_HEADER_RESYNC |
+                           IMUTAG_HEADER_RESYNC_STORAGE_SKIP;
+      debug_log_printf("IMUTag external log write failed, skipped block %u\r\n",
+                       (unsigned)(pState->external_blocks - 1U));
+      break;
     default:
       break;
     }
@@ -246,11 +260,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     for (uint32_t blocks = 0; blocks < IMU_MAX_BLOCKS_PER_WAKE; blocks++)
     {
-      isActive = palReadLine(LINE_ACCEL_INT);
-      if (!isActive) {
-        break;
-      }
-
       switch (sampleAndLogDataBlock()) {
       case IMU_BLOCK_HANDLED:
         break;

@@ -341,7 +341,6 @@ bool initDataCollection(void)
  */
 bool sampleDataCollection(t_DataLog *data)
 {
-  lsm6dsv16x_sample_t samples[IMU_FIFO_PAIRS_PER_BLOCK];
   uint8_t wtm = 0;
   uint8_t ovr = 0;
   uint16_t fifo_words;
@@ -364,15 +363,13 @@ bool sampleDataCollection(t_DataLog *data)
     return false;
   }
 
-  pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE, samples,
+  pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE,
+                               &block_samples[block_sample_count],
                                IMU_FIFO_PAIRS_PER_BLOCK - block_sample_count);
   if (pairs == 0U) {
     return false;
   }
-
-  for (uint16_t i = 0; i < pairs; i++) {
-    block_samples[block_sample_count++] = samples[i];
-  }
+  block_sample_count += pairs;
 
   if (block_sample_count < IMU_FIFO_PAIRS_PER_BLOCK) {
     return false;

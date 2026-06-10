@@ -13,6 +13,7 @@
  * The remaining bits are header flags. */
 #define IMUTAG_HEADER_MILLIS_MASK (0x03ffu)
 #define IMUTAG_HEADER_RESYNC (0x0400u)
+#define IMUTAG_HEADER_RESYNC_STORAGE_SKIP (0x0800u)
 
 /* t_DataLog stores LPS22HH pressure as sensor_raw >> 8.
  * LPS22HH native sensitivity is 1/4096 hPa/LSB, so compact_raw / 16 = hPa. */

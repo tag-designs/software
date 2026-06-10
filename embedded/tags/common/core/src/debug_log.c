@@ -9,6 +9,8 @@
 
 #if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
 
+#include "ch.h"
+
 /** @name Debug log queue
  * Backing store for the monitor debug-message stream.
  *
@@ -25,6 +27,7 @@
 
 static MemoryStream debug_stream;
 static uint8_t debug_message_buffer[DEBUG_LOG_BUFFER_SIZE] NOINIT;
+static binary_semaphore_t debug_log_sem;
 static bool debug_log_initialized;
 
 /**
@@ -32,6 +35,7 @@ static bool debug_log_initialized;
  */
 void debug_log_init(void)
 {
+  chBSemObjectInit(&debug_log_sem, false);
   msObjectInit(&debug_stream, debug_message_buffer, sizeof(debug_message_buffer), 0);
   debug_log_initialized = true;
 }
@@ -43,11 +47,17 @@ void debug_log_init(void)
  */
 bool debug_log_available(void)
 {
+  bool available;
+
   if (!debug_log_initialized)
   {
     return false;
   }
-  return debug_stream.eos != debug_stream.offset;
+
+  chBSemWait(&debug_log_sem);
+  available = debug_stream.eos != debug_stream.offset;
+  chBSemSignal(&debug_log_sem);
+  return available;
 }
 
 /**
@@ -59,11 +69,17 @@ bool debug_log_available(void)
  */
 size_t debug_log_read(uint8_t *buf, size_t len)
 {
+  size_t bytes;
+
   if (!debug_log_initialized)
   {
     return 0;
   }
-  return streamRead(&debug_stream, buf, len);
+
+  chBSemWait(&debug_log_sem);
+  bytes = streamRead(&debug_stream, buf, len);
+  chBSemSignal(&debug_log_sem);
+  return bytes;
 }
 
 /**
@@ -88,6 +104,8 @@ BaseSequentialStream *debug_log_stream(void)
  */
 int debug_log_printf(const char *fmt, ...)
 {
+  int written;
+
   if (!debug_log_initialized)
   {
     return 0;
@@ -95,7 +113,9 @@ int debug_log_printf(const char *fmt, ...)
 
   va_list ap;
   va_start(ap, fmt);
-  int written = chvprintf((BaseSequentialStream *)&debug_stream, fmt, ap);
+  chBSemWait(&debug_log_sem);
+  written = chvprintf((BaseSequentialStream *)&debug_stream, fmt, ap);
+  chBSemSignal(&debug_log_sem);
   va_end(ap);
   return written;
 }

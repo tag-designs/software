@@ -562,7 +562,7 @@ bool loadImuEvents(Database &db, SensorLog &log, QString &error)
     resync_marker.timeDomain = SensorTimeDomain::ElapsedSeconds;
 
     while (stmt.next()) {
-        if (stmt.textColumn(1).compare(QStringLiteral("RESYNC"), Qt::CaseInsensitive) == 0) {
+        if (stmt.textColumn(1).startsWith(QStringLiteral("RESYNC"), Qt::CaseInsensitive)) {
             resync_marker.time.append(static_cast<double>(stmt.int64Column(0)) / 1000000.0);
         }
     }

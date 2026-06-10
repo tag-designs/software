@@ -38,6 +38,7 @@ private:
   char rpcbuf[1024*64];  // communication buffer 
 
   bool Call(uint8_t operation, int32_t operand, uint32_t *result);
+  bool ReadCoreRegister(uint32_t reg, uint32_t *value);
   // The following are gathered from tag monitor.
   // location of call buf in tag
   uint32_t call_buf = 0;

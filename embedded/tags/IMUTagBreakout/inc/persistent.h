@@ -70,6 +70,18 @@ typedef struct
   //int32_t lastwrite;        // timestamp of last write
   uint32_t cycle_count;      // used for run statemachine to track data
   TestResult test_result;   // test_result
+  uint32_t exception_count; // unhandled exception counter
+  uint32_t monitor_request_count; // monitor requests started
+  uint32_t monitor_active_request; // active monitor protobuf request tag
+  uint32_t monitor_active_detail; // active monitor request detail
+  uint32_t monitor_active_phase; // active monitor request phase
+  uint32_t monitor_active_len; // active monitor request length
+  uint32_t monitor_complete_count; // monitor requests completed
+  uint32_t monitor_last_request; // last completed monitor request tag
+  uint32_t monitor_last_detail; // last completed monitor request detail
+  uint32_t monitor_last_phase; // last completed monitor phase
+  uint32_t monitor_last_len; // last completed monitor request length
+  uint32_t monitor_last_result_len; // last completed monitor response length
 
 } BackupState;
 

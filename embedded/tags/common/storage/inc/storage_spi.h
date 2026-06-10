@@ -12,6 +12,29 @@
 
 #include <stdint.h>
 
+#ifndef TAG_STORAGE_SPI_POLL_LIMIT
+#define TAG_STORAGE_SPI_POLL_LIMIT 100000U
+#endif
+
+static inline bool tagStorageSpiWait(SPI_TypeDef *spi, uint32_t mask)
+{
+  uint32_t timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+
+  while ((spi->SR & mask) == 0U)
+  {
+    if ((spi->SR & SPI_SR_OVR) != 0U)
+    {
+      volatile uint32_t dummy = spi->DR;
+      dummy = spi->SR;
+      (void)dummy;
+      return false;
+    }
+    if (timeout-- == 0U)
+      return false;
+  }
+  return true;
+}
+
 /** @name Storage SPI transaction helpers
  * SPI transaction helpers for external flash drivers.
  *
@@ -35,7 +58,7 @@
  * @param[in] buf Bytes to transmit.
  * @param[in] n Number of bytes to transmit.
  */
-static inline void tagStorageSpiWrite(const TagSpiDevice *device,
+static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
                                       const uint8_t *buf, uint32_t n)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
@@ -44,12 +67,11 @@ static inline void tagStorageSpiWrite(const TagSpiDevice *device,
   while (n--)
   {
     *spidr = *buf++;
-    while ((spi->SR & SPI_SR_RXNE) == 0)
-    {
-      ;
-    }
+    if (!tagStorageSpiWait(spi, SPI_SR_RXNE))
+      return false;
     (void)*spidr;
   }
+  return true;
 }
 
 /**
@@ -59,13 +81,13 @@ static inline void tagStorageSpiWrite(const TagSpiDevice *device,
  * @param[out] buf Destination buffer.
  * @param[in] n Number of bytes to read.
  */
-static inline void tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
+static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
                                      uint32_t n)
 {
     SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
     volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
-    if (n == 0) return;
+    if (n == 0) return true;
 
     /* --- Prime the pipeline: send first dummy byte before entering loop --- */
     *spidr = device->dummy;
@@ -78,26 +100,21 @@ static inline void tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
          * TXE rises the moment the shift register has accepted the byte from
          * DR, long before RXNE rises for that same byte, so there is no gap.
          */
-        while ((spi->SR & SPI_SR_TXE) == 0)
-        {
-            ;
-        }
+        if (!tagStorageSpiWait(spi, SPI_SR_TXE))
+            return false;
         *spidr = device->dummy;
 
         /* Now collect the byte that was clocked in for the previous write. */
-        while ((spi->SR & SPI_SR_RXNE) == 0)
-        {
-            ;
-        }
+        if (!tagStorageSpiWait(spi, SPI_SR_RXNE))
+            return false;
         *buf++ = *spidr;
     }
 
     /* --- Drain the last byte that is still in flight --- */
-    while ((spi->SR & SPI_SR_RXNE) == 0)
-    {
-        ;
-    }
+    if (!tagStorageSpiWait(spi, SPI_SR_RXNE))
+        return false;
     *buf = *spidr;
+    return true;
 }
 
 /**
@@ -106,7 +123,7 @@ static inline void tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
  * @param[in] device SPI device descriptor for the flash.
  * @param[in] address 24-bit flash address.
  */
-static inline void tagStorageSpiAddress(const TagSpiDevice *device,
+static inline bool tagStorageSpiAddress(const TagSpiDevice *device,
                                         uint32_t address)
 {
   uint8_t buf[3];
@@ -114,7 +131,7 @@ static inline void tagStorageSpiAddress(const TagSpiDevice *device,
   buf[0] = address >> 16;
   buf[1] = address >> 8;
   buf[2] = address & 0xff;
-  tagStorageSpiWrite(device, buf, sizeof(buf));
+  return tagStorageSpiWrite(device, buf, sizeof(buf));
 }
 
 /**
@@ -123,11 +140,14 @@ static inline void tagStorageSpiAddress(const TagSpiDevice *device,
  * @param[in] device SPI device descriptor for the flash.
  * @param[in] cmd Flash command byte.
  */
-static inline void tagStorageSpiCommand(const TagSpiDevice *device, uint8_t cmd)
+static inline bool tagStorageSpiCommand(const TagSpiDevice *device, uint8_t cmd)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
+  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd));
   tagSpiDeselect(device);
+  return ok;
 }
 
 /**
@@ -137,14 +157,17 @@ static inline void tagStorageSpiCommand(const TagSpiDevice *device, uint8_t cmd)
  * @param[in] cmd Flash command byte.
  * @param[in] address 24-bit flash address.
  */
-static inline void tagStorageSpiCommandAddress(const TagSpiDevice *device,
+static inline bool tagStorageSpiCommandAddress(const TagSpiDevice *device,
                                                uint8_t cmd,
                                                uint32_t address)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(device, address);
+  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
+       tagStorageSpiAddress(device, address);
   tagSpiDeselect(device);
+  return ok;
 }
 
 /**
@@ -155,14 +178,17 @@ static inline void tagStorageSpiCommandAddress(const TagSpiDevice *device,
  * @param[out] buf Destination buffer.
  * @param[in] num Number of response bytes to read.
  */
-static inline void tagStorageSpiCommandReceive(const TagSpiDevice *device,
+static inline bool tagStorageSpiCommandReceive(const TagSpiDevice *device,
                                                uint8_t cmd, uint8_t *buf,
                                                uint32_t num)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
-  tagStorageSpiRead(device, buf, num);
+  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
+       tagStorageSpiRead(device, buf, num);
   tagSpiDeselect(device);
+  return ok;
 }
 
 /**
@@ -174,18 +200,21 @@ static inline void tagStorageSpiCommandReceive(const TagSpiDevice *device,
  * @param[out] buf Destination buffer.
  * @param[in] num Number of response bytes to read.
  */
-static inline void tagStorageSpiCommandAddressReceive(
+static inline bool tagStorageSpiCommandAddressReceive(
     const TagSpiDevice *device,
                                                       uint8_t cmd,
                                                       uint32_t address,
                                                       uint8_t *buf,
                                                       uint32_t num)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(device, address);
-  tagStorageSpiRead(device, buf, num);
+  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
+       tagStorageSpiAddress(device, address) &&
+       tagStorageSpiRead(device, buf, num);
   tagSpiDeselect(device);
+  return ok;
 }
 
 /**
@@ -197,17 +226,20 @@ static inline void tagStorageSpiCommandAddressReceive(
  * @param[in] buf Payload bytes to send.
  * @param[in] num Number of payload bytes to send.
  */
-static inline void tagStorageSpiCommandAddressSend(const TagSpiDevice *device,
+static inline bool tagStorageSpiCommandAddressSend(const TagSpiDevice *device,
                                                    uint8_t cmd,
                                                    uint32_t address,
                                                    const uint8_t *buf,
                                                    uint32_t num)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagStorageSpiWrite(device, &cmd, sizeof(cmd));
-  tagStorageSpiAddress(device, address);
-  tagStorageSpiWrite(device, buf, num);
+  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
+       tagStorageSpiAddress(device, address) &&
+       tagStorageSpiWrite(device, buf, num);
   tagSpiDeselect(device);
+  return ok;
 }
 /** @} */
 

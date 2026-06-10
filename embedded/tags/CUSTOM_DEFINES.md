@@ -28,7 +28,7 @@ the next section, not in this table.
 | `CompassTag` | `FIRMWARE_STRING`, `BOARD_NAME`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `ACCEL_CONSTANT`, `MAG_CONSTANT` |
 | `CompassTagAT25` | Same compass set as `CompassTag`, plus `COMPASS_TAG` |
 | `CompassTagAT25Breakout` | Same compass set as `CompassTag`, plus `SWAP_I2C` |
-| `IMUTagBreakout` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LPS22HH`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `USE_STOP1`, `CONFIG_HAS_HIBERNATE`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT`, `SWAP_I2C` |
+| `IMUTagBreakout` | `EXT_FLASH_SIZE`, `FIRMWARE_STRING`, `BOARD_NAME`, `USE_LPS22HH`, `SENSOR_CALIBRATION`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `SENSOR_CONSTANTS`, `CALIBRATION_CONSTANTS`, `USE_STOP1`, `CONFIG_HAS_HIBERNATE`, `TAG_STATUS_FIXED_VDD100`, `LINE_ACCEL_INT`, `ACCEL_CONSTANT`, `MAG_CONSTANT`, `SWAP_I2C` |
 
 Other tag directories still have `custom.h` files, but those targets are not
 currently built by `embedded/tags/CMakeLists.txt`. Their defines are useful as
@@ -83,6 +83,7 @@ switch inventory.
 | `USE_LPS22HH` | Selects the LPS22HH pressure path in `IMUTagBreakout`. | Used by IMUTagBreakout-local sensor code. Prefer module-generated `TAG_SENSOR_PRESSURE_LPS22HH` in shared code. |
 | `USE_STOP1` | Selects Stop1 instead of Stop2 for the shared `stopMilliseconds()` low-power delay helper. | Used by targets that need peripherals unavailable in Stop2, such as IMUTagBreakout's LPTIM2-triggered IMU path. |
 | `CONFIG_HAS_HIBERNATE` | Indicates whether the tag's stored configuration includes hibernation intervals. Defaults to enabled when absent. | Common state-machine and persistent sizing code use this to avoid referencing `sconfig.hibernate` for tags such as IMUTagBreakout that do not store hibernation intervals. |
+| `TAG_STATUS_FIXED_VDD100` | Overrides the reported and state-marker supply voltage with a fixed value in hundredths of a volt, while still using the ADC for die temperature when status is sampled. | `common/core/src/monitor.c` applies this to monitor status responses and skips ADC sampling while acquisition is active; `common/core/src/persistent.c` applies it to state markers after taking the ADC sample needed for temperature. |
 | `TAG_SENSOR_MAG_AK09940A` | Selects AK09940A magnetometer support. | The common AK09940A module supplies the register driver, default shim, and weak self-test hook. Active CompassTag variants bind the concrete `TagRegisterDevice` in family `devices.c`; IMUTagBreakout binds its mixed SPI wiring in `IMUTagBreakout/src/devices.c`. |
 | `LINE_MAG_CS`, `LINE_MAG_SCK`, `LINE_MAG_MISO`, `LINE_MAG_MOSI`, `LINE_MAG_TRG` | Standard magnetometer bus and trigger line names for AK09940A board wiring. | `common/sensors/mag/src/ak09940a_shim.c` uses the full bus-name set only for the weak default legacy binding. Tags with shared or mixed wiring can provide a strong `tagAk09940aDevice()` descriptor from `devices.c` instead of defining board aliases. |
 | `TAG_SENSOR_IMU_LSM6DSV16X` | Selects LSM6DSV16X IMU support. | The common IMU module supplies the descriptor-driven register driver and weak accelerometer self-test hook. IMUTagBreakout binds the concrete `TagLsm6dsv16xDevice` in `IMUTagBreakout/src/devices.c` and maps its self-test to `RUN_AIS2`/`AIS2_FAILED`. |

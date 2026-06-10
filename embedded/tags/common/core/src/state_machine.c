@@ -142,9 +142,12 @@ enum Sleep StateMachine(void)
 
   if ((reset_cause == resetPower) ||
       (reset_cause == resetBrownout) ||
+      (reset_cause == resetException) ||
       (pState->state == STATE_UNSPECIFIED))
   {
-    if ((reset_cause != resetPower) && (reset_cause != resetBrownout))
+    if ((reset_cause != resetPower) &&
+        (reset_cause != resetBrownout) &&
+        (reset_cause != resetException))
       reset_cause = resetPower;
 
     // figure out what state we're in

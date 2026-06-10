@@ -26,6 +26,7 @@
 #define USE_STOP1 1
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define CONFIG_HAS_HIBERNATE 0
+#define TAG_STATUS_FIXED_VDD100 330
 /* Optional logic-analyzer pulse around data log ACK generation. PA4 is
  * LINE_IMU_TRG_TEST on IMUTagv1.
  */
