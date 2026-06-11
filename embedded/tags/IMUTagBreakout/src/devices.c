@@ -8,6 +8,7 @@
 #include "hal.h"
 
 #include "ak09940a.h"
+#include "lps22hh.h"
 #include "app.h"
 #include "core_sync.h"
 #include "custom.h"
@@ -308,6 +309,12 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+
+  if (state != RUNNING){
+        lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
+        lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
+        ak09940aInitPowerDown(TAG_MAG_DEVICE);
+  }
 }
 
 /**

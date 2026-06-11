@@ -1,3 +1,31 @@
+# Power Measurement
+
+- idle:   150uA -- must be something floating
+- 50hz:  1.06mA
+- 100hz: 1.05mA
+- 200hz: 1.2mA
+- 400hz: 1.35mA
+- 800hz: 1.69mA
+- 1600hz: 1.7mA
+
+There's a problem at idle and at finished -- I don't think the devices are shutdown and it doesn't look like there's a clear path where this would happen.  For example, after collecting data, I'm not sure that lptim2 is shut off and the IMU reset.  I don't know about the pressure sensor or magnetometer either.
+
+## Expected Idle power
+
+ - Lsm6dsv16x -- 2.5 uA
+ - ak09940a   -- 1.0 uA
+ - lps22hh.   -- 0.9 uA
+ - mx25l      -- 10  uA
+ - TPS7A02    -- 25  nA
+ - RTC and MPU -- 200 nA
+
+ Total should be ~5 uA
+
+ ## Idle fix
+
+ After ensuring that device are shutdown in standby, power is 6.8uA.  Slightly above budget, but ok for this device.
+
+
 # Measuring Log Download Speed
 
 We instrumented the tag and base in the following way:
@@ -75,15 +103,5 @@ Now the dominant cost is the swd implementation.  Reformating the log message in
 
 ![Timing after optimization](../../docs/Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
 
-# Power Measurement
 
-- idle:   150uA -- must be something floating
-- 50hz:  1.06mA
-- 100hz: 1.05mA
-- 200hz: 1.2mA
-- 400hz: 1.35mA
-- 800hz: 1.69mA
-- 1600hz: 1.7mA
-
-There's a problem at idle and at finished -- I don't think the devices are shutdown and it doesn't look like there's a clear path where this would happen.  For example, after collecting data, I'm not sure that lptim2 is shut off and the IMU reset.  I don't know about the pressure sensor or magnetometer either.
 
