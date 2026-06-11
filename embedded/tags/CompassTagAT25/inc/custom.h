@@ -18,6 +18,8 @@
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
 #define COMPASS_TAG 1
+#define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
+#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
 /** @} */
 
 /** @name Sensor conversion constants

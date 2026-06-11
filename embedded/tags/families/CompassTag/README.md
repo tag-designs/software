@@ -39,6 +39,14 @@ the core bus-power descriptor helpers, so storage choice can still vary by
 module while the family owns only the pin policy that is genuinely specific to
 the LIS2DU12/CompassTag layout.
 
+The AT25 variants also opt into DMA-backed storage block reads and writes from
+their local `custom.h` files. Because all CompassTag variants share this
+family's ChibiOS configuration, `cfg/mcuconf.h` must continue to define
+`STM32_DMA_REQUIRED`; without it the block-transfer switches compile the DMA
+path but the STM32 DMA support code is not linked. The plain `CompassTag`
+variant does not currently enable the DMA block switches, even though the shared
+family configuration makes DMA support available.
+
 If a divergent source or config becomes common again, move it here and remove
 the local copy from all variants. If a variant needs a temporary board-specific
 power or ChibiOS experiment, add a same-named local `src/pwr.c` or `cfg/*.h`;

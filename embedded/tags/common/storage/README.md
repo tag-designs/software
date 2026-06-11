@@ -33,13 +33,18 @@ Older storage drivers mix two concerns:
 - assumptions about the tag's flash bus and chip-select line.
 
 The converted drivers use `storage_spi.h` for command/address/data transaction
-framing. That helper
-intentionally uses conservative byte-at-a-time SPI transfers, even though the
-core SPI layer also has pipelined stream helpers. The flash command path keeps
-chip select asserted across tightly ordered command, address, and data phases,
-and the byte-paced transfer matches the behavior that has tested correctly for
-erase/write/read operations. Tag/family code owns the board descriptor and the
-chip driver owns only chip commands.
+framing. Command and address phases intentionally use conservative
+byte-at-a-time SPI transfers. Long data phases go through block-transfer hooks:
+`tagStorageSpiBlockRead()` and `tagStorageSpiBlockWrite()`. By default those
+hooks fall back to the conservative read/write helpers. Targets that have been
+validated on hardware can opt into the DMA implementations with
+`TAG_STORAGE_SPI_DMA_BLOCK_READ` and `TAG_STORAGE_SPI_DMA_BLOCK_WRITE`.
+
+Keeping command/address traffic conservative matters because flash protocols
+depend on tightly ordered chip-select, command, address, data, and poll phases.
+Keeping the long data phases behind block hooks lets a tag use DMA for 2 KiB
+log pages without changing chip command code, and leaves a straightforward path
+for future DMA or peripheral-specific transfer implementations.
 
 `storage_device.h` describes the board side of an external flash device: SPI
 bus and sector geometry. AT25XE and MX25R publish their geometry from their
@@ -93,8 +98,21 @@ flowchart TD
 
 ## Planned Cleanup
 
-TODO: find and validate a safe pipelined SPI transfer routine before using
-pipelined transfers as the default for shared SPI device I/O. The conservative
-byte-at-a-time path is currently the known-good behavior for flash erase/write
-and CompassTag calibration sensor access; any faster routine needs hardware
-testing on storage, AK09940A, and LIS2DU12 use cases.
+The current block DMA path is intentionally opt-in. Before enabling it on a new
+tag variant, check the following:
+
+- The target `custom.h` defines `TAG_STORAGE_SPI_DMA_BLOCK_READ` and/or
+  `TAG_STORAGE_SPI_DMA_BLOCK_WRITE`.
+- The target or shared family `mcuconf.h` defines `STM32_DMA_REQUIRED`, so
+  ChibiOS links the STM32 DMA support code.
+- The storage SPI descriptor provides valid RX and TX DMA stream IDs and DMA
+  channel selections for the SPI peripheral used by external flash.
+- The storage chip driver uses the common command/address helpers rather than
+  a local hand-rolled read/write path, so only the large data phase is moved to
+  DMA.
+- The variant has been tested on hardware for erase, write, download/readback,
+  and monitor attach while logging.
+
+Do not make DMA the shared default for all SPI device I/O. Sensor register
+traffic and short flash commands should remain on the conservative path unless
+they have their own measured need and hardware validation.

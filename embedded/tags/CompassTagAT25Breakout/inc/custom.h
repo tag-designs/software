@@ -17,6 +17,8 @@
 #define BOARD_NAME "CompassTagv1"
 #define QTMONITOR_VERSION 2.0
 #define PROTOBUFSIZE 4096
+#define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
+#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
 
 #define SWAP_I2C 1
 /** @} */
