@@ -85,6 +85,8 @@ static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
   return false;
 }
 
+static bool reset_erase_started;
+
 /**
  * @brief Forward declaration for the reset cleanup state.
  *
@@ -122,17 +124,12 @@ eventmask_t events = 0;
 /**
  * @brief Run one state-machine step and return the requested sleep mode.
  *
+ * @param[in] input_events Pending hardware and monitor work events to dispatch.
  * @return Sleep mode requested by the selected state handler.
  */
-enum Sleep StateMachine(void)
+enum Sleep StateMachine(eventmask_t input_events)
 {
-  // read the event flags -- we do this here so any later
-  // arrivals will cause another wakeup
-
-  // we need to pass these events to the states or 
-  // pass the alarm information through a shared variable.
-
-  events = chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE);
+  events = input_events;
 
   // power outage ?
   // this needs work !  We probably need to detect whether pState
@@ -275,7 +272,7 @@ enum Sleep StateMachine(void)
 
   // check monitor events
 
-  if (events & EVT_SELFTEST)
+  if (events & MON_WORK_SELFTEST)
   {
     if (pState->state == TagState_IDLE)
     {
@@ -283,14 +280,14 @@ enum Sleep StateMachine(void)
     }
   }
 
-  if (events & EVT_START)
+  if (events & MON_WORK_START)
   {
     if (pState->state == TagState_IDLE)
     {
       return Configured(T_INIT, State_EVENT_STARTCMD);
     }
   }
-  if (events & EVT_STOP)
+  if (events & MON_WORK_STOP)
   {
     bool stop_requested =
         (pState->state == TagState_CONFIGURED) ||
@@ -312,7 +309,7 @@ enum Sleep StateMachine(void)
     }
 #endif
   }
-  if (events & EVT_RESET)
+  if (events & MON_WORK_RESET)
   {
     if ((pState->state == TagState_ABORTED) ||
         (pState->state == TagState_FINISHED) ||
@@ -323,7 +320,7 @@ enum Sleep StateMachine(void)
   }
 
   #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
-  if (events & EVT_CALIBRATE)
+  if (events & MON_WORK_CALIBRATE)
   {
     if (pState->state == TagState_IDLE)
     {
@@ -392,12 +389,24 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   {
     pState->state = TagState_sRESET;
     recordState(reason);
-    restoreLog();
+    reset_erase_started = false;
   }
 
-  // clean up the persistent state -- External First !
-  eraseExternal();
+  if (!reset_erase_started)
+  {
+    restoreLog();
+    eraseExternalStart();
+    reset_erase_started = true;
+  }
+
+  if (eraseExternalNextSector())
+  {
+    return SLEEP;
+  }
+
+  eraseExternalFinish();
   erasePersistent();
+  reset_erase_started = false;
 
  // pState->logcnt = 0;
 

@@ -179,14 +179,6 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
   }
     */
 
-  // write debug request data (operand,operation)
-
-  if (!WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff)))
-  {
-    log_error("write reg failed");
-    return false;
-  }
-
   // write debug interrupt request -- Set MON_PEND, MON_REQ in DEMCR
   // VC_CORERESET is used as attachment flag to embedded app.
   // This also causes core to halt in reset vector after reset
@@ -198,9 +190,21 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     return false;
   }
 
+  /*
+   * DCRDR is both the request mailbox and the response mailbox.  Do not write a
+   * new request into it until the previous DebugMon transaction is fully idle.
+   */
   if (demcr & (MON_PEND | MON_REQ)){
     log_error("monitor pending bit already set op=%s(0x%x) operand=%d demcr=0x%x",
               monitor_operation_name(operation), operation, operand, demcr);
+    return false;
+  }
+
+  // write debug request data (operand,operation)
+
+  if (!WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff)))
+  {
+    log_error("write reg failed");
     return false;
   }
 

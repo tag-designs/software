@@ -1,6 +1,6 @@
 /**
  * @file handlers.c
- * @brief Debug monitor interrupt and helper thread for protobuf request handling.
+ * @brief Debug monitor interrupt and cooperative protobuf request handling.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -13,9 +13,9 @@
 #include "tag.pb.h"
 
 #include "core_types.h"
+#include "core_events.h"
+#include "core_sync.h"
 #include "custom.h"
-#include "debug_log.h"
-#include "persistent.h"
 
 #define xstr(s) str(s)
 #define str(s) #s
@@ -24,7 +24,7 @@
 /** @name Debug monitor globals
  *  Debug Monitor Interface
  * Shared buffers and monitor metadata used by the DebugMon handler and helper
- * thread to exchange protobuf packets with the host monitor.
+ * main thread to exchange protobuf packets with the host monitor.
  * @{
  */
 
@@ -36,7 +36,7 @@ static const char SHAStr[64] __attribute__((aligned(4))) = GIT_SHA ;
  * @param[in] len Number of request bytes in ProtoBuf.
  * @return Encoded acknowledgement byte count.
  */
-extern int proto_eval(int);
+extern int proto_eval(int, uint32_t *);
 
 #ifndef PROTOBUFSIZE
 #define PROTOBUFSIZE 2056
@@ -55,7 +55,7 @@ const int protobuf_size = PROTOBUFSIZE;
 
 /** @name Optional debug clock scaling
  * Clock helpers speed monitor transfers during debugging and restore the normal
- * low-power clock before the helper thread exits.
+ * low-power clock when the monitor session ends.
  * @{
  */
 /**
@@ -101,130 +101,120 @@ static void slow_msi(void){
 #endif
 
 
-/** @name Monitor helper thread
- * The DebugMon ISR stays short by waking this thread to run protobuf decoding
- * and command evaluation outside interrupt context.
+/** @name Cooperative monitor request state
+ * DebugMon only latches protobuf work and signals the main thread. The main
+ * state-machine path evaluates monitor requests at cooperative safe points.
  * @{
  */
-static thread_t *tpMonitor = NULL;
-static thread_reference_t trp NOINIT;  // for synchronous wait
+static volatile bool monitor_enabled = false;
+static volatile bool monitor_pending = false;
+static volatile bool monitor_timeout_pending = false;
+static int monitor_operand = 0;
+static virtual_timer_t monitor_timer;
+static bool monitor_timer_initialized = false;
+#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
+static bool monitor_clock_fast = false;
+#endif
 
-static THD_FUNCTION(MonitorThread, arg);
-static THD_WORKING_AREA(waMonitor, 2048) NOINIT;
-static const thread_descriptor_t monitor_descriptor = {
-    "monitor",
-    THD_WORKING_AREA_BASE(waMonitor),
-    THD_WORKING_AREA_END(waMonitor),
-    NORMALPRIO, 
-    MonitorThread,
-    NULL};
-
-/**
- * @brief Evaluate monitor protobuf requests and acknowledge completion to DebugMon.
- *
- * @param[in] arg Unused ChibiOS thread argument.
- */
-static THD_FUNCTION(MonitorThread, arg) {
+static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
+{
+  (void)vtp;
   (void)arg;
-  msg_t msg;
-  int len;
 
-  // chRegSetThreadName("Monitor");
+  chSysLockFromISR();
+  if (monitor_enabled)
+    monitor_timeout_pending = true;
+  if (tpMain)
+    chEvtSignalI(tpMain, EVT_MONITOR_TIMEOUT);
+  chSysUnlockFromISR();
+}
 
-  // acknowledge MONITORSTART
+static void monitorArmTimeoutI(void)
+{
+  if (!monitor_timer_initialized)
+  {
+    chVTObjectInit(&monitor_timer);
+    monitor_timer_initialized = true;
+  }
+  monitor_timeout_pending = false;
+  chVTSetI(&monitor_timer, chTimeS2I(60), monitor_timeout_cb, NULL);
+}
+
+static void monitorDisarmTimeoutI(void)
+{
+  if (monitor_timer_initialized)
+    chVTResetI(&monitor_timer);
+}
+
+static void monitorStopI(bool timed_out)
+{
+  monitorDisarmTimeoutI();
+  monitor_timeout_pending = false;
+  monitor_enabled = false;
+  monitor_pending = false;
+
+#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
+  if (monitor_clock_fast)
+  {
+    slow_msi();
+    monitor_clock_fast = false;
+  }
+#endif
+
+  if (timed_out)
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+}
+
+uint32_t monitorServicePending(uint32_t monitor_events)
+{
+  int len = 0;
+  uint32_t work = 0;
+  bool do_eval = false;
 
   chSysLock();
-  tpMonitor = chThdGetSelfX();
-  CoreDebug->DCRDR = 1;
-  (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-
-  debug_log_init();
-  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
-      (pState->exception_count != 0U))
+  if (monitor_enabled && monitor_pending)
   {
-    chSysUnlock();
-    debug_log_printf("Tag unhandled exceptions: %u\r\n",
-                     (unsigned)pState->exception_count);
-    chSysLock();
-  }
-  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
-      (pState->monitor_active_phase != 0U))
-  {
-    pState->monitor_last_request = pState->monitor_active_request;
-    pState->monitor_last_detail = pState->monitor_active_detail;
-    pState->monitor_last_phase = pState->monitor_active_phase;
-    pState->monitor_last_len = pState->monitor_active_len;
-    pState->monitor_last_result_len = 0xffffffffU;
-    chSysUnlock();
-    debug_log_printf(
-        "Tag monitor incomplete: count=%u request=%u detail=%u phase=%u len=%u\r\n",
-        (unsigned)pState->monitor_request_count,
-        (unsigned)pState->monitor_active_request,
-        (unsigned)pState->monitor_active_detail,
-        (unsigned)pState->monitor_active_phase,
-        (unsigned)pState->monitor_active_len);
-    chSysLock();
-    pState->monitor_active_phase = 0;
-  }
-  if ((pState->valid == BACKUP_STATE_VALID_MAGIC) &&
-      (pState->monitor_complete_count != 0U))
-  {
-    chSysUnlock();
-    debug_log_printf(
-        "Tag monitor last: count=%u request=%u detail=%u phase=%u len=%u result=%u\r\n",
-        (unsigned)pState->monitor_complete_count,
-        (unsigned)pState->monitor_last_request,
-        (unsigned)pState->monitor_last_detail,
-        (unsigned)pState->monitor_last_phase,
-        (unsigned)pState->monitor_last_len,
-        (unsigned)pState->monitor_last_result_len);
-    chSysLock();
-  }
-
-  // system locked !!
-
-  #if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-  fast_msi();
-  #endif
-
-  while (1) {
-    // system locked !!
-
-    msg = chThdSuspendTimeoutS(&trp,chTimeS2I(60));
-
-    if (msg == MSG_RESET) {
-      break;
+    monitor_pending = false;
+    if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk)
+    {
+      len = monitor_operand;
+      monitorDisarmTimeoutI();
+      do_eval = true;
     }
-    if (msg == MSG_TIMEOUT) {
-      // timeout -- force end of debug
-      CoreDebug->DEMCR &=  ~CoreDebug_DEMCR_VC_CORERESET_Msk;
-      break;
-    }
-    chSysUnlock();
-    len = proto_eval(msg);
-    chSysLock();
-    CoreDebug->DCRDR = len;
-    (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-    // system locked !!
   }
+  else if ((monitor_events & EVT_MONITOR_TIMEOUT) && monitor_timeout_pending)
+  {
+    monitorStopI(true);
+    chSysUnlock();
+    return 0;
+  }
+  chSysUnlock();
 
-  #if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-  slow_msi();
-  #endif
+  if (!do_eval)
+    return 0;
 
-  // system locked
-  //   clear monitor thread pointers
-  tpMonitor = NULL;
-  trp = NULL;
-  // acknowledge and exit
-  (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-  chThdExitS(0);
+  len = proto_eval(len, &work);
+
+  chSysLock();
+  CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+  if (monitor_enabled)
+    monitorArmTimeoutI();
+  chSysUnlock();
+
+  return work;
+}
+
+bool monitorNeedsService(void)
+{
+  return monitor_pending;
 }
 /** @} */
 
 /** @name Debug monitor interrupt
  * Interrupt entry point used by the host monitor to discover buffers, start or
- * stop the helper thread, and hand protobuf packet lengths to it.
+ * stop monitor sessions, and hand protobuf packet lengths to the main thread.
  * @{
  */
 /**
@@ -261,36 +251,42 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
         (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
         break;
       case MONITORSTART:
-        if (!tpMonitor) {
-          chSysLockFromISR();
-          trp = NULL;
-          tpMonitor = NULL;
-          chThdCreateI(&monitor_descriptor);
-          chSysUnlockFromISR();
-          // thread handles acknowledgement
-        } else {
-          (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        chSysLockFromISR();
+        monitor_enabled = true;
+        monitor_pending = false;
+        monitor_timeout_pending = false;
+        monitorArmTimeoutI();
+#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
+        if (!monitor_clock_fast)
+        {
+          fast_msi();
+          monitor_clock_fast = true;
         }
+#endif
+        CoreDebug->DCRDR = 1;
+        (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        if (tpMain)
+          chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
+        chSysUnlockFromISR();
         break;
       case MONITORSTOP:
-        if (tpMonitor && trp) {
-          chSysLockFromISR();
-          chThdResumeI(&trp, MSG_RESET);  // exit
-          chSysUnlockFromISR();
-        } else {
-          (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-        }
-        // thread clears req when it exits
+        chSysLockFromISR();
+        monitorStopI(false);
+        chSysUnlockFromISR();
         break;
-      case PROTOBUF:  // execute with helper thread
-        if (tpMonitor && trp) {
-          chSysLockFromISR();
+      case PROTOBUF:  // execute later in main-thread context
+        chSysLockFromISR();
+        if (monitor_enabled && !monitor_pending) {
+          monitor_operand = operand;
+          monitor_pending = true;
           CoreDebug->DCRDR = 0;
-          chThdResumeI(&trp, (msg_t)operand);  // eval
-          chSysUnlockFromISR();
+          monitorArmTimeoutI();
+          if (tpMain)
+            chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
         } else {
           (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
         }
+        chSysUnlockFromISR();
         break;
       default:
         (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;

@@ -178,6 +178,23 @@ void erasePersistent(void);
 void eraseExternal(void);
 
 /**
+ * @brief Begin an incremental external erase operation.
+ */
+void eraseExternalStart(void);
+
+/**
+ * @brief Erase the next external sector in an incremental erase operation.
+ *
+ * @return true when more external erase work remains.
+ */
+bool eraseExternalNextSector(void);
+
+/**
+ * @brief Finish an incremental external erase operation.
+ */
+void eraseExternalFinish(void);
+
+/**
  * @brief Erase one external storage block when a tag provides block erasure.
  */
 void eraseExternalBlock(void);

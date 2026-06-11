@@ -442,8 +442,7 @@ static bool monitor_request_allowed(const Req *request)
 
   case Req_erase_tag:
     return (pState->state == TagState_ABORTED) ||
-           (pState->state == TagState_FINISHED) ||
-           (pState->state == TagState_sRESET);
+           (pState->state == TagState_FINISHED);
 
   case Req_start_tag:
   case Req_test_tag:
@@ -484,19 +483,23 @@ static bool monitor_request_allowed(const Req *request)
 
 /** @name Protocol request evaluation
  * Decode host requests, perform side effects that are safe in monitor context,
- * and signal the main thread for state-machine commands.
+ * and return state-machine command work as a bitmask.
  * @{
  */
 /**
  * @brief Evaluate one protobuf request from the shared monitor buffer.
  *
  * @param[in] len Number of request bytes present in ProtoBuf.
+ * @param[out] work State-machine command bits requested by this packet.
  * @return Encoded acknowledgement byte count.
  */
-int proto_eval(int len)
+int proto_eval(int len, uint32_t *work)
 {
   int err;
   bool status;
+
+  if (work)
+    *work = 0;
 
   pState->monitor_request_count++;
   pState->monitor_active_request = 0;
@@ -551,7 +554,8 @@ int proto_eval(int len)
 
   case Req_erase_tag: // erase
     pState->monitor_active_phase = MONITOR_PHASE_ERASE;
-    chEvtSignal(tpMain, EVT_RESET);
+    if (work)
+      *work |= MON_WORK_RESET;
     return monitorReturn(errAck(Ack_OK));
 
   case Req_start_tag: // start
@@ -559,7 +563,8 @@ int proto_eval(int len)
     pState->monitor_active_phase = MONITOR_PHASE_START;
     if (writeConfig(&req.payload.start))
     {
-      chEvtSignal(tpMain, EVT_START);
+      if (work)
+        *work |= MON_WORK_START;
       return monitorReturn(errAck(Ack_OK));
     }
     else
@@ -571,13 +576,15 @@ int proto_eval(int len)
 
   case Req_stop_tag: // stop
     pState->monitor_active_phase = MONITOR_PHASE_STOP;
-    chEvtSignal(tpMain, EVT_STOP);
+    if (work)
+      *work |= MON_WORK_STOP;
     return monitorReturn(errAck(Ack_OK));
 
   case Req_test_tag: // self test
     pState->monitor_active_phase = MONITOR_PHASE_TEST;
     test_to_run = req.payload.test;
-    chEvtSignal(tpMain, EVT_SELFTEST);
+    if (work)
+      *work |= MON_WORK_SELFTEST;
     return monitorReturn(errAck(Ack_OK));
   case Req_set_rtc_tag: // Write RTC
     pState->monitor_active_phase = MONITOR_PHASE_SET_RTC;
@@ -610,7 +617,8 @@ int proto_eval(int len)
 #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   case Req_calibrate_tag:
     pState->monitor_active_phase = MONITOR_PHASE_CALIBRATE;
-    chEvtSignal(tpMain, EVT_CALIBRATE);
+    if (work)
+      *work |= MON_WORK_CALIBRATE;
     return monitorReturn(errAck(Ack_OK));
   case Req_caldata_tag:
     pState->monitor_active_phase = MONITOR_PHASE_CALDATA;

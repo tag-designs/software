@@ -23,14 +23,15 @@ extern thread_t *tpMain;
 /**
  * @brief Run one state-machine step and return the requested sleep mode.
  *
+ * @param[in] events Pending hardware and monitor work events to dispatch.
  * @return Sleep mode requested by the current state.
  */
-enum Sleep StateMachine(void);
+enum Sleep StateMachine(eventmask_t events);
 
 /**
  * @brief Collect pending hardware and monitor events into the shared event mask.
  */
-void CheckEvents(void);
+eventmask_t CheckEvents(void);
 
 /**
  * @brief Initialize board devices and persistent runtime state.

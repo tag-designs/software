@@ -14,13 +14,19 @@
 #include "core_sync.h"
 #include "core_types.h"
 #include "custom.h"
+#include "debug_log.h"
 #include "device.h"
+#include "monitor.h"
 #include "persistent.h"
 #include "power.h"
 #include "rtc_api.h"
 #include "timekeeping.h"
 
 #include "config.h"
+
+#ifndef TAG_DEBUG_MONITOR_PRIORITY
+#define TAG_DEBUG_MONITOR_PRIORITY 8U
+#endif
 
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
@@ -33,6 +39,11 @@ bool rtcInitializedAtBoot;
 
 volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
 /** @} */
+
+void tagSystemInitHook(void)
+{
+  NVIC_SetPriority(DebugMonitor_IRQn, TAG_DEBUG_MONITOR_PRIORITY);
+}
 
 /** @name Runtime initialization and reset handling
  * Boot helpers decide whether retained state is usable, reset device state when
@@ -51,8 +62,10 @@ void deviceInit(int force)
   // tag is reseting properly when power is disconnected !
   // -- might check RTC status bit for "unconfigured"
 
-  if ((pState->resetCause == resetPower) ||
-      (pState->resetCause == resetBrownout) || force)
+  bool power_init = (pState->resetCause == resetPower) ||
+                    (pState->resetCause == resetBrownout);
+
+  if (power_init || force)
   {
     // make sure everything is zeroed
 
@@ -71,9 +84,11 @@ void deviceInit(int force)
     pState->monitor_last_len = 0;
     pState->monitor_last_result_len = 0;
 
-    // configure RTC
+    // Configure the external RTC only for true power initialization. Forced
+    // cleanup runs under monitor control and should avoid unnecessary I2C work.
 
-    tagRtcInit();
+    if (power_init)
+      tagRtcInit();
 
     tagDevicesDeinit();
 
@@ -174,7 +189,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
 /**
  * @brief Clear wake flags and signal pending RTC events to the main thread.
  */
-void CheckEvents(void)
+eventmask_t CheckEvents(void)
 {
   // clear wakeup flag, then check status
   // we may get an extra wakeup, but we won't miss
@@ -212,9 +227,9 @@ void CheckEvents(void)
   uint32_t isr = RTCD1.rtc->ISR;
   RTCD1.rtc->ISR = (isr & ~clear);  
 
-// pass set alarms to main thread as events
+// return set alarms as events
 
-  chEvtSignal(tpMain, EVT_RTC_MASK(isr));
+  return EVT_RTC_MASK(isr);
 }
 /** @} */
 
@@ -248,6 +263,7 @@ int main(void)
   // PWR->CR1 |= PWR_CR1_LPR_Msk;
 
   adcInit();
+  debug_log_init();
   tagPowerInit();
   tagDevicesInit();
   
@@ -275,11 +291,17 @@ int main(void)
   while (1)
   {
     enum Sleep sleepmode = STANDBY;
+    eventmask_t pending_events;
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     pState->safe = false;                          // critical section start
-    
-    CheckEvents();                                 // see if adxl or rtc have events
-    sleepmode = StateMachine();                    // process events
+
+    pending_events = CheckEvents();               // see if adxl or rtc have events
+    pending_events |= chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE);
+    if ((pending_events & EVT_MONITOR_ALL) || monitorNeedsService())
+    {
+      pending_events |= monitorServicePending((uint32_t)pending_events);
+    }
+    sleepmode = StateMachine(pending_events);      // process events
 
     // critical section end
 

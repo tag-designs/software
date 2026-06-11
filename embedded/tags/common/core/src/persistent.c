@@ -89,6 +89,20 @@ void __attribute__((weak)) eraseExternal(void)
 {
 }
 
+void __attribute__((weak)) eraseExternalStart(void)
+{
+  eraseExternal();
+}
+
+bool __attribute__((weak)) eraseExternalNextSector(void)
+{
+  return false;
+}
+
+void __attribute__((weak)) eraseExternalFinish(void)
+{
+}
+
 /**
  * @brief Default no-op block erase for tags without external storage.
  */

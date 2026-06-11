@@ -273,6 +273,31 @@ The config include order is variant `cfg/` first and family `cfg/` second, so a
 variant can override a shared `chconf.h`, `halconf.h`, or `mcuconf.h` without
 copying the family defaults.
 
+## ChibiOS Configuration Requirements
+
+Every tag implementation that uses `tag_core` and the SWD monitor must set the
+DebugMonitor system-handler priority during ChibiOS system initialization. The
+DebugMonitor exception resets to a high priority that can preempt ChibiOS kernel
+critical sections. The monitor handler uses ChibiOS IRQ-safe services, so it
+must run at a normal kernel-callable priority, not as a fast interrupt.
+
+Put the priority setup in the tag or family `cfg/chconf.h`
+`CH_CFG_SYSTEM_INIT_HOOK()` so it runs at the end of `chSysInit()`, before
+interrupts are enabled and multitasking begins:
+
+```c
+#define CH_CFG_SYSTEM_INIT_HOOK() {                                         \
+  extern void tagSystemInitHook(void);                                      \
+  tagSystemInitHook();                                                      \
+}
+```
+
+The shared core implementation provides `tagSystemInitHook()` and sets
+`DebugMonitor_IRQn` to `TAG_DEBUG_MONITOR_PRIORITY`, which defaults to priority
+8. Tags may override that priority, but it must remain in the ChibiOS
+kernel-callable interrupt range. Do not leave DebugMonitor at the reset default
+priority.
+
 Board code is generated under the CMake build tree by `embedded/boards` and
 included through the board fragment selected in `project.mk`:
 

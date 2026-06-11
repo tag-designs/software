@@ -37,6 +37,16 @@ active tags unless a tag provides a same-named local override.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
+## Monitor Priority
+
+The SWD monitor runs through the Cortex-M DebugMonitor system exception. Tags
+that use `tag_core` must set `DebugMonitor_IRQn` to a ChibiOS kernel-callable
+priority from `CH_CFG_SYSTEM_INIT_HOOK()` in their `cfg/chconf.h`. Leaving
+DebugMonitor at the reset-default high priority lets it preempt ChibiOS critical
+sections while the monitor handler calls IRQ-safe kernel services, which can
+corrupt scheduler context. The shared core provides `tagSystemInitHook()` and a
+default `TAG_DEBUG_MONITOR_PRIORITY` of 8 for this purpose.
+
 ## Power And Bus Ownership
 
 The standby path has two layers:

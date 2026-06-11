@@ -16,6 +16,9 @@
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
 static t_DataLog databuf[DATALOG_SAMPLES] NOINIT;
 static volatile int sectors_erased NOINIT;
+static uint32_t erase_sector_size;
+static uint32_t erase_sector_total;
+static bool erase_external_active;
 
 extern int encode_ack(void);
 
@@ -83,6 +86,14 @@ static bool readDataHeader(int index, t_DataHeader *header)
  */
 void eraseExternal()
 {
+  eraseExternalStart();
+  while (eraseExternalNextSector())
+    chThdYield();
+  eraseExternalFinish();
+}
+
+void eraseExternalStart(void)
+{
   const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
   /*
    * Erase only the sectors touched by pages with valid internal headers.
@@ -92,22 +103,38 @@ void eraseExternal()
    */
   const uint32_t dirty_sectors = dirtyExternalSectors();
 
+  erase_sector_size = sector_size;
+  erase_sector_total = dirty_sectors;
+  sectors_erased = 0;
+  erase_external_active = false;
+
   if (sector_size == 0U || dirty_sectors == 0U) {
-    pState->external_blocks = 0;
-    sectors_erased = 0;
     return;
   }
 
-  sectors_erased = 0;
+  erase_external_active = true;
   tagStorageWake(TAG_EXTERNAL_FLASH);
-  for (uint32_t i = 0; i < dirty_sectors; i++) {
-    tagStorageSectorErase(TAG_EXTERNAL_FLASH, i * sector_size);
+}
+
+bool eraseExternalNextSector(void)
+{
+  if (!erase_external_active)
+    return false;
+
+  if ((uint32_t)sectors_erased < erase_sector_total) {
+    tagStorageSectorErase(TAG_EXTERNAL_FLASH,
+                          (uint32_t)sectors_erased * erase_sector_size);
     sectors_erased++;
-    // allow monitor a chance
-    if (i%8 == 7)
-      chThdYield();  
   }
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  return (uint32_t)sectors_erased < erase_sector_total;
+}
+
+void eraseExternalFinish(void)
+{
+  if (erase_external_active)
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+  erase_external_active = false;
   pState->external_blocks = 0;
   sectors_erased = 0;
 }

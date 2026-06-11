@@ -8,6 +8,8 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+#include <stdbool.h>
+
 #include "custom.h"
 #include "config.h"
 
@@ -134,6 +136,12 @@ void recordState(State_Event reason);
 void erasePersistent(void);
 /** @brief Erase all external log storage. */
 void eraseExternal(void);
+/** @brief Begin incremental external log erase. */
+void eraseExternalStart(void);
+/** @brief Erase one external sector; true if more work remains. */
+bool eraseExternalNextSector(void);
+/** @brief Finish incremental external log erase. */
+void eraseExternalFinish(void);
 /** @brief Erase one external log block, when supported by the target. */
 void eraseExternalBlock(void);
 /** @brief Report external flash capacity in bytes. */
