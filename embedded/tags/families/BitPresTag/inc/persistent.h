@@ -8,6 +8,8 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+#include <stdbool.h>
+
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
 /** End of the internal flash region reserved for persistent state. */
@@ -112,6 +114,15 @@ void recordState(State_Event reason);
 void erasePersistent(void);
 /** @brief Erase all external log storage. */
 void eraseExternal(void);
+/** @brief Prepare incremental external log erase. */
+void eraseExternalStart(void);
+/** @brief Erase the next external sector.
+ *
+ * @return true when more sectors remain.
+ */
+bool eraseExternalNextSector(void);
+/** @brief Finish incremental external log erase. */
+void eraseExternalFinish(void);
 /** @brief Erase one external log block, when supported by the target. */
 void eraseExternalBlock(void);
 /**

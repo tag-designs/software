@@ -17,6 +17,8 @@
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 static volatile int sectors_erased NOINIT;
+static uint32_t erase_sector_total;
+static bool erase_external_active;
 
 /**
  * @brief Raise MSI clock speed while formatting large monitor log responses.
@@ -126,17 +128,43 @@ static bool eraseExternalSector(int sector){
  */
 void eraseExternal()
 {
+  eraseExternalStart();
+  while (eraseExternalNextSector())
+    chThdYield();
+  eraseExternalFinish();
+}
+
+void eraseExternalStart(void)
+{
+  erase_sector_total = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
   sectors_erased = 0;
+  erase_external_active = false;
+
+  if (erase_sector_total == 0U)
+    return;
+
+  erase_external_active = true;
   tagStorageWake(TAG_EXTERNAL_FLASH);
-  for (int i = 0; i < tagStorageSectorCount(TAG_EXTERNAL_FLASH); i++) {
-    // check them all
-    eraseExternalSector(i);
+}
+
+bool eraseExternalNextSector(void)
+{
+  if (!erase_external_active)
+    return false;
+
+  if ((uint32_t)sectors_erased < erase_sector_total) {
+    eraseExternalSector(sectors_erased);
     sectors_erased++;
-    // allow monitor a chance
-    if (i%8 == 7)
-      chThdYield();  
   }
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  return (uint32_t)sectors_erased < erase_sector_total;
+}
+
+void eraseExternalFinish(void)
+{
+  if (erase_external_active)
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+  erase_external_active = false;
   pState->external_blocks = 0;
   sectors_erased = 0;
 }
@@ -160,6 +188,11 @@ uint32_t externalFlashSize(void)
 int externalFlashSectorsErased(void)
 {
   return sectors_erased;
+}
+
+int externalFlashSectorsToErasePlusOne(void)
+{
+  return tagStorageSectorCount(TAG_EXTERNAL_FLASH) + 1;
 }
 
 /**

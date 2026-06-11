@@ -13,6 +13,10 @@
 #include "persistent.h"
 #include "power.h"
 
+#ifndef BACKUP_STATE_VALID_MAGIC
+#define BACKUP_STATE_VALID_MAGIC 1U
+#endif
+
 #if defined(__has_include)
 #if __has_include("board_standby.h")
 #include "board_standby.h"
@@ -205,7 +209,6 @@ void _unhandled_exception(void)
 {
   if (pState->valid == BACKUP_STATE_VALID_MAGIC)
   {
-    pState->exception_count++;
     pState->resetCause = resetException;
     pState->state = EXCEPTION;
   }

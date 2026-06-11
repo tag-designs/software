@@ -27,7 +27,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <strings.h>
-#include "chprintf.h"
 
 #if !defined(CONFIG_HAS_HIBERNATE)
 #define CONFIG_HAS_HIBERNATE 1
@@ -71,39 +70,6 @@ static int16_t status_temp10;
 
 static bool monitor_acquisition_active(void);
 
-enum
-{
-  MONITOR_PHASE_IDLE = 0,
-  MONITOR_PHASE_DECODE = 1,
-  MONITOR_PHASE_PERMISSION = 2,
-  MONITOR_PHASE_INFO = 10,
-  MONITOR_PHASE_STATUS = 11,
-  MONITOR_PHASE_CONFIG = 12,
-  MONITOR_PHASE_ERASE = 20,
-  MONITOR_PHASE_START = 21,
-  MONITOR_PHASE_STOP = 22,
-  MONITOR_PHASE_TEST = 23,
-  MONITOR_PHASE_SET_RTC = 24,
-  MONITOR_PHASE_DATA_LOG = 30,
-  MONITOR_PHASE_SYSTEM_LOG = 31,
-  MONITOR_PHASE_CALIBRATE = 40,
-  MONITOR_PHASE_CALDATA = 41,
-  MONITOR_PHASE_WRITE_CAL = 42,
-  MONITOR_PHASE_READ_CAL = 43,
-  MONITOR_PHASE_ERROR_ACK = 90
-};
-
-enum
-{
-  MONITOR_STATUS_DETAIL_START = 1,
-  MONITOR_STATUS_DETAIL_MEASURE = 2,
-  MONITOR_STATUS_DETAIL_FIELDS = 3,
-  MONITOR_STATUS_DETAIL_ERASE_PROGRESS = 4,
-  MONITOR_STATUS_DETAIL_TIME = 5,
-  MONITOR_STATUS_DETAIL_DEBUG_LOG = 6,
-  MONITOR_STATUS_DETAIL_ENCODE = 7
-};
-
 static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 {
   adcVDD(vdd100, temp10);
@@ -114,13 +80,6 @@ static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 
 static int monitorReturn(int len)
 {
-  pState->monitor_complete_count++;
-  pState->monitor_last_request = pState->monitor_active_request;
-  pState->monitor_last_detail = pState->monitor_active_detail;
-  pState->monitor_last_phase = pState->monitor_active_phase;
-  pState->monitor_last_len = pState->monitor_active_len;
-  pState->monitor_last_result_len = (uint32_t)len;
-  pState->monitor_active_phase = MONITOR_PHASE_IDLE;
   return len;
 }
 
@@ -238,11 +197,8 @@ static int statusAck(void)
   int64_t epoch;
   uint32_t millis;
 
-  pState->monitor_active_detail = MONITOR_STATUS_DETAIL_START;
-
   if (!monitor_acquisition_active())
   {
-    pState->monitor_active_detail = MONITOR_STATUS_DETAIL_MEASURE;
     monitorStatusMeasure(&status_vdd100, &status_temp10);
   }
 #if defined(TAG_STATUS_FIXED_VDD100)
@@ -252,7 +208,6 @@ static int statusAck(void)
   }
 #endif
 
-  pState->monitor_active_detail = MONITOR_STATUS_DETAIL_FIELDS;
   ack.err = Ack_OK;
   ack.which_payload = Ack_status_tag;
   ack.payload.status.state = pState->state;
@@ -261,25 +216,21 @@ static int statusAck(void)
   ack.payload.status.test_status = pState->test_result;
   ack.payload.status.voltage = status_vdd100 * 0.01f;
   ack.payload.status.temperature = status_temp10 * 0.1f;
-  pState->monitor_active_detail = MONITOR_STATUS_DETAIL_ERASE_PROGRESS;
   ack.payload.status.sectors_erased = externalFlashSectorsErased();
   ack.payload.status.erase_sectors_total_plus_one =
       externalFlashSectorsToErasePlusOne();
-  pState->monitor_active_detail = MONITOR_STATUS_DETAIL_TIME;
   epoch = GetTimeUnixSec(&millis);
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
 #if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
   if (!monitor_acquisition_active())
   {
-    pState->monitor_active_detail = MONITOR_STATUS_DETAIL_DEBUG_LOG;
     int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
                              sizeof(ack.payload.status.debug_message) - 1);
     ack.payload.status.debug_message[len] = 0;
   }
 #endif
 
-  pState->monitor_active_detail = MONITOR_STATUS_DETAIL_ENCODE;
   return encode_ack();
 }
 
@@ -501,12 +452,6 @@ int proto_eval(int len, uint32_t *work)
   if (work)
     *work = 0;
 
-  pState->monitor_request_count++;
-  pState->monitor_active_request = 0;
-  pState->monitor_active_detail = 0;
-  pState->monitor_active_len = (uint32_t)len;
-  pState->monitor_active_phase = MONITOR_PHASE_DECODE;
-
   bzero(&ack, sizeof(ack));
   pb_istream_t istream = pb_istream_from_buffer(ProtoBuf, len);
 
@@ -516,18 +461,11 @@ int proto_eval(int len, uint32_t *work)
   status = pb_decode(&istream, Req_fields, &req);
   if (!status)
   {
-    pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
     return monitorReturn(errAck(Ack_Err_NANOPB));
   }
 
-  // local state variables
-
-  pState->monitor_active_request = (uint32_t)req.which_payload;
-  pState->monitor_active_phase = MONITOR_PHASE_PERMISSION;
-
   if (!monitor_request_allowed(&req))
   {
-    pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
     return monitorReturn(errAck(Ack_Err_PERM));
   }
 
@@ -539,28 +477,23 @@ int proto_eval(int len, uint32_t *work)
     // Information Requests
 
   case Req_get_info_tag: // Get tag info
-    pState->monitor_active_phase = MONITOR_PHASE_INFO;
     return monitorReturn(infoAck());
 
   case Req_get_status_tag: // return tag state
-    pState->monitor_active_phase = MONITOR_PHASE_STATUS;
     return monitorReturn(statusAck());
 
   case Req_get_config_tag: // get config
-    pState->monitor_active_phase = MONITOR_PHASE_CONFIG;
     return monitorReturn(configAck());
 
     // Control
 
   case Req_erase_tag: // erase
-    pState->monitor_active_phase = MONITOR_PHASE_ERASE;
     if (work)
       *work |= MON_WORK_RESET;
     return monitorReturn(errAck(Ack_OK));
 
   case Req_start_tag: // start
   {
-    pState->monitor_active_phase = MONITOR_PHASE_START;
     if (writeConfig(&req.payload.start))
     {
       if (work)
@@ -569,28 +502,23 @@ int proto_eval(int len, uint32_t *work)
     }
     else
     {
-      pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
       return monitorReturn(errAck(Ack_Err_NXIO));
     }
   }
 
   case Req_stop_tag: // stop
-    pState->monitor_active_phase = MONITOR_PHASE_STOP;
     if (work)
       *work |= MON_WORK_STOP;
     return monitorReturn(errAck(Ack_OK));
 
   case Req_test_tag: // self test
-    pState->monitor_active_phase = MONITOR_PHASE_TEST;
     test_to_run = req.payload.test;
     if (work)
       *work |= MON_WORK_SELFTEST;
     return monitorReturn(errAck(Ack_OK));
   case Req_set_rtc_tag: // Write RTC
-    pState->monitor_active_phase = MONITOR_PHASE_SET_RTC;
     if ((err = SetTimeUnixSec(req.payload.set_rtc / 1000)))
     {
-      pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
       return monitorReturn(errAck(Ack_Err_NXIO));
     }
     else
@@ -599,44 +527,35 @@ int proto_eval(int len, uint32_t *work)
     // request log
 
   case Req_log_tag:
-    pState->monitor_active_detail = (uint32_t)req.payload.log.fmt;
     switch (req.payload.log.fmt)
     {
      case LogReq_INTERNAL_DATA:
-        pState->monitor_active_phase = MONITOR_PHASE_DATA_LOG;
         return monitorReturn(data_logAck(req.payload.log.index, &ack));
     case LogReq_SYSTEM_LOG:
-      pState->monitor_active_phase = MONITOR_PHASE_SYSTEM_LOG;
       return monitorReturn(system_logAck(req.payload.log.index));
     default:
-      pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
       return monitorReturn(errAck(Ack_Err_PERM));
     }
     // Unimplemented request
 
 #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   case Req_calibrate_tag:
-    pState->monitor_active_phase = MONITOR_PHASE_CALIBRATE;
     if (work)
       *work |= MON_WORK_CALIBRATE;
     return monitorReturn(errAck(Ack_OK));
   case Req_caldata_tag:
-    pState->monitor_active_phase = MONITOR_PHASE_CALDATA;
     return monitorReturn(calibration_logAck(&ack));
 
 #endif
 #if defined(CALIBRATION_CONSTANTS) && CALIBRATION_CONSTANTS
   case Req_write_calibration_tag:
-    pState->monitor_active_phase = MONITOR_PHASE_WRITE_CAL;
     return monitorReturn(write_calibration(&req.payload.write_calibration));
   case Req_read_calibration_tag:
-    pState->monitor_active_phase = MONITOR_PHASE_READ_CAL;
     return monitorReturn(read_calibration(req.payload.read_calibration, &ack));
 #endif
 #if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
 #endif
   default:
-    pState->monitor_active_phase = MONITOR_PHASE_ERROR_ACK;
     return monitorReturn(errAck(Ack_Err_PERM));
   }
 }

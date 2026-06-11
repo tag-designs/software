@@ -669,7 +669,8 @@
  *          just before interrupts are enabled globally.
  */
 #define CH_CFG_SYSTEM_INIT_HOOK() {                                         \
-  /* Add system initialization code here.*/                                 \
+  extern void tagSystemInitHook(void);                                      \
+  tagSystemInitHook();                                                      \
 }
 
 /**

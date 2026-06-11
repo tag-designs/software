@@ -58,6 +58,10 @@
 #include "timekeeping.h"
 #include "debug_log.h"
 
+#ifndef BACKUP_STATE_VALID_MAGIC
+#define BACKUP_STATE_VALID_MAGIC 1U
+#endif
+
 #if !defined(CONFIG_HAS_HIBERNATE)
 #define CONFIG_HAS_HIBERNATE 1
 #endif

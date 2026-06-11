@@ -5,5 +5,6 @@
 #define BITTAG_V6 1
 #undef  BOARD_NAME
 #define BOARD_NAME "BitTag V6"
+#define PROTOBUFSIZE 4096
 
 #endif

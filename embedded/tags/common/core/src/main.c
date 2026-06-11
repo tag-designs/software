@@ -28,6 +28,10 @@
 #define TAG_DEBUG_MONITOR_PRIORITY 8U
 #endif
 
+#ifndef BACKUP_STATE_VALID_MAGIC
+#define BACKUP_STATE_VALID_MAGIC 1U
+#endif
+
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
  * @{
@@ -71,18 +75,6 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
-    pState->exception_count = 0;
-    pState->monitor_request_count = 0;
-    pState->monitor_active_request = 0;
-    pState->monitor_active_detail = 0;
-    pState->monitor_active_phase = 0;
-    pState->monitor_active_len = 0;
-    pState->monitor_complete_count = 0;
-    pState->monitor_last_request = 0;
-    pState->monitor_last_detail = 0;
-    pState->monitor_last_phase = 0;
-    pState->monitor_last_len = 0;
-    pState->monitor_last_result_len = 0;
 
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
