@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <sstream>
+#include <vector>
 
 #include "imutag_log_format.h"
 
@@ -12,9 +13,11 @@ namespace tagcore::sqlite_log {
 // microsecond clock measured from the start of data collection.
 //
 // Firmware writes one t_DataHeader followed by DATALOG_SAMPLES t_DataLog blocks.
-// The protobuf mirrors that page shape: IMUTagLog holds the header fields and
-// repeated IMUTagLogData entries. Each entry has compact raw pressure and
-// magnetometer samples, and either:
+// The current fast download path returns IMUTagRawLog, which carries the whole
+// 2048-byte t_DataLog page image in one bounded bytes field. The older
+// IMUTagLog protobuf mirrors that page shape with repeated IMUTagLogData
+// entries. Each old-format entry has compact raw pressure and magnetometer
+// samples, and either:
 //
 // - the raw_data byte array only, or
 // - the entire 128-byte t_DataLog image.
@@ -30,6 +33,18 @@ constexpr int kImuBytesPerSample = kImuAxesPerSample * 2;
 constexpr int kImuRawDataBytes = kImuSamplesPerBlock * kImuBytesPerSample;
 constexpr int kImuDataLogBytes = 128;
 constexpr int kImuRawDataOffset = 8;
+constexpr int kImuBlocksPerPage = 16;
+constexpr int kImuPageBytes = kImuBlocksPerPage * kImuDataLogBytes;
+
+struct ImuBlockView
+{
+    int32_t pressure_raw;
+    int32_t mx_raw;
+    int32_t my_raw;
+    int32_t mz_raw;
+    const uint8_t *raw;
+    size_t raw_size;
+};
 
 double imuAccelMgPerLsb(Lsm6dsv_ACCEL range)
 {
@@ -77,16 +92,16 @@ double magRawToUT(int32_t mag_raw)
     return mag_raw * IMUTAG_COMPACT_MAG_UT_PER_LSB;
 }
 
-bool hasPressureSample(const IMUTagLogData &entry)
+bool hasPressureSample(int32_t pressure_raw)
 {
-    return entry.pressure_raw() != IMUTAG_ENV_SKIP_RAW;
+    return pressure_raw != IMUTAG_ENV_SKIP_RAW;
 }
 
-bool hasMagSample(const IMUTagLogData &entry)
+bool hasMagSample(int32_t mx_raw, int32_t my_raw, int32_t mz_raw)
 {
-    return entry.mx_raw() != IMUTAG_ENV_SKIP_RAW
-        || entry.my_raw() != IMUTAG_ENV_SKIP_RAW
-        || entry.mz_raw() != IMUTAG_ENV_SKIP_RAW;
+    return mx_raw != IMUTAG_ENV_SKIP_RAW
+        || my_raw != IMUTAG_ENV_SKIP_RAW
+        || mz_raw != IMUTAG_ENV_SKIP_RAW;
 }
 
 int16_t readLeI16(const uint8_t *p)
@@ -96,9 +111,11 @@ int16_t readLeI16(const uint8_t *p)
     return static_cast<int16_t>(value);
 }
 
-} // namespace
-
-int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
+int dumpIMUTagBlocks(WriterContext &ctx,
+                     int32_t epoch,
+                     uint32_t raw_millisecond,
+                     float temperature,
+                     const std::vector<ImuBlockView> &blocks)
 {
     if (!ctx.createLogTables()) {
         return -2;
@@ -167,7 +184,6 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
      * the new segment is anchored by the header timestamp, then subsequent data
      * returns to the smooth sample-count clock until the next RESYNC.
      */
-    const uint32_t raw_millisecond = static_cast<uint32_t>(log.millisecond());
     const int header_millisecond =
         static_cast<int>(raw_millisecond & IMUTAG_HEADER_MILLIS_MASK);
     const int header_flags =
@@ -176,7 +192,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     const bool header_storage_skip =
         (raw_millisecond & IMUTAG_HEADER_RESYNC_STORAGE_SKIP) != 0;
     const sqlite3_int64 header_epoch_ms =
-        static_cast<sqlite3_int64>(log.epoch()) * 1000 + header_millisecond;
+        static_cast<sqlite3_int64>(epoch) * 1000 + header_millisecond;
 
     if (!ctx.imu->have_collection_anchor) {
         ctx.imu->collection_anchor_epoch_ms = header_epoch_ms;
@@ -205,10 +221,10 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
     if (!header_insert.bindInt64(1, static_cast<sqlite3_int64>(ctx.imu->header_count))
         || !header_insert.bindInt64(2, header_start_us)
-        || !header_insert.bindInt64(3, log.epoch())
+        || !header_insert.bindInt64(3, epoch)
         || !header_insert.bindInt64(4, header_millisecond)
         || !header_insert.bindInt64(5, header_flags)
-        || !header_insert.bindDouble(6, log.temperature())
+        || !header_insert.bindDouble(6, temperature)
         || !header_insert.stepDone()) {
         ctx.setLastSqliteError("IMUTag header insert failed");
         return -2;
@@ -224,10 +240,9 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     }
     ctx.imu->header_count++;
 
-    for (auto const &entry : log.data()) {
-        const std::string &payload = entry.data();
-        const uint8_t *raw = reinterpret_cast<const uint8_t *>(payload.data());
-        size_t raw_size = payload.size();
+    for (const ImuBlockView &block : blocks) {
+        const uint8_t *raw = block.raw;
+        size_t raw_size = block.raw_size;
         // Firmware-side t_DataLog begins with pressure/mag fields. If the full
         // struct image arrives, skip those fields and decode only raw_data.
         if (raw_size == kImuDataLogBytes) {
@@ -236,7 +251,7 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
         }
         if (raw_size != kImuRawDataBytes) {
             std::ostringstream error;
-            error << "IMUTag data block has " << payload.size()
+            error << "IMUTag data block has " << block.raw_size
                   << " bytes, expected " << kImuRawDataBytes
                   << " raw bytes or " << kImuDataLogBytes
                   << " t_DataLog bytes";
@@ -251,21 +266,21 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
             ctx.imu->elapsed_base_us
             + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
 
-        if (hasPressureSample(entry)) {
+        if (hasPressureSample(block.pressure_raw)) {
             if (!pressure_insert.bindInt64(1, block_start_us)
                 || !pressure_insert.bindDouble(2,
-                                               pressureRawToHpa(entry.pressure_raw()))
+                                               pressureRawToHpa(block.pressure_raw))
                 || !pressure_insert.stepDone()) {
                 ctx.setLastSqliteError("IMUTag pressure insert failed");
                 return -2;
             }
         }
 
-        if (hasMagSample(entry)) {
+        if (hasMagSample(block.mx_raw, block.my_raw, block.mz_raw)) {
             if (!mag_insert.bindInt64(1, block_start_us)
-                || !mag_insert.bindDouble(2, magRawToUT(entry.mx_raw()))
-                || !mag_insert.bindDouble(3, magRawToUT(entry.my_raw()))
-                || !mag_insert.bindDouble(4, magRawToUT(entry.mz_raw()))
+                || !mag_insert.bindDouble(2, magRawToUT(block.mx_raw))
+                || !mag_insert.bindDouble(3, magRawToUT(block.my_raw))
+                || !mag_insert.bindDouble(4, magRawToUT(block.mz_raw))
                 || !mag_insert.stepDone()) {
                 ctx.setLastSqliteError("IMUTag magnetometer insert failed");
                 return -2;
@@ -303,6 +318,66 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
     }
 
     return 1;
+}
+
+} // namespace
+
+int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
+{
+    std::vector<ImuBlockView> blocks;
+    blocks.reserve(static_cast<size_t>(log.data().size()));
+
+    for (auto const &entry : log.data()) {
+        const std::string &payload = entry.data();
+        blocks.push_back({
+            entry.pressure_raw(),
+            entry.mx_raw(),
+            entry.my_raw(),
+            entry.mz_raw(),
+            reinterpret_cast<const uint8_t *>(payload.data()),
+            payload.size(),
+        });
+    }
+
+    return dumpIMUTagBlocks(ctx,
+                            log.epoch(),
+                            static_cast<uint32_t>(log.millisecond()),
+                            log.temperature(),
+                            blocks);
+}
+
+int dumpIMUTagRawLog(WriterContext &ctx, const IMUTagRawLog &log)
+{
+    const std::string &payload = log.samples();
+    if (payload.size() != kImuPageBytes) {
+        std::ostringstream error;
+        error << "IMUTag raw page has " << payload.size()
+              << " bytes, expected " << kImuPageBytes;
+        ctx.setLastError(error.str());
+        return -2;
+    }
+
+    const uint8_t *page = reinterpret_cast<const uint8_t *>(payload.data());
+    std::vector<ImuBlockView> blocks;
+    blocks.reserve(kImuBlocksPerPage);
+
+    for (int i = 0; i < kImuBlocksPerPage; i++) {
+        const uint8_t *block = page + i * kImuDataLogBytes;
+        blocks.push_back({
+            readLeI16(block),
+            readLeI16(block + 2),
+            readLeI16(block + 4),
+            readLeI16(block + 6),
+            block,
+            kImuDataLogBytes,
+        });
+    }
+
+    return dumpIMUTagBlocks(ctx,
+                            log.epoch(),
+                            static_cast<uint32_t>(log.millisecond()),
+                            log.temperature(),
+                            blocks);
 }
 
 } // namespace tagcore::sqlite_log

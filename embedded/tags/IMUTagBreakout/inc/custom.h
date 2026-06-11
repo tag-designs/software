@@ -29,11 +29,11 @@
 #define TAG_STATUS_FIXED_VDD100 330
 #define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
-/* Optional logic-analyzer pulse around storage SPI DMA phases. PA4 is
- * LINE_IMU_TRG_TEST on IMUTagv1. Leave LOG_ACK_MEASURE_LINE disabled while
- * using this so PA4 has one owner in the trace.
+/* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
+ * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
+ * in the trace.
  */
-#define TAG_STORAGE_SPI_MEASURE_LINE LINE_IMU_TRG_TEST
+#define LOG_ACK_MEASURE_LINE LINE_IMU_TRG_TEST
 /** @} */
 
 /** @name Sensor line aliases and conversion constants

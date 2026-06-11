@@ -164,8 +164,12 @@ int main(void)
 
   // disable swd line
 
+
+
   //palSetLine(LINE_TGT_SWDIO_EN); // polarity is reversed
   palClearLine(LINE_TGT_RESET);
+  toOutput(LINE_UART_TX);
+  palClearLine(LINE_UART_TX);
 
   // Initialize system
 
@@ -221,8 +225,11 @@ int main(void)
     else
     {
       //palSetLine(LINE_TGT_SWDIO_EN);
-      if (usbGetDriverStateI(&USBD1) == USB_ACTIVE)
-          stlink_eval(bulkbuf);
+      if (usbGetDriverStateI(&USBD1) == USB_ACTIVE){
+        palSetLine(LINE_UART_TX);
+        stlink_eval(bulkbuf);
+        palClearLine(LINE_UART_TX);
+      }
       //palClearLine(LINE_TGT_SWDIO_EN);
     }
   }

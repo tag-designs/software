@@ -89,6 +89,7 @@ message Ack {
     CalibrationConstants calibration_constants = 14;
 
     IMUTagLog imu_data_log = 15;
+    IMUTagRawLog imu_raw_data_log = 16;
 
     
   }

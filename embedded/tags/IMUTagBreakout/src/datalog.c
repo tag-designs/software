@@ -264,7 +264,6 @@ int data_logAck(int index, Ack *ack)
   int ret;
 
   chThdSetPriority(HIGHPRIO);
-  logAckMeasureBegin();
 
   ack->err = Ack_Err_OK;
 
@@ -282,13 +281,12 @@ int data_logAck(int index, Ack *ack)
 
     // we have a valid header
 
-    ack->which_payload = Ack_imu_data_log_tag;
-    IMUTagLog *log = &ack->payload.imu_data_log;
+    ack->which_payload = Ack_imu_raw_data_log_tag;
+    IMUTagRawLog *log = &ack->payload.imu_raw_data_log;
 
     log->epoch = header.epoch;
     log->millisecond = header.millis;
     log->temperature = header.rawtemp * 0.01f;
-    log->data_count = 0;
 
     // now read the data
 
@@ -297,18 +295,8 @@ int data_logAck(int index, Ack *ack)
                    (uint8_t *)&databuf, sizeof(databuf));
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-    for (int i = 0; i < DATALOG_SAMPLES; i++)
-    {
-      int cnt = log->data_count;
-      log->data[cnt].pressure_raw = databuf[i].pressure;
-      log->data[cnt].mx_raw = databuf[i].mx;
-      log->data[cnt].my_raw = databuf[i].my;
-      log->data[cnt].mz_raw = databuf[i].mz;
-      log->data[cnt].data.size = sizeof(databuf[i].raw_data);
-      memcpy(log->data[cnt].data.bytes, databuf[i].raw_data,
-             sizeof(databuf[i].raw_data));
-      log->data_count++;
-    }
+    log->samples.size = sizeof(databuf);
+    memcpy(log->samples.bytes, databuf, sizeof(databuf));
 
   }
   else
@@ -317,6 +305,7 @@ int data_logAck(int index, Ack *ack)
   }
 
   // encode the ack and return
+  logAckMeasureBegin();
   ret = encode_ack();
   logAckMeasureEnd();
   chThdSetPriority(NORMALPRIO);

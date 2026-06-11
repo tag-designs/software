@@ -258,6 +258,13 @@ message IMUTagLog{
   repeated IMUTagLogData data = 4;
 }
 
+message IMUTagRawLog{
+  int32 epoch = 1;
+  int32 millisecond = 2;
+  float temperature = 3;
+  bytes samples = 4; // raw DATALOG_SAMPLES * t_DataLog page image
+}
+
 message PT_RAW {
     int32 epoch = 1;
     float voltage = 2;

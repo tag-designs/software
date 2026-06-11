@@ -281,10 +281,13 @@ public:
             return dumpBitPresTagLog(context, ack.bitprestag_data_log());
 
         case IMUTAG:
-            if (!ack.has_imu_data_log()) {
-                return 0;
+            if (ack.has_imu_raw_data_log()) {
+                return dumpIMUTagRawLog(context, ack.imu_raw_data_log());
             }
-            return dumpIMUTagLog(context, ack.imu_data_log());
+            if (ack.has_imu_data_log()) {
+                return dumpIMUTagLog(context, ack.imu_data_log());
+            }
+            return 0;
 
         default:
             setLastError("SQLite log output does not support tag type "
