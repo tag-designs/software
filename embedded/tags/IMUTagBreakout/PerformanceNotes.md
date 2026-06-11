@@ -74,3 +74,16 @@ Now the dominant cost is the swd implementation.  Reformating the log message in
 
 
 ![Timing after optimization](../../docs/Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
+
+# Power Measurement
+
+- idle:   150uA -- must be something floating
+- 50hz:  1.06mA
+- 100hz: 1.05mA
+- 200hz: 1.2mA
+- 400hz: 1.35mA
+- 800hz: 1.69mA
+- 1600hz: 1.7mA
+
+There's a problem at idle and at finished -- I don't think the devices are shutdown and it doesn't look like there's a clear path where this would happen.  For example, after collecting data, I'm not sure that lptim2 is shut off and the IMU reset.  I don't know about the pressure sensor or magnetometer either.
+

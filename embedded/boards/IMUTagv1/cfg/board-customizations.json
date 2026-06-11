@@ -249,8 +249,7 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin5": {
         "ID": "FLASH_MOSI",

@@ -288,15 +288,15 @@ int data_logAck(int index, Ack *ack)
     log->millisecond = header.millis;
     log->temperature = header.rawtemp * 0.01f;
 
-    // now read the data
+    // now read the data --- optimization is to read this directly into databuf!
 
     tagStorageWake(TAG_EXTERNAL_FLASH);
     tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                   (uint8_t *)&databuf, sizeof(databuf));
+                   (uint8_t *)log->samples.bytes, databuf_size);
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-    log->samples.size = sizeof(databuf);
-    memcpy(log->samples.bytes, databuf, sizeof(databuf));
+    log->samples.size = databuf_size;
+    //memcpy(log->samples.bytes, databuf, sizeof(databuf));
 
   }
   else
