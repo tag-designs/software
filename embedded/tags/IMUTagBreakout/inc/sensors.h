@@ -11,15 +11,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "imutag_log_format.h"
 #include <tag.pb.h>
 #include "core_state.h"
 
-typedef struct t_DataLog t_DataLog;
+typedef t_ImuTagDataLog t_DataLog;
 
 /** @brief One raw synchronized IMU sample pair stored in the data log. */
-typedef struct {
-    int16_t gx, gy, gz, ax, ay, az;
-} RawSensorData;
+typedef t_ImuTagRawSensorData RawSensorData;
 
 /** @brief Clear one raw sensor sample; retained for legacy RUNNING code. */
 bool sensorSample(RawSensorData *data);

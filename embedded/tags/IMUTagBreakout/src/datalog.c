@@ -15,6 +15,9 @@
 
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
 static t_DataLog databuf[DATALOG_SAMPLES] NOINIT;
+
+static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * sizeof(t_DataLog),
+              "nanopb IMUTagRawLog.samples buffer size in options is out of sync with datalog page size!");
 static volatile int sectors_erased NOINIT;
 static uint32_t erase_sector_size;
 static uint32_t erase_sector_total;

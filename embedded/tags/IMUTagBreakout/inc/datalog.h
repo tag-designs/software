@@ -11,25 +11,13 @@
 #include "assert.h"
 #include "imutag_log_format.h"
 
-/** @brief basic data log block -- data is written in 128 byte units */
-
-typedef struct t_DataLog {
-   int16_t pressure;    // pressure sensor
-   int16_t mx, my, mz;  // magnetometer
-   RawSensorData raw_data[10];
-} t_DataLog;
+typedef t_ImuTagDataLog t_DataLog;
+typedef t_ImuTagDataHeader t_DataHeader;
 
 static_assert(sizeof(t_DataLog) == 128, "imudata size must be exactly 128 bytes!");
 
 /** Number of datalog blocks under one internal header. */
 #define DATALOG_SAMPLES 16
-
-/** @brief Internal-flash header that anchors one external log page. */
-typedef struct {
-  int32_t epoch;
-  uint16_t millis;
-  int16_t rawtemp;
-} t_DataHeader;
 
 /** Internal flash header array placed by the linker script. */
 extern t_DataHeader vddHeader[];
