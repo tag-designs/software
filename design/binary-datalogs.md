@@ -134,3 +134,82 @@ static_assert(sizeof(((IMUTagRawLog*)0)->samples) == sizeof(t_ImuTagDataLog) * D
 ```
 
 This acts as a compile-time bridge, preventing a build from completing if someone modifies the options file or structure layout without updating the other.
+
+## 5. Recommended Host Side Decoding
+
+### A. Communicating the Number of Raw Buffers
+
+Since the binary structures are now shared, the host application knows the
+exact compile-time size of a single buffer ( sizeof(t_ImuTagDataLog) ).
+
+Therefore, you do not need a separate field in the Protobuf message to
+communicate the buffer count. The host can dynamically and safely compute
+the count from the length of the received bytes/string payload:
+
+```c
+  // On the host side:                                                     
+  const std::string& payload = log.samples();                              
+                                                                            
+  // Calculate the number of blocks sent in this message                   
+  size_t num_blocks = payload.size() / sizeof(t_ImuTagDataLog);  
+```          
+
+This is robust against future changes to the page size or sample counts
+since it automatically adjusts to the payload length.
+
+### B. Casting vs. Copying (Alignment & Strict Aliasing)
+
+While the shared struct is packed ( #pragma pack(push, 1) ), which
+technically reduces its alignment requirement to 1 byte, direct casting is 
+highly discouraged on the host application side for two reasons:
+
+1. Strict Aliasing Violations: Reinterpreting a  std::string  or  char* 
+buffer directly as a  t_ImuTagDataLog*  violates C++ strict aliasing rules.
+Compilers (like GCC, Clang, or MSVC) can optimize code under the assumption
+that these pointers do not alias, leading to silent, hard-to-debug runtime
+bugs.
+2. Unaligned Access Overhead: Even though modern host CPUs (x86_64, arm64,
+and Apple Silicon) handle unaligned loads/stores in hardware, unaligned
+access can still cross cache lines, resulting in a performance penalty.
+
+### C. The Best Way to Handle Alignment
+
+The most standard-compliant, safe, and performant way to decode the raw
+bytes is to copy them into a type-safe, naturally aligned container using  
+std::memcpy .
+
+Modern C++ compilers recognize  std::memcpy  as a compiler intrinsic. They
+will optimize the copy into direct CPU register moves, completely eliding
+the overhead of an actual library call.
+
+### D. Recommended Host C++ Pattern
+
+Use a  
+```c
+std::vector<t_ImuTagDataLog>```
+```
+The vector's underlying buffer is
+guaranteed by the C++ allocator to be properly aligned for the type:
+
+```c
+
+// 1. Calculate count   
+
+size_t num_blocks = payload.size() / sizeof(t_ImuTagDataLog);            
+                                                                          
+// 2. Allocate vector (guarantees memory is aligned for t_ImuTagDataLog) 
+
+std::vector<t_ImuTagDataLog> blocks(num_blocks);                         
+                                                                          
+// 3. Copy payload (highly optimized by the compiler, avoids aliasing issues)    
+                                                              
+std::memcpy(blocks.data(), payload.data(), payload.size());              
+                                                                          
+// 4. Access safely and cleanly                                          
+for (size_t i = 0; i < num_blocks; ++i) {                                
+    int16_t p = blocks[i].pressure;                                      
+    int16_t mx = blocks[i].mx;                                           
+    // ...                                                               
+}                                                             
+```
+
