@@ -11,6 +11,7 @@ where-to-look guidance, then read the local README for details.
 - `embedded/`: ChibiOS firmware targets for tags and base/programmer boards.
 - `proto/`: shared protobuf definitions used by host tools and embedded nanopb
   generation.
+- `design/`: developer architecture specifications and design notes. The master index is located at [**`design/index.md`**](file:///design/index.md).
 - `cmake/`: shared CMake helpers, presets support, vcpkg triplets, and package
   helpers.
 - `ChibiOS/`: ChibiOS submodule. Do not edit it as project source.

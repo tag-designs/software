@@ -14,7 +14,7 @@ ownership, ChibiOS usage, and build/documentation expectations.
 - `tags/common/`: shared tag firmware support code and drivers.
 - `tags/common/modules/`: ChibiOS makefile fragments that group shared tag
   sources into named modules used by each tag's `project.mk`.
-- `docs/`: embedded source-layout documentation.
+- `design/`: developer-facing architecture and layout documentation.
 - Any `archive/` directory contains retired or reference firmware. Ignore it
   for normal searches, refactors, builds, and reviews unless the task
   explicitly calls it out.
@@ -108,7 +108,7 @@ CMake build tree, not in source directories.
 
 ## Documentation
 
-- Keep `embedded/docs/README.md` aligned with major layout or ownership
+- Keep `embedded/design/build-orientation.md` aligned with major layout or ownership
   changes.
-- Keep target-specific design notes near the target, for example
-  `tags/<target>/DesignNotes.md`.
+- Keep target-specific design notes near the target under a `design/` subfolder, for example
+  `tags/<target>/design/notes.md`.

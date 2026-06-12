@@ -98,10 +98,10 @@ message IMUTagRawLog{
 
 Now the dominant cost is the swd implementation.  Reformating the log message increased overall performance by almost 2x.
 
-![Timing before optimization](../../docs/Log%20download%20cycle%20IMUTagBreakout.png)
+![Timing before optimization](Log%20download%20cycle%20IMUTagBreakout.png)
 
 
-![Timing after optimization](../../docs/Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
+![Timing after optimization](Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
 
 
 

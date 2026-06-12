@@ -316,7 +316,7 @@ boards.
 
 For an overview of the embedded source tree and how `bases`, `boards`,
 `proto-c`, and `tags` relate to each other, see
-[embedded/docs/README.md](embedded/docs/README.md).
+[embedded/design/build-orientation.md](embedded/design/build-orientation.md).
 
 ## Embedded Prerequisites
 
