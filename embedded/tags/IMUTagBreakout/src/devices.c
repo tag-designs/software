@@ -18,6 +18,7 @@
 #include "gpio_utils.h"
 #include "lsm6dsv16x.h"
 #include "lps.h"
+#include "persistent.h"
 #include "power.h"
 #include "sensor_io.h"
 #include "sensors.h"
@@ -191,23 +192,40 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 }
 
 /**
+ * @brief Apply IMUTagBreakout device power policy for a lifecycle phase.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+    if (state != TagState_RUNNING) {
+     (void)deinitDataCollection();
+      toAnalog(LINE_LPS_DRDY);
+      toAnalog(LINE_MAG_TRG);
+    }
+    break;
+
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    (void)deinitDataCollection();
+    break;
+  }
+}
+
+/**
  * @brief Prepare IMUTagBreakout devices before entering standby.
  *
  * @param[in] state Current state-machine state.
  */
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
-
-  if (state != RUNNING) {
-    lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
-    lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
-    toAnalog(LINE_LPS_DRDY);
-    ak09940aDeviceBegin(TAG_MAG_DEVICE);
-    ak09940aInitPowerDown(TAG_MAG_DEVICE);
-    ak09940aDeviceEnd(TAG_MAG_DEVICE);
-    toAnalog(LINE_MAG_TRG);
-  }
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
 }
 
 /**
@@ -215,7 +233,7 @@ void tagDevicesPrepareStandby(uint32_t state)
  */
 void tagDevicesDeinit(void)
 {
-  (void)deinitDataCollection();
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, pState->state);
 }
 
 /**

@@ -489,7 +489,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 {
   if (t == T_INIT)
   {
-    tagDevicesDeinit();
+    tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, pState->state);
     pState->state = TagState_HIBERNATING;
     recordState(reason);
     // set 1 hour wakeup interval

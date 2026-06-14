@@ -27,12 +27,27 @@
  * changed while entering standby and the caller should abort the sleep attempt.
  * @{
  */
+typedef enum {
+  TAG_DEVICE_POWER_BOOT_CLEANUP,
+  TAG_DEVICE_POWER_RUNTIME_DEINIT,
+  TAG_DEVICE_POWER_STANDBY_ENTRY,
+  TAG_DEVICE_POWER_TERMINAL_ENTRY
+} TagDevicePowerReason;
+
 /**
  * @brief Initialize tag-owned device runtime state.
  *
  * Called after ChibiOS startup, before device descriptors are used.
  */
 void tagDevicesInit(void);
+
+/**
+ * @brief Apply tag-owned device power policy for a common lifecycle phase.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state);
 
 /**
  * @brief Give tag-specific devices a chance to enter their standby state.

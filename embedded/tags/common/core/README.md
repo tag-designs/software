@@ -58,9 +58,14 @@ The standby path has two layers:
   state. Modern tags define the controller semaphore storage they actually use
   in `devices.c`, such as `SPI1mutex` or `USART2mutex`, and initialize those
   semaphores here after ChibiOS startup.
-- `tagDevicesPrepareStandby(state)`: protocol-level work before standby. For
-  example, external flash may be woken briefly and then commanded into its
-  chip-level sleep mode for final states.
+- `tagDevicesApplyPowerState(reason, state)`: protocol-level device power
+  policy for common lifecycle phases such as boot cleanup, runtime
+  deinitialization, and standby entry. New tag/family `devices.c` files should
+  prefer this single hook so shutdown behavior remains auditable in one place.
+- `tagDevicesPrepareStandby(state)` and `tagDevicesDeinit()`: compatibility
+  hooks for older tag/family code. The weak common
+  `tagDevicesApplyPowerState()` implementation bridges to these hooks when a
+  target has not yet migrated to the reasoned lifecycle hook.
 - Generated boards define MCU standby pull policy in `board-customizations.json`
   with each pin's optional `Standby` field. The board build emits
   `board_standby.h`, and `pwr.c` applies those compile-time masks directly to

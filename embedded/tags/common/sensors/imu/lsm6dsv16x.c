@@ -242,6 +242,8 @@ static void shutdown_registers(const TagLsm6dsv16xDevice *device)
 {
     reg_write(device, LSM6DSV16X_CTRL1,      0x00U);
     reg_write(device, LSM6DSV16X_CTRL2,      0x00U);
+    reg_write(device, LSM6DSV16X_CTRL3,      0x01U);  // software reset
+    /*
     reg_write(device, LSM6DSV16X_CTRL9,      0x00U);
     reg_write(device, LSM6DSV16X_CTRL4,      0x00U);
     reg_write(device, LSM6DSV16X_FIFO_CTRL4, LSM6DSV16X_FIFO_MODE_BYPASS);
@@ -259,6 +261,7 @@ static void shutdown_registers(const TagLsm6dsv16xDevice *device)
     reg_write(device, LSM6DSV16X_TAP_CFG2,   0x00U);
     reg_write(device, LSM6DSV16X_WAKE_UP_THS, 0x00U);
     reg_write(device, LSM6DSV16X_WAKE_UP_DUR, 0x00U);
+    */
 }
 
 /* =========================================================================

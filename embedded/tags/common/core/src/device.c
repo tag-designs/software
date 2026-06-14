@@ -31,6 +31,32 @@ void __attribute__((weak)) tagDevicesInit(void)
 }
 
 /**
+ * @brief Default bridge from common lifecycle phases to legacy device hooks.
+ *
+ * Tags can override this directly to keep their shutdown policy in one place.
+ * Older tags that only override tagDevicesPrepareStandby() or
+ * tagDevicesDeinit() keep their previous behavior through this bridge.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void __attribute__((weak))
+tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    tagDevicesPrepareStandby(state);
+    break;
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    tagDevicesDeinit();
+    break;
+  }
+}
+
+/**
  * @brief Default no-op device standby preparation hook.
  *
  * @param[in] state Application state that is about to enter standby.

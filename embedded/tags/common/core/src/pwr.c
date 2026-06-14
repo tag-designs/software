@@ -163,7 +163,7 @@ void godown(enum Sleep sleepmode)
     return;
   }
 
-  tagDevicesPrepareStandby(pState->state);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
 
   __disable_irq();
 
