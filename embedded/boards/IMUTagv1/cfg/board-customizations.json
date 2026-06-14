@@ -123,8 +123,7 @@
         "Mode": "Analog",
         "Alternate": "14",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin9": {
         "ID": "LPS_DRDY",

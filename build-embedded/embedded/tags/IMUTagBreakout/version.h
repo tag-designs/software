@@ -1,5 +1,0 @@
-#define VERSION_HASH "84a9727"
-#define GIT_DATE "Fri Jun 12 16:34:57 2026"
-#define GIT_COMMIT_SUBJECT "update binary-datalogs document"
-#define GIT_REPO "git@github.com:tag-designs/software.git"
-#define GIT_SHA "84a9727ad2192d0537e50709ae2bbcb7019dd6ec"
