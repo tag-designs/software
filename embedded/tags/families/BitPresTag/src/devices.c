@@ -148,6 +148,34 @@ const TagAdxl362Device *tagAdxl362Device(void)
  * pin pulls through board_standby.h; this file keeps the pin hook as a legacy
  * fallback for static board builds.
  */
+static void tagBitPresTagShutdownDevices(void)
+{
+  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
+  chThdSleepMilliseconds(2);
+}
+
+/**
+ * @brief Apply BitPresTag-family device power policy for a lifecycle phase.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+    break;
+
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    tagBitPresTagShutdownDevices();
+    break;
+  }
+}
+
 /**
  * @brief Prepare BitPresTag devices before entering standby.
  *
@@ -155,7 +183,7 @@ const TagAdxl362Device *tagAdxl362Device(void)
  */
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
 }
 
 /**
@@ -204,6 +232,5 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
  */
 void tagDevicesDeinit(void)
 {
-  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
-  chThdSleepMilliseconds(2);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, 0);
 }

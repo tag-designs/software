@@ -95,6 +95,41 @@ const TagTestCase *tagTestCases(size_t *count)
  * pin pulls through board_standby.h; this file keeps the pin hook as a legacy
  * fallback for static board builds.
  */
+static void tagPresTagShutdownDevices(void)
+{
+  /*
+   * The LPS27 path is one-shot and tagPressureDeviceEnd() powers down the
+   * descriptor after each sample, so there is no additional sensor command here.
+   */
+}
+
+static void tagPresTagPrepareStandbyDevices(uint32_t state)
+{
+  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+}
+
+/**
+ * @brief Apply PresTag device power policy for a lifecycle phase.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    tagPresTagPrepareStandbyDevices(state);
+    break;
+
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    tagPresTagShutdownDevices();
+    break;
+  }
+}
+
 /**
  * @brief Prepare PresTag devices before entering standby.
  *
@@ -102,7 +137,15 @@ const TagTestCase *tagTestCases(size_t *count)
  */
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
+}
+
+/**
+ * @brief Deinitialize PresTag-owned device resources.
+ */
+void tagDevicesDeinit(void)
+{
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, 0);
 }
 
 /**

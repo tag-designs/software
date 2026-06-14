@@ -63,10 +63,33 @@ void tagDevicesApplyStandbyPins(void)
   tagEnableStandbyPullup(LINE_ACCEL_CS);
 }
 
+static void tagBitTagShutdownDevices(void)
+{
+  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
+  chThdSleepMilliseconds(2);
+}
+
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    if (state != RUNNING) {
+      tagBitTagShutdownDevices();
+    }
+    break;
+
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    tagBitTagShutdownDevices();
+    break;
+  }
+}
+
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  if (state != RUNNING)
-    tagDevicesDeinit();
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
 }
 
 void tagDevicesDisableWakeupSources(void)
@@ -93,6 +116,5 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 
 void tagDevicesDeinit(void)
 {
-  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
-  chThdSleepMilliseconds(2);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, 0);
 }

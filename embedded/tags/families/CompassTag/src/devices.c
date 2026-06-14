@@ -234,6 +234,40 @@ bool tagCompassAccelWakeActive(void)
  * preparation (storage sleep, reset assertion) is separate from MCU standby
  * pin-pull policy.
  */
+static void tagCompassTagShutdownDevices(void)
+{
+  lis2du12Deinit(TAG_ACCEL_DEVICE);
+  tagCompassMagResetAssert();
+}
+
+static void tagCompassTagPrepareStandbyDevices(uint32_t state)
+{
+  tagCompassMagResetAssert();
+  tagStoragePrepareStandby(&tagExternalFlash, state);
+}
+
+/**
+ * @brief Apply CompassTag-family device power policy for a lifecycle phase.
+ *
+ * @param[in] reason Common lifecycle phase that is quiescing the devices.
+ * @param[in] state Current state-machine state.
+ */
+void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
+{
+  switch (reason) {
+  case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    tagCompassTagPrepareStandbyDevices(state);
+    break;
+
+  case TAG_DEVICE_POWER_BOOT_CLEANUP:
+  case TAG_DEVICE_POWER_RUNTIME_DEINIT:
+  case TAG_DEVICE_POWER_TERMINAL_ENTRY:
+  default:
+    tagCompassTagShutdownDevices();
+    break;
+  }
+}
+
 /**
  * @brief Prepare CompassTag devices before entering standby.
  *
@@ -241,8 +275,7 @@ bool tagCompassAccelWakeActive(void)
  */
 void tagDevicesPrepareStandby(uint32_t state)
 {
-  tagCompassMagResetAssert();
-  tagStoragePrepareStandby(&tagExternalFlash, state);
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
 }
 
 /**
@@ -296,6 +329,5 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
  */
 void tagDevicesDeinit(void)
 {
-  lis2du12Deinit(TAG_ACCEL_DEVICE);
-  tagCompassMagResetAssert();
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, 0);
 }
