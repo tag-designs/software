@@ -396,12 +396,12 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
-    toOutput(device->pwr);
     palSetLine(device->pwr);
+    palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL);
   }
 
   palSetLine(device->cs);
-  toOutput(device->cs);
+  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
 }
 
 /**
@@ -441,7 +441,6 @@ void tagSpiBusBegin(const TagSpiDevice *device)
   palSetLineMode(device->sck, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
   palSetLineMode(device->miso, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
   palSetLineMode(device->mosi, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
-  toAlternate(device->sck);
 
   tagSpiDeviceEnable(device);
 }

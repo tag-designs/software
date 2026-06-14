@@ -25,6 +25,8 @@
 #include "storage_mx25l.h"
 #include "test_support.h"
 
+#define LPTIM2_ALTERNATE_FUNCTION 14
+
 /*
  * IMUTagBreakout device bindings.
  *
@@ -93,9 +95,7 @@ static const TagRegisterDevice imu_registers = {
 void tagImuTagSetTrigger(unsigned int divider)
 {
   palClearLine(LINE_ACCEL_TRG);
-  toAnalog(LINE_ACCEL_TRG);
-  palClearLine(LINE_IMU_TRG_TEST);
-  toAnalog(LINE_IMU_TRG_TEST);
+  palSetLineMode(LINE_ACCEL_TRG, PAL_MODE_INPUT_ANALOG);
 
   if (divider == 0U) {
     RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
@@ -116,7 +116,8 @@ void tagImuTagSetTrigger(unsigned int divider)
   RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
   RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
 
-  toAlternate(LINE_ACCEL_TRG);
+  palSetLineMode(LINE_ACCEL_TRG, PAL_MODE_ALTERNATE(LPTIM2_ALTERNATE_FUNCTION));
+  //toAlternate(LINE_ACCEL_TRG);
 
   LPTIM2->CFGR = 0U;
   LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
@@ -204,8 +205,8 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
     if (state != TagState_RUNNING) {
      (void)deinitDataCollection();
-      toAnalog(LINE_LPS_DRDY);
-      toAnalog(LINE_MAG_TRG);
+     palSetLineMode(LINE_LPS_DRDY, PAL_MODE_INPUT_ANALOG);
+     palSetLineMode(LINE_MAG_TRG, PAL_MODE_INPUT_ANALOG);
     }
     break;
 
