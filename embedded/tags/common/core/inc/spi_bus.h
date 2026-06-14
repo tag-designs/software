@@ -15,6 +15,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+
+// alternate function number for spi -- stm32l432
+
+#define SPI_ALTERNATE_FUNCTION 5
+
+
 /** @name SPI device model
  * SPI bus helpers.
  *

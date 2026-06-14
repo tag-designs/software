@@ -278,6 +278,7 @@ int lps22hh_trigger_one_shot_device(const TagPressureDevice *device)
      */
 
     tagPressureDeviceBegin(device);
+    lps22hh_config_int_drdy(device);
     update_reg(device, LPS22HH_REG_CTRL_REG2,
                LPS22HH_CTRL2_ONE_SHOT,
                LPS22HH_CTRL2_ONE_SHOT);

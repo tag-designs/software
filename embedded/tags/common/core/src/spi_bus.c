@@ -411,17 +411,17 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
  */
 void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
+  palSetLine(device->cs);
+  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->sck, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(device->mosi, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
+  
   if (tagLineIsValid(device->pwr))
   {
-    toAnalog(device->sck);
-    toAnalog(device->mosi);
-    toAnalog(device->miso);
-    toAnalog(device->cs);
+    palSetLineMode(device->cs, PAL_MODE_INPUT_ANALOG);
     palClearLine(device->pwr);
-  } else {
-    palSetLine(device->cs);
-    toOutput(device->cs);
-  }
+  } 
 }
 
 /**
@@ -437,11 +437,11 @@ void tagSpiBusBegin(const TagSpiDevice *device)
   }
 
   palSetLine(device->cs);
-  toOutput(device->cs);
-
+  palSetLineMode(device->cs,  PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->sck, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
+  palSetLineMode(device->miso, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
+  palSetLineMode(device->mosi, PAL_MODE_ALTERNATE(SPI_ALTERNATE_FUNCTION) | PAL_STM32_OSPEED_MID2);
   toAlternate(device->sck);
-  toAlternate(device->miso);
-  toAlternate(device->mosi);
 
   tagSpiDeviceEnable(device);
 }
@@ -459,10 +459,10 @@ void tagSpiBusEnd(const TagSpiDevice *device)
 
   tagSpiDeviceDisable(device);
 
-  toOutput(device->cs);
-  toOutput(device->sck);
-  toOutput(device->mosi);
-  toAnalog(device->miso);
+  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->mosi, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
 
   if (device->mutex)
   {

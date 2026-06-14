@@ -240,15 +240,25 @@ static void set_fifo_watermark_registers(const TagLsm6dsv16xDevice *device,
 
 static void shutdown_registers(const TagLsm6dsv16xDevice *device)
 {
-    reg_write(device, LSM6DSV16X_FIFO_CTRL4, LSM6DSV16X_FIFO_MODE_BYPASS);
-    reg_write(device, LSM6DSV16X_FIFO_CTRL3, 0x00U);
     reg_write(device, LSM6DSV16X_CTRL1,      0x00U);
     reg_write(device, LSM6DSV16X_CTRL2,      0x00U);
+    reg_write(device, LSM6DSV16X_CTRL9,      0x00U);
+    reg_write(device, LSM6DSV16X_CTRL4,      0x00U);
+    reg_write(device, LSM6DSV16X_FIFO_CTRL4, LSM6DSV16X_FIFO_MODE_BYPASS);
+    reg_write(device, LSM6DSV16X_FIFO_CTRL1, 0x00U);
+    reg_write(device, LSM6DSV16X_FIFO_CTRL2, 0x00U);
+    reg_write(device, LSM6DSV16X_FIFO_CTRL3, 0x00U);
+    reg_write(device, LSM6DSV16X_ODR_TRIG_CFG, 0x00U);
+    reg_write(device, LSM6DSV16X_COUNTER_BDR_REG1, 0x00U);
+    reg_write(device, LSM6DSV16X_COUNTER_BDR_REG2, 0x00U);
     reg_write(device, LSM6DSV16X_INT1_CTRL,  0x00U);
     reg_write(device, LSM6DSV16X_INT2_CTRL,  0x00U);
     reg_write(device, LSM6DSV16X_MD1_CFG,    0x00U);
     reg_write(device, LSM6DSV16X_MD2_CFG,    0x00U);
+    reg_write(device, LSM6DSV16X_TAP_CFG0,   0x00U);
     reg_write(device, LSM6DSV16X_TAP_CFG2,   0x00U);
+    reg_write(device, LSM6DSV16X_WAKE_UP_THS, 0x00U);
+    reg_write(device, LSM6DSV16X_WAKE_UP_DUR, 0x00U);
 }
 
 /* =========================================================================

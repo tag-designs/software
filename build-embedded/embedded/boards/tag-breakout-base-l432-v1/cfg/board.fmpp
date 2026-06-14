@@ -1,0 +1,11 @@
+sourceRoot: /Users/geobrown/Research/tag-designs/software/ChibiOS/tools/ftl/processors/boards/stm32f0xx/templates
+outputRoot: /Users/geobrown/Research/tag-designs/software/build-embedded/embedded/boards/tag-breakout-base-l432-v1/../Tag_Breakout_Base_L432_V1
+dataRoot: /Users/geobrown/Research/tag-designs/software/build-embedded/embedded/boards/tag-breakout-base-l432-v1/cfg
+
+data : {
+  doc1:xml (
+    board.chcfg
+    {
+    }
+  )
+}

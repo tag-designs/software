@@ -135,8 +135,8 @@ void rtcOff(void)
  */
 void godown(enum Sleep sleepmode)
 {
-  if (sleepmode == SLEEP) {
-    chThdYield();
+  if (MONCONNECTED || (sleepmode == SLEEP))
+  {
     return;
   }
 
@@ -189,6 +189,7 @@ void godown(enum Sleep sleepmode)
   SET_BIT(PWR->CR3, PWR_CR3_APC);
 
   tagDevicesDisableWakeupSources();
+  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
   /*
    * TODO(CRITICAL): this abort path returns from godown() with interrupts
    * disabled. Rework standby entry so all early exits restore IRQ state.

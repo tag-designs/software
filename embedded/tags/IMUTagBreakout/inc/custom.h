@@ -40,7 +40,6 @@
  * Board-level wake lines and sample scale constants used by local code.
  * @{
  */
-#define LINE_ACCEL_INT LINE_WKUP1
 
 #define ACCEL_CONSTANT 0.976f
 #define MAG_CONSTANT 0.01

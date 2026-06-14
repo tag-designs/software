@@ -63,11 +63,11 @@ void tagI2cDevicePowerOn(const TagI2cDevice *device)
   if (tagLineIsValid(device->pwr))
   { 
     palSetLine(device->pwr);
-    toOutput(device->pwr);
+    palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL| PAL_STM32_OSPEED_LOWEST);
     palSetLine(device->sda);
     palSetLine(device->scl);
-    toOutput(device->scl);
-    toOutput(device->sda);
+    palSetLineMode(device->scl,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+    palSetLineMode(device->sda,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
   }
 }
 
@@ -80,8 +80,8 @@ void tagI2cDevicePowerOff(const TagI2cDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
-    toAnalog(device->sda);
-    toAnalog(device->scl);
+    palSetLineMode(device->sda,PAL_MODE_INPUT_ANALOG );
+    palSetLineMode(device->scl,PAL_MODE_INPUT_ANALOG );
     palClearLine(device->pwr);
   }
 }
@@ -100,10 +100,8 @@ void tagI2cBusBegin(const TagI2cDevice *device)
     chBSemWait(controller->mutex);
   }
 
-  palSetLine(device->sda);
-  palSetLine(device->scl);
-  toOutput(device->scl);
-  toOutput(device->sda);
+  palSetLineMode(device->sda,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+  palSetLineMode(device->scl,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
 
   if (controller)
   {

@@ -1,0 +1,11 @@
+sourceRoot: /Users/geobrown/Research/tag-designs/software/ChibiOS/tools/ftl/processors/boards/stm32c0xx/templates
+outputRoot: /Users/geobrown/Research/tag-designs/software/build-embedded/embedded/boards/tag-base-c071-v1/../ST_NUCLEO64_C071RB
+dataRoot: /Users/geobrown/Research/tag-designs/software/build-embedded/embedded/boards/tag-base-c071-v1/cfg
+
+data : {
+  doc1:xml (
+    board.chcfg
+    {
+    }
+  )
+}

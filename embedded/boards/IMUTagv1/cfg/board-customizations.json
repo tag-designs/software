@@ -30,7 +30,8 @@
         "Mode": "Input",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin1": {
         "ID": "LED1",
@@ -38,7 +39,7 @@
         "Level": "High",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
@@ -69,13 +70,14 @@
       "pin4": {
         "ID": "IMU_TRG_TEST",
         "Type": "PushPull",
-        "Level": "Low",
+        "Level": "High",
         "Speed": "Medium",
         "Resistor": "Floating",
-        "Mode": "Analog",
+        "Mode": "Output",
         "Alternate": "14",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin5": {
         "ID": "ACCEL_SCK",
@@ -121,7 +123,8 @@
         "Mode": "Analog",
         "Alternate": "14",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin9": {
         "ID": "LPS_DRDY",
@@ -220,10 +223,10 @@
       "pin1": {
         "ID": "LED2",
         "Type": "OpenDrain",
-        "Level": "High",
+        "Level": "Low",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
@@ -269,7 +272,7 @@
         "Level": "High",
         "Speed": "Maximum",
         "Resistor": "PullUp",
-        "Mode": "Alternate",
+        "Mode": "Output",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled",
@@ -281,7 +284,7 @@
         "Level": "High",
         "Speed": "Maximum",
         "Resistor": "PullUp",
-        "Mode": "Alternate",
+        "Mode": "Output",
         "Alternate": "4",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled",

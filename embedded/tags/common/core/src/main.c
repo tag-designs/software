@@ -83,6 +83,10 @@ void deviceInit(int force)
       tagRtcInit();
 
     tagDevicesDeinit();
+    for (int i = 0; i < 16; i++) {
+      debug_log_printf("Pin A%d 0x%02x B%d 0x%02x\r\n", i,GPIOA->MODER>>(i*2)&3, i, GPIOB->MODER>>(i*2)&3);
+    }
+
 
     // turn off all alarms
 
@@ -299,14 +303,9 @@ int main(void)
 
     pState->safe = true;
 
-    if (MONCONNECTED)
-    {
-      chThdYield(); // if the monitor is connected, don't sleep
-    }
-    else
-    {
-      godown(sleepmode); // standby
-    }
+    // godown
+
+    godown(sleepmode); // standby
   }
 }
 

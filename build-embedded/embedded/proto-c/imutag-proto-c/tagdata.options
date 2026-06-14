@@ -1,0 +1,51 @@
+# tagdata.options
+// Default nanopb options shared by embedded tag data protocols.
+* long_names:false
+
+// Shared bounds. Keep size/count decisions here so tag overrides only describe
+// protocol surface area or deliberate per-tag deviations.
+Config.hibernate max_count:2
+CalibrationLog.data max_count:25
+IMUTagLogData.data max_size:120
+IMUTagLog.data max_count:16
+IMUTagRawLog.samples max_size:2048
+
+TagInfo.board_desc max_size:60
+TagInfo.uuid max_size:30
+TagInfo.firmware max_size:60
+TagInfo.gitrepo max_size:128
+TagInfo.githash max_size:30
+TagInfo.build_time max_size:30
+TagInfo.source_path max_size:100
+
+// Optional configuration and data messages are disabled until a tag override
+// enables the messages it actually uses.
+
+Config.adxl362 type:FT_IGNORE
+Adxl362 skip_message:true
+PresTagLogFmt skip_message:true
+BitTagLog skip_message:true
+BitTagData skip_message:true
+BitTagNgLog skip_message:true
+PresTagLog skip_message:true
+BitPresTagLog skip_message:true
+PresTagRawLog skip_message:true
+PT_RAW skip_message:true
+CompassTagLog skip_message:true
+SensorData skip_message:true
+CalibrationLog skip_message:true
+CalibrationConstants skip_message:true
+IMUTagLogData skip_message:true
+IMUTagLog skip_message:true
+IMUTagRawLog skip_message:true
+
+
+# tagdata.override.options
+SensorData skip_message:false
+CalibrationLog skip_message:false
+CalibrationConstants skip_message:false
+IMUTagLogData skip_message:false
+IMUTagLog skip_message:false
+IMUTagRawLog skip_message:false
+
+

@@ -32,117 +32,6 @@
  * RTC and standby entry, matching the newer PresTag/CompassTag split.
  */
 
-/**
- * @brief Enable SPI1 using the legacy IMUTagBreakout register sequence.
- */
-static void spiEnable(void)
-{
-  rccEnableSPI1(0);
-  rccResetSPI1();
-
-  SPI1->CR1 = 0;
-  SPI1->CR2 =
-      SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
-      SPI_CR2_DS_1 | SPI_CR2_DS_0;
-
-  SPI1->CR1 = SPI_CR1_MSTR;
-  SPI1->CR1 |= SPI_CR1_SPE;
-  tagMarkSpiOn(SPI1);
-}
-
-/**
- * @brief Disable SPI1 after a legacy local-device transaction.
- */
-static void spiDisable(void)
-{
-  SPI1->CR1 = 0;
-  SPI1->CR2 = 0;
-  tagMarkSpiOff(SPI1);
-}
-
-/**
- * @brief Acquire SPI and configure pins for the legacy magnetometer path.
- */
-void magOn(void)
-{
-  chBSemWait(&SPI1mutex);
-
-  palSetLine(LINE_MAG_CS);
-  toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_LPS_MISO);
-  toAlternate(LINE_ACCEL_MOSI);
-
-  spiEnable();
-}
-
-/**
- * @brief Release SPI and float pins after the legacy magnetometer path.
- */
-void magOff(void)
-{
-  palSetLine(LINE_MAG_CS);
-  spiDisable();
-  toAnalog(LINE_ACCEL_SCK);
-  toAnalog(LINE_ACCEL_MOSI);
-  toAnalog(LINE_LPS_MISO);
-  chBSemSignal(&SPI1mutex);
-}
-
-/**
- * @brief Acquire SPI and configure pins for the legacy pressure path.
- */
-void lpsOn(void)
-{
-  chBSemWait(&SPI1mutex);
-
-  palSetLine(LINE_LPS_CS);
-  toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_LPS_MISO);
-  toAlternate(LINE_LPS_MOSI);
-
-  spiEnable();
-}
-
-/**
- * @brief Release SPI and float pins after the legacy pressure path.
- */
-void lpsOff(void)
-{
-  palSetLine(LINE_LPS_CS);
-  spiDisable();
-  toAnalog(LINE_ACCEL_SCK);
-  toAnalog(LINE_LPS_MOSI);
-  toAnalog(LINE_LPS_MISO);
-  chBSemSignal(&SPI1mutex);
-}
-
-/**
- * @brief Acquire SPI and configure pins for the legacy LSM6 path.
- */
-void lsm6On(void)
-{
-  chBSemWait(&SPI1mutex);
-
-  palSetLine(LINE_ACCEL_CS);
-  toAlternate(LINE_ACCEL_SCK);
-  toAlternate(LINE_ACCEL_MISO);
-  toAlternate(LINE_ACCEL_MOSI);
-
-  spiEnable();
-}
-
-/**
- * @brief Release SPI and float pins after the legacy LSM6 path.
- */
-void lsm6Off(void)
-{
-  palSetLine(LINE_ACCEL_CS);
-  spiDisable();
-  toAnalog(LINE_ACCEL_SCK);
-  toAnalog(LINE_ACCEL_MOSI);
-  toAnalog(LINE_ACCEL_MISO);
-  chBSemSignal(&SPI1mutex);
-}
 
 const TagStorageDevice tagExternalFlash = {
     .ops = &mx25lStorageOps,
@@ -310,10 +199,14 @@ void tagDevicesPrepareStandby(uint32_t state)
 {
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 
-  if (state != RUNNING){
-        lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
-        lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
-        ak09940aInitPowerDown(TAG_MAG_DEVICE);
+  if (state != RUNNING) {
+    lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
+    lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
+    toAnalog(LINE_LPS_DRDY);
+    ak09940aDeviceBegin(TAG_MAG_DEVICE);
+    ak09940aInitPowerDown(TAG_MAG_DEVICE);
+    ak09940aDeviceEnd(TAG_MAG_DEVICE);
+    toAnalog(LINE_MAG_TRG);
   }
 }
 
@@ -335,4 +228,27 @@ void tagDevicesApplyStandbyPins(void)
   tagBusPrepareSleep(&imu_registers.bus);
   tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+}
+
+/**
+ * @brief Disable IMU wakeup sources before entering terminal standby.
+ */
+void tagDevicesDisableWakeupSources(void)
+{
+  CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP1_Msk);
+}
+
+/**
+ * @brief Configure wake sources for IMUTag standby.
+ *
+ * IMUTag uses EXTI on LINE_WKUP1 for Stop1 collection wakes. Terminal
+ * standby states should not leave the IMU interrupt as a wakeup pin.
+ */
+bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
+{
+  (void)state;
+  (void)is_active;
+
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  return true;
 }

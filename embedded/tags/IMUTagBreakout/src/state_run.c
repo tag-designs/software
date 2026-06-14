@@ -273,7 +273,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         break;
       }
     }
-    isActive = palReadLine(LINE_ACCEL_INT);
+    isActive = palReadLine(LINE_WKUP1);
     if (isActive) {
       sleepmode = SLEEP;
     }
