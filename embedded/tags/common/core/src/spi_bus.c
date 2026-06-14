@@ -413,9 +413,9 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
   palSetLine(device->cs);
   palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->sck, PAL_MODE_INPUT_ANALOG);
-  palSetLineMode(device->mosi, PAL_MODE_INPUT_ANALOG);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(device->sck, PAL_MODE_INPUT_PULLDOWN);
+  palSetLineMode(device->mosi, PAL_MODE_INPUT_PULLDOWN);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
   
   if (tagLineIsValid(device->pwr))
   {
@@ -462,7 +462,7 @@ void tagSpiBusEnd(const TagSpiDevice *device)
   palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->mosi, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
 
   if (device->mutex)
   {
@@ -483,7 +483,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
     tagEnableStandbyPullup(device->cs);
     tagEnableStandbyPulldown(device->sck);
     tagEnableStandbyPulldown(device->mosi);
-    //tagEnableStandbyPulldown(device->miso);
+    tagEnableStandbyPulldown(device->miso);
     break;
 
   case TAG_SPI_SLEEP_FLOAT:

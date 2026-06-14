@@ -291,6 +291,15 @@ int main(void)
 
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
+  // Release swdio and swclk if not in monitor mode
+
+  if (0 && !MONCONNECTED)
+  {
+    palSetLineMode(LINE_SWDIO, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(LINE_SWCLK, PAL_MODE_INPUT_ANALOG);
+  }
+
+
   while (1)
   {
     enum Sleep sleepmode = STANDBY;

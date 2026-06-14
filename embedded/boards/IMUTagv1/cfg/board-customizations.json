@@ -27,11 +27,10 @@
         "Level": "High",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Input",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin1": {
         "ID": "LED1",
@@ -73,14 +72,13 @@
         "Level": "High",
         "Speed": "Medium",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "14",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin5": {
-        "ID": "ACCEL_SCK",
+        "ID": "ACCEL_LPS_MAG_SCK",
         "Type": "PushPull",
         "Level": "Low",
         "Speed": "Maximum",
@@ -100,10 +98,11 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
-        "ID": "ACCEL_MOSI",
+        "ID": "ACCEL_MAG_MOSI",
         "Type": "PushPull",
         "Level": "Low",
         "Speed": "Maximum",
@@ -149,7 +148,7 @@
         "Standby": "PULLUP"
       },
       "pin11": {
-        "ID": "LPS_MISO",
+        "ID": "LPS_MAG_MISO",
         "Type": "PushPull",
         "Level": "Low",
         "Speed": "Maximum",
@@ -157,7 +156,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin12": {
         "ID": "LPS_MOSI",
