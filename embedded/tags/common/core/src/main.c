@@ -90,9 +90,6 @@ void deviceInit(int force)
       power_reason = TAG_DEVICE_POWER_TERMINAL_ENTRY;
     }
     tagDevicesApplyPowerState(power_reason, pState->state);
-    for (int i = 0; i < 16; i++) {
-      debug_log_printf("Pin A%d 0x%02x B%d 0x%02x\r\n", i,GPIOA->MODER>>(i*2)&3, i, GPIOB->MODER>>(i*2)&3);
-    }
 
 
     // turn off all alarms
