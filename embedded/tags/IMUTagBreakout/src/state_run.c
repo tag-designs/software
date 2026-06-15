@@ -47,10 +47,10 @@
  * - set IMUTAG_HEADER_RESYNC on that next header so host decoders and SensorViz
  *   can mark the discontinuity.
  *
- * Do not use the millisecond field as a normal per-page timing correction.
- * Only the low ten bits are milliseconds, the upper bits are flags, and the
- * millisecond value can add jitter. Host decoding uses the header only for
- * collection start and explicit resync segment anchors.
+ * Do not use the subsecond field as a normal per-page timing correction. Only
+ * the low ten bits are 1/1024-second subsecond ticks, the upper bits are flags,
+ * and the rounded millisecond value can add jitter. Host decoding uses the
+ * header only for collection start and explicit resync segment anchors.
  */
 static uint32_t discard_blocks;
 static uint32_t discarded_blocks;

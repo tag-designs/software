@@ -174,7 +174,9 @@ SqlTableDefinition imuHeaderTable()
     /*
      * IMUTag has two time domains:
      * - ImuHeader stores the absolute wall-clock timestamp supplied by the tag
-     *   at the start of each 16-block page.
+     *   at the start of each 16-block page. The Millisecond column is the
+     *   rounded integer millisecond decoded from the packed 1/1024-second
+     *   subsecond ticks.
      * - Sensor rows use elapsed microseconds from the first retained block.
      *
      * Sensorviz currently treats time columns generically, so keeping this

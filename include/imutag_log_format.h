@@ -19,8 +19,9 @@
 
 #define IMUTAG_ENV_SKIP_RAW (-1)
 
-/* t_DataHeader.millis uses the low ten bits for the 0..999 millisecond field.
- * The remaining bits are header flags. */
+/* t_DataHeader.millis uses the low ten bits for 1/1024-second subsecond ticks.
+ * Host log writers convert those ticks to rounded integer milliseconds. The
+ * remaining bits are header flags. */
 #define IMUTAG_HEADER_MILLIS_MASK (0x03ffu)
 #define IMUTAG_HEADER_RESYNC (0x0400u)
 #define IMUTAG_HEADER_RESYNC_STORAGE_SKIP (0x0800u)

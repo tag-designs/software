@@ -34,9 +34,24 @@ constexpr size_t kImuSamplesPerBlock =
 constexpr size_t kImuRawDataBytes =
     sizeof(((t_ImuTagDataLog *)nullptr)->raw_data);
 constexpr size_t kImuDataLogBytes = sizeof(t_ImuTagDataLog);
+constexpr uint32_t kImuHeaderSubsecondTicksPerSecond = 1024;
+constexpr uint32_t kMillisecondsPerSecond = 1000;
 
 static_assert(kImuDataLogBytes == 128,
               "IMUTag host decoder expects the shared log block layout");
+
+constexpr int imuHeaderTicksToRoundedMillisecond(uint32_t ticks)
+{
+    return static_cast<int>(
+        (static_cast<uint64_t>(ticks) * kMillisecondsPerSecond
+         + kImuHeaderSubsecondTicksPerSecond / 2)
+        / kImuHeaderSubsecondTicksPerSecond);
+}
+
+static_assert(imuHeaderTicksToRoundedMillisecond(0) == 0);
+static_assert(imuHeaderTicksToRoundedMillisecond(1) == 1);
+static_assert(imuHeaderTicksToRoundedMillisecond(512) == 500);
+static_assert(imuHeaderTicksToRoundedMillisecond(1023) == 999);
 
 double imuAccelMgPerLsb(Lsm6dsv_ACCEL range)
 {
@@ -170,8 +185,10 @@ int dumpIMUTagBlocks(WriterContext &ctx,
      * the new segment is anchored by the header timestamp, then subsequent data
      * returns to the smooth sample-count clock until the next RESYNC.
      */
+    const uint32_t header_subsecond_ticks =
+        raw_millisecond & IMUTAG_HEADER_MILLIS_MASK;
     const int header_millisecond =
-        static_cast<int>(raw_millisecond & IMUTAG_HEADER_MILLIS_MASK);
+        imuHeaderTicksToRoundedMillisecond(header_subsecond_ticks);
     const int header_flags =
         static_cast<int>(raw_millisecond & ~IMUTAG_HEADER_MILLIS_MASK);
     const bool header_resync = (raw_millisecond & IMUTAG_HEADER_RESYNC) != 0;
@@ -192,10 +209,11 @@ int dumpIMUTagBlocks(WriterContext &ctx,
             ctx.imu->elapsed_base_us
             + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
         /*
-         * The resync anchor is only millisecond-resolution. If it rounds below
-         * the samples already emitted for the previous segment, round the new
-         * segment up to the next expected block boundary so elapsed timestamps
-         * remain monotonic.
+         * The resync anchor is rounded to millisecond resolution after decoding
+         * the 1/1024-second subsecond ticks. If it rounds below the samples
+         * already emitted for the previous segment, round the new segment up to
+         * the next expected block boundary so elapsed timestamps remain
+         * monotonic.
          */
         ctx.imu->elapsed_base_us =
             elapsed_from_anchor_us > current_end_us ? elapsed_from_anchor_us : current_end_us;

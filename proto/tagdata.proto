@@ -253,6 +253,8 @@ message IMUTagLogData{
 
 message IMUTagLog{
   int32 epoch = 1;
+  // Packed t_DataHeader.millis: low 10 bits are 1/1024-second ticks,
+  // upper bits are flags.
   int32 millisecond = 2;
   float temperature = 3;
   repeated IMUTagLogData data = 4;
@@ -260,6 +262,8 @@ message IMUTagLog{
 
 message IMUTagRawLog{
   int32 epoch = 1;
+  // Packed t_DataHeader.millis: low 10 bits are 1/1024-second ticks,
+  // upper bits are flags.
   int32 millisecond = 2;
   float temperature = 3;
   bytes samples = 4; // raw DATALOG_SAMPLES * t_DataLog page image
