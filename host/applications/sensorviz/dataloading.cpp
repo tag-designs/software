@@ -119,6 +119,9 @@ void MainWindow::updateMetadata()
     if (log_.hasCompassCalibration) {
         lines << "Compass calibration: loaded";
         lines << QString("Compass calibration epoch: %1").arg(log_.compassCalibrationEpoch);
+        if (!log_.compassCalibrationWarning.isEmpty()) {
+            lines << "Compass calibration warning: " + log_.compassCalibrationWarning;
+        }
     } else if (!log_.compassCalibrationWarning.isEmpty()) {
         lines << "Compass calibration: " + log_.compassCalibrationWarning;
     }

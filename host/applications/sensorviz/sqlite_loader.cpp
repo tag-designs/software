@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QMap>
+#include <QVector3D>
 
 #include <sqlite3.h>
 
@@ -514,6 +515,68 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
     return true;
 }
 
+SensorStream *streamById(SensorLog &log, const QString &id)
+{
+    for (SensorStream &stream : log.streams) {
+        if (stream.id == id) {
+            return &stream;
+        }
+    }
+    return nullptr;
+}
+
+bool streamsHaveSameSamples(
+    const SensorStream &x,
+    const SensorStream &y,
+    const SensorStream &z)
+{
+    if (x.timeDomain != y.timeDomain || x.timeDomain != z.timeDomain) {
+        return false;
+    }
+    if (x.time.size() != y.time.size() || x.time.size() != z.time.size()) {
+        return false;
+    }
+    if (x.value.size() != y.value.size() || x.value.size() != z.value.size()) {
+        return false;
+    }
+    for (qsizetype i = 0; i < x.time.size(); i++) {
+        if (x.time[i] != y.time[i] || x.time[i] != z.time[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void applyCalibrationToImuMagnetometer(SensorLog &log)
+{
+    if (!log.hasCompassCalibration) {
+        return;
+    }
+
+    SensorStream *mx = streamById(log, QStringLiteral("imu_mx"));
+    SensorStream *my = streamById(log, QStringLiteral("imu_my"));
+    SensorStream *mz = streamById(log, QStringLiteral("imu_mz"));
+    if (!mx || !my || !mz) {
+        return;
+    }
+
+    if (!streamsHaveSameSamples(*mx, *my, *mz)) {
+        if (log.compassCalibrationWarning.isEmpty()) {
+            log.compassCalibrationWarning =
+                "IMUTag magnetometer calibration skipped because axis streams do not align";
+        }
+        return;
+    }
+
+    for (qsizetype i = 0; i < mx->value.size(); i++) {
+        const QVector3D calibrated = log.compassCalibration.apply(
+            QVector3D(mx->value[i], my->value[i], mz->value[i]));
+        mx->value[i] = calibrated.x();
+        my->value[i] = calibrated.y();
+        mz->value[i] = calibrated.z();
+    }
+}
+
 bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
 {
     // IMUTag plots use elapsed seconds on the x-axis, but users still need an
@@ -703,6 +766,7 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         && !loadCompassCalibration(db, loaded, error)) {
         return false;
     }
+    applyCalibrationToImuMagnetometer(loaded);
 
     if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {
         error = "No supported sensor streams or record sets found in database";

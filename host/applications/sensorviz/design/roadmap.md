@@ -123,8 +123,9 @@ and IMUTag SQLite logs.
   correct for now, but future workflows may want optional project/session files.
 - Multi-column record sets are currently used mainly for CompassTag data. More
   record-set users may reveal patterns that should be generalized.
-- IMUTag magnetometer samples are loaded and plotted, but calibration-on-input
-  remains a future pass.
+- IMUTag magnetometer samples are calibrated on load when magnetometer
+  constants are available, so scalar axes and derived magnitude use the same
+  corrected data.
 - There are no automated GUI tests for menu organization, preference load/store,
   metadata-box interaction, or plot-title behavior.
 
@@ -137,8 +138,6 @@ Near-term cleanup:
 - Warn the user when a load succeeds but an expected stream or derived stream is
   skipped, for example when CompassTag data lacks calibration metadata needed
   for heading/orientation streams.
-- Apply stored magnetometer calibration to IMUTag magnetometer streams when the
-  calibration and display semantics are settled.
 - Add new stream display defaults to `defaultDisplayForStream()` as new tag
   streams appear.
 - Improve transform-specific configuration structure if more transforms are
