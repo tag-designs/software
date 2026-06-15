@@ -18,6 +18,7 @@
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 static volatile int sectors_erased NOINIT;
+static uint32_t erase_sector_size;
 static uint32_t erase_sector_total;
 static bool erase_external_active;
 
@@ -96,34 +97,27 @@ static int countInternalBlocks(void){
   return count;
 }
 
-/**
- * @brief Erase one external sector if it contains programmed data.
- *
- * @param[in] sector Sector index to inspect.
- * @return true when the sector was erased.
- */
-static bool eraseExternalSector(int sector){
-  int32_t addr;
-  uint8_t buf[256];
-  int sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
-  int sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+static uint32_t dirtyExternalSectors(void)
+{
+  const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  const uint32_t sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+  /*
+   * Reset calls restoreLog() before eraseExternal(), so pState->pages is the
+   * count of valid internal headers. For PresTag each valid header owns exactly
+   * one external page: a t_DataLog containing DATALOG_SAMPLES pressure samples.
+   */
+  const uint64_t dirty_bytes = (uint64_t)pState->pages * (uint64_t)databuf_size;
+  uint32_t dirty_sectors;
 
-  // round up to full sector
-
-  if (sector < 0 || sector >= sector_count)
-    return false;
-
-  addr = sector * sector_size;
-
-  // read a buffer
-  tagStorageRead(TAG_EXTERNAL_FLASH, addr, buf, 256);
-  for (int i = 0; i < 256; i++) {
-      if (buf[i] != 255) {
-        tagStorageSectorErase(TAG_EXTERNAL_FLASH, addr);
-        return true;
-      }
+  if (sector_size == 0U || sector_count == 0U) {
+    return 0;
   }
-  return false;
+
+  dirty_sectors = (uint32_t)((dirty_bytes + sector_size - 1U) / sector_size);
+  if (dirty_sectors > sector_count) {
+    dirty_sectors = sector_count;
+  }
+  return dirty_sectors;
 }
 
 /**
@@ -139,11 +133,20 @@ void eraseExternal()
 
 void eraseExternalStart(void)
 {
-  erase_sector_total = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+  const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  /*
+   * Erase only sectors touched by pages with valid internal headers. Scanning
+   * the flash contents is slower and can make monitor erase progress disagree
+   * with the actual log pages that will be downloaded.
+   */
+  const uint32_t dirty_sectors = dirtyExternalSectors();
+
+  erase_sector_size = sector_size;
+  erase_sector_total = dirty_sectors;
   sectors_erased = 0;
   erase_external_active = false;
 
-  if (erase_sector_total == 0U)
+  if (sector_size == 0U || dirty_sectors == 0U)
     return;
 
   erase_external_active = true;
@@ -156,7 +159,8 @@ bool eraseExternalNextSector(void)
     return false;
 
   if ((uint32_t)sectors_erased < erase_sector_total) {
-    eraseExternalSector(sectors_erased);
+    tagStorageSectorErase(TAG_EXTERNAL_FLASH,
+                          (uint32_t)sectors_erased * erase_sector_size);
     sectors_erased++;
   }
 
@@ -195,7 +199,7 @@ int externalFlashSectorsErased(void)
 
 int externalFlashSectorsToErasePlusOne(void)
 {
-  return tagStorageSectorCount(TAG_EXTERNAL_FLASH) + 1;
+  return (int)dirtyExternalSectors() + 1;
 }
 
 /**
@@ -206,7 +210,7 @@ int externalFlashSectorsToErasePlusOne(void)
 int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES*2;
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES;
   return 0;
 }
 

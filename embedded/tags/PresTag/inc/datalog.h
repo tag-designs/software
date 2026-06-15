@@ -10,7 +10,11 @@
 
 /** Number of pressure samples grouped under one internal header. */
 #define DATALOG_SAMPLES 60
-/** @brief External-flash payload record for one PresTag log page. */
+/**
+ * @brief External-flash payload record for one PresTag log page.
+ *
+ * One written t_DataHeader owns one t_DataLog in external flash.
+ */
 typedef struct {
   struct {
     int16_t pressure;
