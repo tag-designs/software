@@ -18,7 +18,7 @@
 
 // alternate function number for spi -- stm32l432
 
-#define SPI_ALTERNATE_FUNCTION 5
+#define SPI1_ALTERNATE_FUNCTION 5
 
 
 /** @name SPI device model
@@ -48,6 +48,7 @@ typedef enum {
 typedef struct {
   SPI_TypeDef *spi;
   binary_semaphore_t *mutex;
+  int af;
   const TagSpiConfig *config;
   ioline_t cs;
   ioline_t sck;
@@ -61,7 +62,7 @@ typedef struct {
 extern const TagSpiConfig tagSpiDefaultConfig;
 
 #define TAG_SPI1_DEVICE_DEFAULTS                                             \
-  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig
+  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig, .af = SPI1_ALTERNATE_FUNCTION
 /** @} */
 
 /** @name SPI active-state tracking
