@@ -48,7 +48,7 @@ typedef enum {
 typedef struct {
   SPI_TypeDef *spi;
   binary_semaphore_t *mutex;
-  int af;
+  int alternate_function;
   const TagSpiConfig *config;
   ioline_t cs;
   ioline_t sck;
@@ -62,7 +62,8 @@ typedef struct {
 extern const TagSpiConfig tagSpiDefaultConfig;
 
 #define TAG_SPI1_DEVICE_DEFAULTS                                             \
-  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig, .af = SPI1_ALTERNATE_FUNCTION
+  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig, .alternate_function = SPI1_ALTERNATE_FUNCTION
+
 /** @} */
 
 /** @name SPI active-state tracking

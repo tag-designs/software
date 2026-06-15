@@ -337,12 +337,19 @@ void tagUsartDevicePowerOn(const TagUsartDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
-    toOutput(device->pwr);
     palSetLine(device->pwr);
+    palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL);
   }
 
   palSetLine(device->cs);
-  toOutput(device->cs);
+  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+
+  palClearLine(device->sck);
+  palClearLine(device->tx);
+
+  palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->tx, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->rx, PAL_MODE_INPUT_ANALOG);
 }
 
 /**
@@ -354,13 +361,23 @@ void tagUsartDevicePowerOff(const TagUsartDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
+    
+    palSetLineMode(device->sck, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(device->tx, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(device->rx, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(device->cs, PAL_MODE_INPUT_ANALOG);
     palClearLine(device->pwr);
+  } else {
+
+    palSetLine(device->cs);
+    palClearLine(device->sck);
+    palClearLine(device->tx);
+
+    palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetLineMode(device->tx, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetLineMode(device->rx, PAL_MODE_INPUT_ANALOG);
   }
 
-  toAnalog(device->sck);
-  toAnalog(device->tx);
-  toAnalog(device->rx);
-  toAnalog(device->cs);
 }
 
 /**
@@ -376,11 +393,11 @@ void tagUsartBusBegin(const TagUsartDevice *device)
   }
 
   palSetLine(device->cs);
-  toOutput(device->cs);
-
-  toAlternate(device->sck);
-  toAlternate(device->tx);
-  toAlternate(device->rx);
+  palSetLineMode(device->cs,  PAL_MODE_OUTPUT_PUSHPULL);
+  
+  palSetLineMode(device->sck, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
+  palSetLineMode(device->tx, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
+  palSetLineMode(device->rx, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
 
   tagUsartDeviceEnable(device);
 }
@@ -396,9 +413,12 @@ void tagUsartBusEnd(const TagUsartDevice *device)
 
   tagUsartDeviceDisable(device);
 
-  toAnalog(device->sck);
-  toAnalog(device->tx);
-  toAnalog(device->rx);
+  palClearLine(device->sck);
+  palClearLine(device->tx);
+
+  palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->tx, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->rx, PAL_MODE_INPUT_ANALOG);
 
   if (device->mutex)
   {

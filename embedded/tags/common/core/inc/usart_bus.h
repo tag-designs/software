@@ -15,6 +15,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define USART2_ALTERNATE_FUNCTION 7
+
+
 /** @name Synchronous-USART device model
  * Synchronous-USART bus helpers.
  *
@@ -42,6 +45,7 @@ typedef enum {
 typedef struct {
   USART_TypeDef *usart;
   binary_semaphore_t *mutex;
+  int alternate_function;
   const TagUsartSyncConfig *config;
   ioline_t cs;
   ioline_t sck;
@@ -55,7 +59,7 @@ typedef struct {
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
 
 #define TAG_USART2_SYNC_DEVICE_DEFAULTS                                      \
-  .usart = USART2, .mutex = &USART2mutex, .config = &tagUsart2SyncDefaultConfig
+  .usart = USART2, .mutex = &USART2mutex, .config = &tagUsart2SyncDefaultConfig, .alternate_function = USART2_ALTERNATE_FUNCTION
 /** @} */
 
 /** @name USART active-state tracking
