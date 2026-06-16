@@ -119,8 +119,8 @@ void readConfig(Config *config)
   int samples = sconfig.adxl_inactive_samples;   
 
   config->has_adxl362 = true;
-  //config->adxl362.range = Adxl367RngToEnum[range];
-  //config->adxl362.freq = Adxl367ODRToEnum[freq];
+  config->adxl362.range = Adxl367RngToEnum[range];
+  config->adxl362.freq = Adxl367ODRToEnum[freq];
   config->adxl362.act_thresh_g = act_thresh * Sens[range];
   //config->adxl362.inact_thresh_g = inact_thresh * Sens[range];
   config->adxl362.inactive_sec = samples * Tdelta[freq];
@@ -153,6 +153,7 @@ bool writeConfig(Config *config)
 
   if ((range < 0) || (freq < 0))
   {
+    debug_log_printf("Invalid config range or frequency\r\n");
     return false;
   }
 

@@ -339,6 +339,7 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
 {
     switch (tag_type) {
     case BITTAG:
+    case BITTAGNG:
         return {false, {voltageTable(), coreTemperatureTable(), activityTable()}};
     case COMPASSTAG:
         return {

@@ -101,4 +101,56 @@ int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log)
     return log.data().size();
 }
 
+int dumpBitTagNgLog(WriterContext &ctx, const BitTagNgLog &log)
+{
+    if (!ctx.createLogTables()) {
+        return -2;
+    }
+
+    Statement voltage_insert(ctx.db, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+    Statement temperature_insert(
+        ctx.db,
+        "INSERT INTO CoreTemperature (Epoch, Temperature) VALUES (?, ?)");
+    Statement activity_insert(ctx.db, "INSERT INTO Activity (Epoch, Activity) VALUES (?, ?)");
+
+    if (!voltage_insert.valid()
+        || !temperature_insert.valid()
+        || !activity_insert.valid()) {
+        ctx.setLastSqliteError("Could not prepare BitTagNG log insert");
+        return -2;
+    }
+
+    sqlite3_int64 timestamp = log.epoch() - 120;
+    bool wrote_header = false;
+
+    for (auto const activity_word : log.activity()) {
+        for (int i = 0; i < 6; i++) {
+            const double activity =
+                static_cast<double>((activity_word >> (i * 5)) & 0x1f) / 0.20;
+            if (!activity_insert.bindInt64(1, timestamp)
+                || !activity_insert.bindDouble(2, activity)
+                || !activity_insert.stepDone()) {
+                ctx.setLastSqliteError("BitTagNG activity insert failed");
+                return -2;
+            }
+            timestamp += 20;
+        }
+
+        if (!wrote_header) {
+            if (!voltage_insert.bindInt64(1, timestamp)
+                || !voltage_insert.bindDouble(2, log.voltage())
+                || !voltage_insert.stepDone()
+                || !temperature_insert.bindInt64(1, timestamp)
+                || !temperature_insert.bindDouble(2, log.temperature())
+                || !temperature_insert.stepDone()) {
+                ctx.setLastSqliteError("BitTagNG log header insert failed");
+                return -2;
+            }
+            wrote_header = true;
+        }
+    }
+
+    return 1;
+}
+
 } // namespace tagcore::sqlite_log

@@ -22,8 +22,9 @@ class Tag;
  * - the implementation also emits through log_error()/log_debug(), which lets
  *   Qt host applications show messages through their existing log window hook.
  *
- * The current data-log writer supports BitTag, BitPresTag, CompassTag, IMUTag,
- * and PresTag records, including PresTag raw payloads. New databases include
+ * The current data-log writer supports BitTag, BitTagNG, BitPresTag,
+ * CompassTag, IMUTag, and PresTag records, including PresTag raw payloads.
+ * New databases include
  * schema_info and streams metadata tables so external tools can discover stream
  * ids, labels, units, and source columns without depending on sensorViz source
  * code. writeLog() preserves the shared download convention: positive values

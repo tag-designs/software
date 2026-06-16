@@ -157,6 +157,7 @@ struct WriterContext
 SqlTagProfile sqliteProfileForTag(TagType tag_type);
 
 int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log);
+int dumpBitTagNgLog(WriterContext &ctx, const BitTagNgLog &log);
 int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log);
 int dumpBitPresTagLog(WriterContext &ctx, const BitPresTagLog &log);
 int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log);

@@ -67,6 +67,14 @@ const TagTestCase *tagTestCases(size_t *count);
 TestResult tag_test_adxl362(const void *context);
 
 /**
+ * @brief Test ADXL367 accelerometer communication and readiness.
+ *
+ * @return ALL_PASSED when the device passes, otherwise the accel-family
+ * failure result.
+ */
+TestResult tag_test_adxl367(const void *context);
+
+/**
  * @brief Test LIS2DU12 accelerometer communication and readiness.
  *
  * @return ALL_PASSED when the device passes, otherwise a device-specific

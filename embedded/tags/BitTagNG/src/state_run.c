@@ -1,12 +1,12 @@
 #include "hal.h"
 #include <limits.h>
-#include "ADXL367.h"
 #include "app.h"
 
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
 #include "datalog.h"
+#include "sensors.h"
 
 /*
  * Count-Mode Config
@@ -24,43 +24,6 @@ const int32_t sample_period = 120; // sampling period between writes
    Sample rate now hardwired to 12.5 hz
    Sleep sample rate 6hz
 */
-
-#define ADXL_SAMPLE_RATE ADXL367_ODR_12P5HZ
-#define UINT16SWAP(x) (((x&0xff)<<8) | ((x>>8)&0xff))
-static void adxl367_init(void)
-{
-  accelSpiOn();
-  ADXL367_SoftwareReset();
-  stopMilliseconds(true,20);
-// Start Measurement
-  ADXL367_SetRegisterValue(ADXL367_OP_MEASURE, ADXL367_REG_POWER_CTL, 1);
-// interrupt -- caused by AWAKE going active 
-  ADXL367_SetRegisterValue(ADXL367_INTMAP1_AWAKE_INT1 , ADXL367_REG_INTMAP1_LWR, 1);
-// Timer Control Register -- 6 samples/second
-  ADXL367_SetRegisterValue(1<<6, ADXL367_REG_TIMER_CTL,1);
-// set inactivity level maximum 4400 = 1100mg for 2G range (0.25mg resolution)
-  ADXL367_SetRegisterValue(UINT16SWAP(4400<<2),ADXL367_REG_THRESH_INACT_H,2);
-// set activity threshold to 250mg -- see p22 ADXL367 data sheet
-  ADXL367_SetRegisterValue(UINT16SWAP(1000),ADXL367_REG_THRESH_ACT_H,2);
-// set active time to 0
-// ADXL367_SetRegisterValue(UINT16SWAP(0),ADXL367_REG_TIME_ACT_H,2);
-// turn on referenced loop mode
-  ADXL367_SetRegisterValue(0x3F, ADXL367_REG_ACT_INACT_CTL, 1);
-// set power to MEASUREMENT
-  #define POWERCTL (ADXL367_POWER_CTL_WAKEUP | ADXL367_POWER_CTL_AUTOSLEEP | ADXL367_OP_MEASURE)
-  ADXL367_SetRegisterValue(POWERCTL, ADXL367_REG_POWER_CTL, 1);
-// Check AWAKE bit inactivity.
-  while (palReadLine(LINE_ACCEL_INT)) {stopMilliseconds(true,20);};
-// set adxl range/rate;  2g, 12.5hz
-  ADXL367_SetRegisterValue(ADXL_SAMPLE_RATE,ADXL367_REG_FILTER_CTL, 1);
-// set inact timer
-  ADXL367_SetRegisterValue(UINT16SWAP(sconfig.adxl_inactive_samples),ADXL367_REG_TIME_INACT_H,2);
-// reset active threshold and inactive time
-  ADXL367_SetRegisterValue(UINT16SWAP((sconfig.adxl_act_thresh_cnt)<<2),ADXL367_REG_THRESH_ACT_H,2);
-
-  accelSpiOff();
-}
-
 
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
@@ -83,9 +46,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // make sure we're pointing to the next data block in case
     // this is a recovery action -- round up in the case of partial blocks
     // written
-    int remainder = pState->external_blocks % DATALOG_SAMPLES;
+    int remainder = pState->external_blocks % (DATALOG_SAMPLES * 2);
     if (remainder)
-      pState->external_blocks = pState->external_blocks + DATALOG_SAMPLES - remainder;
+      pState->external_blocks =
+          pState->external_blocks + (DATALOG_SAMPLES * 2) - remainder;
       // need to recover internal block start
 
     adcVDD(&vdd100, &temp10);
@@ -93,7 +57,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->vdd100 = vdd100;
     pState->temp10 = temp10;
 
-    adxl367_init();
+    initActivitySensor();
 
     pState->state = TagState_RUNNING;
     recordState(reason);

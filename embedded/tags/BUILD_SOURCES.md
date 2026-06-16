@@ -150,6 +150,85 @@ embedded/tags/common/sensors/inc/sensor_io.h
 embedded/tags/common/sensors/pressure/inc/lps.h
 ```
 
+## BitTagNG
+
+### C Files
+
+```text
+embedded/tags/BitTagNG/src/datalog.c
+embedded/tags/BitTagNG/src/state_run.c
+embedded/tags/families/BitTagNG/src/config.c
+embedded/tags/families/BitTagNG/src/devices.c
+embedded/tags/families/BitTagNG/src/sensors.c
+embedded/tags/common/core/src/bus_power.c
+embedded/tags/common/core/src/device.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
+embedded/tags/common/core/src/persistent.c
+embedded/tags/common/core/src/pwr.c
+embedded/tags/common/core/src/spi_bus.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/test.c
+embedded/tags/common/core/src/time.c
+embedded/tags/common/core/src/usart_bus.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/rtc/src/rtc_device.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
+embedded/tags/common/sensors/accel/src/ADXL367.c
+embedded/tags/common/sensors/accel/src/adxl367_test.c
+embedded/tags/common/sensors/src/sensor_io.c
+embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
+embedded/tags/common/storage/src/storage_flash.c
+```
+
+### Header Files
+
+```text
+embedded/tags/BitTagNG/inc/custom.h
+embedded/tags/families/BitTagNG/inc/config.h
+embedded/tags/families/BitTagNG/inc/datalog.h
+embedded/tags/families/BitTagNG/inc/devices.h
+embedded/tags/families/BitTagNG/inc/persistent.h
+embedded/tags/families/BitTagNG/inc/sensors.h
+embedded/tags/families/BitTagNG/cfg/chconf.h
+embedded/tags/families/BitTagNG/cfg/halconf.h
+embedded/tags/families/BitTagNG/cfg/mcuconf.h
+embedded/tags/common/core/inc/adc.h
+embedded/tags/common/core/inc/app.h
+embedded/tags/common/core/inc/bus_device.h
+embedded/tags/common/core/inc/core_events.h
+embedded/tags/common/core/inc/core_runtime.h
+embedded/tags/common/core/inc/core_state.h
+embedded/tags/common/core/inc/core_sync.h
+embedded/tags/common/core/inc/core_types.h
+embedded/tags/common/core/inc/debug_log.h
+embedded/tags/common/core/inc/device.h
+embedded/tags/common/core/inc/flash_internal.h
+embedded/tags/common/core/inc/gpio_utils.h
+embedded/tags/common/core/inc/i2c_bus.h
+embedded/tags/common/core/inc/power.h
+embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/test_support.h
+embedded/tags/common/core/inc/timekeeping.h
+embedded/tags/common/core/inc/usart_bus.h
+embedded/tags/common/rtc/inc/rtc_api.h
+embedded/tags/common/rtc/inc/rtc_device.h
+embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/common/sensors/accel/inc/ADXL367.h
+embedded/tags/common/sensors/inc/sensor_io.h
+embedded/tags/common/storage/inc/at25xe.h
+embedded/tags/common/storage/inc/storage_device.h
+embedded/tags/common/storage/inc/storage_flash.h
+embedded/tags/common/storage/inc/storage_spi.h
+```
+
 ## PresTag
 
 ### C Files

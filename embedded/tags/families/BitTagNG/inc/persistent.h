@@ -1,7 +1,11 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 extern uint32_t __persistent_start__; // from linker script
+extern uint32_t __persistent_end__;   // from linker script
 extern uint32_t __flash0_end__;       // from linker script
 
 // Reset causes
@@ -101,4 +105,10 @@ extern t_StateMarker sEpoch[sEPOCH_SIZE];
 void recordState(State_Event reason);
 void erasePersistent(void);
 void eraseExternal(void);
+void eraseExternalStart(void);
+bool eraseExternalNextSector(void);
+void eraseExternalFinish(void);
+uint32_t externalFlashSize(void);
+int externalFlashSectorsErased(void);
+int externalFlashSectorsToErasePlusOne(void);
 #endif

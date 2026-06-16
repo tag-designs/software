@@ -259,6 +259,12 @@ public:
             }
             return dumpBitTagLog(context, ack.bittag_data_log());
 
+        case BITTAGNG:
+            if (!ack.has_bittag_ng_data_log()) {
+                return 0;
+            }
+            return dumpBitTagNgLog(context, ack.bittag_ng_data_log());
+
         case COMPASSTAG:
             if (!ack.has_compasstag_data_log()) {
                 // The tag signals end-of-log by returning an Ack without

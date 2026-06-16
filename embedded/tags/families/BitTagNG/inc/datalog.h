@@ -4,9 +4,10 @@
 
 // Stored Data Log -- in external memory
 
-#define member_size(type, member) sizeof(((type *)0)->member)
 #define DATALOG_SAMPLES 15
-CASSERT(member_size(BitTagNgLog,activity)/4 == DATALOG_SAMPLES)
+_Static_assert(sizeof(((BitTagNgLog *)0)->activity) /
+                   sizeof(((BitTagNgLog *)0)->activity[0]) == DATALOG_SAMPLES,
+               "BitTagNG protobuf activity array does not match log page");
 
 typedef struct {
   uint32_t activity[DATALOG_SAMPLES];

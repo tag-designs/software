@@ -8,6 +8,7 @@
 #include "ADXL367.h"
 #include "core_types.h"
 #include "hal.h"
+#include "tag.pb.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -72,4 +73,11 @@ bool adxl367Test(const TagAdxl367Device *device)
   ADXL367_SoftwareResetDevice(device);
   ADXL367_DeviceEnd(device);
   return result;
+}
+
+TestResult tag_test_adxl367(const void *context)
+{
+  return adxl367Test((const TagAdxl367Device *)context)
+             ? ALL_PASSED
+             : ADXL362_FAILED;
 }
