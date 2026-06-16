@@ -223,12 +223,9 @@ static int statusAck(void)
   epoch = epoch * 1000 + millis;
   ack.payload.status.millis = epoch;
 #if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG
-  if (!monitor_acquisition_active())
-  {
-    int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
-                             sizeof(ack.payload.status.debug_message) - 1);
-    ack.payload.status.debug_message[len] = 0;
-  }
+  int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
+                           sizeof(ack.payload.status.debug_message) - 1);
+  ack.payload.status.debug_message[len] = 0;
 #endif
 
   return encode_ack();

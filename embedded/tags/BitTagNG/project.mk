@@ -8,7 +8,8 @@ TAG_MODULES += \
        tag_test \
        rtc_rv3028 \
        flash_at25xe \
-       sensor_accel_adxl367
+       sensor_accel_adxl367 \
+       debug_log
 
 include ../common/modules/modules.mk
 include ../families/BitTagNG/family.mk

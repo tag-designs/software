@@ -150,7 +150,7 @@ bool writeConfig(Config *config)
   int range = EnumToAdxl367Rng(Adxl362_R2G);
   int freq = EnumToAdxl367ODR(Adxl362_S12_5);
 
-
+  debug_log_printf("Configuring ADXL367 with range %d and frequency %d\r\n", range, freq);
   if ((range < 0) || (freq < 0))
   {
     debug_log_printf("Invalid config range or frequency\r\n");
