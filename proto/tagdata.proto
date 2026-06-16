@@ -269,17 +269,10 @@ message IMUTagRawLog{
   bytes samples = 4; // raw DATALOG_SAMPLES * t_DataLog page image
 }
 
-message PT_RAW {
-    int32 epoch = 1;
-    float voltage = 2;
-    float temperature = 3;
-    bytes samples = 4;
-  }
-
 message PresTagRawLog {
   float temp_constant = 1;
   float pres_constant = 2;
-  repeated PT_RAW data = 3;
+  bytes samples = 3; // packed repeated t_PresTagRawBlock records
 }
 
 message CompassTagLog {

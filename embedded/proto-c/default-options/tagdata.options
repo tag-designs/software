@@ -8,8 +8,7 @@ BitTagLog.data max_count:30
 BitTagNgLog.activity max_count:15
 PresTagLog.data max_count:60
 BitPresTagLog.data max_count:12
-PresTagRawLog.data max_count:15
-PT_RAW.samples max_size:240
+PresTagRawLog.samples max_size:3780
 CompassTagLog.data max_count:40
 CalibrationLog.data max_count:25
 IMUTagLogData.data max_size:120
@@ -36,7 +35,6 @@ BitTagNgLog skip_message:true
 PresTagLog skip_message:true
 BitPresTagLog skip_message:true
 PresTagRawLog skip_message:true
-PT_RAW skip_message:true
 CompassTagLog skip_message:true
 SensorData skip_message:true
 CalibrationLog skip_message:true

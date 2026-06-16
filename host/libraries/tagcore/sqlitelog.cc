@@ -269,10 +269,13 @@ public:
             return dumpCompassTagLog(context, ack.compasstag_data_log());
 
         case PRESTAG:
-            if (!ack.has_prestag_data_log()) {
-                return 0;
+            if (ack.has_prestag_raw_data_log()) {
+                return dumpPresTagRawLog(context, ack.prestag_raw_data_log());
             }
-            return dumpPresTagLog(context, ack.prestag_data_log());
+            if (ack.has_prestag_data_log()) {
+                return dumpPresTagLog(context, ack.prestag_data_log());
+            }
+            return 0;
 
         case BITPRESTAG:
             if (!ack.has_bitprestag_data_log()) {

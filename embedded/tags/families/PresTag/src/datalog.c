@@ -12,8 +12,16 @@
 #include "lps27hhw.h"
 #include "storage_flash.h"
 #include <stdbool.h>
+#include <string.h>
 #include <tag.pb.h>
 #include "persistent.h"
+
+#ifndef PRESTAG_RAW_LOG
+#define PRESTAG_RAW_LOG 0
+#endif
+
+#define PRESTAG_LPS27_PRESSURE_CONSTANT (1.0f / 16.0f)
+#define PRESTAG_LPS27_TEMPERATURE_CONSTANT (1.0f / 100.0f)
 
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
@@ -21,6 +29,14 @@ static volatile int sectors_erased NOINIT;
 static uint32_t erase_sector_size;
 static uint32_t erase_sector_total;
 static bool erase_external_active;
+
+#if PRESTAG_RAW_LOG
+_Static_assert(sizeof(t_PresTagRawBlock) ==
+                   sizeof(int32_t) + (2 * sizeof(float)) + sizeof(t_DataLog),
+               "PresTag raw block layout has unexpected padding");
+_Static_assert(sizeof(((PresTagRawLog *)0)->samples.bytes) >= sizeof(t_PresTagRawBlock),
+               "nanopb PresTagRawLog.samples buffer cannot hold one raw block");
+#endif
 
 /**
  * @brief Raise MSI clock speed while formatting large monitor log responses.
@@ -290,10 +306,55 @@ int data_logAck(int index, Ack *ack)
   int ret;
   chThdSetPriority(HIGHPRIO);
   fast_msi();
+#if PRESTAG_RAW_LOG
+  PresTagRawLog *data = &ack->payload.prestag_raw_data_log;
+#else
   PresTagLog *data = &ack->payload.prestag_data_log;
+#endif
   ack->err = Ack_Err_OK;
 
   uint32_t persistent_end = (uint32_t)&__persistent_end__;
+#if PRESTAG_RAW_LOG
+  data->temp_constant = PRESTAG_LPS27_TEMPERATURE_CONSTANT;
+  data->pres_constant = PRESTAG_LPS27_PRESSURE_CONSTANT;
+  data->samples.size = 0;
+
+  if (index >= 0)
+  {
+    tagStorageWake(TAG_EXTERNAL_FLASH);
+    while ((data->samples.size + sizeof(t_PresTagRawBlock)) <=
+           sizeof(data->samples.bytes))
+    {
+      const int current_index =
+          index + (int)(data->samples.size / sizeof(t_PresTagRawBlock));
+      const uint64_t byte_offset = sizeof(databuf) * (uint64_t)current_index;
+      t_DataHeader header;
+      t_PresTagRawBlock block;
+
+      if (((uint32_t)&vddHeader[current_index] >= persistent_end) ||
+          !readDataHeader(current_index, &header) ||
+          (header.epoch == -1) ||
+          (byte_offset + sizeof(databuf) > (uint64_t)externalFlashSize()))
+      {
+        break;
+      }
+
+      tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                     (uint8_t *)&databuf, sizeof(databuf));
+
+      block.epoch = header.epoch;
+      block.voltage = header.vdd100[0] * 0.01f;
+      block.temperature = header.vdd100[1] * 0.01f;
+      memcpy(&block.samples, &databuf, sizeof(block.samples));
+      memcpy(&data->samples.bytes[data->samples.size], &block, sizeof(block));
+      data->samples.size += sizeof(block);
+    }
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+  }
+
+  ack->which_payload =
+      (data->samples.size > 0) ? Ack_prestag_raw_data_log_tag : 0;
+#else
   uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
   t_DataHeader header;
   bool valid_index =
@@ -330,6 +391,7 @@ int data_logAck(int index, Ack *ack)
   {
     ack->which_payload = 0;
   }
+#endif
 
   // encode the ack and return
   ret = encode_ack();

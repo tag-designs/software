@@ -1,5 +1,10 @@
 #include "sqlitelog/internal.h"
 
+#include <cstring>
+#include <sstream>
+
+#include "prestag_log_format.h"
+
 namespace tagcore::sqlite_log {
 
 // Pressure-family tags share pressure and temperature streams, with BitPresTag
@@ -124,6 +129,84 @@ int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log)
     }
 
     return 1;
+}
+
+int dumpPresTagRawLog(WriterContext &ctx, const PresTagRawLog &log)
+{
+    if (!ctx.createLogTables()) {
+        return -2;
+    }
+
+    if (ctx.config.period() == 0) {
+        ctx.setLastError("PresTag raw SQLite output requires a nonzero sample period");
+        return -2;
+    }
+
+    if (log.pres_constant() == 0.0f || log.temp_constant() == 0.0f) {
+        ctx.setLastError("PresTag raw SQLite output requires nonzero conversion constants");
+        return -2;
+    }
+
+    Statement voltage_insert(ctx.db, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+    Statement pressure_insert(ctx.db, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
+    Statement temperature_insert(
+        ctx.db,
+        "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
+
+    if (!voltage_insert.valid()
+        || !pressure_insert.valid()
+        || !temperature_insert.valid()) {
+        ctx.setLastSqliteError("Could not prepare PresTag raw log insert");
+        return -2;
+    }
+
+    const std::string &payload = log.samples();
+    if ((payload.size() % sizeof(t_PresTagRawBlock)) != 0) {
+        std::ostringstream error;
+        error << "PresTag raw payload has " << payload.size()
+              << " bytes, expected a multiple of " << sizeof(t_PresTagRawBlock);
+        ctx.setLastError(error.str());
+        return -2;
+    }
+
+    const size_t block_count = payload.size() / sizeof(t_PresTagRawBlock);
+    for (size_t block_index = 0; block_index < block_count; block_index++) {
+        t_PresTagRawBlock raw_block = {};
+        std::memcpy(&raw_block,
+                    payload.data() + (block_index * sizeof(raw_block)),
+                    sizeof(raw_block));
+
+        sqlite3_int64 timestamp = raw_block.epoch;
+
+        if (!voltage_insert.bindInt64(1, timestamp)
+            || !voltage_insert.bindDouble(2, raw_block.voltage)
+            || !voltage_insert.stepDone()) {
+            ctx.setLastSqliteError("PresTag raw log header insert failed");
+            return -2;
+        }
+
+        for (const t_PresTagRawSample &sample : raw_block.samples.data) {
+            if (sample.pressure == PRESTAG_RAW_PRESSURE_END) {
+                break;
+            }
+
+            if (!pressure_insert.bindInt64(1, timestamp)
+                || !pressure_insert.bindDouble(2,
+                                               sample.pressure * log.pres_constant())
+                || !pressure_insert.stepDone()
+                || !temperature_insert.bindInt64(1, timestamp)
+                || !temperature_insert.bindDouble(2,
+                                                  sample.temperature * log.temp_constant())
+                || !temperature_insert.stepDone()) {
+                ctx.setLastSqliteError("PresTag raw log data insert failed");
+                return -2;
+            }
+
+            timestamp += ctx.config.period();
+        }
+    }
+
+    return static_cast<int>(block_count);
 }
 
 } // namespace tagcore::sqlite_log

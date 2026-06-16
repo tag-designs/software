@@ -155,10 +155,10 @@ embedded/tags/common/sensors/pressure/inc/lps.h
 ### C Files
 
 ```text
-embedded/tags/PresTag/src/config.c
-embedded/tags/PresTag/src/datalog.c
-embedded/tags/PresTag/src/pwr.c
-embedded/tags/PresTag/src/state_run.c
+embedded/tags/families/PresTag/src/config.c
+embedded/tags/families/PresTag/src/datalog.c
+embedded/tags/families/PresTag/src/devices.c
+embedded/tags/families/PresTag/src/state_run.c
 embedded/tags/common/storage/src/at25xe.c
 embedded/tags/common/storage/src/external_flash_test.c
 embedded/tags/common/rtc/src/hal_rtc_lld.c
@@ -186,13 +186,15 @@ embedded/tags/common/core/src/time.c
 ### Header Files
 
 ```text
-embedded/tags/PresTag/Inc/config.h
-embedded/tags/PresTag/Inc/custom.h
-embedded/tags/PresTag/Inc/datalog.h
-embedded/tags/PresTag/Inc/persistent.h
-embedded/tags/PresTag/cfg/chconf.h
-embedded/tags/PresTag/cfg/halconf.h
-embedded/tags/PresTag/cfg/mcuconf.h
+include/prestag_log_format.h
+embedded/tags/PresTag/inc/custom.h
+embedded/tags/families/PresTag/inc/config.h
+embedded/tags/families/PresTag/inc/datalog.h
+embedded/tags/families/PresTag/inc/devices.h
+embedded/tags/families/PresTag/inc/persistent.h
+embedded/tags/families/PresTag/cfg/chconf.h
+embedded/tags/families/PresTag/cfg/halconf.h
+embedded/tags/families/PresTag/cfg/mcuconf.h
 embedded/tags/common/sensors/accel/inc/ais2dw12.h
 embedded/tags/common/core/inc/app.h
 embedded/tags/common/core/inc/adc.h
@@ -217,6 +219,59 @@ embedded/tags/common/sensors/pressure/inc/lps.h
 embedded/tags/common/sensors/pressure/inc/lps27hhw.h
 embedded/tags/common/sensors/mag/inc/mmc5633.h
 embedded/tags/common/sensors/light/inc/opt3002.h
+embedded/tags/common/rtc/inc/rv3028.h
+```
+
+## PresTagRaw
+
+### C Files
+
+```text
+embedded/tags/families/PresTag/src/config.c
+embedded/tags/families/PresTag/src/datalog.c
+embedded/tags/families/PresTag/src/devices.c
+embedded/tags/families/PresTag/src/state_run.c
+embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
+embedded/tags/common/sensors/src/sensor_io.c
+embedded/tags/common/sensors/pressure/src/pressure_device.c
+embedded/tags/common/sensors/pressure/src/lps27.c
+embedded/tags/common/sensors/pressure/src/lps27_test.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
+embedded/tags/common/core/src/persistent.c
+embedded/tags/common/rtc/src/rtc_device.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/usart_bus.c
+embedded/tags/common/core/src/test.c
+embedded/tags/common/core/src/time.c
+```
+
+### Header Files
+
+```text
+include/prestag_log_format.h
+embedded/tags/PresTagRaw/inc/custom.h
+embedded/tags/families/PresTag/inc/config.h
+embedded/tags/families/PresTag/inc/datalog.h
+embedded/tags/families/PresTag/inc/devices.h
+embedded/tags/families/PresTag/inc/persistent.h
+embedded/tags/families/PresTag/cfg/chconf.h
+embedded/tags/families/PresTag/cfg/halconf.h
+embedded/tags/families/PresTag/cfg/mcuconf.h
+embedded/tags/common/sensors/pressure/inc/lps.h
+embedded/tags/common/sensors/pressure/inc/lps27hhw.h
+embedded/tags/common/storage/inc/at25xe.h
+embedded/tags/common/storage/inc/storage_flash.h
+embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rv3028.h
 ```
 

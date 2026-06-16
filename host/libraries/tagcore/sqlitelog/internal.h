@@ -162,6 +162,7 @@ int dumpBitPresTagLog(WriterContext &ctx, const BitPresTagLog &log);
 int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log);
 int dumpIMUTagRawLog(WriterContext &ctx, const IMUTagRawLog &log);
 int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log);
+int dumpPresTagRawLog(WriterContext &ctx, const PresTagRawLog &log);
 
 } // namespace tagcore::sqlite_log
 

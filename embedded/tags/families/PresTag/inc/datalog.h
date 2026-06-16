@@ -8,19 +8,16 @@
 #ifndef DATALOG_H
 #define DATALOG_H
 
+#include "prestag_log_format.h"
+
 /** Number of pressure samples grouped under one internal header. */
-#define DATALOG_SAMPLES 60
+#define DATALOG_SAMPLES PRESTAG_LOG_SAMPLES
 /**
  * @brief External-flash payload record for one PresTag log page.
  *
  * One written t_DataHeader owns one t_DataLog in external flash.
  */
-typedef struct {
-  struct {
-    int16_t pressure;
-    int16_t temperature;
-  } data[DATALOG_SAMPLES];
-} t_DataLog;
+typedef t_PresTagDataLog t_DataLog;
 
 /** @brief Internal-flash header that anchors one external log page. */
 typedef struct {
