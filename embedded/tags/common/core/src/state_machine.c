@@ -262,8 +262,9 @@ enum Sleep StateMachine(eventmask_t input_events)
         case resetSleep:
         case resetStandby:
         case resetShutdown:
-        case resetException:
           return Running(T_CONT, State_EVENT_OK);
+        case resetException:
+          return Running(T_CONT, State_EVENT_EXCEPTION);
         case resetBrownout:
           return Running(T_INIT, State_EVENT_BROWNOUT);
         default:

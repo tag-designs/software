@@ -97,6 +97,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     //int32_t lastwakeup = pState->lastwakeup;
     int32_t lastactstart = pState->lastactstart;
 
+    if (reason == State_EVENT_EXCEPTION)
+    {
+      initActivitySensor();
+      disableAllAlarms();
+      disableTicker();
+      enableAlarm(0, ALARM_MINUTE);
+    }
+
     // sample once ! -- also used in pwr to decide wakeup edge
 
     isActive = palReadLine(LINE_ACCEL_INT);
