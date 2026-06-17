@@ -57,5 +57,12 @@ int write_calibration(CalibrationConstants *constants);
  */
 int read_calibration(int32_t index, Ack *ack);
 
+/**
+ * @brief Report whether at least one calibration entry is stored.
+ *
+ * @return true when data collection has calibration constants available.
+ */
+bool sensorsHaveCalibration(void);
+
 
 #endif

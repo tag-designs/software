@@ -11,12 +11,19 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
+#include "sensors.h"
 #include "strings.h"
 
 
 // ram based config (used by monitor to communicate to tag)
 
 t_storedconfig config_tmp;  
+static const char *config_error_message;
+
+const char *writeConfigErrorMessage(void)
+{
+  return config_error_message;
+}
 
 /**
  * @brief Write the staged configuration to internal flash.
@@ -74,8 +81,15 @@ void readConfig(Config *config)
  */
 bool writeConfig(Config *config)
 {
+  config_error_message = NULL;
   if ((config == NULL) || pState->state != TagState_IDLE)
     return false;
+
+  if (!sensorsHaveCalibration())
+  {
+    config_error_message = "Device must be calibrated";
+    return false;
+  }
 
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;

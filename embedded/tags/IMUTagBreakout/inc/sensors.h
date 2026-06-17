@@ -38,6 +38,8 @@ int calibration_logAck(Ack *ack);
 int write_calibration(CalibrationConstants *constants);
 /** @brief Read stored calibration constants for the host. */
 int read_calibration(int32_t index, Ack *ack);
+/** @brief Report whether at least one calibration entry is stored. */
+bool sensorsHaveCalibration(void);
 
 
 #endif

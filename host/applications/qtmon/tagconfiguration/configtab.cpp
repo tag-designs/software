@@ -306,7 +306,9 @@ void ConfigTab::on_startButton_clicked()
                        << QString::fromStdString(config.DebugString());
     if (!tag->Start(config))
     {
-      msgBox.setText("Start Failed");
+      std::string message = tag->DebugMessage();
+      msgBox.setText(message.empty() ? QStringLiteral("Start Failed")
+                                     : QString::fromStdString(message));
       msgBox.exec();
     }
   } else {

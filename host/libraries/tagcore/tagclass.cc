@@ -100,7 +100,7 @@ bool Tag::Start(Config &cfg)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_start(new Config(cfg));
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 
 bool Tag::Stop()
@@ -132,6 +132,12 @@ bool Tag::Test(TestReq test)
   req.Clear();
   req.set_test(test);
   return monitor.Rpc(req,ack);
+}
+
+std::string Tag::DebugMessage()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return ack.error_message();
 }
 
 bool Tag::GetStatus(Status &status)

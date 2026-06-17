@@ -70,6 +70,11 @@ static int16_t status_temp10;
 
 static bool monitor_acquisition_active(void);
 
+__attribute__((weak)) const char *writeConfigErrorMessage(void)
+{
+  return NULL;
+}
+
 static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 {
   adcVDD(vdd100, temp10);
@@ -499,6 +504,16 @@ int proto_eval(int len, uint32_t *work)
     }
     else
     {
+      const char *message = writeConfigErrorMessage();
+      if (message && message[0])
+      {
+        ack.err = Ack_Err_NXIO;
+        ack.which_payload = Ack_error_message_tag;
+        strncpy(ack.payload.error_message, message,
+                sizeof(ack.payload.error_message) - 1);
+        ack.payload.error_message[sizeof(ack.payload.error_message) - 1] = 0;
+        return monitorReturn(encode_ack());
+      }
       return monitorReturn(errAck(Ack_Err_NXIO));
     }
   }

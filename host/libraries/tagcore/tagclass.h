@@ -1,8 +1,10 @@
 
 #ifndef TAG_H
 #define TAG_H
-using namespace std;
 #include <mutex>
+#include <string>
+
+using namespace std;
 
 #include "linkadapt.h"
 #include "tagmonitor.h"

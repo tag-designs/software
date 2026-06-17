@@ -48,6 +48,16 @@ sensor_constants_t constants_tmp NOINIT;
 
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+bool sensorsHaveCalibration(void)
+{
+  for (unsigned int index = 0; index < CONSTANT_CNT; index++)
+  {
+    if ((*((int32_t *)&calConstants[index])) != -1)
+      return true;
+  }
+  return false;
+}
+
 /**
  * @brief Apply the variant-specific magnetometer axis orientation.
  *
