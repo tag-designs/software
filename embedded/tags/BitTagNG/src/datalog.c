@@ -150,8 +150,13 @@ int externalFlashSectorsToErasePlusOne(void)
 
 int restoreLog(void)
 {
+  const uint32_t recovered_external_blocks = pState->external_blocks;
   pState->pages = countInternalBlocks();
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES * 2;
+  const uint32_t max_external_blocks = pState->pages * DATALOG_SAMPLES;
+  pState->external_blocks =
+      (recovered_external_blocks <= max_external_blocks)
+          ? recovered_external_blocks
+          : max_external_blocks;
   return 0;
 }
 
@@ -172,8 +177,12 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   int addr = pState->external_blocks * 2;
 
   tagStorageWake(TAG_EXTERNAL_FLASH);
-  tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *)data, &cnt);
+  bool ok = tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *)data, &cnt);
   tagStorageSleep(TAG_EXTERNAL_FLASH);
+  if (!ok || cnt != (num * 2))
+  {
+    return LOGWRITE_ERROR;
+  }
   pState->external_blocks += num;
   return LOGWRITE_OK;
 }
@@ -217,6 +226,8 @@ int data_logAck(int index, Ack *ack)
   ack->err = Ack_Err_OK;
 
   t_DataHeader header;
+  uint32_t page_start = (uint32_t)index * DATALOG_SAMPLES;
+  uint32_t page_count = 0;
   uint64_t byte_offset = (uint64_t)databuf_size * (uint64_t)index;
   bool valid_index =
       (index >= 0) &&
@@ -226,28 +237,34 @@ int data_logAck(int index, Ack *ack)
 
   if (valid_index)
   {
-    tagStorageWake(TAG_EXTERNAL_FLASH);
-    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                   (uint8_t *)&databuf, databuf_size);
-    tagStorageSleep(TAG_EXTERNAL_FLASH);
+    if (pState->external_blocks > page_start)
+    {
+      page_count = pState->external_blocks - page_start;
+      if (page_count > DATALOG_SAMPLES)
+        page_count = DATALOG_SAMPLES;
 
-    ack->which_payload = Ack_bittag_ng_data_log_tag;
+      tagStorageWake(TAG_EXTERNAL_FLASH);
+      tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                     (uint8_t *)&databuf, page_count * sizeof(databuf.activity[0]));
+      tagStorageSleep(TAG_EXTERNAL_FLASH);
+    }
+
     data->epoch = header.epoch;
     data->voltage = header.vdd100 * 0.01f;
     data->temperature = header.temp10 * 0.1f;
     data->activity_count = 0;
 
-    for (int j = 0; j < DATALOG_SAMPLES; j++) // loop over samples
+    for (uint32_t j = 0; j < page_count; j++) // loop over samples
     {
-      if (databuf.activity[j] == 0xffffffffu)
-        break;
       data->activity[j] = databuf.activity[j];
       data->activity_count++;
     }
+    ack->which_payload = Ack_bittag_ng_data_log_tag;
   }
   else
   {
-    ack->which_payload = Ack_error_message_tag;
+    ack->err = Ack_Err_NODATA;
+    ack->which_payload = 0;
   }
 
   // encode the ack and return

@@ -103,6 +103,10 @@ int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log)
 
 int dumpBitTagNgLog(WriterContext &ctx, const BitTagNgLog &log)
 {
+    constexpr int bucket_count = 4;
+    constexpr int bucket_bits = 4;
+    constexpr int bucket_period = 15;
+
     if (!ctx.createLogTables()) {
         return -2;
     }
@@ -120,33 +124,31 @@ int dumpBitTagNgLog(WriterContext &ctx, const BitTagNgLog &log)
         return -2;
     }
 
-    sqlite3_int64 timestamp = log.epoch() - 120;
-    bool wrote_header = false;
+    sqlite3_int64 timestamp = log.epoch();
+
+    if (!voltage_insert.bindInt64(1, timestamp)
+        || !voltage_insert.bindDouble(2, log.voltage())
+        || !voltage_insert.stepDone()
+        || !temperature_insert.bindInt64(1, timestamp)
+        || !temperature_insert.bindDouble(2, log.temperature())
+        || !temperature_insert.stepDone()) {
+        ctx.setLastSqliteError("BitTagNG log header insert failed");
+        return -2;
+    }
 
     for (auto const activity_word : log.activity()) {
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < bucket_count; i++) {
             const double activity =
-                static_cast<double>((activity_word >> (i * 5)) & 0x1f) / 0.20;
+                static_cast<double>((activity_word >> (i * bucket_bits)) &
+                                    ((1U << bucket_bits) - 1U)) *
+                100.0 / bucket_period;
             if (!activity_insert.bindInt64(1, timestamp)
                 || !activity_insert.bindDouble(2, activity)
                 || !activity_insert.stepDone()) {
                 ctx.setLastSqliteError("BitTagNG activity insert failed");
                 return -2;
             }
-            timestamp += 20;
-        }
-
-        if (!wrote_header) {
-            if (!voltage_insert.bindInt64(1, timestamp)
-                || !voltage_insert.bindDouble(2, log.voltage())
-                || !voltage_insert.stepDone()
-                || !temperature_insert.bindInt64(1, timestamp)
-                || !temperature_insert.bindDouble(2, log.temperature())
-                || !temperature_insert.stepDone()) {
-                ctx.setLastSqliteError("BitTagNG log header insert failed");
-                return -2;
-            }
-            wrote_header = true;
+            timestamp += bucket_period;
         }
     }
 

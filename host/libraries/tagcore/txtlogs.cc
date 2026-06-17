@@ -302,26 +302,26 @@ static int dumpTagLog(std::ostream &out, const BitPresTagLog &log)
 
 static int dumpTagLog(std::ostream &out, const BitTagNgLog &log)
 {
+  const int bucket_count = 4;
+  const int bucket_bits = 4;
+  const int bucket_period = 15;
   int64_t timestamp = log.epoch();
- 
-  timestamp -= 120;
 
-  bool done = false;
+  out << timestamp << ",";
+  out << "V:" << log.voltage();
+  out << ",TC:" << log.temperature() << std::endl;
 
   for (auto const &activity : log.activity())
   {
       // unpack data
-      // data start 120 seconds (6 20 second blocks) before the header
-    for (int i = 0; i < 6; i++) {
+      // data starts at the clock-minute header in 4 15-second bins
+    for (int i = 0; i < bucket_count; i++) {
       out << timestamp << ",";
-      out << "A:" << ((activity>>(i*5))&0x1f)/0.20 << std::endl;
-      timestamp += 20;
-    }
-    if (!done){
-      out << timestamp << ",";
-      out << "V:" << log.voltage();
-      out << ",TC:" << log.temperature() << std::endl;
-      done = true;
+      out << "A:" << (((activity >> (i * bucket_bits)) &
+                       ((1 << bucket_bits) - 1)) *
+                          100.0 / bucket_period)
+          << std::endl;
+      timestamp += bucket_period;
     }
   }
 

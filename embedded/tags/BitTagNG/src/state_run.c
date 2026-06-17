@@ -15,10 +15,10 @@
  * per sample, and this is where the timing and storage parameters are set.
  */
 
-const int32_t chunk_period = 20;  // seconds
-const int32_t chunk_number = 6;   // chunks in activity write
-const int32_t chunk_bits = 5;     // bits per chunk
-const int32_t sample_period = 120; // sampling period between writes
+const int32_t chunk_period = 15;  // seconds
+const int32_t chunk_number = 4;   // chunks in activity write
+const int32_t chunk_bits = 4;     // bits per chunk
+const int32_t sample_period = 60; // sampling period between writes
 /*
    Range now hardwired to 2g
    Sample rate now hardwired to 12.5 hz
@@ -43,14 +43,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = (timestamp / sample_period) * sample_period;
     pState->lastactstart = INT_MAX;
    
-    // make sure we're pointing to the next data block in case
-    // this is a recovery action -- round up in the case of partial blocks
-    // written
-    int remainder = pState->external_blocks % (DATALOG_SAMPLES * 2);
-    if (remainder)
-      pState->external_blocks =
-          pState->external_blocks + (DATALOG_SAMPLES * 2) - remainder;
-      // need to recover internal block start
+    // Keep the restored external cursor for partially filled pre-header pages.
+    const uint32_t max_external_blocks = pState->pages * DATALOG_SAMPLES;
+    if (pState->external_blocks > max_external_blocks)
+    {
+      pState->external_blocks = max_external_blocks;
+    }
 
     adcVDD(&vdd100, &temp10);
 
@@ -61,7 +59,9 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->state = TagState_RUNNING;
     recordState(reason);
-    enableAlarm(0, ALARM_MINUTE); // turn on minutes alarm
+    disableAllAlarms();
+    disableTicker();
+    enableAlarm(0, ALARM_MINUTE);
   }
   else
   {
@@ -131,37 +131,70 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
      // Write out activity (assuming timestamps are correct)
 
-    if (timestamp == lastwrite + sample_period)
-    { // data log write returns an error if battery or space is exhausted
+    if (events & EVT_RTC_ALRAF)
+    {
+      enum LOGERR err = LOGWRITE_OK;
+      const bool header_open =
+          (pState->pages * DATALOG_SAMPLES) > pState->external_blocks;
 
-    // write a header every N times -- use internal/external count for this
-    // header lags by one block
-    
-      if ((pState->external_blocks%(DATALOG_SAMPLES*2)) == 0) {
+      if (!header_open) {
         t_DataHeader dataheader;
         dataheader.epoch = timestamp;
         dataheader.vdd100 = pState->vdd100;
         dataheader.temp10 = pState->temp10;
-        enum LOGERR err = writeDataHeader(&dataheader);
+        err = writeDataHeader(&dataheader);
+        switch (err)
+        {
+        case LOGWRITE_FULL:
+        case LOGWRITE_ERROR:
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case LOGWRITE_BAT:
+          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        default:
+          break;
+        }
+        lastwrite = timestamp;
+        activity = 0;
+      }
+      else if (timestamp == lastwrite + sample_period)
+      { // data log write returns an error if battery or space is exhausted
 
+        uint16_t tmp16 = (uint16_t)activity;
+        err = writeDataLog(&tmp16, 1);
+        switch (err)
+        {
+        case LOGWRITE_FULL:
+        case LOGWRITE_ERROR:
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case LOGWRITE_BAT:
+          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+        default:
+          break;
+        }
+
+        // update activity status
+        lastwrite = timestamp;
+        activity = 0;
+
+        if ((pState->external_blocks % DATALOG_SAMPLES) == 0)
+        {
+          t_DataHeader dataheader;
+          dataheader.epoch = timestamp;
+          dataheader.vdd100 = pState->vdd100;
+          dataheader.temp10 = pState->temp10;
+          err = writeDataHeader(&dataheader);
           switch (err)
           {
           case LOGWRITE_FULL:
+          case LOGWRITE_ERROR:
             return Finished(T_INIT, State_EVENT_INTERNALFULL);
           case LOGWRITE_BAT:
             //return Finished(T_INIT, State_EVENT_LOWBATTERY);
           default:
             break;
           }
+        }
       }
-
-      // write external data (activity)
-
-      uint32_t tmp32 = activity;
-      writeDataLog((uint16_t *) &tmp32, 2);
-      // update activity status
-      lastwrite = (timestamp / sample_period) * sample_period;
-      activity = 0;
     }
 
     // check for completion

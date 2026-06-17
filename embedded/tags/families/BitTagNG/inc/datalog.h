@@ -10,7 +10,7 @@ _Static_assert(sizeof(((BitTagNgLog *)0)->activity) /
                "BitTagNG protobuf activity array does not match log page");
 
 typedef struct {
-  uint32_t activity[DATALOG_SAMPLES];
+  uint16_t activity[DATALOG_SAMPLES];
 } t_DataLog;
 
 typedef struct {
