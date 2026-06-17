@@ -471,8 +471,10 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     //  return Aborted(T_INIT, State_EVENT_STARTTIM);
 
     debug_log_printf("timestamp %d start %d\n\r",timestamp,sconfig.start);
-    if (timestamp >= sconfig.start) // look at stored value --
+    if (timestamp >= sconfig.start) {// look at stored value --
+      disableAlarm(1);
       return Running(T_INIT, State_EVENT_STARTTIM);
+    }
   }
   return SHUTDOWN;
 }

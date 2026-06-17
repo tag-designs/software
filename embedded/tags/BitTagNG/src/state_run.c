@@ -25,6 +25,29 @@ const int32_t sample_period = 60; // sampling period between writes
    Sleep sample rate 6hz
 */
 
+static enum LOGERR writeCurrentHeader(void)
+{
+  t_DataHeader dataheader;
+  dataheader.epoch = timestamp;
+  dataheader.vdd100 = pState->vdd100;
+  dataheader.temp10 = pState->temp10;
+  return writeDataHeader(&dataheader);
+}
+
+static bool logWriteFailed(enum LOGERR err)
+{
+  switch (err)
+  {
+  case LOGWRITE_FULL:
+  case LOGWRITE_ERROR:
+    return true;
+  case LOGWRITE_BAT:
+    //return Finished(T_INIT, State_EVENT_LOWBATTERY);
+  default:
+    return false;
+  }
+}
+
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
   int16_t temp10;
@@ -58,6 +81,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     initActivitySensor();
 
     pState->state = TagState_RUNNING;
+    pState->lastwrite = timestamp;
+    pState->activity = 0;
     recordState(reason);
     disableAllAlarms();
     disableTicker();
@@ -134,67 +159,30 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     if (events & EVT_RTC_ALRAF)
     {
       enum LOGERR err = LOGWRITE_OK;
-      const bool header_open =
-          (pState->pages * DATALOG_SAMPLES) > pState->external_blocks;
+      const bool header_exists = pState->pages > 0;
 
-      if (!header_open) {
-        t_DataHeader dataheader;
-        dataheader.epoch = timestamp;
-        dataheader.vdd100 = pState->vdd100;
-        dataheader.temp10 = pState->temp10;
-        err = writeDataHeader(&dataheader);
-        switch (err)
-        {
-        case LOGWRITE_FULL:
-        case LOGWRITE_ERROR:
-          return Finished(T_INIT, State_EVENT_INTERNALFULL);
-        case LOGWRITE_BAT:
-          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-        default:
-          break;
-        }
-        lastwrite = timestamp;
-        activity = 0;
-      }
-      else if (timestamp == lastwrite + sample_period)
-      { // data log write returns an error if battery or space is exhausted
-
+      if (header_exists)
+      {
         uint16_t tmp16 = (uint16_t)activity;
         err = writeDataLog(&tmp16, 1);
-        switch (err)
-        {
-        case LOGWRITE_FULL:
-        case LOGWRITE_ERROR:
+        if (logWriteFailed(err))
           return Finished(T_INIT, State_EVENT_INTERNALFULL);
-        case LOGWRITE_BAT:
-          //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-        default:
-          break;
-        }
-
-        // update activity status
-        lastwrite = timestamp;
-        activity = 0;
-
-        if ((pState->external_blocks % DATALOG_SAMPLES) == 0)
-        {
-          t_DataHeader dataheader;
-          dataheader.epoch = timestamp;
-          dataheader.vdd100 = pState->vdd100;
-          dataheader.temp10 = pState->temp10;
-          err = writeDataHeader(&dataheader);
-          switch (err)
-          {
-          case LOGWRITE_FULL:
-          case LOGWRITE_ERROR:
-            return Finished(T_INIT, State_EVENT_INTERNALFULL);
-          case LOGWRITE_BAT:
-            //return Finished(T_INIT, State_EVENT_LOWBATTERY);
-          default:
-            break;
-          }
-        }
       }
+
+      /*
+       * Headers precede activity data. If no header exists yet, this opens the
+       * first page. After a data write fills a page, this opens the next one.
+       */
+      if ((pState->pages * DATALOG_SAMPLES) == pState->external_blocks)
+      {
+        err = writeCurrentHeader();
+        if (logWriteFailed(err))
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+      }
+
+      // update activity status
+      lastwrite = timestamp;
+      activity = 0;
     }
 
     // check for completion

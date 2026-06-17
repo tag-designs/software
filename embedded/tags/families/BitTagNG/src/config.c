@@ -99,6 +99,16 @@ static const float Tdelta[] = {[ADXL367_ODR_12P5HZ] = 1 / 12.5,
 static const float Sens[] = {[ADXL367_RANGE_2G] = 0.00025,
                              [ADXL367_RANGE_4G] = 0.0005,
                              [ADXL367_RANGE_8G] = 0.001};
+
+static int32_t roundUpToMinute(int32_t epoch)
+{
+  int32_t remainder = epoch % 60;
+  if (remainder < 0)
+  {
+    remainder += 60;
+  }
+  return remainder == 0 ? epoch : epoch + (60 - remainder);
+}
 /*
  * Read current config
  */
@@ -169,7 +179,7 @@ bool writeConfig(Config *config)
   int samples = config->adxl362.inactive_sec / Tdelta[freq];
   samples = samples > 255 ? 255 : samples;
   config_tmp.adxl_inactive_samples = samples;
-  config_tmp.start = config->active_interval.start_epoch;
+  config_tmp.start = roundUpToMinute(config->active_interval.start_epoch);
   config_tmp.stop = config->active_interval.end_epoch;
 
   for (int i = 0; i < config->hibernate_count; i++)
