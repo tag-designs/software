@@ -10,6 +10,7 @@
 #include "tagclass.h" 
 
 #include "configinterface.h"
+#include "configfieldvisibility.h"
 
 class Lsm6dsvConfig : public QWidget, public ConfigInterface
 {
@@ -24,6 +25,8 @@ public:
 
     bool GetConfig(Config &config);
     bool SetConfig(const Config &config);
+    bool SetConfig(const Config &config,
+                   const ConfigFieldVisibility &visibility);
 
 public slots:
 
@@ -39,6 +42,7 @@ private:
     PBEnumGroup *odr_ = nullptr;
     PBEnumGroup *accel_range_ = nullptr;
     PBEnumGroup *gyro_range_ = nullptr;
+    ConfigFieldVisibility visibility_;
 };
 
 #endif // LSM6DSVCONFIG_H

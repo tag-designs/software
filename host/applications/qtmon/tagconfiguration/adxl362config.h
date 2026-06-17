@@ -10,6 +10,7 @@
 #include "tagclass.h" 
 
 #include "configinterface.h"
+#include "configfieldvisibility.h"
 
 class Adxl362Config : public QWidget, public ConfigInterface
 {
@@ -24,6 +25,8 @@ public:
 
     bool GetConfig(Config &config);
     bool SetConfig(const Config &config);
+    bool SetConfig(const Config &config,
+                   const ConfigFieldVisibility &visibility);
 
 public slots:
 
@@ -47,9 +50,11 @@ private:
     QDoubleSpinBox *act_thresh_ = nullptr;
     QDoubleSpinBox *inact_thresh_ = nullptr;
     QDoubleSpinBox *inactive_ = nullptr;
+    QLabel act_thresh_label = QLabel("Active Threshold");
     QLabel inact_thresh_label = QLabel("Inactive Threshold");
 
     bool isAdxl375 = false;
+    ConfigFieldVisibility visibility_;
     
 };
 

@@ -74,21 +74,21 @@ bool Lsm6dsvConfig::GetConfig(Config &config){
     int id;
     Lsm6dsv lsm(config.lsm6());
 
-    if (odr_)
+    if (visibility_.lsm6_odr && odr_)
     {
         id = odr_->checkedId();
         if (Lsm6dsv_ODR_IsValid(id))
             lsm.set_odr((Lsm6dsv_ODR) id);
     }
 
-    if (accel_range_)
+    if (visibility_.lsm6_accel_rng && accel_range_)
     {
         id = accel_range_->checkedId();
         if (Lsm6dsv_ACCEL_IsValid(id))
             lsm.set_accel_rng((Lsm6dsv_ACCEL) id);
     }
 
-    if (gyro_range_)
+    if (visibility_.lsm6_gyro_rng && gyro_range_)
     {
         id = gyro_range_->checkedId();
         if (Lsm6dsv_GYRO_IsValid(id))
@@ -100,7 +100,19 @@ bool Lsm6dsvConfig::GetConfig(Config &config){
 }
 
 bool Lsm6dsvConfig::SetConfig(const Config &config){
-  if (!config.has_lsm6())
+  ConfigFieldVisibility visibility;
+  visibility.lsm6 = config.has_lsm6();
+  visibility.lsm6_odr = config.has_lsm6() && (config.lsm6().odr() != Lsm6dsv_ODR_ODR_UNSPECIFIED);
+  visibility.lsm6_accel_rng = config.has_lsm6() && (config.lsm6().accel_rng() != Lsm6dsv_ACCEL_ACCEL_UNSPECIFIED);
+  visibility.lsm6_gyro_rng = config.has_lsm6() && (config.lsm6().gyro_rng() != Lsm6dsv_GYRO_GYRO_UNSPECIFIED);
+  return SetConfig(config, visibility);
+}
+
+bool Lsm6dsvConfig::SetConfig(const Config &config,
+                              const ConfigFieldVisibility &visibility){
+  visibility_ = visibility;
+
+  if (!visibility_.lsm6)
   {
     active = false;
     setVisible(false);
@@ -111,13 +123,16 @@ bool Lsm6dsvConfig::SetConfig(const Config &config){
 
   // initialize all widgets default visibility
 
-  odr_->setVisible(true);
-  gyro_range_->setVisible(true);
-  accel_range_->setVisible(true);
+  odr_->setVisible(visibility_.lsm6_odr);
+  gyro_range_->setVisible(visibility_.lsm6_gyro_rng);
+  accel_range_->setVisible(visibility_.lsm6_accel_rng);
 
-  odr_->setCheckedId((int) lsm.odr());
-  accel_range_->setCheckedId((int) lsm.accel_rng());
-  gyro_range_->setCheckedId((int) lsm.gyro_rng());
+  if (visibility_.lsm6_odr)
+    odr_->setCheckedId((int) lsm.odr());
+  if (visibility_.lsm6_accel_rng)
+    accel_range_->setCheckedId((int) lsm.accel_rng());
+  if (visibility_.lsm6_gyro_rng)
+    gyro_range_->setCheckedId((int) lsm.gyro_rng());
 
   active = true;
   setVisible(true);

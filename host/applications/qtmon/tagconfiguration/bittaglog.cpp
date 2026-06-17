@@ -43,6 +43,22 @@ void BitTagLogTab::Detach()
 
 bool BitTagLogTab::SetConfig(const Config &config)
 {
+    ConfigFieldVisibility visibility;
+    visibility.bittag_log = config.bittag_log() != BITTAG_UNSPECIFIED;
+    return SetConfig(config, visibility);
+}
+
+bool BitTagLogTab::SetConfig(const Config &config,
+                             const ConfigFieldVisibility &visibility)
+{
+    visibility_ = visibility;
+    if (!visibility_.bittag_log)
+    {
+        active = false;
+        setVisible(false);
+        return true;
+    }
+
     QAbstractButton *btn;
     if (config.bittag_log() != BITTAG_UNSPECIFIED){
         btn = log_->button((int)config.bittag_log());
@@ -69,7 +85,7 @@ bool BitTagLogTab::SetConfig(const Config &config)
 
 bool BitTagLogTab::GetConfig(Config &config)
 {
-    if (active)
+    if (active && visibility_.bittag_log)
     {
         int id = log_->checkedId();
         if (BitTagLogFmt_IsValid(id))
@@ -83,4 +99,3 @@ bool BitTagLogTab::GetConfig(Config &config)
     //config.set_bittag_log(BITTAG_UNSPECIFIED);
     return true;
 }
-

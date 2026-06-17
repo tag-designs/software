@@ -80,7 +80,7 @@ Adxl362Config::Adxl362Config(QWidget *parent) : QWidget(parent)
 
   // spinners
 
-  f_lower->addRow("Active Threshold", act_thresh_);
+  f_lower->addRow(&act_thresh_label, act_thresh_);
   f_lower->addRow(&inact_thresh_label, inact_thresh_);
   f_lower->addRow("Inactivity", inactive_);
 
@@ -119,30 +119,33 @@ bool Adxl362Config::GetConfig(Config &config)
   int id;
   Adxl362 adxl(config.adxl362());
 
-  if (!isAdxl375)
+  if (visibility_.adxl362_accel_type)
   {
-    adxl.set_accel_type(Adxl362_AdxlType_AdxlType_362);
-  } else {
-    adxl.set_accel_type(Adxl362_AdxlType_AdxlType_367);
+    if (!isAdxl375)
+    {
+      adxl.set_accel_type(Adxl362_AdxlType_AdxlType_362);
+    } else {
+      adxl.set_accel_type(Adxl362_AdxlType_AdxlType_367);
+    }
   }
 
-  if (sample_rate_  && sample_rate_->isVisible())
-    {
-      id = sample_rate_->checkedId();
-      if (Adxl362_Odr_IsValid(id))
-        adxl.set_freq((Adxl362_Odr)id);
-    }
+  if (visibility_.adxl362_freq && sample_rate_ && sample_rate_->isVisible())
+  {
+    id = sample_rate_->checkedId();
+    if (Adxl362_Odr_IsValid(id))
+      adxl.set_freq((Adxl362_Odr)id);
+  }
 
-  if (range_ && range_->isVisible())
-    {
-      id = range_->checkedId();
-      if (Adxl362_Rng_IsValid(id))
-        adxl.set_range((Adxl362_Rng)id);
-    }
+  if (visibility_.adxl362_range && range_ && range_->isVisible())
+  {
+    id = range_->checkedId();
+    if (Adxl362_Rng_IsValid(id))
+      adxl.set_range((Adxl362_Rng)id);
+  }
 
   // set tag specific info
 
-  if (filter_ && filter_->isVisible()){
+  if (visibility_.adxl362_filter && filter_ && filter_->isVisible()){
     id = filter_->checkedId();
     if (Adxl362_Aa_IsValid(id)) {
         adxl.set_filter((Adxl362_Aa)id);
@@ -151,11 +154,15 @@ bool Adxl362Config::GetConfig(Config &config)
     }
   }
 
-  if (inact_thresh_->isVisible()){
+  if (visibility_.adxl362_inact_thresh_g && inact_thresh_->isVisible()){
     adxl.set_inact_thresh_g(inact_thresh_->value());
   }
-  adxl.set_inactive_sec(inactive_->value());
-  adxl.set_act_thresh_g(act_thresh_->value());
+  if (visibility_.adxl362_inactive_sec) {
+    adxl.set_inactive_sec(inactive_->value());
+  }
+  if (visibility_.adxl362_act_thresh_g) {
+    adxl.set_act_thresh_g(act_thresh_->value());
+  }
 
 
   // set config to result
@@ -166,7 +173,27 @@ bool Adxl362Config::GetConfig(Config &config)
 
 bool Adxl362Config::SetConfig(const Config &config)
 {
-  if (!config.has_adxl362())
+  ConfigFieldVisibility visibility;
+  visibility.adxl362 = config.has_adxl362();
+  visibility.adxl362_range = config.has_adxl362() && (config.adxl362().range() != Adxl362_Rng_Rng_UNSPECIFIED);
+  visibility.adxl362_freq = config.has_adxl362() && (config.adxl362().freq() != Adxl362_Odr_Odr_UNSPECIFIED);
+  visibility.adxl362_filter = config.has_adxl362() && (config.adxl362().filter() != Adxl362_Aa_Aa_UNSPESIFIED);
+  visibility.adxl362_act_thresh_g = config.has_adxl362() && (config.adxl362().act_thresh_g() != 0.0f);
+  visibility.adxl362_inact_thresh_g = config.has_adxl362() && (config.adxl362().inact_thresh_g() != 0.0f);
+  visibility.adxl362_inactive_sec = config.has_adxl362() && (config.adxl362().inactive_sec() != 0.0f);
+  visibility.adxl362_accel_type = config.has_adxl362();
+  visibility.adxl362_data_format = config.has_adxl362() && (config.adxl362().data_format() != Adxl362_Adxl367DataFormat_DF_UNSPECIFIED);
+  visibility.adxl362_channels = config.has_adxl362() && (config.adxl362().channels() != AdxlChannel_UNSPECIFIED);
+  visibility.adxl362_active_sec = config.has_adxl362() && (config.adxl362().active_sec() != 0.0f);
+  return SetConfig(config, visibility);
+}
+
+bool Adxl362Config::SetConfig(const Config &config,
+                              const ConfigFieldVisibility &visibility)
+{
+  visibility_ = visibility;
+
+  if (!visibility_.adxl362)
   {
     active = false;
     setVisible(false);
@@ -179,46 +206,48 @@ bool Adxl362Config::SetConfig(const Config &config)
 
   // initialize all widgets default visibility
 
-  filter_->setVisible(false);
-  sample_rate_->setVisible(false);
-  inact_thresh_->setVisible(false);
-  inact_thresh_label.setVisible(false);
-  spinners_->setVisible(true);
-  range_->setVisible(false);
-
-  if (!isAdxl375)
-   {
-    range_->setVisible(true);
-   }
+  filter_->setVisible(visibility_.adxl362_filter);
+  sample_rate_->setVisible(visibility_.adxl362_freq);
+  act_thresh_->setVisible(visibility_.adxl362_act_thresh_g);
+  act_thresh_label.setVisible(visibility_.adxl362_act_thresh_g);
+  inact_thresh_->setVisible(visibility_.adxl362_inact_thresh_g);
+  inact_thresh_label.setVisible(visibility_.adxl362_inact_thresh_g);
+  spinners_->setVisible(visibility_.adxl362_act_thresh_g ||
+                        visibility_.adxl362_inact_thresh_g ||
+                        visibility_.adxl362_inactive_sec);
+  range_->setVisible(visibility_.adxl362_range);
 
    // adxl362 range, freq, and filter
 
-   if (!isAdxl375)
-   {
+  if (visibility_.adxl362_filter)
     filter_->setCheckedId((int)adxl.filter());
-    filter_->setVisible(true);
-    sample_rate_->setVisible(true);
+  if (visibility_.adxl362_freq)
     sample_rate_->setCheckedId((int)adxl.freq());
+  if (visibility_.adxl362_range)
     range_->setCheckedId((int)adxl.range());
-    inact_thresh_->setVisible(true);
-    inact_thresh_label.setVisible(true);
 
-
-  // set legal range of spin boxes
-
+  if (visibility_.adxl362_freq)
     on_adxlfreq_clicked((int)adxl.freq());
+  if (visibility_.adxl362_range)
     on_adxlrange_clicked((int)adxl.range());
 
+  if (!visibility_.adxl362_range)
+    on_adxlrange_clicked(Adxl362_Rng_R2G);
+  if (!visibility_.adxl362_freq)
+    on_adxlfreq_clicked(Adxl362_Odr_S12_5);
+
+  if (visibility_.adxl362_inact_thresh_g)
     inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
-  }
 
   // adxl362 inactive_ time
 
-  inactive_->setValue(static_cast<double>(adxl.inactive_sec()));
+  if (visibility_.adxl362_inactive_sec)
+    inactive_->setValue(static_cast<double>(adxl.inactive_sec()));
 
   // adxl362 threshold
 
-  act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
+  if (visibility_.adxl362_act_thresh_g)
+    act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
 
 
   active = true;

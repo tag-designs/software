@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QList>
 #include "configinterface.h"
+#include "configfieldvisibility.h"
 
 //#include "tag.pb.h"
 //#include "host.pb.h"
@@ -22,6 +23,8 @@ class Schedule : public QWidget, public ConfigInterface
         
         //! @copydoc ConfigInterface::SetConfig(const Config &)
         bool SetConfig(const Config &config);
+        bool SetConfig(const Config &config,
+                       const ConfigFieldVisibility &visibility);
 
         //! @copydoc ConfigInterface::GetConfig(Config &)
         bool GetConfig(Config &config);
@@ -47,6 +50,7 @@ class Schedule : public QWidget, public ConfigInterface
 
         QList<Hibernate *> hibernate_list_;
         Ui::Schedule ui;
+        ConfigFieldVisibility visibility_;
 
 };
 

@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include "configinterface.h"
+#include "configfieldvisibility.h"
 #include "tagclass.h"
 
 class PBEnumGroup;
@@ -17,6 +18,8 @@ public:
 
     bool GetConfig(Config &config);
     bool SetConfig(const Config &config);
+    bool SetConfig(const Config &config,
+                   const ConfigFieldVisibility &visibility);
 
 public slots:
 
@@ -26,6 +29,7 @@ public slots:
 private:
     QVBoxLayout *vbox_ = nullptr;
     PBEnumGroup *log_ = nullptr; 
+    ConfigFieldVisibility visibility_;
 };
 
 #endif /* BITTAGLOG_H */

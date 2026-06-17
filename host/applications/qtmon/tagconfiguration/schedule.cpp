@@ -58,12 +58,31 @@ void Schedule::Detach(){
 
 bool Schedule::SetConfig(const Config &config)
 {
+  ConfigFieldVisibility visibility;
+  visibility.active_interval = config.has_active_interval();
+  visibility.hibernate = config.hibernate_size() > 0;
+  visibility.period = config.period() != 0;
+  visibility.start_delay = config.start_delay() != 0;
+  return SetConfig(config, visibility);
+}
+
+bool Schedule::SetConfig(const Config &config,
+                         const ConfigFieldVisibility &visibility)
+{
   QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
-  QDateTime start = QDateTime::fromSecsSinceEpoch(roundEpoch(config.active_interval().start_epoch(), 60));
+  visibility_ = visibility;
 
-  if (config.has_active_interval()){
+  if (visibility_.active_interval)
+  {
+    const int32_t start_epoch = config.has_active_interval()
+                                    ? config.active_interval().start_epoch()
+                                    : 0;
+    const int32_t end_epoch = config.has_active_interval()
+                                  ? config.active_interval().end_epoch()
+                                  : INT32_MAX;
+    QDateTime start = QDateTime::fromSecsSinceEpoch(roundEpoch(start_epoch, 60));
 
-    if (config.active_interval().end_epoch() == INT32_MAX)
+    if (end_epoch == INT32_MAX)
     {
       ui.RunIndefinitely->setChecked(true);
     }
@@ -71,7 +90,7 @@ bool Schedule::SetConfig(const Config &config)
     {
       ui.RunUntil->setChecked(true);
     }
-    QDateTime end = QDateTime::fromSecsSinceEpoch(config.active_interval().end_epoch());
+    QDateTime end = QDateTime::fromSecsSinceEpoch(end_epoch);
     ui.EndDateTime->setDateTime(end);
 
     // Schedule
@@ -94,6 +113,7 @@ bool Schedule::SetConfig(const Config &config)
       ui.EndDateTime->setDateTime(ui.StartDateTime->dateTime());
     }
   }
+
   // Hibernation -- first we throw away old hibernation
   //                groups
 
@@ -108,37 +128,47 @@ bool Schedule::SetConfig(const Config &config)
 
   hibernate_list_.clear();
 
-  for (int i = 0; i < config.hibernate_size(); i++)
+  if (visibility_.hibernate)
   {
-    Hibernate *h = new Hibernate(i);
-    if ((config.hibernate(i).start_epoch() == INT32_MAX) ||
-        (config.hibernate(i).start_epoch() == 0))
+    for (int i = 0; i < config.hibernate_size(); i++)
     {
-      h->setStartEpoch(now.currentSecsSinceEpoch());
-      h->setEndEpoch(now.currentSecsSinceEpoch());
+      Hibernate *h = new Hibernate(i);
+      if ((config.hibernate(i).start_epoch() == INT32_MAX) ||
+          (config.hibernate(i).start_epoch() == 0))
+      {
+        h->setStartEpoch(now.currentSecsSinceEpoch());
+        h->setEndEpoch(now.currentSecsSinceEpoch());
+      }
+      else
+      {
+        h->setStartEpoch(config.hibernate(i).start_epoch());
+        h->setEndEpoch(config.hibernate(i).end_epoch());
+      }
+      hibernate_list_.append(h);
+      ui.hibernationGroup->layout()->addWidget(h);
     }
-    else
-    {
-      h->setStartEpoch(config.hibernate(i).start_epoch());
-      h->setEndEpoch(config.hibernate(i).end_epoch());
-    }
-    hibernate_list_.append(h);
-    ui.hibernationGroup->layout()->addWidget(h);
   }
-  if (config.period()) {
+
+  if (visibility_.period && config.period()) {
     ui.period->setValue(config.period()); // range is 1.. to force a default value, but interpeted as value-1
   }
-  if (config.start_delay() > 0){
-    ui.startDelay->setValue(config.start_delay()-1);
-    ui.startdelayGroup->setVisible(true);
-  } else {
-    ui.startdelayGroup->setVisible(false);
+
+  if (visibility_.start_delay)
+  {
+    ui.startDelay->setValue(config.start_delay() > 0 ? config.start_delay() - 1 : 0);
   }
-  ui.periodGroup->setVisible(config.period() != 0);
-  ui.hibernationGroup->setVisible(config.hibernate_size());
-  ui.startGroup->setVisible(config.has_active_interval());
-  ui.runGroup->setVisible(config.has_active_interval());
-  active = true;
+
+  ui.periodGroup->setVisible(visibility_.period);
+  ui.startdelayGroup->setVisible(visibility_.start_delay);
+  ui.hibernationGroup->setVisible(visibility_.hibernate);
+  ui.startGroup->setVisible(visibility_.active_interval);
+  ui.runGroup->setVisible(visibility_.active_interval);
+
+  active = visibility_.active_interval ||
+           visibility_.hibernate ||
+           visibility_.period ||
+           visibility_.start_delay;
+  setVisible(active);
   return true;
 }
 
@@ -152,7 +182,7 @@ bool Schedule::GetConfig(Config &config)
   QDateTime end = ui.EndDateTime->dateTime();
   QDateTime maxdt = QDateTime::fromSecsSinceEpoch(INT32_MAX);
 
-  if (ui.startGroup->isVisible()){
+  if (visibility_.active_interval){
     Config_Interval *active = config.mutable_active_interval();
     active->Clear();
 
@@ -173,29 +203,28 @@ bool Schedule::GetConfig(Config &config)
     {
       active->set_end_epoch(INT32_MAX);
     }
-  }   
-  config.clear_hibernate();
-
-  for (int i = 0; i < hibernate_list_.size(); i++)
-  {
-    Config_Interval *interval = config.add_hibernate();
-    interval->set_start_epoch(hibernate_list_.at(i)->StartEpoch());
-    interval->set_end_epoch(hibernate_list_.at(i)->EndEpoch());
   }
-  if (ui.periodGroup->isVisible()) {
+
+  if (visibility_.hibernate)
+  {
+    config.clear_hibernate();
+
+    for (int i = 0; i < hibernate_list_.size(); i++)
+    {
+      Config_Interval *interval = config.add_hibernate();
+      interval->set_start_epoch(hibernate_list_.at(i)->StartEpoch());
+      interval->set_end_epoch(hibernate_list_.at(i)->EndEpoch());
+    }
+  }
+
+  if (visibility_.period) {
     config.set_period(ui.period->value());
   }
-  else
-  {
-    config.set_period(0);
-  }
-  if (ui.startdelayGroup->isVisible()){
+
+  if (visibility_.start_delay){
     config.set_start_delay(ui.startDelay->value()+1);
   }
-  else
-  {
-    config.set_start_delay(0);
-  }
+
   return true;
 }
 

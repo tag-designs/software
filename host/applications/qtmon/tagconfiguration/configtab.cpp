@@ -22,6 +22,7 @@
 #include "adxl362config.h"
 #include "lsm6dsvconfig.h"
 #include "bittaglog.h"
+#include "configfieldvisibility.h"
 #include "ui_configtab.h"
 #include "qtfiledialog.h"
 
@@ -216,12 +217,13 @@ bool ConfigTab::SetConfig(const Config &new_config)
 {
   current_config_ = new_config;
   tag_type_ = new_config.tag_type();
+  const ConfigFieldVisibility &visibility = configFieldVisibilityForTag(tag_type_);
   // we need to sanity check the new and old configs !
   // if any of these return false, this should return false
-  if (schedule.SetConfig(new_config) &&
-      btlog.SetConfig(new_config) &&
-      adxl.SetConfig(new_config) &&
-      lsm.SetConfig(new_config))
+  if (schedule.SetConfig(new_config, visibility) &&
+      btlog.SetConfig(new_config, visibility) &&
+      adxl.SetConfig(new_config, visibility) &&
+      lsm.SetConfig(new_config, visibility))
   {
     active = true;
     setVisible(true);
