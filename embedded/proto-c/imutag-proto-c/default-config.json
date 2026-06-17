@@ -1,5 +1,5 @@
 {
-    "tagType": "IMUTAG",
+    "tag_type": "IMUTAG",
     "start_delay": 1,
     "lsm6": {
         "odr": "S100",

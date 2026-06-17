@@ -43,9 +43,28 @@ if(WIN32)
   #endif()
 endif()
 
+# Generate config field visibility from tag default-config.json files. The
+# generated table preserves JSON field presence, including scalar zero values
+# that are lost as presence signals after proto3 parsing.
+file(GLOB CONFIG_VISIBILITY_JSONS CONFIGURE_DEPENDS
+     "${CMAKE_SOURCE_DIR}/embedded/proto-c/*-proto-c/default-config.json")
+set(CONFIG_VISIBILITY_SOURCE
+    "${CMAKE_CURRENT_BINARY_DIR}/generated_configfieldvisibility.cpp")
+add_custom_command(
+  OUTPUT "${CONFIG_VISIBILITY_SOURCE}"
+  COMMAND "${CMAKE_COMMAND}"
+          "-DOUTPUT=${CONFIG_VISIBILITY_SOURCE}"
+          "-DINPUTS=${CONFIG_VISIBILITY_JSONS}"
+          -P "${CMAKE_SOURCE_DIR}/cmake/GenerateConfigVisibility.cmake"
+  DEPENDS
+    "${CMAKE_SOURCE_DIR}/cmake/GenerateConfigVisibility.cmake"
+    ${CONFIG_VISIBILITY_JSONS}
+  VERBATIM)
+
 # Populate a CMake variable with the sources
 
 set(qtmonitor_SRCS
+    ${CONFIG_VISIBILITY_SOURCE}
     abstractdownload.cpp
     logwindow.cpp
     main.cpp

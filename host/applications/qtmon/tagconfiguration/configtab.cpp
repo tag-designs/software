@@ -12,6 +12,7 @@
 // #include <QtWidgets/QSpacerItem>
 // #include <QtWidgets/QSizePolicy>
 // #include <ctime>
+#include <algorithm>
 #include <fstream>
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
@@ -60,6 +61,53 @@ ConfigTab::~ConfigTab(){}
 
 bool ConfigTab::isActive(){
   return active;
+}
+
+static void mergeRestoredConfig(Config &target, const Config &restored)
+{
+  if (target.has_active_interval() && restored.has_active_interval())
+  {
+    const Config_Interval &interval = restored.active_interval();
+    if ((interval.start_epoch() != 0) || (interval.end_epoch() != 0))
+    {
+      *target.mutable_active_interval() = interval;
+    }
+  }
+
+  if ((target.hibernate_size() > 0) && (restored.hibernate_size() > 0))
+  {
+    const int count = std::min(target.hibernate_size(), restored.hibernate_size());
+    for (int i = 0; i < count; i++)
+    {
+      *target.mutable_hibernate(i) = restored.hibernate(i);
+    }
+  }
+
+  if ((target.period() != 0) && (restored.period() != 0))
+  {
+    target.set_period(restored.period());
+  }
+
+  if ((target.start_delay() != 0) && (restored.start_delay() != 0))
+  {
+    target.set_start_delay(restored.start_delay());
+  }
+
+  if ((target.bittag_log() != BITTAG_UNSPECIFIED) &&
+      (restored.bittag_log() != BITTAG_UNSPECIFIED))
+  {
+    target.set_bittag_log(restored.bittag_log());
+  }
+
+  if (target.has_adxl362() && restored.has_adxl362())
+  {
+    *target.mutable_adxl362() = restored.adxl362();
+  }
+
+  if (target.has_lsm6() && restored.has_lsm6())
+  {
+    *target.mutable_lsm6() = restored.lsm6();
+  }
 }
 
 bool ConfigTab::Attach(Tag &t)
@@ -278,16 +326,15 @@ void ConfigTab::on_configRestoreButton_clicked()
   auto status = JsonStringToMessage(str, &configin, options2);
   if (status.ok())
   {
-    // We should check the configuration that is read
-    // against the current configuration to make sure all
-    // the fields are implemented
-    if (!SetConfig(configin))
+    Config merged = current_config_;
+    mergeRestoredConfig(merged, configin);
+    if (!SetConfig(merged))
     {
       QMessageBox msgBox;
       msgBox.setText("Config file parsed but is not valid for this tag");
       msgBox.exec();
       qDebug().noquote() << "Config file restore parsed but SetConfig failed:"
-                         << QString::fromStdString(configin.DebugString());
+                         << QString::fromStdString(merged.DebugString());
     }
   }
   else
