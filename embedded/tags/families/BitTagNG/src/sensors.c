@@ -23,20 +23,7 @@
 #define UINT16SWAP(x) (((x&0xff)<<8) | ((x>>8)&0xff))
 
 /*
-
-The ADXL367 has an unfortunate quirk in how activity is detected at startup.  This is from the data sheet:
-
-When using loop mode, it is important to note that the AWAKE bit is
-always asserted when the device first enters measurement mode.
-The device is currently waiting for an activity event. Therefore,
-this AWAKE bit remains asserted until activity is detected and an
-inactivity event is detected. To avoid this, the device must enter
-measurement mode with an activity threshold below the noise
-level of the ADXL367 and an inactivity threshold greater than 1
-g. This allows the device to deassert the AWAKE bit immediately
-after entering measurement mode. The activity threshold can then
-be raised to the desired level (while still in measurement mode).
-
+   Use the default sample rate - 12.5Hz and default range of 2G
 */
 
 bool initActivitySensor(void)

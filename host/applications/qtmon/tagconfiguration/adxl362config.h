@@ -48,6 +48,8 @@ private:
     QDoubleSpinBox *inact_thresh_ = nullptr;
     QDoubleSpinBox *inactive_ = nullptr;
     QLabel inact_thresh_label = QLabel("Inactive Threshold");
+
+    bool isAdxl375 = false;
     
 };
 

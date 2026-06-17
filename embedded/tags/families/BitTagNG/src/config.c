@@ -6,6 +6,7 @@
 #include "persistent.h"
 #include "string.h"
 #include "ADXL367.h"
+#include <pb_decode.h>
 
 #define ADXL_RANGE(r) (((r) >> 6) & 3)
 #define ADXL_RATE(r) ((r)&7)
@@ -14,6 +15,9 @@
 // ram based config (used by monitor to communicate to tag)
 
 t_storedconfig config_tmp;  
+
+extern const unsigned char tag_default_config[];
+extern const unsigned int tag_default_config_len;
 
 /*
  * Write config in ram to flash
@@ -94,45 +98,35 @@ static const float Tdelta[] = {[ADXL367_ODR_12P5HZ] = 1 / 12.5,
                                [ADXL367_ODR_200HZ] = 1 / 200.0,
                                [ADXL367_ODR_400HZ] = 1 / 400.0};
 
-// See ADXL367 Data Sheet
-
-static const float Sens[] = {[ADXL367_RANGE_2G] = 0.00025,
-                             [ADXL367_RANGE_4G] = 0.0005,
-                             [ADXL367_RANGE_8G] = 0.001};
-
 static int32_t roundUpToMinute(int32_t epoch)
 {
-  int32_t remainder = epoch % 60;
-  if (remainder < 0)
-  {
-    remainder += 60;
-  }
-  return remainder == 0 ? epoch : epoch + (60 - remainder);
+  return ((epoch + 59) / 60) * 60;
 }
-/*
- * Read current config
- */
 
-void readConfig(Config *config)
+static void readDefaultConfig(Config *config)
 {
-  if (config == NULL)
-    return;
+  bzero(config, sizeof(*config));
+  pb_istream_t istream = pb_istream_from_buffer(tag_default_config,
+                                                tag_default_config_len);
+  pb_decode(&istream, Config_fields, config);
+}
 
+static void readStoredConfig(Config *config)
+{
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
-  //config->period = sconfig.lps_period;
-// Sensor configuration
-    // convert from adxl values to configuration values
+
+  // Sensor configuration
+  // convert from adxl values to configuration values
   int range = ADXL_RANGE(ADXL367_RANGE_2G);
   int freq = ADXL_RATE(ADXL367_ODR_12P5HZ);
   int act_thresh = sconfig.adxl_act_thresh_cnt;
-  int samples = sconfig.adxl_inactive_samples;   
+  int samples = sconfig.adxl_inactive_samples;
 
   config->has_adxl362 = true;
   config->adxl362.range = Adxl367RngToEnum[range];
   config->adxl362.freq = Adxl367ODRToEnum[freq];
-  config->adxl362.act_thresh_g = act_thresh * Sens[range];
-  //config->adxl362.inact_thresh_g = inact_thresh * Sens[range];
+  config->adxl362.act_thresh_g = (act_thresh - 1100)/1000.0f;
   config->adxl362.inactive_sec = samples * Tdelta[freq];
   config->adxl362.accel_type = Adxl362_AdxlType_367;
   config->has_active_interval = true;
@@ -147,6 +141,23 @@ void readConfig(Config *config)
     config->hibernate[i].end_epoch = sconfig.hibernate[i].end_epoch;
   }
 }
+/*
+ * Read current config
+ */
+
+void readConfig(Config *config)
+{
+  if (config == NULL)
+    return;
+
+  if ((pState->state == TagState_IDLE) || (pState->state == TagState_TEST))
+  {
+    readDefaultConfig(config);
+    return;
+  }
+
+  readStoredConfig(config);
+}
 
 /*
  * Write config to ram
@@ -156,6 +167,8 @@ bool writeConfig(Config *config)
 {
    if ((config == NULL) || pState->state != TagState_IDLE)
     return false;
+
+  bzero(&config_tmp, sizeof(config_tmp));
 
   int range = EnumToAdxl367Rng(Adxl362_R2G);
   int freq = EnumToAdxl367ODR(Adxl362_S12_5);
@@ -168,10 +181,9 @@ bool writeConfig(Config *config)
   }
 
   //config_tmp.adxl_filter_range_rate = (range << 6) | (1 << 5) | freq;
-  int thresh = config->adxl362.act_thresh_g / Sens[range];
-  thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
-  config_tmp.adxl_act_thresh_cnt = thresh;
-  
+
+  config_tmp.adxl_act_thresh_cnt = config->adxl362.act_thresh_g * 1000 + 1100;
+
   //thresh = config->adxl362.inact_thresh_g / Sens[range];
   //thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
   //config_tmp.adxl_inact_thresh_cnt = thresh;

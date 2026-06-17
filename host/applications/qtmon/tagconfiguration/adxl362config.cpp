@@ -72,7 +72,7 @@ Adxl362Config::Adxl362Config(QWidget *parent) : QWidget(parent)
   inact_thresh_->setToolTip("Sleep threshold");
 
   // inactive
-  
+
   inactive_ = new QDoubleSpinBox();
   inactive_->setSuffix(" sec");
   inactive_->setAlignment(Qt::AlignRight);
@@ -119,14 +119,21 @@ bool Adxl362Config::GetConfig(Config &config)
   int id;
   Adxl362 adxl(config.adxl362());
 
-  if (sample_rate_)
+  if (!isAdxl375)
+  {
+    adxl.set_accel_type(Adxl362_AdxlType_AdxlType_362);
+  } else {
+    adxl.set_accel_type(Adxl362_AdxlType_AdxlType_367);
+  }
+
+  if (sample_rate_  && sample_rate_->isVisible())
     {
       id = sample_rate_->checkedId();
       if (Adxl362_Odr_IsValid(id))
         adxl.set_freq((Adxl362_Odr)id);
     }
 
-  if (range_)
+  if (range_ && range_->isVisible())
     {
       id = range_->checkedId();
       if (Adxl362_Rng_IsValid(id))
@@ -135,13 +142,18 @@ bool Adxl362Config::GetConfig(Config &config)
 
   // set tag specific info
 
-  id = filter_->checkedId();
-  if (Adxl362_Aa_IsValid(id)) {
-      adxl.set_filter((Adxl362_Aa)id);
-  } else {
-      adxl.set_filter((Adxl362_Aa)0);
+  if (filter_ && filter_->isVisible()){
+    id = filter_->checkedId();
+    if (Adxl362_Aa_IsValid(id)) {
+        adxl.set_filter((Adxl362_Aa)id);
+    } else {
+        adxl.set_filter((Adxl362_Aa)0);
+    }
   }
-  adxl.set_inact_thresh_g(inact_thresh_->value());
+
+  if (inact_thresh_->isVisible()){
+    adxl.set_inact_thresh_g(inact_thresh_->value());
+  }
   adxl.set_inactive_sec(inactive_->value());
   adxl.set_act_thresh_g(act_thresh_->value());
 
@@ -163,26 +175,42 @@ bool Adxl362Config::SetConfig(const Config &config)
 
   Adxl362 adxl(config.adxl362());
 
+  isAdxl375 = adxl.accel_type() == Adxl362_AdxlType_AdxlType_367;
+
   // initialize all widgets default visibility
 
   filter_->setVisible(false);
-  sample_rate_->setVisible(true);
+  sample_rate_->setVisible(false);
   inact_thresh_->setVisible(false);
   inact_thresh_label.setVisible(false);
   spinners_->setVisible(true);
-  range_->setVisible(true);
+  range_->setVisible(false);
 
-  filter_->setCheckedId((int)adxl.filter());
-  filter_->setVisible(true);
-  sample_rate_->setCheckedId((int)adxl.freq());
-  range_->setCheckedId((int)adxl.range());
-  inact_thresh_->setVisible(true);
-  inact_thresh_label.setVisible(true);
+  if (!isAdxl375)
+   {
+    range_->setVisible(true);
+   }
+
+   // adxl362 range, freq, and filter
+
+   if (!isAdxl375)
+   {
+    filter_->setCheckedId((int)adxl.filter());
+    filter_->setVisible(true);
+    sample_rate_->setVisible(true);
+    sample_rate_->setCheckedId((int)adxl.freq());
+    range_->setCheckedId((int)adxl.range());
+    inact_thresh_->setVisible(true);
+    inact_thresh_label.setVisible(true);
+
 
   // set legal range of spin boxes
 
-  on_adxlfreq_clicked((int)adxl.freq());
-  on_adxlrange_clicked((int)adxl.range());
+    on_adxlfreq_clicked((int)adxl.freq());
+    on_adxlrange_clicked((int)adxl.range());
+
+    inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
+  }
 
   // adxl362 inactive_ time
 
@@ -191,7 +219,7 @@ bool Adxl362Config::SetConfig(const Config &config)
   // adxl362 threshold
 
   act_thresh_->setValue(static_cast<double>(adxl.act_thresh_g()));
-  inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));
+
 
   active = true;
   setVisible(true);

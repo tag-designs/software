@@ -15,7 +15,7 @@ typedef struct
   // adxl configuration
   uint16_t adxl_act_thresh_cnt;
   uint16_t adxl_inactive_samples;
-  // data collextion configuration
+  // data collection configuration
   int32_t  start;
   int32_t  stop;
   hibernate_t hibernate[2];

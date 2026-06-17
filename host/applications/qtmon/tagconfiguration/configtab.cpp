@@ -121,6 +121,7 @@ void ConfigTab::StateUpdate(TagState state)
 bool ConfigTab::GetConfig(Config &config)
 {
 
+  config = current_config_;
   config.set_tag_type(tag_type_);
   
   // Get configuration from children
@@ -144,6 +145,8 @@ bool ConfigTab::GetConfig(Config &config)
     qDebug() << "failed to get lsm config";
     return false;
   }
+
+  current_config_ = config;
   
   return true;
 
@@ -163,6 +166,7 @@ bool ConfigTab::GetConfig(Config &config)
 
 bool ConfigTab::SetConfig(const Config &new_config)
 {
+  current_config_ = new_config;
   tag_type_ = new_config.tag_type();
   // we need to sanity check the new and old configs !
   // if any of these return false, this should return false
@@ -202,7 +206,7 @@ void ConfigTab::on_configSaveButton_clicked()
   {
     google::protobuf::util::JsonPrintOptions options;
     options.add_whitespace = true;
-    // deprecated -- options.always_print_primitive_fields = true;
+    options.always_print_fields_with_no_presence = true;
     options.preserve_proto_field_names = true;
 
     std::ofstream fs(fileName.toStdString());

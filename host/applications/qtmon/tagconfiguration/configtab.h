@@ -45,6 +45,7 @@ private:
 
     TagType tag_type_ = TAG_UNSPECIFIED;
     TagState old_state_ = STATE_UNSPECIFIED;
+    Config current_config_;
 
     // Schedule tab and components
 
