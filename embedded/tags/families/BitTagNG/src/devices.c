@@ -128,8 +128,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 
   CLEAR_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
   if (state == TagState_RUNNING) {
+    bool accel_int = palReadLine(LINE_ACCEL_INT);
     SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
-    return !palReadLine(LINE_ACCEL_INT);
+    return !accel_int;
   }
 
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);

@@ -24,16 +24,30 @@
 static bool activity_awake = false;
 static bool activity_wake_line_serviced = false;
 
+typedef enum {
+  ADXL367_ARMED_ACT,
+  ADXL367_ARMED_INACT,
+} Adxl367ArmedInterrupt;
+
+static Adxl367ArmedInterrupt activity_armed_interrupt = ADXL367_ARMED_ACT;
+
+static const char *armedInterruptName(void)
+{
+  return (activity_armed_interrupt == ADXL367_ARMED_INACT) ? "inact" : "act";
+}
+
 static void armActivityInterrupt(void)
 {
   ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP1_ACT,
                                  ADXL367_REG_INTMAP1_LWR, 1);
+  activity_armed_interrupt = ADXL367_ARMED_ACT;
 }
 
 static void armInactivityInterrupt(void)
 {
   ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP1_INACT,
                                  ADXL367_REG_INTMAP1_LWR, 1);
+  activity_armed_interrupt = ADXL367_ARMED_INACT;
 }
 
 static unsigned char readActivityStatus(void)
@@ -57,8 +71,9 @@ static bool statusIndicatesAwake(unsigned char status)
       activity_awake = true;
     }
   }
-  debug_log_printf("ADXL367 status 0x%02x awake %u->%u act %u inact %u\r\n",
+  debug_log_printf("ADXL367 status 0x%02x armed %s awake %u->%u act %u inact %u\r\n",
                    status,
+                   armedInterruptName(),
                    was_awake ? 1 : 0,
                    activity_awake ? 1 : 0,
                    (status & ADXL367_STATUS_ACT) ? 1 : 0,

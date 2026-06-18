@@ -159,7 +159,7 @@ void ADXL367_DeinitDevice(const TagAdxl367Device *device)
   //const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
 
   ADXL367_DeviceBegin(device);
-  ADXL367_SetPowerModeDevice(device, ADXL367_MEASURE_STANDBY);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_POWER_CTL, 1);
   //ADXL367_SoftwareResetDevice(device);
   //chThdSleepMilliseconds(2);
   ADXL367_DeviceEnd(device);
