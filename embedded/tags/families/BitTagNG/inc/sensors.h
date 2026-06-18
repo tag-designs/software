@@ -13,4 +13,7 @@
 /** @brief Configure the ADXL367 activity sensor for BitTagNG run mode. */
 bool initActivitySensor(void);
 
+/** @brief Read ADXL367 activity state and arm the next transition interrupt. */
+bool checkActivitySensorAwake(bool *is_awake);
+
 #endif

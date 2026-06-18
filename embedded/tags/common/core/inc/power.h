@@ -56,6 +56,11 @@ void tagEnableStandbyPullup(ioline_t line);
 void tagEnableStandbyPulldown(ioline_t line);
 
 /**
+ * @brief Clear retained STM32 standby pull-up and pull-down selections.
+ */
+void tagClearStandbyPulls(void);
+
+/**
  * @brief Give tag devices a chance to prepare for standby.
  */
 void tagPrepareDevicesForStandby(void);

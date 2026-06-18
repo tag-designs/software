@@ -16,7 +16,22 @@
 #include "sensor_io.h"
 #include "storage_device.h"
 #include "storage_flash.h"
+#include "tag.pb.h"
 #include "test_support.h"
+
+#ifndef ACCEL_WAKEUP_SOURCE
+#define ACCEL_WAKEUP_SOURCE 4
+#endif
+
+#if ACCEL_WAKEUP_SOURCE == 1
+#define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP1
+#define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP1_Msk
+#elif ACCEL_WAKEUP_SOURCE == 4
+#define TAG_ACCEL_WAKEUP_POLARITY_BIT PWR_CR4_WP4
+#define TAG_ACCEL_WAKEUP_ENABLE_BIT PWR_CR3_EWUP4_Msk
+#else
+#error "Unsupported ACCEL_WAKEUP_SOURCE"
+#endif
 
 binary_semaphore_t SPI1mutex;
 
@@ -75,6 +90,10 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
   switch (reason) {
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+    if (state != TagState_RUNNING) {
+      ADXL367_DeinitDevice(TAG_ACCEL_DEVICE);
+      chThdSleepMilliseconds(2);
+    }
     break;
 
   case TAG_DEVICE_POWER_BOOT_CLEANUP:
@@ -96,6 +115,25 @@ void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_CS);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+}
+
+void tagDevicesDisableWakeupSources(void)
+{
+  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
+}
+
+bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
+{
+  (void)is_active;
+
+  CLEAR_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
+  if (state == TagState_RUNNING) {
+    SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
+    return !palReadLine(LINE_ACCEL_INT);
+  }
+
+  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  return true;
 }
 
 void tagDevicesDeinit(void)

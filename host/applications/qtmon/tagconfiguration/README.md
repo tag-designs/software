@@ -100,6 +100,23 @@ Keep ownership boundaries clear. For example:
 
 Do not clear another module's fields.
 
+## Tag-Specific Field Semantics
+
+Prefer reusing existing `Config` fields when a new tag needs narrower ranges or
+labels but not a new wire format. The module may adapt labels, suffixes, ranges,
+and tooltips using `Config.tag_type()` or a sensor selector field, while still
+writing the same protobuf fields.
+
+BitTagNG is the current example. It uses an ADXL367 in wake-up mode but reuses
+`Config.adxl362`:
+
+- `adxl362.act_thresh_g` is the absolute ADXL367 wake-up threshold in g.
+- `adxl362.inactive_sec` is interpreted by BitTagNG firmware as an inactivity
+  sample count at 6 Hz, despite the historical field name.
+
+Document any such semantic overload in both the QtMonitor module and the tag
+firmware conversion code.
+
 ## Proto3 Presence Notes
 
 Message presence is reliable:

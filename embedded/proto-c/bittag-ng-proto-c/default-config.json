@@ -16,7 +16,7 @@
  ],
  "adxl362": {
   "accel_type": "AdxlType_367",
-  "act_thresh_g": 0.5,
-  "inactive_sec": 0.5
+  "act_thresh_g": 1.2,
+  "inactive_sec": 3
  }
 }

@@ -82,7 +82,7 @@ Adxl362Config::Adxl362Config(QWidget *parent) : QWidget(parent)
 
   f_lower->addRow(&act_thresh_label, act_thresh_);
   f_lower->addRow(&inact_thresh_label, inact_thresh_);
-  f_lower->addRow("Inactivity", inactive_);
+  f_lower->addRow(&inactive_label, inactive_);
 
   spinners_->setLayout(f_lower);
   g_outer->addWidget(spinners_, 3, 0);
@@ -203,6 +203,7 @@ bool Adxl362Config::SetConfig(const Config &config,
   Adxl362 adxl(config.adxl362());
 
   isAdxl375 = adxl.accel_type() == Adxl362_AdxlType_AdxlType_367;
+  isBitTagNG = config.tag_type() == TagType::BITTAGNG;
 
   // initialize all widgets default visibility
 
@@ -235,6 +236,33 @@ bool Adxl362Config::SetConfig(const Config &config,
     on_adxlrange_clicked(Adxl362_Rng_R2G);
   if (!visibility_.adxl362_freq)
     on_adxlfreq_clicked(Adxl362_Odr_S12_5);
+
+  if (isBitTagNG)
+  {
+    configbox_->setTitle("Activity Wakeup");
+    act_thresh_label.setText("Wakeup Threshold");
+    inactive_label.setText("Inactivity Samples");
+    act_thresh_->setRange(1.1, 1.5);
+    act_thresh_->setSingleStep(0.05);
+    act_thresh_->setDecimals(2);
+    inactive_->setRange(1.0, 5.0);
+    inactive_->setSingleStep(1.0);
+    inactive_->setDecimals(0);
+    inactive_->setSuffix(" samples");
+    act_thresh_->setToolTip("ADXL367 wake-up threshold in g");
+    inactive_->setToolTip("Samples below inactivity threshold at 6 Hz");
+  }
+  else
+  {
+    configbox_->setTitle("Accelerometer");
+    act_thresh_label.setText("Active Threshold");
+    inactive_label.setText("Inactivity");
+    act_thresh_->setDecimals(2);
+    inactive_->setDecimals(2);
+    inactive_->setSuffix(" sec");
+    act_thresh_->setToolTip("Wakeup threshold");
+    inactive_->setToolTip("Time below wakeup threshold to become inactive");
+  }
 
   if (visibility_.adxl362_inact_thresh_g)
     inact_thresh_->setValue(static_cast<double>(adxl.inact_thresh_g()));

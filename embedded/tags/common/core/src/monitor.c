@@ -202,16 +202,7 @@ static int statusAck(void)
   int64_t epoch;
   uint32_t millis;
 
-  if (!monitor_acquisition_active())
-  {
-    monitorStatusMeasure(&status_vdd100, &status_temp10);
-  }
-#if defined(TAG_STATUS_FIXED_VDD100)
-  else
-  {
-    status_vdd100 = TAG_STATUS_FIXED_VDD100;
-  }
-#endif
+  monitorStatusMeasure(&status_vdd100, &status_temp10);
 
   ack.err = Ack_OK;
   ack.which_payload = Ack_status_tag;

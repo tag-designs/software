@@ -8,8 +8,10 @@
 #include "ADXL367.h"
 #include <pb_decode.h>
 
-#define ADXL_RANGE(r) (((r) >> 6) & 3)
-#define ADXL_RATE(r) ((r)&7)
+#define ADXL367_ACT_THRESH_MIN_MG 1100
+#define ADXL367_ACT_THRESH_MAX_MG 1500
+#define ADXL367_INACTIVE_SAMPLES_MIN 1
+#define ADXL367_INACTIVE_SAMPLES_MAX 5
 
 
 // ram based config (used by monitor to communicate to tag)
@@ -41,66 +43,28 @@ void writeStoredConfig(t_storedconfig *s)
 
 // Translation between BitTag constants and ProtoBuf constants
 
-static const Adxl362_Rng Adxl367RngToEnum[] = {
-    [ADXL367_RANGE_2G] = Adxl362_R2G,
-    [ADXL367_RANGE_4G] = Adxl362_R4G,
-    [ADXL367_RANGE_8G] = Adxl362_R8G};
-
-static const Adxl362_Odr Adxl367ODRToEnum[] = {
-    [ADXL367_ODR_12P5HZ] = Adxl362_S12_5,
-    [ADXL367_ODR_25HZ] = Adxl362_S25,
-    [ADXL367_ODR_50HZ] = Adxl362_S50,
-    [ADXL367_ODR_100HZ] = Adxl362_S100,
-    [ADXL367_ODR_200HZ] = Adxl362_S200,
-    [ADXL367_ODR_400HZ] = Adxl362_S400};
-
-static int EnumToAdxl367Rng(Adxl362_Rng rng)
+static uint16_t clampAdxl367ActivityThreshold(float threshold_g)
 {
-  switch (rng)
-  {
-  case Adxl362_R2G:
-    return ADXL367_RANGE_2G;
-  case Adxl362_R4G:
-    return ADXL367_RANGE_4G;
-  case Adxl362_R8G:
-    return ADXL367_RANGE_8G;
-  default:
-    return -1;
-  };
+  // Round positive g-to-mg conversion without pulling in libm roundf().
+  int threshold_mg = threshold_g * 1000.0f + 0.5f;
+
+  if (threshold_mg < ADXL367_ACT_THRESH_MIN_MG)
+    threshold_mg = ADXL367_ACT_THRESH_MIN_MG;
+  if (threshold_mg > ADXL367_ACT_THRESH_MAX_MG)
+    threshold_mg = ADXL367_ACT_THRESH_MAX_MG;
+  return (uint16_t)threshold_mg;
 }
 
-static int EnumToAdxl367ODR(Adxl362_Odr odr)
+static uint16_t clampAdxl367InactivitySamples(float samples_f)
 {
-  switch (odr)
-  {
-  case Adxl362_S12_5:
-    return ADXL367_ODR_12P5HZ;
-  case Adxl362_S25:
-    return ADXL367_ODR_25HZ;
-  case Adxl362_S50:
-    return ADXL367_ODR_50HZ;
-  case Adxl362_S100:
-    return ADXL367_ODR_100HZ;
-  case Adxl362_S200:
-    return ADXL367_ODR_200HZ;
-  case Adxl362_S400:
-    return ADXL367_ODR_400HZ;
-  default:
-    return -1;
-  };
-}
+  // Round positive sample-count values without pulling in libm roundf().
+  int samples = samples_f + 0.5f;
 
-// See ADXL367 Data sheet
-static const float Tdelta[] = {[ADXL367_ODR_12P5HZ] = 1 / 12.5,
-                               [ADXL367_ODR_25HZ] = 1 / 25.0,
-                               [ADXL367_ODR_50HZ] = 1 / 50.0,
-                               [ADXL367_ODR_100HZ] = 1 / 100.0,
-                               [ADXL367_ODR_200HZ] = 1 / 200.0,
-                               [ADXL367_ODR_400HZ] = 1 / 400.0};
-
-static int32_t roundUpToMinute(int32_t epoch)
-{
-  return ((epoch + 59) / 60) * 60;
+  if (samples < ADXL367_INACTIVE_SAMPLES_MIN)
+    samples = ADXL367_INACTIVE_SAMPLES_MIN;
+  if (samples > ADXL367_INACTIVE_SAMPLES_MAX)
+    samples = ADXL367_INACTIVE_SAMPLES_MAX;
+  return (uint16_t)samples;
 }
 
 static void readDefaultConfig(Config *config)
@@ -116,18 +80,17 @@ static void readStoredConfig(Config *config)
   bzero(config, sizeof(*config));
   config->tag_type = TAG_TYPE;
 
-  // Sensor configuration
-  // convert from adxl values to configuration values
-  int range = ADXL_RANGE(ADXL367_RANGE_2G);
-  int freq = ADXL_RATE(ADXL367_ODR_12P5HZ);
+  // Sensor configuration. BitTagNG fixes ADXL367 range and sample rate.
   int act_thresh = sconfig.adxl_act_thresh_cnt;
   int samples = sconfig.adxl_inactive_samples;
 
   config->has_adxl362 = true;
-  config->adxl362.range = Adxl367RngToEnum[range];
-  config->adxl362.freq = Adxl367ODRToEnum[freq];
-  config->adxl362.act_thresh_g = (act_thresh - 1100)/1000.0f;
-  config->adxl362.inactive_sec = samples * Tdelta[freq];
+  config->adxl362.act_thresh_g = act_thresh / 1000.0f;
+  /*
+   * BitTagNG reuses the existing ADXL config shape. For this ADXL367 wake-up
+   * mode, inactive_sec is interpreted as an inactivity sample count at 6 Hz.
+   */
+  config->adxl362.inactive_sec = samples;
   config->adxl362.accel_type = Adxl362_AdxlType_367;
   config->has_active_interval = true;
   config->active_interval.start_epoch = sconfig.start;
@@ -170,28 +133,18 @@ bool writeConfig(Config *config)
 
   bzero(&config_tmp, sizeof(config_tmp));
 
-  int range = EnumToAdxl367Rng(Adxl362_R2G);
-  int freq = EnumToAdxl367ODR(Adxl362_S12_5);
-
-  debug_log_printf("Configuring ADXL367 with range %d and frequency %d\r\n", range, freq);
-  if ((range < 0) || (freq < 0))
-  {
-    debug_log_printf("Invalid config range or frequency\r\n");
-    return false;
-  }
-
-  //config_tmp.adxl_filter_range_rate = (range << 6) | (1 << 5) | freq;
-
-  config_tmp.adxl_act_thresh_cnt = config->adxl362.act_thresh_g * 1000 + 1100;
-
-  //thresh = config->adxl362.inact_thresh_g / Sens[range];
-  //thresh = (thresh > 0x1fff) ? 0x1fff : thresh;
-  //config_tmp.adxl_inact_thresh_cnt = thresh;
-
-  int samples = config->adxl362.inactive_sec / Tdelta[freq];
-  samples = samples > 255 ? 255 : samples;
-  config_tmp.adxl_inactive_samples = samples;
-  config_tmp.start = roundUpToMinute(config->active_interval.start_epoch);
+  config_tmp.adxl_act_thresh_cnt =
+      clampAdxl367ActivityThreshold(config->adxl362.act_thresh_g);
+  /*
+   * See readStoredConfig(): BitTagNG stores ADXL367 inactivity as samples even
+   * though the protobuf field is named inactive_sec for older ADXL362 configs.
+   */
+  config_tmp.adxl_inactive_samples =
+      clampAdxl367InactivitySamples(config->adxl362.inactive_sec);
+  debug_log_printf("Configuring ADXL367 wake-up threshold %u mg, inactivity %u samples\r\n",
+                   config_tmp.adxl_act_thresh_cnt,
+                   config_tmp.adxl_inactive_samples);
+  config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
 
   for (int i = 0; i < config->hibernate_count; i++)

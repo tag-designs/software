@@ -7,6 +7,8 @@
 
 #include "ADXL367.h"
 
+#include "hal.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -154,9 +156,19 @@ void ADXL367_SoftwareResetDevice(const TagAdxl367Device *device)
 
 void ADXL367_DeinitDevice(const TagAdxl367Device *device)
 {
+  //const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
+
   ADXL367_DeviceBegin(device);
-  ADXL367_SoftwareResetDevice(device);
+  ADXL367_SetPowerModeDevice(device, ADXL367_MEASURE_STANDBY);
+  //ADXL367_SoftwareResetDevice(device);
+  //chThdSleepMilliseconds(2);
   ADXL367_DeviceEnd(device);
+
+  //palSetLine(spi->cs);
+  //palSetLineMode(spi->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  //palSetLineMode(spi->sck, PAL_MODE_INPUT_ANALOG);
+  //palSetLineMode(spi->mosi, PAL_MODE_INPUT_ANALOG);
+  //palSetLineMode(spi->miso, PAL_MODE_INPUT_ANALOG);
 }
 
 void ADXL367_SetPowerModeDevice(const TagAdxl367Device *device,

@@ -78,26 +78,28 @@ static const TagI2cDevice rtc_bus = {
 };
 
 #if BOARD_STANDBY_HAS_CONFIG
+void tagClearStandbyPulls(void)
+{
+  PWR->PUCRA = 0U;
+  PWR->PDCRA = 0U;
+  PWR->PUCRB = 0U;
+  PWR->PDCRB = 0U;
+  PWR->PUCRC = 0U;
+  PWR->PDCRC = 0U;
+}
+
 static inline void tagApplyBoardStandbyPins(void)
 {
-#if HAS_PULLUPA
   PWR->PUCRA = PULLUPA;
-#endif
-#if HAS_PULLDWNA
   PWR->PDCRA = PULLDWNA;
-#endif
-#if HAS_PULLUPB
   PWR->PUCRB = PULLUPB;
-#endif
-#if HAS_PULLDWNB
   PWR->PDCRB = PULLDWNB;
-#endif
-#if HAS_PULLUPC
   PWR->PUCRC = PULLUPC;
-#endif
-#if HAS_PULLDWNC
   PWR->PDCRC = PULLDWNC;
-#endif
+}
+#else
+void tagClearStandbyPulls(void)
+{
 }
 #endif
 
@@ -190,12 +192,10 @@ void godown(enum Sleep sleepmode)
 
   tagDevicesDisableWakeupSources();
   WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
-  /*
-   * TODO(CRITICAL): this abort path returns from godown() with interrupts
-   * disabled. Rework standby entry so all early exits restore IRQ state.
-   */
-  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive)) {
+    __enable_irq();
     return;
+  }
 
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));

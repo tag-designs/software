@@ -79,10 +79,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->temp10 = temp10;
 
     initActivitySensor();
+    checkActivitySensorAwake(&isActive);
 
     pState->state = TagState_RUNNING;
     pState->lastwrite = timestamp;
     pState->activity = 0;
+    pState->lastactstart = isActive ? timestamp : INT_MAX;
     recordState(reason);
     disableAllAlarms();
     disableTicker();
@@ -100,14 +102,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     if (reason == State_EVENT_EXCEPTION)
     {
       initActivitySensor();
+      checkActivitySensorAwake(&isActive);
       disableAllAlarms();
       disableTicker();
       enableAlarm(0, ALARM_MINUTE);
     }
 
-    // sample once ! -- also used in pwr to decide wakeup edge
-
-    isActive = palReadLine(LINE_ACCEL_INT);
+    checkActivitySensorAwake(&isActive);
     
 
     // a very rare event is a missed RTC wakeup.  In this case the 

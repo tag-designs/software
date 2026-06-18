@@ -52,8 +52,10 @@ private:
     QDoubleSpinBox *inactive_ = nullptr;
     QLabel act_thresh_label = QLabel("Active Threshold");
     QLabel inact_thresh_label = QLabel("Inactive Threshold");
+    QLabel inactive_label = QLabel("Inactivity");
 
     bool isAdxl375 = false;
+    bool isBitTagNG = false;
     ConfigFieldVisibility visibility_;
     
 };

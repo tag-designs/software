@@ -22,6 +22,7 @@
 #include "core_types.h"
 
 #include <stdarg.h>
+#include <string.h>
 
 #define DEBUG_LOG_BUFFER_SIZE 1024
 
@@ -29,6 +30,26 @@ static MemoryStream debug_stream;
 static uint8_t debug_message_buffer[DEBUG_LOG_BUFFER_SIZE] NOINIT;
 static binary_semaphore_t debug_log_sem;
 static bool debug_log_initialized;
+
+static void debug_log_compact_locked(void)
+{
+  if (debug_stream.offset == 0U)
+  {
+    return;
+  }
+
+  if (debug_stream.offset == debug_stream.eos)
+  {
+    debug_stream.offset = 0U;
+    debug_stream.eos = 0U;
+    return;
+  }
+
+  const size_t unread = debug_stream.eos - debug_stream.offset;
+  memmove(debug_stream.buffer, debug_stream.buffer + debug_stream.offset, unread);
+  debug_stream.offset = 0U;
+  debug_stream.eos = unread;
+}
 
 /**
  * @brief Initialize the in-memory debug-message queue.
@@ -78,6 +99,7 @@ size_t debug_log_read(uint8_t *buf, size_t len)
 
   chBSemWait(&debug_log_sem);
   bytes = streamRead(&debug_stream, buf, len);
+  debug_log_compact_locked();
   chBSemSignal(&debug_log_sem);
   return bytes;
 }
@@ -114,6 +136,7 @@ int debug_log_printf(const char *fmt, ...)
   va_list ap;
   va_start(ap, fmt);
   chBSemWait(&debug_log_sem);
+  debug_log_compact_locked();
   written = chvprintf((BaseSequentialStream *)&debug_stream, fmt, ap);
   chBSemSignal(&debug_log_sem);
   va_end(ap);
