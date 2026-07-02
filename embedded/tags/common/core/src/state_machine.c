@@ -318,6 +318,10 @@ enum Sleep StateMachine(eventmask_t input_events)
     {
       return Finished(T_INIT, State_EVENT_STOPCMD);
     }
+    if (pState->state == TagState_EXCEPTION)
+    {
+      return Aborted(T_INIT, State_EVENT_STOPCMD);
+    }
 #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
     if (pState->state == TagState_CALIBRATE)
     {

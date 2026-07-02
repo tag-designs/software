@@ -359,6 +359,10 @@ static bool monitor_stop_allowed(void)
   {
     return true;
   }
+  if (pState->state == TagState_EXCEPTION)
+  {
+    return true;
+  }
 #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   if (pState->state == TagState_CALIBRATE)
   {

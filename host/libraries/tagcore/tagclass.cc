@@ -108,7 +108,7 @@ bool Tag::Stop()
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_stop(new Empty);
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 
 bool Tag::Calibrate()
