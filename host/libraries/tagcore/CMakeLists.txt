@@ -63,6 +63,7 @@ target_compile_definitions(tagcore PUBLIC
 target_sources(tagcore
     PRIVATE
          tagmonitor.cc 
+         legacy_bittag_rescue.cc
          tagclass.cc   
          taglogwriter.cc
          txtlogs.cc

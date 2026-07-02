@@ -29,7 +29,8 @@ TagMonitor();
  bool GitShaString(std::string &str);
  bool Voltage(float &voltage);
  bool Rpc(Req &req, Ack &ack);
- // Field-rescue helpers used by tag-dwnld --rescue-exception.
+ // Field-rescue helpers implemented in legacy_bittag_rescue.cc and used only
+ // by tag-dwnld --rescue-exception.
  bool ForceBackupState(TagState state);
  bool CountBitTagLogHeaders(int &count);
  bool ReadBitTagLogFromFlash(Ack &ack, int index);
