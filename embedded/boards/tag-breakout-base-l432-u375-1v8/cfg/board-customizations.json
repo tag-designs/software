@@ -1,0 +1,160 @@
+{
+  "board_name": "Tag Breakout Base L432 U375 1V8",
+  "board_id": "Tag_Breakout_Base_L432_U375_1V8",
+  "remove_elements": [
+    "ethernet_phy"
+  ],
+  "elements": {
+    "configuration_settings/output_path": "..",
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32L432xx"
+  },
+  "attributes": {
+    "clocks": {
+      "HSEFrequency": "0",
+      "HSEBypass": "false",
+      "LSEFrequency": "0",
+      "LSEBypass": "false",
+      "LSEDrive": "3 High Drive (default)",
+      "VDD": "330"
+    }
+  },
+  "pins": {
+    "GPIOA": {
+      "pin1": {
+        "ID": "EN1V8",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin3": {
+        "ID": "LED_GREEN",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin9": {
+        "ID": "UART_TX",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "7",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin10": {
+        "ID": "TGT_RESET",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin11": {
+        "ID": "USB_DM",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Alternate",
+        "Alternate": "10",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin12": {
+        "ID": "USB_DP",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Alternate",
+        "Alternate": "10",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin13": {
+        "ID": "SWDIO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Alternate",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin14": {
+        "ID": "SWCLK",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullDown",
+        "Mode": "Alternate",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin15": {
+        "ID": "SWDIO_DIR",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      }
+    },
+    "GPIOB": {
+      "pin3": {
+        "ID": "TGT_SWCLK",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin4": {
+        "ID": "TGT_SWDIO_IN",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Input",
+        "Alternate": "5",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin5": {
+        "ID": "TGT_SWDIO",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      }
+    }
+  }
+}

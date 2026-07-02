@@ -34,6 +34,7 @@ These are the board targets used by active tag and base firmware targets.
 | `tag-base-c071-v1` | `board-tag-base-c071v1` | `ST_NUCLEO64_C071RB/board.mk` | `generate_configured_board_files()` | Bases: `tag-base-c071` |
 | `tag-breakout-base-jlcpcb32-v1` | `board-tag-breakout-base-jlcpcb32-v1` | `tag-breakout-base-jlcpcb32-v1/board.mk` | `generate_board_files()` | Bases: `tag-breakout-base-jlcpcb32-v1` |
 | `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` | `generate_configured_board_files()` | Bases: `tag-breakout-base-l432-v1` |
+| `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` | `generate_configured_board_files()` | Bases: `tag-breakout-base-l432-u375-1v8` |
 
 The firmware side declares the dependency in its `CMakeLists.txt` and includes
 the generated board fragment in `project.mk`:

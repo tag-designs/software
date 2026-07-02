@@ -20,7 +20,7 @@ embedded/bases/
     make-c071.mk              Shared ChibiOS make scaffold for STM32C071 bases
   <base-target>/
     CMakeLists.txt            Firmware target and board dependency
-    Makefile                  Includes the shared base make scaffold
+    Makefile                  Includes a shared or target-local make scaffold
     project.mk                Board include and local/shared source list
     cfg/                      ChibiOS configuration overrides
     src/                      Base-local application or SWD implementation
@@ -51,6 +51,7 @@ source tree.
 | `tag-base-c071` | `board-tag-base-c071v1` | `ST_NUCLEO64_C071RB/board.mk` |
 | `tag-breakout-base-jlcpcb32-v1` | `board-tag-breakout-base-jlcpcb32-v1` | `tag-breakout-base-jlcpcb32-v1/board.mk` |
 | `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` |
+| `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` |
 
 ## Base Descriptions
 
@@ -202,6 +203,40 @@ Local files:
 Shared sources from `common`: `usbcfg.c`, `stlink.c`, `stm32adc.c`.
 
 Notes: TODO.
+
+### `tag-breakout-base-l432-u375-1v8`
+
+Description: STLink-compatible breakout base for an STM32U375 target with
+1.8 V analog buffer enable and explicit SWDIO direction control.
+
+Hardware notes: The STM32L432 base MCU runs from an 80 MHz HSI16-derived PLL.
+USB uses HSI48 with CRS sync. `EN1V8` is a static high board output,
+`TGT_RESET` is active-high, and local bitbang SWD drives `SWDIO_DIR` high for
+transmit and low for receive.
+
+Build target:
+
+```sh
+cmake --build <build-dir> --target tag-breakout-base-l432-u375-1v8
+```
+
+Board dependency: `board-tag-breakout-base-l432-u375-1v8`
+
+Board include: `$(BOARDDIR)/Tag_Breakout_Base_L432_U375_1V8/board.mk`
+
+Local files:
+
+- `src/main.c`
+- `src/ll_swd.c`
+- `make-l432.mk`
+- `cfg/chconf.h`
+- `cfg/halconf.h`
+- `cfg/mcuconf.h`
+
+Shared sources from `common`: `usbcfg.c`, `stlink.c`.
+
+Notes: Initial bringup uses bitbang SWD. SPI-capable SWD can be added after
+the target attach path is proven.
 
 ## Maintenance Notes
 

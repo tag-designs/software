@@ -148,6 +148,7 @@ endfunction()
 add_subdirectory(bittag-base-jlcpcb-v3)
 add_subdirectory(tag-breakout-base-jlcpcb32-v1)
 add_subdirectory(tag-breakout-base-l432-v1)
+add_subdirectory(tag-breakout-base-l432-u375-1v8)
 add_subdirectory(bittag-base-v7)
 add_subdirectory(tag-base-c071-v1)
 
