@@ -49,7 +49,11 @@ extern "C"
 #define STM32L4_RCC_CSR 0x40021094U
 #define STM32L4_PWR_CR1 0x40007000U
 #define STM32L4_RTC_BKP0R 0x40002850U
+// BackupState.state is the fourth 32-bit RTC backup register. Rescue download
+// writes this word only; log cursors and flash contents are left untouched.
 #define TAG_BACKUP_STATE_ADDR (STM32L4_RTC_BKP0R + 3U * sizeof(uint32_t))
+// Legacy BitTag V6 persistent layout. These addresses come from the BitTag
+// firmware map and are used only by the explicit --rescue-exception path.
 #define BITTAG_VDD_HEADER_ADDR 0x08007a68U
 #define BITTAG_PERSISTENT_END 0x08040000U
 #define BITTAG_DATA_HEADER_SIZE 16U
@@ -609,6 +613,12 @@ void TagMonitor::Detach()
 
 bool TagMonitor::ForceBackupState(TagState state)
 {
+  /*
+   * Field-rescue helper for old firmware that cannot serve log RPCs while
+   * pState->state is EXCEPTION. We enable backup-domain writes if needed,
+   * write only BackupState.state, restore DBP, then verify by reading the same
+   * word back over ST-LINK memory access.
+   */
   if (!IsAttached())
   {
     log_error("Monitor not attached");
@@ -666,6 +676,11 @@ bool TagMonitor::ForceBackupState(TagState state)
 
 bool TagMonitor::CountBitTagLogHeaders(int &count)
 {
+  /*
+   * Legacy BitTag stores one 16-byte t_DataHeader per sample in internal flash.
+   * A blank record has epoch == 0xffffffff. Counting these records recovers the
+   * number of samples when pState->pages was lost during an exception.
+   */
   count = 0;
   if (!IsAttached())
   {
@@ -694,6 +709,11 @@ bool TagMonitor::CountBitTagLogHeaders(int &count)
 
 bool TagMonitor::ReadBitTagLogFromFlash(Ack &ack, int index)
 {
+  /*
+   * Synthesize a normal BitTagLog Ack from legacy BitTag flash records. This
+   * does not interpret the 64-bit activity field; text/SQLite writers decode it
+   * later using the recovered Config.bittag_log value.
+   */
   ack.Clear();
   if (!IsAttached())
   {

@@ -40,6 +40,7 @@ public:
   bool GetTagInfo(TagInfo &info);
   bool GetConfig(Config &cfg);
   bool GetStatus(Status &status);
+  // Field-rescue helpers used by tag-dwnld --rescue-exception.
   bool ForceBackupState(TagState state);
   bool CountBitTagLogHeaders(int &count);
   bool GetBitTagLogFromFlash(Ack &data_log, int index);

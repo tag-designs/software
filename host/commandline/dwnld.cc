@@ -96,6 +96,8 @@ void printWriterError(const std::string &context, const TagLogWriter &writer)
 
 bool isDownloadableState(TagState state)
 {
+  // EXCEPTION is terminal for download purposes: collection is no longer
+  // safely mutating log storage, and field recovery may depend on reading it.
   return state == FINISHED || state == ABORTED || state == EXCEPTION;
 }
 
@@ -241,6 +243,13 @@ int main(int argc, char **argv)
   }
 
   if ((status.state() == EXCEPTION) && rescue_exception) {
+    /*
+     * Old BitTag firmware latched EXCEPTION in backup state but rejected
+     * internal-data log RPCs unless the state was ABORTED or FINISHED. For a
+     * field tag, changing only that backup-state word is the least invasive way
+     * to unlock log reads. The low-level helper verifies the write directly;
+     * do not require an immediate status RPC from the unhealthy firmware.
+     */
     std::cerr << "Rescue: changing monitor-visible state from EXCEPTION to ABORTED" << std::endl;
     if (!tag.ForceBackupState(ABORTED)) {
       std::cerr << "Could not rescue exception state" << std::endl;
@@ -312,6 +321,11 @@ int main(int argc, char **argv)
 
   int max_count = status.internal_data_count();
   if (rescue_exception && config.tag_type() == BITTAG && max_count <= 0) {
+    /*
+     * Some exception paths leave pState->pages at zero even though the BitTag
+     * internal flash headers are intact. Count those headers directly so the
+     * download loop has a useful upper bound and progress display.
+     */
     int rescued_count = 0;
     if (!tag.CountBitTagLogHeaders(rescued_count)) {
       std::cerr << "Could not scan BitTag log headers" << std::endl;
@@ -347,6 +361,12 @@ int main(int argc, char **argv)
     len = 0;
 
     start = SteadyClock::now();
+    /*
+     * In BitTag rescue mode, avoid the target firmware's data-log RPC entirely.
+     * The host reads the raw BitTag headers from internal flash, wraps them in
+     * ordinary BitTagLog protobuf messages, and lets the normal writers decode
+     * raw activity using config.bittag_log().
+     */
     const bool got_log =
         (rescue_exception && config.tag_type() == BITTAG)
             ? tag.GetBitTagLogFromFlash(ack, total)

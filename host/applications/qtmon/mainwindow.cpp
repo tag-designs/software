@@ -54,6 +54,8 @@ int roundedSectorCount(qint64 bytes, int sector_size)
 
 bool isDownloadableState(TagState state)
 {
+  // EXCEPTION is no longer collecting data, so allow users to reach the
+  // download controls instead of requiring a reset that could erase evidence.
   return state == FINISHED || state == ABORTED || state == EXCEPTION;
 }
 

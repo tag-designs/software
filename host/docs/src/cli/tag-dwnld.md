@@ -1,10 +1,8 @@
 # tag-dwnld
 
 `tag-dwnld` downloads stored log records from a tag and writes them to a file.
-
-> Fill in: describe when this tool should be used instead of the GUI downloader,
-> which tag states are expected, and which output format is preferred for each
-> tag family.
+Use it for scripted downloads, recovery work, or cases where the GUI monitor is
+not convenient.
 
 ## Usage
 
@@ -26,11 +24,14 @@ tag-dwnld [options]
 
 ## Preconditions
 
-Fill in:
-
-- Required tag/base connection.
-- Required tag state before download.
-- What happens when the tag is running and `--stop` is not supplied.
+- A compatible tag/base interface is connected over USB.
+- Normal downloads require `FINISHED`, `ABORTED`, or `EXCEPTION`.
+- `--stop` can stop a running tag before download. Without it, a running tag is
+  rejected so active log storage is not read while it is still being written.
+- `--rescue-exception` is for old BitTag firmware recovered from the field. It
+  changes only the monitor-visible backup state from `EXCEPTION` to `ABORTED`,
+  then reads legacy BitTag log headers directly from internal flash if the
+  firmware cannot serve data-log RPCs. It does not erase flash or reset counters.
 
 ## Examples
 
@@ -42,13 +43,34 @@ tag-dwnld --format sqlite --output my-log.db3
 tag-dwnld --stop --format default
 ```
 
+```sh
+tag-dwnld --rescue-exception --format sqlite --output field-rescue.db3
+```
+
+```sh
+tag-dwnld --rescue-exception --format text --output field-rescue.txt
+```
+
 ## Output
 
-Fill in: describe the progress bar, final record count, output file contents,
-and any format-specific notes.
+The command prints the selected output path, a progress bar, the final record
+count, and timing information. SQLite output stores metadata in `info`, state
+history in `states`, stream metadata in `streams`, and tag-specific data tables
+such as `Activity`, `Voltage`, and `CoreTemperature`. Text output writes a
+comment header followed by line-oriented log records.
+
+For BitTag rescue downloads, the raw 64-bit activity field is not interpreted by
+the rescue reader. It is wrapped in a normal `BitTagLog` payload and decoded by
+the selected writer using the recovered `Config.bittag_log` value.
 
 ## Troubleshooting
 
-Fill in: include common messages such as "No matching device", "Attach failed",
-"Can't dump logs from current state", unsupported tag type/format combinations,
-and output file write failures.
+- `No matching device`: no connected tag/base matched the optional `--base`
+  selector.
+- `Attach failed`: the USB interface was found but could not be opened.
+- `Can't dump logs from current state`: the tag is not in a terminal state and
+  `--stop` or `--rescue-exception` did not make it downloadable.
+- `Could not scan BitTag log headers`: the rescue path could not read legacy
+  BitTag internal flash headers.
+- `Could not write log data`: the writer could not decode or store a returned
+  payload. Check that the selected format supports the tag type.
