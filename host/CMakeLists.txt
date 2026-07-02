@@ -130,6 +130,7 @@ set(host_cli_install_targets
     tag-info
     tag-reset
     tag-start
+    tag-stop
     tag-cal
     tag-monitor-test)
 set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)

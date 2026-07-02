@@ -47,6 +47,13 @@ extern "C"
 #define SCB_AFSR 0xE000ED3CU
 
 #define STM32L4_RCC_CSR 0x40021094U
+#define STM32L4_PWR_CR1 0x40007000U
+#define STM32L4_RTC_BKP0R 0x40002850U
+#define TAG_BACKUP_STATE_ADDR (STM32L4_RTC_BKP0R + 3U * sizeof(uint32_t))
+#define BITTAG_VDD_HEADER_ADDR 0x08007a68U
+#define BITTAG_PERSISTENT_END 0x08040000U
+#define BITTAG_DATA_HEADER_SIZE 16U
+#define BITTAG_LOG_RECORDS_PER_ACK 30U
 
 #define DBGKEY (0xA05F << 16)
 #define C_DEBUGEN (1 << 0)
@@ -67,6 +74,8 @@ extern "C"
 #define MON_REQ (1 << 19)
 #define MON_PEND (1 << 17)
 #define MON_EN (1 << 16)
+
+#define PWR_CR1_DBP (1 << 8)
 
 #ifndef TAGCORE_HALT_ON_MONITOR_TIMEOUT
 #define TAGCORE_HALT_ON_MONITOR_TIMEOUT 1
@@ -596,6 +605,149 @@ void TagMonitor::Detach()
   WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN)));
   // release usb
   LinkAdapt::Detach();
+}
+
+bool TagMonitor::ForceBackupState(TagState state)
+{
+  if (!IsAttached())
+  {
+    log_error("Monitor not attached");
+    return false;
+  }
+
+  uint32_t original_pwr_cr1 = 0;
+  const bool have_pwr_cr1 =
+      ReadMem32(STM32L4_PWR_CR1, (uint8_t *)&original_pwr_cr1,
+                sizeof(original_pwr_cr1));
+  if (have_pwr_cr1 && ((original_pwr_cr1 & PWR_CR1_DBP) == 0U))
+  {
+    uint32_t writable_pwr_cr1 = original_pwr_cr1 | PWR_CR1_DBP;
+    if (!WriteMem32(STM32L4_PWR_CR1, (uint8_t *)&writable_pwr_cr1,
+                    sizeof(writable_pwr_cr1)))
+    {
+      log_error("could not enable backup-domain writes");
+      return false;
+    }
+  }
+
+  uint32_t backup_state = static_cast<uint32_t>(state);
+  const bool write_ok =
+      WriteMem32(TAG_BACKUP_STATE_ADDR, (uint8_t *)&backup_state,
+                 sizeof(backup_state));
+
+  if (have_pwr_cr1 && ((original_pwr_cr1 & PWR_CR1_DBP) == 0U))
+  {
+    (void)WriteMem32(STM32L4_PWR_CR1, (uint8_t *)&original_pwr_cr1,
+                     sizeof(original_pwr_cr1));
+  }
+
+  if (!write_ok)
+  {
+    log_error("could not write backup state");
+    return false;
+  }
+
+  uint32_t verify_state = 0;
+  if (!ReadMem32(TAG_BACKUP_STATE_ADDR, (uint8_t *)&verify_state,
+                 sizeof(verify_state)))
+  {
+    log_error("could not verify backup state");
+    return false;
+  }
+  if (verify_state != backup_state)
+  {
+    log_error("backup state verify failed: wrote %u read %u",
+              backup_state, verify_state);
+    return false;
+  }
+
+  return true;
+}
+
+bool TagMonitor::CountBitTagLogHeaders(int &count)
+{
+  count = 0;
+  if (!IsAttached())
+  {
+    log_error("Monitor not attached");
+    return false;
+  }
+
+  for (uint32_t address = BITTAG_VDD_HEADER_ADDR;
+       (address + BITTAG_DATA_HEADER_SIZE) <= BITTAG_PERSISTENT_END;
+       address += BITTAG_DATA_HEADER_SIZE)
+  {
+    uint32_t header[BITTAG_DATA_HEADER_SIZE / sizeof(uint32_t)] = {0};
+    if (!ReadMem32(address, (uint8_t *)header, sizeof(header)))
+    {
+      return false;
+    }
+    if (header[0] == 0xffffffffU)
+    {
+      return true;
+    }
+    count++;
+  }
+
+  return true;
+}
+
+bool TagMonitor::ReadBitTagLogFromFlash(Ack &ack, int index)
+{
+  ack.Clear();
+  if (!IsAttached())
+  {
+    log_error("Monitor not attached");
+    return false;
+  }
+  if (index < 0)
+  {
+    ack.set_err(Ack::OK);
+    ack.mutable_bittag_data_log();
+    return true;
+  }
+
+  ack.set_err(Ack::OK);
+  BitTagLog *log = ack.mutable_bittag_data_log();
+
+  for (uint32_t count = 0; count < BITTAG_LOG_RECORDS_PER_ACK; count++)
+  {
+    const uint32_t record_index = static_cast<uint32_t>(index) + count;
+    const uint32_t address =
+        BITTAG_VDD_HEADER_ADDR + record_index * BITTAG_DATA_HEADER_SIZE;
+    if ((address + BITTAG_DATA_HEADER_SIZE) > BITTAG_PERSISTENT_END)
+    {
+      return true;
+    }
+
+    uint8_t header[BITTAG_DATA_HEADER_SIZE] = {0};
+    if (!ReadMem32(address, header, sizeof(header)))
+    {
+      return false;
+    }
+
+    int32_t epoch = 0;
+    int16_t temp10 = 0;
+    uint16_t vdd100 = 0;
+    uint64_t activity = 0;
+    memcpy(&epoch, &header[0], sizeof(epoch));
+    memcpy(&temp10, &header[4], sizeof(temp10));
+    memcpy(&vdd100, &header[6], sizeof(vdd100));
+    memcpy(&activity, &header[8], sizeof(activity));
+
+    if (static_cast<uint32_t>(epoch) == 0xffffffffU)
+    {
+      return true;
+    }
+
+    BitTagData *entry = log->add_data();
+    entry->set_epoch(epoch);
+    entry->set_temperature(temp10 * 0.1f);
+    entry->set_voltage(vdd100 * 0.01f);
+    entry->set_rawdata(activity);
+  }
+
+  return true;
 }
 
 // RPC call for monitor

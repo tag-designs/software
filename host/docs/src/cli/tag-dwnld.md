@@ -18,7 +18,8 @@ tag-dwnld [options]
 | --- | --- | --- |
 | `-o`, `--output` | path | Output file path. If omitted, SensorTag tools write `tag-download.txt` or `tag-download.db3` depending on the selected/default format. |
 | `-f`, `--format` | `default`, `text`, `sqlite` | Selects the output storage format. `default` chooses the default format for the loaded tag type. Accepted SQLite aliases in the parser include `sqlite`, `sql`, `db`, and `db3`; accepted text aliases include `txt` and `text`. |
-| `-s`, `--stop` | none | Stops a running tag before downloading. Without this option, download proceeds only when the tag is already finished or aborted. |
+| `-s`, `--stop` | none | Stops a running tag before downloading. Without this option, download proceeds only when the tag is already finished, aborted, or in exception state. |
+| `--rescue-exception` | none | For old firmware that refuses downloads from `EXCEPTION`, changes the monitor-visible backup state to `ABORTED` before downloading. This does not erase log flash or reset log counters. |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
 | `-h`, `--help` | none | Prints command usage and exits. |

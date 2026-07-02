@@ -123,7 +123,7 @@ bool TextTagLogWriter::writeTextHeader(Tag &tag)
   if (cfg.bittag_log() != BITTAG_UNSPECIFIED)
   {
     fs << "# BitTag Log Format:      "
-       << cfg.bittag_log() << "\n";
+       << BitTagLogFmt_Name(cfg.bittag_log()) << "\n";
   }
 
   if (cfg.period())

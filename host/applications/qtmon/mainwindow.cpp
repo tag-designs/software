@@ -52,6 +52,11 @@ int roundedSectorCount(qint64 bytes, int sector_size)
   return static_cast<int>((bytes + sector_size - 1) / sector_size);
 }
 
+bool isDownloadableState(TagState state)
+{
+  return state == FINISHED || state == ABORTED || state == EXCEPTION;
+}
+
 } // namespace
 
 // main window
@@ -276,7 +281,7 @@ void MainWindow::TriggerUpdate(void)
       ui.testButton->setEnabled(status.state() == IDLE);
       ui.calibrateButton->setEnabled(status.state() == IDLE);
       ui.eraseButton->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
-      ui.datadownloadgroupBox->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
+      ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()));
       ui.stopButton->setEnabled((status.state() == RUNNING) || (status.state() == HIBERNATING) || (status.state() == CALIBRATE));
 
       if (status.state() == IDLE)

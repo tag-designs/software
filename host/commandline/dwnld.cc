@@ -94,6 +94,11 @@ void printWriterError(const std::string &context, const TagLogWriter &writer)
   std::cerr << std::endl;
 }
 
+bool isDownloadableState(TagState state)
+{
+  return state == FINISHED || state == ABORTED || state == EXCEPTION;
+}
+
 using SteadyClock = std::chrono::steady_clock;
 
 uint64_t elapsedNs(SteadyClock::time_point start)
@@ -196,6 +201,7 @@ int main(int argc, char **argv)
   std::string output_path;
   std::string format_name = "default";
   bool stop_tag = false;
+  bool rescue_exception = false;
   bool profile = false;
   uint64_t get_log_ns = 0;
   uint64_t write_log_ns = 0;
@@ -208,6 +214,9 @@ int main(int argc, char **argv)
        cxxopts::value<std::string>(format_name)->default_value("default"))
       ("s,stop", "Stop a running tag before downloading",
        cxxopts::value<bool>(stop_tag)->default_value("false"))
+      ("rescue-exception",
+       "For old firmware only: change EXCEPTION backup state to ABORTED before downloading",
+       cxxopts::value<bool>(rescue_exception)->default_value("false"))
       ("profile", "Print download timing and link transport profile",
        cxxopts::value<bool>(profile)->default_value("false"));
 
@@ -231,6 +240,16 @@ int main(int argc, char **argv)
       std::cerr << status.debug_message();
   }
 
+  if ((status.state() == EXCEPTION) && rescue_exception) {
+    std::cerr << "Rescue: changing monitor-visible state from EXCEPTION to ABORTED" << std::endl;
+    if (!tag.ForceBackupState(ABORTED)) {
+      std::cerr << "Could not rescue exception state" << std::endl;
+      return 1;
+    }
+    status.set_state(ABORTED);
+    std::cerr << "Rescue: backup state verified; continuing with pre-rescue log counts" << std::endl;
+  }
+
   if ((status.state() == RUNNING) && stop_tag) {
     if (!tag.Stop() || !tag.GetStatus(status)) {
       std::cerr << "Could not stop running tag" << std::endl;
@@ -242,7 +261,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if ((status.state() != FINISHED) && (status.state() != ABORTED)) {
+  if (!isDownloadableState(status.state())) {
     std::string formatted;
     TextFormat::PrintToString(status, &formatted);
     std::cerr << "Can't dump logs from current state\n";
@@ -291,7 +310,16 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  const int max_count = status.internal_data_count();
+  int max_count = status.internal_data_count();
+  if (rescue_exception && config.tag_type() == BITTAG && max_count <= 0) {
+    int rescued_count = 0;
+    if (!tag.CountBitTagLogHeaders(rescued_count)) {
+      std::cerr << "Could not scan BitTag log headers" << std::endl;
+      return 1;
+    }
+    max_count = rescued_count;
+    std::cerr << "Rescue: found " << max_count << " BitTag log records" << std::endl;
+  }
   if (max_count <= 0) {
     std::cout << "No log records to download" << std::endl;
     return 0;
@@ -319,7 +347,11 @@ int main(int argc, char **argv)
     len = 0;
 
     start = SteadyClock::now();
-    if (!tag.GetDataLog(ack, total)) {
+    const bool got_log =
+        (rescue_exception && config.tag_type() == BITTAG)
+            ? tag.GetBitTagLogFromFlash(ack, total)
+            : tag.GetDataLog(ack, total);
+    if (!got_log) {
       finishProgress();
       std::cerr << "Parsing log failed. Unsupported tag type?" << std::endl;
       return 1;

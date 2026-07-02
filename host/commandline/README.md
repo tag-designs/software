@@ -9,6 +9,7 @@ Current tools:
 - `tag-info`: inspect tag/base information.
 - `tag-reset`: reset a tag.
 - `tag-start`: start logging.
+- `tag-stop`: stop logging and print the resulting tag status.
 - `tag-cal`: calibration helper.
 - `tag-test`, `tag-test-example`, `tag-monitor-test`: developer/test tools.
 

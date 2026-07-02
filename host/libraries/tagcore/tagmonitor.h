@@ -29,6 +29,9 @@ TagMonitor();
  bool GitShaString(std::string &str);
  bool Voltage(float &voltage);
  bool Rpc(Req &req, Ack &ack);
+ bool ForceBackupState(TagState state);
+ bool CountBitTagLogHeaders(int &count);
+ bool ReadBitTagLogFromFlash(Ack &ack, int index);
  void ResetMonitorStats();
  TagMonitorStats GetMonitorStats() const;
 

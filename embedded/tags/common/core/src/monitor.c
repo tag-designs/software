@@ -327,7 +327,8 @@ static int system_logAck(int index)
 static bool monitor_data_log_allowed(void)
 {
   return (pState->state == TagState_ABORTED) ||
-         (pState->state == TagState_FINISHED);
+         (pState->state == TagState_FINISHED) ||
+         (pState->state == TagState_EXCEPTION);
 }
 
 /**

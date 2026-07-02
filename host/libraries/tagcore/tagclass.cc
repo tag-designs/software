@@ -153,6 +153,24 @@ bool Tag::GetStatus(Status &status)
   return false;
 }
 
+bool Tag::ForceBackupState(TagState state)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.ForceBackupState(state);
+}
+
+bool Tag::CountBitTagLogHeaders(int &count)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.CountBitTagLogHeaders(count);
+}
+
+bool Tag::GetBitTagLogFromFlash(Ack &data_log, int index)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.ReadBitTagLogFromFlash(data_log, index);
+}
+
 // Tag Configuration
 
 bool Tag::GetConfig(Config &cfg)

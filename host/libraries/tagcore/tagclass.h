@@ -40,6 +40,9 @@ public:
   bool GetTagInfo(TagInfo &info);
   bool GetConfig(Config &cfg);
   bool GetStatus(Status &status);
+  bool ForceBackupState(TagState state);
+  bool CountBitTagLogHeaders(int &count);
+  bool GetBitTagLogFromFlash(Ack &data_log, int index);
 
 
   // Tag control

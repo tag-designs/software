@@ -25,6 +25,7 @@ Most tag-attached tools share these options:
 | `tag-info` | [tag-info](tag-info.md) | Print tag information, firmware metadata, status/configuration details. |
 | `tag-reset` | [tag-reset](tag-reset.md) | Stop a running/hibernating tag and erase completed log data. |
 | `tag-start` | [tag-start](tag-start.md) | Start logging when a tag is idle. |
+| `tag-stop` | [tag-stop](tag-stop.md) | Stop active logging states and print the resulting tag status. |
 | `tag-cal` | [tag-cal](tag-cal.md) | Start calibration mode and stream raw calibration samples. |
 | `tag-test` | [tag-test](tag-test.md) | Run RTC checks and tag self-tests. |
 | `tag-test-example` | [tag-test-example](tag-test-example.md) | Minimal RTC-set example for developers. |

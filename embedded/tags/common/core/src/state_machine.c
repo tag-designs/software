@@ -151,6 +151,13 @@ enum Sleep StateMachine(eventmask_t input_events)
         (reset_cause != resetException))
       reset_cause = resetPower;
 
+    // _unhandled_exception() latches EXCEPTION in backup state before reset.
+    // Keep that fact across marker recovery so the last RUNNING marker does
+    // not make an exception look like a healthy acquisition restart.
+    const bool exception_latched =
+        (reset_cause == resetException) &&
+        (pState->state == TagState_EXCEPTION);
+
     // figure out what state we're in
     // if we're running, we let the run procedure decide
     // how to handle the possible error/loss of data
@@ -196,6 +203,11 @@ enum Sleep StateMachine(eventmask_t input_events)
      * new power-fail event.
      */
     pState->resetCause = resetStandby;
+
+    if (exception_latched)
+    {
+      return Aborted(T_INIT, State_EVENT_EXCEPTION);
+    }
 
     if (pState->state == TagState_CONFIGURED)
     {

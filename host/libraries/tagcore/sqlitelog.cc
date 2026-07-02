@@ -122,6 +122,10 @@ public:
         if (!insertInfo("tagtype", TagType_Name(config.tag_type()))) {
             return false;
         }
+        if (config.tag_type() == BITTAG
+            && !insertInfo("bittag_log", BitTagLogFmt_Name(config.bittag_log()))) {
+            return false;
+        }
 
         if (!createSchemaInfoTable() || !createStreamsTable()) {
             return false;

@@ -55,6 +55,7 @@ nav:
       - tag-info: cli/tag-info.md
       - tag-reset: cli/tag-reset.md
       - tag-start: cli/tag-start.md
+      - tag-stop: cli/tag-stop.md
       - tag-cal: cli/tag-cal.md
       - tag-test: cli/tag-test.md
       - tag-test-example: cli/tag-test-example.md
