@@ -56,6 +56,14 @@ if(NOT STM32_PROGRAMMER)
   )
 endif()
 
+find_program(PYTHON_EXECUTABLE NAMES python3 python)
+set(STM32_PROGRAMMER_PROBE
+    "pid:0483:3748"
+    CACHE STRING
+          "ST-LINK selector for download/erase targets: pid:0483:3748, auto, prompt, serial:<sn>, or index:<n>")
+set(STM32_PROGRAMMER_SELECT_SCRIPT
+    "${CMAKE_CURRENT_LIST_DIR}/tools/stm32_programmer_select.py")
+
 #
 # Function to build embedded ChibiOS targets using make
 #
@@ -150,20 +158,53 @@ function(add_embedded_target name proto_target)
 
   # create download target
 
-  if(STM32_PROGRAMMER)
+  if(STM32_PROGRAMMER AND PYTHON_EXECUTABLE)
     add_custom_target(
       ${name}-download
       DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR -d ${target_elf} -g
-              0x08000000)
+      COMMAND
+        ${PYTHON_EXECUTABLE} ${STM32_PROGRAMMER_SELECT_SCRIPT}
+        --programmer ${STM32_PROGRAMMER}
+        --selector ${STM32_PROGRAMMER_PROBE}
+        --
+        -d ${target_elf}
+        -g 0x08000000
+      VERBATIM)
 
-    add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
-                                            mode=UR -e all)
+    add_custom_target(
+      ${name}-erase
+      COMMAND
+        ${PYTHON_EXECUTABLE} ${STM32_PROGRAMMER_SELECT_SCRIPT}
+        --programmer ${STM32_PROGRAMMER}
+        --selector ${STM32_PROGRAMMER_PROBE}
+        --
+        -e all
+      VERBATIM)
 
     add_custom_target(
       ${name}-dfu
       DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf})
+      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf}
+      VERBATIM)
+  elseif(STM32_PROGRAMMER)
+    message(STATUS
+      "Python was not found; embedded download targets will use STM32CubeProgrammer without probe selection"
+    )
+    add_custom_target(
+      ${name}-download
+      DEPENDS ${name}
+      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR -d ${target_elf} -g
+              0x08000000
+      VERBATIM)
+
+    add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
+                                            mode=UR -e all VERBATIM)
+
+    add_custom_target(
+      ${name}-dfu
+      DEPENDS ${name}
+      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf}
+      VERBATIM)
   endif()
 
   install(FILES ${target_elf} TYPE BIN OPTIONAL)

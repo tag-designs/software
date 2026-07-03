@@ -193,6 +193,24 @@ Generated build products are placed in the CMake build tree, not in the source
 tree. The important final artifacts are the `.elf`, `.hex`, `.bin`, `.dmp`, and
 `.list` files under the tag target's build directory.
 
+Firmware targets also get STM32CubeProgrammer helper targets such as
+`BitTag-download` and `BitTag-erase` when `STM32_Programmer_CLI` is available.
+These targets select an ST-LINK probe before invoking CubeProgrammer. By
+default, CMake sets `STM32_PROGRAMMER_PROBE=pid:0483:3748`, which targets the
+tag programmer base instead of the STLINK-V3PWR power monitor
+(`0483:3757`). Override this at configure time or in the build environment when
+needed:
+
+```sh
+cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=serial:<stlink-serial>
+cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=index:<cube-index>
+cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=prompt
+```
+
+The selector uses USB VID:PID discovery on Linux, macOS, and Windows when
+available, then passes `sn=<serial>` to CubeProgrammer. `index:<n>` is still
+available for setups where the OS does not expose a usable serial number.
+
 ## `bases`
 
 `bases` contains firmware applications for base or programmer boards. These
