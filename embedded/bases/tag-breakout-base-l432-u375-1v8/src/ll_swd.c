@@ -32,7 +32,7 @@
 #endif
 
 #define REGRETRIES 20
-#define DELCNT 1
+#define DELCNT 8
 
 static const int AUTO_INCREMENT_PAGE_SIZE = 1024;
 static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
@@ -95,12 +95,10 @@ static inline uint32_t swdioRead(void)
 
 static inline void delay(int i)
 {
-  (void) i;
-  /*
   for (; i > 0; i--)
   {
-    asm("mov r0,r0");
-  }*/
+    __asm volatile("nop");
+  }
 }
 
 
@@ -132,7 +130,9 @@ static inline void _SetSWDIOasOutput(uint32_t size)
   spiSize =  size;
   if (!isOutput){
     palSetLine(LINE_SWDIO_DIR);
+    delay(DELCNT);
     toOutput(LINE_TGT_SWDIO);
+    delay(DELCNT);
     isOutput = true;
   }
 }
@@ -143,6 +143,7 @@ static inline void _SetSWDIOasInput(uint32_t size)
     toAnalog(LINE_TGT_SWDIO);
     toInput(LINE_TGT_SWDIO_IN);
     palClearLine(LINE_SWDIO_DIR);
+    delay(DELCNT);
     isOutput = false;
   }
 }
@@ -151,8 +152,9 @@ static inline uint32_t SWDIO_IN(void)
 {
   uint32_t b = swdioRead();
   swclkHigh();
-  //delay(DELCNT);
+  delay(DELCNT);
   swclkLow();
+  delay(DELCNT);
 
   return b;
 }
@@ -195,9 +197,10 @@ static inline void SW_ShiftOut(uint64_t data, uint8_t bits)
     else
       swdioLow();
     swclkHigh();
-    //delay(DELCNT);
+    delay(DELCNT);
     data = data >> 1;
     swclkLow();
+    delay(DELCNT);
   }
 }
 
@@ -215,9 +218,10 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
     else
       swdioLow();
     swclkHigh();
-    //delay(DELCNT);
+    delay(DELCNT);
     data = data >> 1;
     swclkLow();
+    delay(DELCNT);
   }
 }
 
@@ -246,8 +250,10 @@ static inline void SW_ShiftOutBytes(uint32_t data, uint8_t bytes)
       else                                                     \
         swdioLow();                                            \
       swclkHigh();                                             \
+      delay(DELCNT);                                           \
       data = data >> 1;                                        \
       swclkLow();                                              \
+      delay(DELCNT);                                           \
     }                                                          \
   }
 

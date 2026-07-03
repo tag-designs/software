@@ -28,6 +28,7 @@
 #define DATABUFSIZE 512
 static int mode = STLINK_DEV_DEBUG_MODE;
 bool stlink_open = false;
+static uint16_t core_status = STLINK_CORE_NO_TARGET;
 
 static uint8_t txbuf[128] __attribute__((aligned(4)));
 static uint8_t databuf[DATABUFSIZE] __attribute__((aligned(4)));
@@ -89,6 +90,9 @@ int stlink_eval(uint8_t *buf)
     BULK_Transmit(txbuf, 8); // return 8 bytes
     return 0;
   default:
+    EPRINTF("Unsupported STLINK command %x\n", *(buf - 1));
+    PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
+    BULK_Transmit(txbuf, 2);
     return -1;
   }
 
@@ -101,7 +105,7 @@ int stlink_eval(uint8_t *buf)
   {
 
   case STLINK_DEBUG_GETSTATUS:
-    PACK16(txbuf, STLINK_DEBUG_ERR_OK);
+    PACK16(txbuf, core_status);
     BULK_Transmit(txbuf, 2); // return 2 bytes
     break;
   /* case STLINK_DEBUG_RESETSYS:
@@ -279,8 +283,10 @@ int stlink_eval(uint8_t *buf)
   case STLINK_DEBUG_EXIT:
     //mode = STLINK_DEV_UNKNOWN_MODE;
     EPRINTF("debug exit\r\n");
-    SWD_Close();
+    if (stlink_open)
+      SWD_Close();
     stlink_open = false;
+    core_status = STLINK_CORE_NO_TARGET;
     // no return packet
     break;
   case STLINK_DEBUG_READCOREID:
@@ -288,7 +294,7 @@ int stlink_eval(uint8_t *buf)
     BULK_Transmit(txbuf, 4); // return 4 bytes
     break;
   case STLINK_DEBUG_APIV2_READ_IDCODES:
-    PACK32(txbuf, STLINK_DEBUG_ERR_OK);
+    PACK32(txbuf, stlink_open ? STLINK_DEBUG_ERR_OK : STLINK_DEBUG_ERR_FAULT);
     PACK32(txbuf+4, CoreID);
     PACK32(txbuf+8, 0);
     BULK_Transmit(txbuf, 12);
@@ -299,7 +305,10 @@ int stlink_eval(uint8_t *buf)
       if ((swderr = SWD_Open()))
       {
         //mode = STLINK_DEV_DEBUG_MODE;
-        PACK16(txbuf, swderr); //STLINK_DEBUG_ERR_FAULT);
+        PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
+        lastrwstatus = STLINK_DEBUG_ERR_FAULT;
+        stlink_open = false;
+        core_status = STLINK_CORE_NO_TARGET;
         EPRINTF("swd error %d\r\n", swderr);
       }
       else
@@ -307,6 +316,7 @@ int stlink_eval(uint8_t *buf)
         //mode = STLINK_DEV_DEBUG_MODE;
         PACK16(txbuf, STLINK_DEBUG_ERR_OK);
         stlink_open = true;
+        core_status = STLINK_CORE_OK;
       }
     }
     else
@@ -402,11 +412,30 @@ int stlink_eval(uint8_t *buf)
     BULK_Transmit(txbuf, 2); // return 2 bytes
     break;
   case STLINK_DEBUG_APIV2_RESETSYS:
-    SWD_LineReset(&value);
+    if (stlink_open)
+      SWD_LineReset(&value);
+    else
+      PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
     BULK_Transmit(txbuf, 2); // return 2 bytes
+    break;
+  case STLINK_DEBUG_APIV2_START_TRACE_RX:
+  case STLINK_DEBUG_APIV2_STOP_TRACE_RX:
+    PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
+    BULK_Transmit(txbuf, 2); // return 2 bytes
+    break;
+  case STLINK_DEBUG_APIV2_GET_TRACE_NB:
+    PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
+    PACK16(txbuf + 2, 0);
+    BULK_Transmit(txbuf, 4); // return status and zero trace bytes
     break;
   case STLINK_DEBUG_APIV2_SWD_SET_FREQ:
     PACK16(txbuf, STLINK_DEBUG_ERR_OK);
+    BULK_Transmit(txbuf, 2); // return 2 bytes
+    break;
+  case STLINK_DEBUG_APIV2_JTAG_SET_FREQ:
+  case STLINK_APIV3_SET_COM_FREQ:
+  case STLINK_APIV3_GET_COM_FREQ:
+    PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
     BULK_Transmit(txbuf, 2); // return 2 bytes
     break;
   case STLINK_DEBUG_FORCEDEBUG: /// this isn't working yet

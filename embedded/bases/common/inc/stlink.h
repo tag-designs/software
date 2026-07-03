@@ -78,7 +78,11 @@ enum stlink_debug_commands {
     STLINK_DEBUG_APIV2_GETLASTRWSTATUS   = 0x3B,
     STLINK_DEBUG_APIV2_DRIVE_NRST        = 0x3C,
     STLINK_DEBUG_APIV2_GETLASTRWSTATUS2  = 0x3E,
+    STLINK_DEBUG_APIV2_START_TRACE_RX     = 0x40,
+    STLINK_DEBUG_APIV2_STOP_TRACE_RX      = 0x41,
+    STLINK_DEBUG_APIV2_GET_TRACE_NB       = 0x42,
     STLINK_DEBUG_APIV2_SWD_SET_FREQ      = 0x43,
+    STLINK_DEBUG_APIV2_JTAG_SET_FREQ     = 0x44,
     STLINK_DEBUG_APIV2_READ_DAP_REG      = 0x45,
     STLINK_DEBUG_APIV2_WRITE_DAP_REG     = 0x46,
     STLINK_DEBUG_APIV2_READMEM_16BIT     = 0x47,
@@ -86,6 +90,8 @@ enum stlink_debug_commands {
 
     STLINK_DEBUG_APIV2_INIT_AP           = 0x4B,
     STLINK_DEBUG_APIV2_CLOSE_AP_DBG      = 0x4C,
+    STLINK_APIV3_SET_COM_FREQ            = 0x61,
+    STLINK_APIV3_GET_COM_FREQ            = 0x62,
     STLINK_DEBUG_ENTER_SWD               = 0xa3
 };
 
@@ -103,6 +109,15 @@ enum stlink_debug_commands {
 #define STLINK_DEV_SWIM_MODE           0x03
 #define STLINK_DEV_BOOTLOADER_MODE     0x04
 #define STLINK_DEV_UNKNOWN_MODE        -1
+
+#define STLINK_CORE_OK                 0x01
+#define STLINK_CORE_RUNNING            0x02
+#define STLINK_CORE_HALTED             0x03
+#define STLINK_CORE_NO_TARGET          0x04
+#define STLINK_CORE_BREAKPOINT         0x05
+#define STLINK_CORE_FLASH_FAIL         0x07
+#define STLINK_CORE_COMM_FAIL          0x09
+#define STLINK_CORE_UNKNOWN_STATE      0x0A
 
 #define STLINK_DEBUG_ERR_OK             0x80
 #define STLINK_DEBUG_ERR_FAULT          0x81
