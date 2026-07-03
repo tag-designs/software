@@ -124,9 +124,9 @@ embedded/bases/tag-breakout-base-l432-v1/cfg/mcuconf.h
 
 ```text
 embedded/bases/common/src/stlink.c
-embedded/bases/common/src/usbcfg.c
 embedded/bases/tag-breakout-base-l432-u375-1v8/src/ll_swd.c
 embedded/bases/tag-breakout-base-l432-u375-1v8/src/main.c
+embedded/bases/tag-breakout-base-l432-u375-1v8/src/usbcfg.c
 ```
 
 ### Header Files

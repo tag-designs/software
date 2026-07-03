@@ -21,6 +21,9 @@
 #include "board.h"
 #include "dp_swd.h"
 
+extern SerialUSBDriver SDU1;
+extern const SerialUSBConfig serusbcfg;
+
 volatile uint32_t vlipo100 = 180;
 
 uint8_t bulkbuf[64];
@@ -61,6 +64,9 @@ int main(void)
   toInput(LINE_TGT_SWDIO_IN);
 
   chSysInit();
+
+  sduObjectInit(&SDU1);
+  sduStart(&SDU1, &serusbcfg);
 
   usbDisconnectBus(&USBD1);
   chThdSleepMilliseconds(1500);

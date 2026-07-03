@@ -21,7 +21,12 @@
 
 //#undef USEEPRINTF
 #if defined(USEEPRINTF) && USEEPRINTF
+#if defined(USE_CDC_EPRINTF) && USE_CDC_EPRINTF
+#define EPRINTF(...) debug_printf(__VA_ARGS__)
+void debug_printf(const char *fmt, ...);
+#else
 #define EPRINTF(...) chprintf((BaseSequentialStream *)&SD1,__VA_ARGS__)
+#endif
 #else
 #define EPRINTF(...) while(0){}
 #endif

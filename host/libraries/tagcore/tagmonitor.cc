@@ -46,7 +46,11 @@ extern "C"
 #define SCB_BFAR 0xE000ED38U
 #define SCB_AFSR 0xE000ED3CU
 
+#define STM32L4_DBGMCU_IDCODE 0xE0042000U
 #define STM32L4_RCC_CSR 0x40021094U
+
+#define STM32U3_DBGMCU_IDCODE 0xE0044000U
+#define STM32U3_RCC_CSR 0x40030D14U
 
 #define DBGKEY (0xA05F << 16)
 #define C_DEBUGEN (1 << 0)
@@ -127,6 +131,66 @@ static const char *monitor_operation_name(uint8_t operation)
     return "PROTOBUF";
   default:
     return "UNKNOWN";
+  }
+}
+
+static const char *target_family_name(TargetFamily family)
+{
+  switch (family)
+  {
+  case TargetFamily::STM32L4:
+    return "STM32L4";
+  case TargetFamily::STM32U3:
+    return "STM32U3";
+  default:
+    return "unknown";
+  }
+}
+
+static bool plausible_stm32_idcode(uint32_t idcode)
+{
+  const uint32_t device_id = idcode & 0xfffU;
+  return (device_id != 0U) && (device_id != 0xfffU);
+}
+
+bool TagMonitor::DetectTargetFamily()
+{
+  uint32_t idcode = 0;
+
+  target_family = TargetFamily::Unknown;
+  target_idcode = 0;
+
+  if (ReadDebug32(STM32L4_DBGMCU_IDCODE, &idcode) && plausible_stm32_idcode(idcode))
+  {
+    target_family = TargetFamily::STM32L4;
+    target_idcode = idcode;
+    return true;
+  }
+
+  if (ReadDebug32(STM32U3_DBGMCU_IDCODE, &idcode) && plausible_stm32_idcode(idcode))
+  {
+    target_family = TargetFamily::STM32U3;
+    target_idcode = idcode;
+    return true;
+  }
+
+  return false;
+}
+
+bool TagMonitor::ReadTargetRccCsr(uint32_t *addr, uint32_t *value)
+{
+  switch (target_family)
+  {
+  case TargetFamily::STM32L4:
+    *addr = STM32L4_RCC_CSR;
+    return ReadMem32(*addr, (uint8_t *)value, sizeof(*value));
+  case TargetFamily::STM32U3:
+    *addr = STM32U3_RCC_CSR;
+    return ReadMem32(*addr, (uint8_t *)value, sizeof(*value));
+  default:
+    *addr = 0;
+    *value = 0xffffffffU;
+    return false;
   }
 }
 
@@ -232,6 +296,8 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     uint32_t dhcsr_snapshot = 0;
     uint32_t dcrdr_snapshot = 0;
     uint32_t rcc_csr = 0xffffffffU;
+    uint32_t rcc_csr_addr = 0;
+    bool rcc_csr_ok = false;
     uint32_t icsr = 0;
     uint32_t aircr = 0;
     uint32_t scr = 0;
@@ -241,7 +307,7 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     uint32_t shcsr = 0;
     ReadDebug32(DHCSR, &dhcsr_snapshot);
     ReadDebug32(DCRDR, &dcrdr_snapshot);
-    ReadMem32(STM32L4_RCC_CSR, (uint8_t *)&rcc_csr, sizeof(rcc_csr));
+    rcc_csr_ok = ReadTargetRccCsr(&rcc_csr_addr, &rcc_csr);
     ReadDebug32(SCB_ICSR, &icsr);
     ReadDebug32(SCB_AIRCR, &aircr);
     ReadDebug32(SCB_SCR, &scr);
@@ -311,15 +377,18 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
     if (dhcsr_snapshot & S_LOCKUP)
     {
-      log_error("monitor call timed out op=%s(0x%x) operand=%d demcr=0x%x dhcsr=0x%x dcrdr=0x%x rcc_csr=0x%x "
+      log_error("monitor call timed out op=%s(0x%x) operand=%d target=%s idcode=0x%x "
+                "demcr=0x%x dhcsr=0x%x dcrdr=0x%x rcc_csr_addr=0x%x rcc_csr=0x%x rcc_csr_ok=%u "
                 "icsr=0x%x active=%u pending=%u isrpending=%u rettobase=%u "
                 "shcsr=0x%x shpr1=0x%x shpr2=0x%x shpr3=0x%x aircr=0x%x scr=0x%x "
                 "halt_dhcsr=0x%x sp=0x%x lr=0x%x pc=0x%x xpsr=0x%x msp=0x%x psp=0x%x special=0x%x "
                 "msp_frame_ok=%u msp_frame_lr=0x%x msp_frame_pc=0x%x msp_frame_xpsr=0x%x "
                 "psp_frame_ok=%u psp_frame_lr=0x%x psp_frame_pc=0x%x psp_frame_xpsr=0x%x "
                 "cfsr=0x%x hfsr=0x%x dfsr=0x%x mmfar=0x%x bfar=0x%x afsr=0x%x",
-                monitor_operation_name(operation), operation, operand, demcr,
-                dhcsr_snapshot, dcrdr_snapshot, rcc_csr, icsr, vectactive, vectpending,
+                monitor_operation_name(operation), operation, operand,
+                target_family_name(target_family), target_idcode, demcr,
+                dhcsr_snapshot, dcrdr_snapshot, rcc_csr_addr, rcc_csr,
+                rcc_csr_ok ? 1U : 0U, icsr, vectactive, vectpending,
                 isrpending, rettobase, shcsr, shpr1, shpr2, shpr3, aircr, scr,
                 halted_dhcsr, r13_sp, r14_lr, r15_pc, xpsr, msp, psp, special,
                 msp_frame_ok ? 1U : 0U, msp_frame[5], msp_frame[6], msp_frame[7],
@@ -328,15 +397,18 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     }
     else
     {
-      log_error("monitor call timed out op=%s(0x%x) operand=%d demcr=0x%x dhcsr=0x%x dcrdr=0x%x rcc_csr=0x%x "
+      log_error("monitor call timed out op=%s(0x%x) operand=%d target=%s idcode=0x%x "
+                "demcr=0x%x dhcsr=0x%x dcrdr=0x%x rcc_csr_addr=0x%x rcc_csr=0x%x rcc_csr_ok=%u "
                 "icsr=0x%x active=%u pending=%u isrpending=%u rettobase=%u "
                 "shcsr=0x%x shpr1=0x%x shpr2=0x%x shpr3=0x%x aircr=0x%x scr=0x%x "
                 "halt_dhcsr=0x%x sp=0x%x lr=0x%x pc=0x%x xpsr=0x%x msp=0x%x psp=0x%x special=0x%x "
                 "msp_frame_ok=%u msp_frame_lr=0x%x msp_frame_pc=0x%x msp_frame_xpsr=0x%x "
                 "psp_frame_ok=%u psp_frame_lr=0x%x psp_frame_pc=0x%x psp_frame_xpsr=0x%x "
                 "cfsr=0x%x hfsr=0x%x dfsr=0x%x mmfar=0x%x bfar=0x%x afsr=0x%x",
-                monitor_operation_name(operation), operation, operand, demcr,
-                dhcsr_snapshot, dcrdr_snapshot, rcc_csr, icsr, vectactive, vectpending,
+                monitor_operation_name(operation), operation, operand,
+                target_family_name(target_family), target_idcode, demcr,
+                dhcsr_snapshot, dcrdr_snapshot, rcc_csr_addr, rcc_csr,
+                rcc_csr_ok ? 1U : 0U, icsr, vectactive, vectpending,
                 isrpending, rettobase, shcsr, shpr1, shpr2, shpr3, aircr, scr,
                 halted_dhcsr, r13_sp, r14_lr, r15_pc, xpsr, msp, psp, special,
                 msp_frame_ok ? 1U : 0U, msp_frame[5], msp_frame[6], msp_frame[7],
@@ -373,13 +445,15 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
         }
         if ((resume_dhcsr & S_HALT) == 0U)
         {
-          log_error("monitor caught target reset; cleared vector catch and released reset handler pc=0x%x rcc_csr=0x%x dhcsr=0x%x",
-                    r15_pc, rcc_csr, resume_dhcsr);
+          log_error("monitor caught target reset; cleared vector catch and released reset handler pc=0x%x target=%s rcc_csr_addr=0x%x rcc_csr=0x%x dhcsr=0x%x",
+                    r15_pc, target_family_name(target_family), rcc_csr_addr,
+                    rcc_csr, resume_dhcsr);
         }
         else
         {
-          log_error("monitor caught target reset; target still halted after release pc=0x%x rcc_csr=0x%x dhcsr=0x%x",
-                    r15_pc, rcc_csr, resume_dhcsr);
+          log_error("monitor caught target reset; target still halted after release pc=0x%x target=%s rcc_csr_addr=0x%x rcc_csr=0x%x dhcsr=0x%x",
+                    r15_pc, target_family_name(target_family), rcc_csr_addr,
+                    rcc_csr, resume_dhcsr);
         }
       }
       else
@@ -390,6 +464,8 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
       call_buf = 0;
       memset(sha_str, 0, sizeof(sha_str));
       version = 0;
+      target_family = TargetFamily::Unknown;
+      target_idcode = 0;
       LinkAdapt::Detach();
     }
 #if TAGCORE_HALT_ON_MONITOR_TIMEOUT && !TAGCORE_LEAVE_HALTED_ON_MONITOR_TIMEOUT
@@ -455,6 +531,11 @@ bool TagMonitor::Attach(UsbDev usbdev)
   }
 
   call_buf = 0;
+  maxpacket = 0;
+  memset(sha_str, 0, sizeof(sha_str));
+  version = 0;
+  target_family = TargetFamily::Unknown;
+  target_idcode = 0;
 
   do
   {
@@ -467,6 +548,10 @@ bool TagMonitor::Attach(UsbDev usbdev)
     }
 
     std::this_thread::sleep_for(MS(20));
+
+    DetectTargetFamily();
+    log_debug("Target family: %s idcode=0x%x",
+              target_family_name(target_family), target_idcode);
 
     // read control register
 
@@ -583,7 +668,16 @@ void TagMonitor::Detach()
   uint32_t demcr;
 
   if (!IsAttached())
+  {
+    maxpacket = 0;
+    call_buf = 0;
+    memset(sha_str,0, sizeof(sha_str));
+    version = 0;
+    target_family = TargetFamily::Unknown;
+    target_idcode = 0;
     return;
+  }
+
   maxpacket = 0;
   call_buf = 0;
   memset(sha_str,0, sizeof(sha_str));
@@ -596,6 +690,8 @@ void TagMonitor::Detach()
   WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN)));
   // release usb
   LinkAdapt::Detach();
+  target_family = TargetFamily::Unknown;
+  target_idcode = 0;
 }
 
 // RPC call for monitor

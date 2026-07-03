@@ -32,7 +32,7 @@
 #endif
 
 #define REGRETRIES 20
-#define DELCNT 8
+#define DELCNT 32
 
 static const int AUTO_INCREMENT_PAGE_SIZE = 1024;
 static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);
@@ -151,6 +151,7 @@ static inline void _SetSWDIOasInput(uint32_t size)
 static inline uint32_t SWDIO_IN(void)
 {
   uint32_t b = swdioRead();
+
   swclkHigh();
   delay(DELCNT);
   swclkLow();
@@ -294,54 +295,44 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
 {
 
   uint32_t ack;
-  uint32_t ack_bits;
   uint32_t pbit;
-  uint32_t d0_bit;
-  uint32_t tmp;  
   SW_ShiftOut8(req);            // Send header
-  ack_bits = SW_ShiftIn5();     // read trn,ack,(trn|data0)
-  ack = (ack_bits >> 1) & 7;    // ACK, toss the turnaround bit and possible first data
-  d0_bit = (ack_bits >> 4) & 1; // Save possible data bit 0
+  ack = (SW_ShiftIn(4) >> 1) & 7; // Read turnaround + ACK
 
   switch (ack)
   {
   case SW_ACK_OK: // good to go
     if (req & SW_REQ_RnW)
-    {        
-      *data = SW_ShiftIn24(); // get 24 bits data
-       tmp = SW_ShiftIn9();   // get 8 bits data + trn
-      // combine data, parity
-      pbit = (tmp >> 8) & 1;
-      *data = (tmp << 24) | (*data & 0xffffff);    //combine
-      *data = (*data << 1) | d0_bit;
-
-  
-
+    {
+      *data = SW_ShiftInBytes(4);
+      pbit = SW_ShiftIn(2) & 1; // parity + turnaround
       if (pbit ^ Parity(*data))
       { // parity check
         ack = SW_ACK_PARITY_ERR;
-        EPRINTF("parity error data 0x%x pbit %x\r\n", *data, pbit);
+        EPRINTF("parity error req %02x data 0x%x pbit %x\r\n", req, *data, pbit);
       }
     }
     else
-    {        
-      SW_ShiftOut24(*data); // send 24 bits
-      tmp = ((*data >> 24)&0xff)|(Parity(*data)<<8);
-      SW_ShiftOut16(tmp);  // send 8 bits + parity + plus extra zeros
-                           // per STM32 documentation for writes
-                           // to ensure they are completed internally
+    {
+      SW_ShiftIn(1); // turnaround
+      SW_ShiftOutBytes(*data, 4);
+      SW_ShiftOut(Parity(*data), 1);
     }
     break;
 
     // check out this error recovery
     // may need to finish transaction for overrun
 
-  case SW_ACK_FAULT:
   case SW_ACK_WAIT:
-  default:             
+  case SW_ACK_FAULT:
+    SW_ShiftIn(1); // turnaround
+    break;
+  default:
+    SW_ShiftInBytes(4);
+    SW_ShiftIn(2);
+    break;
   }
-   SW_ShiftOut8(0); // drive line to idle state
- // _SetSWDIOasOutput(8); // Set pin direction  
+  SW_ShiftOut8(0); // drive line to idle state
   return ack;
 }
 
@@ -469,6 +460,16 @@ static uint32_t errorClear(uint32_t ack, int line)
   return 1;
 }
 
+static bool shouldRetryMemError(uint32_t err)
+{
+  /*
+   * errorClear() returns 1 after a target WAIT/FAULT was acknowledged and the
+   * sticky bits were cleared.  Repeating that transfer just re-faults invalid
+   * address probes from host tools, so only retry heavier link-level errors.
+   */
+  return err && (err != 1);
+}
+
 static uint32_t _SWD_writeMem32(uint32_t address, uint32_t *data,
                                 uint32_t size)
 {
@@ -498,10 +499,11 @@ uint32_t SWD_writeMem32(uint32_t address, uint32_t *data,
           (address & (AUTO_INCREMENT_PAGE_SIZE - 1));
     if (size < len)
       len = size;
-      // let it fail once
-    if ((err = _SWD_writeMem32(address, data, len)))
+    if ((err = _SWD_writeMem32(address, data, len)) && shouldRetryMemError(err))
       if ((err = _SWD_writeMem32(address, data, len)))
         return err;
+    if (err)
+      return err;
     address += len;
     data += len / 4;
     size -= len;
@@ -540,10 +542,11 @@ uint32_t SWD_readMem32(uint32_t address, uint32_t *data,
           (address & (AUTO_INCREMENT_PAGE_SIZE - 1));
     if (size < len)
       len = size;
-      // let it fail once
-    if ((err = _SWD_readMem32(address, data, len)))
+    if ((err = _SWD_readMem32(address, data, len)) && shouldRetryMemError(err))
       if ((err = _SWD_readMem32(address, data, len)))
         return err;
+    if (err)
+      return err;
     address += len;
     data += len / 4;
     size -= len;
@@ -575,10 +578,11 @@ uint32_t SWD_writeMem16(uint32_t address, uint16_t *data, uint32_t size)
 
   for (uint32_t i = 0; i < size / 2; i++)
   {
-    // let it fail once
-    if ((err = SWD_writeHalf(address + 2 * i, *data)))
+    if ((err = SWD_writeHalf(address + 2 * i, *data)) && shouldRetryMemError(err))
       if ((err = SWD_writeHalf(address + 2 * i, *data)))
         break;
+    if (err)
+      break;
     data++;
   }
 
@@ -609,10 +613,11 @@ uint32_t SWD_readMem16(uint32_t address, uint16_t *data, uint32_t size)
   tmp = CSW_VALUE | CSW_SIZE16;
   TRANSACTION(SW_CSW_WR, &tmp);
   for (i = 0; i < size / 2; i++){
-    // let it fail once
-    if ((err = SWD_readHalf(address + 2 * i, data + i)))
+    if ((err = SWD_readHalf(address + 2 * i, data + i)) && shouldRetryMemError(err))
       if ((err = SWD_readHalf(address + 2 * i, data + i)))
         break;
+    if (err)
+      break;
   }
   if (err)
     EPRINTF("SWD_readMem8 failed\r\n");
@@ -641,10 +646,11 @@ uint32_t SWD_writeMem8(uint32_t address, uint8_t *data, uint32_t size)
 
   for (uint32_t i = 0; i < size; i++)
   {
-    // let it fail once
-    if ((err = SWD_writeByte(address + i, *data)))
+    if ((err = SWD_writeByte(address + i, *data)) && shouldRetryMemError(err))
       if ((err = SWD_writeByte(address + i, *data)))
         break;
+    if (err)
+      break;
     data++;
   }
 
@@ -675,10 +681,11 @@ uint32_t SWD_readMem8(uint32_t address, uint8_t *data, uint32_t size)
   tmp = CSW_VALUE | CSW_SIZE8;
   TRANSACTION(SW_CSW_WR, &tmp);
   for (i = 0; i < size; i++){
-    // let it fail once
-    if ((err = SWD_readByte(address + i, data + i)))
+    if ((err = SWD_readByte(address + i, data + i)) && shouldRetryMemError(err))
       if ((err = SWD_readByte(address + i, data + i)))
         break;
+    if (err)
+      break;
   }
   if (err)
     EPRINTF("SWD_readMem8 failed\r\n");
@@ -705,15 +712,20 @@ int32_t SWD_Open()
   uint32_t tmp;
   int tries;
 
+  EPRINTF("SWD_Open start\r\n");
+
   //
   if (SWD_Connect(&CoreID) != SW_ACK_OK)
   {
+    EPRINTF("SWD_Connect retry\r\n");
     SW_ShiftReset();
     if (SWD_Connect(&CoreID) != SW_ACK_OK)
     {
+      EPRINTF("SWD_Connect failed\r\n");
       return 1;
     }
   }
+  EPRINTF("SWD CoreID %08x\r\n", CoreID);
 
   // clear any pending errors
   //   EPRINTF("write clear ok\r\n");
@@ -740,6 +752,7 @@ int32_t SWD_Open()
     else
     {
       //  EPRINTF("power up failed 0x%x\r\n", tmp);
+      EPRINTF("SWD power up failed %08x\r\n", tmp);
       return 1;
     }
   };

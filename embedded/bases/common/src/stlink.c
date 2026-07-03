@@ -35,6 +35,16 @@ static uint8_t databuf[DATABUFSIZE] __attribute__((aligned(4)));
 
 static uint16_t lastrwstatus = STLINK_DEBUG_ERR_OK;
 
+static bool swd_error_needs_reopen(int swderr)
+{
+  /*
+   * ll_swd.c returns 1 when a WAIT/FAULT was acknowledged and the sticky bits
+   * were cleared.  That is a normal response to speculative reads of invalid
+   * target address windows, so avoid an expensive full SWD reopen in that case.
+   */
+  return swderr && (swderr != 1);
+}
+
 static inline uint8_t *PACK16(uint8_t *buf, uint16_t val)
 {
   buf[0] = val;
@@ -67,8 +77,12 @@ int stlink_eval(uint8_t *buf)
   uint16_t len;
   uint32_t addr;
   uint32_t value;
+  uint8_t cmd;
 
-  switch (*buf++)
+  cmd = *buf++;
+  EPRINTF("stlink cmd %02x\r\n", cmd);
+
+  switch (cmd)
   {
   case STLINK_GET_VERSION:
     PACK16(txbuf, STLINK_VERSION);
@@ -90,7 +104,7 @@ int stlink_eval(uint8_t *buf)
     BULK_Transmit(txbuf, 8); // return 8 bytes
     return 0;
   default:
-    EPRINTF("Unsupported STLINK command %x\n", *(buf - 1));
+    EPRINTF("Unsupported STLINK command %02x\r\n", cmd);
     PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
     BULK_Transmit(txbuf, 2);
     return -1;
@@ -101,7 +115,11 @@ int stlink_eval(uint8_t *buf)
   int swderr;
   uint32_t tmpreg;
   msg_t rlen;
-  switch (*buf++)
+  uint8_t debug_cmd = *buf++;
+
+  EPRINTF("stlink dbg %02x\r\n", debug_cmd);
+
+  switch (debug_cmd)
   {
 
   case STLINK_DEBUG_GETSTATUS:
@@ -116,30 +134,31 @@ int stlink_eval(uint8_t *buf)
     addr = UNPACK32(buf);
     len = UNPACK16(&buf[4]);
     lastrwstatus = STLINK_DEBUG_ERR_OK;
+    swderr = 0;
     while (len)
     {
       int tmplen = len > DATABUFSIZE ? DATABUFSIZE : len;
       len -= tmplen;
-      swderr = SWD_readMem32(addr, (uint32_t *)databuf, tmplen);
-      addr += tmplen;
+      if (!swderr)
+        swderr = SWD_readMem32(addr, (uint32_t *)databuf, tmplen);
 
       if (swderr)
       {
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-        EPRINTF("error on mem32 read: 0x%x\r\n", addr);
-        SWD_Open(); // reset interface
+        EPRINTF("error on mem32 read: 0x%x..0x%x err %d\r\n",
+                addr, addr + tmplen, swderr);
+        bzero(databuf, tmplen);
+      }
+
+      if (BULK_Transmit(databuf, tmplen) == 0)
+      {
+        lastrwstatus = STLINK_DEBUG_ERR_FAULT;
         break;
       }
-      else
-      {
-        //lastrwstatus = STLINK_DEBUG_ERR_OK;
-        if (BULK_Transmit(databuf, tmplen) == 0)
-        {
-          lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-          break;
-        }
-      }
+      addr += tmplen;
     }
+    if (swd_error_needs_reopen(swderr))
+      SWD_Open(); // reset interface
     break;
   case STLINK_DEBUG_WRITEMEM_32BIT:
     addr = UNPACK32(buf);
@@ -165,7 +184,8 @@ int stlink_eval(uint8_t *buf)
     {
       lastrwstatus = STLINK_DEBUG_ERR_FAULT;
       EPRINTF("error on write mem32 \n");
-      SWD_Open(); // reset interface
+      if (swd_error_needs_reopen(swderr))
+        SWD_Open(); // reset interface
     }
     break;
   case STLINK_DEBUG_APIV2_WRITEMEM_16BIT:
@@ -192,37 +212,39 @@ int stlink_eval(uint8_t *buf)
     {
       lastrwstatus = STLINK_DEBUG_ERR_FAULT;
       EPRINTF("error on write mem16 \n");
-      SWD_Open(); // reset interface
+      if (swd_error_needs_reopen(swderr))
+        SWD_Open(); // reset interface
     }
     break;
   case STLINK_DEBUG_APIV2_READMEM_16BIT:
     addr = UNPACK32(buf);
     len = UNPACK16(&buf[4]);
     lastrwstatus = STLINK_DEBUG_ERR_OK;
+    swderr = 0;
     while (0 < len)
     {
       int tmplen = len > DATABUFSIZE ? DATABUFSIZE : len;
       len -= tmplen;
-      swderr = SWD_readMem16(addr, (uint16_t *) databuf, tmplen);
-      addr += tmplen;
+      if (!swderr)
+        swderr = SWD_readMem16(addr, (uint16_t *) databuf, tmplen);
       if (swderr)
       {
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-        EPRINTF("error on mem16 read: 0x%x\r\n", addr);
-        SWD_Open(); // reset interface
+        EPRINTF("error on mem16 read: 0x%x..0x%x err %d\r\n",
+                addr, addr + tmplen, swderr);
+        bzero(databuf, tmplen);
+      }
+      if (BULK_Transmit(databuf, tmplen) == 0)
+      {
+        lastrwstatus = STLINK_DEBUG_ERR_FAULT;
+        EPRINTF("error on mem16 read transmit: 0x%x..0x%x\r\n",
+                addr, addr + tmplen);
         break;
       }
-      else
-      {
-        //lastrwstatus = STLINK_DEBUG_ERR_OK;
-        if (BULK_Transmit(databuf, tmplen) == 0)
-        {
-          lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-          EPRINTF("error on mem16 read: 0x%x\r\n", addr);
-          break;
-        }
-      }
+      addr += tmplen;
     }
+    if (swd_error_needs_reopen(swderr))
+      SWD_Open(); // reset interface
     break;
   case STLINK_DEBUG_WRITEMEM_8BIT:
     addr = UNPACK32(buf);
@@ -248,37 +270,39 @@ int stlink_eval(uint8_t *buf)
     {
       lastrwstatus = STLINK_DEBUG_ERR_FAULT;
       EPRINTF("error on write mem8 \n");
-      SWD_Open(); // reset interface
+      if (swd_error_needs_reopen(swderr))
+        SWD_Open(); // reset interface
     }
     break;
   case STLINK_DEBUG_READMEM_8BIT:
     addr = UNPACK32(buf);
     len = UNPACK16(&buf[4]);
     lastrwstatus = STLINK_DEBUG_ERR_OK;
+    swderr = 0;
     while (0 < len)
     {
       int tmplen = len > DATABUFSIZE ? DATABUFSIZE : len;
       len -= tmplen;
-      swderr = SWD_readMem8(addr, databuf, tmplen);
-      addr += tmplen;
+      if (!swderr)
+        swderr = SWD_readMem8(addr, databuf, tmplen);
       if (swderr)
       {
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-        EPRINTF("error on mem8 read: 0x%x\r\n", addr);
-        SWD_Open(); // reset interface
+        EPRINTF("error on mem8 read: 0x%x..0x%x err %d\r\n",
+                addr, addr + tmplen, swderr);
+        bzero(databuf, tmplen);
+      }
+      if (BULK_Transmit(databuf, tmplen) == 0)
+      {
+        lastrwstatus = STLINK_DEBUG_ERR_FAULT;
+        EPRINTF("error on mem8 read transmit: 0x%x..0x%x\r\n",
+                addr, addr + tmplen);
         break;
       }
-      else
-      {
-        //lastrwstatus = STLINK_DEBUG_ERR_OK;
-        if (BULK_Transmit(databuf, tmplen) == 0)
-        {
-          lastrwstatus = STLINK_DEBUG_ERR_FAULT;
-          EPRINTF("error on mem8 read: 0x%x\r\n", addr);
-          break;
-        }
-      }
+      addr += tmplen;
     }
+    if (swd_error_needs_reopen(swderr))
+      SWD_Open(); // reset interface
     break;
   case STLINK_DEBUG_EXIT:
     //mode = STLINK_DEV_UNKNOWN_MODE;
@@ -302,6 +326,7 @@ int stlink_eval(uint8_t *buf)
   case STLINK_DEBUG_APIV2_ENTER: // here's where we enter swd
     if (*buf == STLINK_DEBUG_ENTER_SWD)
     {
+      EPRINTF("swd enter\r\n");
       if ((swderr = SWD_Open()))
       {
         //mode = STLINK_DEV_DEBUG_MODE;
@@ -317,6 +342,7 @@ int stlink_eval(uint8_t *buf)
         PACK16(txbuf, STLINK_DEBUG_ERR_OK);
         stlink_open = true;
         core_status = STLINK_CORE_OK;
+        EPRINTF("swd open core %08x\r\n", CoreID);
       }
     }
     else
@@ -468,11 +494,12 @@ int stlink_eval(uint8_t *buf)
     swderr = SWD_ReadDAPReg(tmpreg, addr, &value);
     if (swderr) {
       PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
-      PACK32(&txbuf[4],value);
     }
     else {
       PACK16(txbuf, STLINK_DEBUG_ERR_OK);
     }
+    PACK32(&txbuf[4],value);
+    EPRINTF("dap rd %04x %04x -> %08x err %d\r\n", tmpreg, addr, value, swderr);
     BULK_Transmit(txbuf,8);
     break;
   case STLINK_DEBUG_APIV2_WRITE_DAP_REG:
@@ -492,7 +519,7 @@ int stlink_eval(uint8_t *buf)
     BULK_Transmit(txbuf, 2); // return 2 bytes
     break;
   default:
-    EPRINTF("Unsupported command %x\n", *(buf - 1));
+    EPRINTF("Unsupported debug command %02x\r\n", debug_cmd);
     PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
     BULK_Transmit(txbuf, 2); // return 2 bytes
     return -1;

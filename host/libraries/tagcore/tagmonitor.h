@@ -18,6 +18,13 @@ struct TagMonitorStats
  uint64_t parse_ns = 0;
 };
 
+enum class TargetFamily
+{
+  Unknown,
+  STM32L4,
+  STM32U3
+};
+
 class TagMonitor : public LinkAdapt
 {
 public:
@@ -40,6 +47,8 @@ TagMonitor();
 private:
 
   size_t MaxPacket() { return maxpacket; }
+  bool DetectTargetFamily();
+  bool ReadTargetRccCsr(uint32_t *addr, uint32_t *value);
   char rpcbuf[1024*64];  // communication buffer 
 
   bool Call(uint8_t operation, int32_t operand, uint32_t *result);
@@ -53,6 +62,8 @@ private:
   uint8_t sha_str[48] = {0};
   // tag monitor version
   uint32_t version = 0;
+  TargetFamily target_family = TargetFamily::Unknown;
+  uint32_t target_idcode = 0;
   TagMonitorStats monitor_stats;
 };
 #endif
