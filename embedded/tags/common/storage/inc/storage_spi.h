@@ -83,18 +83,19 @@ static inline void tagStorageSpiMeasureEnd(void)
 static inline void tagStorageSpiRecover(SPI_TypeDef *spi)
 {
   volatile uint32_t dummy;
+  uint32_t timeout = TAG_STORAGE_SPI_POLL_LIMIT;
 
   spi->CR1 &= ~SPI_CR1_SPE;
 
 #if defined(SPI_TXDR_TXDR)
-  while ((spi->SR & SPI_SR_RXP) != 0U)
+  while (((spi->SR & SPI_SR_RXP) != 0U) && (timeout-- > 0U))
     dummy = spi->RXDR;
 
   dummy = spi->RXDR;
   dummy = spi->SR;
   spi->IFCR = 0xFFFFFFFFU;
 #else
-  while ((spi->SR & SPI_SR_RXNE) != 0U)
+  while (((spi->SR & SPI_SR_RXNE) != 0U) && (timeout-- > 0U))
     dummy = spi->DR;
 
   dummy = spi->DR;
@@ -259,7 +260,9 @@ static inline bool tagStorageSpiWriteFast(const TagSpiDevice *device,
     }
   }
 
-  while ((spi->SR & SPI_SR_RXNE) != 0U)
+  uint32_t drain_timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+
+  while (((spi->SR & SPI_SR_RXNE) != 0U) && (drain_timeout-- > 0U))
     (void)*spidr;
   (void)spi->DR;
   (void)spi->SR;

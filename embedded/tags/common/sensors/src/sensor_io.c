@@ -176,13 +176,13 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
   const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
                              registers->write_mask);
+  bool ok;
 
   tagSpiSelect(device);
-  tagSpiWrite(device, &command, 1);
-  tagSpiWrite(device, buf, len);
+  ok = tagSpiWrite(device, &command, 1) && tagSpiWrite(device, buf, len);
   tagSpiDeselect(device);
 
-  return 0;
+  return ok ? MSG_OK : MSG_RESET;
 }
 
 /**
@@ -199,13 +199,13 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
 {
   const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)(reg | registers->read_mask);
+  bool ok;
 
   tagSpiSelect(device);
-  tagSpiWrite(device, &command, 1);
-  tagSpiRead(device, buf, len);
+  ok = tagSpiWrite(device, &command, 1) && tagSpiRead(device, buf, len);
   tagSpiDeselect(device);
 
-  return 0;
+  return ok ? MSG_OK : MSG_RESET;
 }
 /** @} */
 

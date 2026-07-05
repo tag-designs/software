@@ -22,7 +22,7 @@
 #include "strings.h"
 #include "assert.h"
 
-#if TAG_STM32U3_FLASH
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
 /** Ensure U3 state markers match the 128-bit flash programming row. */
 static_assert(sizeof(t_StateMarker) == 32, "sizeof(t_StateMarker) != 32!");
 static_assert(sizeof(t_InternalDataHeader) == 16, "sizeof(t_InternalDataHeader) != 16!");
@@ -31,7 +31,7 @@ static_assert(sizeof(t_InternalDataHeader) == 16, "sizeof(t_InternalDataHeader) 
 static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
 #endif
 
-#if TAG_STM32U3_FLASH
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
 #define TAG_FLASH_RECORD_ALIGN __attribute__((__aligned__(16)))
 #else
 #define TAG_FLASH_RECORD_ALIGN __attribute__((__aligned__(8)))

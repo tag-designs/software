@@ -16,10 +16,10 @@
  *
  * @param[in] context Optional TagPressureDevice descriptor.
  * @return ALL_PASSED when the pressure sensor identity is valid, otherwise
- * LPS22_FAILED.
+ * LPS22HH_FAILED.
  */
 TestResult tag_test_lps22hh(const void *context)
 {
   const TagPressureDevice *device = context ? context : TAG_PRESSURE_DEVICE;
-  return lps22hh_check_who_am_i_device(device) ? ALL_PASSED : LPS22_FAILED;
+  return lps22hh_check_who_am_i_device(device) ? ALL_PASSED : LPS22HH_FAILED;
 }

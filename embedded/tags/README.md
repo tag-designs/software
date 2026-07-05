@@ -128,14 +128,16 @@ tag selects `sensor_accel_adxl362`, for example, the module compiles
 `tag_test_adxl362()` is part of that firmware's monitor self-test list and
 passes the selected accelerometer descriptor as context.
 
-Some monitor request names still reflect older hardware:
+Modern monitor request names describe the actual device under test, for example
+`RUN_LSM6DSV16X`, `RUN_AK09940A`, `RUN_LPS22HH`, `RUN_MX25L`, and
+`RUN_RV3028`. Some legacy request names are still accepted for compatibility:
 
-- `RUN_AIS2` is currently mapped to the LIS2DU12 hook.
+- `RUN_AIS2` may be mapped to the active accelerometer or IMU hook.
 - `RUN_MMC5633` is currently mapped to the AK09940A hook.
 - `RUN_LPS` is shared by the pressure-sensor hooks.
 
-Keep those protocol names stable until the protobuf monitor interface is
-changed. The hook names should still describe the actual device being tested.
+The hook names and returned failure results should still describe the actual
+device being tested.
 
 When adding a device self-test:
 

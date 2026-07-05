@@ -14,7 +14,7 @@
  *
  * @param[in] context Optional TagLsm6dsv16xDevice descriptor.
  * @return ALL_PASSED when the accelerometer self-test passes, otherwise
- * AIS2_FAILED. The monitor protocol still uses the accel-family result here.
+ * LSM6DSV16X_FAILED.
  */
 TestResult __attribute__((weak)) tag_test_lsm6dsv16x(const void *context)
 {
@@ -24,7 +24,7 @@ TestResult __attribute__((weak)) tag_test_lsm6dsv16x(const void *context)
   if (device == NULL)
   {
     debug_log_printf("LSM6DSV16X test: missing device context\r\n");
-    return AIS2_FAILED;
+    return LSM6DSV16X_FAILED;
   }
 
   result = lsm6dsv16x_self_test_accel(device);
@@ -33,7 +33,7 @@ TestResult __attribute__((weak)) tag_test_lsm6dsv16x(const void *context)
     return ALL_PASSED;
   }
 
-  debug_log_printf("LSM6DSV16X test: reporting AIS2_FAILED for result %d\r\n",
+  debug_log_printf("LSM6DSV16X test: reporting LSM6DSV16X_FAILED for result %d\r\n",
                    (int)result);
-  return AIS2_FAILED;
+  return LSM6DSV16X_FAILED;
 }

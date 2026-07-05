@@ -161,9 +161,9 @@ TestResult tag_test_lsm6dsv16x(const void *context);
 
 The context is a `const TagLsm6dsv16xDevice *`. The hook runs the mode-1
 accelerometer self-test path, returns `ALL_PASSED` on success, and returns
-`AIS2_FAILED` on failure. This keeps the IMU test on the existing
-accelerometer-family monitor result until a future protocol change adds a more
-specific IMU result.
+`LSM6DSV16X_FAILED` on failure. Tag test tables may still accept legacy monitor
+request names such as `RUN_AIS2`, but the reported result should name the
+actual device.
 
 The low-level self-test routine:
 

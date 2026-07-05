@@ -11,6 +11,11 @@ enum TestReq {
   RUN_OPT = 6;
   RUN_AIS2 = 7;
   RUN_MMC5633 = 8;
+  RUN_LSM6DSV16X = 9;
+  RUN_AK09940A = 10;
+  RUN_LPS22HH = 11;
+  RUN_MX25L = 12;
+  RUN_RV3028 = 13;
 }
 
 // Request message
