@@ -122,7 +122,11 @@ void tagImuTagSetTrigger(unsigned int divider)
   LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
 
   LPTIM2->ARR = divider - 1U;
+#if defined(LPTIM_CCR1_CCR1)
+  LPTIM2->CCR1 = divider / 2U;
+#else
   LPTIM2->CMP = divider / 2U;
+#endif
   LPTIM2->CNT = 0U;
   LPTIM2->CR |= STM32_LPTIM_CR_CNTSTRT;
 
@@ -253,7 +257,11 @@ void tagDevicesApplyStandbyPins(void)
  */
 void tagDevicesDisableWakeupSources(void)
 {
+#if defined(PWR_CR3_EWUP1_Msk)
   CLEAR_BIT(PWR->CR3, PWR_CR3_EWUP1_Msk);
+#elif defined(PWR_WUCR1_WUPEN1)
+  CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+#endif
 }
 
 /**
@@ -267,6 +275,8 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
   (void)state;
   (void)is_active;
 
+#if defined(PWR_CR3_EIWF_Msk)
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
   return true;
 }

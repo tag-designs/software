@@ -14,6 +14,13 @@
 /** Tag type reported in monitor configuration messages. */
 #define TAG_TYPE IMUTAG
 
+#if !defined(IMUTAG_STORED_CONFIG_STM32U3_FLASH)
+#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
+#define IMUTAG_STORED_CONFIG_STM32U3_FLASH 1
+#else
+#define IMUTAG_STORED_CONFIG_STM32U3_FLASH 0
+#endif
+#endif
 
 /** @brief Flash-resident IMUTagBreakout acquisition schedule. */
 typedef struct
@@ -25,7 +32,12 @@ typedef struct
   Lsm6dsv_ACCEL accel_range;
   Lsm6dsv_GYRO gyro_range;
   //bool internal;
+#if IMUTAG_STORED_CONFIG_STM32U3_FLASH
+  uint32_t flash_padding[2];
+} t_storedconfig __attribute__ ((aligned (16)));
+#else
 } t_storedconfig __attribute__ ((aligned (8)));
+#endif
 
 extern t_storedconfig sconfig;
 extern t_storedconfig config_tmp;

@@ -19,6 +19,14 @@
 
 #define BACKUP_STATE_VALID_MAGIC 0x54414742U
 
+#if !defined(IMUTAG_STM32U3_FLASH)
+#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
+#define IMUTAG_STM32U3_FLASH 1
+#else
+#define IMUTAG_STM32U3_FLASH 0
+#endif
+#endif
+
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
 /** End of the internal flash region reserved for persistent state. */
@@ -105,7 +113,12 @@ typedef struct
   uint16_t vdd100;
   int16_t temp10;
   State_Event reason;
+#if IMUTAG_STM32U3_FLASH
+  uint64_t flash_padding;
+} t_StateMarker __attribute__((aligned(16)));
+#else
 } t_StateMarker __attribute__((aligned(8)));
+#endif
 
 /** Last monitor command seen by the firmware. */
 extern int32_t monitorCMD;

@@ -17,6 +17,12 @@
 #define ADC_CCR_CKMODE_AHB_DIV1 (1 << 16)
 #define ADC_SMPR_SMP_47P5 4
 
+#if defined(ADC12_COMMON)
+#define TAG_ADC_COMMON ADC12_COMMON
+#else
+#define TAG_ADC_COMMON ADC1_COMMON
+#endif
+
 static binary_semaphore_t adc_mutex;
 
 /** @name ADC module initialization
@@ -100,9 +106,14 @@ static void adc_lld_stop_adc(void) {
  * @brief Enable, calibrate, and ready ADC1 for conversions.
  */
 void adc1Start(void) {
+#if defined(rccEnableADC123)
   rccEnableADC123(true);
   rccResetADC123();
-  ADC1_COMMON->CCR = ADC_CCR_CKMODE_AHB_DIV1;
+#elif defined(rccEnableADC12)
+  rccEnableADC12(true);
+  rccResetADC12();
+#endif
+  TAG_ADC_COMMON->CCR = ADC_CCR_CKMODE_AHB_DIV1;
   ADC1->IER = 0;
   adc_lld_vreg_on();
   adc_lld_calibrate();
@@ -116,7 +127,11 @@ void adc1Stop(void) {
   adc_lld_stop_adc();
   adc_lld_analog_off();
   adc_lld_vreg_off();
+#if defined(rccDisableADC123)
   rccDisableADC123();
+#elif defined(rccDisableADC12)
+  rccDisableADC12();
+#endif
 }
 
 /**
@@ -166,22 +181,22 @@ void adc1StopConversion(void) { adc_lld_stop_adc(); }
 /**
  * @brief Enable the internal voltage-reference channel.
  */
-void adc1EnableVREF(void) { ADC1_COMMON->CCR |= ADC_CCR_VREFEN; }
+void adc1EnableVREF(void) { TAG_ADC_COMMON->CCR |= ADC_CCR_VREFEN; }
 
 /**
  * @brief Disable the internal voltage-reference channel.
  */
-void adc1DisableVREF(void) { ADC1_COMMON->CCR &= ~ADC_CCR_VREFEN; }
+void adc1DisableVREF(void) { TAG_ADC_COMMON->CCR &= ~ADC_CCR_VREFEN; }
 
 /**
  * @brief Enable the internal temperature-sensor channel.
  */
-void adc1EnableTS(void) { ADC1_COMMON->CCR |= ADC_CCR_TSEN; }
+void adc1EnableTS(void) { TAG_ADC_COMMON->CCR |= ADC_CCR_TSEN; }
 
 /**
  * @brief Disable the internal temperature-sensor channel.
  */
-void adc1DisableTS(void) { ADC1_COMMON->CCR &= ~ADC_CCR_TSEN; }
+void adc1DisableTS(void) { TAG_ADC_COMMON->CCR &= ~ADC_CCR_TSEN; }
 /** @} */
 
 /** @name Board health measurement
@@ -197,6 +212,15 @@ void adc1DisableTS(void) { ADC1_COMMON->CCR &= ~ADC_CCR_TSEN; }
  */
 void adcVDD(uint16_t *vdd100, int16_t *temp10)
 {
+#if defined(STM32U3xx) || defined(STM32U3XX)
+  /*
+   * STM32U3 calibration constants and internal ADC channel selection differ
+   * from STM32L4. Leave health telemetry neutral until that path is ported.
+   */
+  *vdd100 = 0;
+  *temp10 = 0;
+  return;
+#else
   uint32_t raw;
   int32_t tmp;
   uint32_t adc_samples[2];
@@ -238,5 +262,6 @@ void adcVDD(uint16_t *vdd100, int16_t *temp10)
   // temperature * 10
 
   *temp10 = (tmp - (1300-300) * TS_CAL1)/ (TS_CAL2 - TS_CAL1) + 300;
+#endif
 }
 /** @} */

@@ -8,6 +8,7 @@
 #include "hal.h"
 
 #include "app.h"
+#include "core_types.h"
 #include "custom.h"
 #include "device.h"
 #include "persistent.h"
@@ -31,6 +32,18 @@
 #define STOP1_WAKE_EXTI_GROUP1_MASK 0U
 #endif
 
+#if !defined(TAG_RTC_I2C_DELAY_CYCLES)
+#if defined(STM32U3XX)
+#define TAG_RTC_I2C_DELAY_CYCLES 64U
+#else
+#define TAG_RTC_I2C_DELAY_CYCLES 1U
+#endif
+#endif
+
+#ifndef TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED
+#define TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED 0
+#endif
+
 /** @name Common tag power sequence
  * Common tag power/standby sequence.
  *
@@ -46,7 +59,10 @@
  */
 static void delay(void)
 {
-  __NOP();
+  for (uint32_t i = 0; i < TAG_RTC_I2C_DELAY_CYCLES; i++)
+  {
+    __NOP();
+  }
 }
 
 static const I2CConfig rtc_i2c_config = {
@@ -76,6 +92,92 @@ static const TagI2cDevice rtc_bus = {
     .pwr = TAG_NO_LINE,
     .sleep_policy = TAG_I2C_SLEEP_PULLUP,
 };
+
+static inline void tagPowerSelectStop1(void)
+{
+#if defined(PWR_CR1_LPMS_STOP1)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP1);
+#elif defined(PWR_CR1_LPMS_0)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_0);
+#endif
+}
+
+static inline void tagPowerSelectStandby(void)
+{
+#if defined(PWR_CR1_LPMS_STANDBY)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
+#elif defined(PWR_CR1_LPMS_0) && defined(PWR_CR1_LPMS_1)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_0 | PWR_CR1_LPMS_1);
+#endif
+}
+
+static inline void tagPowerDisableSramRetention(void)
+{
+#if defined(PWR_CR3_RRS)
+  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+#else
+  uint32_t retention = 0U;
+#if defined(PWR_CR1_RRSB1)
+  retention |= PWR_CR1_RRSB1;
+#endif
+#if defined(PWR_CR1_RRSB2)
+  retention |= PWR_CR1_RRSB2;
+#endif
+#if defined(PWR_CR1_RRSB3)
+  retention |= PWR_CR1_RRSB3;
+#endif
+  CLEAR_BIT(PWR->CR1, retention);
+#endif
+}
+
+static inline void tagPowerApplyStandbyPulls(void)
+{
+#if defined(PWR_CR3_APC)
+  SET_BIT(PWR->CR3, PWR_CR3_APC);
+#elif defined(PWR_APCR_APC)
+  SET_BIT(PWR->APCR, PWR_APCR_APC);
+#endif
+}
+
+static inline void tagPowerClearWakeFlags(void)
+{
+#if defined(PWR_SCR_CWUF)
+  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+#elif defined(PWR_WUSCR_CWUF1)
+  uint32_t clear = 0U;
+#if defined(PWR_WUSCR_CWUF1)
+  clear |= PWR_WUSCR_CWUF1;
+#endif
+#if defined(PWR_WUSCR_CWUF2)
+  clear |= PWR_WUSCR_CWUF2;
+#endif
+#if defined(PWR_WUSCR_CWUF3)
+  clear |= PWR_WUSCR_CWUF3;
+#endif
+#if defined(PWR_WUSCR_CWUF4)
+  clear |= PWR_WUSCR_CWUF4;
+#endif
+#if defined(PWR_WUSCR_CWUF5)
+  clear |= PWR_WUSCR_CWUF5;
+#endif
+#if defined(PWR_WUSCR_CWUF6)
+  clear |= PWR_WUSCR_CWUF6;
+#endif
+#if defined(PWR_WUSCR_CWUF7)
+  clear |= PWR_WUSCR_CWUF7;
+#endif
+#if defined(PWR_WUSCR_CWUF8)
+  clear |= PWR_WUSCR_CWUF8;
+#endif
+#if defined(PWR_WUSCR_CWUF9)
+  clear |= PWR_WUSCR_CWUF9;
+#endif
+#if defined(PWR_WUSCR_CWUF10)
+  clear |= PWR_WUSCR_CWUF10;
+#endif
+  WRITE_REG(PWR->WUSCR, clear);
+#endif
+}
 
 #if BOARD_STANDBY_HAS_CONFIG
 void tagClearStandbyPulls(void)
@@ -144,7 +246,7 @@ void godown(enum Sleep sleepmode)
 
   if (sleepmode == STOP1) {
     DBGMCU->CR = 0;
-    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP1);
+    tagPowerSelectStop1();
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
 #if STOP1_WAKE_EXTI_GROUP1_MASK
@@ -173,9 +275,9 @@ void godown(enum Sleep sleepmode)
 
   DBGMCU->CR = 0;
 
-  // disable sram3
+  // disable standby SRAM retention
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+  tagPowerDisableSramRetention();
 
   // Pullup/Pulldown configuration
 
@@ -188,16 +290,16 @@ void godown(enum Sleep sleepmode)
 
   // Apply pull-up and pull-down configuration
 
-  SET_BIT(PWR->CR3, PWR_CR3_APC);
+  tagPowerApplyStandbyPulls();
 
   tagDevicesDisableWakeupSources();
-  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+  tagPowerClearWakeFlags();
   if (!tagDevicesConfigureWakeupSources(pState->state, isActive)) {
     __enable_irq();
     return;
   }
 
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
+  tagPowerSelectStandby();
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
   __DSB();
@@ -213,6 +315,19 @@ void _unhandled_exception(void)
     pState->resetCause = resetException;
     pState->state = EXCEPTION;
   }
+#if TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED
+  /*
+   * Fault bring-up aid: leave the target stopped for debugger inspection
+   * instead of immediately resetting. Keep disabled in normal firmware so an
+   * attached monitor does not change exception recovery behavior.
+   */
+  if (MONCONNECTED)
+  {
+    while (true)
+    {
+    }
+  }
+#endif
   NVIC_SystemReset();
   while (true)
   {

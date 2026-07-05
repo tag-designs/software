@@ -41,8 +41,164 @@ int32_t timestamp;
 uint32_t timestamp_millis;
 bool rtcInitializedAtBoot;
 
-volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
+#if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
+#define TAG_BACKUP_STATE_REG0 (&TAMP->BKP0R)
+#else
+#define TAG_BACKUP_STATE_REG0 (&RTC->BKP0R)
+#endif
+
+volatile BackupState *const pState = (BackupState *)TAG_BACKUP_STATE_REG0;
 /** @} */
+
+static inline bool tagPowerStandbyFlagSet(void)
+{
+#if defined(PWR_SR1_SBF)
+  return (PWR->SR1 & PWR_SR1_SBF) != 0;
+#elif defined(PWR_SR_SBF)
+  return (PWR->SR & PWR_SR_SBF) != 0;
+#else
+  return false;
+#endif
+}
+
+static inline void tagPowerClearStandbyFlag(void)
+{
+#if defined(PWR_SCR_CSBF)
+  PWR->SCR = PWR_SCR_CSBF;
+#elif defined(PWR_SR_CSSF)
+  PWR->SR = PWR_SR_CSSF;
+#endif
+}
+
+static inline void tagPowerClearWakeFlags(void)
+{
+#if defined(PWR_SCR_CWUF)
+  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+#elif defined(PWR_WUSCR_CWUF1)
+  uint32_t clear = 0U;
+#if defined(PWR_WUSCR_CWUF1)
+  clear |= PWR_WUSCR_CWUF1;
+#endif
+#if defined(PWR_WUSCR_CWUF2)
+  clear |= PWR_WUSCR_CWUF2;
+#endif
+#if defined(PWR_WUSCR_CWUF3)
+  clear |= PWR_WUSCR_CWUF3;
+#endif
+#if defined(PWR_WUSCR_CWUF4)
+  clear |= PWR_WUSCR_CWUF4;
+#endif
+#if defined(PWR_WUSCR_CWUF5)
+  clear |= PWR_WUSCR_CWUF5;
+#endif
+#if defined(PWR_WUSCR_CWUF6)
+  clear |= PWR_WUSCR_CWUF6;
+#endif
+#if defined(PWR_WUSCR_CWUF7)
+  clear |= PWR_WUSCR_CWUF7;
+#endif
+#if defined(PWR_WUSCR_CWUF8)
+  clear |= PWR_WUSCR_CWUF8;
+#endif
+#if defined(PWR_WUSCR_CWUF9)
+  clear |= PWR_WUSCR_CWUF9;
+#endif
+#if defined(PWR_WUSCR_CWUF10)
+  clear |= PWR_WUSCR_CWUF10;
+#endif
+  WRITE_REG(PWR->WUSCR, clear);
+#endif
+}
+
+static inline bool tagRtcInitialized(void)
+{
+#if defined(RTC_ISR_INITS)
+  return (RTC->ISR & RTC_ISR_INITS) != 0;
+#elif defined(RTC_ICSR_INITS)
+  return (RTC->ICSR & RTC_ICSR_INITS) != 0;
+#else
+  return false;
+#endif
+}
+
+static inline void tagPowerReleaseStandbyPulls(void)
+{
+#if defined(PWR_CR3_APC)
+  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
+#elif defined(PWR_APCR_APC)
+  CLEAR_BIT(PWR->APCR, PWR_APCR_APC);
+#endif
+}
+
+static eventmask_t tagRtcEventsAndClear(void)
+{
+#if defined(RTC_ISR_TSF)
+  uint32_t clear = (0U
+           | RTC_ISR_TSF
+           | RTC_ISR_TSOVF
+#if defined(RTC_ISR_TAMP1F)
+           | RTC_ISR_TAMP1F
+#endif
+#if defined(RTC_ISR_TAMP2F)
+           | RTC_ISR_TAMP2F
+#endif
+#if defined(RTC_ISR_TAMP3F)
+           | RTC_ISR_TAMP3F
+#endif
+#if defined(RTC_ISR_WUTF)
+           | RTC_ISR_WUTF
+#endif
+#if defined(RTC_ISR_ALRAF)
+           | RTC_ISR_ALRAF
+#endif
+#if defined(RTC_ISR_ALRBF)
+           | RTC_ISR_ALRBF
+#endif
+          );
+
+  uint32_t isr = RTCD1.rtc->ISR;
+  RTCD1.rtc->ISR = (isr & ~clear);
+  return EVT_RTC_MASK(isr);
+#elif defined(RTC_SR_TSF) && defined(RTC_SCR_CTSF)
+  uint32_t sr = RTCD1.rtc->SR;
+  uint32_t clear = 0U;
+  eventmask_t events = 0U;
+
+#if defined(RTC_SR_TSF) && defined(RTC_SCR_CTSF)
+  if ((sr & RTC_SR_TSF) != 0)
+    clear |= RTC_SCR_CTSF;
+#endif
+#if defined(RTC_SR_TSOVF) && defined(RTC_SCR_CTSOVF)
+  if ((sr & RTC_SR_TSOVF) != 0)
+    clear |= RTC_SCR_CTSOVF;
+#endif
+#if defined(RTC_SR_ALRAF) && defined(RTC_SCR_CALRAF)
+  if ((sr & RTC_SR_ALRAF) != 0) {
+    clear |= RTC_SCR_CALRAF;
+    events |= EVT_RTC_ALRAF;
+  }
+#endif
+#if defined(RTC_SR_ALRBF) && defined(RTC_SCR_CALRBF)
+  if ((sr & RTC_SR_ALRBF) != 0) {
+    clear |= RTC_SCR_CALRBF;
+    events |= EVT_RTC_ALRBF;
+  }
+#endif
+#if defined(RTC_SR_WUTF) && defined(RTC_SCR_CWUTF)
+  if ((sr & RTC_SR_WUTF) != 0) {
+    clear |= RTC_SCR_CWUTF;
+    events |= EVT_RTC_WUTF;
+  }
+#endif
+
+  if (clear != 0U)
+    RTCD1.rtc->SCR = clear;
+
+  return events;
+#else
+  return 0U;
+#endif
+}
 
 void tagSystemInitHook(void)
 {
@@ -141,7 +297,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
 
     // not an exit from standby, so must be power on
 
-     if (!(PWR->SR1 & PWR_SR1_SBF))
+     if (!tagPowerStandbyFlagSet())
     {
       resetCause = resetPower;
       break;
@@ -160,11 +316,11 @@ t_resetCause getResetCause(uint32_t rstFlags)
     // Standby is marked, but reset is also ok in safe mode
     // (safe mode marked in backup registers
 
-    if ((PWR->SR1 & PWR_SR1_SBF) || pState->safe)
+    if (tagPowerStandbyFlagSet() || pState->safe)
     {
       resetCause = resetStandby;
       // clear the standby bit
-      PWR->SCR = PWR_SCR_CSBF;
+      tagPowerClearStandbyFlag();
       break;
     }
 
@@ -195,41 +351,11 @@ eventmask_t CheckEvents(void)
   // we may get an extra wakeup, but we won't miss
   // an interrupt
 
-  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+  tagPowerClearWakeFlags();
 
   // check and clear RTC alarms
 
-  uint32_t clear = (0U
-           | RTC_ISR_TSF
-           | RTC_ISR_TSOVF
-#if defined(RTC_ISR_TAMP1F)
-           | RTC_ISR_TAMP1F
-#endif
-#if defined(RTC_ISR_TAMP2F)
-           | RTC_ISR_TAMP2F
-#endif
-#if defined(RTC_ISR_TAMP3F)
-           | RTC_ISR_TAMP3F
-#endif
-#if defined(RTC_ISR_WUTF)
-           | RTC_ISR_WUTF
-#endif
-#if defined(RTC_ISR_ALRAF)
-           | RTC_ISR_ALRAF
-#endif
-#if defined(RTC_ISR_ALRBF)
-           | RTC_ISR_ALRBF
-#endif
-          );
-
-// clear only those alarms that are set
-
-  uint32_t isr = RTCD1.rtc->ISR;
-  RTCD1.rtc->ISR = (isr & ~clear);  
-
-// return set alarms as events
-
-  return EVT_RTC_MASK(isr);
+  return tagRtcEventsAndClear();
 }
 /** @} */
 
@@ -250,14 +376,14 @@ int main(void)
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
-  rtcInitializedAtBoot = (RTC->ISR & RTC_ISR_INITS) != 0;
+  rtcInitializedAtBoot = tagRtcInitialized();
 
   halInit();
   chSysInit();
 
   // release the standby pullup/pulldown
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
+  tagPowerReleaseStandbyPulls();
   tagClearStandbyPulls();
 
   // low power run mode
@@ -281,9 +407,12 @@ int main(void)
 
   deviceInit(false);
 
-  // Configure RTC to bypass shadow registers
+  // Configure RTC to bypass shadow registers when the calendar is live.
 
-  RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
+  if (tagRtcInitialized())
+  {
+    RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
+  }
 
   // clear deep sleep mask
 
@@ -311,6 +440,7 @@ int main(void)
     {
       pending_events |= monitorServicePending((uint32_t)pending_events);
     }
+
     sleepmode = StateMachine(pending_events);      // process events
 
     // critical section end

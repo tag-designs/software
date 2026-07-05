@@ -36,6 +36,10 @@
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
 #endif
 
+#ifndef STM32_DMA_SUPPORTS_CSELR
+#define STM32_DMA_SUPPORTS_CSELR 0
+#endif
+
 #ifndef TAG_STORAGE_SPI_FAST_MAX_INFLIGHT
 #define TAG_STORAGE_SPI_FAST_MAX_INFLIGHT 2U
 #endif
@@ -82,15 +86,64 @@ static inline void tagStorageSpiRecover(SPI_TypeDef *spi)
 
   spi->CR1 &= ~SPI_CR1_SPE;
 
+#if defined(SPI_TXDR_TXDR)
+  while ((spi->SR & SPI_SR_RXP) != 0U)
+    dummy = spi->RXDR;
+
+  dummy = spi->RXDR;
+  dummy = spi->SR;
+  spi->IFCR = 0xFFFFFFFFU;
+#else
   while ((spi->SR & SPI_SR_RXNE) != 0U)
     dummy = spi->DR;
 
   dummy = spi->DR;
   dummy = spi->SR;
+#endif
   (void)dummy;
 
   spi->CR1 |= SPI_CR1_SPE;
 }
+
+#if defined(SPI_TXDR_TXDR)
+static inline bool tagStorageSpiExchangeByte(SPI_TypeDef *spi, uint8_t tx,
+                                             uint8_t *rx)
+{
+  volatile uint8_t *txdr = (volatile uint8_t *)&spi->TXDR;
+  volatile uint8_t *rxdr = (volatile uint8_t *)&spi->RXDR;
+  uint32_t timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+
+  spi->CR1 |= SPI_CR1_CSTART;
+  while ((spi->SR & SPI_SR_TXP) == 0U) {
+    if ((spi->SR & SPI_SR_OVR) != 0U || timeout-- == 0U) {
+      tagStorageSpiRecover(spi);
+      return false;
+    }
+  }
+
+  *txdr = tx;
+  timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+  while ((spi->SR & SPI_SR_RXP) == 0U) {
+    if ((spi->SR & SPI_SR_OVR) != 0U || timeout-- == 0U) {
+      tagStorageSpiRecover(spi);
+      return false;
+    }
+  }
+
+  *rx = *rxdr;
+  spi->CR1 |= SPI_CR1_CSUSP;
+  timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+  while ((spi->CR1 & SPI_CR1_CSTART) != 0U) {
+    if (timeout-- == 0U) {
+      tagStorageSpiRecover(spi);
+      return false;
+    }
+  }
+  spi->IFCR = 0xFFFFFFFFU;
+
+  return true;
+}
+#endif
 
 static inline bool tagStorageSpiWait(SPI_TypeDef *spi, uint32_t mask)
 {
@@ -113,6 +166,24 @@ static inline bool tagStorageSpiWait(SPI_TypeDef *spi, uint32_t mask)
 
 static inline bool tagStorageSpiWaitIdle(SPI_TypeDef *spi)
 {
+#if defined(SPI_TXDR_TXDR)
+  uint32_t timeout = TAG_STORAGE_SPI_POLL_LIMIT;
+
+  while (((spi->SR & SPI_SR_TXC) == 0U) ||
+         ((spi->CR1 & SPI_CR1_CSTART) != 0U))
+  {
+    if ((spi->SR & SPI_SR_OVR) != 0U)
+    {
+      tagStorageSpiRecover(spi);
+      return false;
+    }
+    if (timeout-- == 0U) {
+      tagStorageSpiRecover(spi);
+      return false;
+    }
+  }
+  return true;
+#else
   uint32_t timeout = TAG_STORAGE_SPI_POLL_LIMIT;
   uint32_t mask = SPI_SR_BSY;
 
@@ -132,12 +203,22 @@ static inline bool tagStorageSpiWaitIdle(SPI_TypeDef *spi)
     }
   }
   return true;
+#endif
 }
 
 static inline bool tagStorageSpiWriteFast(const TagSpiDevice *device,
                                           const uint8_t *buf, uint32_t n)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+  uint8_t rx;
+
+  while (n--) {
+    if (!tagStorageSpiExchangeByte(spi, *buf++, &rx))
+      return false;
+  }
+  return true;
+#else
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t sent = 0;
   uint32_t drained = 0;
@@ -183,12 +264,20 @@ static inline bool tagStorageSpiWriteFast(const TagSpiDevice *device,
   (void)spi->DR;
   (void)spi->SR;
   return true;
+#endif
 }
 
 static inline bool tagStorageSpiReadFast(const TagSpiDevice *device,
                                          uint8_t *buf, uint32_t n)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+  while (n--) {
+    if (!tagStorageSpiExchangeByte(spi, device->dummy, buf++))
+      return false;
+  }
+  return true;
+#else
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t sent = 0;
   uint32_t received = 0;
@@ -229,6 +318,7 @@ static inline bool tagStorageSpiReadFast(const TagSpiDevice *device,
     }
   }
   return true;
+#endif
 }
 
 static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
@@ -498,6 +588,16 @@ static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
                                       const uint8_t *buf, uint32_t n)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+  uint8_t rx;
+
+  while (n--)
+  {
+    if (!tagStorageSpiExchangeByte(spi, *buf++, &rx))
+      return false;
+  }
+  return true;
+#else
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (n--)
@@ -508,6 +608,7 @@ static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
     (void)*spidr;
   }
   return true;
+#endif
 }
 
 /**
@@ -521,6 +622,14 @@ static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
                                      uint32_t n)
 {
     SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+    while (n--)
+    {
+        if (!tagStorageSpiExchangeByte(spi, device->dummy, buf++))
+            return false;
+    }
+    return true;
+#else
     volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
     if (n == 0) {
@@ -556,6 +665,7 @@ static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
     }
     *buf = *spidr;
     return true;
+#endif
 }
 
 /**

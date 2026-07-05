@@ -22,8 +22,20 @@
 #include "strings.h"
 #include "assert.h"
 
+#if TAG_STM32U3_FLASH
+/** Ensure U3 state markers match the 128-bit flash programming row. */
+static_assert(sizeof(t_StateMarker) == 32, "sizeof(t_StateMarker) != 32!");
+static_assert(sizeof(t_InternalDataHeader) == 16, "sizeof(t_InternalDataHeader) != 16!");
+#else
 /** Ensure state markers keep the flash-log layout expected by existing tags. */
 static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
+#endif
+
+#if TAG_STM32U3_FLASH
+#define TAG_FLASH_RECORD_ALIGN __attribute__((__aligned__(16)))
+#else
+#define TAG_FLASH_RECORD_ALIGN __attribute__((__aligned__(8)))
+#endif
 
 #include "adc.h"
 
@@ -40,11 +52,11 @@ static void tagStatusMeasure(uint16_t *vdd100, int16_t *temp10)
  * @{
  */
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
-__attribute__((__aligned__(8))) __attribute__((no_reorder));
-t_storedconfig sconfig __attribute__((__aligned__(8))) __attribute__((section(".persistent")))
-__attribute__((__aligned__(8))) __attribute__((no_reorder));
-t_DataHeader vddHeader[256] __attribute__((section(".persistent")))
-__attribute__((__aligned__(8))) __attribute__((no_reorder));
+TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
+t_storedconfig sconfig TAG_FLASH_RECORD_ALIGN __attribute__((section(".persistent")))
+TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
+t_InternalDataHeader vddHeader[256] __attribute__((section(".persistent")))
+TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
 /** @} */
 
 /** @name Internal and external persistence operations
@@ -59,10 +71,11 @@ void erasePersistent(void)
 {
   uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
+  uint32_t page_size = FLASH_PageSize();
 
-  while (start + 2048 <= end)
+  while (start + page_size <= end)
   {
-    end -= 2048;
+    end -= page_size;
     uint64_t first_word;
     uint32_t readerr =
         FLASH_Read_DoubleWord_Checked((const uint64_t *)end, &first_word);
@@ -70,7 +83,7 @@ void erasePersistent(void)
       continue;
     chSysLock();
     FLASH_Unlock();
-    FLASH_PageErase((end - 0x8000000) / 2048);
+    FLASH_PageEraseAddress(end);
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();

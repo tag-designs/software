@@ -78,10 +78,15 @@ static bool readDataHeader(int index, t_DataHeader *header)
     return false;
 
   uint32_t address = (uint32_t)&vddHeader[index];
-  if ((address + sizeof(*header)) > end)
+  if ((address + sizeof(vddHeader[index])) > end)
     return false;
 
+#if IMUTAG_STM32U3_FLASH
+  return FLASH_Read_Checked(&vddHeader[index].header, header,
+                            sizeof(*header)) == 0;
+#else
   return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
+#endif
 }
 
 /**
@@ -229,18 +234,27 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
   uint32_t flashend = (uint32_t)&__persistent_end__;
 
+  t_InternalDataHeader slot;
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
+
+  memset(&slot, 0xff, sizeof(slot));
+#if IMUTAG_STM32U3_FLASH
+  slot.header = *head;
+#else
+  slot = *head;
+#endif
 
   chSysLock();
   FLASH_Unlock();
-  uint32_t flasherr = FLASH_Program_Array(writeptr, (uint32_t *) head, sizeof(t_DataHeader)/4);
+  uint32_t flasherr =
+      FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
   FLASH_Lock();
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 
  // See if the log file is full
 
-  if ((((uint32_t)writeptr) + 16) >= flashend)
+  if ((((uint32_t)writeptr) + sizeof(slot)) >= flashend)
     return LOGWRITE_FULL;
   // See if there is still energy to continue
 

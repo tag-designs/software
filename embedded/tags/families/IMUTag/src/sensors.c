@@ -38,7 +38,12 @@
 typedef struct {
     int32_t timestamp;
     CalibrationConstants_MagConstants constants;
-} sensor_constants_t __attribute__((aligned(8))); 
+#if defined(IMUTAG_STM32U3_FLASH) && IMUTAG_STM32U3_FLASH
+    uint64_t flash_padding;
+} sensor_constants_t __attribute__((aligned(16)));
+#else
+} sensor_constants_t __attribute__((aligned(8)));
+#endif
 
 sensor_constants_t constants_tmp NOINIT;
 
@@ -635,7 +640,7 @@ int write_calibration(CalibrationConstants *constants){
     // erase block
     chSysLock();
     FLASH_Unlock();
-    FLASH_PageErase(((((uint32_t) calConstants)-0x8000000)) / 2048);
+    FLASH_PageEraseAddress((uint32_t)calConstants);
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();

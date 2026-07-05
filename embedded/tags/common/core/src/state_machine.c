@@ -80,13 +80,20 @@ static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
 {
   if (reset_cause == resetBrownout)
     return true;
+  if (reset_cause == resetPower)
+    return true;
   if (MONCONNECTED && (pState->valid == BACKUP_STATE_VALID_MAGIC))
     return false;
-  if ((reset_cause == resetPower) && !MONCONNECTED)
-    return true;
   if (!rtcInitializedAtBoot)
     return true;
   return false;
+}
+
+static bool validStateMarker(const t_StateMarker *marker)
+{
+  return (marker->state > STATE_UNSPECIFIED) &&
+         (marker->state <= _TagState_MAX) &&
+         (marker->reason <= _State_Event_MAX);
 }
 
 static bool reset_erase_started;
@@ -175,6 +182,8 @@ enum Sleep StateMachine(eventmask_t input_events)
       if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
         break;
       if (marker.epoch == -1)
+        break;
+      if (!validStateMarker(&marker))
         break;
       pState->state = marker.state;
     }

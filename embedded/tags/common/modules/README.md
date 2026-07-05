@@ -159,7 +159,10 @@ Current examples:
 
 `hal_rtc_lld.c` is a special case: ChibiOS adds that source basename itself,
 and the RTC module supplies the local source directory so the tag build finds
-the repo-local override before the ChibiOS HAL implementation.
+the repo-local override before the ChibiOS HAL implementation. STM32U3 targets
+can set `USE_CHIBIOS_RTC_LLD = yes` and provide a tag-local
+`src/hal_rtc_lld.c` shim when they need ChibiOS' native RTCv3 implementation
+instead of the repo-local STM32L4 RTCv2 override.
 The active RV3028 driver follows the same descriptor-driven shape as sensors:
 the driver implementation takes a `TagRtcDevice`, and `rtc_device.c` provides a
 weak default RV3028 descriptor for the shared RTC software-I2C bus owned by

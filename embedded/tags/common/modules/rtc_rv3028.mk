@@ -5,7 +5,6 @@
 # common/rtc/src ahead of the ChibiOS source directories in VPATH makes the tag
 # build use the repo-local RTCv2 override.
 
-MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/rtc/src
 MODULE_INC_DIRS += $(TAG_COMMON_DIR)/rtc/inc
 UDEFS += -DTAG_RTC_RV3028=1
 
@@ -16,7 +15,15 @@ TAG_SENSOR_IO_SOURCE_INCLUDED := yes
 ALLCSRC += sensor_io.c
 endif
 
+ifeq ($(USE_CHIBIOS_RTC_LLD),yes)
+ALLCSRC += \
+       $(TAG_COMMON_DIR)/rtc/src/rtc_device.c \
+       $(TAG_COMMON_DIR)/rtc/src/rtc_rv3028.c \
+       $(TAG_COMMON_DIR)/rtc/src/rtc_test.c
+else
+MODULE_SRC_DIRS += $(TAG_COMMON_DIR)/rtc/src
 ALLCSRC += \
        rtc_device.c \
        rtc_rv3028.c \
        rtc_test.c
+endif

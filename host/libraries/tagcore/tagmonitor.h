@@ -53,6 +53,12 @@ private:
 
   bool Call(uint8_t operation, int32_t operand, uint32_t *result);
   bool ReadCoreRegister(uint32_t reg, uint32_t *value);
+#if TAGCORE_ATTACH_PROBE_BUFSIZE_FIRST
+  void LogUnservicedMonitorProbe(uint32_t echoed_request);
+#endif
+#if TAGCORE_ATTACH_RETRY_ON_RESET || TAGCORE_ATTACH_PROBE_BUFSIZE_FIRST
+  bool last_call_caught_reset = false;
+#endif
   // The following are gathered from tag monitor.
   // location of call buf in tag
   uint32_t call_buf = 0;

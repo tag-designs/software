@@ -145,6 +145,11 @@ int main(int argc, char **argv)
       }
       std::cout << "State: " << TagState_Name(status.state()) << std::endl;
     }
+    else
+    {
+      std::cout << "#  Unable to read state ! Exiting" << std::endl;
+      return 0;
+    }
 
     // Read state log
 
@@ -172,19 +177,35 @@ int main(int argc, char **argv)
 
     std::cout << "#  Running test " << TestReq_Name(requested_test) << std::endl;
     tag.Test(requested_test);
+    bool got_test_status = false;
     for (int i = 0; i < 5; i++)
     {
       std::this_thread::sleep_for(MS(1000));
-      tag.GetStatus(status);
+      if (!tag.GetStatus(status))
+      {
+        continue;
+      }
+      got_test_status = true;
       if (!status.debug_message().empty()){
         std::cerr << status.debug_message();
       }
       if (status.state() == IDLE)
         break;
     }
-    TestResult result = status.test_status();
-    std::cout << "Test Result: " << TestResult_Name(result) << std::endl;
-    tag.SetRtc(); // reset rtc since test may alter
+    if (got_test_status)
+    {
+      TestResult result = status.test_status();
+      std::cout << "Test Result: " << TestResult_Name(result) << std::endl;
+    }
+    else
+    {
+      std::cout << "#  Unable to read test result ! Exiting" << std::endl;
+      return 0;
+    }
+    if (!tag.SetRtc()) // reset rtc since test may alter
+    {
+      std::cout << "#  Unable to reset RTC after test" << std::endl;
+    }
   }
   else
   {

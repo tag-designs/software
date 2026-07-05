@@ -21,9 +21,17 @@
 #endif
 
 #if defined(USE_STOP1) && USE_STOP1
+#if defined(PWR_CR1_LPMS_STOP1)
 #define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_STOP1
 #else
+#define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_0
+#endif
+#else
+#if defined(PWR_CR1_LPMS_STOP2)
 #define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_STOP2
+#else
+#define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_1
+#endif
 #endif
 
 // chibios keeps time since 1980, seconds to 1/1/1980
@@ -47,6 +55,78 @@
 static const uint32_t mon_lengths[2][12] = {
     {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
     {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+
+static inline void tagLptim1ClockEnable(void)
+{
+#if defined(RCC_APB3ENR_LPTIM1EN)
+  RCC->APB3ENR |= RCC_APB3ENR_LPTIM1EN;
+#elif defined(RCC_APB1ENR1_LPTIM1EN)
+  RCC->APB1ENR1 |= RCC_APB1ENR1_LPTIM1EN;
+#endif
+}
+
+static inline void tagLptim1ClockDisable(void)
+{
+#if defined(RCC_APB3ENR_LPTIM1EN)
+  RCC->APB3ENR &= ~RCC_APB3ENR_LPTIM1EN;
+#elif defined(RCC_APB1ENR1_LPTIM1EN)
+  RCC->APB1ENR1 &= ~RCC_APB1ENR1_LPTIM1EN;
+#endif
+}
+
+static inline void tagLptim1SetCompare(uint32_t compare)
+{
+#if defined(LPTIM_CCR1_CCR1)
+  LPTIM1->CCR1 = compare;
+#else
+  LPTIM1->CMP = compare;
+#endif
+}
+
+static inline void tagLptim1EnableCompareEvent(void)
+{
+#if defined(EXTI_EMR2_EM32)
+  EXTI->EMR2 |= STM32_EXT_LPTIM1_LINE;
+#else
+  EXTI->EMR1 |= STM32_EXT_LPTIM1_LINE;
+#endif
+}
+
+static inline void tagLptim1DisableCompareEvent(void)
+{
+#if defined(EXTI_EMR2_EM32)
+  EXTI->EMR2 &= ~STM32_EXT_LPTIM1_LINE;
+#else
+  EXTI->EMR1 &= ~STM32_EXT_LPTIM1_LINE;
+#endif
+}
+
+static inline void tagLptim1EnableCompareInterrupt(void)
+{
+#if defined(LPTIM_DIER_CC1IE)
+  LPTIM1->DIER = LPTIM_DIER_CC1IE;
+#else
+  LPTIM1->IER = STM32_LPTIM_IER_CMPMIE;
+#endif
+}
+
+static inline void tagLptim1DisableInterrupts(void)
+{
+#if defined(LPTIM_DIER_CC1IE)
+  LPTIM1->DIER = 0;
+#else
+  LPTIM1->IER = 0;
+#endif
+}
+
+static inline void tagLptim1ClearCompareFlag(void)
+{
+#if defined(LPTIM_ICR_CC1CF)
+  LPTIM1->ICR = LPTIM_ICR_CC1CF;
+#else
+  LPTIM1->ICR = STM32_LPTIM_ICR_CMPMCF;
+#endif
+}
 
 /** @name RTC calendar conversion
  * Conversion helpers isolate the STM32 RTC calendar base from the Unix epoch
@@ -168,6 +248,7 @@ int SetTimeUnixSec(int32_t unix_time)
   if (MSG_OK != tagRtcSetDateTime(&tim))
   {
     //pState->test_result = SET_RTC_FAILED;
+    return -1;
   }
   return err;
 }
@@ -312,19 +393,19 @@ void stopMilliseconds(unsigned int ms)
     // enable lptim1
     // Enter Stop2 mode
 
-    RCC->APB1ENR1 |= (1 << 31);
+    tagLptim1ClockEnable();
     LPTIM1->CR = 1;
 
     // Set up compare,count registers
     LPTIM1->ARR = ms*STM32_RTC_PRESA_VALUE + 1;
-    LPTIM1->CMP = ms*STM32_RTC_PRESA_VALUE; // set compare register
+    tagLptim1SetCompare(ms*STM32_RTC_PRESA_VALUE);
     LPTIM1->CNT = 0;  // reset counter
 
-    EXTI->EMR2 |= STM32_EXT_LPTIM1_LINE;
+    tagLptim1EnableCompareEvent();
 
     // enable interrupts
 
-    LPTIM1->IER = STM32_LPTIM_IER_CMPMIE;
+    tagLptim1EnableCompareInterrupt();
     LPTIM1->CFGR = 0;
 
     // Start the counter in single mode
@@ -343,11 +424,11 @@ void stopMilliseconds(unsigned int ms)
 
     // disable lptim and interrupt
 
-    EXTI->EMR2 &= ~STM32_EXT_LPTIM1_LINE;
-    LPTIM1->IER = 0;
-    LPTIM1->ICR = 1;
+    tagLptim1DisableCompareEvent();
+    tagLptim1DisableInterrupts();
+    tagLptim1ClearCompareFlag();
     LPTIM1->CR = 0;
-    RCC->APB1ENR1 &= ~(1 << 31);
+    tagLptim1ClockDisable();
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
     tagEnableActiveBusesAfterStop();

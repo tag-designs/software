@@ -201,7 +201,7 @@ bool Tag::SetRtc()
 
   req.Clear();
   req.set_set_rtc(ts.time_since_epoch().count());
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req, ack) && (ack.err() == Ack::OK);
 }
 
 // Tag Information

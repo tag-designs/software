@@ -7,6 +7,8 @@
 
 #include "rtc_device.h"
 
+#include "debug_log.h"
+
 #if defined(TAG_RTC_RV3028)
 #include "power.h"
 #include "rv3028.h"
@@ -25,6 +27,9 @@
  */
 static const TagI2cDevice rtc_i2c = {
     .controller = &tagRtcI2cController,
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+    .pwr = TAG_NO_LINE,
     .address = RV3028_ADR,
     .timeout = RTC_TIMEOUT,
     .sleep_policy = TAG_I2C_SLEEP_CUSTOM,
@@ -87,7 +92,19 @@ void tagRtcDeviceEnd(const TagRtcDevice *device)
 int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
-  return tagI2cReadRegister(device->registers, reg, buf, len);
+  const TagI2cDevice *registers = device->registers;
+  int ret = tagI2cReadRegister(registers, reg, buf, len);
+
+  if (ret != MSG_OK)
+  {
+    debug_log_printf(
+        "rv3028 i2c read reg=0x%02x len=%lu ret=%d sda=%u scl=%u\r\n",
+        reg, (unsigned long)len, ret,
+        (unsigned)palReadLine(registers->sda),
+        (unsigned)palReadLine(registers->scl));
+  }
+
+  return ret;
 }
 
 /**
@@ -102,6 +119,18 @@ int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
 int tagRtcWriteRegister(const TagRtcDevice *device, uint8_t reg,
                         const uint8_t *buf, uint32_t len)
 {
-  return tagI2cWriteRegister(device->registers, reg, buf, len);
+  const TagI2cDevice *registers = device->registers;
+  int ret = tagI2cWriteRegister(registers, reg, buf, len);
+
+  if (ret != MSG_OK)
+  {
+    debug_log_printf(
+        "rv3028 i2c write reg=0x%02x len=%lu ret=%d sda=%u scl=%u\r\n",
+        reg, (unsigned long)len, ret,
+        (unsigned)palReadLine(registers->sda),
+        (unsigned)palReadLine(registers->scl));
+  }
+
+  return ret;
 }
 /** @} */

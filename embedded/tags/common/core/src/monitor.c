@@ -302,6 +302,12 @@ static int system_logAck(int index)
     {
       break;
     }
+    if ((marker.state <= STATE_UNSPECIFIED) ||
+        (marker.state > _TagState_MAX) ||
+        (marker.reason > _State_Event_MAX))
+    {
+      break;
+    }
     states[count].has_status = true;
     states[count].status.millis = ((int64_t)marker.epoch) * 1000;
     states[count].status.state = marker.state;

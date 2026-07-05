@@ -21,6 +21,14 @@
 
 #define BACKUP_STATE_VALID_MAGIC 0x54414742U
 
+#if !defined(TAG_STM32U3_FLASH)
+#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
+#define TAG_STM32U3_FLASH 1
+#else
+#define TAG_STM32U3_FLASH 0
+#endif
+#endif
+
 /** @name Persistent linker symbols
  * Linker-provided addresses used to find the internal flash region reserved
  * for state and configuration persistence.
@@ -126,7 +134,12 @@ typedef struct
   uint16_t vdd100;
   int16_t  temp10;
   State_Event reason;
-} t_StateMarker __attribute__((aligned(8))); 
+#if TAG_STM32U3_FLASH
+  uint64_t flash_padding;
+} t_StateMarker __attribute__((aligned(16)));
+#else
+} t_StateMarker __attribute__((aligned(8)));
+#endif
 
 typedef struct
 {
