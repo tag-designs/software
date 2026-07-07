@@ -119,7 +119,8 @@ CPPWARN = -Wall -Wextra -Wundef
 #############################################################################
 
 UDEFS = -DUSE_FULL_LL_DRIVER=1 -DPB_NO_PACKED_STRUCTS=1 -DPB_BUFFER_ONLY=1 \
-        -DUSEEPRINTF=1 -DUSE_CDC_EPRINTF=1
+        -DUSEEPRINTF=1 -DUSE_CDC_EPRINTF=1 \
+        -DSWD_DELAY_COUNT=$(SWD_DELAY_COUNT) -DSWD_SPI_BR='$(SWD_SPI_BR)'
 UADEFS =
 UINCDIR = ../common/inc
 ULIBDIR =
