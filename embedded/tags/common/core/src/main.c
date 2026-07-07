@@ -205,6 +205,26 @@ void tagSystemInitHook(void)
   NVIC_SetPriority(DebugMonitor_IRQn, TAG_DEBUG_MONITOR_PRIORITY);
 }
 
+static void tagBackupStateEnableWrites(void)
+{
+#if defined(RCC_APB1ENR1_RTCAPBEN)
+  RCC->APB1ENR1 |= RCC_APB1ENR1_RTCAPBEN;
+#endif
+#if defined(PWR_DBPR_DBP)
+  PWR->DBPR |= PWR_DBPR_DBP;
+#elif defined(PWR_CR1_DBP)
+  PWR->CR1 |= PWR_CR1_DBP;
+#endif
+}
+
+static void tagResetRuntimeStateForPowerInit(void)
+{
+  pState->state = TagState_IDLE;
+  pState->pages = 0;
+  pState->external_blocks = 0;
+  pState->test_result = TEST_UNSPECIFIED;
+}
+
 /** @name Runtime initialization and reset handling
  * Boot helpers decide whether retained state is usable, reset device state when
  * needed, and map STM32 reset flags to the state-machine reset vocabulary.
@@ -229,14 +249,16 @@ void deviceInit(int force)
   {
     // make sure everything is zeroed
 
-    pState->valid = 0;
-    pState->safe = false;
-
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
 
     if (power_init)
       tagRtcInit();
+
+    pState->valid = 0;
+    pState->safe = false;
+    if (power_init)
+      tagResetRuntimeStateForPowerInit();
 
     TagDevicePowerReason power_reason = TAG_DEVICE_POWER_RUNTIME_DEINIT;
     if (power_init) {
@@ -392,8 +414,9 @@ int main(void)
   adcInit();
   debug_log_init();
   tagPowerInit();
+  tagBackupStateEnableWrites();
   tagDevicesInit();
-  
+
   tpMain = chThdGetSelfX(); // global pointer to main thread
 
   // save reset cause
