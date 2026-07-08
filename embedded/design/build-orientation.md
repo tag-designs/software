@@ -196,14 +196,17 @@ tree. The important final artifacts are the `.elf`, `.hex`, `.bin`, `.dmp`, and
 Firmware targets also get STM32CubeProgrammer helper targets such as
 `BitTag-download` and `BitTag-erase` when `STM32_Programmer_CLI` is available.
 These targets select an ST-LINK probe before invoking CubeProgrammer. By
-default, CMake sets `STM32_PROGRAMMER_PROBE=pid:0483:3748`, which targets the
-tag programmer base instead of the STLINK-V3PWR power monitor
-(`0483:3757`). Override this at configure time or in the build environment when
-needed:
+default, CMake sets `STM32_PROGRAMMER_PROBE=pid:0483:3748`, which prefers the
+tag programmer base. If that PID is not present, the selector falls back to the
+available ST-LINK probes, using the only attached probe automatically or
+prompting when multiple probes are attached. Override this at configure time or
+in the build environment when you need a specific probe such as an STLINK-V3PWR
+(`0483:3757`):
 
 ```sh
 cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=serial:<stlink-serial>
 cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=index:<cube-index>
+cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=pid:0483:3757
 cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=prompt
 ```
 

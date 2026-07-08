@@ -377,6 +377,15 @@ cmake --build build-embedded --target BitTag-download
 cmake --build build-embedded --target PresTag-download
 ```
 
+Download targets prefer the tag programmer base ST-LINK PID (`0483:3748`) and
+fall back to other attached ST-LINK programmers, such as STLINK-V3PWR
+(`0483:3757`). If more than one programmer is connected, select one explicitly:
+
+```
+STM32_PROGRAMMER_PROBE=serial:<stlink-serial> cmake --build build-embedded --target BitTag-download
+STM32_PROGRAMMER_PROBE=pid:0483:3757 cmake --build build-embedded --target BitTag-download
+```
+
 Build base-board targets:
 
 ```

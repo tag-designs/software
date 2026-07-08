@@ -274,6 +274,25 @@ def filter_by_vid_pid(probes: Sequence[Probe], vid: str, pid: str) -> List[Probe
     return [p for p in probes if p.vid == vid and p.pid == pid]
 
 
+def select_from_candidates(
+    candidates: Sequence[Probe], description: str = "matching ST-LINK probes"
+) -> Selection:
+    if len(candidates) == 1:
+        probe = candidates[0]
+        if not probe.serial:
+            raise RuntimeError(
+                f"matched {probe.summary()}, but it has no USB serial number; "
+                "rerun with STM32_PROGRAMMER_PROBE=index:<n>"
+            )
+        return Selection("serial", probe.serial, probe)
+
+    if len(candidates) > 1:
+        print(f"Multiple {description} were found.", file=sys.stderr)
+        return prompt_for_probe(candidates)
+
+    raise RuntimeError(f"no {description} were found")
+
+
 def prompt_readline(candidates: Sequence[Probe]) -> str:
     with ExitStack() as stack:
         if os.name == "nt":
@@ -381,26 +400,25 @@ def select_probe(selector: str, probes: Sequence[Probe]) -> Selection:
 
     if lower == "auto":
         candidates = stlink_probes(probes)
+        return select_from_candidates(candidates)
     elif lower.startswith("pid:"):
         vid, pid = parse_vid_pid(selector.split(":", 1)[1])
         candidates = filter_by_vid_pid(probes, vid, pid)
+        if candidates:
+            return select_from_candidates(candidates)
+
+        fallback = stlink_probes(probes)
+        if fallback:
+            print(
+                f"No probes matched {selector!r}; falling back to available ST-LINK probes.",
+                file=sys.stderr,
+            )
+            return select_from_candidates(fallback, "available ST-LINK probes")
     else:
         raise RuntimeError(
             "unsupported STM32_PROGRAMMER_PROBE value. Use auto, prompt, "
             "pid:<pid>, pid:<vid>:<pid>, serial:<sn>, or index:<n>."
         )
-
-    if len(candidates) == 1:
-        probe = candidates[0]
-        if not probe.serial:
-            raise RuntimeError(
-                f"matched {probe.summary()}, but it has no USB serial number; "
-                "rerun with STM32_PROGRAMMER_PROBE=index:<n>"
-            )
-        return Selection("serial", probe.serial, probe)
-
-    if len(candidates) > 1:
-        return prompt_for_probe(candidates)
 
     found = stlink_probes(probes)
     if found:
@@ -419,8 +437,9 @@ def main(argv: Sequence[str]) -> int:
         default="pid:0483:3748",
         help=(
             "Probe selector: pid:0483:3748, serial:<sn>, index:<n>, prompt, "
-            "or auto. The STM32_PROGRAMMER_PROBE environment variable overrides "
-            "this value."
+            "or auto. PID selectors fall back to available ST-LINK probes when "
+            "that PID is absent. The STM32_PROGRAMMER_PROBE environment variable "
+            "overrides this value."
         ),
     )
     parser.add_argument(
@@ -443,8 +462,9 @@ def main(argv: Sequence[str]) -> int:
     except Exception as exc:
         print(f"error: {exc}", file=sys.stderr)
         print(
-            "Set STM32_PROGRAMMER_PROBE=serial:<sn> or index:<n>, or configure "
-            "with -DSTM32_PROGRAMMER_PROBE=prompt to choose interactively.",
+            "Set STM32_PROGRAMMER_PROBE=serial:<sn>, index:<n>, or "
+            "pid:0483:<pid>; or configure with -DSTM32_PROGRAMMER_PROBE=prompt "
+            "to choose interactively.",
             file=sys.stderr,
         )
         return 2

@@ -27,6 +27,11 @@ extern "C"
 #define STLINK_DEV_DEBUG_MODE 0x02
 #define STLINK_DEV_UNKNOWN_MODE -1
 
+static uint8_t stlink_mode_code(uint16_t mode)
+{
+    return mode & 0xff;
+}
+
 // Stlink Control
 
 #define STLINK_JTAG_DRIVE_NRST 0x3C
@@ -390,6 +395,7 @@ bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
             case STLINK_USB_PID_STLINK_V3E_PID:
             case STLINK_USB_PID_STLINK_V3S_PID:
             case STLINK_USB_PID_STLINK_V3_2VCP_PID:
+            case STLINK_USB_PID_STLINK_V3_PWR:
                 ep_out = 1 | LIBUSB_ENDPOINT_OUT;
                 break;
             default:
@@ -455,7 +461,7 @@ bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
             if (current_mode(mode))
             {
                 // log_debug("current mode: %d", mode);
-                if ((mode == STLINK_DEV_DFU_MODE) && !exit_dfu_mode())
+                if ((stlink_mode_code(mode) == STLINK_DEV_DFU_MODE) && !exit_dfu_mode())
                 {
                     log_error("exit dfu mode failed");
                     break;
@@ -465,9 +471,11 @@ bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
                 enter_debug_mode();
                 // is this the right test ??  perhaps our stlink implementation
                 // is wrong.  != 4 left to work with existing bases
-                if (!current_mode(mode) || (mode != 4 && mode != STLINK_DEV_DEBUG_MODE))
+                if (!current_mode(mode) ||
+                    (stlink_mode_code(mode) != 4 &&
+                     stlink_mode_code(mode) != STLINK_DEV_DEBUG_MODE))
                 {
-                    log_error("enter swd mode failed: %d", mode);
+                    log_error("enter swd mode failed: 0x%x", mode);
                     break;
                 }
             }
@@ -523,21 +531,35 @@ bool LinkAdapt::get_rw_status(uint16_t &status)
     auto start = SteadyClock::now();
 #endif
     LinkReq req;
-    uint8_t result[2];
+    uint8_t result[12] = {0};
     req.cmd[0] = STLINK_DEBUG_COMMAND;
-    req.cmd[1] = STLINK_DEBUG_APIV2_GETLASTRWSTATUS;
+    req.cmd[1] = STLINK_DEBUG_APIV2_GETLASTRWSTATUS2;
     req.len = sizeof(result);
     req.buf = result;
-    if (cmd_eval(req, true))
+    if (!cmd_eval(req, true))
+    {
+        uint8_t legacy_result[2] = {0};
+        req = LinkReq();
+        req.cmd[0] = STLINK_DEBUG_COMMAND;
+        req.cmd[1] = STLINK_DEBUG_APIV2_GETLASTRWSTATUS;
+        req.len = sizeof(legacy_result);
+        req.buf = legacy_result;
+        if (!cmd_eval(req, true))
+        {
+            return false;
+        }
+        status = UNPACK16(legacy_result);
+    }
+    else
     {
         status = UNPACK16(result);
-#if TAGCORE_ENABLE_INSTRUMENTATION
-        stats.rw_status_calls++;
-        stats.rw_status_ns += elapsed_ns(start);
-#endif
-        return true;
+        log_debug("last rw status 0x%x fault_addr=0x%x", status, UNPACK32(&result[4]));
     }
-    return false;
+#if TAGCORE_ENABLE_INSTRUMENTATION
+    stats.rw_status_calls++;
+    stats.rw_status_ns += elapsed_ns(start);
+#endif
+    return true;
 }
 
 bool LinkAdapt::ReadMem32(unsigned int addr, uint8_t *buf, uint16_t count)
