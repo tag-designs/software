@@ -52,6 +52,7 @@ enum TestResult {
   MX25L_FAILED = 20;
   MX25R_FAILED = 21;
   LSM6DSV_FAILED = 22;
+  MX25U12843_FAILED = 26;
 
 }
 

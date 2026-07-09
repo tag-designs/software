@@ -11,6 +11,7 @@ enum TestReq {
   RUN_OPT = 6;
   RUN_AIS2 = 7;
   RUN_MMC5633 = 8;
+  RUN_MX25U12843 = 14;
 }
 
 // Request message

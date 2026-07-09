@@ -21,6 +21,7 @@ The selected storage module chooses the chip implementation:
 
 - `flash_at25xe` compiles `src/at25xe.c`
 - `flash_mx25l` compiles `src/mx25l.c`
+- `flash_mx25u12843` compiles `src/mx25u12843.c`
 - `flash_mx25r` compiles `src/mx25r.c`
 
 `external_flash_test.c` provides the shared monitor self-test hook.
@@ -47,8 +48,8 @@ log pages without changing chip command code, and leaves a straightforward path
 for future DMA or peripheral-specific transfer implementations.
 
 `storage_device.h` describes the board side of an external flash device: SPI
-bus and sector geometry. AT25XE and MX25R publish their geometry from their
-chip headers, and tag or family `devices.c` files copy that into
+bus and sector geometry. AT25XE, MX25U12843, and MX25R publish their geometry
+from their chip headers, and tag or family `devices.c` files copy that into
 `tagExternalFlash` rather than depending on tag-local capacity defines. Chip
 drivers export only a `TagStorageOps` table, while tag or family `devices.c`
 files export `tagExternalFlash`. That descriptor pairs the selected chip
@@ -75,7 +76,7 @@ flowchart TD
   StorageFlash["storage_flash.c dispatch"]
   StorageDev["tagExternalFlash TagStorageDevice"]
   Ops["chip TagStorageOps"]
-  Chip["at25xe.c / mx25l.c / mx25r.c"]
+  Chip["at25xe.c / mx25l.c / mx25u12843.c / mx25r.c"]
   SpiHelper["storage_spi.h SPI command framing"]
   BusDevice["TagBusDevice"]
   SpiDevice["TagSpiDevice"]
