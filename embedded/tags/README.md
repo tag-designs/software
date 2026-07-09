@@ -129,8 +129,9 @@ tag selects `sensor_accel_adxl362`, for example, the module compiles
 passes the selected accelerometer descriptor as context.
 
 Modern monitor request names describe the actual device under test, for example
-`RUN_LSM6DSV16X`, `RUN_AK09940A`, `RUN_LPS22HH`, `RUN_MX25L`, and
-`RUN_RV3028`. Some legacy request names are still accepted for compatibility:
+`RUN_LSM6DSV16X`, `RUN_AK09940A`, `RUN_LPS22HH`, `RUN_MX25L`,
+`RUN_MX25U12843`, and `RUN_RV3028`. Some legacy request names are still
+accepted for compatibility:
 
 - `RUN_AIS2` may be mapped to the active accelerometer or IMU hook.
 - `RUN_MMC5633` is currently mapped to the AK09940A hook.

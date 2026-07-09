@@ -235,7 +235,10 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   uint32_t flashend = (uint32_t)&__persistent_end__;
 
   t_InternalDataHeader slot;
+  uint32_t header_page = pState->pages;
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
+  uint32_t first_flasherr;
+  uint32_t retries = 0;
 
   memset(&slot, 0xff, sizeof(slot));
 #if IMUTAG_STM32U3_FLASH
@@ -248,20 +251,50 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   FLASH_Unlock();
   uint32_t flasherr =
       FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
+  first_flasherr = flasherr;
+  if (flasherr) {
+    retries++;
+    flasherr =
+        FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
+  }
   FLASH_Lock();
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 
  // See if the log file is full
 
-  if ((((uint32_t)writeptr) + sizeof(slot)) >= flashend)
+  if ((((uint32_t)writeptr) + sizeof(slot)) >= flashend) {
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->header_status = LOGWRITE_FULL;
+    pState->header_flasherr = first_flasherr ? first_flasherr : flasherr;
+    pState->header_page = header_page;
+    pState->header_addr = (uint32_t)writeptr;
+    pState->header_retries = retries;
+#endif
     return LOGWRITE_FULL;
+  }
   // See if there is still energy to continue
 
-  if (flasherr) 
+  if (flasherr) {
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->header_status = LOGWRITE_ERROR;
+    pState->header_flasherr = first_flasherr ? first_flasherr : flasherr;
+    pState->header_page = header_page;
+    pState->header_addr = (uint32_t)writeptr;
+    pState->header_retries = retries;
+#endif
     return LOGWRITE_ERROR;
-  else
+  }
+  else {
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->header_status = LOGWRITE_OK;
+    pState->header_flasherr = first_flasherr;
+    pState->header_page = header_page;
+    pState->header_addr = (uint32_t)writeptr;
+    pState->header_retries = retries;
+#endif
     return LOGWRITE_OK;
+  }
 }
 
 //

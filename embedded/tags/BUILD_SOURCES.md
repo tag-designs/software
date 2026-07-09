@@ -768,7 +768,7 @@ embedded/tags/common/sensors/pressure/src/lps22hh_test.c
 embedded/tags/common/sensors/pressure/src/pressure_device.c
 embedded/tags/common/sensors/src/sensor_io.c
 embedded/tags/common/storage/src/external_flash_test.c
-embedded/tags/common/storage/src/mx25l.c
+embedded/tags/common/storage/src/mx25u12843.c
 embedded/tags/common/storage/src/storage_flash.c
 ```
 
@@ -815,6 +815,6 @@ embedded/tags/common/sensors/pressure/inc/lps.h
 embedded/tags/common/sensors/pressure/inc/lps22hh.h
 embedded/tags/common/storage/inc/storage_device.h
 embedded/tags/common/storage/inc/storage_flash.h
-embedded/tags/common/storage/inc/storage_mx25l.h
+embedded/tags/common/storage/inc/storage_mx25u12843.h
 embedded/tags/common/storage/inc/storage_spi.h
 ```

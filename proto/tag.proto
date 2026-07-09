@@ -16,6 +16,7 @@ enum TestReq {
   RUN_LPS22HH = 11;
   RUN_MX25L = 12;
   RUN_RV3028 = 13;
+  RUN_MX25U12843 = 14;
 }
 
 // Request message

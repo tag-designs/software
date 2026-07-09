@@ -23,12 +23,22 @@
 #define PROTOBUFSIZE 4096
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
-#define USE_STOP1 1
+/*
+ * Bring-up note: detached RUNNING collection aborts on monitor reattach when
+ * the U375 enters Stop1. Keep RUNNING awake until the U375-specific Stop1
+ * wake/recovery path is fixed.
+ */
+#define USE_STOP1 0
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define CONFIG_HAS_HIBERNATE 0
 #define TAG_STATUS_FIXED_VDD100 180
 #define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
+/* Temporary bring-up aid: expose a retained RUNNING-state heartbeat in the
+ * status debug message so detached execution can be distinguished from
+ * attach/reset cursor recovery.
+ */
+#define TAG_RETAINED_RUN_DIAGNOSTICS 1
 /* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
  * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
  * in the trace.

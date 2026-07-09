@@ -222,6 +222,16 @@ static void tagResetRuntimeStateForPowerInit(void)
   pState->state = TagState_IDLE;
   pState->pages = 0;
   pState->external_blocks = 0;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+  pState->run_heartbeat = 0;
+  pState->terminal_state = STATE_UNSPECIFIED;
+  pState->terminal_reason = State_EVENT_UNSPECIFIED;
+  pState->header_status = LOGWRITE_OK;
+  pState->header_flasherr = 0;
+  pState->header_page = 0;
+  pState->header_addr = 0;
+  pState->header_retries = 0;
+#endif
   pState->test_result = TEST_UNSPECIFIED;
 }
 
@@ -244,8 +254,15 @@ void deviceInit(int force)
 
   bool power_init = (pState->resetCause == resetPower) ||
                     (pState->resetCause == resetBrownout);
+  // Monitor attach resets can arrive through the power-init path while backup
+  // state is still valid; preserve persistent fields such as test_result then.
+  bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
+  bool monitor_reset_recovery =
+      retained_state_valid &&
+      (MONCONNECTED ||
+       ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U));
 
-  if (power_init || force)
+  if ((power_init && !monitor_reset_recovery) || force)
   {
     // make sure everything is zeroed
 
@@ -257,7 +274,7 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
-    if (power_init)
+    if (power_init && !retained_state_valid)
       tagResetRuntimeStateForPowerInit();
 
     TagDevicePowerReason power_reason = TAG_DEVICE_POWER_RUNTIME_DEINIT;

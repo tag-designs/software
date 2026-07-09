@@ -116,10 +116,12 @@ Current examples:
   inc/storage_device.h
   inc/storage_flash.h
   inc/storage_mx25l.h
+  inc/storage_mx25u12843.h
   inc/storage_spi.h
   src/at25xe.c
   src/external_flash_test.c
   src/mx25l.c
+  src/mx25u12843.c
   src/mx25r.c
 
 ../sensors/
@@ -249,7 +251,7 @@ can keep diagnostics localized without surrounding every call site with
 `#if defined(TAG_DEBUG_LOG) && TAG_DEBUG_LOG`.
 
 Storage owns the external-memory interface and chip drivers. `flash_at25xe`,
-`flash_mx25l`, and `flash_mx25r` select the external-memory implementation used
+`flash_mx25l`, `flash_mx25u12843`, and `flash_mx25r` select the external-memory implementation used
 by a particular tag. `storage_paths.mk` is a guarded helper included by those
 modules and by `tag_core`; it is not intended to be listed directly in
 `TAG_MODULES`. The storage drivers share the descriptor-driven SPI model:

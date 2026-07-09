@@ -20,6 +20,10 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
+#if !defined(USE_STOP1)
+#define USE_STOP1 1
+#endif
+
 #define IMU_CLOCK_LOCK_SECONDS 2
 #define IMU_LOG_SAMPLES_PER_BLOCK                                           \
   (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
@@ -156,8 +160,15 @@ static ImuBlockStatus sampleAndLogDataBlock(void)
 
       err = writeDataHeader(&header);
       switch (err) {
-      case LOGWRITE_FULL:
       case LOGWRITE_ERROR:
+        debug_log_printf(
+          "IMUTag running: internal header write error pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
+        return IMU_BLOCK_INTERNAL_FULL;
+      case LOGWRITE_FULL:
+        debug_log_printf(
+          "IMUTag running: internal header full pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
         return IMU_BLOCK_INTERNAL_FULL;
       default:
         break;
@@ -204,6 +215,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   if (t == T_ERROR)
   { 
     // recovery code for brownout here?
+    debug_log_printf("IMUTag running: abort on T_ERROR reason=%d\r\n", reason);
     return Aborted(T_INIT, reason);
   }
 
@@ -218,10 +230,21 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->pages = 0;
     pState->cycle_count = 0;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->run_heartbeat = 0;
+    pState->terminal_state = STATE_UNSPECIFIED;
+    pState->terminal_reason = State_EVENT_UNSPECIFIED;
+    pState->header_status = LOGWRITE_OK;
+    pState->header_flasherr = 0;
+    pState->header_page = 0;
+    pState->header_addr = 0;
+    pState->header_retries = 0;
+#endif
     //pState->lastwakeup = timestamp;
 
     pState->external_blocks = 0;
     if (!restartDataCollectionClock(false)) {
+      debug_log_printf("IMUTag running: abort, collection init failed\r\n");
       return Aborted(T_INIT, State_EVENT_UNKNOWN);
     }
 
@@ -232,7 +255,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
-    enum Sleep sleepmode = STOP1;
+    enum Sleep sleepmode = USE_STOP1 ? STOP1 : SLEEP;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->run_heartbeat++;
+#endif
 
     /*
      * POWERFAIL here is the state machine's recovery token for monitor
@@ -242,18 +268,24 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
      * before the next retained page.
      */
     if (reason == State_EVENT_POWERFAIL) {
+      debug_log_printf("IMUTag running: monitor reset recovery\r\n");
       (void)deinitDataCollection();
       if (!restartDataCollectionClock(true)) {
+        debug_log_printf("IMUTag running: abort, collection resync failed\r\n");
         return Aborted(T_INIT, State_EVENT_UNKNOWN);
       }
       pState->state = TagState_RUNNING;
-      return STOP1;
+      return USE_STOP1 ? STOP1 : SLEEP;
     }
 
     // check for completion
 
     if (sconfig.stop < timestamp)
     {
+      debug_log_printf(
+        "IMUTag running: stop time reached timestamp=%d stop=%d pages=%u ext=%u\r\n",
+        timestamp, sconfig.stop, (unsigned)pState->pages,
+        (unsigned)pState->external_blocks);
       return Finished(T_INIT, State_EVENT_ENDTIM);
     }
 
@@ -264,8 +296,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       case IMU_BLOCK_HANDLED:
         break;
       case IMU_BLOCK_INTERNAL_FULL:
+        debug_log_printf(
+          "IMUTag running: finishing, internal log unavailable pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
         return Finished(T_INIT, State_EVENT_INTERNALFULL);
       case IMU_BLOCK_EXTERNAL_FULL:
+        debug_log_printf(
+          "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
         return Finished(T_INIT, State_EVENT_EXTERNALFULL);
       case IMU_BLOCK_NO_DATA:
       default:
@@ -284,6 +322,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if (sconfig.stop < timestamp)
     {
+      debug_log_printf(
+        "IMUTag running: stop time reached timestamp=%d stop=%d pages=%u ext=%u\r\n",
+        timestamp, sconfig.stop, (unsigned)pState->pages,
+        (unsigned)pState->external_blocks);
       return Finished(T_INIT, State_EVENT_ENDTIM);
     }
 

@@ -93,6 +93,8 @@ static inline uint32_t FLASH_EccErrors(void) {
   return errors;
 }
 
+uint32_t flash_err = 0;
+
 /**
  * @brief Clear all sticky flash status and ECC error flags before an operation.
  */
@@ -118,7 +120,6 @@ static inline void FLASH_ClearAllErrors(void) {
 }
 /** @} */
 
-uint32_t flash_err = 0;
 volatile uint32_t flash_ecc_flags = 0;
 volatile uint32_t flash_ecc_eccr = 0;
 static volatile bool flash_ecc_probe_active = false;
@@ -247,8 +248,13 @@ static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   }
 
   FLASH_ClearAllErrors();
+  flash_err = 0;
 
   __disable_irq();
+  uint32_t demcr = CoreDebug->DEMCR;
+  CoreDebug->DEMCR = demcr & ~CoreDebug_DEMCR_MON_EN_Msk;
+  __DSB();
+  __ISB();
 
   SET_BIT(FLASH->CR, FLASH_CR_PG);
 
@@ -269,6 +275,9 @@ static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   // Reset PG bit
 
   CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+  CoreDebug->DEMCR = demcr;
+  __DSB();
+  __ISB();
   __enable_irq();
   flash_err = FLASH_Errors();
 }

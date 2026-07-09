@@ -79,6 +79,14 @@ typedef struct
   //int32_t lastwakeup;       // last wakeup time
   //int32_t lastwrite;        // timestamp of last write
   uint32_t cycle_count;      // used for run statemachine to track data
+  uint32_t run_heartbeat;    // retained RUNNING-state iterations for bring-up
+  uint32_t terminal_state;    // retained terminal-state diagnostic
+  uint32_t terminal_reason;   // retained terminal-transition reason
+  uint32_t header_status;     // retained internal-header write status
+  uint32_t header_flasherr;   // retained STM32 flash status for header writes
+  uint32_t header_page;       // retained internal-header page attempted
+  uint32_t header_addr;       // retained internal-header address attempted
+  uint32_t header_retries;    // retained internal-header write retry count
   TestResult test_result;   // test_result
 
 } BackupState;

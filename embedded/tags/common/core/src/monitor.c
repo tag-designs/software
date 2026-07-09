@@ -83,6 +83,99 @@ static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 #endif
 }
 
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+static char *statusDiagAppendChar(char *dst, char *end, char c)
+{
+  if (dst < end)
+    *dst++ = c;
+  return dst;
+}
+
+static char *statusDiagAppendString(char *dst, char *end, const char *src)
+{
+  while (*src)
+    dst = statusDiagAppendChar(dst, end, *src++);
+  return dst;
+}
+
+static char *statusDiagAppendU32(char *dst, char *end, uint32_t value)
+{
+  char digits[10];
+  int count = 0;
+
+  do
+  {
+    digits[count++] = (char)('0' + (value % 10U));
+    value /= 10U;
+  } while (value != 0U);
+
+  while (count > 0)
+    dst = statusDiagAppendChar(dst, end, digits[--count]);
+  return dst;
+}
+
+static void statusDiagLastStateMarker(uint32_t *state, uint32_t *reason)
+{
+  *state = STATE_UNSPECIFIED;
+  *reason = State_EVENT_UNSPECIFIED;
+
+  for (size_t i = 0; i < sEPOCH_SIZE; i++)
+  {
+    t_StateMarker marker;
+    if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
+      break;
+    if (marker.epoch == -1)
+      break;
+    if ((marker.state <= STATE_UNSPECIFIED) ||
+        (marker.state > _TagState_MAX) ||
+        (marker.reason > _State_Event_MAX))
+      break;
+    *state = marker.state;
+    *reason = marker.reason;
+  }
+}
+
+static void statusDiagWrite(void)
+{
+  char *dst = ack.payload.status.debug_message;
+  char *end = dst + sizeof(ack.payload.status.debug_message) - 1U;
+  uint32_t last_state;
+  uint32_t last_reason;
+
+  statusDiagLastStateMarker(&last_state, &last_reason);
+
+  dst = statusDiagAppendString(dst, end, "run_diag hb=");
+  dst = statusDiagAppendU32(dst, end, pState->run_heartbeat);
+  dst = statusDiagAppendString(dst, end, " state=");
+  dst = statusDiagAppendU32(dst, end, pState->state);
+  dst = statusDiagAppendString(dst, end, " rc=");
+  dst = statusDiagAppendU32(dst, end, pState->resetCause);
+  dst = statusDiagAppendString(dst, end, " cycle=");
+  dst = statusDiagAppendU32(dst, end, pState->cycle_count);
+  dst = statusDiagAppendString(dst, end, " pages=");
+  dst = statusDiagAppendU32(dst, end, pState->pages);
+  dst = statusDiagAppendString(dst, end, " ext=");
+  dst = statusDiagAppendU32(dst, end, pState->external_blocks);
+  dst = statusDiagAppendString(dst, end, " last=");
+  dst = statusDiagAppendU32(dst, end, last_state);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, last_reason);
+  dst = statusDiagAppendString(dst, end, " term=");
+  dst = statusDiagAppendU32(dst, end, pState->terminal_state);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, pState->terminal_reason);
+  dst = statusDiagAppendString(dst, end, " hs=");
+  dst = statusDiagAppendU32(dst, end, pState->header_status);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, pState->header_flasherr);
+  dst = statusDiagAppendString(dst, end, " hr=");
+  dst = statusDiagAppendU32(dst, end, pState->header_retries);
+  dst = statusDiagAppendString(dst, end, " hp=");
+  dst = statusDiagAppendU32(dst, end, pState->header_page);
+  *dst = 0;
+}
+#endif
+
 static int monitorReturn(int len)
 {
   return len;
@@ -222,6 +315,10 @@ static int statusAck(void)
   int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
                            sizeof(ack.payload.status.debug_message) - 1);
   ack.payload.status.debug_message[len] = 0;
+#endif
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+  if (ack.payload.status.debug_message[0] == 0)
+    statusDiagWrite();
 #endif
 
   return encode_ack();
@@ -521,6 +618,8 @@ int proto_eval(int len, uint32_t *work)
   }
 
   case Req_stop_tag: // stop
+    debug_log_printf("monitor: stop request accepted state=%d\r\n",
+                     pState->state);
     if (work)
       *work |= MON_WORK_STOP;
     return monitorReturn(errAck(Ack_OK));

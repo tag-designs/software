@@ -19,6 +19,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Embedded Build Orientation**](../embedded/design/build-orientation.md): Layout overview of boards, proto-c, base firmwares, and tag targets.
 *   [**Custom Compiler Definitions**](../embedded/tags/design/custom-defines.md): Complete list of customizable flags, timer settings, and MCU preprocessor defines.
 *   [**Restart Recovery Design**](../embedded/tags/design/restart-recovery.md): Specification for state machine preservation, register resets, and low-power recovery cycles.
+*   [**IMUTagU375 Bring-Up Closeout**](../embedded/design/imutag-u375-bringup-closeout.md): Parked STM32U375 investigation notes, useful findings, and unresolved blockers.
 
 ---
 

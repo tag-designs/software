@@ -16,7 +16,7 @@ TAG_MODULES += \
        debug_log \
        tag_test \
        rtc_rv3028 \
-       flash_mx25l \
+       flash_mx25u12843 \
        sensor_pressure_lps22hh \
        sensor_mag_ak09940a \
        sensor_imu_lsm6dsv16x

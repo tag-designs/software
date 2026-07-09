@@ -32,7 +32,7 @@
 #endif
 
 #define REGRETRIES 20
-#define DELCNT 32
+#define DELCNT 2
 
 static const int AUTO_INCREMENT_PAGE_SIZE = 1024;
 static const int CSW_VALUE = (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC);

@@ -1044,9 +1044,20 @@ void TagMonitor::Detach()
   // Detach call to mon->handler
 
   Call(MONITORSTOP, 0, 0);
-  // Clear debug register bits
+  /*
+   * Leave the target explicitly running before asking ST-LINK to exit debug
+   * mode.  Some probes/cores keep C_DEBUGEN set after monitor traffic; clearing
+   * C_HALT and then C_DEBUGEN avoids a detach period where the core is no
+   * longer serviced by the host but also not executing firmware.
+   */
+  WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN);
+  WriteDebug32(DHCSR, DBGKEY);
+
+  // Clear debug monitor request and vector-catch bits.
   ReadDebug32(DEMCR, &demcr);
-  WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_BUSY | MON_EN)));
+  WriteDebug32(DEMCR,
+               (demcr & ~(VC_CORERESET | MON_BUSY | MON_EN |
+                          MON_PEND | MON_REQ)));
   // release usb
   LinkAdapt::Detach();
   target_family = TargetFamily::Unknown;

@@ -22,8 +22,19 @@
 #include "power.h"
 #include "sensor_io.h"
 #include "sensors.h"
-#include "storage_mx25l.h"
 #include "test_support.h"
+
+#if defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
+#include "storage_mx25u12843.h"
+#define EXTERNAL_FLASH_OPS (&mx25u12843StorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE MX25U12843_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT MX25U12843_SECTOR_COUNT
+#else
+#include "storage_mx25l.h"
+#define EXTERNAL_FLASH_OPS (&mx25lStorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE MX25L_SECTOR_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT (EXT_FLASH_SIZE / MX25L_SECTOR_SIZE)
+#endif
 
 #define LPTIM2_ALTERNATE_FUNCTION 14
 
@@ -37,7 +48,7 @@
 
 
 const TagStorageDevice tagExternalFlash = {
-    .ops = &mx25lStorageOps,
+    .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
         .cs = LINE_FLASH_nCS,
@@ -47,8 +58,8 @@ const TagStorageDevice tagExternalFlash = {
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
-    .sector_size = MX25L_SECTOR_SIZE,
-    .sector_count = EXT_FLASH_SIZE / MX25L_SECTOR_SIZE,
+    .sector_size = EXTERNAL_FLASH_SECTOR_SIZE,
+    .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
 static const TagRegisterDevice lps_registers = {
@@ -166,7 +177,11 @@ static const TagTestCase tag_tests[] =
   {RUN_RTC, tag_test_rtc, NULL},
   {RUN_RV3028, tag_test_rtc, NULL},
   {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+#if defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
+  {RUN_MX25U12843, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+#else
   {RUN_MX25L, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+#endif
   {RUN_AIS2, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
   {RUN_LSM6DSV16X, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
   {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
