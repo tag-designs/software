@@ -55,14 +55,16 @@ Streamline Message Structures
 
 - Direct Function Calls: Program direct calls to encoding functions instead of looping through generic encoders to increase speed by up to 5×
 
-## Existing Log format
+## Historical Log Format
 
-The existing log format packed 16 submessages that were largely, but not exclusively raw bytes.  These were generated from 128 byte raw internal messages.
+The first optimized IMUTag download format packed 16 submessages that were
+largely, but not exclusively raw bytes. These were generated from 128 byte raw
+internal messages.
 
 ```protobuf
 message IMUTagLogData{
-  int32 pressure_raw = 1; // compact pressure; hPa = raw / 16; -1 means no sample
-  int32 mx_raw = 2;       // compact mag; uT = raw * 0.04; all axes -1 means no sample
+  int32 pressure_raw = 1; // legacy compact pressure; hPa = raw / 16; -1 means no sample
+  int32 mx_raw = 2;       // legacy compact mag; uT = raw * 0.04; all axes -1 means no sample
   int32 my_raw = 3;
   int32 mz_raw = 4;
   bytes data = 5; // packed accel, gyro data 16bit integers
@@ -78,16 +80,24 @@ message IMUTagLog{
 
 ## Changes
 
-Because the existing log message consisted of 16 submessages that were largely packed bytes, we chose to merge these into a single 2048 byte "raw log" message format:
+Because the old log message consisted of 16 submessages that were largely
+packed bytes, we chose to merge these into a single bounded raw log message
+format:
 
 ```protobuf
 message IMUTagRawLog{
   int32 epoch = 1;
   int32 millisecond = 2;
   float temperature = 3;
-  bytes samples = 4; // raw DATALOG_SAMPLES * t_DataLog page image
+  bytes samples = 4; // packed t_DataLog block images
 }
 ```
+
+Current `t_DataLog` blocks contain eight IMU samples plus full raw pressure,
+pressure temperature, and full-scale magnetometer fields. Footer flags mark
+which environmental samples are valid and whether a block has been written.
+The tag uses those footer flags to omit trailing erased blocks from partially
+filled external pages.
 
 ### both original and compressed formats assume the decoder respects little-endian data!!
 
@@ -104,6 +114,4 @@ Now the dominant cost is the swd implementation.  Reformating the log message in
 
 
 ![Timing after optimization](Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
-
-
 

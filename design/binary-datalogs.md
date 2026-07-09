@@ -70,9 +70,12 @@ Prevent compilers from inserting platform-dependent padding bytes by wrapping th
 #pragma pack(push, 1)
 
 typedef struct {
-    int16_t pressure;
-    int16_t mx, my, mz;
-    RawSensorData raw_data[10];
+    int32_t mx, my, mz;
+    int32_t pressure;
+    int16_t pressure_temperature;
+    uint8_t reserved[12];
+    RawSensorData raw_data[8];
+    uint16_t flags;
 } t_ImuTagDataLog;
 
 #pragma pack(pop)
@@ -117,7 +120,7 @@ extern "C" {
 
 ## 4. Coherence with Nanopb Options
 
-When raw binary logs are downloaded or transmitted, they are wrapped in Protobuf messages (e.g., `IMUTagRawLog` carrying the raw bytes of a full page). In embedded firmware, nanopb constrains these byte fields to fixed sizes via `.options` files (e.g., `IMUTagRawLog.samples max_size:2048` in `embedded/proto-c/default-options/tagdata.options`).
+When raw binary logs are downloaded or transmitted, they are wrapped in Protobuf messages (e.g., `IMUTagRawLog` carrying the raw bytes from one page). In embedded firmware, nanopb constrains these byte fields to fixed sizes via `.options` files (e.g., `IMUTagRawLog.samples max_size:2048` in `embedded/proto-c/default-options/tagdata.options`). The tag may transmit fewer than `DATALOG_SAMPLES` blocks when the footer flags show that the tail of the external page is still erased.
 
 To ensure these option limits do not fall out of sync with the actual C layout sizes (which would lead to buffer overflows, truncated logs, or wasted RAM):
 
@@ -206,10 +209,9 @@ std::vector<t_ImuTagDataLog> blocks(num_blocks);
 std::memcpy(blocks.data(), payload.data(), payload.size());              
                                                                           
 // 4. Access safely and cleanly                                          
-for (size_t i = 0; i < num_blocks; ++i) {                                
-    int16_t p = blocks[i].pressure;                                      
-    int16_t mx = blocks[i].mx;                                           
-    // ...                                                               
-}                                                             
+for (size_t i = 0; i < num_blocks; ++i) {
+    int32_t p = blocks[i].pressure;
+    int32_t mx = blocks[i].mx;
+    // ...
+}
 ```
-

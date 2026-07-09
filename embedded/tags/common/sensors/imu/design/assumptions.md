@@ -140,16 +140,46 @@ using the active full-scale sensitivity.
 
 ## Environmental Samples
 
-IMUTag data blocks carry one compact pressure sample and one compact
-magnetometer sample alongside ten IMU accel/gyro samples. At high IMU rates the
-environmental sensors are intentionally capped near 50 Hz and sampled sparsely:
-800 Hz IMU records a fresh pressure/mag value every other block, and 1600 Hz
-records a fresh value every fourth block. Blocks without a fresh environmental
-sample store `-1` in the compact pressure field, or `-1, -1, -1` in the compact
-magnetometer fields. The protobuf download keeps these compact raw values and
-the host SQLite writer performs unit conversion while skipping sentinel rows.
-The sentinel and compact-unit conversion constants live in the repository root
-shared include file `include/imutag_log_format.h`.
+IMUTag data blocks carry one native raw pressure sample, one raw pressure
+temperature sample, and one full-scale AK09940 magnetometer sample alongside
+eight IMU accel/gyro samples. Pressure is configured up to one sample per block.
+The magnetometer remains capped near 50 Hz: 800 Hz IMU records a fresh mag value
+every other block, and 1600 Hz records a fresh value every fourth block. Blocks
+without a fresh environmental sample clear the corresponding footer validity
+flag. The raw protobuf download keeps these binary block images, trimmed to omit
+trailing erased blocks, and the host SQLite writer performs unit conversion
+while skipping invalid rows. The footer flags and conversion constants live in
+the repository root shared include file `include/imutag_log_format.h`.
+
+The log block rate is the IMU ODR divided by eight. The pressure sensor may be
+configured faster than the block rate at low IMU ODRs, but the firmware only
+checks it once per block, so the maximum logged pressure row rate is capped by
+the block rate.
+
+| IMU ODR | Log blocks/s | Pressure ODR | Max logged pressure rows/s | Mag logging cadence |
+| ---: | ---: | ---: | ---: | --- |
+| 50 Hz | 6.25 | 10 Hz | 6.25 | every block |
+| 100 Hz | 12.5 | 25 Hz | 12.5 | every block |
+| 200 Hz | 25 | 25 Hz | 25 | every block |
+| 400 Hz | 50 | 50 Hz | 50 | every block |
+| 800 Hz | 100 | 100 Hz | 100 | every 2 blocks |
+| 1600 Hz | 200 | 200 Hz | 200 | every 4 blocks |
+
+External flash run length depends on the 128-byte block size and the block
+rate. These estimates assume external flash capacity is the limiting factor:
+
+| IMU ODR | Log blocks/s | 4 MiB external flash | 16 MiB external flash |
+| ---: | ---: | ---: | ---: |
+| 50 Hz | 6.25 | 1 h 27 m | 5 h 50 m |
+| 100 Hz | 12.5 | 43 m 41 s | 2 h 55 m |
+| 200 Hz | 25 | 21 m 51 s | 1 h 27 m |
+| 400 Hz | 50 | 10 m 55 s | 43 m 41 s |
+| 800 Hz | 100 | 5 m 28 s | 21 m 51 s |
+| 1600 Hz | 200 | 2 m 44 s | 10 m 55 s |
+
+With 16 blocks per internal header and an 8-byte `t_ImuTagDataHeader`, 200 KiB
+of internal header space covers about 50 MiB of external log blocks, so it does
+not limit the 4 MiB or 16 MiB external flash cases.
 
 ## Self-Test
 

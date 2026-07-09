@@ -84,6 +84,17 @@ static bool readDataHeader(int index, t_DataHeader *header)
   return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
 }
 
+static size_t writtenDataBlocks(const t_DataLog *blocks, size_t max_blocks)
+{
+  size_t i;
+
+  for (i = 0; i < max_blocks; i++) {
+    if (!IMUTAG_BLOCK_IS_WRITTEN(blocks[i].flags))
+      break;
+  }
+  return i;
+}
+
 /**
  * @brief Erase the external data log and reset log progress.
  */
@@ -298,7 +309,9 @@ int data_logAck(int index, Ack *ack)
                    (uint8_t *)log->samples.bytes, databuf_size);
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-    log->samples.size = databuf_size;
+    log->samples.size =
+      writtenDataBlocks((const t_DataLog *)log->samples.bytes,
+                        DATALOG_SAMPLES) * sizeof(t_DataLog);
     //memcpy(log->samples.bytes, databuf, sizeof(databuf));
 
   }

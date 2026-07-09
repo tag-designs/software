@@ -9,30 +9,21 @@
 
 namespace tagcore::sqlite_log {
 
-// IMUTag blocks carry pressure and magnetometer samples plus a packed ten-sample
-// accelerometer/gyroscope payload. The database keeps those rows on an elapsed
-// microsecond clock measured from the start of data collection.
+// IMUTag blocks carry pressure, pressure temperature, magnetometer samples, and
+// a packed accelerometer/gyroscope payload. The database keeps those rows on an
+// elapsed microsecond clock measured from the start of data collection.
 //
 // Firmware writes one t_ImuTagDataHeader followed by t_ImuTagDataLog blocks.
-// The current fast download path returns IMUTagRawLog, which carries one or
-// more t_ImuTagDataLog images in a bounded bytes field. The older IMUTagLog
-// protobuf mirrors that page shape with repeated IMUTagLogData entries. Each
-// old-format entry has compact raw pressure and magnetometer samples, and
-// either:
-//
-// - the raw_data byte array only, or
-// - the entire t_ImuTagDataLog image.
-//
-// The decoder accepts both forms so the download path can evolve without
-// forcing the SQLite writer to know which side emitted the payload.
+// The fast download path returns IMUTagRawLog, which carries zero or more
+// t_ImuTagDataLog images in a bounded bytes field. The tag trims trailing
+// erased blocks before transmit, and the host also ignores blocks whose footer
+// flags still carry the erased/unwritten marker.
 
 namespace {
 
 constexpr size_t kImuSamplesPerBlock =
     sizeof(((t_ImuTagDataLog *)nullptr)->raw_data)
     / sizeof(((t_ImuTagDataLog *)nullptr)->raw_data[0]);
-constexpr size_t kImuRawDataBytes =
-    sizeof(((t_ImuTagDataLog *)nullptr)->raw_data);
 constexpr size_t kImuDataLogBytes = sizeof(t_ImuTagDataLog);
 constexpr uint32_t kImuHeaderSubsecondTicksPerSecond = 1024;
 constexpr uint32_t kMillisecondsPerSecond = 1000;
@@ -91,24 +82,37 @@ double imuGyroDpsPerLsb(Lsm6dsv_GYRO range)
 
 double pressureRawToHpa(int32_t pressure_raw)
 {
-    return pressure_raw * IMUTAG_COMPACT_PRESSURE_HPA_PER_LSB;
+    return pressure_raw * IMUTAG_PRESSURE_HPA_PER_LSB;
+}
+
+double pressureTemperatureRawToC(int16_t temperature_raw)
+{
+    return temperature_raw * IMUTAG_PRESSURE_TEMPERATURE_C_PER_LSB;
 }
 
 double magRawToUT(int32_t mag_raw)
 {
-    return mag_raw * IMUTAG_COMPACT_MAG_UT_PER_LSB;
+    return mag_raw * IMUTAG_MAG_UT_PER_LSB;
 }
 
-bool hasPressureSample(int16_t pressure_raw)
+bool hasPressureSample(const t_ImuTagDataLog &block)
 {
-    return pressure_raw != IMUTAG_ENV_SKIP_RAW;
+    return (block.flags & IMUTAG_BLOCK_PRESSURE_VALID) != 0;
 }
 
-bool hasMagSample(int16_t mx_raw, int16_t my_raw, int16_t mz_raw)
+bool hasPressureTemperatureSample(const t_ImuTagDataLog &block)
 {
-    return mx_raw != IMUTAG_ENV_SKIP_RAW
-        || my_raw != IMUTAG_ENV_SKIP_RAW
-        || mz_raw != IMUTAG_ENV_SKIP_RAW;
+    return (block.flags & IMUTAG_BLOCK_PRESSURE_TEMPERATURE_VALID) != 0;
+}
+
+bool hasMagSample(const t_ImuTagDataLog &block)
+{
+    return (block.flags & IMUTAG_BLOCK_MAG_VALID) != 0;
+}
+
+bool isWrittenBlock(const t_ImuTagDataLog &block)
+{
+    return IMUTAG_BLOCK_IS_WRITTEN(block.flags);
 }
 
 int dumpIMUTagBlocks(WriterContext &ctx,
@@ -159,6 +163,9 @@ int dumpIMUTagBlocks(WriterContext &ctx,
     Statement pressure_insert(
         ctx.db,
         "INSERT INTO ImuPressure (ElapsedUs, Pressure) VALUES (?, ?)");
+    Statement temperature_insert(
+        ctx.db,
+        "INSERT INTO ImuTemperature (ElapsedUs, Temperature) VALUES (?, ?)");
     Statement mag_insert(
         ctx.db,
         "INSERT INTO ImuMag (ElapsedUs, mx, my, mz) VALUES (?, ?, ?, ?)");
@@ -172,6 +179,7 @@ int dumpIMUTagBlocks(WriterContext &ctx,
     if (!header_insert.valid()
         || !event_insert.valid()
         || !pressure_insert.valid()
+        || !temperature_insert.valid()
         || !mag_insert.valid()
         || !accel_insert.valid()
         || !gyro_insert.valid()) {
@@ -245,6 +253,10 @@ int dumpIMUTagBlocks(WriterContext &ctx,
     ctx.imu->header_count++;
 
     for (const t_ImuTagDataLog &block : blocks) {
+        if (!isWrittenBlock(block)) {
+            continue;
+        }
+
         // Pressure and magnetometer are sampled once per IMU block, so they use
         // the block start time. Accel/gyro samples are expanded below at the
         // configured IMU sample period.
@@ -252,7 +264,7 @@ int dumpIMUTagBlocks(WriterContext &ctx,
             ctx.imu->elapsed_base_us
             + static_cast<sqlite3_int64>(ctx.imu->segment_block_count) * block_period_us;
 
-        if (hasPressureSample(block.pressure)) {
+        if (hasPressureSample(block)) {
             if (!pressure_insert.bindInt64(1, block_start_us)
                 || !pressure_insert.bindDouble(2,
                                                pressureRawToHpa(block.pressure))
@@ -260,9 +272,18 @@ int dumpIMUTagBlocks(WriterContext &ctx,
                 ctx.setLastSqliteError("IMUTag pressure insert failed");
                 return -2;
             }
+            if (hasPressureTemperatureSample(block)) {
+                if (!temperature_insert.bindInt64(1, block_start_us)
+                    || !temperature_insert.bindDouble(
+                        2, pressureTemperatureRawToC(block.pressure_temperature))
+                    || !temperature_insert.stepDone()) {
+                    ctx.setLastSqliteError("IMUTag pressure temperature insert failed");
+                    return -2;
+                }
+            }
         }
 
-        if (hasMagSample(block.mx, block.my, block.mz)) {
+        if (hasMagSample(block)) {
             if (!mag_insert.bindInt64(1, block_start_us)
                 || !mag_insert.bindDouble(2, magRawToUT(block.mx))
                 || !mag_insert.bindDouble(3, magRawToUT(block.my))
@@ -303,42 +324,10 @@ int dumpIMUTagBlocks(WriterContext &ctx,
 
 } // namespace
 
-int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log)
+int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &)
 {
-    std::vector<t_ImuTagDataLog> blocks;
-    blocks.reserve(static_cast<size_t>(log.data().size()));
-
-    for (auto const &entry : log.data()) {
-        const std::string &payload = entry.data();
-        t_ImuTagDataLog block = {};
-        block.pressure = static_cast<int16_t>(entry.pressure_raw());
-        block.mx = static_cast<int16_t>(entry.mx_raw());
-        block.my = static_cast<int16_t>(entry.my_raw());
-        block.mz = static_cast<int16_t>(entry.mz_raw());
-
-        if (payload.size() == kImuRawDataBytes) {
-            std::memcpy(block.raw_data, payload.data(), payload.size());
-        } else if (payload.size() == kImuDataLogBytes) {
-            t_ImuTagDataLog image = {};
-            std::memcpy(&image, payload.data(), payload.size());
-            std::memcpy(block.raw_data, image.raw_data, sizeof(block.raw_data));
-        } else {
-            std::ostringstream error;
-            error << "IMUTag data block has " << payload.size()
-                  << " bytes, expected " << kImuRawDataBytes
-                  << " raw bytes or " << kImuDataLogBytes
-                  << " t_ImuTagDataLog bytes";
-            ctx.setLastError(error.str());
-            return -2;
-        }
-        blocks.push_back(block);
-    }
-
-    return dumpIMUTagBlocks(ctx,
-                            log.epoch(),
-                            static_cast<uint32_t>(log.millisecond()),
-                            log.temperature(),
-                            blocks);
+    ctx.setLastError("Legacy IMUTagLog protobuf is not supported; use IMUTagRawLog");
+    return -2;
 }
 
 int dumpIMUTagRawLog(WriterContext &ctx, const IMUTagRawLog &log)

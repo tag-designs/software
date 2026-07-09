@@ -276,6 +276,22 @@ bool ak09940aCheckWhoami(const TagRegisterDevice *device)
 }
 
 /**
+ * @brief Soft-reset AK09940A register state.
+ *
+ * @param[in] device Magnetometer register descriptor.
+ * @return MSG_OK on success.
+ */
+msg_t ak09940aReset(const TagRegisterDevice *device)
+{
+  uint8_t cntl4 = AK09940A_CNTL4_SRST;
+  msg_t rc = ak09940a_write_register(device, AK09940A_CNTL4, &cntl4, 1);
+
+  if (rc == MSG_OK)
+    stopMilliseconds(1);
+  return rc;
+}
+
+/**
  * @brief Put AK09940A into power-down mode.
  *
  * @param[in] device Magnetometer register descriptor.
@@ -309,6 +325,9 @@ msg_t ak09940aInitContinuous(const TagRegisterDevice *device,
   cntl2 = (temp_mode == AK09940_TEMP_ENABLED) ? AK09940A_CNTL2_TEM_MSK : 0;
   cntl3 |= ak09940a_rate_to_mode(rate);
 
+  if (ak09940aInitPowerDown(device) != MSG_OK)
+    return MSG_RESET;
+  stopMilliseconds(1);
   if (ak09940a_write_register(device, AK09940A_CNTL1, &cntl1, 1) != MSG_OK)
     return MSG_RESET;
   if (ak09940a_write_register(device, AK09940A_CNTL2, &cntl2, 1) != MSG_OK)

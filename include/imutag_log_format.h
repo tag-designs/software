@@ -17,7 +17,11 @@
  * formats.
  */
 
-#define IMUTAG_ENV_SKIP_RAW (-1)
+#define IMUTAG_BLOCK_PRESSURE_VALID (0x0001u)
+#define IMUTAG_BLOCK_MAG_VALID (0x0002u)
+#define IMUTAG_BLOCK_PRESSURE_TEMPERATURE_VALID (0x0004u)
+#define IMUTAG_BLOCK_UNWRITTEN (0x8000u)
+#define IMUTAG_BLOCK_IS_WRITTEN(flags) (((flags) & IMUTAG_BLOCK_UNWRITTEN) == 0)
 
 /* t_DataHeader.millis uses the low ten bits for 1/1024-second subsecond ticks.
  * Host log writers convert those ticks to rounded integer milliseconds. The
@@ -26,13 +30,16 @@
 #define IMUTAG_HEADER_RESYNC (0x0400u)
 #define IMUTAG_HEADER_RESYNC_STORAGE_SKIP (0x0800u)
 
-/* t_DataLog stores LPS22HH pressure as sensor_raw >> 8.
- * LPS22HH native sensitivity is 1/4096 hPa/LSB, so compact_raw / 16 = hPa. */
-#define IMUTAG_COMPACT_PRESSURE_HPA_PER_LSB (1.0 / 16.0)
+/* t_DataLog stores pressure in the native ST 24-bit raw unit, sign-extended
+ * into int32_t. LPS22HH/LPS22DF native sensitivity is 1/4096 hPa/LSB. */
+#define IMUTAG_PRESSURE_HPA_PER_LSB (1.0 / 4096.0)
 
-/* t_DataLog stores AK09940 magnetometer axes as sensor_raw >> 2.
- * AK09940 native sensitivity is 0.01 uT/LSB, so compact_raw * 0.04 = uT. */
-#define IMUTAG_COMPACT_MAG_UT_PER_LSB (0.04)
+/* Pressure-sensor temperature is stored in the native ST 0.01 C/LSB unit. */
+#define IMUTAG_PRESSURE_TEMPERATURE_C_PER_LSB (0.01)
+
+/* t_DataLog stores AK09940 magnetometer axes as full 18-bit native raw values,
+ * sign-extended into int32_t. AK09940 native sensitivity is 0.01 uT/LSB. */
+#define IMUTAG_MAG_UT_PER_LSB (0.01)
 
 #pragma pack(push, 1)
 
@@ -40,10 +47,15 @@ typedef struct {
     int16_t gx, gy, gz, ax, ay, az;
 } t_ImuTagRawSensorData;
 
+#define IMUTAG_IMU_SAMPLES_PER_BLOCK 8
+
 typedef struct {
-    int16_t pressure;
-    int16_t mx, my, mz;
-    t_ImuTagRawSensorData raw_data[10];
+    int32_t mx, my, mz;
+    int32_t pressure;
+    int16_t pressure_temperature;
+    uint8_t reserved[12];
+    t_ImuTagRawSensorData raw_data[IMUTAG_IMU_SAMPLES_PER_BLOCK];
+    uint16_t flags;
 } t_ImuTagDataLog;
 
 typedef struct {

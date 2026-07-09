@@ -193,19 +193,7 @@ SqlTableDefinition imuHeaderTable()
             {"Flags", "INTEGER"},
             {"Temperature", "REAL"},
         },
-        {{
-            "sensor_temperature",
-            nullptr,
-            nullptr,
-            "ImuHeader",
-            "StartElapsedUs",
-            "Temperature",
-            "scalar",
-            "Sensor temperature",
-            "C",
-            "temperature",
-            "IMUTag header temperature timestamped by elapsed collection time.",
-        }},
+        {},
     };
 }
 
@@ -239,6 +227,27 @@ SqlTableDefinition imuPressureTable()
             "mbar",
             "pressure",
             "IMUTag pressure sample timestamped by elapsed collection time.",
+        }},
+    };
+}
+
+SqlTableDefinition imuTemperatureTable()
+{
+    return {
+        "ImuTemperature",
+        {{"ElapsedUs", "INTEGER"}, {"Temperature", "REAL"}},
+        {{
+            "sensor_temperature",
+            nullptr,
+            nullptr,
+            "ImuTemperature",
+            "ElapsedUs",
+            "Temperature",
+            "scalar",
+            "Sensor temperature",
+            "C",
+            "temperature",
+            "IMUTag pressure-sensor temperature timestamped by elapsed collection time.",
         }},
     };
 }
@@ -354,7 +363,7 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
         // magnetometer constants; the high-rate data tables remain separate.
         return {
             true,
-            {imuHeaderTable(), imuEventTable(), imuPressureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
+            {imuHeaderTable(), imuEventTable(), imuPressureTable(), imuTemperatureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
     default:
         return {false, {}};
     }

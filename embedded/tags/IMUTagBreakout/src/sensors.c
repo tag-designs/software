@@ -28,12 +28,13 @@
 
 
 #define IMU_ACCEL_MG_PER_LSB_4G 0.122f
-#define IMU_FIFO_PAIRS_PER_BLOCK 10U
+#define IMU_FIFO_PAIRS_PER_BLOCK IMUTAG_IMU_SAMPLES_PER_BLOCK
 #define IMU_FIFO_WORDS_PER_PAIR 2U
 #define IMU_FIFO_BLOCK_WORDS \
   (IMU_FIFO_PAIRS_PER_BLOCK * IMU_FIFO_WORDS_PER_PAIR)
 #define IMU_FIFO_WATERMARK_WORDS IMU_FIFO_BLOCK_WORDS
 #define IMU_DATA_WAKE_EXTI_MASK (1U << PAL_PAD(LINE_WKUP1))
+#define MAG_MISSED_RECOVERY_THRESHOLD 16U
 
 typedef struct {
     int32_t timestamp;
@@ -63,17 +64,19 @@ bool sensorsHaveCalibration(void)
 // check if these variables can be noinit
 
 static unsigned int empty_calibration_sample_logs;
-static int16_t latest_pressure;
+static int32_t latest_pressure;
 static int16_t latest_rawtemp;
-static int16_t latest_mx;
-static int16_t latest_my;
-static int16_t latest_mz;
+static int32_t latest_mx;
+static int32_t latest_my;
+static int32_t latest_mz;
 static bool have_pressure_sample;
 static bool have_mag_sample;
 static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_BLOCK];
 static uint16_t block_sample_count;
 static uint16_t environment_block_counter;
-static uint16_t environment_block_divisor;
+static uint16_t mag_block_divisor;
+static uint16_t consecutive_mag_misses;
+static ak09940_rate_t configured_mag_rate;
 
 static void enable_data_collection_wake_event(void)
 {
@@ -115,16 +118,6 @@ static int16_t clamp_i16(int32_t value)
   return (int16_t)value;
 }
 
-static int16_t compact_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
-{
-  return clamp_i16(decode_mag_18bit(l, m, h) >> 2);
-}
-
-static int16_t compact_pressure_raw(int32_t pressure)
-{
-  return clamp_i16(pressure >> 8);
-}
-
 static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -148,18 +141,21 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
   case LSM6DSV16X_TRIG_ODR_50HZ:
     return LPS22HH_ODR_10HZ;
   case LSM6DSV16X_TRIG_ODR_100HZ:
+    return LPS22HH_ODR_25HZ;
   case LSM6DSV16X_TRIG_ODR_200HZ:
     return LPS22HH_ODR_25HZ;
   case LSM6DSV16X_TRIG_ODR_400HZ:
-  case LSM6DSV16X_TRIG_ODR_800HZ:
-  case LSM6DSV16X_TRIG_ODR_1600HZ:
     return LPS22HH_ODR_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return LPS22HH_ODR_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return LPS22HH_ODR_200HZ;
   default:
     return LPS22HH_ODR_50HZ;
   }
 }
 
-static uint16_t select_environment_block_divisor(lsm6dsv16x_trig_odr_t imu_odr)
+static uint16_t select_mag_block_divisor(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
   case LSM6DSV16X_TRIG_ODR_800HZ:
@@ -181,7 +177,8 @@ static void reset_environment_cache(void)
   have_pressure_sample = false;
   have_mag_sample = false;
   environment_block_counter = 0U;
-  environment_block_divisor = 1U;
+  mag_block_divisor = 1U;
+  consecutive_mag_misses = 0U;
 }
 
 static void reset_imu_block_cache(void)
@@ -208,6 +205,54 @@ static void init_pressure_data_ready_line(void)
 static bool pressure_data_ready(void)
 {
   return palReadLine(LINE_LPS_DRDY) == PAL_HIGH;
+}
+
+static bool pressure_sample_ready(void)
+{
+  if (pressure_data_ready())
+    return true;
+
+  return lps22hh_data_ready_device(TAG_PRESSURE_DEVICE);
+}
+
+static bool configure_mag_collection(bool reset_first)
+{
+  bool ok = true;
+
+  ak09940aDeviceBegin(TAG_MAG_DEVICE);
+  if (reset_first && (ak09940aReset(TAG_MAG_DEVICE) != MSG_OK)) {
+    debug_log_printf("IMUTag collection: AK09940A reset failed\r\n");
+    ok = false;
+  }
+  if (ok && ak09940aInitContinuous(TAG_MAG_DEVICE, configured_mag_rate,
+                                   AK09940_DRIVE_LOW_NOISE_2,
+                                   AK09940_TEMP_DISABLED) != MSG_OK) {
+    debug_log_printf("IMUTag collection: AK09940A init failed\r\n");
+    ok = false;
+  }
+  ak09940aDeviceEnd(TAG_MAG_DEVICE);
+
+  if (ok)
+    consecutive_mag_misses = 0U;
+  return ok;
+}
+
+static void record_due_mag_sample(bool sampled)
+{
+  if (sampled) {
+    consecutive_mag_misses = 0U;
+    return;
+  }
+
+  if (consecutive_mag_misses < MAG_MISSED_RECOVERY_THRESHOLD)
+    consecutive_mag_misses++;
+
+  if (consecutive_mag_misses >= MAG_MISSED_RECOVERY_THRESHOLD) {
+    debug_log_printf("IMUTag collection: recovering AK09940A after %u misses\r\n",
+                     (unsigned)consecutive_mag_misses);
+    (void)configure_mag_collection(true);
+    consecutive_mag_misses = 0U;
+  }
 }
 
 static bool read_mag_payload_if_ready(uint8_t *buf)
@@ -243,9 +288,10 @@ static bool update_latest_mag(void)
   if (!read_mag_payload_if_ready(buf))
     return false;
 
-  latest_mx = compact_mag_18bit(buf[0], buf[1], buf[2]);
-  latest_my = compact_mag_18bit(buf[3], buf[4], buf[5]);
-  latest_mz = compact_mag_18bit(buf[6], buf[7], buf[8]);
+  latest_mx = decode_mag_18bit(buf[0], buf[1], buf[2]);
+  latest_my = decode_mag_18bit(buf[3], buf[4], buf[5]);
+  latest_mz = decode_mag_18bit(buf[6], buf[7], buf[8]);
+
   have_mag_sample = true;
   return true;
 }
@@ -256,12 +302,12 @@ static bool update_latest_pressure(void)
   int32_t temperature;
   int rc;
 
-  if (!pressure_data_ready())
+  if (!pressure_sample_ready())
     return false;
 
   rc = lps22hh_read_raw_device(TAG_PRESSURE_DEVICE, &pressure, &temperature);
   if (rc == 0) {
-    latest_pressure = compact_pressure_raw(pressure);
+    latest_pressure = pressure;
     latest_rawtemp = clamp_i16(temperature);
     have_pressure_sample = true;
     return true;
@@ -287,8 +333,9 @@ bool sensorSample(RawSensorData *data){
  * @brief Configure continuous collection sensors.
  *
  * The IMU FIFO watermark is the block pacing source. Magnetometer and pressure
- * run freely at the lowest useful supported rate above one sample per ten IMU
- * samples, and sampleDataCollection() reads their latest values per block.
+ * run freely at the lowest useful supported rate for each stream. Pressure
+ * is configured up to one sample per 8-IMU-sample log block; magnetometer
+ * remains capped near 50 Hz because faster heading samples add little value.
  *
  * @return true when the configured collection mode was accepted.
  */
@@ -311,21 +358,17 @@ bool initDataCollection(void)
   trig_cfg.xl_fs = xl_fs;
   trig_cfg.g_fs = g_fs;
   mag_rate = select_mag_rate(imu_odr);
+  configured_mag_rate = mag_rate;
   pressure_rate = select_pressure_rate(imu_odr);
   reset_environment_cache();
-  environment_block_divisor = select_environment_block_divisor(imu_odr);
+  mag_block_divisor = select_mag_block_divisor(imu_odr);
   reset_imu_block_cache();
   init_mag_data_ready_line();
   init_pressure_data_ready_line();
 
-  ak09940aDeviceBegin(TAG_MAG_DEVICE);
-  if (ak09940aInitContinuous(TAG_MAG_DEVICE, mag_rate,
-                             AK09940_DRIVE_LOW_NOISE_2,
-                             AK09940_TEMP_DISABLED) != MSG_OK) {
-    debug_log_printf("IMUTag collection: AK09940A init failed\r\n");
+  if (!configure_mag_collection(true)) {
     ok = false;
   }
-  ak09940aDeviceEnd(TAG_MAG_DEVICE);
 
   if (lps22hh_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate,
                                        LPS22HH_LPF_DISABLE) != 0) {
@@ -347,7 +390,7 @@ bool initDataCollection(void)
  * @brief Fill one log block from the IMU FIFO and latest environment samples.
  *
  * @param[out] data Destination log block.
- * @return true when ten accel/gyro pairs were copied into the block.
+ * @return true when one complete block of accel/gyro pairs was copied.
  */
 bool sampleDataCollection(t_DataLog *data)
 {
@@ -360,10 +403,6 @@ bool sampleDataCollection(t_DataLog *data)
     return false;
 
   memset(data, 0, sizeof(*data));
-  data->pressure = IMUTAG_ENV_SKIP_RAW;
-  data->mx = IMUTAG_ENV_SKIP_RAW;
-  data->my = IMUTAG_ENV_SKIP_RAW;
-  data->mz = IMUTAG_ENV_SKIP_RAW;
 
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {
@@ -405,15 +444,21 @@ bool sampleDataCollection(t_DataLog *data)
   }
   reset_imu_block_cache();
 
-  if ((environment_block_counter % environment_block_divisor) == 0U) {
-    if (update_latest_mag()) {
+  if ((environment_block_counter % mag_block_divisor) == 0U) {
+    bool mag_sampled = update_latest_mag();
+    if (mag_sampled) {
+      data->flags |= IMUTAG_BLOCK_MAG_VALID;
       data->mx = latest_mx;
       data->my = latest_my;
       data->mz = latest_mz;
     }
-    if (update_latest_pressure()) {
-      data->pressure = latest_pressure;
-    }
+    record_due_mag_sample(mag_sampled);
+  }
+  if (update_latest_pressure()) {
+    data->flags |= IMUTAG_BLOCK_PRESSURE_VALID |
+                   IMUTAG_BLOCK_PRESSURE_TEMPERATURE_VALID;
+    data->pressure = latest_pressure;
+    data->pressure_temperature = latest_rawtemp;
   }
   environment_block_counter++;
 

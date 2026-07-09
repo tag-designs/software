@@ -215,10 +215,9 @@ struct StreamMetadata
 
 SensorTimeDomain timeDomainForColumn(const QString &time_column)
 {
-    // IMUTag data rows use ElapsedUs, while header-derived streams such as
-    // sensor_temperature use StartElapsedUs. Both are microseconds from the
-    // collection start and must share the elapsed axis for transforms such as
-    // temperature-aware altitude.
+    // IMUTag data rows use ElapsedUs; older header-derived elapsed streams use
+    // StartElapsedUs. Both are microseconds from the collection start and must
+    // share the elapsed axis for transforms such as temperature-aware altitude.
     return time_column.endsWith(QStringLiteral("ElapsedUs"), Qt::CaseInsensitive)
         ? SensorTimeDomain::ElapsedSeconds
         : SensorTimeDomain::EpochSeconds;

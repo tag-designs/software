@@ -241,6 +241,13 @@ const TagRegisterDevice *tagAk09940aDevice(void);
  */
 bool ak09940aCheckWhoami(const TagRegisterDevice *device);
 /**
+ * @brief Soft-reset an AK09940A.
+ *
+ * @param[in] device Magnetometer register descriptor.
+ * @return MSG_OK on success or a register-transport error.
+ */
+msg_t ak09940aReset(const TagRegisterDevice *device);
+/**
  * @brief Put an AK09940A into power-down mode.
  *
  * @param[in] device Magnetometer register descriptor.
