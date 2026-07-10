@@ -12,6 +12,18 @@ Measured 6/14/26 (0d21610)
 
 There's a problem at idle and at finished -- I don't think the devices are shutdown and it doesn't look like there's a clear path where this would happen.  For example, after collecting data, I'm not sure that lptim2 is shut off and the IMU reset.  I don't know about the pressure sensor or magnetometer either.
 
+Measured 7/10/27  (ae40ae7) after implementing sleep mode for dma spi writes
+
+- idle:  8.7uA 
+- 50hz:  778uA
+- 100hz: 890uA
+- 200hz: 1004uA
+- 400hz: 1242uA
+- 800hz: 1648uA
+- 1600hz: 2291uA
+
+It's not clear why the measurements went up.
+
 ## Expected Idle power
 
  - Lsm6dsv16x -- 2.5 uA
