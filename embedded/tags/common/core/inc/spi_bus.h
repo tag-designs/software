@@ -187,7 +187,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device);
  * @param[in] buf Bytes to transmit.
  * @param[in] len Number of bytes to transmit.
  */
-void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
+bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
 
 /**
  * @brief Read bytes by clocking the descriptor's dummy byte.
@@ -196,7 +196,7 @@ void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
  * @param[out] buf Buffer that receives bytes from the device.
  * @param[in] len Number of bytes to read.
  */
-void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
+bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
 
 /**
  * @brief Pipelined SPI write for devices proven safe with queued transfers.
@@ -205,7 +205,7 @@ void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
  * @param[in] buf Bytes to transmit.
  * @param[in] len Number of bytes to transmit.
  */
-void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
+bool tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
                           uint32_t len);
 
 /**
@@ -215,7 +215,7 @@ void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
  * @param[out] buf Buffer that receives bytes from the device.
  * @param[in] len Number of bytes to read.
  */
-void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
+bool tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
                          uint32_t len);
 
 /**
@@ -245,12 +245,15 @@ void tagSpiDeselect(const TagSpiDevice *device);
  * @param[in] buf Bytes to transmit.
  * @param[in] len Number of bytes to transmit.
  */
-static inline void tagSpiBusWrite(const TagSpiDevice *device,
+static inline bool tagSpiBusWrite(const TagSpiDevice *device,
                                   const uint8_t *buf, uint32_t len)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagSpiWrite(device, buf, len);
+  ok = tagSpiWrite(device, buf, len);
   tagSpiDeselect(device);
+  return ok;
 }
 
 /**
@@ -260,12 +263,15 @@ static inline void tagSpiBusWrite(const TagSpiDevice *device,
  * @param[out] buf Buffer that receives bytes from the device.
  * @param[in] len Number of bytes to read.
  */
-static inline void tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf,
+static inline bool tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf,
                                  uint32_t len)
 {
+  bool ok;
+
   tagSpiSelect(device);
-  tagSpiRead(device, buf, len);
+  ok = tagSpiRead(device, buf, len);
   tagSpiDeselect(device);
+  return ok;
 }
 /** @} */
 /** @} */

@@ -41,12 +41,198 @@ int32_t timestamp;
 uint32_t timestamp_millis;
 bool rtcInitializedAtBoot;
 
-volatile BackupState *const pState = (BackupState *)&RTC->BKP0R;
+#if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
+#define TAG_BACKUP_STATE_REG0 (&TAMP->BKP0R)
+#else
+#define TAG_BACKUP_STATE_REG0 (&RTC->BKP0R)
+#endif
+
+volatile BackupState *const pState = (BackupState *)TAG_BACKUP_STATE_REG0;
 /** @} */
+
+static inline bool tagPowerStandbyFlagSet(void)
+{
+#if defined(PWR_SR1_SBF)
+  return (PWR->SR1 & PWR_SR1_SBF) != 0;
+#elif defined(PWR_SR_SBF)
+  return (PWR->SR & PWR_SR_SBF) != 0;
+#else
+  return false;
+#endif
+}
+
+static inline void tagPowerClearStandbyFlag(void)
+{
+#if defined(PWR_SCR_CSBF)
+  PWR->SCR = PWR_SCR_CSBF;
+#elif defined(PWR_SR_CSSF)
+  PWR->SR = PWR_SR_CSSF;
+#endif
+}
+
+static inline void tagPowerClearWakeFlags(void)
+{
+#if defined(PWR_SCR_CWUF)
+  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+#elif defined(PWR_WUSCR_CWUF1)
+  uint32_t clear = 0U;
+#if defined(PWR_WUSCR_CWUF1)
+  clear |= PWR_WUSCR_CWUF1;
+#endif
+#if defined(PWR_WUSCR_CWUF2)
+  clear |= PWR_WUSCR_CWUF2;
+#endif
+#if defined(PWR_WUSCR_CWUF3)
+  clear |= PWR_WUSCR_CWUF3;
+#endif
+#if defined(PWR_WUSCR_CWUF4)
+  clear |= PWR_WUSCR_CWUF4;
+#endif
+#if defined(PWR_WUSCR_CWUF5)
+  clear |= PWR_WUSCR_CWUF5;
+#endif
+#if defined(PWR_WUSCR_CWUF6)
+  clear |= PWR_WUSCR_CWUF6;
+#endif
+#if defined(PWR_WUSCR_CWUF7)
+  clear |= PWR_WUSCR_CWUF7;
+#endif
+#if defined(PWR_WUSCR_CWUF8)
+  clear |= PWR_WUSCR_CWUF8;
+#endif
+#if defined(PWR_WUSCR_CWUF9)
+  clear |= PWR_WUSCR_CWUF9;
+#endif
+#if defined(PWR_WUSCR_CWUF10)
+  clear |= PWR_WUSCR_CWUF10;
+#endif
+  WRITE_REG(PWR->WUSCR, clear);
+#endif
+}
+
+static inline bool tagRtcInitialized(void)
+{
+#if defined(RTC_ISR_INITS)
+  return (RTC->ISR & RTC_ISR_INITS) != 0;
+#elif defined(RTC_ICSR_INITS)
+  return (RTC->ICSR & RTC_ICSR_INITS) != 0;
+#else
+  return false;
+#endif
+}
+
+static inline void tagPowerReleaseStandbyPulls(void)
+{
+#if defined(PWR_CR3_APC)
+  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
+#elif defined(PWR_APCR_APC)
+  CLEAR_BIT(PWR->APCR, PWR_APCR_APC);
+#endif
+}
+
+static eventmask_t tagRtcEventsAndClear(void)
+{
+#if defined(RTC_ISR_TSF)
+  uint32_t clear = (0U
+           | RTC_ISR_TSF
+           | RTC_ISR_TSOVF
+#if defined(RTC_ISR_TAMP1F)
+           | RTC_ISR_TAMP1F
+#endif
+#if defined(RTC_ISR_TAMP2F)
+           | RTC_ISR_TAMP2F
+#endif
+#if defined(RTC_ISR_TAMP3F)
+           | RTC_ISR_TAMP3F
+#endif
+#if defined(RTC_ISR_WUTF)
+           | RTC_ISR_WUTF
+#endif
+#if defined(RTC_ISR_ALRAF)
+           | RTC_ISR_ALRAF
+#endif
+#if defined(RTC_ISR_ALRBF)
+           | RTC_ISR_ALRBF
+#endif
+          );
+
+  uint32_t isr = RTCD1.rtc->ISR;
+  RTCD1.rtc->ISR = (isr & ~clear);
+  return EVT_RTC_MASK(isr);
+#elif defined(RTC_SR_TSF) && defined(RTC_SCR_CTSF)
+  uint32_t sr = RTCD1.rtc->SR;
+  uint32_t clear = 0U;
+  eventmask_t events = 0U;
+
+#if defined(RTC_SR_TSF) && defined(RTC_SCR_CTSF)
+  if ((sr & RTC_SR_TSF) != 0)
+    clear |= RTC_SCR_CTSF;
+#endif
+#if defined(RTC_SR_TSOVF) && defined(RTC_SCR_CTSOVF)
+  if ((sr & RTC_SR_TSOVF) != 0)
+    clear |= RTC_SCR_CTSOVF;
+#endif
+#if defined(RTC_SR_ALRAF) && defined(RTC_SCR_CALRAF)
+  if ((sr & RTC_SR_ALRAF) != 0) {
+    clear |= RTC_SCR_CALRAF;
+    events |= EVT_RTC_ALRAF;
+  }
+#endif
+#if defined(RTC_SR_ALRBF) && defined(RTC_SCR_CALRBF)
+  if ((sr & RTC_SR_ALRBF) != 0) {
+    clear |= RTC_SCR_CALRBF;
+    events |= EVT_RTC_ALRBF;
+  }
+#endif
+#if defined(RTC_SR_WUTF) && defined(RTC_SCR_CWUTF)
+  if ((sr & RTC_SR_WUTF) != 0) {
+    clear |= RTC_SCR_CWUTF;
+    events |= EVT_RTC_WUTF;
+  }
+#endif
+
+  if (clear != 0U)
+    RTCD1.rtc->SCR = clear;
+
+  return events;
+#else
+  return 0U;
+#endif
+}
 
 void tagSystemInitHook(void)
 {
   NVIC_SetPriority(DebugMonitor_IRQn, TAG_DEBUG_MONITOR_PRIORITY);
+}
+
+static void tagBackupStateEnableWrites(void)
+{
+#if defined(RCC_APB1ENR1_RTCAPBEN)
+  RCC->APB1ENR1 |= RCC_APB1ENR1_RTCAPBEN;
+#endif
+#if defined(PWR_DBPR_DBP)
+  PWR->DBPR |= PWR_DBPR_DBP;
+#elif defined(PWR_CR1_DBP)
+  PWR->CR1 |= PWR_CR1_DBP;
+#endif
+}
+
+static void tagResetRuntimeStateForPowerInit(void)
+{
+  pState->state = TagState_IDLE;
+  pState->pages = 0;
+  pState->external_blocks = 0;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+  pState->run_heartbeat = 0;
+  pState->terminal_state = STATE_UNSPECIFIED;
+  pState->terminal_reason = State_EVENT_UNSPECIFIED;
+  pState->header_status = LOGWRITE_OK;
+  pState->header_flasherr = 0;
+  pState->header_page = 0;
+  pState->header_addr = 0;
+  pState->header_retries = 0;
+#endif
+  pState->test_result = TEST_UNSPECIFIED;
 }
 
 /** @name Runtime initialization and reset handling
@@ -68,19 +254,28 @@ void deviceInit(int force)
 
   bool power_init = (pState->resetCause == resetPower) ||
                     (pState->resetCause == resetBrownout);
+  // Monitor attach resets can arrive through the power-init path while backup
+  // state is still valid; preserve persistent fields such as test_result then.
+  bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
+  bool monitor_reset_recovery =
+      retained_state_valid &&
+      (MONCONNECTED ||
+       ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U));
 
-  if (power_init || force)
+  if ((power_init && !monitor_reset_recovery) || force)
   {
     // make sure everything is zeroed
-
-    pState->valid = 0;
-    pState->safe = false;
 
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
 
     if (power_init)
       tagRtcInit();
+
+    pState->valid = 0;
+    pState->safe = false;
+    if (power_init && !retained_state_valid)
+      tagResetRuntimeStateForPowerInit();
 
     TagDevicePowerReason power_reason = TAG_DEVICE_POWER_RUNTIME_DEINIT;
     if (power_init) {
@@ -141,7 +336,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
 
     // not an exit from standby, so must be power on
 
-     if (!(PWR->SR1 & PWR_SR1_SBF))
+     if (!tagPowerStandbyFlagSet())
     {
       resetCause = resetPower;
       break;
@@ -160,11 +355,11 @@ t_resetCause getResetCause(uint32_t rstFlags)
     // Standby is marked, but reset is also ok in safe mode
     // (safe mode marked in backup registers
 
-    if ((PWR->SR1 & PWR_SR1_SBF) || pState->safe)
+    if (tagPowerStandbyFlagSet() || pState->safe)
     {
       resetCause = resetStandby;
       // clear the standby bit
-      PWR->SCR = PWR_SCR_CSBF;
+      tagPowerClearStandbyFlag();
       break;
     }
 
@@ -195,41 +390,11 @@ eventmask_t CheckEvents(void)
   // we may get an extra wakeup, but we won't miss
   // an interrupt
 
-  WRITE_REG(PWR->SCR, PWR_SCR_CWUF);
+  tagPowerClearWakeFlags();
 
   // check and clear RTC alarms
 
-  uint32_t clear = (0U
-           | RTC_ISR_TSF
-           | RTC_ISR_TSOVF
-#if defined(RTC_ISR_TAMP1F)
-           | RTC_ISR_TAMP1F
-#endif
-#if defined(RTC_ISR_TAMP2F)
-           | RTC_ISR_TAMP2F
-#endif
-#if defined(RTC_ISR_TAMP3F)
-           | RTC_ISR_TAMP3F
-#endif
-#if defined(RTC_ISR_WUTF)
-           | RTC_ISR_WUTF
-#endif
-#if defined(RTC_ISR_ALRAF)
-           | RTC_ISR_ALRAF
-#endif
-#if defined(RTC_ISR_ALRBF)
-           | RTC_ISR_ALRBF
-#endif
-          );
-
-// clear only those alarms that are set
-
-  uint32_t isr = RTCD1.rtc->ISR;
-  RTCD1.rtc->ISR = (isr & ~clear);  
-
-// return set alarms as events
-
-  return EVT_RTC_MASK(isr);
+  return tagRtcEventsAndClear();
 }
 /** @} */
 
@@ -250,14 +415,14 @@ int main(void)
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
-  rtcInitializedAtBoot = (RTC->ISR & RTC_ISR_INITS) != 0;
+  rtcInitializedAtBoot = tagRtcInitialized();
 
   halInit();
   chSysInit();
 
   // release the standby pullup/pulldown
 
-  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
+  tagPowerReleaseStandbyPulls();
   tagClearStandbyPulls();
 
   // low power run mode
@@ -266,8 +431,9 @@ int main(void)
   adcInit();
   debug_log_init();
   tagPowerInit();
+  tagBackupStateEnableWrites();
   tagDevicesInit();
-  
+
   tpMain = chThdGetSelfX(); // global pointer to main thread
 
   // save reset cause
@@ -281,9 +447,12 @@ int main(void)
 
   deviceInit(false);
 
-  // Configure RTC to bypass shadow registers
+  // Configure RTC to bypass shadow registers when the calendar is live.
 
-  RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
+  if (tagRtcInitialized())
+  {
+    RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
+  }
 
   // clear deep sleep mask
 
@@ -311,6 +480,7 @@ int main(void)
     {
       pending_events |= monitorServicePending((uint32_t)pending_events);
     }
+
     sleepmode = StateMachine(pending_events);      // process events
 
     // critical section end

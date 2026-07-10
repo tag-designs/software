@@ -37,6 +37,55 @@ static inline uint8_t bin2bcd(uint8_t val)
 }
 /** @} */
 
+static inline void tagRtcEnterInitMode(void)
+{
+#if defined(RCC_APB1ENR1_RTCAPBEN)
+    RCC->APB1ENR1 |= RCC_APB1ENR1_RTCAPBEN;
+#endif
+#if defined(PWR_DBPR_DBP)
+    PWR->DBPR |= PWR_DBPR_DBP;
+#endif
+    RTCD1.rtc->WPR = 0xCA;
+    RTCD1.rtc->WPR = 0x53;
+#if defined(RTC_ISR_INIT)
+    RTCD1.rtc->ISR |= RTC_ISR_INIT;
+#elif defined(RTC_ICSR_INIT)
+    RTCD1.rtc->ICSR |= RTC_ICSR_INIT;
+#endif
+}
+
+static inline bool tagRtcInitModeReady(void)
+{
+#if defined(RTC_ISR_INITF)
+    return (RTCD1.rtc->ISR & RTC_ISR_INITF) != 0;
+#elif defined(RTC_ICSR_INITF)
+    return (RTCD1.rtc->ICSR & RTC_ICSR_INITF) != 0;
+#else
+    return true;
+#endif
+}
+
+static inline void tagRtcLeaveInitMode(void)
+{
+#if defined(RTC_ISR_INIT)
+    RTCD1.rtc->ISR &= ~RTC_ISR_INIT;
+#elif defined(RTC_ICSR_INIT)
+    RTCD1.rtc->ICSR &= ~RTC_ICSR_INIT;
+#endif
+}
+
+static bool tagRtcWaitForInitMode(void)
+{
+    for (uint32_t timeout = 10000; timeout > 0; timeout--)
+    {
+        if (tagRtcInitModeReady())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** @name RV3028 register access
  * Register and EEPROM helpers keep the calendar code independent of the I2C
  * transaction wrapper used by the current tag.
@@ -204,7 +253,7 @@ bool rv3028Init(const TagRtcDevice *device)
         rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
                          RV3028_EEPROM_CMD_READ);
         rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1);
-        if ((tmp == clkout) && (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
+        if ((tmp == clkout) && (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
         {
             result = true;
         }
@@ -221,12 +270,18 @@ bool rv3028Init(const TagRtcDevice *device)
     {
         RTCD1.rtc->WPR = 0xCA;
         RTCD1.rtc->WPR = 0x53;
-        RTCD1.rtc->ISR |= RTC_ISR_INIT;
-        while ((RTCD1.rtc->ISR & RTC_ISR_INITF) == 0)
-            ;
-        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
-        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
-        RTCD1.rtc->ISR &= ~RTC_ISR_INIT;
+        tagRtcEnterInitMode();
+        if (tagRtcWaitForInitMode())
+        {
+            RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+            RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+        }
+        else
+        {
+            result = false;
+            debug_log_printf("STM32 RTC init mode timeout\r\n");
+        }
+        tagRtcLeaveInitMode();
     }
     return result;
 }
@@ -294,6 +349,14 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
         ret = rv3028GetReg(device, RV3028_STATUS, &status, 1);
         if ((ret != MSG_OK) || (status & RV3028_STATUS_PORF))
         {
+            if (ret == MSG_OK)
+            {
+                debug_log_printf("rv3028 PORF set status=0x%02x\r\n", status);
+            }
+            else
+            {
+                debug_log_printf("rv3028 status read failed ret=%d\r\n", ret);
+            }
             ret = (ret == MSG_OK) ? -1 : ret;
             break;
         }
@@ -317,7 +380,8 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 
 
     if (ret != MSG_OK){
-        debug_log_printf("Error in rv3028 gettRTCDateTime\r\n");
+        debug_log_printf("Error in rv3028 getRTCDateTime ret=%d status=0x%02x\r\n",
+                         ret, status);
 
     }
     return ret;

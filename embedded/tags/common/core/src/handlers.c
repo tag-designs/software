@@ -116,6 +116,18 @@ static bool monitor_timer_initialized = false;
 static bool monitor_clock_fast = false;
 #endif
 
+static inline bool monitorRequestPending(void)
+{
+  return (CoreDebug->DEMCR &
+          (CoreDebug_DEMCR_MON_REQ_Msk | CoreDebug_DEMCR_MON_PEND_Msk)) != 0U;
+}
+
+static inline void monitorClearRequest(void)
+{
+  CoreDebug->DEMCR &= ~(CoreDebug_DEMCR_MON_REQ_Msk |
+                        CoreDebug_DEMCR_MON_PEND_Msk);
+}
+
 static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
 {
   (void)vtp;
@@ -163,7 +175,7 @@ static void monitorStopI(bool timed_out)
 
   if (timed_out)
     CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+  monitorClearRequest();
 }
 
 uint32_t monitorServicePending(uint32_t monitor_events)
@@ -176,12 +188,9 @@ uint32_t monitorServicePending(uint32_t monitor_events)
   if (monitor_enabled && monitor_pending)
   {
     monitor_pending = false;
-    if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk)
-    {
-      len = monitor_operand;
-      monitorDisarmTimeoutI();
-      do_eval = true;
-    }
+    len = monitor_operand;
+    monitorDisarmTimeoutI();
+    do_eval = true;
   }
   else if ((monitor_events & EVT_MONITOR_TIMEOUT) && monitor_timeout_pending)
   {
@@ -198,7 +207,7 @@ uint32_t monitorServicePending(uint32_t monitor_events)
 
   chSysLock();
   CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+  monitorClearRequest();
   if (monitor_enabled)
     monitorArmTimeoutI();
   chSysUnlock();
@@ -229,9 +238,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
 
   // could use operand for packet length
 
-  if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk) {
-    CoreDebug->DCRDR = 0;
-
+  if (monitorRequestPending()) {
     switch (operation) {
       case TAG_MONITORINFO:
         switch (operand) {
@@ -248,7 +255,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
             CoreDebug->DCRDR = (uint32_t) SHAStr;
             break;
         }
-        (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        monitorClearRequest();
         break;
       case MONITORSTART:
         chSysLockFromISR();
@@ -264,7 +271,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
         }
 #endif
         CoreDebug->DCRDR = 1;
-        (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        monitorClearRequest();
         if (tpMain)
           chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
         chSysUnlockFromISR();
@@ -284,12 +291,12 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
           if (tpMain)
             chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
         } else {
-          (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+          monitorClearRequest();
         }
         chSysUnlockFromISR();
         break;
       default:
-        (CoreDebug->DEMCR) &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+        monitorClearRequest();
         break;
     }
   }

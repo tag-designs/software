@@ -93,9 +93,10 @@ bool __attribute__((weak)) tagDevicesConfigureWakeupSources(uint32_t state,
   (void)state;
   (void)is_active;
 
-  // Enable internal wakeup source
-
+#if defined(PWR_CR3_EIWF_Msk)
+  /* Enable STM32L4 internal wakeup source when the part exposes it. */
   SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
   return true;
 }
 

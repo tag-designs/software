@@ -86,7 +86,7 @@ TestResult tag_test_lis2du12(const void *context);
  * @brief Test LSM6DSV16X IMU accelerometer communication and self-test.
  *
  * @return ALL_PASSED when the accelerometer self-test passes, otherwise the
- * accel-family failure result.
+ * device-specific failure result.
  */
 TestResult tag_test_lsm6dsv16x(const void *context);
 
@@ -101,7 +101,8 @@ TestResult tag_test_ak09940a(const void *context);
 /**
  * @brief Test RTC communication and timekeeping readiness.
  *
- * @return ALL_PASSED when the RTC passes, otherwise RTC_FAILED.
+ * @return ALL_PASSED when the RTC passes, otherwise the selected RTC device's
+ * failure result.
  */
 TestResult tag_test_rtc(const void *context);
 
@@ -123,7 +124,8 @@ TestResult tag_test_lps27(const void *context);
 /**
  * @brief Test LPS22HH pressure sensor communication and readiness.
  *
- * @return ALL_PASSED when the pressure sensor passes, otherwise LPS22_FAILED.
+ * @return ALL_PASSED when the pressure sensor passes, otherwise
+ * LPS22HH_FAILED.
  */
 TestResult tag_test_lps22hh(const void *context);
 /** @} */

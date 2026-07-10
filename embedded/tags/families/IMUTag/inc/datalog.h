@@ -13,7 +13,23 @@
 
 typedef t_ImuTagDataLog t_DataLog;
 typedef t_ImuTagDataHeader t_DataHeader;
+
+#if !defined(IMUTAG_STM32U3_FLASH)
+#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
+#define IMUTAG_STM32U3_FLASH 1
+#else
+#define IMUTAG_STM32U3_FLASH 0
+#endif
+#endif
+
+#if IMUTAG_STM32U3_FLASH
+typedef struct {
+  t_DataHeader header;
+  uint32_t flash_padding[2];
+} t_InternalDataHeader __attribute__((aligned(16)));
+#else
 typedef t_DataHeader t_InternalDataHeader;
+#endif
 
 static_assert(sizeof(t_DataLog) == 128, "imudata size must be exactly 128 bytes!");
 

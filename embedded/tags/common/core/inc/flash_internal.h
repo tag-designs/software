@@ -36,6 +36,18 @@ void FLASH_Unlock(void);
 void FLASH_PageErase(uint32_t Page);
 
 /**
+ * @brief Return the STM32 internal flash erase page size in bytes.
+ */
+uint32_t FLASH_PageSize(void);
+
+/**
+ * @brief Erase the internal flash page containing an absolute flash address.
+ *
+ * @param[in] Address Address in STM32 internal flash.
+ */
+void FLASH_PageEraseAddress(uint32_t Address);
+
+/**
  * @brief Program one aligned STM32 double-word.
  *
  * @param[in,out] Address Aligned destination address in internal flash.

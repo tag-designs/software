@@ -10,6 +10,14 @@
 #include "core_sync.h"
 #include "gpio_utils.h"
 
+#ifndef TAG_SPI_POLL_LIMIT
+#define TAG_SPI_POLL_LIMIT 100000U
+#endif
+
+#ifndef TAG_SPI_ERROR_BYTE
+#define TAG_SPI_ERROR_BYTE 0xffU
+#endif
+
 /** @name SPI bus implementation overview
  * Polling SPI byte transfers shared by simple peripheral drivers.
  *
@@ -330,9 +338,14 @@ void tagSpiEnableActiveAfterStop(void)
     (defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5) ||                         \
     (defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6)
 const TagSpiConfig tagSpiDefaultConfig = {
+#if defined(SPI_CR1_MSTR)
     .cr1 = SPI_CR1_MSTR,
     .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
            SPI_CR2_DS_1 | SPI_CR2_DS_0,
+#else
+    .cr1 = 0,
+    .cr2 = 0,
+#endif
 };
 
 #else
@@ -357,10 +370,20 @@ static void tagSpiDeviceEnable(const TagSpiDevice *device)
 
   tagSpiPeripheralEnableClock(device->spi);
 
+#if defined(SPI_TXDR_TXDR)
+  device->spi->CR1 = 0;
+  device->spi->CR2 = 0;
+  device->spi->IER = 0;
+  device->spi->IFCR = 0xFFFFFFFFU;
+  device->spi->CFG1 = (7U << SPI_CFG1_DSIZE_Pos);
+  device->spi->CFG2 = SPI_CFG2_MASTER | SPI_CFG2_SSOE;
+  device->spi->CR1 = SPI_CR1_MASRX | SPI_CR1_SPE;
+#else
   device->spi->CR1 = 0;
   device->spi->CR2 = config->cr2;
   device->spi->CR1 = config->cr1;
   device->spi->CR1 |= SPI_CR1_SPE;
+#endif
 
   tagMarkSpiOn(device->spi);
 }
@@ -372,8 +395,17 @@ static void tagSpiDeviceEnable(const TagSpiDevice *device)
  */
 static void tagSpiDeviceDisable(const TagSpiDevice *device)
 {
+#if defined(SPI_TXDR_TXDR)
   device->spi->CR1 = 0;
   device->spi->CR2 = 0;
+  device->spi->IER = 0;
+  device->spi->CFG1 = 0;
+  device->spi->CFG2 = 0;
+  device->spi->IFCR = 0xFFFFFFFFU;
+#else
+  device->spi->CR1 = 0;
+  device->spi->CR2 = 0;
+#endif
 
   tagMarkSpiOff(device->spi);
 }
@@ -503,6 +535,118 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
  * have been proven safe on hardware.
  * @{
  */
+static bool tagSpiHasTransferError(SPI_TypeDef *spi)
+{
+#if defined(SPI_SR_OVR)
+  if ((spi->SR & SPI_SR_OVR) != 0U)
+    return true;
+#endif
+#if defined(SPI_SR_MODF)
+  if ((spi->SR & SPI_SR_MODF) != 0U)
+    return true;
+#endif
+  return false;
+}
+
+static void tagSpiRecover(SPI_TypeDef *spi)
+{
+  volatile uint32_t dummy;
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
+
+  spi->CR1 &= ~SPI_CR1_SPE;
+
+#if defined(SPI_TXDR_TXDR)
+  while (((spi->SR & SPI_SR_RXP) != 0U) && (timeout-- > 0U))
+    dummy = spi->RXDR;
+
+  dummy = spi->RXDR;
+  dummy = spi->SR;
+  spi->IFCR = 0xFFFFFFFFU;
+#else
+  while (((spi->SR & SPI_SR_RXNE) != 0U) && (timeout-- > 0U))
+    dummy = spi->DR;
+
+  dummy = spi->DR;
+  dummy = spi->SR;
+#endif
+  (void)dummy;
+
+  spi->CR1 |= SPI_CR1_SPE;
+}
+
+static bool tagSpiWaitSet(SPI_TypeDef *spi, uint32_t mask)
+{
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
+
+  while ((spi->SR & mask) == 0U)
+  {
+    if (tagSpiHasTransferError(spi) || (timeout-- == 0U))
+    {
+      tagSpiRecover(spi);
+      return false;
+    }
+  }
+  return true;
+}
+
+#if defined(SPI_TXDR_TXDR)
+static bool tagSpiWaitClearCr1(SPI_TypeDef *spi, uint32_t mask)
+{
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
+
+  while ((spi->CR1 & mask) != 0U)
+  {
+    if (tagSpiHasTransferError(spi) || (timeout-- == 0U))
+    {
+      tagSpiRecover(spi);
+      return false;
+    }
+  }
+  return true;
+}
+#endif
+
+#if defined(SPI_TXDR_TXDR)
+static bool tagSpiExchangeByte(SPI_TypeDef *spi, uint8_t tx, uint8_t *rx)
+{
+  volatile uint8_t *txdr = (volatile uint8_t *)&spi->TXDR;
+  volatile uint8_t *rxdr = (volatile uint8_t *)&spi->RXDR;
+
+  spi->CR1 |= SPI_CR1_CSTART;
+  if (!tagSpiWaitSet(spi, SPI_SR_TXP))
+    return false;
+  *txdr = tx;
+  if (!tagSpiWaitSet(spi, SPI_SR_RXP))
+    return false;
+  *rx = *rxdr;
+  spi->CR1 |= SPI_CR1_CSUSP;
+  if (!tagSpiWaitClearCr1(spi, SPI_CR1_CSTART))
+    return false;
+  spi->IFCR = 0xFFFFFFFFU;
+
+  return true;
+}
+#else
+static bool tagSpiExchangeByte(SPI_TypeDef *spi, uint8_t tx, uint8_t *rx)
+{
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+
+  if (!tagSpiWaitSet(spi, SPI_SR_TXE))
+    return false;
+  *spidr = tx;
+  if (!tagSpiWaitSet(spi, SPI_SR_RXNE))
+    return false;
+  *rx = *spidr;
+  return true;
+}
+#endif
+
+static void tagSpiFillReadFailure(uint8_t *buf, uint32_t len)
+{
+  while (len--)
+    *buf++ = TAG_SPI_ERROR_BYTE;
+}
+
 /**
  * @brief Pipelined SPI write for devices proven safe with queued transfers.
  *
@@ -510,23 +654,50 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
  * @param[in] buf Bytes to transmit.
  * @param[in] len Number of bytes to transmit.
  */
-void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
+bool tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
                           uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+  uint8_t rx;
+
+  while (len--)
+  {
+    if (!tagSpiExchangeByte(spi, *buf++, &rx))
+      return false;
+  }
+  return true;
+#else
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t read_len = len;
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
 
   while (len || read_len) {
+    bool progress = false;
+
     while (len && (spi->SR & SPI_SR_TXE)) {
       *spidr = *buf++;
       len--;
+      progress = true;
     }
     while (read_len && (spi->SR & SPI_SR_RXNE)) {
       (void)*spidr;
       read_len--;
+      progress = true;
+    }
+    if (tagSpiHasTransferError(spi)) {
+      tagSpiRecover(spi);
+      return false;
+    }
+    if (progress) {
+      timeout = TAG_SPI_POLL_LIMIT;
+    } else if (timeout-- == 0U) {
+      tagSpiRecover(spi);
+      return false;
     }
   }
+  return true;
+#endif
 }
 
 /**
@@ -536,23 +707,54 @@ void tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
  * @param[out] buf Buffer that receives bytes from the device.
  * @param[in] len Number of bytes to read.
  */
-void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
+bool tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
                          uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if defined(SPI_TXDR_TXDR)
+  while (len--)
+  {
+    if (!tagSpiExchangeByte(spi, device->dummy, buf))
+    {
+      tagSpiFillReadFailure(buf, len + 1U);
+      return false;
+    }
+    buf++;
+  }
+  return true;
+#else
   volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
   uint32_t read_len = len;
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
 
   while (len || read_len) {
+    bool progress = false;
+
     while (len && (spi->SR & SPI_SR_TXE)) {
       *spidr = device->dummy;
       len--;
+      progress = true;
     }
     while (read_len && (spi->SR & SPI_SR_RXNE)) {
       *buf++ = *spidr;
       read_len--;
+      progress = true;
+    }
+    if (tagSpiHasTransferError(spi)) {
+      tagSpiRecover(spi);
+      tagSpiFillReadFailure(buf, read_len);
+      return false;
+    }
+    if (progress) {
+      timeout = TAG_SPI_POLL_LIMIT;
+    } else if (timeout-- == 0U) {
+      tagSpiRecover(spi);
+      tagSpiFillReadFailure(buf, read_len);
+      return false;
     }
   }
+  return true;
+#endif
 }
 
 /**
@@ -562,20 +764,18 @@ void tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
  * @param[in] buf Bytes to transmit.
  * @param[in] len Number of bytes to transmit.
  */
-void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
+bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
-  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+  uint8_t rx;
 
   while (len--)
   {
-    *spidr = *buf++;
-    while ((spi->SR & SPI_SR_RXNE) == 0)
-    {
-      ;
-    }
-    (void)*spidr;
+    if (!tagSpiExchangeByte(spi, *buf++, &rx))
+      return false;
   }
+
+  return true;
 }
 
 /**
@@ -585,20 +785,21 @@ void tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
  * @param[out] buf Buffer that receives bytes from the device.
  * @param[in] len Number of bytes to read.
  */
-void tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
+bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
-  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
 
   while (len--)
   {
-    *spidr = device->dummy;
-    while ((spi->SR & SPI_SR_RXNE) == 0)
+    if (!tagSpiExchangeByte(spi, device->dummy, buf))
     {
-      ;
+      tagSpiFillReadFailure(buf, len + 1U);
+      return false;
     }
-    *buf++ = *spidr;
+    buf++;
   }
+
+  return true;
 }
 
 /**

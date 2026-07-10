@@ -1,0 +1,256 @@
+{
+  "board_name": "IMUTag U375",
+  "board_id": "IMUTagU375",
+  "elements": {
+    "configuration_settings/output_path": "..",
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32U375xx"
+  },
+  "attributes": {
+    "clocks": {
+      "HSEFrequency": "0",
+      "HSEBypass": "false",
+      "LSEFrequency": "32768",
+      "LSEBypass": "false",
+      "LSEDrive": "0 Low Drive",
+      "VDD": "300"
+    }
+  },
+  "pins": {
+    "GPIOA": {
+      "pin0": {
+        "ID": "WKUP1",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin1": {
+        "ID": "LED1",
+        "Type": "OpenDrain",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin2": {
+        "ID": "MAG_TRG",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Medium",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin3": {
+        "ID": "MAG_CS",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "Standby": "PULLUP"
+      },
+      "pin4": {
+        "ID": "IMU_TRG_TEST",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Medium",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "14"
+      },
+      "pin5": {
+        "ID": "ACCEL_LPS_MAG_SCK",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin6": {
+        "ID": "ACCEL_MISO",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin7": {
+        "ID": "ACCEL_MAG_MOSI",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin8": {
+        "ID": "ACCEL_TRG",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Medium",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "14"
+      },
+      "pin9": {
+        "ID": "LPS_DRDY",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin10": {
+        "ID": "LPS_CS",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "Standby": "PULLUP"
+      },
+      "pin11": {
+        "ID": "LPS_MAG_MISO",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin12": {
+        "ID": "LPS_MOSI",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin13": {
+        "ID": "SWDIO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      },
+      "pin14": {
+        "ID": "SWCLK",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullDown",
+        "Mode": "Alternate",
+        "Alternate": "0"
+      },
+      "pin15": {
+        "ID": "FLASH_nCS",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "Standby": "PULLUP"
+      }
+    },
+    "GPIOB": {
+      "pin0": {
+        "ID": "ACCEL_CS",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "Standby": "PULLUP"
+      },
+      "pin1": {
+        "ID": "LED2",
+        "Type": "OpenDrain",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0"
+      },
+      "pin3": {
+        "ID": "FLASH_SCK",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin4": {
+        "ID": "FLASH_MISO",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "5"
+      },
+      "pin5": {
+        "ID": "FLASH_MOSI",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "High",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
+      },
+      "pin6": {
+        "ID": "RTC_SDA",
+        "Type": "OpenDrain",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Output",
+        "Alternate": "4",
+        "Standby": "PULLUP"
+      },
+      "pin7": {
+        "ID": "RTC_SCL",
+        "Type": "OpenDrain",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullUp",
+        "Mode": "Output",
+        "Alternate": "4",
+        "Standby": "PULLUP"
+      }
+    },
+    "GPIOC": {
+      "pin14": {
+        "ID": "CLKIN",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Input",
+        "Alternate": "0"
+      }
+    }
+  }
+}
