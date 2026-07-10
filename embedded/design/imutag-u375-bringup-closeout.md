@@ -2,9 +2,10 @@
 
 Date: 2026-07-09
 
-Status: parked. This branch preserves the STM32U375 bring-up work, but the
-U375 is not recommended as the next IMUTag processor without a fresh low-power
-bring-up plan. The L432 path remains the stable baseline.
+Status: parked, with a fresh LPTIM2 Stop1 experiment staged. This branch
+preserves the STM32U375 bring-up work, but the U375 is not recommended as the
+next IMUTag processor without validating the low-power behavior on hardware.
+The L432 path remains the stable baseline.
 
 ## Summary
 
@@ -66,8 +67,11 @@ processor port.
 
 ## Current Workarounds And Diagnostics
 
-- `IMUTagU375/inc/custom.h` currently disables Stop1 with `USE_STOP1 0`.
-  This is only a bring-up workaround. It keeps RUNNING collection awake because
+- `IMUTagU375/inc/custom.h` currently enables RUNNING Stop1 with `USE_STOP1 1`
+  again so the LPTIM2 Stop-mode clock-gate experiment can be tested. It keeps
+  short `stopMilliseconds()` driver waits on the older non-Stop1 delay path
+  with `USE_STOP1_DELAY 0` while detached collection is validated. The prior
+  workaround used `USE_STOP1 0` to keep RUNNING collection awake because
   detached Stop1 collection was not reliable.
 - `TAG_RETAINED_RUN_DIAGNOSTICS` is enabled for IMUTagU375. It exposes retained
   heartbeat, state, page, external-block, and header-write diagnostics through

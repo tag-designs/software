@@ -24,11 +24,13 @@
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
 /*
- * Bring-up note: detached RUNNING collection aborts on monitor reattach when
- * the U375 enters Stop1. Keep RUNNING awake until the U375-specific Stop1
- * wake/recovery path is fixed.
+ * Bring-up note: exercise Stop1 again now that the IMU trigger enables the
+ * STM32U3 LPTIM2 Stop-mode clock gate. Keep short driver wait helpers on
+ * their older Stop2 path while validating detached collection, because those
+ * waits run inside storage and sensor transactions after monitor detach.
  */
-#define USE_STOP1 0
+#define USE_STOP1 1
+#define USE_STOP1_DELAY 0
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define CONFIG_HAS_HIBERNATE 0
 #define TAG_STATUS_FIXED_VDD100 180

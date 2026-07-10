@@ -20,7 +20,11 @@
 #define USE_STOP1 0
 #endif
 
-#if defined(USE_STOP1) && USE_STOP1
+#if !defined(USE_STOP1_DELAY)
+#define USE_STOP1_DELAY USE_STOP1
+#endif
+
+#if defined(USE_STOP1_DELAY) && USE_STOP1_DELAY
 #if defined(PWR_CR1_LPMS_STOP1)
 #define TAG_DELAY_STOP_MODE PWR_CR1_LPMS_STOP1
 #else

@@ -47,6 +47,40 @@
  */
 
 
+static void tagImuTagDisableTriggerClock(void)
+{
+  RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
+#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
+  RCC->APB1SMENR2 &= ~RCC_APB1SMENR2_LPTIM2SMEN;
+#endif
+#if defined(RCC_APB1SLPENR2_LPTIM2SLPEN)
+  RCC->APB1SLPENR2 &= ~RCC_APB1SLPENR2_LPTIM2SLPEN;
+#endif
+#if defined(RCC_APB1STPENR2_LPTIM2STPEN)
+  RCC->APB1STPENR2 &= ~RCC_APB1STPENR2_LPTIM2STPEN;
+#endif
+#if defined(RCC_APB1AMENR2_LPTIM2AMEN)
+  RCC->APB1AMENR2 &= ~RCC_APB1AMENR2_LPTIM2AMEN;
+#endif
+}
+
+static void tagImuTagEnableTriggerClock(void)
+{
+  RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
+#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
+  RCC->APB1SMENR2 |= RCC_APB1SMENR2_LPTIM2SMEN;
+#endif
+#if defined(RCC_APB1SLPENR2_LPTIM2SLPEN)
+  RCC->APB1SLPENR2 |= RCC_APB1SLPENR2_LPTIM2SLPEN;
+#endif
+#if defined(RCC_APB1STPENR2_LPTIM2STPEN)
+  RCC->APB1STPENR2 |= RCC_APB1STPENR2_LPTIM2STPEN;
+#endif
+#if defined(RCC_APB1AMENR2_LPTIM2AMEN)
+  RCC->APB1AMENR2 |= RCC_APB1AMENR2_LPTIM2AMEN;
+#endif
+}
+
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
@@ -109,10 +143,7 @@ void tagImuTagSetTrigger(unsigned int divider)
   palSetLineMode(LINE_ACCEL_TRG, PAL_MODE_INPUT_ANALOG);
 
   if (divider == 0U) {
-    RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
-#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
-    RCC->APB1SMENR2 &= ~RCC_APB1SMENR2_LPTIM2SMEN;
-#endif
+    tagImuTagDisableTriggerClock();
     debug_log_printf("IMUTag trigger: disabled\r\n");
     return;
   }
@@ -120,10 +151,7 @@ void tagImuTagSetTrigger(unsigned int divider)
   if (divider < 2U)
     divider = 2U;
 
-  RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
-#if defined(RCC_APB1SMENR2_LPTIM2SMEN)
-  RCC->APB1SMENR2 |= RCC_APB1SMENR2_LPTIM2SMEN;
-#endif
+  tagImuTagEnableTriggerClock();
   RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
   RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
 
