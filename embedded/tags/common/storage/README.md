@@ -40,6 +40,15 @@ byte-at-a-time SPI transfers. Long data phases go through block-transfer hooks:
 hooks fall back to the conservative read/write helpers. Targets that have been
 validated on hardware can opt into the DMA implementations with
 `TAG_STORAGE_SPI_DMA_BLOCK_READ` and `TAG_STORAGE_SPI_DMA_BLOCK_WRITE`.
+When DMA block transfers are enabled, the helper keeps the existing polled
+completion path while the monitor/debugger is connected. In unattended tag
+operation, `TAG_STORAGE_SPI_DMA_SLEEP_WAIT` defaults to enabled and waits for
+RX DMA completion using the DMA interrupt and normal STM32 Sleep mode. This
+lets the CPU sleep during the long SPI data phase without entering Stop mode,
+so SPI and DMA clocks remain active. Because the shared SPI bus enables the
+peripheral with low-power clocking disabled for ordinary polling transfers, the
+DMA sleep wait temporarily enables the SPI and DMA sleep-mode clocks for the
+active transfer and restores the previous RCC sleep-clock bits afterward.
 
 Keeping command/address traffic conservative matters because flash protocols
 depend on tightly ordered chip-select, command, address, data, and poll phases.
@@ -111,6 +120,9 @@ tag variant, check the following:
 - The storage chip driver uses the common command/address helpers rather than
   a local hand-rolled read/write path, so only the large data phase is moved to
   DMA.
+- Leave `TAG_STORAGE_SPI_DMA_SLEEP_WAIT` enabled for lowest-energy unattended
+  transfers. Define it to `0` only when a target needs the historical polled
+  wait even without a connected monitor.
 - The variant has been tested on hardware for erase, write, download/readback,
   and monitor attach while logging.
 

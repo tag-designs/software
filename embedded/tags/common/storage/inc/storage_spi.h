@@ -8,6 +8,7 @@
 #ifndef TAG_STORAGE_SPI_H
 #define TAG_STORAGE_SPI_H
 
+#include "core_types.h"
 #include "spi_bus.h"
 
 #include <stdint.h>
@@ -34,6 +35,10 @@
 
 #ifndef TAG_STORAGE_SPI_DMA_BLOCK_WRITE
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
+#endif
+
+#ifndef TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+#define TAG_STORAGE_SPI_DMA_SLEEP_WAIT 1
 #endif
 
 #ifndef TAG_STORAGE_SPI_FAST_MAX_INFLIGHT
@@ -238,15 +243,36 @@ static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
 
 #if (TAG_STORAGE_SPI_DMA_BLOCK_READ || TAG_STORAGE_SPI_DMA_BLOCK_WRITE) && \
     STM32_DMA_SUPPORTS_CSELR
+typedef struct {
+  volatile uint32_t flags;
+  volatile bool complete;
+  volatile bool error;
+} TagStorageSpiDmaIrqState;
+
 static const stm32_dma_stream_t *tag_storage_spi_rx_dma;
 static const stm32_dma_stream_t *tag_storage_spi_tx_dma;
+static TagStorageSpiDmaIrqState tag_storage_spi_rx_dma_irq;
+static TagStorageSpiDmaIrqState tag_storage_spi_tx_dma_irq;
+
+static void tagStorageSpiDmaInterrupt(void *param, uint32_t flags)
+{
+  TagStorageSpiDmaIrqState *state = (TagStorageSpiDmaIrqState *)param;
+
+  state->flags |= flags;
+  if ((flags & STM32_DMA_ISR_TCIF) != 0U)
+    state->complete = true;
+  if ((flags & STM32_DMA_ISR_TEIF) != 0U)
+    state->error = true;
+  __DMB();
+}
 
 static inline bool tagStorageSpiDmaConfig(const TagSpiDevice *device,
                                           uint32_t *rx_stream,
                                           uint32_t *tx_stream,
                                           uint32_t *rx_channel,
                                           uint32_t *tx_channel,
-                                          uint32_t *priority)
+                                          uint32_t *priority,
+                                          uint32_t *irq_priority)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
 
@@ -256,6 +282,11 @@ static inline bool tagStorageSpiDmaConfig(const TagSpiDevice *device,
     *rx_channel = STM32_DMA_GETCHANNEL(*rx_stream, STM32_SPI1_RX_DMA_CHN);
     *tx_channel = STM32_DMA_GETCHANNEL(*tx_stream, STM32_SPI1_TX_DMA_CHN);
     *priority = STM32_SPI_SPI1_DMA_PRIORITY;
+#if defined(STM32_SPI_SPI1_IRQ_PRIORITY)
+    *irq_priority = STM32_SPI_SPI1_IRQ_PRIORITY;
+#else
+    *irq_priority = 0U;
+#endif
     return true;
   }
 
@@ -267,6 +298,11 @@ static inline bool tagStorageSpiDmaConfig(const TagSpiDevice *device,
     *rx_channel = STM32_DMA_GETCHANNEL(*rx_stream, STM32_SPI3_RX_DMA_CHN);
     *tx_channel = STM32_DMA_GETCHANNEL(*tx_stream, STM32_SPI3_TX_DMA_CHN);
     *priority = STM32_SPI_SPI3_DMA_PRIORITY;
+#if defined(STM32_SPI_SPI3_IRQ_PRIORITY)
+    *irq_priority = STM32_SPI_SPI3_IRQ_PRIORITY;
+#else
+    *irq_priority = 0U;
+#endif
     return true;
   }
 #endif
@@ -275,19 +311,24 @@ static inline bool tagStorageSpiDmaConfig(const TagSpiDevice *device,
 }
 
 static inline bool tagStorageSpiDmaEnsureStreams(uint32_t rx_stream,
-                                                 uint32_t tx_stream)
+                                                 uint32_t tx_stream,
+                                                 uint32_t irq_priority)
 {
   bool allocated_rx = false;
 
   if (tag_storage_spi_rx_dma == NULL) {
-    tag_storage_spi_rx_dma = dmaStreamAlloc(rx_stream, 0U, NULL, NULL);
+    tag_storage_spi_rx_dma = dmaStreamAlloc(rx_stream, irq_priority,
+                                            tagStorageSpiDmaInterrupt,
+                                            &tag_storage_spi_rx_dma_irq);
     if (tag_storage_spi_rx_dma == NULL)
       return false;
     allocated_rx = true;
   }
 
   if (tag_storage_spi_tx_dma == NULL) {
-    tag_storage_spi_tx_dma = dmaStreamAlloc(tx_stream, 0U, NULL, NULL);
+    tag_storage_spi_tx_dma = dmaStreamAlloc(tx_stream, irq_priority,
+                                            tagStorageSpiDmaInterrupt,
+                                            &tag_storage_spi_tx_dma_irq);
     if (tag_storage_spi_tx_dma == NULL) {
       if (allocated_rx) {
         dmaStreamFree(tag_storage_spi_rx_dma);
@@ -300,16 +341,25 @@ static inline bool tagStorageSpiDmaEnsureStreams(uint32_t rx_stream,
   return true;
 }
 
+static inline uint32_t tagStorageSpiDmaTimeout(uint32_t units)
+{
+  return TAG_STORAGE_SPI_DMA_POLL_LIMIT +
+         (units * TAG_STORAGE_SPI_DMA_BYTE_POLL_LIMIT);
+}
+
+static inline uint32_t tagStorageSpiDmaFlags(const stm32_dma_stream_t *dmastp)
+{
+  return (dmastp->dma->ISR >> dmastp->shift) & STM32_DMA_ISR_MASK;
+}
+
 static inline bool tagStorageSpiDmaPollComplete(const stm32_dma_stream_t *dmastp,
                                                 uint32_t units)
 {
-  uint32_t timeout = TAG_STORAGE_SPI_DMA_POLL_LIMIT +
-                     (units * TAG_STORAGE_SPI_DMA_BYTE_POLL_LIMIT);
+  uint32_t timeout = tagStorageSpiDmaTimeout(units);
 
   while (dmaStreamGetTransactionSize(dmastp) != 0U)
   {
-    uint32_t flags = (dmastp->dma->ISR >> dmastp->shift) &
-                     STM32_DMA_ISR_MASK;
+    uint32_t flags = tagStorageSpiDmaFlags(dmastp);
 
     if ((flags & STM32_DMA_ISR_TEIF) != 0U)
       return false;
@@ -318,6 +368,129 @@ static inline bool tagStorageSpiDmaPollComplete(const stm32_dma_stream_t *dmastp
   }
   return true;
 }
+
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+typedef struct {
+  uint32_t ahb1_mask;
+  uint32_t ahb1_bits;
+  uint32_t apb1_mask;
+  uint32_t apb1_bits;
+  uint32_t apb2_mask;
+  uint32_t apb2_bits;
+} TagStorageSpiDmaSleepClockState;
+
+static inline TagStorageSpiDmaSleepClockState tagStorageSpiDmaEnableSleepClocks(
+    SPI_TypeDef *spi)
+{
+  TagStorageSpiDmaSleepClockState state = {0};
+
+#if defined(DMA1) && defined(RCC_AHB1SMENR_DMA1SMEN)
+  if ((tag_storage_spi_rx_dma->dma == DMA1) ||
+      (tag_storage_spi_tx_dma->dma == DMA1)) {
+    state.ahb1_mask |= RCC_AHB1SMENR_DMA1SMEN;
+    state.ahb1_bits |= RCC->AHB1SMENR & RCC_AHB1SMENR_DMA1SMEN;
+    RCC->AHB1SMENR |= RCC_AHB1SMENR_DMA1SMEN;
+  }
+#endif
+#if defined(DMA2) && defined(RCC_AHB1SMENR_DMA2SMEN)
+  if ((tag_storage_spi_rx_dma->dma == DMA2) ||
+      (tag_storage_spi_tx_dma->dma == DMA2)) {
+    state.ahb1_mask |= RCC_AHB1SMENR_DMA2SMEN;
+    state.ahb1_bits |= RCC->AHB1SMENR & RCC_AHB1SMENR_DMA2SMEN;
+    RCC->AHB1SMENR |= RCC_AHB1SMENR_DMA2SMEN;
+  }
+#endif
+#if defined(SPI1) && defined(RCC_APB2SMENR_SPI1SMEN)
+  if (spi == SPI1) {
+    state.apb2_mask |= RCC_APB2SMENR_SPI1SMEN;
+    state.apb2_bits |= RCC->APB2SMENR & RCC_APB2SMENR_SPI1SMEN;
+    RCC->APB2SMENR |= RCC_APB2SMENR_SPI1SMEN;
+  }
+#endif
+#if defined(SPI3) && defined(RCC_APB1SMENR1_SPI3SMEN)
+  if (spi == SPI3) {
+    state.apb1_mask |= RCC_APB1SMENR1_SPI3SMEN;
+    state.apb1_bits |= RCC->APB1SMENR1 & RCC_APB1SMENR1_SPI3SMEN;
+    RCC->APB1SMENR1 |= RCC_APB1SMENR1_SPI3SMEN;
+  }
+#endif
+  __DSB();
+  return state;
+}
+
+static inline void tagStorageSpiDmaRestoreSleepClocks(
+    TagStorageSpiDmaSleepClockState state)
+{
+  RCC->AHB1SMENR = (RCC->AHB1SMENR & ~state.ahb1_mask) | state.ahb1_bits;
+  RCC->APB1SMENR1 = (RCC->APB1SMENR1 & ~state.apb1_mask) | state.apb1_bits;
+  RCC->APB2SMENR = (RCC->APB2SMENR & ~state.apb2_mask) | state.apb2_bits;
+  __DSB();
+}
+
+static inline void tagStorageSpiDmaRestoreSleepDeep(uint32_t sleepdeep)
+{
+  if (sleepdeep != 0U)
+    SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+}
+
+static inline bool tagStorageSpiDmaSleepComplete(const stm32_dma_stream_t *dmastp,
+                                                 uint32_t units)
+{
+  uint32_t timeout = tagStorageSpiDmaTimeout(units);
+  uint32_t sleepdeep = SCB->SCR & SCB_SCR_SLEEPDEEP_Msk;
+
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  while (!tag_storage_spi_rx_dma_irq.complete)
+  {
+    uint32_t rx_flags = tag_storage_spi_rx_dma_irq.flags |
+                        tagStorageSpiDmaFlags(dmastp);
+    uint32_t tx_flags = tag_storage_spi_tx_dma_irq.flags |
+                        tagStorageSpiDmaFlags(tag_storage_spi_tx_dma);
+    uint32_t flags = rx_flags | tx_flags;
+
+    if (((flags & STM32_DMA_ISR_TEIF) != 0U) ||
+        tag_storage_spi_rx_dma_irq.error ||
+        tag_storage_spi_tx_dma_irq.error) {
+      tagStorageSpiDmaRestoreSleepDeep(sleepdeep);
+      return false;
+    }
+    if (timeout-- == 0U) {
+      tagStorageSpiDmaRestoreSleepDeep(sleepdeep);
+      return false;
+    }
+
+    __DSB();
+    __WFI();
+    __DMB();
+  }
+
+  if (((tag_storage_spi_rx_dma_irq.flags | tag_storage_spi_tx_dma_irq.flags |
+        tagStorageSpiDmaFlags(dmastp) |
+        tagStorageSpiDmaFlags(tag_storage_spi_tx_dma)) &
+       STM32_DMA_ISR_TEIF) != 0U) {
+    tagStorageSpiDmaRestoreSleepDeep(sleepdeep);
+    return false;
+  }
+
+  tagStorageSpiDmaRestoreSleepDeep(sleepdeep);
+  return true;
+}
+
+static inline bool tagStorageSpiDmaWaitComplete(const stm32_dma_stream_t *dmastp,
+                                                uint32_t units)
+{
+  if (MONCONNECTED)
+    return tagStorageSpiDmaPollComplete(dmastp, units);
+  return tagStorageSpiDmaSleepComplete(dmastp, units);
+}
+#else
+static inline bool tagStorageSpiDmaWaitComplete(const stm32_dma_stream_t *dmastp,
+                                                uint32_t units)
+{
+  return tagStorageSpiDmaPollComplete(dmastp, units);
+}
+#endif
 
 static inline void tagStorageSpiDmaStop(SPI_TypeDef *spi)
 {
@@ -339,6 +512,9 @@ static inline bool tagStorageSpiBlockReadDma(const TagSpiDevice *device,
   uint32_t rx_channel;
   uint32_t tx_channel;
   uint32_t priority;
+  uint32_t irq_priority;
+  uint32_t rx_mode;
+  uint32_t tx_mode;
   bool ok;
 
   if (n == 0U)
@@ -348,37 +524,50 @@ static inline bool tagStorageSpiBlockReadDma(const TagSpiDevice *device,
     return false;
 
   if (!tagStorageSpiDmaConfig(device, &rx_stream, &tx_stream, &rx_channel,
-                              &tx_channel, &priority))
+                              &tx_channel, &priority, &irq_priority))
     return tagStorageSpiRead(device, buf, n);
 
-  if (!tagStorageSpiDmaEnsureStreams(rx_stream, tx_stream))
+  if (!tagStorageSpiDmaEnsureStreams(rx_stream, tx_stream, irq_priority))
     return tagStorageSpiRead(device, buf, n);
 
   tagStorageSpiRecover(spi);
   dummy = device->dummy;
+  tag_storage_spi_rx_dma_irq.flags = 0U;
+  tag_storage_spi_rx_dma_irq.complete = false;
+  tag_storage_spi_rx_dma_irq.error = false;
+  tag_storage_spi_tx_dma_irq.flags = 0U;
+  tag_storage_spi_tx_dma_irq.complete = false;
+  tag_storage_spi_tx_dma_irq.error = false;
 
   dmaStreamClearInterrupt(tag_storage_spi_rx_dma);
   dmaStreamClearInterrupt(tag_storage_spi_tx_dma);
 
+  rx_mode = STM32_DMA_CR_CHSEL(rx_channel) |
+            STM32_DMA_CR_PL(priority) |
+            STM32_DMA_CR_MINC |
+            STM32_DMA_CR_PSIZE_BYTE |
+            STM32_DMA_CR_MSIZE_BYTE;
+  tx_mode = STM32_DMA_CR_CHSEL(tx_channel) |
+            STM32_DMA_CR_PL(priority) |
+            STM32_DMA_CR_DIR_M2P |
+            STM32_DMA_CR_PSIZE_BYTE |
+            STM32_DMA_CR_MSIZE_BYTE;
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  if (!MONCONNECTED) {
+    rx_mode |= STM32_DMA_CR_TCIE | STM32_DMA_CR_TEIE;
+    tx_mode |= STM32_DMA_CR_TEIE;
+  }
+#endif
+
   dmaStreamSetPeripheral(tag_storage_spi_rx_dma, &spi->DR);
   dmaStreamSetMemory0(tag_storage_spi_rx_dma, buf);
   dmaStreamSetTransactionSize(tag_storage_spi_rx_dma, n);
-  dmaStreamSetMode(tag_storage_spi_rx_dma,
-                   STM32_DMA_CR_CHSEL(rx_channel) |
-                   STM32_DMA_CR_PL(priority) |
-                   STM32_DMA_CR_MINC |
-                   STM32_DMA_CR_PSIZE_BYTE |
-                   STM32_DMA_CR_MSIZE_BYTE);
+  dmaStreamSetMode(tag_storage_spi_rx_dma, rx_mode);
 
   dmaStreamSetPeripheral(tag_storage_spi_tx_dma, &spi->DR);
   dmaStreamSetMemory0(tag_storage_spi_tx_dma, &dummy);
   dmaStreamSetTransactionSize(tag_storage_spi_tx_dma, n);
-  dmaStreamSetMode(tag_storage_spi_tx_dma,
-                   STM32_DMA_CR_CHSEL(tx_channel) |
-                   STM32_DMA_CR_PL(priority) |
-                   STM32_DMA_CR_DIR_M2P |
-                   STM32_DMA_CR_PSIZE_BYTE |
-                   STM32_DMA_CR_MSIZE_BYTE);
+  dmaStreamSetMode(tag_storage_spi_tx_dma, tx_mode);
 
   tagStorageSpiMeasureBegin();
   spi->CR2 |= SPI_CR2_RXDMAEN;
@@ -386,7 +575,14 @@ static inline bool tagStorageSpiBlockReadDma(const TagSpiDevice *device,
   dmaStreamEnable(tag_storage_spi_tx_dma);
   spi->CR2 |= SPI_CR2_TXDMAEN;
 
-  ok = tagStorageSpiDmaPollComplete(tag_storage_spi_rx_dma, n);
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  TagStorageSpiDmaSleepClockState sleep_clocks =
+      tagStorageSpiDmaEnableSleepClocks(spi);
+#endif
+  ok = tagStorageSpiDmaWaitComplete(tag_storage_spi_rx_dma, n);
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  tagStorageSpiDmaRestoreSleepClocks(sleep_clocks);
+#endif
   tagStorageSpiDmaStop(spi);
   tagStorageSpiMeasureEnd();
 
@@ -411,6 +607,9 @@ static inline bool tagStorageSpiBlockWriteDma(const TagSpiDevice *device,
   uint32_t rx_channel;
   uint32_t tx_channel;
   uint32_t priority;
+  uint32_t irq_priority;
+  uint32_t rx_mode;
+  uint32_t tx_mode;
   bool ok;
 
   if (n == 0U)
@@ -420,37 +619,50 @@ static inline bool tagStorageSpiBlockWriteDma(const TagSpiDevice *device,
     return false;
 
   if (!tagStorageSpiDmaConfig(device, &rx_stream, &tx_stream, &rx_channel,
-                              &tx_channel, &priority))
+                              &tx_channel, &priority, &irq_priority))
     return tagStorageSpiWrite(device, buf, n);
 
-  if (!tagStorageSpiDmaEnsureStreams(rx_stream, tx_stream))
+  if (!tagStorageSpiDmaEnsureStreams(rx_stream, tx_stream, irq_priority))
     return tagStorageSpiWrite(device, buf, n);
 
   tagStorageSpiRecover(spi);
   sink = 0U;
+  tag_storage_spi_rx_dma_irq.flags = 0U;
+  tag_storage_spi_rx_dma_irq.complete = false;
+  tag_storage_spi_rx_dma_irq.error = false;
+  tag_storage_spi_tx_dma_irq.flags = 0U;
+  tag_storage_spi_tx_dma_irq.complete = false;
+  tag_storage_spi_tx_dma_irq.error = false;
 
   dmaStreamClearInterrupt(tag_storage_spi_rx_dma);
   dmaStreamClearInterrupt(tag_storage_spi_tx_dma);
 
+  rx_mode = STM32_DMA_CR_CHSEL(rx_channel) |
+            STM32_DMA_CR_PL(priority) |
+            STM32_DMA_CR_PSIZE_BYTE |
+            STM32_DMA_CR_MSIZE_BYTE;
+  tx_mode = STM32_DMA_CR_CHSEL(tx_channel) |
+            STM32_DMA_CR_PL(priority) |
+            STM32_DMA_CR_DIR_M2P |
+            STM32_DMA_CR_MINC |
+            STM32_DMA_CR_PSIZE_BYTE |
+            STM32_DMA_CR_MSIZE_BYTE;
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  if (!MONCONNECTED) {
+    rx_mode |= STM32_DMA_CR_TCIE | STM32_DMA_CR_TEIE;
+    tx_mode |= STM32_DMA_CR_TEIE;
+  }
+#endif
+
   dmaStreamSetPeripheral(tag_storage_spi_rx_dma, &spi->DR);
   dmaStreamSetMemory0(tag_storage_spi_rx_dma, &sink);
   dmaStreamSetTransactionSize(tag_storage_spi_rx_dma, n);
-  dmaStreamSetMode(tag_storage_spi_rx_dma,
-                   STM32_DMA_CR_CHSEL(rx_channel) |
-                   STM32_DMA_CR_PL(priority) |
-                   STM32_DMA_CR_PSIZE_BYTE |
-                   STM32_DMA_CR_MSIZE_BYTE);
+  dmaStreamSetMode(tag_storage_spi_rx_dma, rx_mode);
 
   dmaStreamSetPeripheral(tag_storage_spi_tx_dma, &spi->DR);
   dmaStreamSetMemory0(tag_storage_spi_tx_dma, buf);
   dmaStreamSetTransactionSize(tag_storage_spi_tx_dma, n);
-  dmaStreamSetMode(tag_storage_spi_tx_dma,
-                   STM32_DMA_CR_CHSEL(tx_channel) |
-                   STM32_DMA_CR_PL(priority) |
-                   STM32_DMA_CR_DIR_M2P |
-                   STM32_DMA_CR_MINC |
-                   STM32_DMA_CR_PSIZE_BYTE |
-                   STM32_DMA_CR_MSIZE_BYTE);
+  dmaStreamSetMode(tag_storage_spi_tx_dma, tx_mode);
 
   tagStorageSpiMeasureBegin();
   spi->CR2 |= SPI_CR2_RXDMAEN;
@@ -458,7 +670,14 @@ static inline bool tagStorageSpiBlockWriteDma(const TagSpiDevice *device,
   dmaStreamEnable(tag_storage_spi_tx_dma);
   spi->CR2 |= SPI_CR2_TXDMAEN;
 
-  ok = tagStorageSpiDmaPollComplete(tag_storage_spi_rx_dma, n);
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  TagStorageSpiDmaSleepClockState sleep_clocks =
+      tagStorageSpiDmaEnableSleepClocks(spi);
+#endif
+  ok = tagStorageSpiDmaWaitComplete(tag_storage_spi_rx_dma, n);
+#if TAG_STORAGE_SPI_DMA_SLEEP_WAIT
+  tagStorageSpiDmaRestoreSleepClocks(sleep_clocks);
+#endif
   tagStorageSpiDmaStop(spi);
   tagStorageSpiMeasureEnd();
 
