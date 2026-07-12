@@ -32,6 +32,14 @@
 #define BACKUP_STATE_VALID_MAGIC 1U
 #endif
 
+#ifndef TAG_STM32U3_FLASH
+#define TAG_STM32U3_FLASH 0
+#endif
+
+#ifndef TAG_MONITOR_RESET_RECOVERY
+#define TAG_MONITOR_RESET_RECOVERY 0
+#endif
+
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
  * @{
@@ -205,6 +213,7 @@ void tagSystemInitHook(void)
   NVIC_SetPriority(DebugMonitor_IRQn, TAG_DEBUG_MONITOR_PRIORITY);
 }
 
+#if TAG_STM32U3_FLASH
 static void tagBackupStateEnableWrites(void)
 {
 #if defined(RCC_APB1ENR1_RTCAPBEN)
@@ -216,7 +225,9 @@ static void tagBackupStateEnableWrites(void)
   PWR->CR1 |= PWR_CR1_DBP;
 #endif
 }
+#endif
 
+#if TAG_MONITOR_RESET_RECOVERY
 static void tagResetRuntimeStateForPowerInit(void)
 {
   pState->state = TagState_IDLE;
@@ -234,6 +245,7 @@ static void tagResetRuntimeStateForPowerInit(void)
 #endif
   pState->test_result = TEST_UNSPECIFIED;
 }
+#endif
 
 /** @name Runtime initialization and reset handling
  * Boot helpers decide whether retained state is usable, reset device state when
@@ -254,6 +266,7 @@ void deviceInit(int force)
 
   bool power_init = (pState->resetCause == resetPower) ||
                     (pState->resetCause == resetBrownout);
+#if TAG_MONITOR_RESET_RECOVERY
   // Monitor attach resets can arrive through the power-init path while backup
   // state is still valid; preserve persistent fields such as test_result then.
   bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
@@ -276,6 +289,20 @@ void deviceInit(int force)
     pState->safe = false;
     if (power_init && !retained_state_valid)
       tagResetRuntimeStateForPowerInit();
+#else
+  if (power_init || force)
+  {
+    // make sure everything is zeroed
+
+    pState->valid = 0;
+    pState->safe = false;
+
+    // Configure the external RTC only for true power initialization. Forced
+    // cleanup runs under monitor control and should avoid unnecessary I2C work.
+
+    if (power_init)
+      tagRtcInit();
+#endif
 
     TagDevicePowerReason power_reason = TAG_DEVICE_POWER_RUNTIME_DEINIT;
     if (power_init) {
@@ -415,14 +442,22 @@ int main(void)
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
+#if TAG_STM32U3_FLASH
   rtcInitializedAtBoot = tagRtcInitialized();
+#else
+  rtcInitializedAtBoot = (RTC->ISR & RTC_ISR_INITS) != 0;
+#endif
 
   halInit();
   chSysInit();
 
   // release the standby pullup/pulldown
 
+#if TAG_STM32U3_FLASH
   tagPowerReleaseStandbyPulls();
+#else
+  CLEAR_BIT(PWR->CR3, PWR_CR3_APC);
+#endif
   tagClearStandbyPulls();
 
   // low power run mode
@@ -431,7 +466,9 @@ int main(void)
   adcInit();
   debug_log_init();
   tagPowerInit();
+#if TAG_STM32U3_FLASH
   tagBackupStateEnableWrites();
+#endif
   tagDevicesInit();
 
   tpMain = chThdGetSelfX(); // global pointer to main thread
@@ -449,10 +486,14 @@ int main(void)
 
   // Configure RTC to bypass shadow registers when the calendar is live.
 
+#if TAG_STM32U3_FLASH
   if (tagRtcInitialized())
   {
     RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
   }
+#else
+  RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
+#endif
 
   // clear deep sleep mask
 

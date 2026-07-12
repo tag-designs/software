@@ -18,6 +18,10 @@
 #define TAG_SPI_ERROR_BYTE 0xffU
 #endif
 
+#ifndef TAG_SPI_TRANSFER_STATUS
+#define TAG_SPI_TRANSFER_STATUS 0
+#endif
+
 /** @name SPI bus implementation overview
  * Polling SPI byte transfers shared by simple peripheral drivers.
  *
@@ -535,6 +539,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
  * have been proven safe on hardware.
  * @{
  */
+#if TAG_SPI_TRANSFER_STATUS || defined(SPI_TXDR_TXDR)
 static bool tagSpiHasTransferError(SPI_TypeDef *spi)
 {
 #if defined(SPI_SR_OVR)
@@ -646,6 +651,7 @@ static void tagSpiFillReadFailure(uint8_t *buf, uint32_t len)
   while (len--)
     *buf++ = TAG_SPI_ERROR_BYTE;
 }
+#endif
 
 /**
  * @brief Pipelined SPI write for devices proven safe with queued transfers.
@@ -658,7 +664,22 @@ bool tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
                           uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
-#if defined(SPI_TXDR_TXDR)
+#if !TAG_SPI_TRANSFER_STATUS && !defined(SPI_TXDR_TXDR)
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+  uint32_t read_len = len;
+
+  while (len || read_len) {
+    while (len && (spi->SR & SPI_SR_TXE)) {
+      *spidr = *buf++;
+      len--;
+    }
+    while (read_len && (spi->SR & SPI_SR_RXNE)) {
+      (void)*spidr;
+      read_len--;
+    }
+  }
+  return true;
+#elif defined(SPI_TXDR_TXDR)
   uint8_t rx;
 
   while (len--)
@@ -711,7 +732,22 @@ bool tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
                          uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
-#if defined(SPI_TXDR_TXDR)
+#if !TAG_SPI_TRANSFER_STATUS && !defined(SPI_TXDR_TXDR)
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+  uint32_t read_len = len;
+
+  while (len || read_len) {
+    while (len && (spi->SR & SPI_SR_TXE)) {
+      *spidr = device->dummy;
+      len--;
+    }
+    while (read_len && (spi->SR & SPI_SR_RXNE)) {
+      *buf++ = *spidr;
+      read_len--;
+    }
+  }
+  return true;
+#elif defined(SPI_TXDR_TXDR)
   while (len--)
   {
     if (!tagSpiExchangeByte(spi, device->dummy, buf))
@@ -767,6 +803,21 @@ bool tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
 bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if !TAG_SPI_TRANSFER_STATUS && !defined(SPI_TXDR_TXDR)
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+
+  while (len--)
+  {
+    *spidr = *buf++;
+    while ((spi->SR & SPI_SR_RXNE) == 0)
+    {
+      ;
+    }
+    (void)*spidr;
+  }
+
+  return true;
+#else
   uint8_t rx;
 
   while (len--)
@@ -776,6 +827,7 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
   }
 
   return true;
+#endif
 }
 
 /**
@@ -788,6 +840,21 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+#if !TAG_SPI_TRANSFER_STATUS && !defined(SPI_TXDR_TXDR)
+  volatile uint8_t *spidr = (volatile uint8_t *)&spi->DR;
+
+  while (len--)
+  {
+    *spidr = device->dummy;
+    while ((spi->SR & SPI_SR_RXNE) == 0)
+    {
+      ;
+    }
+    *buf++ = *spidr;
+  }
+
+  return true;
+#else
 
   while (len--)
   {
@@ -800,6 +867,7 @@ bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
   }
 
   return true;
+#endif
 }
 
 /**

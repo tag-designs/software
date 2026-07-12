@@ -252,7 +252,9 @@ int SetTimeUnixSec(int32_t unix_time)
   if (MSG_OK != tagRtcSetDateTime(&tim))
   {
     //pState->test_result = SET_RTC_FAILED;
+#if defined(TAG_RTC_STM32U3_COMPAT) && TAG_RTC_STM32U3_COMPAT
     return -1;
+#endif
   }
   return err;
 }

@@ -87,7 +87,7 @@ static void enable_data_collection_wake_event(void)
 {
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
   extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK,
-                   EXTI_MODE_RISING_EDGE | EXTI_MODE_ACTION_EVENT);
+                   EXTI_MODE_RISING_EDGE | EXTI_MODE_ACTION_INTERRUPT);
 }
 
 static void disable_data_collection_wake_event(void)

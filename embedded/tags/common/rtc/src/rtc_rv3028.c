@@ -6,8 +6,13 @@
  */
 
 #include "hal.h"
+#include "custom.h"
 #include "debug_log.h"
 #include "rtc_api.h"
+
+#ifndef TAG_RTC_STM32U3_COMPAT
+#define TAG_RTC_STM32U3_COMPAT 0
+#endif
 
 /** @name BCD conversion helpers
  * The RV3028 stores calendar fields as packed BCD while ChibiOS RTCDateTime
@@ -37,6 +42,7 @@ static inline uint8_t bin2bcd(uint8_t val)
 }
 /** @} */
 
+#if TAG_RTC_STM32U3_COMPAT
 static inline void tagRtcEnterInitMode(void)
 {
 #if defined(RCC_APB1ENR1_RTCAPBEN)
@@ -85,6 +91,7 @@ static bool tagRtcWaitForInitMode(void)
     }
     return false;
 }
+#endif
 
 /** @name RV3028 register access
  * Register and EEPROM helpers keep the calendar code independent of the I2C
@@ -195,6 +202,91 @@ static int rv3028EEPROMExec(const TagRtcDevice *device, unsigned char addr,
  */
 bool rv3028Init(const TagRtcDevice *device)
 {
+#if !TAG_RTC_STM32U3_COMPAT
+    unsigned char tmp;
+    unsigned char clkout;
+    unsigned char ctrl1;
+
+    bool result = false;
+    tagRtcDeviceBegin(device);
+    rv3028GetReg(device, RV3028_CTRL1, &ctrl1, 1);
+    ctrl1 |= RV3028_CTRL1_EERD;
+    rv3028SetReg(device, RV3028_CTRL1, &ctrl1, 1);
+    do
+    {
+
+        clkout = 0;
+
+        // check if clkout register is already correctly configured
+
+        if (rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1) != MSG_OK)
+            break;
+        rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
+                         RV3028_EEPROM_CMD_READ);
+        if ((tmp == (0xC0 & (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 & (RV3028_CLKOUT_VAL))))
+        {
+            result = true;
+            break;
+        }
+
+       /*
+        for (i = 0; i < 10; i++)
+        {
+            chThdSleepMilliseconds(10);
+            rv3028GetReg(device, RV3028_STATUS, &tmp, 1);
+            if (!(tmp & RV3028_STATUS_EEBUSY))
+                break;
+        }
+        if (i == 10)
+            break;
+        */
+
+        //clkout = 0xC0 | (RV3028_CLKOUT_VAL&7);
+        //rv3028SetReg(device, RV3028_CLKOUT, &clkout, 1);
+
+        //clkout = 0;
+       // if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout, RV3028_EEPROM_CMD_WRITE))
+        //    break;
+
+        clkout = 0xC0 | (RV3028_CLKOUT_VAL & 7);
+        if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout,
+                             RV3028_EEPROM_CMD_WRITE))
+            break;
+
+        if (rv3028EEPROMExec(device, RV3028_CLKOUT, &clkout,
+                             RV3028_EEPROM_CMD_REFRESH))
+            break;
+
+        rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
+                         RV3028_EEPROM_CMD_READ);
+        rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1);
+        if ((tmp == clkout) && (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
+        {
+            result = true;
+        }
+    } while (0);
+     // reenable EEPROM->Ram refresh
+    ctrl1 &= ~RV3028_CTRL1_EERD;
+    rv3028SetReg(device, RV3028_CTRL1, &ctrl1, 1);
+    tagRtcDeviceEnd(device);
+
+    // Check RTC dividers !
+
+    uint32_t prer = RTCD1.rtc->PRER;
+    if (prer != STM32_RTC_PRER_BITS)
+    {
+        RTCD1.rtc->WPR = 0xCA;
+        RTCD1.rtc->WPR = 0x53;
+        RTCD1.rtc->ISR |= RTC_ISR_INIT;
+        while ((RTCD1.rtc->ISR & RTC_ISR_INITF) == 0)
+            ;
+        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+        RTCD1.rtc->ISR &= ~RTC_ISR_INIT;
+    }
+    return result;
+#else
     unsigned char tmp;
     unsigned char clkout;
     unsigned char ctrl1;
@@ -215,8 +307,15 @@ bool rv3028Init(const TagRtcDevice *device)
             break;
         rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
                          RV3028_EEPROM_CMD_READ);
-        if ((tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
-            (clkout == (0xC0 | (RV3028_CLKOUT_VAL))))
+        if (
+#if TAG_RTC_STM32U3_COMPAT
+            (tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 | (RV3028_CLKOUT_VAL)))
+#else
+            (tmp == (0xC0 & (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 & (RV3028_CLKOUT_VAL)))
+#endif
+            )
         {
             result = true;
             break;
@@ -253,7 +352,12 @@ bool rv3028Init(const TagRtcDevice *device)
         rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
                          RV3028_EEPROM_CMD_READ);
         rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1);
-        if ((tmp == clkout) && (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
+        if ((tmp == clkout) &&
+#if TAG_RTC_STM32U3_COMPAT
+            (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
+#else
+            (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
+#endif
         {
             result = true;
         }
@@ -268,6 +372,7 @@ bool rv3028Init(const TagRtcDevice *device)
     uint32_t prer = RTCD1.rtc->PRER;
     if (prer != STM32_RTC_PRER_BITS)
     {
+#if TAG_RTC_STM32U3_COMPAT
         RTCD1.rtc->WPR = 0xCA;
         RTCD1.rtc->WPR = 0x53;
         tagRtcEnterInitMode();
@@ -282,8 +387,19 @@ bool rv3028Init(const TagRtcDevice *device)
             debug_log_printf("STM32 RTC init mode timeout\r\n");
         }
         tagRtcLeaveInitMode();
+#else
+        RTCD1.rtc->WPR = 0xCA;
+        RTCD1.rtc->WPR = 0x53;
+        RTCD1.rtc->ISR |= RTC_ISR_INIT;
+        while ((RTCD1.rtc->ISR & RTC_ISR_INITF) == 0)
+            ;
+        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+        RTCD1.rtc->PRER = STM32_RTC_PRER_BITS;
+        RTCD1.rtc->ISR &= ~RTC_ISR_INIT;
+#endif
     }
     return result;
+#endif
 }
 
 /**
@@ -349,6 +465,7 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
         ret = rv3028GetReg(device, RV3028_STATUS, &status, 1);
         if ((ret != MSG_OK) || (status & RV3028_STATUS_PORF))
         {
+#if TAG_RTC_STM32U3_COMPAT
             if (ret == MSG_OK)
             {
                 debug_log_printf("rv3028 PORF set status=0x%02x\r\n", status);
@@ -357,6 +474,7 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
             {
                 debug_log_printf("rv3028 status read failed ret=%d\r\n", ret);
             }
+#endif
             ret = (ret == MSG_OK) ? -1 : ret;
             break;
         }
@@ -380,8 +498,12 @@ msg_t rv3028GetDateTime(const TagRtcDevice *device, RTCDateTime *tm)
 
 
     if (ret != MSG_OK){
+#if TAG_RTC_STM32U3_COMPAT
         debug_log_printf("Error in rv3028 getRTCDateTime ret=%d status=0x%02x\r\n",
                          ret, status);
+#else
+        debug_log_printf("Error in rv3028 gettRTCDateTime\r\n");
+#endif
 
     }
     return ret;

@@ -66,6 +66,10 @@
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
+#ifndef TAG_MONITOR_RESET_RECOVERY
+#define TAG_MONITOR_RESET_RECOVERY 0
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -76,6 +80,7 @@ extern int restoreLog(void);
 /** Shared active-state hint used by standby wake-source configuration. */
 bool isActive = false;
 
+#if TAG_MONITOR_RESET_RECOVERY
 static bool monitorResetRecoveryActive(bool retained_state_valid)
 {
   if (!retained_state_valid)
@@ -93,20 +98,29 @@ static bool monitorResetRecoveryActive(bool retained_state_valid)
 
   return (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
 }
+#endif
 
 static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
 {
   if (reset_cause == resetBrownout)
     return true;
+#if TAG_MONITOR_RESET_RECOVERY
   if (monitorResetRecoveryActive(pState->valid == BACKUP_STATE_VALID_MAGIC))
     return false;
   if (reset_cause == resetPower)
     return true;
+#else
+  if (MONCONNECTED && (pState->valid == BACKUP_STATE_VALID_MAGIC))
+    return false;
+  if ((reset_cause == resetPower) && !MONCONNECTED)
+    return true;
+#endif
   if (!rtcInitializedAtBoot)
     return true;
   return false;
 }
 
+#if TAG_MONITOR_RESET_RECOVERY
 static bool validStateMarker(const t_StateMarker *marker)
 {
   return (marker->state > STATE_UNSPECIFIED) &&
@@ -118,14 +132,17 @@ static bool validTagState(uint32_t state)
 {
   return (state > STATE_UNSPECIFIED) && (state <= _TagState_MAX);
 }
+#endif
 
 static bool reset_erase_started;
+#if TAG_MONITOR_RESET_RECOVERY
 static bool last_recovery_trace_valid;
 static uint32_t last_recovery_reset_cause;
 static uint32_t last_recovery_monitor;
 static uint32_t last_recovery_retained_valid;
 static uint32_t last_recovery_demcr;
 static uint32_t last_recovery_dhcsr;
+#endif
 
 /**
  * @brief Forward declaration for the reset cleanup state.
@@ -176,6 +193,7 @@ enum Sleep StateMachine(eventmask_t input_events)
   // is corrupt, if so we can't count on RTC so we have to abort.
 
   t_resetCause reset_cause = pState->resetCause;
+#if TAG_MONITOR_RESET_RECOVERY
   bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
   bool monitor_reset_recovery = monitorResetRecoveryActive(retained_state_valid);
   uint32_t retained_pages = pState->pages;
@@ -184,6 +202,7 @@ enum Sleep StateMachine(eventmask_t input_events)
   uint32_t recovery_demcr = CoreDebug->DEMCR;
   uint32_t recovery_dhcsr = CoreDebug->DHCSR;
   last_recovery_trace_valid = false;
+#endif
 
   if ((reset_cause == resetPower) ||
       (reset_cause == resetBrownout) ||
@@ -195,12 +214,14 @@ enum Sleep StateMachine(eventmask_t input_events)
         (reset_cause != resetException))
       reset_cause = resetPower;
 
+#if TAG_MONITOR_RESET_RECOVERY
     last_recovery_trace_valid = true;
     last_recovery_reset_cause = (uint32_t)reset_cause;
     last_recovery_monitor = monitor_reset_recovery ? 1U : 0U;
     last_recovery_retained_valid = retained_state_valid ? 1U : 0U;
     last_recovery_demcr = recovery_demcr;
     last_recovery_dhcsr = recovery_dhcsr;
+#endif
 
     // _unhandled_exception() latches EXCEPTION in backup state before reset.
     // Keep that fact across marker recovery so the last RUNNING marker does
@@ -215,6 +236,7 @@ enum Sleep StateMachine(eventmask_t input_events)
 
     // what if RTC is off from a brownout ?  We need to see if pState was wiped !
 
+#if TAG_MONITOR_RESET_RECOVERY
     if (monitor_reset_recovery && validTagState(retained_state)) {
       /*
        * Connect-under-reset leaves RTC backup registers intact. In that case
@@ -224,6 +246,7 @@ enum Sleep StateMachine(eventmask_t input_events)
        */
       pState->state = (TagState)retained_state;
     } else {
+#endif
       pState->state = TagState_IDLE;
       pState->pages = 0;
 
@@ -236,11 +259,15 @@ enum Sleep StateMachine(eventmask_t input_events)
           break;
         if (marker.epoch == -1)
           break;
+#if TAG_MONITOR_RESET_RECOVERY
         if (!validStateMarker(&marker))
           break;
+#endif
         pState->state = marker.state;
       }
+#if TAG_MONITOR_RESET_RECOVERY
     }
+#endif
     if (shouldRecoverRtcFromExternal(reset_cause))
     {
       RTCDateTime tim;
@@ -251,6 +278,7 @@ enum Sleep StateMachine(eventmask_t input_events)
 
     // recover log location
     // this should find pState->pages/pState->external variables.
+#if TAG_MONITOR_RESET_RECOVERY
     int logtime = 0;
     if (monitor_reset_recovery)
     {
@@ -266,6 +294,9 @@ enum Sleep StateMachine(eventmask_t input_events)
     {
       logtime = restoreLog();
     }
+#else
+    int logtime = restoreLog();
+#endif
     // restart clock if possible
     if (logtime > timestamp)
     {
@@ -335,7 +366,11 @@ enum Sleep StateMachine(eventmask_t input_events)
           case resetBrownout:
             return Hibernating(T_INIT, State_EVENT_BROWNOUT);
           default:
+#if TAG_MONITOR_RESET_RECOVERY
             if (monitor_reset_recovery)
+#else
+            if (MONCONNECTED)
+#endif
               return Hibernating(T_CONT, State_EVENT_POWERFAIL);
             return Aborted(T_INIT, State_EVENT_POWERFAIL);
         }
@@ -357,7 +392,11 @@ enum Sleep StateMachine(eventmask_t input_events)
         case resetBrownout:
           return Running(T_INIT, State_EVENT_BROWNOUT);
         default:
+#if TAG_MONITOR_RESET_RECOVERY
           if (monitor_reset_recovery)
+#else
+          if (MONCONNECTED)
+#endif
             return Running(T_CONT, State_EVENT_POWERFAIL);
           return Aborted(T_INIT, State_EVENT_POWERFAIL);
       }
@@ -632,6 +671,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
     pState->terminal_state = TagState_FINISHED;
     pState->terminal_reason = reason;
 #endif
+#if TAG_MONITOR_RESET_RECOVERY
     if (last_recovery_trace_valid) {
       debug_log_printf(
         "state_machine: finished r=%d st=%d rc=%u mon=%u val=%u pg=%u ex=%u\r\n",
@@ -644,6 +684,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
         reason, pState->state, (unsigned)pState->pages,
         (unsigned)pState->external_blocks);
     }
+#endif
     pState->state = TagState_FINISHED;
     recordState(reason);
     deviceInit(true);
@@ -666,6 +707,7 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
     pState->terminal_state = TagState_ABORTED;
     pState->terminal_reason = reason;
 #endif
+#if TAG_MONITOR_RESET_RECOVERY
     if (last_recovery_trace_valid) {
       debug_log_printf(
         "state_machine: aborted r=%d st=%d rc=%u mon=%u val=%u de=%x dh=%x pg=%u ex=%u\r\n",
@@ -679,6 +721,7 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
         reason, pState->state, (unsigned)pState->pages,
         (unsigned)pState->external_blocks);
     }
+#endif
     pState->state = TagState_ABORTED;
     recordState(reason);
     deviceInit(true);

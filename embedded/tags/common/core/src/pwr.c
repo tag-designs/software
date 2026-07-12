@@ -44,6 +44,10 @@
 #define TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED 0
 #endif
 
+#ifndef TAG_STOP1_WAKE_USES_INTERRUPT
+#define TAG_STOP1_WAKE_USES_INTERRUPT 0
+#endif
+
 /** @name Common tag power sequence
  * Common tag power/standby sequence.
  *
@@ -59,10 +63,14 @@
  */
 static void delay(void)
 {
+#if TAG_RTC_I2C_DELAY_CYCLES == 1U
+  __NOP();
+#else
   for (uint32_t i = 0; i < TAG_RTC_I2C_DELAY_CYCLES; i++)
   {
     __NOP();
   }
+#endif
 }
 
 static const I2CConfig rtc_i2c_config = {
@@ -259,9 +267,13 @@ void godown(enum Sleep sleepmode)
 #endif
 #endif
     __DSB();
+#if TAG_STOP1_WAKE_USES_INTERRUPT
+    __WFI();
+#else
     __SEV();
     __WFE();
     __WFE();
+#endif
 
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
     return;

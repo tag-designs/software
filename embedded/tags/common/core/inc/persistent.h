@@ -22,11 +22,11 @@
 #define BACKUP_STATE_VALID_MAGIC 0x54414742U
 
 #if !defined(TAG_STM32U3_FLASH)
-#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
-#define TAG_STM32U3_FLASH 1
-#else
 #define TAG_STM32U3_FLASH 0
 #endif
+
+#if !defined(TAG_MONITOR_RESET_RECOVERY)
+#define TAG_MONITOR_RESET_RECOVERY 0
 #endif
 
 /** @name Persistent linker symbols

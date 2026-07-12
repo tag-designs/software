@@ -7,7 +7,12 @@
 
 #include "rtc_device.h"
 
+#include "custom.h"
 #include "debug_log.h"
+
+#ifndef TAG_RTC_TRANSFER_DIAGNOSTICS
+#define TAG_RTC_TRANSFER_DIAGNOSTICS 0
+#endif
 
 #if defined(TAG_RTC_RV3028)
 #include "power.h"
@@ -92,6 +97,7 @@ void tagRtcDeviceEnd(const TagRtcDevice *device)
 int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
+#if TAG_RTC_TRANSFER_DIAGNOSTICS
   const TagI2cDevice *registers = device->registers;
   int ret = tagI2cReadRegister(registers, reg, buf, len);
 
@@ -105,6 +111,9 @@ int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
   }
 
   return ret;
+#else
+  return tagI2cReadRegister(device->registers, reg, buf, len);
+#endif
 }
 
 /**
@@ -119,6 +128,7 @@ int tagRtcReadRegister(const TagRtcDevice *device, uint8_t reg, uint8_t *buf,
 int tagRtcWriteRegister(const TagRtcDevice *device, uint8_t reg,
                         const uint8_t *buf, uint32_t len)
 {
+#if TAG_RTC_TRANSFER_DIAGNOSTICS
   const TagI2cDevice *registers = device->registers;
   int ret = tagI2cWriteRegister(registers, reg, buf, len);
 
@@ -132,5 +142,8 @@ int tagRtcWriteRegister(const TagRtcDevice *device, uint8_t reg,
   }
 
   return ret;
+#else
+  return tagI2cWriteRegister(device->registers, reg, buf, len);
+#endif
 }
 /** @} */

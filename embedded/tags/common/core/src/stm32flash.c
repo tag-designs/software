@@ -16,6 +16,14 @@
 #define FLASH_KEY2 \
   ((uint32_t)0xCDEF89ABU) /*!< Flash key2: used with FLASH_KEY1 */
 
+#ifndef TAG_STM32U3_FLASH
+#define TAG_STM32U3_FLASH 0
+#endif
+
+#if !TAG_STM32U3_FLASH
+#define FLASH_ECC_ERROR_MASK (FLASH_ECCR_ECCC | FLASH_ECCR_ECCD)
+#endif
+
 #if !defined(FLASH_SR_MISERR)
 #define FLASH_SR_MISERR 0U
 #endif
@@ -77,6 +85,9 @@ static inline uint32_t FLASH_Errors(void) {
  * @brief Read the sticky flash ECC error flags.
  */
 static inline uint32_t FLASH_EccErrors(void) {
+#if !TAG_STM32U3_FLASH
+  return FLASH->ECCR & FLASH_ECC_ERROR_MASK;
+#else
   uint32_t errors = 0U;
 #if defined(FLASH_ECCR_ECCC)
   errors |= FLASH->ECCR & FLASH_ECCR_ECCC;
@@ -91,6 +102,7 @@ static inline uint32_t FLASH_EccErrors(void) {
   errors |= FLASH->ECCDR & FLASH_ECCDR_ECCD;
 #endif
   return errors;
+#endif
 }
 
 uint32_t flash_err = 0;
@@ -99,6 +111,9 @@ uint32_t flash_err = 0;
  * @brief Clear all sticky flash status and ECC error flags before an operation.
  */
 void FLASH_ClearEccErrors(void) {
+#if !TAG_STM32U3_FLASH
+  SET_BIT(FLASH->ECCR, FLASH_ECC_ERROR_MASK);
+#else
 #if defined(FLASH_ECCR_ECCC)
   SET_BIT(FLASH->ECCR, FLASH_ECCR_ECCC);
 #endif
@@ -110,6 +125,7 @@ void FLASH_ClearEccErrors(void) {
 #endif
 #if defined(FLASH_ECCDR_ECCD)
   SET_BIT(FLASH->ECCDR, FLASH_ECCDR_ECCD);
+#endif
 #endif
 }
 
@@ -129,8 +145,13 @@ static volatile bool flash_ecc_probe_failed = false;
  * @brief Convert expected flash ECC NMIs into checked-read failures.
  */
 void NMI_Handler(void) {
+#if !TAG_STM32U3_FLASH
+  uint32_t eccr = FLASH->ECCR;
+  uint32_t ecc_errors = eccr & FLASH_ECC_ERROR_MASK;
+#else
   uint32_t eccr = FLASH_EccErrors();
   uint32_t ecc_errors = eccr;
+#endif
 
   if (ecc_errors) {
     flash_ecc_flags |= ecc_errors;
@@ -157,6 +178,22 @@ void NMI_Handler(void) {
  * @param[in] Page Flash page number to erase.
  */
 void FLASH_PageErase(uint32_t Page) {
+#if !TAG_STM32U3_FLASH
+  __disable_irq();
+  FLASH_ClearAllErrors();
+
+  Page &= 255;  // clear any invalid bits
+  MODIFY_REG(FLASH->CR, FLASH_CR_PNB, (Page << POSITION_VAL(FLASH_CR_PNB)));
+  SET_BIT(FLASH->CR, FLASH_CR_PER);
+  SET_BIT(FLASH->CR, FLASH_CR_STRT);
+
+  while (FLASH->SR & FLASH_SR_BSY)
+    ;
+
+  CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
+  __enable_irq();
+  flash_err = FLASH_Errors();
+#else
   uint32_t page_field = Page;
   uint32_t cr_clear = FLASH_CR_PNB;
   uint32_t cr_set;
@@ -194,6 +231,7 @@ void FLASH_PageErase(uint32_t Page) {
   CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
   __enable_irq();
   flash_err = FLASH_Errors();
+#endif
 }
 
 uint32_t FLASH_PageSize(void) {
@@ -228,6 +266,33 @@ void FLASH_Lock(void) {
  */
 void FLASH_Program_DoubleWord(uint32_t *Address, uint32_t Data0,
                               uint32_t Data1) {
+#if !TAG_STM32U3_FLASH
+  if (((uint32_t)Address) & 0x7) return;
+
+  FLASH_ClearAllErrors();
+
+  __disable_irq();
+
+  SET_BIT(FLASH->CR, FLASH_CR_PG);
+
+  Address[0] = Data0;
+  Address[1] = Data1;
+
+  while (FLASH->SR & FLASH_SR_BSY)
+    ;
+
+  // Check that EOP flag is set in the FLASH_SR register
+  // (meaning that the programming operation has succeed), and clear it by
+  // software.
+
+  if (FLASH->SR & FLASH_SR_EOP) CLEAR_BIT(FLASH->SR, FLASH_SR_EOP);
+
+  // Reset PG bit
+
+  CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+  __enable_irq();
+  flash_err = FLASH_Errors();
+#else
   uint32_t row[TAG_FLASH_PROGRAM_ROW_WORDS];
 
   row[0] = Data0;
@@ -239,8 +304,10 @@ void FLASH_Program_DoubleWord(uint32_t *Address, uint32_t Data0,
 #endif
 
   FLASH_Program_Array(Address, row, TAG_FLASH_PROGRAM_ROW_WORDS);
+#endif
 }
 
+#if TAG_STM32U3_FLASH
 static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   if (((uint32_t)Address) & (TAG_FLASH_PROGRAM_ROW_ALIGN - 1U)) {
     flash_err = FLASH_SR_PGAERR;
@@ -281,6 +348,7 @@ static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   __enable_irq();
   flash_err = FLASH_Errors();
 }
+#endif
 
 /**
  * @brief Flush the STM32 data cache after flash contents change.
@@ -354,6 +422,13 @@ uint32_t FLASH_Read_Checked(const void *Address, void *Data, size_t Bytes) {
  * @return 0 on success, or the STM32 flash status error mask.
  */
 uint32_t FLASH_Program_Array(uint32_t *Address, uint32_t *array, int words) {
+#if !TAG_STM32U3_FLASH
+    for (int i = 0; i < words; i += 2) {
+      FLASH_Program_DoubleWord(&Address[i], array[i], array[i+1]);
+      if (flash_err) return flash_err;
+    }
+    return 0;
+#else
     if ((((uint32_t)Address) & (TAG_FLASH_PROGRAM_ROW_ALIGN - 1U)) != 0U) {
       flash_err = FLASH_SR_PGAERR;
       return flash_err;
@@ -371,5 +446,6 @@ uint32_t FLASH_Program_Array(uint32_t *Address, uint32_t *array, int words) {
       if (flash_err) return flash_err;
     }
     return 0;
+#endif
 }
 /** @} */

@@ -55,8 +55,13 @@ t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
 t_storedconfig sconfig TAG_FLASH_RECORD_ALIGN __attribute__((section(".persistent")))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
 t_InternalDataHeader vddHeader[256] __attribute__((section(".persistent")))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
+#else
+t_DataHeader vddHeader[256] __attribute__((section(".persistent")))
+TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
+#endif
 /** @} */
 
 /** @name Internal and external persistence operations
@@ -71,11 +76,21 @@ void erasePersistent(void)
 {
   uint32_t end = (uint32_t)&__persistent_end__;
   uint32_t start = ((uint32_t)(&__persistent_start__));
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
   uint32_t page_size = FLASH_PageSize();
+#endif
 
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
   while (start + page_size <= end)
+#else
+  while (start + 2048 <= end)
+#endif
   {
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
     end -= page_size;
+#else
+    end -= 2048;
+#endif
     uint64_t first_word;
     uint32_t readerr =
         FLASH_Read_DoubleWord_Checked((const uint64_t *)end, &first_word);
@@ -83,7 +98,11 @@ void erasePersistent(void)
       continue;
     chSysLock();
     FLASH_Unlock();
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
     FLASH_PageEraseAddress(end);
+#else
+    FLASH_PageErase((end - 0x8000000) / 2048);
+#endif
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();
