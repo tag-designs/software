@@ -24,6 +24,16 @@ Measured 7/10/27  (ae40ae7) after implementing sleep mode for dma spi writes
 
 It's not clear why the measurements went up.
 
+Measured 7/16/27 with Joulescope (ae40ae7)
+
+- idle:  8.05uA 
+- 50hz:  783uA
+- 100hz: 894uA
+- 200hz: 1023uA
+- 400hz: 1264uA
+- 800hz: 1710uA
+- 1600hz: 2340uA
+
 ## Expected Idle power
 
  - Lsm6dsv16x -- 2.5 uA
