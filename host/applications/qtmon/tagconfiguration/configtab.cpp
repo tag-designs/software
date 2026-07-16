@@ -26,6 +26,25 @@
 #include "ui_configtab.h"
 #include "qtfiledialog.h"
 
+namespace
+{
+
+template <typename Options>
+auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
+    -> decltype(options.always_print_fields_with_no_presence = value, void())
+{
+  options.always_print_fields_with_no_presence = value;
+}
+
+template <typename Options>
+auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
+    -> decltype(options.always_print_primitive_fields = value, void())
+{
+  options.always_print_primitive_fields = value;
+}
+
+} // namespace
+
 ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
 
@@ -256,7 +275,7 @@ void ConfigTab::on_configSaveButton_clicked()
   {
     google::protobuf::util::JsonPrintOptions options;
     options.add_whitespace = true;
-    options.always_print_fields_with_no_presence = true;
+    setAlwaysPrintDefaultFields(options, true, 0);
     options.preserve_proto_field_names = true;
 
     std::ofstream fs(fileName.toStdString());

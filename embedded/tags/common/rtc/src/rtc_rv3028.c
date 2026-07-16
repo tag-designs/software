@@ -223,8 +223,8 @@ bool rv3028Init(const TagRtcDevice *device)
             break;
         rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
                          RV3028_EEPROM_CMD_READ);
-        if ((tmp == (0xC0 & (RV3028_CLKOUT_VAL))) &&
-            (clkout == (0xC0 & (RV3028_CLKOUT_VAL))))
+        if ((tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 | (RV3028_CLKOUT_VAL))))
         {
             result = true;
             break;
@@ -261,7 +261,7 @@ bool rv3028Init(const TagRtcDevice *device)
         rv3028EEPROMExec(device, RV3028_CLKOUT, &tmp,
                          RV3028_EEPROM_CMD_READ);
         rv3028GetReg(device, RV3028_CLKOUT, &clkout, 1);
-        if ((tmp == clkout) && (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
+        if ((tmp == clkout) && (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
         {
             result = true;
         }
@@ -312,8 +312,8 @@ bool rv3028Init(const TagRtcDevice *device)
             (tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
             (clkout == (0xC0 | (RV3028_CLKOUT_VAL)))
 #else
-            (tmp == (0xC0 & (RV3028_CLKOUT_VAL))) &&
-            (clkout == (0xC0 & (RV3028_CLKOUT_VAL)))
+            (tmp == (0xC0 | (RV3028_CLKOUT_VAL))) &&
+            (clkout == (0xC0 | (RV3028_CLKOUT_VAL)))
 #endif
             )
         {
@@ -356,7 +356,7 @@ bool rv3028Init(const TagRtcDevice *device)
 #if TAG_RTC_STM32U3_COMPAT
             (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
 #else
-            (tmp == (0xC0 & (RV3028_CLKOUT_VAL))))
+            (tmp == (0xC0 | (RV3028_CLKOUT_VAL))))
 #endif
         {
             result = true;
