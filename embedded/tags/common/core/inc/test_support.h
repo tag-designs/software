@@ -99,6 +99,14 @@ TestResult tag_test_lsm6dsv16x(const void *context);
 TestResult tag_test_ak09940a(const void *context);
 
 /**
+ * @brief Test BMM350 magnetometer communication and readiness.
+ *
+ * @return ALL_PASSED when the device passes, otherwise a device-specific
+ * failure result.
+ */
+TestResult tag_test_bmm350(const void *context);
+
+/**
  * @brief Test RTC communication and timekeeping readiness.
  *
  * @return ALL_PASSED when the RTC passes, otherwise the selected RTC device's
