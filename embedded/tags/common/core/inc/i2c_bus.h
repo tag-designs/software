@@ -9,7 +9,9 @@
 #define TAG_CORE_I2C_BUS_H
 
 #include "hal.h"
+#include "tag_soft_i2c.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
 /** @name I2C device model
@@ -21,10 +23,25 @@
  * @{
  */
 
+/** Default STM32 alternate-function number used by most STM32 I2C pins. */
+#ifndef TAG_I2C_DEFAULT_ALTERNATE_FUNCTION
+#define TAG_I2C_DEFAULT_ALTERNATE_FUNCTION 4U
+#endif
+
+/** I2C backend selected by a board-level controller descriptor. */
+typedef enum {
+  TAG_I2C_BACKEND_HARDWARE,
+  TAG_I2C_BACKEND_SOFTWARE
+} TagI2cBackendKind;
+
 /** I2C controller register setup and bus arbitration. */
 typedef struct {
-  I2CDriver *driver;
+  TagI2cBackendKind backend;
   binary_semaphore_t *mutex;
+  union {
+    I2CDriver *hardware;
+    TagSoftI2cDriver *software;
+  } driver;
 } TagI2cController;
 
 /** Standby pull policy applied while preparing an I2C-backed device for sleep. */
@@ -37,11 +54,15 @@ typedef enum {
 /** Board-line description for one I2C device attached to a shared controller. */
 typedef struct {
   const TagI2cController *controller;
-  const I2CConfig *config;
+  union {
+    const I2CConfig *hardware;
+    const TagSoftI2cConfig *software;
+  } config;
   ioline_t sda;
   ioline_t scl;
   ioline_t pwr;
   uint8_t address;
+  uint8_t alternate_function;
   uint32_t timeout;
   TagI2cSleepPolicy sleep_policy;
 } TagI2cDevice;
@@ -51,11 +72,11 @@ typedef struct {
 /** @name I2C controller lifecycle
  * Low-level controller hooks used by tagI2cBusBegin/End.
  *
- * I2C is a little different from the SPI/USART shims: ChibiOS keeps the bus
- * timing and software-I2C line behavior in an I2CConfig, so enabling the
- * controller always needs both the shared controller and the active device's
- * config. Normal device code should call tagI2cBusBegin/End instead of these
- * routines unless it is deliberately managing the whole shared I2C controller.
+ * I2C is a little different from the SPI/USART shims: each controller has a
+ * selected backend, and enabling the controller needs the active device's
+ * backend-specific config. Normal device code should call tagI2cBusBegin/End
+ * instead of these routines unless it is deliberately managing the whole
+ * shared I2C controller.
  * @{
  */
 /**
@@ -70,10 +91,10 @@ void tagI2cControllerObjectInit(const TagI2cController *controller);
  * @brief Start an I2C controller with the active device configuration.
  *
  * @param[in] controller Shared controller to enable.
- * @param[in] config ChibiOS bus timing and line-behavior configuration.
+ * @param[in] device Active device supplying the backend-specific config.
  */
 void tagI2cControllerEnable(const TagI2cController *controller,
-                            const I2CConfig *config);
+                            const TagI2cDevice *device);
 
 /**
  * @brief Stop an I2C controller after the active bus session ends.
@@ -122,6 +143,29 @@ void tagI2cBusBegin(const TagI2cDevice *device);
  * @param[in] device I2C device descriptor whose controller should be released.
  */
 void tagI2cBusEnd(const TagI2cDevice *device);
+/** @} */
+
+/** @name I2C transfers
+ * Backend-neutral raw transfer helper used by register adapters.
+ * @{
+ */
+/**
+ * @brief Perform one I2C write/read transaction through a device's backend.
+ *
+ * @param[in] device I2C device descriptor.
+ * @param[in] address 7-bit or 10-bit I2C address, matching the backend config.
+ * @param[in] txbuf Transmit buffer.
+ * @param[in] txbytes Number of bytes to transmit.
+ * @param[out] rxbuf Optional receive buffer.
+ * @param[in] rxbytes Number of bytes to receive.
+ * @param[in] timeout ChibiOS timeout interval.
+ * @return MSG_OK on success or a bus error.
+ */
+msg_t tagI2cMasterTransmitTimeout(const TagI2cDevice *device,
+                                  i2caddr_t address,
+                                  const uint8_t *txbuf, size_t txbytes,
+                                  uint8_t *rxbuf, size_t rxbytes,
+                                  sysinterval_t timeout);
 /** @} */
 
 /** @name I2C low-power preparation

@@ -116,6 +116,83 @@ currently depends on the fallback I2C implementation, delay behavior, or bus
 recovery assumptions should be reviewed when the target switches to hardware
 I2C.
 
+### Hardware And Software I2C Coexistence
+
+The broad I2C backend design belongs to common core and is documented in:
+
+```text
+embedded/tags/common/core/i2c-backend-model.md
+```
+
+The IMUTag production configuration should use the STM32L432 hardware I2C
+peripheral for the primary sensor bus. During development, we may still need
+the software I2C fallback path for devices or breakout boards that are awkward
+for hardware I2C:
+
+- buses that rely on the MCU's weak internal pullups instead of external I2C
+  pullup resistors;
+- breakout wiring where SDA/SCL are swapped or otherwise do not land on a
+  usable STM32 hardware-I2C alternate-function pair;
+- simple bring-up fixtures where flexible GPIO assignment is more valuable
+  than hardware bus speed.
+
+There is no expected advantage to supporting both hardware and software I2C on
+the same physical pins. Treat them as separate board-level bus definitions.
+This keeps the tag model simpler: each `TagI2cDevice` names one controller, and
+that controller's backend decides whether transactions use ChibiOS hardware I2C
+or the copied software I2C implementation.
+
+The IMUTag target should leave `USE_HAL_I2C_FALLBACK` unset so ChibiOS builds
+the STM32 hardware I2C LLD. Any software-I2C development bus should use the
+project-local `TagSoftI2cDriver` backend instead of selecting ChibiOS' global
+fallback.
+
+The copied software driver lives in the tag tree with project-local names
+rather than reusing ChibiOS HAL symbols. The ChibiOS fallback driver exports the
+same public LLD types and functions as the hardware driver, so it cannot be
+compiled unchanged beside `HAL_USE_I2C`. The copy is namespaced around types
+such as `TagSoftI2cDriver` and `TagSoftI2cConfig`, with entry points such as
+`tagSoftI2cStart()`, `tagSoftI2cStop()`, and
+`tagSoftI2cMasterTransmitTimeout()`.
+
+The common tag I2C layer provides one backend-neutral transaction helper used
+by `sensor_io.c`. Sensor drivers, including BMM350 and RV3028, continue to use
+`tagI2cReadRegister()` and `tagI2cWriteRegister()` and do not branch on the
+backend. Board/device descriptors choose the backend.
+
+Controller model:
+
+```c
+typedef enum {
+  TAG_I2C_BACKEND_HARDWARE,
+  TAG_I2C_BACKEND_SOFTWARE,
+} TagI2cBackendKind;
+
+typedef struct {
+  TagI2cBackendKind backend;
+  binary_semaphore_t *mutex;
+  union {
+    I2CDriver *hardware;
+    TagSoftI2cDriver *software;
+  } driver;
+} TagI2cController;
+```
+
+The device descriptor carries a backend-specific config union. The important
+rule is that the backend is fixed by the board descriptor; normal sensor code
+should never switch a device between hardware and software I2C at runtime.
+
+Pin mode policy lives behind the selected backend:
+
+- hardware backend: configure SDA/SCL as the correct STM32 alternate-function
+  open-drain pins before `i2cStart()`;
+- software backend: configure SDA/SCL as GPIO open-drain pins and let the
+  copied fallback driver bit-bang the configured lines.
+
+This avoids a runtime mode-switching problem on shared pins and still supports
+the actual development needs: software I2C for weak-pullup or swapped-pin
+fixtures, hardware I2C for the final IMUTag sensor bus.
+
 ### Delay Policy
 
 Use ChibiOS primitives instead of portable busy-wait hooks:

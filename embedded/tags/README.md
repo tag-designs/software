@@ -268,6 +268,10 @@ ALLCSRC += \
        state_run.c
 ```
 
+`USE_HAL_I2C_FALLBACK = yes` selects ChibiOS' global software-I2C fallback.
+Targets that need hardware I2C should leave that variable unset and use the
+common `TagSoftI2cDriver` backend for any software-I2C development buses.
+
 `common/make.mk` supplies the ChibiOS build plumbing. It includes ChibiOS
 startup, HAL, OSAL/RTOS, platform, and rules makefiles, adds local/family,
 module, generated nanopb, and board include paths, and points the build at the

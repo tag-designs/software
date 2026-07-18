@@ -95,17 +95,6 @@ int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
  * @{
  */
 /**
- * @brief Return the ChibiOS I2C driver for a register device.
- *
- * @param[in] device I2C device descriptor.
- * @return ChibiOS I2C driver pointer.
- */
-static inline I2CDriver *tagI2cDeviceDriver(const TagI2cDevice *device)
-{
-  return device->controller->driver;
-}
-
-/**
  * @brief Write bytes to an I2C register device.
  *
  * @param[in] io TagI2cDevice context.
@@ -129,8 +118,8 @@ int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
     txbuf[i + 1] = buf[i];
   }
 
-  return i2cMasterTransmitTimeout(tagI2cDeviceDriver(device), device->address,
-                                  txbuf, len + 1, 0, 0, device->timeout);
+  return tagI2cMasterTransmitTimeout(device, device->address, txbuf, len + 1,
+                                     0, 0, device->timeout);
 }
 
 /**
@@ -147,8 +136,8 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
 {
   const TagI2cDevice *device = (const TagI2cDevice *)io;
 
-  return i2cMasterTransmitTimeout(tagI2cDeviceDriver(device), device->address,
-                                  &reg, 1, buf, len, device->timeout);
+  return tagI2cMasterTransmitTimeout(device, device->address, &reg, 1, buf,
+                                     len, device->timeout);
 }
 /** @} */
 

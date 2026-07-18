@@ -19,6 +19,7 @@ ALLCSRC += \
        state_machine.c \
        stm32adc.c \
        stm32flash.c \
+       tag_soft_i2c.c \
        test.c \
        time.c \
        usart_bus.c

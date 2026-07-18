@@ -71,7 +71,7 @@ void tagPrepareDevicesForStandby(void);
  * @{
  */
 /**
- * @brief Software-I2C controller used by the shared RTC bus.
+ * @brief I2C controller used by the current shared RTC bus binding.
  */
 extern const TagI2cController tagRtcI2cController;
 

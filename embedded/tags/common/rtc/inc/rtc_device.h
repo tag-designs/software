@@ -40,6 +40,11 @@ typedef struct {
  * @return Immutable RTC device descriptor for the current tag.
  */
 const TagRtcDevice *tagRtcDevice(void);
+
+/**
+ * @brief Initialize runtime state for the configured RTC bus binding.
+ */
+void tagRtcDeviceRuntimeInit(void);
 /** @} */
 
 /** @name RTC transaction helpers

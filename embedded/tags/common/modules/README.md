@@ -79,6 +79,7 @@ Current examples:
   inc/sensor_calibration.h
   inc/spi_bus.h
   inc/test_support.h
+  inc/tag_soft_i2c.h
   inc/timekeeping.h
   inc/usart_bus.h
   src/bus_power.c
@@ -93,6 +94,7 @@ Current examples:
   src/state_machine.c
   src/stm32adc.c
   src/stm32flash.c
+  src/tag_soft_i2c.c
   src/test.c
   src/time.c
   src/usart_bus.c
@@ -167,17 +169,19 @@ can set `USE_CHIBIOS_RTC_LLD = yes` and provide a tag-local
 instead of the repo-local STM32L4 RTCv2 override.
 The active RV3028 driver follows the same descriptor-driven shape as sensors:
 the driver implementation takes a `TagRtcDevice`, and `rtc_device.c` provides a
-weak default RV3028 descriptor for the shared RTC software-I2C bus owned by
-common power code. Common runtime code calls the neutral `tagRtcInit()`,
+weak default RV3028 descriptor for the shared RTC software-I2C bus. Common
+power code asks the selected descriptor which register bus to open instead of
+owning a private RTC bus descriptor. Common runtime code calls the neutral
+`tagRtcInit()`,
 `tagRtcGetDateTime()`, and
 `tagRtcSetDateTime()` helpers from `rtc_api.h`; for RV3028 tags those helpers
 route through the descriptor-driven RV3028 implementation.
 
-TODO: move the complete `TagRtcDevice` binding into tag/family board support
-(`pwr.c` or a small `rtc_board.c`) so the descriptor carries both the register
-bus and the board-specific power callbacks. That would remove the remaining
-global `rtcOn()`/`rtcOff()` glue and match the newer sensor-device model more
-closely.
+Tags with non-default RTC wiring can move the complete `TagRtcDevice` binding
+into tag/family board support, for example a small `rtc_board.c`, so the
+descriptor carries both the register bus and board-specific power callbacks.
+That removes the remaining global `rtcOn()`/`rtcOff()` glue for those tags and
+matches the newer sensor-device model more closely.
 
 Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
@@ -188,10 +192,11 @@ are split between `bus_power.c` and the bus modules: `bus_power.c` owns shared
 STM32 standby pullup/pulldown helpers that operate on board-provided
 `LINE_xxx` names, while `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own their
 bus-specific descriptor helpers, peripheral setup, active-state tracking, and
-Stop2-specific register suspend/resume. I2C still has a controller/device split:
-`TagI2cController` owns the driver and mutex, while `TagI2cDevice` owns the
-config pointer, SDA/SCL/power lines, address, timeout, and standby pull policy
-used by static-board fallback code and register helpers. SPI power and SPI bus
+Stop2-specific register suspend/resume. I2C has a controller/device split:
+`TagI2cController` owns the backend, driver, and mutex, while `TagI2cDevice`
+owns the backend-specific config, SDA/SCL/power lines, address, timeout,
+hardware alternate-function selection, and standby pull policy used by
+descriptor-backed code and register helpers. SPI power and SPI bus
 ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears

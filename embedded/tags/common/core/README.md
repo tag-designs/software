@@ -34,6 +34,10 @@ active tags unless a tag provides a same-named local override.
   setup, active-state tracking, and Stop2 suspend/resume mechanics. I2C owns
   controller setup and device power/session pin policy; register-level I2C
   transactions live with the shared register adapters in `sensor_io.c`.
+- `i2c-backend-model.md`: design note for the common I2C backend model.
+  The model allows ChibiOS hardware I2C and a copied, project-namespaced
+  software I2C fallback to coexist on different board-level buses while keeping
+  sensor and RTC chip drivers backend-neutral.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
@@ -52,8 +56,9 @@ default `TAG_DEBUG_MONITOR_PRIORITY` of 8 for this purpose.
 The standby path has two layers:
 
 - `tagPowerInit()`: startup initialization for the shared power/RTC bus state.
-  It initializes the RTC software-I2C driver and mutex owned by `pwr.c`
-  instead of exposing that detail in `main.c`.
+  It asks the selected RTC descriptor binding to initialize its bus runtime
+  state. The default RV3028 binding owns the shared software-I2C controller,
+  but `pwr.c` no longer assumes the RTC backend.
 - `tagDevicesInit()`: startup initialization for tag-owned device runtime
   state. Modern tags define the controller semaphore storage they actually use
   in `devices.c`, such as `SPI1mutex` or `USART2mutex`, and initialize those
@@ -162,13 +167,24 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 I2C-backed devices follow the same ownership rule: `TagI2cController`
-identifies the low-level driver and mutex, while `TagI2cDevice` carries the
-controller, `I2CConfig`, SDA/SCL/power lines, address, timeout, and standby
-pull policy. `i2c_bus.c` owns `tagI2cControllerEnable/Disable()`,
-`tagI2cDevicePowerOn/Off()`, `tagI2cBusBegin/End()`, and
-`tagI2cDevicePrepareSleep()`. Register-oriented I2C reads and writes live in
-`sensor_io.c` beside the SPI/USART register adapters, so sensor drivers see
-one `TagRegisterDevice` shape across all transports.
+identifies the backend, low-level driver, and mutex, while `TagI2cDevice`
+carries the controller, backend-specific config, SDA/SCL/power lines, address,
+timeout, alternate-function selection for hardware I2C, and standby pull
+policy. `i2c_bus.c` owns `tagI2cControllerEnable/Disable()`,
+`tagI2cDevicePowerOn/Off()`, `tagI2cBusBegin/End()`, backend-neutral transfer
+dispatch, and `tagI2cDevicePrepareSleep()`. Hardware-I2C devices use the
+ChibiOS STM32 I2C driver and alternate-function pins. Software-I2C devices use
+the copied, project-namespaced fallback driver and GPIO open-drain pins. These
+are separate board-level bus definitions; the common model does not support
+hardware and software I2C on the same physical pins. Register-oriented I2C
+reads and writes live in `sensor_io.c` beside the SPI/USART register adapters,
+so sensor drivers see one `TagRegisterDevice` shape across all transports. See
+`i2c-backend-model.md` for details.
+
+Targets that use `TAG_I2C_BACKEND_HARDWARE` should leave
+`USE_HAL_I2C_FALLBACK` unset so ChibiOS compiles the STM32 hardware I2C LLD.
+The project-local `TagSoftI2cDriver` remains available for software-I2C buses
+without selecting ChibiOS' global fallback.
 
 USART-backed sensor buses follow the same split. `TagUsartDevice` describes
 the chip-select, synchronous USART pins, optional power line, peripheral,

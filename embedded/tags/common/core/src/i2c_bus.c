@@ -12,13 +12,13 @@
 /** @name Controller and device lifecycle
  * Controller and device lifecycle.
  *
- * I2C uses ChibiOS I2CConfig directly, so the active device descriptor carries
- * the config used by tagI2cBusBegin(). Power on/off only handles optional
- * switched device power; bus begin/end owns the mutex and controller state.
+ * I2C uses a backend-tagged controller. Power on/off only handles optional
+ * switched device power; bus begin/end owns the mutex, active pin mode, and
+ * controller state.
  * @{
  */
 /**
- * @brief Initialize the ChibiOS I2C driver object for a shared controller.
+ * @brief Initialize the I2C driver object for a shared controller.
  *
  * @param[in] controller Shared controller whose driver object should be
  *            initialized before first use.
@@ -27,7 +27,15 @@ void tagI2cControllerObjectInit(const TagI2cController *controller)
 {
   if (controller)
   {
-    i2cObjectInit(controller->driver);
+    switch (controller->backend)
+    {
+    case TAG_I2C_BACKEND_HARDWARE:
+      i2cObjectInit(controller->driver.hardware);
+      break;
+    case TAG_I2C_BACKEND_SOFTWARE:
+      tagSoftI2cObjectInit(controller->driver.software);
+      break;
+    }
   }
 }
 
@@ -35,12 +43,20 @@ void tagI2cControllerObjectInit(const TagI2cController *controller)
  * @brief Start an I2C controller with the active device configuration.
  *
  * @param[in] controller Shared controller to enable.
- * @param[in] config ChibiOS bus timing and line-behavior configuration.
+ * @param[in] device Active device supplying the backend-specific config.
  */
 void tagI2cControllerEnable(const TagI2cController *controller,
-                            const I2CConfig *config)
+                            const TagI2cDevice *device)
 {
-  i2cStart(controller->driver, config);
+  switch (controller->backend)
+  {
+  case TAG_I2C_BACKEND_HARDWARE:
+    i2cStart(controller->driver.hardware, device->config.hardware);
+    break;
+  case TAG_I2C_BACKEND_SOFTWARE:
+    tagSoftI2cStart(controller->driver.software, device->config.software);
+    break;
+  }
 }
 
 /**
@@ -50,7 +66,15 @@ void tagI2cControllerEnable(const TagI2cController *controller,
  */
 void tagI2cControllerDisable(const TagI2cController *controller)
 {
-  i2cStop(controller->driver);
+  switch (controller->backend)
+  {
+  case TAG_I2C_BACKEND_HARDWARE:
+    i2cStop(controller->driver.hardware);
+    break;
+  case TAG_I2C_BACKEND_SOFTWARE:
+    tagSoftI2cStop(controller->driver.software);
+    break;
+  }
 }
 
 /**
@@ -63,11 +87,10 @@ void tagI2cDevicePowerOn(const TagI2cDevice *device)
   if (tagLineIsValid(device->pwr))
   { 
     palSetLine(device->pwr);
-    palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL| PAL_STM32_OSPEED_LOWEST);
+    palSetLineMode(device->pwr,
+                   PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
     palSetLine(device->sda);
     palSetLine(device->scl);
-    palSetLineMode(device->scl,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
-    palSetLineMode(device->sda,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
   }
 }
 
@@ -80,9 +103,52 @@ void tagI2cDevicePowerOff(const TagI2cDevice *device)
 {
   if (tagLineIsValid(device->pwr))
   {
-    palSetLineMode(device->sda,PAL_MODE_INPUT_ANALOG );
-    palSetLineMode(device->scl,PAL_MODE_INPUT_ANALOG );
+    palSetLineMode(device->sda, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(device->scl, PAL_MODE_INPUT_ANALOG);
     palClearLine(device->pwr);
+  }
+}
+
+static uint8_t tagI2cAlternateFunction(const TagI2cDevice *device)
+{
+  if (device->alternate_function != 0U)
+  {
+    return device->alternate_function;
+  }
+
+  return TAG_I2C_DEFAULT_ALTERNATE_FUNCTION;
+}
+
+static void tagI2cApplyActivePins(const TagI2cDevice *device)
+{
+  const TagI2cController *controller = device->controller;
+
+  if (!controller)
+  {
+    return;
+  }
+
+  switch (controller->backend)
+  {
+  case TAG_I2C_BACKEND_HARDWARE:
+    palSetLineMode(device->sda,
+                   PAL_MODE_ALTERNATE(tagI2cAlternateFunction(device)) |
+                       PAL_STM32_OTYPE_OPENDRAIN | PAL_STM32_PUPDR_PULLUP |
+                       PAL_STM32_OSPEED_LOWEST);
+    palSetLineMode(device->scl,
+                   PAL_MODE_ALTERNATE(tagI2cAlternateFunction(device)) |
+                       PAL_STM32_OTYPE_OPENDRAIN | PAL_STM32_PUPDR_PULLUP |
+                       PAL_STM32_OSPEED_LOWEST);
+    break;
+
+  case TAG_I2C_BACKEND_SOFTWARE:
+    palSetLine(device->sda);
+    palSetLine(device->scl);
+    palSetLineMode(device->sda,
+                   PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+    palSetLineMode(device->scl,
+                   PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+    break;
   }
 }
 
@@ -100,12 +166,11 @@ void tagI2cBusBegin(const TagI2cDevice *device)
     chBSemWait(controller->mutex);
   }
 
-  palSetLineMode(device->sda,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
-  palSetLineMode(device->scl,PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+  tagI2cApplyActivePins(device);
 
   if (controller)
   {
-    tagI2cControllerEnable(controller, device->config);
+    tagI2cControllerEnable(controller, device);
   }
 }
 
@@ -127,6 +192,46 @@ void tagI2cBusEnd(const TagI2cDevice *device)
   {
     chBSemSignal(controller->mutex);
   }
+}
+
+/**
+ * @brief Perform one I2C write/read transaction through a device's backend.
+ *
+ * @param[in] device I2C device descriptor.
+ * @param[in] address 7-bit or 10-bit I2C address, matching the backend config.
+ * @param[in] txbuf Transmit buffer.
+ * @param[in] txbytes Number of bytes to transmit.
+ * @param[out] rxbuf Optional receive buffer.
+ * @param[in] rxbytes Number of bytes to receive.
+ * @param[in] timeout ChibiOS timeout interval.
+ * @return MSG_OK on success or a bus error.
+ */
+msg_t tagI2cMasterTransmitTimeout(const TagI2cDevice *device,
+                                  i2caddr_t address,
+                                  const uint8_t *txbuf, size_t txbytes,
+                                  uint8_t *rxbuf, size_t rxbytes,
+                                  sysinterval_t timeout)
+{
+  const TagI2cController *controller = device->controller;
+
+  if (!controller)
+  {
+    return MSG_RESET;
+  }
+
+  switch (controller->backend)
+  {
+  case TAG_I2C_BACKEND_HARDWARE:
+    return i2cMasterTransmitTimeout(controller->driver.hardware, address,
+                                    txbuf, txbytes, rxbuf, rxbytes, timeout);
+
+  case TAG_I2C_BACKEND_SOFTWARE:
+    return tagSoftI2cMasterTransmitTimeout(controller->driver.software, address,
+                                           txbuf, txbytes, rxbuf, rxbytes,
+                                           timeout);
+  }
+
+  return MSG_RESET;
 }
 
 /**
