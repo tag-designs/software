@@ -132,10 +132,11 @@ set(host_cli_install_targets
     tag-start
     tag-stop
     tag-cal
-    tag-monitor-test)
-set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)
+    tag-monitor-test
+    tag-attach-cycle)
+set(host_qt_install_targets btviz compviz sensorviz qtmonitor qtprogram qtcalibrate)
 set(host_install_targets)
-set(host_candidate_install_targets ${host_qt_install_targets})
+set(host_candidate_install_targets ${host_qt_install_targets} ${host_cli_install_targets})
 foreach(target_name ${host_candidate_install_targets})
   if(TARGET ${target_name})
     list(APPEND host_install_targets ${target_name})
@@ -189,6 +190,14 @@ if(host_install_targets)
       if(TARGET ${target_name})
         install(
           PROGRAMS "$<TARGET_FILE:tag_tools_launcher_gui>"
+          DESTINATION ${CMAKE_INSTALL_BINDIR}
+          RENAME "${target_name}${CMAKE_EXECUTABLE_SUFFIX}")
+      endif()
+    endforeach()
+    foreach(target_name ${host_cli_install_targets})
+      if(TARGET ${target_name})
+        install(
+          PROGRAMS "$<TARGET_FILE:tag_tools_launcher_console>"
           DESTINATION ${CMAKE_INSTALL_BINDIR}
           RENAME "${target_name}${CMAKE_EXECUTABLE_SUFFIX}")
       endif()
