@@ -25,9 +25,7 @@
 #endif
 
 #define IMU_CLOCK_LOCK_SECONDS 2
-#define IMU_LOG_SAMPLES_PER_BLOCK                                           \
-  (sizeof(((t_DataLog *)0)->raw_data) / sizeof(((t_DataLog *)0)->raw_data[0]))
-#define IMU_MAX_BLOCKS_PER_WAKE 8
+#define IMU_MAX_PAGE_WORK_PER_WAKE 8
 
 /*
  * Maintainer notes
@@ -35,9 +33,10 @@
  *
  * IMUTag logging is more timing-sensitive than the lower-rate tags because the
  * LSM6 FIFO provides an implicit stream of high-rate samples. The log stores
- * one t_DataHeader per DATALOG_SAMPLES external blocks. The header gives an
- * absolute timestamp for the first retained block in that page; individual IMU
- * samples are reconstructed later by sample count and configured ODR.
+ * one t_DataHeader per DATALOG_SAMPLES external pages. Each external page also
+ * starts with its own timestamp, captured before the first retained superframe
+ * sample, so individual IMU samples are reconstructed later by page timestamp,
+ * sample count, and configured ODR.
  *
  * A monitor attach uses connect-under-reset. When that happens during RUNNING,
  * the common state machine re-enters this handler with T_CONT and
@@ -56,29 +55,48 @@
  * and the rounded millisecond value can add jitter. Host decoding uses the
  * header only for collection start and explicit resync segment anchors.
  */
-static uint32_t discard_blocks;
-static uint32_t discarded_blocks;
-static int32_t saved_block_epoch;
-static uint16_t saved_block_millis;
+static uint32_t discard_pages;
+static uint32_t discarded_pages;
 static uint16_t next_header_flags;
+static bool page_active;
+static bool current_page_logging;
+static bool current_page_data_header_written;
+static bool current_page_header_written;
+static t_DataHeader current_page_header;
+static uint16_t current_frame_index;
+static int32_t next_frame_epoch;
+static uint16_t next_frame_millis;
+
+static bool imuWakeActive(void)
+{
+  return palReadLine(LINE_WKUP1) == PAL_HIGH;
+}
+
+static void setNextFrameStartTimestamp(int32_t epoch, uint32_t millis)
+{
+  next_frame_epoch = epoch;
+  next_frame_millis = (uint16_t)(millis & IMUTAG_HEADER_MILLIS_MASK);
+}
 
 /*
- * Convert the configured IMU ODR into complete t_DataLog blocks to discard
- * after acquisition starts or restarts. This is deliberately block-based so the
- * first retained header points at a real logged block boundary.
+ * Convert the configured IMU ODR into complete t_DataLog pages to discard
+ * after acquisition starts or restarts. This is deliberately page-based so the
+ * first retained header points at a real logged page boundary.
  */
-static uint32_t runDiscardBlocks(void)
+static uint32_t runDiscardPages(void)
 {
   lsm6dsv16x_trig_odr_t odr;
   lsm6dsv16x_xl_fs_t xl_fs;
   lsm6dsv16x_g_fs_t g_fs;
+  uint32_t warmup_samples;
 
   if (!get_lsm_config(&odr, &xl_fs, &g_fs)) {
     return 0;
   }
 
-  return ((uint32_t)odr * IMU_CLOCK_LOCK_SECONDS) /
-         IMU_LOG_SAMPLES_PER_BLOCK;
+  warmup_samples = (uint32_t)odr * IMU_CLOCK_LOCK_SECONDS;
+  return (warmup_samples + IMUTAG_IMU_SAMPLES_PER_PAGE - 1U) /
+         IMUTAG_IMU_SAMPLES_PER_PAGE;
 }
 
 /*
@@ -91,11 +109,15 @@ static uint32_t runDiscardBlocks(void)
  */
 static bool restartDataCollectionClock(bool mark_resync)
 {
-  discard_blocks = runDiscardBlocks();
-  discarded_blocks = 0;
-  saved_block_epoch = timestamp;
-  saved_block_millis = (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
+  discard_pages = runDiscardPages();
+  discarded_pages = 0;
   next_header_flags = mark_resync ? IMUTAG_HEADER_RESYNC : 0U;
+  page_active = false;
+  current_page_logging = false;
+  current_page_data_header_written = false;
+  current_page_header_written = false;
+  current_frame_index = 0U;
+  setNextFrameStartTimestamp(timestamp, timestamp_millis);
   pState->rawtemp = 0;
 
   if (!initDataCollection()) {
@@ -114,25 +136,85 @@ typedef enum {
   IMU_BLOCK_EXTERNAL_FULL
 } ImuBlockStatus;
 
-static enum LOGERR writeDataLogWithRetry(t_DataLog *data)
+static enum LOGERR writeDataLogPageStartWithRetry(
+    t_DataHeader *header,
+    const t_ImuTagSuperFrame *frame)
 {
-  enum LOGERR err = writeDataLog(data);
+  enum LOGERR err = writeDataLogPageStart(header, frame);
 
   if (err == LOGWRITE_ERROR) {
-    err = writeDataLog(data);
+    err = writeDataLogPageStart(header, frame);
   }
   return err;
 }
 
-static ImuBlockStatus sampleAndLogDataBlock(void)
+static enum LOGERR writeDataLogSuperFrameWithRetry(
+    uint16_t frame_index,
+    const t_ImuTagSuperFrame *frame)
 {
-  static t_DataLog data;
-  int16_t env_rawtemp;
-  int32_t entry_epoch = timestamp;
-  uint16_t entry_millis =
-    (uint16_t)(timestamp_millis & IMUTAG_HEADER_MILLIS_MASK);
+  enum LOGERR err = writeDataLogSuperFrame(frame_index, frame);
 
-  if (!sampleDataCollection(&data)) {
+  if (err == LOGWRITE_ERROR) {
+    err = writeDataLogSuperFrame(frame_index, frame);
+  }
+  return err;
+}
+
+static enum LOGERR startLogPage(void)
+{
+  current_page_header.epoch = next_frame_epoch;
+  current_page_header.millis = next_frame_millis;
+  current_page_header.rawtemp = (int16_t)pState->rawtemp;
+  current_frame_index = 0U;
+  current_page_logging = discarded_pages >= discard_pages;
+  current_page_data_header_written = false;
+  current_page_header_written = false;
+  page_active = true;
+
+  return LOGWRITE_OK;
+}
+
+static enum LOGERR writeCurrentPageInternalHeader(void)
+{
+  t_DataHeader header;
+  enum LOGERR err;
+
+  header.epoch = current_page_header.epoch;
+  header.millis =
+    (uint16_t)(current_page_header.millis & IMUTAG_HEADER_MILLIS_MASK);
+  header.millis |= next_header_flags;
+  header.rawtemp = current_page_header.rawtemp;
+
+  err = writeDataHeader(&header);
+  if (err == LOGWRITE_OK) {
+    pState->cycle_count++;
+    next_header_flags = 0U;
+    current_page_header_written = true;
+  }
+  return err;
+}
+
+static ImuBlockStatus sampleAndLogDataPage(void)
+{
+  t_ImuTagSuperFrame frame;
+  int16_t env_rawtemp;
+  enum LOGERR err;
+
+  if (!page_active) {
+    err = startLogPage();
+    switch (err) {
+    case LOGWRITE_FULL:
+      page_active = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
+    case LOGWRITE_ERROR:
+      page_active = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
+    default:
+      break;
+    }
+  }
+
+  if (!sampleDataCollection(&frame)) {
     return IMU_BLOCK_NO_DATA;
   }
 
@@ -140,66 +222,107 @@ static ImuBlockStatus sampleAndLogDataBlock(void)
     pState->rawtemp = env_rawtemp;
   }
 
-  if (discarded_blocks < discard_blocks) {
-    discarded_blocks++;
-  } else {
-    if ((pState->external_blocks % DATALOG_SAMPLES) == 0U) {
-      t_DataHeader header;
-      enum LOGERR err;
+  if (current_page_logging) {
+    if (current_frame_index == 0U && !current_page_data_header_written) {
+      err = writeDataLogPageStartWithRetry(&current_page_header, &frame);
+      switch (err) {
+      case LOGWRITE_FULL:
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
+      case LOGWRITE_ERROR:
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
+      default:
+        current_page_data_header_written = true;
+        break;
+      }
+    } else {
+      err = writeDataLogSuperFrameWithRetry(current_frame_index, &frame);
+      switch (err) {
+      case LOGWRITE_FULL:
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
+      case LOGWRITE_ERROR:
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
+      default:
+        break;
+      }
+    }
 
-      /*
-       * saved_block_* always names the block about to be written under this
-       * header. entry_* captures the next candidate boundary and is committed
-       * after this block has been sampled.
-       */
-      header.epoch = saved_block_epoch;
-      header.millis =
-        (uint16_t)(saved_block_millis & IMUTAG_HEADER_MILLIS_MASK);
-      header.millis |= next_header_flags;
-      header.rawtemp = (int16_t)pState->rawtemp;
-
-      err = writeDataHeader(&header);
+    if (current_frame_index == 0U && !current_page_header_written) {
+      err = writeCurrentPageInternalHeader();
       switch (err) {
       case LOGWRITE_ERROR:
         debug_log_printf(
           "IMUTag running: internal header write error pages=%u ext=%u\r\n",
           (unsigned)pState->pages, (unsigned)pState->external_blocks);
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
         return IMU_BLOCK_INTERNAL_FULL;
       case LOGWRITE_FULL:
         debug_log_printf(
           "IMUTag running: internal header full pages=%u ext=%u\r\n",
           (unsigned)pState->pages, (unsigned)pState->external_blocks);
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
         return IMU_BLOCK_INTERNAL_FULL;
       default:
         break;
       }
-      if (err == LOGWRITE_OK) {
-        pState->cycle_count++;
-        next_header_flags = 0U;
-      }
-    }
-
-    enum LOGERR err = writeDataLogWithRetry(&data);
-    switch (err) {
-    case LOGWRITE_FULL:
-      return IMU_BLOCK_EXTERNAL_FULL;
-    case LOGWRITE_ERROR:
-      pState->external_blocks++;
-      next_header_flags |= IMUTAG_HEADER_RESYNC |
-                           IMUTAG_HEADER_RESYNC_STORAGE_SKIP;
-      debug_log_printf("IMUTag external log write failed, skipped block %u\r\n",
-                       (unsigned)(pState->external_blocks - 1U));
-      break;
-    default:
-      break;
-    }
-    if (err == LOGWRITE_OK) {
-      pState->external_blocks++;
     }
   }
 
-  saved_block_epoch = entry_epoch;
-  saved_block_millis = entry_millis;
+  current_frame_index++;
+  if (current_frame_index < IMUTAG_SUPERFRAMES_PER_PAGE) {
+    return IMU_BLOCK_HANDLED;
+  }
+
+  if (discarded_pages < discard_pages) {
+    discarded_pages++;
+    page_active = false;
+    current_page_logging = false;
+    current_page_data_header_written = false;
+    current_page_header_written = false;
+  } else {
+    err = commitDataLogPage();
+    switch (err) {
+    case LOGWRITE_FULL:
+      page_active = false;
+      current_page_logging = false;
+      current_page_data_header_written = false;
+      current_page_header_written = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
+    case LOGWRITE_ERROR:
+      page_active = false;
+      current_page_logging = false;
+      current_page_data_header_written = false;
+      current_page_header_written = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
+    default:
+      break;
+    }
+    pState->external_blocks++;
+    page_active = false;
+    current_page_logging = false;
+    current_page_data_header_written = false;
+    current_page_header_written = false;
+  }
+
   return IMU_BLOCK_HANDLED;
 }
 
@@ -256,6 +379,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   else
   {
     enum Sleep sleepmode = USE_STOP1 ? STOP1 : SLEEP;
+    const int32_t wake_epoch = timestamp;
+    const uint32_t wake_millis = timestamp_millis;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     pState->run_heartbeat++;
 #endif
@@ -290,28 +415,45 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     }
 
 
-    for (uint32_t blocks = 0; blocks < IMU_MAX_BLOCKS_PER_WAKE; blocks++)
-    {
-      switch (sampleAndLogDataBlock()) {
-      case IMU_BLOCK_HANDLED:
-        break;
-      case IMU_BLOCK_INTERNAL_FULL:
-        debug_log_printf(
-          "IMUTag running: finishing, internal log unavailable pages=%u ext=%u\r\n",
-          (unsigned)pState->pages, (unsigned)pState->external_blocks);
-        return Finished(T_INIT, State_EVENT_INTERNALFULL);
-      case IMU_BLOCK_EXTERNAL_FULL:
-        debug_log_printf(
-          "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
-          (unsigned)pState->pages, (unsigned)pState->external_blocks);
-        return Finished(T_INIT, State_EVENT_EXTERNALFULL);
-      case IMU_BLOCK_NO_DATA:
-      default:
-        blocks = IMU_MAX_BLOCKS_PER_WAKE;
-        break;
+    isActive = imuWakeActive();
+    if (isActive) {
+      for (uint32_t blocks = 0; blocks < IMU_MAX_PAGE_WORK_PER_WAKE; blocks++)
+      {
+        switch (sampleAndLogDataPage()) {
+        case IMU_BLOCK_HANDLED:
+          /*
+           * The wake that made this superframe available marks the beginning
+           * of the next superframe. Use it when that next superframe becomes
+           * the first retained frame of a page.
+           */
+          setNextFrameStartTimestamp(wake_epoch, wake_millis);
+          /*
+           * Only keep draining while the IMU wake line remains asserted.
+           * Without this guard, monitor-attached or shallow-sleep loops can
+           * perform speculative FIFO status reads after each flash write.
+           */
+          isActive = imuWakeActive();
+          if (!isActive) {
+            blocks = IMU_MAX_PAGE_WORK_PER_WAKE;
+          }
+          break;
+        case IMU_BLOCK_INTERNAL_FULL:
+          debug_log_printf(
+            "IMUTag running: finishing, internal log unavailable pages=%u ext=%u\r\n",
+            (unsigned)pState->pages, (unsigned)pState->external_blocks);
+          return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case IMU_BLOCK_EXTERNAL_FULL:
+          debug_log_printf(
+            "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
+            (unsigned)pState->pages, (unsigned)pState->external_blocks);
+          return Finished(T_INIT, State_EVENT_EXTERNALFULL);
+        case IMU_BLOCK_NO_DATA:
+        default:
+          blocks = IMU_MAX_PAGE_WORK_PER_WAKE;
+          break;
+        }
       }
     }
-    isActive = palReadLine(LINE_WKUP1);
     if (isActive) {
       sleepmode = SLEEP;
     }
@@ -331,13 +473,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     //
     // Check for hibernation
-    //     Only hibernate on datalog block boundary.
+    //     Only hibernate on datalog page boundary.
 
 #if CONFIG_HAS_HIBERNATE
     for (size_t i = 0; i < sizeof(sconfig.hibernate) / sizeof(Config_Interval); i++)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
+          !page_active &&
           (pState->external_blocks % DATALOG_SAMPLES == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);

@@ -28,12 +28,17 @@
 
 
 #define IMU_ACCEL_MG_PER_LSB_4G 0.122f
-#define IMU_FIFO_PAIRS_PER_BLOCK IMUTAG_IMU_SAMPLES_PER_BLOCK
+#define IMU_FIFO_PAIRS_PER_SUPERFRAME IMUTAG_IMU_SAMPLES_PER_SUPERFRAME
 #define IMU_FIFO_WORDS_PER_PAIR 2U
-#define IMU_FIFO_BLOCK_WORDS \
-  (IMU_FIFO_PAIRS_PER_BLOCK * IMU_FIFO_WORDS_PER_PAIR)
-#define IMU_FIFO_WATERMARK_WORDS IMU_FIFO_BLOCK_WORDS
+#define IMU_FIFO_SUPERFRAME_WORDS \
+  (IMU_FIFO_PAIRS_PER_SUPERFRAME * IMU_FIFO_WORDS_PER_PAIR)
+#define IMU_FIFO_WATERMARK_WORDS IMU_FIFO_SUPERFRAME_WORDS
 #define IMU_DATA_WAKE_EXTI_MASK (1U << PAL_PAD(LINE_WKUP1))
+#if defined(TAG_STOP1_WAKE_USES_INTERRUPT) && TAG_STOP1_WAKE_USES_INTERRUPT
+#define IMU_DATA_WAKE_EXTI_ACTION EXTI_MODE_ACTION_INTERRUPT
+#else
+#define IMU_DATA_WAKE_EXTI_ACTION EXTI_MODE_ACTION_EVENT
+#endif
 #define MAG_MISSED_RECOVERY_THRESHOLD 16U
 
 typedef struct {
@@ -69,17 +74,15 @@ bool sensorsHaveCalibration(void)
 // check if these variables can be noinit
 
 static unsigned int empty_calibration_sample_logs;
-static int32_t latest_pressure;
+static float latest_pressure;
 static int16_t latest_rawtemp;
-static int32_t latest_mx;
-static int32_t latest_my;
-static int32_t latest_mz;
+static float latest_mx;
+static float latest_my;
+static float latest_mz;
 static bool have_pressure_sample;
 static bool have_mag_sample;
-static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_BLOCK];
+static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_SUPERFRAME];
 static uint16_t block_sample_count;
-static uint16_t environment_block_counter;
-static uint16_t mag_block_divisor;
 static uint16_t consecutive_mag_misses;
 static ak09940_rate_t configured_mag_rate;
 
@@ -87,7 +90,7 @@ static void enable_data_collection_wake_event(void)
 {
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
   extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK,
-                   EXTI_MODE_RISING_EDGE | EXTI_MODE_ACTION_INTERRUPT);
+                   EXTI_MODE_RISING_EDGE | IMU_DATA_WAKE_EXTI_ACTION);
 }
 
 static void disable_data_collection_wake_event(void)
@@ -123,18 +126,30 @@ static int16_t clamp_i16(int32_t value)
   return (int16_t)value;
 }
 
+static float missing_aux_sample(void)
+{
+  union {
+    uint32_t raw;
+    float value;
+  } missing = {0x7fc00000U};
+
+  return missing.value;
+}
+
 static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
   case LSM6DSV16X_TRIG_ODR_50HZ:
-    return AK09940_RATE_10HZ;
   case LSM6DSV16X_TRIG_ODR_100HZ:
-    return AK09940_RATE_20HZ;
+    return AK09940_RATE_10HZ;
   case LSM6DSV16X_TRIG_ODR_200HZ:
+    return AK09940_RATE_20HZ;
   case LSM6DSV16X_TRIG_ODR_400HZ:
-  case LSM6DSV16X_TRIG_ODR_800HZ:
-  case LSM6DSV16X_TRIG_ODR_1600HZ:
     return AK09940_RATE_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return AK09940_RATE_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return AK09940_RATE_200HZ;
   default:
     return AK09940_RATE_50HZ;
   }
@@ -160,29 +175,15 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
   }
 }
 
-static uint16_t select_mag_block_divisor(lsm6dsv16x_trig_odr_t imu_odr)
-{
-  switch (imu_odr) {
-  case LSM6DSV16X_TRIG_ODR_800HZ:
-    return 2U;
-  case LSM6DSV16X_TRIG_ODR_1600HZ:
-    return 4U;
-  default:
-    return 1U;
-  }
-}
-
 static void reset_environment_cache(void)
 {
-  latest_pressure = 0;
+  latest_pressure = missing_aux_sample();
   latest_rawtemp = 0;
-  latest_mx = 0;
-  latest_my = 0;
-  latest_mz = 0;
+  latest_mx = missing_aux_sample();
+  latest_my = missing_aux_sample();
+  latest_mz = missing_aux_sample();
   have_pressure_sample = false;
   have_mag_sample = false;
-  environment_block_counter = 0U;
-  mag_block_divisor = 1U;
   consecutive_mag_misses = 0U;
 }
 
@@ -293,9 +294,10 @@ static bool update_latest_mag(void)
   if (!read_mag_payload_if_ready(buf))
     return false;
 
-  latest_mx = decode_mag_18bit(buf[0], buf[1], buf[2]);
-  latest_my = decode_mag_18bit(buf[3], buf[4], buf[5]);
-  latest_mz = decode_mag_18bit(buf[6], buf[7], buf[8]);
+  ak09940_convert_to_uT(decode_mag_18bit(buf[0], buf[1], buf[2]),
+                        decode_mag_18bit(buf[3], buf[4], buf[5]),
+                        decode_mag_18bit(buf[6], buf[7], buf[8]),
+                        &latest_mx, &latest_my, &latest_mz);
 
   have_mag_sample = true;
   return true;
@@ -312,7 +314,7 @@ static bool update_latest_pressure(void)
 
   rc = lps22hh_read_raw_device(TAG_PRESSURE_DEVICE, &pressure, &temperature);
   if (rc == 0) {
-    latest_pressure = pressure;
+    latest_pressure = pressure * (float)IMUTAG_PRESSURE_HPA_PER_LSB;
     latest_rawtemp = clamp_i16(temperature);
     have_pressure_sample = true;
     return true;
@@ -337,10 +339,9 @@ bool sensorSample(RawSensorData *data){
 /**
  * @brief Configure continuous collection sensors.
  *
- * The IMU FIFO watermark is the block pacing source. Magnetometer and pressure
- * run freely at the lowest useful supported rate for each stream. Pressure
- * is configured up to one sample per 8-IMU-sample log block; magnetometer
- * remains capped near 50 Hz because faster heading samples add little value.
+ * The IMU FIFO watermark is the superframe pacing source. Magnetometer and
+ * pressure run freely at rates selected to stay above the 1:10 auxiliary
+ * polling cadence used by the page log.
  *
  * @return true when the configured collection mode was accepted.
  */
@@ -366,7 +367,6 @@ bool initDataCollection(void)
   configured_mag_rate = mag_rate;
   pressure_rate = select_pressure_rate(imu_odr);
   reset_environment_cache();
-  mag_block_divisor = select_mag_block_divisor(imu_odr);
   reset_imu_block_cache();
   init_mag_data_ready_line();
   init_pressure_data_ready_line();
@@ -392,22 +392,20 @@ bool initDataCollection(void)
 }
 
 /**
- * @brief Fill one log block from the IMU FIFO and latest environment samples.
+ * @brief Fill one log superframe from the IMU FIFO and environment sensors.
  *
- * @param[out] data Destination log block.
- * @return true when one complete block of accel/gyro pairs was copied.
+ * @param[out] frame Destination log superframe.
+ * @return true when one complete accel/gyro and auxiliary superframe was copied.
  */
-bool sampleDataCollection(t_DataLog *data)
+bool sampleDataCollection(t_ImuTagSuperFrame *frame)
 {
   uint8_t wtm = 0;
   uint8_t ovr = 0;
   uint16_t fifo_words;
   uint16_t pairs;
 
-  if (data == NULL)
+  if (frame == NULL)
     return false;
-
-  memset(data, 0, sizeof(*data));
 
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {
@@ -419,17 +417,19 @@ bool sampleDataCollection(t_DataLog *data)
 
   pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE,
                                &block_samples[block_sample_count],
-                               IMU_FIFO_PAIRS_PER_BLOCK - block_sample_count);
+                               IMU_FIFO_PAIRS_PER_SUPERFRAME - block_sample_count);
   if (pairs == 0U) {
     return false;
   }
   block_sample_count += pairs;
 
-  if (block_sample_count < IMU_FIFO_PAIRS_PER_BLOCK) {
+  if (block_sample_count < IMU_FIFO_PAIRS_PER_SUPERFRAME) {
     return false;
   }
 
-  for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_BLOCK; i++) {
+  memset(frame, 0, sizeof(*frame));
+
+  for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_SUPERFRAME; i++) {
     int16_t gx = block_samples[i].gyro_x;
     int16_t gy = block_samples[i].gyro_y;
     int16_t gz = block_samples[i].gyro_z;
@@ -440,32 +440,24 @@ bool sampleDataCollection(t_DataLog *data)
     orient_imu_xyz(&gx, &gy, &gz);
     orient_imu_xyz(&ax, &ay, &az);
 
-    data->raw_data[i].gx = gx;
-    data->raw_data[i].gy = gy;
-    data->raw_data[i].gz = gz;
-    data->raw_data[i].ax = ax;
-    data->raw_data[i].ay = ay;
-    data->raw_data[i].az = az;
+    frame->imu[i].ax = ax;
+    frame->imu[i].ay = ay;
+    frame->imu[i].az = az;
+    frame->imu[i].gx = gx;
+    frame->imu[i].gy = gy;
+    frame->imu[i].gz = gz;
   }
   reset_imu_block_cache();
 
-  if ((environment_block_counter % mag_block_divisor) == 0U) {
-    bool mag_sampled = update_latest_mag();
-    if (mag_sampled) {
-      data->flags |= IMUTAG_BLOCK_MAG_VALID;
-      data->mx = latest_mx;
-      data->my = latest_my;
-      data->mz = latest_mz;
-    }
-    record_due_mag_sample(mag_sampled);
-  }
-  if (update_latest_pressure()) {
-    data->flags |= IMUTAG_BLOCK_PRESSURE_VALID |
-                   IMUTAG_BLOCK_PRESSURE_TEMPERATURE_VALID;
-    data->pressure = latest_pressure;
-    data->pressure_temperature = latest_rawtemp;
-  }
-  environment_block_counter++;
+  bool mag_sampled = update_latest_mag();
+  bool pressure_sampled = update_latest_pressure();
+
+  record_due_mag_sample(mag_sampled);
+
+  frame->aux.pressure = pressure_sampled ? latest_pressure : missing_aux_sample();
+  frame->aux.mag_x = mag_sampled ? latest_mx : missing_aux_sample();
+  frame->aux.mag_y = mag_sampled ? latest_my : missing_aux_sample();
+  frame->aux.mag_z = mag_sampled ? latest_mz : missing_aux_sample();
 
   return true;
 }

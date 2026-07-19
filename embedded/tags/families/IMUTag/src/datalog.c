@@ -14,7 +14,8 @@
 #include "persistent.h"
 
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
-static t_DataLog databuf[DATALOG_SAMPLES] NOINIT;
+static t_DataLog databuf NOINIT;
+static bool datalog_page_cache_active;
 
 static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * sizeof(t_DataLog),
               "nanopb IMUTagRawLog.samples buffer size in options is out of sync with datalog page size!");
@@ -53,10 +54,13 @@ static uint32_t dirtyExternalSectors(void)
   const uint32_t sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
   /*
    * Reset calls restoreLog() before eraseExternal(), so pState->pages is the
-   * count of valid internal headers. For IMUTag each valid header owns exactly
-   * one external page: DATALOG_SAMPLES 128-byte t_DataLog blocks.
+   * count of valid internal headers. For IMUTag each valid header owns one
+   * committed external page image. Incremental page writes can leave one
+   * uncommitted page partially programmed, so erase one extra page span when
+   * converting headers to dirty sectors.
    */
-  const uint64_t dirty_bytes = (uint64_t)pState->pages * (uint64_t)databuf_size;
+  const uint64_t dirty_bytes = ((uint64_t)pState->pages + 1U) *
+                               (uint64_t)databuf_size;
   uint32_t dirty_sectors;
 
   if (sector_size == 0U || sector_count == 0U) {
@@ -87,17 +91,6 @@ static bool readDataHeader(int index, t_DataHeader *header)
 #else
   return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
 #endif
-}
-
-static size_t writtenDataBlocks(const t_DataLog *blocks, size_t max_blocks)
-{
-  size_t i;
-
-  for (i = 0; i < max_blocks; i++) {
-    if (!IMUTAG_BLOCK_IS_WRITTEN(blocks[i].flags))
-      break;
-  }
-  return i;
 }
 
 /**
@@ -201,37 +194,161 @@ int restoreLog(void)
   pState->pages = i;
   pState->cycle_count = pState->pages;
   pState->external_blocks = pState->pages * DATALOG_SAMPLES;
+  datalog_page_cache_active = false;
   return 0;
 }
 
-/**
- * @brief Append one data block to external flash at the current log cursor.
- *
- * @param[in] data Data block to write.
- * @return Log write status.
- */
-enum LOGERR writeDataLog(t_DataLog *data)
+static enum LOGERR writeDataLogImmediate(uint32_t page_offset,
+                                         const void *data,
+                                         size_t size)
+{
+  int cnt = (int)size;
+  int addr = (int)(pState->external_blocks * sizeof(t_DataLog) + page_offset);
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  bool ok = tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  if (!ok || cnt != (int)size)
+  {
+    return LOGWRITE_ERROR;
+  }
+
+  return LOGWRITE_OK;
+}
+
+static enum LOGERR writeDataLogCache(uint32_t page_offset,
+                                     const void *data,
+                                     size_t size)
+{
+  uint32_t addr =
+      (uint32_t)(pState->external_blocks * sizeof(t_DataLog) + page_offset);
+  bool ok;
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  if (page_offset == 0U && !datalog_page_cache_active) {
+    ok = tagStorageProgramLoad(TAG_EXTERNAL_FLASH, addr, data, (int)size);
+    if (ok) {
+      datalog_page_cache_active = true;
+    }
+  } else if (datalog_page_cache_active) {
+    ok = tagStorageProgramLoadRandom(TAG_EXTERNAL_FLASH, addr, data,
+                                     (int)size);
+  } else {
+    ok = false;
+  }
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  return ok ? LOGWRITE_OK : LOGWRITE_ERROR;
+}
+
+static enum LOGERR writeDataLogBytes(uint32_t page_offset,
+                                     const void *data,
+                                     size_t size)
 {
   uint32_t flash_capacity = tagStorageSectorSize(TAG_EXTERNAL_FLASH) *
                             tagStorageSectorCount(TAG_EXTERNAL_FLASH);
+
+  if (data == NULL || size == 0U ||
+      (page_offset + size) > sizeof(t_DataLog)) {
+    return LOGWRITE_ERROR;
+  }
 
   if ((pState->external_blocks + 1U) > flash_capacity / sizeof(t_DataLog))
   {
     return LOGWRITE_FULL;
   }
 
-  int cnt = sizeof(t_DataLog);
-  int addr = pState->external_blocks * sizeof(t_DataLog);
+  if (tagStorageSupportsProgramCache(TAG_EXTERNAL_FLASH) &&
+      page_offset == 0U && !datalog_page_cache_active) {
+    enum LOGERR cache_err = writeDataLogCache(page_offset, data, size);
+    if (cache_err == LOGWRITE_OK) {
+      return LOGWRITE_OK;
+    }
+  } else if (datalog_page_cache_active) {
+    return writeDataLogCache(page_offset, data, size);
+  }
 
-  tagStorageWake(TAG_EXTERNAL_FLASH);
-  bool ok = tagStorageWrite(TAG_EXTERNAL_FLASH, addr, (uint8_t *) data, &cnt);
-  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  return writeDataLogImmediate(page_offset, data, size);
+}
 
-  if (!ok || cnt != (int)sizeof(t_DataLog))
-  {
+/**
+ * @brief Append one data page to external flash at the current log cursor.
+ *
+ * @param[in] data Data page to write.
+ * @return Log write status.
+ */
+enum LOGERR writeDataLog(t_DataLog *data)
+{
+  enum LOGERR err = writeDataLogBytes(0U, data, sizeof(*data));
+
+  if (err != LOGWRITE_OK) {
+    return err;
+  }
+  return commitDataLogPage();
+}
+
+enum LOGERR writeDataLogPageHeader(t_DataHeader *head)
+{
+  return writeDataLogBytes(0U, head, sizeof(*head));
+}
+
+typedef struct __attribute__((packed)) {
+  t_DataHeader header;
+  t_ImuTagSuperFrame frame;
+} t_ImuTagPageStart;
+
+static_assert(sizeof(t_ImuTagPageStart) ==
+                sizeof(t_DataHeader) + sizeof(t_ImuTagSuperFrame),
+              "IMUTag page-start write must be tightly packed");
+
+enum LOGERR writeDataLogPageStart(t_DataHeader *head,
+                                  const t_ImuTagSuperFrame *frame)
+{
+  t_ImuTagPageStart page_start;
+
+  if (head == NULL || frame == NULL) {
     return LOGWRITE_ERROR;
   }
 
+  page_start.header = *head;
+  page_start.frame = *frame;
+  return writeDataLogBytes(0U, &page_start, sizeof(page_start));
+}
+
+enum LOGERR writeDataLogSuperFrame(uint16_t frame_index,
+                                   const t_ImuTagSuperFrame *frame)
+{
+  uint32_t page_offset;
+
+  if (frame_index >= IMUTAG_SUPERFRAMES_PER_PAGE) {
+    return LOGWRITE_ERROR;
+  }
+
+  page_offset = sizeof(t_ImuTagPageHeader) +
+                (uint32_t)frame_index * sizeof(t_ImuTagSuperFrame);
+  return writeDataLogBytes(page_offset, frame, sizeof(*frame));
+}
+
+enum LOGERR commitDataLogPage(void)
+{
+  uint32_t addr = pState->external_blocks * sizeof(t_DataLog);
+  bool ok;
+
+  if (!datalog_page_cache_active) {
+    return LOGWRITE_OK;
+  }
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  ok = tagStorageProgramExecute(TAG_EXTERNAL_FLASH, addr);
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  if (!ok) {
+    datalog_page_cache_active = false;
+    return LOGWRITE_ERROR;
+  }
+
+  datalog_page_cache_active = false;
   return LOGWRITE_OK;
 }
 
@@ -314,7 +431,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 //
 
 /**
- * @brief Populate and encode a monitor ACK for one IMUTagBreakout log page.
+ * @brief Populate and encode a monitor ACK for one IMUTag log page.
  *
  * @param[in] index Log page index to export.
  * @param[out] ack ACK message to fill.
@@ -345,21 +462,19 @@ int data_logAck(int index, Ack *ack)
     ack->which_payload = Ack_imu_raw_data_log_tag;
     IMUTagRawLog *log = &ack->payload.imu_raw_data_log;
 
-    log->epoch = header.epoch;
-    log->millisecond = header.millis;
-    log->temperature = header.rawtemp * 0.01f;
-
-    // now read the data --- optimization is to read this directly into databuf!
-
     tagStorageWake(TAG_EXTERNAL_FLASH);
     tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
                    (uint8_t *)log->samples.bytes, databuf_size);
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-    log->samples.size =
-      writtenDataBlocks((const t_DataLog *)log->samples.bytes,
-                        DATALOG_SAMPLES) * sizeof(t_DataLog);
-    //memcpy(log->samples.bytes, databuf, sizeof(databuf));
+    const t_DataLog *page = (const t_DataLog *)log->samples.bytes;
+    log->epoch = page->slow_data.epoch;
+    log->millisecond =
+      (page->slow_data.millis & IMUTAG_HEADER_MILLIS_MASK) |
+      (header.millis & (uint16_t)~IMUTAG_HEADER_MILLIS_MASK);
+    log->temperature =
+      page->slow_data.rawtemp * (float)IMUTAG_PRESSURE_TEMPERATURE_C_PER_LSB;
+    log->samples.size = sizeof(t_DataLog);
 
   }
   else

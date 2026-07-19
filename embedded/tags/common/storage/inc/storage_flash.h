@@ -91,6 +91,48 @@ bool tagStorageWrite(const TagStorageDevice *dev, uint32_t address,
                      uint8_t *buf, int *cnt);
 
 /**
+ * @brief Report whether the storage driver supports staged page programming.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return true when program-load, random-load, and execute hooks are present.
+ */
+bool tagStorageSupportsProgramCache(const TagStorageDevice *dev);
+
+/**
+ * @brief Load the first byte range into a NAND page-program cache.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Byte address whose page and column identify the cache load.
+ * @param[in] buf Source buffer.
+ * @param[in] cnt Number of bytes to load.
+ * @return true when the storage driver supports and accepts the cache load.
+ */
+bool tagStorageProgramLoad(const TagStorageDevice *dev, uint32_t address,
+                           const uint8_t *buf, int cnt);
+
+/**
+ * @brief Update an existing NAND page-program cache byte range.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Byte address whose page and column identify the update.
+ * @param[in] buf Source buffer.
+ * @param[in] cnt Number of bytes to load.
+ * @return true when the storage driver supports and accepts the cache update.
+ */
+bool tagStorageProgramLoadRandom(const TagStorageDevice *dev,
+                                 uint32_t address,
+                                 const uint8_t *buf, int cnt);
+
+/**
+ * @brief Commit the loaded NAND page-program cache to the flash array.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @param[in] address Byte address within the target logical page.
+ * @return true when the storage driver supports and completes the execute.
+ */
+bool tagStorageProgramExecute(const TagStorageDevice *dev, uint32_t address);
+
+/**
  * @brief Erase one external flash sector.
  *
  * @param[in] dev Storage device descriptor.

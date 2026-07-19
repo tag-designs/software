@@ -40,8 +40,29 @@ rate, their configured ODRs should remain above that polling frequency.
 - Auxiliary samples are over-provisioned relative to the 1:10 polling cadence,
   so a fresh pressure and magnetic sample should be available when the log
   loop reaches the auxiliary slot.
+- If a fresh pressure or magnetometer sample is not available for an auxiliary
+  slot, firmware writes the explicit IEEE-754 quiet-NaN bit pattern
+  `0x7fc00000` for the missing float value.
 - NAND internal ECC is responsible for page-level data integrity, so the 2048
   byte payload does not need its own checksum.
+- Firmware should not batch the full 2048-byte page write at high IMU rates.
+  The wake timestamp that made the previous superframe available is retained as
+  the start timestamp for the next superframe. When that next superframe starts
+  a page, the retained timestamp becomes the page header. Firmware then reads
+  and fills the 136-byte superframe before doing any flash writes for that wake,
+  writes the page header together with that first superframe, then writes later
+  superframes incrementally. The processor/internal header is written as soon
+  as the first retained superframe has been written. For NAND this separates
+  incremental cache writes from the eventual physical page program operation.
+- NAND cache writes must use the multi-step page-program sequence directly:
+  use Program Load (`02h`) for the initial page header plus first superframe.
+  This sets the starting column and initializes all unwritten bytes in the
+  volatile page buffer to `0xff`. Use Program Load Random Data (`84h`) for
+  each remaining superframe; this changes the column pointer and overwrites
+  only the streamed byte range, preserving previously loaded cache data. After
+  all 15 superframes have been loaded, issue Program Execute (`10h`) for the
+  target page address. This final command performs the single physical write
+  cycle to the NAND array.
 - Periodic headers in MCU flash, for example one header every N logical NAND
   pages, track logical page position and provide coarse recovery anchors.
 - NAND capacity is large enough that the log format can prioritize simple
@@ -108,7 +129,7 @@ typedef struct __attribute__((packed)) {
 
 /* 2048 bytes: one NAND flash page. */
 typedef struct __attribute__((packed)) {
-  SuperFrame_t frames[15]; /* 15 * 136 bytes = 2040 bytes */
   Slow_Sample_t slow_data; /* 1 * 8 bytes    = 8 bytes */
+  SuperFrame_t frames[15]; /* 15 * 136 bytes = 2040 bytes */
 } Nand_Page_t;
 ```

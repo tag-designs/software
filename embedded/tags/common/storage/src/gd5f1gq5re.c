@@ -18,6 +18,7 @@
 #define GD5F1GQ5RE_CMD_PAGE_READ           0x13U
 #define GD5F1GQ5RE_CMD_READ_CACHE          0x03U
 #define GD5F1GQ5RE_CMD_PROGRAM_LOAD        0x02U
+#define GD5F1GQ5RE_CMD_PROGRAM_LOAD_RANDOM 0x84U
 #define GD5F1GQ5RE_CMD_PROGRAM_EXECUTE     0x10U
 #define GD5F1GQ5RE_CMD_BLOCK_ERASE         0xD8U
 #define GD5F1GQ5RE_CMD_READ_ID             0x9FU
@@ -46,6 +47,8 @@
 static uint16_t gd5f1gq5re_bad_blocks[GD5F1GQ5RE_MAX_BAD_BLOCKS];
 static uint32_t gd5f1gq5re_bad_block_count;
 static bool gd5f1gq5re_bbt_loaded;
+static bool gd5f1gq5re_cache_active;
+static uint32_t gd5f1gq5re_cache_logical_page;
 
 static bool gd5f1gq5reWriteBytes(const TagSpiDevice *spi,
                                  const uint8_t *buf, uint32_t len)
@@ -429,6 +432,86 @@ static bool gd5f1gq5reWrite(const TagStorageDevice *dev, uint32_t address,
   return true;
 }
 
+static bool gd5f1gq5reProgramCacheLoad(const TagStorageDevice *dev,
+                                       uint32_t address,
+                                       const uint8_t *buf,
+                                       int cnt,
+                                       bool random)
+{
+  uint32_t logical_page = address / GD5F1GQ5RE_PAGE_SIZE;
+  uint16_t column = (uint16_t)(address % GD5F1GQ5RE_PAGE_SIZE);
+  uint8_t command = random ? GD5F1GQ5RE_CMD_PROGRAM_LOAD_RANDOM :
+                             GD5F1GQ5RE_CMD_PROGRAM_LOAD;
+
+  if (buf == NULL || cnt <= 0)
+    return false;
+  if (!gd5f1gq5reEnsureBbt(dev))
+    return false;
+  if ((uint32_t)cnt > (GD5F1GQ5RE_PAGE_SIZE - column))
+    return false;
+  if (logical_page >=
+      (GD5F1GQ5RE_LOGICAL_BLOCK_COUNT * GD5F1GQ5RE_PAGES_PER_BLOCK))
+    return false;
+  if (random && (!gd5f1gq5re_cache_active ||
+                 gd5f1gq5re_cache_logical_page != logical_page))
+    return false;
+  if (!random) {
+    gd5f1gq5re_cache_active = false;
+    gd5f1gq5re_cache_logical_page = logical_page;
+  }
+
+  if (!gd5f1gq5reWriteEnable(dev))
+    return false;
+  if (!gd5f1gq5reColumnWrite(tagStorageSpiDevice(dev), command, column, buf,
+                             (uint32_t)cnt))
+    return false;
+
+  gd5f1gq5re_cache_active = true;
+  return true;
+}
+
+static bool gd5f1gq5reProgramLoad(const TagStorageDevice *dev,
+                                  uint32_t address,
+                                  const uint8_t *buf,
+                                  int cnt)
+{
+  return gd5f1gq5reProgramCacheLoad(dev, address, buf, cnt, false);
+}
+
+static bool gd5f1gq5reProgramLoadRandom(const TagStorageDevice *dev,
+                                        uint32_t address,
+                                        const uint8_t *buf,
+                                        int cnt)
+{
+  return gd5f1gq5reProgramCacheLoad(dev, address, buf, cnt, true);
+}
+
+static bool gd5f1gq5reProgramExecuteCache(const TagStorageDevice *dev,
+                                          uint32_t address)
+{
+  uint8_t status;
+  uint32_t physical_page;
+  uint32_t logical_page = address / GD5F1GQ5RE_PAGE_SIZE;
+  bool ok;
+
+  if (!gd5f1gq5reEnsureBbt(dev))
+    return false;
+  if (!gd5f1gq5re_cache_active ||
+      gd5f1gq5re_cache_logical_page != logical_page)
+    return false;
+  if (!gd5f1gq5reMapLogicalPage(logical_page, &physical_page))
+    return false;
+
+  ok = gd5f1gq5reWriteEnable(dev) &&
+       gd5f1gq5reRowCommand(tagStorageSpiDevice(dev),
+                            GD5F1GQ5RE_CMD_PROGRAM_EXECUTE,
+                            gd5f1gq5rePageToRow(physical_page)) &&
+       gd5f1gq5reWaitReady(dev, GD5F1GQ5RE_PROGRAM_POLL_LIMIT, &status) &&
+       ((status & GD5F1GQ5RE_STATUS_P_FAIL) == 0U);
+  gd5f1gq5re_cache_active = false;
+  return ok;
+}
+
 static bool gd5f1gq5reSectorErase(const TagStorageDevice *dev,
                                   uint32_t address)
 {
@@ -479,6 +562,9 @@ const TagStorageOps gd5f1gq5reStorageOps = {
   .sleep = gd5f1gq5reSleep,
   .check_id = gd5f1gq5reCheckID,
   .write = gd5f1gq5reWrite,
+  .program_load = gd5f1gq5reProgramLoad,
+  .program_load_random = gd5f1gq5reProgramLoadRandom,
+  .program_execute = gd5f1gq5reProgramExecuteCache,
   .sector_erase = gd5f1gq5reSectorErase,
   .read = gd5f1gq5reRead,
 };

@@ -32,7 +32,6 @@ static const std::vector<PBEnumGroup::binfo> gyro_range_buttons{
 };
 
 static const std::vector<PBEnumGroup::binfo> odr_buttons{
-    {Lsm6dsv_ODR_S50, "50 Hz", nullptr},
     {Lsm6dsv_ODR_S100, "100 Hz", nullptr},
     {Lsm6dsv_ODR_S200, "200 Hz", nullptr},
     {Lsm6dsv_ODR_S400, "400 Hz", nullptr},

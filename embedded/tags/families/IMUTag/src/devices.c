@@ -205,8 +205,6 @@ static const TagTestCase tag_tests[] =
   {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
 #if defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
   {RUN_MX25U12843, tag_test_external_flash, TAG_EXTERNAL_FLASH},
-#else
-  {RUN_MX25L, tag_test_external_flash, TAG_EXTERNAL_FLASH},
 #endif
   {RUN_AIS2, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
   {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},

@@ -15,6 +15,8 @@
 #include "storage_spi.h"
 
 #define PWR_UP_DELAY_US 20
+#define PAGE_PROG_POLL_INTERVAL_US 100
+#define PAGE_PROG_POLL_LIMIT 120
 #define SECTOR_ERASE_POLL_INTERVAL 150
 
 #define MX25L_CMD_READ            0x03
@@ -127,15 +129,15 @@ static bool mx25lWrite(const TagStorageDevice *dev, uint32_t address,
                                              MX25L_CMD_PAGE_PROG, address, buf,
                                              bytes))
             return false;
-        for (i = 0; i < 12; i++)
+        for (i = 0; i < PAGE_PROG_POLL_LIMIT; i++)
         {
-            stopMilliseconds(1);
+            chThdSleepMicroseconds(PAGE_PROG_POLL_INTERVAL_US);
             if (!mx25lStatus(dev, &status))
                 return false;
             if ((status & MX25L_FLAGS_SR_WIP) == 0)
                 break;
         }
-        if (i == 12)
+        if (i == PAGE_PROG_POLL_LIMIT)
             return false;
         address += bytes;
         buf += bytes;

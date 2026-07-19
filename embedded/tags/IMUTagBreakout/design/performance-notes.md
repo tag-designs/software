@@ -111,11 +111,12 @@ message IMUTagRawLog{
   int32 epoch = 1;
   int32 millisecond = 2;
   float temperature = 3;
-  bytes samples = 4; // packed t_DataLog block images
+  bytes samples = 4; // packed t_DataLog payload images
 }
 ```
 
-Current `t_DataLog` blocks contain eight IMU samples plus full raw pressure,
+Historical note: before the 2048-byte page format, `t_DataLog` blocks contained
+eight IMU samples plus full raw pressure,
 pressure temperature, and full-scale magnetometer fields. Footer flags mark
 which environmental samples are valid and whether a block has been written.
 The tag uses those footer flags to omit trailing erased blocks from partially
@@ -136,4 +137,3 @@ Now the dominant cost is the swd implementation.  Reformating the log message in
 
 
 ![Timing after optimization](Log%20download%20cycle%20IMUTagBreakout%20(raw%20log).png)
-

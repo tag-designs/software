@@ -30,9 +30,6 @@ const char *writeConfigErrorMessage(void)
 static bool lsm6totrig_odr(Lsm6dsv_ODR odr_in, lsm6dsv16x_trig_odr_t *odr){
   bool rval = true;
   switch(odr_in) {
-    case Lsm6dsv_ODR_S50:
-      *odr = LSM6DSV16X_TRIG_ODR_50HZ;
-      break;
     case Lsm6dsv_ODR_S100:
       *odr = LSM6DSV16X_TRIG_ODR_100HZ;
       break;

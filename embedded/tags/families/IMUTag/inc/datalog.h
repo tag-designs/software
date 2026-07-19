@@ -31,16 +31,27 @@ typedef struct {
 typedef t_DataHeader t_InternalDataHeader;
 #endif
 
-static_assert(sizeof(t_DataLog) == 128, "imudata size must be exactly 128 bytes!");
+static_assert(sizeof(t_DataLog) == IMUTAG_PAGE_SIZE,
+              "IMUTag data page must be exactly 2048 bytes!");
 
-/** Number of datalog blocks under one internal header. */
-#define DATALOG_SAMPLES 16
+/** Number of external log pages under one internal header. */
+#define DATALOG_SAMPLES 1
 
 /** Internal flash header array placed by the linker script. */
 extern t_InternalDataHeader vddHeader[];
 
-/** @brief Append block to datalog */
+/** @brief Append a complete page to datalog. */
 extern enum LOGERR writeDataLog(t_DataLog *data);
+/** @brief Write the current external page header before collecting samples. */
+extern enum LOGERR writeDataLogPageHeader(t_DataHeader *head);
+/** @brief Write the current external page header and first superframe. */
+extern enum LOGERR writeDataLogPageStart(t_DataHeader *head,
+                                         const t_ImuTagSuperFrame *frame);
+/** @brief Write one superframe into the current external page. */
+extern enum LOGERR writeDataLogSuperFrame(uint16_t frame_index,
+                                          const t_ImuTagSuperFrame *frame);
+/** @brief Commit any staged external page cache to storage. */
+extern enum LOGERR commitDataLogPage(void);
 /** @brief Write the next internal-flash log header. */
 extern enum LOGERR writeDataHeader(t_DataHeader *head);
 /** @brief Recover log cursors from internal flash after reset. */

@@ -473,13 +473,21 @@ Bad-block rules:
 ### Storage Abstraction
 
 The existing NOR `TagStorageOps` is byte-addressed, so the first NAND driver
-uses the same table while enforcing NAND-safe writes:
+uses the same table while enforcing NAND-safe writes. NAND-capable drivers also
+provide optional cache-program operations so high-rate loggers can separate
+cache updates from the physical page program:
 
 - `sector_size` is the logical NAND erase-block size.
 - `sector_count` is `GD5F1GQ5RE_LOGICAL_BLOCK_COUNT`.
 - `read` supports arbitrary byte offsets by reading the needed cache page(s).
 - `write` only accepts full-page-aligned, whole-page writes.
 - partial page writes fail rather than silently programming invalid NAND state.
+- `program_load` issues Program Load (`02h`) for the first byte range in a
+  page cache and initializes unwritten cache bytes to `0xff`.
+- `program_load_random` issues Program Load Random Data (`84h`) for later byte
+  ranges in the same logical page cache.
+- `program_execute` maps the logical page through the BBT and issues Program
+  Execute (`10h`) exactly once after the cache has been filled.
 
 ### Self Test
 

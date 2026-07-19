@@ -30,6 +30,11 @@ typedef struct {
   int (*check_id)(const TagStorageDevice *dev);
   bool (*write)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
                 int *cnt);
+  bool (*program_load)(const TagStorageDevice *dev, uint32_t address,
+                       const uint8_t *buf, int cnt);
+  bool (*program_load_random)(const TagStorageDevice *dev, uint32_t address,
+                              const uint8_t *buf, int cnt);
+  bool (*program_execute)(const TagStorageDevice *dev, uint32_t address);
   bool (*sector_erase)(const TagStorageDevice *dev, uint32_t address);
   void (*read)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
                int num);

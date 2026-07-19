@@ -245,7 +245,7 @@ message BitPresTagLog{
 
 message IMUTagLogData{
   // Legacy decoded-block form. Current IMUTagBreakout firmware emits
-  // IMUTagRawLog with packed t_DataLog block images instead.
+  // IMUTagRawLog with packed t_DataLog page images instead.
   int32 pressure_raw = 1; // legacy compact pressure; hPa = raw / 16; -1 means no sample
   int32 mx_raw = 2;       // legacy compact mag; uT = raw * 0.04; all axes -1 means no sample
   int32 my_raw = 3;
@@ -269,7 +269,7 @@ message IMUTagRawLog{
   // upper bits are flags.
   int32 millisecond = 2;
   float temperature = 3;
-  bytes samples = 4; // packed t_DataLog block images; erased page tails may be omitted
+  bytes samples = 4; // packed t_DataLog page image
 }
 
 message PresTagRawLog {

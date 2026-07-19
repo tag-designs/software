@@ -13,6 +13,8 @@
 #include "storage_spi.h"
 
 #define INTER_WRITE_DELAY 2
+#define PAGE_PROG_POLL_INTERVAL_US 100
+#define PAGE_PROG_POLL_LIMIT 120
 #define SECTOR_ERASE_POLL_INTERVAL 150
 
 #define AT25XE_CMD_READ            0x03
@@ -133,14 +135,14 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
         at25xeStatus(dev); // check status after wel -- debug
         tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev), AT25XE_CMD_PAGE_PROG,
                                         address, buf, bytes);
-        for (i = 0; i < 12; i++)
+        for (i = 0; i < PAGE_PROG_POLL_LIMIT; i++)
         {
-            stopMilliseconds(1);
+            chThdSleepMicroseconds(PAGE_PROG_POLL_INTERVAL_US);
             uint8_t status = at25xeStatus(dev);
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
         } 
-        if (i == 12)
+        if (i == PAGE_PROG_POLL_LIMIT)
             return false;
         address += bytes;
         buf += bytes;

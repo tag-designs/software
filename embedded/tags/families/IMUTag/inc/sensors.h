@@ -15,8 +15,6 @@
 #include <tag.pb.h>
 #include "core_state.h"
 
-typedef t_ImuTagDataLog t_DataLog;
-
 /** @brief One raw synchronized IMU sample pair stored in the data log. */
 typedef t_ImuTagRawSensorData RawSensorData;
 
@@ -24,8 +22,8 @@ typedef t_ImuTagRawSensorData RawSensorData;
 bool sensorSample(RawSensorData *data);
 /** @brief Configure IMU, magnetometer, and pressure sensor for collection. */
 bool initDataCollection(void);
-/** @brief Fill one 128-byte log block when the IMU FIFO has enough samples. */
-bool sampleDataCollection(t_DataLog *data);
+/** @brief Fill one superframe when the IMU FIFO has enough samples. */
+bool sampleDataCollection(t_ImuTagSuperFrame *frame);
 /** @brief Return the latest raw LPS22HH temperature in hundredths of a degree C. */
 bool latestDataCollectionRawTemp(int16_t *rawtemp);
 /** @brief Shut down collection sensors and trigger generation. */

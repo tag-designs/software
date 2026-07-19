@@ -1,5 +1,11 @@
 # IMUTag NAND Log Architecture Sketch
 
+Superseded note: the active page-format design is
+`embedded/tags/IMUTag/design/log-format.md`. That newer design stores one
+timestamped 2048-byte page containing 15 ten-sample superframes, with pressure
+and magnetometer values as floats. The older 128-byte-record packing described
+below is retained as historical context only.
+
 This note sketches a possible IMUTagBreakout log redesign around large NAND
 flash, such as 1 Gbit or 2 Gbit parts with 2 KiB pages and 64 pages per erase
 block. It is not an implementation plan yet; it records the data architecture
