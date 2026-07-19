@@ -191,7 +191,9 @@ add_dependencies(PresTag board-prestag)
 
 Generated build products are placed in the CMake build tree, not in the source
 tree. The important final artifacts are the `.elf`, `.hex`, `.bin`, `.dmp`, and
-`.list` files under the tag target's build directory.
+`.list` files under the tag target's build directory. When installed, those
+same artifacts are copied to
+`share/UltralightTags/firmware/<target>/`.
 
 Firmware targets also get STM32CubeProgrammer helper targets such as
 `BitTag-download` and `BitTag-erase` when `STM32_Programmer_CLI` is available.

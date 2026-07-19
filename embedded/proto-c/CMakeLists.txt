@@ -69,7 +69,7 @@ function(add_nanopb_target name)
 
     add_custom_command(
       OUTPUT "${generated_source}" "${generated_header}"
-      COMMAND "${NANOPB_GENERATOR_SOURCE_DIR}/nanopb_generator"
+      COMMAND "${NANOPB_GENERATOR_EXECUTABLE}"
               -I "${CMAKE_CURRENT_BINARY_DIR}"
               -I "${parent}"
               -D "${CMAKE_CURRENT_BINARY_DIR}"

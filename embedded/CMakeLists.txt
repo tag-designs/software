@@ -126,12 +126,24 @@ function(add_embedded_target name proto_target)
 
   # create build target -- depends upon binary file
 
-  set(target_elf ${CMAKE_CURRENT_BINARY_DIR}/build/${name}.elf)
+  set(target_build_dir ${CMAKE_CURRENT_BINARY_DIR}/build)
+  set(target_elf ${target_build_dir}/${name}.elf)
+  set(target_hex ${target_build_dir}/${name}.hex)
+  set(target_bin ${target_build_dir}/${name}.bin)
+  set(target_dmp ${target_build_dir}/${name}.dmp)
+  set(target_list ${target_build_dir}/${name}.list)
+  set(
+    target_firmware_artifacts
+    ${target_elf}
+    ${target_hex}
+    ${target_bin}
+    ${target_dmp}
+    ${target_list})
 
-  #add_custom_target(${name} ALL DEPENDS ${target_elf})
+  #add_custom_target(${name} DEPENDS ${target_elf})
 
-  add_custom_target(${name} ALL
-    BYPRODUCTS ${target_elf}
+  add_custom_target(${name}
+    BYPRODUCTS ${target_firmware_artifacts}
     #COMMAND echo " ${default_opt} ${ARGN}"
     COMMAND ${MAKE_EXECUTABLE} -C ${name} ${default_opt} ${ARGN}
     WORKING_DIRECTORY ${tag_source_dir}
@@ -207,13 +219,16 @@ function(add_embedded_target name proto_target)
       VERBATIM)
   endif()
 
-  install(FILES ${target_elf} TYPE BIN OPTIONAL)
+  install(
+    FILES ${target_firmware_artifacts}
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}/firmware/${name}"
+    OPTIONAL)
 
 endfunction()
 
 # Make the programmer bases and tags
 
 add_subdirectory(boards)
-add_subdirectory(bases EXCLUDE_FROM_ALL)
+add_subdirectory(bases)
 add_subdirectory(proto-c)
-add_subdirectory(tags EXCLUDE_FROM_ALL)
+add_subdirectory(tags)

@@ -154,8 +154,47 @@ if(BUILD_EMBEDDED)
   if(NOT NANOPB_SRC_ROOT_FOLDER)
     set(NANOPB_SRC_ROOT_FOLDER "${CMAKE_SOURCE_DIR}/nanopb" CACHE PATH "Nanopb source root" FORCE)
   endif()
-  set(NANOPB_GENERATOR_SOURCE_DIR "${NANOPB_SRC_ROOT_FOLDER}/generator-bin" CACHE PATH "Nanopb generator directory")
-  list(APPEND CMAKE_MODULE_PATH "${NANOPB_SRC_ROOT_FOLDER}/extra/")
+  if(NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/pb.h"
+     OR NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/pb_common.c")
+    message(FATAL_ERROR
+      "Nanopb source files were not found. Set NANOPB_ROOT, "
+      "or place the nanopb source tree at ${CMAKE_SOURCE_DIR}/nanopb.")
+  endif()
+
+  set(NANOPB_GENERATOR_EXECUTABLE "" CACHE FILEPATH "Nanopb generator executable")
+  if(NANOPB_GENERATOR_EXECUTABLE AND EXISTS "${NANOPB_GENERATOR_EXECUTABLE}")
+    # Use the cache value explicitly provided by the user or a previous valid configure.
+  else()
+    set(_nanopb_generator_hints)
+    if(EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
+      list(APPEND _nanopb_generator_hints "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
+    endif()
+    find_program(
+      _nanopb_generator_executable
+      NAMES nanopb_generator nanopb_generator.bat
+      HINTS ${_nanopb_generator_hints}
+      DOC "Nanopb generator executable")
+    if(_nanopb_generator_executable)
+      set(
+        NANOPB_GENERATOR_EXECUTABLE
+        "${_nanopb_generator_executable}"
+        CACHE FILEPATH
+        "Nanopb generator executable"
+        FORCE)
+    endif()
+  endif()
+  if(NOT NANOPB_GENERATOR_EXECUTABLE)
+    message(FATAL_ERROR
+      "nanopb_generator was not found. Set NANOPB_GENERATOR_EXECUTABLE, "
+      "or set NANOPB_ROOT to a nanopb "
+      "source tree with generator-bin.")
+  endif()
+
+  get_filename_component(
+    NANOPB_GENERATOR_SOURCE_DIR "${NANOPB_GENERATOR_EXECUTABLE}" DIRECTORY)
+  if(EXISTS "${NANOPB_SRC_ROOT_FOLDER}/extra")
+    list(APPEND CMAKE_MODULE_PATH "${NANOPB_SRC_ROOT_FOLDER}/extra/")
+  endif()
 endif()
 
 # create common include for low-level monitor

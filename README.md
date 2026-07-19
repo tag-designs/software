@@ -119,9 +119,9 @@ cmake --build --preset windows-vcpkg-static-package
 ```
 
 Windows install and packaging are Release-only. The ZIP contains one shared
-`tag_tools` directory with Qt application launcher executables, the real Qt
-applications, Qt DLLs, MSVC runtime DLLs, Qt plugins, and QML runtime files.
-The command-line tools are built but not included in the install package.
+`tag_tools` directory with Qt application and command-line launcher
+executables, the real applications and command-line tools, Qt DLLs, MSVC
+runtime DLLs, Qt plugins, and QML runtime files.
 Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies are linked
 statically and are not packaged as separate DLLs:
 
@@ -396,6 +396,15 @@ cmake --build build-embedded --target tag-breakout-base-jlcpcb32-v1-dfu
 ```
 
 The `-dfu` targets attempt to program the board.
+
+Install built firmware artifacts:
+
+```
+cmake --install build-embedded
+```
+
+The install step copies each built firmware target's `.elf`, `.hex`, `.bin`,
+`.dmp`, and `.list` files to `share/UltralightTags/firmware/<target>/`.
 
 ## Embedded nanopb Options
 

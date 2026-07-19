@@ -40,7 +40,8 @@ include $(BOARDDIR)/<BOARD_TYPE>/board.mk
 ```
 
 Generated firmware artifacts are written under the CMake build tree, not the
-source tree.
+source tree. When installed, `.elf`, `.hex`, `.bin`, `.dmp`, and `.list`
+artifacts are copied to `share/UltralightTags/firmware/<target>/`.
 
 ## Active Bases
 
