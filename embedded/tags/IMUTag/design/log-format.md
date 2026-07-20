@@ -63,8 +63,9 @@ rate, their configured ODRs should remain above that polling frequency.
   all 15 superframes have been loaded, issue Program Execute (`10h`) for the
   target page address. This final command performs the single physical write
   cycle to the NAND array.
-- Periodic headers in MCU flash, for example one header every N logical NAND
-  pages, track logical page position and provide coarse recovery anchors.
+- Sparse checkpoints in MCU flash track seconds, logical page number, and flags
+  for restart/erase recovery. They do not need `millis`, because each NAND page
+  carries its own seconds plus 1/1024 s subsecond timestamp.
 - NAND capacity is large enough that the log format can prioritize simple
   parsing and robust recovery over byte-level compression.
 
@@ -133,3 +134,61 @@ typedef struct __attribute__((packed)) {
   SuperFrame_t frames[15]; /* 15 * 136 bytes = 2040 bytes */
 } Nand_Page_t;
 ```
+
+## Time Synchronization
+
+All timing in the tag is derived from the RTC and its 1024 Hz signal. This
+signal drives the IMU in ODR-triggered mode. The IMU then derives its internal
+sampling rate from that reference and aligns data generation in frequency and
+phase to the reference edges. Given a page timestamp in seconds plus 1/1024 s
+subsecond ticks, the host can reconstruct accurate sample timestamps.
+
+Every page starts with a slow/recovery sample containing an RTC timestamp. Call
+that timestamp `t0`. It is the boundary immediately before the first IMU sample
+stored in the page, not the timestamp of the flash write itself.
+
+There are 150 IMU samples in a page, indexed `i = 0..149`. For a configured IMU
+sample rate `sample_rate`:
+
+```text
+delta = 1 / sample_rate
+time(imu[i]) = t0 + (i + 1) * delta
+```
+
+The page contains 15 superframes. Each superframe contains 10 IMU samples and
+one auxiliary pressure/magnetometer sample, so auxiliary data is logged at 1/10
+the IMU rate. For auxiliary sample `j = 0..14`:
+
+```text
+time(mag[j]) = t0 + (j + 1) * 10 * delta
+time(pressure[j]) = t0 + (j + 1) * 10 * delta
+```
+
+The pressure and magnetometer parts are free-running and are polled when each
+superframe is assembled. The timestamp above is therefore the log-time assigned
+to the auxiliary slot: the end boundary of the corresponding 10-sample IMU
+superframe. If a fresh auxiliary conversion is not available for that slot,
+firmware writes the explicit NaN value described above.
+
+Firmware captures `t0` by retaining the timestamp from the wake that made the
+previous superframe available. That wake marks the beginning of the next
+superframe. When the next superframe becomes the first superframe of a new NAND
+page, the retained timestamp becomes the page timestamp:
+
+```text
+wake N
+timestamp_N = get_timestamp()
+read/process the superframe that just became available
+retain timestamp_N as the start boundary for the next superframe
+
+wake N+1
+read/process the next superframe
+if this superframe starts a new page:
+    page.t0 = retained timestamp_N
+```
+
+The pressure-sensor temperature stored in the page header should have the same
+logical time as `t0`. If firmware samples pressure and temperature while
+assembling the first superframe, it should copy that freshly read temperature
+into the page header before the first page-program load. Otherwise the header
+temperature is only a recent slow value, not an exact `t0` sample.
