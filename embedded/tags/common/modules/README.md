@@ -147,9 +147,12 @@ Current examples:
     src/pressure_device.c
   mag/
     inc/ak09940a.h
+    inc/bmm350_tag.h
     src/ak09940a.c
     src/ak09940a_shim.c
     src/ak09940a_test.c
+    src/bmm350_tag.c
+    src/bmm350_test.c
   imu/
     lsm6dsv16x.h
     lsm6dsv16x_regs.h
@@ -283,6 +286,12 @@ while `mag/src/ak09940a_shim.c` binds a default SPI descriptor and legacy
 Active CompassTag firmware bypasses the shim by exporting
 `tagAk09940aDevice()` from the family device file and calling the descriptor
 API directly from its sensor code and self-test hook.
+
+The BMM350 magnetometer uses a dedicated `TagBmm350Device` descriptor rather
+than the generic register-device shape. The descriptor carries its
+`TagI2cDevice`, DRDY line, RAM compensation buffer, and interrupt settings.
+Targets select it with `sensor_mag_bmm350`; tag or family `devices.c` binds the
+concrete bus and DRDY line.
 
 Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterDevice` with the pressure

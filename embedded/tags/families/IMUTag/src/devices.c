@@ -7,7 +7,12 @@
 
 #include "hal.h"
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+#include "bmm350_tag.h"
+#include "i2c_bus.h"
+#else
 #include "ak09940a.h"
+#endif
 #include "lps22hh.h"
 #include "app.h"
 #include "core_sync.h"
@@ -24,7 +29,12 @@
 #include "sensors.h"
 #include "test_support.h"
 
-#if defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
+#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#include "storage_gd5f1gq5re.h"
+#define EXTERNAL_FLASH_OPS (&gd5f1gq5reStorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE GD5F1GQ5RE_BLOCK_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT GD5F1GQ5RE_LOGICAL_BLOCK_COUNT
+#elif defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
 #include "storage_mx25u12843.h"
 #define EXTERNAL_FLASH_OPS (&mx25u12843StorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE MX25U12843_SECTOR_SIZE
@@ -37,6 +47,62 @@
 #endif
 
 #define LPTIM2_ALTERNATE_FUNCTION 14
+#define IMUTAG_I2C_TIMEOUT 100
+
+#ifndef BMM350_I2C_ADDRESS
+#define BMM350_I2C_ADDRESS 0x14U
+#endif
+
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+#if !defined(TAG_RTC_I2C_DELAY_CYCLES)
+#define TAG_RTC_I2C_DELAY_CYCLES 1U
+#endif
+
+extern const TagI2cController tagRtcI2cController;
+
+static void imutagBmm350I2cDelay(void)
+{
+#if TAG_RTC_I2C_DELAY_CYCLES == 1U
+  __NOP();
+#else
+  for (uint32_t i = 0; i < TAG_RTC_I2C_DELAY_CYCLES; i++) {
+    __NOP();
+  }
+#endif
+}
+
+static const TagSoftI2cConfig bmm350_i2c_config = {
+    .delay = imutagBmm350I2cDelay,
+#if defined(SWAP_I2C) && SWAP_I2C
+    .sda = LINE_RTC_SCL,
+    .scl = LINE_RTC_SDA,
+#else
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+#endif
+};
+
+static const TagI2cDevice bmm350_i2c = {
+    .controller = &tagRtcI2cController,
+    .config.software = &bmm350_i2c_config,
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+    .pwr = TAG_NO_LINE,
+    .address = BMM350_I2C_ADDRESS,
+    .timeout = IMUTAG_I2C_TIMEOUT,
+    .sleep_policy = TAG_I2C_SLEEP_PULLUP,
+};
+
+static TagBmm350Compensation bmm350_compensation;
+
+const TagBmm350Device tagImuTagBmm350Device = {
+    .i2c = &bmm350_i2c,
+    .drdy = LINE_IMU_TRG_TEST,
+    .compensation = &bmm350_compensation,
+    .interrupt_polarity = BMM350_INT_ACTIVE_HIGH,
+    .interrupt_drive = BMM350_INT_PUSH_PULL,
+};
+#endif
 
 /*
  * IMUTagBreakout device bindings.
@@ -184,6 +250,7 @@ const TagLsm6dsv16xDevice tagImuTagImuDevice = {
     .trigger_context = NULL,
 };
 
+#if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 const TagRegisterDevice tagImuTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -198,6 +265,7 @@ const TagRegisterDevice tagImuTagMagDevice = {
     .read_mask = 0x80,
     .write_mask = 0x00,
 };
+#endif
 
 static const TagTestCase tag_tests[] =
 {
@@ -208,7 +276,11 @@ static const TagTestCase tag_tests[] =
 #endif
   {RUN_AIS2, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
   {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  {RUN_MMC5633, tag_test_bmm350, TAG_MAG_DEVICE}
+#else
   {RUN_MMC5633, tag_test_ak09940a, TAG_MAG_DEVICE}
+#endif
 };
 
 /**
@@ -223,6 +295,7 @@ const TagTestCase *tagTestCases(size_t *count)
   return tag_tests;
 }
 
+#if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 /**
  * @brief Return the IMUTagBreakout AK09940A descriptor.
  *
@@ -232,6 +305,7 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 {
   return TAG_MAG_DEVICE;
 }
+#endif
 
 /**
  * @brief Apply IMUTagBreakout device power policy for a lifecycle phase.
@@ -247,7 +321,11 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
     if (state != TagState_RUNNING) {
      (void)deinitDataCollection();
      palSetLineMode(LINE_LPS_DRDY, PAL_MODE_INPUT_ANALOG);
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+     palSetLineMode(LINE_IMU_TRG_TEST, PAL_MODE_INPUT_ANALOG);
+#else
      palSetLineMode(LINE_MAG_TRG, PAL_MODE_INPUT_ANALOG);
+#endif
     }
     break;
 
@@ -284,7 +362,11 @@ void tagDevicesDeinit(void)
 void tagDevicesApplyStandbyPins(void)
 {
   /* Legacy static-board fallback; generated IMUTagv1 uses board_standby.h. */
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  tagI2cDevicePrepareSleep(TAG_MAG_DEVICE->i2c);
+#else
   tagBusPrepareSleep(&tagImuTagMagDevice.bus);
+#endif
   tagBusPrepareSleep(&imu_registers.bus);
   tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);

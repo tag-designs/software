@@ -14,7 +14,7 @@ sequence should live in that tag family instead.
 - `accel/`: accelerometer drivers that are reusable enough to be common.
 - `imu/`: LSM6DSV16X descriptor driver, self-test hook, and design notes.
 - `pressure/`: active LPS27 and LPS22HH pressure drivers.
-- `mag/`: AK09940A descriptor driver and default shim.
+- `mag/`: AK09940A descriptor driver/default shim and BMM350 I2C driver.
 - `archive/`: retired or reference sensor drivers such as MMC5633 and older
   light-sensor code. Ignore this directory unless specifically asked.
 

@@ -21,7 +21,11 @@
 #include "gpio_utils.h"
 #include "persistent.h"
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+#include "bmm350_tag.h"
+#else
 #include "ak09940a.h"
+#endif
 #include "lsm6dsv16x.h"
 #include "lps22hh.h"
 #include "sensors.h"
@@ -84,7 +88,11 @@ static bool have_mag_sample;
 static lsm6dsv16x_sample_t block_samples[IMU_FIFO_PAIRS_PER_SUPERFRAME];
 static uint16_t block_sample_count;
 static uint16_t consecutive_mag_misses;
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+static bmm350_rate_t configured_mag_rate;
+#else
 static ak09940_rate_t configured_mag_rate;
+#endif
 
 static void enable_data_collection_wake_event(void)
 {
@@ -109,6 +117,7 @@ static inline void orient_imu_xyz(int16_t *x, int16_t *y, int16_t *z)
   (void)z;
 }
 
+#if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
   int32_t raw = ((int32_t)(h & 0x03U) << 16) | ((int32_t)m << 8) | l;
@@ -116,6 +125,7 @@ static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
     raw |= (int32_t)0xFFFC0000;
   return raw;
 }
+#endif
 
 static int16_t clamp_i16(int32_t value)
 {
@@ -136,6 +146,25 @@ static float missing_aux_sample(void)
   return missing.value;
 }
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+static bmm350_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
+{
+  switch (imu_odr) {
+  case LSM6DSV16X_TRIG_ODR_50HZ:
+  case LSM6DSV16X_TRIG_ODR_100HZ:
+    return BMM350_RATE_12_5HZ;
+  case LSM6DSV16X_TRIG_ODR_200HZ:
+    return BMM350_RATE_25HZ;
+  case LSM6DSV16X_TRIG_ODR_400HZ:
+    return BMM350_RATE_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return BMM350_RATE_100HZ;
+  default:
+    return BMM350_RATE_50HZ;
+  }
+}
+#else
 static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -154,6 +183,7 @@ static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
     return AK09940_RATE_50HZ;
   }
 }
+#endif
 
 static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
@@ -195,12 +225,20 @@ static void reset_imu_block_cache(void)
 
 static void init_mag_data_ready_line(void)
 {
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  toInput(TAG_MAG_DEVICE->drdy);
+#else
   toInput(LINE_MAG_TRG);
+#endif
 }
 
 static bool mag_data_ready(void)
 {
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  return bmm350DataReady(TAG_MAG_DEVICE);
+#else
   return palReadLine(LINE_MAG_TRG) == PAL_HIGH;
+#endif
 }
 
 static void init_pressure_data_ready_line(void)
@@ -225,6 +263,16 @@ static bool configure_mag_collection(bool reset_first)
 {
   bool ok = true;
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  (void)reset_first;
+  bmm350DeviceBegin(TAG_MAG_DEVICE);
+  if (bmm350InitContinuous(TAG_MAG_DEVICE, configured_mag_rate,
+                           BMM350_PERF_LOW_NOISE) != MSG_OK) {
+    debug_log_printf("IMUTag collection: BMM350 init failed\r\n");
+    ok = false;
+  }
+  bmm350DeviceEnd(TAG_MAG_DEVICE);
+#else
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
   if (reset_first && (ak09940aReset(TAG_MAG_DEVICE) != MSG_OK)) {
     debug_log_printf("IMUTag collection: AK09940A reset failed\r\n");
@@ -237,6 +285,7 @@ static bool configure_mag_collection(bool reset_first)
     ok = false;
   }
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
+#endif
 
   if (ok)
     consecutive_mag_misses = 0U;
@@ -254,13 +303,19 @@ static void record_due_mag_sample(bool sampled)
     consecutive_mag_misses++;
 
   if (consecutive_mag_misses >= MAG_MISSED_RECOVERY_THRESHOLD) {
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+    debug_log_printf("IMUTag collection: recovering BMM350 after %u misses\r\n",
+                     (unsigned)consecutive_mag_misses);
+#else
     debug_log_printf("IMUTag collection: recovering AK09940A after %u misses\r\n",
                      (unsigned)consecutive_mag_misses);
+#endif
     (void)configure_mag_collection(true);
     consecutive_mag_misses = 0U;
   }
 }
 
+#if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 static bool read_mag_payload_if_ready(uint8_t *buf)
 {
   bool ready;
@@ -286,9 +341,27 @@ static bool read_mag_payload_if_ready(uint8_t *buf)
    */
   return (buf[10] & AK09940A_ST2_INV_MSK) == 0;
 }
+#endif
 
 static bool update_latest_mag(void)
 {
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  bool ready;
+  bool ok;
+
+  ready = mag_data_ready();
+  bmm350DeviceBegin(TAG_MAG_DEVICE);
+  ok = ready &&
+       (bmm350ReadMagUT(TAG_MAG_DEVICE, &latest_mx, &latest_my,
+                        &latest_mz) == MSG_OK);
+  bmm350DeviceEnd(TAG_MAG_DEVICE);
+
+  if (!ok)
+    return false;
+
+  have_mag_sample = true;
+  return true;
+#else
   uint8_t buf[11];
 
   if (!read_mag_payload_if_ready(buf))
@@ -301,6 +374,7 @@ static bool update_latest_mag(void)
 
   have_mag_sample = true;
   return true;
+#endif
 }
 
 static bool update_latest_pressure(void)
@@ -351,7 +425,11 @@ bool initDataCollection(void)
   lsm6dsv16x_xl_fs_t xl_fs;
   lsm6dsv16x_g_fs_t g_fs;
   lsm6dsv16x_trig_mode_cfg_t trig_cfg;
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  bmm350_rate_t mag_rate;
+#else
   ak09940_rate_t mag_rate;
+#endif
   lps22hh_odr_t pressure_rate;
   bool ok = true;
 
@@ -490,9 +568,15 @@ bool deinitDataCollection(void)
 {
   disable_data_collection_wake_event();
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+  bmm350DeviceBegin(TAG_MAG_DEVICE);
+  (void)bmm350InitPowerDown(TAG_MAG_DEVICE);
+  bmm350DeviceEnd(TAG_MAG_DEVICE);
+#else
   ak09940aDeviceBegin(TAG_MAG_DEVICE);
   (void)ak09940aInitPowerDown(TAG_MAG_DEVICE);
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
+#endif
 
   (void)lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
   lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
@@ -513,13 +597,28 @@ bool deinitDataCollection(void)
  */
 bool sensorCalibrationSample(SensorData *sensors)
 {
+#if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
     uint8_t buf[11];
+#endif
     int16_t ax = 0;
     int16_t ay = 0;
     int16_t az = 0;
 
     memset(sensors, 0, sizeof(*sensors));
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+    if (mag_data_ready())
+    {
+      bmm350DeviceBegin(TAG_MAG_DEVICE);
+      if (bmm350ReadMagUT(TAG_MAG_DEVICE, &sensors->mag.mx,
+                          &sensors->mag.my,
+                          &sensors->mag.mz) == MSG_OK)
+      {
+        sensors->has_mag = true;
+      }
+      bmm350DeviceEnd(TAG_MAG_DEVICE);
+    }
+#else
     if (read_mag_payload_if_ready(buf))
     {
       int32_t mx_raw = decode_mag_18bit(buf[0], buf[1], buf[2]);
@@ -532,6 +631,7 @@ bool sensorCalibrationSample(SensorData *sensors)
                             &sensors->mag.my,
                             &sensors->mag.mz);
     }
+#endif
 
     if (lsm6dsv16x_read_accel(TAG_IMU_DEVICE, &ax, &ay, &az) == 0)
     {
@@ -567,6 +667,15 @@ bool initSensors(void){
         .g_fs = LSM6DSV16X_G_FS_2000DPS,
     };
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+    bmm350DeviceBegin(TAG_MAG_DEVICE);
+    if (bmm350InitContinuous(TAG_MAG_DEVICE, BMM350_RATE_100HZ,
+                             BMM350_PERF_LOW_NOISE) != MSG_OK)
+    {
+      debug_log_printf("IMUTag calibration: BMM350 continuous init failed\r\n");
+    }
+    bmm350DeviceEnd(TAG_MAG_DEVICE);
+#else
     ak09940aDeviceBegin(TAG_MAG_DEVICE);
     if (ak09940aInitContinuous(TAG_MAG_DEVICE, AK09940_RATE_100HZ,
                                AK09940_DRIVE_LOW_NOISE_2,
@@ -575,6 +684,7 @@ bool initSensors(void){
       debug_log_printf("IMUTag calibration: AK09940A continuous init failed\r\n");
     }
     ak09940aDeviceEnd(TAG_MAG_DEVICE);
+#endif
     init_mag_data_ready_line();
 
     lsm6dsv16x_init_accel_only(TAG_IMU_DEVICE, &accel_cfg);
@@ -591,9 +701,15 @@ bool initSensors(void){
  * @return true when shutdown commands complete.
  */
 bool deinitSensors(void) {
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+    bmm350DeviceBegin(TAG_MAG_DEVICE);
+    (void)bmm350InitPowerDown(TAG_MAG_DEVICE);
+    bmm350DeviceEnd(TAG_MAG_DEVICE);
+#else
     ak09940aDeviceBegin(TAG_MAG_DEVICE);
     (void)ak09940aInitPowerDown(TAG_MAG_DEVICE);
     ak09940aDeviceEnd(TAG_MAG_DEVICE);
+#endif
     lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
     debug_log_printf("IMUTag calibration: sensors deinitialized\r\n");
     return true;

@@ -9,6 +9,21 @@
  * v1.10.0, licensed under the BSD-3-Clause license:
  *
  * Copyright (c) 2025 Bosch Sensortec GmbH. All rights reserved.
+ *
+ * Maintainer notes:
+ * - Public entry points assume the caller has opened a device session with
+ *   bmm350DeviceBegin(). This mirrors the AK09940A driver style and keeps bus
+ *   arbitration visible in family sensor code.
+ * - BMM350 I2C reads return two dummy bytes before payload data. Keep
+ *   BMM350_I2C_DUMMY_BYTES in sync with the read helper; changing it without
+ *   auditing all burst reads will corrupt chip ID, OTP, and sample data.
+ * - bmm350InitContinuous() intentionally reloads OTP compensation on every
+ *   initialization. This costs startup time, but avoids stale compensation RAM
+ *   after resets and keeps calibration-state and collection-state behavior
+ *   identical.
+ * - The driver clears the latched DRDY output by reading INT_STATUS after the
+ *   12-byte sample burst. Do not remove that read unless the interrupt mode is
+ *   changed in bmm350ConfigureInterrupt().
  */
 
 #include "bmm350_tag.h"
@@ -382,6 +397,11 @@ msg_t bmm350InitContinuous(const TagBmm350Device *dev,
                            bmm350_rate_t rate,
                            bmm350_performance_t performance)
 {
+  /*
+   * The reset/read-trim/configure sequence deliberately happens as one public
+   * init operation. Family code can recover a missed-sample run by calling this
+   * helper again without knowing which BMM350 state was lost.
+   */
   if (!bmm350CheckWhoami(dev))
     return MSG_RESET;
   if (bmm350Reset(dev) != MSG_OK)

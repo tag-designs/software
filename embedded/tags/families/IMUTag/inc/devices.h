@@ -13,7 +13,12 @@
 #include "lps.h"
 #include "storage_flash.h"
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+#include "bmm350_tag.h"
+extern const TagBmm350Device tagImuTagBmm350Device;
+#else
 extern const TagRegisterDevice tagImuTagMagDevice;
+#endif
 extern const TagLsm6dsv16xDevice tagImuTagImuDevice;
 extern const TagPressureDevice tagImuTagPressureDevice;
 extern const TagStorageDevice tagExternalFlash;
@@ -21,8 +26,13 @@ extern const TagStorageDevice tagExternalFlash;
 /** @brief Configure the IMU external trigger output; divider 0 disables it. */
 void tagImuTagSetTrigger(unsigned int divider);
 
+#if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+/** Default magnetometer descriptor for shared BMM350 code. */
+#define TAG_MAG_DEVICE (&tagImuTagBmm350Device)
+#else
 /** Default magnetometer descriptor for shared AK09940A code. */
 #define TAG_MAG_DEVICE (&tagImuTagMagDevice)
+#endif
 /** Default IMU descriptor for shared LSM6DSV16X code. */
 #define TAG_IMU_DEVICE (&tagImuTagImuDevice)
 /** Default pressure descriptor for shared LPS22HH code. */

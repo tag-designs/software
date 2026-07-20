@@ -3,6 +3,18 @@
  * @brief Native BMM350 magnetometer driver API for tag firmware.
  * @author tag firmware authors
  * @date 2026-07-17
+ *
+ * Maintainer notes:
+ * - This API is intentionally narrower than Bosch's portable SensorAPI. Tag
+ *   firmware owns bus/session policy through TagI2cDevice and only exposes the
+ *   identity, continuous-mode, DRDY, compensated-read, and suspend operations
+ *   needed by IMUTag-style sampling.
+ * - Factory trim/compensation data lives in RAM supplied by the tag descriptor.
+ *   User magnetometer calibration is a separate application-layer concern and
+ *   should not be mixed into TagBmm350Compensation.
+ * - The interrupt polarity and drive mode are descriptor fields because they
+ *   are board-wiring choices. Keep board-specific decisions in devices.c rather
+ *   than adding target branches to the driver.
  */
 
 #ifndef TAG_BMM350_H
@@ -100,10 +112,19 @@ typedef struct {
 } TagBmm350Compensation;
 
 typedef struct {
+  /** Register bus used by the BMM350. The caller owns session bracketing with
+   * bmm350DeviceBegin()/bmm350DeviceEnd() for public operations.
+   */
   const TagI2cDevice *i2c;
+  /** Data-ready/interrupt line. Use TAG_NO_LINE only for diagnostic bring-up;
+   * normal collection expects a wired DRDY signal.
+   */
   ioline_t drdy;
+  /** RAM buffer populated from BMM350 OTP during bmm350InitContinuous(). */
   TagBmm350Compensation *compensation;
+  /** Active level configured into INT_CTRL and used by bmm350DataReady(). */
   bmm350_int_polarity_t interrupt_polarity;
+  /** Output drive configured into INT_CTRL. */
   bmm350_int_drive_t interrupt_drive;
 } TagBmm350Device;
 
