@@ -19,7 +19,7 @@ rate, their configured ODRs should remain above that polling frequency.
 
 | Selected LSM6 Rate (RTC Sync) | Resulting Polling Freq. (1:10) | Safe BMM350 ODR | Safe LPS22HH ODR | Hardware Safety Margin |
 |---|---:|---|---|---|
-| 100 Hz | 10 Hz | 12.5 Hz | 12.5 Hz | Safe margin (+2.5 Hz overhead) |
+| 100 Hz | 10 Hz | 12.5 Hz | 25 Hz | Safe margin (+2.5 Hz overhead) |
 | 200 Hz | 20 Hz | 25 Hz | 25 Hz | Safe margin (+5 Hz overhead) |
 | 400 Hz | 40 Hz | 50 Hz | 50 Hz | Safe margin (+10 Hz overhead) |
 | 800 Hz | 80 Hz | 100 Hz | 100 Hz | +25% safety margin (100 Hz vs 80 Hz) |

@@ -10,6 +10,10 @@
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
 #include "bmm350_tag.h"
 #include "i2c_bus.h"
+#if defined(TAG_IMUTAG_RTC_I2C_HARDWARE) && TAG_IMUTAG_RTC_I2C_HARDWARE
+#include "rtc_device.h"
+#include "rv3028.h"
+#endif
 #else
 #include "ak09940a.h"
 #endif
@@ -30,10 +34,10 @@
 #include "test_support.h"
 
 #if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
-#include "storage_gd5f1gq5re.h"
-#define EXTERNAL_FLASH_OPS (&gd5f1gq5reStorageOps)
-#define EXTERNAL_FLASH_SECTOR_SIZE GD5F1GQ5RE_BLOCK_SIZE
-#define EXTERNAL_FLASH_SECTOR_COUNT GD5F1GQ5RE_LOGICAL_BLOCK_COUNT
+#include "storage_gd5f.h"
+#define EXTERNAL_FLASH_OPS (&gd5fStorageOps)
+#define EXTERNAL_FLASH_SECTOR_SIZE GD5F_BLOCK_SIZE
+#define EXTERNAL_FLASH_SECTOR_COUNT GD5F_LOGICAL_BLOCK_COUNT
 #elif defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
 #include "storage_mx25u12843.h"
 #define EXTERNAL_FLASH_OPS (&mx25u12843StorageOps)
@@ -53,11 +57,123 @@
 #define BMM350_I2C_ADDRESS 0x14U
 #endif
 
+#ifndef IMUTAG_FLASH_CS_LINE
+#define IMUTAG_FLASH_CS_LINE LINE_FLASH_nCS
+#endif
+#ifndef IMUTAG_FLASH_SCK_LINE
+#define IMUTAG_FLASH_SCK_LINE LINE_FLASH_SCK
+#endif
+#ifndef IMUTAG_FLASH_MISO_LINE
+#define IMUTAG_FLASH_MISO_LINE LINE_FLASH_MISO
+#endif
+#ifndef IMUTAG_FLASH_MOSI_LINE
+#define IMUTAG_FLASH_MOSI_LINE LINE_FLASH_MOSI
+#endif
+
+#ifndef IMUTAG_LPS_CS_LINE
+#define IMUTAG_LPS_CS_LINE LINE_LPS_CS
+#endif
+#ifndef IMUTAG_LPS_SCK_LINE
+#define IMUTAG_LPS_SCK_LINE LINE_ACCEL_LPS_MAG_SCK
+#endif
+#ifndef IMUTAG_LPS_MISO_LINE
+#define IMUTAG_LPS_MISO_LINE LINE_LPS_MAG_MISO
+#endif
+#ifndef IMUTAG_LPS_MOSI_LINE
+#define IMUTAG_LPS_MOSI_LINE LINE_LPS_MOSI
+#endif
+#ifndef IMUTAG_LPS_DRDY_LINE
+#define IMUTAG_LPS_DRDY_LINE LINE_LPS_DRDY
+#endif
+
+#ifndef IMUTAG_IMU_CS_LINE
+#define IMUTAG_IMU_CS_LINE LINE_ACCEL_CS
+#endif
+#ifndef IMUTAG_IMU_SCK_LINE
+#define IMUTAG_IMU_SCK_LINE LINE_ACCEL_LPS_MAG_SCK
+#endif
+#ifndef IMUTAG_IMU_MISO_LINE
+#define IMUTAG_IMU_MISO_LINE LINE_ACCEL_MISO
+#endif
+#ifndef IMUTAG_IMU_MOSI_LINE
+#define IMUTAG_IMU_MOSI_LINE LINE_ACCEL_MAG_MOSI
+#endif
+#ifndef IMUTAG_IMU_TRIGGER_LINE
+#define IMUTAG_IMU_TRIGGER_LINE LINE_ACCEL_TRG
+#endif
+
+#ifndef IMUTAG_BMM_DRDY_LINE
+#define IMUTAG_BMM_DRDY_LINE LINE_IMU_TRG_TEST
+#endif
+
+#ifndef IMUTAG_MAG_CS_LINE
+#define IMUTAG_MAG_CS_LINE LINE_MAG_CS
+#endif
+#ifndef IMUTAG_MAG_SCK_LINE
+#define IMUTAG_MAG_SCK_LINE LINE_ACCEL_LPS_MAG_SCK
+#endif
+#ifndef IMUTAG_MAG_MISO_LINE
+#define IMUTAG_MAG_MISO_LINE LINE_LPS_MAG_MISO
+#endif
+#ifndef IMUTAG_MAG_MOSI_LINE
+#define IMUTAG_MAG_MOSI_LINE LINE_ACCEL_MAG_MOSI
+#endif
+#ifndef IMUTAG_MAG_TRIGGER_LINE
+#define IMUTAG_MAG_TRIGGER_LINE LINE_MAG_TRG
+#endif
+
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
 #if !defined(TAG_RTC_I2C_DELAY_CYCLES)
 #define TAG_RTC_I2C_DELAY_CYCLES 1U
 #endif
 
+#if defined(TAG_IMUTAG_RTC_I2C_HARDWARE) && TAG_IMUTAG_RTC_I2C_HARDWARE
+#ifndef TAG_IMUTAG_I2C_TIMINGR
+#define TAG_IMUTAG_I2C_TIMINGR 0x00000509U
+#endif
+
+static binary_semaphore_t imutag_rtc_i2c_mutex;
+
+static const I2CConfig imutag_rtc_i2c_config = {
+    TAG_IMUTAG_I2C_TIMINGR,
+    0,
+    0,
+};
+
+const TagI2cController tagRtcI2cController = {
+    .backend = TAG_I2C_BACKEND_HARDWARE,
+    .mutex = &imutag_rtc_i2c_mutex,
+    .driver.hardware = &I2CD1,
+};
+
+static const TagI2cDevice imutag_rtc_i2c = {
+    .controller = &tagRtcI2cController,
+    .config.hardware = &imutag_rtc_i2c_config,
+    .sda = LINE_RTC_SDA,
+    .scl = LINE_RTC_SCL,
+    .pwr = TAG_NO_LINE,
+    .address = RV3028_ADR,
+    .timeout = IMUTAG_I2C_TIMEOUT,
+    .sleep_policy = TAG_I2C_SLEEP_PULLUP,
+};
+
+static const TagRtcDevice imutag_rtc_device = {
+    .registers = &imutag_rtc_i2c,
+    .device_on = rtcOn,
+    .device_off = rtcOff,
+};
+
+const TagRtcDevice *tagRtcDevice(void)
+{
+  return &imutag_rtc_device;
+}
+
+void tagRtcDeviceRuntimeInit(void)
+{
+  chBSemObjectInit(&imutag_rtc_i2c_mutex, false);
+  tagI2cControllerObjectInit(&tagRtcI2cController);
+}
+#else
 extern const TagI2cController tagRtcI2cController;
 
 static void imutagBmm350I2cDelay(void)
@@ -81,10 +197,15 @@ static const TagSoftI2cConfig bmm350_i2c_config = {
     .scl = LINE_RTC_SCL,
 #endif
 };
+#endif
 
 static const TagI2cDevice bmm350_i2c = {
     .controller = &tagRtcI2cController,
+#if defined(TAG_IMUTAG_RTC_I2C_HARDWARE) && TAG_IMUTAG_RTC_I2C_HARDWARE
+    .config.hardware = &imutag_rtc_i2c_config,
+#else
     .config.software = &bmm350_i2c_config,
+#endif
     .sda = LINE_RTC_SDA,
     .scl = LINE_RTC_SCL,
     .pwr = TAG_NO_LINE,
@@ -97,7 +218,7 @@ static TagBmm350Compensation bmm350_compensation;
 
 const TagBmm350Device tagImuTagBmm350Device = {
     .i2c = &bmm350_i2c,
-    .drdy = LINE_IMU_TRG_TEST,
+    .drdy = IMUTAG_BMM_DRDY_LINE,
     .compensation = &bmm350_compensation,
     .interrupt_polarity = BMM350_INT_ACTIVE_HIGH,
     .interrupt_drive = BMM350_INT_PUSH_PULL,
@@ -151,10 +272,10 @@ const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_FLASH_nCS,
-        .sck = LINE_FLASH_SCK,
-        .miso = LINE_FLASH_MISO,
-        .mosi = LINE_FLASH_MOSI,
+        .cs = IMUTAG_FLASH_CS_LINE,
+        .sck = IMUTAG_FLASH_SCK_LINE,
+        .miso = IMUTAG_FLASH_MISO_LINE,
+        .mosi = IMUTAG_FLASH_MOSI_LINE,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
@@ -166,10 +287,10 @@ static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_LPS_CS,
-        .sck = LINE_ACCEL_LPS_MAG_SCK,
-        .miso = LINE_LPS_MAG_MISO,
-        .mosi = LINE_LPS_MOSI,
+        .cs = IMUTAG_LPS_CS_LINE,
+        .sck = IMUTAG_LPS_SCK_LINE,
+        .miso = IMUTAG_LPS_MISO_LINE,
+        .mosi = IMUTAG_LPS_MOSI_LINE,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
@@ -185,10 +306,10 @@ static const TagRegisterDevice imu_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_ACCEL_CS,
-        .sck = LINE_ACCEL_LPS_MAG_SCK,
-        .miso = LINE_ACCEL_MISO,
-        .mosi = LINE_ACCEL_MAG_MOSI,
+        .cs = IMUTAG_IMU_CS_LINE,
+        .sck = IMUTAG_IMU_SCK_LINE,
+        .miso = IMUTAG_IMU_MISO_LINE,
+        .mosi = IMUTAG_IMU_MOSI_LINE,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
@@ -205,8 +326,8 @@ static const TagRegisterDevice imu_registers = {
  */
 void tagImuTagSetTrigger(unsigned int divider)
 {
-  palClearLine(LINE_ACCEL_TRG);
-  palSetLineMode(LINE_ACCEL_TRG, PAL_MODE_INPUT_ANALOG);
+  palClearLine(IMUTAG_IMU_TRIGGER_LINE);
+  palSetLineMode(IMUTAG_IMU_TRIGGER_LINE, PAL_MODE_INPUT_ANALOG);
 
   if (divider == 0U) {
     tagImuTagDisableTriggerClock();
@@ -221,7 +342,8 @@ void tagImuTagSetTrigger(unsigned int divider)
   RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
   RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
 
-  palSetLineMode(LINE_ACCEL_TRG, PAL_MODE_ALTERNATE(LPTIM2_ALTERNATE_FUNCTION));
+  palSetLineMode(IMUTAG_IMU_TRIGGER_LINE,
+                 PAL_MODE_ALTERNATE(LPTIM2_ALTERNATE_FUNCTION));
 
   LPTIM2->CFGR = 0U;
   LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
@@ -255,10 +377,10 @@ const TagRegisterDevice tagImuTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_MAG_CS,
-        .sck = LINE_ACCEL_LPS_MAG_SCK,
-        .miso = LINE_LPS_MAG_MISO,
-        .mosi = LINE_ACCEL_MAG_MOSI,
+        .cs = IMUTAG_MAG_CS_LINE,
+        .sck = IMUTAG_MAG_SCK_LINE,
+        .miso = IMUTAG_MAG_MISO_LINE,
+        .mosi = IMUTAG_MAG_MOSI_LINE,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
         .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
@@ -320,11 +442,11 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
     if (state != TagState_RUNNING) {
      (void)deinitDataCollection();
-     palSetLineMode(LINE_LPS_DRDY, PAL_MODE_INPUT_ANALOG);
+     palSetLineMode(IMUTAG_LPS_DRDY_LINE, PAL_MODE_INPUT_ANALOG);
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
-     palSetLineMode(LINE_IMU_TRG_TEST, PAL_MODE_INPUT_ANALOG);
+     palSetLineMode(IMUTAG_BMM_DRDY_LINE, PAL_MODE_INPUT_ANALOG);
 #else
-     palSetLineMode(LINE_MAG_TRG, PAL_MODE_INPUT_ANALOG);
+     palSetLineMode(IMUTAG_MAG_TRIGGER_LINE, PAL_MODE_INPUT_ANALOG);
 #endif
     }
     break;

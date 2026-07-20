@@ -94,6 +94,13 @@ SECTIONS
   {
     *(.calibration)
   } > flash0
+  .nand_map (NOLOAD): ALIGN(2048)
+  {
+   __nand_map_start__ = .;
+   KEEP(*(.nand_map))
+   . = ALIGN(2048);
+   __nand_map_end__ = .;
+  } > flash0
   .persistent (NOLOAD): ALIGN(2048)
   {
    __persistent_start__	= .;

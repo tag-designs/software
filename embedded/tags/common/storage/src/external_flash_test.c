@@ -11,6 +11,10 @@
 #include "storage_flash.h"
 #include "test_support.h"
 
+#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#include "storage_gd5f.h"
+#endif
+
 #if defined(TAG_FLASH_AT25XE) && TAG_FLASH_AT25XE
 #define TAG_EXTERNAL_FLASH_FAILED AT25XE_FAILED
 #elif defined(TAG_FLASH_MX25U12843) && TAG_FLASH_MX25U12843
@@ -38,9 +42,21 @@
 TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
 {
   const TagStorageDevice *device = context ? context : &tagExternalFlash;
+  bool result;
 
   tagStorageWake(device);
-  bool result = tagStorageCheckID(device) > -1;
+#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+  if (!gd5fLogicalMapConfigured()) {
+    uint32_t bad_block_count = 0U;
+    result = gd5fProvisionLogicalMap(device, &bad_block_count);
+  } else {
+    result = gd5fLogicalMapValidate();
+  }
+  if (result)
+    result = tagStorageCheckID(device) > -1;
+#else
+  result = tagStorageCheckID(device) > -1;
+#endif
   tagStorageSleep(device);
   return result ? ALL_PASSED : TAG_EXTERNAL_FLASH_FAILED;
 }

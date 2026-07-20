@@ -384,8 +384,8 @@ needs to be reserved for driver metadata.
 ### Proposed Files
 
 ```text
-embedded/tags/common/storage/inc/storage_gd5f1gq5re.h
-embedded/tags/common/storage/src/gd5f1gq5re.c
+embedded/tags/common/storage/inc/storage_gd5f.h
+embedded/tags/common/storage/src/gd5f.c
 embedded/tags/common/modules/flash_gd5f1gq5re.mk
 ```
 
@@ -399,9 +399,9 @@ logic into shared files at that point.
 The driver keeps physical helpers private:
 
 ```c
-static bool gd5f1gq5reReadPhysicalPage(...);
-static bool gd5f1gq5reProgramPhysicalPage(...);
-static bool gd5f1gq5reErasePhysicalBlock(...);
+static bool gd5fReadPhysicalPage(...);
+static bool gd5fProgramPhysicalPage(...);
+static bool gd5fErasePhysicalBlock(...);
 ```
 
 Those helpers own:
@@ -417,12 +417,11 @@ Those helpers own:
 
 ### Bad-Block Table
 
-The BBT should be kept in CPU flash, not in the SPI-NAND. Exactly when and how
-we create the flash-backed table is TBD. The important linker constraint is not
-the byte size of the record, because the compact list is small; it is the
-STM32L432 internal flash erase-page size. The new `IMUTag` target should reserve
-one whole 2 KiB MCU flash erase page for the table and the normal tag data erase
-path should avoid that page.
+The logical block map is kept in CPU flash, not in the SPI-NAND. It is a flat
+`uint16_t` array in the dedicated `.nand_map` linker section. The important
+linker constraint is the STM32L432 internal flash erase-page size: the target
+reserves one whole 2 KiB MCU flash erase page for the map, immediately before
+`.persistent`, and the normal tag data erase path starts after that page.
 
 This tag is intended as a one-time-use datalogger, so the firmware does not
 update the BBT at runtime. Even during test reuse, we keep the same initial
@@ -431,18 +430,19 @@ touch the spare/OOB bytes, preserving factory bad-block markers.
 
 The first implementation uses:
 
-- an optional CPU-flash-resident `TagGd5f1gq5reBadBlockTable` when a later
-  target/provisioning step provides the weak `gd5f1gq5reBadBlockTable` symbol;
-- a RAM bad-block list populated from that CPU table;
-- a factory-marker scan fallback for bring-up if the CPU table is absent or
-  invalid.
+- a CPU-flash-resident flat logical-to-physical map, `gd5fLogicalBlockMap`;
+- entry 0 equal to `0xffff` as the erased/unprovisioned indicator;
+- an explicit test/provisioning path that scans factory bad-block markers and
+  writes the map;
+- no normal-startup scan fallback.
 
 Boot behavior:
 
 1. Reset and read ID.
 2. Unlock array writes by clearing the block-lock feature register.
-3. Try to load and validate the CPU-flash BBT.
-4. If no valid CPU BBT exists, scan factory bad-block markers into RAM before
+3. Validate the CPU-flash logical map.
+4. If no valid map exists, fail storage readiness until the explicit
+   provisioning/self-test path creates it.
    any erase.
 5. Map each sequential logical block by counting physical good blocks and
    skipping the sorted bad-block list.
@@ -478,7 +478,7 @@ provide optional cache-program operations so high-rate loggers can separate
 cache updates from the physical page program:
 
 - `sector_size` is the logical NAND erase-block size.
-- `sector_count` is `GD5F1GQ5RE_LOGICAL_BLOCK_COUNT`.
+- `sector_count` is `GD5F_LOGICAL_BLOCK_COUNT`.
 - `read` supports arbitrary byte offsets by reading the needed cache page(s).
 - `write` only accepts full-page-aligned, whole-page writes.
 - partial page writes fail rather than silently programming invalid NAND state.
@@ -507,10 +507,10 @@ normal log area may be destroyed.
 ### Open NAND Questions
 
 - Confirm the exact `GD5F1GQ5REYFGR` datasheet and final geometry.
-- Decide the final CPU-flash section name and provisioning workflow for
-  `gd5f1gq5reBadBlockTable`.
-- Reserve/protect one whole STM32L432 internal flash erase page, 2 KiB, for the
-  BBT even though the compact record itself is much smaller.
+- Confirm the factory provisioning workflow and operator-visible reporting for
+  `gd5fProvisionLogicalMap`.
+- Confirm whether `.nand_map` needs additional programmer protection beyond
+  being outside ordinary `.persistent` erase.
 - Datalog page integrity relies on NAND ECC. Logical-page tracking and recovery
   are handled by periodic MCU-flash headers, for example one header every N
   logical NAND pages.

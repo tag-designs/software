@@ -363,10 +363,14 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   uint32_t flashend = (uint32_t)&__persistent_end__;
 
   t_InternalDataHeader slot;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   uint32_t header_page = pState->pages;
+#endif
   uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   uint32_t first_flasherr;
   uint32_t retries = 0;
+#endif
 
   memset(&slot, 0xff, sizeof(slot));
 #if IMUTAG_STM32U3_FLASH
@@ -379,9 +383,13 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   FLASH_Unlock();
   uint32_t flasherr =
       FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   first_flasherr = flasherr;
+#endif
   if (flasherr) {
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     retries++;
+#endif
     flasherr =
         FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
   }
