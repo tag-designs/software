@@ -33,6 +33,7 @@
 
 # Directories
 # ChibiOS is tracked as a git submodule at ./ChibiOS.
+build*/
 nanopb
 public
 docs/themes/docsy
