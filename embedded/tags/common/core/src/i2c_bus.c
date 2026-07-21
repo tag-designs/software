@@ -9,6 +9,10 @@
 
 #include "gpio_utils.h"
 
+#ifndef TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN
+#define TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN 0
+#endif
+
 /** @name Controller and device lifecycle
  * Controller and device lifecycle.
  *
@@ -167,6 +171,14 @@ void tagI2cBusBegin(const TagI2cDevice *device)
   }
 
   tagI2cApplyActivePins(device);
+
+#if TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN
+  if ((controller != NULL) &&
+      (controller->backend == TAG_I2C_BACKEND_SOFTWARE) &&
+      (device->config.software != NULL)) {
+    tagSoftI2cBusClear(device->config.software);
+  }
+#endif
 
   if (controller)
   {

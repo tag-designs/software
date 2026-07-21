@@ -56,6 +56,7 @@ void tagSoftI2cObjectInit(TagSoftI2cDriver *driver);
 msg_t tagSoftI2cStart(TagSoftI2cDriver *driver,
                       const TagSoftI2cConfig *config);
 void tagSoftI2cStop(TagSoftI2cDriver *driver);
+void tagSoftI2cBusClear(const TagSoftI2cConfig *config);
 i2cflags_t tagSoftI2cGetErrors(TagSoftI2cDriver *driver);
 msg_t tagSoftI2cMasterTransmitTimeout(TagSoftI2cDriver *driver,
                                       i2caddr_t addr,

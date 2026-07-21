@@ -272,6 +272,41 @@ void tagSoftI2cStop(TagSoftI2cDriver *driver)
   driver->state = I2C_STOP;
 }
 
+void tagSoftI2cBusClear(const TagSoftI2cConfig *config)
+{
+  osalDbgCheck(config != NULL);
+
+  palSetLine(config->sda);
+  palSetLine(config->scl);
+  if (config->delay) {
+    config->delay();
+  }
+
+  for (unsigned i = 0; (i < 9U) && (palReadLine(config->sda) == PAL_LOW); i++) {
+    palClearLine(config->scl);
+    if (config->delay) {
+      config->delay();
+    }
+    palSetLine(config->scl);
+    if (config->delay) {
+      config->delay();
+    }
+  }
+
+  palClearLine(config->sda);
+  if (config->delay) {
+    config->delay();
+  }
+  palSetLine(config->scl);
+  if (config->delay) {
+    config->delay();
+  }
+  palSetLine(config->sda);
+  if (config->delay) {
+    config->delay();
+  }
+}
+
 i2cflags_t tagSoftI2cGetErrors(TagSoftI2cDriver *driver)
 {
   osalDbgCheck(driver != NULL);
