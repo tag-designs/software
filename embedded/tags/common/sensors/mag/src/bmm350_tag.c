@@ -30,7 +30,6 @@
 
 #include "power.h"
 #include "sensor_io.h"
-#include "timekeeping.h"
 
 #include <stddef.h>
 
@@ -106,20 +105,13 @@
 
 static void bmm350DelayUs(uint32_t delay_us)
 {
-  if (delay_us >= 1000U)
-    stopMilliseconds((delay_us + 999U) / 1000U);
-  else
-    chThdSleepMicroseconds(delay_us);
+  chThdSleepMicroseconds(delay_us);
 }
 
-static int32_t bmm350FixSign(uint32_t value, uint8_t bits)
+static inline int32_t bmm350FixSign(uint32_t value, uint8_t bits)
 {
-  uint32_t sign = 1UL << (bits - 1U);
-  uint32_t mask = (1UL << bits) - 1UL;
-  value &= mask;
-  if ((value & sign) != 0U)
-    return (int32_t)(value - (1UL << bits));
-  return (int32_t)value;
+  uint8_t shift = 32U - bits;
+  return ((int32_t)(value << shift)) >> shift;
 }
 
 static msg_t bmm350WriteRegister(const TagBmm350Device *dev, uint8_t reg,

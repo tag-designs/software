@@ -242,6 +242,11 @@ static void tagResetRuntimeStateForPowerInit(void)
   pState->header_page = 0;
   pState->header_addr = 0;
   pState->header_retries = 0;
+  pState->sample_error_count = 0;
+  pState->sample_fifo_overruns = 0;
+  pState->sample_fifo_watermark_shorts = 0;
+  pState->sample_fifo_empty_reads = 0;
+  pState->sample_fifo_short_blocks = 0;
 #endif
   pState->test_result = TEST_UNSPECIFIED;
 }

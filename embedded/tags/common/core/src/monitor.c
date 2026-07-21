@@ -172,6 +172,16 @@ static void statusDiagWrite(void)
   dst = statusDiagAppendU32(dst, end, pState->header_retries);
   dst = statusDiagAppendString(dst, end, " hp=");
   dst = statusDiagAppendU32(dst, end, pState->header_page);
+  dst = statusDiagAppendString(dst, end, " se=");
+  dst = statusDiagAppendU32(dst, end, pState->sample_error_count);
+  dst = statusDiagAppendString(dst, end, " sf=");
+  dst = statusDiagAppendU32(dst, end, pState->sample_fifo_overruns);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, pState->sample_fifo_watermark_shorts);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, pState->sample_fifo_empty_reads);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, pState->sample_fifo_short_blocks);
   *dst = 0;
 }
 #endif
@@ -463,6 +473,10 @@ static bool monitor_stop_allowed(void)
     return true;
   }
   if (pState->state == TagState_EXCEPTION)
+  {
+    return true;
+  }
+  if (pState->state == STATE_UNSPECIFIED)
   {
     return true;
   }

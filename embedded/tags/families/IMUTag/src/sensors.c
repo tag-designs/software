@@ -1,9 +1,30 @@
 
 /**
  * @file sensors.c
- * @brief IMUTagBreakout sensor sampling and calibration storage stubs.
+ * @brief IMUTagBreakout collection, live calibration, and calibration storage.
  * @author tag firmware authors
  * @date 2026-05-23
+ *
+ * Maintainer notes:
+ * - This file is the IMUTag-family policy layer above descriptor-backed sensor
+ *   drivers. Keep register sequencing and bus/session mechanics in the common
+ *   sensor drivers; keep family choices such as rates, orientation, FIFO block
+ *   shape, calibration mode, and recovery thresholds here.
+ * - Normal collection is paced by the LSM6DSV16X triggered FIFO watermark.
+ *   Each log superframe contains a full IMU block plus one auxiliary slot.
+ *   Pressure and magnetometer devices free-run at lower rates and are sampled
+ *   opportunistically after each complete IMU block.
+ * - Auxiliary values intentionally do not reuse stale cache data in the frame
+ *   when the current poll misses. A quiet NaN marks a missing pressure or
+ *   magnetometer slot, while the latest raw pressure temperature remains
+ *   cached separately for the environment header path in state_run.c.
+ * - Live calibration is a separate monitor-driven mode. It streams individual
+ *   magnetometer and accelerometer samples for host-side fitting and does not
+ *   use the collection FIFO superframe path.
+ * - User magnetometer calibration constants are stored as append-only records
+ *   in the linker-provided .calibration flash section. Sensor factory trim
+ *   data, such as BMM350 OTP compensation, belongs in the sensor driver and
+ *   must not be mixed into this flash record format.
  */
 
 #include <tag.pb.h>
@@ -45,6 +66,13 @@
 #endif
 #define MAG_MISSED_RECOVERY_THRESHOLD 16U
 
+/**
+ * @brief One flash record for host-provided magnetometer calibration.
+ *
+ * The first 32-bit word is the timestamp, which doubles as the erased-slot
+ * sentinel because erased flash reads back as all ones. Alignment matches the
+ * flash programming granularity of the active STM32 family.
+ */
 typedef struct {
     int32_t timestamp;
     CalibrationConstants_MagConstants constants;
@@ -61,10 +89,15 @@ sensor_constants_t constants_tmp NOINIT;
 
 #define CONSTANT_CNT (2048/sizeof(sensor_constants_t))
 
-// calibration constants in reserved flash section
-
+/** Calibration records in the linker-reserved flash section. */
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));
 
+/**
+ * @brief Report whether calibration flash contains at least one written slot.
+ *
+ * Empty slots are detected by the erased timestamp word. The host uses this as
+ * a cheap presence check before requesting calibration constants by index.
+ */
 bool sensorsHaveCalibration(void)
 {
   for (unsigned int index = 0; index < CONSTANT_CNT; index++)
@@ -75,8 +108,11 @@ bool sensorsHaveCalibration(void)
   return false;
 }
 
-// check if these variables can be noinit
-
+/*
+ * Runtime collection state. Keep these in normal zero-initialized RAM: the
+ * collection and calibration entry points reset their own caches, and stale
+ * NOINIT values would make missing auxiliary samples look valid after reset.
+ */
 static unsigned int empty_calibration_sample_logs;
 static float latest_pressure;
 static int16_t latest_rawtemp;
@@ -94,6 +130,7 @@ static bmm350_rate_t configured_mag_rate;
 static ak09940_rate_t configured_mag_rate;
 #endif
 
+/** Enable the IMU FIFO-watermark wake source used while collecting data. */
 static void enable_data_collection_wake_event(void)
 {
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
@@ -101,12 +138,19 @@ static void enable_data_collection_wake_event(void)
                    EXTI_MODE_RISING_EDGE | IMU_DATA_WAKE_EXTI_ACTION);
 }
 
+/** Disable collection wake events before shutting down sensors. */
 static void disable_data_collection_wake_event(void)
 {
   extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK, EXTI_MODE_DISABLED);
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
 }
 
+/**
+ * @brief Rotate IMU-frame X/Y into the tag/log frame.
+ *
+ * The physical IMU mounting is shared by accel and gyro. Z is already aligned,
+ * so this helper deliberately leaves it untouched.
+ */
 static inline void orient_imu_xyz(int16_t *x, int16_t *y, int16_t *z)
 {
   int16_t raw_x = *x;
@@ -118,7 +162,8 @@ static inline void orient_imu_xyz(int16_t *x, int16_t *y, int16_t *z)
 }
 
 #if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
-static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
+/** Decode the AK09940A little-endian signed 18-bit magnetic sample format. */
+static inline int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 {
   int32_t raw = ((int32_t)(h & 0x03U) << 16) | ((int32_t)m << 8) | l;
   if ((raw & 0x20000) != 0)
@@ -127,7 +172,8 @@ static int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
 }
 #endif
 
-static int16_t clamp_i16(int32_t value)
+/** Clamp wide raw sensor values to the 16-bit log/header representation. */
+static inline int16_t clamp_i16(int32_t value)
 {
   if (value > INT16_MAX)
     return INT16_MAX;
@@ -136,17 +182,27 @@ static int16_t clamp_i16(int32_t value)
   return (int16_t)value;
 }
 
-static float missing_aux_sample(void)
+/**
+ * @brief Return the quiet-NaN sentinel used for missing auxiliary samples.
+ *
+ * The log frame keeps one auxiliary sample per IMU block. When pressure or
+ * magnetometer data is not ready for the current block, write NaN rather than
+ * repeating an older value; host loaders can then distinguish "not sampled"
+ * from a real zero or held value.
+ */
+static inline float missing_aux_sample(void)
 {
-  union {
-    uint32_t raw;
-    float value;
-  } missing = {0x7fc00000U};
-
-  return missing.value;
+  return __builtin_nanf("");
 }
 
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
+/**
+ * @brief Select the BMM350 free-running ODR for the configured IMU rate.
+ *
+ * The magnetometer is sampled once per IMU superframe, so it does not need to
+ * match the IMU ODR. These rates keep fresh data available at the auxiliary
+ * cadence without spending current on unnecessary magnetic conversions.
+ */
 static bmm350_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -165,6 +221,13 @@ static bmm350_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
   }
 }
 #else
+/**
+ * @brief Select the AK09940A free-running ODR for the configured IMU rate.
+ *
+ * Keep the rate high enough that the once-per-superframe auxiliary poll usually
+ * finds a completed sample, while leaving margin for the older SPI magnetometer
+ * path on low-power collection runs.
+ */
 static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -185,6 +248,13 @@ static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
 }
 #endif
 
+/**
+ * @brief Select the pressure free-running ODR for the configured IMU rate.
+ *
+ * Pressure is lower bandwidth than the IMU, but it still needs to be ready at
+ * the auxiliary poll cadence so the superframe can carry coherent environment
+ * updates when they are available.
+ */
 static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -205,6 +275,7 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
   }
 }
 
+/** Reset cached auxiliary state at collection start. */
 static void reset_environment_cache(void)
 {
   latest_pressure = missing_aux_sample();
@@ -217,13 +288,33 @@ static void reset_environment_cache(void)
   consecutive_mag_misses = 0U;
 }
 
+/** Reset the partial IMU FIFO block accumulator. */
 static void reset_imu_block_cache(void)
 {
   memset(block_samples, 0, sizeof(block_samples));
   block_sample_count = 0;
 }
 
-static void init_mag_data_ready_line(void)
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+static inline void count_sampling_error(volatile uint32_t *counter)
+{
+  pState->sample_error_count++;
+  (*counter)++;
+}
+#else
+static inline void count_sampling_error(volatile uint32_t *counter)
+{
+  (void)counter;
+}
+#endif
+
+/**
+ * @brief Put the active magnetometer data-ready line in input mode.
+ *
+ * BMM350 boards carry the DRDY line in the descriptor. Legacy AK09940A boards
+ * use the family-level LINE_MAG_TRG signal.
+ */
+static inline void init_mag_data_ready_line(void)
 {
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
   toInput(TAG_MAG_DEVICE->drdy);
@@ -232,7 +323,8 @@ static void init_mag_data_ready_line(void)
 #endif
 }
 
-static bool mag_data_ready(void)
+/** Return true when the active magnetometer has asserted data-ready. */
+static inline bool mag_data_ready(void)
 {
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
   return bmm350DataReady(TAG_MAG_DEVICE);
@@ -241,16 +333,30 @@ static bool mag_data_ready(void)
 #endif
 }
 
-static void init_pressure_data_ready_line(void)
+/** Put the LPS22HH data-ready line in input mode. */
+static inline void init_pressure_data_ready_line(void)
 {
   toInput(LINE_LPS_DRDY);
 }
 
-static bool pressure_data_ready(void)
+/** Return true when the pressure DRDY pin is asserted. */
+static inline bool pressure_data_ready(void)
 {
   return palReadLine(LINE_LPS_DRDY) == PAL_HIGH;
 }
 
+/** Return true when the IMU FIFO/wake line is asserted. */
+static inline bool imu_data_ready(void)
+{
+  return palReadLine(LINE_WKUP1) == PAL_HIGH;
+}
+
+/**
+ * @brief Check pressure readiness using the pin first, then status fallback.
+ *
+ * The fallback keeps collection resilient if the DRDY edge was missed or the
+ * board route is unavailable during bring-up.
+ */
 static bool pressure_sample_ready(void)
 {
   if (pressure_data_ready())
@@ -259,6 +365,13 @@ static bool pressure_sample_ready(void)
   return lps22hh_data_ready_device(TAG_PRESSURE_DEVICE);
 }
 
+/**
+ * @brief Configure the active magnetometer for collection.
+ *
+ * The BMM350 init path always performs its required reset/trim reload sequence,
+ * so reset_first is meaningful only for the AK09940A path. A successful
+ * configuration also clears the missed-sample recovery counter.
+ */
 static bool configure_mag_collection(bool reset_first)
 {
   bool ok = true;
@@ -292,6 +405,13 @@ static bool configure_mag_collection(bool reset_first)
   return ok;
 }
 
+/**
+ * @brief Track missed magnetometer polls and reinitialize after repeated loss.
+ *
+ * Collection samples the magnetometer once per completed IMU superframe. A few
+ * misses are normal when rates are close or an interrupt edge is lost; repeated
+ * misses usually mean the continuous-mode state machine needs to be restarted.
+ */
 static void record_due_mag_sample(bool sampled)
 {
   if (sampled) {
@@ -316,6 +436,13 @@ static void record_due_mag_sample(bool sampled)
 }
 
 #if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
+/**
+ * @brief Read one AK09940A payload when data is ready.
+ *
+ * The ST2 byte is preserved through the burst so invalid reads can be rejected.
+ * Data overrun is allowed for this free-running auxiliary stream because the
+ * logger only needs the newest complete sample at the current superframe.
+ */
 static bool read_mag_payload_if_ready(uint8_t *buf)
 {
   bool ready;
@@ -343,6 +470,13 @@ static bool read_mag_payload_if_ready(uint8_t *buf)
 }
 #endif
 
+/**
+ * @brief Refresh the cached magnetometer values from the active device.
+ *
+ * BMM350 conversion to microtesla is owned by its native driver because factory
+ * compensation is part of that device API. AK09940A conversion stays here to
+ * bridge the legacy 18-bit payload into the shared auxiliary log fields.
+ */
 static bool update_latest_mag(void)
 {
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
@@ -377,6 +511,13 @@ static bool update_latest_mag(void)
 #endif
 }
 
+/**
+ * @brief Refresh cached pressure and raw temperature values if data is ready.
+ *
+ * Pressure is converted to hPa immediately for the superframe. Raw temperature
+ * remains in LPS22HH units because environment log metadata and host export
+ * code already understand that representation.
+ */
 static bool update_latest_pressure(void)
 {
   int32_t pressure;
@@ -399,8 +540,9 @@ static bool update_latest_pressure(void)
 /**
  * @brief Sample raw sensor data for the data log.
  *
- * This revived target currently leaves the legacy sensor bodies disabled while
- * the descriptor-backed shared drivers are wired back in.
+ * The active IMUTag page logger uses sampleDataCollection() instead. This
+ * legacy hook is retained for older RUNNING code paths that expect a raw
+ * single-sample API; clearing the destination is the compatibility behavior.
  *
  * @param[out] data Raw sensor destination.
  * @return true after clearing the destination.
@@ -416,6 +558,11 @@ bool sensorSample(RawSensorData *data){
  * The IMU FIFO watermark is the superframe pacing source. Magnetometer and
  * pressure run freely at rates selected to stay above the 1:10 auxiliary
  * polling cadence used by the page log.
+ *
+ * Initialization order matters: caches and DRDY lines are reset before sensors
+ * start, auxiliary devices are put into continuous mode, then the IMU trigger
+ * and FIFO watermark are enabled last so the first wake event sees all devices
+ * in their collection configuration.
  *
  * @return true when the configured collection mode was accepted.
  */
@@ -438,17 +585,21 @@ bool initDataCollection(void)
     return false;
   }
 
+  /* Snapshot the configured IMU mode before deriving auxiliary rates from it. */
   trig_cfg.trig_odr = imu_odr;
   trig_cfg.xl_fs = xl_fs;
   trig_cfg.g_fs = g_fs;
   mag_rate = select_mag_rate(imu_odr);
   configured_mag_rate = mag_rate;
   pressure_rate = select_pressure_rate(imu_odr);
+
+  /* Clear per-run state before any DRDY line can report old sensor data. */
   reset_environment_cache();
   reset_imu_block_cache();
   init_mag_data_ready_line();
   init_pressure_data_ready_line();
 
+  /* Bring auxiliary sensors up first so the first IMU block can carry them. */
   if (!configure_mag_collection(true)) {
     ok = false;
   }
@@ -459,6 +610,7 @@ bool initDataCollection(void)
     ok = false;
   }
 
+  /* Start the FIFO pacing source last, then enable the wake event for it. */
   lsm6dsv16x_init_accel_gyro_triggered(TAG_IMU_DEVICE, &trig_cfg, NULL);
   lsm6dsv16x_set_fifo_watermark(TAG_IMU_DEVICE, IMU_FIFO_WATERMARK_WORDS);
   enable_data_collection_wake_event();
@@ -471,6 +623,13 @@ bool initDataCollection(void)
 
 /**
  * @brief Fill one log superframe from the IMU FIFO and environment sensors.
+ *
+ * This routine may be called before a watermark is available; in that case it
+ * returns false and leaves any partial FIFO block cached. It first verifies
+ * the IMU FIFO/wake line so monitor-attached polling cannot trigger speculative
+ * FIFO reads. Once a full block is assembled, IMU axes are rotated into log
+ * orientation, auxiliary sensors are polled once, and missing auxiliary slots
+ * are written as quiet NaNs.
  *
  * @param[out] frame Destination log superframe.
  * @return true when one complete accel/gyro and auxiliary superframe was copied.
@@ -485,26 +644,47 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   if (frame == NULL)
     return false;
 
+  if (!imu_data_ready())
+    return false;
+
+  /* Check for a full FIFO watermark before draining any IMU samples. */
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {
+    count_sampling_error(&pState->sample_fifo_overruns);
     debug_log_printf("IMUTag collection: IMU FIFO overrun\r\n");
   }
   if (fifo_words < IMU_FIFO_WATERMARK_WORDS) {
+    if (wtm != 0U) {
+      count_sampling_error(&pState->sample_fifo_watermark_shorts);
+      debug_log_printf("IMUTag collection: FIFO watermark short, %u/%u words\r\n",
+                       (unsigned)fifo_words,
+                       (unsigned)IMU_FIFO_WATERMARK_WORDS);
+    }
     return false;
   }
 
+  /* Accumulate into a cached block in case the FIFO read returns short. */
   pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE,
                                &block_samples[block_sample_count],
                                IMU_FIFO_PAIRS_PER_SUPERFRAME - block_sample_count);
   if (pairs == 0U) {
+    count_sampling_error(&pState->sample_fifo_empty_reads);
+    debug_log_printf("IMUTag collection: FIFO read returned no pairs, %u words available\r\n",
+                     (unsigned)fifo_words);
     return false;
   }
   block_sample_count += pairs;
 
   if (block_sample_count < IMU_FIFO_PAIRS_PER_SUPERFRAME) {
+    count_sampling_error(&pState->sample_fifo_short_blocks);
+    debug_log_printf("IMUTag collection: unrecoverable FIFO block short, %u/%u pairs\r\n",
+                     (unsigned)block_sample_count,
+                     (unsigned)IMU_FIFO_PAIRS_PER_SUPERFRAME);
+    reset_imu_block_cache();
     return false;
   }
 
+  /* A complete IMU block is ready; rebuild the destination frame from scratch. */
   memset(frame, 0, sizeof(*frame));
 
   for (uint16_t i = 0; i < IMU_FIFO_PAIRS_PER_SUPERFRAME; i++) {
@@ -515,6 +695,7 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
     int16_t ay = block_samples[i].accel_y;
     int16_t az = block_samples[i].accel_z;
 
+    /* Store accel and gyro in the tag/log coordinate frame. */
     orient_imu_xyz(&gx, &gy, &gz);
     orient_imu_xyz(&ax, &ay, &az);
 
@@ -527,11 +708,17 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   }
   reset_imu_block_cache();
 
+  /*
+   * Auxiliary sensors are deliberately polled after the IMU block is copied.
+   * That keeps the FIFO service time short and makes the aux fields describe
+   * the newest pressure/magnetic data available near the end of the block.
+   */
   bool mag_sampled = update_latest_mag();
   bool pressure_sampled = update_latest_pressure();
 
   record_due_mag_sample(mag_sampled);
 
+  /* Missing aux values are explicit NaNs, not stale cache repeats. */
   frame->aux.pressure = pressure_sampled ? latest_pressure : missing_aux_sample();
   frame->aux.mag_x = mag_sampled ? latest_mx : missing_aux_sample();
   frame->aux.mag_y = mag_sampled ? latest_my : missing_aux_sample();
@@ -562,6 +749,9 @@ bool latestDataCollectionRawTemp(int16_t *rawtemp)
 /**
  * @brief Stop collection sensors and return them to low-power state.
  *
+ * Disable the EXTI wake source first so no collection event can arrive while
+ * individual devices are being powered down.
+ *
  * @return true when shutdown commands have been issued.
  */
 bool deinitDataCollection(void)
@@ -591,6 +781,10 @@ bool deinitDataCollection(void)
  * Magnetometer samples are reported in microtesla. Accelerometer samples are
  * reported in mg using the calibration-mode +/-4 g scale configured by
  * initSensors().
+ *
+ * The host calibration UI can accept sparse samples: a response may contain
+ * only magnetometer, only accelerometer, both, or neither. The limited debug
+ * logging avoids flooding the monitor while a user is waiting for DRDY edges.
  *
  * @param[out] sensors Protobuf sensor-data payload to populate.
  * @return true after attempting the calibration sample.
@@ -656,6 +850,10 @@ bool sensorCalibrationSample(SensorData *sensors)
 /**
  * @brief Start magnetometer and IMU accelerometer for live calibration.
  *
+ * Calibration uses a simpler setup than data collection: no gyro FIFO and no
+ * pressure sensor. The PA4 trigger divider keeps accelerometer sampling active
+ * for orientation feedback while the host gathers magnetometer points.
+ *
  * @return true when the calibration sensor configuration completes.
  */
 bool initSensors(void){
@@ -698,6 +896,9 @@ bool initSensors(void){
 /**
  * @brief Stop calibration sensors and return them to low-power state.
  *
+ * This mirrors initSensors() rather than deinitDataCollection(): only the
+ * devices enabled for live calibration are touched.
+ *
  * @return true when shutdown commands complete.
  */
 bool deinitSensors(void) {
@@ -717,6 +918,10 @@ bool deinitSensors(void) {
 
 /**
  * @brief Handle the live sensor-calibration state.
+ *
+ * Calibration is monitor-attached by design. Without an active monitor there is
+ * no consumer for calibration_log ACKs, so the state immediately tears down the
+ * live sensors and returns to idle.
  *
  * @param[in] t State transition phase.
  * @param[in] reason Reason for entering or continuing calibration.
@@ -755,6 +960,10 @@ extern int errAck(Ack_Err err);
 /**
  * @brief Populate and encode a live calibration sample ACK.
  *
+ * The monitor protocol requests one calibration log entry at a time. Keep this
+ * ACK shape in sync with host calibration tools that poll Req_caldata while the
+ * tag is in CALIBRATE state.
+ *
  * @param[out] ack ACK message to fill.
  * @return Encoded ACK length.
  */
@@ -770,6 +979,11 @@ int calibration_logAck(Ack *ack){
 /**
  * @brief Accept calibration constants from the host.
  *
+ * Calibration records form a simple flash log. New constants are appended to
+ * the first erased slot; when the page is full, the whole calibration page is
+ * erased and writing starts at slot zero. The host treats a negative read index
+ * as "latest", so append order is the only versioning stored here.
+ *
  * @param[in] constants Host-provided calibration constants.
  * @return Encoded ACK length or error response length.
  */
@@ -780,17 +994,18 @@ int write_calibration(CalibrationConstants *constants){
   if (!constants->has_magnetometer)
     return errAck(Ack_INVAL);
 
-  // search for first empty slot
-
+  /* Search for the first erased slot. */
   for (index = 0; index < CONSTANT_CNT; index++){
     if  ((*((int32_t *) &calConstants[index])) == -1)
       break;
   }
 
-  // if all slots are free, erase current constants
+  /*
+   * No empty slot means the calibration page is full. Erase the page and start
+   * a new log at slot zero; older constants are intentionally discarded.
+   */
   if (index >= CONSTANT_CNT)
   {
-    // erase block
     chSysLock();
     FLASH_Unlock();
     FLASH_PageErase(((((uint32_t) calConstants)-0x8000000)) / 2048);
@@ -800,8 +1015,10 @@ int write_calibration(CalibrationConstants *constants){
     index = 0;
   }
 
-  // write constants
-
+  /*
+   * Stage through NOINIT RAM so the flash programmer sees one aligned record
+   * containing only the persisted timestamp and magnetometer constants.
+   */
   memcpy(&constants_tmp.constants,
          &(constants->magnetometer),
         sizeof(constants->magnetometer));
@@ -821,12 +1038,16 @@ int write_calibration(CalibrationConstants *constants){
 /**
  * @brief Read calibration constants into a host ACK.
  *
+ * Negative indexes select the last written slot. Non-negative indexes expose
+ * the raw flash-log slot numbering so host tools can inspect older records
+ * while they still exist on the current page.
+ *
  * @param[in] index Calibration slot to read, or negative for the latest slot.
  * @param[out] ack ACK message to populate.
  * @return Encoded ACK length or error response length.
  */
 int read_calibration(int32_t index, Ack *ack){
-  // if index < 0, search for last written
+  /* If index < 0, search backward for the latest written slot. */
   if (index < 0) {
     for (index = (int32_t) CONSTANT_CNT - 1 ; index > -1 ; index--){
       if ((*((int32_t *) &calConstants[index])) != -1)

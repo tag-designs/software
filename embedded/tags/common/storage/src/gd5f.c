@@ -72,8 +72,8 @@ static uint32_t gd5f_cache_logical_page;
 /**
  * @brief Write raw bytes to the selected SPI storage bus.
  */
-static bool gd5fWriteBytes(const TagSpiDevice *spi, const uint8_t *buf,
-                           uint32_t len)
+static inline bool gd5fWriteBytes(const TagSpiDevice *spi, const uint8_t *buf,
+                                  uint32_t len)
 {
   return tagStorageSpiWrite(spi, buf, len);
 }
@@ -136,7 +136,7 @@ static bool gd5fColumnWrite(const TagSpiDevice *spi,
 /**
  * @brief Convert a physical page number to the command row address.
  */
-static uint32_t gd5fPageToRow(uint32_t physical_page)
+static inline uint32_t gd5fPageToRow(uint32_t physical_page)
 {
   return physical_page;
 }
@@ -144,7 +144,7 @@ static uint32_t gd5fPageToRow(uint32_t physical_page)
 /**
  * @brief Convert a physical block number to the first row in that block.
  */
-static uint32_t gd5fBlockToRow(uint32_t physical_block)
+static inline uint32_t gd5fBlockToRow(uint32_t physical_block)
 {
   return physical_block * GD5F_PAGES_PER_BLOCK;
 }
@@ -593,8 +593,9 @@ static bool gd5fProgramCacheLoad(const TagStorageDevice *dev,
 /**
  * @brief Seed a new NAND page-program cache using PROGRAM_LOAD (0x02).
  */
-static bool gd5fProgramLoad(const TagStorageDevice *dev, uint32_t address,
-                            const uint8_t *buf, int cnt)
+static inline bool gd5fProgramLoad(const TagStorageDevice *dev,
+                                   uint32_t address, const uint8_t *buf,
+                                   int cnt)
 {
   return gd5fProgramCacheLoad(dev, address, buf, cnt,
                               GD5F_CMD_PROGRAM_LOAD);
@@ -603,9 +604,9 @@ static bool gd5fProgramLoad(const TagStorageDevice *dev, uint32_t address,
 /**
  * @brief Patch an active NAND program cache using PROGRAM_LOAD_RANDOM (0x84).
  */
-static bool gd5fProgramLoadRandom(const TagStorageDevice *dev,
-                                  uint32_t address, const uint8_t *buf,
-                                  int cnt)
+static inline bool gd5fProgramLoadRandom(const TagStorageDevice *dev,
+                                         uint32_t address, const uint8_t *buf,
+                                         int cnt)
 {
   return gd5fProgramCacheLoad(dev, address, buf, cnt,
                               GD5F_CMD_PROGRAM_LOAD_RANDOM);
@@ -689,7 +690,7 @@ static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
 /**
  * @brief Begin the storage bus session for this NAND.
  */
-static void gd5fWake(const TagStorageDevice *dev)
+static inline void gd5fWake(const TagStorageDevice *dev)
 {
   tagStorageBusBegin(dev);
 }
@@ -697,7 +698,7 @@ static void gd5fWake(const TagStorageDevice *dev)
 /**
  * @brief End the storage bus session for this NAND.
  */
-static void gd5fSleep(const TagStorageDevice *dev)
+static inline void gd5fSleep(const TagStorageDevice *dev)
 {
   tagStorageBusEnd(dev);
 }

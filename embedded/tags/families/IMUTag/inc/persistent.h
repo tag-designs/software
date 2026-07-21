@@ -87,6 +87,11 @@ typedef struct
   uint32_t header_page;       // retained internal-header page attempted
   uint32_t header_addr;       // retained internal-header address attempted
   uint32_t header_retries;    // retained internal-header write retry count
+  uint32_t sample_error_count; // retained data-sampling error total
+  uint32_t sample_fifo_overruns;        // IMU FIFO overrun count
+  uint32_t sample_fifo_watermark_shorts; // watermark asserted but count short
+  uint32_t sample_fifo_empty_reads;     // FIFO read returned zero pairs
+  uint32_t sample_fifo_short_blocks;    // unrecoverable short superframe blocks
   TestResult test_result;   // test_result
 
 } BackupState;
