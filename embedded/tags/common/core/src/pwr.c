@@ -140,6 +140,47 @@ static inline void tagPowerClearWakeFlags(void)
 #endif
 }
 
+static inline void tagPowerPrepareStop1WakePin(void)
+{
+#if defined(STM32U3XX) && defined(PWR_WUCR1_WUPEN1) && \
+    defined(PWR_WUSCR_CWUF1)
+  rccEnablePWRInterface(false);
+  CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+#if defined(PWR_WUCR2_WUPP1)
+  CLEAR_BIT(PWR->WUCR2, PWR_WUCR2_WUPP1);
+#endif
+#if defined(PWR_WUCR3_WUSEL1)
+  CLEAR_BIT(PWR->WUCR3, PWR_WUCR3_WUSEL1);
+#endif
+  WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
+  SET_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+#endif
+}
+
+static inline void tagPowerFinishStop1WakePin(void)
+{
+#if defined(STM32U3XX) && defined(PWR_WUCR1_WUPEN1) && \
+    defined(PWR_WUSCR_CWUF1)
+  CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+  WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
+#endif
+}
+
+static inline void tagPowerStop1TraceHigh(void)
+{
+#if defined(STM32U3XX) && defined(LINE_LED2)
+  palSetLineMode(LINE_LED2, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLine(LINE_LED2);
+#endif
+}
+
+static inline void tagPowerStop1TraceLow(void)
+{
+#if defined(STM32U3XX) && defined(LINE_LED2)
+  palClearLine(LINE_LED2);
+#endif
+}
+
 #if BOARD_STANDBY_HAS_CONFIG
 void tagClearStandbyPulls(void)
 {
@@ -227,6 +268,29 @@ void godown(enum Sleep sleepmode)
     tagPowerSelectStop1();
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
+#if defined(STM32U3XX)
+#if defined(LINE_ACCEL_INT)
+    if (palReadLine(LINE_ACCEL_INT)) {
+      tagPowerStop1TraceLow();
+      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+      return;
+    }
+#endif
+    tagPowerStop1TraceHigh();
+    tagPowerPrepareStop1WakePin();
+#if defined(LINE_ACCEL_INT)
+    if (palReadLine(LINE_ACCEL_INT)) {
+      tagPowerFinishStop1WakePin();
+      tagPowerStop1TraceLow();
+      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+      return;
+    }
+#endif
+    __DSB();
+    __WFI();
+    tagPowerFinishStop1WakePin();
+    tagPowerStop1TraceLow();
+#else
 #if STOP1_WAKE_EXTI_GROUP1_MASK
     extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
 #if defined(LINE_ACCEL_INT)
@@ -243,6 +307,7 @@ void godown(enum Sleep sleepmode)
     __SEV();
     __WFE();
     __WFE();
+#endif
 #endif
 
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));

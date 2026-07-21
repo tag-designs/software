@@ -268,6 +268,9 @@ static void tagImuTagEnableTriggerClock(void)
 #if defined(RCC_APB1AMENR2_LPTIM2AMEN)
   RCC->APB1AMENR2 |= RCC_APB1AMENR2_LPTIM2AMEN;
 #endif
+#if defined(STM32U3XX) && defined(RCC_AHB2STPENR1_GPIOASTPEN)
+  RCC->AHB2STPENR1 |= RCC_AHB2STPENR1_GPIOASTPEN;
+#endif
 }
 
 const TagStorageDevice tagExternalFlash = {
@@ -348,6 +351,9 @@ void tagImuTagSetTrigger(unsigned int divider)
                  PAL_MODE_ALTERNATE(LPTIM2_ALTERNATE_FUNCTION));
 
   LPTIM2->CFGR = 0U;
+#if defined(STM32U3XX) && defined(LPTIM_CCMR1_CC1E)
+  LPTIM2->CCMR1 = LPTIM_CCMR1_CC1E;
+#endif
   LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
 
   LPTIM2->ARR = divider - 1U;
