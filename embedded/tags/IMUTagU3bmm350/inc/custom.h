@@ -34,20 +34,19 @@
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define TAG_STM32U3_FLASH 1
 #define TAG_MONITOR_RESET_RECOVERY 1
-#define TAG_STOP1_WAKE_USES_INTERRUPT 1
+#define TAG_STOP1_WAKE_USES_INTERRUPT 0
+#define TAG_CONFIGURED_IMMEDIATE_START 1
 #define TAG_SPI_TRANSFER_STATUS 1
 #define TAG_RTC_TRANSFER_DIAGNOSTICS 1
 #define TAG_RTC_STM32U3_COMPAT 1
 #define CONFIG_HAS_HIBERNATE 0
 #define TAG_STATUS_FIXED_VDD100 180
-/*
- * The shared storage SPI DMA helper currently supports the older STM32 DMA
- * stream/CSELR path. STM32U375 uses the DMA3/GPDMA-style ChibiOS bindings, so
- * keep external-flash log transfers on the conservative polled SPI path until
- * the U3 DMA block-transfer backend exists.
+/* Use DMA for external-flash block data phases; command/address/status
+ * transactions remain byte-paced.
  */
-#define TAG_STORAGE_SPI_DMA_BLOCK_READ 0
-#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
+#define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
+#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
+#define TAG_LSM6DSV16X_FIFO_DMA_READ 1
 /* Temporary bring-up aid: expose a retained RUNNING-state heartbeat in the
  * status debug message so detached execution can be distinguished from
  * attach/reset cursor recovery.

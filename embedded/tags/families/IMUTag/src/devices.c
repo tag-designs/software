@@ -178,7 +178,9 @@ extern const TagI2cController tagRtcI2cController;
 
 static void imutagBmm350I2cDelay(void)
 {
-#if TAG_RTC_I2C_DELAY_CYCLES == 1U
+#if TAG_RTC_I2C_DELAY_CYCLES == 0U
+  return;
+#elif TAG_RTC_I2C_DELAY_CYCLES == 1U
   __NOP();
 #else
   for (uint32_t i = 0; i < TAG_RTC_I2C_DELAY_CYCLES; i++) {

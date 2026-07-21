@@ -70,6 +70,10 @@
 #define TAG_MONITOR_RESET_RECOVERY 0
 #endif
 
+#ifndef TAG_CONFIGURED_IMMEDIATE_START
+#define TAG_CONFIGURED_IMMEDIATE_START 0
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -388,7 +392,11 @@ enum Sleep StateMachine(eventmask_t input_events)
         case resetShutdown:
           return Running(T_CONT, State_EVENT_OK);
         case resetException:
-          return Running(T_CONT, State_EVENT_EXCEPTION);
+#if TAG_MONITOR_RESET_RECOVERY
+          if (monitor_reset_recovery)
+            return Running(T_CONT, State_EVENT_POWERFAIL);
+#endif
+          return Aborted(T_INIT, State_EVENT_EXCEPTION);
         case resetBrownout:
           return Running(T_INIT, State_EVENT_BROWNOUT);
         default:
@@ -597,6 +605,14 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
 
     if (reason == State_EVENT_STARTCMD)
       writeStoredConfig(&config_tmp);
+
+#if TAG_CONFIGURED_IMMEDIATE_START
+    if (timestamp >= sconfig.start) {
+      debug_log_printf("state_machine: immediate start timestamp=%d start=%d\r\n",
+                       timestamp, sconfig.start);
+      return Running(T_INIT, State_EVENT_STARTTIM);
+    }
+#endif
 
     // enable wakeup timer
 

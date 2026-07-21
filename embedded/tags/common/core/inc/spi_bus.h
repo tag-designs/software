@@ -199,6 +199,17 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
 bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
 
 /**
+ * @brief Read bytes using a DMA-backed dummy-byte transfer when available.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[out] buf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to read.
+ * @return true when DMA completed the transfer, false when DMA is unavailable
+ *         or the transfer failed.
+ */
+bool tagSpiReadDma(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
+
+/**
  * @brief Pipelined SPI write for devices proven safe with queued transfers.
  *
  * @param[in] device SPI device descriptor.

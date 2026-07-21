@@ -626,6 +626,10 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
 #define LSM6DSV16X_FIFO_TRACE_WORDS 32U
 #define LSM6DSV16X_FIFO_TRACE_LIMIT 4U
 
+#ifndef TAG_LSM6DSV16X_FIFO_DMA_READ
+#define TAG_LSM6DSV16X_FIFO_DMA_READ 0
+#endif
+
 typedef struct {
     int16_t gx, gy, gz;
     int16_t ax, ay, az;
@@ -633,6 +637,17 @@ typedef struct {
     uint8_t have_accel;
     uint8_t error;
 } fifo_pending_sample_t;
+
+typedef struct {
+    fifo_pending_sample_t pending;
+    uint8_t  current_cnt;
+    uint8_t  have_current_cnt;
+    uint8_t  current_slot_closed;
+    uint16_t pairs_out;
+    uint16_t zeroed_slots;
+    uint8_t  trace_tags[LSM6DSV16X_FIFO_TRACE_WORDS];
+    uint8_t  trace_count;
+} fifo_parse_context_t;
 
 static uint8_t fifo_trace_logs;
 
@@ -676,31 +691,158 @@ static uint8_t fifo_emit_pending_or_zero(const fifo_pending_sample_t *pending,
     return 1U;
 }
 
+static void fifo_parse_context_init(fifo_parse_context_t *ctx)
+{
+    fifo_reset_pending(&ctx->pending);
+    ctx->current_cnt = 0U;
+    ctx->have_current_cnt = 0U;
+    ctx->current_slot_closed = 0U;
+    ctx->pairs_out = 0U;
+    ctx->zeroed_slots = 0U;
+    ctx->trace_count = 0U;
+}
+
+static bool fifo_parse_word(fifo_parse_context_t *ctx,
+                            lsm6dsv16x_sample_t *samples,
+                            uint16_t max_pairs,
+                            const uint8_t *word)
+{
+    uint8_t tag;
+    uint8_t cnt;
+    int16_t x;
+    int16_t y;
+    int16_t z;
+
+    if (ctx->trace_count < LSM6DSV16X_FIFO_TRACE_WORDS) {
+        ctx->trace_tags[ctx->trace_count++] = word[0];
+    }
+
+    tag = (uint8_t)(word[0] >> 3U);
+    cnt = (uint8_t)(word[0] & 0x03U);
+    if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC ||
+        tag == LSM6DSV16X_FIFO_TAG_ACCEL_NC) {
+        if (ctx->have_current_cnt == 0U) {
+            ctx->current_cnt = cnt;
+            ctx->have_current_cnt = 1U;
+        } else if (cnt != ctx->current_cnt) {
+            if (ctx->pending.have_gyro || ctx->pending.have_accel ||
+                ctx->pending.error) {
+                ctx->zeroed_slots +=
+                    fifo_emit_pending_or_zero(&ctx->pending,
+                                              &samples[ctx->pairs_out]);
+                ctx->pairs_out++;
+                fifo_reset_pending(&ctx->pending);
+                if (ctx->pairs_out >= max_pairs) {
+                    return true;
+                }
+            }
+
+            ctx->current_cnt = cnt;
+            ctx->current_slot_closed = 0U;
+        }
+
+        x = (int16_t)((uint16_t)word[2] << 8U | (uint16_t)word[1]);
+        y = (int16_t)((uint16_t)word[4] << 8U | (uint16_t)word[3]);
+        z = (int16_t)((uint16_t)word[6] << 8U | (uint16_t)word[5]);
+
+        if (ctx->current_slot_closed) {
+            ctx->pending.error = 1U;
+        }
+
+        if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC) {
+            if (ctx->pending.have_gyro) {
+                ctx->pending.error = 1U;
+            }
+            ctx->pending.gx = x;
+            ctx->pending.gy = y;
+            ctx->pending.gz = z;
+            ctx->pending.have_gyro = 1U;
+
+        } else {
+            if (ctx->pending.have_accel) {
+                ctx->pending.error = 1U;
+            }
+            ctx->pending.ax = x;
+            ctx->pending.ay = y;
+            ctx->pending.az = z;
+            ctx->pending.have_accel = 1U;
+        }
+
+        if (ctx->pending.have_gyro && ctx->pending.have_accel) {
+            ctx->zeroed_slots +=
+                fifo_emit_pending_or_zero(&ctx->pending,
+                                          &samples[ctx->pairs_out]);
+            ctx->pairs_out++;
+            fifo_reset_pending(&ctx->pending);
+            ctx->current_slot_closed = 1U;
+        }
+    }
+
+    return ctx->pairs_out >= max_pairs;
+}
+
+static void fifo_parse_finalize(fifo_parse_context_t *ctx,
+                                lsm6dsv16x_sample_t *samples,
+                                uint16_t max_pairs)
+{
+    if ((ctx->pairs_out < max_pairs) &&
+        (ctx->pending.have_gyro || ctx->pending.have_accel ||
+         ctx->pending.error)) {
+        ctx->zeroed_slots +=
+            fifo_emit_pending_or_zero(&ctx->pending, &samples[ctx->pairs_out]);
+        ctx->pairs_out++;
+    }
+}
+
+static void fifo_log_parse_trace(const fifo_parse_context_t *ctx)
+{
+    if (ctx->zeroed_slots > 0U) {
+        debug_log_printf("LSM6DSV16X FIFO: zeroed %u slot(s)\r\n",
+                         (unsigned)ctx->zeroed_slots);
+        if (fifo_trace_logs < LSM6DSV16X_FIFO_TRACE_LIMIT) {
+            fifo_trace_logs++;
+            debug_log_printf(
+                "LSM6DSV16X FIFO tags[%u]: %x %x %x %x %x %x %x %x\r\n",
+                (unsigned)ctx->trace_count,
+                ctx->trace_count > 0U ? ctx->trace_tags[0] : 0U,
+                ctx->trace_count > 1U ? ctx->trace_tags[1] : 0U,
+                ctx->trace_count > 2U ? ctx->trace_tags[2] : 0U,
+                ctx->trace_count > 3U ? ctx->trace_tags[3] : 0U,
+                ctx->trace_count > 4U ? ctx->trace_tags[4] : 0U,
+                ctx->trace_count > 5U ? ctx->trace_tags[5] : 0U,
+                ctx->trace_count > 6U ? ctx->trace_tags[6] : 0U,
+                ctx->trace_count > 7U ? ctx->trace_tags[7] : 0U);
+            if (ctx->trace_count > 8U) {
+                debug_log_printf(
+                    "LSM6DSV16X FIFO tags: %x %x %x %x %x %x %x %x\r\n",
+                    ctx->trace_count > 8U ? ctx->trace_tags[8] : 0U,
+                    ctx->trace_count > 9U ? ctx->trace_tags[9] : 0U,
+                    ctx->trace_count > 10U ? ctx->trace_tags[10] : 0U,
+                    ctx->trace_count > 11U ? ctx->trace_tags[11] : 0U,
+                    ctx->trace_count > 12U ? ctx->trace_tags[12] : 0U,
+                    ctx->trace_count > 13U ? ctx->trace_tags[13] : 0U,
+                    ctx->trace_count > 14U ? ctx->trace_tags[14] : 0U,
+                    ctx->trace_count > 15U ? ctx->trace_tags[15] : 0U);
+            }
+        }
+    }
+}
+
 uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
                               lsm6dsv16x_sample_t *samples,
                               uint16_t max_pairs)
 {
-    fifo_pending_sample_t pending = {0};
+    fifo_parse_context_t ctx;
     uint8_t  st1 = 0;
     uint8_t  st2 = 0;
     uint16_t fifo_level;
-    uint16_t pairs_out = 0U;
     uint8_t  word[LSM6DSV16X_FIFO_WORD_BYTES];
-    uint8_t  tag;
-    uint8_t  cnt;
-    int16_t  x;
-    int16_t  y;
-    int16_t  z;
-    uint8_t  current_cnt = 0U;
-    uint8_t  have_current_cnt = 0U;
-    uint8_t  current_slot_closed = 0U;
-    uint16_t zeroed_slots = 0U;
-    uint8_t  trace_tags[LSM6DSV16X_FIFO_TRACE_WORDS];
-    uint8_t  trace_count = 0U;
 
     if (!valid_device(device) || samples == NULL || max_pairs == 0U) {
         return 0U;
     }
+
+    fifo_parse_context_init(&ctx);
 
     device_power_on(device);
     device_begin(device);
@@ -708,116 +850,34 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     reg_read(device, LSM6DSV16X_FIFO_STATUS2, &st2);
     fifo_level = (uint16_t)(((uint16_t)(st2 & 0x03U) << 8U) | (uint16_t)st1);
 
-    while ((fifo_level > 0U) && (pairs_out < max_pairs)) {
+    while ((fifo_level > 0U) && (ctx.pairs_out < max_pairs)) {
 
+#if TAG_LSM6DSV16X_FIFO_DMA_READ
+        if (tagStSpiReadRegisterDeviceDma(device->registers,
+                                          LSM6DSV16X_FIFO_DATA_OUT_TAG,
+                                          word,
+                                          LSM6DSV16X_FIFO_WORD_BYTES) !=
+            MSG_OK) {
+            break;
+        }
+#else
         if (reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
                            word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
             break;
         }
+#endif
         fifo_level--;
-        if (trace_count < LSM6DSV16X_FIFO_TRACE_WORDS) {
-            trace_tags[trace_count++] = word[0];
-        }
 
-        tag = (uint8_t)(word[0] >> 3U);
-        cnt = (uint8_t)(word[0] & 0x03U);
-        if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC ||
-            tag == LSM6DSV16X_FIFO_TAG_ACCEL_NC) {
-            if (have_current_cnt == 0U) {
-                current_cnt = cnt;
-                have_current_cnt = 1U;
-            } else if (cnt != current_cnt) {
-                if (pending.have_gyro || pending.have_accel || pending.error) {
-                    zeroed_slots +=
-                        fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
-                    pairs_out++;
-                    fifo_reset_pending(&pending);
-                    if (pairs_out >= max_pairs) {
-                        break;
-                    }
-                }
-
-                current_cnt = cnt;
-                current_slot_closed = 0U;
-            }
-
-            x = (int16_t)((uint16_t)word[2] << 8U | (uint16_t)word[1]);
-            y = (int16_t)((uint16_t)word[4] << 8U | (uint16_t)word[3]);
-            z = (int16_t)((uint16_t)word[6] << 8U | (uint16_t)word[5]);
-
-            if (current_slot_closed) {
-                pending.error = 1U;
-            }
-
-            if (tag == LSM6DSV16X_FIFO_TAG_GYRO_NC) {
-                if (pending.have_gyro) {
-                    pending.error = 1U;
-                }
-                pending.gx = x;
-                pending.gy = y;
-                pending.gz = z;
-                pending.have_gyro = 1U;
-
-            } else {
-                if (pending.have_accel) {
-                    pending.error = 1U;
-                }
-                pending.ax = x;
-                pending.ay = y;
-                pending.az = z;
-                pending.have_accel = 1U;
-            }
-
-            if (pending.have_gyro && pending.have_accel) {
-                zeroed_slots +=
-                    fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
-                pairs_out++;
-                fifo_reset_pending(&pending);
-                current_slot_closed = 1U;
-            }
-        }
-        /* All other tags silently consumed */
-    }
-
-    if ((pairs_out < max_pairs) &&
-        (pending.have_gyro || pending.have_accel || pending.error)) {
-        zeroed_slots += fifo_emit_pending_or_zero(&pending, &samples[pairs_out]);
-        pairs_out++;
-    }
-
-    if (zeroed_slots > 0U) {
-        debug_log_printf("LSM6DSV16X FIFO: zeroed %u slot(s)\r\n",
-                         (unsigned)zeroed_slots);
-        if (fifo_trace_logs < LSM6DSV16X_FIFO_TRACE_LIMIT) {
-            fifo_trace_logs++;
-            debug_log_printf(
-                "LSM6DSV16X FIFO tags[%u]: %x %x %x %x %x %x %x %x\r\n",
-                (unsigned)trace_count,
-                trace_count > 0U ? trace_tags[0] : 0U,
-                trace_count > 1U ? trace_tags[1] : 0U,
-                trace_count > 2U ? trace_tags[2] : 0U,
-                trace_count > 3U ? trace_tags[3] : 0U,
-                trace_count > 4U ? trace_tags[4] : 0U,
-                trace_count > 5U ? trace_tags[5] : 0U,
-                trace_count > 6U ? trace_tags[6] : 0U,
-                trace_count > 7U ? trace_tags[7] : 0U);
-            if (trace_count > 8U) {
-                debug_log_printf(
-                    "LSM6DSV16X FIFO tags: %x %x %x %x %x %x %x %x\r\n",
-                    trace_count > 8U ? trace_tags[8] : 0U,
-                    trace_count > 9U ? trace_tags[9] : 0U,
-                    trace_count > 10U ? trace_tags[10] : 0U,
-                    trace_count > 11U ? trace_tags[11] : 0U,
-                    trace_count > 12U ? trace_tags[12] : 0U,
-                    trace_count > 13U ? trace_tags[13] : 0U,
-                    trace_count > 14U ? trace_tags[14] : 0U,
-                    trace_count > 15U ? trace_tags[15] : 0U);
-            }
+        if (fifo_parse_word(&ctx, samples, max_pairs, word)) {
+            break;
         }
     }
+
+    fifo_parse_finalize(&ctx, samples, max_pairs);
+    fifo_log_parse_trace(&ctx);
 
     device_end(device);
-    return pairs_out;
+    return ctx.pairs_out;
 }
 
 /* =========================================================================

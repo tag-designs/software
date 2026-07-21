@@ -18,8 +18,23 @@
 #define TAG_SPI_ERROR_BYTE 0xffU
 #endif
 
+#ifndef TAG_SPI_DMA_POLL_LIMIT
+#define TAG_SPI_DMA_POLL_LIMIT 100000U
+#endif
+
+#ifndef TAG_SPI_DMA_BYTE_POLL_LIMIT
+#define TAG_SPI_DMA_BYTE_POLL_LIMIT 64U
+#endif
+
 #ifndef TAG_SPI_TRANSFER_STATUS
 #define TAG_SPI_TRANSFER_STATUS 0
+#endif
+
+#if defined(STM32_DMA3_PRESENT) && defined(SPI_CFG1_RXDMAEN) && \
+    defined(SPI_CFG1_TXDMAEN)
+#define TAG_SPI_DMA3_READ_SUPPORTED 1
+#else
+#define TAG_SPI_DMA3_READ_SUPPORTED 0
 #endif
 
 /** @name SPI bus implementation overview
@@ -561,6 +576,8 @@ static void tagSpiRecover(SPI_TypeDef *spi)
   spi->CR1 &= ~SPI_CR1_SPE;
 
 #if defined(SPI_TXDR_TXDR)
+  spi->CFG1 &= ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
+
   while (((spi->SR & SPI_SR_RXP) != 0U) && (timeout-- > 0U))
     dummy = spi->RXDR;
 
@@ -612,10 +629,22 @@ static bool tagSpiWaitClearCr1(SPI_TypeDef *spi, uint32_t mask)
 #endif
 
 #if defined(SPI_TXDR_TXDR)
+static void tagSpiClearDmaRequests(SPI_TypeDef *spi)
+{
+  uint32_t cr1 = spi->CR1;
+  uint32_t cfg1 = spi->CFG1;
+
+  spi->CR1 = cr1 & ~SPI_CR1_SPE;
+  spi->CFG1 = cfg1 & ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
+  spi->CR1 = cr1;
+}
+
 static bool tagSpiExchangeByte(SPI_TypeDef *spi, uint8_t tx, uint8_t *rx)
 {
   volatile uint8_t *txdr = (volatile uint8_t *)&spi->TXDR;
   volatile uint8_t *rxdr = (volatile uint8_t *)&spi->RXDR;
+
+  tagSpiClearDmaRequests(spi);
 
   spi->CR1 |= SPI_CR1_CSTART;
   if (!tagSpiWaitSet(spi, SPI_SR_TXP))
@@ -651,6 +680,127 @@ static void tagSpiFillReadFailure(uint8_t *buf, uint32_t len)
   while (len--)
     *buf++ = TAG_SPI_ERROR_BYTE;
 }
+
+#if TAG_SPI_DMA3_READ_SUPPORTED
+typedef struct {
+  uint32_t rx_channel_mask;
+  uint32_t tx_channel_mask;
+  uint32_t rx_request;
+  uint32_t tx_request;
+  uint32_t priority;
+  uint32_t irq_priority;
+} TagSpiDma3Config;
+
+static const stm32_dma3_channel_t *tag_spi_rx_dma3;
+static const stm32_dma3_channel_t *tag_spi_tx_dma3;
+static uint8_t tag_spi_dma3_dummy;
+
+static bool tagSpiDma3Config(const TagSpiDevice *device,
+                             TagSpiDma3Config *config)
+{
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+
+#if defined(SPI1) && defined(STM32_SPI_SPI1_RX_DMA3_CHANNEL) && \
+    defined(STM32_SPI_SPI1_TX_DMA3_CHANNEL) &&                  \
+    defined(STM32_DMA3_REQ_SPI1_RX) && defined(STM32_DMA3_REQ_SPI1_TX)
+  if (spi == SPI1) {
+    config->rx_channel_mask = STM32_SPI_SPI1_RX_DMA3_CHANNEL;
+    config->tx_channel_mask = STM32_SPI_SPI1_TX_DMA3_CHANNEL;
+    config->rx_request = STM32_DMA3_REQ_SPI1_RX;
+    config->tx_request = STM32_DMA3_REQ_SPI1_TX;
+    config->priority = STM32_SPI_SPI1_DMA_PRIORITY;
+#if defined(STM32_SPI_SPI1_IRQ_PRIORITY)
+    config->irq_priority = STM32_SPI_SPI1_IRQ_PRIORITY;
+#else
+    config->irq_priority = 0U;
+#endif
+    return true;
+  }
+#endif
+
+  return false;
+}
+
+static bool tagSpiDma3EnsureChannels(const TagSpiDma3Config *config)
+{
+  bool allocated_rx = false;
+
+  if (tag_spi_rx_dma3 == NULL) {
+    tag_spi_rx_dma3 = dma3ChannelAlloc(config->rx_channel_mask,
+                                       config->irq_priority, NULL, NULL);
+    if (tag_spi_rx_dma3 == NULL)
+      return false;
+    allocated_rx = true;
+  }
+
+  if (tag_spi_tx_dma3 == NULL) {
+    tag_spi_tx_dma3 = dma3ChannelAlloc(config->tx_channel_mask,
+                                       config->irq_priority, NULL, NULL);
+    if (tag_spi_tx_dma3 == NULL) {
+      if (allocated_rx) {
+        dma3ChannelFree(tag_spi_rx_dma3);
+        tag_spi_rx_dma3 = NULL;
+      }
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static bool tagSpiDma3WaitComplete(uint32_t units)
+{
+  uint32_t timeout = TAG_SPI_DMA_POLL_LIMIT +
+                     (units * TAG_SPI_DMA_BYTE_POLL_LIMIT);
+
+  while ((dma3ChannelGetTransactionSize(tag_spi_rx_dma3) != 0U) ||
+         (dma3ChannelGetTransactionSize(tag_spi_tx_dma3) != 0U))
+  {
+    uint32_t flags = tag_spi_rx_dma3->channel->CSR |
+                     tag_spi_tx_dma3->channel->CSR;
+
+    if ((flags & STM32_DMA3_CSR_ERRORS) != 0U)
+      return false;
+    if (timeout-- == 0U)
+      return false;
+  }
+
+  if (((tag_spi_rx_dma3->channel->CSR | tag_spi_tx_dma3->channel->CSR) &
+       STM32_DMA3_CSR_ERRORS) != 0U)
+    return false;
+
+  return true;
+}
+
+static bool tagSpiDma3Suspend(SPI_TypeDef *spi)
+{
+  uint32_t timeout = TAG_SPI_POLL_LIMIT;
+
+  spi->CR1 |= SPI_CR1_CSUSP;
+  while ((spi->CR1 & SPI_CR1_CSTART) != 0U)
+  {
+    if (tagSpiHasTransferError(spi))
+      return false;
+    if (timeout-- == 0U)
+      return false;
+  }
+  spi->IFCR = 0xFFFFFFFFU;
+
+  return true;
+}
+
+static void tagSpiDma3Stop(SPI_TypeDef *spi)
+{
+  uint32_t cr1 = spi->CR1;
+
+  spi->CR1 = cr1 & ~SPI_CR1_SPE;
+  spi->CFG1 &= ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
+  spi->CR1 = cr1;
+  dma3ChannelDisable(tag_spi_rx_dma3);
+  dma3ChannelDisable(tag_spi_tx_dma3);
+  spi->IFCR = 0xFFFFFFFFU;
+}
+#endif
 #endif
 
 /**
@@ -867,6 +1017,91 @@ bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
   }
 
   return true;
+#endif
+}
+
+bool tagSpiReadDma(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
+{
+#if TAG_SPI_DMA3_READ_SUPPORTED
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+  TagSpiDma3Config config;
+  uint32_t cr_common;
+  uint32_t rx_tr1;
+  uint32_t tx_tr1;
+  bool ok;
+
+  if (len == 0U)
+    return true;
+  if (buf == NULL)
+    return false;
+  if (len > STM32_DMA3_MAX_TRANSFER)
+    return false;
+  if (!tagSpiDma3Config(device, &config))
+    return false;
+  if (!tagSpiDma3EnsureChannels(&config))
+    return false;
+
+  tagSpiRecover(spi);
+  tag_spi_dma3_dummy = device->dummy;
+
+  cr_common = STM32_DMA3_CCR_PRIO(config.priority) |
+              STM32_DMA3_CCR_LAP_MEM;
+
+  rx_tr1 = STM32_DMA3_CTR1_SAP_PER |
+           STM32_DMA3_CTR1_DAP_MEM |
+           STM32_DMA3_CTR1_SDW_BYTE |
+           STM32_DMA3_CTR1_DDW_BYTE |
+           STM32_DMA3_CTR1_DINC;
+
+  tx_tr1 = STM32_DMA3_CTR1_SAP_MEM |
+           STM32_DMA3_CTR1_DAP_PER |
+           STM32_DMA3_CTR1_SDW_BYTE |
+           STM32_DMA3_CTR1_DDW_BYTE;
+
+  tag_spi_rx_dma3->channel->CFCR = STM32_DMA3_CFCR_ALL_FLAGS;
+  tag_spi_tx_dma3->channel->CFCR = STM32_DMA3_CFCR_ALL_FLAGS;
+
+  dma3ChannelSetSource(tag_spi_rx_dma3, &spi->RXDR);
+  dma3ChannelSetDestination(tag_spi_rx_dma3, buf);
+  dma3ChannelSetTransactionSize(tag_spi_rx_dma3, len);
+  dma3ChannelSetMode(tag_spi_rx_dma3,
+                     cr_common,
+                     rx_tr1,
+                     STM32_DMA3_CTR2_REQSEL(config.rx_request),
+                     0U);
+
+  dma3ChannelSetSource(tag_spi_tx_dma3, &tag_spi_dma3_dummy);
+  dma3ChannelSetDestination(tag_spi_tx_dma3, &spi->TXDR);
+  dma3ChannelSetTransactionSize(tag_spi_tx_dma3, len);
+  dma3ChannelSetMode(tag_spi_tx_dma3,
+                     cr_common,
+                     tx_tr1,
+                     STM32_DMA3_CTR2_REQSEL(config.tx_request) |
+                         STM32_DMA3_CTR2_DREQ,
+                     0U);
+
+  spi->CFG1 |= SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN;
+  dma3ChannelEnable(tag_spi_rx_dma3);
+  dma3ChannelEnable(tag_spi_tx_dma3);
+  spi->CR1 |= SPI_CR1_CSTART;
+
+  ok = tagSpiDma3WaitComplete(len);
+  if (ok)
+    ok = tagSpiDma3Suspend(spi);
+
+  tagSpiDma3Stop(spi);
+
+  if (!ok) {
+    tagSpiRecover(spi);
+    return false;
+  }
+
+  return true;
+#else
+  (void)device;
+  (void)buf;
+  (void)len;
+  return false;
 #endif
 }
 

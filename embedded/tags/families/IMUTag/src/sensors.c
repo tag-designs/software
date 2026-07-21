@@ -214,8 +214,9 @@ static bmm350_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
   case LSM6DSV16X_TRIG_ODR_400HZ:
     return BMM350_RATE_50HZ;
   case LSM6DSV16X_TRIG_ODR_800HZ:
-  case LSM6DSV16X_TRIG_ODR_1600HZ:
     return BMM350_RATE_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return BMM350_RATE_200HZ;
   default:
     return BMM350_RATE_50HZ;
   }
@@ -484,10 +485,12 @@ static bool update_latest_mag(void)
   bool ok;
 
   ready = mag_data_ready();
+  if (!ready)
+    return false;
+
   bmm350DeviceBegin(TAG_MAG_DEVICE);
-  ok = ready &&
-       (bmm350ReadMagUT(TAG_MAG_DEVICE, &latest_mx, &latest_my,
-                        &latest_mz) == MSG_OK);
+  ok = bmm350ReadMagUT(TAG_MAG_DEVICE, &latest_mx, &latest_my,
+                       &latest_mz) == MSG_OK;
   bmm350DeviceEnd(TAG_MAG_DEVICE);
 
   if (!ok)

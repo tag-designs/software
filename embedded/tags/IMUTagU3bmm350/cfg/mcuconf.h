@@ -78,8 +78,9 @@
  * Clock settings.
  *
  * STM32U3 has MSIRC0 at 96 MHz and MSIRC1 at 24 MHz rather than the STM32L4
- * MSI range table. IMUTagU3bmm350 uses MSI as SYSCLK with no HSE/HSI/PLL system
- * clock, keeping the same low-power clocking intent as IMUTagBreakout.
+ * MSI range table. IMUTagU3bmm350 uses MSI as SYSCLK with no HSE/HSI/PLL
+ * system clock. SYSCLK is set to 24 MHz to leave more processing headroom for
+ * 800 Hz acquisition while keeping the low-power U3 MSI clocking strategy.
  */
 #define STM32_HSI16_ENABLED                 FALSE
 #define STM32_HSIKERON_ENABLED              FALSE
@@ -91,7 +92,7 @@
 #define STM32_MSIRC0_MODE                   RCC_MSIRC0_FREE
 #define STM32_MSIRC1_MODE                   RCC_MSIRC1_FREE
 #define STM32_MSIPLL1N_VALUE                0
-#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC0_DIV8
+#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC0_DIV4
 #define STM32_MSIK_SRCDIV                   RCC_ICSCR1_MSIK_IRC0_DIV8
 #define STM32_MSIBIAS                       RCC_ICSCR1_MSIBIAS_CONTINUOUS
 #define STM32_SW                            RCC_CFGR1_SW_MSIS
