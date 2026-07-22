@@ -68,8 +68,8 @@ void tagDevicesInit(void)
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_FLASH_nCS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_FLASH_nCS),
+        //.cs = LINE_FLASH_nCS,
         .sck = LINE_FLASH_SCK,
         .miso = LINE_FLASH_MISO,
         .mosi = LINE_FLASH_MOSI,
@@ -84,7 +84,7 @@ static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_USART_INIT(
         TAG_USART2_SYNC_DEVICE_DEFAULTS,
-        .cs = LINE_LPS_CS,
+        //.cs = LINE_LPS_CS,
         .sck = LINE_LPS_SCK,
         .tx = LINE_LPS_TX,
         .rx = LINE_LPS_RX,
@@ -101,7 +101,7 @@ const TagPressureDevice tagBitPresTagPressureDevice = {
 
 const TagAdxl362Device tagBitPresTagAccelDevice = {
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_ACCEL_CS),
         .cs = LINE_ACCEL_CS,
         .sck = LINE_ACCEL_SCK,
         .miso = LINE_ACCEL_MISO,

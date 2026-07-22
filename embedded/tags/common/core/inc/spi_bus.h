@@ -31,11 +31,23 @@
  * @{
  */
 
-/** Register settings used when a device opens an SPI bus session. */
+/** Register settings used when a device opens a SPI bus session. */
 typedef struct {
   uint32_t cr1;
   uint32_t cr2;
+  ioline_t ssline;
 } TagSpiConfig;
+
+#if defined(SPI_CR1_MSTR) 
+   #define TAGSPIDEFAULTCONFIG(SSLINE) \
+         (TagSpiConfig){ .cr1 = SPI_CR1_MSTR, \
+                         .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | \
+                                SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0, \
+                        .ssline = SSLINE }
+#else
+   #define TAGSPIDEFAULTCONFIG(SSLINE) \
+          (TagSpiConfig){ .cr1 = 0, .cr2 = 0, .ssline = SSLINE }
+#endif
 
 /** Standby pull policy applied while preparing the MCU for deep sleep. */
 typedef enum {
@@ -49,8 +61,8 @@ typedef struct {
   SPI_TypeDef *spi;
   binary_semaphore_t *mutex;
   int alternate_function;
-  const TagSpiConfig *config;
-  ioline_t cs;
+  const TagSpiConfig config;
+  //ioline_t cs;
   ioline_t sck;
   ioline_t miso;
   ioline_t mosi;
@@ -59,10 +71,10 @@ typedef struct {
   TagSpiSleepPolicy sleep_policy;
 } TagSpiDevice;
 
-extern const TagSpiConfig tagSpiDefaultConfig;
+//extern const TagSpiConfig tagSpiDefaultConfig;
 
-#define TAG_SPI1_DEVICE_DEFAULTS                                             \
-  .spi = SPI1, .mutex = &SPI1mutex, .config = &tagSpiDefaultConfig, .alternate_function = SPI1_ALTERNATE_FUNCTION
+#define TAG_SPI1_DEVICE_DEFAULTS(SSLINE)                                             \
+  .spi = SPI1, .mutex = &SPI1mutex, .config = TAGSPIDEFAULTCONFIG(SSLINE), .alternate_function = SPI1_ALTERNATE_FUNCTION
 
 /** @} */
 

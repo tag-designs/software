@@ -350,13 +350,16 @@ void tagSpiEnableActiveAfterStop(void)
  * register state needed for one bus session.
  * @{
  */
+#if 0
 #if (defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1) ||                         \
     (defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2) ||                         \
     (defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3) ||                         \
     (defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4) ||                         \
     (defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5) ||                         \
     (defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6)
-const TagSpiConfig tagSpiDefaultConfig = {
+
+
+    const TagSpiConfig tagSpiDefaultConfig = {
 #if defined(SPI_CR1_MSTR)
     .cr1 = SPI_CR1_MSTR,
     .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 |
@@ -367,12 +370,12 @@ const TagSpiConfig tagSpiDefaultConfig = {
 #endif
 };
 
+
 #else
-const TagSpiConfig tagSpiDefaultConfig = {
-    .cr1 = 0,
-    .cr2 = 0,
-};
+
 #endif
+#endif
+//const TagSpiConfig tagSpiDefaultConfig = TAGSPIDEFAULTCONFIG();
 
 /**
  * @brief Configure and enable the SPI peripheral for one device session.
@@ -381,11 +384,13 @@ const TagSpiConfig tagSpiDefaultConfig = {
  */
 static void tagSpiDeviceEnable(const TagSpiDevice *device)
 {
-  const TagSpiConfig *config = device->config;
+  //const TagSpiConfig config = device->config;
+  /*
   if (!config)
   {
     config = &tagSpiDefaultConfig;
   }
+    */
 
   tagSpiPeripheralEnableClock(device->spi);
 
@@ -399,8 +404,8 @@ static void tagSpiDeviceEnable(const TagSpiDevice *device)
   device->spi->CR1 = SPI_CR1_MASRX | SPI_CR1_SPE;
 #else
   device->spi->CR1 = 0;
-  device->spi->CR2 = config->cr2;
-  device->spi->CR1 = config->cr1;
+  device->spi->CR2 = device->config.cr2;
+  device->spi->CR1 = device->config.cr1;
   device->spi->CR1 |= SPI_CR1_SPE;
 #endif
 
@@ -451,8 +456,8 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
     palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL);
   }
 
-  palSetLine(device->cs);
-  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLine(device->config.ssline);
+  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
 }
 
 /**
@@ -462,15 +467,15 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
  */
 void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
-  palSetLine(device->cs);
-  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLine(device->config.ssline);
+  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_INPUT_PULLDOWN);
   palSetLineMode(device->mosi, PAL_MODE_INPUT_PULLDOWN);
   palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
   
   if (tagLineIsValid(device->pwr))
   {
-    palSetLineMode(device->cs, PAL_MODE_INPUT_ANALOG);
+    palSetLineMode(device->config.ssline, PAL_MODE_INPUT_ANALOG);
     palClearLine(device->pwr);
   } 
 }
@@ -487,8 +492,8 @@ void tagSpiBusBegin(const TagSpiDevice *device)
     chBSemWait(device->mutex);
   }
 
-  palSetLine(device->cs);
-  palSetLineMode(device->cs,  PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLine(device->config.ssline);
+  palSetLineMode(device->config.ssline,  PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
   palSetLineMode(device->miso, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
   palSetLineMode(device->mosi, PAL_MODE_ALTERNATE(device->alternate_function) | PAL_STM32_OSPEED_MID2);
@@ -503,13 +508,13 @@ void tagSpiBusBegin(const TagSpiDevice *device)
  */
 void tagSpiBusEnd(const TagSpiDevice *device)
 {
-  palSetLine(device->cs);
+  palSetLine(device->config.ssline);
   palClearLine(device->mosi);
   palClearLine(device->sck);
 
   tagSpiDeviceDisable(device);
 
-  palSetLineMode(device->cs, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->mosi, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
@@ -530,7 +535,7 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
   switch (device->sleep_policy)
   {
   case TAG_SPI_SLEEP_SAFE_IDLE:
-    tagEnableStandbyPullup(device->cs);
+    tagEnableStandbyPullup(device->config.ssline);
     tagEnableStandbyPulldown(device->sck);
     tagEnableStandbyPulldown(device->mosi);
     tagEnableStandbyPulldown(device->miso);
@@ -1112,7 +1117,7 @@ bool tagSpiReadDma(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
  */
 void tagSpiSelect(const TagSpiDevice *device)
 {
-  palClearLine(device->cs);
+  palClearLine(device->config.ssline);
 }
 
 /**
@@ -1122,6 +1127,6 @@ void tagSpiSelect(const TagSpiDevice *device)
  */
 void tagSpiDeselect(const TagSpiDevice *device)
 {
-  palSetLine(device->cs);
+  palSetLine(device->config.ssline);
 }
 /** @} */

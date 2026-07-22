@@ -38,8 +38,8 @@ void tagDevicesInit(void)
 static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_LPS_CS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_LPS_CS),
+        //.cs = LINE_LPS_CS,
         .sck = LINE_LPS_SCK,
         .miso = LINE_LPS_MISO,
         .mosi = LINE_LPS_MOSI,
@@ -57,7 +57,7 @@ const TagPressureDevice tagPresTagPressureDevice = {
 const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_FLASH_nCS),
         .cs = LINE_FLASH_nCS,
         .sck = LINE_FLASH_SCK,
         .miso = LINE_FLASH_MISO,

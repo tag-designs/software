@@ -43,8 +43,8 @@ void tagDevicesInit(void)
 const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_FLASH_nCS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_FLASH_nCS),
+        //.cs = LINE_FLASH_nCS,
         .sck = LINE_FLASH_SCK,
         .miso = LINE_FLASH_MISO,
         .mosi = LINE_FLASH_MOSI,
@@ -57,8 +57,8 @@ const TagStorageDevice tagExternalFlash = {
 
 const TagAdxl367Device tagBitTagNGAccelDevice = {
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_ACCEL_CS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_ACCEL_CS),
+       // .cs = LINE_ACCEL_CS,
         .sck = LINE_ACCEL_SCK,
         .miso = LINE_ACCEL_MISO,
         .mosi = LINE_ACCEL_MOSI,

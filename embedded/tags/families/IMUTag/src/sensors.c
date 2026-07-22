@@ -133,16 +133,22 @@ static ak09940_rate_t configured_mag_rate;
 /** Enable the IMU FIFO-watermark wake source used while collecting data. */
 static void enable_data_collection_wake_event(void)
 {
+   palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
+  /*
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
   extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK,
                    EXTI_MODE_RISING_EDGE | IMU_DATA_WAKE_EXTI_ACTION);
+                   */
 }
 
 /** Disable collection wake events before shutting down sensors. */
 static void disable_data_collection_wake_event(void)
 {
+  palDisableLineEvent(LINE_WKUP1);
+  /*
   extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK, EXTI_MODE_DISABLED);
   extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
+  */
 }
 
 /**

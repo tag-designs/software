@@ -30,8 +30,8 @@ void tagDevicesInit(void)
 
 const TagAdxl362Device tagBitTagAccelDevice = {
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_ACCEL_CS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_ACCEL_CS),
+        //.cs = LINE_ACCEL_CS,
         .sck = LINE_ACCEL_SCK,
         .miso = LINE_ACCEL_MISO,
         .mosi = LINE_ACCEL_MOSI,

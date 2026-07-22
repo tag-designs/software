@@ -55,8 +55,8 @@
 static const TagRegisterDevice ak09940a_registers = {
   .kind = TAG_REGISTER_ST,
   .bus = TAG_BUS_SPI_INIT(
-    TAG_SPI1_DEVICE_DEFAULTS,
-    .cs = AK09940A_DEFAULT_CS,
+    TAG_SPI1_DEVICE_DEFAULTS(AK09940A_DEFAULT_CS),
+    //.cs = AK09940A_DEFAULT_CS,
     .sck = AK09940A_DEFAULT_SCK,
     .miso = AK09940A_DEFAULT_MISO,
     .mosi = AK09940A_DEFAULT_MOSI,

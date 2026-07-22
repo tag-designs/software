@@ -277,8 +277,8 @@ static void tagImuTagEnableTriggerClock(void)
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = IMUTAG_FLASH_CS_LINE,
+        TAG_SPI1_DEVICE_DEFAULTS(IMUTAG_FLASH_CS_LINE),
+        //.cs = IMUTAG_FLASH_CS_LINE,
         .sck = IMUTAG_FLASH_SCK_LINE,
         .miso = IMUTAG_FLASH_MISO_LINE,
         .mosi = IMUTAG_FLASH_MOSI_LINE,
@@ -292,8 +292,8 @@ const TagStorageDevice tagExternalFlash = {
 static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = IMUTAG_LPS_CS_LINE,
+        TAG_SPI1_DEVICE_DEFAULTS(IMUTAG_LPS_CS_LINE),
+        //.cs = IMUTAG_LPS_CS_LINE,
         .sck = IMUTAG_LPS_SCK_LINE,
         .miso = IMUTAG_LPS_MISO_LINE,
         .mosi = IMUTAG_LPS_MOSI_LINE,
@@ -311,8 +311,8 @@ const TagPressureDevice tagImuTagPressureDevice = {
 static const TagRegisterDevice imu_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = IMUTAG_IMU_CS_LINE,
+        TAG_SPI1_DEVICE_DEFAULTS(IMUTAG_IMU_CS_LINE),
+        //.cs = IMUTAG_IMU_CS_LINE,
         .sck = IMUTAG_IMU_SCK_LINE,
         .miso = IMUTAG_IMU_MISO_LINE,
         .mosi = IMUTAG_IMU_MOSI_LINE,
@@ -394,8 +394,8 @@ const TagLsm6dsv16xDevice tagImuTagImuDevice = {
 const TagRegisterDevice tagImuTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = IMUTAG_MAG_CS_LINE,
+        TAG_SPI1_DEVICE_DEFAULTS(IMUTAG_MAG_CS_LINE),
+        //.cs = IMUTAG_MAG_CS_LINE,
         .sck = IMUTAG_MAG_SCK_LINE,
         .miso = IMUTAG_MAG_MISO_LINE,
         .mosi = IMUTAG_MAG_MOSI_LINE,

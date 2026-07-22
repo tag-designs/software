@@ -76,8 +76,8 @@ void tagDevicesInit(void)
 const TagRegisterDevice tagCompassTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_MAG_CS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_MAG_CS),
+        //.cs = LINE_MAG_CS,
         .sck = LINE_MAG_SCK,
         .miso = LINE_MAG_MISO,
         .mosi = LINE_MAG_MOSI,
@@ -106,8 +106,8 @@ const TagRegisterDevice tagCompassTagAccelDevice = {
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
-        TAG_SPI1_DEVICE_DEFAULTS,
-        .cs = LINE_FLASH_nCS,
+        TAG_SPI1_DEVICE_DEFAULTS(LINE_FLASH_nCS),
+        //.cs = LINE_FLASH_nCS,
         .sck = LINE_FLASH_SCK,
         .miso = LINE_FLASH_MISO,
         .mosi = LINE_FLASH_MOSI,

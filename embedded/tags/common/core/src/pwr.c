@@ -229,6 +229,9 @@ void rtcOff(void)
  *
  * @param[in] sleepmode Requested sleep mode.
  */
+
+#if defined(STM32U375xx) || defined(STM32U385xx)
+
 void godown(enum Sleep sleepmode)
 {
   if (MONCONNECTED || (sleepmode == SLEEP))
@@ -236,77 +239,119 @@ void godown(enum Sleep sleepmode)
     return;
   }
 
-  if (sleepmode == STOP1) {
+  if (sleepmode == STOP1)
+  {
     DBGMCU->CR = 0;
 
-#if defined(STM32U375xx) || defined(STM32U385xx)
     chSysLock();
 
-    rccEnablePWRInterface(true);
+    if (palReadLine(LINE_WKUP1) == PAL_HIGH) {
+        /* Condition already met. Skip STOP0, unlock, and process immediately. */
+        chSysUnlock();
+        return;
+    }
 
-    /* Keep the PWR interface clock enabled in sleep while WKUP1 is armed. */
-    /* WKUP1 must be disabled while its source mux and polarity are changed. */
-    CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+    // this shouldn't be necessary -- not sure why it's not working in sensors.c
 
-    /* PA0 is the board WKUP1 signal; WUSEL1=0 selects the WKUP1_0 route. */
-    MODIFY_REG(PWR->WUCR3, PWR_WUCR3_WUSEL1, 0U);
-
-    /* WUPP1=0 wakes on the active-high/rising WKUP1 assertion from the IMU. */
-    CLEAR_BIT(PWR->WUCR2, PWR_WUCR2_WUPP1);
-
-    /* Clear any sticky WKUP1 flag after selecting the source, then arm WKUP1. */
-    WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
-    SET_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+    palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 
     /* Select Stop1 and make WFI enter deep sleep instead of normal sleep. */
     MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, (0 << PWR_CR1_LPMS_Pos)); // switch 1U to 0
 
-    /* PWR_IRQn must be enabled so WKUP1 can return from WFI in Stop1. */
-    //NVIC_SetPriority(PWR_IRQn, 1);
-    NVIC_ClearPendingIRQ(PWR_IRQn);
-    //NVIC_DisableIRQ(PWR_IRQn);
-
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-
-    PWR->CR1 &= ~(PWR_CR1_SRAM1PD | PWR_CR1_SRAM2PD);
 
     /* PB1 is high only while the U3 core is waiting for hardware WKUP1. */
     palSetPadMode(GPIOB, 1U, PAL_MODE_OUTPUT_PUSHPULL);
     palSetPad(GPIOB, 1U);
 
-    /* Clear stale EXTI/event state before waiting for the next WKUP1 edge. */
-#if STOP1_WAKE_EXTI_GROUP1_MASK
-    extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
-#endif
 
-    /* If WKUP1 asserted while arming Stop1, keep running and service it now. */
-    if (!palReadLine(LINE_WKUP1)) {
-      __DSB();
-      __ISB();
-      __SEV();
-      __WFE();
-      __WFE();
-
-      // Clear the power flag in hardware so you can drop back to sleep later
-      PWR->WUSCR |= (1 << PWR_WUSCR_CWUF1_Pos);
-      __DSB(); // Wait for the 14-cycle APB write delay to settle
-
-    }
+      /* Clear any lingering EXTI pending flags for your wake line */
+    EXTI->RPR1 = (1U << PAL_PAD(LINE_WKUP1));
+    EXTI->FPR1 = (1U << PAL_PAD(LINE_WKUP1));
+    __DSB();
+    __WFI();
 
     palClearPad(GPIOB, 1U);
-    CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
-    WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
+
+    CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+    // this shouldn't be necessary -- not sure why it's not working in sensors.c
+    palDisableLineEvent(LINE_WKUP1);
     chSysUnlock();
     return;
-    //tagDevicesAfterStop1(pState->state);
+    // tagDevicesAfterStop1(pState->state);
+  }
+  else
+  {
+    tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
+
+    __disable_irq();
+
+    // disable the debug unit
+
+    DBGMCU->CR = 0;
+
+    // disable standby SRAM retention
+
+    tagPowerDisableSramRetention();
+
+    // Pullup/Pulldown configuration
+
+#if BOARD_STANDBY_HAS_CONFIG
+    tagApplyBoardStandbyPins();
 #else
+    tagDevicesApplyStandbyPins();
+#if defined(TAG_RTC_RV3028)
+    const TagRtcDevice *rtc = tagRtcDevice();
+    if (rtc && rtc->registers)
+    {
+      tagI2cDevicePrepareSleep(rtc->registers);
+    }
+#endif
+#endif
+
+    // Apply pull-up and pull-down configuration
+
+    tagPowerApplyStandbyPulls();
+
+    tagDevicesDisableWakeupSources();
+    tagPowerClearWakeFlags();
+    if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+    {
+      __enable_irq();
+      return;
+    }
+
+    tagPowerSelectStandby();
+    SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+    __DSB();
+    __WFI();
+
+    __enable_irq();
+  }
+}
+
+#else
+
+void godown(enum Sleep sleepmode)
+{
+  if (MONCONNECTED || (sleepmode == SLEEP))
+  {
+    return;
+  }
+
+  if (sleepmode == STOP1)
+  {
+    DBGMCU->CR = 0;
+
     tagPowerSelectStop1();
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
 #if STOP1_WAKE_EXTI_GROUP1_MASK
     extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
 #if defined(LINE_ACCEL_INT)
-    if (palReadLine(LINE_ACCEL_INT)) {
+    if (palReadLine(LINE_ACCEL_INT))
+    {
       CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
       return;
     }
@@ -319,7 +364,6 @@ void godown(enum Sleep sleepmode)
     __SEV();
     __WFE();
     __WFE();
-#endif
 #endif
 
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
@@ -359,7 +403,8 @@ void godown(enum Sleep sleepmode)
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
-  if (!tagDevicesConfigureWakeupSources(pState->state, isActive)) {
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+  {
     __enable_irq();
     return;
   }
@@ -372,6 +417,7 @@ void godown(enum Sleep sleepmode)
 
   __enable_irq();
 }
+#endif
 
 void _unhandled_exception(void)
 {
