@@ -140,46 +140,19 @@ static inline void tagPowerClearWakeFlags(void)
 #endif
 }
 
-static inline void tagPowerPrepareStop1WakePin(void)
+#if (defined(STM32U375xx) || defined(STM32U385xx)) && defined(PWR_WUSCR_CWUF1)
+/**
+ *  Clear the U3 PWR wake flag after WKUP1 exits Stop1.
+ */
+OSAL_IRQ_HANDLER(Vector22C)
 {
-#if defined(STM32U3XX) && defined(PWR_WUCR1_WUPEN1) && \
-    defined(PWR_WUSCR_CWUF1)
-  rccEnablePWRInterface(false);
-  CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
-#if defined(PWR_WUCR2_WUPP1)
-  CLEAR_BIT(PWR->WUCR2, PWR_WUCR2_WUPP1);
-#endif
-#if defined(PWR_WUCR3_WUSEL1)
-  CLEAR_BIT(PWR->WUCR3, PWR_WUCR3_WUSEL1);
-#endif
+  OSAL_IRQ_PROLOGUE();
+
   WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
-  SET_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
-#endif
-}
 
-static inline void tagPowerFinishStop1WakePin(void)
-{
-#if defined(STM32U3XX) && defined(PWR_WUCR1_WUPEN1) && \
-    defined(PWR_WUSCR_CWUF1)
-  CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
-  WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
-#endif
+  OSAL_IRQ_EPILOGUE();
 }
-
-static inline void tagPowerStop1TraceHigh(void)
-{
-#if defined(STM32U3XX) && defined(LINE_LED2)
-  palSetLineMode(LINE_LED2, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLine(LINE_LED2);
 #endif
-}
-
-static inline void tagPowerStop1TraceLow(void)
-{
-#if defined(STM32U3XX) && defined(LINE_LED2)
-  palClearLine(LINE_LED2);
-#endif
-}
 
 #if BOARD_STANDBY_HAS_CONFIG
 void tagClearStandbyPulls(void)
@@ -265,32 +238,71 @@ void godown(enum Sleep sleepmode)
 
   if (sleepmode == STOP1) {
     DBGMCU->CR = 0;
+
+#if defined(STM32U375xx) || defined(STM32U385xx)
+    chSysLock();
+
+    rccEnablePWRInterface(true);
+
+    /* Keep the PWR interface clock enabled in sleep while WKUP1 is armed. */
+    /* WKUP1 must be disabled while its source mux and polarity are changed. */
+    CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+
+    /* PA0 is the board WKUP1 signal; WUSEL1=0 selects the WKUP1_0 route. */
+    MODIFY_REG(PWR->WUCR3, PWR_WUCR3_WUSEL1, 0U);
+
+    /* WUPP1=0 wakes on the active-high/rising WKUP1 assertion from the IMU. */
+    CLEAR_BIT(PWR->WUCR2, PWR_WUCR2_WUPP1);
+
+    /* Clear any sticky WKUP1 flag after selecting the source, then arm WKUP1. */
+    WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
+    SET_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+
+    /* Select Stop1 and make WFI enter deep sleep instead of normal sleep. */
+    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, (0 << PWR_CR1_LPMS_Pos)); // switch 1U to 0
+
+    /* PWR_IRQn must be enabled so WKUP1 can return from WFI in Stop1. */
+    //NVIC_SetPriority(PWR_IRQn, 1);
+    NVIC_ClearPendingIRQ(PWR_IRQn);
+    //NVIC_DisableIRQ(PWR_IRQn);
+
+    SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+    PWR->CR1 &= ~(PWR_CR1_SRAM1PD | PWR_CR1_SRAM2PD);
+
+    /* PB1 is high only while the U3 core is waiting for hardware WKUP1. */
+    palSetPadMode(GPIOB, 1U, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetPad(GPIOB, 1U);
+
+    /* Clear stale EXTI/event state before waiting for the next WKUP1 edge. */
+#if STOP1_WAKE_EXTI_GROUP1_MASK
+    extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
+#endif
+
+    /* If WKUP1 asserted while arming Stop1, keep running and service it now. */
+    if (!palReadLine(LINE_WKUP1)) {
+      __DSB();
+      __ISB();
+      __SEV();
+      __WFE();
+      __WFE();
+
+      // Clear the power flag in hardware so you can drop back to sleep later
+      PWR->WUSCR |= (1 << PWR_WUSCR_CWUF1_Pos);
+      __DSB(); // Wait for the 14-cycle APB write delay to settle
+
+    }
+
+    palClearPad(GPIOB, 1U);
+    CLEAR_BIT(PWR->WUCR1, PWR_WUCR1_WUPEN1);
+    WRITE_REG(PWR->WUSCR, PWR_WUSCR_CWUF1);
+    chSysUnlock();
+    return;
+    //tagDevicesAfterStop1(pState->state);
+#else
     tagPowerSelectStop1();
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
-#if defined(STM32U3XX)
-#if defined(LINE_ACCEL_INT)
-    if (palReadLine(LINE_ACCEL_INT)) {
-      tagPowerStop1TraceLow();
-      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-      return;
-    }
-#endif
-    tagPowerStop1TraceHigh();
-    tagPowerPrepareStop1WakePin();
-#if defined(LINE_ACCEL_INT)
-    if (palReadLine(LINE_ACCEL_INT)) {
-      tagPowerFinishStop1WakePin();
-      tagPowerStop1TraceLow();
-      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-      return;
-    }
-#endif
-    __DSB();
-    __WFI();
-    tagPowerFinishStop1WakePin();
-    tagPowerStop1TraceLow();
-#else
 #if STOP1_WAKE_EXTI_GROUP1_MASK
     extiClearGroup1(STOP1_WAKE_EXTI_GROUP1_MASK);
 #if defined(LINE_ACCEL_INT)

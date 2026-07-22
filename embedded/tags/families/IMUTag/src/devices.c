@@ -20,6 +20,7 @@
 #include "lps22hh.h"
 #include "app.h"
 #include "core_sync.h"
+#include "config.h"
 #include "custom.h"
 #include "debug_log.h"
 #include "device.h"
@@ -329,14 +330,16 @@ static const TagRegisterDevice imu_registers = {
  * The output frequency is 1024 / divider Hz and is routed to the IMU INT2 /
  * ACCEL_TRG line.
  */
-void tagImuTagSetTrigger(unsigned int divider)
+static void tagImuTagSetTriggerQuiet(unsigned int divider, bool log)
 {
   palClearLine(IMUTAG_IMU_TRIGGER_LINE);
   palSetLineMode(IMUTAG_IMU_TRIGGER_LINE, PAL_MODE_INPUT_ANALOG);
 
   if (divider == 0U) {
     tagImuTagDisableTriggerClock();
-    debug_log_printf("IMUTag trigger: disabled\r\n");
+    if (log) {
+      debug_log_printf("IMUTag trigger: disabled\r\n");
+    }
     return;
   }
 
@@ -365,7 +368,14 @@ void tagImuTagSetTrigger(unsigned int divider)
   LPTIM2->CNT = 0U;
   LPTIM2->CR |= STM32_LPTIM_CR_CNTSTRT;
 
-  debug_log_printf("IMUTag trigger: divider %u\r\n", divider);
+  if (log) {
+    debug_log_printf("IMUTag trigger: divider %u\r\n", divider);
+  }
+}
+
+void tagImuTagSetTrigger(unsigned int divider)
+{
+  tagImuTagSetTriggerQuiet(divider, true);
 }
 
 static void imuSetTrigger(const void *context, unsigned int divider)
@@ -484,6 +494,39 @@ void tagDevicesPrepareStandby(uint32_t state)
 void tagDevicesDeinit(void)
 {
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_RUNTIME_DEINIT, pState->state);
+}
+
+/**
+ *  Re-arm the U3 PA8/LPTIM2 IMU trigger after Stop1 exit.
+ *
+ * Repeated Stop1 entries can leave the LPTIM output flat even though data
+ * collection remains in RUNNING. Restart only the external trigger; the LSM
+ * FIFO and sensor configuration are left intact.
+ */
+void tagDevicesAfterStop1(uint32_t state)
+{
+#if defined(STM32U375xx) || defined(STM32U385xx)
+  lsm6dsv16x_trig_odr_t odr;
+  lsm6dsv16x_xl_fs_t xl_fs;
+  lsm6dsv16x_g_fs_t g_fs;
+  lsm6dsv16x_trig_params_t params;
+
+  if (state != TagState_RUNNING) {
+    return;
+  }
+
+  if (!get_lsm_config(&odr, &xl_fs, &g_fs)) {
+    return;
+  }
+
+  if (lsm6dsv16x_get_trig_params(odr, &params) != 0) {
+    return;
+  }
+
+  tagImuTagSetTriggerQuiet(params.mcu_div_d, false);
+#else
+  (void)state;
+#endif
 }
 
 /**

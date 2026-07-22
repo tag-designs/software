@@ -106,4 +106,14 @@ bool __attribute__((weak)) tagDevicesConfigureWakeupSources(uint32_t state,
 void __attribute__((weak)) tagDevicesDeinit(void)
 {
 }
+
+/**
+ *  Default no-op hook after Stop1 exit.
+ *
+ *  state Application state when Stop1 returned.
+ */
+void __attribute__((weak)) tagDevicesAfterStop1(uint32_t state)
+{
+  (void)state;
+}
 /** @} */

@@ -79,6 +79,13 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active);
  * @brief Deinitialize tag-specific devices during a final shutdown path.
  */
 void tagDevicesDeinit(void);
+
+/**
+ *  Let tag-specific devices recover after Stop1 exit.
+ *
+ *  state Application state when Stop1 returned.
+ */
+void tagDevicesAfterStop1(uint32_t state);
 /** @} */
 
 #endif
