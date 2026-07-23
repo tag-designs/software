@@ -43,69 +43,118 @@ typedef struct {
 } TagSpiConfig;
 
 #if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
-#if SPI_SUPPORTS_CIRCULAR == TRUE
-#define TAG_SPI_CIRCULAR_CONFIG_FIELD .circular = false,
+#define TAG_SPI_USES_CHIBIOS_CONFIG 1
 #else
-#define TAG_SPI_CIRCULAR_CONFIG_FIELD
+#define TAG_SPI_USES_CHIBIOS_CONFIG 0
 #endif
 
-#if defined(HAL_LLD_SELECT_SPI_V2)
-#if SPI_SUPPORTS_SLAVE_MODE == TRUE
-#define TAG_SPI_SLAVE_CONFIG_FIELD .slave = false,
-#else
-#define TAG_SPI_SLAVE_CONFIG_FIELD
+/* The HAL-backed SPI implementation is intentionally limited to ChibiOS' SPI
+ * v2 driver model. STM32L432 and STM32U3 both select that API; the remaining
+ * config variation is chip-select mode and STM32 LLD register layout.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG
+#if !defined(HAL_LLD_SELECT_SPI_V2) || (HAL_LLD_SELECT_SPI_V2 != TRUE)
+#error "Tag SPI ChibiOS backend requires the ChibiOS SPI v2 driver model"
 #endif
-#define TAG_SPI_COMMON_CONFIG_FIELDS                                         \
-  TAG_SPI_CIRCULAR_CONFIG_FIELD                                              \
-  TAG_SPI_SLAVE_CONFIG_FIELD                                                 \
-  .data_cb = NULL, .error_cb = NULL
-#else
-#define TAG_SPI_COMMON_CONFIG_FIELDS                                         \
-  TAG_SPI_CIRCULAR_CONFIG_FIELD                                              \
-  .end_cb = NULL
 #endif
 
-#if SPI_SELECT_MODE == SPI_SELECT_MODE_LINE
-#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE) .ssline = SSLINE
-#elif SPI_SELECT_MODE == SPI_SELECT_MODE_PORT
-#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)                                \
-  .ssport = PAL_PORT(SSLINE), .ssmask = (ioportmask_t)(1U << PAL_PAD(SSLINE))
-#elif SPI_SELECT_MODE == SPI_SELECT_MODE_PAD
-#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)                                \
-  .ssport = PAL_PORT(SSLINE), .sspad = PAL_PAD(SSLINE)
+/* Present only on ChibiOS SPI drivers with circular-transfer support. The
+ * shared tag SPI descriptors use linear transfers by default.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG && (SPI_SUPPORTS_CIRCULAR == TRUE)
+#define TAG_SPI_CONFIG_CIRCULAR_FIELD .circular = false,
 #else
-#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)
+#define TAG_SPI_CONFIG_CIRCULAR_FIELD
 #endif
 
-#if defined(STM32U3XX) && defined(SPI_CFG1_DSIZE_VALUE)
-#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
+/* Present on v2 drivers with slave-mode support. Tag peripherals are opened as
+ * SPI masters unless a device-specific descriptor overrides the config.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG && (SPI_SUPPORTS_SLAVE_MODE == TRUE)
+#define TAG_SPI_CONFIG_SLAVE_FIELD .slave = false,
+#else
+#define TAG_SPI_CONFIG_SLAVE_FIELD
+#endif
+
+/* Default descriptors use the synchronous SPI v2 APIs, so data and error
+ * callbacks are intentionally disabled.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG
+#define TAG_SPI_CONFIG_CALLBACK_FIELDS .data_cb = NULL, .error_cb = NULL,
+#else
+#define TAG_SPI_CONFIG_CALLBACK_FIELDS
+#endif
+
+/* ChibiOS supports several chip-select representations. Keep the public tag
+ * descriptor line-based, then adapt it to the configured HAL SPI select mode.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG &&                                          \
+    (SPI_SELECT_MODE == SPI_SELECT_MODE_LINE)
+#define TAG_SPI_CONFIG_SELECT_FIELDS(SSLINE) .ssline = (SSLINE),
+#elif TAG_SPI_USES_CHIBIOS_CONFIG &&                                        \
+    (SPI_SELECT_MODE == SPI_SELECT_MODE_PORT)
+#define TAG_SPI_CONFIG_SELECT_FIELDS(SSLINE)                                \
+  .ssport = PAL_PORT(SSLINE),                                               \
+  .ssmask = (ioportmask_t)(1U << PAL_PAD(SSLINE)),
+#elif TAG_SPI_USES_CHIBIOS_CONFIG &&                                        \
+    (SPI_SELECT_MODE == SPI_SELECT_MODE_PAD)
+#define TAG_SPI_CONFIG_SELECT_FIELDS(SSLINE)                                \
+  .ssport = PAL_PORT(SSLINE), .sspad = PAL_PAD(SSLINE),
+#else
+#define TAG_SPI_CONFIG_SELECT_FIELDS(SSLINE)
+#endif
+
+/* STM32U3 uses ChibiOS' STM32 SPIv4 LLD, whose SPIConfig carries CFG and DMA
+ * tuning fields. The L432 SPIv2 LLD uses the older CR1/CR2 field pair.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG && defined(STM32U3XX)
+#define TAG_SPI_CONFIG_LLD_FIELDS                                           \
   .cfg1 = SPI_CFG1_DSIZE_VALUE(7U), .cfg2 = 0U, .dtr1rx = 0U,               \
   .dtr1tx = 0U, .dtr2rx = 0U, .dtr2tx = 0U
-#elif defined(SPI_CFG1_DSIZE_VALUE)
-#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
-  .cfg1 = SPI_CFG1_DSIZE_VALUE(7U), .cfg2 = 0U
-#elif defined(SPI_CR2_DS_2)
-#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
+#elif TAG_SPI_USES_CHIBIOS_CONFIG && defined(SPI_CR2_DS_2)
+#define TAG_SPI_CONFIG_LLD_FIELDS                                           \
   .cr1 = 0U, .cr2 = SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
+#elif TAG_SPI_USES_CHIBIOS_CONFIG
+#error "Unsupported STM32 SPI LLD config shape for tag SPI default config"
 #else
-#define TAG_SPI_LLD_CONFIG_FIELDS .cr1 = 0U, .cr2 = 0U
+#define TAG_SPI_CONFIG_LLD_FIELDS
 #endif
 
+/* Complete ChibiOS SPIConfig initializer body, in the order expected by
+ * ChibiOS' SPIConfig struct for the selected HAL and LLD.
+ */
+#define TAG_SPI_CHIBIOS_CONFIG_FIELDS(SSLINE)                               \
+  TAG_SPI_CONFIG_CIRCULAR_FIELD                                             \
+  TAG_SPI_CONFIG_SLAVE_FIELD                                                \
+  TAG_SPI_CONFIG_CALLBACK_FIELDS                                            \
+  TAG_SPI_CONFIG_SELECT_FIELDS(SSLINE)                                      \
+  TAG_SPI_CONFIG_LLD_FIELDS
+
+/* Direct-register polled mode keeps only the STM32 CR1/CR2 settings needed to
+ * start an 8-bit master session plus the shared chip-select line.
+ */
+#if defined(SPI_CR1_MSTR)
+#define TAG_SPI_POLLED_CONFIG_FIELDS(SSLINE)                                \
+  .cr1 = SPI_CR1_MSTR,                                                      \
+  .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | SPI_CR2_DS_2 | SPI_CR2_DS_1 |       \
+         SPI_CR2_DS_0,                                                      \
+  .ssline = (SSLINE)
+#else
+#define TAG_SPI_POLLED_CONFIG_FIELDS(SSLINE)                                \
+  .cr1 = 0U, .cr2 = 0U, .ssline = (SSLINE)
+#endif
+
+/* Public default descriptor config. Its shape follows TagSpiConfig: either a
+ * nested ChibiOS SPIConfig or the direct-register polled fields.
+ */
+#if TAG_SPI_USES_CHIBIOS_CONFIG
 #define TAGSPIDEFAULTCONFIG(SSLINE)                                         \
   (TagSpiConfig){                                                           \
-      .spi = {TAG_SPI_COMMON_CONFIG_FIELDS,                                 \
-              TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE),                         \
-              TAG_SPI_LLD_CONFIG_FIELDS},                                   \
-      .ssline = SSLINE}
-#elif defined(SPI_CR1_MSTR)
-   #define TAGSPIDEFAULTCONFIG(SSLINE) \
-         (TagSpiConfig){ .cr1 = SPI_CR1_MSTR, \
-                         .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | \
-                                SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0, \
-                        .ssline = SSLINE }
+      .spi = {TAG_SPI_CHIBIOS_CONFIG_FIELDS(SSLINE)},                       \
+      .ssline = (SSLINE)}
 #else
-   #define TAGSPIDEFAULTCONFIG(SSLINE) \
-          (TagSpiConfig){ .cr1 = 0, .cr2 = 0, .ssline = SSLINE }
+#define TAGSPIDEFAULTCONFIG(SSLINE)                                         \
+  (TagSpiConfig){TAG_SPI_POLLED_CONFIG_FIELDS(SSLINE)}
 #endif
 
 /** Standby pull policy applied while preparing the MCU for deep sleep. */
@@ -131,8 +180,11 @@ typedef struct {
 
 //extern const TagSpiConfig tagSpiDefaultConfig;
 
-#define TAG_SPI1_DEVICE_DEFAULTS(SSLINE)                                             \
-  .spi = SPI1, .mutex = &SPI1mutex, .config = TAGSPIDEFAULTCONFIG(SSLINE), .alternate_function = SPI1_ALTERNATE_FUNCTION
+#define TAG_SPI1_DEVICE_DEFAULTS(SSLINE)                                    \
+  .spi = SPI1,                                                              \
+  .mutex = &SPI1mutex,                                                      \
+  .config = TAGSPIDEFAULTCONFIG(SSLINE),                                    \
+  .alternate_function = SPI1_ALTERNATE_FUNCTION
 
 /** @} */
 
@@ -269,6 +321,17 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
 bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
 
 /**
+ * @brief Exchange bytes full-duplex.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] txbuf Bytes to transmit.
+ * @param[out] rxbuf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to exchange.
+ */
+bool tagSpiExchange(const TagSpiDevice *device, const uint8_t *txbuf,
+                    uint8_t *rxbuf, uint32_t len);
+
+/**
  * @brief Assert the SPI device chip-select line.
  *
  * @param[in] device SPI device descriptor to select.
@@ -320,6 +383,26 @@ static inline bool tagSpiBusRead(const TagSpiDevice *device, uint8_t *buf,
 
   tagSpiSelect(device);
   ok = tagSpiRead(device, buf, len);
+  tagSpiDeselect(device);
+  return ok;
+}
+
+/**
+ * @brief Exchange one complete SPI transaction under chip select.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] txbuf Bytes to transmit.
+ * @param[out] rxbuf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to exchange.
+ */
+static inline bool tagSpiBusExchange(const TagSpiDevice *device,
+                                     const uint8_t *txbuf, uint8_t *rxbuf,
+                                     uint32_t len)
+{
+  bool ok;
+
+  tagSpiSelect(device);
+  ok = tagSpiExchange(device, txbuf, rxbuf, len);
   tagSpiDeselect(device);
   return ok;
 }
