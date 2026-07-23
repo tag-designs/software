@@ -81,7 +81,12 @@
  * MSI range table. IMUTagU3bmm350 uses MSI as SYSCLK with no HSE/HSI/PLL
  * system clock. SYSCLK is set to 24 MHz to leave more processing headroom for
  * 800 Hz acquisition while keeping the low-power U3 MSI clocking strategy.
+ * 
+ *  MSIK can be used separately to drive SPI1 and other peripherals.  For example,
+ *  to have the core clock at 12 Mhz and SPI1 at 24 MHz, set MSIK to 24 MHz and SYSCLK to 12 MHz.  
+ *  This is done by setting MSIK to 24 MHz and using the SYSCLK divider to divide by 2.
  */
+
 #define STM32_HSI16_ENABLED                 FALSE
 #define STM32_HSIKERON_ENABLED              FALSE
 #define STM32_HSI48_ENABLED                 FALSE
@@ -92,8 +97,8 @@
 #define STM32_MSIRC0_MODE                   RCC_MSIRC0_FREE
 #define STM32_MSIRC1_MODE                   RCC_MSIRC1_FREE
 #define STM32_MSIPLL1N_VALUE                0
-#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC0_DIV4
-#define STM32_MSIK_SRCDIV                   RCC_ICSCR1_MSIK_IRC0_DIV8
+#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC1_DIV2
+#define STM32_MSIK_SRCDIV                   RCC_ICSCR1_MSIK_IRC1_DIV1
 #define STM32_MSIBIAS                       RCC_ICSCR1_MSIBIAS_CONTINUOUS
 #define STM32_SW                            RCC_CFGR1_SW_MSIS
 #define STM32_HPRE                          RCC_CFGR2_HPRE_DIV1
@@ -120,7 +125,9 @@
 #define STM32_LPTIM1SEL                     RCC_CCIPR3_LPTIM1SEL_LSE
 #define STM32_LPTIM2SEL                     RCC_CCIPR1_LPTIM2SEL_LSE
 #define STM32_LPTIM34SEL                    RCC_CCIPR3_LPTIM34SEL_LSE
-#define STM32_SPI1SEL                       RCC_CCIPR1_SPI1SEL_PCLK2
+#define STM32_SPI1SEL                       RCC_CCIPR1_SPI1SEL_MSIK
+
+//RCC_CCIPR1_SPI1SEL_PCLK2
 #define STM32_SPI2SEL                       RCC_CCIPR1_SPI2SEL_PCLK1
 #define STM32_SPI3SEL                       RCC_CCIPR2_SPI3SEL_PCLK1
 #define STM32_OCTOSPISEL                    RCC_CCIPR2_OCTOSPISEL_SYSCLK
@@ -130,8 +137,8 @@
 #define STM32_I2C1SEL                       RCC_CCIPR1_I2C1SEL_PCLK1
 #define STM32_I2C2SEL                       RCC_CCIPR1_I2C2SEL_PCLK1
 #define STM32_I2C3SEL                       RCC_CCIPR3_I2C3SEL_PCLK3
-#define STM32_I3C1SEL                       RCC_CCIPR1_I3C1SEL_PCLK1
-#define STM32_I3C2SEL                       RCC_CCIPR1_I3C2SEL_PCLK3
+//#define STM32_I3C1SEL                       RCC_CCIPR1_I3C1SEL_PCLK1
+//#define STM32_I3C2SEL                       RCC_CCIPR1_I3C2SEL_PCLK3
 #define STM32_ADCDACSEL                     RCC_CCIPR2_ADCDACSEL_HCLK
 #define STM32_DAC1SHSEL                     RCC_CCIPR2_DAC1SHSEL_IGNORE
 #define STM32_ADCDACPRE                     RCC_CCIPR2_ADCDACPRE_ICLK

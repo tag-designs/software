@@ -255,7 +255,7 @@ void godown(enum Sleep sleepmode)
 
     palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 
-    /* Select Stop1 and make WFI enter deep sleep instead of normal sleep. */
+    /* Select Stop0 -- Stop1 crashes.  Need some recover foo to make that work. and make WFI enter deep sleep instead of normal sleep. */
     MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, (0 << PWR_CR1_LPMS_Pos)); // switch 1U to 0
 
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
