@@ -57,6 +57,15 @@
 #include "sensor_io.h"
 
 /**
+ * @brief Maximum number of FIFO samples that can be read in a single call.
+ *
+ * The LSM6DSV16X FIFO can hold 512 samples of 12 bytes each, but the driver
+ * limits the maximum read to a smaller number to avoid long blocking calls.
+ */
+
+#define MAX_LSM6DSV16X_FIFO_READ 30
+
+/**
  * @brief Configure the MCU hardware timer used as the external ODR trigger.
  *
  * Passing divider 0 disables the trigger output. Nonzero values configure the

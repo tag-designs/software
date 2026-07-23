@@ -5,6 +5,8 @@
  * @date 2026-05-23
  */
 
+
+
 #include "sensor_io.h"
 
 #define TAG_I2C_REGISTER_MAX_WRITE 16
@@ -149,6 +151,9 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
  * write into separately selected command and data transfers.
  * @{
  */
+
+  /* these are pretty inefficient, perhaps using a polledexchange for the command phase would work better */
+
 /**
  * @brief Write bytes to an ST-style SPI register device.
  *

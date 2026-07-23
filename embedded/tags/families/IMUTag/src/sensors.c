@@ -656,6 +656,12 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   if (!imu_data_ready())
     return false;
 
+  /* 
+    Note, we're checking the FIFO status twice -- here and in the lsm driver read.
+     This is overkill -- one or the other should be sufficient.   The fifo will 
+     return invalid tags if there isn't enough data anyway. 
+  */
+
   /* Check for a full FIFO watermark before draining any IMU samples. */
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {

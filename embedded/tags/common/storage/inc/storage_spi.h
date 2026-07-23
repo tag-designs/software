@@ -13,6 +13,8 @@
 
 #include <stdint.h>
 
+/*    These are terribly inefficient operations the header of every operation is being broken into */ 
+/*   Perhaps a compromise is to make them packing operations that build up the buffer              */
 
 
 /** @name Storage SPI transaction helpers

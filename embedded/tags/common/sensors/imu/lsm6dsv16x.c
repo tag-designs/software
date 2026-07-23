@@ -62,6 +62,7 @@
 #include "lsm6dsv16x_regs.h"
 #include "timekeeping.h"
 
+
 /* =========================================================================
  * Internal helpers
  * ====================================================================== */
@@ -626,6 +627,9 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
 #define LSM6DSV16X_FIFO_TRACE_WORDS 32U
 #define LSM6DSV16X_FIFO_TRACE_LIMIT 4U
 
+
+static uint8_t fifo_read_buffer[MAX_LSM6DSV16X_FIFO_READ * LSM6DSV16X_FIFO_WORD_BYTES];
+
 typedef struct {
     int16_t gx, gy, gz;
     int16_t ax, ay, az;
@@ -832,10 +836,14 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     uint8_t  st1 = 0;
     uint8_t  st2 = 0;
     uint16_t fifo_level;
-    uint8_t  word[LSM6DSV16X_FIFO_WORD_BYTES];
+    //uint8_t  word[LSM6DSV16X_FIFO_WORD_BYTES];
 
     if (!valid_device(device) || samples == NULL || max_pairs == 0U) {
         return 0U;
+    }
+
+    if (max_pairs*2 > MAX_LSM6DSV16X_FIFO_READ ) {
+        max_pairs = MAX_LSM6DSV16X_FIFO_READ/2;
     }
 
     fifo_parse_context_init(&ctx);
@@ -846,6 +854,26 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
     reg_read(device, LSM6DSV16X_FIFO_STATUS2, &st2);
     fifo_level = (uint16_t)(((uint16_t)(st2 & 0x03U) << 8U) | (uint16_t)st1);
 
+    if (fifo_level > max_pairs*2){
+        fifo_level = max_pairs*2;
+    }
+    
+    // read a block of data
+
+    if ((fifo_level == 0) || reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
+                                                    fifo_read_buffer, 
+                                                    LSM6DSV16X_FIFO_WORD_BYTES*fifo_level)) {
+        device_end(device);
+        return 0U;
+    }
+
+    for (int i = 0; i < fifo_level; i++) {
+        if (fifo_parse_word(&ctx, samples, max_pairs, &fifo_read_buffer[i * LSM6DSV16X_FIFO_WORD_BYTES])) {
+            break;
+        }
+    }
+
+    #if 0
     while ((fifo_level > 0U) && (ctx.pairs_out < max_pairs)) {
 
         if (reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
@@ -860,7 +888,13 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
         }
     }
 
-    fifo_parse_finalize(&ctx, samples, max_pairs);
+    #endif
+
+    // loop over the data 
+    // fifo_parse_word.
+
+
+    fifo_parse_finalize(&ctx, samples, fifo_level);
     fifo_log_parse_trace(&ctx);
 
     device_end(device);
