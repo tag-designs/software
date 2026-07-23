@@ -626,10 +626,6 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
 #define LSM6DSV16X_FIFO_TRACE_WORDS 32U
 #define LSM6DSV16X_FIFO_TRACE_LIMIT 4U
 
-#ifndef TAG_LSM6DSV16X_FIFO_DMA_READ
-#define TAG_LSM6DSV16X_FIFO_DMA_READ 0
-#endif
-
 typedef struct {
     int16_t gx, gy, gz;
     int16_t ax, ay, az;
@@ -852,20 +848,11 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
 
     while ((fifo_level > 0U) && (ctx.pairs_out < max_pairs)) {
 
-#if TAG_LSM6DSV16X_FIFO_DMA_READ
-        if (tagStSpiReadRegisterDeviceDma(device->registers,
-                                          LSM6DSV16X_FIFO_DATA_OUT_TAG,
-                                          word,
-                                          LSM6DSV16X_FIFO_WORD_BYTES) !=
-            MSG_OK) {
-            break;
-        }
-#else
         if (reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
-                           word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
+                            word, LSM6DSV16X_FIFO_WORD_BYTES) != 0) {
             break;
         }
-#endif
+
         fifo_level--;
 
         if (fifo_parse_word(&ctx, samples, max_pairs, word)) {

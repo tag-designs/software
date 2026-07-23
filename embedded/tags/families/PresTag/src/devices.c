@@ -58,7 +58,7 @@ const TagStorageDevice tagExternalFlash = {
     .ops = &at25xeStorageOps,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS(LINE_FLASH_nCS),
-        .cs = LINE_FLASH_nCS,
+        //.cs = LINE_FLASH_nCS,
         .sck = LINE_FLASH_SCK,
         .miso = LINE_FLASH_MISO,
         .mosi = LINE_FLASH_MOSI,

@@ -197,33 +197,6 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
   return 0;
 }
 
-int tagStSpiReadRegisterDeviceDma(const TagRegisterDevice *registers,
-                                  uint8_t reg, uint8_t *buf, uint32_t len)
-{
-  const TagSpiDevice *device;
-  uint8_t command;
-  bool ok;
-
-  if (registers == NULL || registers->bus.kind != TAG_BUS_SPI) {
-    return MSG_RESET;
-  }
-
-  device = tagBusSpiDevice(&registers->bus);
-  command = (uint8_t)(reg | registers->read_mask);
-
-  tagSpiSelect(device);
-  ok = tagSpiWrite(device, &command, 1) &&
-       tagSpiReadDma(device, buf, len);
-  tagSpiDeselect(device);
-
-  if (!ok) {
-    return MSG_RESET;
-  }
-
-  return MSG_OK;
-}
-/** @} */
-
 /** @name ST-style synchronous-USART register adapter
  * ST-style synchronous-USART register adapter.
  *

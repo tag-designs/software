@@ -30,10 +30,13 @@ active tags unless a tag provides a same-named local override.
 - `bus_device.h`: a tagged bus descriptor that embeds one concrete SPI, I2C,
   or USART device and exposes shared power/session/sleep helpers.
 - `spi_bus.c`, `i2c_bus.c`, `usart_bus.c`: low-level bus mechanics for
-  descriptor-backed devices. SPI and USART own raw byte transfers, peripheral
-  setup, active-state tracking, and Stop2 suspend/resume mechanics. I2C owns
-  controller setup and device power/session pin policy; register-level I2C
-  transactions live with the shared register adapters in `sensor_io.c`.
+  descriptor-backed devices. `spi_bus.c` is a backend selector: targets with
+  `HAL_USE_SPI` disabled use the simple polled implementation, while targets
+  with `HAL_USE_SPI` enabled use ChibiOS HAL SPI transactions. SPI and USART
+  own raw byte transfers, peripheral setup, active-state tracking, and Stop2
+  suspend/resume mechanics. I2C owns controller setup and device power/session
+  pin policy; register-level I2C transactions live with the shared register
+  adapters in `sensor_io.c`.
 - `i2c-backend-model.md`: design note for the common I2C backend model.
   The model allows ChibiOS hardware I2C and a copied, project-namespaced
   software I2C fallback to coexist on different board-level buses while keeping
@@ -161,9 +164,11 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
 - `tagSpiDevicePowerOn/Off()` lives in `spi_bus.c` and handles optional
   switched device power plus SPI pin idle state.
 - `tagSpiBusBegin/End()` lives in `spi_bus.c` and handles SPI alternate
-  functions, mutex ownership, and peripheral enable/disable. `End` deselects
-  the device, disables the peripheral, and returns SCK/MOSI/MISO to analog.
-  The device descriptor supplies the `TagSpiConfig` used for that bus session.
+  functions, bus ownership, and peripheral enable/disable. `End` deselects the
+  device, disables the peripheral, and returns SCK/MOSI/MISO to analog. The
+  device descriptor supplies the `TagSpiConfig` used for that bus session; the
+  ChibiOS backend maps that descriptor to `SPIDx`, `spiStart()`, `spiSend()`,
+  and `spiReceive()`.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 I2C-backed devices follow the same ownership rule: `TagI2cController`

@@ -147,22 +147,6 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
 int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
                                uint8_t reg, uint8_t *buf, uint32_t len);
 
-/**
- * @brief Read bytes from an ST-style SPI register using DMA.
- *
- * This helper does not retry on failure, which keeps FIFO-style registers from
- * being consumed twice after a partial transfer.
- *
- * @param[in] registers Register-device descriptor containing SPI bus details.
- * @param[in] reg Register address before the descriptor's read mask is applied.
- * @param[out] buf Destination buffer.
- * @param[in] len Number of bytes to read.
- * @return MSG_OK on success or a register-transport error.
- */
-int tagStSpiReadRegisterDeviceDma(const TagRegisterDevice *registers,
-                                  uint8_t reg, uint8_t *buf, uint32_t len);
-/** @} */
-
 /** @name ST-style synchronous-USART register adapter
  * ST-style register transactions over synchronous USART used as SPI-lite.
  * @{

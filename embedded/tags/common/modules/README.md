@@ -91,6 +91,8 @@ Current examples:
   src/persistent.c
   src/pwr.c
   src/spi_bus.c
+  src/spi_bus_chibios.inc
+  src/spi_bus_polled.inc
   src/state_machine.c
   src/stm32adc.c
   src/stm32flash.c
@@ -203,10 +205,13 @@ descriptor-backed code and register helpers. SPI power and SPI bus
 ownership are
 separate concepts: `tagSpiDevicePowerOn()` asserts optional switched device
 power and leaves chip select high, while `tagSpiDevicePowerOff()` clears
-optional switched power and floats the SPI pins. `tagSpiBusBegin()` and
-`tagSpiBusEnd()` own pin alternate functions, the bus mutex, and peripheral
-enable/disable. Each SPI device descriptor also points at the `TagSpiConfig`
-for that session. Generated boards now keep standby pull policy in
+optional switched power and floats the SPI pins. `spi_bus.c` selects a simple
+polled backend when `HAL_USE_SPI` is false and a ChibiOS HAL SPI backend when
+`HAL_USE_SPI` is true. `tagSpiBusBegin()` and `tagSpiBusEnd()` own pin
+alternate functions, bus ownership, and peripheral enable/disable. Each SPI
+device descriptor also points at the `TagSpiConfig` for that session; in the
+HAL backend that config embeds the ChibiOS `SPIConfig`. Generated boards now
+keep standby pull policy in
 `board-customizations.json` `Standby` fields and expose it through
 `board_standby.h`; the descriptor sleep-policy helpers remain for static-board
 fallbacks. USART-style sensor buses use the same idea: `TagUsartDevice` carries

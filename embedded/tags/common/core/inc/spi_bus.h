@@ -33,12 +33,71 @@
 
 /** Register settings used when a device opens a SPI bus session. */
 typedef struct {
+#if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
+  SPIConfig spi;
+#else
   uint32_t cr1;
   uint32_t cr2;
+#endif
   ioline_t ssline;
 } TagSpiConfig;
 
-#if defined(SPI_CR1_MSTR) 
+#if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
+#if SPI_SUPPORTS_CIRCULAR == TRUE
+#define TAG_SPI_CIRCULAR_CONFIG_FIELD .circular = false,
+#else
+#define TAG_SPI_CIRCULAR_CONFIG_FIELD
+#endif
+
+#if defined(HAL_LLD_SELECT_SPI_V2)
+#if SPI_SUPPORTS_SLAVE_MODE == TRUE
+#define TAG_SPI_SLAVE_CONFIG_FIELD .slave = false,
+#else
+#define TAG_SPI_SLAVE_CONFIG_FIELD
+#endif
+#define TAG_SPI_COMMON_CONFIG_FIELDS                                         \
+  TAG_SPI_CIRCULAR_CONFIG_FIELD                                              \
+  TAG_SPI_SLAVE_CONFIG_FIELD                                                 \
+  .data_cb = NULL, .error_cb = NULL
+#else
+#define TAG_SPI_COMMON_CONFIG_FIELDS                                         \
+  TAG_SPI_CIRCULAR_CONFIG_FIELD                                              \
+  .end_cb = NULL
+#endif
+
+#if SPI_SELECT_MODE == SPI_SELECT_MODE_LINE
+#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE) .ssline = SSLINE
+#elif SPI_SELECT_MODE == SPI_SELECT_MODE_PORT
+#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)                                \
+  .ssport = PAL_PORT(SSLINE), .ssmask = (ioportmask_t)(1U << PAL_PAD(SSLINE))
+#elif SPI_SELECT_MODE == SPI_SELECT_MODE_PAD
+#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)                                \
+  .ssport = PAL_PORT(SSLINE), .sspad = PAL_PAD(SSLINE)
+#else
+#define TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE)
+#endif
+
+#if defined(STM32U3XX) && defined(SPI_CFG1_DSIZE_VALUE)
+#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
+  .cfg1 = SPI_CFG1_DSIZE_VALUE(7U), .cfg2 = 0U, .dtr1rx = 0U,               \
+  .dtr1tx = 0U, .dtr2rx = 0U, .dtr2tx = 0U
+#elif defined(SPI_CFG1_DSIZE_VALUE)
+#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
+  .cfg1 = SPI_CFG1_DSIZE_VALUE(7U), .cfg2 = 0U
+#elif defined(SPI_CR2_DS_2)
+#define TAG_SPI_LLD_CONFIG_FIELDS                                           \
+  .cr1 = 0U, .cr2 = SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
+#else
+#define TAG_SPI_LLD_CONFIG_FIELDS .cr1 = 0U, .cr2 = 0U
+#endif
+
+#define TAGSPIDEFAULTCONFIG(SSLINE)                                         \
+  (TagSpiConfig){                                                           \
+      .spi = {TAG_SPI_COMMON_CONFIG_FIELDS,                                 \
+              TAG_SPI_SELECT_CONFIG_FIELDS(SSLINE),                         \
+              TAG_SPI_LLD_CONFIG_FIELDS},                                   \
+      .ssline = SSLINE}
+#elif defined(SPI_CR1_MSTR)
    #define TAGSPIDEFAULTCONFIG(SSLINE) \
          (TagSpiConfig){ .cr1 = SPI_CR1_MSTR, \
                          .cr2 = SPI_CR2_FRXTH | SPI_CR2_SSOE | \
@@ -62,7 +121,6 @@ typedef struct {
   binary_semaphore_t *mutex;
   int alternate_function;
   const TagSpiConfig config;
-  //ioline_t cs;
   ioline_t sck;
   ioline_t miso;
   ioline_t mosi;
@@ -209,37 +267,6 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len);
  * @param[in] len Number of bytes to read.
  */
 bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
-
-/**
- * @brief Read bytes using a DMA-backed dummy-byte transfer when available.
- *
- * @param[in] device SPI device descriptor.
- * @param[out] buf Buffer that receives bytes from the device.
- * @param[in] len Number of bytes to read.
- * @return true when DMA completed the transfer, false when DMA is unavailable
- *         or the transfer failed.
- */
-bool tagSpiReadDma(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
-
-/**
- * @brief Pipelined SPI write for devices proven safe with queued transfers.
- *
- * @param[in] device SPI device descriptor.
- * @param[in] buf Bytes to transmit.
- * @param[in] len Number of bytes to transmit.
- */
-bool tagSpiWritePipelined(const TagSpiDevice *device, const uint8_t *buf,
-                          uint32_t len);
-
-/**
- * @brief Pipelined SPI read for devices proven safe with queued transfers.
- *
- * @param[in] device SPI device descriptor.
- * @param[out] buf Buffer that receives bytes from the device.
- * @param[in] len Number of bytes to read.
- */
-bool tagSpiReadPipelined(const TagSpiDevice *device, uint8_t *buf,
-                         uint32_t len);
 
 /**
  * @brief Assert the SPI device chip-select line.

@@ -44,9 +44,11 @@
 /* Use DMA for external-flash block data phases; command/address/status
  * transactions remain byte-paced.
  */
-#define TAG_STORAGE_SPI_DMA_BLOCK_READ 1
-#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 1
-#define TAG_LSM6DSV16X_FIFO_DMA_READ 1
+
+ /* this is now handled automatically by configuring to use or not use chibios spi*/
+#define TAG_STORAGE_SPI_DMA_BLOCK_READ 0
+#define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
+#define TAG_LSM6DSV16X_FIFO_DMA_READ 0
 /* Temporary bring-up aid: expose a retained RUNNING-state heartbeat in the
  * status debug message so detached execution can be distinguished from
  * attach/reset cursor recovery.
