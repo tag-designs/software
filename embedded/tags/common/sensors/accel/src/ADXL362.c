@@ -12,6 +12,24 @@
 
 static uint8_t selected_range = 2;
 
+static bool adxl362WritePayload(const TagSpiDevice *spi,
+                                const uint8_t *buffer,
+                                size_t length)
+{
+  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledSend(spi, buffer, (uint32_t)length);
+  return tagSpiWrite(spi, buffer, (uint32_t)length);
+}
+
+static bool adxl362ReadPayload(const TagSpiDevice *spi,
+                               uint8_t *buffer,
+                               size_t length)
+{
+  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
+  return tagSpiRead(spi, buffer, (uint32_t)length);
+}
+
 /** @name ADXL362 bus lifecycle
  * Helpers bracket ADXL362 register access with the descriptor's bus power and
  * transaction session.
@@ -59,7 +77,7 @@ static void adxl362Write(const TagAdxl362Device *device,
   const TagSpiDevice *spi = tagAdxl362SpiDevice(device);
 
   tagSpiSelect(spi);
-  tagSpiWrite(spi, buffer, length);
+  adxl362WritePayload(spi, buffer, length);
   tagSpiDeselect(spi);
 }
 
@@ -81,8 +99,8 @@ static void adxl362WriteThenRead(const TagAdxl362Device *device,
   const TagSpiDevice *spi = tagAdxl362SpiDevice(device);
 
   tagSpiSelect(spi);
-  tagSpiWrite(spi, write_buffer, write_length);
-  tagSpiRead(spi, read_buffer, read_length);
+  if (adxl362WritePayload(spi, write_buffer, write_length))
+    adxl362ReadPayload(spi, read_buffer, read_length);
   tagSpiDeselect(spi);
 }
 /** @} */

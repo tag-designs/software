@@ -292,6 +292,51 @@ bool tagSpiExchange(const TagSpiDevice *device, const uint8_t *txbuf,
   return true;
 }
 
+bool tagSpiPolledExchange(const TagSpiDevice *device, uint8_t tx, uint8_t *rx)
+{
+  uint8_t value;
+
+  if (!tagSpiExchangeByte(tagSpiDevicePeripheral(device), tx, &value)) {
+    if (rx != NULL)
+      *rx = TAG_SPI_ERROR_BYTE;
+    return false;
+  }
+
+  if (rx != NULL)
+    *rx = value;
+  return true;
+}
+
+bool tagSpiPolledSend(const TagSpiDevice *device, const uint8_t *buf,
+                      uint32_t len)
+{
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+  uint8_t rx;
+
+  while (len-- > 0U) {
+    if (!tagSpiExchangeByte(spi, *buf++, &rx))
+      return false;
+  }
+
+  return true;
+}
+
+bool tagSpiPolledReceive(const TagSpiDevice *device, uint8_t *buf,
+                         uint32_t len)
+{
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+
+  while (len-- > 0U) {
+    if (!tagSpiExchangeByte(spi, device->dummy, buf)) {
+      tagSpiFillReadFailure(buf, len + 1U);
+      return false;
+    }
+    buf++;
+  }
+
+  return true;
+}
+
 void tagSpiSelect(const TagSpiDevice *device)
 {
   palClearLine(device->config.ssline);

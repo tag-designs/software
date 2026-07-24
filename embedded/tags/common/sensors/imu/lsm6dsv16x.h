@@ -376,11 +376,15 @@ void lsm6dsv16x_set_fifo_watermark(const TagLsm6dsv16xDevice *device,
  * @param[in]  device Concrete device descriptor. Must not be NULL.
  * @param[out] samples   Destination array.
  * @param[in]  max_pairs Capacity of samples[].
+ * @param[in]  fifo_words Optional pre-read FIFO word count from
+ *             lsm6dsv16x_read_fifo_status(); pass NULL to read FIFO status
+ *             inside this function.
  * @return Number of complete pairs written.
  */
 uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
                               lsm6dsv16x_sample_t *samples,
-                              uint16_t max_pairs);
+                              uint16_t max_pairs,
+                              const uint16_t *fifo_words);
 
 /**
  * Query the parameters the driver will use for a given trigger ODR.

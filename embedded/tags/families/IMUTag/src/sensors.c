@@ -656,12 +656,6 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   if (!imu_data_ready())
     return false;
 
-  /* 
-    Note, we're checking the FIFO status twice -- here and in the lsm driver read.
-     This is overkill -- one or the other should be sufficient.   The fifo will 
-     return invalid tags if there isn't enough data anyway. 
-  */
-
   /* Check for a full FIFO watermark before draining any IMU samples. */
   fifo_words = lsm6dsv16x_read_fifo_status(TAG_IMU_DEVICE, &wtm, &ovr);
   if (ovr != 0U) {
@@ -681,7 +675,8 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   /* Accumulate into a cached block in case the FIFO read returns short. */
   pairs = lsm6dsv16x_read_fifo(TAG_IMU_DEVICE,
                                &block_samples[block_sample_count],
-                               IMU_FIFO_PAIRS_PER_SUPERFRAME - block_sample_count);
+                               IMU_FIFO_PAIRS_PER_SUPERFRAME - block_sample_count,
+                               &fifo_words);
   if (pairs == 0U) {
     count_sampling_error(&pState->sample_fifo_empty_reads);
     debug_log_printf("IMUTag collection: FIFO read returned no pairs, %u words available\r\n",

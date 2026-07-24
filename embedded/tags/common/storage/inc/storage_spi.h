@@ -13,10 +13,6 @@
 
 #include <stdint.h>
 
-/*    These are terribly inefficient operations the header of every operation is being broken into */ 
-/*   Perhaps a compromise is to make them packing operations that build up the buffer              */
-
-
 /** @name Storage SPI transaction helpers
  * SPI transaction helpers for external flash drivers.
  *
@@ -24,17 +20,13 @@
  * data phases. These helpers centralize that framing while leaving chip
  * commands and polling rules in the individual storage drivers.
  *
- * These helpers deliberately use conservative byte-at-a-time transfers rather
- * than the pipelined stream helpers in spi_bus.c. The flash erase/write command
- * path has historically depended on reading each full-duplex byte before
- * sending the next byte; keeping that pacing here preserves the known-good
- * storage behavior while the generic SPI layer remains available for devices
- * that tolerate streaming transactions.
+ * Command and address phases use polled transfers to avoid DMA setup overhead.
+ * Larger data phases use the generic stream helpers in spi_bus.c.
  * @{
  */
 
 /**
- * @brief Write bytes to flash using byte-at-a-time full-duplex pacing.
+ * @brief Write bytes to flash, polling command-sized transfers.
  *
  * @param[in] device SPI device descriptor for the flash.
  * @param[in] buf Bytes to transmit.
@@ -43,11 +35,13 @@
 static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
                                       const uint8_t *buf, uint32_t n)
 {
-  return tagSpiWrite(device,buf,n);
+  if (n <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledSend(device, buf, n);
+  return tagSpiWrite(device, buf, n);
 }
 
 /**
- * @brief Read bytes from flash while keeping the SPI clock continuously fed.
+ * @brief Read bytes from flash, polling command-sized transfers.
  *
  * @param[in] device SPI device descriptor for the flash.
  * @param[out] buf Destination buffer.
@@ -56,49 +50,64 @@ static inline bool tagStorageSpiWrite(const TagSpiDevice *device,
 static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
                                      uint32_t n)
 {
+  if (n <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledReceive(device, buf, n);
   return tagSpiRead(device, buf, n);
 }
 
 /**
  * @brief Bulk write bytes to flash after command/address framing.
  *
- * The default implementation preserves the conservative byte-paced write.
- * Targets can opt in to a different implementation for long data phases
- * without changing command and address timing.
+ * Command-sized payloads stay on the polled path; larger data phases use the
+ * stream helper so DMA-backed targets avoid byte-at-a-time payload transfers.
  */
 static inline bool tagStorageSpiBlockWrite(const TagSpiDevice *device,
                                            const uint8_t *buf, uint32_t n)
 {
-   return tagSpiWrite(device, buf, n);
+  if (n <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledSend(device, buf, n);
+  return tagSpiWrite(device, buf, n);
 }
 
 /**
  * @brief Bulk read bytes from flash after command/address framing.
  *
- * The default implementation preserves the conservative one-byte-ahead read.
- * This is the future hook for DMA or a proven-safe FIFO implementation.
+ * Command-sized payloads stay on the polled path; larger data phases use the
+ * stream helper so DMA-backed targets avoid byte-at-a-time payload transfers.
  */
 static inline bool tagStorageSpiBlockRead(const TagSpiDevice *device,
                                           uint8_t *buf, uint32_t n)
 {
-  return tagStorageSpiRead(device, buf, n);
+  if (n <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledReceive(device, buf, n);
+  return tagSpiRead(device, buf, n);
 }
 
 /**
- * @brief Send a 24-bit flash address in command byte order.
+ * @brief Fill a 24-bit flash address in command byte order.
  *
- * @param[in] device SPI device descriptor for the flash.
+ * @param[out] buf Destination address buffer; must hold at least 3 bytes.
  * @param[in] address 24-bit flash address.
  */
-static inline bool tagStorageSpiAddress(const TagSpiDevice *device,
-                                        uint32_t address)
+static inline void tagStorageSpiFillAddress(uint8_t *buf, uint32_t address)
 {
-  uint8_t buf[3];
-
   buf[0] = address >> 16;
   buf[1] = address >> 8;
   buf[2] = address & 0xff;
-  return tagStorageSpiWrite(device, buf, sizeof(buf));
+}
+
+/**
+ * @brief Fill a flash command plus 24-bit address header.
+ *
+ * @param[out] buf Destination header buffer; must hold at least 4 bytes.
+ * @param[in] cmd Flash command byte.
+ * @param[in] address 24-bit flash address.
+ */
+static inline void tagStorageSpiFillCommandAddress(uint8_t *buf, uint8_t cmd,
+                                                   uint32_t address)
+{
+  buf[0] = cmd;
+  tagStorageSpiFillAddress(&buf[1], address);
 }
 
 /**
@@ -128,11 +137,12 @@ static inline bool tagStorageSpiCommandAddress(const TagSpiDevice *device,
                                                uint8_t cmd,
                                                uint32_t address)
 {
+  uint8_t header[4];
   bool ok;
 
+  tagStorageSpiFillCommandAddress(header, cmd, address);
   tagSpiSelect(device);
-  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
-       tagStorageSpiAddress(device, address);
+  ok = tagStorageSpiWrite(device, header, sizeof(header));
   tagSpiDeselect(device);
   return ok;
 }
@@ -174,11 +184,12 @@ static inline bool tagStorageSpiCommandAddressReceive(
                                                       uint8_t *buf,
                                                       uint32_t num)
 {
+  uint8_t header[4];
   bool ok;
 
+  tagStorageSpiFillCommandAddress(header, cmd, address);
   tagSpiSelect(device);
-  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
-       tagStorageSpiAddress(device, address) &&
+  ok = tagStorageSpiWrite(device, header, sizeof(header)) &&
        tagStorageSpiBlockRead(device, buf, num);
   tagSpiDeselect(device);
   return ok;
@@ -199,11 +210,12 @@ static inline bool tagStorageSpiCommandAddressSend(const TagSpiDevice *device,
                                                    const uint8_t *buf,
                                                    uint32_t num)
 {
+  uint8_t header[4];
   bool ok;
 
+  tagStorageSpiFillCommandAddress(header, cmd, address);
   tagSpiSelect(device);
-  ok = tagStorageSpiWrite(device, &cmd, sizeof(cmd)) &&
-       tagStorageSpiAddress(device, address) &&
+  ok = tagStorageSpiWrite(device, header, sizeof(header)) &&
        tagStorageSpiBlockWrite(device, buf, num);
   tagSpiDeselect(device);
   return ok;

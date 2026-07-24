@@ -14,6 +14,24 @@
 
 static uint8_t selected_range = 2;
 
+static bool adxl367WritePayload(const TagSpiDevice *spi,
+                                const uint8_t *buffer,
+                                size_t length)
+{
+  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledSend(spi, buffer, (uint32_t)length);
+  return tagSpiWrite(spi, buffer, (uint32_t)length);
+}
+
+static bool adxl367ReadPayload(const TagSpiDevice *spi,
+                               uint8_t *buffer,
+                               size_t length)
+{
+  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
+  return tagSpiRead(spi, buffer, (uint32_t)length);
+}
+
 void ADXL367_DeviceBegin(const TagAdxl367Device *device)
 {
   tagBusPowerOn(&device->bus);
@@ -33,7 +51,7 @@ static void adxl367Write(const TagAdxl367Device *device,
   const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
 
   tagSpiSelect(spi);
-  tagSpiWrite(spi, buffer, length);
+  adxl367WritePayload(spi, buffer, length);
   tagSpiDeselect(spi);
 }
 
@@ -46,8 +64,8 @@ static void adxl367WriteThenRead(const TagAdxl367Device *device,
   const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
 
   tagSpiSelect(spi);
-  tagSpiWrite(spi, write_buffer, write_length);
-  tagSpiRead(spi, read_buffer, read_length);
+  if (adxl367WritePayload(spi, write_buffer, write_length))
+    adxl367ReadPayload(spi, read_buffer, read_length);
   tagSpiDeselect(spi);
 }
 

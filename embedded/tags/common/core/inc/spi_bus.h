@@ -20,6 +20,13 @@
 
 #define SPI1_ALTERNATE_FUNCTION 5
 
+#ifndef TAG_SPI_POLLED_TRANSFER_MAX
+#define TAG_SPI_POLLED_TRANSFER_MAX 9U
+#endif
+
+#ifndef TAG_SPI_ERROR_BYTE
+#define TAG_SPI_ERROR_BYTE 0xffU
+#endif
 
 /** @name SPI device model
  * SPI bus helpers.
@@ -330,6 +337,117 @@ bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len);
  */
 bool tagSpiExchange(const TagSpiDevice *device, const uint8_t *txbuf,
                     uint8_t *rxbuf, uint32_t len);
+
+#if TAG_SPI_USES_CHIBIOS_CONFIG
+static inline SPIDriver *tagSpiPolledDeviceDriver(const TagSpiDevice *device)
+{
+  SPI_TypeDef *spi = tagSpiDevicePeripheral(device);
+
+#if defined(STM32_SPI_USE_SPI1) && STM32_SPI_USE_SPI1
+  if (spi == SPI1)
+    return &SPID1;
+#endif
+#if defined(STM32_SPI_USE_SPI2) && STM32_SPI_USE_SPI2
+  if (spi == SPI2)
+    return &SPID2;
+#endif
+#if defined(STM32_SPI_USE_SPI3) && STM32_SPI_USE_SPI3
+  if (spi == SPI3)
+    return &SPID3;
+#endif
+#if defined(STM32_SPI_USE_SPI4) && STM32_SPI_USE_SPI4
+  if (spi == SPI4)
+    return &SPID4;
+#endif
+#if defined(STM32_SPI_USE_SPI5) && STM32_SPI_USE_SPI5
+  if (spi == SPI5)
+    return &SPID5;
+#endif
+#if defined(STM32_SPI_USE_SPI6) && STM32_SPI_USE_SPI6
+  if (spi == SPI6)
+    return &SPID6;
+#endif
+
+  return NULL;
+}
+
+/**
+ * @brief Exchange one SPI byte through ChibiOS' polled SPI path.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] tx Byte to transmit.
+ * @param[out] rx Optional received byte; pass NULL to discard it.
+ * @return true on successful exchange.
+ */
+static inline bool tagSpiPolledExchange(const TagSpiDevice *device, uint8_t tx,
+                                        uint8_t *rx)
+{
+  SPIDriver *driver = tagSpiPolledDeviceDriver(device);
+  uint8_t value;
+
+  if (driver == NULL) {
+    if (rx != NULL)
+      *rx = TAG_SPI_ERROR_BYTE;
+    return false;
+  }
+
+  value = (uint8_t)spiPolledExchange(driver, tx);
+  if (rx != NULL)
+    *rx = value;
+  return true;
+}
+
+/**
+ * @brief Send bytes through ChibiOS' polled SPI path and discard RX.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[in] buf Bytes to transmit.
+ * @param[in] len Number of bytes to transmit.
+ * @return true on successful transfer.
+ */
+static inline bool tagSpiPolledSend(const TagSpiDevice *device,
+                                    const uint8_t *buf, uint32_t len)
+{
+  SPIDriver *driver = tagSpiPolledDeviceDriver(device);
+
+  if (driver == NULL)
+    return false;
+
+  while (len-- > 0U)
+    (void)spiPolledExchange(driver, *buf++);
+  return true;
+}
+
+/**
+ * @brief Receive bytes through ChibiOS' polled SPI path.
+ *
+ * @param[in] device SPI device descriptor.
+ * @param[out] buf Buffer that receives bytes from the device.
+ * @param[in] len Number of bytes to receive.
+ * @return true on successful transfer.
+ */
+static inline bool tagSpiPolledReceive(const TagSpiDevice *device,
+                                       uint8_t *buf, uint32_t len)
+{
+  SPIDriver *driver = tagSpiPolledDeviceDriver(device);
+
+  if (driver == NULL) {
+    while (len-- > 0U)
+      *buf++ = TAG_SPI_ERROR_BYTE;
+    return false;
+  }
+
+  while (len-- > 0U)
+    *buf++ = (uint8_t)spiPolledExchange(driver, device->dummy);
+  return true;
+}
+#else
+bool tagSpiPolledExchange(const TagSpiDevice *device, uint8_t tx, uint8_t *rx);
+bool tagSpiPolledSend(const TagSpiDevice *device, const uint8_t *buf,
+                      uint32_t len);
+bool tagSpiPolledReceive(const TagSpiDevice *device, uint8_t *buf,
+                         uint32_t len);
+#endif
 
 /**
  * @brief Assert the SPI device chip-select line.

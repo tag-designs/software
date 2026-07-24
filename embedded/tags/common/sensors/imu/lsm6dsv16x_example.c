@@ -90,11 +90,17 @@ void example_accel_gyro_triggered(void)
     while (1) {
         uint8_t wtm = 0;
         uint8_t ovr = 0;
+        uint16_t fifo_words;
 
         platform_wait_int1();
-        (void)lsm6dsv16x_read_fifo_status(&tagExampleImuDevice, &wtm, &ovr);
+        fifo_words = lsm6dsv16x_read_fifo_status(&tagExampleImuDevice,
+                                                 &wtm,
+                                                 &ovr);
         if (wtm != 0U) {
-            (void)lsm6dsv16x_read_fifo(&tagExampleImuDevice, samples, 64U);
+            (void)lsm6dsv16x_read_fifo(&tagExampleImuDevice,
+                                       samples,
+                                       64U,
+                                       &fifo_words);
         }
     }
 }

@@ -152,7 +152,41 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
  * @{
  */
 
-  /* these are pretty inefficient, perhaps using a polledexchange for the command phase would work better */
+static inline bool tagStSpiWritePayload(const TagSpiDevice *device,
+                                        const uint8_t *buf,
+                                        uint32_t len)
+{
+  if (len <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledSend(device, buf, len);
+  return tagSpiWrite(device, buf, len);
+}
+
+static inline bool tagStSpiReadPayload(const TagSpiDevice *device,
+                                       uint8_t *buf,
+                                       uint32_t len)
+{
+  if (len <= TAG_SPI_POLLED_TRANSFER_MAX)
+    return tagSpiPolledReceive(device, buf, len);
+  return tagSpiRead(device, buf, len);
+}
+
+static inline bool tagStSpiWriteRegisterPayload(const TagSpiDevice *device,
+                                                uint8_t command,
+                                                const uint8_t *buf,
+                                                uint32_t len)
+{
+  uint8_t txbuf[TAG_SPI_POLLED_TRANSFER_MAX];
+
+  if (len < TAG_SPI_POLLED_TRANSFER_MAX) {
+    txbuf[0] = command;
+    for (uint32_t i = 0; i < len; i++)
+      txbuf[i + 1U] = buf[i];
+    return tagSpiPolledSend(device, txbuf, len + 1U);
+  }
+
+  return tagSpiPolledSend(device, &command, sizeof(command)) &&
+         tagStSpiWritePayload(device, buf, len);
+}
 
 /**
  * @brief Write bytes to an ST-style SPI register device.
@@ -170,13 +204,13 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
   const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)((reg & (uint8_t)~registers->read_mask) |
                              registers->write_mask);
+  bool ok;
 
   tagSpiSelect(device);
-  tagSpiWrite(device, &command, 1);
-  tagSpiWrite(device, buf, len);
+  ok = tagStSpiWriteRegisterPayload(device, command, buf, len);
   tagSpiDeselect(device);
 
-  return 0;
+  return ok ? MSG_OK : MSG_RESET;
 }
 
 /**
@@ -193,13 +227,14 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
 {
   const TagSpiDevice *device = tagBusSpiDevice(&registers->bus);
   uint8_t command = (uint8_t)(reg | registers->read_mask);
+  bool ok;
 
   tagSpiSelect(device);
-  tagSpiWrite(device, &command, 1);
-  tagSpiRead(device, buf, len);
+  ok = tagSpiPolledSend(device, &command, sizeof(command)) &&
+       tagStSpiReadPayload(device, buf, len);
   tagSpiDeselect(device);
 
-  return 0;
+  return ok ? MSG_OK : MSG_RESET;
 }
 
 /** @name ST-style synchronous-USART register adapter

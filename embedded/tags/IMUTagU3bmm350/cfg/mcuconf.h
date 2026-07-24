@@ -97,7 +97,7 @@
 #define STM32_MSIRC0_MODE                   RCC_MSIRC0_FREE
 #define STM32_MSIRC1_MODE                   RCC_MSIRC1_FREE
 #define STM32_MSIPLL1N_VALUE                0
-#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC1_DIV1
+#define STM32_MSIS_SRCDIV                   RCC_ICSCR1_MSIS_IRC1_DIV2
 #define STM32_MSIK_SRCDIV                   RCC_ICSCR1_MSIK_IRC1_DIV1
 #define STM32_MSIBIAS                       RCC_ICSCR1_MSIBIAS_CONTINUOUS
 #define STM32_SW                            RCC_CFGR1_SW_MSIS

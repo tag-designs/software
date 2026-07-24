@@ -830,7 +830,8 @@ static void fifo_log_parse_trace(const fifo_parse_context_t *ctx)
 
 uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
                               lsm6dsv16x_sample_t *samples,
-                              uint16_t max_pairs)
+                              uint16_t max_pairs,
+                              const uint16_t *fifo_words)
 {
     fifo_parse_context_t ctx;
     uint8_t  st1 = 0;
@@ -850,9 +851,13 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
 
     device_power_on(device);
     device_begin(device);
-    reg_read(device, LSM6DSV16X_FIFO_STATUS1, &st1);
-    reg_read(device, LSM6DSV16X_FIFO_STATUS2, &st2);
-    fifo_level = (uint16_t)(((uint16_t)(st2 & 0x03U) << 8U) | (uint16_t)st1);
+    if (fifo_words != NULL) {
+        fifo_level = *fifo_words;
+    } else {
+        reg_read(device, LSM6DSV16X_FIFO_STATUS1, &st1);
+        reg_read(device, LSM6DSV16X_FIFO_STATUS2, &st2);
+        fifo_level = (uint16_t)(((uint16_t)(st2 & 0x03U) << 8U) | (uint16_t)st1);
+    }
 
     if (fifo_level > max_pairs*2){
         fifo_level = max_pairs*2;

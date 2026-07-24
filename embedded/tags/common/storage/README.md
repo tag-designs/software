@@ -35,26 +35,16 @@ Older storage drivers mix two concerns:
 
 The converted drivers use `storage_spi.h` for command/address/data transaction
 framing. Command and address phases intentionally use conservative
-byte-at-a-time SPI transfers. Long data phases go through block-transfer hooks:
-`tagStorageSpiBlockRead()` and `tagStorageSpiBlockWrite()`. By default those
-hooks fall back to the conservative read/write helpers. Targets that have been
-validated on hardware can opt into the DMA implementations with
-`TAG_STORAGE_SPI_DMA_BLOCK_READ` and `TAG_STORAGE_SPI_DMA_BLOCK_WRITE`.
-When DMA block transfers are enabled, the helper keeps the existing polled
-completion path while the monitor/debugger is connected. In unattended tag
-operation, `TAG_STORAGE_SPI_DMA_SLEEP_WAIT` defaults to enabled and waits for
-RX DMA completion using the DMA interrupt and normal STM32 Sleep mode. This
-lets the CPU sleep during the long SPI data phase without entering Stop mode,
-so SPI and DMA clocks remain active. Because the shared SPI bus enables the
-peripheral with low-power clocking disabled for ordinary polling transfers, the
-DMA sleep wait temporarily enables the SPI and DMA sleep-mode clocks for the
-active transfer and restores the previous RCC sleep-clock bits afterward.
+polled send/receive helpers. Long data phases go through block-transfer hooks:
+`tagStorageSpiBlockRead()` and `tagStorageSpiBlockWrite()`. Transfers up to
+`TAG_SPI_POLLED_TRANSFER_MAX` bytes stay polled; larger transfers use the
+generic SPI stream helpers so ChibiOS targets can amortize DMA setup across
+the payload.
 
 Keeping command/address traffic conservative matters because flash protocols
 depend on tightly ordered chip-select, command, address, data, and poll phases.
 Keeping the long data phases behind block hooks lets a tag use DMA for 2 KiB
-log pages without changing chip command code, and leaves a straightforward path
-for future DMA or peripheral-specific transfer implementations.
+log pages without changing chip command code.
 
 `storage_device.h` describes the board side of an external flash device: SPI
 bus and sector geometry. AT25XE, MX25U12843, and MX25R publish their geometry
@@ -108,18 +98,11 @@ flowchart TD
 
 ## Planned Cleanup
 
-The current block DMA path is intentionally opt-in. Before enabling it on a new
-tag variant, check the following:
+Before enabling storage on a new tag variant, check the following:
 
-- The target `custom.h` defines `TAG_STORAGE_SPI_DMA_BLOCK_READ` and/or
-  `TAG_STORAGE_SPI_DMA_BLOCK_WRITE`.
-- The target or shared family `mcuconf.h` defines `STM32_DMA_REQUIRED`, so
-  ChibiOS links the STM32 DMA support code.
-- The storage SPI descriptor provides valid RX and TX DMA stream IDs and DMA
-  channel selections for the SPI peripheral used by external flash.
 - The storage chip driver uses the common command/address helpers rather than
   a local hand-rolled read/write path, so only the large data phase is moved to
-  DMA.
+  the stream-transfer path.
 - Leave `TAG_STORAGE_SPI_DMA_SLEEP_WAIT` enabled for lowest-energy unattended
   transfers. Define it to `0` only when a target needs the historical polled
   wait even without a connected monitor.

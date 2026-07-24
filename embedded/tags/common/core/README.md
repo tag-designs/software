@@ -168,7 +168,8 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
   device, disables the peripheral, and returns SCK/MOSI/MISO to analog. The
   device descriptor supplies the `TagSpiConfig` used for that bus session; the
   ChibiOS backend maps that descriptor to `SPIDx`, `spiStart()`, `spiSend()`,
-  and `spiReceive()`.
+  `spiReceive()`, and `spiPolledExchange()`-based polled helpers for
+  command-sized transfers.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 I2C-backed devices follow the same ownership rule: `TagI2cController`

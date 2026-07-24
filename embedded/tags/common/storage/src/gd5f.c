@@ -85,12 +85,16 @@ static bool gd5fRowCommand(const TagSpiDevice *spi, uint8_t command,
                            uint32_t row)
 {
   uint8_t buf[4];
+  bool ok;
 
   buf[0] = command;
   buf[1] = (uint8_t)(row >> 16);
   buf[2] = (uint8_t)(row >> 8);
   buf[3] = (uint8_t)row;
-  return tagSpiBusWrite(spi, buf, sizeof(buf));
+  tagSpiSelect(spi);
+  ok = gd5fWriteBytes(spi, buf, sizeof(buf));
+  tagSpiDeselect(spi);
+  return ok;
 }
 
 /**
@@ -182,11 +186,15 @@ static bool gd5fSetFeature(const TagStorageDevice *dev, uint8_t feature,
                            uint8_t value)
 {
   uint8_t cmd[3];
+  bool ok;
 
   cmd[0] = GD5F_CMD_SET_FEATURE;
   cmd[1] = feature;
   cmd[2] = value;
-  return tagSpiBusWrite(tagStorageSpiDevice(dev), cmd, sizeof(cmd));
+  tagSpiSelect(tagStorageSpiDevice(dev));
+  ok = gd5fWriteBytes(tagStorageSpiDevice(dev), cmd, sizeof(cmd));
+  tagSpiDeselect(tagStorageSpiDevice(dev));
+  return ok;
 }
 
 /**
