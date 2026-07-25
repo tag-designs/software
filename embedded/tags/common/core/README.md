@@ -44,6 +44,15 @@ active tags unless a tag provides a same-named local override.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
+## Event Model
+
+The main tag thread processes only ChibiOS thread events. Interrupt handlers and
+callbacks translate hardware causes into `EVT_*` bits and signal the main
+thread; monitor protobuf evaluation posts `MON_WORK_*` bits into the same event
+mask before the state machine runs. On reset from standby, `main.c` reconstructs
+retained RTC alarm/wakeup flags once during startup and posts those bits as
+thread events. The steady-state loop should not poll RTC status registers.
+
 ## Monitor Priority
 
 The SWD monitor runs through the Cortex-M DebugMonitor system exception. Tags

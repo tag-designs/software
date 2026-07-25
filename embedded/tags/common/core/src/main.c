@@ -6,6 +6,7 @@
  */
 
 #include "hal.h"
+#include "hal_rtc_lld.h"
 #include "tag.pb.h"
 
 #include "adc.h"
@@ -138,7 +139,7 @@ static inline void tagPowerReleaseStandbyPulls(void)
 #endif
 }
 
-static eventmask_t tagRtcEventsAndClear(void)
+static eventmask_t tagRtcCollectAndClearPendingEvents(void)
 {
 #if defined(RTC_ISR_TSF)
   uint32_t clear = (0U
@@ -206,6 +207,63 @@ static eventmask_t tagRtcEventsAndClear(void)
 #else
   return 0U;
 #endif
+}
+
+static eventmask_t tagRtcEventMask(rtcevent_t event)
+{
+  switch (event)
+  {
+  case RTC_EVENT_ALARM_A:
+    return EVT_RTC_ALRAF;
+  case RTC_EVENT_ALARM_B:
+    return EVT_RTC_ALRBF;
+  case RTC_EVENT_WAKEUP:
+    return EVT_RTC_WUTF;
+  default:
+    return 0U;
+  }
+}
+
+#if defined(RTC_SUPPORTS_CALLBACKS) && (RTC_SUPPORTS_CALLBACKS == TRUE)
+static void tagRtcCallback(RTCDriver *rtcp, rtcevent_t event)
+{
+  (void)rtcp;
+
+  eventmask_t rtc_event = tagRtcEventMask(event);
+  if (rtc_event == 0U)
+    return;
+
+  chSysLockFromISR();
+  if (tpMain)
+    chEvtSignalI(tpMain, rtc_event);
+  chSysUnlockFromISR();
+}
+#endif
+
+static void tagRtcInstallCallback(void)
+{
+#if defined(RTC_SUPPORTS_CALLBACKS) && (RTC_SUPPORTS_CALLBACKS == TRUE)
+  rtcSetCallback(&RTCD1, tagRtcCallback);
+#endif
+
+chSysLock();
+EXTI->IMR1  |= (1U << 18) | (1U << 20);
+EXTI->RTSR1 |= (1U << 18) | (1U << 20); // Enable rising edge event trigger
+RTC->CR &= ~(RTC_CR_ALRBE | RTC_CR_ALRAE | RTC_CR_WUTE );
+chSysUnlock();
+}
+
+static void tagPostStartupEvents(void)
+{
+  eventmask_t startup_events = 0U;
+
+  tagPowerClearWakeFlags();
+
+  if (pState->resetCause == resetStandby)
+    startup_events |= tagRtcCollectAndClearPendingEvents();
+
+  if (startup_events != 0U)
+    chEvtAddEvents(startup_events);
 }
 
 void tagSystemInitHook(void)
@@ -304,6 +362,10 @@ void deviceInit(int force)
 
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
+
+
+    // doesn't look like we're catching up on rtc events from shutdown
+    // do we even use the event flags? 
 
     if (power_init)
       tagRtcInit();
@@ -408,28 +470,6 @@ t_resetCause getResetCause(uint32_t rstFlags)
 }
 /** @} */
 
-/** @name Event polling
- * Event helpers translate hardware wake flags into ChibiOS event bits consumed
- * by the state machine.
- * @{
- */
-/**
- * @brief Clear wake flags and signal pending RTC events to the main thread.
- */
-eventmask_t CheckEvents(void)
-{
-  // clear wakeup flag, then check status
-  // we may get an extra wakeup, but we won't miss
-  // an interrupt
-
-  tagPowerClearWakeFlags();
-
-  // check and clear RTC alarms
-
-  return tagRtcEventsAndClear();
-}
-/** @} */
-
 uint32_t start_cycles;
 
 /** @name Firmware entry points
@@ -455,6 +495,8 @@ int main(void)
 
   halInit();
   chSysInit();
+  tpMain = chThdGetSelfX(); // global pointer to main thread
+  monitorPostPendingEvents();  // this uses the I version of chAddEvents -- why?
 
   // release the standby pullup/pulldown
 
@@ -475,8 +517,6 @@ int main(void)
   tagBackupStateEnableWrites();
 #endif
   tagDevicesInit();
-
-  tpMain = chThdGetSelfX(); // global pointer to main thread
 
   // save reset cause
 
@@ -500,6 +540,9 @@ int main(void)
   RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
 #endif
 
+  //tagRtcInstallCallback();
+  tagPostStartupEvents();
+
   // clear deep sleep mask
 
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
@@ -517,16 +560,15 @@ int main(void)
   {
     enum Sleep sleepmode = STANDBY;
     eventmask_t pending_events;
+
+    chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     pState->safe = false;                          // critical section start
 
-    pending_events = CheckEvents();               // see if adxl or rtc have events
-    pending_events |= chEvtWaitAnyTimeout(ALL_EVENTS, TIME_IMMEDIATE);
-    if ((pending_events & EVT_MONITOR_ALL) || monitorNeedsService())
-    {
-      pending_events |= monitorServicePending((uint32_t)pending_events);
-    }
-
+    monitorServicePending((uint32_t)chEvtWaitAnyTimeout(EVT_MONITOR_ALL,
+                                                        TIME_IMMEDIATE));
+    pending_events = chEvtWaitAnyTimeout(EVT_HARDWARE_ALL | MON_WORK_ALL,
+                                         TIME_IMMEDIATE);
     sleepmode = StateMachine(pending_events);      // process events
 
     // critical section end

@@ -26,8 +26,8 @@ enum DBGINFO { MONITORVERSION = 0, MONITORBUF = 1, MONITORBUFSIZE = 2, TAGSHASTR
 extern "C" {
 #endif
 
-uint32_t monitorServicePending(uint32_t monitor_events);
-bool monitorNeedsService(void);
+void monitorServicePending(uint32_t monitor_events);
+void monitorPostPendingEvents(void);
 
 #ifdef __cplusplus
 }

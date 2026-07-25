@@ -29,11 +29,6 @@ extern thread_t *tpMain;
 enum Sleep StateMachine(eventmask_t events);
 
 /**
- * @brief Collect pending hardware and monitor events into the shared event mask.
- */
-eventmask_t CheckEvents(void);
-
-/**
  * @brief Initialize board devices and persistent runtime state.
  *
  * @param[in] force Nonzero to force reinitialization after reset handling.

@@ -39,8 +39,9 @@ extern eventmask_t events;
 // Standby/shutdown wakeup.
 #define EVT_WAKE_STANDBY EVENT_MASK(EVT_BIT_WAKE_STANDBY)
 
-// Monitor command work bits. These are returned by protobuf evaluation and
-// consumed by the state machine; they are not signaled as ChibiOS events.
+// Monitor command work bits. Protobuf evaluation posts these into the main
+// thread event mask so the state machine sees monitor work like any other
+// pending event.
 #define MON_WORK_START EVENT_MASK(EVT_BIT_MON_WORK_START)
 #define MON_WORK_STOP EVENT_MASK(EVT_BIT_MON_WORK_STOP)
 #define MON_WORK_RESET EVENT_MASK(EVT_BIT_MON_WORK_RESET)

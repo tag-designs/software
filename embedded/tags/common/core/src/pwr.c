@@ -253,7 +253,7 @@ void godown(enum Sleep sleepmode)
 
     // this shouldn't be necessary -- not sure why it's not working in sensors.c
 
-    //palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
+    palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 
     /* Select Stop0 -- Stop1 crashes.  Need some recover foo to make that work. and make WFI enter deep sleep instead of normal sleep. */
     MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, (0 << PWR_CR1_LPMS_Pos)); // switch 1U to 0

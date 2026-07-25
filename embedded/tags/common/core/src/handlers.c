@@ -188,7 +188,7 @@ static void monitorStopI(bool timed_out)
 #endif
 }
 
-uint32_t monitorServicePending(uint32_t monitor_events)
+void monitorServicePending(uint32_t monitor_events)
 {
   int len = 0;
   uint32_t work = 0;
@@ -215,14 +215,17 @@ uint32_t monitorServicePending(uint32_t monitor_events)
   {
     monitorStopI(true);
     chSysUnlock();
-    return 0;
+    return;
   }
   chSysUnlock();
 
   if (!do_eval)
-    return 0;
+    return;
 
   len = proto_eval(len, &work);
+
+  if (work != 0U)
+    chEvtAddEvents((eventmask_t)work);
 
   chSysLock();
   CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
@@ -234,14 +237,22 @@ uint32_t monitorServicePending(uint32_t monitor_events)
   if (monitor_enabled)
     monitorArmTimeoutI();
   chSysUnlock();
-
-  return work;
 }
 
-bool monitorNeedsService(void)
+void monitorPostPendingEvents(void)
 {
-  return monitor_pending;
+  eventmask_t pending_events = 0U;
+
+  chSysLock();
+  if (monitor_pending)
+    pending_events |= EVT_MONITOR_SERVICE;
+  if (monitor_timeout_pending)
+    pending_events |= EVT_MONITOR_TIMEOUT;
+  if (pending_events != 0U)
+    chEvtAddEventsI(pending_events);
+  chSysUnlock();
 }
+
 /** @} */
 
 /** @name Debug monitor interrupt
