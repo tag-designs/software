@@ -271,7 +271,7 @@ int SetTimeUnixSec(int32_t unix_time)
  */
 void enableSecondsAlarm(void)
 {
-  chSysLock();
+ 
 
   // turn off existing alarms
 
@@ -289,7 +289,7 @@ void enableSecondsAlarm(void)
 
   RTC->CR |= RTC_CR_ALRAIE;
 
-  chSysUnlock();
+
 }
 
 /**
@@ -319,8 +319,8 @@ void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype)
     }
 
     rtcSetAlarm(&RTCD1, alarm, &alarmspec);
-    RTC->CR |= RTC_CR_ALRAIE;
-    chSysUnlock();
+    //RTC->CR |= RTC_CR_ALRAIE;
+   
   }
 }
 
@@ -333,9 +333,9 @@ void disableAlarm(unsigned int alarm)
 {
   if (alarm < 2)
   {
-    chSysLock();
+  
     rtcSetAlarm(&RTCD1, alarm, NULL);
-    chSysUnlock();
+  
   }
 }
 
@@ -344,11 +344,10 @@ void disableAlarm(unsigned int alarm)
  */
 void disableAllAlarms(void)
 {
-  chSysLock();
-  RTC->CR &= ~RTC_CR_ALRAIE;
+ 
+  //RTC->CR &= ~RTC_CR_ALRAIE;
   rtcSetAlarm(&RTCD1, 0, NULL);
   rtcSetAlarm(&RTCD1, 1, NULL);
-  chSysUnlock();
 }
 
 /**

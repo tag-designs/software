@@ -246,11 +246,22 @@ static void tagRtcInstallCallback(void)
   rtcSetCallback(&RTCD1, tagRtcCallback);
 #endif
 
-chSysLock();
-EXTI->IMR1  |= (1U << 18) | (1U << 20);
-EXTI->RTSR1 |= (1U << 18) | (1U << 20); // Enable rising edge event trigger
-RTC->CR &= ~(RTC_CR_ALRBE | RTC_CR_ALRAE | RTC_CR_WUTE );
-chSysUnlock();
+// 3. TARGET THE CORRECT HARDWARE LINES BASED ON YOUR CHIP
+#if defined(STM32L432xx)
+    /* Correct bit definitions for STM32L432 (Line 18 = Alarm, Line 20 = Wakeup) */
+    EXTI->IMR1  |= (EXTI_IMR1_IM18 | EXTI_IMR1_IM20); 
+    EXTI->RTSR1 |= (EXTI_RTSR1_RT18 | EXTI_RTSR1_RT20);
+
+    /* Open the hardware gate on the L4 platform */
+    nvicEnableVector(RTC_Alarm_IRQn, 3);
+    nvicEnableVector(RTC_WKUP_IRQn, 3);
+#elif defined(STM32U375xx)
+    /* STM32U3 series routes internal RTC straight to the NVIC core. */
+    /* No EXTI configuration is necessary for active runtime interrupts. */
+    nvicEnableVector(RTC_Alarm_IRQn, 3);
+    nvicEnableVector(RTC_WKUP_IRQn, 3);Unmask line 32 in the second bank register
+#endif
+
 }
 
 static void tagPostStartupEvents(void)
@@ -540,7 +551,7 @@ int main(void)
   RTCD1.rtc->CR |= RTC_CR_BYPSHAD;
 #endif
 
-  //tagRtcInstallCallback();
+  tagRtcInstallCallback();
   tagPostStartupEvents();
 
   // clear deep sleep mask
@@ -561,7 +572,9 @@ int main(void)
     enum Sleep sleepmode = STANDBY;
     eventmask_t pending_events;
 
-    chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
+    // rtc interrupts are not working hence this polling of them
+    //chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
+
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     pState->safe = false;                          // critical section start
 
