@@ -258,8 +258,7 @@ static void tagRtcInstallCallback(void)
 #elif defined(STM32U375xx)
     /* STM32U3 series routes internal RTC straight to the NVIC core. */
     /* No EXTI configuration is necessary for active runtime interrupts. */
-    nvicEnableVector(RTC_Alarm_IRQn, 3);
-    nvicEnableVector(RTC_WKUP_IRQn, 3);Unmask line 32 in the second bank register
+    nvicEnableVector(RTC_IRQn, 3);
 #endif
 
 }
