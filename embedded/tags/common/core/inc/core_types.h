@@ -8,8 +8,8 @@
 #ifndef TAG_CORE_TYPES_H
 #define TAG_CORE_TYPES_H
 
-#include "ch.h"
-#include "hal.h"
+//#include "ch.h"
+//#include "hal.h"
 
 // Compile-time checks.
 #define CASSERT(predicate) _impl_CASSERT_LINE(predicate, __LINE__, __FILE__)

@@ -35,6 +35,7 @@
 #include "hal.h"
 #include "config.h"
 #include "core_types.h"
+#include "core_events.h"
 #include "datalog.h"
 #include "debug_log.h"
 #include "devices.h"
@@ -109,6 +110,19 @@ bool sensorsHaveCalibration(void)
 }
 
 /*
+ * Wakup line callback
+ */
+
+ static void wkup_callback(void *arg) {
+  (void)arg;
+  /* Handle the input interrupt event here */
+   chSysLockFromISR();
+   if (tpMain)
+          chEvtSignalI(tpMain, EVT_WKUP);
+    chSysUnlockFromISR();
+}
+
+/*
  * Runtime collection state. Keep these in normal zero-initialized RAM: the
  * collection and calibration entry points reset their own caches, and stale
  * NOINIT values would make missing auxiliary samples look valid after reset.
@@ -133,22 +147,14 @@ static ak09940_rate_t configured_mag_rate;
 /** Enable the IMU FIFO-watermark wake source used while collecting data. */
 static void enable_data_collection_wake_event(void)
 {
-   palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
-  /*
-  extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
-  extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK,
-                   EXTI_MODE_RISING_EDGE | IMU_DATA_WAKE_EXTI_ACTION);
-                   */
+  palSetLineCallback(LINE_WKUP1, wkup_callback, 0);
+  palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 }
 
 /** Disable collection wake events before shutting down sensors. */
 static void disable_data_collection_wake_event(void)
 {
   palDisableLineEvent(LINE_WKUP1);
-  /*
-  extiEnableGroup1(IMU_DATA_WAKE_EXTI_MASK, EXTI_MODE_DISABLED);
-  extiClearGroup1(IMU_DATA_WAKE_EXTI_MASK);
-  */
 }
 
 /**

@@ -31,6 +31,10 @@
 #define _CHIBIOS_RT_CONF_
 #define _CHIBIOS_RT_CONF_VER_7_0_
 
+#ifndef __ASSEMBLY__
+#include "power_modes.h" /* Contains your inline function definition */
+#endif
+
 /*===========================================================================*/
 /**
  * @name System settings
@@ -750,9 +754,7 @@
  *          should be invoked from here.
  * @note    This macro can be used to activate a power saving mode.
  */
-#define CH_CFG_IDLE_ENTER_HOOK() {                                          \
-  /* Idle-enter code here.*/                                                \
-}
+#define CH_CFG_IDLE_ENTER_HOOK() idle_enter()                                     
 
 /**
  * @brief   Idle thread leave hook.
@@ -760,17 +762,14 @@
  *          should be invoked from here.
  * @note    This macro can be used to deactivate a power saving mode.
  */
-#define CH_CFG_IDLE_LEAVE_HOOK() {                                          \
-  /* Idle-leave code here.*/                                                \
-}
+#define CH_CFG_IDLE_LEAVE_HOOK() idle_leave()                                      
 
 /**
  * @brief   Idle Loop hook.
  * @details This hook is continuously invoked by the idle thread loop.
  */
-#define CH_CFG_IDLE_LOOP_HOOK() {                                           \
-  /* Idle loop code here.*/                                                 \
-}
+#define CH_CFG_IDLE_LOOP_HOOK() idle_loop()
+
 
 /**
  * @brief   System tick event hook.
