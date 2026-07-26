@@ -565,11 +565,15 @@ int main(void)
     palSetLineMode(LINE_SWCLK, PAL_MODE_INPUT_ANALOG);
   }
 
+  eventmask_t pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
 
   while (1)
   {
     enum Sleep sleepmode = STANDBY;
-    eventmask_t pending_events;
+    /*  if (pending_events & EVT_MONITOR_ALL)
+    {
+      debug_log_printf("main loop 0: monitor events detected\r\n");
+    } */
 
     // rtc interrupts are not working hence this polling of them
     //chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
@@ -577,19 +581,25 @@ int main(void)
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     pState->safe = false;                          // critical section start
 
-    monitorServicePending((uint32_t)chEvtWaitAnyTimeout(EVT_MONITOR_ALL,
-                                                        TIME_IMMEDIATE));
-    pending_events = chEvtWaitAnyTimeout(EVT_HARDWARE_ALL | MON_WORK_ALL,
-                                         TIME_IMMEDIATE);
+    monitorServicePending((uint32_t) (pending_events & EVT_MONITOR_ALL));
+    pending_events |= chEvtGetAndClearEvents(MON_WORK_ALL);
     sleepmode = StateMachine(pending_events);      // process events
+
+    /* if (pending_events & EVT_MONITOR_ALL)
+    {
+      debug_log_printf("main loop 1: monitor events detected\r\n");
+    } */
 
     // critical section end
 
     pState->safe = true;
 
-    // godown
-
-    godown(sleepmode); // standby
+    godown(sleepmode);
+    
+    pending_events =  chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
+    pending_events |= chEvtGetAndClearEvents(EVT_ALL_DEFINED);
+    //debug_log_printf("main loop: sleepmode %d, pending events %x\r\n", sleepmode, pending_events);
+    
   }
 }
 

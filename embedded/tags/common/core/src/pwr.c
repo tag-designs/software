@@ -234,7 +234,10 @@ void rtcOff(void)
 
 void godown(enum Sleep sleepmode)
 {
-  if (MONCONNECTED || (sleepmode == SLEEP))
+  if (MONCONNECTED || (sleepmode == SLEEP)|| sleepmode == STOP1)
+  {
+    return;
+  }
   {
     return;
   }
@@ -253,6 +256,7 @@ void godown(enum Sleep sleepmode)
 
     // this shouldn't be necessary -- not sure why it's not working in sensors.c
 
+    debug_log_printf("Is wkup line event enabled %x\r\n",palIsLineEventEnabledX(LINE_WKUP1));
     palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 
     /* Select Stop0 -- Stop1 crashes.  Need some recover foo to make that work. and make WFI enter deep sleep instead of normal sleep. */
@@ -266,8 +270,8 @@ void godown(enum Sleep sleepmode)
 
 
       /* Clear any lingering EXTI pending flags for your wake line */
-    EXTI->RPR1 = (1U << PAL_PAD(LINE_WKUP1));
-    EXTI->FPR1 = (1U << PAL_PAD(LINE_WKUP1));
+    //EXTI->RPR1 = (1U << PAL_PAD(LINE_WKUP1));
+    //EXTI->FPR1 = (1U << PAL_PAD(LINE_WKUP1));
     __DSB();
     __WFI();
 

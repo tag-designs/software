@@ -188,6 +188,10 @@ static void monitorStopI(bool timed_out)
 #endif
 }
 
+bool isMonitorEnabled(){
+  return monitor_enabled;
+}
+
 void monitorServicePending(uint32_t monitor_events)
 {
   int len = 0;

@@ -22,6 +22,8 @@ TAG_MODULES += \
        sensor_mag_bmm350 \
        sensor_imu_lsm6dsv16x
 
+ALLCSRC += power_modes.c
+
 include ../common/modules/modules.mk
 include ../families/IMUTag/family.mk
 

@@ -146,7 +146,7 @@ static ak09940_rate_t configured_mag_rate;
 
 /** Enable the IMU FIFO-watermark wake source used while collecting data. */
 static void enable_data_collection_wake_event(void)
-{
+{ debug_log_printf("enable LINE_WKUP1 event \r\n");
   palSetLineCallback(LINE_WKUP1, wkup_callback, 0);
   palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
 }
@@ -155,6 +155,7 @@ static void enable_data_collection_wake_event(void)
 static void disable_data_collection_wake_event(void)
 {
   palDisableLineEvent(LINE_WKUP1);
+  debug_log_printf("disable LINE_WKUP1 event \r\n");
 }
 
 /**
@@ -595,6 +596,8 @@ bool initDataCollection(void)
   lps22hh_odr_t pressure_rate;
   bool ok = true;
 
+  enable_data_collection_wake_event();
+
   if (!get_lsm_config(&imu_odr, &xl_fs, &g_fs)) {
     debug_log_printf("IMUTag collection: invalid LSM6 config\r\n");
     return false;
@@ -628,7 +631,7 @@ bool initDataCollection(void)
   /* Start the FIFO pacing source last, then enable the wake event for it. */
   lsm6dsv16x_init_accel_gyro_triggered(TAG_IMU_DEVICE, &trig_cfg, NULL);
   lsm6dsv16x_set_fifo_watermark(TAG_IMU_DEVICE, IMU_FIFO_WATERMARK_WORDS);
-  enable_data_collection_wake_event();
+ 
 
   debug_log_printf("IMUTag collection: IMU %u Hz, FIFO watermark %u words\r\n",
                    (unsigned)imu_odr,

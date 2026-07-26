@@ -24,6 +24,8 @@
 // Detect connected monitor/debugger.
 #define MONCONNECTED (CoreDebug->DEMCR & CoreDebug_DEMCR_VC_CORERESET_Msk)
 
+extern bool isMonitorEnabled(void);
+
 enum Sleep { SHUTDOWN, STANDBY, STOP1, STOP2, SLEEP };
 
 #endif
