@@ -28,7 +28,14 @@ extern "C" {
 
 void monitorServicePending(uint32_t monitor_events);
 void monitorPostPendingEvents(void);
-
+/*
+ * Runtime monitor session state. This is set by MONITORSTART and cleared by
+ * MONITORSTOP or monitor timeout; use it for tag behavior that depends on a
+ * currently attached qtmonitor session.
+ */
+bool monitorIsAttached(void);
+/* Compatibility alias for older tag code. */
+bool isMonitorEnabled(void);
 #ifdef __cplusplus
 }
 #endif
