@@ -33,7 +33,7 @@ void idle_enter(void){
   // there's a window where the debugger is attached but not the monitor
   // we need code to define that window
 
-  doWFI = !(CoreDebug->DEMCR & (CoreDebug_DEMCR_MON_EN_Msk));
+  doWFI =  !(CoreDebug->DEMCR & (CoreDebug_DEMCR_MON_EN_Msk));
    //!(monitorIsAttached() || is_main_waiting_on_timeout()); // || is_main_waiting_on_timeout())  ; // only enter WFI if SPI1 is not active or monitor is connected
 
   //palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
@@ -52,8 +52,11 @@ void idle_enter(void){
 void idle_loop(void){
   if (doWFI) {
     palSetLine(LINE_testpin);
+    __disable_irq();
     __DSB();
     __WFI();
+    __ISB();
+    __enable_irq();
   }
 }
 

@@ -565,6 +565,10 @@ int main(void)
     palSetLineMode(LINE_SWCLK, PAL_MODE_INPUT_ANALOG);
   }
 
+  // set debug monitor priority
+
+  NVIC_SetPriority(DebugMonitor_IRQn, 3);
+
   eventmask_t pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
 
   while (1)

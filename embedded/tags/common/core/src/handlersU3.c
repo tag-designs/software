@@ -81,5 +81,6 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
     }
   }
   __DSB();
+  __ISB();
   CH_IRQ_EPILOGUE();
 }
