@@ -962,7 +962,7 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
     initSensors();
     pState->state = TagState_CALIBRATE;
   }
-  if (MONCONNECTED)
+  if (monitorIsAttached())
     return SHUTDOWN;
   else
   {

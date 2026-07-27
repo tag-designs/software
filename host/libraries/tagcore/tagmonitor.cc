@@ -678,18 +678,45 @@ void TagMonitor::Detach()
     return;
   }
 
+  // Detach call to mon->handler
+
+  uint32_t stop_success = 0;
+  if (!Call(MONITORSTOP, 0, &stop_success) || !stop_success)
+  {
+    log_error("Monitor Stop failed during detach");
+  }
+
+  // Clear debug register bits
+  if (ReadDebug32(DEMCR, &demcr))
+  {
+    const uint32_t detached_demcr =
+        demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN);
+    if (!WriteDebug32(DEMCR, detached_demcr))
+    {
+      log_error("Monitor detach failed to clear debug control register");
+    }
+    else
+    {
+      uint32_t verify_demcr = 0;
+      if (ReadDebug32(DEMCR, &verify_demcr) &&
+          ((verify_demcr & (VC_CORERESET | MON_PEND | MON_REQ | MON_EN)) != 0U))
+      {
+        log_error("Monitor detach left debug control bits set demcr=0x%x",
+                  verify_demcr);
+      }
+    }
+  }
+  else
+  {
+    log_error("Monitor detach failed to read debug control register");
+  }
+
+  // release usb
+  LinkAdapt::Detach();
   maxpacket = 0;
   call_buf = 0;
   memset(sha_str,0, sizeof(sha_str));
   version = 0;
-  // Detach call to mon->handler
-
-  Call(MONITORSTOP, 0, 0);
-  // Clear debug register bits
-  ReadDebug32(DEMCR, &demcr);
-  WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN)));
-  // release usb
-  LinkAdapt::Detach();
   target_family = TargetFamily::Unknown;
   target_idcode = 0;
 }

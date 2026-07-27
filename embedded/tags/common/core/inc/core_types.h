@@ -21,9 +21,14 @@
 // Attribute for uninitialized data that should not live in bss or data.
 #define NOINIT __attribute__((section(".ram0")))
 
-// Detect connected monitor/debugger.
+/*
+ * Detect the debug-reset/vector-catch hint used during monitor attach reset
+ * recovery. Runtime code that needs to know whether the monitor session is
+ * currently attached should call monitorIsAttached() instead.
+ */
 #define MONCONNECTED (CoreDebug->DEMCR & CoreDebug_DEMCR_VC_CORERESET_Msk)
 
+extern bool monitorIsAttached(void);
 extern bool isMonitorEnabled(void);
 
 enum Sleep { SHUTDOWN, STANDBY, STOP1, STOP2, SLEEP };

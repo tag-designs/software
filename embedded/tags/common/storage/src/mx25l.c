@@ -85,7 +85,7 @@ static int mx25lCheckID(const TagStorageDevice *dev)
     if (!tagStorageSpiCommandReceive(tagStorageSpiDevice(dev),
                                      MX25L_CMD_READ_ID, id, 3))
         return -1;
-    if (MONCONNECTED)
+    if (monitorIsAttached())
     {
         debug_log_printf("Flash: MID 0x%x DID 0x%x SIZE 0x%x",
                          id[0], id[1], id[2]);

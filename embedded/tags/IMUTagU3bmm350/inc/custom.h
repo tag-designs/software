@@ -37,7 +37,7 @@
 #define TAG_STOP1_WAKE_USES_INTERRUPT 1
 #define TAG_CONFIGURED_IMMEDIATE_START 1
 #define TAG_SPI_TRANSFER_STATUS 1
-#define TAG_RTC_TRANSFER_DIAGNOSTICS 1
+//#define TAG_RTC_TRANSFER_DIAGNOSTICS 1
 #define TAG_RTC_STM32U3_COMPAT 1
 #define CONFIG_HAS_HIBERNATE 0
 #define TAG_STATUS_FIXED_VDD100 180
@@ -53,7 +53,7 @@
  * status debug message so detached execution can be distinguished from
  * attach/reset cursor recovery.
  */
-#define TAG_RETAINED_RUN_DIAGNOSTICS 1
+//#define TAG_RETAINED_RUN_DIAGNOSTICS 1
 /* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
  * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
  * in the trace.

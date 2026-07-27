@@ -17,13 +17,20 @@
 #include "core_sync.h"
 #include "custom.h"
 
-#ifndef TAG_MONITOR_RESET_RECOVERY
-#define TAG_MONITOR_RESET_RECOVERY 0
-#endif
-
 #define xstr(s) str(s)
 #define str(s) #s
 
+#if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
+#define TAG_HANDLERS_PROCESSOR_U3 1
+#define TAG_HANDLERS_PROCESSOR_L4 0
+#elif defined(STM32L4xx_MCUCONF) || defined(STM32L422xx) || \
+      defined(STM32L431xx) || defined(STM32L432xx) || \
+      defined(STM32L433xx)
+#define TAG_HANDLERS_PROCESSOR_U3 0
+#define TAG_HANDLERS_PROCESSOR_L4 1
+#else
+#error "handlers.c supports only STM32L4 and STM32U3 tag processors"
+#endif
 
 /** @name Debug monitor globals
  *  Debug Monitor Interface
@@ -120,7 +127,7 @@ static bool monitor_timer_initialized = false;
 static bool monitor_clock_fast = false;
 #endif
 
-#if TAG_MONITOR_RESET_RECOVERY
+#if TAG_HANDLERS_PROCESSOR_U3
 static inline bool monitorRequestPending(void)
 {
   return (CoreDebug->DEMCR &
@@ -132,7 +139,26 @@ static inline void monitorClearRequest(void)
   CoreDebug->DEMCR &= ~(CoreDebug_DEMCR_MON_REQ_Msk |
                         CoreDebug_DEMCR_MON_PEND_Msk);
 }
+#else
+static inline bool monitorRequestPending(void)
+{
+  return (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk) != 0U;
+}
+
+static inline void monitorClearRequest(void)
+{
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
+}
 #endif
+
+static inline bool monitorServiceRequestReady(void)
+{
+#if TAG_HANDLERS_PROCESSOR_U3
+  return true;
+#else
+  return monitorRequestPending();
+#endif
+}
 
 static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
 {
@@ -155,7 +181,7 @@ static void monitorArmTimeoutI(void)
     monitor_timer_initialized = true;
   }
   monitor_timeout_pending = false;
-  chVTSetI(&monitor_timer, chTimeS2I(60), monitor_timeout_cb, NULL);
+  chVTSetI(&monitor_timer, chTimeS2I(3), monitor_timeout_cb, NULL);
 }
 
 static void monitorDisarmTimeoutI(void)
@@ -170,6 +196,7 @@ static void monitorStopI(bool timed_out)
   monitor_timeout_pending = false;
   monitor_enabled = false;
   monitor_pending = false;
+  //palClearLine(LINE_testpin);
 
 #if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
   if (monitor_clock_fast)
@@ -179,17 +206,21 @@ static void monitorStopI(bool timed_out)
   }
 #endif
 
-  if (timed_out)
-    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
-#if TAG_MONITOR_RESET_RECOVERY
+  (void)timed_out;
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
   monitorClearRequest();
-#else
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
+  __DSB();
 }
 
-bool isMonitorEnabled(){
-  return monitor_enabled;
+bool monitorIsAttached(void)
+{
+  return monitor_enabled &&
+         ((CoreDebug->DEMCR & CoreDebug_DEMCR_VC_CORERESET_Msk) != 0U);
+}
+
+bool isMonitorEnabled(void)
+{
+  return monitorIsAttached();
 }
 
 void monitorServicePending(uint32_t monitor_events)
@@ -202,18 +233,12 @@ void monitorServicePending(uint32_t monitor_events)
   if (monitor_enabled && monitor_pending)
   {
     monitor_pending = false;
-#if TAG_MONITOR_RESET_RECOVERY
-    len = monitor_operand;
-    monitorDisarmTimeoutI();
-    do_eval = true;
-#else
-    if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk)
+    if (monitorServiceRequestReady())
     {
       len = monitor_operand;
       monitorDisarmTimeoutI();
       do_eval = true;
     }
-#endif
   }
   else if ((monitor_events & EVT_MONITOR_TIMEOUT) && monitor_timeout_pending)
   {
@@ -233,11 +258,7 @@ void monitorServicePending(uint32_t monitor_events)
 
   chSysLock();
   CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
-#if TAG_MONITOR_RESET_RECOVERY
   monitorClearRequest();
-#else
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
   if (monitor_enabled)
     monitorArmTimeoutI();
   chSysUnlock();
@@ -267,173 +288,9 @@ void monitorPostPendingEvents(void)
 /**
  * @brief Service debug-monitor commands from the host tooling.
  */
-#if !TAG_MONITOR_RESET_RECOVERY
-CH_IRQ_HANDLER(DebugMon_Handler) {
-  CH_IRQ_PROLOGUE();
-
-  uint32_t input = (CoreDebug->DCRDR);
-  uint8_t operation = (input & 0xff);
-  int operand = (input >> 8);
-
-  // could use operand for packet length
-
-  if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk) {
-    switch (operation) {
-      case TAG_MONITORINFO:
-        switch (operand) {
-          case (MONITORVERSION):
-            CoreDebug->DCRDR = (uint32_t)DEBUGVERSION;
-            break;
-          case (MONITORBUF):
-            CoreDebug->DCRDR = (uint32_t)ProtoBuf;
-            break;
-          case (MONITORBUFSIZE):
-            CoreDebug->DCRDR = (uint32_t)sizeof(ProtoBuf);
-            break;
-          case (TAGSHASTR):
-            CoreDebug->DCRDR = (uint32_t) SHAStr;
-            break;
-        }
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-        break;
-      case MONITORSTART:
-        chSysLockFromISR();
-        monitor_enabled = true;
-        monitor_pending = false;
-        monitor_timeout_pending = false;
-        monitorArmTimeoutI();
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-        if (!monitor_clock_fast)
-        {
-          fast_msi();
-          monitor_clock_fast = true;
-        }
-#endif
-        CoreDebug->DCRDR = 1;
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-        if (tpMain)
-          chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
-        chSysUnlockFromISR();
-        break;
-      case MONITORSTOP:
-        chSysLockFromISR();
-        monitorStopI(false);
-        chSysUnlockFromISR();
-        break;
-      case PROTOBUF:  // execute later in main-thread context
-        chSysLockFromISR();
-        if (monitor_enabled && !monitor_pending) {
-          monitor_operand = operand;
-          monitor_pending = true;
-          CoreDebug->DCRDR = 0;
-          monitorArmTimeoutI();
-          if (tpMain)
-            chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
-        } else {
-          CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-        }
-        chSysUnlockFromISR();
-        break;
-      default:
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-        break;
-    }
-  }
-  CH_IRQ_EPILOGUE();
-}
+#if TAG_HANDLERS_PROCESSOR_U3
+#include "handlersU3.c"
 #else
-CH_IRQ_HANDLER(DebugMon_Handler) {
-  CH_IRQ_PROLOGUE();
-
-  uint32_t input = (CoreDebug->DCRDR);
-  uint8_t operation = (input & 0xff);
-  int operand = (input >> 8);
-
-  // could use operand for packet length
-
-#if TAG_MONITOR_RESET_RECOVERY
-  if (monitorRequestPending()) {
-#else
-  if (CoreDebug->DEMCR & CoreDebug_DEMCR_MON_REQ_Msk) {
-#endif
-    switch (operation) {
-      case TAG_MONITORINFO:
-        switch (operand) {
-          case (MONITORVERSION):
-            CoreDebug->DCRDR = (uint32_t)DEBUGVERSION;
-            break;
-          case (MONITORBUF):
-            CoreDebug->DCRDR = (uint32_t)ProtoBuf;
-            break;
-          case (MONITORBUFSIZE):
-            CoreDebug->DCRDR = (uint32_t)sizeof(ProtoBuf);
-            break;
-          case (TAGSHASTR):
-            CoreDebug->DCRDR = (uint32_t) SHAStr;
-            break;
-        }
-#if TAG_MONITOR_RESET_RECOVERY
-        monitorClearRequest();
-#else
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
-        break;
-      case MONITORSTART:
-        chSysLockFromISR();
-        monitor_enabled = true;
-        monitor_pending = false;
-        monitor_timeout_pending = false;
-        monitorArmTimeoutI();
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-        if (!monitor_clock_fast)
-        {
-          fast_msi();
-          monitor_clock_fast = true;
-        }
-#endif
-        CoreDebug->DCRDR = 1;
-#if TAG_MONITOR_RESET_RECOVERY
-        monitorClearRequest();
-#else
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
-        if (tpMain)
-          chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
-        chSysUnlockFromISR();
-        break;
-      case MONITORSTOP:
-        chSysLockFromISR();
-        monitorStopI(false);
-        chSysUnlockFromISR();
-        break;
-      case PROTOBUF:  // execute later in main-thread context
-        chSysLockFromISR();
-        if (monitor_enabled && !monitor_pending) {
-          monitor_operand = operand;
-          monitor_pending = true;
-          CoreDebug->DCRDR = 0;
-          monitorArmTimeoutI();
-          if (tpMain)
-            chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
-        } else {
-#if TAG_MONITOR_RESET_RECOVERY
-          monitorClearRequest();
-#else
-          CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
-        }
-        chSysUnlockFromISR();
-        break;
-      default:
-#if TAG_MONITOR_RESET_RECOVERY
-        monitorClearRequest();
-#else
-        CoreDebug->DEMCR &= ~CoreDebug_DEMCR_MON_REQ_Msk;
-#endif
-        break;
-    }
-  }
-  CH_IRQ_EPILOGUE();
-}
+#include "handlersL4.c"
 #endif
 /** @} */

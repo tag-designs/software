@@ -183,12 +183,12 @@
         "Standby": "PULLUP"
       },
       "pin1": {
-        "ID": "LED2",
-        "Type": "OpenDrain",
+        "ID": "testpin",
+        "Type": "PushPull",
         "Level": "Low",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Analog",
+        "Mode": "Output",
         "Alternate": "0"
       },
       "pin3": {

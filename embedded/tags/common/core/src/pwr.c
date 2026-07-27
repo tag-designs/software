@@ -265,7 +265,6 @@ void godown(enum Sleep sleepmode)
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
     /* PB1 is high only while the U3 core is waiting for hardware WKUP1. */
-    palSetPadMode(GPIOB, 1U, PAL_MODE_OUTPUT_PUSHPULL);
     palSetPad(GPIOB, 1U);
 
 

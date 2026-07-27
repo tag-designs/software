@@ -6,6 +6,7 @@
  */
 
 #include "hal.h"
+#include "core_types.h"
 #include "debug_log.h"
 #include "flash_internal.h"
 #include "rtc_api.h"
@@ -253,7 +254,7 @@ static int gd5fProbe(const TagStorageDevice *dev)
   if (!ok)
     return -1;
 
-  if (MONCONNECTED)
+  if (monitorIsAttached())
     debug_log_printf("NAND: MID 0x%x DID 0x%x", id[0], id[1]);
 
   if (id[0] != GD5F_ID_MANUFACTURER ||
@@ -450,7 +451,7 @@ bool gd5fProvisionLogicalMap(const TagStorageDevice *dev,
     return false;
 
   gd5f_logical_map_loaded = gd5fLogicalMapValidate();
-  if (MONCONNECTED && gd5f_logical_map_loaded)
+  if (monitorIsAttached() && gd5f_logical_map_loaded)
     debug_log_printf("NAND: provisioned map, bad blocks %u", bad_count);
 
   return gd5f_logical_map_loaded;

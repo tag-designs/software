@@ -8,8 +8,10 @@ active tags unless a tag provides a same-named local override.
 
 - `main.c`, `state_machine.c`: shared execution loop and monitor-controlled
   state transitions.
-- `handlers.c`, `monitor.c`: protobuf request/ack handling and monitor-facing
-  commands.
+- `handlers.c`, `handlersL4.c`, `handlersU3.c`, `monitor.c`: protobuf
+  request/ack handling and monitor-facing commands. `handlers.c` owns the
+  shared monitor state and includes the L4 or U3 interrupt implementation based
+  on the STM32 processor flags from ChibiOS.
 - `test.c`: monitor-facing self-test dispatcher. It iterates the
   tag/family-provided `TagTestCase` table from `test_support.h` and records
   the first non-`ALL_PASSED` result returned by a test hook.

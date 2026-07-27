@@ -553,7 +553,8 @@ bool LinkAdapt::get_rw_status(uint16_t &status)
     else
     {
         status = UNPACK16(result);
-        log_debug("last rw status 0x%x fault_addr=0x%x", status, UNPACK32(&result[4]));
+        // this is causing a lot of chatter -- the root cause needs to be determined
+        //log_debug("last rw status 0x%x fault_addr=0x%x", status, UNPACK32(&result[4]));
     }
 #if TAGCORE_ENABLE_INSTRUMENTATION
     stats.rw_status_calls++;

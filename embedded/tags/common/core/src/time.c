@@ -391,7 +391,7 @@ void stopMilliseconds(unsigned int ms)
 #if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
   chThdSleepMilliseconds(ms);
 #else
-  if (MONCONNECTED)
+  if (monitorIsAttached())
   {
     chThdSleepMilliseconds(ms);
   }

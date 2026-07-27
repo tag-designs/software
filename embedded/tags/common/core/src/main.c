@@ -594,7 +594,8 @@ int main(void)
 
     pState->safe = true;
 
-    godown(sleepmode);
+    if (sleepmode == STANDBY)
+      godown(sleepmode);
     
     pending_events =  chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
     pending_events |= chEvtGetAndClearEvents(EVT_ALL_DEFINED);
