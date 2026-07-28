@@ -44,7 +44,6 @@ static inline void idlePowerApplyMode(enum Sleep mode)
   }
 
 #if defined(LINE_LED1)
-  palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLine(LINE_LED1);
 #endif
   DBGMCU->CR = 0;
@@ -91,7 +90,6 @@ void idle_leave(void)
 #endif
 #if defined(LINE_LED1)
   palClearLine(LINE_LED1);
-  palSetLineMode(LINE_LED1, PAL_MODE_INPUT_ANALOG);
 #endif
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 }
