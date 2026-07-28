@@ -17,14 +17,6 @@ static_assert(sizeof(monitor_shared_t) <= MONITOR_SHARED_SIZE,
 
 static bool monitor_requested_at_boot = false;
 
-/*
- * Shared-memory session state.
- */
-static bool monitorAttachRequestedAtBoot(void)
-{
-  return monitor_shared.request == MONITOR_REQUEST_MAGIC;
-}
-
 static void monitorSharedSetDisconnected(void)
 {
   monitor_shared.request = 0U;
@@ -82,24 +74,6 @@ static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
   chSysUnlockFromISR();
 }
 
-static void monitorStopI(bool timed_out)
-{
-  (void)timed_out;
-
-  monitorStopSessionI();
-  monitorSharedSetDisconnected();
-}
-
-static void monitorAcknowledgeDetachI(void)
-{
-  /*
-   * U3 MONITORSTOP completion is the transition to detached state. The host
-   * polls request==0 as the acknowledgement, so publish that only after the
-   * timer/session has been stopped.
-   */
-  monitorStopI(false);
-}
-
 /*
  * Cooperative protobuf service path. The kick IRQ only latches work; main
  * thread context evaluates protobuf and completes the shared-memory command.
@@ -120,7 +94,12 @@ void monitorServicePending(uint32_t monitor_events)
   }
   else if ((monitor_events & EVT_MONITOR_TIMEOUT) && monitor_timeout_pending)
   {
-    monitorStopI(true);
+    /*
+     * Heartbeat timeout: the host stopped polling, so tear down the local
+     * session and publish detached state.
+     */
+    monitorStopSessionI();
+    monitorSharedSetDisconnected();
     chSysUnlock();
     return;
   }
@@ -151,7 +130,8 @@ void monitorServicePending(uint32_t monitor_events)
  */
 void monitorSharedEarlyInit(void)
 {
-  monitor_requested_at_boot = monitorAttachRequestedAtBoot();
+  monitor_requested_at_boot =
+      (monitor_shared.request == MONITOR_REQUEST_MAGIC);
 
   monitor_shared.abi_version = MONITOR_SHARED_ABI_VERSION;
   monitor_shared.debug_version = DEBUGVERSION;
@@ -210,17 +190,25 @@ OSAL_IRQ_HANDLER(STM32_FDCAN1_IT0_HANDLER)
 
   if (monitor_shared.request == 0U)
   {
-    monitorAcknowledgeDetachI();
-    chSysUnlockFromISR();
-    OSAL_IRQ_EPILOGUE();
-    return;
+    /*
+     * Stale kick after detach. Route it through the MONITORSTOP case so
+     * cleanup and detached-state publication stay in one place.
+     */
+    operation = MONITORSTOP;
   }
-
-  monitor_shared.host_activity = 1U;
+  else
+  {
+    monitor_shared.host_activity = 1U;
+  }
 
   switch (operation) {
     case MONITORSTOP:
-      monitorAcknowledgeDetachI();
+      /*
+       * Explicit detach. The host polls request==0 as MONITORSTOP completion,
+       * so publish that only after the timer/session has been stopped.
+       */
+      monitorStopSessionI();
+      monitorSharedSetDisconnected();
       break;
     case PROTOBUF:
       if (monitor_enabled && !monitor_pending) {
