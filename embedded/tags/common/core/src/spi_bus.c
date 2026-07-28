@@ -7,6 +7,7 @@
 
 #include "spi_bus.h"
 
+#include "core_runtime.h"
 #include "core_sync.h"
 #include "gpio_utils.h"
 #include "power.h"

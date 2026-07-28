@@ -78,12 +78,20 @@ bool tagSpiWrite(const TagSpiDevice *device, const uint8_t *buf, uint32_t len)
 bool tagSpiRead(const TagSpiDevice *device, uint8_t *buf, uint32_t len)
 {
   SPIDriver *driver = tagSpiDeviceDriver(device);
+  enum Sleep saved_idle_power_mode;
+  msg_t result;
 
   if (driver == NULL) {
     tagSpiFillReadFailure(buf, len);
     return false;
   }
-  if (spiReceive(driver, len, buf) != MSG_OK) {
+
+  saved_idle_power_mode = idlePowerMode;
+  idlePowerMode = STOP0;
+  result = spiReceive(driver, len, buf);
+  idlePowerMode = saved_idle_power_mode;
+
+  if (result != MSG_OK) {
     tagSpiFillReadFailure(buf, len);
     return false;
   }

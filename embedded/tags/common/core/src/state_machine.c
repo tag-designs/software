@@ -84,6 +84,9 @@ extern int restoreLog(void);
 /** Shared active-state hint used by standby wake-source configuration. */
 bool isActive = false;
 
+/** Shared idle-thread low-power selector for tags that manage CPU idle mode. */
+volatile enum Sleep idlePowerMode = SLEEP;
+
 #if TAG_MONITOR_RESET_RECOVERY
 static bool monitorResetRecoveryActive(bool retained_state_valid)
 {

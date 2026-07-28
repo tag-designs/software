@@ -859,15 +859,15 @@ uint16_t lsm6dsv16x_read_fifo(const TagLsm6dsv16xDevice *device,
         fifo_level = (uint16_t)(((uint16_t)(st2 & 0x03U) << 8U) | (uint16_t)st1);
     }
 
-    if (fifo_level > max_pairs*2){
-        fifo_level = max_pairs*2;
+    if (fifo_level > max_pairs * 2) {
+        fifo_level = max_pairs * 2;
     }
-    
+
     // read a block of data
 
-    if ((fifo_level == 0) || reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG,
-                                                    fifo_read_buffer, 
-                                                    LSM6DSV16X_FIFO_WORD_BYTES*fifo_level)) {
+    if ((fifo_level == 0) ||
+        reg_read_block(device, LSM6DSV16X_FIFO_DATA_OUT_TAG, fifo_read_buffer,
+                       LSM6DSV16X_FIFO_WORD_BYTES * fifo_level)) {
         device_end(device);
         return 0U;
     }

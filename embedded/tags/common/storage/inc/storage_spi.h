@@ -8,6 +8,7 @@
 #ifndef TAG_STORAGE_SPI_H
 #define TAG_STORAGE_SPI_H
 
+#include "core_runtime.h"
 #include "core_types.h"
 #include "spi_bus.h"
 
@@ -64,9 +65,17 @@ static inline bool tagStorageSpiRead(const TagSpiDevice *device, uint8_t *buf,
 static inline bool tagStorageSpiBlockWrite(const TagSpiDevice *device,
                                            const uint8_t *buf, uint32_t n)
 {
+  enum Sleep saved_idle_power_mode;
+  bool ok;
+
   if (n <= TAG_SPI_POLLED_TRANSFER_MAX)
     return tagSpiPolledSend(device, buf, n);
-  return tagSpiWrite(device, buf, n);
+
+  saved_idle_power_mode = idlePowerMode;
+  idlePowerMode = STOP0;
+  ok = tagSpiWrite(device, buf, n);
+  idlePowerMode = saved_idle_power_mode;
+  return ok;
 }
 
 /**

@@ -29,10 +29,10 @@
       },
       "pin1": {
         "ID": "LED1",
-        "Type": "OpenDrain",
+        "Type": "PushPull",
         "Level": "High",
         "Speed": "Low",
-        "Resistor": "Floating",
+        "Resistor": "Output",
         "Mode": "Analog",
         "Alternate": "0"
       },

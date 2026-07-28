@@ -31,6 +31,6 @@
 extern bool monitorIsAttached(void);
 extern bool isMonitorEnabled(void);
 
-enum Sleep { SHUTDOWN, STANDBY, STOP1, STOP2, SLEEP };
+enum Sleep { SHUTDOWN, STANDBY, STOP1, STOP2, SLEEP, STOP0 };
 
 #endif

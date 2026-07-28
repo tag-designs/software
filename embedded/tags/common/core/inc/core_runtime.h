@@ -46,4 +46,10 @@ void godown(enum Sleep mode);
 /** Shared activity state used by power and state-machine code. */
 extern bool isActive;
 
+/*
+ * Idle-thread low-power selector. Valid managed-idle values are SLEEP, STOP0,
+ * STOP1, and STOP2; tags without idle power management can ignore it.
+ */
+extern volatile enum Sleep idlePowerMode;
+
 #endif
