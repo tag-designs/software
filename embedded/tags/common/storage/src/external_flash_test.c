@@ -46,11 +46,13 @@ TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
 
   tagStorageWake(device);
 #if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+  uint32_t bad_block_count = 0U;
+
   if (!gd5fLogicalMapConfigured()) {
-    uint32_t bad_block_count = 0U;
     result = gd5fProvisionLogicalMap(device, &bad_block_count);
   } else {
-    result = gd5fLogicalMapValidate();
+    result = gd5fLogFactoryBadBlocks(device, &bad_block_count);
+    result = result && gd5fLogicalMapValidate();
   }
   if (result)
     result = tagStorageCheckID(device) > -1;

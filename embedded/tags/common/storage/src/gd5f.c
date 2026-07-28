@@ -45,6 +45,7 @@
 
 #define GD5F_BAD_BLOCK_MARK_COLUMN   GD5F_PAGE_SIZE
 #define GD5F_BAD_BLOCK_MARK          0xFFU
+#define GD5F_BAD_BLOCK_MARK_PAGES    2U
 
 #define GD5F_RESET_DELAY_MS          1U
 #define GD5F_READY_POLL_MS           1U
@@ -207,7 +208,6 @@ static bool gd5fWaitReady(const TagStorageDevice *dev, uint32_t poll_limit,
   uint8_t sr = 0U;
 
   while (poll_limit-- > 0U) {
-    stopMilliseconds(GD5F_READY_POLL_MS);
     if (!gd5fGetFeature(dev, GD5F_FEATURE_STATUS, &sr))
       return false;
     if ((sr & GD5F_STATUS_OIP) == 0U) {
@@ -215,6 +215,8 @@ static bool gd5fWaitReady(const TagStorageDevice *dev, uint32_t poll_limit,
         *status = sr;
       return true;
     }
+    if (poll_limit > 0U)
+      stopMilliseconds(GD5F_READY_POLL_MS);
   }
   return false;
 }
@@ -255,7 +257,7 @@ static int gd5fProbe(const TagStorageDevice *dev)
     return -1;
 
   if (monitorIsAttached())
-    debug_log_printf("NAND: MID 0x%x DID 0x%x", id[0], id[1]);
+    debug_log_printf("NAND: MID 0x%x DID 0x%x\r\n", id[0], id[1]);
 
   if (id[0] != GD5F_ID_MANUFACTURER ||
       id[1] != GD5F_ID_DEVICE)
@@ -298,19 +300,107 @@ static bool gd5fReadPhysicalPage(const TagStorageDevice *dev,
  * @{
  */
 /**
+ * @brief Read the factory bad-block marker for one physical block.
+ */
+static bool gd5fReadBadBlockMark(const TagStorageDevice *dev,
+                                 uint32_t physical_block,
+                                 uint32_t page_in_block,
+                                 uint8_t *mark)
+{
+  uint32_t physical_page = (physical_block * GD5F_PAGES_PER_BLOCK) +
+                           page_in_block;
+
+  if (mark == NULL ||
+      physical_block >= GD5F_PHYSICAL_BLOCK_COUNT ||
+      page_in_block >= GD5F_BAD_BLOCK_MARK_PAGES ||
+      page_in_block >= GD5F_PAGES_PER_BLOCK)
+    return false;
+  return gd5fReadPhysicalPage(dev, physical_page,
+                              GD5F_BAD_BLOCK_MARK_COLUMN,
+                              mark, 1U);
+}
+
+/**
  * @brief Test the factory bad-block marker for one physical block.
  */
 static bool gd5fBlockIsGood(const TagStorageDevice *dev,
                             uint32_t physical_block)
 {
-  uint8_t mark = 0U;
-  uint32_t physical_page = physical_block * GD5F_PAGES_PER_BLOCK;
+  for (uint32_t marker_page = 0U;
+       marker_page < GD5F_BAD_BLOCK_MARK_PAGES;
+       marker_page++) {
+    uint8_t mark = 0U;
 
-  if (!gd5fReadPhysicalPage(dev, physical_page,
-                            GD5F_BAD_BLOCK_MARK_COLUMN,
-                            &mark, 1U))
-    return false;
-  return mark == GD5F_BAD_BLOCK_MARK;
+    if (!gd5fReadBadBlockMark(dev, physical_block, marker_page, &mark))
+      return false;
+    if (mark != GD5F_BAD_BLOCK_MARK)
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Scan factory bad-block markers and optionally build the good map.
+ */
+static bool gd5fScanFactoryBadBlocks(const TagStorageDevice *dev,
+                                     uint16_t *map,
+                                     uint32_t *good_block_count,
+                                     uint32_t *bad_block_count)
+{
+  uint32_t good_count = 0U;
+  uint32_t bad_count = 0U;
+  uint32_t unreadable_mark_count = 0U;
+
+  for (uint32_t block = 0U; block < GD5F_PHYSICAL_BLOCK_COUNT; block++) {
+    bool block_bad = false;
+
+    for (uint32_t marker_page = 0U;
+         marker_page < GD5F_BAD_BLOCK_MARK_PAGES;
+         marker_page++) {
+      uint8_t mark = 0U;
+      uint32_t page = (block * GD5F_PAGES_PER_BLOCK) + marker_page;
+
+      if (!gd5fReadBadBlockMark(dev, block, marker_page, &mark)) {
+        unreadable_mark_count++;
+        if (!block_bad) {
+          bad_count++;
+          block_bad = true;
+        }
+        debug_log_printf(
+            "NAND: bad-block marker unreadable block %u page %u\r\n",
+            block, page);
+        continue;
+      }
+      if (mark != GD5F_BAD_BLOCK_MARK) {
+        if (!block_bad) {
+          bad_count++;
+          block_bad = true;
+        }
+        debug_log_printf(
+            "NAND: factory bad block %u marker page %u mark 0x%x\r\n",
+            block, page, mark);
+      }
+    }
+
+    if (!block_bad && map != NULL) {
+      if (good_count < GD5F_LOGICAL_BLOCK_COUNT)
+        map[good_count] = (uint16_t)block;
+      good_count++;
+    }
+  }
+
+  if (good_block_count != NULL)
+    *good_block_count = good_count;
+  if (bad_block_count != NULL)
+    *bad_block_count = bad_count;
+  if (bad_count == 0U && unreadable_mark_count == 0U)
+    debug_log_printf("NAND: no factory bad-block markers found\r\n");
+  else
+    debug_log_printf("NAND: bad-block scan found %u bad blocks, "
+                     "%u unreadable markers\r\n",
+                     bad_count, unreadable_mark_count);
+
+  return unreadable_mark_count == 0U;
 }
 
 /**
@@ -341,6 +431,20 @@ bool gd5fLogicalMapValidate(void)
     previous_block = physical_block;
   }
   return true;
+}
+
+/**
+ * @brief Log factory bad-block marker locations without modifying flash.
+ */
+bool gd5fLogFactoryBadBlocks(const TagStorageDevice *dev,
+                             uint32_t *bad_block_count)
+{
+  if (bad_block_count != NULL)
+    *bad_block_count = 0U;
+  if (gd5fProbe(dev) < 0)
+    return false;
+
+  return gd5fScanFactoryBadBlocks(dev, NULL, NULL, bad_block_count);
 }
 
 /**
@@ -433,14 +537,9 @@ bool gd5fProvisionLogicalMap(const TagStorageDevice *dev,
   memset(gd5f_provision_map, 0xff,
          sizeof(gd5f_provision_map));
 
-  for (uint32_t block = 0U; block < GD5F_PHYSICAL_BLOCK_COUNT; block++) {
-    if (gd5fBlockIsGood(dev, block)) {
-      if (good_count < GD5F_LOGICAL_BLOCK_COUNT)
-        gd5f_provision_map[good_count++] = (uint16_t)block;
-    } else {
-      bad_count++;
-    }
-  }
+  if (!gd5fScanFactoryBadBlocks(dev, gd5f_provision_map,
+                                &good_count, &bad_count))
+    return false;
 
   if (bad_block_count != NULL)
     *bad_block_count = bad_count;
@@ -452,7 +551,7 @@ bool gd5fProvisionLogicalMap(const TagStorageDevice *dev,
 
   gd5f_logical_map_loaded = gd5fLogicalMapValidate();
   if (monitorIsAttached() && gd5f_logical_map_loaded)
-    debug_log_printf("NAND: provisioned map, bad blocks %u", bad_count);
+    debug_log_printf("NAND: provisioned map, bad blocks %u\r\n", bad_count);
 
   return gd5f_logical_map_loaded;
 }
@@ -657,6 +756,10 @@ static bool gd5fErasePhysicalBlock(const TagStorageDevice *dev,
 {
   uint8_t status;
 
+  if (physical_block >= GD5F_PHYSICAL_BLOCK_COUNT)
+    return false;
+  if (!gd5fBlockIsGood(dev, physical_block))
+    return false;
   if (!gd5fWriteEnable(dev))
     return false;
   if (!gd5fRowCommand(tagStorageSpiDevice(dev),

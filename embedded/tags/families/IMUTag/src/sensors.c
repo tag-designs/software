@@ -1027,7 +1027,11 @@ int write_calibration(CalibrationConstants *constants){
   {
     chSysLock();
     FLASH_Unlock();
+#if IMUTAG_STM32U3_FLASH
+    FLASH_PageEraseAddress((uint32_t)calConstants);
+#else
     FLASH_PageErase(((((uint32_t) calConstants)-0x8000000)) / 2048);
+#endif
     FLASH_Lock();
     FLASH_Flush_Data_Cache();
     chSysUnlock();

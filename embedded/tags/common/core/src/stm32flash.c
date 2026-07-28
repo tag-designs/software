@@ -351,7 +351,7 @@ static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
 #endif
 
 /**
- * @brief Flush the STM32 data cache after flash contents change.
+ * @brief Flush STM32 flash read caches after flash contents change.
  */
 void FLASH_Flush_Data_Cache(void) {
 #if defined(FLASH_ACR_DCEN) && defined(FLASH_ACR_DCRST)
@@ -359,6 +359,21 @@ void FLASH_Flush_Data_Cache(void) {
     CLEAR_BIT(FLASH->ACR, FLASH_ACR_DCEN);  // disable data cache
     SET_BIT(FLASH->ACR, FLASH_ACR_DCRST);   // reset data cache
     SET_BIT(FLASH->ACR, FLASH_ACR_DCEN);    // enable data cache
+  }
+#endif
+#if defined(ICACHE) && defined(ICACHE_CR_EN) && defined(ICACHE_CR_CACHEINV) && \
+    defined(ICACHE_SR_BUSYF) && defined(ICACHE_SR_BSYENDF) && \
+    defined(ICACHE_FCR_CBSYENDF)
+  if (READ_BIT(ICACHE->CR, ICACHE_CR_EN) != RESET) {
+    while (READ_BIT(ICACHE->SR, ICACHE_SR_BUSYF) != RESET)
+      ;
+    WRITE_REG(ICACHE->FCR, ICACHE_FCR_CBSYENDF);
+    SET_BIT(ICACHE->CR, ICACHE_CR_CACHEINV);
+    while (READ_BIT(ICACHE->SR, ICACHE_SR_BSYENDF) == RESET)
+      ;
+    WRITE_REG(ICACHE->FCR, ICACHE_FCR_CBSYENDF);
+    __DSB();
+    __ISB();
   }
 #endif
 }

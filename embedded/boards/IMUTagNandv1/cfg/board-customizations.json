@@ -1,13 +1,10 @@
 {
   "board_name": "IMUTagNand v1",
   "board_id": "IMUTagNandv1",
-  "remove_elements": [
-    "ethernet_phy"
-  ],
   "elements": {
     "configuration_settings/output_path": "..",
     "configuration_settings/board_files_path": "$(BOARDDIR)",
-    "subtype": "STM32L432xx"
+    "subtype": "STM32U375xx"
   },
   "attributes": {
     "clocks": {
@@ -28,9 +25,27 @@
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Input",
+        "Alternate": "0"
+      },
+      "pin1": {
+        "ID": "LED1",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
         "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Standby": "PULLDOWN"
+      },
+      "pin2": {
+        "ID": "testpin",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "0",
+        "Standby": "PULLDOWN"
       },
       "pin4": {
         "ID": "FLASH_nCS",
@@ -40,8 +55,6 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "14",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLUP"
       },
       "pin5": {
@@ -52,8 +65,6 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLDOWN"
       },
       "pin6": {
@@ -64,8 +75,6 @@
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLDOWN"
       },
       "pin7": {
@@ -76,8 +85,6 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLDOWN"
       },
       "pin8": {
@@ -87,9 +94,7 @@
         "Speed": "Medium",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "14",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "14"
       },
       "pin9": {
         "ID": "LPS_CS",
@@ -99,8 +104,6 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLUP"
       },
       "pin10": {
@@ -110,9 +113,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "0"
       },
       "pin11": {
         "ID": "LPS_MISO",
@@ -122,8 +123,6 @@
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLDOWN"
       },
       "pin12": {
@@ -134,8 +133,6 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLDOWN"
       },
       "pin13": {
@@ -145,9 +142,7 @@
         "Speed": "Maximum",
         "Resistor": "PullUp",
         "Mode": "Alternate",
-        "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "0"
       },
       "pin14": {
         "ID": "SWCLK",
@@ -156,9 +151,7 @@
         "Speed": "Maximum",
         "Resistor": "PullDown",
         "Mode": "Alternate",
-        "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "0"
       }
 
     },
@@ -171,8 +164,6 @@
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLUP"
       },
       "pin3": {
@@ -183,8 +174,16 @@
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
+      },
+       "pin4": {
+        "ID": "LMS_TRIG_2",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Output",
+        "Alternate": "1",
         "Standby": "PULLDOWN"
       },
       "pin5": {
@@ -194,9 +193,7 @@
         "Speed": "High",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "5",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "5"
       },
       "pin6": {
         "ID": "SDA",
@@ -206,8 +203,6 @@
         "Resistor": "PullUp",
         "Mode": "Output",
         "Alternate": "4",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLUP"
       },
       "pin7": {
@@ -218,8 +213,6 @@
         "Resistor": "PullUp",
         "Mode": "Output",
         "Alternate": "4",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
         "Standby": "PULLUP"
       }
     },
@@ -231,9 +224,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0",
-        "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "Alternate": "0"
       }
     }
   }

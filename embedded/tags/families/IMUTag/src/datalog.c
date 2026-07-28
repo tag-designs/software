@@ -361,14 +361,11 @@ enum LOGERR commitDataLogPage(void)
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
   uint32_t flashend = (uint32_t)&__persistent_end__;
-
   t_InternalDataHeader slot;
-#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   uint32_t header_page = pState->pages;
-#endif
-  uint32_t *writeptr = (uint32_t *)&vddHeader[pState->pages++];
+  uint32_t *writeptr = (uint32_t *)&vddHeader[header_page];
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
-  uint32_t first_flasherr;
+  uint32_t first_flasherr = 0;
   uint32_t retries = 0;
 #endif
 
@@ -378,6 +375,18 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 #else
   slot = *head;
 #endif
+
+  // See if the log file is full before programming into the configuration tail.
+  if ((((uint32_t)writeptr) + sizeof(slot)) > flashend) {
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->header_status = LOGWRITE_FULL;
+    pState->header_flasherr = 0;
+    pState->header_page = header_page;
+    pState->header_addr = (uint32_t)writeptr;
+    pState->header_retries = 0;
+#endif
+    return LOGWRITE_FULL;
+  }
 
   chSysLock();
   FLASH_Unlock();
@@ -397,18 +406,6 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   FLASH_Flush_Data_Cache();
   chSysUnlock();
 
- // See if the log file is full
-
-  if ((((uint32_t)writeptr) + sizeof(slot)) >= flashend) {
-#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
-    pState->header_status = LOGWRITE_FULL;
-    pState->header_flasherr = first_flasherr ? first_flasherr : flasherr;
-    pState->header_page = header_page;
-    pState->header_addr = (uint32_t)writeptr;
-    pState->header_retries = retries;
-#endif
-    return LOGWRITE_FULL;
-  }
   // See if there is still energy to continue
 
   if (flasherr) {
@@ -422,6 +419,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
     return LOGWRITE_ERROR;
   }
   else {
+    pState->pages = header_page + 1U;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     pState->header_status = LOGWRITE_OK;
     pState->header_flasherr = first_flasherr;

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QString>
 #include <QTimer>
 #include <QPromise>
 #include "tagclass.h"
@@ -73,7 +74,9 @@ private:
   const float version = 2.0;
   int external_flash_size = 0;
   int sector_size = 4096;
+  QString tag_debug_line_buffer;
   int eraseSectorMaximum(const Status &status) const;
+  void logTagDebugMessage(const QString &message);
 };
 
 #endif // MAINWINDOW_H

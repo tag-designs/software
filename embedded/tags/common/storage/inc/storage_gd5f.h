@@ -58,6 +58,19 @@ bool gd5fLogicalMapConfigured(void);
 bool gd5fLogicalMapValidate(void);
 
 /**
+ * Scan factory bad-block markers in the first two pages of every block and
+ * write their physical page numbers to the debug log without modifying STM32
+ * or NAND flash.
+ *
+ * @param[in] dev Storage device descriptor for the NAND.
+ * @param[out] bad_block_count Optional count of physical blocks whose marker
+ * was not erased.
+ * @return true when all marker reads completed.
+ */
+bool gd5fLogFactoryBadBlocks(const TagStorageDevice *dev,
+                             uint32_t *bad_block_count);
+
+/**
  * Scan factory bad-block markers and write the flat NAND map to internal flash.
  *
  * @param[in] dev Storage device descriptor for the NAND.

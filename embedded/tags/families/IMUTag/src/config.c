@@ -10,8 +10,10 @@
 #include "app.h"
 #include "tag.pb.h"
 #include "config.h"
+#include "devices.h"
 #include "persistent.h"
 #include "sensors.h"
+#include "storage_flash.h"
 #include "strings.h"
 
 // ram based config (used by monitor to communicate to tag)
@@ -172,6 +174,17 @@ bool writeConfig(Config *config)
     config_error_message = "Device must be calibrated";
     return false;
   }
+
+#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  bool storage_ready = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  if (!storage_ready)
+  {
+    config_error_message = "NAND map must be provisioned";
+    return false;
+  }
+#endif
 
   // check for sensor configuration
 

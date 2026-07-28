@@ -1,7 +1,7 @@
 # IMUTag Family
 
 Shared application code for the `IMUTagBreakout`, `IMUTagbmm350`,
-`IMUTagNandv1`, `IMUTagU375`, and `IMUTagU3bmm350` build variants lives here.
+`IMUTagNand`, `IMUTagU375`, and `IMUTagU3bmm350` build variants lives here.
 
 The variants share the IMUTag data-log format, configuration handling, device
 binding table, sensor orchestration, RUN-state acquisition flow, and default
@@ -16,9 +16,7 @@ software-I2C RTC bus and PA4 as the BMM350 INT/DRDY input. `IMUTagU375` uses
 the STM32U3xx/Cortex-M33 makefile, a generated STM32U375 board with the same
 logical pinout, and local U375 `mcuconf.h`/linker settings. `IMUTagU3bmm350`
 combines the U375 board, U3 RTC/linker settings, and MX25U12843 flash path with
-the BMM350 magnetometer binding.
-
-`IMUTagNandv1` uses the generated `IMUTagNandv1` STM32L432 board, GD5F1GQ5RE
-1 Gbit SPI NAND flash, LSM6DSV16X IMU, LPS22HH pressure sensor, and BMM350
-magnetometer. The RTC and BMM350 share the hardware I2C1 bus, while the LSM6DSV16X
-and NAND flash share the generated `LSM_FLASH_*` SPI1 signals.
+the BMM350 magnetometer binding. `IMUTagNand` derives from `IMUTagU3bmm350`,
+uses the generated `IMUTagNandv1` board files configured for STM32U375, and
+selects the GD5F SPI-NAND storage module. The old L432 `IMUTagNandv1` firmware
+member is retained as source history only.

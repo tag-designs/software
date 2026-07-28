@@ -105,19 +105,54 @@ SECTIONS
 /* Generic rules inclusion.*/
 INCLUDE rules.ld
 
-/* Storage for logging and calibration. */
+/* Storage for logging and provisioned configuration.
+   The final two STM32U375 flash pages are reserved for data that ordinary
+   persistent-state erase must preserve:
+
+   - penultimate page: host-provided calibration constants;
+   - final page: NAND logical-block map, blank on non-NAND targets.
+
+   Keeping the same layout for all U375 IMUTag members costs one unused page on
+   non-NAND targets but gives erase code a single persistent-header boundary. */
 SECTIONS
 {
-  .calibration (NOLOAD): ALIGN(4096)
-  {
-    *(.calibration)
-  } > flash0
+  __tag_flash_page_size__ = 4096;
+  __tag_config_start__ = ORIGIN(flash0) + LENGTH(flash0) -
+                         (2 * __tag_flash_page_size__);
+  __tag_nand_map_start__ = ORIGIN(flash0) + LENGTH(flash0) -
+                           __tag_flash_page_size__;
+  __flash0_end__ = ORIGIN(flash0) + LENGTH(flash0);
+
   .persistent (NOLOAD): ALIGN(4096)
   {
    __persistent_start__ = .;
    *(.persistent)
    . = ALIGN(4096);
-   . = ORIGIN(flash0) + LENGTH(flash0);
-   __persistent_end__ = .;
   } > flash0
+  __persistent_end__ = __tag_config_start__;
+
+  .calibration __tag_config_start__ (NOLOAD): ALIGN(4096)
+  {
+    __calibration_start__ = .;
+    KEEP(*(.calibration))
+    . = ALIGN(16);
+    __calibration_data_end__ = .;
+  } > flash0
+  __calibration_end__ = __tag_nand_map_start__;
+
+  .nand_map __tag_nand_map_start__ (NOLOAD): ALIGN(4096)
+  {
+   __nand_map_start__ = .;
+   KEEP(*(.nand_map))
+   . = ALIGN(16);
+   __nand_map_data_end__ = .;
+  } > flash0
+  __nand_map_end__ = __flash0_end__;
 }
+
+ASSERT(ADDR(.persistent) + SIZEOF(.persistent) <= __tag_config_start__,
+       "STM32U375 persistent section overlaps reserved configuration pages");
+ASSERT(__calibration_data_end__ <= __tag_nand_map_start__,
+       "STM32U375 calibration section exceeds its reserved flash page");
+ASSERT(__nand_map_data_end__ <= __flash0_end__,
+       "STM32U375 NAND map section exceeds its reserved flash page");

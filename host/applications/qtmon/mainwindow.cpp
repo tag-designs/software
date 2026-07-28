@@ -107,6 +107,20 @@ int MainWindow::eraseSectorMaximum(const Status &status) const
   return roundedSectorCount(external_flash_size, sector_size);
 }
 
+void MainWindow::logTagDebugMessage(const QString &message)
+{
+  for (const QChar ch : message) {
+    if (ch == QLatin1Char('\r'))
+      continue;
+    if (ch == QLatin1Char('\n')) {
+      qDebug().noquote() << "Log:" << tag_debug_line_buffer;
+      tag_debug_line_buffer.clear();
+      continue;
+    }
+    tag_debug_line_buffer.append(ch);
+  }
+}
+
 bool MainWindow::Attach()
 {
   if (tag.IsAttached())
@@ -169,11 +183,12 @@ bool MainWindow::Attach()
     Config config;
     Status status;
     TagInfo info;
+    tag_debug_line_buffer.clear();
     tag.GetTagInfo(info);
     tag.GetConfig(config);
     tag.GetStatus(status);
     if (!status.debug_message().empty()){
-      qDebug().noquote() << "Log: " << QString::fromStdString(status.debug_message());
+      logTagDebugMessage(QString::fromStdString(status.debug_message()));
     }
 
     // check qtmonitor version 
@@ -270,8 +285,7 @@ void MainWindow::TriggerUpdate(void)
       }
 
       if (!status.debug_message().empty()){
-        QString ds = QString::fromStdString(status.debug_message());
-        qDebug().noquote() << "Log: " << ds;
+        logTagDebugMessage(QString::fromStdString(status.debug_message()));
       }
 
       double timeerr = QDateTime::currentMSecsSinceEpoch();
@@ -383,6 +397,7 @@ void MainWindow::on_Detach_clicked()
   ui.ControlGroup->setEnabled(false);
   ui.datadownloadgroupBox->setEnabled(false);
   ui.configtab->Detach();
+  tag_debug_line_buffer.clear();
 }
 
 void MainWindow::on_syncButton_clicked()
