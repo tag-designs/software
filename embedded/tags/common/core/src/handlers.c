@@ -177,7 +177,7 @@ static void monitorStartSessionI(sysinterval_t timeout, vtfunc_t callback)
 
 bool isMonitorEnabled(void)
 {
-  return monitorIsAttached();
+  return MONCONNECTED || monitorIsAttached();
 }
 
 void monitorPostPendingEvents(void)
