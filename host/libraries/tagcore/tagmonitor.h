@@ -2,6 +2,7 @@
 #define TAGMON_H
 
 #include "linkadapt.h"
+#include "monitor.h"
 #include "tag.pb.h"
 
 struct TagMonitorStats
@@ -49,6 +50,14 @@ private:
   size_t MaxPacket() { return maxpacket; }
   bool DetectTargetFamily();
   bool ReadTargetRccCsr(uint32_t *addr, uint32_t *value);
+  bool AttachL4();
+  bool AttachU3();
+  bool CallU3(uint8_t operation, int32_t operand, uint32_t *result);
+  bool ReadMemWord(uint32_t addr, uint32_t *value);
+  bool WriteMemWord(uint32_t addr, uint32_t value);
+  bool ReadMonitorShared(monitor_shared_t &shared);
+  bool WriteMonitorSharedWord(size_t offset, uint32_t value);
+  void LogMonitorShared(const char *prefix, const monitor_shared_t &shared);
   char rpcbuf[1024*64];  // communication buffer 
 
   bool Call(uint8_t operation, int32_t operand, uint32_t *result);

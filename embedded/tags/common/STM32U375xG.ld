@@ -29,8 +29,10 @@ MEMORY
     flash5 (rx) : org = 0x00000000, len = 0
     flash6 (rx) : org = 0x00000000, len = 0
     flash7 (rx) : org = 0x00000000, len = 0
-    ram0   (wx) : org = 0x20000000, len = 256k  /* SRAM1+SRAM2 NS */
-    ram1   (wx) : org = 0x20000000, len = 192k  /* SRAM1 NS */
+    /* Reserved for host/tag monitor handoff. Not part of any C runtime
+       initialized RAM region; see MONITOR_SHARED_ADDR in monitor.h. */
+    ram0   (wx) : org = 0x20000040, len = 256k - 0x40  /* SRAM1+SRAM2 NS */
+    ram1   (wx) : org = 0x20000040, len = 192k - 0x40  /* SRAM1 NS */
     ram2   (wx) : org = 0x20030000, len = 64k   /* SRAM2 NS */
     ram3   (wx) : org = 0x00000000, len = 0
     ram4   (wx) : org = 0x30000000, len = 256k  /* SRAM1+SRAM2 secure alias */

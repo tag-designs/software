@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <chrono>
+#include <cstddef>
 #include <thread>
 
 #include <iostream>
@@ -153,6 +154,79 @@ static bool plausible_stm32_idcode(uint32_t idcode)
   return (device_id != 0U) && (device_id != 0xfffU);
 }
 
+static uint32_t monitor_command_word(uint8_t operation, int32_t operand)
+{
+  return ((uint32_t)operand << 8) | (operation & 0xffU);
+}
+
+static bool monitor_shared_any_nonzero(const monitor_shared_t &shared)
+{
+  return (shared.request != 0U) ||
+         (shared.abi_version != 0U) ||
+         (shared.debug_version != 0U) ||
+         (shared.flags != 0U) ||
+         (shared.buf_addr != 0U) ||
+         (shared.buf_size != 0U) ||
+         (shared.sha_addr != 0U) ||
+         (shared.command != 0U) ||
+         (shared.result != 0U) ||
+         (shared.status != 0U) ||
+         (shared.host_activity != 0U) ||
+         (shared.watchdog_ticks != 0U) ||
+         (shared.path_magic != 0U);
+}
+
+bool TagMonitor::ReadMemWord(uint32_t addr, uint32_t *value)
+{
+  return ReadMem32(addr, (uint8_t *)value, sizeof(*value));
+}
+
+bool TagMonitor::WriteMemWord(uint32_t addr, uint32_t value)
+{
+  return WriteMem32(addr, (uint8_t *)&value, sizeof(value));
+}
+
+bool TagMonitor::ReadMonitorShared(monitor_shared_t &shared)
+{
+  return ReadMem32(MONITOR_SHARED_ADDR, (uint8_t *)&shared, sizeof(shared));
+}
+
+bool TagMonitor::WriteMonitorSharedWord(size_t offset, uint32_t value)
+{
+  return WriteMemWord(MONITOR_SHARED_ADDR + (uint32_t)offset, value);
+}
+
+void TagMonitor::LogMonitorShared(const char *prefix,
+                                  const monitor_shared_t &shared)
+{
+  uint32_t raw[MONITOR_SHARED_SIZE / sizeof(uint32_t)] = {};
+  bool raw_ok = ReadMem32(MONITOR_SHARED_ADDR, (uint8_t *)raw, sizeof(raw));
+
+  log_error("%s fields: request=0x%x abi=%u debug=0x%x "
+            "flags=0x%x buf=0x%x size=%u sha=0x%x command=0x%x "
+            "result=0x%x status=0x%x heartbeat=0x%x watchdog_ticks=%u "
+            "path=0x%x",
+            prefix, shared.request, shared.abi_version,
+            shared.debug_version, shared.flags, shared.buf_addr,
+            shared.buf_size, shared.sha_addr, shared.command, shared.result,
+            shared.status, shared.host_activity, shared.watchdog_ticks,
+            shared.path_magic);
+
+  if (raw_ok)
+  {
+    log_error("%s raw: %08x %08x %08x %08x %08x %08x %08x %08x "
+              "%08x %08x %08x %08x %08x %08x %08x %08x",
+              prefix, raw[0], raw[1], raw[2], raw[3],
+              raw[4], raw[5], raw[6], raw[7],
+              raw[8], raw[9], raw[10], raw[11],
+              raw[12], raw[13], raw[14], raw[15]);
+  }
+  else
+  {
+    log_error("%s raw: shared block read failed", prefix);
+  }
+}
+
 bool TagMonitor::DetectTargetFamily()
 {
   uint32_t idcode = 0;
@@ -222,6 +296,9 @@ bool TagMonitor::ReadCoreRegister(uint32_t reg, uint32_t *value)
 
 bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 {
+  if (target_family == TargetFamily::STM32U3)
+    return CallU3(operation, operand, result);
+
   static const int TIMEOUT = 500;
   uint32_t demcr, dhcsr;
   int err;
@@ -518,41 +595,12 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
   return true;
 }
 
-bool TagMonitor::Attach(UsbDev usbdev)
+bool TagMonitor::AttachL4()
 {
-  int err;
   uint32_t demcr;
-  uint32_t debugval;
-  uint32_t resetvector;
-
-  if (IsAttached()) {
-    log_error("Already attached");
-    return false;
-  }
-
-  call_buf = 0;
-  maxpacket = 0;
-  memset(sha_str, 0, sizeof(sha_str));
-  version = 0;
-  target_family = TargetFamily::Unknown;
-  target_idcode = 0;
 
   do
   {
-    // connect to stlink
-
-    if (!LinkAdapt::Attach(usbdev))
-    {
-      log_error("Attach failed");
-      return false;
-    }
-
-    std::this_thread::sleep_for(MS(20));
-
-    DetectTargetFamily();
-    log_debug("Target family: %s idcode=0x%x",
-              target_family_name(target_family), target_idcode);
-
     // read control register
 
     if (!ReadDebug32(DEMCR, &demcr))
@@ -659,7 +707,326 @@ bool TagMonitor::Attach(UsbDev usbdev)
 
   // try detach to clean up
 
+  return false;
+}
+
+bool TagMonitor::AttachU3()
+{
+  static const int ATTACH_TIMEOUT_MS = 2000;
+  uint32_t demcr = 0;
+  uint32_t empty[MONITOR_SHARED_SIZE / sizeof(uint32_t)] = {};
+  monitor_shared_t shared = {};
+  monitor_shared_t last_nonzero_shared = {};
+  bool saw_nonzero_shared = false;
+
+  do
+  {
+    if (!ReadDebug32(DEMCR, &demcr))
+    {
+      log_error("U3 monitor attach failed: DEMCR read failed");
+      break;
+    }
+
+    if (!(WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN) &&
+          WriteDebug32(DEMCR,
+              ((demcr | VC_CORERESET) &
+                ~MON_EN & ~MON_REQ & ~MON_PEND))))
+    {
+      log_error("U3 monitor attach failed: debug setup failed");
+      break;
+    }
+
+    if (!AssertReset(true))
+    {
+      log_error("U3 monitor attach failed: reset release failed");
+      break;
+    }
+
+    uint32_t dhcsr = 0;
+    for (int i = 0; i < 100; i++)
+    {
+      if (ReadDebug32(DHCSR, &dhcsr) && (dhcsr & S_HALT))
+        break;
+      std::this_thread::sleep_for(MS(1));
+    }
+
+    if ((dhcsr & S_HALT) == 0U)
+    {
+      log_error("U3 monitor attach failed: target did not halt at reset vector dhcsr=0x%x",
+                dhcsr);
+      break;
+    }
+
+    if (!WriteMem32(MONITOR_SHARED_ADDR, (uint8_t *)&empty, sizeof(empty)) ||
+        !WriteMonitorSharedWord(offsetof(monitor_shared_t, request),
+                                MONITOR_REQUEST_MAGIC) ||
+        !WriteMemWord(MONITOR_SHARED_KICK_ICPR_ADDR,
+                      MONITOR_SHARED_KICK_MASK))
+    {
+      log_error("U3 monitor attach failed: shared request setup failed");
+      break;
+    }
+
+    if (ReadMonitorShared(shared))
+    {
+      log_debug("U3 monitor request written at reset vector request=0x%x "
+                "flags=0x%x status=0x%x dhcsr=0x%x",
+                shared.request, shared.flags, shared.status, dhcsr);
+    }
+    else
+    {
+      log_error("U3 monitor attach warning: reset-vector shared readback failed");
+    }
+
+    if (!WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN))
+    {
+      log_error("U3 monitor attach failed: resume failed");
+      break;
+    }
+
+    bool connected = false;
+    for (int i = 0; i < ATTACH_TIMEOUT_MS; i++)
+    {
+      WriteMonitorSharedWord(offsetof(monitor_shared_t, host_activity), 1U);
+      if (ReadMonitorShared(shared))
+      {
+        if (monitor_shared_any_nonzero(shared))
+        {
+          last_nonzero_shared = shared;
+          saw_nonzero_shared = true;
+        }
+        if ((shared.request == MONITOR_CONNECTED_MAGIC) &&
+            ((shared.flags & MONITOR_SHARED_FLAG_SESSION_READY) != 0U))
+        {
+          connected = true;
+          break;
+        }
+      }
+      std::this_thread::sleep_for(MS(1));
+    }
+
+    if (!connected)
+    {
+      uint32_t ispr = 0;
+      uint32_t dhcsr_snapshot = 0;
+      uint32_t demcr_snapshot = 0;
+      ReadMonitorShared(shared);
+      ReadMemWord(MONITOR_SHARED_KICK_ISPR_ADDR, &ispr);
+      ReadDebug32(DHCSR, &dhcsr_snapshot);
+      ReadDebug32(DEMCR, &demcr_snapshot);
+      log_error("U3 monitor attach timed out target=%s idcode=0x%x "
+                "request=0x%x flags=0x%x status=0x%x "
+                "heartbeat=0x%x watchdog_ticks=%u "
+                "dhcsr=0x%x demcr=0x%x ispr=0x%x",
+                target_family_name(target_family), target_idcode,
+                shared.request, shared.flags, shared.status,
+                shared.host_activity, shared.watchdog_ticks,
+                dhcsr_snapshot, demcr_snapshot, ispr);
+      LogMonitorShared("U3 monitor attach timeout shared", shared);
+      if (saw_nonzero_shared)
+        LogMonitorShared("U3 monitor attach last nonzero shared",
+                         last_nonzero_shared);
+      break;
+    }
+
+    if (shared.abi_version != MONITOR_SHARED_ABI_VERSION)
+    {
+      log_error("U3 monitor ABI mismatch host=%u target=%u",
+                MONITOR_SHARED_ABI_VERSION, shared.abi_version);
+      break;
+    }
+
+    version = shared.debug_version;
+    call_buf = shared.buf_addr;
+    maxpacket = shared.buf_size;
+
+    if ((version != DEBUGVERSION) || (call_buf == 0U) || (maxpacket == 0U) ||
+        (maxpacket > sizeof(rpcbuf)) || (shared.sha_addr == 0U))
+    {
+      log_error("U3 monitor metadata invalid version=0x%x buf=0x%x size=%zu sha=0x%x",
+                version, call_buf, maxpacket, shared.sha_addr);
+      break;
+    }
+
+    if (!ReadMem32(shared.sha_addr, (uint8_t *)sha_str, sizeof(sha_str)))
+    {
+      log_error("U3 monitor attach failed: SHA read failed");
+      break;
+    }
+
+    log_debug("U3 monitor attached version=0x%x buf=0x%x size=%zu sha=%s",
+              version, call_buf, maxpacket, sha_str);
+    return true;
+  } while (0);
+
+  call_buf = 0;
+  maxpacket = 0;
+  memset(sha_str, 0, sizeof(sha_str));
+  version = 0;
+  return false;
+}
+
+bool TagMonitor::Attach(UsbDev usbdev)
+{
+  if (IsAttached()) {
+    log_error("Already attached");
+    return false;
+  }
+
+  call_buf = 0;
+  maxpacket = 0;
+  memset(sha_str, 0, sizeof(sha_str));
+  version = 0;
+  target_family = TargetFamily::Unknown;
+  target_idcode = 0;
+
+  do
+  {
+    if (!LinkAdapt::Attach(usbdev))
+    {
+      log_error("Attach failed");
+      return false;
+    }
+
+    std::this_thread::sleep_for(MS(20));
+
+    DetectTargetFamily();
+    log_debug("Target family: %s idcode=0x%x",
+              target_family_name(target_family), target_idcode);
+
+    if (target_family == TargetFamily::STM32U3)
+    {
+      if (AttachU3())
+        return true;
+      LinkAdapt::Detach();
+      break;
+    }
+
+    if (AttachL4())
+      return true;
+
+    LinkAdapt::Detach();
+  } while (0);
+
   Detach();
+  return false;
+}
+
+bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
+{
+  static const int TIMEOUT_MS = 2500;
+  monitor_shared_t shared = {};
+
+  if (!IsAttached())
+  {
+    log_error("monitor not attached");
+    return false;
+  }
+
+  if (!ReadMonitorShared(shared))
+  {
+    log_error("U3 monitor shared read failed");
+    return false;
+  }
+
+  if ((operation != MONITORSTOP) &&
+      (shared.request != MONITOR_CONNECTED_MAGIC))
+  {
+    log_error("U3 monitor not connected request=0x%x status=0x%x",
+              shared.request, shared.status);
+    return false;
+  }
+
+  if ((operation != MONITORSTOP) &&
+      (shared.command != 0U || shared.status == MONITOR_STATUS_PENDING))
+  {
+    log_error("U3 monitor busy command=0x%x status=0x%x",
+              shared.command, shared.status);
+    return false;
+  }
+
+  const uint32_t command = monitor_command_word(operation, operand);
+  if (!WriteMonitorSharedWord(offsetof(monitor_shared_t, result), 0U) ||
+      !WriteMonitorSharedWord(offsetof(monitor_shared_t, status),
+                              MONITOR_STATUS_IDLE) ||
+      !WriteMonitorSharedWord(offsetof(monitor_shared_t, command), command) ||
+      !WriteMemWord(MONITOR_SHARED_KICK_ICPR_ADDR,
+                    MONITOR_SHARED_KICK_MASK) ||
+      !WriteMemWord(MONITOR_SHARED_KICK_ISPR_ADDR,
+                    MONITOR_SHARED_KICK_MASK))
+  {
+    log_error("U3 monitor kick failed op=%s(0x%x) operand=%d",
+              monitor_operation_name(operation), operation, operand);
+    return false;
+  }
+
+  for (int i = 0; i < TIMEOUT_MS; i++)
+  {
+    uint32_t status = 0;
+    if (ReadMemWord(MONITOR_SHARED_ADDR + offsetof(monitor_shared_t, status),
+                    &status))
+    {
+      if (status == MONITOR_STATUS_DONE)
+      {
+        if (result)
+        {
+          if (!ReadMemWord(MONITOR_SHARED_ADDR +
+                               offsetof(monitor_shared_t, result),
+                           result))
+          {
+            log_error("U3 monitor result read failed");
+            return false;
+          }
+        }
+        return true;
+      }
+
+      if (operation == MONITORSTOP)
+      {
+        monitor_shared_t stop_shared = {};
+        if (ReadMonitorShared(stop_shared) &&
+            (stop_shared.request == 0U) &&
+            (stop_shared.flags == 0U) &&
+            (stop_shared.command == 0U))
+        {
+          log_debug("U3 monitor stop observed detached state status=0x%x "
+                    "result=0x%x heartbeat=0x%x watchdog_ticks=%u",
+                    stop_shared.status, stop_shared.result,
+                    stop_shared.host_activity, stop_shared.watchdog_ticks);
+          if (result)
+            *result = 1U;
+          return true;
+        }
+      }
+
+      if ((status == MONITOR_STATUS_BUSY) ||
+          (status == MONITOR_STATUS_BAD_COMMAND) ||
+          (status == MONITOR_STATUS_NOT_ATTACHED))
+      {
+        log_error("U3 monitor request rejected op=%s(0x%x) operand=%d status=0x%x",
+                  monitor_operation_name(operation), operation, operand,
+                  status);
+        return false;
+      }
+    }
+    std::this_thread::sleep_for(MS(1));
+  }
+
+  uint32_t ispr = 0;
+  uint32_t iabr = 0;
+  uint32_t dhcsr_snapshot = 0;
+  uint32_t demcr_snapshot = 0;
+  ReadMonitorShared(shared);
+  ReadMemWord(MONITOR_SHARED_KICK_ISPR_ADDR, &ispr);
+  ReadMemWord(0xE000E304U, &iabr);
+  ReadDebug32(DHCSR, &dhcsr_snapshot);
+  ReadDebug32(DEMCR, &demcr_snapshot);
+  log_error("U3 monitor call timed out op=%s(0x%x) operand=%d "
+            "request=0x%x command=0x%x status=0x%x result=0x%x "
+            "flags=0x%x ispr=0x%x iabr=0x%x dhcsr=0x%x demcr=0x%x",
+            monitor_operation_name(operation), operation, operand,
+            shared.request, shared.command, shared.status, shared.result,
+            shared.flags, ispr, iabr, dhcsr_snapshot, demcr_snapshot);
   return false;
 }
 
@@ -678,12 +1045,33 @@ void TagMonitor::Detach()
     return;
   }
 
-  // Detach call to mon->handler
-
-  uint32_t stop_success = 0;
-  if (!Call(MONITORSTOP, 0, &stop_success) || !stop_success)
+  if (target_family == TargetFamily::STM32U3)
   {
-    log_error("Monitor Stop failed during detach");
+    uint32_t stop_success = 0;
+    const bool stop_ok = Call(MONITORSTOP, 0, &stop_success);
+    monitor_shared_t detached_shared = {};
+    if (ReadMonitorShared(detached_shared))
+    {
+      log_debug("U3 monitor after MONITORSTOP request=0x%x flags=0x%x "
+                "status=0x%x command=0x%x heartbeat=0x%x watchdog_ticks=%u "
+                "stop_ok=%u stop_success=%u",
+                detached_shared.request, detached_shared.flags,
+                detached_shared.status, detached_shared.command,
+                detached_shared.host_activity, detached_shared.watchdog_ticks,
+                stop_ok ? 1U : 0U, stop_success);
+    }
+    if (!stop_ok || !stop_success)
+    {
+      log_error("U3 Monitor Stop failed during detach");
+    }
+  }
+  else
+  {
+    uint32_t stop_success = 0;
+    if (!Call(MONITORSTOP, 0, &stop_success) || !stop_success)
+    {
+      log_error("Monitor Stop failed during detach");
+    }
   }
 
   // Clear debug register bits
@@ -709,6 +1097,12 @@ void TagMonitor::Detach()
   else
   {
     log_error("Monitor detach failed to read debug control register");
+  }
+
+  if (target_family == TargetFamily::STM32U3)
+  {
+    if (!WriteDebug32(DHCSR, DBGKEY))
+      log_error("U3 monitor detach failed to clear core debug enable");
   }
 
   // release usb

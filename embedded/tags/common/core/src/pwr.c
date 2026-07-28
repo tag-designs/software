@@ -234,7 +234,7 @@ void rtcOff(void)
 
 void godown(enum Sleep sleepmode)
 {
-  if (MONCONNECTED || (sleepmode == SLEEP)|| sleepmode == STOP1)
+  if (monitorIsAttached() || (sleepmode == SLEEP)|| sleepmode == STOP1)
   {
     return;
   }
@@ -338,7 +338,7 @@ void godown(enum Sleep sleepmode)
 
 void godown(enum Sleep sleepmode)
 {
-  if (MONCONNECTED || (sleepmode == SLEEP))
+  if (monitorIsAttached() || (sleepmode == SLEEP))
   {
     return;
   }

@@ -9,7 +9,7 @@
 void idle_enter(void);
 void idle_loop(void);
 void idle_leave(void);
-
+void idle_enable_wfi_sleep(void);
 
 
 

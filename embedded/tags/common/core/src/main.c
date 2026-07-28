@@ -25,6 +25,9 @@
 
 #include "config.h"
 
+void idle_enable_wfi_sleep(void) __attribute__((weak));
+void idle_enable_wfi_sleep(void) {}
+
 #ifndef TAG_DEBUG_MONITOR_PRIORITY
 #define TAG_DEBUG_MONITOR_PRIORITY 8U
 #endif
@@ -503,9 +506,11 @@ int main(void)
   rtcInitializedAtBoot = (RTC->ISR & RTC_ISR_INITS) != 0;
 #endif
 
+  monitorSharedEarlyInit();
   halInit();
   chSysInit();
   tpMain = chThdGetSelfX(); // global pointer to main thread
+  monitorSharedSessionStart();
   monitorPostPendingEvents();  // this uses the I version of chAddEvents -- why?
 
   // release the standby pullup/pulldown
@@ -565,9 +570,7 @@ int main(void)
     palSetLineMode(LINE_SWCLK, PAL_MODE_INPUT_ANALOG);
   }
 
-  // set debug monitor priority
-
-  NVIC_SetPriority(DebugMonitor_IRQn, 3);
+  idle_enable_wfi_sleep();
 
   eventmask_t pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
 

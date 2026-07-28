@@ -89,5 +89,5 @@ target_sources(tagcore
 target_include_directories(tagcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(tagcore PUBLIC proto)
-target_link_libraries(tagcore PRIVATE tag_monitor_interface)
+target_link_libraries(tagcore PUBLIC tag_monitor_interface)
 target_link_libraries(tagcore PRIVATE ${HOST_SQLITE_TARGET})
