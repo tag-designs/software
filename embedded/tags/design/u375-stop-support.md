@@ -1,330 +1,216 @@
-# STM32U375 Stop-Mode Support Notes
+# STM32U375 Stop-Mode Support
 
-This note scopes the work needed to make the U375 IMUTag variants spend idle
-collection time in Stop mode without losing sensor wakeups or ChibiOS timing.
-It is intentionally conservative: register names and wake behavior must be
-checked against the STM32U375 reference manual and the exact ChibiOS STM32U3
-port before implementation.
+This note describes the current U375 stop-mode design as implemented in the
+tag firmware. It is not a future work plan.
 
-## Goals
+The design has two separate low-power paths:
 
-- Let the acquisition thread block on the LSM6DSV16X FIFO watermark interrupt
-  instead of polling.
-- Let the idle thread enter Stop1 while all runnable threads are blocked.
-- Keep ChibiOS timeouts meaningful across Stop1, or explicitly avoid relying on
-  timeouts while the system timer is stopped.
-- Preserve the current U3 clock plan: MSIS for SYSCLK and MSIK for SPI/kernel
-  peripherals.
-- Treat the board LSE as a 1024 Hz source. Do not assume the usual 32768 Hz
-  watch crystal.
-- Treat SRAM1 run-time power-down as a later optimization, separate from Stop1.
+- Terminal standby entry through `godown(STANDBY)`.
+- Runtime idle stop/sleep selection through the shared `idlePowerMode` state.
 
-## Current U3 Assumptions
+Only targets with idle power-management hooks use `idlePowerMode` in practice.
+Targets without those hooks still build with the shared variable but ignore it.
 
-The current `IMUTagU3bmm350` configuration is the useful baseline:
+## Terminal Standby
 
-- `STM32_LSE_ENABLED TRUE`
-- `STM32_LSI_ENABLED FALSE`
-- `STM32_LPTIM1SEL RCC_CCIPR3_LPTIM1SEL_LSE`
-- `STM32_LPTIM2SEL RCC_CCIPR1_LPTIM2SEL_LSE`
-- `STM32_LPTIM34SEL RCC_CCIPR3_LPTIM34SEL_LSE`
-- `STM32_ST_USE_TIMER 2`
-- `STM32_STOPWUCK RCC_CFGR1_STOPWUCK_MSIS`
-- `STM32_STOPKERWUCK RCC_CFGR1_STOPKERWUCK_MSIK`
-- `USE_STOP1 1`
-- `TAG_STOP1_WAKE_USES_INTERRUPT 1`
+`godown()` in `embedded/tags/common/core/src/pwr.c` is intentionally a pure
+standby function. It returns unless both of these conditions are true:
 
-That means the existing ChibiOS system timer is still a regular timer, not a
-low-power timer. A regular timer can work for normal run/sleep, but it should
-not be assumed to keep time or wake the core from Stop1.
+- the requested sleep mode is `STANDBY`;
+- the monitor is not active or trying to attach.
 
-The non-negotiable clock constraint is that LSE is 1024 Hz on this hardware.
-That is suitable for RTC-style calendar/timekeeping, but it is a poor source
-for the ChibiOS system timer if we want normal timeout behavior and low compare
-latency. A Stop1-capable ChibiOS ST implementation should therefore move the
-chosen LPTIM34 clock source to LSI and enable LSI for that target.
-
-## Recommended Work Plan
-
-### 1. Make the LSM Interrupt the Collection Wait Primitive
-
-Use a binary semaphore or event source signaled from the LSM6 EXTI callback.
-The data-collection thread should wait on that primitive, then drain the FIFO
-when the watermark is available.
-
-Minimal shape:
+The monitor guard is `isMonitorEnabled()`. That predicate is deliberately
+broader than `monitorIsAttached()`:
 
 ```c
-static binary_semaphore_t imu_wtm_bsem;
-
-static void imu_wtm_cb(void *arg)
-{
-  (void)arg;
-  chSysLockFromISR();
-  chBSemSignalI(&imu_wtm_bsem);
-  chSysUnlockFromISR();
-}
-
-void imu_wtm_wait_init(void)
-{
-  chBSemObjectInit(&imu_wtm_bsem, true);
-  palSetLineCallback(LINE_WKUP1, imu_wtm_cb, NULL);
-  palEnableLineEvent(LINE_WKUP1, PAL_EVENT_MODE_RISING_EDGE);
-}
-
-msg_t imu_wtm_wait(sysinterval_t timeout)
-{
-  return chBSemWaitTimeout(&imu_wtm_bsem, timeout);
-}
+return MONCONNECTED || monitorIsAttached();
 ```
 
-Use `TIME_INFINITE` if the acquisition mode only needs sensor-driven wakeups.
-Use a finite timeout only after the system timer source is proven to run across
-Stop1.
+This matters on the STM32L4 monitor path. During the early attach/info phase,
+the host has set `VC_CORERESET` (`MONCONNECTED`) but has not yet completed
+`MONITORSTART`, so `monitorIsAttached()` is still false. Treating
+`MONCONNECTED` as monitor-enabled prevents L4 targets such as PresTag from
+entering standby while the host is fetching monitor metadata.
 
-### 2. Enter Stop1 Only From a Central Idle Path
+`godown()` no longer contains STOP0, STOP1, STOP2, or STM32U3-specific idle
+code. It prepares devices and standby pin pulls, configures wake sources,
+selects standby in `PWR->CR1`, sets `SLEEPDEEP`, and executes `WFI`.
 
-Do not scatter raw `__WFI()` snippets through application code. The idle path
-should be the only place that sets deep-sleep state, enters Stop1, and unwinds
-after wake.
+## Runtime Idle Power Mode
 
-The Stop1 entry path needs to:
-
-- Confirm no bus transfer, flash write/erase, debug monitor transaction, or
-  active log operation requires run-mode clocks.
-- Park SPI, I2C, USART, and GPIO pins using the existing bus/device sleep
-  policy helpers.
-- Configure the wake sources before setting `SLEEPDEEP`.
-- Select Stop1 in `PWR->CR1`.
-- Execute `__WFI()`.
-- Clear `SLEEPDEEP` after wake.
-- Re-run `stm32_clock_init()` if Stop1 exit changes SYSCLK or peripheral
-  kernel clocks.
-- Restore bus/device pin modes only when the owning driver opens a bus session.
-
-Avoid entering Stop1 while holding a ChibiOS system lock longer than required
-for the final sleep transition. The post-wake clock restore and device unwind
-must run unlocked unless a specific ChibiOS API requires otherwise.
-
-### 3. Decide How ChibiOS Time Advances in Stop1
-
-There are two viable approaches.
-
-Option A is the smallest first milestone: use Stop1 only for indefinite waits
-on the LSM EXTI wake source. Do not expect `chThdSleep*()` or
-`chBSemWaitTimeout()` deadlines to expire while the core is in Stop1. This is
-acceptable for a sensor-paced collection loop if all periodic work is tied to
-external sensor interrupts or RTC wakeups.
-
-Option B is the robust solution: provide a ChibiOS ST low-level driver backed
-by an LPTIM clocked from LSI. This makes kernel timeouts continue across Stop1
-without being limited by the board's 1024 Hz LSE source. Use LPTIM3 or LPTIM4
-through the U3 `STM32_LPTIM34SEL` clock selector so the RTC/LSE path can remain
-independent.
-
-For an LSI-backed 16-bit LPTIM ST driver:
+The shared runtime selector is:
 
 ```c
-#define HAL_ST_USE_TIMER_WIDTH              16
-#define ST_LLD_NUM_ALARMS                   1
-#define ST_LLD_HAS_PERIODIC_IRQ             FALSE
-
-#define CH_CFG_ST_RESOLUTION                16
-#define CH_CFG_ST_FREQUENCY                 8000
-#define CH_CFG_ST_TIMEDELTA                 2
+volatile enum Sleep idlePowerMode = SLEEP;
 ```
 
-The 8000 Hz frequency is the intended ChibiOS ST tick rate. The LSI source is
-nominally around 32 kHz, but it is not exact; choose the LPTIM prescaler and
-calibration policy so `CH_CFG_ST_FREQUENCY` matches the effective timer rate
-used by the driver. A 16-bit timer at 8000 Hz gives an 8.192 second hardware
-wrap interval. Use a different frequency only after checking ChibiOS tickless
-limits, timeout range, and LPTIM compare latency.
+It is declared in `core_runtime.h` and defined in `state_machine.c`. Valid
+runtime idle values are:
 
-### 4. Implement the LPTIM ST Driver Carefully
+- `SLEEP`
+- `STOP0`
+- `STOP1`
+- `STOP2`
 
-The custom ST LLD should live in project source, not in `ChibiOS/`, unless the
-submodule is intentionally being changed.
+`STOP0` was added to the existing `enum Sleep` so the same enum can carry both
+state-machine sleep requests and runtime idle power requests. `godown()` only
+acts on `STANDBY`; the stop values are consumed by target-specific idle hooks.
+
+## U3bmm350 Idle Hooks
+
+`IMUTagU3bmm350` is the current target that applies `idlePowerMode`.
+
+Its `chconf.h` wires the ChibiOS idle hooks to:
+
+- `idle_enter()`
+- `idle_loop()`
+- `idle_leave()`
+
+`idle_enter()` reads `idlePowerMode` and configures the core for the requested
+idle mode:
+
+- `SLEEP`: clear `SCB->SCR.SLEEPDEEP`;
+- `STOP0`: set `PWR->CR1.LPMS = 0` and set `SLEEPDEEP`;
+- `STOP1`: set `PWR->CR1.LPMS = LPMS_0` and set `SLEEPDEEP`;
+- `STOP2`: set `PWR->CR1.LPMS = LPMS_1` and set `SLEEPDEEP`.
+
+`idle_loop()` is deliberately small: if the firmware monitor is attached it
+avoids deep sleep; otherwise it executes the WFI sequence. Mode selection does
+not live in `idle_loop()`.
+
+`idle_leave()` clears the debug test lines and clears `SLEEPDEEP`.
+
+`LINE_LED1` is configured as analog by the board file, so the debug pulse in
+the idle power hook switches it to output push-pull before driving it high and
+returns it to analog on idle leave. `LINE_testpin` is already an output and is
+used to show that the idle loop reached WFI.
+
+## Normal Collection Idle
+
+The common main loop sets:
 
 ```c
-#define HAL_ST_USE_TIMER_WIDTH             16
-#define ST_LLD_NUM_ALARMS                  1
-#define ST_LLD_HAS_PERIODIC_IRQ            FALSE
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void st_lld_init(void);
-  bool st_lld_is_alarm_active(void);
-  systime_t st_lld_get_counter(void);
-  void st_lld_start_alarm(systime_t time);
-  void st_lld_stop_alarm(void);
-#ifdef __cplusplus
-}
-#endif
+idlePowerMode = STOP1;
+pending_events = chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
+idlePowerMode = SLEEP;
 ```
 
-Implementation checkpoints:
+Only targets with idle hooks act on this. On `IMUTagU3bmm350`, this means the
+idle thread can enter STOP1 while the main thread is blocked waiting for
+monitor or hardware events.
 
-- Use the STM32U3 clock-source symbol shape. For LPTIM3/4 on this target that
-  is `STM32_LPTIM34SEL`, not the STM32L-style `STM32_LPTIM3SEL`.
-- Enable LSI and route `STM32_LPTIM34SEL` to the U3 LSI selector for the
-  selected system-timer LPTIM. Keep any RTC-specific LSE users separate.
-- Enable the selected LPTIM peripheral clock and reset it through ChibiOS/RCC
-  helpers if the port provides them.
-- If Stop1 wake requires autonomous peripheral clock requests on STM32U3,
-  verify the exact RCC register and bit name before using it. Do not assume
-  `RCC->SRDAMR |= RCC_SRDAMR_LPTIM3AMEN` without checking the U375 header.
-- Configure ARR after enabling the LPTIM, then wait for `ARROK` after the
-  write.
-- Write CMP, then wait for `CMPOK` after the write.
-- Clear stale compare flags before enabling `CMPMIE`.
-- Handle compare values that are too close to the current counter; schedule at
-  least `CH_CFG_ST_TIMEDELTA` ticks in the future.
-- Enable the matching NVIC vector with `STM32_ST_IRQ_PRIORITY`.
-- In the ISR, clear the LPTIM compare flag and call `chSysTimerHandlerI()`
-  while locked from ISR.
+The wake model is event-driven. The IMU FIFO watermark and other hardware
+events are expected to wake the main thread through the existing event path.
 
-Skeleton:
+## Short DMA/Driver Waits
+
+Some SPI transfers are short enough that going all the way to STOP1 around the
+blocking wait is not useful or safe during bring-up. The current design uses
+STOP0 as the temporary idle mode around selected synchronous SPI driver waits.
+
+### Flash Program Payload Writes
+
+`tagStorageSpiBlockWrite()` in `storage_spi.h` brackets long flash payload
+writes:
 
 ```c
-void st_lld_init(void)
-{
-  /* Enable/reset selected LPTIM clock here. */
-
-  LPTIM3->IER = 0;
-  LPTIM3->ICR = 0xFFFFFFFFU;
-  LPTIM3->CFGR = LPTIM_CFGR_PRESC_1; /* LSI-derived, target 8000 Hz ST. */
-  LPTIM3->CR = LPTIM_CR_ENABLE;
-
-  LPTIM3->ARR = 0xFFFFU;
-  while ((LPTIM3->ISR & LPTIM_ISR_ARROK) == 0U) {
-  }
-  LPTIM3->ICR = LPTIM_ICR_ARROKCF;
-
-  nvicEnableVector(STM32_LPTIM3_NUMBER, STM32_ST_IRQ_PRIORITY);
-  LPTIM3->CR |= LPTIM_CR_CNTSTRT;
-}
-
-bool st_lld_is_alarm_active(void)
-{
-  return (LPTIM3->IER & LPTIM_IER_CMPMIE) != 0U;
-}
-
-systime_t st_lld_get_counter(void)
-{
-  return (systime_t)LPTIM3->CNT;
-}
-
-void st_lld_start_alarm(systime_t time)
-{
-  LPTIM3->IER &= ~LPTIM_IER_CMPMIE;
-  LPTIM3->ICR = LPTIM_ICR_CMPMCF;
-  LPTIM3->CMP = (uint32_t)time;
-  while ((LPTIM3->ISR & LPTIM_ISR_CMPOK) == 0U) {
-  }
-  LPTIM3->ICR = LPTIM_ICR_CMPOKCF;
-  LPTIM3->IER |= LPTIM_IER_CMPMIE;
-}
-
-void st_lld_stop_alarm(void)
-{
-  LPTIM3->IER &= ~LPTIM_IER_CMPMIE;
-}
-
-OSAL_IRQ_HANDLER(STM32_LPTIM3_HANDLER)
-{
-  OSAL_IRQ_PROLOGUE();
-  if ((LPTIM3->ISR & LPTIM_ISR_CMPM) != 0U) {
-    LPTIM3->ICR = LPTIM_ICR_CMPMCF;
-    chSysLockFromISR();
-    chSysTimerHandlerI();
-    chSysUnlockFromISR();
-  }
-  OSAL_IRQ_EPILOGUE();
-}
+saved_idle_power_mode = idlePowerMode;
+idlePowerMode = STOP0;
+ok = tagSpiWrite(device, buf, n);
+idlePowerMode = saved_idle_power_mode;
 ```
 
-The EXTI wake line for LPTIM3 must be verified before coding. If the wake line
-is above 31, it will not belong in `EXTI->IMR1`; use the register and bit from
-the STM32U375 header/reference manual.
+Command, address, write-enable, and status-poll transactions remain on the
+normal path. The STOP0 bracket covers only the bulk payload phase, such as
+MX25U page-program data or GD5F program-cache data.
 
-## Peripheral State in Stop1
+### SPI Reads
 
-Do not keep SPI, I2C, or GPDMA active through Stop1 for the first milestone.
-The safer policy is:
+The ChibiOS SPI backend brackets `spiReceive()` in `tagSpiRead()`:
 
-- Finish any active transfer before idle can enter Stop1.
-- Deselect SPI devices and park bus pins.
-- Keep sensor power rails enabled only for devices that must keep sampling.
-- Keep the LSM interrupt pin configured as an EXTI wake source.
-- Reopen buses normally after wake through existing driver begin/end helpers.
-
-Only consider autonomous SPI/I2C/DMA operation after the simple Stop1 wake path
-is stable and measured.
-
-## Debugger Behavior
-
-When a debugger is attached, either skip Stop1 or enable the STM32 debug-in-stop
-bits intentionally. Guard any debug behavior with `CoreDebug->DHCSR` so release
-firmware does not keep debug support powered accidentally.
-
-The debug path should be explicit because keeping debug active in Stop mode can
-hide wake/clock bugs and changes current consumption.
-
-## Clock Cautions
-
-Keep the U375 SYSCLK at or below the current 24 MHz MSIS plan until Stop1 wake
-and clock restore are measured. The target currently uses `STM32_STOPWUCK` for
-MSIS wake and `STM32_STOPKERWUCK` for MSIK kernel clocks; changing those should
-be treated as a separate clock-tree experiment.
-
-After every Stop1 wake, verify:
-
-- `SystemCoreClock`
-- SPI1 kernel clock
-- I2C kernel clock
-- ChibiOS timebase
-- RTC/LSE state
-- LPTIM34/LSI state
-- LSM FIFO interrupt behavior
-
-## SRAM1 Power-Down
-
-SRAM1 power-down is a separate, later optimization. Do not combine it with the
-first Stop1 implementation.
-
-Before setting `PWR_CR1_SRAM1PD` in run mode, prove from the linker map that no
-live section is in SRAM1:
-
-- vector table, if relocated
-- main stack and process stacks
-- ChibiOS thread working areas
-- heap/core allocator pools
-- `.data`, `.bss`, `.noinit`, and retained diagnostic buffers
-- DMA buffers
-
-If all live RAM moves to SRAM2, then a linker-memory change similar to this may
-be appropriate after verifying the STM32U375 memory map:
-
-```ld
-ram0 (xrw) : ORIGIN = 0x20030000, LENGTH = 64K
-ram1 (xrw) : ORIGIN = 0x00000000, LENGTH = 0
+```c
+saved_idle_power_mode = idlePowerMode;
+idlePowerMode = STOP0;
+result = spiReceive(driver, len, buf);
+idlePowerMode = saved_idle_power_mode;
 ```
 
-Stop-mode SRAM page retention uses different bits from run-mode SRAM1
-power-down. Treat `PWR_CR1_SRAM1PD` and the `PWR_CR2_SRAM1PDSx` page controls
-as separate features.
+This places the policy at the SPI driver level instead of in individual sensor
+drivers. The IMU FIFO read uses the ordinary register-block path; when that
+path reaches `tagSpiRead()`, the receive wait can idle in STOP0.
 
-## Validation Checklist
+Small register transactions generally remain on the polled path and do not
+change `idlePowerMode`.
 
-1. Build the U375 target with no low-power changes and record baseline current.
-2. Confirm the LSM EXTI callback wakes a blocked thread in normal sleep.
-3. Enter Stop1 only on an indefinite LSM wait; verify wake and FIFO drain.
-4. Verify clocks after wake with SPI flash, I2C sensors, and USART/monitor.
-5. Measure current with sensor rails on and buses parked.
-6. Add the LPTIM ST driver and verify `chThdSleepMilliseconds()` advances
-   correctly across Stop1.
-7. Verify `chBSemWaitTimeout()` wakes from timeout with no sensor interrupt.
-8. Run long collection at each supported IMU ODR and check sample gaps.
-9. Only after Stop1 is stable, evaluate SRAM1 power-down.
+## What Is Not Implemented
+
+The current design does not provide a ChibiOS system timer backed by LPTIM.
+The normal system timer is still the configured ChibiOS timer for the target.
+Do not assume arbitrary ChibiOS timeouts continue to advance while the core is
+in STOP1.
+
+There is also no general peripheral parking framework for runtime STOP entry.
+The implemented runtime path relies on the owning drivers to open and close bus
+sessions normally. Terminal standby still uses the device standby hooks.
+
+Autonomous SPI/I2C/DMA operation through STOP modes is not treated as a shared
+capability. The current STOP0 use is limited to allowing the idle thread to
+sleep while synchronous SPI waits are blocked in the driver.
+
+SRAM1 power-down is not part of this design.
+
+## Debug And Monitor Behavior
+
+Firmware monitor attachment must prevent terminal standby. The shared predicate
+uses both:
+
+- `MONCONNECTED`: host has asserted the vector-catch attach hint;
+- `monitorIsAttached()`: target monitor session is active.
+
+This preserves the STM32L4 attach sequence while supporting the STM32U3 shared
+memory monitor path.
+
+Debugger attachment alone is not the same as firmware monitor attachment.
+During ordinary debugger use, `monitorIsAttached()` may be false. Debug pins or
+logic-analyzer lines used in `power_modes.c` are only bring-up aids and are not
+part of the low-power contract.
+
+## Current Target Split
+
+`IMUTagU3bmm350`:
+
+- Uses the U375 board and STM32U3 runtime.
+- Installs idle hooks.
+- Applies `idlePowerMode` in `power_modes.c`.
+- Uses STOP1 for ordinary blocked idle.
+- Uses STOP0 around selected SPI driver waits.
+
+`IMUTagU375`:
+
+- Shares the STM32U3 core support and build settings.
+- Does not currently install the same `power_modes.c` idle hook implementation.
+- Therefore sees the shared `idlePowerMode` variable but does not act on it
+  unless equivalent hooks are added.
+
+STM32L4 targets such as `PresTag`:
+
+- Ignore `idlePowerMode` unless they add their own idle hooks.
+- Continue to use `godown(STANDBY)` for terminal standby.
+- Depend on `MONCONNECTED || monitorIsAttached()` to keep standby out of the
+  monitor attach path.
+
+## Validation Notes
+
+The implementation has been build-checked on:
+
+- `IMUTagU3bmm350`
+- `IMUTagU375`
+- `PresTag`
+
+Hardware validation should focus on:
+
+- PresTag monitor attach, especially early `TAG_MONITORINFO` calls;
+- U3bmm350 idle STOP1 entry and wake from hardware events;
+- flash writes with STOP0 around the payload transfer;
+- LSM6DSV16X FIFO reads with STOP0 around `spiReceive()`;
+- current draw with debug test lines removed or disabled.

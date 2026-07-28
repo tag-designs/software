@@ -12,8 +12,8 @@
  * STM32U3 shared-memory monitor ABI.
  *
  * Host and firmware both include this header, so keep every field that crosses
- * the SWD boundary here. The full design and attach sequence are documented in
- * embedded/tags/design/monitor_interface_u375.md.
+ * the SWD boundary here. See embedded/tags/design/monitor_interface.md for the
+ * L4 and U3 monitor transports.
  *
  * The block lives in a reserved hole at the bottom of U3 SRAM. Firmware must
  * keep that address out of normal .data/.bss/noinit ownership, and host code
