@@ -20,9 +20,10 @@
  *
  * @details Initializes USB CDC/bulk endpoints, bitbang/SPI-assisted SWD
  *          control, target reset/direction GPIOs, and the local green status
- *          LED. The status LED uses TIM2 channel 4 as a high-frequency PWM
- *          brightness carrier, while a ChibiOS virtual timer gates the
- *          channel on and off for the visible blink envelope.
+ *          LED. The status LED flashes only while the STLink debug session is
+ *          open. It uses TIM2 channel 4 as a high-frequency PWM brightness
+ *          carrier, while a ChibiOS virtual timer gates the channel on and
+ *          off for the visible blink envelope.
  */
 
 #include "ch.h"
@@ -34,6 +35,7 @@
 
 extern SerialUSBDriver SDU1;
 extern const SerialUSBConfig serusbcfg;
+extern bool stlink_open;
 
 volatile uint32_t vlipo100 = 180;
 
@@ -74,8 +76,14 @@ uint8_t bulkbuf[64];
  */
 #define LED_GREEN_BLINK_OFF_MS 750U
 
+/**
+ * @def     LED_GREEN_STLINK_CLOSED_POLL_MS
+ * @brief   Timer polling interval while no STLink session is open.
+ */
+#define LED_GREEN_STLINK_CLOSED_POLL_MS 100U
+
 static virtual_timer_t led_green_blink_timer; ///< One-shot timer that gates the visible LED blink.
-static bool led_green_blink_enabled = true;   ///< True while TIM2 channel 4 is enabled.
+static bool led_green_blink_enabled = false;  ///< True while TIM2 channel 4 is enabled.
 
 /**
  * @brief   TIM2 PWM configuration for the green status LED carrier.
@@ -99,13 +107,40 @@ static const PWMConfig led_green_pwm_config = {
 };
 
 /**
+ * @brief   Enables or disables the green LED PWM carrier from locked context.
+ *
+ * @param[in] enabled   true to drive TIM2 channel 4 at the configured
+ *                      brightness duty, false to force the LED off.
+ *
+ * @pre     TIM2 PWM must have been started with @c pwmStart().
+ * @pre     Caller must hold the ChibiOS system lock.
+ * @post    @ref led_green_blink_enabled matches @p enabled.
+ */
+static void ledGreenSetPwmI(bool enabled)
+{
+  if (enabled)
+  {
+    pwmEnableChannelI(&PWMD2, 3,
+                      PWM_PERCENTAGE_TO_WIDTH(&PWMD2,
+                                              LED_GREEN_PWM_DUTY_PERCENT));
+  }
+  else
+  {
+    pwmDisableChannelI(&PWMD2, 3);
+  }
+  led_green_blink_enabled = enabled;
+}
+
+/**
  * @brief   Toggles the visible green LED blink gate.
  *
  * @details Runs from the ChibiOS virtual timer callback path. The callback
- *          alternates between disabling TIM2 channel 4 for the off interval
- *          and re-enabling it at @ref LED_GREEN_PWM_DUTY_PERCENT for the on
- *          interval. The PWM carrier keeps the enabled LED dim; the virtual
- *          timer controls only the human-visible blink envelope.
+ *          keeps TIM2 channel 4 disabled while @c stlink_open is false. Once
+ *          the STLink session is open, it alternates between disabling the
+ *          channel for the off interval and re-enabling it at
+ *          @ref LED_GREEN_PWM_DUTY_PERCENT for the on interval. The PWM
+ *          carrier keeps the enabled LED dim; the virtual timer controls only
+ *          the human-visible blink envelope.
  *
  * @param[in] vtp   Virtual timer instance that fired. The callback rearms the
  *                  module-global timer and does not otherwise use @p vtp.
@@ -124,19 +159,25 @@ static void ledGreenBlinkTimer(virtual_timer_t *vtp, void *arg)
   (void)arg;
 
   chSysLockFromISR();
+  if (!stlink_open)
+  {
+    ledGreenSetPwmI(false);
+    chVTSetI(&led_green_blink_timer,
+             TIME_MS2I(LED_GREEN_STLINK_CLOSED_POLL_MS),
+             ledGreenBlinkTimer, NULL);
+    chSysUnlockFromISR();
+    return;
+  }
+
   if (led_green_blink_enabled)
   {
-    pwmDisableChannelI(&PWMD2, 3);
-    led_green_blink_enabled = false;
+    ledGreenSetPwmI(false);
     chVTSetI(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_OFF_MS),
              ledGreenBlinkTimer, NULL);
   }
   else
   {
-    pwmEnableChannelI(&PWMD2, 3,
-                      PWM_PERCENTAGE_TO_WIDTH(&PWMD2,
-                                              LED_GREEN_PWM_DUTY_PERCENT));
-    led_green_blink_enabled = true;
+    ledGreenSetPwmI(true);
     chVTSetI(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_ON_MS),
              ledGreenBlinkTimer, NULL);
   }
@@ -146,23 +187,23 @@ static void ledGreenBlinkTimer(virtual_timer_t *vtp, void *arg)
 /**
  * @brief   Starts the dimmed green status LED blink.
  *
- * @details Starts TIM2 PWM, enables channel 4 at the configured brightness,
- *          initializes the virtual timer used for the visible blink envelope,
- *          and arms the first on interval. Must be called after @c chSysInit()
- *          so the PWM driver and virtual timer services are available.
+ * @details Starts TIM2 PWM, leaves channel 4 off until @c stlink_open is
+ *          true, initializes the virtual timer used for the visible blink
+ *          envelope, and arms the closed-session poll interval. Must be called
+ *          after @c chSysInit() so the PWM driver and virtual timer services
+ *          are available.
  *
  * @pre     Board initialization must have configured PA3 as TIM2_CH4 AF1.
- * @post    The green LED is blinking with the configured carrier duty and
- *          on/off timing.
+ * @post    The green LED timer is armed; the LED remains off until
+ *          @c stlink_open becomes true.
  */
 static void ledGreenStart(void)
 {
   pwmStart(&PWMD2, &led_green_pwm_config);
   chVTObjectInit(&led_green_blink_timer);
-  pwmEnableChannel(&PWMD2, 3,
-                   PWM_PERCENTAGE_TO_WIDTH(&PWMD2,
-                                           LED_GREEN_PWM_DUTY_PERCENT));
-  chVTSet(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_ON_MS),
+  pwmDisableChannel(&PWMD2, 3);
+  chVTSet(&led_green_blink_timer,
+          TIME_MS2I(LED_GREEN_STLINK_CLOSED_POLL_MS),
           ledGreenBlinkTimer, NULL);
 }
 
