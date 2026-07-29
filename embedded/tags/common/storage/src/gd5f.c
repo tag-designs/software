@@ -35,6 +35,9 @@
 #define GD5F_STATUS_WEL              0x02U
 #define GD5F_STATUS_E_FAIL           0x04U
 #define GD5F_STATUS_P_FAIL           0x08U
+#define GD5F_STATUS_ECC_MASK         0x30U
+#define GD5F_STATUS_ECC_CORRECTED    0x10U
+#define GD5F_STATUS_ECC_UNCORRECTABLE 0x20U
 
 #ifndef GD5F_ID_MANUFACTURER
 #define GD5F_ID_MANUFACTURER         0xC8U
@@ -275,20 +278,52 @@ static int gd5fProbe(const TagStorageDevice *dev)
  */
 /**
  * @brief Read bytes from one physical NAND page and column.
+ *
+ * @param[in] dev Storage device descriptor for the NAND.
+ * @param[in] physical_page Physical page index to move into the chip cache.
+ * @param[in] column Byte column inside the cached page.
+ * @param[out] buf Destination for the requested byte range.
+ * @param[in] len Number of bytes to read from the cached page.
+ * @return Page read status, including ECC state reported by the chip.
  */
-static bool gd5fReadPhysicalPage(const TagStorageDevice *dev,
-                                 uint32_t physical_page, uint16_t column,
-                                 uint8_t *buf, uint32_t len)
+static gd5f_page_read_result_t gd5fReadPhysicalPageColumn(
+    const TagStorageDevice *dev, uint32_t physical_page, uint16_t column,
+    uint8_t *buf, uint32_t len)
 {
   uint8_t status;
 
   if (!gd5fRowCommand(tagStorageSpiDevice(dev),
                       GD5F_CMD_PAGE_READ,
                       gd5fPageToRow(physical_page)))
-    return false;
+    return GD5F_PAGE_READ_ERROR;
   if (!gd5fWaitReady(dev, GD5F_READ_POLL_LIMIT, &status))
-    return false;
-  return gd5fColumnRead(tagStorageSpiDevice(dev), column, buf, len);
+    return GD5F_PAGE_READ_ERROR;
+  if ((status & GD5F_STATUS_ECC_MASK) == GD5F_STATUS_ECC_UNCORRECTABLE)
+    return GD5F_PAGE_READ_ECC_UNCORRECTABLE;
+  if (!gd5fColumnRead(tagStorageSpiDevice(dev), column, buf, len))
+    return GD5F_PAGE_READ_ERROR;
+  if ((status & GD5F_STATUS_ECC_MASK) == GD5F_STATUS_ECC_CORRECTED)
+    return GD5F_PAGE_READ_ECC_CORRECTED;
+  return GD5F_PAGE_READ_OK;
+}
+
+/**
+ * @brief Read a physical NAND page from column zero.
+ *
+ * @param[in] dev Storage device descriptor for the NAND.
+ * @param[in] physical_page Physical page index to read.
+ * @param[out] buf Destination for the requested prefix of the page.
+ * @param[in] len Number of bytes to read. Must not exceed GD5F_PAGE_SIZE.
+ * @return Read status including ECC state, bounds failures, and bus errors.
+ */
+gd5f_page_read_result_t gd5fReadPhysicalPage(
+    const TagStorageDevice *dev, uint32_t physical_page, uint8_t *buf,
+    uint32_t len)
+{
+  if (buf == NULL || len > GD5F_PAGE_SIZE ||
+      physical_page >= (GD5F_PHYSICAL_BLOCK_COUNT * GD5F_PAGES_PER_BLOCK))
+    return GD5F_PAGE_READ_ERROR;
+  return gd5fReadPhysicalPageColumn(dev, physical_page, 0U, buf, len);
 }
 /** @} */
 
@@ -315,9 +350,12 @@ static bool gd5fReadBadBlockMark(const TagStorageDevice *dev,
       page_in_block >= GD5F_BAD_BLOCK_MARK_PAGES ||
       page_in_block >= GD5F_PAGES_PER_BLOCK)
     return false;
-  return gd5fReadPhysicalPage(dev, physical_page,
-                              GD5F_BAD_BLOCK_MARK_COLUMN,
-                              mark, 1U);
+  gd5f_page_read_result_t result =
+      gd5fReadPhysicalPageColumn(dev, physical_page,
+                                 GD5F_BAD_BLOCK_MARK_COLUMN,
+                                 mark, 1U);
+  return result == GD5F_PAGE_READ_OK ||
+         result == GD5F_PAGE_READ_ECC_CORRECTED;
 }
 
 /**
@@ -461,14 +499,23 @@ static bool gd5fEnsureLogicalMap(void)
 
 /**
  * @brief Convert a logical page to a physical page through the flat map.
+ *
+ * @param[in] logical_page Logical page index in the bad-block-free address
+ *                         space exposed to higher layers.
+ * @param[out] physical_page Physical NAND page selected by the map.
+ * @return true when the map is present, valid, and covers @p logical_page.
  */
-static bool gd5fMapLogicalPage(uint32_t logical_page,
-                               uint32_t *physical_page)
+bool gd5fMapLogicalPage(uint32_t logical_page,
+                        uint32_t *physical_page)
 {
   uint32_t logical_block = logical_page / GD5F_PAGES_PER_BLOCK;
   uint32_t page_in_block = logical_page % GD5F_PAGES_PER_BLOCK;
   uint16_t physical_block;
 
+  if (physical_page == NULL)
+    return false;
+  if (!gd5fEnsureLogicalMap())
+    return false;
   if (logical_block >= GD5F_LOGICAL_BLOCK_COUNT)
     return false;
 
@@ -479,6 +526,27 @@ static bool gd5fMapLogicalPage(uint32_t logical_page,
   *physical_page = ((uint32_t)physical_block * GD5F_PAGES_PER_BLOCK) +
                    page_in_block;
   return true;
+}
+
+/**
+ * @brief Map and read a logical NAND page from column zero.
+ *
+ * @param[in] dev Storage device descriptor for the NAND.
+ * @param[in] logical_page Logical page index to read.
+ * @param[out] buf Destination for the requested prefix of the page.
+ * @param[in] len Number of bytes to read. Must not exceed GD5F_PAGE_SIZE.
+ * @return Read status including ECC state or GD5F_PAGE_READ_ERROR on mapping
+ *         failure.
+ */
+gd5f_page_read_result_t gd5fReadLogicalPage(
+    const TagStorageDevice *dev, uint32_t logical_page, uint8_t *buf,
+    uint32_t len)
+{
+  uint32_t physical_page;
+
+  if (!gd5fMapLogicalPage(logical_page, &physical_page))
+    return GD5F_PAGE_READ_ERROR;
+  return gd5fReadPhysicalPage(dev, physical_page, buf, len);
 }
 
 /**
@@ -582,7 +650,8 @@ static void gd5fRead(const TagStorageDevice *dev, uint32_t address,
       bytes = (uint32_t)num;
     if (!gd5fMapLogicalPage(logical_page, &physical_page))
       return;
-    if (!gd5fReadPhysicalPage(dev, physical_page, column, buf, bytes))
+    if (gd5fReadPhysicalPageColumn(dev, physical_page, column, buf, bytes) >=
+        GD5F_PAGE_READ_ECC_UNCORRECTABLE)
       return;
 
     address += bytes;

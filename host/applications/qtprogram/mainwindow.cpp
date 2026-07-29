@@ -141,7 +141,7 @@ int MainWindow::eraseSectorMaximum(const Status &status) const
 
   if (tag_type == IMUTAG)
     return roundedSectorCount(
-        static_cast<qint64>(status.internal_data_count()) * kImuDataLogPageBytes,
+        static_cast<qint64>(status.external_data_count()) * kImuDataLogPageBytes,
         sector_size);
 
   return roundedSectorCount(external_flash_size, sector_size);

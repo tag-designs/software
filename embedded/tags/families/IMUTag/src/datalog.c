@@ -7,11 +7,19 @@
 
 #include "app.h"
 #include "datalog.h"
+#include "debug_log.h"
 #include "flash_internal.h"
 #include <string.h>
 #include <tag.pb.h>
 #include "devices.h"
 #include "persistent.h"
+
+#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#include "storage_gd5f.h"
+#define IMUTAG_NAND_CHECKPOINTS 1
+#else
+#define IMUTAG_NAND_CHECKPOINTS 0
+#endif
 
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
@@ -53,13 +61,12 @@ static uint32_t dirtyExternalSectors(void)
   const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
   const uint32_t sector_count = tagStorageSectorCount(TAG_EXTERNAL_FLASH);
   /*
-   * Reset calls restoreLog() before eraseExternal(), so pState->pages is the
-   * count of valid internal headers. For IMUTag each valid header owns one
-   * committed external page image. Incremental page writes can leave one
-   * uncommitted page partially programmed, so erase one extra page span when
-   * converting headers to dirty sectors.
+   * Reset calls restoreLog() before eraseExternal(), so pState->external_blocks
+   * is the recovered external page cursor. Incremental page writes can leave
+   * one uncommitted page partially programmed, so erase one extra page span
+   * when converting pages to dirty sectors.
    */
-  const uint64_t dirty_bytes = ((uint64_t)pState->pages + 1U) *
+  const uint64_t dirty_bytes = ((uint64_t)pState->external_blocks + 1U) *
                                (uint64_t)databuf_size;
   uint32_t dirty_sectors;
 
@@ -74,22 +81,65 @@ static uint32_t dirtyExternalSectors(void)
   return dirty_sectors;
 }
 
-static bool readDataHeader(int index, t_DataHeader *header)
+/**
+ * @brief Read one raw internal header/checkpoint slot from STM32 flash.
+ *
+ * @param[in] index Internal header slot index.
+ * @param[out] slot Destination for the complete internal row.
+ * @return true when the slot address is inside the persistent header region
+ *         and the STM32 flash read passes ECC validation.
+ */
+static bool readInternalHeader(int index, t_InternalDataHeader *slot)
 {
   uint32_t end = (uint32_t)&__persistent_end__;
 
-  if (index < 0)
+  if (index < 0 || slot == NULL)
     return false;
 
   uint32_t address = (uint32_t)&vddHeader[index];
   if ((address + sizeof(vddHeader[index])) > end)
     return false;
 
+  return FLASH_Read_Checked(&vddHeader[index], slot, sizeof(*slot)) == 0;
+}
+
+#if !IMUTAG_NAND_CHECKPOINTS
+/**
+ * @brief Read one legacy per-page data header from the internal header stream.
+ *
+ * @param[in] index Internal header slot index.
+ * @param[out] header Destination for the extracted page header.
+ * @return true when the slot can be read and converted to a t_DataHeader.
+ */
+static bool readDataHeader(int index, t_DataHeader *header)
+{
+  t_InternalDataHeader slot;
+
+  if (header == NULL)
+    return false;
+  if (!readInternalHeader(index, &slot))
+    return false;
 #if IMUTAG_STM32U3_FLASH
-  return FLASH_Read_Checked(&vddHeader[index].header, header,
-                            sizeof(*header)) == 0;
+  *header = slot.header;
 #else
-  return FLASH_Read_Checked(&vddHeader[index], header, sizeof(*header)) == 0;
+  *header = slot;
+#endif
+  return true;
+}
+#endif
+
+/**
+ * @brief Test whether an internal header slot is still in the erased state.
+ *
+ * @param[in] slot Internal header row previously read from STM32 flash.
+ * @return true when the slot is absent or its embedded epoch is erased.
+ */
+static bool internalHeaderErased(const t_InternalDataHeader *slot)
+{
+#if IMUTAG_STM32U3_FLASH
+  return slot == NULL || slot->header.epoch == -1;
+#else
+  return slot == NULL || slot->epoch == -1;
 #endif
 }
 
@@ -172,28 +222,230 @@ int externalFlashSectorsErased(void)
   return sectors_erased;
 }
 
+/**
+ * @brief Report erase progress denominator for monitor polling.
+ *
+ * @return Number of external sectors expected during erase, plus one so zero
+ *         remains distinguishable from an unknown or unavailable total.
+ */
 int externalFlashSectorsToErasePlusOne(void)
 {
   return (int)dirtyExternalSectors() + 1;
 }
 
 /**
+ * @brief Report whether the current external page starts a checkpoint group.
+ *
+ * @details NAND-backed IMUTag variants use sparse STM32 internal checkpoints:
+ *          one checkpoint covers IMUTAG_CHECKPOINT_PAGES external NAND pages.
+ *          If a reset occurs after a checkpoint but before any page in that
+ *          group is committed, this function suppresses a duplicate checkpoint
+ *          for the same logical group after recovery.
+ *
+ * @return true when the next retained page should first write an internal
+ *         checkpoint, false when it should only append external page data.
+ */
+bool dataLogCheckpointDue(void)
+{
+#if IMUTAG_NAND_CHECKPOINTS
+  t_InternalDataHeader slot;
+
+  if ((pState->external_blocks % IMUTAG_CHECKPOINT_PAGES) != 0U)
+    return false;
+  if (pState->pages == 0U)
+    return true;
+  if (!readInternalHeader((int)pState->pages - 1, &slot) ||
+      internalHeaderErased(&slot))
+    return true;
+  return slot.external_page_logical_next != pState->external_blocks;
+#else
+  return true;
+#endif
+}
+
+/**
+ * @brief Resolve an IMUTag logical external page to a physical page address.
+ *
+ * @param[in] logical_page External log page index used by firmware and host.
+ * @param[out] physical_page Physical NAND page selected by the active map.
+ * @return true when the page can be mapped, false if the NAND map is absent,
+ *         invalid, or the page is out of range.
+ */
+static bool dataLogPhysicalPageForLogical(uint32_t logical_page,
+                                          uint32_t *physical_page)
+{
+  if (physical_page == NULL)
+    return false;
+#if IMUTAG_NAND_CHECKPOINTS
+  return gd5fMapLogicalPage(logical_page, physical_page);
+#else
+  *physical_page = logical_page;
+  return true;
+#endif
+}
+
+/**
+ * @brief Test whether a fetched external page contains a programmed log header.
+ *
+ * @param[in] page External log page image read from storage.
+ * @return true when the page has a non-erased timestamp header.
+ */
+static bool dataLogExternalPageValid(const t_DataLog *page)
+{
+  if (page == NULL)
+    return false;
+  return page->slow_data.epoch != -1;
+}
+
+#if IMUTAG_NAND_CHECKPOINTS
+/**
+ * @brief Read and validate one physical NAND page as an IMUTag log page.
+ *
+ * @param[in] physical_page Physical NAND page index.
+ * @param[out] page Destination for the complete external log page.
+ * @param[out] read_result Optional raw NAND read/ECC status.
+ * @return true when the page read completed with clean or corrected ECC and
+ *         the embedded IMUTag page header is programmed.
+ */
+static bool dataLogReadPhysicalPage(uint32_t physical_page,
+                                    t_DataLog *page,
+                                    gd5f_page_read_result_t *read_result)
+{
+  gd5f_page_read_result_t result;
+
+  if (read_result != NULL)
+    *read_result = GD5F_PAGE_READ_ERROR;
+  if (page == NULL)
+    return false;
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  result = gd5fReadPhysicalPage(TAG_EXTERNAL_FLASH, physical_page,
+                                (uint8_t *)page, sizeof(*page));
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  if (read_result != NULL)
+    *read_result = result;
+  return (result == GD5F_PAGE_READ_OK ||
+          result == GD5F_PAGE_READ_ECC_CORRECTED) &&
+         dataLogExternalPageValid(page);
+}
+
+/**
+ * @brief Read and validate one logical NAND page as an IMUTag log page.
+ *
+ * @param[in] logical_page External log page index.
+ * @param[out] page Destination for the complete external log page.
+ * @param[out] read_result Optional raw NAND read/ECC status.
+ * @return true when mapping succeeds and the mapped physical page is readable
+ *         as a programmed IMUTag data page.
+ */
+static bool dataLogReadLogicalPage(uint32_t logical_page,
+                                   t_DataLog *page,
+                                   gd5f_page_read_result_t *read_result)
+{
+  uint32_t physical_page;
+
+  if (!dataLogPhysicalPageForLogical(logical_page, &physical_page))
+    return false;
+  return dataLogReadPhysicalPage(physical_page, page, read_result);
+}
+
+/**
+ * @brief Find the sparse internal checkpoint covering a requested log page.
+ *
+ * @details Checkpoints are cadence-aligned but may not have a one-to-one index
+ *          relationship with external pages after partial-group recovery. This
+ *          searches backward from the expected cadence slot until it finds a
+ *          checkpoint whose logical anchor covers @p requested_page.
+ *
+ * @param[in] requested_page External logical page requested by the host.
+ * @param[out] slot Populated with the covering internal checkpoint.
+ * @return true when a valid checkpoint covers @p requested_page.
+ */
+static bool readCheckpointForPage(uint32_t requested_page,
+                                  t_InternalDataHeader *slot)
+{
+  uint32_t count = pState->pages;
+  uint32_t candidate;
+
+  if (slot == NULL || count == 0U)
+    return false;
+
+  candidate = requested_page / IMUTAG_CHECKPOINT_PAGES;
+  if (candidate >= count)
+    candidate = count - 1U;
+
+  for (;;) {
+    uint32_t logical_next;
+
+    if (!readInternalHeader((int)candidate, slot) ||
+        internalHeaderErased(slot))
+      return false;
+    logical_next = slot->external_page_logical_next;
+    if (logical_next <= requested_page &&
+        (requested_page - logical_next) < IMUTAG_CHECKPOINT_PAGES)
+      return true;
+    if (candidate == 0U)
+      break;
+    candidate--;
+  }
+  return false;
+}
+#endif
+
+/**
  * @brief Recover persistent log cursors from internal flash headers.
+ *
+ * @details For NAND-backed IMUTag variants, the last internal header is a
+ *          sparse checkpoint for an 8-page external group. Recovery scans that
+ *          group until the first erased, invalid, or unreadable page and
+ *          resumes at that logical page. If collection was active, the next
+ *          regular checkpoint records IMUTAG_HEADER_RESTART_RECOVERY.
  *
  * @return 0 when recovery completes.
  */
 int restoreLog(void)
 {
   int i;
-  t_DataHeader header;
-  for (i = 0; readDataHeader(i, &header); i++)
+  t_InternalDataHeader slot;
+  for (i = 0; readInternalHeader(i, &slot); i++)
   {
-    if (header.epoch == -1)
+    if (internalHeaderErased(&slot))
       break;
   }
   pState->pages = i;
   pState->cycle_count = pState->pages;
+#if IMUTAG_NAND_CHECKPOINTS
+  pState->external_blocks = 0;
+  if (i > 0 && readInternalHeader(i - 1, &slot) &&
+      !internalHeaderErased(&slot)) {
+    uint32_t group_start = slot.external_page_logical_next;
+    uint32_t group_limit = group_start + IMUTAG_CHECKPOINT_PAGES;
+    uint32_t page;
+
+    pState->external_blocks = group_start;
+    for (page = group_start; page < group_limit; page++) {
+      gd5f_page_read_result_t read_result = GD5F_PAGE_READ_ERROR;
+
+      if (!dataLogReadLogicalPage(page, &databuf, &read_result)) {
+        if (read_result == GD5F_PAGE_READ_ECC_UNCORRECTABLE) {
+          debug_log_printf(
+              "IMUTag restore: NAND page %u has uncorrectable ECC\r\n",
+              (unsigned)page);
+        }
+        break;
+      }
+      pState->external_blocks = page + 1U;
+    }
+    if (pState->state == TagState_RUNNING ||
+        pState->state == TagState_HIBERNATING ||
+        pState->state == TagState_CONFIGURED) {
+      pState->checkpoint_flags_pending |= IMUTAG_HEADER_RESTART_RECOVERY;
+    }
+  }
+#else
   pState->external_blocks = pState->pages * DATALOG_SAMPLES;
+#endif
   datalog_page_cache_active = false;
   return 0;
 }
@@ -353,10 +605,17 @@ enum LOGERR commitDataLogPage(void)
 }
 
 /**
- * @brief Persist an internal flash header for the next external log page.
+ * @brief Persist an internal flash checkpoint for the next external log page.
+ *
+ * @details On STM32U3 NAND builds, this writes the ordinary page header plus
+ *          logical and physical page anchors for the current checkpoint group.
+ *          The caller is responsible for invoking this only at cadence
+ *          boundaries before external page data is programmed.
  *
  * @param[in] head Header to write.
- * @return Log write status.
+ * @return LOGWRITE_OK on success, LOGWRITE_FULL when the internal header
+ *         region is full, or LOGWRITE_ERROR when page mapping or STM32 flash
+ *         programming fails.
  */
 extern enum LOGERR writeDataHeader(t_DataHeader *head)
 {
@@ -372,6 +631,11 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   memset(&slot, 0xff, sizeof(slot));
 #if IMUTAG_STM32U3_FLASH
   slot.header = *head;
+  slot.external_page_logical_next = pState->external_blocks;
+  if (!dataLogPhysicalPageForLogical(pState->external_blocks,
+                                     &slot.external_page_physical_next)) {
+    return LOGWRITE_ERROR;
+  }
 #else
   slot = *head;
 #endif
@@ -439,6 +703,11 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 /**
  * @brief Populate and encode a monitor ACK for one IMUTag log page.
  *
+ * @details NAND builds use the sparse checkpoint stream to resolve the
+ *          requested logical page to a physical NAND page. Missing, erased, or
+ *          ECC-failed pages are returned as Ack_Err_NODATA so host downloaders
+ *          can skip the hole and continue until external_data_count is reached.
+ *
  * @param[in] index Log page index to export.
  * @param[out] ack ACK message to fill.
  * @return Encoded ACK length.
@@ -449,43 +718,70 @@ int data_logAck(int index, Ack *ack)
 
   chThdSetPriority(HIGHPRIO);
 
-  ack->err = Ack_Err_OK;
+  ack->err = Ack_Err_NODATA;
+  ack->which_payload = 0;
 
-  uint32_t end = (uint32_t)&__persistent_end__;
-  uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
-  t_DataHeader header;
-
-  // check for valid header
-
-  if (index >= 0 && ((uint32_t)&vddHeader[index] < end) &&
-      readDataHeader(index, &header) &&
-      (header.epoch != -1) &&
-      (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize()))
+  if (index >= 0 && (uint32_t)index < pState->external_blocks &&
+      (((uint64_t)index + 1U) * sizeof(databuf) <=
+       (uint64_t)externalFlashSize()))
   {
-
-    // we have a valid header
+    t_DataHeader header;
+    bool page_valid = false;
 
     ack->which_payload = Ack_imu_raw_data_log_tag;
     IMUTagRawLog *log = &ack->payload.imu_raw_data_log;
 
-    tagStorageWake(TAG_EXTERNAL_FLASH);
-    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                   (uint8_t *)log->samples.bytes, databuf_size);
-    tagStorageSleep(TAG_EXTERNAL_FLASH);
+#if IMUTAG_NAND_CHECKPOINTS
+    t_InternalDataHeader checkpoint;
+    uint32_t delta;
+    uint32_t physical_page;
+    gd5f_page_read_result_t read_result = GD5F_PAGE_READ_ERROR;
 
-    const t_DataLog *page = (const t_DataLog *)log->samples.bytes;
-    log->epoch = page->slow_data.epoch;
-    log->millisecond =
-      (page->slow_data.millis & IMUTAG_HEADER_MILLIS_MASK) |
-      (header.millis & (uint16_t)~IMUTAG_HEADER_MILLIS_MASK);
-    log->temperature =
-      page->slow_data.rawtemp * (float)IMUTAG_PRESSURE_TEMPERATURE_C_PER_LSB;
-    log->samples.size = sizeof(t_DataLog);
+    if (readCheckpointForPage((uint32_t)index, &checkpoint)) {
+      delta = (uint32_t)index - checkpoint.external_page_logical_next;
+      physical_page = checkpoint.external_page_physical_next + delta;
+      page_valid = dataLogReadPhysicalPage(
+          physical_page, (t_DataLog *)log->samples.bytes, &read_result);
+      header = checkpoint.header;
+      if ((uint32_t)index != checkpoint.external_page_logical_next) {
+        header.millis &= IMUTAG_HEADER_MILLIS_MASK;
+      }
+      if (!page_valid) {
+        debug_log_printf(
+            "IMUTag download: page %u physical %u unavailable status=%u\r\n",
+            (unsigned)index, (unsigned)physical_page,
+            (unsigned)read_result);
+      }
+    }
+#else
+    uint32_t byte_offset = sizeof(databuf) * (uint32_t)index;
 
-  }
-  else
-  {
-    ack->which_payload = 0;
+    if (readDataHeader(index, &header) && header.epoch != -1) {
+      tagStorageWake(TAG_EXTERNAL_FLASH);
+      tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                     (uint8_t *)log->samples.bytes, databuf_size);
+      tagStorageSleep(TAG_EXTERNAL_FLASH);
+      page_valid = dataLogExternalPageValid(
+          (const t_DataLog *)log->samples.bytes);
+    }
+#endif
+
+    if (page_valid) {
+      const t_DataLog *page = (const t_DataLog *)log->samples.bytes;
+      uint16_t checkpoint_flags =
+          (uint16_t)(header.millis & (uint16_t)~IMUTAG_HEADER_MILLIS_MASK);
+
+      log->epoch = page->slow_data.epoch;
+      log->millisecond =
+        (page->slow_data.millis & IMUTAG_HEADER_MILLIS_MASK) |
+        checkpoint_flags;
+      log->temperature =
+        page->slow_data.rawtemp * (float)IMUTAG_PRESSURE_TEMPERATURE_C_PER_LSB;
+      log->samples.size = sizeof(t_DataLog);
+      ack->err = Ack_Err_OK;
+    } else {
+      ack->which_payload = 0;
+    }
   }
 
   // encode the ack and return

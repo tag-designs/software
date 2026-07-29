@@ -70,8 +70,8 @@ typedef struct
   uint32_t safe;            // used to mark regions where reset is safe
   uint32_t resetCause;      // last reset cause -- deprecated, need to remove
   uint32_t state;           // current run state
-  uint32_t pages;           // dirty flash pages
-  uint32_t external_blocks;  // external data blocks
+  uint32_t pages;           // internal checkpoint/header rows written
+  uint32_t external_blocks;  // external log pages recovered or committed
   //int32_t lastactstart;     // time of last active start
   int32_t rawtemp;          // latest LPS22HH raw temperature in 0.01 C units
   //uint32_t vdd100;          // running average of voltage
@@ -87,6 +87,7 @@ typedef struct
   uint32_t header_page;       // retained internal-header page attempted
   uint32_t header_addr;       // retained internal-header address attempted
   uint32_t header_retries;    // retained internal-header write retry count
+  uint32_t checkpoint_flags_pending; // retained flags for next checkpoint row
   uint32_t sample_error_count; // retained data-sampling error total
   uint32_t sample_fifo_overruns;        // IMU FIFO overrun count
   uint32_t sample_fifo_watermark_shorts; // watermark asserted but count short

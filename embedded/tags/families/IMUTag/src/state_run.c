@@ -33,7 +33,7 @@
  *
  * IMUTag logging is more timing-sensitive than the lower-rate tags because the
  * LSM6 FIFO provides an implicit stream of high-rate samples. The log stores
- * one t_DataHeader per DATALOG_SAMPLES external pages. Each external page also
+ * sparse internal checkpoints for NAND-backed variants. Each external page
  * starts with its own timestamp, captured before the first retained superframe
  * sample, so individual IMU samples are reconstructed later by page timestamp,
  * sample count, and configured ODR.
@@ -45,10 +45,9 @@
  *
  * - deinitialize/reinitialize the acquisition hardware;
  * - discard a short warmup interval so the IMU clock and FIFO stream settle;
- * - abandon any partial pre-reset page by starting the next header at the first
+ * - abandon any partial pre-reset page by starting the next page at the first
  *   post-warmup block timestamp;
- * - set IMUTAG_HEADER_RESYNC on that next header so host decoders and SensorViz
- *   can mark the discontinuity.
+ * - set checkpoint flags so the next internal checkpoint records recovery.
  *
  * Do not use the subsecond field as a normal per-page timing correction. Only
  * the low ten bits are 1/1024-second subsecond ticks, the upper bits are flags,
@@ -99,19 +98,29 @@ static uint32_t runDiscardPages(void)
          IMUTAG_IMU_SAMPLES_PER_PAGE;
 }
 
-/*
- * Start or restart the data-collection clock.
+/**
+ * @brief Start or restart the IMU data-collection clock.
  *
- * mark_resync is true only for recovery from a monitor connect-under-reset
- * while already RUNNING. It causes exactly one future internal header to carry
- * IMUTAG_HEADER_RESYNC. Header flags are cleared only after that header write
- * succeeds, so a write failure cannot silently lose the discontinuity marker.
+ * @details @p mark_resync is true only for recovery from a monitor
+ *          connect-under-reset while already RUNNING. It causes exactly one
+ *          future internal checkpoint to carry IMUTAG_HEADER_RESYNC and
+ *          IMUTAG_HEADER_RESTART_RECOVERY. Header flags are cleared only after
+ *          that checkpoint write succeeds, so a write failure cannot silently
+ *          lose the discontinuity marker.
+ *
+ * @param[in] mark_resync true when the next checkpoint should mark a recovery
+ *                        boundary.
+ * @return true when collection hardware was initialized successfully.
  */
 static bool restartDataCollectionClock(bool mark_resync)
 {
   discard_pages = runDiscardPages();
   discarded_pages = 0;
-  next_header_flags = mark_resync ? IMUTAG_HEADER_RESYNC : 0U;
+  next_header_flags = (uint16_t)pState->checkpoint_flags_pending;
+  if (mark_resync) {
+    next_header_flags |= IMUTAG_HEADER_RESYNC |
+                         IMUTAG_HEADER_RESTART_RECOVERY;
+  }
   page_active = false;
   current_page_logging = false;
   current_page_data_header_written = false;
@@ -130,10 +139,10 @@ static bool restartDataCollectionClock(bool mark_resync)
 }
 
 typedef enum {
-  IMU_BLOCK_NO_DATA,
-  IMU_BLOCK_HANDLED,
-  IMU_BLOCK_INTERNAL_FULL,
-  IMU_BLOCK_EXTERNAL_FULL
+  IMU_BLOCK_NO_DATA,       ///< No complete superframe was available.
+  IMU_BLOCK_HANDLED,       ///< One superframe or page transition was handled.
+  IMU_BLOCK_INTERNAL_FULL, ///< Internal checkpoint storage is full or failed.
+  IMU_BLOCK_EXTERNAL_FULL  ///< External NAND storage is full or failed.
 } ImuBlockStatus;
 
 static enum LOGERR writeDataLogPageStartWithRetry(
@@ -174,6 +183,15 @@ static enum LOGERR startLogPage(void)
   return LOGWRITE_OK;
 }
 
+/**
+ * @brief Write the cadence checkpoint for the page currently being started.
+ *
+ * @details The checkpoint is written before the external NAND page header and
+ *          first superframe. On success, pending recovery flags are cleared so
+ *          they are recorded by exactly one checkpoint.
+ *
+ * @return Log write status from writeDataHeader().
+ */
 static enum LOGERR writeCurrentPageInternalHeader(void)
 {
   t_DataHeader header;
@@ -188,12 +206,24 @@ static enum LOGERR writeCurrentPageInternalHeader(void)
   err = writeDataHeader(&header);
   if (err == LOGWRITE_OK) {
     pState->cycle_count++;
+    pState->checkpoint_flags_pending = 0;
     next_header_flags = 0U;
     current_page_header_written = true;
   }
   return err;
 }
 
+/**
+ * @brief Sample at most one superframe and advance the active external page.
+ *
+ * @details When a retained page starts on an IMUTagNand checkpoint boundary,
+ *          this writes the internal checkpoint before loading the external NAND
+ *          page cache. Page data is committed only after all superframes for
+ *          the page have been staged.
+ *
+ * @return Status describing whether work completed, no data was available, or
+ *         storage became unavailable/full.
+ */
 static ImuBlockStatus sampleAndLogDataPage(void)
 {
   t_ImuTagSuperFrame frame;
@@ -223,6 +253,31 @@ static ImuBlockStatus sampleAndLogDataPage(void)
   }
 
   if (current_page_logging) {
+    if (current_frame_index == 0U && !current_page_header_written &&
+        dataLogCheckpointDue()) {
+      err = writeCurrentPageInternalHeader();
+      switch (err) {
+      case LOGWRITE_ERROR:
+        debug_log_printf(
+          "IMUTag running: internal header write error pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        return IMU_BLOCK_INTERNAL_FULL;
+      case LOGWRITE_FULL:
+        debug_log_printf(
+          "IMUTag running: internal header full pages=%u ext=%u\r\n",
+          (unsigned)pState->pages, (unsigned)pState->external_blocks);
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        return IMU_BLOCK_INTERNAL_FULL;
+      default:
+        break;
+      }
+    }
+
     if (current_frame_index == 0U && !current_page_data_header_written) {
       err = writeDataLogPageStartWithRetry(&current_page_header, &frame);
       switch (err) {
@@ -262,29 +317,6 @@ static ImuBlockStatus sampleAndLogDataPage(void)
       }
     }
 
-    if (current_frame_index == 0U && !current_page_header_written) {
-      err = writeCurrentPageInternalHeader();
-      switch (err) {
-      case LOGWRITE_ERROR:
-        debug_log_printf(
-          "IMUTag running: internal header write error pages=%u ext=%u\r\n",
-          (unsigned)pState->pages, (unsigned)pState->external_blocks);
-        page_active = false;
-        current_page_logging = false;
-        current_page_data_header_written = false;
-        return IMU_BLOCK_INTERNAL_FULL;
-      case LOGWRITE_FULL:
-        debug_log_printf(
-          "IMUTag running: internal header full pages=%u ext=%u\r\n",
-          (unsigned)pState->pages, (unsigned)pState->external_blocks);
-        page_active = false;
-        current_page_logging = false;
-        current_page_data_header_written = false;
-        return IMU_BLOCK_INTERNAL_FULL;
-      default:
-        break;
-      }
-    }
   }
 
   current_frame_index++;
@@ -353,6 +385,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     pState->pages = 0;
     pState->cycle_count = 0;
+    pState->checkpoint_flags_pending = 0;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     pState->run_heartbeat = 0;
     pState->terminal_state = STATE_UNSPECIFIED;

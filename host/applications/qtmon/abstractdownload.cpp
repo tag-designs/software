@@ -18,8 +18,8 @@ AbstractDownload::AbstractDownload(
 }
 
 void AbstractDownload::exec() {
-    // The tag reports the total number of internal log records in status. The
-    // writer also needs the config to decode each Ack into the right schema.
+    // Prefer the external page cursor for sparse-checkpoint IMUTagNand logs.
+    // Older firmware reports only internal_data_count, so keep that fallback.
     Status status;
     if (!tag.GetStatus(status))
     {
@@ -28,7 +28,9 @@ void AbstractDownload::exec() {
     }
 
     cnt = 0;
-    max_cnt = status.internal_data_count();
+    max_cnt = status.external_data_count() > 0
+        ? status.external_data_count()
+        : status.internal_data_count();
     if (!max_cnt) {
         emit downloadFinished();
         return;
@@ -97,6 +99,13 @@ void AbstractDownload::worker(){
                 downloadError(QString::fromStdString(ack.error_message()));
                 emit downloadFinished();
                 return;
+            }
+
+            if (ack.err() == Ack::NODATA && cnt < max_cnt) {
+                qInfo("skipping missing log block %d", cnt);
+                cnt++;
+                len = 1;
+                continue;
             }
 
             // The writer hides text-vs-SQLite details but preserves the common

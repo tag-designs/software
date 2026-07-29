@@ -20,3 +20,9 @@ the BMM350 magnetometer binding. `IMUTagNand` derives from `IMUTagU3bmm350`,
 uses the generated `IMUTagNandv1` board files configured for STM32U375, and
 selects the GD5F SPI-NAND storage module. The old L432 `IMUTagNandv1` firmware
 member is retained as source history only.
+
+Design notes:
+
+- [`design/internal-header-checkpoints.md`](design/internal-header-checkpoints.md)
+  describes the sparse STM32U3 internal-header checkpoint scheme used to
+  recover NAND-backed IMUTag external log cursors.

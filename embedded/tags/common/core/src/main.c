@@ -304,6 +304,7 @@ static void tagResetRuntimeStateForPowerInit(void)
   pState->state = TagState_IDLE;
   pState->pages = 0;
   pState->external_blocks = 0;
+  pState->checkpoint_flags_pending = 0;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   pState->run_heartbeat = 0;
   pState->terminal_state = STATE_UNSPECIFIED;

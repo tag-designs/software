@@ -319,7 +319,9 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  int max_count = status.internal_data_count();
+  int max_count = status.external_data_count() > 0
+      ? status.external_data_count()
+      : status.internal_data_count();
   if (rescue_exception && config.tag_type() == BITTAG && max_count <= 0) {
     /*
      * Some exception paths leave pState->pages at zero even though the BitTag
@@ -383,6 +385,13 @@ int main(int argc, char **argv)
       finishProgress();
       std::cerr << ack.error_message() << std::endl;
       return 1;
+    }
+
+    if (ack.err() == Ack::NODATA && total < max_count) {
+      total++;
+      len = 1;
+      printProgress(total, max_count);
+      continue;
     }
 
     start = SteadyClock::now();
