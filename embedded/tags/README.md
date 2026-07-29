@@ -151,7 +151,7 @@ When adding a device self-test:
 5. Add the request-to-hook mapping to the tag or family `devices.c`
    `TagTestCase` table. The hook should return `ALL_PASSED` on success and a
    specific `TestResult` on failure.
-6. Update `CUSTOM_DEFINES.md` and rebuild the active tag targets.
+6. Update `design/custom-defines.md` and rebuild the active tag targets.
 
 Avoid adding a tag-local `src/test.c` unless the entire diagnostic entry point
 really must be replaced. Most tags should share `common/core/src/test.c` and
@@ -166,7 +166,7 @@ code.
 
 Tag-specific build constants live in each target's `inc/custom.h`; module-owned
 feature switches come from `TAG_MODULES`. See
-[`CUSTOM_DEFINES.md`](CUSTOM_DEFINES.md) for the current inventory and the code
+[`custom-defines.md`](design/custom-defines.md) for the current inventory and the code
 paths affected by each define.
 
 Shared device code should prefer explicit descriptors over preprocessor line

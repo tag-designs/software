@@ -12,6 +12,8 @@ where-to-look guidance, then read the local README for details.
 - `proto/`: shared protobuf definitions used by host tools and embedded nanopb
   generation.
 - `design/`: developer architecture specifications and design notes. The master index is located at [**`design/index.md`**](file:///design/index.md).
+- `docs/developer/`: developer documentation portal scaffold. CMake stages
+  curated source-adjacent design notes and Doxygen output into the build tree.
 - `cmake/`: shared CMake helpers, presets support, vcpkg triplets, and package
   helpers.
 - `ChibiOS/`: ChibiOS submodule. Do not edit it as project source.
@@ -46,6 +48,8 @@ The top-level CMake options are:
 - `BUILD_QT_APPS`: build Qt GUI applications.
 - `BUILD_EMBEDDED`: build embedded firmware targets.
 - `BUILD_HOST_DOCS`: include MkDocs output in the default/package build.
+- `BUILD_DEVELOPER_DOCS`: include the developer documentation portal in the
+  default build. This is separate from packaged end-user host docs.
 
 Prefer focused verification:
 
@@ -53,6 +57,8 @@ Prefer focused verification:
 cmake --build <build-dir> --target sensorviz
 cmake --build <build-dir> --target qtmonitor
 cmake --build <build-dir> --target docs
+cmake --build <build-dir> --target developer_docs
+cmake --build <build-dir> --target api_docs
 cmake --build <build-dir> --target PresTag
 ```
 
@@ -70,6 +76,55 @@ Use the target that matches the files changed. For documentation-only changes,
   stored/default configuration JSON. Scope those changes carefully.
 - If CMake source lists change for embedded firmware, update the relevant
   `BUILD_SOURCES.md` under `embedded/tags` or `embedded/bases`.
+
+## Developer Documentation Maintenance
+
+This repository has two documentation products:
+
+- `host/docs/`: end-user application manuals and workflow guides. These are
+  built into host distribution packages.
+- `docs/developer/`: developer architecture, design, and API documentation.
+  This is a local/CI browser portal for understanding the codebase and is not
+  the packaged user manual.
+
+Keep developer design documents close to the code they explain:
+
+- Cross-cutting architecture, repo-wide contracts, protocol policy, build
+  policy, and ADRs belong under top-level `design/`.
+- Firmware/platform design belongs near firmware code, for example
+  `embedded/design/`, `embedded/tags/design/`, or a target/module-local
+  `design/` directory.
+- Host-library and application design belongs near the owning host directory,
+  for example `host/libraries/tagcore/README.md` or
+  `host/applications/sensorviz/design/`.
+- Do not move local design docs to top-level `design/` merely to make them
+  discoverable. Add or update navigation stubs instead.
+
+Whenever you add, move, rename, or materially update a developer design
+document:
+
+- Update the nearest local `README.md` or `design/index.md` so the document is
+  discoverable from its owning subtree.
+- Update top-level `design/index.md` when the document is architecture-relevant,
+  cross-cutting, or useful to engineers outside the owning subtree.
+- Update `DEVELOPER_DOCS_MARKDOWN` in top-level `CMakeLists.txt` and
+  `docs/developer/src/source-tree.md` when the document should appear in the
+  browser portal.
+- Update `docs/developer/mkdocs.yml` only for curated navigation entries that
+  should be visible in the sidebar. The sidebar should first mirror repository
+  ownership (`design/`, `embedded/`, `host/`, `proto/`) and then provide
+  cross-cutting topic views.
+- Keep topic sections organized by scope: cross-cutting architecture,
+  build/tooling, embedded and firmware platform, host libraries/applications,
+  protocols/data formats, active decisions, and historical notes.
+- Prefer one-line index entries with a short "why this exists" description.
+- Mark stale or historical docs explicitly instead of silently leaving them in
+  active sections.
+
+Doxygen comments are the source of truth for API contracts. Markdown design
+docs are the source of truth for architecture, rationale, tradeoffs, and
+developer workflows. The developer portal copies/renders these sources; it
+should not become the canonical place where design content is edited.
 
 ## Documentation Standards (C / C++ / CMake)
 

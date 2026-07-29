@@ -1,0 +1,56 @@
+# Doxygen configuration for the developer API reference.
+
+PROJECT_NAME           = "Ultralight Tags Developer API"
+PROJECT_BRIEF          = "Project-owned C and C++ API reference"
+OUTPUT_DIRECTORY       = @DEVELOPER_DOXYGEN_OUTPUT_DIR@
+HTML_OUTPUT            = api
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+
+INPUT                  = @PROJECT_SOURCE_DIR@/include \
+                         @PROJECT_SOURCE_DIR@/host/libraries/tagcore \
+                         @PROJECT_SOURCE_DIR@/host/libraries/sensoranalysis \
+                         @PROJECT_SOURCE_DIR@/host/libraries/sensorui \
+                         @PROJECT_SOURCE_DIR@/embedded/boards \
+                         @PROJECT_SOURCE_DIR@/embedded/tags/common \
+                         @PROJECT_SOURCE_DIR@/embedded/tags/families
+
+RECURSIVE              = YES
+FILE_PATTERNS          = *.c *.cc *.cpp *.h *.hpp
+EXCLUDE_PATTERNS       = */archive/* \
+                         */build-*/* \
+                         */CMakeFiles/* \
+                         */cfg/* \
+                         */qcustomplot/* \
+                         */proto-c/* \
+                         */host/libraries/tagcore/cxxopts.hpp \
+                         */embedded/tags/common/sensors/accel/inc/adxl362-original.h \
+                         */embedded/tags/common/sensors/accel/inc/ais2dw12_reg.h \
+                         */embedded/tags/common/sensors/accel/src/ais2dw12_reg.c
+
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_AS_ERROR          = NO
+WARN_LOGFILE           = @DEVELOPER_DOXYGEN_WARN_LOG@
+QUIET                  = YES
+
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = YES
+FULL_PATH_NAMES        = YES
+STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@
+
+OPTIMIZE_OUTPUT_FOR_C  = NO
+MARKDOWN_SUPPORT       = YES

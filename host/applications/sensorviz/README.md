@@ -4,7 +4,7 @@
 is intended to grow into the general viewer for pressure, activity, and other
 sensor-oriented tag logs.
 
-For the longer design/history note, see [ROADMAP.md](ROADMAP.md).
+For the longer design/history note, see [roadmap.md](design/roadmap.md).
 
 ## What It Does
 

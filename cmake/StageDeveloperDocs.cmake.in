@@ -1,0 +1,36 @@
+set(PROJECT_SOURCE_DIR "@PROJECT_SOURCE_DIR@")
+set(DEVELOPER_DOCS_SOURCE_DIR "@DEVELOPER_DOCS_SOURCE_DIR@")
+set(DEVELOPER_DOCS_STAGING_DIR "@DEVELOPER_DOCS_STAGING_DIR@")
+set(DEVELOPER_DOCS_MARKDOWN "@DEVELOPER_DOCS_MARKDOWN@")
+
+file(REMOVE_RECURSE "${DEVELOPER_DOCS_STAGING_DIR}")
+file(MAKE_DIRECTORY "${DEVELOPER_DOCS_STAGING_DIR}/src")
+
+file(
+  COPY "${DEVELOPER_DOCS_SOURCE_DIR}/src/"
+  DESTINATION "${DEVELOPER_DOCS_STAGING_DIR}/src")
+
+file(
+  COPY "${DEVELOPER_DOCS_SOURCE_DIR}/mkdocs.yml"
+  DESTINATION "${DEVELOPER_DOCS_STAGING_DIR}")
+
+foreach(doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
+  set(source_file "${PROJECT_SOURCE_DIR}/${doc}")
+  set(output_file "${DEVELOPER_DOCS_STAGING_DIR}/src/reference/${doc}")
+  get_filename_component(source_dir "${source_file}" DIRECTORY)
+  get_filename_component(output_dir "${output_file}" DIRECTORY)
+  file(MAKE_DIRECTORY "${output_dir}")
+  file(COPY_FILE "${source_file}" "${output_file}")
+
+  file(
+    GLOB local_assets
+    LIST_DIRECTORIES false
+    "${source_dir}/*.gif"
+    "${source_dir}/*.jpg"
+    "${source_dir}/*.jpeg"
+    "${source_dir}/*.png"
+    "${source_dir}/*.svg")
+  if(local_assets)
+    file(COPY ${local_assets} DESTINATION "${output_dir}")
+  endif()
+endforeach()

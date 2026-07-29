@@ -2,7 +2,7 @@
 
 This note captures the current `sensorviz` design state and the work that still
 belongs in future passes. The shorter user/maintainer overview is in
-[README.md](README.md).
+[README.md](../README.md).
 
 ## Current State
 

@@ -25,6 +25,7 @@ endif()
 option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
 option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ${BUILD_QT_APPS})
+option(BUILD_DEVELOPER_DOCS "Build developer architecture and API documentation by default" OFF)
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
@@ -42,6 +43,77 @@ set(HOST_DOCS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/host/docs")
 set(HOST_DOCS_CONFIG "${HOST_DOCS_SOURCE_DIR}/mkdocs.yml")
 set(HOST_DOCS_BUILD_DIR "${CMAKE_BINARY_DIR}/host/docs/site")
 set(HOST_DOCS_INSTALL_SCRIPT "${CMAKE_BINARY_DIR}/host/BuildHostDocs.cmake")
+
+set(DEVELOPER_DOCS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/docs/developer")
+set(DEVELOPER_DOCS_STAGING_DIR "${CMAKE_BINARY_DIR}/docs/developer-src")
+set(DEVELOPER_DOCS_CONFIG "${DEVELOPER_DOCS_STAGING_DIR}/mkdocs.yml")
+set(DEVELOPER_DOCS_SITE_DIR "${CMAKE_BINARY_DIR}/docs/developer/site")
+set(DEVELOPER_DOXYGEN_OUTPUT_DIR "${DEVELOPER_DOCS_SITE_DIR}")
+set(DEVELOPER_DOXYGEN_CONFIG "${CMAKE_BINARY_DIR}/docs/Doxyfile.developer")
+set(DEVELOPER_DOXYGEN_WARN_LOG "${CMAKE_BINARY_DIR}/docs/developer-doxygen-warnings.log")
+set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
+set(
+  DEVELOPER_DOCS_MARKDOWN
+  "design/index.md"
+  "design/binary-datalogs.md"
+  "design/windows-build-notes.md"
+  "embedded/bases/BUILD_SOURCES.md"
+  "embedded/bases/README.md"
+  "embedded/bases/notes.md"
+  "embedded/bases/tag-breakout-base-l432-v1/Note.md"
+  "embedded/boards/README.md"
+  "embedded/boards/tools/README.md"
+  "embedded/design/build-orientation.md"
+  "embedded/tags/BUILD_SOURCES.md"
+  "embedded/tags/README.md"
+  "embedded/tags/common/README.md"
+  "embedded/tags/common/core/README.md"
+  "embedded/tags/common/core/i2c-backend-model.md"
+  "embedded/tags/common/modules/README.md"
+  "embedded/tags/common/rtc/README.md"
+  "embedded/tags/common/sensors/README.md"
+  "embedded/tags/common/sensors/imu/design_notes.md"
+  "embedded/tags/families/README.md"
+  "embedded/tags/design/monitor_interface.md"
+  "embedded/tags/design/restart-recovery.md"
+  "embedded/tags/design/custom-defines.md"
+  "embedded/tags/design/u375-stop-support.md"
+  "embedded/tags/common/sensors/imu/design/assumptions.md"
+  "embedded/tags/common/sensors/mag/README.md"
+  "embedded/tags/common/storage/README.md"
+  "embedded/tags/common/test/README.md"
+  "embedded/tags/IMUTag/design/device-driver-plan.md"
+  "embedded/tags/IMUTag/design/flashmanagement.md"
+  "embedded/tags/IMUTag/design/log-format.md"
+  "embedded/tags/IMUTagBreakout/design/idle_state.md"
+  "embedded/tags/IMUTagBreakout/design/nand-log-architecture.md"
+  "embedded/tags/IMUTagBreakout/design/performance-notes.md"
+  "embedded/tags/IMUTagNand/README.md"
+  "embedded/tags/IMUTagNand/todo.md"
+  "embedded/tags/IMUTagU3bmm350/README.md"
+  "embedded/tags/IMUTagbmm350/README.md"
+  "embedded/tags/CompassTagAT25Breakout/design/notes.md"
+  "embedded/tags/families/BitPresTag/README.md"
+  "embedded/tags/families/BitTagNG/README.md"
+  "embedded/tags/families/BitTagNG/wakeup_note.md"
+  "embedded/tags/families/CompassTag/README.md"
+  "embedded/tags/families/IMUTag/README.md"
+  "embedded/tags/families/IMUTag/design/internal-header-checkpoints.md"
+  "embedded/tags/families/PresTag/README.md"
+  "host/README.md"
+  "host/applications/README.md"
+  "host/applications/compviz/README.md"
+  "host/applications/qtcalibrate/README.md"
+  "host/applications/qtmon/tagconfiguration/README.md"
+  "host/commandline/README.md"
+  "host/common/README.md"
+  "host/libraries/README.md"
+  "host/libraries/tagcore/README.md"
+  "host/libraries/sensoranalysis/README.md"
+  "host/libraries/sensorui/README.md"
+  "host/applications/sensorviz/README.md"
+  "host/applications/sensorviz/design/roadmap.md"
+  "proto/README.md")
 
 if(NOT HOST_MKDOCS_COMMAND)
   find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
@@ -112,6 +184,95 @@ else()
 endif()
 
 add_custom_target(host_docs DEPENDS docs)
+
+file(
+  GLOB_RECURSE developer_docs_sources
+  CONFIGURE_DEPENDS
+  "${DEVELOPER_DOCS_SOURCE_DIR}/*")
+
+set(developer_docs_markdown_sources)
+foreach(developer_doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
+  list(APPEND developer_docs_markdown_sources "${PROJECT_SOURCE_DIR}/${developer_doc}")
+endforeach()
+
+configure_file(
+  "${PROJECT_SOURCE_DIR}/cmake/StageDeveloperDocs.cmake.in"
+  "${DEVELOPER_DOCS_STAGE_SCRIPT}"
+  @ONLY)
+
+configure_file(
+  "${DEVELOPER_DOCS_SOURCE_DIR}/Doxyfile.in"
+  "${DEVELOPER_DOXYGEN_CONFIG}"
+  @ONLY)
+
+find_package(Doxygen QUIET)
+
+set(developer_docs_all)
+if(BUILD_DEVELOPER_DOCS)
+  set(developer_docs_all ALL)
+endif()
+
+add_custom_target(
+  developer_docs_stage
+  COMMAND ${CMAKE_COMMAND} -P "${DEVELOPER_DOCS_STAGE_SCRIPT}"
+  DEPENDS ${developer_docs_sources} ${developer_docs_markdown_sources}
+  COMMENT "Staging developer documentation sources"
+  VERBATIM)
+
+if(DOXYGEN_FOUND)
+  add_custom_target(
+    api_docs
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_DOCS_SITE_DIR}"
+    COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_CONFIG}"
+    DEPENDS "${DEVELOPER_DOXYGEN_CONFIG}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "Building developer Doxygen API reference"
+    VERBATIM)
+else()
+  add_custom_target(
+    api_docs
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "Doxygen is required to build API docs. Install doxygen and rerun CMake."
+    COMMAND ${CMAKE_COMMAND} -E false
+    COMMENT "Doxygen is not available for developer API documentation"
+    VERBATIM)
+endif()
+
+if(HOST_MKDOCS_COMMAND)
+  set(developer_docs_doxygen_commands)
+  if(DOXYGEN_FOUND)
+    set(
+      developer_docs_doxygen_commands
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_DOCS_SITE_DIR}"
+      COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_CONFIG}")
+  endif()
+
+  add_custom_target(
+    developer_docs ${developer_docs_all}
+    COMMAND ${CMAKE_COMMAND} -P "${DEVELOPER_DOCS_STAGE_SCRIPT}"
+    COMMAND
+      ${HOST_MKDOCS_COMMAND} build
+      --config-file "${DEVELOPER_DOCS_CONFIG}"
+      --site-dir "${DEVELOPER_DOCS_SITE_DIR}"
+      --clean
+    ${developer_docs_doxygen_commands}
+    DEPENDS ${developer_docs_sources} ${developer_docs_markdown_sources}
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "Building developer documentation portal"
+    VERBATIM)
+else()
+  add_custom_target(
+    developer_docs
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "MkDocs is required to build developer docs. Install with: python3 -m pip install -r host/docs/requirements.txt"
+    COMMAND ${CMAKE_COMMAND} -E false
+    COMMENT "MkDocs is not available for developer documentation"
+    VERBATIM)
+endif()
+
+add_custom_target(all_docs DEPENDS docs developer_docs)
 
 set(
   MACOS_CODE_SIGN_IDENTITY
