@@ -32,7 +32,7 @@
         "Type": "PushPull",
         "Level": "High",
         "Speed": "Low",
-        "Resistor": "Output",
+        "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "0"
       },
@@ -81,8 +81,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5",
-        "Standby": "PULLDOWN"
+        "Alternate": "5"
       },
       "pin7": {
         "ID": "ACCEL_MAG_MOSI",
@@ -129,8 +128,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5",
-        "Standby": "PULLDOWN"
+        "Alternate": "5"
       },
       "pin12": {
         "ID": "LPS_MOSI",
