@@ -75,6 +75,12 @@ __attribute__((weak)) const char *writeConfigErrorMessage(void)
   return NULL;
 }
 
+/**
+ * @brief Capture voltage and temperature for status acknowledgements.
+ *
+ * @param[out] vdd100 Supply voltage in 0.01 V units.
+ * @param[out] temp10 Temperature in 0.1 C units.
+ */
 static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 {
   adcVDD(vdd100, temp10);
@@ -84,6 +90,14 @@ static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 }
 
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+/**
+ * @brief Append one character to a bounded diagnostic string.
+ *
+ * @param[in,out] dst Current write pointer.
+ * @param[in] end One-past-last writable byte.
+ * @param[in] c Character to append if space remains.
+ * @return Updated write pointer.
+ */
 static char *statusDiagAppendChar(char *dst, char *end, char c)
 {
   if (dst < end)
@@ -91,6 +105,14 @@ static char *statusDiagAppendChar(char *dst, char *end, char c)
   return dst;
 }
 
+/**
+ * @brief Append a null-terminated string to a bounded diagnostic buffer.
+ *
+ * @param[in,out] dst Current write pointer.
+ * @param[in] end One-past-last writable byte.
+ * @param[in] src Null-terminated text to append.
+ * @return Updated write pointer.
+ */
 static char *statusDiagAppendString(char *dst, char *end, const char *src)
 {
   while (*src)
@@ -98,6 +120,14 @@ static char *statusDiagAppendString(char *dst, char *end, const char *src)
   return dst;
 }
 
+/**
+ * @brief Append an unsigned integer to a bounded diagnostic buffer.
+ *
+ * @param[in,out] dst Current write pointer.
+ * @param[in] end One-past-last writable byte.
+ * @param[in] value Value to append in decimal.
+ * @return Updated write pointer.
+ */
 static char *statusDiagAppendU32(char *dst, char *end, uint32_t value)
 {
   char digits[10];
@@ -114,6 +144,12 @@ static char *statusDiagAppendU32(char *dst, char *end, uint32_t value)
   return dst;
 }
 
+/**
+ * @brief Recover the newest valid state/reason pair from the state marker log.
+ *
+ * @param[out] state Last valid TagState value, or STATE_UNSPECIFIED.
+ * @param[out] reason Last valid State_Event value, or State_EVENT_UNSPECIFIED.
+ */
 static void statusDiagLastStateMarker(uint32_t *state, uint32_t *reason)
 {
   *state = STATE_UNSPECIFIED;
@@ -135,6 +171,9 @@ static void statusDiagLastStateMarker(uint32_t *state, uint32_t *reason)
   }
 }
 
+/**
+ * @brief Write retained run diagnostics into the status debug-message field.
+ */
 static void statusDiagWrite(void)
 {
   char *dst = ack.payload.status.debug_message;

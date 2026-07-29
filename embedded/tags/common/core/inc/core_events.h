@@ -10,8 +10,17 @@
 
 #include "ch.h"
 
+/**
+ * @brief Main-thread event mask accumulated by interrupt and monitor handlers.
+ */
 extern eventmask_t events;
 
+/**
+ * @name Event bit assignments
+ * Bit positions used to construct ChibiOS event masks for hardware wakeups,
+ * RTC events, and monitor work requests.
+ * @{
+ */
 // Event/work bit assignments.
 #define EVT_BIT_WKUP 7
 #define EVT_BIT_RTC_ALRAF 8
@@ -25,7 +34,13 @@ extern eventmask_t events;
 #define EVT_BIT_MON_WORK_CALIBRATE 16
 #define EVT_BIT_MONITOR_SERVICE 17
 #define EVT_BIT_MONITOR_TIMEOUT 18
+/** @} */
 
+/**
+ * @name Hardware event masks
+ * Event masks posted by wakeup lines and RTC interrupt sources.
+ * @{
+ */
 // Generic wakeup event.
 #define EVT_WKUP EVENT_MASK(EVT_BIT_WKUP)
 
@@ -38,7 +53,13 @@ extern eventmask_t events;
 
 // Standby/shutdown wakeup.
 #define EVT_WAKE_STANDBY EVENT_MASK(EVT_BIT_WAKE_STANDBY)
+/** @} */
 
+/**
+ * @name Monitor work masks
+ * Work requests decoded by the monitor and consumed by the main state machine.
+ * @{
+ */
 // Monitor command work bits. Protobuf evaluation posts these into the main
 // thread event mask so the state machine sees monitor work like any other
 // pending event.
@@ -47,7 +68,13 @@ extern eventmask_t events;
 #define MON_WORK_RESET EVENT_MASK(EVT_BIT_MON_WORK_RESET)
 #define MON_WORK_SELFTEST EVENT_MASK(EVT_BIT_MON_WORK_SELFTEST)
 #define MON_WORK_CALIBRATE EVENT_MASK(EVT_BIT_MON_WORK_CALIBRATE)
+/** @} */
 
+/**
+ * @name Composite event masks
+ * Convenience masks used by the main loop and state-machine dispatch.
+ * @{
+ */
 // Actual monitor events signaled into the main thread.
 #define EVT_MONITOR_SERVICE EVENT_MASK(EVT_BIT_MONITOR_SERVICE)
 #define EVT_MONITOR_TIMEOUT EVENT_MASK(EVT_BIT_MONITOR_TIMEOUT)
@@ -56,6 +83,7 @@ extern eventmask_t events;
 
 #define EVT_HARDWARE_ALL (EVT_WKUP | EVT_RTC_ALL | EVT_WAKE_STANDBY)
 #define EVT_ALL_DEFINED (EVT_HARDWARE_ALL | MON_WORK_ALL | EVT_MONITOR_ALL)
+/** @} */
 
 #if defined(__cplusplus)
 static_assert((EVT_HARDWARE_ALL & MON_WORK_ALL) == 0, "hardware events overlap monitor work bits");

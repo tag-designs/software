@@ -39,6 +39,12 @@ static_assert(sizeof(t_StateMarker) == 24, "sizeof(t_StateMarker) != 24!");
 
 #include "adc.h"
 
+/**
+ * @brief Capture status measurements for persistent state/log records.
+ *
+ * @param[out] vdd100 Supply voltage in 0.01 V units.
+ * @param[out] temp10 Temperature in 0.1 C units.
+ */
 static void tagStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 {
   adcVDD(vdd100, temp10);
@@ -121,16 +127,27 @@ void __attribute__((weak)) eraseExternal(void)
 {
 }
 
+/**
+ * @brief Default incremental external erase start for tags without storage.
+ */
 void __attribute__((weak)) eraseExternalStart(void)
 {
   eraseExternal();
 }
 
+/**
+ * @brief Default incremental external erase step for tags without storage.
+ *
+ * @return false because no erase work remains.
+ */
 bool __attribute__((weak)) eraseExternalNextSector(void)
 {
   return false;
 }
 
+/**
+ * @brief Default incremental external erase finish for tags without storage.
+ */
 void __attribute__((weak)) eraseExternalFinish(void)
 {
 }

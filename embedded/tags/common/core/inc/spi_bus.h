@@ -16,14 +16,21 @@
 #include <stdint.h>
 
 
-// alternate function number for spi -- stm32l432
-
+/** @brief STM32 alternate-function number used by the default SPI1 binding. */
 #define SPI1_ALTERNATE_FUNCTION 5
 
+/**
+ * @def TAG_SPI_POLLED_TRANSFER_MAX
+ * @brief Maximum direct-register polled SPI transfer size in bytes.
+ */
 #ifndef TAG_SPI_POLLED_TRANSFER_MAX
 #define TAG_SPI_POLLED_TRANSFER_MAX 9U
 #endif
 
+/**
+ * @def TAG_SPI_ERROR_BYTE
+ * @brief Placeholder byte returned when a polled SPI receive path fails.
+ */
 #ifndef TAG_SPI_ERROR_BYTE
 #define TAG_SPI_ERROR_BYTE 0xffU
 #endif
@@ -38,15 +45,17 @@
  * @{
  */
 
-/** Register settings used when a device opens a SPI bus session. */
+/**
+ * @brief Register settings used when a device opens an SPI bus session.
+ */
 typedef struct {
 #if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
-  SPIConfig spi;
+  SPIConfig spi; ///< ChibiOS SPI configuration when HAL SPI is enabled.
 #else
-  uint32_t cr1;
-  uint32_t cr2;
+  uint32_t cr1;  ///< Direct-register CR1 value for polled mode.
+  uint32_t cr2;  ///< Direct-register CR2 value for polled mode.
 #endif
-  ioline_t ssline;
+  ioline_t ssline; ///< Device chip-select line.
 } TagSpiConfig;
 
 #if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
@@ -164,29 +173,38 @@ typedef struct {
   (TagSpiConfig){TAG_SPI_POLLED_CONFIG_FIELDS(SSLINE)}
 #endif
 
-/** Standby pull policy applied while preparing the MCU for deep sleep. */
+/**
+ * @enum TagSpiSleepPolicy
+ * @brief Standby pull policy applied while preparing the MCU for deep sleep.
+ */
 typedef enum {
-  TAG_SPI_SLEEP_FLOAT,
-  TAG_SPI_SLEEP_SAFE_IDLE,
-  TAG_SPI_SLEEP_CUSTOM
+  TAG_SPI_SLEEP_FLOAT,     ///< Leave SPI pins floating/analog for sleep.
+  TAG_SPI_SLEEP_SAFE_IDLE, ///< Bias pins to the device's inactive bus state.
+  TAG_SPI_SLEEP_CUSTOM     ///< Tag-specific code owns sleep pin state.
 } TagSpiSleepPolicy;
 
-/** Board-line description for one SPI device attached to a hardware peripheral. */
+/**
+ * @brief Board-line description for one SPI device.
+ */
 typedef struct {
-  SPI_TypeDef *spi;
-  binary_semaphore_t *mutex;
-  int alternate_function;
-  const TagSpiConfig config;
-  ioline_t sck;
-  ioline_t miso;
-  ioline_t mosi;
-  ioline_t pwr;
-  uint8_t dummy;
-  TagSpiSleepPolicy sleep_policy;
+  SPI_TypeDef *spi;              ///< STM32 SPI peripheral.
+  binary_semaphore_t *mutex;     ///< Shared bus lock for sessions.
+  int alternate_function;        ///< STM32 alternate-function selector.
+  const TagSpiConfig config;     ///< Bus configuration for this device.
+  ioline_t sck;                  ///< SPI clock line.
+  ioline_t miso;                 ///< SPI MISO line.
+  ioline_t mosi;                 ///< SPI MOSI line.
+  ioline_t pwr;                  ///< Optional switched-power line.
+  uint8_t dummy;                 ///< Byte clocked when reading.
+  TagSpiSleepPolicy sleep_policy;///< Pin policy for low-power entry.
 } TagSpiDevice;
 
 //extern const TagSpiConfig tagSpiDefaultConfig;
 
+/**
+ * @def TAG_SPI1_DEVICE_DEFAULTS
+ * @brief Common descriptor initializer fields for an SPI1 device.
+ */
 #define TAG_SPI1_DEVICE_DEFAULTS(SSLINE)                                    \
   .spi = SPI1,                                                              \
   .mutex = &SPI1mutex,                                                      \
@@ -339,6 +357,13 @@ bool tagSpiExchange(const TagSpiDevice *device, const uint8_t *txbuf,
                     uint8_t *rxbuf, uint32_t len);
 
 #if TAG_SPI_USES_CHIBIOS_CONFIG
+/**
+ * @brief Return the ChibiOS SPIDriver for a descriptor's SPI peripheral.
+ *
+ * @param[in] device SPI device descriptor.
+ * @return Matching ChibiOS SPIDriver, or NULL when the peripheral is disabled
+ *         in the ChibiOS board configuration.
+ */
 static inline SPIDriver *tagSpiPolledDeviceDriver(const TagSpiDevice *device)
 {
   SPI_TypeDef *spi = tagSpiDevicePeripheral(device);

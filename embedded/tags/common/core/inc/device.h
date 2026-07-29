@@ -28,10 +28,10 @@
  * @{
  */
 typedef enum {
-  TAG_DEVICE_POWER_BOOT_CLEANUP,
-  TAG_DEVICE_POWER_RUNTIME_DEINIT,
-  TAG_DEVICE_POWER_STANDBY_ENTRY,
-  TAG_DEVICE_POWER_TERMINAL_ENTRY
+  TAG_DEVICE_POWER_BOOT_CLEANUP,    ///< Boot-time cleanup after reset handling.
+  TAG_DEVICE_POWER_RUNTIME_DEINIT,  ///< Runtime deinitialization before sleep.
+  TAG_DEVICE_POWER_STANDBY_ENTRY,   ///< Preparation for standby entry.
+  TAG_DEVICE_POWER_TERMINAL_ENTRY   ///< Final terminal-state device shutdown.
 } TagDevicePowerReason;
 
 /**
@@ -81,9 +81,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active);
 void tagDevicesDeinit(void);
 
 /**
- *  Let tag-specific devices recover after Stop1 exit.
+ * @brief Let tag-specific devices recover after Stop1 exit.
  *
- *  state Application state when Stop1 returned.
+ * @param[in] state Application state when Stop1 returned.
  */
 void tagDevicesAfterStop1(uint32_t state);
 /** @} */

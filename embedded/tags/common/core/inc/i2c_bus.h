@@ -23,48 +23,61 @@
  * @{
  */
 
-/** Default STM32 alternate-function number used by most STM32 I2C pins. */
+/**
+ * @def TAG_I2C_DEFAULT_ALTERNATE_FUNCTION
+ * @brief Default STM32 alternate-function number used by most STM32 I2C pins.
+ */
 #ifndef TAG_I2C_DEFAULT_ALTERNATE_FUNCTION
 #define TAG_I2C_DEFAULT_ALTERNATE_FUNCTION 4U
 #endif
 
-/** I2C backend selected by a board-level controller descriptor. */
+/**
+ * @enum TagI2cBackendKind
+ * @brief I2C backend selected by a board-level controller descriptor.
+ */
 typedef enum {
-  TAG_I2C_BACKEND_HARDWARE,
-  TAG_I2C_BACKEND_SOFTWARE
+  TAG_I2C_BACKEND_HARDWARE, ///< Use a ChibiOS hardware I2CDriver.
+  TAG_I2C_BACKEND_SOFTWARE  ///< Use the project software-I2C backend.
 } TagI2cBackendKind;
 
-/** I2C controller register setup and bus arbitration. */
+/**
+ * @brief Shared I2C controller register setup and bus arbitration.
+ */
 typedef struct {
-  TagI2cBackendKind backend;
-  binary_semaphore_t *mutex;
+  TagI2cBackendKind backend; ///< Hardware or software backend selection.
+  binary_semaphore_t *mutex; ///< Shared bus lock for transaction sessions.
   union {
-    I2CDriver *hardware;
-    TagSoftI2cDriver *software;
+    I2CDriver *hardware;         ///< Hardware driver when backend is hardware.
+    TagSoftI2cDriver *software;  ///< Software driver when backend is software.
   } driver;
 } TagI2cController;
 
-/** Standby pull policy applied while preparing an I2C-backed device for sleep. */
+/**
+ * @enum TagI2cSleepPolicy
+ * @brief Standby pull policy applied while preparing an I2C-backed device.
+ */
 typedef enum {
-  TAG_I2C_SLEEP_PULLUP,
-  TAG_I2C_SLEEP_FLOAT,
-  TAG_I2C_SLEEP_CUSTOM
+  TAG_I2C_SLEEP_PULLUP, ///< Bias SCL/SDA with standby pull-ups.
+  TAG_I2C_SLEEP_FLOAT,  ///< Leave bus pins floating/analog for sleep.
+  TAG_I2C_SLEEP_CUSTOM  ///< Tag-specific code owns sleep pin state.
 } TagI2cSleepPolicy;
 
-/** Board-line description for one I2C device attached to a shared controller. */
+/**
+ * @brief Board-line description for one I2C device on a shared controller.
+ */
 typedef struct {
-  const TagI2cController *controller;
+  const TagI2cController *controller; ///< Shared controller descriptor.
   union {
-    const I2CConfig *hardware;
-    const TagSoftI2cConfig *software;
+    const I2CConfig *hardware;        ///< ChibiOS config for hardware backend.
+    const TagSoftI2cConfig *software; ///< Software-I2C config for software backend.
   } config;
-  ioline_t sda;
-  ioline_t scl;
-  ioline_t pwr;
-  uint8_t address;
-  uint8_t alternate_function;
-  uint32_t timeout;
-  TagI2cSleepPolicy sleep_policy;
+  ioline_t sda;                       ///< SDA board line.
+  ioline_t scl;                       ///< SCL board line.
+  ioline_t pwr;                       ///< Optional switched-power line.
+  uint8_t address;                    ///< Default 7-bit I2C device address.
+  uint8_t alternate_function;         ///< STM32 alternate-function selector.
+  uint32_t timeout;                   ///< Default transfer timeout.
+  TagI2cSleepPolicy sleep_policy;     ///< Pin policy for low-power entry.
 } TagI2cDevice;
 
 /** @} */

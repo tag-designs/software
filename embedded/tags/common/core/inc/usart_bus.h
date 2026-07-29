@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/** @brief STM32 alternate-function number for USART2 synchronous bus pins. */
 #define USART2_ALTERNATE_FUNCTION 7
 
 
@@ -28,36 +29,46 @@
  * @{
  */
 typedef struct {
-  uint32_t brr;
-  uint32_t cr1;
-  uint32_t cr2;
-  uint32_t cr3;
+  uint32_t brr; ///< USART baud-rate register value.
+  uint32_t cr1; ///< USART CR1 configuration value.
+  uint32_t cr2; ///< USART CR2 configuration value.
+  uint32_t cr3; ///< USART CR3 configuration value.
 } TagUsartSyncConfig;
 
-/** Standby pull policy applied while preparing a USART-backed device for sleep. */
+/**
+ * @enum TagUsartSleepPolicy
+ * @brief Standby pull policy applied while preparing a USART-backed device.
+ */
 typedef enum {
-  TAG_USART_SLEEP_FLOAT,
-  TAG_USART_SLEEP_SAFE_IDLE,
-  TAG_USART_SLEEP_CUSTOM
+  TAG_USART_SLEEP_FLOAT,     ///< Leave USART pins floating/analog for sleep.
+  TAG_USART_SLEEP_SAFE_IDLE, ///< Bias pins to the device's inactive bus state.
+  TAG_USART_SLEEP_CUSTOM     ///< Tag-specific code owns sleep pin state.
 } TagUsartSleepPolicy;
 
-/** Board-line description for one synchronous-USART device. */
+/**
+ * @brief Board-line description for one synchronous-USART device.
+ */
 typedef struct {
-  USART_TypeDef *usart;
-  binary_semaphore_t *mutex;
-  int alternate_function;
-  const TagUsartSyncConfig *config;
-  ioline_t cs;
-  ioline_t sck;
-  ioline_t tx;
-  ioline_t rx;
-  ioline_t pwr;
-  uint8_t dummy;
-  TagUsartSleepPolicy sleep_policy;
+  USART_TypeDef *usart;             ///< STM32 USART peripheral.
+  binary_semaphore_t *mutex;        ///< Shared bus lock for sessions.
+  int alternate_function;           ///< STM32 alternate-function selector.
+  const TagUsartSyncConfig *config; ///< Synchronous USART register config.
+  ioline_t cs;                      ///< Device chip-select line.
+  ioline_t sck;                     ///< USART clock line.
+  ioline_t tx;                      ///< USART transmit line.
+  ioline_t rx;                      ///< USART receive line.
+  ioline_t pwr;                     ///< Optional switched-power line.
+  uint8_t dummy;                    ///< Byte clocked when reading.
+  TagUsartSleepPolicy sleep_policy; ///< Pin policy for low-power entry.
 } TagUsartDevice;
 
+/** @brief Default synchronous USART2 register configuration. */
 extern const TagUsartSyncConfig tagUsart2SyncDefaultConfig;
 
+/**
+ * @def TAG_USART2_SYNC_DEVICE_DEFAULTS
+ * @brief Common descriptor initializer fields for a USART2 synchronous device.
+ */
 #define TAG_USART2_SYNC_DEVICE_DEFAULTS                                      \
   .usart = USART2, .mutex = &USART2mutex, .config = &tagUsart2SyncDefaultConfig, .alternate_function = USART2_ALTERNATE_FUNCTION
 /** @} */

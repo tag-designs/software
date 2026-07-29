@@ -53,7 +53,8 @@ void adc1Stop(void);
  *
  * @param[in] channel STM32 ADC channel number to sample.
  * @param[in] delay STM32 sample-time selector for the channel.
- * @return 0 when the conversion was started, or -1 for an invalid channel or delay.
+ * @return 0 when the conversion was started, or -1 for an invalid channel or
+ *         delay.
  */
 int adc1StartConversion(uint16_t channel, uint16_t delay);
 

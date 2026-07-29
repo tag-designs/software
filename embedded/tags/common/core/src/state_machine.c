@@ -88,6 +88,14 @@ bool isActive = false;
 volatile enum Sleep idlePowerMode = SLEEP;
 
 #if TAG_MONITOR_RESET_RECOVERY
+/**
+ * @brief Decide whether the current reset is a monitor attach recovery.
+ *
+ * @param[in] retained_state_valid true when BackupState carries the valid
+ *                                 runtime magic value.
+ * @return true when debug/monitor state indicates connect-under-reset rather
+ *         than field power loss.
+ */
 static bool monitorResetRecoveryActive(bool retained_state_valid)
 {
   if (!retained_state_valid)
@@ -107,6 +115,12 @@ static bool monitorResetRecoveryActive(bool retained_state_valid)
 }
 #endif
 
+/**
+ * @brief Decide whether boot should recover RTC time from the external RTC.
+ *
+ * @param[in] reset_cause Reset cause classified by main.c.
+ * @return true when the STM32 RTC may be uninitialized or stale.
+ */
 static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
 {
   if (reset_cause == resetBrownout)
@@ -128,6 +142,12 @@ static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
 }
 
 #if TAG_MONITOR_RESET_RECOVERY
+/**
+ * @brief Validate a state marker read from STM32 internal flash.
+ *
+ * @param[in] marker Marker record to validate.
+ * @return true when state and reason enum values are in protobuf range.
+ */
 static bool validStateMarker(const t_StateMarker *marker)
 {
   return (marker->state > STATE_UNSPECIFIED) &&
@@ -135,6 +155,12 @@ static bool validStateMarker(const t_StateMarker *marker)
          (marker->reason <= _State_Event_MAX);
 }
 
+/**
+ * @brief Validate a retained TagState enum value.
+ *
+ * @param[in] state Raw retained state value.
+ * @return true when the value is a concrete protobuf TagState.
+ */
 static bool validTagState(uint32_t state)
 {
   return (state > STATE_UNSPECIFIED) && (state <= _TagState_MAX);

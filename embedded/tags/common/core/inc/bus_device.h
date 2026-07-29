@@ -19,30 +19,46 @@
  * bus lifecycle API without type-erasing through void pointers or vtables.
  * @{
  */
+/**
+ * @enum TagBusKind
+ * @brief Concrete bus type held by a TagBusDevice descriptor.
+ */
 typedef enum {
-  TAG_BUS_SPI,
-  TAG_BUS_USART,
-  TAG_BUS_I2C
+  TAG_BUS_SPI,   ///< Descriptor contains a TagSpiDevice.
+  TAG_BUS_USART, ///< Descriptor contains a TagUsartDevice.
+  TAG_BUS_I2C    ///< Descriptor contains a TagI2cDevice.
 } TagBusKind;
 
+/**
+ * @brief Tagged union for devices that can live on any supported core bus.
+ */
 typedef struct {
-  TagBusKind kind;
+  TagBusKind kind; ///< Active member of the device union.
   union {
-    TagSpiDevice spi;
-    TagUsartDevice usart;
-    TagI2cDevice i2c;
+    TagSpiDevice spi;     ///< SPI descriptor when kind is TAG_BUS_SPI.
+    TagUsartDevice usart; ///< USART descriptor when kind is TAG_BUS_USART.
+    TagI2cDevice i2c;     ///< I2C descriptor when kind is TAG_BUS_I2C.
   } device;
 } TagBusDevice;
 
-/** Initialize a TagBusDevice that carries a TagSpiDevice descriptor. */
+/**
+ * @def TAG_BUS_SPI_INIT
+ * @brief Initialize a TagBusDevice that carries a TagSpiDevice descriptor.
+ */
 #define TAG_BUS_SPI_INIT(...) \
   { .kind = TAG_BUS_SPI, .device.spi = { __VA_ARGS__ } }
 
-/** Initialize a TagBusDevice that carries a TagUsartDevice descriptor. */
+/**
+ * @def TAG_BUS_USART_INIT
+ * @brief Initialize a TagBusDevice that carries a TagUsartDevice descriptor.
+ */
 #define TAG_BUS_USART_INIT(...) \
   { .kind = TAG_BUS_USART, .device.usart = { __VA_ARGS__ } }
 
-/** Initialize a TagBusDevice that carries a TagI2cDevice descriptor. */
+/**
+ * @def TAG_BUS_I2C_INIT
+ * @brief Initialize a TagBusDevice that carries a TagI2cDevice descriptor.
+ */
 #define TAG_BUS_I2C_INIT(...) \
   { .kind = TAG_BUS_I2C, .device.i2c = { __VA_ARGS__ } }
 /** @} */

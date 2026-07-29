@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/** @brief Sentinel PAL line value used for optional board lines. */
 #define TAG_NO_LINE ((ioline_t)0)
 
 /** @name Shared low-power helpers
@@ -123,6 +124,8 @@ void accelSpiOff(void);
  * @return Tag-specific status code.
  */
 int accelConfigureFIFO(int entries);
+
+/** @brief Legacy ADXL status byte retained for older accelerometer code. */
 extern uint8_t adxl_status;
 
 /**

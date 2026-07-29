@@ -35,9 +35,9 @@
  * @{
  */
 
-extern uint32_t __persistent_start__; // from linker script
-extern uint32_t __persistent_end__;   // from linker script
-extern uint32_t __flash0_end__;       // from linker script
+extern uint32_t __persistent_start__; ///< Start of the persistent flash region.
+extern uint32_t __persistent_end__;   ///< End of the persistent flash region.
+extern uint32_t __flash0_end__;       ///< End of the MCU internal flash image.
 /** @} */
 
 /** @name Reset and sleep state types
@@ -47,28 +47,28 @@ extern uint32_t __flash0_end__;       // from linker script
  */
 typedef enum
 {
-  resetSleep,     // return from sleep mode
-  resetStandby,   // return from standby mode
-  resetShutdown,  // return from shutdown mode
-  resetException, // unplanned exception
-  resetBrownout,  // brownout other than shutdown
-  resetPower      // power on event
+  resetSleep,     ///< Return from sleep mode.
+  resetStandby,   ///< Return from standby mode.
+  resetShutdown,  ///< Return from shutdown mode.
+  resetException, ///< Unplanned exception reset.
+  resetBrownout,  ///< Brownout other than shutdown.
+  resetPower      ///< Power-on reset.
 } t_resetCause;
 
 typedef enum
 {
-  modeSleep,
-  modeStandby,
-  modeShutdown
+  modeSleep,    ///< Runtime should enter ordinary sleep.
+  modeStandby,  ///< Runtime should enter standby.
+  modeShutdown  ///< Runtime should enter shutdown.
 } t_sleepMode;
 
 typedef enum
 {
-  SYSNOP,
-  SYSSTART,
-  SYSSTOP,
-  SYSRESET,
-  MAXCMD
+  SYSNOP,   ///< No pending monitor command.
+  SYSSTART, ///< Start collection command.
+  SYSSTOP,  ///< Stop collection command.
+  SYSRESET, ///< Erase/reset command.
+  MAXCMD    ///< Sentinel count for command values.
 } t_command;
 /** @} */
 
@@ -79,22 +79,23 @@ typedef enum
  */
 typedef struct
 {
-  uint32_t valid;       // backup registers hold BACKUP_STATE_VALID_MAGIC
-  uint32_t safe;        // used to mark regions where reset is safe
-  uint32_t resetCause;  // last reset cause -- deprecated, need to remove
-  uint32_t state;       // current run state
-  uint32_t pages;       // dirty flash pages
-  int32_t lastactstart; // time of last active start
+  uint32_t valid;       ///< Backup registers hold BACKUP_STATE_VALID_MAGIC.
+  uint32_t safe;        ///< Marks code regions where reset recovery is safe.
+  uint32_t resetCause;  ///< Last reset cause; deprecated.
+  uint32_t state;       ///< Current protobuf TagState value.
+  uint32_t pages;       ///< Internal log/header pages written.
+  int32_t lastactstart; ///< Unix seconds at the last active-state start.
   // runtime
-  int32_t temp10;       // running average of temperature
-  uint32_t vdd100;      // running average of voltage
-  uint64_t activity;    // track activity "bits"
-  int32_t lastwakeup;   // last wakeup time
-  int32_t lastwrite;    // timestamp of last write
-  TestResult test_result;   // test_result
-  uint32_t external_blocks; // external data blocks
+  int32_t temp10;       ///< Running average temperature in 0.1 C units.
+  uint32_t vdd100;      ///< Running average supply voltage in 0.01 V units.
+  uint64_t activity;    ///< Activity bitmap accumulated by activity tags.
+  int32_t lastwakeup;   ///< Unix seconds at the last wakeup.
+  int32_t lastwrite;    ///< Unix seconds at the last log write.
+  TestResult test_result; ///< Most recent self-test result.
+  uint32_t external_blocks; ///< External data blocks/pages written.
 } BackupState;
 
+/** @brief Retained runtime state mirror in backup storage. */
 extern volatile BackupState *const pState;
 /** @} */
 
@@ -103,52 +104,53 @@ extern volatile BackupState *const pState;
  * @{
  */
 
+/**
+ * @enum LOGERR
+ * @brief Persistent log write result.
+ */
 enum LOGERR
 {
-  LOGWRITE_OK,
-  LOGWRITE_BAT,
-  LOGWRITE_FULL,
-  LOGWRITE_ERROR
+  LOGWRITE_OK,    ///< Write completed successfully.
+  LOGWRITE_BAT,   ///< Write stopped because supply/battery was too low.
+  LOGWRITE_FULL,  ///< Destination storage is full.
+  LOGWRITE_ERROR  ///< Hardware, encoding, or flash programming error.
 };
 
-// Stored State Log
-
-/*
- * We use the following structure in STM32 flash
- * to track state information that must persist across a power cycle event.
- * Right now we just write the current epoch on entry to the corresponding
- * state.  e.g. runEpoch is written on entry to the RUN state.
+/**
+ * @brief Flash-resident marker for one state-machine transition.
  *
- *  location 0 = Triggered
- *  location 1 = Running
- *  location 2 = Aborted/Finished
- *  location 3 = Reset
+ * @details The state machine appends these records in STM32 internal flash so
+ *          reset handling can recover the last durable state, event reason, and
+ *          log cursors after a power cycle or monitor reset.
  */
-
 typedef struct
 {
-  int32_t epoch;
-  TagState state;
-  uint32_t internal_pages;
-  uint32_t external_pages;
-  uint16_t vdd100;
-  int16_t  temp10;
-  State_Event reason;
+  int32_t epoch;            ///< Unix seconds when the marker was written.
+  TagState state;           ///< State entered by this transition.
+  uint32_t internal_pages;  ///< Internal log/header cursor at transition.
+  uint32_t external_pages;  ///< External log cursor at transition.
+  uint16_t vdd100;          ///< Supply voltage in 0.01 V units.
+  int16_t  temp10;          ///< Temperature in 0.1 C units.
+  State_Event reason;       ///< Event that caused the transition.
 #if TAG_STM32U3_FLASH
-  uint64_t flash_padding;
+  uint64_t flash_padding;   ///< Padding for STM32U3 16-byte flash rows.
 } t_StateMarker __attribute__((aligned(16)));
 #else
 } t_StateMarker __attribute__((aligned(8)));
 #endif
 
+/**
+ * @brief Legacy activity log record stored in internal flash.
+ */
 typedef struct
 {
-  int32_t epoch;
-  int16_t temp10;
-  uint16_t vdd100;
-  uint64_t activity;
+  int32_t epoch;     ///< Unix seconds for the activity sample.
+  int16_t temp10;    ///< Temperature in 0.1 C units.
+  uint16_t vdd100;   ///< Supply voltage in 0.01 V units.
+  uint64_t activity; ///< Activity bitmap for the sample window.
 } t_DataLog __attribute__((aligned(8)));
 
+/** @brief Last monitor command mirrored into persistent state. */
 extern int32_t monitorCMD;
 
 #if CONFIG_HAS_HIBERNATE

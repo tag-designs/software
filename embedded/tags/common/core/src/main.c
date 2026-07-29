@@ -25,6 +25,9 @@
 
 #include "config.h"
 
+/**
+ * @brief Weak idle hook for targets that enable WFI from ChibiOS idle context.
+ */
 void idle_enable_wfi_sleep(void) __attribute__((weak));
 void idle_enable_wfi_sleep(void) {}
 
@@ -62,6 +65,11 @@ bool rtcInitializedAtBoot;
 volatile BackupState *const pState = (BackupState *)TAG_BACKUP_STATE_REG0;
 /** @} */
 
+/**
+ * @brief Report whether STM32 reset state indicates standby exit.
+ *
+ * @return true when the platform standby flag is set.
+ */
 static inline bool tagPowerStandbyFlagSet(void)
 {
 #if defined(PWR_SR1_SBF)
@@ -73,6 +81,9 @@ static inline bool tagPowerStandbyFlagSet(void)
 #endif
 }
 
+/**
+ * @brief Clear the platform standby flag after reset-cause classification.
+ */
 static inline void tagPowerClearStandbyFlag(void)
 {
 #if defined(PWR_SCR_CSBF)
@@ -82,6 +93,9 @@ static inline void tagPowerClearStandbyFlag(void)
 #endif
 }
 
+/**
+ * @brief Clear retained STM32 wakeup flags before posting startup events.
+ */
 static inline void tagPowerClearWakeFlags(void)
 {
 #if defined(PWR_SCR_CWUF)
@@ -122,6 +136,11 @@ static inline void tagPowerClearWakeFlags(void)
 #endif
 }
 
+/**
+ * @brief Report whether the STM32 RTC calendar is initialized.
+ *
+ * @return true when the RTC initialization status bit is set.
+ */
 static inline bool tagRtcInitialized(void)
 {
 #if defined(RTC_ISR_INITS)
@@ -133,6 +152,9 @@ static inline bool tagRtcInitialized(void)
 #endif
 }
 
+/**
+ * @brief Disable the retained standby pull configuration gate after wake.
+ */
 static inline void tagPowerReleaseStandbyPulls(void)
 {
 #if defined(PWR_CR3_APC)
@@ -142,6 +164,11 @@ static inline void tagPowerReleaseStandbyPulls(void)
 #endif
 }
 
+/**
+ * @brief Collect pending RTC events and clear their sticky hardware flags.
+ *
+ * @return Event mask containing any RTC alarm/wakeup events observed at boot.
+ */
 static eventmask_t tagRtcCollectAndClearPendingEvents(void)
 {
 #if defined(RTC_ISR_TSF)
@@ -212,6 +239,12 @@ static eventmask_t tagRtcCollectAndClearPendingEvents(void)
 #endif
 }
 
+/**
+ * @brief Convert a ChibiOS RTC callback event to a main-thread event mask.
+ *
+ * @param[in] event ChibiOS RTC event identifier.
+ * @return Matching EVT_RTC_* mask, or 0 when the event is not handled.
+ */
 static eventmask_t tagRtcEventMask(rtcevent_t event)
 {
   switch (event)
@@ -228,6 +261,12 @@ static eventmask_t tagRtcEventMask(rtcevent_t event)
 }
 
 #if defined(RTC_SUPPORTS_CALLBACKS) && (RTC_SUPPORTS_CALLBACKS == TRUE)
+/**
+ * @brief RTC interrupt callback that forwards RTC events to the main thread.
+ *
+ * @param[in] rtcp ChibiOS RTC driver that raised the event.
+ * @param[in] event RTC event identifier.
+ */
 static void tagRtcCallback(RTCDriver *rtcp, rtcevent_t event)
 {
   (void)rtcp;
@@ -243,6 +282,9 @@ static void tagRtcCallback(RTCDriver *rtcp, rtcevent_t event)
 }
 #endif
 
+/**
+ * @brief Install RTC interrupt routing needed by the current STM32 family.
+ */
 static void tagRtcInstallCallback(void)
 {
 #if defined(RTC_SUPPORTS_CALLBACKS) && (RTC_SUPPORTS_CALLBACKS == TRUE)
@@ -266,6 +308,9 @@ static void tagRtcInstallCallback(void)
 
 }
 
+/**
+ * @brief Post wakeup events discovered during reset/startup handling.
+ */
 static void tagPostStartupEvents(void)
 {
   eventmask_t startup_events = 0U;
@@ -279,12 +324,18 @@ static void tagPostStartupEvents(void)
     chEvtAddEvents(startup_events);
 }
 
+/**
+ * @brief Hook called during early system initialization to set monitor priority.
+ */
 void tagSystemInitHook(void)
 {
   NVIC_SetPriority(DebugMonitor_IRQn, TAG_DEBUG_MONITOR_PRIORITY);
 }
 
 #if TAG_STM32U3_FLASH
+/**
+ * @brief Enable writes to STM32U3 backup registers used by BackupState.
+ */
 static void tagBackupStateEnableWrites(void)
 {
 #if defined(RCC_APB1ENR1_RTCAPBEN)
@@ -299,6 +350,9 @@ static void tagBackupStateEnableWrites(void)
 #endif
 
 #if TAG_MONITOR_RESET_RECOVERY
+/**
+ * @brief Clear retained runtime fields during a true power initialization.
+ */
 static void tagResetRuntimeStateForPowerInit(void)
 {
   pState->state = TagState_IDLE;
