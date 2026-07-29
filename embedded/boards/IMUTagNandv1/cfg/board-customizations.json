@@ -25,7 +25,8 @@
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0"
+        "Alternate": "0",
+        "Standby": "PULLDOWN"
       },
       "pin1": {
         "ID": "LED1",
@@ -74,8 +75,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5",
-        "Standby": "PULLDOWN"
+        "Alternate": "5"
       },
       "pin7": {
         "ID": "LSM_FLASH_MOSI",
@@ -94,7 +94,8 @@
         "Speed": "Medium",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "14"
+        "Alternate": "14",
+        "Standby": "PULLDOWN"
       },
       "pin9": {
         "ID": "LPS_CS",
@@ -113,7 +114,8 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0"
+        "Alternate": "0",
+        "Standby": "PULLDOWN"
       },
       "pin11": {
         "ID": "LPS_MISO",
@@ -122,8 +124,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5",
-        "Standby": "PULLDOWN"
+        "Alternate": "5"
       },
       "pin12": {
         "ID": "LPS_MOSI",
@@ -162,7 +163,7 @@
         "Level": "High",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Analog",
+        "Mode": "Output",
         "Alternate": "0",
         "Standby": "PULLUP"
       },
@@ -182,7 +183,7 @@
         "Level": "Low",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "1",
         "Standby": "PULLDOWN"
       },
@@ -193,7 +194,8 @@
         "Speed": "High",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "5"
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
       },
       "pin6": {
         "ID": "SDA",
@@ -223,7 +225,7 @@
         "Level": "High",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Input",
+        "Mode": "Analog",
         "Alternate": "0"
       }
     }

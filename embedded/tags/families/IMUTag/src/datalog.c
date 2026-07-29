@@ -40,6 +40,8 @@ static uint32_t erase_sector_size;
 static uint32_t erase_sector_total;
 /** True while an incremental external erase is active. */
 static bool erase_external_active;
+/** Sticky failure flag for the current incremental external erase. */
+static bool erase_external_failed;
 
 extern int encode_ack(void);
 
@@ -192,6 +194,7 @@ void eraseExternalStart(void)
   erase_sector_total = dirty_sectors;
   sectors_erased = 0;
   erase_external_active = false;
+  erase_external_failed = false;
 
   if (sector_size == 0U || dirty_sectors == 0U) {
     return;
@@ -207,8 +210,16 @@ bool eraseExternalNextSector(void)
     return false;
 
   if ((uint32_t)sectors_erased < erase_sector_total) {
-    tagStorageSectorErase(TAG_EXTERNAL_FLASH,
-                          (uint32_t)sectors_erased * erase_sector_size);
+    uint32_t sector = (uint32_t)sectors_erased;
+    uint32_t address = sector * erase_sector_size;
+
+    if (!tagStorageSectorErase(TAG_EXTERNAL_FLASH, address)) {
+      erase_external_failed = true;
+      debug_log_printf(
+          "IMUTag erase: external sector %u address 0x%x failed\r\n",
+          (unsigned)sector, (unsigned)address);
+      return false;
+    }
     sectors_erased++;
   }
 
@@ -220,8 +231,14 @@ void eraseExternalFinish(void)
   if (erase_external_active)
     tagStorageSleep(TAG_EXTERNAL_FLASH);
   erase_external_active = false;
-  pState->external_blocks = 0;
+  if (!erase_external_failed)
+    pState->external_blocks = 0;
   sectors_erased = 0;
+}
+
+bool eraseExternalFailed(void)
+{
+  return erase_external_failed;
 }
 
 /**

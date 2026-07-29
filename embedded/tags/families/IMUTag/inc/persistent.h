@@ -167,6 +167,8 @@ void eraseExternalStart(void);
 bool eraseExternalNextSector(void);
 /** @brief Finish incremental external log erase. */
 void eraseExternalFinish(void);
+/** @brief Report whether the current incremental external erase failed. */
+bool eraseExternalFailed(void);
 /** @brief Erase one external log block, when supported by the target. */
 void eraseExternalBlock(void);
 /** @brief Report external flash capacity in bytes. */

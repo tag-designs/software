@@ -657,9 +657,16 @@ int main(void)
     pState->safe = true;
 
     godown(sleepmode);
+#if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palSetLineMode(LINE_testpin, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetLine(LINE_testpin);
+#endif
     idlePowerMode = STOP1;
     pending_events =  chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
     idlePowerMode = SLEEP;
+#if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palClearLine(LINE_testpin);
+#endif
     pending_events |= chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     //debug_log_printf("main loop: sleepmode %d, pending events %x\r\n", sleepmode, pending_events);
     

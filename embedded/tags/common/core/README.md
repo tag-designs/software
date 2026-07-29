@@ -176,11 +176,11 @@ Power lifetime and bus lifetime are intentionally separate. For SPI devices:
   switched device power plus SPI pin idle state.
 - `tagSpiBusBegin/End()` lives in `spi_bus.c` and handles SPI alternate
   functions, bus ownership, and peripheral enable/disable. `End` deselects the
-  device, disables the peripheral, and returns SCK/MOSI/MISO to analog. The
-  device descriptor supplies the `TagSpiConfig` used for that bus session; the
-  ChibiOS backend maps that descriptor to `SPIDx`, `spiStart()`, `spiSend()`,
-  `spiReceive()`, and `spiPolledExchange()`-based polled helpers for
-  command-sized transfers.
+  device, disables the peripheral, idles SCK/MOSI low, and leaves MISO analog
+  high-Z. The device descriptor supplies the `TagSpiConfig` used for that bus
+  session; the ChibiOS backend maps that descriptor to `SPIDx`, `spiStart()`,
+  `spiSend()`, `spiReceive()`, and `spiPolledExchange()`-based polled helpers
+  for command-sized transfers.
 - `tagSpiDevicePrepareSleep()` applies standby pull policy before deep sleep.
 
 I2C-backed devices follow the same ownership rule: `TagI2cController`

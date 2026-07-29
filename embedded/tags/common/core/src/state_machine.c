@@ -583,6 +583,11 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   }
 
   eraseExternalFinish();
+  if (eraseExternalFailed()) {
+    reset_erase_started = false;
+    debug_log_printf("state_machine: external erase failed during reset\r\n");
+    return Aborted(T_INIT, State_EVENT_EXTERNALFULL);
+  }
   erasePersistent();
   reset_erase_started = false;
 

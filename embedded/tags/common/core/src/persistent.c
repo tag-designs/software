@@ -153,6 +153,16 @@ void __attribute__((weak)) eraseExternalFinish(void)
 }
 
 /**
+ * @brief Default external erase failure status for tags without storage.
+ *
+ * @return false because the no-op erase path cannot fail.
+ */
+bool __attribute__((weak)) eraseExternalFailed(void)
+{
+  return false;
+}
+
+/**
  * @brief Default no-op block erase for tags without external storage.
  */
 void __attribute__((weak)) eraseExternalBlock(void)

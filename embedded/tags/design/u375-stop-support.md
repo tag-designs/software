@@ -85,6 +85,10 @@ the idle power hook switches it to output push-pull before driving it high and
 returns it to analog on idle leave. `LINE_testpin` is already an output and is
 used to show that the idle loop reached WFI.
 
+`IMUTagNand` keeps the same STOP/WFI hook shape, but disables those diagnostic
+drives by default so PA1 and PA2 do not affect current measurements. Define
+`TAG_IDLE_STOP_DIAGNOSTICS` only for scoped bring-up captures.
+
 ## Normal Collection Idle
 
 The common main loop sets:

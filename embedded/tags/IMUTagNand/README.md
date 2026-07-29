@@ -18,6 +18,8 @@ MX25U12843 SPI NOR storage module with the GD5F SPI-NAND storage module.
 - RTC and BMM350 bus: shared software I2C on the RTC pin pair.
 - BMM350 INT/DRDY: PB5, exposed by the board as `LINE_BMM_INT`.
 - Test outputs: PA1 is `LINE_LED1`; PA2 is `LINE_testpin`.
+  STOP/WFI diagnostic driving is disabled by default; define
+  `TAG_IDLE_STOP_DIAGNOSTICS` only when probing those lines.
 
 The target uses the shared STM32U375 linker script. That script reserves the
 last two STM32 flash pages for provisioned configuration: calibration constants

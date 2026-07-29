@@ -29,7 +29,10 @@
 #define GD5F_CMD_RESET               0xFFU
 
 #define GD5F_FEATURE_BLOCK_LOCK      0xA0U
+#define GD5F_FEATURE_CONFIG          0xB0U
 #define GD5F_FEATURE_STATUS          0xC0U
+
+#define GD5F_CONFIG_ECC_EN           0x10U
 
 #define GD5F_STATUS_OIP              0x01U
 #define GD5F_STATUS_WEL              0x02U
@@ -203,6 +206,21 @@ static bool gd5fSetFeature(const TagStorageDevice *dev, uint8_t feature,
 }
 
 /**
+ * @brief Ensure normal array reads and programs use the on-die ECC engine.
+ */
+static bool gd5fEnableEcc(const TagStorageDevice *dev)
+{
+  uint8_t config = 0U;
+
+  if (!gd5fGetFeature(dev, GD5F_FEATURE_CONFIG, &config))
+    return false;
+  if ((config & GD5F_CONFIG_ECC_EN) != 0U)
+    return true;
+  return gd5fSetFeature(dev, GD5F_FEATURE_CONFIG,
+                        (uint8_t)(config | GD5F_CONFIG_ECC_EN));
+}
+
+/**
  * @brief Poll the status register until the chip is ready or the limit expires.
  */
 static bool gd5fWaitReady(const TagStorageDevice *dev, uint32_t poll_limit,
@@ -251,6 +269,8 @@ static int gd5fProbe(const TagStorageDevice *dev)
   tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_RESET);
   stopMilliseconds(GD5F_RESET_DELAY_MS);
   gd5fSetFeature(dev, GD5F_FEATURE_BLOCK_LOCK, 0U);
+  if (!gd5fEnableEcc(dev))
+    return -1;
 
   tagSpiSelect(tagStorageSpiDevice(dev));
   ok = gd5fWriteBytes(tagStorageSpiDevice(dev), cmd, sizeof(cmd)) &&
@@ -298,10 +318,10 @@ static gd5f_page_read_result_t gd5fReadPhysicalPageColumn(
     return GD5F_PAGE_READ_ERROR;
   if (!gd5fWaitReady(dev, GD5F_READ_POLL_LIMIT, &status))
     return GD5F_PAGE_READ_ERROR;
-  if ((status & GD5F_STATUS_ECC_MASK) == GD5F_STATUS_ECC_UNCORRECTABLE)
-    return GD5F_PAGE_READ_ECC_UNCORRECTABLE;
   if (!gd5fColumnRead(tagStorageSpiDevice(dev), column, buf, len))
     return GD5F_PAGE_READ_ERROR;
+  if ((status & GD5F_STATUS_ECC_MASK) == GD5F_STATUS_ECC_UNCORRECTABLE)
+    return GD5F_PAGE_READ_ECC_UNCORRECTABLE;
   if ((status & GD5F_STATUS_ECC_MASK) == GD5F_STATUS_ECC_CORRECTED)
     return GD5F_PAGE_READ_ECC_CORRECTED;
   return GD5F_PAGE_READ_OK;
@@ -336,6 +356,11 @@ gd5f_page_read_result_t gd5fReadPhysicalPage(
  */
 /**
  * @brief Read the factory bad-block marker for one physical block.
+ *
+ * @details The marker byte is in spare/OOB, so a payload ECC failure after
+ *          PAGE_READ does not by itself make the marker unreadable. Power-torn
+ *          test pages can report uncorrectable ECC while still returning a
+ *          valid erased marker byte from the cache.
  */
 static bool gd5fReadBadBlockMark(const TagStorageDevice *dev,
                                  uint32_t physical_block,
@@ -354,8 +379,7 @@ static bool gd5fReadBadBlockMark(const TagStorageDevice *dev,
       gd5fReadPhysicalPageColumn(dev, physical_page,
                                  GD5F_BAD_BLOCK_MARK_COLUMN,
                                  mark, 1U);
-  return result == GD5F_PAGE_READ_OK ||
-         result == GD5F_PAGE_READ_ECC_CORRECTED;
+  return result != GD5F_PAGE_READ_ERROR;
 }
 
 /**
@@ -825,19 +849,39 @@ static bool gd5fErasePhysicalBlock(const TagStorageDevice *dev,
 {
   uint8_t status;
 
-  if (physical_block >= GD5F_PHYSICAL_BLOCK_COUNT)
+  if (physical_block >= GD5F_PHYSICAL_BLOCK_COUNT) {
+    debug_log_printf("NAND: erase physical block %u out of range\r\n",
+                     (unsigned)physical_block);
     return false;
-  if (!gd5fBlockIsGood(dev, physical_block))
+  }
+  if (!gd5fBlockIsGood(dev, physical_block)) {
+    debug_log_printf("NAND: erase physical block %u rejected by marker\r\n",
+                     (unsigned)physical_block);
     return false;
-  if (!gd5fWriteEnable(dev))
+  }
+  if (!gd5fWriteEnable(dev)) {
+    debug_log_printf("NAND: erase physical block %u write-enable failed\r\n",
+                     (unsigned)physical_block);
     return false;
+  }
   if (!gd5fRowCommand(tagStorageSpiDevice(dev),
                       GD5F_CMD_BLOCK_ERASE,
-                      gd5fBlockToRow(physical_block)))
+                      gd5fBlockToRow(physical_block))) {
+    debug_log_printf("NAND: erase physical block %u command failed\r\n",
+                     (unsigned)physical_block);
     return false;
-  if (!gd5fWaitReady(dev, GD5F_ERASE_POLL_LIMIT, &status))
+  }
+  if (!gd5fWaitReady(dev, GD5F_ERASE_POLL_LIMIT, &status)) {
+    debug_log_printf("NAND: erase physical block %u ready timeout\r\n",
+                     (unsigned)physical_block);
     return false;
-  return (status & GD5F_STATUS_E_FAIL) == 0U;
+  }
+  if ((status & GD5F_STATUS_E_FAIL) != 0U) {
+    debug_log_printf("NAND: erase physical block %u failed status=0x%x\r\n",
+                     (unsigned)physical_block, status);
+    return false;
+  }
+  return true;
 }
 
 /**

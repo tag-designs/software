@@ -179,7 +179,7 @@ typedef struct {
  */
 typedef enum {
   TAG_SPI_SLEEP_FLOAT,     ///< Leave SPI pins floating/analog for sleep.
-  TAG_SPI_SLEEP_SAFE_IDLE, ///< Bias pins to the device's inactive bus state.
+  TAG_SPI_SLEEP_SAFE_IDLE, ///< Bias CS/SCK/MOSI inactive; leave MISO high-Z.
   TAG_SPI_SLEEP_CUSTOM     ///< Tag-specific code owns sleep pin state.
 } TagSpiSleepPolicy;
 
@@ -281,7 +281,7 @@ static inline SPI_TypeDef *tagSpiDevicePeripheral(const TagSpiDevice *device)
 void tagSpiDevicePowerOn(const TagSpiDevice *device);
 
 /**
- * @brief Remove device power and return SPI pins to analog low-leakage mode.
+ * @brief Remove device power and return SPI pins to low-leakage idle state.
  *
  * @param[in] device SPI device descriptor to power down.
  */

@@ -198,6 +198,11 @@ bool eraseExternalNextSector(void);
 void eraseExternalFinish(void);
 
 /**
+ * @brief Report whether the current incremental external erase failed.
+ */
+bool eraseExternalFailed(void);
+
+/**
  * @brief Erase one external storage block when a tag provides block erasure.
  */
 void eraseExternalBlock(void);

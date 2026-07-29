@@ -18,6 +18,9 @@ AbstractDownload::AbstractDownload(
 }
 
 void AbstractDownload::exec() {
+    finished = false;
+    log_started = false;
+
     // Prefer the external page cursor for sparse-checkpoint IMUTagNand logs.
     // Older firmware reports only internal_data_count, so keep that fallback.
     Status status;
@@ -62,6 +65,16 @@ void AbstractDownload::exec() {
         return;
     }
 
+    if (!writer->beginLog()) {
+        const QString error = writer && !writer->lastError().empty()
+            ? QString::fromStdString(writer->lastError())
+            : QStringLiteral("Could not begin log download");
+        downloadError(error);
+        emit downloadFinished();
+        return;
+    }
+    log_started = true;
+
     emit progressRangeChanged(0,max_cnt);//max_cnt);
     emit progressValueChanged(0);
 
@@ -76,6 +89,9 @@ void AbstractDownload::exec() {
 
 void AbstractDownload::cancel(){
     trigger_timer.stop();
+    if (finished) {
+        return;
+    }
     QString tmstr = QString::number(timer.elapsed()/1000.0, 'f',2);
     qInfo() << "Download Elapsed time: " << tmstr << " seconds";
     qInfo() << "Downloaded " << cnt << " blocks";
@@ -105,6 +121,10 @@ void AbstractDownload::worker(){
                 qInfo("skipping missing log block %d", cnt);
                 cnt++;
                 len = 1;
+                if (cnt >= max_cnt) {
+                    finishDownload();
+                    return;
+                }
                 continue;
             }
 
@@ -134,6 +154,10 @@ void AbstractDownload::worker(){
                 return;   
             } else {
                 cnt += len;
+                if (cnt >= max_cnt) {
+                    finishDownload();
+                    return;
+                }
          
             }
         } else {
@@ -149,8 +173,7 @@ void AbstractDownload::worker(){
 
     if (len == 0) {
         // finished
-        emit downloadFinished();
-        cancel();
+        finishDownload();
     } 
 }
 
@@ -171,4 +194,27 @@ int AbstractDownload::writeLog(Ack &ack)
         return -2;
     }
     return writer->writeLog(ack);
+}
+
+void AbstractDownload::finishDownload()
+{
+    if (finished) {
+        return;
+    }
+
+    trigger_timer.stop();
+    if (log_started && writer && !writer->endLog()) {
+        const QString error = !writer->lastError().empty()
+            ? QString::fromStdString(writer->lastError())
+            : QStringLiteral("Could not finish log download");
+        downloadError(error);
+    }
+    log_started = false;
+
+    QString tmstr = QString::number(timer.elapsed()/1000.0, 'f',2);
+    qInfo() << "Download Elapsed time: " << tmstr << " seconds";
+    qInfo() << "Downloaded " << cnt << " blocks";
+    finished = true;
+    emit progressValueChanged(cnt);
+    emit downloadFinished();
 }

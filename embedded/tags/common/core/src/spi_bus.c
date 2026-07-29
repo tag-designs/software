@@ -268,7 +268,7 @@ void tagSpiDevicePowerOff(const TagSpiDevice *device)
   palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_INPUT_PULLDOWN);
   palSetLineMode(device->mosi, PAL_MODE_INPUT_PULLDOWN);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
 
   if (tagLineIsValid(device->pwr)) {
     palSetLineMode(device->config.ssline, PAL_MODE_INPUT_ANALOG);
@@ -303,7 +303,7 @@ void tagSpiBusEnd(const TagSpiDevice *device)
   palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLineMode(device->mosi, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_PULLDOWN);
+  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
 
   tagSpiBusRelease(device);
 }
@@ -315,7 +315,6 @@ void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
     tagEnableStandbyPullup(device->config.ssline);
     tagEnableStandbyPulldown(device->sck);
     tagEnableStandbyPulldown(device->mosi);
-    tagEnableStandbyPulldown(device->miso);
     break;
 
   case TAG_SPI_SLEEP_FLOAT:

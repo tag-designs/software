@@ -57,6 +57,8 @@ class AbstractDownload : public QObject
 
     protected:
         int max_cnt;
+        bool finished = false;
+        bool log_started = false;
         // Number of log records consumed so far. This is passed back to the
         // tag as the next download offset.
         int cnt;
@@ -67,6 +69,7 @@ class AbstractDownload : public QObject
     private:
 
         void downloadError(const QString &);
+        void finishDownload(void);
         bool writeHeader(void);
         // Returns the number of records consumed, 0 at end/no matching payload,
         // and negative values for errors. See TagLogWriter::writeLog().
