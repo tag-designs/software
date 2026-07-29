@@ -1,6 +1,6 @@
 /**
  * @file datalog.c
- * @brief IMUTagBreakout log storage, erase support, and monitor ACK export.
+ * @brief IMUTag family log storage, erase support, and monitor ACK export.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -16,27 +16,38 @@
 
 #if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
 #include "storage_gd5f.h"
+/** @brief Enable sparse internal checkpoints for NAND-backed IMUTag logs. */
 #define IMUTAG_NAND_CHECKPOINTS 1
 #else
+/** @brief Use one internal header per external page on legacy storage. */
 #define IMUTAG_NAND_CHECKPOINTS 0
 #endif
 
+/** Number of bytes exported by one raw-log acknowledgement. */
 const int databuf_size = DATALOG_SAMPLES * sizeof(t_DataLog);
+/** Raw-log acknowledgement staging buffer. */
 static t_DataLog databuf NOINIT;
+/** True when a NAND page-program cache is active and needs commit. */
 static bool datalog_page_cache_active;
 
 static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * sizeof(t_DataLog),
               "nanopb IMUTagRawLog.samples buffer size in options is out of sync with datalog page size!");
+/** Number of external erase sectors completed by the incremental erase path. */
 static volatile int sectors_erased NOINIT;
+/** Active external erase-sector size in bytes. */
 static uint32_t erase_sector_size;
+/** Total external erase sectors selected for the current erase. */
 static uint32_t erase_sector_total;
+/** True while an incremental external erase is active. */
 static bool erase_external_active;
 
 extern int encode_ack(void);
 
 #if defined(LOG_ACK_MEASURE_LINE)
+/** Tracks whether LOG_ACK_MEASURE_LINE has been configured as an output. */
 static bool log_ack_measure_line_initialized;
 
+/** @brief Assert the optional raw-log acknowledgement measurement line. */
 static void logAckMeasureBegin(void)
 {
   if (!log_ack_measure_line_initialized) {
@@ -47,15 +58,27 @@ static void logAckMeasureBegin(void)
   palSetLine(LOG_ACK_MEASURE_LINE);
 }
 
+/** @brief Deassert the optional raw-log acknowledgement measurement line. */
 static void logAckMeasureEnd(void)
 {
   palClearLine(LOG_ACK_MEASURE_LINE);
 }
 #else
+/** @brief No-op raw-log acknowledgement measurement hook. */
 #define logAckMeasureBegin() do { } while (0)
+/** @brief No-op raw-log acknowledgement measurement hook. */
 #define logAckMeasureEnd() do { } while (0)
 #endif
 
+/**
+ * @brief Estimate how many external erase sectors contain dirty log data.
+ *
+ * @details Recovery restores the external page cursor before erase begins.
+ *          The estimate erases one extra page span so a partially programmed
+ *          page from an interrupted write is also cleared.
+ *
+ * @return Number of external sectors to erase, capped at device capacity.
+ */
 static uint32_t dirtyExternalSectors(void)
 {
   const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
@@ -524,12 +547,7 @@ static enum LOGERR writeDataLogBytes(uint32_t page_offset,
   return writeDataLogImmediate(page_offset, data, size);
 }
 
-/**
- * @brief Append one data page to external flash at the current log cursor.
- *
- * @param[in] data Data page to write.
- * @return Log write status.
- */
+/* Public API contract documented in datalog.h. */
 enum LOGERR writeDataLog(t_DataLog *data)
 {
   enum LOGERR err = writeDataLogBytes(0U, data, sizeof(*data));

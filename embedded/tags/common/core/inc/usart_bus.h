@@ -28,6 +28,10 @@
  * protocols on top of this layer through sensor_io.
  * @{
  */
+/**
+ * @struct TagUsartSyncConfig
+ * @brief Raw STM32 register configuration for a synchronous USART bus.
+ */
 typedef struct {
   uint32_t brr; ///< USART baud-rate register value.
   uint32_t cr1; ///< USART CR1 configuration value.

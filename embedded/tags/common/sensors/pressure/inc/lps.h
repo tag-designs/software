@@ -21,8 +21,12 @@
  * inferring whether the device is SPI, synchronous-USART, or I2C at runtime.
  * @{
  */
+/**
+ * @struct TagPressureDevice
+ * @brief Register-device binding for one pressure sensor.
+ */
 typedef struct {
-  const TagRegisterDevice *registers;
+  const TagRegisterDevice *registers; ///< Register transport for this sensor.
 } TagPressureDevice;
 /** @} */
 

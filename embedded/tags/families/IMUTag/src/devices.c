@@ -1,6 +1,6 @@
 /**
  * @file devices.c
- * @brief IMUTagBreakout device descriptors, legacy SPI helpers, and power hooks.
+ * @brief IMUTag family device descriptors, legacy SPI helpers, and power hooks.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -229,7 +229,7 @@ const TagBmm350Device tagImuTagBmm350Device = {
 #endif
 
 /*
- * IMUTagBreakout device bindings.
+ * IMUTag family device bindings.
  *
  * This target predates the descriptor-driven device model, so keep the local
  * SPI sequencing intact while moving it out of pwr.c. That lets pwr.c focus on
@@ -237,6 +237,9 @@ const TagBmm350Device tagImuTagBmm350Device = {
  */
 
 
+/**
+ * @brief Disable the LPTIM2 trigger clock used for IMU external ODR.
+ */
 static void tagImuTagDisableTriggerClock(void)
 {
   RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
@@ -254,6 +257,9 @@ static void tagImuTagDisableTriggerClock(void)
 #endif
 }
 
+/**
+ * @brief Enable the LPTIM2 trigger clock used for IMU external ODR.
+ */
 static void tagImuTagEnableTriggerClock(void)
 {
   RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
@@ -274,6 +280,7 @@ static void tagImuTagEnableTriggerClock(void)
 #endif
 }
 
+/** External flash descriptor used by the IMUTag family datalog. */
 const TagStorageDevice tagExternalFlash = {
     .ops = EXTERNAL_FLASH_OPS,
     .bus = TAG_BUS_SPI_INIT(
@@ -289,6 +296,7 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
+/** LPS22HH register descriptor for the IMUTag family pressure path. */
 static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -304,10 +312,12 @@ static const TagRegisterDevice lps_registers = {
     .write_mask = 0x00,
 };
 
+/** Pressure device descriptor exported to common pressure helpers. */
 const TagPressureDevice tagImuTagPressureDevice = {
     .registers = &lps_registers,
 };
 
+/** LSM6DSV16X register descriptor for the IMUTag family IMU path. */
 static const TagRegisterDevice imu_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -378,12 +388,19 @@ void tagImuTagSetTrigger(unsigned int divider)
   tagImuTagSetTriggerQuiet(divider, true);
 }
 
+/**
+ * @brief Adapter from LSM6DSV16X trigger callback to IMUTag trigger output.
+ *
+ * @param[in] context Unused callback context.
+ * @param[in] divider LPTIM divider; zero disables the trigger output.
+ */
 static void imuSetTrigger(const void *context, unsigned int divider)
 {
   (void)context;
   tagImuTagSetTrigger(divider);
 }
 
+/** LSM6DSV16X device descriptor exported to the IMUTag collection code. */
 const TagLsm6dsv16xDevice tagImuTagImuDevice = {
     .registers = &imu_registers,
     .set_trigger = imuSetTrigger,
@@ -391,6 +408,7 @@ const TagLsm6dsv16xDevice tagImuTagImuDevice = {
 };
 
 #if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
+/** AK09940A register descriptor for legacy IMUTag magnetometer targets. */
 const TagRegisterDevice tagImuTagMagDevice = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
@@ -407,6 +425,7 @@ const TagRegisterDevice tagImuTagMagDevice = {
 };
 #endif
 
+/** Self-test table for devices owned by the IMUTag family. */
 static const TagTestCase tag_tests[] =
 {
   {RUN_RTC, tag_test_rtc, NULL},
@@ -423,12 +442,7 @@ static const TagTestCase tag_tests[] =
 #endif
 };
 
-/**
- * @brief Return the IMUTagBreakout self-test table.
- *
- * @param[out] count Number of test cases.
- * @return Pointer to the static test-case table.
- */
+/* Public API contract documented in test_support.h. */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);

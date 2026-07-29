@@ -1,7 +1,7 @@
 
 /**
  * @file sensors.c
- * @brief IMUTagBreakout collection, live calibration, and calibration storage.
+ * @brief IMUTag family collection, live calibration, and calibration storage.
  * @author tag firmware authors
  * @date 2026-05-23
  *
@@ -639,8 +639,8 @@ bool initDataCollection(void)
   return ok;
 }
 
-/**
- * @brief Fill one log superframe from the IMU FIFO and environment sensors.
+/*
+ * Fill one log superframe from the IMU FIFO and environment sensors.
  *
  * This routine may be called before a watermark is available; in that case it
  * returns false and leaves any partial FIFO block cached. It first verifies
@@ -648,9 +648,6 @@ bool initDataCollection(void)
  * FIFO reads. Once a full block is assembled, IMU axes are rotated into log
  * orientation, auxiliary sensors are polled once, and missing auxiliary slots
  * are written as quiet NaNs.
- *
- * @param[out] frame Destination log superframe.
- * @return true when one complete accel/gyro and auxiliary superframe was copied.
  */
 bool sampleDataCollection(t_ImuTagSuperFrame *frame)
 {
@@ -746,15 +743,12 @@ bool sampleDataCollection(t_ImuTagSuperFrame *frame)
   return true;
 }
 
-/**
- * @brief Return the latest raw pressure-sensor temperature.
+/*
+ * Return the latest raw pressure-sensor temperature.
  *
  * The cache is refreshed by sampleDataCollection(), which reads pressure and
  * temperature as one coherent LPS22HH burst. The LPS22HH reports temperature
  * in hundredths of a degree C; conversion is deferred to the log export path.
- *
- * @param[out] rawtemp Latest cached raw temperature in 0.01 C units.
- * @return true once at least one pressure/temperature sample has been read.
  */
 bool latestDataCollectionRawTemp(int16_t *rawtemp)
 {

@@ -30,35 +30,52 @@
  * Public BMM350 register values and selectors used by tag/family bindings.
  * @{
  */
+/** @brief Expected BMM350 chip ID register value. */
 #define BMM350_CHIP_ID_VALUE 0x33U
 
+/**
+ * @enum bmm350_rate_t
+ * @brief Output data-rate selector encoded for the BMM350 PMU command path.
+ */
 typedef enum {
-  BMM350_RATE_400HZ = 0x02,
-  BMM350_RATE_200HZ = 0x03,
-  BMM350_RATE_100HZ = 0x04,
-  BMM350_RATE_50HZ = 0x05,
-  BMM350_RATE_25HZ = 0x06,
-  BMM350_RATE_12_5HZ = 0x07,
-  BMM350_RATE_6_25HZ = 0x08,
-  BMM350_RATE_3_125HZ = 0x09,
-  BMM350_RATE_1_5625HZ = 0x0A
+  BMM350_RATE_400HZ = 0x02,    ///< 400 Hz continuous output rate.
+  BMM350_RATE_200HZ = 0x03,    ///< 200 Hz continuous output rate.
+  BMM350_RATE_100HZ = 0x04,    ///< 100 Hz continuous output rate.
+  BMM350_RATE_50HZ = 0x05,     ///< 50 Hz continuous output rate.
+  BMM350_RATE_25HZ = 0x06,     ///< 25 Hz continuous output rate.
+  BMM350_RATE_12_5HZ = 0x07,   ///< 12.5 Hz continuous output rate.
+  BMM350_RATE_6_25HZ = 0x08,   ///< 6.25 Hz continuous output rate.
+  BMM350_RATE_3_125HZ = 0x09,  ///< 3.125 Hz continuous output rate.
+  BMM350_RATE_1_5625HZ = 0x0A  ///< 1.5625 Hz continuous output rate.
 } bmm350_rate_t;
 
+/**
+ * @enum bmm350_performance_t
+ * @brief BMM350 averaging/noise-performance selector.
+ */
 typedef enum {
-  BMM350_PERF_LOW_POWER = 0,
-  BMM350_PERF_REGULAR = 1,
-  BMM350_PERF_LOW_NOISE = 2,
-  BMM350_PERF_ULTRA_LOW_NOISE = 3
+  BMM350_PERF_LOW_POWER = 0,       ///< Lowest current, highest noise.
+  BMM350_PERF_REGULAR = 1,         ///< Balanced current/noise setting.
+  BMM350_PERF_LOW_NOISE = 2,       ///< Lower noise with higher current.
+  BMM350_PERF_ULTRA_LOW_NOISE = 3  ///< Lowest noise, highest current.
 } bmm350_performance_t;
 
+/**
+ * @enum bmm350_int_polarity_t
+ * @brief Interrupt active-level selector for the BMM350 data-ready pin.
+ */
 typedef enum {
-  BMM350_INT_ACTIVE_LOW = 0,
-  BMM350_INT_ACTIVE_HIGH = 1
+  BMM350_INT_ACTIVE_LOW = 0,  ///< Data-ready interrupt asserts low.
+  BMM350_INT_ACTIVE_HIGH = 1  ///< Data-ready interrupt asserts high.
 } bmm350_int_polarity_t;
 
+/**
+ * @enum bmm350_int_drive_t
+ * @brief Output-drive selector for the BMM350 interrupt pin.
+ */
 typedef enum {
-  BMM350_INT_OPEN_DRAIN = 0,
-  BMM350_INT_PUSH_PULL = 1
+  BMM350_INT_OPEN_DRAIN = 0, ///< Interrupt pin uses open-drain drive.
+  BMM350_INT_PUSH_PULL = 1   ///< Interrupt pin uses push-pull drive.
 } bmm350_int_drive_t;
 /** @} */
 
@@ -66,51 +83,83 @@ typedef enum {
  * RAM-backed factory compensation state and board binding.
  * @{
  */
+/**
+ * @struct TagBmm350OffsetCompensation
+ * @brief Factory offset compensation terms decoded from BMM350 OTP.
+ */
 typedef struct {
-  float t_offs;
-  float offset_x;
-  float offset_y;
-  float offset_z;
+  float t_offs;   ///< Temperature offset term.
+  float offset_x; ///< X-axis magnetic offset term.
+  float offset_y; ///< Y-axis magnetic offset term.
+  float offset_z; ///< Z-axis magnetic offset term.
 } TagBmm350OffsetCompensation;
 
+/**
+ * @struct TagBmm350SensitivityCompensation
+ * @brief Factory sensitivity compensation terms decoded from BMM350 OTP.
+ */
 typedef struct {
-  float t_sens;
-  float sens_x;
-  float sens_y;
-  float sens_z;
+  float t_sens; ///< Temperature sensitivity term.
+  float sens_x; ///< X-axis magnetic sensitivity term.
+  float sens_y; ///< Y-axis magnetic sensitivity term.
+  float sens_z; ///< Z-axis magnetic sensitivity term.
 } TagBmm350SensitivityCompensation;
 
+/**
+ * @struct TagBmm350TcoCompensation
+ * @brief Temperature coefficient of offset compensation terms.
+ */
 typedef struct {
-  float tco_x;
-  float tco_y;
-  float tco_z;
+  float tco_x; ///< X-axis TCO term.
+  float tco_y; ///< Y-axis TCO term.
+  float tco_z; ///< Z-axis TCO term.
 } TagBmm350TcoCompensation;
 
+/**
+ * @struct TagBmm350TcsCompensation
+ * @brief Temperature coefficient of sensitivity compensation terms.
+ */
 typedef struct {
-  float tcs_x;
-  float tcs_y;
-  float tcs_z;
+  float tcs_x; ///< X-axis TCS term.
+  float tcs_y; ///< Y-axis TCS term.
+  float tcs_z; ///< Z-axis TCS term.
 } TagBmm350TcsCompensation;
 
+/**
+ * @struct TagBmm350CrossAxisCompensation
+ * @brief Cross-axis magnetic compensation terms decoded from OTP.
+ */
 typedef struct {
-  float cross_x_y;
-  float cross_y_x;
-  float cross_z_x;
-  float cross_z_y;
+  float cross_x_y; ///< Y contribution into compensated X.
+  float cross_y_x; ///< X contribution into compensated Y.
+  float cross_z_x; ///< X contribution into compensated Z.
+  float cross_z_y; ///< Y contribution into compensated Z.
 } TagBmm350CrossAxisCompensation;
 
+/**
+ * @struct TagBmm350Compensation
+ * @brief RAM cache of BMM350 factory OTP and decoded compensation terms.
+ *
+ * @details bmm350ReadCompensationData() fills this structure before
+ *          compensated reads are valid. The cache is device-owned RAM so
+ *          multiple BMM350 descriptors can coexist without global trim state.
+ */
 typedef struct {
-  bool valid;
-  uint16_t otp_data[32];
-  uint8_t variant_id;
-  TagBmm350OffsetCompensation offset;
-  TagBmm350SensitivityCompensation sensitivity;
-  TagBmm350TcoCompensation tco;
-  TagBmm350TcsCompensation tcs;
-  float t0;
-  TagBmm350CrossAxisCompensation cross_axis;
+  bool valid; ///< True after OTP has been read and decoded successfully.
+  uint16_t otp_data[32]; ///< Raw OTP words retained for diagnostics.
+  uint8_t variant_id; ///< BMM350 variant identifier from OTP.
+  TagBmm350OffsetCompensation offset; ///< Offset compensation group.
+  TagBmm350SensitivityCompensation sensitivity; ///< Sensitivity group.
+  TagBmm350TcoCompensation tco; ///< Temperature coefficient of offset group.
+  TagBmm350TcsCompensation tcs; ///< Temperature coefficient of sensitivity group.
+  float t0; ///< Reference temperature term used during compensation.
+  TagBmm350CrossAxisCompensation cross_axis; ///< Cross-axis compensation group.
 } TagBmm350Compensation;
 
+/**
+ * @struct TagBmm350Device
+ * @brief Board binding and runtime compensation storage for one BMM350.
+ */
 typedef struct {
   /** Register bus used by the BMM350. The caller owns session bracketing with
    * bmm350DeviceBegin()/bmm350DeviceEnd() for public operations.
@@ -128,11 +177,15 @@ typedef struct {
   bmm350_int_drive_t interrupt_drive;
 } TagBmm350Device;
 
+/**
+ * @struct TagBmm350RawSample
+ * @brief Raw signed BMM350 magnetometer and temperature sample.
+ */
 typedef struct {
-  int32_t x;
-  int32_t y;
-  int32_t z;
-  int32_t temperature;
+  int32_t x;           ///< Raw X-axis magnetic ADC sample.
+  int32_t y;           ///< Raw Y-axis magnetic ADC sample.
+  int32_t z;           ///< Raw Z-axis magnetic ADC sample.
+  int32_t temperature; ///< Raw temperature ADC sample.
 } TagBmm350RawSample;
 /** @} */
 
@@ -140,7 +193,18 @@ typedef struct {
  * Bus and optional power helpers.
  * @{
  */
+/**
+ * @brief Power and begin the I2C session for a BMM350 descriptor.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ */
 void bmm350DeviceBegin(const TagBmm350Device *dev);
+
+/**
+ * @brief End the I2C session and power down a BMM350 descriptor.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ */
 void bmm350DeviceEnd(const TagBmm350Device *dev);
 /** @} */
 
@@ -148,16 +212,77 @@ void bmm350DeviceEnd(const TagBmm350Device *dev);
  * Native driver entry points used by tag/family code.
  * @{
  */
+/**
+ * @brief Verify that the device responds with the expected BMM350 chip ID.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @return true when the chip ID matches BMM350_CHIP_ID_VALUE.
+ */
 bool bmm350CheckWhoami(const TagBmm350Device *dev);
+
+/**
+ * @brief Issue a soft reset and wait for the command to complete.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @return MSG_OK on success, or a ChibiOS I2C error.
+ */
 msg_t bmm350Reset(const TagBmm350Device *dev);
+
+/**
+ * @brief Read OTP trim data and populate the descriptor compensation cache.
+ *
+ * @param[in] dev BMM350 device descriptor with writable compensation storage.
+ * @return MSG_OK when OTP was read and decoded, or a ChibiOS I2C error.
+ */
 msg_t bmm350ReadCompensationData(const TagBmm350Device *dev);
+
+/**
+ * @brief Configure continuous magnetic sampling.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] rate Output data rate selector.
+ * @param[in] performance Averaging/noise-performance selector.
+ * @return MSG_OK when configuration completed, or a ChibiOS I2C error.
+ */
 msg_t bmm350InitContinuous(const TagBmm350Device *dev,
                            bmm350_rate_t rate,
                            bmm350_performance_t performance);
+
+/**
+ * @brief Put the BMM350 into power-down mode.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @return MSG_OK when the mode command completed, or a ChibiOS I2C error.
+ */
 msg_t bmm350InitPowerDown(const TagBmm350Device *dev);
+
+/**
+ * @brief Read the descriptor's configured data-ready line.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @return true when the DRDY pin is asserted according to descriptor polarity.
+ */
 bool bmm350DataReady(const TagBmm350Device *dev);
+
+/**
+ * @brief Read one raw magnetometer and temperature sample.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[out] sample Populated with raw ADC values on success.
+ * @return MSG_OK when all sample registers were read, or a ChibiOS I2C error.
+ */
 msg_t bmm350ReadRawSample(const TagBmm350Device *dev,
                           TagBmm350RawSample *sample);
+
+/**
+ * @brief Read one compensated magnetic sample in microtesla.
+ *
+ * @param[in] dev BMM350 device descriptor with valid compensation cache.
+ * @param[out] mx Compensated X-axis magnetic field in uT.
+ * @param[out] my Compensated Y-axis magnetic field in uT.
+ * @param[out] mz Compensated Z-axis magnetic field in uT.
+ * @return MSG_OK when a raw sample was read and compensated.
+ */
 msg_t bmm350ReadMagUT(const TagBmm350Device *dev,
                       float *mx, float *my, float *mz);
 /** @} */

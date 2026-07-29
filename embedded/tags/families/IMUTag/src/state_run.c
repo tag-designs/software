@@ -1,6 +1,6 @@
 /**
  * @file state_run.c
- * @brief IMUTagBreakout RUNNING-state acquisition and logging logic.
+ * @brief IMUTag family RUNNING-state acquisition and logging logic.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -17,14 +17,18 @@
 #include "sensors.h"
 
 #if !defined(CONFIG_HAS_HIBERNATE)
+/** @brief Enable hibernation-state support unless a target opts out. */
 #define CONFIG_HAS_HIBERNATE 1
 #endif
 
 #if !defined(USE_STOP1)
+/** @brief Use Stop1 for IMUTag RUNNING-state idle waits by default. */
 #define USE_STOP1 1
 #endif
 
+/** Number of seconds discarded after IMU trigger-clock restart. */
 #define IMU_CLOCK_LOCK_SECONDS 2
+/** Maximum log-page work items handled during one RUNNING wake. */
 #define IMU_MAX_PAGE_WORK_PER_WAKE 8
 
 /*
@@ -54,23 +58,45 @@
  * and the rounded millisecond value can add jitter. Host decoding uses the
  * header only for collection start and explicit resync segment anchors.
  */
+/** Number of initial pages to discard while the IMU clock/FIFO settles. */
 static uint32_t discard_pages;
+/** Number of warmup pages already discarded in the current run segment. */
 static uint32_t discarded_pages;
+/** Header flags to OR into the next internal checkpoint row. */
 static uint16_t next_header_flags;
+/** True once a log page has been started. */
 static bool page_active;
+/** True when the current page should be written rather than discarded. */
 static bool current_page_logging;
+/** True when the external page header/superframe start has been written. */
 static bool current_page_data_header_written;
+/** True when the internal checkpoint/header for the current page is written. */
 static bool current_page_header_written;
+/** Header metadata for the active external log page. */
 static t_DataHeader current_page_header;
+/** Superframe index being filled in the active external log page. */
 static uint16_t current_frame_index;
+/** Epoch seconds for the next page/superframe anchor. */
 static int32_t next_frame_epoch;
+/** Millisecond field for the next page/superframe anchor. */
 static uint16_t next_frame_millis;
 
+/**
+ * @brief Read the IMU wakeup line state.
+ *
+ * @return true when the IMU wakeup line is asserted.
+ */
 static bool imuWakeActive(void)
 {
   return palReadLine(LINE_WKUP1) == PAL_HIGH;
 }
 
+/**
+ * @brief Store the timestamp anchor for the next retained frame/page.
+ *
+ * @param[in] epoch Timestamp seconds.
+ * @param[in] millis Timestamp milliseconds; flag bits are masked out.
+ */
 static void setNextFrameStartTimestamp(int32_t epoch, uint32_t millis)
 {
   next_frame_epoch = epoch;
@@ -81,6 +107,11 @@ static void setNextFrameStartTimestamp(int32_t epoch, uint32_t millis)
  * Convert the configured IMU ODR into complete t_DataLog pages to discard
  * after acquisition starts or restarts. This is deliberately page-based so the
  * first retained header points at a real logged page boundary.
+ */
+/**
+ * @brief Compute how many complete pages to discard after collection restart.
+ *
+ * @return Number of warmup pages derived from configured ODR.
  */
 static uint32_t runDiscardPages(void)
 {
@@ -138,6 +169,10 @@ static bool restartDataCollectionClock(bool mark_resync)
   return true;
 }
 
+/**
+ * @enum ImuBlockStatus
+ * @brief Result of processing one IMU FIFO/logging step.
+ */
 typedef enum {
   IMU_BLOCK_NO_DATA,       ///< No complete superframe was available.
   IMU_BLOCK_HANDLED,       ///< One superframe or page transition was handled.
@@ -145,6 +180,13 @@ typedef enum {
   IMU_BLOCK_EXTERNAL_FULL  ///< External NAND storage is full or failed.
 } ImuBlockStatus;
 
+/**
+ * @brief Start a page write, retrying once on transient storage failure.
+ *
+ * @param[in] header Header for the page being started.
+ * @param[in] frame First superframe for the page.
+ * @return Log write status after the initial attempt or retry.
+ */
 static enum LOGERR writeDataLogPageStartWithRetry(
     t_DataHeader *header,
     const t_ImuTagSuperFrame *frame)
@@ -157,6 +199,13 @@ static enum LOGERR writeDataLogPageStartWithRetry(
   return err;
 }
 
+/**
+ * @brief Write one superframe, retrying once on transient storage failure.
+ *
+ * @param[in] frame_index Superframe index inside the active page.
+ * @param[in] frame Superframe payload to stage.
+ * @return Log write status after the initial attempt or retry.
+ */
 static enum LOGERR writeDataLogSuperFrameWithRetry(
     uint16_t frame_index,
     const t_ImuTagSuperFrame *frame)
@@ -169,6 +218,11 @@ static enum LOGERR writeDataLogSuperFrameWithRetry(
   return err;
 }
 
+/**
+ * @brief Initialize bookkeeping for a new external log page.
+ *
+ * @return LOGWRITE_OK after local page state is reset.
+ */
 static enum LOGERR startLogPage(void)
 {
   current_page_header.epoch = next_frame_epoch;

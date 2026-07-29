@@ -19,11 +19,15 @@
  * execute hardware-specific checks without owning device descriptors.
  * @{
  */
+/**
+ * @struct TagTestCase
+ * @brief One self-test request binding in a tag/family test table.
+ */
 typedef struct
 {
-  TestReq request;
-  TestResult (*run)(const void *context);
-  const void *context;
+  TestReq request; ///< Monitor/protobuf test request handled by this entry.
+  TestResult (*run)(const void *context); ///< Test hook invoked when selected.
+  const void *context; ///< Device descriptor or NULL passed to the hook.
 } TagTestCase;
 /** @} */
 
@@ -43,6 +47,7 @@ void test(void);
  */
 TestResult testreport(void);
 
+/** Monitor-selected self-test request consumed by the common test runner. */
 extern TestReq test_to_run;
 
 /**

@@ -20,12 +20,29 @@
  * callbacks needed before and after each RTC transaction.
  * @{
  */
+/**
+ * @typedef TagRtcPower
+ * @brief Optional RTC power/session callback.
+ *
+ * Implementations normally assert or deassert a board-specific RTC power rail
+ * or bus switch. The callback takes no arguments because the active descriptor
+ * already owns the callback binding.
+ */
 typedef void (*TagRtcPower)(void);
 
+/**
+ * @struct TagRtcDevice
+ * @brief Board binding for one RTC register device.
+ *
+ * @details The descriptor supplies the I2C register transport plus optional
+ *          power callbacks used to bracket every RTC transaction. Chip drivers
+ *          consume this descriptor through tagRtcReadRegister() and
+ *          tagRtcWriteRegister() rather than touching the bus directly.
+ */
 typedef struct {
-  const TagI2cDevice *registers;
-  TagRtcPower device_on;
-  TagRtcPower device_off;
+  const TagI2cDevice *registers; ///< I2C register device for the RTC chip.
+  TagRtcPower device_on;         ///< Optional callback before register access.
+  TagRtcPower device_off;        ///< Optional callback after register access.
 } TagRtcDevice;
 /** @} */
 

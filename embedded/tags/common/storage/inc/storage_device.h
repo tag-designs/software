@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * @typedef TagStorageDevice
+ * @brief Opaque external-storage device descriptor used by storage APIs.
+ */
 typedef struct TagStorageDevice TagStorageDevice;
 
 /** @name Storage operation model
@@ -24,20 +28,30 @@ typedef struct TagStorageDevice TagStorageDevice;
  * teaching datalog code about chip command sets.
  * @{
  */
+/**
+ * @struct TagStorageOps
+ * @brief Chip-specific command table for a storage device.
+ *
+ * @details Hooks may be NULL only when the generic dispatcher explicitly
+ *          treats the operation as optional. Program-cache hooks are optional
+ *          because NOR parts do not implement NAND-style staged page
+ *          programming; identity, erase, read, and normal write hooks are
+ *          required for active datalog storage.
+ */
 typedef struct {
-  void (*wake)(const TagStorageDevice *dev);
-  void (*sleep)(const TagStorageDevice *dev);
-  int (*check_id)(const TagStorageDevice *dev);
+  void (*wake)(const TagStorageDevice *dev);  ///< Leave deep-power-down state.
+  void (*sleep)(const TagStorageDevice *dev); ///< Enter low-power chip state.
+  int (*check_id)(const TagStorageDevice *dev); ///< Verify chip identity.
   bool (*write)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
-                int *cnt);
+                int *cnt); ///< Program bytes and report completed count.
   bool (*program_load)(const TagStorageDevice *dev, uint32_t address,
-                       const uint8_t *buf, int cnt);
+                       const uint8_t *buf, int cnt); ///< Start cache load.
   bool (*program_load_random)(const TagStorageDevice *dev, uint32_t address,
-                              const uint8_t *buf, int cnt);
-  bool (*program_execute)(const TagStorageDevice *dev, uint32_t address);
-  bool (*sector_erase)(const TagStorageDevice *dev, uint32_t address);
+                              const uint8_t *buf, int cnt); ///< Update cache.
+  bool (*program_execute)(const TagStorageDevice *dev, uint32_t address); ///< Commit cache.
+  bool (*sector_erase)(const TagStorageDevice *dev, uint32_t address); ///< Erase one sector.
   void (*read)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
-               int num);
+               int num); ///< Read bytes from the flash array.
 } TagStorageOps;
 /** @} */
 
@@ -52,11 +66,15 @@ typedef struct {
  * device descriptor and the geometry used by higher-level logging code.
  * @{
  */
+/**
+ * @struct TagStorageDevice
+ * @brief Board binding and geometry for an external flash device.
+ */
 struct TagStorageDevice {
-  const TagStorageOps *ops;
-  TagBusDevice bus;
-  uint32_t sector_size;
-  uint32_t sector_count;
+  const TagStorageOps *ops; ///< Chip-specific operation table.
+  TagBusDevice bus;         ///< SPI bus binding and low-power policy.
+  uint32_t sector_size;     ///< Erase-sector size in bytes.
+  uint32_t sector_count;    ///< Number of erase sectors in the array.
 };
 /** @} */
 

@@ -1,6 +1,6 @@
 /**
  * @file stubs.c
- * @brief Placeholder accelerometer hooks for inactive IMUTagBreakout paths.
+ * @brief Placeholder accelerometer hooks for inactive IMUTag family paths.
  * @author tag firmware authors
  * @date 2026-05-23
  */

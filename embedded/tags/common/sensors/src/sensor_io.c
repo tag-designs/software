@@ -19,15 +19,7 @@
  * over the register protocol and bus kind instead of a type-erased vtable.
  * @{
  */
-/**
- * @brief Write bytes to a sensor register using the descriptor's protocol.
- *
- * @param[in] device Register-device descriptor.
- * @param[in] reg Register address.
- * @param[in] buf Bytes to write.
- * @param[in] len Number of bytes to write.
- * @return 0/MSG_OK on success or a protocol-specific error.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
                      const uint8_t *buf, uint32_t len)
 {
@@ -53,15 +45,7 @@ int tagRegisterWrite(const TagRegisterDevice *device, uint8_t reg,
   return MSG_RESET;
 }
 
-/**
- * @brief Read bytes from a sensor register using the descriptor's protocol.
- *
- * @param[in] device Register-device descriptor.
- * @param[in] reg Register address.
- * @param[out] buf Destination buffer.
- * @param[in] len Number of bytes to read.
- * @return 0/MSG_OK on success or a protocol-specific error.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
                     uint32_t len)
 {
@@ -96,15 +80,7 @@ int tagRegisterRead(const TagRegisterDevice *device, uint8_t reg, uint8_t *buf,
  * the concrete device descriptor.
  * @{
  */
-/**
- * @brief Write bytes to an I2C register device.
- *
- * @param[in] io TagI2cDevice context.
- * @param[in] reg Register address.
- * @param[in] buf Bytes to write.
- * @param[in] len Number of bytes to write.
- * @return MSG_OK on success or a ChibiOS I2C error.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                         uint32_t len)
 {
@@ -124,15 +100,7 @@ int tagI2cWriteRegister(const void *io, uint8_t reg, const uint8_t *buf,
                                      0, 0, device->timeout);
 }
 
-/**
- * @brief Read bytes from an I2C register device.
- *
- * @param[in] io TagI2cDevice context.
- * @param[in] reg Register address.
- * @param[out] buf Destination buffer.
- * @param[in] len Number of bytes to read.
- * @return MSG_OK on success or a ChibiOS I2C error.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
                        uint32_t len)
 {
@@ -152,6 +120,14 @@ int tagI2cReadRegister(const void *io, uint8_t reg, uint8_t *buf,
  * @{
  */
 
+/**
+ * @brief Transfer an SPI register write payload using the best available path.
+ *
+ * @param[in] device SPI device descriptor whose CS is already asserted.
+ * @param[in] buf Payload bytes to transmit after the command byte.
+ * @param[in] len Number of payload bytes to transmit.
+ * @return true when the full payload was transmitted.
+ */
 static inline bool tagStSpiWritePayload(const TagSpiDevice *device,
                                         const uint8_t *buf,
                                         uint32_t len)
@@ -161,6 +137,14 @@ static inline bool tagStSpiWritePayload(const TagSpiDevice *device,
   return tagSpiWrite(device, buf, len);
 }
 
+/**
+ * @brief Transfer an SPI register read payload using the best available path.
+ *
+ * @param[in] device SPI device descriptor whose CS is already asserted.
+ * @param[out] buf Buffer that receives bytes after the command byte.
+ * @param[in] len Number of payload bytes to read.
+ * @return true when the full payload was received.
+ */
 static inline bool tagStSpiReadPayload(const TagSpiDevice *device,
                                        uint8_t *buf,
                                        uint32_t len)
@@ -170,6 +154,19 @@ static inline bool tagStSpiReadPayload(const TagSpiDevice *device,
   return tagSpiRead(device, buf, len);
 }
 
+/**
+ * @brief Send one ST-style SPI register command plus payload.
+ *
+ * @details Uses a single small polled transaction when the command and payload
+ *          fit the polled-transfer buffer; otherwise it sends the command
+ *          first and then transfers the payload while CS remains asserted.
+ *
+ * @param[in] device SPI device descriptor whose CS is already asserted.
+ * @param[in] command Register command byte including protocol masks.
+ * @param[in] buf Payload bytes to write.
+ * @param[in] len Number of payload bytes to write.
+ * @return true when both command and payload were transmitted.
+ */
 static inline bool tagStSpiWriteRegisterPayload(const TagSpiDevice *device,
                                                 uint8_t command,
                                                 const uint8_t *buf,
@@ -188,15 +185,7 @@ static inline bool tagStSpiWriteRegisterPayload(const TagSpiDevice *device,
          tagStSpiWritePayload(device, buf, len);
 }
 
-/**
- * @brief Write bytes to an ST-style SPI register device.
- *
- * @param[in] registers Register-device descriptor.
- * @param[in] reg Register address.
- * @param[in] buf Bytes to write.
- * @param[in] len Number of bytes to write.
- * @return 0 on success.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
                                 uint8_t reg, const uint8_t *buf,
                                 uint32_t len)
@@ -213,15 +202,7 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
   return ok ? MSG_OK : MSG_RESET;
 }
 
-/**
- * @brief Read bytes from an ST-style SPI register device.
- *
- * @param[in] registers Register-device descriptor.
- * @param[in] reg Register address.
- * @param[out] buf Destination buffer.
- * @param[in] len Number of bytes to read.
- * @return 0 on success.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
                                uint8_t reg, uint8_t *buf, uint32_t len)
 {
@@ -236,6 +217,7 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
 
   return ok ? MSG_OK : MSG_RESET;
 }
+/** @} */
 
 /** @name ST-style synchronous-USART register adapter
  * ST-style synchronous-USART register adapter.
@@ -245,15 +227,7 @@ int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
  * payload, release CS.
  * @{
  */
-/**
- * @brief Write bytes to an ST-style synchronous-USART register device.
- *
- * @param[in] registers Register-device descriptor.
- * @param[in] reg Register address.
- * @param[in] buf Bytes to write.
- * @param[in] len Number of bytes to write.
- * @return 0 on success.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
                                   uint8_t reg, const uint8_t *buf,
                                   uint32_t len)
@@ -270,15 +244,7 @@ int tagStUsartWriteRegisterDevice(const TagRegisterDevice *registers,
   return 0;
 }
 
-/**
- * @brief Read bytes from an ST-style synchronous-USART register device.
- *
- * @param[in] registers Register-device descriptor.
- * @param[in] reg Register address.
- * @param[out] buf Destination buffer.
- * @param[in] len Number of bytes to read.
- * @return 0 on success.
- */
+/* Public API contract documented in sensor_io.h. */
 int tagStUsartReadRegisterDevice(const TagRegisterDevice *registers,
                                  uint8_t reg, uint8_t *buf, uint32_t len)
 {

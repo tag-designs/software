@@ -1,6 +1,6 @@
 /**
  * @file config.c
- * @brief IMUTagBreakout configuration persistence and protobuf conversion.
+ * @brief IMUTag family configuration persistence and protobuf conversion.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -16,11 +16,16 @@
 #include "storage_flash.h"
 #include "strings.h"
 
-// ram based config (used by monitor to communicate to tag)
-
+/** RAM-based configuration staging area used by the monitor request path. */
 t_storedconfig config_tmp;
+/** Last configuration validation error reported to the monitor. */
 static const char *config_error_message;
 
+/**
+ * @brief Return the most recent configuration validation error.
+ *
+ * @return Pointer to a static error string, or NULL when no error is pending.
+ */
 const char *writeConfigErrorMessage(void)
 {
   return config_error_message;
@@ -29,6 +34,13 @@ const char *writeConfigErrorMessage(void)
 
 // config to lsm6dsv16x conversion routines
 
+/**
+ * @brief Convert a protobuf ODR selector into an LSM6DSV16X trigger selector.
+ *
+ * @param[in] odr_in Host-facing ODR enum from the stored configuration.
+ * @param[out] odr Driver-facing triggered FIFO ODR selector.
+ * @return true when @p odr_in maps to a supported driver value.
+ */
 static bool lsm6totrig_odr(Lsm6dsv_ODR odr_in, lsm6dsv16x_trig_odr_t *odr){
   bool rval = true;
   switch(odr_in) {
@@ -53,6 +65,13 @@ static bool lsm6totrig_odr(Lsm6dsv_ODR odr_in, lsm6dsv16x_trig_odr_t *odr){
   return rval;
 }
 
+/**
+ * @brief Convert a protobuf accelerometer range into an LSM6DSV16X selector.
+ *
+ * @param[in] accel_in Host-facing accelerometer range enum.
+ * @param[out] xl_fs Driver-facing accelerometer full-scale selector.
+ * @return true when @p accel_in maps to a supported driver value.
+ */
 static bool lsm6toxl_fs(Lsm6dsv_ACCEL accel_in,lsm6dsv16x_xl_fs_t *xl_fs)
 {
   bool rval = true;
@@ -75,6 +94,13 @@ static bool lsm6toxl_fs(Lsm6dsv_ACCEL accel_in,lsm6dsv16x_xl_fs_t *xl_fs)
   return rval;
 }
 
+/**
+ * @brief Convert a protobuf gyroscope range into an LSM6DSV16X selector.
+ *
+ * @param[in] gyro_in Host-facing gyroscope range enum.
+ * @param[out] g_fs Driver-facing gyroscope full-scale selector.
+ * @return true when @p gyro_in maps to a supported driver value.
+ */
 static bool lsm6tog_fs(Lsm6dsv_GYRO gyro_in,lsm6dsv16x_g_fs_t *g_fs){
   bool rval = true;
 
@@ -103,6 +129,7 @@ static bool lsm6tog_fs(Lsm6dsv_GYRO gyro_in,lsm6dsv16x_g_fs_t *g_fs){
   return rval;
 }
 
+/* Public API contract documented in config.h. */
 bool get_lsm_config(lsm6dsv16x_trig_odr_t *odr,lsm6dsv16x_xl_fs_t *xl_fs, lsm6dsv16x_g_fs_t *g_fs){
     return lsm6totrig_odr(sconfig.odr, odr)
            && lsm6toxl_fs(sconfig.accel_range, xl_fs)

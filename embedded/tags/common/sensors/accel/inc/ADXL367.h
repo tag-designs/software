@@ -226,8 +226,12 @@
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
 
+/**
+ * @struct TagAdxl367Device
+ * @brief Board binding for one ADXL367 accelerometer instance.
+ */
 typedef struct {
-  TagBusDevice bus;
+  TagBusDevice bus; ///< Physical bus binding and low-power policy.
 } TagAdxl367Device;
 
 static inline const TagSpiDevice *tagAdxl367SpiDevice(const TagAdxl367Device *device)

@@ -1,6 +1,6 @@
 /**
  * @file datalog.h
- * @brief IMUTagBreakout external-log record layout and log IO API.
+ * @brief IMUTag family external-log record layout and log IO API.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -11,13 +11,17 @@
 #include "assert.h"
 #include "imutag_log_format.h"
 
+/** IMUTag family external flash page payload type. */
 typedef t_ImuTagDataLog t_DataLog;
+/** IMUTag family per-page timestamp/header type. */
 typedef t_ImuTagDataHeader t_DataHeader;
 
 #if !defined(IMUTAG_STM32U3_FLASH)
 #if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
+/** @brief Use STM32U3 16-byte flash rows for internal log checkpoints. */
 #define IMUTAG_STM32U3_FLASH 1
 #else
+/** @brief Use legacy 8-byte internal flash rows for internal log checkpoints. */
 #define IMUTAG_STM32U3_FLASH 0
 #endif
 #endif
@@ -41,6 +45,7 @@ typedef struct {
   uint32_t external_page_physical_next; ///< First physical NAND page covered.
 } t_InternalDataHeader __attribute__((aligned(16)));
 #else
+/** Legacy targets store the normal page header directly in internal flash. */
 typedef t_DataHeader t_InternalDataHeader;
 #endif
 

@@ -1,9 +1,25 @@
+/**
+ * @file power_modes.c
+ * @brief IMUTagNand ChibiOS idle-thread STOP-mode hooks.
+ *
+ * @details The idle hook enters the managed sleep mode selected by
+ *          idlePowerMode when the monitor is detached. When a monitor is
+ *          attached, the hook avoids deep sleep so shared-memory monitor
+ *          requests can be serviced promptly.
+ */
+
 #include "ch.h"
 #include "hal.h"
 
 #include "core_runtime.h"
 #include "monitor.h"
 
+/**
+ * @brief Convert a core sleep selector into the STM32U3 PWR LPMS field.
+ *
+ * @param[in] mode Core sleep selector requested by the runtime.
+ * @return PWR_CR1_LPMS field value for supported STOP modes.
+ */
 static inline uint32_t idlePowerLpms(enum Sleep mode)
 {
   switch (mode)
@@ -30,11 +46,22 @@ static inline uint32_t idlePowerLpms(enum Sleep mode)
   }
 }
 
+/**
+ * @brief Report whether a core sleep selector requires STOP-mode entry.
+ *
+ * @param[in] mode Core sleep selector requested by the runtime.
+ * @return true for STOP0/STOP1/STOP2, false for shallow sleep modes.
+ */
 static inline bool idlePowerUsesStop(enum Sleep mode)
 {
   return (mode == STOP0) || (mode == STOP1) || (mode == STOP2);
 }
 
+/**
+ * @brief Program SCB/PWR state for the requested idle sleep depth.
+ *
+ * @param[in] mode Core sleep selector requested by the runtime.
+ */
 static inline void idlePowerApplyMode(enum Sleep mode)
 {
   if (!idlePowerUsesStop(mode))
@@ -51,6 +78,7 @@ static inline void idlePowerApplyMode(enum Sleep mode)
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 }
 
+/* Public idle-hook contract documented in power_modes.h. */
 void idle_enter(void)
 {
 
@@ -67,6 +95,7 @@ void idle_enter(void)
   }
 }
 
+/* Public idle-hook contract documented in power_modes.h. */
 void idle_loop(void)
 {
   if (monitorIsAttached())
@@ -83,6 +112,7 @@ void idle_loop(void)
   __ISB();
 }
 
+/* Public idle-hook contract documented in power_modes.h. */
 void idle_leave(void)
 {
 #if defined(LINE_testpin)

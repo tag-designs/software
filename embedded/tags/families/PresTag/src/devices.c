@@ -76,12 +76,7 @@ static const TagTestCase tag_tests[] =
   {RUN_LPS, tag_test_lps27, TAG_PRESSURE_DEVICE},
 };
 
-/**
- * @brief Return the PresTag self-test table.
- *
- * @param[out] count Number of test cases.
- * @return Pointer to the static test-case table.
- */
+/* Public API contract documented in test_support.h. */
 const TagTestCase *tagTestCases(size_t *count)
 {
   *count = sizeof(tag_tests) / sizeof(tag_tests[0]);

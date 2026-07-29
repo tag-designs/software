@@ -1,6 +1,6 @@
 /**
  * @file devices.h
- * @brief IMUTagBreakout device descriptors.
+ * @brief IMUTag family device descriptors.
  * @author tag firmware authors
  * @date 2026-05-23
  */
@@ -15,12 +15,17 @@
 
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
 #include "bmm350_tag.h"
+/** BMM350 magnetometer descriptor for IMUTag-family targets that use BMM350. */
 extern const TagBmm350Device tagImuTagBmm350Device;
 #else
+/** AK09940A register descriptor for IMUTag-family targets that use AK09940A. */
 extern const TagRegisterDevice tagImuTagMagDevice;
 #endif
+/** LSM6DSV16X IMU descriptor shared by IMUTag-family collection code. */
 extern const TagLsm6dsv16xDevice tagImuTagImuDevice;
+/** Pressure-sensor descriptor shared by IMUTag-family collection code. */
 extern const TagPressureDevice tagImuTagPressureDevice;
+/** External flash descriptor used by IMUTag-family datalog storage. */
 extern const TagStorageDevice tagExternalFlash;
 
 /** @brief Configure the IMU external trigger output; divider 0 disables it. */

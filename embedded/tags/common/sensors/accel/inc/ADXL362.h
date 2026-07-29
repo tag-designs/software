@@ -205,8 +205,12 @@
 /************************ Functions Declarations ******************************/
 /******************************************************************************/
 
+/**
+ * @struct TagAdxl362Device
+ * @brief Board binding for one ADXL362 accelerometer instance.
+ */
 typedef struct {
-  TagBusDevice bus;
+  TagBusDevice bus; ///< Physical bus binding and low-power policy.
 } TagAdxl362Device;
 
 /** @name ADXL362 descriptor helpers

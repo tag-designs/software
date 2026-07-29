@@ -103,17 +103,38 @@
 #define BMM350_GOTO_SUSPEND_DELAY_US 6000U
 #define BMM350_SUSPEND_TO_NORMAL_DELAY_US 38000U
 
+/**
+ * @brief Sleep for a BMM350 datasheet delay interval.
+ *
+ * @param[in] delay_us Delay interval in microseconds.
+ */
 static void bmm350DelayUs(uint32_t delay_us)
 {
   chThdSleepMicroseconds(delay_us);
 }
 
+/**
+ * @brief Sign-extend a raw BMM350 OTP field.
+ *
+ * @param[in] value Unsigned raw field value from OTP.
+ * @param[in] bits Number of valid signed bits in @p value.
+ * @return Sign-extended 32-bit value.
+ */
 static inline int32_t bmm350FixSign(uint32_t value, uint8_t bits)
 {
   uint8_t shift = 32U - bits;
   return ((int32_t)(value << shift)) >> shift;
 }
 
+/**
+ * @brief Write one or more BMM350 registers over the descriptor I2C bus.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] reg First register address.
+ * @param[in] data Bytes to write.
+ * @param[in] len Number of bytes to write.
+ * @return MSG_OK on success, or MSG_RESET for invalid arguments or bus error.
+ */
 static msg_t bmm350WriteRegister(const TagBmm350Device *dev, uint8_t reg,
                                  const uint8_t *data, uint32_t len)
 {
@@ -122,6 +143,18 @@ static msg_t bmm350WriteRegister(const TagBmm350Device *dev, uint8_t reg,
   return tagI2cWriteRegister(dev->i2c, reg, data, len);
 }
 
+/**
+ * @brief Read one or more BMM350 registers over the descriptor I2C bus.
+ *
+ * @details BMM350 I2C reads include two leading dummy bytes. This helper
+ *          strips those bytes and copies only payload bytes to @p data.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] reg First register address.
+ * @param[out] data Destination buffer for payload bytes.
+ * @param[in] len Number of payload bytes to read.
+ * @return MSG_OK on success, or MSG_RESET for invalid arguments or bus error.
+ */
 static msg_t bmm350ReadRegister(const TagBmm350Device *dev, uint8_t reg,
                                 uint8_t *data, uint32_t len)
 {
@@ -141,18 +174,41 @@ static msg_t bmm350ReadRegister(const TagBmm350Device *dev, uint8_t reg,
   return MSG_OK;
 }
 
+/**
+ * @brief Write a single BMM350 register byte.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] reg Register address.
+ * @param[in] value Byte value to write.
+ * @return MSG_OK on success, or MSG_RESET for invalid arguments or bus error.
+ */
 static msg_t bmm350WriteU8(const TagBmm350Device *dev, uint8_t reg,
                            uint8_t value)
 {
   return bmm350WriteRegister(dev, reg, &value, 1U);
 }
 
+/**
+ * @brief Read a single BMM350 register byte.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] reg Register address.
+ * @param[out] value Destination byte.
+ * @return MSG_OK on success, or MSG_RESET for invalid arguments or bus error.
+ */
 static msg_t bmm350ReadU8(const TagBmm350Device *dev, uint8_t reg,
                           uint8_t *value)
 {
   return bmm350ReadRegister(dev, reg, value, 1U);
 }
 
+/**
+ * @brief Clamp performance to combinations allowed by the selected rate.
+ *
+ * @param[in] rate Requested continuous output rate.
+ * @param[in] performance Requested performance mode.
+ * @return Valid performance mode for @p rate.
+ */
 static bmm350_performance_t bmm350ClampPerformance(
     bmm350_rate_t rate, bmm350_performance_t performance)
 {
@@ -165,6 +221,14 @@ static bmm350_performance_t bmm350ClampPerformance(
   return performance;
 }
 
+/**
+ * @brief Program the BMM350 ODR/performance aggregate setting.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] rate Continuous output rate selector.
+ * @param[in] performance Requested performance mode.
+ * @return MSG_OK when the aggregate update command completes.
+ */
 static msg_t bmm350SetOdrPerformance(const TagBmm350Device *dev,
                                      bmm350_rate_t rate,
                                      bmm350_performance_t performance)
@@ -183,6 +247,12 @@ static msg_t bmm350SetOdrPerformance(const TagBmm350Device *dev,
   return MSG_OK;
 }
 
+/**
+ * @brief Configure latched data-ready interrupt behavior.
+ *
+ * @param[in] dev BMM350 device descriptor with board interrupt policy.
+ * @return MSG_OK when INT_CTRL was updated successfully.
+ */
 static msg_t bmm350ConfigureInterrupt(const TagBmm350Device *dev)
 {
   uint8_t reg = 0;
@@ -204,6 +274,14 @@ static msg_t bmm350ConfigureInterrupt(const TagBmm350Device *dev)
   return bmm350WriteU8(dev, BMM350_REG_INT_CTRL, reg);
 }
 
+/**
+ * @brief Read one BMM350 OTP word by address.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @param[in] addr OTP word address, masked to the chip-supported range.
+ * @param[out] word Destination for the decoded 16-bit OTP word.
+ * @return MSG_OK when the OTP command completed and data was read.
+ */
 static msg_t bmm350ReadOtpWord(const TagBmm350Device *dev, uint8_t addr,
                                uint16_t *word)
 {
@@ -236,6 +314,12 @@ static msg_t bmm350ReadOtpWord(const TagBmm350Device *dev, uint8_t addr,
   return MSG_RESET;
 }
 
+/**
+ * @brief Decode raw OTP words into floating-point compensation coefficients.
+ *
+ * @param[in,out] comp Compensation cache containing raw OTP words on entry and
+ *                     decoded coefficients on return.
+ */
 static void bmm350UpdateCompensation(TagBmm350Compensation *comp)
 {
   uint16_t off_x;
@@ -309,6 +393,12 @@ static void bmm350UpdateCompensation(TagBmm350Compensation *comp)
   comp->cross_axis.cross_z_y = (float)bmm350FixSign(cross_z_y, 8) / 800.0f;
 }
 
+/**
+ * @brief Build raw-sample conversion coefficients for magnetic and temperature axes.
+ *
+ * @param[out] coeff Four-entry coefficient table for X/Y/Z magnetic uT and
+ *                   temperature degrees C conversion.
+ */
 static void bmm350LsbToUTAndDegC(float coeff[4])
 {
   const float bxy_sens = 14.55f;

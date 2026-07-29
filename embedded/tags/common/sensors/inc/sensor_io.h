@@ -30,8 +30,29 @@
  * convention.
  * @{
  */
+/**
+ * @typedef TagRegisterWrite
+ * @brief Custom register-write callback used by unusual sensor protocols.
+ *
+ * @param[in] io Driver-supplied callback context.
+ * @param[in] reg Register address or command byte.
+ * @param[in] buf Bytes to write after the register selector.
+ * @param[in] len Number of bytes to write.
+ * @return MSG_OK/0 on success, or a transport-specific error.
+ */
 typedef int (*TagRegisterWrite)(const void *io, uint8_t reg,
                                 const uint8_t *buf, uint32_t len);
+
+/**
+ * @typedef TagRegisterRead
+ * @brief Custom register-read callback used by unusual sensor protocols.
+ *
+ * @param[in] io Driver-supplied callback context.
+ * @param[in] reg Register address or command byte.
+ * @param[out] buf Destination buffer for register bytes.
+ * @param[in] len Number of bytes to read.
+ * @return MSG_OK/0 on success, or a transport-specific error.
+ */
 typedef int (*TagRegisterRead)(const void *io, uint8_t reg, uint8_t *buf,
                                uint32_t len);
 
@@ -42,22 +63,35 @@ typedef int (*TagRegisterRead)(const void *io, uint8_t reg, uint8_t *buf,
  * Custom keeps the old callback escape hatch for unusual register protocols
  * without forcing every normal device through a function-pointer bus wrapper.
  */
+/**
+ * @enum TagRegisterKind
+ * @brief Register transport/protocol selector for TagRegisterDevice.
+ */
 typedef enum {
-  TAG_REGISTER_ST,
-  TAG_REGISTER_I2C,
-  TAG_REGISTER_CUSTOM
+  TAG_REGISTER_ST,     ///< ST-style register command over SPI or USART.
+  TAG_REGISTER_I2C,    ///< Simple I2C register address followed by payload.
+  TAG_REGISTER_CUSTOM  ///< Driver-provided read/write callback pair.
 } TagRegisterKind;
 
+/**
+ * @struct TagRegisterDevice
+ * @brief Sensor register-access descriptor.
+ *
+ * @details Combines the register protocol selector, physical bus descriptor,
+ *          optional custom callbacks, and command masks used by ST-style
+ *          register protocols. Drivers pass this descriptor to generic
+ *          register helpers instead of opening buses directly.
+ */
 typedef struct {
-  TagRegisterKind kind;
-  TagBusDevice bus;
+  TagRegisterKind kind; ///< Register protocol and dispatch path.
+  TagBusDevice bus;     ///< Physical bus used by descriptor-backed protocols.
   struct {
-    TagRegisterRead read_register;
-    TagRegisterWrite write_register;
-    const void *context;
-  } custom;
-  uint8_t read_mask;
-  uint8_t write_mask;
+    TagRegisterRead read_register;   ///< Custom read callback.
+    TagRegisterWrite write_register; ///< Custom write callback.
+    const void *context;             ///< Opaque context passed to callbacks.
+  } custom;                          ///< Callback binding for custom devices.
+  uint8_t read_mask;  ///< Mask ORed into ST-style read command bytes.
+  uint8_t write_mask; ///< Mask ORed into ST-style write command bytes.
 } TagRegisterDevice;
 /** @} */
 
@@ -146,6 +180,7 @@ int tagStSpiWriteRegisterDevice(const TagRegisterDevice *registers,
  */
 int tagStSpiReadRegisterDevice(const TagRegisterDevice *registers,
                                uint8_t reg, uint8_t *buf, uint32_t len);
+/** @} */
 
 /** @name ST-style synchronous-USART register adapter
  * ST-style register transactions over synchronous USART used as SPI-lite.
