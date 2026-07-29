@@ -42,9 +42,24 @@ static const char SHAStr[64] __attribute__((aligned(4))) = GIT_SHA ;
  * @brief Evaluate one protobuf monitor request from the shared buffer.
  *
  * @param[in] len Number of request bytes in ProtoBuf.
+ * @param[out] work State-machine work bits requested by the packet.
  * @return Encoded acknowledgement byte count.
  */
 extern int proto_eval(int, uint32_t *);
+
+/**
+ * @brief Try to answer a monitor status request from cached runtime state.
+ *
+ * @details Used by the STM32U3 shared-memory path when the main state-machine
+ *          thread is inside a non-preemptible operation. Returns zero for all
+ *          non-status requests so the caller can keep the normal cooperative
+ *          monitor path.
+ *
+ * @param[in] len Number of request bytes in ProtoBuf.
+ * @return Encoded acknowledgement byte count for a fast status response, or
+ *         zero when the packet is not eligible for the fast path.
+ */
+extern int monitor_fast_status_eval(int len);
 
 #ifndef PROTOBUFSIZE
 #define PROTOBUFSIZE 2056

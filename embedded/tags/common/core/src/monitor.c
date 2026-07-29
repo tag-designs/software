@@ -373,6 +373,74 @@ static int statusAck(void)
   return encode_ack();
 }
 
+/**
+ * @brief Report whether the protobuf buffer contains an empty get_status Req.
+ *
+ * @details This checks the protobuf wire encoding for the generated
+ *          Req_get_status field tag carrying an empty message. The fast path
+ *          is only for this exact zero-length request; all other messages,
+ *          including any future status request with fields, must stay on the
+ *          cooperative monitor service path so normal protobuf decoding and
+ *          permission checks apply.
+ *
+ * @note    This is intentionally a wire-format shortcut rather than a nanopb
+ *          decode. It is safe only because the fast path handles one fixed,
+ *          side-effect-free request whose encoded form is derived from the
+ *          generated field tag and empty-message size.
+ *
+ * @param[in] len Number of request bytes in ProtoBuf.
+ * @return true when the buffer is exactly Req.get_status, false otherwise.
+ */
+static bool monitor_is_fast_status_request(int len)
+{
+  const uint8_t get_status_key =
+      (uint8_t)((Req_get_status_tag << 3) | PB_WT_STRING);
+
+  return (len == 2) &&
+         (ProtoBuf[0] == get_status_key) &&
+         (ProtoBuf[1] == Empty_size);
+}
+
+/**
+ * @brief Encode a cached status ACK without blocking on sensors or RTC.
+ *
+ * @details The STM32U3 monitor interrupt uses this while the main thread has
+ *          marked @c pState->safe false. It reports retained runtime state,
+ *          the last voltage/temperature values captured by the normal status
+ *          path, and the last timestamp captured by the main loop, avoiding
+ *          ADC reads, RTC access, debug-log draining, diagnostics, and storage
+ *          queries that belong in thread context. The returned clock may
+ *          therefore appear stale while a long operation is running, which is
+ *          preferable to blocking the host monitor until that operation yields.
+ *
+ * @warning Intended only for the U3 IRQ fast path. Do not add hardware access,
+ *          blocking calls, debug-log drains, or state-machine side effects.
+ *
+ * @param[in] len Number of request bytes in ProtoBuf.
+ * @return Encoded acknowledgement byte count, or zero when @p len does not
+ *         describe the fast-path status request.
+ */
+int monitor_fast_status_eval(int len)
+{
+  if (!monitor_is_fast_status_request(len))
+    return 0;
+
+  bzero(&ack, sizeof(ack));
+  ack.err = Ack_OK;
+  ack.which_payload = Ack_status_tag;
+  ack.payload.status.state = pState->state;
+  ack.payload.status.internal_data_count = pState->pages;
+  ack.payload.status.external_data_count = pState->external_blocks;
+  ack.payload.status.test_status = pState->test_result;
+  ack.payload.status.voltage = status_vdd100 * 0.01f;
+  ack.payload.status.temperature = status_temp10 * 0.1f;
+  ack.payload.status.sectors_erased = externalFlashSectorsErased();
+  ack.payload.status.millis =
+      ((int64_t)timestamp * 1000) + (int64_t)timestamp_millis;
+
+  return encode_ack();
+}
+
 #define STR_COPY(src, dest) strncpy(dest, src, sizeof(dest))
 /**
  * @brief Generate firmware, board, storage, and unique-ID information.

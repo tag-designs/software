@@ -2,9 +2,17 @@
  * @file handlersU3.c
  * @brief STM32U3 shared-memory monitor kick interrupt implementation.
  *
- * This file is included by handlers.c after the shared monitor state and
- * helpers have been declared.
+ * @details This file is included by handlers.c after the shared monitor state
+ *          and helpers have been declared. U3 uses a shared-memory command
+ *          mailbox and a reserved IRQ instead of the L4 DebugMonitor request
+ *          bits. Protobuf requests normally stay cooperative: the IRQ latches
+ *          work and the main state-machine thread evaluates it. The only
+ *          exception is an exact get_status request while @c pState->safe is
+ *          false, which is answered from cached state so host polling can
+ *          continue while the main thread is inside a long operation.
  */
+
+#include "persistent.h"
 
 static_assert(sizeof(monitor_shared_t) <= MONITOR_SHARED_SIZE,
               "monitor shared block is too small");
@@ -212,6 +220,23 @@ OSAL_IRQ_HANDLER(STM32_FDCAN1_IT0_HANDLER)
       break;
     case PROTOBUF:
       if (monitor_enabled && !monitor_pending) {
+        /*
+         * When the main state-machine thread is already inside a guarded
+         * region, it cannot run monitorServicePending() until the operation
+         * yields. Status polling is read-only and central to host progress
+         * displays, so answer only that exact request from cached state here;
+         * every other protobuf request remains serialized through the main
+         * thread.
+         */
+        if (!pState->safe) {
+          int fast_len = monitor_fast_status_eval(operand);
+          if (fast_len > 0) {
+            monitor_shared.result = (uint32_t)fast_len;
+            monitor_shared.status = MONITOR_STATUS_DONE;
+            monitor_shared.command = 0U;
+            break;
+          }
+        }
         monitor_operand = operand;
         monitor_pending = true;
         monitor_shared.result = 0U;

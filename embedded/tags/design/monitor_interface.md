@@ -218,9 +218,18 @@ The U3 kick IRQ handler:
 - sets `host_activity` when the shared request word is still connected;
 - treats `request == 0` as a stale kick/detach case;
 - handles `MONITORSTOP` by stopping the session and clearing the shared state;
+- handles an exact `get_status` protobuf request directly when `pState->safe`
+  is false, using cached runtime state and the last main-loop timestamp;
 - handles `PROTOBUF` by latching the request length, setting status pending,
   clearing command, and signaling the main thread;
 - reports busy/not-attached/bad-command through the shared status word.
+
+The U3 status fast path exists only to keep host status polling responsive while
+the main thread is inside a guarded long operation. It intentionally omits
+thread-context work done by the normal status path, including RTC reads, ADC
+measurement, debug-log draining, diagnostics, and storage-derived totals. The
+reported `millis` field is the timestamp last captured by the main loop, so host
+clock-error displays can show stale-time drift during the busy interval.
 
 `monitorServicePending()` runs `proto_eval()` in main-thread context, writes
 the result length to `monitor_shared.result`, sets status done, clears command,
