@@ -14,6 +14,17 @@
 * limitations under the License.                                          *
 **************************************************************************/
 
+/**
+ * @file    main.c
+ * @brief   USB SWD programmer firmware for the L432/U375 1.8 V breakout base.
+ *
+ * @details Initializes USB CDC/bulk endpoints, bitbang/SPI-assisted SWD
+ *          control, target reset/direction GPIOs, and the local green status
+ *          LED. The status LED uses TIM2 channel 4 as a high-frequency PWM
+ *          brightness carrier, while a ChibiOS virtual timer gates the
+ *          channel on and off for the visible blink envelope.
+ */
+
 #include "ch.h"
 #include "hal.h"
 #include "usbcfg.h"
@@ -28,18 +39,143 @@ volatile uint32_t vlipo100 = 180;
 
 uint8_t bulkbuf[64];
 
-static THD_WORKING_AREA(waBlinkThread, 256);
-static THD_FUNCTION(BlinkThread, arg)
+/**
+ * @def     LED_GREEN_PWM_FREQUENCY_HZ
+ * @brief   TIM2 PWM timer clock used for the green LED brightness carrier.
+ */
+#define LED_GREEN_PWM_FREQUENCY_HZ 1000000U
+
+/**
+ * @def     LED_GREEN_PWM_PERIOD_TICKS
+ * @brief   PWM carrier period in TIM2 ticks.
+ * @details Combined with @ref LED_GREEN_PWM_FREQUENCY_HZ, this produces a
+ *          1 kHz carrier that controls apparent LED brightness without
+ *          visible flicker.
+ */
+#define LED_GREEN_PWM_PERIOD_TICKS 1000U
+
+/**
+ * @def     LED_GREEN_PWM_DUTY_PERCENT
+ * @brief   Green LED brightness duty while the blink gate is enabled.
+ * @details ChibiOS @c PWM_PERCENTAGE_TO_WIDTH() uses a 0..10000 scale, so
+ *          1000U represents 10% carrier duty.
+ */
+#define LED_GREEN_PWM_DUTY_PERCENT 1000U
+
+/**
+ * @def     LED_GREEN_BLINK_ON_MS
+ * @brief   Visible green LED blink on-time in milliseconds.
+ */
+#define LED_GREEN_BLINK_ON_MS 250U
+
+/**
+ * @def     LED_GREEN_BLINK_OFF_MS
+ * @brief   Visible green LED blink off-time in milliseconds.
+ */
+#define LED_GREEN_BLINK_OFF_MS 750U
+
+static virtual_timer_t led_green_blink_timer; ///< One-shot timer that gates the visible LED blink.
+static bool led_green_blink_enabled = true;   ///< True while TIM2 channel 4 is enabled.
+
+/**
+ * @brief   TIM2 PWM configuration for the green status LED carrier.
+ * @details PA3 is routed to TIM2 channel 4 using AF1 in the generated board
+ *          configuration. Channels 1-3 are disabled because this target uses
+ *          TIM2 only for the green LED.
+ */
+static const PWMConfig led_green_pwm_config = {
+  LED_GREEN_PWM_FREQUENCY_HZ,
+  LED_GREEN_PWM_PERIOD_TICKS,
+  NULL,
+  {
+    {PWM_OUTPUT_DISABLED, NULL},
+    {PWM_OUTPUT_DISABLED, NULL},
+    {PWM_OUTPUT_DISABLED, NULL},
+    {PWM_OUTPUT_ACTIVE_HIGH, NULL}
+  },
+  0,
+  0,
+  0
+};
+
+/**
+ * @brief   Toggles the visible green LED blink gate.
+ *
+ * @details Runs from the ChibiOS virtual timer callback path. The callback
+ *          alternates between disabling TIM2 channel 4 for the off interval
+ *          and re-enabling it at @ref LED_GREEN_PWM_DUTY_PERCENT for the on
+ *          interval. The PWM carrier keeps the enabled LED dim; the virtual
+ *          timer controls only the human-visible blink envelope.
+ *
+ * @param[in] vtp   Virtual timer instance that fired. The callback rearms the
+ *                  module-global timer and does not otherwise use @p vtp.
+ * @param[in] arg   Unused callback argument.
+ *
+ * @pre     @ref led_green_blink_timer must have been initialized with
+ *          @c chVTObjectInit().
+ * @post    The timer is rearmed for the next on/off interval.
+ *
+ * @warning Runs from timer callback context and uses ISR-class ChibiOS/PWM
+ *          APIs under @c chSysLockFromISR().
+ */
+static void ledGreenBlinkTimer(virtual_timer_t *vtp, void *arg)
 {
+  (void)vtp;
   (void)arg;
 
-  while (true)
+  chSysLockFromISR();
+  if (led_green_blink_enabled)
   {
-    palToggleLine(LINE_LED_GREEN);
-    chThdSleepMilliseconds(500);
+    pwmDisableChannelI(&PWMD2, 3);
+    led_green_blink_enabled = false;
+    chVTSetI(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_OFF_MS),
+             ledGreenBlinkTimer, NULL);
   }
+  else
+  {
+    pwmEnableChannelI(&PWMD2, 3,
+                      PWM_PERCENTAGE_TO_WIDTH(&PWMD2,
+                                              LED_GREEN_PWM_DUTY_PERCENT));
+    led_green_blink_enabled = true;
+    chVTSetI(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_ON_MS),
+             ledGreenBlinkTimer, NULL);
+  }
+  chSysUnlockFromISR();
 }
 
+/**
+ * @brief   Starts the dimmed green status LED blink.
+ *
+ * @details Starts TIM2 PWM, enables channel 4 at the configured brightness,
+ *          initializes the virtual timer used for the visible blink envelope,
+ *          and arms the first on interval. Must be called after @c chSysInit()
+ *          so the PWM driver and virtual timer services are available.
+ *
+ * @pre     Board initialization must have configured PA3 as TIM2_CH4 AF1.
+ * @post    The green LED is blinking with the configured carrier duty and
+ *          on/off timing.
+ */
+static void ledGreenStart(void)
+{
+  pwmStart(&PWMD2, &led_green_pwm_config);
+  chVTObjectInit(&led_green_blink_timer);
+  pwmEnableChannel(&PWMD2, 3,
+                   PWM_PERCENTAGE_TO_WIDTH(&PWMD2,
+                                           LED_GREEN_PWM_DUTY_PERCENT));
+  chVTSet(&led_green_blink_timer, TIME_MS2I(LED_GREEN_BLINK_ON_MS),
+          ledGreenBlinkTimer, NULL);
+}
+
+/**
+ * @brief   Starts USB CRS autotrim against the USB SOF reference.
+ *
+ * @details Enables the STM32 CRS peripheral and configures it to trim HSI48
+ *          from the USB synchronization source. This keeps the USB clock
+ *          within tolerance without an external HSE crystal.
+ *
+ * @pre     HSI48 must be enabled by the clock configuration.
+ * @post    CRS automatic trim and frequency error counter are enabled.
+ */
 static void crsStart(void)
 {
   RCC->APB1ENR1 |= RCC_APB1ENR1_CRSEN;
@@ -73,8 +209,7 @@ int main(void)
   usbStart(&USBD1, &usbcfg);
   usbConnectBus(&USBD1);
 
-  chThdCreateStatic(waBlinkThread, sizeof(waBlinkThread),
-                    NORMALPRIO, BlinkThread, NULL);
+  ledGreenStart();
 
   while (true)
   {

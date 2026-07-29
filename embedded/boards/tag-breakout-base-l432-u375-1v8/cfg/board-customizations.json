@@ -38,8 +38,8 @@
         "Level": "Low",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Output",
-        "Alternate": "0",
+        "Mode": "Alternate",
+        "Alternate": "1",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
       },

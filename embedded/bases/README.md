@@ -215,6 +215,14 @@ USB uses HSI48 with CRS sync. `EN1V8` is a static high board output,
 `TGT_RESET` is active-high, and local bitbang SWD drives `SWDIO_DIR` high for
 transmit and low for receive.
 
+Status LED notes: `LED_GREEN` is PA3 routed to TIM2 channel 4 (`AF1`). TIM2
+drives a 1 kHz PWM brightness carrier, while a ChibiOS virtual timer separately
+gates the channel for the visible blink. Tune apparent brightness with
+`LED_GREEN_PWM_DUTY_PERCENT`; tune the visible blink envelope with
+`LED_GREEN_BLINK_ON_MS` and `LED_GREEN_BLINK_OFF_MS`. This target uses periodic
+SysTick timing (`CH_CFG_ST_TIMEDELTA == 0`) so TIM2 is available to the PWM
+driver on STM32L432.
+
 Build target:
 
 ```sh
