@@ -25,8 +25,7 @@
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0",
-        "Standby": "PULLDOWN"
+        "Alternate": "0"
       },
       "pin1": {
         "ID": "LED1",
@@ -94,8 +93,7 @@
         "Speed": "Medium",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "14",
-        "Standby": "PULLDOWN"
+        "Alternate": "14"
       },
       "pin9": {
         "ID": "LPS_CS",
@@ -114,8 +112,7 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "0",
-        "Standby": "PULLDOWN"
+        "Alternate": "0"
       },
       "pin11": {
         "ID": "LPS_MISO",
@@ -194,8 +191,7 @@
         "Speed": "High",
         "Resistor": "Floating",
         "Mode": "Input",
-        "Alternate": "5",
-        "Standby": "PULLDOWN"
+        "Alternate": "5"
       },
       "pin6": {
         "ID": "SDA",

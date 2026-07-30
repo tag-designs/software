@@ -70,7 +70,7 @@ static inline void idlePowerApplyMode(enum Sleep mode)
     return;
   }
 
-  palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
+  //palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
   palSetLine(LINE_LED1);
   DBGMCU->CR = 0;
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, idlePowerLpms(mode));
@@ -103,7 +103,7 @@ void idle_loop(void)
     return;
   }
 
-  palSetLine(LINE_testpin);
+  //palSetLine(LINE_testpin);
   __DSB();
   __WFI();
   __ISB();
@@ -112,8 +112,8 @@ void idle_loop(void)
 /* Public idle-hook contract documented in power_modes.h. */
 void idle_leave(void)
 {
-  palClearLine(LINE_testpin);
+  //palClearLine(LINE_testpin);
   palClearLine(LINE_LED1);
-  palSetLineMode(LINE_LED1, PAL_MODE_INPUT_ANALOG);
+  //palSetLineMode(LINE_LED1, PAL_MODE_INPUT_ANALOG);
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 }

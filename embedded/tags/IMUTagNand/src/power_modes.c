@@ -74,16 +74,7 @@ static inline void idlePowerApplyMode(enum Sleep mode)
     return;
   }
 
-#if TAG_IDLE_STOP_DIAGNOSTICS && defined(LINE_LED1)
   palSetLine(LINE_LED1);
-#elif defined(LINE_LED1)
-  palSetLineMode(LINE_LED1, PAL_MODE_INPUT_ANALOG);
-#endif
-#if !TAG_IDLE_STOP_DIAGNOSTICS && defined(LINE_testpin)
-  if (palReadLine(LINE_testpin) == PAL_LOW) {
-    palSetLineMode(LINE_testpin, PAL_MODE_INPUT_ANALOG);
-  }
-#endif
   DBGMCU->CR = 0;
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, idlePowerLpms(mode));
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
@@ -115,29 +106,15 @@ void idle_loop(void)
     return;
   }
 
-#if TAG_IDLE_STOP_DIAGNOSTICS && defined(LINE_testpin)
-  palSetLine(LINE_testpin);
-#endif
-#if defined(LINE_LED1)
-  palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLine(LINE_LED1);
-#endif
   __DSB();
   __WFI();
   __ISB();
-#if defined(LINE_LED1)
-  palClearLine(LINE_LED1);
-#endif
 }
 
 /* Public idle-hook contract documented in power_modes.h. */
 void idle_leave(void)
 {
-#if TAG_IDLE_STOP_DIAGNOSTICS && defined(LINE_testpin)
-  palClearLine(LINE_testpin);
-#endif
-#if TAG_IDLE_STOP_DIAGNOSTICS && defined(LINE_LED1)
+
   palClearLine(LINE_LED1);
-#endif
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 }
