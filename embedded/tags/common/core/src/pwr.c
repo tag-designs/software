@@ -48,11 +48,10 @@
 
 static inline void tagPowerSelectStandby(void)
 {
-#if defined(PWR_CR1_LPMS_STANDBY)
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
-#elif defined(PWR_CR1_LPMS_0) && defined(PWR_CR1_LPMS_1)
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_0 | PWR_CR1_LPMS_1);
+#ifndef PWR_CR1_LPMS_STANDBY
+#define PWR_CR1_LPMS_STANDBY 3
 #endif
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
 }
 
 static inline void tagPowerDisableSramRetention(void)
@@ -205,17 +204,19 @@ void godown(enum Sleep sleepmode)
     return;
   }
 
+
+
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
 
   __disable_irq();
 
   // disable the debug unit
 
-  DBGMCU->CR = 0;
+  DBGMCU->CR = 0;                          // Completely clear debug bits
 
   // disable standby SRAM retention
 
-  tagPowerDisableSramRetention();
+  //tagPowerDisableSramRetention();
 
   // Pullup/Pulldown configuration
 
@@ -241,16 +242,28 @@ void godown(enum Sleep sleepmode)
   if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
   {
     __enable_irq();
+     
     return;
   }
 
+  
   tagPowerSelectStandby();
+    #if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palSetLine(LINE_testpin);
+#endif
+
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
   __DSB();
   __WFI();
+  __ISB();
+
+  // this is for stm32u3 which uses stop3 in place of standby
+  stm32_clock_init();
 
   __enable_irq();
+
+ 
 }
 
 void _unhandled_exception(void)

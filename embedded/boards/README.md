@@ -63,6 +63,12 @@ or `embedded/bases/CMakeLists.txt`.
 `archive/` contains retired or reference board descriptions and is not part of
 the normal active firmware build.
 
+## Board-Local Notes
+
+- `IMUTagNandv1/standby-pins.md` documents the STM32U375 Standby pull-up and
+  pull-down choices for the IMUTagNand sensor, flash, interrupt, and test
+  pins.
+
 ## Updating Board Names
 
 Board files should expose the physical signal names that firmware code uses.

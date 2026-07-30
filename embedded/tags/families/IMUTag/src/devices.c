@@ -510,6 +510,9 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
  */
 void tagDevicesPrepareStandby(uint32_t state)
 {
+  // need to make sure all devices are in their standby state here
+
+  //deinitDataCollection();
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, state);
 }
 

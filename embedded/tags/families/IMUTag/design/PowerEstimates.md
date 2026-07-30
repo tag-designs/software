@@ -88,3 +88,14 @@ This estimate is for the periods when there is no activity.  bmm350 low-noise - 
 
 
 This does not include the cost of reading data or writing flash.  This is just the idle periods.
+
+Actual Measurements [Note this is with software i2c which averages 2.4mA for 1.9ms]
+
+Idle:     55uA      211uA
+100hz:  1014uA     1520uA
+200hz:  1211uA     1600uA
+400hz:  1555uA     1840uA
+800hz:  1523uA     2330uA  [bmm switch to low current]
+1600hz: 1702uA     2800uA 
+
+The estimates did not include communication costs with I/O devices and memory.  Software I2C is especially expensive. [what resistors id breakout board use?]

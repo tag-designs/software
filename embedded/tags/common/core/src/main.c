@@ -656,11 +656,16 @@ int main(void)
 
     pState->safe = true;
 
-    godown(sleepmode);
-#if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palSetLineMode(LINE_testpin, PAL_MODE_OUTPUT_PUSHPULL);
-    palSetLine(LINE_testpin);
+#if defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
+    palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
+    palSetLine(LINE_LED1);
 #endif
+  #if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palSetLineMode(LINE_testpin, PAL_MODE_OUTPUT_PUSHPULL);
+    palClearLine(LINE_testpin);
+#endif
+
+    godown(sleepmode);
     idlePowerMode = STOP1;
     pending_events =  chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
     idlePowerMode = SLEEP;

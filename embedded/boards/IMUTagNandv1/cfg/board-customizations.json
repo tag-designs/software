@@ -74,7 +74,8 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5"
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
         "ID": "LSM_FLASH_MOSI",
@@ -121,7 +122,8 @@
         "Speed": "Maximum",
         "Resistor": "Floating",
         "Mode": "Analog",
-        "Alternate": "5"
+        "Alternate": "5",
+        "Standby": "PULLDOWN"
       },
       "pin12": {
         "ID": "LPS_MOSI",
@@ -149,7 +151,18 @@
         "Speed": "Maximum",
         "Resistor": "PullDown",
         "Mode": "Alternate",
-        "Alternate": "0"
+        "Alternate": "0",
+        "Standby": "PULLDOWN"
+      },
+         "pin15": {
+        "ID": "pa15",
+        "Type": "PushPull",
+        "Level": "High",
+        "Speed": "Maximum",
+        "Resistor": "PullDown",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "Standby": "PULLUP"
       }
 
     },
@@ -182,7 +195,7 @@
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "1",
-        "Standby": "PULLDOWN"
+        "Standby": "PULLUP"
       },
       "pin5": {
         "ID": "BMM_INT",

@@ -604,7 +604,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the idle state.
  * @param[in] reason Event that caused idle handling.
- * @return Shutdown sleep mode while idle.
+ * @return Standby sleep mode while idle.
  */
 static enum Sleep Idle(enum StateTrans t, State_Event reason)
 {
@@ -614,7 +614,7 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
   {
     pState->state = TagState_IDLE;
   }
-  return SHUTDOWN;
+  return STANDBY;
 }
 
 
@@ -663,7 +663,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
       return Running(T_INIT, State_EVENT_STARTTIM);
     }
   }
-  return SHUTDOWN;
+  return STANDBY;
 }
 
 #if CONFIG_HAS_HIBERNATE
@@ -672,7 +672,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the hibernating state.
  * @param[in] reason Event that caused hibernating handling.
- * @return Shutdown while hibernating, Running when activity resumes, or Finished.
+ * @return Standby while hibernating, Running when activity resumes, or Finished.
  */
 enum Sleep Hibernating(enum StateTrans t, State_Event reason)
 {
@@ -693,7 +693,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
   {
     if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
         (timestamp < sconfig.hibernate[i].end_epoch))
-      return SHUTDOWN;
+      return STANDBY;
   }
 
   if (timestamp < sconfig.stop)
@@ -715,7 +715,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the finished state.
  * @param[in] reason Event that caused finished handling.
- * @return Shutdown sleep mode.
+ * @return Standby sleep mode.
  */
 enum Sleep Finished(enum StateTrans t, State_Event reason)
 {
@@ -743,7 +743,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
     recordState(reason);
     deviceInit(true);
   }
-  return SHUTDOWN;
+  return STANDBY;
 }
 
 /**
@@ -751,7 +751,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the aborted state.
  * @param[in] reason Event that caused aborted handling.
- * @return Shutdown sleep mode.
+ * @return Standby sleep mode.
  */
 enum Sleep Aborted(enum StateTrans t, State_Event reason)
 {
@@ -780,7 +780,7 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
     recordState(reason);
     deviceInit(true);
   }
-  return SHUTDOWN;
+  return STANDBY;
 }
 
 /**
