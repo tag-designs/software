@@ -91,7 +91,7 @@ This does not include the cost of reading data or writing flash.  This is just t
 
 Actual Measurements [Note this is with software i2c which averages 2.4mA for 1.9ms]
 
-Idle:     55uA      211uA
+Idle:     55uA      ??    standby doesn't work.  Getting 20uA in stop3
 100hz:  1014uA     1520uA
 200hz:  1211uA     1600uA
 400hz:  1555uA     1840uA

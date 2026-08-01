@@ -356,6 +356,17 @@ enum Sleep StateMachine(eventmask_t input_events)
       {
         return Configured(T_INIT, State_EVENT_BROWNOUT);
       }
+#if TAG_MONITOR_RESET_RECOVERY
+      if (monitor_reset_recovery)
+      {
+        return Configured(T_CONT, State_EVENT_POWERFAIL);
+      }
+#else
+      if (MONCONNECTED)
+      {
+        return Configured(T_CONT, State_EVENT_POWERFAIL);
+      }
+#endif
       else
       {
         return Aborted(T_INIT, State_EVENT_POWERFAIL);

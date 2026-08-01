@@ -39,8 +39,8 @@ typedef struct TagStorageDevice TagStorageDevice;
  *          required for active datalog storage.
  */
 typedef struct {
-  void (*wake)(const TagStorageDevice *dev);  ///< Leave deep-power-down state.
-  void (*sleep)(const TagStorageDevice *dev); ///< Enter low-power chip state.
+  void (*wake)(const TagStorageDevice *dev);  ///< Prepare the chip/bus for commands.
+  void (*sleep)(const TagStorageDevice *dev); ///< Quiesce the chip/bus after commands.
   int (*check_id)(const TagStorageDevice *dev); ///< Verify chip identity.
   bool (*write)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
                 int *cnt); ///< Program bytes and report completed count.

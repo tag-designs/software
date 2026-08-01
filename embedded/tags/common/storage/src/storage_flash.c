@@ -11,7 +11,7 @@
 
 /** @name Storage standby policy
  * Standby helpers decide whether the current state should leave external flash
- * asleep and bias its pins for low leakage.
+ * quiesced and bias its pins for low leakage.
  * @{
  */
 /**
@@ -23,6 +23,7 @@
 static bool tagStorageShouldSleepForStandby(uint32_t state)
 {
   return state == IDLE ||
+         state == CONFIGURED ||
          state == ABORTED ||
          state == FINISHED ||
          state == EXCEPTION ||
@@ -57,7 +58,7 @@ int tagStorageSectorCount(const TagStorageDevice *dev)
 }
 
 /**
- * @brief Wake the external flash and begin its bus session.
+ * @brief Prepare the external flash and begin its bus session.
  *
  * @param[in] dev Storage device descriptor.
  */
@@ -67,7 +68,7 @@ void tagStorageWake(const TagStorageDevice *dev)
 }
 
 /**
- * @brief Put the external flash to sleep and end its bus session.
+ * @brief Quiesce the external flash and end its bus session.
  *
  * @param[in] dev Storage device descriptor.
  */
@@ -87,7 +88,7 @@ void tagStoragePrepareSleep(const TagStorageDevice *dev)
 }
 
 /**
- * @brief Prepare external flash for MCU standby when the state requires it.
+ * @brief Prepare external flash/bus state for MCU standby when required.
  *
  * @param[in] dev Storage device descriptor.
  * @param[in] state Current tag state.

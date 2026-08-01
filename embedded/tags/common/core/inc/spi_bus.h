@@ -178,7 +178,7 @@ typedef struct {
  * @brief Standby pull policy applied while preparing the MCU for deep sleep.
  */
 typedef enum {
-  TAG_SPI_SLEEP_FLOAT,     ///< Leave SPI pins floating/analog for sleep.
+  TAG_SPI_SLEEP_FLOAT,     ///< Bias power off only; CS still idles high.
   TAG_SPI_SLEEP_SAFE_IDLE, ///< Bias CS/SCK/MOSI inactive; leave MISO high-Z.
   TAG_SPI_SLEEP_CUSTOM     ///< Tag-specific code owns sleep pin state.
 } TagSpiSleepPolicy;

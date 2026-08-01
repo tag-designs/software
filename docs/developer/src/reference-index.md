@@ -31,6 +31,7 @@ paths below mirror their repository locations under `reference/`.
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
 - [U375 Stop Support](reference/embedded/tags/design/u375-stop-support.md)
+- [U375 Stop3 Terminal Sleep Plan](reference/embedded/tags/design/u375-stop3-terminal-sleep-plan.md)
 - [IMU Assumptions](reference/embedded/tags/common/sensors/imu/design/assumptions.md)
 - [Magnetometer Sensors README](reference/embedded/tags/common/sensors/mag/README.md)
 - [Storage README](reference/embedded/tags/common/storage/README.md)

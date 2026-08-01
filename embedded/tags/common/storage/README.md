@@ -23,6 +23,7 @@ The selected storage module chooses the chip implementation:
 - `flash_mx25l` compiles `src/mx25l.c`
 - `flash_mx25u12843` compiles `src/mx25u12843.c`
 - `flash_mx25r` compiles `src/mx25r.c`
+- `flash_gd5f` compiles `src/gd5f.c`
 
 `external_flash_test.c` provides the shared monitor self-test hook.
 
@@ -53,12 +54,15 @@ from their chip headers, and tag or family `devices.c` files copy that into
 drivers export only a `TagStorageOps` table, while tag or family `devices.c`
 files export `tagExternalFlash`. That descriptor pairs the selected chip
 operation table with board wiring and flash geometry. Chip operations use
-`wake`/`sleep` for flash low-power commands so they are not confused with SPI
-bus begin/end.
+`wake`/`sleep` for chip-specific lifecycle hooks so they are not confused with
+raw SPI bus begin/end. NOR drivers use those hooks for deep-power-down and
+release-from-deep-power-down commands; the GD5F SPI-NAND driver has no
+deep-power-down command, so its hook only begins or ends the storage bus and
+leaves chip-select deasserted.
 
 Converted storage also supplies helpers used by tag/family `devices.c` standby
-hooks. `tagStoragePrepareStandby()` handles chip-level standby behavior such as
-entering flash sleep only for the system states where that is useful.
+hooks. `tagStoragePrepareStandby()` handles chip-level or bus-level standby
+behavior only for the system states where that is useful.
 Generated boards handle the separate MCU standby-pin phase through
 `board-customizations.json` `Standby` fields and the generated
 `board_standby.h` masks. `tagStorageApplyStandbyPins()` remains for static-board

@@ -15,6 +15,9 @@
 #include "monitor.h"
 
 #ifndef TAG_IDLE_STOP_DIAGNOSTICS
+/**
+ * @brief Enable IMUTagNand idle-hook GPIO probes around STOP/WFI entry.
+ */
 #define TAG_IDLE_STOP_DIAGNOSTICS 0
 #endif
 
@@ -74,7 +77,9 @@ static inline void idlePowerApplyMode(enum Sleep mode)
     return;
   }
 
+#if TAG_IDLE_STOP_DIAGNOSTICS
   palSetLine(LINE_LED1);
+#endif
   DBGMCU->CR = 0;
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, idlePowerLpms(mode));
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
@@ -115,6 +120,8 @@ void idle_loop(void)
 void idle_leave(void)
 {
 
+#if TAG_IDLE_STOP_DIAGNOSTICS
   palClearLine(LINE_LED1);
+#endif
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 }

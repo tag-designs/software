@@ -47,6 +47,13 @@ void idle_enable_wfi_sleep(void) {}
 #define TAG_MONITOR_RESET_RECOVERY 0
 #endif
 
+#ifndef TAG_MAIN_SLEEP_DIAGNOSTICS
+/**
+ * @brief Enable IMUTagNand main-loop GPIO probes around sleep waits.
+ */
+#define TAG_MAIN_SLEEP_DIAGNOSTICS 0
+#endif
+
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
  * @{
@@ -656,25 +663,41 @@ int main(void)
 
     pState->safe = true;
 
-#if defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
     palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
     palSetLine(LINE_LED1);
 #endif
-  #if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
     palSetLineMode(LINE_testpin, PAL_MODE_OUTPUT_PUSHPULL);
     palClearLine(LINE_testpin);
 #endif
-
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
+    palSetLine(LINE_LED1);
+#endif
+    palClearLine(LINE_testpin);
     godown(sleepmode);
-    idlePowerMode = STOP1;
-    pending_events =  chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
-    idlePowerMode = SLEEP;
-#if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palSetLine(LINE_testpin);
+#endif
+
+    palSetLine(LINE_testpin);
+
+    if (pState->state == TagState_RUNNING){
+      idlePowerMode = STOP1;
+      pending_events =  chEvtWaitAny(EVT_HARDWARE_ALL);
+      idlePowerMode = SLEEP;
+    }
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
     palClearLine(LINE_testpin);
 #endif
     pending_events |= chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     //debug_log_printf("main loop: sleepmode %d, pending events %x\r\n", sleepmode, pending_events);
-    
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
+    palClearLine(LINE_testpin);
+#endif
+#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
+    palClearLine(LINE_LED1);
+#endif
   }
 }
 

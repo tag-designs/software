@@ -214,9 +214,14 @@ OSAL_IRQ_HANDLER(STM32_FDCAN1_IT0_HANDLER)
       /*
        * Explicit detach. The host polls request==0 as MONITORSTOP completion,
        * so publish that only after the timer/session has been stopped.
+       * Signal the main thread so configured/idle terminal states can leave
+       * the runtime Stop1 wait and immediately re-enter their terminal sleep
+       * backend with monitorIsAttached() now false.
        */
       monitorStopSessionI();
       monitorSharedSetDisconnected();
+      if (tpMain)
+        chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
       break;
     case PROTOBUF:
       if (monitor_enabled && !monitor_pending) {

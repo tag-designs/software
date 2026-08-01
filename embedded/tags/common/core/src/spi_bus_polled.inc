@@ -339,10 +339,10 @@ bool tagSpiPolledReceive(const TagSpiDevice *device, uint8_t *buf,
 
 void tagSpiSelect(const TagSpiDevice *device)
 {
-  palClearLine(device->config.ssline);
+  tagSpiSetChipSelectActive(device);
 }
 
 void tagSpiDeselect(const TagSpiDevice *device)
 {
-  palSetLine(device->config.ssline);
+  tagSpiSetChipSelectIdle(device);
 }

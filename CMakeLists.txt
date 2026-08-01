@@ -78,6 +78,7 @@ set(
   "embedded/tags/design/restart-recovery.md"
   "embedded/tags/design/custom-defines.md"
   "embedded/tags/design/u375-stop-support.md"
+  "embedded/tags/design/u375-stop3-terminal-sleep-plan.md"
   "embedded/tags/common/sensors/imu/design/assumptions.md"
   "embedded/tags/common/sensors/mag/README.md"
   "embedded/tags/common/storage/README.md"

@@ -20,6 +20,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Custom Compiler Definitions**](../embedded/tags/design/custom-defines.md): Complete list of customizable flags, timer settings, and MCU preprocessor defines.
 *   [**Tag Monitor Interface**](../embedded/tags/design/monitor_interface.md): Reference for the STM32L4 DebugMonitor path and STM32U3 shared-memory monitor path.
 *   [**Restart Recovery Design**](../embedded/tags/design/restart-recovery.md): Specification for state machine preservation, register resets, and low-power recovery cycles.
+*   [**STM32U375 Stop3 Terminal Sleep Plan**](../embedded/tags/design/u375-stop3-terminal-sleep-plan.md): Plan for replacing IMUTagNand terminal Standby with Stop3 while preserving the STM32L432 Standby path.
 
 ---
 

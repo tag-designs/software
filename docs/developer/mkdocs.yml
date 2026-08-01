@@ -62,6 +62,7 @@ nav:
           - Restart Recovery: reference/embedded/tags/design/restart-recovery.md
           - Custom Defines: reference/embedded/tags/design/custom-defines.md
           - U375 Stop Support: reference/embedded/tags/design/u375-stop-support.md
+          - U375 Stop3 Terminal Sleep Plan: reference/embedded/tags/design/u375-stop3-terminal-sleep-plan.md
       - Embedded Tag Common:
           - Overview: reference/embedded/tags/common/README.md
           - Core: reference/embedded/tags/common/core/README.md
@@ -129,6 +130,7 @@ nav:
       - Tag Families README: reference/embedded/tags/families/README.md
       - Custom Defines: reference/embedded/tags/design/custom-defines.md
       - U375 Stop Support: reference/embedded/tags/design/u375-stop-support.md
+      - U375 Stop3 Terminal Sleep Plan: reference/embedded/tags/design/u375-stop3-terminal-sleep-plan.md
   - Host:
       - Overview: host.md
       - Host README: reference/host/README.md

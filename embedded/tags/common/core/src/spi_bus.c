@@ -217,6 +217,9 @@ static void tagSpiFillReadFailure(uint8_t *buf, uint32_t len)
     *buf++ = TAG_SPI_ERROR_BYTE;
 }
 
+static void tagSpiSetChipSelectActive(const TagSpiDevice *device);
+static void tagSpiSetChipSelectIdle(const TagSpiDevice *device);
+
 #if defined(HAL_USE_SPI) && (HAL_USE_SPI == TRUE)
 #include "spi_bus_chibios.inc"
 #else
@@ -251,6 +254,81 @@ static void tagSpiBusRelease(const TagSpiDevice *device)
 #endif
 }
 
+/**
+ * @brief Drive a valid GPIO line high as a push-pull output.
+ *
+ * @param[in] line Board line to drive.
+ */
+static void tagSpiSetLineOutputHigh(ioline_t line)
+{
+  if (tagLineIsValid(line)) {
+    palSetLine(line);
+    palSetLineMode(line, PAL_MODE_OUTPUT_PUSHPULL);
+  }
+}
+
+/**
+ * @brief Drive a valid GPIO line low as a push-pull output.
+ *
+ * @param[in] line Board line to drive.
+ */
+static void tagSpiSetLineOutputLow(ioline_t line)
+{
+  if (tagLineIsValid(line)) {
+    palClearLine(line);
+    palSetLineMode(line, PAL_MODE_OUTPUT_PUSHPULL);
+  }
+}
+
+/**
+ * @brief Put a valid GPIO line into analog input mode.
+ *
+ * @param[in] line Board line to release.
+ */
+static void tagSpiSetLineAnalog(ioline_t line)
+{
+  if (tagLineIsValid(line)) {
+    palSetLineMode(line, PAL_MODE_INPUT_ANALOG);
+  }
+}
+
+/**
+ * @brief Deassert a device chip-select line.
+ *
+ * @param[in] device SPI device descriptor whose CS line should idle inactive.
+ */
+static void tagSpiSetChipSelectIdle(const TagSpiDevice *device)
+{
+  tagSpiSetLineOutputHigh(device->config.ssline);
+}
+
+/**
+ * @brief Assert a device chip-select line.
+ *
+ * @param[in] device SPI device descriptor whose CS line should be active.
+ */
+static void tagSpiSetChipSelectActive(const TagSpiDevice *device)
+{
+  tagSpiSetLineOutputLow(device->config.ssline);
+}
+
+/**
+ * @brief Put shared SPI bus pins into the common inactive drive state.
+ *
+ * @details SCK and MOSI are safe to drive low when no bus session is active.
+ *          MISO remains high-Z because it is driven by the selected device.
+ *          The operation is intentionally idempotent for devices sharing the
+ *          same SPI bus pins.
+ *
+ * @param[in] device SPI device descriptor naming the shared bus pins.
+ */
+static void tagSpiSetBusIdle(const TagSpiDevice *device)
+{
+  tagSpiSetLineOutputLow(device->sck);
+  tagSpiSetLineOutputLow(device->mosi);
+  tagSpiSetLineAnalog(device->miso);
+}
+
 void tagSpiDevicePowerOn(const TagSpiDevice *device)
 {
   if (tagLineIsValid(device->pwr)) {
@@ -258,20 +336,15 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
     palSetLineMode(device->pwr, PAL_MODE_OUTPUT_PUSHPULL);
   }
 
-  palSetLine(device->config.ssline);
-  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
+  tagSpiSetChipSelectIdle(device);
 }
 
 void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
-  palSetLine(device->config.ssline);
-  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->sck, PAL_MODE_INPUT_PULLDOWN);
-  palSetLineMode(device->mosi, PAL_MODE_INPUT_PULLDOWN);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
+  tagSpiSetChipSelectIdle(device);
+  tagSpiSetBusIdle(device);
 
   if (tagLineIsValid(device->pwr)) {
-    palSetLineMode(device->config.ssline, PAL_MODE_INPUT_ANALOG);
     palClearLine(device->pwr);
   }
 }
@@ -280,8 +353,7 @@ void tagSpiBusBegin(const TagSpiDevice *device)
 {
   tagSpiBusAcquire(device);
 
-  palSetLine(device->config.ssline);
-  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
+  tagSpiSetChipSelectIdle(device);
   palSetLineMode(device->sck, PAL_MODE_ALTERNATE(device->alternate_function) |
                                   PAL_STM32_OSPEED_MID2);
   palSetLineMode(device->miso, PAL_MODE_ALTERNATE(device->alternate_function) |
@@ -294,25 +366,22 @@ void tagSpiBusBegin(const TagSpiDevice *device)
 
 void tagSpiBusEnd(const TagSpiDevice *device)
 {
-  palSetLine(device->config.ssline);
-  palClearLine(device->mosi);
-  palClearLine(device->sck);
+  tagSpiSetChipSelectIdle(device);
 
   tagSpiDeviceDisable(device);
 
-  palSetLineMode(device->config.ssline, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->sck, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->mosi, PAL_MODE_OUTPUT_PUSHPULL);
-  palSetLineMode(device->miso, PAL_MODE_INPUT_ANALOG);
+  tagSpiSetBusIdle(device);
 
   tagSpiBusRelease(device);
 }
 
 void tagSpiDevicePrepareSleep(const TagSpiDevice *device)
 {
+  tagSpiSetChipSelectIdle(device);
+  tagEnableStandbyPullup(device->config.ssline);
+
   switch (device->sleep_policy) {
   case TAG_SPI_SLEEP_SAFE_IDLE:
-    tagEnableStandbyPullup(device->config.ssline);
     tagEnableStandbyPulldown(device->sck);
     tagEnableStandbyPulldown(device->mosi);
     break;

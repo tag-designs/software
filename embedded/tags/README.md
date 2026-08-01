@@ -384,6 +384,12 @@ local `src/test.c` unless the target truly needs to replace the shared
 diagnostic entry point. `BitTag-legacy` keeps a local `test.c` because it is a
 frozen legacy target.
 
+## Design Notes
+
+- `design/u375-stop3-terminal-sleep-plan.md` records the plan to use Stop3 as
+  the STM32U375 terminal sleep backend for IMUTagNand while preserving the
+  STM32L432 Standby path.
+
 ## Adding Shared Code
 
 - Add source files to the narrowest appropriate module in `common/modules`.

@@ -27,6 +27,7 @@ directory that owns the code; the developer portal stages those files under
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
 - [U375 Stop Support](reference/embedded/tags/design/u375-stop-support.md)
+- [U375 Stop3 Terminal Sleep Plan](reference/embedded/tags/design/u375-stop3-terminal-sleep-plan.md)
 
 ## Embedded Tag Common
 

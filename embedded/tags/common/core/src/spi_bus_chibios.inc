@@ -116,20 +116,10 @@ bool tagSpiExchange(const TagSpiDevice *device, const uint8_t *txbuf,
 
 void tagSpiSelect(const TagSpiDevice *device)
 {
-  SPIDriver *driver = tagSpiDeviceDriver(device);
-
-  if (driver != NULL && driver->config != NULL)
-    spiSelect(driver);
-  else
-    palClearLine(device->config.ssline);
+  tagSpiSetChipSelectActive(device);
 }
 
 void tagSpiDeselect(const TagSpiDevice *device)
 {
-  SPIDriver *driver = tagSpiDeviceDriver(device);
-
-  if (driver != NULL && driver->config != NULL)
-    spiUnselect(driver);
-  else
-    palSetLine(device->config.ssline);
+  tagSpiSetChipSelectIdle(device);
 }

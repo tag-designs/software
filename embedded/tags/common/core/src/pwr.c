@@ -8,6 +8,8 @@
 #include "hal.h"
 
 #include "app.h"
+#include "core_events.h"
+#include "core_sync.h"
 #include "core_types.h"
 #include "custom.h"
 #include "device.h"
@@ -36,6 +38,29 @@
 #define TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED 0
 #endif
 
+#if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
+#ifndef TAG_STM32U3_TERMINAL_STOP3
+/**
+ * @brief Select Stop3 instead of Standby for terminal sleep on STM32U3 builds.
+ */
+#define TAG_STM32U3_TERMINAL_STOP3 1
+#endif
+#else
+#ifndef TAG_STM32U3_TERMINAL_STOP3
+/**
+ * @brief Select Stop3 instead of Standby for terminal sleep on STM32U3 builds.
+ */
+#define TAG_STM32U3_TERMINAL_STOP3 0
+#endif
+#endif
+
+#ifndef TAG_STM32U3_STOP3_CLEAR_WAKE_FLAGS
+/**
+ * @brief Clear STM32U3 PWR wake flags immediately before Stop3 entry.
+ */
+#define TAG_STM32U3_STOP3_CLEAR_WAKE_FLAGS 0
+#endif
+
 /** @name Common tag power sequence
  * Common tag power/standby sequence.
  *
@@ -53,6 +78,117 @@ static inline void tagPowerSelectStandby(void)
 #endif
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
 }
+
+#if TAG_STM32U3_TERMINAL_STOP3
+/**
+ * @brief Select STM32U3 Stop3 as the next deep-sleep mode.
+ */
+static inline void tagPowerSelectStop3(void)
+{
+#if defined(PWR_CR1_LPMS_STOP3)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STOP3);
+#elif defined(PWR_CR1_LPMS_0) && defined(PWR_CR1_LPMS_1)
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_0 | PWR_CR1_LPMS_1);
+#else
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 3U);
+#endif
+}
+
+#ifndef TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE
+#if defined(PWR_WUCR1_WUPEN7)
+/**
+ * @brief Wakeup-line enable bit used for RTC-originated Stop3 wake.
+ */
+#define TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE PWR_WUCR1_WUPEN7
+#else
+#define TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE 0U
+#endif
+#endif
+
+#ifndef TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY_MASK
+#if defined(PWR_WUCR2_WUPP7)
+/**
+ * @brief Polarity mask for the RTC-originated Stop3 wake line.
+ */
+#define TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY_MASK PWR_WUCR2_WUPP7
+#else
+#define TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY_MASK 0U
+#endif
+#endif
+
+#ifndef TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY
+/**
+ * @brief Polarity value for the RTC-originated Stop3 wake line.
+ */
+#define TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY 0U
+#endif
+
+#ifndef TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK
+#if defined(PWR_WUCR3_WUSEL7)
+/**
+ * @brief Source-select mask for the RTC-originated Stop3 wake line.
+ */
+#define TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK PWR_WUCR3_WUSEL7
+#else
+#define TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK 0U
+#endif
+#endif
+
+#ifndef TAG_STM32U3_STOP3_RTC_WUCR3_SELECT
+#if defined(PWR_WUCR3_WUSEL7_0) && defined(PWR_WUCR3_WUSEL7_1)
+/**
+ * @brief Source-select value for the RTC-originated Stop3 wake line.
+ */
+#define TAG_STM32U3_STOP3_RTC_WUCR3_SELECT (PWR_WUCR3_WUSEL7_0 | PWR_WUCR3_WUSEL7_1)
+#else
+#define TAG_STM32U3_STOP3_RTC_WUCR3_SELECT TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK
+#endif
+#endif
+
+/**
+ * @brief Configure the STM32U3 PWR wake line used by RTC Stop3 wake.
+ */
+static inline void tagPowerConfigureStop3RtcWake(void)
+{
+#if TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK != 0U
+  MODIFY_REG(PWR->WUCR3,
+             TAG_STM32U3_STOP3_RTC_WUCR3_SELECT_MASK,
+             TAG_STM32U3_STOP3_RTC_WUCR3_SELECT);
+#endif
+#if TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY_MASK != 0U
+  MODIFY_REG(PWR->WUCR2,
+             TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY_MASK,
+             TAG_STM32U3_STOP3_RTC_WUCR2_POLARITY);
+#endif
+#if TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE != 0U
+  SET_BIT(PWR->WUCR1, TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE);
+#endif
+}
+
+/**
+ * @brief Restore the configured STM32U3 run clock tree after Stop3 wake.
+ */
+static inline void tagPowerRestoreClocksAfterStop3(void)
+{
+#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT)
+  (void)hal_lld_clock_switch_mode(&hal_clkcfg_default);
+#endif
+}
+
+/**
+ * @brief Post a synthetic terminal-wake event to the main thread.
+ *
+ * @pre The system lock is held by the caller.
+ */
+static inline void tagPowerPostStop3WakeEventI(void)
+{
+  if (tpMain != NULL)
+  {
+    chEvtSignalI(tpMain, EVT_WAKE_STANDBY);
+  }
+}
+
+#endif
 
 static inline void tagPowerDisableSramRetention(void)
 {
@@ -174,7 +310,6 @@ void rtcOn(void)
   }
 #endif
 }
-
 /**
  * @brief End the shared RTC bus session and remove device power.
  */
@@ -192,33 +327,77 @@ void rtcOff(void)
 #endif
 }
 
+#if TAG_STM32U3_TERMINAL_STOP3
 /**
- * @brief Enter the requested low-power terminal mode after device preparation.
+ * @brief Enter STM32U3 terminal Stop3 after device preparation.
  *
  * @param[in] sleepmode Requested sleep mode.
  */
-void godown(enum Sleep sleepmode)
+static void tagPowerEnterStop3(enum Sleep sleepmode)
+{
+  if ((sleepmode != STANDBY) || monitorIsAttached())
+  {
+    return;
+  }
+
+#if TAG_STM32U3_STOP3_CLEAR_WAKE_FLAGS
+  tagPowerClearWakeFlags();
+#endif
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
+  tagDevicesDisableWakeupSources();
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+  {
+    return;
+  }
+  tagPowerConfigureStop3RtcWake();
+
+#if BOARD_STANDBY_HAS_CONFIG
+  tagApplyBoardStandbyPins();
+#else
+  tagDevicesApplyStandbyPins();
+#endif
+  PWR->APCR |= PWR_APCR_APC;
+  //chSysLock();
+
+  DBGMCU->CR = 0;
+  tagPowerSelectStop3();
+
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  __DSB();
+  __WFI();
+  __ISB();
+
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  PWR->APCR &= ~PWR_APCR_APC;
+  palSetLine(LINE_testpin);
+  chSysLock();
+  tagPowerRestoreClocksAfterStop3();
+
+  tagPowerPostStop3WakeEventI();
+
+  chSysUnlock();
+}
+#else
+/**
+ * @brief Enter STM32L4-style Standby after device preparation.
+ *
+ * @param[in] sleepmode Requested sleep mode.
+ */
+static void tagPowerEnterStandby(enum Sleep sleepmode)
 {
   if ((sleepmode != STANDBY) || isMonitorEnabled())
   {
     return;
   }
 
-
-
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
 
-  __disable_irq();
+  chSysLock();
 
-  // disable the debug unit
+  DBGMCU->CR = 0;
 
-  DBGMCU->CR = 0;                          // Completely clear debug bits
-
-  // disable standby SRAM retention
-
-  //tagPowerDisableSramRetention();
-
-  // Pullup/Pulldown configuration
+  /* tagPowerDisableSramRetention(); */
 
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
@@ -233,24 +412,18 @@ void godown(enum Sleep sleepmode)
 #endif
 #endif
 
-  // Apply pull-up and pull-down configuration
-
   tagPowerApplyStandbyPulls();
+  PWR->CR3 |= PWR_CR3_APC;
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
   if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
   {
-    __enable_irq();
-     
+    chSysUnlock();
     return;
   }
 
-  
   tagPowerSelectStandby();
-    #if defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palSetLine(LINE_testpin);
-#endif
 
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
@@ -258,12 +431,24 @@ void godown(enum Sleep sleepmode)
   __WFI();
   __ISB();
 
-  // this is for stm32u3 which uses stop3 in place of standby
-  stm32_clock_init();
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  chSysUnlock();
+}
+#endif
 
-  __enable_irq();
+/**
+ * @brief Enter the requested low-power terminal mode after device preparation.
+ *
+ * @param[in] sleepmode Requested sleep mode.
+ */
+void godown(enum Sleep sleepmode)
+{
+#if TAG_STM32U3_TERMINAL_STOP3
+  tagPowerEnterStop3(sleepmode);
+#else
+  tagPowerEnterStandby(sleepmode);
+#endif
 
- 
 }
 
 void _unhandled_exception(void)
