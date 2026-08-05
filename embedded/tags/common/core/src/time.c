@@ -339,6 +339,35 @@ void disableAlarm(unsigned int alarm)
   }
 }
 
+
+// this is a bit of a mess and doesn't really work correctly
+  void delayAlarmEpoch(unsigned int alarm, unsigned int epoch)
+
+{
+  if (alarm < 2)
+  {
+    RTCAlarm alarmspec;
+    uint32_t wake = epoch;
+    RTCDateTime tim_spec;
+    EpochToRTCDateTime(&tim_spec, wake);
+    // 2. Safely unpack individual components from the ChibiOS fields
+    uint32_t seconds = (tim_spec.millisecond / 1000) % 60;
+    uint32_t minutes = (tim_spec.millisecond / 60000) % 60;
+    uint32_t hours   = (tim_spec.millisecond / 3600000) % 24;
+
+    // 3. Populate the register structure natively using ChibiOS/ST Macros
+    alarmspec.alrmr = RTC_ALRM_MSK4 |                          // Mask 4: Ignore date/day match
+                      RTC_ALRM_HT(hours / 10)   | RTC_ALRM_HU(hours % 10)   |
+                      RTC_ALRM_MNT(minutes / 10) | RTC_ALRM_MNU(minutes % 10) |
+                      RTC_ALRM_ST(seconds / 10)  | RTC_ALRM_SU(seconds % 10);
+
+    // 4. Pass the specification to the ChibiOS driver (0 represents Alarm A)
+    rtcSetAlarm(&RTCD1, 0, &alarmspec);
+    //rtcSetAlarm(&RTCD1, alarm, &alarmspec);
+
+  }
+}
+
 /**
  * @brief Disable all RTC alarm interrupts and alarm slots.
  */

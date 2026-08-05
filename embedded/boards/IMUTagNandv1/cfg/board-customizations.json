@@ -30,7 +30,7 @@
       "pin1": {
         "ID": "LED1",
         "Type": "PushPull",
-        "Level": "Low",
+        "Level": "High",
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Output",
@@ -40,7 +40,7 @@
       "pin2": {
         "ID": "testpin",
         "Type": "PushPull",
-        "Level": "Low",
+        "Level": "High",
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Output",
@@ -142,7 +142,8 @@
         "Speed": "Maximum",
         "Resistor": "PullUp",
         "Mode": "Alternate",
-        "Alternate": "0"
+        "Alternate": "0",
+        "Standby": "PULLUP"
       },
       "pin14": {
         "ID": "SWCLK",
@@ -195,7 +196,7 @@
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "1",
-        "Standby": "PULLUP"
+        "Standby":"PULLDOWN"
       },
       "pin5": {
         "ID": "BMM_INT",

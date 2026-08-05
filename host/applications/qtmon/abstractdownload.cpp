@@ -131,6 +131,7 @@ void AbstractDownload::worker(){
             // The writer hides text-vs-SQLite details but preserves the common
             // return convention used by the download loop.
             len = writeLog(ack);
+            qDebug() << "retreived log block " << cnt << " len=" << len;
             if (len == 0) {
                 qInfo("no data");
                 emit downloadFinished();

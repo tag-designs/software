@@ -222,7 +222,7 @@ int main(int argc, char **argv)
       ("profile", "Print download timing and link transport profile",
        cxxopts::value<bool>(profile)->default_value("false"));
 
-  if (!parse_options(argc, argv, options, tag, dev)) {
+  if ((argc > 1)&&!parse_options(argc, argv, options, tag, dev)) {
     return 1;
   }
 

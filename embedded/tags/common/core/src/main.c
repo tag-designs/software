@@ -495,6 +495,10 @@ t_resetCause getResetCause(uint32_t rstFlags)
       break;
     }
 
+     // the following is a hack to test reset from stop3
+    //resetCause = resetStandby;
+    //break;
+
     // A firmware-triggered reset is used after unhandled exceptions.
     // It can happen while the tag is active, so it will not have SBF set.
     if ((rstFlags & RCC_CSR_SFTRSTF))
@@ -510,6 +514,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
       resetCause = resetPower;
       break;
     }
+
 
     // Brownout leaves memory in questionable state
     // but shutdown also causes brownout
@@ -663,6 +668,7 @@ int main(void)
 
     pState->safe = true;
 
+    #if 0
 #if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
     palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
     palSetLine(LINE_LED1);
@@ -681,12 +687,17 @@ int main(void)
 #endif
 
     palSetLine(LINE_testpin);
+    #endif
+
+    godown(sleepmode);
 
     if (pState->state == TagState_RUNNING){
       idlePowerMode = STOP1;
       pending_events =  chEvtWaitAny(EVT_HARDWARE_ALL);
       idlePowerMode = SLEEP;
     }
+
+    #if 0
 #if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
     palClearLine(LINE_testpin);
 #endif
@@ -697,6 +708,7 @@ int main(void)
 #endif
 #if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
     palClearLine(LINE_LED1);
+#endif
 #endif
   }
 }

@@ -157,6 +157,15 @@ enum ALARM_TYPE { ALARM_SECOND, ALARM_MINUTE, ALARM_HOUR };
 void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype);
 
 /**
+ * @brief Delay until epoch_seconds have passed, then trigger the requested RTC alarm.
+ *
+ * @param[in] alarm STM32 alarm index, normally 0 or 1.
+ * @parem[in epoch_seconds] Number of seconds to delay.
+ */
+
+void delayAlarmEpoch(unsigned int alarm, unsigned int epoch);
+
+/**
  * @brief Disable one RTC alarm.
  *
  * @param[in] alarm STM32 alarm index, normally 0 or 1.

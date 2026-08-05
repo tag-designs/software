@@ -643,6 +643,21 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     // record the new state
 
     pState->state = TagState_CONFIGURED;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+    pState->run_heartbeat = 0;
+    pState->terminal_state = STATE_UNSPECIFIED;
+    pState->terminal_reason = State_EVENT_UNSPECIFIED;
+    pState->header_status = LOGWRITE_OK;
+    pState->header_flasherr = 0;
+    pState->header_page = 0;
+    pState->header_addr = 0;
+    pState->header_retries = 0;
+    pState->sample_error_count = 0;
+    pState->sample_fifo_overruns = 0;
+    pState->sample_fifo_watermark_shorts = 0;
+    pState->sample_fifo_empty_reads = 0;
+    pState->sample_fifo_short_blocks = 0;
+#endif
     recordState(reason);
 
     // write configuration to memory if this
@@ -662,6 +677,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     // enable wakeup timer
 
     enableAlarm(1, ALARM_MINUTE);
+    //delayAlarmEpoch(1, sconfig.start);
   }
   else
   {

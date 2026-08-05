@@ -53,7 +53,7 @@
  * status debug message so detached execution can be distinguished from
  * attach/reset cursor recovery.
  */
-//#define TAG_RETAINED_RUN_DIAGNOSTICS 1
+#define TAG_RETAINED_RUN_DIAGNOSTICS 1
 /* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
  * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
  * in the trace.

@@ -430,7 +430,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
   if (t == T_INIT)
   {
-
     disableAllAlarms();
     disableTicker();
     //accelDeinit();
@@ -458,13 +457,15 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     //pState->lastwakeup = timestamp;
 
     pState->external_blocks = 0;
-    if (!restartDataCollectionClock(false)) {
-      debug_log_printf("IMUTag running: abort, collection init failed\r\n");
-      return Aborted(T_INIT, State_EVENT_UNKNOWN);
-    }
 
     pState->state = TagState_RUNNING;
     recordState(reason);
+    if (!restartDataCollectionClock(false)) {
+      debug_log_printf("IMUTag running: abort, collection init failed\r\n");
+    
+      return Aborted(T_INIT, State_EVENT_UNKNOWN);
+    }
+
     debug_log_printf("IMUTag running: collection initialized, %d s warmup\r\n",
                      IMU_CLOCK_LOCK_SECONDS);
   }

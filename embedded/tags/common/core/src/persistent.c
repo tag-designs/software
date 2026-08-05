@@ -239,7 +239,9 @@ void recordState(State_Event reason)
 
   chSysLock();
   FLASH_Unlock();
-  FLASH_Program_Array((uint32_t *)&sEpoch[offset], (uint32_t *)&marker, sizeof(marker) / 4);
+  if (FLASH_Program_Array((uint32_t *)&sEpoch[offset], (uint32_t *)&marker, sizeof(marker) / 4)){
+    //palSetLine(LINE_LED1);
+  }
   FLASH_Lock();
   FLASH_Flush_Data_Cache();
   chSysUnlock();
