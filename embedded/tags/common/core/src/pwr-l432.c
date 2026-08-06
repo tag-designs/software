@@ -9,41 +9,9 @@
  *          symbols.
  */
 
-static inline void tagPowerSelectStandby(void)
-{
 #ifndef PWR_CR1_LPMS_STANDBY
 #define PWR_CR1_LPMS_STANDBY 3
 #endif
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
-}
-
-static inline void tagPowerDisableSramRetention(void)
-{
-#if defined(PWR_CR3_RRS)
-  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
-#else
-  uint32_t retention = 0U;
-#if defined(PWR_CR1_RRSB1)
-  retention |= PWR_CR1_RRSB1;
-#endif
-#if defined(PWR_CR1_RRSB2)
-  retention |= PWR_CR1_RRSB2;
-#endif
-#if defined(PWR_CR1_RRSB3)
-  retention |= PWR_CR1_RRSB3;
-#endif
-  CLEAR_BIT(PWR->CR1, retention);
-#endif
-}
-
-static inline void tagPowerApplyStandbyPulls(void)
-{
-#if defined(PWR_CR3_APC)
-  SET_BIT(PWR->CR3, PWR_CR3_APC);
-#elif defined(PWR_APCR_APC)
-  SET_BIT(PWR->APCR, PWR_APCR_APC);
-#endif
-}
 
 /**
  * @brief Enter STM32L4-style Standby after device preparation.
@@ -63,8 +31,6 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 
   DBGMCU->CR = 0;
 
-  /* tagPowerDisableSramRetention(); */
-
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
 #else
@@ -78,8 +44,11 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 #endif
 #endif
 
-  tagPowerApplyStandbyPulls();
-
+#if defined(PWR_CR3_APC)
+  SET_BIT(PWR->CR3, PWR_CR3_APC);
+#elif defined(PWR_APCR_APC)
+  SET_BIT(PWR->APCR, PWR_APCR_APC);
+#endif
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
@@ -89,7 +58,7 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
     return;
   }
 
-  tagPowerSelectStandby();
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
 
   PWR->CR3 |= PWR_CR3_APC;
 

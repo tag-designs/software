@@ -381,6 +381,7 @@ static void tagResetRuntimeStateForPowerInit(void)
   pState->sample_fifo_empty_reads = 0;
   pState->sample_fifo_short_blocks = 0;
 #endif
+  pState->synthetic_standby_wake = 0;
   pState->test_result = TEST_UNSPECIFIED;
 }
 #endif
@@ -425,6 +426,7 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
+    pState->synthetic_standby_wake = 0;
     if (power_init && !retained_state_valid)
       tagResetRuntimeStateForPowerInit();
 #else
@@ -434,6 +436,7 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
+    pState->synthetic_standby_wake = 0;
 
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
@@ -495,9 +498,17 @@ t_resetCause getResetCause(uint32_t rstFlags)
       break;
     }
 
-     // the following is a hack to test reset from stop3
-    //resetCause = resetStandby;
-    //break;
+    bool synthetic_standby_wake =
+        pState->synthetic_standby_wake == TAG_SYNTHETIC_STANDBY_WAKE_MAGIC;
+    if (synthetic_standby_wake)
+    {
+      pState->synthetic_standby_wake = 0;
+      if ((rstFlags & RCC_CSR_SFTRSTF) != 0U)
+      {
+        resetCause = resetStandby;
+        break;
+      }
+    }
 
     // A firmware-triggered reset is used after unhandled exceptions.
     // It can happen while the tag is active, so it will not have SBF set.
@@ -644,7 +655,9 @@ int main(void)
   while (1)
   {
     enum Sleep sleepmode = STANDBY;
-    /*  if (pending_events & EVT_MONITOR_ALL)
+    eventmask_t current_events = pending_events;
+    pending_events = 0;
+    /*  if (current_events & EVT_MONITOR_ALL)
     {
       debug_log_printf("main loop 0: monitor events detected\r\n");
     } */
@@ -655,11 +668,11 @@ int main(void)
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     pState->safe = false;                          // critical section start
 
-    monitorServicePending((uint32_t) (pending_events & EVT_MONITOR_ALL));
-    pending_events |= chEvtGetAndClearEvents(MON_WORK_ALL);
-    sleepmode = StateMachine(pending_events);      // process events
+    monitorServicePending((uint32_t) (current_events & EVT_MONITOR_ALL));
+    current_events |= chEvtGetAndClearEvents(MON_WORK_ALL);
+    sleepmode = StateMachine(current_events);      // process events
 
-    /* if (pending_events & EVT_MONITOR_ALL)
+    /* if (current_events & EVT_MONITOR_ALL)
     {
       debug_log_printf("main loop 1: monitor events detected\r\n");
     } */
@@ -695,6 +708,8 @@ int main(void)
       idlePowerMode = STOP1;
       pending_events =  chEvtWaitAny(EVT_HARDWARE_ALL);
       idlePowerMode = SLEEP;
+    } else {
+      pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     }
 
     #if 0

@@ -9,6 +9,7 @@
  *          symbols.
  */
 
+#if 0
 void assert_flash_write_readiness(void) {
     bool incorrect_state = false;
 
@@ -46,6 +47,7 @@ void assert_flash_write_readiness(void) {
         palClearLine(LINE_LED1);
     }
 }
+#endif
 
 #ifndef TAG_STM32U3_STOP3_CLEAR_WAKE_FLAGS
 /**
@@ -66,8 +68,6 @@ static inline void tagPowerSelectStop3(void)
 #else
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 3U);
 #endif
- // MODIFY_REG(PWR->CR1,
- //           (4U << PWR_CR1_LPMS_Pos));
 }
 
 #ifndef TAG_STM32U3_STOP3_RTC_WUCR1_ENABLE
@@ -144,13 +144,18 @@ static inline void tagPowerConfigureStop3RtcWake(void)
 /**
  * @brief Restore the configured STM32U3 run clock tree after Stop3 wake.
  */
+
+
 static inline void tagPowerRestoreClocksAfterStop3(void)
 {
-#if defined(HAL_LLD_USE_CLOCK_MANAGEMENT)
+
+#if 0 //defined(HAL_LLD_USE_CLOCK_MANAGEMENT)
   if (hal_lld_clock_switch_mode(&hal_clkcfg_default)){
     palSetLine(LINE_LED1);
   }
 #endif
+
+stm32_clock_init();
 }
 
 /**
@@ -233,21 +238,84 @@ static inline void tagPowerPostStop3WakeEventI(void)
 }
 
 /**
- * @brief Enter STM32U3 terminal Stop3 after device preparation.
+ * @brief Latch a one-shot standby-wake marker and reset after Stop3.
  *
- * @param[in] sleepmode Requested sleep mode.
+ * @details STM32U3 Stop3 wake does not assert the hardware SBF bit used by
+ *          the legacy Standby resume path. This marker lets reset handling
+ *          classify the intentional software reset as a standby wake without
+ *          touching flash/cache state after Stop3 return.
  */
-static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
+static void tagPowerResetAfterStop3Wake(void)
+{
+  pState->synthetic_standby_wake = TAG_SYNTHETIC_STANDBY_WAKE_MAGIC;
+  pState->resetCause = resetStandby;
+
+  __DSB();
+  NVIC_SystemReset();
+  while (true){}
+}
+
+
+#if 0
+
+static void tagPowerEnterStandby(enum Sleep sleepmode){
+ if ((sleepmode != STANDBY) || monitorIsAttached())
+  {
+    return;
+  }
+
+  palClearLine(LINE_LED1);
+  chThdSleepMilliseconds(100);
+  palSetLine(LINE_LED1);
+  chThdSleepMilliseconds(100);
+
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+  {
+    return;
+  }
+
+  tagPowerConfigureStop3RtcWake();
+
+#if BOARD_STANDBY_HAS_CONFIG
+  tagApplyBoardStandbyPins();
+#else
+  tagDevicesApplyStandbyPins();
+#endif
+  PWR->APCR |= PWR_APCR_APC;
+
+  RCC->AHB1ENR2 |= RCC_AHB1ENR2_PWREN;
+
+  tagDevicesDisableWakeupSources();
+  //tagPowerClearWakeFlags();
+  PWR->WUSCR &= 0x3ff;// clear all wakeup flags
+  RTC->SCR = 0x3ff; // clear all RTC flags
+  DBGMCU->CR = 0;
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 4U);
+  (void) PWR->CR1; // read back to ensure the write has taken effect
+
+
+  //tagPowerSelectStop3();
+
+  SET_BIT(PWR->SR, PWR_SR_CSSF); // make sure standby flag is cleared before entering standby
+
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  (void) SCB->SCR;
+
+  while (1){
+  __DSB();
+  __WFI();
+  }
+
+}
+#endif
+
+static void tagPowerEnterStop3(enum Sleep sleepmode)
 {
   if ((sleepmode != STANDBY) || monitorIsAttached())
   {
     return;
   }
-
-     palClearLine(LINE_LED1);
-    chThdSleepMilliseconds(100);
-    palSetLine(LINE_LED1);
-    chThdSleepMilliseconds(100);
 
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
   if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
@@ -261,9 +329,8 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
   tagDevicesApplyStandbyPins();
 #endif
   PWR->APCR |= PWR_APCR_APC;
-  //chSysLock();
 
-   RCC->AHB1ENR2 |= RCC_AHB1ENR2_PWREN;
+  RCC->AHB1ENR2 |= RCC_AHB1ENR2_PWREN;
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
@@ -278,42 +345,24 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
   __DSB();
   __ISB();
   __WFI();
-  __ISB();
 
 
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
   PWR->APCR &= ~PWR_APCR_APC;
   palSetLine(LINE_testpin);
 
-  // this causes a transition to ABORTED --- there needs to be
-  // communication with main to restart cleanly - probably emulate the
-  // standby logic
-
-  //pState->valid = BACKUP_STATE_VALID_MAGIC;
-  //NVIC_SystemReset();
-
-  chSysLock();
-  tagPowerRestoreClocksAfterStop3();
-  tagPowerRestoreFlashAfterStop3();
-  tagPowerPostStop3WakeEventI();
-
-  // 1. Request Range 1 (highest performance)
-  //PWR->VOSR |= PWR_VOSR_RANGE1;
+  tagPowerResetAfterStop3Wake();
 
 
-  chSysUnlock();
-  // assert_flash_write_readiness();
-   // Ensure Flash is awake and not stuck in low-power mode
-  //FLASH->ACR &= ~(FLASH_ACR_SLEEP_PD|FLASH_ACR_LPM|FLASH_ACR_PDREQ1|FLASH_ACR_PDREQ2); 
-  __DSB();
+}
 
-  
-  while (1){
-    palSetLine(LINE_LED1);
-    chThdSleepMilliseconds(100);
-    palClearLine(LINE_LED1);
-    chThdSleepMilliseconds(100);
-  }
-  
+/**
+ * @brief Enter STM32U3 terminal Stop3 after device preparation.
+ *
+ * @param[in] sleepmode Requested sleep mode.
+ */
 
+static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
+{
+  tagPowerEnterStop3(sleepmode);
 }

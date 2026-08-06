@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QTime>
+#include <QThread>
 #include <QTimer>
 #include <QLayout>
 #include <QFutureWatcher>
@@ -274,6 +275,8 @@ void MainWindow::TriggerUpdate(void)
 
     if (tag.GetStatus(status))
     {
+      ui.StatusGroup->setEnabled(true);
+      ui.ControlGroup->setEnabled(true);
       int external_count = status.external_data_count();
       ui.State->setText(QString::fromStdString(TagState_Name(status.state())));
       ui.internalCount->setText(QString::number(status.internal_data_count()));
@@ -445,12 +448,16 @@ void MainWindow::on_eraseButton_clicked()
     {
       qDebug() << "tag reset returned false";
     } else {
+      if (!timer.isActive())
+        timer.start(400);
+
       if (erase_sector_maximum > 0) {
-      QProgressDialog progress("Erasing flash...", "exit dialog", 0, erase_sector_maximum, this);
-      progress.setWindowModality(Qt::WindowModal);
-      connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
-      connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
-      progress.exec();
+        QProgressDialog progress("Erasing flash...", "Close", 0, erase_sector_maximum, this);
+        progress.setWindowModality(Qt::WindowModal);
+        progress.setMinimumDuration(0);
+        connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
+        connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
+        progress.exec();
       }
     }
   }
@@ -515,22 +522,43 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   // Create Progress Dialog
 
-  QProgressDialog pd = QProgressDialog("Downloading ..","Cancel",0,0);
+  QProgressDialog *pd = new QProgressDialog("Downloading ..","Cancel",0,0,this);
+  pd->setWindowModality(Qt::WindowModal);
+  pd->setMinimumDuration(0);
 
   // This is deliberately an explicit format value instead of a hidden
   // tag-type switch inside AbstractDownload. A future UI can replace the
   // default with a user-selected format for tags that support more than one.
   AbstractDownload *dl = new AbstractDownload(tag, selected_storage_format, fileName.toStdString());
+  QThread *download_thread = new QThread(this);
+  dl->moveToThread(download_thread);
 
-  connect(dl,&AbstractDownload::progressRangeChanged, &pd, &QProgressDialog::setRange);
-  connect(dl,&AbstractDownload::progressValueChanged, &pd, &QProgressDialog::setValue);
-  connect(dl,&AbstractDownload::downloadFinished, &pd, &QProgressDialog::cancel);
-  connect(&pd,&QProgressDialog::canceled,dl,&AbstractDownload::cancel);
+  connect(download_thread,&QThread::started,dl,&AbstractDownload::exec);
+  connect(dl,&AbstractDownload::progressRangeChanged,pd,&QProgressDialog::setRange);
+  connect(dl,&AbstractDownload::progressValueChanged,pd,&QProgressDialog::setValue);
+  connect(dl,&AbstractDownload::downloadError,this,[this](const QString &message) {
+    QMessageBox::critical(this,tr("Download Failed"),message);
+  });
+  connect(pd,&QProgressDialog::canceled,dl,&AbstractDownload::cancel,Qt::DirectConnection);
+  connect(dl,&AbstractDownload::downloadFinished,pd,&QProgressDialog::close);
+  connect(dl,&AbstractDownload::downloadFinished,download_thread,&QThread::quit);
+  connect(dl,&AbstractDownload::downloadFinished,dl,&QObject::deleteLater);
+  connect(download_thread,&QThread::finished,download_thread,&QObject::deleteLater);
+  connect(download_thread,&QThread::finished,pd,&QObject::deleteLater);
+
+  const bool restart_status_timer = timer.isActive();
+  timer.stop();
+  ui.datadownloadgroupBox->setEnabled(false);
+  connect(download_thread,&QThread::finished,this,[this,restart_status_timer]() {
+    if (restart_status_timer && tag.IsAttached()) {
+      timer.start(400);
+      TriggerUpdate();
+    }
+  });
 
   qDebug() <<  "starting download";
 
-  dl->exec();
-  pd.exec();
-  delete(dl);
+  download_thread->start();
+  pd->show();
   return;
 }

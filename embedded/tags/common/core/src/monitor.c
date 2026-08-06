@@ -435,6 +435,8 @@ int monitor_fast_status_eval(int len)
   ack.payload.status.voltage = status_vdd100 * 0.01f;
   ack.payload.status.temperature = status_temp10 * 0.1f;
   ack.payload.status.sectors_erased = externalFlashSectorsErased();
+  ack.payload.status.erase_sectors_total_plus_one =
+      externalFlashSectorsToErasePlusOne();
   ack.payload.status.millis =
       ((int64_t)timestamp * 1000) + (int64_t)timestamp_millis;
 

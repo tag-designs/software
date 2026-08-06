@@ -312,7 +312,7 @@ bool parse_options(int argc, char **argv, cxxopts::Options &options, UsbDev &dev
             device = result["base"].as<std::string>();
         }
 
-        if (result["debug"].as<bool>())
+        if (result.count("debug"))
         {
             log_set_level(LOG_DEBUG);
         }

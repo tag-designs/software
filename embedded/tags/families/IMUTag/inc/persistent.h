@@ -21,6 +21,11 @@
 /** @brief Magic value marking retained BackupState contents as initialized. */
 #define BACKUP_STATE_VALID_MAGIC 0x54414742U
 
+/**
+ * @brief One-shot retained marker for Stop3 wakeups that reset instead of SBF.
+ */
+#define TAG_SYNTHETIC_STANDBY_WAKE_MAGIC 0x53544259U
+
 #if !defined(IMUTAG_STM32U3_FLASH)
 #if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx) || defined(BOARD_IMUTagU375)
 /** @brief Use STM32U3 internal-flash row layout for persistent IMUTag data. */
@@ -98,6 +103,7 @@ typedef struct
   uint32_t sample_fifo_empty_reads; ///< FIFO read returned zero pairs.
   uint32_t sample_fifo_short_blocks; ///< Unrecoverable short superframe blocks.
   TestResult test_result;   ///< Most recent self-test result.
+  uint32_t synthetic_standby_wake; ///< One-shot marker for reset-after-Stop3 wake.
 
 } BackupState;
 

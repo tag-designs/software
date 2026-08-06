@@ -1,8 +1,6 @@
 #include <abstractdownload.h>
 #include <QDebug>
 #include <QElapsedTimer>
-#include <QTimer>
-#include <QDeadlineTimer>
 #include <utility>
 
 AbstractDownload::AbstractDownload(
@@ -20,6 +18,7 @@ AbstractDownload::AbstractDownload(
 void AbstractDownload::exec() {
     finished = false;
     log_started = false;
+    cancel_requested.store(false);
 
     // Prefer the external page cursor for sparse-checkpoint IMUTagNand logs.
     // Older firmware reports only internal_data_count, so keep that fallback.
@@ -40,7 +39,7 @@ void AbstractDownload::exec() {
     }
 
     if (!tag.GetConfig(config)) {
-        downloadError(QStringLiteral("Could not read tag config"));
+        reportError(QStringLiteral("Could not read tag config"));
         emit downloadFinished();
         return;
     }
@@ -51,7 +50,7 @@ void AbstractDownload::exec() {
         const QString error = writer
             ? QString::fromStdString(writer->lastError())
             : QStringLiteral("No log writer configured");
-        downloadError(error.isEmpty() ? QStringLiteral("Download output is not open") : error);
+        reportError(error.isEmpty() ? QStringLiteral("Download output is not open") : error);
         emit downloadFinished();
         return;
     }
@@ -60,7 +59,7 @@ void AbstractDownload::exec() {
         const QString error = writer && !writer->lastError().empty()
             ? QString::fromStdString(writer->lastError())
             : QStringLiteral("Download header write failed");
-        downloadError(error);
+        reportError(error);
         emit downloadFinished();
         return;
     }
@@ -69,7 +68,7 @@ void AbstractDownload::exec() {
         const QString error = writer && !writer->lastError().empty()
             ? QString::fromStdString(writer->lastError())
             : QStringLiteral("Could not begin log download");
-        downloadError(error);
+        reportError(error);
         emit downloadFinished();
         return;
     }
@@ -77,34 +76,22 @@ void AbstractDownload::exec() {
 
     emit progressRangeChanged(0,max_cnt);//max_cnt);
     emit progressValueChanged(0);
-
-    // Keep the modal progress dialog responsive by doing bounded work in the
-    // event loop instead of downloading the whole log in this call.
-    connect(&trigger_timer, &QTimer::timeout, this, &AbstractDownload::worker);
-    trigger_timer.start();
     timer.start();
-    
-    return;
+
+    runDownloadLoop();
 }
 
 void AbstractDownload::cancel(){
-    trigger_timer.stop();
-    if (finished) {
-        return;
-    }
-    QString tmstr = QString::number(timer.elapsed()/1000.0, 'f',2);
-    qInfo() << "Download Elapsed time: " << tmstr << " seconds";
-    qInfo() << "Downloaded " << cnt << " blocks";
+    cancel_requested.store(true);
 }
 
-void AbstractDownload::worker(){
-    QDeadlineTimer deadline(300ms);
+void AbstractDownload::runDownloadLoop(){
     int len;
 
-    // Process as many records as we can within a short deadline. Each
-    // successful writer call returns the number of records consumed from the
-    // current Ack, which becomes the offset for the next tag.GetDataLog().
-    do
+    // Run flat-out in the worker thread. Each successful writer call returns
+    // the number of records consumed from the current Ack, which becomes the
+    // offset for the next tag.GetDataLog().
+    while (!cancel_requested.load())
     {
         ack.Clear();
         len = 0;
@@ -112,8 +99,8 @@ void AbstractDownload::worker(){
         if (tag.GetDataLog(ack, cnt))
         {
             if (ack.error_message() != "") {
-                downloadError(QString::fromStdString(ack.error_message()));
-                emit downloadFinished();
+                reportError(QString::fromStdString(ack.error_message()));
+                finishDownload();
                 return;
             }
 
@@ -121,6 +108,7 @@ void AbstractDownload::worker(){
                 qInfo("skipping missing log block %d", cnt);
                 cnt++;
                 len = 1;
+                emit progressValueChanged(cnt);
                 if (cnt >= max_cnt) {
                     finishDownload();
                     return;
@@ -134,27 +122,25 @@ void AbstractDownload::worker(){
             qDebug() << "retreived log block " << cnt << " len=" << len;
             if (len == 0) {
                 qInfo("no data");
-                emit downloadFinished();
-                cancel();
+                finishDownload();
                 return;
             } else if (len == -1) {
                 QString error = writer && !writer->lastError().empty()
                     ? QString::fromStdString(writer->lastError())
                     : QStringLiteral("no matching log type");
-                downloadError(error);
-                emit downloadFinished();
-                cancel();
+                reportError(error);
+                finishDownload();
                 return;
             } else if (len == -2) {
                 QString error = writer && !writer->lastError().empty()
                     ? QString::fromStdString(writer->lastError())
                     : QStringLiteral("no log message");
-                downloadError(error);
-                emit downloadFinished();
-                cancel();
+                reportError(error);
+                finishDownload();
                 return;   
             } else {
                 cnt += len;
+                emit progressValueChanged(cnt);
                 if (cnt >= max_cnt) {
                     finishDownload();
                     return;
@@ -162,26 +148,20 @@ void AbstractDownload::worker(){
          
             }
         } else {
-            downloadError("Parsing log failed. Unsopported tag type?");
-            emit downloadFinished();
-            cancel();
+            reportError("Parsing log failed. Unsopported tag type?");
+            finishDownload();
             return;
         }
-    } while ((len>0) && !deadline.hasExpired());
 
-    qInfo("downloaded %d blocks",cnt);
-    emit progressValueChanged(cnt);
+        qInfo("downloaded %d blocks",cnt);
+    }
 
-    if (len == 0) {
-        // finished
-        finishDownload();
-    } 
+    finishDownload();
 }
 
-void AbstractDownload::downloadError(const QString &s) {
+void AbstractDownload::reportError(const QString &s) {
     qCritical().noquote() << s;
-    msgBox.setText(s);
-    msgBox.exec();
+    emit downloadError(s);
 }
 
 bool AbstractDownload::writeHeader()
@@ -203,12 +183,11 @@ void AbstractDownload::finishDownload()
         return;
     }
 
-    trigger_timer.stop();
     if (log_started && writer && !writer->endLog()) {
         const QString error = !writer->lastError().empty()
             ? QString::fromStdString(writer->lastError())
             : QStringLiteral("Could not finish log download");
-        downloadError(error);
+        reportError(error);
     }
     log_started = false;
 

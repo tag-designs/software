@@ -17,6 +17,11 @@ using namespace google::protobuf;
 #include <signal.h>
 #endif
 
+extern "C"
+{
+#include "log.h"
+}
+
 extern bool parse_options(int argc, char **argv, cxxopts::Options &options, Tag &tag, UsbDev &dev);
 
 namespace
@@ -222,7 +227,7 @@ int main(int argc, char **argv)
       ("profile", "Print download timing and link transport profile",
        cxxopts::value<bool>(profile)->default_value("false"));
 
-  if ((argc > 1)&&!parse_options(argc, argv, options, tag, dev)) {
+  if (!parse_options(argc, argv, options, tag, dev)) {
     return 1;
   }
 
@@ -238,7 +243,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  if (!status.debug_message().empty()){
+  if (log_is_enabled(LOG_DEBUG) && !status.debug_message().empty()){
       std::cerr << status.debug_message();
   }
 
@@ -265,7 +270,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    if (!status.debug_message().empty()){
+    if (log_is_enabled(LOG_DEBUG) && !status.debug_message().empty()){
       std::cerr << status.debug_message();
     }
   }

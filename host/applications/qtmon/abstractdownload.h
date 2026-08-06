@@ -3,10 +3,8 @@
 
 #include <QObject>
 #include <QTextStream>
-#include <QMessageBox>
-#include <QProgressDialog>
 #include <QElapsedTimer>
-#include <QTimer>
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -19,8 +17,8 @@
  *
  * AbstractDownload reads the tag config, creates the selected TagLogWriter,
  * then handles the shared mechanics: read status, fetch log chunks by index,
- * keep the UI responsive by processing bounded batches on a timer, and report
- * progress/errors to the caller.
+ * and report progress/errors to the caller. Instances are intended to run in a
+ * worker thread; UI objects must stay with the MainWindow.
  */
 class AbstractDownload : public QObject
 {
@@ -34,8 +32,7 @@ class AbstractDownload : public QObject
             std::string output_path,
             QObject *parent = 0);
         virtual ~AbstractDownload() = default;
-        // Starts the timer-driven download. The call returns after the first
-        // setup step; work continues through worker() until finished/canceled.
+        // Starts the blocking download loop. Call this from the worker thread.
         void exec(void);
         int total(void){return cnt;};
 
@@ -43,17 +40,14 @@ class AbstractDownload : public QObject
 
         void progressRangeChanged(int,int);
         void progressValueChanged(int);
+        void downloadError(const QString &);
         void downloadFinished();
 
     public slots:
 
-        // Stops the timer. This is used both for user cancellation and normal
-        // completion so elapsed time/count logging stays in one place.
+        // Requests cancellation from any thread. The worker observes the flag
+        // between tag RPCs and writer calls.
         void cancel();
-
-    private slots:
-
-        void worker();
 
     protected:
         int max_cnt;
@@ -68,7 +62,7 @@ class AbstractDownload : public QObject
 
     private:
 
-        void downloadError(const QString &);
+        void runDownloadLoop(void);
         void finishDownload(void);
         bool writeHeader(void);
         // Returns the number of records consumed, 0 at end/no matching payload,
@@ -76,13 +70,12 @@ class AbstractDownload : public QObject
         int writeLog(Ack &ack);
         
         
-        QMessageBox msgBox;
+        std::atomic_bool cancel_requested{false};
         QElapsedTimer timer;
-        QTimer trigger_timer;
-        QProgressDialog *pd;
         TagLogStorageFormat storage_format;
         std::string output_path;
         std::unique_ptr<TagLogWriter> writer;
+        void reportError(const QString &);
        
 };
 

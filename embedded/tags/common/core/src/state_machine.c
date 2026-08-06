@@ -689,6 +689,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
       disableAlarm(1);
       return Running(T_INIT, State_EVENT_STARTTIM);
     }
+    enableAlarm(1, ALARM_MINUTE);
   }
   return STANDBY;
 }
