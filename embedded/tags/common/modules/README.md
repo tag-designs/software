@@ -192,7 +192,10 @@ Core owns the persistent state layer because that state is stored in STM32
 flash and used by the tag runtime. It also owns the default power-management
 orchestration in `pwr.c`; tags and families should use that default when their
 board files publish the standard `LINE_xxx` names, and keep local `src/pwr.c`
-overrides only for genuinely non-standard sequencing. Shared bus/pin mechanics
+overrides only for genuinely non-standard sequencing. Family terminal-sleep
+paths live in included implementation fragments, with STM32L432 Standby in
+`pwr-l432.c` and STM32U375 Stop3 in `pwr-u375.c`, so the shared RTC and
+exception plumbing stays in `pwr.c`. Shared bus/pin mechanics
 are split between `bus_power.c` and the bus modules: `bus_power.c` owns shared
 STM32 standby pullup/pulldown helpers that operate on board-provided
 `LINE_xxx` names, while `spi_bus.c`, `i2c_bus.c`, and `usart_bus.c` own their
