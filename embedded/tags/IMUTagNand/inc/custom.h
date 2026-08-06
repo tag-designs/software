@@ -41,6 +41,9 @@
 #define TAG_RTC_STM32U3_COMPAT 1
 #define CONFIG_HAS_HIBERNATE 0
 #define TAG_STATUS_FIXED_VDD100 180
+#define TAG_IMUTAG_RTC_I2C_HARDWARE 1
+/* I2C1 timing for a 12.5 MHz peripheral clock, approximately 400 kHz SCL. */
+#define TAG_IMUTAG_I2C_TIMINGR 0x00210D10U
 /* Use DMA for external-flash block data phases; command/address/status
  * transactions remain byte-paced.
  */
