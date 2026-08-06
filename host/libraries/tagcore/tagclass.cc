@@ -116,14 +116,14 @@ bool Tag::Calibrate()
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_calibrate(new Empty);
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 bool Tag::Erase()
 {
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_erase(new Empty);
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 
 bool Tag::Test(TestReq test)
@@ -131,7 +131,7 @@ bool Tag::Test(TestReq test)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_test(test);
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 
 std::string Tag::DebugMessage()
@@ -201,7 +201,7 @@ bool Tag::SetRtc()
 
   req.Clear();
   req.set_set_rtc(ts.time_since_epoch().count());
-  return monitor.Rpc(req,ack);
+  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
 }
 
 // Tag Information

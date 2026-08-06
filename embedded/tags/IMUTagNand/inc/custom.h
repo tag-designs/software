@@ -49,11 +49,8 @@
 #define TAG_STORAGE_SPI_DMA_BLOCK_READ 0
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
 #define TAG_LSM6DSV16X_FIFO_DMA_READ 0
-/* Temporary bring-up aid: expose a retained RUNNING-state heartbeat in the
- * status debug message so detached execution can be distinguished from
- * attach/reset cursor recovery.
- */
-#define TAG_RETAINED_RUN_DIAGNOSTICS 1
+/* Keep retained runtime diagnostics disabled during data collection. */
+#define TAG_RETAINED_RUN_DIAGNOSTICS 0
 /* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
  * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
  * in the trace.

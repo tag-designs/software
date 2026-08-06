@@ -175,6 +175,7 @@ static uint32_t last_recovery_monitor;
 static uint32_t last_recovery_retained_valid;
 static uint32_t last_recovery_demcr;
 static uint32_t last_recovery_dhcsr;
+static bool unspecified_recovery_logged;
 #endif
 
 /**
@@ -226,8 +227,12 @@ enum Sleep StateMachine(eventmask_t input_events)
   // is corrupt, if so we can't count on RTC so we have to abort.
 
   t_resetCause reset_cause = pState->resetCause;
+  const bool recovery_started_from_unspecified =
+      pState->state == STATE_UNSPECIFIED;
+  bool recovered_concrete_state = false;
+  bool retained_state_valid = false;
 #if TAG_MONITOR_RESET_RECOVERY
-  bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
+  retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
   bool monitor_reset_recovery = monitorResetRecoveryActive(retained_state_valid);
   uint32_t retained_pages = pState->pages;
   uint32_t retained_external_blocks = pState->external_blocks;
@@ -278,6 +283,7 @@ enum Sleep StateMachine(eventmask_t input_events)
        * the core shortly after a start command.
        */
       pState->state = (TagState)retained_state;
+      recovered_concrete_state = true;
     } else {
 #endif
       pState->state = TagState_IDLE;
@@ -297,6 +303,7 @@ enum Sleep StateMachine(eventmask_t input_events)
           break;
 #endif
         pState->state = marker.state;
+        recovered_concrete_state = true;
       }
 #if TAG_MONITOR_RESET_RECOVERY
     }
@@ -345,9 +352,30 @@ enum Sleep StateMachine(eventmask_t input_events)
      */
     pState->resetCause = resetStandby;
 
+#if TAG_MONITOR_RESET_RECOVERY
+    if (recovery_started_from_unspecified && !unspecified_recovery_logged)
+    {
+      unspecified_recovery_logged = true;
+      debug_log_printf(
+          "state_machine: unspecified recovery rc=%u valid=%x mon=%u "
+          "ret=%u recovered=%u st=%u pages=%u ext=%u de=%x dh=%x\r\n",
+          (unsigned)reset_cause, (unsigned)pState->valid,
+          monitor_reset_recovery ? 1U : 0U, (unsigned)retained_state,
+          recovered_concrete_state ? 1U : 0U, (unsigned)pState->state,
+          (unsigned)pState->pages, (unsigned)pState->external_blocks,
+          (unsigned)recovery_demcr, (unsigned)recovery_dhcsr);
+    }
+#endif
+
     if (exception_latched)
     {
       return Aborted(T_INIT, State_EVENT_EXCEPTION);
+    }
+    if (recovery_started_from_unspecified &&
+        retained_state_valid &&
+        !recovered_concrete_state)
+    {
+      return Aborted(T_INIT, State_EVENT_UNKNOWN);
     }
 
     if (pState->state == TagState_CONFIGURED)
@@ -483,10 +511,6 @@ enum Sleep StateMachine(eventmask_t input_events)
       return Finished(T_INIT, State_EVENT_STOPCMD);
     }
     if (pState->state == TagState_EXCEPTION)
-    {
-      return Aborted(T_INIT, State_EVENT_STOPCMD);
-    }
-    if (pState->state == STATE_UNSPECIFIED)
     {
       return Aborted(T_INIT, State_EVENT_STOPCMD);
     }

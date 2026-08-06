@@ -208,7 +208,7 @@
         "Alternate": "5"
       },
       "pin6": {
-        "ID": "SDA",
+        "ID": "SCL",
         "Type": "OpenDrain",
         "Level": "High",
         "Speed": "Maximum",
@@ -218,7 +218,7 @@
         "Standby": "PULLUP"
       },
       "pin7": {
-        "ID": "SCL",
+        "ID": "SDA",
         "Type": "OpenDrain",
         "Level": "High",
         "Speed": "Maximum",

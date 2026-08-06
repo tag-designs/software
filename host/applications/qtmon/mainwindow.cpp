@@ -299,9 +299,12 @@ void MainWindow::TriggerUpdate(void)
       ui.syncButton->setEnabled(status.state() == IDLE);
       ui.testButton->setEnabled(status.state() == IDLE);
       ui.calibrateButton->setEnabled(status.state() == IDLE);
-      ui.eraseButton->setEnabled((status.state() == FINISHED) || (status.state() == ABORTED));
+      ui.eraseButton->setEnabled((status.state() == FINISHED) ||
+                                 (status.state() == ABORTED));
       ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()));
-      ui.stopButton->setEnabled((status.state() == RUNNING) || (status.state() == HIBERNATING) || (status.state() == CALIBRATE));
+      ui.stopButton->setEnabled((status.state() == RUNNING) ||
+                                (status.state() == HIBERNATING) ||
+                                (status.state() == CALIBRATE));
 
       if (status.state() == IDLE)
       {
@@ -311,6 +314,7 @@ void MainWindow::TriggerUpdate(void)
 
       if (status.state() == sRESET)
       {
+        emit EraseProgress(status.sectors_erased(), eraseSectorMaximum(status));
         emit SectorsErased(status.sectors_erased());
       } 
 
@@ -405,12 +409,22 @@ void MainWindow::on_Detach_clicked()
 
 void MainWindow::on_syncButton_clicked()
 {
-  tag.SetRtc();
+  if (!tag.SetRtc()) {
+    QMessageBox::warning(this,tr("Sync Failed"),
+                         tr("The tag did not accept the clock sync command."));
+    return;
+  }
+  TriggerUpdate();
 }
 
 void MainWindow::on_stopButton_clicked()
 {
-  tag.Stop();
+  if (!tag.Stop()) {
+    QMessageBox::warning(this,tr("Stop Failed"),
+                         tr("The tag did not accept the stop command."));
+    return;
+  }
+  QTimer::singleShot(250,this,[this]() { TriggerUpdate(); });
 }
 
 void MainWindow::on_calibrateButton_clicked()
@@ -446,19 +460,25 @@ void MainWindow::on_eraseButton_clicked()
 
     if (!tag.Erase())
     {
-      qDebug() << "tag reset returned false";
+      QMessageBox::warning(this,tr("Erase Failed"),
+                           tr("The tag did not accept the erase command."));
     } else {
       if (!timer.isActive())
         timer.start(400);
 
-      if (erase_sector_maximum > 0) {
-        QProgressDialog progress("Erasing flash...", "Close", 0, erase_sector_maximum, this);
-        progress.setWindowModality(Qt::WindowModal);
-        progress.setMinimumDuration(0);
-        connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
-        connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
-        progress.exec();
-      }
+      QProgressDialog progress("Erasing flash...", "Close", 0,
+                               erase_sector_maximum, this);
+      progress.setWindowModality(Qt::WindowModal);
+      progress.setMinimumDuration(0);
+      connect(this,&MainWindow::EraseProgress,&progress,
+              [&progress](int value, int maximum) {
+                if (maximum > progress.maximum())
+                  progress.setRange(0, maximum);
+                progress.setValue(value);
+              });
+      connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
+      connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
+      progress.exec();
     }
   }
 }

@@ -34,6 +34,7 @@ extern "C"
 #define DEMCR 0xE000EDFCU
 
 #define SCB_ICSR 0xE000ED04U
+#define SCB_VTOR 0xE000ED08U
 #define SCB_AIRCR 0xE000ED0CU
 #define SCB_SCR 0xE000ED10U
 #define SCB_SHPR1 0xE000ED18U
@@ -1013,20 +1014,84 @@ bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
   }
 
   uint32_t ispr = 0;
+  uint32_t iser = 0;
   uint32_t iabr = 0;
   uint32_t dhcsr_snapshot = 0;
   uint32_t demcr_snapshot = 0;
+  uint32_t icsr = 0;
+  uint32_t vtor = 0;
+  uint32_t shcsr = 0;
+  uint32_t cfsr = 0;
+  uint32_t hfsr = 0;
+  uint32_t dfsr = 0;
+  uint32_t r13_sp = 0;
+  uint32_t r14_lr = 0;
+  uint32_t r15_pc = 0;
+  uint32_t xpsr = 0;
+  uint32_t msp = 0;
+  uint32_t psp = 0;
+  uint32_t special = 0;
+  uint32_t halted_dhcsr = 0;
+  bool halted_by_timeout_probe = false;
   ReadMonitorShared(shared);
+  ReadMemWord(MONITOR_SHARED_KICK_ISPR_ADDR - 0x100U, &iser);
   ReadMemWord(MONITOR_SHARED_KICK_ISPR_ADDR, &ispr);
   ReadMemWord(0xE000E304U, &iabr);
   ReadDebug32(DHCSR, &dhcsr_snapshot);
   ReadDebug32(DEMCR, &demcr_snapshot);
+  ReadDebug32(SCB_ICSR, &icsr);
+  ReadDebug32(SCB_VTOR, &vtor);
+  ReadDebug32(SCB_SHCSR, &shcsr);
+  ReadDebug32(SCB_CFSR, &cfsr);
+  ReadDebug32(SCB_HFSR, &hfsr);
+  ReadDebug32(SCB_DFSR, &dfsr);
+
+#if TAGCORE_HALT_ON_MONITOR_TIMEOUT
+  if ((dhcsr_snapshot & S_LOCKUP) == 0U)
+  {
+    halted_by_timeout_probe = (dhcsr_snapshot & S_HALT) == 0U;
+    if (WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN | C_HALT))
+    {
+      for (int halt_i = 0; halt_i < 100; halt_i++)
+      {
+        if (ReadDebug32(DHCSR, &halted_dhcsr) && (halted_dhcsr & S_HALT))
+          break;
+        std::this_thread::sleep_for(MS(1));
+      }
+
+      if (halted_dhcsr & S_HALT)
+      {
+        ReadCoreRegister(13, &r13_sp);
+        ReadCoreRegister(14, &r14_lr);
+        ReadCoreRegister(15, &r15_pc);
+        ReadCoreRegister(16, &xpsr);
+        ReadCoreRegister(17, &msp);
+        ReadCoreRegister(18, &psp);
+        ReadCoreRegister(20, &special);
+      }
+    }
+  }
+#endif
+
   log_error("U3 monitor call timed out op=%s(0x%x) operand=%d "
             "request=0x%x command=0x%x status=0x%x result=0x%x "
-            "flags=0x%x ispr=0x%x iabr=0x%x dhcsr=0x%x demcr=0x%x",
+            "flags=0x%x iser=0x%x ispr=0x%x iabr=0x%x "
+            "dhcsr=0x%x demcr=0x%x icsr=0x%x vtor=0x%x shcsr=0x%x "
+            "cfsr=0x%x hfsr=0x%x dfsr=0x%x halt_dhcsr=0x%x "
+            "sp=0x%x lr=0x%x pc=0x%x xpsr=0x%x msp=0x%x psp=0x%x special=0x%x",
             monitor_operation_name(operation), operation, operand,
             shared.request, shared.command, shared.status, shared.result,
-            shared.flags, ispr, iabr, dhcsr_snapshot, demcr_snapshot);
+            shared.flags, iser, ispr, iabr, dhcsr_snapshot, demcr_snapshot,
+            icsr, vtor, shcsr, cfsr, hfsr, dfsr, halted_dhcsr,
+            r13_sp, r14_lr, r15_pc, xpsr, msp, psp, special);
+
+#if TAGCORE_HALT_ON_MONITOR_TIMEOUT && !TAGCORE_LEAVE_HALTED_ON_MONITOR_TIMEOUT
+  if (halted_by_timeout_probe && ((halted_dhcsr & S_HALT) != 0U))
+  {
+    if (!WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN))
+      log_error("U3 monitor timeout diagnostics halted target but failed to resume it");
+  }
+#endif
   return false;
 }
 

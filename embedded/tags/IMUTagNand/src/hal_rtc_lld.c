@@ -283,11 +283,16 @@ struct RTCDriverVMT _rtc_lld_vmt = {
  */
 static void rtc_lld_serve_interrupt(void) {
 
-  uint32_t isr;
+  uint32_t rtc_isr;
+  uint32_t tamp_isr;
 
   /* Get and clear the RTC interrupts. */
-  isr = RTCD1.rtc->MISR;
-  RTCD1.rtc->SCR = isr;
+  rtc_isr = RTCD1.rtc->MISR;
+  RTCD1.rtc->SCR = rtc_isr;
+
+  /* Get and clear the TAMP interrupts. */
+  tamp_isr = RTCD1.tamp->MISR;
+  RTCD1.tamp->SCR = tamp_isr;
 
   /* Clear EXTI events. */
   STM32_RTC_CLEAR_ALL_EXTI();
@@ -296,62 +301,59 @@ static void rtc_lld_serve_interrupt(void) {
   if (RTCD1.callback != NULL) {
 
 #if defined(RTC_MISR_WUTMF)
-    if ((isr & RTC_MISR_WUTMF) != 0U) {
+    if ((rtc_isr & RTC_MISR_WUTMF) != 0U) {
       RTCD1.callback(&RTCD1, RTC_EVENT_WAKEUP);
     }
 #endif
 
 #if defined(RTC_MISR_ALRAMF)
-    if ((isr & RTC_MISR_ALRAMF) != 0U) {
+    if ((rtc_isr & RTC_MISR_ALRAMF) != 0U) {
       RTCD1.callback(&RTCD1, RTC_EVENT_ALARM_A);
     }
 #endif
 #if defined(RTC_MISR_ALRBMF)
-    if ((isr & RTC_MISR_ALRBMF) != 0U) {
+    if ((rtc_isr & RTC_MISR_ALRBMF) != 0U) {
       RTCD1.callback(&RTCD1, RTC_EVENT_ALARM_B);
     }
 #endif
 #if defined(RTC_MISR_ITSMF)
-    if ((isr & RTC_MISR_ITSMF) != 0U) {
+    if ((rtc_isr & RTC_MISR_ITSMF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TS);
       }
 #endif
 #if defined(RTC_MISR_TSOVMF)
-    if ((isr & RTC_MISR_TSOVMF) != 0U) {
+    if ((rtc_isr & RTC_MISR_TSOVMF) != 0U) {
       RTCD1.callback(&RTCD1, RTC_EVENT_TS_OVF);
     }
 #endif
 
-    /* Get and clear the TAMP interrupts. */
-     isr = RTCD1.tamp->MISR;
-     RTCD1.tamp->SCR = isr;
 #if defined(TAMP_MISR_TAMP1MF)
-     if ((isr & TAMP_MISR_TAMP1MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_TAMP1MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP1);
       }
 #endif
 #if defined(TAMP_MISR_TAMP2MF)
-     if ((isr & TAMP_MISR_TAMP2MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_TAMP2MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP2);
       }
 #endif
 #if defined(TAMP_MISR_ITAMP3MF)
-     if ((isr & TAMP_MISR_ITAMP3MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_ITAMP3MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP3);
       }
 #endif
 #if defined(TAMP_MISR_ITAMP4MF)
-     if ((isr & TAMP_MISR_ITAMP4MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_ITAMP4MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP4);
       }
 #endif
 #if defined(TAMP_MISR_ITAMP5MF)
-     if ((isr & TAMP_MISR_ITAMP5MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_ITAMP5MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP5);
       }
 #endif
 #if defined(TAMP_MISR_ITAMP6MF)
-     if ((isr & TAMP_MISR_ITAMP6MF) != 0U) {
+     if ((tamp_isr & TAMP_MISR_ITAMP6MF) != 0U) {
         RTCD1.callback(&RTCD1, RTC_EVENT_TAMP6);
       }
 #endif

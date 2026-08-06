@@ -145,6 +145,32 @@ static char *statusDiagAppendU32(char *dst, char *end, uint32_t value)
 }
 
 /**
+ * @brief Append an unsigned integer to a bounded diagnostic buffer in hex.
+ *
+ * @param[in,out] dst Current write pointer.
+ * @param[in] end One-past-last writable byte.
+ * @param[in] value Value to append in lowercase hexadecimal.
+ * @return Updated write pointer.
+ */
+static char *statusDiagAppendHex(char *dst, char *end, uint32_t value)
+{
+  static const char digits[] = "0123456789abcdef";
+  bool started = false;
+
+  dst = statusDiagAppendString(dst, end, "0x");
+  for (int shift = 28; shift >= 0; shift -= 4)
+  {
+    uint32_t nibble = (value >> (uint32_t)shift) & 0xfU;
+    if ((nibble != 0U) || started || (shift == 0))
+    {
+      dst = statusDiagAppendChar(dst, end, digits[nibble]);
+      started = true;
+    }
+  }
+  return dst;
+}
+
+/**
  * @brief Recover the newest valid state/reason pair from the state marker log.
  *
  * @param[out] state Last valid TagState value, or STATE_UNSPECIFIED.
@@ -185,10 +211,18 @@ static void statusDiagWrite(void)
 
   dst = statusDiagAppendString(dst, end, "run_diag hb=");
   dst = statusDiagAppendU32(dst, end, pState->run_heartbeat);
+  dst = statusDiagAppendString(dst, end, " valid=");
+  dst = statusDiagAppendHex(dst, end, pState->valid);
+  dst = statusDiagAppendString(dst, end, " safe=");
+  dst = statusDiagAppendU32(dst, end, pState->safe);
   dst = statusDiagAppendString(dst, end, " state=");
   dst = statusDiagAppendU32(dst, end, pState->state);
   dst = statusDiagAppendString(dst, end, " rc=");
   dst = statusDiagAppendU32(dst, end, pState->resetCause);
+#if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
+  dst = statusDiagAppendString(dst, end, " tamp=");
+  dst = statusDiagAppendHex(dst, end, TAMP->MISR);
+#endif
   dst = statusDiagAppendString(dst, end, " cycle=");
   dst = statusDiagAppendU32(dst, end, pState->cycle_count);
   dst = statusDiagAppendString(dst, end, " pages=");
@@ -221,6 +255,59 @@ static void statusDiagWrite(void)
   dst = statusDiagAppendU32(dst, end, pState->sample_fifo_empty_reads);
   dst = statusDiagAppendChar(dst, end, '/');
   dst = statusDiagAppendU32(dst, end, pState->sample_fifo_short_blocks);
+  *dst = 0;
+}
+
+/**
+ * @brief Write non-blocking retained-state diagnostics for fast status.
+ */
+static void statusDiagWriteFast(void)
+{
+  char *dst = ack.payload.status.debug_message;
+  char *end = dst + sizeof(ack.payload.status.debug_message) - 1U;
+
+#if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
+  extern volatile uint32_t tag_backup_diag_phase_mask;
+  extern volatile uint32_t tag_backup_diag_latest_phase;
+  extern volatile uint32_t tag_backup_diag_valid;
+  extern volatile uint32_t tag_backup_diag_safe;
+  extern volatile uint32_t tag_backup_diag_reset_cause;
+  extern volatile uint32_t tag_backup_diag_state;
+
+  dst = statusDiagAppendString(dst, end, "fast ph=");
+  dst = statusDiagAppendHex(dst, end, tag_backup_diag_phase_mask);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendHex(dst, end, tag_backup_diag_latest_phase);
+  dst = statusDiagAppendString(dst, end, " lv=");
+  dst = statusDiagAppendHex(dst, end, tag_backup_diag_valid);
+  dst = statusDiagAppendString(dst, end, " ls=");
+  dst = statusDiagAppendU32(dst, end, tag_backup_diag_safe);
+  dst = statusDiagAppendString(dst, end, " lr=");
+  dst = statusDiagAppendU32(dst, end, tag_backup_diag_reset_cause);
+  dst = statusDiagAppendString(dst, end, " lst=");
+  dst = statusDiagAppendU32(dst, end, tag_backup_diag_state);
+  dst = statusDiagAppendString(dst, end, " c=");
+  dst = statusDiagAppendHex(dst, end, TAMP->BKP0R);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendHex(dst, end, TAMP->BKP1R);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendHex(dst, end, TAMP->BKP2R);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendHex(dst, end, TAMP->BKP3R);
+  dst = statusDiagAppendString(dst, end, " db=");
+  dst = statusDiagAppendHex(dst, end, PWR->DBPR);
+  dst = statusDiagAppendString(dst, end, " ap=");
+  dst = statusDiagAppendHex(dst, end, RCC->APB1ENR1);
+#else
+  dst = statusDiagAppendString(dst, end, "fast_diag valid=");
+  dst = statusDiagAppendHex(dst, end, pState->valid);
+  dst = statusDiagAppendString(dst, end, " safe=");
+  dst = statusDiagAppendU32(dst, end, pState->safe);
+  dst = statusDiagAppendString(dst, end, " state=");
+  dst = statusDiagAppendU32(dst, end, pState->state);
+  dst = statusDiagAppendString(dst, end, " rc=");
+  dst = statusDiagAppendU32(dst, end, pState->resetCause);
+#endif
   *dst = 0;
 }
 #endif
@@ -439,6 +526,10 @@ int monitor_fast_status_eval(int len)
       externalFlashSectorsToErasePlusOne();
   ack.payload.status.millis =
       ((int64_t)timestamp * 1000) + (int64_t)timestamp_millis;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+  if (pState->state == STATE_UNSPECIFIED)
+    statusDiagWriteFast();
+#endif
 
   return encode_ack();
 }
@@ -582,10 +673,6 @@ static bool monitor_stop_allowed(void)
     return true;
   }
   if (pState->state == TagState_EXCEPTION)
-  {
-    return true;
-  }
-  if (pState->state == STATE_UNSPECIFIED)
   {
     return true;
   }

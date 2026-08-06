@@ -340,6 +340,29 @@ void tagSystemInitHook(void)
 }
 
 #if TAG_STM32U3_FLASH
+#define TAG_BACKUP_DIAG_AFTER_BACKUP_ENABLE 1U
+#define TAG_BACKUP_DIAG_AFTER_RESET_CAUSE   2U
+#define TAG_BACKUP_DIAG_AFTER_DEVICE_INIT   4U
+
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+volatile uint32_t tag_backup_diag_phase_mask;
+volatile uint32_t tag_backup_diag_latest_phase;
+volatile uint32_t tag_backup_diag_rst_flags;
+volatile uint32_t tag_backup_diag_valid;
+volatile uint32_t tag_backup_diag_safe;
+volatile uint32_t tag_backup_diag_reset_cause;
+volatile uint32_t tag_backup_diag_state;
+volatile uint32_t tag_backup_diag_pages;
+volatile uint32_t tag_backup_diag_external_blocks;
+volatile uint32_t tag_backup_diag_dbpr;
+volatile uint32_t tag_backup_diag_apb1enr1;
+volatile uint32_t tag_backup_diag_bkp0;
+volatile uint32_t tag_backup_diag_bkp1;
+volatile uint32_t tag_backup_diag_bkp2;
+volatile uint32_t tag_backup_diag_bkp3;
+volatile uint32_t tag_backup_diag_bkp4;
+#endif
+
 /**
  * @brief Enable writes to STM32U3 backup registers used by BackupState.
  */
@@ -354,6 +377,54 @@ static void tagBackupStateEnableWrites(void)
   PWR->CR1 |= PWR_CR1_DBP;
 #endif
 }
+
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+/**
+ * @brief Emit a boot-time snapshot of backup-domain state.
+ *
+ * @param[in] phase Human-readable boot phase label.
+ * @param[in] phase_id Bit identifying the boot phase.
+ * @param[in] rst_flags RCC reset flags captured before firmware clears them.
+ */
+static void tagBackupStateDebug(const char *phase, uint32_t phase_id,
+                                uint32_t rst_flags)
+{
+  tag_backup_diag_phase_mask |= phase_id;
+  tag_backup_diag_latest_phase = phase_id;
+  tag_backup_diag_rst_flags = rst_flags;
+  tag_backup_diag_valid = pState->valid;
+  tag_backup_diag_safe = pState->safe;
+  tag_backup_diag_reset_cause = pState->resetCause;
+  tag_backup_diag_state = pState->state;
+  tag_backup_diag_pages = pState->pages;
+  tag_backup_diag_external_blocks = pState->external_blocks;
+  tag_backup_diag_dbpr = PWR->DBPR;
+  tag_backup_diag_apb1enr1 = RCC->APB1ENR1;
+  tag_backup_diag_bkp0 = TAMP->BKP0R;
+  tag_backup_diag_bkp1 = TAMP->BKP1R;
+  tag_backup_diag_bkp2 = TAMP->BKP2R;
+  tag_backup_diag_bkp3 = TAMP->BKP3R;
+  tag_backup_diag_bkp4 = TAMP->BKP4R;
+
+  debug_log_printf(
+      "backup %s rst=%x valid=%x safe=%u rc=%u st=%u pg=%u ext=%u "
+      "dbpr=%x apb1=%x tamp=%x/%x cr=%x/%x ier=%x\r\n",
+      phase, (unsigned)rst_flags, (unsigned)pState->valid,
+      (unsigned)pState->safe, (unsigned)pState->resetCause,
+      (unsigned)pState->state, (unsigned)pState->pages,
+      (unsigned)pState->external_blocks, (unsigned)PWR->DBPR,
+      (unsigned)RCC->APB1ENR1, (unsigned)TAMP->MISR, (unsigned)TAMP->SR,
+      (unsigned)TAMP->CR1, (unsigned)TAMP->CR2, (unsigned)TAMP->IER);
+}
+#else
+static void tagBackupStateDebug(const char *phase, uint32_t phase_id,
+                                uint32_t rst_flags)
+{
+  (void)phase;
+  (void)phase_id;
+  (void)rst_flags;
+}
+#endif
 #endif
 
 #if TAG_MONITOR_RESET_RECOVERY
@@ -608,12 +679,18 @@ int main(void)
   tagPowerInit();
 #if TAG_STM32U3_FLASH
   tagBackupStateEnableWrites();
+  tagBackupStateDebug("after_backup_enable",
+                      TAG_BACKUP_DIAG_AFTER_BACKUP_ENABLE, rstFlags);
 #endif
   tagDevicesInit();
 
   // save reset cause
 
   pState->resetCause = getResetCause(rstFlags);
+#if TAG_STM32U3_FLASH
+  tagBackupStateDebug("after_reset_cause",
+                      TAG_BACKUP_DIAG_AFTER_RESET_CAUSE, rstFlags);
+#endif
 
    // clear reset flags -- we've done our job at this point
   RCC->CSR |= RCC_CSR_RMVF;
@@ -621,6 +698,10 @@ int main(void)
   // Initialize system (if power on)
 
   deviceInit(false);
+#if TAG_STM32U3_FLASH
+  tagBackupStateDebug("after_device_init",
+                      TAG_BACKUP_DIAG_AFTER_DEVICE_INIT, rstFlags);
+#endif
 
   // Configure RTC to bypass shadow registers when the calendar is live.
 

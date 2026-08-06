@@ -35,6 +35,7 @@ signals:
 
   void StateUpdate(TagState state);
   void SectorsErased(int);
+  void EraseProgress(int value, int maximum);
   void IdleState(void);
 
 private slots:

@@ -14,7 +14,6 @@ include $(BOARDDIR)/IMUTagNandv1/board.mk
 TAG_MODULES += \
        protocol_nanopb \
        tag_core \
-       debug_log \
        tag_test \
        rtc_rv3028 \
        flash_gd5f1gq5re \
