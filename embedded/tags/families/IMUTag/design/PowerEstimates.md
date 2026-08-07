@@ -94,8 +94,10 @@ Actual Measurements [Note this is with software i2c which averages 2.4mA for 1.9
 Idle:     55uA      ??    standby doesn't work.  Getting 20uA in stop3
 100hz:  1014uA     1520uA
 200hz:  1211uA     1600uA
-400hz:  1555uA     1840uA
-800hz:  1523uA     2330uA  [bmm switch to low current]
-1600hz: 1702uA     2800uA 
+400hz:  1555uA     1800uA
+800hz:  1523uA     2259uA  [bmm switch to low current]
+1600hz: 1702uA     2630uA 
 
-The estimates did not include communication costs with I/O devices and memory.  Software I2C is especially expensive. [what resistors id breakout board use?]
+The estimates did not include communication costs with I/O devices and memory. Updated to use hardware I2C.
+
+Page write is 11uJ.  So memory write is  1.4J for 128k pages.
