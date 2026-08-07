@@ -24,10 +24,10 @@
 #define SENSOR_CONSTANTS 1
 #define CALIBRATION_CONSTANTS 1
 /*
- * Bring-up note: exercise Stop1 again now that the IMU trigger enables the
- * STM32U3 LPTIM2 Stop-mode clock gate. Keep short driver wait helpers on
- * their older Stop2 path while validating detached collection, because those
- * waits run inside storage and sensor transactions after monitor detach.
+ * Bring-up note: exercise Stop1 now that the IMU trigger enables the STM32U3
+ * LPTIM1 Stop-mode clock gate. Short driver waits use the U3 sleep path rather
+ * than the older LPTIM1 stop-delay helper, so LPTIM1 is owned by the trigger
+ * during detached collection.
  */
 #define USE_STOP1 1
 #define USE_STOP1_DELAY 0
@@ -87,8 +87,10 @@
 #define IMUTAG_IMU_SCK_LINE LINE_LSM_FLASH_SCK
 #define IMUTAG_IMU_MISO_LINE LINE_LSM_FLASH_MISO
 #define IMUTAG_IMU_MOSI_LINE LINE_LSM_FLASH_MOSI
-#define IMUTAG_IMU_TRIGGER_LINE LINE_LSM_TRG
-#define IMUTAG_IMU_TRIGGER_AF 14
+#define IMUTAG_IMU_TRIGGER_LINE LINE_LMS_TRIG_2
+#define IMUTAG_IMU_TRIGGER_AF 1
+#define IMUTAG_IMU_TRIGGER_LPTIM_ID 1
+#define IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL 2
 
 #define IMUTAG_BMM_DRDY_LINE LINE_BMM_INT
 

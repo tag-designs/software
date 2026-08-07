@@ -54,6 +54,19 @@
 #ifndef IMUTAG_IMU_TRIGGER_AF
 #define IMUTAG_IMU_TRIGGER_AF 14
 #endif
+#ifndef IMUTAG_IMU_TRIGGER_LPTIM_ID
+#define IMUTAG_IMU_TRIGGER_LPTIM_ID 2
+#endif
+#ifndef IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL
+#define IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL 1
+#endif
+#if IMUTAG_IMU_TRIGGER_LPTIM_ID == 1
+#define IMUTAG_IMU_TRIGGER_LPTIM LPTIM1
+#elif IMUTAG_IMU_TRIGGER_LPTIM_ID == 2
+#define IMUTAG_IMU_TRIGGER_LPTIM LPTIM2
+#else
+#error "Unsupported IMUTag IMU trigger LPTIM instance"
+#endif
 #define IMUTAG_I2C_TIMEOUT 100
 
 #ifndef BMM350_I2C_ADDRESS
@@ -240,10 +253,28 @@ const TagBmm350Device tagImuTagBmm350Device = {
 
 
 /**
- * @brief Disable the LPTIM2 trigger clock used for IMU external ODR.
+ * @brief Disable the LPTIM trigger clock used for IMU external ODR.
  */
 static void tagImuTagDisableTriggerClock(void)
 {
+#if IMUTAG_IMU_TRIGGER_LPTIM_ID == 1
+#if defined(RCC_APB3ENR_LPTIM1EN)
+  RCC->APB3ENR &= ~RCC_APB3ENR_LPTIM1EN;
+#elif defined(RCC_APB1ENR1_LPTIM1EN)
+  RCC->APB1ENR1 &= ~RCC_APB1ENR1_LPTIM1EN;
+#else
+#error "Unsupported LPTIM1 clock gate for IMUTag trigger"
+#endif
+#if defined(RCC_APB1SMENR1_LPTIM1SMEN)
+  RCC->APB1SMENR1 &= ~RCC_APB1SMENR1_LPTIM1SMEN;
+#endif
+#if defined(RCC_APB3SLPENR_LPTIM1SLPEN)
+  RCC->APB3SLPENR &= ~RCC_APB3SLPENR_LPTIM1SLPEN;
+#endif
+#if defined(RCC_APB3STPENR_LPTIM1STPEN)
+  RCC->APB3STPENR &= ~RCC_APB3STPENR_LPTIM1STPEN;
+#endif
+#elif IMUTAG_IMU_TRIGGER_LPTIM_ID == 2
   RCC->APB1ENR2 &= ~RCC_APB1ENR2_LPTIM2EN;
 #if defined(RCC_APB1SMENR2_LPTIM2SMEN)
   RCC->APB1SMENR2 &= ~RCC_APB1SMENR2_LPTIM2SMEN;
@@ -257,13 +288,32 @@ static void tagImuTagDisableTriggerClock(void)
 #if defined(RCC_APB1AMENR2_LPTIM2AMEN)
   RCC->APB1AMENR2 &= ~RCC_APB1AMENR2_LPTIM2AMEN;
 #endif
+#endif
 }
 
 /**
- * @brief Enable the LPTIM2 trigger clock used for IMU external ODR.
+ * @brief Enable the LPTIM trigger clock used for IMU external ODR.
  */
 static void tagImuTagEnableTriggerClock(void)
 {
+#if IMUTAG_IMU_TRIGGER_LPTIM_ID == 1
+#if defined(RCC_APB3ENR_LPTIM1EN)
+  RCC->APB3ENR |= RCC_APB3ENR_LPTIM1EN;
+#elif defined(RCC_APB1ENR1_LPTIM1EN)
+  RCC->APB1ENR1 |= RCC_APB1ENR1_LPTIM1EN;
+#else
+#error "Unsupported LPTIM1 clock gate for IMUTag trigger"
+#endif
+#if defined(RCC_APB1SMENR1_LPTIM1SMEN)
+  RCC->APB1SMENR1 |= RCC_APB1SMENR1_LPTIM1SMEN;
+#endif
+#if defined(RCC_APB3SLPENR_LPTIM1SLPEN)
+  RCC->APB3SLPENR |= RCC_APB3SLPENR_LPTIM1SLPEN;
+#endif
+#if defined(RCC_APB3STPENR_LPTIM1STPEN)
+  RCC->APB3STPENR |= RCC_APB3STPENR_LPTIM1STPEN;
+#endif
+#elif IMUTAG_IMU_TRIGGER_LPTIM_ID == 2
   RCC->APB1ENR2 |= RCC_APB1ENR2_LPTIM2EN;
 #if defined(RCC_APB1SMENR2_LPTIM2SMEN)
   RCC->APB1SMENR2 |= RCC_APB1SMENR2_LPTIM2SMEN;
@@ -277,6 +327,7 @@ static void tagImuTagEnableTriggerClock(void)
 #if defined(RCC_APB1AMENR2_LPTIM2AMEN)
   RCC->APB1AMENR2 |= RCC_APB1AMENR2_LPTIM2AMEN;
 #endif
+#endif
 #if defined(STM32U3XX)
 #if defined(RCC_AHB2STPENR1_GPIOASTPEN)
   if (PAL_PORT(IMUTAG_IMU_TRIGGER_LINE) == GPIOA) {
@@ -287,6 +338,69 @@ static void tagImuTagEnableTriggerClock(void)
   if (PAL_PORT(IMUTAG_IMU_TRIGGER_LINE) == GPIOB) {
     RCC->AHB2STPENR1 |= RCC_AHB2STPENR1_GPIOBSTPEN;
   }
+#endif
+#endif
+}
+
+/**
+ * @brief Reset the LPTIM instance that owns the IMU trigger output.
+ */
+static void tagImuTagResetTriggerTimer(void)
+{
+#if IMUTAG_IMU_TRIGGER_LPTIM_ID == 1
+#if defined(RCC_APB3RSTR_LPTIM1RST)
+  RCC->APB3RSTR |= RCC_APB3RSTR_LPTIM1RST;
+  RCC->APB3RSTR &= ~RCC_APB3RSTR_LPTIM1RST;
+#elif defined(RCC_APB1RSTR1_LPTIM1RST)
+  RCC->APB1RSTR1 |= RCC_APB1RSTR1_LPTIM1RST;
+  RCC->APB1RSTR1 &= ~RCC_APB1RSTR1_LPTIM1RST;
+#else
+#error "Unsupported LPTIM1 reset gate for IMUTag trigger"
+#endif
+#elif IMUTAG_IMU_TRIGGER_LPTIM_ID == 2
+  RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
+  RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
+#endif
+}
+
+/**
+ * @brief Enable the configured LPTIM output compare channel.
+ */
+static void tagImuTagEnableTriggerOutput(void)
+{
+#if IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL == 1
+#if defined(STM32U3XX) && defined(LPTIM_CCMR1_CC1E)
+  IMUTAG_IMU_TRIGGER_LPTIM->CCMR1 = LPTIM_CCMR1_CC1E;
+#endif
+#elif IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL == 2
+#if defined(STM32U3XX) && defined(LPTIM_CCMR1_CC2E)
+  IMUTAG_IMU_TRIGGER_LPTIM->CCMR1 = LPTIM_CCMR1_CC2E;
+#else
+#error "LPTIM channel 2 output compare is not available for this target"
+#endif
+#else
+#error "Unsupported IMUTag IMU trigger LPTIM channel"
+#endif
+}
+
+/**
+ * @brief Set the configured LPTIM output compare duty point.
+ *
+ * @param[in] compare Counter value where the trigger output toggles.
+ */
+static void tagImuTagSetTriggerCompare(uint32_t compare)
+{
+#if IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL == 1
+#if defined(LPTIM_CCR1_CCR1)
+  IMUTAG_IMU_TRIGGER_LPTIM->CCR1 = compare;
+#else
+  IMUTAG_IMU_TRIGGER_LPTIM->CMP = compare;
+#endif
+#elif IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL == 2
+#if defined(LPTIM_CCR2_CCR2)
+  IMUTAG_IMU_TRIGGER_LPTIM->CCR2 = compare;
+#else
+#error "LPTIM channel 2 compare register is not available for this target"
 #endif
 #endif
 }
@@ -345,11 +459,11 @@ static const TagRegisterDevice imu_registers = {
 };
 
 /**
- * @brief Configure PA8/LPTIM2_OUT as the IMU external ODR trigger clock.
+ * @brief Configure the IMU external ODR trigger clock output.
  *
- * LPTIM2 is clocked from the 1024 Hz low-speed source selected in mcuconf.h.
- * The output frequency is 1024 / divider Hz and is routed to the IMU INT2 /
- * ACCEL_TRG line.
+ * The selected LPTIM is clocked from the 1024 Hz low-speed source selected in
+ * mcuconf.h. The output frequency is 1024 / divider Hz and is routed to the
+ * IMU INT2 / ACCEL_TRG line.
  */
 static void tagImuTagSetTriggerQuiet(unsigned int divider, bool log)
 {
@@ -368,26 +482,19 @@ static void tagImuTagSetTriggerQuiet(unsigned int divider, bool log)
     divider = 2U;
 
   tagImuTagEnableTriggerClock();
-  RCC->APB1RSTR2 |= RCC_APB1RSTR2_LPTIM2RST;
-  RCC->APB1RSTR2 &= ~RCC_APB1RSTR2_LPTIM2RST;
+  tagImuTagResetTriggerTimer();
 
   palSetLineMode(IMUTAG_IMU_TRIGGER_LINE,
                  PAL_MODE_ALTERNATE(IMUTAG_IMU_TRIGGER_AF));
 
-  LPTIM2->CFGR = 0U;
-#if defined(STM32U3XX) && defined(LPTIM_CCMR1_CC1E)
-  LPTIM2->CCMR1 = LPTIM_CCMR1_CC1E;
-#endif
-  LPTIM2->CR = STM32_LPTIM_CR_ENABLE;
+  IMUTAG_IMU_TRIGGER_LPTIM->CFGR = 0U;
+  tagImuTagEnableTriggerOutput();
+  IMUTAG_IMU_TRIGGER_LPTIM->CR = STM32_LPTIM_CR_ENABLE;
 
-  LPTIM2->ARR = divider - 1U;
-#if defined(LPTIM_CCR1_CCR1)
-  LPTIM2->CCR1 = divider / 2U;
-#else
-  LPTIM2->CMP = divider / 2U;
-#endif
-  LPTIM2->CNT = 0U;
-  LPTIM2->CR |= STM32_LPTIM_CR_CNTSTRT;
+  IMUTAG_IMU_TRIGGER_LPTIM->ARR = divider - 1U;
+  tagImuTagSetTriggerCompare(divider / 2U);
+  IMUTAG_IMU_TRIGGER_LPTIM->CNT = 0U;
+  IMUTAG_IMU_TRIGGER_LPTIM->CR |= STM32_LPTIM_CR_CNTSTRT;
 
   if (log) {
     debug_log_printf("IMUTag trigger: divider %u\r\n", divider);
@@ -525,7 +632,7 @@ void tagDevicesDeinit(void)
 }
 
 /**
- *  Re-arm the U3 PA8/LPTIM2 IMU trigger after Stop1 exit.
+ *  Re-arm the U3 IMU trigger after Stop1 exit.
  *
  * Repeated Stop1 entries can leave the LPTIM output flat even though data
  * collection remains in RUNNING. Restart only the external trigger; the LSM

@@ -12,8 +12,8 @@ MX25U12843 SPI NOR storage module with the GD5F SPI-NAND storage module.
   as an STM32U375 board.
 - Flash: GD5F SPI-NAND using the common logical block map in STM32 internal
   flash.
-- IMU: LSM6DSV16X SPI binding and LPTIM2 trigger output from the IMUTag
-  family.
+- IMU: LSM6DSV16X SPI binding with the external ODR trigger on PB4
+  (`LINE_LMS_TRIG_2`) driven by LPTIM1 channel 2.
 - Pressure: LPS22HH SPI binding from the IMUTag family.
 - RTC and BMM350 bus: shared software I2C on the RTC pin pair.
 - BMM350 INT/DRDY: PB5, exposed by the board as `LINE_BMM_INT`.

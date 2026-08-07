@@ -440,7 +440,8 @@ void lsm6dsv16x_init_accel_wakeup(
  * Sequence ([AN] Section 3.3, Listing 2):
  *  1.  Software reset.
  *  2.  BDU + IF_INC.
- *  3.  Leave PA8 analog while INT2 is still an IMU interrupt output.
+ *  3.  Leave the trigger line analog while INT2 is still an IMU interrupt
+ *      output.
  *  4.  Hold both sensors in power-down; wait at least 500 us ([AN]
  *      requirement before writing ODR-triggered configuration registers).
  *      The tag timekeeping API rounds this up to stopMilliseconds(1).
@@ -482,9 +483,10 @@ void lsm6dsv16x_init_accel_gyro_triggered(
     apply_common_defaults(device);
 
     /*
-     * 3. PA8 remains analog while INT2 is still an IMU interrupt output. The
-     *    trigger callback is called only after the device is configured for
-     *    ODR-triggered mode, so INT1 can remain push-pull for the wakeup line.
+     * 3. The trigger line remains analog while INT2 is still an IMU interrupt
+     *    output. The trigger callback is called only after the device is
+     *    configured for ODR-triggered mode, so INT1 can remain push-pull for
+     *    the wakeup line.
      */
 
     /* 4. Hold in power-down per [AN]; 500 us minimum rounded to 1 ms. */

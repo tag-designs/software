@@ -31,7 +31,7 @@ tri-states while deselected. On this board the flash shares the
 | `LPS_MISO` | Pull down | LPS22HH SDO/MISO tri-states when deselected or powered down. |
 | `WKUP1` | None | LSM6DSV interrupt output can be high-Z, but this net is left unbiased while measuring whether interrupt pulldowns fight latched active-high outputs. |
 | `LSM_TRG` | None | LSM6DSV trigger/interrupt net can be high-Z, but is left unbiased during the interrupt-line standby-current experiment. |
-| `LMS_TRIG_2` | None | Alternate LSM6DSV trigger candidate; left unbiased during the interrupt-line standby-current experiment. |
+| `LMS_TRIG_2` | None | LSM6DSV external ODR trigger on PB4; left unbiased when the trigger is disabled for standby. |
 | `LPS_DRDY` | None | LPS22HH data-ready output can be high-Z, but is left unbiased while checking for pull conflicts. |
 | `BMM_INT` | None | BMM350 interrupt is active-high in firmware; left unbiased while checking for pull conflicts. |
 | `SDA` | Pull up | Shared RTC/BMM350 software-I2C data line must idle high. |
