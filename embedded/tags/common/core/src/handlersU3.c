@@ -27,12 +27,14 @@ static bool monitor_requested_at_boot = false;
 
 static void monitorSharedSetDisconnected(void)
 {
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
   monitor_shared.request = 0U;
   monitor_shared.flags = 0U;
   monitor_shared.host_activity = 0U;
   monitor_shared.status = MONITOR_STATUS_IDLE;
   monitor_shared.command = 0U;
   monitor_shared.result = 0U;
+  __DSB();
 }
 
 /*

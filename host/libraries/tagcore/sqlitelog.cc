@@ -131,7 +131,11 @@ public:
             return false;
         }
 
-        tag.GetTagInfo(info);
+        if (!tag.GetTagInfo(info)) {
+            setLastError("Could not read tag info");
+            return false;
+        }
+        configureImuClockCorrection(info);
         if (!insertInfo("uuid", info.uuid())) {
             return false;
         }
@@ -545,6 +549,28 @@ private:
             return statement.bindText(index, value);
         }
         return statement.bindNull(index);
+    }
+
+    void configureImuClockCorrection(const TagInfo &info)
+    {
+        if (config_.tag_type() != IMUTAG) {
+            return;
+        }
+
+        if (!info.has_ppm_clock_error()) {
+            imu_decode_state_.clock_correction_ppm = 0.0;
+            imu_decode_state_.clock_correction_factor = 1.0;
+            log_debug("IMUTag info missing ppm_clock_error; assuming zero clock correction");
+            return;
+        }
+
+        const double ppm_clock_error = info.ppm_clock_error();
+        imu_decode_state_.clock_correction_ppm = ppm_clock_error;
+        imu_decode_state_.clock_correction_factor =
+            1.0 + ppm_clock_error / 1000000.0;
+        log_debug("IMUTag clock correction %.9f ppm, factor %.12f",
+                  ppm_clock_error,
+                  imu_decode_state_.clock_correction_factor);
     }
 
     void setLastError(const std::string &error)

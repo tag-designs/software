@@ -581,6 +581,8 @@ static int infoAck(void)
   ack.payload.info.accelconstant = ACCEL_CONSTANT;
   ack.payload.info.magconstant = MAG_CONSTANT;
 #endif
+  tagRtcRefreshClockCorrection();
+  ack.payload.info.has_ppm_clock_error = true;
   ack.payload.info.ppm_clock_error = tagRtcClockErrorPpm();
   return encode_ack();
 }

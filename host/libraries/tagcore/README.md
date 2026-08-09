@@ -14,7 +14,9 @@ Responsibilities:
 SQLite log writing is split between the public `sqlitelog.*` wrapper and the
 private `sqlitelog/` implementation directory. `sqlitelog/schema.cc` owns the
 table and stream metadata, while the other files in that directory decode
-individual tag log protobufs into rows.
+individual tag log protobufs into rows. See
+[`sqlitelog/README.md`](sqlitelog/README.md) for the IMUTag downloader schema
+and timing-field meanings.
 
 This library should remain Qt-free. Qt applications can link it, but reusable
 Qt UI code belongs in `../sensorui` or `../../common`.

@@ -120,6 +120,18 @@ float rv3028ClockErrorPpm(void);
 bool rv3028ClockCorrectionValid(void);
 
 /**
+ * @brief Refresh the cached RV3028 factory clock correction from shadow RAM.
+ *
+ * @details Reads the RV3028 Offset and Backup RAM mirror registers through the
+ *          normal RTC device transaction wrapper. This does not issue any
+ *          EEPROM write command and does not modify EEOffset.
+ *
+ * @param[in] device RTC device descriptor that owns the register bus.
+ * @return true when the correction registers were read and decoded.
+ */
+bool rv3028RefreshClockCorrection(const TagRtcDevice *device);
+
+/**
  * @brief Apply the cached RV3028 clock correction to the STM32 RTC.
  *
  * @details Builds that enable STM32 smooth calibration translate the cached

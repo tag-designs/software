@@ -177,7 +177,9 @@ SqlTableDefinition imuHeaderTable()
      *   at the start of each 16-block page. The Millisecond column is the
      *   rounded integer millisecond decoded from the packed 1/1024-second
      *   subsecond ticks.
-     * - Sensor rows use elapsed microseconds from the first retained block.
+     * - Sensor rows use corrected elapsed microseconds from the first retained
+     *   block, reconstructed from segment anchors, sample index, configured
+     *   ODR, and the tag-reported sample-clock ppm correction when present.
      *
      * Sensorviz currently treats time columns generically, so keeping this
      * origin information explicit gives future viewers enough data to convert
@@ -187,11 +189,36 @@ SqlTableDefinition imuHeaderTable()
         "ImuHeader",
         {
             {"HeaderIndex", "INTEGER"},
+            {"SegmentId", "INTEGER"},
             {"StartElapsedUs", "INTEGER"},
             {"Epoch", "INTEGER"},
             {"Millisecond", "INTEGER"},
+            {"SubsecondTicks", "INTEGER"},
+            {"SubsecondHz", "INTEGER"},
             {"Flags", "INTEGER"},
             {"Temperature", "REAL"},
+        },
+        {},
+    };
+}
+
+SqlTableDefinition imuSegmentTable()
+{
+    return {
+        "ImuSegment",
+        {
+            {"SegmentId", "INTEGER"},
+            {"HeaderIndex", "INTEGER"},
+            {"StartElapsedUs", "INTEGER"},
+            {"Epoch", "INTEGER"},
+            {"Millisecond", "INTEGER"},
+            {"SubsecondTicks", "INTEGER"},
+            {"SubsecondHz", "INTEGER"},
+            {"Flags", "INTEGER"},
+            {"Event", "TEXT"},
+            {"FirstSampleIndex", "INTEGER"},
+            {"ConfiguredOdrHz", "INTEGER"},
+            {"CorrectionPpm", "REAL"},
         },
         {},
     };
@@ -214,7 +241,13 @@ SqlTableDefinition imuPressureTable()
 {
     return {
         "ImuPressure",
-        {{"ElapsedUs", "INTEGER"}, {"Pressure", "REAL"}},
+        {
+            {"SegmentId", "INTEGER"},
+            {"SampleIndex", "INTEGER"},
+            {"RawElapsedUs", "INTEGER"},
+            {"ElapsedUs", "INTEGER"},
+            {"Pressure", "REAL"},
+        },
         {{
             "imu_pressure",
             nullptr,
@@ -235,7 +268,13 @@ SqlTableDefinition imuTemperatureTable()
 {
     return {
         "ImuTemperature",
-        {{"ElapsedUs", "INTEGER"}, {"Temperature", "REAL"}},
+        {
+            {"SegmentId", "INTEGER"},
+            {"SampleIndex", "INTEGER"},
+            {"RawElapsedUs", "INTEGER"},
+            {"ElapsedUs", "INTEGER"},
+            {"Temperature", "REAL"},
+        },
         {{
             "sensor_temperature",
             nullptr,
@@ -257,6 +296,9 @@ SqlTableDefinition imuMagTable()
     return {
         "ImuMag",
         {
+            {"SegmentId", "INTEGER"},
+            {"SampleIndex", "INTEGER"},
+            {"RawElapsedUs", "INTEGER"},
             {"ElapsedUs", "INTEGER"},
             {"mx", "REAL"},
             {"my", "REAL"},
@@ -287,6 +329,9 @@ SqlTableDefinition imuAccelTable()
     return {
         "ImuAccel",
         {
+            {"SegmentId", "INTEGER"},
+            {"SampleIndex", "INTEGER"},
+            {"RawElapsedUs", "INTEGER"},
             {"ElapsedUs", "INTEGER"},
             {"ax", "REAL"},
             {"ay", "REAL"},
@@ -317,6 +362,9 @@ SqlTableDefinition imuGyroTable()
     return {
         "ImuGyro",
         {
+            {"SegmentId", "INTEGER"},
+            {"SampleIndex", "INTEGER"},
+            {"RawElapsedUs", "INTEGER"},
             {"ElapsedUs", "INTEGER"},
             {"gx", "REAL"},
             {"gy", "REAL"},
@@ -363,7 +411,7 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
         // magnetometer constants; the high-rate data tables remain separate.
         return {
             true,
-            {imuHeaderTable(), imuEventTable(), imuPressureTable(), imuTemperatureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
+            {imuHeaderTable(), imuSegmentTable(), imuEventTable(), imuPressureTable(), imuTemperatureTable(), imuMagTable(), imuAccelTable(), imuGyroTable()}};
     default:
         return {false, {}};
     }

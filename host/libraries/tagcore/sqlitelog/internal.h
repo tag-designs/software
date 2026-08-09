@@ -126,16 +126,20 @@ struct SqlTagProfile
 };
 
 // IMUTag logs send one absolute timestamp per header, followed by blocks whose
-// sensor samples are decoded in elapsed microseconds from the start of capture.
-// This state persists across ACK pages so each downloaded header/block sequence
-// keeps a monotonic elapsed timeline in the SQLite database.
+// sensor samples are decoded in corrected elapsed microseconds from the start
+// of capture. This state persists across ACK pages so each downloaded
+// header/block sequence keeps a monotonic elapsed timeline in the SQLite
+// database.
 struct ImuDecodeState
 {
     uint64_t block_count = 0;
     uint64_t segment_block_count = 0;
     uint64_t header_count = 0;
+    uint64_t segment_id = 0;
     sqlite3_int64 collection_anchor_epoch_ms = 0;
     sqlite3_int64 elapsed_base_us = 0;
+    double clock_correction_ppm = 0.0;
+    double clock_correction_factor = 1.0;
     bool have_collection_anchor = false;
 };
 

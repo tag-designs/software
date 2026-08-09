@@ -1139,8 +1139,14 @@ void TagMonitor::Detach()
     }
   }
 
-  // Clear debug register bits
-  if (ReadDebug32(DEMCR, &demcr))
+  // Clear debug register bits. U3 firmware clears VC_CORERESET while handling
+  // MONITORSTOP; after that it may immediately return to low power, so avoid
+  // racing the target with best-effort debug-register cleanup from the host.
+  if (target_family == TargetFamily::STM32U3)
+  {
+    log_debug("U3 monitor detach leaves post-stop debug cleanup to target firmware");
+  }
+  else if (ReadDebug32(DEMCR, &demcr))
   {
     const uint32_t detached_demcr =
         demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN);
@@ -1162,12 +1168,6 @@ void TagMonitor::Detach()
   else
   {
     log_error("Monitor detach failed to read debug control register");
-  }
-
-  if (target_family == TargetFamily::STM32U3)
-  {
-    if (!WriteDebug32(DHCSR, DBGKEY))
-      log_error("U3 monitor detach failed to clear core debug enable");
   }
 
   // release usb

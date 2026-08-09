@@ -604,6 +604,12 @@ bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
     return true;
 }
 
+bool isImuDiscontinuityEvent(const QString &event)
+{
+    return event.startsWith(QStringLiteral("RESYNC"), Qt::CaseInsensitive)
+        || event.compare(QStringLiteral("RESTART_RECOVERY"), Qt::CaseInsensitive) == 0;
+}
+
 bool loadImuEvents(Database &db, SensorLog &log, QString &error)
 {
     if (!tableExistsRaw(db, "ImuEvent")) {
@@ -624,7 +630,7 @@ bool loadImuEvents(Database &db, SensorLog &log, QString &error)
     resync_marker.timeDomain = SensorTimeDomain::ElapsedSeconds;
 
     while (stmt.next()) {
-        if (stmt.textColumn(1).startsWith(QStringLiteral("RESYNC"), Qt::CaseInsensitive)) {
+        if (isImuDiscontinuityEvent(stmt.textColumn(1))) {
             resync_marker.time.append(static_cast<double>(stmt.int64Column(0)) / 1000000.0);
         }
     }

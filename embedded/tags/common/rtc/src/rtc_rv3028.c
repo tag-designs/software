@@ -265,6 +265,14 @@ bool rv3028ClockCorrectionValid(void)
     return rv3028_clock_correction_valid;
 }
 
+bool rv3028RefreshClockCorrection(const TagRtcDevice *device)
+{
+    tagRtcDeviceBegin(device);
+    rv3028UpdateClockCorrection(device);
+    tagRtcDeviceEnd(device);
+    return rv3028_clock_correction_valid;
+}
+
 bool rv3028ApplyClockCorrection(void)
 {
 #if TAG_RTC_STM32U3_COMPAT && IMUTAG_USE_STM32_RTC_SMOOTH_CALIBRATION

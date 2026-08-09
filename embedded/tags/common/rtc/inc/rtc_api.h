@@ -68,6 +68,16 @@ static inline float tagRtcClockErrorPpm(void)
 }
 
 /**
+ * @brief Refresh the configured RTC's raw clock correction cache.
+ *
+ * @return true when the correction was read successfully.
+ */
+static inline bool tagRtcRefreshClockCorrection(void)
+{
+  return rv3028RefreshClockCorrection(tagRtcDevice());
+}
+
+/**
  * @brief Apply the configured RTC's raw clock correction to the STM32 RTC.
  *
  * @return true when the correction was applied or no target-side correction is
@@ -147,6 +157,16 @@ static inline bool tagRtcInit(void)
 static inline float tagRtcClockErrorPpm(void)
 {
   return 0.0f;
+}
+
+/**
+ * @brief Refresh the configured RTC's raw clock correction cache.
+ *
+ * @return true for legacy RTC drivers that do not publish a correction value.
+ */
+static inline bool tagRtcRefreshClockCorrection(void)
+{
+  return true;
 }
 
 /**
