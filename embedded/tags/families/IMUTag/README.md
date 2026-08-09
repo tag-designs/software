@@ -23,6 +23,10 @@ member is retained as source history only.
 
 Design notes:
 
+- [`design/jitter-free-sampling-timing-reconstruction.md`](design/jitter-free-sampling-timing-reconstruction.md)
+  plans jitter-free IMU sampling from a smooth RV-3028 reference, STM32 RTC
+  smooth calibration for real-time events, and downloadable timing metadata for
+  corrected reconstruction.
 - [`design/internal-header-checkpoints.md`](design/internal-header-checkpoints.md)
   describes the sparse STM32U3 internal-header checkpoint scheme used to
   recover NAND-backed IMUTag external log cursors.

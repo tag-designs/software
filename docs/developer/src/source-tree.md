@@ -65,6 +65,7 @@ directory that owns the code; the developer portal stages those files under
 - [BitTagNG Wakeup Note](reference/embedded/tags/families/BitTagNG/wakeup_note.md)
 - [CompassTag](reference/embedded/tags/families/CompassTag/README.md)
 - [IMUTag Family](reference/embedded/tags/families/IMUTag/README.md)
+- [IMUTag Jitter-Free Sampling Timing Strategy](reference/embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md)
 - [IMUTag Internal Header Checkpoints](reference/embedded/tags/families/IMUTag/design/internal-header-checkpoints.md)
 - [PresTag](reference/embedded/tags/families/PresTag/README.md)
 

@@ -99,6 +99,7 @@ set(
   "embedded/tags/families/BitTagNG/wakeup_note.md"
   "embedded/tags/families/CompassTag/README.md"
   "embedded/tags/families/IMUTag/README.md"
+  "embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md"
   "embedded/tags/families/IMUTag/design/internal-header-checkpoints.md"
   "embedded/tags/families/PresTag/README.md"
   "host/README.md"
