@@ -28,6 +28,7 @@ message TagInfo {
                             // block erase
   float accelconstant = 13; // constant for converting accel data
   float magconstant = 14;   // constant for converting mag data
+  float ppm_clock_error = 15; // RV3028 EEOffset-derived clock correction
 }
 
 enum TestResult {

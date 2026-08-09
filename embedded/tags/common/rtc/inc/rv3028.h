@@ -100,6 +100,39 @@ int rv3028GetReg(const TagRtcDevice *device, enum RV3028Reg reg,
 bool rv3028Init(const TagRtcDevice *device);
 
 /**
+ * @brief Return the cached RV3028 factory clock correction in ppm.
+ *
+ * @details The value is decoded from the RV3028 EEPROM Offset and Backup RAM
+ *          mirror registers during rv3028Init(). A positive value represents
+ *          a positive RV3028 EEOffset correction step count.
+ *
+ * @return Cached correction in ppm, or 0.0f if the correction has not been
+ *         read successfully in this boot.
+ */
+float rv3028ClockErrorPpm(void);
+
+/**
+ * @brief Report whether the RV3028 factory clock correction was read.
+ *
+ * @return true after rv3028Init() has decoded EEOffset successfully, false
+ *         before initialization or after a correction-register read failure.
+ */
+bool rv3028ClockCorrectionValid(void);
+
+/**
+ * @brief Apply the cached RV3028 clock correction to the STM32 RTC.
+ *
+ * @details Builds that enable STM32 smooth calibration translate the cached
+ *          EEOffset step count into RTC_CALR fields. Other builds treat this
+ *          as a successful no-op.
+ *
+ * @return true when no correction was required or the STM32 RTC calibration
+ *         register was updated, false if the correction is unavailable or the
+ *         STM32 RTC rejected the calibration update.
+ */
+bool rv3028ApplyClockCorrection(void);
+
+/**
  * @brief Write date/time to the RV3028.
  *
  * @param[in] device RTC device descriptor.

@@ -57,6 +57,28 @@ static inline bool tagRtcInit(void)
 }
 
 /**
+ * @brief Return the configured RTC's raw clock correction in ppm.
+ *
+ * @return Cached RV3028 EEOffset-derived correction in ppm, or 0.0f if the
+ *         correction has not been read successfully in this boot.
+ */
+static inline float tagRtcClockErrorPpm(void)
+{
+  return rv3028ClockErrorPpm();
+}
+
+/**
+ * @brief Apply the configured RTC's raw clock correction to the STM32 RTC.
+ *
+ * @return true when the correction was applied or no target-side correction is
+ *         needed, false if a configured correction could not be applied.
+ */
+static inline bool tagRtcApplyClockCorrection(void)
+{
+  return rv3028ApplyClockCorrection();
+}
+
+/**
  * @brief Read date/time from the configured RV3028.
  *
  * @param[out] tm RTC date/time structure to populate.
@@ -115,6 +137,26 @@ bool initRTC(void);
 static inline bool tagRtcInit(void)
 {
   return initRTC();
+}
+
+/**
+ * @brief Return the configured RTC's raw clock correction in ppm.
+ *
+ * @return 0.0f for legacy RTC drivers that do not publish a correction value.
+ */
+static inline float tagRtcClockErrorPpm(void)
+{
+  return 0.0f;
+}
+
+/**
+ * @brief Apply the configured RTC's raw clock correction to the STM32 RTC.
+ *
+ * @return true for legacy RTC drivers that do not publish a correction value.
+ */
+static inline bool tagRtcApplyClockCorrection(void)
+{
+  return true;
 }
 
 /**
@@ -197,16 +239,25 @@ void enableTicker(uint16_t interval);
 void disableTicker(void);
 /** @} */
 
-#if STM32_RTC_PRESA_VALUE * STM32_RTC_PRESS_VALUE == (32 * 1024)
+/*
+ * The RV3028 CLKOUT selection follows the RTC reference frequency. IMUTag
+ * smooth-clock builds use the direct 32.768 kHz output and keep the STM32
+ * subsecond counter at 1024 Hz through the RTC asynchronous prescaler.
+ */
+#define TAG_RTC_REFERENCE_HZ \
+  (STM32_RTC_PRESA_VALUE * STM32_RTC_PRESS_VALUE)
+#define TAG_RTC_SUBSECOND_HZ STM32_RTC_PRESS_VALUE
+
+#if TAG_RTC_REFERENCE_HZ == (32 * 1024)
 #define RV3028_CLKOUT_VAL 0
 #endif
-#if STM32_RTC_PRESA_VALUE * STM32_RTC_PRESS_VALUE == 8192
+#if TAG_RTC_REFERENCE_HZ == 8192
 #define RV3028_CLKOUT_VAL 1
 #endif
-#if STM32_RTC_PRESA_VALUE * STM32_RTC_PRESS_VALUE == 1024
+#if TAG_RTC_REFERENCE_HZ == 1024
 #define RV3028_CLKOUT_VAL 2
 #endif
-#if STM32_RTC_PRESA_VALUE * STM32_RTC_PRESS_VALUE == 64
+#if TAG_RTC_REFERENCE_HZ == 64
 #define RV3028_CLKOUT_VAL 3
 #endif
 

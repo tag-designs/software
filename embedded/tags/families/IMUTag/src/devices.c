@@ -30,6 +30,7 @@
 #include "lps.h"
 #include "persistent.h"
 #include "power.h"
+#include "rtc_api.h"
 #include "sensor_io.h"
 #include "sensors.h"
 #include "test_support.h"
@@ -66,6 +67,44 @@
 #define IMUTAG_IMU_TRIGGER_LPTIM LPTIM2
 #else
 #error "Unsupported IMUTag IMU trigger LPTIM instance"
+#endif
+
+#ifndef IMUTAG_IMU_TRIGGER_LOGICAL_HZ
+#define IMUTAG_IMU_TRIGGER_LOGICAL_HZ 1024U
+#endif
+#ifndef IMUTAG_IMU_TRIGGER_TIMER_HZ
+#define IMUTAG_IMU_TRIGGER_TIMER_HZ TAG_RTC_REFERENCE_HZ
+#endif
+#if (IMUTAG_IMU_TRIGGER_TIMER_HZ % IMUTAG_IMU_TRIGGER_LOGICAL_HZ) != 0
+#error "IMUTag trigger timer frequency must divide to the logical trigger base"
+#endif
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV \
+  (IMUTAG_IMU_TRIGGER_TIMER_HZ / IMUTAG_IMU_TRIGGER_LOGICAL_HZ)
+#if IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 1
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS 0U
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 2
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (1U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 4
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (2U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 8
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (3U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 16
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (4U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 32
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (5U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 64
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (6U << LPTIM_CFGR_PRESC_Pos)
+#elif IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV == 128
+#define IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS \
+  (7U << LPTIM_CFGR_PRESC_Pos)
+#else
+#error "Unsupported IMUTag LPTIM trigger prescaler divisor"
 #endif
 #define IMUTAG_I2C_TIMEOUT 100
 
@@ -487,7 +526,8 @@ static void tagImuTagSetTriggerQuiet(unsigned int divider, bool log)
   palSetLineMode(IMUTAG_IMU_TRIGGER_LINE,
                  PAL_MODE_ALTERNATE(IMUTAG_IMU_TRIGGER_AF));
 
-  IMUTAG_IMU_TRIGGER_LPTIM->CFGR = 0U;
+  IMUTAG_IMU_TRIGGER_LPTIM->CFGR =
+      IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_BITS;
   tagImuTagEnableTriggerOutput();
   IMUTAG_IMU_TRIGGER_LPTIM->CR = STM32_LPTIM_CR_ENABLE;
 
@@ -497,7 +537,10 @@ static void tagImuTagSetTriggerQuiet(unsigned int divider, bool log)
   IMUTAG_IMU_TRIGGER_LPTIM->CR |= STM32_LPTIM_CR_CNTSTRT;
 
   if (log) {
-    debug_log_printf("IMUTag trigger: divider %u\r\n", divider);
+    debug_log_printf("IMUTag trigger: input %u Hz, prescaler %u, logical divider %u\r\n",
+                     (unsigned)IMUTAG_IMU_TRIGGER_TIMER_HZ,
+                     (unsigned)IMUTAG_IMU_TRIGGER_LPTIM_PRESCALER_DIV,
+                     divider);
   }
 }
 

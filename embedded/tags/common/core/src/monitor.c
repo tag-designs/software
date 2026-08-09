@@ -17,6 +17,7 @@
 #include "debug_log.h"
 #include "flash_internal.h"
 #include "persistent.h"
+#include "rtc_api.h"
 #include "sensor_calibration.h"
 #include "test_support.h"
 #include "timekeeping.h"
@@ -580,6 +581,7 @@ static int infoAck(void)
   ack.payload.info.accelconstant = ACCEL_CONSTANT;
   ack.payload.info.magconstant = MAG_CONSTANT;
 #endif
+  ack.payload.info.ppm_clock_error = tagRtcClockErrorPpm();
   return encode_ack();
 }
 

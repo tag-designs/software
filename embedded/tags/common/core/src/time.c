@@ -249,6 +249,12 @@ int SetTimeUnixSec(int32_t unix_time)
   // been initialized.
   rtcSetTime(&RTCD1, &tim);
   tagRtcInit();
+  if (!tagRtcApplyClockCorrection())
+  {
+#if defined(TAG_RTC_STM32U3_COMPAT) && TAG_RTC_STM32U3_COMPAT
+    return -1;
+#endif
+  }
   if (MSG_OK != tagRtcSetDateTime(&tim))
   {
     //pState->test_result = SET_RTC_FAILED;
