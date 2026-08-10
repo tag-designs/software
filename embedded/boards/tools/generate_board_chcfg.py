@@ -611,18 +611,26 @@ def write_text(text: str, output: Path | None) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate a ChibiOS board.chcfg from JSON board customizations."
+        description=(
+            "Generate a ChibiOS board.chcfg from JSON board customizations. "
+            "The ChibiOS template path is explicit; run fmpp separately to "
+            "produce board.c, board.h, and board.mk."
+        )
     )
     parser.add_argument(
         "--template",
         required=True,
         type=Path,
-        help="Template board.chcfg to read.",
+        help=(
+            "Template board XML to read, for example "
+            "$CHIBIOS_DIR/tools/ftl/xml/stm32l4board.xml."
+        ),
     )
     parser.add_argument(
-        "--pins",
         "--customizations",
+        "--pins",
         dest="pins",
+        metavar="CUSTOMIZATIONS",
         required=True,
         type=Path,
         help="JSON file containing board customizations and pin definitions.",

@@ -18,6 +18,12 @@ Older board directories still use `generate_board_files()` with a source-tree
 `cfg/board.chcfg`, `cfg/board.fmpp`, and local FreeMarker templates. Both paths
 write generated board files into the CMake build tree.
 
+`generate_configured_board_files()` gets ChibiOS templates from the CMake
+`CHIBIOS_DIR` value. During embedded configuration, `embedded/CMakeLists.txt`
+prefers the repository `ChibiOS/` submodule, then `$CHIBIOS_DIR`, then an
+explicit `-DCHIBIOS_DIR=/path/to/ChibiOS`. See
+[`tools/README.md`](tools/README.md) for the full lookup and generation flow.
+
 ## Active Board Consumers
 
 These are the board targets used by active tag and base firmware targets.
@@ -101,3 +107,8 @@ You can also build a board target directly when checking generation only:
 ```sh
 cmake --build <build-dir> --target board-bitprestag
 ```
+
+Generated-configured board targets run the Python customization tool, then
+run `fmpp` against the matching ChibiOS templates. The resulting files land in
+`<build-dir>/embedded/boards/<BOARD_TYPE>/`; firmware targets consume them via
+the `$(BOARDDIR)/<BOARD_TYPE>/board.mk` include in `project.mk`.
