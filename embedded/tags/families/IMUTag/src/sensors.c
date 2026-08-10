@@ -773,7 +773,7 @@ bool deinitDataCollection(void)
 
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
   bmm350DeviceBegin(TAG_MAG_DEVICE);
-  (void)bmm350InitPowerDown(TAG_MAG_DEVICE);
+  (void)bmm350PreparePowerDown(TAG_MAG_DEVICE);
   bmm350DeviceEnd(TAG_MAG_DEVICE);
 #else
   ak09940aDeviceBegin(TAG_MAG_DEVICE);

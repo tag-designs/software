@@ -502,6 +502,24 @@ msg_t bmm350InitContinuous(const TagBmm350Device *dev,
   return MSG_OK;
 }
 
+msg_t bmm350PreparePowerDown(const TagBmm350Device *dev)
+{
+  msg_t result = MSG_OK;
+
+  if (!bmm350CheckWhoami(dev)) {
+    result = MSG_RESET;
+  } else if ((result = bmm350Reset(dev)) == MSG_OK) {
+    if (!bmm350CheckWhoami(dev)) {
+      result = MSG_RESET;
+    } else {
+      result = bmm350ReadCompensationData(dev);
+    }
+  }
+
+  msg_t suspend_result = bmm350InitPowerDown(dev);
+  return result == MSG_OK ? suspend_result : result;
+}
+
 msg_t bmm350InitPowerDown(const TagBmm350Device *dev)
 {
   if (bmm350WriteU8(dev, BMM350_REG_PMU_CMD, BMM350_PMU_CMD_SUS) != MSG_OK)

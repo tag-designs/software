@@ -249,6 +249,20 @@ msg_t bmm350InitContinuous(const TagBmm350Device *dev,
                            bmm350_performance_t performance);
 
 /**
+ * @brief Normalize an unknown BMM350 state before entering power-down mode.
+ *
+ * @details Some boards can leave the BMM350 drawing elevated current after a
+ * cold start unless the reset/OTP trim path has completed and the OTP domain
+ * is explicitly powered down before suspend. Call this while the device bus
+ * session is active.
+ *
+ * @param[in] dev BMM350 device descriptor.
+ * @return MSG_OK when the reset, OTP power-off, and suspend sequence
+ * completes, or a ChibiOS I2C error.
+ */
+msg_t bmm350PreparePowerDown(const TagBmm350Device *dev);
+
+/**
  * @brief Put the BMM350 into power-down mode.
  *
  * @param[in] dev BMM350 device descriptor.

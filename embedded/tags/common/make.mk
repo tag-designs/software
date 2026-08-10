@@ -252,6 +252,21 @@ IINCDIR := $(patsubst %,-I%,$(INCDIR) $(DINCDIR) $(UINCDIR))
 # same-named files from module source directories and ../common/src.
 VPATH := $(BUILDDIR) ./src $(TAG_FAMILY_SRC_DIRS) $(MODULE_SRC_DIRS) ../common/src $(PROTODIR) $(NANOPBDIR) $(VPATH)
 
+# Source fragments that are included from compiled C translation units.
+# GCC emits them into the generated .d files after the first compile, but make
+# should also know the intentional fragment dependency before/stale-dep rebuilds.
+$(OBJDIR)/pwr.o: $(TAG_COMMON_DIR)/core/src/pwr-l432.c $(TAG_COMMON_DIR)/core/src/pwr-u375.c
+
+TAG_LOCAL_C_SOURCES := $(notdir $(wildcard ./src/*.c))
+define tag_add_family_fragment_dependency
+$(OBJDIR)/$(basename $(notdir $(1))).o: $(1)
+endef
+
+$(foreach dir,$(TAG_FAMILY_SRC_DIRS), \
+  $(foreach source,$(wildcard $(dir)/*.c), \
+    $(if $(filter $(notdir $(source)),$(TAG_LOCAL_C_SOURCES)), \
+      $(eval $(call tag_add_family_fragment_dependency,$(source))))))
+
 UNAME_S := $(shell uname -s)
 
 # ifeq ($(UNAME_S),Darwin)
