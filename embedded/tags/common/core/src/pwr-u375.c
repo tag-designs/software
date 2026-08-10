@@ -341,15 +341,12 @@ static void tagPowerEnterStop3(enum Sleep sleepmode)
 
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
-
   __DSB();
   __ISB();
   __WFI();
 
-
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
   PWR->APCR &= ~PWR_APCR_APC;
-  palSetLine(LINE_testpin);
 
   tagPowerResetAfterStop3Wake();
 
