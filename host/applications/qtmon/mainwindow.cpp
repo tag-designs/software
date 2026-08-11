@@ -302,7 +302,8 @@ void MainWindow::TriggerUpdate(void)
       ui.eraseButton->setEnabled((status.state() == FINISHED) ||
                                  (status.state() == ABORTED));
       ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()));
-      ui.stopButton->setEnabled((status.state() == RUNNING) ||
+      ui.stopButton->setEnabled((status.state() == CONFIGURED) ||
+                                (status.state() == RUNNING) ||
                                 (status.state() == HIBERNATING) ||
                                 (status.state() == CALIBRATE));
 

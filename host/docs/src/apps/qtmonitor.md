@@ -12,7 +12,7 @@ The tag monitor, illustrated in the following figure, has three tabs -- "Tag Sta
 
 The initial tab is "Tag State."  This tab has five regions -- "Status", "Control," "Tag Attach," "Tag Information," and "Tag Data" (grayed out in the
 current state).  This tab, like the "Configure" tab, is modal -- only the currently relevant controls and state are active.  For example, there are greyed out controls on the 
-Tag State tab to "Stop" (a running tag), to "Erase" (a stopped tag), and to "Save" the data from a stopped tag.
+Tag State tab to "Stop" (a configured or running tag), to "Erase" (a stopped tag), and to "Save" the data from a stopped tag.
 
 The "Status" region gives the current state of the tag ("IDLE"), the current error of the tag's internal clock (as a well as a control to synchronize the tag's clock to the host computer), the current Voltage of the tag battery (if any), and the current state of the tag's self-tests.  To the right of the test status is a test control to execute the tag's self-tests. 
 *NOTE -- it is important to synchronize the tag's clock and successfully execute the self-tests before using the tag for a data logging experiment*
@@ -48,4 +48,3 @@ The final "Error Log", not illustrated, provides an edit window to receive error
 ```md
 ![Tag Monitor live view](../images/qtmonitor-live-view.png)
 ```
-
