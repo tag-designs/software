@@ -186,6 +186,11 @@ above. `board.fmpp.in` is optional, but it shows the minimal `fmpp` config
 shape needed to turn the generated `board.chcfg` into `board.c`, `board.h`, and
 `board.mk`.
 
+The `example/` directory is a complete standalone CMake project for a minimal
+STM32L432 board. It demonstrates the JSON customization shape, the generated
+standby pull masks, and configure-time diagnostics for missing `CHIBIOS_DIR`
+and `FMPP_EXECUTABLE` paths.
+
 The workflow has two phases:
 
 1. generate the `fmpp` inputs: `board.chcfg`, optional `board_standby.h`, and a

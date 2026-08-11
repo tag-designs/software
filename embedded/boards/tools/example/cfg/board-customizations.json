@@ -1,0 +1,82 @@
+{
+  "board_name": "STM32L432 Standalone Example",
+  "board_id": "STM32L432_Standalone_Example",
+  "remove_elements": [
+    "ethernet_phy"
+  ],
+  "elements": {
+    "configuration_settings/board_files_path": "$(BOARDDIR)",
+    "subtype": "STM32L432xx"
+  },
+  "attributes": {
+    "clocks": {
+      "HSEFrequency": "0",
+      "HSEBypass": "false",
+      "LSEFrequency": "32768",
+      "LSEBypass": "false",
+      "VDD": "300",
+      "LSEDrive": "3 High Drive (default)"
+    }
+  },
+  "pins": {
+    "PA0": {
+      "ID": "WAKE_BUTTON",
+      "Type": "PushPull",
+      "Speed": "Minimum",
+      "Resistor": "PullDown",
+      "Level": "Low",
+      "Mode": "Input",
+      "Alternate": "0",
+      "AnalogSwitch": "Disabled",
+      "PinLock": "Disabled",
+      "Standby": "PULLDOWN"
+    },
+    "PA5": {
+      "ID": "STATUS_LED",
+      "Type": "PushPull",
+      "Speed": "Low",
+      "Resistor": "Floating",
+      "Level": "Low",
+      "Mode": "Output",
+      "Alternate": "0",
+      "AnalogSwitch": "Disabled",
+      "PinLock": "Disabled"
+    },
+    "PB6": {
+      "ID": "I2C1_SCL",
+      "Type": "OpenDrain",
+      "Speed": "High",
+      "Resistor": "PullUp",
+      "Level": "High",
+      "Mode": "Alternate",
+      "Alternate": "4",
+      "AnalogSwitch": "Disabled",
+      "PinLock": "Disabled",
+      "Standby": "PULLUP"
+    },
+    "PB7": {
+      "ID": "I2C1_SDA",
+      "Type": "OpenDrain",
+      "Speed": "High",
+      "Resistor": "PullUp",
+      "Level": "High",
+      "Mode": "Alternate",
+      "Alternate": "4",
+      "AnalogSwitch": "Disabled",
+      "PinLock": "Disabled",
+      "Standby": "PULLUP"
+    },
+    "PC13": {
+      "ID": "USER_BUTTON",
+      "Type": "PushPull",
+      "Speed": "Minimum",
+      "Resistor": "PullUp",
+      "Level": "High",
+      "Mode": "Input",
+      "Alternate": "0",
+      "AnalogSwitch": "Disabled",
+      "PinLock": "Disabled",
+      "Standby": "PULLUP"
+    }
+  }
+}
