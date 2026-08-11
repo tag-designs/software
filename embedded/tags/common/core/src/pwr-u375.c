@@ -256,61 +256,7 @@ static void tagPowerResetAfterStop3Wake(void)
 }
 
 
-#if 0
-
-static void tagPowerEnterStandby(enum Sleep sleepmode){
- if ((sleepmode != STANDBY) || monitorIsAttached())
-  {
-    return;
-  }
-
-  palClearLine(LINE_LED1);
-  chThdSleepMilliseconds(100);
-  palSetLine(LINE_LED1);
-  chThdSleepMilliseconds(100);
-
-  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
-  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
-  {
-    return;
-  }
-
-  tagPowerConfigureStop3RtcWake();
-
-#if BOARD_STANDBY_HAS_CONFIG
-  tagApplyBoardStandbyPins();
-#else
-  tagDevicesApplyStandbyPins();
-#endif
-  PWR->APCR |= PWR_APCR_APC;
-
-  RCC->AHB1ENR2 |= RCC_AHB1ENR2_PWREN;
-
-  tagDevicesDisableWakeupSources();
-  //tagPowerClearWakeFlags();
-  PWR->WUSCR &= 0x3ff;// clear all wakeup flags
-  RTC->SCR = 0x3ff; // clear all RTC flags
-  DBGMCU->CR = 0;
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 4U);
-  (void) PWR->CR1; // read back to ensure the write has taken effect
-
-
-  //tagPowerSelectStop3();
-
-  SET_BIT(PWR->SR, PWR_SR_CSSF); // make sure standby flag is cleared before entering standby
-
-  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-  (void) SCB->SCR;
-
-  while (1){
-  __DSB();
-  __WFI();
-  }
-
-}
-#endif
-
-static void tagPowerEnterStop3(enum Sleep sleepmode)
+static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
 {
   if ((sleepmode != STANDBY) || monitorIsAttached())
   {
@@ -323,6 +269,7 @@ static void tagPowerEnterStop3(enum Sleep sleepmode)
     return;
   }
   tagPowerConfigureStop3RtcWake();
+
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
 #else
@@ -349,8 +296,140 @@ static void tagPowerEnterStop3(enum Sleep sleepmode)
   PWR->APCR &= ~PWR_APCR_APC;
 
   tagPowerResetAfterStop3Wake();
+}
 
 
+/**
+ * @brief Reset SPI1 state before entering STM32U3 standby.
+ *
+ * @details IMUTagNand can remain in a high-current standby state after SPI1 has
+ *          been used, even when the visible SPI and GPDMA registers look idle.
+ *          A hardware reset pulse for SPI1 is sufficient to clear that
+ *          condition; resetting GPDMA1 alone was not sufficient.
+ *
+ * @pre     Call only after all SPI-backed device standby preparation is done.
+ */
+static void tagPowerResetSpi1BeforeStandby(void)
+{
+  rccResetSPI1();
+
+  __DSB();
+  __ISB();
+}
+
+#if 0
+void Force_SPI1_GPDMA1_Reset_LL(void)
+{
+    // =========================================================================
+    // STEP 1: Safely Suspend & Disable GPDMA Channel 0
+    // =========================================================================
+    if (GPDMA1_Channel0->CCR & DMA_CCR_EN) {
+        // Request channel suspension to finish/flush active bus transfers
+        GPDMA1_Channel0->CCR |= DMA_CCR_SUSP;
+
+        // Poll for suspension acknowledgement (SUSPF flag in CSR)
+        uint32_t timeout = 10000;
+        while (!(GPDMA1_Channel0->CSR & DMA_CSR_SUSPF) && --timeout);
+
+        // Disable channel
+        GPDMA1_Channel0->CCR &= ~DMA_CCR_EN;
+    }
+
+    // Clear ALL GPDMA Channel 0 flags (Writing 1s to Clear Flag Register - CFCR)
+    GPDMA1_Channel0->CFCR = 0xFFFFFFFF;
+
+    // =========================================================================
+    // STEP 2: Disable SPI1 Peripheral
+    // =========================================================================
+    // Clear SPE (SPI Enable) in CR1
+    SPI1->CR1 &= ~SPI_CR1_SPE;
+
+    // Clear any pending status/error flags by writing to IFCR (Interrupt/Flag Clear Reg)
+    SPI1->IFCR = 0xFFFFFFFF;
+
+    // =========================================================================
+    // STEP 3: Pulse Hardware Peripheral Resets via RCC
+    // =========================================================================
+    // SPI1 Reset (APB2 Peripheral Reset Register - APB2RSTR)
+    RCC->APB2RSTR |= RCC_APB2RSTR_SPI1RST;
+    __NOP(); __NOP(); __NOP();
+    RCC->APB2RSTR &= ~RCC_APB2RSTR_SPI1RST;
+
+    // GPDMA1 Reset (AHB1 Peripheral Reset Register - AHB1RSTR)
+    RCC->AHB1RSTR1 |= RCC_AHB1RSTR1_GPDMA1RST;
+    __NOP(); __NOP(); __NOP();
+    RCC->AHB1RSTR1 &= ~RCC_AHB1RSTR1_GPDMA1RST;
+
+    // =========================================================================
+    // STEP 4: Disable & Clear NVIC IRQ Lines at the Core Level
+    // =========================================================================
+    // Disable IRQs in NVIC (ICER - Interrupt Clear-Enable Register)
+    NVIC_DisableIRQ(SPI1_IRQn);
+    NVIC_DisableIRQ(GPDMA1_Channel0_IRQn);
+
+    // Clear Pending IRQs in NVIC (ICPR - Interrupt Clear-Pending Register)
+    NVIC_ClearPendingIRQ(SPI1_IRQn);
+    NVIC_ClearPendingIRQ(GPDMA1_Channel0_IRQn);
+
+    // =========================================================================
+    // STEP 5: Gate Peripheral Clocks in RCC
+    // =========================================================================
+    // Disable SPI1 clock (APB2ENR)
+    RCC->APB2ENR &= ~RCC_APB2ENR_SPI1EN;
+
+    // Disable GPDMA1 clock (AHB1ENR)
+    RCC->AHB1ENR1 &= ~RCC_AHB1ENR1_GPDMA1EN;
+
+    // Memory barriers to ensure peripheral write operations complete
+    __DSB();
+    __ISB();
+}
+#endif
+
+static void tagPowerEnterStandby(enum Sleep sleepmode)
+{
+
+  if ((sleepmode != STANDBY) || isMonitorEnabled())
+  {
+    return;
+  }
+
+  tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
+
+  if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
+  {
+    return;
+  }
+  tagPowerConfigureStop3RtcWake();
+
+  tagPowerResetSpi1BeforeStandby();
+
+#if BOARD_STANDBY_HAS_CONFIG
+  tagApplyBoardStandbyPins();
+#else
+  tagDevicesApplyStandbyPins();
+#endif
+  PWR->APCR |= PWR_APCR_APC;
+
+  RCC->AHB1ENR2 |= RCC_AHB1ENR2_PWREN;
+
+  tagDevicesDisableWakeupSources();
+  tagPowerClearWakeFlags();
+  DBGMCU->CR = 0;
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 4U);
+
+  //tagPowerSelectStop3();
+
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  __DSB();
+  __ISB();
+  __WFI();
+
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  PWR->APCR &= ~PWR_APCR_APC;
+
+  tagPowerResetAfterStop3Wake();
 }
 
 /**
@@ -361,5 +440,5 @@ static void tagPowerEnterStop3(enum Sleep sleepmode)
 
 static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 {
-  tagPowerEnterStop3(sleepmode);
+  tagPowerEnterStandby(sleepmode);
 }

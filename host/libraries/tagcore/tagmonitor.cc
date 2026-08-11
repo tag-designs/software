@@ -916,6 +916,7 @@ bool TagMonitor::Attach(UsbDev usbdev)
 bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
 {
   static const int TIMEOUT_MS = 2500;
+  static const int MONITORSTOP_TIMEOUT_MS = 100;
   monitor_shared_t shared = {};
 
   if (!IsAttached())
@@ -961,7 +962,9 @@ bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
     return false;
   }
 
-  for (int i = 0; i < TIMEOUT_MS; i++)
+  const int timeout_ms = (operation == MONITORSTOP) ? MONITORSTOP_TIMEOUT_MS :
+                                                     TIMEOUT_MS;
+  for (int i = 0; i < timeout_ms; i++)
   {
     uint32_t status = 0;
     if (ReadMemWord(MONITOR_SHARED_ADDR + offsetof(monitor_shared_t, status),
@@ -1011,6 +1014,22 @@ bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
       }
     }
     std::this_thread::sleep_for(MS(1));
+  }
+
+  if (operation == MONITORSTOP)
+  {
+    /*
+     * U3 detach is allowed to race the terminal sleep path. Firmware handles
+     * MONITORSTOP by clearing the shared monitor block, clearing vector-catch
+     * debug state, and signalling the main thread to enter terminal sleep. If
+     * standby wins before the host observes the cleared shared block, further
+     * SWD reads can fail or stall even though detach did what it needed to do.
+     */
+    log_warn("U3 monitor stop did not observe detached state before timeout; "
+             "completing host detach");
+    if (result)
+      *result = 1U;
+    return true;
   }
 
   uint32_t ispr = 0;
