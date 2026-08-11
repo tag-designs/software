@@ -18,5 +18,11 @@ individual tag log protobufs into rows. See
 [`sqlitelog/README.md`](sqlitelog/README.md) for the IMUTag downloader schema
 and timing-field meanings.
 
+Design documents:
+
+- [`design/python-interface.md`](design/python-interface.md): Proposed Python
+  binding API, native/protobuf boundary, shared download service, packaging,
+  and testing plan.
+
 This library should remain Qt-free. Qt applications can link it, but reusable
 Qt UI code belongs in `../sensorui` or `../../common`.

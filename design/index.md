@@ -36,3 +36,9 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 4. Host Applications
 
 *   [**SensorViz Roadmap**](../host/applications/sensorviz/design/roadmap.md): Display preference policies, plotting roadmaps, and SQLite reader features.
+
+---
+
+## 5. Host Libraries
+
+*   [**TagCore Python Interface Design**](../host/libraries/tagcore/design/python-interface.md): Proposed Python API, protobuf/native boundary, shared download workflow, packaging, and test strategy.

@@ -77,6 +77,8 @@ directory that owns the code; the developer portal stages those files under
 - [Common Host Code](reference/host/common/README.md)
 - [Libraries](reference/host/libraries/README.md)
 - [TagCore](reference/host/libraries/tagcore/README.md)
+- [TagCore Design Index](reference/host/libraries/tagcore/design/index.md)
+- [TagCore Python Interface Design](reference/host/libraries/tagcore/design/python-interface.md)
 - [SensorAnalysis](reference/host/libraries/sensoranalysis/README.md)
 - [SensorUI](reference/host/libraries/sensorui/README.md)
 

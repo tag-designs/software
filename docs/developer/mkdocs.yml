@@ -104,6 +104,9 @@ nav:
           - Common: reference/host/common/README.md
           - Libraries: reference/host/libraries/README.md
           - TagCore: reference/host/libraries/tagcore/README.md
+          - TagCore Design:
+              - Overview: reference/host/libraries/tagcore/design/index.md
+              - Python Interface: reference/host/libraries/tagcore/design/python-interface.md
           - SensorAnalysis: reference/host/libraries/sensoranalysis/README.md
           - SensorUI: reference/host/libraries/sensorui/README.md
       - Host Applications:
@@ -139,6 +142,7 @@ nav:
       - Command Line README: reference/host/commandline/README.md
       - Libraries README: reference/host/libraries/README.md
       - TagCore README: reference/host/libraries/tagcore/README.md
+      - TagCore Python Interface: reference/host/libraries/tagcore/design/python-interface.md
       - SensorAnalysis README: reference/host/libraries/sensoranalysis/README.md
       - SensorUI README: reference/host/libraries/sensorui/README.md
       - SensorViz README: reference/host/applications/sensorviz/README.md

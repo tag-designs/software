@@ -111,6 +111,8 @@ set(
   "host/common/README.md"
   "host/libraries/README.md"
   "host/libraries/tagcore/README.md"
+  "host/libraries/tagcore/design/index.md"
+  "host/libraries/tagcore/design/python-interface.md"
   "host/libraries/sensoranalysis/README.md"
   "host/libraries/sensorui/README.md"
   "host/applications/sensorviz/README.md"
