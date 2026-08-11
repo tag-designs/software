@@ -270,7 +270,9 @@ static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
   }
   tagPowerConfigureStop3RtcWake();
 
-#if BOARD_STANDBY_HAS_CONFIG
+#if TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF
+  /* Standby pulls were installed by ChibiOS from mcuconf.h at HAL startup. */
+#elif BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
 #else
   tagDevicesApplyStandbyPins();
@@ -404,7 +406,9 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
 
   tagPowerResetSpi1BeforeStandby();
 
-#if BOARD_STANDBY_HAS_CONFIG
+#if TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF
+  /* Standby pulls were installed by ChibiOS from mcuconf.h at HAL startup. */
+#elif BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
 #else
   tagDevicesApplyStandbyPins();

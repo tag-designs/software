@@ -135,9 +135,30 @@ ChibiOS board schema attribute is intentionally being introduced.
 `Standby` is project metadata, not a ChibiOS XML attribute. It may be placed in
 a pin definition after `PinLock` and accepts `FLOAT`, `PULLUP`, or `PULLDOWN`;
 omitting it is the same as `FLOAT`. The generator strips `Standby` from
-`board.chcfg` and uses it only for `board_standby.h`. Pins with non-floating
-standby state must have a non-empty `ID`, because the generated masks use the
-human-readable `LINE_<ID>` names from `board.h`.
+`board.chcfg` and uses it only for `board_standby.h`. The generated pull masks
+use numeric pin positions, so firmware can include `board_standby.h` from
+`mcuconf.h` and use the masks as ChibiOS PWR startup defaults.
+
+For example, a board with PA4/PA9 pull-ups and PB3 pull-down generates:
+
+```c
+#define BOARD_STANDBY_HAS_CONFIG 1
+
+#define HAS_PULLUPA 1
+#define HAS_PULLDWNA 0
+#define PULLUPA ((1U << 4U) | \
+  (1U << 9U))
+#define PULLDWNA 0U
+
+#define HAS_PULLUPB 0
+#define HAS_PULLDWNB 1
+#define PULLUPB 0U
+#define PULLDWNB ((1U << 3U))
+```
+
+Firmware can assign these generated `PULLUPx` and `PULLDWNx` macros to the
+matching `STM32_PWR_PUCRx` and `STM32_PWR_PDCRx` definitions in `mcuconf.h`;
+ChibiOS then applies the standby pull register values during HAL startup.
 
 The script validates requested XML paths and pin names with ElementTree, then
 patches the original XML text. This keeps generated `board.chcfg` files close

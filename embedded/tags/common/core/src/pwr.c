@@ -39,6 +39,10 @@
 #define BOARD_STANDBY_HAS_CONFIG 0
 #endif
 
+#if !defined(TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF)
+#define TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF 0
+#endif
+
 #ifndef TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED
 #define TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED 0
 #endif
@@ -93,7 +97,11 @@ static inline void tagPowerClearWakeFlags(void)
 #endif
 }
 
-#if BOARD_STANDBY_HAS_CONFIG
+#if TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF
+void tagClearStandbyPulls(void)
+{
+}
+#elif BOARD_STANDBY_HAS_CONFIG
 void tagClearStandbyPulls(void)
 {
   PWR->PUCRA = 0U;

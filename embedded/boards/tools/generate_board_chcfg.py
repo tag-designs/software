@@ -339,12 +339,6 @@ def validate_standby_pin(port: str, pin: int, attributes: dict[str, str]) -> str
     if port_letter not in STANDBY_PORTS:
         raise ConfigError(f"{label}: Standby only supports GPIOA, GPIOB, and GPIOC")
 
-    pin_id = attributes.get("ID", "").strip()
-    if not pin_id:
-        raise ConfigError(f"{label}: Standby={standby} requires a non-empty ID")
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", pin_id):
-        raise ConfigError(f"{label}: ID {pin_id!r} cannot be used as a C identifier")
-
     if port == "GPIOA" and standby == "PULLUP" and pin == 14:
         raise ConfigError(f"{label}: PA14 cannot be configured as a standby pull-up")
     if port == "GPIOA" and standby == "PULLDOWN" and pin in {13, 15}:
@@ -353,16 +347,16 @@ def validate_standby_pin(port: str, pin: int, attributes: dict[str, str]) -> str
     return standby
 
 
-def render_standby_mask(pin_ids: list[str]) -> str:
-    if not pin_ids:
+def render_standby_mask(pins: list[int]) -> str:
+    if not pins:
         return "0U"
-    terms = [f"PAL_PORT_BIT(PAL_PAD(LINE_{pin_id}))" for pin_id in pin_ids]
+    terms = [f"(1U << {pin}U)" for pin in pins]
     expression = " | \\\n  ".join(terms)
     return f"({expression})"
 
 
 def render_standby_header(records: list[tuple[str, int, dict[str, str]]]) -> str:
-    masks: dict[tuple[str, str], list[str]] = {
+    masks: dict[tuple[str, str], list[int]] = {
         (kind, port): [] for kind in ("PULLUP", "PULLDWN") for port in STANDBY_PORTS
     }
 
@@ -372,7 +366,7 @@ def render_standby_header(records: list[tuple[str, int, dict[str, str]]]) -> str
             continue
         port_letter = port[4:] if port.startswith("GPIO") else port
         mask_kind = "PULLUP" if standby == "PULLUP" else "PULLDWN"
-        masks[(mask_kind, port_letter)].append(attributes["ID"].strip())
+        masks[(mask_kind, port_letter)].append(pin)
 
     lines = [
         "/*",

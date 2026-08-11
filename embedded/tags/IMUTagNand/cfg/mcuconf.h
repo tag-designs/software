@@ -42,6 +42,8 @@
 /*
  * PWR settings.
  */
+#include "board_standby.h"
+
 #define STM32_PWR_VOSR                      PWR_VOSR_RANGE1
 #define STM32_PWR_CR3                       (PWR_CR3_FSTEN | PWR_CR3_REGSEL)
 #define STM32_PWR_SVMCR                     (PWR_SVMCR_ASV | PWR_SVMCR_USV | PWR_SVMCR_AVM1EN | PWR_SVMCR_AVM2EN | PWR_SVMCR_UVMEN)
@@ -50,12 +52,16 @@
 #define STM32_PWR_WUCR3                     0U
 #define STM32_PWR_BDCR                      0U
 #define STM32_PWR_APCR                      0U
-#define STM32_PWR_PUCRA                     0U
-#define STM32_PWR_PDCRA                     0U
-#define STM32_PWR_PUCRB                     0U
-#define STM32_PWR_PDCRB                     0U
-#define STM32_PWR_PUCRC                     0U
-#define STM32_PWR_PDCRC                     0U
+/*
+ * Use the generated IMUTagNandv1 standby masks as ChibiOS startup defaults.
+ */
+#define TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF 1
+#define STM32_PWR_PUCRA                     PULLUPA
+#define STM32_PWR_PDCRA                     PULLDWNA
+#define STM32_PWR_PUCRB                     PULLUPB
+#define STM32_PWR_PDCRB                     PULLDWNB
+#define STM32_PWR_PUCRC                     PULLUPC
+#define STM32_PWR_PDCRC                     PULLDWNC
 #define STM32_PWR_PUCRD                     0U
 #define STM32_PWR_PDCRD                     0U
 #define STM32_PWR_PUCRE                     0U
