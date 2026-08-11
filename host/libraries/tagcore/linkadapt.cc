@@ -205,8 +205,7 @@ bool LinkAdapt::enter_debug_mode()
         uint16_t status = UNPACK16(result);
         if (status != STLINK_DEBUG_ERR_OK)
         {
-            log_error("unexpected error %u", status);
-            return false;
+            log_warn("enter swd mode reported status 0x%x", status);
         }
         return true;
     }
@@ -457,18 +456,31 @@ bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
 
             log_debug("Interface claimed !");
 
+            float target_voltage = 0.0f;
+            if (Voltage(target_voltage))
+                log_debug("Target voltage %.2f V", target_voltage);
+
             uint16_t mode;
             if (current_mode(mode))
             {
-                // log_debug("current mode: %d", mode);
+                log_debug("ST-LINK mode before debug entry: 0x%x", mode);
                 if ((stlink_mode_code(mode) == STLINK_DEV_DFU_MODE) && !exit_dfu_mode())
                 {
                     log_error("exit dfu mode failed");
                     break;
                 }
+                if (assertReset && !AssertReset(false))
+                {
+                    log_error("asserting target reset failed");
+                    break;
+                }
                 if (assertReset)
-                    AssertReset(false);
-                enter_debug_mode();
+                    log_debug("target reset asserted through ST-LINK");
+                if (!enter_debug_mode())
+                {
+                    log_error("enter swd mode command failed");
+                    break;
+                }
                 // is this the right test ??  perhaps our stlink implementation
                 // is wrong.  != 4 left to work with existing bases
                 if (!current_mode(mode) ||
@@ -478,6 +490,7 @@ bool LinkAdapt::Attach(bool assertReset,UsbDev usbdev)
                     log_error("enter swd mode failed: 0x%x", mode);
                     break;
                 }
+                log_debug("ST-LINK mode after debug entry: 0x%x", mode);
             }
             return true;
         }
@@ -640,7 +653,7 @@ bool LinkAdapt::ReadDebug32(unsigned int addr, uint32_t *rval)
         uint16_t status = UNPACK16(result);
         if (status != STLINK_DEBUG_ERR_OK)
         {
-            log_error("error return %x", status);
+            log_error("read debug register 0x%x failed status=0x%x", addr, status);
             return false;
         }
         else
@@ -674,7 +687,7 @@ bool LinkAdapt::WriteDebug32(unsigned int addr, uint32_t val)
         uint16_t status = UNPACK16(result);
         if (status != STLINK_DEBUG_ERR_OK)
         {
-            log_error("error %x", status);
+            log_error("write debug register 0x%x failed status=0x%x", addr, status);
             return false;
         }
 #if TAGCORE_ENABLE_INSTRUMENTATION

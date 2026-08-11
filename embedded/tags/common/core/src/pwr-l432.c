@@ -14,6 +14,16 @@
 #endif
 
 /**
+ * @brief Report whether the Cortex-M debug port is currently enabled.
+ *
+ * @return true when an external debugger has enabled core debug access.
+ */
+static bool tagPowerDebuggerAttached(void)
+{
+  return (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
+}
+
+/**
  * @brief Enter STM32L4-style Standby after device preparation.
  *
  * @param[in] sleepmode Requested sleep mode.
@@ -29,7 +39,16 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 
   chSysLock();
 
-  DBGMCU->CR = 0;
+  if (tagPowerDebuggerAttached())
+  {
+    DBGMCU->CR = DBGMCU_CR_DBG_SLEEP |
+                 DBGMCU_CR_DBG_STOP |
+                 DBGMCU_CR_DBG_STANDBY;
+  }
+  else
+  {
+    DBGMCU->CR = 0;
+  }
 
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();

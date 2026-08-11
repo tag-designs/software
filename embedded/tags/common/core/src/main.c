@@ -452,7 +452,9 @@ static void tagResetRuntimeStateForPowerInit(void)
   pState->sample_fifo_empty_reads = 0;
   pState->sample_fifo_short_blocks = 0;
 #endif
+#if TAG_STM32U3_FLASH
   pState->synthetic_standby_wake = 0;
+#endif
   pState->test_result = TEST_UNSPECIFIED;
 }
 #endif
@@ -497,7 +499,9 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
+#if TAG_STM32U3_FLASH
     pState->synthetic_standby_wake = 0;
+#endif
     if (power_init && !retained_state_valid)
       tagResetRuntimeStateForPowerInit();
 #else
@@ -507,7 +511,9 @@ void deviceInit(int force)
 
     pState->valid = 0;
     pState->safe = false;
+#if TAG_STM32U3_FLASH
     pState->synthetic_standby_wake = 0;
+#endif
 
     // Configure the external RTC only for true power initialization. Forced
     // cleanup runs under monitor control and should avoid unnecessary I2C work.
@@ -569,9 +575,8 @@ t_resetCause getResetCause(uint32_t rstFlags)
       break;
     }
 
-    bool synthetic_standby_wake =
-        pState->synthetic_standby_wake == TAG_SYNTHETIC_STANDBY_WAKE_MAGIC;
-    if (synthetic_standby_wake)
+#if TAG_STM32U3_FLASH
+    if (pState->synthetic_standby_wake == TAG_SYNTHETIC_STANDBY_WAKE_MAGIC)
     {
       pState->synthetic_standby_wake = 0;
       if ((rstFlags & RCC_CSR_SFTRSTF) != 0U)
@@ -580,6 +585,7 @@ t_resetCause getResetCause(uint32_t rstFlags)
         break;
       }
     }
+#endif
 
     // A firmware-triggered reset is used after unhandled exceptions.
     // It can happen while the tag is active, so it will not have SBF set.
@@ -787,9 +793,18 @@ int main(void)
 
     if (pState->state == TagState_RUNNING){
       idlePowerMode = STOP1;
-      pending_events =  chEvtWaitAny(EVT_HARDWARE_ALL);
+      eventmask_t wait_events = EVT_HARDWARE_ALL;
+      if (isMonitorEnabled())
+        wait_events |= EVT_MONITOR_ALL;
+      pending_events =  chEvtWaitAny(wait_events);
       idlePowerMode = SLEEP;
-    } else {
+    }
+#if TAG_STM32U3_FLASH
+    else if (isMonitorEnabled()) {
+      pending_events = chEvtWaitAny(EVT_ALL_DEFINED);
+    }
+#endif
+    else {
       pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     }
 

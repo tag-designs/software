@@ -108,6 +108,7 @@ void eraseExternal(void);
 void eraseExternalStart(void);
 bool eraseExternalNextSector(void);
 void eraseExternalFinish(void);
+bool eraseExternalFailed(void);
 uint32_t externalFlashSize(void);
 int externalFlashSectorsErased(void);
 int externalFlashSectorsToErasePlusOne(void);

@@ -13,6 +13,7 @@
 #define ADXL367_INACTIVE_SAMPLES_MIN 1
 #define ADXL367_INACTIVE_SAMPLES_MAX 5
 
+static const char *config_error_message;
 
 // ram based config (used by monitor to communicate to tag)
 
@@ -20,6 +21,11 @@ t_storedconfig config_tmp;
 
 extern const unsigned char tag_default_config[];
 extern const unsigned int tag_default_config_len;
+
+const char *writeConfigErrorMessage(void)
+{
+  return config_error_message;
+}
 
 /*
  * Write config in ram to flash
@@ -128,8 +134,17 @@ void readConfig(Config *config)
 
 bool writeConfig(Config *config)
 {
-   if ((config == NULL) || pState->state != TagState_IDLE)
+  config_error_message = NULL;
+  if (config == NULL)
+  {
+    config_error_message = "Missing configuration";
     return false;
+  }
+  if (pState->state != TagState_IDLE)
+  {
+    config_error_message = "Tag must be idle before start";
+    return false;
+  }
 
   bzero(&config_tmp, sizeof(config_tmp));
 

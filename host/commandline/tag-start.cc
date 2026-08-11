@@ -53,15 +53,41 @@ int main(int argc, char **argv)
 
         Status status;
         tag.GetStatus(status);
+        bool start_attempted = false;
+        bool start_failed = false;
         if (status.state() == IDLE)
         {
             Config cfg;
             tag.GetConfig(cfg);
-            tag.Start(cfg);
+            start_attempted = true;
+            if (!tag.Start(cfg))
+            {
+                start_failed = true;
+                std::string message = tag.DebugMessage();
+                std::cout << "Start failed";
+                if (!message.empty())
+                {
+                    std::cout << ": " << message;
+                }
+                std::cout << std::endl;
+            }
+        }
+        else
+        {
+            std::cout << "Start skipped: tag is " << TagState_Name(status.state())
+                      << std::endl;
         }
 
-        tag.GetStatus(status);
-        std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+        if (!start_attempted || !start_failed)
+        {
+            tag.GetStatus(status);
+            std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+        }
+        else
+        {
+            std::cout << "Last known state: " << TagState_Name(status.state())
+                      << std::endl;
+        }
     }
     else
     {

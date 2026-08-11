@@ -379,9 +379,26 @@ void ConfigTab::on_startButton_clicked()
     if (!tag->Start(config))
     {
       std::string message = tag->DebugMessage();
-      msgBox.setText(message.empty() ? QStringLiteral("Start Failed")
-                                     : QString::fromStdString(message));
-      msgBox.exec();
+      QMessageBox startFailedBox;
+      startFailedBox.setWindowTitle("Error");
+      startFailedBox.setIcon(QMessageBox::Warning);
+      startFailedBox.setText("Start Failed");
+      startFailedBox.setStandardButtons(QMessageBox::Ok);
+      if (!message.empty())
+      {
+        QString info = "The monitor reported a start error.";
+        info += "\nLast known state: ";
+        info += QString::fromStdString(TagState_Name(old_state_));
+        startFailedBox.setInformativeText(info);
+        startFailedBox.setDetailedText(QString::fromStdString(message));
+      }
+      else
+      {
+        startFailedBox.setInformativeText(
+            "Last known state: " +
+            QString::fromStdString(TagState_Name(old_state_)));
+      }
+      startFailedBox.exec();
     }
   } else {
     qDebug() << "on_startButton_clicked failed to get config";
