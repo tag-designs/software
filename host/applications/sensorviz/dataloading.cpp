@@ -1,11 +1,33 @@
 #include "mainwindow.h"
 
+#include <QApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QMessageBox>
+#include <QtConcurrent/QtConcurrent>
 
 #include "qtfiledialog.h"
 #include "sqlite_loader.h"
+
+namespace
+{
+
+struct LoadResult
+{
+    bool ok = false;
+    SensorLog log;
+    QString error;
+};
+
+LoadResult loadSensorLog(const QString &path)
+{
+    LoadResult result;
+    result.ok = SqliteLoader::load(path, result.log, result.error);
+    return result;
+}
+
+} // namespace
 
 // This file owns the load workflow:
 //
@@ -19,6 +41,10 @@
 // metadata was loaded successfully.
 void MainWindow::loadLog()
 {
+    if (log_load_in_progress_) {
+        return;
+    }
+
     // This is the only file-open path. It asks SqliteLoader for a fresh
     // SensorLog, replaces all stream/action state, and then lets transform
     // actions auto-enable any derived streams that should exist on load.
@@ -31,13 +57,44 @@ void MainWindow::loadLog()
         return;
     }
 
-    SensorLog log;
-    QString error;
-    if (!SqliteLoader::load(path, log, error)) {
-        QMessageBox::critical(this, tr("Load Failed"), error);
+    setLogLoadInProgress(true, path);
+    auto *watcher = new QFutureWatcher<LoadResult>(this);
+    connect(watcher, &QFutureWatcher<LoadResult>::finished, this, [this, watcher, path]() {
+        const LoadResult result = watcher->result();
+        watcher->deleteLater();
+
+        if (!result.ok) {
+            setLogLoadInProgress(false);
+            QMessageBox::critical(this, tr("Load Failed"), result.error);
+            updateMetadata();
+            return;
+        }
+
+        status_->setText(tr("Preparing plot for %1...").arg(QFileInfo(path).fileName()));
+        applyLoadedLog(path, result.log);
+        setLogLoadInProgress(false);
+    });
+    watcher->setFuture(QtConcurrent::run(loadSensorLog, path));
+}
+
+void MainWindow::setLogLoadInProgress(bool loading, const QString &path)
+{
+    if (log_load_in_progress_ == loading) {
         return;
     }
 
+    log_load_in_progress_ = loading;
+    load_action_->setEnabled(!loading);
+    if (loading) {
+        QApplication::setOverrideCursor(Qt::BusyCursor);
+        status_->setText(tr("Loading %1...").arg(QFileInfo(path).fileName()));
+    } else {
+        QApplication::restoreOverrideCursor();
+    }
+}
+
+void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
+{
     rememberCurrentPreferences();
 
     current_path_ = QFileInfo(path).absolutePath();

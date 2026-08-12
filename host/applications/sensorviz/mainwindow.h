@@ -117,6 +117,8 @@ private:
     void updateLoadedStateActions();
     void updateMetadata();
     void updateTransformActions();
+    void setLogLoadInProgress(bool loading, const QString &path = {});
+    void applyLoadedLog(const QString &path, const SensorLog &log);
     void createAltitudeStream();
     void createImuMagnitudeStreams();
     void createCompassPlotStreams();
@@ -193,6 +195,7 @@ private:
     QString current_path_;
     QString graph_title_;
     bool graph_title_visible_ = true;
+    bool log_load_in_progress_ = false;
 
     // Metadata box placement is intentionally session-only. The box is an
     // overlay for contextual constants, so dragging it should not mutate log
