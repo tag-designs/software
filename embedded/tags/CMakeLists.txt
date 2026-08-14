@@ -21,6 +21,7 @@ add_subdirectory(CompassTagAT25)
 add_subdirectory(IMUTagBreakout)
 add_subdirectory(IMUTagbmm350)
 add_subdirectory(IMUTagNand)
+add_subdirectory(stop1test)
 # IMUTagNandv1 board files are now used by the U375 IMUTagNand target.
 # The old L432 IMUTagNandv1 firmware member is retained as source history only.
 #add_subdirectory(IMUTagNandv1)

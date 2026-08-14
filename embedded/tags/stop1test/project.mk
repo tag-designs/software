@@ -1,0 +1,10 @@
+# Self-contained IMUTagNandv1 STOP1/SPI/internal-flash probe.
+USE_PROCESS_STACKSIZE = 0x400
+USE_EXCEPTIONS_STACKSIZE = 0x400
+TAG_FLASH_SIZE = 1024K
+UDEFS += -DTAG_STM32U3_FLASH=1
+
+ALLINC += $(BOARDDIR)/Stop1Test
+
+ALLCSRC += main.c \
+          $(BOARDDIR)/Stop1Test/board.c
