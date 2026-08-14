@@ -534,11 +534,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
           debug_log_printf(
             "IMUTag running: finishing, internal log unavailable pages=%u ext=%u\r\n",
             (unsigned)pState->pages, (unsigned)pState->external_blocks);
+          pState->pages = dataLogLastInternalHeaderFlashError();
           return Finished(T_INIT, State_EVENT_INTERNALFULL);
         case IMU_BLOCK_EXTERNAL_FULL:
           debug_log_printf(
             "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
             (unsigned)pState->pages, (unsigned)pState->external_blocks);
+          pState->external_blocks = 666U;
           return Finished(T_INIT, State_EVENT_EXTERNALFULL);
         case IMU_BLOCK_NO_DATA:
         default:

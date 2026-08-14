@@ -113,6 +113,7 @@ void idle_loop(void)
 
   __DSB();
   __WFI();
+  __DSB();
   __ISB();
 }
 

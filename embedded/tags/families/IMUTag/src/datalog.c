@@ -9,6 +9,7 @@
 #include "datalog.h"
 #include "debug_log.h"
 #include "flash_internal.h"
+#include <stdint.h>
 #include <string.h>
 #include <tag.pb.h>
 #include "devices.h"
@@ -42,6 +43,8 @@ static uint32_t erase_sector_total;
 static bool erase_external_active;
 /** Sticky failure flag for the current incremental external erase. */
 static bool erase_external_failed;
+/** Last internal-header flash program failure observed by writeDataHeader(). */
+static uint32_t last_internal_header_flash_error;
 
 extern int encode_ack(void);
 
@@ -88,14 +91,17 @@ static uint32_t dirtyExternalSectors(void)
   /*
    * Reset calls restoreLog() before eraseExternal(), so pState->external_blocks
    * is the recovered external page cursor. Incremental page writes can leave
-   * one uncommitted page partially programmed, so erase one extra page span
-   * when converting pages to dirty sectors.
+   * one uncommitted page partially programmed after a committed page, so erase
+   * one extra page span when converting a non-empty log to dirty sectors.
    */
   const uint64_t dirty_bytes = ((uint64_t)pState->external_blocks + 1U) *
                                (uint64_t)databuf_size;
   uint32_t dirty_sectors;
 
   if (sector_size == 0U || sector_count == 0U) {
+    return 0;
+  }
+  if (pState->external_blocks == 0U) {
     return 0;
   }
 
@@ -658,8 +664,8 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   t_InternalDataHeader slot;
   uint32_t header_page = pState->pages;
   uint32_t *writeptr = (uint32_t *)&vddHeader[header_page];
-#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   uint32_t first_flasherr = 0;
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   uint32_t retries = 0;
 #endif
 
@@ -669,6 +675,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   slot.external_page_logical_next = pState->external_blocks;
   if (!dataLogPhysicalPageForLogical(pState->external_blocks,
                                      &slot.external_page_physical_next)) {
+    last_internal_header_flash_error = UINT32_MAX;
     return LOGWRITE_ERROR;
   }
 #else
@@ -677,6 +684,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 
   // See if the log file is full before programming into the configuration tail.
   if ((((uint32_t)writeptr) + sizeof(slot)) > flashend) {
+    last_internal_header_flash_error = UINT32_MAX;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     pState->header_status = LOGWRITE_FULL;
     pState->header_flasherr = 0;
@@ -691,10 +699,9 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
   FLASH_Unlock();
   uint32_t flasherr =
       FLASH_Program_Array(writeptr, (uint32_t *)&slot, sizeof(slot) / 4);
-#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   first_flasherr = flasherr;
-#endif
   if (flasherr) {
+    last_internal_header_flash_error = first_flasherr ? first_flasherr : flasherr;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     retries++;
 #endif
@@ -718,6 +725,7 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
     return LOGWRITE_ERROR;
   }
   else {
+    last_internal_header_flash_error = 0U;
     pState->pages = header_page + 1U;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
     pState->header_status = LOGWRITE_OK;
@@ -728,6 +736,11 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 #endif
     return LOGWRITE_OK;
   }
+}
+
+uint32_t dataLogLastInternalHeaderFlashError(void)
+{
+  return last_internal_header_flash_error;
 }
 
 //

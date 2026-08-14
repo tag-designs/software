@@ -10,6 +10,7 @@
 #include "sensors.h"
 #include "assert.h"
 #include "imutag_log_format.h"
+#include <stdint.h>
 
 /** IMUTag family external flash page payload type. */
 typedef t_ImuTagDataLog t_DataLog;
@@ -115,6 +116,14 @@ extern bool dataLogCheckpointDue(void);
  *         region is full, or LOGWRITE_ERROR on mapping/programming failure.
  */
 extern enum LOGERR writeDataHeader(t_DataHeader *head);
+/**
+ * @brief Return the most recent STM32 internal-header flash write error.
+ *
+ * @return Flash status error mask from the last failed internal header program,
+ *         zero when no program error has been recorded, or @c UINT32_MAX for a
+ *         non-programming internal-header failure.
+ */
+extern uint32_t dataLogLastInternalHeaderFlashError(void);
 /**
  * @brief Recover internal and external log cursors after reset.
  *
