@@ -792,7 +792,7 @@ int main(void)
     godown(sleepmode);
 
     if (pState->state == TagState_RUNNING){
-      idlePowerMode = STOP1;
+      idlePowerMode = STOP2;
       eventmask_t wait_events = EVT_HARDWARE_ALL;
       if (isMonitorEnabled())
         wait_events |= EVT_MONITOR_ALL;
