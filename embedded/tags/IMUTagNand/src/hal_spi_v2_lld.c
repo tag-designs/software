@@ -640,6 +640,13 @@ void spi_lld_stop(SPIDriver *spip) {
     //spip->spi->CFG1 &= ~(SPI_CFG1_RXDMAEN | SPI_CFG1_TXDMAEN);
     //spip->spi->CR1  &= ~SPI_CR1_SPE;
 
+     /* SPI cleanup.*/
+    spip->spi->CR1  = 0U;
+    spip->spi->CR2  = 0U;
+    spip->spi->CFG1 = 0U;
+    spip->spi->CFG2 = 0U;
+    spip->spi->IER  = 0U;
+    
     /* Releasing DMA channels.*/
     dma3ChannelFreeI(spip->dmarx);
     dma3ChannelFreeI(spip->dmatx);
