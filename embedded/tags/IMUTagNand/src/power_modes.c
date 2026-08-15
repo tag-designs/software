@@ -194,6 +194,6 @@ void idle_leave(void)
   if (idleStopNeedsRecovery)
   {
     idleStopNeedsRecovery = false;
-    //idlePowerRecoverAfterStop();
+    idlePowerRecoverAfterStop();
   }
 }
