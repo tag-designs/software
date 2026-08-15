@@ -74,6 +74,17 @@
 #define TAG_CONFIGURED_IMMEDIATE_START 0
 #endif
 
+#ifndef TAG_EXTERNAL_ERASE_SECTORS_PER_PASS
+/**
+ * @brief External erase sectors processed before yielding to monitor/status.
+ */
+#define TAG_EXTERNAL_ERASE_SECTORS_PER_PASS 16U
+#endif
+
+#if TAG_EXTERNAL_ERASE_SECTORS_PER_PASS == 0U
+#error "TAG_EXTERNAL_ERASE_SECTORS_PER_PASS must be at least 1"
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -592,6 +603,8 @@ enum Sleep StateMachine(eventmask_t input_events)
  */
 static enum Sleep Reset(enum StateTrans t, State_Event reason)
 {
+  bool erase_more = false;
+
   // we need some error recovery here.  If the
   // internal flash isn't correctly marked, then
   // we need to discover the number of dirty pages
@@ -612,8 +625,14 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
     reset_erase_started = true;
   }
 
-  if (eraseExternalNextSector())
-  {
+  for (uint32_t sector = 0U; sector < TAG_EXTERNAL_ERASE_SECTORS_PER_PASS;
+       sector++) {
+    erase_more = eraseExternalNextSector();
+    if (!erase_more)
+      break;
+  }
+
+  if (erase_more) {
     return SLEEP;
   }
 

@@ -159,6 +159,11 @@ DATALOG_SAMPLES * sizeof(t_DataLog) == 16 * 128 == 2048 bytes
 or erase sectors beyond the internal header count, because headers are the
 authoritative record of complete IMU log pages that may be downloaded.
 
+The reset state processes external erase work in small batches before yielding
+back to monitor/status handling. `TAG_EXTERNAL_ERASE_SECTORS_PER_PASS` defaults
+to 16, avoiding a one-sector-per-host-poll erase rate while still allowing the
+monitor to report progress during long external flash erases.
+
 The live `Status` message reports:
 
 - `sectors_erased`: sectors completed during the current reset/erase;
