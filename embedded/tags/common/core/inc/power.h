@@ -9,6 +9,7 @@
 #define TAG_CORE_POWER_H
 
 #include "hal.h"
+#include "core_types.h"
 #include "i2c_bus.h"
 #include "spi_bus.h"
 #include "usart_bus.h"
@@ -80,6 +81,21 @@ extern const TagI2cController tagRtcI2cController;
  * @brief Initialize power/RTC bus runtime state.
  */
 void tagPowerInit(void);
+
+/**
+ * @brief Enter one returned idle sleep mode on targets with managed idle power.
+ *
+ * @details The helper returns after @c SLEEP, @c STOP0, @c STOP1, and @c STOP2
+ *          wake. Terminal modes such as @c STANDBY and @c SHUTDOWN are not
+ *          entered here; callers should continue to use godown() for those
+ *          reset-returning paths.
+ *
+ * @param[in] mode Requested idle sleep depth.
+ *
+ * @warning Called from the ChibiOS idle thread on targets that wire this helper
+ *          into their idle hooks; it must not block on kernel services.
+ */
+void tagPowerEnterIdleMode(enum Sleep mode);
 
 /**
  * @brief Power and begin the shared RTC bus session.

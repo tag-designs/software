@@ -1,6 +1,6 @@
 /**
  * @file pwr-u375.c
- * @brief STM32U375 Stop3 terminal power path included by pwr.c.
+ * @brief STM32U375 returned-idle and terminal power paths included by pwr.c.
  * @author tag firmware authors
  * @date 2026-08-05
  *
@@ -55,6 +55,122 @@ void assert_flash_write_readiness(void) {
  */
 #define TAG_STM32U3_STOP3_CLEAR_WAKE_FLAGS 0
 #endif
+
+#ifndef TAG_IDLE_STOP_DIAGNOSTICS
+/**
+ * @brief Enable optional GPIO diagnostics around returned STOP/WFI entry.
+ */
+#define TAG_IDLE_STOP_DIAGNOSTICS 0
+#endif
+
+/**
+ * @brief Convert a returned idle sleep selector into the STM32U3 LPMS field.
+ *
+ * @param[in] mode Requested returned idle sleep mode.
+ * @return PWR_CR1_LPMS field value for @c STOP0, @c STOP1, or @c STOP2.
+ */
+static inline uint32_t tagPowerIdleLpms(enum Sleep mode)
+{
+  switch (mode) {
+  case STOP1:
+#if defined(PWR_CR1_LPMS_STOP1)
+    return PWR_CR1_LPMS_STOP1;
+#elif defined(PWR_CR1_LPMS_0)
+    return PWR_CR1_LPMS_0;
+#else
+    return 0U;
+#endif
+  case STOP2:
+#if defined(PWR_CR1_LPMS_STOP2)
+    return PWR_CR1_LPMS_STOP2;
+#elif defined(PWR_CR1_LPMS_1)
+    return PWR_CR1_LPMS_1;
+#else
+    return 0U;
+#endif
+  case STOP0:
+  default:
+    return 0U;
+  }
+}
+
+/**
+ * @brief Report whether a returned idle selector uses STM32U3 STOP mode.
+ *
+ * @param[in] mode Requested returned idle sleep mode.
+ * @return true for @c STOP0, @c STOP1, and @c STOP2.
+ */
+static inline bool tagPowerIdleUsesStop(enum Sleep mode)
+{
+  return (mode == STOP0) || (mode == STOP1) || (mode == STOP2);
+}
+
+/**
+ * @brief Normalize modes that must not use the returned-idle entry path.
+ *
+ * @param[in] mode Requested idle sleep depth.
+ * @return A mode safe for in-place idle entry and wake return.
+ */
+static inline enum Sleep tagPowerReturnedIdleMode(enum Sleep mode)
+{
+  switch (mode) {
+  case STOP0:
+  case STOP1:
+  case STOP2:
+  case SLEEP:
+    return mode;
+  case STANDBY:
+  case SHUTDOWN:
+  default:
+    return SLEEP;
+  }
+}
+
+/**
+ * @brief Enter a returned STM32U3 idle mode.
+ *
+ * @param[in] mode Requested idle sleep depth. @c STANDBY and @c SHUTDOWN are
+ *                 treated as ordinary @c SLEEP because terminal modes remain
+ *                 owned by godown().
+ */
+void tagPowerEnterIdleMode(enum Sleep mode)
+{
+  if (isMonitorEnabled()) {
+    CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+    return;
+  }
+
+  mode = tagPowerReturnedIdleMode(mode);
+
+  if (!tagPowerIdleUsesStop(mode)) {
+    CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+    __DSB();
+    __WFI();
+    __DSB();
+    __ISB();
+    return;
+  }
+
+#if TAG_IDLE_STOP_DIAGNOSTICS
+  palSetLine(LINE_LED1);
+#endif
+
+  DBGMCU->CR = 0;
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, tagPowerIdleLpms(mode));
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  __DSB();
+  __ISB();
+  __WFI();
+  __DSB();
+  __ISB();
+
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+#if TAG_IDLE_STOP_DIAGNOSTICS
+  palClearLine(LINE_LED1);
+#endif
+}
 
 /**
  * @brief Select STM32U3 Stop3 as the next deep-sleep mode.

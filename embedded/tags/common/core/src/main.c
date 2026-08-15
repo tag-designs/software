@@ -54,6 +54,13 @@ void idle_enable_wfi_sleep(void) {}
 #define TAG_MAIN_SLEEP_DIAGNOSTICS 0
 #endif
 
+#ifndef TAG_RUNNING_IDLE_POWER_MODE
+/**
+ * @brief Returned idle mode used while the RUNNING state waits for events.
+ */
+#define TAG_RUNNING_IDLE_POWER_MODE STOP2
+#endif
+
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
  * @{
@@ -792,7 +799,7 @@ int main(void)
     godown(sleepmode);
 
     if (pState->state == TagState_RUNNING){
-      idlePowerMode = STOP2;
+      idlePowerMode = TAG_RUNNING_IDLE_POWER_MODE;
       eventmask_t wait_events = EVT_HARDWARE_ALL;
       if (isMonitorEnabled())
         wait_events |= EVT_MONITOR_ALL;

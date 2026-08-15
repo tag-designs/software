@@ -57,6 +57,35 @@
 #define TAG_INTERNAL_FLASH_PAGE_SIZE 4096U
 #define TAG_FLASH_PROGRAM_ROW_WORDS 4U
 #define TAG_FLASH_PROGRAM_ROW_ALIGN 16U
+#if STM32_SYSCLK > STM32_RANGE1_BOOSTEN_THRESHOLD
+#define TAG_U3_FLASH_PROGRAM_BOOSTER_ENABLED TRUE
+#if STM32_SW == RCC_CFGR1_SW_MSIS
+#define TAG_U3_FLASH_PROGRAM_BOOSTSEL RCC_CFGR4_BOOSTSEL_MSIS
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV 0U
+#elif STM32_SW == RCC_CFGR1_SW_HSI16
+#define TAG_U3_FLASH_PROGRAM_BOOSTSEL RCC_CFGR4_BOOSTSEL_HSI16
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV RCC_CFGR4_BOOSTDIV_DIV2
+#else
+#define TAG_U3_FLASH_PROGRAM_BOOSTSEL RCC_CFGR4_BOOSTSEL_HSE
+#if STM32_HSECLK <= 12000000U
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV RCC_CFGR4_BOOSTDIV_DIV1
+#elif STM32_HSECLK <= 24000000U
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV RCC_CFGR4_BOOSTDIV_DIV2
+#else
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV RCC_CFGR4_BOOSTDIV_DIV4
+#endif
+#endif
+#else
+#define TAG_U3_FLASH_PROGRAM_BOOSTER_ENABLED FALSE
+#define TAG_U3_FLASH_PROGRAM_BOOSTSEL 0U
+#define TAG_U3_FLASH_PROGRAM_BOOSTDIV 0U
+#endif
+#ifndef TAG_U3_FLASH_VCORE_WAIT_LIMIT
+/**
+ * @brief Poll limit while waiting for STM32U3 VCORE range changes.
+ */
+#define TAG_U3_FLASH_VCORE_WAIT_LIMIT 1000000U
+#endif
 #else
 #define TAG_INTERNAL_FLASH_PAGE_SIZE 2048U
 #define TAG_FLASH_PROGRAM_ROW_WORDS 2U
@@ -308,11 +337,108 @@ void FLASH_Program_DoubleWord(uint32_t *Address, uint32_t Data0,
 }
 
 #if TAG_STM32U3_FLASH
+/**
+ * @brief Return the ready bits expected for a requested STM32U3 VCORE setting.
+ *
+ * @param[in] vosr PWR_VOSR range and optional booster bits.
+ * @return PWR_VOSR ready bits that must assert before flash programming.
+ */
+static uint32_t FLASH_U3VcoreReadyMask(uint32_t vosr) {
+  uint32_t ready = 0U;
+
+  if ((vosr & PWR_VOSR_RANGE_Msk) == PWR_VOSR_RANGE1) {
+    ready |= PWR_VOSR_R1RDY;
+  }
+  if ((vosr & PWR_VOSR_RANGE_Msk) == PWR_VOSR_RANGE2) {
+    ready |= PWR_VOSR_R2RDY;
+  }
+  if ((vosr & PWR_VOSR_BOOSTEN) != 0U) {
+    ready |= PWR_VOSR_BOOSTRDY;
+  }
+
+  return ready;
+}
+
+/**
+ * @brief Wait until the requested STM32U3 VCORE range is ready.
+ *
+ * @param[in] ready_mask PWR_VOSR ready bits expected.
+ */
+static void FLASH_U3WaitVcoreReady(uint32_t ready_mask) {
+  for (uint32_t timeout = TAG_U3_FLASH_VCORE_WAIT_LIMIT;
+       (timeout > 0U) && ((PWR->VOSR & ready_mask) != ready_mask);
+       timeout--) {
+    __NOP();
+  }
+}
+
+/**
+ * @brief Apply one STM32U3 VCORE range/booster setting.
+ *
+ * @param[in] vosr PWR_VOSR range and optional booster bits.
+ * @param[in] boostsel RCC_CFGR4 BOOSTSEL value to apply when booster is used.
+ * @param[in] boostdiv RCC_CFGR4 BOOSTDIV value to apply when booster is used.
+ */
+static void FLASH_U3ApplyVcore(uint32_t vosr, uint32_t boostsel,
+                               uint32_t boostdiv) {
+  if ((vosr & PWR_VOSR_BOOSTEN) != 0U) {
+    MODIFY_REG(RCC->CFGR4, RCC_CFGR4_BOOSTSEL | RCC_CFGR4_BOOSTDIV,
+               boostsel | boostdiv);
+  }
+
+  WRITE_REG(PWR->VOSR, vosr);
+  FLASH_U3WaitVcoreReady(FLASH_U3VcoreReadyMask(vosr));
+}
+
+/**
+ * @brief Ensure STM32U3 internal flash programming runs in VCORE Range 1.
+ *
+ * @return true when the configured run range is Range 2 and should be restored
+ *         after the program row completes.
+ */
+static bool FLASH_U3PrepareProgramVcore(void) {
+  uint32_t program_vosr = PWR_VOSR_RANGE1;
+
+#if TAG_U3_FLASH_PROGRAM_BOOSTER_ENABLED == TRUE
+  program_vosr |= PWR_VOSR_BOOSTEN;
+#endif
+
+  uint32_t ready_mask = FLASH_U3VcoreReadyMask(program_vosr);
+
+  if (((PWR->VOSR & PWR_VOSR_RANGE_Msk) != PWR_VOSR_RANGE1) ||
+      ((PWR->VOSR & ready_mask) != ready_mask)) {
+    FLASH_U3ApplyVcore(program_vosr, TAG_U3_FLASH_PROGRAM_BOOSTSEL,
+                       TAG_U3_FLASH_PROGRAM_BOOSTDIV);
+  }
+
+  return (STM32_PWR_VOSR & PWR_VOSR_RANGE_Msk) == PWR_VOSR_RANGE2;
+}
+
+/**
+ * @brief Restore the configured STM32U3 run VCORE range after programming.
+ *
+ * @param[in] restore_range2 true when the build's configured run range is
+ *                           Range 2.
+ */
+static void FLASH_U3RestoreProgramVcore(bool restore_range2) {
+  if (restore_range2) {
+    uint32_t configured_vosr = STM32_PWR_VOSR;
+
+#if STM32_BOOSTER_ENABLED == TRUE
+    configured_vosr |= PWR_VOSR_BOOSTEN;
+#endif
+
+    FLASH_U3ApplyVcore(configured_vosr, STM32_BOOSTSEL, STM32_BOOSTDIV);
+  }
+}
+
 static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   if (((uint32_t)Address) & (TAG_FLASH_PROGRAM_ROW_ALIGN - 1U)) {
     flash_err = FLASH_SR_PGAERR;
     return;
   }
+
+  bool restore_range2 = FLASH_U3PrepareProgramVcore();
 
   FLASH_ClearAllErrors();
   flash_err = 0;
@@ -347,6 +473,7 @@ static void FLASH_Program_Row(uint32_t *Address, const uint32_t *Data) {
   __ISB();
   __enable_irq();
   flash_err = FLASH_Errors();
+  FLASH_U3RestoreProgramVcore(restore_range2);
 }
 #endif
 

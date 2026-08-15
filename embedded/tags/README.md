@@ -386,6 +386,9 @@ frozen legacy target.
 
 ## Design Notes
 
+- `design/u375-stop-support.md` documents the current STM32U375 returned-idle
+  STOP policy, monitor attach guard, and scoped flash/SPI low-power behavior
+  for U375 tag targets.
 - `design/u375-stop3-terminal-sleep-plan.md` records the plan to use Stop3 as
   the STM32U375 terminal sleep backend for IMUTagNand while preserving the
   STM32L432 Standby path.

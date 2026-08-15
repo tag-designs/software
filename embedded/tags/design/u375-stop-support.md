@@ -56,76 +56,87 @@ runtime idle values are:
 state-machine sleep requests and runtime idle power requests. `godown()` only
 acts on `STANDBY`; the stop values are consumed by target-specific idle hooks.
 
-## U3bmm350 Idle Hooks
+## U375 Idle Hooks
 
-`IMUTagU3bmm350` is the current target that applies `idlePowerMode`.
+`IMUTagU3bmm350` and `IMUTagNand` apply `idlePowerMode`.
 
-Its `chconf.h` wires the ChibiOS idle hooks to:
+Their `chconf.h` files wire the ChibiOS idle hooks to:
 
 - `idle_enter()`
 - `idle_loop()`
 - `idle_leave()`
 
-`idle_enter()` reads `idlePowerMode` and configures the core for the requested
-idle mode:
+`idle_loop()` is deliberately small. If the firmware monitor is attached or
+trying to attach, it returns without executing WFI. Otherwise it delegates the
+selected mode to `tagPowerEnterIdleMode()`, the STM32U3 returned-idle helper in
+`common/core/src/pwr-u375.c`.
+
+The helper keeps the same monitor guard defensively, then owns the
+silicon-specific sequence:
 
 - `SLEEP`: clear `SCB->SCR.SLEEPDEEP`;
-- `STOP0`: set `PWR->CR1.LPMS = 0` and set `SLEEPDEEP`;
-- `STOP1`: set `PWR->CR1.LPMS = LPMS_0` and set `SLEEPDEEP`;
-- `STOP2`: set `PWR->CR1.LPMS = LPMS_1` and set `SLEEPDEEP`.
+- `STOP0`: set `PWR->CR1.LPMS = 0`, set `SLEEPDEEP`, execute WFI, then clear
+  `SLEEPDEEP`;
+- `STOP1`: set `PWR->CR1.LPMS = LPMS_0`, set `SLEEPDEEP`, execute WFI, then
+  clear `SLEEPDEEP`;
+- `STOP2`: set `PWR->CR1.LPMS = LPMS_1`, set `SLEEPDEEP`, execute WFI, then
+  clear `SLEEPDEEP`.
 
-`idle_loop()` is deliberately small: if the firmware monitor is attached it
-avoids deep sleep; otherwise it executes the WFI sequence. Mode selection does
-not live in `idle_loop()`.
+`idle_enter()` and `idle_leave()` are empty for these U375 targets. Returned
+STOP wake does not restore VCORE range in the idle hook; internal flash
+programming owns the temporary Range 1 requirement for flash writes.
 
-`idle_leave()` clears the debug test lines and clears `SLEEPDEEP`.
-
-`LINE_LED1` is configured as analog by the board file, so the debug pulse in
-the idle power hook switches it to output push-pull before driving it high and
-returns it to analog on idle leave. `LINE_testpin` is already an output and is
-used to show that the idle loop reached WFI.
-
-`IMUTagNand` keeps the same STOP/WFI hook shape, but disables those diagnostic
-drives by default so PA1 and PA2 do not affect current measurements. Define
-`TAG_IDLE_STOP_DIAGNOSTICS` only for scoped bring-up captures.
+`TAG_IDLE_STOP_DIAGNOSTICS` can pulse `LINE_LED1` from the common helper around
+returned STOP entry. Leave it disabled for normal IMUTagNand current
+measurements so PA1 and PA2 are not driven by the idle path.
 
 ## Normal Collection Idle
 
-The common main loop sets:
+After each state-machine pass, the common main loop uses `godown(sleepmode)`
+for terminal low-power requests. While the state is `TagState_RUNNING`, it then
+sets the returned-idle selector around the blocking event wait:
 
 ```c
-idlePowerMode = STOP1;
-pending_events = chEvtWaitAny(EVT_MONITOR_ALL | EVT_HARDWARE_ALL);
+idlePowerMode = TAG_RUNNING_IDLE_POWER_MODE;
+wait_events = EVT_HARDWARE_ALL;
+if (isMonitorEnabled())
+    wait_events |= EVT_MONITOR_ALL;
+pending_events = chEvtWaitAny(wait_events);
 idlePowerMode = SLEEP;
 ```
 
-Only targets with idle hooks act on this. On `IMUTagU3bmm350`, this means the
-idle thread can enter STOP1 while the main thread is blocked waiting for
-monitor or hardware events.
+The default common policy is `TAG_RUNNING_IDLE_POWER_MODE=STOP2`.
+
+Only targets with idle hooks act on this. On `IMUTagU3bmm350` and
+`IMUTagNand`, this means the idle thread can enter the selected returned STOP
+mode while the main thread is blocked waiting for hardware events. Monitor
+events are included in the wait set only when `isMonitorEnabled()` is already
+true; in that case the idle hook returns without WFI so the monitor/debug path
+stays responsive.
 
 The wake model is event-driven. The IMU FIFO watermark and other hardware
 events are expected to wake the main thread through the existing event path.
 
-## Short DMA/Driver Waits
+## Synchronous SPI Waits
 
-Some SPI transfers are short enough that going all the way to STOP1 around the
-blocking wait is not useful or safe during bring-up. The current design uses
-STOP0 as the temporary idle mode around selected synchronous SPI driver waits.
+Long SPI stream transfers can block in the ChibiOS driver while DMA or the SPI
+peripheral finishes the transfer. External flash payload writes use STOP1;
+selected SPI reads use STOP0.
 
 ### Flash Program Payload Writes
 
 `tagStorageSpiBlockWrite()` in `storage_spi.h` brackets long flash payload
-writes:
+writes before calling `tagSpiWrite()`:
 
 ```c
 saved_idle_power_mode = idlePowerMode;
-idlePowerMode = STOP0;
+idlePowerMode = STOP1;
 ok = tagSpiWrite(device, buf, n);
 idlePowerMode = saved_idle_power_mode;
 ```
 
 Command, address, write-enable, and status-poll transactions remain on the
-normal path. The STOP0 bracket covers only the bulk payload phase, such as
+normal path. The STOP1 bracket covers only the bulk payload phase, such as
 MX25U page-program data or GD5F program-cache data.
 
 ### SPI Reads
@@ -140,18 +151,28 @@ idlePowerMode = saved_idle_power_mode;
 ```
 
 This places the policy at the SPI driver level instead of in individual sensor
-drivers. The IMU FIFO read uses the ordinary register-block path; when that
-path reaches `tagSpiRead()`, the receive wait can idle in STOP0.
+drivers for normal reads.
 
 Small register transactions generally remain on the polled path and do not
 change `idlePowerMode`.
 
+## Internal STM32 Flash Writes
+
+STM32U3 internal flash row programming requires VCORE Range 1. The U3 flash
+write path checks the current VCORE state before programming a row, switches to
+Range 1 when needed, performs the write, and restores the configured run range
+when that configured range is Range 2.
+
+This range change is deliberately local to `FLASH_Program_Row()`. STOP wake
+recovery in the idle hook does not adjust VCORE just to satisfy later flash
+writes.
+
 ## What Is Not Implemented
 
-The current design does not provide a ChibiOS system timer backed by LPTIM.
-The normal system timer is still the configured ChibiOS timer for the target.
-Do not assume arbitrary ChibiOS timeouts continue to advance while the core is
-in STOP1.
+The current design does not provide a ChibiOS system timer backed by LPTIM for
+returned idle. The normal system timer is still the configured ChibiOS timer
+for the target. Do not assume arbitrary ChibiOS timeouts continue to advance
+while the core is in STOP0, STOP1, or STOP2.
 
 There is also no general peripheral parking framework for runtime STOP entry.
 The implemented runtime path relies on the owning drivers to open and close bus
@@ -159,7 +180,8 @@ sessions normally. Terminal standby still uses the device standby hooks.
 
 Autonomous SPI/I2C/DMA operation through STOP modes is not treated as a shared
 capability. The current STOP0 use is limited to allowing the idle thread to
-sleep while synchronous SPI waits are blocked in the driver.
+sleep while synchronous SPI waits are blocked in the driver. The current STOP1
+transfer use is limited to external flash payload writes.
 
 SRAM1 power-down is not part of this design.
 
@@ -186,8 +208,20 @@ part of the low-power contract.
 - Uses the U375 board and STM32U3 runtime.
 - Installs idle hooks.
 - Applies `idlePowerMode` in `power_modes.c`.
-- Uses STOP1 for ordinary blocked idle.
-- Uses STOP0 around selected SPI driver waits.
+- Uses STOP2 for ordinary blocked idle.
+- Uses STOP1 around external flash payload writes.
+- Uses STOP0 around selected SPI receive waits.
+
+`IMUTagNand`:
+
+- Shares the STM32U3 core support and build settings.
+- Installs idle hooks.
+- Applies `idlePowerMode` in `power_modes.c`.
+- Uses STOP2 for ordinary blocked idle.
+- Uses STOP1 around external flash payload writes.
+- Uses STOP0 around selected SPI receive waits.
+- Disables idle-hook diagnostic pin drives unless `TAG_IDLE_STOP_DIAGNOSTICS`
+  is enabled.
 
 `IMUTagU375`:
 
@@ -208,13 +242,11 @@ STM32L4 targets such as `PresTag`:
 The implementation has been build-checked on:
 
 - `IMUTagU3bmm350`
-- `IMUTagU375`
-- `PresTag`
+- `IMUTagNand`
 
 Hardware validation should focus on:
 
-- PresTag monitor attach, especially early `TAG_MONITORINFO` calls;
-- U3bmm350 idle STOP1 entry and wake from hardware events;
-- flash writes with STOP0 around the payload transfer;
-- LSM6DSV16X FIFO reads with STOP0 around `spiReceive()`;
+- monitor attach, especially early `TAG_MONITORINFO` calls;
+- U375 returned STOP2 entry and wake from hardware events;
+- flash writes with STOP1 around the payload transfer;
 - current draw with debug test lines removed or disabled.

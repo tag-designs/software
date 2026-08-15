@@ -107,12 +107,14 @@ Before enabling storage on a new tag variant, check the following:
 - The storage chip driver uses the common command/address helpers rather than
   a local hand-rolled read/write path, so only the large data phase is moved to
   the stream-transfer path.
-- Leave `TAG_STORAGE_SPI_DMA_SLEEP_WAIT` enabled for lowest-energy unattended
-  transfers. Define it to `0` only when a target needs the historical polled
-  wait even without a connected monitor.
+- Command-sized transfers should remain on the polled SPI helpers. Larger block
+  reads use the normal `tagSpiRead()` policy; larger block writes temporarily
+  set `idlePowerMode=STOP1` around `tagSpiWrite()` and then restore the
+  previous idle mode.
 - The variant has been tested on hardware for erase, write, download/readback,
   and monitor attach while logging.
 
-Do not make DMA the shared default for all SPI device I/O. Sensor register
-traffic and short flash commands should remain on the conservative path unless
-they have their own measured need and hardware validation.
+Do not make a deeper STOP mode or special transfer path the shared default for
+all SPI device I/O. Sensor register traffic and short flash commands should
+remain on the conservative path unless they have their own measured need and
+hardware validation.

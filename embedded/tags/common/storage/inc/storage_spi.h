@@ -72,7 +72,7 @@ static inline bool tagStorageSpiBlockWrite(const TagSpiDevice *device,
     return tagSpiPolledSend(device, buf, n);
 
   saved_idle_power_mode = idlePowerMode;
-  idlePowerMode = STOP0;
+  idlePowerMode = STOP1;
   ok = tagSpiWrite(device, buf, n);
   idlePowerMode = saved_idle_power_mode;
   return ok;
