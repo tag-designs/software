@@ -61,6 +61,13 @@ void idle_enable_wfi_sleep(void) {}
 #define TAG_RUNNING_IDLE_POWER_MODE STOP2
 #endif
 
+#ifndef TAG_DEFAULT_IDLE_POWER_MODE
+/**
+ * @brief Returned idle mode restored outside scoped runtime waits.
+ */
+#define TAG_DEFAULT_IDLE_POWER_MODE SLEEP
+#endif
+
 /** @name Shared runtime state
  * Timestamps and main-thread handle shared by runtime services.
  * @{
@@ -804,7 +811,7 @@ int main(void)
       if (isMonitorEnabled())
         wait_events |= EVT_MONITOR_ALL;
       pending_events =  chEvtWaitAny(wait_events);
-      idlePowerMode = SLEEP;
+      idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
     }
 #if TAG_STM32U3_FLASH
     else if (isMonitorEnabled()) {

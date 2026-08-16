@@ -22,9 +22,11 @@ void idle_loop(void)
 {
   if (isMonitorEnabled()) {
     return;
+  } else if (stIsAlarmActive()) {
+    tagPowerEnterIdleMode(SLEEP);
+  } else {
+   tagPowerEnterIdleMode(idlePowerMode);
   }
-
-  tagPowerEnterIdleMode(idlePowerMode);
 }
 
 /* Public idle-hook contract documented in power_modes.h. */

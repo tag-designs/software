@@ -102,10 +102,16 @@ wait_events = EVT_HARDWARE_ALL;
 if (isMonitorEnabled())
     wait_events |= EVT_MONITOR_ALL;
 pending_events = chEvtWaitAny(wait_events);
-idlePowerMode = SLEEP;
+idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
 ```
 
-The default common policy is `TAG_RUNNING_IDLE_POWER_MODE=STOP2`.
+The default common policy is `TAG_RUNNING_IDLE_POWER_MODE=STOP2` during the
+RUNNING wait and `TAG_DEFAULT_IDLE_POWER_MODE=SLEEP` outside scoped runtime
+waits.
+
+STOP0 and STOP1 were both evaluated as default idle modes for `IMUTagNand`.
+The measured power difference was negligible, while the extra STOP transitions
+raised reliability concerns, so the target keeps Sleep as its default idle mode.
 
 Only targets with idle hooks act on this. On `IMUTagU3bmm350` and
 `IMUTagNand`, this means the idle thread can enter the selected returned STOP
@@ -217,7 +223,8 @@ part of the low-power contract.
 - Shares the STM32U3 core support and build settings.
 - Installs idle hooks.
 - Applies `idlePowerMode` in `power_modes.c`.
-- Uses STOP2 for ordinary blocked idle.
+- Uses STOP2 during the RUNNING event wait.
+- Uses Sleep as the default idle mode outside scoped waits.
 - Uses STOP1 around external flash payload writes.
 - Uses STOP0 around selected SPI receive waits.
 - Disables idle-hook diagnostic pin drives unless `TAG_IDLE_STOP_DIAGNOSTICS`

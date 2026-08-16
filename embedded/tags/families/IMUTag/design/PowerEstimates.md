@@ -102,15 +102,17 @@ the idle periods.
 ## Actual Measurements
 
 Note: these measurements used software I2C, which averages 2.4 mA for 1.9 ms.
+Battery runtime is computed directly from the measured average current and does
+not include capacity derating.
 
-| Mode | Estimate (uA) | Measured (uA) | Notes |
-| --- | ---: | ---: | --- |
-| Idle | 55 | | Standby does not work; getting 20 uA in Stop3 |
-| 100 Hz | 1014 | 1520 | |
-| 200 Hz | 1211 | 1600 | |
-| 400 Hz | 1555 | 1800 | |
-| 800 Hz | 1523 | 2259 | BMM350 switched to low current |
-| 1600 Hz | 1702 | 2630 | |
+| Mode | Estimate (uA) | Measured (uA) | 12 mAh Runtime | 20 mAh Runtime | Notes |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Idle | 55 | | | | Standby does not work; getting 20 uA in Stop3 |
+| 100 Hz | 1014 | 1520 | 7.89 h | 13.2 h | |
+| 200 Hz | 1211 | 1600 | 7.50 h | 12.5 h | |
+| 400 Hz | 1555 | 1800 | 6.67 h | 11.1 h | |
+| 800 Hz | 1523 | 2259 | 5.31 h | 8.85 h | BMM350 switched to low current |
+| 1600 Hz | 1702 | 2630 | 4.56 h | 7.60 h | |
 
 The estimates did not include communication costs with I/O devices and memory.
 Updated to use hardware I2C.
@@ -134,11 +136,11 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 
 ## After Fixing Stop1 Code
 
-| Mode | Estimate (uA) | Measured (uA) | Notes |
-| --- | ---: | ---: | --- |
-| Idle | 55 | 14.2 | |
-| 100 Hz | 1014 | 920 | |
-| 200 Hz | 1211 | 998 | |
-| 400 Hz | 1555 | 1260 | |
-| 800 Hz | 1523 | 1700 | BMM350 switched to low current |
-| 1600 Hz | 1702 | 2300 | |
+| Mode | Estimate (uA) | Measured (uA) | 12 mAh Runtime | 20 mAh Runtime | Notes |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Idle | 55 | 14.2 | 845 h (35.2 d) | 1408 h (58.7 d) | |
+| 100 Hz | 1014 | 920 | 13.0 h | 21.7 h | |
+| 200 Hz | 1211 | 998 | 12.0 h | 20.0 h | |
+| 400 Hz | 1555 | 1260 | 9.52 h | 15.9 h | |
+| 800 Hz | 1523 | 1700 | 7.06 h | 11.8 h | BMM350 switched to low current |
+| 1600 Hz | 1702 | 2300 | 5.22 h | 8.70 h | |

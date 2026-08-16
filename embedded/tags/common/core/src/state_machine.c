@@ -85,6 +85,13 @@
 #error "TAG_EXTERNAL_ERASE_SECTORS_PER_PASS must be at least 1"
 #endif
 
+#ifndef TAG_DEFAULT_IDLE_POWER_MODE
+/**
+ * @brief Returned idle mode used before any scoped runtime wait overrides it.
+ */
+#define TAG_DEFAULT_IDLE_POWER_MODE SLEEP
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -96,7 +103,7 @@ extern int restoreLog(void);
 bool isActive = false;
 
 /** Shared idle-thread low-power selector for tags that manage CPU idle mode. */
-volatile enum Sleep idlePowerMode = SLEEP;
+volatile enum Sleep idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
 
 #if TAG_MONITOR_RESET_RECOVERY
 /**
