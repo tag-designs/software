@@ -173,6 +173,21 @@ This range change is deliberately local to `FLASH_Program_Row()`. STOP wake
 recovery in the idle hook does not adjust VCORE just to satisfy later flash
 writes.
 
+Bench measurements on `IMUTagNand` found that the current surge before an
+internal checkpoint write is caused by the STM32U3 VCORE range transition
+rather than the flash row program itself. The Range 2 to Range 1 transition
+cost is about 0.8 uJ when STOP1/STOP2 use leaves the core in the configured
+lower-power run range before the next internal flash write. The checkpoint
+cadence is fixed, so this energy should be treated as the required cost of
+using STOP modes before internal flash checkpoints rather than something the
+flash writer can amortize by reducing write frequency.
+
+This measured cost is consistent with the energy needed to charge the local
+VCORE/LDO capacitance during the range step. For example, charging a 4.7 uF
+capacitor from 1.0 V to 1.2 V is
+`0.5 * 4.7 uF * (1.2^2 - 1.0^2)`, or about 1.0 uJ before capacitor tolerance,
+actual rail voltage, regulator, and measurement effects.
+
 ## What Is Not Implemented
 
 The current design does not provide a ChibiOS system timer backed by LPTIM for
