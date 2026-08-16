@@ -43,6 +43,9 @@ active tags unless a tag provides a same-named local override.
   The model allows ChibiOS hardware I2C and a copied, project-namespaced
   software I2C fallback to coexist on different board-level buses while keeping
   sensor and RTC chip drivers backend-neutral.
+- `design/lptim-system-timer.md`: design note for an opt-in ChibiOS ST
+  low-level driver backed by STM32 LPTIM3/LPTIM4, plus a lower-risk Sleep-mode
+  fallback when timer alarms are active.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 

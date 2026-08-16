@@ -34,6 +34,7 @@ directory that owns the code; the developer portal stages those files under
 - [Common Firmware](reference/embedded/tags/common/README.md)
 - [Core Runtime](reference/embedded/tags/common/core/README.md)
 - [I2C Backend Model](reference/embedded/tags/common/core/i2c-backend-model.md)
+- [LPTIM System Timer Design](reference/embedded/tags/common/core/design/lptim-system-timer.md)
 - [Modules](reference/embedded/tags/common/modules/README.md)
 - [RTC](reference/embedded/tags/common/rtc/README.md)
 - [Sensors](reference/embedded/tags/common/sensors/README.md)

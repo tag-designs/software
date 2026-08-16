@@ -22,6 +22,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Restart Recovery Design**](../embedded/tags/design/restart-recovery.md): Specification for state machine preservation, register resets, and low-power recovery cycles.
 *   [**STM32U375 Stop-Mode Support**](../embedded/tags/design/u375-stop-support.md): Current returned-idle STOP policy, monitor attach guard, and scoped flash/SPI low-power behavior for U375 tag targets.
 *   [**STM32U375 Stop3 Terminal Sleep Plan**](../embedded/tags/design/u375-stop3-terminal-sleep-plan.md): Plan for replacing IMUTagNand terminal Standby with Stop3 while preserving the STM32L432 Standby path.
+*   [**LPTIM System Timer Design**](../embedded/tags/common/core/design/lptim-system-timer.md): Proposal for an STM32 LPTIM3/LPTIM4-backed ChibiOS ST driver and a Sleep-mode fallback when timer alarms are active.
 
 ---
 
