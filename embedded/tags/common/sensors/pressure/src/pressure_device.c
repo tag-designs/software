@@ -32,5 +32,17 @@ void tagPressureDeviceEnd(const TagPressureDevice *device)
 {
   tagBusEnd(&device->registers->bus);
   tagBusPowerOff(&device->registers->bus);
+  tagPressureDeviceAfterPowerOff(device);
+}
+
+/**
+ * @brief Default post-power-off hook for pressure sensors.
+ *
+ * @param[in] device Pressure device descriptor that was just powered down.
+ */
+void __attribute__((weak))
+tagPressureDeviceAfterPowerOff(const TagPressureDevice *device)
+{
+  (void)device;
 }
 /** @} */

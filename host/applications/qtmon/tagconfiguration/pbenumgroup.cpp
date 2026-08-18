@@ -49,12 +49,12 @@ void PBEnumGroup::replaceButtons(const std::vector<struct binfo> &buttons)
     for (std::size_t i = 0; i < buttons.size(); i++)
     {
         QRadioButton *button = new QRadioButton(buttons[i].label);
+        buttonGroup->addButton(button, buttons[i].index);
         if (first)
         {
             button->setChecked(true);
             first = false;
         }
-        buttonGroup->addButton(button, buttons[i].index);
         if (buttons[i].toolTip != nullptr)
         {
             button->setToolTip(buttons[i].toolTip);

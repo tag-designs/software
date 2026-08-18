@@ -69,13 +69,15 @@ bool isMonitorEnabled(void);
 `isMonitorEnabled()` is intentionally broader:
 
 ```c
-return MONCONNECTED || monitorIsAttached();
+return MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive();
 ```
 
 `MONCONNECTED` is the `DEMCR.VC_CORERESET` attach hint set by the host. This is
 important for the STM32L4 path because the host sets vector catch before it has
 completed `MONITORSTART`. Runtime sleep code uses `isMonitorEnabled()` so a tag
 does not enter standby while a host is still in the early attach/info phase.
+The L4 transport also treats recent `TAG_MONITORINFO` traffic as a short attach
+grace so metadata reads can bridge reliably into `MONITORSTART`.
 
 ## STM32L4 Path
 
@@ -104,7 +106,9 @@ The host `AttachL4()` sequence is:
 
 During this metadata phase, `monitorIsAttached()` is still false because the
 firmware session has not started yet. `MONCONNECTED` is therefore the only
-target-side signal that standby must be suppressed.
+host-provided signal that standby must be suppressed. Each `TAG_MONITORINFO`
+request also arms a short target-side attach grace, covering hosts that briefly
+drop the vector-catch hint between metadata reads and `MONITORSTART`.
 
 ### L4 Calls
 
@@ -119,12 +123,13 @@ For a normal L4 monitor call, the host:
 The target `DebugMon_Handler` reads `DCRDR`, decodes the operation, and handles
 commands as follows:
 
-- `TAG_MONITORINFO`: immediately writes metadata to `DCRDR` and clears
-  `MON_REQ`.
+- `TAG_MONITORINFO`: starts or refreshes the short attach grace, immediately
+  writes metadata to `DCRDR`, and clears `MON_REQ`.
 - `MONITORSTART`: starts the monitor session, writes success to `DCRDR`, clears
   `MON_REQ`, and signals the main thread.
-- `MONITORSTOP`: writes success, stops the session, clears vector catch and
-  request state.
+- `MONITORSTOP`: writes success, stops the session, and clears DebugMonitor
+  control/request state. The host treats posting this request as sufficient for
+  detach because the target may enter terminal low power immediately afterward.
 - `PROTOBUF`: latches the protobuf request length, arms the timeout, signals
   the main thread, and returns later through `monitorServicePending()`.
 
@@ -134,10 +139,15 @@ watchdog while attached.
 
 ### L4 Detach And Timeout
 
-`MONITORSTOP` clears `VC_CORERESET`, clears `MON_REQ`, and stops the monitor
-session.
+`MONITORSTOP` clears `VC_CORERESET`, `MON_EN`, `MON_PEND`, and `MON_REQ`, then
+stops the monitor session.
 
-The L4 watchdog is a 3-second request/session watchdog. If it fires while
+The host does not require a post-stop `DCRDR` read on L4 detach. Once the stop
+request is posted, firmware owns cleanup and may enter terminal low power before
+another SWD transaction can complete.
+
+The L4 attach grace is 10 seconds. Once `MONITORSTART` completes, the L4
+watchdog is a 60-second request/session watchdog. If it fires while
 `monitor_enabled` is true, it posts `EVT_MONITOR_TIMEOUT`; the main-thread
 service path stops the session.
 
@@ -290,7 +300,8 @@ STM32L4 targets, including PresTag:
 - use `handlersL4.c`;
 - use `TAG_MONITORINFO` for attach metadata;
 - use `DCRDR` and DebugMonitor request bits for RPC calls;
-- need `MONCONNECTED` to suppress standby during early attach.
+- need `MONCONNECTED` and the L4 attach grace to suppress standby during early
+  attach.
 
 STM32U3 targets, including U375/U3bmm350:
 
@@ -305,9 +316,11 @@ STM32U3 targets, including U375/U3bmm350:
 Useful regression checks:
 
 - L4/PresTag attach can complete all early `TAG_MONITORINFO` calls.
-- L4 `MONITORSTART`, protobuf calls, and `MONITORSTOP` clear request bits.
+- L4 `MONITORSTART`, protobuf calls, and `MONITORSTOP` clear request bits; L4
+  detach does not require a post-stop response read.
 - U3 attach reaches `MONITOR_CONNECTED_MAGIC` and `SESSION_READY`.
 - U3 protobuf calls transition status idle -> pending -> done.
 - U3 `MONITORSTOP` clears `request` to 0.
 - U3 timeout clears the shared session after missing heartbeat activity.
-- Standby entry is suppressed while `MONCONNECTED || monitorIsAttached()`.
+- Standby entry is suppressed while `MONCONNECTED`, `monitorIsAttached()`, or
+  the L4 attach grace is active.

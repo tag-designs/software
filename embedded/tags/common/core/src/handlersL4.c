@@ -23,6 +23,49 @@ static void monitorClearRequest(void)
  * Session lifecycle. L4 uses DEMCR/DCRDR directly, with a short watchdog while
  * a protobuf request is outstanding.
  */
+#define L4_MONITOR_TIMEOUT_S 60U
+#define L4_MONITOR_ATTACH_TIMEOUT_S 10U
+
+static volatile bool monitor_attach_grace_active = false;
+
+static bool monitorAttachGraceActive(void)
+{
+  return monitor_attach_grace_active;
+}
+
+static void monitor_attach_timeout_cb(virtual_timer_t *vtp, void *arg)
+{
+  (void)vtp;
+  (void)arg;
+
+  chSysLockFromISR();
+  monitor_attach_grace_active = false;
+  chSysUnlockFromISR();
+}
+
+static void monitorStartAttachGraceI(void)
+{
+  if (monitor_enabled)
+    return;
+
+  monitor_attach_grace_active = true;
+  monitorArmTimeoutI(chTimeS2I(L4_MONITOR_ATTACH_TIMEOUT_S),
+                     monitor_attach_timeout_cb);
+}
+
+static void monitorStartAttachGraceFromISR(void)
+{
+  if (!tpMain)
+  {
+    monitor_attach_grace_active = true;
+    return;
+  }
+
+  chSysLockFromISR();
+  monitorStartAttachGraceI();
+  chSysUnlockFromISR();
+}
+
 static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
 {
   (void)vtp;
@@ -41,8 +84,11 @@ static void monitorStopI(bool timed_out)
   (void)timed_out;
 
   monitorStopSessionI();
-  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
+  monitor_attach_grace_active = false;
   monitorClearRequest();
+  CoreDebug->DEMCR &= ~(CoreDebug_DEMCR_VC_CORERESET_Msk |
+                        CoreDebug_DEMCR_MON_PEND_Msk |
+                        CoreDebug_DEMCR_MON_EN_Msk);
   __DSB();
 }
 
@@ -89,15 +135,15 @@ void monitorServicePending(uint32_t monitor_events)
 
   len = proto_eval(len, &work);
 
-  if (work != 0U)
-    chEvtAddEvents((eventmask_t)work);
-
   chSysLock();
   CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
   monitorClearRequest();
   if (monitor_enabled)
-    monitorArmTimeoutI(chTimeS2I(3), monitor_timeout_cb);
+    monitorArmTimeoutI(chTimeS2I(L4_MONITOR_TIMEOUT_S), monitor_timeout_cb);
   chSysUnlock();
+
+  if (work != 0U)
+    chEvtAddEvents((eventmask_t)work);
 }
 
 /*
@@ -110,6 +156,12 @@ void monitorSharedEarlyInit(void)
 
 void monitorSharedSessionStart(void)
 {
+  if (!monitor_attach_grace_active)
+    return;
+
+  chSysLock();
+  monitorStartAttachGraceI();
+  chSysUnlock();
 }
 
 /*
@@ -128,6 +180,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
   if (monitorRequestPending()) {
     switch (operation) {
       case TAG_MONITORINFO:
+        monitorStartAttachGraceFromISR();
         switch (operand) {
           case (MONITORVERSION):
             CoreDebug->DCRDR = (uint32_t)DEBUGVERSION;
@@ -146,7 +199,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
         break;
       case MONITORSTART:
         chSysLockFromISR();
-        monitorStartSessionI(chTimeS2I(3), monitor_timeout_cb);
+        monitorStartSessionI(chTimeS2I(L4_MONITOR_TIMEOUT_S), monitor_timeout_cb);
         CoreDebug->DCRDR = 1;
         monitorClearRequest();
         if (tpMain)
@@ -165,7 +218,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
           monitor_operand = operand;
           monitor_pending = true;
           CoreDebug->DCRDR = 0;
-          monitorArmTimeoutI(chTimeS2I(3), monitor_timeout_cb);
+          monitorArmTimeoutI(chTimeS2I(L4_MONITOR_TIMEOUT_S), monitor_timeout_cb);
           if (tpMain)
             chEvtSignalI(tpMain, EVT_MONITOR_SERVICE);
         } else {

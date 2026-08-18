@@ -43,8 +43,25 @@
 #define TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF 0
 #endif
 
+#if !defined(TAG_SHUTDOWN_ENTERS_STANDBY)
+#if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
+#define TAG_SHUTDOWN_ENTERS_STANDBY 0
+#else
+#define TAG_SHUTDOWN_ENTERS_STANDBY 1
+#endif
+#endif
+
 #ifndef TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED
 #define TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED 0
+#endif
+
+#define TAG_SHUTDOWN_WAKE_MARKER 0x53485554U
+
+#if (!defined(TAG_STM32U3_FLASH) || !TAG_STM32U3_FLASH) &&                  \
+    defined(RTC_BKP_NUMBER) && (RTC_BKP_NUMBER > 31U)
+#define TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED 1
+#else
+#define TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED 0
 #endif
 
 /** @name Common tag power sequence
@@ -168,6 +185,54 @@ void rtcOff(void)
     tagI2cBusEnd(registers);
     tagI2cDevicePowerOff(registers);
   }
+#endif
+}
+
+/**
+ * @brief Report whether a terminal sleep request should enter standby.
+ *
+ * @param[in] sleepmode State-machine terminal sleep request.
+ * @return true when the target maps the requested terminal mode to standby.
+ */
+static inline bool tagPowerTerminalModeEntersStandby(enum Sleep sleepmode)
+{
+  if (sleepmode == STANDBY)
+  {
+    return true;
+  }
+
+#if TAG_SHUTDOWN_ENTERS_STANDBY
+  if (sleepmode == SHUTDOWN)
+  {
+    return true;
+  }
+#endif
+
+  return false;
+}
+
+/**
+ * @brief Report whether a terminal sleep request should enter shutdown.
+ *
+ * @param[in] sleepmode State-machine terminal sleep request.
+ * @return true when the target maps the requested terminal mode to shutdown.
+ */
+static inline bool tagPowerTerminalModeEntersShutdown(enum Sleep sleepmode)
+{
+  return (sleepmode == SHUTDOWN) && !TAG_SHUTDOWN_ENTERS_STANDBY;
+}
+
+/**
+ * @brief Record whether the next L4 reset should be treated as Shutdown wake.
+ *
+ * @param[in] is_shutdown true when entering hardware Shutdown.
+ */
+static inline void tagPowerSetShutdownWakeMarker(bool is_shutdown)
+{
+#if TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED
+  RTC->BKP31R = is_shutdown ? TAG_SHUTDOWN_WAKE_MARKER : 0U;
+#else
+  (void)is_shutdown;
 #endif
 }
 

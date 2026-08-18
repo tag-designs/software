@@ -13,24 +13,33 @@
 #define PWR_CR1_LPMS_STANDBY 3
 #endif
 
-/**
- * @brief Report whether the Cortex-M debug port is currently enabled.
- *
- * @return true when an external debugger has enabled core debug access.
- */
-static bool tagPowerDebuggerAttached(void)
-{
-  return (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
-}
+#ifndef PWR_CR1_LPMS_SHUTDOWN
+#define PWR_CR1_LPMS_SHUTDOWN 4
+#endif
 
 /**
- * @brief Enter STM32L4-style Standby after device preparation.
+ * @brief Enter STM32L4 terminal sleep after device preparation.
  *
  * @param[in] sleepmode Requested sleep mode.
  */
 static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 {
-  if ((sleepmode != STANDBY) || isMonitorEnabled())
+  uint32_t lpms;
+
+  if (isMonitorEnabled())
+  {
+    return;
+  }
+
+  if (tagPowerTerminalModeEntersStandby(sleepmode))
+  {
+    lpms = PWR_CR1_LPMS_STANDBY;
+  }
+  else if (tagPowerTerminalModeEntersShutdown(sleepmode))
+  {
+    lpms = PWR_CR1_LPMS_SHUTDOWN;
+  }
+  else
   {
     return;
   }
@@ -39,16 +48,10 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 
   chSysLock();
 
-  if (tagPowerDebuggerAttached())
-  {
-    DBGMCU->CR = DBGMCU_CR_DBG_SLEEP |
-                 DBGMCU_CR_DBG_STOP |
-                 DBGMCU_CR_DBG_STANDBY;
-  }
-  else
-  {
-    DBGMCU->CR = 0;
-  }
+  DBGMCU->CR = 0;
+#if defined(PWR_CR3_RRS)
+  CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+#endif
 
 #if BOARD_STANDBY_HAS_CONFIG
   tagApplyBoardStandbyPins();
@@ -77,7 +80,8 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
     return;
   }
 
-  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_CR1_LPMS_STANDBY);
+  tagPowerSetShutdownWakeMarker(lpms == PWR_CR1_LPMS_SHUTDOWN);
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, lpms);
 
   PWR->CR3 |= PWR_CR3_APC;
 

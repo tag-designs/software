@@ -146,6 +146,8 @@ std::string Tag::DebugMessage()
   std::lock_guard<std::mutex> lck(mtx);
   if (!ack.error_message().empty())
     return ack.error_message();
+  if (ack.err() == Ack::UNSPECIFIED)
+    return "Tag returned an empty or invalid acknowledgement";
   if (ack.err() != Ack::OK)
     return "Tag returned " + Ack_Err_Name(ack.err());
   return "";
@@ -212,7 +214,19 @@ bool Tag::SetRtc()
 
   req.Clear();
   req.set_set_rtc(ts.time_since_epoch().count());
-  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
+  if (!monitor.Rpc(req,ack))
+  {
+    ack.Clear();
+    ack.set_err(Ack::MONITOR);
+    ack.set_error_message("Monitor call failed while setting RTC");
+    return false;
+  }
+  if (ack.err() == Ack::UNSPECIFIED)
+  {
+    ack.set_error_message("Tag returned an empty or invalid RTC sync acknowledgement");
+    return false;
+  }
+  return ack.err() == Ack::OK;
 }
 
 // Tag Information

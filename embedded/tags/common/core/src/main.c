@@ -83,8 +83,33 @@ bool rtcInitializedAtBoot;
 #define TAG_BACKUP_STATE_REG0 (&RTC->BKP0R)
 #endif
 
+#define TAG_SHUTDOWN_WAKE_MARKER 0x53485554U
+
+#if (!defined(TAG_STM32U3_FLASH) || !TAG_STM32U3_FLASH) &&                  \
+    defined(RTC_BKP_NUMBER) && (RTC_BKP_NUMBER > 31U)
+#define TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED 1
+#else
+#define TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED 0
+#endif
+
 volatile BackupState *const pState = (BackupState *)TAG_BACKUP_STATE_REG0;
 /** @} */
+
+/**
+ * @brief Read and clear the retained L4 Shutdown-entry marker.
+ *
+ * @return Marker value captured before clearing, or zero when unsupported.
+ */
+static uint32_t tagPowerGetAndClearShutdownWakeMarker(void)
+{
+#if TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED
+  uint32_t marker = RTC->BKP31R;
+  RTC->BKP31R = 0U;
+  return marker;
+#else
+  return 0U;
+#endif
+}
 
 /**
  * @brief Report whether STM32 reset state indicates standby exit.
@@ -572,6 +597,8 @@ void deviceInit(int force)
 t_resetCause getResetCause(uint32_t rstFlags)
 {
   t_resetCause resetCause = resetException; // default case
+  const uint32_t shutdown_wake_marker =
+      tagPowerGetAndClearShutdownWakeMarker();
 
   // note that the reset flags are cleared only  after we've processed
   // things.  That way, bad things are sticky
@@ -606,6 +633,13 @@ t_resetCause getResetCause(uint32_t rstFlags)
     if ((rstFlags & RCC_CSR_SFTRSTF))
     {
       resetCause = resetException;
+      break;
+    }
+
+    if (shutdown_wake_marker == TAG_SHUTDOWN_WAKE_MARKER)
+    {
+      resetCause = resetShutdown;
+      tagPowerClearStandbyFlag();
       break;
     }
 
@@ -805,6 +839,7 @@ int main(void)
 
     godown(sleepmode);
 
+#if TAG_STM32U3_FLASH
     if (pState->state == TagState_RUNNING){
       idlePowerMode = TAG_RUNNING_IDLE_POWER_MODE;
       eventmask_t wait_events = EVT_HARDWARE_ALL;
@@ -813,14 +848,17 @@ int main(void)
       pending_events =  chEvtWaitAny(wait_events);
       idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
     }
-#if TAG_STM32U3_FLASH
     else if (isMonitorEnabled()) {
       pending_events = chEvtWaitAny(EVT_ALL_DEFINED);
     }
-#endif
     else {
       pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     }
+#else
+    if (isMonitorEnabled())
+      chThdYield();
+    pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
+#endif
 
     #if 0
 #if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)

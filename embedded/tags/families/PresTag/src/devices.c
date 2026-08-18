@@ -90,12 +90,36 @@ const TagTestCase *tagTestCases(size_t *count)
  * pin pulls through board_standby.h; this file keeps the pin hook as a legacy
  * fallback for static board builds.
  */
+/**
+ * @brief Release PresTag pressure-sensor signal pins after sensor power-off.
+ *
+ * @details The LPS rail is switched off in inactive sleep states, so the SPI
+ *          signal pins must not be driven above the unpowered sensor rail.
+ *          Leaving the communication pins in analog mode keeps them floating
+ *          for Shutdown while LPS_PWR is driven low before entry.
+ */
+static void tagPresTagReleasePressurePins(void)
+{
+  palSetLineMode(LINE_LPS_CS, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(LINE_LPS_SCK, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(LINE_LPS_MISO, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(LINE_LPS_MOSI, PAL_MODE_INPUT_ANALOG);
+}
+
+void tagPressureDeviceAfterPowerOff(const TagPressureDevice *device)
+{
+  if (device == TAG_PRESSURE_DEVICE)
+    tagPresTagReleasePressurePins();
+}
+
 static void tagPresTagShutdownDevices(void)
 {
-  /*
-   * The LPS27 path is one-shot and tagPressureDeviceEnd() powers down the
-   * descriptor after each sample, so there is no additional sensor command here.
-   */
+  tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
+  tagPresTagReleasePressurePins();
+  palClearLine(LINE_LPS_PWR);
+  palSetLineMode(LINE_LPS_PWR,
+                 PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_LOWEST);
+  chThdSleepMilliseconds(2);
 }
 
 static void tagPresTagPrepareStandbyDevices(uint32_t state)
@@ -114,6 +138,8 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
   switch (reason) {
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
     tagPresTagPrepareStandbyDevices(state);
+    if (state != RUNNING)
+      tagPresTagShutdownDevices();
     break;
 
   case TAG_DEVICE_POWER_BOOT_CLEANUP:
@@ -146,11 +172,37 @@ void tagDevicesDeinit(void)
 /**
  * @brief Apply board pin pulls needed for standby leakage.
  */
-
- /*
 void tagDevicesApplyStandbyPins(void)
 {
-  tagBusPrepareSleep(&lps_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }
-*/
+
+/**
+ * @brief Disable PresTag wakeup sources before terminal sleep setup.
+ */
+void tagDevicesDisableWakeupSources(void)
+{
+#if defined(PWR_CR3_EIWF_Msk)
+  CLEAR_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#endif
+}
+
+/**
+ * @brief Enable internal RTC wake sources only for timed PresTag states.
+ *
+ * @param[in] state Current state-machine state.
+ * @param[in] is_active Current activity flag; unused by PresTag.
+ * @return true because PresTag has no external wake pin polarity to verify.
+ */
+bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
+{
+  (void)is_active;
+
+#if defined(PWR_CR3_EIWF_Msk)
+  if ((state == RUNNING) || (state == CONFIGURED) || (state == HIBERNATING))
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+#else
+  (void)state;
+#endif
+  return true;
+}

@@ -6,6 +6,7 @@
  */
 
 #include "app.h"
+#include "debug_log.h"
 #include "persistent.h"
 #include "tag.pb.h"
 #include "tagdata.pb.h"
@@ -56,7 +57,10 @@ void test(void)
       continue;
     }
 
+    debug_log_printf("test: start request=%d\r\n", tag_tests[i].request);
     TestResult result = tag_tests[i].run(tag_tests[i].context);
+    debug_log_printf("test: finish request=%d result=%d\r\n",
+                     tag_tests[i].request, result);
     if (result != ALL_PASSED)
     {
       pState->test_result = result;

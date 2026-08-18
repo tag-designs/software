@@ -316,7 +316,7 @@ void ADXL362_GetFifoValueDevice(const TagAdxl362Device *device,
 void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device);
 
 /**
- * @brief Reset and power down an ADXL362 device.
+ * @brief Put an ADXL362 device into standby and clear wake interrupt routing.
  *
  * @param[in] device ADXL362 device descriptor.
  */

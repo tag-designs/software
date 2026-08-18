@@ -212,7 +212,7 @@ void ADXL362_SoftwareResetDevice(const TagAdxl362Device *device)
 }
 
 /**
- * @brief Reset and power down an ADXL362 device.
+ * @brief Reset an ADXL362 device and release its bus.
  *
  * @param[in] device ADXL362 device descriptor.
  */

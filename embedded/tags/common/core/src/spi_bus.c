@@ -341,11 +341,15 @@ void tagSpiDevicePowerOn(const TagSpiDevice *device)
 
 void tagSpiDevicePowerOff(const TagSpiDevice *device)
 {
-  tagSpiSetChipSelectIdle(device);
-  tagSpiSetBusIdle(device);
-
   if (tagLineIsValid(device->pwr)) {
+    tagSpiSetLineAnalog(device->config.ssline);
+    tagSpiSetLineAnalog(device->sck);
+    tagSpiSetLineAnalog(device->miso);
+    tagSpiSetLineAnalog(device->mosi);
     palClearLine(device->pwr);
+  } else {
+    tagSpiSetChipSelectIdle(device);
+    tagSpiSetBusIdle(device);
   }
 }
 

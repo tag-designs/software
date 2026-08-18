@@ -59,7 +59,9 @@ static void adxl362_init(void)
                                  ADXL362_REG_INTMAP2, 1);
   // power
   ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
-                                 2 | ADXL362_POWER_CTL_AUTOSLEEP,
+                                 ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON) |
+                                 ADXL362_POWER_CTL_WAKEUP,
+                                 //ADXL362_POWER_CTL_AUTOSLEEP,
                                  ADXL362_REG_POWER_CTL, 1);
   ADXL362_DeviceEnd(TAG_ACCEL_DEVICE);
 }
@@ -259,5 +261,5 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = lastwrite;
     pState->lastwakeup = timestamp;
   }
-  return SHUTDOWN;
+  return STANDBY;
 }

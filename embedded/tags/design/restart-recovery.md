@@ -16,6 +16,20 @@ implemented behavior contract yet.
   current block/page over trying to reconstruct partially read or partially
   written data.
 
+## Low-Power Wake Classification
+
+STM32L4 Standby wake can be distinguished from a cold reset by combining the
+retained `pState` validity marker with the platform standby flag. Hardware
+Shutdown is more ambiguous because the reset flags can look like a power or
+brownout reset while RTC backup registers are still retained.
+
+The common L4 terminal-sleep path reserves `RTC->BKP31R` as a one-shot
+Shutdown-entry marker. Before entering hardware Shutdown it writes `SHUT`
+(`0x53485554`) to that register; early startup reads and clears the marker
+before reset-cause classification. If `pState` is valid and the marker is
+present, the reset is classified as `resetShutdown` even if the ordinary standby
+flag is absent.
+
 ## Header/Page Recovery
 
 One simple recovery policy is to start a new `vddHeader` after reset and

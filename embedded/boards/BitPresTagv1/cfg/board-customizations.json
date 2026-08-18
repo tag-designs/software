@@ -96,7 +96,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
         "ID": "ACCEL_MOSI",
@@ -154,7 +155,8 @@
         "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin1": {
         "ID": "ACCEL_CS",

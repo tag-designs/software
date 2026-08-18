@@ -94,7 +94,7 @@ void tagDevicesPrepareStandby(uint32_t state)
 
 void tagDevicesDisableWakeupSources(void)
 {
-  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
+  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
 }
 
 bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
@@ -110,7 +110,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
     return is_active == palReadLine(LINE_ACCEL_INT);
   }
 
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  if ((state == CONFIGURED) || (state == HIBERNATING))
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+
   return true;
 }
 

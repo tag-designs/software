@@ -389,6 +389,23 @@ int errAck(Ack_Err err)
   ack.which_payload = 0;
   return encode_ack();
 }
+
+/**
+ * @brief Build and encode an error acknowledgement with a diagnostic string.
+ *
+ * @param[in] err Error code to place in the acknowledgement.
+ * @param[in] message Null-terminated diagnostic for host tools.
+ * @return Encoded byte count.
+ */
+static int errMessageAck(Ack_Err err, const char *message)
+{
+  ack.err = err;
+  ack.which_payload = Ack_error_message_tag;
+  strncpy(ack.payload.error_message, message,
+          sizeof(ack.payload.error_message) - 1);
+  ack.payload.error_message[sizeof(ack.payload.error_message) - 1] = 0;
+  return encode_ack();
+}
 /** @} */
 
 extern const unsigned char tag_default_config[];
@@ -781,7 +798,8 @@ int proto_eval(int len, uint32_t *work)
 
   if (!monitor_request_allowed(&req))
   {
-    return monitorReturn(errAck(Ack_Err_PERM));
+    return monitorReturn(errMessageAck(Ack_Err_PERM,
+                                       "Monitor request not permitted in current tag state"));
   }
 
   // Process requests in order of message fields
@@ -846,7 +864,8 @@ int proto_eval(int len, uint32_t *work)
   case Req_set_rtc_tag: // Write RTC
     if ((err = SetTimeUnixSec(req.payload.set_rtc / 1000)))
     {
-      return monitorReturn(errAck(Ack_Err_NXIO));
+      return monitorReturn(errMessageAck(Ack_Err_NXIO,
+                                         "RTC sync failed while writing tag clock"));
     }
     else
       return monitorReturn(errAck(Ack_OK));

@@ -25,6 +25,11 @@ static_assert(sizeof(monitor_shared_t) <= MONITOR_SHARED_SIZE,
 
 static bool monitor_requested_at_boot = false;
 
+static bool monitorAttachGraceActive(void)
+{
+  return false;
+}
+
 static void monitorSharedSetDisconnected(void)
 {
   CoreDebug->DEMCR &= ~CoreDebug_DEMCR_VC_CORERESET_Msk;
@@ -120,9 +125,6 @@ void monitorServicePending(uint32_t monitor_events)
 
   len = proto_eval(len, &work);
 
-  if (work != 0U)
-    chEvtAddEvents((eventmask_t)work);
-
   chSysLock();
   monitor_shared.result = monitor_enabled ? (uint32_t)len : 0U;
   monitor_shared.status = monitor_enabled ? MONITOR_STATUS_DONE :
@@ -132,6 +134,9 @@ void monitorServicePending(uint32_t monitor_events)
     monitorArmTimeoutI(chTimeS2I(MONITOR_HEARTBEAT_PERIOD_S),
                        monitor_timeout_cb);
   chSysUnlock();
+
+  if (work != 0U)
+    chEvtAddEvents((eventmask_t)work);
 }
 
 /*

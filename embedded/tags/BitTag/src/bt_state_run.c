@@ -59,7 +59,10 @@ static void adxl362_init(void)
   // interrupt -- caused by AWAKE going active
   ADXL362_SetRegisterValueDevice(device, ADXL362_INTMAP2_AWAKE, ADXL362_REG_INTMAP2, 1);
   // power
-  ADXL362_SetRegisterValueDevice(device, 2 | ADXL362_POWER_CTL_AUTOSLEEP,
+  ADXL362_SetRegisterValueDevice(device,
+                                 ADXL362_POWER_CTL_MEASURE(ADXL362_MEASURE_ON) |
+                                 ADXL362_POWER_CTL_WAKEUP,
+                                 //ADXL362_POWER_CTL_AUTOSLEEP,
                                  ADXL362_REG_POWER_CTL, 1);
   ADXL362_DeviceEnd(device);
 }
@@ -226,5 +229,5 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = lastwrite;
     pState->lastwakeup = timestamp;
   }
-  return SHUTDOWN;
+  return STANDBY;
 }

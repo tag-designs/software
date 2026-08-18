@@ -22,6 +22,18 @@
 // ram based config (used by monitor to communicate to tag)
 
 t_storedconfig config_tmp;  
+static const char *config_error;
+
+/**
+ * @brief Return the most recent BitPresTag configuration validation failure.
+ *
+ * @return Null when the last configuration staged successfully, otherwise a
+ *         static diagnostic string suitable for monitor acknowledgements.
+ */
+const char *writeConfigErrorMessage(void)
+{
+  return config_error;
+}
 
 /**
  * @brief Write the staged configuration to internal flash.
@@ -204,15 +216,51 @@ void readConfig(Config *config)
  */
 bool writeConfig(Config *config)
 {
-  if ((config == NULL) || pState->state != TagState_IDLE)
+  config_error = NULL;
+
+  if (config == NULL)
+  {
+    config_error = "BitPresTag config request was empty";
     return false;
+  }
+
+  if (pState->state != TagState_IDLE)
+  {
+    config_error = "BitPresTag can only start from IDLE";
+    return false;
+  }
+
+  if (!config->has_adxl362)
+  {
+    config_error = "BitPresTag config missing ADXL362 settings";
+    return false;
+  }
+
+  if (!config->has_active_interval)
+  {
+    config_error = "BitPresTag config missing active interval";
+    return false;
+  }
 
   int range = EnumToAdxl362Rng(config->adxl362.range);
   int freq = EnumToAdxl362ODR(config->adxl362.freq);
   int Aa = EnumToAdxl362Filter(config->adxl362.filter);
 
-  if ((range < 0) || (freq < 0) || (Aa < 0))
+  if (range < 0)
   {
+    config_error = "BitPresTag config has unsupported ADXL362 range";
+    return false;
+  }
+
+  if (freq < 0)
+  {
+    config_error = "BitPresTag config has unsupported ADXL362 sample rate";
+    return false;
+  }
+
+  if (Aa < 0)
+  {
+    config_error = "BitPresTag config has unsupported ADXL362 filter";
     return false;
   }
 
@@ -232,6 +280,13 @@ bool writeConfig(Config *config)
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
  
+
+  if (config->hibernate_count >
+      (pb_size_t)(sizeof(config_tmp.hibernate) / sizeof(config_tmp.hibernate[0])))
+  {
+    config_error = "BitPresTag config has too many hibernate intervals";
+    return false;
+  }
 
   for (int i = 0; i < config->hibernate_count; i++)
   {

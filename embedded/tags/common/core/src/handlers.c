@@ -139,6 +139,8 @@ static bool monitor_timer_initialized = false;
 static bool monitor_clock_fast = false;
 #endif
 
+static bool monitorAttachGraceActive(void);
+
 static void monitorArmTimeoutI(sysinterval_t timeout, vtfunc_t callback)
 {
   if (!monitor_timer_initialized)
@@ -192,7 +194,7 @@ static void monitorStartSessionI(sysinterval_t timeout, vtfunc_t callback)
 
 bool isMonitorEnabled(void)
 {
-  return MONCONNECTED || monitorIsAttached();
+  return MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive();
 }
 
 void monitorPostPendingEvents(void)

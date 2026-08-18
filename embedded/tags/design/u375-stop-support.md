@@ -23,14 +23,16 @@ The monitor guard is `isMonitorEnabled()`. That predicate is deliberately
 broader than `monitorIsAttached()`:
 
 ```c
-return MONCONNECTED || monitorIsAttached();
+return MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive();
 ```
 
 This matters on the STM32L4 monitor path. During the early attach/info phase,
 the host has set `VC_CORERESET` (`MONCONNECTED`) but has not yet completed
 `MONITORSTART`, so `monitorIsAttached()` is still false. Treating
 `MONCONNECTED` as monitor-enabled prevents L4 targets such as PresTag from
-entering standby while the host is fetching monitor metadata.
+entering standby while the host is fetching monitor metadata. Recent L4
+`TAG_MONITORINFO` traffic also holds a short attach grace so the tag does not
+enter terminal sleep between metadata reads and `MONITORSTART`.
 
 `godown()` no longer contains STOP0, STOP1, STOP2, or STM32U3-specific idle
 code. It prepares devices and standby pin pulls, configures wake sources,
@@ -256,8 +258,8 @@ STM32L4 targets such as `PresTag`:
 
 - Ignore `idlePowerMode` unless they add their own idle hooks.
 - Continue to use `godown(STANDBY)` for terminal standby.
-- Depend on `MONCONNECTED || monitorIsAttached()` to keep standby out of the
-  monitor attach path.
+- Depend on `MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive()`
+  to keep standby out of the monitor attach path.
 
 ## Validation Notes
 

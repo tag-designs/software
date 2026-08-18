@@ -92,6 +92,41 @@
 #define TAG_DEFAULT_IDLE_POWER_MODE SLEEP
 #endif
 
+#ifndef TAG_IDLE_SLEEP_MODE
+/**
+ * @brief Terminal sleep mode requested while the tag is unconfigured idle.
+ */
+#define TAG_IDLE_SLEEP_MODE STANDBY
+#endif
+
+#ifndef TAG_CONFIGURED_SLEEP_MODE
+/**
+ * @brief Terminal sleep mode requested while waiting for a configured start.
+ */
+#define TAG_CONFIGURED_SLEEP_MODE STANDBY
+#endif
+
+#ifndef TAG_HIBERNATING_SLEEP_MODE
+/**
+ * @brief Terminal sleep mode requested during configured hibernation windows.
+ */
+#define TAG_HIBERNATING_SLEEP_MODE STANDBY
+#endif
+
+#ifndef TAG_FINISHED_SLEEP_MODE
+/**
+ * @brief Terminal sleep mode requested after successful collection completion.
+ */
+#define TAG_FINISHED_SLEEP_MODE STANDBY
+#endif
+
+#ifndef TAG_ABORTED_SLEEP_MODE
+/**
+ * @brief Terminal sleep mode requested after aborted collection.
+ */
+#define TAG_ABORTED_SLEEP_MODE STANDBY
+#endif
+
 /**
  * @brief Recover persistent data-log state after reset.
  *
@@ -673,9 +708,11 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
   (void)t;
   if (t == T_INIT)
   {
+    disableAllAlarms();
+    disableTicker();
     pState->state = TagState_IDLE;
   }
-  return STANDBY;
+  return TAG_IDLE_SLEEP_MODE;
 }
 
 
@@ -741,7 +778,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     }
     enableAlarm(1, ALARM_MINUTE);
   }
-  return STANDBY;
+  return TAG_CONFIGURED_SLEEP_MODE;
 }
 
 #if CONFIG_HAS_HIBERNATE
@@ -771,7 +808,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
   {
     if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
         (timestamp < sconfig.hibernate[i].end_epoch))
-      return STANDBY;
+      return TAG_HIBERNATING_SLEEP_MODE;
   }
 
   if (timestamp < sconfig.stop)
@@ -793,7 +830,7 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the finished state.
  * @param[in] reason Event that caused finished handling.
- * @return Standby sleep mode.
+ * @return Terminal sleep mode after recording the finished state.
  */
 enum Sleep Finished(enum StateTrans t, State_Event reason)
 {
@@ -821,7 +858,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
     recordState(reason);
     deviceInit(true);
   }
-  return STANDBY;
+  return TAG_FINISHED_SLEEP_MODE;
 }
 
 /**
@@ -829,7 +866,7 @@ enum Sleep Finished(enum StateTrans t, State_Event reason)
  *
  * @param[in] t Transition phase for the aborted state.
  * @param[in] reason Event that caused aborted handling.
- * @return Standby sleep mode.
+ * @return Terminal sleep mode after recording the aborted state.
  */
 enum Sleep Aborted(enum StateTrans t, State_Event reason)
 {
@@ -858,7 +895,7 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
     recordState(reason);
     deviceInit(true);
   }
-  return STANDBY;
+  return TAG_ABORTED_SLEEP_MODE;
 }
 
 /**

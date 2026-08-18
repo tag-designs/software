@@ -300,7 +300,13 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
   if (target_family == TargetFamily::STM32U3)
     return CallU3(operation, operand, result);
 
-  static const int TIMEOUT = 500;
+  static const int MONITOR_RESULT_TIMEOUT_MS = 500;
+  static const int MONITORSTOP_POST_MS = 5;
+  static const int MONITOR_FAST_CALL_TIMEOUT_MS = 2500;
+  static const int MONITOR_PROTOBUF_CALL_TIMEOUT_MS = 65000;
+  const int call_timeout_ms = (operation == PROTOBUF)
+                                  ? MONITOR_PROTOBUF_CALL_TIMEOUT_MS
+                                  : MONITOR_FAST_CALL_TIMEOUT_MS;
   uint32_t demcr, dhcsr;
   int err;
   int i;
@@ -356,9 +362,23 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
     return false;
   }
 
+  if (operation == MONITORSTOP)
+  {
+    /*
+     * Detach intentionally lets the target drop into terminal low power as
+     * soon as the DebugMonitor handler has seen the request. Waiting for a
+     * DCRDR response or post-stop DEMCR read can therefore turn a successful
+     * detach into a host-side USB/SWD timeout.
+     */
+    std::this_thread::sleep_for(MS(MONITORSTOP_POST_MS));
+    if (result)
+      *result = 1U;
+    return true;
+  }
+
   // wait for result by polling MON_REQ bit
 
-  for (i = 0; i < TIMEOUT*5; i++)
+  for (i = 0; i < call_timeout_ms; i++)
   {
     if (!ReadDebug32(DEMCR, &demcr))
       log_error("read_mem failed\n");
@@ -369,7 +389,7 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
   // check for timeout
 
-  if (i == TIMEOUT*5)
+  if (i == call_timeout_ms)
   {
     uint32_t dhcsr_snapshot = 0;
     uint32_t dcrdr_snapshot = 0;
@@ -575,7 +595,7 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
   if (result)
   {
-    for (i = 0; i < TIMEOUT; i++)
+    for (i = 0; i < MONITOR_RESULT_TIMEOUT_MS; i++)
     {
       if (ReadDebug32(DCRDR, result))
         break;
@@ -585,7 +605,7 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
     // check for a timeout
 
-    if (i == TIMEOUT-1)
+    if (i == MONITOR_RESULT_TIMEOUT_MS - 1)
     {
       log_error("monitor result read timed out op=%s(0x%x) operand=%d demcr=0x%x",
                 monitor_operation_name(operation), operation, operand, demcr);
@@ -598,58 +618,73 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
 
 bool TagMonitor::AttachL4()
 {
-  uint32_t demcr;
-
   do
   {
-    // read control register
+    auto reset_into_monitor = [this](const char *phase) {
+      uint32_t setup_demcr;
 
-    if (!ReadDebug32(DEMCR, &demcr))
+      if (!ReadDebug32(DEMCR, &setup_demcr))
+      {
+        log_error("Monitor attach failed: %s DEMCR read failed", phase);
+        return false;
+      }
+
+      /*
+       * Standby can power-cycle the core debug block. Program vector catch
+       * immediately before reset release so the firmware sees MONCONNECTED
+       * before it can return to terminal standby.
+       */
+      if (!(WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN) &&
+            WriteDebug32(DEMCR,
+                ((setup_demcr | MON_EN | VC_CORERESET) &
+                  ~MON_REQ & ~MON_PEND))))
+      {
+        log_error("Monitor attach failed: %s debug setup failed", phase);
+        return false;
+      }
+
+      if (!AssertReset(true))
+      {
+        log_error("Monitor attach failed: %s reset release failed", phase);
+        return false;
+      }
+
+      std::this_thread::sleep_for(MS(50));
+
+      if (!WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN))
+        log_warn("Monitor attach warning: %s halt release failed", phase);
+
+      return true;
+    };
+
+    if (!reset_into_monitor("initial"))
     {
-      log_error("Read failed");
       LinkAdapt::Detach();
       break;
     }
-
-    // Write debug magic key and
-    // Set VC_CORERESET (halt in reset)
-    // Set MON_EN (enable handler); clear request bits
-
-    if (!(WriteDebug32(DBG_HCSR, DBGKEY | 1) &&
-          WriteDebug32(DEMCR,
-              ((demcr | MON_EN | VC_CORERESET) & 
-                ~MON_REQ & ~MON_PEND))))
-    {
-
-      log_error("Monitor attach failed: write returned");
-      LinkAdapt::Detach();
-      break;
-    }
-
-    // remove reset
-
-    if (!AssertReset(true))
-    {
-      log_error("Monitor attach failed: Reset assert");
-      LinkAdapt::Detach();
-      break;
-    }
-
-    // give time for reset to complete
-
-    std::this_thread::sleep_for(MS(50));
-
-    // clear the halt
-
-    WriteDebug32(DBG_HCSR, DBGKEY | 1);
 
     // Call monitor to get pointer to information block
 
     if (!Call(TAG_MONITORINFO, MONITORVERSION, &version))
     {
-      log_error("couldn't fetch monitor version information");
-      LinkAdapt::Detach();
-      break;
+      log_warn("L4 monitor version read failed; retrying attach after reset pulse");
+
+      if (!AssertReset(false))
+      {
+        log_error("Monitor attach failed: retry reset assert failed");
+        LinkAdapt::Detach();
+        break;
+      }
+
+      std::this_thread::sleep_for(MS(20));
+
+      if (!reset_into_monitor("retry") ||
+          !Call(TAG_MONITORINFO, MONITORVERSION, &version))
+      {
+        log_error("couldn't fetch monitor version information");
+        LinkAdapt::Detach();
+        break;
+      }
     }
 
     log_debug("Monitor Version 0x%x", version);
@@ -1158,12 +1193,14 @@ void TagMonitor::Detach()
     }
   }
 
-  // Clear debug register bits. U3 firmware clears VC_CORERESET while handling
-  // MONITORSTOP; after that it may immediately return to low power, so avoid
-  // racing the target with best-effort debug-register cleanup from the host.
-  if (target_family == TargetFamily::STM32U3)
+  // Firmware clears monitor debug bits while handling MONITORSTOP; after that
+  // it may immediately return to low power, so avoid racing the target with
+  // best-effort debug-register cleanup from the host.
+  if ((target_family == TargetFamily::STM32U3) ||
+      (target_family == TargetFamily::STM32L4))
   {
-    log_debug("U3 monitor detach leaves post-stop debug cleanup to target firmware");
+    log_debug("%s monitor detach leaves post-stop debug cleanup to target firmware",
+              target_family_name(target_family));
   }
   else if (ReadDebug32(DEMCR, &demcr))
   {

@@ -48,6 +48,17 @@ void tagPressureDeviceBegin(const TagPressureDevice *device);
  * @param[in] device Pressure device descriptor.
  */
 void tagPressureDeviceEnd(const TagPressureDevice *device);
+
+/**
+ * @brief Optional tag hook after pressure-sensor power has been removed.
+ *
+ * @details Tags with switched pressure rails can use this hook to release or
+ *          bias communication pins that must not be driven while the sensor is
+ *          unpowered. The default implementation is a no-op.
+ *
+ * @param[in] device Pressure device descriptor that was just powered down.
+ */
+void tagPressureDeviceAfterPowerOff(const TagPressureDevice *device);
 /** @} */
 
 #endif

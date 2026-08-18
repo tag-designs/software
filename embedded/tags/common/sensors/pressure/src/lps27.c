@@ -11,6 +11,7 @@
 #include "rtc_api.h"
 #include "lps.h"
 #include "lps27hhw.h"
+#include "debug_log.h"
 #include "limits.h"
 
 enum LPS27_Reg
@@ -37,6 +38,27 @@ enum LPS27_Reg
  * bus so STOP waits during power-up and conversion leave the bus pins parked.
  * @{
  */
+/**
+ * @brief Apply LPS27 sensor power without opening the register bus.
+ *
+ * @param[in] device Pressure device descriptor.
+ */
+static void lps27_PowerOn(const TagPressureDevice *device)
+{
+  tagBusPowerOn(&device->registers->bus);
+}
+
+/**
+ * @brief Remove LPS27 sensor power and apply target-specific pin cleanup.
+ *
+ * @param[in] device Pressure device descriptor.
+ */
+static void lps27_PowerOff(const TagPressureDevice *device)
+{
+  tagBusPowerOff(&device->registers->bus);
+  tagPressureDeviceAfterPowerOff(device);
+}
+
 /**
  * @brief Write one or more LPS27 registers.
  *
@@ -111,7 +133,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
                           int16_t *temperature)
 {
  
-  uint8_t status;
+  uint8_t status = 0;
   uint8_t cmd[2];
 
   // default return values
@@ -119,7 +141,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   *pressure = SHRT_MIN;
   *temperature = SHRT_MIN;
 
-  tagBusPowerOn(&device->registers->bus);
+  lps27_PowerOn(device);
   stopMilliseconds(10); // 10ms power up
 
   // set BDU and configure one shot
@@ -152,7 +174,12 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
     lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
     lps27_GetReg(device, LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
   }
-  tagBusPowerOff(&device->registers->bus);
+  lps27_PowerOff(device);
+  if (status != 3)
+  {
+    debug_log_printf("lps27: sample status=0x%x pressure=%d temp=%d\r\n",
+                     status, *pressure, *temperature);
+  }
   return status == 3;
 }
 
@@ -167,13 +194,17 @@ bool lps27Test(const TagPressureDevice *device)
   uint8_t who;
   int16_t temperature,pressure;
   bool status;
-  tagBusPowerOn(&device->registers->bus);
+  lps27_PowerOn(device);
   stopMilliseconds(10);
   lps27_GetReg(device, LPS27_WHO_AM_I, &who, 1);
-  tagBusPowerOff(&device->registers->bus);
+  lps27_PowerOff(device);
   status = lps27GetPressureTemp(device, &pressure, &temperature);
 
-
+  if ((who != LPS27_WHO_AM_I_VALUE) || !status)
+  {
+    debug_log_printf("lps27: who=0x%x expected=0x%x status=%u\r\n",
+                     who, LPS27_WHO_AM_I_VALUE, status ? 1U : 0U);
+  }
   return (who == LPS27_WHO_AM_I_VALUE) && status;
 }
 /** @} */

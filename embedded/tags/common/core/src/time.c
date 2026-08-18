@@ -132,6 +132,31 @@ static inline void tagLptim1ClearCompareFlag(void)
 #endif
 }
 
+static inline void tagLptim1ClearPendingWake(void)
+{
+  uint32_t icr = 0;
+
+#if defined(LPTIM_ICR_CC1CF)
+  icr |= LPTIM_ICR_CC1CF;
+#elif defined(LPTIM_ICR_CMPMCF)
+  icr |= LPTIM_ICR_CMPMCF;
+#else
+  icr |= STM32_LPTIM_ICR_CMPMCF;
+#endif
+
+#if defined(LPTIM_ICR_ARRMCF)
+  icr |= LPTIM_ICR_ARRMCF;
+#elif defined(STM32_LPTIM_ICR_ARRMCF)
+  icr |= STM32_LPTIM_ICR_ARRMCF;
+#endif
+
+  LPTIM1->ICR = icr;
+
+#if defined(LPTIM1_IRQn)
+  NVIC_ClearPendingIRQ(LPTIM1_IRQn);
+#endif
+}
+
 /** @name RTC calendar conversion
  * Conversion helpers isolate the STM32 RTC calendar base from the Unix epoch
  * used by logs, monitor messages, and protobuf configuration.
@@ -437,6 +462,10 @@ void stopMilliseconds(unsigned int ms)
     // Enter Stop2 mode
 
     tagLptim1ClockEnable();
+    tagLptim1DisableCompareEvent();
+    tagLptim1DisableInterrupts();
+    LPTIM1->CR = 0;
+    tagLptim1ClearPendingWake();
     LPTIM1->CR = 1;
 
     // Set up compare,count registers

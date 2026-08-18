@@ -84,7 +84,7 @@ static const TagRegisterDevice lps_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_USART_INIT(
         TAG_USART2_SYNC_DEVICE_DEFAULTS,
-        //.cs = LINE_LPS_CS,
+        .cs = LINE_LPS_CS,
         .sck = LINE_LPS_SCK,
         .tx = LINE_LPS_TX,
         .rx = LINE_LPS_RX,
@@ -102,7 +102,7 @@ const TagPressureDevice tagBitPresTagPressureDevice = {
 const TagAdxl362Device tagBitPresTagAccelDevice = {
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS(LINE_ACCEL_CS),
-        .cs = LINE_ACCEL_CS,
+       // .cs = LINE_ACCEL_CS,
         .sck = LINE_ACCEL_SCK,
         .miso = LINE_ACCEL_MISO,
         .mosi = LINE_ACCEL_MOSI,
@@ -145,6 +145,7 @@ const TagAdxl362Device *tagAdxl362Device(void)
  */
 static void tagBitPresTagShutdownDevices(void)
 {
+  tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
   ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
   chThdSleepMilliseconds(2);
 }
@@ -160,6 +161,8 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
   switch (reason) {
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
+    if (state != RUNNING)
+      tagBitPresTagShutdownDevices();
     break;
 
   case TAG_DEVICE_POWER_BOOT_CLEANUP:
@@ -195,7 +198,7 @@ void tagDevicesApplyStandbyPins(void)
  */
 void tagDevicesDisableWakeupSources(void)
 {
-  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
+  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
 }
 
 /**
@@ -218,7 +221,9 @@ bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
     return is_active == palReadLine(LINE_WKUP1);
   }
 
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  if ((state == CONFIGURED) || (state == HIBERNATING))
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+
   return true;
 }
 

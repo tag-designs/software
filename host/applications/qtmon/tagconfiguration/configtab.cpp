@@ -156,6 +156,7 @@ void ConfigTab::Detach()
 
 void ConfigTab::StateUpdate(TagState state)
 {
+  old_state_ = state;
   {
     if (state == IDLE ) {
       if (schedule.isActive())
@@ -379,6 +380,11 @@ void ConfigTab::on_startButton_clicked()
     if (!tag->Start(config))
     {
       std::string message = tag->DebugMessage();
+      Status status;
+      if (tag->GetStatus(status))
+      {
+        old_state_ = status.state();
+      }
       QMessageBox startFailedBox;
       startFailedBox.setWindowTitle("Error");
       startFailedBox.setIcon(QMessageBox::Warning);
@@ -386,7 +392,7 @@ void ConfigTab::on_startButton_clicked()
       startFailedBox.setStandardButtons(QMessageBox::Ok);
       if (!message.empty())
       {
-        QString info = "The monitor reported a start error.";
+        QString info = QString::fromStdString(message);
         info += "\nLast known state: ";
         info += QString::fromStdString(TagState_Name(old_state_));
         startFailedBox.setInformativeText(info);

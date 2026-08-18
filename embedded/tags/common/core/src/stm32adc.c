@@ -125,6 +125,7 @@ void adc1Start(void) {
  */
 void adc1Stop(void) {
   adc_lld_stop_adc();
+  TAG_ADC_COMMON->CCR &= ~(ADC_CCR_VREFEN | ADC_CCR_TSEN);
   adc_lld_analog_off();
   adc_lld_vreg_off();
 #if defined(rccDisableADC123)

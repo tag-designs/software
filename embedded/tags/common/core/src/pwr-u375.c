@@ -374,7 +374,7 @@ static void tagPowerResetAfterStop3Wake(void)
 
 static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
 {
-  if ((sleepmode != STANDBY) || monitorIsAttached())
+  if (!tagPowerTerminalModeEntersStandby(sleepmode) || monitorIsAttached())
   {
     return;
   }
@@ -441,7 +441,7 @@ static void tagPowerResetSpi1BeforeStandby(void)
 static void tagPowerEnterStandby(enum Sleep sleepmode)
 {
 
-  if ((sleepmode != STANDBY) || isMonitorEnabled())
+  if (!tagPowerTerminalModeEntersStandby(sleepmode) || isMonitorEnabled())
   {
     return;
   }

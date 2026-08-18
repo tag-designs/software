@@ -411,8 +411,17 @@ void MainWindow::on_Detach_clicked()
 void MainWindow::on_syncButton_clicked()
 {
   if (!tag.SetRtc()) {
-    QMessageBox::warning(this,tr("Sync Failed"),
-                         tr("The tag did not accept the clock sync command."));
+    QMessageBox syncFailedBox;
+    syncFailedBox.setWindowTitle(tr("Sync Failed"));
+    syncFailedBox.setIcon(QMessageBox::Warning);
+    syncFailedBox.setText(tr("The tag did not accept the clock sync command."));
+    const std::string message = tag.DebugMessage();
+    if (!message.empty())
+    {
+      syncFailedBox.setInformativeText(QString::fromStdString(message));
+      syncFailedBox.setDetailedText(QString::fromStdString(message));
+    }
+    syncFailedBox.exec();
     return;
   }
   TriggerUpdate();

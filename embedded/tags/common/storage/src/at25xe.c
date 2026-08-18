@@ -23,7 +23,8 @@
 #define AT25XE_CMD_READ_ID         0x9F
 #define AT25XE_CMD_WRITE_ENABLE    0x06
 #define AT25XE_CMD_READ_STATUS_REG 0x05
-#define AT25XE_CMD_DEEP_POWER_DOWN 0x79
+#define AT25XE_CMD_DEEP_POWER_DOWN 0xB9
+#define AT25XE_CMD_ULTRA_DEEP_POWER_DOWN 0x79
 #define AT25XE_CMD_POWER_UP        0xAB
 #define AT25XE_CMD_RESET_ENABLE    0x66
 #define AT25XE_CMD_RESET_MEMORY    0x99
@@ -78,6 +79,7 @@ static void at25xeWake(const TagStorageDevice *dev)
 static void at25xeSleep(const TagStorageDevice *dev)
 {
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_DEEP_POWER_DOWN);
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_ULTRA_DEEP_POWER_DOWN);
     tagStorageBusEnd(dev);
 }
 
