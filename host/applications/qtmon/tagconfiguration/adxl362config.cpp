@@ -242,10 +242,10 @@ bool Adxl362Config::SetConfig(const Config &config,
     configbox_->setTitle("Activity Wakeup");
     act_thresh_label.setText("Wakeup Threshold");
     inactive_label.setText("Inactivity Samples");
-    act_thresh_->setRange(1.1, 1.5);
+    act_thresh_->setRange(0.2, 0.7);
     act_thresh_->setSingleStep(0.05);
     act_thresh_->setDecimals(2);
-    inactive_->setRange(1.0, 5.0);
+    inactive_->setRange(3.0, 12.0);
     inactive_->setSingleStep(1.0);
     inactive_->setDecimals(0);
     inactive_->setSuffix(" samples");

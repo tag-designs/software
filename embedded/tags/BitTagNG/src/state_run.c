@@ -216,6 +216,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     }
 
 
+    // Refresh the level used by terminal sleep entry after flash writes. The
+    // ADXL awake line may change while a header/page write is in progress.
+    checkActivitySensorAwake(&isActive);
+
     // update state
     //     we've "collected" all the bits since the lastactstart up to, but
     //     not including the current timestamp
@@ -225,5 +229,5 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = lastwrite;
     pState->lastwakeup = timestamp;
   }
-  return SHUTDOWN;
+  return STANDBY;
 }

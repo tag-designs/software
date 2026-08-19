@@ -363,7 +363,8 @@ static void tagPostStartupEvents(void)
 
   tagPowerClearWakeFlags();
 
-  if (pState->resetCause == resetStandby)
+  if ((pState->resetCause == resetStandby) ||
+      (pState->resetCause == resetShutdown))
     startup_events |= tagRtcCollectAndClearPendingEvents();
 
   if (startup_events != 0U)

@@ -21,6 +21,28 @@
   },
   "pins": {
     "GPIOA": {
+      "pin0": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin1": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
       "pin2": {
         "ID": "ACCEL_INT",
         "Type": "PushPull",
@@ -28,6 +50,17 @@
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Input",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin3": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
@@ -50,11 +83,10 @@
         "Level": "Low",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin6": {
         "ID": "ACCEL_MISO",
@@ -65,7 +97,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
         "ID": "ACCEL_MOSI",
@@ -73,11 +106,32 @@
         "Level": "Low",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
+      },
+      "pin8": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin9": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
       },
       "pin10": {
         "ID": "FLASH_nCS",
@@ -109,7 +163,7 @@
         "Level": "Low",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled",
@@ -150,6 +204,28 @@
       }
     },
     "GPIOB": {
+      "pin0": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin1": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
       "pin2": {
         "ID": "",
         "Type": "PushPull",
@@ -167,7 +243,7 @@
         "Level": "Low",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Output",
+        "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled",
@@ -178,6 +254,17 @@
         "Type": "PushPull",
         "Level": "High",
         "Speed": "Maximum",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
+      },
+      "pin5": {
+        "ID": "",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Analog",
         "Alternate": "0",
@@ -216,7 +303,7 @@
         "Level": "High",
         "Speed": "Maximum",
         "Resistor": "Floating",
-        "Mode": "Input",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"

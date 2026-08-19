@@ -174,19 +174,17 @@ void ADXL367_SoftwareResetDevice(const TagAdxl367Device *device)
 
 void ADXL367_DeinitDevice(const TagAdxl367Device *device)
 {
-  //const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
+  unsigned char status = 0;
 
   ADXL367_DeviceBegin(device);
   ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_POWER_CTL, 1);
-  //ADXL367_SoftwareResetDevice(device);
-  //chThdSleepMilliseconds(2);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_INTMAP1_LWR, 1);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_INTMAP1_UPPER, 1);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_INTMAP2_LWR, 1);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_INTMAP2_UPPER, 1);
+  ADXL367_SetRegisterValueDevice(device, 0, ADXL367_REG_ACT_INACT_CTL, 1);
+  ADXL367_GetRegisterValueDevice(device, &status, ADXL367_REG_STATUS, 1);
   ADXL367_DeviceEnd(device);
-
-  //palSetLine(spi->cs);
-  //palSetLineMode(spi->cs, PAL_MODE_OUTPUT_PUSHPULL);
-  //palSetLineMode(spi->sck, PAL_MODE_INPUT_ANALOG);
-  //palSetLineMode(spi->mosi, PAL_MODE_INPUT_ANALOG);
-  //palSetLineMode(spi->miso, PAL_MODE_INPUT_ANALOG);
 }
 
 void ADXL367_SetPowerModeDevice(const TagAdxl367Device *device,

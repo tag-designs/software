@@ -14,41 +14,26 @@
 #include "timekeeping.h"
 #include "app.h"
 
+#define ACT_COUNT 2
+
 #define DEFAULT_MODE(active, inactive) ((inactive << 2) | active)
 #define ABSOLUTE_DEFAULT_MODE                                                \
   DEFAULT_MODE(ADXL367_ACTIVITY_ENABLE, ADXL367_INACTIVITY_ENABLE)
 
+#define REFERENCED_ABSOLUTE_LOOP_MODE                                        \
+  (ADXL367_ACT_INACT_CTL_LINKLOOP(ADXL367_MODE_LOOP) |                       \
+   DEFAULT_MODE(ADXL367_REFERENCED_ACTIVITY_ENABLE, ADXL367_INACTIVITY_ENABLE))
+
 #define ADXL_SAMPLE_RATE ADXL367_ODR_12P5HZ
+#define ADXL_WAKEUP_RATE_6P25HZ 1u
+#define ADXL_TIMER_CTL_WAKEUP_RATE_SHIFT 6u
+#define ADXL_TIMER_CTL_WAKEUP_RATE(rate)                                    \
+  (((rate)&0x3u) << ADXL_TIMER_CTL_WAKEUP_RATE_SHIFT)
+#define ADXL_WAKEUP_TIMER_CTL                                                \
+  ADXL_TIMER_CTL_WAKEUP_RATE(ADXL_WAKEUP_RATE_6P25HZ)
 #define UINT16SWAP(x) (((x&0xff)<<8) | ((x>>8)&0xff))
 
 static bool activity_awake = false;
-static bool activity_wake_line_serviced = false;
-
-typedef enum {
-  ADXL367_ARMED_ACT,
-  ADXL367_ARMED_INACT,
-} Adxl367ArmedInterrupt;
-
-static Adxl367ArmedInterrupt activity_armed_interrupt = ADXL367_ARMED_ACT;
-
-static const char *armedInterruptName(void)
-{
-  return (activity_armed_interrupt == ADXL367_ARMED_INACT) ? "inact" : "act";
-}
-
-static void armActivityInterrupt(void)
-{
-  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP1_ACT,
-                                 ADXL367_REG_INTMAP1_LWR, 1);
-  activity_armed_interrupt = ADXL367_ARMED_ACT;
-}
-
-static void armInactivityInterrupt(void)
-{
-  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP1_INACT,
-                                 ADXL367_REG_INTMAP1_LWR, 1);
-  activity_armed_interrupt = ADXL367_ARMED_INACT;
-}
 
 static unsigned char readActivityStatus(void)
 {
@@ -56,29 +41,6 @@ static unsigned char readActivityStatus(void)
   ADXL367_GetRegisterValueDevice(TAG_ACCEL_DEVICE, &status,
                                  ADXL367_REG_STATUS, 1);
   return status;
-}
-
-static bool statusIndicatesAwake(unsigned char status)
-{
-  bool was_awake = activity_awake;
-
-  if (activity_awake) {
-    if (status & ADXL367_STATUS_INACT) {
-      activity_awake = false;
-    }
-  } else {
-    if (status & ADXL367_STATUS_ACT) {
-      activity_awake = true;
-    }
-  }
-  debug_log_printf("ADXL367 status 0x%02x armed %s awake %u->%u act %u inact %u\r\n",
-                   status,
-                   armedInterruptName(),
-                   was_awake ? 1 : 0,
-                   activity_awake ? 1 : 0,
-                   (status & ADXL367_STATUS_ACT) ? 1 : 0,
-                   (status & ADXL367_STATUS_INACT) ? 1 : 0);
-  return activity_awake;
 }
 
 /*
@@ -112,15 +74,16 @@ bool initActivitySensor(void)
   ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, UINT16SWAP(1100<<RANGE_SHIFT),
                                  ADXL367_REG_THRESH_INACT_H, 2);
 
-  // Enable independent activity and inactivity detection in default mode.
+  // Enable looped referenced activity and absolute inactivity detection.
 
-  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ABSOLUTE_DEFAULT_MODE,
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 REFERENCED_ABSOLUTE_LOOP_MODE,
                                  ADXL367_REG_ACT_INACT_CTL, 1);
 
 
-  // Timer control register: 6 samples/second.
+  // Timer control register: wakeup mode at 6.25 samples/second.
 
-  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 1<<6,
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL_WAKEUP_TIMER_CTL,
                                  ADXL367_REG_TIMER_CTL, 1);
 
   // Set inactivity timer.
@@ -129,7 +92,18 @@ bool initActivitySensor(void)
                                  UINT16SWAP(sconfig.adxl_inactive_samples),
                                  ADXL367_REG_TIME_INACT_H, 2);
 
-  // Start measurement mode with wakeup enabled
+  // Set the activity timer
+
+   ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 ACT_COUNT,
+                                 ADXL367_REG_TIME_ACT, 1);
+
+  // Route the ADXL367 awake state as a level signal for MCU wakeup.
+
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP1_AWAKE,
+                                 ADXL367_REG_INTMAP1_LWR, 1);
+
+  // Start measurement mode with wakeup enabled.
 
   ADXL367_SetRegisterValueDevice(
       TAG_ACCEL_DEVICE,
@@ -137,11 +111,8 @@ bool initActivitySensor(void)
           ADXL367_POWER_CTL_MEASURE(ADXL367_MEASURE_ON),
       ADXL367_REG_POWER_CTL, 1);
 
-  activity_awake = false;
-  activity_wake_line_serviced = false;
   (void)readActivityStatus();
-  armActivityInterrupt();
-  (void)readActivityStatus();
+  activity_awake = palReadLine(LINE_ACCEL_INT);
 
   ADXL367_DeviceEnd(TAG_ACCEL_DEVICE);
   return true;
@@ -152,36 +123,7 @@ bool checkActivitySensorAwake(bool *is_awake)
   if (is_awake == NULL)
     return false;
 
-  if (!palReadLine(LINE_ACCEL_INT)) {
-    activity_wake_line_serviced = false;
-    *is_awake = activity_awake;
-    return true;
-  }
-
-  if (activity_wake_line_serviced) {
-    *is_awake = activity_awake;
-    return true;
-  }
-
-  activity_wake_line_serviced = true;
-
-  ADXL367_DeviceBegin(TAG_ACCEL_DEVICE);
-
-  unsigned char status = readActivityStatus();
-  bool awake = statusIndicatesAwake(status);
-
-  if (awake) {
-    armInactivityInterrupt();
-  } else {
-    armActivityInterrupt();
-  }
-
-  (void)readActivityStatus();
-  if (!palReadLine(LINE_ACCEL_INT)) {
-    activity_wake_line_serviced = false;
-  }
-  ADXL367_DeviceEnd(TAG_ACCEL_DEVICE);
-
-  *is_awake = awake;
+  activity_awake = palReadLine(LINE_ACCEL_INT);
+  *is_awake = activity_awake;
   return true;
 }

@@ -64,7 +64,7 @@ const TagAdxl367Device tagBitTagNGAccelDevice = {
         .mosi = LINE_ACCEL_MOSI,
         .pwr = TAG_NO_LINE,
         .dummy = 0xff,
-        .sleep_policy = TAG_SPI_SLEEP_SAFE_IDLE),
+        .sleep_policy = TAG_SPI_SLEEP_FLOAT),
 };
 
 static const TagTestCase tag_tests[] =
@@ -119,21 +119,24 @@ void tagDevicesApplyStandbyPins(void)
 
 void tagDevicesDisableWakeupSources(void)
 {
-  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT);
+  CLEAR_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
 }
 
 bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 {
-  (void)is_active;
+  if (is_active)
+    SET_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
+  else
+    CLEAR_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
 
-  CLEAR_BIT(PWR->CR4, TAG_ACCEL_WAKEUP_POLARITY_BIT);
   if (state == TagState_RUNNING) {
-    bool accel_int = palReadLine(LINE_ACCEL_INT);
     SET_BIT(PWR->CR3, TAG_ACCEL_WAKEUP_ENABLE_BIT | PWR_CR3_EIWF_Msk);
-    return !accel_int;
+    return is_active == palReadLine(LINE_ACCEL_INT);
   }
 
-  SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+  if ((state == TagState_CONFIGURED) || (state == TagState_HIBERNATING))
+    SET_BIT(PWR->CR3, PWR_CR3_EIWF_Msk);
+
   return true;
 }
 
