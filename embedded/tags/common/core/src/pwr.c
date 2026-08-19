@@ -43,12 +43,8 @@
 #define TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF 0
 #endif
 
-#if !defined(TAG_SHUTDOWN_ENTERS_STANDBY)
-#if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
-#define TAG_SHUTDOWN_ENTERS_STANDBY 0
-#else
-#define TAG_SHUTDOWN_ENTERS_STANDBY 1
-#endif
+#if defined(TAG_SHUTDOWN_ENTERS_STANDBY)
+#error "TAG_SHUTDOWN_ENTERS_STANDBY is retired; return STANDBY or SHUTDOWN explicitly from the state handler."
 #endif
 
 #ifndef TAG_HALT_ON_EXCEPTION_WHEN_MONCONNECTED
@@ -192,34 +188,22 @@ void rtcOff(void)
  * @brief Report whether a terminal sleep request should enter standby.
  *
  * @param[in] sleepmode State-machine terminal sleep request.
- * @return true when the target maps the requested terminal mode to standby.
+ * @return true when the request is explicitly @c STANDBY.
  */
 static inline bool tagPowerTerminalModeEntersStandby(enum Sleep sleepmode)
 {
-  if (sleepmode == STANDBY)
-  {
-    return true;
-  }
-
-#if TAG_SHUTDOWN_ENTERS_STANDBY
-  if (sleepmode == SHUTDOWN)
-  {
-    return true;
-  }
-#endif
-
-  return false;
+  return sleepmode == STANDBY;
 }
 
 /**
  * @brief Report whether a terminal sleep request should enter shutdown.
  *
  * @param[in] sleepmode State-machine terminal sleep request.
- * @return true when the target maps the requested terminal mode to shutdown.
+ * @return true when the request is explicitly @c SHUTDOWN.
  */
 static inline bool tagPowerTerminalModeEntersShutdown(enum Sleep sleepmode)
 {
-  return (sleepmode == SHUTDOWN) && !TAG_SHUTDOWN_ENTERS_STANDBY;
+  return sleepmode == SHUTDOWN;
 }
 
 /**

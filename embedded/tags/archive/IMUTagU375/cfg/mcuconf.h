@@ -79,7 +79,7 @@
  *
  * STM32U3 has MSIRC0 at 96 MHz and MSIRC1 at 24 MHz rather than the STM32L4
  * MSI range table. IMUTagU375 uses MSI as SYSCLK with no HSE/HSI/PLL system
- * clock, keeping the same low-power clocking intent as IMUTagBreakout.
+ * clock, keeping the same low-power clocking intent as the IMUTag family.
  */
 #define STM32_HSI16_ENABLED                 FALSE
 #define STM32_HSIKERON_ENABLED              FALSE

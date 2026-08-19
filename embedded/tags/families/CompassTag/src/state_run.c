@@ -241,5 +241,5 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = lastwrite;
     //pState->lastwakeup = timestamp;
   }
-  return SHUTDOWN;
+  return STANDBY;
 }

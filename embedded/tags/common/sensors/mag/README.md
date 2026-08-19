@@ -49,7 +49,7 @@ uses a different active level or drive mode, change the tag's
 
 ## Current User
 
-`IMUTagbmm350` binds BMM350 on the same swapped software-I2C bus as the RV3028
-RTC and uses PA4 / `LINE_IMU_TRG_TEST` as the INT/DRDY input. The monitor test
-table still maps this to the legacy `RUN_MMC5633` request until the protobuf
-test enum grows a BMM350-specific request/result.
+`IMUTagNand` binds BMM350 through the IMUTag family descriptor table using the
+U375 hardware-I2C bus and the board-provided `LINE_BMM_INT` data-ready input.
+The monitor test table still maps this to the legacy `RUN_MMC5633` request
+until the protobuf test enum grows a BMM350-specific request/result.

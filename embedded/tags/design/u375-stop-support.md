@@ -60,7 +60,7 @@ acts on `STANDBY`; the stop values are consumed by target-specific idle hooks.
 
 ## U375 Idle Hooks
 
-`IMUTagU3bmm350` and `IMUTagNand` apply `idlePowerMode`.
+`IMUTagNand` applies `idlePowerMode`.
 
 Their `chconf.h` files wire the ChibiOS idle hooks to:
 
@@ -96,10 +96,11 @@ measurements so PA1 and PA2 are not driven by the idle path.
 
 After each state-machine pass, the common main loop uses `godown(sleepmode)`
 for terminal low-power requests. While the state is `TagState_RUNNING`, it then
-sets the returned-idle selector around the blocking event wait:
+uses the sleep mode returned by the state handler as the returned-idle selector
+around the blocking event wait:
 
 ```c
-idlePowerMode = TAG_RUNNING_IDLE_POWER_MODE;
+idlePowerMode = sleepmode;
 wait_events = EVT_HARDWARE_ALL;
 if (isMonitorEnabled())
     wait_events |= EVT_MONITOR_ALL;
@@ -107,20 +108,19 @@ pending_events = chEvtWaitAny(wait_events);
 idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
 ```
 
-The default common policy is `TAG_RUNNING_IDLE_POWER_MODE=STOP2` during the
-RUNNING wait and `TAG_DEFAULT_IDLE_POWER_MODE=SLEEP` outside scoped runtime
-waits.
+RUNNING-state power policy therefore belongs in the relevant `Running()`
+procedure. `TAG_DEFAULT_IDLE_POWER_MODE=SLEEP` remains the default outside
+scoped runtime waits.
 
 STOP0 and STOP1 were both evaluated as default idle modes for `IMUTagNand`.
 The measured power difference was negligible, while the extra STOP transitions
 raised reliability concerns, so the target keeps Sleep as its default idle mode.
 
-Only targets with idle hooks act on this. On `IMUTagU3bmm350` and
-`IMUTagNand`, this means the idle thread can enter the selected returned STOP
-mode while the main thread is blocked waiting for hardware events. Monitor
-events are included in the wait set only when `isMonitorEnabled()` is already
-true; in that case the idle hook returns without WFI so the monitor/debug path
-stays responsive.
+Only targets with idle hooks act on this. On `IMUTagNand`, this means the idle
+thread can enter the selected returned STOP mode while the main thread is
+blocked waiting for hardware events. Monitor events are included in the wait
+set only when `isMonitorEnabled()` is already true; in that case the idle hook
+returns without WFI so the monitor/debug path stays responsive.
 
 The wake model is event-driven. The IMU FIFO watermark and other hardware
 events are expected to wake the main thread through the existing event path.
@@ -224,35 +224,20 @@ During ordinary debugger use, `monitorIsAttached()` may be false. Debug pins or
 logic-analyzer lines used in `power_modes.c` are only bring-up aids and are not
 part of the low-power contract.
 
-## Current Target Split
-
-`IMUTagU3bmm350`:
-
-- Uses the U375 board and STM32U3 runtime.
-- Installs idle hooks.
-- Applies `idlePowerMode` in `power_modes.c`.
-- Uses STOP2 for ordinary blocked idle.
-- Uses STOP1 around external flash payload writes.
-- Uses STOP0 around selected SPI receive waits.
+## Current Target Behavior
 
 `IMUTagNand`:
 
 - Shares the STM32U3 core support and build settings.
 - Installs idle hooks.
 - Applies `idlePowerMode` in `power_modes.c`.
-- Uses STOP2 during the RUNNING event wait.
+- Uses the mode returned by the IMUTag family `Running()` procedure during
+  RUNNING event waits.
 - Uses Sleep as the default idle mode outside scoped waits.
 - Uses STOP1 around external flash payload writes.
 - Uses STOP0 around selected SPI receive waits.
 - Disables idle-hook diagnostic pin drives unless `TAG_IDLE_STOP_DIAGNOSTICS`
   is enabled.
-
-`IMUTagU375`:
-
-- Shares the STM32U3 core support and build settings.
-- Does not currently install the same `power_modes.c` idle hook implementation.
-- Therefore sees the shared `idlePowerMode` variable but does not act on it
-  unless equivalent hooks are added.
 
 STM32L4 targets such as `PresTag`:
 
@@ -263,10 +248,7 @@ STM32L4 targets such as `PresTag`:
 
 ## Validation Notes
 
-The implementation has been build-checked on:
-
-- `IMUTagU3bmm350`
-- `IMUTagNand`
+The implementation has been build-checked on `IMUTagNand`.
 
 Hardware validation should focus on:
 

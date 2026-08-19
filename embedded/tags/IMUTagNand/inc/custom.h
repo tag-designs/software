@@ -67,9 +67,8 @@
 /** @name Sensor line aliases and conversion constants
  * Board-level wake lines and sample scale constants used by local code.
  *
- * Maintainer note: this target keeps the U3 firmware path from
- * IMUTagU3bmm350, but uses the generated IMUTagNandv1 board pin names and the
- * GD5F SPI-NAND storage module.
+ * Maintainer note: this target uses the generated IMUTagNandv1 board pin names
+ * and the GD5F SPI-NAND storage module.
  * @{
  */
 #define LINE_RTC_SDA LINE_SDA

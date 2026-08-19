@@ -13,5 +13,4 @@ Start with the [Developer Design Index](reference/design/index.md), then use the
 - [Tag Monitor Interface](reference/embedded/tags/design/monitor_interface.md)
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
-- [NAND Log Architecture](reference/embedded/tags/IMUTagBreakout/design/nand-log-architecture.md)
 - [SensorViz Roadmap](reference/host/applications/sensorviz/design/roadmap.md)

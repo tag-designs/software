@@ -1,6 +1,6 @@
 /**
  * @file lps22hh_test.c
- * @brief IMUTagBreakout LPS22HH self-test hook.
+ * @brief LPS22HH self-test hook.
  * @author tag firmware authors
  * @date 2026-05-23
  */

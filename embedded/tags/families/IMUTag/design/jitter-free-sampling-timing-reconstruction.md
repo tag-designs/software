@@ -454,10 +454,7 @@ change should be the LPTIM prescaler field; ARR/CMP continue to use the same
 Files:
 
 - `embedded/tags/families/IMUTag/cfg/mcuconf.h`
-- `embedded/tags/IMUTagBreakout/cfg/mcuconf.h`
 - `embedded/tags/IMUTagNand/cfg/mcuconf.h`
-- `embedded/tags/IMUTagU375/cfg/mcuconf.h`
-- `embedded/tags/IMUTagU3bmm350/cfg/mcuconf.h`
 
 The 1024 Hz reconstruction work itself does not require an RTC configuration
 change. Active IMUTag variants can continue to use the existing 1024 Hz divided
@@ -483,8 +480,6 @@ Files:
 - `embedded/tags/common/rtc/inc/rtc_api.h`
 - `embedded/tags/common/rtc/src/rtc_rv3028.c`
 - `embedded/tags/common/rtc/src/hal_rtc_lld.c`
-- `embedded/tags/IMUTagU375/src/hal_rtc_lld.c`
-- `embedded/tags/IMUTagU3bmm350/src/hal_rtc_lld.c`
 
 The RV-3028 CLKOUT selection already maps a prescaler product of 32768 to
 `RV3028_CLKOUT_VAL = 0`, selecting the direct 32.768 kHz output. Add comments
@@ -513,8 +508,6 @@ Files:
   safely in `time.c`:
   - `embedded/tags/common/rtc/src/hal_rtc_lld.c`
   - `embedded/tags/IMUTagNand/src/hal_rtc_lld.c`
-  - `embedded/tags/IMUTagU375/src/hal_rtc_lld.c`
-  - `embedded/tags/IMUTagU3bmm350/src/hal_rtc_lld.c`
 
 Add a helper that reads epoch seconds plus raw RTC subsecond ticks before the
 HAL normalizes the counter to integer milliseconds. The helper should preserve
@@ -944,8 +937,8 @@ Cross-tag isolation:
 
 ## Open Decisions
 
-- Whether the rollout should include the L432 `IMUTagBreakout` target or only
-  currently active STM32U3 IMUTag targets.
+- Whether archived L432 IMUTag variants should remain historical only during
+  rollout.
 - Whether the smooth direct-RV3028 phase should ship with the conservative
   `PRESA/PRESS = 32/1024` setting for all active STM32U3 IMUTag variants.
 - Whether to store only major reconstruction headers or every downloaded page

@@ -612,7 +612,7 @@ const TagTestCase *tagTestCases(size_t *count)
 
 #if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 /**
- * @brief Return the IMUTagBreakout AK09940A descriptor.
+ * @brief Return the IMUTag AK09940A descriptor.
  *
  * @return Magnetometer register descriptor used by shared AK09940A code.
  */
@@ -623,7 +623,7 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 #endif
 
 /**
- * @brief Apply IMUTagBreakout device power policy for a lifecycle phase.
+ * @brief Apply IMUTag device power policy for a lifecycle phase.
  *
  * @param[in] reason Common lifecycle phase that is quiescing the devices.
  * @param[in] state Current state-machine state.
@@ -654,7 +654,7 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
 }
 
 /**
- * @brief Prepare IMUTagBreakout devices before entering standby.
+ * @brief Prepare IMUTag devices before entering standby.
  *
  * @param[in] state Current state-machine state.
  */
@@ -667,7 +667,7 @@ void tagDevicesPrepareStandby(uint32_t state)
 }
 
 /**
- * @brief Deinitialize IMUTagBreakout-owned device resources.
+ * @brief Deinitialize IMUTag-owned device resources.
  */
 void tagDevicesDeinit(void)
 {

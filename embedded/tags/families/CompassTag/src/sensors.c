@@ -247,7 +247,7 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
     // shutdown sensors
     deinitSensors();
     pState->state = TagState_IDLE;
-    return SHUTDOWN;
+    return STANDBY;
   }
 
   if (t == T_INIT)
@@ -257,13 +257,13 @@ enum Sleep Calibrating(enum StateTrans t, State_Event reason)
     pState->state = TagState_CALIBRATE;
   }
   if (monitorIsAttached())
-    return SHUTDOWN;
+    return STANDBY;
   else
   {
     // shutdown sensors
     deinitSensors();
     pState->state = TagState_IDLE;
-    return SHUTDOWN;
+    return STANDBY;
   }
 }
 

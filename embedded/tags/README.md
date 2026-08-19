@@ -117,8 +117,7 @@ Current hook examples:
 - `tag_test_rtc()` lives with the RV-3028 RTC module.
 - `tag_test_external_flash()` lives with the external-flash support code.
 - `tag_test_lis2du12()` lives with the CompassTag family LIS2DU12 code.
-- `tag_test_lps22hh()` lives in `IMUTagBreakout/src` until the pressure module
-  grows a generic concrete LPS22HH test.
+- `tag_test_lps22hh()` lives with the common LPS22HH pressure module.
 - `tag_test_ak09940a()` lives with the common AK09940A module and takes the
   magnetometer descriptor from each tag or family test table.
 

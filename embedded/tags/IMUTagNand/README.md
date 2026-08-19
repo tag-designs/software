@@ -1,10 +1,9 @@
 # IMUTagNand Maintainer Notes
 
-`IMUTagNand` is the STM32U375/Cortex-M33 NAND build derived from
-`IMUTagU3bmm350`. It keeps the U375 RTCv3 shim, Stop1 support, BMM350
-magnetometer, LSM6DSV16X IMU, and LPS22HH pressure sensor runtime shape from
-that target, but uses the generated `IMUTagNandv1` board files and replaces the
-MX25U12843 SPI NOR storage module with the GD5F SPI-NAND storage module.
+`IMUTagNand` is the STM32U375/Cortex-M33 NAND build for the active IMUTag
+family. It combines the U375 RTCv3 shim, Stop1 support, BMM350 magnetometer,
+LSM6DSV16X IMU, LPS22HH pressure sensor, generated `IMUTagNandv1` board files,
+and the GD5F SPI-NAND storage module.
 
 ## Hardware Shape
 
@@ -42,5 +41,5 @@ sensor_imu_lsm6dsv16x
 
 The target includes `../families/IMUTag/family.mk`, so shared application
 sources come from `embedded/tags/families/IMUTag/src`. The local
-`src/hal_rtc_lld.c` and `src/power_modes.c` are inherited from the U375/BMM350
-target shape.
+`src/hal_rtc_lld.c` and `src/power_modes.c` provide the U375 RTC shim and
+idle-hook implementation for this target.

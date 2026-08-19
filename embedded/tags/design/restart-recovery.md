@@ -96,13 +96,12 @@ Approximate active-target external flash capacities:
 | `CompassTag` | MX25R | 4 MiB | 4096-byte sectors, 1024 sectors. |
 | `CompassTagAT25` | AT25XE | 4 MiB | 4096-byte sectors, 1024 sectors. |
 | `CompassTagAT25Breakout` | AT25XE | 4 MiB | 4096-byte sectors, 1024 sectors. |
-| `IMUTagBreakout` | MX25L | 16 MiB | Capacity comes from `EXT_FLASH_SIZE`. |
+| `IMUTagNand` | GD5F SPI-NAND | 128 MiB raw | 1004 logical 128 KiB blocks after bad-block reserve. |
 
 External-flash capacity is usually not the limiting factor for current log
 download. For example, 4 MiB flash can hold many thousands of current PresTag,
-BitPresTag, or CompassTag log pages, and IMUTagBreakout can hold 8192 current
-2048-byte pages. The internal trailing header space normally limits complete
-anchored downloads before external flash fills.
+BitPresTag, or CompassTag log pages. The internal trailing header space normally
+limits complete anchored downloads before external flash fills.
 
 The current number of complete internal-header pages needed to fill external
 flash is:
@@ -115,11 +114,12 @@ flash is:
 | `CompassTag` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
 | `CompassTagAT25Breakout` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
 | `CompassTagAT25` | 500 B | 4 MiB | 8,388 | 304 | 8,389 |
-| `IMUTagBreakout` | 2,048 B | 16 MiB | 8,192 | 0 | 8,193 |
 
 `BitTag` has no external flash. For 256 KiB internal flash builds, external
-flash fills first for `PresTag`, the CompassTag variants, and IMUTagBreakout.
-The internal `vddHeader` region fills first for the BitPresTag variants.
+flash fills first for `PresTag` and the CompassTag variants. The internal
+`vddHeader` region fills first for the BitPresTag variants. U375 IMUTag targets
+use a different checkpoint and NAND/SPI-NOR accounting model and are documented
+with the IMUTag family.
 
 Current linked `vddHeader` limits from
 `/Users/geobrown/Build/tag-designs/software-embedded-clean`, with
@@ -133,7 +133,6 @@ Current linked `vddHeader` limits from
 | `CompassTag` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
 | `CompassTagAT25Breakout` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
 | `CompassTagAT25` | `0x08009a58` | 8 B | `0x08040000` | 27,829 |
-| `IMUTagBreakout` | `0x0800b1f0` | 8 B | `0x08040000` | 27,074 |
 | `BitTag` | `0x08007268` | 16 B | `0x08040000` | 14,553 |
 
 For a 128 KiB build, assuming similar code layout and
@@ -147,26 +146,10 @@ For a 128 KiB build, assuming similar code layout and
 | `CompassTag` | 11,701 |
 | `CompassTagAT25Breakout` | 11,701 |
 | `CompassTagAT25` | 11,445 |
-| `IMUTagBreakout` | 10,690 |
 | `BitTag` | 6,361 |
 
 `BitTag` uses a 16-byte internal data header; the other current active targets
 listed above use 8-byte `t_DataHeader` records.
-
-## IMUTag Erase Accounting
-
-For IMUTagBreakout, one valid internal `t_DataHeader` corresponds to one
-external log page:
-
-```c
-DATALOG_SAMPLES * sizeof(t_DataLog) == 16 * 128 == 2048 bytes
-```
-
-`restoreLog()` scans checked-readable internal headers and sets:
-
-- `pState->pages` / `Status.internal_data_count` to the valid header count;
-- `pState->external_blocks` / `Status.external_data_count` to
-  `pState->pages * DATALOG_SAMPLES`.
 
 `eraseExternal()` depends on reset calling `restoreLog()` first. It erases
 `pState->pages * 2048`, rounded up to external flash sectors. It does not probe

@@ -46,16 +46,8 @@ directory that owns the code; the developer portal stages those files under
 
 ## Embedded Tag Targets
 
-- [IMUTag Device Driver Plan](reference/embedded/tags/IMUTag/design/device-driver-plan.md)
-- [IMUTag Flash Management](reference/embedded/tags/IMUTag/design/flashmanagement.md)
-- [IMUTag Log Format](reference/embedded/tags/IMUTag/design/log-format.md)
-- [IMUTagBreakout Idle State](reference/embedded/tags/IMUTagBreakout/design/idle_state.md)
-- [IMUTagBreakout NAND Log Architecture](reference/embedded/tags/IMUTagBreakout/design/nand-log-architecture.md)
-- [IMUTagBreakout Performance Notes](reference/embedded/tags/IMUTagBreakout/design/performance-notes.md)
 - [IMUTagNand](reference/embedded/tags/IMUTagNand/README.md)
 - [IMUTagNand TODO](reference/embedded/tags/IMUTagNand/todo.md)
-- [IMUTagU3bmm350](reference/embedded/tags/IMUTagU3bmm350/README.md)
-- [IMUTagbmm350](reference/embedded/tags/IMUTagbmm350/README.md)
 - [CompassTagAT25Breakout Notes](reference/embedded/tags/CompassTagAT25Breakout/design/notes.md)
 
 ## Embedded Tag Families

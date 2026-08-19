@@ -413,7 +413,7 @@ static ImuBlockStatus sampleAndLogDataPage(void)
 }
 
 /**
- * @brief Handle the IMUTagBreakout data-acquisition state.
+ * @brief Handle the IMUTag family data-acquisition state.
  *
  * @param[in] t State transition phase.
  * @param[in] reason Reason for entering or continuing the state.

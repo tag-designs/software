@@ -201,10 +201,10 @@ The accelerometer self-test field is `CTRL10.ST_XL[1:0]`, the low two bits of
 `CTRL10`. The gyro self-test field is separate and is not used by this driver
 path.
 
-## IMUTagBreakout Binding
+## IMUTag Binding
 
-`IMUTagBreakout` selects the `sensor_imu_lsm6dsv16x` module and exports
-`TAG_IMU_DEVICE` from `embedded/tags/IMUTagBreakout/src/devices.c`.
+Active IMUTag family targets select the `sensor_imu_lsm6dsv16x` module and
+export `TAG_IMU_DEVICE` from `embedded/tags/families/IMUTag/src/devices.c`.
 
 The IMU shares the tag's normal register-device infrastructure. The descriptor
 is the single source of truth for mixed or shared wiring, so the common driver

@@ -26,7 +26,7 @@ repository-root/
 │   └── ...
 ├── embedded/
 │   └── tags/
-│       └── IMUTagBreakout/
+│       └── IMUTagNand/
 │           └── inc/datalog.h    <-- Embedded-only log implementation
 └── host/
     └── libraries/

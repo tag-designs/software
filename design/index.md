@@ -30,7 +30,6 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 
 *   [**IMUTag Jitter-Free Sampling Timing Strategy**](../embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md): Plan for smooth RV-3028-derived sampling, STM32 RTC real-time correction, and downloadable metadata for corrected timing reconstruction.
 *   [**IMU Design Assumptions**](../embedded/tags/common/sensors/imu/design/assumptions.md): Synchronized FIFO sampling, LSM6 time-slot pairings, and environmental sensor sparse sampling.
-*   [**IMU Performance Notes**](../embedded/tags/IMUTagBreakout/design/performance-notes.md): Tag-specific timing analysis, FIFO limits, and bandwidth profiling.
 *   [**CompassTag Breakout Design Notes**](../embedded/tags/CompassTagAT25Breakout/design/notes.md): Board layout, power domains, SPI bus layout, and calibration preservation.
 
 ---
