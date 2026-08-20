@@ -16,6 +16,25 @@
 
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
 
+/**
+ * @brief LPTIM1 counter frequency used by the STM32L432 stop-delay path.
+ */
+#if !defined(TAG_STOP_LPTIM_HZ)
+#define TAG_STOP_LPTIM_HZ 1024U
+#endif
+
+/**
+ * @brief LPTIM1 configuration used before arming the one-shot stop delay.
+ */
+#if !defined(TAG_STOP_LPTIM_CFGR)
+#define TAG_STOP_LPTIM_CFGR 0U
+#endif
+
+/**
+ * @brief Maximum delay count representable by the 16-bit LPTIM ARR register.
+ */
+#define TAG_STOP_LPTIM_MAX_TICKS 0xFFFFU
+
 #if !defined(USE_STOP1)
 #define USE_STOP1 0
 #endif
@@ -78,16 +97,46 @@ static inline void tagLptim1ClockDisable(void)
 #endif
 }
 
-static inline void tagLptim1SetCompare(uint32_t compare)
+/**
+ * @brief Convert milliseconds to stop-delay LPTIM ticks without waking early.
+ *
+ * @param[in] ms Delay interval in milliseconds.
+ * @return Ceiling-rounded LPTIM tick count at TAG_STOP_LPTIM_HZ.
+ */
+static inline uint64_t tagStopMillisecondsToLptimTicks(unsigned int ms)
 {
-#if defined(LPTIM_CCR1_CCR1)
-  LPTIM1->CCR1 = compare;
+  return (((uint64_t)ms) * TAG_STOP_LPTIM_HZ + 999U) / 1000U;
+}
+
+/**
+ * @brief Return the vendor-header-specific ARR match status bit.
+ *
+ * @return Bit mask to test in LPTIM1->ISR.
+ */
+static inline uint32_t tagLptim1ArrMatchFlag(void)
+{
+#if defined(LPTIM_ISR_ARRM)
+  return LPTIM_ISR_ARRM;
 #else
-  LPTIM1->CMP = compare;
+  return STM32_LPTIM_ISR_ARRM;
 #endif
 }
 
-static inline void tagLptim1EnableCompareEvent(void)
+/**
+ * @brief Return the vendor-header-specific ARR update synchronization bit.
+ *
+ * @return Bit mask to test in LPTIM1->ISR.
+ */
+static inline uint32_t tagLptim1ArrOkFlag(void)
+{
+#if defined(LPTIM_ISR_ARROK)
+  return LPTIM_ISR_ARROK;
+#else
+  return STM32_LPTIM_ISR_ARROK;
+#endif
+}
+
+static inline void tagLptim1EnableWakeEvent(void)
 {
 #if defined(EXTI_EMR2_EM32)
   EXTI->EMR2 |= STM32_EXT_LPTIM1_LINE;
@@ -96,7 +145,7 @@ static inline void tagLptim1EnableCompareEvent(void)
 #endif
 }
 
-static inline void tagLptim1DisableCompareEvent(void)
+static inline void tagLptim1DisableWakeEvent(void)
 {
 #if defined(EXTI_EMR2_EM32)
   EXTI->EMR2 &= ~STM32_EXT_LPTIM1_LINE;
@@ -105,30 +154,39 @@ static inline void tagLptim1DisableCompareEvent(void)
 #endif
 }
 
-static inline void tagLptim1EnableCompareInterrupt(void)
+static inline void tagLptim1EnableArrMatchInterrupt(void)
 {
-#if defined(LPTIM_DIER_CC1IE)
-  LPTIM1->DIER = LPTIM_DIER_CC1IE;
+#if defined(LPTIM_DIER_ARRMIE)
+  LPTIM1->DIER = LPTIM_DIER_ARRMIE;
 #else
-  LPTIM1->IER = STM32_LPTIM_IER_CMPMIE;
+  LPTIM1->IER = STM32_LPTIM_IER_ARRMIE;
 #endif
 }
 
 static inline void tagLptim1DisableInterrupts(void)
 {
-#if defined(LPTIM_DIER_CC1IE)
+#if defined(LPTIM_DIER_ARRMIE)
   LPTIM1->DIER = 0;
 #else
   LPTIM1->IER = 0;
 #endif
 }
 
-static inline void tagLptim1ClearCompareFlag(void)
+static inline void tagLptim1ClearArrMatchFlag(void)
 {
-#if defined(LPTIM_ICR_CC1CF)
-  LPTIM1->ICR = LPTIM_ICR_CC1CF;
+#if defined(LPTIM_ICR_ARRMCF)
+  LPTIM1->ICR = LPTIM_ICR_ARRMCF;
 #else
-  LPTIM1->ICR = STM32_LPTIM_ICR_CMPMCF;
+  LPTIM1->ICR = STM32_LPTIM_ICR_ARRMCF;
+#endif
+}
+
+static inline void tagLptim1ClearArrOkFlag(void)
+{
+#if defined(LPTIM_ICR_ARROKCF)
+  LPTIM1->ICR = LPTIM_ICR_ARROKCF;
+#else
+  LPTIM1->ICR = STM32_LPTIM_ICR_ARROKCF;
 #endif
 }
 
@@ -148,6 +206,12 @@ static inline void tagLptim1ClearPendingWake(void)
   icr |= LPTIM_ICR_ARRMCF;
 #elif defined(STM32_LPTIM_ICR_ARRMCF)
   icr |= STM32_LPTIM_ICR_ARRMCF;
+#endif
+
+#if defined(LPTIM_ICR_ARROKCF)
+  icr |= LPTIM_ICR_ARROKCF;
+#elif defined(STM32_LPTIM_ICR_ARROKCF)
+  icr |= STM32_LPTIM_ICR_ARROKCF;
 #endif
 
   LPTIM1->ICR = icr;
@@ -451,36 +515,53 @@ void stopMilliseconds(unsigned int ms)
 #if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
   chThdSleepMilliseconds(ms);
 #else
+  if (ms == 0U)
+  {
+    return;
+  }
+
   if (monitorIsAttached())
   {
     chThdSleepMilliseconds(ms);
   }
   else
   {
+    const uint64_t ticks = tagStopMillisecondsToLptimTicks(ms);
+
+    chDbgAssert(ticks <= TAG_STOP_LPTIM_MAX_TICKS,
+                "stopMilliseconds interval exceeds LPTIM range");
+    if (ticks > TAG_STOP_LPTIM_MAX_TICKS)
+    {
+      chThdSleepMilliseconds(ms);
+      return;
+    }
+
     tagDisableActiveBusesForStop();
-    // enable lptim1
-    // Enter Stop2 mode
 
     tagLptim1ClockEnable();
-    tagLptim1DisableCompareEvent();
+    tagLptim1DisableWakeEvent();
     tagLptim1DisableInterrupts();
+
+    /* Disabling LPTIM1 resets the counter; CNT is read-only on this part. */
     LPTIM1->CR = 0;
     tagLptim1ClearPendingWake();
-    LPTIM1->CR = 1;
 
-    // Set up compare,count registers
-    LPTIM1->ARR = ms*STM32_RTC_PRESA_VALUE + 1;
-    tagLptim1SetCompare(ms*STM32_RTC_PRESA_VALUE);
-    LPTIM1->CNT = 0;  // reset counter
+    /* CFGR fields are write-protected while ENABLE is set. */
+    LPTIM1->CFGR = TAG_STOP_LPTIM_CFGR;
+    LPTIM1->CR = STM32_LPTIM_CR_ENABLE;
 
-    tagLptim1EnableCompareEvent();
+    /*
+     * Use ARR as the one-shot terminal count.  Clear ARROK before writing so
+     * the synchronization wait cannot be satisfied by a stale update flag.
+     */
+    tagLptim1ClearArrOkFlag();
+    LPTIM1->ARR = (uint32_t)ticks;
+    while ((LPTIM1->ISR & tagLptim1ArrOkFlag()) == 0U) { }
+    tagLptim1ClearArrOkFlag();
 
-    // enable interrupts
-
-    tagLptim1EnableCompareInterrupt();
-    LPTIM1->CFGR = 0;
-
-    // Start the counter in single mode
+    tagLptim1ClearArrMatchFlag();
+    tagLptim1EnableWakeEvent();
+    tagLptim1EnableArrMatchInterrupt();
 
     LPTIM1->CR |= STM32_LPTIM_CR_SNGSTRT;
 
@@ -492,13 +573,18 @@ void stopMilliseconds(unsigned int ms)
     SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
     __SEV();
     __WFE();
-    __WFE();
+
+    /* WFE can return for unrelated events; only ARRM completes this delay. */
+    while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
+    {
+      __WFE();
+    }
 
     // disable lptim and interrupt
 
-    tagLptim1DisableCompareEvent();
+    tagLptim1DisableWakeEvent();
     tagLptim1DisableInterrupts();
-    tagLptim1ClearCompareFlag();
+    tagLptim1ClearArrMatchFlag();
     LPTIM1->CR = 0;
     tagLptim1ClockDisable();
     CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));

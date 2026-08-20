@@ -70,6 +70,7 @@ set(
   "embedded/tags/common/core/README.md"
   "embedded/tags/common/core/i2c-backend-model.md"
   "embedded/tags/common/core/design/lptim-system-timer.md"
+  "embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md"
   "embedded/tags/common/modules/README.md"
   "embedded/tags/common/rtc/README.md"
   "embedded/tags/common/sensors/README.md"

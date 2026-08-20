@@ -46,6 +46,9 @@ active tags unless a tag provides a same-named local override.
 - `design/lptim-system-timer.md`: design note for an opt-in ChibiOS ST
   low-level driver backed by STM32 LPTIM3/LPTIM4, plus a lower-risk Sleep-mode
   fallback when timer alarms are active.
+- `design/stop-milliseconds-lptim-arr-delay.md`: proposed cleanup for the
+  STM32L432 `stopMilliseconds()` LPTIM1 one-shot delay path, replacing compare
+  match with autoreload match and adding synchronization/wake robustness.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
