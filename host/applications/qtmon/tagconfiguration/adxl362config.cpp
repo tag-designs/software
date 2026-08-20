@@ -204,6 +204,8 @@ bool Adxl362Config::SetConfig(const Config &config,
 
   isAdxl375 = adxl.accel_type() == Adxl362_AdxlType_AdxlType_367;
   isBitTagNG = config.tag_type() == TagType::BITTAGNG;
+  isBitTagLe = config.tag_type() == TagType::BITTAG_LE;
+  usesWakeSampleConfig = isBitTagLe || config.tag_type() == TagType::BITPRESTAG;
 
   // initialize all widgets default visibility
 
@@ -233,7 +235,7 @@ bool Adxl362Config::SetConfig(const Config &config,
     on_adxlrange_clicked((int)adxl.range());
 
   if (!visibility_.adxl362_range)
-    on_adxlrange_clicked(Adxl362_Rng_R2G);
+    on_adxlrange_clicked(usesWakeSampleConfig ? Adxl362_Rng_R4G : Adxl362_Rng_R2G);
   if (!visibility_.adxl362_freq)
     on_adxlfreq_clicked(Adxl362_Odr_S12_5);
 
@@ -251,6 +253,22 @@ bool Adxl362Config::SetConfig(const Config &config,
     inactive_->setSuffix(" samples");
     act_thresh_->setToolTip("ADXL367 wake-up threshold in g");
     inactive_->setToolTip("Samples below inactivity threshold at 6 Hz");
+  }
+  else if (usesWakeSampleConfig)
+  {
+    configbox_->setTitle("Activity Wakeup");
+    act_thresh_label.setText("Active Threshold");
+    inact_thresh_label.setText("Inactive Threshold");
+    inactive_label.setText("Inactivity Samples");
+    act_thresh_->setDecimals(2);
+    inact_thresh_->setDecimals(2);
+    inactive_->setRange(1.0, 255.0);
+    inactive_->setSingleStep(1.0);
+    inactive_->setDecimals(0);
+    inactive_->setSuffix(" samples");
+    act_thresh_->setToolTip("ADXL362 wake-up active threshold in g");
+    inact_thresh_->setToolTip("ADXL362 wake-up inactive threshold in g");
+    inactive_->setToolTip("Samples below inactive threshold at 6 Hz");
   }
   else
   {

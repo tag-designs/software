@@ -30,7 +30,9 @@ Schedule Tab has controls to define when data collection should begin and when i
 The contents of the "Sensor" tab are also dependent upon the tag type.
  ![Tag Monitor Configure Tag](../images/TagMonitor3.png)
 
-The BitTag has a single sensor -- the adxl362 accelerometer.  The sensor tag provides access to all of the configuration parameters for this sensor.  The most important parameters are for activity detection.  They define the acceleration thresholds (in units of g) for detecting the presence or absence of activity and the length of inactivity before the tag considers the most recent active period to have ended.  The other parameters define the acceleration sensitivity (the total range), the sample rate, and the intenal antialiasing filter bandwidth.  It is unlikely that most experimenter will need to vary these parameters.
+The BitTag has a single sensor -- the adxl362 accelerometer.  Older BitTag firmware exposes all configuration parameters for this sensor.  The most important parameters are for activity detection.  They define the acceleration thresholds (in units of g) for detecting the presence or absence of activity and the length of inactivity before the tag considers the most recent active period to have ended.  The other parameters define the acceleration sensitivity (the total range), the sample rate, and the internal antialiasing filter bandwidth.  It is unlikely that most experimenters will need to vary these parameters.
+
+BitTag low-energy firmware and BitPresTag hide the ADXL362 range, sample rate, and filter because wake-mode operation fixes those values in firmware.  Their sensor tab still exposes the active threshold, inactive threshold, and inactivity count.  In these wake-mode configurations, "Inactivity Samples" is a sample count at the accelerometer wake-mode rate, not a duration in seconds, despite the historical protobuf field name `inactive_sec`.
 
 The final "Error Log", not illustrated, provides an edit window to receive error messages and a way to save this error log to a file.  In the event of unexpected behavior, it is good to examine these messages for clues about the root cause.
 

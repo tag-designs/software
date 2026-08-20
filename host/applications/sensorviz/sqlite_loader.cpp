@@ -244,6 +244,9 @@ QString displayNameForTag(const QString &tag_type)
     if (tag_type.compare("BITTAG", Qt::CaseInsensitive) == 0) {
         return "BitTag";
     }
+    if (tag_type.compare("BITTAG_LE", Qt::CaseInsensitive) == 0) {
+        return "BitTag LE";
+    }
     if (tag_type.compare("BITPRESTAG", Qt::CaseInsensitive) == 0) {
         return "BitPresTag";
     }

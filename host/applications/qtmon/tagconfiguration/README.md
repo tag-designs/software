@@ -107,12 +107,21 @@ labels but not a new wire format. The module may adapt labels, suffixes, ranges,
 and tooltips using `Config.tag_type()` or a sensor selector field, while still
 writing the same protobuf fields.
 
-BitTagNG is the current example. It uses an ADXL367 in wake-up mode but reuses
+BitTagNG is one example. It uses an ADXL367 in wake-up mode but reuses
 `Config.adxl362`:
 
 - `adxl362.act_thresh_g` is the absolute ADXL367 wake-up threshold in g.
 - `adxl362.inactive_sec` is interpreted by BitTagNG firmware as an inactivity
   sample count at 6 Hz, despite the historical field name.
+
+BitTag low-energy firmware (`BITTAG_LE`) and BitPresTag also use wake-mode
+activity detection with the existing ADXL362 protobuf fields:
+
+- `adxl362.act_thresh_g` and `adxl362.inact_thresh_g` remain thresholds in g.
+- `adxl362.inactive_sec` is interpreted as an inactivity sample count at the
+  wake-mode sample rate, not as seconds.
+- ADXL362 range, output data rate, and anti-alias filter are fixed by firmware
+  and are intentionally hidden from the QtMonitor sensor UI.
 
 Document any such semantic overload in both the QtMonitor module and the tag
 firmware conversion code.

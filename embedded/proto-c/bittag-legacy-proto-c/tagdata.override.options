@@ -1,0 +1,4 @@
+Config.adxl362 type:FT_STATIC
+Adxl362 skip_message:false
+BitTagLog skip_message:false
+BitTagData skip_message:false

@@ -122,7 +122,7 @@ public:
         if (!insertInfo("tagtype", TagType_Name(config.tag_type()))) {
             return false;
         }
-        if (config.tag_type() == BITTAG
+        if ((config.tag_type() == BITTAG || config.tag_type() == BITTAG_LE)
             && !insertInfo("bittag_log", BitTagLogFmt_Name(config.bittag_log()))) {
             return false;
         }
@@ -262,6 +262,7 @@ public:
         WriterContext context = writerContext();
         switch (config_.tag_type()) {
         case BITTAG:
+        case BITTAG_LE:
             if (!ack.has_bittag_data_log()) {
                 return 0;
             }

@@ -446,6 +446,7 @@ int TextTagLogWriter::writeTextLog(const Ack &log)
   switch (config_.tag_type())
   {
   case BITTAG:
+  case BITTAG_LE:
     if (log.has_bittag_data_log())
     {
       return dumpTagLog(out, log.bittag_data_log(),

@@ -8,7 +8,7 @@
 
 /* Stored Configuration */
 
-#define TAG_TYPE BITTAG
+#define TAG_TYPE BITTAG_LE
 
 typedef struct {
   int32_t start_epoch;

@@ -56,6 +56,8 @@ private:
 
     bool isAdxl375 = false;
     bool isBitTagNG = false;
+    bool isBitTagLe = false;
+    bool usesWakeSampleConfig = false;
     ConfigFieldVisibility visibility_;
     
 };

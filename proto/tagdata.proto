@@ -3,6 +3,7 @@ syntax = "proto3";
 enum TagType {
   TAG_UNSPECIFIED = 0;
   BITTAG = 1;
+  BITTAG_LE = 2;
   PRESTAG = 3;
   BITTAGNG = 7;
   BITPRESTAG = 8;
