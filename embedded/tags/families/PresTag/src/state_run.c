@@ -16,6 +16,10 @@
 #include "devices.h"
 #include "lps27hhw.h"
 
+#ifndef PRESTAG_RUNNING_LONG_SLEEP_MODE
+#define PRESTAG_RUNNING_LONG_SLEEP_MODE STANDBY
+#endif
+
 /**
  * @brief Handle the PresTag data-acquisition state.
  *
@@ -116,7 +120,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       if ((pState->external_blocks % (DATALOG_SAMPLES)) == 0)
       {
-        
         dataheader.epoch = timestamp;
         dataheader.vdd100[0] = pState->vdd100;
         dataheader.vdd100[1] = pState->temp10;
@@ -167,5 +170,5 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   if (sconfig.lps_period < 10)
     return STOP2;
   else
-    return STANDBY;
+    return PRESTAG_RUNNING_LONG_SLEEP_MODE;
 }

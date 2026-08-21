@@ -95,8 +95,9 @@ const TagTestCase *tagTestCases(size_t *count)
  *
  * @details The LPS rail is switched off in inactive sleep states, so the SPI
  *          signal pins must not be driven above the unpowered sensor rail.
- *          Leaving the communication pins in analog mode keeps them floating
- *          for Shutdown while LPS_PWR is driven low before entry.
+ *          Leaving the communication pins in analog mode removes active GPIO
+ *          drive; standby pull policy can still bias selected nets low during
+ *          the low-power interval.
  */
 static void tagPresTagReleasePressurePins(void)
 {
@@ -127,6 +128,12 @@ static void tagPresTagPrepareStandbyDevices(uint32_t state)
   tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
 }
 
+static void tagPresTagReleaseDebugPins(void)
+{
+  palSetLineMode(LINE_SWDIO, PAL_MODE_INPUT_ANALOG);
+  palSetLineMode(LINE_SWCLK, PAL_MODE_INPUT_ANALOG);
+}
+
 /**
  * @brief Apply PresTag device power policy for a lifecycle phase.
  *
@@ -138,6 +145,7 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
   switch (reason) {
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
     tagPresTagPrepareStandbyDevices(state);
+    tagPresTagReleaseDebugPins();
     if (state != RUNNING)
       tagPresTagShutdownDevices();
     break;
@@ -175,6 +183,11 @@ void tagDevicesDeinit(void)
 void tagDevicesApplyStandbyPins(void)
 {
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
+  tagEnableStandbyPulldown(LINE_FLASH_MISO);
+  tagEnableStandbyPulldown(LINE_LPS_SCK);
+  tagEnableStandbyPulldown(LINE_LPS_MISO);
+  tagEnableStandbyPulldown(LINE_LPS_MOSI);
+  tagEnableStandbyPulldown(LINE_LPS_PWR);
 }
 
 /**

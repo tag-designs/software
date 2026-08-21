@@ -32,6 +32,18 @@ enum LPS27_Reg
 #define LPS27_CTRL_REG2_LOW_NOISE_EN (1 << 1)
 #define LPS27_CTRL_REG2_IF_ADD_INC (1 << 4)
 
+#ifndef LPS27_POWERUP_MS
+#define LPS27_POWERUP_MS 10U
+#endif
+
+#ifndef LPS27_READY_POLL_MS
+#define LPS27_READY_POLL_MS 15U
+#endif
+
+#ifndef LPS27_READY_POLLS
+#define LPS27_READY_POLLS 6
+#endif
+
 /** @name LPS27 register helpers
  * Register helpers keep the one-shot sampling path independent of the concrete
  * bus used by the pressure device descriptor. Each access opens and closes the
@@ -135,6 +147,10 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
  
   uint8_t status = 0;
   uint8_t cmd[2];
+  struct {
+    int16_t pressure;
+    int16_t temperature;
+  } sample;
 
   // default return values
 
@@ -142,7 +158,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   *temperature = SHRT_MIN;
 
   lps27_PowerOn(device);
-  stopMilliseconds(10); // 10ms power up
+  stopMilliseconds(LPS27_POWERUP_MS);
 
   // set BDU and configure one shot
 
@@ -162,8 +178,8 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
     
   // wait for data
 
-  for (int i = 0; i < 6; i++) {
-    stopMilliseconds(15);
+  for (int i = 0; i < LPS27_READY_POLLS; i++) {
+    stopMilliseconds(LPS27_READY_POLL_MS);
     lps27_GetReg(device, LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)
       break;
@@ -171,8 +187,10 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   
   if (status == 3) // don't capture if overrun
   {
-    lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *) pressure, 2);
-    lps27_GetReg(device, LPS27_TEMP_OUT_L, (uint8_t *) temperature, 2);
+    lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *)&sample,
+                 sizeof(sample));
+    *pressure = sample.pressure;
+    *temperature = sample.temperature;
   }
   lps27_PowerOff(device);
   if (status != 3)
