@@ -580,6 +580,8 @@ void MainWindow::on_tagLogSaveButton_clicked()
   timer.stop();
   ui.datadownloadgroupBox->setEnabled(false);
   connect(download_thread,&QThread::finished,this,[this,restart_status_timer]() {
+    ui.datadownloadgroupBox->setEnabled(tag.IsAttached() &&
+                                        isDownloadableState(current_state));
     if (restart_status_timer && tag.IsAttached()) {
       timer.start(400);
       TriggerUpdate();
