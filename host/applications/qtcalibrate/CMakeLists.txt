@@ -41,6 +41,12 @@ qt_add_executable(
 
 target_include_directories(qtcalibrate PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
+# Documentation automation is usually launched from the build tree, but replay
+# fixtures and generated MkDocs images live in the source tree. Compile the
+# source root into qtcalibrate so relative CLI paths can be resolved reliably.
+target_compile_definitions(
+  qtcalibrate PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+
 # qtcalibrate embeds the shared sensorui QML compass and 3D attitude widgets.
 set_property(
   TARGET qtcalibrate

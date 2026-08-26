@@ -1,4 +1,6 @@
 #include <QApplication>
+#include <QCommandLineOption>
+#include <QCommandLineParser>
 #include <QString>
 
 #include <QMainWindow>
@@ -98,6 +100,82 @@ int main(int argc, char *argv[])
 
   qInstallMessageHandler(myMessageOutput);
   QApplication a(argc, argv);
+  QCommandLineParser parser;
+  parser.setApplicationDescription("Tag calibration tool");
+  parser.addHelpOption();
+
+  // These options are intentionally hidden in the maintainer workflow rather
+  // than the normal UI. They let documentation builds open the real
+  // qtcalibrate window, feed it archived calibration data as a fake tag, and
+  // capture stable screenshots without requiring hardware on the build host.
+  parser.addOption(QCommandLineOption(
+      "replay-capture",
+      "Load a qtcalibrate sample capture JSON file instead of attaching to USB.",
+      "path"));
+  parser.addOption(QCommandLineOption(
+      "replay-percent",
+      "Prefill the replayed calibration collection to a percentage from 0 to 100.",
+      "percent"));
+  parser.addOption(QCommandLineOption(
+      "capture-replay-screenshots",
+      "Generate replay milestone screenshots and exit. Requires --replay-capture."));
+  parser.addOption(QCommandLineOption(
+      "capture-orientation-screenshot",
+      "Generate an orientation screenshot from replay data and exit. Requires --replay-capture."));
+  parser.addOption(QCommandLineOption(
+      "orientation-pose",
+      "Pose for orientation screenshots as heading,pitch,roll,dip,field,gravity.",
+      "values"));
+  parser.addOption(QCommandLineOption(
+      "capture-startup-screenshot",
+      "Generate the disconnected startup screenshot and exit without attaching."));
+  parser.addOption(QCommandLineOption(
+      "no-auto-attach",
+      "Open the app without probing USB tag bases."));
+  parser.addOption(QCommandLineOption(
+      "screenshot-dir",
+      "Directory for generated screenshots. Defaults to host/docs/src/images.",
+      "dir"));
+  parser.addOption(QCommandLineOption(
+      "screenshot-prefix",
+      "Filename prefix for replay milestone screenshots.",
+      "prefix",
+      "qtcalibrate-collection"));
+  parser.process(a);
+
+  MainWindowOptions options;
+  options.replayCapturePath = parser.value("replay-capture");
+  if (parser.isSet("replay-percent")) {
+    bool ok = false;
+    const int percent = parser.value("replay-percent").toInt(&ok);
+    if (ok) {
+      options.replayPercent = qBound(0, percent, 100);
+    }
+  }
+  options.captureReplayScreenshots = parser.isSet("capture-replay-screenshots");
+  options.captureOrientationScreenshot =
+      parser.isSet("capture-orientation-screenshot");
+  options.captureStartupScreenshot = parser.isSet("capture-startup-screenshot");
+  options.skipAutoAttach =
+      parser.isSet("no-auto-attach") || options.captureStartupScreenshot;
+  if (parser.isSet("orientation-pose")) {
+    const QStringList values = parser.value("orientation-pose").split(',');
+    if (values.size() == 6) {
+      for (const QString &value : values) {
+        bool ok = false;
+        const float number = value.trimmed().toFloat(&ok);
+        if (ok) {
+          options.orientationPose.append(number);
+        } else {
+          options.orientationPose.clear();
+          break;
+        }
+      }
+    }
+  }
+  options.screenshotDir = parser.value("screenshot-dir");
+  options.screenshotPrefix = parser.value("screenshot-prefix");
+
   HostStyle::apply(a);
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;
@@ -109,7 +187,18 @@ int main(int argc, char *argv[])
   log_set_level(log_level);
   log_add_callback(log_log_callback, nullptr, LOG_TRACE);
 
-  MainWindow w;
+  MainWindow w(options);
   w.show();
+  if (w.shouldQuitAfterStartup()) {
+    // Screenshot slots run after the first event-loop turn so Qt has created
+    // native window resources and loaded the embedded QML views.
+    if (options.captureStartupScreenshot) {
+      QTimer::singleShot(600, &w, &MainWindow::captureStartupScreenshot);
+    } else if (options.captureOrientationScreenshot) {
+      QTimer::singleShot(900, &w, &MainWindow::captureOrientationScreenshot);
+    } else {
+      QTimer::singleShot(600, &w, &MainWindow::captureReplayScreenshots);
+    }
+  }
   return a.exec();
 }

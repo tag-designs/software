@@ -7,7 +7,14 @@ Store guide images in `docs/src/images/`.
 Use short, stable names that identify the app and screen:
 
 - `qtprogram-main-window.png`
+- `qtcalibrate-startup.png`
 - `qtcalibrate-collection.png`
+- `qtcalibrate-collection-000.png`
+- `qtcalibrate-collection-025.png`
+- `qtcalibrate-collection-050.png`
+- `qtcalibrate-collection-100.png`
+- `qtcalibrate-orientation-forward.png`
+- `qtcalibrate-orientation-backward.png`
 - `qtmonitor-live-view.png`
 - `btdataviz-plot-view.png`
 - `sensorviz-compass-view.png`

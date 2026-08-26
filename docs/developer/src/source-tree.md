@@ -66,6 +66,7 @@ directory that owns the code; the developer portal stages those files under
 ## Host
 
 - [Host Overview](reference/host/README.md)
+- [Host User Guide Screenshot Automation](reference/host/docs/design/screenshot-automation.md)
 - [Applications](reference/host/applications/README.md)
 - [Command Line](reference/host/commandline/README.md)
 - [Common Host Code](reference/host/common/README.md)

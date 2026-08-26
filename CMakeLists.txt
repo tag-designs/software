@@ -97,6 +97,7 @@ set(
   "embedded/tags/families/IMUTag/design/internal-header-checkpoints.md"
   "embedded/tags/families/PresTag/README.md"
   "host/README.md"
+  "host/docs/design/screenshot-automation.md"
   "host/applications/README.md"
   "host/applications/compviz/README.md"
   "host/applications/qtcalibrate/README.md"

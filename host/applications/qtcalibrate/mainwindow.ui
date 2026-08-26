@@ -534,12 +534,13 @@
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <addaction name="actionSave_Calibration"/>
-    <addaction name="actionRead_Data_File"/>
-   </widget>
+   <property name="title">
+    <string>File</string>
+   </property>
+   <addaction name="actionSave_Calibration"/>
+   <addaction name="actionSave_Sample_Capture"/>
+   <addaction name="actionRead_Data_File"/>
+  </widget>
    <addaction name="menuFile"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
@@ -554,6 +555,14 @@
   <action name="actionSave_Calibration">
    <property name="text">
     <string>Save Calibration</string>
+   </property>
+  </action>
+  <action name="actionSave_Sample_Capture">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Save Sample Capture</string>
    </property>
   </action>
   <action name="actionRead_Data_File">

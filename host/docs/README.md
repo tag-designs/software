@@ -66,3 +66,8 @@ Markdown source files live in `host/docs/src/`. Images should go in
 ```md
 ![Qt Program main window](../images/qtprogram-main-window.png)
 ```
+
+Developer design notes for the host documentation workflow live in
+`host/docs/design/`. Start with
+[`design/screenshot-automation.md`](design/screenshot-automation.md) for the
+planned Qt application screenshot and annotation pipeline.
