@@ -1,4 +1,7 @@
-See [Documentation](https://geoffreymbrown.github.io/ultralight-tags/) to explore this project and for complete build instructions.
+See the [repository documentation](https://tag-designs.github.io/software/) for
+host/user guides, developer notes, and generated API references. The broader
+[external project page](https://geoffreymbrown.github.io/ultralight-tags/)
+remains available for project-level documentation.
 
 
 # Overview
