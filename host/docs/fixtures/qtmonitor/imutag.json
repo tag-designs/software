@@ -1,0 +1,57 @@
+{
+  "schema": "tag-designs.qtmonitor.fake-tag.v1",
+  "id": "imutag",
+  "label": "IMUTag",
+  "captured_at_utc": "2026-08-27T12:05:32Z",
+  "info": {
+ "tag_type": "IMUTAG",
+ "board_desc": "IMUTagNand",
+ "uuid": "00303143433650090049002E",
+ "intflashsz": "1024",
+ "extflashsz": "131596288",
+ "firmware": "IMUTagNand, Firmware version 1",
+ "gitrepo": "git@github.com:tag-designs/software.git",
+ "githash": "c068ed9",
+ "source_path": "/embedded/tags/IMUTagNand",
+ "build_time": "Aug 16 2026 : 14:31:00",
+ "qtmonitor_min_version": 2,
+ "flash_blocks": 0,
+ "accelconstant": 0.976,
+ "magconstant": 0.01,
+ "ppm_clock_error": -3.81469727
+}
+,
+  "config": {
+    "source": "captured-default",
+    "fallback_ref": "embedded/proto-c/imutag-proto-c/default-config.json",
+    "value": {
+ "tag_type": "IMUTAG",
+ "hibernate": [],
+ "bittag_log": "BITTAG_UNSPECIFIED",
+ "period": 0,
+ "lsm6": {
+  "odr": "S100",
+  "accel_rng": "R4G",
+  "gyro_rng": "R1000dps"
+ },
+ "start_delay": 1
+}
+
+  },
+  "voltage": 1.800,
+  "statuses": {
+    "idle": {
+ "millis": "1787832332064",
+ "state": "IDLE",
+ "test_status": "ALL_PASSED",
+ "internal_data_count": 0,
+ "external_data_count": 0,
+ "voltage": 1.8,
+ "temperature": 0,
+ "sectors_erased": 0,
+ "erase_sectors_total_plus_one": 1,
+ "debug_message": ""
+}
+
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema": "tag-designs.qtmonitor.fake-tag.v1",
+  "id": "bittag",
+  "label": "BitTag",
+  "notes": "Synthetic classic BitTag fixture derived from the BitTag LE capture and the legacy BitTag default configuration.",
+  "captured_at_utc": "2026-08-27T12:01:09Z",
+  "info": {
+    "tag_type": "BITTAG",
+    "board_desc": "BitTag V6",
+    "uuid": "2039354D30315012005E0068",
+    "intflashsz": "256",
+    "extflashsz": "0",
+    "firmware": "BitTag V6, Firmware version 2",
+    "gitrepo": "git@github.com:tag-designs/software.git",
+    "githash": "f2a82b5",
+    "source_path": "/embedded/tags/BitTag",
+    "build_time": "Aug 22 2026 : 10:43:49",
+    "qtmonitor_min_version": 1.5,
+    "flash_blocks": 0,
+    "accelconstant": 0,
+    "magconstant": 0,
+    "ppm_clock_error": 0
+  },
+  "config": {
+    "source": "fallback-default",
+    "fallback_ref": "embedded/proto-c/bittag-legacy-proto-c/default-config.json",
+    "value": {
+      "tag_type": "BITTAG",
+      "active_interval": {
+        "start_epoch": 0,
+        "end_epoch": 2147483647
+      },
+      "hibernate": [
+        {
+          "start_epoch": 0,
+          "end_epoch": 0
+        },
+        {
+          "start_epoch": 0,
+          "end_epoch": 0
+        }
+      ],
+      "bittag_log": "BITTAG_BITSPERFIVEMIN",
+      "adxl362": {
+        "range": "R4G",
+        "freq": "S50",
+        "filter": "AAquarter",
+        "act_thresh_g": 0.5,
+        "inact_thresh_g": 0.5,
+        "inactive_sec": 0.5
+      }
+    }
+  },
+  "voltage": 3.280,
+  "statuses": {
+    "idle": {
+      "millis": "1787832069582",
+      "state": "IDLE",
+      "test_status": "ALL_PASSED",
+      "internal_data_count": 0,
+      "external_data_count": 0,
+      "voltage": 3.3,
+      "temperature": 26,
+      "sectors_erased": 0,
+      "erase_sectors_total_plus_one": 0,
+      "debug_message": ""
+    }
+  }
+}

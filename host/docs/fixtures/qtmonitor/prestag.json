@@ -1,0 +1,65 @@
+{
+  "schema": "tag-designs.qtmonitor.fake-tag.v1",
+  "id": "prestag",
+  "label": "PresTag",
+  "captured_at_utc": "2026-08-27T12:03:04Z",
+  "info": {
+ "tag_type": "PRESTAG",
+ "board_desc": "PresTagv3",
+ "uuid": "203330503641500400530062",
+ "intflashsz": "256",
+ "extflashsz": "4194304",
+ "firmware": "PresTagv4, Firmware version 1",
+ "gitrepo": "git@github.com:tag-designs/software.git",
+ "githash": "acd3167",
+ "source_path": "/embedded/tags/PresTag",
+ "build_time": "Aug 21 2026 : 14:47:08",
+ "qtmonitor_min_version": 2,
+ "flash_blocks": 0,
+ "accelconstant": 0,
+ "magconstant": 0,
+ "ppm_clock_error": 1.90734863
+}
+,
+  "config": {
+    "source": "captured-default",
+    "fallback_ref": "embedded/proto-c/prestag-proto-c/default-config.json",
+    "value": {
+ "tag_type": "PRESTAG",
+ "active_interval": {
+  "start_epoch": 0,
+  "end_epoch": 2147483647
+ },
+ "hibernate": [
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  },
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  }
+ ],
+ "bittag_log": "BITTAG_UNSPECIFIED",
+ "period": 60,
+ "start_delay": 0
+}
+
+  },
+  "voltage": 3.290,
+  "statuses": {
+    "idle": {
+ "millis": "1787832184439",
+ "state": "IDLE",
+ "test_status": "ALL_PASSED",
+ "internal_data_count": 0,
+ "external_data_count": 0,
+ "voltage": 3.3,
+ "temperature": 27.3000011,
+ "sectors_erased": 0,
+ "erase_sectors_total_plus_one": 1,
+ "debug_message": ""
+}
+
+  }
+}

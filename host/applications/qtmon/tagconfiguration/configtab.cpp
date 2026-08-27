@@ -72,6 +72,11 @@ ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
   layout->addWidget(&lsm);
   layout->addStretch(1);
   ui.sensorTab->setLayout(layout);
+  // SetConfig() reveals active sensor modules; before then, keep the default
+  // sensor widgets out of the tab widget's startup size hint.
+  adxl.setVisible(false);
+  lsm.setVisible(false);
+  UpdateSensorTabVisibility();
   //index = addTab(&sensorTab,"Sensors");
   //setTabToolTip(index,"Configure Sensors");
   //StateUpdate(STATE_UNSPECIFIED);

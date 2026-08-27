@@ -68,7 +68,7 @@ LogWindow::~LogWindow(){
  */
 QSize LogWindow::sizeHint() const
 {
-    return QSize(700, 520);
+    return QSize(700, 460);
 }
 
 /**
@@ -78,7 +78,7 @@ QSize LogWindow::sizeHint() const
  */
 QSize LogWindow::minimumSizeHint() const
 {
-    return QSize(520, 360);
+    return QSize(520, 320);
 }
 
 bool LogWindow::Attach(Tag &tag){return true;}

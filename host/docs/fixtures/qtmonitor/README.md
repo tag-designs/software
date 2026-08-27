@@ -86,6 +86,12 @@ The `config.value` object is protobuf JSON from `GetConfig()`. The
 is not available or when maintainers want to compare hardware defaults against
 source-controlled defaults.
 
+Use `"source": "fallback-default"` for a fixture whose configuration was built
+from the checked-in default instead of captured from the attached hardware. This
+is useful for classic or historical tag variants when a closely related tag can
+provide representative identity/status fields but the configuration UI should
+show a different default tag type.
+
 ## Screenshot Replay
 
 `qtmonitor` can replay one fixture directly for documentation screenshots:

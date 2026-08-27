@@ -19,7 +19,16 @@ Use short, stable names that identify the app and screen:
 - `qtmonitor-main-idle.png`
 - `qtmonitor-main-running.png`
 - `qtmonitor-main-finished.png`
+- `qtmonitor-config-bittag-schedule.png`
+- `qtmonitor-config-bittag-sensors.png`
+- `qtmonitor-config-bittag-le-schedule.png`
+- `qtmonitor-config-bittag-le-sensors.png`
+- `qtmonitor-config-bitprestag-schedule.png`
+- `qtmonitor-config-bitprestag-sensors.png`
 - `qtmonitor-config-compasstag-schedule.png`
+- `qtmonitor-config-imutag-schedule.png`
+- `qtmonitor-config-imutag-sensors.png`
+- `qtmonitor-config-prestag-schedule.png`
 - `qtmonitor-error-log.png`
 - `btdataviz-plot-view.png`
 - `sensorviz-compass-view.png`

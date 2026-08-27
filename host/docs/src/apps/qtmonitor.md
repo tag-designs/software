@@ -1,57 +1,160 @@
 # Tag Monitor
 
-Use Tag Monitor to connect to a tag or base station and inspect live messages.
+Tag Monitor connects to a tag through a USB base and shows the information
+needed to prepare, check, run, and recover a data logging experiment. Use it to
+verify the tag identity and firmware, synchronize the tag clock, run self-tests,
+edit the tag configuration, start logging, download finished data, and inspect
+error messages.
 
-## Connect to a Device
+## BitTag Walkthrough
 
-1. Connect a tag base with an installed tag to the computer via USB
-2. Open the qtmonitor app
+The examples in this section use a classic BitTag so the main screens are
+consistent. Other tag types use the same Tag State and Error Log screens; only
+the Configuration tab changes by tag family.
 
-The tag monitor, illustrated in the following figure, has three tabs -- "Tag State", "Configure", and "Error Log"
- ![Tag Monitor opening screen](../images/qtmonitor-startup.png)
+### Opening Screen
 
-The initial tab is "Tag State."  This tab has five regions -- "Status", "Control," "Tag Attach," "Tag Information," and "Tag Data" (grayed out in the
-current state).  This tab, like the "Configure" tab, is modal -- only the currently relevant controls and state are active.  For example, there are greyed out controls on the 
-Tag State tab to "Stop" (a configured or running tag), to "Erase" (a stopped tag), and to "Save" the data from a stopped tag.
+When Tag Monitor opens with no tag attached, the Tag State tab is visible but
+most tag-dependent fields and controls are inactive. Connect a base with an
+installed tag, then press **Attach** if the application did not attach
+automatically.
 
-The "Status" region gives the current state of the tag ("IDLE"), the current error of the tag's internal clock (as a well as a control to synchronize the tag's clock to the host computer), the current Voltage of the tag battery (if any), and the current state of the tag's self-tests.  To the right of the test status is a test control to execute the tag's self-tests. Tags that support calibration, currently CompassTag and IMUTag, also show a calibration control.
-*NOTE -- it is important to synchronize the tag's clock and successfully execute the self-tests before using the tag for a data logging experiment*
+![Tag Monitor opening screen](../images/qtmonitor-startup.png)
 
- ![Tag Monitor idle state](../images/qtmonitor-main-idle.png)
+### Tag State
 
-When a tag is running, the configuration controls are inactive and the Stop control is available.
+The Tag State tab has five main areas: Status, Control, Tag Attach, Tag
+Information, and Data. The enabled controls depend on the current tag state.
 
- ![Tag Monitor running state](../images/qtmonitor-main-running.png)
+![Tag Monitor idle BitTag state](../images/qtmonitor-main-idle.png)
 
-The "Tag Information" region gives various information about the tag and its programmed software.  The most important information consists of the tag type, its UUID (unique id), and its Git Hash.  The UUID is a unique identifier provided by the microprocessor manufacturer and the GIT Hash identifies the specific software version used to program the tag.  This information can be important to help resolve any issues that might arise.
+Check the state, voltage, self-test result, UUID, firmware version, and Git hash
+before using a tag in the field. The UUID identifies the physical tag and the
+Git hash identifies the firmware build loaded on it.
 
-The "Configure" tab, illustrated in the following figure, always has a "Schedule" sub-tab and may also have a "Sensors" sub-tab when the attached tag exposes user-configurable sensor settings.
- ![Tag Monitor configure schedule](../images/qtmonitor-config-compasstag-schedule.png)
+Synchronize the clock and run self-tests before starting an experiment. Tags
+that support calibration, currently CompassTag and IMUTag, also show a
+calibration control when attached.
 
-The function of the configuration tab is to define the tag configuration for a specific experiment.  *Note: configuration is written to the tag and the tag started when the "start" button i the lower right is pressed.  Until that action, the configuration can be regarded as planned.  It's possible to "save" the current configuration to a file, and "restore" a saved configuration from a file.  It's also possible to "read" the (default) configuration from the connected tag.
+When a tag is running, configuration controls are inactive and **Stop** is
+available.
 
-Unlike the "Tag State Tab", the contents of these sub-tabs vary by tag type.  For example, the BitTag
-Schedule Tab has controls to define when data collection should begin and when it should end (both defined in UTC).  It also has two optional "hibernation" periods when the tag will enter a low-power state and stop collecting data.  Hibernation periods defined before the start time have no effect.   The BitTag configuration also provides a way to define the internal log format.  The log format determines the period over which activity data is "binned" -- seconds, minutes, four minutes, or five minutes.  The logging memory of a BitTag can collect five minute bins for more than a year (subject to battery capacity), but one second bins for only about 230 hours and one minute bins for about 2300 hours.
+![Tag Monitor running BitTag state](../images/qtmonitor-main-running.png)
 
-The contents of the "Sensor" tab are also dependent upon the tag type. Some tag types have no user-visible sensor controls, and for those tags the tab is hidden. Other tags expose the sensor fields that apply to their firmware and hardware.
+When a tag has finished logging, Tag Monitor enables the data controls used to
+save tag data.
 
-The BitTag has a single sensor -- the adxl362 accelerometer.  Older BitTag firmware exposes all configuration parameters for this sensor.  The most important parameters are for activity detection.  They define the acceleration thresholds (in units of g) for detecting the presence or absence of activity and the length of inactivity before the tag considers the most recent active period to have ended.  The other parameters define the acceleration sensitivity (the total range), the sample rate, and the internal antialiasing filter bandwidth.  It is unlikely that most experimenters will need to vary these parameters.
+![Tag Monitor finished BitTag state](../images/qtmonitor-main-finished.png)
 
-BitTag low-energy firmware and BitPresTag hide the ADXL362 range, sample rate, and filter because wake-mode operation fixes those values in firmware.  Their sensor tab still exposes the active threshold, inactive threshold, and inactivity count.  In these wake-mode configurations, "Inactivity Samples" is a sample count at the accelerometer wake-mode rate, not a duration in seconds, despite the historical protobuf field name `inactive_sec`.
+### Configuration
 
-The final "Error Log" provides an edit window to receive error messages and a way to save this error log to a file.  In the event of unexpected behavior, it is good to examine these messages for clues about the root cause.
+The Configuration tab defines the experiment plan that will be written to the
+tag. The **Schedule** sub-tab controls when logging starts, when it ends, and
+any hibernation periods. Some tag types also show a **Sensors** sub-tab with
+tag-specific sensor controls.
 
- ![Tag Monitor error log](../images/qtmonitor-error-log.png)
+![Tag Monitor classic BitTag schedule configuration](../images/qtmonitor-config-bittag-schedule.png)
 
-When a tag has finished logging, Tag Monitor enables the data controls for saving tag data.
+Pressing **start** writes the displayed configuration to the tag and starts the
+tag. Until then, the displayed configuration is only a planned configuration.
+Use **save** and **restore** to move configurations through files, and **read**
+to reload the current configuration from the attached tag.
 
- ![Tag Monitor finished state](../images/qtmonitor-main-finished.png)
+![Tag Monitor classic BitTag sensor configuration](../images/qtmonitor-config-bittag-sensors.png)
 
+### Error Log
 
-## Common Checks
+The Error Log tab collects application and tag communication messages. If Tag
+Monitor behaves unexpectedly, check this tab first and save the log if the
+message history will help diagnose the issue.
 
-- Device identity and firmware version
-- Sensor status
-- Battery or power status
-- Logging state
-- Error messages
+![Tag Monitor error log](../images/qtmonitor-error-log.png)
+
+## Common Workflow
+
+1. Connect the USB base with the tag installed.
+2. Attach to the tag and verify tag type, UUID, firmware, Git hash, and voltage.
+3. Synchronize the tag clock.
+4. Run self-tests and resolve any reported problem.
+5. Configure the schedule and any sensor settings for the experiment.
+6. Press **start** to write the configuration and begin logging.
+7. After logging finishes, save the tag data before erasing or redeploying.
+8. Use the Error Log when attach, configuration, test, or download behavior is
+   unexpected.
+
+## Tag Configuration
+
+The Configuration tab is intentionally tag-specific. Every tag has a schedule
+view, but only tags with user-configurable sensor fields show a Sensors sub-tab.
+
+### BitTag
+
+Classic BitTag exposes the full ADXL362 accelerometer configuration. The
+schedule controls define the active logging interval and optional hibernation
+periods. The BitTag log format controls how activity is binned in memory:
+shorter bins provide finer time resolution and consume storage faster.
+
+![Classic BitTag schedule configuration](../images/qtmonitor-config-bittag-schedule.png)
+
+The Sensors sub-tab configures ADXL362 range, sample rate, anti-alias filter,
+and activity detection thresholds. Most experiments primarily tune the active
+and inactive thresholds plus inactivity duration; range, rate, and filter are
+usually changed only for specialized deployments.
+
+![Classic BitTag sensor configuration](../images/qtmonitor-config-bittag-sensors.png)
+
+### BitTag LE
+
+BitTag LE uses the same schedule concepts as classic BitTag. Its low-energy
+firmware fixes some accelerometer operating parameters, so the Sensors sub-tab
+shows only the fields users are expected to tune.
+
+![BitTag LE schedule configuration](../images/qtmonitor-config-bittag-le-schedule.png)
+
+The BitTag LE sensor controls expose ADXL362 wake/activity thresholds and the
+inactivity sample count. In this mode, inactivity is a count at the wake-mode
+sample rate rather than a duration in seconds.
+
+![BitTag LE sensor configuration](../images/qtmonitor-config-bittag-le-sensors.png)
+
+### BitPresTag
+
+BitPresTag combines BitTag-style activity logging with pressure-tag behavior.
+Use the schedule fields for the deployment interval and hibernation windows.
+
+![BitPresTag schedule configuration](../images/qtmonitor-config-bitprestag-schedule.png)
+
+The Sensors sub-tab exposes the wake/activity fields that apply to the
+BitPresTag firmware. As with BitTag LE, firmware fixes the hidden accelerometer
+parameters.
+
+![BitPresTag sensor configuration](../images/qtmonitor-config-bitprestag-sensors.png)
+
+### PresTag
+
+PresTag currently presents the schedule view without additional user-visible
+sensor controls. If the Sensors sub-tab is absent, there is no separate sensor
+configuration step for this tag type.
+
+![PresTag schedule configuration](../images/qtmonitor-config-prestag-schedule.png)
+
+### IMUTag
+
+IMUTag uses the schedule view for deployment timing and hibernation windows.
+Because IMUTag supports calibration, the Tag State tab also exposes the
+calibration control when an IMUTag is attached.
+
+![IMUTag schedule configuration](../images/qtmonitor-config-imutag-schedule.png)
+
+The Sensors sub-tab configures the IMU fields exposed by the firmware, including
+sample rate and measurement ranges.
+
+![IMUTag sensor configuration](../images/qtmonitor-config-imutag-sensors.png)
+
+### CompassTag
+
+CompassTag uses the schedule view for deployment timing. Like IMUTag, it
+supports calibration from the Tag State tab. The current CompassTag fixture does
+not expose separate user-visible sensor controls in Tag Monitor.
+
+![CompassTag schedule configuration](../images/qtmonitor-config-compasstag-schedule.png)

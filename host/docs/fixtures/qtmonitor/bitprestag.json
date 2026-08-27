@@ -1,0 +1,77 @@
+{
+  "schema": "tag-designs.qtmonitor.fake-tag.v1",
+  "id": "bitprestag",
+  "label": "BitPresTag",
+  "captured_at_utc": "2026-08-27T12:04:10Z",
+  "info": {
+ "tag_type": "BITPRESTAG",
+ "board_desc": "BitPresTagMX25Rv1",
+ "uuid": "2036354B3032500800330027",
+ "intflashsz": "128",
+ "extflashsz": "4194304",
+ "firmware": "BitPresTagv4, Firmware version 1",
+ "gitrepo": "git@github.com:tag-designs/software.git",
+ "githash": "acd3167",
+ "source_path": "/embedded/tags/BitPresTagMX25R",
+ "build_time": "Aug 20 2026 : 19:04:38",
+ "qtmonitor_min_version": 2,
+ "flash_blocks": 0,
+ "accelconstant": 0,
+ "magconstant": 0,
+ "ppm_clock_error": 0
+}
+,
+  "config": {
+    "source": "captured-default",
+    "fallback_ref": "embedded/proto-c/bitprestag-proto-c/default-config.json",
+    "value": {
+ "tag_type": "BITPRESTAG",
+ "active_interval": {
+  "start_epoch": 0,
+  "end_epoch": 2147483647
+ },
+ "hibernate": [
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  },
+  {
+   "start_epoch": 0,
+   "end_epoch": 0
+  }
+ ],
+ "bittag_log": "BITTAG_UNSPECIFIED",
+ "adxl362": {
+  "range": "Rng_UNSPECIFIED",
+  "freq": "Odr_UNSPECIFIED",
+  "filter": "Aa_UNSPESIFIED",
+  "act_thresh_g": 0.5,
+  "inact_thresh_g": 0.35,
+  "inactive_sec": 3,
+  "accel_type": "AdxlType_362",
+  "data_format": "DF_UNSPECIFIED",
+  "channels": "AdxlChannel_UNSPECIFIED",
+  "active_sec": 0
+ },
+ "period": 0,
+ "start_delay": 0
+}
+
+  },
+  "voltage": 3.280,
+  "statuses": {
+    "idle": {
+ "millis": "1787832250638",
+ "state": "IDLE",
+ "test_status": "ALL_PASSED",
+ "internal_data_count": 0,
+ "external_data_count": 0,
+ "voltage": 3.40999985,
+ "temperature": 8.2,
+ "sectors_erased": 0,
+ "erase_sectors_total_plus_one": 1025,
+ "debug_message": ""
+}
+
+  }
+}
