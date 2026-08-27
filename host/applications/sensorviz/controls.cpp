@@ -200,7 +200,7 @@ void MainWindow::setGraphTitleVisible(bool visible)
 void MainWindow::showCalibrationConstants()
 {
     // Compass calibration is loaded in sqlite_loader.cpp and stored as typed
-    // SensorLog metadata. This dialog is read-only and shared with compviz.
+    // SensorLog metadata. This dialog is read-only and shared through sensorui.
     if (!log_.hasCompassCalibration) {
         QMessageBox::information(
             this,

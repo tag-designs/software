@@ -39,6 +39,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 
 *   [**Host User Guide Screenshot Automation**](../host/docs/design/screenshot-automation.md): Pilot plan for deterministic Qt application screenshots and generated annotations, starting with `qtcalibrate`.
 *   [**QtMonitor Screenshot Automation**](../host/docs/design/qtmonitor-screenshot-automation.md): Design for fake-tag fixtures, per-tag default configuration screenshots, and representative state screenshots for `qtmonitor`.
+*   [**DataProcessing Post-Processing Application**](dataprocessing.md): Design for a host CLI that copies SQLite logs, materializes calibrated/derived streams, and records processing provenance for analysis outside SensorViz.
 *   [**SensorViz Roadmap**](../host/applications/sensorviz/design/roadmap.md): Display preference policies, plotting roadmaps, and SQLite reader features.
 *   [**SensorViz Screenshot Capture Plan**](../host/applications/sensorviz/design/screenshot-capture-plan.md): Strategy for sample SQLite fixtures, menu/dialog captures, display customization screenshots, and tag-specific SensorViz documentation.
 

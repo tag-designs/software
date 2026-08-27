@@ -23,7 +23,6 @@ if(BUILD_QT_APPS)
   add_subdirectory(applications/qtprogram)
   add_subdirectory(applications/qtcalibrate)
   add_subdirectory(applications/btdataviz)
-  add_subdirectory(applications/compviz)
   add_subdirectory(applications/sensorviz)
 endif()
 
@@ -134,7 +133,7 @@ set(host_cli_install_targets
     tag-cal
     tag-monitor-test
     tag-attach-cycle)
-set(host_qt_install_targets btviz compviz sensorviz qtmonitor qtprogram qtcalibrate)
+set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)
 set(host_install_targets)
 set(host_candidate_install_targets ${host_qt_install_targets} ${host_cli_install_targets})
 foreach(target_name ${host_candidate_install_targets})

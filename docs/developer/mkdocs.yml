@@ -104,7 +104,6 @@ nav:
           - SensorAnalysis: reference/host/libraries/sensoranalysis/README.md
           - SensorUI: reference/host/libraries/sensorui/README.md
       - Host Applications:
-          - CompViz: reference/host/applications/compviz/README.md
           - QtCalibrate: reference/host/applications/qtcalibrate/README.md
           - QtMonitor Tag Configuration: reference/host/applications/qtmon/tagconfiguration/README.md
           - SensorViz: reference/host/applications/sensorviz/README.md

@@ -67,11 +67,6 @@ bool CompassProcessor::deriveSample(
     return true;
 }
 
-double CompassProcessor::headingFromYaw(double yaw, double declinationDegrees)
-{
-    return std::fmod(720.0 + yaw + declinationDegrees, 360.0);
-}
-
 /*
  * Quaternion eCompass implementation based on:
  *

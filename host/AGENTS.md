@@ -35,8 +35,9 @@ in `common/` or `libraries/sensorui`.
 - `applications/qtmon`: tag monitoring, configuration, and download UI.
 - `applications/qtcalibrate`: calibration workflow and live orientation display.
 - `applications/sensorviz`: general SQLite sensor-log viewer.
-- `applications/compviz`: still built as a specialized/reference compass tool,
-  but not packaged now that sensorViz handles CompassTag logs.
+- `applications/compviz`: retired CompassTag viewer source kept for reference;
+  do not add it back to normal build or package paths now that sensorViz
+  handles CompassTag logs.
 - `applications/qtprogram`, `btdataviz`, and related apps should keep one-off
   behavior local until a second app genuinely needs it.
 
@@ -72,4 +73,3 @@ install rules, also verify the relevant package/install target when practical.
 - Update app-level READMEs when changing structure or user-visible workflows.
 - Update `host/docs/src/apps/*.md` for user-facing guide changes.
 - MkDocs dependencies live in `host/docs/requirements.txt`.
-

@@ -51,7 +51,6 @@ paths below mirror their repository locations under `reference/`.
 
 - [Host README](reference/host/README.md)
 - [Applications README](reference/host/applications/README.md)
-- [CompViz README](reference/host/applications/compviz/README.md)
 - [QtCalibrate README](reference/host/applications/qtcalibrate/README.md)
 - [QtMonitor Tag Configuration README](reference/host/applications/qtmon/tagconfiguration/README.md)
 - [Command Line README](reference/host/commandline/README.md)

@@ -21,9 +21,9 @@ by the host download tools. It currently supports:
   stream visibility, colors, axis sides, and per-stream y-axis ranges;
 - per-tag display preferences stored as sparse, formatted JSON overrides.
 
-`compviz` remains buildable as a specialized/reference tool, but `sensorviz` is
-now the intended general viewer for BitTag, BitPresTag, PresTag, CompassTag,
-and IMUTag SQLite logs.
+`compviz` is retired from the normal build and package path. `sensorviz` is now
+the intended general viewer for BitTag, BitPresTag, PresTag, CompassTag, and
+IMUTag SQLite logs.
 
 ## Current Architecture
 

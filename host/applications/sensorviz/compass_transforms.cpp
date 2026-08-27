@@ -6,6 +6,8 @@
 #include <QInputDialog>
 #include <QMessageBox>
 
+#include <cmath>
+
 // compass_transforms.cpp owns CompassTag-specific display derivation. It is the
 // bridge between SensorRecordSet compass_raw, sensoranalysis::CompassProcessor,
 // ordinary SensorStream plots, and the optional QML compass panel.
@@ -61,20 +63,26 @@ bool compassRecordHasExpectedColumns(const SensorRecordSet &compass)
         && compass.columns.value("mz").size() == sample_count;
 }
 
+double displayHeadingFromYaw(double yaw, double declination_degrees)
+{
+    return std::fmod(720.0 + yaw + declination_degrees, 360.0);
+}
+
 QVector<double> compassHeadingValues(
     const QVector<CompassDerivedSample> &samples,
     double declination_degrees,
     bool battery_forward)
 {
-    // Heading is the only CompassTag stream affected by display settings.
-    // Samples remain magnetic-frame; declination and battery direction are
-    // layered on here and in the QML panel.
+    // Heading is display policy, not calibration math. SensorViz layers
+    // declination and battery direction onto the magnetic-frame yaw returned by
+    // sensoranalysis; DataProcessing writes canonical orientation and documents
+    // this conversion for downstream tools.
     QVector<double> heading;
     heading.reserve(samples.size());
     for (const CompassDerivedSample &sample : samples) {
-        double value = CompassProcessor::headingFromYaw(sample.yaw, declination_degrees);
+        double value = displayHeadingFromYaw(sample.yaw, declination_degrees);
         if (!battery_forward) {
-            value = CompassProcessor::headingFromYaw(value, 180.0);
+            value = displayHeadingFromYaw(value, 180.0);
         }
         heading.append(value);
     }

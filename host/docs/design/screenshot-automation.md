@@ -35,7 +35,7 @@ the real UI geometry.
 - Keep screenshot definitions close to the application or host documentation
   tree so they can be reviewed with UI changes.
 - Make the pilot reusable for other Qt host tools such as `qtmonitor`,
-  `qtprogram`, `sensorviz`, `compviz`, and `btviz`.
+  `qtprogram`, `sensorviz`, and `btviz`.
 - Allow focused local execution through CMake.
 
 ## Non-Goals

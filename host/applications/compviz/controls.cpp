@@ -7,10 +7,10 @@
 #include <qcustomplot.h>
 #include <iostream>
 
+#include <cmath>
 #include <float.h>
 
 #include "mainwindow.h"
-#include "compass_processor.h"
 #include "tickerdatetimeoffset.h"
 #include "ui_mainwindow.h"
 #include "compass_calibration_dialog.h"
@@ -18,6 +18,16 @@
 // Track the plot cursor, display a compact tooltip, and update the QML compass
 // with the nearest orientation sample. This is the only place where the plot
 // position drives the compass widget.
+
+namespace
+{
+
+double displayHeadingFromYaw(double yaw, double declination)
+{
+    return std::fmod(720.0 + yaw + declination, 360.0);
+}
+
+} // namespace
 
 void MainWindow::onMouseMove(QMouseEvent *event)
 {
@@ -278,9 +288,9 @@ void MainWindow::on_actionUTC_Offset_triggered() {
     // user-selected view transforms here so declination and battery direction
     // can be changed without reloading or recalibrating the log.
     for (i = 0; i < len; i++) {
-        double h = CompassProcessor::headingFromYaw(orientation[i].yaw, declination);
+        double h = displayHeadingFromYaw(orientation[i].yaw, declination);
         if (!forward) {
-            h = CompassProcessor::headingFromYaw(h, 180.0);
+            h = displayHeadingFromYaw(h, 180.0);
         }
         heading[i] = h;
         //qInfo() << heading[i];

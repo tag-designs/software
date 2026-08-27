@@ -8,6 +8,7 @@ directory that owns the code; the developer portal stages those files under
 
 - [Design Index](reference/design/index.md)
 - [Binary Datalogs](reference/design/binary-datalogs.md)
+- [DataProcessing Post-Processing Application](reference/design/dataprocessing.md)
 - [Windows Build Notes](reference/design/windows-build-notes.md)
 
 ## Embedded
@@ -79,7 +80,6 @@ directory that owns the code; the developer portal stages those files under
 
 ## Host Applications
 
-- [CompViz](reference/host/applications/compviz/README.md)
 - [QtCalibrate](reference/host/applications/qtcalibrate/README.md)
 - [QtMonitor](reference/host/applications/qtmon/README.md)
 - [QtMonitor Tag Configuration](reference/host/applications/qtmon/tagconfiguration/README.md)

@@ -56,6 +56,7 @@ set(
   DEVELOPER_DOCS_MARKDOWN
   "design/index.md"
   "design/binary-datalogs.md"
+  "design/dataprocessing.md"
   "design/windows-build-notes.md"
   "embedded/bases/BUILD_SOURCES.md"
   "embedded/bases/README.md"
@@ -102,7 +103,6 @@ set(
   "host/docs/fixtures/qtmonitor/README.md"
   "host/docs/fixtures/sensorviz/README.md"
   "host/applications/README.md"
-  "host/applications/compviz/README.md"
   "host/applications/qtcalibrate/README.md"
   "host/applications/qtmon/README.md"
   "host/applications/qtmon/tagconfiguration/README.md"

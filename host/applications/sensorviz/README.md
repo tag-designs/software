@@ -55,7 +55,7 @@ The code is split by responsibility:
   offset, context menus, and mouse readout.
 - `controls.cpp`: small shared display helpers and general actions.
 - `sensorui`: provides the shared CompassTag calibration dialog and QML
-  orientation display used by both `sensorviz` and `compviz`.
+  orientation display used by `sensorviz` and `qtcalibrate`.
 
 ## Maintenance Map
 

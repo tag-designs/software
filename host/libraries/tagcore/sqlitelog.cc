@@ -108,9 +108,8 @@ public:
         options.add_whitespace = true;
         options.preserve_proto_field_names = true;
 
-        // The info table intentionally stores flexible field/value pairs. That
-        // matches the schema compviz already reads and lets us add metadata
-        // later without changing the table layout.
+        // The info table intentionally stores flexible field/value pairs so
+        // viewers can add metadata later without changing the table layout.
         if (!exec("CREATE TABLE info ("
                   "fieldname TEXT,"
                   "value TEXT"

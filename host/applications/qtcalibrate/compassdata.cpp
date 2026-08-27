@@ -126,7 +126,7 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	raw.mag = magin;
 
 	// qtcalibrate keeps ownership of live calibration and low-pass filtering.
-	// The UI-free eCompass solve itself is shared with compviz and sensorviz.
+	// The UI-free eCompass solve itself is shared with sensorviz.
 	CompassProcessor processor{CompassCalibration()};
 	CompassDerivedSample derived;
 	if (!processor.deriveCalibratedSample(raw, derived))
