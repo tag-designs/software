@@ -41,6 +41,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
   - Source Tree:
       - Overview: source-tree.md
       - Top-Level Design:

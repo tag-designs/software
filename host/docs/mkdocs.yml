@@ -43,6 +43,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
   - Applications:
       - Qt Program: apps/qtprogram.md
       - Qt Calibrate: apps/qtcalibrate.md

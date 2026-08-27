@@ -1,0 +1,164 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: host/docs/requirements.txt
+
+      - name: Install documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r host/docs/requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz protobuf-compiler libprotobuf-dev
+
+      - name: Configure documentation targets
+        run: >
+          cmake -S . -B build-docs
+          -DBUILD_HOST=OFF
+          -DBUILD_QT_APPS=OFF
+          -DBUILD_EMBEDDED=OFF
+          -DBUILD_HOST_DOCS=OFF
+          -DBUILD_DEVELOPER_DOCS=OFF
+          -DHOST_MKDOCS_COMMAND="python;-m;mkdocs"
+
+      - name: Build documentation sites
+        run: cmake --build build-docs --target all_docs
+
+      - name: Assemble GitHub Pages artifact
+        run: |
+          mkdir -p public/user public/developer
+          cp -R build-docs/host/docs/site/. public/user/
+          cp -R build-docs/docs/developer/site/. public/developer/
+          cat > public/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Ultralight Tags Documentation</title>
+            <style>
+              :root {
+                color-scheme: light dark;
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                line-height: 1.5;
+              }
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                background: Canvas;
+                color: CanvasText;
+              }
+              main {
+                width: min(42rem, calc(100vw - 2rem));
+              }
+              h1 {
+                margin: 0 0 0.75rem;
+                font-size: clamp(2rem, 7vw, 4rem);
+                line-height: 1;
+              }
+              p {
+                margin: 0 0 1.5rem;
+                color: color-mix(in srgb, CanvasText 72%, Canvas);
+              }
+              nav {
+                display: grid;
+                gap: 0.75rem;
+              }
+              a {
+                display: block;
+                padding: 0.9rem 1rem;
+                border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+                border-radius: 0.5rem;
+                color: inherit;
+                text-decoration: none;
+              }
+              a:hover,
+              a:focus-visible {
+                border-color: color-mix(in srgb, CanvasText 48%, Canvas);
+                outline: none;
+              }
+              strong {
+                display: block;
+              }
+              span {
+                display: block;
+                margin-top: 0.15rem;
+                color: color-mix(in srgb, CanvasText 68%, Canvas);
+              }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>Ultralight Tags Documentation</h1>
+              <p>Repo-built manuals and developer references, with the external project page kept in view.</p>
+              <nav aria-label="Documentation sections">
+                <a href="user/">
+                  <strong>Host/User Guide</strong>
+                  <span>Application manuals, command-line references, and field workflows.</span>
+                </a>
+                <a href="developer/">
+                  <strong>Developer Documentation</strong>
+                  <span>Architecture notes, source-tree references, and generated API docs.</span>
+                </a>
+                <a href="https://geoffreymbrown.github.io/ultralight-tags/">
+                  <strong>External Project Page</strong>
+                  <span>Public project documentation hosted outside this repository build.</span>
+                </a>
+              </nav>
+            </main>
+          </body>
+          </html>
+          HTML
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+  deploy:
+    name: Deploy documentation
+    if: github.event_name != 'pull_request'
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

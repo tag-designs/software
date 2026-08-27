@@ -29,6 +29,17 @@ locations into the build tree under `reference/`. `api_docs` runs Doxygen when
 it is available. `developer_docs` builds the MkDocs portal and, when Doxygen is
 available, places the API reference under `api/`.
 
+## Published GitHub Pages
+
+The `.github/workflows/docs.yml` workflow builds the combined repository
+documentation site through the CMake `all_docs` target. Pull requests build the
+site as a check. Pushes to `main` and manual workflow runs publish a GitHub
+Pages artifact with:
+
+- `user/`: the host user guide built from `host/docs`;
+- `developer/`: this developer portal built from `docs/developer`;
+- a root documentation hub that keeps the external project page linked.
+
 When adding source design documents that should appear in the portal, update:
 
 - the nearest local README or design index;
