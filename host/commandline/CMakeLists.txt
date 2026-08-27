@@ -40,3 +40,27 @@ host_cli_tool(tag-cal MACOSX_BUNDLE WIN32 tag-calibrate.cc options.cc)
 host_cli_tool(tag-monitor-test MACOSX_BUNDLE WIN32 tag-monitor-test.cc options.cc)
 host_cli_tool(tag-attach-cycle MACOSX_BUNDLE WIN32 tag-attach-cycle.cc options.cc)
 host_cli_tool(qtmonitor-fixture-capture MACOSX_BUNDLE WIN32 qtmonitor-fixture-capture.cc)
+
+if(TARGET sensoranalysis)
+  if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
+    find_package(unofficial-sqlite3 CONFIG REQUIRED)
+    set(DATAPROCESSING_SQLITE_INCLUDE_DIRS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include")
+    set(DATAPROCESSING_SQLITE_TARGET unofficial::sqlite3::sqlite3)
+  else()
+    find_package(SQLite3 REQUIRED)
+    set(DATAPROCESSING_SQLITE_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
+    set(DATAPROCESSING_SQLITE_TARGET SQLite::SQLite3)
+  endif()
+
+  add_executable(dataprocessing MACOSX_BUNDLE WIN32 dataprocessing.cc)
+  target_compile_features(dataprocessing PRIVATE cxx_std_20)
+  target_include_directories(dataprocessing PRIVATE ${DATAPROCESSING_SQLITE_INCLUDE_DIRS})
+  target_link_libraries(dataprocessing PRIVATE sensoranalysis ${DATAPROCESSING_SQLITE_TARGET})
+  set_target_properties(
+    dataprocessing
+    PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib
+               RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+  if(WIN32)
+    set_target_properties(dataprocessing PROPERTIES LINK_FLAGS /SUBSYSTEM:CONSOLE)
+  endif()
+endif()

@@ -27,6 +27,7 @@ Most tag-attached tools share these options:
 | `tag-start` | [tag-start](tag-start.md) | Start logging when a tag is idle. |
 | `tag-stop` | [tag-stop](tag-stop.md) | Stop active logging states and print the resulting tag status. |
 | `tag-cal` | [tag-cal](tag-cal.md) | Start calibration mode and stream raw calibration samples. |
+| `dataprocessing` | [dataprocessing](dataprocessing.md) | Copy SQLite logs and add derived sensor streams for later analysis. |
 | `tag-test` | [tag-test](tag-test.md) | Run RTC checks and tag self-tests. |
 | `tag-test-example` | [tag-test-example](tag-test-example.md) | Minimal RTC-set example for developers. |
 | `tag-monitor-test` | [tag-monitor-test](tag-monitor-test.md) | Developer monitor-interface test tool. |

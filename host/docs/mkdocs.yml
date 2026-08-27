@@ -57,6 +57,7 @@ nav:
       - tag-start: cli/tag-start.md
       - tag-stop: cli/tag-stop.md
       - tag-cal: cli/tag-cal.md
+      - dataprocessing: cli/dataprocessing.md
       - tag-test: cli/tag-test.md
       - tag-test-example: cli/tag-test-example.md
       - tag-monitor-test: cli/tag-monitor-test.md
