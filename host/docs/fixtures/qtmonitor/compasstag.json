@@ -1,0 +1,62 @@
+{
+    "schema": "tag-designs.qtmonitor.fake-tag.v1",
+    "id": "compasstag",
+    "label": "CompassTag",
+    "captured_at_utc": "2026-08-27T00:02:19Z",
+    "info": {
+        "tag_type": "COMPASSTAG",
+        "board_desc": "CompassTagv1",
+        "uuid": "203633324B425006003E005D",
+        "intflashsz": "256",
+        "extflashsz": "4194304",
+        "firmware": "CompassTagv1, Firmware version 1",
+        "gitrepo": "git@github.com:tag-designs/software.git",
+        "githash": "acd3167",
+        "source_path": "/embedded/tags/CompassTag",
+        "build_time": "Aug 26 2026 : 13:43:36",
+        "qtmonitor_min_version": 2,
+        "flash_blocks": 0,
+        "accelconstant": 0.976,
+        "magconstant": 0.01,
+        "ppm_clock_error": -2.86102295
+    },
+    "config": {
+        "source": "captured-default",
+        "fallback_ref": "embedded/proto-c/compasstag-proto-c/default-config.json",
+        "value": {
+            "tag_type": "COMPASSTAG",
+            "active_interval": {
+                "start_epoch": 0,
+                "end_epoch": 2147483647
+            },
+            "hibernate": [
+                {
+                    "start_epoch": 0,
+                    "end_epoch": 0
+                },
+                {
+                    "start_epoch": 0,
+                    "end_epoch": 0
+                }
+            ],
+            "bittag_log": "BITTAG_UNSPECIFIED",
+            "period": 0,
+            "start_delay": 0
+        }
+    },
+    "voltage": 2.84,
+    "statuses": {
+        "idle": {
+            "millis": "1787788939514",
+            "state": "IDLE",
+            "test_status": "ALL_PASSED",
+            "internal_data_count": 0,
+            "external_data_count": 0,
+            "voltage": 3.3,
+            "temperature": 23,
+            "sectors_erased": 0,
+            "erase_sectors_total_plus_one": 1025,
+            "debug_message": ""
+        }
+    }
+}

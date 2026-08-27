@@ -70,4 +70,10 @@ Markdown source files live in `host/docs/src/`. Images should go in
 Developer design notes for the host documentation workflow live in
 `host/docs/design/`. Start with
 [`design/screenshot-automation.md`](design/screenshot-automation.md) for the
-planned Qt application screenshot and annotation pipeline.
+planned Qt application screenshot and annotation pipeline. The follow-on
+[`design/qtmonitor-screenshot-automation.md`](design/qtmonitor-screenshot-automation.md)
+describes fake-tag fixtures for `qtmonitor` documentation screenshots.
+Captured qtmonitor fixture data lives under
+[`fixtures/qtmonitor/`](fixtures/qtmonitor/README.md); those fixtures support
+maintainer screenshot generation and are not rendered into the packaged user
+guide.

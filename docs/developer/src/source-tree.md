@@ -82,6 +82,8 @@ directory that owns the code; the developer portal stages those files under
 - [CompViz](reference/host/applications/compviz/README.md)
 - [QtCalibrate](reference/host/applications/qtcalibrate/README.md)
 - [QtMonitor Tag Configuration](reference/host/applications/qtmon/tagconfiguration/README.md)
+- [QtMonitor Screenshot Automation](reference/host/docs/design/qtmonitor-screenshot-automation.md)
+- [QtMonitor Fixture Captures](reference/host/docs/fixtures/qtmonitor/README.md)
 - [SensorViz](reference/host/applications/sensorviz/README.md)
 - [SensorViz Roadmap](reference/host/applications/sensorviz/design/roadmap.md)
 

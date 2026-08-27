@@ -98,6 +98,8 @@ set(
   "embedded/tags/families/PresTag/README.md"
   "host/README.md"
   "host/docs/design/screenshot-automation.md"
+  "host/docs/design/qtmonitor-screenshot-automation.md"
+  "host/docs/fixtures/qtmonitor/README.md"
   "host/applications/README.md"
   "host/applications/compviz/README.md"
   "host/applications/qtcalibrate/README.md"

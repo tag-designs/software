@@ -38,6 +38,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 4. Host Applications
 
 *   [**Host User Guide Screenshot Automation**](../host/docs/design/screenshot-automation.md): Pilot plan for deterministic Qt application screenshots and generated annotations, starting with `qtcalibrate`.
+*   [**QtMonitor Screenshot Automation**](../host/docs/design/qtmonitor-screenshot-automation.md): Design for fake-tag fixtures, per-tag default configuration screenshots, and representative state screenshots for `qtmonitor`.
 *   [**SensorViz Roadmap**](../host/applications/sensorviz/design/roadmap.md): Display preference policies, plotting roadmaps, and SQLite reader features.
 
 ---
