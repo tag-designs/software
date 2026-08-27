@@ -1,4 +1,6 @@
 #include <QApplication>
+#include <QCommandLineOption>
+#include <QCommandLineParser>
 #include <QString>
 
 #include <QMainWindow>
@@ -94,13 +96,73 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
+  QCommandLineParser parser;
+  parser.setApplicationDescription("Tag monitor");
+  parser.addHelpOption();
+  parser.addOption(QCommandLineOption(
+      "fake-fixture",
+      "Load a qtmonitor fake-tag fixture JSON file instead of attaching to USB.",
+      "path"));
+  parser.addOption(QCommandLineOption(
+      "fake-state",
+      "Fixture state slot for single-state display. Defaults to idle.",
+      "name",
+      "idle"));
+  parser.addOption(QCommandLineOption(
+      "capture-startup-screenshot",
+      "Capture the disconnected startup screen and exit."));
+  parser.addOption(QCommandLineOption(
+      "capture-main-screenshots",
+      "Capture idle, running, and finished Tag State screenshots and exit."));
+  parser.addOption(QCommandLineOption(
+      "capture-config-screenshots",
+      "Capture idle Configuration schedule and sensor screenshots and exit."));
+  parser.addOption(QCommandLineOption(
+      "capture-error-log-screenshot",
+      "Capture the disconnected Error Log screen and exit."));
+  parser.addOption(QCommandLineOption(
+      "screenshot-dir",
+      "Directory for generated screenshots. Defaults to host/docs/src/images.",
+      "dir"));
+  parser.addOption(QCommandLineOption(
+      "no-auto-attach",
+      "Open without probing USB tag bases."));
+  parser.process(a);
+
+  MainWindowOptions windowOptions;
+  windowOptions.fakeFixturePath = parser.value("fake-fixture");
+  windowOptions.fakeState = parser.value("fake-state");
+  windowOptions.screenshotDir = parser.value("screenshot-dir");
+  windowOptions.captureStartupScreenshot =
+      parser.isSet("capture-startup-screenshot");
+  windowOptions.captureMainScreenshots =
+      parser.isSet("capture-main-screenshots");
+  windowOptions.captureConfigScreenshots =
+      parser.isSet("capture-config-screenshots");
+  windowOptions.captureErrorLogScreenshot =
+      parser.isSet("capture-error-log-screenshot");
+  windowOptions.skipAutoAttach =
+      parser.isSet("no-auto-attach") || windowOptions.captureStartupScreenshot
+      || windowOptions.captureErrorLogScreenshot;
+
   HostStyle::apply(a);
 
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   log_set_quiet(true);
   log_set_level(log_level);
   log_add_callback(log_log_callback, nullptr, LOG_TRACE);
-  MainWindow w;
+  MainWindow w(windowOptions);
   w.show();
+  if (w.shouldQuitAfterStartup()) {
+    if (windowOptions.captureStartupScreenshot) {
+      QTimer::singleShot(600, &w, &MainWindow::captureStartupScreenshot);
+    } else if (windowOptions.captureMainScreenshots) {
+      QTimer::singleShot(900, &w, &MainWindow::captureMainScreenshots);
+    } else if (windowOptions.captureErrorLogScreenshot) {
+      QTimer::singleShot(600, &w, &MainWindow::captureErrorLogScreenshot);
+    } else {
+      QTimer::singleShot(900, &w, &MainWindow::captureConfigScreenshots);
+    }
+  }
   return a.exec();
 }

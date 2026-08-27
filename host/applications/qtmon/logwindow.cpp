@@ -1,9 +1,19 @@
-    
+/**
+ * @file    logwindow.cpp
+ * @brief   Error Log tab implementation for qtmonitor.
+ *
+ * @details The tab redirects Qt/log.c messages into a read-only text edit and
+ *          exposes save, clear, and log-level controls. The explicit size hints
+ *          keep the documentation Error Log screenshot compact without
+ *          clipping the bottom of the text edit.
+ */
+
 #include "logwindow.h"
 #include <QTextEdit>
 #include <QComboBox>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSize>
 #include <QStringList>
 
 #include "txtlogs.h"
@@ -49,6 +59,26 @@ LogWindow::LogWindow(QWidget *parent) : QWidget(parent) {
 
 LogWindow::~LogWindow(){
     s_textEdit = nullptr;
+}
+
+/**
+ * @brief Returns the preferred Error Log tab size.
+ *
+ * @return Documentation-friendly preferred size in pixels.
+ */
+QSize LogWindow::sizeHint() const
+{
+    return QSize(700, 520);
+}
+
+/**
+ * @brief Returns the smallest useful Error Log tab size.
+ *
+ * @return Minimum size that preserves the toolbar row and log pane.
+ */
+QSize LogWindow::minimumSizeHint() const
+{
+    return QSize(520, 360);
 }
 
 bool LogWindow::Attach(Tag &tag){return true;}

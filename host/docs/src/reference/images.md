@@ -15,7 +15,12 @@ Use short, stable names that identify the app and screen:
 - `qtcalibrate-collection-100.png`
 - `qtcalibrate-orientation-forward.png`
 - `qtcalibrate-orientation-backward.png`
-- `qtmonitor-live-view.png`
+- `qtmonitor-startup.png`
+- `qtmonitor-main-idle.png`
+- `qtmonitor-main-running.png`
+- `qtmonitor-main-finished.png`
+- `qtmonitor-config-compasstag-schedule.png`
+- `qtmonitor-error-log.png`
 - `btdataviz-plot-view.png`
 - `sensorviz-compass-view.png`
 

@@ -83,6 +83,70 @@ bool ConfigTab::isActive(){
   return active;
 }
 
+/**
+ * @brief Reports whether any sensor configuration module is active.
+ *
+ * @return true if the current configuration exposes ADXL362 or LSM6 controls;
+ *         false for tags whose Sensors tab would otherwise be empty.
+ */
+bool ConfigTab::HasSensorConfiguration()
+{
+  return adxl.isActive() || lsm.isActive();
+}
+
+/**
+ * @brief Selects the Schedule sub-tab for deterministic screenshot capture.
+ */
+void ConfigTab::ShowScheduleTab()
+{
+  ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
+}
+
+/**
+ * @brief Selects the Sensors sub-tab for deterministic screenshot capture.
+ */
+void ConfigTab::ShowSensorTab()
+{
+  if (HasSensorConfiguration()) {
+    ui.configtabWidget->setCurrentWidget(ui.sensorTab);
+  } else {
+    ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
+  }
+}
+
+/**
+ * @brief Enables or disables display-only fixture behavior.
+ *
+ * @details In fixture mode, StateUpdate() still enables controls according to
+ *          tag state so screenshots look like live qtmonitor, but Start and
+ *          Read return before using the live Tag pointer.
+ *
+ * @param[in] enabled   true when the tab is backed by fixture data.
+ */
+void ConfigTab::SetFixtureMode(bool enabled)
+{
+  fixture_mode_ = enabled;
+}
+
+/**
+ * @brief Shows the Sensors sub-tab only when sensor controls are active.
+ */
+void ConfigTab::UpdateSensorTabVisibility()
+{
+  const int sensor_index = ui.configtabWidget->indexOf(ui.sensorTab);
+  if (sensor_index < 0) {
+    return;
+  }
+
+  const bool has_sensor_controls = HasSensorConfiguration();
+  ui.configtabWidget->setTabVisible(sensor_index, has_sensor_controls);
+  ui.configtabWidget->setTabEnabled(sensor_index, has_sensor_controls);
+  if (!has_sensor_controls &&
+      ui.configtabWidget->currentWidget() == ui.sensorTab) {
+    ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
+  }
+}
+
 static void mergeRestoredConfig(Config &target, const Config &restored)
 {
   if (target.has_active_interval() && restored.has_active_interval())
@@ -245,10 +309,12 @@ bool ConfigTab::SetConfig(const Config &new_config)
       adxl.SetConfig(new_config, visibility) &&
       lsm.SetConfig(new_config, visibility))
   {
+    UpdateSensorTabVisibility();
     active = true;
     setVisible(true);
     setEnabled(true);
   } else {
+    UpdateSensorTabVisibility();
     setVisible(false);
     setEnabled(false);
     active = false;
@@ -372,6 +438,11 @@ void ConfigTab::on_configRestoreButton_clicked()
 
 void ConfigTab::on_startButton_clicked()
 {
+  if (fixture_mode_) {
+    qInfo() << "Ignoring Start in qtmonitor fixture display mode";
+    return;
+  }
+
   Config config;
   if (GetConfig(config))
   {
@@ -413,6 +484,11 @@ void ConfigTab::on_startButton_clicked()
 
 void ConfigTab::on_readButton_clicked()
 {
+  if (fixture_mode_) {
+    qInfo() << "Ignoring Read in qtmonitor fixture display mode";
+    return;
+  }
+
   Config configin;
   if (tag->GetConfig(configin)) {
     //qDebug()<< QString(configin.DebugString());

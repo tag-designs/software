@@ -103,6 +103,7 @@ set(
   "host/applications/README.md"
   "host/applications/compviz/README.md"
   "host/applications/qtcalibrate/README.md"
+  "host/applications/qtmon/README.md"
   "host/applications/qtmon/tagconfiguration/README.md"
   "host/commandline/README.md"
   "host/common/README.md"

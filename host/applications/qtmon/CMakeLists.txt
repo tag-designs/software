@@ -97,6 +97,11 @@ target_include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tagconfiguration")
 
+# Screenshot automation is normally launched from the build tree while
+# fixtures and generated documentation images live in the source tree.
+target_compile_definitions(
+  qtmonitor PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+
 set_target_properties(
   qtmonitor
   PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib

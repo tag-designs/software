@@ -379,19 +379,17 @@ this route, the design should still aim to collapse those branches into
 
 ## Command-Line Hooks
 
-Add maintainer-only CLI options to `qtmonitor`:
+Add maintainer-only CLI options to `qtmonitor`. The first implementation uses
+fixture-file options local to `MainWindow`; the broader inventory-oriented
+options below remain future work.
 
 ```text
---fake-tag <fixture-or-id>
---fake-inventory <path>
+--fake-fixture <path>
 --fake-state <idle|running|finished|aborted>
---fake-config <default-config-json>
 --capture-startup-screenshot
---capture-state-screenshot
---capture-config-screenshot
---capture-all-default-configs
+--capture-main-screenshots
+--capture-config-screenshots
 --screenshot-dir <dir>
---screenshot-prefix <prefix>
 --no-auto-attach
 ```
 
@@ -400,9 +398,12 @@ Expected behavior:
 - No fake options: unchanged live hardware behavior.
 - `--capture-startup-screenshot`: open with no USB probing and capture the
   disconnected Tag State tab.
-- `--fake-tag ... --capture-state-screenshot`: attach the fake tag, apply
-  `--fake-state`, capture the Tag State tab, and exit.
-- `--capture-all-default-configs`: iterate over all default config JSON files,
+- `--fake-fixture ... --capture-main-screenshots`: load the fake fixture, apply
+  idle, running, and finished display states, capture the Tag State tab for
+  each state, and exit.
+- `--fake-fixture ... --capture-config-screenshots`: load the fake fixture,
+  apply idle state, capture the Configure schedule and sensor tabs, and exit.
+- Future `--capture-all-default-configs`: iterate over all default config JSON files,
   or preferably over all `document: true` inventory entries, attach each as a
   fake tag, show the Configure tab, capture schedule and sensor views as needed,
   and exit.
@@ -416,41 +417,54 @@ native window resources and child widgets are fully realized.
 
 Every documented inventory entry should get at least one default Configure
 screenshot. The generator should create predictable names based on the inventory
-`id`, for example:
+`id`. The schedule screenshot is always required:
 
 ```text
 qtmonitor-config-bittag-schedule.png
-qtmonitor-config-bittag-sensors.png
 qtmonitor-config-bittag-le-schedule.png
-qtmonitor-config-bittag-le-sensors.png
 qtmonitor-config-bittagng-schedule.png
-qtmonitor-config-bittagng-sensors.png
 qtmonitor-config-bitprestag-schedule.png
-qtmonitor-config-bitprestag-sensors.png
 qtmonitor-config-compasstag-schedule.png
-qtmonitor-config-compasstag-sensors.png
 qtmonitor-config-imutag-schedule.png
-qtmonitor-config-imutag-sensors.png
 qtmonitor-config-prestag-schedule.png
-qtmonitor-config-prestag-sensors.png
 qtmonitor-config-prestagraw-schedule.png
+```
+
+The sensors screenshot is generated only for tags with active sensor
+configuration controls:
+
+```text
+qtmonitor-config-bittag-sensors.png
+qtmonitor-config-bittag-le-sensors.png
+qtmonitor-config-bittagng-sensors.png
+qtmonitor-config-bitprestag-sensors.png
+qtmonitor-config-imutag-sensors.png
+qtmonitor-config-prestag-sensors.png
 qtmonitor-config-prestagraw-sensors.png
 ```
 
-If a tag has no meaningful controls on one sub-tab, the first implementation may
-capture only the visible tab and record the skipped view in a manifest.
+If a tag has no meaningful controls on the Sensors sub-tab, qtmonitor hides the
+tab and skips the sensor screenshot instead of producing a blank image.
 
 ### Required Representative States
 
 State screenshots do not need to be repeated for every tag. A recommended set:
 
-- `qtmonitor-state-startup.png`: no tag attached.
-- `qtmonitor-state-idle.png`: representative tag attached, controls enabled for
-  sync, self-test, calibration, and configuration.
-- `qtmonitor-state-running.png`: stop enabled, configuration disabled.
-- `qtmonitor-state-finished.png`: data download and erase enabled.
-- `qtmonitor-state-aborted.png`: data download and erase enabled, error/debug
+- `qtmonitor-startup.png`: no tag attached.
+- `qtmonitor-main-idle.png`: representative tag attached, controls enabled for
+  sync, self-test, configuration, and calibration when supported by that tag.
+- `qtmonitor-main-running.png`: stop enabled, configuration disabled.
+- `qtmonitor-main-finished.png`: data download and erase enabled.
+- `qtmonitor-main-aborted.png`: data download and erase enabled, error/debug
   context visible.
+- `qtmonitor-error-log.png`: disconnected Error Log tab, showing the log pane
+  and save affordance.
+
+Screenshot capture should prefer Qt's layout model over image post-processing:
+select the target tab, let `adjustSize()` and `sizeHint()` settle the window,
+then apply a capture-size guardrail before grabbing the native frame. Avoid
+using image cropping as the primary sizing mechanism because it can hide the
+bottom of widgets such as the Error Log text pane.
 
 Use a tag with both internal and external counts for `FINISHED` and `ABORTED`
 so the download region is meaningful.
@@ -488,7 +502,8 @@ in the main user-facing narrative.
    real connected tag.
 6. Add a fake monitor session or first-step fake branches in `MainWindow`.
 7. Make `ConfigTab` usable with fake mode by avoiding live `Tag` calls while
-   showing default configs. Start/Read/Restore can be disabled in screenshots.
+   showing default configs. Start and Read should match normal visual state but
+   return before sending hardware commands.
 8. Add screenshot helpers using native-frame capture, same as `qtcalibrate`.
 9. Add a fixture generator script or CMake helper that reads the curated
    inventory and can warn about unrepresented default configs.

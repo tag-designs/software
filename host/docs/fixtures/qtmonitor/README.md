@@ -85,3 +85,35 @@ The `config.value` object is protobuf JSON from `GetConfig()`. The
 `fallback_ref` points to the checked-in default config used when a live capture
 is not available or when maintainers want to compare hardware defaults against
 source-controlled defaults.
+
+## Screenshot Replay
+
+`qtmonitor` can replay one fixture directly for documentation screenshots:
+
+```sh
+cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor
+
+/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+  --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
+  --capture-main-screenshots
+
+/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+  --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
+  --capture-config-screenshots
+```
+
+The main capture writes `qtmonitor-main-idle.png`,
+`qtmonitor-main-running.png`, and `qtmonitor-main-finished.png`. The config
+capture writes `qtmonitor-config-<fixture-id>-schedule.png` and
+`qtmonitor-config-<fixture-id>-sensors.png` only when the fixture exposes
+user-configurable sensor controls.
+
+The disconnected first screen does not need a fixture:
+
+```sh
+/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+  --capture-startup-screenshot
+
+/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+  --capture-error-log-screenshot
+```
