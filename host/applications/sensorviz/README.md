@@ -4,7 +4,9 @@
 is intended to grow into the general viewer for pressure, activity, and other
 sensor-oriented tag logs.
 
-For the longer design/history note, see [roadmap.md](design/roadmap.md).
+For the longer design/history note, see [roadmap.md](design/roadmap.md). For
+the user-guide screenshot fixture and capture strategy, see
+[screenshot-capture-plan.md](design/screenshot-capture-plan.md).
 
 ## What It Does
 

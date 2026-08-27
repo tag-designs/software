@@ -115,6 +115,7 @@ set(
   "host/libraries/sensorui/README.md"
   "host/applications/sensorviz/README.md"
   "host/applications/sensorviz/design/roadmap.md"
+  "host/applications/sensorviz/design/screenshot-capture-plan.md"
   "proto/README.md")
 
 if(NOT HOST_MKDOCS_COMMAND)

@@ -109,6 +109,7 @@ nav:
           - QtMonitor Tag Configuration: reference/host/applications/qtmon/tagconfiguration/README.md
           - SensorViz: reference/host/applications/sensorviz/README.md
           - SensorViz Roadmap: reference/host/applications/sensorviz/design/roadmap.md
+          - SensorViz Screenshot Capture Plan: reference/host/applications/sensorviz/design/screenshot-capture-plan.md
       - Proto: reference/proto/README.md
   - Architecture:
       - Overview: architecture.md
@@ -117,6 +118,7 @@ nav:
       - Monitor Interface: reference/embedded/tags/design/monitor_interface.md
       - Restart Recovery: reference/embedded/tags/design/restart-recovery.md
       - SensorViz Roadmap: reference/host/applications/sensorviz/design/roadmap.md
+      - SensorViz Screenshot Capture Plan: reference/host/applications/sensorviz/design/screenshot-capture-plan.md
   - Firmware:
       - Overview: firmware.md
       - Embedded Build Orientation: reference/embedded/design/build-orientation.md
@@ -140,6 +142,7 @@ nav:
       - SensorUI README: reference/host/libraries/sensorui/README.md
       - SensorViz README: reference/host/applications/sensorviz/README.md
       - SensorViz Roadmap: reference/host/applications/sensorviz/design/roadmap.md
+      - SensorViz Screenshot Capture Plan: reference/host/applications/sensorviz/design/screenshot-capture-plan.md
   - API Reference:
       - Overview: api.md
       - Doxygen Output: api/index.md
