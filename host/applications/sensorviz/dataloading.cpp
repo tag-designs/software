@@ -77,6 +77,32 @@ void MainWindow::loadLog()
     watcher->setFuture(QtConcurrent::run(loadSensorLog, path));
 }
 
+bool MainWindow::loadLogFromPathForDocumentation(const QString &path, QString &error)
+{
+    if (path.isEmpty()) {
+        error = tr("No SQLite log path was provided.");
+        return false;
+    }
+    if (log_load_in_progress_) {
+        error = tr("A log load is already in progress.");
+        return false;
+    }
+
+    setLogLoadInProgress(true, path);
+    const LoadResult result = loadSensorLog(path);
+    if (!result.ok) {
+        setLogLoadInProgress(false);
+        error = result.error;
+        updateMetadata();
+        return false;
+    }
+
+    status_->setText(tr("Preparing plot for %1...").arg(QFileInfo(path).fileName()));
+    applyLoadedLog(path, result.log);
+    setLogLoadInProgress(false);
+    return true;
+}
+
 void MainWindow::setLogLoadInProgress(bool loading, const QString &path)
 {
     if (log_load_in_progress_ == loading) {

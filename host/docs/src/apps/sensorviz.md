@@ -1,16 +1,17 @@
 # SensorViz
 
-Use SensorViz to inspect SQLite sensor logs from pressure, activity, and
-CompassTag logs. The application is intended for comparing raw sensor streams
-and derived views, such as altitude computed from pressure, filtered activity,
-and compass-derived heading/orientation streams.
+Use SensorViz to inspect SQLite sensor logs from pressure, activity, IMUTag,
+and CompassTag logs. The application is intended for comparing raw sensor
+streams and derived views, such as altitude computed from pressure, filtered
+activity, IMU magnitude streams, and compass-derived heading/orientation
+streams.
 
 At startup, **File > Load** and the **Help** menu are available. Most commands
 become available after you load a SQLite log file. SensorViz enables additional
 menu items when the loaded file contains the streams or metadata needed by those
 features.
 
-![SensorViz main window placeholder](../images/sensorviz-main-window.png)
+![SensorViz at startup with no log loaded](../images/sensorviz-startup.png)
 
 ## Open a Data File
 
@@ -24,14 +25,19 @@ The **File Info** tab lists the file name, tag type, profile name, loaded record
 sets, compass calibration status when present, and other log metadata. Qt
 diagnostic messages are also routed to this tab.
 
-![SensorViz File Info tab placeholder](../images/sensorviz-file-info.png)
+![SensorViz File Info tab for an IMUTag log](../images/sensorviz-imutag-file-info.png)
 
 ## File Menu
 
-The **File** menu contains log-level actions, preference file commands, and
-printing.
+The menu sections below describe the menu bar, but the same command groups are
+also available from the plot context menu. Right-click inside the plot to open a
+popup with **File**, **View**, and **Configuration** submenus while you are
+working directly with the graph.
 
-![SensorViz File menu placeholder](../images/sensorviz-file-menu.png)
+The **File** menu contains log-level actions, preference file commands, and
+printing. The exact enabled state depends on whether a log has been loaded.
+
+![SensorViz File menu](../images/sensorviz-file-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -44,7 +50,7 @@ printing.
 The **Preferences** submenu stores display choices by tag type. It is enabled
 after a log is loaded.
 
-![SensorViz Preferences submenu placeholder](../images/sensorviz-preferences-menu.png)
+![SensorViz Preferences submenu](../images/sensorviz-preferences-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -61,7 +67,7 @@ UTC offset, or battery direction because those are analysis/session settings.
 The **Help** menu opens the SensorViz guide and displays application
 information.
 
-![SensorViz Help placeholder](../images/sensorviz-help-menu.png)
+![SensorViz Help menu](../images/sensorviz-help-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -71,9 +77,10 @@ information.
 ## View Menu
 
 The **View** menu controls what appears on the plot and how visible streams are
-drawn.
+drawn. Stream and range entries are rebuilt from the loaded file, so the menu
+may be short for simple tags and longer for IMUTag or CompassTag logs.
 
-![SensorViz View menu placeholder](../images/sensorviz-view-menu.png)
+![SensorViz View menu](../images/sensorviz-view-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -90,7 +97,7 @@ pressure-sensor temperature default to visible. Core temperature, voltage, and
 altitude default to hidden. CompassTag heading and acceleration default to
 visible; pitch, roll, dip, and magnetic field default to hidden.
 
-![SensorViz Visible Streams dialog placeholder](../images/sensorviz-visible-streams-dialog.png)
+![SensorViz Visible Streams dialog](../images/sensorviz-visible-streams-dialog.png)
 
 ## View > Ranges Submenu
 
@@ -98,7 +105,7 @@ The **Ranges** submenu is rebuilt from the streams currently visible on the
 plot. Each item is named for one stream, for example **Pressure Range...** or
 **Altitude Range...**.
 
-![SensorViz Ranges submenu placeholder](../images/sensorviz-ranges-menu.png)
+![SensorViz Ranges submenu](../images/sensorviz-ranges-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -116,14 +123,14 @@ range. If you set a pressure range while altitude is visible, SensorViz derives
 a matching altitude range. Activity and the low-pass activity filter are also
 kept on the same range until one of them is adjusted independently.
 
-![SensorViz stream range dialog placeholder](../images/sensorviz-range-dialog.png)
+![SensorViz stream range dialog](../images/sensorviz-range-dialog.png)
 
 ## Configuration Menu
 
 The **Configuration** menu controls plot presentation and derived-view
 parameters.
 
-![SensorViz Configuration menu placeholder](../images/sensorviz-configuration-menu.png)
+![SensorViz Configuration menu with pressure-derived controls](../images/sensorviz-configuration-menu.png)
 
 | Menu item | Function |
 | --- | --- |
@@ -140,16 +147,21 @@ are available, so the active parameter is visible without reopening the dialog.
 The plot also annotates altitude with the current sea-level pressure and heading
 with the current declination.
 
-![SensorViz Graph Title dialog placeholder](../images/sensorviz-graph-title-dialog.png)
+Configuration items are data-dependent. Pressure logs show sea-level pressure
+controls, activity logs show the activity filter, and CompassTag logs with raw
+compass samples and calibration constants show declination and battery-direction
+controls.
 
-![SensorViz UTC Offset dialog placeholder](../images/sensorviz-utc-offset-dialog.png)
+![SensorViz Graph Title dialog](../images/sensorviz-graph-title-dialog.png)
+
+![SensorViz UTC Offset dialog](../images/sensorviz-utc-offset-dialog.png)
 
 ## Derived Views
 
 SensorViz creates some streams from loaded data so they can be inspected beside
 raw streams.
 
-![SensorViz derived views placeholder](../images/sensorviz-derived-views.png)
+![SensorViz derived views](../images/sensorviz-derived-views.png)
 
 | Derived view | How to control it |
 | --- | --- |
@@ -157,10 +169,38 @@ raw streams.
 | **Activity filter** | Enable or disable it with **Configuration > Activity Filter**. The filter is display-only and does not alter the raw activity stream. |
 | **CompassTag heading and orientation streams** | Generated automatically when the log contains raw compass samples and calibration constants. Show or hide individual compass streams from **View > Visible Streams...**. Adjust heading display with **Configuration > Declination...** and **Configuration > Battery Forward**. |
 
+## IMUTag Logs
+
+IMUTag logs typically contain high-rate accelerometer and gyroscope samples plus
+lower-rate magnetometer and pressure samples. SensorViz keeps the raw `x/y/z`
+component streams available in **View > Visible Streams...**, then generates
+summary magnitude streams that are easier to read on the first plot. IMUTag
+logs use elapsed seconds on the x-axis when the SQLite file stores samples by
+elapsed time rather than UTC epoch.
+
+![SensorViz IMUTag plot with generated magnitude streams](../images/sensorviz-imutag-plot.png)
+
+The IMUTag File Info example above shows the metadata check to make before you
+start changing display settings.
+
+## CompassTag Logs
+
+CompassTag logs add a raw compass record set and calibration metadata. When both
+are present, SensorViz generates heading, acceleration, pitch, roll, dip, and
+field-strength streams from the loaded data.
+
+![SensorViz CompassTag plot](../images/sensorviz-compasstag-plot.png)
+
 CompassTag logs may also show a compass/orientation panel beside the plot. Moving
 the mouse over the plot updates that panel to the nearest loaded compass sample.
 
-![SensorViz CompassTag view placeholder](../images/sensorviz-compass-view.png)
+![SensorViz CompassTag orientation panel](../images/sensorviz-compass-view.png)
+
+The CompassTag File Info tab reports the compass calibration status and the
+loaded record sets, which helps confirm that the orientation panel and
+CompassTag-specific configuration commands should be available.
+
+![SensorViz CompassTag file information](../images/sensorviz-compasstag-file-info.png)
 
 ## Plot Context Menu
 
@@ -170,7 +210,7 @@ directly inside the plot because it exposes loading, preferences, stream
 visibility, ranges, zoom commands, printing, and derived-view settings without
 moving to the menu bar.
 
-![SensorViz plot context menu placeholder](../images/sensorviz-popup-menu.png)
+![SensorViz plot context menu](../images/sensorviz-popup-menu.png)
 
 The context menu only shows data-dependent items that make sense for the current
 file. For example, **View > Ranges** is populated from visible streams, and
@@ -184,7 +224,7 @@ the plot to move the left cursor. Shift-double-click to move the right cursor.
 Choose **View > Zoom to Cursors** to zoom the x-axis to the selected interval.
 Choose **View > Reset Zoom** to return to the full loaded time range.
 
-![SensorViz cursors placeholder](../images/sensorviz-cursors.png)
+![SensorViz cursors](../images/sensorviz-cursors.png)
 
 The mouse tooltip reports the time at the pointer and nearby stream values. For
 CompassTag logs, moving over the plot also updates the orientation panel.
@@ -195,7 +235,7 @@ Choose **File > Print** to open a print preview of the current plot. SensorViz
 renders the plot in landscape orientation and preserves the on-screen aspect
 ratio for printing.
 
-![SensorViz print preview placeholder](../images/sensorviz-print-preview.png)
+![SensorViz print preview](../images/sensorviz-print-preview.png)
 
 ## Troubleshooting
 

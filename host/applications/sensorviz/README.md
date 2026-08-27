@@ -243,6 +243,79 @@ Derived streams that should be listed beside their inputs need an entry in
 `sourceOrderForStream()` in `stream_actions.cpp`; otherwise they append to the
 end of the stream list.
 
+## Documentation Capture Hooks
+
+SensorViz includes maintainer-only command-line hooks for user-guide
+screenshot generation. With no capture options, startup remains the normal
+interactive workflow.
+
+Supported options:
+
+```sh
+sensorviz \
+  --load-log <path> \
+  --load-preferences <path> \
+  --capture-screenshot <name> \
+  --capture-suite <startup|menus|imutag|compasstag|bitprestag|all> \
+  --screenshot-dir <dir> \
+  --no-user-prompts
+```
+
+`--load-log` uses the same SQLite loader and `applyLoadedLog()` path as
+File > Load, but runs synchronously so capture code can wait until stream
+actions, transforms, metadata, and the plot are ready. `--load-preferences`
+loads the normal SensorViz JSON preference file and reapplies it to the loaded
+tag before capture.
+
+`documentation_capture.cpp` owns the automation flow. It starts after the main
+window is shown, optionally captures the startup window before loading a log,
+loads fixture data, waits for Qt paint events to settle, and writes PNG files.
+The default output directory is `host/docs/src/images`; pass
+`--screenshot-dir` for test runs or staging.
+
+Named captures currently supported:
+
+```text
+startup
+main-window
+file-info
+file-menu
+preferences-menu
+view-menu
+ranges-menu
+configuration-menu
+help-menu
+popup-menu
+imutag-plot
+imutag-file-info
+compasstag-plot
+compasstag-file-info
+compass-view
+bitprestag-plot
+bitprestag-file-info
+```
+
+Menu captures reuse the live top-level `QMenu` objects created in
+`mainwindow.cpp`. The plot context menu is built by `createPlotContextMenu()`
+in `interaction.cpp`, which is shared by right-click interaction and capture
+automation. Keep that builder as the single source of truth when adding context
+menu entries.
+
+The dialog screenshot suite is intentionally not implemented yet. The blocking
+dialogs in `stream_actions.cpp`, `controls.cpp`, and `transforms.cpp` need a
+follow-on refactor into reusable dialog builders before they can be shown
+modelessly, captured, and closed without user input.
+
+Example local checks:
+
+```sh
+sensorviz --capture-screenshot startup --screenshot-dir /tmp/sensorviz-shots --no-user-prompts
+sensorviz --load-log host/docs/fixtures/sensorviz/imutag.db3 \
+  --capture-suite imutag --screenshot-dir /tmp/sensorviz-shots --no-user-prompts
+sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
+  --capture-suite compasstag --screenshot-dir /tmp/sensorviz-shots --no-user-prompts
+```
+
 ## Future Direction
 
 CompassTag and IMUTag now have initial support, but there are still useful

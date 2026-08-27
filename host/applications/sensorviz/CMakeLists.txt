@@ -31,6 +31,7 @@ set(sensorviz_SRCS
   compass_transforms.cpp
   controls.cpp
   dataloading.cpp
+  documentation_capture.cpp
   interaction.cpp
   main.cpp
   mainwindow.cpp

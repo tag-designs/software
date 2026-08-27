@@ -26,6 +26,25 @@
 class QQuickWidget;
 class QSplitter;
 
+/**
+ * @struct  MainWindowOptions
+ * @brief   Startup options used by maintainer automation.
+ *
+ * @details The normal interactive application passes the default-constructed
+ *          value. Documentation capture runs pass fixture paths and capture
+ *          names so SensorViz can load real data and grab deterministic
+ *          screenshots without opening modal file dialogs.
+ */
+struct MainWindowOptions
+{
+    QString loadLogPath;          ///< SQLite log loaded after the window is shown.
+    QString loadPreferencesPath;  ///< SensorViz preference JSON loaded for the fixture log.
+    QString captureScreenshot;    ///< Single capture name; may be empty when a suite is used.
+    QString captureSuite;         ///< Capture suite name such as @c startup, @c menus, or @c all.
+    QString screenshotDir;        ///< Destination directory for generated PNG files.
+    bool noUserPrompts = false;   ///< Report fixture/capture errors to stderr instead of dialogs.
+};
+
 // MainWindow is the coordination object for sensorViz. It owns the loaded
 // SensorLog, the stream list currently available to the user, the menu actions
 // that select those streams, and the QCustomPlot state used to draw them.
@@ -65,7 +84,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(
+        const MainWindowOptions &options = MainWindowOptions(),
+        QWidget *parent = nullptr);
 
 private slots:
     void loadLog();
@@ -128,6 +149,56 @@ private:
     bool loadPreferencesFromFile(const QString &path, QString &error);
     bool savePreferencesToFile(const QString &path, QString &error);
 
+    /**
+     * @brief   Loads a SQLite log for command-line documentation automation.
+     *
+     * @details Runs the same SQLite conversion and state application used by
+     *          File > Load, but synchronously so screenshot capture can wait
+     *          for menus, transforms, and plots to settle.
+     *
+     * @param[in] path   SQLite database path to load.
+     * @param[out] error Human-readable failure reason when loading fails.
+     *
+     * @return  @c true when the log was loaded and applied, @c false on a
+     *          loader or file error.
+     */
+    bool loadLogFromPathForDocumentation(const QString &path, QString &error);
+
+    /**
+     * @brief   Applies documentation startup options after the window is shown.
+     *
+     * @details This is the only entry point for command-line documentation
+     *          hooks. It keeps fixture loading and screenshot capture out of
+     *          the normal interactive startup path.
+     */
+    void runDocumentationStartup();
+
+    /**
+     * @brief   Saves a named documentation screenshot.
+     *
+     * @param[in] name Capture name or PNG filename.
+     *
+     * @return  @c true when the PNG was written successfully.
+     */
+    bool captureDocumentationScreenshot(const QString &name);
+
+    /**
+     * @brief   Saves a deterministic suite of documentation screenshots.
+     *
+     * @param[in] suite Capture suite name such as @c startup, @c menus, or
+     *                  @c all.
+     *
+     * @return  @c true when every capture in the suite succeeds.
+     */
+    bool captureDocumentationSuite(const QString &suite);
+
+    /**
+     * @brief   Emits capture failures through the automation-friendly channel.
+     *
+     * @param[in] message Failure text suitable for stderr or a message box.
+     */
+    void reportDocumentationError(const QString &message);
+
     // Streams are the single source of truth for both raw and derived data.
     // Raw and generated compass streams have checkable QAction objects in
     // stream_actions_; the Visible Streams dialog edits those actions as a
@@ -168,6 +239,7 @@ private:
     QColor effectiveStreamColor(const SensorStream &stream) const;
     void updateColorsAction();
     void updateCompassDisplay(double epoch);
+    QMenu *createPlotContextMenu(QWidget *parent);
     QString formatPlotTime(double time_seconds) const;
     void updateTimeAxisForLog();
 
@@ -196,6 +268,7 @@ private:
     QString graph_title_;
     bool graph_title_visible_ = true;
     bool log_load_in_progress_ = false;
+    MainWindowOptions options_;
 
     // Metadata box placement is intentionally session-only. The box is an
     // overlay for contextual constants, so dragging it should not mutate log
@@ -261,6 +334,9 @@ private:
     QMenu *view_menu_ = nullptr;
     QMenu *configuration_menu_ = nullptr;
     QMenu *range_menu_ = nullptr;
+    QMenu *file_menu_ = nullptr;
+    QMenu *preferences_menu_ = nullptr;
+    QMenu *help_menu_ = nullptr;
     QVector<QAction *> stream_actions_;
     QVector<QAction *> range_actions_;
 

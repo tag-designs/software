@@ -76,4 +76,5 @@ describes fake-tag fixtures for `qtmonitor` documentation screenshots.
 Captured qtmonitor fixture data lives under
 [`fixtures/qtmonitor/`](fixtures/qtmonitor/README.md); those fixtures support
 maintainer screenshot generation and are not rendered into the packaged user
-guide.
+guide. SensorViz sample SQLite logs live under
+[`fixtures/sensorviz/`](fixtures/sensorviz/README.md) for the same purpose.

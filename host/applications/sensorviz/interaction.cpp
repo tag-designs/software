@@ -285,17 +285,17 @@ void MainWindow::updateTimeAxisForLog()
     utc_offset_action_->setEnabled(!log_.path.isEmpty());
 }
 
-void MainWindow::showPlotContextMenu(const QPoint &pos)
+QMenu *MainWindow::createPlotContextMenu(QWidget *parent)
 {
     // Build a fresh popup each time so it reflects the current set of visible
     // streams, enabled transforms, and tag-specific controls.
-    QMenu menu(this);
+    QMenu *menu = new QMenu(parent);
     // The context menu mirrors the top-level File, View, and Configuration
     // menus. Keeping the same structure avoids a long flat popup as more
     // stream/preference controls are added. Range actions are temporary here
     // because QMenu owns them only for the lifetime of this popup; the
     // persistent View -> Ranges actions are managed by range_actions_.
-    QMenu *file = menu.addMenu(tr("File"));
+    QMenu *file = menu->addMenu(tr("File"));
     file->addAction(load_action_);
     QMenu *preferences = file->addMenu(tr("Preferences"));
     preferences->addAction(load_preferences_action_);
@@ -307,7 +307,7 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
     file->addSeparator();
     file->addAction(about_action_);
 
-    QMenu *view = menu.addMenu(tr("View"));
+    QMenu *view = menu->addMenu(tr("View"));
     if (!stream_actions_.isEmpty()) {
         view->addAction(visible_streams_action_);
     }
@@ -343,7 +343,7 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
         view->addAction(calibration_constants_action_);
     }
 
-    QMenu *configuration = menu.addMenu(tr("Configuration"));
+    QMenu *configuration = menu->addMenu(tr("Configuration"));
     configuration->addAction(edit_title_action_);
     configuration->addAction(show_title_action_);
     configuration->addSeparator();
@@ -366,7 +366,14 @@ void MainWindow::showPlotContextMenu(const QPoint &pos)
             configuration->addAction(battery_forward_action_);
         }
     }
-    menu.exec(plot_->mapToGlobal(pos));
+    return menu;
+}
+
+void MainWindow::showPlotContextMenu(const QPoint &pos)
+{
+    QMenu *menu = createPlotContextMenu(this);
+    menu->exec(plot_->mapToGlobal(pos));
+    menu->deleteLater();
 }
 
 QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) const

@@ -9,6 +9,7 @@
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTimeZone>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -21,13 +22,22 @@ QTextEdit *s_textEdit = nullptr;
 // dataloading.cpp and controls.cpp. The static actions created here are reused
 // by both the top-level menus and the plot context menu, so changing an action
 // label, shortcut, or connection here affects both places.
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
+MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
+    : QMainWindow(parent),
+      options_(options)
 {
     // Construct the static shell first. Data-dependent menus are hidden until
     // loadLog() has real streams/record sets to advertise.
     createActions();
     createUi();
     updateTransformActions();
+
+    if (!options_.loadLogPath.isEmpty()
+        || !options_.loadPreferencesPath.isEmpty()
+        || !options_.captureScreenshot.isEmpty()
+        || !options_.captureSuite.isEmpty()) {
+        QTimer::singleShot(0, this, &MainWindow::runDocumentationStartup);
+    }
 }
 
 void MainWindow::createActions()
@@ -128,15 +138,15 @@ void MainWindow::createActions()
     // The menu layout follows compViz: File for file-level actions, View for
     // plot/stream visibility and Configuration for transform parameters.
     // Separators are stored when later code needs to hide empty groups.
-    QMenu *file_menu = menuBar()->addMenu(tr("&File"));
-    file_menu->addAction(load_action_);
-    QMenu *preferences_menu = file_menu->addMenu(tr("&Preferences"));
-    preferences_menu->addAction(load_preferences_action_);
-    preferences_menu->addAction(save_preferences_action_);
-    preferences_menu->addSeparator();
-    preferences_menu->addAction(default_preferences_action_);
-    file_menu->addSeparator();
-    file_menu->addAction(print_action_);
+    file_menu_ = menuBar()->addMenu(tr("&File"));
+    file_menu_->addAction(load_action_);
+    preferences_menu_ = file_menu_->addMenu(tr("&Preferences"));
+    preferences_menu_->addAction(load_preferences_action_);
+    preferences_menu_->addAction(save_preferences_action_);
+    preferences_menu_->addSeparator();
+    preferences_menu_->addAction(default_preferences_action_);
+    file_menu_->addSeparator();
+    file_menu_->addAction(print_action_);
 
     view_menu_ = menuBar()->addMenu(tr("&View"));
     view_menu_->addAction(visible_streams_action_);
@@ -162,10 +172,10 @@ void MainWindow::createActions()
     configuration_menu_->addAction(declination_action_);
     configuration_menu_->addAction(battery_forward_action_);
 
-    QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
-    help_menu->addAction(user_guide_action_);
-    help_menu->addSeparator();
-    help_menu->addAction(about_action_);
+    help_menu_ = menuBar()->addMenu(tr("&Help"));
+    help_menu_->addAction(user_guide_action_);
+    help_menu_->addSeparator();
+    help_menu_->addAction(about_action_);
 
     // User-facing help for every persistent menu action lives here. Keep these
     // text fields editable and close to action construction so menu wording,

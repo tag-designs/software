@@ -86,6 +86,7 @@ directory that owns the code; the developer portal stages those files under
 - [QtMonitor Screenshot Automation](reference/host/docs/design/qtmonitor-screenshot-automation.md)
 - [QtMonitor Fixture Captures](reference/host/docs/fixtures/qtmonitor/README.md)
 - [SensorViz](reference/host/applications/sensorviz/README.md)
+- [SensorViz Sample Logs](reference/host/docs/fixtures/sensorviz/README.md)
 - [SensorViz Roadmap](reference/host/applications/sensorviz/design/roadmap.md)
 - [SensorViz Screenshot Capture Plan](reference/host/applications/sensorviz/design/screenshot-capture-plan.md)
 

@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QTextEdit>
 
 #include "mainwindow.h"
@@ -52,9 +53,59 @@ int main(int argc, char *argv[])
     // Keep startup deliberately small: after QApplication and styling, the
     // MainWindow constructor owns all menu/widget creation.
     QApplication app(argc, argv);
+    QCoreApplication::setApplicationName(QStringLiteral("sensorViz"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription(
+        QStringLiteral("SQLite sensor log visualization tool."));
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    QCommandLineOption load_log_option(
+        QStringLiteral("load-log"),
+        QStringLiteral("Load a SQLite sensor log after startup."),
+        QStringLiteral("path"));
+    QCommandLineOption load_preferences_option(
+        QStringLiteral("load-preferences"),
+        QStringLiteral("Load a sensorViz display preferences JSON file."),
+        QStringLiteral("path"));
+    QCommandLineOption capture_screenshot_option(
+        QStringLiteral("capture-screenshot"),
+        QStringLiteral("Capture one named documentation screenshot and exit."),
+        QStringLiteral("name"));
+    QCommandLineOption capture_suite_option(
+        QStringLiteral("capture-suite"),
+        QStringLiteral("Capture a documentation screenshot suite and exit."),
+        QStringLiteral("suite"));
+    QCommandLineOption screenshot_dir_option(
+        QStringLiteral("screenshot-dir"),
+        QStringLiteral("Directory where generated PNG screenshots are written."),
+        QStringLiteral("dir"));
+    QCommandLineOption no_user_prompts_option(
+        QStringLiteral("no-user-prompts"),
+        QStringLiteral("Report automation failures without opening modal prompts."));
+
+    parser.addOption(load_log_option);
+    parser.addOption(load_preferences_option);
+    parser.addOption(capture_screenshot_option);
+    parser.addOption(capture_suite_option);
+    parser.addOption(screenshot_dir_option);
+    parser.addOption(no_user_prompts_option);
+    parser.process(app);
+
     HostStyle::apply(app);
     qInstallMessageHandler(sensorVizMessageOutput);
-    MainWindow window;
+
+    MainWindowOptions options;
+    options.loadLogPath = parser.value(load_log_option);
+    options.loadPreferencesPath = parser.value(load_preferences_option);
+    options.captureScreenshot = parser.value(capture_screenshot_option);
+    options.captureSuite = parser.value(capture_suite_option);
+    options.screenshotDir = parser.value(screenshot_dir_option);
+    options.noUserPrompts = parser.isSet(no_user_prompts_option);
+
+    MainWindow window(options);
     window.show();
     return app.exec();
 }
