@@ -202,7 +202,8 @@ bool writeConfig(Config *config)
     return false;
   }
 
-#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
+    (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
   tagStorageWake(TAG_EXTERNAL_FLASH);
   bool storage_ready = tagStorageCheckID(TAG_EXTERNAL_FLASH) > -1;
   tagStorageSleep(TAG_EXTERNAL_FLASH);

@@ -23,7 +23,8 @@ The selected storage module chooses the chip implementation:
 - `flash_mx25l` compiles `src/mx25l.c`
 - `flash_mx25u12843` compiles `src/mx25u12843.c`
 - `flash_mx25r` compiles `src/mx25r.c`
-- `flash_gd5f` compiles `src/gd5f.c`
+- `flash_gd5f1gq5re` compiles `src/gd5f.c` with the 1 Gbit GD5F geometry
+- `flash_gd5f2gm7re` compiles `src/gd5f.c` with the 2 Gbit GD5F2GM7RE geometry
 
 `external_flash_test.c` provides the shared monitor self-test hook.
 
@@ -48,17 +49,17 @@ Keeping the long data phases behind block hooks lets a tag use DMA for 2 KiB
 log pages without changing chip command code.
 
 `storage_device.h` describes the board side of an external flash device: SPI
-bus and sector geometry. AT25XE, MX25U12843, and MX25R publish their geometry
-from their chip headers, and tag or family `devices.c` files copy that into
-`tagExternalFlash` rather than depending on tag-local capacity defines. Chip
-drivers export only a `TagStorageOps` table, while tag or family `devices.c`
-files export `tagExternalFlash`. That descriptor pairs the selected chip
-operation table with board wiring and flash geometry. Chip operations use
-`wake`/`sleep` for chip-specific lifecycle hooks so they are not confused with
-raw SPI bus begin/end. NOR drivers use those hooks for deep-power-down and
-release-from-deep-power-down commands; the GD5F SPI-NAND driver has no
-deep-power-down command, so its hook only begins or ends the storage bus and
-leaves chip-select deasserted.
+bus and sector geometry. AT25XE, MX25U12843, MX25R, and the GD5F NAND modules
+publish geometry through chip headers or module compile definitions, and tag or
+family `devices.c` files copy that into `tagExternalFlash` rather than
+depending on tag-local capacity defines. Chip drivers export only a
+`TagStorageOps` table, while tag or family `devices.c` files export
+`tagExternalFlash`. That descriptor pairs the selected chip operation table
+with board wiring and flash geometry. Chip operations use `wake`/`sleep` for
+chip-specific lifecycle hooks so they are not confused with raw SPI bus
+begin/end. NOR drivers use those hooks for deep-power-down and
+release-from-deep-power-down commands; the GD5F SPI-NAND driver currently only
+begins or ends the storage bus and leaves chip-select deasserted.
 
 Converted storage also supplies helpers used by tag/family `devices.c` standby
 hooks. `tagStoragePrepareStandby()` handles chip-level or bus-level standby

@@ -38,6 +38,8 @@ paths below mirror their repository locations under `reference/`.
 - [Common Tests README](reference/embedded/tags/common/test/README.md)
 - [IMUTagNand README](reference/embedded/tags/IMUTagNand/README.md)
 - [IMUTagNand TODO](reference/embedded/tags/IMUTagNand/todo.md)
+- [IMUTagNandBmp581 README](reference/embedded/tags/IMUTagNandBmp581/README.md)
+- [IMUTagNandBmp581 TODO](reference/embedded/tags/IMUTagNandBmp581/todo.md)
 - [CompassTag Notes](reference/embedded/tags/CompassTagAT25Breakout/design/notes.md)
 - [BitPresTag README](reference/embedded/tags/families/BitPresTag/README.md)
 - [BitTagNG README](reference/embedded/tags/families/BitTagNG/README.md)

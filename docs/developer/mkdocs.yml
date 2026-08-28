@@ -84,6 +84,8 @@ nav:
       - Embedded Tag Targets:
           - IMUTagNand: reference/embedded/tags/IMUTagNand/README.md
           - IMUTagNand TODO: reference/embedded/tags/IMUTagNand/todo.md
+          - IMUTagNandBmp581: reference/embedded/tags/IMUTagNandBmp581/README.md
+          - IMUTagNandBmp581 TODO: reference/embedded/tags/IMUTagNandBmp581/todo.md
           - CompassTagAT25Breakout: reference/embedded/tags/CompassTagAT25Breakout/design/notes.md
       - Embedded Tag Families:
           - Overview: reference/embedded/tags/families/README.md

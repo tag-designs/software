@@ -141,12 +141,17 @@ Current examples:
     src/lis2dtw12.c
   pressure/
     inc/lps.h
+    inc/bmp581.h
     inc/lps22hh.h
     inc/lps27hhw.h
+    src/bmp581.c
+    src/bmp581_test.c
     src/lps22hh.c
+    src/lps22hh_test.c
     src/lps27.c
     src/lps27_test.c
     src/pressure_device.c
+    vendor/bmp5/
   mag/
     inc/ak09940a.h
     inc/bmm350_tag.h
@@ -305,10 +310,11 @@ Pressure drivers add one more layer above `sensor_io`: `lps.h` defines
 `TagPressureDevice`, which combines a `TagRegisterDevice` with the pressure
 driver's sleep callback. The `TagRegisterDevice` owns both the register
 read/write protocol kind and the `TagBusDevice` used to power/open/close the
-device. Active LPS27 and LPS22HH firmware bind those descriptors in tag/family
-`devices.c` and call the parameterized drivers directly. Keep sensor register
-sequences in the individual driver files and keep tag-selection details in the
-tag/family `devices.c` file.
+device. Active BMP581, LPS27, and LPS22HH firmware bind those descriptors in
+tag/family `devices.c` and call the parameterized drivers directly. The BMP581
+wrapper uses the Bosch BMP5 SensorAPI from `pressure/vendor/bmp5` with tag
+register-bus callbacks. Keep sensor register sequences in the individual driver
+files and keep tag-selection details in the tag/family `devices.c` file.
 `sensor_paths.mk` is a broader guarded helper used by core power code while
 that code still has compile-time branches for multiple sensor families; it is
 not intended to be listed directly in `TAG_MODULES`.

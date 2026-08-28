@@ -49,7 +49,11 @@
 #include "ak09940a.h"
 #endif
 #include "lsm6dsv16x.h"
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+#include "bmp581.h"
+#else
 #include "lps22hh.h"
+#endif
 #include "sensors.h"
 
 
@@ -66,6 +70,9 @@
 #define IMU_DATA_WAKE_EXTI_ACTION EXTI_MODE_ACTION_EVENT
 #endif
 #define MAG_MISSED_RECOVERY_THRESHOLD 16U
+#ifndef IMUTAG_PRESSURE_DRDY_LINE
+#define IMUTAG_PRESSURE_DRDY_LINE LINE_LPS_DRDY
+#endif
 
 /**
  * @brief One flash record for host-provided magnetometer calibration.
@@ -269,6 +276,27 @@ static ak09940_rate_t select_mag_rate(lsm6dsv16x_trig_odr_t imu_odr)
  * the auxiliary poll cadence so the superframe can carry coherent environment
  * updates when they are available.
  */
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+static bmp581_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
+{
+  switch (imu_odr) {
+  case LSM6DSV16X_TRIG_ODR_50HZ:
+    return BMP581_ODR_10HZ;
+  case LSM6DSV16X_TRIG_ODR_100HZ:
+    return BMP581_ODR_25HZ;
+  case LSM6DSV16X_TRIG_ODR_200HZ:
+    return BMP581_ODR_25HZ;
+  case LSM6DSV16X_TRIG_ODR_400HZ:
+    return BMP581_ODR_50HZ;
+  case LSM6DSV16X_TRIG_ODR_800HZ:
+    return BMP581_ODR_100HZ;
+  case LSM6DSV16X_TRIG_ODR_1600HZ:
+    return BMP581_ODR_200HZ;
+  default:
+    return BMP581_ODR_50HZ;
+  }
+}
+#else
 static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
 {
   switch (imu_odr) {
@@ -288,6 +316,7 @@ static lps22hh_odr_t select_pressure_rate(lsm6dsv16x_trig_odr_t imu_odr)
     return LPS22HH_ODR_50HZ;
   }
 }
+#endif
 
 /** Reset cached auxiliary state at collection start. */
 static void reset_environment_cache(void)
@@ -347,16 +376,16 @@ static inline bool mag_data_ready(void)
 #endif
 }
 
-/** Put the LPS22HH data-ready line in input mode. */
+/** Put the pressure data-ready line in input mode. */
 static inline void init_pressure_data_ready_line(void)
 {
-  toInput(LINE_LPS_DRDY);
+  toInput(IMUTAG_PRESSURE_DRDY_LINE);
 }
 
 /** Return true when the pressure DRDY pin is asserted. */
 static inline bool pressure_data_ready(void)
 {
-  return palReadLine(LINE_LPS_DRDY) == PAL_HIGH;
+  return palReadLine(IMUTAG_PRESSURE_DRDY_LINE) == PAL_HIGH;
 }
 
 /** Return true when the IMU FIFO/wake line is asserted. */
@@ -376,7 +405,11 @@ static bool pressure_sample_ready(void)
   if (pressure_data_ready())
     return true;
 
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  return bmp581_data_ready_device(TAG_PRESSURE_DEVICE);
+#else
   return lps22hh_data_ready_device(TAG_PRESSURE_DEVICE);
+#endif
 }
 
 /**
@@ -531,11 +564,29 @@ static bool update_latest_mag(void)
  * @brief Refresh cached pressure and raw temperature values if data is ready.
  *
  * Pressure is converted to hPa immediately for the superframe. Raw temperature
- * remains in LPS22HH units because environment log metadata and host export
- * code already understand that representation.
+ * remains in the active pressure driver's storage units for the environment
+ * header path in state_run.c.
  */
 static bool update_latest_pressure(void)
 {
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  float pressure_hpa;
+  int16_t temperature_centi_c;
+  int rc;
+
+  if (!pressure_sample_ready())
+    return false;
+
+  rc = bmp581_read_pressure_temp_device(TAG_PRESSURE_DEVICE, &pressure_hpa,
+                                        &temperature_centi_c);
+  if (rc == 0) {
+    latest_pressure = pressure_hpa;
+    latest_rawtemp = temperature_centi_c;
+    have_pressure_sample = true;
+    return true;
+  }
+  return false;
+#else
   int32_t pressure;
   int32_t temperature;
   int rc;
@@ -551,6 +602,7 @@ static bool update_latest_pressure(void)
     return true;
   }
   return false;
+#endif
 }
 
 /**
@@ -593,7 +645,11 @@ bool initDataCollection(void)
 #else
   ak09940_rate_t mag_rate;
 #endif
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  bmp581_odr_t pressure_rate;
+#else
   lps22hh_odr_t pressure_rate;
+#endif
   bool ok = true;
 
   enable_data_collection_wake_event();
@@ -622,11 +678,18 @@ bool initDataCollection(void)
     ok = false;
   }
 
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  if (bmp581_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate) != 0) {
+    debug_log_printf("IMUTag collection: BMP581 init failed\r\n");
+    ok = false;
+  }
+#else
   if (lps22hh_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate,
                                        LPS22HH_LPF_DISABLE) != 0) {
     debug_log_printf("IMUTag collection: LPS22HH init failed\r\n");
     ok = false;
   }
+#endif
 
   /* Start the FIFO pacing source last, then enable the wake event for it. */
   lsm6dsv16x_init_accel_gyro_triggered(TAG_IMU_DEVICE, &trig_cfg, NULL);
@@ -781,7 +844,11 @@ bool deinitDataCollection(void)
   ak09940aDeviceEnd(TAG_MAG_DEVICE);
 #endif
 
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  (void)bmp581_set_idle_device(TAG_PRESSURE_DEVICE);
+#else
   (void)lps22hh_set_idle_device(TAG_PRESSURE_DEVICE);
+#endif
   lsm6dsv16x_init_shutdown(TAG_IMU_DEVICE);
   debug_log_printf("IMUTag collection: sensors deinitialized\r\n");
   return true;

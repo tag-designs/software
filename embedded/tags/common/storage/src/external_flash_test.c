@@ -11,7 +11,8 @@
 #include "storage_flash.h"
 #include "test_support.h"
 
-#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
+    (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
 #include "storage_gd5f.h"
 #endif
 
@@ -45,7 +46,8 @@ TestResult __attribute__((weak)) tag_test_external_flash(const void *context)
   bool result;
 
   tagStorageWake(device);
-#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
+    (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
   uint32_t bad_block_count = 0U;
 
   if (!gd5fLogicalMapConfigured()) {

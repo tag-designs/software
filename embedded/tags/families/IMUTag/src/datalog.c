@@ -15,7 +15,8 @@
 #include "devices.h"
 #include "persistent.h"
 
-#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
+    (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
 #include "storage_gd5f.h"
 /** @brief Enable sparse internal checkpoints for NAND-backed IMUTag logs. */
 #define IMUTAG_NAND_CHECKPOINTS 1

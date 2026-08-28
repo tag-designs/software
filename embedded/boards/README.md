@@ -33,6 +33,8 @@ These are the board targets used by active tag and base firmware targets.
 | `BitPresTagv1` | `board-bitprestag` | `BitPresTagv1/board.mk` | `generate_configured_board_files()` | Tags: `BitPresTag`, `BitPresTagMX25R` |
 | `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_configured_board_files()` | Tags: `BitTag`, `BitTag-legacy` |
 | `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()` | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
+| `IMUTagNandv1` | `board-imutag-nand-v1` | `IMUTagNandv1/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagNand` |
+| `IMUTagNandv2` | `board-imutag-nand-v2` | `IMUTagNandv2/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagNandBmp581` |
 | `IMUTagv1` | `board-imutag-breakout` | `IMUTagv1/board.mk` | `generate_configured_board_files()` | Archived tag variants |
 | `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()` | Tags: `PresTag` |
 | `bittag-base-jlcpcb-v3` | `board-bittag-base-jlcpcb-v3` | `bittag-base-jlcpcb-v3/board.mk` | `generate_board_files()` | Bases: `bittag-base-jlcpcb-v3` |
@@ -74,6 +76,8 @@ the normal active firmware build.
 - `IMUTagNandv1/standby-pins.md` documents the STM32U375 Standby pull-up and
   pull-down choices for the IMUTagNand sensor, flash, interrupt, and test
   pins.
+- `IMUTagNandv2/standby-pins.md` documents the matching standby biases for the
+  BMP581/GD5F2GM7RE replacement breakout.
 
 ## Updating Board Names
 

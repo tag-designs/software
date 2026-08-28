@@ -88,6 +88,8 @@ set(
   "embedded/tags/common/test/README.md"
   "embedded/tags/IMUTagNand/README.md"
   "embedded/tags/IMUTagNand/todo.md"
+  "embedded/tags/IMUTagNandBmp581/README.md"
+  "embedded/tags/IMUTagNandBmp581/todo.md"
   "embedded/tags/CompassTagAT25Breakout/design/notes.md"
   "embedded/tags/families/BitPresTag/README.md"
   "embedded/tags/families/BitTagNG/README.md"

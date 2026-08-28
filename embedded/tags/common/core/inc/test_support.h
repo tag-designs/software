@@ -141,6 +141,13 @@ TestResult tag_test_lps27(const void *context);
  * LPS22HH_FAILED.
  */
 TestResult tag_test_lps22hh(const void *context);
+
+/**
+ * @brief Test BMP581 pressure sensor communication and readiness.
+ *
+ * @return ALL_PASSED when the pressure sensor passes, otherwise LPS_FAILED.
+ */
+TestResult tag_test_bmp581(const void *context);
 /** @} */
 
 #endif

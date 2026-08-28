@@ -50,6 +50,8 @@ directory that owns the code; the developer portal stages those files under
 
 - [IMUTagNand](reference/embedded/tags/IMUTagNand/README.md)
 - [IMUTagNand TODO](reference/embedded/tags/IMUTagNand/todo.md)
+- [IMUTagNandBmp581](reference/embedded/tags/IMUTagNandBmp581/README.md)
+- [IMUTagNandBmp581 TODO](reference/embedded/tags/IMUTagNandBmp581/todo.md)
 - [CompassTagAT25Breakout Notes](reference/embedded/tags/CompassTagAT25Breakout/design/notes.md)
 
 ## Embedded Tag Families

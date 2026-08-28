@@ -1,8 +1,8 @@
 # IMUTag Family
 
-Shared application code for the active `IMUTagNand` build variant lives here.
-Older breakout, BMM350 bring-up, U375 flash, and L432 NAND variants have been
-moved under `embedded/tags/archive/`.
+Shared application code for the active `IMUTagNand` and `IMUTagNandBmp581`
+build variants lives here. Older breakout, BMM350 bring-up, U375 flash, and
+L432 NAND variants have been moved under `embedded/tags/archive/`.
 
 The variants share the IMUTag data-log format, configuration handling, device
 binding table, sensor orchestration, RUN-state acquisition flow, and default
@@ -11,7 +11,10 @@ processor-specific makefile choice, firmware identity strings, and any
 temporary bring-up overrides.
 
 `IMUTagNand` uses the generated `IMUTagNandv1` board files configured for
-STM32U375 and selects the GD5F SPI-NAND storage module.
+STM32U375 and selects the 1 Gbit GD5F SPI-NAND plus LPS22HH pressure modules.
+`IMUTagNandBmp581` uses the generated `IMUTagNandv2` board files and selects
+the BMP581 pressure module plus the 2 Gbit GD5F2GM7RE SPI-NAND module while
+preserving the IMUTag protocol family.
 
 Design notes:
 

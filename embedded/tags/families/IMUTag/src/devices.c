@@ -17,7 +17,11 @@
 #else
 #include "ak09940a.h"
 #endif
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+#include "bmp581.h"
+#else
 #include "lps22hh.h"
+#endif
 #include "app.h"
 #include "core_sync.h"
 #include "config.h"
@@ -35,7 +39,8 @@
 #include "sensors.h"
 #include "test_support.h"
 
-#if defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE
+#if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
+    (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
 #include "storage_gd5f.h"
 #define EXTERNAL_FLASH_OPS (&gd5fStorageOps)
 #define EXTERNAL_FLASH_SECTOR_SIZE GD5F_BLOCK_SIZE
@@ -460,8 +465,8 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
-/** LPS22HH register descriptor for the IMUTag family pressure path. */
-static const TagRegisterDevice lps_registers = {
+/** Pressure-sensor register descriptor for the IMUTag family pressure path. */
+static const TagRegisterDevice pressure_registers = {
     .kind = TAG_REGISTER_ST,
     .bus = TAG_BUS_SPI_INIT(
         TAG_SPI1_DEVICE_DEFAULTS(IMUTAG_LPS_CS_LINE),
@@ -478,7 +483,7 @@ static const TagRegisterDevice lps_registers = {
 
 /** Pressure device descriptor exported to common pressure helpers. */
 const TagPressureDevice tagImuTagPressureDevice = {
-    .registers = &lps_registers,
+    .registers = &pressure_registers,
 };
 
 /** LSM6DSV16X register descriptor for the IMUTag family IMU path. */
@@ -595,7 +600,11 @@ static const TagTestCase tag_tests[] =
   {RUN_MX25U12843, tag_test_external_flash, TAG_EXTERNAL_FLASH},
 #endif
   {RUN_AIS2, tag_test_lsm6dsv16x, TAG_IMU_DEVICE},
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  {RUN_LPS, tag_test_bmp581, TAG_PRESSURE_DEVICE},
+#else
   {RUN_LPS, tag_test_lps22hh, TAG_PRESSURE_DEVICE},
+#endif
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
   {RUN_MMC5633, tag_test_bmm350, TAG_MAG_DEVICE}
 #else
@@ -719,7 +728,7 @@ void tagDevicesApplyStandbyPins(void)
   tagBusPrepareSleep(&tagImuTagMagDevice.bus);
 #endif
   tagBusPrepareSleep(&imu_registers.bus);
-  tagBusPrepareSleep(&lps_registers.bus);
+  tagBusPrepareSleep(&pressure_registers.bus);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }
 
