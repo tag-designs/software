@@ -23,7 +23,9 @@ features.
 
 The **File Info** tab lists the file name, tag type, profile name, loaded record
 sets, compass calibration status when present, and other log metadata. Qt
-diagnostic messages are also routed to this tab.
+diagnostic messages are also routed to this tab. The
+[SQLite Log Format](../reference/sqlite-logs.md) reference describes the
+metadata and sensor tables that SensorViz reads from `.db3` files.
 
 ![SensorViz File Info tab for an IMUTag log](../images/sensorviz-imutag-file-info.png)
 

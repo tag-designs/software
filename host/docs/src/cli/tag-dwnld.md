@@ -57,7 +57,9 @@ The command prints the selected output path, a progress bar, the final record
 count, and timing information. SQLite output stores metadata in `info`, state
 history in `states`, stream metadata in `streams`, and tag-specific data tables
 such as `Activity`, `Voltage`, and `CoreTemperature`. Text output writes a
-comment header followed by line-oriented log records.
+comment header followed by line-oriented log records. See the
+[SQLite Log Format](../reference/sqlite-logs.md) reference for the common
+metadata tables and tag-specific sensor tables.
 
 For BitTag rescue downloads, the raw 64-bit activity field is not interpreted by
 the rescue reader. It is wrapped in a normal `BitTagLog` payload and decoded by

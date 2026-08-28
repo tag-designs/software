@@ -52,7 +52,8 @@ Use this checklist when adding a tag type to the `qtmonitor` user guide:
    every tag. Those are shared walkthrough images and should be updated only
    when the common workflow image set intentionally changes.
 8. Add or update the tag section in `host/docs/src/apps/qtmonitor.md`, and add
-   any new image names to `host/docs/src/reference/images.md`.
+   any new image names to
+   `host/docs/src/reference/documentation-guidelines.md`.
 9. Validate the result:
 
    ```sh

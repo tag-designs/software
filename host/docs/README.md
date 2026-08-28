@@ -60,12 +60,9 @@ Generated package docs are installed alongside the host tools:
 
 ## Source Layout
 
-Markdown source files live in `host/docs/src/`. Images should go in
-`host/docs/src/images/` and be referenced with relative paths such as:
-
-```md
-![Qt Program main window](../images/qtprogram-main-window.png)
-```
+Markdown source files live in `host/docs/src/`. Writing, image placement, and
+screenshot naming conventions are collected in
+[`src/reference/documentation-guidelines.md`](src/reference/documentation-guidelines.md).
 
 Developer design notes for the host documentation workflow live in
 `host/docs/design/`. Start with

@@ -39,6 +39,9 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+extra_css:
+  - stylesheets/extra.css
+
 nav:
   - Home: index.md
   - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
@@ -91,6 +94,7 @@ nav:
           - IMUTag: reference/embedded/tags/families/IMUTag/README.md
           - IMUTag Jitter-Free Sampling Timing: reference/embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md
           - IMUTag Header Checkpoints: reference/embedded/tags/families/IMUTag/design/internal-header-checkpoints.md
+          - IMUTagNandBmp581 Development Plan: reference/embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md
           - PresTag: reference/embedded/tags/families/PresTag/README.md
       - Host:
           - Overview: reference/host/README.md

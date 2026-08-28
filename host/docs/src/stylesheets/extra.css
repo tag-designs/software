@@ -1,0 +1,9 @@
+.md-sidebar--primary nav[data-md-level="0"] > .md-nav__list > .md-nav__item > .md-nav__link {
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+}
+
+.md-sidebar--primary nav[data-md-level="0"] > .md-nav__list > .md-nav__item {
+  margin-top: 0.4rem;
+  padding-top: 0.25rem;
+}

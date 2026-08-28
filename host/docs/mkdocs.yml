@@ -41,17 +41,21 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+extra_css:
+  - stylesheets/extra.css
+
 nav:
   - Home: index.md
   - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
   - Applications:
-      - Qt Program: apps/qtprogram.md
-      - Qt Calibrate: apps/qtcalibrate.md
       - Tag Monitor: apps/qtmonitor.md
-      - Bit Tag Visualizer: apps/btdataviz.md
       - SensorViz: apps/sensorviz.md
+      - Qt Calibrate: apps/qtcalibrate.md
+      - Qt Program: apps/qtprogram.md
+      - Bit Tag Visualizer: apps/btdataviz.md
   - Command Line:
       - Overview: cli/index.md
+      - tag-test: cli/tag-test.md
       - tag-dwnld: cli/tag-dwnld.md
       - tag-info: cli/tag-info.md
       - tag-reset: cli/tag-reset.md
@@ -59,7 +63,6 @@ nav:
       - tag-stop: cli/tag-stop.md
       - tag-cal: cli/tag-cal.md
       - dataprocessing: cli/dataprocessing.md
-      - tag-test: cli/tag-test.md
       - tag-test-example: cli/tag-test-example.md
       - tag-monitor-test: cli/tag-monitor-test.md
   - Workflows:
@@ -68,5 +71,6 @@ nav:
       - Calibration: workflows/calibration.md
       - Data Download: workflows/data-download.md
   - Reference:
-      - Screenshots and Images: reference/images.md
+      - SQLite Log Format: reference/sqlite-logs.md
+      - Documentation Guidelines: reference/documentation-guidelines.md
       - Troubleshooting: reference/troubleshooting.md

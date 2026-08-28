@@ -23,8 +23,9 @@ calibrate, and visualize Ultralight Tags.
 - [Command-Line Tools](cli/index.md): reference templates for the host CLI tools,
   including available options and fill-in sections for usage notes.
 
-## Writing Notes
+## Reference
 
-Use task-focused pages. Start each page with what the user is trying to do,
-then give the shortest successful path, then add troubleshooting and reference
-details after the main workflow.
+- [SQLite Log Format](reference/sqlite-logs.md): table organization for `.db3`
+  files created by tag download tools.
+- [Documentation Guidelines](reference/documentation-guidelines.md): writing,
+  source layout, screenshot, and image naming conventions for this guide.

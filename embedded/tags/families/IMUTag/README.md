@@ -22,3 +22,7 @@ Design notes:
 - [`design/internal-header-checkpoints.md`](design/internal-header-checkpoints.md)
   describes the sparse STM32U3 internal-header checkpoint scheme used to
   recover NAND-backed IMUTag external log cursors.
+- [`design/imutag-nand-bmp581-development-plan.md`](design/imutag-nand-bmp581-development-plan.md)
+  plans the IMUTagNand replacement firmware variant that keeps the `IMUTAG`
+  protocol identity while adding BMP581 pressure sensing and GD5F2GM7RE
+  SPI-NAND storage.
