@@ -59,7 +59,9 @@ with board wiring and flash geometry. Chip operations use `wake`/`sleep` for
 chip-specific lifecycle hooks so they are not confused with raw SPI bus
 begin/end. NOR drivers use those hooks for deep-power-down and
 release-from-deep-power-down commands; the GD5F SPI-NAND driver currently only
-begins or ends the storage bus and leaves chip-select deasserted.
+begins or ends the storage bus and leaves chip-select deasserted. GD5F2GM7RE
+adds a separate optional `deep_sleep` hook for its `B9h` low-current command so
+that deep power-down is reserved for non-RUNNING standby preparation.
 
 Converted storage also supplies helpers used by tag/family `devices.c` standby
 hooks. `tagStoragePrepareStandby()` handles chip-level or bus-level standby

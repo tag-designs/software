@@ -35,12 +35,15 @@ typedef struct TagStorageDevice TagStorageDevice;
  * @details Hooks may be NULL only when the generic dispatcher explicitly
  *          treats the operation as optional. Program-cache hooks are optional
  *          because NOR parts do not implement NAND-style staged page
- *          programming; identity, erase, read, and normal write hooks are
- *          required for active datalog storage.
+ *          programming. The deep-sleep hook is optional because some chips use
+ *          ordinary sleep for their deepest safe idle state; identity, erase,
+ *          read, and normal write hooks are required for active datalog
+ *          storage.
  */
 typedef struct {
   void (*wake)(const TagStorageDevice *dev);  ///< Prepare the chip/bus for commands.
   void (*sleep)(const TagStorageDevice *dev); ///< Quiesce the chip/bus after commands.
+  void (*deep_sleep)(const TagStorageDevice *dev); ///< Enter the deepest non-RUNNING standby mode.
   int (*check_id)(const TagStorageDevice *dev); ///< Verify chip identity.
   bool (*write)(const TagStorageDevice *dev, uint32_t address, uint8_t *buf,
                 int *cnt); ///< Program bytes and report completed count.

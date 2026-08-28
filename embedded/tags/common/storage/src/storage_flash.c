@@ -88,6 +88,21 @@ void tagStoragePrepareSleep(const TagStorageDevice *dev)
 }
 
 /**
+ * @brief Enter the deepest storage sleep mode available for standby entry.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
+static void tagStorageDeepSleep(const TagStorageDevice *dev)
+{
+  if (dev->ops->deep_sleep != NULL) {
+    dev->ops->deep_sleep(dev);
+    return;
+  }
+
+  tagStorageSleep(dev);
+}
+
+/**
  * @brief Prepare external flash/bus state for MCU standby when required.
  *
  * @param[in] dev Storage device descriptor.
@@ -102,7 +117,7 @@ void tagStoragePrepareStandby(const TagStorageDevice *dev, uint32_t state)
 
   tagStorageWake(dev);
   stopMilliseconds(1);
-  tagStorageSleep(dev);
+  tagStorageDeepSleep(dev);
 }
 
 /**

@@ -26,6 +26,8 @@
 #define GD5F_CMD_PROGRAM_EXECUTE     0x10U
 #define GD5F_CMD_BLOCK_ERASE         0xD8U
 #define GD5F_CMD_READ_ID             0x9FU
+#define GD5F_CMD_DEEP_POWER_DOWN     0xB9U
+#define GD5F_CMD_RELEASE_DPD         0xABU
 #define GD5F_CMD_RESET               0xFFU
 
 #define GD5F_FEATURE_BLOCK_LOCK      0xA0U
@@ -58,6 +60,12 @@
 #define GD5F_READ_POLL_LIMIT         4U
 #define GD5F_PROGRAM_POLL_LIMIT      8U
 #define GD5F_ERASE_POLL_LIMIT        12U
+#define GD5F_DPD_ENTRY_DELAY_US      3U
+#define GD5F_DPD_RELEASE_DELAY_US    30U
+
+#ifndef TAG_GD5F_DEEP_POWER_DOWN
+#define TAG_GD5F_DEEP_POWER_DOWN     0
+#endif
 
 #define GD5F_MAP_PROGRAM_WORDS       4U
 #define GD5F_MAP_ENTRIES_PER_ROW \
@@ -70,6 +78,7 @@ static uint16_t gd5f_provision_map[GD5F_PHYSICAL_BLOCK_COUNT];
 static bool gd5f_logical_map_loaded;
 static bool gd5f_cache_active;
 static uint32_t gd5f_cache_logical_page;
+static bool gd5f_deep_power_down_active;
 
 /** @name SPI command primitives
  * These helpers encode GD5F command headers and own chip-select
@@ -268,6 +277,7 @@ static int gd5fProbe(const TagStorageDevice *dev)
 
   tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_RESET);
   stopMilliseconds(GD5F_RESET_DELAY_MS);
+  gd5f_deep_power_down_active = false;
   gd5fSetFeature(dev, GD5F_FEATURE_BLOCK_LOCK, 0U);
   if (!gd5fEnableEcc(dev))
     return -1;
@@ -909,7 +919,9 @@ static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
 
 /** @name Storage lifecycle callbacks
  * These are the functions exported through TagStorageOps. They bridge the
- * generic storage API to the GD5F1GQ5RE command groups above.
+ * generic storage API to the GD5F command groups above. Ordinary sleep only
+ * closes the bus session; optional deep power-down is reserved for standby
+ * preparation outside RUNNING collection.
  * @{
  */
 /**
@@ -918,13 +930,45 @@ static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
 static inline void gd5fWake(const TagStorageDevice *dev)
 {
   tagStorageBusBegin(dev);
+#if TAG_GD5F_DEEP_POWER_DOWN
+  if (gd5f_deep_power_down_active) {
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_RELEASE_DPD);
+    chThdSleepMicroseconds(GD5F_DPD_RELEASE_DELAY_US);
+    gd5f_deep_power_down_active = false;
+  }
+#endif
 }
 
 /**
- * @brief End the storage bus session for this NAND.
+ * @brief End the storage bus session without changing NAND power mode.
  */
 static inline void gd5fSleep(const TagStorageDevice *dev)
 {
+  tagStorageBusEnd(dev);
+}
+
+/**
+ * @brief Enter GD5F deep power-down for non-RUNNING standby preparation.
+ *
+ * @details The GD5F2GM7RE `B9h` mode is only valid on 1.8 V devices, and the
+ *          command is rejected while an internal read, program, or erase cycle
+ *          is active. This hook is therefore separate from ordinary storage
+ *          sleep and selected only by targets that explicitly enable
+ *          TAG_GD5F_DEEP_POWER_DOWN.
+ *
+ * @param[in] dev Storage device descriptor.
+ */
+static void gd5fDeepSleep(const TagStorageDevice *dev)
+{
+#if TAG_GD5F_DEEP_POWER_DOWN
+  uint8_t status;
+
+  if (gd5fWaitReady(dev, GD5F_ERASE_POLL_LIMIT, &status)) {
+    tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_DEEP_POWER_DOWN);
+    chThdSleepMicroseconds(GD5F_DPD_ENTRY_DELAY_US);
+    gd5f_deep_power_down_active = true;
+  }
+#endif
   tagStorageBusEnd(dev);
 }
 
@@ -943,6 +987,7 @@ static int gd5fCheckID(const TagStorageDevice *dev)
 const TagStorageOps gd5fStorageOps = {
   .wake = gd5fWake,
   .sleep = gd5fSleep,
+  .deep_sleep = gd5fDeepSleep,
   .check_id = gd5fCheckID,
   .write = gd5fWrite,
   .program_load = gd5fProgramLoad,
