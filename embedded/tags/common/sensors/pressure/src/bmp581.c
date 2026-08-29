@@ -25,6 +25,12 @@ static struct bmp5_osr_odr_press_config bmp581_active_config = {
   .odr = BMP5_ODR_50_HZ
 };
 
+static const bmp581_interrupt_config_t bmp581_continuous_interrupt_config =
+    BMP581_INTERRUPT_PUSH_PULL_PULSED_ACTIVE_HIGH;
+
+static const bmp581_interrupt_config_t bmp581_forced_interrupt_config =
+    BMP581_INTERRUPT_OPEN_DRAIN_LATCHED_ACTIVE_LOW;
+
 /**
  * @brief Convert a tag register-bus result into a Bosch SensorAPI result.
  *
@@ -136,6 +142,38 @@ static void bmp581_prepare_dev(const TagPressureDevice *device,
   dev->delay_us = bmp581_delay_us;
   dev->intf_rslt = BMP5_INTF_RET_SUCCESS;
   dev->intf = BMP5_SPI_INTF;
+}
+
+/**
+ * @brief Power the BMP581 rail and open its bus session.
+ *
+ * @param[in] device Pressure device descriptor.
+ */
+static void bmp581_begin_powered_session(const TagPressureDevice *device)
+{
+  tagBusPowerOn(&device->registers->bus);
+  tagBusBegin(&device->registers->bus);
+}
+
+/**
+ * @brief Close the BMP581 bus session without removing sensor power.
+ *
+ * @param[in] device Pressure device descriptor.
+ */
+static void bmp581_end_powered_session(const TagPressureDevice *device)
+{
+  tagBusEnd(&device->registers->bus);
+}
+
+/**
+ * @brief Remove BMP581 power and run the tag-specific pin cleanup hook.
+ *
+ * @param[in] device Pressure device descriptor.
+ */
+static void bmp581_power_off(const TagPressureDevice *device)
+{
+  tagBusPowerOff(&device->registers->bus);
+  tagPressureDeviceAfterPowerOff(device);
 }
 
 /**
@@ -264,6 +302,57 @@ static int8_t bmp581_init_device(const TagPressureDevice *device,
 }
 
 /**
+ * @brief Apply BMP581 pressure sampling, filter, and interrupt configuration.
+ *
+ * @param[in,out] dev Initialized Bosch SensorAPI device object.
+ * @param[in] odr Output data-rate register encoding.
+ * @param[in] interrupt_config Interrupt pin mode applied before DRDY enable.
+ * @return BMP5_OK on success or a negative Bosch SensorAPI error.
+ * @pre The sensor must be initialized and reachable through an active bus
+ *      session.
+ */
+static int8_t
+bmp581_apply_sampling_config(struct bmp5_dev *dev, bmp581_odr_t odr,
+                             const bmp581_interrupt_config_t *interrupt_config)
+{
+  struct bmp5_iir_config iir_cfg = {
+    .set_iir_t = BMP5_IIR_FILTER_BYPASS,
+    .set_iir_p = BMP5_IIR_FILTER_BYPASS,
+    .shdw_set_iir_t = BMP5_DISABLE,
+    .shdw_set_iir_p = BMP5_DISABLE,
+    .iir_flush_forced_en = BMP5_DISABLE
+  };
+  struct bmp5_int_source_select int_src = {
+    .drdy_en = BMP5_ENABLE,
+    .fifo_full_en = BMP5_DISABLE,
+    .fifo_thres_en = BMP5_DISABLE,
+    .oor_press_en = BMP5_DISABLE
+  };
+  int8_t rc;
+
+  if (interrupt_config == NULL)
+    interrupt_config = &bmp581_forced_interrupt_config;
+
+  rc = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, dev);
+  if (rc == BMP5_OK) {
+    bmp581_active_config.odr = (uint8_t)odr;
+    rc = bmp5_set_osr_odr_press_config(&bmp581_active_config, dev);
+  }
+  if (rc == BMP5_OK)
+    rc = bmp5_set_iir_config(&iir_cfg, dev);
+  if (rc == BMP5_OK)
+    rc = bmp5_configure_interrupt(interrupt_config->mode,
+                                  interrupt_config->polarity,
+                                  interrupt_config->drive,
+                                  BMP5_INTR_ENABLE,
+                                  dev);
+  if (rc == BMP5_OK)
+    rc = bmp5_int_source_select(&int_src, dev);
+
+  return rc;
+}
+
+/**
  * @brief Saturating conversion from float degrees Celsius to centi-Celsius.
  *
  * @param[in] temperature_c Temperature in degrees Celsius.
@@ -328,19 +417,6 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
                                     bmp581_odr_t odr)
 {
   struct bmp5_dev dev;
-  struct bmp5_iir_config iir_cfg = {
-    .set_iir_t = BMP5_IIR_FILTER_BYPASS,
-    .set_iir_p = BMP5_IIR_FILTER_BYPASS,
-    .shdw_set_iir_t = BMP5_DISABLE,
-    .shdw_set_iir_p = BMP5_DISABLE,
-    .iir_flush_forced_en = BMP5_DISABLE
-  };
-  struct bmp5_int_source_select int_src = {
-    .drdy_en = BMP5_ENABLE,
-    .fifo_full_en = BMP5_DISABLE,
-    .fifo_thres_en = BMP5_DISABLE,
-    .oor_press_en = BMP5_DISABLE
-  };
   int8_t rc;
   uint8_t raw_chip_id = 0U;
   uint8_t status_last = 0U;
@@ -351,19 +427,8 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
   rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
                           &status_last);
   if (rc == BMP5_OK)
-    rc = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &dev);
-  if (rc == BMP5_OK) {
-    bmp581_active_config.odr = (uint8_t)odr;
-    rc = bmp5_set_osr_odr_press_config(&bmp581_active_config, &dev);
-  }
-  if (rc == BMP5_OK)
-    rc = bmp5_set_iir_config(&iir_cfg, &dev);
-  if (rc == BMP5_OK)
-    rc = bmp5_configure_interrupt(BMP5_PULSED, BMP5_ACTIVE_HIGH,
-                                  BMP5_INTR_PUSH_PULL, BMP5_INTR_ENABLE,
-                                  &dev);
-  if (rc == BMP5_OK)
-    rc = bmp5_int_source_select(&int_src, &dev);
+    rc = bmp581_apply_sampling_config(&dev, odr,
+                                      &bmp581_continuous_interrupt_config);
   if (rc == BMP5_OK)
     rc = bmp5_set_power_mode(BMP5_POWERMODE_CONTINUOUS, &dev);
   if (rc != BMP5_OK) {
@@ -374,6 +439,71 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
   }
 
   tagPressureDeviceEnd(device);
+  return rc;
+}
+
+int bmp581_config_forced_device(const TagPressureDevice *device,
+                                bmp581_odr_t odr,
+                                const bmp581_interrupt_config_t *interrupt_config)
+{
+  struct bmp5_dev dev;
+  int8_t rc;
+  uint8_t raw_chip_id = 0U;
+  uint8_t status_last = 0U;
+  bool raw_read_ok = false;
+
+  bmp581_begin_powered_session(device);
+
+  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
+                          &status_last);
+  if (rc == BMP5_OK)
+    rc = bmp581_apply_sampling_config(&dev, odr, interrupt_config);
+  if (rc != BMP5_OK) {
+    debug_log_printf("BMP581: forced config raw_ok=%u raw_id=0x%x"
+                     " status=0x%x rc=%d chip=0x%x intf=%d\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id, status_last, rc,
+                     dev.chip_id, dev.intf_rslt);
+  }
+
+  bmp581_end_powered_session(device);
+  if (rc != BMP5_OK)
+    bmp581_power_off(device);
+
+  return rc;
+}
+
+int bmp581_trigger_forced_device(const TagPressureDevice *device)
+{
+  struct bmp5_dev dev;
+  int8_t rc;
+
+  bmp581_begin_powered_session(device);
+  bmp581_prepare_dev(device, &dev);
+  rc = bmp5_set_power_mode(BMP5_POWERMODE_FORCED, &dev);
+  bmp581_end_powered_session(device);
+
+  if (rc != BMP5_OK) {
+    debug_log_printf("BMP581: forced trigger rc=%d intf=%d\r\n",
+                     rc, dev.intf_rslt);
+  }
+
+  return rc;
+}
+
+int bmp581_clear_interrupt_status_device(const TagPressureDevice *device,
+                                         uint8_t *int_status)
+{
+  struct bmp5_dev dev;
+  int8_t rc;
+
+  if (int_status == NULL)
+    return BMP5_E_NULL_PTR;
+
+  bmp581_begin_powered_session(device);
+  bmp581_prepare_dev(device, &dev);
+  rc = bmp5_get_interrupt_status(int_status, &dev);
+  bmp581_end_powered_session(device);
+
   return rc;
 }
 
@@ -389,6 +519,30 @@ bool bmp581_data_ready_device(const TagPressureDevice *device)
   tagPressureDeviceEnd(device);
 
   return (rc == BMP5_OK) && ((int_status & BMP5_INT_ASSERTED_DRDY) != 0U);
+}
+
+int bmp581_read_pressure_temp_powered_device(const TagPressureDevice *device,
+                                             float *pressure_hpa,
+                                             int16_t *temperature_centi_c)
+{
+  struct bmp5_dev dev;
+  struct bmp5_sensor_data sensor_data;
+  int8_t rc;
+
+  if (pressure_hpa == NULL || temperature_centi_c == NULL)
+    return BMP5_E_NULL_PTR;
+
+  bmp581_begin_powered_session(device);
+  bmp581_prepare_dev(device, &dev);
+  rc = bmp5_get_sensor_data(&sensor_data, &bmp581_active_config, &dev);
+  bmp581_end_powered_session(device);
+
+  if (rc == BMP5_OK) {
+    *pressure_hpa = sensor_data.pressure / BMP581_PRESSURE_PA_PER_HPA;
+    *temperature_centi_c = bmp581_centi_c(sensor_data.temperature);
+  }
+
+  return rc;
 }
 
 int bmp581_read_pressure_temp_device(const TagPressureDevice *device,
@@ -410,4 +564,41 @@ int bmp581_read_pressure_temp_device(const TagPressureDevice *device,
   }
 
   return rc;
+}
+
+int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
+                                         uint32_t timeout_us,
+                                         float *pressure_hpa,
+                                         int16_t *temperature_centi_c)
+{
+  uint32_t remaining_us = timeout_us;
+  int rc = bmp581_trigger_forced_device(device);
+
+  if (rc != BMP5_OK)
+    return rc;
+
+  do {
+    uint8_t int_status = 0U;
+
+    rc = bmp581_clear_interrupt_status_device(device, &int_status);
+    if (rc != BMP5_OK)
+      return rc;
+    if ((int_status & BMP5_INT_ASSERTED_DRDY) != 0U) {
+      return bmp581_read_pressure_temp_powered_device(device, pressure_hpa,
+                                                      temperature_centi_c);
+    }
+
+    if (remaining_us == 0U)
+      break;
+
+    if (remaining_us > BMP581_INIT_RETRY_DELAY_US) {
+      chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
+      remaining_us -= BMP581_INIT_RETRY_DELAY_US;
+    } else {
+      chThdSleepMicroseconds(remaining_us);
+      remaining_us = 0U;
+    }
+  } while (true);
+
+  return BMP581_E_DATA_READY_TIMEOUT;
 }

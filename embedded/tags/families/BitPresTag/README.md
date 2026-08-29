@@ -37,3 +37,9 @@ without copying the normal configuration into every variant.
 
 The larger descriptor-based power cleanup remains future work, especially for
 the USART-style LPS pressure sensor bus.
+
+## Design Notes
+
+- [BMP581/BMP585 forced-mode pressure plan](design/bmp581-forced-mode.md):
+  driver and BitPresTag-family integration plan for interrupt-driven forced
+  pressure sampling on a BMP581-compatible BMP585 board.

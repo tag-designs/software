@@ -58,6 +58,7 @@ directory that owns the code; the developer portal stages those files under
 
 - [Families Overview](reference/embedded/tags/families/README.md)
 - [BitPresTag](reference/embedded/tags/families/BitPresTag/README.md)
+- [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](reference/embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md)
 - [BitTagNG](reference/embedded/tags/families/BitTagNG/README.md)
 - [BitTagNG Wakeup Note](reference/embedded/tags/families/BitTagNG/wakeup_note.md)
 - [CompassTag](reference/embedded/tags/families/CompassTag/README.md)

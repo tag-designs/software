@@ -92,6 +92,7 @@ set(
   "embedded/tags/IMUTagNandBmp581/todo.md"
   "embedded/tags/CompassTagAT25Breakout/design/notes.md"
   "embedded/tags/families/BitPresTag/README.md"
+  "embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md"
   "embedded/tags/families/BitTagNG/README.md"
   "embedded/tags/families/BitTagNG/wakeup_note.md"
   "embedded/tags/families/CompassTag/README.md"

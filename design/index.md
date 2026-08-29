@@ -31,6 +31,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 
 *   [**IMUTag Jitter-Free Sampling Timing Strategy**](../embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md): Plan for smooth RV-3028-derived sampling, STM32 RTC real-time correction, and downloadable metadata for corrected timing reconstruction.
 *   [**IMUTagNandBmp581 Development Plan**](../embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md): Firmware plan for the IMUTagNand replacement board using BMP581 pressure sensing and GD5F2GM7RE SPI-NAND while retaining the `IMUTAG` protocol identity.
+*   [**BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan**](../embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md): Driver and family integration plan for interrupt-driven BMP58x forced pressure sampling.
 *   [**IMU Design Assumptions**](../embedded/tags/common/sensors/imu/design/assumptions.md): Synchronized FIFO sampling, LSM6 time-slot pairings, and environmental sensor sparse sampling.
 *   [**CompassTag Breakout Design Notes**](../embedded/tags/CompassTagAT25Breakout/design/notes.md): Board layout, power domains, SPI bus layout, and calibration preservation.
 

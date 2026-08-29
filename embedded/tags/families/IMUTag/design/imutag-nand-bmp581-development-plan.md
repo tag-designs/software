@@ -168,6 +168,22 @@ Driver requirements:
 - Convert BMP581 temperature from degrees C to the existing raw centi-degree C
   representation used by IMUTag headers.
 
+Reset/readiness notes:
+
+- The Bosch BMP5 API treats `STATUS` NVM readiness as mandatory before normal
+  initialization. In the vendor header used here, `BMP5_INT_NVM_RDY` is
+  `0x02`, `BMP5_INT_NVM_ERR` is `0x04`, and `BMP5_INT_NVM_CMD_ERR` is `0x08`;
+  `STATUS=0x01` only proves the BMP581 core is reachable.
+- A Bosch community report notes that `INT_STATUS.POR_SOFTRESET_COMPLETE` may
+  be set by an explicit `bmp5_soft_reset()` but not by a hard reset/power
+  cycle, even when NVM status is otherwise valid:
+  https://community.bosch-sensortec.com/mems-sensors-forum-jrmujtaw/post/bmp581-interrupt-status-por-soft-reset-bit-only-set-by-manual-soft-reset-cTWxdujrWaR7HaS
+- The firmware should therefore use the POR/soft-reset interrupt bit as part of
+  explicit soft-reset recovery, not as the sole hard-reset readiness predicate.
+  If Bosch init reports `BMP5_E_NVM_NOT_READY` while SPI, chip ID, and
+  core-ready status are sane, issue a soft reset and retry normal
+  initialization; do not configure the sensor while NVM-ready is still false.
+
 Initial collection policy should mirror the LPS22HH behavior: select a BMP581
 normal-mode ODR high enough that each IMU superframe poll usually finds fresh
 pressure data. FIFO use is a later optimization, not required for first
