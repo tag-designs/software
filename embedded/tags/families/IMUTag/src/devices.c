@@ -37,6 +37,7 @@
 #include "rtc_api.h"
 #include "sensor_io.h"
 #include "sensors.h"
+#include "storage_flash.h"
 #include "test_support.h"
 
 #if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
@@ -632,6 +633,27 @@ const TagRegisterDevice *tagAk09940aDevice(void)
 #endif
 
 /**
+ * @brief Release IMUTag external devices from reset-retained low-power states.
+ *
+ * @details GD5F2GM7RE deep power-down is retained by the flash across MCU
+ *          reset/standby. Release it before the state machine can make
+ *          run/abort decisions that depend on NAND access.
+ *
+ * @param[in] reset_cause Reset cause recorded in persistent state.
+ * @param[in] state Retained application state at reset.
+ */
+void tagDevicesAfterReset(uint32_t reset_cause, uint32_t state)
+{
+  (void)reset_cause;
+  (void)state;
+
+#if defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+#endif
+}
+
+/**
  * @brief Apply IMUTag device power policy for a lifecycle phase.
  *
  * @param[in] reason Common lifecycle phase that is quiescing the devices.
@@ -654,6 +676,10 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
     break;
 
   case TAG_DEVICE_POWER_BOOT_CLEANUP:
+    tagDevicesAfterReset(0U, state);
+    (void)deinitDataCollection();
+    break;
+
   case TAG_DEVICE_POWER_RUNTIME_DEINIT:
   case TAG_DEVICE_POWER_TERMINAL_ENTRY:
   default:

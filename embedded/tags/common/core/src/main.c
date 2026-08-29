@@ -739,6 +739,7 @@ int main(void)
   tagBackupStateDebug("after_reset_cause",
                       TAG_BACKUP_DIAG_AFTER_RESET_CAUSE, rstFlags);
 #endif
+  tagDevicesAfterReset((uint32_t)pState->resetCause, pState->state);
 
    // clear reset flags -- we've done our job at this point
   RCC->CSR |= RCC_CSR_RMVF;

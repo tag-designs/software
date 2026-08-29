@@ -42,6 +42,20 @@ typedef enum {
 void tagDevicesInit(void);
 
 /**
+ * @brief Repair tag-owned external device state immediately after reset cause
+ *        classification.
+ *
+ * @details Use this for device state that can survive an MCU reset, such as an
+ *          external flash deep-power-down latch. The hook runs after
+ *          tagDevicesInit() and before the state machine decides whether a
+ *          retained RUNNING/CONFIGURED/HIBERNATING state can continue.
+ *
+ * @param[in] reset_cause Reset cause recorded in persistent state.
+ * @param[in] state Retained application state at reset.
+ */
+void tagDevicesAfterReset(uint32_t reset_cause, uint32_t state);
+
+/**
  * @brief Apply tag-owned device power policy for a common lifecycle phase.
  *
  * @param[in] reason Common lifecycle phase that is quiescing the devices.

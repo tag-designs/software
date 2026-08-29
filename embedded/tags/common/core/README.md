@@ -83,6 +83,10 @@ The standby path has two layers:
   state. Modern tags define the controller semaphore storage they actually use
   in `devices.c`, such as `SPI1mutex` or `USART2mutex`, and initialize those
   semaphores here after ChibiOS startup.
+- `tagDevicesAfterReset(reset_cause, state)`: immediate post-reset repair for
+  external device state that survives MCU reset, such as flash
+  deep-power-down latches. It runs before retained state recovery decides
+  whether collection can continue.
 - `tagDevicesApplyPowerState(reason, state)`: protocol-level device power
   policy for common lifecycle phases such as boot cleanup, runtime
   deinitialization, and standby entry. New tag/family `devices.c` files should

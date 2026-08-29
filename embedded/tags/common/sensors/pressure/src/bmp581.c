@@ -16,6 +16,7 @@
 #define BMP581_CENTI_C_PER_C 100.0f
 #define BMP581_INIT_ATTEMPTS 12U
 #define BMP581_INIT_RETRY_DELAY_US 2000U
+#define BMP581_STATUS_CORE_READY 0x01U
 
 static struct bmp5_osr_odr_press_config bmp581_active_config = {
   .osr_t = BMP5_OVERSAMPLING_2X,
@@ -182,6 +183,32 @@ static bool bmp581_chip_id_valid(uint8_t chip_id)
 }
 
 /**
+ * @brief Test whether Bosch init found the BMP581 stuck before NVM readiness.
+ *
+ * @details A STATUS value with the Bosch core-ready bit set but NVM-ready bit
+ *          clear indicates that SPI communication is established, but the
+ *          factory trim copy has not completed. Configuration writes are not
+ *          attempted from this state; the caller uses it only to decide
+ *          whether a soft reset recovery is worth trying.
+ *
+ * @param[in] rc Bosch SensorAPI result returned by bmp581_init_device().
+ * @param[in] raw_chip_id Raw CHIP_ID register value from the same init attempt.
+ * @param[in] status_last STATUS register value captured after the failure.
+ * @return true when the BMP581 core is reachable, NVM is not ready, and no NVM
+ *         error bits are asserted.
+ */
+static bool bmp581_needs_soft_reset_after_init(int8_t rc, uint8_t raw_chip_id,
+                                               uint8_t status_last)
+{
+  uint8_t nvm_error_bits = BMP5_INT_NVM_ERR | BMP5_INT_NVM_CMD_ERR;
+
+  return rc == BMP5_E_NVM_NOT_READY &&
+         bmp581_chip_id_valid(raw_chip_id) &&
+         ((status_last & BMP581_STATUS_CORE_READY) != 0U) &&
+         ((status_last & nvm_error_bits) == 0U);
+}
+
+/**
  * @brief Initialize the Bosch SensorAPI device with reset-time retries.
  *
  * @details BMP581 starts in I2C/I3C mode after reset and switches to SPI only
@@ -205,6 +232,7 @@ static int8_t bmp581_init_device(const TagPressureDevice *device,
                                  uint8_t *status_last)
 {
   int8_t rc = BMP5_E_COM_FAIL;
+  bool soft_reset_attempted = false;
 
   for (uint8_t attempt = 0U; attempt < BMP581_INIT_ATTEMPTS; attempt++) {
     *raw_chip_id = 0U;
@@ -216,6 +244,18 @@ static int8_t bmp581_init_device(const TagPressureDevice *device,
       return rc;
 
     (void)bmp581_spi_read(device, BMP5_REG_STATUS, status_last, 1U);
+
+    if (!soft_reset_attempted &&
+        bmp581_needs_soft_reset_after_init(rc, *raw_chip_id, *status_last)) {
+      int8_t reset_rc = bmp5_soft_reset(dev);
+
+      soft_reset_attempted = true;
+      if (reset_rc != BMP5_OK) {
+        debug_log_printf("BMP581: soft reset recovery failed status=0x%x"
+                         " rc=%d reset_rc=%d intf=%d\r\n",
+                         *status_last, rc, reset_rc, dev->intf_rslt);
+      }
+    }
 
     chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
   }
@@ -273,9 +313,6 @@ int bmp581_set_idle_device(const TagPressureDevice *device)
   if (rc == BMP5_OK)
     rc = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &dev);
   tagPressureDeviceEnd(device);
-
-  if (rc == BMP5_E_NVM_NOT_READY && bmp581_chip_id_valid(raw_chip_id))
-    return BMP5_OK;
 
   if (rc != BMP5_OK) {
     debug_log_printf("BMP581: idle raw_ok=%u raw_id=0x%x status=0x%x"

@@ -31,6 +31,19 @@ void __attribute__((weak)) tagDevicesInit(void)
 }
 
 /**
+ * @brief Default no-op reset cleanup for tags without retained external state.
+ *
+ * @param[in] reset_cause Reset cause recorded in persistent state.
+ * @param[in] state Retained application state at reset.
+ */
+void __attribute__((weak))
+tagDevicesAfterReset(uint32_t reset_cause, uint32_t state)
+{
+  (void)reset_cause;
+  (void)state;
+}
+
+/**
  * @brief Default bridge from common lifecycle phases to legacy device hooks.
  *
  * Tags can override this directly to keep their shutdown policy in one place.
