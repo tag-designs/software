@@ -67,6 +67,10 @@
 #define TAG_GD5F_DEEP_POWER_DOWN     0
 #endif
 
+#ifndef TAG_GD5F_RELEASE_DEEP_POWER_DOWN
+#define TAG_GD5F_RELEASE_DEEP_POWER_DOWN TAG_GD5F_DEEP_POWER_DOWN
+#endif
+
 #define GD5F_MAP_PROGRAM_WORDS       4U
 #define GD5F_MAP_ENTRIES_PER_ROW \
   ((GD5F_MAP_PROGRAM_WORDS * sizeof(uint32_t)) / sizeof(uint16_t))
@@ -78,7 +82,11 @@ static uint16_t gd5f_provision_map[GD5F_PHYSICAL_BLOCK_COUNT];
 static bool gd5f_logical_map_loaded;
 static bool gd5f_cache_active;
 static uint32_t gd5f_cache_logical_page;
-static bool gd5f_deep_power_down_active;
+#if TAG_GD5F_RELEASE_DEEP_POWER_DOWN
+static bool gd5f_release_deep_power_down_needed = true;
+#else
+static bool gd5f_release_deep_power_down_needed;
+#endif
 
 /** @name SPI command primitives
  * These helpers encode GD5F command headers and own chip-select
@@ -277,7 +285,7 @@ static int gd5fProbe(const TagStorageDevice *dev)
 
   tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_RESET);
   stopMilliseconds(GD5F_RESET_DELAY_MS);
-  gd5f_deep_power_down_active = false;
+  gd5f_release_deep_power_down_needed = false;
   gd5fSetFeature(dev, GD5F_FEATURE_BLOCK_LOCK, 0U);
   if (!gd5fEnableEcc(dev))
     return -1;
@@ -925,16 +933,21 @@ static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
  * @{
  */
 /**
- * @brief Begin the storage bus session for this NAND.
+ * @brief Begin the storage bus session and release prior deep power-down.
+ *
+ * @details GD5F2 deep power-down can survive an MCU standby/reset cycle even
+ *          though C static state is reinitialized. Targets that enable
+ *          TAG_GD5F_RELEASE_DEEP_POWER_DOWN therefore assume the first wake
+ *          after boot may need the `ABh` release command.
  */
 static inline void gd5fWake(const TagStorageDevice *dev)
 {
   tagStorageBusBegin(dev);
-#if TAG_GD5F_DEEP_POWER_DOWN
-  if (gd5f_deep_power_down_active) {
+#if TAG_GD5F_RELEASE_DEEP_POWER_DOWN
+  if (gd5f_release_deep_power_down_needed) {
     tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_RELEASE_DPD);
     chThdSleepMicroseconds(GD5F_DPD_RELEASE_DELAY_US);
-    gd5f_deep_power_down_active = false;
+    gd5f_release_deep_power_down_needed = false;
   }
 #endif
 }
@@ -966,7 +979,7 @@ static void gd5fDeepSleep(const TagStorageDevice *dev)
   if (gd5fWaitReady(dev, GD5F_ERASE_POLL_LIMIT, &status)) {
     tagStorageSpiCommand(tagStorageSpiDevice(dev), GD5F_CMD_DEEP_POWER_DOWN);
     chThdSleepMicroseconds(GD5F_DPD_ENTRY_DELAY_US);
-    gd5f_deep_power_down_active = true;
+    gd5f_release_deep_power_down_needed = true;
   }
 #endif
   tagStorageBusEnd(dev);

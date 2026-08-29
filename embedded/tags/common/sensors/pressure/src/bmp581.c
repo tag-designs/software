@@ -14,7 +14,7 @@
 
 #define BMP581_PRESSURE_PA_PER_HPA 100.0f
 #define BMP581_CENTI_C_PER_C 100.0f
-#define BMP581_INIT_ATTEMPTS 3U
+#define BMP581_INIT_ATTEMPTS 12U
 #define BMP581_INIT_RETRY_DELAY_US 2000U
 
 static struct bmp5_osr_odr_press_config bmp581_active_config = {
@@ -171,6 +171,17 @@ static bool bmp581_select_spi(const TagPressureDevice *device, uint8_t *chip_id)
 }
 
 /**
+ * @brief Test whether a raw chip-id byte names a BMP5-family pressure sensor.
+ *
+ * @param[in] chip_id Register value read from BMP5_REG_CHIP_ID.
+ * @return true when the value is one of the Bosch-defined BMP5 IDs.
+ */
+static bool bmp581_chip_id_valid(uint8_t chip_id)
+{
+  return chip_id == BMP5_CHIP_ID_PRIM || chip_id == BMP5_CHIP_ID_SEC;
+}
+
+/**
  * @brief Initialize the Bosch SensorAPI device with reset-time retries.
  *
  * @details BMP581 starts in I2C/I3C mode after reset and switches to SPI only
@@ -183,22 +194,28 @@ static bool bmp581_select_spi(const TagPressureDevice *device, uint8_t *chip_id)
  * @param[out] dev Bosch SensorAPI device object.
  * @param[out] raw_chip_id Last raw chip-id byte observed before init.
  * @param[out] raw_read_ok true when the raw SPI transaction completed.
+ * @param[out] status_last Last STATUS register byte observed after a failed
+ *                         init attempt.
  * @return BMP5_OK on success, otherwise the final Bosch SensorAPI error.
  */
 static int8_t bmp581_init_device(const TagPressureDevice *device,
                                  struct bmp5_dev *dev,
                                  uint8_t *raw_chip_id,
-                                 bool *raw_read_ok)
+                                 bool *raw_read_ok,
+                                 uint8_t *status_last)
 {
   int8_t rc = BMP5_E_COM_FAIL;
 
   for (uint8_t attempt = 0U; attempt < BMP581_INIT_ATTEMPTS; attempt++) {
     *raw_chip_id = 0U;
+    *status_last = 0U;
     *raw_read_ok = bmp581_select_spi(device, raw_chip_id);
     bmp581_prepare_dev(device, dev);
     rc = bmp5_init(dev);
     if (rc == BMP5_OK)
       return rc;
+
+    (void)bmp581_spi_read(device, BMP5_REG_STATUS, status_last, 1U);
 
     chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
   }
@@ -227,27 +244,19 @@ static int16_t bmp581_centi_c(float temperature_c)
 
 bool bmp581_check_who_am_i_device(const TagPressureDevice *device)
 {
-  struct bmp5_dev dev;
-  int8_t rc;
   uint8_t raw_chip_id = 0U;
   bool raw_read_ok = false;
 
   tagPressureDeviceBegin(device);
-  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok);
+  raw_read_ok = bmp581_select_spi(device, &raw_chip_id);
   tagPressureDeviceEnd(device);
 
-  if ((rc != BMP5_OK) ||
-      ((dev.chip_id != BMP5_CHIP_ID_PRIM) &&
-       (dev.chip_id != BMP5_CHIP_ID_SEC))) {
-    debug_log_printf("BMP581: probe raw_ok=%u raw_id=0x%x rc=%d chip=0x%x"
-                     " intf=%d\r\n",
-                     raw_read_ok ? 1U : 0U, raw_chip_id, rc, dev.chip_id,
-                     dev.intf_rslt);
+  if (!raw_read_ok || !bmp581_chip_id_valid(raw_chip_id)) {
+    debug_log_printf("BMP581: probe raw_ok=%u raw_id=0x%x\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id);
   }
 
-  return (rc == BMP5_OK) &&
-         ((dev.chip_id == BMP5_CHIP_ID_PRIM) ||
-          (dev.chip_id == BMP5_CHIP_ID_SEC));
+  return raw_read_ok && bmp581_chip_id_valid(raw_chip_id);
 }
 
 int bmp581_set_idle_device(const TagPressureDevice *device)
@@ -255,19 +264,24 @@ int bmp581_set_idle_device(const TagPressureDevice *device)
   struct bmp5_dev dev;
   int8_t rc;
   uint8_t raw_chip_id = 0U;
+  uint8_t status_last = 0U;
   bool raw_read_ok = false;
 
   tagPressureDeviceBegin(device);
-  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok);
+  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
+                          &status_last);
   if (rc == BMP5_OK)
     rc = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &dev);
   tagPressureDeviceEnd(device);
 
+  if (rc == BMP5_E_NVM_NOT_READY && bmp581_chip_id_valid(raw_chip_id))
+    return BMP5_OK;
+
   if (rc != BMP5_OK) {
-    debug_log_printf("BMP581: idle raw_ok=%u raw_id=0x%x rc=%d chip=0x%x"
-                     " intf=%d\r\n",
-                     raw_read_ok ? 1U : 0U, raw_chip_id, rc, dev.chip_id,
-                     dev.intf_rslt);
+    debug_log_printf("BMP581: idle raw_ok=%u raw_id=0x%x status=0x%x"
+                     " rc=%d chip=0x%x intf=%d\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id, status_last, rc,
+                     dev.chip_id, dev.intf_rslt);
   }
 
   return rc;
@@ -292,11 +306,13 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
   };
   int8_t rc;
   uint8_t raw_chip_id = 0U;
+  uint8_t status_last = 0U;
   bool raw_read_ok = false;
 
   tagPressureDeviceBegin(device);
 
-  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok);
+  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
+                          &status_last);
   if (rc == BMP5_OK)
     rc = bmp5_set_power_mode(BMP5_POWERMODE_STANDBY, &dev);
   if (rc == BMP5_OK) {
@@ -314,10 +330,10 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
   if (rc == BMP5_OK)
     rc = bmp5_set_power_mode(BMP5_POWERMODE_CONTINUOUS, &dev);
   if (rc != BMP5_OK) {
-    debug_log_printf("BMP581: config raw_ok=%u raw_id=0x%x rc=%d chip=0x%x"
-                     " intf=%d\r\n",
-                     raw_read_ok ? 1U : 0U, raw_chip_id, rc, dev.chip_id,
-                     dev.intf_rslt);
+    debug_log_printf("BMP581: config raw_ok=%u raw_id=0x%x status=0x%x"
+                     " rc=%d chip=0x%x intf=%d\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id, status_last, rc,
+                     dev.chip_id, dev.intf_rslt);
   }
 
   tagPressureDeviceEnd(device);

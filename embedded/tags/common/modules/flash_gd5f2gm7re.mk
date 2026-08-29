@@ -10,7 +10,11 @@ include $(TAG_COMMON_MODULE_DIR)/storage_paths.mk
 # Feature and ID defines select the shared GD5F path and expected JEDEC-style
 # identity bytes returned by the flash self-test.
 UDEFS += -DTAG_HAS_EXTERNAL_FLASH=1 -DTAG_FLASH_GD5F2GM7RE=1
-UDEFS += -DTAG_GD5F_DEEP_POWER_DOWN=1
+# Keep GD5F2 deep power-down off during pressure/collection bring-up. The
+# shared driver has a separate non-RUNNING deep-sleep hook, but entering `B9h`
+# still needs more board testing before it becomes the default for this target.
+UDEFS += -DTAG_GD5F_DEEP_POWER_DOWN=0
+UDEFS += -DTAG_GD5F_RELEASE_DEEP_POWER_DOWN=1
 UDEFS += -DGD5F_ID_MANUFACTURER=0xC8U
 UDEFS += -DGD5F_ID_DEVICE=0x82U
 # NAND geometry exposed to gd5f.c and the storage layer.
