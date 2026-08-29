@@ -144,3 +144,15 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 | 400 Hz | 1555 | 1260 | 9.52 h | 15.9 h | |
 | 800 Hz | 1523 | 1700 | 7.06 h | 11.8 h | BMM350 switched to low current |
 | 1600 Hz | 1702 | 2300 | 5.22 h | 8.70 h | |
+
+## switch to 2gbit flash and bmp581
+
+| Mode | Estimate (uA) | Measured (uA) | 12 mAh Runtime | 20 mAh Runtime | Notes |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Idle | 55 | 6.7 |   |   | |
+| 100 Hz | 1014 | 1100 |   h |  | |
+| 200 Hz | 1211 | 1180 |   h |  | |
+| 400 Hz | 1555 | 1330 |   h |   | |
+| 800 Hz | 1523 | 1630 |   h |   | BMM350 switched to low current |
+| 1600 Hz | 1702 | 1930 |   h |   | |
+

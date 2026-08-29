@@ -16,12 +16,13 @@ TAG_MODULES += \
        protocol_nanopb \
        tag_core \
        tag_test \
-       debug_log \
        rtc_rv3028 \
        flash_gd5f2gm7re \
        sensor_pressure_bmp581 \
        sensor_mag_bmm350 \
        sensor_imu_lsm6dsv16x
+
+       # debug_log \
 
 ALLCSRC += power_modes.c
 
