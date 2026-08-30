@@ -14,22 +14,113 @@
 
 static uint8_t selected_range = 2;
 
-static bool adxl367WritePayload(const TagSpiDevice *spi,
+/**
+ * @brief Send an ADXL367 command or payload phase on the descriptor bus.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @param[in] buffer Bytes to transmit while chip select is asserted.
+ * @param[in] length Number of bytes to transmit.
+ * @return true when the bus supports ADXL367 byte writes.
+ */
+static bool adxl367WritePayload(const TagBusDevice *bus,
                                 const uint8_t *buffer,
                                 size_t length)
 {
-  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
-    return tagSpiPolledSend(spi, buffer, (uint32_t)length);
-  return tagSpiWrite(spi, buffer, (uint32_t)length);
+  const TagSpiDevice *spi;
+
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    spi = tagBusSpiDevice(bus);
+    if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+      return tagSpiPolledSend(spi, buffer, (uint32_t)length);
+    return tagSpiWrite(spi, buffer, (uint32_t)length);
+
+  case TAG_BUS_USART:
+    tagUsartWrite(tagBusUsartDevice(bus), buffer, (uint32_t)length);
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
 }
 
-static bool adxl367ReadPayload(const TagSpiDevice *spi,
+/**
+ * @brief Receive an ADXL367 payload phase on the descriptor bus.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @param[out] buffer Destination for bytes clocked from the sensor.
+ * @param[in] length Number of bytes to receive.
+ * @return true when the bus supports ADXL367 byte reads.
+ */
+static bool adxl367ReadPayload(const TagBusDevice *bus,
                                uint8_t *buffer,
                                size_t length)
 {
-  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
-    return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
-  return tagSpiRead(spi, buffer, (uint32_t)length);
+  const TagSpiDevice *spi;
+
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    spi = tagBusSpiDevice(bus);
+    if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+      return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
+    return tagSpiRead(spi, buffer, (uint32_t)length);
+
+  case TAG_BUS_USART:
+    tagUsartRead(tagBusUsartDevice(bus), buffer, (uint32_t)length);
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Assert chip select for an ADXL367 transaction.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @return true when the bus supports ADXL367 chip-select control.
+ */
+static bool adxl367Select(const TagBusDevice *bus)
+{
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    tagSpiSelect(tagBusSpiDevice(bus));
+    return true;
+
+  case TAG_BUS_USART:
+    tagUsartSelect(tagBusUsartDevice(bus));
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Release chip select after an ADXL367 transaction.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ */
+static void adxl367Deselect(const TagBusDevice *bus)
+{
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    tagSpiDeselect(tagBusSpiDevice(bus));
+    break;
+
+  case TAG_BUS_USART:
+    tagUsartDeselect(tagBusUsartDevice(bus));
+    break;
+
+  case TAG_BUS_I2C:
+    break;
+  }
 }
 
 void ADXL367_DeviceBegin(const TagAdxl367Device *device)
@@ -48,11 +139,12 @@ static void adxl367Write(const TagAdxl367Device *device,
                          const uint8_t *buffer,
                          size_t length)
 {
-  const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
+  const TagBusDevice *bus = &device->bus;
 
-  tagSpiSelect(spi);
-  adxl367WritePayload(spi, buffer, length);
-  tagSpiDeselect(spi);
+  if (!adxl367Select(bus))
+    return;
+  adxl367WritePayload(bus, buffer, length);
+  adxl367Deselect(bus);
 }
 
 static void adxl367WriteThenRead(const TagAdxl367Device *device,
@@ -61,12 +153,13 @@ static void adxl367WriteThenRead(const TagAdxl367Device *device,
                                  uint8_t *read_buffer,
                                  size_t read_length)
 {
-  const TagSpiDevice *spi = tagAdxl367SpiDevice(device);
+  const TagBusDevice *bus = &device->bus;
 
-  tagSpiSelect(spi);
-  if (adxl367WritePayload(spi, write_buffer, write_length))
-    adxl367ReadPayload(spi, read_buffer, read_length);
-  tagSpiDeselect(spi);
+  if (!adxl367Select(bus))
+    return;
+  if (adxl367WritePayload(bus, write_buffer, write_length))
+    adxl367ReadPayload(bus, read_buffer, read_length);
+  adxl367Deselect(bus);
 }
 
 static int16_t adxl367SignExtend14(uint16_t value)

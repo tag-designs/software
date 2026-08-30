@@ -7,6 +7,7 @@ Current variants:
 
 - `BitPresTag`: AT25XE external flash.
 - `BitPresTagMX25R`: MX25R external flash.
+- `TagUIUC`: ADXL367 on USART2 + BMP585 on SPI1 with LPS_RDY interrupt.
 
 The variants are intended to differ only in the external flash module selected
 from their `project.mk` files. Shared headers, state code, data logging, tests,
@@ -40,6 +41,9 @@ the USART-style LPS pressure sensor bus.
 
 ## Design Notes
 
+- [TagUIUC board integration plan](design/taguiuc-board-integration.md):
+  ADXL367 on USART2 + BMP585 on SPI1 with LPS_RDY interrupt.
 - [BMP581/BMP585 forced-mode pressure plan](design/bmp581-forced-mode.md):
   driver and BitPresTag-family integration plan for interrupt-driven forced
   pressure sampling on a BMP581-compatible BMP585 board.
+

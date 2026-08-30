@@ -7,6 +7,7 @@
 
 #include "hal.h"
 #include <limits.h>
+#include <stdbool.h>
 #include "app.h"
 
 #include "tag.pb.h"
@@ -14,8 +15,18 @@
 #include "persistent.h"
 #include "datalog.h"
 #include "devices.h"
-#include "lps27hhw.h"
+
+#if defined(TAG_SENSOR_ACCEL_ADXL367) && TAG_SENSOR_ACCEL_ADXL367
+#include "ADXL367.h"
+#else
 #include "ADXL362.h"
+#endif
+
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+#include "bmp581.h"
+#else
+#include "lps27hhw.h"
+#endif
 
 static const int32_t sample_period = 60; //300;
 static const int32_t chunk_period = 15; //60;
@@ -23,12 +34,46 @@ static const int32_t chunk_number = 4;//5;
 static const int32_t chunk_bits = 4; //6;
 
 /**
- * @brief Configure the ADXL362 for activity wakeups during acquisition.
+ * @brief Configure the accelerometer for activity wakeups during acquisition.
  */
-static void adxl362_init(void)
+static void accel_init(void)
 {
   // set up ADXL and alarm
 
+#if defined(TAG_SENSOR_ACCEL_ADXL367) && TAG_SENSOR_ACCEL_ADXL367
+  ADXL367_DeviceBegin(TAG_ACCEL_DEVICE);
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 0, ADXL367_REG_POWER_CTL,
+                                 1);
+
+  // set adxl filter;
+
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 sconfig.adxl_filter_range_rate,
+                                 ADXL367_REG_FILTER_CTL, 1);
+  // set adxl activity detection
+
+  ADXL367_SetupActivityDetectionDevice(TAG_ACCEL_DEVICE, 1,
+                                       sconfig.adxl_act_thresh_cnt, 2);
+
+  // set adxl inactivity detection
+
+  ADXL367_SetupInactivityDetectionDevice(TAG_ACCEL_DEVICE, 1,
+                                         sconfig.adxl_inact_thresh_cnt,
+                                         sconfig.adxl_inactive_samples);
+
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 0x3F,
+                                 ADXL367_REG_ACT_INACT_CTL, 1);
+
+  // interrupt -- caused by AWAKE going active
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE, ADXL367_INTMAP2_AWAKE,
+                                 ADXL367_REG_INTMAP2_LWR, 1);
+  // power
+  ADXL367_SetRegisterValueDevice(TAG_ACCEL_DEVICE,
+                                 ADXL367_POWER_CTL_MEASURE(ADXL367_MEASURE_ON) |
+                                 ADXL367_POWER_CTL_WAKEUP,
+                                 ADXL367_REG_POWER_CTL, 1);
+  ADXL367_DeviceEnd(TAG_ACCEL_DEVICE);
+#else
   ADXL362_DeviceBegin(TAG_ACCEL_DEVICE);
   ADXL362_SetRegisterValueDevice(TAG_ACCEL_DEVICE, 0, ADXL362_REG_POWER_CTL,
                                  1);
@@ -64,6 +109,47 @@ static void adxl362_init(void)
                                  //ADXL362_POWER_CTL_AUTOSLEEP,
                                  ADXL362_REG_POWER_CTL, 1);
   ADXL362_DeviceEnd(TAG_ACCEL_DEVICE);
+#endif
+}
+
+/**
+ * @brief Sample pressure and temperature using the configured pressure sensor.
+ *
+ * @param[out] pressure Raw BitPresTag pressure log value.
+ * @param[out] temperature Raw BitPresTag temperature log value.
+ * @return true when a fresh sample was captured.
+ */
+static bool pressure_sample(int16_t *pressure, int16_t *temperature)
+{
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  float pressure_hpa = 0.0f;
+  float pressure_raw;
+  int rc;
+
+  *pressure = SHRT_MIN;
+  *temperature = SHRT_MIN;
+
+  rc = bmp581_config_forced_device(TAG_PRESSURE_DEVICE, BMP581_ODR_50HZ, NULL);
+  if (rc == 0) {
+    rc = bmp581_sample_forced_blocking_device(TAG_PRESSURE_DEVICE, 100000U,
+                                              &pressure_hpa, temperature);
+  }
+  tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
+  tagPressureDeviceAfterPowerOff(TAG_PRESSURE_DEVICE);
+
+  if (rc == 0) {
+    pressure_raw = pressure_hpa * 16.0f;
+    if (pressure_raw > (float)SHRT_MAX)
+      pressure_raw = (float)SHRT_MAX;
+    if (pressure_raw < (float)SHRT_MIN)
+      pressure_raw = (float)SHRT_MIN;
+    *pressure = (int16_t)(pressure_raw +
+                          (pressure_raw >= 0.0f ? 0.5f : -0.5f));
+  }
+  return rc == 0;
+#else
+  return lps27GetPressureTemp(TAG_PRESSURE_DEVICE, pressure, temperature);
+#endif
 }
 
 /**
@@ -124,7 +210,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->state = TagState_RUNNING;
     recordState(reason);
 
-    adxl362_init();
+    accel_init();
 
     // Start the interval timer
 
@@ -189,8 +275,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         int16_t temperature;
       } datablock;
 
-      lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
-                           &datablock.temperature);
+      pressure_sample(&datablock.pressure, &datablock.temperature);
       //datablock.pressure = SHRT_MIN;
       //datablock.temperature = SHRT_MAX;
       datablock.activity = activity;

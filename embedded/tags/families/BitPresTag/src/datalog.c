@@ -9,7 +9,11 @@
 #include "datalog.h"
 #include "devices.h"
 #include "flash_internal.h"
+
+#if !(defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581)
 #include "lps27hhw.h"
+#endif
+
 #include "storage_flash.h"
 #include <stdbool.h>
 #include <tag.pb.h>
@@ -21,6 +25,36 @@ static t_DataLog databuf NOINIT;
 static volatile int sectors_erased NOINIT;
 static uint32_t erase_sector_total;
 static bool erase_external_active;
+
+/**
+ * @brief Convert stored pressure samples to hectopascals.
+ *
+ * @param[in] pressure Raw pressure value stored in the BitPresTag log.
+ * @return Pressure in hPa.
+ */
+static float bitprestagLogPressure(int16_t pressure)
+{
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  return pressure / 16.0f;
+#else
+  return lps27Pressure(pressure);
+#endif
+}
+
+/**
+ * @brief Convert stored sensor temperature samples to degrees Celsius.
+ *
+ * @param[in] temperature Raw temperature value stored in the BitPresTag log.
+ * @return Temperature in degrees Celsius.
+ */
+static float bitprestagLogTemperature(int16_t temperature)
+{
+#if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
+  return temperature / 100.0f;
+#else
+  return lps27Temperature(temperature);
+#endif
+}
 
 /**
  * @brief Raise MSI clock speed while formatting large monitor log responses.
@@ -318,9 +352,9 @@ int data_logAck(int index, Ack *ack)
       if (databuf.data[j].pressure == -1)
         break;
       data->data[j].activity = databuf.data[j].activity;
-      data->data[j].pressure = lps27Pressure(databuf.data[j].pressure);
+      data->data[j].pressure = bitprestagLogPressure(databuf.data[j].pressure);
       data->data[j].temperature =
-          lps27Temperature(databuf.data[j].temperature);
+          bitprestagLogTemperature(databuf.data[j].temperature);
       data->data_count++;
     }
   }

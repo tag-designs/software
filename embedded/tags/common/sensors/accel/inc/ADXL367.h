@@ -234,11 +234,6 @@ typedef struct {
   TagBusDevice bus; ///< Physical bus binding and low-power policy.
 } TagAdxl367Device;
 
-static inline const TagSpiDevice *tagAdxl367SpiDevice(const TagAdxl367Device *device)
-{
-  return tagBusSpiDevice(&device->bus);
-}
-
 const TagAdxl367Device *tagAdxl367Device(void);
 
 void ADXL367_DeviceBegin(const TagAdxl367Device *device);
