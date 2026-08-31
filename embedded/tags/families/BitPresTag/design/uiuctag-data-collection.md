@@ -78,8 +78,7 @@ firmware-side, against a decoder already known good.
 
 ### Where the implementation diverged from this plan
 
-Four decisions were changed while building S3. Each is a simplification the
-absolute-epoch addressing made available.
+Five decisions were changed while building S3.
 
 1. **Blocks open lazily, and the checkpoint is written after the sample it
    anchors.** The plan opened a block on entry and at each rollover, before
@@ -93,14 +92,17 @@ absolute-epoch addressing made available.
    conversion alongside accelerometer setup. At most one slot is lost at run
    start, and it is recorded as an ordinary gap.
 3. **Hibernation is permitted at any sample boundary, not only a block
-   boundary.** With slot addressing derived from absolute epoch, a resumed run
-   opens a fresh block and fills from its own slot; there is no longer a reason
-   to defer hibernation by up to two hours. The wake that enters hibernation
-   still stores its sample first.
+   boundary.** A resumed run anchors a fresh block at its own first sample, so
+   there is no reason to defer hibernation by up to two hours. The wake that
+   enters hibernation still stores its sample first.
 4. **Activity spanning a reset is left unwritten rather than reconstructed.**
    `lastwrite` is cleared on entry, so the sample written before a reset keeps
    an erased activity word. Its accumulation is genuinely lost, and the log says
    so instead of recording a partial count as if it were complete.
+5. **The sample grid is anchored at the run's first minute boundary, not at
+   absolute epoch multiples.** See the note at the end of
+   [Time mapping](#time-mapping-the-invariant-the-host-decoder-depends-on). It
+   removed the host's normalization step entirely.
 
 ### Verification performed without hardware
 
@@ -135,8 +137,8 @@ include (`MONITORINCDIR` for firmware, `tag_monitor_interface` for host):
   against `0x7fc00000` it catches the erased-flash NaN (`0xFFFFFFFF`) as well as
   the canonical one the firmware writes.
 - `uiuctagActivityBucket(sample, b)` for the 6-bit unpack.
-- `uiuctagSampleEpoch(header_epoch, s)` implementing
-  `(epoch - epoch % 7200) + s*300` once, for both sides.
+- `uiuctagSampleEpoch(header_epoch, s)` implementing `epoch + s*300` once, for
+  both sides.
 - Rename `t_UIUCTagInternalLog.raw_voltage` to state its 0.01 V units.
 
 *Acceptance:* both trees build; existing size assertions still hold; no
@@ -200,7 +202,7 @@ Three sub-steps, each buildable, with two hardware checkpoints:
   (W7). *Checkpoint 1:* download an erased or partially written log. Framing,
   index bounds, `NODATA` past `pages`, and trailing-sample trimming are all
   observable here, through the S2 decoder, before any real data exists.
-- **S3c** - `state_run.c` sequencing (W5): minute alarm, absolute-epoch buckets,
+- **S3c** - `state_run.c` sequencing (W5): minute alarm, run-anchored grid,
   staged writes with recharge rests, NaN on sensor failure, checkpoint on block
   open, activity flush before `Hibernating()`/`Finished()`. Deletes the
   transitional `pressure_sample()` shim. *Checkpoint 2:* the full capture
@@ -275,8 +277,9 @@ worktree rather than assumed.
    `timestamp % 300 == 0` does **not** hold. `enableAlarm(0, ALARM_MINUTE)`
    (`embedded/tags/common/core/src/time.c`) instead masks the alarm down to a
    seconds-field match, so it fires on every epoch minute boundary and posts
-   `EVT_RTC_ALRAF`. UIUCTag uses the minute alarm, which makes absolute-epoch
-   bucket and slot indexing exact by construction. Precedent:
+   `EVT_RTC_ALRAF`. UIUCTag uses the minute alarm so that the sample grid,
+   anchored at the run's first minute boundary, falls on whole minutes and each
+   sample covers exactly five of them. Precedent:
    `BitTagNG/src/state_run.c` and `BitTag/src/bt_state_run.c` both drive
    RUNNING from alarm 0 this way; `state_machine.c` uses alarm 1 for the
    non-RUNNING states, so alarm 0 is free.
@@ -346,33 +349,27 @@ W2.
 
 ### Time mapping (the invariant the host decoder depends on)
 
-RUNNING wakes on the minute alarm, so every sample boundary is an epoch
-multiple of 300 and every bucket boundary an epoch multiple of 60. All indexing
-is therefore absolute:
+RUNNING wakes on the minute alarm. The **first** such wake of a run writes the
+first checkpoint and the first sample, and that instant anchors the sample grid
+for everything after it:
 
 ```
-bucket b in the current sample = (T / 60) % 5
-slot   s within the block      = (T % 7200) / 300
-block start epoch              = T - (T % 7200)
+first sample          = first minute boundary at or after RUNNING entry
+sample s of a block   = checkpoint.epoch + s * 300
+next block starts at  = checkpoint.epoch + 24 * 300
+bucket b of sample s  = sample epoch + b * 60
 ```
 
 For checkpoint `k` with fields `{epoch, vdd100, extern_log_block}`:
 
 - Block bytes live at `extern_log_block * 288` in external flash.
-- `epoch` is the raw wake time at which the block was opened, **not** rounded
-  down to the 7200 boundary. The host normalizes: sample `s` of a block is at
-  `(epoch - epoch % 7200) + s*300`. Storing the raw time costs nothing and keeps
-  two blocks opened in the same 2-hour window — a restart or hibernation resume
-  — distinguishable from each other, which a pre-normalized epoch would not.
-  All samples in a block are in the same 7200-second window by construction,
-  because crossing the window is exactly what opens the next block.
-- A block opened mid-window fills only the slots from its `s` onward and leaves
-  the earlier slots erased. Slot position, not write order, carries the time.
+- `epoch` is the time of this block's **own slot 0**, not a rounded boundary.
+  The host adds `s * 300` and is done: no modulo, no absolute grid, and no way
+  for two blocks to share a start time.
 - `samples[s].pressure` / `.temperature` are instantaneous readings taken at
   that slot time.
-- `packed_activity_data` bucket `b` (bits `6b .. 6b+5`) counts active seconds in
-  the `b`-th minute of the slot; range 0..60, so the 6-bit field never
-  saturates.
+- `packed_activity_data` bucket `b` counts active seconds in the `b`-th minute
+  after the slot time; range 0..60, so the 6-bit field never saturates.
 - **Every checkpoint maps to exactly one 288-byte external block, without
   exception.** A restart may skip individual fields or whole slots, but never
   breaks the one-header-to-one-block correspondence, so block index equals
@@ -383,6 +380,14 @@ For checkpoint `k` with fields `{epoch, vdd100, extern_log_block}`:
   measurement.** For activity, `packed_activity_data == 0xFFFFFFFF` means the
   word was never written. Gaps may appear anywhere in a block, not just at the
   tail.
+
+An earlier revision of this plan anchored the grid to absolute epoch multiples
+of 7200 instead, and had the host round a header epoch down to its window. That
+worked, but it cost more than it bought: the first block of a run wasted the
+slots before the run started, a header epoch and its slot 0 were different
+instants, and two blocks could share a normalized start after a restart inside
+one window. Anchoring at the run's first minute boundary removes all three, and
+reduces the host's time reconstruction to one addition.
 
 ### Write staging
 
@@ -398,35 +403,40 @@ slept once after step 3.
 
 ### Cursor derivation (no new persistent state)
 
-`pState->pages` counts checkpoints, so the current block index is `pages - 1`
+`pState->pages` counts checkpoints, so the current block index is `pages - 1`,
 and the newest checkpoint is read back from internal flash (memory-mapped, no
-external flash access). At a minute-alarm wake at time `T`, on the 300-second
-boundaries only:
+external flash access). At a minute-alarm wake at time `T`:
 
 ```
-C = checkpoint[pages-1]
-s = (T % 7200) / 300                              // slot in block
-g = C.extern_log_block * 24 + s                   // global sample index
-new block needed when (T - T % 7200) != (C.epoch - C.epoch % 7200)
-g_prev = g - 1                                    // pending activity slot
+C    = checkpoint[pages-1]                       // absent on the first wake
+due  = (T - C.epoch) % 300 == 0                  // is a sample due?
+slot = (T - C.epoch) / 300
+full = slot >= 24                                // block finished
+g    = C.extern_log_block * 24 + slot            // global sample index
 ```
 
-A new block is opened by appending a checkpoint with `epoch = T` and
-`extern_log_block = C.extern_log_block + 1`; slot `s` is then written in the
-same wake. Because blocks are contiguous and one-per-checkpoint, `g - 1` is the
-previous sample even across a block boundary.
+The grid lives in flash, not in absolute time, which is what makes recovery
+exact rather than approximate: a reset mid-block leaves `C` untouched, so the
+resumed run lands on the very sample times it would have used had it never
+stopped. A minute wake that is not on the grid simply is not a sample boundary —
+worth noting, because after a reset the tag will wake up to four times before
+its next sample.
 
-`pState->lastwrite` still records the epoch of the last sample write, but only
-so the pending activity word can be suppressed when the previous sample was not
-in the immediately preceding 300-second window (first sample of a run,
-hibernation resume, or a missed wake). The write *addresses* are pure functions
-of `T` plus the flash-resident checkpoint, which is what makes reset recovery
-free: nothing mid-block is reconstructed from RAM, and a slot is never
-programmed twice.
+When `full`, a new block is opened with `epoch = T` and
+`extern_log_block = C.extern_log_block + 1`, and its slot 0 is written in the
+same wake. A long gap — hibernation, or a clock that was stopped — lands far past
+the last slot and re-anchors the grid at that wake rather than leaving the
+skipped slots addressable.
 
-Activity accumulation is clamped to the current sample window: the
-seconds-accumulation loop starts at `max(lastactstart, T - 300)`, so a long gap
-cannot fold stale seconds into the wrong buckets by wrapping mod 5.
+`pState->lastwrite` holds the epoch of the last sample write. It is not a cursor:
+it is the start of the activity window currently accumulating, and it suppresses
+the pending-activity write when the previous sample was not in the immediately
+preceding window (first sample of a run, hibernation resume, or a reset).
+
+Activity accumulation is measured from that window start: each active second is
+credited to bucket `(i - lastwrite) / 60`, and seconds falling outside the five
+buckets are dropped rather than wrapped, so a late wake cannot corrupt the
+current sample's counts.
 
 ## Work Items
 
@@ -477,8 +487,8 @@ the host decoder gets them for free rather than reimplementing the convention:
   `!isnan(...)`, which covers erased flash and an explicit sensor-failure NaN
   with one test (constraint 10).
 - `uiuctagActivityBucket(sample, b)` for the 6-bit unpack, and
-  `uiuctagSampleEpoch(header_epoch, s)` implementing
-  `(epoch - epoch % 7200) + s*300` once, on both sides of the link.
+  `uiuctagSampleEpoch(header_epoch, s)` implementing `epoch + s*300` once, on
+  both sides of the link.
 
 Also rename `t_UIUCTagInternalLog.raw_voltage` to make its units explicit (it
 carries `vdd100`, i.e. 0.01 V units, matching `Status.voltage` handling
@@ -549,10 +559,10 @@ Rewrite the UIUCTag `state_run.c` `Running()`:
   `BitTagNG/src/state_run.c`. Re-arm the alarm on
   `reason == State_EVENT_EXCEPTION` as BitTagNG does.
 - Activity accumulation runs at every wake (minute alarm and `EVT_WKUP`
-  activity edges alike), with **absolute-epoch** bucket indexing
-  `index = ((i / 60) % 5) * 6`, which is exact now that boundaries are epoch
-  multiples. Start the loop at `max(lastactstart, T - 300)` and clamp each
-  bucket to `UIUCTAG_ACTIVITY_BUCKET_MASK`.
+  activity edges alike), with bucket indexing measured from the start of the
+  sample window being accumulated: `index = ((i - lastwrite) / 60) * 6`. Drop
+  seconds falling outside the five buckets rather than wrapping them, and clamp
+  each bucket to `UIUCTAG_ACTIVITY_BUCKET_MASK`.
 - Sample work happens only on the 300-second boundaries (`T % 300 == 0`), so
   four of every five minute wakes touch neither the pressure sensor nor flash.
 - `T_INIT`: sample ADC, reset activity state, `initDataCollection()`, arm the
@@ -700,12 +710,12 @@ What the firmware guarantees to the `sqlitelog` decoder:
   the index space.
 - `voltage` is volts; `samples` is `n * 12` bytes of `t_UIUCTagSample`,
   `n <= 24`, always starting at slot 0 so the array index *is* the slot number.
-- `epoch` is the raw time the block was opened. Normalize it:
-  `block_start = epoch - epoch % 7200`, then sample `s` is at
-  `block_start + s*300` and its activity bucket `b` covers
-  `block_start + s*300 + b*60`, value 0..60 active seconds. Two blocks may share
-  a `block_start` if a run restarted inside one 2-hour window; the later
-  checkpoint index is the newer data.
+- `epoch` is the time of the block's own slot 0. Sample `s` is at
+  `epoch + s*300` and its activity bucket `b` covers `epoch + s*300 + b*60`,
+  value 0..60 active seconds. Do not round the epoch to a 2-hour boundary: the
+  grid is anchored at the run's first minute boundary, so a header epoch is
+  generally not a multiple of the block period, and rounding would shift every
+  sample in the block.
 - **NaN means no measurement**, for both erased slots (`0xFFFFFFFF`, itself a
   NaN) and failed sensor reads (canonical quiet NaN). Activity is absent when
   `packed_activity_data == 0xFFFFFFFF`. Gaps may appear anywhere in the payload,

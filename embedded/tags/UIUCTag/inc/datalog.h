@@ -47,9 +47,11 @@
 /**
  * @brief Internal-flash checkpoint that anchors one external log block.
  *
- * @details Layout is the shared t_UIUCTagInternalLog: the raw wake time the
- *          block was opened, the supply voltage at that moment in 0.01 V units,
- *          and the index of the external block it describes.
+ * @details Layout is the shared t_UIUCTagInternalLog: the epoch second of this
+ *          block's slot 0, the supply voltage at that moment in 0.01 V units,
+ *          and the index of the external block it describes. The first
+ *          checkpoint of a run anchors the sample grid; each later one is
+ *          exactly one block period after its predecessor.
  */
 typedef t_UIUCTagInternalLog t_DataHeader;
 

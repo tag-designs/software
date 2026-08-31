@@ -82,18 +82,28 @@ int main()
     assert(uiuctagActivityBucket(&real, 0) == 60);
     assert(uiuctagActivityBucket(&real, 4) == 60);
 
-    // slot timing: block opened late still maps slots to window boundaries
-    const int32_t on_boundary = 1767225600;         // multiple of 7200
-    assert(on_boundary % 7200 == 0);
-    assert(uiuctagBlockStartEpoch(on_boundary) == on_boundary);
-    assert(uiuctagSampleEpoch(on_boundary, 0) == on_boundary);
-    assert(uiuctagSampleEpoch(on_boundary, 23) == on_boundary + 23 * 300);
-    assert(uiuctagActivityBucketEpoch(on_boundary, 1, 4)
-           == on_boundary + 300 + 240);
+    // Slot timing. The checkpoint epoch is the block's own slot 0, so slot
+    // times are a plain offset from it and no rounding is involved. The grid is
+    // anchored at the first minute boundary of a run, so a header epoch is not
+    // generally a multiple of the block period - which is exactly the case a
+    // normalizing decoder would get wrong.
+    const int32_t anchor = 1767225780;              // a minute, not a 2h, boundary
+    assert(anchor % 60 == 0 && anchor % 7200 != 0);
+    assert(uiuctagSampleEpoch(anchor, 0) == anchor);
+    assert(uiuctagSampleEpoch(anchor, 1) == anchor + 300);
+    assert(uiuctagSampleEpoch(anchor, 23) == anchor + 23 * 300);
+    assert(uiuctagActivityBucketEpoch(anchor, 0, 0) == anchor);
+    assert(uiuctagActivityBucketEpoch(anchor, 1, 4) == anchor + 300 + 240);
+    assert(uiuctagActivityBucketEpoch(anchor, 23, 4)
+           == anchor + 23 * 300 + 4 * 60);
 
-    const int32_t late = on_boundary + 1500;        // opened at slot 5
-    assert(uiuctagBlockStartEpoch(late) == on_boundary);
-    assert(uiuctagSampleEpoch(late, 5) == late);
+    // The last bucket of a slot must end exactly where the next slot begins.
+    assert(uiuctagActivityBucketEpoch(anchor, 5, 4) + 60
+           == uiuctagSampleEpoch(anchor, 6));
+
+    // A later block is one block period on, and its own slot 0.
+    const int32_t next_block = anchor + 7200;
+    assert(uiuctagSampleEpoch(next_block, 0) == next_block);
 
     printf("S1 helpers: all assertions passed\n");
     return 0;

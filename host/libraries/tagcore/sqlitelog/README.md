@@ -25,20 +25,23 @@ always describes exactly one external block, so there are no holes in it.
 
 ### Timing
 
-`UIUCTagLog.epoch` is the raw wake time at which the tag opened the block, not
-the block window boundary. Normalize before use:
+`UIUCTagLog.epoch` is the time of the block's own slot 0, so slot times are a
+plain offset from it with no rounding:
 
-- `block_start = epoch - epoch % 7200` (`uiuctagBlockStartEpoch()`)
-- sample `s` is at `block_start + s * 300` (`uiuctagSampleEpoch()`)
+- sample `s` is at `epoch + s * 300` (`uiuctagSampleEpoch()`)
 - activity bucket `b` of sample `s` starts at `+ b * 60`
   (`uiuctagActivityBucketEpoch()`)
 
-The array index *is* the slot number: the firmware always sends a block from
-slot 0 and trims only trailing unwritten slots, so a short payload is a valid
-partial block and never a shifted one. A block opened mid-window — at run start,
-after a reset, or on hibernation resume — leaves its earlier slots unwritten and
-fills in from its own slot onward. Two blocks can share a `block_start` if a run
-restarted inside one window; the higher checkpoint index is the newer data.
+Collection anchors its sample grid at the first minute boundary of the run and
+each later block begins exactly one block period after the previous one, so a
+header epoch is generally *not* a multiple of 7200. Do not round it down to a
+two-hour boundary; that would shift every sample in the block.
+
+The array index *is* the slot number: the firmware always sends a block from slot
+0 and trims only trailing unwritten slots, so a short payload is a valid partial
+block and never a shifted one. Because each block is anchored at its own first
+sample, no two blocks can share a start time, and a block that ended early — at a
+reset or a hibernation window — simply has unwritten slots at the end.
 
 ### Missing data
 

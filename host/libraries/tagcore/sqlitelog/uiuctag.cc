@@ -74,10 +74,11 @@ double activityPercent(uint32_t active_seconds)
  *
  * @details Writes one Voltage row per block at the raw checkpoint epoch, then
  *          per sample slot a Pressure row, a Temperature row, and five Activity
- *          rows, at epochs derived from the block window boundary. The payload
- *          index is the slot number: the firmware always sends a block from
- *          slot 0 and trims only trailing unwritten slots, so a short payload
- *          is a valid partial block rather than a shifted one.
+ *          rows, at epochs offset from the checkpoint epoch, which is the
+ *          block's own slot 0. The payload index is the slot number: the
+ *          firmware always sends a block from slot 0 and trims only trailing
+ *          unwritten slots, so a short payload is a valid partial block rather
+ *          than a shifted one.
  *
  *          Absent values produce no row. A slot may be empty because no wake
  *          ever filled it, which reads as erased flash, or because the
@@ -135,8 +136,8 @@ int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log)
         return -2;
     }
 
-    // The voltage reading is taken as the block opens, so it belongs at the
-    // checkpoint's own timestamp rather than at the block window boundary.
+    // The voltage reading is taken as the block opens, which is also the time
+    // of its slot 0, so the header epoch is the right timestamp for it.
     if (!voltage_insert.bindInt64(1, header_epoch)
         || !voltage_insert.bindDouble(2, log.voltage())
         || !voltage_insert.stepDone()) {

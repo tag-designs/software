@@ -138,6 +138,20 @@ bool samplePressure(float *pressure_hpa, float *temperature_c)
 /* --- the simulation ------------------------------------------------------ */
 static const int32_t BLOCK0 = 1767225600;   /* multiple of 7200 */
 
+/*
+ * The expected slot indices, checkpoint epochs, and activity words below are
+ * written for the shipping five-minute period. The invariants that hold at any
+ * period - no word programmed twice, no write while the flash sleeps, every
+ * sampled slot getting both pressure and temperature - stay active either way,
+ * so building this with -DUIUCTAG_SAMPLE_PERIOD_SEC set still exercises the
+ * addressing arithmetic that a shortened period is most likely to break.
+ */
+#if UIUCTAG_SAMPLE_PERIOD_SEC == UIUCTAG_EXTERNAL_BLOCK_SECONDS
+#define SIM_DEFAULT_GEOMETRY 1
+#else
+#define SIM_DEFAULT_GEOMETRY 0
+#endif
+
 /**
  * @brief Unpack an activity bucket from a recorded activity word.
  *
@@ -185,54 +199,61 @@ int main(int argc, char **argv)
            checkpoint_count, write_count);
     assert(checkpoint_count == 0 && "no block should open before a sample");
 
-    /* Minute alarms for three hours. Active during two known minutes of the
-       window that starts at block0+3600: the whole minute at +3600 (bucket 0)
-       and half the minute at +3720 (bucket 2). */
+    /* Minute alarms for three hours. The grid is anchored at the first minute
+       boundary of the run, block0+180, so sample boundaries are +180, +480,
+       ... and the sample covering [+3780, +4080) is the one exercised below:
+       the whole minute at +3780 fills its bucket 0, and 30 s from +3900 fills
+       half of its bucket 2. */
     for (int32_t t = BLOCK0 + 180; t <= BLOCK0 + 10800; t += 60) {
         timestamp = t;
         events = EVT_RTC_ALRAF;
         isActive = false;
-        if (t == BLOCK0 + 3600) { isActive = true; }        /* active from here */
-        if (t == BLOCK0 + 3660) { isActive = false; }       /* 60 s of activity */
-        if (t == BLOCK0 + 3720) { isActive = true; }
-        if (t == BLOCK0 + 3750) { isActive = false; }       /* not on a wake */
+        if (t == BLOCK0 + 3780) { isActive = true; }        /* active from here */
+        if (t == BLOCK0 + 3840) { isActive = false; }       /* 60 s of activity */
+        if (t == BLOCK0 + 3900) { isActive = true; }
         Running(T_CONT, 0);
-        /* lastactstart is what carries "active since" across wakes; emulate the
-           30 s case by clearing it mid-window the way an activity edge wake
-           would. */
-        if (t == BLOCK0 + 3720) { pState->lastactstart = t + 30; }
+        /* lastactstart is what carries "active since" across wakes; emulate 30 s
+           of activity starting mid-minute the way an edge wake would. */
+        if (t == BLOCK0 + 3900) { pState->lastactstart = t + 30; }
+        if (t == BLOCK0 + 3960) { pState->lastactstart = INT_MAX; }
     }
 
     printf("after 3 h: pressure_samples=%d writes=%d checkpoints=%d\n",
            pressure_samples, write_count, checkpoint_count);
 
     /* --- checkpoint expectations --- */
-    /* First sample lands at block0+300 (first 300-boundary after start), so
-       block 0 opens then; the next window starts at block0+7200. */
+#if SIM_DEFAULT_GEOMETRY
+    /* The run's first minute boundary is block0+180, and that instant is both
+       checkpoint 0 and its own slot 0. Every later block starts exactly one
+       block period after the previous one, so the grid never depends on where
+       the run happened to begin relative to absolute time. */
+    const int32_t ANCHOR = BLOCK0 + 180;
     assert(checkpoint_count == 2);
-    assert(checkpoints[0].epoch == BLOCK0 + 300 && checkpoints[0].block == 0);
-    assert(checkpoints[1].epoch == BLOCK0 + 7200 && checkpoints[1].block == 1);
-    printf("checkpoint 0: epoch=block0+%d block=%u\n",
+    assert(checkpoints[0].epoch == ANCHOR && checkpoints[0].block == 0);
+    assert(checkpoints[1].epoch == ANCHOR + 7200 && checkpoints[1].block == 1);
+    printf("checkpoint 0: epoch=block0+%d block=%u (run anchor)\n",
            checkpoints[0].epoch - BLOCK0, checkpoints[0].block);
-    printf("checkpoint 1: epoch=block0+%d block=%u\n",
+    printf("checkpoint 1: epoch=block0+%d block=%u (anchor + one block)\n",
            checkpoints[1].epoch - BLOCK0, checkpoints[1].block);
 
-    /* --- slot addressing --- */
-    /* Sample at block0+300 is slot 1 of block 0 -> index 1. */
-    int w = find_write(1, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == BLOCK0 + 300);
-    /* Sample at block0+7200 is slot 0 of block 1 -> index 24. */
+    /* --- slot addressing, measured from each block's own start --- */
+    /* The anchor sample itself is slot 0 of block 0 -> index 0. */
+    int w = find_write(0, DATALOG_FIELD_PRESSURE);
+    assert(w >= 0 && writes[w].at == ANCHOR);
+    /* One period later is slot 1 -> index 1. */
+    w = find_write(1, DATALOG_FIELD_PRESSURE);
+    assert(w >= 0 && writes[w].at == ANCHOR + 300);
+    /* The 24th sample opens block 1 as its slot 0 -> index 24. */
     w = find_write(24, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == BLOCK0 + 7200);
-    /* Sample at block0+10800 is slot 12 of block 1 -> index 36. */
-    w = find_write(36, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == BLOCK0 + 10800);
-    printf("slot addressing: index 1 @+300, index 24 @+7200, index 36 @+10800\n");
+    assert(w >= 0 && writes[w].at == ANCHOR + 7200);
+    printf("slot addressing: index 0 @anchor, index 1 @anchor+300, "
+           "index 24 @anchor+7200\n");
 
     /* --- failed conversion stores NaN, and only NaN --- */
-    /* slot 7 of block 0 = index 7, written at block0+2100 */
+    /* slot 7 of block 0 = index 7, written one period per slot after the
+       anchor. */
     w = find_write(7, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == BLOCK0 + 2100);
+    assert(w >= 0 && writes[w].at == ANCHOR + 7 * 300);
     {
         float p; memcpy(&p, &writes[w].word, 4);
         assert(uiuctagFloatMissing(p) && "failed sample must store NaN");
@@ -243,11 +264,12 @@ int main(int argc, char **argv)
            writes[w].word);
 
     /* --- activity is written one sample period late, into the right slot --- */
-    /* The window [block0+3600, +3900) is slot 12 of block 0 (3600/300=12).
-       Its activity word must be programmed at block0+3900. */
+    /* The sample at anchor+3600 is slot 12 of block 0, covering
+       [anchor+3600, anchor+3900) = [block0+3780, block0+4080). Its activity
+       word must be programmed one period later, at anchor+3900. */
     w = find_write(12, DATALOG_FIELD_ACTIVITY);
     assert(w >= 0);
-    assert(writes[w].at == BLOCK0 + 3900 && "activity lags its sample by one period");
+    assert(writes[w].at == ANCHOR + 3900 && "activity lags its sample by one period");
     printf("activity for slot 12 written at +%d, word=0x%08x buckets=%u,%u,%u,%u,%u\n",
            writes[w].at - BLOCK0, writes[w].word,
            bucket(writes[w].word, 0), bucket(writes[w].word, 1),
@@ -259,8 +281,10 @@ int main(int argc, char **argv)
     assert(bucket(writes[w].word, 3) == 0);
     assert(bucket(writes[w].word, 4) == 0);
 
-    /* --- every written sample got exactly pressure+temperature, and every
-           completed sample also got activity --- */
+#endif /* SIM_DEFAULT_GEOMETRY */
+
+    /* --- period-independent invariants: every written sample got exactly
+           pressure+temperature, and every completed sample also got activity --- */
     int with_pressure = 0, with_activity = 0;
     for (unsigned i = 0; i < MAX_SAMPLES; i++) {
         if (flash_written[i][0]) {
@@ -284,6 +308,7 @@ int main(int argc, char **argv)
     assert(finished_count == 1);
     printf("stop time honoured: finished=%d\n", finished_count);
 
+#if SIM_DEFAULT_GEOMETRY
     /* ---------------------------------------------------------------- */
     /* Phase 2: reset mid-block. The state machine re-enters RUNNING via
        T_INIT with the flash checkpoints intact but volatile progress lost. */
@@ -294,27 +319,35 @@ int main(int argc, char **argv)
         finished_count = 0;
         sconfig.stop = BLOCK0 + 100000;
 
-        timestamp = BLOCK0 + 10920;          /* mid-window, mid-block */
+        /* Reset between two grid points, deliberately off the sample grid. */
+        timestamp = ANCHOR + 10860;
         Running(T_INIT, 0);
         assert(checkpoint_count == checkpoints_before &&
                "re-entry must not open a block on its own");
         assert(write_count == writes_before);
 
-        /* Next sample boundary after the reset: slot 13 of block 1 = index 37 */
-        timestamp = BLOCK0 + 11100;
+        /* A wake that is minute aligned but off the grid must not sample. */
+        timestamp = ANCHOR + 10920;
         events = EVT_RTC_ALRAF;
         isActive = false;
         Running(T_CONT, 0);
-        int w2 = find_write(37, DATALOG_FIELD_PRESSURE);
-        assert(w2 >= 0 && writes[w2].at == BLOCK0 + 11100);
+        assert(write_count == writes_before &&
+               "an off-grid wake must not write a sample");
+
+        /* The next grid point resumes the original grid: slot 12 of block 1. */
+        timestamp = ANCHOR + 11100;
+        events = EVT_RTC_ALRAF;
+        Running(T_CONT, 0);
+        int w2 = find_write(24 + 13, DATALOG_FIELD_PRESSURE);
+        assert(w2 >= 0 && writes[w2].at == ANCHOR + 11100);
         assert(checkpoint_count == checkpoints_before &&
-               "same window must reuse the existing block");
+               "an unfilled block must be reused, not replaced");
         /* The sample written before the reset keeps its erased activity word:
            its accumulation was lost, so nothing is invented for it. */
-        assert(!flash_written[36][2] &&
+        assert(!flash_written[24 + 12][2] &&
                "activity spanning a reset must stay unwritten, not guessed");
-        printf("reset mid-block: resumed at index 37, block reused, "
-               "index 36 activity left erased\n");
+        printf("reset mid-block: off-grid wake ignored, grid resumed at "
+               "index %d, prior activity left erased\n", 24 + 13);
     }
 
     /* ---------------------------------------------------------------- */
@@ -324,29 +357,36 @@ int main(int argc, char **argv)
         int checkpoints_before = checkpoint_count;
         hibernating_count = 0;
 
-        sconfig.hibernate[0].start_epoch = BLOCK0 + 11400;
-        sconfig.hibernate[0].end_epoch = BLOCK0 + 25200;
+        sconfig.hibernate[0].start_epoch = ANCHOR + 11400;
+        sconfig.hibernate[0].end_epoch = ANCHOR + 25200;
 
-        timestamp = BLOCK0 + 11400;
+        timestamp = ANCHOR + 11400;
         events = EVT_RTC_ALRAF;
         Running(T_CONT, 0);
         assert(hibernating_count == 1 && "must hibernate at a sample boundary");
 
-        /* Resume after the window: a new block opens because the 7200-second
-           window has rolled over several times. */
-        timestamp = BLOCK0 + 25200;
+        /* Resume well after the window: the grid has run far past the block's
+           last slot, so the resumed run re-anchors on a fresh block rather than
+           addressing slots it skipped. */
+        timestamp = ANCHOR + 25200;
         Running(T_INIT, 0);
-        timestamp = BLOCK0 + 25200 + 300;
+        /* ANCHOR + 25500 is the next point on the grid the old checkpoint
+           defines; a resumed run samples there, not at the first minute wake. */
+        timestamp = ANCHOR + 25500;
         events = EVT_RTC_ALRAF;
         Running(T_CONT, 0);
         assert(checkpoint_count == checkpoints_before + 1);
         assert(checkpoints[checkpoint_count - 1].block ==
                checkpoints[checkpoints_before - 1].block + 1 &&
                "resumed run must take the next external block");
-        printf("hibernate/resume: new block %u opened at epoch offset +%d\n",
+        assert(checkpoints[checkpoint_count - 1].epoch == ANCHOR + 25500 &&
+               "a resumed block is anchored at its own first sample");
+        printf("hibernate/resume: new block %u anchored at anchor+%d\n",
                checkpoints[checkpoint_count - 1].block,
-               checkpoints[checkpoint_count - 1].epoch - BLOCK0);
+               checkpoints[checkpoint_count - 1].epoch - ANCHOR);
     }
+
+#endif /* SIM_DEFAULT_GEOMETRY */
 
     /* ---------------------------------------------------------------- */
     /* Emit the simulated external blocks and their checkpoints so the host
@@ -379,6 +419,8 @@ int main(int argc, char **argv)
                block_output_path);
     }
 
-    printf("\nFIRMWARE SEQUENCER SIM: all assertions passed\n");
+    printf("\nFIRMWARE SEQUENCER SIM: all assertions passed (%s)\n",
+           SIM_DEFAULT_GEOMETRY ? "default geometry"
+                                : "invariants only, period overridden");
     return 0;
 }

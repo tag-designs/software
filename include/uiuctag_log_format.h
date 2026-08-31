@@ -87,9 +87,16 @@ typedef struct {
  * @details The external log block identifies the first 12-byte sample in the
  *          external log region associated with this checkpoint. Subsequent
  *          samples can be derived from the fixed sample size and count.
+ *
+ *          The epoch is the time of this block's slot 0, not a rounded window
+ *          boundary: collection anchors its sample grid at the first minute
+ *          boundary of the run, and each later block starts exactly
+ *          UIUCTAG_DATA_LOG_SECONDS after the previous one. Sample times are
+ *          therefore epoch + slot * UIUCTAG_EXTERNAL_BLOCK_SECONDS with no
+ *          normalization, and two blocks can never share a start time.
  */
 typedef struct {
-    int32_t epoch;           /**< Wake time the block was opened, epoch seconds. */
+    int32_t epoch;           /**< Epoch second of slot 0 of this block. */
     uint16_t vdd100;         /**< Supply voltage in 0.01 V units. */
     uint16_t extern_log_block; /**< Index of the 288-byte external block. */
 } t_UIUCTagInternalLog;
@@ -262,37 +269,23 @@ static inline uint32_t uiuctagActivityBucket(const t_UIUCTagSample *sample,
 }
 
 /**
- * @brief Round a checkpoint epoch down to the start of its block window.
- *
- * @details Checkpoints store the raw wake time at which a block was opened,
- *          which is not necessarily the window boundary: a run that starts, or
- *          resumes from hibernation, mid-window opens its block late and leaves
- *          the earlier slots erased. Slot position carries the time, so the
- *          window boundary is what slot epochs are measured from.
- *
- * @param[in] header_epoch Raw epoch seconds from the internal checkpoint.
- * @return Epoch seconds of the containing block window boundary.
- *
- * @note Defined for non-negative epochs, which is every timestamp a tag can
- *       record.
- */
-static inline int32_t uiuctagBlockStartEpoch(int32_t header_epoch)
-{
-    return header_epoch
-           - (header_epoch % (int32_t)UIUCTAG_DATA_LOG_SECONDS);
-}
-
-/**
  * @brief Epoch time of one sample slot within a block.
  *
- * @param[in] header_epoch Raw epoch seconds from the internal checkpoint.
+ * @details The checkpoint epoch is the time of the block's own slot 0, so slot
+ *          times are a plain offset from it. Collection anchors the grid at the
+ *          first minute boundary of the run rather than at an absolute
+ *          multiple of the block period, which is why no rounding is involved:
+ *          a block's samples always begin at slot 0, and a block that ends
+ *          early simply has unwritten slots at the end.
+ *
+ * @param[in] header_epoch Epoch seconds from the internal checkpoint.
  * @param[in] slot Slot index within the block, 0 to UIUCTAG_LOG_SAMPLES-1.
  * @return Epoch seconds at which that slot's pressure was measured, and at
  *         which its first activity bucket starts.
  */
 static inline int32_t uiuctagSampleEpoch(int32_t header_epoch, unsigned slot)
 {
-    return uiuctagBlockStartEpoch(header_epoch)
+    return header_epoch
            + (int32_t)(slot * UIUCTAG_EXTERNAL_BLOCK_SECONDS);
 }
 
