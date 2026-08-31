@@ -73,6 +73,7 @@ target_sources(tagcore
          sqlitelog/imutag.cc
          sqlitelog/pressure.cc
          sqlitelog/schema.cc
+         sqlitelog/uiuctag.cc
          linkadapt.cc
          log.c
          linkadapt.h
@@ -91,3 +92,27 @@ target_include_directories(tagcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tagcore PUBLIC proto)
 target_link_libraries(tagcore PUBLIC tag_monitor_interface)
 target_link_libraries(tagcore PRIVATE ${HOST_SQLITE_TARGET})
+
+#[[
+  @brief  Offline assertion checks for the tagcore log decoders.
+
+  @details These drive the decoders with synthetic payloads instead of a tag, so
+           a log format can be developed and regression checked without
+           hardware. They are off by default because they are developer tools
+           rather than shipped binaries, and because they are plain assertion
+           programs rather than a registered test framework: build with
+           -DBUILD_TAGCORE_CHECKS=ON and run them by hand. See test/README.md.
+#]]
+option(BUILD_TAGCORE_CHECKS
+       "Build the offline tagcore decoder checks (developer tool, run manually)"
+       OFF)
+
+if(BUILD_TAGCORE_CHECKS)
+  foreach(check uiuctag_format_check uiuctag_decoder_check
+                uiuctag_end_to_end_check)
+    add_executable(${check} test/${check}.cc)
+    target_link_libraries(${check} PRIVATE tagcore tag_monitor_interface)
+    set_target_properties(${check} PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+  endforeach()
+endif()

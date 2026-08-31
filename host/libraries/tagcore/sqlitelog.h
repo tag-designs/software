@@ -23,7 +23,8 @@ class Tag;
  *   Qt host applications show messages through their existing log window hook.
  *
  * The current data-log writer supports BitTag, BitTagNG, BitPresTag,
- * CompassTag, IMUTag, and PresTag records, including PresTag raw payloads.
+ * CompassTag, IMUTag, PresTag, and UIUCTag records, including PresTag raw and
+ * UIUCTag packed-sample payloads.
  * New databases include
  * schema_info and streams metadata tables so external tools can discover stream
  * ids, labels, units, and source columns without depending on sensorViz source

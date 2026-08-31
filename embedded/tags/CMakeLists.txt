@@ -25,5 +25,4 @@ add_subdirectory(stop1test)
 #add_subdirectory(NucleoTag)
 #add_subdirectory(BitTagNG-proto)
 
-add_subdirectory(TagUIUC)
-
+add_subdirectory(UIUCTag)

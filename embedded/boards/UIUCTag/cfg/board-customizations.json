@@ -1,6 +1,6 @@
 {
-  "board_name": "TagUIUC",
-  "board_id": "TagUIUC",
+  "board_name": "UIUCTag",
+  "board_id": "UIUCTag",
   "remove_elements": [
     "ethernet_phy"
   ],

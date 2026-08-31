@@ -2,9 +2,10 @@
 #define _CUSTOM_H_
 
 /* Firmware identity */
-#define FIRMWARE_STRING "TagUIUC, Firmware version 1.0.0"
+#define FIRMWARE_STRING "UIUCTag, Firmware version 1.0.0"
 #undef  BOARD_NAME
-#define BOARD_NAME "TagUIUC"
+#define BOARD_NAME "UIUCTag"
+#define TAG_TYPE UIUCTAG
 #define SWAP_I2C 1
 #define QTMONITOR_VERSION 2.0
 

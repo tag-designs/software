@@ -29,7 +29,8 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
             || tag_type == BITTAG
             || tag_type == BITTAG_LE
             || tag_type == BITTAGNG
-            || tag_type == IMUTAG;
+            || tag_type == IMUTAG
+            || tag_type == UIUCTAG;
     case TagLogStorageFormat::Text:
         return true;
     default:

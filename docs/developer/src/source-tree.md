@@ -53,12 +53,16 @@ directory that owns the code; the developer portal stages those files under
 - [IMUTagNandBmp581](reference/embedded/tags/IMUTagNandBmp581/README.md)
 - [IMUTagNandBmp581 TODO](reference/embedded/tags/IMUTagNandBmp581/todo.md)
 - [CompassTagAT25Breakout Notes](reference/embedded/tags/CompassTagAT25Breakout/design/notes.md)
+- [UIUCTag Sequencer Simulation](reference/embedded/tags/UIUCTag/test/README.md)
 
 ## Embedded Tag Families
 
 - [Families Overview](reference/embedded/tags/families/README.md)
 - [BitPresTag](reference/embedded/tags/families/BitPresTag/README.md)
 - [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](reference/embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md)
+- [UIUCTag Board Integration Plan](reference/embedded/tags/families/BitPresTag/design/uiuctag-board-integration.md)
+- [UIUCTag Data Collection Integration Plan](reference/embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md)
+- [UIUCTag Test Strategy](reference/embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md)
 - [BitTagNG](reference/embedded/tags/families/BitTagNG/README.md)
 - [BitTagNG Wakeup Note](reference/embedded/tags/families/BitTagNG/wakeup_note.md)
 - [CompassTag](reference/embedded/tags/families/CompassTag/README.md)
@@ -79,6 +83,7 @@ directory that owns the code; the developer portal stages those files under
 - [TagCore](reference/host/libraries/tagcore/README.md)
 - [TagCore Design Index](reference/host/libraries/tagcore/design/index.md)
 - [TagCore Python Interface Design](reference/host/libraries/tagcore/design/python-interface.md)
+- [TagCore Offline Decoder Checks](reference/host/libraries/tagcore/test/README.md)
 - [SensorAnalysis](reference/host/libraries/sensoranalysis/README.md)
 - [SensorUI](reference/host/libraries/sensorui/README.md)
 

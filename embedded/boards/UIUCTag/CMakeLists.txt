@@ -1,5 +1,4 @@
-generate_configured_board_files(board-taguiuc
+generate_configured_board_files(board-uiuctag
   PROCESSOR stm32l4xx
-  BOARD_TYPE TagUIUC
+  BOARD_TYPE UIUCTag
   CUSTOMIZATIONS cfg/board-customizations.json)
-

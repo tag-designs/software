@@ -17,8 +17,8 @@ namespace tagcore::sqlite_log {
 // File ownership:
 // - sqlitelog.cc owns the writer lifecycle, generic metadata, and dispatch.
 // - schema.cc owns declarative table/stream definitions for each tag type.
-// - bittag.cc, compasstag.cc, pressure.cc, and imutag.cc decode protobuf
-//   payloads into rows for their tag families.
+// - bittag.cc, compasstag.cc, pressure.cc, imutag.cc, and uiuctag.cc decode
+//   protobuf payloads into rows for their tag families.
 //
 // Keep these helpers small and data-oriented. They are shared implementation
 // details, not a second public API surface.
@@ -164,6 +164,14 @@ int dumpBitTagLog(WriterContext &ctx, const BitTagLog &log);
 int dumpBitTagNgLog(WriterContext &ctx, const BitTagNgLog &log);
 int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log);
 int dumpBitPresTagLog(WriterContext &ctx, const BitPresTagLog &log);
+/**
+ * @brief Decode one UIUCTag packed-sample block into log rows.
+ *
+ * @details Contract documented at the definition in uiuctag.cc. Unlike the
+ *          other decoders here, the payload is a raw byte image of the external
+ *          flash block rather than decoded protobuf fields.
+ */
+int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log);
 int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log);
 int dumpIMUTagRawLog(WriterContext &ctx, const IMUTagRawLog &log);
 int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log);

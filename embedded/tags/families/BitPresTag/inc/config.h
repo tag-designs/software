@@ -8,8 +8,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "custom.h"
+
 /** Tag type reported in monitor configuration messages. */
+#ifndef TAG_TYPE
 #define TAG_TYPE BITPRESTAG
+#endif
 
 /** @brief Hibernation window stored in flash configuration. */
 typedef struct {

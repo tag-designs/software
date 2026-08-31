@@ -407,6 +407,12 @@ SqlTagProfile sqliteProfileForTag(TagType tag_type)
         return {false, {voltageTable(), pressureTable(), sensorTemperatureTable()}};
     case BITPRESTAG:
         return {false, {voltageTable(), activityTable(), pressureTable(), sensorTemperatureTable()}};
+    case UIUCTAG:
+        // UIUCTag records the same quantities as BitPresTag at a different
+        // cadence and in a different on-flash format. Sharing the table and
+        // stream shape keeps viewers and analysis queries identical across the
+        // two; only the decoder differs.
+        return {false, {voltageTable(), activityTable(), pressureTable(), sensorTemperatureTable()}};
     case IMUTAG:
         // IMUTag uses the same Calibration table shape as CompassTag for
         // magnetometer constants; the high-rate data tables remain separate.

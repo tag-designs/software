@@ -9,6 +9,7 @@ enum TagType {
   BITPRESTAG = 8;
   COMPASSTAG = 9;
   IMUTAG = 10;
+  UIUCTAG = 11;
 }
 
 message TagInfo {
@@ -243,6 +244,12 @@ message BitPresTagLog{
   float voltage  = 2;
   float temperature = 3;
   repeated BPT data = 4;
+}
+
+message UIUCTagLog {
+  int32 epoch = 1;
+  float voltage = 2;
+  bytes samples = 3; // packed t_UIUCTagSample[24] records
 }
 
 message IMUTagLogData{

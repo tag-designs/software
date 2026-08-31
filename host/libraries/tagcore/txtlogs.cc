@@ -11,6 +11,9 @@
 
 #include <tag.pb.h>
 #include <tagdata.pb.h>
+
+#include "uiuctag_log_format.h"
+#include <cstring>
 //#include <host.pb.h>
 
 #include "linkadapt.h"
@@ -300,6 +303,75 @@ static int dumpTagLog(std::ostream &out, const BitPresTagLog &log)
   return 1;
 }
 
+/**
+ * @brief   Write one UIUCTag block to the plain-text log format.
+ *
+ * @details Text output is the fallback format for UIUCTag; SQLite is the
+ *          default and carries the same data with schema metadata. Geometry and
+ *          the missing-value rule come from the shared uiuctag_log_format.h, so
+ *          this dumper cannot drift from the SQLite decoder the way the two
+ *          BitPresTag dumpers have drifted from each other.
+ *
+ * @param[in,out] out Destination stream.
+ * @param[in] log One downloaded block: checkpoint epoch, voltage, and packed
+ *                samples.
+ * @return  1 when the block was written, or -1 when the payload is not a whole
+ *          number of samples or is longer than one block.
+ */
+static int dumpTagLog(std::ostream &out, const UIUCTagLog &log)
+{
+  const std::string &payload = log.samples();
+
+  if (payload.size() > UIUCTAG_SAMPLE_BYTES_MAX
+      || (payload.size() % sizeof(t_UIUCTagSample)) != 0)
+  {
+    return -1;
+  }
+
+  const int32_t header_epoch = log.epoch();
+  const size_t sample_count = payload.size() / sizeof(t_UIUCTagSample);
+
+  out << "# UIUCTag" << std::endl;
+  out << header_epoch << ",V:" << log.voltage() << std::endl;
+
+  for (size_t slot = 0; slot < sample_count; slot++)
+  {
+    t_UIUCTagSample sample;
+    std::memcpy(&sample, payload.data() + (slot * sizeof(sample)), sizeof(sample));
+    const int32_t sample_epoch =
+        uiuctagSampleEpoch(header_epoch, static_cast<unsigned>(slot));
+
+    // Absent values are omitted rather than printed as a placeholder, matching
+    // the SQLite decoder: a gap in this log means no measurement was taken.
+    if (uiuctagSampleHasActivity(&sample))
+    {
+      for (unsigned bucket = 0;
+           bucket < UIUCTAG_ACTIVITY_BUCKETS_PER_EXTERNAL_BLOCK;
+           bucket++)
+      {
+        out << uiuctagActivityBucketEpoch(header_epoch,
+                                          static_cast<unsigned>(slot), bucket)
+            << ",MIN:"
+            << (uiuctagActivityBucket(&sample, bucket) * 100.0
+                / UIUCTAG_ACTIVITY_BUCKET_SECONDS)
+            << std::endl;
+      }
+    }
+
+    if (uiuctagSampleHasPressure(&sample))
+    {
+      out << sample_epoch << ",P:" << sample.pressure << std::endl;
+    }
+
+    if (uiuctagSampleHasTemperature(&sample))
+    {
+      out << sample_epoch << ",T:" << sample.temperature << std::endl;
+    }
+  }
+
+  return 1;
+}
+
 static int dumpTagLog(std::ostream &out, const BitTagNgLog &log)
 {
   const int bucket_count = 4;
@@ -476,6 +548,12 @@ int TextTagLogWriter::writeTextLog(const Ack &log)
     {
         return dumpTagLog(out, log.compasstag_data_log());
     } 
+    break;
+  case UIUCTAG:
+    if (log.has_uiuctag_data_log())
+    {
+        return dumpTagLog(out, log.uiuctag_data_log());
+    }
     break;
   default:
     return -1;

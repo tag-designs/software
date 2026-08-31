@@ -253,6 +253,9 @@ QString displayNameForTag(const QString &tag_type)
     if (tag_type.compare("COMPASSTAG", Qt::CaseInsensitive) == 0) {
         return "CompassTag";
     }
+    if (tag_type.compare("UIUCTAG", Qt::CaseInsensitive) == 0) {
+        return "UIUCTag";
+    }
     if (!tag_type.isEmpty()) {
         return tag_type;
     }

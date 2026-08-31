@@ -1,6 +1,6 @@
 /**
  * @file devices.c
- * @brief UIUC board device descriptors, tests, and power hooks.
+ * @brief UIUCTag device descriptors, tests, and power hooks.
  * @author tag firmware authors
  * @date 2026-08-30
  */
@@ -28,13 +28,13 @@
 #define EXTERNAL_FLASH_SECTOR_SIZE MX25R_SECTOR_SIZE
 #define EXTERNAL_FLASH_SECTOR_COUNT MX25R_SECTOR_COUNT
 #else
-#error "UIUC family requires a supported external flash module"
+#error "UIUCTag requires a supported external flash module"
 #endif
 
 /*
  * Device descriptors.
  *
- * UIUC uses:
+ * UIUCTag uses:
  * - ADXL367 on USART2 in 4-wire SPI mode (instead of ADXL362 on SPI2)
  * - BMP585 on SPI1 with LPS_RDY interrupt (instead of LPS27 on USART1)
  */
@@ -42,7 +42,7 @@ binary_semaphore_t SPI1mutex;
 binary_semaphore_t USART2mutex;
 
 /**
- * @brief Initialize UIUC-family bus synchronization state.
+ * @brief Initialize UIUCTag bus synchronization state.
  */
 void tagDevicesInit(void)
 {
@@ -65,7 +65,7 @@ const TagStorageDevice tagExternalFlash = {
 };
 
 /* ADXL367 on USART2 synchronous clocked bus. */
-const TagAdxl367Device tagUIUCAccelDevice = {
+const TagAdxl367Device uiucTagAccelDevice = {
     .bus = TAG_BUS_USART_INIT(
         TAG_USART2_SYNC_DEVICE_DEFAULTS,
         .cs = LINE_ACCEL_nCS,
@@ -92,16 +92,16 @@ static const TagRegisterDevice bmp585_registers = {
     .write_mask = 0x00,
 };
 
-const TagPressureDevice tagUIUCPressureDevice = {
+const TagPressureDevice uiucTagPressureDevice = {
     .registers = &bmp585_registers,
 };
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, tag_test_adxl367, &tagUIUCAccelDevice},  // Uses ADXL367 test
+  {RUN_ADXL362, tag_test_adxl367, &uiucTagAccelDevice},  // Uses ADXL367 test
   {RUN_RTC, tag_test_rtc, NULL},
   {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
-  {RUN_LPS, tag_test_bmp581, &tagUIUCPressureDevice},   // Uses BMP581 test
+  {RUN_LPS, tag_test_bmp581, &uiucTagPressureDevice},   // Uses BMP581 test
 };
 
 /* Public API contract documented in test_support.h. */
@@ -112,29 +112,29 @@ const TagTestCase *tagTestCases(size_t *count)
 }
 
 /**
- * @brief Return the UIUC ADXL367 descriptor.
+ * @brief Return the UIUCTag ADXL367 descriptor.
  *
  * @return Accelerometer descriptor used by shared ADXL367 code.
  */
 const TagAdxl367Device *tagAdxl367Device(void)
 {
-  return &tagUIUCAccelDevice;
+  return &uiucTagAccelDevice;
 }
 
 /**
- * @brief Return the UIUC BMP585 descriptor.
+ * @brief Return the UIUCTag BMP585 descriptor.
  *
  * @return Pressure descriptor used by shared BMP581 code.
  */
 const TagPressureDevice *tagPressureDevice(void)
 {
-  return &tagUIUCPressureDevice;
+  return &uiucTagPressureDevice;
 }
 
 /*
  * Required standby hooks.
  */
-static void tagUIDCShutdownDevices(void)
+static void uiucTagShutdownDevices(void)
 {
   tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
   ADXL367_DeinitDevice(TAG_ACCEL_DEVICE);
@@ -142,7 +142,7 @@ static void tagUIDCShutdownDevices(void)
 }
 
 /**
- * @brief Apply UIUC-family device power policy for a lifecycle phase.
+ * @brief Apply UIUCTag device power policy for a lifecycle phase.
  *
  * @param[in] reason Common lifecycle phase that is quiescing the devices.
  * @param[in] state Current state-machine state.
@@ -153,20 +153,20 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
     if (state != RUNNING)
-      tagUIDCShutdownDevices();
+      uiucTagShutdownDevices();
     break;
 
   case TAG_DEVICE_POWER_BOOT_CLEANUP:
   case TAG_DEVICE_POWER_RUNTIME_DEINIT:
   case TAG_DEVICE_POWER_TERMINAL_ENTRY:
   default:
-    tagUIDCShutdownDevices();
+    uiucTagShutdownDevices();
     break;
   }
 }
 
 /**
- * @brief Prepare UIUC devices before entering standby.
+ * @brief Prepare UIUCTag devices before entering standby.
  *
  * @param[in] state Current state-machine state.
  */

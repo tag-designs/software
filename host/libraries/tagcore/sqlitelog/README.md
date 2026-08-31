@@ -4,6 +4,73 @@ This directory owns the project SQLite writer used by `tag-dwnld` and Qt
 download paths. `schema.cc` declares the tables and stream metadata, while the
 tag-specific `*.cc` files decode protobuf log pages into rows.
 
+## UIUCTag Downloader Fields
+
+UIUCTag reuses the BitPresTag table and stream shape — `Voltage`, `Pressure`,
+`Temperature`, `Activity` — so viewers and analysis queries are identical across
+the two tags. Only the decoder differs: UIUCTag downloads a raw byte image of
+packed samples rather than a decoded protobuf record list.
+
+### Download unit
+
+One ACK carries one **two-hour block**: up to 24 twelve-byte samples, each with
+float pressure in hPa, float BMP585 temperature in degrees C, and five six-bit
+activity counts covering the five minutes that follow the sample. The layout and
+every decode rule live in `include/uiuctag_log_format.h`, shared verbatim with
+the firmware; this decoder takes all geometry from those macros rather than
+repeating constants.
+
+The download index space is the internal checkpoint index, and one checkpoint
+always describes exactly one external block, so there are no holes in it.
+
+### Timing
+
+`UIUCTagLog.epoch` is the raw wake time at which the tag opened the block, not
+the block window boundary. Normalize before use:
+
+- `block_start = epoch - epoch % 7200` (`uiuctagBlockStartEpoch()`)
+- sample `s` is at `block_start + s * 300` (`uiuctagSampleEpoch()`)
+- activity bucket `b` of sample `s` starts at `+ b * 60`
+  (`uiuctagActivityBucketEpoch()`)
+
+The array index *is* the slot number: the firmware always sends a block from
+slot 0 and trims only trailing unwritten slots, so a short payload is a valid
+partial block and never a shifted one. A block opened mid-window — at run start,
+after a reset, or on hibernation resume — leaves its earlier slots unwritten and
+fills in from its own slot onward. Two blocks can share a `block_start` if a run
+restarted inside one window; the higher checkpoint index is the newer data.
+
+### Missing data
+
+**NaN means no measurement.** Absent values are omitted from the tables rather
+than stored as a placeholder, so gaps stay visible in plots and out of
+aggregates. Two distinct causes both read as NaN:
+
+- The slot was never written. Erased flash reads as `0xFFFFFFFF`, which is
+  itself a quiet NaN.
+- The conversion failed. The firmware stores a canonical quiet NaN.
+
+`uiuctagSampleHasPressure()` and `uiuctagSampleHasTemperature()` test for any
+NaN and therefore cover both. Note this differs deliberately from
+`imutag.cc`, which compares against one exact NaN encoding — that test would
+miss the erased-flash case, which is a normal occurrence in a UIUCTag log.
+
+Activity has its own marker: `packed_activity_data == 0xFFFFFFFF` means the word
+was never written. That is the expected state of the newest sample in any log,
+because a sample's activity is programmed one sample period after its pressure.
+Gaps of both kinds can appear anywhere in a block, not only at the tail.
+
+### Rows
+
+- `Voltage`: one row per block, at the raw checkpoint `epoch`, since the reading
+  is taken as the block opens.
+- `Pressure`, `Temperature`: one row per sample that has that value, at the
+  sample's slot epoch.
+- `Activity`: five rows per sample whose activity word was written, one per
+  one-minute bucket, as a percentage — `active_seconds * 100 / 60`, matching the
+  `%` units the `Activity` stream metadata declares and the convention the
+  BitPresTag and CompassTag decoders use.
+
 ## IMUTag Downloader Fields
 
 IMUTag logs have two time domains:
