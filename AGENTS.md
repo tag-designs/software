@@ -21,6 +21,30 @@ where-to-look guidance, then read the local README for details.
   code when searching, refactoring, building, or reviewing unless the task
   explicitly asks about an archive.
 
+## Where to Look First
+
+Most questions about how this tree works are already answered in a README next
+to the code. Read the relevant one before exploring; these are the entry points
+that save the most time.
+
+| Task | Read first |
+| --- | --- |
+| Adding or changing a tag target | `embedded/tags/README.md`, especially **Local Overrides** and **Template Tag Directory** |
+| Understanding the firmware build, boards, or nanopb targets | `embedded/design/build-orientation.md` |
+| Adding a tag to the SQLite download path | the recipe comment at the top of `host/libraries/tagcore/sqlitelog.cc`, then `host/libraries/tagcore/sqlitelog/README.md` |
+| Per-tag SQLite schema and row semantics | `host/libraries/tagcore/sqlitelog/README.md` |
+| Board pin and signal generation | `embedded/boards/README.md` |
+| What a family shares and what a variant overrides | that family's `README.md` under `embedded/tags/families/` |
+| Design rationale for an existing subsystem | the nearest `design/` directory; the index is `design/index.md` |
+
+Two conventions that are easy to miss and expensive to rediscover:
+
+- A tag-local `./src/<name>.c` or `./inc/<name>.h` **replaces** the family or
+  module file of the same basename, for that target only. This is how a variant
+  diverges from its family without touching shared code.
+- Runtime state that must survive standby lives in `pState`, a mirror of the RTC
+  backup registers, not in ordinary statics.
+
 ## General Working Rules
 
 - Prefer small, focused changes that match the existing directory ownership.
@@ -64,6 +88,54 @@ cmake --build <build-dir> --target PresTag
 
 Use the target that matches the files changed. For documentation-only changes,
 `git diff --check` is often enough unless CMake/docs build files changed.
+
+### Verifying a firmware change
+
+- **Confirm which source actually compiled.** With basename-based overrides, the
+  file you edited is not always the file that built. The dependency file names
+  it: `grep <name>.c <build-dir>/embedded/tags/<Tag>/dep/<name>.o.d` prints
+  `src/<name>.c` for a tag-local override, or the family/module path otherwise.
+- **Clean-rebuild a target after changing a shared type.** Objects compiled from
+  common sources cache the header they resolved. Changing a type that a tag
+  supplies to common code — `t_DataHeader`, which types the `vddHeader[]` array
+  declared in `common/core/src/persistent.c`, is the live example — can
+  otherwise leave a stale object linked against the old definition, with no
+  diagnostic. Remove the target's `build/` and `dep/` directories.
+- **Do not compare ELF checksums across commits.** Every image embeds the git
+  hash through the generated `version.h`, so all binaries change when HEAD
+  moves, including targets the commit did not touch. Compare the `.list`
+  disassembly instead. A checksum is meaningful only between two builds at the
+  same commit in the same tree.
+
+### Checking documentation coverage
+
+Doxygen is configured but not currently part of a routine build. To check that a
+change is documented to the standard below, generate with the project's own
+configuration and **diff the warning log** — the tree carries a few thousand
+pre-existing warnings, so the count alone means nothing:
+
+```sh
+sed -e "s|@PROJECT_SOURCE_DIR@|$PWD|g" -e "s|@[A-Z_]*@|x|g"     docs/developer/Doxyfile.in > /tmp/Doxyfile.check
+printf '\nOUTPUT_DIRECTORY=/tmp/doxout\nWARN_LOGFILE=/tmp/doxwarn.txt\nGENERATE_HTML=NO\nQUIET=YES\n' \
+    >> /tmp/Doxyfile.check
+doxygen /tmp/Doxyfile.check
+grep <your-file> /tmp/doxwarn.txt
+```
+
+`EXTRACT_ALL=NO` and `WARN_IF_UNDOCUMENTED=YES`, so anything undocumented is
+reported. Note the INPUT paths cover `include/`, `host/libraries/*`,
+`embedded/boards`, and `embedded/tags/{common,families}` — **individual tag
+directories are not scanned**, so point Doxygen at one explicitly to check it.
+
+### Tests
+
+There is no test framework, no `enable_testing()`, and no CI test target. Where
+logic can be checked without hardware, the established pattern is a standalone
+assertion program built behind an option and run by hand; see
+`host/libraries/tagcore/test/README.md` and
+`embedded/tags/UIUCTag/test/README.md` for a worked example covering a shared
+binary format, a firmware state machine compiled against stubs, and the two
+meeting end to end.
 
 ## Cross-Cutting Notes
 

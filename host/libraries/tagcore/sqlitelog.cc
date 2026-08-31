@@ -30,10 +30,20 @@ using namespace tagcore::sqlite_log;
  * sqlite3 handle, create their data tables on first use, and unpack one
  * protobuf log payload into rows. If adding a new tag log type, update:
  *
- *   1. schema.cc, to declare tables and stream metadata;
- *   2. internal.h, to declare the tag decoder;
- *   3. a tag-specific sqlitelog/<tag>.cc decoder;
- *   4. writeLog() below, to dispatch the ACK payload.
+ *   1. taglogwriter.cc, to add the tag to isTagLogStorageFormatSupported();
+ *   2. schema.cc, to declare tables and stream metadata;
+ *   3. internal.h, to declare the tag decoder;
+ *   4. a tag-specific sqlitelog/<tag>.cc decoder, and CMakeLists.txt;
+ *   5. writeLog() below, to dispatch the ACK payload.
+ *
+ * Step 1 is easy to miss and fails quietly rather than loudly: without it a
+ * download of that tag never reaches this file at all. createTagLogWriter()
+ * falls back to the text writer, whose own switch has no case for the tag
+ * either, so the CLI reports "Unsupported tag type?" from a code path that
+ * looks unrelated to SQLite.
+ *
+ * Table names come from schema.cc and do not always match the helper that
+ * builds them: sensorTemperatureTable() creates a table called "Temperature".
  */
 
 // Pimpl keeps the C sqlite3 types out of sqlitelog.h. This matters because the

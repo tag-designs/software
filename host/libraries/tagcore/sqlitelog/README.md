@@ -74,6 +74,25 @@ Gaps of both kinds can appear anywhere in a block, not only at the tail.
   `%` units the `Activity` stream metadata declares and the convention the
   BitPresTag and CompassTag decoders use.
 
+## Known Inconsistency: BitPresTag Activity Geometry
+
+The two BitPresTag decoders disagree about how `BitPresTagLog.activity` is
+packed, and both hard-code it:
+
+- `sqlitelog/pressure.cc` reads 4 buckets of 4 bits over a 15-second period.
+- `txtlogs.cc` reads 5 buckets of 6 bits over a 60-second period.
+
+The 15-second form matches the debug constants currently compiled into
+`families/BitPresTag/src/state_run.c`; the 60-second form matches what those
+constants are commented as being in production. At most one decoder is right for
+any given firmware image, so a BitPresTag activity series should be treated as
+suspect until this is resolved against a known capture.
+
+Not fixed here because it needs a decision about which firmware geometry is
+authoritative, and a check of whether existing logs were captured with the debug
+constants. UIUCTag avoids the whole class of problem by taking its geometry from
+`include/uiuctag_log_format.h`, which the firmware includes too.
+
 ## IMUTag Downloader Fields
 
 IMUTag logs have two time domains:

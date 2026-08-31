@@ -370,10 +370,29 @@ source search paths while building its internal variables. `common/make.mk`
 therefore recomputes `IINCDIR` and restores `VPATH` after including ChibiOS
 rules so tag-local `inc` and `src` files can override shared defaults.
 
-The module fragments intentionally list source basenames rather than full paths
-so this override behavior still works. Prefer avoiding new same-name overrides
-when practical; add a clearly named tag-local file instead if the behavior is
-not truly an override of a shared default.
+The module fragments intentionally list source basenames rather than full paths,
+which keeps the override behavior obvious at the point of declaration. Note
+though that a full path in `ALLCSRC` does **not** disable overriding: ChibiOS
+`rules.mk` derives each object name with `$(notdir ...)` and then resolves the
+`%.c` prerequisite through `VPATH`, so a tag-local basename still wins.
+`families/BitPresTag/family.mk` lists full paths and its `UIUCTag` variant still
+overrides four of them. Prefer basenames so the intent is readable, but do not
+assume a full path means the family file is the one being compiled.
+
+To confirm which file a target actually built, read the dependency file rather
+than the makefiles:
+
+```sh
+grep devices.c <build-dir>/embedded/tags/<Tag>/dep/devices.o.d
+```
+
+A tag-local override prints `src/devices.c`; otherwise the family or module path
+appears. This is also the quickest way to catch a stale object after changing a
+header that common code resolves through the tag's include path.
+
+Prefer avoiding new same-name overrides when practical; add a clearly named
+tag-local file instead if the behavior is not truly an override of a shared
+default.
 
 The active tag targets use the shared test driver in `common/core/src/test.c`
 and provide their concrete test lists from tag or family `devices.c` files.
