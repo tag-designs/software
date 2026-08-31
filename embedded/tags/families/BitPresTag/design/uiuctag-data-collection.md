@@ -48,10 +48,13 @@ Verification notes carried forward from them:
   after a clean rebuild**. An incremental build can leave a stale
   `persistent.o` holding the family record type, which matters the moment the
   record size or meaning changes.
-- Compare `UIUCTag.list` (disassembly), not the ELF checksum: code generation is
-  deterministic across clean rebuilds, but other ELF bytes are not. Within one
-  build tree an incremental rebuild does produce a stable checksum, which is
-  enough to show a comment-only or dead-branch-only edit changed no code.
+- Compare `UIUCTag.list` (disassembly), not the ELF checksum. Every image embeds
+  the git hash through the generated `version.h`, so all binaries change
+  whenever HEAD moves - including targets the commit did not touch. A clean
+  rebuild also varies in other non-code ELF bytes. A checksum is only meaningful
+  between two builds at the same commit in the same tree, which is enough to
+  show a comment-only or dead-branch-only edit changed no code; anything wider
+  needs the disassembly.
 
 ### Remaining stages, and why the host goes first
 
