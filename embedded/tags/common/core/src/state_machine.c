@@ -577,19 +577,26 @@ enum Sleep StateMachine(eventmask_t input_events)
     if (pState->state == TagState_RUNNING)
     {
       /*
-       * Every path below either resumes or restarts collection, and each one
-       * relies on the stop-time comparison in Running() to terminate. With an
-       * untrusted clock that comparison never fires, so the tag would collect
-       * until the flash filled or the cell was flat. Park it in a terminal
-       * state instead and let the host resynchronize.
+       * A monitor attach connects under reset, so a healthy running tag arrives
+       * here looking like a power event. It must resume: Running(T_CONT,
+       * POWERFAIL) restarts the sensors, keeps the recovered log cursors, and
+       * marks the discontinuity in the next checkpoint. Aborting instead loses
+       * the run every time a host connects.
+       *
+       * The clock-trust gate below therefore applies only when no monitor is
+       * present. Its purpose is to stop a field power event leaving the tag
+       * collecting against a meaningless stop time; with a host attached the
+       * clock can simply be resynchronized, so refusing to resume would trade a
+       * real run for a hypothetical one. This matters because clock trust
+       * depends on rtcInitializedAtBoot, which on STM32U3 comes from an external
+       * RTC query issued before halInit() and is not reliable enough to justify
+       * discarding an active acquisition.
        */
-      if (!clockTrustedAtBoot)
-      {
-        debug_log_printf(
-            "state_machine: running recovery refused, clock untrusted rc=%u\r\n",
-            (unsigned)reset_cause);
-        return Aborted(T_INIT, State_EVENT_POWERFAIL);
-      }
+#if TAG_MONITOR_RESET_RECOVERY
+      const bool monitor_present = monitor_reset_recovery;
+#else
+      const bool monitor_present = MONCONNECTED;
+#endif
 
       // goto error
       switch (reset_cause)
@@ -599,19 +606,25 @@ enum Sleep StateMachine(eventmask_t input_events)
         case resetShutdown:
           return Running(T_CONT, State_EVENT_OK);
         case resetException:
-#if TAG_MONITOR_RESET_RECOVERY
-          if (monitor_reset_recovery)
+          if (monitor_present)
             return Running(T_CONT, State_EVENT_POWERFAIL);
-#endif
           return Aborted(T_INIT, State_EVENT_EXCEPTION);
         case resetBrownout:
+          /*
+           * Check the monitor first: an attach classified as a brownout should
+           * resume and resync rather than restart the run from its beginning.
+           */
+          if (monitor_present)
+            return Running(T_CONT, State_EVENT_POWERFAIL);
+          if (!clockTrustedAtBoot)
+          {
+            debug_log_printf(
+                "state_machine: brownout restart refused, clock untrusted\r\n");
+            return Aborted(T_INIT, State_EVENT_POWERFAIL);
+          }
           return Running(T_INIT, State_EVENT_BROWNOUT);
         default:
-#if TAG_MONITOR_RESET_RECOVERY
-          if (monitor_reset_recovery)
-#else
-          if (MONCONNECTED)
-#endif
+          if (monitor_present)
             return Running(T_CONT, State_EVENT_POWERFAIL);
           return Aborted(T_INIT, State_EVENT_POWERFAIL);
       }
