@@ -158,25 +158,29 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 
 ## Regulator and Flash-Power Comparison (2 Gbit GD5F, BMP581)
 
-All rows below were measured with the board fed from a **3.3 V** bench supply,
-not from a cell. Two regulator builds of the u375 breakout base were compared:
+Two regulator builds of the u375 breakout base were compared, both carrying the
+IMUTagNandBmp581 daughter card:
 
-- **LDO** — TPS7A0218PDBVR, fixed 1.8 V, 25 nA quiescent. Measured on the
-  breakout revision that carries the NAND load switch.
+- **LDO** — TPS7A0218PDBVR, fixed 1.8 V, 25 nA quiescent.
 - **SMPS** — TPS62840**YBG** buck, 1.8 V set by the VSET resistor. The YBG
-  (WCSP-6) package has neither a MODE nor a STOP pin, so the converter is
-  always in automatic PFM/PWM; there is no forced-PWM strap to get wrong.
+  (WCSP-6) package has neither a MODE nor a STOP pin, so the converter is always
+  in automatic PFM/PWM; there is no forced-PWM strap to get wrong.
 
 Both builds carry the **same components and the same firmware image**. The only
 difference is the `FLASH_PWR` pull direction in standby, and `FLASH_PWR` is
-asserted throughout collection, so it can only affect the idle row. The two LDO
-columns therefore differ in idle only, and the regulator is the sole material
-variable at every logging rate.
+asserted throughout collection, so it can only affect the idle row. The
+regulator is the sole material variable at every logging rate.
 
-**Runtime figures below use a 12 mAh cell as the reference.** A 20 mAh cell is
-a heavier solution that is not always appropriate for a deployment, so 12 mAh
-is the case that should drive design decisions; 20 mAh is shown alongside for
-comparison only.
+> **Both builds were measured from a 2.5 V bench supply**, not 3.3 V and not a
+> cell. This single number dominates the interpretation, because an LDO's
+> efficiency is exactly Vout/Vin: **1.8/2.5 = 72.0%**, which is a high bar. The
+> same measurements read against an assumed 3.3 V input would put the buck 25-30
+> points below its datasheet and look like a fault. They are not. See
+> *Sensitivity to Cell Voltage* below.
+
+**Runtime figures use a 12 mAh cell as the reference.** A 20 mAh cell is a
+heavier solution that is not always appropriate for a deployment, so 12 mAh is
+the case that should drive design decisions.
 
 | Mode | LDO, flash off in standby (uA) | LDO, flash on in standby (uA) | SMPS (uA) |
 | --- | ---: | ---: | ---: |
@@ -187,244 +191,176 @@ comparison only.
 | 800 Hz | 1630 | 1630 | 1500 |
 | 1600 Hz | 1920 | 1920 | 1670 |
 
-> **Units.** The idle row was recorded on a milliamp range; the raw readings
-> were 0.0059, 0.0066 and 0.0055 mA and are converted to microamps here. A
-> nanoamp reading is not physically possible: 5.9 nA is below the TPS7A0218's
-> own 25 nA quiescent current.
+> **Units.** The idle row was recorded on a milliamp range; the raw readings were
+> 0.0059, 0.0066 and 0.0055 mA and are converted to microamps here. A nanoamp
+> reading is not physically possible: 5.9 nA is below the TPS7A0218's own 25 nA
+> quiescent current.
+
+An independent JS320 reading of the LDO build in idle, taken with
+[`embedded/tools/joulescope_measure.py`](../../../../tools/joulescope_measure.py)
+at a 3.2935 V supply, gives **6.71 uA** (6.708 / 6.713 / 6.715 / 6.715 uA over
+5 s, 30 s and two 10 s windows; charge-integrated and block-mean estimators agree
+to better than 0.02%). This matches the *switch to 2gbit flash and bmp581* row
+above and the Joulescope UI's own reading.
+
+Idle is not flat: the same runs show the current cycling between 6.18 uA and
+10.5 uA, so periodic activity rides on the baseline.
+
+Note that 6.71 uA sits on the **flash-on-in-standby** column (6.6 uA) rather than
+flash-off (5.9 uA), which suggests this LDO build has `FLASH_PWR` pulled up.
+Inferred from the match, not confirmed against the schematic.
+
+### Measurement Method: A Joulescope Hazard Worth Knowing
+
+The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
+test**, and on an IMUTag that corrupts `pState` in the RTC backup registers. Both
+`measure` and `statistics` call `Driver.open(device)` with no `mode`, which the
+driver documents as equivalent to `'defaults'`: it pushes the metadata default
+for every writable topic. On a JS320:
+
+- `s/i/range/mode` defaults to `0` (`off`), which opens the current-sense path
+  and cuts DUT power at every open;
+- `s/i/range/select`, the manual shunt selection, also defaults to `0` (`off`).
+  `statistics` then sets mode `5` (`manual`), so the current path stays open for
+  the entire run and every sample reads approximately zero.
+
+Observed symptoms: `statistics` returned one plausible window followed by exact
+zeros (the board dying, then unpowered), while repeated `measure` calls left the
+tag drawing 1.71 mA with a disrupted clock until qtmonitor resynchronised it.
+
+Use [`embedded/tools/joulescope_measure.py`](../../../../tools/joulescope_measure.py),
+which opens with `mode='restore'`, never writes range `0`, holds one session
+across windows, restores the range configuration it found, and computes average
+current from accumulated charge rather than a mean of window means.
 
 ### Load Switch Verdict: Not Worth It
 
 The load switch buys 0.7 uA out of a 6.6 uA idle budget, and nothing at any
 logging rate. In energy terms a full day of idling saves 0.017 mAh, about
-55 seconds of additional logging at 100 Hz. On a 12 mAh cell, idle-only life
-goes from 75.8 days with the flash powered to 84.7 days with it switched off.
-Over the multi-month horizon needed for that 8.9 days to accumulate, cell
-self-discharge and the capacity derating this document explicitly excludes are
-both larger terms than the 0.7 uA being chased.
+55 seconds of additional logging at 100 Hz. On a 12 mAh cell, idle-only life goes
+from 75.8 days with the flash powered to 84.7 days with it switched off. Over the
+multi-month horizon needed for that 8.9 days to accumulate, cell self-discharge
+and the capacity derating this document excludes are both larger terms than the
+0.7 uA being chased.
 
-GD5F deep power-down (`0xB9`) already reaches within 0.7 uA of a fully
-unpowered part, exits in 30 us with no re-initialization, and is interlocked
-against an in-progress program or erase by `gd5fWaitReady()`. A hard rail cut
-has no such interlock, and requires tPUW plus reset plus feature-register, ECC
-and block-unlock restoration on every wake.
+GD5F deep power-down (`0xB9`) already reaches within 0.7 uA of a fully unpowered
+part, exits in 30 us with no re-initialization, and is interlocked against an
+in-progress program or erase by `gd5fWaitReady()`. A hard rail cut has no such
+interlock, and requires tPUW plus reset plus feature-register, ECC and
+block-unlock restoration on every wake.
 
 **Decision:** strap `FLASH_PWR` high and use deep power-down for standby. Keep
 the switch footprint as a recovery aid, but do not cycle the rail between
 collection bursts. This resolves the open question in
 `imutag-nand-bmp581-development-plan.md`.
 
-### Regulator Comparison: The Buck Is Far Below Its Own Specification
+### Regulator Comparison: Ordinary Behaviour, Not a Fault
 
-Both builds carry the same components and the same firmware image, differing
-only in the `FLASH_PWR` pull direction in standby. The 1.8 V rail load is
-therefore identical at each rate, and because the TPS7A0218 passes load current
-straight through (25 nA quiescent), **the LDO column is the 1.8 V load
-current**. That makes the SMPS column a direct efficiency measurement rather
-than a confounded comparison.
+Because the components and firmware match and the TPS7A0218 passes load current
+straight through, the LDO column **is** the 1.8 V rail load. That makes the SMPS
+column a direct efficiency measurement against the 2.5 V input:
 
-An LDO's efficiency is fixed at Vout/Vin = 1.8/3.3 = **54.5%** at every load.
+| Mode | 1.8 V load (uA) | SMPS input (uA) | Buck efficiency | LDO (fixed) |
+| --- | ---: | ---: | ---: | ---: |
+| 100 Hz | 1100 | 1150 | 68.9% | 72.0% |
+| 200 Hz | 1180 | 1210 | 70.2% | 72.0% |
+| 400 Hz | 1330 | 1300 | **73.7%** | 72.0% |
+| 800 Hz | 1630 | 1500 | 78.2% | 72.0% |
+| 1600 Hz | 1920 | 1670 | 82.8% | 72.0% |
 
-| Mode | 1.8 V load (uA) | SMPS input at 3.3 V (uA) | Buck efficiency |
-| --- | ---: | ---: | ---: |
-| Idle | 5.9 | 5.5 | 58.5% |
-| 100 Hz | 1100 | 1150 | 52.2% |
-| 200 Hz | 1180 | 1210 | 53.2% |
-| 400 Hz | 1330 | 1300 | 55.8% |
-| 800 Hz | 1630 | 1500 | 59.3% |
-| 1600 Hz | 1920 | 1670 | 62.7% |
+69% rising to 83% across 1.1-1.9 mA is an ordinary light-load buck curve:
+modest where fixed and switching losses dominate, improving as the converter
+moves toward continuous conduction. It crosses the LDO's flat 72% at almost
+exactly 400 Hz, which is precisely where the measured crossover sits. Nothing
+here requires a fault, a wrong passive, or a measurement artifact.
 
-The buck is only breaking even with the LDO around 400 Hz and never exceeds
-63%. **The TPS62840 datasheet headline is 80% efficiency at 1 uA of load**
-(3.6 V to 1.8 V), and a buck of this class should be near 90% at 1-2 mA. These
-measurements sit 25-30 points below that across the entire range, including at
-light load where the part is specified to be at its best.
+Two honest caveats. The buck's 69% at 1.1 mA is still somewhat below what the
+TPS62840 datasheet implies — its headline is 80% efficiency at a 1 uA load, three
+decades lower — so there is probably some headroom. And 2.5 V is an unusually
+favourable input for the LDO, so this table is the buck's *worst* case, not a
+general verdict.
 
-That shortfall is not a property of the TPS62840, and it is not an LDO-versus-
-SMPS architectural result. With components and firmware now eliminated as
-variables, it is a buck implementation problem on that board.
+### Sensitivity to Cell Voltage
 
-> The idle row is weak evidence on its own — at 5.5 uA, meter resolution of a
-> few tenths of a microamp moves the efficiency figure by ten points or more.
-> The 100-1600 Hz rows, at 1-2 mA, are the solid measurements.
+This is now the question that decides the regulator, and it is unresolved.
 
-#### The Shortfall Is Unambiguous, Whatever Its Cause
+An LDO's input current equals its load current, independent of input voltage,
+because the pass element carries the load directly. A buck's input current scales
+roughly as 1/Vin. So the two diverge as the supply rises, and the LDO's advantage
+at 2.5 V evaporates on a higher-voltage cell.
 
-One observation needs no modelling. At 100 and 200 Hz **the SMPS board draws
-more total input current than the LDO board at the same input voltage with the
-same load.** A buck can only lose to a linear regulator if its efficiency is
-below Vout/Vin, i.e. below 54.5%. No decomposition of the load, and no argument
-about which rail feeds what, can explain that away.
+At 400 Hz on a 12 mAh cell, where the LDO draws 1330 uA and gives 9.02 h at any
+input voltage, against the 13.7 h storage ceiling:
 
-#### What to Check
+| Cell | LDO usable | Buck at measured 74% | Buck at 88% |
+| ---: | ---: | ---: | ---: |
+| 2.5 V | 9.02 h | 9.24 h (+2%) | 11.03 h (+22%) |
+| 3.0 V | 9.02 h | 11.08 h (+23%) | 13.23 h (+47%) |
+| 3.7 V | 9.02 h | **13.67 h (+52%)** | 13.70 h (+52%, capped) |
+| 4.2 V | 9.02 h | 13.70 h (+52%, capped) | 13.70 h (+52%, capped) |
 
-The output capacitor is 10 uF and the inductor is one of the parts from the
-datasheet's Table 4, so the two passives that most commonly cause this are
-already correct. That leaves two candidates.
+The striking entry is 3.7 V: **the buck exactly as built, with no efficiency
+improvement at all, would deliver 13.67 h against the 13.7 h flash ceiling** —
+both resources fully consumed, and +52% over the LDO. Nothing needs fixing for
+that; it needs only a higher supply voltage.
 
-1. **The measurement path — now the leading suspect.** A buck draws *pulsating*
-   input current; an LDO draws smooth DC. The datasheet is explicit: "Because
-   the buck converter has a pulsating input current, a low-ESR input capacitor
-   is required", and "when operating from a high impedance source, a larger
-   input buffer capacitor is recommended." **A current meter in series is a high
-   impedance source.** DMM current shunts are commonly tens to hundreds of ohms
-   on low ranges.
+So the SMPS question is not "is the converter healthy" — it is. It is entirely
+"what voltage does the deployed tag run from", and **that number is recorded
+nowhere in this repository.** It should be, because it moves the regulator
+decision from a 2% curiosity to a 52% design win.
 
-   The consequences all push the same way, and only against the buck:
-
-   - Real dissipation in the shunt is `I_rms^2 * R`, and for PFM operation the
-     input-current crest factor is large, so `I_rms` is several times `I_avg`.
-     Closing the 100 Hz gap between the measured 1150 uA and the ~667 uA a 90%
-     buck would draw takes 1.6 mW of loss — which is `I_rms = 4 mA` in a 100 Ohm
-     shunt, a crest factor of only about 6 over the average. Entirely ordinary
-     for PFM at light load.
-   - Input voltage sags at the converter during each pulse, raising duty and
-     compounding the loss.
-   - Meters average a pulsed waveform less accurately than a DC one.
-
-   This hypothesis also predicts the *shape* of the measured curve, which the
-   others do not. Crest factor is highest in PFM at light load and falls as the
-   converter moves toward continuous conduction, so the artifact should be worst
-   at the lightest logging rate and shrink as the rate rises — which is exactly
-   the 52% at 100 Hz rising to 63% at 1600 Hz that was measured. It also
-   predicts a negligible effect at true idle, where absolute power is so small
-   that `I_rms^2 * R` is fractions of a microwatt; consistent with the idle row,
-   the one place the buck measures better than the LDO.
-
-   **Fix, and it costs one component:** clip a low-ESR bulk capacitor of
-   10-100 uF directly across the SMPS board's input pins, downstream of the
-   meter, and re-measure. The meter then supplies smooth average current while
-   the capacitor sources the pulses locally. A large drop in the reading
-   confirms the artifact. Two supporting checks: note the meter's burden voltage
-   on the range used (burden voltage divided by current gives the shunt
-   resistance), and measure the input voltage *at the board* while logging to
-   see whether it is sagging below 3.3 V.
-
-2. **Rail voltage.** Still unverified, and still worth a DMM reading while
-   logging. If VSET selected the wrong output, every efficiency figure above is
-   computed against the wrong Vout. The datasheet warns that parasitic current
-   or more than 100 pF between VSET and GND "can cause false RSET readings and a
-   faulty output voltage to be set." Note that a rail materially above 1.8 V
-   would be its own problem: the GD5F2 deep power-down command is valid only on
-   1.8 V devices, and a 1.8 V NAND has little headroom above that.
-
-Lower priority, if both of the above come back clean: input capacitor effective
-value (1 uF minimum, 4.7 uF nominal), and the VOS sense point — DCS-Control
-senses the output through VOS in an AC loop, so it must land at the output
-capacitor rather than the switch node, with the low-inductance ground return
-the datasheet calls critical.
-
-#### The Prize If It Is Fixed
-
-At 90% conversion the input current becomes 0.606x the rail load. On a 12 mAh
-cell:
-
-| Rate | LDO (uA) | Buck at 90% (uA) | LDO usable | Buck usable | Gain |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 100 Hz | 1100 | 667 | 10.9 h | 18.0 h | **+65%** |
-| 200 Hz | 1180 | 715 | 10.2 h | 16.8 h | **+65%** |
-| 400 Hz | 1330 | 806 | 9.02 h | 13.7 h | **+52%** (storage caps it) |
-| 800 Hz | 1630 | 988 | 6.83 h | 6.83 h | 0% |
-| 1600 Hz | 1920 | 1164 | 3.41 h | 3.41 h | 0% |
-
-**The lighter cell widens the window in which the regulator matters.** On
-12 mAh a working buck pays off at three of the five rates; on 20 mAh only at
-two, because the 20 mAh cell is already storage-capped at 400 Hz and so cannot
-spend the improvement there. Efficiency and capacity are substitutes, and the
-less capacity the design carries, the more the efficiency is worth. If the
-weight budget is pushing toward 12 mAh, that is an argument *for* pursuing the
-buck, not against it.
-
-**Do not retire the SMPS variant on the strength of the measurements above** —
-they record a board that is 25-30 points off datasheet, not a verdict on the
-architecture. Equally, do not adopt it until the measurement has been repeated
-with input bulk capacitance and the rail voltage confirmed, because as measured
-it is genuinely worse than the LDO at 100 and 200 Hz.
-
-### Input Voltage Caveat
-
-3.3 V is the LDO's most favourable operating point, and the bias grows with
-cell voltage. An LDO's input *current* is independent of Vin because the pass
-element carries the load current directly; a buck's input current falls as
-1/Vin. Battery capacity is rated in mAh, so measuring at 3.3 V understates the
-buck by however much the deployed cell exceeds it. For 100 Hz on a 12 mAh cell,
-a 90% buck gives 16.4 h at 3.0 V, 18.0 h at 3.3 V, 20.2 h at 3.7 V and 22.9 h
-at 4.2 V, against the LDO's 10.9 h at any of them.
-
-Raising Vin is not, however, a way to work around the efficiency shortfall. The
-loss measured above is real dissipation in the converter or its passives, and
-feeding it a higher voltage does not recover it.
-
-**The deployed cell voltage is not recorded anywhere in this repository.** It
-needs to be, because every runtime figure here depends on it.
+It is also worth establishing whether the 2.5 V bench setting is representative
+of the intended supply or was incidental to these measurements.
 
 ### Design Point: 400 Hz, 12 mAh
 
 400 Hz is the intended operating point — the rate that gives meaningful flight
-dynamics for songbirds — and 12 mAh is the reference cell. Everything below is
-that single case.
+dynamics for songbirds — and 12 mAh is the reference cell.
 
 | Case | Current | Battery | Usable | Limited by |
 | --- | ---: | ---: | ---: | --- |
-| LDO, as measured | 1330 uA | 9.02 h | **9.02 h** | battery |
-| SMPS, as measured | 1300 uA | 9.23 h | **9.23 h** | battery |
-| SMPS at 90% | 806 uA | 14.89 h | **13.70 h** | storage |
-
-Three things follow.
+| LDO (any Vin) | 1330 uA | 9.02 h | **9.02 h** | battery |
+| SMPS at 2.5 V, as measured | 1300 uA | 9.23 h | **9.23 h** | battery |
+| SMPS at 3.7 V, same efficiency | 878 uA | 13.67 h | **13.67 h** | both, balanced |
 
 **The 2 Gbit upgrade already banked the easy win.** At 400 Hz a 1 Gbit part caps
 at 6.83 h, below the 9.02 h the battery supports, so the design was
 storage-limited. 2 Gbit lifts the ceiling to 13.7 h and makes it battery-limited
 — roughly +32%, already realised.
 
-**The measured SMPS advantage is 12 minutes.** That is the only hard number
-available: +2.3%, comfortably inside measurement scatter. Not a reason to add an
-inductor.
+**Reaching that ceiling needs 876 uA**, a 34% cut from 1330 uA. Sensor
+configuration cannot span it: each 100 uA saved is worth 0.68 h, so plausible
+savings from magnetometer ODR/mode and MCU clock choices — a few hundred
+microamps — are worth perhaps +15-20%. Worth taking on their own merits, and free
+of new parts and noise risk, but not 34%. Only the regulator, at a cell voltage
+above roughly 3.5 V, closes the gap.
 
-**A working buck is the only remaining lever big enough to fill the flash.**
-Reaching the 13.7 h ceiling needs 876 uA, a 34% cut from 1330 uA. Nothing in the
-sensor configuration gets there: at 400 Hz each 100 uA saved is worth 0.68 h, so
-the plausible savings from magnetometer ODR/mode and MCU clock choices — a few
-hundred microamps — are worth perhaps +15-20%. Real, free of new parts and free
-of noise risk, and worth taking, but not 34%. Only conversion efficiency spans
-that gap, and at 90% it lands almost exactly on the ceiling: 14.89 h of battery
-against 13.7 h of flash, both resources fully used. That is an unusually clean
-design point, which is what makes the unresolved efficiency question worth
-returning to rather than dropping.
+Duty cycling does not change this. Idle is 6.6 uA against 1330 uA logging, a
+200:1 ratio, so the logging term dominates above about 0.5% duty.
 
-Duty cycling does not change the conclusion. Idle is 6.6 uA against 1330 uA
-logging, a 200:1 ratio, so the logging term dominates above about 0.5% duty. At
-1 h/day the LDO gives 8.1 days and a 90% buck 12.5 days — the same ~55% spread
-as continuous operation.
+#### Verdict: LDO Until the Cell Voltage Is Settled
 
-#### Verdict: LDO for Now
+At a 2.5 V supply the LDO is the right choice, and comfortably so: it is more
+efficient than the buck at 100 and 200 Hz, within 2% at 400 Hz, and carries none
+of the switching-noise risk described below. The measured SMPS advantage at the
+design point is 12 minutes.
 
-The extra complexity and switching noise are **not** justified on the evidence
-available:
+That verdict is contingent, not final. On a 3.7 V cell the same buck hardware is
+worth +52% and lands exactly on the flash ceiling. Settle the cell voltage first;
+if it is above ~3.5 V, the SMPS deserves a proper evaluation including the noise
+measurement, and the next breakout should be built to support it:
 
-- The only measured advantage is 12 minutes at the design point.
-- The larger advantage is inferred from a datasheet, not observed, and the
-  boards in hand cannot test it — the rail pins are not accessible, so neither
-  the input-bulk-capacitance test nor a direct rail-current measurement can be
-  performed.
-- The noise risk falls on the primary measurement rather than on runtime, which
-  is the wrong thing to gamble on a flight-dynamics instrument. See below.
-
-This is a decision about what to build next, not a closed question. The SMPS
-remains the only path to filling the flash at 400 Hz, so the next breakout
-should be built to answer it:
-
-- A 0-ohm jumper or sense resistor in series with the 1.8 V rail, so rail
-  current can be measured directly rather than inferred from input current.
-- Accessible Vin and Vout test points, and a footprint for input bulk
-  capacitance below the meter.
-- Ideally **both regulators on one board, jumper-selectable.** That removes
-  every confounder discussed above in a single stroke and turns this into a
-  ten-minute measurement.
+- A 0-ohm jumper or sense resistor in series with the 1.8 V rail, so rail current
+  can be measured directly rather than inferred from input current.
+- Accessible Vin and Vout test points.
+- Ideally **both regulators on one board, jumper-selectable**, which removes
+  every confounder in a single stroke.
 
 ### Storage-Limited vs Battery-Limited Runtime
 
 Usable mission time is `min(battery, storage)`. Using the 2 Gbit column from
-*Storage-Limited Runtime* above, the boards **as built**, on a 12 mAh cell:
+*Storage-Limited Runtime* above, the boards **as built at 2.5 V**, on a 12 mAh
+cell:
 
 | Rate | Storage (2 Gbit) | LDO battery | SMPS battery | LDO usable | SMPS usable | Binds on |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- |
@@ -434,22 +370,17 @@ Usable mission time is `min(battery, storage)`. Using the 2 Gbit column from
 | 800 Hz | 6.83 h | 7.36 h | 8.00 h | **6.83 h** | **6.83 h** | storage |
 | 1600 Hz | 3.41 h | 6.25 h | 7.19 h | **3.41 h** | **3.41 h** | storage |
 
-On a 12 mAh cell the storage bound only bites at **800 Hz and above**; on a
-20 mAh cell it bites from 400 Hz. Below the crossover the mission is
-battery-limited and regulator efficiency is fully spendable; above it, the
-flash fills first. **No regulator change buys any usable mission time at or
-above the crossover.** The SMPS's 8-13% advantage at 800 and 1600 Hz converts
-to exactly zero hours.
+The LDO column holds at any input voltage; the SMPS column is specific to 2.5 V
+and improves as the supply rises.
 
-Conversely, on 12 mAh the rates where a regulator improvement *is* spendable are
-100, 200 and 400 Hz — and those are precisely the rates where the buck as built
-measures level with or worse than the LDO. Both halves point the same way: the
-SMPS is worth pursuing only for the low-rate case, and only once the efficiency
-shortfall is fixed.
+On a 12 mAh cell the storage bound only bites at **800 Hz and above**; on 20 mAh
+it bites from 400 Hz. Below the crossover the mission is battery-limited and
+regulator efficiency is fully spendable; above it the flash fills first, and no
+regulator change buys any usable mission time.
 
 The lever at high rates is bytes per sample, not microamps. At 13.6 bytes per
-sample (150 samples per 2048-byte page), any packing or compression win
-converts one-for-one into mission time at 800 and 1600 Hz.
+sample (150 samples per 2048-byte page), any packing or compression win converts
+one-for-one into mission time at 800 and 1600 Hz.
 
 ### Outstanding: Sample-Synchronous Supply Noise
 
@@ -467,26 +398,23 @@ switching component at all, only a PSRR rolloff.
 
 A DC field from the inductor calibrates out as a hard-iron offset and is not the
 worry. The worry is a supply artifact locked to the sample clock, which would
-degrade the measurement rather than the mission duration. That is the wrong
-trade for an instrument, and it is why the LDO carries the benefit of the doubt
-until this is tested.
+degrade the measurement rather than the mission duration. That is the wrong trade
+for an instrument, and it is why the LDO carries the benefit of the doubt until
+this is tested.
 
-Testable with existing tooling and no bench equipment: log on both boards under
-matched conditions and compare noise floors and spectra in sensorViz, looking
-specifically for structure at and around the sample rate and its subharmonics.
+Testable with existing tooling: log on both boards under matched conditions and
+compare noise floors and spectra in sensorViz, looking specifically for structure
+at and around the sample rate and its subharmonics.
 
 ## Open Questions
 
-- What is the deployed cell voltage and chemistry? Not recorded in this tree.
-- Why is the TPS62840 measuring 25-30 points below its datasheet efficiency?
-  Cout (10 uF) and the inductor (a Table 4 part) are confirmed correct, so the
-  open suspects are the measurement path's burden resistance against a pulsating
-  input current, and the actual rail voltage — in that order.
-- Does adding 10-100 uF of bulk capacitance at the SMPS board's input, below the
-  meter, change the reading? This is the cheapest discriminating test available,
-  but the rail pins are not accessible on the boards in hand, so it must wait
-  for a breakout built with the test points listed under *Design Point*.
+- **What cell voltage and chemistry does the deployed tag use?** Not recorded in
+  this tree, and it now decides the regulator: 2% for the buck at 2.5 V versus
+  52% at 3.7 V. Also: was the 2.5 V bench setting representative or incidental?
+- Is the buck's 69% at 1.1 mA improvable? It is below what the datasheet implies,
+  though no longer anomalous. Only worth pursuing if the cell voltage makes the
+  SMPS viable.
 - Does the BMM350 or LSM6DSV16X noise floor show structure at or near the sample
-  rate on the SMPS board? This is the question that actually gates adoption.
+  rate on the SMPS board? This is what actually gates adoption.
 - Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
   it can be compared against the correct LDO column?
