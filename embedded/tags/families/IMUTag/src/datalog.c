@@ -34,8 +34,21 @@ static bool datalog_page_cache_active;
 
 static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * sizeof(t_DataLog),
               "nanopb IMUTagRawLog.samples buffer size in options is out of sync with datalog page size!");
-/** Number of external erase sectors completed by the incremental erase path. */
-static volatile int sectors_erased NOINIT;
+/**
+ * Number of external erase sectors completed by the incremental erase path.
+ *
+ * Deliberately NOT declared NOINIT. It is reported to the host in every Status
+ * reply through externalFlashSectorsErased(), so it must read zero before any
+ * erase has run; in .ram0 it instead returned whatever the region happened to
+ * hold, observed as large negative values that differed between polls.
+ *
+ * Retaining it across a reset would achieve nothing: its gate,
+ * erase_external_active, is ordinary .bss and is cleared at every boot, so a
+ * surviving count could not be resumed, and eraseExternalStart() zeroes this
+ * anyway on entry to each erase. All four companion variables below are
+ * likewise ordinary statics.
+ */
+static volatile int sectors_erased;
 /** Active external erase-sector size in bytes. */
 static uint32_t erase_sector_size;
 /** Total external erase sectors selected for the current erase. */
