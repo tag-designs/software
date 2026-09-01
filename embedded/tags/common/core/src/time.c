@@ -13,6 +13,7 @@
 #include "power.h"
 #include "rtc_api.h"
 #include "timekeeping.h"
+#include "core_sync.h"
 
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
 
@@ -351,6 +352,14 @@ int SetTimeUnixSec(int32_t unix_time)
     return -1;
 #endif
   }
+  /*
+   * The clock has just been set from a known-good source, so any doubt recorded
+   * at boot no longer applies. Without this, a boot that could not verify the
+   * external RTC left clockTrusted false for the whole session, which held off
+   * the immediate-start path and delayed every configured start to the next
+   * minute alarm.
+   */
+  clockTrusted = true;
   return err;
 }
 /** @} */

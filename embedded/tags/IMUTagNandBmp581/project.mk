@@ -22,6 +22,15 @@ TAG_MODULES += \
        sensor_mag_bmm350 \
        sensor_imu_lsm6dsv16x
 
+# WARNING: enabling debug_log breaks Stop3 entry on STM32U375. A tag built with
+# it reports IDLE but never reaches standby, drawing about 1.7 mA instead of
+# 6.6 uA -- reproduced on hardware, and it survives tag-reset. The cause is in
+# the module itself and is unfixed; do not enable it on a U375 target, and it
+# does not belong in shipped code regardless.
+#
+# Note the entry below is also orphaned: sensor_imu_lsm6dsv16x carries no
+# trailing backslash, so simply uncommenting this line would not add the module
+# to TAG_MODULES anyway.
        # debug_log \
 
 ALLCSRC += power_modes.c

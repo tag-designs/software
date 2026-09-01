@@ -143,8 +143,7 @@ class Experiment:
     duration_s: float
     current_ua: float | None = None
     voltage_v: float | None = None
-    external_pages: int | None = None
-    internal_pages: int | None = None
+    recorded_odr: str = ""
     sanity: str = "not checked"
     notes: str = ""
 
@@ -359,6 +358,50 @@ def download(bin_dir: str, out_path: str, base: str | None, timeout: float,
     return run("download", argv, timeout, verbose)
 
 
+def recorded_config(db_path: str) -> dict | None:
+    """Read the configuration the tag actually ran, from the download.
+
+    @details The stored configuration on the tag is erased by the reset that
+             follows a run, and tag-info then reports defaults, so the only
+             record of what a run used is the copy written into the downloaded
+             log's info table.
+
+    @param db_path Downloaded SQLite file.
+    @return Parsed configuration, or None when absent or unparseable.
+    """
+    try:
+        import sqlite3
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except Exception:
+        return None
+    try:
+        row = con.execute(
+            "SELECT value FROM info WHERE fieldname='config'").fetchone()
+        return json.loads(row[0]) if row and row[0] else None
+    except Exception:
+        return None
+    finally:
+        con.close()
+
+
+def config_odr_hz(cfg: dict | None) -> float | None:
+    """Extract a sample rate in Hz from a recorded configuration.
+
+    @param cfg Configuration as recorded in the download, or None.
+    @return Rate in Hz when the configuration names one in a recognised form,
+            else None. IMUTag encodes it as lsm6.odr = "S400".
+    """
+    if not cfg:
+        return None
+    odr = (cfg.get("lsm6") or {}).get("odr")
+    if isinstance(odr, str) and odr.startswith("S"):
+        try:
+            return float(odr[1:].replace("_", "."))
+        except ValueError:
+            return None
+    return None
+
+
 def check_download(db_path: str, duration_s: float, expected_hz: float | None,
                    tolerance: float) -> tuple[str, str]:
     """Step 6b: sanity-check a downloaded database.
@@ -430,6 +473,15 @@ def check_download(db_path: str, duration_s: float, expected_hz: float | None,
         detail = f"{best}: {best_rows} rows"
         if regressions:
             return "fail", f"{detail}, {regressions} non-monotonic timestamps"
+
+        # The recorded configuration is the only evidence of what the tag ran.
+        ran_hz = config_odr_hz(recorded_config(db_path))
+        if ran_hz is not None:
+            detail += f", ran at {ran_hz:g} Hz"
+            if expected_hz and abs(ran_hz - expected_hz) > 0.5:
+                return "fail", detail + f" but {expected_hz:g} Hz was requested"
+        elif expected_hz:
+            detail += ", recorded rate unknown"
 
         if expected_hz:
             expected = expected_hz * duration_s
@@ -563,6 +615,9 @@ def main() -> int:
             else:
                 verdict, detail = check_download(
                     db_path, args.duration, args.expected_hz, args.tolerance)
+                ran = config_odr_hz(recorded_config(db_path))
+                if ran is not None:
+                    exp.recorded_odr = f"{ran:g}"
                 exp.sanity = verdict
                 print(f"      {verdict}: {detail}")
                 if verdict != "pass":

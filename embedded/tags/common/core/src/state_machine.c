@@ -161,7 +161,7 @@ volatile enum Sleep idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
  *       good as it was when the tag went to sleep; defaulting to false would
  *       silently stop every scheduled run from ever starting.
  */
-bool clockTrustedAtBoot = true;
+bool clockTrusted = true;
 
 #if TAG_MONITOR_RESET_RECOVERY
 /**
@@ -401,7 +401,7 @@ enum Sleep StateMachine(eventmask_t input_events)
      * against. A failed external-RTC read used to be silent, leaving the STM32
      * RTC uninitialized; GetTimeUnixSec() then returns a plausible-looking but
      * wrong epoch, and every time comparison in the state machine silently
-     * evaluates against it. See clockTrustedAtBoot.
+     * evaluates against it. See clockTrusted.
      */
     bool clock_recovered = false;
     if (shouldRecoverRtcFromExternal(reset_cause))
@@ -424,7 +424,7 @@ enum Sleep StateMachine(eventmask_t input_events)
      * retained state nor the STM32 RTC survived; only an explicit recovery from
      * the external RTC can restore a usable clock.
      */
-    clockTrustedAtBoot =
+    clockTrusted =
         clock_recovered || (retained_state_valid && rtcInitializedAtBoot);
     timestamp = GetTimeUnixSec(&timestamp_millis);
 
@@ -616,7 +616,7 @@ enum Sleep StateMachine(eventmask_t input_events)
            */
           if (monitor_present)
             return Running(T_CONT, State_EVENT_POWERFAIL);
-          if (!clockTrustedAtBoot)
+          if (!clockTrusted)
           {
             debug_log_printf(
                 "state_machine: brownout restart refused, clock untrusted\r\n");
@@ -878,7 +878,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
       writeStoredConfig(&config_tmp);
 
 #if TAG_CONFIGURED_IMMEDIATE_START
-    if (clockTrustedAtBoot && (timestamp >= sconfig.start)) {
+    if (clockTrusted && (timestamp >= sconfig.start)) {
       debug_log_printf("state_machine: immediate start timestamp=%d start=%d\r\n",
                        timestamp, sconfig.start);
       return Running(T_INIT, State_EVENT_STARTTIM);
@@ -902,7 +902,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
      * stop comparison would then never fire. Configured sleep is cheap, so
      * waiting is the safe default until the host synchronizes.
      */
-    if (clockTrustedAtBoot && (timestamp >= sconfig.start)) {// look at stored value --
+    if (clockTrusted && (timestamp >= sconfig.start)) {// look at stored value --
       disableAlarm(1);
       return Running(T_INIT, State_EVENT_STARTTIM);
     }

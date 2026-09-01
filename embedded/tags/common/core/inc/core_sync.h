@@ -32,9 +32,13 @@ extern bool rtcInitializedAtBoot;
  *          configured start and stop comparisons meaningless, which strands the
  *          tag in RUNNING at collection current.
  *
- * @note Determined once during boot reset recovery, not re-evaluated afterwards.
+ * @note Set during boot reset recovery and again by any successful
+ *       SetTimeUnixSec(), so a host clock synchronization makes the clock
+ *       trustworthy immediately. Gating a later decision on a boot-only snapshot
+ *       was wrong: it delayed every configured start to the next minute alarm
+ *       even though the host had just set the clock.
  */
-extern bool clockTrustedAtBoot;
+extern bool clockTrusted;
 /** @brief Main ChibiOS thread handle used by interrupt/event producers. */
 extern thread_t *tpMain;
 
