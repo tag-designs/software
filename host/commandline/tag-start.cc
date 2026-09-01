@@ -125,14 +125,33 @@ int main(int argc, char **argv)
 
         // read tag information
 
-        if (set_rtc && !tag.SetRtc())
-        {
-            std::cerr << "SetRtc failed" << std::endl;
-            return 1;
-        }
-
+        // Read status before synchronizing the clock. Attach connects under
+        // reset, so the tag needs a round trip to settle; the firmware accepts
+        // a set_rtc request only in IDLE (monitor.c, Req_set_rtc_tag), and one
+        // issued as the first request after attach is rejected.
         Status status;
         tag.GetStatus(status);
+
+        if (set_rtc)
+        {
+            if (status.state() != IDLE)
+            {
+                std::cerr << "SetRtc skipped: tag is "
+                          << TagState_Name(status.state())
+                          << ", the tag accepts a clock sync only when IDLE"
+                          << std::endl;
+                return 1;
+            }
+            if (!tag.SetRtc())
+            {
+                std::string why = tag.DebugMessage();
+                std::cerr << "SetRtc failed"
+                          << (why.empty() ? "" : ": " + why) << std::endl;
+                return 1;
+            }
+            std::cout << "RTC synchronized" << std::endl;
+        }
+
         bool start_attempted = false;
         bool start_failed = false;
         if (status.state() == IDLE)

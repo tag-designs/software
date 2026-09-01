@@ -262,7 +262,11 @@ def start(bin_dir: str, config: str | None, base: str | None, merge: bool,
     @param verbose True to echo commands.
     @raise ExperimentError when the tag does not reach RUNNING.
     """
-    argv = [os.path.join(bin_dir, "tag-start"), "--set-rtc", "--start-now"]
+    # No --set-rtc here: step 1 already established the clock. Asking for a
+    # second sync across back-to-back attach cycles was observed to fail with
+    # "RTC sync failed while writing tag clock", while the same sync succeeds
+    # standalone. Setting it once is also what the procedure calls for.
+    argv = [os.path.join(bin_dir, "tag-start"), "--start-now"]
     if config:
         argv += ["-c", config]
     if merge:
@@ -317,9 +321,25 @@ def stop(bin_dir: str, base: str | None, timeout: float,
     if base:
         argv += ["-b", base]
     res = run("stop", argv, timeout, verbose)
-    if not res.ok:
-        raise ExperimentError(f"tag-stop failed: {res.stderr.strip()}")
-    return tag_state(res.stdout)
+    if res.ok:
+        return tag_state(res.stdout)
+
+    # Attaching the monitor connects under reset, and reset recovery may end the
+    # run itself before the stop request arrives -- observed as an ABORTED marker
+    # with reason EVENT_POWERFAIL. The tag then refuses the stop because
+    # monitor_stop_allowed() is false outside acquisition. Collection has ended
+    # and the data is intact, which is what step 5 exists to achieve, so confirm
+    # the state rather than failing.
+    argv_info = [os.path.join(bin_dir, "tag-info")]
+    if base:
+        argv_info += ["-b", base]
+    info = run("state-check", argv_info, timeout, verbose)
+    state = tag_state(info.stdout)
+    if state in TERMINAL_STATES:
+        return state
+    raise ExperimentError(
+        f"tag-stop failed and the tag is {state or 'in an unknown state'}, "
+        f"not terminal: {res.stderr.strip()}")
 
 
 def download(bin_dir: str, out_path: str, base: str | None, timeout: float,
@@ -390,9 +410,10 @@ def check_download(db_path: str, duration_s: float, expected_hz: float | None,
             cur.execute(f'PRAGMA table_info("{t}")')
             cols = [c[1] for c in cur.fetchall()]
             timecol = next((c for c in cols
-                            if c.lower() in ("time", "timestamp", "epoch",
-                                             "millis", "t", "time_us",
-                                             "time_ms")), None)
+                            if c.lower() in ("elapsedus", "rawelapsedus",
+                                             "startelapsedus", "time",
+                                             "timestamp", "epoch", "millis",
+                                             "t", "time_us", "time_ms")), None)
             if timecol and rows > best_rows:
                 best, best_rows, best_timecol = t, rows, timecol
 
