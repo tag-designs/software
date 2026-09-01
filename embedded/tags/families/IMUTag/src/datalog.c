@@ -289,23 +289,34 @@ void eraseExternalStart(void)
    * block destroys its marker permanently, and a device whose markers are gone
    * can no longer distinguish bad media from good.
    */
-  const uint32_t dirty_sectors =
-      (sector_size == 0U || sector_count == 0U)
-          ? 0U
-          : lastDirtyExternalSector(sector_size, sector_count);
-
   erase_sector_size = sector_size;
-  erase_sector_total = dirty_sectors;
+  erase_sector_total = 0U;
   sectors_erased = 0;
   erase_external_active = false;
   erase_external_failed = false;
 
-  if (sector_size == 0U || dirty_sectors == 0U) {
+  if (sector_size == 0U || sector_count == 0U) {
+    return;
+  }
+
+  /*
+   * Wake before probing, and only then search.
+   *
+   * lastDirtyExternalSector() reads the device. A NAND still asleep, or still in
+   * deep power-down, does not return 0xFF, so probing it first makes every
+   * sector look dirty and commits the tag to erasing the entire device. Ordering
+   * matters here in a way it did not when the extent came from a retained
+   * counter and this function touched no hardware before waking.
+   */
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+
+  erase_sector_total = lastDirtyExternalSector(sector_size, sector_count);
+  if (erase_sector_total == 0U) {
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
     return;
   }
 
   erase_external_active = true;
-  tagStorageWake(TAG_EXTERNAL_FLASH);
 }
 
 bool eraseExternalNextSector(void)
