@@ -151,9 +151,30 @@ SECTIONS
      data corruption. */
   __tag_code_limit__ = ORIGIN(flash0) + 128K;
 
-  .persistent __tag_code_limit__ (NOLOAD): ALIGN(__tag_flash_page_size__)
+  /* Provisioned configuration owns a flash page to itself.
+     sconfig is rewritten on every start command, and STM32 flash programming can
+     only clear bits, so a rewrite must erase first. It previously shared a page
+     with sEpoch and the head of vddHeader, which cannot be erased without
+     destroying the state marker log and the internal checkpoint headers, so the
+     write was done without an erase: programming S400 (0x190) over S100 (0x64)
+     yielded 0x000, an unspecified ODR that aborts collection. Reaching IDLE does
+     not imply an erased region either, because a reflash preserves .persistent
+     and SelfTest and reset recovery both reach IDLE without erasePersistent().
+
+     __persistent_start__ deliberately covers this page so erasePersistent(), and
+     therefore a reset, still clears the provisioned configuration. */
+  __stored_config_start__ = __tag_code_limit__;
+  __stored_config_end__ = __tag_code_limit__ + __tag_flash_page_size__;
+  __persistent_start__ = __tag_code_limit__;
+
+  .storedconfig __stored_config_start__ (NOLOAD): ALIGN(__tag_flash_page_size__)
   {
-   __persistent_start__ = .;
+   KEEP(*(.storedconfig))
+   . = ALIGN(__tag_flash_page_size__);
+  } > flash0
+
+  .persistent __stored_config_end__ (NOLOAD): ALIGN(__tag_flash_page_size__)
+  {
    *(.persistent)
    . = ALIGN(__tag_flash_page_size__);
   } > flash0
@@ -198,6 +219,12 @@ ASSERT(((__tag_config_start__ - __tag_code_limit__) % __tag_flash_page_size__) =
 ASSERT(__tag_code_limit__ < __tag_config_start__,
        "STM32U375 __tag_code_limit__ leaves no room for the persistent region");
 
+ASSERT(SIZEOF(.storedconfig) <= __tag_flash_page_size__,
+       "STM32U375 stored configuration exceeds its dedicated flash page; it must \
+stay within one page so writeStoredConfig() can erase it without touching sEpoch \
+or vddHeader");
+ASSERT(ADDR(.persistent) >= __stored_config_end__,
+       "STM32U375 persistent section overlaps the stored configuration page");
 ASSERT(ADDR(.persistent) + SIZEOF(.persistent) <= __tag_config_start__,
        "STM32U375 persistent section overlaps reserved configuration pages");
 ASSERT(__calibration_data_end__ <= __tag_nand_map_start__,

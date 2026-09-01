@@ -12,6 +12,7 @@
 #include "config.h"
 #include "devices.h"
 #include "persistent.h"
+#include "debug_log.h"
 #include "sensors.h"
 #include "storage_flash.h"
 #include "strings.h"
@@ -147,14 +148,48 @@ void writeStoredConfig(t_storedconfig *s)
   uint32_t *src = (uint32_t *)s;
   uint32_t *dest = (uint32_t *)&sconfig;
   ssize_t size = sizeof(*s)/4;
-  if (s)
+
+  if (s == NULL)
+    return;
+
+  /*
+   * Erase before programming. STM32 flash programming can only clear bits, so
+   * writing over a populated configuration yields the bitwise AND of old and
+   * new: S400 (0x190) over S100 (0x64) produced 0x000, an unspecified ODR that
+   * makes get_lsm_config() fail and aborts collection at start.
+   *
+   * The linker gives the stored configuration a page of its own on targets that
+   * define TAG_STORED_CONFIG_SECTION, so this erase cannot disturb sEpoch or the
+   * internal checkpoint headers. Skip it when the region is already erased,
+   * which is the normal case after a reset, to spare a flash cycle.
+   */
+  chSysLock();
+  FLASH_Unlock();
+#if TAG_STORED_CONFIG_OWN_PAGE
+  if (!storedConfigErased())
+    FLASH_PageEraseAddress((uint32_t)&sconfig);
+#endif
+  FLASH_Program_Array(dest, src, size);
+  FLASH_Lock();
+  FLASH_Flush_Data_Cache();
+  chSysUnlock();
+
+  /*
+   * Verify. After the erase this should never differ, so a mismatch means a
+   * flash fault or a power loss between erase and program. Report it: the
+   * configuration governs every run, and get_lsm_config() would otherwise
+   * surface the problem later as an unexplained collection abort.
+   */
+  for (ssize_t i = 0; i < size; i++)
   {
-    chSysLock();
-    FLASH_Unlock();
-    FLASH_Program_Array(dest, src, size);
-    FLASH_Lock();
-    FLASH_Flush_Data_Cache();
-    chSysUnlock();
+    if (dest[i] != src[i])
+    {
+      debug_log_printf(
+          "IMUTag config: stored config verify failed at word %d, "
+          "wrote 0x%x read 0x%x\r\n",
+          (int)i, (unsigned)src[i], (unsigned)dest[i]);
+      return;
+    }
   }
 }
 

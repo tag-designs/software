@@ -59,7 +59,8 @@ static void tagStatusMeasure(uint16_t *vdd100, int16_t *temp10)
  */
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
-t_storedconfig sconfig TAG_FLASH_RECORD_ALIGN __attribute__((section(".persistent")))
+t_storedconfig sconfig TAG_FLASH_RECORD_ALIGN
+__attribute__((section(TAG_STORED_CONFIG_SECTION)))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
 #if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
 t_InternalDataHeader vddHeader[256] __attribute__((section(".persistent")))
@@ -201,6 +202,49 @@ int __attribute__((weak)) externalFlashSectorsToErasePlusOne(void)
 {
   return 0;
 }
+
+#if TAG_STORED_CONFIG_OWN_PAGE
+/**
+ * @brief Report whether a flash range reads as erased.
+ *
+ * @param[in] base  First byte of the range.
+ * @param[in] bytes Range length; rounded down to a multiple of eight.
+ * @return true when every double word reads 0xFF..FF, false on any programmed
+ *         word or on a read error. A read error is reported as not-erased so a
+ *         flash fault is never mistaken for a clean region.
+ */
+static bool flashRangeErased(const void *base, size_t bytes)
+{
+  const uint64_t *p = (const uint64_t *)base;
+  const size_t words = bytes / sizeof(uint64_t);
+
+  for (size_t i = 0; i < words; i++)
+  {
+    uint64_t value;
+    if (FLASH_Read_DoubleWord_Checked(&p[i], &value) != 0U)
+      return false;
+    if (value != UINT64_MAX)
+      return false;
+  }
+  return true;
+}
+
+bool storedConfigErased(void)
+{
+  return flashRangeErased(&sconfig, sizeof(sconfig));
+}
+
+bool persistentIdleStateClean(void)
+{
+  t_StateMarker marker;
+
+  if (!storedConfigErased())
+    return false;
+  if (FLASH_Read_Checked(&sEpoch[0], &marker, sizeof(marker)) != 0U)
+    return false;
+  return marker.epoch == -1;
+}
+#endif /* TAG_STORED_CONFIG_OWN_PAGE */
 
 /**
  * @brief Append a state transition marker to internal flash.

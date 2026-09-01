@@ -810,6 +810,26 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
    * nothing and would spend an entry in a fixed-size, non-wrapping log.
    */
   (void)reason;
+
+  /*
+   * The invariant is idle => clean state and configuration, which is what
+   * erasePersistent() leaves behind. Several paths arrive here without erasing:
+   * a reflash preserves the persistent region by design, and SelfTest() and
+   * reset recovery both enter idle directly. Claiming idle over stale contents
+   * is what allowed a start command to program a configuration on top of an
+   * existing one, corrupting it. Refuse instead, so the host has to reset.
+   */
+#if TAG_STORED_CONFIG_OWN_PAGE
+  if (!persistentIdleStateClean())
+  {
+    debug_log_printf(
+        "state_machine: idle refused, persistent state not clean "
+        "(config erased=%u); reset required\r\n",
+        storedConfigErased() ? 1U : 0U);
+    return Aborted(T_INIT, State_EVENT_UNKNOWN);
+  }
+#endif
+
   if (t == T_INIT)
   {
     disableAllAlarms();

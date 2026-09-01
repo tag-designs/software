@@ -42,6 +42,10 @@
 #define USE_STOP1_DELAY 0
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define TAG_STM32U3_FLASH 1
+/* STM32U375xG.ld reserves a dedicated, independently erasable flash page
+ * for the provisioned configuration so writeStoredConfig() can erase
+ * before programming. */
+#define TAG_STORED_CONFIG_OWN_PAGE 1
 #define TAG_MONITOR_RESET_RECOVERY 1
 #define TAG_STOP1_WAKE_USES_INTERRUPT 1
 #define TAG_CONFIGURED_IMMEDIATE_START 1
