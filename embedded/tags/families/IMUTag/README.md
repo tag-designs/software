@@ -29,3 +29,7 @@ Design notes:
   plans the IMUTagNand replacement firmware variant that keeps the `IMUTAG`
   protocol identity while adding BMP581 pressure sensing and GD5F2GM7RE
   SPI-NAND storage.
+- [`design/PowerEstimates.md`](design/PowerEstimates.md)
+  records datasheet power estimates against bench measurements per sample rate,
+  and compares the LDO and TPS62840 SMPS breakout builds and the NAND load
+  switch against the storage-limited runtime bound.
