@@ -113,7 +113,28 @@ INCLUDE rules.ld
    - final page: NAND logical-block map, blank on non-NAND targets.
 
    Keeping the same layout for all U375 IMUTag members costs one unused page on
-   non-NAND targets but gives erase code a single persistent-header boundary. */
+   non-NAND targets but gives erase code a single persistent-header boundary.
+
+   The persistent region occupies the top of flash at FIXED addresses, between
+   __tag_code_limit__ and the calibration page. Pinning both bounds is a
+   correctness requirement, not tidiness:
+
+   - `<tag>-download` passes only `-d <elf>` to STM32_Programmer_CLI, with no
+     `-e all`. It therefore erases only the pages it writes, deliberately, so
+     that provisioned configuration and calibration survive a firmware update.
+   - The region previously began at the location counter, immediately after
+     .rodata. Its start address was therefore a function of code size, and any
+     change that crossed a page boundary relocated sEpoch, sconfig and the
+     vddHeader region wholesale.
+   - After such a move the objects are read from addresses the programmer did
+     not erase: stale internal-header content when the image grows, or leftover
+     code bytes when it shrinks. t_storedconfig carries no magic, version, or
+     checksum, so a garbage start/stop schedule is accepted verbatim, and a
+     garbage state marker that happens to fall inside the TagState range is
+     accepted as a state to recover into.
+
+   Both bounds are page-aligned, so the region size is always a whole number of
+   pages, which erasePersistent() requires. */
 SECTIONS
 {
   __tag_flash_page_size__ = 4096;
@@ -123,12 +144,23 @@ SECTIONS
                            __tag_flash_page_size__;
   __flash0_end__ = ORIGIN(flash0) + LENGTH(flash0);
 
-  .persistent (NOLOAD): ALIGN(4096)
+  /* Fixed ceiling for code and read-only data, and therefore the fixed floor of
+     the persistent region. Raising it costs internal-header capacity; lowering
+     it costs code space. Either way it must stay page-aligned, and the ASSERTs
+     after this block turn an overrun into a build failure rather than silent
+     data corruption. */
+  __tag_code_limit__ = ORIGIN(flash0) + 128K;
+
+  .persistent __tag_code_limit__ (NOLOAD): ALIGN(__tag_flash_page_size__)
   {
    __persistent_start__ = .;
    *(.persistent)
-   . = ALIGN(4096);
+   . = ALIGN(__tag_flash_page_size__);
   } > flash0
+  /* vddHeader[] is declared with a nominal element count but grows upward at
+     runtime, bounded only by this address; see readInternalHeader() and
+     writeDataHeader(). The region must therefore extend to the calibration
+     page, not merely cover the declared objects. */
   __persistent_end__ = __tag_config_start__;
 
   .calibration __tag_config_start__ (NOLOAD): ALIGN(4096)
@@ -149,6 +181,22 @@ SECTIONS
   } > flash0
   __nand_map_end__ = __flash0_end__;
 }
+
+/* Code must not grow into the persistent region. Before the region was pinned,
+   an overrun silently relocated sEpoch/sconfig/vddHeader into flash the
+   programmer does not erase; now it fails the build instead. .data is the last
+   section with flash contents, so its load address bounds code growth. */
+ASSERT(LOADADDR(.data) + SIZEOF(.data) <= __tag_code_limit__,
+       "STM32U375 code and rodata exceed __tag_code_limit__: raise it (costs internal-header capacity) or shrink the image. Do NOT let the persistent region float: it holds sEpoch, sconfig and vddHeader, which <tag>-download does not erase.");
+
+/* erasePersistent() walks the region a page at a time, so both bounds must be
+   page-aligned and the region must be a whole number of pages. */
+ASSERT((__tag_code_limit__ % __tag_flash_page_size__) == 0,
+       "STM32U375 __tag_code_limit__ must be flash-page aligned");
+ASSERT(((__tag_config_start__ - __tag_code_limit__) % __tag_flash_page_size__) == 0,
+       "STM32U375 persistent region size must be a whole number of flash pages");
+ASSERT(__tag_code_limit__ < __tag_config_start__,
+       "STM32U375 __tag_code_limit__ leaves no room for the persistent region");
 
 ASSERT(ADDR(.persistent) + SIZEOF(.persistent) <= __tag_config_start__,
        "STM32U375 persistent section overlaps reserved configuration pages");

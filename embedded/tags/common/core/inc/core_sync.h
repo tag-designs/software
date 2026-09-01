@@ -23,6 +23,18 @@ extern int32_t timestamp;
 extern uint32_t timestamp_millis;
 /** @brief Whether the STM32 RTC calendar was initialized at boot. */
 extern bool rtcInitializedAtBoot;
+/**
+ * @brief Whether boot established a wall clock worth scheduling against.
+ *
+ * @details False when the backup domain was lost and the external RTC could not
+ *          supply a replacement time. State transitions that commit the tag to
+ *          collecting data must be gated on this: an untrusted clock makes the
+ *          configured start and stop comparisons meaningless, which strands the
+ *          tag in RUNNING at collection current.
+ *
+ * @note Determined once during boot reset recovery, not re-evaluated afterwards.
+ */
+extern bool clockTrustedAtBoot;
 /** @brief Main ChibiOS thread handle used by interrupt/event producers. */
 extern thread_t *tpMain;
 

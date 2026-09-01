@@ -430,13 +430,24 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
   if (t == T_INIT)
   {
+    /*
+     * BROWNOUT arrives here after the state machine recovered a RUNNING marker
+     * across a power event, with the log cursors rebuilt by restoreLog(). Zeroing
+     * them would restart the log at page 0 and overwrite everything already
+     * collected, and a tag browning out repeatedly on a marginal cell would do
+     * that on every cycle while never reaching its stop time. Keep the recovered
+     * cursors and resynchronize the stream instead.
+     */
+    const bool resume_after_brownout = (reason == State_EVENT_BROWNOUT);
+
     disableAllAlarms();
     disableTicker();
     //accelDeinit();
 
     // Fresh run: reset durable log counters and start a new continuous segment.
 
-    pState->pages = 0;
+    if (!resume_after_brownout)
+      pState->pages = 0;
     pState->cycle_count = 0;
     pState->checkpoint_flags_pending = 0;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
@@ -456,18 +467,27 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 #endif
     //pState->lastwakeup = timestamp;
 
-    pState->external_blocks = 0;
+    if (!resume_after_brownout)
+      pState->external_blocks = 0;
 
     pState->state = TagState_RUNNING;
     recordState(reason);
-    if (!restartDataCollectionClock(false)) {
-      debug_log_printf("IMUTag running: abort, collection init failed\r\n");
-    
+    /*
+     * Pass resync=true when resuming so the next retained page carries an
+     * explicit discontinuity marker, matching the monitor-reset recovery path.
+     */
+    if (!restartDataCollectionClock(resume_after_brownout)) {
+      debug_log_printf("IMUTag running: abort, collection %s failed\r\n",
+                       resume_after_brownout ? "resume" : "init");
+
       return Aborted(T_INIT, State_EVENT_UNKNOWN);
     }
 
-    debug_log_printf("IMUTag running: collection initialized, %d s warmup\r\n",
-                     IMU_CLOCK_LOCK_SECONDS);
+    debug_log_printf(
+        "IMUTag running: collection %s, %d s warmup, pages=%u ext=%u\r\n",
+        resume_after_brownout ? "resumed" : "initialized",
+        IMU_CLOCK_LOCK_SECONDS, (unsigned)pState->pages,
+        (unsigned)pState->external_blocks);
   }
   else
   {

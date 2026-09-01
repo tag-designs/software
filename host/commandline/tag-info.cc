@@ -5,6 +5,8 @@
 #include <google/protobuf/text_format.h>
 #include <map>
 #include <regex>
+#include <ctime>
+#include <iostream>
 using namespace google::protobuf;
 
 #include <cxxopts.hpp>
@@ -35,6 +37,94 @@ static void intHandler(int dummy)
 }
 
 static std::map<std::string, std::string> strMap;
+
+/**
+ * @brief Render a marker epoch as UTC, or as a bare value when implausible.
+ *
+ * @param[in] millis Marker timestamp in milliseconds since the Unix epoch.
+ * @return Human-readable timestamp, suffixed with a warning when the value is
+ *         not a plausible acquisition time.
+ */
+static std::string formatMarkerTime(int64_t millis)
+{
+  const int64_t seconds = millis / 1000;
+  char buf[64];
+
+  // The tag stores -1 as the erased-slot sentinel, and an unsynchronized RTC
+  // yields an epoch near zero, so call both out rather than printing a date.
+  if (seconds <= 0)
+    return std::to_string(seconds) + "  <-- clock not set";
+
+  const std::time_t t = static_cast<std::time_t>(seconds);
+  std::tm tm_utc{};
+#ifdef _WIN64
+  gmtime_s(&tm_utc, &t);
+#else
+  gmtime_r(&t, &tm_utc);
+#endif
+  if (std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S UTC", &tm_utc) == 0)
+    return std::to_string(seconds);
+  return std::string(buf);
+}
+
+/**
+ * @brief Print the tag's persistent state-transition marker log.
+ *
+ * @details The tag records one marker per state transition into a fixed-size,
+ *          non-wrapping region of internal flash that only a reset erases. Once
+ *          it fills, further markers are dropped silently, which freezes the
+ *          history that boot-time reset recovery reads to reconstruct a lost
+ *          state. The entry count is therefore the diagnostic of interest: a
+ *          count at the tag's capacity means recovery may be acting on a stale
+ *          final marker.
+ *
+ * @param[in,out] tag Attached tag to query.
+ */
+static void printStateLog(Tag &tag)
+{
+  StateLog system_log;
+  int next = 0;
+  int page_count = 0;
+
+  std::cout << "State transition log:" << std::endl;
+
+  // Bound the paging loop: a tag that keeps returning entries must not hang the
+  // tool. Capacity is 10 + TagState_MAX on current firmware, so this is ample.
+  while (tag.GetStateLog(system_log, next) && (page_count++ < 16))
+  {
+    const int returned = system_log.states().size();
+    if (returned <= 0)
+      break;
+
+    for (const auto &state : system_log.states())
+    {
+      std::cout << "  [" << next << "] "
+                << TagState_Name(state.status().state())
+                << "  reason=" << State_Event_Name(state.transition_reason())
+                << "  time=" << formatMarkerTime(state.status().millis())
+                << std::endl;
+      std::cout << "        internal_pages=" << state.status().internal_data_count()
+                << " external_pages=" << state.status().external_data_count()
+                << " vdd=" << state.status().voltage()
+                << " temp=" << state.status().temperature()
+                << std::endl;
+      next++;
+    }
+  }
+
+  if (next == 0)
+  {
+    std::cout << "  (empty -- nothing recorded since the last reset; reset"
+                 " recovery reads this as idle)" << std::endl;
+  }
+  else
+  {
+    std::cout << "  entries: " << next
+              << "  (compare against the tag's capacity, 10 + TagState_MAX;"
+                 " at capacity, new markers are dropped silently and reset"
+                 " recovery may act on a stale final entry)" << std::endl;
+  }
+}
 
 int main(int argc, char **argv)
 {
@@ -113,6 +203,12 @@ int main(int argc, char **argv)
       Config cfg;
       tag.GetConfig(cfg);
       std::cout << cfg.DebugString() << std::endl;
+
+      Status status;
+      if (tag.GetStatus(status))
+        std::cout << "Current state: " << TagState_Name(status.state())
+                  << std::endl;
+      printStateLog(tag);
     }
   }
   return 0;

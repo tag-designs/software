@@ -140,6 +140,29 @@ bool isActive = false;
 /** Shared idle-thread low-power selector for tags that manage CPU idle mode. */
 volatile enum Sleep idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
 
+/**
+ * @brief True when boot established a wall clock worth scheduling against.
+ *
+ * @details Cleared when the backup domain was lost and the external RTC could
+ *          not supply a replacement time. Transitions that commit the tag to
+ *          collecting data are gated on this, because an untrusted clock makes
+ *          every start/stop comparison meaningless while leaving the tag drawing
+ *          collection current: measured at 1.71 mA against 6.7 uA in standby, a
+ *          255x drain that empties a 12 mAh cell in about seven hours.
+ *
+ * @note Boot-time determination only. It is not re-evaluated once the host
+ *       synchronizes the clock; a host sync moves the tag out of the terminal
+ *       state it was parked in.
+ *
+ * @note Defaults to true because reset recovery, which is the only place the
+ *       clock's validity is in question, runs solely for power, brownout,
+ *       exception, and unspecified-state boots and overwrites this. An ordinary
+ *       standby or shutdown wake retains the backup domain, so the clock is as
+ *       good as it was when the tag went to sleep; defaulting to false would
+ *       silently stop every scheduled run from ever starting.
+ */
+bool clockTrustedAtBoot = true;
+
 #if TAG_MONITOR_RESET_RECOVERY
 /**
  * @brief Decide whether the current reset is a monitor attach recovery.
@@ -194,12 +217,21 @@ static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
   return false;
 }
 
-#if TAG_MONITOR_RESET_RECOVERY
 /**
  * @brief Validate a state marker read from STM32 internal flash.
  *
+ * @details Applied on every target, not only those building monitor reset
+ *          recovery. The marker log shares a flash region with provisioned
+ *          state that `<tag>-download` does not erase, so a marker slot can
+ *          hold bytes never written as a marker. Range-checking the enums stops
+ *          the recovery scan adopting such a value as a state to resume into.
+ *
  * @param[in] marker Marker record to validate.
  * @return true when state and reason enum values are in protobuf range.
+ *
+ * @note A range check is necessary but not sufficient: an arbitrary byte in
+ *       1.._TagState_MAX still passes. Detecting genuinely stale records needs a
+ *       stamped record format.
  */
 static bool validStateMarker(const t_StateMarker *marker)
 {
@@ -208,6 +240,7 @@ static bool validStateMarker(const t_StateMarker *marker)
          (marker->reason <= _State_Event_MAX);
 }
 
+#if TAG_MONITOR_RESET_RECOVERY
 /**
  * @brief Validate a retained TagState enum value.
  *
@@ -283,9 +316,13 @@ enum Sleep StateMachine(eventmask_t input_events)
   const bool recovery_started_from_unspecified =
       pState->state == STATE_UNSPECIFIED;
   bool recovered_concrete_state = false;
-  bool retained_state_valid = false;
+  /*
+   * Computed unconditionally: the corrupt-pState guard below and the clock-trust
+   * decision both depend on it, and both must work on targets that do not build
+   * with TAG_MONITOR_RESET_RECOVERY.
+   */
+  const bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
 #if TAG_MONITOR_RESET_RECOVERY
-  retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
   bool monitor_reset_recovery = monitorResetRecoveryActive(retained_state_valid);
   uint32_t retained_pages = pState->pages;
   uint32_t retained_external_blocks = pState->external_blocks;
@@ -351,22 +388,44 @@ enum Sleep StateMachine(eventmask_t input_events)
           break;
         if (marker.epoch == -1)
           break;
-#if TAG_MONITOR_RESET_RECOVERY
         if (!validStateMarker(&marker))
           break;
-#endif
         pState->state = marker.state;
         recovered_concrete_state = true;
       }
 #if TAG_MONITOR_RESET_RECOVERY
     }
 #endif
+    /*
+     * Establish whether boot ended up with a wall clock worth making decisions
+     * against. A failed external-RTC read used to be silent, leaving the STM32
+     * RTC uninitialized; GetTimeUnixSec() then returns a plausible-looking but
+     * wrong epoch, and every time comparison in the state machine silently
+     * evaluates against it. See clockTrustedAtBoot.
+     */
+    bool clock_recovered = false;
     if (shouldRecoverRtcFromExternal(reset_cause))
     {
       RTCDateTime tim;
       if (tagRtcGetDateTime(&tim) == MSG_OK)
+      {
         rtcSetTime(&RTCD1, &tim);
+        clock_recovered = true;
+      }
+      else
+      {
+        debug_log_printf(
+            "state_machine: external RTC read failed, clock untrusted rc=%u\r\n",
+            (unsigned)reset_cause);
+      }
     }
+    /*
+     * A wiped pState means the backup domain lost power, so neither the
+     * retained state nor the STM32 RTC survived; only an explicit recovery from
+     * the external RTC can restore a usable clock.
+     */
+    clockTrustedAtBoot =
+        clock_recovered || (retained_state_valid && rtcInitializedAtBoot);
     timestamp = GetTimeUnixSec(&timestamp_millis);
 
     // recover log location
@@ -424,6 +483,18 @@ enum Sleep StateMachine(eventmask_t input_events)
     {
       return Aborted(T_INIT, State_EVENT_EXCEPTION);
     }
+    /*
+     * pState claims to be valid, yet carries no concrete state, and internal
+     * flash offered no marker either. That combination is self-inconsistent, so
+     * abort rather than guess.
+     *
+     * retained_state_valid is deliberately part of this condition. Without it
+     * the test would also fire on a freshly programmed tag -- no retained state
+     * and no markers -- and strand it in ABORTED before first use. A wiped
+     * pState with no markers is instead safe to treat as idle: any tag that had
+     * been collecting would have left a RUNNING marker, because Running(T_INIT)
+     * records one.
+     */
     if (recovery_started_from_unspecified &&
         retained_state_valid &&
         !recovered_concrete_state)
@@ -505,6 +576,21 @@ enum Sleep StateMachine(eventmask_t input_events)
 
     if (pState->state == TagState_RUNNING)
     {
+      /*
+       * Every path below either resumes or restarts collection, and each one
+       * relies on the stop-time comparison in Running() to terminate. With an
+       * untrusted clock that comparison never fires, so the tag would collect
+       * until the flash filled or the cell was flat. Park it in a terminal
+       * state instead and let the host resynchronize.
+       */
+      if (!clockTrustedAtBoot)
+      {
+        debug_log_printf(
+            "state_machine: running recovery refused, clock untrusted rc=%u\r\n",
+            (unsigned)reset_cause);
+        return Aborted(T_INIT, State_EVENT_POWERFAIL);
+      }
+
       // goto error
       switch (reset_cause)
       {
@@ -704,8 +790,13 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
  */
 static enum Sleep Idle(enum StateTrans t, State_Event reason)
 {
+  /*
+   * Idle deliberately records no state marker, unlike every other handler.
+   * Reset recovery seeds pState->state with TagState_IDLE before walking
+   * sEpoch, so an empty log already resolves to idle; a marker would add
+   * nothing and would spend an entry in a fixed-size, non-wrapping log.
+   */
   (void)reason;
-  (void)t;
   if (t == T_INIT)
   {
     disableAllAlarms();
@@ -754,7 +845,7 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
       writeStoredConfig(&config_tmp);
 
 #if TAG_CONFIGURED_IMMEDIATE_START
-    if (timestamp >= sconfig.start) {
+    if (clockTrustedAtBoot && (timestamp >= sconfig.start)) {
       debug_log_printf("state_machine: immediate start timestamp=%d start=%d\r\n",
                        timestamp, sconfig.start);
       return Running(T_INIT, State_EVENT_STARTTIM);
@@ -772,7 +863,13 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     //  return Aborted(T_INIT, State_EVENT_STARTTIM);
 
     debug_log_printf("timestamp %d start %d\n\r",timestamp,sconfig.start);
-    if (timestamp >= sconfig.start) {// look at stored value --
+    /*
+     * Keep waiting rather than starting against a clock we do not trust: the
+     * start comparison could fire immediately on a bogus epoch, and the matching
+     * stop comparison would then never fire. Configured sleep is cheap, so
+     * waiting is the safe default until the host synchronizes.
+     */
+    if (clockTrustedAtBoot && (timestamp >= sconfig.start)) {// look at stored value --
       disableAlarm(1);
       return Running(T_INIT, State_EVENT_STARTTIM);
     }
