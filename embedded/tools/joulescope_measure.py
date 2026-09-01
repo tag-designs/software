@@ -41,6 +41,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+import signal
 import statistics
 import sys
 import threading
@@ -204,8 +205,19 @@ def report(windows: list[Window], elapsed: float, window_s: float,
               f'>5%; windows may have been dropped', file=sys.stderr)
 
 
+def _terminate(signum, frame):  # noqa: ANN001 - signal handler signature
+    """Turn SIGTERM/SIGINT into an exception so teardown still runs.
+
+    @details Without this a timeout or Ctrl-C kills the process outright and the
+             finally block never executes, leaving the instrument mid-session.
+    """
+    raise KeyboardInterrupt(f"signal {signum}")
+
+
 def main() -> int:
     """Parse arguments, run the measurement, and restore device state."""
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGINT, _terminate)
     p = argparse.ArgumentParser(
         description='Measure DUT current with a Joulescope, without pushing '
                     'topic defaults that would power-cycle the DUT.')
@@ -253,6 +265,7 @@ def main() -> int:
         # use 'defaults' (or omit mode) here: see this module's docstring.
         d.open(device, mode='restore')
         saved_mode = saved_select = None
+        range_changed = False
         try:
             saved_mode = d.query(f'{device}/s/i/range/mode')
             saved_select = d.query(f'{device}/s/i/range/select')
@@ -266,6 +279,7 @@ def main() -> int:
 
             if requested is not None:
                 mode, select = requested
+                range_changed = True
                 if mode == RANGE_MODE_MANUAL:
                     d.publish(f'{device}/s/i/range/select', select)
                 d.publish(f'{device}/s/i/range/mode', mode)
@@ -296,14 +310,29 @@ def main() -> int:
                 label = f'[{run + 1}/{args.repeat}] ' if args.repeat > 1 else ''
                 report(c.snapshot(), elapsed, args.window, label)
         finally:
-            d.publish(f'{device}/s/stats/ctrl', 0)
-            # Put back exactly what we found, so a tag that survived the
-            # measurement also survives the teardown.
-            if saved_select is not None:
-                d.publish(f'{device}/s/i/range/select', saved_select)
-            if saved_mode is not None:
-                d.publish(f'{device}/s/i/range/mode', saved_mode)
-            d.close(device)
+            with suppress(Exception):
+                d.publish(f'{device}/s/stats/ctrl', 0)
+            #
+            # Restore the range ONLY if this run changed it.
+            #
+            # The previous teardown republished the values it had read, but
+            # s/i/range/select reads back as 0 on a device left in auto, and 0
+            # is the "off" selection that disconnects the current path and cuts
+            # DUT power. Writing it unconditionally on every exit was the one
+            # place this tool did the exact thing it exists to avoid, and it
+            # left a tag unpowered mid-erase.
+            #
+            # When --set-range was not given the range was never touched, so the
+            # correct teardown is to touch nothing. When it was given, restore
+            # the mode first and only write a selection that is a real shunt.
+            if range_changed:
+                with suppress(Exception):
+                    if saved_mode is not None:
+                        d.publish(f'{device}/s/i/range/mode', saved_mode)
+                    if saved_select:  # never write 0; see above
+                        d.publish(f'{device}/s/i/range/select', saved_select)
+            with suppress(Exception):
+                d.close(device)
     finally:
         d.finalize()
     return 0

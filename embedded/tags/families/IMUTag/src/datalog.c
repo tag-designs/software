@@ -199,16 +199,100 @@ void eraseExternal()
   eraseExternalFinish();
 }
 
+/** Leading bytes of a sector examined to decide whether it holds data. */
+#define IMUTAG_ERASE_PROBE_BYTES 16U
+
+/**
+ * @brief Report whether an external sector reads as blank.
+ *
+ * @details Log pages are written contiguously from sector zero, so the first
+ *          blank sector marks the end of everything ever written. Reading the
+ *          device is the only trustworthy way to find that boundary: the
+ *          alternative, deriving it from pState->external_blocks, fails exactly
+ *          when it matters most, because a power loss that leaves data behind
+ *          also destroys the retained cursor.
+ *
+ * @param[in] address Byte address of the sector to probe.
+ * @return true when the leading bytes are all 0xFF. A sector that cannot be
+ *         read is reported as non-blank, so an unreadable sector is erased
+ *         rather than silently ending the sweep early.
+ */
+static bool externalSectorIsBlank(uint32_t address)
+{
+  uint8_t probe[IMUTAG_ERASE_PROBE_BYTES];
+
+  memset(probe, 0x00, sizeof(probe));
+  tagStorageRead(TAG_EXTERNAL_FLASH, address, probe, (int)sizeof(probe));
+  for (size_t i = 0U; i < sizeof(probe); i++) {
+    if (probe[i] != 0xFFU)
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Find how many external sectors have ever been written.
+ *
+ * @details Binary searches for the highest sector that still holds data and
+ *          returns one past it. Nothing is ever written above the highest write,
+ *          so the blank/dirty boundary is monotonic from the top and the search
+ *          is sound.
+ *
+ *          Deliberately searches for the last dirty sector rather than the first
+ *          blank one. Those differ after an interrupted erase, which leaves a
+ *          blank region below sectors that still hold data: a first-blank search
+ *          would stop at sector zero and leave the rest behind, which is exactly
+ *          the state a tag is in when a power loss interrupts a reset.
+ *
+ *          Reading the device is the only trustworthy source. Deriving the
+ *          extent from pState->external_blocks fails precisely when it matters,
+ *          because the power loss that leaves data behind also destroys the
+ *          retained cursor.
+ *
+ * @param[in] sector_size Sector size in bytes.
+ * @param[in] sector_count Total sectors in the logical address space.
+ * @return Number of sectors to sweep, zero when the device reads blank.
+ */
+static uint32_t lastDirtyExternalSector(uint32_t sector_size,
+                                        uint32_t sector_count)
+{
+  uint32_t lo = 0U;
+  uint32_t hi = sector_count;
+  uint32_t last_dirty = 0U;
+  bool any_dirty = false;
+
+  while (lo < hi) {
+    const uint32_t mid = lo + ((hi - lo) / 2U);
+
+    if (externalSectorIsBlank(mid * sector_size)) {
+      hi = mid;
+    } else {
+      last_dirty = mid;
+      any_dirty = true;
+      lo = mid + 1U;
+    }
+  }
+  return any_dirty ? (last_dirty + 1U) : 0U;
+}
+
 void eraseExternalStart(void)
 {
   const uint32_t sector_size = tagStorageSectorSize(TAG_EXTERNAL_FLASH);
+  const uint32_t sector_count = (uint32_t)tagStorageSectorCount(TAG_EXTERNAL_FLASH);
   /*
-   * Erase only the sectors touched by pages with valid internal headers.
-   * Walking the whole 16 MiB device would waste time and would make monitor
-   * erase progress misleading. dirtyExternalSectors() is also the status
-   * progress denominator, so firmware erase work and host progress agree.
+   * Sweep from sector zero up to the last sector that holds data, located by
+   * reading the device rather than by trusting a retained cursor.
+   *
+   * NEVER iterate physical blocks here. The logical map is built by
+   * gd5fScanFactoryBadBlocks() and therefore contains only good blocks, which is
+   * what keeps this sweep away from factory bad-block markers. Erasing a bad
+   * block destroys its marker permanently, and a device whose markers are gone
+   * can no longer distinguish bad media from good.
    */
-  const uint32_t dirty_sectors = dirtyExternalSectors();
+  const uint32_t dirty_sectors =
+      (sector_size == 0U || sector_count == 0U)
+          ? 0U
+          : lastDirtyExternalSector(sector_size, sector_count);
 
   erase_sector_size = sector_size;
   erase_sector_total = dirty_sectors;
@@ -232,6 +316,16 @@ bool eraseExternalNextSector(void)
   if ((uint32_t)sectors_erased < erase_sector_total) {
     uint32_t sector = (uint32_t)sectors_erased;
     uint32_t address = sector * erase_sector_size;
+
+    /*
+     * Skip sectors that are already blank rather than ending the sweep: an
+     * interrupted erase leaves blank sectors below ones that still hold data,
+     * and stopping here would strand them. Skipping also spares a flash cycle.
+     */
+    if (externalSectorIsBlank(address)) {
+      sectors_erased++;
+      return (uint32_t)sectors_erased < erase_sector_total;
+    }
 
     if (!tagStorageSectorErase(TAG_EXTERNAL_FLASH, address)) {
       erase_external_failed = true;
@@ -284,6 +378,12 @@ int externalFlashSectorsErased(void)
 
 /**
  * @brief Report erase progress denominator for monitor polling.
+ *
+ * @details An estimate only, and display-only: the erase sweep now stops at the
+ *          first blank sector rather than at a computed count, so the work
+ *          actually done can exceed this when the retained cursor did not
+ *          survive the power loss that left the data behind. Nothing controls
+ *          on this value.
  *
  * @return Number of external sectors expected during erase, plus one so zero
  *         remains distinguishable from an unknown or unavailable total.
