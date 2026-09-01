@@ -37,8 +37,16 @@
 
 /** Exported for shared monitor code that reports download block size. */
 const int databuf_size = DATALOG_BLOCK_BYTES;
-/** Sectors processed so far by the incremental external erase. */
-static volatile int sectors_erased NOINIT;
+/*
+ * Sectors processed so far by the incremental external erase.
+ *
+ * Deliberately not NOINIT: this is reported to the host in every Status reply,
+ * so it must read zero before any erase has run. Retaining it across a reset
+ * would achieve nothing, because its gate erase_external_active is ordinary
+ * .bss and is cleared at every boot, and eraseExternalStart() zeroes this on
+ * entry to each erase.
+ */
+static volatile int sectors_erased;
 /** Total sectors the active erase sequence has to cover. */
 static uint32_t erase_sector_total;
 /** True while an incremental external erase is in progress. */
