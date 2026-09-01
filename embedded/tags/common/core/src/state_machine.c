@@ -878,7 +878,15 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
       writeStoredConfig(&config_tmp);
 
 #if TAG_CONFIGURED_IMMEDIATE_START
-    if (clockTrusted && (timestamp >= sconfig.start)) {
+    /*
+     * Deliberately not gated on clockTrusted. sconfig.start is computed from
+     * timestamp at the moment the start command is accepted
+     * (config_tmp.start = (start_delay - 1) * 60 + timestamp), so this is a
+     * relative comparison against a value derived from the same clock and is
+     * self-consistent whether or not the absolute wall time is trustworthy.
+     * Gating it delayed every start to the next minute alarm.
+     */
+    if (timestamp >= sconfig.start) {
       debug_log_printf("state_machine: immediate start timestamp=%d start=%d\r\n",
                        timestamp, sconfig.start);
       return Running(T_INIT, State_EVENT_STARTTIM);
@@ -896,13 +904,8 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     //  return Aborted(T_INIT, State_EVENT_STARTTIM);
 
     debug_log_printf("timestamp %d start %d\n\r",timestamp,sconfig.start);
-    /*
-     * Keep waiting rather than starting against a clock we do not trust: the
-     * start comparison could fire immediately on a bogus epoch, and the matching
-     * stop comparison would then never fire. Configured sleep is cheap, so
-     * waiting is the safe default until the host synchronizes.
-     */
-    if (clockTrusted && (timestamp >= sconfig.start)) {// look at stored value --
+    /* Relative to the start moment; see the T_INIT comment above. */
+    if (timestamp >= sconfig.start) {// look at stored value --
       disableAlarm(1);
       return Running(T_INIT, State_EVENT_STARTTIM);
     }

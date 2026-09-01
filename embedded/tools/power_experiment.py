@@ -523,9 +523,11 @@ def main() -> int:
                         "configuration rather than replacing it.")
     p.add_argument("--window", type=float, default=0.5,
                    help="Measurement statistics block length in seconds.")
-    p.add_argument("--settle", type=float, default=2.0,
-                   help="Seconds to wait after starting before measuring, so "
-                        "warmup and the monitor detach are excluded.")
+    p.add_argument("--settle", type=float, default=3.0,
+                   help="Seconds to wait after starting before measuring. "
+                        "Targets that set TAG_CONFIGURED_IMMEDIATE_START begin "
+                        "collecting at once, so a few seconds suffices; a target "
+                        "without it waits for a minute alarm and needs more.")
     p.add_argument("--bin-dir", default=DEFAULT_BIN,
                    help="Directory holding the tag-* host tools.")
     p.add_argument("--measure-python", default=None,
