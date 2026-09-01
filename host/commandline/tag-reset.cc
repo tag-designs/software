@@ -34,7 +34,13 @@ int main(int argc, char **argv)
     Tag tag;
     UsbDev dev;
 
-    cxxopts::Options options("tag-test", "sets the RTC and executes tag self-tests");
+    bool set_rtc = false;
+
+    cxxopts::Options options("tag-reset",
+                             "stop, erase, and return a tag to the idle state");
+    options.add_options()
+        ("set-rtc", "Synchronize the tag clock from the host once idle",
+         cxxopts::value<bool>(set_rtc)->default_value("false"));
 
     // Parse options
 
@@ -79,7 +85,20 @@ int main(int argc, char **argv)
             }
         }
 
-        
+        if (set_rtc)
+        {
+            if (tag.SetRtc())
+            {
+                std::cout << "RTC synchronized" << std::endl;
+            }
+            else
+            {
+                std::cerr << "SetRtc failed" << std::endl;
+                return 1;
+            }
+        }
+
+        std::cout << "Final state: " << TagState_Name(status.state()) << std::endl;
     }
     else
     {

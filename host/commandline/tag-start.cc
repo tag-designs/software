@@ -4,6 +4,10 @@
 #include <chrono>
 #include <thread>
 
+#include <fstream>
+#include <iterator>
+
+#include <google/protobuf/util/json_util.h>
 #include <tag.pb.h>
 #include <tagclass.h>
 #include <cxxopts.hpp>
@@ -29,12 +33,82 @@ static void intHandler(int dummy)
     exit(1);
 }
 
+/**
+ * @brief Load a Config from a protobuf-JSON file.
+ *
+ * @details The default configurations under embedded/proto-c/<tag>-proto-c/
+ *          are partial: they carry tag_type, start_delay and sensor settings but
+ *          no schedule. Pass merge=true to overlay such a file onto the
+ *          configuration already stored on the tag; pass false to program
+ *          exactly what the file specifies, which is what a reproducible
+ *          experiment wants.
+ *
+ * @param[in]     path  JSON file to read.
+ * @param[in,out] cfg   On entry the tag's current configuration; on success the
+ *                      configuration to program.
+ * @param[in]     merge true to overlay onto @p cfg, false to replace it.
+ * @return true on success; false with a message on stderr if the file cannot be
+ *         read or the JSON does not parse as a Config.
+ */
+static bool loadConfigJson(const std::string &path, Config &cfg, bool merge)
+{
+    std::ifstream fin(path);
+    if (!fin)
+    {
+        std::cerr << "Cannot open config file: " << path << std::endl;
+        return false;
+    }
+    std::string text((std::istreambuf_iterator<char>(fin)),
+                     std::istreambuf_iterator<char>());
+    fin.close();
+
+    Config parsed;
+    google::protobuf::util::JsonParseOptions parse_options;
+    auto status = google::protobuf::util::JsonStringToMessage(text, &parsed,
+                                                             parse_options);
+    if (!status.ok())
+    {
+        std::cerr << "Config JSON did not parse: " << status.ToString()
+                  << std::endl;
+        return false;
+    }
+
+    if (merge)
+    {
+        // MergeFrom leaves proto3 scalar fields that are zero in the source
+        // untouched, so a merged file cannot clear a value back to zero. Use
+        // --start-now for that, or omit --merge.
+        cfg.MergeFrom(parsed);
+    }
+    else
+    {
+        cfg = parsed;
+    }
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     Tag tag;
     UsbDev dev;
 
-    cxxopts::Options options("tag-test", "sets the RTC and executes tag self-tests");
+    std::string config_path;
+    bool merge_config = false;
+    bool set_rtc = false;
+    bool start_now = false;
+
+    cxxopts::Options options("tag-start",
+                             "start a configured tag and print the resulting status");
+    options.add_options()
+        ("c,config", "Program this protobuf-JSON configuration before starting",
+         cxxopts::value<std::string>(config_path))
+        ("merge", "Overlay --config onto the tag's stored configuration rather "
+                  "than replacing it",
+         cxxopts::value<bool>(merge_config)->default_value("false"))
+        ("set-rtc", "Synchronize the tag clock from the host before starting",
+         cxxopts::value<bool>(set_rtc)->default_value("false"))
+        ("start-now", "Force start_delay to zero so collection begins immediately",
+         cxxopts::value<bool>(start_now)->default_value("false"));
 
     // Parse options
 
@@ -51,6 +125,12 @@ int main(int argc, char **argv)
 
         // read tag information
 
+        if (set_rtc && !tag.SetRtc())
+        {
+            std::cerr << "SetRtc failed" << std::endl;
+            return 1;
+        }
+
         Status status;
         tag.GetStatus(status);
         bool start_attempted = false;
@@ -59,6 +139,17 @@ int main(int argc, char **argv)
         {
             Config cfg;
             tag.GetConfig(cfg);
+            if (!config_path.empty() &&
+                !loadConfigJson(config_path, cfg, merge_config))
+            {
+                return 1;
+            }
+            if (start_now)
+            {
+                cfg.set_start_delay(0);
+            }
+            std::cout << "Starting with configuration:" << std::endl
+                      << cfg.DebugString();
             start_attempted = true;
             if (!tag.Start(cfg))
             {

@@ -1,0 +1,9 @@
+{
+    "tag_type": "IMUTAG",
+    "start_delay": 0,
+    "lsm6": {
+        "odr": "S400",
+        "accelRng": "R4G",
+        "gyroRng": "R1000dps"
+    }
+}
