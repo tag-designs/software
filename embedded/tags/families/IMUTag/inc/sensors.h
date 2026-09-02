@@ -25,12 +25,52 @@ typedef t_ImuTagRawSensorData RawSensorData;
  * @return true after the record has been initialized.
  */
 bool sensorSample(RawSensorData *data);
+/** @name Collection-init failure detail
+ * Bit assignments for the detail word reported through
+ * tagStateMarkerDetail() when initDataCollection() fails and the run aborts.
+ *
+ * Bits rather than an enum because more than one device can fail in the same
+ * attempt, and that distinction matters: one sensor failing repeatedly points
+ * at that part, several failing together points at the shared bus or supply.
+ * @{
+ */
+/** @brief The stored configuration did not yield a usable LSM6 mode. */
+#define IMUTAG_INIT_FAIL_LSM_CONFIG (1U << 0)
+/** @brief Magnetometer collection configuration failed. */
+#define IMUTAG_INIT_FAIL_MAG        (1U << 1)
+/** @brief Pressure-sensor collection configuration failed. */
+#define IMUTAG_INIT_FAIL_PRESSURE   (1U << 2)
+/** @brief Shift of the first failing device's driver status. */
+#define IMUTAG_INIT_FAIL_STATUS_SHIFT 8U
+/** @brief Mask of the first failing device's driver status. */
+#define IMUTAG_INIT_FAIL_STATUS_MASK  (0xFFU << IMUTAG_INIT_FAIL_STATUS_SHIFT)
+/** @} */
+
 /**
  * @brief Configure IMU, magnetometer, and pressure sensor for collection.
  *
- * @return true when all collection devices are configured and ready.
+ * @details Latches which stage failed for tagStateMarkerDetail(), so an abort
+ *          at start records the cause in the state marker rather than reaching
+ *          flash as a bare State_EVENT_UNKNOWN.
+ *
+ * @return true when all collection devices are configured and ready. On false,
+ *         imuTagCollectionInitFailure() reports which stages failed.
+ *
+ * @note Auxiliary-sensor failures do not stop the remaining configuration; the
+ *       function continues and reports the aggregate. See @ref
+ *       imuTagCollectionInitFailure().
  */
 bool initDataCollection(void);
+
+/**
+ * @brief Report which stages of the last initDataCollection() failed.
+ *
+ * @return Bitwise OR of IMUTAG_INIT_FAIL_* for the most recent attempt this
+ *         boot, with the first failing device's driver status in
+ *         IMUTAG_INIT_FAIL_STATUS_MASK. Zero when the last attempt succeeded
+ *         or none has run.
+ */
+uint32_t imuTagCollectionInitFailure(void);
 /**
  * @brief Fill one superframe when the IMU FIFO has enough samples.
  *

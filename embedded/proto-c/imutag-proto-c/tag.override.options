@@ -3,3 +3,7 @@ Ack.calibration_constants type:FT_STATIC
 Req.write_calibration type:FT_STATIC
 Ack.imu_data_log type:FT_STATIC
 Ack.imu_raw_data_log type:FT_STATIC
+
+// STM32U3 marker records reserve padding for the 128-bit flash programming
+// row, so IMUTag can carry the transition detail word at no cost.
+State.transition_detail type:FT_STATIC

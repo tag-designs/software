@@ -144,10 +144,14 @@ Use the target that matches the files changed. For documentation-only changes,
   different today" in one step, and it is how the 995 uA above was pinned to
   the instrumentation rather than to the fix it was shipped with.
 
-  Note the trap: retained diagnostics cannot be used to investigate a
-  sleep problem, because enabling them is itself enough to prevent sleep.
-  Whatever tells you why the tag is awake has to cost nothing while it is
-  asleep.
+  A tag reporting IDLE while drawing run current is usually stuck in `__WFI()`
+  rather than waking repeatedly. On STM32U3 the first thing to suspect is a
+  latched flash error or ECC flag, which aborts the low-power transition or
+  wakes the part straight back out of WFI; that is what
+  `tagPowerClearFlashErrorFlags()` exists to prevent, and it made an apparent
+  150x penalty from unrelated instrumentation disappear entirely. The tell is
+  that the triggering change is implausibly small for the effect and merely
+  touched internal flash. See `embedded/tags/design/restart-recovery.md`.
 
 ### Checking documentation coverage
 

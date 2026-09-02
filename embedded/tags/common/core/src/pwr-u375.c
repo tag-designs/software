@@ -175,6 +175,48 @@ void tagPowerEnterIdleMode(enum Sleep mode)
 /**
  * @brief Select STM32U3 Stop3 as the next deep-sleep mode.
  */
+/**
+ * @brief Mask of latched FLASH_SR error flags cleared around low-power entry.
+ *
+ * @details This file is compiled only for STM32U3, so every flag named here is
+ *          defined by the target CMSIS headers and no per-flag conditionals are
+ *          needed. Shared by the pre-sleep clear and the post-wake restore so
+ *          the two cannot drift apart.
+ */
+#define TAG_U3_FLASH_SR_ERROR_MASK                                            \
+  (FLASH_SR_EOP | FLASH_SR_OPERR | FLASH_SR_PROGERR | FLASH_SR_WRPERR |       \
+   FLASH_SR_PGAERR | FLASH_SR_SIZERR | FLASH_SR_PGSERR | FLASH_SR_OPTWERR)
+
+/**
+ * @brief Clear every latched flash error and ECC flag.
+ *
+ * @details Must run immediately before the WFI that enters a low-power mode.
+ *          On STM32U3 an uncleared FLASH_SR error flag -- OPERR, WRPERR,
+ *          PGAERR and friends -- makes the power controller either abort the
+ *          transition or wake instantly out of WFI, so the tag spins in an
+ *          apparently normal sleep call while drawing run current. Observed as
+ *          995 uA idle against 6.6 uA, from nothing more than a code change
+ *          that added one field read of a flash-resident record.
+ *
+ *          The ECC flags in FLASH_ECCR are cleared for the same reason and are
+ *          the easier ones to latch: any read of internal flash can set ECCC,
+ *          and the flags outlive the read that caused them.
+ *          FLASH_Read_Checked() clears what it detects, but nothing clears a
+ *          flag raised by an ordinary load through a pointer into flash.
+ *
+ * @post FLASH_SR error flags and FLASH_ECCR ECCC/ECCD are clear.
+ *
+ * @note Flags are cleared by writing 1, so no flash unlock is required and the
+ *       call is safe with the flash locked.
+ *
+ * @see tagPowerRestoreFlashAfterStop3(), FLASH_ClearEccErrors()
+ */
+static inline void tagPowerClearFlashErrorFlags(void)
+{
+  WRITE_REG(FLASH->SR, TAG_U3_FLASH_SR_ERROR_MASK);
+  FLASH_ClearEccErrors();
+}
+
 static inline void tagPowerSelectStop3(void)
 {
 #if defined(PWR_CR1_LPMS_STOP3)
@@ -311,33 +353,8 @@ static inline void tagPowerRestoreFlashAfterStop3(void)
     __NOP();
   }
 
-#if defined(FLASH_SR_EOP)
-  sr_clear |= FLASH_SR_EOP;
-#endif
-#if defined(FLASH_SR_OPERR)
-  sr_clear |= FLASH_SR_OPERR;
-#endif
-#if defined(FLASH_SR_PROGERR)
-  sr_clear |= FLASH_SR_PROGERR;
-#endif
-#if defined(FLASH_SR_WRPERR)
-  sr_clear |= FLASH_SR_WRPERR;
-#endif
-#if defined(FLASH_SR_PGAERR)
-  sr_clear |= FLASH_SR_PGAERR;
-#endif
-#if defined(FLASH_SR_SIZERR)
-  sr_clear |= FLASH_SR_SIZERR;
-#endif
-#if defined(FLASH_SR_PGSERR)
-  sr_clear |= FLASH_SR_PGSERR;
-#endif
-#if defined(FLASH_SR_OPTWERR)
-  sr_clear |= FLASH_SR_OPTWERR;
-#endif
-  if (sr_clear != 0U) {
-    WRITE_REG(FLASH->SR, sr_clear);
-  }
+  sr_clear = TAG_U3_FLASH_SR_ERROR_MASK;
+  WRITE_REG(FLASH->SR, sr_clear);
 }
 
 /**
@@ -399,6 +416,12 @@ static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
+  /*
+   * Last thing before arming sleep: a latched flash error or ECC flag makes
+   * the U3 power controller abort the transition or wake straight back out of
+   * WFI. Everything above this point may have touched flash.
+   */
+  tagPowerClearFlashErrorFlags();
   DBGMCU->CR = 0;
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 3U);
 

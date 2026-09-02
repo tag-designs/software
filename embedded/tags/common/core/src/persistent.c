@@ -272,6 +272,40 @@ bool persistentIdleStateClean(void)
  *
  * @param[in] reason Event that caused the state transition.
  */
+/**
+ * @brief Supply the reason-scoped diagnostic detail for the next state marker.
+ *
+ * @details Weak default for targets and families with nothing to report. A
+ *          family overrides it to expose why a transition happened, which
+ *          matters most for the paths that otherwise reach flash as a bare
+ *          State_EVENT_UNKNOWN.
+ *
+ *          Deliberately a hook rather than a parameter on recordState(): the
+ *          shared state handlers that record the interesting transitions --
+ *          Aborted() above all -- must not acquire knowledge of any particular
+ *          tag's sensors or storage to pass it along.
+ *
+ * @return Detail word to store in t_StateMarker::detail, interpreted relative
+ *         to the marker's reason. Zero means the transition carries no detail.
+ *
+ * @warning Called from recordState() with the system locked around the flash
+ *          program that follows, so it must not block, allocate, or touch a
+ *          bus. Return a value already latched by the code that observed the
+ *          condition.
+ *
+ * @note Compiled only for STM32U3, the only targets whose marker has room for
+ *       the field. The definition is guarded rather than merely unused because
+ *       a weak function has external linkage and is emitted regardless: left
+ *       unguarded it shifted every STM32L4 image by four bytes, which is both
+ *       pointless there and a change to tags that must not move.
+ */
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
+uint32_t __attribute__((weak)) tagStateMarkerDetail(void)
+{
+  return 0U;
+}
+#endif
+
 void recordState(State_Event reason)
 {
   t_StateMarker marker;
@@ -301,6 +335,9 @@ void recordState(State_Event reason)
   marker.vdd100 = vdd100;
   marker.temp10 = temp10;
   marker.reason = reason;
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
+  marker.detail = tagStateMarkerDetail();
+#endif
 
   chSysLock();
   FLASH_Unlock();

@@ -1,7 +1,9 @@
 # IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail
 
-Status: open. Failure characterised and localised; the diagnostic described in
-[Proposal](#proposal-a-detail-word-in-the-state-marker) is not implemented.
+Status: the detail word described below is implemented. The failure itself has
+not recurred since the STM32U3 flash error-flag fix, and the leading hypothesis
+is that it was the same root cause; see
+[Probable resolution](#probable-resolution) at the end.
 
 ## The failure
 
@@ -236,3 +238,28 @@ STOP_ON_FAILURE=1 embedded/tools/power_sweep_imutag.sh 60 results.csv
 Halts on the first failing point and dumps state, stored configuration and
 marker log without resetting. Expect to need one or two sweeps. Detaching the
 Joulescope app and qtmonitor first is required; see `AGENTS.md`.
+
+## Probable resolution
+
+Not reproduced in 38 consecutive start attempts after
+`tagPowerClearFlashErrorFlags()` was added to the STM32U3 low-power entry path,
+against three failures in nine attempts before it. The five failures in that
+run were all the unrelated `SetRtc` bug, where the start command never reaches
+the tag.
+
+A latched flash ECC flag is a credible cause of the abort, and it reconciles
+the one puzzling piece of evidence. `get_lsm_config()` reads the stored
+configuration out of internal flash. With `ECCD` latched -- which the marker-log
+scan can do simply by reading an erased slot, see
+[`restart-recovery.md`](../../../design/restart-recovery.md) -- that read fails
+while the stored configuration itself is perfectly intact. That is exactly what
+the captured failure showed: an abort whose stored ODR read back correctly as
+`S800` when the host asked a moment later.
+
+This is not confirmed. Confirming it needs the failure to recur once with the
+detail word in place: `IMUTAG_INIT_FAIL_LSM_CONFIG` (bit 0) would support it,
+while `IMUTAG_INIT_FAIL_MAG` or `IMUTAG_INIT_FAIL_PRESSURE` would point back at
+the sensors and leave the original diagnosis standing. Until then the sensor
+explanation above remains on the record rather than being rewritten, because
+the evidence for it -- that those are the only two remaining false returns from
+`initDataCollection()` -- is unaffected by any of this.

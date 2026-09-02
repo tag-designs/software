@@ -85,15 +85,15 @@ typedef enum
  *          this adds six retained words and a status line that together report
  *          which recovery branch ran and what it resolved.
  *
- * @warning Off by default because it costs the tag its deep sleep. Measured on
- *          an IMUTagNandBmp581 at 3.29 V: 6.56 uA idle with this disabled,
- *          995 uA with it enabled -- the tag stays awake in WFI instead of
- *          entering Stop3. The reason is not understood; it is the same class
- *          of failure as the debug module, which is excluded for exactly this
- *          reason. Enable it for a bench investigation where idle current does
- *          not matter, never in a shipped image.
+ * @note Off by default as a policy choice, not a cost. It once measured 995 uA
+ *       idle against 6.56 uA, but that was a missing pre-sleep flash
+ *       error-flag clear in the U3 power path, not this code: with
+ *       tagPowerClearFlashErrorFlags() in place it measures 6.705 uA against
+ *       6.716 uA with it disabled, which is within run-to-run spread. Enable
+ *       it when a boot-recovery question needs answering.
  *
- * @see embedded/tags/families/IMUTag/design/PowerEstimates.md
+ * @see tagPowerClearFlashErrorFlags() in core/src/pwr-u375.c,
+ *      embedded/tags/design/restart-recovery.md
  */
 #define TAG_RECOVERY_TRACE 0
 #endif
@@ -269,7 +269,30 @@ typedef struct
   int16_t temp10;          ///< Temperature sample in tenths of a degree C.
   State_Event reason;      ///< Event that caused the transition.
 #if IMUTAG_STM32U3_FLASH
-  uint64_t flash_padding;  ///< Padding required for STM32U3 flash rows.
+  /**
+   * @brief Reason-scoped diagnostic detail, or 0 when the transition has none.
+   *
+   * @details Interpreted relative to @c reason, so each event owns its own
+   *          encoding and new detail can be added without touching this
+   *          record. Its purpose is to make transitions that currently reach
+   *          flash as a bare State_EVENT_UNKNOWN say why: the only other
+   *          narration in those paths is debug_log_printf(), which shipped
+   *          images compile out because the debug module prevents standby.
+   *
+   *          Costs nothing to carry. recordState() already programs this
+   *          record and already bzero()s it first, so 0 means "no detail" in
+   *          every marker written by earlier firmware and no flash write,
+   *          erase or region is added.
+   *
+   * @note Available on STM32U3 only, where it comes out of the padding the
+   *       128-bit flash programming row requires. The STM32L4 record is 24
+   *       bytes of real fields with no slack, and growing it would cost
+   *       marker-log capacity and invalidate existing logs on deployed tags.
+   *
+   * @see tagStateMarkerDetail(), IMUTAG_INIT_FAIL_* in sensors.h
+   */
+  uint32_t detail;
+  uint32_t flash_padding;  ///< Remaining padding for the 128-bit flash row.
 } t_StateMarker __attribute__((aligned(16)));
 #else
 } t_StateMarker __attribute__((aligned(8)));
@@ -289,6 +312,19 @@ extern int32_t monitorCMD;
 /** Internal flash state-transition log. */
 extern t_StateMarker sEpoch[sEPOCH_SIZE];
 /** @brief Append the current state to the persistent state log. */
+/**
+ * @brief Supply the reason-scoped detail word for the next state marker.
+ *
+ * @details Weak default returns 0. A family overrides it to record why a
+ *          transition happened; see t_StateMarker::detail. Called with the
+ *          system locked, so it must only return an already-latched value.
+ *
+ * @return Detail word for t_StateMarker::detail, or 0 for no detail.
+ */
+#if IMUTAG_STM32U3_FLASH
+uint32_t tagStateMarkerDetail(void);
+#endif
+
 void recordState(State_Event reason);
 /** @brief Erase internal persistent state and headers. */
 void erasePersistent(void);

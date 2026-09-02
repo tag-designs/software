@@ -166,6 +166,11 @@ message State {
   }
   Status status = 1;
   Event transition_reason = 2; // transition event code
+  uint32 transition_detail = 3; // reason-scoped detail, 0 when none.
+                                // Interpreted relative to transition_reason,
+                                // so each event owns its own encoding. Set
+                                // only by targets whose flash marker has room
+                                // for it (STM32U3); always 0 elsewhere.
 }
 
 message StateLog { repeated State states = 1; }

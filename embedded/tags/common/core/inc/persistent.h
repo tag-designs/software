@@ -143,7 +143,30 @@ typedef struct
   int16_t  temp10;          ///< Temperature in 0.1 C units.
   State_Event reason;       ///< Event that caused the transition.
 #if TAG_STM32U3_FLASH
-  uint64_t flash_padding;   ///< Padding for STM32U3 16-byte flash rows.
+  /**
+   * @brief Reason-scoped diagnostic detail, or 0 when the transition has none.
+   *
+   * @details Interpreted relative to @c reason, so each event owns its own
+   *          encoding and new detail can be added without touching this
+   *          record. Its purpose is to make transitions that currently reach
+   *          flash as a bare State_EVENT_UNKNOWN say why: the only other
+   *          narration in those paths is debug_log_printf(), which shipped
+   *          images compile out because the debug module prevents standby.
+   *
+   *          Costs nothing to carry. recordState() already programs this
+   *          record and already bzero()s it first, so 0 means "no detail" in
+   *          every marker written by earlier firmware and no flash write,
+   *          erase or region is added.
+   *
+   * @note Available on STM32U3 only, where it comes out of the padding the
+   *       128-bit flash programming row requires. The STM32L4 record is 24
+   *       bytes of real fields with no slack, and growing it would cost
+   *       marker-log capacity and invalidate existing logs on deployed tags.
+   *
+   * @see tagStateMarkerDetail(), IMUTAG_INIT_FAIL_* in sensors.h
+   */
+  uint32_t detail;
+  uint32_t flash_padding;  ///< Remaining padding for the 128-bit flash row.
 } t_StateMarker __attribute__((aligned(16)));
 #else
 } t_StateMarker __attribute__((aligned(8)));
@@ -258,6 +281,19 @@ enum LOGERR writeDataLog(uint64_t activity);
  *
  * @param[in] reason Event that caused the state transition.
  */
+/**
+ * @brief Supply the reason-scoped detail word for the next state marker.
+ *
+ * @details Weak default returns 0. A family overrides it to record why a
+ *          transition happened; see t_StateMarker::detail. Called with the
+ *          system locked, so it must only return an already-latched value.
+ *
+ * @return Detail word for t_StateMarker::detail, or 0 for no detail.
+ */
+#if TAG_STM32U3_FLASH
+uint32_t tagStateMarkerDetail(void);
+#endif
+
 void recordState(State_Event reason);
 
 /**

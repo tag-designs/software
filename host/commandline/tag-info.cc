@@ -7,6 +7,7 @@
 #include <regex>
 #include <ctime>
 #include <iostream>
+#include <sstream>
 using namespace google::protobuf;
 
 #include <cxxopts.hpp>
@@ -80,6 +81,52 @@ static std::string formatMarkerTime(int64_t millis)
  *
  * @param[in,out] tag Attached tag to query.
  */
+/** @brief IMUTag collection-init failure bits; see IMUTag inc/sensors.h. */
+enum {
+  kInitFailLsmConfig = 1u << 0,
+  kInitFailMag       = 1u << 1,
+  kInitFailPressure  = 1u << 2,
+  kInitFailStatusShift = 8,
+  kInitFailStatusMask  = 0xffu << kInitFailStatusShift,
+};
+
+/**
+ * @brief Render a marker's detail word for the reason that produced it.
+ *
+ * @details The word is reason-scoped by design, so decoding is per-event. Only
+ *          the abort detail is decoded today; anything else is shown in hex
+ *          rather than silently dropped, so a newer firmware reporting detail
+ *          this tool does not know about is still visible.
+ *
+ * @param[in] reason Transition reason the detail belongs to.
+ * @param[in] detail Raw detail word from the marker.
+ * @return Human-readable description, never empty.
+ */
+static std::string formatTransitionDetail(State_Event reason, uint32_t detail)
+{
+  std::ostringstream out;
+
+  if (reason != State_Event_EVENT_UNKNOWN) {
+    out << "0x" << std::hex << detail;
+    return out.str();
+  }
+
+  // Collection init failed; name the stages so the failing device is known
+  // without a debug build. See initDataCollection() in the IMUTag family.
+  const char *sep = "";
+  out << "collection init failed: ";
+  if (detail & kInitFailLsmConfig) { out << sep << "LSM6 config"; sep = ", "; }
+  if (detail & kInitFailMag)       { out << sep << "magnetometer"; sep = ", "; }
+  if (detail & kInitFailPressure)  { out << sep << "pressure"; sep = ", "; }
+  if (*sep == '\0')
+    out << "unrecognized (0x" << std::hex << detail << std::dec << ")";
+
+  const uint32_t status = (detail & kInitFailStatusMask) >> kInitFailStatusShift;
+  if (status != 0)
+    out << "; first driver status " << status;
+  return out.str();
+}
+
 static void printStateLog(Tag &tag)
 {
   StateLog system_log;
@@ -103,6 +150,13 @@ static void printStateLog(Tag &tag)
                 << "  reason=" << State_Event_Name(state.transition_reason())
                 << "  time=" << formatMarkerTime(state.status().millis())
                 << std::endl;
+      // Reason-scoped diagnostic the firmware stored with the marker. Only
+      // present on targets whose flash record has room for it, and only for
+      // transitions that had something to say, so absence means nothing.
+      if (state.transition_detail() != 0)
+        std::cout << "        detail=" << formatTransitionDetail(
+                         state.transition_reason(), state.transition_detail())
+                  << std::endl;
       std::cout << "        internal_pages=" << state.status().internal_data_count()
                 << " external_pages=" << state.status().external_data_count()
                 << " vdd=" << state.status().voltage()

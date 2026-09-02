@@ -634,6 +634,59 @@ bool sensorSample(RawSensorData *data){
  *
  * @return true when the configured collection mode was accepted.
  */
+/**
+ * @brief Stages that failed in the most recent initDataCollection() attempt.
+ *
+ * @details Ordinary static, not retained state. It only has to survive from
+ *          the failing initDataCollection() to the recordState() call in the
+ *          Aborted() that follows it, which is the same boot. Keeping it out
+ *          of pState is deliberate: adding retained words there for
+ *          diagnostics previously stopped the tag entering Stop3 altogether.
+ */
+static uint32_t collection_init_failure;
+
+uint32_t imuTagCollectionInitFailure(void)
+{
+  return collection_init_failure;
+}
+
+/**
+ * @brief Report the collection-init failure detail for the state marker.
+ *
+ * @details Strong override of the weak default in core/src/persistent.c. Only
+ *          the failure bits are meaningful, and only for the abort that
+ *          follows a failed start; every other transition latches zero.
+ *
+ * @return IMUTAG_INIT_FAIL_* bits for the last attempt, or 0.
+ */
+uint32_t tagStateMarkerDetail(void)
+{
+  return collection_init_failure;
+}
+
+/**
+ * @brief Latch a failing collection-init stage and its driver status.
+ *
+ * @param[in] bit    IMUTAG_INIT_FAIL_* bit for the stage that failed.
+ * @param[in] status Driver status from the failing call, truncated to 8 bits.
+ *
+ * @post The stage bit is set. The status is stored only for the first failing
+ *       stage, so the field always describes the earliest failure rather than
+ *       being overwritten by later ones.
+ */
+static void noteCollectionInitFailure(uint32_t bit, int status)
+{
+  const bool first = (collection_init_failure &
+                      (IMUTAG_INIT_FAIL_LSM_CONFIG | IMUTAG_INIT_FAIL_MAG |
+                       IMUTAG_INIT_FAIL_PRESSURE)) == 0U;
+
+  collection_init_failure |= bit;
+  if (first)
+    collection_init_failure |=
+        ((uint32_t)status << IMUTAG_INIT_FAIL_STATUS_SHIFT) &
+        IMUTAG_INIT_FAIL_STATUS_MASK;
+}
+
 bool initDataCollection(void)
 {
   lsm6dsv16x_trig_odr_t imu_odr;
@@ -652,10 +705,13 @@ bool initDataCollection(void)
 #endif
   bool ok = true;
 
+  collection_init_failure = 0U;
+
   enable_data_collection_wake_event();
 
   if (!get_lsm_config(&imu_odr, &xl_fs, &g_fs)) {
     debug_log_printf("IMUTag collection: invalid LSM6 config\r\n");
+    noteCollectionInitFailure(IMUTAG_INIT_FAIL_LSM_CONFIG, 0);
     return false;
   }
 
@@ -675,18 +731,24 @@ bool initDataCollection(void)
 
   /* Bring auxiliary sensors up first so the first IMU block can carry them. */
   if (!configure_mag_collection(true)) {
+    noteCollectionInitFailure(IMUTAG_INIT_FAIL_MAG, 0);
     ok = false;
   }
 
 #if defined(TAG_SENSOR_PRESSURE_BMP581) && TAG_SENSOR_PRESSURE_BMP581
-  if (bmp581_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate) != 0) {
+  int pressure_status =
+      bmp581_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate);
+  if (pressure_status != 0) {
     debug_log_printf("IMUTag collection: BMP581 init failed\r\n");
+    noteCollectionInitFailure(IMUTAG_INIT_FAIL_PRESSURE, pressure_status);
     ok = false;
   }
 #else
-  if (lps22hh_config_continuous_device(TAG_PRESSURE_DEVICE, pressure_rate,
-                                       LPS22HH_LPF_DISABLE) != 0) {
+  int pressure_status = lps22hh_config_continuous_device(
+      TAG_PRESSURE_DEVICE, pressure_rate, LPS22HH_LPF_DISABLE);
+  if (pressure_status != 0) {
     debug_log_printf("IMUTag collection: LPS22HH init failed\r\n");
+    noteCollectionInitFailure(IMUTAG_INIT_FAIL_PRESSURE, pressure_status);
     ok = false;
   }
 #endif

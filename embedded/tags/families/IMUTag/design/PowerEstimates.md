@@ -509,15 +509,23 @@ the earlier estimate and comparison tables, not to that sweep.
 | condition | idle current |
 | --- | ---: |
 | firmware as shipped | 6.5423, 6.5521, 6.6586, 6.6731 uA |
-| with `TAG_RECOVERY_TRACE` enabled | 995.2679, 995.2135, 995.1618 uA |
+| `TAG_RECOVERY_TRACE` on, before the flash-flag fix | 995.2679, 995.2135, 995.1618 uA |
+| `TAG_RECOVERY_TRACE` on, after it | 6.7054, 6.7009 uA |
+| `debug_log` module enabled, after it | 1710.2836, 1709.7712 uA |
 
 Idle is unchanged from the 6.61-6.70 uA measured across the sweep above, so the
 boot-cleanup fix costs nothing at idle.
 
-The second row is a warning, not a measurement of interest. `TAG_RECOVERY_TRACE`
-is the retained boot-recovery trace added to diagnose the alternation above; it
-adds six backup-register words and a status line, and with it enabled the tag
-never enters Stop3 at all — it sits awake in WFI at 995 uA, a 150x idle penalty.
-The mechanism is not understood. It is the same class of failure as the debug
-module, which is excluded from shipped images for exactly this reason, so the
-trace defaults off and must stay off outside bench investigation.
+The 995 uA row was not what it looked like. It was read as evidence that
+retained diagnostics cost the tag Stop3, and the trace was defaulted off
+because of it. The real cause was a missing pre-sleep clear of the STM32U3
+flash error and ECC flags: while one is latched the power controller aborts the
+low-power transition or wakes straight back out of `__WFI()`, so any change
+that happened to touch internal flash could move the tag from 6.6 uA to run
+current. `tagPowerClearFlashErrorFlags()` fixes it, and the same build then
+measures 6.705 uA. See
+[`embedded/tags/design/restart-recovery.md`](../../../design/restart-recovery.md).
+
+The `debug_log` row is a different fault and is still open. It was retested
+after the flash-flag fix and stayed at 1.71 mA, which confirms the module's own
+long-standing bug rather than this mechanism. It remains excluded.

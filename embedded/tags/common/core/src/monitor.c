@@ -819,6 +819,9 @@ static int system_logAck(int index)
     states[count].status.voltage = marker.vdd100 * 0.01f;
     states[count].status.temperature = marker.temp10 * 0.1f;
     states[count].transition_reason = marker.reason;
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
+    states[count].transition_detail = marker.detail;
+#endif
     states[count].status.test_status = 0;
     count++;
   }
