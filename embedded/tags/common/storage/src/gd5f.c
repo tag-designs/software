@@ -877,6 +877,36 @@ static bool gd5fErasePhysicalBlock(const TagStorageDevice *dev,
                      (unsigned)physical_block);
     return false;
   }
+  /*
+   * Clear block protection before erasing.
+   *
+   * A GD5F powers up with block protection enabled. Protected blocks still read
+   * normally while BLOCK_ERASE and PROGRAM are refused, so the condition is
+   * invisible to any read-only check. The lock was previously cleared only in
+   * gd5fProbe(), reachable just through gd5fCheckID() -- which on this family
+   * runs from the external-flash self-test and from writeConfig() on a start
+   * command. Whether an erase worked therefore depended on whether a start had
+   * happened earlier in the same power session:
+   *
+   *   clean run -> FINISHED: writeConfig() probed and unlocked at start, so a
+   *   later erase succeeds.
+   *
+   *   power loss -> ABORTED: fresh boot, blocks locked, no start command, and
+   *   the reset path never probes, so every erase is refused. Observed as nine
+   *   consecutive sRESET -> ABORTED/EVENT_EXTERNALFULL cycles on a device that
+   *   simultaneously downloaded all 128 of its recorded pages without error.
+   *
+   * Deliberately here rather than in gd5fWake(). Wake is also the standby-entry
+   * path: tagStoragePrepareStandby() wakes the device solely to put it into deep
+   * power-down, once per idle cycle. Putting an SPI feature write there cost the
+   * tag Stop3 entry altogether, taking idle from 6.68 uA to 1.70 mA. The erase
+   * path is where the unlock is needed and the only place it belongs.
+   */
+  if (!gd5fSetFeature(dev, GD5F_FEATURE_BLOCK_LOCK, 0U)) {
+    debug_log_printf("NAND: erase physical block %u unlock failed\r\n",
+                     (unsigned)physical_block);
+    return false;
+  }
   if (!gd5fWriteEnable(dev)) {
     debug_log_printf("NAND: erase physical block %u write-enable failed\r\n",
                      (unsigned)physical_block);
@@ -950,33 +980,6 @@ static inline void gd5fWake(const TagStorageDevice *dev)
     gd5f_release_deep_power_down_needed = false;
   }
 #endif
-  /*
-   * Clear block protection on every wake, so that an awake device is always
-   * writable.
-   *
-   * A GD5F powers up with block protection enabled. Protected blocks still read
-   * normally while BLOCK_ERASE and PROGRAM are refused, so the condition is
-   * invisible to any read-only check. The lock used to be cleared only in
-   * gd5fProbe(), reachable just through gd5fCheckID() -- which on this family
-   * runs from the external-flash self-test and from writeConfig() on a start
-   * command. Whether an erase worked therefore depended on whether a start had
-   * happened earlier in the same power session:
-   *
-   *   clean run -> FINISHED: writeConfig() had probed and unlocked, erase works.
-   *   power loss -> ABORTED: fresh boot, blocks locked, no start command, and
-   *   the reset path never probes, so every erase is refused.
-   *
-   * Observed as nine consecutive sRESET -> ABORTED/EVENT_EXTERNALFULL cycles,
-   * each failing within the same second and never clearing the log cursor, on a
-   * device that simultaneously downloaded all 128 of its recorded pages without
-   * error.
-   *
-   * Written unconditionally rather than guarded by a cached flag: a flag would
-   * be wrong whenever the NAND rail is cycled without an MCU reset, which the
-   * FLASH_PWR load switch makes possible, and the cost is one three-byte SPI
-   * feature write per wake.
-   */
-  gd5fSetFeature(dev, GD5F_FEATURE_BLOCK_LOCK, 0U);
 }
 
 /**
