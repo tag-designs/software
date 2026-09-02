@@ -197,7 +197,7 @@ the case that should drive design decisions.
 > quiescent current.
 
 An independent JS320 reading of the LDO build in idle, taken with
-[`embedded/tools/joulescope_measure.py`](../../../../tools/joulescope_measure.py)
+`embedded/tools/joulescope_measure.py`
 at a 3.2935 V supply, gives **6.71 uA** (6.708 / 6.713 / 6.715 / 6.715 uA over
 5 s, 30 s and two 10 s windows; charge-integrated and block-mean estimators agree
 to better than 0.02%). This matches the *switch to 2gbit flash and bmp581* row
@@ -212,7 +212,7 @@ Inferred from the match, not confirmed against the schematic.
 
 ### Measured LDO Board, Full Rate Sweep
 
-Taken with [`embedded/tools/power_experiment.py`](../../../../tools/power_experiment.py)
+Taken with `embedded/tools/power_experiment.py`
 on the LDO breakout carrying the IMUTagNandBmp581 daughter card, at a **3.2935 V**
 bench supply. Each point is an independent experiment: reset to idle with the
 clock set, start with the per-rate configuration, close the monitor session,
@@ -272,6 +272,78 @@ leaves pages the next reset must erase, while a failed run leaves nothing. The
 failed runs end ABORTED having drawn more than any legitimate rate, so the tag is
 bringing sensors up and then never sleeping. Unresolved; see *Open Questions*.
 
+### Measured SMPS Board, Full Rate Sweep (3.3 V)
+
+Taken 2026-09-02 with the same daughter card, the same firmware (`b1657d7`) and
+the same procedure as the LDO sweep above, on the TPS62840 breakout at a
+**3.2935 V** bench supply. Idle was re-checked after every rate point.
+
+| Mode | LDO (uA) | SMPS (uA) | Delta |
+| --- | ---: | ---: | ---: |
+| Idle | 6.6457 | **4.0858** | **-38.5%** |
+| 100 Hz | 1103.8523 | *failed to start* | -- |
+| 200 Hz | 1177.8776 | **727.6414** | **-38.2%** |
+| 400 Hz | 1328.7656 | **818.2931** | **-38.4%** |
+| 800 Hz | 1628.6156 | **996.4598** | **-38.8%** |
+| 1600 Hz | 1924.1887 | **1175.3872** | **-38.9%** |
+
+Idle between points: 4.0864, 4.1023, 4.1208, 4.1323 uA. Every rate point carries
+a verified download with the ODR read back from the recorded configuration:
+12150, 24600, 49350 and 98550 accelerometer rows at 1.01-1.03x the expected
+count.
+
+**The advantage is 38-39% at every point, across a 290x range of load current
+from 4 uA to 1.9 mA.** A constant ratio over that span is the signature of a
+genuine efficiency difference rather than anything load-dependent, and it is
+what the earlier 2.5 V measurements could not show.
+
+#### This reverses the earlier verdict, on supply voltage alone
+
+The "no significant advantage" conclusion below was drawn from data taken at
+2.5 V, and it was right for 2.5 V. An LDO's input current equals its load
+current whatever the input voltage, so the LDO columns are the same at 2.5 V and
+3.3 V; a buck's input current instead falls as the input rises. Raising the
+supply from 2.5 V to 3.3 V therefore costs the LDO nothing in current and pays
+the buck almost 40%.
+
+#### Consequence at the design point
+
+| 400 Hz, 12 mAh cell | Current | Battery | Storage | Usable | Limited by |
+| --- | ---: | ---: | ---: | ---: | --- |
+| LDO at 3.3 V | 1328.77 uA | 9.03 h | 13.70 h | **9.03 h** | battery |
+| SMPS at 3.3 V | 818.29 uA | 14.66 h | 13.70 h | **13.70 h** | **storage** |
+
+At 400 Hz the SMPS moves the binding constraint from the battery to the NAND.
+Usable mission time goes from 9.03 h to 13.70 h, **+52%**, and the cell would
+carry a further 0.96 h that the 2 Gbit part cannot store. Past this point more
+regulator efficiency buys nothing at 400 Hz without more storage, which is a
+useful thing to know before optimising further.
+
+Above 400 Hz the tag was already storage-limited and the SMPS changes only the
+margin, not the mission: 800 Hz and 1600 Hz stay at 6.83 h and 3.41 h. Below
+400 Hz it is still battery-limited and the saving passes straight through, 200 Hz
+going from 10.19 h to 16.49 h. Idle rises from 75.2 to 122.4 days, which matters
+for how long a tag can wait between programming and deployment rather than for
+mission length.
+
+#### What this does not settle
+
+- The **switching-noise question is untouched** and remains the real gate on
+  adoption; see *Outstanding: Sample-Synchronous Supply Noise* below. A 38%
+  current saving is worthless if it puts structure into the magnetometer or
+  accelerometer band.
+- The **`FLASH_PWR` standby polarity** of this board was not verified. The image
+  flashed was the standard `b1657d7` build, so the idle figure should be
+  compared against the matching LDO column with that in mind.
+- The **100 Hz point failed to start** and is missing. The sweep was run with
+  `STOP_ON_FAILURE=0`, so the next point's reset erased the marker log before
+  the new detail word could be read, and `tag-reset failed: SetRtc failed` in the
+  same interval means it is not even known whether this was the start abort or
+  the unrelated RTC bug. Re-run that point with `STOP_ON_FAILURE=1`.
+- These are **single measurements per point**, not repeats. The LDO sweep agreed
+  with itself to within 0.4% across two runs, so the precision is not in doubt,
+  but no claim is made here about board-to-board variation.
+
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
 The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
@@ -290,7 +362,7 @@ Observed symptoms: `statistics` returned one plausible window followed by exact
 zeros (the board dying, then unpowered), while repeated `measure` calls left the
 tag drawing 1.71 mA with a disrupted clock until qtmonitor resynchronised it.
 
-Use [`embedded/tools/joulescope_measure.py`](../../../../tools/joulescope_measure.py),
+Use `embedded/tools/joulescope_measure.py`,
 which opens with `mode='restore'`, never writes range `0`, holds one session
 across windows, restores the range configuration it found, and computes average
 current from accumulated charge rather than a mean of window means.
@@ -384,6 +456,12 @@ dynamics for songbirds — and 12 mAh is the reference cell.
 | LDO (any Vin) | 1330 uA | 9.02 h | **9.02 h** | battery |
 | SMPS at 2.5 V, as measured | 1300 uA | 9.23 h | **9.23 h** | battery |
 | SMPS at 3.7 V, same efficiency | 878 uA | 13.67 h | **13.67 h** | both, balanced |
+| **SMPS at 3.3 V, as measured** | **818 uA** | 14.66 h | **13.70 h** | **storage** |
+
+The last row was added after the fact and settles the question the rest of this
+section was reasoning towards: the projection was close, and at 3.3 V the buck
+already reaches the flash ceiling. See *Measured SMPS Board, Full Rate Sweep
+(3.3 V)*.
 
 **The 2 Gbit upgrade already banked the easy win.** At 400 Hz a 1 Gbit part caps
 at 6.83 h, below the 9.02 h the battery supports, so the design was
@@ -400,7 +478,15 @@ above roughly 3.5 V, closes the gap.
 Duty cycling does not change this. Idle is 6.6 uA against 1330 uA logging, a
 200:1 ratio, so the logging term dominates above about 0.5% duty.
 
-#### Verdict: LDO Until the Cell Voltage Is Settled
+#### Verdict: LDO Until the Cell Voltage Is Settled (superseded 2026-09-02)
+
+> **Superseded.** This was written from 2.5 V measurements and is correct for
+> 2.5 V. The board has since been measured at 3.3 V, where the buck wins 38-39%
+> at every operating point and takes the 400 Hz design point from 9.03 h to
+> 13.70 h. See *Measured SMPS Board, Full Rate Sweep (3.3 V)* above. The
+> reasoning below is kept because its central claim held up: the choice turns on
+> the supply voltage, and the condition it set -- evaluate the SMPS properly if
+> the cell is above ~3.5 V -- is what the new measurement did.
 
 At a 2.5 V supply the LDO is the right choice, and comfortably so: it is more
 efficient than the buck at 100 and 200 Hz, within 2% at 400 Hz, and carries none
@@ -470,14 +556,14 @@ at and around the sample rate and its subharmonics.
 
 ## Open Questions
 
-- **What cell voltage and chemistry does the deployed tag use?** Not recorded in
-  this tree, and it now decides the regulator: 2% for the buck at 2.5 V versus
-  52% at 3.7 V. Also: was the 2.5 V bench setting representative or incidental?
-- Is the buck's 69% at 1.1 mA improvable? It is below what the datasheet implies,
-  though no longer anomalous. Only worth pursuing if the cell voltage makes the
-  SMPS viable.
+- **What cell voltage and chemistry does the deployed tag use?** Still not
+  recorded in this tree, and still the input that decides the regulator, though
+  the answer is now less finely balanced: measured at 3.3 V the buck wins 38-39%
+  everywhere, so anything at or above 3.3 V favours it decisively and only a
+  cell sitting near 2.5 V favours the LDO.
 - Does the BMM350 or LSM6DSV16X noise floor show structure at or near the sample
-  rate on the SMPS board? This is what actually gates adoption.
+  rate on the SMPS board? **This is now the only thing gating adoption**, the
+  efficiency question having been settled at 3.3 V.
 - Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
   it can be compared against the correct LDO column?
 - Does `tag-start --set-rtc` fail intermittently because of the external RTC on

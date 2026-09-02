@@ -105,6 +105,7 @@ set(
   "embedded/tags/families/IMUTag/design/internal-header-checkpoints.md"
   "embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md"
   "embedded/tags/families/IMUTag/design/start-abort-diagnostics.md"
+  "embedded/tags/families/IMUTag/design/PowerEstimates.md"
   "embedded/tags/families/PresTag/README.md"
   "host/README.md"
   "host/docs/design/screenshot-automation.md"

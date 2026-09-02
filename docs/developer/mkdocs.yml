@@ -103,6 +103,7 @@ nav:
           - IMUTag Header Checkpoints: reference/embedded/tags/families/IMUTag/design/internal-header-checkpoints.md
           - IMUTagNandBmp581 Development Plan: reference/embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md
           - IMUTag Start Abort Diagnostics: reference/embedded/tags/families/IMUTag/design/start-abort-diagnostics.md
+          - IMUTag Power Estimates: reference/embedded/tags/families/IMUTag/design/PowerEstimates.md
           - PresTag: reference/embedded/tags/families/PresTag/README.md
       - Host:
           - Overview: reference/host/README.md
