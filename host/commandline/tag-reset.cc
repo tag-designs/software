@@ -35,12 +35,15 @@ int main(int argc, char **argv)
     UsbDev dev;
 
     bool set_rtc = false;
+    int reset_timeout_s = 180;
 
     cxxopts::Options options("tag-reset",
                              "stop, erase, and return a tag to the idle state");
     options.add_options()
         ("set-rtc", "Synchronize the tag clock from the host once idle",
-         cxxopts::value<bool>(set_rtc)->default_value("false"));
+         cxxopts::value<bool>(set_rtc)->default_value("false"))
+        ("reset-timeout", "Seconds to wait for the erase to finish",
+         cxxopts::value<int>(reset_timeout_s)->default_value("180"));
 
     // Parse options
 
@@ -77,11 +80,48 @@ int main(int argc, char **argv)
         if (status.state() == FINISHED || status.state() == ABORTED)
         {
             tag.Erase();
-             std::this_thread::sleep_for(MS(2000));
-            tag.GetStatus(status);
-            std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+
+            /*
+             * Poll for completion rather than guessing at a duration.
+             * Tag::Erase() only posts the work; the state machine then sweeps
+             * external storage in batches, returning SLEEP between them, and
+             * the sweep length depends on how much data is actually present
+             * because it probes the device rather than trusting a stored
+             * cursor. The previous fixed two-second sleep was therefore
+             * sometimes short -- reporting a state read mid-reset, which made
+             * scripted use nondeterministic -- and otherwise wasteful.
+             */
+            const int poll_ms = 250;
+            const int timeout_ms = reset_timeout_s * 1000;
+            int waited_ms = 0;
+            bool reached_idle = false;
+
+            while (waited_ms < timeout_ms)
+            {
+                std::this_thread::sleep_for(MS(poll_ms));
+                waited_ms += poll_ms;
+                if (!tag.GetStatus(status))
+                {
+                    continue;
+                }
+                if (status.state() == IDLE)
+                {
+                    reached_idle = true;
+                    break;
+                }
+            }
+
+            std::cout << "State: " << TagState_Name(status.state())
+                      << " after " << (waited_ms / 1000.0) << " s" << std::endl;
             if (!status.debug_message().empty()){
                 std::cerr << status.debug_message();
+            }
+            if (!reached_idle)
+            {
+                std::cerr << "Reset did not reach IDLE within "
+                          << reset_timeout_s << " s; last state "
+                          << TagState_Name(status.state()) << std::endl;
+                return 1;
             }
         }
 

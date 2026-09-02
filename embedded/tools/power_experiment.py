@@ -355,7 +355,25 @@ def download(bin_dir: str, out_path: str, base: str | None, timeout: float,
     argv = [os.path.join(bin_dir, "tag-dwnld"), "-f", "sqlite", "-o", out_path]
     if base:
         argv += ["-b", base]
-    return run("download", argv, timeout, verbose)
+
+    # Retry once. tag-dwnld attaches under reset, and the log request can arrive
+    # before the state machine has settled back into a terminal state, which the
+    # firmware refuses with "Monitor request not permitted in current tag state".
+    # Observed on one rate point while the neighbouring ones succeeded, so it is
+    # a race rather than a refusal on the merits.
+    attempts = 4
+    for attempt in range(attempts):
+        res = run("download", argv, timeout, verbose)
+        if res.ok:
+            return res
+        if "not permitted" not in (res.stdout + res.stderr):
+            return res
+        if attempt < attempts - 1:
+            delay = 3.0 * (attempt + 1)
+            print(f"      download refused, tag not settled; retry "
+                  f"{attempt + 2}/{attempts} in {delay:.0f} s")
+            time.sleep(delay)
+    return res
 
 
 def recorded_config(db_path: str) -> dict | None:
