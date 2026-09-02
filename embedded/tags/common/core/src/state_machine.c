@@ -778,13 +778,33 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
   }
 
   eraseExternalFinish();
-  if (eraseExternalFailed()) {
-    reset_erase_started = false;
-    debug_log_printf("state_machine: external erase failed during reset\r\n");
-    return Aborted(T_INIT, State_EVENT_EXTERNALFULL);
-  }
-  erasePersistent();
+  const bool external_erase_failed = eraseExternalFailed();
   reset_erase_started = false;
+
+  /*
+   * An external erase failure must not strand the tag.
+   *
+   * This used to return Aborted(EXTERNALFULL). ABORTED cannot reach IDLE, and
+   * IDLE is required by Req_start_tag and Req_test_tag -- including the
+   * self-test that calls gd5fProvisionLogicalMap() and so repairs an invalid
+   * NAND logical map, which is the most common cause of this very failure.
+   * A tag therefore looped sRESET -> ABORTED with no route back: observed over
+   * seven consecutive reset attempts on hardware, each failing in the same
+   * second, with the marker log filling towards the point where recordState()
+   * silently stops recording.
+   *
+   * Clear internal state and return to idle regardless, so the tag stays
+   * reachable and repairable. External storage may still hold data; a
+   * subsequent run will program over it and report its own errors, which is a
+   * far better failure mode than a tag that cannot be commanded at all.
+   */
+  erasePersistent();
+
+  if (external_erase_failed) {
+    debug_log_printf(
+        "state_machine: external erase failed during reset; returning to idle "
+        "so the NAND map can be re-provisioned by self-test\r\n");
+  }
 
  // pState->logcnt = 0;
 
