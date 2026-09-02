@@ -85,7 +85,33 @@ behind no evidence beyond "aborted".
 Carry a diagnostic word in the existing marker, written to internal flash by
 the `recordState()` call that already happens on the abort.
 
-`t_StateMarker` already reserves padding for the STM32U3 16-byte flash row:
+### This is available on STM32U3 targets only
+
+The free space exists because the U3 record is padded out to the 128-bit flash
+programming row, and it exists *only* there:
+
+| Target | `sizeof(t_StateMarker)` | Alignment | Slack |
+| --- | ---: | ---: | --- |
+| STM32U3 (`IMUTagNand`, `IMUTagNandBmp581`) | 32 | 16 | 8 bytes of explicit `flash_padding` |
+| STM32L4 (`UIUCTag`, `PresTag`, `CompassTag`, ...) | 24 | 8 | **none** |
+
+The L4 record is 24 bytes of real fields, and 24 is already a multiple of the
+L4 flash doubleword, so there is no padding to reclaim — not merely no declared
+padding, but no slack at all. Adding a 4-byte field there rounds the record to
+32 bytes under `aligned(8)`, which would cost a third of the marker-log
+capacity in a fixed-size region, move every subsequent record, and make every
+existing log on a deployed 432 tag unreadable. That is not acceptable, and the
+432 tags are in any case out of scope for this work.
+
+So the field is guarded by the same condition as the padding it replaces, and
+non-U3 targets are bit-identical. The tag exhibiting the failure is a U375
+board, so this covers the case at hand; if L4 detail is ever needed it wants
+its own mechanism, such as a single dedicated record outside `sEpoch`, and is
+deliberately out of scope here.
+
+### The change
+
+`t_StateMarker` currently reserves the row padding as one field:
 
 ```c
   State_Event reason;      ///< Event that caused the transition.
@@ -95,19 +121,24 @@ the `recordState()` call that already happens on the abort.
 } t_StateMarker __attribute__((aligned(16)));
 ```
 
-Split it:
+Split it, under the existing guard:
 
 ```c
+#if IMUTAG_STM32U3_FLASH
   uint32_t detail;         ///< Reason-specific diagnostic; 0 when unused.
-  uint32_t flash_padding;
+  uint32_t flash_padding;  ///< Remaining padding for the 128-bit flash row.
+#endif
 ```
 
-The record stays 32 bytes, so the existing
-`static_assert(sizeof(t_StateMarker) == 32)` still holds and the log capacity,
-addresses and layout are all unchanged. `recordState()` already `bzero()`s the
-marker before programming, so `detail` is 0 in every existing marker and 0
-means "no detail" for free — old logs stay readable and new firmware reading an
-old log sees no spurious detail.
+The record stays 32 bytes, so `static_assert(sizeof(t_StateMarker) == 32)`
+still holds and the log capacity, addresses and layout are all unchanged. The
+same split is needed in both the family header and the common one, which
+declare the record identically.
+
+`recordState()` already `bzero()`s the marker before programming, so `detail`
+is 0 in every existing marker and 0 means "no detail" for free — U3 logs
+written by current firmware stay readable, and new firmware reading an old log
+sees no spurious detail.
 
 ### Getting the bits to `recordState()`
 
@@ -122,10 +153,12 @@ uint32_t __attribute__((weak)) tagStateMarkerDetail(void)
 }
 ```
 
-`recordState()` sets `marker.detail = tagStateMarkerDetail();`. The IMUTag
-family defines the strong version in `sensors.c`, returning latched bits from
-the most recent `initDataCollection()` attempt. Other families link the weak
-default and are bit-identical.
+`recordState()` sets `marker.detail = tagStateMarkerDetail();`, under the same
+`TAG_STM32U3_FLASH` guard as the field. The IMUTag family defines the strong
+version in `sensors.c`, returning latched bits from the most recent
+`initDataCollection()` attempt. Other families link the weak default, and on
+non-U3 targets neither the field nor the call exists, so those images are
+unchanged.
 
 ### Suggested bit layout
 
@@ -155,8 +188,11 @@ message State {
 ```
 
 Field 3 is free and proto3 omits it when zero, so nothing changes on the wire
-for markers without detail. `tag-info` decodes it beside the reason, and
-`sqlitelog` can carry it in the `states` table so a downloaded log preserves it.
+for markers without detail — including every marker from an L4 tag, which
+never sets it. `tag-info` decodes it beside the reason, and `sqlitelog` can
+carry it in the `states` table so a downloaded log preserves it. The host side
+is therefore uniform across targets: a tag with no detail to give simply
+reports none, which is indistinguishable from a transition that had none.
 
 ### Why this is safe for standby
 
@@ -166,7 +202,8 @@ so it is worth being explicit:
 
 - **No new flash writes.** The abort marker is already programmed; this fills
   bytes inside it that are already being written as zeros.
-- **No new flash region, page or erase.** Capacity and addresses are unchanged.
+- **No new flash region, page or erase.** Capacity and addresses are unchanged,
+  and on non-U3 targets nothing changes at all.
 - **No backup-register traffic.** The latched bits live in ordinary `.bss` in
   `sensors.c`, valid for the boot that needs them. Nothing is added to
   `pState`, which is where the previous attempt went wrong.

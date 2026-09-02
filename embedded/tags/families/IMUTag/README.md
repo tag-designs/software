@@ -28,7 +28,8 @@ Design notes:
 - [`design/start-abort-diagnostics.md`](design/start-abort-diagnostics.md)
   records the intermittent abort at start, localises it to auxiliary-sensor
   init in `initDataCollection()`, and proposes a persistent per-marker detail
-  word so the reason survives to the next download. Open.
+  word so the reason survives to the next download. The detail word uses
+  STM32U3 flash-row padding, which STM32L4 markers do not have. Open.
 - [`design/imutag-nand-bmp581-development-plan.md`](design/imutag-nand-bmp581-development-plan.md)
   plans the IMUTagNand replacement firmware variant that keeps the `IMUTAG`
   protocol identity while adding BMP581 pressure sensing and GD5F2GM7RE
