@@ -106,6 +106,48 @@ Use the target that matches the files changed. For documentation-only changes,
   moves, including targets the commit did not touch. Compare the `.list`
   disassembly instead. A checksum is meaningful only between two builds at the
   same commit in the same tree.
+- **Measure idle current after any change to the boot or state-machine path.**
+  A clean build and passing functional tests prove nothing about sleep. The
+  live example: adding six retained backup-register words and a status line
+  left the tag awake in WFI instead of entering Stop3 — 995 uA against 6.56 uA,
+  a 150x idle penalty — through four flashes in which every functional test
+  passed. The debug module is excluded from shipped images for the same class
+  of failure. Anything that touches `main.c` boot cleanup, `state_machine.c`,
+  `pwr.c`, `godown()`, `pState`, or the device power sequencing needs a
+  measurement, not an argument.
+
+  **Ask the user to detach the Joulescope desktop app and qtmonitor first**, and
+  wait for confirmation. Both invalidate the result, in different ways: the
+  Joulescope app holds the device so the script cannot open it, and qtmonitor
+  holds the monitor, which keeps `isMonitorEnabled()` true so the tag never
+  sleeps at all. Neither failure is obvious in the output — a held monitor just
+  reads as a high average.
+
+  Put the tag in the state you mean to measure, then measure it detached:
+
+  ```sh
+  build-host/bin/tag-reset                       # -> IDLE
+  <python-with-pyjoulescope> embedded/tools/joulescope_measure.py \
+      --duration 45 --repeat 2
+  ```
+
+  Use two or more windows and require them to agree; a single window hides both
+  a still-attached monitor and a tag that is waking periodically.
+  `joulescope_measure.py` needs an interpreter that can import
+  `pyjoulescope_driver`, which is usually a virtualenv rather than the system
+  python; `power_experiment.py` resolves one automatically and prints which it
+  chose.
+
+  When the number is wrong, bisect against the last known-good image rather
+  than reasoning about it: stash the firmware changes, rebuild, flash, measure,
+  then restore. That distinguishes "my change did this" from "this board is
+  different today" in one step, and it is how the 995 uA above was pinned to
+  the instrumentation rather than to the fix it was shipped with.
+
+  Note the trap: retained diagnostics cannot be used to investigate a
+  sleep problem, because enabling them is itself enough to prevent sleep.
+  Whatever tells you why the tag is awake has to cost nothing while it is
+  asleep.
 
 ### Checking documentation coverage
 
