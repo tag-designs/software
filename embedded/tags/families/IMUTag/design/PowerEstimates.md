@@ -502,16 +502,17 @@ declining to dump from IDLE.
 
 ## Idle Current at 3.3 V
 
-The rate sweep further up this page was taken with the bench supply at 2.5 V.
-For comparison, on the same LDO board at 3.2935 V:
+Repeat idle readings on the LDO board at 3.2935 V, the same supply as the
+measured rate sweep above. The 2.5 V figures elsewhere on this page belong to
+the earlier estimate and comparison tables, not to that sweep.
 
 | condition | idle current |
 | --- | ---: |
 | firmware as shipped | 6.5423, 6.5521, 6.6586, 6.6731 uA |
 | with `TAG_RECOVERY_TRACE` enabled | 995.2679, 995.2135, 995.1618 uA |
 
-Idle is essentially unchanged from the 6.62-6.70 uA measured at 2.5 V, which is
-expected for a part sleeping in Stop3 behind an LDO.
+Idle is unchanged from the 6.61-6.70 uA measured across the sweep above, so the
+boot-cleanup fix costs nothing at idle.
 
 The second row is a warning, not a measurement of interest. `TAG_RECOVERY_TRACE`
 is the retained boot-recovery trace added to diagnose the alternation above; it
