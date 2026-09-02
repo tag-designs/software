@@ -831,27 +831,36 @@ static enum Sleep Idle(enum StateTrans t, State_Event reason)
    */
   (void)reason;
 
-  /*
-   * The invariant is idle => clean state and configuration, which is what
-   * erasePersistent() leaves behind. Several paths arrive here without erasing:
-   * a reflash preserves the persistent region by design, and SelfTest() and
-   * reset recovery both enter idle directly. Claiming idle over stale contents
-   * is what allowed a start command to program a configuration on top of an
-   * existing one, corrupting it. Refuse instead, so the host has to reset.
-   */
-#if TAG_STORED_CONFIG_OWN_PAGE
-  if (!persistentIdleStateClean())
-  {
-    debug_log_printf(
-        "state_machine: idle refused, persistent state not clean "
-        "(config erased=%u); reset required\r\n",
-        storedConfigErased() ? 1U : 0U);
-    return Aborted(T_INIT, State_EVENT_UNKNOWN);
-  }
-#endif
-
   if (t == T_INIT)
   {
+    /*
+     * The invariant is idle => clean state and configuration, which is what
+     * erasePersistent() leaves behind. Several paths arrive here without
+     * erasing: a reflash preserves the persistent region by design, and
+     * SelfTest() and reset recovery both enter idle directly. Claiming idle
+     * over stale contents is what allowed a start command to program a
+     * configuration on top of an existing one, corrupting it. Refuse instead,
+     * so the host has to reset.
+     *
+     * Checked on entry only. It was previously evaluated on every call to this
+     * handler, including T_CONT, which placed internal flash reads --
+     * FLASH_ClearEccErrors() and an ECC probe read -- immediately in front of
+     * every attempt to enter Stop3, and cost the tag its deep sleep: idle drew
+     * 1.71 mA against 6.6 uA, while FINISHED, whose handler performs no flash
+     * access, slept correctly. Entry is in any case the only moment at which
+     * the condition can change.
+     */
+#if TAG_STORED_CONFIG_OWN_PAGE
+    if (!persistentIdleStateClean())
+    {
+      debug_log_printf(
+          "state_machine: idle refused, persistent state not clean "
+          "(config erased=%u); reset required\r\n",
+          storedConfigErased() ? 1U : 0U);
+      return Aborted(T_INIT, State_EVENT_UNKNOWN);
+    }
+#endif
+
     disableAllAlarms();
     disableTicker();
     pState->state = TagState_IDLE;
