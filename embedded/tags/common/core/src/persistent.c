@@ -203,6 +203,31 @@ int __attribute__((weak)) externalFlashSectorsToErasePlusOne(void)
   return 0;
 }
 
+/**
+ * @brief Report whether the state-transition marker log is empty.
+ *
+ * @details The firmware holds IDLE => empty state log as an invariant: Idle()
+ *          deliberately records no marker, and reset recovery seeds IDLE before
+ *          walking sEpoch, so an empty log is what makes an idle tag resolve to
+ *          idle. Any code that claims IDLE without going through Idle() has to
+ *          check this first, or it asserts idle over a log that still describes
+ *          a completed run -- which strands the data, because the host erase
+ *          path only runs from FINISHED or ABORTED.
+ *
+ * @return true when the first marker slot reads erased. A read error reports
+ *         false, so a flash fault is never mistaken for an empty log.
+ *
+ * @see persistentIdleStateClean(), recordState()
+ */
+bool stateLogEmpty(void)
+{
+  t_StateMarker marker;
+
+  if (FLASH_Read_Checked(&sEpoch[0], &marker, sizeof(marker)) != 0U)
+    return false;
+  return marker.epoch == -1;
+}
+
 #if TAG_STORED_CONFIG_OWN_PAGE
 /**
  * @brief Report whether a flash range reads as erased.
@@ -236,13 +261,9 @@ bool storedConfigErased(void)
 
 bool persistentIdleStateClean(void)
 {
-  t_StateMarker marker;
-
   if (!storedConfigErased())
     return false;
-  if (FLASH_Read_Checked(&sEpoch[0], &marker, sizeof(marker)) != 0U)
-    return false;
-  return marker.epoch == -1;
+  return stateLogEmpty();
 }
 #endif /* TAG_STORED_CONFIG_OWN_PAGE */
 

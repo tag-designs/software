@@ -84,6 +84,22 @@ void FLASH_PageEraseAddress(uint32_t Address);
 #define TAG_STORED_CONFIG_SECTION ".persistent"
 #endif
 
+/**
+ * @brief Report whether the state-transition marker log is empty.
+ *
+ * @details The firmware holds IDLE => empty state log as an invariant. Any code
+ *          that sets TagState_IDLE without going through Idle() -- boot cleanup
+ *          being the live example -- must check this first, or it claims idle
+ *          over a log that still describes a completed run and the host erase
+ *          path, which only runs from FINISHED or ABORTED, never reclaims it.
+ *
+ * @return true when the first marker slot reads erased; false when a marker is
+ *         present or the region cannot be read.
+ *
+ * @see persistentIdleStateClean()
+ */
+bool stateLogEmpty(void);
+
 #if TAG_STORED_CONFIG_OWN_PAGE
 /**
  * @brief Report whether the provisioned configuration region reads as erased.

@@ -250,7 +250,7 @@ def to_idle(bin_dir: str, base: str | None, timeout: float,
 
 
 def start(bin_dir: str, config: str | None, base: str | None, merge: bool,
-          timeout: float, verbose: bool) -> None:
+          timeout: float, verbose: bool, running_timeout: float = 90.0) -> None:
     """Step 2: program a configuration and begin collection immediately.
 
     @param bin_dir Directory holding the host tools.
@@ -265,6 +265,9 @@ def start(bin_dir: str, config: str | None, base: str | None, merge: bool,
     # second sync across back-to-back attach cycles was observed to fail with
     # "RTC sync failed while writing tag clock", while the same sync succeeds
     # standalone. Setting it once is also what the procedure calls for.
+    info_argv = [os.path.join(bin_dir, "tag-info")]
+    if base:
+        info_argv += ["-b", base]
     argv = [os.path.join(bin_dir, "tag-start"), "--start-now"]
     if config:
         argv += ["-c", config]
@@ -280,6 +283,27 @@ def start(bin_dir: str, config: str | None, base: str | None, merge: bool,
         raise ExperimentError(
             f"tag is {state or 'in an unknown state'} after start, expected "
             "RUNNING or CONFIGURED")
+
+    # Wait for RUNNING before measuring.
+    #
+    # A start command lands in CONFIGURED and the state machine then transitions
+    # to RUNNING. Accepting CONFIGURED as good enough meant a tag that never
+    # reached RUNNING was still measured for the full window, and the number
+    # recorded: exactly the "collected nothing" outcome, reported as a result
+    # rather than as a failure.
+    deadline = time.time() + running_timeout
+    while time.time() < deadline:
+        info = run("state-check", info_argv, timeout, verbose)
+        state = tag_state(info.stdout)
+        if state == "RUNNING":
+            return
+        if state in TERMINAL_STATES or state == "IDLE":
+            raise ExperimentError(
+                f"tag reached {state} instead of RUNNING; the run did not start")
+        time.sleep(2.0)
+    raise ExperimentError(
+        f"tag is still {state or 'in an unknown state'} after "
+        f"{running_timeout:.0f} s, never reached RUNNING")
 
 
 def measure(python: str, duration: float, window: float,
@@ -541,6 +565,9 @@ def main() -> int:
                         "configuration rather than replacing it.")
     p.add_argument("--window", type=float, default=0.5,
                    help="Measurement statistics block length in seconds.")
+    p.add_argument("--running-timeout", type=float, default=90.0,
+                   help="Seconds to wait for the tag to reach RUNNING after a "
+                        "start command before failing the experiment.")
     p.add_argument("--settle", type=float, default=3.0,
                    help="Seconds to wait after starting before measuring. "
                         "Targets that set TAG_CONFIGURED_IMMEDIATE_START begin "
@@ -601,7 +628,7 @@ def main() -> int:
         else:
             print(f"[2/7] start with {args.config}")
             start(args.bin_dir, args.config, args.base, args.merge,
-                  args.timeout, args.verbose)
+                  args.timeout, args.verbose, args.running_timeout)
             print(f"[3/7] monitor session closed; settling {args.settle} s")
             time.sleep(args.settle)
 

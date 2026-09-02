@@ -8,6 +8,7 @@
 #ifndef PERSISTENT_H
 #define PERSISTENT_H
 
+#include <assert.h>
 #include <stdbool.h>
 
 #include "custom.h"
@@ -72,6 +73,101 @@ typedef enum
   MAXCMD    ///< Sentinel count for command validation.
 } t_command;
 
+#if !defined(TAG_RECOVERY_TRACE)
+/**
+ * @brief Retain a trace of what boot reset recovery saw and decided.
+ *
+ * @details Reset recovery is the least observable code in the tag: it runs
+ *          before the monitor thread exists, its inputs (reset cause, retained
+ *          backup state, the internal-flash marker log) are all gone or
+ *          rewritten by the time a host can ask, and its only other narration
+ *          is debug_log_printf(), which shipped images compile out. Enabling
+ *          this adds six retained words and a status line that together report
+ *          which recovery branch ran and what it resolved.
+ *
+ * @warning Off by default because it costs the tag its deep sleep. Measured on
+ *          an IMUTagNandBmp581 at 3.29 V: 6.56 uA idle with this disabled,
+ *          995 uA with it enabled -- the tag stays awake in WFI instead of
+ *          entering Stop3. The reason is not understood; it is the same class
+ *          of failure as the debug module, which is excluded for exactly this
+ *          reason. Enable it for a bench investigation where idle current does
+ *          not matter, never in a shipped image.
+ *
+ * @see embedded/tags/families/IMUTag/design/PowerEstimates.md
+ */
+#define TAG_RECOVERY_TRACE 0
+#endif
+
+#if TAG_RECOVERY_TRACE
+/** @name Boot recovery trace bits
+ * Bit assignments for BackupState::recovery_flags. Bits 0..15 record what
+ * recovery observed and which branch it took; bits 24..27 carry the
+ * @ref t_resetCause it dispatched on.
+ * @{
+ */
+/** @brief Boot entered the reset-recovery block rather than ordinary dispatch. */
+#define RECOVERY_TRACE_ENTERED          (1U << 0)
+/** @brief Recovery classified the reset as a monitor connect-under-reset. */
+#define RECOVERY_TRACE_MONITOR          (1U << 1)
+/** @brief Retained BackupState carried BACKUP_STATE_VALID_MAGIC. */
+#define RECOVERY_TRACE_RETAINED_VALID   (1U << 2)
+/** @brief Recovery was entered with no retained state (STATE_UNSPECIFIED). */
+#define RECOVERY_TRACE_FROM_UNSPEC      (1U << 3)
+/** @brief Recovery resolved a concrete state rather than defaulting to idle. */
+#define RECOVERY_TRACE_CONCRETE         (1U << 4)
+/** @brief Recovery adopted the retained state instead of scanning markers. */
+#define RECOVERY_TRACE_ADOPTED_RETAINED (1U << 5)
+/** @brief The marker scan stopped because a marker read failed (ECC/fault). */
+#define RECOVERY_TRACE_MARKER_READFAIL  (1U << 6)
+/** @brief The marker scan stopped on an erased entry (epoch == -1). */
+#define RECOVERY_TRACE_MARKER_BLANK     (1U << 7)
+/** @brief The marker scan stopped on a marker that failed validation. */
+#define RECOVERY_TRACE_MARKER_INVALID   (1U << 8)
+/** @brief The marker scan reached the end of the log with every entry valid. */
+#define RECOVERY_TRACE_MARKER_FULL      (1U << 9)
+/** @brief Boot restored the wall clock from the external RTC. */
+#define RECOVERY_TRACE_CLOCK_RECOVERED  (1U << 10)
+/** @brief Recovery left clockTrusted set. */
+#define RECOVERY_TRACE_CLOCK_TRUSTED    (1U << 11)
+/** @brief The STM32 RTC calendar was already initialized at boot. */
+#define RECOVERY_TRACE_RTC_INIT_BOOT    (1U << 12)
+/** @brief Shift of the t_resetCause field within recovery_flags. */
+#define RECOVERY_TRACE_CAUSE_SHIFT      24U
+/** @brief Mask of the t_resetCause field within recovery_flags. */
+#define RECOVERY_TRACE_CAUSE_MASK       (0xFU << RECOVERY_TRACE_CAUSE_SHIFT)
+/** @} */
+
+/**
+ * @def RECOVERY_TRACE_STATES
+ * @brief Pack the four one-byte state values of recovery_states.
+ *
+ * @param entry    TagState held by pState on entry to recovery.
+ * @param resolved TagState pState held once recovery finished resolving it.
+ * @param markers  Number of marker-log entries the scan consumed (saturated
+ *                 at 255).
+ * @param reason   State_Event of the last valid marker the scan accepted.
+ */
+#define RECOVERY_TRACE_STATES(entry, resolved, markers, reason) \
+  ((((uint32_t)(entry) & 0xFFU)) | \
+   (((uint32_t)(resolved) & 0xFFU) << 8) | \
+   (((uint32_t)(markers) & 0xFFU) << 16) | \
+   (((uint32_t)(reason) & 0xFFU) << 24))
+
+/**
+ * @def RECOVERY_TRACE_HIST_DEPTH
+ * @brief Number of resolved states retained in recovery_state_hist.
+ *
+ * @details The history exists because a tag can only be observed by attaching
+ *          a monitor, and attaching resets the core -- so the single-slot
+ *          recovery_states always describes the healthy attach boot rather than
+ *          the detached boot under investigation. Entries are pushed only when
+ *          the resolved state differs from the previous entry, so the run's
+ *          many standby wakeups compress to the transitions that matter and
+ *          eight nibbles cover a whole run.
+ */
+#define RECOVERY_TRACE_HIST_DEPTH 8U
+#endif
+
 /** @brief Backup-register runtime state used to recover after resets. */
 typedef struct
 {
@@ -104,8 +200,39 @@ typedef struct
   uint32_t sample_fifo_short_blocks; ///< Unrecoverable short superframe blocks.
   TestResult test_result;   ///< Most recent self-test result.
   uint32_t synthetic_standby_wake; ///< One-shot marker for reset-after-Stop3 wake.
+#if TAG_RECOVERY_TRACE
+  uint32_t recovery_boots;   ///< Boots that ran reset recovery; wraps freely.
+  uint32_t recovery_flags;   ///< RECOVERY_TRACE_* bits and the reset cause.
+  uint32_t recovery_states;  ///< See RECOVERY_TRACE_STATES().
+  uint32_t recovery_flags_seen; ///< Sticky OR of recovery_flags over all boots.
+  uint32_t recovery_state_hist; ///< Eight-deep nibble history of resolved states.
+  uint32_t recovery_change_flags;  ///< recovery_flags of the last state change.
+  uint32_t recovery_change_states; ///< recovery_states of the last state change.
+  uint32_t recovery_wipes; ///< Times boot cleanup discarded retained runtime state.
+#endif
 
 } BackupState;
+
+/*
+ * pState is a direct overlay on the backup registers -- TAMP->BKP0R on STM32U3,
+ * RTC->BKP0R elsewhere -- of which both the STM32U375 and the STM32L432 provide
+ * 32. Overflowing that silently aliases retained state onto whatever follows
+ * the register block, with no diagnostic.
+ *
+ * Non-U3 targets reserve the last register for the Shutdown-wake marker; see
+ * TAG_SHUTDOWN_WAKE_MARKER_SUPPORTED in core/src/pwr.c, which is enabled only
+ * when TAG_STM32U3_FLASH is off.
+ */
+#if IMUTAG_STM32U3_FLASH
+/** @brief Backup registers available to BackupState on this target. */
+#define BACKUP_STATE_MAX_WORDS 32U
+#else
+/** @brief Backup registers available to BackupState, less the Shutdown marker. */
+#define BACKUP_STATE_MAX_WORDS 31U
+#endif
+
+static_assert(sizeof(BackupState) <= BACKUP_STATE_MAX_WORDS * sizeof(uint32_t),
+              "BackupState exceeds the available backup registers");
 
 /** Pointer to the retained backup-state region. */
 extern volatile BackupState *const pState;

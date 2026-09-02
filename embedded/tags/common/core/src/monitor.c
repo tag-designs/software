@@ -90,7 +90,21 @@ static void monitorStatusMeasure(uint16_t *vdd100, int16_t *temp10)
 #endif
 }
 
-#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
+#if !defined(TAG_RECOVERY_TRACE)
+/** @brief Families without retained recovery-trace fields report nothing. */
+#define TAG_RECOVERY_TRACE 0
+#endif
+
+#if (defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS) || \
+    TAG_RECOVERY_TRACE
+/** @brief Build the bounded string appenders shared by the diagnostic writers. */
+#define TAG_STATUS_DIAG_HELPERS 1
+#else
+/** @brief No status diagnostic writer needs the string appenders. */
+#define TAG_STATUS_DIAG_HELPERS 0
+#endif
+
+#if TAG_STATUS_DIAG_HELPERS
 /**
  * @brief Append one character to a bounded diagnostic string.
  *
@@ -145,6 +159,9 @@ static char *statusDiagAppendU32(char *dst, char *end, uint32_t value)
   return dst;
 }
 
+#endif /* TAG_STATUS_DIAG_HELPERS */
+
+#if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
 /**
  * @brief Append an unsigned integer to a bounded diagnostic buffer in hex.
  *
@@ -313,6 +330,148 @@ static void statusDiagWriteFast(void)
 }
 #endif
 
+#if TAG_RECOVERY_TRACE
+/** @brief Letters reported for recovery_flags, in bit order. */
+static const char statusTraceFlagLetters[] = "EMVUCARTfbiF";
+
+/** @brief Bits matching statusTraceFlagLetters, same order. */
+static const uint32_t statusTraceFlagBits[] = {
+    RECOVERY_TRACE_ENTERED,          RECOVERY_TRACE_MONITOR,
+    RECOVERY_TRACE_RETAINED_VALID,   RECOVERY_TRACE_FROM_UNSPEC,
+    RECOVERY_TRACE_CONCRETE,         RECOVERY_TRACE_ADOPTED_RETAINED,
+    RECOVERY_TRACE_CLOCK_RECOVERED,  RECOVERY_TRACE_CLOCK_TRUSTED,
+    RECOVERY_TRACE_MARKER_READFAIL,  RECOVERY_TRACE_MARKER_BLANK,
+    RECOVERY_TRACE_MARKER_INVALID,   RECOVERY_TRACE_MARKER_FULL};
+
+/**
+ * @brief Append a recovery-flags word as a fixed-width letter field.
+ *
+ * @details Each position is its letter when the bit is set and '-' when clear,
+ *          so two words line up column-for-column when read side by side.
+ *
+ * @param[in,out] dst Current write pointer.
+ * @param[in] end One-past-last writable byte.
+ * @param[in] flags Recovery flags word to render.
+ * @return Updated write pointer.
+ */
+static char *statusTraceAppendFlags(char *dst, char *end, uint32_t flags)
+{
+  for (size_t i = 0;
+       i < sizeof(statusTraceFlagBits) / sizeof(statusTraceFlagBits[0]); i++)
+    dst = statusDiagAppendChar(
+        dst, end,
+        (flags & statusTraceFlagBits[i]) ? statusTraceFlagLetters[i] : '-');
+  return dst;
+}
+
+/**
+ * @brief Report the retained boot reset-recovery trace in the status reply.
+ *
+ * @details Renders the BackupState recovery-trace words as a single line in
+ *          Status.debug_message, for example:
+ *
+ *              rcv b=12 rc=5 st=7>2 mk=1/7 fl=E-V-C---b--- sn=EMV-CA--b---
+ *              ch=4>2/0/0rc5 E-V-C---b--- h=72
+ *
+ *          where @c b is the boot count, @c rc the @ref t_resetCause recovery
+ *          dispatched on, @c st the TagState pState held on entry to recovery
+ *          and the one recovery resolved, and @c mk the number of marker-log
+ *          entries the scan consumed with the reason of the last accepted
+ *          marker.
+ *
+ *          @c fl is this boot's flags and @c sn the sticky OR over every boot,
+ *          in the same column order: E entered recovery, M monitor attach,
+ *          V retained state valid, U entered unspecified, C concrete state
+ *          recovered, A retained state adopted, R clock recovered from the
+ *          external RTC, T clockTrusted, then why the marker scan stopped --
+ *          f read fault, b erased entry, i invalid marker, F log full.
+ *
+ *          @c ch is the full record of the boot that last changed the resolved
+ *          state -- entry state, resolved state, markers consumed, last marker
+ *          reason, reset cause, and that boot's flags. It is what an attach
+ *          cannot overwrite, because an attach resolves the state the tag
+ *          already holds and so changes nothing.
+ *
+ *          @c h is the resolved-state history, oldest digit first, pushed only
+ *          on change. It is the field that survives the attach: a monitor
+ *          attach is itself a reset, so @c fl always describes the healthy
+ *          attach boot rather than the detached boot being investigated.
+ *
+ *          This exists because reset recovery decides the tag's state before
+ *          any host can observe it, and its only other narration is
+ *          debug_log_printf(), which shipped images compile out. A tag that
+ *          reports FINISHED in its marker log but IDLE as its live state cannot
+ *          be diagnosed without knowing which recovery branch ran.
+ *
+ * @pre  Status.debug_message must be otherwise unused for this reply.
+ * @post ack.payload.status.debug_message holds a null-terminated trace line.
+ */
+static void statusRecoveryTraceWrite(void)
+{
+  char *dst = ack.payload.status.debug_message;
+  char *end = dst + sizeof(ack.payload.status.debug_message) - 1U;
+  const uint32_t flags = pState->recovery_flags;
+  const uint32_t states = pState->recovery_states;
+  const uint32_t history = pState->recovery_state_hist;
+  bool started = false;
+
+  dst = statusDiagAppendString(dst, end, "rcv b=");
+  dst = statusDiagAppendU32(dst, end, pState->recovery_boots);
+  dst = statusDiagAppendString(dst, end, " rc=");
+  dst = statusDiagAppendU32(dst, end,
+                            (flags & RECOVERY_TRACE_CAUSE_MASK) >>
+                                RECOVERY_TRACE_CAUSE_SHIFT);
+  dst = statusDiagAppendString(dst, end, " st=");
+  dst = statusDiagAppendU32(dst, end, states & 0xFFU);
+  dst = statusDiagAppendChar(dst, end, '>');
+  dst = statusDiagAppendU32(dst, end, (states >> 8) & 0xFFU);
+  dst = statusDiagAppendString(dst, end, " mk=");
+  dst = statusDiagAppendU32(dst, end, (states >> 16) & 0xFFU);
+  dst = statusDiagAppendChar(dst, end, '/');
+  dst = statusDiagAppendU32(dst, end, (states >> 24) & 0xFFU);
+  dst = statusDiagAppendString(dst, end, " fl=");
+  dst = statusTraceAppendFlags(dst, end, flags);
+  dst = statusDiagAppendString(dst, end, " w=");
+  dst = statusDiagAppendU32(dst, end, pState->recovery_wipes);
+  dst = statusDiagAppendString(dst, end, " sn=");
+  dst = statusTraceAppendFlags(dst, end, pState->recovery_flags_seen);
+
+  {
+    const uint32_t chg = pState->recovery_change_flags;
+    const uint32_t chs = pState->recovery_change_states;
+
+    dst = statusDiagAppendString(dst, end, " ch=");
+    dst = statusDiagAppendU32(dst, end, chs & 0xFFU);
+    dst = statusDiagAppendChar(dst, end, '>');
+    dst = statusDiagAppendU32(dst, end, (chs >> 8) & 0xFFU);
+    dst = statusDiagAppendChar(dst, end, '/');
+    dst = statusDiagAppendU32(dst, end, (chs >> 16) & 0xFFU);
+    dst = statusDiagAppendChar(dst, end, '/');
+    dst = statusDiagAppendU32(dst, end, (chs >> 24) & 0xFFU);
+    dst = statusDiagAppendString(dst, end, "rc");
+    dst = statusDiagAppendU32(dst, end,
+                              (chg & RECOVERY_TRACE_CAUSE_MASK) >>
+                                  RECOVERY_TRACE_CAUSE_SHIFT);
+    dst = statusDiagAppendChar(dst, end, ' ');
+    dst = statusTraceAppendFlags(dst, end, chg);
+  }
+
+  dst = statusDiagAppendString(dst, end, " h=");
+  for (uint32_t shift = 4U * (RECOVERY_TRACE_HIST_DEPTH - 1U);; shift -= 4U)
+  {
+    const uint32_t nibble = (history >> shift) & 0xFU;
+    if ((nibble != 0U) || started || (shift == 0U))
+    {
+      dst = statusDiagAppendU32(dst, end, nibble);
+      started = true;
+    }
+    if (shift == 0U)
+      break;
+  }
+  *dst = 0;
+}
+#endif
+
 static int monitorReturn(int len)
 {
   return len;
@@ -469,10 +628,26 @@ static int statusAck(void)
   int len = debug_log_read((uint8_t *)ack.payload.status.debug_message,
                            sizeof(ack.payload.status.debug_message) - 1);
   ack.payload.status.debug_message[len] = 0;
+#else
+  /*
+   * ack is reused between replies, so the field has to be cleared explicitly
+   * rather than assumed empty: the diagnostic writers below only fill it when
+   * the debug log left nothing, and a stale message would suppress them.
+   */
+  ack.payload.status.debug_message[0] = 0;
 #endif
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   if (ack.payload.status.debug_message[0] == 0)
     statusDiagWrite();
+#endif
+#if TAG_RECOVERY_TRACE
+  /*
+   * Last resort for the debug-message field: the recovery trace is retained
+   * state, so it stays reportable for the whole boot and does not need to win
+   * against a live debug queue.
+   */
+  if (ack.payload.status.debug_message[0] == 0)
+    statusRecoveryTraceWrite();
 #endif
 
   return encode_ack();

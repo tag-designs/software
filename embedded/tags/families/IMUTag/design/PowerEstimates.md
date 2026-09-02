@@ -480,11 +480,43 @@ at and around the sample rate and its subharmonics.
   rate on the SMPS board? This is what actually gates adoption.
 - Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
   it can be compared against the correct LDO column?
-- **Why does every second collection attempt fail to collect?** The alternation
-  is exact and both outcomes reproduce to four figures, so it is carried state
-  rather than timing. It correlates with data being present on the NAND when the
-  run starts. The failed run reaches CONFIGURED, draws more current than any
-  valid rate, produces no data, and ends ABORTED.
-- Why is a download refused whenever the tag has data to return? The refusal is
-  "Monitor request not permitted in current tag state" and correlates with data
-  volume, not with rate.
+- Does `tag-start --set-rtc` fail intermittently because of the external RTC on
+  this breakout? Two of four verification cycles aborted at
+  "RTC sync failed while writing tag clock", and boots frequently report
+  `rtcInitializedAtBoot` and `clockTrusted` false.
+
+## Resolved: Every Second Collection Attempt (2026-09-02)
+
+Boot cleanup was claiming IDLE over a marker log that still ended in FINISHED,
+and zeroing the external page cursor with it. Because the host erase path only
+runs from FINISHED or ABORTED, `tag-reset` skipped the erase, the next run
+started on a dirty NAND and collected nothing, and only the resulting ABORTED
+was erasable — hence the exact alternation. Cause, fix, and hardware
+verification are in
+[`embedded/tags/design/restart-recovery.md`](../../../design/restart-recovery.md).
+
+After the fix, four consecutive reset/start/detach/stop/download cycles at
+400 Hz all succeeded, each returning 47 external pages and 7050 accelerometer
+samples. The download refusals disappeared with it: they were the tag correctly
+declining to dump from IDLE.
+
+## Idle Current at 3.3 V
+
+The rate sweep further up this page was taken with the bench supply at 2.5 V.
+For comparison, on the same LDO board at 3.2935 V:
+
+| condition | idle current |
+| --- | ---: |
+| firmware as shipped | 6.5423, 6.5521, 6.6586, 6.6731 uA |
+| with `TAG_RECOVERY_TRACE` enabled | 995.2679, 995.2135, 995.1618 uA |
+
+Idle is essentially unchanged from the 6.62-6.70 uA measured at 2.5 V, which is
+expected for a part sleeping in Stop3 behind an LDO.
+
+The second row is a warning, not a measurement of interest. `TAG_RECOVERY_TRACE`
+is the retained boot-recovery trace added to diagnose the alternation above; it
+adds six backup-register words and a status line, and with it enabled the tag
+never enters Stop3 at all — it sits awake in WFI at 995 uA, a 150x idle penalty.
+The mechanism is not understood. It is the same class of failure as the debug
+module, which is excluded from shipped images for exactly this reason, so the
+trace defaults off and must stay off outside bench investigation.

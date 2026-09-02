@@ -206,8 +206,17 @@ int main(int argc, char **argv)
 
       Status status;
       if (tag.GetStatus(status))
+      {
         std::cout << "Current state: " << TagState_Name(status.state())
                   << std::endl;
+        // Firmware fills this with a boot reset-recovery trace when it has
+        // nothing else to report; see statusRecoveryTraceWrite(). It explains
+        // which state the tag booted into and why, which the live state and
+        // the marker log below cannot when the two disagree.
+        if (!status.debug_message().empty())
+          std::cout << "Firmware report: " << status.debug_message()
+                    << std::endl;
+      }
       printStateLog(tag);
     }
   }

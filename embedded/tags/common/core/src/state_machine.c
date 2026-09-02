@@ -253,6 +253,113 @@ static bool validTagState(uint32_t state)
 }
 #endif
 
+#if !defined(TAG_RECOVERY_TRACE)
+/** @brief Families without retained trace fields compile the trace out. */
+#define TAG_RECOVERY_TRACE 0
+#endif
+
+/**
+ * @brief Why the boot scan of the internal-flash marker log stopped.
+ *
+ * @details Kept as a local classification rather than the retained bit values
+ *          so the scan bookkeeping compiles unchanged on families whose
+ *          BackupState has no recovery-trace fields.
+ */
+enum markerScanStop
+{
+  markerScanNotRun,  ///< The retained state was adopted; no scan happened.
+  markerScanReadFail,///< A marker read faulted or reported an ECC error.
+  markerScanBlank,   ///< The scan reached an erased entry (epoch == -1).
+  markerScanInvalid, ///< The scan reached an entry that failed validation.
+  markerScanFull     ///< Every entry in the fixed-size log was valid.
+};
+
+#if TAG_RECOVERY_TRACE
+/**
+ * @brief Map a marker-scan outcome onto its retained recovery_flags bit.
+ *
+ * @param[in] stop Scan outcome recorded during boot recovery.
+ * @return The matching RECOVERY_TRACE_MARKER_* bit, or 0 when no scan ran.
+ */
+static uint32_t markerScanStopFlag(enum markerScanStop stop)
+{
+  switch (stop)
+  {
+  case markerScanReadFail: return RECOVERY_TRACE_MARKER_READFAIL;
+  case markerScanBlank:    return RECOVERY_TRACE_MARKER_BLANK;
+  case markerScanInvalid:  return RECOVERY_TRACE_MARKER_INVALID;
+  case markerScanFull:     return RECOVERY_TRACE_MARKER_FULL;
+  case markerScanNotRun:
+  default:                 return 0U;
+  }
+}
+#endif
+
+/**
+ * @brief Record the boot reset-recovery trace into retained backup state.
+ *
+ * @details Writes at most once per boot. StateMachine() runs on every wakeup
+ *          and every monitor event, but only its first call this boot reflects
+ *          what recovery actually saw; later calls would overwrite the record
+ *          with steady-state values and spend backup-register writes doing it.
+ *          The guard is an ordinary static, which is zero-initialized by every
+ *          reset -- including the reset that ends standby -- so "first call
+ *          this boot" is exactly what it means.
+ *
+ * @param[in] flags  RECOVERY_TRACE_* bits, with the reset cause already
+ *                   shifted into RECOVERY_TRACE_CAUSE_MASK.
+ * @param[in] states Packed state bytes as built by RECOVERY_TRACE_STATES().
+ *
+ * @post On the first call of a boot, pState->recovery_boots is incremented and
+ *       pState->recovery_flags / pState->recovery_states are replaced.
+ *
+ * @note Compiled out unless the target's BackupState carries the trace fields.
+ */
+static void recoveryTraceStore(uint32_t flags, uint32_t states)
+{
+#if TAG_RECOVERY_TRACE
+  static bool trace_stored;
+
+  if (trace_stored)
+    return;
+  trace_stored = true;
+
+  pState->recovery_boots = pState->recovery_boots + 1U;
+  pState->recovery_flags = flags;
+  pState->recovery_states = states;
+  pState->recovery_flags_seen = pState->recovery_flags_seen | flags;
+
+  /*
+   * Push the resolved state only when it differs from the newest entry. A run
+   * wakes from standby many times, and each wakeup is a reset that lands here
+   * with the same state; recording every one would push the transition of
+   * interest out of the window within a second of collecting.
+   */
+  {
+    const uint32_t resolved = (states >> 8) & 0xFU;
+    const uint32_t history = pState->recovery_state_hist;
+
+    if ((history & 0xFU) != resolved)
+    {
+      pState->recovery_state_hist = (history << 4) | resolved;
+      /*
+       * Latch the full record of the boot that changed the resolved state.
+       * recovery_flags alone cannot show this: observing the tag means
+       * attaching a monitor, attaching is a reset, and that attach boot
+       * overwrites recovery_flags with its own healthy values. An attach
+       * resolves the state the tag already holds, so it pushes no history
+       * entry and leaves this record intact.
+       */
+      pState->recovery_change_flags = flags;
+      pState->recovery_change_states = states;
+    }
+  }
+#else
+  (void)flags;
+  (void)states;
+#endif
+}
+
 static bool reset_erase_started;
 #if TAG_MONITOR_RESET_RECOVERY
 static bool last_recovery_trace_valid;
@@ -317,6 +424,25 @@ enum Sleep StateMachine(eventmask_t input_events)
       pState->state == STATE_UNSPECIFIED;
   bool recovered_concrete_state = false;
   /*
+   * Boot recovery trace bookkeeping. Maintained unconditionally so the scan
+   * below reads the same on every family; only the store into pState is
+   * conditional. See TAG_RECOVERY_TRACE.
+   */
+  const uint32_t trace_entry_state = pState->state;
+  enum markerScanStop trace_marker_stop = markerScanNotRun;
+  uint32_t trace_markers = 0U;
+  uint32_t trace_marker_reason = State_EVENT_UNSPECIFIED;
+  bool trace_clock_recovered = false;
+  bool trace_adopted_retained = false;
+#if !TAG_RECOVERY_TRACE
+  (void)trace_entry_state;
+  (void)trace_markers;
+  (void)trace_marker_reason;
+  (void)trace_marker_stop;
+  (void)trace_clock_recovered;
+  (void)trace_adopted_retained;
+#endif
+  /*
    * Computed unconditionally: the corrupt-pState guard below and the clock-trust
    * decision both depend on it, and both must work on targets that do not build
    * with TAG_MONITOR_RESET_RECOVERY.
@@ -374,6 +500,7 @@ enum Sleep StateMachine(eventmask_t input_events)
        */
       pState->state = (TagState)retained_state;
       recovered_concrete_state = true;
+      trace_adopted_retained = true;
     } else {
 #endif
       pState->state = TagState_IDLE;
@@ -381,18 +508,32 @@ enum Sleep StateMachine(eventmask_t input_events)
 
       // find the last state
 
-      for (size_t i = 0; i < sEPOCH_SIZE; i++)
+      size_t i;
+      for (i = 0; i < sEPOCH_SIZE; i++)
       {
         t_StateMarker marker;
         if (FLASH_Read_Checked(&sEpoch[i], &marker, sizeof(marker)))
+        {
+          trace_marker_stop = markerScanReadFail;
           break;
+        }
         if (marker.epoch == -1)
+        {
+          trace_marker_stop = markerScanBlank;
           break;
+        }
         if (!validStateMarker(&marker))
+        {
+          trace_marker_stop = markerScanInvalid;
           break;
+        }
         pState->state = marker.state;
+        trace_marker_reason = marker.reason;
         recovered_concrete_state = true;
       }
+      trace_markers = (uint32_t)i;
+      if (i == sEPOCH_SIZE)
+        trace_marker_stop = markerScanFull;
 #if TAG_MONITOR_RESET_RECOVERY
     }
 #endif
@@ -411,6 +552,7 @@ enum Sleep StateMachine(eventmask_t input_events)
       {
         rtcSetTime(&RTCD1, &tim);
         clock_recovered = true;
+        trace_clock_recovered = true;
       }
       else
       {
@@ -463,6 +605,42 @@ enum Sleep StateMachine(eventmask_t input_events)
      * new power-fail event.
      */
     pState->resetCause = resetStandby;
+
+    /*
+     * Everything recovery could learn is now known, and every branch below
+     * returns, so this is the one point that sees the whole decision.
+     */
+#if TAG_RECOVERY_TRACE
+    {
+      uint32_t trace_flags = RECOVERY_TRACE_ENTERED;
+#if TAG_MONITOR_RESET_RECOVERY
+      if (monitor_reset_recovery)
+        trace_flags |= RECOVERY_TRACE_MONITOR;
+#endif
+      if (retained_state_valid)
+        trace_flags |= RECOVERY_TRACE_RETAINED_VALID;
+      if (recovery_started_from_unspecified)
+        trace_flags |= RECOVERY_TRACE_FROM_UNSPEC;
+      if (recovered_concrete_state)
+        trace_flags |= RECOVERY_TRACE_CONCRETE;
+      if (trace_adopted_retained)
+        trace_flags |= RECOVERY_TRACE_ADOPTED_RETAINED;
+      if (trace_clock_recovered)
+        trace_flags |= RECOVERY_TRACE_CLOCK_RECOVERED;
+      if (clockTrusted)
+        trace_flags |= RECOVERY_TRACE_CLOCK_TRUSTED;
+      if (rtcInitializedAtBoot)
+        trace_flags |= RECOVERY_TRACE_RTC_INIT_BOOT;
+      trace_flags |= markerScanStopFlag(trace_marker_stop);
+      trace_flags |= ((uint32_t)reset_cause << RECOVERY_TRACE_CAUSE_SHIFT) &
+                     RECOVERY_TRACE_CAUSE_MASK;
+      recoveryTraceStore(
+          trace_flags,
+          RECOVERY_TRACE_STATES(trace_entry_state, pState->state,
+                                trace_markers > 255U ? 255U : trace_markers,
+                                trace_marker_reason));
+    }
+#endif
 
 #if TAG_MONITOR_RESET_RECOVERY
     if (recovery_started_from_unspecified && !unspecified_recovery_logged)
@@ -630,6 +808,22 @@ enum Sleep StateMachine(eventmask_t input_events)
       }
     }
   }
+
+  /*
+   * Recovery did not run this boot, or ran and fell through with a state that
+   * has no recovery dispatch of its own (idle, finished, aborted). Record the
+   * trace with RECOVERY_TRACE_ENTERED clear so a host can tell "recovery chose
+   * idle" from "recovery never looked".
+   */
+#if TAG_RECOVERY_TRACE
+  recoveryTraceStore(
+      ((uint32_t)pState->resetCause << RECOVERY_TRACE_CAUSE_SHIFT) &
+          RECOVERY_TRACE_CAUSE_MASK,
+      RECOVERY_TRACE_STATES(trace_entry_state, pState->state, 0U,
+                            State_EVENT_UNSPECIFIED));
+#else
+  recoveryTraceStore(0U, 0U);
+#endif
 
   // check monitor events
 

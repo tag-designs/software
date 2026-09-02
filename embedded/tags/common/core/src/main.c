@@ -17,6 +17,7 @@
 #include "custom.h"
 #include "debug_log.h"
 #include "device.h"
+#include "flash_internal.h"
 #include "monitor.h"
 #include "persistent.h"
 #include "power.h"
@@ -466,9 +467,39 @@ static void tagBackupStateDebug(const char *phase, uint32_t phase_id,
  */
 static void tagResetRuntimeStateForPowerInit(void)
 {
-  pState->state = TagState_IDLE;
-  pState->pages = 0;
-  pState->external_blocks = 0;
+#if defined(TAG_RECOVERY_TRACE) && TAG_RECOVERY_TRACE
+  /*
+   * Counted because this is the only code outside the state machine that can
+   * discard a terminal state, and it does so invisibly: the flash marker log
+   * still ends in FINISHED while the live state reads IDLE and the external
+   * log cursor reads zero. Reported by statusRecoveryTraceWrite() as "w=".
+   */
+  pState->recovery_wipes = pState->recovery_wipes + 1U;
+#endif
+  /*
+   * IDLE => empty state log is an invariant of this firmware: Idle() records no
+   * marker, and reset recovery seeds IDLE before walking sEpoch, so an empty
+   * log is what makes an idle tag resolve to idle. Claiming IDLE here with
+   * markers still present breaks that -- and strands the data, because the host
+   * erase path only runs from FINISHED or ABORTED.
+   *
+   * When the log is not empty the honest answer is that boot does not know the
+   * state, so leave it unspecified and let reset recovery resolve it from the
+   * log. Leaving the state unspecified also keeps the monitor-attach recovery
+   * branch from adopting it, which forces the marker scan. The log cursors are
+   * left alone in that case for the same reason: recovery owns them, through
+   * restoreLog() when detached or the retained values under a monitor.
+   */
+  if (stateLogEmpty())
+  {
+    pState->state = TagState_IDLE;
+    pState->pages = 0;
+    pState->external_blocks = 0;
+  }
+  else
+  {
+    pState->state = STATE_UNSPECIFIED;
+  }
   pState->checkpoint_flags_pending = 0;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
   pState->run_heartbeat = 0;
@@ -530,8 +561,24 @@ void deviceInit(int force)
     if (power_init)
       tagRtcInit();
 
-    pState->valid = 0;
-    pState->safe = false;
+    /*
+     * Only a genuine power init may declare retained state invalid. This block
+     * also runs with force set from the terminal transitions -- Finished(),
+     * Aborted(), Reset(), SelfTest() -- and clearing valid there opens a window
+     * spanning all of the device power sequencing below in which any reset is
+     * classified as a power-on with no retained state. getResetCause() then
+     * returns resetPower and the cleanup below discards the completed run:
+     * observed as a live state of IDLE with the flash marker log still ending
+     * in FINISHED and the external cursor zeroed, which the host cannot erase
+     * because tag-reset only erases from FINISHED or ABORTED. valid is restored
+     * unconditionally at the end of this block, so clearing it here bought
+     * nothing.
+     */
+    if (power_init)
+    {
+      pState->valid = 0;
+      pState->safe = false;
+    }
 #if TAG_STM32U3_FLASH
     pState->synthetic_standby_wake = 0;
 #endif

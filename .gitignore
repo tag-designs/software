@@ -55,3 +55,7 @@ software/embedded/proto-c/luxtag-proto-c
 hardware/tag-breakout-template/jlcpcb/
 .vscode
 .DS_Store
+
+# Python bytecode caches from embedded/tools scripts
+__pycache__/
+*.pyc
