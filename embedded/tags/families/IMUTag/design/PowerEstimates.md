@@ -210,6 +210,68 @@ Note that 6.71 uA sits on the **flash-on-in-standby** column (6.6 uA) rather tha
 flash-off (5.9 uA), which suggests this LDO build has `FLASH_PWR` pulled up.
 Inferred from the match, not confirmed against the schematic.
 
+### Measured LDO Board, Full Rate Sweep
+
+Taken with [`embedded/tools/power_experiment.py`](../../../../tools/power_experiment.py)
+on the LDO breakout carrying the IMUTagNandBmp581 daughter card, at a **3.2935 V**
+bench supply. Each point is an independent experiment: reset to idle with the
+clock set, start with the per-rate configuration, close the monitor session,
+measure detached for 60 s, stop, download, erase. Idle was re-measured between
+every point to confirm the tag was still reaching standby, since a tag that
+stops entering Stop3 invalidates every reading after it.
+
+| Mode | Measured (uA) | Runs | Earlier table (uA) | Delta | 12 mAh battery | 2 Gbit storage | Usable | Binds on |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Idle | 6.6636 | 1 | 6.7 | -0.5% | 1801 h (75.0 d) | -- | 75.0 d | battery |
+| 100 Hz | 1104.3374 | 1 | 1100 | +0.4% | 10.87 h | 54.60 h | **10.87 h** | battery |
+| 200 Hz | 1181.6701 | 2 | 1180 | +0.1% | 10.16 h | 27.30 h | **10.16 h** | battery |
+| 400 Hz | 1331.6389 | 2 | 1330 | +0.1% | 9.01 h | 13.70 h | **9.01 h** | battery |
+| 800 Hz | 1631.6040 | 1 | 1630 | +0.1% | 7.35 h | 6.83 h | **6.83 h** | storage |
+| 1600 Hz | 1924.1958 | 2 | 1930 | -0.3% | 6.24 h | 3.41 h | **3.41 h** | storage |
+
+Every point falls within 0.5% of the earlier table and most within 0.1%, through
+a different instrument path and a different supply voltage. Repeated runs agree
+to between 0.008% and 0.16%, so the measurement is well inside the precision
+needed for any design decision here.
+
+Idle between points: 6.6904, 6.6999, 6.6814, 6.6848 and 6.6130 uA. Standby was
+healthy throughout, so no rate reading is contaminated.
+
+An LDO's input current equals its load current independent of input voltage, so
+these figures are directly comparable to the earlier 2.5 V measurements. The same
+would not hold for the SMPS board, whose input current scales with supply
+voltage; that comparison needs its own run at the deployed cell voltage.
+
+Storage becomes the binding constraint at 800 Hz and above on a 12 mAh cell.
+Below that the mission is battery-limited and regulator efficiency is spendable.
+
+#### Confidence and Caveats
+
+Only the 100 Hz point carries a verified download: `ImuAccel: 6000 rows, ran at
+100 Hz, 1.00x expected`, with the rate read from the configuration recorded in
+the log rather than assumed. The other points had their downloads refused with
+"Monitor request not permitted in current tag state", and the refusal correlates
+with data being present rather than with the rate, so it is systematic. Those
+currents rest on magnitude and reproducibility, not on reading the log back.
+
+Roughly half of all collection attempts do not collect at all, and the pattern is
+deterministic rather than random. Four consecutive attempts at both 400 Hz and
+1600 Hz alternated exactly:
+
+| Attempt | 400 Hz | 1600 Hz |
+| ---: | ---: | ---: |
+| 1 | 1331.5883 uA, collected | 1925.1871 uA, collected |
+| 2 | 2696.6303 uA, no data | 1709.5761 uA, no data |
+| 3 | 1331.6895 uA, collected | 1923.2044 uA, collected |
+| 4 | 2697.6081 uA, no data | 1708.4518 uA, no data |
+
+Both outcomes reproduce to four significant figures, and a successful run is
+always followed by a failed one. That is state carried between runs, not a race.
+The correlation is with data being present on the NAND: a run that collects
+leaves pages the next reset must erase, while a failed run leaves nothing. The
+failed runs end ABORTED having drawn more than any legitimate rate, so the tag is
+bringing sensors up and then never sleeping. Unresolved; see *Open Questions*.
+
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
 The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
@@ -418,3 +480,11 @@ at and around the sample rate and its subharmonics.
   rate on the SMPS board? This is what actually gates adoption.
 - Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
   it can be compared against the correct LDO column?
+- **Why does every second collection attempt fail to collect?** The alternation
+  is exact and both outcomes reproduce to four figures, so it is carried state
+  rather than timing. It correlates with data being present on the NAND when the
+  run starts. The failed run reaches CONFIGURED, draws more current than any
+  valid rate, produces no data, and ends ABORTED.
+- Why is a download refused whenever the tag has data to return? The refusal is
+  "Monitor request not permitted in current tag state" and correlates with data
+  volume, not with rate.

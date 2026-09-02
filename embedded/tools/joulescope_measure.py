@@ -327,9 +327,16 @@ def main() -> int:
             # the mode first and only write a selection that is a real shunt.
             if range_changed:
                 with suppress(Exception):
-                    if saved_mode is not None:
+                    # Never restore "off" for either field. Faithfully putting
+                    # back what was found is wrong when what was found was a
+                    # disconnected current path: it re-cuts DUT power on the way
+                    # out, which is the failure this tool exists to avoid. If
+                    # the device was found off and this run turned it on, leave
+                    # it on -- an unexpectedly powered DUT is recoverable, an
+                    # unexpectedly dead one is not.
+                    if saved_mode is not None and int(saved_mode) != RANGE_MODE_OFF:
                         d.publish(f'{device}/s/i/range/mode', saved_mode)
-                    if saved_select:  # never write 0; see above
+                    if saved_select:
                         d.publish(f'{device}/s/i/range/select', saved_select)
             with suppress(Exception):
                 d.close(device)
