@@ -678,6 +678,31 @@ void tagDevicesAfterReset(uint32_t reset_cause, uint32_t state)
 
 #if defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE
   tagStorageWake(TAG_EXTERNAL_FLASH);
+  /*
+   * Probe here, not just wake.
+   *
+   * A GD5F powers up with block protection enabled, and protection refuses
+   * PROGRAM and BLOCK_ERASE while leaving reads working normally. The lock is
+   * cleared by gd5fProbe(), which this family otherwise reaches only through
+   * gd5fCheckID() -- from the external-flash self-test, or from writeConfig()
+   * on a start command. A run that resumes after a restart takes neither path,
+   * so its first page commit was refused: on a logic analyser the recovery
+   * reads all complete and the write transaction is the one that dies, and the
+   * tag reports it as EVENT_EXTERNALFULL on a device barely one percent used.
+   *
+   * The restart path is where this belongs. Clearing protection per program
+   * would pay an SPI transaction on every page, and clearing it in
+   * tagStorageWake() -- which is also the standby-entry path, since
+   * tagStoragePrepareStandby() wakes the device solely to put it into deep
+   * power-down -- cost the tag Stop3 entry altogether, 6.68 uA to 1.70 mA.
+   * Probing once per reset costs nothing that a reset was not already paying,
+   * and it leaves the NAND in exactly the state a start command would.
+   *
+   * Safe against the shared page cache: gd5fProbe() issues a device RESET,
+   * which would discard a staged program, but nothing is staged at restart --
+   * the cache is a volatile register and the restart is what emptied it.
+   */
+  (void)tagStorageCheckID(TAG_EXTERNAL_FLASH);
   tagStorageSleep(TAG_EXTERNAL_FLASH);
 #endif
 }
