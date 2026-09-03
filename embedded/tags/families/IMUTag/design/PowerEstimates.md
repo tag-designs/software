@@ -274,9 +274,25 @@ bringing sensors up and then never sleeping. Unresolved; see *Open Questions*.
 
 ### Measured SMPS Board, Full Rate Sweep (3.3 V)
 
-Taken 2026-09-02 with the same daughter card, the same firmware (`b1657d7`) and
-the same procedure as the LDO sweep above, on the TPS62840 breakout at a
-**3.2935 V** bench supply. Idle was re-checked after every rate point.
+Taken 2026-09-02 with the same firmware (`b1657d7`) and the same procedure as
+the LDO sweep above, on the TPS62840 breakout at a **3.2935 V** bench supply.
+Idle was re-checked after every rate point.
+
+> **Not the same daughter card.** The LDO sweep ran on STM32U375 UUID
+> `00303143433650090049002E` and this one on `00303143433650090059002E`, so the
+> comparison spans two boards, not one regulator swap under a fixed load. That
+> is a real confounder and is recorded rather than glossed: it means the
+> absolute figures pair a regulator with a particular assembly.
+>
+> It does not plausibly account for the result. The advantage is 38-39% at
+> every point across a 290x range of load current, and part-to-part variation
+> in an STM32 and three sensors does not produce a constant ratio over that
+> span -- a fixed efficiency difference does. The idle figure is the one most
+> exposed, since leakage genuinely varies between parts; 6.65 uA to 4.09 uA is
+> far larger than that, but a repeat with the regulators swapped under one
+> daughter card would settle it properly. The second card also reports
+> `ppm_clock_error: 0` where the first reports `-3.81469727`, confirming they
+> are separately calibrated assemblies.
 
 | Mode | LDO (uA) | SMPS (uA) | Delta |
 | --- | ---: | ---: | ---: |
