@@ -9,10 +9,6 @@
 
 #include "gpio_utils.h"
 
-#ifndef TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN
-#define TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN 0
-#endif
-
 /** @name Controller and device lifecycle
  * Controller and device lifecycle.
  *
@@ -156,6 +152,120 @@ static void tagI2cApplyActivePins(const TagI2cDevice *device)
   }
 }
 
+#if TAG_I2C_BUS_CLEAR
+/**
+ * @brief Half-period spacing for bus-clear clocks, comfortably under 100 kHz.
+ *
+ * @details A busy loop rather than a sleep: recovery runs before the scheduler
+ *          on the startup path, and with the controller mutex held elsewhere.
+ */
+static void tagI2cBusClearDelay(void)
+{
+  for (volatile uint32_t i = 0U; i < 400U; i++) {
+    __NOP();
+  }
+}
+
+/**
+ * @brief Clock a stuck slave off SDA and return the bus to idle.
+ *
+ * @details Hardware-backend sequence. The pins are handed to GPIO because a
+ *          wedged peripheral cannot generate START/STOP itself, and the
+ *          peripheral is reset afterwards because it latches BUSY from the bus
+ *          independently of what the pins now read.
+ *
+ * @param[in] device Device whose board lines describe the bus.
+ * @pre The controller must be disabled.
+ * @post Pins are returned to their active alternate-function mode.
+ */
+static void tagI2cBusClearHardware(const TagI2cDevice *device)
+{
+  const TagI2cController *controller = device->controller;
+
+  palSetLineMode(device->scl,
+                 PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_LOWEST);
+  palSetLine(device->scl);
+  tagI2cBusClearDelay();
+
+  for (unsigned i = 0U; (i < 9U) && (palReadLine(device->sda) == PAL_LOW);
+       i++) {
+    palClearLine(device->scl);
+    tagI2cBusClearDelay();
+    palSetLine(device->scl);
+    tagI2cBusClearDelay();
+  }
+
+  /* STOP: release SDA while SCL is high, so every slave sees a clean idle. */
+  palSetLineMode(device->sda,
+                 PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_LOWEST);
+  palClearLine(device->sda);
+  tagI2cBusClearDelay();
+  palSetLine(device->scl);
+  tagI2cBusClearDelay();
+  palSetLine(device->sda);
+  tagI2cBusClearDelay();
+
+  if (controller->reset) {
+    controller->reset();
+  }
+
+  /*
+   * Leave the pins as released open-drain outputs, NOT in alternate function.
+   * Only tagI2cBusBegin() follows this with a controller start; at the other
+   * call sites the peripheral stays disabled, and an AF pin with no peripheral
+   * driving it is held low. The board pulls SCL and SDA up with 4.7k, so a
+   * line parked low sinks about 700 uA -- which is exactly what an earlier
+   * version of this cost at idle, 1031 uA against 4.09 uA. Released
+   * open-drain against those pull-ups is the correct passive idle state and
+   * draws nothing.
+   */
+}
+#endif
+
+#if TAG_I2C_BUS_CLEAR
+bool tagI2cBusClearIfStuck(const TagI2cDevice *device)
+{
+  const TagI2cController *controller;
+
+  if (device == NULL) {
+    return false;
+  }
+  controller = device->controller;
+  if (controller == NULL) {
+    return false;
+  }
+
+  /*
+   * Never drive an unpowered part. tagI2cDevicePowerOff() deliberately parks
+   * SDA and SCL as analog inputs for exactly this reason, and clocking a
+   * device whose supply is down injects current through its protection diodes.
+   */
+  if (tagLineIsValid(device->pwr) && (palReadLine(device->pwr) == PAL_LOW)) {
+    return false;
+  }
+
+  /* Nothing to do unless a slave is actually holding the bus. */
+  if (palReadLine(device->sda) != PAL_LOW) {
+    return false;
+  }
+
+  switch (controller->backend) {
+  case TAG_I2C_BACKEND_HARDWARE:
+    tagI2cBusClearHardware(device);
+    return true;
+
+  case TAG_I2C_BACKEND_SOFTWARE:
+    if (device->config.software != NULL) {
+      tagSoftI2cBusClear(device->config.software);
+      return true;
+    }
+    return false;
+  }
+
+  return false;
+}
+#endif
+
 /**
  * @brief Claim the shared controller and start a transaction session.
  *
@@ -170,16 +280,17 @@ void tagI2cBusBegin(const TagI2cDevice *device)
     chBSemWait(controller->mutex);
   }
 
-  tagI2cApplyActivePins(device);
-
-#if TAG_I2C_SOFTWARE_BUS_CLEAR_ON_BEGIN
-  if ((controller != NULL) &&
-      (controller->backend == TAG_I2C_BACKEND_SOFTWARE) &&
-      (device->config.software != NULL)) {
-    tagSoftI2cBusClear(device->config.software);
-  }
+#if TAG_I2C_BUS_CLEAR
+  /*
+   * Recover before the pins are handed to the peripheral and before it is
+   * enabled: a controller started against a bus that is not idle latches BUSY
+   * and stays stuck. The clear leaves the pins released rather than in
+   * alternate function, so applying the active pin mode must follow it.
+   */
+  (void)tagI2cBusClearIfStuck(device);
 #endif
 
+  tagI2cApplyActivePins(device);
   if (controller)
   {
     tagI2cControllerEnable(controller, device);
@@ -199,6 +310,17 @@ void tagI2cBusEnd(const TagI2cDevice *device)
   {
     tagI2cControllerDisable(controller);
   }
+
+  /*
+   * Clear on the way out as well as on the way in, so a transaction that left
+   * a slave mid-byte does not hand a wedged bus to the next device sharing
+   * this controller. Done after the controller is disabled, because the pins
+   * have to be driven directly, and before the mutex is released, because
+   * driving them is only safe while this session still owns the bus.
+   */
+#if TAG_I2C_BUS_CLEAR
+  (void)tagI2cBusClearIfStuck(device);
+#endif
 
   if (controller && controller->mutex)
   {

@@ -5,6 +5,15 @@ USE_EXCEPTIONS_STACKSIZE = 0x800
 TAG_FLASH_SIZE = 1024K
 UDEFS += -DTAG_STM32U3_FLASH=1
 UDEFS += -DIMUTAG_STM32U3_FLASH=1
+
+# Recover an I2C bus that a slave is holding. The RV-3028 and the magnetometer
+# share one controller here, and a monitor attach resets the core under an
+# in-flight transaction, which left both devices unreachable for the rest of
+# that boot: SDA low, SCL high, and every read failing. Set as a compile
+# definition rather than in custom.h because i2c_bus.h applies its own default
+# and does not include custom.h, so a header define would depend on include
+# order.
+UDEFS += -DTAG_I2C_BUS_CLEAR=1
 UDEFS += -DIMUTAG_STORED_CONFIG_STM32U3_FLASH=1
 include $(BOARDDIR)/IMUTagNandv1/board.mk
 

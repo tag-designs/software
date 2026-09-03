@@ -201,10 +201,29 @@ static const I2CConfig imutag_rtc_i2c_config = {
     0,
 };
 
+/**
+ * @brief Reset I2C1 for bus recovery.
+ *
+ * @details Supplied to the controller descriptor so the shared bus layer can
+ *          reset this instance without knowing which I2Cx the board wired up.
+ *          Needed because clearing the wire does not clear the peripheral:
+ *          a controller that saw the bus go quiet mid-transfer keeps its BUSY
+ *          state regardless of what the pins subsequently read.
+ */
+#if TAG_I2C_BUS_CLEAR
+static void imutagRtcI2cReset(void)
+{
+  rccResetI2C1();
+}
+#endif
+
 const TagI2cController tagRtcI2cController = {
     .backend = TAG_I2C_BACKEND_HARDWARE,
     .mutex = &imutag_rtc_i2c_mutex,
     .driver.hardware = &I2CD1,
+#if TAG_I2C_BUS_CLEAR
+    .reset = imutagRtcI2cReset,
+#endif
 };
 
 static const TagI2cDevice imutag_rtc_i2c = {
@@ -233,6 +252,16 @@ void tagRtcDeviceRuntimeInit(void)
 {
   chBSemObjectInit(&imutag_rtc_i2c_mutex, false);
   tagI2cControllerObjectInit(&tagRtcI2cController);
+  /*
+   * Recover the bus before the first transaction rather than at it. The
+   * boot-time external RTC query runs early, and clearing only inside
+   * tagI2cBusBegin() would let that first read fail before recovery had a
+   * chance to run. Both devices on this controller share SDA and SCL, so one
+   * clear serves the RTC and the magnetometer.
+   */
+#if TAG_I2C_BUS_CLEAR
+  (void)tagI2cBusClearIfStuck(tagRtcDevice()->registers);
+#endif
 }
 #else
 extern const TagI2cController tagRtcI2cController;
@@ -663,6 +692,16 @@ void tagDevicesApplyPowerState(TagDevicePowerReason reason, uint32_t state)
 {
   switch (reason) {
   case TAG_DEVICE_POWER_STANDBY_ENTRY:
+    /*
+     * Leave the bus idle. A slave still holding SDA would sit against the
+     * standby pull-ups drawing current, and would greet the next boot with an
+     * already-wedged bus. This runs unconditionally on both U3 terminal paths,
+     * unlike tagDevicesApplyStandbyPins(), which this target skips because it
+     * sets TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF.
+     */
+#if TAG_I2C_BUS_CLEAR
+    (void)tagI2cBusClearIfStuck(tagRtcDevice()->registers);
+#endif
     tagStoragePrepareStandby(TAG_EXTERNAL_FLASH, state);
     if (state != TagState_RUNNING) {
      (void)deinitDataCollection();

@@ -25,6 +25,7 @@ directory that owns the code; the developer portal stages those files under
 - [Tags Overview](reference/embedded/tags/README.md)
 - [Tag Build Sources](reference/embedded/tags/BUILD_SOURCES.md)
 - [Monitor Interface](reference/embedded/tags/design/monitor_interface.md)
+- [I2C Bus Recovery](reference/embedded/tags/design/i2c-bus-recovery.md)
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
 - [U375 Stop Support](reference/embedded/tags/design/u375-stop-support.md)

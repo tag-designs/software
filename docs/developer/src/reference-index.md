@@ -28,6 +28,7 @@ paths below mirror their repository locations under `reference/`.
 - [IMU Design Notes](reference/embedded/tags/common/sensors/imu/design_notes.md)
 - [Tag Families README](reference/embedded/tags/families/README.md)
 - [Monitor Interface](reference/embedded/tags/design/monitor_interface.md)
+- [I2C Bus Recovery](reference/embedded/tags/design/i2c-bus-recovery.md)
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
 - [U375 Stop Support](reference/embedded/tags/design/u375-stop-support.md)

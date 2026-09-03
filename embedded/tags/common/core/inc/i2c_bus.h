@@ -11,6 +11,7 @@
 #include "hal.h"
 #include "tag_soft_i2c.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -22,6 +23,21 @@
  * sensor_io so SPI, USART, and I2C register devices share one adapter shape.
  * @{
  */
+
+/**
+ * @def TAG_I2C_BUS_CLEAR
+ * @brief Recover a stuck I2C bus around sessions, startup and standby.
+ *
+ * @details Off by default so existing targets keep their exact images. The
+ *          recovery only acts when SDA actually reads low, so enabling it
+ *          changes behaviour on a broken bus and nowhere else; the reason for
+ *          the switch is code size on the smaller parts, not risk.
+ *
+ * @see tagI2cBusClearIfStuck()
+ */
+#ifndef TAG_I2C_BUS_CLEAR
+#define TAG_I2C_BUS_CLEAR 0
+#endif
 
 /**
  * @def TAG_I2C_DEFAULT_ALTERNATE_FUNCTION
@@ -50,6 +66,22 @@ typedef struct {
     I2CDriver *hardware;         ///< Hardware driver when backend is hardware.
     TagSoftI2cDriver *software;  ///< Software driver when backend is software.
   } driver;
+#if TAG_I2C_BUS_CLEAR
+  /**
+   * @brief Optional peripheral reset for bus recovery, or NULL.
+   *
+   * @details Board code supplies the RCC reset for this controller instance,
+   *          for example @c rccResetI2C1. Bus recovery needs it because
+   *          clearing the wire is not sufficient on its own: the peripheral
+   *          latches its own BUSY state from the bus, and a controller that
+   *          saw the bus go quiet mid-transfer can stay stuck no matter what
+   *          the pins subsequently read.
+   *
+   * @note Kept as a pointer rather than an instance test inside i2c_bus.c so
+   *       the shared layer needs no knowledge of which I2Cx a board wired up.
+   */
+  void (*reset)(void);
+#endif
 } TagI2cController;
 
 /**
@@ -192,6 +224,40 @@ msg_t tagI2cMasterTransmitTimeout(const TagI2cDevice *device,
  * @param[in] device I2C device descriptor whose sleep policy should be applied.
  */
 void tagI2cDevicePrepareSleep(const TagI2cDevice *device);
+
+/**
+ * @brief Recover a bus that a slave is holding, if it is holding one.
+ *
+ * @details A core reset in the middle of an I2C byte -- which a monitor attach
+ *          causes routinely, since it connects under reset -- leaves the
+ *          addressed slave driving SDA low and waiting for clocks that never
+ *          arrive. The master cannot issue a START while the bus is not idle,
+ *          so every device on the controller fails for the rest of that boot.
+ *          Nine SCL pulses let the slave finish its byte and release SDA; a
+ *          STOP then returns every device on the bus to idle.
+ *
+ *          Observed on an IMUTagNandBmp581, where the RV-3028 and the BMM350
+ *          share one controller: SDA low with SCL high at the moment of
+ *          failure, both devices unreachable together, and the condition
+ *          persisting for the whole boot.
+ *
+ * @param[in] device Device whose controller and board lines should be cleared.
+ * @return true when the bus was stuck and a recovery sequence was issued,
+ *         false when the bus was already idle or recovery does not apply.
+ *
+ * @note Does nothing unless SDA actually reads low, so a healthy bus is never
+ *       disturbed, and nothing when the device has a switched power line that
+ *       is currently deasserted -- driving an unpowered part would inject
+ *       current through its protection diodes.
+ *
+ * @warning Drives SCL and SDA directly. Callers must own the controller mutex,
+ *          or run before the scheduler starts.
+ *
+ * @see tagI2cBusBegin(), tagI2cBusEnd(), tagSoftI2cBusClear()
+ */
+#if TAG_I2C_BUS_CLEAR
+bool tagI2cBusClearIfStuck(const TagI2cDevice *device);
+#endif
 /** @} */
 
 #endif
