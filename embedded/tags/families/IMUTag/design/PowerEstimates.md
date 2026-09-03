@@ -360,6 +360,90 @@ mission length.
   with itself to within 0.4% across two runs, so the precision is not in doubt,
   but no claim is made here about board-to-board variation.
 
+### Measured SMPS Board, Full Rate Sweep (2026-09-03), with 3.7 V Projection
+
+Taken on the TPS62840 breakout carrying daughter card
+`00303143433650090059002E` -- the same card as the 3.3 V sweep above -- at a
+measured **3.2936 V**, 120 s per point, on `main` plus two uncommitted changes:
+the restart-path NAND unlock in `tagDevicesAfterReset()` and the removal of the
+`666` debug sentinel from `state_run.c`.
+
+This is the first sweep of the day whose points are all verified. Every rate
+point carries a download at 1.01-1.03x the expected sample count, and idle was
+re-measured between every point at 4.886-4.977 uA, so no point was taken while
+the tag had stopped reaching Stop3.
+
+| Mode | Measured @3.294 V (uA) | Projected @3.7 V (uA) | 12 mAh @3.294 V | 12 mAh @3.7 V | 2 Gbit storage | Usable @3.7 V | Binds on |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Idle | 4.9419 | 4.40 | 2428 h (101 d) | 2728 h (114 d) | -- | 114 d | battery |
+| 100 Hz | 868.1827 | 772.8 | 13.82 h | 15.53 h | 54.60 h | **15.53 h** | battery |
+| 200 Hz | 907.0935 | 807.5 | 13.23 h | 14.86 h | 27.30 h | **14.86 h** | battery |
+| 400 Hz | 983.0179 | 875.1 | 12.21 h | 13.71 h | 13.70 h | **13.70 h** | dead heat |
+| 800 Hz | 1135.5329 | 1010.8 | 10.57 h | 11.87 h | 6.83 h | **6.83 h** | storage |
+| 1600 Hz | 1271.5679 | 1131.9 | 9.44 h | 10.60 h | 3.41 h | **3.41 h** | storage |
+
+The 1600 Hz point was re-run on its own to obtain the download verification: in
+the sweep its current measured cleanly but the readback timed out, because
+120 s at 1600 Hz is roughly 1280 pages. The two currents agree to 0.2%
+(1269.19 uA in the sweep, 1271.57 uA on the verified re-run); the verified
+figure is the one tabulated.
+
+#### How the 3.7 V column is derived, and what it assumes
+
+The tag cannot be measured at 3.7 V on this bench, so the column is a
+projection, not a measurement, and it is only valid for the SMPS.
+
+A buck converter draws input power, not input current, so raising the input
+voltage lowers the input current for the same load: `I(3.7) = I(3.294) x
+(3.294/3.7)`, a factor of **0.890**. This assumes converter efficiency is
+unchanged between the two input voltages, which is optimistic -- TPS62840
+efficiency falls slightly as Vin rises at fixed Vout, so the real 3.7 V current
+will be a little above these figures. Treat the column as a lower bound with a
+few percent of headroom, not a specification.
+
+**The same scaling must not be applied to the LDO.** An LDO's input current
+equals its load current regardless of input voltage, so every LDO figure in
+this document is already its own 3.7 V figure. This is the whole reason the
+regulator comparison depends on supply voltage, and it is why the SMPS
+advantage grows as the cell voltage rises rather than staying fixed.
+
+Runtimes are `12000 uAh / I`, against the 12 mAh reference cell, ignoring cell
+derating at temperature and end-of-life voltage. Storage limits are unchanged
+by supply voltage, so at 800 Hz and above the device still fills long before
+the battery empties, and at 400 Hz the two now land within 0.1 h of each other.
+
+#### This sweep disagrees with the 2026-09-02 SMPS sweep above
+
+Same board, same regulator, same procedure, roughly 20% apart:
+
+| Mode | 2026-09-02 (uA) | 2026-09-03 (uA) | Delta |
+| --- | ---: | ---: | ---: |
+| Idle | 4.0858 | 4.9419 | +21% |
+| 200 Hz | 727.6414 | 907.0935 | +25% |
+| 400 Hz | 818.2931 | 983.0179 | +20% |
+| 800 Hz | 996.4598 | 1135.5329 | +14% |
+| 1600 Hz | 1175.3872 | 1271.5679 | +8% |
+
+This is not resolved, and neither sweep should be quoted as authoritative until
+it is. A 21% difference in *idle* is the most troubling part, because idle is
+the simplest measurement here and the one least able to hide a procedural
+difference. Candidates, none confirmed:
+
+- **Instrument range.** This sweep ran with `s/i/range/mode` = 4 (auto),
+  recorded in the tool output. The earlier sweep's range was not recorded. A
+  fixed manual shunt biases low-current readings differently from autoranging,
+  and the idle point is where that matters most.
+- **Firmware.** The 09-02 sweep ran on `b1657d7`, which predates the restart
+  NAND unlock. Its rate runs were subject to being killed part-way by the
+  harness's own monitor polling, and a window that includes post-failure sleep
+  averages *low*. That would depress the rate points but not idle.
+- **Bench conditions.** Both sweeps report 3.2935-3.2936 V, so the supply is
+  not the variable.
+
+The 2026-09-03 numbers are the ones with per-point download verification and
+per-point idle checks, so they are the better-evidenced set; that is a reason to
+prefer them, not a reason to consider the discrepancy explained.
+
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
 The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
