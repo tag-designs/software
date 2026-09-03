@@ -22,6 +22,17 @@
 
 #if defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
 #define TAG_HANDLERS_TARGET_FILE "handlersU3.c"
+/**
+ * @def TAG_MONITOR_MAILBOX
+ * @brief The monitor session is owned by the shared-memory mailbox.
+ *
+ * @details True for the STM32U3 path, where attachment is published in
+ *          monitor_shared.request and reconciled at boot by
+ *          monitorSharedEarlyInit(). The STM32L4 path has no mailbox: there
+ *          attachment really is the DebugMonitor vector-catch bit, so the two
+ *          models cannot share one notion of "attached".
+ */
+#define TAG_MONITOR_MAILBOX 1
 #elif defined(STM32L4xx_MCUCONF) || defined(STM32L422xx) || \
       defined(STM32L431xx) || defined(STM32L432xx) || \
       defined(STM32L433xx)
@@ -194,7 +205,24 @@ static void monitorStartSessionI(sysinterval_t timeout, vtfunc_t callback)
 
 bool isMonitorEnabled(void)
 {
+#if defined(TAG_MONITOR_MAILBOX) && TAG_MONITOR_MAILBOX
+  /*
+   * The mailbox is the authority, deliberately: MONCONNECTED is only the debug
+   * unit's VC_CORERESET bit, and the host uses that bit as an attachment flag
+   * it does not always clear. tagmonitor.cc resumes the core after a
+   * monitor-call timeout with VC_CORERESET still set, so a single timed-out
+   * call latches "attached" for good. Every sleep path then refuses and the tag
+   * sits at about 1 mA instead of 6 uA until some later session's teardown
+   * happens to clear the bit -- which is why only a reset appeared to fix it.
+   *
+   * VC_CORERESET remains legitimate evidence elsewhere: see
+   * monitorResetRecoveryActive(), where the question genuinely is whether a
+   * debugger connected under reset. It is only wrong as a liveness test.
+   */
+  return monitorIsAttached() || monitorAttachGraceActive();
+#else
   return MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive();
+#endif
 }
 
 void monitorPostPendingEvents(void)

@@ -66,10 +66,14 @@ bool isMonitorEnabled(void);
 
 `monitorIsAttached()` means the target-specific monitor session is active.
 
-`isMonitorEnabled()` is intentionally broader:
+`isMonitorEnabled()` is broader, and **differs by transport**:
 
 ```c
+/* STM32L4: vector catch is the attach mechanism. */
 return MONCONNECTED || monitorIsAttached() || monitorAttachGraceActive();
+
+/* STM32U3 (TAG_MONITOR_MAILBOX): the mailbox is the only session truth. */
+return monitorIsAttached() || monitorAttachGraceActive();
 ```
 
 `MONCONNECTED` is the `DEMCR.VC_CORERESET` attach hint set by the host. This is
@@ -78,6 +82,12 @@ completed `MONITORSTART`. Runtime sleep code uses `isMonitorEnabled()` so a tag
 does not enter standby while a host is still in the early attach/info phase.
 The L4 transport also treats recent `TAG_MONITORINFO` traffic as a short attach
 grace so metadata reads can bridge reliably into `MONITORSTART`.
+
+The U3 path must not consult `MONCONNECTED`, for the reason this document
+already gave under *Sleep And Reset Interaction*: it is an attach hint, not
+session truth. Until 2026-09-03 the shared implementation used it on both
+paths, and the consequence on U3 was severe rather than cosmetic --
+see *Attachment Authority On U3* below.
 
 ## STM32L4 Path
 
@@ -292,6 +302,56 @@ Monitor attachment is part of the low-power contract:
 
 `MONCONNECTED` remains a narrow attach hint: it is `DEMCR.VC_CORERESET`. It is
 not the U3 session truth. U3 session truth is the shared request word.
+
+## Attachment Authority On U3 (2026-09-03)
+
+`isMonitorEnabled()` consulted `MONCONNECTED` on every target, which
+contradicted the paragraph above and cost the U3 tags their sleep.
+
+`DEMCR.VC_CORERESET` is set by the host as an attachment flag -- the host code
+says so in as many words, at `host/libraries/tagcore/tagmonitor.cc`:
+
+```c
+// VC_CORERESET is used as attachment flag to embedded app.
+```
+
+The host has two resume paths after a failed monitor call. One clears the flag;
+the other, taken when the timeout probe has halted the target, resumes with
+`(demcr | MON_EN | VC_CORERESET)` and deliberately leaves it set. Nothing on
+the tag clears `VC_CORERESET` except `monitorSharedSetDisconnected()`, which
+runs only from a session teardown -- and a teardown needs a session. So one
+timed-out monitor call latched "attached" for the rest of that boot:
+
+- every sleep path refused, because they all gate on `isMonitorEnabled()`;
+- the main loop took its blocking `chEvtWaitAny()` branch;
+- the tag drew about **1 mA instead of 6 uA**, indefinitely;
+- only a reset recovered it, because the reset command established a fresh
+  session whose teardown then cleared the flag.
+
+Measured on an IMUTagNandBmp581 at 3.29 V: **1037-1040 uA** whenever a monitor
+call had timed out, with `demcr=0x1000001` in the timeout dump, against
+**5.8-6.3 uA** whenever it had not. Eight logic-analyser channels were silent
+throughout the fault -- no NAND, no SPI, no I2C, no sensor data-ready -- so the
+current was the core alone, not stranded peripheral activity.
+
+The fix restores what this document specified: on the mailbox path
+`isMonitorEnabled()` is `monitorIsAttached() || monitorAttachGraceActive()`,
+gated by `TAG_MONITOR_MAILBOX` so L4 keeps vector catch as its attach
+mechanism. `MONCONNECTED` is deliberately retained in
+`monitorResetRecoveryActive()`, where the question genuinely is whether a
+debugger connected under reset; it was only ever wrong as a liveness test.
+
+Verified by 160 attach/detach cycles down to 400 ms attached / 250 ms detached
+with zero timeouts and zero errors, the tag answering on every cycle, and idle
+at 5.43-5.50 uA afterwards. That test matters because the risk of ignoring the
+hint is the opposite failure: a tag that sleeps while a host is still reaching
+for it would show up as attach timeouts.
+
+Still open, and independent of the tag: the host's timeout-resume path should
+clear `VC_CORERESET` as its reset path does. A stale flag can no longer stop
+the tag sleeping, but it still misleads `monitorResetRecoveryActive()` into
+reading the next boot as a monitor attach. Needs testing across targets before
+changing, since both transports read that bit.
 
 ## Current Target Split
 
