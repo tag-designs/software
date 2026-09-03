@@ -229,6 +229,11 @@ def main() -> int:
                    help='Statistics block length in seconds (default: 0.5).')
     p.add_argument('--device', default=None,
                    help='Device path; default is the only device found.')
+    p.add_argument('--allow-unpowered', action='store_true',
+                   help='Measure even when the current range is off. Only '
+                        'meaningful when the DUT is powered from a separate '
+                        'supply and the sense path is deliberately open; the '
+                        'reading does not describe the DUT otherwise.')
     p.add_argument('--set-range', default=None, metavar='SPEC',
                    help="Change the current range: 'auto' or 'manual:N' with "
                         "N in 1-5. Omit to leave the device as found. Never "
@@ -273,9 +278,21 @@ def main() -> int:
             print(f'  range/mode as found   : {describe_mode(saved_mode)}')
             print(f'  range/select as found : {saved_select}')
             if int(saved_mode) == RANGE_MODE_OFF and requested is None:
-                print('  WARNING: range mode is off, so the DUT is unpowered '
-                      'through the sense path. Pass --set-range auto to '
-                      'restore it.', file=sys.stderr)
+                # Refuse rather than warn. A warning here does not survive a
+                # sweep: the caller records the number, the number looks
+                # plausible, and every point in the run reads the same because
+                # it reflects the sense path rather than the tag -- an entire
+                # measurement session was lost to exactly this. There is no
+                # useful measurement to take with the output off, so failing is
+                # never the wrong call.
+                print('ERROR: range mode is off, so the DUT is not powered '
+                      'through the sense path and any average taken now '
+                      'describes the instrument, not the tag. Pass '
+                      '--set-range auto to power it, or --allow-unpowered if '
+                      'the DUT is deliberately powered from elsewhere.',
+                      file=sys.stderr)
+                if not args.allow_unpowered:
+                    return 2
 
             if requested is not None:
                 mode, select = requested

@@ -224,17 +224,26 @@ def parse_measurement(text: str) -> Measurement:
 
 
 def to_idle(bin_dir: str, base: str | None, timeout: float,
-            verbose: bool) -> str:
-    """Step 1: stop, erase, and set the clock, leaving the tag idle.
+            verbose: bool, set_rtc: bool = True) -> str:
+    """Step 1: stop, erase, and optionally set the clock, leaving the tag idle.
 
     @param bin_dir Directory holding the host tools.
     @param base    Optional bus:device selector.
     @param timeout Per-command timeout in seconds.
     @param verbose True to echo commands.
+    @param set_rtc True to also set the tag clock, which a run needs so its
+                   configured start time is meaningful. Pass False for an idle
+                   measurement: --set-rtc leaves the tag drawing run current
+                   indefinitely -- measured at 1036 uA against 4.93 uA after a
+                   plain reset, on the same tag seconds apart -- so an idle
+                   point that sets the clock measures the fault instead of the
+                   tag. See SetTimeUnixSec() -> tagRtcInit() -> rv3028Init().
     @return The tag state reported after the reset.
     @raise ExperimentError when the tag does not reach IDLE.
     """
-    argv = [os.path.join(bin_dir, "tag-reset"), "--set-rtc"]
+    argv = [os.path.join(bin_dir, "tag-reset")]
+    if set_rtc:
+        argv += ["--set-rtc"]
     if base:
         argv += ["-b", base]
     res = run("reset", argv, timeout, verbose)
@@ -568,8 +577,12 @@ def main() -> int:
     p.add_argument("--running-timeout", type=float, default=90.0,
                    help="Seconds to wait for the tag to reach RUNNING after a "
                         "start command before failing the experiment.")
-    p.add_argument("--settle", type=float, default=3.0,
-                   help="Seconds to wait after starting before measuring. "
+    p.add_argument("--settle", type=float, default=5.0,
+                   help="Seconds to wait after starting and detaching before "
+                        "measuring. Covers the LSM trigger-synchronisation "
+                        "window: a run discards its first pages while the "
+                        "sensor locks onto the trigger, and that period is not "
+                        "representative of steady-state collection current. "
                         "Targets that set TAG_CONFIGURED_IMMEDIATE_START begin "
                         "collecting at once, so a few seconds suffices; a target "
                         "without it waits for a minute alarm and needs more.")
@@ -619,12 +632,26 @@ def main() -> int:
         if args.verbose:
             print(f"  measurement interpreter: {measure_python}")
 
-        print(f"[1/7] reset to idle, set clock")
-        to_idle(args.bin_dir, args.base, args.timeout, args.verbose)
+        print("[1/7] reset to idle"
+              + ("" if args.idle else ", set clock"))
+        to_idle(args.bin_dir, args.base, args.timeout, args.verbose,
+                set_rtc=not args.idle)
 
         if args.idle:
+            # Settle here too. An idle point measured straight after the
+            # monitor session closes reads run current, not idle current: the
+            # tag refuses every sleep path while it believes a session is open,
+            # and teardown takes up to two heartbeat periods. Skipping the wait
+            # here is what made whole sweeps report ~1037 uA at every point,
+            # including points where the tag was doing nothing at all.
+            # The two waits cover different things, so an idle point needs the
+            # longer of them. A rate point waits for the LSM to synchronise on
+            # the trigger; an idle point waits for the monitor session to tear
+            # down, which takes up to two MONITOR_HEARTBEAT_PERIOD_S ticks.
+            idle_settle = max(args.settle, 12.0)
             print(f"[2/7] skipped (idle measurement)")
-            print(f"[3/7] monitor session closed")
+            print(f"[3/7] monitor session closed; settling {idle_settle} s")
+            time.sleep(idle_settle)
         else:
             print(f"[2/7] start with {args.config}")
             start(args.bin_dir, args.config, args.base, args.merge,
