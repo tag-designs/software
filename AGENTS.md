@@ -123,7 +123,25 @@ Use the target that matches the files changed. For documentation-only changes,
   sleeps at all. Neither failure is obvious in the output — a held monitor just
   reads as a high average.
 
-  Put the tag in the state you mean to measure, then measure it detached:
+  Prefer the life-cycle check, which walks the tag through idle, running,
+  stopped and idle-again and measures every resting state:
+
+  ```sh
+  embedded/tools/tag_lifecycle_check.py \
+      --config embedded/tools/power-configs/imutag-400.json --run-duration 60
+  ```
+
+  Measure one state and you only learn about that state. A power sweep measures
+  the run, which is the state a fault is hardest to see in: an idle regression
+  that left the tag at 1036 uA hid inside a real 400 Hz run current of about
+  970 uA and survived a full sweep. It also reset the tag without setting the
+  clock, so it never entered the state that was broken. The life-cycle check
+  measures idle **with the clock set**, because that is how a prepared tag is
+  actually left, and compares idle before the run against idle after it — the
+  same state by two histories, which is where a state-dependent fault shows up
+  even when both numbers look plausible.
+
+  To measure a single state directly instead:
 
   ```sh
   build-host/bin/tag-reset                       # -> IDLE

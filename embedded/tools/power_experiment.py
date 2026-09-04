@@ -232,12 +232,17 @@ def to_idle(bin_dir: str, base: str | None, timeout: float,
     @param timeout Per-command timeout in seconds.
     @param verbose True to echo commands.
     @param set_rtc True to also set the tag clock, which a run needs so its
-                   configured start time is meaningful. Pass False for an idle
-                   measurement: --set-rtc leaves the tag drawing run current
-                   indefinitely -- measured at 1036 uA against 4.93 uA after a
-                   plain reset, on the same tag seconds apart -- so an idle
-                   point that sets the clock measures the fault instead of the
-                   tag. See SetTimeUnixSec() -> tagRtcInit() -> rv3028Init().
+                   configured start time is meaningful. Idle points set it too:
+                   a prepared tag has had its clock set, so measuring idle
+                   without it measures a state no deployed tag is ever in.
+
+                   This defaulted to False for idle points for a while, because
+                   --set-rtc left the tag at 1036 uA against 4.93 uA after a
+                   plain reset. That was a real firmware regression, not a
+                   property of setting the clock: the I2C bus clear in
+                   tagI2cBusEnd() parked SDA and SCL as GPIO outputs against the
+                   board pull-ups. Skipping --set-rtc here meant the harness
+                   measured around it for two days instead of reporting it.
     @return The tag state reported after the reset.
     @raise ExperimentError when the tag does not reach IDLE.
     """
@@ -632,10 +637,9 @@ def main() -> int:
         if args.verbose:
             print(f"  measurement interpreter: {measure_python}")
 
-        print("[1/7] reset to idle"
-              + ("" if args.idle else ", set clock"))
+        print("[1/7] reset to idle, set clock")
         to_idle(args.bin_dir, args.base, args.timeout, args.verbose,
-                set_rtc=not args.idle)
+                set_rtc=True)
 
         if args.idle:
             # Settle here too. An idle point measured straight after the
