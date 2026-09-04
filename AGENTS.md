@@ -141,6 +141,11 @@ Use the target that matches the files changed. For documentation-only changes,
   same state by two histories, which is where a state-dependent fault shows up
   even when both numbers look plausible.
 
+  `tag_attach_storm.py` covers the other half: repeated reset-and-set-clock
+  cycles and attach/detach storms against a running tag, checking that the run
+  survives and recorded usable data. It measures no power; the two tools are
+  complementary.
+
   To measure a single state directly instead:
 
   ```sh
