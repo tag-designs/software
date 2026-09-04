@@ -708,9 +708,16 @@ because of it. The real cause was a missing pre-sleep clear of the STM32U3
 flash error and ECC flags: while one is latched the power controller aborts the
 low-power transition or wakes straight back out of `__WFI()`, so any change
 that happened to touch internal flash could move the tag from 6.6 uA to run
-current. `tagPowerClearFlashErrorFlags()` fixes it, and the same build then
-measures 6.705 uA. See
+current. `tagPowerClearFlashErrorFlags()` fixed it, and the same build then
+measured 6.705 uA. See
 [`embedded/tags/design/restart-recovery.md`](../../../design/restart-recovery.md).
+
+**Stale as of 2026-09-04.** That fix was applied to `tagPowerEnterStop3()`,
+which was then the live terminal path. It no longer is: the tag enters standby
+via `tagPowerEnterStandby()`, and Stop3 is `__attribute__((unused))`. The
+pre-sleep clear therefore runs on no path the tag takes today, and attempts to
+put it on the live paths have measured 1036 uA at idle against 4.94 uA without
+it. See [`../../design/open-issues.md`](../../design/open-issues.md).
 
 The `debug_log` row is a different fault and is still open. It was retested
 after the flash-flag fix and stayed at 1.71 mA, which confirms the module's own

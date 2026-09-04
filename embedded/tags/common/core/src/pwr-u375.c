@@ -209,6 +209,16 @@ void tagPowerEnterIdleMode(enum Sleep mode)
  * @note Flags are cleared by writing 1, so no flash unlock is required and the
  *       call is safe with the flash locked.
  *
+ * @warning Called only from tagPowerEnterStop3(), which is
+ *          __attribute__((unused)): this does not run on any path the tag
+ *          takes today. The live terminal path is tagPowerEnterStandby().
+ *          Two attempts to call it from the live idle and standby paths each
+ *          measured about 1036 uA at idle against 4.94 uA without it, which is
+ *          unexplained -- a conditional version that only reads the flags and
+ *          writes nothing when they are clear cost the same. Do not add the
+ *          call back without measuring.
+ *          @see embedded/tags/design/open-issues.md
+ *
  * @see tagPowerRestoreFlashAfterStop3(), FLASH_ClearEccErrors()
  */
 static inline void tagPowerClearFlashErrorFlags(void)

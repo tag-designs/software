@@ -167,14 +167,56 @@ Use the target that matches the files changed. For documentation-only changes,
   different today" in one step, and it is how the 995 uA above was pinned to
   the instrumentation rather than to the fix it was shipped with.
 
-  A tag reporting IDLE while drawing run current is usually stuck in `__WFI()`
-  rather than waking repeatedly. On STM32U3 the first thing to suspect is a
-  latched flash error or ECC flag, which aborts the low-power transition or
-  wakes the part straight back out of WFI; that is what
-  `tagPowerClearFlashErrorFlags()` exists to prevent, and it made an apparent
-  150x penalty from unrelated instrumentation disappear entirely. The tell is
-  that the triggering change is implausibly small for the effect and merely
-  touched internal flash. See `embedded/tags/design/restart-recovery.md`.
+### Reading state out of a tag that cannot talk
+
+  Sleep faults are hard to instrument because the usual narration changes the
+  thing being measured: the monitor keeps `isMonitorEnabled()` true so the tag
+  never sleeps at all, and `debug_log_printf()` is compiled out of shipped
+  images. A probe that calls any timing function inside the idle or power path
+  changes the fault outright -- an instrumented build read 430 uA where the
+  pristine one read 1036 uA.
+
+  Reserve a block of RAM at a known address and log into it with plain stores,
+  then read it back over SWD:
+
+  ```sh
+  # must connect under reset; hotplug does not work on this rig
+  STM32_Programmer_CLI -c port=SWD mode=UR -u <address> <size> <file>
+  ```
+
+  Keep each probe to a single store, placed outside the idle and power paths,
+  and decode the file afterwards. Nothing runs on the tag to produce the
+  output, so the measurement is undisturbed.
+
+  Ordinary RAM is enough for **Run and Stop**, which retain SRAM. To carry data
+  **across standby**, put the block in SRAM2 and enable its standby retention;
+  standby otherwise loses SRAM, and a probe that vanishes is itself evidence --
+  survival of the block proves standby was not entered, destruction proves it
+  was.
+
+  A tag reporting IDLE while drawing run current is not necessarily stuck in
+  `__WFI()`. Rule out the cheap explanations before reaching for a mechanism:
+
+  - **Pin state.** A GPIO left driven against the board's 4.7k pull-ups sinks
+    about 700 uA per line, and the tag really is asleep underneath it. This is
+    what an I2C bus clear at the wrong call site cost, and it read as a failure
+    to sleep for two days. Ask what the last code to touch those pins left them
+    as.
+  - **Bisect against recent commits** before theorising. The same fault was
+    chased through the RTC alarm and wakeup teardown for most of a day; the
+    cause was a commit from the previous afternoon, found in one `git log`.
+  - **Trust only repeated measurements.** Single-point bisects on this fault
+    produced two confident and wrong conclusions. Use three or four trials per
+    point.
+
+  A latched flash error or ECC flag can also abort the low-power transition, and
+  `tagPowerClearFlashErrorFlags()` exists for it, but **it is not currently
+  called on any live path** -- its only caller, `tagPowerEnterStop3()`, is
+  `__attribute__((unused))`. Adding it to the live idle and standby paths has
+  measured 1036 uA at idle against 4.94 uA without it, unexplained. Do not
+  reach for it as a fix without measuring. See
+  `embedded/tags/design/open-issues.md` and
+  `embedded/tags/design/restart-recovery.md`.
 
 ### Checking documentation coverage
 

@@ -243,7 +243,13 @@ Joulescope app and qtmonitor first is required; see `AGENTS.md`.
 
 Not reproduced in 38 consecutive start attempts after
 `tagPowerClearFlashErrorFlags()` was added to the STM32U3 low-power entry path,
-against three failures in nine attempts before it. The five failures in that
+against three failures in nine attempts before it.
+
+> **Stale as of 2026-09-04.** That entry path was `tagPowerEnterStop3()`, which
+> is no longer live -- the tag enters standby through `tagPowerEnterStandby()`
+> and Stop3 is `__attribute__((unused))`. The clear does not run today, so if
+> this abort returns, the flash-flag explanation is no longer in force.
+> See [`../../design/open-issues.md`](../../design/open-issues.md). The five failures in that
 run were all the unrelated `SetRtc` bug, where the start command never reaches
 the tag.
 

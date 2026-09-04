@@ -88,9 +88,16 @@ typedef enum
  * @note Off by default as a policy choice, not a cost. It once measured 995 uA
  *       idle against 6.56 uA, but that was a missing pre-sleep flash
  *       error-flag clear in the U3 power path, not this code: with
- *       tagPowerClearFlashErrorFlags() in place it measures 6.705 uA against
+ *       tagPowerClearFlashErrorFlags() in place it measured 6.705 uA against
  *       6.716 uA with it disabled, which is within run-to-run spread. Enable
  *       it when a boot-recovery question needs answering.
+ *
+ * @warning Those figures were taken when tagPowerEnterStop3() was the live
+ *       terminal path. It no longer is -- tagPowerEnterTerminalSleep() calls
+ *       tagPowerEnterStandby(), and Stop3 is __attribute__((unused)) -- so the
+ *       flash error-flag clear does not run on any path the tag takes today.
+ *       Adding it to the live paths has so far cost 1 mA at idle rather than
+ *       saving it; see embedded/tags/design/open-issues.md.
  *
  * @see tagPowerClearFlashErrorFlags() in core/src/pwr-u375.c,
  *      embedded/tags/design/restart-recovery.md

@@ -280,9 +280,17 @@ pointer into flash.
 
 The U3 terminal sleep path cleared neither. It cleared `FLASH_SR` only
 *after* waking, in `tagPowerRestoreFlashAfterStop3()`, which is too late to
-help entry. `tagPowerClearFlashErrorFlags()` now clears both registers as the
-last step before arming sleep, immediately ahead of `DBGMCU->CR = 0` and the
-`LPMS`/`SLEEPDEEP`/`WFI` sequence. Flags are cleared by writing 1, so no flash
+help entry. `tagPowerClearFlashErrorFlags()` clears both registers as the last
+step before arming sleep, immediately ahead of `DBGMCU->CR = 0` and the
+`LPMS`/`SLEEPDEEP`/`WFI` sequence.
+
+> **Stale as of 2026-09-04.** It does so inside `tagPowerEnterStop3()`, which
+> is no longer the live terminal path: `tagPowerEnterTerminalSleep()` calls
+> `tagPowerEnterStandby()`, and Stop3 carries `__attribute__((unused))`. The
+> clear runs on no path the tag takes today. Two attempts to add it to the live
+> idle and standby paths both measured about 1036 uA at idle against 4.94 uA
+> without it, which is not yet explained -- see
+> [`open-issues.md`](open-issues.md). Flags are cleared by writing 1, so no flash
 unlock is needed and the call is safe with the flash locked.
 
 ### How the flag gets latched in the first place

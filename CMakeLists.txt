@@ -79,6 +79,7 @@ set(
   "embedded/tags/families/README.md"
   "embedded/tags/design/monitor_interface.md"
   "embedded/tags/design/i2c-bus-recovery.md"
+  "embedded/tags/design/open-issues.md"
   "embedded/tags/design/restart-recovery.md"
   "embedded/tags/design/custom-defines.md"
   "embedded/tags/design/u375-stop-support.md"
