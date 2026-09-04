@@ -444,6 +444,57 @@ The 2026-09-03 numbers are the ones with per-point download verification and
 per-point idle checks, so they are the better-evidenced set; that is a reason to
 prefer them, not a reason to consider the discrepancy explained.
 
+### Measured SMPS Board, Full Rate Sweep (2026-09-04), after the I2C Idle Fix
+
+First sweep taken after `24c1f86` removed the I2C bus clear from
+`tagI2cBusEnd()`. Same TPS62840 breakout, measured at **3.2936-3.2937 V**.
+
+Protocol per point: reset with `--set-rtc`, start, wait 5 s, measure 30 s
+running, stop, settle 12 s, measure 30 s stopped, reset. The stopped column is
+a check, not a result -- it confirms the tag reached a sleeping terminal state
+between every rate, so no run point was taken on a tag that had stopped
+sleeping.
+
+| Mode | Running @3.294 V (uA) | Stopped (uA) |
+| --- | ---: | ---: |
+| Idle | 4.3431 | -- |
+| 100 Hz | 669.6557 | 4.3571 |
+| 200 Hz | 715.8684 | 4.3159 |
+| 400 Hz | 809.6533 | 4.3298 |
+| 800 Hz | 992.8078 | 4.3603 |
+| 1600 Hz | 1175.3383 | 4.3760 |
+
+#### Compared with the 2026-09-03 sweep
+
+Every point is lower, by a margin that shrinks as the rate rises:
+
+| Mode | 2026-09-03 (uA) | 2026-09-04 (uA) | Change |
+| --- | ---: | ---: | ---: |
+| Idle | 4.9419 | 4.3431 | -12.1% |
+| 100 Hz | 868.1827 | 669.6557 | -22.9% |
+| 200 Hz | 907.0935 | 715.8684 | -21.1% |
+| 400 Hz | 983.0179 | 809.6533 | -17.6% |
+| 800 Hz | 1135.5329 | 992.8078 | -12.6% |
+| 1600 Hz | 1271.5679 | 1175.3383 | -7.6% |
+
+**This is not established as an effect of the fix.** There is a plausible
+mechanism -- the removed clear ran at the end of every I2C session, and it
+leaves SDA and SCL as GPIO rather than restoring alternate function, so between
+sensor accesses a line could sit against the 4.7k pull-ups at about 700 uA. A
+per-session cost would fall as a fraction of total current as the sample rate
+rises, which is the shape seen here.
+
+Against that: this tree already carries an unexplained ~20% disagreement
+between the 2026-09-02 and 2026-09-03 sweeps at a constant supply voltage, and
+the size of that discrepancy is the same as the change reported here. The idle
+row makes the point -- idle does no I2C work between measurements, yet moved
+12%, and idle measured 4.94 uA earlier the same day on this build. Until a
+sweep is run back-to-back on the two firmware images with nothing else varying,
+these numbers should be read as a fresh measurement, not as a saving.
+
+Method differences that also separate the two sweeps: 30 s per point here
+against 120 s, and no per-point download verification.
+
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
 The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
