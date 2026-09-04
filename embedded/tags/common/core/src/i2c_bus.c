@@ -312,15 +312,22 @@ void tagI2cBusEnd(const TagI2cDevice *device)
   }
 
   /*
-   * Clear on the way out as well as on the way in, so a transaction that left
-   * a slave mid-byte does not hand a wedged bus to the next device sharing
-   * this controller. Done after the controller is disabled, because the pins
-   * have to be driven directly, and before the mutex is released, because
-   * driving them is only safe while this session still owns the bus.
+   * Deliberately NO bus clear here. Clearing on the way out cost 1 mA at idle:
+   * tagI2cBusClearHardware() has to drive SDA and SCL directly, so it leaves
+   * them as plain open-drain GPIO outputs, and at this call site nothing ever
+   * restores them -- only tagI2cBusBegin() follows a clear with
+   * tagI2cApplyActivePins(). A write that ends with a slave holding SDA is
+   * exactly when the clear fires, so setting the clock parked the pins as GPIO
+   * into standby and the tag drew about 1 mA instead of 5 uA until the next
+   * reset. Reads never tripped it, which is why it looked like a fault in the
+   * RTC write path.
+   *
+   * Nothing is lost by dropping it. The clear is already performed where it
+   * can be followed by a correct pin state: tagI2cBusBegin() clears before
+   * enabling the controller, so the next user of this bus recovers it, and
+   * tagRtcDeviceRuntimeInit() clears at boot, so a slave left holding SDA
+   * across standby is recovered on the next startup.
    */
-#if TAG_I2C_BUS_CLEAR
-  (void)tagI2cBusClearIfStuck(device);
-#endif
 
   if (controller && controller->mutex)
   {

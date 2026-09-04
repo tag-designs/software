@@ -79,16 +79,44 @@ BUSY from the bus and can stay stuck regardless of what the pins then read.
 
 ### Call sites
 
-`tagI2cBusBegin()` and `tagI2cBusEnd()` are the complete session choke points
--- nothing outside `i2c_bus.c` calls `tagI2cControllerEnable()` or
-`tagI2cControllerDisable()` -- so two hooks cover every transaction.
+`tagI2cBusBegin()` is the session choke point that can host a clear -- nothing
+outside `i2c_bus.c` calls `tagI2cControllerEnable()`, so every transaction
+passes through it.
+
+A clear may only be placed where something restores the pin mode afterwards.
+`tagI2cBusClearHardware()` drives SDA and SCL directly and therefore leaves
+them as plain open-drain GPIO outputs; only `tagI2cBusBegin()` follows it with
+`tagI2cApplyActivePins()`. This is not a detail -- see **Where a clear must
+not go** below.
 
 | site | placement | why |
 | --- | --- | --- |
 | `tagI2cBusBegin()` | before the controller is enabled, and before the active pin mode is applied | a controller started against a non-idle bus latches BUSY |
-| `tagI2cBusEnd()` | after the controller is disabled, before the mutex is released | clears damage from the transaction just finished, so the next device on the shared controller is not blocked; the pins may only be driven while this session still owns the bus |
 | startup | from IMUTag `devices.c` device init, before the first RTC read | the boot-time external RTC query runs early; clearing only inside `tagI2cBusBegin()` would let that first read fail before recovery could run |
 | standby entry | `tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, ...)` | leaves the bus idle, so a slave is not left holding SDA against the standby pull-ups, and the next boot does not inherit a wedged bus |
+
+### Where a clear must not go
+
+`tagI2cBusEnd()` looks like the natural partner to `tagI2cBusBegin()`, and a
+clear was placed there originally. It cost 1 mA at idle and was removed.
+
+The clear leaves the pins as open-drain GPIO outputs, and at bus end nothing
+restores them to alternate function. A transaction that ends with a slave
+holding SDA -- which is precisely when the clear fires -- therefore parked the
+pins as GPIO against the board's 4.7k pull-ups, and they stayed that way into
+standby. Setting the clock is normally the last preparation step, so a prepared
+tag sat at about 1 mA instead of 5 uA until its next reset while still
+reporting IDLE: roughly 11 hours of battery life rather than 100 days.
+
+It presented as an RTC fault rather than a pin-state fault. The clear only runs
+when SDA reads low, so writes tripped it and reads never did; the trigger
+isolated to `rv3028SetDateTime()`, and running to finished and back to idle was
+always clean because that path never sets the clock.
+
+Nothing is lost by leaving bus end alone. `tagI2cBusBegin()` clears before
+enabling the controller, so the next user of the bus recovers it, and the
+startup hook clears at boot, so a slave left holding SDA across standby is
+recovered on the next startup.
 
 The standby hook must **not** go in `tagI2cDevicePrepareSleep()`, which is the
 obvious-looking home: this target sets
