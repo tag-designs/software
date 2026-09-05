@@ -125,8 +125,8 @@ enough, and it keeps the field names in one place.
 
 ## 2. GDB over SWD
 
-The base board carries an ST-Link, so any standard ARM debugger works. This is
-the only approach that shows the full machine -- core registers, peripheral
+The base board carries an ST-Link. This is the only approach that shows the
+full machine -- core registers, peripheral
 registers, the stack, and where the program counter actually is -- and the only
 one that can stop the tag at a chosen instruction and let you look around.
 
@@ -134,6 +134,34 @@ The obvious use is a breakpoint immediately before the `__WFI()` that enters a
 low-power mode, then examining `PWR`, `RTC`, `NVIC`, `SCB` and the peripheral
 flags at leisure. That answers "what did the machine look like at the moment it
 refused to sleep", which no amount of after-the-fact reasoning does.
+
+### First: use a debugger that knows the part
+
+"Any standard ARM debugger" is not true here, and finding that out costs an
+afternoon. The STM32U375 is newer than the tooling most systems have installed:
+
+| Tool | STM32U3 support |
+| --- | --- |
+| probe-rs, as built into `embedded-debugger-mcp` | **none.** Its target database carries STM32U031/073/083 and STM32U535 through U599, and no U3 whatsoever. There is no generic Armv8-M fallback target name either. |
+| OpenOCD 0.12.0 (distribution build) | **none.** `stm32u5x.cfg` exists; there is no `stm32u3x.cfg`. |
+| ST's OpenOCD fork | yes. This is the one to build. |
+
+The probe-rs failure is worth recognising by sight, because it looks like a
+wiring or reset problem and is not:
+
+```
+Failed to attach to target 'STM32U375RGTx'
+Error: Unable to load specification for chip
+```
+
+That is the target database, not the connection -- it appears identically with
+`connect_under_reset` set and the probe enumerating correctly.
+
+With ST's OpenOCD running and exposing its GDB port, drive it through the
+`embedded-debugger` MCP with `backend: "openocd"` and `openocd_address`
+(default `127.0.0.1:3333`), or attach `arm-none-eabi-gdb` directly. Flashing
+does not have to come from the same tool; STM32CubeProgrammer already does that
+on this rig, so a debug-only target definition is sufficient.
 
 ### What has to change first
 
@@ -214,14 +242,37 @@ why `tagI2cBusClearIfStuck()` exists.
 Two MCP servers are registered for this repository and are the intended way to
 drive the first two approaches:
 
-- **`embedded-debugger`** -- probe-rs based; probe inspection, flashing, core
-  control, memory reads, RTT. The `embedded-debugger` skill describes the
-  workflow and the CLI fallback.
+- **`embedded-debugger`** -- probe inspection, core control, memory reads,
+  breakpoints, RTT, over either probe-rs or OpenOCD. Probe enumeration works
+  out of the box; attaching to this part requires the OpenOCD backend, for the
+  reason given above. The `embedded-debugger` skill describes the workflow and
+  the CLI fallback.
 - **`joulescope-js220`** -- direct instrument access for current measurement.
 
 They are registered at local scope. MCP tools bind when a session starts, so a
 session that was already running when they were added will not see them until
 it is restarted.
+
+### The Joulescope server does not accept a JS320
+
+`list_devices` reports our instrument, but every functional call fails with
+"No connected JS220 JouleScope devices found". The filter is a literal
+substring match in `joulescope_mcp/service.py`:
+
+```python
+if require_js220 and "/js220/" not in device_path:
+```
+
+Our device path is `u/js320/Z2GW`. It is a **JS320**, so it never matches, and
+only the handful of calls passing `require_js220=False` -- `list_devices` among
+them -- work. That reads as a naming assumption rather than a capability one:
+`embedded/tools/joulescope_measure.py` drives this same instrument through the
+same `pyjoulescope_driver` topics without trouble. Widening that filter in a
+fork is the durable fix; patching the `uvx` cache is undone on the next
+resolve.
+
+Until then the Python tools are the way to measure, and nothing is lost by
+using them.
 
 ## What not to do
 
