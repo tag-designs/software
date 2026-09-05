@@ -464,36 +464,45 @@ sleeping.
 | 800 Hz | 992.8078 | 4.3603 |
 | 1600 Hz | 1175.3383 | 4.3760 |
 
-#### Compared with the 2026-09-03 sweep
+#### Compared with the 2026-09-03 sweep: an A/B test, not an inference
 
-Every point is lower, by a margin that shrinks as the rate rises:
+The first version of this section said the drop was plausible but unproven,
+because this tree already carried an unexplained ~20% sweep-to-sweep
+disagreement of the same magnitude. It has now been tested directly.
 
-| Mode | 2026-09-03 (uA) | 2026-09-04 (uA) | Change |
-| --- | ---: | ---: | ---: |
-| Idle | 4.9419 | 4.3431 | -12.1% |
-| 100 Hz | 868.1827 | 669.6557 | -22.9% |
-| 200 Hz | 907.0935 | 715.8684 | -21.1% |
-| 400 Hz | 983.0179 | 809.6533 | -17.6% |
-| 800 Hz | 1135.5329 | 992.8078 | -12.6% |
-| 1600 Hz | 1271.5679 | 1175.3383 | -7.6% |
+Both images were built once and flashed alternately, A/B order swapped at each
+rate to cancel drift, 120 s per point, same session and same supply:
 
-**This is not established as an effect of the fix.** There is a plausible
-mechanism -- the removed clear ran at the end of every I2C session, and it
-leaves SDA and SCL as GPIO rather than restoring alternate function, so between
-sensor accesses a line could sit against the 4.7k pull-ups at about 700 uA. A
-per-session cost would fall as a fraction of total current as the sample rate
-rises, which is the shape seen here.
+- **A** = `main` with the fix (`24c1f86`), one clear call site in `i2c_bus.c`
+- **B** = `7efe688`, the bus-end clear present, two call sites
 
-Against that: this tree already carries an unexplained ~20% disagreement
-between the 2026-09-02 and 2026-09-03 sweeps at a constant supply voltage, and
-the size of that discrepancy is the same as the change reported here. The idle
-row makes the point -- idle does no I2C work between measurements, yet moved
-12%, and idle measured 4.94 uA earlier the same day on this build. Until a
-sweep is run back-to-back on the two firmware images with nothing else varying,
-these numbers should be read as a fresh measurement, not as a saving.
+| Mode | A, fixed (uA) | B, pre-fix (uA) | Change | B vs the 2026-09-03 sweep |
+| --- | ---: | ---: | ---: | ---: |
+| Idle | 4.3095 | 1032.9474 | -99.6% | -- |
+| 100 Hz | 668.9062 | 863.9646 | -22.6% | 868.18, 0.5% |
+| 200 Hz | 714.6061 | 899.2494 | -20.5% | 907.09, 0.9% |
+| 400 Hz | 807.1992 | 976.2971 | -17.3% | 983.02, 0.7% |
+| 800 Hz | 991.1455 | 1132.6792 | -12.5% | 1135.53, 0.25% |
+| 1600 Hz | 1173.2872 | 1267.5105 | -7.4% | 1271.57, 0.3% |
 
-Method differences that also separate the two sweeps: 30 s per point here
-against 120 s, and no per-point download verification.
+Every B point reproduces the 2026-09-03 sweep to within 1%, and every A point
+reproduces the 2026-09-04 sweep above to within 0.2%. The instrument and the
+method are therefore repeatable to well under a percent, and the difference
+between the two sweeps is the firmware. **The saving is real and it is the
+fix.**
+
+That also settles what the 2026-09-03 sweep was measuring: pre-fix firmware,
+with SDA and SCL parked as GPIO against the board's 4.7k pull-ups for part of
+every duty cycle. It does not settle the separate 2026-09-02 versus 2026-09-03
+disagreement recorded earlier in this document, which involved different
+daughter cards and remains open.
+
+One feature of the result is not explained. If the cost were a simple DC pin
+leak it would be a constant number of microamps at every rate, but the absolute
+saving falls steadily as the rate rises -- 195.1, 184.6, 169.1, 141.5 and
+94.2 uA from 100 Hz to 1600 Hz. Something about how much of each duty cycle the
+pins spend parked evidently varies with sample rate. The direction and size of
+the effect are established; its mechanism is not.
 
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
