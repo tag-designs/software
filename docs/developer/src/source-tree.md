@@ -26,6 +26,7 @@ directory that owns the code; the developer portal stages those files under
 - [Tag Build Sources](reference/embedded/tags/BUILD_SOURCES.md)
 - [Monitor Interface](reference/embedded/tags/design/monitor_interface.md)
 - [I2C Bus Recovery](reference/embedded/tags/design/i2c-bus-recovery.md)
+- [Debugging a Tag](reference/embedded/tags/design/debugging.md)
 - [Tag Firmware Open Issues](reference/embedded/tags/design/open-issues.md)
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)

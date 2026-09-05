@@ -20,6 +20,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Custom Compiler Definitions**](../embedded/tags/design/custom-defines.md): Complete list of customizable flags, timer settings, and MCU preprocessor defines.
 *   [**Tag Monitor Interface**](../embedded/tags/design/monitor_interface.md): Reference for the STM32L4 DebugMonitor path and STM32U3 shared-memory monitor path.
 *   [**I2C Bus Recovery**](../embedded/tags/design/i2c-bus-recovery.md): Why a monitor attach can wedge a shared I2C bus, the evidence that identified it, and the recovery now performed around sessions, at startup and before standby.
+*   [**Debugging a Tag**](../embedded/tags/design/debugging.md): The ways to see inside a running tag, what each costs, and what each destroys by being used.
 *   [**Tag Firmware Open Issues**](../embedded/tags/design/open-issues.md): Known unfixed defects, separating reproduced faults from ones found by reading code.
 *   [**Restart Recovery Design**](../embedded/tags/design/restart-recovery.md): Specification for state machine preservation, register resets, and low-power recovery cycles.
 *   [**IMUTag Power Estimates and Measurements**](../embedded/tags/families/IMUTag/design/PowerEstimates.md): Measured idle and per-rate current for the LDO and TPS62840 SMPS breakouts, storage-versus-battery limits on a 12 mAh cell, and the regulator decision at the 400 Hz design point.
