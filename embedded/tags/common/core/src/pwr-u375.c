@@ -133,6 +133,33 @@ static inline enum Sleep tagPowerReturnedIdleMode(enum Sleep mode)
  *                 treated as ordinary @c SLEEP because terminal modes remain
  *                 owned by godown().
  */
+/**
+ * @brief Set DBGMCU for a low-power entry.
+ *
+ * @details Shipped images clear DBGMCU_CR entirely: the debug unit is a load
+ *          the tag cannot afford, costing hundreds of microamps continuously,
+ *          and leaving it enabled would dwarf the currents being measured.
+ *
+ *          A debug build instead holds DBG_STOP and DBG_STANDBY, which keeps
+ *          the debug power domain alive through Stop and Standby so a GDB
+ *          session survives the transition and a breakpoint in front of the
+ *          WFI is actually reachable. Without it there is nothing for a
+ *          debugger to attach to once the tag sleeps -- the core is powered
+ *          down and SWD does not answer.
+ *
+ * @warning TAG_DEBUG_LOW_POWER must never be set in a shipped image, and any
+ *          power measurement taken with it set measures the debug unit rather
+ *          than the tag. See embedded/tags/design/debugging.md.
+ */
+static inline void tagPowerApplyDebugConfig(void)
+{
+#if TAG_DEBUG_LOW_POWER
+  DBGMCU->CR = DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY;
+#else
+  DBGMCU->CR = 0;
+#endif
+}
+
 void tagPowerEnterIdleMode(enum Sleep mode)
 {
   if (isMonitorEnabled()) {
@@ -155,7 +182,7 @@ void tagPowerEnterIdleMode(enum Sleep mode)
   palSetLine(LINE_LED1);
 #endif
 
-  DBGMCU->CR = 0;
+  tagPowerApplyDebugConfig();
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, tagPowerIdleLpms(mode));
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
@@ -432,7 +459,7 @@ static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
    * WFI. Everything above this point may have touched flash.
    */
   tagPowerClearFlashErrorFlags();
-  DBGMCU->CR = 0;
+  tagPowerApplyDebugConfig();
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 3U);
 
   //tagPowerSelectStop3();
@@ -504,7 +531,7 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
 
   tagDevicesDisableWakeupSources();
   tagPowerClearWakeFlags();
-  DBGMCU->CR = 0;
+  tagPowerApplyDebugConfig();
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 4U);
 
 
