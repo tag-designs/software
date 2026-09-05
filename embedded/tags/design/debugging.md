@@ -165,25 +165,127 @@ on this rig, so a debug-only target definition is sufficient.
 
 ### What has to change first
 
-Debug is disabled in low-power modes by default, and this tree explicitly turns
-it off on **every** entry path. `pwr-u375.c` writes `DBGMCU->CR = 0` at three
-places: line 158 (idle Stop entry), line 435 (`tagPowerEnterStop3()`, currently
-unused) and line 507 (terminal standby). To hold a debug connection across
-Stop or Standby, those writes have to become conditional on a debug build, and
-the relevant bits set instead:
+Debug is disabled in low-power modes by default, and this tree turned it off on
+every entry path. The three `DBGMCU->CR = 0` writes in `pwr-u375.c` now go
+through `tagPowerApplyDebugConfig()`, which keeps that behaviour unless
+`TAG_DEBUG_LOW_POWER` is set, in which case it holds `DBG_STOP` and
+`DBG_STANDBY`. Default builds are byte-identical by `.list` comparison, so the
+flag is the only thing that changes behaviour.
 
-- `DBGMCU_CR_DBG_STOP` -- keeps the debug clock alive through Stop
-- `DBGMCU_CR_DBG_STANDBY` -- keeps the debug unit powered through Standby
+Build the debug image by adding to the target's `project.mk`:
+
+```
+UDEFS += -DTAG_DEBUG_LOW_POWER=1
+```
+
+### Attach while the tag is awake, not while it sleeps
+
+This is the part that wastes an afternoon if you get it wrong. `DBG_STANDBY`
+keeps the debug power domain alive so an **already-established** session
+survives the transition. It does not let a debugger attach to a core that is
+already in Standby -- the core is unpowered and there is nothing to enumerate.
+
+A tag reporting IDLE is in Standby. Every attach attempt against it fails with
+`init mode failed (unable to connect to the target)`, with or without
+`connect_assert_srst`, and that failure looks exactly like a wiring problem.
+Put the tag in **RUN** mode first:
+
+```sh
+build-host/bin/tag-reset --set-rtc
+build-host/bin/tag-start --start-now -c embedded/tools/power-configs/imutag-100.json
+```
+
+RUNNING never enters Standby, and `DBG_STOP` covers the Stop periods between
+samples, so the session survives the whole run.
+
+### The working configuration
+
+```tcl
+source [find interface/stlink.cfg]
+transport select hla_swd
+adapter speed 480
+set CHIPNAME stm32u375
+source [find target/stm32u3x.cfg]
+```
+
+```sh
+/usr/local/bin/openocd -f u375.cfg
+```
+
+Success looks like this:
+
+```
+Info : [stm32u375.cpu] Cortex-M33 r0p4 processor detected
+Info : [stm32u375.cpu] Examination succeed
+Info : [stm32u375.cpu] target has 8 breakpoints, 4 watchpoints
+Info : Listening on port 3333 for gdb connections
+```
+
+The `Warn : The selected adapter does not support debugging this device in
+secure mode` line is benign here: the option bytes read `TZEN 0x0`, TrustZone
+globally disabled, and `RDP 0xAA`, level 0.
+
+### Halt before attaching a GDB client
+
+OpenOCD refuses a GDB attach while the target is free-running:
+
+```
+Info : accepting 'gdb' connection on tcp/3333
+Error: attempted 'gdb' connection rejected
+```
+
+Through the MCP that surfaces as `IO error: early eof`, and the session's
+socket is dead afterwards -- a later call reports `Broken pipe`, which reads as
+a different fault than it is. Halt first, over telnet on 4444 or with the MCP's
+own `halt_after_connect`:
+
+```sh
+(printf 'halt\nexit\n'; sleep 2) | nc 127.0.0.1 4444
+```
+
+Then from the `embedded-debugger` MCP:
+
+```
+connect(probe_selector="auto", target_chip="STM32U375",
+        backend="openocd", openocd_address="127.0.0.1:3333",
+        halt_after_connect=true)
+```
+
+`read_memory`, `write_memory`, `halt`, `run`, `step`, `reset`, breakpoints and
+`diagnose_fault` all work over this backend. Flash and RTT need probe-rs, which
+does not know this part.
+
+A worked check, confirming the debug build is what is actually running:
+
+```
+0xE0044004 (DBGMCU_CR) = 0x00000006   = DBG_STOP | DBG_STANDBY
+```
+
+### Two hazards
+
+**The work area overlaps the monitor mailbox.** OpenOCD reports `work-area
+address is set to 0x20000000`, which is where `monitor_shared_t` lives. Nothing
+touches it until OpenOCD runs a flash algorithm, at which point it becomes
+scratch and the mailbox is destroyed. Flash with STM32CubeProgrammer, or set a
+work area elsewhere before letting OpenOCD program anything.
+
+**The monitor and OpenOCD share one ST-Link.** Only one can hold it. The
+`tag-*` tools attach and detach per invocation, so they interleave with an
+OpenOCD session, but anything holding a session open -- qtmonitor especially --
+locks OpenOCD out, and vice versa.
 
 ### What it costs
 
-Hundreds of microamps, continuously, for as long as the bits are set. That is
-larger than most of the faults worth chasing, so:
+Hundreds of microamps, continuously, for as long as the bits are set. Measured
+on IMUTagNandBmp581: **1035 uA at idle with `TAG_DEBUG_LOW_POWER=1`, against
+4.37 uA without**. So:
 
 - **Never in a shipped image.** Same policy, and the same reason, as the debug
   module.
 - **Never during a power measurement.** A build with `DBG_STANDBY` set cannot
-  be used to measure sleep; the measurement is of the debug unit.
+  be used to measure sleep; the measurement is of the debug unit. Note the
+  figure is close to the 1036 uA of the I2C pin-parking fault -- do not confuse
+  a debug build for that regression.
 - Use it to answer a *state* question, then remove it and re-measure with a
   clean image to answer the *power* question.
 
