@@ -156,10 +156,13 @@ listed above use 8-byte `t_DataHeader` records.
 or erase sectors beyond the internal header count, because headers are the
 authoritative record of complete IMU log pages that may be downloaded.
 
-The reset state processes external erase work in small batches before yielding
-back to monitor/status handling. `TAG_EXTERNAL_ERASE_SECTORS_PER_PASS` defaults
-to 16, avoiding a one-sector-per-host-poll erase rate while still allowing the
-monitor to report progress during long external flash erases.
+The sweep runs until something needs the main thread, then returns to the
+state machine. `Reset()` erases at least one sector per call and then keeps
+going while `chEvtGetEventsX()` shows no monitor or work event pending; that
+read does not clear the mask, so main()'s `chEvtGetAndClearEvents()` still
+sees whatever arrived. Read-only status polls never interrupt it, being
+answered from cached state inside the ISR. A reset command received while a
+sweep is already running resumes it rather than restarting from sector zero.
 
 The live `Status` message reports:
 

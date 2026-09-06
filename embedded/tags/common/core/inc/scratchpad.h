@@ -33,13 +33,12 @@
  * Enable with `-DTAG_SCRATCHPAD=1` in the target's project.mk. When disabled
  * every entry point compiles to nothing.
  *
- * @warning Never call any of this between the `LPMS`/`SLEEPDEEP` writes and
- *          the `WFI` in `tagPowerEnterStandby()`. Code placed in that window
- *          stops the part entering Standby, erratically and without any
- *          register showing why -- measured repeatedly at about 1035 uA
- *          against 4.4 uA. Capture at the start of the sequence instead, which
- *          is verified stable across builds. See
- *          embedded/tags/design/debugging.md.
+ * @warning Do not log from inside `tagPowerEnterStandby()`. Not because that
+ *          window is special -- the layout sensitivity that made it look so is
+ *          fixed by the `noinline` on that function -- but because writing
+ *          there changes the image, so whatever you measure is not the build
+ *          you ship. Capture at boot instead. See
+ *          embedded/tags/design/open-issues.md.
  *
  * Read it back with:
  * @code
@@ -54,7 +53,7 @@
 
 #include <stdint.h>
 
-#if TAG_SCRATCHPAD
+#if defined(TAG_SCRATCHPAD) && TAG_SCRATCHPAD
 
 /** @brief Base of the reserved region: SRAM2 page 3, the last 8 KB. */
 #define TAG_SCRATCH_BASE  0x2003E000U

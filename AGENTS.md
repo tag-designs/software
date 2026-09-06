@@ -167,23 +167,41 @@ Use the target that matches the files changed. For documentation-only changes,
   different today" in one step, and it is how the 995 uA above was pinned to
   the instrumentation rather than to the fix it was shipped with.
 
-### The Standby arming window is off limits
+### Standby entry is layout-sensitive: keep it out of line
 
-  On STM32U3, do not add anything to `tagPowerEnterStandby()` — no probe, no
-  register clear, no extra barrier, no logging. Code placed there stops the
-  part entering Standby: it reaches the `WFI` and never returns, drawing about
-  1035 uA instead of 4.4 uA.
+  `tagPowerEnterStandby()` in `pwr-u375.c` carries
+  `__attribute__((noinline))`, and it is load-bearing. Remove it and the build
+  becomes a lottery: with LTO on, the partitioner inlines the whole function
+  into `main()`, and in that form whether the part enters Standby is decided by
+  where code lands rather than by what it does.
 
-  The effect is erratic rather than proportional. Four register reads before
-  the `WFI` stall it; eight sleep. Twenty-three scan regions sleep; a
-  twenty-fourth that reads *nothing* stalls. Thirty bytes of logging at the top
-  of the function, before any arming, stalled three builds out of three. No
-  register read at that instant differs between a working and a failing build,
-  across 1584 words of peripheral space. So **one passing experiment there
-  proves nothing**, and a result that does not hold across at least three
-  different code sizes should not be believed.
+  Inserting `nop` padding into an unrelated function -- a change that cannot
+  alter behaviour -- flips idle current between 5.2 uA and 1040 uA, with the
+  `WFI` at an unchanged address:
 
-  Instrument at boot instead, via the scratchpad below.
+  | nops added to `Reset()` | idle |
+  | --- | --- |
+  | 0, 2 | 5.2 uA |
+  | 4, 8, 16, 32 | 1040 uA |
+
+  With `noinline` all of those sleep, verified at nine image layouts across two
+  padding sites. `optimize("O0")` fixes it too, by the same route. Alignment
+  attributes, clearing `FLASH_ACR_PRFTEN`, and relocating the sequence into
+  SRAM do not; disabling ICACHE makes every build fail.
+
+  This supersedes an earlier rule that said nothing may be added to that
+  function. That rule was a misreading: the additions were not doing anything at
+  the `WFI`, they were moving the image. Adding a probe there is still a bad
+  way to debug -- it perturbs the layout, so a passing experiment proves nothing
+  -- but the function is not cursed, and the failures it caused are fixed rather
+  than merely avoided.
+
+  Why the inlined form fails is still unknown; the arming sequence disassembles
+  identically in both. See `embedded/tags/design/open-issues.md`.
+
+  **Anything that changes the image can therefore expose this class of fault.**
+  Measure idle after firmware changes, and when a change that provably cannot
+  alter behaviour moves idle current, suspect layout before logic.
 
 ### The retained scratchpad
 
@@ -279,12 +297,13 @@ Use the target that matches the files changed. For documentation-only changes,
     produced two confident and wrong conclusions. Use three or four trials per
     point.
 
-  A latched flash error or ECC flag can also abort the low-power transition, and
-  `tagPowerClearFlashErrorFlags()` exists for it, but **it is not currently
-  called on any live path** -- its only caller, `tagPowerEnterStop3()`, is
-  `__attribute__((unused))`. Adding it to the live idle and standby paths has
-  measured 1036 uA at idle against 4.94 uA without it, unexplained. Do not
-  reach for it as a fix without measuring. See
+  `tagPowerClearFlashErrorFlags()` exists to clear a latched flash/ECC flag,
+  but **it is not called on any live path** -- its only caller,
+  `tagPowerEnterStop3()`, is `__attribute__((unused))`. Adding it to the live
+  idle and standby paths once measured 1036 uA against 4.94 uA; that was the
+  layout sensitivity above, not a cost of touching flash, and the flags were
+  captured clean in a failing build. Clear them where the failure occurs, in
+  the datalog code, not in the power path. See
   `embedded/tags/design/open-issues.md` and
   `embedded/tags/design/restart-recovery.md`.
 

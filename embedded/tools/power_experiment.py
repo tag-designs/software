@@ -56,6 +56,13 @@ DEFAULT_BIN = os.path.join(REPO_ROOT, "build-host", "bin")
 MEASURE_TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             "joulescope_measure.py")
 
+#: When true, measurements are taken through joulescope_server.py instead of
+#: opening the instrument directly. The server holds the device open for its
+#: lifetime, which avoids the USB open/close churn that has both wedged the
+#: instrument and left the DUT supply switched off mid-sweep. Set by
+#: --use-server on the tools, or by JOULESCOPE_USE_SERVER=1 in the environment.
+USE_SERVER = os.environ.get("JOULESCOPE_USE_SERVER", "") not in ("", "0")
+
 #: Terminal tag states, from which tag-reset is able to erase.
 TERMINAL_STATES = ("FINISHED", "ABORTED")
 
@@ -333,6 +340,8 @@ def measure(python: str, duration: float, window: float,
     """
     argv = [python, MEASURE_TOOL,
             "--duration", str(duration), "--window", str(window)]
+    if USE_SERVER:
+        argv.append("--use-server")
     res = run("measure", argv, duration + 60.0, verbose)
     m = parse_measurement(res.stdout)
     if not res.ok and m.current_ua is None:

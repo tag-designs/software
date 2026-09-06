@@ -155,7 +155,7 @@ static inline enum Sleep tagPowerReturnedIdleMode(enum Sleep mode)
 
 static inline void tagPowerApplyDebugConfig(void)
 {
-#if TAG_DEBUG_LOW_POWER
+#if defined(TAG_DEBUG_LOW_POWER) && TAG_DEBUG_LOW_POWER
   DBGMCU->CR = DBGMCU_CR_DBG_STOP | DBGMCU_CR_DBG_STANDBY;
 #else
   DBGMCU->CR = 0;
@@ -242,10 +242,12 @@ void tagPowerEnterIdleMode(enum Sleep mode)
  *          __attribute__((unused)): this does not run on any path the tag
  *          takes today. The live terminal path is tagPowerEnterStandby().
  *          Two attempts to call it from the live idle and standby paths each
- *          measured about 1036 uA at idle against 4.94 uA without it, which is
- *          unexplained -- a conditional version that only reads the flags and
- *          writes nothing when they are clear cost the same. Do not add the
- *          call back without measuring.
+ *          measured about 1036 uA at idle against 4.94 uA without it. That was
+ *          the layout sensitivity described at tagPowerEnterStandby(), not a
+ *          cost of touching flash: a conditional version that only read the
+ *          flags cost the same, and so did padding that did nothing at all.
+ *          The flags belong where the failure occurs, in the datalog code, not
+ *          in the power path.
  *          @see embedded/tags/design/open-issues.md
  *
  * @see tagPowerRestoreFlashAfterStop3(), FLASH_ClearEccErrors()
@@ -500,6 +502,28 @@ static void tagPowerResetSpi1BeforeStandby(void)
 }
 #endif
 
+/*
+ * noinline is load-bearing, not a hint.
+ *
+ * Left to itself, LTO inlines this whole function into main(), which puts the
+ * arming sequence and its WFI inside a ~2.5 KB function whose literal pool sits
+ * past the WFI. In that form Standby entry becomes a lottery decided by image
+ * layout: eight bytes of nop padding inserted into an unrelated function -- a
+ * change that cannot alter behaviour -- flips idle between 5.2 uA and 1040 uA,
+ * with the WFI at an unchanged address. Keeping this a distinct function fixes
+ * it, measured over three trials at each of nine image layouts across two
+ * independent padding sites, against a baseline that fails at five of them.
+ *
+ * Two unrelated ways of preventing the merge both cure it (noinline, and
+ * optimize("O0")), while alignment, clearing FLASH_ACR_PRFTEN, and relocating
+ * the sequence into SRAM all fail to. Disabling ICACHE makes every image fail.
+ * The micro-architectural reason is not established; see
+ * embedded/tags/design/open-issues.md.
+ *
+ * Do not remove this attribute, and do not let this function grow enough to be
+ * worth outlining differently, without re-running that padding sweep.
+ */
+__attribute__((noinline))
 static void tagPowerEnterStandby(enum Sleep sleepmode)
 {
 
@@ -508,10 +532,10 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
     return;
   }
 
-  /* One SET_BIT, before any arming, and nothing else: writing the scratchpad
-     itself from this function stops Standby. Whether this actually retains the
-     page across Standby is unresolved -- it worked once and not since, with
-     the bit verified set and PWR clocked at this point. */
+  /* One SET_BIT and nothing else -- this is the power path, so it does as
+     little as possible. Whether this actually retains the page across Standby
+     is unresolved: it worked once and not since, with the bit verified set and
+     PWR clocked at this point. */
   tagScratchRetain();
 
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
@@ -544,17 +568,12 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
 
 
   /*
-   * Nothing may be added between here and the WFI below -- no probe, no
-   * register clear, no extra barrier, no scratchpad write. Code placed in that
-   * window stops the part entering Standby: it reaches the WFI and never
-   * returns, drawing about 1035 uA instead of 4.4 uA, and no register read at
-   * that instant differs from a working build. The effect is erratic rather
-   * than proportional, so one passing experiment there proves nothing.
-   *
-   * The whole of this function is best left alone: logging even thirty bytes
-   * at its start, before any arming, was enough to stop Standby in three
-   * builds out of three. Instrument at boot instead.
-   * See embedded/tags/design/debugging.md.
+   * Standby entry here is sensitive to image layout, not to what this code
+   * does. The function carries noinline for that reason -- see the comment at
+   * its definition. Adding a probe in this window is still a poor way to
+   * debug: it moves the layout, so a passing experiment proves nothing about
+   * the build you actually ship. Instrument at boot via the scratchpad
+   * instead. See embedded/tags/design/open-issues.md.
    */
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 

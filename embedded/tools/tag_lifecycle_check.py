@@ -45,6 +45,7 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import power_experiment  # noqa: E402
 from power_experiment import (  # noqa: E402
     DEFAULT_BIN,
     ExperimentError,
@@ -192,8 +193,14 @@ def main() -> int:
                    help="fractional tolerance on the expected sample count")
     p.add_argument("--keep-download", help="directory to keep the database in")
     p.add_argument("--measure-python", help="interpreter with pyjoulescope_driver")
+    p.add_argument("--use-server", action="store_true",
+                   help="measure through joulescope_server.py instead of "
+                        "opening the instrument directly; avoids the USB "
+                        "open/close churn of a long sweep")
     p.add_argument("--verbose", action="store_true", help="echo commands")
     args = p.parse_args()
+    if args.use_server:
+        power_experiment.USE_SERVER = True
 
     cyc = Cycle()
     try:

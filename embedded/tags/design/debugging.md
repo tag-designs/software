@@ -102,9 +102,12 @@ arm-none-eabi-nm build/<Tag>.elf | grep -iE '__heap_end__|__ram0_end__'
 
 ### Discipline
 
-- **Single stores only.** A probe that calls a timing function inside the idle
-  or power path changes the fault: an instrumented build read 430 uA where the
-  pristine one read 1036 uA.
+- **Single stores only.** A probe in the idle or power path changes the fault
+  rather than observing it: an instrumented build read 430 uA where the
+  pristine one read 1036 uA. Part of that is timing, and part is that any added
+  code moves the image, which Standby entry is sensitive to -- see
+  `embedded/tags/design/open-issues.md`. Either way, what you measure with the
+  probe in is not the build you ship.
 - **Write a magic word** and check it on readback. A page that was powered down
   returns whatever it returns; without a sentinel you cannot tell "nothing was
   recorded" from "the page did not survive".

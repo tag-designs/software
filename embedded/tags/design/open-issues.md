@@ -39,40 +39,64 @@ silently discarded. Clearing them blanket-fashion before sleep hides the error
 and, as this entry records, cost two days on the assumption that the sleep path
 was the problem.
 
-### Unexplained: code in the Standby arming window stops Standby
+### RESOLVED: the Standby arming window was never the problem
 
-Any code added to `tagPowerEnterStandby()` can stop the part entering Standby.
-The core reaches the WFI and never returns, drawing about 1035 uA instead of
-4.4 uA. It does not reset and takes no fault -- a marker written either side of
-the WFI shows the pre-WFI store executed and the post-WFI store did not, and no
-fault handler was entered.
+Previously filed here as "any code added to `tagPowerEnterStandby()` can stop
+the part entering Standby", with a table of erratic perturbations -- four flash
+reads stall, eight sleep, a scan region that reads nothing stalls, thirty bytes
+of logging stalls 3 of 3 -- and no register differing between a working and a
+failing build across 149 non-default addresses.
 
-It is erratic rather than proportional:
+Every one of those observations was real. The conclusion drawn from them was
+wrong. The perturbations were not doing anything *at the WFI*; they were
+changing the **layout of the image**, and Standby entry was a lottery decided
+by that layout.
 
-| perturbation before the WFI | result |
+This was established with perturbations that provably cannot change behaviour.
+Inserting `n` `nop` instructions at the top of `Reset()` in `state_machine.c`
+-- a function not even on the idle path, in a build where the erase sweep has
+no work to do -- flips idle current, three trials at each point:
+
+| padding | idle current |
 | --- | --- |
-| 0-11 no-op instructions | all sleep (12 builds) |
-| 1-2 flash reads | sleeps |
-| 4 flash reads, straight-line or looped | stalls |
-| 8 flash reads, straight-line | sleeps |
-| 4 SRAM reads | stalls |
-| a 24th scan region that reads nothing | stalls |
-| a 24th table entry that is not scanned | sleeps |
-| ~30 bytes of logging at the top of the function | stalls (3 of 3 builds) |
+| none | 5.18 uA |
+| 2 nops | 5.21 uA |
+| 4 nops | 1040 uA |
+| 8 nops | 1040 uA |
+| 16 nops | 1040 uA |
 
-At the instant of the stalled WFI, **no register differs from a working
-build**: 0 differences across 149 non-default addresses covering PWR, RCC with
-every STPENR and SLPENR, SCB, NVIC, RTC, TAMP, EXTI, FLASH, I2C1, SPI1, TIM2,
-GPIOA-H, GPDMA1, ICACHE, RAMCFG, DBGMCU and DHCSR/DEMCR. Eliminated by direct
-measurement: latched flash/ECC flags, SRAM2 parity (disabled in the option
-bytes), pending interrupts, DMA activity, autonomous clock requests, ICACHE,
-debug vector catch, and build non-determinism (the `.list` is reproducible).
+The standby `WFI` is at the *same address* in the sleeping and the stalling
+builds. What moves is everything else: the build uses LTO, and left alone the
+partitioner inlines `tagPowerEnterStandby()` all the way into `main()`, which
+places the arming sequence and its `WFI` inside a ~2.5 KB function whose
+literal pool sits past the `WFI`.
 
-Nothing in production occupies that window, so nothing is broken today. It
-matters only because it makes the path impossible to instrument, and because it
-produced a long series of confident, wrong diagnoses before the pattern was
-recognised. A minimal reproducer for ST would be the 24th-region case: a loop
-iteration that performs no memory access at all, added before the WFI.
+**The fix is `__attribute__((noinline))` on `tagPowerEnterStandby()`**, so the
+arming sequence stays a small self-contained function. Verified over three
+trials at each of nine image layouts across two independent padding sites
+(inside `Reset()`, and inside `main()`), against a baseline that fails at five
+of them.
+
+What was tested and does **not** fix it, each against the padding point that
+reliably fails:
+
+| attempted fix | result |
+| --- | --- |
+| `__attribute__((aligned(16)))` alone | still stalls -- inert, since the function is inlined and has no entry point to align |
+| clearing `FLASH_ACR_PRFTEN` | still stalls |
+| moving the arming sequence into SRAM via `.ramtext` | **every** image stalls, including the pristine one |
+| disabling ICACHE | **every** image stalls, including the pristine one |
+
+Two unrelated ways of preventing the inline both cure it: `noinline`, and
+`optimize("O0")` on the same function. That is the evidence the inlining is the
+operative variable rather than a coincidence of one attribute.
+
+**Still unexplained:** *why* the inlined form fails. The arming sequence
+disassembles correctly in both cases -- `PWR_CR1.LPMS=4`, `SCB_SCR.SLEEPDEEP`,
+`DSB`, `ISB`, `WFI`, in that order, with no reordering -- and the earlier
+register comparison found nothing different at the stalled `WFI`. A reproducer
+for ST would be the `nop` sweep above: identical source, identical `WFI`
+address, 200x difference in idle current.
 
 ### Unexplained: SRAM2 page 3 is not reliably retained across Standby
 

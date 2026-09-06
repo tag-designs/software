@@ -74,17 +74,6 @@
 #define TAG_CONFIGURED_IMMEDIATE_START 0
 #endif
 
-#ifndef TAG_EXTERNAL_ERASE_SECTORS_PER_PASS
-/**
- * @brief External erase sectors processed before yielding to monitor/status.
- */
-#define TAG_EXTERNAL_ERASE_SECTORS_PER_PASS 16U
-#endif
-
-#if TAG_EXTERNAL_ERASE_SECTORS_PER_PASS == 0U
-#error "TAG_EXTERNAL_ERASE_SECTORS_PER_PASS must be at least 1"
-#endif
-
 #ifndef TAG_DEFAULT_IDLE_POWER_MODE
 /**
  * @brief Returned idle mode used before any scoped runtime wait overrides it.
@@ -948,9 +937,25 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
 
   if (t == T_INIT)
   {
+    /*
+     * A reset command while already erasing resumes; it does not restart.
+     *
+     * StateMachine() accepts MON_WORK_RESET in sRESET, so a host that retries
+     * -- the natural response to a tag that looks busy -- used to clear
+     * reset_erase_started, sending the sweep back to the beginning and
+     * re-running restoreLog() and lastDirtyExternalSector(). A host polling on
+     * a timer could keep that up indefinitely and the erase would never
+     * finish. Resuming makes reset idempotent.
+     */
+    const bool already_erasing =
+        (pState->state == TagState_sRESET) && reset_erase_started;
+
     pState->state = TagState_sRESET;
     recordState(reason);
-    reset_erase_started = false;
+    if (!already_erasing)
+    {
+      reset_erase_started = false;
+    }
   }
 
   if (!reset_erase_started)
@@ -960,10 +965,40 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
     reset_erase_started = true;
   }
 
-  for (uint32_t sector = 0U; sector < TAG_EXTERNAL_ERASE_SECTORS_PER_PASS;
-       sector++) {
+  /*
+   * Erase until something needs the main thread, then hand it back.
+   *
+   * chEvtGetEventsX() reads this thread's pending mask without clearing it, so
+   * whatever arrived is still there for the chEvtGetAndClearEvents() in main()
+   * on the next pass and nothing has to be reposted. Every source signals this
+   * thread directly with chEvtSignalI(tpMain, ...), so a request appears in
+   * that mask as soon as its interrupt runs.
+   *
+   * This replaces a fixed sixteen-sector pass, which existed only because a
+   * state handler cannot see pending events and so needed a proxy for "long
+   * enough". The tag now yields within one sector erase rather than up to
+   * sixteen, and sweeps flat out while the host is quiet. Read-only status
+   * polls never reach here: those are answered from cached state inside the
+   * ISR.
+   *
+   * The event test sits after the erase, not before it, so every call makes at
+   * least one sector of progress. A leading test would let a host that polls
+   * faster than a sector erase stall the sweep indefinitely.
+   *
+   * The mask matters. An unmasked test would yield on every EVT_WKUP or RTC
+   * tick, pacing the sweep one sector at a time for a different reason.
+   *
+   * There is deliberately no cancel: MON_WORK_STOP has no sRESET branch in
+   * StateMachine(), so a stop sent mid-sweep breaks this loop, is cleared by
+   * main(), and the next pass resumes through Reset(T_CONT). Returning to IDLE
+   * with sectors still dirty would let a run start on un-erased NAND.
+   */
+  for (;;)
+  {
     erase_more = eraseExternalNextSector();
     if (!erase_more)
+      break;
+    if ((chEvtGetEventsX() & (eventmask_t)(EVT_MONITOR_ALL | MON_WORK_ALL)) != 0U)
       break;
   }
 
