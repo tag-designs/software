@@ -255,8 +255,16 @@ int main(int argc, char **argv)
         }
       }
       Config cfg;
-      tag.GetConfig(cfg);
-      std::cout << cfg.DebugString() << std::endl;
+      /* Printing a default-constructed config would misreport the tag's
+         settings as whatever the proto defaults happen to be. */
+      if (tag.GetConfig(cfg))
+      {
+        std::cout << cfg.DebugString() << std::endl;
+      }
+      else
+      {
+        std::cerr << "GetConfig failed: " << tag.DebugMessage() << std::endl;
+      }
 
       Status status;
       if (tag.GetStatus(status))

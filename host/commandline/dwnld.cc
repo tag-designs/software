@@ -239,7 +239,12 @@ int main(int argc, char **argv)
   signal(SIGINT, intHandler);
 
   if (!tag.GetStatus(status)) {
-    std::cerr << "Could not read tag status" << std::endl;
+    // The acknowledgement carries the tag's own reason -- PERM, NXIO, a nanopb
+    // failure, or a monitor-level error. Reporting only "could not read"
+    // discards it and leaves an intermittent failure indistinguishable from a
+    // link glitch.
+    std::cerr << "Could not read tag status: " << tag.DebugMessage()
+              << std::endl;
     return 1;
   }
 
@@ -257,7 +262,8 @@ int main(int argc, char **argv)
      */
     std::cerr << "Rescue: changing monitor-visible state from EXCEPTION to ABORTED" << std::endl;
     if (!tag.ForceBackupState(ABORTED)) {
-      std::cerr << "Could not rescue exception state" << std::endl;
+      std::cerr << "Could not rescue exception state: "
+                << tag.DebugMessage() << std::endl;
       return 1;
     }
     status.set_state(ABORTED);
@@ -266,7 +272,8 @@ int main(int argc, char **argv)
 
   if ((status.state() == RUNNING) && stop_tag) {
     if (!tag.Stop() || !tag.GetStatus(status)) {
-      std::cerr << "Could not stop running tag" << std::endl;
+      std::cerr << "Could not stop running tag: " << tag.DebugMessage()
+                << std::endl;
       return 1;
     }
 
@@ -284,7 +291,8 @@ int main(int argc, char **argv)
   }
 
   if (!tag.GetConfig(config)) {
-    std::cerr << "Could not read tag config" << std::endl;
+    std::cerr << "Could not read tag config: " << tag.DebugMessage()
+              << std::endl;
     return 1;
   }
 
@@ -380,7 +388,16 @@ int main(int argc, char **argv)
             : tag.GetDataLog(ack, total);
     if (!got_log) {
       finishProgress();
-      std::cerr << "Parsing log failed. Unsupported tag type?" << std::endl;
+      /*
+       * Report what the tag actually said. This printed a guess -- "Parsing
+       * log failed. Unsupported tag type?" -- for every cause, including a
+       * refused request, a link error and a nanopb failure, none of which
+       * have anything to do with the tag type. An intermittent download
+       * failure under attach storms was therefore indistinguishable from a
+       * genuinely unsupported tag.
+       */
+      std::cerr << "GetDataLog failed at entry " << total << ": "
+                << tag.DebugMessage() << std::endl;
       return 1;
     }
     get_log_ns += elapsedNs(start);

@@ -464,15 +464,18 @@ int main(int argc, char **argv)
   float voltage = 0.0f;
 
   if (!tag.GetTagInfo(info)) {
-    std::cerr << "Could not read tag info" << std::endl;
+    std::cerr << "Could not read tag info: " << tag.DebugMessage()
+              << std::endl;
     return 1;
   }
   if (capture.capture_default_config && !tag.GetConfig(config)) {
-    std::cerr << "Could not read tag config" << std::endl;
+    std::cerr << "Could not read tag config: " << tag.DebugMessage()
+              << std::endl;
     return 1;
   }
   if (!tag.GetStatus(status)) {
-    std::cerr << "Could not read tag status" << std::endl;
+    std::cerr << "Could not read tag status: " << tag.DebugMessage()
+              << std::endl;
     return 1;
   }
   if (!tag.Voltage(voltage)) {

@@ -130,7 +130,18 @@ int main(int argc, char **argv)
         // a set_rtc request only in IDLE (monitor.c, Req_set_rtc_tag), and one
         // issued as the first request after attach is rejected.
         Status status;
-        tag.GetStatus(status);
+        /*
+         * Checked, because Status default-constructs to STATE_UNSPECIFIED and
+         * every decision below turns on state(). A discarded failure here
+         * silently becomes "the tag is not IDLE", which reports a refusal the
+         * tag never made.
+         */
+        if (!tag.GetStatus(status))
+        {
+            std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                      << std::endl;
+            return 1;
+        }
 
         if (set_rtc)
         {
@@ -157,7 +168,14 @@ int main(int argc, char **argv)
         if (status.state() == IDLE)
         {
             Config cfg;
-            tag.GetConfig(cfg);
+            /* Starting from a default-constructed config would run the tag
+               with settings nobody chose. */
+            if (!tag.GetConfig(cfg))
+            {
+                std::cerr << "GetConfig failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
             if (!config_path.empty() &&
                 !loadConfigJson(config_path, cfg, merge_config))
             {
@@ -190,8 +208,20 @@ int main(int argc, char **argv)
 
         if (!start_attempted || !start_failed)
         {
-            tag.GetStatus(status);
-            std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+            if (tag.GetStatus(status))
+            {
+                std::cout << "State: " << TagState_Name(status.state())
+                          << std::endl;
+            }
+            else
+            {
+                /* Report the last state actually read, not a zeroed one. */
+                std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                          << std::endl;
+                std::cout << "Last known state: "
+                          << TagState_Name(status.state()) << std::endl;
+                return 1;
+            }
         }
         else
         {

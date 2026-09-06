@@ -98,7 +98,8 @@ int main(int argc, char **argv)
       if (tag.GetStatus(status)) {
         printStatus(cycle, status);
       } else {
-        std::cerr << "cycle " << cycle << ": status failed" << std::endl;
+        std::cerr << "cycle " << cycle << ": status failed: "
+                  << tag.DebugMessage() << std::endl;
       }
     }
 

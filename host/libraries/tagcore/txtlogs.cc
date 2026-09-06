@@ -68,7 +68,12 @@ bool TextTagLogWriter::writeTextHeader(Tag &tag)
   if (!tag.GetConfig(cfg))
     return false;
 
-  tag.GetTagInfo(info);
+  /* The two reads above are checked; this one was not, and its fields are
+     written straight into the log header. A failed read would record a log
+     whose tag type, firmware, board and UUID are all empty or zero, with
+     nothing to say the header is fabricated rather than describing the tag. */
+  if (!tag.GetTagInfo(info))
+    return false;
 
   int64_t timeerr = status.millis() - now;
   fs << "#\n# Tag Read time: " << now / 1000 << "\n";

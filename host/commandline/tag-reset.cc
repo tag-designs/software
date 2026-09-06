@@ -61,16 +61,40 @@ int main(int argc, char **argv)
         // read tag information
 
         Status status;
-        tag.GetStatus(status);
+        /*
+         * A failed status read must not be mistaken for a tag that is already
+         * idle. Status default-constructs with state() == STATE_UNSPECIFIED,
+         * which matches neither RUNNING/HIBERNATING nor FINISHED/ABORTED, so
+         * ignoring this return value made the tool skip both the stop and the
+         * erase, still set the clock, print "Final state: STATE_UNSPECIFIED"
+         * and exit 0 -- reporting success for a reset that never happened.
+         * Seen in roughly one storm clock-cycle in twenty.
+         */
+        if (!tag.GetStatus(status))
+        {
+            std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                      << std::endl;
+            return 1;
+        }
         if (!status.debug_message().empty()){
             std::cerr << status.debug_message();
         }
         std::cout << status.DebugString() << std::endl;
         if (status.state() == RUNNING || status.state() == HIBERNATING)
         {
-            tag.Stop();
+            if (!tag.Stop())
+            {
+                std::cerr << "Stop failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
             std::cout << "State: " << TagState_Name(status.state()) << std::endl;
-            tag.GetStatus(status);
+            if (!tag.GetStatus(status))
+            {
+                std::cerr << "GetStatus after stop failed: "
+                          << tag.DebugMessage() << std::endl;
+                return 1;
+            }
             if (!status.debug_message().empty()){
                 std::cerr << status.debug_message();
             }
@@ -79,7 +103,12 @@ int main(int argc, char **argv)
         std::cout << "State: " << TagState_Name(status.state()) << std::endl;
         if (status.state() == FINISHED || status.state() == ABORTED)
         {
-            tag.Erase();
+            if (!tag.Erase())
+            {
+                std::cerr << "Erase failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
 
             /*
              * Poll for completion rather than guessing at a duration.

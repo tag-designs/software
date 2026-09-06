@@ -194,6 +194,11 @@ def main() -> int:
                    help="download timeout in seconds")
     p.add_argument("--tolerance", type=float, default=0.25,
                    help="fractional tolerance on the expected sample count")
+    p.add_argument("--stop-on-failure", action="store_true",
+                   help="stop as soon as a round fails, leaving the tag in the "
+                        "state that failed. Without this the next round begins "
+                        "with a reset that erases, so a failure cannot be "
+                        "examined afterwards")
     p.add_argument("--keep-download",
                    help="directory to keep each round's database in, named "
                         "round<N>.db3; without this they go to a temporary "
@@ -270,16 +275,47 @@ def main() -> int:
                     name = keep_path
                 tmp = _Kept()
             else:
-                tmp = tempfile.NamedTemporaryFile(suffix=".db3", delete=False)
-                tmp.close()
+                handle = tempfile.NamedTemporaryFile(suffix=".db3",
+                                                     delete=False)
+                handle.close()
+
+                class _Tmp:
+                    name = handle.name
+                tmp = _Tmp()
             try:
                 res = download(args.bin_dir, tmp.name, args.base,
                                args.download_timeout, args.verbose)
                 if not res.ok:
-                    st.sanity.append("download failed")
-                    st.failures.append(
-                        f"round {rnd}: download failed: {res.stderr.strip()}")
-                else:
+                    # Retry immediately, before anything touches the tag. The
+                    # next round starts with a reset that erases, so without
+                    # this the failing state is gone within seconds and there
+                    # is no way to tell a transient link error from a tag left
+                    # unreadable -- which need entirely different fixes.
+                    first_err = res.stderr.strip()
+                    print(f"      download FAILED: {first_err}")
+                    print("      retrying immediately, tag state untouched")
+                    # A new path, so the first attempt's partial database is
+                    # preserved rather than overwritten by the retry. What the
+                    # failing download managed to produce is evidence.
+                    retry_path = tmp.name + ".retry"
+                    again = download(args.bin_dir, retry_path, args.base,
+                                     args.download_timeout, args.verbose)
+                    if again.ok:
+                        tmp.name = retry_path
+                    if again.ok:
+                        st.sanity.append("download failed, retry succeeded")
+                        st.failures.append(
+                            f"round {rnd}: download failed but an immediate "
+                            f"retry succeeded (transient): {first_err}")
+                        print("      retry SUCCEEDED -- transient")
+                    else:
+                        st.sanity.append("download failed twice")
+                        st.failures.append(
+                            f"round {rnd}: download failed twice on the same "
+                            f"tag state: {first_err} / {again.stderr.strip()}")
+                        print(f"      retry ALSO FAILED: {again.stderr.strip()}")
+                    res = again
+                if res.ok:
                     cfg = recorded_config(tmp.name)
                     odr = config_odr_hz(cfg)
                     # No rate expectation here. This test resets the tag
@@ -310,7 +346,16 @@ def main() -> int:
                         st.failures.append(f"round {rnd}: data {detail}")
             finally:
                 if not args.keep_download:
-                    os.unlink(tmp.name)
+                    for path in (tmp.name, tmp.name + ".retry"):
+                        try:
+                            os.unlink(path)
+                        except OSError:
+                            pass
+
+            if args.stop_on_failure and (st.failures or st.aborts):
+                print("      stopping on failure; the tag is left in the "
+                      "state that failed, and has NOT been reset")
+                break
 
     except ExperimentError as e:
         st.failures.append(str(e))

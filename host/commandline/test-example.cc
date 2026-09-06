@@ -32,10 +32,21 @@ int main(int argc, char **argv)
     if (parse_options(argc, argv, options, tag, dev) &&
         tag.Attach(dev))
     {
-        tag.SetRtc();
+        if (!tag.SetRtc())
+        {
+            std::cerr << "SetRtc failed: " << tag.DebugMessage() << std::endl;
+            return 1;
+        }
 
         std::this_thread::sleep_for(MS(2000));
-        tag.GetStatus(status);
+        /* millis() defaults to 0, which would report a clock error of about
+           -1.8e9 seconds as though it were a measurement. */
+        if (!tag.GetStatus(status))
+        {
+            std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                      << std::endl;
+            return 1;
+        }
         auto now = std::chrono::system_clock::now();
         auto ts = std::chrono::time_point_cast<MS>(now);
 

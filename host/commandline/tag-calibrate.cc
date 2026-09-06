@@ -57,19 +57,40 @@ int main(int argc, char **argv)
         // read tag information
 
         Status status;
-        tag.GetStatus(status);
+        /* Status default-constructs to STATE_UNSPECIFIED, so a discarded
+           failure here reports "Tag not idle" for a tag that never answered. */
+        if (!tag.GetStatus(status))
+        {
+            std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                      << std::endl;
+            return 1;
+        }
         if (status.state() == IDLE)
         {
             // set the clock
 
-            tag.SetRtc();
+            if (!tag.SetRtc())
+            {
+                std::cerr << "SetRtc failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
 
             // start calibration
 
-
-            tag.Calibrate();
+            if (!tag.Calibrate())
+            {
+                std::cerr << "Calibrate failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
             while (execute) {
-                tag.GetCalibrationLog(ack);
+                if (!tag.GetCalibrationLog(ack))
+                {
+                    std::cerr << "GetCalibrationLog failed: "
+                              << tag.DebugMessage() << std::endl;
+                    break;
+                }
                 if (ack.has_calibration_log()) {
                     for(auto const &sdata : ack.calibration_log().data())
                     {
@@ -98,7 +119,12 @@ int main(int argc, char **argv)
                 //std::this_thread::sleep_for(MS(50));
 
             }
-            tag.Stop();
+            if (!tag.Stop())
+            {
+                std::cerr << "Stop failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
 
         } else {
             std::cerr << "Tag not idle" << std::endl;

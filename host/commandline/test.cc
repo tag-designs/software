@@ -76,11 +76,17 @@ int main(int argc, char **argv)
   UsbDev dev;
   std::string test_name = TestReq_Name(RUN_ALL);
   TestReq requested_test = RUN_ALL;
+  int test_timeout_s = 30;
 
   cxxopts::Options options("tag-test", "sets the RTC and executes tag self-tests");
   options.add_options()
       ("t,test", "Self-test to run by TestReq name or number",
-       cxxopts::value<std::string>(test_name)->default_value(TestReq_Name(RUN_ALL)));
+       cxxopts::value<std::string>(test_name)->default_value(TestReq_Name(RUN_ALL)))
+      ("test-timeout",
+       "Seconds to wait for the tag to return to IDLE before giving up. A test "
+       "that has not finished has no result to report, so this is a give-up "
+       "time, not a pass/fail threshold. Raise it for slower tests or tags",
+       cxxopts::value<int>(test_timeout_s)->default_value("30"));
 
   // Parse options
 
@@ -105,7 +111,11 @@ int main(int argc, char **argv)
 
     // read tag information
 
-    tag.GetTagInfo(info);
+    if (!tag.GetTagInfo(info))
+    {
+      std::cerr << "GetTagInfo failed: " << tag.DebugMessage() << std::endl;
+      return 1;
+    }
 
     // Write  Tag Information
     
@@ -127,7 +137,11 @@ int main(int argc, char **argv)
       std::cout << "Initial Clock drift: " << f << std::endl;
     }
     std::cout << "#  Checking RTC (2 second delay)" << std::endl;
-    tag.SetRtc();
+    if (!tag.SetRtc())
+    {
+      std::cerr << "SetRtc failed: " << tag.DebugMessage() << std::endl;
+      return 1;
+    }
     std::this_thread::sleep_for(MS(2000));
     if (rtcDrift(tag, f))
     {
@@ -171,20 +185,71 @@ int main(int argc, char **argv)
     // Run Test
 
     std::cout << "#  Running test " << TestReq_Name(requested_test) << std::endl;
-    tag.Test(requested_test);
-    for (int i = 0; i < 5; i++)
+    /*
+     * A test result is only meaningful if the request was accepted and the
+     * status that reports it was actually read. Both were discarded here, so
+     * a refused request or a failed read still printed a "Test Result" taken
+     * from a default-constructed Status -- reporting a verdict the tag never
+     * gave.
+     */
+    if (!tag.Test(requested_test))
+    {
+      std::cerr << "Test request failed: " << tag.DebugMessage() << std::endl;
+      return 1;
+    }
+    /*
+     * The tag returns to IDLE when the test is finished; until then
+     * test_status() is TEST_RUNNING, which is a state and not a verdict.
+     * Printing it as "Test Result" reported a run that had not finished as
+     * though it had, and the tool still exited 0. The window was a hardcoded
+     * five seconds and RUN_ALL on an IMUTag does not finish within it, so the
+     * real result was never seen. It is now --test-timeout, because how long a
+     * self-test takes is a property of the test and the tag, not something
+     * this tool can know.
+     */
+    const int test_poll_s = test_timeout_s;
+    bool status_read = false;
+    bool completed = false;
+    for (int i = 0; i < test_poll_s; i++)
     {
       std::this_thread::sleep_for(MS(1000));
-      tag.GetStatus(status);
+      if (!tag.GetStatus(status))
+      {
+        std::cerr << "GetStatus failed: " << tag.DebugMessage() << std::endl;
+        continue;
+      }
+      status_read = true;
       if (!status.debug_message().empty()){
         std::cerr << status.debug_message();
       }
       if (status.state() == IDLE)
+      {
+        completed = true;
         break;
+      }
+    }
+    if (!status_read)
+    {
+      std::cerr << "No status was read after the test; not reporting a result"
+                << std::endl;
+      return 1;
+    }
+    if (!completed)
+    {
+      std::cerr << "Test did not finish within " << test_poll_s
+                << " s; last state " << TagState_Name(status.state())
+                << ", no result to report. Use --test-timeout to allow longer."
+                << std::endl;
+      return 1;
     }
     TestResult result = status.test_status();
     std::cout << "Test Result: " << TestResult_Name(result) << std::endl;
-    tag.SetRtc(); // reset rtc since test may alter
+    if (!tag.SetRtc()) // reset rtc since test may alter
+    {
+      std::cerr << "SetRtc after test failed: " << tag.DebugMessage()
+                << std::endl;
+      return 1;
+    }
   }
   else
   {
