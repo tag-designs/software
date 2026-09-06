@@ -11,7 +11,6 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
-#include "scratchpad.h"
 #include "datalog.h"
 #include "debug_log.h"
 #include "imutag_log_format.h"
@@ -65,9 +64,6 @@ static uint32_t discard_pages;
 static uint32_t discarded_pages;
 /** Header flags to OR into the next internal checkpoint row. */
 static uint16_t next_header_flags;
-
-/** @brief Consecutive external page failures; reset by any page that commits. */
-static uint32_t consecutive_page_errors;
 /** True once a log page has been started. */
 static bool page_active;
 /** True when the current page should be written rather than discarded. */
@@ -151,7 +147,6 @@ static bool restartDataCollectionClock(bool mark_resync)
 {
   discard_pages = runDiscardPages();
   discarded_pages = 0;
-  consecutive_page_errors = 0U;
   next_header_flags = (uint16_t)pState->checkpoint_flags_pending;
   if (mark_resync) {
     next_header_flags |= IMUTAG_HEADER_RESYNC |
@@ -162,19 +157,6 @@ static bool restartDataCollectionClock(bool mark_resync)
   current_page_data_header_written = false;
   current_page_header_written = false;
   current_frame_index = 0U;
-  /*
-   * Scratchpad trace for the backwards ElapsedUs step filed in
-   * embedded/tags/design/open-issues.md. Each recovery re-bases the segment
-   * from the wall clock here, so a stale or early RTC read lands the new
-   * segment behind the end of the previous one, which a download sees as a
-   * timestamp going backwards at the boundary. RSYN says whether this is a
-   * recovery, RTSC/RTMS record the base actually used. Compiles to nothing
-   * unless TAG_SCRATCHPAD is set.
-   */
-  tagScratchWord("RSYN", (uint32_t)mark_resync);
-  tagScratchWord("RTSC", (uint32_t)timestamp);
-  tagScratchWord("RTMS", (uint32_t)timestamp_millis);
-
   setNextFrameStartTimestamp(timestamp, timestamp_millis);
   pState->rawtemp = 0;
 
@@ -195,115 +177,8 @@ typedef enum {
   IMU_BLOCK_NO_DATA,       ///< No complete superframe was available.
   IMU_BLOCK_HANDLED,       ///< One superframe or page transition was handled.
   IMU_BLOCK_INTERNAL_FULL, ///< Internal checkpoint storage is full or failed.
-  IMU_BLOCK_EXTERNAL_FULL, ///< External NAND storage is full.
-  IMU_BLOCK_EXTERNAL_ERROR ///< External writes keep failing; skipping did not
-                           ///< recover the run.
+  IMU_BLOCK_EXTERNAL_FULL  ///< External NAND storage is full or failed.
 } ImuBlockStatus;
-
-#ifndef IMUTAG_TEST_PAGE_ERROR_EVERY
-/**
- * @def IMUTAG_TEST_PAGE_ERROR_EVERY
- * @brief Inject an external page write failure every N pages, for testing.
- *
- * @details Zero, the default, compiles the injection out entirely. A non-zero
- *          value forces commitDataLogPage() to report LOGWRITE_ERROR on every
- *          Nth page so the skip path can be exercised on a healthy device --
- *          there is otherwise no way to reach it without a failing NAND.
- *
- * @warning Test builds only. The page is really written before the injected
- *          failure, so this exercises the control flow, not the data loss.
- */
-#define IMUTAG_TEST_PAGE_ERROR_EVERY (0U)
-#endif
-
-#if IMUTAG_TEST_PAGE_ERROR_EVERY
-/*
- * Loud on purpose. An image that deliberately corrupts its own data logging is
- * useful for one afternoon and dangerous on a deployed tag, and the difference
- * between it and a shipping image is a single -D that leaves no trace in the
- * git hash. This warning is the only thing that makes such a build visible in
- * a build log after the fact.
- */
-#warning "IMUTAG_TEST_PAGE_ERROR_EVERY is set: this image injects external \
-page write failures and must not be deployed"
-#endif
-
-#ifndef IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS
-/**
- * @def IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS
- * @brief Pages skipped in a row before the run is given up as unwritable.
- *
- * @details Skipping recovers a run from an isolated bad page, but a device
- *          that fails every write would otherwise be skipped through forever,
- *          collecting nothing and reporting nothing. Each write is already
- *          retried once before it reaches here, so this counts persistent
- *          failures, not transient ones.
- */
-#define IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS (4U)
-#endif
-
-/**
- * @brief Abandon the page that failed to write and carry on collecting.
- *
- * @details A write error used to end the run and report it to the host as
- *          EXTERNALFULL, so one bad page cost the rest of the deployment and
- *          misnamed the cause. The page is skipped instead: the log cursor
- *          advances past it and collection continues.
- *
- *          The discontinuity is announced with RESYNC and RESYNC_STORAGE_SKIP
- *          left pending in @c checkpoint_flags_pending, which the next sparse
- *          checkpoint records. It is deliberately not forced out early --
- *          markers ride the existing IMUTAG_CHECKPOINT_PAGES cadence, the same
- *          way restoreLog() announces RESTART_RECOVERY, so the host sees a
- *          storage discontinuity at a checkpoint boundary it already
- *          understands. Both flags are decoded by
- *          host/libraries/tagcore/sqlitelog/imutag.cc and surface as a
- *          RESYNC_STORAGE_SKIP event.
- *
- * @return IMU_BLOCK_HANDLED when the page was skipped and collection
- *         continues, IMU_BLOCK_EXTERNAL_ERROR once
- *         IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS pages have failed in a row.
- *
- * @warning Skipping never erases the failed page. Erasing a factory bad block
- *          destroys its marker permanently; see the warning in datalog.c.
- */
-static ImuBlockStatus skipFailedExternalPage(void)
-{
-  page_active = false;
-  current_page_logging = false;
-  current_page_data_header_written = false;
-  current_page_header_written = false;
-
-  consecutive_page_errors++;
-  if (consecutive_page_errors > IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS) {
-    debug_log_printf(
-      "IMUTag running: %u external pages failed in a row, giving up ext=%u\r\n",
-      (unsigned)consecutive_page_errors, (unsigned)pState->external_blocks);
-    tagScratchWord("EGUP", pState->external_blocks);
-    return IMU_BLOCK_EXTERNAL_ERROR;
-  }
-
-  debug_log_printf(
-    "IMUTag running: skipping failed external page ext=%u (%u in a row)\r\n",
-    (unsigned)pState->external_blocks, (unsigned)consecutive_page_errors);
-  tagScratchWord("ESKP", pState->external_blocks);
-
-  pState->external_blocks++;
-
-  /*
-   * Both, deliberately. next_header_flags is what writeCurrentPageInternalHeader()
-   * actually ORs into the header, so without it the marker is never written;
-   * checkpoint_flags_pending is retained in the backup domain, so the marker
-   * survives a reset that lands between the skip and the next checkpoint.
-   * restoreLog() sets only the retained copy because a restart always follows
-   * it and reloads next_header_flags -- a skip has no such restart.
-   */
-  next_header_flags |=
-    (uint16_t)(IMUTAG_HEADER_RESYNC | IMUTAG_HEADER_RESYNC_STORAGE_SKIP);
-  pState->checkpoint_flags_pending |=
-    (uint32_t)(IMUTAG_HEADER_RESYNC | IMUTAG_HEADER_RESYNC_STORAGE_SKIP);
-  return IMU_BLOCK_HANDLED;
-}
 
 /**
  * @brief Start a page write, retrying once on transient storage failure.
@@ -416,7 +291,8 @@ static ImuBlockStatus sampleAndLogDataPage(void)
       page_active = false;
       return IMU_BLOCK_EXTERNAL_FULL;
     case LOGWRITE_ERROR:
-      return skipFailedExternalPage();
+      page_active = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
     default:
       break;
     }
@@ -466,7 +342,11 @@ static ImuBlockStatus sampleAndLogDataPage(void)
         current_page_header_written = false;
         return IMU_BLOCK_EXTERNAL_FULL;
       case LOGWRITE_ERROR:
-        return skipFailedExternalPage();
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
       default:
         current_page_data_header_written = true;
         break;
@@ -481,7 +361,11 @@ static ImuBlockStatus sampleAndLogDataPage(void)
         current_page_header_written = false;
         return IMU_BLOCK_EXTERNAL_FULL;
       case LOGWRITE_ERROR:
-        return skipFailedExternalPage();
+        page_active = false;
+        current_page_logging = false;
+        current_page_data_header_written = false;
+        current_page_header_written = false;
+        return IMU_BLOCK_EXTERNAL_FULL;
       default:
         break;
       }
@@ -502,15 +386,6 @@ static ImuBlockStatus sampleAndLogDataPage(void)
     current_page_header_written = false;
   } else {
     err = commitDataLogPage();
-#if IMUTAG_TEST_PAGE_ERROR_EVERY
-    {
-      static uint32_t injected_page_count;
-      injected_page_count++;
-      if ((injected_page_count % IMUTAG_TEST_PAGE_ERROR_EVERY) == 0U) {
-        err = LOGWRITE_ERROR;
-      }
-    }
-#endif
     switch (err) {
     case LOGWRITE_FULL:
       page_active = false;
@@ -519,12 +394,15 @@ static ImuBlockStatus sampleAndLogDataPage(void)
       current_page_header_written = false;
       return IMU_BLOCK_EXTERNAL_FULL;
     case LOGWRITE_ERROR:
-      return skipFailedExternalPage();
+      page_active = false;
+      current_page_logging = false;
+      current_page_data_header_written = false;
+      current_page_header_written = false;
+      return IMU_BLOCK_EXTERNAL_FULL;
     default:
       break;
     }
     pState->external_blocks++;
-    consecutive_page_errors = 0U;
     page_active = false;
     current_page_logging = false;
     current_page_data_header_written = false;
@@ -683,11 +561,6 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
             "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
             (unsigned)pState->pages, (unsigned)pState->external_blocks);
           return Finished(T_INIT, State_EVENT_EXTERNALFULL);
-        case IMU_BLOCK_EXTERNAL_ERROR:
-          debug_log_printf(
-            "IMUTag running: finishing, external writes failing pages=%u ext=%u\r\n",
-            (unsigned)pState->pages, (unsigned)pState->external_blocks);
-          return Finished(T_INIT, State_EVENT_STORAGEERROR);
         case IMU_BLOCK_NO_DATA:
         default:
           blocks = IMU_MAX_PAGE_WORK_PER_WAKE;

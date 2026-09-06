@@ -123,54 +123,43 @@ survived trivially and the test read as a pass without ever exercising
 retention. Re-running it only became meaningful once Standby entry was
 deterministic.
 
-### RESOLVED: a write error now skips the page instead of ending the run
+### REVERTED: the write-error page skip caused a 240x idle regression
 
-Filed as "`state_run.c` maps both `LOGWRITE_FULL` and `LOGWRITE_ERROR` to
-`IMU_BLOCK_EXTERNAL_FULL`, so a tag that cannot write is indistinguishable from
-one that filled up". It had already misled one investigation: writes refused
-because the GD5F powers up with block protection enabled were reported as a
-full log.
+The change described below worked, was tested on hardware, and was reverted
+because it stopped the tag sleeping.
 
-Splitting the two was the agreed fix, but ending the run on a write error is
-itself the wrong response. A single bad page cost the rest of a deployment. The
-four external `LOGWRITE_ERROR` sites now call `skipFailedExternalPage()`, which
-advances the log cursor past the page that failed and keeps collecting. Each
-write is already retried once before it gets there, so this handles persistent
-failures, not transient ones.
+`skipFailedExternalPage()` in `state_run.c` let a run survive a bad page and
+announced the discontinuity with `RESYNC_STORAGE_SKIP`. Verified with injected
+failures: at one page in twenty the run stayed RUNNING and produced five skip
+events over six segments; at every page it ended with `EVENT_STORAGEERROR` at
+the cap. None of that was wrong.
 
-The discontinuity is announced with `IMUTAG_HEADER_RESYNC` and
-`IMUTAG_HEADER_RESYNC_STORAGE_SKIP`, which the next sparse checkpoint records.
-Markers stay on the existing `IMUTAG_CHECKPOINT_PAGES` cadence rather than
-being forced out early, the same way `restoreLog()` announces
-`RESTART_RECOVERY`. Both flags were already defined and already decoded by
-`host/libraries/tagcore/sqlitelog/imutag.cc`, and had simply never been set by
-firmware, so no host or schema change was needed.
+What was never measured is idle current, and the commit landed with a **1033 uA
+idle against 4.34 uA before** -- the Standby stall, on a code path idle never
+executes. Bisected to the commit, then within it:
 
-Both flags are set: `next_header_flags`, which is what the checkpoint writer
-actually reads, and the retained `checkpoint_flags_pending`, so the marker
-survives a reset landing between the skip and the checkpoint. Setting only the
-retained copy -- which is all `restoreLog()` does, because a restart always
-follows it and reloads the other -- silently wrote no marker at all.
-
-After `IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS` (4) failures in a row the device is
-treated as unwritable and the run ends with the new `EVENT_STORAGEERROR`, which
-is additive to the proto. `EVENT_EXTERNALFULL` now means only what it says.
-
-Verified on hardware with `IMUTAG_TEST_PAGE_ERROR_EVERY`, a compile-time
-injection that is byte-identical to absent when unset and emits a `#warning`
-when set:
-
-| injected failure rate | outcome |
+| build | idle |
 | --- | --- |
-| every 20 pages | stayed RUNNING, 16950 rows, 5 `RESYNC_STORAGE_SKIP` events over 6 segments, ended `EVENT_STOPCMD` at 113 pages |
-| every page | ended `EVENT_STORAGEERROR` at 4 pages, as the cap intends |
+| before the commit | 4.40 uA |
+| + the proto enum alone | 4.38 uA |
+| + proto and `state_run.c` | 1036 uA |
+| same, fault injection stripped out | 1036 uA |
+| `state_run.c` reverted | 4.33 uA |
 
-Skipping never erases the failed page: erasing a factory bad block destroys its
-marker permanently.
+So the trigger is the presence of the skip code, not the injection and not the
+proto change. `tagPowerEnterStandby()` still carries `noinline` and sits at the
+same address, `0x08002260`, in both the sleeping and the stalling image, so the
+standby function did not move -- consistent with the residency mechanism, where
+what matters is the rest of the image around it.
 
-Not addressed: the internal-checkpoint error path still reports
-`IMU_BLOCK_INTERNAL_FULL`. Internal flash filling is a genuine end-of-run, but
-an internal *error* is conflated with it in the same way this entry describes.
+**`noinline` narrows this failure surface but does not close it.** It survived
+nine deliberately varied image layouts, which was taken as a fix; a real change
+elsewhere in the tree brought the stall back. The entry above that calls the
+Standby window resolved should be read with that in mind.
+
+The feature is worth re-landing. It needs the layout problem understood first,
+not another roll of the dice, and an idle measurement attached to the commit --
+which AGENTS.md already required and this commit did not do.
 
 ### RESOLVED: the non-monotonic timestamps were a bug in the check
 
