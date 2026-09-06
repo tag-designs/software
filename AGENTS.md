@@ -167,6 +167,76 @@ Use the target that matches the files changed. For documentation-only changes,
   different today" in one step, and it is how the 995 uA above was pinned to
   the instrumentation rather than to the fix it was shipped with.
 
+### The Standby arming window is off limits
+
+  On STM32U3, do not add anything to `tagPowerEnterStandby()` — no probe, no
+  register clear, no extra barrier, no logging. Code placed there stops the
+  part entering Standby: it reaches the `WFI` and never returns, drawing about
+  1035 uA instead of 4.4 uA.
+
+  The effect is erratic rather than proportional. Four register reads before
+  the `WFI` stall it; eight sleep. Twenty-three scan regions sleep; a
+  twenty-fourth that reads *nothing* stalls. Thirty bytes of logging at the top
+  of the function, before any arming, stalled three builds out of three. No
+  register read at that instant differs between a working and a failing build,
+  across 1584 words of peripheral space. So **one passing experiment there
+  proves nothing**, and a result that does not hold across at least three
+  different code sizes should not be believed.
+
+  Instrument at boot instead, via the scratchpad below.
+
+### The retained scratchpad
+
+  `embedded/tags/common/core/inc/scratchpad.h` gives firmware somewhere to
+  write that a host can read back later. Enable per target with
+  `-DTAG_SCRATCHPAD=1`; with the macro undefined every entry point compiles to
+  nothing and the image is byte-identical, so it is safe to leave the calls in
+  place.
+
+  ```c
+  tagScratchInit();                       /* once, early in boot */
+  tagScratchPuts("configured");
+  tagScratchWord("STAT", pState->state);
+  ```
+
+  ```sh
+  STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin
+  embedded/tools/decode_scratchpad.py scratch.bin
+  ```
+
+  The contents are the program's business; messages are the general case. It
+  lives in the last 8 KB of SRAM2, held out of `ram0` by the linker script so
+  `crt0` never clears it, which is why it survives the reset that reading it
+  causes. It does **not** dependably survive a successful Standby — see the
+  warning in the header — but that does not matter for the faults it exists
+  for: a tag that failed to sleep, crashed or wedged never lost SRAM.
+
+### Measuring without wearing out the instrument
+
+  `joulescope_measure.py` opens and closes the Joulescope on every run. Across
+  a sweep that is dozens of USB open/close cycles, and it caused two failures:
+  the instrument wedging so its topic tree disappears and only a physical power
+  cycle recovers it, and the DUT supply being left switched off, which appears
+  downstream as `Unable to get core ID` from the debug probe because the target
+  is unpowered.
+
+  For any sweep, run the server instead. It holds the device open for its
+  lifetime and treats power as explicit state:
+
+  ```sh
+  <python-with-pyjoulescope> embedded/tools/joulescope_server.py --start &
+  embedded/tools/joulescope_measure.py --use-server --duration 10 --window 0.5
+  embedded/tools/joulescope_server.py --stop
+  ```
+
+  `--use-server` prints the same lines as the direct path, so existing scripts
+  that scrape `current  (charge/time)` keep working. Cross-checked against the
+  direct path: 5.3368 uA versus 5.3333 uA on the same build.
+
+  Do not use the `joulescope-js220` MCP server for this. It holds the device
+  for the life of the session, which blocks the harness (`jsdrv_open` times
+  out), and it cannot be stopped without killing the process.
+
 ### Reading state out of a tag that cannot talk
 
   Sleep faults are hard to instrument because the usual narration changes the

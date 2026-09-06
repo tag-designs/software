@@ -16,6 +16,7 @@
 #include "core_types.h"
 #include "custom.h"
 #include "debug_log.h"
+#include "scratchpad.h"
 #include "device.h"
 #include "flash_internal.h"
 #include "monitor.h"
@@ -816,6 +817,16 @@ int main(void)
   // clear deep sleep mask
 
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  /*
+   * Format the scratchpad here, at boot, and log from anywhere EXCEPT the
+   * power path: writing it from inside tagPowerEnterStandby() stops the part
+   * entering Standby, measured at 1038 uA against 5.37 uA over three builds.
+   * The region survives the reset that reading it back causes, which is what
+   * the faults worth chasing need.
+   */
+  tagScratchInit();
+  tagScratchPuts("boot");
 
   // Release swdio and swclk if not in monitor mode
 

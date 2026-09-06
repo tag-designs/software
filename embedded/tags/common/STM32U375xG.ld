@@ -31,7 +31,11 @@ MEMORY
     flash7 (rx) : org = 0x00000000, len = 0
     /* Reserved for host/tag monitor handoff. Not part of any C runtime
        initialized RAM region; see MONITOR_SHARED_ADDR in monitor.h. */
-    ram0   (wx) : org = 0x20000040, len = 256k - 0x40  /* SRAM1+SRAM2 NS */
+    /* Last 8k of SRAM2 (page 3, 0x2003E000-0x2003FFFF) is held out of the C
+       runtime as a debug scratchpad, so crt0 never clears it and the contents
+       survive a reset. Surviving Standby needs PWR_CR1_RRSB3 and is not
+       dependable; see common/core/inc/scratchpad.h. */
+    ram0   (wx) : org = 0x20000040, len = 248k - 0x40  /* SRAM1+SRAM2 less page 3 */
     ram1   (wx) : org = 0x20000040, len = 192k - 0x40  /* SRAM1 NS */
     ram2   (wx) : org = 0x20030000, len = 64k   /* SRAM2 NS */
     ram3   (wx) : org = 0x00000000, len = 0

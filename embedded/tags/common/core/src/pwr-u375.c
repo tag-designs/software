@@ -151,6 +151,8 @@ static inline enum Sleep tagPowerReturnedIdleMode(enum Sleep mode)
  *          power measurement taken with it set measures the debug unit rather
  *          than the tag. See embedded/tags/design/debugging.md.
  */
+#include "scratchpad.h"
+
 static inline void tagPowerApplyDebugConfig(void)
 {
 #if TAG_DEBUG_LOW_POWER
@@ -506,6 +508,12 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
     return;
   }
 
+  /* One SET_BIT, before any arming, and nothing else: writing the scratchpad
+     itself from this function stops Standby. Whether this actually retains the
+     page across Standby is unresolved -- it worked once and not since, with
+     the bit verified set and PWR clocked at this point. */
+  tagScratchRetain();
+
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
 
   if (!tagDevicesConfigureWakeupSources(pState->state, isActive))
@@ -535,6 +543,19 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
   MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, 4U);
 
 
+  /*
+   * Nothing may be added between here and the WFI below -- no probe, no
+   * register clear, no extra barrier, no scratchpad write. Code placed in that
+   * window stops the part entering Standby: it reaches the WFI and never
+   * returns, drawing about 1035 uA instead of 4.4 uA, and no register read at
+   * that instant differs from a working build. The effect is erratic rather
+   * than proportional, so one passing experiment there proves nothing.
+   *
+   * The whole of this function is best left alone: logging even thirty bytes
+   * at its start, before any arming, was enough to stop Standby in three
+   * builds out of three. Instrument at boot instead.
+   * See embedded/tags/design/debugging.md.
+   */
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
   __DSB();

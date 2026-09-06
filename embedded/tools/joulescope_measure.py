@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import signal
+import os
 import statistics
 import sys
 import threading
@@ -214,6 +215,41 @@ def _terminate(signum, frame):  # noqa: ANN001 - signal handler signature
     raise KeyboardInterrupt(f"signal {signum}")
 
 
+def measure_via_server(sock: str, duration: float, window: float,
+                       repeat: int) -> int:
+    """Take measurements through a running joulescope_server.
+
+    @param sock     Server socket path.
+    @param duration Seconds per measurement.
+    @param window   Statistics block length in seconds.
+    @param repeat   Number of measurements.
+    @return 0 on success, 1 if any measurement failed.
+
+    @details Output is deliberately byte-compatible with the direct path, so
+             scripts that scrape "current  (charge/time)" keep working. The
+             server holds the instrument open, which is the point: opening and
+             closing it per measurement is what wedged the device and left the
+             DUT unpowered.
+    """
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from joulescope_server import request
+
+    rc = 0
+    for run in range(repeat):
+        r = request(sock, {"cmd": "measure", "duration": duration,
+                           "window": window})
+        if "error" in r:
+            print(f"ERROR: {r['error']}", file=sys.stderr)
+            rc = 1
+            continue
+        label = f"[{run + 1}/{repeat}] " if repeat > 1 else ""
+        print(f"{label}blocks={r['blocks']} elapsed={r.get('elapsed_s', 0):.2f} s "
+              f"integrated over {r['span_s']:.3f} s")
+        print(f"  current  (charge/time) : {r['current_ua']:14.4f} uA")
+        print(f"  voltage  mean          : {r['voltage_v']:14.4f} V")
+    return rc
+
+
 def main() -> int:
     """Parse arguments, run the measurement, and restore device state."""
     signal.signal(signal.SIGTERM, _terminate)
@@ -238,7 +274,13 @@ def main() -> int:
                    help="Change the current range: 'auto' or 'manual:N' with "
                         "N in 1-5. Omit to leave the device as found. Never "
                         "accepts 0, which would disconnect the DUT.")
+    p.add_argument("--use-server", nargs="?", const="/tmp/joulescope_server.sock",
+                   help="measure through a running joulescope_server")
     args = p.parse_args()
+
+    if args.use_server:
+        return measure_via_server(args.use_server, args.duration,
+                                  args.window, args.repeat)
 
     try:
         from pyjoulescope_driver import Driver
