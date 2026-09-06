@@ -379,23 +379,29 @@ void tagSystemInitHook(void)
 #define TAG_BACKUP_DIAG_AFTER_RESET_CAUSE   2U
 #define TAG_BACKUP_DIAG_AFTER_DEVICE_INIT   4U
 
+/*
+ * used, or these vanish. Nothing in the firmware reads them -- they exist to be
+ * read back over SWD from a capture -- so LTO internalises the symbols and the
+ * names disappear from the image even though volatile keeps the stores. The
+ * diagnostic then looks enabled and produces nothing findable.
+ */
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
-volatile uint32_t tag_backup_diag_phase_mask;
-volatile uint32_t tag_backup_diag_latest_phase;
-volatile uint32_t tag_backup_diag_rst_flags;
-volatile uint32_t tag_backup_diag_valid;
-volatile uint32_t tag_backup_diag_safe;
-volatile uint32_t tag_backup_diag_reset_cause;
-volatile uint32_t tag_backup_diag_state;
-volatile uint32_t tag_backup_diag_pages;
-volatile uint32_t tag_backup_diag_external_blocks;
-volatile uint32_t tag_backup_diag_dbpr;
-volatile uint32_t tag_backup_diag_apb1enr1;
-volatile uint32_t tag_backup_diag_bkp0;
-volatile uint32_t tag_backup_diag_bkp1;
-volatile uint32_t tag_backup_diag_bkp2;
-volatile uint32_t tag_backup_diag_bkp3;
-volatile uint32_t tag_backup_diag_bkp4;
+__attribute__((used)) volatile uint32_t tag_backup_diag_phase_mask;
+__attribute__((used)) volatile uint32_t tag_backup_diag_latest_phase;
+__attribute__((used)) volatile uint32_t tag_backup_diag_rst_flags;
+__attribute__((used)) volatile uint32_t tag_backup_diag_valid;
+__attribute__((used)) volatile uint32_t tag_backup_diag_safe;
+__attribute__((used)) volatile uint32_t tag_backup_diag_reset_cause;
+__attribute__((used)) volatile uint32_t tag_backup_diag_state;
+__attribute__((used)) volatile uint32_t tag_backup_diag_pages;
+__attribute__((used)) volatile uint32_t tag_backup_diag_external_blocks;
+__attribute__((used)) volatile uint32_t tag_backup_diag_dbpr;
+__attribute__((used)) volatile uint32_t tag_backup_diag_apb1enr1;
+__attribute__((used)) volatile uint32_t tag_backup_diag_bkp0;
+__attribute__((used)) volatile uint32_t tag_backup_diag_bkp1;
+__attribute__((used)) volatile uint32_t tag_backup_diag_bkp2;
+__attribute__((used)) volatile uint32_t tag_backup_diag_bkp3;
+__attribute__((used)) volatile uint32_t tag_backup_diag_bkp4;
 #endif
 
 /**
@@ -440,6 +446,21 @@ static void tagBackupStateDebug(const char *phase, uint32_t phase_id,
   tag_backup_diag_bkp2 = TAMP->BKP2R;
   tag_backup_diag_bkp3 = TAMP->BKP3R;
   tag_backup_diag_bkp4 = TAMP->BKP4R;
+
+  /*
+   * Also into the scratchpad, because these globals are in .bss and .bss is in
+   * SRAM1, which this part cannot retain through Standby -- PWR_CR1 offers
+   * RRSB1..RRSB3 and those are SRAM2 pages. A capture taken after the tag has
+   * slept therefore finds noise where these variables were, which decodes as
+   * plausible garbage rather than failing. The scratchpad is SRAM2 page 3 and
+   * is retained, so a copy there survives. Compiles to nothing without
+   * TAG_SCRATCHPAD.
+   */
+  tagScratchWord("DPHS", phase_id);
+  tagScratchWord("DVAL", pState->valid);
+  tagScratchWord("DSTA", pState->state);
+  tagScratchWord("DRST", rst_flags);
+  tagScratchWord("DRC ", pState->resetCause);
 
   debug_log_printf(
       "backup %s rst=%x valid=%x safe=%u rc=%u st=%u pg=%u ext=%u "

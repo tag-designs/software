@@ -615,6 +615,7 @@ int restoreLog(void)
           debug_log_printf(
               "IMUTag restore: NAND page %u has uncorrectable ECC\r\n",
               (unsigned)page);
+          tagScratchWord("EECC", page);
         }
         tagScratchWord("RSTP", page);
         tagScratchWord("RRES", (uint32_t)read_result);

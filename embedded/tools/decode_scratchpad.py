@@ -24,6 +24,53 @@ HDR = 32               #: Header size in bytes.
 TEXT, WORD = 1, 2      #: Record kinds; see enum TagScratchKind.
 
 
+#: Labels whose value is not a bare number, and how to read it.
+#:
+#: STAT is written by recordState() for every state transition and packs
+#: state<<16 | reason, so a capture shows how a run ended without decoding the
+#: flash marker log.
+TAG_STATES = {
+    0: "STATE_UNSPECIFIED", 1: "TEST", 2: "IDLE", 3: "CONFIGURED",
+    4: "RUNNING", 5: "HIBERNATING", 6: "ABORTED", 7: "FINISHED",
+    8: "sRESET", 9: "EXCEPTION", 10: "CALIBRATE",
+}
+STATE_EVENTS = {
+    0: "UNSPECIFIED", 1: "OK", 2: "STARTCMD", 3: "ENDTIM", 4: "STARTTIM",
+    5: "STARTHIB", 6: "ENDHIB", 7: "STOPCMD", 8: "RESETCMD", 9: "LOWBATTERY",
+    10: "INTERNALFULL", 11: "EXTERNALFULL", 12: "BROWNOUT", 13: "POWERFAIL",
+    14: "UNKNOWN", 15: "SLEEP", 16: "STANDBY", 17: "SHUTDOWN",
+    18: "EXCEPTION", 19: "STORAGEERROR",
+}
+
+
+def annotate(label: str, value: int) -> str:
+    """Render a value that means more than its number.
+
+    @param label Four-character record label.
+    @param value Recorded word.
+    @return Trailing annotation, empty when the number speaks for itself.
+    """
+    tag = label.rstrip("\x00 ")
+    if tag == "STAT":
+        st, rs = value >> 16, value & 0xFFFF
+        return (f"  state={TAG_STATES.get(st, st)} "
+                f"reason={STATE_EVENTS.get(rs, rs)}")
+    if tag in ("DSTA", "RSTA"):
+        return f"  ({TAG_STATES.get(value, '?')})"
+    if tag == "DVAL":
+        return "  (BACKUP_STATE_VALID_MAGIC)" if value == 0x54414742 \
+            else "  (backup state NOT valid)"
+    if tag == "ESLF":
+        return "  <- flash marker log full; transitions stopped being recorded"
+    if tag == "ESKP":
+        return "  <- external page skipped after a write error"
+    if tag == "EGUP":
+        return "  <- gave up: too many consecutive page write failures"
+    if tag == "EECC":
+        return "  <- uncorrectable ECC on this NAND page"
+    return ""
+
+
 #: Bytes of payload after the 32-byte header.
 CAP = 0x2000 - 32
 
@@ -59,7 +106,8 @@ def _walk(body: bytes, base: int, n0: int, out: list) -> tuple[int, bool]:
                 return n, False
             label = body[i:i + 4].decode("ascii", "replace")
             (value,) = struct.unpack("<I", body[i + 4:i + 8])
-            out.append(f"  [{n0 + n:4}] {label} = 0x{value:08X}  ({value})")
+            out.append(f"  [{n0 + n:4}] {label} = 0x{value:08X}  "
+                       f"({value}){annotate(label, value)}")
             i += 8
         else:
             return n, False

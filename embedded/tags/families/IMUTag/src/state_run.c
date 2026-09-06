@@ -279,12 +279,14 @@ static ImuBlockStatus skipFailedExternalPage(void)
     debug_log_printf(
       "IMUTag running: %u external pages failed in a row, giving up ext=%u\r\n",
       (unsigned)consecutive_page_errors, (unsigned)pState->external_blocks);
+    tagScratchWord("EGUP", pState->external_blocks);
     return IMU_BLOCK_EXTERNAL_ERROR;
   }
 
   debug_log_printf(
     "IMUTag running: skipping failed external page ext=%u (%u in a row)\r\n",
     (unsigned)pState->external_blocks, (unsigned)consecutive_page_errors);
+  tagScratchWord("ESKP", pState->external_blocks);
 
   pState->external_blocks++;
 

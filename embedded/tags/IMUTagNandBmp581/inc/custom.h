@@ -66,8 +66,14 @@
 #define TAG_STORAGE_SPI_DMA_BLOCK_WRITE 0
 /* FIFO reads stay byte-paced while validating the LSM6DSV16X trigger path. */
 #define TAG_LSM6DSV16X_FIFO_DMA_READ 0
-/* Keep retained runtime diagnostics disabled during data collection. */
+/* Keep retained runtime diagnostics disabled during data collection.
+ * #ifndef so a build can turn them on with -DTAG_RETAINED_RUN_DIAGNOSTICS=1
+ * without editing this file. An unconditional #define silently overrode the
+ * command line and left only a "redefined" warning among the twenty a normal
+ * build already emits, so the diagnostics looked enabled and produced nothing. */
+#ifndef TAG_RETAINED_RUN_DIAGNOSTICS
 #define TAG_RETAINED_RUN_DIAGNOSTICS 0
+#endif
 /* Optional logic-analyzer pulse on PA4 while building a log ACK. Leave
  * TAG_STORAGE_SPI_MEASURE_LINE disabled while using this so PA4 has one owner
  * in the trace.

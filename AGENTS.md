@@ -243,6 +243,16 @@ Use the target that matches the files changed. For documentation-only changes,
   embedded/tools/decode_scratchpad.py scratch.bin
   ```
 
+  **Errors and state transitions are logged there already.** `recordState()`
+  writes a `STAT` record for every transition, packed as `state<<16 | reason`,
+  and an `ESLF` record when the flash marker log fills and it silently stops
+  recording. Storage failures add `ESKP`, `EGUP` and `EECC`. So a capture from
+  a tag that ended a run badly shows how it ended without decoding the flash
+  log. `decode_scratchpad.py` names the states and reasons.
+
+  Put new error paths here too. It is the one place that survives a tag which
+  cannot talk, and the calls cost nothing when the macro is off.
+
   The contents are the program's business; messages are the general case. It
   lives in the last 8 KB of SRAM2, held out of `ram0` by the linker script so
   `crt0` never clears it, which is why it survives the reset that reading it
@@ -272,6 +282,14 @@ Use the target that matches the files changed. For documentation-only changes,
   shipping one by a `-D` that leaves no trace in the git hash. Pass the
   target's `project.mk` as `--extra` for the same reason. A capture with no
   image stored says so in its manifest.
+
+  **SRAM1 is not retained through Standby, and cannot be.** This part offers
+  `PWR_CR1_RRSB1..RRSB3`, which are SRAM2 pages; the `SRAMxPDS` bits in
+  `PWR_CR2` are Stop-mode controls and do nothing for Standby. Ordinary `.data`
+  and `.bss` live in SRAM1 -- the tag uses 17.9 KB there, ending at
+  `0x200047A8` -- so anything you want to read back after the tag has slept
+  must be in the scratchpad, which is SRAM2 page 3 and is retained. Building
+  with `-DTAG_RETAINED_RUN_DIAGNOSTICS=1` copies the boot decision there.
 
   Two things about the regions are worth knowing. The persistent flash sweep
   stops at the first wholly erased page, which cut a real capture from 909312

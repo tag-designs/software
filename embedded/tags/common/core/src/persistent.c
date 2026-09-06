@@ -18,6 +18,7 @@
 #include "custom.h"
 #include "flash_internal.h"
 #include "persistent.h"
+#include "scratchpad.h"
 #include "datalog.h"
 #include "strings.h"
 #include "assert.h"
@@ -325,8 +326,24 @@ void recordState(State_Event reason)
       break;
   }
 
-  if (offset >= sEPOCH_SIZE)
+  /*
+   * Every state transition, into the scratchpad as well as flash. This is the
+   * one place all of them pass through, so an error that ends a run is visible
+   * in a capture without instrumenting each site that raises it. Packed as
+   * state<<16 | reason to stay one record.
+   *
+   * The full-log case below returns without recording anything, which is how a
+   * tag can transition repeatedly with nothing to show for it; ESLF says the
+   * flash marker log is what ran out, not that the transition did not happen.
+   * Compiles to nothing without TAG_SCRATCHPAD.
+   */
+  tagScratchWord("STAT",
+                 ((uint32_t)pState->state << 16) | (uint32_t)reason);
+
+  if (offset >= sEPOCH_SIZE) {
+    tagScratchWord("ESLF", (uint32_t)sEPOCH_SIZE);
     return;
+  }
 
   marker.epoch = timestamp;
   marker.state = pState->state;

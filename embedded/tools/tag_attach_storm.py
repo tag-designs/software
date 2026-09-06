@@ -220,9 +220,21 @@ def main() -> int:
                                     args.verbose, set_rtc=True)
                     if state != "IDLE":
                         st.rtc_failures.append(f"cycle {i}: reached {state}")
+                        print(f"      cycle {i}: FAILED: reached {state}")
                 except ExperimentError as e:
                     st.rtc_failures.append(f"cycle {i}: {e}")
                     print(f"      cycle {i}: FAILED: {e}")
+                if args.stop_on_failure and st.rtc_failures:
+                    # Stop here rather than at the end of the phase. Clock
+                    # failures are only folded into st.failures once every
+                    # phase has run, so without this the tag is reset up to
+                    # nine more times and then stormed twice before anything
+                    # can look at the state that actually failed.
+                    print("      stopping on failure; the tag is left in the "
+                          "state that failed, and has NOT been reset")
+                    raise ExperimentError(
+                        f"stopped after clock cycle {i}: "
+                        f"{st.rtc_failures[-1]}")
             print(f"      {st.rtc_attempts - len(st.rtc_failures)}"
                   f"/{st.rtc_attempts} succeeded")
 

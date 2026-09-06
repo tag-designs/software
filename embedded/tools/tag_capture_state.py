@@ -16,6 +16,16 @@
          survive a reset is already gone by the time this runs. SRAM survives a
          reset; a successful Standby does not retain it unless
          PWR_CR1_RRSB3 was armed.
+
+@warning **SRAM may capture as noise, and it is not obvious.** Catch the tag
+         mid-Standby and SRAM is powered down, while mode=UR holds the core in
+         reset so it never boots to repopulate it -- the dump is uninitialised
+         memory that decodes as plausible-looking garbage rather than failing.
+         Observed on one capture out of several taken seconds apart. Sanity
+         check before believing a decode: a live image has large zeroed .bss
+         and readable strings, noise has neither. The backup registers are in
+         the always-powered backup domain and do not have this problem, which
+         is why they are the more trustworthy of the two.
 """
 from __future__ import annotations
 
