@@ -98,17 +98,30 @@ register comparison found nothing different at the stalled `WFI`. A reproducer
 for ST would be the `nop` sweep above: identical source, identical `WFI`
 address, 200x difference in idle current.
 
-### Unexplained: SRAM2 page 3 is not reliably retained across Standby
+### RESOLVED: SRAM2 page 3 is retained across Standby
 
-`PWR_CR1_RRSB3` is supposed to retain the last 8 KB of SRAM2 through Standby,
-and `tagScratchRetain()` sets it. The contents survived once and have not
-since. At the point of the write, `RCC_AHB1ENR2` reads `0x00000004`, so PWR is
-clocked, and `PWR_CR1` reads back `0x40` with the bit set. The page is still
-lost. Setting the bit at boot behaves the same way.
+`PWR_CR1_RRSB3` retains the last 8 KB of SRAM2 through Standby, and
+`tagScratchRetain()` sets it from the top of `tagPowerEnterStandby()`. This was
+previously filed as unreliable -- the contents survived once and not since.
 
-This does not block the scratchpad's main use, which is reading a log back from
-a tag that failed to sleep, crashed or wedged -- those never lose SRAM, and the
-region survives the reset that reading it causes.
+It works. A/B at one commit, `TAG_SCRATCHPAD=1`, three reset/standby/wake
+cycles each, with idle current measured on every cycle to prove the part
+actually slept:
+
+| build | idle | page after three Standby cycles |
+| --- | --- | --- |
+| `tagScratchRetain()` armed | 5.37 uA | magic `0x33524353`, `seq=4`, record intact |
+| retention not armed (control) | 5.15 uA | magic `0x8F2B4AA3` -- noise |
+
+The control is the part that makes this conclusive: it shows Standby really
+does power the page down, so survival in the armed build is the retention bit
+working rather than the page never having been at risk.
+
+The earlier "worked once and not since" result was entangled with the Standby
+entry fault: a build that stalled at the WFI never lost SRAM, so the page
+survived trivially and the test read as a pass without ever exercising
+retention. Re-running it only became meaningful once Standby entry was
+deterministic.
 
 ### Write errors are reported to the host as "external log full"
 

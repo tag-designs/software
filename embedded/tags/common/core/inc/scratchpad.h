@@ -19,12 +19,14 @@
  *          wanted. Verified: a build that stalled instead of entering Standby
  *          read back its complete log afterwards.
  *
- * @warning Surviving a *successful* Standby is NOT reliable. Standby powers
- *          SRAM2 down unless `PWR_CR1_RRSB3` retains it, and while
- *          tagScratchRetain() sets that bit, the contents were observed to
- *          survive once and not thereafter, with the bit set both at boot and
- *          in the power path. Do not depend on reading a log back from a tag
- *          that slept successfully. This is unresolved.
+ * @note    The region also survives a *successful* Standby, which powers SRAM2
+ *          down unless `PWR_CR1_RRSB3` retains it. tagScratchRetain() sets
+ *          that bit. Verified by A/B at one commit, three Standby cycles each,
+ *          with idle current confirming the part really slept: armed, the page
+ *          came back with its magic intact and `seq` counting every boot;
+ *          not armed, it came back as noise. An earlier note here called this
+ *          unreliable -- that predates the Standby entry fix, and a build that
+ *          failed to sleep retained the page trivially, which reads as success.
  *
  *          What goes in it is up to the program. Messages are the general
  *          case; `tagScratchWord()` suits a value you want to watch across a
@@ -175,13 +177,14 @@ static inline void tagScratchWord(const char label[4], uint32_t value)
 /**
  * @brief Ask the power controller to retain the region through Standby.
  *
- * @details Asks the power controller to keep SRAM2 page 3 alive through
- *          Standby. Note that this has not been observed to work dependably;
- *          see the warning on the file. It costs little either way, and the
- *          facility's main use does not rely on it.
+ * @details Sets `PWR_CR1_RRSB3`, which keeps SRAM2 page 3 powered through
+ *          Standby. Without it the page comes back as noise; with it the
+ *          contents survive intact. See the note on the file for the A/B that
+ *          established this.
  *
- * @pre Must be called before the Standby arming sequence begins, never
- *      between the LPMS write and the WFI.
+ * @pre Must be called before the Standby arming sequence begins. It is called
+ *      from the top of tagPowerEnterStandby(), which is as little work as the
+ *      power path can do and still arm retention.
  */
 static inline void tagScratchRetain(void)
 {

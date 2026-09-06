@@ -225,9 +225,10 @@ Use the target that matches the files changed. For documentation-only changes,
   The contents are the program's business; messages are the general case. It
   lives in the last 8 KB of SRAM2, held out of `ram0` by the linker script so
   `crt0` never clears it, which is why it survives the reset that reading it
-  causes. It does **not** dependably survive a successful Standby — see the
-  warning in the header — but that does not matter for the faults it exists
-  for: a tag that failed to sleep, crashed or wedged never lost SRAM.
+  causes. It also survives a successful Standby, because `tagScratchRetain()`
+  sets `PWR_CR1_RRSB3`: verified by A/B, where the armed build came back with
+  `seq` counting every boot and the unarmed control came back as noise. So it
+  carries data across all three of reset, a failed sleep, and a real Standby.
 
 ### Measuring without wearing out the instrument
 
