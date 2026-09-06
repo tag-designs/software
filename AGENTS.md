@@ -148,6 +148,20 @@ Use the target that matches the files changed. For documentation-only changes,
   without it they go to a temporary file that is deleted, so a failing round
   cannot be examined afterwards.
 
+  **An acknowledgement is not a completion.** `Tag::Stop()` and `Tag::Erase()`
+  return true when the request is *accepted*; the monitor handler only sets a
+  work bit and the state machine acts later. A host tool that reads the status
+  straight afterwards sees the old state. That is what made `tag-stop` exit 0
+  while the tag was still RUNNING, and the download then refused with "Can't
+  dump logs from current state" -- which read as an intermittent download bug
+  for a long time. Poll for the state you asked for, a few seconds apart, and
+  fail with the last state seen.
+
+  **`Tag::Attach()` connects under reset**, so the tag is still booting and its
+  first status can legitimately report `STATE_UNSPECIFIED`. Wait for a definite
+  state before deciding anything, and before issuing a request the firmware
+  only accepts in IDLE.
+
   **When a check fails, confirm what it actually measured before believing
   it.** `check_download()` picks a timestamp column by name, and picking the
   wrong one cost real time: `ImuAccel` declares `RawElapsedUs` before

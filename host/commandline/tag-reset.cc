@@ -36,6 +36,7 @@ int main(int argc, char **argv)
 
     bool set_rtc = false;
     int reset_timeout_s = 180;
+    int settle_timeout_s = 10;
 
     cxxopts::Options options("tag-reset",
                              "stop, erase, and return a tag to the idle state");
@@ -43,7 +44,12 @@ int main(int argc, char **argv)
         ("set-rtc", "Synchronize the tag clock from the host once idle",
          cxxopts::value<bool>(set_rtc)->default_value("false"))
         ("reset-timeout", "Seconds to wait for the erase to finish",
-         cxxopts::value<int>(reset_timeout_s)->default_value("180"));
+         cxxopts::value<int>(reset_timeout_s)->default_value("180"))
+        ("settle-timeout",
+         "Seconds to wait for the tag to report a definite state after attach. "
+         "Attach connects under reset, so the first status can legitimately be "
+         "STATE_UNSPECIFIED while the tag boots",
+         cxxopts::value<int>(settle_timeout_s)->default_value("10"));
 
     // Parse options
 
@@ -70,9 +76,43 @@ int main(int argc, char **argv)
          * and exit 0 -- reporting success for a reset that never happened.
          * Seen in roughly one storm clock-cycle in twenty.
          */
-        if (!tag.GetStatus(status))
+        /*
+         * Attach connects under reset, so the tag is still booting and its
+         * first status can report STATE_UNSPECIFIED -- pState->state is zero
+         * until the state machine restores it. That is a tag that has not
+         * settled yet, not a tag in an unknown state, and treating it as the
+         * latter skipped the erase and reported a reset that never happened.
+         * tag-start already waits for this; tag-reset did not, which is the
+         * "tag is STATE_UNSPECIFIED after reset" seen in roughly one storm
+         * clock-cycle in twenty, and the neighbouring "SetRtc failed", since
+         * the firmware rejects a clock write issued before the tag settles.
+         */
+        /* A second between tries: each poll is a request the tag must
+           service while it is still coming up, so spacing them out competes
+           less with the boot being waited on. */
+        const int settle_ms = 1000;
+        const int settle_tries =
+            (settle_timeout_s * 1000 + settle_ms - 1) / settle_ms;
+        bool settled = false;
+        for (int i = 0; i < settle_tries; i++)
         {
-            std::cerr << "GetStatus failed: " << tag.DebugMessage()
+            if (!tag.GetStatus(status))
+            {
+                std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                          << std::endl;
+                return 1;
+            }
+            if (status.state() != STATE_UNSPECIFIED)
+            {
+                settled = true;
+                break;
+            }
+            std::this_thread::sleep_for(MS(settle_ms));
+        }
+        if (!settled)
+        {
+            std::cerr << "tag still reports STATE_UNSPECIFIED after "
+                      << settle_timeout_s << " s; it is not merely settling"
                       << std::endl;
             return 1;
         }
@@ -162,7 +202,13 @@ int main(int argc, char **argv)
             }
             else
             {
-                std::cerr << "SetRtc failed" << std::endl;
+                /* The tag says why: the firmware answers a failed clock
+                   write with Ack_Err_NXIO and "RTC sync failed while writing
+                   tag clock". Printing only "SetRtc failed" discarded that and
+                   left an intermittent RV-3028 write indistinguishable from a
+                   refusal on state. */
+                std::cerr << "SetRtc failed: " << tag.DebugMessage()
+                          << std::endl;
                 return 1;
             }
         }
@@ -171,7 +217,11 @@ int main(int argc, char **argv)
     }
     else
     {
-        std::cout << "Attach failed" << std::endl;
+        std::cerr << "Attach failed" << std::endl;
+        /* Exiting 0 here reported success from a tool that
+           never reached the tag, which a script cannot tell
+           apart from a completed operation. */
+        return 1;
     }
 
     return 0;

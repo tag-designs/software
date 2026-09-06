@@ -135,6 +135,10 @@ int main(int argc, char **argv)
     else
     {
         std::cerr << "Attach failed" << std::endl;
+        /* Exiting 0 here reported success from a tool that
+           never reached the tag, which a script cannot tell
+           apart from a completed operation. */
+        return 1;
     }
 
     return 0;

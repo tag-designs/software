@@ -217,20 +217,74 @@ worth not re-chasing:
   in a storm round that produced 5 recoveries, so it is not on the recovery
   path at all.
 
-### Still open: intermittent download failure after a storm round
+### RESOLVED (host side): the intermittent download failure
 
-With the false timestamp failure removed, a real one became visible that it had
-been masking: `tag-dwnld` occasionally fails after a storm round. Seen in one
-round of each of two consecutive two-round sets, then not at all in the next
-three rounds, so it is genuinely intermittent and not yet characterised. It was
-invisible before because `check_download()` returned "fail" on the bogus
-monotonicity check first, so the round was already marked failed.
+`tag-dwnld` failed intermittently after a storm round with "Can't dump logs
+from current state". The download was right to refuse: the tag really was still
+RUNNING. The fault was in `tag-stop`.
 
-### Still open: STATE_UNSPECIFIED after reset
+`Tag::Stop()` returns true when the request is *acknowledged*, and the monitor
+handler only does `*work |= MON_WORK_STOP` -- the state machine makes the
+transition later. `tag-stop` read the status immediately afterwards, saw
+RUNNING, printed it and exited 0, reporting a stop that had not happened.
+`tag-reset` already polls for IDLE after `Erase()` for exactly this reason;
+`tag-stop` never got the same treatment.
 
-Three of twenty reset-and-set-clock cycles left the tag reporting
-`STATE_UNSPECIFIED` rather than `IDLE` in one baseline session; later sessions
-ran 10/10 and 4/4 clean. Also intermittent, also not characterised.
+It now polls for FINISHED or ABORTED at two-second intervals -- each poll is a
+monitor request the tag must service, so hammering the link competes with the
+work being waited on -- and fails with the last state seen.
+
+### RESOLVED (host side): STATE_UNSPECIFIED after reset
+
+Filed as three of twenty reset-and-set-clock cycles reporting
+`STATE_UNSPECIFIED` rather than `IDLE`.
+
+`Tag::Attach()` connects under reset, so the tag is still booting when the
+host's first request arrives, and `pState->state` is legitimately zero until
+the state machine restores it. `tag-reset` issued `GetStatus` immediately after
+attach and took that transient zero as the tag's state: it matched neither
+RUNNING/HIBERNATING nor FINISHED/ABORTED, so the erase was skipped and it
+printed "Final state: STATE_UNSPECIFIED". The `SetRtc` issued next hit the same
+unsettled tag and was rejected, which is the neighbouring "SetRtc failed".
+
+The tag was never at fault. At a captured failure the retained state was
+healthy -- `valid` was BACKUP_STATE_VALID_MAGIC and `state` was IDLE -- the
+tag's own `run_diag` reported `state=2` throughout, and `statusDiagWriteFast()`
+never fired, so the fast status path never saw a zero either.
+
+`tag-start` already knew this; its comment says attach needs a round trip to
+settle. `tag-reset` now polls for a definite state after attach, at one-second
+intervals, with `--settle-timeout`. Twenty rapid reset cycles then ran clean
+against one to four failures per ten before, and 60 clock cycles across six
+storm sets ran 60/60.
+
+### Still open: a stop request can go unserviced for at least 30 s
+
+With `tag-stop` waiting properly, one storm set in six failed with "Tag did not
+reach a stopped state within 30 s; last state RUNNING". The tag genuinely did
+not act on the stop. This was previously invisible: `tag-stop` exited 0 and the
+symptom surfaced later as a confusing download refusal.
+
+The suspect is the event wait for the RUNNING state in `main.c`:
+
+```c
+eventmask_t wait_events = EVT_HARDWARE_ALL;
+if (isMonitorEnabled())
+  wait_events |= EVT_MONITOR_ALL;
+pending_events = chEvtWaitAny(wait_events);
+```
+
+`MON_WORK_ALL` is not in the mask, so a posted `MON_WORK_STOP` cannot wake the
+main thread on its own. It is collected by the
+`chEvtGetAndClearEvents(MON_WORK_ALL)` at the top of the loop, but only once
+something else has woken it -- normally the monitor request's own
+`EVT_MONITOR_*`, which is masked in only while `isMonitorEnabled()` is true.
+
+Not proven. At 400 Hz the IMU should wake the loop far sooner than 30 s, so
+either that wake path is also blocked or `isMonitorEnabled()` is false at that
+moment. Reproduced once in six sets. Adding `MON_WORK_ALL` to the mask is the
+obvious change, and it belongs to the state-machine path that AGENTS.md says
+must be measured rather than argued.
 
 ## Found by reading code, not reproduced
 
