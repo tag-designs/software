@@ -123,17 +123,54 @@ survived trivially and the test read as a pass without ever exercising
 retention. Re-running it only became meaningful once Standby entry was
 deterministic.
 
-### Write errors are reported to the host as "external log full"
+### RESOLVED: a write error now skips the page instead of ending the run
 
-`state_run.c` maps both `LOGWRITE_FULL` and `LOGWRITE_ERROR` to
-`IMU_BLOCK_EXTERNAL_FULL`, at four call-site pairs (lines 292/295, 343/349,
-362/368, 395/401), which reaches the host as `EVENT_EXTERNALFULL`. The enum
-comment concedes it: *"External NAND storage is full or failed."*
+Filed as "`state_run.c` maps both `LOGWRITE_FULL` and `LOGWRITE_ERROR` to
+`IMU_BLOCK_EXTERNAL_FULL`, so a tag that cannot write is indistinguishable from
+one that filled up". It had already misled one investigation: writes refused
+because the GD5F powers up with block protection enabled were reported as a
+full log.
 
-A tag that cannot write is therefore indistinguishable from one that filled up.
-This actively misled an investigation: writes refused because the GD5F powers
-up with block protection enabled were reported as a full log. Splitting the two
-is agreed; it is not done.
+Splitting the two was the agreed fix, but ending the run on a write error is
+itself the wrong response. A single bad page cost the rest of a deployment. The
+four external `LOGWRITE_ERROR` sites now call `skipFailedExternalPage()`, which
+advances the log cursor past the page that failed and keeps collecting. Each
+write is already retried once before it gets there, so this handles persistent
+failures, not transient ones.
+
+The discontinuity is announced with `IMUTAG_HEADER_RESYNC` and
+`IMUTAG_HEADER_RESYNC_STORAGE_SKIP`, which the next sparse checkpoint records.
+Markers stay on the existing `IMUTAG_CHECKPOINT_PAGES` cadence rather than
+being forced out early, the same way `restoreLog()` announces
+`RESTART_RECOVERY`. Both flags were already defined and already decoded by
+`host/libraries/tagcore/sqlitelog/imutag.cc`, and had simply never been set by
+firmware, so no host or schema change was needed.
+
+Both flags are set: `next_header_flags`, which is what the checkpoint writer
+actually reads, and the retained `checkpoint_flags_pending`, so the marker
+survives a reset landing between the skip and the checkpoint. Setting only the
+retained copy -- which is all `restoreLog()` does, because a restart always
+follows it and reloads the other -- silently wrote no marker at all.
+
+After `IMUTAG_MAX_CONSECUTIVE_PAGE_ERRORS` (4) failures in a row the device is
+treated as unwritable and the run ends with the new `EVENT_STORAGEERROR`, which
+is additive to the proto. `EVENT_EXTERNALFULL` now means only what it says.
+
+Verified on hardware with `IMUTAG_TEST_PAGE_ERROR_EVERY`, a compile-time
+injection that is byte-identical to absent when unset and emits a `#warning`
+when set:
+
+| injected failure rate | outcome |
+| --- | --- |
+| every 20 pages | stayed RUNNING, 16950 rows, 5 `RESYNC_STORAGE_SKIP` events over 6 segments, ended `EVENT_STOPCMD` at 113 pages |
+| every page | ended `EVENT_STORAGEERROR` at 4 pages, as the cap intends |
+
+Skipping never erases the failed page: erasing a factory bad block destroys its
+marker permanently.
+
+Not addressed: the internal-checkpoint error path still reports
+`IMU_BLOCK_INTERNAL_FULL`. Internal flash filling is a genuine end-of-run, but
+an internal *error* is conflated with it in the same way this entry describes.
 
 ### RESOLVED: the non-monotonic timestamps were a bug in the check
 

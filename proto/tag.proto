@@ -163,6 +163,10 @@ message State {
     EVENT_STANDBY = 16;      // standby event
     EVENT_SHUTDOWN = 17;     // shutdown event
     EVENT_EXCEPTION = 18;    // exception event
+    // External storage kept failing to accept writes. Distinct from
+    // EVENT_EXTERNALFULL, which means the medium is full rather than broken;
+    // reporting a write error as "full" sent diagnosis the wrong way.
+    EVENT_STORAGEERROR = 19; // external storage write failure
   }
   Status status = 1;
   Event transition_reason = 2; // transition event code

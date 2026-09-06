@@ -251,6 +251,37 @@ Use the target that matches the files changed. For documentation-only changes,
   `seq` counting every boot and the unarmed control came back as noise. So it
   carries data across all three of reset, a failed sleep, and a real Standby.
 
+### Capturing a tag's state after a failure
+
+  `embedded/tools/tag_capture_state.py` connects under reset and stores the
+  three places a tag keeps state a download cannot reach: SRAM, the writable
+  part of internal flash, and the RTC backup registers.
+
+  ```sh
+  embedded/tools/tag_capture_state.py --reason "storm round 2 aborted" \
+      --elf build-embedded/embedded/tags/<Tag>/build/<Tag>.elf \
+      --extra embedded/tags/<Tag>/project.mk
+  ```
+
+  Run it **before** anything resets or erases the tag;
+  `tag_attach_storm.py --stop-on-failure` exists to make that possible.
+
+  Always pass `--elf`. The region bounds are read from it -- flash size and the
+  persistent floor are per-target linker symbols, not constants -- and it is
+  the only reliable record of what was running: a test image differs from a
+  shipping one by a `-D` that leaves no trace in the git hash. Pass the
+  target's `project.mk` as `--extra` for the same reason. A capture with no
+  image stored says so in its manifest.
+
+  Two things about the regions are worth knowing. The persistent flash sweep
+  stops at the first wholly erased page, which cut a real capture from 909312
+  bytes to 8192; the config and NAND-map pages sit above it and are captured by
+  address, or the sweep would never reach them. And the backup registers read
+  as **all zeros** unless `RCC_APB1ENR1_RTCAPBEN` is set first, because holding
+  the core in reset also resets RCC -- indistinguishable from a backup domain
+  that was genuinely lost, which is the distinction the capture exists to make.
+  The tool sets that bit before reading.
+
 ### Measuring without wearing out the instrument
 
   `joulescope_measure.py` opens and closes the Joulescope on every run. Across
