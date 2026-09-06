@@ -78,7 +78,8 @@ typedef struct {
   uint32_t seq;      /**< Incremented each time the buffer is formatted. */
   uint32_t used;     /**< Bytes of @c data written so far. */
   uint32_t overflow; /**< Bytes discarded because the buffer was full. */
-  uint32_t resv[4];  /**< Pad the header to 32 bytes. */
+  uint32_t wrapped;  /**< Non-zero once a ring-mode buffer has wrapped. */
+  uint32_t resv[3];  /**< Pad the header to 32 bytes. */
   uint8_t  data[TAG_SCRATCH_BYTES];
 } tag_scratch_t;
 
@@ -108,35 +109,112 @@ static inline void tagScratchInit(void)
   tagScratch.seq = tagScratch.seq + 1U;
   tagScratch.used = 0U;
   tagScratch.overflow = 0U;
+  tagScratch.wrapped = 0U;
   tagScratch.magic = TAG_SCRATCH_MAGIC;
 }
 
 /**
- * @brief Append raw bytes, counting anything that does not fit.
+ * @brief Number of boots that have formatted or resumed this region.
  *
- * @param[in] p Bytes to append.
- * @param[in] n Number of bytes.
- *
- * @post @c used advances, or @c overflow does when the buffer is full. A
- *       truncated log is therefore visible as such rather than silently short.
+ * @return @c seq, which advances once per tagScratchInit() or
+ *         tagScratchResume(). Zero before either has run.
  */
-static inline void tagScratchRaw(const uint8_t *p, uint32_t n)
+static inline uint32_t tagScratchSeq(void)
 {
+  return tagScratch.seq;
+}
+
+/**
+ * @brief Keep any existing log and continue appending to it.
+ *
+ * @details The alternative to tagScratchInit() for faults that span resets.
+ *          A tag that is being reset repeatedly -- by an attach storm, a
+ *          watchdog, or restart recovery -- formats its scratchpad on every
+ *          boot if it calls tagScratchInit(), so only the final boot survives
+ *          to be read back, which is rarely the interesting one. This keeps
+ *          the accumulated log, advances @c seq so boots remain countable, and
+ *          lets @c overflow report anything lost once the buffer fills.
+ *
+ *          Falls back to formatting when the region does not hold a valid
+ *          header, or when @c used is out of range -- a cold start leaves
+ *          arbitrary bytes there, and a stale @c used would otherwise make
+ *          every later append land in the overflow counter.
+ *
+ * @post @c tagScratch is valid and @c seq has advanced. Existing content and
+ *       @c used are preserved when the header was intact.
+ */
+static inline void tagScratchResume(void)
+{
+  if ((tagScratch.magic != TAG_SCRATCH_MAGIC) ||
+      (tagScratch.used > TAG_SCRATCH_BYTES)) {
+    tagScratchInit();
+    return;
+  }
+  tagScratch.seq = tagScratch.seq + 1U;
+}
+
+#ifndef TAG_SCRATCHPAD_RING
+/**
+ * @def TAG_SCRATCHPAD_RING
+ * @brief Keep the newest records instead of the oldest when the buffer fills.
+ *
+ * @details Linear (the default) is right when the interesting event is near
+ *          the start, such as a boot that never completes. Ring is right when
+ *          it is near the end, such as a fault after thousands of resets: a
+ *          storm boots the tag hundreds of times, and a linear buffer fills
+ *          long before the failure and then discards exactly the records that
+ *          matter.
+ */
+#define TAG_SCRATCHPAD_RING 0
+#endif
+
+/**
+ * @brief Append one complete record, wrapping or discarding when full.
+ *
+ * @details Records are written whole. A record that would straddle the end of
+ *          the buffer starts again at offset zero and the unused tail is
+ *          marked with a zero kind byte, so a decoder reading from an
+ *          arbitrary point can tell a gap from a record.
+ *
+ * @param[in] kind Record kind, a non-zero TagScratchKind value.
+ * @param[in] p    Payload bytes.
+ * @param[in] n    Payload length.
+ *
+ * @post In linear mode @c overflow counts anything dropped. In ring mode
+ *       @c wrapped is set once the buffer has turned over, and @c used is the
+ *       write cursor, which is also the oldest surviving record.
+ */
+static inline void tagScratchRecord(uint8_t kind, const uint8_t *p, uint32_t n)
+{
+  uint32_t used;
+  uint32_t total = n + 1U;
   uint32_t i;
-  uint32_t used = tagScratch.used;
 
   if (tagScratch.magic != TAG_SCRATCH_MAGIC) {
     tagScratchInit();
-    used = 0U;
   }
-  if ((used + n) > TAG_SCRATCH_BYTES) {
-    tagScratch.overflow = tagScratch.overflow + n;
+  used = tagScratch.used;
+  if (total > TAG_SCRATCH_BYTES) {
+    tagScratch.overflow = tagScratch.overflow + total;
     return;
   }
-  for (i = 0U; i < n; i++) {
-    tagScratch.data[used + i] = p[i];
+  if ((used + total) > TAG_SCRATCH_BYTES) {
+#if TAG_SCRATCHPAD_RING
+    if (used < TAG_SCRATCH_BYTES) {
+      tagScratch.data[used] = 0U;    /* gap marker for the decoder */
+    }
+    tagScratch.wrapped = 1U;
+    used = 0U;
+#else
+    tagScratch.overflow = tagScratch.overflow + total;
+    return;
+#endif
   }
-  tagScratch.used = used + n;
+  tagScratch.data[used] = kind;
+  for (i = 0U; i < n; i++) {
+    tagScratch.data[used + 1U + i] = p[i];
+  }
+  tagScratch.used = used + total;
 }
 
 /**
@@ -155,8 +233,7 @@ static inline void tagScratchPuts(const char *s)
   while (s[n] != '\0') {
     n++;
   }
-  tagScratchRaw(&kind, 1U);
-  tagScratchRaw((const uint8_t *)s, n + 1U);
+  tagScratchRecord(kind, (const uint8_t *)s, n + 1U);
 }
 
 /**
@@ -167,11 +244,16 @@ static inline void tagScratchPuts(const char *s)
  */
 static inline void tagScratchWord(const char label[4], uint32_t value)
 {
-  uint8_t kind = (uint8_t)TAG_SCRATCH_WORD;
+  uint8_t payload[8];
+  uint32_t i;
 
-  tagScratchRaw(&kind, 1U);
-  tagScratchRaw((const uint8_t *)label, 4U);
-  tagScratchRaw((const uint8_t *)&value, 4U);
+  for (i = 0U; i < 4U; i++) {
+    payload[i] = (uint8_t)label[i];
+  }
+  for (i = 0U; i < 4U; i++) {
+    payload[4U + i] = (uint8_t)((value >> (8U * i)) & 0xFFU);
+  }
+  tagScratchRecord((uint8_t)TAG_SCRATCH_WORD, payload, 8U);
 }
 
 /**
@@ -193,9 +275,21 @@ static inline void tagScratchRetain(void)
 
 #else /* !TAG_SCRATCHPAD */
 
+/*
+ * The arguments are discarded with sizeof, which the language guarantees is
+ * unevaluated, rather than with a cast to void. A cast evaluates, and these
+ * macros are used on volatile operands -- pState is `volatile BackupState *`
+ * -- where evaluation is a side effect the compiler must keep. Logging
+ * `pState->state` through a (void) cast emitted a real load and shifted the
+ * surrounding code, which defeats the point of a facility that is supposed to
+ * leave the shipped image alone. sizeof still type-checks the expression.
+ */
 #define tagScratchInit()            do { } while (0)
-#define tagScratchPuts(s)           do { (void)(s); } while (0)
-#define tagScratchWord(label, v)    do { (void)(label); (void)(v); } while (0)
+#define tagScratchResume()          do { } while (0)
+#define tagScratchSeq()             0U
+#define tagScratchPuts(s)           do { (void)sizeof(s); } while (0)
+#define tagScratchWord(label, v)    do { (void)sizeof(label); \
+                                         (void)sizeof(v); } while (0)
 #define tagScratchRetain()          do { } while (0)
 
 #endif

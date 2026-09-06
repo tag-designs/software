@@ -11,6 +11,7 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "persistent.h"
+#include "scratchpad.h"
 #include "datalog.h"
 #include "debug_log.h"
 #include "imutag_log_format.h"
@@ -157,6 +158,19 @@ static bool restartDataCollectionClock(bool mark_resync)
   current_page_data_header_written = false;
   current_page_header_written = false;
   current_frame_index = 0U;
+  /*
+   * Scratchpad trace for the backwards ElapsedUs step filed in
+   * embedded/tags/design/open-issues.md. Each recovery re-bases the segment
+   * from the wall clock here, so a stale or early RTC read lands the new
+   * segment behind the end of the previous one, which a download sees as a
+   * timestamp going backwards at the boundary. RSYN says whether this is a
+   * recovery, RTSC/RTMS record the base actually used. Compiles to nothing
+   * unless TAG_SCRATCHPAD is set.
+   */
+  tagScratchWord("RSYN", (uint32_t)mark_resync);
+  tagScratchWord("RTSC", (uint32_t)timestamp);
+  tagScratchWord("RTMS", (uint32_t)timestamp_millis);
+
   setNextFrameStartTimestamp(timestamp, timestamp_millis);
   pState->rawtemp = 0;
 

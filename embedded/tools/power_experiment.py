@@ -467,6 +467,33 @@ def config_odr_hz(cfg: dict | None) -> float | None:
     return None
 
 
+#: Timestamp columns in order of preference, most corrected first.
+#:
+#: Order matters, and it is not the table's column order. `RawElapsedUs` is
+#: documented as "uncorrected elapsed microseconds from the segment start", so
+#: it restarts at zero in every segment and regresses at every segment
+#: boundary by design. Selecting by table order picked it ahead of `ElapsedUs`
+#: and reported one non-monotonic timestamp per RESTART_RECOVERY -- filed for
+#: some time as an intermittent firmware fault, when the corrected column was
+#: monotonic throughout. Anything segment-relative belongs at the end of this
+#: list, and only as a last resort.
+TIME_COLUMNS = ("elapsedus", "time_us", "time_ms", "timestamp", "time",
+                "epoch", "millis", "t", "startelapsedus", "rawelapsedus")
+
+
+def _pick_time_column(cols: list[str]) -> str | None:
+    """Choose the most trustworthy timestamp column present.
+
+    @param cols Column names as declared by the table.
+    @return The chosen column name, or None when the table has no timestamp.
+    """
+    lowered = {c.lower(): c for c in cols}
+    for want in TIME_COLUMNS:
+        if want in lowered:
+            return lowered[want]
+    return None
+
+
 def check_download(db_path: str, duration_s: float, expected_hz: float | None,
                    tolerance: float) -> tuple[str, str]:
     """Step 6b: sanity-check a downloaded database.
@@ -517,11 +544,7 @@ def check_download(db_path: str, duration_s: float, expected_hz: float | None,
                 continue
             cur.execute(f'PRAGMA table_info("{t}")')
             cols = [c[1] for c in cur.fetchall()]
-            timecol = next((c for c in cols
-                            if c.lower() in ("elapsedus", "rawelapsedus",
-                                             "startelapsedus", "time",
-                                             "timestamp", "epoch", "millis",
-                                             "t", "time_us", "time_ms")), None)
+            timecol = _pick_time_column(cols)
             if timecol and rows > best_rows:
                 best, best_rows, best_timecol = t, rows, timecol
 

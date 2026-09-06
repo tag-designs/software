@@ -135,16 +135,65 @@ This actively misled an investigation: writes refused because the GD5F powers
 up with block protection enabled were reported as a full log. Splitting the two
 is agreed; it is not done.
 
-### Intermittent non-monotonic timestamps under attach storms
+### RESOLVED: the non-monotonic timestamps were a bug in the check
 
-One 30-cycle attach storm produced 4 backwards `ElapsedUs` steps in 7050 rows.
-An identical repeat produced none. An undisturbed run is clean, and `ElapsedUs`
-normally continues monotonically straight across `RESTART_RECOVERY` segment
-boundaries -- so this is an anomaly in restart-recovery timestamping, not an
-expected consequence of resetting a tag mid-run.
+Filed as "one 30-cycle attach storm produced 4 backwards `ElapsedUs` steps in
+7050 rows, an identical repeat produced none", and left strict on purpose.
 
-`tag_attach_storm.py` checks for it and will fail when it recurs. The check is
-deliberately left strict.
+The tag was never wrong. `check_download()` in `embedded/tools/power_experiment.py`
+chose its timestamp column by walking the table's columns in declaration order
+and taking the first recognised name. In `ImuAccel` that is `RawElapsedUs`,
+which comes before `ElapsedUs`, and `RawElapsedUs` is documented in
+`host/libraries/tagcore/sqlitelog/README.md` as *uncorrected elapsed
+microseconds from the segment start*. It restarts at zero in every segment by
+design, so it steps backwards once per segment boundary.
+
+On one kept database, checked both ways:
+
+| column | backwards steps |
+| --- | --- |
+| `RawElapsedUs` (what the tool measured) | 5 |
+| `ElapsedUs` (the corrected series) | 0 |
+
+Every step was exactly a segment boundary, and the count always equalled the
+number of `RESTART_RECOVERY` events -- 5 recoveries, 5 steps. The corrected
+series ran straight through: `0..5997500`, then `11407000..14404500`, then
+`33016000..36013500`, and so on.
+
+This also explains the two observations in the original note that did not fit a
+firmware fault. An undisturbed run was "clean" because it has a single segment
+and therefore no restarts. And `ElapsedUs` really does continue monotonically
+across `RESTART_RECOVERY` boundaries -- that was checked by hand and was
+correct; it simply was not the column the tool was reading.
+
+Fixed by selecting the timestamp column from an explicit preference list, most
+corrected first, with segment-relative columns last.
+
+Two things were ruled out along the way with the retained scratchpad, and are
+worth not re-chasing:
+
+- **The RTC is not read stale on recovery.** `restartDataCollectionClock()`
+  re-bases each segment from the wall clock. Recording the epoch and
+  millisecond actually used, across 625 recoveries in three storm sets that all
+  reported failures, the base was strictly increasing every time.
+- **`restoreLog()` is not rewinding the write cursor.** It ran on 2 of 45 boots
+  in a storm round that produced 5 recoveries, so it is not on the recovery
+  path at all.
+
+### Still open: intermittent download failure after a storm round
+
+With the false timestamp failure removed, a real one became visible that it had
+been masking: `tag-dwnld` occasionally fails after a storm round. Seen in one
+round of each of two consecutive two-round sets, then not at all in the next
+three rounds, so it is genuinely intermittent and not yet characterised. It was
+invisible before because `check_download()` returned "fail" on the bogus
+monotonicity check first, so the round was already marked failed.
+
+### Still open: STATE_UNSPECIFIED after reset
+
+Three of twenty reset-and-set-clock cycles left the tag reporting
+`STATE_UNSPECIFIED` rather than `IDLE` in one baseline session; later sessions
+ran 10/10 and 4/4 clean. Also intermittent, also not characterised.
 
 ## Found by reading code, not reproduced
 

@@ -825,8 +825,8 @@ int main(void)
    * The region survives the reset that reading it back causes, which is what
    * the faults worth chasing need.
    */
-  tagScratchInit();
-  tagScratchPuts("boot");
+  tagScratchResume();
+  tagScratchWord("BOOT", tagScratchSeq());
 
   // Release swdio and swclk if not in monitor mode
 

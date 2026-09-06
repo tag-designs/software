@@ -144,7 +144,20 @@ Use the target that matches the files changed. For documentation-only changes,
   `tag_attach_storm.py` covers the other half: repeated reset-and-set-clock
   cycles and attach/detach storms against a running tag, checking that the run
   survives and recorded usable data. It measures no power; the two tools are
-  complementary.
+  complementary. Pass `--keep-download <dir>` to keep each round's database;
+  without it they go to a temporary file that is deleted, so a failing round
+  cannot be examined afterwards.
+
+  **When a check fails, confirm what it actually measured before believing
+  it.** `check_download()` picks a timestamp column by name, and picking the
+  wrong one cost real time: `ImuAccel` declares `RawElapsedUs` before
+  `ElapsedUs`, and `RawElapsedUs` is documented as elapsed microseconds *from
+  the segment start*, so it restarts at zero in every segment. The tool
+  reported one "non-monotonic timestamp" per restart-recovery and it was filed
+  as an intermittent firmware fault for some time; the corrected column was
+  monotonic throughout. A failing check is a claim about the tag that deserves
+  the same scepticism as any other measurement -- and a wrong check hides real
+  faults behind it, which is how an intermittent download failure went unseen.
 
   To measure a single state directly instead:
 
@@ -212,10 +225,18 @@ Use the target that matches the files changed. For documentation-only changes,
   place.
 
   ```c
-  tagScratchInit();                       /* once, early in boot */
+  tagScratchResume();                     /* once, early in boot */
   tagScratchPuts("configured");
   tagScratchWord("STAT", pState->state);
   ```
+
+  `tagScratchResume()` keeps whatever the last boot left and advances `seq`;
+  `tagScratchInit()` starts empty. Resume is what you want for a fault that
+  spans resets -- an attach storm boots the tag several hundred times, so a
+  buffer formatted on every boot preserves only the last one, which is rarely
+  the interesting one. Add `-DTAG_SCRATCHPAD_RING=1` for those runs too: the
+  8 KB fills long before the end and linear mode then discards everything
+  after, keeping the oldest records when the failure is at the newest end.
 
   ```sh
   STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin

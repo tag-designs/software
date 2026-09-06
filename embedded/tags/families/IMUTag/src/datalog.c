@@ -14,6 +14,7 @@
 #include <tag.pb.h>
 #include "devices.h"
 #include "persistent.h"
+#include "scratchpad.h"
 
 #if (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE) || \
     (defined(TAG_FLASH_GD5F2GM7RE) && TAG_FLASH_GD5F2GM7RE)
@@ -594,6 +595,17 @@ int restoreLog(void)
     uint32_t group_limit = group_start + IMUTAG_CHECKPOINT_PAGES;
     uint32_t page;
 
+    /*
+     * Scratchpad trace of every recovery, for the intermittent backwards
+     * ElapsedUs step filed in embedded/tags/design/open-issues.md. The suspect
+     * is this scan rewinding external_blocks behind pages that already hold
+     * data, which a download would show as a timestamp going backwards at the
+     * segment boundary. RSTP/RRES say where the scan stopped and why; a stop
+     * before group_limit for any reason other than a normally erased page is
+     * the case of interest. Compiles to nothing unless TAG_SCRATCHPAD is set.
+     */
+    tagScratchWord("RGST", group_start);
+
     pState->external_blocks = group_start;
     for (page = group_start; page < group_limit; page++) {
       gd5f_page_read_result_t read_result = GD5F_PAGE_READ_ERROR;
@@ -604,10 +616,15 @@ int restoreLog(void)
               "IMUTag restore: NAND page %u has uncorrectable ECC\r\n",
               (unsigned)page);
         }
+        tagScratchWord("RSTP", page);
+        tagScratchWord("RRES", (uint32_t)read_result);
         break;
       }
       pState->external_blocks = page + 1U;
     }
+
+    tagScratchWord("REXT", pState->external_blocks);
+    tagScratchWord("RSTA", (uint32_t)pState->state);
     if (pState->state == TagState_RUNNING ||
         pState->state == TagState_HIBERNATING ||
         pState->state == TagState_CONFIGURED) {
