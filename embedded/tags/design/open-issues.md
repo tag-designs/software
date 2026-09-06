@@ -8,35 +8,83 @@ Last reviewed 2026-09-04.
 
 ## Reproduced
 
-### Flash error-flag clear cannot be put on the live low-power path
+### RESOLVED: the flash error-flag clear was never the problem
 
-`tagPowerClearFlashErrorFlags()` clears latched `FLASH_SR` error bits and the
-ECC flags before a low-power entry. It is called only from
-`tagPowerEnterStop3()`, which carries `__attribute__((unused))`. The live
-terminal path is `tagPowerEnterStandby()`, reached through
-`tagPowerEnterTerminalSleep()`, and the live idle path is
-`tagPowerEnterIdleMode()`. **The clear runs on neither.**
+Previously filed here as "adding `tagPowerClearFlashErrorFlags()` to the live
+low-power path costs 1 mA, and three register reads cannot cost 1 mA, so the
+bisect must be wrong". The bisect was right and the reasoning was wrong: the
+call had been placed **between the LPMS/SLEEPDEEP writes and the WFI**, and
+anything placed there stops the part entering Standby. It had nothing to do
+with flash.
 
-Two attempts to add it, each measured with `tag_lifecycle_check.py` on
-IMUTagNandBmp581:
+That was established by putting a probe in the same window that touches no
+flash at all. Reading a single core register there stalls Standby; so does a
+scan region that reads nothing; so does thirty bytes of logging. Meanwhile the
+flash error flags were captured directly in a failing build and were clean --
+`FLASH_SR`, `FLASH_ECCCR` and `FLASH_ECCDR` all zero, identical to a build that
+slept.
 
-| build | idle / stopped / idle again |
+The rule that replaces this entry is in `AGENTS.md` under "The Standby arming
+window is off limits", and at the `SLEEPDEEP` write in `pwr-u375.c`.
+
+What remains true and unfixed: `tagPowerClearFlashErrorFlags()` is called only
+from `tagPowerEnterStop3()`, which is `__attribute__((unused))`, so it runs on
+no path the tag takes.
+
+It does not belong in the power path at all. Clear the flags **where the
+failure occurs -- in the datalog code**, at the flash operation that latched
+them. That is where an ECC or program error is meaningful, where it can be
+attributed to a specific access, and where it can be reported rather than
+silently discarded. Clearing them blanket-fashion before sleep hides the error
+and, as this entry records, cost two days on the assumption that the sleep path
+was the problem.
+
+### Unexplained: code in the Standby arming window stops Standby
+
+Any code added to `tagPowerEnterStandby()` can stop the part entering Standby.
+The core reaches the WFI and never returns, drawing about 1035 uA instead of
+4.4 uA. It does not reset and takes no fault -- a marker written either side of
+the WFI shows the pre-WFI store executed and the post-WFI store did not, and no
+fault handler was entered.
+
+It is erratic rather than proportional:
+
+| perturbation before the WFI | result |
 | --- | --- |
-| baseline | 4.94 / 4.94 / 4.94 uA |
-| clear on both live paths, unconditional | 1036 / 1038 / 1038 uA |
-| clear only when a flag is actually latched | 1037 / 1037 / 1037 uA |
-| reverted to baseline | 4.94 / 4.94 / 4.94 uA |
+| 0-11 no-op instructions | all sleep (12 builds) |
+| 1-2 flash reads | sleeps |
+| 4 flash reads, straight-line or looped | stalls |
+| 8 flash reads, straight-line | sleeps |
+| 4 SRAM reads | stalls |
+| a 24th scan region that reads nothing | stalls |
+| a 24th table entry that is not scanned | sleeps |
+| ~30 bytes of logging at the top of the function | stalls (3 of 3 builds) |
 
-The second result is not credible as a mechanism: with no flags latched that
-version only reads `FLASH_SR`, `FLASH_ECCCR` and `FLASH_ECCDR` and writes
-nothing, and three register reads cannot cost 1 mA. So either the bisect is not
-as clean as it looks or something incidental to the added code matters. Needs a
-proper investigation with a control build, not another two-shot attempt.
+At the instant of the stalled WFI, **no register differs from a working
+build**: 0 differences across 149 non-default addresses covering PWR, RCC with
+every STPENR and SLPENR, SCB, NVIC, RTC, TAMP, EXTI, FLASH, I2C1, SPI1, TIM2,
+GPIOA-H, GPDMA1, ICACHE, RAMCFG, DBGMCU and DHCSR/DEMCR. Eliminated by direct
+measurement: latched flash/ECC flags, SRAM2 parity (disabled in the option
+bytes), pending interrupts, DMA activity, autonomous clock requests, ICACHE,
+debug vector catch, and build non-determinism (the `.list` is reproducible).
 
-This matters because several documents, and `AGENTS.md`, used to present this
-function as the first thing to suspect when a tag reports IDLE at run current.
-Those have been corrected; the measurements they cite (6.705 uA) were taken
-when Stop3 was the live path and are not reproducible today.
+Nothing in production occupies that window, so nothing is broken today. It
+matters only because it makes the path impossible to instrument, and because it
+produced a long series of confident, wrong diagnoses before the pattern was
+recognised. A minimal reproducer for ST would be the 24th-region case: a loop
+iteration that performs no memory access at all, added before the WFI.
+
+### Unexplained: SRAM2 page 3 is not reliably retained across Standby
+
+`PWR_CR1_RRSB3` is supposed to retain the last 8 KB of SRAM2 through Standby,
+and `tagScratchRetain()` sets it. The contents survived once and have not
+since. At the point of the write, `RCC_AHB1ENR2` reads `0x00000004`, so PWR is
+clocked, and `PWR_CR1` reads back `0x40` with the bit set. The page is still
+lost. Setting the bit at boot behaves the same way.
+
+This does not block the scratchpad's main use, which is reading a log back from
+a tag that failed to sleep, crashed or wedged -- those never lose SRAM, and the
+region survives the reset that reading it causes.
 
 ### Write errors are reported to the host as "external log full"
 
