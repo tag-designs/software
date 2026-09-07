@@ -40,6 +40,18 @@
  */
 #define USE_STOP1 1
 #define USE_STOP1_DELAY 0
+/*
+ * Sleep between IMU wakes in Stop 2, not the Stop 1 that USE_STOP1 selects.
+ * Measured at 100 Hz across three builds differing only in code layout:
+ * Stop 1 gave 671, 866 and 866 uA; Stop 2 gave 605.0, 604.8 and 604.9. The
+ * Stop 1 spread is the same layout sensitivity that costs Standby entry
+ * 1 mA, and it is not something a build setting removes. Stop 2 is also
+ * lower at every rate -- 605/746/959/1133 uA at 100/400/800/1600 Hz against
+ * 671/811 for the best Stop 1 build -- and collection, timing and download
+ * pass at all four rates. USE_STOP1 stays 1 because stopMilliseconds() and
+ * the LPTIM1 trigger gate still depend on it.
+ */
+#define IMUTAG_RUN_SLEEP_MODE STOP2
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define TAG_STM32U3_FLASH 1
 /* STM32U375xG.ld reserves a dedicated, independently erasable flash page

@@ -27,6 +27,21 @@
 #define USE_STOP1 1
 #endif
 
+#ifndef IMUTAG_RUN_SLEEP_MODE
+/**
+ * @def IMUTAG_RUN_SLEEP_MODE
+ * @brief Sleep depth requested between IMU wakes while RUNNING.
+ *
+ * @details Defaults to the historical USE_STOP1 choice. A target may select
+ *          STOP2 instead, which on STM32U375 is both lower and -- unlike
+ *          Stop 1 -- reproducible: Stop 1 run current moved by up to 195 uA
+ *          between builds differing only in code layout, while Stop 2 held to
+ *          within 0.2 uA across the same builds. See
+ *          embedded/tags/design/open-issues.md.
+ */
+#define IMUTAG_RUN_SLEEP_MODE (USE_STOP1 ? STOP1 : SLEEP)
+#endif
+
 /** Number of seconds discarded after IMU trigger-clock restart. */
 #define IMU_CLOCK_LOCK_SECONDS 2
 /** Maximum log-page work items handled during one RUNNING wake. */
@@ -612,7 +627,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
-    enum Sleep sleepmode = USE_STOP1 ? STOP1 : SLEEP;
+    enum Sleep sleepmode = IMUTAG_RUN_SLEEP_MODE;
     const int32_t wake_epoch = timestamp;
     const uint32_t wake_millis = timestamp_millis;
 #if defined(TAG_RETAINED_RUN_DIAGNOSTICS) && TAG_RETAINED_RUN_DIAGNOSTICS
@@ -634,7 +649,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         return Aborted(T_INIT, State_EVENT_UNKNOWN);
       }
       pState->state = TagState_RUNNING;
-      return USE_STOP1 ? STOP1 : SLEEP;
+      return IMUTAG_RUN_SLEEP_MODE;
     }
 
     // check for completion
