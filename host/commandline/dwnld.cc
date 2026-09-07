@@ -1,6 +1,8 @@
 #include "dwnld.h"
 
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <cctype>
 #include <iomanip>
 #include <memory>
@@ -210,6 +212,8 @@ int main(int argc, char **argv)
   bool stop_tag = false;
   bool rescue_exception = false;
   bool profile = false;
+  int settle_timeout_s = 10;
+  int stop_timeout_s = 30;
   uint64_t get_log_ns = 0;
   uint64_t write_log_ns = 0;
 
@@ -225,7 +229,17 @@ int main(int argc, char **argv)
        "For old firmware only: change EXCEPTION backup state to ABORTED before downloading",
        cxxopts::value<bool>(rescue_exception)->default_value("false"))
       ("profile", "Print download timing and link transport profile",
-       cxxopts::value<bool>(profile)->default_value("false"));
+       cxxopts::value<bool>(profile)->default_value("false"))
+      ("settle-timeout",
+       "Seconds to wait after attach for the tag to report a definite state. "
+       "Attach connects under reset, so the first status can legitimately be "
+       "STATE_UNSPECIFIED while the tag boots",
+       cxxopts::value<int>(settle_timeout_s)->default_value("10"))
+      ("stop-timeout",
+       "With --stop, seconds to wait for the tag to reach FINISHED or ABORTED. "
+       "Stop() returns when the request is accepted; the state machine acts on "
+       "it later",
+       cxxopts::value<int>(stop_timeout_s)->default_value("30"));
 
   if (!parse_options(argc, argv, options, tag, dev)) {
     return 1;
@@ -238,14 +252,40 @@ int main(int argc, char **argv)
 
   signal(SIGINT, intHandler);
 
-  if (!tag.GetStatus(status)) {
-    // The acknowledgement carries the tag's own reason -- PERM, NXIO, a nanopb
-    // failure, or a monitor-level error. Reporting only "could not read"
-    // discards it and leaves an intermittent failure indistinguishable from a
-    // link glitch.
-    std::cerr << "Could not read tag status: " << tag.DebugMessage()
-              << std::endl;
-    return 1;
+  /*
+   * Attach connects under reset, so the first status can legitimately be
+   * STATE_UNSPECIFIED while the tag boots. Judging downloadability from that
+   * read refused with "Can't dump logs from current state" on a tag that was
+   * FINISHED, and an immediate retry succeeded -- one storm round in six.
+   * Poll for a definite state, as tag-reset, tag-start and tag-stop do.
+   */
+  {
+    const int settle_ms = 1000;
+    const int settle_tries =
+        std::max(1, (settle_timeout_s * 1000 + settle_ms - 1) / settle_ms);
+    bool settled = false;
+    for (int i = 0; i < settle_tries; i++) {
+      if (!tag.GetStatus(status)) {
+        // The acknowledgement carries the tag's own reason -- PERM, NXIO, a
+        // nanopb failure, or a monitor-level error. Reporting only "could not
+        // read" discards it and leaves an intermittent failure
+        // indistinguishable from a link glitch.
+        std::cerr << "Could not read tag status: " << tag.DebugMessage()
+                  << std::endl;
+        return 1;
+      }
+      if (status.state() != STATE_UNSPECIFIED) {
+        settled = true;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(settle_ms));
+    }
+    if (!settled) {
+      std::cerr << "tag still reports STATE_UNSPECIFIED after "
+                << settle_timeout_s << " s; it is not merely settling"
+                << std::endl;
+      return 1;
+    }
   }
 
   if (log_is_enabled(LOG_DEBUG) && !status.debug_message().empty()){
@@ -271,8 +311,32 @@ int main(int argc, char **argv)
   }
 
   if ((status.state() == RUNNING) && stop_tag) {
-    if (!tag.Stop() || !tag.GetStatus(status)) {
+    if (!tag.Stop()) {
       std::cerr << "Could not stop running tag: " << tag.DebugMessage()
+                << std::endl;
+      return 1;
+    }
+    /*
+     * Stop() returns when the request is accepted; the state machine acts on
+     * it later, so one status read straight afterwards still says RUNNING.
+     * Poll for the stopped state, as tag-stop does.
+     */
+    const int poll_ms = 2000;
+    const int tries = std::max(1, (stop_timeout_s * 1000 + poll_ms - 1) / poll_ms);
+    for (int i = 0; i < tries; i++) {
+      if (!tag.GetStatus(status)) {
+        std::cerr << "Could not read tag status after stop: "
+                  << tag.DebugMessage() << std::endl;
+        return 1;
+      }
+      if (status.state() == FINISHED || status.state() == ABORTED) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
+    }
+    if (status.state() != FINISHED && status.state() != ABORTED) {
+      std::cerr << "Tag did not reach a stopped state within " << stop_timeout_s
+                << " s; last state " << TagState_Name(status.state())
                 << std::endl;
       return 1;
     }
