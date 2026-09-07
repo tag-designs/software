@@ -248,8 +248,24 @@ Use the target that matches the files changed. For documentation-only changes,
   -- but the function is not cursed, and the failures it caused are fixed rather
   than merely avoided.
 
-  Why the inlined form fails is still unknown; the arming sequence disassembles
-  identically in both. See `embedded/tags/design/open-issues.md`.
+  Why a given layout fails is still unknown, and it is not for want of
+  looking: the firmware reaches the `WFI`; every register precondition for
+  Standby is met one instruction before it, sampled live without a debugger;
+  ~380 peripheral and core-control registers are bit-identical between a
+  failing and a working image at that instant; and the stalled part is in
+  plain Sleep with its bus clocks running, the deep-sleep request declined.
+  The errata sheet (ES0626) has no matching item. The list of mechanisms
+  tested and excluded is in `embedded/tags/design/open-issues.md` -- read it
+  before proposing another.
+
+  **The shipping terminal sleep is now Stop 3, not Standby.**
+  `tagPowerEnterTerminalSleep()` calls `tagPowerEnterStop3()`: same device
+  preparation, RTC wake through WKUP7, and a synthetic standby reset on wake,
+  so the boot path is unchanged. It entered at every layout that stalls
+  Standby and passed `tag_release_check.py`, at about 3.6 uA more at rest.
+  `tagPowerEnterStandby()` stays in the tree, unused, as the reference for the
+  fault. The measurement discipline above still applies: Stop 3 has been
+  shown to survive the layouts tried, not proven immune.
 
   **Anything that changes the image can therefore expose this class of fault.**
   Measure idle after firmware changes, and when a change that provably cannot

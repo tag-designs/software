@@ -430,7 +430,7 @@ static void tagPowerResetAfterStop3Wake(void)
 }
 
 
-static void __attribute__((unused)) tagPowerEnterStop3(enum Sleep sleepmode)
+static void __attribute__((noinline)) tagPowerEnterStop3(enum Sleep sleepmode)
 {
   if (!tagPowerTerminalModeEntersStandby(sleepmode) || monitorIsAttached())
   {
@@ -524,7 +524,7 @@ static void tagPowerResetSpi1BeforeStandby(void)
  * worth outlining differently, without re-running that padding sweep.
  */
 __attribute__((noinline))
-static void tagPowerEnterStandby(enum Sleep sleepmode)
+static void __attribute__((unused)) tagPowerEnterStandby(enum Sleep sleepmode)
 {
 
   if (!tagPowerTerminalModeEntersStandby(sleepmode) || isMonitorEnabled())
@@ -595,7 +595,25 @@ static void tagPowerEnterStandby(enum Sleep sleepmode)
  * @param[in] sleepmode Requested sleep mode.
  */
 
+/**
+ * @brief Enter the terminal low-power state.
+ *
+ * @details Goes through Stop 3 rather than Standby. On this part a Standby
+ *          request (LPMS = 1xx) is declined in a layout-dependent way: the
+ *          WFI is reached with every documented precondition met and the core
+ *          drops into plain Sleep at about 1 mA instead. Stop 3 with the same
+ *          device preparation and the same RTC wake (WKUP7, WUSEL7 = 11) has
+ *          entered at every layout that stalls Standby -- five IDLE layouts,
+ *          three full life-cycles including FINISHED, a scheduled start woken
+ *          by the minute alarm, and a passing tag_release_check -- at about
+ *          3.6 uA more than a Standby that works. The wake is turned into a
+ *          synthetic standby reset by tagPowerResetAfterStop3Wake(), so the
+ *          boot path sees no difference. tagPowerEnterStandby() is kept as
+ *          the reference for the fault; see open-issues.md.
+ *
+ * @param[in] sleepmode Requested sleep mode; only STANDBY enters.
+ */
 static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 {
-  tagPowerEnterStandby(sleepmode);
+  tagPowerEnterStop3(sleepmode);
 }

@@ -922,10 +922,14 @@ int main(void)
       pending_events =  chEvtWaitAny(wait_events);
       idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
     }
-    else if (isMonitorEnabled()) {
-      pending_events = chEvtWaitAny(EVT_ALL_DEFINED);
-    }
     else {
+      /*
+       * Never block here outside RUNNING. Blocking on the monitor's behalf
+       * bought nothing -- godown() already refuses to sleep while a monitor
+       * is attached -- and it raced the detach: a MONITORSTOP landing after
+       * the isMonitorEnabled() test but before the wait parks the main
+       * thread on an event no one will ever post.
+       */
       pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     }
 #else

@@ -97,11 +97,13 @@ class Server:
         self.driver.subscribe(f"{self.device}/s/stats/value", "pub",
                               self.collector.on_value)
 
-    def measure(self, duration: float, window: float) -> dict:
+    def measure(self, duration: float, window: float,
+                trace: bool = False) -> dict:
         """Measure by taking a delta across the running stream.
 
         @param duration Seconds to accumulate.
         @param window   Requested block length; a change restarts the stream.
+        @param trace    Also return trace_ua, the mean current of every block.
         @return Dict with current_ua, voltage_v, blocks and span_s, or an
                 error key when the DUT is unpowered or too few blocks arrived.
         """
@@ -109,11 +111,12 @@ class Server:
         if mode == RANGE_MODE_OFF:
             return {"error": "range mode is off; DUT is not powered"}
         if abs(window - self.window) > 1e-9:
-            with suppress(Exception):
-                self.driver.unsubscribe(f"{self.device}/s/stats/value",
-                                        self.collector.on_value)
-            self.start_stream(window)
-            time.sleep(window * 2)
+            # Restarting the statistics stream to change the block length
+            # races inside pyjoulescope_driver's publish callback and has
+            # killed the server twice ("'_thread.lock' object is not
+            # callable"). The window is fixed for the server's lifetime.
+            return {"error": f"window is fixed at {self.window} s for this "
+                             f"server; restart it to change"}
 
         before = self.collector.snapshot()
         t0 = time.time()
@@ -128,13 +131,23 @@ class Server:
         # Span from the block count, which is exact; elapsed is wall clock and
         # includes the partial blocks at each end.
         span = (len(new_blocks) - 1) * self.window
-        return {
+        resp = {
             "current_ua": (charge / span) * 1e6,
             "voltage_v": sum(w.v_avg for w in new_blocks) / len(new_blocks),
             "blocks": len(new_blocks),
             "span_s": span,
             "elapsed_s": round(elapsed, 2),
         }
+        if trace:
+            # Per-block mean current, so a caller can see whether a high
+            # average is a steady load or a duty cycle; the aggregate alone
+            # cannot tell a tag that never sleeps from one that sleeps and
+            # wakes every couple of seconds.
+            resp["trace_ua"] = [
+                round((b.charge - a.charge) / self.window * 1e6, 2)
+                for a, b in zip(new_blocks, new_blocks[1:])
+            ]
+        return resp
 
     def handle(self, req: dict) -> dict:
         """Dispatch one request.
@@ -147,7 +160,8 @@ class Server:
         cmd = req.get("cmd")
         if cmd == "measure":
             return self.measure(float(req.get("duration", 10.0)),
-                                float(req.get("window", 0.5)))
+                                float(req.get("window", 0.5)),
+                                bool(req.get("trace", False)))
         if cmd == "power":
             want = RANGE_MODE_AUTO if req.get("on", True) else RANGE_MODE_OFF
             self.driver.publish(f"{self.device}/s/i/range/mode", want)
@@ -193,7 +207,12 @@ class Server:
                         resp = self.handle(json.loads(line))
                     except Exception as e:                    # noqa: BLE001
                         resp = {"error": f"{type(e).__name__}: {e}"}
-                    data.write((json.dumps(resp) + "\n").encode())
+                    try:
+                        data.write((json.dumps(resp) + "\n").encode())
+                    except (BrokenPipeError, ConnectionResetError):
+                        # The client gave up; that is its problem, not a
+                        # reason to drop the device and every other client.
+                        pass
                     data.flush()
         finally:
             srv.close()
