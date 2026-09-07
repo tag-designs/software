@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -96,6 +97,7 @@ int main(int argc, char **argv)
     bool merge_config = false;
     bool set_rtc = false;
     bool start_now = false;
+    int start_timeout_s = 10;
 
     cxxopts::Options options("tag-start",
                              "start a configured tag and print the resulting status");
@@ -108,7 +110,12 @@ int main(int argc, char **argv)
         ("set-rtc", "Synchronize the tag clock from the host before starting",
          cxxopts::value<bool>(set_rtc)->default_value("false"))
         ("start-now", "Force start_delay to zero so collection begins immediately",
-         cxxopts::value<bool>(start_now)->default_value("false"));
+         cxxopts::value<bool>(start_now)->default_value("false"))
+        ("start-timeout",
+         "Seconds to wait for the tag to leave IDLE after the start is accepted. "
+         "Start is posted, not performed: the state machine acts on it later, so "
+         "a status read straight afterwards can still say IDLE",
+         cxxopts::value<int>(start_timeout_s)->default_value("10"));
 
     // Parse options
 
@@ -208,17 +215,61 @@ int main(int argc, char **argv)
 
         if (!start_attempted || !start_failed)
         {
-            if (tag.GetStatus(status))
+            /*
+             * Start() returns when the request is accepted; the monitor
+             * handler only posts MON_WORK_START and the state machine acts
+             * on it later. One status read straight afterwards can still say
+             * IDLE, which tag_attach_storm.py then reports as "tag is IDLE
+             * after start" -- seen on one storm set in three. Poll, a second
+             * apart, until the tag has left IDLE, as tag-stop polls for
+             * FINISHED.
+             */
+            const int poll_ms = 1000;
+            const int tries = start_attempted
+                ? std::max(1, (start_timeout_s * 1000 + poll_ms - 1) / poll_ms)
+                : 1;
+            bool read_ok = false;
+            for (int i = 0; i < tries; i++)
             {
-                std::cout << "State: " << TagState_Name(status.state())
-                          << std::endl;
+                read_ok = tag.GetStatus(status);
+                if (!read_ok)
+                {
+                    break;
+                }
+                if (!start_attempted || status.state() != IDLE)
+                {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
             }
-            else
+            if (!read_ok)
             {
                 /* Report the last state actually read, not a zeroed one. */
                 std::cerr << "GetStatus failed: " << tag.DebugMessage()
                           << std::endl;
                 std::cout << "Last known state: "
+                          << TagState_Name(status.state()) << std::endl;
+                return 1;
+            }
+            if (start_attempted && status.state() == IDLE)
+            {
+                std::cerr << "Tag did not leave IDLE within " << start_timeout_s
+                          << " s of the start being accepted" << std::endl;
+                std::cout << "State: " << TagState_Name(status.state())
+                          << std::endl;
+                return 1;
+            }
+            std::cout << "State: " << TagState_Name(status.state())
+                      << std::endl;
+            /*
+             * Leaving IDLE is not the same as having started. A start that
+             * fails in device setup goes IDLE -> ABORTED, and a status read
+             * that lands there must not be reported as success.
+             */
+            if (start_attempted && status.state() != RUNNING &&
+                status.state() != CONFIGURED)
+            {
+                std::cerr << "Start did not lead to RUNNING or CONFIGURED: "
                           << TagState_Name(status.state()) << std::endl;
                 return 1;
             }
