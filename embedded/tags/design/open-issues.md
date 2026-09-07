@@ -447,8 +447,13 @@ None of these is known to cause a current symptom.
 
 ## Agreed work, not started
 
-- Rework `eraseExternal()` liveness. `chThdYield()` is slow and expensive; it
-  should check for any pending event, push it back to the outer loop and
-  return. The model is: while no event, erase; if an event is pending, return.
+- ~~Rework `eraseExternal()` liveness.~~ Done, in two parts. The model --
+  while no event, erase; if an event is pending, return -- is what `Reset()`
+  in `state_machine.c` implements around the incremental
+  `eraseExternalNextSector()`, testing the pending-event mask after every
+  sector. The blocking `eraseExternal()` in the IMUTag `datalog.c` is dead on
+  this target; its `chThdYield()` was removed on 2026-09-07 and the function
+  documented as the synchronous sweep it is. The shipped image is byte-identical
+  before and after, so no measurement was owed.
 - Consider a full erase sweep when a run did not finish with clearly
   recoverable boundaries.

@@ -192,11 +192,22 @@ static bool internalHeaderErased(const t_InternalDataHeader *slot)
 /**
  * @brief Erase the external data log and reset log progress.
  */
+/*
+ * A complete, synchronous sweep. Nothing on this target calls it: the state
+ * machine's Reset() drives the incremental eraseExternalStart() /
+ * eraseExternalNextSector() / eraseExternalFinish() sequence directly, testing
+ * the thread's pending-event mask between sectors so a monitor request is
+ * served within one sector erase. This exists for the common declaration in
+ * core/inc/persistent.h. The chThdYield() that used to sit in the loop was a
+ * cost without a benefit on a single-thread main -- there is nothing to yield
+ * to -- and gave the impression the sweep was cooperative when it was not.
+ */
 void eraseExternal()
 {
   eraseExternalStart();
   while (eraseExternalNextSector())
-    chThdYield();
+  {
+  }
   eraseExternalFinish();
 }
 
