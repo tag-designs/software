@@ -49,9 +49,11 @@
  * lower at every rate -- 605/746/959/1133 uA at 100/400/800/1600 Hz against
  * 671/811 for the best Stop 1 build -- and collection, timing and download
  * pass at all four rates. USE_STOP1 stays 1 because stopMilliseconds() and
- * the LPTIM1 trigger gate still depend on it.
+ * the LPTIM1 trigger gate still depend on it. Legal here only because this
+ * target's IMU trigger is on LPTIM1 -- Stop 2 keeps LPTIM1 clocked but not
+ * LPTIM2, and the family default is LPTIM2; devices.c enforces that.
  */
-#define IMUTAG_RUN_SLEEP_MODE STOP2
+#define IMUTAG_RUN_SLEEP_STOP2 1
 #define STOP1_WAKE_EXTI_GROUP1_MASK (1U << 0)
 #define TAG_STM32U3_FLASH 1
 /* STM32U375xG.ld reserves a dedicated, independently erasable flash page

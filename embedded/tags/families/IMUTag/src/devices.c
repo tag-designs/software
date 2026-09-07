@@ -67,6 +67,13 @@
 #ifndef IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL
 #define IMUTAG_IMU_TRIGGER_LPTIM_CHANNEL 1
 #endif
+#if defined(IMUTAG_RUN_SLEEP_STOP2) && IMUTAG_RUN_SLEEP_STOP2 && \
+    (IMUTAG_IMU_TRIGGER_LPTIM_ID != 1)
+#error "IMUTAG_RUN_SLEEP_STOP2 needs the IMU trigger on LPTIM1: Stop 2 keeps \
+LPTIM1 clocked but not LPTIM2, so the trigger would stop and the tag would \
+collect nothing without reporting a fault"
+#endif
+
 #if IMUTAG_IMU_TRIGGER_LPTIM_ID == 1
 #define IMUTAG_IMU_TRIGGER_LPTIM LPTIM1
 #elif IMUTAG_IMU_TRIGGER_LPTIM_ID == 2

@@ -27,18 +27,35 @@
 #define USE_STOP1 1
 #endif
 
-#ifndef IMUTAG_RUN_SLEEP_MODE
+#ifndef IMUTAG_RUN_SLEEP_STOP2
 /**
- * @def IMUTAG_RUN_SLEEP_MODE
- * @brief Sleep depth requested between IMU wakes while RUNNING.
+ * @def IMUTAG_RUN_SLEEP_STOP2
+ * @brief Sleep between IMU wakes in Stop 2 rather than the USE_STOP1 choice.
  *
- * @details Defaults to the historical USE_STOP1 choice. A target may select
- *          STOP2 instead, which on STM32U375 is both lower and -- unlike
- *          Stop 1 -- reproducible: Stop 1 run current moved by up to 195 uA
- *          between builds differing only in code layout, while Stop 2 held to
- *          within 0.2 uA across the same builds. See
+ * @details On STM32U375 Stop 2 is both lower and -- unlike Stop 1 --
+ *          reproducible: Stop 1 run current moved by up to 195 uA between
+ *          builds differing only in code layout, while Stop 2 held to within
+ *          0.2 uA across the same builds. See
  *          embedded/tags/design/open-issues.md.
+ *
+ * @warning Stop 2 keeps LPTIM1 clocked but not LPTIM2, so a target may only
+ *          set this when its IMU trigger is on LPTIM1. The family default in
+ *          devices.c is LPTIM2, and devices.c rejects the combination at
+ *          compile time. A target that got it wrong would stop collecting
+ *          rather than fail loudly, which is why the check exists.
  */
+#define IMUTAG_RUN_SLEEP_STOP2 0
+#endif
+
+#ifdef IMUTAG_RUN_SLEEP_MODE
+#error "select the run sleep with IMUTAG_RUN_SLEEP_STOP2, not by defining \
+IMUTAG_RUN_SLEEP_MODE: defining it in custom.h only redefines the macro below, \
+which wins silently and leaves the target in Stop 1"
+#endif
+
+#if IMUTAG_RUN_SLEEP_STOP2
+#define IMUTAG_RUN_SLEEP_MODE STOP2
+#else
 #define IMUTAG_RUN_SLEEP_MODE (USE_STOP1 ? STOP1 : SLEEP)
 #endif
 
