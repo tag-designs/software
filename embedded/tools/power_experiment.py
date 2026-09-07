@@ -63,6 +63,11 @@ MEASURE_TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 #: --use-server on the tools, or by JOULESCOPE_USE_SERVER=1 in the environment.
 USE_SERVER = os.environ.get("JOULESCOPE_USE_SERVER", "") not in ("", "0")
 
+#: Where joulescope_server.py listens. Its presence means the instrument is
+#: already held open, and measuring directly then fails with "jsdrv_open
+#: timed out" on every point -- a whole sweep lost to a server left running.
+SERVER_SOCKET = "/tmp/joulescope_server.sock"
+
 #: Terminal tag states, from which tag-reset is able to erase.
 TERMINAL_STATES = ("FINISHED", "ABORTED")
 
@@ -328,19 +333,21 @@ def start(bin_dir: str, config: str | None, base: str | None, merge: bool,
 
 
 def measure(python: str, duration: float, window: float,
-            verbose: bool) -> Measurement:
+            verbose: bool, use_server: bool = USE_SERVER) -> Measurement:
     """Step 4: measure supply current with no monitor session open.
 
     @param python   Interpreter that can import pyjoulescope_driver.
     @param duration Measurement window in seconds.
     @param window   Statistics block length in seconds.
     @param verbose  True to echo commands.
+    @param use_server True to measure through joulescope_server.py rather than
+                    opening the instrument directly.
     @return Parsed measurement.
     @raise ExperimentError when the tool produced no usable current figure.
     """
     argv = [python, MEASURE_TOOL,
             "--duration", str(duration), "--window", str(window)]
-    if USE_SERVER:
+    if use_server:
         argv.append("--use-server")
     res = run("measure", argv, duration + 60.0, verbose)
     m = parse_measurement(res.stdout)
@@ -609,6 +616,16 @@ def main() -> int:
     p.add_argument("--merge", action="store_true",
                    help="Overlay a partial --config onto the tag's stored "
                         "configuration rather than replacing it.")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--use-server", dest="use_server", action="store_true",
+                   default=None,
+                   help="measure through joulescope_server.py. The default is "
+                        "to use it when its socket exists, because a running "
+                        "server holds the instrument and measuring directly "
+                        "then fails on every point")
+    g.add_argument("--no-use-server", dest="use_server", action="store_false",
+                   help="always open the instrument directly, even if a server "
+                        "is running")
     p.add_argument("--window", type=float, default=0.5,
                    help="Measurement statistics block length in seconds.")
     p.add_argument("--running-timeout", type=float, default=90.0,
@@ -666,6 +683,10 @@ def main() -> int:
         # Resolve this first: failing here must not leave the tag reset and
         # erased for a measurement that was never going to run.
         measure_python = resolve_measure_python(args.measure_python)
+        if args.use_server is None:
+            args.use_server = USE_SERVER or os.path.exists(SERVER_SOCKET)
+        if args.use_server:
+            print("measuring through joulescope_server.py")
         if args.verbose:
             print(f"  measurement interpreter: {measure_python}")
 
@@ -696,7 +717,8 @@ def main() -> int:
             time.sleep(args.settle)
 
         print(f"[4/7] measure {args.duration} s")
-        m = measure(measure_python, args.duration, args.window, args.verbose)
+        m = measure(measure_python, args.duration, args.window, args.verbose,
+                    args.use_server)
         exp.current_ua = m.current_ua
         exp.voltage_v = m.voltage_v
         if m.warnings:

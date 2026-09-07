@@ -540,6 +540,65 @@ the effect are established; its mechanism is not.
 > 1600 Hz, holding to 0.2 uA across three layouts that swing Stop 1 by 195.
 > See `embedded/tags/design/open-issues.md`.
 
+### Measured SMPS Board, Full Rate Sweep (2026-09-07), Shipping Configuration
+
+The first sweep of the configuration that is actually shipped: terminal sleep
+through Stop 3 (`0638a76`) and the run sleep in Stop 2 (`e08e3fa`). Same
+TPS62840 breakout, measured at **3.2936-3.2938 V**, 120 s per rate point, and
+every rate point carries a download at the expected sample count.
+
+This is the sweep to quote. The earlier ones are now known to be a mix of good
+and bad Stop 1 layout rolls -- see the note under the 2026-09-04 A/B -- and the
+run figures here do not depend on how the build fell: the three layouts that
+swing Stop 1 by 195 uA hold Stop 2 to within 0.2.
+
+| Mode | Measured @3.294 V (uA) | Projected @3.7 V (uA) | 12 mAh @3.294 V | 12 mAh @3.7 V | 2 Gbit storage | Usable @3.7 V | Binds on |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Idle | 7.9438 | 7.07 | 1511 h (63 d) | 1697 h (71 d) | -- | 71 d | battery |
+| 100 Hz | 604.9368 | 538.4 | 19.84 h | 22.29 h | 54.6 h | **22.29 h** | battery |
+| 200 Hz | 651.4691 | 579.8 | 18.42 h | 20.70 h | 27.3 h | **20.70 h** | battery |
+| 400 Hz | 745.9229 | 663.9 | 16.09 h | 18.08 h | 13.7 h | **13.70 h** | storage |
+| 800 Hz | 932.2999 | 829.7 | 12.87 h | 14.46 h | 6.83 h | **6.83 h** | storage |
+| 1600 Hz | 1133.3741 | 1008.7 | 10.59 h | 11.90 h | 3.41 h | **3.41 h** | storage |
+
+The 3.7 V column uses the same `x 0.890` buck projection and the same caveats
+as the sweeps above: a lower bound with a few percent of headroom, valid for
+the SMPS only.
+
+**What binds has moved.** At 400 Hz the battery and the 2 Gbit device used to
+land within 0.1 h of each other; the run now has 18.08 h of battery against
+13.70 h of storage, so at 400 Hz and above the device fills first and the power
+saving becomes margin -- for cold, for cell derating, and for idle time either
+side of the run -- rather than more samples. Below 400 Hz the battery still
+binds and the saving is runtime directly.
+
+#### Against the 2026-09-04 sweep
+
+That sweep is the best of the earlier ones, and is a good Stop 1 roll rather
+than a bad one, so this is the honest comparison rather than a flattering one:
+
+| Mode | 2026-09-04 (uA) | 2026-09-07 (uA) | Delta | Change |
+| --- | ---: | ---: | ---: | ---: |
+| Idle | 4.3431 | 7.9438 | +3.6 | +82.9% |
+| 100 Hz | 669.6557 | 604.9368 | -64.7 | -9.7% |
+| 200 Hz | 715.8684 | 651.4691 | -64.4 | -9.0% |
+| 400 Hz | 809.6533 | 745.9229 | -63.7 | -7.9% |
+| 800 Hz | 992.8078 | 932.2999 | -60.5 | -6.1% |
+| 1600 Hz | 1175.3383 | 1133.3741 | -42.0 | -3.6% |
+
+Every run point improves, by a roughly fixed amount amortised over a shrinking
+idle fraction, which is what a lower sleeping floor looks like. Against a *bad*
+Stop 1 roll the improvement is much larger -- 100 Hz 868.18 to 604.94, 400 Hz
+983.02 to 745.92 -- but the point of the change is that the roll no longer
+happens.
+
+**Idle costs 3.6 uA more**, and that is not free: 71 days on a 12 mAh cell
+against 115. It is the price of a terminal sleep that is entered every time.
+Standby was cheaper when it worked and drew about 1 mA when it did not, with no
+way to tell which build you had short of measuring it. For a tag that sits idle
+for months before deployment this is the one figure that got worse, and it is
+worth knowing before quoting shelf life.
+
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 
 The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
