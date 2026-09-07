@@ -234,7 +234,17 @@ about 3.6 uA at rest against a Standby that works. Whether to ship it is a
 decision, not a measurement; the `tag_release_check.py` run on that tree is
 the evidence to decide on.
 
-### REVERTED: the write-error page skip caused a 240x idle regression
+### REVERTED, then re-landed under Stop 3: the write-error page skip
+
+**Re-landed 2026-09-07.** The revert below was never about the code: the change
+moved the image into a layout at which the Standby request is declined, and the
+same `state_run.c` is one of the "skip" layouts in the tables above. With the
+terminal sleep now through Stop 3 that reason is gone. Re-verified on the
+Stop 3 tree: a test build with `IMUTAG_TEST_PAGE_ERROR_EVERY=25` ran 58 s at
+400 Hz through six injected page failures -- six `RESYNC_STORAGE_SKIP` events,
+seven segments, 23100 accelerometer rows, download sane -- and the shipping
+build (injection compiled out, `#warning` absent) idled at 8.04-8.11 uA with a
+passing life-cycle walk. The record of the original revert is kept below.
 
 The change described below worked, was tested on hardware, and was reverted
 because it stopped the tag sleeping.
