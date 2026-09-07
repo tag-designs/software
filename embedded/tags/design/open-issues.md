@@ -159,6 +159,81 @@ image being shipped.** `embedded/tools/tag_release_check.py` does that along
 with the life-cycle walk and attach storms. The failure is silent, 240x, and
 survives every functional test, so the only defence is to look.
 
+#### What the stall is, and what it is not (2026-09-07)
+
+A day with OpenOCD, the scratchpad and the Joulescope established the shape of
+the fault precisely, without finding its cause. Recorded so the same ground is
+not covered again.
+
+**The firmware reaches the `WFI` and never returns.** A scratchpad record
+written immediately before the Standby `WFI` is present after a stall; one
+written immediately after it is absent. `godown()` is not refusing: probes at
+both of its early exits stay silent in a stalling boot. The stall occurs in
+boots with **no monitor session and no debugger** -- a plain programmer reset
+is enough.
+
+**The stalled state is Sleep with the bus clocks running.** Current is flat at
+1040 uA in every 0.2 s block for minutes -- not a duty cycle. Gating TIM2's APB
+clock just before the `WFI` lowers the stalled current by 42 uA. Datasheet
+Stop 0 is ~170 uA. The deep-sleep request is declined and the `WFI` degrades to
+an ordinary sleep that nothing wakes.
+
+**The state one instruction before the `WFI`, sampled live in a stalling
+boot** (plain stores to retained SRAM2, no debugger): `PWR_CR1 = 0x44`
+(LPMS = Standby, RRSB3), `SCB_SCR = 0x4`, `PWR_SR = 0`, `PWR_WUSR = 0`,
+`PWR_VOSR = 0x01010101` (R1EN, BOOSTEN, R1RDY, BOOSTRDY), `RCC_CR = 0x1F`
+(MSIS/MSIK ready), `FLASH_SR = 0` with no programming in the boot,
+`NVIC_ISPR = 0`, `SCB_ICSR = 0`, no EXTI/RTC/I2C flags, `DHCSR.C_DEBUGEN = 0`,
+`DBGMCU_CR = 0`. Every precondition in RM0487 Table 93 is met.
+
+**Failing and working images are bit-identical at the `WFI`** across ~380
+registers -- PWR, RCC (every ENR/SLPENR/STPENR/CCIPR), SCB, NVIC, SysTick,
+EXTI, RTC, TAMP, FLASH, ICACHE, SYSCFG, GPIOA-H, SPI1, I2C1, LPTIM1, ADC1, CRS,
+DBGMCU, DWT/FPU -- captured at a hardware breakpoint on each image's `wfi`.
+Only the core GPRs, the RTC time, one backup-register counter and `FPCAR`
+differ. ICACHE hit/miss monitors across the `WFI`: hits only, in both.
+
+**Tested on a reliably failing layout, three or more trials each, no effect:**
+`WFI` at the start of a 16-byte flash line with `nop` padding after it (the
+STM32U5 errata workaround shape); a PWR register read-back before the `WFI`;
+TIM2 stopped and unclocked; every LPTIM reset through RCC before the `WFI`
+(ES0626 2.11.1); `FLASH_ACR_PRFTEN = 0`; a bounded wait for `C_DEBUGEN` to
+clear; a host-side delay before `STLINK_DEBUG_EXIT`; a non-blocking main loop
+outside RUNNING; file-scope `-O0` on the bus drivers with LTO off, with and
+without `noinline` on their teardown routines; a dedicated linker section for
+the power code. ES0626 Rev 3 has no item on Standby entry. The `*STPENR`
+registers cannot be cleared (fixed bits read back), so "peripheral clock in
+Stop" was never actually removed as a variable.
+
+**Two things that looked like causes and were not.** A stream of `godown()`
+return records in an early capture read as a monitor-attached spin; it was the
+one second the host was attached, followed by the silent stall. And the
+`WFI` returning after ~1 s under the debugger, on both images, was a hardware
+breakpoint on the following instruction -- a debug event -- not the fault.
+
+A forum post with these numbers is `stm32u375-standby-forum-post.md` in this directory; the practical answer
+remains the release gate above.
+
+#### Stop 3 as the terminal sleep: measured, not yet adopted (2026-09-07)
+
+`tagPowerEnterStop3()` -- the same preparation, `LPMS = 011`, RTC wake through
+WKUP7 (`WUSEL7 = 11` selects RTC_ALRA/ALRB/WUT/TS), and `NVIC_SystemReset()`
+on wake with `resetCause = resetStandby` -- was wired in as the terminal sleep
+and put through the layouts that stall Standby:
+
+| layout | Standby | Stop 3 IDLE | Stop 3 FINISHED |
+| --- | --- | --- | --- |
+| base (main + non-blocking loop) | IDLE 4.6, **FINISHED 1039** | 8.07 | 8.07 |
+| + skip | **1040** | 8.02 / 8.12 | 8.14 |
+| + skip + 4 nops | **1040** | 8.08 | -- |
+| + skip + 16 nops | **1040** | 8.05 / 8.14 | 8.13 |
+
+A scheduled start (`start_delay: 2`) parked at 7.95 uA and woke on the 12:23:00
+minute alarm into an 810 uA run, as the state machine predicts. The cost is
+about 3.6 uA at rest against a Standby that works. Whether to ship it is a
+decision, not a measurement; the `tag_release_check.py` run on that tree is
+the evidence to decide on.
+
 ### REVERTED: the write-error page skip caused a 240x idle regression
 
 The change described below worked, was tested on hardware, and was reverted

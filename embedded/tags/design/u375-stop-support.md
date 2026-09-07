@@ -13,6 +13,12 @@ Targets without those hooks still build with the shared variable but ignore it.
 
 ## Terminal Standby
 
+> **2026-09-07:** the terminal path now enters **Stop 3** via
+> `tagPowerEnterStop3()`, with a synthetic standby reset on wake, because the
+> Standby request is declined in a layout-dependent way on this part. The
+> conditions and preparation below are unchanged; only the LPMS value and the
+> wake route (WKUP7 <- RTC alarm) differ. See `open-issues.md`.
+
 `godown()` in `embedded/tags/common/core/src/pwr.c` is intentionally a pure
 standby function. It returns unless both of these conditions are true:
 

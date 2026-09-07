@@ -188,18 +188,58 @@ keeps the debug power domain alive so an **already-established** session
 survives the transition. It does not let a debugger attach to a core that is
 already in Standby -- the core is unpowered and there is nothing to enumerate.
 
-A tag reporting IDLE is in Standby. Every attach attempt against it fails with
-`init mode failed (unable to connect to the target)`, with or without
-`connect_assert_srst`, and that failure looks exactly like a wiring problem.
-Put the tag in **RUN** mode first:
+A tag reporting IDLE is in Standby. Every hot attach against it fails with
+`init mode failed (unable to connect to the target)` or `Examination failed`,
+and that failure looks exactly like a wiring problem. Two ways round it:
+
+**Connect under reset -- the general one.** It works, but the stock ST target
+script defeats it: `stm32u3x.cfg` installs an `examine-end` handler that spins
+on `PWR_VOSR` until a ready bit sets, and with nRST held the peripheral never
+answers, so OpenOCD hangs after "target has 8 breakpoints" with no GDB port.
+Override the handler:
+
+```tcl
+source [find interface/stlink.cfg]
+transport select hla_swd
+adapter speed 480
+set CHIPNAME stm32u375
+source [find target/stm32u3x.cfg]
+reset_config srst_only srst_nogate connect_assert_srst
+stm32u375.cpu configure -event examine-end {}
+stm32u375.cpu configure -event reset-init {}
+```
+
+Then `reset halt` parks the core at the reset vector with `DEMCR = 0x01000000`
+-- `VC_CORERESET` clear, so the firmware does not mistake the session for a
+monitor -- and a hardware breakpoint set there is hit within a second of
+`resume`. The stock `examine-end` handler also writes
+`DBGMCU_CR |= DBG_STANDBY | DBG_STOP`, so overriding it is what keeps a debug
+session from silently turning a shipping image into a debug build.
+
+**RUN mode -- only for the debug build.** With `TAG_DEBUG_LOW_POWER=1`,
+`DBG_STOP` covers the Stop periods between samples and a hot attach during a
+run succeeds. Without it the examination fails even at 1600 Hz.
 
 ```sh
 build-host/bin/tag-reset --set-rtc
 build-host/bin/tag-start --start-now -c embedded/tools/power-configs/imutag-100.json
 ```
 
-RUNNING never enters Standby, and `DBG_STOP` covers the Stop periods between
-samples, so the session survives the whole run.
+**Breakpoints near a low-power `WFI` defeat the observation.** With a
+hardware breakpoint set on the instruction after the `wfi`, the `WFI` returns
+after about a second having consumed exactly 11 `DWT_CYCCNT` cycles, with
+`STOPF`/`SBF` clear and no handler run -- on every image. That is a debug
+event, not a power fault. Remove every breakpoint before the final `resume`:
+with the session attached and no breakpoints, a sleeping image enters Standby
+normally (4.4 uA, measured) and OpenOCD reports `communication failure` as it
+loses the target, which is what any deep-sleep entry looks like from the
+ST-Link and says nothing about which state the part is in.
+
+Dump peripheral state at a breakpoint over telnet (`mdw <base> <words>` per
+block) rather than through the MCP one word at a time; a regmap generated from
+the CMSIS header's `Address offset:` comments names the words. Two dumps taken
+this way on a failing and a working image were bit-identical across ~380
+registers -- see `open-issues.md`.
 
 ### The working configuration
 
