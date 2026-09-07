@@ -424,6 +424,17 @@ Same board, same regulator, same procedure, roughly 20% apart:
 | 800 Hz | 996.4598 | 1135.5329 | +14% |
 | 1600 Hz | 1175.3872 | 1271.5679 | +8% |
 
+> **The rate points were resolved on 2026-09-07: layout-dependent Stop 1
+> current.** The 09-03 sweep is a "bad layout" build and the 09-02 and 09-04
+> sweeps are "good layout" ones. The two populations were reproduced that day
+> and match these to a couple of microamps -- 868.18 here against 866-869 then
+> at 100 Hz, 983.02 against 980-984 at 400 Hz, 669.66 (09-04) against 670-671,
+> 809.65 against 811.82 -- and the 09-02 to 09-03 deltas (+179.5 at 200 Hz,
+> +164.7 at 400 Hz, falling to +96.2 at 1600 Hz) are the same fixed
+> sleeping-floor offset amortised over a shrinking idle fraction. The 21% idle
+> difference is *not* covered by this and remains open, though it is only
+> 0.86 uA in absolute terms. See `embedded/tags/design/open-issues.md`.
+
 This is not resolved, and neither sweep should be quoted as authoritative until
 it is. A 21% difference in *idle* is the most troubling part, because idle is
 the simplest measurement here and the one least able to hide a procedural
@@ -503,6 +514,31 @@ saving falls steadily as the rate rises -- 195.1, 184.6, 169.1, 141.5 and
 94.2 uA from 100 Hz to 1600 Hz. Something about how much of each duty cycle the
 pins spend parked evidently varies with sample rate. The direction and size of
 the effect are established; its mechanism is not.
+
+> **Explained on 2026-09-07, and it was not the I2C fix.** Those five numbers
+> are the STM32U375's layout-dependent Stop 1 current. Measured that day on two
+> builds whose `i2c_bus.c` is *identical* and which differ only in code layout:
+> 195 uA at 100 Hz (671 against 866) and 169 uA at 400 Hz (811 against 980) --
+> the same figures to within 1%, from a change that cannot touch the I2C pins.
+> A probe in retained SRAM2 confirmed both builds sit in Stop 1 for 97% of a
+> run (`LPMS=1`, `STOPF=1`, 36.4 s of 37 s by `RTC_SSR`) with identical
+> peripheral state latched at Stop entry; what differs is the current drawn
+> while asleep. The saving therefore falls with rate because it is a fixed
+> sleeping-floor offset amortised over a shrinking idle fraction -- which is
+> exactly the rate dependence recorded above.
+>
+> **So the A/B above is confounded**: arms A and B differ in code layout as
+> well as in the number of clear call sites, and the run-current portion of the
+> saving cannot be attributed to the I2C fix. The idle portion is a separate
+> matter and is independently attested by the direct pin measurement quoted in
+> `i2c_bus.c` (about 700 uA for one parked AF pin; 1031 uA against 4.09 uA) --
+> but note that a build which fails Standby entry also reads about 1035 uA at
+> idle, so an idle A/B on its own cannot tell the two apart.
+>
+> Selecting Stop 2 for the run sleep removes the variation and is lower than
+> either arm at every rate: 605 / 746 / 959 / 1133 uA at 100 / 400 / 800 /
+> 1600 Hz, holding to 0.2 uA across three layouts that swing Stop 1 by 195.
+> See `embedded/tags/design/open-issues.md`.
 
 ### Measurement Method: A Joulescope Hazard Worth Knowing
 

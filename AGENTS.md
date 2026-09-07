@@ -220,6 +220,23 @@ Use the target that matches the files changed. For documentation-only changes,
   was caught days late. Later the same day's tree slept in IDLE and stalled in
   FINISHED; only the life-cycle walk saw it.
 
+  **Bound run current, not just idle.** `tag_release_check.py` now fails if the
+  life-cycle run exceeds `--run-max-ua` (850 uA, sized for the default 400 Hz
+  config where a healthy run is about 750 uA). This is not belt-and-braces
+  either: run current is what sets battery life during a deployment, and it has
+  now twice moved by about 200 uA between builds differing only in code layout.
+  Four consecutive release checks reported such a regression and passed,
+  because only the resting states were bounded.
+
+  **The run-mode sleep is Stop 2, and the terminal sleep is Stop 3 -- neither
+  is the mode the code originally asked for.** On this part the deeper the
+  requested low-power mode, the less reliably it is reached. Standby is a
+  lottery that Stop 3 fixes; Stop 1 is a lottery that Stop 2 fixes. Stop 1 run
+  current varied 671/866/866 uA at 100 Hz across three builds differing only in
+  layout, with the MCU verifiably in Stop 1 for 97% of the window in every one
+  of them; Stop 2 gave 605.0/604.8/604.9 across the same three, and is lower at
+  every sample rate. `IMUTAG_RUN_SLEEP_MODE` selects it per target.
+
   **The shipping terminal sleep is Stop 3, not Standby.**
   `tagPowerEnterTerminalSleep()` calls `tagPowerEnterStop3()`: same device
   preparation, RTC wake through WKUP7, and a synthetic standby reset on wake,
