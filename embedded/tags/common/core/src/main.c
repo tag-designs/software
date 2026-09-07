@@ -916,7 +916,13 @@ int main(void)
 #if TAG_STM32U3_FLASH
     if (pState->state == TagState_RUNNING){
       idlePowerMode = sleepmode;
-      eventmask_t wait_events = EVT_HARDWARE_ALL;
+      /*
+       * MON_WORK_* are posted by the monitor handler and must be able to wake
+       * this wait on their own. Without them in the mask a stop request only
+       * takes effect once something else wakes the loop, and one storm set in
+       * six saw a stop go unserviced for over 30 s.
+       */
+      eventmask_t wait_events = EVT_HARDWARE_ALL | MON_WORK_ALL;
       if (isMonitorEnabled())
         wait_events |= EVT_MONITOR_ALL;
       pending_events =  chEvtWaitAny(wait_events);

@@ -194,7 +194,8 @@ static bool restartDataCollectionClock(bool mark_resync)
 typedef enum {
   IMU_BLOCK_NO_DATA,       ///< No complete superframe was available.
   IMU_BLOCK_HANDLED,       ///< One superframe or page transition was handled.
-  IMU_BLOCK_INTERNAL_FULL, ///< Internal checkpoint storage is full or failed.
+  IMU_BLOCK_INTERNAL_FULL, ///< Internal checkpoint storage is full.
+  IMU_BLOCK_INTERNAL_ERROR,///< An internal header write failed to program.
   IMU_BLOCK_EXTERNAL_FULL, ///< External NAND storage is full.
   IMU_BLOCK_EXTERNAL_ERROR ///< External writes keep failing; skipping did not
                            ///< recover the run.
@@ -440,7 +441,7 @@ static ImuBlockStatus sampleAndLogDataPage(void)
         page_active = false;
         current_page_logging = false;
         current_page_data_header_written = false;
-        return IMU_BLOCK_INTERNAL_FULL;
+        return IMU_BLOCK_INTERNAL_ERROR;
       case LOGWRITE_FULL:
         debug_log_printf(
           "IMUTag running: internal header full pages=%u ext=%u\r\n",
@@ -672,10 +673,20 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
           break;
         case IMU_BLOCK_INTERNAL_FULL:
           debug_log_printf(
-            "IMUTag running: finishing, internal log unavailable pages=%u ext=%u\r\n",
+            "IMUTag running: finishing, internal log full pages=%u ext=%u\r\n",
             (unsigned)pState->pages, (unsigned)pState->external_blocks);
           pState->pages = dataLogLastInternalHeaderFlashError();
           return Finished(T_INIT, State_EVENT_INTERNALFULL);
+        case IMU_BLOCK_INTERNAL_ERROR:
+          /*
+           * A programming failure, not exhaustion. Reporting it as INTERNALFULL
+           * sent diagnosis towards capacity when the flash was refusing writes.
+           */
+          debug_log_printf(
+            "IMUTag running: finishing, internal header write failed pages=%u ext=%u\r\n",
+            (unsigned)pState->pages, (unsigned)pState->external_blocks);
+          pState->pages = dataLogLastInternalHeaderFlashError();
+          return Finished(T_INIT, State_EVENT_STORAGEERROR);
         case IMU_BLOCK_EXTERNAL_FULL:
           debug_log_printf(
             "IMUTag running: finishing, external log full pages=%u ext=%u\r\n",
