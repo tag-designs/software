@@ -49,14 +49,14 @@ DEFAULT_SOCKET = "/tmp/joulescope_server.sock"
 class Server:
     """Owns the instrument for the lifetime of the process."""
 
-    def __init__(self, sock_path: str):
+    def __init__(self, sock_path: str, window: float = 0.5):
         """@param sock_path Unix socket to listen on."""
         self.sock_path = sock_path
         self.driver = None
         self.device = None
         self.stop = threading.Event()
         self.collector = None
-        self.window = 0.5
+        self.window = window
 
     def open_device(self) -> None:
         """Open the instrument and ensure the DUT is powered.
@@ -110,13 +110,12 @@ class Server:
         mode = int(self.driver.query(f"{self.device}/s/i/range/mode"))
         if mode == RANGE_MODE_OFF:
             return {"error": "range mode is off; DUT is not powered"}
-        if abs(window - self.window) > 1e-9:
-            # Restarting the statistics stream to change the block length
-            # races inside pyjoulescope_driver's publish callback and has
-            # killed the server twice ("'_thread.lock' object is not
-            # callable"). The window is fixed for the server's lifetime.
-            return {"error": f"window is fixed at {self.window} s for this "
-                             f"server; restart it to change"}
+        # A different window is honoured by ignoring it, not by restarting the
+        # stream: restarting races inside pyjoulescope_driver's publish
+        # callback and has both killed the server and wedged the instrument.
+        # The average is charge over span, so block length changes only the
+        # resolution of trace_ua. Start the server with --window to change it.
+        requested_window = window
 
         before = self.collector.snapshot()
         t0 = time.time()
@@ -137,7 +136,11 @@ class Server:
             "blocks": len(new_blocks),
             "span_s": span,
             "elapsed_s": round(elapsed, 2),
+            "window_s": self.window,
         }
+        if abs(requested_window - self.window) > 1e-9:
+            resp["note"] = (f"measured with the server's {self.window} s blocks, "
+                            f"not the requested {requested_window} s")
         if trace:
             # Per-block mean current, so a caller can see whether a high
             # average is a steady load or a duty cycle; the aggregate alone
@@ -259,13 +262,16 @@ def main() -> int:
     g.add_argument("--status", action="store_true")
     g.add_argument("--stop", action="store_true")
     g.add_argument("--measure", type=float, metavar="SECONDS")
-    p.add_argument("--window", type=float, default=0.5)
+    p.add_argument("--window", type=float, default=0.5,
+                   help="statistics block length; with --start it is fixed for "
+                        "the server's lifetime, because changing it later "
+                        "races inside the driver and wedges the instrument")
     args = p.parse_args()
 
     if args.start:
-        srv = Server(args.socket)
+        srv = Server(args.socket, args.window)
         srv.open_device()
-        srv.start_stream(0.5)
+        srv.start_stream(args.window)
         return srv.serve()
     if args.status:
         print(json.dumps(request(args.socket, {"cmd": "status"})))
