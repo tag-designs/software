@@ -36,6 +36,7 @@ int main(int argc, char **argv)
   UsbDev dev;
 
   int stop_timeout_s = 30;
+  int settle_timeout_s = 10;
 
   cxxopts::Options options("tag-stop",
                            "stop a running tag and print the resulting status");
@@ -44,7 +45,12 @@ int main(int argc, char **argv)
        "Seconds to wait for the tag to actually reach a stopped state. The "
        "stop request is posted and acknowledged before the state machine acts "
        "on it",
-       cxxopts::value<int>(stop_timeout_s)->default_value("30"));
+       cxxopts::value<int>(stop_timeout_s)->default_value("30"))
+      ("settle-timeout",
+       "Seconds to wait after attach for the tag to report a definite state. "
+       "Attach connects under reset, so the first status can legitimately be "
+       "STATE_UNSPECIFIED while the tag boots",
+       cxxopts::value<int>(settle_timeout_s)->default_value("10"));
 
   if (!parse_options(argc, argv, options, tag, dev)) {
     return 1;
@@ -56,6 +62,39 @@ int main(int argc, char **argv)
   }
 
   signal(SIGINT, intHandler);
+
+  /*
+   * Let the tag settle before asking it to stop. Attach connects under reset,
+   * so the tag may still be booting and pState->state is zero until the state
+   * machine restores it; monitor_stop_allowed() then refuses with "Monitor
+   * request not permitted in current tag state", tag-stop reports a failure
+   * the tag never really made, and a download issued afterwards refuses too.
+   * Seen on one run in three at 1600 Hz. tag-reset does the same wait.
+   */
+  {
+    Status settle;
+    const int settle_ms = 1000;
+    const int settle_tries =
+        (settle_timeout_s * 1000 + settle_ms - 1) / settle_ms;
+    bool settled = false;
+    for (int i = 0; i < settle_tries; i++) {
+      if (!tag.GetStatus(settle)) {
+        std::cerr << "GetStatus failed: " << tag.DebugMessage() << std::endl;
+        return 1;
+      }
+      if (settle.state() != STATE_UNSPECIFIED) {
+        settled = true;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(settle_ms));
+    }
+    if (!settled) {
+      std::cerr << "tag still reports STATE_UNSPECIFIED after "
+                << settle_timeout_s << " s; it is not merely settling"
+                << std::endl;
+      return 1;
+    }
+  }
 
   if (!tag.Stop()) {
     const std::string message = tag.DebugMessage();

@@ -158,9 +158,16 @@ Use the target that matches the files changed. For documentation-only changes,
   fail with the last state seen.
 
   **`Tag::Attach()` connects under reset**, so the tag is still booting and its
-  first status can legitimately report `STATE_UNSPECIFIED`. Wait for a definite
-  state before deciding anything, and before issuing a request the firmware
-  only accepts in IDLE.
+  first status can legitimately report `STATE_UNSPECIFIED` -- `pState->state`
+  is zero until the state machine restores it. **Any tool that issues a request
+  straight after attaching must first wait for a definite state.** This has
+  bitten three separate tools: `tag-reset` skipped its erase and reported
+  success for a reset that never happened; the `SetRtc` issued next was
+  rejected; and `tag-stop` was refused with "Monitor request not permitted in
+  current tag state", which then surfaced as a download failing with "Can't
+  dump logs from current state". Each looked like a different intermittent
+  fault. `tag-reset`, `tag-start` and `tag-stop` now poll for a real state,
+  a second apart, with `--settle-timeout`.
 
   **When a check fails, confirm what it actually measured before believing
   it.** `check_download()` picks a timestamp column by name, and picking the
