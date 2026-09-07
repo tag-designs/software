@@ -186,7 +186,12 @@ int main(int argc, char **argv)
   UsbDev dev;
 
   cxxopts::Options options("tag-info",
-                           "print tag information");
+                           "print tag information. Attaching connects under "
+                           "reset, so the state shown is the one the tag "
+                           "restored on boot, not the one it was in: a tag "
+                           "past its start time is reported RUNNING because "
+                           "the reset started it, and a tag that had stalled "
+                           "reports whatever its backup registers held");
 
   signal(SIGINT, intHandler);
 

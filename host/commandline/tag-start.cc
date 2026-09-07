@@ -98,6 +98,7 @@ int main(int argc, char **argv)
     bool set_rtc = false;
     bool start_now = false;
     int start_timeout_s = 10;
+    int settle_timeout_s = 10;
 
     cxxopts::Options options("tag-start",
                              "start a configured tag and print the resulting status");
@@ -115,7 +116,12 @@ int main(int argc, char **argv)
          "Seconds to wait for the tag to leave IDLE after the start is accepted. "
          "Start is posted, not performed: the state machine acts on it later, so "
          "a status read straight afterwards can still say IDLE",
-         cxxopts::value<int>(start_timeout_s)->default_value("10"));
+         cxxopts::value<int>(start_timeout_s)->default_value("10"))
+        ("settle-timeout",
+         "Seconds to wait after attach for the tag to report a definite state. "
+         "Attach connects under reset, so the first status can legitimately be "
+         "STATE_UNSPECIFIED while the tag boots",
+         cxxopts::value<int>(settle_timeout_s)->default_value("10"));
 
     // Parse options
 
@@ -142,12 +148,40 @@ int main(int argc, char **argv)
          * every decision below turns on state(). A discarded failure here
          * silently becomes "the tag is not IDLE", which reports a refusal the
          * tag never made.
+         *
+         * Polled, because the first status after a connect-under-reset can
+         * legitimately be STATE_UNSPECIFIED while the tag boots. Taking that
+         * as "not IDLE" skipped the start and then reported the tag IDLE with
+         * a success exit -- one storm set in three. tag-reset and tag-stop do
+         * the same wait.
          */
-        if (!tag.GetStatus(status))
         {
-            std::cerr << "GetStatus failed: " << tag.DebugMessage()
-                      << std::endl;
-            return 1;
+            const int settle_ms = 1000;
+            const int settle_tries =
+                std::max(1, (settle_timeout_s * 1000 + settle_ms - 1) / settle_ms);
+            bool settled = false;
+            for (int i = 0; i < settle_tries; i++)
+            {
+                if (!tag.GetStatus(status))
+                {
+                    std::cerr << "GetStatus failed: " << tag.DebugMessage()
+                              << std::endl;
+                    return 1;
+                }
+                if (status.state() != STATE_UNSPECIFIED)
+                {
+                    settled = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(settle_ms));
+            }
+            if (!settled)
+            {
+                std::cerr << "tag still reports STATE_UNSPECIFIED after "
+                          << settle_timeout_s << " s; it is not merely settling"
+                          << std::endl;
+                return 1;
+            }
         }
 
         if (set_rtc)
@@ -207,10 +241,18 @@ int main(int argc, char **argv)
                 std::cout << std::endl;
             }
         }
+        else if (status.state() == RUNNING || status.state() == CONFIGURED)
+        {
+            std::cout << "Start skipped: tag is already "
+                      << TagState_Name(status.state()) << std::endl;
+        }
         else
         {
-            std::cout << "Start skipped: tag is " << TagState_Name(status.state())
-                      << std::endl;
+            /* A skipped start is not a success for a tool whose job is to start. */
+            std::cerr << "Start skipped: tag is " << TagState_Name(status.state())
+                      << "; a start is accepted only in IDLE" << std::endl;
+            std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+            return 1;
         }
 
         if (!start_attempted || !start_failed)

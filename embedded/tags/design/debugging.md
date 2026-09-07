@@ -382,6 +382,13 @@ Attaching also connects **under reset**, which is a real event with real
 consequences: a reset landing mid-I2C-byte leaves a slave holding SDA, which is
 why `tagI2cBusClearIfStuck()` exists.
 
+The same reset means **no `tag-*` tool can tell you what state a tag was in**.
+`tag-info` reports the state the boot *restored* from the backup registers:
+a tag whose scheduled start time has passed comes up RUNNING because the
+reset started it, not because it had woken by itself, and a tag that had
+stalled reports the state it stalled in. To know whether a tag woke, slept
+or stalled, measure its current before touching it.
+
 ## MCP servers
 
 Two MCP servers are registered for this repository and are the intended way to
