@@ -196,6 +196,24 @@ Use the target that matches the files changed. For documentation-only changes,
 
 ### Standby entry is layout-sensitive: keep it out of line
 
+  **Qualify a release on hardware before shipping it.**
+
+  ```sh
+  embedded/tools/tag_release_check.py --target IMUTagNandBmp581
+  ```
+
+  Builds, flashes, then measures idle four times, walks the full life cycle,
+  and runs three attach-storm sets, keeping every log, database and the ELF in
+  a timestamped directory with a single pass/fail. It records whether the tree
+  was dirty, because a release qualified from a dirty tree is not reproducible.
+
+  This is not belt-and-braces. A change to the state-machine path shipped a
+  240x idle regression to main that a clean build, a hardware feature test and
+  a full attach storm all passed; only an idle measurement caught it, and it
+  was caught days late. See `embedded/tags/design/open-issues.md` for the
+  matrix showing why no compiler setting removes the need.
+
+
   `tagPowerEnterStandby()` in `pwr-u375.c` carries
   `__attribute__((noinline))`, and it is load-bearing. Remove it and the build
   becomes a lottery: with LTO on, the partitioner inlines the whole function

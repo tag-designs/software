@@ -123,6 +123,42 @@ survived trivially and the test read as a pass without ever exercising
 retention. Re-running it only became meaningful once Standby entry was
 deterministic.
 
+### Standby entry: the compiler search is exhausted
+
+Standby entry depends on where code lands in the image, and no build setting
+short of whole-tree `-O0` makes it deterministic. Whole-tree `-O0` cannot
+sustain 1600 Hz, so it is not available. Recorded here so nobody repeats these
+builds.
+
+Three trials per cell. "skip" is the `state_run.c` change from the reverted
+commit below, which reliably discriminates; "padding" is four inert `nop`s in
+`main()`.
+
+| configuration | no skip | + skip | + padding | 1600 Hz |
+| --- | --- | --- | --- | --- |
+| `-O2` + LTO on (shipping) | sleeps | **stalls** | **stalls** | ok |
+| `-O2`, LTO off | **stalls** | **stalls** | -- | -- |
+| `pwr.o` at `-O0`, LTO on | **stalls** | sleeps | sleeps | -- |
+| `pwr.o` at `-O0`, LTO off | **stalls** | **stalls** | **stalls** | -- |
+| whole tree `-O0`, LTO off | sleeps | sleeps | sleeps | **cannot keep up** |
+
+The `pwr.o at -O0` rows are the point: flipping LTO inverts which variants
+stall without reducing the sensitivity. Partial measures move the lottery, they
+do not end it.
+
+Also tried and rejected, each against a padding point that reliably fails:
+`__attribute__((aligned(16)))`, which is a no-op because `-falign-functions=16`
+is already in `USE_OPT`; relocating the arming sequence into SRAM via
+`.ramtext`, which makes **every** image stall; and disabling ICACHE, likewise.
+`noinline` on `tagPowerEnterStandby()` narrows the failure surface -- it
+survived nine deliberately varied layouts -- but does not close it, as the
+reverted commit below proves.
+
+What follows from this is a process, not a fix: **measure idle current on the
+image being shipped.** `embedded/tools/tag_release_check.py` does that along
+with the life-cycle walk and attach storms. The failure is silent, 240x, and
+survives every functional test, so the only defence is to look.
+
 ### REVERTED: the write-error page skip caused a 240x idle regression
 
 The change described below worked, was tested on hardware, and was reverted
