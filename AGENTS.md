@@ -201,7 +201,7 @@ Use the target that matches the files changed. For documentation-only changes,
   different today" in one step, and it is how the 995 uA above was pinned to
   the instrumentation rather than to the fix it was shipped with.
 
-### Standby entry is layout-sensitive: keep it out of line
+### Terminal sleep is Stop 3; Standby entry is layout-sensitive
 
   **Qualify a release on hardware before shipping it.**
 
@@ -217,57 +217,29 @@ Use the target that matches the files changed. For documentation-only changes,
   This is not belt-and-braces. A change to the state-machine path shipped a
   240x idle regression to main that a clean build, a hardware feature test and
   a full attach storm all passed; only an idle measurement caught it, and it
-  was caught days late. See `embedded/tags/design/open-issues.md` for the
-  matrix showing why no compiler setting removes the need.
+  was caught days late. Later the same day's tree slept in IDLE and stalled in
+  FINISHED; only the life-cycle walk saw it.
 
-
-  `tagPowerEnterStandby()` in `pwr-u375.c` carries
-  `__attribute__((noinline))`, and it is load-bearing. Remove it and the build
-  becomes a lottery: with LTO on, the partitioner inlines the whole function
-  into `main()`, and in that form whether the part enters Standby is decided by
-  where code lands rather than by what it does.
-
-  Inserting `nop` padding into an unrelated function -- a change that cannot
-  alter behaviour -- flips idle current between 5.2 uA and 1040 uA, with the
-  `WFI` at an unchanged address:
-
-  | nops added to `Reset()` | idle |
-  | --- | --- |
-  | 0, 2 | 5.2 uA |
-  | 4, 8, 16, 32 | 1040 uA |
-
-  With `noinline` all of those sleep, verified at nine image layouts across two
-  padding sites. `optimize("O0")` fixes it too, by the same route. Alignment
-  attributes, clearing `FLASH_ACR_PRFTEN`, and relocating the sequence into
-  SRAM do not; disabling ICACHE makes every build fail.
-
-  This supersedes an earlier rule that said nothing may be added to that
-  function. That rule was a misreading: the additions were not doing anything at
-  the `WFI`, they were moving the image. Adding a probe there is still a bad
-  way to debug -- it perturbs the layout, so a passing experiment proves nothing
-  -- but the function is not cursed, and the failures it caused are fixed rather
-  than merely avoided.
-
-  Why a given layout fails is still unknown, and it is not for want of
-  looking: the firmware reaches the `WFI`; every register precondition for
-  Standby is met one instruction before it, sampled live without a debugger;
-  ~380 peripheral and core-control registers are bit-identical between a
-  failing and a working image at that instant; and the stalled part is in
-  plain Sleep with its bus clocks running, the deep-sleep request declined.
-  The errata sheet (ES0626) has no matching item. The list of mechanisms
-  tested and excluded is in `embedded/tags/design/open-issues.md` -- read it
-  before proposing another.
-
-  **The shipping terminal sleep is now Stop 3, not Standby.**
+  **The shipping terminal sleep is Stop 3, not Standby.**
   `tagPowerEnterTerminalSleep()` calls `tagPowerEnterStop3()`: same device
   preparation, RTC wake through WKUP7, and a synthetic standby reset on wake,
-  so the boot path is unchanged. It entered at every layout that stalls
-  Standby and passed `tag_release_check.py`, at about 3.6 uA more at rest.
-  `tagPowerEnterStandby()` stays in the tree, unused, as the reference for the
-  fault. The measurement discipline above still applies: Stop 3 has been
-  shown to survive the layouts tried, not proven immune.
+  so the boot path is unchanged. It costs about 3.6 uA more at rest than a
+  Standby that works, and it entered at every layout that stalls Standby.
 
-  **Anything that changes the image can therefore expose this class of fault.**
+  Why Standby: on this part a Standby request (`LPMS = 1xx`) is declined in a
+  layout-dependent way. Inserting `nop` padding into an unrelated function --
+  a change that cannot alter behaviour -- flips idle current between 5 uA and
+  1040 uA. The firmware reaches the `WFI` with every documented precondition
+  met, sampled live without a debugger; ~380 peripheral and core-control
+  registers are bit-identical between a failing and a working image at that
+  instant; the stalled part sits in plain Sleep with its bus clocks running.
+  ES0626 has no matching item. `__attribute__((noinline))` on
+  `tagPowerEnterStandby()` narrowed the failure -- nine layouts -- and then a
+  tenth failed. The mechanisms tested and excluded are in
+  `embedded/tags/design/open-issues.md`; read it before proposing another.
+
+  **Anything that changes the image can expose this class of fault**, and
+  Stop 3 has been shown to survive the layouts tried, not proven immune.
   Measure idle after firmware changes, and when a change that provably cannot
   alter behaviour moves idle current, suspect layout before logic.
 

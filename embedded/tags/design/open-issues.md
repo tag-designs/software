@@ -4,7 +4,7 @@ Known defects that are understood well enough to write down but are not fixed.
 Each entry says what the evidence actually is, so the next person can tell a
 reproduced fault from one found by reading code.
 
-Last reviewed 2026-09-04.
+Last reviewed 2026-09-07.
 
 ## Reproduced
 
@@ -24,12 +24,15 @@ flash error flags were captured directly in a failing build and were clean --
 `FLASH_SR`, `FLASH_ECCCR` and `FLASH_ECCDR` all zero, identical to a build that
 slept.
 
-The rule that replaces this entry is in `AGENTS.md` under "The Standby arming
-window is off limits", and at the `SLEEPDEEP` write in `pwr-u375.c`.
+The rule that replaces this entry is in `AGENTS.md` under "Terminal sleep is
+Stop 3; Standby entry is layout-sensitive", and at the `SLEEPDEEP` write in
+`pwr-u375.c`.
 
-What remains true and unfixed: `tagPowerClearFlashErrorFlags()` is called only
-from `tagPowerEnterStop3()`, which is `__attribute__((unused))`, so it runs on
-no path the tag takes.
+Since 0638a76 the terminal sleep *is* `tagPowerEnterStop3()`, so
+`tagPowerClearFlashErrorFlags()` now runs before every terminal sleep. The
+1036 uA once measured when it was added to the live path was the layout stall,
+not a cost of clearing flags; the Stop 3 tree that includes it passed the
+release gate at 8 uA.
 
 It does not belong in the power path at all. Clear the flags **where the
 failure occurs -- in the datalog code**, at the flash operation that latched
@@ -123,7 +126,18 @@ survived trivially and the test read as a pass without ever exercising
 retention. Re-running it only became meaningful once Standby entry was
 deterministic.
 
-### Standby entry: the compiler search is exhausted
+### RESOLVED by Stop 3: the Standby request is declined by layout
+
+**Resolution (2026-09-07, commit 0638a76):** the terminal sleep now goes
+through Stop 3 (`tagPowerEnterStop3()`, RTC wake through WKUP7, synthetic
+standby reset on wake). It entered at every layout that stalls Standby and
+passed `tag_release_check.py`; cost about 3.6 uA at rest. *Why* the Standby
+request is declined remains unknown -- see the two subsections below for what
+was established and excluded -- and `tagPowerEnterStandby()` stays in the tree,
+unused, as the reference. Everything from here to the next entry is the record
+of that search, kept so it is not repeated.
+
+#### The compiler search, exhausted
 
 Standby entry depends on where code lands in the image, and no build setting
 short of whole-tree `-O0` makes it deterministic. Whole-tree `-O0` cannot
