@@ -142,15 +142,26 @@ def settle_and_measure(python: str, settle: float, duration: float,
         f"no capture succeeded in {attempts} attempts: {last}")
 
 
-def judge(point: Point, idle_max_ua: float) -> None:
+def judge(point: Point, idle_max_ua: float,
+          run_max_ua: float | None = None) -> None:
     """Decide whether a measured point matches the state it was taken in.
 
     Sets @p point.verdict to "pass", "FAIL" or "unmeasured". A resting state
     must be at or below @p idle_max_ua; the running state must be above it,
-    because a run that draws idle current collected nothing.
+    because a run that draws idle current collected nothing, and at or below
+    @p run_max_ua when one is given.
+
+    An upper bound on the run exists because run current is what sets battery
+    life during a deployment, and it has twice moved by ~200 uA between builds
+    that differ only in code layout -- the STM32U375 reaches a requested Stop
+    mode unreliably. Four release checks reported such a regression and passed,
+    because only the resting states were bounded. See
+    embedded/tags/design/open-issues.md.
 
     @param point       The point to judge, with current_ua already filled in.
     @param idle_max_ua Threshold separating asleep from awake, in uA.
+    @param run_max_ua  Upper bound for the running state, or None to only
+                       report it.
     """
     if point.current_ua is None:
         point.verdict = "unmeasured"
@@ -158,8 +169,12 @@ def judge(point: Point, idle_max_ua: float) -> None:
     asleep = point.current_ua <= idle_max_ua
     if point.expect_asleep:
         point.verdict = "pass" if asleep else "FAIL"
+    elif asleep:
+        point.verdict = "FAIL"
+    elif run_max_ua is not None and point.current_ua > run_max_ua:
+        point.verdict = "FAIL"
     else:
-        point.verdict = "FAIL" if asleep else "pass"
+        point.verdict = "pass"
 
 
 def main() -> int:
@@ -183,6 +198,11 @@ def main() -> int:
                    help="statistics block length in seconds")
     p.add_argument("--settle", type=float, default=DEFAULT_SETTLE_S,
                    help="seconds to wait after a session closes")
+    p.add_argument("--run-max-ua", type=float, default=None,
+                   help="fail if the running state draws more than this, in uA. "
+                        "Run current has twice moved ~200 uA between builds "
+                        "differing only in layout; without a bound that is "
+                        "reported and passed")
     p.add_argument("--idle-max-ua", type=float, default=DEFAULT_IDLE_MAX_UA,
                    help="current at or below which a state counts as asleep")
     p.add_argument("--timeout", type=float, default=180.0,
@@ -216,7 +236,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -229,7 +249,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.run_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -240,7 +260,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua)
         cyc.points.append(pt)
         print(f"      state {pt.state}, {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -280,7 +300,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 

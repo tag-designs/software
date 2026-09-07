@@ -92,6 +92,13 @@ def main() -> int:
     p.add_argument("--idle-trials", type=int, default=4,
                    help="idle measurements; the fault is layout-driven, so "
                         "repeat rather than trusting one reading")
+    p.add_argument("--run-max-ua", type=float, default=850.0,
+                   help="fail if the life-cycle run draws more than this, in "
+                        "uA. Sized for the default 400 Hz config, where a "
+                        "healthy run is about 750 uA; run current has twice "
+                        "moved ~200 uA between builds differing only in code "
+                        "layout, and four release checks reported such a "
+                        "regression and passed because only idle was bounded")
     p.add_argument("--storm-sets", type=int, default=3,
                    help="attach-storm sets to run")
     p.add_argument("--measure-python",
@@ -163,9 +170,11 @@ def main() -> int:
     print("[life-cycle] idle, running, stopped, idle again")
     rc, out_txt = run([os.path.join(TOOLS, "tag_lifecycle_check.py"),
                        "--config", args.config, "--run-duration", "60",
+                       "--run-max-ua", str(args.run_max_ua),
                        "--use-server"],
                       os.path.join(out, "lifecycle.log"), 1800)
     results["checks"]["lifecycle"] = "pass" if rc == 0 else "fail"
+    results["checks"]["run_max_ua"] = args.run_max_ua
     print(f"  {'passed' if rc == 0 else 'FAILED'}")
     ok &= rc == 0
 
