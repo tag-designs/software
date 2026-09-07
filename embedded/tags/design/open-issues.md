@@ -358,6 +358,14 @@ It now polls for FINISHED or ABORTED at two-second intervals -- each poll is a
 monitor request the tag must service, so hammering the link competes with the
 work being waited on -- and fails with the last state seen.
 
+**A second cause, found 2026-09-07 (a71752f):** the same message also came
+from `tag-dwnld` itself, on a tag that *was* FINISHED, with an immediate retry
+succeeding. `tag-dwnld` read the status once after attaching, and attach
+connects under reset, so that read could be STATE_UNSPECIFIED while the tag
+booted. It now settles like the other tools, and with `--stop` polls for
+FINISHED instead of reading once after a posted `Stop()`. With that, every
+`tag-*` tool that judges the tag's state waits for a definite one first.
+
 ### RESOLVED (host side): STATE_UNSPECIFIED after reset
 
 Filed as three of twenty reset-and-set-clock cycles reporting
@@ -382,7 +390,13 @@ intervals, with `--settle-timeout`. Twenty rapid reset cycles then ran clean
 against one to four failures per ten before, and 60 clock cycles across six
 storm sets ran 60/60.
 
-### Still open: a stop request can go unserviced for at least 30 s
+### RESOLVED: a stop request could go unserviced for at least 30 s
+
+**Fixed in 928093d (2026-09-07):** `MON_WORK_ALL` is now in the RUNNING
+state's event-wait mask, so a posted stop wakes the main thread on its own.
+Qualified twice with `tag_release_check.py`; the storm failures on those runs
+were host-tool settle races, fixed in 43119cb and a71752f. The original
+analysis follows.
 
 With `tag-stop` waiting properly, one storm set in six failed with "Tag did not
 reach a stopped state within 30 s; last state RUNNING". The tag genuinely did
