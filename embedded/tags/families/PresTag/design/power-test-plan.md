@@ -63,6 +63,92 @@ behaviour.
 `TAG_IDLE_SLEEP_MODE`, `TAG_CONFIGURED_SLEEP_MODE`, `TAG_HIBERNATING_SLEEP_MODE`,
 `TAG_FINISHED_SLEEP_MODE` and `TAG_ABORTED_SLEEP_MODE`.
 
+### 1.2a Measured: the Stop 2 path does not sleep at all
+
+The sleep-mode switch above is not a choice between two working modes. Measured
+on a PresTagv3 at `411b046`:
+
+| Period | Mode requested | Measured `I_avg` |
+| --- | --- | --- |
+| 9 s | `STOP2` | **530.7 µA** |
+| 10 s | `SHUTDOWN` | **3.695 µA** |
+
+A 144x step for a one-second change in period. A 0.5 s-resolution trace at 9 s is
+**flat at 530.7 µA** — minimum 530.62, with the sampling events visible only as
+536 µA bumps every 9 s. There is no low-current interval between samples at all,
+which is the signature of a part that never entered a low-power mode rather than
+one whose low-power mode is expensive.
+
+The cause is in `godown()`
+([pwr.c:234](../../../common/core/src/pwr.c#L234)):
+
+```c
+void godown(enum Sleep sleepmode)
+{
+  tagPowerEnterTerminalSleep(sleepmode);
+}
+```
+
+`tagPowerEnterTerminalSleep()` on this part selects `LPMS` only for Standby and
+Shutdown, and returns without touching anything for any other request
+([pwr-l432.c:33-45](../../../common/core/src/pwr-l432.c#L33-L45)). **A `STOP2`
+return from `Running()` is therefore a silent no-op**: the state handler asks to
+sleep, `godown()` declines without saying so, and the main loop goes round
+again.
+
+Consequences:
+
+- Sub-10 s periods are unusable, and not because Stop 2 is costly — it is never
+  entered. An L432 in Stop 2 should be nearer 1-2 µA.
+- **The 9 s / 10 s pair does not measure the cost of the per-sample reboot**,
+  which is what it was designed for. That comparison needs a working Stop 2
+  first.
+- Field periods are unaffected: they are at or above 10 s, take the Shutdown
+  path, and measure 3.695 µA at 10 s and 0.855 µA at 60 s.
+
+This is separate from `stopMilliseconds()`, which enters Stop through its own
+LPTIM1 path rather than through `godown()`.
+
+### 1.2b Measured: `stopMilliseconds()` spins ~6.7 ms and never sleeps
+
+Every driver wait on this target goes through `stopMilliseconds()`, which arms
+LPTIM1 for the requested delay and enters Stop 2 with `WFE`. Instrumented with
+retained timestamps (see §11), the call behaves like this for requests of 2 ms
+and 5 ms alike:
+
+| Step | Measured |
+| --- | --- |
+| bus disable, LPTIM clock/enable | ~0.1 ms |
+| **`ARR` write → `ARROK` seen** (`while (!(ISR & ARROK)) {}`) | **6.3–7.1 ms, Run current** |
+| `WFE` loop until `ARRM` | **0.0–0.1 ms, exactly 1 iteration** |
+
+The cause is the clock. **LSE on this board is 1024 Hz**, and LPTIM1 runs from
+it (`RCC_CCIPR.LPTIM1SEL = 11`, read live), so `TAG_STOP_LPTIM_HZ = 1024` is
+right and a 5 ms request correctly programs 6 ticks. But LPTIM register writes
+— `ARR`, and every `ICR` flag clear — only take effect after kernel-clock edges,
+and at 1024 Hz each edge is ~1 ms. The `ARROK` wait therefore burns ~7 cycles of
+Run current, longer than the delay it is arming; and the `ARRM` clear written
+immediately before the `WFE` has not propagated when the loop reads `ISR`, so
+it sees the *previous* call's match still set and returns without sleeping.
+Net effect: **the Stop 2 sleep never happens, the wait lasts ~6.7 ms whatever
+was requested, and all of it is at Run current** — three per sample (two LPS27
+waits, one flash-wake wait), ~20 ms and roughly a third of `Q_cycle`, the flash
+one dearest because the AT25 is awake underneath it.
+
+The AT25 recharge metering is therefore over-satisfied in time (7 ms for a 2 ms
+request) but paid for at Run current instead of in Stop.
+
+Fix direction: the synchronisation cost has to become small relative to the
+delay, and the flag check must not race the clear. Options, in rough order of
+preference: (a) clock LPTIM1 from LSI (~32 kHz, available in Stop 2; `LPTIM1SEL`
+is independent of `RTCSEL`, so the RTC stays on the 1024 Hz LSE) with a
+prescaler to taste and `TAG_STOP_LPTIM_HZ` updated — sync drops to tens of µs;
+(b) keep 1024 Hz but never rewrite `ARR`: free-run, use `CMP = CNT + ticks` and
+wait for `CMPOK` *by sleeping*, accepting ~1–2 ms of granularity; (c) the RTC
+wakeup timer, which has the same LSE-domain sync cost. Whichever is chosen must
+then be shown to sleep — a dip to ~2 µA for the requested duration in a fine
+trace — rather than argued.
+
 ### 1.3 The repeating unit is 60 samples, not one sample
 
 Two different flash writes happen at two different cadences
@@ -264,6 +350,65 @@ Non-negotiable, and each item has already cost real time on this project.
 # ... all measurements via --use-server ...
 embedded/tools/joulescope_server.py --stop
 ```
+
+### 2.0 Flashing: stop and reset the tag first
+
+**Always `tag-stop` then `tag-reset` before programming.** Not as hygiene — as
+the thing that makes the download work at all.
+
+Reset drops the tag into recovery. A freshly programmed image boots, reads the
+state markers in internal flash together with `pState` in the RTC backup
+registers, resumes whatever the tag was previously doing, and re-enters Shutdown
+within milliseconds. Neither the flash markers nor the backup domain is cleared
+by programming, so the persistent state outlives the image that wrote it. The
+next connection attempt then meets a sleeping part with its debug port powered
+down, and fails with `Unable to get core ID` at a perfectly healthy target
+voltage — the same message the probe gives for an unpowered target, which is why
+it reads as a rig fault.
+
+Clearing the state first removes the cause:
+
+```sh
+build-host/bin/tag-stop     # RUNNING -> FINISHED; poll, an ack is not a completion
+build-host/bin/tag-reset    # erase -> IDLE
+cmake --build <build-dir> --target PresTag-download
+```
+
+Two supporting changes are in the tree, and neither replaces the procedure
+above:
+
+- The download target still ends with **`-g 0x08000000`**, a debugger jump, and
+  must keep doing so. During the first execution of this plan it was changed to
+  `-rst` (a system reset) on the theory that a jump left debug state behind;
+  that was wrong, and expensively so — see §2.0a. The jump never consults boot
+  selection; a reset does.
+- `stm32_programmer_select.py` retries the connection four times, two seconds
+  apart, and connects with `reset=HWrst`. A first attempt on a sleeping target
+  still fails intermittently.
+
+### 2.0a If the tag is found at 14 mA, it is in the system bootloader
+
+Observed twice during the first execution of this plan: the tag ended up running
+the **STM32 system-memory bootloader** — PC in `0x1FFF....`, `HSI16` as
+SYSCLK, ~14 mA, RTC registers reading zero — and from that state **no reset
+recovered it**: five system resets and two hardware reset pulses re-entered the
+ROM every time, while flash was intact, `PEMPTY` was clear and the option bytes
+were normal. Two things did recover it: a debugger jump,
+
+```sh
+STM32_Programmer_CLI -c port=SWD mode=UR reset=HWrst -g 0x08000000
+```
+
+and a power-on reset (an accidental DUT power loss booted flash cleanly).
+
+The first entry followed a self-reset during a run of an instrumented image; the
+second followed the download target's post-program `-rst`, which had been
+substituted for the original `-g 0x08000000` during this work. The original jump
+is restored: it starts the firmware without consulting boot selection at all.
+BOOT0 is tied on this board and hundreds of tags have deployed, so this is an
+unfortunate reachable state that a power cycle clears, not a board fault; the
+latch mechanism was not established here. The practical rule is the recovery
+above, and to keep `-g` in the download target.
 
 ### 2.1 Measuring a sub-µA average of a load that pulses to milliamps
 
@@ -930,3 +1075,157 @@ disagree remain; each should be filed once observed:
    Confirmed or refuted by **H3**.
 2. **`start_delay` is silently ignored by this family** (§1.4), so
    `tag-start --start-now` has no effect on a PresTag. Confirmed by **C2**.
+
+### 1.2c Measured: Stop 2 is requested correctly and not entered
+
+The delay never reaches Stop 2, and the reason is not the clock, the devices or
+the debugger. A build with a 30 ms wait inserted after the LPS27 is powered off
+and before the AT25 is woken — so nothing but the MCU is drawing — shows a
+**flat 140 µA for the full 30 ms**. On an L432 at 2 MHz that is Sleep; Stop 2
+would be 1-2 µA.
+
+Captured by plain stores into SRAM2 at the instant of the `WFE`:
+
+| Register | Value | Reading |
+| --- | --- | --- |
+| `SCB_SCR` | `0x00000004` | `SLEEPDEEP = 1` |
+| `PWR_CR1` | `0x00000502` | `LPMS = 2`, Stop 2 |
+| `PWR_SR2` | `0x00000100` | low-power regulator ready |
+| `DBGMCU_CR` | `0x00000000` | debug-in-low-power disabled |
+| `NVIC ISPR0/1` | `0`, `0` | no peripheral IRQ pending |
+| **`SCB_ICSR`** | **`0x00400000`** | **`ISRPENDING = 1`** |
+
+Every precondition for Stop 2 is met and the part sleeps shallow anyway. Ruled
+out by measurement, not argument:
+
+- **Not the debug domain.** Identical 140 µA after USB-resetting the ST-LINK
+  with no session open. (Stop 2 keeps VCORE, so a held debug power-up request
+  would have shown here; Shutdown removes VCORE, which is why the between-sample
+  baseline is a clean 0.28 µA either way.)
+- **Not device load.** The sensor rail is off and the flash is in ultra-deep
+  power-down during the window.
+- **Not the wrong mode.** `SLEEPDEEP` and `LPMS` are correct at the `WFE`.
+
+The single anomaly is `ISRPENDING = 1` with an empty NVIC, which points at an
+**EXTI event line** — `tagLptim1EnableWakeEvent()` sets `EMR2` for the LPTIM1
+line to wake the `WFE`, and an event held in the event register makes `WFE`
+return without sleeping, or sleep only shallowly. That is the lead, not a
+conclusion.
+
+**Tried and rejected: an LSI-clocked delay.** Running LPTIM1 from LSI (started
+on demand, `/32` for ~1 ms ticks, with `ICR` clears confirmed before use) was
+measured like-for-like at a verified 10 s period: 54 ms and **31.0 µC** against
+59 ms and 34.9 µC — 11%, against ~10 µC predicted. It shortened the arming spin
+but did not make the wait sleep, because shallow sleep is the real problem and
+the kernel clock is not its cause. The change was reverted: it buys little,
+adds a second oscillator and its ±5% tolerance, and does not address the EXTI
+event lead.
+
+**Direction.** Configure LPTIM1 once per boot, free-running, and count
+autoreload ticks in the ISR rather than re-arming `ARR` and the EXTI event line
+for every delay. That removes the per-delay `ARROK` synchronisation *and* the
+per-delay event-line manipulation that the `ISRPENDING` evidence implicates,
+and it stays on LSE. Note that at field periods each sample is a boot out of
+Shutdown, so "once at init" means once per sample rather than once per run —
+the arming cost falls from three times per sample to one, not to zero. At
+1024 Hz one tick is 0.977 ms, so a 2 ms wait carries up to ~1 ms of phase
+error; that is acceptable for the AT25 recharge and the LPS27 settling, which
+are the only waits in the sample path. Whatever is implemented must be judged
+by the trace: the wait plateaus collapsing from 140-165 µA to single-digit µA.
+
+### 1.2d Defect found on the way: a stale stored configuration
+
+`tag-start` printed `period: 10`; the tag ran at 9 s (`RTC_WUTR = 8`, bursts
+8.97 s apart) with `sconfig.lps_period = 9` still in flash. `writeStoredConfig()`
+programs `sconfig` without checking `FLASH_Program_Array()`'s result, and
+`erasePersistent()` never checks that its erase happened; on an L4 a program
+into a non-erased double word is refused, so the previous configuration
+silently survives a reset-and-start. Every "10 s" run between the first POR and
+an explicit page erase was a 9 s run — including one bisect that seemed to show
+Shutdown broken and was in fact the Stop 2 path behaving as documented. Two
+lessons for the plan: **verify the period from the data** (burst spacing, or
+the download's epoch step), not from the host's echo; and treat `tag-start`'s
+configuration print as the request, not the result.
+
+### 1.2e Rig caveat: the debug port and Stop modes
+
+A debugger session leaves the DP powered up until a POR or a completed
+Shutdown; with it up, Stop modes keep the system domain alive and read as
+Sleep-level current. `STM32_Programmer_CLI` hotplug sessions do this, and the
+CLI itself wedged after repeated use until a USB reset. Measurements of Stop
+depth on this rig must follow a POR, use only the host tools, and take no
+debugger reads until the measurement is done. Shutdown is unaffected, which is
+why the resting-state numbers stand.
+
+## 11. Findings from the first execution (2026-09-08, `411b046` + probes)
+
+Measured on a PresTagv3 at 2.485 V, Joulescope JS320, auto range, `charge/time`.
+
+| Measurement | Result |
+| --- | --- |
+| A1 IDLE, clock set (300 s ×3) | **0.2928 µA** (0.2921 / 0.2926 / 0.2937) — PASS |
+| A2 CONFIGURED (900 s ×2) | **0.5165 µA**; wakes every 60.0 s (trace), **13.4 µC per wake** |
+| B2 9 s (Stop 2 path) | **530.7 µA, flat** — never sleeps; `godown(STOP2)` is a no-op (§1.2a) |
+| B3 10 s | **3.6948 µA** |
+| B7 60 s | **0.8552 µA** (predicted 0.860 from B3 + A1) |
+| Fit, Shutdown regime | `I_rest` 0.287 µA, `Q_cycle` 34.1 µC, `T_knee` 119 s |
+| Predicted 90 s default | 0.666 µA → **11 mAh 688 d, 5.5 mAh 344 d** (nominal) |
+| Download check, 9 s run | PASS: 990.56–990.94 hPa, 25.8–26.1 °C, no sentinels |
+| One sample event (10 s trace) | 59 ms, 34.1 µC; 9 s event 52 ms — **boot ≈ 7 ms ≈ 4.5 µC** |
+| Sample path (probe) | 28.9 ms loop-top to loop-top; three `stopMilliseconds` ≈ 6.7 ms each |
+| 4-byte flash write | `WIP` clear on first poll: **0.5 ms** — cheap, as the datasheet says |
+
+Sub-1 µA at 60 s and one year on 11 mAh are confirmed; 5.5 mAh is 21 days short
+before derating, and a ~4.4 µC cut in `Q_cycle` would carry it over.
+
+### Where the 34 µC goes, and what it says about optimisation
+
+- **~20 ms of `stopMilliseconds()` at Run/Sleep current** (§1.2b, §1.2c) — the
+  largest controllable item. The waits do elapse, but shallow: 140 µA measured
+  with all devices off, against 1-2 µA for Stop 2. Making them sleep properly is
+  worth roughly 10 µC and is what takes 5.5 mAh across a year. An LSI kernel
+  clock was tried and recovered only 3.9 µC (§1.2c).
+- **Boot from Shutdown, ~7 ms, 4.5 µC** — inherent to Shutdown-per-sample.
+  Avoidable only by a working Stop 2 between samples, which `godown()` does not
+  implement on this part (§1.2a).
+- **Flash write is not the cost.** Byte programming is ~30 µs; batching samples
+  into pages would save little and, on a small cell, risk a brownout mid-page.
+- **SPI is polled peripheral SPI at 1 MHz**, ~8 µs per byte; DMA SPI would buy
+  back essentially nothing.
+- **LPS27 timing is already tuned** (5 / 5 / 1 versus driver defaults 10 / 15 /
+  6), though `PresTagRaw` never received it.
+- The `stopMilliseconds()` synchronisation cost means the AT25 recharge wait is
+  longer than requested but spent at Run current; on a cell the metering itself
+  is satisfied, the energy is what is lost.
+
+### Trace features that are not the firmware
+
+After the sample pass the trace shows a ~7 ms plateau at ~160 µA and a 2.5 mA,
+1.5 ms spike before the current settles. Forty consecutive loop passes after
+every sample measure 0.9–1.0 ms each with the ADC running (533 µA elsewhere),
+there are no threads besides main and idle, and no ISRs beyond the RTC. The
+supply current cannot fall below what the MCU is drawing, and the dip and spike
+carry nearly equal and opposite charge (−2.6 µC, +3.0 µC). The working
+conclusion is an **instrument auto-range transition** with charge conserved but
+the shape distorted — so `Q_cycle` from `charge/time` stands, but per-phase
+attribution of that tail does not. A fixed-range capture would settle it; the
+instrument wedged before one could be taken.
+
+### Not yet run
+
+The LSI delay experiment (§1.2c) needs its all-devices-off wait to settle sleep depth.
+
+A3, A4, A5; B1, B4, B5, B6; all of Phase C (C1–C6, T4); H3 for hibernation. The
+CONFIGURED minute alarm was confirmed by trace; the HIBERNATING one was not
+measured.
+
+### Tooling found wanting, and fixed or reverted
+
+- `joulescope_measure.py` client timeout fixed at 300 s; scaled to the window.
+- `joulescope_server.py` died on `BrokenPipe` because `flush()` sat outside
+  the guard; moved inside.
+- Download target: `-rst` briefly replaced `-g 0x08000000`; the tag was found in
+  the ROM immediately afterwards (§2.0a). Reverted to the jump; `reset=HWrst`
+  and a 4-try connect retry kept.
+- The instrument wedges after repeated direct open/close cycles; use the server
+  for the whole session and do not run direct-driver captures alongside it.

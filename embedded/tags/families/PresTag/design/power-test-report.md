@@ -4,8 +4,9 @@ Results for the procedure in [`power-test-plan.md`](power-test-plan.md). One
 section per session; keep old sessions rather than overwriting them, so a
 regression can be bisected against a number someone actually took.
 
-**Status: not yet executed.** The tables below are the blank form. Nothing here
-is a measurement until a session fills it in and signs the provenance block.
+**Status: first session executed 2026-09-08 (partial).** Phase A1/A2, B2/B3/B7
+and one download check were measured; the rest of the form is still blank.
+Summary and interpretation are in the plan's §11.
 
 ---
 
@@ -17,19 +18,19 @@ Copy this whole block for each run.
 
 | Item | Value |
 | --- | --- |
-| Date (UTC) | |
-| Operator | |
-| git hash | |
-| **Tree dirty?** | |
+| Date (UTC) | 2026-09-08 |
+| Operator | G. Brown / Claude (Claude Code) |
+| git hash | `411b046` (+ uncommitted probe/tooling edits, see §11 of the plan) |
+| **Tree dirty?** | yes — tooling fixes and probe instrumentation uncommitted |
 | Target built | `PresTag` |
-| `tag-info` firmware string | |
+| `tag-info` firmware string | PresTagv4, Firmware version 1, githash 411b046 |
 | Board / serial | |
-| Supply | baseboard via Joulescope, __ V |
-| Joulescope interpreter | |
-| Joulescope server used? | |
-| **Joulescope desktop app detached?** | |
-| **`qtmonitor` detached?** | |
-| Plan deviations | |
+| Supply | baseboard via Joulescope JS320, **2.485 V** |
+| Joulescope interpreter | /home/geobrown/opt/joulescope-mcp/.venv/bin/python |
+| Joulescope server used? | yes (auto range); some direct captures for fine traces |
+| **Joulescope desktop app detached?** | yes (confirmed by operator) |
+| **`qtmonitor` detached?** | yes (confirmed by operator) |
+| Plan deviations | sub-10 s reduced to 9 s only; B7 (60 s) run before B4–B6; Phase C/D deferred; probe builds flashed for diagnosis |
 
 A run from a dirty tree is not reproducible. Record it as dirty rather than
 omitting the row; a report with that row blank cannot be trusted later.
@@ -43,28 +44,28 @@ a wake per minute, so they are recorded, not gated.
 
 | ID | State | Gate | W1 (µA) | W2 (µA) | W3 (µA) | Mean | Pass |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| A1 | IDLE, clock set (300 s ×3) | **< 1 µA** | | | | | |
-| A2 | CONFIGURED (900 s ×2) | record | | | — | | |
+| A1 | IDLE, clock set (300 s ×3) | **< 1 µA** | 0.2921 | 0.2926 | 0.2937 | **0.2928** | PASS |
+| A2 | CONFIGURED (900 s ×2) | record | 0.5162 | 0.5168 | — | **0.5165** | recorded |
 | A3 | FINISHED (300 s ×3) | **< 1 µA** | | | | | |
 | A4 | HIBERNATING (900 s ×2) | record | | | — | | |
-| A5 | IDLE again (300 s ×3) | **< 1 µA** | | | | | |
+| A5 | IDLE again (300 s ×1, final shipping image after probe removal) | **< 1 µA** | 0.2860 | — | — | **0.2860** | PASS |
 
 Expect the floor at a few hundred nA, not just "under 1 µA" — the sub-1 µA
 average at 60 s leaves only a fraction of a µA for it. Confirm the Joulescope
 was auto-ranging and that the two/three windows agree to a few percent.
 
-**A1 vs A5:** ______ % apart. (Gate: within 20%. These are the same logical
+**A1 vs A5:** **2.3 %** apart (0.2928 vs 0.2860). (Gate: within 20%. These are the same logical
 state reached by two histories; a divergence is a finding even when both numbers
 look fine.)
 
-**A2 vs A1:** ______ µA — the cost of the CONFIGURED minute alarm.
+**A2 vs A1:** **0.2237 µA** — the cost of the CONFIGURED minute alarm (trace: wakes at exactly 60 s spacing).
 
 **A4 vs A1:** ______ µA — the cost of the HIBERNATING minute alarm. Roughly one
 wake per minute's worth of charge; if it were the hourly alarm the comment
 claims, this difference would be ~60× smaller and A4 would sit near the IDLE
 floor. See H3.
 
-**Implied wake charge** (A4 − A1) × 60 s = ______ µC per wake.
+**Implied wake charge** (A2 − A1) × 60 s = **13.4 µC** per CONFIGURED wake (trace: one 0.5 ms block at 27.1 µA ⇒ 13.4 µC, consistent). A4 not measured.
 
 ### Phase B — sample period sweep
 
@@ -74,12 +75,15 @@ the tag reached RUNNING.
 | ID | Period | Regime | Window | W1 (µA) | W2 (µA) | W3 (µA) | Mean |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | B1 | 1 s | Stop 2 | 60 s | | | | |
-| B2 | 9 s | Stop 2 | 540 s | | | — | |
-| B3 | 10 s | Shutdown | 600 s | | | — | |
+| B2 | 9 s | Stop 2 | 540 s | 530.69 | — | — | **530.7** (never sleeps) |
+| B3 | 10 s | Shutdown | 600 s | 3.6948 | — | — | **3.6948** |
+| B3′ | 10 s, stock delay path, trace | 35 s | 3.27 | — | — | 34.9 µC / 59 ms per event |
+| B3″ | 10 s, LSI delay path (tried, reverted) | 35 s | 2.94 | — | — | 31.0 µC / 54 ms per event |
+| B3‴ | 30 ms all-devices-off wait, sleep depth | trace | — | — | — | **140 µA flat** (Stop 2 would be 1–2 µA) |
 | B4 | 15 s | Shutdown | 900 s | | | — | |
 | B5 | 30 s | Shutdown | 1800 s | | — | — | |
 | B6 | **90 s (default)** | Shutdown | 5400 s | | — | — | |
-| B7 | 60 s (optional) | Shutdown | 3600 s | | — | — | |
+| B7 | 60 s (optional) | Shutdown | 3600 s | 0.8552 | — | — | **0.8552** |
 
 **The 9 s / 10 s step (B2 → B3):** ______ µA. This is the cost of rebooting per
 sample, measured rather than inferred — the two configurations differ only in
@@ -97,9 +101,9 @@ embedded/tools/prestag_power_model.py \
 
 | Quantity | Value | Expected | Meaning |
 | --- | --- | --- | --- |
-| `I_rest` | ______ µA | a few hundred nA | Shutdown floor: MCU + RTC + LPS27 + AT25 + board |
-| `Q_cycle` | ______ µC | **tens of µC** | charge per sample, incl. amortised header |
-| `T_knee` | ______ s | | sampling costs as much as resting |
+| `I_rest` | **0.2873 µA** | a few hundred nA | Shutdown floor: MCU + RTC + LPS27 + AT25 + board |
+| `Q_cycle` | **34.08 µC** | **tens of µC** | charge per sample, incl. amortised header |
+| `T_knee` | **118.6 s** | | sampling costs as much as resting |
 | max residual | ______ µA | < 5% | |
 | R² | ______ | | |
 
@@ -145,10 +149,10 @@ Target lifetime 365 days. Budget is `1000 × C / (365 × 24)`.
 
 | Cell | Budget (µA) | `I_avg` at 90 s | Meets? | Margin |
 | --- | --- | --- | --- | --- |
-| 5.5 mAh | 0.628 | | | |
-| 11 mAh | 1.256 | | | |
+| 5.5 mAh | 0.628 | 0.666 (pred.) | **no** | −0.038 µA (21 days short) |
+| 11 mAh | 1.256 | 0.666 (pred.) | **yes** | 1.9× |
 
-`I_avg` at 60 s: ______ µA (expected **< 1 µA** for a healthy tag).
+`I_avg` at 60 s: **0.8552 µA** measured (expected **< 1 µA** for a healthy tag) — PASS.
 
 5.5 mAh is expected to be marginal and decided by the floor and the derating,
 not by the sample period. Record whether it clears; do not read a miss as a
@@ -220,6 +224,7 @@ embedded/tools/prestag_check_download.py <db> --period 10 \
 
 | Run | `--expect-gaps` | Samples found | Checker verdict | Notes |
 | --- | --- | --- | --- | --- |
+| 9 s diagnostic run | 0 | 50 | **PASS** | 990.56–990.94 hPa (7 distinct), 25.8–26.1 °C, 2.47 V, no sentinels |
 | C1 | 0 | | | |
 | C3 | 0 | | | |
 | C4 | 0 | | | |
