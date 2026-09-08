@@ -15,6 +15,7 @@ import os
 import platform
 import re
 import subprocess
+import time
 import sys
 from contextlib import ExitStack
 from dataclasses import dataclass
@@ -54,6 +55,17 @@ class Probe:
         if self.location:
             fields.append(self.location)
         return "  ".join(fields)
+
+
+#: Attempts to make before giving up on a target that will not answer SWD.
+#:
+#: A sleeping STM32L4 in Shutdown intermittently refuses the first connection,
+#: so one attempt is not a verdict. Four is comfortably more than the one retry
+#: that has been observed to be enough, and costs nothing when the first works.
+CONNECT_ATTEMPTS = 4
+
+#: Seconds between connection attempts.
+CONNECT_RETRY_DELAY_S = 2.0
 
 
 @dataclass
@@ -469,11 +481,22 @@ def main(argv: Sequence[str]) -> int:
         )
         return 2
 
+    # reset=HWrst drives the physical NRST line rather than writing AIRCR.
+    #
+    # Targets whose rest state powers the debug port down -- every PresTag state
+    # is STM32L4 Shutdown -- cannot be reset through the debug port, because the
+    # debug port is what is unavailable. A software reset therefore has nothing
+    # to write to and the connect fails with "Unable to get core ID" at a
+    # perfectly healthy target voltage, which is also what the probe reports for
+    # an unpowered target -- so it reads as a rig fault rather than a sleeping
+    # tag. The CLI documents HWrst as the default under mode=UR; setting it
+    # explicitly is what actually gets a sleeping PresTag onto the bus.
     command = [
         args.programmer,
         "-c",
         "port=SWD",
         "mode=UR",
+        "reset=HWrst",
         selection.connection_arg(),
         *programmer_args,
     ]
@@ -481,7 +504,31 @@ def main(argv: Sequence[str]) -> int:
         print(f"Using ST-LINK {selection.probe.summary()}", flush=True)
     else:
         print(f"Using ST-LINK {selection.kind}:{selection.value}", flush=True)
-    return subprocess.call(command)
+
+    # Retry, because the first attempt on a sleeping target often fails.
+    #
+    # Targets whose rest state powers the debug port down -- every PresTag state
+    # is STM32L4 Shutdown -- intermittently refuse the first connection with
+    # "Unable to get core ID" at a healthy target voltage, and answer a repeat
+    # attempt seconds later. reset=HWrst above is necessary but not sufficient;
+    # measured on a PresTagv3, a cold attempt failed and an immediate retry
+    # succeeded. The same pattern shows up in the monitor path, where a first
+    # Tag::Attach() fails its DEMCR read and the next one works.
+    #
+    # A retry is safe for every action these targets use: programming and erase
+    # are idempotent, and a failed attempt has not written anything.
+    for attempt in range(1, CONNECT_ATTEMPTS + 1):
+        rc = subprocess.call(command)
+        if rc == 0:
+            if attempt > 1:
+                print(f"connected on attempt {attempt}", flush=True)
+            return 0
+        if attempt < CONNECT_ATTEMPTS:
+            print(f"attempt {attempt} failed (rc={rc}); retrying in "
+                  f"{CONNECT_RETRY_DELAY_S:g}s", flush=True)
+            time.sleep(CONNECT_RETRY_DELAY_S)
+    print(f"error: all {CONNECT_ATTEMPTS} attempts failed", file=sys.stderr)
+    return rc
 
 
 if __name__ == "__main__":
