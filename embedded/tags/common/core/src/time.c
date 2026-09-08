@@ -14,6 +14,7 @@
 #include "rtc_api.h"
 #include "timekeeping.h"
 #include "core_sync.h"
+#include "phase_probe.h"
 
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
 
@@ -546,6 +547,10 @@ void stopMilliseconds(unsigned int ms)
     }
 
     tagDisableActiveBusesForStop();
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+      tagPhaseProbeMark(25);
+#endif  /* call #1: buses disabled */
 
     tagLptim1ClockEnable();
     tagLptim1DisableWakeEvent();
@@ -558,6 +563,10 @@ void stopMilliseconds(unsigned int ms)
     /* CFGR fields are write-protected while ENABLE is set. */
     LPTIM1->CFGR = TAG_STOP_LPTIM_CFGR;
     LPTIM1->CR = STM32_LPTIM_CR_ENABLE;
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+      tagPhaseProbeMark(26);
+#endif  /* call #1: LPTIM1 enabled, ARR about to be written */
 
     /*
      * Use ARR as the one-shot terminal count.  Clear ARROK before writing so
@@ -566,7 +575,14 @@ void stopMilliseconds(unsigned int ms)
     tagLptim1ClearArrOkFlag();
     LPTIM1->ARR = (uint32_t)ticks;
     while ((LPTIM1->ISR & tagLptim1ArrOkFlag()) == 0U) { }
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+      tagPhaseProbeMark(27);
+#endif  /* call #1: ARROK observed */
     tagLptim1ClearArrOkFlag();
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    tagPhaseProbeMarkIfOpen(17 + 2U * (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U)); /* ARR latched: 17/19/21 for 1st/2nd/3rd call */
+#endif
 
     tagLptim1ClearArrMatchFlag();
     tagLptim1EnableWakeEvent();
@@ -584,10 +600,30 @@ void stopMilliseconds(unsigned int ms)
     __WFE();
 
     /* WFE can return for unrelated events; only ARRM completes this delay. */
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    uint32_t probe_wfe_iters = 0U;
+    while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
+    {
+      __WFE();
+      probe_wfe_iters++;
+    }
+#else
     while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
     {
       __WFE();
     }
+#endif
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    {
+      uint32_t ps = tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS;
+      uint32_t call = tagPhaseProbe.aux[ps][4] & 3U;
+      tagPhaseProbeMarkIfOpen(18 + 2U * call);          /* ARRM seen: 18/20/22 */
+      if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) {
+        tagPhaseProbe.aux[ps][5 + (call > 2U ? 2U : call)] = probe_wfe_iters; /* aux5..7 */
+        tagPhaseProbe.aux[ps][4] = call + 1U;
+      }
+    }
+#endif
 
     // disable lptim and interrupt
 

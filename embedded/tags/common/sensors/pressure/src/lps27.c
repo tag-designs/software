@@ -13,6 +13,7 @@
 #include "lps27hhw.h"
 #include "debug_log.h"
 #include "limits.h"
+#include "phase_probe.h"
 
 enum LPS27_Reg
 {
@@ -158,7 +159,9 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   *temperature = SHRT_MIN;
 
   lps27_PowerOn(device);
+  tagPhaseProbeMark(1);   /* sensor rail on, bus session begun */
   stopMilliseconds(LPS27_POWERUP_MS);
+  tagPhaseProbeMark(2);   /* power-up delay done */
 
   // set BDU and configure one shot
 
@@ -175,6 +178,7 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
   // write CTRL_REG1 and CTRL_REG2 to start one shot
   
   lps27_SetReg(device, LPS27_CTRL_REG1, cmd, 2);
+  tagPhaseProbeMark(3);   /* one-shot triggered */
     
   // wait for data
 
@@ -185,6 +189,8 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
       break;
   }
   
+  tagPhaseProbeMark(4);   /* readiness poll finished */
+  tagPhaseProbeAux(1, status);
   if (status == 3) // don't capture if overrun
   {
     lps27_GetReg(device, LPS27_PRESS_OUT_L, (uint8_t *)&sample,

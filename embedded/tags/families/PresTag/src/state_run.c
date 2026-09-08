@@ -15,6 +15,7 @@
 #include "datalog.h"
 #include "devices.h"
 #include "lps27hhw.h"
+#include "phase_probe.h"
 
 #ifndef PRESTAG_RUNNING_LONG_SLEEP_MODE
 #define PRESTAG_RUNNING_LONG_SLEEP_MODE STANDBY
@@ -97,6 +98,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // update temperature/voltage
 
     adcVDD(&vdd100, &temp10);
+    tagPhaseProbeAdcDone();
     //pState->temp10 = (pState->temp10 * 3 + temp10) / 4;
     pState->vdd100 = (pState->vdd100 * 3 + vdd100)/ 4;
 
@@ -120,8 +122,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         int16_t temperature;
       } datablock;
 
+      tagPhaseProbeBegin();
+      tagPhaseProbeMark(0);   /* sample tick: entering the sample path */
       lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
                            &datablock.temperature);
+      tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
       t_DataHeader dataheader;
 
       if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))
@@ -151,7 +156,9 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       // write data 
 
+      tagPhaseProbeMark(6);   /* about to write the sample to external flash */
       err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+      tagPhaseProbeMark(11);  /* external flash write returned */
       switch (err)
       {
       case LOGWRITE_FULL:
@@ -164,6 +171,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       }
     
       pState->external_blocks += 1;
+      tagPhaseProbeMark(14);  /* sample bookkeeping done, leaving WUTF branch */
 
       // check error return
       /*
