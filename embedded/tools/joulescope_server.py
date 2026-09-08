@@ -212,11 +212,19 @@ class Server:
                         resp = {"error": f"{type(e).__name__}: {e}"}
                     try:
                         data.write((json.dumps(resp) + "\n").encode())
+                        data.flush()
                     except (BrokenPipeError, ConnectionResetError):
                         # The client gave up; that is its problem, not a
                         # reason to drop the device and every other client.
+                        #
+                        # flush() has to be inside this guard, not after it:
+                        # the writer is buffered, so write() only fills the
+                        # buffer and it is flush() that touches the socket and
+                        # raises. With flush() outside, a client that timed out
+                        # during a long measurement killed the server as it
+                        # tried to reply -- which is how a 900 s window took the
+                        # instrument down with it.
                         pass
-                    data.flush()
         finally:
             srv.close()
             with suppress(FileNotFoundError):

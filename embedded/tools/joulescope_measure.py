@@ -234,10 +234,18 @@ def measure_via_server(sock: str, duration: float, window: float,
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from joulescope_server import request
 
+    # The socket timeout has to outlast the measurement itself. request()
+    # defaults to 300 s, so any window longer than that failed client-side while
+    # the server went on measuring to completion -- the reply then arrived at a
+    # socket nobody was reading, and the instrument stayed busy for the rest of
+    # the window. Every window in the PresTag sweep above a 5 s period is longer
+    # than 300 s, so this is the difference between the tool working and not.
+    reply_timeout = duration + 120.0
+
     rc = 0
     for run in range(repeat):
         r = request(sock, {"cmd": "measure", "duration": duration,
-                           "window": window})
+                           "window": window}, timeout=reply_timeout)
         if "error" in r:
             print(f"ERROR: {r['error']}", file=sys.stderr)
             rc = 1
