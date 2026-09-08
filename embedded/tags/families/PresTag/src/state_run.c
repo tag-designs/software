@@ -44,10 +44,20 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     recordState(reason);
     // make sure we're pointing to the next data block in case
     // this is a recovery action -- round up in the case of partial blocks
-    // written
-    int remainder = pState->external_blocks % (sizeof(t_DataLog) / 2);
+    // written.
+    //
+    // The unit is DATALOG_SAMPLES, not sizeof(t_DataLog)/2. external_blocks
+    // counts 4-byte samples (writeDataLog uses external_blocks * 4, and
+    // restoreLog sets pages * DATALOG_SAMPLES), so one page is DATALOG_SAMPLES
+    // of it; sizeof(t_DataLog)/2 is that page measured in 16-bit words, which
+    // is twice as many. Download pairs header vddHeader[i] with the page at
+    // i * sizeof(t_DataLog), so the invariant this must preserve is
+    // external_blocks == pages * DATALOG_SAMPLES. Rounding to twice the page
+    // advanced the cursor a whole page without advancing pages, which
+    // desynchronised every later block from its header for the rest of the run.
+    int remainder = pState->external_blocks % DATALOG_SAMPLES;
     if (remainder)
-      pState->external_blocks = pState->external_blocks + sizeof(t_DataLog) / 2 - remainder;
+      pState->external_blocks = pState->external_blocks + DATALOG_SAMPLES - remainder;
       // need to recover internal block start
     adcVDD(&vdd100, &temp10);
 
@@ -71,13 +81,14 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     //
     // Check for hibernation
-    //     Only hibernate on datalog block boundary.
+    //     Only hibernate on datalog block boundary, which is DATALOG_SAMPLES
+    //     of external_blocks -- see the unit note in the T_INIT branch above.
 
     for (size_t i = 0; i < sizeof(sconfig.hibernate) / sizeof(Config_Interval); i++)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
-          (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0))
+          (pState->external_blocks % DATALOG_SAMPLES == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
