@@ -111,6 +111,8 @@ set(
   "embedded/tags/families/IMUTag/design/start-abort-diagnostics.md"
   "embedded/tags/families/IMUTag/design/PowerEstimates.md"
   "embedded/tags/families/PresTag/README.md"
+  "embedded/tags/families/PresTag/design/power-test-plan.md"
+  "embedded/tags/families/PresTag/design/power-test-report.md"
   "host/README.md"
   "host/docs/design/screenshot-automation.md"
   "host/docs/design/qtmonitor-screenshot-automation.md"
