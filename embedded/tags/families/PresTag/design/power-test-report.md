@@ -177,27 +177,40 @@ cell's actual figure here: ______________
 
 | ID | Test | Expected | Observed | Pass |
 | --- | --- | --- | --- | --- |
-| C1 | Scheduled start | CONFIGURED until start epoch; RUNNING ≤ 60 s after | | |
-| C2 | Immediate start (`start_epoch = 0`) | RUNNING within ~60 s | | |
-| C3 | Scheduled stop | FINISHED within one period (10 s) of stop epoch | | |
-| C4 | Commanded stop | `tag-stop` exits 0 **and** FINISHED confirmed by polling | | |
-| C4b | Download straight after C4 | succeeds; no "Can't dump logs from current state" | | |
-| C5 | Hibernation entry | at the next 60-sample block boundary at/after the window opens, not at the instant it opens | | |
-| C5b | Hibernation exit | RUNNING within ~60 s of window close | | |
-| C5c | Run end | FINISHED at `end_epoch` | | |
-| C6 | C3/C4 repeated at `T = 90 s` (default) | same behaviour | | |
-| T4 | Brownout recovery, odd page count | continuous data, no zero-sample block (regression test for the §1.7 fix) | | |
+| C1 | Scheduled start | CONFIGURED until start epoch; RUNNING ≤ 60 s after | held CONFIGURED with the start 120 s out; first sample **+17 s** after the epoch | **PASS** |
+| C2 | Immediate start (`start_epoch = 0`) | RUNNING within ~60 s | `tag-start` returned `State: RUNNING` immediately | **PASS** |
+| C3 | Scheduled stop | FINISHED within one period (10 s) of stop epoch | last sample **−3 s** before the epoch; 29 samples against an expected 30 | **PASS** |
+| C4 | Commanded stop | `tag-stop` exits 0 **and** FINISHED confirmed | `tag-stop` reported `state: FINISHED` | **PASS** |
+| C4b | Download straight after C4 | succeeds; no "Can't dump logs from current state" | downloaded cleanly, 1 record | **PASS** |
+| C5 | Hibernation entry | at the next 60-sample block boundary at/after the window opens, not at the instant it opens | entered at **sample 120**, a block boundary, **+510 s** after the window opened | **PASS** (does not discriminate — see below) |
+| C5b | Hibernation exit | RUNNING within ~60 s of window close | resumed **+66 s** after close | **PASS** |
+| C5c | Run end | FINISHED at `end_epoch` | last sample t+2386 s against a 2400 s window | **PASS** |
+| C6 | C3/C4 repeated at `T = 90 s` (default) | same behaviour | not run | — |
+| T4 | Brownout recovery, odd page count | continuous data, no zero-sample block (regression test for the §1.7 fix) | not run | — |
+
+**C5 does not discriminate the §1.7 cursor fix.** The window opened at t+690, so
+the first 60-sample boundary at or after it is sample 120 — which is also a
+multiple of 120, so the *old* gate would have entered at the same place. To test
+the fix the window must open between samples 60 and 120 (e.g. t+300 to t+1500):
+the corrected gate enters at t+600, the old one at t+1200. T4 remains the
+stronger regression test, and neither has been run.
+
+**Poll sparingly, and verify from the data.** The C4 run recorded only 3 samples
+because state was polled eight times with `tag-info`, and every attach connects
+under reset. C1/C3 recorded 29 of an expected 30 once polling was dropped in
+favour of reading the epochs back from the download. The plan says this; it is
+easy to ignore in the moment.
 
 Latencies observed:
 
 | Event | Latency | Note |
 | --- | --- | --- |
-| start command → CONFIGURED | | |
-| start epoch → RUNNING | | minute-alarm polling, expect ≤ 60 s |
-| stop epoch → FINISHED | | expect ≤ one sample period |
-| `tag-stop` → FINISHED | | number of polls needed: ____ |
-| hibernate window open → HIBERNATING | | expect the next 60-sample boundary |
-| hibernate window close → RUNNING | | expect ≤ 60 s |
+| start command → CONFIGURED | immediate | reported by `tag-start` |
+| start epoch → RUNNING | **+17 s** | minute-alarm polling, expect ≤ 60 s |
+| stop epoch → FINISHED | **−3 s** (last sample) | within one 10 s period |
+| `tag-stop` → FINISHED | immediate | reported by the stop itself; no polling needed |
+| hibernate window open → HIBERNATING | **+510 s** | the next 60-sample boundary, as designed |
+| hibernate window close → RUNNING | **+66 s** | minute-alarm granularity, expect ≤ ~60 s |
 
 ### H3 — hibernation wake cadence
 
@@ -225,19 +238,18 @@ embedded/tools/prestag_check_download.py <db> --period 10 \
 | Run | `--expect-gaps` | Samples found | Checker verdict | Notes |
 | --- | --- | --- | --- | --- |
 | 9 s diagnostic run | 0 | 50 | **PASS** | 990.56–990.94 hPa (7 distinct), 25.8–26.1 °C, 2.47 V, no sentinels |
-| C1 | 0 | | | |
-| C3 | 0 | | | |
-| C4 | 0 | | | |
-| C5 | 1 | | | |
-| T4 | 0 | | | |
+| C1/C3 (one 300 s run) | 0 | 29 of ~30 | **PASS** | 989.13–989.31 hPa (4 distinct), 24.79–25.00 °C, 2.470 V |
+| C4 | 0 | 3 | **PASS** | 989.31–989.38 hPa, 25.04–25.18 °C; short because state was polled |
+| C5 | 1 | 164, 3 headers | **PASS** | one gap of 766 s at sample 120; 988.94–989.31 hPa, 24.67–25.55 °C |
+| T4 | 0 | not run | — | |
 
 Value checks, worst case seen across all runs:
 
 | Check | Bound | Worst observed | Pass |
 | --- | --- | --- | --- |
-| Pressure range | > 900 hPa (and < 1100) | | |
-| Temperature range | 15–40 °C | | |
-| Failed-read sentinel (−2048.00 hPa / −327.68 °C) | **none** | | |
+| Pressure range | > 900 hPa (and < 1100) | 988.94 … 990.94 hPa across four runs | **PASS** |
+| Temperature range | 15–40 °C | 24.67 … 26.1 °C | **PASS** |
+| Failed-read sentinel (−2048.00 hPa / −327.68 °C) | **none** | none in any run | **PASS** |
 | Distinct pressure values | > 1 | | |
 | Voltage range | 2.0–3.7 V | | |
 
@@ -286,21 +298,25 @@ here is a regression, not a discovery:
 
 | # | Must NOT happen | Clean? | Evidence |
 | --- | --- | --- | --- |
-| R1 | Hibernation entry skipped at a 60-sample block boundary | | C5 |
-| R2 | Zero-sample block or one-block displacement after brownout recovery | | T4 |
+| R1 | Hibernation entry skipped at a 60-sample block boundary | entry at sample 120, a boundary — but see the C5 caveat: this run does not discriminate the fix | C5 |
+| R2 | Zero-sample block or one-block displacement after brownout recovery | not tested | T4 |
 
 **Still open** — a "confirmed" here is expected, and should be filed:
 
 | # | Prediction | Confirmed? | Evidence | Filed as |
 | --- | --- | --- | --- | --- |
-| 1 | `ALARM_HOUR` behaves as `ALARM_MINUTE`; hibernation wakes 60×/hour | | H3 | |
-| 2 | `start_delay` ignored, so `--start-now` is a no-op on PresTag | | C2 | |
+| 1 | `ALARM_HOUR` behaves as `ALARM_MINUTE`; hibernation wakes 60×/hour | consistent: CONFIGURED wakes every 60.0 s (traced) and hibernation exited +66 s after the window closed | A2, H3, C5b | |
+| 2 | `start_delay` ignored, so `--start-now` is a no-op on PresTag | yes — start is governed solely by `active_interval.start_epoch` (C1 held CONFIGURED, C2 started at once) | C1, C2 | |
 
 ### Findings and follow-ups
 
 | # | Finding | Severity | Action |
 | --- | --- | --- | --- |
-| | | | |
+| F1 | `stopMilliseconds()` does not reach Stop 2: 140 µA flat for a 30 ms wait with all devices off, while `SLEEPDEEP=1`, `LPMS=Stop 2`, `DBGMCU_CR=0` and the NVIC is empty. `ICSR.ISRPENDING=1` is the only anomaly. **This is a regression, not a design limit — Stop 2 was measured working when `stopMilliseconds()` was written.** Most likely an interrupt flag left unhandled by something added since. | high — ~a third of `Q_cycle` | bisect against the commit where Stop 2 last measured correctly; hunt the pending flag |
+| F2 | `godown(STOP2)` is a silent no-op on L432: `tagPowerEnterTerminalSleep()` handles only Standby and Shutdown and returns for anything else. Sub-10 s periods never sleep (530.7 µA flat). | medium — bench only | implement or reject STOP2 explicitly rather than returning silently |
+| F3 | `writeStoredConfig()` ignores `FLASH_Program_Array()`'s result and `erasePersistent()` never checks its erase, so a stale `sconfig` survives a reset-and-start. `tag-start` printed `period: 10` while the tag ran at 9 s. | high — silent wrong configuration | check flash status on the config write path |
+| F4 | A free-running timer used for delays freezes ChibiOS time when it genuinely reaches Stop 2, because the OS tick is TIM2. With one thread this is mostly harmless, but any pending virtual timer (e.g. the 10 s monitor attach grace) then never expires. | medium — blocks any Stop 2 delay work | skip Stop 2 while `chVTGetTimersStateI()` reports a pending timer |
+| F5 | `PresTagRaw` never received the LPS27 timing reduction from `f2a82b5`: it still uses the driver defaults (10 ms power-up, up to 6×15 ms polling) where `PresTag` uses 5/5/1. | low | apply the same constants |
 
 ### Overall result
 
@@ -312,10 +328,10 @@ here is a regression, not a discovery:
 | `I_avg` at 60 s below 1 µA | |
 | `I_avg` at 90 s meets the 11 mAh one-year budget (1.256 µA) | |
 | `I_avg` at 90 s meets the 5.5 mAh one-year budget (0.628 µA) — expected marginal | |
-| All Phase C expectations met | |
-| All Phase D checks passed | |
-| Shutdown fit linear (residuals < 5%) | |
-| **Session verdict** | |
+| All Phase C expectations met | **yes** — C1, C2, C3, C4, C4b, C5, C5b, C5c all pass; C6 and T4 not run |
+| All Phase D checks passed | **yes** — four downloads, structure and values, no sentinels |
+| Shutdown fit linear (residuals < 5%) | two-point fit; B4/B5/B6 not run, so no residual available |
+| **Session verdict** | **Power and schedule behaviour pass. Not a release qualification:** B4/B5/B6, C6, T4 and H3's event count are outstanding, and F1/F3 are open firmware defects. |
 
 ---
 

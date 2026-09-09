@@ -1106,6 +1106,14 @@ out by measurement, not argument:
   power-down during the window.
 - **Not the wrong mode.** `SLEEPDEEP` and `LPMS` are correct at the `WFE`.
 
+**This is a regression, not a limit of the part.** Stop 2 was measured working
+when `stopMilliseconds()` was first written, so something added since leaves the
+core unable to enter it. The most likely shape, and the one to look for first,
+is an **interrupt flag that is never cleared**: a pending source both sets
+`ISRPENDING` and keeps the part out of deep sleep, and it would have arrived
+with whatever code introduced it. That makes this a bisect against the commit
+where Stop 2 last measured correctly, not a redesign.
+
 The single anomaly is `ISRPENDING = 1` with an empty NVIC, which points at an
 **EXTI event line** — `tagLptim1EnableWakeEvent()` sets `EMR2` for the LPTIM1
 line to wake the `WFE`, and an event held in the event register makes `WFE`
