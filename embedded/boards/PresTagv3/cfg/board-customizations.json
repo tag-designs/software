@@ -27,7 +27,7 @@
         "Level": "High",
         "Speed": "Low",
         "Resistor": "Floating",
-        "Mode": "Input",
+        "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled"
