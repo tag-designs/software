@@ -184,8 +184,12 @@ class Server:
         """Listen until told to quit.
 
         @return Process exit status.
-        @post The socket file is removed and the device closed. The DUT is
-              deliberately left powered.
+        @post The socket file is removed, the DUT is left powered, and the
+              device is closed. The power step is explicit: closing the driver
+              with the current range off opens the sense path and removes the
+              target's supply, which downstream looks like a dead tag --
+              "Unable to get core ID" from the debug probe, or a download that
+              silently does nothing. This used to be claimed and not done.
         """
         with suppress(FileNotFoundError):
             os.unlink(self.sock_path)
@@ -229,11 +233,62 @@ class Server:
             srv.close()
             with suppress(FileNotFoundError):
                 os.unlink(self.sock_path)
+            self.stop_stream()
+            self.leave_dut_powered()
             with suppress(Exception):
                 self.driver.close(self.device)
             with suppress(Exception):
                 self.driver.finalize()
         return 0
+
+    def stop_stream(self) -> None:
+        """Undo everything start_stream() turned on, in reverse order.
+
+        @details Closing the driver while the instrument is still streaming and
+                 a callback is still attached leaves the JS320 wedged: it keeps
+                 enumerating, nothing holds its USB handle, and the next
+                 jsdrv_open() times out with its topic tree gone, recoverable
+                 only by physically replugging it. The teardown used to close
+                 the device without unsubscribing or clearing stats/ctrl, which
+                 is how a routine release cost a power cycle.
+        """
+        if self.collector is not None:
+            with suppress(Exception):
+                self.driver.unsubscribe(f"{self.device}/s/stats/value",
+                                        self.collector.on_value)
+        with suppress(Exception):
+            self.driver.publish(f"{self.device}/s/stats/ctrl", 0)
+        # Let the final blocks drain before the device is closed underneath the
+        # stream; the teardown is not worth racing.
+        time.sleep(0.3)
+
+    def leave_dut_powered(self) -> bool:
+        """Force the current range back to auto before releasing the device.
+
+        @details The DUT is supplied through the sense path, so a range of off
+                 unpowers it. Whoever picks the instrument up next -- the
+                 desktop UI, another script, a person -- should find a live
+                 target, and a tag that has silently lost power wastes far more
+                 time than this costs.
+
+        @return true when the range reads back as something other than off.
+        """
+        try:
+            self.driver.publish(f"{self.device}/s/i/range/mode", RANGE_MODE_AUTO)
+            time.sleep(0.2)
+            mode = int(self.driver.query(f"{self.device}/s/i/range/mode"))
+        except Exception as e:                                  # noqa: BLE001
+            print(f"joulescope_server: could not restore DUT power: {e}",
+                  file=sys.stderr, flush=True)
+            return False
+        if mode == RANGE_MODE_OFF:
+            print("joulescope_server: WARNING the DUT is left UNPOWERED "
+                  "(range mode off); power-cycle the instrument",
+                  file=sys.stderr, flush=True)
+            return False
+        print(f"joulescope_server: released, DUT left powered (range mode {mode})",
+              flush=True)
+        return True
 
 
 def request(sock_path: str, req: dict, timeout: float = 300.0) -> dict:
