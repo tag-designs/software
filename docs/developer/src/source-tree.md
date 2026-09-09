@@ -79,6 +79,7 @@ directory that owns the code; the developer portal stages those files under
 - [PresTag](reference/embedded/tags/families/PresTag/README.md)
 - [PresTag Power and Schedule Test Plan](reference/embedded/tags/families/PresTag/design/power-test-plan.md)
 - [PresTag Power and Schedule Test Report](reference/embedded/tags/families/PresTag/design/power-test-report.md)
+- [PresTag Power Measurement Log](reference/embedded/tags/families/PresTag/design/power-test-results.md)
 
 ## Host
 

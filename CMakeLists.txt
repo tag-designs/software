@@ -113,6 +113,7 @@ set(
   "embedded/tags/families/PresTag/README.md"
   "embedded/tags/families/PresTag/design/power-test-plan.md"
   "embedded/tags/families/PresTag/design/power-test-report.md"
+  "embedded/tags/families/PresTag/design/power-test-results.md"
   "host/README.md"
   "host/docs/design/screenshot-automation.md"
   "host/docs/design/qtmonitor-screenshot-automation.md"
