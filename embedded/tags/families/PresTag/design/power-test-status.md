@@ -4,7 +4,7 @@
 connect; do not accumulate history here — that belongs in
 [`power-test-results.md`](power-test-results.md).**
 
-Updated: **2026-09-09 ~16:00**  ·  Branch `prestag-power-test-plan` at `ef2f6db`
+Updated: **2026-09-09 ~18:30**  ·  Branch `prestag-power-test-plan` at `458982d`
 
 ## Current objective
 
@@ -16,31 +16,42 @@ confirm nothing else broke, and collect a **measured** power model at 10 s,
 
 | | |
 | --- | --- |
-| worktree | clean at `ef2f6db`, four commits ahead of `main` |
-| tag firmware | `ef2f6db` — PA2 analog, RTC Alarm A ticker |
-| tag state | RUNNING at a 60 s period, mid-measurement |
+| worktree | `458982d` plus an uncommitted `PresTagRaw/custom.h` alignment |
+| tag firmware | `458982d` PresTag — PA2 analog, RTC Alarm A ticker |
+| tag state | RUNNING at 90 s, mid-measurement |
 | instrument | `joulescope_server.py` **running**, holding the JS320 |
-| in flight | 60 s sweep point, 3600 s block; then 90 s, 5400 s block |
+| in flight | 90 s sweep point, 5400 s block (restarted 18:30) |
 
 ## Done
 
 - Stop 2 works. Two faults, both fixed: PA2/INT1 was a floating input (~130 µA
-  in Stop 2 only), and the LPTIM re-arm cost 6.3–7.1 ms of Run current per delay.
-- `Q_cycle` 34.06 → 26.82 (pin) → **14.49 µC** (Alarm A).
-- Phase C and D re-run clean on the new build; hibernation identical to before.
+  in Stop 2 only), and the LPTIM re-arm cost 6.3-7.1 ms of Run current per delay.
+- Phase C and D re-run clean on the Alarm A build; hibernation identical to before.
+- Sweep, measured over full blocks: **IDLE 0.2810 µA**, **10 s 1.8099 µA**,
+  **60 s 0.5406 µA**. `Q_cycle` from the two run points agrees to 2%
+  (15.29 vs 15.58 µC), so the linear model holds across a 6x span.
 
 ## Outstanding
 
-- 60 s and 90 s sweep points, then a three-point fit with residuals.
+- 90 s sweep point, then a three-point fit with residuals.
+- **PresTagRaw**: its `custom.h` silently inherited `STANDBY` for every state and
+  the LPS27 driver defaults (10 ms power-up, up to six 15 ms polls) where PresTag
+  uses `SHUTDOWN` and 5/5/1. Now aligned in the worktree, **built but never run**.
+  Next: flash it, measure idle and a run, and check the download for sanity --
+  it writes the same Pressure/Temperature/Voltage tables, so
+  `prestag_check_download.py` works unchanged.
 - **C6** (C3/C4 at the 90 s default) and **T4** (brownout recovery, the real
-  regression test for the §1.7 cursor fix) have never been run.
-- **PresTagRaw** is opted into the Alarm A ticker but has never been run on
-  hardware.
+  regression test for the section 1.7 cursor fix) have never been run.
 - **F3**: `writeStoredConfig()` ignores the result of `FLASH_Program_Array()` and
   `erasePersistent()` never checks its erase, so a stale `sconfig` can survive a
   reset-and-start. Open.
 
 ## What to watch for
+
+**A killed session leaves the tag unpowered.** The clean release only runs on a
+normal exit; a hard kill skips it and the DUT loses its supply through the open
+sense path, so the tag resets and any run in progress is gone. Starting the
+server restores power. After any crash, assume the run died and check.
 
 **The instrument.** One server, started once, left running. Stop/start cycling
 wedges the JS320 — it keeps enumerating, nothing holds its USB handle, and
