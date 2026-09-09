@@ -1076,72 +1076,72 @@ disagree remain; each should be filed once observed:
 2. **`start_delay` is silently ignored by this family** (§1.4), so
    `tag-start --start-now` has no effect on a PresTag. Confirmed by **C2**.
 
-### 1.2c Measured: Stop 2 is requested correctly and not entered
+### 1.2c Resolved: a floating input, and the LPTIM arming cost
 
-The delay never reaches Stop 2, and the reason is not the clock, the devices or
-the debugger. A build with a 30 ms wait inserted after the LPS27 is powered off
-and before the AT25 is woken — so nothing but the MCU is drawing — shows a
-**flat 140 µA for the full 30 ms**. On an L432 at 2 MHz that is Sleep; Stop 2
-would be 1-2 µA.
+Stop 2 works. Two independent faults made it look otherwise, and both are fixed.
 
-Captured by plain stores into SRAM2 at the instant of the `WFE`:
+**A floating input.** PA2/INT1 is unused and was configured as a digital input
+with nothing driving it, so it sat near mid-rail and dissipated continuously.
+Configured as analog
+([board-customizations.json](../../../../boards/PresTagv3/cfg/board-customizations.json)),
+the stop-delay plateau fell from **143 µA to 8-16 µA** with the LPS27 off and
+the AT25 in deep power-down.
 
-| Register | Value | Reading |
+It hid because it cost nothing anywhere convenient: negligible against Run
+current, and impossible in Shutdown, where VCORE is removed -- which is why
+idle always measured a clean 0.29 µA. It showed only in Stop 2, the mode used
+for every driver delay.
+
+**The LPTIM arming cost.** Re-arming LPTIM1 per delay costs an `ARROK`
+busy-wait of 6.3-7.1 ms at Run current on a 1024 Hz LSE, longer than the delay
+it arms. Replaced by a free-running RTC Alarm A tick (§1.2d).
+
+| build | `Q_cycle` | `I_avg` at 10 s |
 | --- | --- | --- |
-| `SCB_SCR` | `0x00000004` | `SLEEPDEEP = 1` |
-| `PWR_CR1` | `0x00000502` | `LPMS = 2`, Stop 2 |
-| `PWR_SR2` | `0x00000100` | low-power regulator ready |
-| `DBGMCU_CR` | `0x00000000` | debug-in-low-power disabled |
-| `NVIC ISPR0/1` | `0`, `0` | no peripheral IRQ pending |
-| **`SCB_ICSR`** | **`0x00400000`** | **`ISRPENDING = 1`** |
+| LPTIM, floating pin | 34.06 µC | 3.6948 µA |
+| LPTIM + pin fix | 26.82 µC | 2.9742 µA |
+| **Alarm A + pin fix** | **14.49 µC** | **1.7376 µA** |
 
-Every precondition for Stop 2 is met and the part sleeps shallow anyway. Ruled
-out by measurement, not argument:
+**How not to look for this.** Every documented cause was excluded by capturing
+registers at the `WFI` -- `SLEEPDEEP`, `LPMS`, `PWREN`, voltage range, ADC and
+`VREFINT`, RCC clock requests, `C_DEBUGEN`, pending interrupts and wakeup flags
+were all correct or clear. They were excluded correctly and none was the cause.
+Meanwhile an early test *appeared* to exclude pins and did not: it called
+`tagDevicesApplyStandbyPins()`, which writes only `PWR->PUCRx`/`PDCRx` -- the
+Standby and Shutdown pull configuration, applied through `PWR_CR3_APC`, with no
+effect in Stop mode, where GPIOs keep their Run configuration. A null result
+from a test that cannot detect the fault is not an exclusion, and recording it
+as one cost hours.
 
-- **Not the debug domain.** Identical 140 µA after USB-resetting the ST-LINK
-  with no session open. (Stop 2 keeps VCORE, so a held debug power-up request
-  would have shown here; Shutdown removes VCORE, which is why the between-sample
-  baseline is a clean 0.28 µA either way.)
-- **Not device load.** The sensor rail is off and the flash is in ultra-deep
-  power-down during the window.
-- **Not the wrong mode.** `SLEEPDEEP` and `LPMS` are correct at the `WFE`.
+### 1.2d The stop-delay tick: RTC Alarm A
 
-**This is a regression, not a limit of the part.** Stop 2 was measured working
-when `stopMilliseconds()` was first written, so something added since leaves the
-core unable to enter it. The most likely shape, and the one to look for first,
-is an **interrupt flag that is never cleared**: a pending source both sets
-`ISRPENDING` and keeps the part out of deep sleep, and it would have arrived
-with whatever code introduced it. That makes this a bisect against the commit
-where Stop 2 last measured correctly, not a redesign.
+`stopMilliseconds()` counts matches of a free-running RTC Alarm A, configured
+once by `Running()` on entry and torn down by the `disableAllAlarms()` in
+whichever state follows.
 
-The single anomaly is `ISRPENDING = 1` with an empty NVIC, which points at an
-**EXTI event line** — `tagLptim1EnableWakeEvent()` sets `EMR2` for the LPTIM1
-line to wake the `WFE`, and an event held in the event register makes `WFE`
-return without sleeping, or sleep only shallowly. That is the lead, not a
-conclusion.
+Nothing on this path is synchronisation-bound. The flag is set in the RTCCLK
+domain and read directly, and RM0394 specifies `ALRAF` is cleared **2 APB
+cycles** after writing 0 -- about 100 ns. That is the property LPTIM lacks and
+the reason this works.
 
-**Tried and rejected: an LSI-clocked delay.** Running LPTIM1 from LSI (started
-on demand, `/32` for ~1 ms ticks, with `ICR` clears confirmed before use) was
-measured like-for-like at a verified 10 s period: 54 ms and **31.0 µC** against
-59 ms and 34.9 µC — 11%, against ~10 µC predicted. It shortened the arming spin
-but did not make the wait sleep, because shallow sleep is the real problem and
-the kernel clock is not its cause. The change was reverted: it buys little,
-adds a second oscillator and its ±5% tolerance, and does not address the EXTI
-event lead.
+`MASKSS = 1` matches every 2 sub-second counts: **1.95 ms**, the finest
+available at `PREDIV_S = 1023`. `MASKSS = 0` is not finer; it disables the
+sub-second comparison and fires once a second.
 
-**Direction.** Configure LPTIM1 once per boot, free-running, and count
-autoreload ticks in the ISR rather than re-arming `ARR` and the EXTI event line
-for every delay. That removes the per-delay `ARROK` synchronisation *and* the
-per-delay event-line manipulation that the `ISRPENDING` evidence implicates,
-and it stays on LSE. Note that at field periods each sample is a boot out of
-Shutdown, so "once at init" means once per sample rather than once per run —
-the arming cost falls from three times per sample to one, not to zero. At
-1024 Hz one tick is 0.977 ms, so a 2 ms wait carries up to ~1 ms of phase
-error; that is acceptable for the AT25 recharge and the LPS27 settling, which
-are the only waits in the sample path. Whatever is implemented must be judged
-by the trace: the wait plateaus collapsing from 140-165 µA to single-digit µA.
+Two hazards worth knowing:
 
-### 1.2d Defect found on the way: a stale stored configuration
+- **ChibiOS owns EXTI IMR1 line 18** for Alarm B. Arming `ALRAIE` without
+  masking the interrupt there runs the full RTC alarm ISR every 1.95 ms instead
+  of waking silently, and held the tag out of Shutdown entirely at 188 µA.
+- **Stop 2 halts TIM2**, the ChibiOS tick, so any pending virtual timer would
+  never fire. Delays fall back to the RTOS sleep when one is armed, when a
+  monitor session is open, or outside a run.
+
+Verified against the RTC calendar, which keeps running through Stop 2:
+`stopMilliseconds(2000)` elapses **2013.7 ms**, and alarm matches read from
+`RTC_SSR` are exactly 2 counts apart whether polled or slept through.
+
+### 1.2e Defect found on the way: a stale stored configuration
 
 `tag-start` printed `period: 10`; the tag ran at 9 s (`RTC_WUTR = 8`, bursts
 8.97 s apart) with `sconfig.lps_period = 9` still in flash. `writeStoredConfig()`

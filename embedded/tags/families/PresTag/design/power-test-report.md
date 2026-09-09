@@ -79,7 +79,10 @@ the tag reached RUNNING.
 | B3 | 10 s | Shutdown | 600 s | 3.6948 | — | — | **3.6948** |
 | B3′ | 10 s, stock delay path, trace | 35 s | 3.27 | — | — | 34.9 µC / 59 ms per event |
 | B3″ | 10 s, LSI delay path (tried, reverted) | 35 s | 2.94 | — | — | 31.0 µC / 54 ms per event |
-| B3‴ | 30 ms all-devices-off wait, sleep depth | trace | — | — | — | **140 µA flat** (Stop 2 would be 1–2 µA) |
+| B3‴ | 30 ms all-devices-off wait, sleep depth | trace | — | — | — | 140 µA flat — the floating PA2, since fixed |
+| B4 | 10 s, LPTIM + PA2 analog | 60 s | 2.9742 | — | — | `Q_cycle` 26.82 µC |
+| **B5** | **10 s, RTC Alarm A + PA2 analog** | 120/180 s | **1.7376** | — | — | **`Q_cycle` 14.49 µC**, waits 8–16 µA |
+| A6 | IDLE, same build | 120 s | 0.2884 | — | — | unchanged by either fix |
 | B4 | 15 s | Shutdown | 900 s | | | — | |
 | B5 | 30 s | Shutdown | 1800 s | | — | — | |
 | B6 | **90 s (default)** | Shutdown | 5400 s | | — | — | |
@@ -312,7 +315,7 @@ here is a regression, not a discovery:
 
 | # | Finding | Severity | Action |
 | --- | --- | --- | --- |
-| F1 | `stopMilliseconds()` does not reach Stop 2: 140 µA flat for a 30 ms wait with all devices off, while `SLEEPDEEP=1`, `LPMS=Stop 2`, `DBGMCU_CR=0` and the NVIC is empty. `ICSR.ISRPENDING=1` is the only anomaly. **This is a regression, not a design limit — Stop 2 was measured working when `stopMilliseconds()` was written.** Most likely an interrupt flag left unhandled by something added since. | high — ~a third of `Q_cycle` | bisect against the commit where Stop 2 last measured correctly; hunt the pending flag |
+| F1 | **RESOLVED.** `stopMilliseconds()` did not reach Stop 2 because PA2/INT1 was a floating digital input dissipating ~130 µA, and the LPTIM re-arm cost 6.3–7.1 ms of Run current per delay. Pin made analog (`bf0c331`) and the delay moved to a free-running RTC Alarm A tick (`0ac8bc6`). Stop-delay plateau 143 µA → 8–16 µA; `Q_cycle` 34.06 → 14.49 µC. | was high | done |
 | F2 | `godown(STOP2)` is a silent no-op on L432: `tagPowerEnterTerminalSleep()` handles only Standby and Shutdown and returns for anything else. Sub-10 s periods never sleep (530.7 µA flat). | medium — bench only | implement or reject STOP2 explicitly rather than returning silently |
 | F3 | `writeStoredConfig()` ignores `FLASH_Program_Array()`'s result and `erasePersistent()` never checks its erase, so a stale `sconfig` survives a reset-and-start. `tag-start` printed `period: 10` while the tag ran at 9 s. | high — silent wrong configuration | check flash status on the config write path |
 | F4 | A free-running timer used for delays freezes ChibiOS time when it genuinely reaches Stop 2, because the OS tick is TIM2. With one thread this is mostly harmless, but any pending virtual timer (e.g. the 10 s monitor attach grace) then never expires. | medium — blocks any Stop 2 delay work | skip Stop 2 while `chVTGetTimersStateI()` reports a pending timer |
@@ -331,7 +334,7 @@ here is a regression, not a discovery:
 | All Phase C expectations met | **yes** — C1, C2, C3, C4, C4b, C5, C5b, C5c all pass; C6 and T4 not run |
 | All Phase D checks passed | **yes** — four downloads, structure and values, no sentinels |
 | Shutdown fit linear (residuals < 5%) | two-point fit; B4/B5/B6 not run, so no residual available |
-| **Session verdict** | **Power and schedule behaviour pass. Not a release qualification:** B4/B5/B6, C6, T4 and H3's event count are outstanding, and F1/F3 are open firmware defects. |
+| **Session verdict** | **Power and schedule behaviour pass; Stop 2 now works and both cells clear a year at the 90 s default (5.5 mAh 510 d, 11 mAh 1020 d, projected from `Q_cycle` = 14.49 µC).** Not a release qualification: the 30/60/90 s sweep points are extrapolated rather than measured, C6, T4 and H3's event count are outstanding, PresTagRaw is opted in but untested, and F3 (unchecked flash status on the config write) is still open. |
 
 ---
 
