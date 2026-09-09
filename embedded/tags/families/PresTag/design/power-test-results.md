@@ -107,3 +107,74 @@ supply 2.485 V, monitor and Joulescope UI detached.
   | 10 s | 600 s | **1.8099 µA** |
   | 60 s | 3600 s | *pending* |
   | 90 s | 5400 s | *pending* |
+
+### 2026-09-09 ~17:25  60 s sweep point complete
+- **build**: `ef2f6db`, PA2 analog, RTC Alarm A
+- **conditions**: 3600 s window (one 60-sample block); one retry on first attach
+- **result**: **0.5406 µA** at 2.4853 V
+
+### 2026-09-09 ~17:25  Interim power model fit (two Shutdown points)
+- **build**: `ef2f6db`
+- **points used**: 10 s → 1.8099 µA, 60 s → 0.5406 µA
+- **result** (`prestag_power_model.py --point 10:1.8099 --point 60:0.5406 --capacity 5.5 --capacity 11 --target-days 365`):
+
+  | quantity | value | note |
+  | --- | --- | --- |
+  | `I_rest` | **0.2867 µA** | Shutdown floor |
+  | `Q_cycle` | **15.23 µC** | charge per sampling cycle |
+  | `T_knee` | **53.1 s** | sampling costs as much as resting |
+  | max residual | 0.000 µA | exact — two-point fit has no residual check |
+  | R² | 1.000 | |
+
+  Predicted `I_avg` and lifetime (nominal upper bound):
+
+  | period | `I_avg` | 5.5 mAh | 11 mAh | meets 365 d? |
+  | --- | --- | --- | --- | --- |
+  | 10 s | 1.810 µA | 127 d | 253 d | no |
+  | 60 s | 0.541 µA | 424 d | 848 d | yes |
+  | **90 s** | **0.456 µA** | **502 d** | **1005 d** | **yes** |
+  | ∞ | 0.287 µA | 799 d | 1598 d | — |
+
+- **notes**: two-point fit is exact by construction — `I_rest` and `Q_cycle` determined with no
+  redundancy and no residual to check. The 90 s point (in flight) will be the first independent
+  check; if `I_avg(90 s)` lands near 0.456 µA the fit stands. A miss of more than ~5% means one
+  of the three points is wrong and the fit is to be distrusted.
+
+### 2026-09-09 ~20:00  Measured sweep, three full blocks
+- **build**: `890a11b` PresTag — PA2 analog, RTC Alarm A ticker
+- **conditions**: one full 60-sample block per point, nothing attached
+- **result**:
+  | period | window | current |
+  | --- | --- | --- |
+  | IDLE | 300 s | **0.2810 µA** |
+  | 10 s | 600 s | **1.8099 µA** |
+  | 60 s | 3600 s | **0.5406 µA** |
+  | 90 s | 5400 s | **0.4517 µA** |
+- **fit**: `I_rest` **0.2842 µA**, `Q_cycle` **15.26 µC**, `T_knee` **53.7 s**,
+  max residual **0.002 µA**, **R² = 0.999993**.
+- **notes**: the linear model is now measured across a 9× span rather than
+  assumed from one point. The fit intercept and the directly measured idle agree
+  to 1.1% — two independent routes to the same quantity.
+- **lifetime at the shipped 90 s period**: 5.5 mAh **505 days**, 11 mAh **1010
+  days**, against one-year budgets of 0.628 and 1.256 µA. Both met; 5.5 mAh was
+  21 days short before the PA2 and Alarm A fixes.
+
+### 2026-09-09 ~20:30  PresTagRaw, first hardware run
+- **build**: `890a11b` + `PresTagRaw/custom.h` aligned to PresTag
+- **notes on what changed**: the variant had silently inherited `STANDBY` for
+  all five states and the LPS27 driver defaults (10 ms power-up, up to six 15 ms
+  polls) where PresTag uses `SHUTDOWN` and 5/5/1. Same board, so it already had
+  the PA2 fix.
+- **result**:
+  | | PresTagRaw | PresTag |
+  | --- | --- | --- |
+  | IDLE, 300 s | **0.2792 µA** | 0.2810 µA |
+  | RUN 10 s, 600 s block | **1.7746 µA** | 1.8099 µA |
+  | download | **PASS** | PASS |
+  | pressure | 985.13–985.56 hPa | 988.75–988.94 hPa |
+  | temperature | 24.31–24.98 °C | 25.09–25.25 °C |
+- **notes**: within 2% of PresTag on both currents, as expected once the configs
+  match. 73 samples over 2 raw blocks, one header each, epochs monotonic. The
+  raw export writes the same Pressure/Temperature/Voltage tables, so
+  `prestag_check_download.py` needed no change. Pressure differs from PresTag's
+  run by ~3.5 hPa because the runs are hours apart — real weather.
