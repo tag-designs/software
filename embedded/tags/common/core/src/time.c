@@ -19,6 +19,51 @@
 #define STM32_EXT_LPTIM1_LINE (1U << 0)
 
 /**
+ * @def     TAG_STOP_RTC_TICKER
+ * @brief   Use RTC Alarm A as a free-running sub-second tick for stop delays.
+ *
+ * @details The per-delay LPTIM path rewrites @c ARR and busy-waits for
+ *          @c ARROK before every wait. LPTIM registers only latch on kernel
+ *          clock edges, and this board's LSE is 1024 Hz, so that wait measured
+ *          6.3-7.1 ms of Run current for a 5 ms request -- longer than the
+ *          delay it was arming, which is why short waits never slept at all.
+ *
+ *          Alarm A has no such cost on the hot path. It is configured once to
+ *          match on a sub-second mask and left enabled; a delay only sets and
+ *          clears @c ALRAIE, which is an ordinary @c RTC_CR bit behind write
+ *          protection with no synchronisation flag to wait on. @c ALRAWF is
+ *          touched only during setup.
+ *
+ * @note    Alarm B is untouched: @c Configured and @c Hibernating keep using it
+ *          for their minute wake. The two share EXTI line 18, so a B match
+ *          during a delay also wakes the loop; the loop tests @c ALRAF rather
+ *          than the EXTI pending bit and simply sleeps again, which costs a
+ *          wake but cannot miscount.
+ */
+#if !defined(TAG_STOP_RTC_TICKER)
+#define TAG_STOP_RTC_TICKER 0
+#endif
+
+/**
+ * @brief   Sub-second alarm mask selecting the tick period.
+ *
+ * @details @c MASKSS = n compares @c SS[n-1:0], so with a zero target the alarm
+ *          fires every 2^n sub-second counts. @c SS decrements at
+ *          RTCCLK/(PREDIV_A+1) = 1024 Hz here, so 1 is every second count:
+ *          1.95 ms, and the finest available. @c MASKSS = 0 is not finer -- it
+ *          disables sub-second comparison altogether and fires once a second.
+ */
+#if !defined(TAG_STOP_RTC_MASKSS)
+#define TAG_STOP_RTC_MASKSS 1U
+#endif
+
+/** @brief Alarm A tick frequency, in Hz. */
+#define TAG_STOP_RTC_TICK_HZ (1024U / (1U << TAG_STOP_RTC_MASKSS))
+
+/** @brief Bound on polled waits, so no delay can hang the caller. */
+#define TAG_STOP_RTC_SPIN_LIMIT 100000U
+
+/**
  * @brief LPTIM1 counter frequency used by the STM32L432 stop-delay path.
  */
 #if !defined(TAG_STOP_LPTIM_HZ)
@@ -515,16 +560,165 @@ void disableTicker(void)
  * keeping active buses powered through stop-mode delays unnecessarily.
  * @{
  */
+#if TAG_STOP_RTC_TICKER
+
+/** @brief RTC write-protection key sequence. */
+static inline void tagRtcWriteUnlock(void) { RTC->WPR = 0xCAU; RTC->WPR = 0x53U; }
+static inline void tagRtcWriteLock(void)   { RTC->WPR = 0xFFU; }
+
+/** @brief EXTI bit for the RTC alarm line, shared by Alarm A and Alarm B. */
+#define TAG_RTC_ALARM_EXTI_BIT (1U << STM32_RTC_ALARM_EXTI)
+
+void tagStopRtcTickerInit(void)
+{
+  uint32_t limit = TAG_STOP_RTC_SPIN_LIMIT;
+
+  tagRtcWriteUnlock();
+  RTC->CR &= ~RTC_CR_ALRAE;
+  /* The only synchronisation wait in the scheme, and it happens once per run. */
+  while (((RTC->ISR & RTC_ISR_ALRAWF) == 0U) && (limit-- > 0U)) { }
+
+  /* Mask the whole calendar; the sub-second mask alone sets the tick period. */
+  RTC->ALRMAR = RTC_ALRMAR_MSK1 | RTC_ALRMAR_MSK2 |
+                RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK4;
+  RTC->ALRMASSR = ((uint32_t)TAG_STOP_RTC_MASKSS) << RTC_ALRMASSR_MASKSS_Pos;
+  RTC->CR |= RTC_CR_ALRAE;
+  RTC->CR &= ~RTC_CR_ALRAIE;      /* silent until a delay arms it */
+  tagRtcWriteLock();
+
+  EXTI->RTSR1 |= TAG_RTC_ALARM_EXTI_BIT;
+  EXTI->EMR1 &= ~TAG_RTC_ALARM_EXTI_BIT;
+}
+#endif /* TAG_STOP_RTC_TICKER */
+
+#if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
+
 /**
- * @brief Sleep for a short interval using the configured stop mode.
+ * @brief Sleep for a short interval.
+ *
+ * @details STM32U3 targets have no stop-mode delay path; the ordinary RTOS
+ *          sleep is used throughout.
  *
  * @param[in] ms Delay interval in milliseconds.
  */
 void stopMilliseconds(unsigned int ms)
 {
-#if defined(STM32U3xx) || defined(STM32U3XX) || defined(STM32U375xx) || defined(STM32U385xx)
   chThdSleepMilliseconds(ms);
+}
+
+#elif TAG_STOP_RTC_TICKER
+
+/**
+ * @brief Sleep for a short interval using the configured stop mode.
+ *
+ * @details Counts matches of the free-running RTC Alarm A ticker, so nothing is
+ *          armed per call beyond @c ALRAIE and there is no synchronisation
+ *          wait on this path. See @c TAG_STOP_RTC_TICKER.
+ *          Falls back to the RTOS sleep while a monitor session is open: the
+ *          tag must stay responsive and must not enter a stop mode.
+ *
+ * @param[in] ms Delay interval in milliseconds.
+ */
+void stopMilliseconds(unsigned int ms)
+{
+  if (ms == 0U)
+  {
+    return;
+  }
+
+  /*
+   * The RTOS sleep covers three cases, all of which must keep the system tick
+   * running: a monitor session, a pending virtual timer (Stop 2 halts TIM2, so
+   * the timer would never fire), and any delay taken outside a run, when
+   * Running() has not armed the ticker.
+   */
+  sysinterval_t vt_next;
+  bool vt_pending;
+
+  chSysLock();
+  vt_pending = chVTGetTimersStateI(&vt_next);
+  chSysUnlock();
+
+  if (monitorIsAttached() || vt_pending || ((RTC->CR & RTC_CR_ALRAE) == 0U))
+  {
+    chThdSleepMilliseconds(ms);
+    return;
+  }
+
+  /* One extra tick: the first match lands anywhere inside the current one. */
+  const uint32_t ticks =
+      (uint32_t)((((uint64_t)ms) * TAG_STOP_RTC_TICK_HZ + 999U) / 1000U) + 1U;
+
+  tagDisableActiveBusesForStop();
+
+  /*
+   * ChibiOS enables the interrupt on this line for Alarm B, and it is shared,
+   * so the alarm must be masked there or every tick runs the RTC ISR instead
+   * of waking silently. Restored on the way out.
+   */
+  const uint32_t imr_saved = EXTI->IMR1 & TAG_RTC_ALARM_EXTI_BIT;
+  EXTI->IMR1 &= ~TAG_RTC_ALARM_EXTI_BIT;
+  EXTI->EMR1 |= TAG_RTC_ALARM_EXTI_BIT;
+
+  tagRtcWriteUnlock();
+  RTC->ISR &= ~RTC_ISR_ALRAF;
+  RTC->CR |= RTC_CR_ALRAIE;
+
+  DBGMCU->CR = 0;
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, TAG_DELAY_STOP_MODE);
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  /*
+  * Commit SLEEPDEEP and LPMS before sleeping. Without the barrier the
+  * store can still be buffered when the WFE executes, so the core enters
+  * plain Sleep with the old SLEEPDEEP and no stop mode happens -- while a
+  * later read of SCB->SCR still shows 1, which is what made this
+  * invisible. pwr-l432.c's terminal sleep has always had this barrier.
+  */
+  __DSB();
+
+
+
+  __SEV();
+  __WFE();
+
+
+  for (uint32_t counted = 0U; counted < ticks; )
+  {
+    __WFE();
+    if ((RTC->ISR & RTC_ISR_ALRAF) != 0U)
+    {
+      RTC->ISR &= ~RTC_ISR_ALRAF;
+      counted++;
+    }
+  }
+
+
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  RTC->CR &= ~RTC_CR_ALRAIE;
+  tagRtcWriteLock();
+
+  EXTI->EMR1 &= ~TAG_RTC_ALARM_EXTI_BIT;
+  EXTI->PR1 = TAG_RTC_ALARM_EXTI_BIT;
+  EXTI->IMR1 |= imr_saved;
+
+  tagEnableActiveBusesAfterStop();
+}
+
 #else
+
+/**
+ * @brief Sleep for a short interval using the configured stop mode.
+ *
+ * @details Re-arms LPTIM1 as a one-shot for each wait. Writing @c ARR costs an
+ *          @c ARROK synchronisation wait at the LPTIM kernel clock, which is
+ *          why targets on a slow LSE prefer @c TAG_STOP_RTC_TICKER.
+ *          Falls back to the RTOS sleep while a monitor session is open: the
+ *          tag must stay responsive and must not enter a stop mode.
+ *
+ * @param[in] ms Delay interval in milliseconds.
+ */
+void stopMilliseconds(unsigned int ms)
+{
   if (ms == 0U)
   {
     return;
@@ -533,109 +727,117 @@ void stopMilliseconds(unsigned int ms)
   if (monitorIsAttached())
   {
     chThdSleepMilliseconds(ms);
+    return;
   }
-  else
+
+  const uint64_t ticks = tagStopMillisecondsToLptimTicks(ms);
+
+  chDbgAssert(ticks <= TAG_STOP_LPTIM_MAX_TICKS,
+              "stopMilliseconds interval exceeds LPTIM range");
+  if (ticks > TAG_STOP_LPTIM_MAX_TICKS)
   {
-    const uint64_t ticks = tagStopMillisecondsToLptimTicks(ms);
+    chThdSleepMilliseconds(ms);
+    return;
+  }
 
-    chDbgAssert(ticks <= TAG_STOP_LPTIM_MAX_TICKS,
-                "stopMilliseconds interval exceeds LPTIM range");
-    if (ticks > TAG_STOP_LPTIM_MAX_TICKS)
-    {
-      chThdSleepMilliseconds(ms);
-      return;
-    }
-
-    tagDisableActiveBusesForStop();
+  tagDisableActiveBusesForStop();
 #if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
-      tagPhaseProbeMark(25);
+  if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+    tagPhaseProbeMark(25);
 #endif  /* call #1: buses disabled */
 
-    tagLptim1ClockEnable();
-    tagLptim1DisableWakeEvent();
-    tagLptim1DisableInterrupts();
+  tagLptim1ClockEnable();
+  tagLptim1DisableWakeEvent();
+  tagLptim1DisableInterrupts();
 
-    /* Disabling LPTIM1 resets the counter; CNT is read-only on this part. */
-    LPTIM1->CR = 0;
-    tagLptim1ClearPendingWake();
+  /* Disabling LPTIM1 resets the counter; CNT is read-only on this part. */
+  LPTIM1->CR = 0;
+  tagLptim1ClearPendingWake();
 
-    /* CFGR fields are write-protected while ENABLE is set. */
-    LPTIM1->CFGR = TAG_STOP_LPTIM_CFGR;
-    LPTIM1->CR = STM32_LPTIM_CR_ENABLE;
+  /* CFGR fields are write-protected while ENABLE is set. */
+  LPTIM1->CFGR = TAG_STOP_LPTIM_CFGR;
+  LPTIM1->CR = STM32_LPTIM_CR_ENABLE;
 #if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
-      tagPhaseProbeMark(26);
+  if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+    tagPhaseProbeMark(26);
 #endif  /* call #1: LPTIM1 enabled, ARR about to be written */
 
-    /*
-     * Use ARR as the one-shot terminal count.  Clear ARROK before writing so
-     * the synchronization wait cannot be satisfied by a stale update flag.
-     */
-    tagLptim1ClearArrOkFlag();
-    LPTIM1->ARR = (uint32_t)ticks;
-    while ((LPTIM1->ISR & tagLptim1ArrOkFlag()) == 0U) { }
+  /*
+   * Use ARR as the one-shot terminal count.  Clear ARROK before writing so
+   * the synchronization wait cannot be satisfied by a stale update flag.
+   */
+  tagLptim1ClearArrOkFlag();
+  LPTIM1->ARR = (uint32_t)ticks;
+  while ((LPTIM1->ISR & tagLptim1ArrOkFlag()) == 0U) { }
 #if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
-      tagPhaseProbeMark(27);
+  if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U && (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U) == 0U)
+    tagPhaseProbeMark(27);
 #endif  /* call #1: ARROK observed */
-    tagLptim1ClearArrOkFlag();
+  tagLptim1ClearArrOkFlag();
 #if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    tagPhaseProbeMarkIfOpen(17 + 2U * (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U)); /* ARR latched: 17/19/21 for 1st/2nd/3rd call */
+  tagPhaseProbeMarkIfOpen(17 + 2U * (tagPhaseProbe.aux[tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS][4] & 3U)); /* ARR latched: 17/19/21 for 1st/2nd/3rd call */
 #endif
 
-    tagLptim1ClearArrMatchFlag();
-    tagLptim1EnableWakeEvent();
-    tagLptim1EnableArrMatchInterrupt();
+  tagLptim1ClearArrMatchFlag();
+  tagLptim1EnableWakeEvent();
+  tagLptim1EnableArrMatchInterrupt();
 
-    LPTIM1->CR |= STM32_LPTIM_CR_SNGSTRT;
+  LPTIM1->CR |= STM32_LPTIM_CR_SNGSTRT;
 
-    // go into the configured stop mode
+  // go into the configured stop mode
 
-    DBGMCU->CR = 0;
-    MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, TAG_DELAY_STOP_MODE);
+  DBGMCU->CR = 0;
+  MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, TAG_DELAY_STOP_MODE);
 
-    SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-    __SEV();
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+  /*
+  * Commit SLEEPDEEP and LPMS before sleeping. Without the barrier the
+  * store can still be buffered when the WFE executes, so the core enters
+  * plain Sleep with the old SLEEPDEEP and no stop mode happens -- while a
+  * later read of SCB->SCR still shows 1, which is what made this
+  * invisible. pwr-l432.c's terminal sleep has always had this barrier.
+  */
+  __DSB();
+  __SEV();
+  __WFE();
+
+  /* WFE can return for unrelated events; only ARRM completes this delay. */
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+  uint32_t probe_wfe_iters = 0U;
+  while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
+  {
     __WFE();
-
-    /* WFE can return for unrelated events; only ARRM completes this delay. */
-#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    uint32_t probe_wfe_iters = 0U;
-    while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
-    {
-      __WFE();
-      probe_wfe_iters++;
-    }
+    probe_wfe_iters++;
+  }
 #else
-    while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
-    {
-      __WFE();
-    }
-#endif
-#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    {
-      uint32_t ps = tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS;
-      uint32_t call = tagPhaseProbe.aux[ps][4] & 3U;
-      tagPhaseProbeMarkIfOpen(18 + 2U * call);          /* ARRM seen: 18/20/22 */
-      if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) {
-        tagPhaseProbe.aux[ps][5 + (call > 2U ? 2U : call)] = probe_wfe_iters; /* aux5..7 */
-        tagPhaseProbe.aux[ps][4] = call + 1U;
-      }
-    }
-#endif
-
-    // disable lptim and interrupt
-
-    tagLptim1DisableWakeEvent();
-    tagLptim1DisableInterrupts();
-    tagLptim1ClearArrMatchFlag();
-    LPTIM1->CR = 0;
-    tagLptim1ClockDisable();
-    CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-
-    tagEnableActiveBusesAfterStop();
+  while ((LPTIM1->ISR & tagLptim1ArrMatchFlag()) == 0U)
+  {
+    __WFE();
   }
 #endif
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+  {
+    uint32_t ps = tagPhaseProbe.seq % TAG_PHASE_PROBE_SLOTS;
+    uint32_t call = tagPhaseProbe.aux[ps][4] & 3U;
+    tagPhaseProbeMarkIfOpen(18 + 2U * call);          /* ARRM seen: 18/20/22 */
+    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) {
+      tagPhaseProbe.aux[ps][5 + (call > 2U ? 2U : call)] = probe_wfe_iters; /* aux5..7 */
+      tagPhaseProbe.aux[ps][4] = call + 1U;
+    }
+  }
+#endif
+
+  // disable lptim and interrupt
+
+  tagLptim1DisableWakeEvent();
+  tagLptim1DisableInterrupts();
+  tagLptim1ClearArrMatchFlag();
+  LPTIM1->CR = 0;
+  tagLptim1ClockDisable();
+  CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+  tagEnableActiveBusesAfterStop();
 }
+
+#endif
 /** @} */

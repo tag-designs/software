@@ -69,6 +69,16 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     disableAllAlarms();
     disableTicker();
     enableTicker(sconfig.lps_period > 0 ? sconfig.lps_period : 1);
+
+    /*
+     * Arm the stop-delay tick source for the run. disableAllAlarms() above has
+     * just cleared it, and the disableAllAlarms() in whichever state follows
+     * this one tears it down again, so it is live exactly while RUNNING. The
+     * RTC is in the backup domain, so this survives the Shutdown between every
+     * sample and costs its setup synchronisation once per run, not per delay.
+     */
+    tagStopRtcTickerInit();
+
   }
   else
   {
