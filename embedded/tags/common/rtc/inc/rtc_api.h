@@ -219,6 +219,19 @@ enum ALARM_TYPE { ALARM_SECOND, ALARM_MINUTE, ALARM_HOUR };
 void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype);
 
 /**
+ * @brief Configure RTC Alarm A as the free-running stop-delay tick source.
+ *
+ * @details Idempotent, and re-armed lazily by stopMilliseconds() because
+ *          disableAllAlarms() clears Alarm A on every state entry. Compiles to
+ *          nothing unless TAG_STOP_RTC_TICKER is set for the target.
+ */
+#if defined(TAG_STOP_RTC_TICKER) && TAG_STOP_RTC_TICKER
+void tagStopRtcTickerInit(void);
+#else
+#define tagStopRtcTickerInit() ((void)0)
+#endif
+
+/**
  * @brief Delay until epoch_seconds have passed, then trigger the requested RTC alarm.
  *
  * @param[in] alarm STM32 alarm index, normally 0 or 1.

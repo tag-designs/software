@@ -26,6 +26,7 @@
 #include "timekeeping.h"
 
 #include "config.h"
+#include "phase_probe.h"
 
 /**
  * @brief Weak idle hook for targets that enable WFI from ChibiOS idle context.
@@ -875,11 +876,13 @@ int main(void)
     //chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
 
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
+    tagPhaseProbeLoopTop();
     pState->safe = false;                          // critical section start
 
     monitorServicePending((uint32_t) (current_events & EVT_MONITOR_ALL));
     current_events |= chEvtGetAndClearEvents(MON_WORK_ALL);
     sleepmode = StateMachine(current_events);      // process events
+    tagPhaseProbeMarkIfOpen(15);  /* StateMachine returned */
 
     /* if (current_events & EVT_MONITOR_ALL)
     {
@@ -889,6 +892,7 @@ int main(void)
     // critical section end
 
     pState->safe = true;
+    tagPhaseProbeMarkIfOpen(23);  /* critical section closed */
 
     #if 0
 #if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
@@ -912,6 +916,10 @@ int main(void)
     #endif
 
     godown(sleepmode);
+    tagPhaseProbeMarkIfOpen(16);  /* godown returned (no-op for STOP requests) */
+#if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
+    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) tagPhaseProbeAux(3, (uint32_t)sleepmode);
+#endif
 
 #if TAG_STM32U3_FLASH
     if (pState->state == TagState_RUNNING){

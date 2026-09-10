@@ -19,6 +19,31 @@
 #define PROTOBUFSIZE 4096
 /** @} */
 
+/*
+ * Sleep modes and LPS27 timing, matched to PresTag.
+ *
+ * These were absent, so the variant silently inherited STANDBY for every state
+ * and the LPS27 driver defaults of 10 ms power-up and up to six 15 ms polls.
+ * PresTag has used SHUTDOWN throughout and 5/5/1 since f2a82b5 ("Reduce PresTag
+ * low-power energy"); the two variants share a board and family code, and there
+ * is no reason for them to differ here.
+ */
+#define TAG_IDLE_SLEEP_MODE SHUTDOWN
+#define TAG_CONFIGURED_SLEEP_MODE SHUTDOWN
+#define TAG_HIBERNATING_SLEEP_MODE SHUTDOWN
+#define TAG_FINISHED_SLEEP_MODE SHUTDOWN
+#define TAG_ABORTED_SLEEP_MODE SHUTDOWN
+
 #define LPS_LOW_POWER 1
+#define LPS27_POWERUP_MS 5U
+#define LPS27_READY_POLL_MS 5U
+#define LPS27_READY_POLLS 1
+#define PRESTAG_RUNNING_LONG_SLEEP_MODE SHUTDOWN
+
+/* RTC Alarm A as the stop-delay tick source. The board LSE is 1024 Hz, which
+ * makes per-delay LPTIM re-arming cost more than the delay itself; Alarm A has
+ * no synchronisation wait on the hot path. See TAG_STOP_RTC_TICKER in
+ * common/core/src/time.c. */
+#define TAG_STOP_RTC_TICKER 1
 
 #endif

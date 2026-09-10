@@ -11,3 +11,19 @@ Family members:
 Both members report `PRESTAG` in monitor configuration. The target name and
 firmware string identify the build variant; the protobuf payload identifies the
 download log format.
+
+## Design notes
+
+- [Power and Schedule Test Plan](design/power-test-plan.md): hardware-in-the-loop
+  procedure for sample period, start, stop and hibernation. Explains the 10 s
+  sleep-mode boundary in `Running()`, why an unbiased power window is 60 sample
+  periods rather than one, and the linear average-current law used to estimate
+  battery lifetime.
+- [Power and Schedule Test Report](design/power-test-report.md): results form and
+  baseline table for the above.
+- [Power Test Status](design/power-test-status.md): live handoff — what the rig
+  is doing right now, and the traps worth knowing before touching it. Overwritten
+  by whichever session is driving; read it first.
+- [Power Measurement Log](design/power-test-results.md): append-only record of
+  every completed measurement with its conditions. Cite entries from here rather
+  than restating figures.

@@ -205,12 +205,12 @@ function(add_embedded_target name proto_target)
     add_custom_target(
       ${name}-download
       DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR -d ${target_elf} -g
-              0x08000000
+      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR reset=HWrst -d
+              ${target_elf} -g 0x08000000
       VERBATIM)
 
     add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
-                                            mode=UR -e all VERBATIM)
+                                            mode=UR reset=HWrst -e all VERBATIM)
 
     add_custom_target(
       ${name}-dfu

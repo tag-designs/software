@@ -11,6 +11,7 @@
 #include "at25xe.h"
 #include "storage_device.h"
 #include "storage_spi.h"
+#include "phase_probe.h"
 
 #define INTER_WRITE_DELAY 2
 #define PAGE_PROG_POLL_INTERVAL_US 100
@@ -69,6 +70,7 @@ static void at25xeWake(const TagStorageDevice *dev)
     //stopMilliseconds(1);//chThdSleepMicroseconds(250);
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_POWER_UP);
     stopMilliseconds(2);//chThdSleepMicroseconds(250);
+    tagPhaseProbeMark(7);   /* flash awake after power-up delay */
 }
 
 /**
@@ -81,6 +83,7 @@ static void at25xeSleep(const TagStorageDevice *dev)
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_DEEP_POWER_DOWN);
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_ULTRA_DEEP_POWER_DOWN);
     tagStorageBusEnd(dev);
+    tagPhaseProbeMark(10);  /* flash in ultra-deep power-down, bus released */
 }
 
 /**
@@ -137,6 +140,7 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
         at25xeStatus(dev); // check status after wel -- debug
         tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev), AT25XE_CMD_PAGE_PROG,
                                         address, buf, bytes);
+        tagPhaseProbeMark(8);   /* PAGE_PROG issued, array programming */
         for (i = 0; i < PAGE_PROG_POLL_LIMIT; i++)
         {
             chThdSleepMicroseconds(PAGE_PROG_POLL_INTERVAL_US);
@@ -144,6 +148,8 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
         } 
+        tagPhaseProbeMark(9);   /* WIP cleared */
+        tagPhaseProbeAux(0, (uint32_t)i);  /* poll iterations at 100 us */
         if (i == PAGE_PROG_POLL_LIMIT)
             return false;
         address += bytes;
