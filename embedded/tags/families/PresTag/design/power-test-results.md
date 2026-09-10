@@ -159,6 +159,10 @@ supply 2.485 V, monitor and Joulescope UI detached.
   days**, against one-year budgets of 0.628 and 1.256 µA. Both met; 5.5 mAh was
   21 days short before the PA2 and Alarm A fixes.
 
+### 2026-09-09 ~20:00  Power model chart
+
+![PresTag power model — average current vs sampling period](power-model.svg)
+
 ### 2026-09-09 ~20:30  PresTagRaw, first hardware run
 - **build**: `890a11b` + `PresTagRaw/custom.h` aligned to PresTag
 - **notes on what changed**: the variant had silently inherited `STANDBY` for
@@ -178,3 +182,89 @@ supply 2.485 V, monitor and Joulescope UI detached.
   raw export writes the same Pressure/Temperature/Voltage tables, so
   `prestag_check_download.py` needed no change. Pressure differs from PresTag's
   run by ~3.5 hPa because the runs are hours apart — real weather.
+
+### 2026-09-09 ~20:15  Rig recovery — the wedged JS320 unwedged in software
+- **symptom**: after the session was hard-killed mid-C6, the JS320 enumerated but
+  its whole topic tree read `NOT_FOUND`, and a later attempt gave
+  `jsdrv_open timed out`. The tag was dark: `Unable to get core ID` at a healthy
+  2.47 V, and the monitor attach failed with `initial DEMCR read failed`.
+- **result**: **repeated `USBDEVFS_RESET` ioctls recovered it** — one reset did
+  nothing, three in a row with 5 s between them restored the tree. No replug and
+  no root. This corrects the standing note that only a physical power cycle works.
+- **notes**: after recovery `s/i/range/mode` reads **0** — sense path open, DUT
+  unpowered — which is why the tag looked dead. Starting `joulescope_server.py`
+  puts it back to auto and the tag comes up. The interrupted C6 run was gone:
+  its transition log ended `ABORTED reason=EVENT_POWERFAIL`, exactly the
+  documented consequence of a killed session.
+
+### 2026-09-09 ~20:30  C6 — scheduled and commanded stop at the 90 s default
+- **build**: `890a11b` PresTag — PA2 analog, RTC Alarm A ticker
+- **C6a, scheduled stop**: run configured `period: 90`, `end_epoch` 540 s out.
+  `FINISHED` recorded at **00:30:06 UTC** against a stop epoch of **00:30:05** —
+  **+1 s**, reason `EVENT_ENDTIM`. Five samples at exactly 90 s spacing
+  (00:22:35 … 00:28:35); the sixth was due at 00:30:05, the stop epoch itself,
+  and was correctly not taken. Download **PASS** (985.06–985.19 hPa,
+  24.62–24.95 °C, 2.470 V).
+- **C6b, commanded stop**: open-ended run at 90 s, left alone for 330 s, then
+  `tag-stop` — exit **0**, reporting `state: FINISHED` in the same reply,
+  confirmed by **one** poll 1 s later. The **immediate** download succeeded, with
+  no "Can't dump logs from current state". Three samples at 90 s, **PASS**
+  (985.00–985.13 hPa, 24.82–24.96 °C).
+- **in-run trace (no attach)**: 200 s at a 0.5 s window during C6a showed two
+  wake events **exactly 90.0 s apart**, each one block, peaking 32.4 and
+  29.1 µA over a 0.280 µA floor. The excess charge is
+  (0.4332 − 0.280) µA × 199.5 s ÷ 2 = **15.3 µC per cycle**, against the
+  `Q_cycle` of **15.26 µC** fitted from the three sweep points — an independent
+  route to the same number.
+- **notes**: nothing in the stop path is period-sensitive. The first attempt at
+  C6a reported a spurious TIMEOUT: the poller ran `tag-info` through `grep`,
+  whose output contains binary, so `grep` answered `binary file matches` and the
+  state parsed as empty on all 43 polls. The tag had finished correctly at +1 s
+  the whole time. `strings` before `grep`, or `grep -a`.
+
+### 2026-09-09 ~21:15  H3 — hibernation wake cadence, and the §1.7 fix discriminated
+- **build**: `890a11b` PresTag — PA2 analog, RTC Alarm A ticker
+- **conditions**: `period: 10`, run 1800 s, hibernate window t+300 … t+1500.
+  Chosen so the window opens **between** samples 60 and 120, which is the case
+  the report says C5 could not discriminate: the corrected gate enters at
+  sample 60, the old one at sample 120. Three 295 s traces at the server's
+  0.5 s window, nothing attached during the run.
+- **result**:
+
+  | trace | when | mean | events | spacing | peak |
+  | --- | --- | --- | --- | --- | --- |
+  | A (RUNNING, 10 s) | run+60…360 | **1.8100 µA** | 29 | **10.0 s** | ~32.4 µA |
+  | B (HIBERNATING) | run+660…960 | **0.3769 µA** | **5** | **60.0 s** | ~11.8 µA |
+  | C (HIBERNATING) | run+1140…1440 | **0.3769 µA** | **5** | **60.0 s** | ~11.8 µA |
+
+- **H3 verdict**: **five wake events in 295 s at exactly 60.0 s** — the minute
+  alarm, twice over. An hourly alarm predicts 0–1. §1.6 is right that
+  `ALARM_HOUR` behaves as `ALARM_MINUTE`.
+- **A4**: HIBERNATING **0.3769 µA**, identical to four digits across two
+  independent windows. A4 − A1 = **0.0841 µA** ⇒ **5.05 µC per hibernation
+  wake**; the peak block gives (11.80 − 0.28) × 0.5 = 5.76 µC, and a CONFIGURED
+  wake costs 13.4 µC — the hibernation wake is cheaper because it checks the
+  clock without sampling.
+- **§1.7 cursor fix — R1 now has real evidence**: window opened 00:48:43,
+  `HIBERNATING` logged **00:53:53**, one period after sample 60 (t+600). The old
+  gate would have waited for sample 120 at 01:03:43, and traces B and C would
+  then have shown the 10 s cadence. They show the minute cadence. Entry is at
+  the **first** 60-sample boundary at or after the window opens, as intended.
+- **schedule latencies**: hibernation exit **+17 s** after the window closed
+  (01:08:43 → 01:09:00; was +59 and +66 s in earlier runs), FINISHED **+7 s**
+  after the end epoch.
+- **download**: **PASS** — 88 samples, 2 headers, one 927 s gap **exactly at
+  sample 60**, 985.00–985.75 hPa, 24.29–25.00 °C, 2.470 V.
+- **notes**: trace A doubles as a validation of the method — its 1.8100 µA
+  matches the independently measured 10 s sweep point of 1.8099 µA to four
+  digits, so the 0.5 s block trace and the charge/time average agree.
+
+### 2026-09-09 ~21:40  A3 — resting FINISHED
+- **build**: `890a11b`
+- **conditions**: tag left in FINISHED after H3's run ended; three 300 s windows
+- **result**: 0.2796 / 0.2793 / 0.2782 µA → **0.2790 µA** at 2.4853 V
+- **notes**: closes the last blank in Phase A. The four resting figures — IDLE
+  0.2928 (A1), IDLE again 0.2860 (A5), FINISHED 0.2790 (A3), IDLE with the final
+  sweep 0.2810 (A1′) — span **4.7%** across two days and two histories, against a
+  20% gate. A tag left at the end of a deployment rests as deeply as one never
+  started.

@@ -1219,13 +1219,15 @@ the shape distorted — so `Q_cycle` from `charge/time` stands, but per-phase
 attribution of that tail does not. A fixed-range capture would settle it; the
 instrument wedged before one could be taken.
 
-### Not yet run
+### Not yet run, as of the first execution
 
 The LSI delay experiment (§1.2c) needs its all-devices-off wait to settle sleep depth.
 
 A3, A4, A5; B1, B4, B5, B6; all of Phase C (C1–C6, T4); H3 for hibernation. The
 CONFIGURED minute alarm was confirmed by trace; the HIBERNATING one was not
 measured.
+
+**All of these except B1, B4, B5 and T4 were run on 2026-09-09** — see §12.
 
 ### Tooling found wanting, and fixed or reverted
 
@@ -1237,3 +1239,53 @@ measured.
   and a 4-try connect retry kept.
 - The instrument wedges after repeated direct open/close cycles; use the server
   for the whole session and do not run direct-driver captures alongside it.
+
+
+## 12. Second execution (2026-09-09, `890a11b`)
+
+The first execution's numbers stand as a record of the *pre-fix* firmware. Two
+faults were found and fixed between the two, and every number below moved
+because of them:
+
+- **PA2/INT1 was a floating digital input** on the PresTagv3 board, dissipating
+  ~130 µA whenever the part was in Stop 2 — invisible in Run, and impossible in
+  Shutdown where VCORE is removed, which is why it hid for so long. Made analog
+  in `bf0c331`.
+- **`stopMilliseconds()` re-armed LPTIM per delay**, and the `ARROK` busy-wait
+  costs 6.3–7.1 ms of Run current each time at a 1024 Hz LSE. Replaced by a
+  free-running **RTC Alarm A** tick set up on RUNNING entry, in `0ac8bc6`.
+
+`Q_cycle` fell **34.06 → 26.82 → 15.26 µC** across the two fixes.
+
+| Measurement | First execution | Second execution |
+| --- | --- | --- |
+| IDLE | 0.2928 µA | 0.2810 µA (A1′) |
+| FINISHED | not run | **0.2790 µA** |
+| HIBERNATING | not run | **0.3769 µA**, 5.05 µC per wake |
+| 10 s | 3.6948 µA | **1.8099 µA** |
+| 60 s | 0.8552 µA | **0.5406 µA** |
+| **90 s (default)** | 0.666 µA *predicted* | **0.4517 µA measured** |
+| Fit | `I_rest` 0.287, `Q_cycle` 34.1, `T_knee` 119 s | `I_rest` **0.2842 µA**, `Q_cycle` **15.26 µC**, `T_knee` **53.7 s**, R² 0.999993 |
+| 5.5 mAh at 90 s | 344 d — **21 days short of a year** | **505 d — clears it** |
+| 11 mAh at 90 s | 688 d | **1010 d** |
+
+Both cells now clear a year at the shipped period, which was the object of the
+exercise. The model is measured at three periods, not extrapolated from one.
+
+Schedule behaviour was re-run in full against the Alarm A change and is
+unchanged: C1–C5 as before, **C6a** (scheduled stop at 90 s) FINISHED at the
+stop epoch +1 s, **C6b** (commanded stop at 90 s) confirmed in one poll with an
+immediate clean download. **H3** counted the hibernation wakes directly — five
+in 295 s at exactly 60.0 s, twice over — settling §1.6: the hour alarm does
+behave as a minute alarm. That same run was configured to open its hibernate
+window between samples 60 and 120, which is what C5 could not do, and so it is
+also the hardware confirmation of the §1.7 cursor fix.
+
+`PresTagRaw` was brought into line with PresTag (`4527184` — it had silently
+inherited `STANDBY` for every state and the LPS27 driver defaults) and then
+measured: IDLE 0.2792 µA, 10 s run 1.7746 µA, download PASS. Within 2% of
+PresTag on both, as it should be once the configurations match.
+
+**Still outstanding:** T4 (brownout recovery) needs a genuine brownout and has
+not been run, and F3 — `writeStoredConfig()` ignoring the flash programming
+status, so a stale configuration can survive a reset-and-start — is open.
