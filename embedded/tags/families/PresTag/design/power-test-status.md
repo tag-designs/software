@@ -4,7 +4,7 @@
 connect; do not accumulate history here — that belongs in
 [`power-test-results.md`](power-test-results.md).**
 
-Updated: **2026-09-09 ~22:00**  ·  Branch `prestag-power-test-plan`, merging to `main`
+Updated: **2026-09-09 ~22:00**  ·  Merged to `main` at `e0362fc`
 
 ## Current objective
 
