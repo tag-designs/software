@@ -86,6 +86,8 @@
 #define STM32_SWPMI1SEL                     STM32_SWPMI1SEL_PCLK1
 #define STM32_RTCSEL                        STM32_RTCSEL_LSE
 
+#define STM32_LSE_BYPASS                    TRUE
+
 /*
  * IRQ system settings.
  */
