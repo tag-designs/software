@@ -55,3 +55,15 @@ otherwise use the common core implementation as the single source of truth.
 The CompassTag variants now use the common core state machine. Family-specific
 behavior stays in the tag hooks such as `Running()`, `tagDevicesDeinit()`,
 sensor orchestration, and storage/configuration bindings.
+
+## Design Documents
+
+- [Power Test Plan](design/power-test-plan.md): hardware-in-the-loop
+  verification of the Standby-after-attach idle-current regression and its
+  fix in the shared L432 `DBGMCU->CR` handling.
+- [Power Test Report](design/power-test-report.md): results form and gate
+  table for the power test plan.
+- [Power Test Status](design/power-test-status.md): live handoff — what the
+  rig is doing right now, overwritten by the active session.
+- [Power Measurement Log](design/power-test-results.md): append-only record
+  of every completed CompassTag power measurement.
