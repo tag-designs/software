@@ -655,15 +655,22 @@ enum Sleep StateMachine(eventmask_t input_events)
      * flash offered no marker either. That combination is self-inconsistent, so
      * abort rather than guess.
      *
-     * retained_state_valid is deliberately part of this condition. Without it
-     * the test would also fire on a freshly programmed tag -- no retained state
-     * and no markers -- and strand it in ABORTED before first use. A wiped
-     * pState with no markers is instead safe to treat as idle: any tag that had
-     * been collecting would have left a RUNNING marker, because Running(T_INIT)
-     * records one.
+     * backupStateValidAtBoot is deliberately part of this condition, and is not
+     * the same thing as retained_state_valid above. deviceInit() unconditionally
+     * re-stamps pState->valid to BACKUP_STATE_VALID_MAGIC before StateMachine()
+     * ever runs, so by the time retained_state_valid is computed here it is true
+     * on every power-init boot -- fresh tag or not -- and can no longer tell them
+     * apart. backupStateValidAtBoot is captured in getResetCause(), before
+     * deviceInit() touches pState->valid, so it still reflects reality: false
+     * only when the backup domain was genuinely uninitialized (or lost) at the
+     * start of this boot. Without that distinction this test also fired on a
+     * freshly programmed tag -- no retained state and no markers -- and stranded
+     * it in ABORTED before first use. A wiped pState with no markers is instead
+     * safe to treat as idle: any tag that had been collecting would have left a
+     * RUNNING marker, because Running(T_INIT) records one.
      */
     if (recovery_started_from_unspecified &&
-        retained_state_valid &&
+        backupStateValidAtBoot &&
         !recovered_concrete_state)
     {
       return Aborted(T_INIT, State_EVENT_UNKNOWN);

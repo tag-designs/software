@@ -72,6 +72,7 @@ thread_t *tpMain = 0;
 int32_t timestamp;
 uint32_t timestamp_millis;
 bool rtcInitializedAtBoot;
+bool backupStateValidAtBoot;
 
 #if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
 #define TAG_BACKUP_STATE_REG0 (&TAMP->BKP0R)
@@ -661,6 +662,11 @@ void deviceInit(int force)
 t_resetCause getResetCause(uint32_t rstFlags)
 {
   t_resetCause resetCause = resetException; // default case
+
+  // Captured before anything below (deviceInit(), in particular) can
+  // re-stamp pState->valid. See backupStateValidAtBoot in core_sync.h.
+  backupStateValidAtBoot = (pState->valid == BACKUP_STATE_VALID_MAGIC);
+
   const uint32_t shutdown_wake_marker =
       tagPowerGetAndClearShutdownWakeMarker();
 
