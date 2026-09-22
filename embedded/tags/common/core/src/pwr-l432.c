@@ -18,6 +18,29 @@
 #endif
 
 /**
+ * @brief Report whether the Cortex-M debug port is currently enabled.
+ *
+ * @details DHCSR.C_DEBUGEN is set by the debug probe's own SWD protocol on
+ *          attach and is not cleared by this firmware's monitor-session
+ *          teardown (monitorStopI() only clears DEMCR bits it owns). It can
+ *          stay set long after a clean monitor detach. Restored 2026-09-22:
+ *          commit 7ea0a86 ("Optimize L432 tag power states") replaced the
+ *          conditional DBGMCU->CR handling below with an unconditional
+ *          `DBGMCU->CR = 0`, which leaves C_DEBUGEN set but tells DBGMCU not
+ *          to retain debug clocks through Standby -- an inconsistent state
+ *          that left the part unable to reach genuine Standby current
+ *          (measured ~365uA instead of ~376nA) after any monitor attach,
+ *          even following a clean detach. See
+ *          [[compasstag-standby-decline-idle-current]].
+ *
+ * @return true when an external debugger has enabled core debug access.
+ */
+static bool tagPowerDebuggerAttached(void)
+{
+  return (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
+}
+
+/**
  * @brief Enter STM32L4 terminal sleep after device preparation.
  *
  * @param[in] sleepmode Requested sleep mode.
@@ -48,7 +71,16 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
 
   chSysLock();
 
-  DBGMCU->CR = 0;
+  if (tagPowerDebuggerAttached())
+  {
+    DBGMCU->CR = DBGMCU_CR_DBG_SLEEP |
+                 DBGMCU_CR_DBG_STOP |
+                 DBGMCU_CR_DBG_STANDBY;
+  }
+  else
+  {
+    DBGMCU->CR = 0;
+  }
 #if defined(PWR_CR3_RRS)
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
 #endif
