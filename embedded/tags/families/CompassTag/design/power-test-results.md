@@ -101,3 +101,19 @@ figure, supply ~2.485 V, qtmonitor and Joulescope desktop app detached.
 - **notes**: confirms the fix's effect is from the `DBGMCU->CR` change itself,
   not an artifact of the diagnostic instrumentation that was present in the
   build used for the two attach-pattern entries above.
+
+### 2026-09-22 ~19:55  Post-fix, plain `CompassTagAT25` firmware on Breakout hardware
+- **build**: `d9d76d0` tree, `CompassTagAT25` target (not `...Breakout`)
+- **board**: CompassTagAT25Breakout hardware (I2C pin assignment mismatch
+  expected — this target assumes the non-breakout wiring)
+- **conditions**: `tag-test`, 12 s settle, 15 s window
+- **result**: `RUN_ALL` → `RTC_FAILED` (expected: wrong I2C wiring assumption
+  for this hardware, unrelated to the power fix); idle current **0.3762 µA**
+- **notes**: this was a deliberate mismatched board/firmware combination, run
+  only to confirm the `DBGMCU->CR` fix's *mechanism* is identical across
+  CompassTag targets (it is — same shared `pwr-l432.c`, no target-specific
+  branch), not to validate `CompassTagAT25` on its own hardware. Do **not**
+  read the RTC failure as a regression; do not read the clean idle current as
+  a substitute for testing `CompassTagAT25` on its own board. Breakout
+  firmware reflashed immediately after to leave the board correctly
+  configured.
