@@ -131,7 +131,8 @@ def settle_and_measure(python: str, settle: float, duration: float,
     last: ExperimentError | None = None
     for attempt in range(attempts):
         try:
-            return measure(python, duration, window, verbose)
+            return measure(python, duration, window, verbose,
+                           use_server=power_experiment.USE_SERVER)
         except ExperimentError as e:
             last = e
             if attempt < attempts - 1:
