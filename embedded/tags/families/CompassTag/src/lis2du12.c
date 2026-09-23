@@ -62,7 +62,16 @@ typedef enum
 #define CTRL1_WU_EN (7)
 #define CTRL4_BDU (1<<5)
 #define CTRL5_1_6HZ (1<<4)
-#define CTRL5_6HZ_3HZ ((4<<4)|(3<<2))
+/*
+ * ODR=0011 is "6 Hz in ultralow-power mode" (Table 34); ODR=0100 is "6 Hz in
+ * normal mode". Normal mode's antialiasing filter runs regardless of ODR, so
+ * its current is roughly constant no matter how slow the ODR is -- ULP mode
+ * is the one whose current actually scales down with ODR. This wake-up
+ * config wants the ULP variant; a prior commit (f407466) silently switched
+ * it to normal mode, which is why the resting current between samples
+ * doesn't drop the way the datasheet suggests it should.
+ */
+#define CTRL5_6HZ_3HZ_ULP ((3<<4)|(3<<2))
 #define CTRL5_POWER_DOWN (0)
 #define INT_CFG_SLEEP_STATUS_ON_INT (1<<3)
 #define INT_CFG_ENABLE (1)
@@ -203,7 +212,7 @@ void lis2du12Init(const TagRegisterDevice *device, lis2du12mode_t mode)
       LIS2DU12_write_byte(device, LIS2DU12_WAKE_UP_DUR, WAKE_UP_DUR_7ODR); // Wakeup duration = 7 sample times, Sleep duration = 16 samples times
       LIS2DU12_write_byte(device, LIS2DU12_WAKE_UP_THS,0x4);//WAKE_UP_THS_0_5G);  // was 42
       LIS2DU12_write_byte(device, LIS2DU12_MD1_CFG,MD1_CFG_WKUP); // Wakeup event on INT1 pin, 0x22U changes wake_up_dur interpretation
-      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, CTRL5_6HZ_3HZ); // ODR = 6hz, BW = 3hz -- was 3C which is ultralow power mode
+      LIS2DU12_write_byte(device, LIS2DU12_CTRL5, CTRL5_6HZ_3HZ_ULP); // ODR = 6hz ultralow-power, BW = 3hz
       break;
     case ACCEL_SAMPLE_50HZ_MODE:
       LIS2DU12_write_byte(device, LIS2DU12_CTRL1, 0x10U); // ADD_INC

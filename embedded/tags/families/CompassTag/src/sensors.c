@@ -119,6 +119,8 @@ bool sensorSample(RawSensorData *data){
   memset(data,0,sizeof(*data));
 
   mag = TAG_MAG_DEVICE;
+  accel = TAG_ACCEL_DEVICE;
+
   ak09940aDeviceBegin(mag);
   stopMilliseconds(1);
   tagCompassMagResetRelease();
@@ -138,7 +140,13 @@ bool sensorSample(RawSensorData *data){
   ak09940aDeviceEnd(mag);
   tagCompassMagResetAssert();
 
-  accel = TAG_ACCEL_DEVICE;
+  /*
+   * Accelerometer stays in ultralow-power mode (CTRL5_6HZ_3HZ_ULP, set by
+   * lis2du12Init(ACCEL_WAKEUP_MODE) and never switched) for both wake-up
+   * detection and this tilt reading -- at FS=+-2g its noise is well within
+   * what tilt compensation needs, and it avoids the settle-time cost of
+   * switching modes on every sample.
+   */
   if (lis2du12Sample(accel, (uint8_t *) &accel_data))
     {
         orient_accel_raw(&accel_data.x, &accel_data.y);
@@ -148,7 +156,8 @@ bool sensorSample(RawSensorData *data){
     } else {
       ok = false;
     }
-    return ok;
+
+  return ok;
 }
 
 
