@@ -16,6 +16,8 @@ Distributed tools:
 - `tag-start`: start logging.
 - `tag-stop`: stop logging and print the resulting tag status.
 - `tag-cal`: calibration helper.
+- `tag-cal-write`: write an identity (no-op) calibration constant set. See
+  below.
 - `tag-test`, `tag-test-example`, `tag-monitor-test`: developer/test tools.
 
 Maintainer-only build-tree tools:
@@ -56,6 +58,30 @@ qtmonitor-fixture-capture \
 
 `--state` names the captured status slot in the fixture; it does not drive the
 tag into that state. Put the tag in the desired state before running the tool.
+
+## tag-cal-write
+
+Several CompassTag-family state handlers refuse `Start` with "Device must be
+calibrated" (`config.c`, `sensorsHaveCalibration()`) until at least one
+magnetometer calibration entry is present in flash. A mass-erase reflash
+(`STM32_Programmer_CLI -e all`, or any full-chip erase) wipes that flash
+region along with everything else, which then blocks `tag-start` on an
+otherwise-healthy board with no other symptom.
+
+`tag-cal-write` writes a single identity calibration entry (`M' = A(M-V)`
+with `A` = identity, `V` = 0, `B` = 1) so the tag will start again:
+
+```sh
+build-host/bin/tag-cal-write
+build-host/bin/tag-reset --set-rtc
+build-host/bin/tag-start --start-now
+```
+
+This unblocks power/lifecycle testing on a freshly reflashed board without a
+physical rotation-based calibration pass. It is **not** a real calibration --
+magnetometer output taken under it is uncalibrated raw data passed straight
+through. Run the interactive `tag-cal` (or qtcalibrate) for a real
+calibration before trusting compass output from a board this was used on.
 
 ## DataProcessing
 
