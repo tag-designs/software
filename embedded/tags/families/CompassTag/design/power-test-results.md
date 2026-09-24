@@ -117,3 +117,46 @@ figure, supply ~2.485 V, qtmonitor and Joulescope desktop app detached.
   a substitute for testing `CompassTagAT25` on its own board. Breakout
   firmware reflashed immediately after to leave the board correctly
   configured.
+
+### 2026-09-24  `CompassTagAT25` on real production hardware — full validation, two fixes plus the 30 s interval change
+
+- **build**: `4160d1e` (committed): the `DBGMCU->CR` unconditional-clear fix
+  ([[compasstag-standby-stuck-at-wfi]]), the magnetometer SPI pull-down fix
+  ([[compasstag-mag-pins-floating-real-board]]), the LIS2DU12 wake-threshold
+  rework, and the 30 s compass sample interval, all together for the first
+  time on this hardware
+- **board**: `CompassTagAT25` target on the real production CompassTag unit
+  (not the Breakout board this whole log otherwise covers), UUID
+  `203633324B425006004A005D`, real user calibration present throughout
+  (verified byte-identical before/after every flash via a `.calibration`
+  section backup at `0x0800a800`, 2016 bytes — not touched by any of
+  tonight's flashes)
+- **conditions**: `tag-test` self-test, then a real `tag-start --set-rtc
+  --start-now` run, 3 min (six 30 s sample ticks), `tag-dwnld --stop`, then
+  `tag-reset`; power measured via `joulescope_measure.py`, no debug-port
+  contact during any measurement window
+- **result**:
+  | condition | result |
+  | --- | --- |
+  | self-test | `ALL_PASSED` |
+  | RUNNING current, 180 s window | **1.9538 µA** |
+  | IDLE current, post-run, window 1/2 | **0.2346 µA** |
+  | IDLE current, post-run, window 2/2 | **0.2317 µA** |
+  | sample timestamps | all six exactly 30 s apart |
+  | accel/mag values | stable, non-zero, non-saturated (tag stationary: az
+    ~960-969, ax/ay noise-level; mag axes stable across all six samples) |
+  | activity | 0.0 throughout (tag stationary — expected; not a test of the
+    activity encoding itself, which needs real motion) |
+- **notes**: this is the first test of the real production board specifically
+  (not the Breakout dev board this whole log otherwise covers), and the first
+  test of all of tonight's changes together. IDLE current (~0.23 µA) is
+  higher than the Breakout board's own post-fix numbers above (~0.38 µA
+  there is actually higher, so this compares favorably) but is not directly
+  comparable to those entries: this run additionally has the magnetometer
+  pull-down fix applied, which the Breakout board's own idle numbers above
+  predate and don't need in the first place (its `MAG_PWR` genuinely cuts I/O
+  power). RUNNING current (~1.95 µA) lines up closely with the ~1.97 µA
+  predicted in the 30 s interval change design work. Two independent 60 s
+  IDLE windows agreed closely (0.2346 vs 0.2317 µA), and calibration was
+  confirmed byte-identical before and after flashing, so none of this
+  required re-running `tag-cal`/`qtcalibrate`.
