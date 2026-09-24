@@ -88,7 +88,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin6": {
         "ID": "MAG_MISO",
@@ -99,7 +100,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin7": {
         "ID": "MAG_MOSI",
@@ -110,7 +112,8 @@
         "Mode": "Analog",
         "Alternate": "5",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin9": {
         "ID": "MAG_PWR",
@@ -123,6 +126,17 @@
         "AnalogSwitch": "Disabled",
         "PinLock": "Disabled",
         "Standby": "PULLDOWN"
+      },
+      "pin10": {
+        "ID": "AK_DRDY",
+        "Type": "PushPull",
+        "Level": "Low",
+        "Speed": "Low",
+        "Resistor": "Floating",
+        "Mode": "Analog",
+        "Alternate": "0",
+        "AnalogSwitch": "Disabled",
+        "PinLock": "Disabled"
       },
       "pin13": {
         "ID": "SWDIO",
@@ -181,7 +195,8 @@
         "Mode": "Analog",
         "Alternate": "0",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin3": {
         "ID": "FLASH_SCK",
