@@ -462,7 +462,16 @@ void enableAlarm(unsigned int alarm, enum ALARM_TYPE atype)
       alarmspec.alrmr = (RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2);
       break;
     case ALARM_HOUR:
-      alarmspec.alrmr = (RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3 | RTC_ALRMAR_MSK2);
+      /*
+       * Mask date and hours (any day, any hour match); compare minutes and
+       * seconds, which default to 0 since nothing else sets them -- fires
+       * once per hour, on the hour. Previously used the identical mask as
+       * ALARM_MINUTE (date/hours/minutes all masked, comparing only
+       * seconds), which meant every caller of enableAlarm(..., ALARM_HOUR)
+       * -- e.g. Hibernating()'s "1 hour wakeup interval" -- actually fired
+       * once per minute.
+       */
+      alarmspec.alrmr = (RTC_ALRMAR_MSK4 | RTC_ALRMAR_MSK3);
       break;
     default:
       return;
