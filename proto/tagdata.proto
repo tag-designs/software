@@ -302,6 +302,7 @@ message CompassTagLog {
   float voltage = 2;
   float temperature = 3;
   repeated Compass data = 4;
+  int32 sample_period_s = 5; // seconds between entries in data[]
 }
 
 

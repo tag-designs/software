@@ -228,7 +228,7 @@ int restoreLog(void)
 
   pState->pages = countInternalBlocks();
   // we really should read the external page a search it
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES*4;
+  pState->external_blocks = pState->pages * DATALOG_SAMPLES * SAMPLES_PER_BLOCK;
   if (pState->pages > 0) {
     t_DataHeader last_header;
     if (readDataHeader(pState->pages - 1, &last_header))
@@ -337,12 +337,13 @@ int data_logAck(int index, Ack *ack)
     data->epoch = header.epoch;
     data->voltage = header.vdd100 * 0.01f;
     data->temperature = header.temp10 * 0.1f;
+    data->sample_period_s = COMPASS_SAMPLE_PERIOD_S;
     data->data_count = 0;
 
     // For each databuf[i]
     //.   check if activity != 0xffff (erased), finished if erased
-    //.   for i = 1..4
-    //.       write activity. [extract bits and divide by 16.0f]
+    //.   for i = 1..SAMPLES_PER_BLOCK
+    //.       write activity. [extract bits and convert to percent of tick]
     //.       write a[x,y,z], m[x,y,z]. -- convert to float with appropriate constants
     //.       increment data_count;
 
@@ -351,10 +352,12 @@ int data_logAck(int index, Ack *ack)
       uint16_t activity = databuf.data[i].activity;
       // check for erased activity
       if (activity == 0xffff) continue;
-      for (int j = 0; j < 4; j++){
+      for (int j = 0; j < SAMPLES_PER_BLOCK; j++){
         int cnt = data->data_count;
-        // extract activity bits and convert to percentage
-        data->data[cnt].activity = ((activity >> (j*4)) & 0xf) * 100.0f/16.0f;
+        // extract this sample's activity field and convert to percent of tick
+        data->data[cnt].activity =
+            ((activity >> (j * ACTIVITY_BITS_PER_SAMPLE)) & ((1 << ACTIVITY_BITS_PER_SAMPLE) - 1)) *
+            100.0f / COMPASS_SAMPLE_PERIOD_S;
         // get accelerometer data 
         data->data[cnt].ax = databuf.data[i].sensors[j].ax * 0.976f;
         data->data[cnt].ay = databuf.data[i].sensors[j].ay * 0.976f;

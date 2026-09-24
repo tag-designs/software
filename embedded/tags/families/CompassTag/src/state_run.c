@@ -19,14 +19,11 @@
 #include "sensors.h"
 
 
-// activity data 4 bits/15 seconds
-// 16 bits/minute
+// activity data: ACTIVITY_BITS_PER_SAMPLE bits/sample, SAMPLES_PER_BLOCK
+// samples/activity word (see datalog.h)
 
-static const uint32_t sample_period = 15;
-//static const uint32_t chunk_period = 15;
-//static const uint32_t chunk_number = 4;
-//static const uint32_t chunk_bits = 4;
-static const uint32_t max_cycles = DATALOG_SAMPLES * 4;
+static const uint32_t sample_period = COMPASS_SAMPLE_PERIOD_S;
+static const uint32_t max_cycles = DATALOG_SAMPLES * SAMPLES_PER_BLOCK;
 
 /**
  * @brief Handle the CompassTag data-acquisition state.
@@ -125,11 +122,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     for (int i = lastactstart; i < timestamp; i++)
     {
-      // figure out which chunk needs to be update
+      // figure out which sample's field needs to be updated
       // use cycle count to determine
 
-      int index = (cycle_count % 4) ;
-      activity += (((uint64_t)1) << index);
+      int index = (cycle_count % SAMPLES_PER_BLOCK) ;
+      activity += (((uint64_t)1) << (ACTIVITY_BITS_PER_SAMPLE * index));
     }
 
     // If wakeup timer awoke us
@@ -170,7 +167,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       // possibly write activty data data
 
-      if ((cycle_count % 4) == 0)
+      if ((cycle_count % SAMPLES_PER_BLOCK) == 0)
       {
         uint16_t act = activity;
 

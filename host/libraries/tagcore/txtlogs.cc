@@ -417,7 +417,7 @@ static int dumpTagLog(std::ostream &out, const CompassTagLog &log)
 
   // loop over the data
   for (auto const &entry : log.data()) {
-    timestamp += 15;
+    timestamp += log.sample_period_s();
     out << timestamp << ",";
     out << "ACTIVITY," << entry.activity() << std::endl;
     out << timestamp << ",";

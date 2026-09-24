@@ -2,12 +2,12 @@
 
 namespace tagcore::sqlite_log {
 
-// CompassTag packets contain one header timestamp followed by 15 second
-// activity and compass samples.
+// CompassTag packets contain one header timestamp followed by activity and
+// compass samples, log.sample_period_s() apart.
 //
-// The first stored sample is 15 seconds after log.epoch(). This mirrors the
-// embedded log page format, where the header timestamp marks the beginning of
-// the page interval rather than the first data row.
+// The first stored sample is log.sample_period_s() after log.epoch(). This
+// mirrors the embedded log page format, where the header timestamp marks the
+// beginning of the page interval rather than the first data row.
 
 int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log)
 {
@@ -46,7 +46,7 @@ int dumpCompassTagLog(WriterContext &ctx, const CompassTagLog &log)
     }
 
     for (auto const &entry : log.data()) {
-        timestamp += 15;
+        timestamp += log.sample_period_s();
 
         if (!activity_insert.bindInt64(1, timestamp)
             || !activity_insert.bindDouble(2, entry.activity())
