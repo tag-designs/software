@@ -44,6 +44,9 @@ TagMonitor();
  bool ReadBitTagLogFromFlash(Ack &ack, int index);
  void ResetMonitorStats();
  TagMonitorStats GetMonitorStats() const;
+ // Temporary diagnostic: read one word of live tag memory/peripheral space
+ // without resetting the tag. See tag-peek.cc.
+ bool ReadMemWord(uint32_t addr, uint32_t *value);
 
 private:
 
@@ -53,7 +56,6 @@ private:
   bool AttachL4();
   bool AttachU3();
   bool CallU3(uint8_t operation, int32_t operand, uint32_t *result);
-  bool ReadMemWord(uint32_t addr, uint32_t *value);
   bool WriteMemWord(uint32_t addr, uint32_t value);
   bool ReadMonitorShared(monitor_shared_t &shared);
   bool WriteMonitorSharedWord(size_t offset, uint32_t value);

@@ -255,6 +255,12 @@ bool Tag::Voltage(float &voltage)
   return monitor.Voltage(voltage);
 }
 
+bool Tag::ReadMemWord(uint32_t addr, uint32_t *value)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.ReadMemWord(addr, value);
+}
+
 /*
  *   The following are for handling various repeated data responses
  */

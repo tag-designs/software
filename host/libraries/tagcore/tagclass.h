@@ -45,6 +45,9 @@ public:
   bool CountBitTagLogHeaders(int &count);
   bool GetBitTagLogFromFlash(Ack &data_log, int index);
 
+  // Temporary diagnostic: read one word of live tag memory/peripheral space
+  // without resetting the tag. See tag-peek.cc.
+  bool ReadMemWord(uint32_t addr, uint32_t *value);
 
   // Tag control
 
