@@ -67,6 +67,7 @@ directory that owns the code; the developer portal stages those files under
 - [UIUCTag Board Integration Plan](reference/embedded/tags/families/BitPresTag/design/uiuctag-board-integration.md)
 - [UIUCTag Data Collection Integration Plan](reference/embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md)
 - [UIUCTag Test Strategy](reference/embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md)
+- [UIUCTag Bring-Up Report](reference/embedded/tags/families/BitPresTag/design/uiuctag-bringup-report.md)
 - [BitTagNG](reference/embedded/tags/families/BitTagNG/README.md)
 - [BitTagNG Wakeup Note](reference/embedded/tags/families/BitTagNG/wakeup_note.md)
 - [CompassTag](reference/embedded/tags/families/CompassTag/README.md)

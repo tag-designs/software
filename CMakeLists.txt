@@ -101,6 +101,7 @@ set(
   "embedded/tags/families/BitPresTag/design/uiuctag-board-integration.md"
   "embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md"
   "embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md"
+  "embedded/tags/families/BitPresTag/design/uiuctag-bringup-report.md"
   "embedded/tags/families/BitTagNG/README.md"
   "embedded/tags/families/BitTagNG/wakeup_note.md"
   "embedded/tags/families/CompassTag/README.md"

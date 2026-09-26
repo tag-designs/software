@@ -59,3 +59,8 @@ the USART-style LPS pressure sensor bus.
 - [BMP581/BMP585 forced-mode pressure plan](design/bmp581-forced-mode.md):
   driver and BitPresTag-family integration plan for interrupt-driven forced
   pressure sampling on a BMP581-compatible BMP585 board.
+- [UIUCTag bring-up report](design/uiuctag-bringup-report.md): six bugs found
+  and fixed getting a fresh UIUCTag to real logged data — LPS self-test,
+  ADXL367 wake configuration, an AT25XE write-cycle timing race, a same-thread
+  SPI1 bus deadlock, external sample-count tracking, and an ADXL367 loop-state
+  reset gap — plus an extended power measurement.
