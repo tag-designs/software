@@ -113,6 +113,37 @@ wakeup-cost breakdown that reconciles with the extended average to within
 | Activity, ~5 s real shake | isolated to one minute bucket (~11 raw seconds out of 60, i.e. ~18% — the decoded field is a percentage, not a raw count), buckets before and after the shake stayed at `0` |
 | Wake line after fix #6 | correctly reads inactive from boot, no shake needed to "unstick" it |
 
+### ADXL367 wake-mode sample-rate timing
+
+Config round-trip is verified: the activity threshold and inactivity sample
+count set in qtmonitor reach `TIME_INACT`/`THRESH_ACT` via the same
+`UINT16SWAP` + `_H`-address register-write pattern BitTagNG uses for its own
+field-proven thresholds (see `config.c`), with no scaling or truncation bugs
+in the path.
+
+However, the *measured* inactivity-declare floor (time from real stillness to
+the AWAKE line deasserting, read directly off the Joulescope trace) comes in
+shorter than the datasheet-nominal `N x 160 ms` prediction for
+`WAKEUP_RATE=01` ("6 samples per second") at every configured sample count
+tried:
+
+| samples (N) | nominal (N x 160 ms) | observed |
+| --- | --- | --- |
+| 3 | 480 ms | ~300 ms |
+| 6 | 960 ms | ~600 ms |
+| 12 | 1920 ms | ~1300-1400 ms (two trials, same setting) |
+
+The two trials at N=12 differ by ~100 ms with nothing else changed, so a
+meaningful part of the shortfall is measurement noise from reading the
+current trace by eye rather than a single clean deterministic ratio — the
+data don't fit one fixed multiplicative or additive correction cleanly across
+all three sample counts. The register write is verbatim-identical to
+BitTagNG's own (field-proven) configuration, so this is not a UIUCTag-
+specific bug; it reads as the true wake-mode sample rate running somewhat
+faster than the 160 ms/sample datasheet nominal (roughly 100-130 ms/sample
+fits the observed points within the noise band). Not chased further absent a
+cursor-timestamped (rather than eyeballed) measurement — see "Not yet run".
+
 ### Extended energy measurement
 
 - **conditions**: `tag-reset --set-rtc`, `tag-start --start-now`, then
@@ -217,3 +248,9 @@ not a regression.
 - Only one block's worth of samples (2 samples, 1 checkpoint) has been
   downloaded and inspected; a longer run spanning multiple blocks (testing
   block-boundary rollover, not just the first block) has not been done.
+- A precise (cursor-timestamped, not eyeballed) measurement of the ADXL367
+  wake-mode sample rate has not been done -- see "ADXL367 wake-mode
+  sample-rate timing" above. The observed inactivity-declare floor is
+  consistently shorter than the datasheet-nominal 160 ms/sample, but the
+  eyeballed readings aren't precise enough to characterize the true rate
+  beyond "somewhat under nominal."
