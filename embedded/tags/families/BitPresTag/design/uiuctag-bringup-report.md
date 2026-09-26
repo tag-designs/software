@@ -156,6 +156,8 @@ cursor-timestamped (rather than eyeballed) measurement — see "Not yet run".
   | --- | --- |
   | Isolated idle baseline, 5 s window, pre-measurement spot check | **0.4247 µA** |
   | 25-minute average, spanning ~5 wake+write cycles | **0.7891 µA** |
+  | Independent confirmation run, undisturbed (no shaking), 32 minutes | **0.76 µA** |
+  | Same confirmation run, continued to 3 h 38 min (dozens of write cycles) | **0.78 µA** |
   | Supply | 2.4853 V, steady |
 
 - **wakeup cost breakdown** (operator-captured, per-event, isolated from idle):
@@ -175,6 +177,15 @@ cursor-timestamped (rather than eyeballed) measurement — see "Not yet run".
   run" gap noted below for the write-event cost; the idle-baseline and
   activity-transition figures are consistent with, though not a full
   substitute for, a longer multi-block run exercising more transitions.
+
+- **independent confirmation**: a separate, longer undisturbed run (no
+  shaking) landed at 0.76 µA after 32 minutes and 0.78 µA after 3 h 38 min —
+  within ~1-4% of the original 25-minute figure, with the longer duration
+  averaging over dozens of write cycles rather than ~5, so any quantization
+  from exactly how many 5-minute writes fall in a given window is largely
+  averaged out. This corroborates 0.75-0.79 µA as the tag's genuine
+  undisturbed steady-state average, not an artifact of the first run's short
+  window.
 
 - **notes**: the 25-minute average necessarily mixes the idle baseline with
   the periodic cost of the once-a-minute wake/activity check and the

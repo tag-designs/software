@@ -157,6 +157,15 @@ void readConfig(Config *config)
    * at the ADXL367 wake-mode rate, not seconds.
    */
   config->adxl362.inactive_sec = sconfig.adxl_inactive_samples;
+  /*
+   * UIUCTag is wired to an ADXL367, not the family's default ADXL362 (see
+   * sensors.c). This field defaults to AdxlType_362 (the proto3 zero value)
+   * when left unset, which is what BitPresTag's original config.c did --
+   * silently misreporting the sensor to every host tool that reads the
+   * stored config back (qtmonitor, log decoders, etc.). BitTagNG's config.c
+   * sets this explicitly for the same reason; do the same here.
+   */
+  config->adxl362.accel_type = Adxl362_AdxlType_367;
 
   config->has_active_interval = true;
   config->active_interval.start_epoch = sconfig.start;
