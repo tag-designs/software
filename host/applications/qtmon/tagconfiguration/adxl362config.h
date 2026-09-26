@@ -55,7 +55,13 @@ private:
     QLabel inactive_label = QLabel("Inactivity");
 
     bool isAdxl375 = false;
-    bool isBitTagNG = false;
+    /**
+     * True for tags that share BitTagNG's ADXL367 wake-mode configuration
+     * (raw-milligram activity threshold, inactivity as a sample count at the
+     * ADXL367's 6.25 Hz wake rate): BitTagNG itself, and UIUCTag, which
+     * ported that configuration verbatim -- see UIUCTag's own config.c.
+     */
+    bool usesAdxl367WakeConfig = false;
     bool isBitTagLe = false;
     bool usesWakeSampleConfig = false;
     ConfigFieldVisibility visibility_;

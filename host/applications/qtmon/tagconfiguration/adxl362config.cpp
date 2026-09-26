@@ -203,7 +203,8 @@ bool Adxl362Config::SetConfig(const Config &config,
   Adxl362 adxl(config.adxl362());
 
   isAdxl375 = adxl.accel_type() == Adxl362_AdxlType_AdxlType_367;
-  isBitTagNG = config.tag_type() == TagType::BITTAGNG;
+  usesAdxl367WakeConfig = config.tag_type() == TagType::BITTAGNG ||
+                         config.tag_type() == TagType::UIUCTAG;
   isBitTagLe = config.tag_type() == TagType::BITTAG_LE;
   usesWakeSampleConfig = isBitTagLe || config.tag_type() == TagType::BITPRESTAG;
 
@@ -239,7 +240,7 @@ bool Adxl362Config::SetConfig(const Config &config,
   if (!visibility_.adxl362_freq)
     on_adxlfreq_clicked(Adxl362_Odr_S12_5);
 
-  if (isBitTagNG)
+  if (usesAdxl367WakeConfig)
   {
     configbox_->setTitle("Activity Wakeup");
     act_thresh_label.setText("Wakeup Threshold");
@@ -252,7 +253,11 @@ bool Adxl362Config::SetConfig(const Config &config,
     inactive_->setDecimals(0);
     inactive_->setSuffix(" samples");
     act_thresh_->setToolTip("ADXL367 wake-up threshold in g");
-    inactive_->setToolTip("Samples below inactivity threshold at 6 Hz");
+    inactive_->setToolTip(
+        "Samples below the inactivity threshold before the ADXL367 declares "
+        "inactivity. Counted at its 6.25 Hz wake rate, so one sample is "
+        "~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- "
+        "not seconds directly.");
   }
   else if (usesWakeSampleConfig)
   {

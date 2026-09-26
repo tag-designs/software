@@ -16,7 +16,6 @@
  ],
  "adxl362": {
   "act_thresh_g": 0.5,
-  "inact_thresh_g": 0.35,
   "inactive_sec": 3
  }
 }
