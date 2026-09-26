@@ -176,13 +176,29 @@ static unsigned short adxl367PackHighFirst16(uint16_t value)
   return (unsigned short)(((value & 0x00ffU) << 8) | (value >> 8));
 }
 
-static void adxl367SetLeftAligned14Device(const TagAdxl367Device *device,
-                                          uint16_t value,
-                                          unsigned char high_register)
+/**
+ * @brief Write a THRESH_ACT/THRESH_INACT-style register pair.
+ *
+ * @details Per the ADXL367 data sheet (Rev. B, Register Details for
+ *          THRESH_ACT_H/THRESH_ACT_L, THRESH_INACT_H/THRESH_INACT_L), the
+ *          threshold is a 13-bit unsigned value: the "_H" register (the
+ *          lower address of the pair) holds bits [12:6] in its own bits
+ *          [6:0] (bit 7 reserved), and the "_L" register holds bits [5:0] in
+ *          its own bits [7:2] (bits [1:0] reserved). That is exactly a plain
+ *          13-bit value shifted left 2 bits, split at the byte boundary and
+ *          byte-swapped so the high byte lands at the lower ("_H") address --
+ *          the same high-byte-at-lower-address convention the XDATA/TEMP data
+ *          registers use, not the 4-bit range/reserved shift a previous
+ *          version of this function assumed by analogy with BitTagNG's
+ *          driver. BitTagNG's shift amount does not match the data sheet.
+ */
+static void adxl367SetThresholdDevice(const TagAdxl367Device *device,
+                                      uint16_t value,
+                                      unsigned char high_register)
 {
-  uint16_t left_aligned = (uint16_t)((value & 0x3fffU) << 2);
+  uint16_t shifted = (uint16_t)((value & 0x1fffU) << 2);
   ADXL367_SetRegisterValueDevice(device,
-                                 adxl367PackHighFirst16(left_aligned),
+                                 adxl367PackHighFirst16(shifted),
                                  high_register,
                                  2);
 }
@@ -379,7 +395,7 @@ void ADXL367_SetupActivityDetectionDevice(const TagAdxl367Device *device,
 {
   unsigned char act_inact_ctl = 0;
 
-  adxl367SetLeftAligned14Device(device, threshold, ADXL367_REG_THRESH_ACT_H);
+  adxl367SetThresholdDevice(device, threshold, ADXL367_REG_THRESH_ACT_H);
   ADXL367_SetRegisterValueDevice(device, time, ADXL367_REG_TIME_ACT, 1);
 
   ADXL367_GetRegisterValueDevice(device, &act_inact_ctl,
@@ -398,7 +414,7 @@ void ADXL367_SetupInactivityDetectionDevice(const TagAdxl367Device *device,
 {
   unsigned char act_inact_ctl = 0;
 
-  adxl367SetLeftAligned14Device(device, threshold, ADXL367_REG_THRESH_INACT_H);
+  adxl367SetThresholdDevice(device, threshold, ADXL367_REG_THRESH_INACT_H);
   adxl367SetHighFirst16Device(device, time, ADXL367_REG_TIME_INACT_H);
 
   ADXL367_GetRegisterValueDevice(device, &act_inact_ctl,

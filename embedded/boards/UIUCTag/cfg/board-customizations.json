@@ -47,19 +47,18 @@
       "pin2": {
         "ID": "ACCEL_MOSI",
         "Type": "PushPull",
-        "Level": "High",
+        "Level": "Low",
         "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "7",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin3": {
         "ID": "ACCEL_MISO",
         "Type": "PushPull",
-        "Level": "High",
+        "Level": "Low",
         "Speed": "High",
         "Resistor": "Floating",
         "Mode": "Input",
@@ -72,13 +71,12 @@
         "ID": "ACCEL_SCK",
         "Type": "PushPull",
         "Level": "High",
-        "Speed": "High",
+        "Speed": "Low",
         "Resistor": "Floating",
         "Mode": "Output",
         "Alternate": "7",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled",
-        "Standby": "PULLDOWN"
+        "PinLock": "Disabled"
       },
       "pin5": {
         "ID": "LPS_SCK",

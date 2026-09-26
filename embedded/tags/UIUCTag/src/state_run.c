@@ -220,9 +220,12 @@ static enum LOGERR flush_activity(const t_DataHeader *header,
  * @param[in] block External block index to record.
  * @return Log write status from the checkpoint write.
  *
- * @post On success pState->pages counts the new checkpoint and
- *       pState->external_blocks matches, so monitor status reports a valid
- *       download bound.
+ * @post On success pState->pages counts the new checkpoint.
+ *       pState->external_blocks is not touched here -- it tracks the
+ *       running external sample count (set at each successful sample
+ *       write, in Running()), not the block count, so a caller watching it
+ *       for write progress sees it advance every sample rather than only
+ *       once per block.
  */
 static enum LOGERR open_block(int32_t epoch, uint32_t block)
 {
@@ -234,7 +237,6 @@ static enum LOGERR open_block(int32_t epoch, uint32_t block)
   header.extern_log_block = (uint16_t)block;
 
   err = writeDataHeader(&header);
-  pState->external_blocks = pState->pages;
   return err;
 }
 
@@ -378,6 +380,20 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       slot = new_block ? 0U
                        : (uint32_t)slot_of(header.epoch, timestamp);
 
+      /*
+       * Sample the pressure sensor before waking external flash. Both
+       * devices share the SPI1 bus mutex (TAG_SPI1_DEVICE_DEFAULTS sets
+       * .mutex = &SPI1mutex for each), and HAL_USE_SPI is FALSE for this
+       * family, so bus acquisition is a plain chBSemWait() on that one
+       * binary semaphore -- not reentrant. dataLogWriteBegin() holds it for
+       * the whole write session; calling samplePressure() while it was held
+       * self-deadlocked this thread permanently on BMP581's own bus-acquire
+       * (confirmed: samplePressure() was entered but never returned, no
+       * write ever completed, and the tag never reached WFI again). Sample
+       * first, while flash is still asleep and the bus is free.
+       */
+      samplePressure(&pressure_hpa, &temperature_c);
+
       dataLogWriteBegin();
 
       /*
@@ -393,13 +409,22 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       if (err == LOGWRITE_OK)
       {
-        samplePressure(&pressure_hpa, &temperature_c);
-
         err = dataLogWriteField(sample_index_of(block, slot),
                                 DATALOG_FIELD_PRESSURE, &pressure_hpa);
         if (err == LOGWRITE_OK)
           err = dataLogWriteField(sample_index_of(block, slot),
                                   DATALOG_FIELD_TEMPERATURE, &temperature_c);
+        if (err == LOGWRITE_OK)
+        {
+          /*
+           * Report the running external sample count, not the block count:
+           * open_block() only advances once per block (many samples each),
+           * so a caller watching external_data_count for write progress saw
+           * it freeze at the block count between block boundaries even
+           * though every sample write was succeeding.
+           */
+          pState->external_blocks = sample_index_of(block, slot) + 1U;
+        }
       }
 
       dataLogWriteEnd();
@@ -448,6 +473,19 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
     }
+
+    /*
+     * Refresh the level used for this window's close after flash writes, the
+     * same way BitTagNG's checkActivitySensorAwake() call before its own
+     * final lastactstart update does: the ADXL awake line can change while a
+     * pressure sample and header/page write are in progress (easily tens of
+     * ms, plus the deliberate write-rest delay), and using the value read at
+     * the top of this wake -- before any of that -- systematically stretched
+     * every activity-triggered wake's "active" window all the way to this
+     * point regardless of whether the sensor had already gone inactive,
+     * pegging the packed activity buckets at their maximum.
+     */
+    isActive = palReadLine(LINE_WKUP1);
 
     pState->lastactstart = isActive ? timestamp : INT_MAX;
     pState->activity = activity;

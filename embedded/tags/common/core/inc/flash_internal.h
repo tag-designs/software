@@ -149,6 +149,22 @@ void FLASH_Flush_Data_Cache(void);
 void FLASH_ClearEccErrors(void);
 
 /**
+ * @brief Clear all sticky flash status and ECC error flags.
+ *
+ * @details Program/erase helpers already clear these before starting an
+ *          operation, but leave them latched when the operation itself
+ *          fails -- the failing status is exactly what a caller needs to see
+ *          in its own return value. A caller that reports and discards a
+ *          program/erase error (e.g. a checkpoint write returning
+ *          LOGWRITE_ERROR) must call this afterward: a latched flash status
+ *          error can otherwise block the MCU from reaching its deepest sleep
+ *          mode on the next attempt, at a cost of hundreds of uA. Clear at
+ *          the call site that observed the failure, not from the power-down
+ *          path, so the fix stays next to the operation that can fail.
+ */
+void FLASH_ClearAllErrors(void);
+
+/**
  * @brief Read one flash double-word while converting ECC NMIs to errors.
  *
  * @param[in] Address Aligned flash source address.

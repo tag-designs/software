@@ -373,19 +373,24 @@ static int16_t bmp581_centi_c(float temperature_c)
 
 bool bmp581_check_who_am_i_device(const TagPressureDevice *device)
 {
+  struct bmp5_dev dev;
+  int8_t rc;
   uint8_t raw_chip_id = 0U;
+  uint8_t status_last = 0U;
   bool raw_read_ok = false;
 
   tagPressureDeviceBegin(device);
-  raw_read_ok = bmp581_select_spi(device, &raw_chip_id);
+  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
+                          &status_last);
   tagPressureDeviceEnd(device);
 
-  if (!raw_read_ok || !bmp581_chip_id_valid(raw_chip_id)) {
-    debug_log_printf("BMP581: probe raw_ok=%u raw_id=0x%x\r\n",
-                     raw_read_ok ? 1U : 0U, raw_chip_id);
+  if (rc != BMP5_OK) {
+    debug_log_printf("BMP581: probe raw_ok=%u raw_id=0x%x status=0x%x"
+                     " rc=%d\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id, status_last, rc);
   }
 
-  return raw_read_ok && bmp581_chip_id_valid(raw_chip_id);
+  return rc == BMP5_OK;
 }
 
 int bmp581_set_idle_device(const TagPressureDevice *device)

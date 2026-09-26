@@ -283,10 +283,11 @@ int restoreLog(void)
 {
   pState->pages = countInternalBlocks();
   /*
-   * One checkpoint always describes exactly one external block, so the block
-   * count and the checkpoint count are the same number. Reporting blocks here
-   * also keeps Status.external_data_count a valid upper bound for the host
-   * download loop, whose index space is the checkpoint index space.
+   * pState->external_blocks tracks the running external sample count (set
+   * per sample write in Running()), which recovery has no record of here --
+   * only the checkpoint count is known. Seed it with that as a conservative
+   * lower bound (still a valid, if stale, download bound for the host); it
+   * corrects itself at the very next successful sample write after resume.
    */
   pState->external_blocks = pState->pages;
   return 0;
@@ -365,8 +366,17 @@ enum LOGERR writeDataHeader(t_DataHeader *head)
     return LOGWRITE_FULL;
   // See if there is still energy to continue
 
-  if (flasherr) 
+  if (flasherr) {
+    /*
+     * FLASH_Program_Array()/FLASH_Program_DoubleWord() clear status errors
+     * before programming, not after a failure -- the failing status is what
+     * flasherr just reported. Left latched, it can block the MCU from
+     * reaching its deepest sleep mode on the very next attempt (see
+     * FLASH_ClearAllErrors()'s doc comment).
+     */
+    FLASH_ClearAllErrors();
     return LOGWRITE_ERROR;
+  }
   if (head->vdd100 < 200)
     return LOGWRITE_BAT;
   else

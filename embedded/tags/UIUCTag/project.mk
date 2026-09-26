@@ -9,7 +9,8 @@ TAG_MODULES += \
        rtc_rv3028 \
        flash_at25xe \
        sensor_pressure_bmp581 \
-       sensor_accel_adxl367
+       sensor_accel_adxl367 \
+       debug_log
 
 # Tag-local application sources. Shared BitPresTag family sources come from
 # ../families/BitPresTag unless this directory provides a same-named file;

@@ -17,6 +17,8 @@
 #include "storage_flash.h"
 #include "test_support.h"
 
+#include <string.h>
+
 #if defined(TAG_FLASH_AT25XE)
 #include "at25xe.h"
 #define EXTERNAL_FLASH_OPS (&at25xeStorageOps)
@@ -96,11 +98,78 @@ const TagPressureDevice uiucTagPressureDevice = {
     .registers = &bmp585_registers,
 };
 
+/**
+ * @brief Verify external flash identity AND that a real write actually
+ *        persists, not just chip identity.
+ *
+ * @details Overrides the shared (identity-only) tag_test_external_flash():
+ *          bring-up found zero log checkpoints ever appearing despite
+ *          RUN_EXT_FLASH (identity check only) passing. One documented way
+ *          for that to happen with no reported error: if a block is in a
+ *          protected state, Program/Erase commands are silently not
+ *          executed (data sheet, both AT25XE321D and AT25FF321A) -- the
+ *          device just returns to idle, the busy bit never asserts, and a
+ *          caller polling for completion sees an immediate, spurious
+ *          "success". Test the actual last sector directly: erase it, write
+ *          a known pattern, read it back, and compare -- rather than
+ *          inferring from identity or datasheet reading alone whether
+ *          writes really persist on this board.
+ *
+ * @param[in] context Optional TagStorageDevice descriptor; NULL selects
+ *                     tagExternalFlash.
+ * @return ALL_PASSED when identity checks out and the written pattern reads
+ *         back unchanged; AT25XE_FAILED otherwise.
+ */
+static TestResult uiucTagTestExternalFlashWriteVerify(const void *context)
+{
+  const TagStorageDevice *device = context ? context : &tagExternalFlash;
+  static const uint8_t pattern[32] = {
+      0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+      0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01,
+      0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0xFE,
+      0xFD, 0xFB, 0xF7, 0xEF, 0xDF, 0xBF, 0x7F, 0xA5,
+  };
+  uint8_t readback[sizeof(pattern)];
+  uint32_t address;
+  int id;
+  int count;
+  bool ok;
+
+  tagStorageWake(device);
+
+  id = tagStorageCheckID(device);
+  ok = id > -1;
+
+  address = (uint32_t)(tagStorageSectorCount(device) - 1) *
+            (uint32_t)tagStorageSectorSize(device);
+
+  if (ok) {
+    ok = tagStorageSectorErase(device, address);
+  }
+
+  if (ok) {
+    count = (int)sizeof(pattern);
+    ok = tagStorageWrite(device, address, (uint8_t *)pattern, &count) &&
+         (count == (int)sizeof(pattern));
+  }
+
+  if (ok) {
+    tagStorageRead(device, address, readback, (int)sizeof(readback));
+    ok = memcmp(readback, pattern, sizeof(pattern)) == 0;
+  }
+
+  /* Leave the test sector erased regardless of outcome. */
+  tagStorageSectorErase(device, address);
+
+  tagStorageSleep(device);
+  return ok ? ALL_PASSED : AT25XE_FAILED;
+}
+
 static const TagTestCase tag_tests[] =
 {
   {RUN_ADXL362, tag_test_adxl367, &uiucTagAccelDevice},  // Uses ADXL367 test
   {RUN_RTC, tag_test_rtc, NULL},
-  {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
+  {RUN_EXT_FLASH, uiucTagTestExternalFlashWriteVerify, TAG_EXTERNAL_FLASH},
   {RUN_LPS, tag_test_bmp581, &uiucTagPressureDevice},   // Uses BMP581 test
 };
 

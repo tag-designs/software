@@ -26,12 +26,13 @@
  *
  * @details Places the ADXL367 in wake-mode operation with the stored
  *          activity/inactivity thresholds from @c sconfig, maps the AWAKE
- *          event to the INT2 line, and leaves the device measuring. The
- *          accelerometer then drives the tag's activity wake source for the
- *          whole RUNNING state.
+ *          event to the INT1 line (UIUCTag wires INT1, not INT2, to the MCU
+ *          wakeup pin), and leaves the device measuring. The accelerometer
+ *          then drives the tag's activity wake source for the whole RUNNING
+ *          state.
  *
  * @pre     Stored configuration has been loaded into @c sconfig.
- * @post    The ADXL367 is measuring in wake mode and its INT2 line reports
+ * @post    The ADXL367 is measuring in wake mode and its INT1 line reports
  *          AWAKE transitions; the bus session is closed.
  *
  * @note    The underlying register writes report no status, so there is no

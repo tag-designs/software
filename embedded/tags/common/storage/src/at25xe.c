@@ -16,7 +16,23 @@
 #define INTER_WRITE_DELAY 2
 #define PAGE_PROG_POLL_INTERVAL_US 100
 #define PAGE_PROG_POLL_LIMIT 120
+/*
+ * Write Status Register's own write cycle (tW) was measured taking up to
+ * ~11.4 ms (114 iterations at PAGE_PROG_POLL_INTERVAL_US), right at the edge
+ * of the page-program budget above -- occasionally over it, at which point
+ * at25xeUnprotect() timed out and returned with WIP still genuinely set on
+ * the part. Give it its own, more generous budget.
+ */
+#define WRSR_POLL_INTERVAL_US 200
+#define WRSR_POLL_LIMIT 250
 #define SECTOR_ERASE_POLL_INTERVAL 150
+/*
+ * The original 5-iteration budget (750 ms) left a residual ~4% failure rate
+ * under repeated testing -- occasional sector erases genuinely take longer.
+ * Wake and erase are rare events (once per checkpoint), so a larger budget
+ * costs nothing in the common case and avoids silently dropping a write.
+ */
+#define SECTOR_ERASE_POLL_LIMIT 20
 
 #define AT25XE_CMD_READ            0x03
 #define AT25XE_CMD_PAGE_PROG       0x02
@@ -24,6 +40,7 @@
 #define AT25XE_CMD_READ_ID         0x9F
 #define AT25XE_CMD_WRITE_ENABLE    0x06
 #define AT25XE_CMD_READ_STATUS_REG 0x05
+#define AT25XE_CMD_WRITE_STATUS_REG_1 0x01
 #define AT25XE_CMD_DEEP_POWER_DOWN 0xB9
 #define AT25XE_CMD_ULTRA_DEEP_POWER_DOWN 0x79
 #define AT25XE_CMD_POWER_UP        0xAB
@@ -59,6 +76,9 @@
  * Chip-specific operations behind the generic TagStorageOps table.
  * @{
  */
+static bool at25xeUnprotect(const TagStorageDevice *dev);
+static uint8_t at25xeStatus(const TagStorageDevice *dev);
+
 /**
  * @brief Wake the AT25XE and begin its storage bus session.
  *
@@ -71,6 +91,15 @@ static void at25xeWake(const TagStorageDevice *dev)
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_POWER_UP);
     stopMilliseconds(2);//chThdSleepMicroseconds(250);
     tagPhaseProbeMark(7);   /* flash awake after power-up delay */
+
+    /*
+     * Ensure the array is writable every wake. See at25xeUnprotect()'s doc
+     * comment: a protected array silently no-ops Program/Erase commands
+     * (no error, busy bit never asserts), and protection can be
+     * non-volatile, so this is not a one-time fix -- verify it on every
+     * wake rather than assuming a prior wake's write already cleared it.
+     */
+    at25xeUnprotect(dev);
 }
 
 /**
@@ -97,6 +126,58 @@ static uint8_t at25xeStatus(const TagStorageDevice *dev)
     uint8_t buf;
     tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), AT25XE_CMD_READ_STATUS_REG, &buf, 1);
     return buf;
+}
+
+/**
+ * @brief Clear AT25XE Status Register 1 so the array is fully writable.
+ *
+ * @details The Block Protect field (BP[2:0], bits 4:2 of Status Register 1)
+ *          can protect part or all of the array from Program and Erase
+ *          commands; when a block is protected, those commands are silently
+ *          not executed -- the device just returns to idle with no error and
+ *          the busy bit never asserts, so a caller polling for completion
+ *          sees an immediate, spurious "success". Status Register 1 can be
+ *          held in non-volatile storage, so a protected state can persist
+ *          across power cycles and MCU reflashes. The factory default is
+ *          BP[2:0]=000 (unprotected), but nothing in this driver previously
+ *          verified or restored that, so any accidental protection would go
+ *          unnoticed indefinitely. Writing SR1=0x00 clears BPSIZE/TB/BP[2:0]
+ *          unconditionally; this is a no-op (and harmless) when the array is
+ *          already unprotected.
+ *
+ * @param[in] dev Storage device descriptor.
+ * @return true when the write-enable and write-status-register transactions
+ *         completed and WIP cleared before the write cycle timeout.
+ *
+ * @note    A Write Status Register command asserts WIP for its own write
+ *          cycle (tW), just like Program and Erase. This function used to
+ *          return as soon as the command was clocked out, without waiting
+ *          for that cycle to finish -- since it runs on every wake, the very
+ *          next command (typically a sector erase, moments later) would see
+ *          WIP still set from this write and read it as "flash stuck busy",
+ *          failing immediately via its own early-exit guard. Poll here so
+ *          callers never observe this write's WIP window.
+ */
+static bool at25xeUnprotect(const TagStorageDevice *dev)
+{
+    const TagSpiDevice *spi = tagStorageSpiDevice(dev);
+    uint8_t header[2] = { AT25XE_CMD_WRITE_STATUS_REG_1, 0x00U };
+    bool ok;
+    int i;
+
+    tagStorageSpiCommand(spi, AT25XE_CMD_WRITE_ENABLE);
+    tagSpiSelect(spi);
+    ok = tagStorageSpiWrite(spi, header, sizeof(header));
+    tagSpiDeselect(spi);
+    if (!ok)
+        return false;
+
+    for (i = 0; i < WRSR_POLL_LIMIT; i++) {
+        chThdSleepMicroseconds(WRSR_POLL_INTERVAL_US);
+        if ((at25xeStatus(dev) & AT25XE_FLAGS_SR_WIP) == 0)
+            break;
+    }
+    return i < WRSR_POLL_LIMIT;
 }
 
 /**
@@ -177,14 +258,14 @@ static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
         return false;
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_WRITE_ENABLE);
     tagStorageSpiCommandAddress(tagStorageSpiDevice(dev), AT25XE_CMD_SECTOR_ERASE, address);
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < SECTOR_ERASE_POLL_LIMIT; i++)
     {
         chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
         status = at25xeStatus(dev);
         if (!(status & AT25XE_FLAGS_SR_WIP))
             break;
     }
-    if (i == 5)
+    if (i == SECTOR_ERASE_POLL_LIMIT)
     {
         return false;
     }

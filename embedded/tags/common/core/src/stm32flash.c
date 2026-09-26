@@ -158,7 +158,7 @@ void FLASH_ClearEccErrors(void) {
 #endif
 }
 
-static inline void FLASH_ClearAllErrors(void) {
+void FLASH_ClearAllErrors(void) {
   SET_BIT(FLASH->SR, FLASH_STATUS_ERROR_MASK);
 
   FLASH_ClearEccErrors();
