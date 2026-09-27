@@ -416,15 +416,32 @@ if(BUILD_EMBEDDED)
   if(NANOPB_GENERATOR_EXECUTABLE AND EXISTS "${NANOPB_GENERATOR_EXECUTABLE}")
     # Use the cache value explicitly provided by the user or a previous valid configure.
   else()
-    set(_nanopb_generator_hints)
-    if(EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
-      list(APPEND _nanopb_generator_hints "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
-    endif()
+    # A binary distribution ships the generator in generator-bin, a source tree
+    # in generator. Search only under NANOPB_SRC_ROOT_FOLDER first: falling
+    # straight through to PATH would silently use a generator unrelated to the
+    # tree that was pointed at, which is indistinguishable from it having
+    # worked.
+    unset(_nanopb_generator_executable CACHE)
     find_program(
       _nanopb_generator_executable
       NAMES nanopb_generator nanopb_generator.bat
-      HINTS ${_nanopb_generator_hints}
+      HINTS "${NANOPB_SRC_ROOT_FOLDER}/generator-bin"
+            "${NANOPB_SRC_ROOT_FOLDER}/generator"
+      NO_DEFAULT_PATH
       DOC "Nanopb generator executable")
+    if(NOT _nanopb_generator_executable)
+      find_program(
+        _nanopb_generator_executable
+        NAMES nanopb_generator nanopb_generator.bat
+        DOC "Nanopb generator executable")
+      if(_nanopb_generator_executable)
+        message(WARNING
+          "No nanopb generator under ${NANOPB_SRC_ROOT_FOLDER} (looked in "
+          "generator-bin and generator); using "
+          "${_nanopb_generator_executable} from PATH instead. NANOPB_ROOT is "
+          "not determining which generator this build uses.")
+      endif()
+    endif()
     if(_nanopb_generator_executable)
       set(
         NANOPB_GENERATOR_EXECUTABLE
@@ -466,13 +483,16 @@ if(BUILD_EMBEDDED)
       "against the vendored runtime ${NANOPB_VERSION}.")
   elseif(NOT "${_nanopb_generator_version}" STREQUAL "${NANOPB_VERSION}")
     nanopb_version_problem(
-      "The nanopb generator is version ${_nanopb_generator_version} but the "
-      "vendored runtime is ${NANOPB_VERSION}. Generated .pb.c and .pb.h would "
-      "be built against a runtime they were not generated for. Point "
-      "NANOPB_ROOT or NANOPB_GENERATOR_EXECUTABLE at a ${NANOPB_VERSION} "
-      "distribution, or vendor the runtime matching the generator.")
+      "The nanopb generator at ${NANOPB_GENERATOR_EXECUTABLE} is version "
+      "${_nanopb_generator_version} but the vendored runtime is "
+      "${NANOPB_VERSION}. Generated .pb.c and .pb.h would be built against a "
+      "runtime they were not generated for. Point NANOPB_ROOT or "
+      "NANOPB_GENERATOR_EXECUTABLE at a ${NANOPB_VERSION} distribution, or "
+      "vendor the runtime matching the generator.")
   else()
-    message(STATUS "Nanopb generator: ${_nanopb_generator_version} (matches runtime)")
+    message(STATUS
+      "Nanopb generator: ${_nanopb_generator_version} matches runtime "
+      "(${NANOPB_GENERATOR_EXECUTABLE})")
   endif()
 
   get_filename_component(
