@@ -195,6 +195,18 @@ this repository's history permanently, instead of depending on an upstream
 archive still being downloadable years from now, which is the whole premise of
 archiving over rebuilding.
 
+Concretely that is `pb.h`, `pb_common.{c,h}`, `pb_encode.{c,h}`,
+`pb_decode.{c,h}` and the licence -- about eight files -- taken from the
+source archive, with a README beside them recording the version, the upstream
+commit, the archive it came from and that archive's hash.
+
+A plain vendored copy rather than a submodule, for three reasons: the whole
+nanopb repository is far more than these files; a copy needs no network at
+build time and survives upstream going away, which is the premise of archiving
+over rebuilding; and the copy is diffable, so an upgrade is reviewable rather
+than a SHA change. `git subtree` sits in between and preserves upstream
+history, at a complexity cost this does not need.
+
 *The nanopb generator is a build-time tool*, like `arm-none-eabi-gcc`. It does
 not belong in the repository; it needs to be pinned and verified.
 
@@ -285,9 +297,45 @@ version, and the `PB_PROTO_HEADER_VERSION` guard in generated headers catches
 only a major mismatch, so the configure-time comparison is what covers point
 releases.
 
-**Check availability before pinning a version.** Older nanopb releases are not
-uniformly published for all three platforms, and a pin that cannot be satisfied
-on macOS is worse than no pin at all.
+**Upgrading nanopb is one commit.** The runtime and the generated code must
+move together -- a runtime from one version with `.pb.c` from another is a
+defect, caught only coarsely by `PB_PROTO_HEADER_VERSION`. Vendoring is what
+makes moving them together possible atomically:
+
+1. Bump `NANOPB_VERSION` and the recorded archive hash.
+2. Replace the vendored runtime files from the new source archive.
+3. Regenerate every `.pb.*` with the matching generator.
+4. Commit the three together; CI's freshness check then confirms the committed
+   output is what the new pinned generator produces.
+
+The version banner in each generated header makes step 3 visible in the diff,
+and the whole change is reviewable as a unit. This is worth contrasting with
+today: with nanopb supplied per developer, there is no way to make that change
+atomically at all -- the runtime moves when each person happens to update a
+directory outside the repository, and the generated code moves whenever someone
+next regenerates.
+
+### Two protobuf toolchains, pinned separately
+
+"The protobuf tool" is two different things here, and keeping them distinct
+avoids a false coupling:
+
+| | Pinned by | Produces |
+| --- | --- | --- |
+| Host protobuf / `protoc` | the vcpkg baseline | host `*.pb.{cc,h}`, generated at build time |
+| Embedded `protoc` | `NANOPB_VERSION`, transitively -- it is bundled from `grpc_tools` when the nanopb package is built | nothing directly; it parses `.proto` for the nanopb generator |
+
+The isolation is useful: a vcpkg baseline bump changes host gencode and leaves
+the committed `.pb.*` untouched, and a nanopb bump does the reverse.
+
+**One real coupling crosses that line.** `config-gen` links the host protobuf
+library and uses `google/protobuf/util/json_util.h` to parse
+`default-config.json` against `tag.pb.h`, so `default_config.c` -- which is
+compiled into the image -- depends on the *host* protobuf version. Once that
+output is committed, a vcpkg baseline bump can change it, and nothing but the CI
+freshness check would notice. The host protobuf version therefore belongs in the
+`.inputs.sha256` digest for the proto-c directories and in the build manifest,
+alongside the nanopb versions.
 
 **Record the environment per build.** A `build-manifest.json` written beside
 the image, carrying what the sources do not:
@@ -303,6 +351,7 @@ the image, carrying what the sources do not:
 | `toolchain` | `arm-none-eabi-gcc --version`, binutils, `cmake --version` |
 | `target`, `board_type` | which image this is |
 | `compile_flags_digest` plus the full command lines | the `-D` problem, recorded rather than inferred |
+| `host_protobuf_version` | an input to `default_config.c` via `config-gen` |
 | `project_mk_sha256` | the per-target options file |
 
 The flags entry is the one that earns its place. It is the documented way a test
@@ -330,6 +379,7 @@ escalated according to the build mode.
 | `CHIBIOS_DIR` outside the repo | already warned for | the library is not described at all |
 | Vendored nanopb runtime edited in place | `git status --porcelain` on the vendored path | a local patch compiled into shipped images |
 | Generator version differs from the pin | `--version` against `NANOPB_VERSION` | different generator, different `.pb.*` |
+| Host protobuf version differs from the digest | vcpkg baseline / `protoc --version` | `default_config.c` is compiled in and depends on it |
 | Generated files stale | regenerate and diff | committed sources are not what the inputs produce |
 | Generated files unverified | generators unavailable | staleness unknown, not disproven |
 | Toolchain differs from the recorded expectation | `--version` against a pinned string | a different compiler is a different image |
