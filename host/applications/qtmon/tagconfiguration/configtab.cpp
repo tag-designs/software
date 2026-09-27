@@ -8,7 +8,7 @@
 #include <QGroupBox>
 // #include <QTextEdit>
 // #include <QTime>
-// #include <QTimer>
+#include <QTimer>
 // #include <QtWidgets/QSpacerItem>
 // #include <QtWidgets/QSizePolicy>
 // #include <ctime>
@@ -449,42 +449,78 @@ void ConfigTab::on_startButton_clicked()
   }
 
   Config config;
-  if (GetConfig(config))
-  {
-    qDebug().noquote() << "Starting tag with config:"
-                       << QString::fromStdString(config.DebugString());
-    if (!tag->Start(config))
-    {
-      std::string message = tag->DebugMessage();
-      Status status;
-      if (tag->GetStatus(status))
-      {
-        old_state_ = status.state();
-      }
-      QMessageBox startFailedBox;
-      startFailedBox.setWindowTitle("Error");
-      startFailedBox.setIcon(QMessageBox::Warning);
-      startFailedBox.setText("Start Failed");
-      startFailedBox.setStandardButtons(QMessageBox::Ok);
-      if (!message.empty())
-      {
-        QString info = QString::fromStdString(message);
-        info += "\nLast known state: ";
-        info += QString::fromStdString(TagState_Name(old_state_));
-        startFailedBox.setInformativeText(info);
-        startFailedBox.setDetailedText(QString::fromStdString(message));
-      }
-      else
-      {
-        startFailedBox.setInformativeText(
-            "Last known state: " +
-            QString::fromStdString(TagState_Name(old_state_)));
-      }
-      startFailedBox.exec();
-    }
-  } else {
+  if (!GetConfig(config)) {
     qDebug() << "on_startButton_clicked failed to get config";
+    return;
   }
+
+  qDebug().noquote() << "Starting tag with config:"
+                     << QString::fromStdString(config.DebugString());
+  std::string message;
+  if (!tag->Start(config))
+  {
+    message = tag->DebugMessage();
+  }
+  pollStartResult(message, 0);
+}
+
+namespace {
+constexpr int kStartPollAttempts = 8;
+constexpr int kStartPollIntervalMs = 1000;
+}  // namespace
+
+void ConfigTab::pollStartResult(std::string start_call_message, int attempt)
+{
+  Status status;
+  if (tag->GetStatus(status))
+  {
+    old_state_ = status.state();
+    if (old_state_ == RUNNING || old_state_ == CONFIGURED)
+    {
+      // The tag reached the expected post-Start state, even if the
+      // original Start() call itself reported a transient failure -- see
+      // pollStartResult()'s doc comment. Nothing to show the user; just
+      // note the swallowed error for anyone reading logs.
+      if (!start_call_message.empty())
+      {
+        qWarning().noquote()
+            << "Start() reported a transient failure but the tag reached"
+            << QString::fromStdString(TagState_Name(old_state_)) << ":"
+            << QString::fromStdString(start_call_message);
+      }
+      return;
+    }
+  }
+
+  if (attempt + 1 < kStartPollAttempts)
+  {
+    QTimer::singleShot(kStartPollIntervalMs, this,
+                       [this, start_call_message, attempt]() {
+                         pollStartResult(start_call_message, attempt + 1);
+                       });
+    return;
+  }
+
+  QMessageBox startFailedBox;
+  startFailedBox.setWindowTitle("Error");
+  startFailedBox.setIcon(QMessageBox::Warning);
+  startFailedBox.setText("Start Failed");
+  startFailedBox.setStandardButtons(QMessageBox::Ok);
+  if (!start_call_message.empty())
+  {
+    QString info = QString::fromStdString(start_call_message);
+    info += "\nLast known state: ";
+    info += QString::fromStdString(TagState_Name(old_state_));
+    startFailedBox.setInformativeText(info);
+    startFailedBox.setDetailedText(QString::fromStdString(start_call_message));
+  }
+  else
+  {
+    startFailedBox.setInformativeText(
+        "Last known state: " +
+        QString::fromStdString(TagState_Name(old_state_)));
+  }
+  startFailedBox.exec();
 }
 
 void ConfigTab::on_readButton_clicked()

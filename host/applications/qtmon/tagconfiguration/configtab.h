@@ -74,6 +74,30 @@ private:
      */
     void UpdateSensorTabVisibility();
 
+    /**
+     * @brief Poll for the tag's post-Start state, retrying on a timer.
+     *
+     * @details Tag::Start() returning false does not mean the tag never
+     *          started: a transient monitor/USB error (LIBUSB timeout, a
+     *          failed debug-register access) can lose the acknowledgement
+     *          after the tag already accepted the command, the same
+     *          "acknowledgement is not a completion" gap tag-start/tag-stop
+     *          poll around on the command line. Polls GetStatus() a bounded
+     *          number of times, 1 s apart, via a non-blocking QTimer chain
+     *          (never a sleep loop -- that would freeze the GUI thread).
+     *          RUNNING or CONFIGURED at any poll is treated as success, even
+     *          if the initial Start() call itself reported failure; only
+     *          still-IDLE (or another unexpected state) after the last
+     *          attempt shows the failure dialog, using the freshest state
+     *          read rather than whatever was captured immediately after the
+     *          original failed call.
+     *
+     * @param[in] start_call_message DebugMessage() from a failed Start()
+     *                                call, or empty if Start() returned true.
+     * @param[in] attempt Zero-based retry count so far.
+     */
+    void pollStartResult(std::string start_call_message, int attempt);
+
     // Helper function
 
     TagType tag_type_ = TAG_UNSPECIFIED;
