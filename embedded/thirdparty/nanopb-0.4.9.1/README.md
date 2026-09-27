@@ -48,9 +48,24 @@ snapshot whose `pb.h` self-reports `0.4.9-dev`, while the generator producing
 the `.pb.*` sources reported `0.4.9.1`. Adopting 0.4.9.1 here makes the runtime
 and the generator agree for the first time.
 
-Relative to that snapshot, 0.4.9.1 changes only: the version string; a
-refactor introducing `PB_BYTE_T_OVERRIDE` and defining `pb_type_t` as
-`pb_byte_t` (both resolve to `uint8_t` wherever `UINT8_MAX` is defined, so the
-generated layout is unchanged on the STM32 targets); IAR detection added to the
-`checkreturn` attribute macro, inert under GCC; and comment reflow. Field order
-in `pb_ostream_s` and `pb_istream_s` is unchanged.
+Relative to that snapshot, 0.4.9.1 changes:
+
+- the version string;
+- a refactor introducing `PB_BYTE_T_OVERRIDE` and defining `pb_type_t` as
+  `pb_byte_t` -- both resolve to `uint8_t` wherever `UINT8_MAX` is defined, so
+  layout is unchanged on the STM32 targets;
+- IAR detection added to the `checkreturn` attribute macro, inert under GCC;
+- comment reflow, with field order in `pb_ostream_s` and `pb_istream_s`
+  unchanged;
+- one behavioural change, in `pb_decode_ex`: a failed
+  `pb_close_string_substream` sets `status = false` and falls through where it
+  previously did `return false`. The early return skipped the `pb_release`
+  below it, leaking heap-allocated fields -- but only under `PB_ENABLE_MALLOC`,
+  which this tree does not define, so the block compiles out and both forms
+  return false identically. The branch is in `pb_decode_ex`'s delimited path,
+  which this tree never calls; firmware uses plain `pb_decode`.
+
+Verified by cross-compiling both runtimes for `cortex-m4` and `cortex-m33` at
+`-Os` and comparing objects: `pb_common.o` and `pb_encode.o` are byte-identical
+on both cores, and `pb_decode.o` has identical text size with instruction
+scheduling differing only as a consequence of the statement above.
