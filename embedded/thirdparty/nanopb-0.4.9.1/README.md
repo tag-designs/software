@@ -22,6 +22,10 @@ vendored; it is pinned by version and checked at configure time. See
 
 `CHECKSUMS.txt` records the SHA-256 of each file as vendored.
 
+Independently verified: these eight files are byte-identical to the ones in the
+`nanopb-0.4.9.1-macosx-x86` release distribution, so the source tag and the
+published release agree.
+
 ## Files
 
 `pb.h`, `pb_common.{c,h}`, `pb_encode.{c,h}`, `pb_decode.{c,h}` — the complete
