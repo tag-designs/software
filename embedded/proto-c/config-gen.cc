@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
             *out << "\n};\n";
             *out << "const unsigned int tag_default_config_len = " << output.length() << ";\n";
         } else {
-            cerr << err << std::endl;
+            cerr << "Couldn't parse " << argv[1] << ": " << err << std::endl;
+            return 1;
         }
         return 0;
 
