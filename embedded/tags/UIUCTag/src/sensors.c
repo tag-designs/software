@@ -34,15 +34,18 @@
 #define UIUCTAG_PRESSURE_TIMEOUT_US 100000U
 
 /*
- * Push-pull/pulsed/active-high instead of the forced-mode default (open-
- * drain/latched/active-low) so the DRDY line drives a clean level with no
- * dependency on an external pull-up -- for observing it on a scope via the
- * exposed LPS_RDY test point. Bit-level enabling (INT_CONFIG.int_en,
- * INT_SOURCE.drdy_data_reg_en) is unconditional in bmp581_apply_sampling_config()
- * regardless of which drive/mode/polarity profile is selected here.
- */
+ * Push-pull/pulsed/active-high (instead of the forced-mode default, open-
+ * drain/latched/active-low) was used to drive a clean DRDY level with no
+ * dependency on an external pull-up, for observing it on a scope via the
+ * exposed LPS_RDY test point -- confirmed working, but an interrupt-driven
+ * wait (WFI, waking on this line instead of polling INT_STATUS) was
+ * evaluated and deferred (no already-proven hardware timeout reaches the
+ * NVIC to safely bound such a wait on this project, which has no
+ * watchdog), so nothing in this driver ever reads or reacts to this pin.
+ * Left here, commented out, in case that changes.
 static const bmp581_interrupt_config_t uiuctag_pressure_interrupt_config =
     BMP581_INTERRUPT_PUSH_PULL_PULSED_ACTIVE_HIGH;
+ */
 
 /*
  * ADXL367 wake-mode configuration below is a direct, verbatim port of
@@ -202,7 +205,7 @@ bool samplePressure(float *pressure_hpa, float *temperature_c)
    */
   rc = bmp581_config_forced_fast_device(TAG_PRESSURE_DEVICE,
                                         UIUCTAG_PRESSURE_ODR,
-                                        &uiuctag_pressure_interrupt_config);
+                                        NULL);
   if (rc == 0) {
     rc = bmp581_sample_forced_blocking_device(TAG_PRESSURE_DEVICE,
                                               UIUCTAG_PRESSURE_TIMEOUT_US,

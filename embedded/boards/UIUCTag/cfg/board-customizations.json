@@ -53,7 +53,8 @@
         "Mode": "Output",
         "Alternate": "7",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin3": {
         "ID": "ACCEL_MISO",
@@ -76,7 +77,8 @@
         "Mode": "Output",
         "Alternate": "7",
         "AnalogSwitch": "Disabled",
-        "PinLock": "Disabled"
+        "PinLock": "Disabled",
+        "Standby": "PULLDOWN"
       },
       "pin5": {
         "ID": "LPS_SCK",

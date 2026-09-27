@@ -7,6 +7,7 @@
 
 #include "hal.h"
 
+#include "bus_device.h"
 #include "core_sync.h"
 #include "custom.h"
 #include "device.h"
@@ -246,10 +247,28 @@ void tagDevicesPrepareStandby(uint32_t state)
 
 /**
  * @brief Apply board pin pulls needed for standby leakage and wake behavior.
+ *
+ * @details The ADXL367's USART2 sync-SPI bus declares
+ *          .sleep_policy = TAG_USART_SLEEP_SAFE_IDLE (uiucTagAccelDevice,
+ *          this file), but nothing previously invoked
+ *          tagUsartDevicePrepareSleep()/tagBusPrepareSleep() to apply it --
+ *          a project-wide dead-code gap (tagUsartDevicePrepareSleep() and
+ *          tagSpiDevicePrepareSleep() had zero callers anywhere in the
+ *          tree). The manual tagEnableStandbyPullup(LINE_ACCEL_nCS) below
+ *          covered only chip-select; SCK and MOSI were left floating for
+ *          the entire Standby sleep between RTC wakes, unlike the BMP585/
+ *          AT25XE buses, whose SCK/MISO/MOSI already get a static
+ *          "Standby": "PULLDOWN" pull baked into the board's own pin
+ *          configuration independent of this runtime mechanism.
+ *          tagBusPrepareSleep() applies the CS pullup and the missing
+ *          SCK/MOSI pulldowns together, so the manual nCS call is now
+ *          redundant (kept anyway: harmless, and this file's own contract
+ *          for what standby-pin state this function guarantees).
  */
 void tagDevicesApplyStandbyPins(void)
 {
   tagEnableStandbyPullup(LINE_ACCEL_nCS);
+  tagBusPrepareSleep(&uiucTagAccelDevice.bus);
   tagEnableStandbyPullup(LINE_LPS_nCS);
   tagStorageApplyStandbyPins(TAG_EXTERNAL_FLASH);
 }

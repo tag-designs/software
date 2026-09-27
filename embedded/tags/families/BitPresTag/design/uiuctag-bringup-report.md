@@ -265,3 +265,167 @@ not a regression.
   consistently shorter than the datasheet-nominal 160 ms/sample, but the
   eyeballed readings aren't precise enough to characterize the true rate
   beyond "somewhat under nominal."
+
+## Session 2026-09-27
+
+### Fixes: flash-write and BMP585 sample-path energy
+
+1. **AT25XE `at25xeUnprotect()` guarded a write+poll behind a status read.**
+   It issued a full Write Status Register command and its completion poll on
+   *every* wake, unconditionally, to guard against a residual Block Protect
+   state -- measured as ~0.24 uA of the ~0.78 uA undisturbed average, more
+   than the page program it was protecting ever cost. Now reads the status
+   register first (cheap: no write cycle, no poll) and only pays for the
+   write+poll when Block Protect bits are actually set, which does not recur
+   in normal operation. See `embedded/tags/common/storage/src/at25xe.c`.
+2. **BMP585 forced-mode sampling took 24 SPI transactions and ~23 ms per
+   sample**, almost entirely the generic Bosch SensorAPI's read-modify-write
+   and deep-standby-detection sequence -- redundant every time, since
+   UIUCTag power-cycles the BMP585 rail between every sample and so always
+   starts from a known power-on-reset state. Added
+   `bmp581_config_forced_fast_device()` (`bmp581.c`/`.h`), computing register
+   values directly and writing only what needs a new value: 9 transactions.
+   (First attempt tried true multi-byte SPI bursts; the data sheet is
+   explicit that this chip requires a separate address with every write
+   byte, unlike reads -- that version silently dropped every second byte of
+   each pair and broke sampling. Reverted to correctly-addressed single-byte
+   writes, which still skip the redundant reads.) A single settle delay
+   before the first DRDY poll, sized from the data sheet's conversion-time
+   spec for this driver's fixed oversampling (~4.0 ms nominal), means the
+   poll now almost always succeeds immediately instead of guaranteed-missing
+   on the first try.
+3. **Every wait in the BMP581/585 driver used `chThdSleepMicroseconds()`**,
+   which blocks the RTOS thread but leaves the MCU in RUN mode for the whole
+   wait. Switched all of them (the Bosch `delay_us()` callback, the
+   post-power-up settle, the init retry loop, the DRDY poll loop) to
+   `stopMilliseconds()`, the same Stop2-sleep primitive `lps27.c` already
+   uses for comparable waits.
+4. IMUTagNandBmp581, the only other consumer of the shared `bmp581.c`, is
+   unaffected by any of the above -- confirmed via a clean rebuild; it still
+   calls the original, unmodified `bmp581_config_forced_device()`.
+
+Measured via isolated per-event Joulescope capture: the checkpoint-write
+event dropped from 248 uJ to 82 uJ after fixes #2/#3, then to 76 uJ after
+adding the settle delay -- a ~69% reduction in per-event energy, confirmed
+on hardware, though too small an average-current effect to show clearly in
+a short (5-10 min) baseline measurement given write-cadence quantization
+(see "ADXL367 wake-mode sample-rate timing" for the same quantization
+effect on an earlier measurement).
+
+### DRDY interrupt: enabled, then not wired to anything
+
+UIUCTag's forced-mode DRDY interrupt profile was switched from the
+forced-mode default (open-drain/latched/active-low) to push-pull/pulsed/
+active-high, confirmed on scope as a clean pulse per sample via the exposed
+`LPS_RDY` test point. A synchronous, interrupt-driven wait (WFI, waking on
+this line instead of polling `INT_STATUS`) was evaluated and deferred: this
+project has no watchdog, and there is no already-proven hardware timeout
+that reaches the NVIC (as WFI would need) to safely bound such a wait,
+unlike the WFE/LPTIM1 mechanism `stopMilliseconds()` already uses for
+timer-only waits. Since nothing in the driver reads or reacts to the pin,
+the interrupt-enabling change was reverted (commented out, not deleted, in
+`UIUCTag/src/sensors.c`) and `samplePressure()` passes `NULL` again for the
+interrupt config -- back to the family default.
+
+### Baseline current investigation: ADXL367 wake mode and standby pin state
+
+Two distinct numbers are in play here, easy to conflate:
+
+- **The true undisturbed baseline** (idle current alone, isolated from any
+  write activity): **0.4247 uA** originally, confirmed unchanged at **0.422
+  uA** later in this session. This figure has not moved despite the ADXL367
+  standby-pin investigation below -- consistent with both pin-leakage fixes
+  independently showing "no change" when tested.
+- **The write-inclusive average** (idle plus the periodic once-a-minute
+  wake/activity check plus the once-per-5-minutes checkpoint write --
+  i.e. what a real deployment actually sees): 0.7891 uA (original 25-min
+  figure) -> 0.78 uA (3h38m confirmation) -> **0.76 uA** (before the at25xe +
+  BMP585 fixes above) -> **0.56 uA** (after those fixes, most recent, 20
+  min). The drop from 0.76 to 0.56 uA -- a real ~200 nA, ~26% reduction in
+  the number a deployed tag actually runs at -- is the clearest, most direct
+  confirmation of this session's at25xe/BMP585 optimization work, and
+  corroborates the isolated per-event energy drop (248 -> 76 uJ) measured
+  separately.
+
+Two theories for a residual ~80-120 nA gap against a naive prediction
+(idle baseline + ADXL367's own 40 nA standby / 180 nA wake-mode datasheet
+figures) were investigated and are **not bugs**:
+
+- **ADXL367 SPI/USART2 bus pin leakage during Standby.** Two fixes were
+  tried: (a) applying `tagUsartDevicePrepareSleep()`/`tagBusPrepareSleep()`
+  (a project-wide mechanism that had zero callers anywhere in the tree,
+  despite the ADXL367 descriptor already declaring the right sleep policy
+  for it) to add Standby pulldowns to SCK/MOSI, matching the CS-only pullup
+  already in place; (b) porting BitTagNG's own historical fix for this same
+  class of problem (commit `4533111`), which instead sets these pins' board-
+  level Mode to Analog (disabling the digital input buffer, so floating
+  voltage cannot leak) and changes the bus `sleep_policy` to `FLOAT`. (b)
+  caused ACCEL_CS glitches on UIUCTag's USART-synchronous bus (unlike
+  BitTagNG's dedicated SPI2 peripheral, this driver's own end-of-transfer
+  cleanup already drives SCK/MOSI to a defined level, so the static Analog
+  default likely broke active transfers) and was reverted. (a) is currently
+  applied (`devices.c`, `board-customizations.json`) -- functionally safe,
+  but measured baseline current has not dropped as a result, either alone
+  or combined with the operator's own manual Standby-pulldown JSON edit.
+- **ADXL367 wake-mode current at 6.25 Hz vs. the datasheet's 181 nA figure.**
+  That figure is measured specifically at 1.5625 Hz (the slowest of the
+  ADXL367's 4 wake rates; UIUCTag runs 4x faster), per the data sheet's own
+  footnote -- and the data sheet's own population histogram (Figure 36),
+  even at that same slow rate, centers around 250-256 nA, not 181 nA.
+  Confirmed via `tag-peek` on a backup-register readback that the
+  `TIMER_CTL` wake-rate register write is applied correctly (both normally,
+  and for a temporary 1.5625 Hz test). Dropping to 1.5625 Hz for a direct
+  test measured 380 nA, a real ~42 nA reduction from 422 nA at the same
+  baseline configuration -- confirming wake-rate is a real, correctly-
+  applied contributor, though smaller than a naive prediction and not
+  the sole explanation for the full gap. Reverted back to the production
+  6.25 Hz rate after the test.
+
+Net: real silicon running warmer than optimistic datasheet "typical"
+figures, at a genuinely faster wake rate than those figures were measured
+at, is a well-evidenced partial explanation for the undisturbed baseline
+(0.422 uA) sitting above a naive idle+datasheet prediction. The standby-pin
+fix is real and harmless but unconfirmed to move that baseline; the
+residual gap against the naive prediction is not fully reconciled and is
+left open rather than overclaimed. The write-inclusive average (0.76 -> 0.56
+uA), by contrast, *is* well explained -- entirely by the at25xe/BMP585
+energy fixes above.
+
+### Other fixes
+
+- **qtmonitor's Start button showed an "Error" popup for a successful
+  start.** `ConfigTab::on_startButton_clicked()` treated `Tag::Start()`
+  returning `false` as definitive failure, but a transient monitor/USB
+  error (the same class of `LIBUSB_ERROR_TIMEOUT` this session hit
+  independently via the `tag-start` CLI tool) can lose the acknowledgement
+  after the tag already accepted the command -- the error dialog's own
+  "Last known state: RUNNING" line was evidence the start had actually
+  worked. Now polls `GetStatus()` on a bounded, non-blocking `QTimer` chain
+  after `Start()` regardless of its return value, and only shows the
+  failure dialog if the tag is still not `RUNNING`/`CONFIGURED` after the
+  last retry. Confirmed fixed by the operator.
+
+### Maximum run time from available memory
+
+UIUCTag's datalog format ties one internal-flash checkpoint header (8
+bytes each) to one external-flash block (24 five-minute slots x 12 bytes =
+288 bytes, covering a fixed 7200 s / 2 h of real time regardless of
+activity level, since pressure/temperature sampling runs on a fixed
+5-minute grid). Reading both capacities directly from the linked ELF and
+the AT25XE321D's actual capacity (not `tag-info`'s external-flash-size
+field, which reports raw bytes mislabeled as kB):
+
+| resource | capacity | blocks | max run time |
+| --- | --- | --- | --- |
+| Internal flash headers (`__persistent_start__` to `__persistent_end__`, `0x0800B800`-`0x08040000`) | 215,040 bytes / 8 B per header | 26,880 | 2240 days (6.13 years) |
+| External flash (AT25XE321D, 4,194,304 bytes) | 4,194,304 bytes / 288 B per block | 14,563 | 1213.6 days (3.32 years) |
+
+**External flash is the binding constraint: ~3.3 years of continuous
+logging capacity**, roughly 2.5x the internal-flash-header limit and far
+beyond the ~1-1.3 year battery-life projection from the extended energy
+measurement above -- memory is not the limiting resource for this design's
+target deployment length. This assumes continuous operation; each
+hibernation cycle abandons whatever slots were left unused in the block
+open at the time (a new block always opens on resume), so frequent
+hibernation cycling would reduce the effective total somewhat below this
+ceiling. No specific hibernation schedule was modeled.
