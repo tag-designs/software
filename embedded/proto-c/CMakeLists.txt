@@ -87,8 +87,11 @@ function(add_nanopb_target name)
       "${default_config}")
 
   add_library(${name}_proto INTERFACE)
+  # NANOPB_RUNTIME_DIR carries the vendored pb.h and the pb_*.c sources; the
+  # firmware makefiles reach both through NANOPBDIR, which is derived from this
+  # property (UINCDIR for the headers, VPATH for the sources).
   target_include_directories(${name}_proto INTERFACE ${CMAKE_CURRENT_BINARY_DIR}
-                                                     ${NANOPB_SRC_ROOT_FOLDER})
+                                                     ${NANOPB_RUNTIME_DIR})
 
   target_sources(${name}_proto INTERFACE ${nanopb_sources} "${default_config}")
 

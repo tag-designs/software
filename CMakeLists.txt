@@ -339,15 +339,39 @@ endif()
 cmake_print_variables(Protobuf_VERSION)
 
 if(BUILD_EMBEDDED)
-  set(NANOPB_SRC_ROOT_FOLDER "$ENV{NANOPB_ROOT}" CACHE PATH "Nanopb source root")
-  if(NOT NANOPB_SRC_ROOT_FOLDER)
-    set(NANOPB_SRC_ROOT_FOLDER "${CMAKE_SOURCE_DIR}/nanopb" CACHE PATH "Nanopb source root" FORCE)
-  endif()
-  if(NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/pb.h"
-     OR NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/pb_common.c")
+  # The nanopb runtime is vendored, because it is compiled into every image.
+  # The directory is named for its version, so derive the path by glob and
+  # require exactly one: a second directory left behind by a half-finished
+  # upgrade must fail rather than let the build pick one.
+  file(GLOB NANOPB_RUNTIME_DIRS "${CMAKE_SOURCE_DIR}/embedded/thirdparty/nanopb-*")
+  list(LENGTH NANOPB_RUNTIME_DIRS NANOPB_RUNTIME_DIR_COUNT)
+  if(NOT NANOPB_RUNTIME_DIR_COUNT EQUAL 1)
     message(FATAL_ERROR
-      "Nanopb source files were not found. Set NANOPB_ROOT, "
-      "or place the nanopb source tree at ${CMAKE_SOURCE_DIR}/nanopb.")
+      "Expected exactly one vendored nanopb runtime under "
+      "embedded/thirdparty/nanopb-*, found ${NANOPB_RUNTIME_DIR_COUNT}: "
+      "${NANOPB_RUNTIME_DIRS}")
+  endif()
+  list(GET NANOPB_RUNTIME_DIRS 0 NANOPB_RUNTIME_DIR)
+  if(NOT EXISTS "${NANOPB_RUNTIME_DIR}/pb.h"
+     OR NOT EXISTS "${NANOPB_RUNTIME_DIR}/pb_common.c")
+    message(FATAL_ERROR
+      "Vendored nanopb runtime at ${NANOPB_RUNTIME_DIR} is incomplete.")
+  endif()
+  message(STATUS "Nanopb runtime: ${NANOPB_RUNTIME_DIR}")
+
+  # NANOPB_SRC_ROOT_FOLDER now supplies only the generator, which is a
+  # build-time tool and stays outside the repository. The runtime is no longer
+  # taken from it.
+  set(NANOPB_SRC_ROOT_FOLDER "$ENV{NANOPB_ROOT}" CACHE PATH "Nanopb generator tree")
+  if(NOT NANOPB_SRC_ROOT_FOLDER)
+    set(NANOPB_SRC_ROOT_FOLDER "${CMAKE_SOURCE_DIR}/nanopb" CACHE PATH "Nanopb generator tree" FORCE)
+  endif()
+  if(NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator"
+     AND NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
+    message(FATAL_ERROR
+      "The nanopb generator was not found. Set NANOPB_ROOT, or place a nanopb "
+      "distribution at ${CMAKE_SOURCE_DIR}/nanopb. Only the generator is taken "
+      "from there; the runtime is vendored at ${NANOPB_RUNTIME_DIR}.")
   endif()
 
   set(NANOPB_GENERATOR_EXECUTABLE "" CACHE FILEPATH "Nanopb generator executable")
