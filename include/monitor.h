@@ -72,7 +72,25 @@ enum MONITOR_STATUS {
   MONITOR_STATUS_NOT_ATTACHED = 5,
 };
 
-typedef struct __attribute__((packed, aligned(4))) {
+/*
+ * monitor_shared_t mirrors a fixed block of tag memory read over SWD, so its
+ * layout must be identical on every toolchain that sees this header. GCC and
+ * Clang take the attribute syntax; MSVC (the host tools on Windows) needs
+ * #pragma pack plus __declspec, so the packing is spelled per compiler here
+ * and applied once to the struct below.
+ */
+#if defined(_MSC_VER)
+#define MONITOR_SHARED_PACK_BEGIN __pragma(pack(push, 1))
+#define MONITOR_SHARED_PACK_END __pragma(pack(pop))
+#define MONITOR_SHARED_ALIGNED __declspec(align(4))
+#else
+#define MONITOR_SHARED_PACK_BEGIN
+#define MONITOR_SHARED_PACK_END
+#define MONITOR_SHARED_ALIGNED __attribute__((packed, aligned(4)))
+#endif
+
+MONITOR_SHARED_PACK_BEGIN
+typedef struct MONITOR_SHARED_ALIGNED {
   volatile uint32_t request;
   volatile uint32_t abi_version;
   volatile uint32_t debug_version;
@@ -87,6 +105,7 @@ typedef struct __attribute__((packed, aligned(4))) {
   volatile uint32_t watchdog_ticks;
   volatile uint32_t path_magic;
 } monitor_shared_t;
+MONITOR_SHARED_PACK_END
 
 // monitor interrupt handler opcodes
 
