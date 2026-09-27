@@ -415,14 +415,39 @@ avoids a false coupling:
 The isolation is useful: a vcpkg baseline bump changes host gencode and leaves
 the committed `.pb.*` untouched, and a nanopb bump does the reverse.
 
-**One real coupling crosses that line.** `config-gen` links the host protobuf
-library and uses `google/protobuf/util/json_util.h` to parse
-`default-config.json` against `tag.pb.h`, so `default_config.c` -- which is
-compiled into the image -- depends on the *host* protobuf version. Once that
-output is committed, a vcpkg baseline bump can change it, and nothing but the CI
-freshness check would notice. The host protobuf version therefore belongs in the
-`.inputs.sha256` digest for the proto-c directories and in the build manifest,
-alongside the nanopb versions.
+**One coupling crosses that line, and it is weaker than it looks.**
+`config-gen` links the host protobuf library, so `default_config.c` -- which is
+compiled into the image -- is produced by a host-side tool. But what it produces
+is not implementation-dependent:
+
+```cpp
+JsonStringToMessage(str, &configin, options2);
+...
+configin.SerializeToString(&output);
+```
+
+It parses the JSON into a `Config` and emits the **proto3 wire encoding** as a
+byte array. The wire format is specified and stable across implementations and
+versions -- that is its purpose -- so the real inputs are `tag.proto` and
+`default-config.json`, both in the repository, not Google's implementation of
+the day. `Config` contains no `map` fields, so the one documented source of
+serialization nondeterminism does not apply either.
+
+The residue is small enough to record rather than guard: `SerializeToString`
+does not contract byte-for-byte determinism even though the C++ implementation
+emits in field-number order, and `JsonParseOptions` defaults could in principle
+shift. Both would be caught by the CI freshness check. So the host protobuf
+version belongs in the build manifest, where it costs nothing, but not in the
+pitfall checks, where it would flag a rare and probably benign event.
+
+Committing `default_config.c` is still clearly right -- it removes `config-gen`,
+and with it the host protobuf build, from an ordinary firmware build.
+
+**A small defect noticed while reading this.** `config-gen` prints the parse
+error and then `return 0` on the failure path, so invalid
+`default-config.json` exits successfully without writing the output file. The
+build does fail, but as a missing-output error from the build system rather than
+as the JSON error that caused it.
 
 **Record the environment per build.** A `build-manifest.json` written beside
 the image, carrying what the sources do not:
@@ -438,7 +463,7 @@ the image, carrying what the sources do not:
 | `toolchain` | `arm-none-eabi-gcc --version`, binutils, `cmake --version` |
 | `target`, `board_type` | which image this is |
 | `compile_flags_digest` plus the full command lines | the `-D` problem, recorded rather than inferred |
-| `host_protobuf_version` | an input to `default_config.c` via `config-gen` |
+| `host_protobuf_version` | produced `default_config.c`; recorded, low risk |
 | `project_mk_sha256` | the per-target options file |
 
 The flags entry is the one that earns its place. It is the documented way a test
@@ -466,7 +491,6 @@ escalated according to the build mode.
 | `CHIBIOS_DIR` outside the repo | already warned for | the library is not described at all |
 | Vendored nanopb runtime edited in place | `git status --porcelain` on `embedded/thirdparty/nanopb-*` | a local patch compiled into shipped images |
 | Generator version differs from the pin | `--version` against `NANOPB_VERSION` | different generator, different `.pb.*` |
-| Host protobuf version differs from the digest | vcpkg baseline / `protoc --version` | `default_config.c` is compiled in and depends on it |
 | Generated files stale | regenerate and diff | committed sources are not what the inputs produce |
 | Generated files unverified | generators unavailable | staleness unknown, not disproven |
 | Toolchain differs from the recorded expectation | `--version` against a pinned string | a different compiler is a different image |
