@@ -112,6 +112,43 @@ int bmp581_config_forced_device(const TagPressureDevice *device,
                                 const bmp581_interrupt_config_t *interrupt_config);
 
 /**
+ * @brief Configure forced-mode sampling with fewer, burst SPI transactions.
+ *
+ * @details Same effect as bmp581_config_forced_device() -- oversampling,
+ *          ODR, IIR bypass, and the data-ready interrupt end up configured
+ *          identically -- but takes 9 SPI transactions instead of 24 to get
+ *          there, by skipping the generic Bosch SensorAPI's read-modify-
+ *          write and deep-standby-detection sequence and writing only the
+ *          bytes that actually need a new value. (This chip's SPI write
+ *          protocol requires a separate address with every byte written --
+ *          unlike reads, there is no address-auto-increment burst-write
+ *          format -- so combining writes saves the redundant reads around
+ *          them, not the writes themselves.)
+ *
+ * @pre     The device must be freshly powered (a true power-on reset since
+ *          the last time its rail was off) and not yet touched this session
+ *          beyond bmp581_init_device()/bmp581_check_who_am_i_device(). This
+ *          function writes OSR_CONFIG/ODR_CONFIG and INT_CONFIG/INT_SOURCE
+ *          from scratch rather than reading current state first, and skips
+ *          the DSP_CONFIG/DSP_IIR (IIR filter) write entirely on the
+ *          assumption that its power-on reset value already matches the
+ *          bypass configuration this driver always wants -- both
+ *          assumptions only hold right after a real power-up. Calling this
+ *          on a device that has been running in continuous mode, or that
+ *          was left in some other state, will misconfigure it.
+ *
+ * @param[in] device Pressure device descriptor.
+ * @param[in] odr Output data rate encoding used by the BMP5 OSR/ODR register.
+ * @param[in] interrupt_config Optional interrupt pin configuration. Passing
+ *                             NULL selects latched, active-low open-drain mode.
+ * @return 0 on success or a negative Bosch SensorAPI error.
+ * @post On success the pressure rail remains on and the bus session is closed.
+ */
+int bmp581_config_forced_fast_device(const TagPressureDevice *device,
+                                     bmp581_odr_t odr,
+                                     const bmp581_interrupt_config_t *interrupt_config);
+
+/**
  * @brief Trigger one forced-mode conversion on a powered BMP581.
  *
  * @details Starts one pressure/temperature conversion by placing the sensor in
@@ -180,10 +217,17 @@ int bmp581_read_pressure_temp_device(const TagPressureDevice *device,
 /**
  * @brief Trigger and wait for one forced-mode BMP581 sample.
  *
- * @details Convenience helper for self-tests and fallback diagnostics. It
- *          assumes the sensor has already been configured for forced mode and
- *          remains powered. Production BitPresTag collection should normally
- *          sleep on the DRDY GPIO instead of polling with this helper.
+ * @details Assumes the sensor has already been configured for forced mode
+ *          and remains powered. Waits bmp581_active_config's data-sheet
+ *          conversion time (see BMP581_CONVERSION_SETTLE_MS) before the
+ *          first INT_STATUS poll, so the poll almost always succeeds
+ *          immediately instead of guaranteed-missing on the first try; each
+ *          poll and the settle wait itself sleep via stopMilliseconds()
+ *          (Stop2), not a busy/RTOS-thread wait. A true interrupt-driven
+ *          wake (WFI, waking on the DRDY GPIO instead of polling INT_STATUS
+ *          at all) was considered and deferred: this project has no
+ *          watchdog, and there is no already-proven hardware timeout that
+ *          reaches the NVIC (as WFI would need) to bound such a wait safely.
  *
  * @param[in] device Pressure device descriptor.
  * @param[in] timeout_us Maximum time to poll INT_STATUS for DRDY.

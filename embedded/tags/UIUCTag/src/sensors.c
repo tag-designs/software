@@ -34,6 +34,17 @@
 #define UIUCTAG_PRESSURE_TIMEOUT_US 100000U
 
 /*
+ * Push-pull/pulsed/active-high instead of the forced-mode default (open-
+ * drain/latched/active-low) so the DRDY line drives a clean level with no
+ * dependency on an external pull-up -- for observing it on a scope via the
+ * exposed LPS_RDY test point. Bit-level enabling (INT_CONFIG.int_en,
+ * INT_SOURCE.drdy_data_reg_en) is unconditional in bmp581_apply_sampling_config()
+ * regardless of which drive/mode/polarity profile is selected here.
+ */
+static const bmp581_interrupt_config_t uiuctag_pressure_interrupt_config =
+    BMP581_INTERRUPT_PUSH_PULL_PULSED_ACTIVE_HIGH;
+
+/*
  * ADXL367 wake-mode configuration below is a direct, verbatim port of
  * BitTagNG's initActivitySensor() (embedded/tags/families/BitTagNG/src/
  * sensors.c) -- same register values, same constants, same bypass of the
@@ -183,8 +194,15 @@ bool samplePressure(float *pressure_hpa, float *temperature_c)
   *pressure_hpa = missing_sample();
   *temperature_c = missing_sample();
 
-  rc = bmp581_config_forced_device(TAG_PRESSURE_DEVICE, UIUCTAG_PRESSURE_ODR,
-                                   NULL);
+  /*
+   * UIUCTag fully powers the BMP585 rail off between samples, so every
+   * samplePressure() call is a genuine power-on reset -- exactly the
+   * precondition bmp581_config_forced_fast_device() requires (see its doc
+   * comment). Cuts config from 24 SPI transactions to 9.
+   */
+  rc = bmp581_config_forced_fast_device(TAG_PRESSURE_DEVICE,
+                                        UIUCTAG_PRESSURE_ODR,
+                                        &uiuctag_pressure_interrupt_config);
   if (rc == 0) {
     rc = bmp581_sample_forced_blocking_device(TAG_PRESSURE_DEVICE,
                                               UIUCTAG_PRESSURE_TIMEOUT_US,

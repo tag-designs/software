@@ -11,12 +11,44 @@
 #include "custom.h"
 #include "debug_log.h"
 #include "hal.h"
+#include "rtc_api.h"
 
 #define BMP581_PRESSURE_PA_PER_HPA 100.0f
 #define BMP581_CENTI_C_PER_C 100.0f
 #define BMP581_INIT_ATTEMPTS 12U
 #define BMP581_INIT_RETRY_DELAY_US 2000U
 #define BMP581_STATUS_CORE_READY 0x01U
+/*
+ * Data-sheet conversion time for bmp581_active_config's fixed oversampling
+ * (OSR_T=2x: tconv_t ~1.1 ms; OSR_P=4x: tconv_p ~2.9 ms; BMP585 DS003 Table,
+ * Sec. "Electrical Characteristics"), each +-5%, so ~4.0 ms nominal / ~4.2 ms
+ * worst case. Waiting this long before the first poll means it almost
+ * always finds DRDY already set, instead of the original loop's guaranteed-
+ * to-miss immediate poll followed by one or two more 2 ms-spaced polls
+ * before the conversion is actually done.
+ */
+#define BMP581_CONVERSION_SETTLE_MS 5U
+
+/**
+ * @brief Round a microsecond delay up to whole milliseconds for stopMilliseconds().
+ *
+ * @details All waits in this driver -- the Bosch SensorAPI's own delay_us()
+ *          callback included -- used chThdSleepMicroseconds(), which blocks
+ *          the calling thread but leaves the MCU in RUN mode for the whole
+ *          wait. stopMilliseconds() is the same low-power STOP-mode sleep
+ *          already used for comparable waits elsewhere in this same
+ *          directory (lps27.c's power-up and ready-poll delays) and by
+ *          other sensor/storage drivers; it only takes whole milliseconds,
+ *          so a microsecond delay is rounded up (never down, so a wait is
+ *          never shortened below what the data sheet requires).
+ *
+ * @param[in] period_us Requested delay in microseconds.
+ * @return Equivalent delay in whole milliseconds, rounded up.
+ */
+static inline unsigned int bmp581_stop_ms(uint32_t period_us)
+{
+  return (unsigned int)((period_us + 999U) / 1000U);
+}
 
 static struct bmp5_osr_odr_press_config bmp581_active_config = {
   .osr_t = BMP5_OVERSAMPLING_2X,
@@ -123,7 +155,7 @@ static BMP5_INTF_RET_TYPE bmp581_bus_write(uint8_t reg_addr,
 static void bmp581_delay_us(uint32_t period, void *intf_ptr)
 {
   (void)intf_ptr;
-  chThdSleepMicroseconds(period);
+  stopMilliseconds(bmp581_stop_ms(period));
 }
 
 /**
@@ -205,7 +237,7 @@ static bool bmp581_select_spi(const TagPressureDevice *device, uint8_t *chip_id)
 {
   bool ok = bmp581_raw_spi_read(device, BMP5_REG_CHIP_ID, chip_id);
 
-  chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
+  stopMilliseconds(bmp581_stop_ms(BMP581_INIT_RETRY_DELAY_US));
   return ok;
 }
 
@@ -295,7 +327,7 @@ static int8_t bmp581_init_device(const TagPressureDevice *device,
       }
     }
 
-    chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
+    stopMilliseconds(bmp581_stop_ms(BMP581_INIT_RETRY_DELAY_US));
   }
 
   return rc;
@@ -477,6 +509,157 @@ int bmp581_config_forced_device(const TagPressureDevice *device,
   return rc;
 }
 
+/**
+ * @brief Issue up to two single-byte SPI register writes without a
+ *        preceding read.
+ *
+ * @details Per the data sheet (BMP585 DS003 Sec. 5.5.2 "SPI Write
+ *          Operation"): "for each write byte the address has to be sent
+ *          over separately" -- a genuine burst write on this chip is a
+ *          sequence of (address, data) pairs within one chip-select
+ *          assertion, not one address followed by streamed data bytes (that
+ *          format is burst-*read*-only; the data sheet's read section has no
+ *          equivalent warning). bmp5_set_regs()'s own byte-at-a-time loop
+ *          reflects this by re-sending the (incremented) address with every
+ *          byte -- correctly, just as two fully separate transactions
+ *          instead of one held transaction. This does the same two
+ *          transactions bmp5_set_regs() would, skipping only its own
+ *          preceding bmp5_get_regs() call, for registers whose target value
+ *          is fully known up front (no read-modify-write needed).
+ *
+ * @param[in,out] dev Bosch SensorAPI device object.
+ * @param[in] reg_addr First register address (SPI write, no read mask).
+ * @param[in] data Bytes to write, one per consecutive register address.
+ * @param[in] len Number of bytes/registers (1 or 2).
+ * @return BMP5_OK on success or BMP5_E_COM_FAIL on a transport failure.
+ */
+static int8_t bmp581_write_bytes(struct bmp5_dev *dev, uint8_t reg_addr,
+                                 const uint8_t *data, uint32_t len)
+{
+  uint32_t idx;
+
+  for (idx = 0U; idx < len; idx++) {
+    dev->intf_rslt = dev->write((uint8_t)(reg_addr + idx), &data[idx], 1,
+                                dev->intf_ptr);
+    if (dev->intf_rslt != BMP5_INTF_RET_SUCCESS)
+      return BMP5_E_COM_FAIL;
+  }
+  return BMP5_OK;
+}
+
+/**
+ * @brief Fast-path equivalent of bmp581_apply_sampling_config().
+ *
+ * @details Same register targets as bmp581_apply_sampling_config(), reached
+ *          in 5 transactions instead of 20: OSR_CONFIG (0x36) and the
+ *          adjacent ODR_CONFIG (0x37) as two single-byte writes with no
+ *          preceding reads (oversampling/pressure-enable computed directly;
+ *          deep-standby-disable, standby power mode, and ODR computed
+ *          directly instead of read-modify-written); a discard read of
+ *          INT_STATUS (0x27) to clear the power-on-reset interrupt latch,
+ *          matching bmp5_configure_interrupt()'s own clear-before-enable
+ *          step; then INT_CONFIG (0x14) and the adjacent INT_SOURCE (0x15)
+ *          as two more single-byte writes (pin mode/polarity/drive/enable,
+ *          then data-ready source-select). DSP_CONFIG/DSP_IIR (IIR filter,
+ *          0x30-0x31) is not written at all: its power-on reset value
+ *          already selects filter-bypass for both temperature and pressure,
+ *          which is the only configuration this driver ever uses. See
+ *          bmp581_config_forced_fast_device()'s precondition -- this only
+ *          produces the intended state from a true power-on reset.
+ *
+ * @param[in,out] dev Initialized Bosch SensorAPI device object.
+ * @param[in] odr Output data-rate register encoding.
+ * @param[in] interrupt_config Interrupt pin mode applied before DRDY enable.
+ * @return BMP5_OK on success or a negative Bosch SensorAPI error.
+ */
+static int8_t
+bmp581_apply_sampling_config_fast(struct bmp5_dev *dev, bmp581_odr_t odr,
+                                  const bmp581_interrupt_config_t *interrupt_config)
+{
+  uint8_t osr_odr[2] = { 0U, 0U };
+  uint8_t int_regs[2] = { 0U, 0U };
+  uint8_t discard_status = 0U;
+  int8_t rc;
+
+  if (interrupt_config == NULL)
+    interrupt_config = &bmp581_forced_interrupt_config;
+
+  bmp581_active_config.odr = (uint8_t)odr;
+
+  osr_odr[0] = BMP5_SET_BITS_POS_0(osr_odr[0], BMP5_TEMP_OS,
+                                   bmp581_active_config.osr_t);
+  osr_odr[0] = BMP5_SET_BITSLICE(osr_odr[0], BMP5_PRESS_OS,
+                                 bmp581_active_config.osr_p);
+  osr_odr[0] = BMP5_SET_BITSLICE(osr_odr[0], BMP5_PRESS_EN,
+                                 bmp581_active_config.press_en);
+  osr_odr[1] = BMP5_SET_BITSLICE(osr_odr[1], BMP5_DEEP_DISABLE,
+                                 BMP5_DEEP_DISABLED);
+  osr_odr[1] = BMP5_SET_BITS_POS_0(osr_odr[1], BMP5_POWERMODE,
+                                   BMP5_POWERMODE_STANDBY);
+  osr_odr[1] = BMP5_SET_BITSLICE(osr_odr[1], BMP5_ODR, (uint8_t)odr);
+
+  rc = bmp581_write_bytes(dev, BMP5_REG_OSR_CONFIG, osr_odr, 2);
+  if (rc != BMP5_OK)
+    return rc;
+
+  /* t_standby: time for the standby transition just requested above to
+   * actually complete, per the data sheet -- same delay
+   * bmp5_set_power_mode() applies after its own standby-mode write. */
+  dev->delay_us(BMP5_DELAY_US_STANDBY, dev->intf_ptr);
+
+  rc = bmp5_get_regs(BMP5_REG_INT_STATUS, &discard_status, 1, dev);
+  if (rc != BMP5_OK)
+    return rc;
+
+  int_regs[0] = BMP5_SET_BITS_POS_0(int_regs[0], BMP5_INT_MODE,
+                                    interrupt_config->mode);
+  int_regs[0] = BMP5_SET_BITSLICE(int_regs[0], BMP5_INT_POL,
+                                  interrupt_config->polarity);
+  int_regs[0] = BMP5_SET_BITSLICE(int_regs[0], BMP5_INT_OD,
+                                  interrupt_config->drive);
+  int_regs[0] = BMP5_SET_BITSLICE(int_regs[0], BMP5_INT_EN, BMP5_INTR_ENABLE);
+  /* pad_int_drv (bit 4): not exposed by any struct this driver sets, in the
+   * generic path or here -- bmp5_configure_interrupt() only ever preserves
+   * it via its own read-before-write. Its power-on reset value is 1; keep
+   * that explicitly since this path has no prior read to preserve it from. */
+  int_regs[0] |= (uint8_t)(1U << 4);
+  int_regs[1] = BMP5_SET_BITS_POS_0(int_regs[1], BMP5_INT_DRDY_EN,
+                                    BMP5_ENABLE);
+
+  return bmp581_write_bytes(dev, BMP5_REG_INT_CONFIG, int_regs, 2);
+}
+
+/* Public API contract documented in bmp581.h. */
+int bmp581_config_forced_fast_device(const TagPressureDevice *device,
+                                     bmp581_odr_t odr,
+                                     const bmp581_interrupt_config_t *interrupt_config)
+{
+  struct bmp5_dev dev;
+  int8_t rc;
+  uint8_t raw_chip_id = 0U;
+  uint8_t status_last = 0U;
+  bool raw_read_ok = false;
+
+  bmp581_begin_powered_session(device);
+
+  rc = bmp581_init_device(device, &dev, &raw_chip_id, &raw_read_ok,
+                          &status_last);
+  if (rc == BMP5_OK)
+    rc = bmp581_apply_sampling_config_fast(&dev, odr, interrupt_config);
+  if (rc != BMP5_OK) {
+    debug_log_printf("BMP581: fast forced config raw_ok=%u raw_id=0x%x"
+                     " status=0x%x rc=%d chip=0x%x intf=%d\r\n",
+                     raw_read_ok ? 1U : 0U, raw_chip_id, status_last, rc,
+                     dev.chip_id, dev.intf_rslt);
+  }
+
+  bmp581_end_powered_session(device);
+  if (rc != BMP5_OK)
+    bmp581_power_off(device);
+
+  return rc;
+}
+
 int bmp581_trigger_forced_device(const TagPressureDevice *device)
 {
   struct bmp5_dev dev;
@@ -577,10 +760,16 @@ int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
                                          int16_t *temperature_centi_c)
 {
   uint32_t remaining_us = timeout_us;
+  uint32_t settle_us = BMP581_CONVERSION_SETTLE_MS * 1000U;
   int rc = bmp581_trigger_forced_device(device);
 
   if (rc != BMP5_OK)
     return rc;
+
+  if (settle_us > remaining_us)
+    settle_us = remaining_us;
+  stopMilliseconds(bmp581_stop_ms(settle_us));
+  remaining_us -= settle_us;
 
   do {
     uint8_t int_status = 0U;
@@ -597,10 +786,10 @@ int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
       break;
 
     if (remaining_us > BMP581_INIT_RETRY_DELAY_US) {
-      chThdSleepMicroseconds(BMP581_INIT_RETRY_DELAY_US);
+      stopMilliseconds(bmp581_stop_ms(BMP581_INIT_RETRY_DELAY_US));
       remaining_us -= BMP581_INIT_RETRY_DELAY_US;
     } else {
-      chThdSleepMicroseconds(remaining_us);
+      stopMilliseconds(bmp581_stop_ms(remaining_us));
       remaining_us = 0U;
     }
   } while (true);

@@ -145,9 +145,22 @@ static uint8_t at25xeStatus(const TagStorageDevice *dev)
  *          unconditionally; this is a no-op (and harmless) when the array is
  *          already unprotected.
  *
+ *          A first cut of this fix issued the Write Status Register command
+ *          (and its full completion poll, below) on every single wake,
+ *          unconditionally. Measured impact on UIUCTag: ~0.24 uA of the
+ *          ~0.78 uA undisturbed average, i.e. most of the measured
+ *          per-checkpoint write cost was this guard, not the page program
+ *          it was guarding. The protected state this exists to catch does
+ *          not recur in normal operation -- nothing else in this driver (or
+ *          any known caller) ever sets Block Protect -- so a status-register
+ *          read (cheap: no write cycle, no poll) is enough to tell whether
+ *          the expensive path is actually needed this wake.
+ *
  * @param[in] dev Storage device descriptor.
- * @return true when the write-enable and write-status-register transactions
- *         completed and WIP cleared before the write cycle timeout.
+ * @return true when the array is confirmed unprotected: either it already
+ *         was (status read only), or the write-enable and write-status-
+ *         register transactions completed and WIP cleared before the write
+ *         cycle timeout.
  *
  * @note    A Write Status Register command asserts WIP for its own write
  *          cycle (tW), just like Program and Erase. This function used to
@@ -164,6 +177,9 @@ static bool at25xeUnprotect(const TagStorageDevice *dev)
     uint8_t header[2] = { AT25XE_CMD_WRITE_STATUS_REG_1, 0x00U };
     bool ok;
     int i;
+
+    if ((at25xeStatus(dev) & AT25XE_FLAGS_SR_BP) == 0)
+        return true;
 
     tagStorageSpiCommand(spi, AT25XE_CMD_WRITE_ENABLE);
     tagSpiSelect(spi);
