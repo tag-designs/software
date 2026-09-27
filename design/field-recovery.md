@@ -101,6 +101,85 @@ tag to image must be recorded externally before they fly. And while the format
 is being versioned: `int32_t epoch` overflows in January 2038. A
 `format_version` field is what makes widening it survivable later.
 
+## Extracting external flash: STM32CubeProgrammer external loaders
+
+Where the bulk of recorded data is on external flash, the extraction path can
+reuse STM32CubeProgrammer's external loader mechanism: a small binary
+(`.stldr`) that the programmer downloads into the tag's SRAM and calls, exporting
+a `StorageInfo` descriptor plus `Init`, `Read`, `Write`, `SectorErase` and
+`MassErase`. Reads are function calls, so the address space is fictional and the
+mechanism is not restricted to memory-mapped QSPI/OSPI -- it works for plain SPI
+NOR and NAND on an ordinary SPI peripheral, which is what the tags use.
+
+### Why this rather than a recovery firmware
+
+The obvious alternative is to flash a dedicated dumper image that reads external
+flash and sends it out over the monitor. **That overwrites internal flash**, and
+internal flash is where the `t_StateMarker` marker log, the persistent
+configuration and the NAND map live. It would destroy the evidence for goal 2 in
+the course of serving goal 1, and it would do so silently.
+
+An external loader runs entirely from SRAM and leaves internal flash untouched.
+For a tag returned from the field that is the deciding property.
+
+### Capture order is therefore fixed
+
+The loader occupies SRAM, destroying whatever the application left there. So:
+
+1. `tag_capture_state.py` first -- SRAM, writable internal flash, RTC backup
+   registers.
+2. The external loader second.
+
+Reversing these loses SRAM state and looks like it worked. This belongs in the
+recovery procedure as a rule, not as a note.
+
+### Read-only by default
+
+`STM32_Programmer_CLI` will happily erase external memory through a loader. A
+loader used for field recovery should implement `Read` and `StorageInfo` and
+stub `Write`, `SectorErase` and `MassErase` to fail, so the forensic tool is
+incapable of destroying the thing it was brought in to recover. A separate
+writable loader can exist for production use if one is ever wanted.
+
+### Raw reads for NAND
+
+For the GD5F SPI-NAND parts, prefer reading raw pages *including the spare area
+and ECC bytes*, and do bad-block skipping and ECC correction on the host. A
+loader that corrects and skips internally can discard information
+irrecoverably -- and when the failure under investigation is itself in the
+bad-block map or the ECC path, the loader would be hiding exactly the evidence
+that matters.
+
+### Fewer loaders than tags
+
+The board-specific part is pins, clock setup and any flash power-enable GPIO;
+the invariant part is the flash command set, and there are only five parts in
+the tree (`at25xe`, `mx25r`, `mx25l`, `mx25u12843`, `gd5f`).
+
+The repository already has the right seam:
+[`storage_spi.h`](../embedded/tags/common/storage/inc/storage_spi.h) wraps SPI
+behind `TagSpiDevice` with inline framing helpers, and the drivers in
+`embedded/tags/common/storage/src/` sit on top of it. A freestanding SPI backend
+under that seam would let loaders share command sequences with the firmware, so
+a driver fix reaches both.
+
+This is a refactor rather than a recompile: the drivers currently include
+`hal.h`, `rtc_api.h`, `debug_log.h` and `phase_probe.h`, and a loader has no
+ChibiOS, no HAL and no application startup. `Init` must bring up its own clocks,
+SPI and any power-enable pin from reset state.
+
+### What to verify before committing to this
+
+- **SRAM budget.** The loader, its stack and the programmer's transfer buffer
+  must fit alongside nothing else -- tight on STM32L432's 64 KB, comfortable on
+  the U375 parts.
+- **Board bring-up from cold.** Whether each board's external flash can be
+  reached without the application's power sequencing, and what `Init` must
+  replicate.
+- **Provenance.** A `.stldr` is per board, and a mismatched loader reads
+  plausible garbage without complaint. Loaders belong in the same archive as the
+  image, keyed to the board, and built by the same CI job.
+
 ## Gap 2: the field failure record
 
 The marker log is the right place and mostly does the job. Three gaps.
@@ -179,9 +258,12 @@ the host tools' `v*` -- since they release on different clocks.
 ## Open questions
 
 - **Where does the superblock live?** If the bulk of recorded data is on external
-  flash, the superblock belongs there, and the internal-flash capture path is
-  serving goal 2 rather than goal 1. This decides which piece of work is
-  actually urgent.
+  flash, the superblock belongs there, written through the same path that writes
+  pages, and the internal-flash capture path is serving goal 2 rather than goal
+  1. This decides which piece of work is actually urgent.
+- **Which loaders are needed first?** One per board, but the flash command set is
+  shared; the first one built will show how much of the existing driver code
+  survives being made freestanding.
 - **Where is the per-deployment record** mapping a physical tag to the image
   hash it was flashed with, for tags deployed before a superblock exists?
 - **Is a reset-cause marker worth its flash write**, given endurance and energy
