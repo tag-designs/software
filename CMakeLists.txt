@@ -57,6 +57,7 @@ set(
   "design/index.md"
   "design/binary-datalogs.md"
   "design/dataprocessing.md"
+  "design/field-recovery.md"
   "design/windows-build-notes.md"
   "embedded/bases/BUILD_SOURCES.md"
   "embedded/bases/README.md"
