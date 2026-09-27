@@ -1,0 +1,205 @@
+name: Release host tools
+
+# Builds the Windows and macOS host tool packages. Pushing a version tag
+# (for example `v3.1`) builds both platforms and publishes a GitHub release
+# with the resulting .zip and .dmg attached. `workflow_dispatch` runs the same
+# builds without publishing, so the pipeline can be exercised without cutting
+# a tag.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Qt provisioned by aqt for the CI builds. The local presets use 6.10.2
+  # (Windows) and 6.8.2 (macOS); CI pins a single version for both.
+  QT_VERSION: "6.8.2"
+  # Must match the baseline in vcpkg-configuration.json so manifest-mode
+  # version resolution finds the commit in this shallow clone.
+  VCPKG_BASELINE: "99a97de2cb371449d4fb9dc970f2ac562d689ec2"
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2022
+            artifact: host-tools-windows-x64
+            triplet: x64-windows-static-md
+            host_triplet: x64-windows
+            qt_host: windows
+            qt_arch: win64_msvc2022_64
+            generator: Visual Studio 17 2022
+            generator_args: -A x64
+            configure_extra: ""
+            package_glob: build/*.zip
+          - name: macOS arm64
+            os: macos-15
+            artifact: host-tools-macos-arm64
+            triplet: arm64-osx-static
+            host_triplet: arm64-osx
+            qt_host: mac
+            qt_arch: clang_64
+            generator: Ninja
+            generator_args: ""
+            configure_extra: -DCMAKE_BUILD_TYPE=Release -DMACOS_SIGN_APPS=OFF
+            package_glob: build/*.dmg
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          # Full history so the CMake version logic can resolve the release
+          # tag via `git tag --merged HEAD`.
+          fetch-depth: 0
+
+      - name: Check out vcpkg at the manifest baseline
+        uses: actions/checkout@v6
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ env.VCPKG_BASELINE }}
+          path: vcpkg
+          fetch-depth: 1
+
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          else
+            ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
+
+      - name: Install macOS build tools (autotools for vcpkg ports, ninja)
+        if: runner.os == 'macOS'
+        run: brew install autoconf autoconf-archive automake libtool ninja
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg-cache
+          key: >-
+            vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_BASELINE }}-${{
+            hashFiles('vcpkg.json', 'vcpkg-configuration.json',
+            'cmake/vcpkg-triplets/*') }}
+          restore-keys: |
+            vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_BASELINE }}-
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: host/docs/requirements.txt
+
+      - name: Install documentation dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r host/docs/requirements.txt
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt_host }}
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
+          cache: true
+
+      - name: Resolve CMake-friendly paths
+        shell: bash
+        run: |
+          # Bash on the Windows runner reports MSYS paths ("/d/a/...") and Qt
+          # is reported with backslashes; CMake needs native forward-slash
+          # paths in both cases.
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "SRC_DIR=$(cygpath -m "$PWD")" >> "$GITHUB_ENV"
+          else
+            echo "SRC_DIR=$PWD" >> "$GITHUB_ENV"
+          fi
+          echo "QT_CMAKE_PREFIX=$(printf '%s' "$QT_ROOT_DIR" | tr '\\' '/')" >> "$GITHUB_ENV"
+
+      - name: Configure
+        shell: bash
+        run: |
+          export VCPKG_DEFAULT_BINARY_CACHE="$SRC_DIR/vcpkg-cache"
+          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+          cmake -S . -B build \
+            -G "${{ matrix.generator }}" ${{ matrix.generator_args }} \
+            -DCMAKE_TOOLCHAIN_FILE="$SRC_DIR/vcpkg/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+            -DVCPKG_HOST_TRIPLET=${{ matrix.host_triplet }} \
+            -DVCPKG_OVERLAY_TRIPLETS="$SRC_DIR/cmake/vcpkg-triplets" \
+            -DCMAKE_PREFIX_PATH="$QT_CMAKE_PREFIX" \
+            -DCMAKE_INSTALL_PREFIX="$SRC_DIR/build/install" \
+            -DBUILD_HOST=ON \
+            -DBUILD_QT_APPS=ON \
+            -DBUILD_EMBEDDED=OFF \
+            -DBUILD_HOST_DOCS=ON \
+            -DBUILD_DEVELOPER_DOCS=OFF \
+            -DHOST_MKDOCS_COMMAND="python;-m;mkdocs" \
+            ${{ matrix.configure_extra }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --parallel
+
+      - name: Package
+        shell: bash
+        run: cmake --build build --config Release --target package
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.package_glob }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List packages
+        run: ls -lR artifacts
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --generate-notes \
+              artifacts/*
+          fi

@@ -260,6 +260,35 @@ cmake -S . -B build-package \
   -DMACOS_SIGN_APPS=OFF
 ```
 
+## Tagged Releases
+
+`.github/workflows/release.yml` builds the Windows and macOS host packages on
+GitHub Actions. Pushing a tag matching `vX.Y` or `vX.Y.Z` builds both platforms
+and publishes a GitHub release with the ZIP and DMG attached; the packages take
+their version from the same `git tag --merged HEAD` lookup used by local builds,
+so the workflow checks out full history. A `workflow_dispatch` run performs the
+same builds and uploads the packages as workflow artifacts without publishing a
+release, which is the way to exercise the pipeline without cutting a tag.
+
+| | Windows | macOS |
+| --- | --- | --- |
+| Runner | `windows-2022` | `macos-15` (arm64) |
+| Generator | Visual Studio 17 2022 | Ninja |
+| vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` |
+| Qt | `QT_VERSION` in the workflow env, installed with aqt | same |
+
+The workflow checks out vcpkg at the baseline commit recorded in
+`vcpkg-configuration.json` rather than using the runner's preinstalled copy, so
+manifest resolution is reproducible, and caches built ports keyed on
+`vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
+packages (`BUILD_HOST_DOCS=ON`), matching a local package build.
+
+macOS CI builds are configured with `-DMACOS_SIGN_APPS=OFF`, so the published
+DMG is unsigned and users must right-click and choose Open on first launch.
+Signing in CI would need the Developer ID certificate and its password added as
+repository secrets and imported into a temporary keychain before the package
+step.
+
 ## Linux Prerequisites
 
 | Requirement | Notes |
