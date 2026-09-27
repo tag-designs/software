@@ -10,7 +10,8 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 1. Cross-Cutting Design
 
 *   [**Binary Datalogging Design**](binary-datalogs.md): System standard for shared binary log structure alignment, naming conventions, and nanopb constraints.
-*   [**Field Recovery and Firmware Provenance**](field-recovery.md): Proposal. Why a raw datalog dump is not self-decoding, what the internal-flash marker log does and does not record in the field, keying firmware provenance on the image hash, extracting external flash with STM32CubeProgrammer external loaders rather than a recovery firmware that would overwrite the evidence, committing generated board, nanopb and default-config sources so a tree at a commit builds without fmpp, nanopb or host protobuf, and what a GitHub Actions firmware build can and cannot qualify.
+*   [**Tag Firmware Build Reproducibility**](tag-build-reproducibility.md): Proposal. The three categories of source a tag image is built from, which tools remain required, committing generated board/nanopb/config sources to drop fmpp, nanopb and host protobuf from the build, recording library and tool versions per image, and flagging dirty submodules, stale generated files and unpinned toolchains.
+*   [**Field Data Extraction**](field-data-extraction.md): Proposal. Why a raw datalog dump is not self-decoding and what a session superblock would fix, extracting external flash with STM32CubeProgrammer loaders rather than a recovery firmware that would overwrite the evidence, and what the internal-flash marker log does and does not record in the field.
 *   [**Windows Build Notes**](windows-build-notes.md): Reference notes on MSVC compiler setups, vcpkg static dependencies, and developer environment paths.
 
 ---
