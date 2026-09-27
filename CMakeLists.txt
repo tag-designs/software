@@ -418,7 +418,7 @@ if(Git_FOUND)
   if(_ultralight_git_tag_result EQUAL 0 AND _ultralight_git_tags)
     string(REPLACE "\n" ";" _ultralight_git_tag_list "${_ultralight_git_tags}")
     foreach(_ultralight_git_tag IN LISTS _ultralight_git_tag_list)
-      if(_ultralight_git_tag MATCHES "^v[0-9]+\\.[0-9]+$")
+      if(_ultralight_git_tag MATCHES "^v[0-9]+\\.[0-9]+(\\.[0-9]+)?$")
         set(ULTRALIGHT_PACKAGE_GIT_TAG "${_ultralight_git_tag}")
         break()
       endif()
@@ -434,9 +434,21 @@ if(NOT ULTRALIGHT_PACKAGE_GIT_TAG)
     "${ULTRALIGHT_PACKAGE_FALLBACK_VERSION}")
 endif()
 string(REGEX REPLACE "^v" "" ULTRALIGHT_PACKAGE_VERSION "${ULTRALIGHT_PACKAGE_GIT_TAG}")
-string(REGEX MATCH "^([0-9]+)\\.([0-9]+)$" _ultralight_package_version_match "${ULTRALIGHT_PACKAGE_VERSION}")
+# vX.Y and vX.Y.Z are both accepted; the workflow in .github/workflows/release.yml
+# triggers on either. A tag with no patch component yields patch 0 so that
+# CPACK_PACKAGE_VERSION_PATCH is always defined.
+string(
+  REGEX MATCH
+  "^([0-9]+)\\.([0-9]+)\\.?([0-9]*)$"
+  _ultralight_package_version_match
+  "${ULTRALIGHT_PACKAGE_VERSION}")
 set(ULTRALIGHT_PACKAGE_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(ULTRALIGHT_PACKAGE_VERSION_MINOR "${CMAKE_MATCH_2}")
+if("${CMAKE_MATCH_3}" STREQUAL "")
+  set(ULTRALIGHT_PACKAGE_VERSION_PATCH "0")
+else()
+  set(ULTRALIGHT_PACKAGE_VERSION_PATCH "${CMAKE_MATCH_3}")
+endif()
 message(STATUS "UltralightTags package tag: ${ULTRALIGHT_PACKAGE_GIT_TAG}")
 
 set(CPACK_PACKAGE_NAME "UltralightTags")
@@ -444,6 +456,7 @@ set(CPACK_PACKAGE_VENDOR "cs.iu.edu")
 set(CPACK_PACKAGE_VERSION "${ULTRALIGHT_PACKAGE_VERSION}")
 set(CPACK_PACKAGE_VERSION_MAJOR "${ULTRALIGHT_PACKAGE_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${ULTRALIGHT_PACKAGE_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${ULTRALIGHT_PACKAGE_VERSION_PATCH}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ultralight Tags Host Tools")
 
 add_subdirectory(proto)
