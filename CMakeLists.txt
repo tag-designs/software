@@ -27,6 +27,9 @@ option(BUILD_QT_APPS "Build Qt host applications" ON)
 option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ${BUILD_QT_APPS})
 option(BUILD_DEVELOPER_DOCS "Build developer architecture and API documentation by default" OFF)
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
+option(REPRODUCIBLE_BUILD
+       "Treat conditions that make a build unreproducible as errors rather than warnings"
+       OFF)
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
@@ -338,6 +341,19 @@ if(NOT Protobuf_FOUND)
 endif()
 cmake_print_variables(Protobuf_VERSION)
 
+# Report a condition that makes the build unreproducible. Warns by default so
+# day-to-day work is not obstructed; -DREPRODUCIBLE_BUILD=ON turns the same
+# condition into a configure error, which is how CI and release qualification
+# should build.
+function(nanopb_version_problem)
+  string(JOIN "" _message ${ARGN})
+  if(REPRODUCIBLE_BUILD)
+    message(FATAL_ERROR "${_message}")
+  else()
+    message(WARNING "${_message} (configure with -DREPRODUCIBLE_BUILD=ON to make this an error)")
+  endif()
+endfunction()
+
 if(BUILD_EMBEDDED)
   # The nanopb runtime is vendored, because it is compiled into every image.
   # The directory is named for its version, so derive the path by glob and
@@ -357,7 +373,29 @@ if(BUILD_EMBEDDED)
     message(FATAL_ERROR
       "Vendored nanopb runtime at ${NANOPB_RUNTIME_DIR} is incomplete.")
   endif()
-  message(STATUS "Nanopb runtime: ${NANOPB_RUNTIME_DIR}")
+  # The directory name is the pin: deriving the version from it rather than
+  # comparing against a separately recorded value removes one way for the tree
+  # to disagree with itself.
+  get_filename_component(_nanopb_runtime_name "${NANOPB_RUNTIME_DIR}" NAME)
+  string(REGEX REPLACE "^nanopb-" "" NANOPB_VERSION "${_nanopb_runtime_name}")
+  message(STATUS "Nanopb runtime: ${NANOPB_RUNTIME_DIR} (version ${NANOPB_VERSION})")
+
+  # The runtime states its own version. A disagreement here means the directory
+  # was renamed without replacing its contents, or the reverse.
+  file(READ "${NANOPB_RUNTIME_DIR}/pb.h" _nanopb_pb_h)
+  string(REGEX MATCH "NANOPB_VERSION[ \t]+\"nanopb-([0-9][0-9.]*)\"" _ "${_nanopb_pb_h}")
+  set(_nanopb_runtime_version "${CMAKE_MATCH_1}")
+  unset(_nanopb_pb_h)
+  if("${_nanopb_runtime_version}" STREQUAL "")
+    nanopb_version_problem(
+      "Could not read NANOPB_VERSION from ${NANOPB_RUNTIME_DIR}/pb.h.")
+  elseif(NOT "${_nanopb_runtime_version}" STREQUAL "${NANOPB_VERSION}")
+    nanopb_version_problem(
+      "Vendored nanopb runtime disagrees with its directory name: "
+      "${NANOPB_RUNTIME_DIR}/pb.h reports ${_nanopb_runtime_version}, but the "
+      "directory is named for ${NANOPB_VERSION}. Replace the directory contents "
+      "or rename the directory, whichever is wrong.")
+  endif()
 
   # NANOPB_SRC_ROOT_FOLDER now supplies only the generator, which is a
   # build-time tool and stays outside the repository. The runtime is no longer
@@ -401,6 +439,40 @@ if(BUILD_EMBEDDED)
       "nanopb_generator was not found. Set NANOPB_GENERATOR_EXECUTABLE, "
       "or set NANOPB_ROOT to a nanopb "
       "source tree with generator-bin.")
+  endif()
+
+  # The generator stamps its version into every .pb.h it writes, so a
+  # generator that disagrees with the vendored runtime produces sources built
+  # against a runtime they were not generated for. PB_PROTO_HEADER_VERSION only
+  # catches that across major versions.
+  execute_process(
+    COMMAND "${NANOPB_GENERATOR_EXECUTABLE}" --version
+    OUTPUT_VARIABLE _nanopb_generator_version_out
+    ERROR_VARIABLE _nanopb_generator_version_err
+    RESULT_VARIABLE _nanopb_generator_version_result
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_STRIP_TRAILING_WHITESPACE)
+  string(REGEX MATCH "nanopb-([0-9][0-9.]*)"
+         _ "${_nanopb_generator_version_out}${_nanopb_generator_version_err}")
+  set(_nanopb_generator_version "${CMAKE_MATCH_1}")
+  if(NOT _nanopb_generator_version_result EQUAL 0
+     OR "${_nanopb_generator_version}" STREQUAL "")
+    # Never fatal: a generator that cannot report its version is a gap in the
+    # evidence, not proof of a mismatch, and failing here would block a build
+    # over a tool's command line rather than over the tree's contents.
+    message(WARNING
+      "Could not determine the nanopb generator version from "
+      "${NANOPB_GENERATOR_EXECUTABLE}; generated sources are unverified "
+      "against the vendored runtime ${NANOPB_VERSION}.")
+  elseif(NOT "${_nanopb_generator_version}" STREQUAL "${NANOPB_VERSION}")
+    nanopb_version_problem(
+      "The nanopb generator is version ${_nanopb_generator_version} but the "
+      "vendored runtime is ${NANOPB_VERSION}. Generated .pb.c and .pb.h would "
+      "be built against a runtime they were not generated for. Point "
+      "NANOPB_ROOT or NANOPB_GENERATOR_EXECUTABLE at a ${NANOPB_VERSION} "
+      "distribution, or vendor the runtime matching the generator.")
+  else()
+    message(STATUS "Nanopb generator: ${_nanopb_generator_version} (matches runtime)")
   endif()
 
   get_filename_component(

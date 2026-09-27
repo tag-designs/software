@@ -401,6 +401,24 @@ Each disagreement has a distinct meaning, and the message should say which:
 | runtime ahead of generated | runtime replaced, `.pb.*` not regenerated |
 | generator differs from pin | local tool is not the pinned one |
 
+**Implemented, in part.** The pin, the vendored `pb.h` and the generator's
+reported version are compared at configure time, with `nanopb_version_problem()`
+warning by default and failing under `-DREPRODUCIBLE_BUILD=ON`. The generated
+banner is not compared yet: the `.pb.*` files are regenerated on every build by
+the generator that was just checked, so until they are committed the generator
+check subsumes it. That comparison becomes necessary at the same moment the
+generated sources enter the repository.
+
+A generator that cannot report its version warns but never fails, even under
+`REPRODUCIBLE_BUILD`. That is a gap in the evidence rather than proof of a
+mismatch, and a build should not be blocked over a tool's command line when the
+tree itself is consistent.
+
+Determinism of the banner is not an assumption: `nanopb_generator` defaults
+`notimestamp` to true and has since 0.4.0, so the preamble carries the version
+alone. Passing `-t` would add `time.asctime()` and make every regeneration
+differ, which is worth knowing before anyone adds generator flags.
+
 A CI job could instead check that a diff touching the version file also touches
 the vendored and generated paths. That is weaker: it depends on how the change
 was made rather than on what the tree contains, and it would miss a bad merge or
