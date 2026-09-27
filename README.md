@@ -301,12 +301,8 @@ bundle fails `codesign --verify` and arm64 macOS refuses to launch it. Users see
 "the application is damaged and can't be opened" rather than the usual
 unidentified-developer prompt.
 
-Ad-hoc signed apps still are not notarized, so on first launch users must
-right-click the app and choose Open, or clear the quarantine attribute:
-
-```
-xattr -dr com.apple.quarantine /Applications/qtmonitor.app
-```
+Ad-hoc signed apps are not notarized, so macOS still blocks them on first
+launch. See [Installing a macOS Release](#installing-a-macos-release) below.
 
 Publishing apps that open on a double-click would need the Developer ID
 certificate and its password stored as repository secrets and imported into a
@@ -315,6 +311,39 @@ stapling with `notarytool`. In that configuration the hardened runtime
 (`--options runtime`) and a secure timestamp apply; `install_macos_codesign` in
 `cmake/DeployQt.cmake` selects those flags automatically for a real identity and
 omits them for `-`.
+
+## Installing a macOS Release
+
+The apps in the DMG are ad-hoc signed but not notarized, so macOS quarantines
+them on download and refuses to launch them until the quarantine attribute is
+cleared. Drag `tag_tools` out of the mounted DMG first — the DMG itself is a
+read-only volume and `xattr` cannot write to it — then clear the attribute on
+the whole folder:
+
+```
+xattr -dr com.apple.quarantine /path/to/tag_tools
+```
+
+That covers all five apps at once. They then open normally, with no Gatekeeper
+prompt, because quarantine is what triggers Gatekeeper.
+
+If an app instead reports that it "is damaged and can't be opened", it came from
+a DMG built before ad-hoc signing was enabled in CI. Those bundles have no valid
+signature, which is a separate problem from quarantine and is not fixed by
+clearing it. Re-sign them in place, then clear quarantine:
+
+```
+cd /path/to/tag_tools
+for app in *.app; do
+  codesign --force --deep --timestamp=none -s - "$app"
+done
+codesign --verify --deep --strict *.app && echo "all verify OK"
+xattr -dr com.apple.quarantine .
+```
+
+`--deep` is not how the packages themselves are signed — `install_macos_codesign`
+signs each nested dylib and framework individually before sealing the bundle —
+but it is adequate for repairing an already-assembled bundle locally.
 
 ## Linux Prerequisites
 
