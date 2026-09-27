@@ -53,11 +53,18 @@ image, and neither is described by the firmware sources.
   currently checks. `embedded/CMakeLists.txt` does warn when `CHIBIOS_DIR` comes
   from the environment instead of the submodule, which is the right instinct and
   the only such check in the tree.
-- **nanopb is not pinned at all.** It is listed in `.gitignore` and supplied per
-  developer via `NANOPB_ROOT` or a `./nanopb` directory. Its generator produces
-  the `.pb.*` sources and its runtime -- `pb_encode.c`, `pb_decode.c`,
-  `pb_common.c` -- is compiled into every shipped image, from a tree whose
-  version is recorded nowhere.
+- **nanopb is not pinned at all**, and it plays two roles from one untracked
+  tree. `NANOPB_SRC_ROOT_FOLDER` supplies both the include path for the
+  *runtime* -- `pb_encode.c`, `pb_decode.c`, `pb_common.c`, `pb.h`, compiled
+  into every shipped image -- and the `generator-bin` hint for the *generator*
+  that produces the `.pb.*` sources. The tree is listed in `.gitignore` and
+  supplied per developer via `NANOPB_ROOT` or `./nanopb`, so neither role has a
+  recorded version.
+
+  The two roles need different treatment, and are handled separately under
+  strategy 2. nanopb does provide one coarse safety net already: generated
+  headers carry `#if PB_PROTO_HEADER_VERSION != 40 / #error Regenerate this
+  file`, which catches a 0.3-against-0.4 mismatch but not 0.4.7 against 0.4.9.1.
 
 ### Tools
 
@@ -67,7 +74,7 @@ image, and neither is described by the firmware sources.
 | `make`, `cmake` | the build | always | no |
 | `fmpp` (Java) | board files | only when regenerating | no |
 | `python3` + `generate_board_chcfg.py` | `board.chcfg` | only when regenerating | script in repo |
-| `nanopb_generator` | `.pb.{c,h}` | only when regenerating | no |
+| `nanopb_generator` | `.pb.{c,h}` | only when regenerating | not today; by version + per-platform hash under strategy 2 |
 | `config-gen` + host protobuf | `default_config.c` | only when regenerating | source in repo, links protobuf |
 
 "Only when regenerating" describes the intended state, not the current one.
@@ -122,34 +129,97 @@ later. Committed, it arrives as a reviewable diff.
   `embedded/boards/<Board>/generated/`,
   `embedded/proto-c/<variant>/generated/`. Each file keeps its generator's
   "do not edit" banner.
-- The build consumes the committed copies. Generation happens only under
-  `-DREGENERATE_SOURCES=ON`, default `OFF`. This is the point of the exercise,
-  so `find_program(FMPP ... REQUIRED)` and the nanopb generator lookup must
-  become conditional on that option rather than unconditional as they are now,
-  and `config-gen` must build only when regenerating.
-- Explicit targets -- `regenerate-boards`, `regenerate-proto-c`, and an
-  aggregate `regenerate` -- never generation as part of the default build. A
-  generator wired into every compile dirties the working tree, and a `git
-  status` that is always dirty is one nobody reads.
-- `.gitattributes`: mark the nanopb outputs `linguist-generated`. Do **not**
-  mark the board files that way; their reviewability is the reason for this.
+- **Generation stays automatic where the tools exist.** Board customizations
+  and `.proto`/`.options` files change often during tag development, and a
+  manual step that can be forgotten is worse than no step. The existing
+  `add_custom_command` rules already declare complete dependencies -- the
+  customizations JSON, the ChibiOS XML, all three `.ftl` templates,
+  `generate_board_chcfg.py`, `${TAG_PROTO_SOURCES}`, the merged options,
+  `default-config.json` -- so redirecting their `OUTPUT` from the build tree to
+  the source tree makes regeneration incremental and automatic. Edit an input,
+  build, and the generated file updates and appears in `git status`.
+- **`REGENERATE_SOURCES` is a tri-state**, not a switch:
+  - `AUTO` (default): wire up the generation rules when the generators are
+    found; fall back to the committed copies when they are not.
+  - `ON`: require the generators and fail at configure time if any is missing.
+    Used by the CI freshness job.
+  - `OFF`: never generate. Used by the CI firmware build, so the no-tools path
+    is proven rather than assumed.
+
+  `find_program(FMPP ... REQUIRED)` and the nanopb generator lookup must become
+  conditional rather than unconditional as they are now, and `config-gen` must
+  build only when regenerating.
+- **An input digest covers the `AUTO`-without-tools case**, which is the one
+  CMake cannot catch by dependency: someone edits a board customization on a
+  machine with no `fmpp`, no rule exists, and the build silently uses stale
+  output. Alongside each generated directory write `.inputs.sha256`, a digest
+  over the inputs that produced it. Recomputing it needs only file hashing, no
+  generator, so configure can always compare and name the input that moved.
+- Keep the explicit `regenerate-boards`, `regenerate-proto-c` and aggregate
+  `regenerate` targets for the `OFF` case and for forcing output after a
+  generator upgrade, where no input changed but the output would.
+- `.gitattributes`: mark the nanopb outputs `linguist-generated`, and set
+  `eol=lf` on every generated path. Generated text written on Windows otherwise
+  lands with CRLF and produces diffs with nothing to do with content. Set this
+  before the first commit of generated output, not after.
 
 **Freshness is enforced in CI**, by a job that configures with
 `-DREGENERATE_SOURCES=ON`, runs `regenerate`, and fails on `git diff
 --exit-code` over the generated paths. A diff means "run the regenerate target
-and commit the result", not "CI is broken", and the job should say so. Without
-this step the arrangement merely moves the staleness risk somewhere less
-visible than the build.
+and commit the result", not "CI is broken", and the job should say so.
+
+The two checks are complementary and catch different failures. The digest
+catches an input edited without regenerating -- the frequent development
+mistake. The CI diff catches what the digest structurally cannot: a **generator
+upgrade** changes the output while every input hash stays identical.
+
+**One platform is authoritative.** The CI job runs on Linux with the pinned
+generator distribution, and its verdict is the one that counts. A local version
+mismatch warns rather than fails, so that whoever is working on Windows or macOS
+with a different point release does not get red builds for a difference the
+pinned environment does not have.
 
 ### 2. Record library and tool versions
 
 What cannot be eliminated must be recorded. Two places, for two audiences.
 
-**Pin the libraries.** Make nanopb a submodule at a tag, alongside ChibiOS. A
-submodule gives a SHA in the superproject, which is what makes "the libraries
-at this commit" a meaningful statement. It is also a prerequisite for the
-freshness check above: with nanopb supplied per developer, a mismatched
-generator fails the check through no fault of the developer.
+**Pin the libraries, by role.** ChibiOS is one thing -- a submodule whose SHA
+the superproject records. nanopb is two, and they want different mechanisms.
+
+*The nanopb runtime is source that ships inside the product.* `pb_encode.c`,
+`pb_decode.c`, `pb_common.c` and `pb.h` are compiled into every image. They are
+platform-independent and there are about seven of them, so **vendor them into
+the tree** -- `embedded/third_party/nanopb/` with a README recording the
+upstream version and commit. Vendoring rather than a submodule keeps them in
+this repository's history permanently, instead of depending on an upstream
+archive still being downloadable years from now, which is the whole premise of
+archiving over rebuilding.
+
+*The nanopb generator is a build-time tool*, like `arm-none-eabi-gcc`. It does
+not belong in the repository; it needs to be pinned and verified.
+
+Here the precompiled nanopb distributions are an asset rather than a
+compromise. Each bundles the generator, a `protoc`, and a compatible Python
+protobuf package as one unit, so pinning the distribution pins all three
+together. Wiring nanopb in as a `protoc` plugin from source would replace one
+pinned thing with three independently versioned ones that must stay mutually
+compatible.
+
+So: record `NANOPB_VERSION` and a **per-platform SHA-256** of each distribution
+archive in one file in the repository -- three hashes, one version, which is how
+the Windows, macOS and Linux split is handled. A script fetches and verifies
+into a build-local cache; configure compares the found generator's reported
+version against the pin, warning locally and failing under
+`-DREPRODUCIBLE_BUILD=ON`.
+
+The vendored runtime and the pinned generator must name the same nanopb
+version, and the `PB_PROTO_HEADER_VERSION` guard in generated headers catches
+only a major mismatch, so the configure-time comparison is what covers point
+releases.
+
+**Check availability before pinning a version.** Older nanopb releases are not
+uniformly published for all three platforms, and a pin that cannot be satisfied
+on macOS is worse than no pin at all.
 
 **Record the environment per build.** A `build-manifest.json` written beside
 the image, carrying what the sources do not:
@@ -159,7 +229,8 @@ the image, carrying what the sources do not:
 | `image_sha256`, `elf_sha256` | identity -- see below |
 | `git_sha`, `git_describe`, `tree_dirty` | which commit, and whether it was clean |
 | `chibios_sha`, `chibios_dirty`, `chibios_from_env` | the ChibiOS actually used, not the one recorded |
-| `nanopb_sha`, `nanopb_dirty` | likewise, once vendored |
+| `nanopb_runtime_version` | the vendored runtime actually compiled in |
+| `nanopb_generator_version`, `protoc_version`, `generator_platform` | which distribution produced the committed `.pb.*` |
 | `generated_state` | fresh / stale / unverified |
 | `toolchain` | `arm-none-eabi-gcc --version`, binutils, `cmake --version` |
 | `target`, `board_type` | which image this is |
@@ -188,7 +259,9 @@ escalated according to the build mode.
 | Working tree dirty | `git status --porcelain` | the commit does not describe the sources |
 | Submodule at a different commit than recorded | `git submodule status` leading `+` | the library is not the one the commit names |
 | Submodule working tree dirty | `git status --porcelain` inside it | edits invisible to the superproject |
-| `CHIBIOS_DIR` / `NANOPB_ROOT` outside the repo | already warned for ChibiOS | the library is not described at all |
+| `CHIBIOS_DIR` outside the repo | already warned for | the library is not described at all |
+| Vendored nanopb runtime edited in place | `git status --porcelain` on the vendored path | a local patch compiled into shipped images |
+| Generator version differs from the pin | `--version` against `NANOPB_VERSION` | different generator, different `.pb.*` |
 | Generated files stale | regenerate and diff | committed sources are not what the inputs produce |
 | Generated files unverified | generators unavailable | staleness unknown, not disproven |
 | Toolchain differs from the recorded expectation | `--version` against a pinned string | a different compiler is a different image |
@@ -256,25 +329,36 @@ the host tools' `v*` -- since they release on different clocks.
 
 ## Order of work
 
-1. Vendor nanopb as a submodule at a pinned tag. Everything else depends on it,
-   and it separately closes the hole where the nanopb runtime in every shipped
-   image comes from an untracked tree.
-2. Add the `generated/` directories, commit the current outputs, and switch the
-   builds to consume them.
-3. Add the `regenerate` targets and make the generator lookups conditional.
-4. Add the pitfall checks and `-DREPRODUCIBLE_BUILD`.
-5. Add the build manifest, and extend `version.cmake` with the dirty flag and
-   submodule SHAs.
-6. Add the CI freshness check and the firmware build.
+1. Vendor the nanopb runtime into the tree and pin the generator distribution
+   by version and per-platform hash. Everything else depends on the generator
+   being pinned, and it separately closes the hole where the runtime compiled
+   into every shipped image comes from an untracked tree.
+2. Set `.gitattributes` for the generated paths -- `eol=lf` before any generated
+   output is committed, not after.
+3. Add the `generated/` directories, commit the current outputs, redirect the
+   existing custom commands to write there, and add the `.inputs.sha256`
+   digests.
+4. Add the `REGENERATE_SOURCES` tri-state and make the generator lookups
+   conditional.
+5. Add the pitfall checks and `-DREPRODUCIBLE_BUILD`.
+6. Add the build manifest, and extend `version.cmake` with the dirty flag, the
+   ChibiOS SHA and the nanopb versions.
+7. Add the CI freshness check and the firmware build.
 
-Steps 1 to 3 remove the external tools; 4 and 5 record what is left; 6 is what
-makes any of it dependable.
+Steps 1 to 4 remove the external tools from an ordinary build; 5 and 6 record
+what is left; 7 is what makes any of it dependable.
 
 ## Open questions
 
-- **Does vendoring nanopb change generated output?** Pinning to a tag may shift
-  the `.pb.*` files on first regeneration. That belongs in a commit of its own,
-  before anything depends on the freshness check.
+- **Does pinning nanopb change generated output?** Fixing on one version may
+  shift the `.pb.*` files on first regeneration. That belongs in a commit of its
+  own, before anything depends on the freshness check.
+- **Which nanopb version is available for all three platforms?** The pin has to
+  be satisfiable on Windows, macOS and Linux, which constrains the choice more
+  than picking the newest release would suggest.
+- **Is generator output byte-identical across platforms** for the same
+  distribution version? Making Linux authoritative sidesteps having to know, but
+  if it is identical the local check can be strict rather than advisory.
 - **How strictly should the toolchain be pinned?** Recording the version is
   clearly right; refusing to build on a different one may be more than a small
   group wants day to day, which is what the two modes are for -- but the
