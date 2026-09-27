@@ -477,10 +477,24 @@ if(BUILD_EMBEDDED)
     # Never fatal: a generator that cannot report its version is a gap in the
     # evidence, not proof of a mismatch, and failing here would block a build
     # over a tool's command line rather than over the tree's contents.
+    # Carry the tool's own last error into the message. A source tree needs
+    # its nanopb_pb2.py generated and the python protobuf packages installed
+    # before the generator will run at all, and saying so here saves the reader
+    # from rediscovering it.
+    set(_nanopb_generator_why "")
+    if(NOT "${_nanopb_generator_version_err}" STREQUAL "")
+      string(REGEX REPLACE "\r?\n" ";" _nanopb_err_lines
+             "${_nanopb_generator_version_err}")
+      list(FILTER _nanopb_err_lines EXCLUDE REGEX "^[ \t]*$")
+      if(_nanopb_err_lines)
+        list(GET _nanopb_err_lines -1 _nanopb_generator_why)
+        set(_nanopb_generator_why " It reported: ${_nanopb_generator_why}")
+      endif()
+    endif()
     message(WARNING
       "Could not determine the nanopb generator version from "
       "${NANOPB_GENERATOR_EXECUTABLE}; generated sources are unverified "
-      "against the vendored runtime ${NANOPB_VERSION}.")
+      "against the vendored runtime ${NANOPB_VERSION}.${_nanopb_generator_why}")
   elseif(NOT "${_nanopb_generator_version}" STREQUAL "${NANOPB_VERSION}")
     nanopb_version_problem(
       "The nanopb generator at ${NANOPB_GENERATOR_EXECUTABLE} is version "
