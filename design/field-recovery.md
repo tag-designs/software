@@ -317,6 +317,14 @@ A regeneration check is only stable if the generators are pinned.
   every shipped image from that same untracked tree, with no version recorded
   anywhere in the repository or the image.
 
+  The version banner nanopb emits by default works in favour of committing the
+  output: a committed `.pb.h` states which generator produced it, so the tree
+  records the nanopb version without anyone maintaining a separate note, and a
+  regeneration by a mismatched generator opens its diff with a one-line version
+  change that accounts for every other hunk rather than presenting unexplained
+  churn. It records the generator retrospectively; only vendoring pins it going
+  forward.
+
 - **`fmpp`** remains an external tool, but once board output is committed its
   version only matters to whoever regenerates, and the CI job pins it.
 
