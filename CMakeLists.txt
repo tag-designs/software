@@ -460,7 +460,10 @@ endif()
 if(APPLE)
   set(CPACK_GENERATOR DragNDrop)
   set(CPACK_PACKAGE_FILE_NAME "Ultralight-tags-${ULTRALIGHT_PACKAGE_GIT_TAG}")
-  if(MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY)
+  # An ad-hoc identity is handled entirely by the install rules in
+  # cmake/DeployQt.cmake; handing it to CPack as well would have the DragNDrop
+  # generator re-sign the bundle inside the DMG with its own flags.
+  if(MACOS_SIGN_APPS AND MACOS_CODE_SIGN_IDENTITY AND NOT MACOS_CODE_SIGN_IDENTITY STREQUAL "-")
     set(CPACK_BUNDLE_APPLE_CERT_APP "${MACOS_CODE_SIGN_IDENTITY}")
     set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_CODE_SIGN_IDENTITY}")
   endif()

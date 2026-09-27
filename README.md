@@ -283,11 +283,38 @@ manifest resolution is reproducible, and caches built ports keyed on
 `vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
 packages (`BUILD_HOST_DOCS=ON`), matching a local package build.
 
-macOS CI builds are configured with `-DMACOS_SIGN_APPS=OFF`, so the published
-DMG is unsigned and users must right-click and choose Open on first launch.
-Signing in CI would need the Developer ID certificate and its password added as
-repository secrets and imported into a temporary keychain before the package
-step.
+macOS CI builds are signed ad-hoc (`-DMACOS_CODE_SIGN_IDENTITY=-`) rather than
+with the Developer ID identity, which is not available to the runner. Signing is
+not optional here. With `MACOS_SIGN_APPS=OFF` nothing runs `codesign` on the
+bundle, so the only signature present is the ad-hoc one the linker applies to
+arm64 Mach-O files:
+
+```
+CodeDirectory v=20400 flags=0x20002(adhoc,linker-signed)
+Sealed Resources=none
+qtmonitor.app: code has no resources but signature indicates they must be present
+```
+
+That signature seals the executable but writes no
+`Contents/_CodeSignature/CodeResources`, which an app bundle requires, so the
+bundle fails `codesign --verify` and arm64 macOS refuses to launch it. Users see
+"the application is damaged and can't be opened" rather than the usual
+unidentified-developer prompt.
+
+Ad-hoc signed apps still are not notarized, so on first launch users must
+right-click the app and choose Open, or clear the quarantine attribute:
+
+```
+xattr -dr com.apple.quarantine /Applications/qtmonitor.app
+```
+
+Publishing apps that open on a double-click would need the Developer ID
+certificate and its password stored as repository secrets and imported into a
+temporary keychain before the package step, followed by notarization and
+stapling with `notarytool`. In that configuration the hardened runtime
+(`--options runtime`) and a secure timestamp apply; `install_macos_codesign` in
+`cmake/DeployQt.cmake` selects those flags automatically for a real identity and
+omits them for `-`.
 
 ## Linux Prerequisites
 

@@ -438,6 +438,22 @@ function(install_macos_codesign target)
         string(APPEND _entitlements_lines "                    \"${_entitlements_arg}\"\n")
     endforeach()
 
+    # An ad-hoc signature ("-") carries no team identifier, so it cannot take a
+    # secure timestamp (that needs a real identity and Apple's timestamp
+    # server), and the hardened runtime's library validation has no team to
+    # match the bundled dylibs against. Ad-hoc signing exists here to make the
+    # bundles launchable on Apple Silicon, which refuses any binary whose
+    # signature does not validate; notarization is what needs the hardened
+    # runtime, and an ad-hoc build is not notarizable anyway.
+    set(_codesign_item_hardened_line "                            --options runtime\n")
+    set(_codesign_bundle_hardened_line "                    --options runtime\n")
+    set(_codesign_bundle_timestamp_line "                    --timestamp\n")
+    if(MACOS_CODE_SIGN_IDENTITY STREQUAL "-")
+        set(_codesign_item_hardened_line "")
+        set(_codesign_bundle_hardened_line "")
+        set(_codesign_bundle_timestamp_line "                    --timestamp=none\n")
+    endif()
+
     install(CODE "
         set(_bundle_path \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\")
         if(NOT EXISTS \"\${_bundle_path}\")
@@ -489,8 +505,7 @@ function(install_macos_codesign target)
                     COMMAND \"${CODESIGN_EXECUTABLE}\"
                             --force
                             --timestamp=none
-                            --options runtime
-                            --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
+${_codesign_item_hardened_line}                            --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
                             \"\${_bundle_signing_item}\"
                     RESULT_VARIABLE _codesign_result)
                 if(NOT _codesign_result EQUAL 0)
@@ -502,9 +517,7 @@ function(install_macos_codesign target)
         execute_process(
             COMMAND \"${CODESIGN_EXECUTABLE}\"
                     --force
-                    --timestamp
-                    --options runtime
-${_entitlements_lines}
+${_codesign_bundle_timestamp_line}${_codesign_bundle_hardened_line}${_entitlements_lines}
                     --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
                     \"\${_bundle_path}\"
             RESULT_VARIABLE _codesign_result)

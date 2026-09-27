@@ -56,7 +56,7 @@ jobs:
             qt_arch: clang_64
             generator: Ninja
             generator_args: ""
-            configure_extra: -DCMAKE_BUILD_TYPE=Release -DMACOS_SIGN_APPS=OFF
+            configure_extra: "-DCMAKE_BUILD_TYPE=Release -DMACOS_SIGN_APPS=ON -DMACOS_CODE_SIGN_IDENTITY=-"
             package_glob: build/*.dmg
 
     steps:
