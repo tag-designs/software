@@ -88,12 +88,22 @@ Keep the directory. It is the only record that a given image was measured, and
 
 ## 2. Programming a tag with a released binary
 
-### Why not `<Tag>-download`
+### The rule
 
-`<Tag>-download` programs whatever is in a build tree. That is right during
+**A field tag is programmed from a release, never from a build tree.**
+
+A release is built by a machine nobody edits, from a commit, and ships a
+manifest recording the hash of every image. A build tree is whatever a developer
+had that afternoon. `<Tag>-download` programs the latter, which is right during
 development and wrong for the field: the image that flies is then never the
 image that was archived and measured, and nothing afterwards can say which bytes
 went onto the tag.
+
+The same rule applies to qualification. Measure the released image -- with
+`--skip-build`, against the binary from the release -- rather than a local
+rebuild of the same commit. The two are now byte-identical, which is what makes
+the substitution safe, but qualifying the artifact that will actually be flashed
+removes the need to rely on that.
 
 ### Steps
 

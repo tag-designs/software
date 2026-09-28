@@ -547,23 +547,40 @@ leaves it untouched -- so a database keyed on it cannot distinguish two builds
 that differ in ways that matter. Every release artifact carries that SHA-256 in
 its manifest, and `flash_release.py` prints it before programming.
 
-### Bench-built images have nowhere to put their manifests
-
-CI attaches manifests to the release automatically. An image flashed from a
-developer's bench produces a manifest in the build tree and nothing collects it.
-There is no archive location and no naming convention. A tag returned in two
-years is most likely to have been flashed from a bench, so this is where the
-provenance of a returned image is thinnest -- the board database will name a
-commit, and the manifest that said what that commit actually produced was left
-in a build tree.
-
 ### Nothing records whether an image was qualified
 
-The manifest says what was built. It has no field for whether
-`tag_release_check.py` and a Joulescope measurement ever passed against that
-image hash. The board database records what went onto each tag, but not whether
-that image had been qualified, so "was this cleared to fly" is still answered
-from memory rather than from a record.
+This is the one that matters.
+
+The rule the rest of this depends on is that **a field tag is programmed from a
+release, never from a build tree.** A release is built by a machine nobody edits,
+from a commit, with a manifest recording the hash of every image; a build tree is
+whatever a developer had that afternoon. `flash_release.py` enforces the
+mechanics -- it will not program an image whose bytes do not match its manifest
+-- but nothing enforces that the release was ever qualified.
+
+`tag_release_check.py` produces `results.json` with a verdict per check and the
+commit it was built from. It has no field for the SHA-256 of the image it
+measured, and no way to be pointed at a released artifact rather than a local
+build. So the chain has a gap in the middle: the release names its images by
+hash, the board database names what was programmed, and the qualification
+between them names only a commit.
+
+Reproducibility narrows that gap without closing it. A commit now determines its
+image, so a qualification of commit X does apply to the release built from X --
+but only because that identity was separately established, not because the
+record says so. A qualification that named the hash it measured would stand on
+its own.
+
+### Bench-built images have nowhere to put their manifests
+
+An image flashed from a developer's bench produces a manifest in the build tree
+and nothing collects it: no archive location, no naming convention.
+
+This matters less than it first appeared. Bench builds are for development, and
+the rule above says they do not fly -- so the provenance that goes uncollected
+is provenance for images that were never going to need it. It becomes pressing
+only if a bench-flashed tag ever reaches the field, which is the thing the rule
+exists to prevent.
 
 
 ### Host tools are still out of scope
