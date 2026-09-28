@@ -451,26 +451,45 @@ runs on whatever machine has the ST-LINK attached.
 
 That closes the gap where the image that flies was never the image that was
 archived -- `<Tag>-download` programs a build tree, which is right for
-development and wrong for the field. What it does **not** do is record what was
-programmed onto which tag: there is no flash log and no readback of the STM32
-unique ID, so nothing links a physical tag to an image hash. That link is still
-missing, and it is the other half of the gap below.
+development and wrong for the field.
+
+It does not verify that the image belongs on the board attached. It cannot: the
+programmer reports the MCU, not the board, and four of the five distributed tags
+are `stm32l4xx`. A device-ID check would catch only a mix between
+`IMUTagNandBmp581` and the other four -- 8 of the 20 wrong pairings -- and would
+pass for `BitTag` onto a PresTag board while printing "verified", which is worse
+than checking nothing. Choosing the right release directory is the operator's,
+and boards are labelled for that reason.
+
+**What links a physical tag to what is running on it is a database, kept
+outside this repository.** Every board is labelled, and its git hash and MCU
+unique ID are recorded there before it goes to the field. That is the backward
+link, and it predates all of this.
+
+The refinement this work argues for is one field: **record the SHA-256 of the
+image alongside the git hash.** The whole premise here is that a git hash does
+not identify an image -- a `-D`, an uncommitted change or a different compiler
+leaves it untouched -- so a database keyed on it cannot distinguish two builds
+that differ in ways that matter. Every release artifact carries that SHA-256 in
+its manifest, and `flash_release.py` prints it before programming.
 
 ### Bench-built images have nowhere to put their manifests
 
 CI attaches manifests to the release automatically. An image flashed from a
 developer's bench produces a manifest in the build tree and nothing collects it.
-There is no archive location, no naming convention, and no link from a
-qualification result back to an image hash. This is the largest remaining gap in
-the *backward* question: a tag returned in two years is most likely to have been
-flashed from a bench.
+There is no archive location and no naming convention. A tag returned in two
+years is most likely to have been flashed from a bench, so this is where the
+provenance of a returned image is thinnest -- the board database will name a
+commit, and the manifest that said what that commit actually produced was left
+in a build tree.
 
 ### Nothing records whether an image was qualified
 
 The manifest says what was built. It has no field for whether
 `tag_release_check.py` and a Joulescope measurement ever passed against that
-image hash. That link is the thing that would make the archive answer "was this
-cleared to fly", and it does not exist.
+image hash. The board database records what went onto each tag, but not whether
+that image had been qualified, so "was this cleared to fly" is still answered
+from memory rather than from a record.
 
 
 ### Host tools are still out of scope
