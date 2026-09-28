@@ -434,11 +434,34 @@ This closes the loop the document opened with. A commit now determines its
 image, so the SHA-256 recorded in a board database can be re-derived from the
 commit alone -- the forward question answering the backward one.
 
-What has **not** been shown is determinism across machines: same commit,
-different host, different toolchain installation path, different OS. CI builds
-on Linux and the bench on macOS, so comparing a CI artifact's hash against a
-local rebuild of the same commit would settle it, and that comparison has not
-been made. Nor has every distributed tag been checked -- one was.
+### Across machines: the compiler agreed, the git strings did not
+
+That comparison has now been made, between a CI image from `fw-v0.0.1` and a
+local rebuild of the same commit -- Linux against macOS, Arm's tarball against
+Homebrew's build of the same 14.2.1. The images are the same size and **63 of
+33416 bytes differ**, which is the useful part of the result: had the toolchains
+disagreed, the sizes would have moved and the differences would be everywhere.
+They are not. The compiled code is identical. Every differing byte is a string
+git supplied, or a pointer displaced by one:
+
+| | CI | local | cause |
+| --- | --- | --- | --- |
+| `GIT_REPO` | `https://github.com/...` | `git@github.com:...` | how the clone was made |
+| `VERSION_HASH` | `a3f596d0` | `a3f596d` | `--short` picks the shortest unambiguous abbreviation, which depends on the object count |
+| `GIT_DATE` | `...:30Z` | `...:30+00:00` | git renders UTC differently between versions, even under `iso-strict` |
+
+All three are now pinned in `version.cmake`: `--short=8`, an explicit strftime
+format under `TZ=UTC` rather than a format git chooses, and the remote reduced
+to `host/owner/repo` so that SSH and HTTPS clones agree. Whether that closes the
+gap has not yet been measured -- it needs another CI build and another local
+rebuild to compare.
+
+The lesson generalizes past these three. Anything derived from the *clone*
+rather than the *commit* is a reproducibility hazard, and git's conveniences --
+abbreviation, date rendering, remote URLs -- are all clone properties wearing
+commit clothing.
+
+Nor has every distributed tag been checked -- one was.
 
 ### The old board generation path is untouched
 
