@@ -168,10 +168,90 @@ So the build is a matrix over boards, like the firmware itself, and the
 per-board work is a short configuration rather than a driver: pins, clocks,
 power enable, part selection, link address.
 
-This is a refactor rather than a recompile: the drivers currently include
-`hal.h`, `rtc_api.h`, `debug_log.h` and `phase_probe.h`, and a loader has no
-ChibiOS, no HAL and no application startup. `Init` must bring up its own clocks,
-SPI and any power-enable pin from reset state.
+### Two routes, and what each reuses
+
+A loader does not need the ChibiOS kernel, but that does not mean it must avoid
+ChibiOS. The HAL sits on an OSAL, and the submodule carries
+`os/hal/osal/os-less/ARMCMx` -- about 1300 lines -- whose `osalThreadSuspendS`
+is a spin on a flag an interrupt sets:
+
+```c
+self.message = MSG_WAIT;
+*trp = &self;
+while (self.message == MSG_WAIT) {
+  osalSysUnlock();
+  OSAL_IDLE_HOOK();
+  osalSysLock();
+}
+```
+
+No scheduler, no thread switch, no system tick. A blocking HAL call needs an
+interrupt to complete, not a kernel, which is exactly the situation a loader is
+in. So there are two routes:
+
+| | HAL + os-less OSAL | freestanding |
+| --- | --- | --- |
+| Reuses | `board.c`, the SPI driver, the storage drivers | `board.h` macros, `spi_bus_polled.inc` |
+| Requires | a RAM vector table, a working ISR path, OSAL init | nothing beyond register writes |
+| Second code path to maintain | no | yes |
+| SRAM footprint | larger | minimal |
+
+Neither is ruled out. The first is the better starting point because it reuses
+the firmware's drivers rather than paraphrasing them, and a paraphrase is a
+second place for a device quirk to be fixed.
+
+### Can the existing memory drivers be reused?
+
+Close to unmodified, on either route. Their dependency on the kernel is
+smaller than their include list suggests:
+
+- **18 call sites** across the five drivers use `chThdSleepMicroseconds`,
+  `chThdSleepMilliseconds` or `chSysLock` -- the RT kernel API rather than the
+  OSAL. `os-less/ARMCMx/osal.h` provides `osalThreadSleepMicroseconds`,
+  `osalThreadSleepMilliseconds` and `osalSysLock`, so the change is mechanical.
+  It is worth making in the firmware regardless: driver code written against
+  the OSAL rather than the kernel is portable by construction, and these are
+  device timing delays, not scheduling decisions.
+- **`rtc_api.h` and `debug_log.h`** contribute only `debug_log_printf`, which
+  shipped images already compile out.
+- **`phase_probe.h`** is included by `at25xe.c` and nothing from it is used.
+
+So the reuse question is not whether the drivers can be made to work outside
+the firmware, but how few lines it takes. The freestanding route additionally
+needs the `chThdSleep*` calls backed by a busy-wait rather than the OSAL, which
+is the same 18 sites pointed somewhere else.
+
+### The pin configuration comes from ChibiOS either way
+
+What a loader genuinely needs from ChibiOS is the board description, and the
+generated `board.h` is pure data: no `#include` of its own, its own
+`PIN_MODE_*` and `PIN_AFIO_AF` helpers, 49 `VAL_GPIOx_*` macros carrying the
+literal `MODER`, `OTYPER`, `OSPEEDR`, `PUPDR`, `ODR`, `AFRL` and `AFRH` values,
+and the named pins -- `GPIOA_AT25_nCS`, `GPIOA_AT25_SCK`, `GPIOA_AT25_MISO`,
+`GPIOA_AT25_MOSI`. A freestanding `Init` can write those registers directly
+from the header; the HAL route gets the same values through `board.c` and
+`palInit`.
+
+`board.c` is the part that needs `hal.h`, and its `__early_init` does clock
+setup a loader must do differently in any case, from whatever state the
+programmer left the part in.
+
+This is a further argument for committing generated sources, from
+[Tag Firmware Build Reproducibility](tag-build-reproducibility.md): `board.h`
+currently exists only in a build tree, so a loader built from a checkout would
+need `fmpp` and a JVM. Committed, the recovery tooling builds without them --
+and recovery tooling is used years later, exactly when a toolchain dependency
+is least welcome.
+
+### What is still unknown
+
+- Whether the programmer's calling convention tolerates the HAL route's
+  interrupt path: a RAM vector table via `VTOR`, and interrupts enabled during
+  an entry point.
+- Whether kernel state or OSAL state must survive between entry-point calls,
+  given the programmer typically sets SP as well as PC for each one.
+- The SRAM cost of the HAL route against the transfer buffer on the 64 KB
+  STM32L432 parts.
 
 ST's External Memory Manager was considered and does not fit. Its custom-driver
 configuration is XSPI vocabulary -- dummy cycles, single/dual/quad modes, DQS,
@@ -185,16 +265,12 @@ a generated loader would beat a written one. Note that ST's generated loaders
 are read/write by design, so the read-only stubbing above would have to be
 applied deliberately.
 
-### What to verify before committing to this
-
-- **SRAM budget and link address.** The loader is linked to a fixed address and
-  runs with its stack and the programmer's transfer buffer alongside it, so both
-  the address and the size are per-board facts to establish -- tight on
-  STM32L432's 64 KB, comfortable on the U375 parts.
-- **Board bring-up from cold.** Whether each board's external flash can be
+- **Link address and SRAM budget**, per board: the loader runs with its stack
+  and the programmer's transfer buffer alongside it.
+- **Board bring-up from cold**: whether each board's external flash can be
   reached without the application's power sequencing, and what `Init` must
   replicate.
-- **Provenance.** A `.stldr` is per board, and a mismatched loader reads
+- **Provenance**: a `.stldr` is per board, and a mismatched loader reads
   plausible garbage without complaint. Loaders belong in the image archive,
   keyed to the board, and built by the same CI job.
 
