@@ -31,12 +31,28 @@ function(add_nanopb_target name)
 
   get_target_property(TAG_PROTO_SOURCES tag-proto-sources INTERFACE_SOURCES)
 
+  set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_PROTO_ALL "${name}_proto")
+
   # Generated sources are committed here so that an ordinary firmware build
   # needs neither the nanopb generator nor config-gen.  Regeneration writes back
   # into this directory rather than the build tree, so what is built is what is
   # committed.
 
-  set(generated_dir "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+  # A variant commits its generated sources by having a generated/ directory.
+  # Only the distributed variants do; prototypes generate into the build tree as
+  # before, so an ordinary build never leaves untracked files in the source tree
+  # for tags that are not shipped.  To promote a prototype, create the directory
+  # and configure with -DREGENERATE_SOURCES=ON once, then commit what lands in
+  # it -- the consistency check in embedded/CMakeLists.txt reports a distributed
+  # variant that has not had this done.
+  if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+    set(generated_dir "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+    set(sources_committed TRUE)
+    set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_PROTO_COMMITTED "${name}_proto")
+  else()
+    set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}")
+    set(sources_committed FALSE)
+  endif()
   set(manifest "${generated_dir}/inputs.sha256")
   set(default_config "${generated_dir}/default_config.c")
   set(default_config_json "${CMAKE_CURRENT_SOURCE_DIR}/default-config.json")
@@ -103,13 +119,19 @@ function(add_nanopb_target name)
     set(regenerate TRUE)
   elseif(REGENERATE_SOURCES STREQUAL "OFF")
     set(regenerate FALSE)
+    if(NOT sources_committed)
+      message(FATAL_ERROR
+        "REGENERATE_SOURCES=OFF but ${name} does not commit its generated "
+        "sources, so there is nothing to build. Prototype variants generate at "
+        "build time; use AUTO, or drop ${name} from the build.")
+    endif()
     if(NOT outputs_present)
       message(FATAL_ERROR
         "REGENERATE_SOURCES=OFF but ${name} has no committed generated sources "
         "under ${generated_dir}. Configure with -DREGENERATE_SOURCES=ON once to "
         "produce them.")
     endif()
-    if(NOT up_to_date)
+    if(NOT up_to_date AND sources_committed)
       reproducibility_problem(
         "Committed generated sources for ${name} are stale: the inputs recorded "
         "in ${manifest} do not match the current .proto, options, config-gen or "

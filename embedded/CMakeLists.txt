@@ -297,4 +297,38 @@ else()
   endforeach()
   add_custom_target(distributed_proto_sources
                     DEPENDS ${_distributed_proto_source_targets})
+
+  # Which variants commit their generated sources is declared by the presence of
+  # a generated/ directory, which is what add_nanopb_target keys on.  That is
+  # self-describing but says nothing about whether it matches the tags actually
+  # marked DISTRIBUTE, so compare the two here -- this is the only place that
+  # knows both.
+
+  get_property(_committed_protos GLOBAL PROPERTY ULTRALIGHT_PROTO_COMMITTED)
+
+  set(_missing ${_distributed_protos})
+  if(_committed_protos)
+    list(REMOVE_ITEM _missing ${_committed_protos})
+  endif()
+  if(_missing)
+    list(JOIN _missing " " _missing_text)
+    reproducibility_problem(
+      "These proto variants are used by tags marked DISTRIBUTE but do not "
+      "commit their generated sources: ${_missing_text}. Create the matching "
+      "embedded/proto-c/<variant>-proto-c/generated directory, configure with "
+      "-DREGENERATE_SOURCES=ON once, and commit what lands in it.")
+  endif()
+
+  set(_extra ${_committed_protos})
+  if(_extra AND _distributed_protos)
+    list(REMOVE_ITEM _extra ${_distributed_protos})
+  endif()
+  if(_extra)
+    list(JOIN _extra " " _extra_text)
+    message(WARNING
+      "These proto variants commit generated sources but no tag marked "
+      "DISTRIBUTE uses them: ${_extra_text}. They are left over from a tag that "
+      "is no longer distributed; delete the generated directory, or mark the "
+      "tag DISTRIBUTE if it should be shipped.")
+  endif()
 endif()
