@@ -725,24 +725,37 @@ out of the linked images, which call plain `pb_decode`.
    firmware change still to be made; the manifest holds the same facts
    meanwhile.
 
+10. **The CI freshness check is in place.** The workflow
+    `embedded-reproducibility.yml` runs `cmake/CheckGeneratedSourcesFresh.cmake` on
+    every push and pull request. It reuses `InputManifest.cmake` so it cannot
+    disagree with what the build writes, reads the `.proto` list out of
+    `proto/CMakeLists.txt` rather than repeating it, and needs nothing but
+    CMake -- no toolchain, no fmpp, no generator, no submodules.
+
 ### Next
 
-10. **Add the CI freshness check and the firmware build.** The freshness check
-    is now cheap: configure with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON`
-    and a stale committed source is a configure error, with no generator
-    needed on the runner.
 
-Step 10 is what makes the rest dependable rather than merely tidy: until a
-machine nobody edits builds this way, every guarantee above rests on each
-person remembering to.
+11. **Build firmware in CI** for the distributed tags on a release tag, and
+    publish the images with their manifests. This needs `arm-none-eabi-gcc`
+    14.2.1 and `fmpp` on the runner, which is new CI surface; the freshness
+    check above deliberately avoids both so that it cannot fail for their
+    reasons.
+12. **Carry the dirty flag into the image.** `version.h` defines it; nothing
+    references it, because adding a string shifts the layout and STM32U375
+    Standby entry depends on where code lands. A firmware change of its own.
+13. **Check determinism directly** by building the same commit twice and
+    comparing images. Commit-to-commit comparison cannot show this: `SHAStr`
+    carries the commit into every image, so any two commits differ for a
+    trivial reason.
 
 ### Where to resume
 
-Step 10 is the last one, and has no remaining unknowns: both questions that
-gated it -- whether pinning shifts the output, and whether the output depends
-on the platform -- are settled below. The freshness check itself is now cheap:
-configure with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON` and a stale
-committed source is a configure error, with no generator needed on the runner.
+Step 11 is next and is the one with real unknowns left -- not about
+reproducibility, which is settled, but about provisioning: whether the pinned
+toolchain and `fmpp` install cleanly on a GitHub runner, and how long the
+embedded build takes there.
+
+Steps 12 and 13 are independent of it and of each other.
 
 ## Settled: pinning does not shift the generated output
 
