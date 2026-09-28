@@ -679,6 +679,21 @@ the host tools' `v*` -- since they release on different clocks.
    also closes a standing gap, since `make install` had no way to build the
    firmware it was installing.
 
+6. **Generated sources are committed** for the six distributed variants --
+   `tag.pb.c`, `tag.pb.h`, `tagdata.pb.c`, `tagdata.pb.h` and
+   `default_config.c` under each variant's `generated/` directory, checked
+   byte-for-byte against the same files generated independently on another
+   platform. A variant declares that it commits by having that directory;
+   prototypes still generate into the build tree, and
+   `embedded/CMakeLists.txt` compares the committing set against the
+   distributed one so the two cannot drift.
+7. **`REGENERATE_SOURCES` is in place** as AUTO (the default), ON and OFF,
+   driven by `generated/inputs.sha256`: the SHA-256 of every input the
+   generators consume plus the pinned nanopb version. Not timestamps -- git
+   does not preserve mtimes, so a fresh clone would look stale. The generator
+   is no longer needed to configure, and under OFF `config-gen` is not built at
+   all, which is what removes the host protobuf build from a firmware build.
+
 Moving to 0.4.9.1 from the `0.4.8-11-g1f0c2e1` snapshot changes no behaviour
 here: `pb_common.o` and `pb_encode.o` are byte-identical when cross-compiled
 for `cortex-m4` and `cortex-m33`, and the sole semantic difference -- a leak fix
@@ -687,34 +702,28 @@ out of the linked images, which call plain `pb_decode`.
 
 ### Next
 
-6. **Commit the generated sources.** Add the `generated/` directories, commit
-   the current board, `.pb.*` and `default_config.c` outputs, redirect the
-   existing custom commands to write there, and add the `.inputs.sha256`
-   digests. This is the step that removes `fmpp`, `nanopb_generator` and
-   `config-gen` -- and with the last of those, the host protobuf build -- from
-   an ordinary firmware build.
-7. **Add the `REGENERATE_SOURCES` tri-state** and make the generator lookups
-   conditional on it.
 8. **Add the remaining pitfall checks** from the table above -- dirty tree,
-   submodule state, stale generated files, toolchain version -- reusing the
-   `REPRODUCIBLE_BUILD` escalation that already exists.
+   submodule state, toolchain version -- reusing the `REPRODUCIBLE_BUILD`
+   escalation that already exists. Stale generated sources are now covered.
 9. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
    the ChibiOS SHA and the nanopb versions, so a returned tag can state its own
    provenance.
-10. **Add the CI freshness check and the firmware build.**
+10. **Add the CI freshness check and the firmware build.** The freshness check
+    is now cheap: configure with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON`
+    and a stale committed source is a configure error, with no generator
+    needed on the runner.
 
-Steps 6 and 7 remove the external tools from an ordinary build; 8 and 9 record
-what is left; 10 is what makes any of it dependable rather than merely tidy.
+Steps 8 and 9 record what the build cannot remove; 10 is what makes any of it
+dependable rather than merely tidy.
 
 ### Where to resume
 
-Step 6 is the natural next one and the largest. It is also the one with a
-prerequisite already satisfied -- `.gitattributes` had to precede it and does.
-Before starting, settle the first open question below, because a first
-regeneration that shifts the `.pb.*` files belongs in its own commit ahead of
-everything else.
+Step 8 is next and is a collection of small independent checks rather than one
+large change, so it can be done piecemeal. Step 10 has no remaining unknowns:
+both questions that gated it -- whether pinning shifts the output, and whether
+the output depends on the platform -- are settled below.
 
-### Settled: pinning does not shift the generated output
+## Settled: pinning does not shift the generated output
 
 The worry was that fixing on 0.4.9.1 would shift the `.pb.*` files away from
 what built the firmware now in the field, making the first commit of generated
