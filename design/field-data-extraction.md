@@ -147,29 +147,50 @@ loader that corrects and skips internally can discard information irrecoverably
 -- and when the failure under investigation is itself in the bad-block map or
 the ECC path, the loader would be hiding exactly the evidence that matters.
 
-### Fewer loaders than tags
+### One loader per board; sharing is at the source level
 
-The board-specific part is pins, clock setup and any flash power-enable GPIO;
-the invariant part is the flash command set, and there are only five parts in
-the tree (`at25xe`, `mx25r`, `mx25l`, `mx25u12843`, `gd5f`).
+There is no way to have fewer loaders than boards. A `.stldr` is fully linked
+to run from RAM -- the programmer downloads the image into SRAM and calls its
+entry points -- so the artifact is bound to one board's pin assignment, memory
+part, clock setup, power-enable GPIO, and to a link address and size that fit
+that target's SRAM map. Nothing about that is shareable between a STM32L432
+board and a U375 one.
 
-The repository already has the right seam:
+What is shared is source. The repository already has the seam:
 [`storage_spi.h`](../embedded/tags/common/storage/inc/storage_spi.h) wraps SPI
 behind `TagSpiDevice` with inline framing helpers, and the drivers in
-`embedded/tags/common/storage/src/` sit on top of it. A freestanding SPI backend
-under that seam would let loaders share command sequences with the firmware, so
-a driver fix reaches both.
+`embedded/tags/common/storage/src/` sit on top of it. There are five parts in
+the tree -- `at25xe`, `mx25r`, `mx25l`, `mx25u12843`, `gd5f` -- and a
+freestanding SPI backend under that seam would let every loader compile the
+same command sequences the firmware uses, so a driver fix reaches both.
+
+So the build is a matrix over boards, like the firmware itself, and the
+per-board work is a short configuration rather than a driver: pins, clocks,
+power enable, part selection, link address.
 
 This is a refactor rather than a recompile: the drivers currently include
 `hal.h`, `rtc_api.h`, `debug_log.h` and `phase_probe.h`, and a loader has no
 ChibiOS, no HAL and no application startup. `Init` must bring up its own clocks,
 SPI and any power-enable pin from reset state.
 
+ST's External Memory Manager was considered and does not fit. Its custom-driver
+configuration is XSPI vocabulary -- dummy cycles, single/dual/quad modes, DQS,
+instruction and address widths -- while every external flash in this tree hangs
+off SPI1 (`TAG_SPI1_DEVICE_DEFAULTS` in
+[`spi_bus.h`](../embedded/tags/common/core/inc/spi_bus.h)). Its parameter list
+is still a useful checklist of what a loader's `Init` must establish -- JEDEC
+ID, capacity, reset method, read opcode, dummy cycles, chip-select timing --
+and if a future board puts flash on OCTOSPI it becomes worth revisiting, since
+a generated loader would beat a written one. Note that ST's generated loaders
+are read/write by design, so the read-only stubbing above would have to be
+applied deliberately.
+
 ### What to verify before committing to this
 
-- **SRAM budget.** The loader, its stack and the programmer's transfer buffer
-  must fit alongside nothing else -- tight on STM32L432's 64 KB, comfortable on
-  the U375 parts.
+- **SRAM budget and link address.** The loader is linked to a fixed address and
+  runs with its stack and the programmer's transfer buffer alongside it, so both
+  the address and the size are per-board facts to establish -- tight on
+  STM32L432's 64 KB, comfortable on the U375 parts.
 - **Board bring-up from cold.** Whether each board's external flash can be
   reached without the application's power sequencing, and what `Init` must
   replicate.
