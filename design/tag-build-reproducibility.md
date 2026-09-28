@@ -738,17 +738,24 @@ So the chain from the field firmware's generator to the pinned one introduces no
 substantive change, and the first commit of generated sources can be taken as a
 baseline rather than staged behind a separate behaviour-changing commit.
 
+### Settled: generator output does not depend on the platform
+
+For nanopb 0.4.9.1, the macOS x86 release binary and the Linux PyPI wheel
+produce **byte-identical** output: all 24 files across the six distributed
+variants compared equal, `.pb.c` and `.pb.h` alike, line endings included. The
+two runs also used different include-path spellings, so the output is not
+sensitive to that either.
+
+A regeneration on a Mac can therefore be committed directly; there is no need to
+make Linux authoritative or to route protocol changes through a particular
+machine. This is what makes a CI freshness check meaningful -- had it not held,
+the check would have failed for everyone not building on the blessed platform.
+
 ## Open questions
 
 - **Pin 0.4.9.1 or move to 0.4.9.2?** Pinning what already generated the tree's
   output keeps the first commit of generated files a no-op; moving to the newer
   LTS bugfix release is a change worth making deliberately and separately.
-- **Is generator output byte-identical across platforms** for the same nanopb
-  version, including between the upstream x86 build and a locally built arm64
-  one? Making Linux authoritative sidesteps having to know. If it is identical,
-  a Mac regeneration can be committed directly; if not, protocol changes should
-  be regenerated on Linux before committing, and that should be written down
-  rather than discovered.
 - **How strictly should the toolchain be pinned?** Recording the version is
   clearly right; refusing to build on a different one may be more than a small
   group wants day to day, which is what the two modes are for -- but the
