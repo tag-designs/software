@@ -1,6 +1,6 @@
 # Tag Firmware Build Reproducibility
 
-Status: implemented and exercised. A firmware build of the distributed tags
+Status: implemented and verified. A firmware build of the distributed tags
 needs the ARM toolchain, `make`, `cmake` and `python3` -- no `fmpp`, no Java
 runtime, no nanopb generator, no protobuf. Every image carries a manifest keyed
 on its own SHA-256, and the conditions that would quietly make a build
@@ -408,7 +408,7 @@ layout, and Standby entry on the STM32U375 depends on where code lands, so
 wiring these into the monitor is a firmware change that deserves its own commit
 and its own bench measurement -- not a side effect of recording provenance.
 
-### Determinism, verified for a rebuild on one machine
+### Determinism, verified within and across machines
 
 `monitor.c` used to embed `__DATE__ " : " __TIME__`, which made byte-identical
 rebuilds impossible by construction: the same commit produced different bytes
@@ -430,11 +430,12 @@ path, a temporary name -- would have shown as a difference, and none did.
 not in ChibiOS' HAL, RT or common code, and only in `BitTag-legacy`, a prototype
 that does not build.
 
-This closes the loop the document opened with. A commit now determines its
-image, so the SHA-256 recorded in a board database can be re-derived from the
-commit alone -- the forward question answering the backward one.
+This closes the loop the document opened with. A commit determines its image, so
+the SHA-256 recorded in a board database can be re-derived from the commit alone
+by anyone with the repository -- the forward question answering the backward
+one, and no longer dependent on the archive surviving.
 
-### Across machines: the compiler agreed, the git strings did not
+### Across machines: verified, after three clone properties were removed
 
 That comparison has now been made, between a CI image from `fw-v0.0.1` and a
 local rebuild of the same commit -- Linux against macOS, Arm's tarball against
@@ -452,9 +453,18 @@ git supplied, or a pointer displaced by one:
 
 All three are now pinned in `version.cmake`: `--short=8`, an explicit strftime
 format under `TZ=UTC` rather than a format git chooses, and the remote reduced
-to `host/owner/repo` so that SSH and HTTPS clones agree. Whether that closes the
-gap has not yet been measured -- it needs another CI build and another local
-rebuild to compare.
+to `host/owner/repo` so that SSH and HTTPS clones agree.
+
+**That closed it.** At `fw-v0.0.2`, a CI image and a local rebuild of the same
+commit are byte-identical: `24d009da...` on a Linux runner using Arm's tarball
+and on macOS using Homebrew's build of 14.2.1, twenty-four seconds apart. The
+two build manifests still record different remotes -- `https://github.com/...`
+against `git@github.com:...` -- which is what proves they are genuinely
+different clones on different machines rather than the same artifact compared
+with itself.
+
+That difference belonging in the manifest and not in the image is the whole
+distinction: the manifest describes a build, the image describes a commit.
 
 The lesson generalizes past these three. Anything derived from the *clone*
 rather than the *commit* is a reproducibility hazard, and git's conveniences --
