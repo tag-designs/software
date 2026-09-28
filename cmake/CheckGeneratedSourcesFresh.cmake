@@ -130,15 +130,112 @@ foreach(_generated_dir IN LISTS _generated_dirs)
   math(EXPR _checked "${_checked} + 1")
 endforeach()
 
+# --- boards ------------------------------------------------------------------
+#
+# Board files are generated from per-board customizations plus ChibiOS' own
+# templates, so a submodule bump makes them stale as surely as an edit does.
+# That is the point: the templates are an input like any other.
+#
+# CHIBIOS_DIR defaults to the in-repo submodule. If it is not checked out there
+# is nothing to hash, and the board half is skipped with a message rather than
+# failing -- a check that demanded submodules would be a different check.
+
+set(_chibios "${SOURCE_DIR}/ChibiOS")
+set(_boards_checked 0)
+
+if(NOT EXISTS "${_chibios}/tools/ftl/libs")
+  # Skipping is right for a developer who has not initialized the submodule,
+  # and wrong for CI, where a skip is indistinguishable from a pass. REQUIRE_
+  # CHIBIOS=ON makes the absence an error so the job cannot quietly check
+  # nothing.
+  if(REQUIRE_CHIBIOS)
+    message(FATAL_ERROR
+      "REQUIRE_CHIBIOS=ON but ChibiOS is not checked out at ${_chibios}, so the "
+      "board files cannot be checked. Check out the submodule.")
+  endif()
+  message(STATUS
+    "ChibiOS is not checked out; skipping the board file check. Run "
+    "`git submodule update --init ChibiOS` to include it.")
+else()
+  file(GLOB _chibios_libs "${_chibios}/tools/ftl/libs/*")
+  file(GLOB _board_generated_dirs "${SOURCE_DIR}/embedded/boards/*/generated")
+
+  foreach(_generated_dir IN LISTS _board_generated_dirs)
+    get_filename_component(_board_dir "${_generated_dir}" DIRECTORY)
+    get_filename_component(_board "${_board_dir}" NAME)
+
+    # The processor family is named in the board's own CMakeLists.txt, which is
+    # what picks the templates; reading it here keeps the two from disagreeing.
+    file(READ "${_board_dir}/CMakeLists.txt" _board_cmake)
+    string(REGEX MATCH "PROCESSOR[ \t\r\n]+([A-Za-z0-9_]+)" _ "${_board_cmake}")
+    set(_processor "${CMAKE_MATCH_1}")
+    if("${_processor}" STREQUAL "")
+      list(APPEND _stale "${_board}: could not read PROCESSOR from its CMakeLists.txt")
+      continue()
+    endif()
+    string(TOLOWER "${_processor}" _processor)
+    string(REGEX REPLACE "xx$" "" _processor_xml "${_processor}")
+    set(_template_dir "${_chibios}/tools/ftl/processors/boards/${_processor}/templates")
+
+    set(_board_inputs
+        "${_board_dir}/cfg/board-customizations.json"
+        "${SOURCE_DIR}/embedded/boards/tools/generate_board_chcfg.py"
+        "${SOURCE_DIR}/embedded/boards/tools/board.fmpp.in"
+        "${_chibios}/tools/ftl/xml/${_processor_xml}board.xml"
+        "${_template_dir}/board.c.ftl"
+        "${_template_dir}/board.h.ftl"
+        "${_template_dir}/board.mk.ftl")
+    list(APPEND _board_inputs ${_chibios_libs})
+
+    set(_absent "")
+    foreach(_input IN LISTS _board_inputs)
+      if(NOT EXISTS "${_input}")
+        file(RELATIVE_PATH _rel "${SOURCE_DIR}" "${_input}")
+        list(APPEND _absent "${_rel}")
+      endif()
+    endforeach()
+    if(_absent)
+      list(JOIN _absent ", " _absent_text)
+      list(APPEND _stale "${_board}: missing input ${_absent_text}")
+      continue()
+    endif()
+
+    input_manifest_text(_expected
+                        ROOT "${SOURCE_DIR}"
+                        TOOLS "chibios-templates ${_processor}"
+                        EXTRA_ROOT "${_chibios}"
+                        EXTRA_LABEL "<chibios>"
+                        INPUTS ${_board_inputs})
+
+    set(_manifest "${_generated_dir}/inputs.sha256")
+    if(NOT EXISTS "${_manifest}")
+      list(APPEND _stale "${_board}: no inputs.sha256")
+      continue()
+    endif()
+    file(READ "${_manifest}" _committed)
+    if(NOT _expected STREQUAL _committed)
+      list(APPEND _stale "${_board}: recorded inputs do not match the tree")
+    endif()
+
+    foreach(_f board.h board.c board.mk board_standby.h)
+      if(NOT EXISTS "${_generated_dir}/${_f}")
+        list(APPEND _stale "${_board}: missing ${_f}")
+      endif()
+    endforeach()
+
+    math(EXPR _boards_checked "${_boards_checked} + 1")
+  endforeach()
+endif()
+
 if(_stale)
   list(JOIN _stale "\n  " _stale_text)
   message(FATAL_ERROR
     "Committed generated sources are out of date:\n  ${_stale_text}\n\n"
     "Regenerate them with `cmake -DREGENERATE_SOURCES=ON` followed by "
-    "`cmake --build <dir> --target distributed_proto_sources`, and commit the "
-    "result.")
+    "`cmake --build <dir> --target distributed_proto_sources` and a build of "
+    "the affected board targets, and commit the result.")
 endif()
 
 message(STATUS
-  "Generated sources are up to date for ${_checked} variant(s) "
-  "(nanopb ${_nanopb_version}).")
+  "Generated sources are up to date: ${_checked} proto variant(s) "
+  "(nanopb ${_nanopb_version}), ${_boards_checked} board(s).")

@@ -5,10 +5,15 @@ name: Embedded reproducibility
 # no code generator; that only helps while they are actually current, and a
 # stale one is invisible locally to anyone whose build does not regenerate.
 #
-# Deliberately needs nothing but CMake: no ARM toolchain, no fmpp, no nanopb
-# generator, no submodules. A check that needed the generator in order to prove
+# Deliberately needs nothing but CMake and a checkout: no ARM toolchain, no
+# fmpp, no nanopb generator. A check that needed the generator in order to prove
 # the generator is unnecessary would be self-defeating, and one that configured
 # the whole embedded tree would fail for reasons unrelated to freshness.
+#
+# ChibiOS is checked out because the committed board files are rendered from its
+# templates, which makes them inputs. REQUIRE_CHIBIOS=ON turns a missing
+# submodule into a failure here, because in CI a skipped check looks exactly
+# like a passing one.
 
 on:
   push:
@@ -31,8 +36,15 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          # ChibiOS is needed because the committed board files are generated
+          # from its templates, so those templates are inputs and must be
+          # hashed. Shallow, and only this one submodule.
+          submodules: true
+          fetch-depth: 1
 
       - name: Check committed generated sources
         run: |
           cmake -DSOURCE_DIR="$GITHUB_WORKSPACE" \
+                -DREQUIRE_CHIBIOS=ON \
                 -P cmake/CheckGeneratedSourcesFresh.cmake

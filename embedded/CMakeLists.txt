@@ -370,6 +370,69 @@ else()
       "-DREGENERATE_SOURCES=ON once, and commit what lands in it.")
   endif()
 
+  # Boards behind distributed tags.
+  #
+  # A tag names its board in project.mk, as `include $(BOARDDIR)/<board>/board.mk`,
+  # so the distributed board set is derived from the distributed tags the same
+  # way the proto set is -- read out of the file that already decides it rather
+  # than listed again here.
+
+  set(_distributed_boards "")
+  foreach(_tag IN LISTS _distributed_tags)
+    set(_project_mk "${CMAKE_CURRENT_SOURCE_DIR}/tags/${_tag}/project.mk")
+    if(NOT EXISTS "${_project_mk}")
+      message(WARNING "No project.mk for distributed tag ${_tag}; its board cannot be determined.")
+      continue()
+    endif()
+    file(READ "${_project_mk}" _project_mk_text)
+    string(REGEX MATCHALL "BOARDDIR\\)/([A-Za-z0-9_.-]+)/board\\.mk"
+           _board_includes "${_project_mk_text}")
+    if(NOT _board_includes)
+      message(WARNING
+        "Could not determine the board for distributed tag ${_tag} from "
+        "${_project_mk}; expected an `include $(BOARDDIR)/<board>/board.mk` line.")
+      continue()
+    endif()
+    foreach(_inc IN LISTS _board_includes)
+      string(REGEX REPLACE "^BOARDDIR\\)/(.*)/board\\.mk$" "\\1" _board "${_inc}")
+      list(APPEND _distributed_boards "${_board}")
+    endforeach()
+  endforeach()
+  list(REMOVE_DUPLICATES _distributed_boards)
+  list(SORT _distributed_boards)
+  set_property(GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_BOARDS ${_distributed_boards})
+  if(_distributed_boards)
+    list(JOIN _distributed_boards " " _distributed_boards_text)
+    message(STATUS "Distributed boards: ${_distributed_boards_text}")
+  endif()
+
+  get_property(_committed_boards GLOBAL PROPERTY ULTRALIGHT_BOARD_COMMITTED)
+
+  set(_missing_boards ${_distributed_boards})
+  if(_committed_boards)
+    list(REMOVE_ITEM _missing_boards ${_committed_boards})
+  endif()
+  if(_missing_boards)
+    list(JOIN _missing_boards " " _missing_boards_text)
+    reproducibility_problem(
+      "These boards are used by tags marked DISTRIBUTE but do not commit their "
+      "generated files: ${_missing_boards_text}. Create the matching "
+      "embedded/boards/<board>/generated directory, configure with "
+      "-DREGENERATE_SOURCES=ON once, and commit what lands in it.")
+  endif()
+
+  set(_extra_boards ${_committed_boards})
+  if(_extra_boards AND _distributed_boards)
+    list(REMOVE_ITEM _extra_boards ${_distributed_boards})
+  endif()
+  if(_extra_boards)
+    list(JOIN _extra_boards " " _extra_boards_text)
+    message(WARNING
+      "These boards commit generated files but no tag marked DISTRIBUTE uses "
+      "them: ${_extra_boards_text}. Delete the generated directory, or mark the "
+      "tag that uses the board DISTRIBUTE.")
+  endif()
+
   set(_extra ${_committed_protos})
   if(_extra AND _distributed_protos)
     list(REMOVE_ITEM _extra ${_distributed_protos})
