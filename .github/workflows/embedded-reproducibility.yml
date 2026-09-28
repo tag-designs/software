@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # ChibiOS is needed because the committed board files are generated
           # from its templates, so those templates are inputs and must be
