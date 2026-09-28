@@ -202,6 +202,8 @@ function(_check_submodules)
           "Submodule ${_path} has unmerged conflicts.")
       endif()
 
+      _check_submodule_branch("${_path}")
+
       # A submodule can sit at the recorded commit and still have edits in it,
       # which the superproject's own status does not show as file changes.
       if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/${_path}/.git"
@@ -221,6 +223,76 @@ function(_check_submodules)
       endif()
     endif()
   endforeach()
+endfunction()
+
+# The recorded commit can be the one checked out and still be the wrong commit:
+# nothing above notices a pointer moved from stable_21.11.x to master, because
+# both are "the commit this tree records". .gitmodules already names the branch
+# each submodule is meant to track, so that is the thing to check against.
+
+function(_check_submodule_branch path)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" config -f .gitmodules
+            --get "submodule.${path}.branch"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE _branch
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if("${_branch}" STREQUAL "")
+    return()
+  endif()
+
+  # Prefer the remote-tracking ref: a local branch of the same name can have
+  # been moved, while origin/<branch> is what upstream actually publishes.
+  set(_ref "")
+  foreach(_candidate "origin/${_branch}" "${_branch}")
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" rev-parse --verify --quiet "${_candidate}^{commit}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${path}"
+      OUTPUT_QUIET ERROR_QUIET
+      RESULT_VARIABLE _candidate_result)
+    if(_candidate_result EQUAL 0)
+      set(_ref "${_candidate}")
+      break()
+    endif()
+  endforeach()
+
+  if("${_ref}" STREQUAL "")
+    # A shallow or single-branch clone has no such ref. That is a gap in the
+    # evidence, not a mismatch, so say so rather than fail.
+    message(STATUS
+      "Submodule ${path} should track ${_branch}, but no ref for it is present "
+      "in this clone, so that cannot be confirmed here.")
+    return()
+  endif()
+
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" merge-base --is-ancestor HEAD "${_ref}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${path}"
+    RESULT_VARIABLE _contained
+    OUTPUT_QUIET ERROR_QUIET)
+
+  if(NOT _contained EQUAL 0)
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" describe --tags --always HEAD
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${path}"
+      OUTPUT_VARIABLE _describe
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    reproducibility_problem(
+      "Submodule ${path} is at ${_describe}, which is not on ${_branch} -- the "
+      "branch .gitmodules says it tracks. The commit is the one this tree "
+      "records, so nothing else flags it, but the library is not the one the "
+      "project means to build against.")
+  else()
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" describe --tags --always HEAD
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/${path}"
+      OUTPUT_VARIABLE _describe
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Submodule ${path}: ${_describe} on ${_branch}")
+  endif()
 endfunction()
 
 # Turn porcelain output into a short phrase. A message listing two hundred paths

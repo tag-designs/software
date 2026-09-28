@@ -82,6 +82,26 @@ if(_chibios_porcelain)
   set(_chibios_dirty "true")
 endif()
 
+# The branch .gitmodules says the submodule tracks, and what the commit
+# describes as. A bare SHA says nothing to a reader three years from now about
+# whether it was the release branch or a development one.
+set(_chibios_branch "")
+set(_chibios_describe "")
+if(GIT_FOUND)
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" config -f .gitmodules --get submodule.ChibiOS.branch
+    WORKING_DIRECTORY "${SOURCE_DIR}"
+    OUTPUT_VARIABLE _chibios_branch
+    ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(EXISTS "${SOURCE_DIR}/ChibiOS/.git")
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" describe --tags --always HEAD
+      WORKING_DIRECTORY "${SOURCE_DIR}/ChibiOS"
+      OUTPUT_VARIABLE _chibios_describe
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+endif()
+
 # Hash every artifact that exists. A missing one is reported as absent rather
 # than omitted, so a truncated build is visible in the manifest.
 set(_artifact_entries "")
@@ -113,7 +133,12 @@ file(WRITE "${OUTPUT}"
     \"dirty\": ${_dirty}
   },
   \"submodules\": {
-    \"ChibiOS\": { \"commit\": \"${_chibios}\", \"dirty\": ${_chibios_dirty} }
+    \"ChibiOS\": {
+      \"commit\": \"${_chibios}\",
+      \"describe\": \"${_chibios_describe}\",
+      \"tracks_branch\": \"${_chibios_branch}\",
+      \"dirty\": ${_chibios_dirty}
+    }
   },
   \"tools\": {
     \"arm_gcc\": { \"path\": \"${ARM_TOOLCHAIN}\", \"version\": \"${ARM_TOOLCHAIN_VERSION}\" },
