@@ -70,10 +70,28 @@ jobs:
             exit 1
           fi
 
-      - name: Install the pinned ARM toolchain
+      - name: Download the pinned ARM toolchain
         run: |
           set -euo pipefail
           curl -fsSL "$ARM_TOOLCHAIN_URL" -o arm-toolchain.tar.xz
+          echo "size:     $(stat -c%s arm-toolchain.tar.xz) bytes"
+          echo "type:     $(file -b arm-toolchain.tar.xz)"
+          echo "computed: $(sha256sum arm-toolchain.tar.xz | cut -d' ' -f1)"
+          echo "pinned:   $ARM_TOOLCHAIN_SHA256"
+          # Arm publishes a checksum beside the file. It is fetched only to say
+          # which of the two is wrong when they disagree -- a checksum from the
+          # same server as the file proves nothing about the file, so it is
+          # never used to accept the download.
+          if curl -fsSL "$ARM_TOOLCHAIN_URL.sha256asc" -o published.txt; then
+            echo "published (for diagnosis only, not trusted):"
+            sed 's/^/  /' published.txt
+          else
+            echo "published: could not be fetched"
+          fi
+
+      - name: Verify and install
+        run: |
+          set -euo pipefail
           echo "$ARM_TOOLCHAIN_SHA256  arm-toolchain.tar.xz" | sha256sum --check --strict
           sudo mkdir -p /opt/arm-toolchain
           sudo tar -xJf arm-toolchain.tar.xz -C /opt/arm-toolchain --strip-components=1
