@@ -347,6 +347,29 @@ toolchain from Arm's own tarball, verified against the SHA-256 in the workflow,
 because Ubuntu's packaged `gcc-arm-none-eabi` is a different version and the pin
 would reject it.
 
+### Programming a tag from a release
+
+`<Tag>-download` programs whatever is in a build tree. That is right for
+development and wrong for the field, because the image that flies is then never
+the image that was archived. To program a released artifact instead:
+
+```
+python3 embedded/tools/flash_release.py <release>/BitTag
+```
+
+It checks the image against the SHA-256 its build manifest records and refuses
+to program on a mismatch, then invokes the same probe selection the CMake
+targets use. Add `--verify-only` to check without programming, and `--selector`
+to choose an ST-LINK as elsewhere.
+
+A release directory is self-describing -- `BitTag.elf` beside
+`BitTag-build-manifest.json` -- so this needs no build tree, no CMake configure
+and no toolchain. Unzip a release on the machine with the ST-LINK attached and
+run it there.
+
+A matching hash says the image is the one that was archived. It does not say the
+image was ever qualified.
+
 **A green build does not qualify an image.** It says the sources compile and the
 provenance is recorded. It says nothing about power behaviour, and STM32U375
 Standby entry depends on where code lands in the image, so a change with no

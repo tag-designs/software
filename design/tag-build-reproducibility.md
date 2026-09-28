@@ -442,6 +442,20 @@ one machine and not another would cause false staleness across the group, which
 would be worse than the risk. The per-image build manifest does not record it
 either -- that would be a small, easy addition.
 
+### Programming a field tag
+
+`embedded/tools/flash_release.py` programs a tag from a released artifact,
+verifying the image against the SHA-256 its manifest records and refusing on a
+mismatch. It needs no build tree: a release directory is self-describing, so it
+runs on whatever machine has the ST-LINK attached.
+
+That closes the gap where the image that flies was never the image that was
+archived -- `<Tag>-download` programs a build tree, which is right for
+development and wrong for the field. What it does **not** do is record what was
+programmed onto which tag: there is no flash log and no readback of the STM32
+unique ID, so nothing links a physical tag to an image hash. That link is still
+missing, and it is the other half of the gap below.
+
 ### Bench-built images have nowhere to put their manifests
 
 CI attaches manifests to the release automatically. An image flashed from a
