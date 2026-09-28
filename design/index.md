@@ -10,7 +10,8 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 1. Cross-Cutting Design
 
 *   [**Binary Datalogging Design**](binary-datalogs.md): System standard for shared binary log structure alignment, naming conventions, and nanopb constraints.
-*   [**Tag Firmware Build Reproducibility**](tag-build-reproducibility.md): Proposal. The three categories of source a tag image is built from, which tools remain required, committing generated board/nanopb/config sources to drop fmpp, nanopb and host protobuf from the build, recording library and tool versions per image, and flagging dirty submodules, stale generated files and unpinned toolchains.
+*   [**Tag Firmware Build Reproducibility**](tag-build-reproducibility.md): The model as built: which tags are in scope and how that is derived, the generated board and protocol sources committed with input manifests, the per-image build manifest keyed on the image's own SHA-256, what configure refuses to build over, how to maintain it as tags and boards are added, and what was not done.
+*   [**Releasing and Programming Tag Firmware**](tag-release-procedure.md): Procedure. Qualifying a candidate image on the bench and what a pass does and does not prove, then programming a field tag from a released binary and recording which bytes went onto which tag.
 *   [**Field Data Extraction**](field-data-extraction.md): Proposal. Why a raw datalog dump is not self-decoding and what a session superblock would fix, extracting external flash with STM32CubeProgrammer loaders rather than a recovery firmware that would overwrite the evidence, and what the internal-flash marker log does and does not record in the field.
 *   [**Windows Build Notes**](windows-build-notes.md): Reference notes on MSVC compiler setups, vcpkg static dependencies, and developer environment paths.
 
