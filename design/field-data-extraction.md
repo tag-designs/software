@@ -1,6 +1,9 @@
 # Field Data Extraction
 
-Status: proposal. Nothing here is implemented.
+Status: proposal. Nothing here is implemented. The loader sections record what
+was established by reading the tree and ST's reference loaders rather than by
+building one; [Where to start](#where-to-start) says which unknowns the first
+loader would settle.
 
 ## Purpose and scope
 
@@ -297,6 +300,45 @@ burn the log.
 **No build identity in the flash record.** Covered by the superblock when the
 data region carries one; otherwise one marker at session start carrying a
 truncated image hash serves the same purpose.
+
+## Where to start
+
+Two pieces of work are independent of each other, and one of them is worth
+doing whether or not a loader is ever written.
+
+**Move the storage drivers off the kernel API.** The 18 `chThdSleepMicroseconds`,
+`chThdSleepMilliseconds` and `chSysLock` call sites become their `osal`
+equivalents. That is a contained change to firmware that currently builds and
+is tested, it makes the drivers usable from a loader on either route, and it is
+defensible on its own terms: a device timing delay is not a scheduling
+decision, and driver code written against the OSAL is portable by construction.
+Doing it first means the loader work starts from drivers that already compile
+outside the RTOS.
+
+**Then write one loader, for one board.** Not a framework. The open questions
+about the HAL route -- whether the programmer's calling convention tolerates
+interrupts and a `VTOR`-relocated vector table, whether OSAL state survives
+between entry-point calls when SP is reset for each one, what the kernel-free
+HAL costs in SRAM against the transfer buffer on a 64 KB L432 -- are not
+answerable by further reading. They are answerable by one `Init` and one `Read`
+against a board on a bench. Whichever board is most convenient is the right
+one; the per-board work afterwards is a short configuration, so the first is
+where all the cost is.
+
+Start with the HAL and os-less OSAL route. If it runs into the calling
+convention, the freestanding route is a retreat to register writes with
+`board.h` and `spi_bus_polled.inc`, both of which are dependency-free today,
+and nothing done for the first route is wasted.
+
+Worth reading before starting: `~/tmp/stm32-memory-loaders` for the entry-point
+contract and `Dev_Inf.c` layout, with the caveat that its examples are IAR
+projects for XSPI parts on H5 and H7 boards, so the bus and the build are both
+different from ours.
+
+The data-format work -- the session superblock of Gap 1 -- is independent of
+all of this and gated on a different question: where the bulk of recorded data
+lives. That is the first open question below, and it decides whether the
+superblock belongs on external flash or internal.
 
 ## Open questions
 

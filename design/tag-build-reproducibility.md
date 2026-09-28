@@ -1,6 +1,11 @@
 # Tag Firmware Build Reproducibility
 
-Status: proposal. Nothing here is implemented.
+Status: partly implemented. The nanopb runtime is vendored, the build compiles
+against it, the version agreement is checked at configure time, and the
+line-ending rules are in place. Committing generated sources, the build
+manifest, the remaining pitfall checks and the CI work are not started. See
+[State of the work](#state-of-the-work) at the end for what is done and what is
+next.
 
 ## Purpose and scope
 
@@ -53,18 +58,26 @@ image, and neither is described by the firmware sources.
   currently checks. `embedded/CMakeLists.txt` does warn when `CHIBIOS_DIR` comes
   from the environment instead of the submodule, which is the right instinct and
   the only such check in the tree.
-- **nanopb is not pinned at all**, and it plays two roles from one untracked
-  tree. `NANOPB_SRC_ROOT_FOLDER` supplies both the include path for the
-  *runtime* -- `pb_encode.c`, `pb_decode.c`, `pb_common.c`, `pb.h`, compiled
-  into every shipped image -- and the `generator-bin` hint for the *generator*
-  that produces the `.pb.*` sources. The tree is listed in `.gitignore` and
-  supplied per developer via `NANOPB_ROOT` or `./nanopb`, so neither role has a
-  recorded version.
+- **nanopb plays two roles**, and until recently both came from one untracked
+  tree: `NANOPB_SRC_ROOT_FOLDER` supplied the include path for the *runtime*
+  -- `pb_encode.c`, `pb_decode.c`, `pb_common.c`, `pb.h`, compiled into every
+  shipped image -- and the `generator-bin` hint for the *generator* that
+  produces the `.pb.*` sources. The tree was listed in `.gitignore` and supplied
+  per developer, so neither role had a recorded version.
 
-  The two roles need different treatment, and are handled separately under
-  strategy 2. nanopb does provide one coarse safety net already: generated
-  headers carry `#if PB_PROTO_HEADER_VERSION != 40 / #error Regenerate this
-  file`, which catches a 0.3-against-0.4 mismatch but not 0.4.7 against 0.4.9.1.
+  **What that produced, found while fixing it:** the tree in use was a git clone
+  at `nanopb-0.4.8-11-g1f0c2e1`, an untagged master snapshot whose `pb.h`
+  self-reports `0.4.9-dev`, while the generator beside it reported `0.4.9.1`.
+  Runtime and generated code disagreed in every image built on that machine.
+  `PB_PROTO_HEADER_VERSION` is 40 for both, so the one safety net nanopb
+  provides could not see it -- it catches 0.3 against 0.4, not 0.4.7 against
+  0.4.9.1.
+
+  **Now:** the runtime is vendored at `embedded/thirdparty/nanopb-0.4.9.1/` and
+  the build compiles against it; `NANOPB_SRC_ROOT_FOLDER` supplies only the
+  generator; and configure compares the directory-derived version, the vendored
+  `pb.h` and the generator's reported version. The two roles are treated
+  separately under strategy 2 below, which describes the arrangement as built.
 
 ### Tools
 
@@ -582,27 +595,65 @@ ever cleared to fly.
 Firmware and host tools should use separate tag namespaces -- `fw-v*` against
 the host tools' `v*` -- since they release on different clocks.
 
-## Order of work
+## State of the work
 
-1. Vendor the nanopb runtime into the tree and pin the generator distribution
-   by version, with an archive hash for the CI platform. Everything else
-   depends on the generator
-   being pinned, and it separately closes the hole where the runtime compiled
-   into every shipped image comes from an untracked tree.
-2. Set `.gitattributes` for the generated paths -- `eol=lf` before any generated
-   output is committed, not after.
-3. Add the `generated/` directories, commit the current outputs, redirect the
+### Done
+
+1. **The nanopb runtime is vendored** at `embedded/thirdparty/nanopb-0.4.9.1/`
+   -- eight files, `CHECKSUMS.txt`, and a README recording the upstream tag and
+   commit. Taken from the upstream tag and independently confirmed
+   byte-identical to the `nanopb-0.4.9.1-macosx-x86` release distribution.
+2. **The build compiles against it.** `NANOPB_RUNTIME_DIR` is derived by glob
+   from `embedded/thirdparty/nanopb-*` and required to be unique; the proto
+   targets' include directory points at it, which is what becomes `NANOPBDIR`
+   and so supplies both `UINCDIR` for the headers and `VPATH` for
+   `pb_common.c`, `pb_encode.c` and `pb_decode.c`. Verified on a real firmware
+   build: every dependency file names the vendored path and none names the old
+   tree. `NANOPB_SRC_ROOT_FOLDER` now supplies only the generator.
+3. **The version agreement is checked** at configure time across the
+   directory-derived pin, the vendored `pb.h` and the generator's reported
+   version, with `REPRODUCIBLE_BUILD` turning warnings into errors. The
+   generator lookup searches `generator-bin` and `generator` under
+   `NANOPB_SRC_ROOT_FOLDER` before falling back to `PATH`, and says so when it
+   falls back.
+4. **`.gitattributes` is in place** -- `eol=lf` on `embedded/thirdparty/**` and
+   on the paths generated sources will occupy, before any generated file is
+   committed, because attributes do not normalize retroactively.
+
+Moving to 0.4.9.1 from the `0.4.8-11-g1f0c2e1` snapshot changes no behaviour
+here: `pb_common.o` and `pb_encode.o` are byte-identical when cross-compiled
+for `cortex-m4` and `cortex-m33`, and the sole semantic difference -- a leak fix
+in `pb_decode_ex` under `PB_ENABLE_MALLOC` -- is in a function garbage-collected
+out of the linked images, which call plain `pb_decode`.
+
+### Next
+
+5. **Commit the generated sources.** Add the `generated/` directories, commit
+   the current board, `.pb.*` and `default_config.c` outputs, redirect the
    existing custom commands to write there, and add the `.inputs.sha256`
-   digests.
-4. Add the `REGENERATE_SOURCES` tri-state and make the generator lookups
-   conditional.
-5. Add the pitfall checks and `-DREPRODUCIBLE_BUILD`.
-6. Add the build manifest, and extend `version.cmake` with the dirty flag, the
-   ChibiOS SHA and the nanopb versions.
-7. Add the CI freshness check and the firmware build.
+   digests. This is the step that removes `fmpp`, `nanopb_generator` and
+   `config-gen` -- and with the last of those, the host protobuf build -- from
+   an ordinary firmware build.
+6. **Add the `REGENERATE_SOURCES` tri-state** and make the generator lookups
+   conditional on it.
+7. **Add the remaining pitfall checks** from the table above -- dirty tree,
+   submodule state, stale generated files, toolchain version -- reusing the
+   `REPRODUCIBLE_BUILD` escalation that already exists.
+8. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
+   the ChibiOS SHA and the nanopb versions, so a returned tag can state its own
+   provenance.
+9. **Add the CI freshness check and the firmware build.**
 
-Steps 1 to 4 remove the external tools from an ordinary build; 5 and 6 record
-what is left; 7 is what makes any of it dependable.
+Steps 5 and 6 remove the external tools from an ordinary build; 7 and 8 record
+what is left; 9 is what makes any of it dependable rather than merely tidy.
+
+### Where to resume
+
+Step 5 is the natural next one and the largest. It is also the one with a
+prerequisite already satisfied -- `.gitattributes` had to precede it and does.
+Before starting, settle the first open question below, because a first
+regeneration that shifts the `.pb.*` files belongs in its own commit ahead of
+everything else.
 
 ## Open questions
 
