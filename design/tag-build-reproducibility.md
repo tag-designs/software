@@ -408,13 +408,26 @@ layout, and Standby entry on the STM32U375 depends on where code lands, so
 wiring these into the monitor is a firmware change that deserves its own commit
 and its own bench measurement -- not a side effect of recording provenance.
 
-### Determinism has never been directly verified
+### The build is known not to be byte-reproducible
 
-Nothing has yet built the same commit twice and compared the images. Every
-comparison made so far was between *different* commits, which cannot show
-determinism: `SHAStr` carries the commit into every image, so any two commits
-differ for a trivial reason. The honest statement today is that the inputs are
-pinned and recorded, not that the output has been shown to be stable.
+This was listed as unverified. It is worse than that: it cannot hold today.
+`monitor.c` embeds `__DATE__ " : " __TIME__`, so building the same commit twice
+produces different bytes by construction. No measurement is needed to know the
+answer, and none has been taken.
+
+The fix is small and has a pleasing consequence. `version.h` already carries
+`GIT_DATE`, the commit date, so `build_time` could report when the source was
+committed rather than when someone happened to compile it. Then two builds of a
+commit would be byte-identical, and the commit alone would identify the image --
+which is the whole objective, and removes the need to distinguish builds at all.
+
+It trades away the one thing `build_time` currently offers: telling two builds
+of a commit apart from the tag. That trade is worth making, because the reason
+those builds differ is exactly what reproducibility is meant to eliminate.
+
+Whether anything else in the image is non-deterministic is unknown, and would
+only be visible once this is removed. Absolute paths in `__FILE__`, linker
+ordering and library timestamps are the usual suspects.
 
 ### The old board generation path is untouched
 
@@ -470,12 +483,21 @@ link, and it predates all of this.
 commit forever -- `infoAck` returns `githash` because `VERSION_HASH` is baked
 in, and the UUID it returns is the factory `UID_BASE` register, read-only and
 untouched by flashing. But an image cannot contain its own SHA-256: embedding
-the hash changes the bytes being hashed. So a returned tag will always say which
-commit it came from and can never say which *build* of that commit. No better
-firmware fixes this; it is a property of hashing, not a gap in the protocol.
+the hash changes the bytes being hashed. No better firmware fixes that; it is a
+property of hashing, not a gap in the protocol.
+
+`tag-info` does return `build_time`, which is `__DATE__ " : " __TIME__` and so
+distinguishes two builds of the same commit to the second. That is a useful
+correlator against a manifest's `built_at` -- the two differ only by the seconds
+between compiling `monitor.c` and writing the manifest -- but it is not an image
+identity. `__TIME__` is when `monitor.c` was compiled, not when the image was
+linked, so an incremental rebuild touching only a driver produces different
+bytes and reports the same timestamp.
 
 The refinement this work argues for is therefore one field, recorded at the one
-moment it is available: **the SHA-256 of the image, alongside the git hash.** The whole premise here is that a git hash does
+moment it is available: **the SHA-256 of the image, alongside the git hash.**
+Until the build is byte-reproducible, that hash is the only thing that
+distinguishes two builds of a commit with certainty. The whole premise here is that a git hash does
 not identify an image -- a `-D`, an uncommitted change or a different compiler
 leaves it untouched -- so a database keyed on it cannot distinguish two builds
 that differ in ways that matter. Every release artifact carries that SHA-256 in
