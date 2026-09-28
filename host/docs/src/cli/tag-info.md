@@ -18,6 +18,7 @@ tag-info [options]
 | --- | --- | --- |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
+| `-j`, `--json` | none | Prints everything as a single JSON object on one line, for recording rather than reading. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
 ## Preconditions
@@ -36,6 +37,30 @@ tag-info
 ```sh
 tag-info --base 20:7 --debug
 ```
+
+Record a tag's identity when it is programmed:
+
+```sh
+tag-info --json >> ~/tags/programmed.jsonl
+```
+
+## Recording what is on a tag
+
+`--json` exists for the board database. A tag's UUID, the commit it was built
+from and when that build was compiled are recorded when the tag is programmed,
+and parsing those back out of labelled prose is the kind of step that silently
+rots. The protobuf messages are serialized by the library with the same options
+`tagcore` uses when it stores them, so a field added to the protocol appears in
+the JSON without this tool being changed.
+
+One field is not there and cannot be: **the SHA-256 of the image**. An image
+cannot contain its own hash, so no tag can report which *build* of a commit it
+is running -- only which commit. `build_time` distinguishes builds to the
+second, but it records when `monitor.c` was compiled rather than when the image
+was linked, so an incremental rebuild can change the image without changing it.
+The image hash is available only when the tag is programmed:
+`embedded/tools/flash_release.py` prints it, and it belongs in the same row as
+the UUID this command reports.
 
 ## Output
 

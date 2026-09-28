@@ -3,6 +3,7 @@
 #include <vector>
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
+#include <google/protobuf/util/json_util.h>
 #include <map>
 #include <regex>
 #include <ctime>
@@ -180,6 +181,75 @@ static void printStateLog(Tag &tag)
   }
 }
 
+/**
+ * @brief Print everything the tag reports as one JSON object.
+ *
+ * @details The text output is for reading; this is for recording. A tag's
+ *          provenance -- its UUID, the commit it was built from, when that
+ *          build was compiled -- is written into a board database when the tag
+ *          is programmed, and parsing it back out of labelled prose is the kind
+ *          of step that silently rots.
+ *
+ *          The protobuf messages are serialized by the library rather than
+ *          assembled by hand, with the same options tagcore uses when it stores
+ *          them, so a field added to the protocol appears here without this
+ *          tool being touched.
+ *
+ * @note One thing a tag cannot report is the SHA-256 of its own image: an image
+ *       cannot contain its own hash. That has to be recorded when the tag is
+ *       programmed -- see embedded/tools/flash_release.py, which prints it.
+ */
+static int printJson(Tag &tag)
+{
+  google::protobuf::util::JsonPrintOptions json_options;
+  // Exactly the options tagcore uses when it stores these messages, minus the
+  // whitespace: one object per line suits a record file. always_print_* is
+  // deliberately not set, because that field was renamed between protobuf
+  // versions and this has to build against whatever is installed.
+  json_options.add_whitespace = false;
+  json_options.preserve_proto_field_names = true;
+
+  TagInfo info;
+  if (!tag.GetTagInfo(info))
+  {
+    std::cerr << "Info failed" << std::endl;
+    return 1;
+  }
+
+  std::string sha;
+  std::string info_json;
+  if (!MessageToJsonString(info, &info_json, json_options).ok())
+  {
+    std::cerr << "Could not create JSON string for tag info" << std::endl;
+    return 1;
+  }
+
+  // Config and status are reported when available rather than required: a tag
+  // that answers the info request but not these is still worth recording, and
+  // emitting a default-constructed message would misreport its settings as
+  // whatever the proto defaults happen to be.
+  std::string config_json;
+  Config cfg;
+  if (tag.GetConfig(cfg) && !MessageToJsonString(cfg, &config_json, json_options).ok())
+    config_json.clear();
+
+  std::string status_json;
+  Status status;
+  if (tag.GetStatus(status) && !MessageToJsonString(status, &status_json, json_options).ok())
+    status_json.clear();
+
+  std::cout << "{";
+  if (tag.GitSha(sha))
+    std::cout << "\"tag_sha\":\"" << sha << "\",";
+  std::cout << "\"info\":" << info_json;
+  if (!config_json.empty())
+    std::cout << ",\"config\":" << config_json;
+  if (!status_json.empty())
+    std::cout << ",\"status\":" << status_json;
+  std::cout << "}" << std::endl;
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
   Tag tag;
@@ -193,10 +263,28 @@ int main(int argc, char **argv)
                            "the reset started it, and a tag that had stalled "
                            "reports whatever its backup registers held");
 
+  options.add_options()("j,json",
+                       "Print tag information as a single JSON object, for "
+                       "recording rather than reading");
+
   signal(SIGINT, intHandler);
+
+  // cxxopts is parsed inside parse_options, which does not hand back its
+  // result, so the flag is read from argv here. It is a presence test on a
+  // valueless option, which is the whole of what is needed.
+  bool json = false;
+  for (int i = 1; i < argc; i++)
+  {
+    const std::string arg(argv[i]);
+    if (arg == "--json" || arg == "-j")
+      json = true;
+  }
 
   if (parse_options(argc, argv, options, tag, dev) && tag.Attach(dev))
   {
+    if (json)
+      return printJson(tag);
+
     std::string str;
     TagInfo info;
     if (tag.GitSha(str))
