@@ -124,6 +124,10 @@ function(get_target_deploy_qml_dirs out_var target_name)
   endif()
 endfunction()
 
+# What ships. tag-attach-cycle is deliberately absent: it is a bench program
+# for exercising USB attach/detach cycles, has no entry in the user guide, and
+# was only ever in this list by accident. tag-cal-write, tag-peek and
+# qtmonitor-fixture-capture are built but never were.
 set(host_cli_install_targets
     tag-dwnld
     tag-test
@@ -133,8 +137,7 @@ set(host_cli_install_targets
     tag-start
     tag-stop
     tag-cal
-    tag-monitor-test
-    tag-attach-cycle)
+    tag-monitor-test)
 if(TARGET dataprocessing)
   list(APPEND host_cli_install_targets dataprocessing)
 endif()
@@ -264,6 +267,28 @@ if(host_install_targets)
         elseif(MACOS_DEPLOY_QT_PLUGINS_MANUALLY OR MACOS_CODE_SIGN_ENTITLEMENTS)
           install_macos_codesign(${target_name})
         endif()
+      endforeach()
+
+      # The command line tools are MACOSX_BUNDLE targets as well, and until
+      # now nothing signed them: they shipped carrying only the ad-hoc
+      # signature the linker applies to the inner Mach-O. That is a valid
+      # signature for the executable, which is why running
+      # tag-info.app/Contents/MacOS/tag-info from a terminal has always
+      # worked, but a .app with no Contents/_CodeSignature/CodeResources
+      # fails `codesign --verify` as a bundle. It would be refused if ever
+      # double-clicked, and would fail notarization of the whole image.
+      #
+      # They need no deployment work -- no Qt, no bundled dylibs -- only the
+      # seal, so this loop calls the signing step alone. dataprocessing
+      # appears in both lists and is signed by the loop above.
+      foreach(target_name ${host_cli_install_targets})
+        if(NOT TARGET ${target_name})
+          continue()
+        endif()
+        if(target_name IN_LIST host_qt_runtime_install_targets)
+          continue()
+        endif()
+        install_macos_codesign(${target_name})
       endforeach()
     endif()
   endif()
