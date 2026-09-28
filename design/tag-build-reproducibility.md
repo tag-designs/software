@@ -466,8 +466,16 @@ outside this repository.** Every board is labelled, and its git hash and MCU
 unique ID are recorded there before it goes to the field. That is the backward
 link, and it predates all of this.
 
-The refinement this work argues for is one field: **record the SHA-256 of the
-image alongside the git hash.** The whole premise here is that a git hash does
+**The image hash can only be captured at programming time.** A tag reports its
+commit forever -- `infoAck` returns `githash` because `VERSION_HASH` is baked
+in, and the UUID it returns is the factory `UID_BASE` register, read-only and
+untouched by flashing. But an image cannot contain its own SHA-256: embedding
+the hash changes the bytes being hashed. So a returned tag will always say which
+commit it came from and can never say which *build* of that commit. No better
+firmware fixes this; it is a property of hashing, not a gap in the protocol.
+
+The refinement this work argues for is therefore one field, recorded at the one
+moment it is available: **the SHA-256 of the image, alongside the git hash.** The whole premise here is that a git hash does
 not identify an image -- a `-D`, an uncommitted change or a different compiler
 leaves it untouched -- so a database keyed on it cannot distinguish two builds
 that differ in ways that matter. Every release artifact carries that SHA-256 in
