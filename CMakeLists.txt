@@ -530,6 +530,8 @@ if(BUILD_EMBEDDED)
         "Nanopb generator: ${_nanopb_generator_version} matches runtime "
         "(${NANOPB_GENERATOR_EXECUTABLE})")
     endif()
+    set_property(GLOBAL PROPERTY ULTRALIGHT_NANOPB_GENERATOR_VERSION
+                                 "${_nanopb_generator_version}")
   endif()
 
   get_filename_component(

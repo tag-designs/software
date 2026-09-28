@@ -3,3 +3,17 @@
 #define GIT_COMMIT_SUBJECT "@GIT_COMMIT_SUBJECT@"
 #define GIT_REPO "@GIT_REPO@"
 #define GIT_SHA "@GIT_SHA@"
+
+/* Provenance of this image beyond the commit it was built from.
+ *
+ * These are macros, so they cost nothing unless something references them.
+ * Nothing in the firmware does yet: putting a new string into the image shifts
+ * its layout, and on the STM32U375 Standby entry depends on where code lands,
+ * so wiring these into the monitor is a deliberate firmware change rather than
+ * a side effect of recording them here. The build manifest carries the same
+ * facts today.
+ */
+#define GIT_DIRTY @GIT_DIRTY@
+#define GIT_DIRTY_STR "@GIT_DIRTY_STR@"
+#define CHIBIOS_SHA "@CHIBIOS_SHA@"
+#define NANOPB_RUNTIME_VERSION "@NANOPB_VERSION@"

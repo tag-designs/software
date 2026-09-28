@@ -149,27 +149,66 @@ function(add_embedded_target name proto_target)
   set(target_bin ${target_build_dir}/${name}.bin)
   set(target_dmp ${target_build_dir}/${name}.dmp)
   set(target_list ${target_build_dir}/${name}.list)
+  set(target_manifest ${target_build_dir}/${name}-build-manifest.json)
   set(
     target_firmware_artifacts
     ${target_elf}
     ${target_hex}
     ${target_bin}
     ${target_dmp}
-    ${target_list})
+    ${target_list}
+    ${target_manifest})
 
   #add_custom_target(${name} DEPENDS ${target_elf})
+
+  # The manifest is written after the image is linked, in the same target, so it
+  # always describes the image sitting beside it. The git facts are read there
+  # rather than passed in: the tree can change between configuring and linking,
+  # and the manifest should describe what was built.
+
+  get_property(_manifest_nanopb_generator GLOBAL
+               PROPERTY ULTRALIGHT_NANOPB_GENERATOR_VERSION)
+  get_property(_manifest_toolchain_version GLOBAL
+               PROPERTY ULTRALIGHT_ARM_TOOLCHAIN_VERSION)
+  set(_manifest_sources_committed "false")
+  if(NOT proto_target STREQUAL "0")
+    get_property(_manifest_committed_protos GLOBAL
+                 PROPERTY ULTRALIGHT_PROTO_COMMITTED)
+    if(_manifest_committed_protos AND proto_target IN_LIST _manifest_committed_protos)
+      set(_manifest_sources_committed "true")
+    endif()
+  endif()
+  set(_manifest_reproducible "false")
+  if(REPRODUCIBLE_BUILD)
+    set(_manifest_reproducible "true")
+  endif()
 
   add_custom_target(${name}
     BYPRODUCTS ${target_firmware_artifacts}
     #COMMAND echo " ${default_opt} ${ARGN}"
     COMMAND ${MAKE_EXECUTABLE} -C ${name} ${default_opt} ${make_vars}
+    COMMAND ${CMAKE_COMMAND}
+            "-DNAME=${name}"
+            "-DOUTPUT=${target_manifest}"
+            "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+            "-DARTIFACT_DIR=${target_build_dir}"
+            "-DNANOPB_RUNTIME_VERSION=${NANOPB_VERSION}"
+            "-DNANOPB_GENERATOR_VERSION=${_manifest_nanopb_generator}"
+            "-DARM_TOOLCHAIN=${GCCARM}"
+            "-DARM_TOOLCHAIN_VERSION=${_manifest_toolchain_version}"
+            "-DREPRODUCIBLE_BUILD=${_manifest_reproducible}"
+            "-DREGENERATE_SOURCES=${REGENERATE_SOURCES}"
+            "-DSOURCES_COMMITTED=${_manifest_sources_committed}"
+            -P "${CMAKE_SOURCE_DIR}/cmake/WriteBuildManifest.cmake"
     WORKING_DIRECTORY ${tag_source_dir}
     COMMENT "Building ${name}")
 
   # build version.h file which includes git variables
 
-  add_custom_target(${name}_version_h ${CMAKE_COMMAND} -P
-                                      ${CMAKE_SOURCE_DIR}/cmake/version.cmake
+  add_custom_target(${name}_version_h
+                    ${CMAKE_COMMAND}
+                    "-DNANOPB_VERSION=${NANOPB_VERSION}"
+                    -P ${CMAKE_SOURCE_DIR}/cmake/version.cmake
                     BYPRODUCTS version.h)
 
   add_dependencies(${name} ${name}_version_h)
