@@ -59,8 +59,13 @@ is running -- only which commit. `build_time` distinguishes builds to the
 second, but it records when `monitor.c` was compiled rather than when the image
 was linked, so an incremental rebuild can change the image without changing it.
 The image hash is available only when the tag is programmed:
-`embedded/tools/flash_release.py` prints it, and it belongs in the same row as
-the UUID this command reports.
+`embedded/tools/flash_release.py` prints it, and records it with `--json`.
+
+Those two records are not automatically joinable, and deliberately so. A batch
+flashed from one release shares a commit and an image hash across every record,
+distinguished only by the board label the operator supplies at flash time, while
+the tag knows its UUID and not its label. Pairing them is a per-tag step at the
+moment of entry -- flash one, read one, enter one row.
 
 ## Output
 

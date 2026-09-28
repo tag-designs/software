@@ -380,14 +380,21 @@ python3 embedded/tools/flash_release.py <release>/BitTag \
 ```
 
 That appends one object per flash. Afterwards, `tag-info --json` reports what
-the tag says about itself. The two join on the commit -- `flash.commit` is the
-full SHA and equals `tag_sha` -- giving a row with the board label, the chip
-UUID, the commit, the build time, and the SHA-256 of the image.
+the tag says about itself. Between them they hold everything a board database
+row needs: the label and the image SHA-256 from the flash, the chip UUID and the
+build time from the tag.
 
-That last field is the reason for the file. A tag reports which commit it was
+The image SHA-256 is the reason for the file. A tag reports which commit it was
 built from and can never report which *build* of that commit, because an image
-cannot contain its own hash. The image SHA-256 exists only at the moment of
+cannot contain its own hash. That number exists only at the moment of
 programming; if it is not written down then, it is gone.
+
+**The two files cannot be joined automatically.** Flash ten BitTags from one
+release and every flash record carries the same commit and the same SHA-256,
+distinguished only by `--label`; every `tag-info` record carries a distinct
+`uuid` and no label. There is no shared key that identifies a tag. Pairing them
+is something the operator does per tag -- flash one, read one, enter one row --
+which is why the label is recorded with the flash and not asked of the tag.
 
 The record is written whether or not programming succeeded, with `programmed`
 saying which. A failed flash that left no row would be indistinguishable from
