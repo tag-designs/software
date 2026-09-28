@@ -124,20 +124,19 @@ function(get_target_deploy_qml_dirs out_var target_name)
   endif()
 endfunction()
 
-# What ships. tag-attach-cycle is deliberately absent: it is a bench program
-# for exercising USB attach/detach cycles, has no entry in the user guide, and
-# was only ever in this list by accident. tag-cal-write, tag-peek and
-# qtmonitor-fixture-capture are built but never were.
+# What ships. The developer and bench programs -- tag-attach-cycle,
+# tag-test-example, tag-monitor-test, tag-cal-write, tag-peek and
+# qtmonitor-fixture-capture -- are built but deliberately not installed; see
+# host/commandline/README.md. tag-test is a field tool and does ship despite
+# the name.
 set(host_cli_install_targets
     tag-dwnld
     tag-test
-    tag-test-example
     tag-info
     tag-reset
     tag-start
     tag-stop
-    tag-cal
-    tag-monitor-test)
+    tag-cal)
 if(TARGET dataprocessing)
   list(APPEND host_cli_install_targets dataprocessing)
 endif()

@@ -29,8 +29,11 @@ Most tag-attached tools share these options:
 | `tag-cal` | [tag-cal](tag-cal.md) | Start calibration mode and stream raw calibration samples. |
 | `dataprocessing` | [dataprocessing](dataprocessing.md) | Copy SQLite logs and add derived sensor streams for later analysis. |
 | `tag-test` | [tag-test](tag-test.md) | Run RTC checks and tag self-tests. |
-| `tag-test-example` | [tag-test-example](tag-test-example.md) | Minimal RTC-set example for developers. |
-| `tag-monitor-test` | [tag-monitor-test](tag-monitor-test.md) | Developer monitor-interface test tool. |
+
+Developer and bench programs -- `tag-test-example`, `tag-monitor-test`,
+`tag-attach-cycle`, `tag-cal-write`, `tag-peek` -- are built from the same
+directory but are not part of a release, so they have no pages here. They are
+described in `host/commandline/README.md`.
 
 ## Fill-In Checklist
 

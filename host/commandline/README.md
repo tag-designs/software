@@ -5,7 +5,9 @@ Command-line host tools live here. Most hardware-facing tools link the Qt-free
 exception: it reuses the existing `sensoranalysis` math library, so it is built
 when the Qt/sensor-analysis host stack is enabled.
 
-Distributed tools:
+Distributed tools -- these are the ones in `host_cli_install_targets` in
+`../CMakeLists.txt`, the ones documented in the user guide, and the ones that
+reach a release:
 
 - `dataprocessing`: copy SQLite logs and materialize derived/calibrated sensor
   streams. The initial implementation supports CompassTag calibrated vectors
@@ -16,16 +18,31 @@ Distributed tools:
 - `tag-start`: start logging.
 - `tag-stop`: stop logging and print the resulting tag status.
 - `tag-cal`: calibration helper.
-- `tag-cal-write`: write an identity (no-op) calibration constant set. See
-  below.
-- `tag-test`, `tag-test-example`, `tag-monitor-test`: developer/test tools.
+- `tag-test`: run RTC checks and tag self-tests. Despite the name this is a
+  field tool -- it is what confirms a freshly programmed board works -- so it
+  ships.
 
-Maintainer-only build-tree tools:
+Developer and bench tools -- built from this directory, never installed. They
+exist to exercise hardware and firmware during development, they carry no user
+guide pages, and adding one to the install list is what put an unsigned,
+undocumented `tag-attach-cycle.app` into every macOS release until it was
+caught by the signature check in `host/tools/release-macos.sh`:
 
+- `tag-test-example`: minimal example that sets the tag RTC, waits, and prints
+  the measured clock error. A worked example of the tagcore API, not a tool.
+- `tag-monitor-test`: exercises the debug monitor interface through the link
+  adapter.
+- `tag-attach-cycle`: repeatedly attaches and detaches a tag over USB, to shake
+  out enumeration and attach-path faults.
+- `tag-peek`: read arbitrary memory through the monitor interface.
+- `tag-cal-write`: write an identity (no-op) calibration constant set, to
+  unblock a mass-erased CompassTag. See below.
 - `qtmonitor-fixture-capture`: capture `TagInfo`, default `Config`, `Status`,
   and voltage from a real tag into the fixture JSON consumed by qtmonitor
-  documentation screenshot automation. This tool is built for maintainers but
-  is not installed into distributed host packages.
+  documentation screenshot automation.
+
+All of the tag-attached tools share `-d`/`--debug`, `-b`/`--base BUS:DEVICE`
+and `-h`/`--help`.
 
 Keep direct tag-operation tools independent of Qt so they remain lightweight and
 usable in scripts. Processing tools may link host analysis libraries when that
