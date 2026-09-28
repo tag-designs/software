@@ -19,15 +19,43 @@ document assumes that and concerns itself with what a person does.
 
 ### What it proves, and what it does not
 
-`embedded/tools/tag_release_check.py` builds the target, flashes it, and runs
-the checks that have each caught a real regression on this tree. It is a power
-qualification. It says nothing about whether the sensors read correctly or the
-protocol is right -- that is what `tag-test` is for, and it is a separate step.
+`embedded/tools/tag_release_check.py` runs the checks that have each caught a
+real regression on this tree. It is a **power** qualification. It says nothing
+about whether the sensors read correctly or the protocol is right -- that is
+`tag-test`, and it is a separate step.
 
-A pass is a statement about **one image on one board**. It does not transfer to
-another build of the same commit unless that build is byte-identical, which is
-why the reproducibility work matters: it is what lets a qualification result
-attach to a commit rather than to a particular afternoon.
+A pass is a statement about **one image**. Because the build is reproducible, a
+commit determines its image, so the result attaches to the release rather than
+to the afternoon it was measured. It is still one board: board-to-board hardware
+variation is not what this measures.
+
+Qualify **per target**, not per tag. Five distributed targets flying means at
+most five runs, on one board each -- not one run per physical tag.
+
+### Qualify the released image, not a rebuild
+
+The image that is measured should be the image that will be flashed. Program the
+tag from the release first, then measure what is on it:
+
+```sh
+# 1. put the released image on the board, verified against its manifest
+python3 <repo>/embedded/tools/flash_release.py <release>/IMUTagNandBmp581 \
+    --json ~/tags/qualification.jsonl
+
+# 2. measure what is now on the tag
+python3 <repo>/embedded/tools/tag_release_check.py \
+    --target IMUTagNandBmp581 \
+    --config <repo>/embedded/tools/power-configs/imutag-400.json \
+    --skip-build
+```
+
+`--skip-build` is what makes this a qualification of the release: without it the
+script rebuilds from the working tree and flashes that instead, which measures
+something the release process will never produce.
+
+A local rebuild of the same commit is byte-identical, so measuring one would in
+practice measure the other. Qualifying the artifact that will actually be
+flashed removes the need to rely on that.
 
 ### Before starting
 
@@ -35,56 +63,54 @@ attach to a commit rather than to a particular afternoon.
   result, in different ways, and neither failure is obvious in the output. The
   Joulescope app holds the instrument so the script cannot open it. qtmonitor
   holds the monitor, which keeps `isMonitorEnabled()` true, so the tag never
-  sleeps at all and a held monitor simply reads as a high average.
-- **Attach the right board.** The script flashes whatever target is named onto
-  whatever board is connected, and nothing checks that they match. A
-  cross-family mismatch -- an STM32U3 image onto an STM32L4 board -- erases and
-  writes before failing to start, so the wrong board loses its contents and
+  sleeps at all and simply reads as a high average.
+- **Attach the right board.** Nothing checks that the board matches the target.
+  A cross-family mismatch -- an STM32U3 image onto an STM32L4 board -- erases
+  and writes before failing to start, so the wrong board loses its contents and
   needs reflashing. A same-family mismatch flashes and runs, silently.
-- **Commit first.** The script records the commit and whether the tree was
-  dirty, and prints `NOTE: the tree is dirty; this is not a reproducible
-  release`. A qualification of an uncommitted tree cannot be tied to anything.
-- **Match the toolchain.** `ARM_TOOLCHAIN_VERSION` pins 14.2.1; a different
-  compiler is a different image and configure will say so.
-
-### Running it
-
-```sh
-cd <build directory>
-python3 <repo>/embedded/tools/tag_release_check.py \
-    --target IMUTagNandBmp581 \
-    --build-dir .
-```
-
-`--target` defaults to `IMUTagNandBmp581` and `--config` to
-`embedded/tools/power-configs/imutag-400.json`; both need setting for another
-tag. `--skip-build` measures the image already on the tag instead of rebuilding
-and reflashing, which is the option to use when qualifying a released binary
-rather than a working tree.
+- **Set `--config` for the target.** It defaults to
+  `power-configs/imutag-400.json`, and `--target` to `IMUTagNandBmp581`. The
+  thresholds below are sized for that configuration.
 
 ### What it runs, in order
 
 | Step | What it catches |
 | --- | --- |
-| build and flash | that the image builds and downloads at all; the `.elf` is copied into the output directory, so the measured image is kept |
+| build and flash | skipped under `--skip-build`, which is the release case. Otherwise: that the image builds and downloads, with the `.elf` copied into the output directory |
 | idle, 4 trials | the Standby stall. A sleeping tag reads about 5 uA and a stalled one about 1035 uA, so the limit is 100 uA and anything between is a failure, not a margin. Repeated because the fault is layout-driven and one reading is not a verdict |
 | life-cycle | every resting state, not just idle: idle, running, stopped, idle again. Fails above `--run-max-ua`, default 850 uA against a healthy 750 uA at 400 Hz -- run current has twice moved ~200 uA between builds differing only in code layout |
 | attach storms, 3 sets | host/firmware races around attach, which is where they surface |
 
-### Reading the result
+### Reading and keeping the result
 
 Everything lands in `release-checks/release-<target>-<timestamp>/`:
-`results.json` with a verdict per check, `build.log`, `idle1..4.log`,
-`lifecycle.log`, `storm1..3.log`, and the `.elf` that was measured. The script
-exits non-zero on failure and prints `RELEASE CHECK FAILED`.
+`results.json` with a verdict per check, `idle1..4.log`, `lifecycle.log`,
+`storm1..3.log`, and -- when it built rather than skipped -- the `.elf` it
+measured. The script exits non-zero and prints `RELEASE CHECK FAILED`.
 
-Keep the directory. It is the only record that a given image was measured, and
-`results.json` carries the commit it was built from.
+Keep the directory. It is the only record that an image was measured.
 
-> **The image hash is not in `results.json`.** Record it alongside, from the
-> build manifest or from `flash_release.py`. A commit does not identify an
-> image, so a qualification recorded against a commit alone cannot later be
-> matched to the bytes that were measured.
+> **`results.json` does not name the image.** It records the commit of the
+> working tree the script ran in, which under `--skip-build` is not necessarily
+> the commit of the image on the tag. Write the release tag and the image
+> SHA-256 into the directory yourself -- `flash_release.py --json` printed both
+> in step 1. A qualification that cannot be matched to the bytes it measured
+> proves nothing later.
+
+### Qualifying during development
+
+Rebuilding and flashing from a working tree is the right thing when iterating on
+firmware, and is what the script does by default:
+
+```sh
+cd <build directory>
+python3 <repo>/embedded/tools/tag_release_check.py --target IMUTagNandBmp581 --build-dir .
+```
+
+The script prints `NOTE: the tree is dirty; this is not a reproducible release`
+when the tree has uncommitted changes. That result is a development signal. It
+is not a qualification of anything that can fly, because nothing can reproduce
+the image it measured.
 
 ## 2. Programming a tag with a released binary
 
@@ -163,17 +189,27 @@ hash is recorded regardless.
 
 ## Order of operations for a release
 
-1. Commit and push. A dirty tree cannot be qualified.
-2. Tag `fw-vX.Y`. CI builds the distributed tags and publishes images with
-   their manifests.
-3. Download the release.
-4. Qualify each tag: attach the right board, run `tag_release_check.py`
-   with `--skip-build` against the released image, keep the output directory,
-   and record the image hash with the result.
-5. Program field tags from the release with `flash_release.py`, recording the
-   label and hash.
-6. Run `tag-test` on each, and enter the row.
+1. **Commit and push.** A dirty tree cannot be qualified: nothing can reproduce
+   the image it would produce.
+2. **Tag `fw-vX.Y`.** CI builds the distributed targets and publishes each image
+   with its manifest. The workflow builds with `-DREGENERATE_SOURCES=OFF
+   -DREPRODUCIBLE_BUILD=ON`, so a stale generated source, a dirty tree, a
+   submodule off its branch or the wrong toolchain fails the build rather than
+   shipping quietly.
+3. **Download the release.**
+4. **Qualify, once per target that will fly.** Attach a board of that type,
+   flash it from the release with `flash_release.py`, then
+   `tag_release_check.py --skip-build`. Keep the output directory and write the
+   release tag and image SHA-256 into it.
+5. **Program the field tags** from the same release with `flash_release.py`,
+   with `--label` and `--json`.
+6. **Run `tag-test`** on each to confirm the hardware works, then `tag-info
+   --json`, and enter the board database row.
 
-Steps 4 and 5 are separate on purpose. Qualification is per image; programming
-is per tag. Qualifying one board does not qualify the others, but it does
-qualify the image they all receive.
+Steps 4 and 5 are separate because they answer different questions.
+Qualification is per image: one measurement clears the image every tag of that
+type will receive. Programming is per tag, and each one needs its own row.
+
+A target that is not flying this round does not need qualifying. A target that
+is needs it again after any change to its image -- which, the build being
+reproducible, means after any change to the commit it is built from.
