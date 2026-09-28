@@ -370,6 +370,30 @@ run it there.
 A matching hash says the image is the one that was archived. It does not say the
 image was ever qualified.
 
+### Recording what went onto a tag
+
+`--label` and `--json` record the flash:
+
+```
+python3 embedded/tools/flash_release.py <release>/BitTag \
+    --label BitTag-017 --json ~/tags/programmed.jsonl
+```
+
+That appends one object per flash. Afterwards, `tag-info --json` reports what
+the tag says about itself. The two join on the commit -- `flash.commit` is the
+full SHA and equals `tag_sha` -- giving a row with the board label, the chip
+UUID, the commit, the build time, and the SHA-256 of the image.
+
+That last field is the reason for the file. A tag reports which commit it was
+built from and can never report which *build* of that commit, because an image
+cannot contain its own hash. The image SHA-256 exists only at the moment of
+programming; if it is not written down then, it is gone.
+
+The record is written whether or not programming succeeded, with `programmed`
+saying which. A failed flash that left no row would be indistinguishable from
+one that never happened, and the tag in hand would not be running what the
+record implies.
+
 **A green build does not qualify an image.** It says the sources compile and the
 provenance is recorded. It says nothing about power behaviour, and STM32U375
 Standby entry depends on where code lands in the image, so a change with no

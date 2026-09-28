@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -190,6 +191,57 @@ def describe(manifest_data: dict, image: Path) -> str:
     return "\n".join(lines)
 
 
+def record(
+    path: Path,
+    label: Optional[str],
+    image: Path,
+    manifest_data: dict,
+    programmed: bool,
+    exit_code: Optional[int],
+) -> None:
+    """Append one JSON object describing what was programmed.
+
+    @details A path rather than stdout, because STM32_Programmer_CLI writes to
+             stdout and a redirect would capture its progress bar along with the
+             record.
+
+             This exists for one field. `tag-info --json` reports everything a
+             tag knows about itself -- its UUID, the commit it was built from,
+             when that build was compiled -- but no tag can report the SHA-256
+             of its own image, because an image cannot contain its own hash.
+             That number is available only here, at the moment of programming,
+             and is lost if it is not written down now.
+    """
+    src = manifest_data.get("source") or {}
+    sub = (manifest_data.get("submodules") or {}).get("ChibiOS") or {}
+    tools = manifest_data.get("tools") or {}
+    recorded = (manifest_data.get("artifacts") or {}).get(image.name) or {}
+
+    entry = {
+        "label": label,
+        "flashed_at": datetime.datetime.now(datetime.timezone.utc)
+        .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "programmed": programmed,
+        "target": manifest_data.get("target"),
+        "image": image.name,
+        "sha256": recorded.get("sha256"),
+        "bytes": recorded.get("bytes"),
+        "commit": src.get("commit"),
+        "describe": src.get("describe"),
+        "dirty": src.get("dirty"),
+        "built_at": manifest_data.get("built_at"),
+        "chibios": sub.get("commit"),
+        "chibios_describe": sub.get("describe"),
+        "arm_gcc": (tools.get("arm_gcc") or {}).get("version"),
+        "nanopb_runtime": tools.get("nanopb_runtime"),
+    }
+    if exit_code is not None:
+        entry["exit_code"] = exit_code
+
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description="Verify a released firmware image against its build manifest, "
@@ -211,6 +263,20 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="Check the image against its manifest and report, without programming.",
     )
+    parser.add_argument(
+        "--label",
+        help="The board's physical label, recorded with the flash. Boards are "
+        "labelled because nothing in the image or the programmer identifies "
+        "which board is attached.",
+    )
+    parser.add_argument(
+        "--json",
+        type=Path,
+        metavar="FILE",
+        help="Append one JSON object per flash to FILE, to join against "
+        "`tag-info --json`. A file rather than stdout, because the programmer "
+        "writes there too.",
+    )
     args = parser.parse_args(argv)
 
     image, manifest = resolve_release(args.release)
@@ -222,6 +288,8 @@ def main(argv: list[str]) -> int:
     verify(image, manifest_data)
 
     print(f"Verified {image.name} against {manifest.name}:")
+    if args.label:
+        print(f"  label        {args.label}")
     print(describe(manifest_data, image))
 
     if (manifest_data.get("source") or {}).get("dirty"):
@@ -232,6 +300,8 @@ def main(argv: list[str]) -> int:
         )
 
     if args.verify_only:
+        if args.json:
+            record(args.json, args.label, image, manifest_data, False, None)
         return 0
 
     programmer = find_programmer(args.programmer)
@@ -249,7 +319,14 @@ def main(argv: list[str]) -> int:
         LOAD_ADDRESS,
     ]
     print(f"\nProgramming with {programmer}")
-    return subprocess.call(command)
+    status = subprocess.call(command)
+
+    # Recorded either way, with `programmed` saying which. A failed flash that
+    # left no row would be indistinguishable from one that never happened, and
+    # the tag in hand is not running what the operator thinks it is.
+    if args.json:
+        record(args.json, args.label, image, manifest_data, status == 0, status)
+    return status
 
 
 if __name__ == "__main__":
