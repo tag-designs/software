@@ -689,6 +689,24 @@ the host tools' `v*` -- since they release on different clocks.
    prototypes still generate into the build tree, and
    `embedded/CMakeLists.txt` compares the committing set against the
    distributed one so the two cannot drift.
+
+   **Board files too**, on the same terms: `board.c`, `board.h`, `board.mk`
+   and `board_standby.h` for the five boards behind distributed tags, verified
+   byte-for-byte against what the build produced. The distributed board set is
+   derived from the tags as well -- a tag names its board in `project.mk` as
+   `include $(BOARDDIR)/<board>/board.mk`. Committed files are copied into the
+   build tree where `BOARDDIR` already points, so consumption is unchanged.
+   Together these remove `fmpp`, a Java runtime, `nanopb_generator` and
+   `config-gen` from a firmware build of the distributed tags.
+
+   The board manifests hash the ChibiOS templates -- `board.{c,h,mk}.ftl`, the
+   pin XML and the `libs/` the templates import -- so a submodule bump makes
+   every affected board stale. Deliberate: the templates are inputs. They are
+   recorded under a fixed `<chibios>` label rather than a relative path, since
+   `CHIBIOS_DIR` may point outside the repository. `fmpp`'s own version is not
+   in the manifest, because a manifest has to compare equal across machines and
+   a tool version reported on one and not another would cause false staleness;
+   what a given machine had belongs in the per-image build manifest.
 7. **`REGENERATE_SOURCES` is in place** as AUTO (the default), ON and OFF,
    driven by `generated/inputs.sha256`: the SHA-256 of every input the
    generators consume plus the pinned nanopb version. Not timestamps -- git
@@ -704,7 +722,9 @@ out of the linked images, which call plain `pb_decode`.
 
 8. **The pitfall checks are in place** in `cmake/ReproducibilityChecks.cmake`:
    dirty working tree, edited vendored runtime, submodule uninitialized or off
-   its recorded commit or dirty inside it, toolchain other than the pin, and --
+   its recorded commit or dirty inside it, a submodule whose recorded commit is
+   not on the branch `.gitmodules` says it tracks -- which nothing else catches,
+   since that commit *is* the recorded one -- toolchain other than the pin, and --
    in strict mode only -- a HEAD that is not at a tag. All go through
    `reproducibility_problem()`. `ARM_TOOLCHAIN_VERSION` is empty by default:
    recording the compiler version is unambiguously right, refusing to build on
@@ -726,11 +746,15 @@ out of the linked images, which call plain `pb_decode`.
    meanwhile.
 
 10. **The CI freshness check is in place.** The workflow
-    `embedded-reproducibility.yml` runs `cmake/CheckGeneratedSourcesFresh.cmake` on
-    every push and pull request. It reuses `InputManifest.cmake` so it cannot
-    disagree with what the build writes, reads the `.proto` list out of
-    `proto/CMakeLists.txt` rather than repeating it, and needs nothing but
-    CMake -- no toolchain, no fmpp, no generator, no submodules.
+    `embedded-reproducibility.yml` runs `cmake/CheckGeneratedSourcesFresh.cmake`
+    on every push and pull request, covering both the proto variants and the
+    boards. It reuses `InputManifest.cmake` so it cannot disagree with what the
+    build writes, and reads the `.proto` list out of `proto/CMakeLists.txt` and
+    each board's `PROCESSOR` out of its own `CMakeLists.txt` rather than
+    repeating either. It needs CMake and a checkout -- no ARM toolchain, no
+    `fmpp`, no nanopb generator. ChibiOS is checked out because the board
+    templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
+    failure, since in CI a skipped check looks exactly like a passing one.
 
 ### Next
 
