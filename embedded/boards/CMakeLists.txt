@@ -83,35 +83,6 @@ function(generate_configured_board_files name)
     message(FATAL_ERROR "Missing ChibiOS board template directory: ${_template_dir}")
   endif()
 
-  file(MAKE_DIRECTORY "${_generated_cfg_dir}")
-
-  # Keep board.fmpp generated in the build tree because its sourceRoot,
-  # outputRoot, and dataRoot are all build- and ChibiOS-location dependent.
-  set(BOARD_FMPP_SOURCE_ROOT "${_template_dir}")
-  set(BOARD_FMPP_OUTPUT_ROOT "${_board_output_dir}")
-  set(BOARD_FMPP_DATA_ROOT "${_generated_cfg_dir}")
-  configure_file(
-    "${BOARD_TOOLS_DIR}/board.fmpp.in"
-    "${_generated_board_fmpp}"
-    @ONLY)
-
-  add_custom_command(
-    OUTPUT
-      "${_generated_board_chcfg}"
-      "${_generated_board_standby}"
-    COMMAND ${PYTHON_EXECUTABLE}
-            "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
-            --template "${_template_xml}"
-            --customizations "${_customizations}"
-            --output "${_generated_board_chcfg}"
-            --standby-header "${_generated_board_standby}"
-    DEPENDS
-      "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
-      "${_customizations}"
-      "${_template_xml}"
-    VERBATIM
-    COMMENT "Generating ${GCB_BOARD_TYPE}/board.chcfg")
-
   set(_fmpp_board_files
     "${_board_output_dir}/board.h"
     "${_board_output_dir}/board.c"
@@ -120,22 +91,6 @@ function(generate_configured_board_files name)
   set(_board_files
     ${_fmpp_board_files}
     "${_generated_board_standby}")
-
-  add_custom_command(
-    OUTPUT ${_fmpp_board_files}
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${_board_output_dir}"
-    COMMAND ${FMPP} --freemarker-links "{lib : ${CHIBIOS_DIR}/tools/ftl/libs}"
-            -C "${_generated_board_fmpp}" -v -O "${_board_output_dir}"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    DEPENDS
-      "${_generated_board_chcfg}"
-      "${_generated_board_standby}"
-      "${_generated_board_fmpp}"
-      "${_template_dir}/board.c.ftl"
-      "${_template_dir}/board.h.ftl"
-      "${_template_dir}/board.mk.ftl"
-    VERBATIM
-    COMMENT "Building generated board files for ${GCB_BOARD_TYPE}")
 
   # Committed generated board files.
   #
@@ -229,6 +184,55 @@ function(generate_configured_board_files name)
   endif()
 
   if(_regenerate)
+    # The generation rules exist only in this branch. Registering them
+    # unconditionally would leave two custom commands claiming the same outputs
+    # whenever the committed files are used instead, which CMake rejects at
+    # generate time.
+    file(MAKE_DIRECTORY "${_generated_cfg_dir}")
+
+    # Keep board.fmpp generated in the build tree because its sourceRoot,
+    # outputRoot, and dataRoot are all build- and ChibiOS-location dependent.
+    set(BOARD_FMPP_SOURCE_ROOT "${_template_dir}")
+    set(BOARD_FMPP_OUTPUT_ROOT "${_board_output_dir}")
+    set(BOARD_FMPP_DATA_ROOT "${_generated_cfg_dir}")
+    configure_file(
+      "${BOARD_TOOLS_DIR}/board.fmpp.in"
+      "${_generated_board_fmpp}"
+      @ONLY)
+
+    add_custom_command(
+      OUTPUT
+        "${_generated_board_chcfg}"
+        "${_generated_board_standby}"
+      COMMAND ${PYTHON_EXECUTABLE}
+              "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
+              --template "${_template_xml}"
+              --customizations "${_customizations}"
+              --output "${_generated_board_chcfg}"
+              --standby-header "${_generated_board_standby}"
+      DEPENDS
+        "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
+        "${_customizations}"
+        "${_template_xml}"
+      VERBATIM
+      COMMENT "Generating ${GCB_BOARD_TYPE}/board.chcfg")
+
+    add_custom_command(
+      OUTPUT ${_fmpp_board_files}
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${_board_output_dir}"
+      COMMAND ${FMPP} --freemarker-links "{lib : ${CHIBIOS_DIR}/tools/ftl/libs}"
+              -C "${_generated_board_fmpp}" -v -O "${_board_output_dir}"
+      WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+      DEPENDS
+        "${_generated_board_chcfg}"
+        "${_generated_board_standby}"
+        "${_generated_board_fmpp}"
+        "${_template_dir}/board.c.ftl"
+        "${_template_dir}/board.h.ftl"
+        "${_template_dir}/board.mk.ftl"
+      VERBATIM
+      COMMENT "Building generated board files for ${GCB_BOARD_TYPE}")
+
     if(_sources_committed)
       # Generate into the build tree as always, then copy back, so the
       # committed copy is exactly what a build produced.
