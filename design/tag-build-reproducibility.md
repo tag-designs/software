@@ -1,11 +1,14 @@
 # Tag Firmware Build Reproducibility
 
-Status: implemented. A firmware build of the distributed tags needs the ARM
-toolchain, `make`, `cmake` and `python3` -- no `fmpp`, no Java runtime, no nanopb
-generator, no protobuf. Every image carries a manifest keyed on its own SHA-256,
-and the conditions that would quietly make a build unreproducible are detected at
-configure time. [What was not done](#what-was-not-done) lists the gaps, which are
-real and deliberate.
+Status: implemented and exercised. A firmware build of the distributed tags
+needs the ARM toolchain, `make`, `cmake` and `python3` -- no `fmpp`, no Java
+runtime, no nanopb generator, no protobuf. Every image carries a manifest keyed
+on its own SHA-256, and the conditions that would quietly make a build
+unreproducible are detected at configure time. CI has built all five distributed
+tags on a runner and every hash its manifests record was verified against the
+bytes shipped. [What was not done](#what-was-not-done) lists the gaps, which are
+real and deliberate -- the largest being that nothing yet collects a manifest
+from a bench-built image, which is how most flown firmware is flashed.
 
 ## Purpose and scope
 
@@ -188,6 +191,13 @@ because the tree can change in between and the manifest should describe the imag
 that exists. A missing artifact is recorded as `null` rather than omitted, so a
 truncated build is visible rather than merely unremarkable.
 
+One field is emptier than it looks. `nanopb_generator` records the version the
+generator reported at configure time, and under `REGENERATE_SOURCES=OFF` no
+generator is looked for, so a CI manifest leaves it blank. That is correct --
+nothing generated anything, so there is no version to record -- but it means a
+CI manifest carries slightly less than a bench-built one, and the absence should
+not be read as a missing generator having been used.
+
 **In the image**, `version.h` defines `VERSION_HASH`, `GIT_SHA`, `GIT_DATE`,
 `GIT_COMMIT_SUBJECT`, `GIT_REPO`, and now also `GIT_DIRTY`, `GIT_DIRTY_STR`,
 `CHIBIOS_SHA` and `NANOPB_RUNTIME_VERSION`. The last four are macros that cost
@@ -225,6 +235,24 @@ no generator. A check that needed the generator in order to prove the generator
 is unnecessary would be self-defeating. ChibiOS is checked out because the board
 templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
 failure, since in CI a skipped check looks exactly like a passing one.
+
+`release-firmware.yml` has been run to completion on a runner via
+`workflow_dispatch`. It produced all five distributed tags, seven files each,
+with `reproducible_mode: true`, `regenerate_sources: OFF`, a clean tree, the
+pinned toolchain at 14.2.1 and the expected ChibiOS commit. Every SHA-256 and
+size a manifest records was re-checked against the bytes actually shipped: 15 of
+15 matched. That is the backward question working -- bytes recovered from a tag
+can be matched to an archived build with nothing to trust but the bytes.
+
+Getting there took one real failure, worth recording because it is the failure
+mode the pin exists for. The first run rejected the toolchain: the pinned hash
+belonged to a different file in the same release, because Arm ships `x86_64`,
+`aarch64` and `darwin-arm64` builds of 14.2.rel1 under near-identical names and
+the checksum taken was the one a Mac is offered. The download was fine and the
+pin was wrong. The workflow now prints the downloaded file's size, type and
+computed hash alongside the pinned one, and the checksum Arm publishes beside
+the file -- printed for comparison and never acted on, since a checksum served
+by the same host as the file proves nothing about the file.
 
 Firmware and host tools use separate tag namespaces because they are validated
 differently. A host tool release is exercised by running it; a firmware release
@@ -430,13 +458,6 @@ The manifest says what was built. It has no field for whether
 image hash. That link is the thing that would make the archive answer "was this
 cleared to fly", and it does not exist.
 
-### The CI firmware job has never run
-
-`release-firmware.yml` is written and its checksum is pinned, but no runner has
-executed it. What it will exercise for the first time is provisioning -- whether
-the Arm tarball installs cleanly and how long an embedded build takes there --
-not anything about reproducibility, which is settled. A `workflow_dispatch` run
-builds without publishing.
 
 ### Host tools are still out of scope
 
