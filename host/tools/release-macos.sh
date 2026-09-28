@@ -226,7 +226,10 @@ FIRST_APP=$(printf '%s\n' "$APPS" | head -1)
 printf '\nGatekeeper assessment of %s:\n' "${FIRST_APP##*/}"
 spctl --assess --type exec -vv "$FIRST_APP" 2>&1 | sed 's/^/  /' || true
 
-hdiutil detach "$MOUNT_POINT" -quiet
+# Detach before reporting, so a failure message is not competing with a
+# still-mounted image. `detach` tolerates a busy volume; a stuck mount must not
+# turn a signature failure into a confusing early exit under `set -e`.
+detach
 trap cleanup_log EXIT
 
 [ "$FAILED" -eq 0 ] || die "signature verification failed; do not ship this image"
