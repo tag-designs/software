@@ -255,6 +255,13 @@ add_subdirectory(bases)
 add_subdirectory(proto-c)
 add_subdirectory(tags)
 
+# Conditions that would make these images unreproducible -- a dirty tree, a
+# submodule that is not where the commit says, a compiler other than the pinned
+# one -- are reported here, once, after the toolchain has been located.
+
+include("${CMAKE_SOURCE_DIR}/cmake/ReproducibilityChecks.cmake")
+check_reproducibility_pitfalls()
+
 #
 # Actively deployed tags
 #

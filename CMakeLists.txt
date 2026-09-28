@@ -33,6 +33,8 @@ option(REPRODUCIBLE_BUILD
 set(REGENERATE_SOURCES "AUTO" CACHE STRING
     "Regenerate committed generated sources: AUTO (when their recorded inputs change), ON (always), OFF (never)")
 set_property(CACHE REGENERATE_SOURCES PROPERTY STRINGS AUTO ON OFF)
+set(ARM_TOOLCHAIN_VERSION "" CACHE STRING
+    "Expected arm-none-eabi-gcc version; empty records the version without checking it")
 string(TOUPPER "${REGENERATE_SOURCES}" REGENERATE_SOURCES)
 if(NOT REGENERATE_SOURCES MATCHES "^(AUTO|ON|OFF)$")
   message(FATAL_ERROR
