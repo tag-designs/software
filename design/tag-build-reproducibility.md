@@ -408,7 +408,7 @@ layout, and Standby entry on the STM32U375 depends on where code lands, so
 wiring these into the monitor is a firmware change that deserves its own commit
 and its own bench measurement -- not a side effect of recording provenance.
 
-### Determinism is now possible, and still unverified
+### Determinism, verified for a rebuild on one machine
 
 `monitor.c` used to embed `__DATE__ " : " __TIME__`, which made byte-identical
 rebuilds impossible by construction: the same commit produced different bytes
@@ -421,18 +421,24 @@ reports when the source was committed rather than when someone happened to
 compile it, which is the more useful answer from a tag in hand anyway. It is
 always exactly 25 characters against a 30-byte field.
 
-That removes the only known obstacle. It does not establish determinism, and
-nothing has yet built one commit twice and compared. `__DATE__`/`__TIME__`
-appear nowhere else that compiles into a distributed tag -- not in ChibiOS'
-HAL, RT or common code, and only in `BitTag-legacy`, a prototype that does not
-build -- but absolute paths, linker ordering and library timestamps are the
-usual remaining suspects and none of them have been looked for.
+**The measurement has been taken, and it passes.** A distributed tag built twice
+from a clean tree, into two different build directories, produced a
+byte-identical `.bin`. The differing build paths make that stronger than it
+sounds: anything leaking a build location into the image -- `__FILE__`, a debug
+path, a temporary name -- would have shown as a difference, and none did.
+`__DATE__`/`__TIME__` now appear nowhere that compiles into a distributed tag,
+not in ChibiOS' HAL, RT or common code, and only in `BitTag-legacy`, a prototype
+that does not build.
 
-**The measurement is now worth taking**, which it was not before: building a
-distributed tag twice from a clean tree and comparing the `.bin` either shows
-byte-identical output or names the next obstacle. Until that is done, the
-honest statement is that the inputs are pinned and one known source of variance
-is removed.
+This closes the loop the document opened with. A commit now determines its
+image, so the SHA-256 recorded in a board database can be re-derived from the
+commit alone -- the forward question answering the backward one.
+
+What has **not** been shown is determinism across machines: same commit,
+different host, different toolchain installation path, different OS. CI builds
+on Linux and the bench on macOS, so comparing a CI artifact's hash against a
+local rebuild of the same commit would settle it, and that comparison has not
+been made. Nor has every distributed tag been checked -- one was.
 
 ### The old board generation path is untouched
 
