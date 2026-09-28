@@ -1,0 +1,38 @@
+name: Embedded reproducibility
+
+# Checks that the committed generated protocol sources still match the inputs
+# recorded beside them. Those sources exist so an ordinary firmware build needs
+# no code generator; that only helps while they are actually current, and a
+# stale one is invisible locally to anyone whose build does not regenerate.
+#
+# Deliberately needs nothing but CMake: no ARM toolchain, no fmpp, no nanopb
+# generator, no submodules. A check that needed the generator in order to prove
+# the generator is unnecessary would be self-defeating, and one that configured
+# the whole embedded tree would fail for reasons unrelated to freshness.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: embedded-reproducibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated-sources:
+    name: Generated sources are current
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Check committed generated sources
+        run: |
+          cmake -DSOURCE_DIR="$GITHUB_WORKSPACE" \
+                -P cmake/CheckGeneratedSourcesFresh.cmake
