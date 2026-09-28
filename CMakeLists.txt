@@ -355,6 +355,10 @@ if(NOT Protobuf_FOUND)
 endif()
 cmake_print_variables(Protobuf_VERSION)
 
+# Shared by the proto-c and board generation rules, both of which record the
+# inputs of their committed generated files.
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/InputManifest.cmake")
+
 # Report a condition that makes the build unreproducible -- a version
 # disagreement, a stale committed source. Warns by default so day-to-day work is
 # not obstructed; -DREPRODUCIBLE_BUILD=ON turns the same condition into a

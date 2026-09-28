@@ -22,7 +22,6 @@ endif()
 set(NANOPB_PROTO_C_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(NANOPB_DEFAULT_OPTIONS_DIR "${NANOPB_PROTO_C_DIR}/default-options")
 
-include("${CMAKE_SOURCE_DIR}/cmake/InputManifest.cmake")
 
 #
 # Helper function to create nanopb pb.h pb.c files
