@@ -280,4 +280,21 @@ else()
   list(JOIN _distributed_protos " " _distributed_protos_text)
   message(STATUS "Distributed tags: ${_distributed_tags_text}")
   message(STATUS "Distributed proto targets: ${_distributed_protos_text}")
+
+  # One rule that builds everything that ships.  The per-tag targets are not in
+  # ALL, and install(FILES) of the firmware artifacts creates no build
+  # dependency -- which is why those install rules are OPTIONAL -- so without
+  # this there is no single command that produces the set, and `make install`
+  # on a fresh tree silently installs nothing.
+
+  add_custom_target(distributed_firmware DEPENDS ${_distributed_tags})
+
+  # Regenerating the committed sources covers the same set.
+
+  set(_distributed_proto_source_targets "")
+  foreach(_proto ${_distributed_protos})
+    list(APPEND _distributed_proto_source_targets "${_proto}_sources")
+  endforeach()
+  add_custom_target(distributed_proto_sources
+                    DEPENDS ${_distributed_proto_source_targets})
 endif()

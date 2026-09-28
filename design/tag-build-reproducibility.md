@@ -63,6 +63,19 @@ step. For the six tags above it resolves to `bittag_proto`,
 `bittag-legacy_proto`, `compasstag_proto`, `imutag_proto`, `prestag_proto` and
 `uiuctag_proto` -- six of the nine variants configured.
 
+Two aggregate targets fall out of the marking:
+
+- `distributed_firmware` builds every tag that ships.
+- `distributed_proto_sources` regenerates the proto-c outputs for exactly that
+  set, which is what the regeneration and freshness steps below drive.
+
+Neither existed before, and their absence was not merely inconvenient. The
+per-tag targets are not in `ALL`, and `install(FILES)` of the firmware artifacts
+creates no build dependency -- which is why those install rules carry
+`OPTIONAL`. So `make install` on a fresh tree installed nothing at all, silently.
+`make distributed_firmware && make install` is the sequence that produces a
+populated package, and CI will want the same pair.
+
 Everything that follows applies to the distributed set. Prototypes keep
 generating their sources at build time and are not held to the freshness check;
 `REPRODUCIBLE_BUILD=ON` escalates to an error only for tags that install. A
@@ -661,7 +674,10 @@ the host tools' `v*` -- since they release on different clocks.
 5. **The distributed set is marked.** `add_embedded_target` takes `DISTRIBUTE`,
    only marked targets install, and the distributed proto targets are derived
    from them. This scopes every remaining step to six tags and six proto
-   variants rather than fourteen and nine.
+   variants rather than fourteen and nine. The `distributed_firmware` and
+   `distributed_proto_sources` targets build and regenerate that set; the first
+   also closes a standing gap, since `make install` had no way to build the
+   firmware it was installing.
 
 Moving to 0.4.9.1 from the `0.4.8-11-g1f0c2e1` snapshot changes no behaviour
 here: `pb_common.o` and `pb_encode.o` are byte-identical when cross-compiled
