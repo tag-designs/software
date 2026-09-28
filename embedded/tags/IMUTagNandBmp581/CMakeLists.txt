@@ -8,5 +8,5 @@
            identifier so host tools treat this hardware revision as a
            replacement for IMUTagNand.
 ]]
-add_embedded_target(IMUTagNandBmp581 imutag_proto TAG_FLASH_SIZE=1024K)
+add_embedded_target(IMUTagNandBmp581 imutag_proto DISTRIBUTE TAG_FLASH_SIZE=1024K)
 add_dependencies(IMUTagNandBmp581 board-imutag-nand-v2)

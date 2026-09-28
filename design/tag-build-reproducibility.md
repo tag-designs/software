@@ -31,6 +31,45 @@ Data recovery from a returned tag is covered separately in
 [Field Data Extraction](field-data-extraction.md); the two meet at the image
 hash.
 
+### Which tags are in scope
+
+Not every tag in the tree deserves this. Most are development prototypes that
+were built once to try a sensor or a flash part; they will never be deployed and
+never returned from the field, so nothing is gained by promising that a build
+from a future checkout reproduces them byte for byte, and something is lost --
+every additional variant is more generated output to commit, more to keep fresh,
+and more to break a build over.
+
+The distinction the tree already wanted is the one CMake supplies: **the
+actively deployed tags are the ones that install.** `add_embedded_target` takes
+a `DISTRIBUTE` keyword; marked targets install their firmware artifacts and are
+recorded in the global property `ULTRALIGHT_DISTRIBUTED_TAGS`. That gives three
+tiers:
+
+| tier | how it is expressed | obligation |
+| --- | --- | --- |
+| retired | commented out of `embedded/tags/CMakeLists.txt` | none |
+| prototype | added, but without `DISTRIBUTE` | must compile |
+| distributed | `add_embedded_target(... DISTRIBUTE)` | reproducible: committed generated sources, pinned tool versions, version agreement enforced, firmware in the release |
+
+The distributed set is currently `BitTag`, `BitTag-legacy`, `CompassTagAT25`,
+`IMUTagNandBmp581`, `PresTag` and `UIUCTag` -- six of the fourteen that build.
+
+The proto-c variants needing the same treatment are **derived, not declared**.
+`add_embedded_target` already knows each tag's proto target, so the distributed
+proto set falls out of the tag markings and is recorded in
+`ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS`; there is no second list to fall out of
+step. For the six tags above it resolves to `bittag_proto`,
+`bittag-legacy_proto`, `compasstag_proto`, `imutag_proto`, `prestag_proto` and
+`uiuctag_proto` -- six of the nine variants configured.
+
+Everything that follows applies to the distributed set. Prototypes keep
+generating their sources at build time and are not held to the freshness check;
+`REPRODUCIBLE_BUILD=ON` escalates to an error only for tags that install. A
+prototype that later goes into the field is promoted by adding one keyword,
+which is the point of choosing a marker the build already acts on rather than a
+list in a document.
+
 ## What a build consumes
 
 ### Three categories of source
@@ -619,6 +658,10 @@ the host tools' `v*` -- since they release on different clocks.
 4. **`.gitattributes` is in place** -- `eol=lf` on `embedded/thirdparty/**` and
    on the paths generated sources will occupy, before any generated file is
    committed, because attributes do not normalize retroactively.
+5. **The distributed set is marked.** `add_embedded_target` takes `DISTRIBUTE`,
+   only marked targets install, and the distributed proto targets are derived
+   from them. This scopes every remaining step to six tags and six proto
+   variants rather than fourteen and nine.
 
 Moving to 0.4.9.1 from the `0.4.8-11-g1f0c2e1` snapshot changes no behaviour
 here: `pb_common.o` and `pb_encode.o` are byte-identical when cross-compiled
@@ -628,28 +671,28 @@ out of the linked images, which call plain `pb_decode`.
 
 ### Next
 
-5. **Commit the generated sources.** Add the `generated/` directories, commit
+6. **Commit the generated sources.** Add the `generated/` directories, commit
    the current board, `.pb.*` and `default_config.c` outputs, redirect the
    existing custom commands to write there, and add the `.inputs.sha256`
    digests. This is the step that removes `fmpp`, `nanopb_generator` and
    `config-gen` -- and with the last of those, the host protobuf build -- from
    an ordinary firmware build.
-6. **Add the `REGENERATE_SOURCES` tri-state** and make the generator lookups
+7. **Add the `REGENERATE_SOURCES` tri-state** and make the generator lookups
    conditional on it.
-7. **Add the remaining pitfall checks** from the table above -- dirty tree,
+8. **Add the remaining pitfall checks** from the table above -- dirty tree,
    submodule state, stale generated files, toolchain version -- reusing the
    `REPRODUCIBLE_BUILD` escalation that already exists.
-8. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
+9. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
    the ChibiOS SHA and the nanopb versions, so a returned tag can state its own
    provenance.
-9. **Add the CI freshness check and the firmware build.**
+10. **Add the CI freshness check and the firmware build.**
 
-Steps 5 and 6 remove the external tools from an ordinary build; 7 and 8 record
-what is left; 9 is what makes any of it dependable rather than merely tidy.
+Steps 6 and 7 remove the external tools from an ordinary build; 8 and 9 record
+what is left; 10 is what makes any of it dependable rather than merely tidy.
 
 ### Where to resume
 
-Step 5 is the natural next one and the largest. It is also the one with a
+Step 6 is the natural next one and the largest. It is also the one with a
 prerequisite already satisfied -- `.gitattributes` had to precede it and does.
 Before starting, settle the first open question below, because a first
 regeneration that shifts the `.pb.*` files belongs in its own commit ahead of

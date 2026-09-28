@@ -70,6 +70,23 @@ set(STM32_PROGRAMMER_SELECT_SCRIPT
 
 function(add_embedded_target name proto_target)
 
+  # DISTRIBUTE marks a tag as actively deployed: its firmware is installed and
+  # packaged, and it is the set the reproducibility machinery applies to.  Tags
+  # without it are development prototypes -- they must still compile, but no
+  # promise is made that a build from a future checkout reproduces them.  The
+  # remaining arguments are passed through to make as before.
+
+  cmake_parse_arguments(ARG "DISTRIBUTE" "" "" ${ARGN})
+  set(make_vars ${ARG_UNPARSED_ARGUMENTS})
+
+  if(ARG_DISTRIBUTE)
+    set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_TAGS ${name})
+    if(NOT proto_target STREQUAL "0")
+      set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS
+                                          ${proto_target})
+    endif()
+  endif()
+
   # get some paths
 
   message(STATUS "Embedded target ${name} proto target: ${proto_target}")
@@ -145,7 +162,7 @@ function(add_embedded_target name proto_target)
   add_custom_target(${name}
     BYPRODUCTS ${target_firmware_artifacts}
     #COMMAND echo " ${default_opt} ${ARGN}"
-    COMMAND ${MAKE_EXECUTABLE} -C ${name} ${default_opt} ${ARGN}
+    COMMAND ${MAKE_EXECUTABLE} -C ${name} ${default_opt} ${make_vars}
     WORKING_DIRECTORY ${tag_source_dir}
     COMMENT "Building ${name}")
 
@@ -219,10 +236,15 @@ function(add_embedded_target name proto_target)
       VERBATIM)
   endif()
 
-  install(
-    FILES ${target_firmware_artifacts}
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}/firmware/${name}"
-    OPTIONAL)
+  # Only actively deployed tags are installed; prototypes are built but not
+  # shipped.
+
+  if(ARG_DISTRIBUTE)
+    install(
+      FILES ${target_firmware_artifacts}
+      DESTINATION "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}/firmware/${name}"
+      OPTIONAL)
+  endif()
 
 endfunction()
 
@@ -232,3 +254,30 @@ add_subdirectory(boards)
 add_subdirectory(bases)
 add_subdirectory(proto-c)
 add_subdirectory(tags)
+
+#
+# Actively deployed tags
+#
+# Tags are added above; those marked DISTRIBUTE are the ones in field use whose
+# firmware is installed and packaged.  The set of proto-c variants that need the
+# same treatment is derived from them rather than listed separately, so the two
+# cannot drift apart.
+#
+
+get_property(_distributed_tags GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_TAGS)
+get_property(_distributed_protos GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS)
+list(REMOVE_DUPLICATES _distributed_protos)
+list(SORT _distributed_tags)
+list(SORT _distributed_protos)
+set_property(GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS ${_distributed_protos})
+
+if(NOT _distributed_tags)
+  message(WARNING
+    "No embedded target is marked DISTRIBUTE; no firmware will be installed. "
+    "Mark the actively deployed tags in embedded/tags/*/CMakeLists.txt.")
+else()
+  list(JOIN _distributed_tags " " _distributed_tags_text)
+  list(JOIN _distributed_protos " " _distributed_protos_text)
+  message(STATUS "Distributed tags: ${_distributed_tags_text}")
+  message(STATUS "Distributed proto targets: ${_distributed_protos_text}")
+endif()
