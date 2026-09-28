@@ -710,31 +710,37 @@ out of the linked images, which call plain `pb_decode`.
    Untracked files are not treated as dirty -- nothing compiles them, and
    warning about scratch files would make the warning ignorable.
 
+9. **The build manifest is written** as `<name>-build-manifest.json` beside each
+   image, in the same target that links it: commit, describe, dirty flag, the
+   ChibiOS commit actually compiled, tool paths and versions, the build modes,
+   and the SHA-256 and size of the `.elf`, `.bin` and `.hex`. Git facts are read
+   when the manifest is written, not at configure time, so it describes the
+   image that exists. `version.h` gains `GIT_DIRTY`, `GIT_DIRTY_STR`,
+   `CHIBIOS_SHA` and `NANOPB_RUNTIME_VERSION` as macros -- free unless
+   referenced, and nothing references them yet, because adding a string to the
+   image shifts its layout and STM32U375 Standby entry depends on where code
+   lands. Carrying the dirty flag *into* the image is therefore a deliberate
+   firmware change still to be made; the manifest holds the same facts
+   meanwhile.
+
 ### Next
 
-9. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
-   the ChibiOS SHA and the nanopb versions, so a returned tag can state its own
-   provenance.
 10. **Add the CI freshness check and the firmware build.** The freshness check
     is now cheap: configure with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON`
     and a stale committed source is a configure error, with no generator
     needed on the runner.
 
-Step 9 records what the build cannot remove -- the checks above now detect it,
-but only a manifest carried with the image lets a returned tag say so. Step 10
-is what makes any of it dependable rather than merely tidy.
+Step 10 is what makes the rest dependable rather than merely tidy: until a
+machine nobody edits builds this way, every guarantee above rests on each
+person remembering to.
 
 ### Where to resume
 
-Step 9 is next. The detection now exists; what is missing is carrying the result
-out of the configure log and into the image, which is what makes it useful
-months later with a returned tag on the bench. The global properties
-`ULTRALIGHT_TREE_DIRTY`, `ULTRALIGHT_CHIBIOS_SHA` and
-`ULTRALIGHT_ARM_TOOLCHAIN_VERSION` are set for exactly that.
-
-Step 10 has no remaining unknowns: both questions that gated it -- whether
-pinning shifts the output, and whether the output depends on the platform -- are
-settled below.
+Step 10 is the last one, and has no remaining unknowns: both questions that
+gated it -- whether pinning shifts the output, and whether the output depends
+on the platform -- are settled below. The freshness check itself is now cheap:
+configure with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON` and a stale
+committed source is a configure error, with no generator needed on the runner.
 
 ## Settled: pinning does not shift the generated output
 
