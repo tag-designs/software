@@ -414,9 +414,9 @@ For an overview of the embedded source tree and how `bases`, `boards`,
 | Native C++20 compiler | Builds host-side generation helpers used by embedded protocol targets. |
 | Protobuf | Install `protoc` and development libraries; the embedded build still configures shared protocol targets. |
 | Git | Used by version-generation helpers. |
-| Arm GNU Toolchain | Provides `arm-none-eabi-gcc`; it must be on `PATH`. |
+| Arm GNU Toolchain | Provides `arm-none-eabi-gcc`; it must be on `PATH`. Version 14.2.1 is the expected one; a different version warns, and fails under `-DREPRODUCIBLE_BUILD=ON`. Configure with `-DARM_TOOLCHAIN_VERSION=` to record the version without checking it. |
 | ChibiOS | Tracked as the `ChibiOS` git submodule on branch `stable_21.11.x`. |
-| nanopb | Set `NANOPB_ROOT`, or place the tree at `nanopb` in the repository root. |
+| nanopb | Only needed to regenerate protocol sources. The generated `.pb.c`/`.pb.h` for the distributed tags are committed, so an ordinary firmware build needs no generator; set `NANOPB_ROOT` only when changing a `.proto` or an options file, or when configuring with `-DREGENERATE_SOURCES=ON`. The runtime is vendored in the repository. |
 | Java runtime | Required by `fmpp`. |
 | `fmpp` | Required for board file generation; it must be on `PATH`. |
 | `make` | Required for ChibiOS-based firmware builds. |
