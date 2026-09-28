@@ -56,7 +56,7 @@ function(generate_configured_board_files name)
     message(FATAL_ERROR "generate_configured_board_files requires CUSTOMIZATIONS")
   endif()
 
-  find_program(PYTHON_EXECUTABLE NAMES python3 python REQUIRED)
+  find_program(PYTHON_EXECUTABLE NAMES python3 python)
 
   # ChibiOS uses stm32l4board.xml for the stm32l4xx template family, while the
   # FTL template directory keeps the full family name stm32l4xx.
@@ -160,17 +160,18 @@ function(generate_configured_board_files name)
     set(_up_to_date FALSE)
   endif()
 
+  set(_unbuildable FALSE)
   if(REGENERATE_SOURCES STREQUAL "ON")
     set(_regenerate TRUE)
   elseif(REGENERATE_SOURCES STREQUAL "OFF")
     set(_regenerate FALSE)
+    # As for proto variants: a board that does not commit its files has nothing
+    # to build under OFF, but that must not stop a release build from
+    # configuring the whole tree and building only the distributed targets.
     if(NOT _sources_committed)
-      message(FATAL_ERROR
-        "REGENERATE_SOURCES=OFF but board ${GCB_BOARD_TYPE} does not commit its "
-        "generated files, so there is nothing to build. Boards behind prototype "
-        "tags generate at build time; use AUTO.")
+      set(_unbuildable TRUE)
     endif()
-    if(NOT _up_to_date)
+    if(NOT _up_to_date AND _sources_committed)
       reproducibility_problem(
         "Committed board files for ${GCB_BOARD_TYPE} are stale: the inputs "
         "recorded in ${_manifest} do not match the current customizations or "
@@ -188,6 +189,19 @@ function(generate_configured_board_files name)
     # unconditionally would leave two custom commands claiming the same outputs
     # whenever the committed files are used instead, which CMake rejects at
     # generate time.
+    #
+    # This is also the only place that needs the generators, so it is where they
+    # are demanded rather than at the top of the embedded tree.
+    if(NOT FMPP)
+      message(FATAL_ERROR
+        "Board ${GCB_BOARD_TYPE} needs regenerating, which requires fmpp (and a "
+        "Java runtime). Install fmpp, or commit its generated files so the "
+        "build does not need it.")
+    endif()
+    if(NOT PYTHON_EXECUTABLE)
+      message(FATAL_ERROR
+        "Board ${GCB_BOARD_TYPE} needs regenerating, which requires python3.")
+    endif()
     file(MAKE_DIRECTORY "${_generated_cfg_dir}")
 
     # Keep board.fmpp generated in the build tree because its sourceRoot,
@@ -259,6 +273,12 @@ function(generate_configured_board_files name)
     else()
       add_custom_target(${name} DEPENDS ${_board_files})
     endif()
+  elseif(_unbuildable)
+    add_custom_target(${name}
+      COMMAND ${CMAKE_COMMAND} -E echo
+              "Board ${GCB_BOARD_TYPE} does not commit its generated files, and REGENERATE_SOURCES=OFF forbids generating them. Configure with -DREGENERATE_SOURCES=AUTO to build it."
+      COMMAND ${CMAKE_COMMAND} -E false
+      VERBATIM)
   else()
     # Copy the committed files into the build tree, where BOARDDIR expects them.
     set(_installed_board_files "")

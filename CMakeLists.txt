@@ -349,11 +349,26 @@ include(GNUInstallDirs)
 # Find Protobuf and Nanopb
 
 set(protobuf_MODULE_COMPATIBLE TRUE)
-find_package(Protobuf CONFIG QUIET)
-if(NOT Protobuf_FOUND)
-  find_package(Protobuf REQUIRED)
+# Protobuf is needed for the host tools and for config-gen, which turns
+# default-config.json into the proto3 wire encoding.  config-gen is only built
+# when generated sources may be regenerated, so a firmware build with
+# REGENERATE_SOURCES=OFF needs neither, and should not be made to install it.
+if(BUILD_HOST OR NOT REGENERATE_SOURCES STREQUAL "OFF")
+  set(ULTRALIGHT_NEED_PROTOBUF ON)
+else()
+  set(ULTRALIGHT_NEED_PROTOBUF OFF)
+  message(STATUS
+    "Not looking for protobuf: BUILD_HOST is off and REGENERATE_SOURCES=OFF, "
+    "so neither the host tools nor config-gen are built.")
 endif()
-cmake_print_variables(Protobuf_VERSION)
+
+if(ULTRALIGHT_NEED_PROTOBUF)
+  find_package(Protobuf CONFIG QUIET)
+  if(NOT Protobuf_FOUND)
+    find_package(Protobuf REQUIRED)
+  endif()
+  cmake_print_variables(Protobuf_VERSION)
+endif()
 
 # Shared by the proto-c and board generation rules, both of which record the
 # inputs of their committed generated files.

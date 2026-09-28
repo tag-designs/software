@@ -2,17 +2,23 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Configure Proto")
 
-protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS tag.proto tagdata.proto)
+# The C++ protocol library is needed by the host tools and by config-gen, and
+# by nothing else.  A firmware build of tags whose generated sources are
+# committed needs neither, so it should not need protobuf installed either.
 
-#
-# Create the c++ protocol library for tags 
-#
+if(ULTRALIGHT_NEED_PROTOBUF)
+  protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS tag.proto tagdata.proto)
 
-add_library(proto ${PROTO_SRCS} ${PROTO_HDRS})
-target_compile_features(proto PUBLIC cxx_std_20)
-target_include_directories(proto PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
-target_include_directories(proto PUBLIC ${Protobuf_INCLUDE_DIRS})
-target_link_libraries(proto PUBLIC protobuf::libprotobuf)
+  #
+  # Create the c++ protocol library for tags
+  #
+
+  add_library(proto ${PROTO_SRCS} ${PROTO_HDRS})
+  target_compile_features(proto PUBLIC cxx_std_20)
+  target_include_directories(proto PUBLIC "${CMAKE_CURRENT_BINARY_DIR}")
+  target_include_directories(proto PUBLIC ${Protobuf_INCLUDE_DIRS})
+  target_link_libraries(proto PUBLIC protobuf::libprotobuf)
+endif()
 
 #
 # Create a tool for translating json tag configuration files to 

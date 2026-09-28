@@ -4,10 +4,13 @@ cmake_minimum_required(VERSION 3.10)
 
 find_program(GCCARM arm-none-eabi-gcc REQUIRED)
 find_program(MAKE_EXECUTABLE make REQUIRED)
+# fmpp renders the ChibiOS board templates, and needs a Java runtime behind it.
+# Boards whose generated files are committed do not run it, so it is looked up
+# leniently here and demanded only where a board actually regenerates.
 if(MSVC)
-  find_program(FMPP fmpp fmpp.bat PATHS "c:/Program Files/fmpp/bin" REQUIRED)
+  find_program(FMPP fmpp fmpp.bat PATHS "c:/Program Files/fmpp/bin")
 else()
-  find_program(FMPP fmpp REQUIRED)
+  find_program(FMPP fmpp)
 endif()
 
 set(_repo_chibios_dir "${CMAKE_SOURCE_DIR}/ChibiOS")

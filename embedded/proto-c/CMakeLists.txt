@@ -114,21 +114,18 @@ function(add_nanopb_target name)
     set(up_to_date FALSE)
   endif()
 
+  set(unbuildable FALSE)
   if(REGENERATE_SOURCES STREQUAL "ON")
     set(regenerate TRUE)
   elseif(REGENERATE_SOURCES STREQUAL "OFF")
     set(regenerate FALSE)
-    if(NOT sources_committed)
-      message(FATAL_ERROR
-        "REGENERATE_SOURCES=OFF but ${name} does not commit its generated "
-        "sources, so there is nothing to build. Prototype variants generate at "
-        "build time; use AUTO, or drop ${name} from the build.")
-    endif()
-    if(NOT outputs_present)
-      message(FATAL_ERROR
-        "REGENERATE_SOURCES=OFF but ${name} has no committed generated sources "
-        "under ${generated_dir}. Configure with -DREGENERATE_SOURCES=ON once to "
-        "produce them.")
+    # A prototype variant has nothing to build under OFF. That is not a reason
+    # to fail the whole configure: a release build configures the entire tree
+    # and builds only the distributed targets, so the prototypes must be
+    # configurable even though they are unbuildable. Failing when one is
+    # actually asked for says the same thing at the only moment it matters.
+    if(NOT sources_committed OR NOT outputs_present)
+      set(unbuildable TRUE)
     endif()
     if(NOT up_to_date AND sources_committed)
       reproducibility_problem(
@@ -217,6 +214,12 @@ function(add_nanopb_target name)
       ${name}_proto_sources ALL
       DEPENDS ${nanopb_options} ${nanopb_sources} ${nanopb_headers}
               "${default_config}" "${manifest}")
+  elseif(unbuildable)
+    add_custom_target(${name}_proto_sources
+      COMMAND ${CMAKE_COMMAND} -E echo
+              "${name} does not commit its generated sources, and REGENERATE_SOURCES=OFF forbids generating them. Configure with -DREGENERATE_SOURCES=AUTO to build this variant."
+      COMMAND ${CMAKE_COMMAND} -E false
+      VERBATIM)
   else()
     # Nothing to build: the committed sources are used as they are.  The target
     # still exists because the tag targets depend on it by name.
