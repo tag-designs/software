@@ -14,9 +14,14 @@ execute_process(COMMAND
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # the date of the commit
+#
+# iso-strict, not local: --date=local renders in the builder's timezone, so the
+# same commit produces a different string on two machines. The author date and
+# its offset are stored in the commit, so this is a property of the commit
+# rather than of the build -- which is what lets the image carry it.
 
 execute_process(COMMAND
-    "${GIT_EXECUTABLE}" log -1 --format=%ad --date=local
+    "${GIT_EXECUTABLE}" log -1 --format=%ad --date=iso-strict
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
     OUTPUT_VARIABLE GIT_DATE
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)

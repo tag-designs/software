@@ -500,7 +500,16 @@ static const char *InfoStrings[ARRAY_SIZE_STR] = {
     [BOARD_STR] = BOARD_NAME,
     [REPO_STR] = GIT_REPO,
     [HASH_STR] = VERSION_HASH,
-    [BUILDTM_STR] = __DATE__ " : " __TIME__,
+    /* The commit date, not __DATE__/__TIME__.
+     *
+     * The compile time made every build of a commit produce different bytes,
+     * so "same commit, same image" could never hold however carefully the
+     * inputs were pinned. The commit date is a property of the commit, so two
+     * builds of it now agree here -- and what this field reports becomes when
+     * the source was written rather than when someone happened to compile it,
+     * which is the more useful answer from a tag in hand.
+     */
+    [BUILDTM_STR] = GIT_DATE,
     [SOURCE_STR] = xstr(SOURCEDIR)};
 /** @} */
 

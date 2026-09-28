@@ -408,26 +408,31 @@ layout, and Standby entry on the STM32U375 depends on where code lands, so
 wiring these into the monitor is a firmware change that deserves its own commit
 and its own bench measurement -- not a side effect of recording provenance.
 
-### The build is known not to be byte-reproducible
+### Determinism is now possible, and still unverified
 
-This was listed as unverified. It is worse than that: it cannot hold today.
-`monitor.c` embeds `__DATE__ " : " __TIME__`, so building the same commit twice
-produces different bytes by construction. No measurement is needed to know the
-answer, and none has been taken.
+`monitor.c` used to embed `__DATE__ " : " __TIME__`, which made byte-identical
+rebuilds impossible by construction: the same commit produced different bytes
+every time, however carefully the inputs were pinned.
 
-The fix is small and has a pleasing consequence. `version.h` already carries
-`GIT_DATE`, the commit date, so `build_time` could report when the source was
-committed rather than when someone happened to compile it. Then two builds of a
-commit would be byte-identical, and the commit alone would identify the image --
-which is the whole objective, and removes the need to distinguish builds at all.
+It now carries `GIT_DATE` instead -- the commit's author date, from
+`version.cmake`, in `iso-strict` form so that it does not vary with the
+builder's timezone. The field still reports a date, which the tags rely on; it
+reports when the source was committed rather than when someone happened to
+compile it, which is the more useful answer from a tag in hand anyway. It is
+always exactly 25 characters against a 30-byte field.
 
-It trades away the one thing `build_time` currently offers: telling two builds
-of a commit apart from the tag. That trade is worth making, because the reason
-those builds differ is exactly what reproducibility is meant to eliminate.
+That removes the only known obstacle. It does not establish determinism, and
+nothing has yet built one commit twice and compared. `__DATE__`/`__TIME__`
+appear nowhere else that compiles into a distributed tag -- not in ChibiOS'
+HAL, RT or common code, and only in `BitTag-legacy`, a prototype that does not
+build -- but absolute paths, linker ordering and library timestamps are the
+usual remaining suspects and none of them have been looked for.
 
-Whether anything else in the image is non-deterministic is unknown, and would
-only be visible once this is removed. Absolute paths in `__FILE__`, linker
-ordering and library timestamps are the usual suspects.
+**The measurement is now worth taking**, which it was not before: building a
+distributed tag twice from a clean tree and comparing the `.bin` either shows
+byte-identical output or names the next obstacle. Until that is done, the
+honest statement is that the inputs are pinned and one known source of variance
+is removed.
 
 ### The old board generation path is untouched
 
@@ -486,13 +491,13 @@ untouched by flashing. But an image cannot contain its own SHA-256: embedding
 the hash changes the bytes being hashed. No better firmware fixes that; it is a
 property of hashing, not a gap in the protocol.
 
-`tag-info` does return `build_time`, which is `__DATE__ " : " __TIME__` and so
-distinguishes two builds of the same commit to the second. That is a useful
-correlator against a manifest's `built_at` -- the two differ only by the seconds
-between compiling `monitor.c` and writing the manifest -- but it is not an image
-identity. `__TIME__` is when `monitor.c` was compiled, not when the image was
-linked, so an incremental rebuild touching only a driver produces different
-bytes and reports the same timestamp.
+`tag-info` returns `build_time`, but that is now the commit date rather than a
+compile time, so it says nothing about which build a tag is running -- by
+design. It used to distinguish builds to the second, which sounds useful and was
+not: `__TIME__` recorded when `monitor.c` was compiled rather than when the image
+was linked, so an incremental rebuild could change the image and leave the
+timestamp untouched. It was traded for the possibility of two builds of a commit
+being identical, after which there is nothing to distinguish.
 
 The refinement this work argues for is therefore one field, recorded at the one
 moment it is available: **the SHA-256 of the image, alongside the git hash.**
