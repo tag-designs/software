@@ -1,0 +1,11 @@
+# Generated-source inputs. Regenerate with -DREGENERATE_SOURCES=ON.
+tools nanopb 0.4.9.1
+b4184f3ebed5712a43ec547aede7d4361bb188b5955f409683127ec438361b23  cmake/CombineFiles.cmake
+bc5f27ec9054c785a9df7f05ff2b977d2fe9a6d073df5719431fc991fe937aea  embedded/proto-c/bittag-legacy-proto-c/default-config.json
+304c7cfcdfb5817ad63367cda433a4c76edc83ee1677ff28cc2900f24c5cbe81  embedded/proto-c/bittag-legacy-proto-c/tag.override.options
+edb13163ee332667e05ed2487524f88510db33ef69efdc94f0bb5b461013d9ee  embedded/proto-c/bittag-legacy-proto-c/tagdata.override.options
+ead42f40ebbf1bcb28fc6eb8db4e93c19f2292ff1027d76b81ae3ea7886df294  embedded/proto-c/config-gen.cc
+91dbeaba569a620ba0eac52fad9a2e47015f90eee5de828ef7374b5c72999895  embedded/proto-c/default-options/tag.options
+18e37099a770c89d9facd6c459b5070f22ff0d3d4d94224e7878cba261fa04fb  embedded/proto-c/default-options/tagdata.options
+55fb03646286439710f4a4744159bd5ec8a28abae2a35e5079e077cb317db580  proto/tag.proto
+d4c3604b0c9181f9299507b6daaed0a03cabf02ffa3b8c9ab075021dc727bf00  proto/tagdata.proto
