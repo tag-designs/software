@@ -30,6 +30,14 @@ option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_defaul
 option(REPRODUCIBLE_BUILD
        "Treat conditions that make a build unreproducible as errors rather than warnings"
        OFF)
+set(REGENERATE_SOURCES "AUTO" CACHE STRING
+    "Regenerate committed generated sources: AUTO (when their recorded inputs change), ON (always), OFF (never)")
+set_property(CACHE REGENERATE_SOURCES PROPERTY STRINGS AUTO ON OFF)
+string(TOUPPER "${REGENERATE_SOURCES}" REGENERATE_SOURCES)
+if(NOT REGENERATE_SOURCES MATCHES "^(AUTO|ON|OFF)$")
+  message(FATAL_ERROR
+    "REGENERATE_SOURCES must be AUTO, ON or OFF, not '${REGENERATE_SOURCES}'.")
+endif()
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
@@ -341,11 +349,11 @@ if(NOT Protobuf_FOUND)
 endif()
 cmake_print_variables(Protobuf_VERSION)
 
-# Report a condition that makes the build unreproducible. Warns by default so
-# day-to-day work is not obstructed; -DREPRODUCIBLE_BUILD=ON turns the same
-# condition into a configure error, which is how CI and release qualification
-# should build.
-function(nanopb_version_problem)
+# Report a condition that makes the build unreproducible -- a version
+# disagreement, a stale committed source. Warns by default so day-to-day work is
+# not obstructed; -DREPRODUCIBLE_BUILD=ON turns the same condition into a
+# configure error, which is how CI and release qualification should build.
+function(reproducibility_problem)
   string(JOIN "" _message ${ARGN})
   if(REPRODUCIBLE_BUILD)
     message(FATAL_ERROR "${_message}")
@@ -387,10 +395,10 @@ if(BUILD_EMBEDDED)
   set(_nanopb_runtime_version "${CMAKE_MATCH_1}")
   unset(_nanopb_pb_h)
   if("${_nanopb_runtime_version}" STREQUAL "")
-    nanopb_version_problem(
+    reproducibility_problem(
       "Could not read NANOPB_VERSION from ${NANOPB_RUNTIME_DIR}/pb.h.")
   elseif(NOT "${_nanopb_runtime_version}" STREQUAL "${NANOPB_VERSION}")
-    nanopb_version_problem(
+    reproducibility_problem(
       "Vendored nanopb runtime disagrees with its directory name: "
       "${NANOPB_RUNTIME_DIR}/pb.h reports ${_nanopb_runtime_version}, but the "
       "directory is named for ${NANOPB_VERSION}. Replace the directory contents "
@@ -404,12 +412,23 @@ if(BUILD_EMBEDDED)
   if(NOT NANOPB_SRC_ROOT_FOLDER)
     set(NANOPB_SRC_ROOT_FOLDER "${CMAKE_SOURCE_DIR}/nanopb" CACHE PATH "Nanopb generator tree" FORCE)
   endif()
+  # Missing here is not fatal: generated sources are committed, so an ordinary
+  # build needs no generator at all. Whether one is actually required is decided
+  # per proto variant, once the recorded inputs have been compared -- see
+  # add_nanopb_target. Only REGENERATE_SOURCES=ON demands it unconditionally.
   if(NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator"
      AND NOT EXISTS "${NANOPB_SRC_ROOT_FOLDER}/generator-bin")
-    message(FATAL_ERROR
-      "The nanopb generator was not found. Set NANOPB_ROOT, or place a nanopb "
-      "distribution at ${CMAKE_SOURCE_DIR}/nanopb. Only the generator is taken "
-      "from there; the runtime is vendored at ${NANOPB_RUNTIME_DIR}.")
+    if(REGENERATE_SOURCES STREQUAL "ON")
+      message(FATAL_ERROR
+        "REGENERATE_SOURCES=ON but the nanopb generator was not found. Set "
+        "NANOPB_ROOT, or place a nanopb distribution at "
+        "${CMAKE_SOURCE_DIR}/nanopb. Only the generator is taken from there; "
+        "the runtime is vendored at ${NANOPB_RUNTIME_DIR}.")
+    endif()
+    message(STATUS
+      "No nanopb generator under ${NANOPB_SRC_ROOT_FOLDER}; building the "
+      "committed generated sources. Set NANOPB_ROOT to regenerate them.")
+    set(NANOPB_GENERATOR_EXECUTABLE "" CACHE FILEPATH "Nanopb generator executable" FORCE)
   endif()
 
   set(NANOPB_GENERATOR_EXECUTABLE "" CACHE FILEPATH "Nanopb generator executable")
@@ -451,62 +470,64 @@ if(BUILD_EMBEDDED)
         FORCE)
     endif()
   endif()
-  if(NOT NANOPB_GENERATOR_EXECUTABLE)
+  if(NOT NANOPB_GENERATOR_EXECUTABLE AND REGENERATE_SOURCES STREQUAL "ON")
     message(FATAL_ERROR
-      "nanopb_generator was not found. Set NANOPB_GENERATOR_EXECUTABLE, "
-      "or set NANOPB_ROOT to a nanopb "
-      "source tree with generator-bin.")
+      "REGENERATE_SOURCES=ON but nanopb_generator was not found. Set "
+      "NANOPB_GENERATOR_EXECUTABLE, or set NANOPB_ROOT to a nanopb source tree "
+      "with generator-bin.")
   endif()
 
   # The generator stamps its version into every .pb.h it writes, so a
   # generator that disagrees with the vendored runtime produces sources built
   # against a runtime they were not generated for. PB_PROTO_HEADER_VERSION only
   # catches that across major versions.
-  execute_process(
-    COMMAND "${NANOPB_GENERATOR_EXECUTABLE}" --version
-    OUTPUT_VARIABLE _nanopb_generator_version_out
-    ERROR_VARIABLE _nanopb_generator_version_err
-    RESULT_VARIABLE _nanopb_generator_version_result
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_STRIP_TRAILING_WHITESPACE)
-  string(REGEX MATCH "nanopb-([0-9][0-9.]*)"
-         _ "${_nanopb_generator_version_out}${_nanopb_generator_version_err}")
-  set(_nanopb_generator_version "${CMAKE_MATCH_1}")
-  if(NOT _nanopb_generator_version_result EQUAL 0
-     OR "${_nanopb_generator_version}" STREQUAL "")
-    # Never fatal: a generator that cannot report its version is a gap in the
-    # evidence, not proof of a mismatch, and failing here would block a build
-    # over a tool's command line rather than over the tree's contents.
-    # Carry the tool's own last error into the message. A source tree needs
-    # its nanopb_pb2.py generated and the python protobuf packages installed
-    # before the generator will run at all, and saying so here saves the reader
-    # from rediscovering it.
-    set(_nanopb_generator_why "")
-    if(NOT "${_nanopb_generator_version_err}" STREQUAL "")
-      string(REGEX REPLACE "\r?\n" ";" _nanopb_err_lines
-             "${_nanopb_generator_version_err}")
-      list(FILTER _nanopb_err_lines EXCLUDE REGEX "^[ \t]*$")
-      if(_nanopb_err_lines)
-        list(GET _nanopb_err_lines -1 _nanopb_generator_why)
-        set(_nanopb_generator_why " It reported: ${_nanopb_generator_why}")
+  if(NANOPB_GENERATOR_EXECUTABLE)
+    execute_process(
+      COMMAND "${NANOPB_GENERATOR_EXECUTABLE}" --version
+      OUTPUT_VARIABLE _nanopb_generator_version_out
+      ERROR_VARIABLE _nanopb_generator_version_err
+      RESULT_VARIABLE _nanopb_generator_version_result
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_STRIP_TRAILING_WHITESPACE)
+    string(REGEX MATCH "nanopb-([0-9][0-9.]*)"
+           _ "${_nanopb_generator_version_out}${_nanopb_generator_version_err}")
+    set(_nanopb_generator_version "${CMAKE_MATCH_1}")
+    if(NOT _nanopb_generator_version_result EQUAL 0
+       OR "${_nanopb_generator_version}" STREQUAL "")
+      # Never fatal: a generator that cannot report its version is a gap in the
+      # evidence, not proof of a mismatch, and failing here would block a build
+      # over a tool's command line rather than over the tree's contents.
+      # Carry the tool's own last error into the message. A source tree needs
+      # its nanopb_pb2.py generated and the python protobuf packages installed
+      # before the generator will run at all, and saying so here saves the reader
+      # from rediscovering it.
+      set(_nanopb_generator_why "")
+      if(NOT "${_nanopb_generator_version_err}" STREQUAL "")
+        string(REGEX REPLACE "\r?\n" ";" _nanopb_err_lines
+               "${_nanopb_generator_version_err}")
+        list(FILTER _nanopb_err_lines EXCLUDE REGEX "^[ \t]*$")
+        if(_nanopb_err_lines)
+          list(GET _nanopb_err_lines -1 _nanopb_generator_why)
+          set(_nanopb_generator_why " It reported: ${_nanopb_generator_why}")
+        endif()
       endif()
+      message(WARNING
+        "Could not determine the nanopb generator version from "
+        "${NANOPB_GENERATOR_EXECUTABLE}; generated sources are unverified "
+        "against the vendored runtime ${NANOPB_VERSION}.${_nanopb_generator_why}")
+    elseif(NOT "${_nanopb_generator_version}" STREQUAL "${NANOPB_VERSION}")
+      reproducibility_problem(
+        "The nanopb generator at ${NANOPB_GENERATOR_EXECUTABLE} is version "
+        "${_nanopb_generator_version} but the vendored runtime is "
+        "${NANOPB_VERSION}. Generated .pb.c and .pb.h would be built against a "
+        "runtime they were not generated for. Point NANOPB_ROOT or "
+        "NANOPB_GENERATOR_EXECUTABLE at a ${NANOPB_VERSION} distribution, or "
+        "vendor the runtime matching the generator.")
+    else()
+      message(STATUS
+        "Nanopb generator: ${_nanopb_generator_version} matches runtime "
+        "(${NANOPB_GENERATOR_EXECUTABLE})")
     endif()
-    message(WARNING
-      "Could not determine the nanopb generator version from "
-      "${NANOPB_GENERATOR_EXECUTABLE}; generated sources are unverified "
-      "against the vendored runtime ${NANOPB_VERSION}.${_nanopb_generator_why}")
-  elseif(NOT "${_nanopb_generator_version}" STREQUAL "${NANOPB_VERSION}")
-    nanopb_version_problem(
-      "The nanopb generator at ${NANOPB_GENERATOR_EXECUTABLE} is version "
-      "${_nanopb_generator_version} but the vendored runtime is "
-      "${NANOPB_VERSION}. Generated .pb.c and .pb.h would be built against a "
-      "runtime they were not generated for. Point NANOPB_ROOT or "
-      "NANOPB_GENERATOR_EXECUTABLE at a ${NANOPB_VERSION} distribution, or "
-      "vendor the runtime matching the generator.")
-  else()
-    message(STATUS
-      "Nanopb generator: ${_nanopb_generator_version} matches runtime "
-      "(${NANOPB_GENERATOR_EXECUTABLE})")
   endif()
 
   get_filename_component(
