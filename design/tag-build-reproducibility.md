@@ -700,11 +700,18 @@ for `cortex-m4` and `cortex-m33`, and the sole semantic difference -- a leak fix
 in `pb_decode_ex` under `PB_ENABLE_MALLOC` -- is in a function garbage-collected
 out of the linked images, which call plain `pb_decode`.
 
+8. **The pitfall checks are in place** in `cmake/ReproducibilityChecks.cmake`:
+   dirty working tree, edited vendored runtime, submodule uninitialized or off
+   its recorded commit or dirty inside it, toolchain other than the pin, and --
+   in strict mode only -- a HEAD that is not at a tag. All go through
+   `reproducibility_problem()`. `ARM_TOOLCHAIN_VERSION` is empty by default:
+   recording the compiler version is unambiguously right, refusing to build on
+   a different one is a policy to choose, so the comparison is opt-in.
+   Untracked files are not treated as dirty -- nothing compiles them, and
+   warning about scratch files would make the warning ignorable.
+
 ### Next
 
-8. **Add the remaining pitfall checks** from the table above -- dirty tree,
-   submodule state, toolchain version -- reusing the `REPRODUCIBLE_BUILD`
-   escalation that already exists. Stale generated sources are now covered.
 9. **Add the build manifest**, and extend `version.cmake` with the dirty flag,
    the ChibiOS SHA and the nanopb versions, so a returned tag can state its own
    provenance.
@@ -713,15 +720,21 @@ out of the linked images, which call plain `pb_decode`.
     and a stale committed source is a configure error, with no generator
     needed on the runner.
 
-Steps 8 and 9 record what the build cannot remove; 10 is what makes any of it
-dependable rather than merely tidy.
+Step 9 records what the build cannot remove -- the checks above now detect it,
+but only a manifest carried with the image lets a returned tag say so. Step 10
+is what makes any of it dependable rather than merely tidy.
 
 ### Where to resume
 
-Step 8 is next and is a collection of small independent checks rather than one
-large change, so it can be done piecemeal. Step 10 has no remaining unknowns:
-both questions that gated it -- whether pinning shifts the output, and whether
-the output depends on the platform -- are settled below.
+Step 9 is next. The detection now exists; what is missing is carrying the result
+out of the configure log and into the image, which is what makes it useful
+months later with a returned tag on the bench. The global properties
+`ULTRALIGHT_TREE_DIRTY`, `ULTRALIGHT_CHIBIOS_SHA` and
+`ULTRALIGHT_ARM_TOOLCHAIN_VERSION` are set for exactly that.
+
+Step 10 has no remaining unknowns: both questions that gated it -- whether
+pinning shifts the output, and whether the output depends on the platform -- are
+settled below.
 
 ## Settled: pinning does not shift the generated output
 
