@@ -1,6 +1,6 @@
-# Releasing and Programming Tag Firmware
+# Releasing Tag Firmware and Host Tools
 
-Two procedures, and what each one proves.
+Three procedures, and what each one proves.
 
 **Qualifying a release** takes a candidate image and decides whether it may fly.
 CI cannot do this: a build that compiles, links and passes every functional test
@@ -10,6 +10,11 @@ where code lands in the image. Only a bench measurement settles it.
 **Programming a tag** takes a qualified image and puts it on hardware, so that
 what flies is the image that was archived and measured, and so the board
 database can say which bytes are on which tag.
+
+**Releasing the host tools** is a smaller thing and is described last, because
+it shares only the tag mechanics. It is here because half of it cannot be done
+by CI: the macOS package has to be signed on a machine that holds the Developer
+ID key, and that machine is not a GitHub runner.
 
 For how the images are made reproducible in the first place, see
 [Tag Firmware Build Reproducibility](tag-build-reproducibility.md). This
@@ -187,7 +192,7 @@ and the tag can afterwards be tied only to a commit. That is enough when the
 build is byte-reproducible, and is not enough when it is not -- which is why the
 hash is recorded regardless.
 
-## Order of operations for a release
+## Order of operations for a firmware release
 
 1. **Commit and push.** A dirty tree cannot be qualified: nothing can reproduce
    the image it would produce.
@@ -213,3 +218,81 @@ type will receive. Programming is per tag, and each one needs its own row.
 A target that is not flying this round does not need qualifying. A target that
 is needs it again after any change to its image -- which, the build being
 reproducible, means after any change to the commit it is built from.
+
+## 3. Releasing the host tools
+
+Host tools release on their own `vX.Y[.Z]` tags, separate from the `fw-v*`
+firmware tags, because they are validated differently: a host tool is qualified
+by running it, and needs no bench.
+
+### Why this one is half-manual
+
+The Windows package is built and attached by CI. The macOS package is not.
+
+macOS refuses to launch an app whose signature it does not accept, and the
+signature it accepts requires the Indiana University Developer ID certificate.
+Putting that certificate and its password into a public repository's secrets
+would make the private key recoverable by anyone who can run a workflow on a
+fork or land a change to one, so it stays on the developer's machine. CI builds
+the macOS package anyway -- ad-hoc signed, as a check that it still builds --
+and leaves it as a workflow artifact that nobody ships.
+
+So `release.yml` opens the release as a **draft** with only the Windows ZIP.
+The draft is the signal that the release is incomplete. It becomes publishable
+once the locally built, Developer ID signed DMG is attached.
+
+The packages are not notarized. An unnotarized Developer ID app still prompts on
+first launch, and the user gets past it with right-click -> Open; notarization
+would remove that one prompt and nothing else. See
+[Installing a macOS Release](../README.md#installing-a-macos-release).
+
+### Steps
+
+Run these on the Mac holding the Developer ID certificate, from a clean
+checkout of the commit to be released.
+
+```
+# 1. create and push the tag, then build, sign and verify the DMG
+host/tools/release-macos.sh v3.1
+```
+
+That one command does the whole macOS side:
+
+| It does | Because |
+| --- | --- |
+| refuses a dirty tree | a release must be reproducible from its commit |
+| creates and pushes the annotated tag | and so starts the CI build of the Windows package |
+| configures with the `macos-vcpkg` preset | the DMG is named from the tag, resolved at *configure* time -- so the tag has to exist first |
+| checks the tag CMake resolved | the lookup takes the **highest** reachable `vX.Y` tag, not the newest, so a higher version already merged here would silently name the DMG |
+| builds and packages | |
+| mounts the DMG and verifies each app | CPack's DragNDrop generator is also handed the signing identity and can re-sign the bundle inside the image; what matters is the signature a user receives, not the one in the build tree |
+| prints the DMG path and its SHA-256 | |
+
+It stops with an error rather than producing an unshippable image if the
+identity is missing from the keychain, the resolved tag is not the one asked
+for, or any bundle in the DMG fails `codesign --verify --strict`.
+
+Gatekeeper's own assessment is printed but not treated as a failure. An
+unnotarized Developer ID app is *expected* to be rejected by `spctl`; the
+assessment is shown because it distinguishes that from a broken signature.
+
+```
+# 2. wait for the Windows build, then attach the macOS package
+gh run watch
+gh release upload v3.1 ~/Build/tag-designs/software-vcpkg-release/Ultralight-tags-v3.1.dmg
+
+# 3. check the draft, then publish
+gh release view v3.1 --web
+```
+
+### If something goes wrong after the tag is pushed
+
+The tag is pushed before the build, so a build failure leaves a tag and a draft
+release behind. Both are cheap to keep: fix the problem, commit, and release
+under the next tag. Re-running the script with the same tag works only if the
+tag still points at HEAD -- it refuses to move a tag onto a different commit,
+because a tag that has been pushed and then moved is a tag that means different
+things to different clones.
+
+Deleting a pushed tag is the one recovery worth avoiding. A draft release that
+is never published costs nothing.

@@ -197,8 +197,15 @@ cmake --build --preset macos-vcpkg-package
 The `macos-vcpkg` configure preset sets the source directory to this checkout
 and the build directory to `~/Build/tag-designs/software-vcpkg-release`; the
 package build preset then builds the `package` target in that same build tree.
-The generated DMG is named from the latest reachable Git tag matching `vX.Y`,
-for example `Ultralight-tags-v3.0.dmg`.
+The generated DMG is named from the highest reachable Git tag matching `vX.Y`,
+for example `Ultralight-tags-v3.0.dmg` -- and that name is resolved when CMake
+*configures*, not when it packages, so the tag has to exist before the configure
+step.
+
+To cut a release rather than just build one, use `host/tools/release-macos.sh
+vX.Y`, which creates and pushes the tag first for that reason, then runs the
+two commands above and verifies the signatures inside the resulting DMG. See
+[Releasing the host tools](design/tag-release-procedure.md#3-releasing-the-host-tools).
 
 This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
 of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
@@ -270,7 +277,7 @@ ships, or invite it to be skipped.
 
 | Tag | Workflow | Produces |
 | --- | --- | --- |
-| `vX.Y`, `vX.Y.Z` | `release.yml` | Windows ZIP and macOS DMG of the host tools |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools; the signed macOS DMG is added locally |
 | `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
 
 The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
@@ -280,11 +287,17 @@ affect host package naming.
 
 `.github/workflows/release.yml` builds the Windows and macOS host packages on
 GitHub Actions. Pushing a tag matching `vX.Y` or `vX.Y.Z` builds both platforms
-and publishes a GitHub release with the ZIP and DMG attached; the packages take
-their version from the same `git tag --merged HEAD` lookup used by local builds,
-so the workflow checks out full history. A `workflow_dispatch` run performs the
-same builds and uploads the packages as workflow artifacts without publishing a
-release, which is the way to exercise the pipeline without cutting a tag.
+and opens a **draft** GitHub release with the Windows ZIP attached; the packages
+take their version from the same `git tag --merged HEAD` lookup used by local
+builds, so the workflow checks out full history. A `workflow_dispatch` run
+performs the same builds and uploads the packages as workflow artifacts without
+publishing anything, which is the way to exercise the pipeline without cutting a
+tag.
+
+The release stays a draft because it is incomplete: the macOS DMG the runner
+builds is only ad-hoc signed and is never attached. Use
+`host/tools/release-macos.sh vX.Y` on a Mac with the Developer ID certificate to
+cut the tag and build the signed DMG, then upload it to the draft and publish.
 
 | | Windows | macOS |
 | --- | --- | --- |
@@ -317,16 +330,24 @@ bundle fails `codesign --verify` and arm64 macOS refuses to launch it. Users see
 "the application is damaged and can't be opened" rather than the usual
 unidentified-developer prompt.
 
-Ad-hoc signed apps are not notarized, so macOS still blocks them on first
-launch. See [Installing a macOS Release](#installing-a-macos-release) below.
+That is why the CI macOS package is **not attached to releases**. It is a build
+check and a workflow artifact, nothing more. `release.yml` opens the release as
+a *draft* with only the Windows ZIP attached; the shippable macOS DMG is built
+and signed on a machine holding the Developer ID certificate by
+`host/tools/release-macos.sh`, uploaded to that draft by hand, and the release
+is published once it is there.
 
-Publishing apps that open on a double-click would need the Developer ID
-certificate and its password stored as repository secrets and imported into a
-temporary keychain before the package step, followed by notarization and
-stapling with `notarytool`. In that configuration the hardened runtime
-(`--options runtime`) and a secure timestamp apply; `install_macos_codesign` in
-`cmake/DeployQt.cmake` selects those flags automatically for a real identity and
-omits them for `-`.
+Signing in CI instead would mean storing the Developer ID certificate and its
+password as repository secrets and importing them into a temporary keychain
+before the package step. In a public repository that makes the private key
+recoverable by anyone who can run a workflow, so it is deliberately not done.
+`install_macos_codesign` in `cmake/DeployQt.cmake` already selects the hardened
+runtime (`--options runtime`) and a secure timestamp for a real identity and
+omits them for `-`, so the local build needs no special handling.
+
+See [Releasing the host tools](design/tag-release-procedure.md#3-releasing-the-host-tools)
+for the procedure, and [Installing a macOS Release](#installing-a-macos-release)
+for what a user does with the result.
 
 ### Tag firmware
 
@@ -409,36 +430,36 @@ flight.
 
 ## Installing a macOS Release
 
-The apps in the DMG are ad-hoc signed but not notarized, so macOS quarantines
-them on download and refuses to launch them until the quarantine attribute is
-cleared. Drag `tag_tools` out of the mounted DMG first — the DMG itself is a
-read-only volume and `xattr` cannot write to it — then clear the attribute on
-the whole folder:
+The apps in the DMG are signed with the Indiana University Developer ID
+certificate but are not notarized, so macOS asks once before it will run them.
+Drag `tag_tools` out of the mounted DMG to Applications or anywhere else first,
+then, for the **first** app you open:
 
-```
-xattr -dr com.apple.quarantine /path/to/tag_tools
-```
+1. Right-click (or Control-click) the app and choose **Open**.
+2. Click **Open** in the dialog that appears.
 
-That covers all five apps at once. They then open normally, with no Gatekeeper
-prompt, because quarantine is what triggers Gatekeeper.
+That records your consent for that app. It opens normally from then on, and so
+does anything you launch from within it. Repeat it once for each of the five
+apps you use, or open each one this way the first time.
 
-If an app instead reports that it "is damaged and can't be opened", it came from
-a DMG built before ad-hoc signing was enabled in CI. Those bundles have no valid
-signature, which is a separate problem from quarantine and is not fixed by
-clearing it. Re-sign them in place, then clear quarantine:
+Double-clicking instead gives a dialog with no Open button -- "Apple could not
+verify ... is free of malware" -- which is the same check refusing without
+offering the override. Right-click -> Open is what offers it. If you have
+already double-clicked and dismissed that dialog, **System Settings -> Privacy
+& Security** shows an **Open Anyway** button for a few minutes afterwards, which
+does the same thing.
 
-```
-cd /path/to/tag_tools
-for app in *.app; do
-  codesign --force --deep --timestamp=none -s - "$app"
-done
-codesign --verify --deep --strict *.app && echo "all verify OK"
-xattr -dr com.apple.quarantine .
-```
+Notarizing the release would remove this one prompt and change nothing else. It
+is not done, because it would require the Developer ID key to reach Apple's
+service from the build machine and buys only the first double-click.
 
-`--deep` is not how the packages themselves are signed — `install_macos_codesign`
-signs each nested dylib and framework individually before sealing the bundle —
-but it is adequate for repairing an already-assembled bundle locally.
+### If an app reports that it "is damaged and can't be opened"
+
+That is a different problem, and clearing quarantine will not fix it. It means
+the bundle has no valid signature -- which is true of the DMG built by CI,
+where the Developer ID certificate is not available. Those DMGs are workflow
+artifacts, not releases; they are never attached to a GitHub release. Check that
+you downloaded the DMG from the release page rather than from an Actions run.
 
 ## Linux Prerequisites
 
