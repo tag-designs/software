@@ -52,16 +52,18 @@ tiers:
 | prototype | added, but without `DISTRIBUTE` | must compile |
 | distributed | `add_embedded_target(... DISTRIBUTE)` | reproducible: committed generated sources, pinned tool versions, version agreement enforced, firmware in the release |
 
-The distributed set is currently `BitTag`, `BitTag-legacy`, `CompassTagAT25`,
-`IMUTagNandBmp581`, `PresTag` and `UIUCTag` -- six of the fourteen that build.
+The distributed set is currently `BitTag`, `CompassTagAT25`,
+`IMUTagNandBmp581`, `PresTag` and `UIUCTag` -- five of the fourteen configured.
+`BitTag-legacy` was marked and then unmarked: it does not currently build, which
+is exactly the kind of thing the tier is meant to keep out of a release.
 
 The proto-c variants needing the same treatment are **derived, not declared**.
 `add_embedded_target` already knows each tag's proto target, so the distributed
 proto set falls out of the tag markings and is recorded in
 `ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS`; there is no second list to fall out of
-step. For the six tags above it resolves to `bittag_proto`,
-`bittag-legacy_proto`, `compasstag_proto`, `imutag_proto`, `prestag_proto` and
-`uiuctag_proto` -- six of the nine variants configured.
+step. For the five tags above it resolves to `bittag_proto`, `compasstag_proto`,
+`imutag_proto`, `prestag_proto` and `uiuctag_proto` -- five of the nine variants
+configured.
 
 Two aggregate targets fall out of the marking:
 
@@ -673,13 +675,13 @@ the host tools' `v*` -- since they release on different clocks.
    committed, because attributes do not normalize retroactively.
 5. **The distributed set is marked.** `add_embedded_target` takes `DISTRIBUTE`,
    only marked targets install, and the distributed proto targets are derived
-   from them. This scopes every remaining step to six tags and six proto
-   variants rather than fourteen and nine. The `distributed_firmware` and
+   from them. This scopes every remaining step to the shipped tags
+   and their proto variants rather than all fourteen and nine. The `distributed_firmware` and
    `distributed_proto_sources` targets build and regenerate that set; the first
    also closes a standing gap, since `make install` had no way to build the
    firmware it was installing.
 
-6. **Generated sources are committed** for the six distributed variants --
+6. **Generated sources are committed** for the distributed variants --
    `tag.pb.c`, `tag.pb.h`, `tagdata.pb.c`, `tagdata.pb.h` and
    `default_config.c` under each variant's `generated/` directory, checked
    byte-for-byte against the same files generated independently on another
