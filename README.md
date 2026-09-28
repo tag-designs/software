@@ -430,36 +430,54 @@ flight.
 
 ## Installing a macOS Release
 
-The apps in the DMG are signed with the Indiana University Developer ID
-certificate but are not notarized, so macOS asks once before it will run them.
-Drag `tag_tools` out of the mounted DMG to Applications or anywhere else first,
-then, for the **first** app you open:
+The apps are signed with the Indiana University Developer ID certificate but
+are not notarized, so macOS blocks them on first launch and has to be told
+once, per app, to allow them.
 
-1. Right-click (or Control-click) the app and choose **Open**.
-2. Click **Open** in the dialog that appears.
+First drag `tag_tools` out of the mounted DMG — to Applications, or anywhere
+else you like. The DMG is a read-only volume, so nothing below works while the
+apps are still on it.
 
-That records your consent for that app. It opens normally from then on, and so
-does anything you launch from within it. Repeat it once for each of the five
-apps you use, or open each one this way the first time.
+### The quick way, if you are comfortable in a terminal
 
-Double-clicking instead gives a dialog with no Open button -- "Apple could not
-verify ... is free of malware" -- which is the same check refusing without
-offering the override. Right-click -> Open is what offers it. If you have
-already double-clicked and dismissed that dialog, **System Settings -> Privacy
-& Security** shows an **Open Anyway** button for a few minutes afterwards, which
-does the same thing.
+Clearing the quarantine attribute on the extracted folder covers every app at
+once, and they then open normally with no prompt at all:
 
-Notarizing the release would remove this one prompt and change nothing else. It
-is not done, because it would require the Developer ID key to reach Apple's
-service from the build machine and buys only the first double-click.
+```
+xattr -dr com.apple.quarantine /path/to/tag_tools
+```
+
+Quarantine is what makes macOS demand notarization; without it the Developer ID
+signature is accepted on its own. This is one command instead of thirteen trips
+through System Settings.
+
+### The GUI way, per app
+
+1. Double-click the app. macOS refuses it — **this step is required**, because
+   the override in step 3 does not appear until something has been blocked.
+2. Open **System Settings → Privacy & Security** and scroll to **Security**.
+   There is a line naming the app that was blocked.
+3. Click **Open Anyway** and authenticate.
+4. Open the app again and confirm.
+
+macOS then remembers that app. Repeat for each app you use.
+
+Older instructions — including earlier versions of this file — say to
+Control-click the app and choose **Open**. That route was removed in macOS 15;
+on current systems the menu has an Open item that behaves no differently from a
+double-click, so it looks like nothing happened. Use System Settings.
+
+Notarizing the release would remove this entirely, at the cost of putting the
+signing key where Apple's service can reach it from the build machine. It buys
+one prompt per app, once, and is not done.
 
 ### If an app reports that it "is damaged and can't be opened"
 
-That is a different problem, and clearing quarantine will not fix it. It means
-the bundle has no valid signature -- which is true of the DMG built by CI,
-where the Developer ID certificate is not available. Those DMGs are workflow
-artifacts, not releases; they are never attached to a GitHub release. Check that
-you downloaded the DMG from the release page rather than from an Actions run.
+That is a different problem and clearing quarantine will not fix it. It means
+the bundle has no valid signature — true of the DMG that CI builds, where the
+Developer ID certificate is not available. Those DMGs are workflow artifacts,
+never attached to a release. Check that you downloaded from the release page
+rather than from an Actions run.
 
 ## Linux Prerequisites
 

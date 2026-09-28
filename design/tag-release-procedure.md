@@ -241,9 +241,10 @@ So `release.yml` opens the release as a **draft** with only the Windows ZIP.
 The draft is the signal that the release is incomplete. It becomes publishable
 once the locally built, Developer ID signed DMG is attached.
 
-The packages are not notarized. An unnotarized Developer ID app still prompts on
-first launch, and the user gets past it with right-click -> Open; notarization
-would remove that one prompt and nothing else. See
+The packages are not notarized. macOS blocks an unnotarized Developer ID app on
+first launch, and the user clears it once per app through System Settings ->
+Privacy & Security -> Open Anyway, or clears quarantine on the whole folder in
+one command. Notarization would remove that and nothing else. See
 [Installing a macOS Release](../README.md#installing-a-macos-release).
 
 ### Steps
