@@ -30,6 +30,18 @@ if(NOT EXISTS "${CHIBIOS_DIR}/os")
 endif()
 message(STATUS "CHIBIOS_DIR is ${CHIBIOS_DIR}")
 
+# Conditions that would make these images unreproducible -- a dirty tree, a
+# submodule that is not where the commit says, a compiler other than the pinned
+# one -- are reported here, once, after the toolchain and ChibiOS have been
+# located.
+#
+# This must run BEFORE add_subdirectory(tags): add_embedded_target reads the
+# recorded toolchain version when it builds each tag's manifest command, so
+# checking afterwards records an empty version into every manifest.
+
+include("${CMAKE_SOURCE_DIR}/cmake/ReproducibilityChecks.cmake")
+check_reproducibility_pitfalls()
+
 # Tools for programming hardware
 
 if(MSVC)
@@ -293,13 +305,6 @@ add_subdirectory(boards)
 add_subdirectory(bases)
 add_subdirectory(proto-c)
 add_subdirectory(tags)
-
-# Conditions that would make these images unreproducible -- a dirty tree, a
-# submodule that is not where the commit says, a compiler other than the pinned
-# one -- are reported here, once, after the toolchain has been located.
-
-include("${CMAKE_SOURCE_DIR}/cmake/ReproducibilityChecks.cmake")
-check_reproducibility_pitfalls()
 
 #
 # Actively deployed tags
