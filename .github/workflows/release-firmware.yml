@@ -1,0 +1,158 @@
+name: Release tag firmware
+
+# Builds and publishes firmware for the tags marked DISTRIBUTE, on its own tag
+# namespace: `fw-v1.0` and the like, separate from the `v3.0` tags that release
+# the host tools.
+#
+# They are separated because they are validated differently. A host tool release
+# is exercised by running it; a firmware release has to be bench-tested on
+# hardware for power behaviour before it can fly, and STM32U375 Standby entry
+# depends on where code lands in the image. Tying the two together would either
+# demand that validation every time a host tool ships, or invite it to be
+# skipped. A firmware tag is a deliberate statement that these images are meant
+# to be qualified.
+#
+# The host version derivation filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags
+# do not affect host package naming.
+#
+# CI never regenerates: it configures with REGENERATE_SOURCES=OFF and
+# REPRODUCIBLE_BUILD=ON, so committed generated sources are used as they are and
+# a stale one, a dirty tree, a submodule off its branch or a toolchain other
+# than the pin are configure errors rather than things worked around.
+
+on:
+  push:
+    tags:
+      - "fw-v[0-9]+.[0-9]+"
+      - "fw-v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-firmware-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The ARM toolchain the firmware is built with. It must report the version
+  # ARM_TOOLCHAIN_VERSION pins in CMakeLists.txt (14.2.1 for 14.2.rel1) or the
+  # build fails, which is the point of pinning it. Ubuntu's packaged
+  # gcc-arm-none-eabi is a different version, so the official tarball is used.
+  #
+  # ARM_TOOLCHAIN_SHA256 must be the SHA-256 Arm publishes for this exact file
+  # (developer.arm.com serves it as <url>.sha256asc). The job refuses to run
+  # while it is empty rather than install an unverified toolchain.
+  ARM_TOOLCHAIN_URL: "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
+  ARM_TOOLCHAIN_SHA256: "e6405f20f8a817a50d92dbf7974d0ee77708dfdf9e79900a59c5d343b464ef9c"
+
+jobs:
+  firmware:
+    name: Tag firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # Submodules for ChibiOS, and full history so `git describe` can name
+          # the tag in version.h and in each build manifest.
+          submodules: true
+          fetch-depth: 0
+
+      - name: Require a pinned toolchain checksum
+        run: |
+          if [ -z "$ARM_TOOLCHAIN_SHA256" ]; then
+            echo "ARM_TOOLCHAIN_SHA256 is empty in .github/workflows/release.yml."
+            echo "Set it to the SHA-256 Arm publishes for:"
+            echo "  $ARM_TOOLCHAIN_URL"
+            echo "Refusing to install an unverified toolchain."
+            exit 1
+          fi
+
+      - name: Install the pinned ARM toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL "$ARM_TOOLCHAIN_URL" -o arm-toolchain.tar.xz
+          echo "$ARM_TOOLCHAIN_SHA256  arm-toolchain.tar.xz" | sha256sum --check --strict
+          sudo mkdir -p /opt/arm-toolchain
+          sudo tar -xJf arm-toolchain.tar.xz -C /opt/arm-toolchain --strip-components=1
+          echo "/opt/arm-toolchain/bin" >> "$GITHUB_PATH"
+
+      - name: Report the toolchain
+        run: |
+          arm-none-eabi-gcc --version | head -1
+          echo "dumpversion: $(arm-none-eabi-gcc -dumpversion)"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DBUILD_HOST=OFF \
+            -DBUILD_HOST_DOCS=OFF \
+            -DBUILD_EMBEDDED=ON \
+            -DREGENERATE_SOURCES=OFF \
+            -DREPRODUCIBLE_BUILD=ON
+
+      - name: Build the distributed firmware
+        run: cmake --build build --target distributed_firmware
+
+      - name: Collect images and manifests
+        run: |
+          set -euo pipefail
+          mkdir -p firmware
+          for d in build/embedded/tags/*/build; do
+            tag="$(basename "$(dirname "$d")")"
+            # Only tags that produced a manifest were built, which is the
+            # distributed set; the rest have no build directory at all.
+            [ -f "$d/$tag-build-manifest.json" ] || continue
+            mkdir -p "firmware/$tag"
+            # Everything the build produced: .elf with DWARF, .map, .bin, .hex,
+            # .dmp and .list. Archiving them beats planning to rebuild -- in
+            # three years this toolchain will not install cleanly, and the
+            # recorded versions only make a rebuild possible, not certain.
+            cp "$d/$tag".* "firmware/$tag/"
+            cp "$d/$tag-build-manifest.json" "firmware/$tag/"
+          done
+          ls -lR firmware
+          tar -czf tag-firmware-${{ github.ref_name }}.tar.gz firmware
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: tag-firmware
+          path: tag-firmware-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish firmware release
+    if: startsWith(github.ref, 'refs/tags/fw-v')
+    needs: firmware
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lR artifacts
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "Tag firmware for the distributed targets. Each image ships with its build manifest, which records the commit, the ChibiOS commit and branch, the toolchain and nanopb versions, and the SHA-256 of the image itself. These images have not been bench-tested for power behaviour by CI; that is a separate step before flight." \
+              artifacts/*
+          fi

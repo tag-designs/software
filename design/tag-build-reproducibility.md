@@ -764,9 +764,11 @@ out of the linked images, which call plain `pb_decode`.
     templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
     failure, since in CI a skipped check looks exactly like a passing one.
 
-11. **Firmware is built in CI** on a release tag, by a `firmware` job in
-    `release.yml` that configures with `-DREGENERATE_SOURCES=OFF
-    -DREPRODUCIBLE_BUILD=ON` and builds `distributed_firmware`. It never
+11. **Firmware is built in CI** on its own tag namespace -- `fw-vX.Y`, separate
+    from the `vX.Y` tags that release the host tools, because a firmware release
+    has to be bench-tested for power before it can fly and a host tool release
+    does not. `release-firmware.yml` configures with `-DREGENERATE_SOURCES=OFF
+    `-DREPRODUCIBLE_BUILD=ON` and builds `distributed_firmware`. It never
     regenerates: committed sources are used as they are, and a stale one is a
     configure error rather than something quietly rebuilt. It installs the
     pinned Arm toolchain from Arm's own tarball, verified against a SHA-256 in
@@ -799,11 +801,9 @@ out of the linked images, which call plain `pb_decode`.
 
 Steps 12 and 13 remain, and are independent of each other.
 
-The one thing step 11 still needs is `ARM_TOOLCHAIN_SHA256` in `release.yml`,
-which is deliberately empty: the job refuses to run rather than install an
-unverified toolchain. Fill it with the SHA-256 Arm publishes for the pinned
-tarball before the next release tag, or the release will fail -- visibly, which
-is the intended failure mode.
+Step 11 has not yet run on a real runner. What it will exercise for the first
+time is provisioning, not reproducibility: whether the pinned tarball installs
+cleanly and how long an embedded build takes there.
 
 ## Settled: pinning does not shift the generated output
 

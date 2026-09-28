@@ -262,6 +262,22 @@ cmake -S . -B build-package \
 
 ## Tagged Releases
 
+Host tools and tag firmware release on separate tag namespaces, because they are
+validated differently. A host tool release is exercised by running it; a firmware
+release has to be bench-tested on hardware for power behaviour before it can fly.
+Tying them together would either demand that validation every time a host tool
+ships, or invite it to be skipped.
+
+| Tag | Workflow | Produces |
+| --- | --- | --- |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | Windows ZIP and macOS DMG of the host tools |
+| `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
+
+The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
+affect host package naming.
+
+### Host tools
+
 `.github/workflows/release.yml` builds the Windows and macOS host packages on
 GitHub Actions. Pushing a tag matching `vX.Y` or `vX.Y.Z` builds both platforms
 and publishes a GitHub release with the ZIP and DMG attached; the packages take
@@ -311,6 +327,31 @@ stapling with `notarytool`. In that configuration the hardened runtime
 (`--options runtime`) and a secure timestamp apply; `install_macos_codesign` in
 `cmake/DeployQt.cmake` selects those flags automatically for a real identity and
 omits them for `-`.
+
+### Tag firmware
+
+`.github/workflows/release-firmware.yml` builds firmware for the tags marked
+`DISTRIBUTE` and attaches each image to the release alongside its build
+manifest, which records the commit, whether the tree was dirty, the ChibiOS
+commit and the branch it tracks, the toolchain and nanopb versions, and the
+SHA-256 of the image itself. That hash, not the commit, is what identifies a
+build: a `-D` leaves no trace in the git hash, so two materially different
+images can report the same commit.
+
+The job never regenerates. It configures with `-DREGENERATE_SOURCES=OFF
+-DREPRODUCIBLE_BUILD=ON`, so the committed generated sources are used as they
+are, and a stale one -- along with a dirty tree, a submodule off the branch
+`.gitmodules` tracks, or a toolchain other than the pinned 14.2.1 -- is a
+configure error rather than something quietly worked around. It installs that
+toolchain from Arm's own tarball, verified against the SHA-256 in the workflow,
+because Ubuntu's packaged `gcc-arm-none-eabi` is a different version and the pin
+would reject it.
+
+**A green build does not qualify an image.** It says the sources compile and the
+provenance is recorded. It says nothing about power behaviour, and STM32U375
+Standby entry depends on where code lands in the image, so a change with no
+visible effect on the source can change whether a tag sleeps. Bench-test before
+flight.
 
 ## Installing a macOS Release
 
