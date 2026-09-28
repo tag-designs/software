@@ -252,48 +252,93 @@ one command. Notarization would remove that and nothing else. See
 Run these on the Mac holding the Developer ID certificate, from a clean
 checkout of the commit to be released.
 
+**1. Push the commits.** Not the tag -- the commits. CI builds whatever the tag
+points at, and a tag pointing at a commit nobody else has is a release nobody
+can reproduce. The script warns if HEAD is not on a remote branch.
+
+**2. Build, sign and verify locally, without pushing the tag.**
+
 ```
-# 1. create and push the tag, then build, sign and verify the DMG
-host/tools/release-macos.sh v3.1
+host/tools/release-macos.sh v3.1 --no-push
 ```
+
+`--no-push` is the recommended order. The tag is created locally, the image is
+built and checked, and nothing has been announced. If anything fails, `git tag
+-d v3.1` and the attempt leaves no trace. Without it the script pushes first,
+which starts CI and opens a draft release before anything has been verified.
 
 That one command does the whole macOS side:
 
 | It does | Because |
 | --- | --- |
 | refuses a dirty tree | a release must be reproducible from its commit |
-| creates and pushes the annotated tag | and so starts the CI build of the Windows package |
-| configures with the `macos-vcpkg` preset | the DMG is named from the tag, resolved at *configure* time -- so the tag has to exist first |
+| creates the annotated tag | the DMG is named from the tag, resolved at *configure* time, so the tag has to exist before CMake runs |
+| checks the identity is in the keychain | a missing identity otherwise fails deep inside the install step |
 | checks the tag CMake resolved | the lookup takes the **highest** reachable `vX.Y` tag, not the newest, so a higher version already merged here would silently name the DMG |
 | builds and packages | |
 | mounts the DMG and verifies each app | CPack's DragNDrop generator is also handed the signing identity and can re-sign the bundle inside the image; what matters is the signature a user receives, not the one in the build tree |
-| prints the DMG path and its SHA-256 | |
+| prints the DMG path and its SHA-256 | the hash identifies the image that was tested |
+
+Expect thirteen `ok` lines -- five Qt apps, `dataprocessing`, and seven command
+line tools. A count that is not thirteen means the install set changed; check
+that against `host_cli_install_targets` before shipping.
 
 It stops with an error rather than producing an unshippable image if the
-identity is missing from the keychain, the resolved tag is not the one asked
-for, or any bundle in the DMG fails `codesign --verify --strict`.
+identity is missing, the resolved tag is not the one asked for, or any bundle
+in the DMG fails `codesign --verify --strict`. That last check is not
+theoretical: it is what caught `tag-attach-cycle.app` and, behind it, the fact
+that no command line bundle had ever been signed.
 
-Gatekeeper's own assessment is printed but not treated as a failure. An
-unnotarized Developer ID app is *expected* to be rejected by `spctl`; the
-assessment is shown because it distinguishes that from a broken signature.
+The Gatekeeper assessment it prints reads `accepted / source=Developer ID`.
+That is worth understanding rather than trusting: the image was just built
+here, so it carries no quarantine attribute, and quarantine is what makes
+macOS demand notarization. The assessment confirms the signature is real and
+trusted. It says nothing about what a user who downloads the DMG will see --
+only the download test in step 5 does.
+
+**3. Push the tag.** CI builds the Windows package and opens a draft release
+with the ZIP attached.
 
 ```
-# 2. wait for the Windows build, then attach the macOS package
+git push origin refs/tags/v3.1
 gh run watch
-gh release upload v3.1 ~/Build/tag-designs/software-vcpkg-release/Ultralight-tags-v3.1.dmg
-
-# 3. check the draft, then publish
-gh release view v3.1 --web
+gh release view v3.1
 ```
 
-### If something goes wrong after the tag is pushed
+A draft, one asset, the Windows `.zip`, no `.dmg`. A DMG appearing there means
+the artifact filter in `release.yml` stopped working.
 
-The tag is pushed before the build, so a build failure leaves a tag and a draft
-release behind. Both are cheap to keep: fix the problem, commit, and release
-under the next tag. Re-running the script with the same tag works only if the
-tag still points at HEAD -- it refuses to move a tag onto a different commit,
-because a tag that has been pushed and then moved is a tag that means different
-things to different clones.
+**4. Attach the macOS package** built in step 2. It matches the tag: the script
+refuses a dirty tree, so the image and the commit agree.
 
+```
+gh release upload v3.1 ~/Build/tag-designs/software-vcpkg-release/Ultralight-tags-v3.1.dmg
+```
+
+**5. Install it from the release page on a Mac that has never seen the build,**
+and follow
+[Installing a macOS Release](../README.md#installing-a-macos-release) as
+written. This is the only step that tests what a user experiences, because it
+is the only copy that is quarantined. Everything before it tests the build.
+
+**6. Publish the draft.**
+
+### If something goes wrong
+
+With `--no-push`, almost nothing can: delete the local tag and start over.
+
+Once the tag is pushed, a failure leaves a tag and a draft release behind. Both
+are cheap to keep -- fix the problem, commit, and release under the next
+number. Re-running the script with the same tag works only if the tag still
+points at HEAD; it refuses to move a tag onto a different commit, because a tag
+that has been pushed and then moved means different things to different clones.
 Deleting a pushed tag is the one recovery worth avoiding. A draft release that
 is never published costs nothing.
+
+If the verification reports a bundle you thought you had removed from the
+install set, it is probably a stale one being re-packed: CPack's staging tree
+is not always cleaned between runs.
+
+```
+rm -rf ~/Build/tag-designs/software-vcpkg-release/_CPack_Packages
+```
