@@ -622,6 +622,14 @@ script, `compile_commands.json`, the `build-manifest.json`, and -- where one
 exists -- the external loader used to read that board's flash. Single-digit
 megabytes.
 
+**CI does not qualify an image.** A green build says the sources compile and
+the provenance is recorded. It says nothing about power behaviour, and
+`AGENTS.md` records that STM32U375 Standby entry depends on where code lands in
+the image, so a change with no visible effect on the source can change whether a
+tag sleeps. Release images are bench-tested for power by the developer before
+they fly; nothing in this document substitutes for that, and a manifest
+accompanying an untested image should not be read as a warrant.
+
 Archive artifacts rather than planning to rebuild them. In three years the
 toolchain will not install cleanly; the recorded versions make a rebuild
 *possible*, but nothing downstream should depend on it. Reproducibility is the
@@ -756,14 +764,29 @@ out of the linked images, which call plain `pb_decode`.
     templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
     failure, since in CI a skipped check looks exactly like a passing one.
 
+11. **Firmware is built in CI** on a release tag, by a `firmware` job in
+    `release.yml` that configures with `-DREGENERATE_SOURCES=OFF
+    -DREPRODUCIBLE_BUILD=ON` and builds `distributed_firmware`. It never
+    regenerates: committed sources are used as they are, and a stale one is a
+    configure error rather than something quietly rebuilt. It installs the
+    pinned Arm toolchain from Arm's own tarball, verified against a SHA-256 in
+    the workflow, because Ubuntu's packaged `gcc-arm-none-eabi` is a different
+    version and the pin would reject it.
+
+    That build needs the ARM toolchain, `make`, `cmake` and `python3` -- no
+    `fmpp`, no Java, no nanopb generator, no protobuf. Three changes made that
+    true: `fmpp` and `python3` are looked up leniently and demanded only where a
+    board actually regenerates; protobuf is looked for only when the host tools
+    or `config-gen` are built; and `REGENERATE_SOURCES=OFF` no longer fails to
+    configure on a target that commits nothing. That last one matters because a
+    release build configures the whole tree, prototypes included, and builds
+    only the distributed targets -- so a prototype has to be configurable while
+    remaining unbuildable. Asking for one now fails with a message saying to use
+    AUTO, at the only moment the distinction matters.
+
 ### Next
 
 
-11. **Build firmware in CI** for the distributed tags on a release tag, and
-    publish the images with their manifests. This needs `arm-none-eabi-gcc`
-    14.2.1 and `fmpp` on the runner, which is new CI surface; the freshness
-    check above deliberately avoids both so that it cannot fail for their
-    reasons.
 12. **Carry the dirty flag into the image.** `version.h` defines it; nothing
     references it, because adding a string shifts the layout and STM32U375
     Standby entry depends on where code lands. A firmware change of its own.
@@ -774,12 +797,13 @@ out of the linked images, which call plain `pb_decode`.
 
 ### Where to resume
 
-Step 11 is next and is the one with real unknowns left -- not about
-reproducibility, which is settled, but about provisioning: whether the pinned
-toolchain and `fmpp` install cleanly on a GitHub runner, and how long the
-embedded build takes there.
+Steps 12 and 13 remain, and are independent of each other.
 
-Steps 12 and 13 are independent of it and of each other.
+The one thing step 11 still needs is `ARM_TOOLCHAIN_SHA256` in `release.yml`,
+which is deliberately empty: the job refuses to run rather than install an
+unverified toolchain. Fill it with the SHA-256 Arm publishes for the pinned
+tarball before the next release tag, or the release will fail -- visibly, which
+is the intended failure mode.
 
 ## Settled: pinning does not shift the generated output
 

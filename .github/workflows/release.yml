@@ -27,6 +27,16 @@ env:
   # Must match the baseline in vcpkg-configuration.json so manifest-mode
   # version resolution finds the commit in this shallow clone.
   VCPKG_BASELINE: "99a97de2cb371449d4fb9dc970f2ac562d689ec2"
+  # The ARM toolchain the firmware is built with. It must report the version
+  # ARM_TOOLCHAIN_VERSION pins in CMakeLists.txt (14.2.1 for 14.2.rel1) or the
+  # build fails, which is the point of pinning it. Ubuntu's packaged
+  # gcc-arm-none-eabi is a different version, so the official tarball is used.
+  #
+  # ARM_TOOLCHAIN_SHA256 must be the SHA-256 Arm publishes for this exact file
+  # (developer.arm.com serves it as <url>.sha256asc). The job refuses to run
+  # while it is empty rather than install an unverified toolchain.
+  ARM_TOOLCHAIN_URL: "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
+  ARM_TOOLCHAIN_SHA256: ""
 
 jobs:
   build:
@@ -171,10 +181,87 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  firmware:
+    name: Tag firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # Submodules for ChibiOS, and full history so `git describe` can name
+          # the tag in version.h and in each build manifest.
+          submodules: true
+          fetch-depth: 0
+
+      - name: Require a pinned toolchain checksum
+        run: |
+          if [ -z "$ARM_TOOLCHAIN_SHA256" ]; then
+            echo "ARM_TOOLCHAIN_SHA256 is empty in .github/workflows/release.yml."
+            echo "Set it to the SHA-256 Arm publishes for:"
+            echo "  $ARM_TOOLCHAIN_URL"
+            echo "Refusing to install an unverified toolchain."
+            exit 1
+          fi
+
+      - name: Install the pinned ARM toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL "$ARM_TOOLCHAIN_URL" -o arm-toolchain.tar.xz
+          echo "$ARM_TOOLCHAIN_SHA256  arm-toolchain.tar.xz" | sha256sum --check --strict
+          sudo mkdir -p /opt/arm-toolchain
+          sudo tar -xJf arm-toolchain.tar.xz -C /opt/arm-toolchain --strip-components=1
+          echo "/opt/arm-toolchain/bin" >> "$GITHUB_PATH"
+
+      - name: Report the toolchain
+        run: |
+          arm-none-eabi-gcc --version | head -1
+          echo "dumpversion: $(arm-none-eabi-gcc -dumpversion)"
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DBUILD_HOST=OFF \
+            -DBUILD_HOST_DOCS=OFF \
+            -DBUILD_EMBEDDED=ON \
+            -DREGENERATE_SOURCES=OFF \
+            -DREPRODUCIBLE_BUILD=ON
+
+      - name: Build the distributed firmware
+        run: cmake --build build --target distributed_firmware
+
+      - name: Collect images and manifests
+        run: |
+          set -euo pipefail
+          mkdir -p firmware
+          for d in build/embedded/tags/*/build; do
+            tag="$(basename "$(dirname "$d")")"
+            # Only tags that produced a manifest were built, which is the
+            # distributed set; the rest have no build directory at all.
+            [ -f "$d/$tag-build-manifest.json" ] || continue
+            mkdir -p "firmware/$tag"
+            # Everything the build produced: .elf with DWARF, .map, .bin, .hex,
+            # .dmp and .list. Archiving them beats planning to rebuild -- in
+            # three years this toolchain will not install cleanly, and the
+            # recorded versions only make a rebuild possible, not certain.
+            cp "$d/$tag".* "firmware/$tag/"
+            cp "$d/$tag-build-manifest.json" "firmware/$tag/"
+          done
+          ls -lR firmware
+          tar -czf tag-firmware-${{ github.ref_name }}.tar.gz firmware
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: tag-firmware
+          path: tag-firmware-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, firmware]
     runs-on: ubuntu-latest
     permissions:
       contents: write
