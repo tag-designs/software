@@ -76,7 +76,7 @@ set(
   "design/dataprocessing.md"
   "design/field-data-extraction.md"
   "design/tag-build-reproducibility.md"
-  "design/tag-host-release-procedure.md"
+  "design/tag-and-host-release-procedure.md"
   "design/windows-build-notes.md"
   "embedded/bases/BUILD_SOURCES.md"
   "embedded/bases/README.md"
