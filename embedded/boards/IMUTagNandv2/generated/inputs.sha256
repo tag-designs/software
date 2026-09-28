@@ -1,0 +1,18 @@
+# Generated-source inputs. Regenerate with -DREGENERATE_SOURCES=ON.
+tools chibios-templates stm32u3xx
+aba892e53eead29e685cc839fbda461633d2ef9d0d6df735f9b88aba0f7b56f3  <chibios>/tools/ftl/libs/code_snippets.xml
+62b19f70c218e37f7c77640e6853edb4fe725efc87af15f3b46126f9349fc680  <chibios>/tools/ftl/libs/libcclasses.ftl
+422d3d9e967383264ca2448523e8aba07f3bd8cc0ac93d2e00a044a32dfa7aa1  <chibios>/tools/ftl/libs/libccode.ftl
+e055f55d57fe78ef93e5280ca5cd28796ae1bf70911cc30489ef5f8a49f6617f  <chibios>/tools/ftl/libs/libcode.ftl
+382a5e089849a06ba86b89f31998e736e6c08f624eb3107195fadc38a6ec3a1b  <chibios>/tools/ftl/libs/libdoxygen.ftl
+2d8d268e99970506f2bb20a7fa8ed8ce979d6b6a014ffb2b99116c011760f854  <chibios>/tools/ftl/libs/liblicense.ftl
+4de349350b1ee84ce73e582ae1abefa17106a445a50eac922acbdb72a4499b8b  <chibios>/tools/ftl/libs/libsnippets.ftl
+c24529cffbc68ba1b1c40cf9872d20bf1df5ae7da3d68dd9f159faa3db39d26e  <chibios>/tools/ftl/libs/libstm32f4xx.ftl
+37268003bfde7d027e58a425dc5cf7e5babfaed00bc984519da47c548478cb7c  <chibios>/tools/ftl/libs/libutils.ftl
+bf1b9b609d6943cf3cc05d16d7b2599aa228f916083bdc13851cad64626e3a6d  <chibios>/tools/ftl/processors/boards/stm32u3xx/templates/board.c.ftl
+3a01f492c3c3864fc5007f8131a4639d2d11834ef594bf0d3ef52be7e8038b70  <chibios>/tools/ftl/processors/boards/stm32u3xx/templates/board.h.ftl
+679abf0a62ddae3399ca39f3429af7bfd7f3a7db7d7ac7b0662fe7cc0abd71f6  <chibios>/tools/ftl/processors/boards/stm32u3xx/templates/board.mk.ftl
+6fbe83c0ca7c71c3c0dddfc33f478b6bade8c5d769eeb2ba942d9777078e0b16  <chibios>/tools/ftl/xml/stm32u3board.xml
+dbd24531657facb1db2e27a3bca4def4f8f9bb336767821da70b743897a99255  embedded/boards/IMUTagNandv2/cfg/board-customizations.json
+3aa8fa2b8cbe5a4f36c0fd285fa066c80dd894e0dda5b4a4c7c8ccdf076043aa  embedded/boards/tools/board.fmpp.in
+3f5ff6d034284e73065cec829d17168a192ca19469cd861102484007e08a1071  embedded/boards/tools/generate_board_chcfg.py
