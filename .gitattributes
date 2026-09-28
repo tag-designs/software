@@ -1,0 +1,28 @@
+# Line-ending and classification rules.
+#
+# Deliberately not a repository-wide policy: `* text=auto` would renormalize
+# every existing file and produce a large diff unrelated to any change being
+# made. These rules cover only the paths where the line ending is load-bearing.
+
+# Vendored third-party sources. Each file's SHA-256 is recorded in
+# CHECKSUMS.txt, so a checkout that rewrote them to CRLF would both fail that
+# verification and compile different bytes than the ones reviewed and recorded.
+# Kept diffable: reviewing what changes inside the runtime across an upgrade is
+# a reason this code is vendored rather than referenced.
+embedded/thirdparty/** eol=lf
+embedded/thirdparty/** linguist-vendored
+
+# Generated sources, once committed, are compared against freshly generated
+# output by the CI freshness check. Generated text written on Windows would
+# otherwise arrive as CRLF and produce diffs that have nothing to do with
+# content. These rules must be in place before the first generated file is
+# committed: attributes do not retroactively normalize what is already in
+# history.
+embedded/boards/*/generated/** eol=lf
+embedded/proto-c/*/generated/** eol=lf
+
+# nanopb output is machine-written and need not count towards language
+# statistics. Board files are deliberately left unmarked: seeing what a ChibiOS
+# bump changes in board.c is the reason for committing them at all.
+embedded/proto-c/*/generated/*.pb.c linguist-generated
+embedded/proto-c/*/generated/*.pb.h linguist-generated
