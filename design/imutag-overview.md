@@ -295,11 +295,42 @@ Before arming, synchronize the clock -- this is what makes timestamps
 comparable to anything else you record. The same tab has a self-test that
 checks every sensor and the flash, and it is worth running before a deployment.
 
-Magnetometer calibration is a separate step, in `qtcalibrate`. The constants it
-produces are written to the tag and travel with every download afterwards, so
-you calibrate once per tag, not once per deployment.
+Magnetometer calibration is a separate step, covered next.
 
-### 4.2 Downloading
+### 4.2 Calibrating the magnetometer: qtcalibrate
+
+The magnetometer is the one channel that needs a per-tag calibration step, for
+the reason given in section 3.3 -- uncalibrated, its offset is half the size of
+the field it is trying to measure. `qtcalibrate` is the tool that fixes it, and
+it is a once-per-tag job, not a once-per-deployment one.
+
+Attach the tag, press **Start**, and turn it through as many orientations as
+you can manage while samples accumulate. The plot shows where those samples
+fall on a sphere; what you are aiming for is even coverage, because the fit is
+only as good as the directions you actually visited.
+
+![qtcalibrate at the end of a collection: the sample cloud covers the sphere, with the fitted constants and quality metrics on the right](../host/docs/src/images/qtcalibrate-collection-100.png)
+
+Four numbers under the plot tell you whether you turned the tag enough.
+**Gaps** is how much of the sphere you missed, **Variance** and **Wobble**
+describe how tightly the samples sit on it, and **Fit Error** is how well the
+fitted model matches them. Lower is better on all four; if Gaps stays high,
+keep turning.
+
+The fit produces a magnetic offset, a 3x3 mapping matrix and the field strength
+those imply. **Tag Write** stores them on the tag and **Tag Read** shows what is
+already there. Once written, the constants are copied into every download from
+that tag, and `sensorviz` applies them without being asked.
+
+The **Orientation** tab then shows live compass heading and attitude, which is
+the quickest way to confirm the calibration behaves before you commit a tag to
+a deployment.
+
+Step-by-step instructions and the other collection milestones are in the
+application guide, `host/docs/src/apps/qtcalibrate.md`.
+
+### 4.3 Downloading
+
 
 Either press the save button in `qtmonitor`, or use the command-line tool:
 
@@ -316,7 +347,7 @@ You can download a tag as many times as you like. The data stays on the tag
 until you explicitly erase it, which is worth doing only once you have the file
 safely copied.
 
-### 4.3 Looking at the data: sensorviz
+### 4.4 Looking at the data: sensorviz
 
 `sensorviz` opens a downloaded file and plots everything in it. It works out
 what the file contains from the file itself, so there is nothing to configure
