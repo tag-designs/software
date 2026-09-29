@@ -350,17 +350,27 @@ include(GNUInstallDirs)
 # Find Protobuf and Nanopb
 
 set(protobuf_MODULE_COMPATIBLE TRUE)
-# Protobuf is needed for the host tools and for config-gen, which turns
-# default-config.json into the proto3 wire encoding.  config-gen is only built
-# when generated sources may be regenerated, so a firmware build with
-# REGENERATE_SOURCES=OFF needs neither, and should not be made to install it.
-if(BUILD_HOST OR NOT REGENERATE_SOURCES STREQUAL "OFF")
+# The C++ protobuf library is needed by the host tools and by nothing else.
+# It used to be needed for regeneration too, because config-gen was a compiled
+# tool linked against it; config-gen.py is not, so regenerating protocol
+# sources no longer pulls in a C++ protobuf, a C++ compiler, or vcpkg.
+#
+# What regeneration does need -- protoc and a protobuf runtime -- comes from
+# the pinned virtual environment embedded/proto-c builds from its own
+# requirements.txt, which is version-matched by construction rather than by
+# whatever each machine happens to have installed.
+#
+# A firmware build with REGENERATE_SOURCES=OFF needs none of it, and should
+# not be made to install any of it.
+if(BUILD_HOST)
   set(ULTRALIGHT_NEED_PROTOBUF ON)
 else()
   set(ULTRALIGHT_NEED_PROTOBUF OFF)
   message(STATUS
-    "Not looking for protobuf: BUILD_HOST is off and REGENERATE_SOURCES=OFF, "
-    "so neither the host tools nor config-gen are built.")
+    "Not looking for the C++ protobuf library: BUILD_HOST is off, and nothing "
+    "else needs it. Regenerating protocol sources needs protoc and the Python "
+    "protobuf runtime, which embedded/proto-c supplies from its own "
+    "requirements.txt.")
 endif()
 
 if(ULTRALIGHT_NEED_PROTOBUF)

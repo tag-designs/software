@@ -10,10 +10,245 @@ cmake_minimum_required(VERSION 3.20)
 # are regenerated; REGENERATE_SOURCES=OFF is the mode that builds firmware
 # without it.
 
+set(CONFIG_GEN_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/config-gen.py")
+set(CONFIG_GEN_DESCRIPTOR "${CMAKE_CURRENT_BINARY_DIR}/config-gen/tag.desc")
+
 if(NOT REGENERATE_SOURCES STREQUAL "OFF")
-  add_executable(config-gen config-gen.cc)
-  target_compile_features(config-gen PRIVATE cxx_std_20)
-  target_link_libraries(config-gen PRIVATE proto)
+  # config-gen is a Python script rather than a compiled C++ tool.  It emits
+  # byte-identical output -- verified against the committed default_config.c of
+  # every distributed variant, and against a rebuild of the old config-gen.cc.
+  #
+  # Be clear about what this costs, because it is easy to state too kindly.
+  # nanopb's BINARY distribution ships its own interpreter under generator-bin,
+  # with protobuf bundled, so regeneration did NOT already require protobuf on
+  # the interpreter CMake finds here.  On a machine using that distribution
+  # this is a genuinely new dependency on the system Python, not a free ride on
+  # an existing one.  What is gained in exchange:
+  #
+  #   * The dependency becomes pinnable.  libprotobuf came from each
+  #     developer's vcpkg baseline, so its version was per-machine by
+  #     construction and appears in no manifest.  A Python version can be
+  #     recorded and hashed; a vcpkg baseline's build of a C++ library cannot.
+  #   * One protobuf implementation governs default_config.c instead of a
+  #     second one living beside nanopb's in the same generated/ directory.
+  #   * It removes a host compile-and-link from a cross-compiling tree.
+  #
+  # The honest follow-up is a virtual environment built from a hash-pinned
+  # requirements.txt, created at configure time, rather than asking developers
+  # to pip install into whatever interpreter they have.  That is what makes the
+  # version recordable in the manifest; until it exists, the protobuf version
+  # is deliberately absent from tools_text for the same reason fmpp is absent
+  # from the board manifests -- a version reported on one machine and not
+  # another causes false staleness for everyone.
+  #
+  # The JSON parsers are where the two implementations genuinely differed: the
+  # C++ one accepted trailing commas, which RFC 8259 forbids, and two config
+  # files relied on that.  Both were corrected.  Strictness here is the point,
+  # not a regression.
+  # Which interpreter runs config-gen.py is not a detail to leave to PATH.
+  # On a developer machine `python3`, `pip` and CMake's find_package(Python3)
+  # routinely resolve to three different installations -- Homebrew ships
+  # several side by side, and pip commonly belongs to none of the ones in use.
+  # Leaving the choice open means the version of protobuf that renders a
+  # COMMITTED file varies per machine and per shell, which is the exact defect
+  # the generated sources are pinned to avoid.
+  #
+  # So the build makes its own environment from requirements.txt and uses that,
+  # rather than asking developers to install packages into an interpreter they
+  # share with everything else. Nothing here touches the system Python.
+  #
+  # This costs a virtualenv and one pip run in the build tree, on the first
+  # configure and afterwards only when requirements.txt changes. It needs
+  # network access that once. REGENERATE_SOURCES=OFF never reaches this block,
+  # so ordinary firmware builds and CI release builds are untouched and stay
+  # offline-capable.
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+  option(CONFIG_GEN_USE_VENV
+         "Build a virtual environment for config-gen.py from requirements.txt"
+         ON)
+  set(CONFIG_GEN_REQUIREMENTS "${CMAKE_CURRENT_LIST_DIR}/requirements.txt")
+
+  if(CONFIG_GEN_USE_VENV)
+    set(CONFIG_GEN_VENV "${CMAKE_CURRENT_BINARY_DIR}/config-gen-venv")
+    if(WIN32)
+      set(CONFIG_GEN_PYTHON "${CONFIG_GEN_VENV}/Scripts/python.exe")
+    else()
+      set(CONFIG_GEN_PYTHON "${CONFIG_GEN_VENV}/bin/python")
+    endif()
+
+    # The stamp carries the hash of requirements.txt, so an edit to it rebuilds
+    # the environment and nothing else does. Timestamps are not used, for the
+    # same reason the generated-source manifests do not use them.
+    file(SHA256 "${CONFIG_GEN_REQUIREMENTS}" _config_gen_req_hash)
+    set(_config_gen_stamp "${CONFIG_GEN_VENV}/.requirements.sha256")
+    set(_config_gen_stamped "")
+    if(EXISTS "${_config_gen_stamp}")
+      file(READ "${_config_gen_stamp}" _config_gen_stamped)
+    endif()
+
+    if(NOT EXISTS "${CONFIG_GEN_PYTHON}"
+       OR NOT _config_gen_stamped STREQUAL _config_gen_req_hash)
+      message(STATUS "config-gen: building ${CONFIG_GEN_VENV}")
+      file(REMOVE_RECURSE "${CONFIG_GEN_VENV}")
+      execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -m venv "${CONFIG_GEN_VENV}"
+        RESULT_VARIABLE _config_gen_venv_made
+        ERROR_VARIABLE _config_gen_venv_err)
+      if(NOT _config_gen_venv_made EQUAL 0)
+        message(FATAL_ERROR
+          "Could not create a virtual environment with ${Python3_EXECUTABLE}:\n"
+          "${_config_gen_venv_err}\n"
+          "Install the venv module for that interpreter, or configure with "
+          "-DCONFIG_GEN_USE_VENV=OFF and -DPython3_EXECUTABLE=<an interpreter "
+          "that already has the packages in ${CONFIG_GEN_REQUIREMENTS}>.")
+      endif()
+      execute_process(
+        COMMAND "${CONFIG_GEN_PYTHON}" -m pip install --quiet --disable-pip-version-check
+                -r "${CONFIG_GEN_REQUIREMENTS}"
+        RESULT_VARIABLE _config_gen_pip
+        ERROR_VARIABLE _config_gen_pip_err)
+      if(NOT _config_gen_pip EQUAL 0)
+        message(FATAL_ERROR
+          "Could not install ${CONFIG_GEN_REQUIREMENTS} into "
+          "${CONFIG_GEN_VENV}:\n${_config_gen_pip_err}\n"
+          "This step needs network access the first time. To use an "
+          "interpreter you have prepared yourself instead, configure with "
+          "-DCONFIG_GEN_USE_VENV=OFF -DPython3_EXECUTABLE=<that interpreter>.")
+      endif()
+      file(WRITE "${_config_gen_stamp}" "${_config_gen_req_hash}")
+    endif()
+  else()
+    # Opt-out: whatever find_package found, or whatever was pinned on the
+    # command line. The probes below still apply, so a wrong interpreter fails
+    # here with a message rather than in the middle of a build.
+    set(CONFIG_GEN_PYTHON "${Python3_EXECUTABLE}")
+  endif()
+
+  execute_process(
+    COMMAND "${CONFIG_GEN_PYTHON}" -c
+            "import google.protobuf as p; print(p.__version__)"
+    OUTPUT_VARIABLE CONFIG_GEN_PROTOBUF_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE _config_gen_protobuf_probe)
+  if(NOT _config_gen_protobuf_probe EQUAL 0)
+    message(FATAL_ERROR
+      "${CONFIG_GEN_PYTHON} cannot import google.protobuf, which config-gen.py "
+      "needs to turn default-config.json into the proto3 wire encoding. Install "
+      "the protobuf package for that interpreter, point Python3_EXECUTABLE at "
+      "the one that already runs nanopb_generator, or configure with "
+      "-DREGENERATE_SOURCES=OFF to build the committed sources as they are.")
+  endif()
+  message(STATUS
+    "config-gen: ${CONFIG_GEN_PYTHON} with protobuf ${CONFIG_GEN_PROTOBUF_VERSION}")
+
+  # protoc renders the descriptor set config-gen.py reads its schema from.
+  # It is NOT a Python dependency: the pinned nanopb distribution ships one in
+  # generator-bin beside nanopb_generator, so a protoc is present exactly when
+  # regeneration is possible. Preferring that one also means the descriptor set
+  # and the .pb.c/.pb.h beside it come from the same protoc.
+  #
+  # Taking protoc from PyPI instead would mean grpcio-tools, which pulls grpcio
+  # -- some 12 MB -- for a binary already on disk.
+  #
+  # Version sensitivity here is low by construction. A descriptor set is
+  # wire-format data, not generated code, so it carries no gencode version for
+  # the runtime to reject; any protoc that emits one produces something any
+  # modern protobuf can read.
+  set(CONFIG_GEN_PROTOC "" CACHE FILEPATH "protoc used to render the config-gen descriptor set")
+  if(NOT CONFIG_GEN_PROTOC)
+    set(_config_gen_protoc_hints "")
+    if(NANOPB_GENERATOR_EXECUTABLE)
+      get_filename_component(_config_gen_nanopb_bin
+                             "${NANOPB_GENERATOR_EXECUTABLE}" DIRECTORY)
+      list(APPEND _config_gen_protoc_hints "${_config_gen_nanopb_bin}")
+    endif()
+    find_program(_config_gen_protoc_found
+                 NAMES protoc
+                 HINTS ${_config_gen_protoc_hints}
+                 NO_DEFAULT_PATH)
+    if(NOT _config_gen_protoc_found AND Protobuf_PROTOC_EXECUTABLE)
+      set(_config_gen_protoc_found "${Protobuf_PROTOC_EXECUTABLE}")
+    endif()
+    if(NOT _config_gen_protoc_found)
+      find_program(_config_gen_protoc_found NAMES protoc)
+    endif()
+    if(NOT _config_gen_protoc_found)
+      message(FATAL_ERROR
+        "No protoc found to render the descriptor set config-gen.py needs. "
+        "It normally comes from the nanopb distribution's generator-bin "
+        "directory, beside nanopb_generator. Set NANOPB_ROOT, set "
+        "CONFIG_GEN_PROTOC to a protoc, put one on PATH, or configure with "
+        "-DREGENERATE_SOURCES=OFF to build the committed sources as they are.")
+    endif()
+    set(CONFIG_GEN_PROTOC "${_config_gen_protoc_found}" CACHE FILEPATH
+        "protoc used to render the config-gen descriptor set" FORCE)
+  endif()
+  set(CONFIG_GEN_PROTOC_COMMAND "${CONFIG_GEN_PROTOC}")
+  set(CONFIG_GEN_PROTOC_LABEL "${CONFIG_GEN_PROTOC}")
+  message(STATUS "config-gen protoc: ${CONFIG_GEN_PROTOC}")
+
+  get_target_property(_config_gen_protos tag-proto-sources INTERFACE_SOURCES)
+  if(NOT _config_gen_protos)
+    message(FATAL_ERROR
+      "tag-proto-sources carries no INTERFACE_SOURCES, so there is nothing to "
+      "generate Python bindings from.")
+  endif()
+
+  # The include path is taken from the .proto files themselves rather than
+  # spelled relative to here. protoc requires -I to be an EXACT TEXTUAL PREFIX
+  # of each file it is given -- it does not resolve `..` or compare absolute
+  # against relative -- so "${CMAKE_CURRENT_LIST_DIR}/../../proto" fails
+  # against the absolute paths the target property holds, even though the two
+  # name the same directory. Deriving the directory from a file that is
+  # certainly inside it removes the chance of the two disagreeing.
+  list(GET _config_gen_protos 0 _config_gen_first_proto)
+  cmake_path(GET _config_gen_first_proto PARENT_PATH CONFIG_GEN_PROTO_DIR)
+
+  # Prove this works now rather than in the middle of a build: render a
+  # descriptor set with this protoc and build the Config class from it with
+  # this interpreter. A failure here names the cause; the same failure during
+  # a build arrives with five targets in flight.
+  set(_config_gen_probe "${CMAKE_CURRENT_BINARY_DIR}/config-gen-probe")
+  file(MAKE_DIRECTORY "${_config_gen_probe}")
+  execute_process(
+    COMMAND "${CONFIG_GEN_PROTOC}"
+            "-I${CONFIG_GEN_PROTO_DIR}" --include_imports
+            "--descriptor_set_out=${_config_gen_probe}/tag.desc"
+            ${_config_gen_protos}
+    RESULT_VARIABLE _config_gen_probe_gen
+    OUTPUT_QUIET ERROR_VARIABLE _config_gen_probe_err)
+  if(NOT _config_gen_probe_gen EQUAL 0)
+    message(FATAL_ERROR
+      "${CONFIG_GEN_PROTOC} could not render a descriptor set for the tag "
+      "protocol:\n${_config_gen_probe_err}")
+  endif()
+  execute_process(
+    COMMAND "${CONFIG_GEN_PYTHON}" "${CONFIG_GEN_SCRIPT}"
+            --descriptor-set "${_config_gen_probe}/tag.desc"
+            --print-config-only
+    RESULT_VARIABLE _config_gen_probe_load
+    OUTPUT_QUIET ERROR_VARIABLE _config_gen_probe_load_err)
+  if(NOT _config_gen_probe_load EQUAL 0)
+    message(FATAL_ERROR
+      "config-gen.py could not build the Config message from a descriptor set "
+      "rendered by ${CONFIG_GEN_PROTOC}, using protobuf "
+      "${CONFIG_GEN_PROTOBUF_VERSION}:\n${_config_gen_probe_load_err}")
+  endif()
+
+  add_custom_command(
+    OUTPUT "${CONFIG_GEN_DESCRIPTOR}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/config-gen"
+    COMMAND "${CONFIG_GEN_PROTOC}"
+            "-I${CONFIG_GEN_PROTO_DIR}" --include_imports
+            "--descriptor_set_out=${CONFIG_GEN_DESCRIPTOR}"
+            ${_config_gen_protos}
+    DEPENDS ${_config_gen_protos}
+    COMMENT "Rendering the protocol descriptor set for config-gen"
+    VERBATIM)
+
+  add_custom_target(config-gen-descriptor DEPENDS "${CONFIG_GEN_DESCRIPTOR}")
 endif()
 
 # Captured at file scope: inside a function CMAKE_CURRENT_LIST_DIR is the
@@ -61,7 +296,7 @@ function(add_nanopb_target name)
   set(nanopb_options)
   set(manifest_inputs
       "${default_config_json}"
-      "${NANOPB_PROTO_C_DIR}/config-gen.cc"
+      "${NANOPB_PROTO_C_DIR}/config-gen.py"
       "${CMAKE_SOURCE_DIR}/cmake/CombineFiles.cmake")
   list(APPEND manifest_inputs ${TAG_PROTO_SOURCES})
 
@@ -155,8 +390,10 @@ function(add_nanopb_target name)
 
     add_custom_command(
       OUTPUT "${default_config}"
-      COMMAND $<TARGET_FILE:config-gen> "${default_config_json}" "${default_config}"
-      DEPENDS config-gen "${default_config_json}"
+      COMMAND "${CONFIG_GEN_PYTHON}" "${CONFIG_GEN_SCRIPT}"
+              --descriptor-set "${CONFIG_GEN_DESCRIPTOR}"
+              "${default_config_json}" "${default_config}"
+      DEPENDS config-gen-descriptor "${CONFIG_GEN_SCRIPT}" "${default_config_json}"
       VERBATIM)
 
     foreach(P ${TAG_PROTO_SOURCES})

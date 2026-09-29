@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 message("Configure Proto")
 
-# The C++ protocol library is needed by the host tools and by config-gen, and
-# by nothing else.  A firmware build of tags whose generated sources are
-# committed needs neither, so it should not need protobuf installed either.
+# The C++ protocol library is needed by the host tools and by nothing else
+# now that config-gen is a Python script.  A firmware build of tags whose
+# generated sources are committed needs neither, so it should not need
+# protobuf installed either.
 
 if(ULTRALIGHT_NEED_PROTOBUF)
   protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS tag.proto tagdata.proto)
@@ -21,13 +22,11 @@ if(ULTRALIGHT_NEED_PROTOBUF)
 endif()
 
 #
-# Create a tool for translating json tag configuration files to 
-# C code
+# The tool that translates json tag configuration files to C code lives at
+# embedded/proto-c/config-gen.py.  These lines are the remains of an earlier
+# arrangement in which it was built here; embedded/proto-c/CMakeLists.txt has
+# been the one that wires it up for some time.
 #
-
-#add_executable(config-gen config-gen.cc)
-#target_include_directories(config-gen PRIVATE ${Protobuf_INCLUDE_DIRS})
-#target_link_libraries(config-gen PRIVATE proto)
 
 #
 # Create a library of tag protocol sources for 

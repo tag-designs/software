@@ -1,0 +1,30 @@
+# Python dependency for config-gen.py, which turns default-config.json into the
+# proto3 wire encoding committed as default_config.c.
+#
+# Pinned because the output is COMMITTED: a generator whose version varies per
+# machine is the failure this pinning exists to prevent, the same reasoning
+# that pins nanopb to 0.4.9.1 and the ARM toolchain to 14.2.1. Changing this
+# version is a change to generated sources -- regenerate, read the diff, and
+# commit the result.
+#
+# 5.28.1 is not an arbitrary choice: it is the protobuf that the pinned nanopb
+# distribution itself runs on. nanopb-0.4.9.1's generator-bin bundles protoc
+# 28.1 and the matching Python protobuf 5.28.1, so pinning to it means ONE
+# protobuf era governs both generated outputs in these directories -- the
+# .pb.c/.pb.h from nanopb and the default_config.c from config-gen -- rather
+# than two that are free to drift apart. That was the argument for moving
+# config-gen off C++ in the first place; picking a different version here
+# would give most of it back.
+#
+# The pin is nonetheless conservative rather than load-bearing. config-gen.py
+# reads the schema from a protobuf descriptor set rather than generated Python
+# modules, so there is no gencode/runtime version gate, and the emitted bytes
+# were verified identical under protobuf 4.25.3, 5.28.1, 5.29.5 and 7.36.2
+# across all five distributed variants.
+#
+# protoc is deliberately NOT a Python dependency. It is needed only to render
+# the descriptor set, and the nanopb distribution already ships one beside
+# nanopb_generator -- guaranteed present exactly when regeneration is possible.
+# Taking a protoc from PyPI would mean grpcio-tools, which drags in grpcio at
+# roughly 12 MB for a binary the build already has.
+protobuf==5.28.1

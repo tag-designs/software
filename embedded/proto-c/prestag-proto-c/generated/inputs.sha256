@@ -1,10 +1,10 @@
 # Generated-source inputs. Regenerate with -DREGENERATE_SOURCES=ON.
 tools nanopb 0.4.9.1
 b4184f3ebed5712a43ec547aede7d4361bb188b5955f409683127ec438361b23  cmake/CombineFiles.cmake
-ead42f40ebbf1bcb28fc6eb8db4e93c19f2292ff1027d76b81ae3ea7886df294  embedded/proto-c/config-gen.cc
+bc67ef7c4a7030ef531e85d3720908fce21ddd6dde08b2c1024f683ea8884264  embedded/proto-c/config-gen.py
 91dbeaba569a620ba0eac52fad9a2e47015f90eee5de828ef7374b5c72999895  embedded/proto-c/default-options/tag.options
 18e37099a770c89d9facd6c459b5070f22ff0d3d4d94224e7878cba261fa04fb  embedded/proto-c/default-options/tagdata.options
-39ee8f6e42dd6d2eff698f57df711efd7e654a3b22584613fe43c37cd8b1ba4c  embedded/proto-c/prestag-proto-c/default-config.json
+75bd16527eaca9292e3c1bc8ebf623be5acff2851db632e27703162f91d25860  embedded/proto-c/prestag-proto-c/default-config.json
 08a32986e1637cc321366912a797cf99ff7268d667ffb42689f9a2e785552979  embedded/proto-c/prestag-proto-c/tag.override.options
 97a3c13849969e7b91a48672e1fc8aa84dff44e40131e3a4732d7f2e2206a9cc  embedded/proto-c/prestag-proto-c/tagdata.override.options
 55fb03646286439710f4a4744159bd5ec8a28abae2a35e5079e077cb317db580  proto/tag.proto

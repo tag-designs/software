@@ -1,7 +1,7 @@
 # Generated-source inputs. Regenerate with -DREGENERATE_SOURCES=ON.
 tools nanopb 0.4.9.1
 b4184f3ebed5712a43ec547aede7d4361bb188b5955f409683127ec438361b23  cmake/CombineFiles.cmake
-ead42f40ebbf1bcb28fc6eb8db4e93c19f2292ff1027d76b81ae3ea7886df294  embedded/proto-c/config-gen.cc
+bc67ef7c4a7030ef531e85d3720908fce21ddd6dde08b2c1024f683ea8884264  embedded/proto-c/config-gen.py
 91dbeaba569a620ba0eac52fad9a2e47015f90eee5de828ef7374b5c72999895  embedded/proto-c/default-options/tag.options
 18e37099a770c89d9facd6c459b5070f22ff0d3d4d94224e7878cba261fa04fb  embedded/proto-c/default-options/tagdata.options
 aa0e0913c08328e2180c6e497b75fa673b8e4788384ae4d34614bd551f0562eb  embedded/proto-c/uiuctag-proto-c/default-config.json
