@@ -13,6 +13,6 @@ c24529cffbc68ba1b1c40cf9872d20bf1df5ae7da3d68dd9f159faa3db39d26e  <chibios>/tool
 0b32c242a942e883c56e787195782e4c7bcfd48fe09953c1724266c371c68be6  <chibios>/tools/ftl/processors/boards/stm32l4xx/templates/board.h.ftl
 679abf0a62ddae3399ca39f3429af7bfd7f3a7db7d7ac7b0662fe7cc0abd71f6  <chibios>/tools/ftl/processors/boards/stm32l4xx/templates/board.mk.ftl
 5c07088c5f3d4bd59b988648b3ce5618426de33255eade4b83956d0bb639a6d6  <chibios>/tools/ftl/xml/stm32l4board.xml
-d9fad527f6847979126d89b47c19b473a6dac0d76e9b0e560ce0e7f747dfe6e3  embedded/boards/PresTagv3/cfg/board-customizations.json
+0795efa6b35447b342e661a17c2054420a7953caf1c6b41c5e5cd9d5e8d65d4c  embedded/boards/PresTagv3/cfg/board-customizations.json
 3aa8fa2b8cbe5a4f36c0fd285fa066c80dd894e0dda5b4a4c7c8ccdf076043aa  embedded/boards/tools/board.fmpp.in
 3f5ff6d034284e73065cec829d17168a192ca19469cd861102484007e08a1071  embedded/boards/tools/generate_board_chcfg.py
