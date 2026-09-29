@@ -9,6 +9,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 
 ## 1. Cross-Cutting Design
 
+*   [**The IMUTag: An Overview**](imutag-overview.md): Introduction for people deploying IMUTags and analyzing the data -- what the tag is and records, the hardware limits that shape a study, sample rates and per-channel resolution/accuracy/noise, how long a deployment lasts and what ends it, the configure/download/view tools, the SQLite data file, and what is not yet possible (orientation, position, video sync).
 *   [**Binary Datalogging Design**](binary-datalogs.md): System standard for shared binary log structure alignment, naming conventions, and nanopb constraints.
 *   [**Tag Firmware Build Reproducibility**](tag-build-reproducibility.md): The model as built: which tags are in scope and how that is derived, the generated board and protocol sources committed with input manifests, the per-image build manifest keyed on the image's own SHA-256, what configure refuses to build over, how to maintain it as tags and boards are added, and what was not done.
 *   [**Releasing Tag Firmware and Host Tools**](tag-and-host-release-procedure.md): Procedure. Qualifying a candidate firmware image on the bench and what a pass does and does not prove; programming a field tag from a released binary and recording which bytes went onto which tag; and cutting a host tools release, whose macOS package is signed locally because CI has no access to the Developer ID key.
