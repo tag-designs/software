@@ -169,19 +169,24 @@ else()
       list(APPEND _stale "${_board}: could not read PROCESSOR from its CMakeLists.txt")
       continue()
     endif()
-    string(TOLOWER "${_processor}" _processor)
-    string(REGEX REPLACE "xx$" "" _processor_xml "${_processor}")
-    set(_template_dir "${_chibios}/tools/ftl/processors/boards/${_processor}/templates")
 
-    set(_board_inputs
-        "${_board_dir}/cfg/board-customizations.json"
-        "${SOURCE_DIR}/embedded/boards/tools/generate_board_chcfg.py"
-        "${SOURCE_DIR}/embedded/boards/tools/board.fmpp.in"
-        "${_chibios}/tools/ftl/xml/${_processor_xml}board.xml"
-        "${_template_dir}/board.c.ftl"
-        "${_template_dir}/board.h.ftl"
-        "${_template_dir}/board.mk.ftl")
-    list(APPEND _board_inputs ${_chibios_libs})
+    # CUSTOMIZATIONS is read rather than assumed, for the same reason PROCESSOR
+    # is: it is an argument of the board's generate_configured_board_files call,
+    # so a board that puts the file elsewhere would otherwise be checked against
+    # one the build never read.
+    string(REGEX MATCH "CUSTOMIZATIONS[ \t\r\n]+([^ \t\r\n)]+)" _ "${_board_cmake}")
+    set(_customizations "${CMAKE_MATCH_1}")
+    if("${_customizations}" STREQUAL "")
+      list(APPEND _stale
+           "${_board}: could not read CUSTOMIZATIONS from its CMakeLists.txt")
+      continue()
+    endif()
+    board_manifest_inputs(_board_inputs
+                          SOURCE_DIR "${SOURCE_DIR}"
+                          BOARD_DIR "${_board_dir}"
+                          CHIBIOS_DIR "${_chibios}"
+                          PROCESSOR "${_processor}"
+                          CUSTOMIZATIONS "${_customizations}")
 
     set(_absent "")
     foreach(_input IN LISTS _board_inputs)

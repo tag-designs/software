@@ -42,6 +42,8 @@ endfunction()
 #   1. generate_board_chcfg.py creates a build-tree cfg/board.chcfg from
 #      ChibiOS/tools/ftl/xml/<processor>board.xml.
 #   2. fmpp renders ChibiOS' matching board.c/h/mk templates.
+include("${CMAKE_SOURCE_DIR}/cmake/GeneratedSourceInputs.cmake")
+
 function(generate_configured_board_files name)
   set(one_value_args PROCESSOR BOARD_TYPE CUSTOMIZATIONS)
   cmake_parse_arguments(GCB "" "${one_value_args}" "" ${ARGN})
@@ -60,11 +62,11 @@ function(generate_configured_board_files name)
 
   # ChibiOS uses stm32l4board.xml for the stm32l4xx template family, while the
   # FTL template directory keeps the full family name stm32l4xx.
-  string(TOLOWER "${GCB_PROCESSOR}" _processor)
-  string(REGEX REPLACE "xx$" "" _processor_xml "${_processor}")
 
-  set(_template_xml "${CHIBIOS_DIR}/tools/ftl/xml/${_processor_xml}board.xml")
-  set(_template_dir "${CHIBIOS_DIR}/tools/ftl/processors/boards/${_processor}/templates")
+
+  board_template_paths(_template_dir _template_xml
+                       CHIBIOS_DIR "${CHIBIOS_DIR}"
+                       PROCESSOR "${GCB_PROCESSOR}")
   set(_customizations "${CMAKE_CURRENT_SOURCE_DIR}/${GCB_CUSTOMIZATIONS}")
   set(_generated_cfg_dir "${CMAKE_CURRENT_BINARY_DIR}/cfg")
   set(_generated_board_chcfg "${_generated_cfg_dir}/board.chcfg")
@@ -117,17 +119,14 @@ function(generate_configured_board_files name)
 
   # What the output depends on.  The ChibiOS templates are inputs as much as the
   # customizations are, so a submodule bump correctly makes every board stale.
-  set(_chibios_lib_dir "${CHIBIOS_DIR}/tools/ftl/libs")
-  file(GLOB _chibios_libs "${_chibios_lib_dir}/*")
-  set(_manifest_inputs
-      "${_customizations}"
-      "${BOARD_TOOLS_DIR}/generate_board_chcfg.py"
-      "${BOARD_TOOLS_DIR}/board.fmpp.in"
-      "${_template_xml}"
-      "${_template_dir}/board.c.ftl"
-      "${_template_dir}/board.h.ftl"
-      "${_template_dir}/board.mk.ftl")
-  list(APPEND _manifest_inputs ${_chibios_libs})
+  # Shared with CheckGeneratedSourcesFresh.cmake so the build and the check
+  # cannot disagree about what a board input is.
+  board_manifest_inputs(_manifest_inputs
+                        SOURCE_DIR "${CMAKE_SOURCE_DIR}"
+                        BOARD_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+                        CHIBIOS_DIR "${CHIBIOS_DIR}"
+                        PROCESSOR "${GCB_PROCESSOR}"
+                        CUSTOMIZATIONS "${GCB_CUSTOMIZATIONS}")
 
   # fmpp's own version is deliberately not in this manifest.  It has to compare
   # equal across machines, and a tool version that is reported on one machine
