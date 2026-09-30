@@ -1,0 +1,189 @@
+name: Generated sources reproduce
+
+# Regenerates the committed generated sources and fails if anything changes.
+#
+# This is a different question from the one embedded-reproducibility.yml asks,
+# and the difference is the point. That check compares the recorded input
+# hashes against the tree: it detects an input that changed without its output
+# being regenerated. It cannot detect a GENERATOR that produces different
+# output from unchanged inputs, because it never runs one -- deliberately, so
+# that a check proving the generators unnecessary does not itself need them.
+#
+# That leaves a gap this job fills. If a renderer produced different files on
+# some machine, the output would be committed alongside a perfectly correct
+# inputs.sha256 -- the inputs really did not change, only the renderer did --
+# and every later check would pass. AUTO then seals it: no other machine
+# regenerates, because the recorded inputs still match, so the competing output
+# that would expose the disagreement is never produced.
+#
+# Running the generators on a second machine is what breaks that. It is also
+# the standing answer to a question the design document leaves open: whether
+# the committed board files depend on the platform that rendered them. nanopb's
+# output was shown not to; fmpp's has never been checked across machines, and
+# this runner is a different machine from every developer's.
+#
+# Deliberately not part of every pull request. It needs the ARM toolchain, a
+# JRE, fmpp and the nanopb distribution -- everything an ordinary build does
+# not -- so it runs on a schedule and on demand instead.
+
+on:
+  schedule:
+    # Weekly, Monday 06:17 UTC. Off the hour because everything runs on the
+    # hour and the queue shows it.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: generated-sources-reproduce-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same toolchain as release-firmware.yml. Configure requires
+  # arm-none-eabi-gcc even though this job compiles nothing: the embedded
+  # CMakeLists finds it before the board and proto-c subdirectories are added.
+  ARM_TOOLCHAIN_URL: "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
+  ARM_TOOLCHAIN_SHA256: "62a63b981fe391a9cbad7ef51b17e49aeaa3e7b0d029b36ca1e9c3b2a9b78823"
+
+  # The nanopb distribution supplies both the generator and the protoc that
+  # renders config-gen's descriptor set. It must be the version the vendored
+  # runtime is pinned to, or configure rejects it.
+  #
+  # NANOPB_SHA256 is empty until someone fills it in. The job refuses to run
+  # while it is, rather than install an unverified generator -- the same rule
+  # release-firmware.yml applies to the toolchain, for the same reason. The
+  # download step prints the hash it computed, so filling this in is a matter
+  # of running the job once and copying what it printed.
+  #
+  # Take the hash from the x86_64 LINUX archive. Arm's toolchain pin was
+  # briefly wrong in exactly this way, because the checksum copied came from
+  # the macOS build of the same release.
+  NANOPB_URL: "https://jpa.kapsi.fi/nanopb/download/nanopb-0.4.9.1-linux-x86.tar.gz"
+  NANOPB_SHA256: ""
+
+  # fmpp renders the ChibiOS board templates. 0.9.16 is the last release
+  # (September 2018) and FMPP_VERSION pins it, so configure will reject
+  # anything else.
+  FMPP_URL: "https://downloads.sourceforge.net/project/fmpp/fmpp/0.9.16/fmpp_0.9.16.tar.gz"
+  FMPP_SHA256: ""
+
+jobs:
+  regenerate:
+    name: Regenerating changes nothing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+        with:
+          # ChibiOS supplies the board templates, which are inputs to the
+          # rendering this job exercises.
+          submodules: true
+          fetch-depth: 0
+
+      - name: Require pinned checksums
+        run: |
+          missing=""
+          [ -z "$NANOPB_SHA256" ] && missing="$missing NANOPB_SHA256"
+          [ -z "$FMPP_SHA256" ] && missing="$missing FMPP_SHA256"
+          if [ -n "$missing" ]; then
+            echo "Empty in .github/workflows/generated-sources-reproduce.yml:$missing"
+            echo "Run this job once, take the computed hashes it prints, and set them."
+            echo "Refusing to install unverified generators."
+            exit 1
+          fi
+
+      - name: Install the pinned ARM toolchain
+        run: |
+          set -euo pipefail
+          curl -fsSL "$ARM_TOOLCHAIN_URL" -o arm-toolchain.tar.xz
+          echo "$ARM_TOOLCHAIN_SHA256  arm-toolchain.tar.xz" | sha256sum --check --strict
+          sudo mkdir -p /opt/arm-toolchain
+          sudo tar -xJf arm-toolchain.tar.xz -C /opt/arm-toolchain --strip-components=1
+          echo "/opt/arm-toolchain/bin" >> "$GITHUB_PATH"
+
+      - name: Install the nanopb generator
+        run: |
+          set -euo pipefail
+          curl -fsSL "$NANOPB_URL" -o nanopb.tar.gz
+          echo "computed: $(sha256sum nanopb.tar.gz | cut -d' ' -f1)"
+          echo "pinned:   $NANOPB_SHA256"
+          echo "$NANOPB_SHA256  nanopb.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/nanopb"
+          tar -xzf nanopb.tar.gz -C "$HOME/nanopb" --strip-components=1
+          echo "NANOPB_ROOT=$HOME/nanopb" >> "$GITHUB_ENV"
+
+      - name: Set up a Java runtime for fmpp
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install fmpp
+        run: |
+          set -euo pipefail
+          curl -fsSL "$FMPP_URL" -o fmpp.tar.gz
+          echo "computed: $(sha256sum fmpp.tar.gz | cut -d' ' -f1)"
+          echo "pinned:   $FMPP_SHA256"
+          echo "$FMPP_SHA256  fmpp.tar.gz" | sha256sum --check --strict
+          mkdir -p "$HOME/fmpp"
+          tar -xzf fmpp.tar.gz -C "$HOME/fmpp" --strip-components=1
+          chmod +x "$HOME/fmpp/bin/fmpp"
+          echo "$HOME/fmpp/bin" >> "$GITHUB_PATH"
+
+      - name: Report the generators
+        run: |
+          arm-none-eabi-gcc -dumpversion
+          fmpp --version || true
+          "$NANOPB_ROOT"/generator-bin/nanopb_generator --version || true
+          "$NANOPB_ROOT"/generator-bin/protoc --version || true
+
+      - name: Configure for regeneration
+        run: |
+          cmake -S . -B build \
+            -DBUILD_HOST=OFF \
+            -DBUILD_HOST_DOCS=OFF \
+            -DBUILD_EMBEDDED=ON \
+            -DREGENERATE_SOURCES=ON
+
+      - name: Regenerate every committed generated source
+        run: |
+          cmake --build build --target \
+            bittag_proto_sources compasstag_proto_sources imutag_proto_sources \
+            prestag_proto_sources uiuctag_proto_sources
+          cmake --build build --target \
+            board-bittag-v6 board-compasstag board-imutag-nand-v2 \
+            board-prestag board-uiuctag
+
+      - name: The regenerated sources must match what is committed
+        run: |
+          set -euo pipefail
+          # inputs.sha256 is excluded on purpose: it records the tool versions
+          # this runner had, which are allowed to differ from the machine that
+          # last committed. What must not differ is the generated CODE.
+          if ! git diff --exit-code -- \
+               'embedded/proto-c/*/generated/*.pb.c' \
+               'embedded/proto-c/*/generated/*.pb.h' \
+               'embedded/proto-c/*/generated/default_config.c' \
+               'embedded/boards/*/generated/board.c' \
+               'embedded/boards/*/generated/board.h' \
+               'embedded/boards/*/generated/board.mk' \
+               'embedded/boards/*/generated/board_standby.h'; then
+            echo
+            echo "Regenerating on this runner produced different sources than the"
+            echo "ones committed, from inputs that did not change. That is a"
+            echo "generator disagreeing with the one that produced the committed"
+            echo "files -- the failure the recorded input hashes cannot see."
+            echo "The diff above is what differs."
+            exit 1
+          fi
+          echo "Regeneration reproduced every committed generated source."
+
+      - name: Report manifest drift, without failing on it
+        if: always()
+        run: |
+          # A changed inputs.sha256 with unchanged sources means only that this
+          # runner recorded different tool versions. Worth seeing, not a failure.
+          git diff --stat -- '*/generated/inputs.sha256' || true
