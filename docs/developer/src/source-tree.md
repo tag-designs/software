@@ -98,6 +98,7 @@ directory that owns the code; the developer portal stages those files under
 - [TagCore](reference/host/libraries/tagcore/README.md)
 - [TagCore Design Index](reference/host/libraries/tagcore/design/index.md)
 - [TagCore Python Interface Design](reference/host/libraries/tagcore/design/python-interface.md)
+- [TagCore SWD Capture and Recovery](reference/host/libraries/tagcore/design/swd-recovery.md)
 - [TagCore Offline Decoder Checks](reference/host/libraries/tagcore/test/README.md)
 - [SensorAnalysis](reference/host/libraries/sensoranalysis/README.md)
 - [SensorUI](reference/host/libraries/sensorui/README.md)

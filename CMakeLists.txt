@@ -169,6 +169,7 @@ set(
   "host/libraries/tagcore/README.md"
   "host/libraries/tagcore/design/index.md"
   "host/libraries/tagcore/design/python-interface.md"
+  "host/libraries/tagcore/design/swd-recovery.md"
   "host/libraries/tagcore/test/README.md"
   "host/libraries/sensoranalysis/README.md"
   "host/libraries/sensorui/README.md"

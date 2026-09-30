@@ -201,9 +201,21 @@ differently). A host tool that controls the exit sequence can test it.
 
 **`tag_capture_state.py` does not work on STM32L432.** Its SRAM step requests
 256 KB (the U375's size) and fails, and its backup-register step also fails.
+Both come from U375 constants in the script. For the backup registers it
+writes the U375's `RCC_APB1ENR1` at `0x40030C9C` (`RTCAPBEN` is bit 30 there);
+on the L432 that address maps to nothing, and the register is at `0x40021058`
+with `RTCAPBEN` at bit 10.
 The internal-flash regions capture correctly. Until it is fixed, read the
 backup registers by hand: under reset, enable `RCC_APB1ENR1_RTCAPBEN`, then
 read `0x40002850`, 128 bytes.
+
+**The loaders do not refresh the watchdog.** A tag whose option bytes select
+the hardware watchdog (`FLASH_OPTR.IWDG_SW` = 0) has it running from reset, and
+the debug freeze covers only a halted core. A long run of loader code -- a mass
+erase above all -- would then be cut off by a reset. The bench PresTag uses the
+software watchdog, so it is unaffected. The fix is a `IWDG_KR = 0xAAAA` write in
+the poll loops, which has no effect when the watchdog is not running; see
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md#mcu-reference).
 
 **`MassErase` is untested.** Whether `-e all` with a loader loaded also erases
 internal flash has not been established, and was not tried on a tag with
@@ -213,7 +225,8 @@ erase-before-write.
 **CubeProgrammer is a poor driver for this.** Its loader contract is
 undocumented, it rejects a malformed loader silently, its sector-number erase is
 ambiguous between internal and external memory, and it knows nothing of the
-capture-first and external-before-internal ordering. A host tool on `tagcore`
-is the planned replacement. The base firmware already implements the ST-LINK
+capture-first and external-before-internal ordering. A host library on
+`tagcore` is the planned replacement; see
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md). The base firmware already implements the ST-LINK
 core-register, run and debug-register commands the calling convention needs,
 and `LinkAdapt` already provides attach-under-reset and memory access.

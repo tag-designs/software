@@ -69,3 +69,4 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 5. Host Libraries
 
 *   [**TagCore Python Interface Design**](../host/libraries/tagcore/design/python-interface.md): Proposed Python API, protobuf/native boundary, shared download workflow, packaging, and test strategy.
+*   [**SWD Capture and Recovery Library**](../host/libraries/tagcore/design/swd-recovery.md): Proposed. Capturing a returned tag's registers, internal flash, SRAM and external flash over SWD without booting its firmware; one exclusive session per connection; identifying the tag from its own image; a service wrapper around the loaders; the layered, Python-usable API; and the implementation sequence.

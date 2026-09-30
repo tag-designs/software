@@ -9,8 +9,9 @@ would overwrite it. The case for this approach is in
 [Field Data Extraction](../../design/field-data-extraction.md).
 
 The images follow STM32CubeProgrammer's external-loader (`.stldr`) contract, so
-`STM32_Programmer_CLI -el` can drive them today. A host tool built on `tagcore`
-is planned to replace CubeProgrammer as the driver; it will use the same images.
+`STM32_Programmer_CLI -el` can drive them today. A host library and tools built
+on `tagcore` are planned to replace CubeProgrammer as the driver, using the same
+images; see [SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
 
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing

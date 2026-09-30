@@ -123,6 +123,7 @@ nav:
           - TagCore Design:
               - Overview: reference/host/libraries/tagcore/design/index.md
               - Python Interface: reference/host/libraries/tagcore/design/python-interface.md
+              - SWD Capture and Recovery: reference/host/libraries/tagcore/design/swd-recovery.md
               - Offline Decoder Checks: reference/host/libraries/tagcore/test/README.md
           - SensorAnalysis: reference/host/libraries/sensoranalysis/README.md
           - SensorUI: reference/host/libraries/sensorui/README.md
@@ -163,6 +164,7 @@ nav:
       - Libraries README: reference/host/libraries/README.md
       - TagCore README: reference/host/libraries/tagcore/README.md
       - TagCore Python Interface: reference/host/libraries/tagcore/design/python-interface.md
+      - TagCore SWD Capture and Recovery: reference/host/libraries/tagcore/design/swd-recovery.md
       - SensorAnalysis README: reference/host/libraries/sensoranalysis/README.md
       - SensorUI README: reference/host/libraries/sensorui/README.md
       - SensorViz README: reference/host/applications/sensorviz/README.md

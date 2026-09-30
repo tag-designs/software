@@ -283,7 +283,9 @@ truncated image hash serves the same purpose.
 
 The first loader exists. What remains is independent work.
 
-**A host tool to drive the loaders.** The base firmware already implements the
+**A host tool to drive the loaders**, designed in
+[SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md).
+The base firmware already implements the
 ST-LINK core-register, run and debug-register commands that the calling
 convention needs, and `tagcore`'s `LinkAdapt` already provides attach under
 reset and memory access. A host tool can enforce the capture-first and

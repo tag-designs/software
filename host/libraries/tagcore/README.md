@@ -23,6 +23,9 @@ Design documents:
 - [`design/python-interface.md`](design/python-interface.md): Proposed Python
   binding API, native/protobuf boundary, shared download service, packaging,
   and testing plan.
+- [`design/swd-recovery.md`](design/swd-recovery.md): Proposed SWD capture and
+  recovery library: whole-tag capture without booting the firmware, external
+  flash through the loaders, and the implementation sequence.
 
 This library should remain Qt-free. Qt applications can link it, but reusable
 Qt UI code belongs in `../sensorui` or `../../common`.
