@@ -2,6 +2,32 @@ sourceRoot: @BOARD_FMPP_SOURCE_ROOT@
 outputRoot: @BOARD_FMPP_OUTPUT_ROOT@
 dataRoot: @BOARD_FMPP_DATA_ROOT@
 
+# The rendering environment is pinned here rather than inherited.
+#
+# fmpp has not been released since 0.9.16 (2018-09-03), so there is effectively
+# one renderer in circulation and its version is not the hazard. The JVM under
+# it is not frozen, and FreeMarker formats numbers, decides character encodings
+# and picks a locale from whatever the machine supplies.
+#
+# That reaches the output: the ChibiOS board templates interpolate numbers in
+# 54 places via ?number and 156 more via ?index, ?size and ?counter, none of
+# them guarded with ?c, and no template sets #setting. A locale whose
+# conventions differ would render those differently, and board.c is C source --
+# a stray grouping separator is a compile error, not a cosmetic diff.
+#
+# Nothing here changes the output on a machine that was already using these
+# conventions; it stops a machine that is not from producing different files.
+# board.fmpp.in is itself a hashed input of every board manifest, so these
+# settings are covered by the existing freshness check with nothing added to it.
+
+# Integers, no grouping separator, '.' if a fraction ever appears.
+numberFormat: 0.############
+# Formatting and collation follow this, not the machine's locale.
+locale: en_US
+# Do not let the platform default decide how bytes are read or written.
+sourceEncoding: UTF-8
+outputEncoding: UTF-8
+
 data : {
   doc1:xml (
     board.chcfg

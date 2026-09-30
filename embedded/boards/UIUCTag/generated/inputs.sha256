@@ -14,5 +14,5 @@ c24529cffbc68ba1b1c40cf9872d20bf1df5ae7da3d68dd9f159faa3db39d26e  <chibios>/tool
 679abf0a62ddae3399ca39f3429af7bfd7f3a7db7d7ac7b0662fe7cc0abd71f6  <chibios>/tools/ftl/processors/boards/stm32l4xx/templates/board.mk.ftl
 5c07088c5f3d4bd59b988648b3ce5618426de33255eade4b83956d0bb639a6d6  <chibios>/tools/ftl/xml/stm32l4board.xml
 832106d21b99f6ba601416955421c5c1116b5be6c60f22f6d9391bd42df847c2  embedded/boards/UIUCTag/cfg/board-customizations.json
-3aa8fa2b8cbe5a4f36c0fd285fa066c80dd894e0dda5b4a4c7c8ccdf076043aa  embedded/boards/tools/board.fmpp.in
+f217ff19b2a98746d4638781f6da9030f0ed8aaa0d0b9cb2dbb3f8c9f7de6e4d  embedded/boards/tools/board.fmpp.in
 3f5ff6d034284e73065cec829d17168a192ca19469cd861102484007e08a1071  embedded/boards/tools/generate_board_chcfg.py
