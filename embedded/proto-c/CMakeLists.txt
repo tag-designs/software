@@ -156,14 +156,51 @@ if(NOT REGENERATE_SOURCES STREQUAL "OFF")
   # wire-format data, not generated code, so it carries no gencode version for
   # the runtime to reject; any protoc that emits one produces something any
   # modern protobuf can read.
-  set(CONFIG_GEN_PROTOC "" CACHE FILEPATH "protoc used to render the config-gen descriptor set")
+  # protoc is normally the one the nanopb distribution ships beside its
+  # generator, so that the descriptor set and the .pb.c files come from the
+  # same release.  That tie has to survive nanopb MOVING: a plain cache
+  # variable would be derived once and then keep naming a protoc from a
+  # distribution no longer in use, and the version check below would compare
+  # against a binary nothing runs.  So the nanopb generator it was derived from
+  # is remembered, and the search is redone when that changes.
+  #
+  # A protoc the user set explicitly is never overwritten: re-derivation
+  # happens only while the cached value is still the one this logic chose.
+  set(CONFIG_GEN_PROTOC "" CACHE FILEPATH
+      "protoc used to render the config-gen descriptor set")
+  # Initialised only when absent: `set(... CACHE INTERNAL ...)` implies FORCE,
+  # so writing these unconditionally would erase them on every configure --
+  # which is precisely the memory the re-derivation below depends on.
+  if(NOT DEFINED CONFIG_GEN_PROTOC_DERIVED_FROM)
+    set(CONFIG_GEN_PROTOC_DERIVED_FROM "" CACHE INTERNAL
+        "nanopb generator CONFIG_GEN_PROTOC was derived from")
+  endif()
+  if(NOT DEFINED CONFIG_GEN_PROTOC_DERIVED)
+    set(CONFIG_GEN_PROTOC_DERIVED "" CACHE INTERNAL
+        "the protoc this logic last derived")
+  endif()
+
+  set(_config_gen_rederive FALSE)
   if(NOT CONFIG_GEN_PROTOC)
+    set(_config_gen_rederive TRUE)
+  elseif(CONFIG_GEN_PROTOC STREQUAL CONFIG_GEN_PROTOC_DERIVED)
+    # Ours, not the user's. Redo it if nanopb moved or the binary is gone.
+    if(NOT CONFIG_GEN_PROTOC_DERIVED_FROM STREQUAL "${NANOPB_GENERATOR_EXECUTABLE}"
+       OR NOT EXISTS "${CONFIG_GEN_PROTOC}")
+      set(_config_gen_rederive TRUE)
+    endif()
+  endif()
+
+  if(_config_gen_rederive)
     set(_config_gen_protoc_hints "")
     if(NANOPB_GENERATOR_EXECUTABLE)
       get_filename_component(_config_gen_nanopb_bin
                              "${NANOPB_GENERATOR_EXECUTABLE}" DIRECTORY)
       list(APPEND _config_gen_protoc_hints "${_config_gen_nanopb_bin}")
     endif()
+    # find_program caches into its own result variable, so a stale one would
+    # defeat the re-derivation above.
+    unset(_config_gen_protoc_found CACHE)
     find_program(_config_gen_protoc_found
                  NAMES protoc
                  HINTS ${_config_gen_protoc_hints}
@@ -172,6 +209,7 @@ if(NOT REGENERATE_SOURCES STREQUAL "OFF")
       set(_config_gen_protoc_found "${Protobuf_PROTOC_EXECUTABLE}")
     endif()
     if(NOT _config_gen_protoc_found)
+      unset(_config_gen_protoc_found CACHE)
       find_program(_config_gen_protoc_found NAMES protoc)
     endif()
     if(NOT _config_gen_protoc_found)
@@ -184,6 +222,10 @@ if(NOT REGENERATE_SOURCES STREQUAL "OFF")
     endif()
     set(CONFIG_GEN_PROTOC "${_config_gen_protoc_found}" CACHE FILEPATH
         "protoc used to render the config-gen descriptor set" FORCE)
+    set(CONFIG_GEN_PROTOC_DERIVED "${_config_gen_protoc_found}" CACHE INTERNAL
+        "the protoc this logic last derived")
+    set(CONFIG_GEN_PROTOC_DERIVED_FROM "${NANOPB_GENERATOR_EXECUTABLE}"
+        CACHE INTERNAL "nanopb generator CONFIG_GEN_PROTOC was derived from")
   endif()
   set(CONFIG_GEN_PROTOC_COMMAND "${CONFIG_GEN_PROTOC}")
   set(CONFIG_GEN_PROTOC_LABEL "${CONFIG_GEN_PROTOC}")
@@ -306,6 +348,8 @@ endif()
 # Captured at file scope: inside a function CMAKE_CURRENT_LIST_DIR is the
 # CALLER's directory, not this file's, and add_nanopb_target is called from each
 # variant's subdirectory.
+include("${CMAKE_SOURCE_DIR}/cmake/GeneratedSourceInputs.cmake")
+
 set(NANOPB_PROTO_C_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(NANOPB_DEFAULT_OPTIONS_DIR "${NANOPB_PROTO_C_DIR}/default-options")
 
@@ -346,11 +390,13 @@ function(add_nanopb_target name)
   set(nanopb_sources)
   set(nanopb_headers)
   set(nanopb_options)
-  set(manifest_inputs
-      "${default_config_json}"
-      "${NANOPB_PROTO_C_DIR}/config-gen.py"
-      "${CMAKE_SOURCE_DIR}/cmake/CombineFiles.cmake")
-  list(APPEND manifest_inputs ${TAG_PROTO_SOURCES})
+
+  # The manifest input list is shared with CheckGeneratedSourcesFresh.cmake so
+  # that the build and the check cannot disagree about it. They once did.
+  proto_c_manifest_inputs(manifest_inputs
+                          SOURCE_DIR "${CMAKE_SOURCE_DIR}"
+                          VARIANT_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
+                          PROTO_SOURCES ${TAG_PROTO_SOURCES})
 
   foreach(P ${TAG_PROTO_SOURCES})
     cmake_path(GET P STEM stem)
@@ -366,7 +412,6 @@ function(add_nanopb_target name)
     if(NOT EXISTS "${override_options}")
       message(FATAL_ERROR "Missing override nanopb options file: ${override_options}")
     endif()
-    list(APPEND manifest_inputs "${default_options}" "${override_options}")
   endforeach()
 
   # Decide whether to regenerate.  The manifest records the hash of every input

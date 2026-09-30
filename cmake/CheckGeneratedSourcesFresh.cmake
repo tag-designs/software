@@ -18,6 +18,7 @@ if(NOT DEFINED SOURCE_DIR)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/InputManifest.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/GeneratedSourceInputs.cmake")
 
 # The pin is the vendored directory's name, derived exactly as the build derives
 # it, so a runtime bump shows up here as a stale manifest rather than silently.
@@ -69,17 +70,12 @@ foreach(_generated_dir IN LISTS _generated_dirs)
   get_filename_component(_variant_dir "${_generated_dir}" DIRECTORY)
   get_filename_component(_variant "${_variant_dir}" NAME)
 
-  set(_inputs
-      "${_variant_dir}/default-config.json"
-      "${SOURCE_DIR}/embedded/proto-c/config-gen.py"
-      "${SOURCE_DIR}/cmake/CombineFiles.cmake")
-  list(APPEND _inputs ${_proto_sources})
-  foreach(_proto IN LISTS _proto_sources)
-    get_filename_component(_stem "${_proto}" NAME_WE)
-    list(APPEND _inputs
-         "${SOURCE_DIR}/embedded/proto-c/default-options/${_stem}.options"
-         "${_variant_dir}/${_stem}.override.options")
-  endforeach()
+  # Shared with add_nanopb_target, which writes these manifests, so the two
+  # cannot disagree about what an input is.
+  proto_c_manifest_inputs(_inputs
+                          SOURCE_DIR "${SOURCE_DIR}"
+                          VARIANT_DIR "${_variant_dir}"
+                          PROTO_SOURCES ${_proto_sources})
 
   # Check the inputs exist before hashing them. A .proto added to the source
   # list without a matching per-variant override lands here, and saying which
