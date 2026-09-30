@@ -302,12 +302,124 @@ function(add_embedded_target name proto_target)
 
 endfunction()
 
-# Make the programmer bases and tags
+#[[
+  @brief   Build an STM32CubeProgrammer external loader (.stldr) with make.
+
+  @details A loader is a small image that the programmer downloads into the
+           tag's SRAM and calls to read -- or, in a read-write build, erase and
+           program -- the
+           external flash without touching internal flash. The source layout
+           mirrors a tag target; see embedded/loaders/README.md.
+
+           Runs `make -C <DIRECTORY>` from embedded/loaders, as
+           add_embedded_target does for tags, and writes the same build
+           manifest beside the image. The .stldr is the linked ELF under the
+           name the programmer expects, so the manifest's ELF hash identifies
+           it.
+
+           Loaders are kept out of the distributed-tags list: they have no
+           proto variant and name their board in a different way, and the
+           reproducibility checks read that list as tags.
+
+  @param   name         Target and image name, e.g. AT25XE_PresTagv3.
+  @param   DIRECTORY    Source directory under embedded/loaders; defaults to
+                        name. Lets one source directory produce several images.
+  @param   ALLOW_WRITE  Build with LOADER_ALLOW_WRITE=1: erase and program.
+                        Without it the image contains no erase or program
+                        code and refuses both.
+  @param   DISTRIBUTE   Install the image with the host package, under
+                        loaders/<name>, and build it with distributed_firmware.
+
+  Example:
+    add_embedded_loader(AT25XE_PresTagv3 DISTRIBUTE)
+    add_embedded_loader(AT25XE_PresTagv3-RW
+      DIRECTORY AT25XE_PresTagv3 ALLOW_WRITE DISTRIBUTE)
+#]]
+function(add_embedded_loader name)
+  cmake_parse_arguments(ARG "ALLOW_WRITE;DISTRIBUTE" "DIRECTORY" "" ${ARGN})
+  if(NOT ARG_DIRECTORY)
+    set(ARG_DIRECTORY ${name})
+  endif()
+  set(allow_write 0)
+  if(ARG_ALLOW_WRITE)
+    set(allow_write 1)
+  endif()
+
+  if(ARG_DISTRIBUTE)
+    set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_LOADERS ${name})
+  endif()
+
+  set(loader_source_dir ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  set(loader_binary_dir ${CMAKE_CURRENT_BINARY_DIR}/${name})
+  set(builddir ${loader_binary_dir}/build)
+  set(depdir ${loader_binary_dir}/dep)
+
+  set(loader_artifacts
+      ${builddir}/${name}.stldr
+      ${builddir}/${name}.elf
+      ${builddir}/${name}.hex
+      ${builddir}/${name}.bin
+      ${builddir}/${name}.list
+      ${builddir}/${name}-build-manifest.json)
+
+  get_property(_manifest_toolchain_version GLOBAL
+               PROPERTY ULTRALIGHT_ARM_TOOLCHAIN_VERSION)
+  set(_manifest_reproducible "false")
+  if(REPRODUCIBLE_BUILD)
+    set(_manifest_reproducible "true")
+  endif()
+
+  add_custom_target(${name}
+    BYPRODUCTS ${loader_artifacts}
+    COMMAND ${MAKE_EXECUTABLE} -C ${ARG_DIRECTORY}
+            BUILDDIR=${builddir}
+            DEPDIR=${depdir}
+            CHIBIOS=${CHIBIOS_DIR}
+            PROJECT=${name}
+            LOADER_ALLOW_WRITE=${allow_write}
+    COMMAND ${CMAKE_COMMAND}
+            "-DNAME=${name}"
+            "-DOUTPUT=${builddir}/${name}-build-manifest.json"
+            "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+            "-DARTIFACT_DIR=${builddir}"
+            "-DARM_TOOLCHAIN=${GCCARM}"
+            "-DARM_TOOLCHAIN_VERSION=${_manifest_toolchain_version}"
+            "-DREPRODUCIBLE_BUILD=${_manifest_reproducible}"
+            "-DREGENERATE_SOURCES=${REGENERATE_SOURCES}"
+            "-DSOURCES_COMMITTED=true"
+            -P "${CMAKE_SOURCE_DIR}/cmake/WriteBuildManifest.cmake"
+    WORKING_DIRECTORY ${loader_source_dir}
+    COMMENT "Building loader ${name}")
+
+  # version.h goes in the loader's binary directory, which make.mk puts on the
+  # include path as $(BUILDDIR)/..
+
+  file(MAKE_DIRECTORY ${loader_binary_dir})
+  add_custom_target(${name}_version_h
+                    ${CMAKE_COMMAND}
+                    -P ${CMAKE_SOURCE_DIR}/cmake/version.cmake
+                    WORKING_DIRECTORY ${loader_binary_dir}
+                    BYPRODUCTS ${loader_binary_dir}/version.h)
+  add_dependencies(${name} ${name}_version_h)
+
+  set_property(TARGET ${name} PROPERTY ADDITIONAL_CLEAN_FILES
+                                       ${depdir};${builddir})
+
+  if(ARG_DISTRIBUTE)
+    install(
+      FILES ${loader_artifacts}
+      DESTINATION "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}/loaders/${name}"
+      OPTIONAL)
+  endif()
+endfunction()
+
+# Make the programmer bases, tags and external loaders
 
 add_subdirectory(boards)
 add_subdirectory(bases)
 add_subdirectory(proto-c)
 add_subdirectory(tags)
+add_subdirectory(loaders)
 
 #
 # Actively deployed tags
@@ -341,7 +453,12 @@ else()
   # this there is no single command that produces the set, and `make install`
   # on a fresh tree silently installs nothing.
 
-  add_custom_target(distributed_firmware DEPENDS ${_distributed_tags})
+  # External loaders ship beside the firmware they read, built by the same
+  # rule, so a returned tag's loader comes from the same archive as its image.
+
+  get_property(_distributed_loaders GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_LOADERS)
+  add_custom_target(distributed_firmware
+                    DEPENDS ${_distributed_tags} ${_distributed_loaders})
 
   # Regenerating the committed sources covers the same set.
 

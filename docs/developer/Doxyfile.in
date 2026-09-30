@@ -14,6 +14,7 @@ INPUT                  = @PROJECT_SOURCE_DIR@/include \
                          @PROJECT_SOURCE_DIR@/host/libraries/sensoranalysis \
                          @PROJECT_SOURCE_DIR@/host/libraries/sensorui \
                          @PROJECT_SOURCE_DIR@/embedded/boards \
+                         @PROJECT_SOURCE_DIR@/embedded/loaders \
                          @PROJECT_SOURCE_DIR@/embedded/tags/common \
                          @PROJECT_SOURCE_DIR@/embedded/tags/families
 
