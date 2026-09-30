@@ -304,6 +304,12 @@ The example below uses `BOARD_TOOLS_DIR` for the directory containing
 `generate_board_chcfg.py` and `board.fmpp.in`. It assumes the helper is called
 from a board source directory containing `cfg/board-customizations.json`.
 
+It is deliberately self-contained, and deliberately simpler than what this
+repository does: it derives the template paths inline and has no notion of
+committing generated files, recording their inputs, or checking them for
+staleness. Copy it as a starting point, not as a description of the local
+integration -- [This Repository](#this-repository) covers that.
+
 ```cmake
 set(BOARD_TOOLS_DIR
     ""
@@ -479,8 +485,25 @@ be deleted or replaced when copying the tools into another project.
 
 In this repository, CMake supplies the script's `--template` path from
 `CHIBIOS_DIR` inside `generate_configured_board_files()` in
-`embedded/boards/CMakeLists.txt`. `embedded/CMakeLists.txt` resolves
-`CHIBIOS_DIR` in this order:
+`embedded/boards/CMakeLists.txt`.
+
+Two things the example above does inline are shared here instead, because the
+freshness check needs them as well and the two disagreeing is a real failure
+mode rather than a hypothetical one. `cmake/GeneratedSourceInputs.cmake`
+supplies `board_template_paths()`, which turns a `PROCESSOR` into the template
+directory and XML path, and `board_manifest_inputs()`, which lists every input
+a board's `inputs.sha256` records. `generate_configured_board_files()` and
+`cmake/CheckGeneratedSourcesFresh.cmake` both call them, so a board cannot be
+rendered from one template directory and checked against another.
+
+The `fmpp` environment is pinned rather than inherited: `board.fmpp.in` sets
+the locale, number format and encodings, because FreeMarker otherwise takes
+them from the machine and the templates interpolate numbers in many places.
+`FMPP_VERSION` pins the renderer itself and configure checks it. `board.fmpp.in`
+is one of the hashed inputs, so changing those settings correctly makes every
+board stale.
+
+`embedded/CMakeLists.txt` resolves `CHIBIOS_DIR` in this order:
 
 1. the repository `ChibiOS/` submodule, when `ChibiOS/os` exists;
 2. the `CHIBIOS_DIR` environment variable, when it points at a ChibiOS source
@@ -509,9 +532,13 @@ cmake -S . -B build-embedded \
 
 CMake prints the resolved path as `CHIBIOS_DIR is ...` during configuration.
 The embedded configure step also requires `arm-none-eabi-gcc`, `make`, Python,
-and `fmpp` on `PATH`. Because the top-level embedded configuration also adds
-`embedded/proto-c`, configure can require Protobuf and nanopb even when the
-target you intend to build is only a board-generation target.
+and `fmpp` on `PATH`. Because the top-level embedded configuration also adds `embedded/proto-c`,
+configure can require more than a board-generation target needs. It no longer
+requires the C++ Protobuf library -- `config-gen` is a Python script now, so
+that is looked for only when `BUILD_HOST` is on -- but unless
+`REGENERATE_SOURCES=OFF`, configure will build a virtual environment from
+`embedded/proto-c/requirements.txt` and look for a `protoc`, which normally
+comes from the nanopb distribution.
 
 The configure command above assumes only CMake cache variables. It does not
 require users to predefine Make variables such as `CHIBIOS`, `BOARDDIR`,
