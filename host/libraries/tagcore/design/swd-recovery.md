@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed. Nothing here is implemented. It defines a Qt-free, Python-usable
+Partly implemented. Steps 0-2 of the
+[implementation sequence](#implementation-sequence) are built and were run on a
+PresTag (STM32L432) on 2026-09-30: `tagcore/recovery/` and the `tag-capture`
+tool capture registers, option bytes, OTP and internal flash, halted before the
+firmware runs. Everything else here is still a proposal.
+
+It defines a Qt-free, Python-usable
 library in `tagcore` for capturing a tag's complete state over SWD and for
 reading, and in rescue erasing, its external flash through an SRAM-resident
 loader. It also sets out the order in which to build it. It replaces
@@ -96,7 +102,18 @@ in one of two declared ways:
 The default is `hardware_reset`. This is also the experiment for the open
 `resetCause` issue: CubeProgrammer loader sessions leave `resetCause` =
 `resetStandby` where a plain connection leaves `resetShutdown`, and a session
-whose exit is known lets that be tested directly.
+whose exit is known lets that be tested directly. Measured on 2026-09-30: after
+a session ending in `hardware_reset`, the next capture read `resetCause` =
+`resetShutdown`, as after a plain connection. So an SWD session as such does not
+cause the change; what remains is something particular to CubeProgrammer's
+loader sessions.
+
+**CubeProgrammer's connect-under-reset does not stop the firmware first.** Two
+consecutive `STM32_Programmer_CLI -c port=SWD mode=UR` reads of SRAM1 on the
+same PresTag differed in about 14,900 of 49,152 bytes, so the firmware runs
+between reset release and CubeProgrammer's halt. Anything captured through
+CubeProgrammer -- including by `tag_capture_state.py` -- describes a tag that
+has started to boot. The attach above is the first that does not.
 
 ## What a capture contains
 
@@ -106,7 +123,7 @@ In the order read, least disturbing first:
 | --- | --- | --- | --- |
 | 1 | Core and system registers | memory reads | `FLASH_OPTR` (option bytes), the flash ECC registers (**before** step 2, which can overwrite them), `RCC_CSR` (reset flags, which accumulate until firmware clears them), `RCC_BDCR`, PWR status, RTC time/date/status, all backup registers after enabling `RTCAPBEN`, the unique ID, the flash-size register, OTP, and the core registers of the halted core. |
 | 2 | Internal flash | memory reads | The whole array, page by page: image, persistent region, configuration and NAND-map pages. No code runs. The ECC registers are read again afterwards. |
-| 3 | SRAM | memory reads | All of SRAM1 and SRAM2. Optional but default on. Must precede step 4: the loader overwrites the start of SRAM1. Recorded as untrustworthy when the SRAM erase-on-reset option is set, because the attach itself erased it. The U375 scratchpad lives in the last 8 KB of SRAM2. |
+| 3 | SRAM | memory reads | **Opt-in.** Tags spend their idle time in Shutdown or Standby, which do not keep SRAM, so a returned tag's SRAM rarely holds anything; the state that matters is in the backup registers of step 1. Useful mainly for a tag that stopped while running, and for the U375 scratchpad in the last 8 KB of SRAM2. Must precede step 4: the loader overwrites the start of SRAM1. Recorded as untrustworthy when the SRAM erase-on-reset option is set, because the attach itself erased it. |
 | 4 | External flash | loader | Raw, whole part. For NAND, raw pages including spare area. |
 
 Steps 1-3 need nothing but SWD reads and work on any tag, including one whose
@@ -269,7 +286,6 @@ typedef struct {
   uint32_t cmd;           /* PROBE, READ, ERASE_SECTOR, PROGRAM, EXIT */
   uint32_t offset;        /* flash offset */
   uint32_t length;        /* bytes */
-  uint32_t buffer;        /* which of the two transfer buffers */
   int32_t  status;        /* 0 ok, negative error code */
   uint32_t detail[8];     /* JEDEC ID, SR1 as found, failing offset, ... */
   uint32_t progress;      /* bytes done in the current command */
@@ -277,9 +293,11 @@ typedef struct {
 ```
 
 - **Location by symbol, not by address.** The host reads the addresses of the
-  service block and the two transfer buffers from the loader ELF's symbol table,
+  service block and the transfer buffer from the loader ELF's symbol table,
   the same way it finds `Serve`.
-- **Double buffering.** The host reads buffer A while the loader fills buffer B.
+- **One buffer.** SWD reads run at about 101 KB/s through a base (step 0), a
+  tenth of what the flash's 8 MHz SPI delivers, so the loader fills a buffer
+  far faster than the host can fetch it. Double buffering would buy nothing.
 - **Detailed results.** `detail[]` carries what the ST convention throws away:
   the part's identity, the status register as found (the protect bits are
   evidence), and which sector failed and why.
@@ -354,13 +372,18 @@ with tagcore.swd.open() as s:                   # attaches halted, before boot
 Each step ends with a check on a bench tag, and each builds only on steps
 already checked. Steps 1-3 need no loader changes.
 
-**0. Baseline throughput.** Time raw 32-bit memory reads through the base
-from `LinkAdapt`, at the transfer size the base allows. This bounds everything
-later: if the base reads at 60 KB/s, `Serve()` will not beat CubeProgrammer's
-70 s per 4 MB, and the decision about double buffering changes.
-*Check:* a number, recorded in this document.
+**0. Baseline throughput.** *Done.* 32-bit memory reads through a base run at
+101-104 KB/s at 2-4 KB per transfer (internal flash 256 KB in 2.59 s, SRAM1
+48 KB in 0.47 s). A 4 MB external-flash dump is therefore bounded by SWD at
+about 40 s, against CubeProgrammer's 70 s, and double buffering is dropped.
 
-**1. Core control and attach-without-boot.** Add halt, run, wait-for-halt,
+**1. Core control and attach-without-boot.** *Built, except the idle-current
+check.* Halting uses `DHCSR` writes and core registers use `DCRSR`/`DCRDR`
+through `LinkAdapt`'s existing debug-register access, so the base's
+`FORCEDEBUG` handler is not needed. On the bench the core halted with PC equal
+to the reset vector on every attach. The idle-current measurement after detach
+is still to do.
+Original plan: add halt, run, wait-for-halt,
 core-register access and vector catch to `LinkAdapt`. Implement `SwdSession`
 attach and detach as above. Check first whether the base's `FORCEDEBUG` handler
 halts reliably; it carries a "this isn't working yet" comment in
@@ -373,7 +396,11 @@ through a base on 2026-09-30.
   last point is a measurement, per AGENTS.md: a leftover vector catch reads as a
   tag that never sleeps.
 
-**2. Registers, internal flash and SRAM.** `SwdSession` region reads and the MCU
+**2. Registers, internal flash and SRAM.** *Built and checked on STM32L432.*
+Internal flash, OTP and option bytes were byte-identical across two captures
+and a CubeProgrammer read. SRAM could not be cross-checked, because
+CubeProgrammer lets the firmware run first. The U375 table is untested.
+Original plan: `SwdSession` region reads and the MCU
 tables of [MCU reference](#mcu-reference), with the capture directory and
 manifest for steps 1-3 of a capture.
 *Check:*

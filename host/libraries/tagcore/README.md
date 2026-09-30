@@ -18,6 +18,11 @@ individual tag log protobufs into rows. See
 [`sqlitelog/README.md`](sqlitelog/README.md) for the IMUTag downloader schema
 and timing-field meanings.
 
+`recovery/` holds the SWD capture and recovery code, separate from the monitor
+path: `SwdSession` owns a base for an exclusive session that halts the tag at
+its reset vector before the firmware runs, `swdmcu` holds the per-MCU address
+tables, and `statecapture` is the capture procedure behind `tag-capture`.
+
 Design documents:
 
 - [`design/python-interface.md`](design/python-interface.md): Proposed Python

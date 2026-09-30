@@ -76,6 +76,26 @@ qtmonitor-fixture-capture \
 `--state` names the captured status slot in the fixture; it does not drive the
 tag into that state. Put the tag in the desired state before running the tool.
 
+## tag-capture
+
+Captures a tag's state over SWD **without booting its firmware**: the backup
+registers (where the tag keeps its `pState`), the reset flags, option bytes,
+flash ECC registers, RTC, unique ID, OTP and the whole internal flash. Run it
+first on a returned tag, before `tag-info` or any other tool here. Those
+attach a monitor, which lets the firmware boot, and the boot clears the reset
+flags and can rewrite `pState` and the marker log.
+
+```sh
+build-host/bin/tag-capture --reason "returned from site 3, would not start"
+```
+
+It writes `captures/capture-YYYYmmdd-HHMMSS/` with one `.bin` per region and a
+`manifest.json` holding the decoded registers and each file's SHA-256. The tag
+is then reset and boots normally. `--sram` also captures SRAM, which is rarely
+useful because Shutdown and Standby do not keep it. `--leave-halted` leaves the
+core stopped. External flash is not captured yet. See
+[SWD Capture and Recovery Library](../libraries/tagcore/design/swd-recovery.md).
+
 ## tag-cal-write
 
 Several CompassTag-family state handlers refuse `Start` with "Device must be

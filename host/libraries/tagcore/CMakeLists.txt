@@ -77,6 +77,10 @@ target_sources(tagcore
          linkadapt.cc
          log.c
          linkadapt.h
+         recovery/sha256.cc
+         recovery/swdmcu.cc
+         recovery/swdsession.cc
+         recovery/statecapture.cc
     PUBLIC
          log.h
          tagmonitor.h
@@ -85,6 +89,10 @@ target_sources(tagcore
          txtlogs.h
          sqlitelog.h
          linkadapt.h
+         recovery/sha256.h
+         recovery/swdmcu.h
+         recovery/swdsession.h
+         recovery/statecapture.h
    )
 
 target_include_directories(tagcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

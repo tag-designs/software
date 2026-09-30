@@ -59,3 +59,6 @@ hardware/tag-breakout-template/jlcpcb/
 # Python bytecode caches from embedded/tools scripts
 __pycache__/
 *.pyc
+
+# tag-capture output (host/commandline/tag-capture.cc); captures are evidence, not source
+/captures/
