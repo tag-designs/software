@@ -487,7 +487,7 @@ build directory and is not in the flashed bytes. The distinction is the same
 one this document draws throughout: the manifest describes a build, the image
 describes a commit.
 
-### The freshness check cannot detect a divergent generator
+### The freshness check cannot detect a divergent generator -- a second job does
 
 `CheckGeneratedSourcesFresh.cmake` compares the recorded input hashes against
 the tree. It does not re-render the output and diff it. The difference matters
@@ -500,16 +500,20 @@ would pass. `AUTO` then seals it: no other machine regenerates, because the
 recorded inputs still match, so the competing output that would expose the
 disagreement is never produced. The failure is self-certifying and stable.
 
-Pinning the renderer prevents this; it does not detect it. A CI job that
-regenerated in a pinned environment and diffed the result would detect it, and
-would be strictly stronger. It would also need the generators in CI, which is
-exactly what `embedded-reproducibility.yml` was built not to need, so it
-belongs in a separate job with a clearly different purpose rather than as a
-replacement for that one.
+Pinning the renderer prevents this; it does not detect it. Detection is what
+`generated-sources-reproduce.yml` adds: it installs the pinned generators,
+regenerates every committed source, and fails if the generated code differs
+from what is in the tree. `inputs.sha256` is excluded from that comparison,
+since it records the tool versions the runner had and those may legitimately
+differ; the generated code may not.
 
-Whether the committed board files are currently divergent is not known. It is
-cheap to find out: regenerate the boards on more than one machine under
-`REGENERATE_SOURCES=ON` and see whether `git diff` comes back empty.
+It is a separate workflow rather than an extension of
+`embedded-reproducibility.yml`, and deliberately so. That check was built to
+need nothing but CMake and a checkout, on the reasoning that a check proving
+the generators unnecessary must not itself require them. Detection needs the
+opposite -- every generator installed -- so the two cannot be the same job
+without destroying the property the first one demonstrates. It runs weekly and
+on demand rather than per pull request, for the same reason.
 
 ### The old board generation path is untouched
 
@@ -528,11 +532,30 @@ then be misleading, because the remedy it suggests -- create a `generated/`
 directory and regenerate -- does nothing on the old path. The right response is
 to port the board to `generate_configured_board_files` first.
 
-### `fmpp` is not pinned
+### `fmpp` is pinned, in two parts
 
-The board manifests hash the ChibiOS templates but not the renderer. A different
-`fmpp` could in principle render the same templates differently and the manifests
-would not notice. Pinning it was rejected because a version string reported on
+The board manifests hash the ChibiOS templates but not the renderer, so a
+different `fmpp` could in principle render them differently and the manifests
+would not notice. Two changes closed that without touching the manifests.
+
+**`FMPP_VERSION` pins 0.9.16** and configure compares what `fmpp` reports
+against it, routing a disagreement through `reproducibility_problem` like the
+ARM toolchain check. fmpp's last release was September 2018, so there is
+effectively one renderer in circulation and this is an assertion rather than a
+constraint. It is a check and not a manifest entry, which is what avoids the
+problem described next.
+
+**`board.fmpp.in` pins the rendering environment** -- locale, number format and
+both encodings -- which FreeMarker was otherwise taking from the machine. That
+mattered more than the version: the templates interpolate numbers in 54 places
+via `?number` and 156 more via `?index`, `?size` and `?counter`, none guarded
+with `?c`, and `board.c` is C source, so a locale that groups digits
+differently produces a file that does not compile. `board.fmpp.in` is itself a
+hashed input of every board manifest, so this pin is covered by the existing
+freshness check with nothing added to it.
+
+The original reasoning for leaving the version out of the manifests still
+stands and is why it stayed out: Pinning it was rejected because a version string reported on
 one machine and not another would cause false staleness across the group, which
 would be worse than the risk. The per-image build manifest does not record it
 either -- that would be a small, easy addition.
@@ -735,29 +758,50 @@ make Linux authoritative or to route protocol changes through a particular
 machine. This is what makes the CI freshness check meaningful -- had it not held,
 the check would have failed for everyone not building on the blessed platform.
 
+## Settled: the board files do not depend on the machine that rendered them
+
+This was the last open question about `fmpp`, and it now has a standing answer
+rather than a one-off measurement.
+
+`generated-sources-reproduce.yml` installs the pinned generators on a Linux
+runner, regenerates every committed source, and compares. It passes: all five
+proto variants and all five boards come back byte-identical to files rendered
+on macOS, with a different JVM underneath fmpp and a different platform under
+everything.
+
+nanopb's output had already been shown platform-independent -- the macOS
+release binary and the Linux wheel producing identical output across 24 files.
+fmpp's never had been, and it was the weaker case of the two, since a template
+renderer on a JVM has more ways to inherit machine state than a Python code
+generator does. It reproduces.
+
+The result is worth more as a job than as a measurement. A measurement says the
+files matched on the day someone checked; the job says they still match every
+week, and says so loudly on the day they stop.
+
 ## Open questions
 
 - **Move to nanopb 0.4.9.2?** 0.4.9.1 is pinned because it is what already
   generated the tree's output. The newer LTS bugfix release is a change worth
-  making deliberately and separately.
+  making deliberately and separately. Note that the pin now lives in three
+  places that must move together: the vendored runtime directory,
+  `requirements.txt`'s protobuf (which must match the protoc that distribution
+  ships), and `NANOPB_URL`/`NANOPB_SHA256` in
+  `generated-sources-reproduce.yml`.
 - **Where do bench-built manifests live**, and what links a qualification result
   to an image hash? See [What was not done](#what-was-not-done).
 - **Do host tools need any of this?** Argued out of scope, but the
   `dataprocessing` path also produces records that outlive their build.
-- **Are the committed board files currently divergent?** Unknown, and cheap to
-  settle: regenerate the boards on two machines under `REGENERATE_SOURCES=ON`
-  and compare. Everything about pinning `fmpp` reads differently depending on
-  whether this finds a latent hazard or a live disagreement already committed.
-- **Should `fmpp` and its JRE be pinned the way `config-gen`'s protobuf now
-  is?** The mechanism exists and is proven; the obstacle is that a JRE does not
-  come from a package index. See [`fmpp` is not pinned](#fmpp-is-not-pinned).
-- **Should a CI job regenerate and diff**, rather than only comparing input
-  hashes? It would detect a divergent generator instead of merely preventing
-  one. See [What was not done](#what-was-not-done).
 - **When does the `config-gen` protobuf version enter `tools_text`?** It is
-  pinned and identical everywhere now, so recording it is finally honest. It
-  was left out of this change so that the manifest churn belongs to one commit
-  rather than two, and it should land with the `fmpp` pin if that happens.
+  pinned in `requirements.txt` and identical on every machine by construction,
+  so recording it is finally honest. It was left out so that the manifest churn
+  belonged to one commit rather than two.
+- **Does the same duplication remain for boards?** The proto-c manifest input
+  list now lives in `cmake/GeneratedSourceInputs.cmake` and is shared between
+  the build and the freshness check, after the two disagreed and would have
+  failed every pull request. The board input list is still written out twice,
+  in `generate_configured_board_files` and in the check, and will break the same
+  way on the next change to a board input.
 
 ## Appendix: how nanopb was found disagreeing with itself
 
