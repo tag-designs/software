@@ -19,6 +19,8 @@ directory that owns the code; the developer portal stages those files under
 - [Bases](reference/embedded/bases/README.md)
 - [Base Build Sources](reference/embedded/bases/BUILD_SOURCES.md)
 - [Base Notes](reference/embedded/bases/notes.md)
+- [External Flash Loaders](reference/embedded/loaders/README.md)
+- [Loader Runtime Design](reference/embedded/loaders/design/loader-runtime.md)
 
 ## Embedded Tags
 

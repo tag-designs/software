@@ -59,6 +59,8 @@ nav:
           - Base Build Sources: reference/embedded/bases/BUILD_SOURCES.md
           - Base Notes: reference/embedded/bases/notes.md
           - Tag Breakout Base L432 Note: reference/embedded/bases/tag-breakout-base-l432-v1/Note.md
+          - External Flash Loaders: reference/embedded/loaders/README.md
+          - Loader Runtime Design: reference/embedded/loaders/design/loader-runtime.md
       - Embedded Tags:
           - Overview: reference/embedded/tags/README.md
           - Build Sources: reference/embedded/tags/BUILD_SOURCES.md

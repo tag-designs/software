@@ -8,7 +8,8 @@ where-to-look guidance, then read the local README for details.
 
 - `host/`: desktop host tools, command-line utilities, Qt applications, shared
   host libraries, and MkDocs user documentation.
-- `embedded/`: ChibiOS firmware targets for tags and base/programmer boards.
+- `embedded/`: ChibiOS firmware targets for tags and base/programmer boards,
+  and SRAM-resident external flash loaders (`embedded/loaders`).
 - `proto/`: shared protobuf definitions used by host tools and embedded nanopb
   generation.
 - `design/`: developer architecture specifications and design notes. The master index is located at [**`design/index.md`**](file:///design/index.md).
@@ -35,6 +36,7 @@ that save the most time.
 | Per-tag SQLite schema and row semantics | `host/libraries/tagcore/sqlitelog/README.md` |
 | Board pin and signal generation | `embedded/boards/README.md` |
 | What a family shares and what a variant overrides | that family's `README.md` under `embedded/tags/families/` |
+| Reading or erasing a tag's external flash without its firmware, or adding a loader | `embedded/loaders/README.md`, then `embedded/loaders/design/loader-runtime.md` |
 | Design rationale for an existing subsystem | the nearest `design/` directory; the index is `design/index.md` |
 
 Two conventions that are easy to miss and expensive to rediscover:
@@ -439,7 +441,7 @@ grep <your-file> /tmp/doxwarn.txt
 
 `EXTRACT_ALL=NO` and `WARN_IF_UNDOCUMENTED=YES`, so anything undocumented is
 reported. Note the INPUT paths cover `include/`, `host/libraries/*`,
-`embedded/boards`, and `embedded/tags/{common,families}` — **individual tag
+`embedded/boards`, `embedded/loaders`, and `embedded/tags/{common,families}` — **individual tag
 directories are not scanned**, so point Doxygen at one explicitly to check it.
 
 ### Tests

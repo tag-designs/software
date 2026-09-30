@@ -13,14 +13,16 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Binary Datalogging Design**](binary-datalogs.md): System standard for shared binary log structure alignment, naming conventions, and nanopb constraints.
 *   [**Tag Firmware Build Reproducibility**](tag-build-reproducibility.md): The model as built: which tags are in scope and how that is derived, the generated board and protocol sources committed with input manifests, the per-image build manifest keyed on the image's own SHA-256, what configure refuses to build over, how to maintain it as tags and boards are added, and what was not done.
 *   [**Releasing Tag Firmware and Host Tools**](tag-and-host-release-procedure.md): Procedure. Qualifying a candidate firmware image on the bench and what a pass does and does not prove; programming a field tag from a released binary and recording which bytes went onto which tag; and cutting a host tools release, whose macOS package is signed locally because CI has no access to the Developer ID key.
-*   [**Field Data Extraction**](field-data-extraction.md): Proposal. Why a raw datalog dump is not self-decoding and what a session superblock would fix, extracting external flash with STM32CubeProgrammer loaders rather than a recovery firmware that would overwrite the evidence, and what the internal-flash marker log does and does not record in the field.
+*   [**Field Data Extraction**](field-data-extraction.md): Partly implemented. Why a raw datalog dump is not self-decoding and what a session superblock would fix, extracting external flash with SRAM-resident loaders rather than a recovery firmware that would overwrite the evidence, what the first loader settled, and what the internal-flash marker log does and does not record in the field.
 *   [**Windows Build Notes**](windows-build-notes.md): Reference notes on MSVC compiler setups, vcpkg static dependencies, and developer environment paths.
 
 ---
 
 ## 2. Embedded & Firmware Platform
 
-*   [**Embedded Build Orientation**](../embedded/design/build-orientation.md): Layout overview of boards, proto-c, base firmwares, and tag targets.
+*   [**Embedded Build Orientation**](../embedded/design/build-orientation.md): Layout overview of boards, proto-c, base firmwares, tag targets, and external flash loaders.
+*   [**External Flash Loaders**](../embedded/loaders/README.md): SRAM-resident images that read, and in an RW build erase and program, a tag's external flash over SWD without touching internal flash: layout, naming, building, use with STM32CubeProgrammer, and the checklist for adding a loader.
+*   [**Loader Runtime Design**](../embedded/loaders/design/loader-runtime.md): The loader contract as traced on hardware (descriptor at address 0, BKPT return, per-call Init), why there is no startup code, no interrupts, no OSAL sleeps and no ChibiOS clock init, read-back as the only proof of erase and program, rescue-erase ordering, and open issues.
 *   [**Custom Compiler Definitions**](../embedded/tags/design/custom-defines.md): Complete list of customizable flags, timer settings, and MCU preprocessor defines.
 *   [**Tag Monitor Interface**](../embedded/tags/design/monitor_interface.md): Reference for the STM32L4 DebugMonitor path and STM32U3 shared-memory monitor path.
 *   [**I2C Bus Recovery**](../embedded/tags/design/i2c-bus-recovery.md): Why a monitor attach can wedge a shared I2C bus, the evidence that identified it, and the recovery now performed around sessions, at startup and before standby.

@@ -1,9 +1,12 @@
 # Field Data Extraction
 
-Status: proposal. Nothing here is implemented. The loader sections record what
-was established by reading the tree and ST's reference loaders rather than by
-building one; [Where to start](#where-to-start) says which unknowns the first
-loader would settle.
+Status: partly implemented. The external-flash loader is built and validated on
+hardware for one board, PresTagv3 with an AT25XE321D; see
+[External Flash Loaders](../embedded/loaders/README.md) and
+[Loader Runtime Design](../embedded/loaders/design/loader-runtime.md). The
+session superblock (Gap 1) and the field failure record (Gap 2) remain
+proposals. [What the first loader settled](#what-the-first-loader-settled)
+records which of this document's expectations held and which did not.
 
 ## Purpose and scope
 
@@ -40,10 +43,13 @@ It is excellent for attach storms and reset loops on a desk, and it must not be
 load-bearing for anything a returned tag has to tell us. Any diagnostic that
 matters in the field belongs in internal flash.
 
-**Capture already works.**
+**Capture already works on STM32U375 tags.**
 [`embedded/tools/tag_capture_state.py`](../embedded/tools/tag_capture_state.py)
 connects under reset and stores SRAM, the writable part of internal flash, and
-the RTC backup registers, reading region bounds from the ELF it is given.
+the RTC backup registers, reading region bounds from the ELF it is given. On
+STM32L432 tags only the internal-flash regions capture today: the SRAM and
+backup-register steps fail
+([open issue](../embedded/loaders/design/loader-runtime.md#open-issues)).
 
 ## Gap 1: the recorded data is not self-describing
 
@@ -139,8 +145,14 @@ recovery procedure as a rule, not as a note.
 `STM32_Programmer_CLI` will happily erase external memory through a loader. A
 loader used for field recovery should implement `Read` and `StorageInfo` and
 stub `Write`, `SectorErase` and `MassErase` to fail, so the forensic tool is
-incapable of destroying the thing it was brought in to recover. A separate
-writable loader can exist for production use if one is ever wanted.
+incapable of destroying the thing it was brought in to recover.
+
+Implemented as two images from one source: `<PART>_<Board>.stldr` is read-only
+and is built without the erase and program code at all, and
+`<PART>_<Board>-RW.stldr` erases and programs, each verified by read-back, for
+rescue and bench testing. External erase is a rescue operation, always paired
+with an internal erase, and the order matters; see
+[Rescue erase](../embedded/loaders/design/loader-runtime.md#rescue-erase).
 
 ### Raw reads for NAND
 
@@ -159,102 +171,70 @@ part, clock setup, power-enable GPIO, and to a link address and size that fit
 that target's SRAM map. Nothing about that is shareable between a STM32L432
 board and a U375 one.
 
-What is shared is source. The repository already has the seam:
-[`storage_spi.h`](../embedded/tags/common/storage/inc/storage_spi.h) wraps SPI
-behind `TagSpiDevice` with inline framing helpers, and the drivers in
-`embedded/tags/common/storage/src/` sit on top of it. There are five parts in
-the tree -- `at25xe`, `mx25r`, `mx25l`, `mx25u12843`, `gd5f` -- and a
-freestanding SPI backend under that seam would let every loader compile the
-same command sequences the firmware uses, so a driver fix reaches both.
+What is shared is source, though less of it than this document first expected.
+The loader runtime (clock, delay, SPI, entry points) is shared across loaders in
+`embedded/loaders/common/`. Between a loader and the firmware, the shared layer
+is the part's command set -- opcodes, register bits and measured timing budgets
+-- in a dependency-free `<part>_commands.h` beside the firmware driver
+(`at25xe_commands.h` is the first). The drivers themselves are not shared; the
+next section says why.
 
 So the build is a matrix over boards, like the firmware itself, and the
-per-board work is a short configuration rather than a driver: pins, clocks,
-power enable, part selection, link address.
+per-board work is a short configuration rather than a driver: pins, board
+bring-up, part selection, descriptor.
 
-### Two routes, and what each reuses
+### What the first loader settled
 
-A loader does not need the ChibiOS kernel, but that does not mean it must avoid
-ChibiOS. The HAL sits on an OSAL, and the submodule carries
-`os/hal/osal/os-less/ARMCMx` -- about 1300 lines -- whose `osalThreadSuspendS`
-is a spin on a flag an interrupt sets:
+Building `AT25XE_PresTagv3` answered the questions this section used to leave
+open, and overturned three of its expectations. The detail is in
+[Loader Runtime Design](../embedded/loaders/design/loader-runtime.md).
 
-```c
-self.message = MSG_WAIT;
-*trp = &self;
-while (self.message == MSG_WAIT) {
-  osalSysUnlock();
-  OSAL_IDLE_HOOK();
-  osalSysLock();
-}
-```
+**The HAL route works, without interrupts.** The loader uses ChibiOS's register
+headers, the committed `board.h` and PAL, with the os-less OSAL and
+`osalconf.h` in place of `chconf.h`. It needs no vector table and no ISR path,
+because the PresTag family already runs SPI as polled register access
+(`HAL_USE_SPI FALSE`). ST's own loaders disable interrupts in every entry
+point, and so does this one.
 
-No scheduler, no thread switch, no system tick. A blocking HAL call needs an
-interrupt to complete, not a kernel, which is exactly the situation a loader is
-in. So there are two routes:
+**Moving the drivers to the OSAL would not have made them loader-ready.** This
+document expected the 18 `chThdSleep*` call sites to be the only obstacle. But
+the os-less `osalThreadSleep` waits on a SysTick-driven virtual timer, which
+never advances with interrupts off, and `osalSysPolledDelayX` is an empty stub.
+The dependency web is also wider than listed: `storage_spi.h` reaches `ch.h`
+and writes `idlePowerMode`, `spi_bus.c` waits on a semaphore, and `at25xe.c`
+calls `stopMilliseconds`.
 
-| | HAL + os-less OSAL | freestanding |
-| --- | --- | --- |
-| Reuses | `board.c`, the SPI driver, the storage drivers | `board.h` macros, `spi_bus_polled.inc` |
-| Requires | a RAM vector table, a working ISR path, OSAL init | nothing beyond register writes |
-| Second code path to maintain | no | yes |
-| SRAM footprint | larger | minimal |
+**The firmware driver is unsuitable for forensic reads in any case.** Its
+`wake` hook clears block protection with a Write Status Register whenever the
+protect bits are set, which mutates the part, and the bits are evidence. The
+loader has its own small driver whose probe never writes, and it shares the
+command set header with the firmware. Moving the AT25XE constants there left
+all seven AT25XE firmware targets byte-identical.
 
-Neither is ruled out. The first is the better starting point because it reuses
-the firmware's drivers rather than paraphrasing them, and a paraphrase is a
-second place for a device quirk to be fixed.
+**The calling convention**, from `-vb 3` traces: the programmer leaves
+interrupts as the tag had them (the loader disables them), sets a `BKPT` return trap at
+`0x20000000`, MSP just past the image (about 1 KB of stack), the transfer
+buffer after that, and `Init` before every operation. Nothing survives between
+calls that the loader relies on. The SRAM cost is about 1.5 KB for the
+read-only image and 2.3 KB for the RW image.
 
-### Can the existing memory drivers be reused?
+**`StorageInfo` must sit at address 0** in its own segment. A loader with its
+descriptor in SRAM is ignored without any message, and reads then silently
+bypass it. This was not in any of the material this document drew on.
 
-Close to unmodified, on either route. Their dependency on the kernel is
-smaller than their include list suggests:
+**The clock is HSI16, set by hand.** ChibiOS's `stm32_clock_init()` can reset
+the whole backup domain -- RTC and `pState` -- and must never be called from a
+loader.
 
-- **18 call sites** across the five drivers use `chThdSleepMicroseconds`,
-  `chThdSleepMilliseconds` or `chSysLock` -- the RT kernel API rather than the
-  OSAL. `os-less/ARMCMx/osal.h` provides `osalThreadSleepMicroseconds`,
-  `osalThreadSleepMilliseconds` and `osalSysLock`, so the change is mechanical.
-  It is worth making in the firmware regardless: driver code written against
-  the OSAL rather than the kernel is portable by construction, and these are
-  device timing delays, not scheduling decisions.
-- **`rtc_api.h` and `debug_log.h`** contribute only `debug_log_printf`, which
-  shipped images already compile out.
-- **`phase_probe.h`** is included by `at25xe.c` and nothing from it is used.
+**Bring-up from cold** on PresTagv3 needs no power sequencing: the flash is on
+the main supply.
 
-So the reuse question is not whether the drivers can be made to work outside
-the firmware, but how few lines it takes. The freestanding route additionally
-needs the `chThdSleep*` calls backed by a busy-wait rather than the OSAL, which
-is the same 18 sites pointed somewhere else.
+**`board.h` is committed** for PresTagv3, so the loader builds from a checkout
+without `fmpp`, as the reproducibility work intended.
 
-### The pin configuration comes from ChibiOS either way
-
-What a loader genuinely needs from ChibiOS is the board description, and the
-generated `board.h` is pure data: no `#include` of its own, its own
-`PIN_MODE_*` and `PIN_AFIO_AF` helpers, 49 `VAL_GPIOx_*` macros carrying the
-literal `MODER`, `OTYPER`, `OSPEEDR`, `PUPDR`, `ODR`, `AFRL` and `AFRH` values,
-and the named pins -- `GPIOA_AT25_nCS`, `GPIOA_AT25_SCK`, `GPIOA_AT25_MISO`,
-`GPIOA_AT25_MOSI`. A freestanding `Init` can write those registers directly
-from the header; the HAL route gets the same values through `board.c` and
-`palInit`.
-
-`board.c` is the part that needs `hal.h`, and its `__early_init` does clock
-setup a loader must do differently in any case, from whatever state the
-programmer left the part in.
-
-This is a further argument for committing generated sources, from
-[Tag Firmware Build Reproducibility](tag-build-reproducibility.md): `board.h`
-currently exists only in a build tree, so a loader built from a checkout would
-need `fmpp` and a JVM. Committed, the recovery tooling builds without them --
-and recovery tooling is used years later, exactly when a toolchain dependency
-is least welcome.
-
-### What is still unknown
-
-- Whether the programmer's calling convention tolerates the HAL route's
-  interrupt path: a RAM vector table via `VTOR`, and interrupts enabled during
-  an entry point.
-- Whether kernel state or OSAL state must survive between entry-point calls,
-  given the programmer typically sets SP as well as PC for each one.
-- The SRAM cost of the HAL route against the transfer buffer on the 64 KB
-  STM32L432 parts.
+**Provenance** is handled as proposed: loaders are built by
+`distributed_firmware`, installed beside the firmware, carry a build manifest,
+and put the variant and commit in the device name CubeProgrammer displays.
 
 ST's External Memory Manager was considered and does not fit. Its custom-driver
 configuration is XSPI vocabulary -- dummy cycles, single/dual/quad modes, DQS,
@@ -268,14 +248,12 @@ a generated loader would beat a written one. Note that ST's generated loaders
 are read/write by design, so the read-only stubbing above would have to be
 applied deliberately.
 
-- **Link address and SRAM budget**, per board: the loader runs with its stack
-  and the programmer's transfer buffer alongside it.
-- **Board bring-up from cold**: whether each board's external flash can be
-  reached without the application's power sequencing, and what `Init` must
-  replicate.
-- **Provenance**: a `.stldr` is per board, and a mismatched loader reads
-  plausible garbage without complaint. Loaders belong in the image archive,
-  keyed to the board, and built by the same CI job.
+**STM32CubeProgrammer is a poor driver for this.** Its contract is
+undocumented, it rejects a malformed loader silently, and its sector-number
+erase is ambiguous between internal and external memory when a loader is
+loaded. It also knows nothing of capture-first or external-before-internal
+ordering. A host tool on `tagcore`, using the same loader images, is the next
+step; see [Where to start](#where-to-start).
 
 ## Gap 2: the field failure record
 
@@ -303,37 +281,25 @@ truncated image hash serves the same purpose.
 
 ## Where to start
 
-Two pieces of work are independent of each other, and one of them is worth
-doing whether or not a loader is ever written.
+The first loader exists. What remains is independent work.
 
-**Move the storage drivers off the kernel API.** The 18 `chThdSleepMicroseconds`,
-`chThdSleepMilliseconds` and `chSysLock` call sites become their `osal`
-equivalents. That is a contained change to firmware that currently builds and
-is tested, it makes the drivers usable from a loader on either route, and it is
-defensible on its own terms: a device timing delay is not a scheduling
-decision, and driver code written against the OSAL is portable by construction.
-Doing it first means the loader work starts from drivers that already compile
-outside the RTOS.
+**A host tool to drive the loaders.** The base firmware already implements the
+ST-LINK core-register, run and debug-register commands that the calling
+convention needs, and `tagcore`'s `LinkAdapt` already provides attach under
+reset and memory access. A host tool can enforce the capture-first and
+external-before-internal ordering, feed dumps straight to the decoders, and
+control how the core is left afterwards, which CubeProgrammer does not (see the
+`resetCause` item under
+[Open issues](../embedded/loaders/design/loader-runtime.md#open-issues)).
 
-**Then write one loader, for one board.** Not a framework. The open questions
-about the HAL route -- whether the programmer's calling convention tolerates
-interrupts and a `VTOR`-relocated vector table, whether OSAL state survives
-between entry-point calls when SP is reset for each one, what the kernel-free
-HAL costs in SRAM against the transfer buffer on a 64 KB L432 -- are not
-answerable by further reading. They are answerable by one `Init` and one `Read`
-against a board on a bench. Whichever board is most convenient is the right
-one; the per-board work afterwards is a short configuration, so the first is
-where all the cost is.
+**More loaders.** The per-board work is a short configuration; the
+[add-a-loader checklist](../embedded/loaders/README.md#adding-a-loader) covers a
+new board, a new part and a new MCU.
 
-Start with the HAL and os-less OSAL route. If it runs into the calling
-convention, the freestanding route is a retreat to register writes with
-`board.h` and `spi_bus_polled.inc`, both of which are dependency-free today,
-and nothing done for the first route is wasted.
-
-Worth reading before starting: `~/tmp/stm32-memory-loaders` for the entry-point
-contract and `Dev_Inf.c` layout, with the caveat that its examples are IAR
-projects for XSPI parts on H5 and H7 boards, so the bus and the build are both
-different from ours.
+**Moving the storage drivers off the kernel API** is still defensible on its
+own terms -- a device timing delay is not a scheduling decision -- but it is no
+longer a prerequisite for anything here, and it is not sufficient to make a
+driver usable from a loader.
 
 The data-format work -- the session superblock of Gap 1 -- is independent of
 all of this and gated on a different question: where the bulk of recorded data
@@ -346,9 +312,9 @@ superblock belongs on external flash or internal.
   flash, the superblock belongs there, written through the same path that writes
   pages, and the internal-flash capture path is serving goal 2 rather than goal
   1. This decides which piece of work is actually urgent.
-- **Which loaders are needed first?** One per board, but the flash command set is
-  shared; the first one built will show how much of the existing driver code
-  survives being made freestanding.
+- **Which loaders are needed next?** The first, `AT25XE_PresTagv3`, is done.
+  The other AT25XE boards are a configuration each; MX25R, MX25L and the GD5F
+  NAND parts each need a part driver.
 - **Where is the per-deployment record** mapping a physical tag to the image hash
   it was flashed with, for tags deployed before a superblock exists?
 - **Is a reset-cause marker worth its flash write**, given endurance and energy

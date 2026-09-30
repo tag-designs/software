@@ -99,6 +99,8 @@ set(
   "embedded/boards/README.md"
   "embedded/boards/tools/README.md"
   "embedded/design/build-orientation.md"
+  "embedded/loaders/README.md"
+  "embedded/loaders/design/loader-runtime.md"
   "embedded/tags/BUILD_SOURCES.md"
   "embedded/tags/README.md"
   "embedded/tags/common/README.md"

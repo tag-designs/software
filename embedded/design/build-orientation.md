@@ -1,11 +1,13 @@
 # Embedded Source Layout
 
-The embedded tree is organized around four major sections:
+The embedded tree is organized around five major sections:
 
 - `bases`: firmware images for programmer/base boards.
 - `boards`: generated ChibiOS board descriptions for physical hardware.
 - `proto-c`: nanopb C bindings and default configuration data for tag protocols.
 - `tags`: firmware images that run on the tags themselves.
+- `loaders`: SRAM-resident external-flash loaders for reading a tag's external
+  flash over SWD without touching its internal flash.
 
 At a high level, `boards` describes hardware pins and signals, `proto-c`
 describes the compact protocol structures used by tag firmware, and `bases` and
@@ -21,6 +23,8 @@ embedded/
        bases/    Programmer/base-board firmware targets
           |
         tags/     Tag firmware targets
+          |
+     loaders/     External flash loaders (per board + flash part)
           |
      proto-c/     nanopb protocol bindings and default tag configuration
           |
@@ -251,3 +255,23 @@ Most bugs should be fixed at the lowest layer that owns the behavior. Pin and
 signal mistakes belong in `boards`; protocol encoding and default configuration
 belong in `proto-c`; sensor behavior and runtime state belong in `tags`; base
 board USB/SWD/programmer behavior belongs in `bases`.
+
+## `loaders`
+
+`loaders` contains STM32CubeProgrammer-compatible external loaders (`.stldr`),
+one per board and flash part. A loader is laid out like a tag target -- a
+`Makefile` including `../common/make.mk`, a `project.mk`, and local overrides of
+`../common` -- but it has no startup code, no RTOS kernel and no protocol
+target: it uses the committed `board.h`, ChibiOS PAL and the os-less OSAL, and
+shares the flash part's command set with the firmware driver through a
+dependency-free `<part>_commands.h`. Each source directory builds two images:
+
+```cmake
+add_embedded_loader(AT25XE_PresTagv3 DISTRIBUTE)
+add_embedded_loader(AT25XE_PresTagv3-RW
+  DIRECTORY AT25XE_PresTagv3 ALLOW_WRITE DISTRIBUTE)
+```
+
+Distributed loaders are built by `distributed_firmware` and installed to
+`share/<package>/loaders/<image>/`. See [External Flash
+Loaders](../loaders/README.md).
