@@ -66,7 +66,17 @@ env:
   # fmpp renders the ChibiOS board templates. 0.9.16 is the last release
   # (September 2018) and FMPP_VERSION pins it, so configure will reject
   # anything else.
-  FMPP_URL: "https://downloads.sourceforge.net/project/fmpp/fmpp/0.9.16/fmpp_0.9.16.tar.gz"
+  #
+  # This is SourceForge's legacy redirector and it is plain HTTP, which is
+  # acceptable here for one reason: FMPP_SHA256 lives in this file, reviewed
+  # and committed, not served alongside the download. An intercepted or
+  # corrupted transfer fails the check. That is the same reasoning
+  # release-firmware.yml applies to the toolchain, where the checksum Arm
+  # publishes beside the file is printed for diagnosis and never acted on -- a
+  # checksum from the same source as the file proves nothing about it.
+  #
+  # Try https:// first if it resolves; the pin is what makes either safe.
+  FMPP_URL: "http://prdownloads.sourceforge.net/fmpp/fmpp_0.9.16.tar.gz"
   FMPP_SHA256: ""
 
 jobs:
