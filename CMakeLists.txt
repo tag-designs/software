@@ -44,6 +44,20 @@ endif()
 # a known compiler should say so rather than pass quietly.
 set(ARM_TOOLCHAIN_VERSION "14.2.1" CACHE STRING
     "Expected arm-none-eabi-gcc version; empty records the version without checking it")
+
+# The fmpp that renders the ChibiOS board templates. 0.9.16 is the last release
+# -- September 2018 -- so in practice there is one renderer in circulation and
+# this check will pass everywhere; it exists to make that an assertion rather
+# than an assumption, and to say so plainly if someone ever has a different one.
+#
+# This is a configure-time check, deliberately NOT a manifest entry. Recording
+# fmpp in inputs.sha256 would make boards look stale on any machine that
+# reported a different version, which is why it was left out; comparing it here
+# costs nothing across machines because nothing derived from it is committed.
+#
+# Set to an empty string to record the version without checking it.
+set(FMPP_VERSION "0.9.16" CACHE STRING
+    "fmpp version required to regenerate board files; empty to skip the check")
 option(MACOS_SIGN_APPS "Sign macOS app bundles while packaging" ON)
 option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle deployment" ON)
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)

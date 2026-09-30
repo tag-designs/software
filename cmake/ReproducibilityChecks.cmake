@@ -23,8 +23,10 @@ function(check_reproducibility_pitfalls)
   set_property(GLOBAL PROPERTY ULTRALIGHT_TREE_DIRTY "unknown")
   set_property(GLOBAL PROPERTY ULTRALIGHT_CHIBIOS_SHA "")
   set_property(GLOBAL PROPERTY ULTRALIGHT_ARM_TOOLCHAIN_VERSION "")
+  set_property(GLOBAL PROPERTY ULTRALIGHT_FMPP_VERSION "")
 
   _check_arm_toolchain()
+  _check_fmpp()
   _check_git_provenance()
 endfunction()
 
@@ -65,6 +67,58 @@ function(_check_arm_toolchain)
       "pin deliberately.")
   else()
     message(STATUS "ARM toolchain: ${GCCARM} (version ${_version})")
+  endif()
+endfunction()
+
+# -- fmpp ---------------------------------------------------------------------
+#
+# fmpp renders the ChibiOS board templates.  Only a board that regenerates needs
+# it, so it is looked up leniently and this check is skipped when nothing can
+# regenerate.
+#
+# The version is compared here rather than recorded in the board manifests.  A
+# manifest has to compare equal across machines, and a version string reported
+# on one and not another would make every board look stale for a reason
+# unrelated to the tree.  Comparing it at configure time has no such cost: it
+# constrains the machine doing the rendering without putting anything
+# machine-specific into a committed file.
+
+function(_check_fmpp)
+  if(NOT FMPP OR REGENERATE_SOURCES STREQUAL "OFF")
+    return()
+  endif()
+
+  execute_process(
+    COMMAND "${FMPP}" --version
+    OUTPUT_VARIABLE _fmpp_output
+    ERROR_VARIABLE _fmpp_output_err
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE _fmpp_ran)
+  if(NOT _fmpp_ran EQUAL 0)
+    message(WARNING
+      "Could not run ${FMPP} --version, so the renderer is unverified.")
+    return()
+  endif()
+
+  string(REGEX MATCH "[0-9]+\\.[0-9]+(\\.[0-9]+)?"
+         _fmpp_version "${_fmpp_output}${_fmpp_output_err}")
+  if(NOT _fmpp_version)
+    message(WARNING
+      "Could not read a version from `${FMPP} --version`, which printed: "
+      "${_fmpp_output}${_fmpp_output_err}")
+    return()
+  endif()
+
+  set_property(GLOBAL PROPERTY ULTRALIGHT_FMPP_VERSION "${_fmpp_version}")
+
+  if(FMPP_VERSION AND NOT "${_fmpp_version}" STREQUAL "${FMPP_VERSION}")
+    reproducibility_problem(
+      "fmpp is version ${_fmpp_version} but FMPP_VERSION pins ${FMPP_VERSION}. "
+      "A different renderer could produce different board files from the same "
+      "templates, and those files are committed. Install the pinned version, "
+      "or change the pin deliberately and read the regenerated diff.")
+  else()
+    message(STATUS "fmpp: ${FMPP} (version ${_fmpp_version})")
   endif()
 endfunction()
 
