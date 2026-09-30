@@ -71,7 +71,7 @@ foreach(_generated_dir IN LISTS _generated_dirs)
 
   set(_inputs
       "${_variant_dir}/default-config.json"
-      "${SOURCE_DIR}/embedded/proto-c/config-gen.cc"
+      "${SOURCE_DIR}/embedded/proto-c/config-gen.py"
       "${SOURCE_DIR}/cmake/CombineFiles.cmake")
   list(APPEND _inputs ${_proto_sources})
   foreach(_proto IN LISTS _proto_sources)
