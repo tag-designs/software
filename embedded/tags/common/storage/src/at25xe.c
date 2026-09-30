@@ -13,64 +13,7 @@
 #include "storage_spi.h"
 #include "phase_probe.h"
 
-#define INTER_WRITE_DELAY 2
-#define PAGE_PROG_POLL_INTERVAL_US 100
-#define PAGE_PROG_POLL_LIMIT 120
-/*
- * Write Status Register's own write cycle (tW) was measured taking up to
- * ~11.4 ms (114 iterations at PAGE_PROG_POLL_INTERVAL_US), right at the edge
- * of the page-program budget above -- occasionally over it, at which point
- * at25xeUnprotect() timed out and returned with WIP still genuinely set on
- * the part. Give it its own, more generous budget.
- */
-#define WRSR_POLL_INTERVAL_US 200
-#define WRSR_POLL_LIMIT 250
-#define SECTOR_ERASE_POLL_INTERVAL 150
-/*
- * The original 5-iteration budget (750 ms) left a residual ~4% failure rate
- * under repeated testing -- occasional sector erases genuinely take longer.
- * Wake and erase are rare events (once per checkpoint), so a larger budget
- * costs nothing in the common case and avoids silently dropping a write.
- */
-#define SECTOR_ERASE_POLL_LIMIT 20
-
-#define AT25XE_CMD_READ            0x03
-#define AT25XE_CMD_PAGE_PROG       0x02
-#define AT25XE_CMD_SECTOR_ERASE    0x20
-#define AT25XE_CMD_READ_ID         0x9F
-#define AT25XE_CMD_WRITE_ENABLE    0x06
-#define AT25XE_CMD_READ_STATUS_REG 0x05
-#define AT25XE_CMD_WRITE_STATUS_REG_1 0x01
-#define AT25XE_CMD_DEEP_POWER_DOWN 0xB9
-#define AT25XE_CMD_ULTRA_DEEP_POWER_DOWN 0x79
-#define AT25XE_CMD_POWER_UP        0xAB
-#define AT25XE_CMD_RESET_ENABLE    0x66
-#define AT25XE_CMD_RESET_MEMORY    0x99
-
-/* Status Register */
-
-#define AT25XE_FLAGS_SR_WIP                    ((uint8_t)0x01)    /* Write in progress */
-#define AT25XE_FLAGS_SR_WEL                    ((uint8_t)0x02)    /* Write enable latch */
-#define AT25XE_FLAGS_SR_BP                     ((uint8_t)0x3C)    /* Block protect */
-#define AT25XE_FLAGS_SR_QE                     ((uint8_t)0x40)    /* Quad enable */
-#define AT25XE_FLAGS_SR_SRWD                   ((uint8_t)0x80)    /* Status register write disable */
-
-/* Configuration Register 1 */
-
-#define AT25XE_FLAGS_CR1_TB                    ((uint8_t)0x08)    /* Top / bottom */
-
-/* Configuration Register 2 */
-
-#define AT25XE_FLAGS_CR2_LH_SWITCH             ((uint8_t)0x02)    /* Low power / high performance switch */
-
-/* Security Register */
-
-#define AT25XE_FLAGS_SECR_SOI                  ((uint8_t)0x01)    /* Secured OTP indicator */
-#define AT25XE_FLAGS_SECR_LDSO                 ((uint8_t)0x02)    /* Lock-down secured OTP */
-#define AT25XE_FLAGS_SECR_PSB                  ((uint8_t)0x04)    /* Program suspend bit */
-#define AT25XE_FLAGS_SECR_ESB                  ((uint8_t)0x08)    /* Erase suspend bit */
-#define AT25XE_FLAGS_SECR_P_FAIL               ((uint8_t)0x20)    /* Program fail flag */
-#define AT25XE_FLAGS_SECR_E_FAIL               ((uint8_t)0x40)    /* Erase fail flag */
+/* Opcodes, register bits and timing budgets come from at25xe_commands.h. */
 
 /** @name AT25XE storage operations
  * Chip-specific operations behind the generic TagStorageOps table.
@@ -89,7 +32,7 @@ static void at25xeWake(const TagStorageDevice *dev)
     tagStorageBusBegin(dev);
     //stopMilliseconds(1);//chThdSleepMicroseconds(250);
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_POWER_UP);
-    stopMilliseconds(2);//chThdSleepMicroseconds(250);
+    stopMilliseconds(AT25XE_WAKE_DELAY_MS);//chThdSleepMicroseconds(250);
     tagPhaseProbeMark(7);   /* flash awake after power-up delay */
 
     /*
@@ -188,12 +131,12 @@ static bool at25xeUnprotect(const TagStorageDevice *dev)
     if (!ok)
         return false;
 
-    for (i = 0; i < WRSR_POLL_LIMIT; i++) {
-        chThdSleepMicroseconds(WRSR_POLL_INTERVAL_US);
+    for (i = 0; i < AT25XE_WRSR_POLL_LIMIT; i++) {
+        chThdSleepMicroseconds(AT25XE_WRSR_POLL_INTERVAL_US);
         if ((at25xeStatus(dev) & AT25XE_FLAGS_SR_WIP) == 0)
             break;
     }
-    return i < WRSR_POLL_LIMIT;
+    return i < AT25XE_WRSR_POLL_LIMIT;
 }
 
 /**
@@ -206,9 +149,9 @@ static int at25xeCheckID(const TagStorageDevice *dev)
 {
     uint8_t id[3];
     tagStorageSpiCommandReceive(tagStorageSpiDevice(dev), AT25XE_CMD_READ_ID, id, 3);
-    if (id[0] != 0x1F)
+    if (id[0] != AT25XE_JEDEC_MANUFACTURER)
         return -1;
-    if (id[1] != 0x47)
+    if (id[1] != AT25XE_JEDEC_DEVICE1)
         return -1;
     return (1<<((id[1]& 0x1f)+9));
 }
@@ -238,16 +181,16 @@ static bool at25xeWrite(const TagStorageDevice *dev, uint32_t address,
         tagStorageSpiCommandAddressSend(tagStorageSpiDevice(dev), AT25XE_CMD_PAGE_PROG,
                                         address, buf, bytes);
         tagPhaseProbeMark(8);   /* PAGE_PROG issued, array programming */
-        for (i = 0; i < PAGE_PROG_POLL_LIMIT; i++)
+        for (i = 0; i < AT25XE_PAGE_PROG_POLL_LIMIT; i++)
         {
-            chThdSleepMicroseconds(PAGE_PROG_POLL_INTERVAL_US);
+            chThdSleepMicroseconds(AT25XE_PAGE_PROG_POLL_INTERVAL_US);
             uint8_t status = at25xeStatus(dev);
             if ((status & AT25XE_FLAGS_SR_WIP) == 0)
                 break;
         } 
         tagPhaseProbeMark(9);   /* WIP cleared */
         tagPhaseProbeAux(0, (uint32_t)i);  /* poll iterations at 100 us */
-        if (i == PAGE_PROG_POLL_LIMIT)
+        if (i == AT25XE_PAGE_PROG_POLL_LIMIT)
             return false;
         address += bytes;
         buf += bytes;
@@ -274,14 +217,14 @@ static bool at25xeSectorErase(const TagStorageDevice *dev, uint32_t address)
         return false;
     tagStorageSpiCommand(tagStorageSpiDevice(dev), AT25XE_CMD_WRITE_ENABLE);
     tagStorageSpiCommandAddress(tagStorageSpiDevice(dev), AT25XE_CMD_SECTOR_ERASE, address);
-    for (i = 0; i < SECTOR_ERASE_POLL_LIMIT; i++)
+    for (i = 0; i < AT25XE_SECTOR_ERASE_POLL_LIMIT; i++)
     {
-        chThdSleepMilliseconds(SECTOR_ERASE_POLL_INTERVAL);
+        chThdSleepMilliseconds(AT25XE_SECTOR_ERASE_POLL_INTERVAL);
         status = at25xeStatus(dev);
         if (!(status & AT25XE_FLAGS_SR_WIP))
             break;
     }
-    if (i == SECTOR_ERASE_POLL_LIMIT)
+    if (i == AT25XE_SECTOR_ERASE_POLL_LIMIT)
     {
         return false;
     }
