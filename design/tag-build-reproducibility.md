@@ -92,7 +92,7 @@ rebuilt unless their recorded inputs change:
 | --- | --- | --- |
 | `board.{c,h,mk}`, `board_standby.h` | `fmpp` + ChibiOS `.ftl` templates, via `generate_board_chcfg.py` | yes, in `embedded/boards/<board>/generated/` |
 | `tag.pb.{c,h}`, `tagdata.pb.{c,h}` | `nanopb_generator` | yes, in `embedded/proto-c/<variant>-proto-c/generated/` |
-| `default_config.c` | `config-gen` from `default-config.json` | yes, beside the `.pb.*` |
+| `default_config.c` | `config-gen.py` from `default-config.json` | yes, beside the `.pb.*` |
 | `tag.options`, `tagdata.options` | `CombineFiles.cmake` over the default and per-variant options | no -- pure CMake, no external tool, regenerated cheaply |
 | `cfg/board.chcfg`, `cfg/board.fmpp` | `generate_board_chcfg.py`, `configure_file` | no -- intermediates, only produced when regenerating |
 
@@ -120,7 +120,7 @@ SHA-256 of every input the generators consume, plus the pinned tool version.
 
 | | proto-c variants | boards |
 | --- | --- | --- |
-| Inputs hashed | both `.proto` files, both halves of each options file, `default-config.json`, `config-gen.cc`, `CombineFiles.cmake` | `board-customizations.json`, `generate_board_chcfg.py`, `board.fmpp.in`, the ChibiOS pin XML, `board.{c,h,mk}.ftl`, and every file in ChibiOS `tools/ftl/libs/` |
+| Inputs hashed | both `.proto` files, both halves of each options file, `default-config.json`, `config-gen.py`, `CombineFiles.cmake` | `board-customizations.json`, `generate_board_chcfg.py`, `board.fmpp.in`, the ChibiOS pin XML, `board.{c,h,mk}.ftl`, and every file in ChibiOS `tools/ftl/libs/` |
 | Tool line | `nanopb <version>` | `chibios-templates <processor>` |
 
 Two decisions in there are worth keeping in mind:
@@ -210,14 +210,15 @@ nothing unless referenced, and nothing references them yet -- see
 | --- | --- |
 | `arm-none-eabi-gcc` 14.2.1 and binutils | always; version is pinned and checked |
 | `make`, `cmake` | always |
-| `python3` | only to regenerate a board |
+| `python3` | only to regenerate a board, or to build the `config-gen` virtualenv |
 | `fmpp` and a Java runtime | only to regenerate a board |
 | `nanopb_generator` | only to regenerate protocol sources |
-| `config-gen` and host protobuf | only to regenerate protocol sources |
+| `protobuf` 5.28.1 in a virtualenv, and a `protoc` | only to regenerate protocol sources; both come from pins, not from the machine |
 
 With `REGENERATE_SOURCES=OFF` none of the optional rows are looked for at all:
-`config-gen` is not built, protobuf is not searched for, and `fmpp` and `python3`
-are looked up leniently and demanded only where a board actually regenerates.
+no virtualenv is created, no interpreter or `protoc` is searched for, the C++
+protobuf library is not looked for either, and `fmpp` and `python3` are looked
+up leniently and demanded only where a board actually regenerates.
 
 ### CI
 
@@ -471,7 +472,44 @@ rather than the *commit* is a reproducibility hazard, and git's conveniences --
 abbreviation, date rendering, remote URLs -- are all clone properties wearing
 commit clothing.
 
-Nor has every distributed tag been checked -- one was.
+That result has since been widened. All five distributed tags were rebuilt at
+`fw-v0.0.3` and compared against the images that release published: every
+`.bin` and `.hex` is byte-identical, and each matches the SHA-256 its own
+manifest records. The two builds differ in almost every way a build can -- a
+Linux CI runner against macOS, Arm's tarball against Homebrew's build of
+14.2.1, and `REGENERATE_SOURCES=OFF` against `AUTO` -- so the comparison also
+establishes something neither build alone could: **regenerating the committed
+sources is a no-op.** One build consumed them untouched, the other rebuilt them
+from their inputs, and the images agree.
+
+The `.elf` files differ by 32 bytes, which is the DWARF path of a different
+build directory and is not in the flashed bytes. The distinction is the same
+one this document draws throughout: the manifest describes a build, the image
+describes a commit.
+
+### The freshness check cannot detect a divergent generator
+
+`CheckGeneratedSourcesFresh.cmake` compares the recorded input hashes against
+the tree. It does not re-render the output and diff it. The difference matters
+for any generator whose own version is not recorded -- `fmpp` above all.
+
+If a different `fmpp` rendered `board.c` differently, the developer would
+commit that output alongside a perfectly correct `inputs.sha256` -- the inputs
+really did not change, only the renderer did -- and every check thereafter
+would pass. `AUTO` then seals it: no other machine regenerates, because the
+recorded inputs still match, so the competing output that would expose the
+disagreement is never produced. The failure is self-certifying and stable.
+
+Pinning the renderer prevents this; it does not detect it. A CI job that
+regenerated in a pinned environment and diffed the result would detect it, and
+would be strictly stronger. It would also need the generators in CI, which is
+exactly what `embedded-reproducibility.yml` was built not to need, so it
+belongs in a separate job with a clearly different purpose rather than as a
+replacement for that one.
+
+Whether the committed board files are currently divergent is not known. It is
+cheap to find out: regenerate the boards on more than one machine under
+`REGENERATE_SOURCES=ON` and see whether `git diff` comes back empty.
 
 ### The old board generation path is untouched
 
@@ -498,6 +536,21 @@ would not notice. Pinning it was rejected because a version string reported on
 one machine and not another would cause false staleness across the group, which
 would be worse than the risk. The per-image build manifest does not record it
 either -- that would be a small, easy addition.
+
+That reasoning was sound while the renderer was an uncontrolled desktop
+install, and `config-gen` has since shown what removes it. Its protobuf is
+pinned in a `requirements.txt` and installed into a virtualenv the build makes
+itself, so every machine reports the same version because every machine runs
+the same bytes, and the version becomes recordable rather than a source of
+false staleness. The same pattern would work for `fmpp` and the JRE under it,
+with one difference worth weighing: a Java runtime is not a pip install, so it
+would mean either a documented download or a container.
+
+Whichever way that goes, **the pin and the manifest entry have to land
+together.** Recording `fmpp` in `inputs.sha256` while desktop regeneration is
+still permitted reintroduces exactly the false staleness that was avoided, and
+the commit that adds it invalidates every board manifest and requires a
+regeneration alongside.
 
 ### Programming a field tag
 
@@ -613,6 +666,63 @@ Moving to 0.4.9.1 from that snapshot also changes no runtime behaviour:
 `pb_decode_ex` under `PB_ENABLE_MALLOC` -- is in a function garbage-collected out
 of the linked images, which call plain `pb_decode`.
 
+## Settled: `config-gen` is Python, and its protobuf is pinned
+
+`default_config.c` was produced by `config-gen.cc`, a C++ tool linked against
+whichever libprotobuf a developer's vcpkg baseline supplied. The manifest
+hashed `config-gen.cc` and recorded nothing about that library, so a committed,
+shipped file was governed by a per-machine dependency no check could see --
+the same shape of hole as `fmpp`, with a much larger library behind it.
+
+It is now `config-gen.py`, depending on `protobuf` alone, pinned in
+`embedded/proto-c/requirements.txt` to **5.28.1**. That version is not a
+preference: it is the protobuf the pinned nanopb 0.4.9.1 distribution itself
+runs on, whose `generator-bin` ships `protoc 28.1`. One protobuf now governs
+both generated outputs in those directories instead of two free to drift.
+
+Two decisions make the pin cheap to hold:
+
+- **The schema comes from a descriptor set, not generated modules.** Generated
+  Python carries a gencode version the runtime checks and can refuse, which
+  makes an old `protoc` against a newer runtime a standing hazard. A descriptor
+  set is wire-format data with no such gate.
+- **`protoc` comes from the nanopb distribution**, beside `nanopb_generator`,
+  so one is present exactly when regeneration is possible and nothing is
+  installed for it.
+
+The build creates its own virtualenv from `requirements.txt` rather than using
+whichever interpreter is on `PATH`. That is not fastidiousness: on the machine
+this was developed on, `python3`, `pip` and CMake's `find_package(Python3)`
+resolved to three different installations, and nanopb's binary distribution
+bundles a fourth interpreter of its own. An uncontrolled interpreter choosing
+the version that renders a committed file is precisely the defect being
+removed, so it is not an acceptable way to remove it.
+
+The switch was measured, not assumed. Output is byte-identical to
+`config-gen.cc`'s for all five distributed variants -- verified against a
+rebuild of the C++ tool, and under protobuf 4.25.3, 5.28.1, 5.29.5 and 7.36.2.
+The pin is therefore conservative rather than load-bearing: if it has to move,
+it can.
+
+## Settled: two config files parsed only by accident
+
+Switching parsers found a defect that had been in the tree invisibly.
+`prestag-proto-c/default-config.json` and `prestagraw-proto-c/default-config.json`
+both ended with a trailing comma before the closing brace, which RFC 8259
+disallows. The C++ JSON parser accepted it; a strict parser does not.
+
+Those files parsed only because of a leniency nobody chose, nothing recorded,
+and no check could observe. A developer on a stricter libprotobuf would have
+hit a hard failure on one distributed variant out of five with nothing in the
+tree to explain why. Both are corrected, and neither correction moves an
+emitted byte -- the comma changed what the file hashed to and nothing about
+what it meant.
+
+Worth recording as the concrete form of a general risk: **an unpinned
+generator can make a malformed input look valid**, and the freshness check
+cannot see it, because that check compares recorded input hashes rather than
+re-rendering output. See [What was not done](#what-was-not-done).
+
 ## Settled: generator output does not depend on the platform
 
 For nanopb 0.4.9.1, the macOS x86 release binary and the Linux PyPI wheel produce
@@ -634,6 +744,20 @@ the check would have failed for everyone not building on the blessed platform.
   to an image hash? See [What was not done](#what-was-not-done).
 - **Do host tools need any of this?** Argued out of scope, but the
   `dataprocessing` path also produces records that outlive their build.
+- **Are the committed board files currently divergent?** Unknown, and cheap to
+  settle: regenerate the boards on two machines under `REGENERATE_SOURCES=ON`
+  and compare. Everything about pinning `fmpp` reads differently depending on
+  whether this finds a latent hazard or a live disagreement already committed.
+- **Should `fmpp` and its JRE be pinned the way `config-gen`'s protobuf now
+  is?** The mechanism exists and is proven; the obstacle is that a JRE does not
+  come from a package index. See [`fmpp` is not pinned](#fmpp-is-not-pinned).
+- **Should a CI job regenerate and diff**, rather than only comparing input
+  hashes? It would detect a divergent generator instead of merely preventing
+  one. See [What was not done](#what-was-not-done).
+- **When does the `config-gen` protobuf version enter `tools_text`?** It is
+  pinned and identical everywhere now, so recording it is finally honest. It
+  was left out of this change so that the manifest churn belongs to one commit
+  rather than two, and it should land with the `fmpp` pin if that happens.
 
 ## Appendix: how nanopb was found disagreeing with itself
 

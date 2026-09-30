@@ -206,6 +206,58 @@ if(NOT REGENERATE_SOURCES STREQUAL "OFF")
   list(GET _config_gen_protos 0 _config_gen_first_proto)
   cmake_path(GET _config_gen_first_proto PARENT_PATH CONFIG_GEN_PROTO_DIR)
 
+  # The pinned protobuf and the protoc in use must be the same release.
+  #
+  # requirements.txt names a version; nothing derives it from nanopb, and
+  # nothing could reliably -- a source nanopb tree ships no protoc at all. So
+  # a nanopb bump would move protoc while the pin sat still, quietly undoing
+  # the property the pin exists for: that ONE protobuf release governs both
+  # generated outputs in these directories.
+  #
+  # Rather than derive it, check it. protoc reports "libprotoc 28.1"; the
+  # Python package calls the same release 5.28.1. The Python-side major differs
+  # by design, so the comparison is on what follows it.
+  #
+  # Releases before 22 complicate this: protoc called them 3.21.12 while the
+  # Python package called the same release 4.21.12. So a leading "3." on the
+  # protoc side is dropped as well, leaving 21.12 against 21.12.
+  execute_process(
+    COMMAND "${CONFIG_GEN_PROTOC}" --version
+    OUTPUT_VARIABLE _config_gen_protoc_version_text
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE _config_gen_protoc_version_ok
+    ERROR_QUIET)
+  if(NOT _config_gen_protoc_version_ok EQUAL 0)
+    message(WARNING
+      "Could not run ${CONFIG_GEN_PROTOC} --version; the protoc and protobuf "
+      "versions are unverified against each other.")
+  else()
+    string(REGEX MATCH "([0-9]+\\.[0-9]+(\\.[0-9]+)?)$"
+           _ "${_config_gen_protoc_version_text}")
+    set(_config_gen_protoc_version "${CMAKE_MATCH_1}")
+    # protobuf 5.28.1 -> 28.1, protobuf 4.21.12 -> 21.12
+    string(REGEX REPLACE "^[0-9]+\\.(.*)$" "\\1" _config_gen_protobuf_tail
+           "${CONFIG_GEN_PROTOBUF_VERSION}")
+    # protoc 28.1 -> 28.1, protoc 3.21.12 -> 21.12
+    string(REGEX REPLACE "^3\\.(.*)$" "\\1" _config_gen_protoc_tail
+           "${_config_gen_protoc_version}")
+    if(NOT _config_gen_protoc_tail STREQUAL _config_gen_protobuf_tail)
+      reproducibility_problem(
+        "config-gen's protobuf and protoc are different releases: "
+        "requirements.txt pins protobuf ${CONFIG_GEN_PROTOBUF_VERSION} but "
+        "${CONFIG_GEN_PROTOC} reports ${_config_gen_protoc_version_text}. "
+        "protoc normally comes from the nanopb distribution, so this usually "
+        "means nanopb was bumped without updating "
+        "${CONFIG_GEN_REQUIREMENTS}. Set protobuf to "
+        "<major>.${_config_gen_protoc_tail} there, regenerate, and commit "
+        "what changes.")
+    else()
+      message(STATUS
+        "config-gen: protobuf ${CONFIG_GEN_PROTOBUF_VERSION} and "
+        "${_config_gen_protoc_version_text} are the same release")
+    endif()
+  endif()
+
   # Prove this works now rather than in the middle of a build: render a
   # descriptor set with this protoc and build the Config class from it with
   # this interpreter. A failure here names the cause; the same failure during
