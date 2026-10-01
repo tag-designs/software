@@ -244,27 +244,27 @@ from the tag's `project.mk`, which the build already reads to derive the
 distributed board set. For the mapping from board to loader, `add_embedded_loader`
 gains a `BOARD` argument; today the board is implicit in `LOADER_BOARD_INC`.
 
-**A static identity record, for future firmware.** A fixed-format struct placed
-by the tag linker script directly after the vector table, found by scanning
-the first 4 KB of flash for its magic. That works on any MCU without knowing
-its vector-table size. Proposed contents:
+**A tag identity record, for future firmware.** A const, versioned record placed
+by the tag linker script directly after the interrupt vectors. Since the
+session already knows the MCU from `DBGMCU_IDCODE`, and the vector table has a
+fixed size per MCU, the record sits at a known address: `0x080001A0` on the
+STM32L432, `0x08000240` on the STM32U375. It is read in one step, with no
+scan. It carries:
+- everything the tag-info call reports;
+- the board and hardware revision;
+- the external flash part;
+- the loader and decoder names;
+- the layout facts a decoder needs.
 
-| Field | Purpose |
-| --- | --- |
-| `magic`, `format_version`, `size` | Locate and validate the record; let it grow. |
-| `tag_type`, `board_name`, `firmware_string` | What `infoAck()` reports today. |
-| `git_repo`, `git_hash`, `source_path`, `git_date` | The `InfoStrings`, which can then point here rather than duplicate them. |
-| `external_flash_part`, `loader_name` | What the recovery tool needs, directly. |
-| `image_end` | Where the image stops, so a host hashes the right number of bytes. |
+The downloader chooses its loader and decoder from it, so no board argument is
+needed. The specification is item 4 of
+[Offline Log Reconstruction](../../../../design/offline-log-reconstruction.md#4-a-tag-identity-record-immediately-after-the-interrupt-vectors).
 
-The image's own SHA-256 cannot be in the image. The host computes it up to
-`image_end`.
-
-This record should be designed together with the session superblock of Field
-Data Extraction, which carries the per-session data layout. Adding it changes
-every image's layout, and on STM32U375 layout alone has moved idle current.
-So it ships only as a qualified firmware release (`tag_release_check.py`),
-ideally bundled with other firmware work.
+This record should be designed together with the session facts, which go with
+the stored configuration (item 5 there). Adding it changes every image's
+layout, and on STM32U375 layout alone has moved idle current. So it ships only
+as a qualified firmware release (`tag_release_check.py`), ideally bundled with
+other firmware work.
 
 ## Loader protocol: a service wrapper around the ST entry points
 
