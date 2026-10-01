@@ -107,8 +107,12 @@ SECTIONS
     } > DMA3_RAM
 }
 
-/* Generic rules inclusion.*/
-INCLUDE rules.ld
+/* Generic rules inclusion: ChibiOS's rules.ld, with rules_code.ld replaced by
+   the project copy that places the tag identity record after the vectors. */
+INCLUDE rules_stacks.ld
+INCLUDE ../common/tag_rules_code.ld
+INCLUDE rules_data.ld
+INCLUDE rules_memory.ld
 
 /* Storage for logging and provisioned configuration.
    The final two STM32U375 flash pages are reserved for data that ordinary
@@ -236,3 +240,14 @@ ASSERT(__calibration_data_end__ <= __tag_nand_map_start__,
        "STM32U375 calibration section exceeds its reserved flash page");
 ASSERT(__nand_map_data_end__ <= __flash0_end__,
        "STM32U375 NAND map section exceeds its reserved flash page");
+
+/* End of the loaded image: the later of flash-resident sections and the .data
+   initialisers stored after them. A host hashes up to here. */
+__tag_image_end__ = MAX(__flash0_free__, LOADADDR(.data) + SIZEOF(.data));
+
+/* Every target built with the tag core module (modules/tag_core.mk) has a
+   record; a program that links this script without it, such as stop1test,
+   simply has none. Where there is one, it must directly follow the vectors. */
+ASSERT(SIZEOF(.tag_identity) == 0 ||
+       ADDR(.tag_identity) == ADDR(.vectors) + SIZEOF(.vectors),
+       "the tag identity record must directly follow the vector table");

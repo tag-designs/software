@@ -19,6 +19,7 @@
 #include "persistent.h"
 #include "rtc_api.h"
 #include "sensor_calibration.h"
+#include "tag_identity.h"
 #include "test_support.h"
 #include "timekeeping.h"
 #include "version.h"
@@ -35,8 +36,7 @@
 
 #include "adc.h"
 
-#define MAJOR_VERSION "1"
-#define MINOR_VERSION "0"
+/* The monitor protocol version string is TAG_IDENTITY_MONITOR_VERSION. */
 
 /**
  * @brief Generate one page of data-log acknowledgements.
@@ -477,41 +477,19 @@ static int monitorReturn(int len)
   return len;
 }
 
-/** @name Monitor information strings
- * Static firmware/build strings returned to host tools during monitor discovery.
- * @{
+/*
+ * The firmware and build strings the tag-info call reports live in the tag
+ * identity record (tag_identity.h, tagIdentityStrings), at a fixed address
+ * after the vectors. A host reading the tag's flash over SWD then gets the
+ * same bytes this call returns, without the firmware running.
+ *
+ * The date field is the commit date, not __DATE__/__TIME__: the compile time
+ * made every build of a commit produce different bytes, so "same commit, same
+ * image" could never hold however carefully the inputs were pinned. The
+ * commit date is a property of the commit -- when the source was written
+ * rather than when someone happened to compile it, which is the more useful
+ * answer from a tag in hand.
  */
-enum
-{
-  MONITOR_STR,
-  BOARD_STR,
-  REPO_STR,
-  HASH_STR,
-  BUILDTM_STR,
-  SOURCE_STR,
-  ARRAY_SIZE_STR
-};
-
-#define xstr(s) str(s)
-#define str(s) #s
-
-static const char *InfoStrings[ARRAY_SIZE_STR] = {
-    [MONITOR_STR] = MAJOR_VERSION "." MINOR_VERSION,
-    [BOARD_STR] = BOARD_NAME,
-    [REPO_STR] = GIT_REPO,
-    [HASH_STR] = VERSION_HASH,
-    /* The commit date, not __DATE__/__TIME__.
-     *
-     * The compile time made every build of a commit produce different bytes,
-     * so "same commit, same image" could never hold however carefully the
-     * inputs were pinned. The commit date is a property of the commit, so two
-     * builds of it now agree here -- and what this field reports becomes when
-     * the source was written rather than when someone happened to compile it,
-     * which is the more useful answer from a tag in hand.
-     */
-    [BUILDTM_STR] = GIT_DATE,
-    [SOURCE_STR] = xstr(SOURCEDIR)};
-/** @} */
 
 /** @name Acknowledgement encoding
  * Encoding helpers keep every monitor response in the shared protobuf buffer
@@ -752,8 +730,7 @@ static int infoAck(void)
   ack.err = Ack_OK;
   ack.which_payload = Ack_info_tag;
 
-  //STR_COPY(InfoStrings[MONITOR_STR], ack.payload.info.monitor);
-  STR_COPY(InfoStrings[BOARD_STR], ack.payload.info.board_desc);
+  STR_COPY(tagIdentityStrings.board_desc, ack.payload.info.board_desc);
   for (int i = 0; i < 3; i++)
   {
     uint32_t data = ((uint32_t *)UID_BASE)[i];
@@ -768,11 +745,11 @@ static int infoAck(void)
   ack.payload.info.extflashsz = externalFlashSize();
 
   ack.payload.info.tag_type = TAG_TYPE;
-  STR_COPY(FIRMWARE_STRING, ack.payload.info.firmware);
-  STR_COPY(InfoStrings[REPO_STR], ack.payload.info.gitrepo);
-  STR_COPY(InfoStrings[HASH_STR], ack.payload.info.githash);
-  STR_COPY(InfoStrings[BUILDTM_STR], ack.payload.info.build_time);
-  STR_COPY(InfoStrings[SOURCE_STR], ack.payload.info.source_path);
+  STR_COPY(tagIdentityStrings.firmware, ack.payload.info.firmware);
+  STR_COPY(tagIdentityStrings.git_repo, ack.payload.info.gitrepo);
+  STR_COPY(tagIdentityStrings.git_hash, ack.payload.info.githash);
+  STR_COPY(tagIdentityStrings.git_date, ack.payload.info.build_time);
+  STR_COPY(tagIdentityStrings.source_path, ack.payload.info.source_path);
 #ifdef QTMONITOR_VERSION
   ack.payload.info.qtmonitor_min_version = QTMONITOR_VERSION;
 #else

@@ -36,6 +36,7 @@ embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
 embedded/tags/common/core/src/usart_bus.c
@@ -51,6 +52,7 @@ embedded/tags/common/sensors/src/sensor_io.c
 ### Header Files
 
 ```text
+embedded/tags/BitTag/inc/tag_identity_family.h
 embedded/tags/BitTag/inc/config.h
 embedded/tags/BitTag/inc/custom.h
 embedded/tags/BitTag/inc/datalog.h
@@ -75,6 +77,7 @@ embedded/tags/common/core/inc/persistent.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -172,6 +175,7 @@ embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
 embedded/tags/common/core/src/usart_bus.c
@@ -215,6 +219,8 @@ embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/tag_identity.h
+embedded/tags/common/core/inc/tag_identity_family.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -258,6 +264,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
@@ -289,6 +296,7 @@ embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -300,6 +308,7 @@ embedded/tags/common/sensors/pressure/inc/lps27hhw.h
 embedded/tags/common/sensors/mag/inc/mmc5633.h
 embedded/tags/common/sensors/light/inc/opt3002.h
 embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/PresTag/inc/tag_identity_family.h
 ```
 
 ## PresTagRaw
@@ -330,6 +339,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
@@ -340,6 +350,7 @@ embedded/tags/common/core/src/time.c
 ```text
 include/prestag_log_format.h
 embedded/tags/PresTagRaw/inc/custom.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/families/PresTag/inc/config.h
 embedded/tags/families/PresTag/inc/datalog.h
 embedded/tags/families/PresTag/inc/devices.h
@@ -354,6 +365,7 @@ embedded/tags/common/storage/inc/at25xe_commands.h
 embedded/tags/common/storage/inc/storage_flash.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/PresTag/inc/tag_identity_family.h
 ```
 
 ## BitPresTag
@@ -386,6 +398,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
@@ -416,6 +429,8 @@ embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/tag_identity.h
+embedded/tags/common/core/inc/tag_identity_family.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -461,6 +476,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/time.c
 ```
@@ -491,11 +507,13 @@ embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/CompassTag/inc/tag_identity_family.h
 ```
 
 ## CompassTagAT25Breakout
@@ -530,6 +548,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/time.c
 ```
@@ -560,11 +579,13 @@ embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/CompassTag/inc/tag_identity_family.h
 ```
 
 ## CompassTagAT25
@@ -600,6 +621,7 @@ embedded/tags/common/rtc/src/rtc_test.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/usart_bus.c
 embedded/tags/common/core/src/time.c
 ```
@@ -630,11 +652,13 @@ embedded/tags/common/core/inc/gpio_utils.h
 embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
 embedded/tags/common/rtc/inc/rtc_api.h
 embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/CompassTag/inc/tag_identity_family.h
 ```
 
 ## IMUTagNand
@@ -663,6 +687,7 @@ embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/tag_soft_i2c.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
@@ -712,6 +737,7 @@ embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -729,6 +755,7 @@ embedded/tags/common/storage/inc/storage_device.h
 embedded/tags/common/storage/inc/storage_flash.h
 embedded/tags/common/storage/inc/storage_gd5f.h
 embedded/tags/common/storage/inc/storage_spi.h
+embedded/tags/families/IMUTag/inc/tag_identity_family.h
 ```
 
 ## IMUTagNandBmp581
@@ -757,6 +784,7 @@ embedded/tags/common/core/src/spi_bus.c
 embedded/tags/common/core/src/state_machine.c
 embedded/tags/common/core/src/stm32adc.c
 embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
 embedded/tags/common/core/src/tag_soft_i2c.c
 embedded/tags/common/core/src/test.c
 embedded/tags/common/core/src/time.c
@@ -807,6 +835,7 @@ embedded/tags/common/core/inc/i2c_bus.h
 embedded/tags/common/core/inc/power.h
 embedded/tags/common/core/inc/sensor_calibration.h
 embedded/tags/common/core/inc/spi_bus.h
+embedded/tags/common/core/inc/tag_identity.h
 embedded/tags/common/core/inc/test_support.h
 embedded/tags/common/core/inc/timekeeping.h
 embedded/tags/common/core/inc/usart_bus.h
@@ -826,6 +855,7 @@ embedded/tags/common/storage/inc/storage_device.h
 embedded/tags/common/storage/inc/storage_flash.h
 embedded/tags/common/storage/inc/storage_gd5f.h
 embedded/tags/common/storage/inc/storage_spi.h
+embedded/tags/families/IMUTag/inc/tag_identity_family.h
 ```
 
 ## stop1test

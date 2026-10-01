@@ -15,6 +15,7 @@
 #include "devices.h"
 #include "flash_internal.h"
 #include "persistent.h"
+#include "tag_identity_family.h"
 #include "timekeeping.h"
 
 #include "lis2du12.h"
@@ -43,6 +44,12 @@ sensor_constants_t constants_tmp NOINIT;
 
 
 #define CONSTANT_CNT (2048/sizeof(sensor_constants_t))
+
+/* The tag identity record publishes the slot size and count; keep them true. */
+_Static_assert(sizeof(sensor_constants_t) == TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
+               "tag_identity_family.h calibration slot size is wrong");
+_Static_assert(CONSTANT_CNT == TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
+               "tag_identity_family.h calibration slot count is wrong");
 
 // calibration constants in reserved flash section
 

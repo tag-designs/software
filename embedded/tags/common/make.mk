@@ -216,6 +216,16 @@ CPPWARN = -Wall -Wextra -Wundef
 UDEFS += -DPB_NO_PACKED_STRUCTS=1 -DPB_BUFFER_ONLY=1 -DSOURCEDIR=$(SOURCEDIR) 
 UDEFS += -DSTM32_I2C_USE_DMA=FALSE -DSTM32_SPI_DMA_REQUIRED=FALSE
 
+# Identity record inputs (core/src/tag_identity.c). TAG_BUILD_OPTIONS_DIGEST is
+# a CRC32 (POSIX cksum) of the -D options gathered so far, from the modules,
+# project.mk and the lines above. Two images of one commit built with different
+# options -- a test image and a shipping one -- then carry different digests,
+# which the git hash alone cannot show. It is taken before the identity names
+# are added, so it describes options, not names.
+TAG_BUILD_OPTIONS_DIGEST := $(shell printf '%s' '$(UDEFS)' | cksum | awk '{printf "0x%08xU", $$1}')
+UDEFS += -DTAG_BUILD_OPTIONS_DIGEST=$(TAG_BUILD_OPTIONS_DIGEST)
+UDEFS += -DTAG_TARGET_NAME=\"$(PROJECT)\" -DTAG_BOARD_ID=\"$(notdir $(BOARDINC))\"
+
 # Define ASM defines here
 UADEFS =  -DCRT0_INIT_STACKS=0 
 # doesn't work -DCRT0_INIT_BSS=0

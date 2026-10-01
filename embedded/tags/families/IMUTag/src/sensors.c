@@ -42,6 +42,7 @@
 #include "flash_internal.h"
 #include "gpio_utils.h"
 #include "persistent.h"
+#include "tag_identity_family.h"
 
 #if defined(TAG_SENSOR_MAG_BMM350) && TAG_SENSOR_MAG_BMM350
 #include "bmm350_tag.h"
@@ -96,6 +97,12 @@ sensor_constants_t constants_tmp NOINIT;
 
 
 #define CONSTANT_CNT (2048/sizeof(sensor_constants_t))
+
+/* The tag identity record publishes the slot size and count; keep them true. */
+_Static_assert(sizeof(sensor_constants_t) == TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
+               "tag_identity_family.h calibration slot size is wrong");
+_Static_assert(CONSTANT_CNT == TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
+               "tag_identity_family.h calibration slot count is wrong");
 
 /** Calibration records in the linker-reserved flash section. */
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));

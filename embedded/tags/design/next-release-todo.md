@@ -142,6 +142,25 @@ a layout version, so the host keeps decoding fw-v0.0.3 images too.
 
 ### B1. Tag identity record after the interrupt vectors
 
+**Status: implemented on `firmware-fix`; hardware verification outstanding.**
+- **Record:** `common/core/src/tag_identity.c`, with the format in
+  `common/core/inc/tag_identity.h`.
+- **Family facts:** `inc/tag_identity_family.h` in each of PresTag,
+  CompassTag, IMUTag, BitTag and UIUCTag.
+- **Placement:** `common/tag_rules_code.ld`, the project copy of ChibiOS's
+  `rules_code.ld`.
+- **Reader:** `embedded/tools/decode_tag_identity.py`.
+
+On the build machine, each of the eight affected targets' records matched its
+ELF's symbols and its `.bin` length. Two notes for the test machine:
+- **Build from a fresh tree**, or remove each target's `build/` and `dep/`. The
+  new family headers shadow a common default, and `make` does not notice a new
+  header shadowing an old one.
+- **`tag-info` should report exactly what it did before.** Compare its output
+  field by field.
+
+What follows is the specification as planned.
+
 - **Targets:** every tag; shared code.
 - **Changes.**
   - **Linker scripts** (`common/STM32L432xC.ld`, `common/STM32U375xG.ld`):

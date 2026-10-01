@@ -389,11 +389,22 @@ host needs neither: one read at a fixed address tells it where everything is
 and how big each record is. That holds even for an image whose package has
 been lost.
 
-**Format.** Entries are `{u16 id; u16 length; value}`, ending with an end
-entry, followed by a CRC over the whole record. Readers skip ids they do not
-know. So a family can add entries, and the format can grow, without breaking
-older hosts. Values are little-endian `u32`s, or NUL-terminated strings for the
-identity fields.
+**Format.** Entries are `{u16 id; u16 length; value}` after an 8-byte header
+(magic, format version, total size), ending with an end entry. Readers skip ids
+they do not know. So a family can add entries, and the format can grow, without
+breaking older hosts. Values are little-endian `u32`s, or NUL-terminated strings
+for the identity fields.
+
+As built (format version 1, `common/core/src/tag_identity.c`), two details
+differ from the first draft:
+- **There is no CRC.** A C initializer cannot compute one. The magic, the size
+  field and the end entry identify a well-formed record, and the image's
+  SHA-256 covers its bytes.
+- **Regions are given as start and end addresses, not sizes.** Each address is
+  a link-time constant, while the difference of two symbols is not. The data
+  headers' end is given as 0, meaning "to the end of the persistent region".
+
+The reader is `embedded/tools/decode_tag_identity.py`.
 
 **Regions.** Each region entry gives `{address, size, record_size,
 record_count, layout_version}`:

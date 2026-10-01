@@ -83,8 +83,12 @@ REGION_ALIAS("BSS_RAM", ram0);
 /* RAM region to be used for the default heap.*/
 REGION_ALIAS("HEAP_RAM", ram0);
 
-/* Generic rules inclusion.*/
-INCLUDE rules.ld
+/* Generic rules inclusion: ChibiOS's rules.ld, with rules_code.ld replaced by
+   the project copy that places the tag identity record after the vectors. */
+INCLUDE rules_stacks.ld
+INCLUDE ../common/tag_rules_code.ld
+INCLUDE rules_data.ld
+INCLUDE rules_memory.ld
 
 /* Storage for logging */
 
@@ -92,7 +96,9 @@ SECTIONS
 {
   .calibration (NOLOAD): ALIGN(2048)
   {
+    __calibration_start__ = .;
     *(.calibration)
+    __calibration_end__ = .;
   } > flash0
   .nand_map (NOLOAD): ALIGN(2048)
   {
@@ -110,3 +116,14 @@ SECTIONS
    __persistent_end__ = .;
   }  > flash0
 }
+
+/* End of the loaded image: the later of flash-resident sections and the .data
+   initialisers stored after them. A host hashes up to here. */
+__tag_image_end__ = MAX(__flash0_free__, LOADADDR(.data) + SIZEOF(.data));
+
+/* Every target built with the tag core module (modules/tag_core.mk) has a
+   record; a program that links this script without it, such as stop1test,
+   simply has none. Where there is one, it must directly follow the vectors. */
+ASSERT(SIZEOF(.tag_identity) == 0 ||
+       ADDR(.tag_identity) == ADDR(.vectors) + SIZEOF(.vectors),
+       "the tag identity record must directly follow the vector table");
