@@ -67,3 +67,9 @@ sensor orchestration, and storage/configuration bindings.
   rig is doing right now, overwritten by the active session.
 - [Power Measurement Log](design/power-test-results.md): append-only record
   of every completed CompassTag power measurement.
+
+## Host simulation
+
+[`test/`](test/README.md) compiles the real `state_run.c` and `datalog.c` for
+the host against stubs, fills a fake external flash, and checks every page
+through the real `data_logAck()`. It is not part of any build.

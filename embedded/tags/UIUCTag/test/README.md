@@ -36,6 +36,47 @@ images. Feed that file to `uiuctag_end_to_end_check` in
 `host/libraries/tagcore/test` to decode firmware-produced bytes with the real
 host decoder.
 
+## Datalog simulation: filling the flash
+
+`datalog_sim.c` complements the sequencer simulation. Where `sequencer_sim.c`
+replaces the datalog layer with a recorder, this harness compiles the real
+`../src/datalog.c` together with `../src/state_run.c`. It links them to a fake
+external NOR and a fake internal checkpoint array, and drives the minute alarm
+until the flash is full. Then it downloads every block through the real
+`data_logAck()`.
+
+Its subject is fix A3 from the `firmware-fix` branch
+(see [next-release-todo.md](../../design/next-release-todo.md)). Flash size is
+not a multiple of the 288-byte block, so the end of the part cuts the final
+block short. That block must still be served, with every slot that was
+completed plus the fields of the slot cut short that fit:
+
+- on 4 MiB (AT25XE321D), 13 slots plus the cut-short slot's pressure;
+- on 8 MiB, 2 slots plus the cut-short slot's pressure and temperature.
+
+fw-v0.0.3 served only whole blocks. The fake NOR also asserts on any read past
+the end of the part.
+
+```sh
+cd embedded/tags/UIUCTag
+cc -std=c11 -Wall -Wextra -Wno-pointer-to-int-cast -O1 \
+   -o /tmp/uiuctag_datalog_sim test/datalog_sim.c \
+   -Itest/stub -Itest -I../../../include -Iinc -Isrc
+/tmp/uiuctag_datalog_sim
+```
+
+The run should print `UIUCTAG DATALOG SIM: all assertions passed`. Built
+against the `datalog.c` from before A3, it fails with `block not served`.
+
+`-Wno-pointer-to-int-cast` is needed because `datalog.c` compares flash
+addresses as `uint32_t`, which is exact on the 32-bit tag. On a 64-bit host the
+harness asserts that its checkpoint array does not straddle a 4 GiB boundary.
+
+The register blocks, kernel calls and `UIUCTagLog` Ack that `datalog.c` needs
+are defined in the harness itself. `stub/` gained only `flash_internal.h` and
+`storage_flash.h`, which `sequencer_sim.c` never includes, so the stubs it
+relies on are unchanged.
+
 ## What it does not cover
 
 Sensors, buses, power, and real timing are all stubbed. The simulation is only

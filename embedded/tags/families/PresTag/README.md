@@ -27,3 +27,9 @@ download log format.
 - [Power Measurement Log](design/power-test-results.md): append-only record of
   every completed measurement with its conditions. Cite entries from here rather
   than restating figures.
+
+## Host simulation
+
+[`test/`](test/README.md) compiles the real `state_run.c` and `datalog.c` for
+the host against stubs, fills a fake external flash, and checks every page
+through the real `data_logAck()`. It is not part of any build.
