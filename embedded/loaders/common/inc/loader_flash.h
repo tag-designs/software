@@ -48,6 +48,20 @@ uint32_t loaderFlashSectorSize(void);
  */
 bool loaderFlashRead(uint32_t offset, uint8_t *buf, uint32_t n);
 
+/**
+ * @brief   Report the part's identity and status as found.
+ *
+ * @details The JEDEC ID is the one read by the last loaderFlashProbe(); the
+ *          status register is read now and never written, so block-protect
+ *          bits found on a returned tag are reported, not changed.
+ *
+ * @param[out] jedec  JEDEC ID, manufacturer in bits 23:16; 0 if never probed.
+ * @param[out] sr1    Status register 1.
+ * @return  false on an SPI timeout reading the status register.
+ * @pre     loaderFlashProbe() has run.
+ */
+bool loaderFlashIdentity(uint32_t *jedec, uint8_t *sr1);
+
 #if LOADER_ALLOW_WRITE
 /**
  * @brief   Erase one sector and prove it blank.

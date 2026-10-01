@@ -26,6 +26,8 @@ constexpr uint32_t kDemcr = 0xE000EDFCU;
 constexpr uint32_t kDbgKey = 0xA05FU << 16;
 constexpr uint32_t kCDebugEn = 1U << 0;
 constexpr uint32_t kCHalt = 1U << 1;
+constexpr uint32_t kCMaskInts = 1U << 3;
+constexpr uint32_t kRegWnR = 1U << 16;
 constexpr uint32_t kSRegRdy = 1U << 16;
 constexpr uint32_t kSHalt = 1U << 17;
 constexpr uint32_t kVcCoreReset = 1U << 0;
@@ -61,6 +63,60 @@ bool SwdSession::ReadCoreRegister(uint32_t reg, uint32_t &value) {
     SleepMs(1);
   }
   return false;
+}
+
+bool SwdSession::WriteCoreRegister(uint32_t reg, uint32_t value) {
+  if (!WriteDebug32(kDcrdr, value) || !WriteDebug32(kDcrsr, reg | kRegWnR))
+    return false;
+  for (int i = 0; i < 100; i++) {
+    uint32_t dhcsr = 0;
+    if (ReadDebug32(kDhcsr, &dhcsr) && (dhcsr & kSRegRdy))
+      return true;
+    SleepMs(1);
+  }
+  return false;
+}
+
+bool SwdSession::Write(uint32_t addr, const uint8_t *buf, uint32_t len) {
+  for (uint32_t off = 0; off < len; off += kBasePiece) {
+    const uint32_t n = (len - off) < kBasePiece ? (len - off) : kBasePiece;
+    // WriteMem32 takes a non-const buffer but only reads it.
+    if (!WriteMem32(addr + off, const_cast<uint8_t *>(buf + off),
+                    static_cast<uint16_t>(n)))
+      return false;
+  }
+  return true;
+}
+
+bool SwdSession::Run() {
+  // C_MASKINTS may only change while halted: set it with C_HALT still set,
+  // then release the halt with it held.
+  return WriteDebug32(kDhcsr, kDbgKey | kCDebugEn | kCHalt | kCMaskInts) &&
+         WriteDebug32(kDhcsr, kDbgKey | kCDebugEn | kCMaskInts);
+}
+
+bool SwdSession::WaitHalt(int timeout_ms, uint32_t *dhcsr_out) {
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+  uint32_t dhcsr = 0;
+  for (;;) {
+    if (ReadDebug32(kDhcsr, &dhcsr) && (dhcsr & kSHalt)) {
+      if (dhcsr_out)
+        *dhcsr_out = dhcsr;
+      return true;
+    }
+    if (std::chrono::steady_clock::now() >= deadline)
+      break;
+    SleepMs(1);
+  }
+  if (dhcsr_out)
+    *dhcsr_out = dhcsr;
+  return false;
+}
+
+bool SwdSession::Halt() {
+  return WriteDebug32(kDhcsr, kDbgKey | kCDebugEn | kCHalt | kCMaskInts) &&
+         WaitHalt(100);
 }
 
 bool SwdSession::Open(UsbDev usbdev) {

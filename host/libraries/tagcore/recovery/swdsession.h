@@ -157,6 +157,53 @@ public:
    */
   bool ReadCoreRegister(uint32_t reg, uint32_t &value);
 
+  /**
+   * @brief   Write a range of target memory.
+   *
+   * @param[in] addr  First byte; 4-byte aligned.
+   * @param[in] buf   Source, @p len bytes.
+   * @param[in] len   Length; a multiple of 4.
+   * @return  false on the first SWD fault; earlier pieces stay written.
+   */
+  bool Write(uint32_t addr, const uint8_t *buf, uint32_t len);
+
+  /**
+   * @brief   Write a core register of the halted core through DCRSR/DCRDR.
+   *
+   * @param[in] reg    Register selector, as for ReadCoreRegister().
+   * @param[in] value  Value to write.
+   * @return  false if the core is not halted or the transfer failed.
+   */
+  bool WriteCoreRegister(uint32_t reg, uint32_t value);
+
+  /**
+   * @brief   Let the halted core run, with interrupts masked by the debugger.
+   *
+   * @details Sets DHCSR.C_MASKINTS while still halted, as the architecture
+   *          requires, then clears C_HALT. The tag's own interrupts are
+   *          therefore not taken while code downloaded by the host runs:
+   *          one taken then would run tag firmware from internal flash.
+   *
+   * @return  false on an SWD fault.
+   * @pre     The core is halted.
+   */
+  bool Run();
+
+  /**
+   * @brief   Wait for the core to halt.
+   *
+   * @param[in]  timeout_ms  Longest wait, in milliseconds.
+   * @param[out] dhcsr       DHCSR as last read; may be nullptr.
+   * @return  true when DHCSR.S_HALT was seen within the timeout.
+   */
+  bool WaitHalt(int timeout_ms, uint32_t *dhcsr = nullptr);
+
+  /**
+   * @brief   Request a halt and wait briefly for it.
+   * @return  true when the core is halted.
+   */
+  bool Halt();
+
 private:
   bool open_ = false;
   const McuMap *mcu_ = nullptr;

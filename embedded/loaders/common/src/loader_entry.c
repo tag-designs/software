@@ -28,10 +28,15 @@
  *          Write, SectorErase and MassErase fail in the read-only image,
  *          which is built without the erase and program code
  *          (LOADER_ALLOW_WRITE=0).
+ *
+ *          @c Serve(buffer, size) is the host library's entry point, outside
+ *          the ST set: it initialises once and then runs commands from the
+ *          ::loaderService block until told to exit. See loader_service.h.
  */
 
 #include "loader.h"
 #include "loader_flash.h"
+#include "loader_service.h"
 
 /** @brief Keeps an entry point linked and in the section the map retains. */
 #define LOADER_ENTRY __attribute__((used, noinline, section(".loader_entry")))
@@ -216,4 +221,153 @@ LOADER_ENTRY int MassErase(uint32_t Parallelism)
 #else
   return 0;
 #endif
+}
+
+/**
+ * @brief   The Serve() command block, found by the host through this symbol.
+ *
+ * @details In .bss, so Serve() clears it on entry; @c magic is written last,
+ *          once the part has been probed, so a host that sees the magic sees
+ *          a complete block.
+ */
+volatile LoaderServiceBlock loaderService;
+
+/** @brief STM32L4 IWDG key register; 0xAAAA reloads a running watchdog. */
+#define LOADER_IWDG_KR (*(volatile uint32_t *)0x40003000U)
+/** @brief Key that reloads the IWDG counter. */
+#define LOADER_IWDG_RELOAD 0xAAAAU
+
+/**
+ * @brief   Run one command from ::loaderService.
+ *
+ * @param[in,out] buf   Transfer buffer.
+ * @param[in]     size  Buffer length in bytes.
+ * @return  A LoaderServiceStatus value.
+ */
+static int32_t loaderServeCommand(uint8_t *buf, uint32_t size)
+{
+  const uint32_t cmd = loaderService.cmd;
+  const uint32_t offset = loaderService.offset;
+  const uint32_t length = loaderService.length;
+  const uint32_t total = loaderFlashSize();
+  uint32_t jedec;
+  uint8_t sr1;
+
+  loaderService.progress = 0U;
+  loaderService.detail[LOADER_DETAIL_FAIL_OFFSET] = 0U;
+
+  switch (cmd) {
+  case LOADER_CMD_PROBE:
+    if (!loaderFlashProbe() || !loaderFlashIdentity(&jedec, &sr1))
+      return LOADER_STATUS_IO;
+    loaderService.detail[LOADER_DETAIL_JEDEC] = jedec;
+    loaderService.detail[LOADER_DETAIL_SR1] = sr1;
+    return LOADER_STATUS_OK;
+
+  case LOADER_CMD_READ:
+    if (length > size || offset > total || length > total - offset)
+      return LOADER_STATUS_RANGE;
+    if (!loaderFlashRead(offset, buf, length)) {
+      loaderService.detail[LOADER_DETAIL_FAIL_OFFSET] = offset;
+      return LOADER_STATUS_IO;
+    }
+    loaderService.progress = length;
+    return LOADER_STATUS_OK;
+
+  case LOADER_CMD_ERASE_SECTOR:
+#if LOADER_ALLOW_WRITE
+    if (offset >= total)
+      return LOADER_STATUS_RANGE;
+    if (!loaderFlashEraseSector(offset - (offset % loaderFlashSectorSize()))) {
+      loaderService.detail[LOADER_DETAIL_FAIL_OFFSET] = offset;
+      return LOADER_STATUS_VERIFY;
+    }
+    loaderService.progress = loaderFlashSectorSize();
+    return LOADER_STATUS_OK;
+#else
+    return LOADER_STATUS_READ_ONLY;
+#endif
+
+  case LOADER_CMD_PROGRAM:
+#if LOADER_ALLOW_WRITE
+    if (length > size || offset > total || length > total - offset)
+      return LOADER_STATUS_RANGE;
+    if (!loaderFlashProgram(offset, buf, length)) {
+      loaderService.detail[LOADER_DETAIL_FAIL_OFFSET] = offset;
+      return LOADER_STATUS_VERIFY;
+    }
+    loaderService.progress = length;
+    return LOADER_STATUS_OK;
+#else
+    return LOADER_STATUS_READ_ONLY;
+#endif
+
+  default:
+    return LOADER_STATUS_BAD_COMMAND;
+  }
+}
+
+/**
+ * @brief   Initialise once, then serve host commands until EXIT.
+ *
+ * @details Clears .bss, brings up clock, board, SPI and the part, records the
+ *          part's identity and status register as found in detail[], and
+ *          publishes ::LOADER_SERVICE_MAGIC. It then waits for the host to
+ *          change @c seq, runs the command, and acknowledges it by copying
+ *          @c seq into @c ack. Each command is bounded by the part driver's
+ *          own timeouts. The wait reloads the IWDG, which has no effect unless
+ *          the hardware watchdog option has started it; the debug freeze
+ *          covers only a halted core.
+ *
+ *          On an initialisation failure the block carries
+ *          ::LOADER_STATUS_INIT with the magic, and Serve() returns 0 at once.
+ *
+ * @param[in,out] buffer  Transfer buffer in SRAM, chosen by the host.
+ * @param[in]     size    Its length in bytes.
+ * @return  1 after EXIT, 0 when initialisation failed.
+ */
+LOADER_ENTRY int Serve(uint8_t *buffer, uint32_t size)
+{
+  uint32_t *p;
+  uint32_t jedec = 0U;
+  uint8_t sr1 = 0U;
+  uint32_t seen;
+
+  for (p = &__loader_bss_start__; p < &__loader_bss_end__; p++)
+    *p = 0U;
+
+  loaderService.version = LOADER_SERVICE_VERSION;
+  loaderService.detail[LOADER_DETAIL_SIZE] = loaderFlashSize();
+  loaderService.detail[LOADER_DETAIL_SECTOR] = loaderFlashSectorSize();
+  loaderService.detail[LOADER_DETAIL_WRITABLE] = LOADER_ALLOW_WRITE ? 1U : 0U;
+
+  if (!loaderStart() || !loaderFlashIdentity(&jedec, &sr1)) {
+    loaderService.detail[LOADER_DETAIL_JEDEC] = jedec;
+    loaderService.status = LOADER_STATUS_INIT;
+    __DSB();
+    loaderService.magic = LOADER_SERVICE_MAGIC;
+    return 0;
+  }
+  loaderService.detail[LOADER_DETAIL_JEDEC] = jedec;
+  loaderService.detail[LOADER_DETAIL_SR1] = sr1;
+  loaderService.status = LOADER_STATUS_OK;
+  seen = loaderService.seq;
+  __DSB();
+  loaderService.magic = LOADER_SERVICE_MAGIC;
+
+  for (;;) {
+    while (loaderService.seq == seen)
+      LOADER_IWDG_KR = LOADER_IWDG_RELOAD;
+    seen = loaderService.seq;
+    __DSB();
+    if (loaderService.cmd == LOADER_CMD_EXIT) {
+      loaderService.status = LOADER_STATUS_OK;
+      __DSB();
+      loaderService.ack = seen;
+      return 1;
+    }
+    loaderService.status = loaderServeCommand(buffer, size);
+    __DSB();
+    loaderService.ack = seen;
+  }
 }

@@ -80,6 +80,9 @@ target_sources(tagcore
          recovery/sha256.cc
          recovery/swdmcu.cc
          recovery/swdsession.cc
+         recovery/targetimage.cc
+         recovery/sramcall.cc
+         recovery/externalflash.cc
          recovery/statecapture.cc
     PUBLIC
          log.h
@@ -92,6 +95,9 @@ target_sources(tagcore
          recovery/sha256.h
          recovery/swdmcu.h
          recovery/swdsession.h
+         recovery/targetimage.h
+         recovery/sramcall.h
+         recovery/externalflash.h
          recovery/statecapture.h
    )
 

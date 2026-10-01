@@ -42,6 +42,7 @@ host_cli_tool(tag-cal MACOSX_BUNDLE WIN32 tag-calibrate.cc options.cc)
 host_cli_tool(tag-monitor-test MACOSX_BUNDLE WIN32 tag-monitor-test.cc options.cc)
 host_cli_tool(tag-attach-cycle MACOSX_BUNDLE WIN32 tag-attach-cycle.cc options.cc)
 host_cli_tool(tag-capture MACOSX_BUNDLE WIN32 tag-capture.cc)
+host_cli_tool(tag-xflash MACOSX_BUNDLE WIN32 tag-xflash.cc)
 host_cli_tool(qtmonitor-fixture-capture MACOSX_BUNDLE WIN32 qtmonitor-fixture-capture.cc)
 
 if(TARGET sensoranalysis)

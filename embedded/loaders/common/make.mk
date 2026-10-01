@@ -39,6 +39,13 @@ endif
 ifeq ($(USE_CPPOPT),)
   USE_CPPOPT =
 endif
+
+# The image is one SRAM segment holding code, data and .bss together, by
+# design: the programmer, or the host library, downloads it and runs it in
+# place. ld warns about such an RWX segment; the warning says nothing here.
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = --no-warn-rwx-segments
+endif
 USE_LINK_GC = yes
 USE_LTO = no
 USE_THUMB = yes
@@ -65,6 +72,8 @@ LOADER_MCU_CFG_DIR ?= $(LOADER_COMMON_DIR)/cfg/stm32l4
 # The shared AT25XE command set lives beside the firmware driver so both use
 # one copy of the opcodes and timing budgets.
 TAG_STORAGE_INC_DIR ?= ../../tags/common/storage/inc
+# Host/firmware shared formats, such as the Serve() command block.
+LOADER_SHARED_INC_DIR ?= ../../../include
 
 # Configuration lookup mirrors the tags: the target's ./cfg first, then the
 # per-MCU defaults. HALCONFDIR must be a single directory because hal.mk reads
@@ -105,7 +114,7 @@ ASMSRC =
 ASMXSRC =
 
 INCDIR = $(LOADER_CFG_DIRS) ./inc $(LOADER_COMMON_DIR)/inc $(LOADER_BOARD_INC) \
-         $(TAG_STORAGE_INC_DIR) $(ALLINC)
+         $(TAG_STORAGE_INC_DIR) $(LOADER_SHARED_INC_DIR) $(ALLINC)
 
 MCU  = cortex-m4
 

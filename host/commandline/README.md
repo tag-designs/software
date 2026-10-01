@@ -96,6 +96,28 @@ useful because Shutdown and Standby do not keep it. `--leave-halted` leaves the
 core stopped. External flash is not captured yet. See
 [SWD Capture and Recovery Library](../libraries/tagcore/design/swd-recovery.md).
 
+## tag-xflash
+
+Reads a tag's external flash over SWD, again **without booting its firmware**.
+It halts the tag at its reset vector, downloads an external-flash loader from
+`embedded/loaders` into SRAM, and calls the loader's `Init` and `Read` from the
+host. CubeProgrammer is not involved, and internal flash is not written.
+
+```sh
+build-host/bin/tag-xflash dump \
+    --loader build-host/embedded/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3/build/AT25XE_PresTagv3.stldr \
+    -o xflash.bin
+```
+
+A loader with a `Serve()` entry point (the loaders in this tree) is driven
+through it, and the tool prints the part's JEDEC ID and status register as
+found. Any other `.stldr` is driven through the STM32CubeProgrammer entry
+points; `--st` forces that path. `--offset` and `--length` read part of the
+device; by default the whole part is read, its size taken from the loader. The loader must match the board; for now
+it is chosen by hand. Downloading the loader overwrites the start of SRAM1, so
+run `tag-capture` first if SRAM matters. A 4 MiB part takes about a minute.
+See [Loader Runtime Design](../../embedded/loaders/design/loader-runtime.md).
+
 ## tag-cal-write
 
 Several CompassTag-family state handlers refuse `Start` with "Device must be

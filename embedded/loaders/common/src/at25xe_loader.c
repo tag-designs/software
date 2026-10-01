@@ -35,6 +35,9 @@
 /** @brief Erased-byte value of the array. */
 #define AT25XE_ERASED_BYTE 0xFFU
 
+/** JEDEC ID read by the last loaderFlashProbe(), manufacturer in bits 23:16. */
+static uint32_t at25_jedec;
+
 /**
  * @brief   Send a single-byte command under its own chip select.
  *
@@ -90,6 +93,8 @@ bool loaderFlashProbe(void)
        loaderSpiReceive(&loaderFlashBus, id, sizeof(id));
   loaderSpiDeselect(&loaderFlashBus);
 
+  at25_jedec = ok ? ((uint32_t)id[0] << 16) | ((uint32_t)id[1] << 8) | id[2]
+                  : 0U;
   return ok && id[0] == AT25XE_JEDEC_MANUFACTURER &&
          id[1] == AT25XE_JEDEC_DEVICE1;
 }
@@ -118,7 +123,6 @@ bool loaderFlashRead(uint32_t offset, uint8_t *buf, uint32_t n)
   return ok;
 }
 
-#if LOADER_ALLOW_WRITE
 /**
  * @brief   Read Status Register 1.
  *
@@ -136,6 +140,14 @@ static bool at25ReadStatus(uint8_t *status)
   return ok;
 }
 
+/* Contract documented in loader_flash.h. */
+bool loaderFlashIdentity(uint32_t *jedec, uint8_t *sr1)
+{
+  *jedec = at25_jedec;
+  return at25ReadStatus(sr1);
+}
+
+#if LOADER_ALLOW_WRITE
 /**
  * @brief   Poll until BSY clears, within a budget.
  *
