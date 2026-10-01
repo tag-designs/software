@@ -249,7 +249,9 @@ these.
 ## Firmware defects found
 
 These came out of the reading. They are not fixed here; each is a separate
-firmware change, with the qualification that implies. An offline rebuild
+firmware change, with the qualification that implies. They are scheduled, with
+fixes and verification, in
+[Tag Firmware: Next Release TODO](../embedded/tags/design/next-release-todo.md). An offline rebuild
 reproduces each of them faithfully.
 
 - **CompassTag page stride (data corruption).** `external_blocks` counts

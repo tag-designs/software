@@ -68,6 +68,7 @@ nav:
           - I2C Bus Recovery: reference/embedded/tags/design/i2c-bus-recovery.md
           - Debugging a Tag: reference/embedded/tags/design/debugging.md
           - Open Issues: reference/embedded/tags/design/open-issues.md
+          - Next Release TODO: reference/embedded/tags/design/next-release-todo.md
           - Restart Recovery: reference/embedded/tags/design/restart-recovery.md
           - Custom Defines: reference/embedded/tags/design/custom-defines.md
           - U375 Stop Support: reference/embedded/tags/design/u375-stop-support.md

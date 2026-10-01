@@ -118,6 +118,7 @@ set(
   "embedded/tags/design/i2c-bus-recovery.md"
   "embedded/tags/design/debugging.md"
   "embedded/tags/design/open-issues.md"
+  "embedded/tags/design/next-release-todo.md"
   "embedded/tags/design/stm32u375-standby-forum-post.md"
   "embedded/tags/design/restart-recovery.md"
   "embedded/tags/design/custom-defines.md"

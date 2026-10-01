@@ -4,7 +4,7 @@ Known defects that are understood well enough to write down but are not fixed.
 Each entry says what the evidence actually is, so the next person can tell a
 reproduced fault from one found by reading code.
 
-Last reviewed 2026-09-07.
+Last reviewed 2026-10-01.
 
 ## Reproduced
 
@@ -489,7 +489,23 @@ must be measured rather than argued.
 
 ## Found by reading code, not reproduced
 
-None of these is known to cause a current symptom.
+None of these is known to cause a current symptom, except where an entry says
+otherwise. Fixes for the first three, and for the marker-log entry, are
+scheduled in [Next Release TODO](next-release-todo.md).
+
+- **CompassTag family: resumed logging overwrites earlier pages.** This one
+  loses data. `Running(T_INIT)` (`state_run.c:62`) and `restoreLog()`
+  (`datalog.c:231`) reset the external cursor to `pages * 30`. That is a
+  sample count, but the cursor is in 16-bit words, and a page is 190 of them.
+  So any resume after hibernation or a restart writes over earlier pages. It
+  affects the shipping CompassTagAT25. TODO A1.
+- **CompassTag family: `t_DataHeader.temp10` is `uint16_t`** but holds a signed
+  value, so sub-zero core temperatures read as about 6553 °C. TODO A2.
+- **PresTag, CompassTag, UIUCTag: the last partial page is never downloaded.**
+  Writes run to the end of flash, but `data_logAck()` serves only whole pages.
+  TODO A3.
+- **The state-marker log stops silently when full**, which leaves no trace in a
+  field build. TODO A4.
 
 - **`gd5fSectorErase()` reports success without erasing** on three paths:
   logical block out of range, mapping failure, and physical block out of range.

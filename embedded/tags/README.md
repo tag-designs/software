@@ -404,6 +404,10 @@ frozen legacy target.
 
 ## Design Notes
 
+- `design/next-release-todo.md` is the work list for the next firmware
+  release. It covers the defect fixes, the layout changes for offline log
+  reconstruction, release qualification, and the matching host work.
+  `design/open-issues.md` is the standing defect tracker.
 - `design/u375-stop-support.md` documents the current STM32U375 returned-idle
   STOP policy, monitor attach guard, and scoped flash/SPI low-power behavior
   for U375 tag targets.

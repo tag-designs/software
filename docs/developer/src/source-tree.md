@@ -31,6 +31,7 @@ directory that owns the code; the developer portal stages those files under
 - [I2C Bus Recovery](reference/embedded/tags/design/i2c-bus-recovery.md)
 - [Debugging a Tag](reference/embedded/tags/design/debugging.md)
 - [Tag Firmware Open Issues](reference/embedded/tags/design/open-issues.md)
+- [Tag Firmware: Next Release TODO](reference/embedded/tags/design/next-release-todo.md)
 - [STM32U375 Standby Entry: Forum Post](reference/embedded/tags/design/stm32u375-standby-forum-post.md)
 - [Restart Recovery](reference/embedded/tags/design/restart-recovery.md)
 - [Custom Defines](reference/embedded/tags/design/custom-defines.md)
