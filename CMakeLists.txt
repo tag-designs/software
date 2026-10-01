@@ -89,6 +89,7 @@ set(
   "design/binary-datalogs.md"
   "design/dataprocessing.md"
   "design/field-data-extraction.md"
+  "design/offline-log-reconstruction.md"
   "design/tag-build-reproducibility.md"
   "design/tag-and-host-release-procedure.md"
   "design/windows-build-notes.md"

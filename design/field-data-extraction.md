@@ -162,6 +162,12 @@ loader that corrects and skips internally can discard information irrecoverably
 -- and when the failure under investigation is itself in the bad-block map or
 the ECC path, the loader would be hiding exactly the evidence that matters.
 
+Revised by [Offline Log Reconstruction](offline-log-reconstruction.md): the
+GD5F's on-die ECC algorithm is not in the source, so the host cannot correct a
+raw page itself. A capture should read each used page raw **and** through
+on-die ECC, recording the ECC status. The firmware drops a page whose ECC
+fails, and only the on-die read shows which pages those are.
+
 ### One loader per board; sharing is at the source level
 
 There is no way to have fewer loaders than boards. A `.stldr` is fully linked

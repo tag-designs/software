@@ -8,6 +8,7 @@ directory that owns the code; the developer portal stages those files under
 
 - [Design Index](reference/design/index.md)
 - [Binary Datalogs](reference/design/binary-datalogs.md)
+- [Offline Log Reconstruction](reference/design/offline-log-reconstruction.md)
 - [DataProcessing Post-Processing Application](reference/design/dataprocessing.md)
 - [Windows Build Notes](reference/design/windows-build-notes.md)
 
