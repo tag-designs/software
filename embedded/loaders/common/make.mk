@@ -93,8 +93,10 @@ include $(CHIBIOS)/os/hal/osal/os-less/ARMCMx/osal.mk
 LDSCRIPT = $(LOADER_COMMON_DIR)/STM32L432-loader.ld
 
 # Shared loader sources, as basenames resolved through VPATH so a target's
-# ./src can override any of them.
-LOADER_COMMON_CSRC = \
+# ./src can override any of them. A project.mk may set its own list: an SRAM
+# probe that is not a flash loader keeps the clock and delay code and drops
+# the flash entry points.
+LOADER_COMMON_CSRC ?= \
        loader_entry.c \
        loader_clock.c \
        loader_delay.c \

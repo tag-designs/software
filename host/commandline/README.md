@@ -118,6 +118,26 @@ it is chosen by hand. Downloading the loader overwrites the start of SRAM1, so
 run `tag-capture` first if SRAM matters. A 4 MiB part takes about a minute.
 See [Loader Runtime Design](../../embedded/loaders/design/loader-runtime.md).
 
+## tag-sramcall
+
+Calls one function of an SRAM-resident image on a halted tag and prints the
+transfer buffer. It halts the tag at its reset vector, downloads the image into
+SRAM1 with the same convention as the external-flash loaders, calls the named
+function with up to four arguments, hex-dumps the buffer, and resets the tag.
+An argument written `buf` becomes the buffer's address.
+
+```sh
+build-host/bin/tag-sramcall \
+    --image build-host/embedded/loaders/RV3028_PresTagv3/RV3028_PresTagv3/build/RV3028_PresTagv3.elf \
+    --call Rv3028ReadRegs --args buf,0x30,8 --dump 8
+```
+
+That reads the RV3028's configuration registers, its factory clock offset
+among them, with no firmware on the tag. See
+[RV3028_PresTagv3](../../embedded/loaders/RV3028_PresTagv3/README.md). Exit
+status: 0 when the function returned 1, 2 for any other result, 1 when the call
+could not be made.
+
 ## tag-cal-write
 
 Several CompassTag-family state handlers refuse `Start` with "Device must be

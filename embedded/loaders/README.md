@@ -9,9 +9,10 @@ would overwrite it. The case for this approach is in
 [Field Data Extraction](../../design/field-data-extraction.md).
 
 The images follow STM32CubeProgrammer's external-loader (`.stldr`) contract, so
-`STM32_Programmer_CLI -el` can drive them today. A host library and tools built
-on `tagcore` are planned to replace CubeProgrammer as the driver, using the same
-images; see [SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
+`STM32_Programmer_CLI -el` can drive them. The host library in `tagcore` drives
+the same images without CubeProgrammer. It uses their `Serve()` entry point,
+and `tag-xflash dump` reads a whole part with it. See
+[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
 
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
@@ -29,7 +30,7 @@ loaders/
     inc/loader.h            clock, delay, SPI, and the board hooks a target supplies
     inc/loader_flash.h      the part-driver interface
     inc/dev_inf.h           CubeProgrammer's StorageInfo layout
-    src/loader_entry.c      Init / Read / Write / SectorErase / MassErase
+    src/loader_entry.c      Init / Read / Write / SectorErase / MassErase, and Serve()
     src/loader_clock.c      HSI16 by hand, never the backup domain
     src/loader_delay.c      DWT busy-wait delays
     src/loader_spi.c        polled, bounded SPI master (STM32 SPIv2)
@@ -39,7 +40,12 @@ loaders/
     Makefile, project.mk    like a tag target
     src/board_loader.c      pins and board bring-up
     src/dev_inf.c           StorageInfo: name, size, sector map
+  AT25XE_CompassTagv1/      the same part on the CompassTagv1 board
+  RV3028_PresTagv3/         not a flash loader: a read-only RTC register probe
 ```
+
+The `Serve()` command block is defined in `include/loader_service.h` at the
+top of the repository, because the host library uses the same definition.
 
 A loader target is laid out like a tag target: `Makefile` includes
 `../common/make.mk`, `project.mk` names the board, MCU config and sources, and a
@@ -55,6 +61,7 @@ serves both. Names follow ST's `<MEMORY>_<BOARD>` convention:
 | --- | --- |
 | `AT25XE_PresTagv3.stldr` | Read-only. Forensic use; the only image the recovery procedure uses. |
 | `AT25XE_PresTagv3-RW.stldr` | Erase and program, each verified by read-back. Rescue and bench testing. |
+| `AT25XE_CompassTagv1.stldr`, `-RW` | The same pair for CompassTagAT25 and CompassTagAT25Breakout. |
 
 The two are one source directory built twice. The read-only image is built with
 `LOADER_ALLOW_WRITE=0` and does not contain the erase or program code at all; it
@@ -117,6 +124,13 @@ A full 4 MB read takes about 70 s.
    particular, leave other devices' pins alone: driving a sensor's pins while its
    rail is off back-powers it.
 5. Update the name string in `src/dev_inf.c`.
+
+`AT25XE_CompassTagv1` was made this way on 2026-10-01. The steps above were
+the whole job: a new `board_loader.c` for PA15/PB3-PB5 with GPIOA and GPIOB
+enabled, a name change, and the CMake entry. It read the part correctly on its
+first run on a tag. The one judgement call was step 4. The magnetometer shares
+SPI1 in the firmware, but on other pins behind a switched rail, so the loader
+leaves those pins alone.
 
 **New part** (MX25R, MX25L, ...):
 
