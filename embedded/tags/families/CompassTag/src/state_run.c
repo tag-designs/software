@@ -57,9 +57,10 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->lastwrite = timestamp;
     pState->lastactstart = INT_MAX;
 
-    // round up external short count
+    // Resume at the start of the next external page. The cursor is in
+    // 16-bit words (DATALOG_PAGE_WORDS per page), not samples.
 
-    pState->external_blocks = pState->pages*max_cycles;
+    pState->external_blocks = pState->pages * DATALOG_PAGE_WORDS;
 
     // get voltage, internal temperature
 
@@ -227,7 +228,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
-          (pState->external_blocks % (sizeof(t_DataLog) / 2) == 0))
+          (pState->external_blocks % DATALOG_PAGE_WORDS == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }

@@ -40,6 +40,19 @@ typedef struct {
   } data[DATALOG_SAMPLES];
 } t_DataLog;
 
+/**
+ * @def     DATALOG_PAGE_WORDS
+ * @brief   Length of one external log page in the units of
+ *          pState->external_blocks.
+ *
+ * @details The external write cursor counts 16-bit words, not samples: a
+ *          write lands at byte address `external_blocks * 2`. Every place that
+ *          positions the cursor at a page boundary must use this, not a
+ *          sample count. fw-v0.0.3 reset it to `pages * 30` -- samples -- on
+ *          resume, which wrote new data over earlier pages.
+ */
+#define DATALOG_PAGE_WORDS (sizeof(t_DataLog) / 2U)
+
 /** @brief Internal-flash header that anchors one external log page. */
 typedef struct {
   int32_t epoch;

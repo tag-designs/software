@@ -227,8 +227,10 @@ int restoreLog(void)
   }
 
   pState->pages = countInternalBlocks();
-  // we really should read the external page a search it
-  pState->external_blocks = pState->pages * DATALOG_SAMPLES * SAMPLES_PER_BLOCK;
+  // Resume at the start of the page after the last header. The cursor is in
+  // 16-bit words (DATALOG_PAGE_WORDS per page), not samples. Samples written
+  // after the last header's page began are not recovered here.
+  pState->external_blocks = pState->pages * DATALOG_PAGE_WORDS;
   if (pState->pages > 0) {
     t_DataHeader last_header;
     if (readDataHeader(pState->pages - 1, &last_header))
