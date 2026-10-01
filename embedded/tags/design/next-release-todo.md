@@ -29,6 +29,33 @@ layout work slips.
 
 **Severity: data loss.** Checked against the source.
 
+**Status: fixed, and verified on hardware on 2026-10-01.** On a CompassTagAT25
+(UID `203633324B4250060022005E`, firmware `a7a69b17`), with the flash read by
+`tag-xflash` and the new `AT25XE_CompassTagv1` loader:
+- **Hibernation resume, the path that corrupted fw-v0.0.3 logs:**
+  - The tag logged a full page and hibernated at the page boundary; a reset
+    then woke it after the window.
+  - `Running(T_INIT, ENDHIB)` put the cursor at 380 words, page 2, and wrote
+    header 2.
+  - Page 0 was byte-identical before and after.
+  - The new samples began at byte 760.
+  - The pre-fix code would have resumed at 60 words, on top of page 0.
+- **Backup-domain loss:**
+  - The valid word was cleared under reset to simulate a battery swap.
+  - `restoreLog()` rebuilt the cursor as 190 words, the next page, where the
+    pre-fix code gave 30.
+  - The boot then classified the reset as a power failure and ended the run
+    ABORTED, so nothing was written there.
+
+Both agree with `families/CompassTag/test/datalog_sim.c`.
+
+Two things learned on the way, both by design:
+- Hibernation is re-checked only by the hourly alarm (`ALARM_HOUR` in
+  `Hibernating()`), so a window shorter than an hour ends at the next hourly
+  wake or at a reset, not at its `end_epoch`.
+- A plain NRST reset while RUNNING keeps the retained cursor and does not call
+  `restoreLog()` at all.
+
 - **Targets:** CompassTagAT25, plus CompassTag and CompassTagAT25Breakout
   (all family members).
 - **Defect.** `pState->external_blocks` is the external write cursor in 16-bit
@@ -270,7 +297,24 @@ On a bench PresTag (UID `20333050364150040063005F`), a start therefore stored
 `tagSessionFactsCapture()`, as `infoAck()` already does. With it, the same tag
 started without `--set-rtc` stored `rtc_offset_valid = true` at 0 steps
 (0.0 ppm). This unit's EEOffset really is zero, which agrees with `tag-info`'s
-live read. The fix adds one I2C transaction at start, outside the sleep path.
+live read. A CompassTagAT25 (`203633324B4250060022005E`) also stored a valid
+offset of 0 steps.
+
+A third unit, a never-programmed PresTag, read −2 steps (−1.907 ppm). It was
+read before any firmware ran, by the read-only SRAM probe
+`embedded/loaders/RV3028_PresTagv3` through `tag-sramcall`. Offsets of a step
+or two are evidently typical for these oscillators, so zero on two of three
+units is plausible.
+
+On that blank unit, the normal workflow left the offset unchanged:
+- flashing, and the first boot, which rewrote CLKOUT from `C0` to `C2`;
+- `tag-info`, which then reported −1.907 ppm;
+- `tag-reset` and `tag-start --set-rtc`.
+
+A cold power-up was not tested, deliberately: it would risk the factory value,
+which cannot be recovered once lost. To record each tag's factory EEOffset,
+probe boards before they are first programmed. The fix adds one I2C
+transaction at start, outside the sleep path.
 Measure idle current anyway, as for any image change.
 
 The hardware check also confirmed B1 on that tag. `decode_tag_identity.py` on
@@ -357,9 +401,12 @@ This is **not yet a release qualification**:
 - The currents were checked by eye, not recorded. Recording them for each
   shipped target, from the release commit, is the gate for this release (see
   below).
-- A1 and A3 have been checked by simulation only, not on a tag.
 - B1 and B2 were checked on a bench PresTag on 2026-10-01 (see B2), and B2
-  needed a fix. They have not been checked on the other families.
+  needed a fix. Both were then checked on a CompassTagAT25: the record decoded
+  with its calibration region and 380-byte pages, and the session facts were
+  valid. Other families are not yet checked on hardware.
+- A1 was checked on a CompassTagAT25 (see A1). A3 has been checked by
+  simulation only.
 
 Every item above changes a tag image, and Part B changes all of them.
 AGENTS.md is explicit that this needs measurement, not argument.
