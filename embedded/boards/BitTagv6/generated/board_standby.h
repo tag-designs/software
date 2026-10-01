@@ -8,9 +8,9 @@
 #define BOARD_STANDBY_HAS_CONFIG 1
 
 #define HAS_PULLUPA 1
-#define HAS_PULLDWNA 1
+#define HAS_PULLDWNA 0
 #define PULLUPA ((1U << 3U))
-#define PULLDWNA ((1U << 6U))
+#define PULLDWNA 0U
 
 #define HAS_PULLUPB 1
 #define HAS_PULLDWNB 0
