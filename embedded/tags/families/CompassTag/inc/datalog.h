@@ -53,11 +53,19 @@ typedef struct {
  */
 #define DATALOG_PAGE_WORDS (sizeof(t_DataLog) / 2U)
 
-/** @brief Internal-flash header that anchors one external log page. */
+/**
+ * @brief Internal-flash header that anchors one external log page.
+ *
+ * @details `temp10` is signed: core temperature in 0.1 degC, negative below
+ *          freezing. fw-v0.0.3 declared it `uint16_t`, so data_logAck()
+ *          reported sub-zero temperatures as about 6553 degC. The size and
+ *          offset are unchanged, so headers written by either version read
+ *          correctly as signed.
+ */
 typedef struct {
-  int32_t epoch;
-  uint16_t vdd100;
-  uint16_t temp10;
+  int32_t epoch;    ///< Unix seconds at the start of the page.
+  uint16_t vdd100;  ///< Supply voltage in 0.01 V units.
+  int16_t temp10;   ///< Core temperature in 0.1 degC units.
 } t_DataHeader;
 
 /** Internal flash header array placed by the linker script. */
