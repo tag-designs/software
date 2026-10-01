@@ -185,9 +185,28 @@ re-initialisation, including the 2 ms wake, is a measurable share of read time
 at CubeProgrammer's chunk size. A driver that controls its own chunking could
 initialise once per session.
 
+## The Serve() entry point
+
+`Serve(buffer, size)` is the host library's entry point, beside the ST set.
+It initialises clock, board, SPI and the part once. It records the JEDEC ID
+and status register as found, then loops on the `loaderService` command block
+(`include/loader_service.h`) until the host sends EXIT. Erase and program
+commands are answered `LOADER_STATUS_READ_ONLY` in an image built without
+`LOADER_ALLOW_WRITE`. Because the service block is in `.bss`, the image now has
+a non-empty `.bss`, so ld would warn about an RWX segment; `make.mk` passes
+`--no-warn-rwx-segments`. The protocol and the host side are in
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md#loader-protocol-a-service-wrapper-around-the-st-entry-points).
+
 ## Open issues
 
-**A loader session changes the next boot's recorded reset cause.** After any
+**A loader session changes the next boot's recorded reset cause.** *Settled
+2026-10-01: CubeProgrammer's exit, not the loader.* A `tag-xflash` session,
+which downloads and runs the same loader and ends in a plain reset, left every
+backup register unchanged. A CubeProgrammer read of the same tag changed
+`resetCause` from 2 to 1 and rounded `external_blocks` up to a page, because
+CubeProgrammer lets the firmware boot as it leaves. See
+`host/libraries/tagcore/design/swd-recovery.md`, step 3.
+The original note follows. After any
 CubeProgrammer session that uses a loader, read-only or read-write,
 `RTC_BKP2R` (`pState->resetCause`) reads 1 (`resetStandby`) where it
 otherwise reads 2 (`resetShutdown`). Eight plain connections and a plain
@@ -209,7 +228,9 @@ The internal-flash regions capture correctly. Until it is fixed, read the
 backup registers by hand: under reset, enable `RCC_APB1ENR1_RTCAPBEN`, then
 read `0x40002850`, 128 bytes.
 
-**The loaders do not refresh the watchdog.** A tag whose option bytes select
+**The ST entry points do not refresh the watchdog.** `Serve()` does
+(2026-10-01): it writes `IWDG_KR = 0xAAAA` while it waits for commands. The
+ST entry points still do not. A tag whose option bytes select
 the hardware watchdog (`FLASH_OPTR.IWDG_SW` = 0) has it running from reset, and
 the debug freeze covers only a halted core. A long run of loader code -- a mass
 erase above all -- would then be cut off by a reset. The bench PresTag uses the

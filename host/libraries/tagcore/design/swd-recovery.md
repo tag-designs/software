@@ -6,7 +6,23 @@ Partly implemented. Steps 0-2 of the
 [implementation sequence](#implementation-sequence) are built and were run on a
 PresTag (STM32L432) on 2026-09-30: `tagcore/recovery/` and the `tag-capture`
 tool capture registers, option bytes, OTP and internal flash, halted before the
-firmware runs. Everything else here is still a proposal.
+firmware runs.
+
+Steps 3 and 4 are built (2026-10-01). `TargetImage`, `SramCall` and `tag-xflash dump`
+call a loader's `Init` and `Read` from the host and stream the external flash
+to a file; see step 3 for what has been checked. Step 9, the identity record,
+shipped in the firmware ahead of steps 4-8 (`next-release-todo.md` B1). It was
+checked on a bench PresTag with `tag-capture` and
+`embedded/tools/decode_tag_identity.py`. Everything else here is still a
+proposal.
+
+**Resume here.** Step 3's checks passed, and step 4's read path is built and
+checked (see each step). The next steps are:
+- step 4's remaining checks, which need an erase path through `Serve()`;
+- step 5, external flash in `tag-capture`;
+- then the offline SQLite shim (`next-release-todo.md` D1) on PresTag. Capture
+  and dump a tag, rebuild its SQLite file, and compare it with a normal
+  `tag-dwnld` of the same tag.
 
 It defines a Qt-free, Python-usable
 library in `tagcore` for capturing a tag's complete state over SWD and for
@@ -217,7 +233,11 @@ reason that script fails on the L432.
 ## Identifying the tag, and choosing a loader
 
 A tag that cannot talk cannot say what it is, so identification works from what
-the capture has already read. There are three sources, in order of confidence:
+the capture has already read. Firmware built since the identity record
+(`embedded/tags/design/next-release-todo.md` B1) carries it directly after the
+vectors, and it names the loader and decoder outright. Read it first. The
+three sources below remain for older images, such as the fw-v0.0.3 tags
+already deployed, in order of confidence:
 
 1. **Image hash.** Step 2 has the image. Each build manifest records the `.bin`
    SHA-256 and length, so hashing that many bytes of internal flash and looking
@@ -244,7 +264,7 @@ from the tag's `project.mk`, which the build already reads to derive the
 distributed board set. For the mapping from board to loader, `add_embedded_loader`
 gains a `BOARD` argument; today the board is implicit in `LOADER_BOARD_INC`.
 
-**A tag identity record, for future firmware.** A const, versioned record placed
+**The tag identity record** (in firmware since B1; this was the proposal). A const, versioned record placed
 by the tag linker script directly after the interrupt vectors. Since the
 session already knows the MCU from `DBGMCU_IDCODE`, and the vector table has a
 fixed size per MCU, the record sits at a known address: `0x080001A0` on the
@@ -411,7 +431,43 @@ manifest for steps 1-3 of a capture.
   SRAMs the attach erased and the watchdog selection;
 - the ECC registers are captured before the flash read.
 
-**3. ELF reader and generic ST-style call.** `TargetImage` and `SramCall`, then
+**3. ELF reader and generic ST-style call.** *Built.*
+- `recovery/targetimage.*` is a minimal ELF32 reader.
+- `recovery/sramcall.*` implements the traced convention. It downloads the
+  image's SRAM segments with a `BKPT` trap word at the start of SRAM1, sets LR
+  to the trap, MSP 1 KB past the image, R0-R3 to the arguments and xPSR to
+  Thumb, then runs with `DHCSR.C_MASKINTS` so the tag's interrupts are never
+  taken.
+- `SwdSession` gained `Write`, `WriteCoreRegister`, `Run`, `Halt` and
+  `WaitHalt`.
+- `tag-xflash dump --loader <.stldr> -o <file>` calls `Init` once, then `Read`
+  per 32 KB buffer, taking the part's base and size from the loader's
+  `StorageInfo`.
+
+Checked on a bench PresTag on 2026-10-01 (UID `20333050364150040063005F`):
+- **Identical to CubeProgrammer.** A 4 MiB dump holding a logged run was
+  byte-identical to `STM32_Programmer_CLI -el ... -u 0x90000000 0x400000` of
+  the same part (SHA-256 `b51b10ef...`). It took 56.1 s at about 75 KB/s,
+  against 57.4 s for CubeProgrammer and 101 KB/s for raw SWD reads (step 0).
+  The gap to raw SWD is the per-call register setup and the loader's 2 ms
+  flash wake, which `Serve()` removes.
+- **The `resetCause` question is settled: it is CubeProgrammer's exit, not
+  the loader.**
+  - Backup registers captured before and after a `tag-xflash` session were
+    identical.
+  - Across a CubeProgrammer read of the same FINISHED tag, `resetCause` went
+    from 2 to 1 and `external_blocks` from 14 to 60, rounded up to a page.
+  - CubeProgrammer lets the firmware boot on exit, and that boot's recovery
+    path rewrites `pState`. A `tag-xflash` session halts at the reset vector
+    and ends in a plain reset, so the firmware runs only after the session.
+- **A capture ends a short-period run.** On PresTag at sample periods under
+  10 s (run-mode Stop 2), the reset that ends any SWD session is classified
+  `EVENT_POWERFAIL` and the run goes to ABORTED. At 10 s and above (Standby
+  between samples) the run carries on through the same reset. See
+  `embedded/tags/design/restart-recovery.md`. Periods under 10 s are a bench
+  convenience, not deployed, so this matters on the bench: capture a
+  short-period test run only after stopping it.
+Original plan: `TargetImage` and `SramCall`, then
 call the existing `AT25XE_PresTagv3.stldr` `Init` and `Read` from the host.
 *Check:*
 - a 4 MB dump is identical to a CubeProgrammer dump of the same part;
@@ -419,7 +475,36 @@ call the existing `AT25XE_PresTagv3.stldr` `Init` and `Read` from the host.
   `hardware_reset`. This settles whether the `resetCause` change comes from
   CubeProgrammer's exit or from something the loader session itself does.
 
-**4. `Serve()` and `ExternalFlash`.** Add `Serve()` and the service block to
+**4. `Serve()` and `ExternalFlash`.** *Built; read path checked (2026-10-01).*
+- **Command block:** `include/loader_service.h`, shared by loader and host.
+- **Loader side:** `Serve(buffer, size)` in `embedded/loaders/common/src/loader_entry.c`,
+  with `loaderFlashIdentity()` in the part driver. The ST entry points are
+  unchanged.
+- **Host side:** `recovery/externalflash.*` provides probe at open, `Read`,
+  `EraseSector`, `Program` and `Close`.
+- **Tool:** `tag-xflash dump` uses `Serve()` when the loader has it; `--st`
+  forces the ST path.
+
+Two departures from the plan above:
+- The transfer buffer is passed to `Serve()` as an argument, not found by
+  symbol, so the host chooses where it goes.
+- The host zeroes the block before starting `Serve()`. The block is `.bss`,
+  which is not downloaded, and SRAM survives a reset, so a magic left by an
+  earlier session would otherwise read as ready.
+
+Checked on the bench PresTag:
+- A 4 MiB `Serve()` dump of a logged run was byte-identical to an ST-path dump
+  of the same state, taking 53.8 s against 56.1 s. That is about 78 KB/s
+  against step 0's 101 KB/s for raw SWD; SWD itself is the bottleneck.
+- `detail[]` reported JEDEC `0x1F4708` and SR1 `0x00`, no block protection.
+  The identity record (B1) stores the ID as `manufacturer << 16 | device1` =
+  `0x1F0047`, because the firmware knows only those two bytes. Identification
+  must compare those two bytes, not the whole word.
+- Not yet checked: the read-only image refusing erase through `Serve()` (no
+  tool issues an erase yet), and the loaders README bench sequence through
+  `ExternalFlash` (the `-RW` image).
+
+Original plan: add `Serve()` and the service block to
 `embedded/loaders/common`, keeping the ST entry points unchanged, and implement
 `ExternalFlash` on it.
 *Check:*
@@ -454,7 +539,11 @@ is external erase with blank-check, then internal erase and reflash, then
 first new run downloads correctly. An interruption between the steps leaves the
 harmless state described in Loader Runtime Design.
 
-**9. Identity record (firmware).** Specify it with the session superblock, add
+**9. Identity record (firmware).** *Done in the firmware, ahead of steps 4-8*
+(`embedded/tags/design/next-release-todo.md` B1). It is in every family.
+It was checked on hardware on a PresTag. What remains here is the host side:
+identification (step 7) should read the record first.
+Original plan: specify it with the session superblock, add
 it to one family, and qualify that release. This is a separate firmware change,
 gated on a firmware release.
 *Check:* `tag_release_check.py` passes, and step 7 identifies the tag from the

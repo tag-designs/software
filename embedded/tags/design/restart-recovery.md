@@ -263,6 +263,29 @@ successful runs — which had not happened once in the preceding runs.
 
 ### Still open
 
+- **PresTag at sample periods under 10 s does not survive a reset during
+  RUNNING** (observed 2026-10-01, bench PresTag `20333050364150040063005F`,
+  firmware `663780af`). Below 10 s the run sleeps in Stop 2 between samples
+  (`state_run.c`, `sconfig.lps_period < 10`); from 10 s up it uses Standby.
+  - A monitor attach (connect under reset), at 1 s: the tag kept reporting
+    RUNNING and wrote no further sample or header. External flash held 27
+    samples from the 27 s before the attach and nothing in the five minutes
+    after. The FINISHED marker then recorded 60 samples, the cursor rounded
+    up to a page by the restart path, not samples written.
+  - A plain NRST reset (the end of a `tag-capture` or `tag-xflash` session),
+    at 1 s: the boot classified it `EVENT_POWERFAIL` and the run went to
+    ABORTED.
+  - At 10 s, the same monitor attach and two SWD-session resets left the run
+    RUNNING and sampling (11 samples in 110 s, 12 after).
+  - Likely mechanism, not yet confirmed: a reset taken in Stop 2 leaves no
+    standby flag, so reset classification treats it as a power-on, while the
+    Standby case carries `SBF`. The monitor-attach stall is a separate path:
+    the run is adopted, but the next wakeup never comes.
+  - Not bisected; this is probably not a regression from the `firmware-fix`
+    branch, which does not touch the boot or run paths.
+  - Low priority: periods under 10 s are a bench convenience for gathering
+    data quickly, not a deployed configuration.
+
 - The monitor-attach recovery branch adopts retained state without
   cross-checking the marker log. Nothing depends on that now, but a future wipe
   or corruption of `pState->state` would again outrank durable flash evidence.

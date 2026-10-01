@@ -142,6 +142,21 @@ Optional for this release.
   storms do not burn the log. Weigh the flash write against endurance on a
   12 mAh cell first; this is an open question in Field Data Extraction.
 
+### A6. PresTag at sample periods under 10 s: a reset during RUNNING loses the run
+
+**Observed 2026-10-01, not scheduled.** On the bench PresTag:
+- at a 1 s period, a monitor attach left the tag RUNNING but no longer
+  sampling;
+- at a 1 s period, the plain reset that ends a `tag-capture` or `tag-xflash`
+  session was classified `EVENT_POWERFAIL`, and the run went to ABORTED;
+- at 10 s, which uses Standby between samples, both left the run intact.
+
+Low priority. Periods under 10 s exist only to gather data quickly on the
+bench, and deployed configurations use longer ones, so the shipping 90 s
+configuration is not affected. It matters on the bench: a short-period test
+run must not be attached to or captured mid-run, or its data stops there.
+Details and the likely mechanism are in `restart-recovery.md`, "Still open".
+
 ## Part B: layout changes for offline log reconstruction
 
 Specified in
@@ -152,7 +167,15 @@ a layout version, so the host keeps decoding fw-v0.0.3 images too.
 
 ### B1. Tag identity record after the interrupt vectors
 
-**Status: implemented on `firmware-fix`; hardware verification outstanding.**
+**Status: implemented; verified on a bench PresTag on 2026-10-01 (see B2).**
+Other families not yet checked on hardware.
+
+A follow-up from that check: the record's build-options digest does not cover
+the toolchain. The `5060aa03` image on the bench tag, built on another
+machine, had the same digest as a local build of the same source. But it was
+460 bytes smaller, with every code address shifted. A decoder that needs
+symbol addresses must take them from the ELF of the exact build. Consider
+adding the compiler version to the record.
 - **Record:** `common/core/src/tag_identity.c`, with the format in
   `common/core/inc/tag_identity.h`.
 - **Family facts:** `inc/tag_identity_family.h` in each of PresTag,
@@ -217,8 +240,8 @@ What follows is the specification as planned.
 
 ### B2. Session facts in the stored configuration
 
-**Status: implemented on `firmware-fix` for the EEOffset; hardware verification
-outstanding.**
+**Status: implemented for the EEOffset, and verified on a bench PresTag on
+2026-10-01 after a fix (uncommitted at the time of writing; see below).**
 - **The facts:** `common/core/inc/session_facts.h` defines `t_sessionFacts`:
   version, EEOffset steps, a valid flag, ppm, and a reserved word, 16 bytes in
   all.
@@ -226,14 +249,36 @@ outstanding.**
   UIUCTag) each add it to `t_storedconfig` and define
   `TAG_STORED_CONFIG_HAS_SESSION`.
 - **Written at start:** `state_machine.c` fills it just before the start
-  command writes the stored configuration, from the RV3028 correction cached at
-  RTC initialisation, so start adds no I2C traffic.
+  command writes the stored configuration. `tagSessionFactsCapture()` reads
+  the RV3028 offset over I2C at that moment.
 - **Reported:** `infoAck()` returns the stored ppm when it is valid, and reads
   it live otherwise, as before.
 - **Described:** the identity record gains a `TAG_ID_SESSION_FACTS` entry and
   reports the stored-config layout as version 2.
   `embedded/tools/decode_tag_identity.py` decodes the stored facts from a
   capture.
+
+**The hardware check found a bug, now fixed.** As first committed
+(`5060aa0`), the facts were taken from the driver's cached correction, so that
+start added no I2C traffic. That cache is RAM, filled only by `tagRtcInit()` on
+a power-on boot or a `set_rtc` request. A start normally arrives on a later
+boot that did neither. That is how `tag-reset` then `tag-start` works, and
+`tag-start` sets the clock only with `--set-rtc`.
+
+On a bench PresTag (UID `20333050364150040063005F`), a start therefore stored
+`rtc_offset_valid = false`. The fix is to refresh the cache with a live read in
+`tagSessionFactsCapture()`, as `infoAck()` already does. With it, the same tag
+started without `--set-rtc` stored `rtc_offset_valid = true` at 0 steps
+(0.0 ppm). This unit's EEOffset really is zero, which agrees with `tag-info`'s
+live read. The fix adds one I2C transaction at start, outside the sleep path.
+Measure idle current anyway, as for any image change.
+
+The hardware check also confirmed B1 on that tag. `decode_tag_identity.py` on
+a `tag-capture` directory decoded every field correctly: the record at
+`0x080001A0`, the region table, loader, decoder, JEDEC ID and git SHA. Those
+captures are in
+`/Users/geobrown/Research/tag-designs/captures/2026-10-01-prestag-5060aa0/`,
+outside the repo.
 
 Still to do from the plan below:
 - the effective sample settings as values;
@@ -312,8 +357,9 @@ This is **not yet a release qualification**:
 - The currents were checked by eye, not recorded. Recording them for each
   shipped target, from the release commit, is the gate for this release (see
   below).
-- A1 and A3 have been checked by simulation only, not on a tag. B1 and B2 have
-  not been checked on a tag.
+- A1 and A3 have been checked by simulation only, not on a tag.
+- B1 and B2 were checked on a bench PresTag on 2026-10-01 (see B2), and B2
+  needed a fix. They have not been checked on the other families.
 
 Every item above changes a tag image, and Part B changes all of them.
 AGENTS.md is explicit that this needs measurement, not argument.
@@ -398,8 +444,8 @@ useful once they exist. They are listed so neither half ships alone.
   decodes fw-v0.0.3 layouts from the release source and later layouts from B1
   and B3.
 - **D2.** `tagcore/recovery`: read the identity record at the per-MCU address
-  (add it to `swdmcu`), verify its CRC, and use it to choose the loader and
-  decoder; fall back to hash or string identification without it.
+  (add it to `swdmcu`), check its magic, size and end entry (the record has no
+  CRC), and use it to choose the loader and decoder; fall back to hash or string identification without it.
 - **D3.** Capture additions:
   - EEOffset over I2C for tags already deployed;
   - NAND pages read through on-die ECC, with their status;
