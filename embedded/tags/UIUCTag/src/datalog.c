@@ -428,13 +428,29 @@ int data_logAck(int index, Ack *ack)
     uint64_t byte_offset =
         (uint64_t)header.extern_log_block * DATALOG_BLOCK_BYTES;
 
-    if ((byte_offset + DATALOG_BLOCK_BYTES) <= (uint64_t)externalFlashSize())
+    /*
+     * Serve the final block even when the end of flash cuts it short. The log
+     * is written sample by sample until flash is full, and flash size is not a
+     * multiple of the block size; fw-v0.0.3 served only whole blocks, which
+     * left the last one written but never downloaded. Bytes beyond the end of
+     * flash read as 0xFF, the erased value: unwritten trailing slots are
+     * trimmed below, and a slot cut short keeps the fields that were written
+     * while the rest read as missing.
+     */
+    const uint64_t flash_size = externalFlashSize();
+
+    if (byte_offset < flash_size)
     {
       size_t used = DATALOG_BLOCK_BYTES;
+      uint32_t count = DATALOG_BLOCK_BYTES;
 
+      if (byte_offset + count > flash_size)
+        count = (uint32_t)(flash_size - byte_offset);
+
+      memset(data->samples.bytes, 0xFF, DATALOG_BLOCK_BYTES);
       tagStorageWake(TAG_EXTERNAL_FLASH);
       tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                     data->samples.bytes, DATALOG_BLOCK_BYTES);
+                     data->samples.bytes, count);
       tagStorageSleep(TAG_EXTERNAL_FLASH);
 
       /* Trim trailing never-written slots; keep interior gaps in place. */

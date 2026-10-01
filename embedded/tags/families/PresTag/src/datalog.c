@@ -304,6 +304,39 @@ extern enum LOGERR writeDataHeader(t_DataHeader *head)
 //
 
 /**
+ * @brief Read one external log page into databuf, the final partial page
+ *        included.
+ *
+ * @details The log is written until external flash is truly full, and flash
+ *          size is not a multiple of the page size, so the last page can be
+ *          cut short by the end of the part. fw-v0.0.3 served only pages that
+ *          fit whole, which left the last one written but never downloaded.
+ *          Bytes beyond the end of flash read as 0xFF, the erased value, so
+ *          the page ends at its first missing sample through the same
+ *          pressure == -1 rule that ends any partly filled page.
+ *
+ * @param[in] byte_offset Byte offset of the page in external flash.
+ * @return false when the page starts at or beyond the end of flash.
+ *
+ * @pre The external flash is awake (tagStorageWake()).
+ */
+static bool readExternalPage(uint64_t byte_offset)
+{
+  const uint64_t flash_size = externalFlashSize();
+  uint32_t count = sizeof(databuf);
+
+  if (byte_offset >= flash_size)
+    return false;
+  if (byte_offset + count > flash_size)
+    count = (uint32_t)(flash_size - byte_offset);
+
+  memset(&databuf, 0xFF, sizeof(databuf));
+  tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
+                 (uint8_t *)&databuf, count);
+  return true;
+}
+
+/**
  * @brief Populate and encode a monitor ACK for one PresTag log page.
  *
  * @param[in] index Log page index to export.
@@ -343,13 +376,10 @@ int data_logAck(int index, Ack *ack)
       if (((uint32_t)&vddHeader[current_index] >= persistent_end) ||
           !readDataHeader(current_index, &header) ||
           (header.epoch == -1) ||
-          (byte_offset + sizeof(databuf) > (uint64_t)externalFlashSize()))
+          !readExternalPage(byte_offset))
       {
         break;
       }
-
-      tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                     (uint8_t *)&databuf, sizeof(databuf));
 
       block.epoch = header.epoch;
       block.voltage = header.vdd100[0] * 0.01f;
@@ -371,13 +401,12 @@ int data_logAck(int index, Ack *ack)
       ((uint32_t)&vddHeader[index] < persistent_end) &&
       readDataHeader(index, &header) &&
       (header.epoch != -1) &&
-      (byte_offset + sizeof(databuf) <= (uint64_t)externalFlashSize());
+      (byte_offset < (uint64_t)externalFlashSize());
 
   if (valid_index)
   {
     tagStorageWake(TAG_EXTERNAL_FLASH);
-    tagStorageRead(TAG_EXTERNAL_FLASH, (uint32_t)byte_offset,
-                   (uint8_t *)&databuf, sizeof(databuf));
+    (void)readExternalPage(byte_offset);
     tagStorageSleep(TAG_EXTERNAL_FLASH);
 
     ack->which_payload = Ack_prestag_data_log_tag;
