@@ -15,6 +15,14 @@ void tagSessionFactsCapture(t_sessionFacts *facts)
 {
   memset(facts, 0, sizeof(*facts));
   facts->version = TAG_SESSION_FACTS_VERSION;
+  /*
+   * Read the offset now rather than trusting the cache. The cache is RAM, and
+   * is filled only by tagRtcInit(), which runs on a power-on boot and on a
+   * set_rtc request. A start normally arrives in a later monitor session than
+   * the clock was set in, on a boot that did neither, so the cache would read
+   * as never filled and the session would record no offset.
+   */
+  (void)tagRtcRefreshClockCorrection();
   if (tagRtcClockCorrectionValid())
   {
     facts->flags |= TAG_SESSION_FLAG_RTC_OFFSET_VALID;

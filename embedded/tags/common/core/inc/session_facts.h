@@ -59,9 +59,14 @@ typedef struct {
 /**
  * @brief   Record the current session facts.
  *
- * @details Uses the RV3028 correction cached at RTC initialisation, so it
- *          performs no bus traffic. Called by the state machine immediately
- *          before the start command writes the stored configuration.
+ * @details Refreshes the RV3028 correction over I2C first
+ *          (tagRtcRefreshClockCorrection()), then records it. The cache alone
+ *          is not enough: it is filled only by tagRtcInit(), on a power-on boot
+ *          or a set_rtc request, and a start normally arrives on a later boot
+ *          that did neither. Called by the state machine immediately before
+ *          the start command writes the stored configuration.
+ *
+ * @warning Performs an RTC bus transaction; call from thread context.
  *
  * @param[out] facts  Facts to fill in.
  */
