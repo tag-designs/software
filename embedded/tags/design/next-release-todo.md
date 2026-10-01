@@ -309,19 +309,45 @@ real `state_run.c` and `datalog.c` (see A1 and A3):
 - each passes on the branch and fails on the source from before its fix.
 
 This is **not yet a release qualification**:
-- `tag_release_check.py` has not been run on any target. It adds four idle
-  measurements, the life-cycle walk with the clock set, the bound on run
-  current and the attach storms.
+- The currents were checked by eye, not recorded. Recording them for each
+  shipped target, from the release commit, is the gate for this release (see
+  below).
 - A1 and A3 have been checked by simulation only, not on a tag. B1 and B2 have
   not been checked on a tag.
 
 Every item above changes a tag image, and Part B changes all of them.
 AGENTS.md is explicit that this needs measurement, not argument.
 
-- Run `embedded/tools/tag_release_check.py --target <Tag>` for every
-  distributed target, from a clean tree. It builds and flashes, measures idle
-  four times, walks the life cycle (bounding run current), and runs attach
-  storms.
+- **`tag_release_check.py` is a full gate for IMUTagNandBmp581 only.** It takes
+  any `--target`, but its defaults were written for that tag:
+  - the config is `power-configs/imutag-400.json`, and only IMUTag configs
+    exist there;
+  - `--run-max-ua 850` is sized for IMUTag at 400 Hz;
+  - the sample-count check reads only IMUTag's `lsm6.odr`;
+  - the life-cycle run is a fixed 60 s.
+
+  For the other tags, the build/flash, idle and attach-storm steps are still
+  meaningful. The life-cycle step is not:
+  - its run-current bound is too high for PresTag and BitTag to catch
+    anything;
+  - CompassTag (30 s samples, downloaded in blocks of 3) and UIUCTag (5-minute
+    samples) probably produce no downloadable row in 60 s, and would fail on
+    an empty table rather than on a fault.
+- **For this release, the current checks are the gate.**
+  - For each target being shipped, measure idle, running and finished current
+    from a clean build of the release commit.
+  - Record the numbers, so the next release has a baseline to compare against.
+  - IMUTagNandBmp581 is still a prototype, with boards out for fab, so it is not
+    gated on `tag_release_check.py` for this release. Run the release check
+    when it ships.
+- **Later:** make the release check cover every tag. This needs:
+  - a config per tag in `power-configs/`;
+  - per-target defaults selected by `--target`: a run-current bound taken
+    from a known-good measurement, and a run long enough to fill at least
+    one downloadable page;
+  - a per-tag sample-count check in place of the IMU-only rate check.
+
+  The hand measurements above provide the bounds.
 - On the STM32U375 (IMUTagNandBmp581), layout alone has moved both idle and
   run current. Treat any change in either as a layout effect first, and bisect
   against the previous image before reasoning about logic.
