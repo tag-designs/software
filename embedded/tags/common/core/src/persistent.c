@@ -58,6 +58,15 @@ static void tagStatusMeasure(uint16_t *vdd100, int16_t *temp10)
  * Objects placed in the persistent flash section and read directly after reset.
  * @{
  */
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+/* FLASH_Program_Array() programs STM32L4 flash in double-words and, given an
+   odd word count, writes one word past the struct. Keep it whole. */
+_Static_assert(sizeof(t_sessionFacts) == 16U,
+               "t_sessionFacts must stay 16 bytes");
+_Static_assert((sizeof(t_storedconfig) % 8U) == 0U,
+               "t_storedconfig must be a whole number of flash double-words");
+#endif
+
 t_StateMarker sEpoch[sEPOCH_SIZE] __attribute__((section(".persistent")))
 TAG_FLASH_RECORD_ALIGN __attribute__((no_reorder));
 t_storedconfig sconfig TAG_FLASH_RECORD_ALIGN

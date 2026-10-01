@@ -14,6 +14,7 @@ ALLCSRC += \
        main.c \
        monitor.c \
        persistent.c \
+       session_facts.c \
        pwr.c \
        spi_bus.c \
        state_machine.c \

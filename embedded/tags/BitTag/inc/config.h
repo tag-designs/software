@@ -1,6 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "session_facts.h"
+
+/** @brief This family's t_storedconfig carries t_sessionFacts `session`. */
+#define TAG_STORED_CONFIG_HAS_SESSION 1
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -27,6 +32,7 @@ typedef struct
   int32_t  stop;
   hibernate_t hibernate[2];
   uint8_t fill[4];
+  t_sessionFacts session; ///< Session facts; filled at start (session_facts.h).
 } t_storedconfig __attribute__ ((aligned (8)));
 
 extern t_storedconfig sconfig;

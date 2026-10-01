@@ -120,6 +120,18 @@ float rv3028ClockErrorPpm(void);
 bool rv3028ClockCorrectionValid(void);
 
 /**
+ * @brief Return the cached RV3028 factory clock correction in EEOffset steps.
+ *
+ * @details The raw signed 9-bit step count behind rv3028ClockErrorPpm(), as
+ *          decoded from the EEPROM Offset and Backup registers. Stored with
+ *          the session facts so the ppm value can be audited.
+ *
+ * @return Cached step count, or 0 if the correction has not been read
+ *         successfully in this boot.
+ */
+int16_t rv3028ClockCorrectionSteps(void);
+
+/**
  * @brief Refresh the cached RV3028 factory clock correction from shadow RAM.
  *
  * @details Reads the RV3028 Offset and Backup RAM mirror registers through the

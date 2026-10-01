@@ -1140,7 +1140,14 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     // is in response to a start command.
 
     if (reason == State_EVENT_STARTCMD)
+    {
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+      /* Session facts share the stored configuration's lifetime: written
+         here, at start, and erased with the data. */
+      tagSessionFactsCapture(&config_tmp.session);
+#endif
       writeStoredConfig(&config_tmp);
+    }
 
 #if TAG_CONFIGURED_IMMEDIATE_START
     /*

@@ -8,6 +8,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "session_facts.h"
+
+/** @brief This family's t_storedconfig carries t_sessionFacts `session`. */
+#define TAG_STORED_CONFIG_HAS_SESSION 1
+
 #include "tagdata.pb.h"
 #include "lsm6dsv16x.h"
 
@@ -39,6 +44,7 @@ typedef struct
   Lsm6dsv_ODR odr;      ///< Host-facing LSM6DSV16X output data-rate selector.
   Lsm6dsv_ACCEL accel_range; ///< Host-facing accelerometer full-scale selector.
   Lsm6dsv_GYRO gyro_range;   ///< Host-facing gyroscope full-scale selector.
+  t_sessionFacts session; ///< Session facts; filled at start (session_facts.h).
   //bool internal;
 #if IMUTAG_STORED_CONFIG_STM32U3_FLASH
   uint32_t flash_padding[2]; ///< Padding required for STM32U3 row writes.

@@ -759,9 +759,24 @@ static int infoAck(void)
   ack.payload.info.accelconstant = ACCEL_CONSTANT;
   ack.payload.info.magconstant = MAG_CONSTANT;
 #endif
-  tagRtcRefreshClockCorrection();
+  /*
+   * Report the RV3028 clock offset recorded at start when there is one, so the
+   * value a download sees is the value stored with the session -- the same
+   * value an offline reader of the stored configuration sees. Before a start,
+   * and on families that do not store it, read it live as before.
+   */
   ack.payload.info.has_ppm_clock_error = true;
-  ack.payload.info.ppm_clock_error = tagRtcClockErrorPpm();
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+  if (tagSessionFactsRtcOffsetValid(&sconfig.session))
+  {
+    ack.payload.info.ppm_clock_error = sconfig.session.rtc_offset_ppm;
+  }
+  else
+#endif
+  {
+    tagRtcRefreshClockCorrection();
+    ack.payload.info.ppm_clock_error = tagRtcClockErrorPpm();
+  }
   return encode_ack();
 }
 

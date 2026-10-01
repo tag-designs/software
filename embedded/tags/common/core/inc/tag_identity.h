@@ -81,6 +81,7 @@
 #define TAG_ID_DATA_FORMAT      0x0403U ///< TagIdentityDataFormat.
 #define TAG_ID_SCALES           0x0404U ///< float[TAG_IDENTITY_SCALE_SLOTS], decoder-defined order.
 #define TAG_ID_BUILD            0x0501U ///< TagIdentityBuild.
+#define TAG_ID_SESSION_FACTS    0x0601U ///< TagIdentitySessionFacts.
 /** @} */
 
 /** @brief Number of float slots in the TAG_ID_SCALES entry. */
@@ -203,6 +204,20 @@ typedef struct {
   uint32_t options_digest; ///< CRC32 (POSIX cksum) of the build's UDEFS.
   uint32_t flags;          ///< TAG_IDENTITY_FLAG_*.
 } TagIdentityBuild;
+
+/**
+ * @struct  TagIdentitySessionFacts
+ * @brief   Where the session facts sit inside the stored configuration.
+ *
+ * @details Present only for families whose t_storedconfig carries a
+ *          t_sessionFacts (session_facts.h). Read them from
+ *          stored_config.start + offset.
+ */
+typedef struct {
+  uint32_t offset;   ///< Byte offset of `session` within sconfig.
+  uint32_t size;     ///< sizeof(t_sessionFacts).
+  uint32_t version;  ///< TAG_SESSION_FACTS_VERSION.
+} TagIdentitySessionFacts;
 
 /**
  * @struct  TagIdentityStrings

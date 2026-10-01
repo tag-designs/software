@@ -68,6 +68,26 @@ static inline float tagRtcClockErrorPpm(void)
 }
 
 /**
+ * @brief Report whether the configured RTC's clock correction has been read.
+ *
+ * @return true when the cached RV3028 correction is valid in this boot.
+ */
+static inline bool tagRtcClockCorrectionValid(void)
+{
+  return rv3028ClockCorrectionValid();
+}
+
+/**
+ * @brief Return the configured RTC's raw clock correction in EEOffset steps.
+ *
+ * @return Cached signed step count, or 0 if not read in this boot.
+ */
+static inline int16_t tagRtcClockCorrectionSteps(void)
+{
+  return rv3028ClockCorrectionSteps();
+}
+
+/**
  * @brief Refresh the configured RTC's raw clock correction cache.
  *
  * @return true when the correction was read successfully.
@@ -157,6 +177,26 @@ static inline bool tagRtcInit(void)
 static inline float tagRtcClockErrorPpm(void)
 {
   return 0.0f;
+}
+
+/**
+ * @brief Report whether the configured RTC's clock correction has been read.
+ *
+ * @return false: legacy RTC drivers publish no correction.
+ */
+static inline bool tagRtcClockCorrectionValid(void)
+{
+  return false;
+}
+
+/**
+ * @brief Return the configured RTC's raw clock correction in EEOffset steps.
+ *
+ * @return 0: legacy RTC drivers publish no correction.
+ */
+static inline int16_t tagRtcClockCorrectionSteps(void)
+{
+  return 0;
 }
 
 /**

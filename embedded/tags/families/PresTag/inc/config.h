@@ -8,6 +8,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "session_facts.h"
+
+/** @brief This family's t_storedconfig carries t_sessionFacts `session`. */
+#define TAG_STORED_CONFIG_HAS_SESSION 1
+
 /** Tag type reported in monitor configuration messages. */
 #define TAG_TYPE PRESTAG
 
@@ -25,6 +30,7 @@ typedef struct
   hibernate_t hibernate[2];
   uint32_t lps_period;
   bool internal;
+  t_sessionFacts session; ///< Session facts; filled at start (session_facts.h).
 } t_storedconfig __attribute__ ((aligned (8)));
 
 extern t_storedconfig sconfig;

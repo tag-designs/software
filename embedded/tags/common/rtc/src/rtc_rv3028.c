@@ -265,6 +265,11 @@ bool rv3028ClockCorrectionValid(void)
     return rv3028_clock_correction_valid;
 }
 
+int16_t rv3028ClockCorrectionSteps(void)
+{
+    return rv3028_eeoffset_steps;
+}
+
 bool rv3028RefreshClockCorrection(const TagRtcDevice *device)
 {
     tagRtcDeviceBegin(device);

@@ -356,6 +356,9 @@ typedef struct {
     float value[TAG_IDENTITY_SCALE_SLOTS];
   } scales; ///< Entry TAG_ID_SCALES.
   TAG_ID_VALUE(build, TagIdentityBuild); ///< Entry TAG_ID_BUILD.
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+  TAG_ID_VALUE(session_facts, TagIdentitySessionFacts); ///< Entry TAG_ID_SESSION_FACTS.
+#endif
 
   struct {
     uint16_t id;
@@ -371,6 +374,13 @@ typedef struct {
 
 /** @brief Address of a link-time object, as a 32-bit value. */
 #define TAG_ID_ADDR(x) ((uint32_t)(uintptr_t)(x))
+
+/** @brief Stored-config layout version: 2 once it carries session facts. */
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+#define TAG_ID_STORED_CONFIG_VERSION 2U
+#else
+#define TAG_ID_STORED_CONFIG_VERSION 1U
+#endif
 
 /* Build flags, from the options this image was compiled with. */
 #if defined(TAG_SCRATCHPAD) && TAG_SCRATCHPAD
@@ -457,7 +467,8 @@ const TagIdentityRecord tagIdentity = {
                    1U}},
     .stored_config = {TAG_ID_REGION_STORED_CONFIG, TAG_ID_LEN(stored_config),
                       {TAG_ID_ADDR(&sconfig), TAG_ID_ADDR(&sconfig + 1),
-                       (uint32_t)sizeof(t_storedconfig), 1U, 1U}},
+                       (uint32_t)sizeof(t_storedconfig), 1U,
+                       TAG_ID_STORED_CONFIG_VERSION}},
     .data_headers = {TAG_ID_REGION_DATA_HEADERS, TAG_ID_LEN(data_headers),
                      {TAG_ID_ADDR(&vddHeader[0]), 0U,
                       (uint32_t)TAG_IDENTITY_DATA_HEADER_SIZE, 0U,
@@ -524,6 +535,12 @@ const TagIdentityRecord tagIdentity = {
                   .flags = TAG_ID_F_SCRATCHPAD | TAG_ID_F_RING |
                            TAG_ID_F_RETAINED | TAG_ID_F_CONFIG_PAGE,
               }},
+#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+    .session_facts = {TAG_ID_SESSION_FACTS, TAG_ID_LEN(session_facts),
+                      {(uint32_t)offsetof(t_storedconfig, session),
+                       (uint32_t)sizeof(t_sessionFacts),
+                       TAG_SESSION_FACTS_VERSION}},
+#endif
     .end = {TAG_ID_END, 0U},
 };
 

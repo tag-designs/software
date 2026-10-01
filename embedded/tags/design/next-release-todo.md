@@ -207,6 +207,37 @@ What follows is the specification as planned.
 
 ### B2. Session facts in the stored configuration
 
+**Status: implemented on `firmware-fix` for the EEOffset; hardware verification
+outstanding.**
+- **The facts:** `common/core/inc/session_facts.h` defines `t_sessionFacts`:
+  version, EEOffset steps, a valid flag, ppm, and a reserved word, 16 bytes in
+  all.
+- **Opt-in:** PresTag, CompassTag, IMUTag, BitTag and BitPresTag (which covers
+  UIUCTag) each add it to `t_storedconfig` and define
+  `TAG_STORED_CONFIG_HAS_SESSION`.
+- **Written at start:** `state_machine.c` fills it just before the start
+  command writes the stored configuration, from the RV3028 correction cached at
+  RTC initialisation, so start adds no I2C traffic.
+- **Reported:** `infoAck()` returns the stored ppm when it is valid, and reads
+  it live otherwise, as before.
+- **Described:** the identity record gains a `TAG_ID_SESSION_FACTS` entry and
+  reports the stored-config layout as version 2.
+  `embedded/tools/decode_tag_identity.py` decodes the stored facts from a
+  capture.
+
+Still to do from the plan below:
+- the effective sample settings as values;
+- the nanopb-encoded `Config`.
+
+The facts are 16 bytes so that every L4 stored configuration that opts in stays
+a whole number of flash double-words, which `persistent.c` now asserts. On
+STM32L4, `FLASH_Program_Array()` programs one word past the struct when given
+an odd word count. BitTagNG's 28-byte `t_storedconfig` already does this; it
+lands in alignment padding, but it writes stray RAM into flash and should be
+fixed in that family.
+
+What follows is the specification as planned.
+
 - **Targets:** every tag (`t_storedconfig` per family); RV3028 driver.
 - **Changes.**
   - Add to each family's `t_storedconfig`:
@@ -267,6 +298,38 @@ AGENTS.md is explicit that this needs measurement, not argument.
   test, and a `tag-capture` of each target to confirm B1's record and B2's
   facts are readable from the capture.
 - Tag the release and publish the package as before.
+
+## Testing the `firmware-fix` branch on another machine
+
+The branch is pushed to `origin/firmware-fix`, with one commit per item, so a
+failure can be pinned to one change and reverted on its own:
+
+| Commit | Item | What to check on a tag |
+| --- | --- | --- |
+| `3139005` | A1 | CompassTagAT25: resume after hibernation or a forced restart does not overwrite earlier pages |
+| `053c2a3` | A2 | CompassTagAT25: a negative core temperature downloads as negative |
+| `e417238` | A3 | PresTag, CompassTagAT25, UIUCTag: a full tag downloads its last partial page |
+| `b2f3986` | B1 | `tag-info` output unchanged; `decode_tag_identity.py` on a `tag-capture` directory decodes the record |
+| "tags: store the RV3028 clock offset with the stored configuration" | B2 | After a start, `tag-info` `ppm_clock_error` is unchanged, and a `tag-capture` shows it stored |
+
+```sh
+git fetch origin
+git switch firmware-fix          # first time: git switch -c firmware-fix origin/firmware-fix
+git pull --ff-only               # later updates; the branch is never rewritten
+```
+
+- **Build from a fresh tree**, or remove each target's `build/` and `dep/`
+  first. Two of these commits add headers that shadow common ones by basename,
+  and `make` does not notice a new header shadowing an old one.
+- **Run the release qualification (Part C) on the branch head**, and on any
+  commit that changes current: bisect by commit.
+  `git checkout <commit>` then rebuild and flash, or `git revert <commit>` to
+  test without one item. On the STM32U375, B1 alone moves every image's
+  layout, so treat an idle or run-current change there as a layout effect
+  first.
+- **Report results against commit hashes.** Fixes made in response are new
+  commits on the branch; nothing already pushed is rewritten.
+- **Merge to `main` after qualification**, then tag the release.
 
 ## Part D: host-side counterparts
 

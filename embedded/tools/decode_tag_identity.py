@@ -14,6 +14,10 @@ STM32U375. This reads it from any of:
   decode_tag_identity.py captures/capture-20261001-120000/
   decode_tag_identity.py --json build/PresTag.elf
 
+Given a capture, it also decodes the session facts stored in the stored
+configuration (the RV3028 clock offset recorded at start), when the record
+says where they are.
+
 Exit status: 0 decoded, 1 no record found or the record is malformed.
 """
 
@@ -92,6 +96,10 @@ def decode_entry(eid, value):
     if eid == 0x0404:
         n = len(value) // 4
         return "scales", [round(x, 9) for x in struct.unpack_from("<%df" % n, value)]
+    if eid == 0x0601:
+        off, size, ver = struct.unpack_from("<3I", value)
+        return "session_facts", {"offset_in_stored_config": off, "size": size,
+                                 "version": ver}
     if eid == 0x0501:
         digest, flags = struct.unpack_from("<2I", value)
         return "build", {"options_digest": hex(digest),
@@ -121,6 +129,22 @@ def decode(record):
         out[name] = value
         off += length
     raise ValueError("record has no end entry")
+
+
+def stored_session_facts(image, rec):
+    """Decode sconfig.session when @p image reaches it (a capture, not a .bin)."""
+    loc = rec.get("session_facts")
+    if not loc or "stored_config" not in rec:
+        return None
+    addr = int(rec["stored_config"]["start"], 16) + loc["offset_in_stored_config"]
+    off = addr - FLASH_BASE
+    if off < 0 or off + 16 > len(image):
+        return None
+    version, steps, flags, ppm, _ = struct.unpack_from("<IhHfI", image, off)
+    if version == 0xFFFFFFFF:
+        return "erased (the tag has not been started since its data were cleared)"
+    return {"version": version, "rtc_offset_steps": steps,
+            "rtc_offset_valid": bool(flags & 1), "rtc_offset_ppm": round(ppm, 6)}
 
 
 def image_from(path):
@@ -156,6 +180,9 @@ def main():
             errors.append("%s @0x%08X: %s" % (mcu, FLASH_BASE + off, e))
             continue
         rec = {"mcu": mcu, "address": hex(FLASH_BASE + off), **rec}
+        stored = stored_session_facts(image, rec)
+        if stored is not None:
+            rec["stored_session_facts"] = stored
         if args.json:
             print(json.dumps(rec, indent=2))
         else:
