@@ -10,6 +10,21 @@
 
 #include <string.h>
 
+/*
+ * Session facts, at the stored config's session_facts offset.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_sessionFacts, version) == 0, "session facts layout: see capturesource.cc");
+_Static_assert(offsetof(t_sessionFacts, flags) == 6, "session facts layout: see capturesource.cc");
+_Static_assert(offsetof(t_sessionFacts, rtc_offset_ppm) == 8, "session facts layout: see capturesource.cc");
+_Static_assert(TAG_SESSION_FACTS_VERSION == 1U, "session facts version: see capturesource.cc");
+_Static_assert(TAG_SESSION_FLAG_RTC_OFFSET_VALID == 1U, "session facts flags: see capturesource.cc");
+
+
 /* Contract documented in session_facts.h. */
 void tagSessionFactsCapture(t_sessionFacts *facts)
 {

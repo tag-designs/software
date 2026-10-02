@@ -35,6 +35,24 @@ static bool datalog_page_cache_active;
 
 static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * sizeof(t_DataLog),
               "nanopb IMUTagRawLog.samples buffer size in options is out of sync with datalog page size!");
+
+/*
+ * Checkpoints (region data_headers) and page headers, as data_logAck() and
+ * readCheckpointForPage() read them. The host rebuilds a download from an
+ * SWD capture by reading these at these offsets
+ * (host/libraries/tagcore/recovery/capturesource.cc). Moving a member is a
+ * layout change: bump TAG_IDENTITY_DATA_LAYOUT_VERSION and teach that
+ * decoder the new layout.
+ */
+_Static_assert(offsetof(t_ImuTagPageHeader, epoch) == 0, "IMUTag page header layout: see capturesource.cc");
+_Static_assert(offsetof(t_ImuTagPageHeader, millis) == 4, "IMUTag page header layout: see capturesource.cc");
+_Static_assert(offsetof(t_ImuTagPageHeader, rawtemp) == 6, "IMUTag page header layout: see capturesource.cc");
+#if IMUTAG_NAND_CHECKPOINTS
+_Static_assert(offsetof(t_InternalDataHeader, header) == 0, "IMUTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_InternalDataHeader, external_page_logical_next) == 8, "IMUTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_InternalDataHeader, external_page_physical_next) == 12, "IMUTag data_headers layout: see capturesource.cc");
+_Static_assert(sizeof(t_InternalDataHeader) == 16, "IMUTag data_headers layout: see capturesource.cc");
+#endif
 /**
  * Number of external erase sectors completed by the incremental erase path.
  *

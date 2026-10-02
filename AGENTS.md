@@ -307,6 +307,34 @@ Use the target that matches the files changed. For documentation-only changes,
   `seq` counting every boot and the unarmed control came back as noise. So it
   carries data across all three of reset, a failed sleep, and a real Standby.
 
+### The offline rebuild must follow the firmware
+
+  `tag-rebuild <capture-dir> -o out.db3` rebuilds a download from an SWD
+  capture, with no firmware running. It does this by re-implementing each
+  family's monitor handlers on the host
+  (`host/libraries/tagcore/recovery/capturesource.cc`), so a change to the
+  firmware's download path can silently break it. Two guards make the
+  common case loud:
+
+  - The firmware `_Static_assert`s every struct offset the decoders read,
+    next to the type, naming `capturesource.cc`. When one fires, update the
+    decoder, and bump the region's `layout_version` in the tag identity
+    record: the host refuses a version it does not know, rather than
+    misreading it.
+  - `embedded/tools/tag_rebuild_check.py run --config <json>` drives an
+    attached tag through a run with a mid-run and a final capture, and
+    requires the rebuild to equal a live `tag-dwnld -f sqlite` table by
+    table. Run it after any change to a family's `data_logAck()`,
+    `readConfig()` or `system_logAck()`; the asserts cannot see logic.
+    `tag_rebuild_check.py compare <capture> <download.db3>` re-checks a
+    stored pair offline after a host decoder change.
+
+  The mid-run capture is also the check on the capture path itself:
+  `tag_rebuild_check.py` attaches straight afterwards, which is how a
+  capture that left `DHCSR.C_MASKINTS` set -- stalling the next monitor
+  attach -- was found. See `design/offline-log-reconstruction.md`, "Keeping
+  the rebuild in sync with the firmware".
+
 ### Capturing a tag's state after a failure
 
   `embedded/tools/tag_capture_state.py` connects under reset and stores the

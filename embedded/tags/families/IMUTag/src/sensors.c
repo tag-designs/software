@@ -103,6 +103,13 @@ _Static_assert(sizeof(sensor_constants_t) == TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
                "tag_identity_family.h calibration slot size is wrong");
 _Static_assert(CONSTANT_CNT == TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
                "tag_identity_family.h calibration slot count is wrong");
+/* The host reads a slot as {int32 timestamp; 13 floats} when it rebuilds a
+   download from an SWD capture (host/libraries/tagcore/recovery/
+   capturesource.cc); a change here is a layout change for that decoder. */
+_Static_assert(offsetof(sensor_constants_t, constants) == 4,
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(sizeof(CalibrationConstants_MagConstants) == 13 * sizeof(float),
+               "calibration slot layout: see capturesource.cc");
 
 /** Calibration records in the linker-reserved flash section. */
 sensor_constants_t calConstants[CONSTANT_CNT] __attribute__((section(".calibration")));

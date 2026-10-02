@@ -149,6 +149,29 @@
     (defined(TAG_FLASH_GD5F1GQ5RE) && TAG_FLASH_GD5F1GQ5RE)
 /* Geometry defaults for parts whose module sets none (GD5F1GQ5RE). */
 #include "storage_gd5f.h"
+
+/*
+ * State markers (region state_log), as system_logAck() serves them.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_StateMarker, epoch) == 0, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, state) == 4, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, internal_pages) == 8, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, external_pages) == 12, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, vdd100) == 16, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, temp10) == 18, "state_log layout: see capturesource.cc");
+_Static_assert(offsetof(t_StateMarker, reason) == 20, "state_log layout: see capturesource.cc");
+#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
+_Static_assert(offsetof(t_StateMarker, detail) == 24, "state_log layout: see capturesource.cc");
+_Static_assert(sizeof(t_StateMarker) == 32, "state_log layout: see capturesource.cc");
+#else
+_Static_assert(sizeof(t_StateMarker) == 24, "state_log layout: see capturesource.cc");
+#endif
+
 /* The ID defaults are private to gd5f.c; these mirror them. */
 #ifndef GD5F_ID_MANUFACTURER
 #define GD5F_ID_MANUFACTURER 0xC8U

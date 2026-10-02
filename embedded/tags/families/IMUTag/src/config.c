@@ -17,6 +17,23 @@
 #include "storage_flash.h"
 #include "strings.h"
 
+/*
+ * Stored configuration (region stored_config), as readConfig() reads it.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_storedconfig, start_delay) == 8, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, odr) == 12, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(sizeof(((t_storedconfig *)0)->odr) == 2, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, accel_range) == 14, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(sizeof(((t_storedconfig *)0)->accel_range) == 1, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, gyro_range) == 15, "IMUTag stored_config layout: see capturesource.cc");
+_Static_assert(sizeof(((t_storedconfig *)0)->gyro_range) == 1, "IMUTag stored_config layout: see capturesource.cc");
+
+
 /** RAM-based configuration staging area used by the monitor request path. */
 t_storedconfig config_tmp;
 /** Last configuration validation error reported to the monitor. */
