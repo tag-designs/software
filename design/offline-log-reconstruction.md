@@ -2,7 +2,7 @@
 
 Status: analysis, with decisions agreed on 2026-10-01 (see
 [Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
-IMUTagNandBmp581 (`tag-rebuild`, 2026-10-02; see
+IMUTagNandBmp581 and PresTag (`tag-rebuild`, 2026-10-02; see
 [Implementation status](#implementation-status)); the other families are not
 yet. It answers one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
@@ -331,8 +331,14 @@ an interface the writer pulls from:
   code, laid out by the identity record of item 4. A per-family
   `CaptureDecoder`, chosen by the record's `decoder` string, supplies
   `readConfig()`, `externalFlashSize()`, the data-log count and
-  `data_logAck()`. Only `imutag` (NAND checkpoints) exists so far. Other
-  families, and images without an identity record (fw-v0.0.3), are refused.
+  `data_logAck()`. `imutag` (NAND checkpoints) and `prestag` (converted
+  samples, NOR) exist so far. Other families, and images without an identity
+  record (fw-v0.0.3), are refused.
+- A capture is checked before anything is written. Each file must match the
+  SHA-256 its manifest records and must not be marked failed, and a NOR image
+  must be the size the record gives. Each region's `layout_version` and
+  record size must be one the decoder knows. A rebuild that fails part way
+  removes its output.
 - The data log is walked as `tag-dwnld` walks it: a NODATA index below the
   count is a hole and is skipped.
 - Provenance goes into `info`: `source` = `capture`, `capture_dir` and
@@ -347,6 +353,22 @@ live `tag-dwnld --stop -f sqlite` gave:
   identical;
 - `info` differing only by the three provenance rows.
 
+PresTag, on the bench unit `20333050364150040063005F`
+(`captures/2026-10-02-prestag-d1`), gave the same result for:
+- a 90 s run, with one partial page of 3 samples;
+- a 1 s run of 12 pages, several of them partial, because each attach starts
+  a new page;
+- `regression-1`, a 1 s run captured mid-run and again after the stop.
+
+A mid-run capture rebuilds to an exact prefix of the final download: 100 and
+75 samples in two runs, ending at the capture instant. The partial page is in
+external flash sample by sample.
+
+The mid-run captures also exposed a capture-path fault. The SWD session left
+`DHCSR.C_MASKINTS` set, which stalled the next monitor attach. It is fixed;
+see `host/libraries/tagcore/design/swd-recovery.md`, "Attaching without
+booting the firmware".
+
 **Gaps.**
 
 - The identity record carries the NAND erase unit but not the logical block
@@ -355,6 +377,42 @@ live `tag-dwnld --stop -f sqlite` gave:
 - Live, `infoAck()` falls back to reading the RV3028 offset over I2C when the
   session facts are invalid. A capture has no such fallback, so the rebuild
   leaves `ppm_clock_error` unset in that case.
+
+#### Keeping the rebuild in sync with the firmware
+
+The decoders are a second implementation of each family's monitor handlers.
+Nothing makes them follow the firmware automatically, so each kind of drift
+has its own guard.
+
+| What can change | Guard | Catches it |
+| --- | --- | --- |
+| A struct the decoder reads: stored config, state marker, data header or checkpoint, calibration slot, session facts | `_Static_assert` on every offset and size the decoder uses, next to the type, naming `capturesource.cc` | at firmware build time; the images are byte-identical with or without the asserts (`.list` compared, PresTag and IMUTagNandBmp581) |
+| The same change, made deliberately | bump the region's `layout_version` in the identity record; the host refuses a version or record size it does not know | at rebuild time, as a refusal instead of a misread |
+| The download logic in `data_logAck()`: checkpoint search, flag masking, conversions, page termination, holes | `embedded/tools/tag_rebuild_check.py run` on hardware: a mid-run and a final capture, rebuilt and compared table by table with a live download | at release qualification |
+| A host decoder change | `tag_rebuild_check.py compare` over the stored reference pairs | before committing the host change |
+| The SQLite writer | none needed: live downloads and rebuilds use the same writer and the same `TagLogHeader` | by construction |
+| A family with no decoder | `tag-rebuild` refuses it by name | always |
+
+What remains unguarded:
+
+- **Constants the record does not carry.** The GD5F logical block count
+  (2008) is the one so far. It should move into the record's numbers.
+- **Algorithm drift between hardware checks.** A change to `data_logAck()`
+  that keeps every struct is caught only when the hardware check runs. The
+  remedy without hardware is a differential test: compile the real
+  `data_logAck()` against stubs, as `families/PresTag/test/datalog_sim.c`
+  already does; dump the simulated flash as a capture directory with the
+  encoded Acks; and require `CaptureSource` to produce the same Acks byte for
+  byte. Not built yet.
+
+The rule for a firmware change:
+- **A struct listed above:** bump its layout version and update the decoder.
+- **`data_logAck()` or `readConfig()`:** update the decoder and run the
+  hardware check.
+- **A host decoder:** run `compare` on every reference pair.
+
+The reference pairs are kept outside the repository, in `captures/`, at 1 to
+5 MB each.
 
 ### 2. Close the gaps in the capture
 

@@ -235,6 +235,61 @@ recognised as a monitor reset and does not abort. It matters on the bench: a sho
 run must not be attached to or captured mid-run, or its data stops there.
 Details and the likely mechanism are in `restart-recovery.md`, "Still open".
 
+### A7. PresTag: samples after a halt mid-page are timestamped early
+
+**Status, 2026-10-02: fixed in the working tree, uncommitted. The host
+simulation and the bench PresTag pass; current is not yet measured** (flash
+log entry 1, `captures/2026-10-02-prestag-d1/flash-log.md`).
+
+On hardware, with `tag_rebuild_check.py run`, both runs passed every check:
+- **10 s, 300 s run.** The capture's halt now shows as a 56 s gap, and the
+  last sample is 20:00:05 against a stop at 20:00:11, which is real time.
+  The boot after the capture took one sample off the 10 s phase (19:57:41)
+  before the old phase resumed (19:57:45). The check therefore opened a page
+  for that single sample: correct, but a page of space per such reset.
+- **1 s, 180 s run.** The uninterrupted pages are full (60 samples, 60 s
+  apart), so the 1 s jitter tolerance holds, and the capture starts a new
+  page as before.
+
+PresTag samples carry no timestamps. The host places sample *j* of a page at
+the header epoch plus *j* × `lps_period` (`sqlitelog/pressure.cc`), which is
+right only if no sample in the page was missed. A gap shorter than a page used
+to start a new page only by luck of the reset path.
+
+The case found: a 10 s run captured mid-run with `tag-capture`, on the bench
+PresTag.
+- The capture held the core for about 55 s.
+- Its reset arrived during Shutdown, where `getResetCause()` returns
+  `resetShutdown` for any reset, because of the shutdown wake marker. The
+  run therefore resumed as an ordinary wakeup, `Running(T_CONT, OK)`, mid-page.
+- The page then held 31 samples spaced 10 s from its header, where the run
+  had lasted 356 s. Every sample after the capture was placed about 50 s
+  early.
+- The 1 s runs did not show it: their resets were classified differently and
+  went through `restoreLog()`, which rounds the cursor to whole pages.
+
+**The fix** is in `Running()`'s sample path and does not depend on reset
+classification. If a sample is more than max(1 s, period / 2) from where its
+slot puts it, the cursor moves to a new page, as T_INIT does. The rest of the
+old page stays erased and the download ends that page at its first erased
+sample. That covers a capture halt, a lost wakeup and a clock set alike. The
+cost is one internal-flash read of the current header per sample.
+
+`families/PresTag/test/datalog_sim.c` gained three cases:
+- a 55 s halt at a 1 s period;
+- a 55 s halt at a 10 s period;
+- 1 s wake jitter, which must not split a page.
+
+All pass with the fix, in both builds. Against the previous `state_run.c` the
+gap case fails with "wrong sample count". The simulation's stub `tag.pb.h`
+also lacked `State_EVENT_POWERFAIL`, used since `a406eda`, so the simulation
+had not built since then; the stub is fixed.
+
+**Still to do:**
+- run and idle current against flash log entry 0;
+- check whether CompassTag and UIUCTag, whose pages are also timestamped by
+  position, have the same gap.
+
 ## Part B: layout changes for offline log reconstruction
 
 Specified in
@@ -565,11 +620,16 @@ useful once they exist. They are listed so neither half ships alone.
   writer, rebuilding info, Config, Calibration, State and the data rows. It
   decodes fw-v0.0.3 layouts from the release source and later layouts from B1
   and B3.
-  *Status 2026-10-02:* done for IMUTagNandBmp581 with identity-record images
-  (`tag-rebuild`, `recovery/capturesource`). Rebuilt against a live download,
-  every table is identical apart from three provenance rows in `info`. Still to
-  do: decoders for the other families, and the fw-v0.0.3 layouts. See
-  `design/offline-log-reconstruction.md`, "Implementation status".
+  *Status 2026-10-02:* done for IMUTagNandBmp581 and PresTag with
+  identity-record images (`tag-rebuild`, `recovery/capturesource`). Rebuilt
+  against live downloads, every table is identical apart from three provenance
+  rows in `info`, and a mid-run capture rebuilds to an exact prefix. Firmware
+  asserts the struct offsets the decoders read, with no change to the images;
+  `embedded/tools/tag_rebuild_check.py` checks the rest on hardware. Still to
+  do: decoders for CompassTag, UIUCTag and BitTag, the fw-v0.0.3 layouts, and
+  the GD5F logical block count in the identity record. See
+  `design/offline-log-reconstruction.md`, "Implementation status" and
+  "Keeping the rebuild in sync with the firmware".
 - **D2.** `tagcore/recovery`: read the identity record at the per-MCU address
   (add it to `swdmcu`), check its magic, size and end entry (the record has no
   CRC), and use it to choose the loader and decoder; fall back to hash or string identification without it.
