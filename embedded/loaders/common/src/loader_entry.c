@@ -302,6 +302,23 @@ static int32_t loaderServeCommand(uint8_t *buf, uint32_t size)
     return LOADER_STATUS_READ_ONLY;
 #endif
 
+#if defined(LOADER_FLASH_PAGED) && LOADER_FLASH_PAGED
+  case LOADER_CMD_READ_PAGE: {
+    uint8_t st = 0U, st2 = 0U;
+    if (offset >= loaderFlashPageCount() || loaderFlashPageBytes() > size ||
+        length > LOADER_PAGE_RAW)
+      return LOADER_STATUS_RANGE;
+    if (!loaderFlashReadPage(offset, length == LOADER_PAGE_RAW, buf, &st, &st2)) {
+      loaderService.detail[LOADER_DETAIL_FAIL_OFFSET] = offset;
+      return LOADER_STATUS_IO;
+    }
+    loaderService.detail[LOADER_DETAIL_PAGE_STATUS] = st;
+    loaderService.detail[LOADER_DETAIL_PAGE_STATUS2] = st2;
+    loaderService.progress = loaderFlashPageBytes();
+    return LOADER_STATUS_OK;
+  }
+#endif
+
   default:
     return LOADER_STATUS_BAD_COMMAND;
   }
@@ -350,6 +367,10 @@ LOADER_ENTRY int Serve(uint8_t *buffer, uint32_t size)
   }
   loaderService.detail[LOADER_DETAIL_JEDEC] = jedec;
   loaderService.detail[LOADER_DETAIL_SR1] = sr1;
+#if defined(LOADER_FLASH_PAGED) && LOADER_FLASH_PAGED
+  loaderService.detail[LOADER_DETAIL_PAGE_BYTES] = loaderFlashPageBytes();
+  loaderService.detail[LOADER_DETAIL_FOUND] = loaderFlashFound();
+#endif
   loaderService.status = LOADER_STATUS_OK;
   seen = loaderService.seq;
   __DSB();
@@ -361,7 +382,13 @@ LOADER_ENTRY int Serve(uint8_t *buffer, uint32_t size)
     seen = loaderService.seq;
     __DSB();
     if (loaderService.cmd == LOADER_CMD_EXIT) {
+#if defined(LOADER_FLASH_PAGED) && LOADER_FLASH_PAGED
+      /* Put back any volatile configuration a READ_PAGE changed. */
+      loaderService.status = loaderFlashRestore() ? LOADER_STATUS_OK
+                                                  : LOADER_STATUS_IO;
+#else
       loaderService.status = LOADER_STATUS_OK;
+#endif
       __DSB();
       loaderService.ack = seen;
       return 1;

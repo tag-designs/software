@@ -94,24 +94,30 @@ bool ExternalFlash::Open(const TargetImage &loader, std::string *error) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  uint32_t version = 0, status = 0, d[8] = {};
+  uint32_t version = 0, status = 0;
+  uint32_t d[sizeof(LoaderServiceBlock::detail) / sizeof(uint32_t)] = {};
   if (!Field(kVersion, version) || !Field(kStatus, status) ||
       !Field(kSeq, seq_)) {
     s_.Halt();
     return Fail(error, "could not read the service block");
   }
-  for (int i = 0; i < 8; i++)
-    Field(kDetail + 4 * i, d[i]);
+  for (size_t i = 0; i < sizeof(d) / sizeof(d[0]); i++)
+    Field(kDetail + 4 * static_cast<uint32_t>(i), d[i]);
   jedec_ = d[LOADER_DETAIL_JEDEC];
   sr1_ = d[LOADER_DETAIL_SR1];
   size_ = d[LOADER_DETAIL_SIZE];
   sector_ = d[LOADER_DETAIL_SECTOR];
   writable_ = d[LOADER_DETAIL_WRITABLE] != 0;
+  version_ = version;
+  // Version 1 had an 8-word detail[]: the paged fields are not there.
+  page_bytes_ = version >= 2 ? d[LOADER_DETAIL_PAGE_BYTES] : 0;
+  found_ = version >= 2 ? d[LOADER_DETAIL_FOUND] : 0;
 
-  if (version != LOADER_SERVICE_VERSION) {
+  if (version != 1U && version != LOADER_SERVICE_VERSION) {
     s_.Halt();
     return Fail(error, "service block version " + std::to_string(version) +
-                           ", expected " + std::to_string(LOADER_SERVICE_VERSION));
+                           ", expected 1 or " +
+                           std::to_string(LOADER_SERVICE_VERSION));
   }
   if (static_cast<int32_t>(status) != LOADER_STATUS_OK) {
     uint32_t r0 = 0;
@@ -175,6 +181,27 @@ bool ExternalFlash::Read(uint32_t offset, uint8_t *out, uint32_t len,
     if (progress)
       progress(done, len);
   }
+  return true;
+}
+
+bool ExternalFlash::ReadPage(uint32_t page, bool raw, uint8_t *out,
+                             uint8_t &status, uint8_t &status2,
+                             std::string *error) {
+  if (page_bytes_ == 0 || version_ < 2)
+    return Fail(error, "the loader does not read whole pages");
+  if (!Command(LOADER_CMD_READ_PAGE, page,
+               raw ? LOADER_PAGE_RAW : LOADER_PAGE_ECC, kReadTimeoutMs, error))
+    return false;
+  uint32_t st = 0, st2 = 0;
+  if (!Field(kDetail + 4 * LOADER_DETAIL_PAGE_STATUS, st) ||
+      !Field(kDetail + 4 * LOADER_DETAIL_PAGE_STATUS2, st2))
+    return Fail(error, "could not read the page status");
+  status = static_cast<uint8_t>(st);
+  status2 = static_cast<uint8_t>(st2);
+  std::vector<uint8_t> tmp((page_bytes_ + 3) & ~3U);
+  if (!s_.Read(call_.BufferAddress(), tmp.data(), tmp.size(), 8192, nullptr))
+    return Fail(error, "SWD read of the buffer failed");
+  std::copy(tmp.begin(), tmp.begin() + page_bytes_, out);
   return true;
 }
 

@@ -41,7 +41,12 @@
 #define GD5F_FEATURE_STATUS          0xC0U ///< Status of the last operation.
 #define GD5F_FEATURE_STATUS2         0xF0U ///< Extended ECC status (ECCSE).
 
+#define GD5F_CONFIG_OTP_PRT          0x80U ///< B0: OTP protect. NON-VOLATILE: setting it is permanent.
+#define GD5F_CONFIG_OTP_EN           0x40U ///< B0: page reads and programs address the OTP area.
 #define GD5F_CONFIG_ECC_EN           0x10U ///< B0: on-die ECC enabled (power-on default).
+#define GD5F_CONFIG_BPL              0x08U ///< B0: block-protection lock-down.
+#define GD5F_CONFIG_QE               0x01U ///< B0: quad enable; off makes IO2/IO3 WP#/HOLD#.
+#define GD5F_CONFIG_RESERVED         0x26U ///< B0: reserved bits, held low on any write.
 
 #define GD5F_STATUS_OIP              0x01U ///< C0: operation in progress.
 #define GD5F_STATUS_WEL              0x02U ///< C0: write enable latch.

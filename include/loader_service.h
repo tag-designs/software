@@ -31,8 +31,13 @@
 /** @brief 'LSRV': written to @c magic once the loader is ready for commands. */
 #define LOADER_SERVICE_MAGIC 0x5652534CU
 
-/** @brief Layout version of ::LoaderServiceBlock. */
-#define LOADER_SERVICE_VERSION 1U
+/**
+ * @brief Layout version of ::LoaderServiceBlock.
+ *
+ * @details 2 added LOADER_CMD_READ_PAGE and widened detail[] to 12 words.
+ *          A host may accept 1, which lacks both.
+ */
+#define LOADER_SERVICE_VERSION 2U
 
 /**
  * @enum    LoaderServiceCommand
@@ -44,7 +49,17 @@ typedef enum {
   LOADER_CMD_ERASE_SECTOR = 3, ///< Erase the sector holding @c offset (write images only).
   LOADER_CMD_PROGRAM = 4,      ///< Program @c length bytes from the buffer at @c offset (write images only).
   LOADER_CMD_EXIT = 5,         ///< Return from Serve() into the host's trap.
+  LOADER_CMD_READ_PAGE = 6,    ///< Paged parts (NAND): read page @c offset, data and spare, mode in @c length.
 } LoaderServiceCommand;
+
+/**
+ * @enum    LoaderPageMode
+ * @brief   The @c length field of LOADER_CMD_READ_PAGE.
+ */
+typedef enum {
+  LOADER_PAGE_ECC = 0, ///< Through the part's on-die ECC; detail[] gets its verdict.
+  LOADER_PAGE_RAW = 1, ///< ECC off: the bytes as stored, spare and ECC parity included.
+} LoaderPageMode;
 
 /**
  * @enum    LoaderServiceStatus
@@ -72,6 +87,17 @@ typedef enum {
 #define LOADER_DETAIL_WRITABLE 4
 /** @brief detail[] index: flash offset of the failure, for a failed command. */
 #define LOADER_DETAIL_FAIL_OFFSET 5
+/** @brief detail[] index: status register after the last READ_PAGE (NAND: C0h). */
+#define LOADER_DETAIL_PAGE_STATUS 6
+/** @brief detail[] index: second status register after the last READ_PAGE (NAND: F0h). */
+#define LOADER_DETAIL_PAGE_STATUS2 7
+/** @brief detail[] index: bytes per page including spare, or 0 for a non-paged part. */
+#define LOADER_DETAIL_PAGE_BYTES 8
+/**
+ * @brief detail[] index: the part's configuration as found, before any
+ *        command: for NAND, A0h | B0h << 8 | C0h << 16 | F0h << 24.
+ */
+#define LOADER_DETAIL_FOUND 9
 
 /**
  * @struct  LoaderServiceBlock
@@ -86,7 +112,7 @@ typedef struct {
   uint32_t offset;    ///< Flash byte offset (not the programmer's 0x90000000 address).
   uint32_t length;    ///< Bytes; at most the buffer size.
   int32_t status;     ///< A ::LoaderServiceStatus for the last command.
-  uint32_t detail[8]; ///< Indexed by the LOADER_DETAIL_* values.
+  uint32_t detail[12]; ///< Indexed by the LOADER_DETAIL_* values.
   uint32_t progress;  ///< Bytes done in the current command.
 } LoaderServiceBlock;
 

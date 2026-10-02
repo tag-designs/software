@@ -27,6 +27,7 @@
  * @see     embedded/loaders/design/loader-runtime.md
  */
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <iostream>
@@ -225,6 +226,137 @@ bool DumpServe(SwdSession &s, const TargetImage &loader, uint32_t offset,
   return true;
 }
 
+/**
+ * @brief   Read a paged part (SPI NAND) block by block into @p dir.
+ *
+ * @details Page 0 of each block is read raw. If it is blank (every byte FFh,
+ *          spare included), the rest of the block is blank too for a tag that
+ *          writes pages in order, and is skipped unless @p full. Otherwise
+ *          every page of the block is read raw and through on-die ECC. The
+ *          policy is the host's; the loader only reads pages
+ *          (u375-nand-loader-plan.md, decision 5).
+ *
+ *          Writes raw.bin and ecc.bin (the pages read, in page order), and
+ *          pages.csv (page, block, ECC verdict and status registers) to @p dir.
+ *
+ * @return  true when every requested block was read.
+ */
+bool DumpNand(SwdSession &s, const TargetImage &loader, const std::string &dir,
+              uint32_t first_block, uint32_t block_count, bool full) {
+  ExternalFlash xf(s);
+  std::string err;
+  if (!xf.Open(loader, &err)) {
+    std::cerr << "loader failed: " << err << std::endl;
+    return false;
+  }
+  if (xf.PageBytes() == 0) {
+    std::cerr << "this loader's part has no pages; use dump" << std::endl;
+    xf.Close();
+    return false;
+  }
+  const uint32_t page_bytes = xf.PageBytes();
+  uint32_t data_bytes = 1;            // the data area: the largest power of 2
+  while (data_bytes * 2 <= page_bytes)
+    data_bytes *= 2;
+  const uint32_t pages_per_block = xf.SectorSize() / data_bytes;
+  const uint32_t blocks = xf.Size() / xf.SectorSize();
+  if (block_count == 0 || first_block + block_count > blocks)
+    block_count = first_block < blocks ? blocks - first_block : 0;
+  const uint32_t found = xf.Found();
+  std::printf("loader  %s (Serve v%u)\n        JEDEC 0x%06X  %u blocks x %u pages x "
+              "%u bytes\n        found A0=%02X B0=%02X C0=%02X F0=%02X\n",
+              loader.Path().c_str(), xf.Version(), xf.Jedec(), blocks,
+              pages_per_block, page_bytes, found & 0xFF, (found >> 8) & 0xFF,
+              (found >> 16) & 0xFF, found >> 24);
+
+  std::FILE *raw = std::fopen((dir + "/raw.bin").c_str(), "wb");
+  std::FILE *ecc = std::fopen((dir + "/ecc.bin").c_str(), "wb");
+  std::FILE *csv = std::fopen((dir + "/pages.csv").c_str(), "w");
+  if (!raw || !ecc || !csv) {
+    std::cerr << "cannot write to " << dir << std::endl;
+    xf.Close();
+    return false;
+  }
+  std::fprintf(csv, "page,block,raw_c0,ecc_c0,ecc_f0,ecc_verdict\n");
+
+  static const char *kVerdict[4] = {"ok", "corrected", "uncorrectable", "corrected8"};
+  std::vector<uint8_t> page(page_bytes), page_ecc(page_bytes);
+  uint32_t read_blocks = 0, skipped = 0, bad_marked = 0, uncorrectable = 0;
+  const auto t0 = std::chrono::steady_clock::now();
+  bool ok = true;
+  for (uint32_t b = first_block; ok && b < first_block + block_count; b++) {
+    const uint32_t p0 = b * pages_per_block;
+    uint8_t st = 0, st2 = 0;
+    if (!xf.ReadPage(p0, true, page.data(), st, st2, &err)) {
+      std::cerr << "\npage " << p0 << " (raw): " << err << std::endl;
+      ok = false;
+      break;
+    }
+    const bool blank = std::all_of(page.begin(), page.end(),
+                                   [](uint8_t v) { return v == 0xFF; });
+    if (blank && !full) {
+      skipped++;
+    } else {
+      if (page[data_bytes] != 0xFF)   // spare byte 0 of page 0: factory mark
+        bad_marked++;
+      read_blocks++;
+      for (uint32_t i = 0; ok && i < pages_per_block; i++) {
+        const uint32_t pg = p0 + i;
+        uint8_t raw_st = st;
+        if (i > 0 && !xf.ReadPage(pg, true, page.data(), raw_st, st2, &err)) {
+          std::cerr << "\npage " << pg << " (raw): " << err << std::endl;
+          ok = false;
+          break;
+        }
+        uint8_t ecc_st = 0, ecc_st2 = 0;
+        if (!xf.ReadPage(pg, false, page_ecc.data(), ecc_st, ecc_st2, &err)) {
+          std::cerr << "\npage " << pg << " (ECC): " << err << std::endl;
+          ok = false;
+          break;
+        }
+        const unsigned verdict = (ecc_st >> 4) & 3U;
+        if (verdict == 2U)
+          uncorrectable++;
+        std::fwrite(page.data(), 1, page_bytes, raw);
+        std::fwrite(page_ecc.data(), 1, page_bytes, ecc);
+        std::fprintf(csv, "%u,%u,0x%02X,0x%02X,0x%02X,%s\n", pg, b, raw_st,
+                     ecc_st, ecc_st2, kVerdict[verdict]);
+      }
+    }
+    const double secs = std::chrono::duration<double>(
+                            std::chrono::steady_clock::now() - t0).count();
+    std::printf("\r        block %u/%u  read %u  blank %u  %.0f s", b + 1 - first_block,
+                block_count, read_blocks, skipped, secs);
+    std::fflush(stdout);
+  }
+  std::fclose(raw);
+  std::fclose(ecc);
+  std::fclose(csv);
+  std::printf("\n        %u blocks read (%u factory-marked), %u blank and skipped, "
+              "%u uncorrectable pages\n", read_blocks, bad_marked, skipped, uncorrectable);
+
+  if (std::FILE *sum = std::fopen((dir + "/summary.txt").c_str(), "w")) {
+    std::fprintf(sum, "loader %s\nserve_version %u\njedec 0x%06X\n"
+                      "found_A0 0x%02X\nfound_B0 0x%02X\nfound_C0 0x%02X\n"
+                      "found_F0 0x%02X\npage_bytes %u\npages_per_block %u\n"
+                      "blocks_scanned %u\nfirst_block %u\nblocks_read %u\n"
+                      "blocks_blank %u\nblocks_factory_marked %u\n"
+                      "pages_uncorrectable %u\nfull %d\ncomplete %d\n",
+                 loader.Path().c_str(), xf.Version(), xf.Jedec(), found & 0xFF,
+                 (found >> 8) & 0xFF, (found >> 16) & 0xFF, found >> 24,
+                 page_bytes, pages_per_block, block_count, first_block,
+                 read_blocks, skipped, bad_marked, uncorrectable, full ? 1 : 0,
+                 ok ? 1 : 0);
+    std::fclose(sum);
+  }
+  if (!xf.Close(&err)) {
+    std::cerr << "Serve() did not exit cleanly (configuration not restored?): "
+              << err << std::endl;
+    return false;
+  }
+  return ok;
+}
+
 } // namespace
 
 /**
@@ -234,15 +366,20 @@ bool DumpServe(SwdSession &s, const TargetImage &loader, uint32_t offset,
 int main(int argc, char **argv) {
   cxxopts::Options options("tag-xflash",
                            "Read a tag's external flash over SWD through a loader");
-  options.positional_help("dump");
+  options.positional_help("dump | nand");
   options.add_options()
-      ("command", "Command: dump", cxxopts::value<std::string>())
+      ("command", "Command: dump (linear data), or nand (whole pages, raw and ECC, into the --out directory)", cxxopts::value<std::string>())
       ("l,loader", "Loader image (.stldr or .elf)", cxxopts::value<std::string>())
-      ("o,out", "Output file", cxxopts::value<std::string>())
+      ("o,out", "Output file (dump) or existing directory (nand)", cxxopts::value<std::string>())
       ("offset", "First byte of the part to read",
        cxxopts::value<uint32_t>()->default_value("0"))
       ("length", "Bytes to read (default: to the end of the part)",
        cxxopts::value<uint32_t>())
+      ("full", "nand: read every block, blank or not")
+      ("first-block", "nand: first block to scan",
+       cxxopts::value<uint32_t>()->default_value("0"))
+      ("blocks", "nand: blocks to scan (default: to the end of the part)",
+       cxxopts::value<uint32_t>()->default_value("0"))
       ("st", "Use the STM32CubeProgrammer entry points (Init, Read) even when "
              "the loader has Serve()")
       ("b,base", "Select bus:device", cxxopts::value<std::string>())
@@ -253,7 +390,8 @@ int main(int argc, char **argv) {
   std::string command, loader_path, out_path, base;
   uint32_t offset = 0, length = 0;
   bool length_given = false;
-  bool force_st = false;
+  bool force_st = false, full = false;
+  uint32_t first_block = 0, block_count = 0;
   try {
     auto result = options.parse(argc, argv);
     if (result.count("help") || !result.count("command")) {
@@ -276,12 +414,15 @@ int main(int argc, char **argv) {
     if (result.count("base"))
       base = result["base"].as<std::string>();
     force_st = result.count("st") > 0;
+    full = result.count("full") > 0;
+    first_block = result["first-block"].as<uint32_t>();
+    block_count = result["blocks"].as<uint32_t>();
   } catch (const cxxopts::OptionException &e) {
     std::cerr << "error parsing options: " << e.what() << std::endl;
     return 1;
   }
-  if (command != "dump") {
-    std::cerr << "unknown command " << command << "; only dump exists" << std::endl;
+  if (command != "dump" && command != "nand") {
+    std::cerr << "unknown command " << command << "; use dump or nand" << std::endl;
     return 1;
   }
 
@@ -302,6 +443,13 @@ int main(int argc, char **argv) {
   }
   std::printf("%s halted at reset vector 0x%08X (firmware did not run)\n",
               s.Mcu()->name, s.AttachInfo().pc);
+
+  if (command == "nand") {
+    const bool ok = DumpNand(s, loader, out_path, first_block, block_count, full);
+    s.Close(SwdExit::HardwareReset);
+    std::printf("%s\n", ok ? "complete" : "FAILED");
+    return ok ? 0 : 1;
+  }
 
   std::FILE *out = std::fopen(out_path.c_str(), "wb");
   if (!out) {

@@ -8,7 +8,10 @@ PresTag (STM32L432) on 2026-09-30: `tagcore/recovery/` and the `tag-capture`
 tool capture registers, option bytes, OTP and internal flash, halted before the
 firmware runs.
 
-Steps 3 and 4 are built (2026-10-01). `TargetImage`, `SramCall` and `tag-xflash dump`
+Steps 3 and 4 are built (2026-10-01). On 2026-10-02 they were extended to the
+STM32U375 and SPI NAND, through `GD5F2GM7RE_IMUTagNandv2`, `Serve()`
+version 2 (`READ_PAGE`) and `tag-xflash nand`; see
+`embedded/loaders/design/u375-nand-loader-plan.md`. `TargetImage`, `SramCall` and `tag-xflash dump`
 call a loader's `Init` and `Read` from the host and stream the external flash
 to a file; see step 3 for what has been checked. Step 9, the identity record,
 shipped in the firmware ahead of steps 4-8 (`next-release-todo.md` B1). It was

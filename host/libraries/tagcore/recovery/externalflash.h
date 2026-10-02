@@ -72,6 +72,29 @@ public:
   uint32_t SectorSize() const { return sector_; }
   /** @brief True when the loader image can erase and program. */
   bool Writable() const { return writable_; }
+  /** @brief Bytes per page including spare, or 0 for a part without pages. */
+  uint32_t PageBytes() const { return page_bytes_; }
+  /** @brief The part's configuration as found (for NAND: A0 | B0<<8 | C0<<16 | F0<<24). */
+  uint32_t Found() const { return found_; }
+  /** @brief Service protocol version the loader reported. */
+  uint32_t Version() const { return version_; }
+
+  /**
+   * @brief   Read one whole page, data and spare, from a paged part.
+   *
+   * @param[in]  page     Physical page index.
+   * @param[in]  raw      true for on-die ECC off (bytes as stored), false for
+   *                      reads through ECC.
+   * @param[out] out      PageBytes() bytes.
+   * @param[out] status   The part's status after the read (NAND: C0h, whose
+   *                      bits 5:4 are the ECC verdict).
+   * @param[out] status2  Its second status register (NAND: F0h).
+   * @param[out] error    Why it failed; may be nullptr.
+   * @return  false on a part without pages, a version-1 loader, or a failed
+   *          read.
+   */
+  bool ReadPage(uint32_t page, bool raw, uint8_t *out, uint8_t &status,
+                uint8_t &status2, std::string *error = nullptr);
 
   /**
    * @brief   Read @p len bytes at flash offset @p offset.
@@ -116,6 +139,7 @@ private:
   uint32_t block_ = 0;
   uint32_t seq_ = 0;
   uint32_t jedec_ = 0, sr1_ = 0, size_ = 0, sector_ = 0;
+  uint32_t page_bytes_ = 0, found_ = 0, version_ = 0;
   bool writable_ = false;
 };
 

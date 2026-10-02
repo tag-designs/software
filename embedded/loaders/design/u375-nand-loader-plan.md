@@ -3,7 +3,7 @@
 Status: **plan accepted**, 2026-10-02. All five decisions below were agreed
 with the recommendations. Decision 5 moved blank detection from the loader to
 the host library. Decision 4's NAND power was corrected in step 2: the loader drives FLASH_PWR, as the firmware does.
-Steps 1 and 2 are built and checked (2026-10-02); see each step.
+Steps 1-4 are built and checked (2026-10-02); see each step. Step 5, NAND in `tag-capture`, remains.
 
 This plan covers reading an IMUTagNandBmp581's external flash (GigaDevice
 GD5F2GM7RE SPI NAND, 256 MiB) over SWD without its firmware. The tag's identity
@@ -212,6 +212,35 @@ firmware, if any, go in its flash log
      means the part was not driving MISO, so the page is retried and never
      returned silently. That is cheap insurance against the failure that
      the missing PA8 drive caused.
+
+   **Steps 3 and 4 done 2026-10-02.**
+   - `gd5f_loader.c` gained `loaderFlashReadPage()`: 2176 bytes, raw or
+     through ECC, with C0h and F0h after the read, and the no-reply check.
+     It also gained `loaderFlashRestore()`.
+   - B0h writes go only through `gd5fSetEcc()`, which changes ECC_EN alone
+     and holds the reserved bits low. It refuses if OTP_EN or OTP_PRT was
+     found set: OTP_PRT is non-volatile.
+   - `Serve()` restores B0h as found before it returns.
+   - `loader_service.h` version 2 adds `LOADER_CMD_READ_PAGE` and widens
+     `detail[]`: page bytes, and A0/B0/C0/F0 as found. All loaders are
+     version 2; the host accepts 1 or 2.
+   - `ExternalFlash::ReadPage()` is the host side.
+   - `tag-xflash nand -o DIR` applies decision 5: page 0 of each block is
+     read raw, a blank block is skipped, and every other block is read raw
+     and through ECC. It writes `raw.bin`, `ecc.bin`, `pages.csv` and
+     `summary.txt`.
+
+   Checked on the bench IMUTagNandBmp581:
+   - The whole part (2048 blocks) took 74 s: 1 block read (64 pages, every
+     ECC verdict `ok`), 2047 blank, none factory-marked on page 0.
+   - The ECC-mode data was byte-identical to the step-2 linear dump.
+   - Raw data equalled the ECC data, so there were no bit errors, and the
+     raw spare showed the on-die parity at 0x840.
+   - B0h read `10` after the session, as found.
+
+   One limit: the firmware looks for the factory mark on pages 0 and 1, but
+   the skip rule reads only page 0. A block marked only on page 1 is skipped
+   unreported. It holds no data, so nothing is lost.
 
 ## Risks
 

@@ -113,7 +113,18 @@ A loader with a `Serve()` entry point (the loaders in this tree) is driven
 through it, and the tool prints the part's JEDEC ID and status register as
 found. Any other `.stldr` is driven through the STM32CubeProgrammer entry
 points; `--st` forces that path. `--offset` and `--length` read part of the
-device; by default the whole part is read, its size taken from the loader. The loader must match the board; for now
+device; by default the whole part is read, its size taken from the loader.
+
+For SPI NAND, `tag-xflash nand -l <loader> -o <dir>` reads whole pages, data
+and spare, both raw and through the part's on-die ECC:
+- page 0 of each block is read raw, and a blank block is skipped (`--full`
+  reads every block);
+- `--first-block` and `--blocks` select a range;
+- it writes `raw.bin`, `ecc.bin`, `pages.csv` (each page's ECC verdict and
+  status registers) and `summary.txt`.
+
+On an IMUTagNandBmp581 the whole 256 MiB part scans in about 75 s when
+only one block is in use. The loader must match the board; for now
 it is chosen by hand. Downloading the loader overwrites the start of SRAM1, so
 run `tag-capture` first if SRAM matters. A 4 MiB part takes about a minute.
 See [Loader Runtime Design](../../embedded/loaders/design/loader-runtime.md).

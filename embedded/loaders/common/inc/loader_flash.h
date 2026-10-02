@@ -62,6 +62,49 @@ bool loaderFlashRead(uint32_t offset, uint8_t *buf, uint32_t n);
  */
 bool loaderFlashIdentity(uint32_t *jedec, uint8_t *sr1);
 
+#if defined(LOADER_FLASH_PAGED) && LOADER_FLASH_PAGED
+/**
+ * @name    Paged parts (SPI NAND)
+ * @details Built when the target defines LOADER_FLASH_PAGED=1. Serve() then
+ *          answers LOADER_CMD_READ_PAGE.
+ * @{
+ */
+/** @brief Bytes per page, data plus spare. */
+uint32_t loaderFlashPageBytes(void);
+
+/** @brief Number of pages in the part. */
+uint32_t loaderFlashPageCount(void);
+
+/**
+ * @brief   The part's configuration as loaderFlashProbe() found it, packed
+ *          as LOADER_DETAIL_FOUND describes.
+ */
+uint32_t loaderFlashFound(void);
+
+/**
+ * @brief   Read one whole page, data and spare.
+ *
+ * @param[in]  page     Physical page index.
+ * @param[in]  raw      true for ECC off (bytes as stored), false for on-die ECC.
+ * @param[out] buf      loaderFlashPageBytes() bytes.
+ * @param[out] status   The part's status after the read (NAND: C0h).
+ * @param[out] status2  Its second status register (NAND: F0h).
+ * @return  false on a range error, an SPI timeout, a part that stopped
+ *          answering, or a raw read refused because the configuration
+ *          found does not allow the mode change safely.
+ */
+bool loaderFlashReadPage(uint32_t page, bool raw, uint8_t *buf,
+                         uint8_t *status, uint8_t *status2);
+
+/**
+ * @brief   Put back any volatile configuration loaderFlashReadPage() changed,
+ *          as found. Called by Serve() before it returns.
+ * @return  false if the restore could not be confirmed.
+ */
+bool loaderFlashRestore(void);
+/** @} */
+#endif
+
 #if LOADER_ALLOW_WRITE
 /**
  * @brief   Erase one sector and prove it blank.
