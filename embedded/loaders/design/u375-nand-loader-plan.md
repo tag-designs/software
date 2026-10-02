@@ -3,7 +3,7 @@
 Status: **plan accepted**, 2026-10-02. All five decisions below were agreed
 with the recommendations. Decision 5 moved blank detection from the loader to
 the host library, and the obsolete board with a NAND load switch was dropped.
-Nothing here is built yet.
+Step 1 is built and checked (2026-10-02); see step 1.
 
 This plan covers reading an IMUTagNandBmp581's external flash (GigaDevice
 GD5F2GM7RE SPI NAND, 256 MiB) over SWD without its firmware. The tag's identity
@@ -128,9 +128,31 @@ firmware, if any, go in its flash log
    loader overwrites them only while the core is halted, and the firmware
    clears them at boot; confirm that.
 
-   *Check:* the RV3028 probe, ported first as `RV3028_IMUTagNandv2` (PB6
-   SDA, PB7 SCL, no swap; the board has no `LINE_RTC_*` names, so alias
-   them), returns this tag's factory EEOffset. Read-only, as before.
+   *Check:* the RV3028 probe, ported first as `RV3028_IMUTagNandv2`,
+   returns this tag's factory EEOffset. Read-only, as before.
+
+   **Done 2026-10-02.**
+   - Built: `common/make-u375.mk`, `common/cfg/stm32u3/`,
+     `common/STM32U375-loader.ld`, `common/src/loader_clock_u3.c` and
+     `RV3028_IMUTagNandv2/`.
+   - The board names its I2C pins `LINE_SDA` (PB7) and `LINE_SCL` (PB6),
+     aliased by the target's `project.mk`.
+   - The image references only RCC, GPIOB 6/7, DWT and DEMCR.
+   - On the bench IMUTagNandBmp581 it read all 64 registers:
+     - CLKOUT `C0`;
+     - EEOffset `00`/`10` = 0 steps, agreeing with the stored session facts
+       and `tag-info`;
+     - the time as set by the firmware.
+
+   **One departure from decision 3.**
+   - The reset clock could not be established from documentation. ChibiOS
+     assumes MSIRC1/4 (6 MHz); the captured reset registers read MSIRC1/2
+     (12 MHz).
+   - So `loader_clock_u3.c` pins MSIS at MSIRC1/2 = 12 MHz through
+     `RCC_ICSCR1` (MSIRGSEL = 1). That is a value the part may already be
+     running at, and it stays within voltage range 2 at the reset's 1 wait
+     state.
+   - Still untouched: PWR, the booster, `FLASH_ACR` and the backup domain.
 2. **U3 SPI and delay.**
    - `loader_spi_u3.c`, a bounded polled master following
      `common/core/src/spi_bus_polled.inc:57-68, 187-207`: `CFG1` 8-bit, and

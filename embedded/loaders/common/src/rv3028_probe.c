@@ -164,7 +164,11 @@ int Rv3028ReadRegs(uint8_t *buf, uint32_t first, uint32_t count)
     return PROBE_ERR_CLOCK;
   loaderDelayInit();
 
-  rccEnableAHB2(RCC_AHB2ENR_GPIOBEN, false);
+#if defined(RCC_AHB2ENR1_GPIOBEN)
+  rccEnableAHB2R1(RCC_AHB2ENR1_GPIOBEN, false);   /* STM32U3 */
+#else
+  rccEnableAHB2(RCC_AHB2ENR_GPIOBEN, false);      /* STM32L4 */
+#endif
   palSetLine(PROBE_SDA);
   palSetLine(PROBE_SCL);
   palSetLineMode(PROBE_SDA, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
