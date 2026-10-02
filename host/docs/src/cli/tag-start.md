@@ -40,7 +40,18 @@ tag-start --base 20:7
 
 ## Output
 
-Fill in: describe the printed final state and what state indicates success.
+After the start is accepted, `tag-start` reads the tag's state until it leaves
+IDLE, and prints it:
+
+- `State: RUNNING` or `State: CONFIGURED` -- logging has started, or will start
+  at the configured time. Exit status 0.
+- `State: not confirmed (last read: ...)` -- the start was accepted, and the
+  tag then left the debug link before its new state could be read. This is
+  normal for tags that go to sleep as soon as they start, such as UIUCTag: a
+  tag must give up its debug interface to sleep. Exit status 0. To confirm,
+  run `tag-start` again; it reports `Start skipped: tag is already RUNNING`.
+- Any other state, such as ABORTED, or a tag still IDLE after
+  `--start-timeout` seconds -- the start failed. Exit status 1.
 
 ## Troubleshooting
 

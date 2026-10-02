@@ -99,6 +99,15 @@ int main(int argc, char **argv)
     bool start_now = false;
     int start_timeout_s = 10;
     int settle_timeout_s = 10;
+    /* parse_options() sets the log level from --debug but does not report
+       it; the post-start quieting below needs to know. */
+    bool debug_requested = false;
+    for (int i = 1; i < argc; i++)
+    {
+        const std::string a = argv[i];
+        if (a == "-d" || a == "--debug")
+            debug_requested = true;
+    }
 
     cxxopts::Options options("tag-start",
                              "start a configured tag and print the resulting status");
@@ -229,7 +238,19 @@ int main(int argc, char **argv)
             std::cout << "Starting with configuration:" << std::endl
                       << cfg.DebugString();
             start_attempted = true;
-            if (!tag.Start(cfg))
+            if (tag.Start(cfg))
+            {
+                /*
+                 * From here the tag may leave the debug link at any moment: a
+                 * tag whose next state sleeps at once (UIUCTag goes straight to
+                 * Shutdown) must drop its debug interface, and does, so the
+                 * link errors tagcore would log are expected. Keep them
+                 * unless --debug was given.
+                 */
+                if (!debug_requested)
+                    log_set_level(LOG_FATAL);
+            }
+            else
             {
                 start_failed = true;
                 std::string message = tag.DebugMessage();
@@ -283,6 +304,23 @@ int main(int argc, char **argv)
                     break;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(poll_ms));
+            }
+            if (!read_ok && start_attempted)
+            {
+                /*
+                 * The start was accepted, and then the tag left the debug
+                 * link. That is how a tag that sleeps straight after a start
+                 * behaves, not a failure: the tag must give up its debug
+                 * interface to sleep. Its new state cannot be read without
+                 * attaching again, which resets it, so it is reported as not
+                 * confirmed rather than guessed.
+                 */
+                std::cout << "Start accepted; the tag then left the debug link "
+                             "(it went to sleep), so its new state was not read"
+                          << std::endl;
+                std::cout << "State: not confirmed (last read: "
+                          << TagState_Name(status.state()) << ")" << std::endl;
+                return 0;
             }
             if (!read_ok)
             {
