@@ -15,6 +15,10 @@
  *              tag-sramcall --image RV3028_PresTagv3.elf \
  *                  --call Rv3028ReadRegs --args buf,0,64 --dump 64
  *
+ *          `--peek ADDR,LEN` also prints LEN bytes at ADDR, as 32-bit words,
+ *          while the core is still halted, for example an image's static
+ *          diagnostics found with `nm`.
+ *
  *          Exit status: 0 the function returned 1, 2 it returned something
  *          else, 1 the call could not be made.
  *
@@ -58,12 +62,15 @@ int main(int argc, char **argv) {
        cxxopts::value<std::string>()->default_value(""))
       ("dump", "Bytes of the buffer to print after the call",
        cxxopts::value<uint32_t>()->default_value("0"))
+      ("peek", "After the call, also print LEN bytes at ADDR (ADDR,LEN), for "
+               "example an image's static diagnostics",
+       cxxopts::value<std::string>()->default_value(""))
       ("timeout", "Milliseconds to wait for the return",
        cxxopts::value<int>()->default_value("2000"))
       ("d,debug", "Set log level to DEBUG")
       ("h,help", "Print usage");
 
-  std::string image_path, symbol, args_text;
+  std::string image_path, symbol, args_text, peek_text;
   uint32_t dump = 0;
   int timeout_ms = 2000;
   try {
@@ -78,6 +85,7 @@ int main(int argc, char **argv) {
     args_text = result["args"].as<std::string>();
     dump = result["dump"].as<uint32_t>();
     timeout_ms = result["timeout"].as<int>();
+    peek_text = result["peek"].as<std::string>();
   } catch (const cxxopts::OptionException &e) {
     std::cerr << "error parsing options: " << e.what() << std::endl;
     return 1;
@@ -151,6 +159,25 @@ int main(int argc, char **argv) {
       for (uint32_t j = i; j < i + 16 && j < dump; j++)
         std::printf(" %02X", buf[j]);
       std::printf("\n");
+    }
+  }
+  if (!peek_text.empty()) {
+    const size_t comma = peek_text.find(',');
+    const uint32_t addr =
+        static_cast<uint32_t>(std::strtoul(peek_text.c_str(), nullptr, 0));
+    uint32_t len = comma == std::string::npos
+        ? 16U
+        : static_cast<uint32_t>(std::strtoul(peek_text.c_str() + comma + 1, nullptr, 0));
+    len = (len + 3U) & ~3U;
+    std::vector<uint8_t> buf(len);
+    if (!s.Read(addr & ~3U, buf.data(), len, 4096, nullptr)) {
+      std::cerr << "SWD read of the peek range failed" << std::endl;
+    } else {
+      std::printf("peek 0x%08X:\n", addr & ~3U);
+      for (uint32_t i = 0; i < len; i += 4)
+        std::printf("  +%02X: 0x%08X\n", i,
+                    buf[i] | (buf[i + 1] << 8) | (buf[i + 2] << 16) |
+                        (static_cast<uint32_t>(buf[i + 3]) << 24));
     }
   }
   s.Close(SwdExit::HardwareReset);

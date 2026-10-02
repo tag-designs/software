@@ -2,8 +2,8 @@
 
 Status: **plan accepted**, 2026-10-02. All five decisions below were agreed
 with the recommendations. Decision 5 moved blank detection from the loader to
-the host library, and the obsolete board with a NAND load switch was dropped.
-Step 1 is built and checked (2026-10-02); see step 1.
+the host library. Decision 4's NAND power was corrected in step 2: the loader drives FLASH_PWR, as the firmware does.
+Steps 1 and 2 are built and checked (2026-10-02); see each step.
 
 This plan covers reading an IMUTagNandBmp581's external flash (GigaDevice
 GD5F2GM7RE SPI NAND, 256 MiB) over SWD without its firmware. The tag's identity
@@ -71,16 +71,20 @@ in the sibling repository.
      value, and make every budget an iteration bound with a wide margin.
      *Recommendation: no clock change.*
 4. **Power and neighbours on the bus:**
-   - **NAND rail.** Current boards have no load switch: the NAND is on +1V8
-     continuously.
-     - The TPS22916 and its `FLASH_PWR` net are in the August `imutag-nand`
-       schematic, a board now obsolete. The current `imutag-smps` design has
-       neither.
-     - `board.h` still names PA8 `FLASH_PWR` (output, ODR high), a leftover.
-       The loader leaves PA8 alone.
-     - The firmware puts the NAND in deep power-down at Standby entry, so the
-       loader sends `AB` (release from deep power-down) and waits tRES1
-       (30 µs) before anything else.
+   - **NAND rail.** Drive `FLASH_PWR` (PA8) high, wait tVSL plus margin
+     (5 ms), then send `AB` (release from deep power-down, which the tag
+     enters in Standby) and wait tRES1 (30 µs).
+     - The bench IMUTagNandBmp581 is a breakout board with a NAND load switch
+       on PA8. The final tag has no switch.
+     - The firmware drives PA8 high on every IMUTagNandv2 board (`board.h`:
+       output, ODR high), so the loader doing the same is safe on both.
+     - After the attach's reset PA8 is undriven. On the breakout the NAND then
+       ran on residual charge and parasitic power through its IO pins. It
+       answered for a few tens of milliseconds and then dropped off the bus:
+       status read `FF`, then `00`, and a cache read in progress came back as
+       `FF` from the point of the outage, silently.
+     - This was found in step 2 (see there). An earlier draft of this plan
+       left PA8 alone, wrongly.
    - **LSM6DSV16X.** It shares the NAND's SCK, MISO and MOSI nets
      (PA5-PA7) and is always powered, so the loader drives its CS (PB1)
      high before any SPI traffic, and leaves every other LSM6DSV pin alone.
@@ -190,6 +194,24 @@ firmware, if any, go in its flash log
    write one file of raw pages, one of ECC pages and a per-page status table.
    *Check:* the offline shim (next-release-todo D1) rebuilds the run's SQLite
    file from the capture alone.
+
+   **Step 2 done 2026-10-02.**
+   - Built: `common/src/loader_spi_u3.c`; `common/src/gd5f_loader.c`,
+     read-only, with no reset and no feature writes; and the
+     `GD5F2GM7RE_IMUTagNandv2` target.
+   - The GD5F opcodes moved to `tags/common/storage/inc/gd5f_commands.h`. The
+     `.list` of IMUTagNandBmp581 and IMUTagNand is identical before and after.
+   - `NandInfo` read ID `C8 82`, `A0` `00`, `B0` `10` (ECC on), `C0` `00` and
+     `F0` `00`.
+   - Through the ST entry points and `Serve()`, four reads of the first 64
+     pages, 5 s apart, were byte-identical. They held 52 non-blank pages,
+     matching the 52 pages a monitor download of the same run returned.
+   - The core clock was checked against the host: a 2000 ms delay took
+     2.018 s.
+   - Every page read is now followed by a status read. A reply of all ones
+     means the part was not driving MISO, so the page is retried and never
+     returned silently. That is cheap insurance against the failure that
+     the missing PA8 drive caused.
 
 ## Risks
 

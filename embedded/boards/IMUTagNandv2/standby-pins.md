@@ -52,3 +52,24 @@ The debug pins are in AF pull-up/pull-down after reset:
 - PA13: JTMS/SWDIO in pull-up
 - PB4: NJTRST in pull-up
 - PB3: JTDO/TRACESWO in floating state no pull-up/pull-down
+
+## FLASH_PWR (PA8) across a reset
+
+On the breakout, PA8 (`FLASH_PWR`) enables the NAND's TPS22916 load switch,
+active high. The final tag has no switch.
+- The firmware drives PA8 high from its board init (`board.h`: output, ODR
+  high), and the Standby pull-up (`PULLUPA` bit 8) holds it there in Standby.
+- **Neither survives a reset.** A system reset returns PA8 to analog and
+  clears `PWR_APCR` and `PWR_PUCRA` (read as 0 under the attach's reset,
+  2026-10-02).
+- So from NRST until code drives PA8 again, the switch enable is held only by
+  whatever is on the PCB. On the breakout, after an SWD attach the NAND then
+  runs on residual charge and parasitic power through its IO pins for a few
+  tens of milliseconds, and then drops off the bus.
+- The firmware never notices, because it drives PA8 high at boot. Code that
+  runs instead of the firmware must do the same. The SRAM loader
+  (`embedded/loaders/GD5F2GM7RE_IMUTagNandv2`) drives PA8 high and waits 5 ms
+  before using the NAND. That is harmless on the final tag.
+- A hardware pull-up on the switch enable would keep the NAND powered across a
+  reset. It was judged not worth a PCB change on a board the final tag does
+  not share.

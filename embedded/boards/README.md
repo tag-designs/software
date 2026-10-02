@@ -77,7 +77,8 @@ the normal active firmware build.
   pull-down choices for the IMUTagNand sensor, flash, interrupt, and test
   pins.
 - `IMUTagNandv2/standby-pins.md` documents the matching standby biases for the
-  BMP581/GD5F2GM7RE replacement breakout.
+  BMP581/GD5F2GM7RE replacement breakout. It also records why code that runs without the
+  firmware, such as an SRAM loader, must drive `FLASH_PWR` (PA8) high itself.
 
 ## Updating Board Names
 
