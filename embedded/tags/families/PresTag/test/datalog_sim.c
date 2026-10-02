@@ -172,6 +172,16 @@ static void reset_world(uint32_t bytes)
     finished_count = 0;
 }
 
+/** One ticker wakeup @p dt seconds after the last; true while still running. */
+static bool tick_by(int32_t dt)
+{
+    timestamp += dt;
+    events = EVT_RTC_WUTF;
+    Running(T_CONT, 0);
+    events = 0;
+    return finished_count == 0;
+}
+
 /** One ticker wakeup; returns true while still running. */
 static bool tick(void)
 {
@@ -334,11 +344,58 @@ static void test_full(uint32_t bytes, const char *part)
            part, whole, tail, (unsigned)downloaded, (unsigned)sample_seq);
 }
 
+/**
+ * Gap: a halt of @p halt_s seconds mid-page, at a period of @p period_s --
+ * what a tag-capture does to a running tag. Samples carry no timestamps, so
+ * the samples after the halt must start a new page whose header holds their
+ * own time; continuing the old page would place them @p halt_s too early.
+ */
+static void test_gap(int32_t period_s, int32_t halt_s)
+{
+    reset_world(4u * 1024u * 1024u);
+    sconfig.lps_period = (uint32_t)period_s;
+    Running(T_INIT, 0);
+    for (int i = 0; i < 20; i++)
+        assert(tick_by(period_s));
+    timestamp += halt_s;               /* core halted: no wakeups */
+    const int32_t resumed_at = timestamp + period_s;
+    for (int i = 0; i < 10; i++)
+        assert(tick_by(period_s));
+
+    const int expect[] = {20, 10};
+    const uint32_t first[] = {0, 20};
+    assert(download_all(2, expect, first) == 2 && "halt did not start a new page");
+    assert(vddHeader[1].epoch == resumed_at && "new page header has the wrong time");
+    printf("gap: %d s halt at %d s period starts page 2 at the resumed time\n",
+           (int)halt_s, (int)period_s);
+}
+
+/**
+ * Jitter: integer-second timestamps of a 1 s ticker can step 0 or 2 when a
+ * wakeup lands near a second boundary. That must not split a page.
+ */
+static void test_jitter(void)
+{
+    static const int32_t steps[] = {1, 1, 2, 0, 1, 2, 0, 1};
+    reset_world(4u * 1024u * 1024u);
+    Running(T_INIT, 0);
+    for (int i = 0; i < DATALOG_SAMPLES; i++)
+        assert(tick_by(steps[i % 8]));
+    const int expect[] = {DATALOG_SAMPLES};
+    const uint32_t first[] = {0};
+    assert(download_all(1, expect, first) == 1);
+    assert(pState->pages == 1 && "jitter split a page");
+    printf("jitter: 1 s wake jitter keeps one page\n");
+}
+
 int main(void)
 {
     printf("PresTag %s download\n", PRESTAG_RAW_LOG ? "raw" : "converted");
     test_resume();
     test_full(4u * 1024u * 1024u, "4 MiB (AT25XE321D)");
+    test_gap(1, 55);
+    test_gap(10, 55);
+    test_jitter();
     printf("PRESTAG DATALOG SIM: all assertions passed\n");
     return 0;
 }

@@ -16,6 +16,7 @@
 #include "devices.h"
 #include "lps27hhw.h"
 #include "phase_probe.h"
+#include "flash_internal.h"
 
 #ifndef PRESTAG_RUNNING_LONG_SLEEP_MODE
 #define PRESTAG_RUNNING_LONG_SLEEP_MODE STANDBY
@@ -151,6 +152,33 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
                            &datablock.temperature);
       tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
       t_DataHeader dataheader;
+
+      /*
+       * A page's samples carry no timestamps: the host places sample j at the
+       * header epoch plus j * lps_period. That holds only if no sample was
+       * missed. When this sample is not where that rule puts it -- the core
+       * was halted by a capture, a wakeup was lost, the clock was set -- start
+       * a new page, as T_INIT does after a reset. This does not depend on how
+       * the reset was classified: a capture's reset arriving during Shutdown
+       * resumes here as an ordinary wakeup, mid-page. Timestamps are whole RTC
+       * seconds, so a 1 s ticker may land either side of a second boundary;
+       * hence the tolerance of at least a second.
+       */
+      {
+        const uint32_t slot = pState->external_blocks % DATALOG_SAMPLES;
+        t_DataHeader page_head;
+        if ((slot != 0U) && (pState->pages > 0U) &&
+            (FLASH_Read_Checked(&vddHeader[pState->pages - 1U], &page_head,
+                                sizeof(page_head)) == 0U))
+        {
+          const int32_t period = (int32_t)(sconfig.lps_period > 0 ? sconfig.lps_period : 1);
+          const int32_t tolerance = (period / 2 > 1) ? period / 2 : 1;
+          const int32_t drift =
+              timestamp - (page_head.epoch + (int32_t)slot * period);
+          if ((drift > tolerance) || (drift < -tolerance))
+            pState->external_blocks += DATALOG_SAMPLES - slot;
+        }
+      }
 
       if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))
       {

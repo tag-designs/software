@@ -11,6 +11,7 @@ typedef int State_Event;
 #define State_EVENT_INTERNALFULL 2
 #define State_EVENT_EXTERNALFULL 3
 #define State_EVENT_STARTHIB 4
+#define State_EVENT_POWERFAIL 13
 typedef struct { int32_t start_epoch; int32_t end_epoch; } Config_Interval;
 typedef int TestResult;
 typedef struct { float temperature, pressure; } PresTagLog_PT;

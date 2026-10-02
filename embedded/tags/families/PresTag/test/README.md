@@ -15,7 +15,10 @@ Its subject is fix A3 from the `firmware-fix` branch
 - The fake NOR also asserts on any read past the end of the part.
 
 It also checks that a reset in the middle of a page resumes on a fresh page
-without reprogramming written bytes.
+without reprogramming written bytes, and that a halt mid-page also starts one
+(A7). Samples carry no timestamps, so a page that missed samples would place
+every later sample too early. Integer-second wake jitter at 1 s must not split
+a page.
 
 It is built twice, once for each download path:
 
@@ -37,6 +40,10 @@ for raw in 0 1; do
   /tmp/prestag_datalog_sim$raw
 done
 ```
+
+On macOS, if `cc` fails to link against the installed SDK, use the
+compiler and SDK the CMake host build uses (`CMAKE_C_COMPILER` and
+`CMAKE_OSX_SYSROOT` in `build-host/CMakeCache.txt`, with `-isysroot`).
 
 Each build should print `PRESTAG DATALOG SIM: all assertions passed`. Any
 failure aborts on the assertion that describes it. Built against the
