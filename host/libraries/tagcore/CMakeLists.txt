@@ -86,6 +86,7 @@ target_sources(tagcore
          recovery/externalcapture.cc
          recovery/identityrecord.cc
          recovery/statecapture.cc
+         recovery/capturesource.cc
     PUBLIC
          log.h
          tagmonitor.h
@@ -103,6 +104,7 @@ target_sources(tagcore
          recovery/externalcapture.h
          recovery/identityrecord.h
          recovery/statecapture.h
+         recovery/capturesource.h
    )
 
 target_include_directories(tagcore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

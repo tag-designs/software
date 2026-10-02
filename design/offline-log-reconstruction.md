@@ -1,8 +1,10 @@
 # Offline Log Reconstruction
 
 Status: analysis, with decisions agreed on 2026-10-01 (see
-[Decisions and plan](#decisions-and-plan)). Nothing here is implemented. It
-answers one
+[Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
+IMUTagNandBmp581 (`tag-rebuild`, 2026-10-02; see
+[Implementation status](#implementation-status)); the other families are not
+yet. It answers one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
 **from a raw capture of a tag plus the released firmware package, can we build
 the same SQLite file that `tag-dwnld -f sqlite` would have produced -- and if
@@ -310,6 +312,49 @@ single-sourced on the host.
   from the package descriptor of item 3 for later releases.
 - **The output is labelled "as captured".** It differs legitimately from a live
   download: there is no stop marker, and reset recovery did not run.
+
+#### Implementation status
+
+Implemented 2026-10-02 in `host/libraries/tagcore/recovery/capturesource.{h,cc}`
+and the `tag-rebuild` command. The interface came out push-style rather than as
+an interface the writer pulls from:
+
+- `TagLogHeader` (`taglogwriter.h`) holds Config, TagInfo, the calibration
+  slots and the state history. `readTagLogHeader()` gathers it from a live tag
+  with the same monitor calls the writer made before, and
+  `SqliteTagLogWriter::writeHeader(const TagLogHeader &)` writes it. The live
+  path now goes through both, and a full `.dump` of a live download was
+  identical before and after the change. Only the SQLite writer takes a pushed
+  header; recovery does not produce text logs.
+- `CaptureSource` builds the `TagLogHeader` from the capture. The common parts
+  (TagInfo, calibration, `sEpoch[]`, session facts) follow the shared firmware
+  code, laid out by the identity record of item 4. A per-family
+  `CaptureDecoder`, chosen by the record's `decoder` string, supplies
+  `readConfig()`, `externalFlashSize()`, the data-log count and
+  `data_logAck()`. Only `imutag` (NAND checkpoints) exists so far. Other
+  families, and images without an identity record (fw-v0.0.3), are refused.
+- The data log is walked as `tag-dwnld` walks it: a NODATA index below the
+  count is a hole and is skipped.
+- Provenance goes into `info`: `source` = `capture`, `capture_dir` and
+  `captured_at`, through `SqliteTagLogWriter::writeInfo()`.
+
+**Validation.** The IMUTagNandBmp581 reference pair is
+`captures/2026-10-02-imutag-nand-bmp581/d1-reference`, a 60 s run at 100 Hz:
+52 pages and 7800 samples. A table-by-table `.dump` of the rebuild against the
+live `tag-dwnld --stop -f sqlite` gave:
+
+- every data table, `streams`, `schema_info`, `Calibration` and `states`
+  identical;
+- `info` differing only by the three provenance rows.
+
+**Gaps.**
+
+- The identity record carries the NAND erase unit but not the logical block
+  count that `externalFlashSize()` multiplies by: 2008 for the GD5F2GM7RE, a
+  constant in the decoder. It should become a record number.
+- Live, `infoAck()` falls back to reading the RV3028 offset over I2C when the
+  session facts are invalid. A capture has no such fallback, so the rebuild
+  leaves `ppm_clock_error` unset in that case.
 
 ### 2. Close the gaps in the capture
 

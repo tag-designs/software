@@ -565,6 +565,11 @@ useful once they exist. They are listed so neither half ships alone.
   writer, rebuilding info, Config, Calibration, State and the data rows. It
   decodes fw-v0.0.3 layouts from the release source and later layouts from B1
   and B3.
+  *Status 2026-10-02:* done for IMUTagNandBmp581 with identity-record images
+  (`tag-rebuild`, `recovery/capturesource`). Rebuilt against a live download,
+  every table is identical apart from three provenance rows in `info`. Still to
+  do: decoders for the other families, and the fw-v0.0.3 layouts. See
+  `design/offline-log-reconstruction.md`, "Implementation status".
 - **D2.** `tagcore/recovery`: read the identity record at the per-MCU address
   (add it to `swdmcu`), check its magic, size and end entry (the record has no
   CRC), and use it to choose the loader and decoder; fall back to hash or string identification without it.

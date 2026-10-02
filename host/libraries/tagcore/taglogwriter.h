@@ -10,6 +10,41 @@
 class Tag;
 
 /**
+ * @struct  TagLogHeader
+ * @brief   Everything the SQLite writer records about the tag, gathered
+ *          before writing.
+ *
+ * @details SqliteTagLogWriter::writeHeader(const TagLogHeader &) takes this
+ *          instead of querying a Tag. The same writer then serves both:
+ *          - a live download: readTagLogHeader() fills it from monitor calls;
+ *          - an offline rebuild from an SWD capture: the recovery code fills
+ *            it from capture bytes.
+ *          The data log follows as writeLog(Ack) calls in both cases.
+ */
+struct TagLogHeader
+{
+    Config config;                                 ///< GetConfig().
+    TagInfo info;                                  ///< GetTagInfo().
+    std::vector<CalibrationConstants> calibration; ///< ReadCalibration(0..n-1), oldest first.
+    std::vector<State> states;                     ///< GetStateLog(), every chunk, in order.
+};
+
+/**
+ * @brief   Read a TagLogHeader from a live tag, with the monitor calls the
+ *          SQLite writer made itself before it took a header.
+ *
+ * @details GetConfig and GetTagInfo, each required; then ReadCalibration(i)
+ *          for i = 0, 1, ... until one fails; then GetStateLog(next) until a
+ *          reply is empty.
+ *
+ * @param[in]  tag     An attached tag.
+ * @param[out] header  The header.
+ * @param[out] error   Why it failed; may be nullptr.
+ * @return  false when a required read failed.
+ */
+bool readTagLogHeader(Tag &tag, TagLogHeader &header, std::string *error = nullptr);
+
+/**
  * Storage formats supported by the common tag-log download path.
  *
  * Text is the legacy line-oriented format implemented by TextTagLogWriter.

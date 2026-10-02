@@ -59,6 +59,33 @@ public:
      * and state history. Must be called once before writeLog().
      */
     bool writeHeader(Tag &tag) override;
+
+    /**
+     * @brief   Write the header from one gathered beforehand.
+     *
+     * @details What writeHeader(Tag &) does after readTagLogHeader(), for a
+     *          header that did not come from a live tag, such as one rebuilt
+     *          from an SWD capture (host/libraries/tagcore/recovery).
+     *
+     * @param[in] header  Config, info, calibration slots and state history.
+     *                    Its config must match the one this writer was
+     *                    constructed with.
+     * @return  false on a mismatch or a database error; lastError() says which.
+     */
+    bool writeHeader(const TagLogHeader &header);
+
+    /**
+     * @brief   Add one row to the info table.
+     *
+     * @details For metadata the tag does not supply, such as the provenance
+     *          of a log rebuilt from an SWD capture.
+     *
+     * @pre     writeHeader() succeeded, which creates the table.
+     * @param[in] fieldname  Info key.
+     * @param[in] value      Info value.
+     * @return  false on a database error; lastError() says which.
+     */
+    bool writeInfo(const std::string &fieldname, const std::string &value);
     bool beginLog() override;
     bool endLog() override;
 

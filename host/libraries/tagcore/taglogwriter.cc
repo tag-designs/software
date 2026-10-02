@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "sqlitelog.h"
+#include "tagclass.h"
 #include "txtlogs.h"
 
 TagLogStorageFormat defaultTagLogStorageFormat(TagType tag_type)
@@ -86,4 +87,33 @@ std::unique_ptr<TagLogWriter> createTagLogWriter(
     default:
         return std::make_unique<TextTagLogWriter>(path, config);
     }
+}
+
+/* Contract documented in taglogwriter.h. */
+bool readTagLogHeader(Tag &tag, TagLogHeader &header, std::string *error)
+{
+    header = TagLogHeader();
+    if (!tag.GetConfig(header.config)) {
+        if (error)
+            *error = "Could not read tag config";
+        return false;
+    }
+    if (!tag.GetTagInfo(header.info)) {
+        if (error)
+            *error = "Could not read tag info";
+        return false;
+    }
+    // ReadCalibration(index) returns false when there are no more entries.
+    CalibrationConstants constants;
+    for (uint32_t i = 0; tag.ReadCalibration(constants, i); i++)
+        header.calibration.push_back(constants);
+    // The tag returns state history in chunks; advance by the number received.
+    StateLog state_log;
+    int next = 0;
+    while (tag.GetStateLog(state_log, next)) {
+        next += state_log.states().size();
+        for (const State &state : state_log.states())
+            header.states.push_back(state);
+    }
+    return true;
 }

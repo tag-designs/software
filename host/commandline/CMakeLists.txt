@@ -44,6 +44,7 @@ host_cli_tool(tag-attach-cycle MACOSX_BUNDLE WIN32 tag-attach-cycle.cc options.c
 host_cli_tool(tag-capture MACOSX_BUNDLE WIN32 tag-capture.cc)
 host_cli_tool(tag-xflash MACOSX_BUNDLE WIN32 tag-xflash.cc)
 host_cli_tool(tag-sramcall MACOSX_BUNDLE WIN32 tag-sramcall.cc)
+host_cli_tool(tag-rebuild MACOSX_BUNDLE WIN32 tag-rebuild.cc)
 host_cli_tool(qtmonitor-fixture-capture MACOSX_BUNDLE WIN32 qtmonitor-fixture-capture.cc)
 
 if(TARGET sensoranalysis)

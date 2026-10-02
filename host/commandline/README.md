@@ -162,6 +162,23 @@ among them, with no firmware on the tag. See
 status: 0 when the function returned 1, 2 for any other result, 1 when the call
 could not be made.
 
+## tag-rebuild
+
+Rebuilds a SQLite download from a `tag-capture` directory, without the tag.
+The capture's internal flash, backup registers and external flash are turned
+back into the messages the firmware would have served, and written by the same
+SQLite writer `tag-dwnld` uses:
+
+```sh
+build-host/bin/tag-rebuild <capture-dir> -o tag.db3
+```
+
+The file is "as captured": the tag as it was found, before the reset recovery
+a live attach would run. Its `info` table records `source` = `capture`, the
+capture directory and the capture time. Only families with a capture decoder
+are accepted, so far IMUTag with NAND checkpoints; others are refused. See
+[Offline Log Reconstruction](../../design/offline-log-reconstruction.md).
+
 ## tag-cal-write
 
 Several CompassTag-family state handlers refuse `Start` with "Device must be

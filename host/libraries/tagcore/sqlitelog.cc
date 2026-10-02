@@ -87,7 +87,20 @@ public:
         return last_error_;
     }
 
-    bool writeHeader(Tag &tag)
+    // For failures found before the header reaches the database, such as a
+    // monitor read in SqliteTagLogWriter::writeHeader(Tag &).
+    void noteError(const std::string &error)
+    {
+        setLastError(error);
+    }
+
+    // An info row the tag did not supply (SqliteTagLogWriter::writeInfo).
+    bool writeInfo(const std::string &fieldname, const std::string &value)
+    {
+        return insertInfo(fieldname, value);
+    }
+
+    bool writeHeader(const TagLogHeader &header)
     {
         if (!db_) {
             setLastError("Database is not open");
@@ -100,14 +113,8 @@ public:
             return false;
         }
 
-        TagInfo info;
-        Config config;
-        CalibrationConstants constants;
-
-        if (!tag.GetConfig(config)) {
-            setLastError("Could not read tag config");
-            return false;
-        }
+        const Config &config = header.config;
+        const TagInfo &info = header.info;
 
         if (config.tag_type() != config_.tag_type()) {
             setLastError("Tag config changed while preparing SQLite log output");
@@ -140,10 +147,6 @@ public:
             return false;
         }
 
-        if (!tag.GetTagInfo(info)) {
-            setLastError("Could not read tag info");
-            return false;
-        }
         configureImuClockCorrection(info);
         if (!insertInfo("uuid", info.uuid())) {
             return false;
@@ -189,9 +192,7 @@ public:
                 return false;
             }
 
-            // ReadCalibration(index) returns false when there are no more
-            // entries.
-            for (int i = 0; tag.ReadCalibration(constants, i); i++) {
+            for (const CalibrationConstants &constants : header.calibration) {
                 constants_json.clear();
                 if (!MessageToJsonString(constants, &constants_json, options).ok()) {
                     setLastError("Could not create JSON string for tag calibration constants");
@@ -231,13 +232,8 @@ public:
             return false;
         }
 
-        StateLog state_log;
-        int next = 0;
-        while (tag.GetStateLog(state_log, next)) {
-            // The tag returns state history in chunks. Advance by the number of
-            // states received so the next request continues where this one left.
-            next += state_log.states().size();
-            for (auto const &state : state_log.states()) {
+        {
+            for (const State &state : header.states) {
                 if (!state_insert.bindInt64(1, state.status().millis() / 1000)
                     || !state_insert.bindText(2, TagState_Name(state.status().state()))
                     || !state_insert.bindText(3, State_Event_Name(state.transition_reason()))
@@ -650,7 +646,24 @@ const std::string &SqliteTagLogWriter::lastError() const
 
 bool SqliteTagLogWriter::writeHeader(Tag &tag)
 {
-    return impl_->writeHeader(tag);
+    // Same calls as before the header was gathered first, in the same order.
+    TagLogHeader header;
+    std::string error;
+    if (!readTagLogHeader(tag, header, &error)) {
+        impl_->noteError(error);
+        return false;
+    }
+    return impl_->writeHeader(header);
+}
+
+bool SqliteTagLogWriter::writeInfo(const std::string &fieldname, const std::string &value)
+{
+    return impl_->writeInfo(fieldname, value);
+}
+
+bool SqliteTagLogWriter::writeHeader(const TagLogHeader &header)
+{
+    return impl_->writeHeader(header);
 }
 
 bool SqliteTagLogWriter::beginLog()
