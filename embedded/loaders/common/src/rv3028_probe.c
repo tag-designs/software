@@ -36,12 +36,15 @@
 #endif
 
 #if PROBE_SWAP_I2C
-#define PROBE_SDA LINE_RTC_SCL
-#define PROBE_SCL LINE_RTC_SDA
+#define PROBE_SDA LINE_RTC_SCL ///< The line that is really SDA.
+#define PROBE_SCL LINE_RTC_SDA ///< The line that is really SCL.
 #else
-#define PROBE_SDA LINE_RTC_SDA
-#define PROBE_SCL LINE_RTC_SCL
+#define PROBE_SDA LINE_RTC_SDA ///< The RTC's SDA line.
+#define PROBE_SCL LINE_RTC_SCL ///< The RTC's SCL line.
 #endif
+
+/** @brief Keeps an entry point linked and in the section the map retains. */
+#define PROBE_ENTRY __attribute__((used, noinline, section(".loader_entry")))
 
 /** @brief RV3028 7-bit I2C address. */
 #define RV3028_I2C_ADDR 0x52U
@@ -141,7 +144,7 @@ static void stop(void)
  * @brief   Placeholder for the loader link map's entry symbol.
  * @return  1.
  */
-__attribute__((used, noinline, section(".loader_entry"))) int Init(void)
+PROBE_ENTRY int Init(void)
 {
   return 1;
 }
@@ -154,8 +157,7 @@ __attribute__((used, noinline, section(".loader_entry"))) int Init(void)
  * @param[in]  count  Registers to read; first + count must not exceed 0x40.
  * @return  ::PROBE_OK, or a negative PROBE_ERR_* code.
  */
-__attribute__((used, noinline, section(".loader_entry")))
-int Rv3028ReadRegs(uint8_t *buf, uint32_t first, uint32_t count)
+PROBE_ENTRY int Rv3028ReadRegs(uint8_t *buf, uint32_t first, uint32_t count)
 {
   __disable_irq();
   if (first + count > 0x40U || count == 0U)

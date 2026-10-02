@@ -3,7 +3,7 @@
 Status: **plan accepted**, 2026-10-02. All five decisions below were agreed
 with the recommendations. Decision 5 moved blank detection from the loader to
 the host library. Decision 4's NAND power was corrected in step 2: the loader drives FLASH_PWR, as the firmware does.
-Steps 1-4 are built and checked (2026-10-02); see each step. Step 5, NAND in `tag-capture`, remains.
+All five steps are built and checked (2026-10-02); see each step.
 
 This plan covers reading an IMUTagNandBmp581's external flash (GigaDevice
 GD5F2GM7RE SPI NAND, 256 MiB) over SWD without its firmware. The tag's identity
@@ -241,6 +241,34 @@ firmware, if any, go in its flash log
    One limit: the firmware looks for the factory mark on pages 0 and 1, but
    the skip rule reads only page 0. A block marked only on page 1 is skipped
    unreported. It holds no data, so nothing is lost.
+
+   **Step 5 done 2026-10-02.**
+   - `recovery/identityrecord.*` parses the identity record from the
+     captured internal flash, at the new `McuMap::identity_offset`: 0x1A0 on
+     L432, 0x240 on U375.
+   - `recovery/externalcapture.*` holds the shared capture (linear or
+     paged), used by both `tag-capture` and `tag-xflash nand`.
+   - `tag-capture` now ends with the external flash, through the loader the
+     record names, searched for under `--loader-dir`, `$TAG_LOADER_DIR` and
+     `build-host/embedded/loaders`; `--loader` overrides it. It checks the
+     JEDEC ID against the record (manufacturer and first device byte).
+   - The manifest gains `identity` and `external_flash` sections: loader and
+     its SHA-256, Serve version, registers as found, selection rule, block
+     counts, and every file's SHA-256.
+
+   On the bench IMUTagNandBmp581:
+   - One `tag-capture` found `GD5F2GM7RE_IMUTagNandv2` by name and scanned
+     the NAND in 73.7 s: 1 block read, 2047 blank, no uncorrectable pages.
+   - `external_ecc.bin` was byte-identical to the step-4 `tag-xflash nand`
+     run.
+   - On this breakout the registers "as found" are the NAND's power-on
+     values (A0 `38`, F0 `08`). The attach's reset leaves PA8 undriven, so
+     the switched NAND loses power until the loader drives PA8 again. On the
+     final tag, which has no switch, they are the real state.
+
+   The linear path, through the AT25 loaders, is the same code as
+   `tag-xflash dump` but has not yet been run through `tag-capture` on a
+   PresTag.
 
 ## Risks
 

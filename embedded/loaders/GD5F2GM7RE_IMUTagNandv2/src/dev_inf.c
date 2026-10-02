@@ -16,6 +16,7 @@
 /** @brief Data bytes per block. */
 #define GD5F_LOADER_BLOCK_BYTES (GD5F_PAGE_SIZE * GD5F_PAGES_PER_BLOCK)
 
+/** @brief The descriptor CubeProgrammer reads from address 0 of the image. */
 LOADER_DEV_INFO const struct StorageInfo StorageInfo = {
     "GD5F2GM7RE_IMUTagNandv2 RO " VERSION_HASH,
     NAND_FLASH,

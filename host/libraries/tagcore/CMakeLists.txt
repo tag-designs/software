@@ -83,6 +83,8 @@ target_sources(tagcore
          recovery/targetimage.cc
          recovery/sramcall.cc
          recovery/externalflash.cc
+         recovery/externalcapture.cc
+         recovery/identityrecord.cc
          recovery/statecapture.cc
     PUBLIC
          log.h
@@ -98,6 +100,8 @@ target_sources(tagcore
          recovery/targetimage.h
          recovery/sramcall.h
          recovery/externalflash.h
+         recovery/externalcapture.h
+         recovery/identityrecord.h
          recovery/statecapture.h
    )
 

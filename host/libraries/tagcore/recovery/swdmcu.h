@@ -73,6 +73,9 @@ struct McuMap {
 
   /// SRAM regions, in capture order.
   std::vector<McuRegion> sram;
+  /// Offset from flash_base of the tag identity record: the end of the
+  /// interrupt vector table (embedded/tags/common/core/inc/tag_identity.h).
+  uint32_t identity_offset;
 };
 
 /**

@@ -31,6 +31,8 @@
 #ifndef TAGCORE_RECOVERY_STATECAPTURE_H
 #define TAGCORE_RECOVERY_STATECAPTURE_H
 
+#include "recovery/externalcapture.h"
+#include "recovery/identityrecord.h"
 #include "recovery/swdsession.h"
 
 #include <cstdint>
@@ -48,6 +50,12 @@ struct CaptureOptions {
   std::string parent_dir = "captures"; ///< Directory that receives capture-YYYYmmdd-HHMMSS/ (UTC).
   std::string reason;                  ///< Free text recorded in the manifest.
   bool include_sram = false;           ///< Also capture SRAM1 and SRAM2 (opt-in).
+  /// Also capture the external flash, through the loader the identity record
+  /// names (or loader_path). Last, because the loader overwrites SRAM1.
+  bool include_external = true;
+  std::string loader_path;             ///< Loader image to use; empty: by name from the record.
+  std::vector<std::string> loader_dirs; ///< Directories searched for NAME.stldr, NAME from the record.
+  bool external_full = false;          ///< Paged parts: read every block, blank or not.
   SwdExit exit = SwdExit::HardwareReset; ///< How to leave the tag.
   std::function<void(const std::string &)> progress; ///< Optional progress lines.
 };
@@ -90,6 +98,10 @@ struct CaptureResult {
   SwdAttachInfo attach;                 ///< What the session observed.
   std::vector<NamedRegister> registers; ///< Named register values.
   std::vector<CapturedRegion> regions;  ///< Files written.
+  IdentityRecord identity;              ///< The tag identity record, parsed from internal flash.
+  bool external_attempted = false;      ///< External flash capture was tried.
+  std::string external_note;            ///< Why it was skipped or how it failed.
+  ExternalCaptureResult external;       ///< What it read.
   bool complete = false;                ///< Every region read in full.
   std::string error;                    ///< Why the capture stopped, if it did.
 };

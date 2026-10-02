@@ -22,7 +22,7 @@ proposal.
 **Resume here.** Step 3's checks passed, and step 4's read path is built and
 checked (see each step). The next steps are:
 - step 4's remaining checks, which need an erase path through `Serve()`;
-- step 5, external flash in `tag-capture`;
+- step 5's AT25 check (a PresTag capture with external flash);
 - then the offline SQLite shim (`next-release-todo.md` D1) on PresTag. Capture
   and dump a tag, rebuild its SQLite file, and compare it with a normal
   `tag-dwnld` of the same tag.
@@ -531,7 +531,13 @@ Original plan: add `Serve()` and the service block to
 - the throughput is compared with step 0. The loaders README bench sequence
   (pattern, overwrite, refuse, restore) passes through `ExternalFlash`.
 
-**5. Complete capture.** Add external flash to the capture, with the loader
+**5. Complete capture.** *Built 2026-10-02.* `tag-capture` reads the
+external flash last, through the loader the identity record names; `--loader`
+overrides it. The shared code is `recovery/externalcapture.*`, and the record
+parser is `recovery/identityrecord.*`. Checked with SPI NAND on an
+IMUTagNandBmp581; see `embedded/loaders/design/u375-nand-loader-plan.md`,
+step 5. The AT25 (linear) path is still to be run on a PresTag.
+Original plan: add external flash to the capture, with the loader
 named by argument. Retire `tag_capture_state.py`, or leave it as a thin wrapper
 around `tag-capture`.
 *Check:* a full capture of a PresTag, and a tag that is then booted and

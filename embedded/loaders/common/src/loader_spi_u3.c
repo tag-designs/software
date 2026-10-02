@@ -31,6 +31,7 @@
 /** @brief Status bits that end any wait as a failure. */
 #define LOADER_SPI_ERROR_BITS (SPI_SR_OVR | SPI_SR_MODF)
 
+/** @brief Enable and reset the SPI instance @p spi (SPI1, SPI2 or SPI3). */
 static void loaderSpiEnableClock(SPI_TypeDef *spi)
 {
   if (spi == SPI1) {

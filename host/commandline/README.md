@@ -93,7 +93,20 @@ It writes `captures/capture-YYYYmmdd-HHMMSS/` with one `.bin` per region and a
 `manifest.json` holding the decoded registers and each file's SHA-256. The tag
 is then reset and boots normally. `--sram` also captures SRAM, which is rarely
 useful because Shutdown and Standby do not keep it. `--leave-halted` leaves the
-core stopped. External flash is not captured yet. See
+core stopped.
+
+It then captures the external flash. It reads the tag's identity record from
+the internal flash just captured, finds the loader the record names
+(`<loader>.stldr` under `--loader-dir`, `$TAG_LOADER_DIR` or
+`build-host/embedded/loaders`), and checks the part's JEDEC ID against the
+record. The output is:
+- for NOR: `external_flash.bin`;
+- for SPI NAND: `external_raw.bin`, `external_ecc.bin` and
+  `external_pages.csv`, with blank blocks skipped (`--external-full` reads
+  them).
+
+`--loader` names the image explicitly, for an image with no identity record.
+`--no-external` skips this stage. See
 [SWD Capture and Recovery Library](../libraries/tagcore/design/swd-recovery.md).
 
 ## tag-xflash

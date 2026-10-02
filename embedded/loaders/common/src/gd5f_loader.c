@@ -32,10 +32,13 @@
 /** @name Geometry, from the project's -D defines
  * @{
  */
-#define GD5F_LOADER_BLOCK_BYTES (GD5F_PAGE_SIZE * GD5F_PAGES_PER_BLOCK)
-#define GD5F_LOADER_DATA_BYTES  (GD5F_LOADER_BLOCK_BYTES * GD5F_PHYSICAL_BLOCK_COUNT)
-#define GD5F_LOADER_PAGE_COUNT  (GD5F_PAGES_PER_BLOCK * GD5F_PHYSICAL_BLOCK_COUNT)
+#define GD5F_LOADER_BLOCK_BYTES (GD5F_PAGE_SIZE * GD5F_PAGES_PER_BLOCK) ///< Data bytes per block.
+#define GD5F_LOADER_DATA_BYTES  (GD5F_LOADER_BLOCK_BYTES * GD5F_PHYSICAL_BLOCK_COUNT) ///< Data bytes in the part.
+#define GD5F_LOADER_PAGE_COUNT  (GD5F_PAGES_PER_BLOCK * GD5F_PHYSICAL_BLOCK_COUNT) ///< Pages in the part.
 /** @} */
+
+/** @brief Keeps an entry point linked and in the section the map retains. */
+#define GD5F_LOADER_ENTRY __attribute__((used, noinline, section(".loader_entry")))
 
 /** @brief Interval between status polls while a page read completes. */
 #define GD5F_LOADER_POLL_US 10U
@@ -222,26 +225,43 @@ bool loaderFlashProbe(void)
   return true;
 }
 
-/* Contract documented in loader_flash.h. */
+/** @brief Bytes per whole page, data plus spare (loader_flash.h). */
 uint32_t loaderFlashPageBytes(void)
 {
   return GD5F_LOADER_PAGE_BYTES;
 }
 
-/* Contract documented in loader_flash.h. */
+/** @brief Number of pages in the part (loader_flash.h). */
 uint32_t loaderFlashPageCount(void)
 {
   return GD5F_LOADER_PAGE_COUNT;
 }
 
-/* Contract documented in loader_flash.h: A0h | B0h << 8 | C0h << 16 | F0h << 24. */
+/**
+ * @brief   The configuration loaderFlashProbe() found (loader_flash.h).
+ * @return  A0h | B0h << 8 | C0h << 16 | F0h << 24.
+ */
 uint32_t loaderFlashFound(void)
 {
   return (uint32_t)gd5f_found[0] | ((uint32_t)gd5f_found[1] << 8) |
          ((uint32_t)gd5f_found[2] << 16) | ((uint32_t)gd5f_found[3] << 24);
 }
 
-/* Contract documented in loader_flash.h. */
+/**
+ * @brief   Read one whole page, data and spare, raw or through on-die ECC
+ *          (loader_flash.h).
+ *
+ * @details Sets ECC_EN as the mode needs (gd5fSetEcc()), then page read,
+ *          cache read and a status read proving the part answered throughout,
+ *          retrying a page that overlapped an outage.
+ *
+ * @param[in]  page     Physical page index.
+ * @param[in]  raw      true for ECC off, false for on-die ECC.
+ * @param[out] buf      GD5F_PAGE_SIZE + GD5F_SPARE_SIZE bytes.
+ * @param[out] status   C0h after the page read: bits 5:4 are the ECC verdict.
+ * @param[out] status2  F0h after the page read.
+ * @return  false on a range error, a refused mode change, or a failed read.
+ */
 bool loaderFlashReadPage(uint32_t page, bool raw, uint8_t *buf,
                          uint8_t *status, uint8_t *status2)
 {
@@ -266,7 +286,10 @@ bool loaderFlashReadPage(uint32_t page, bool raw, uint8_t *buf,
   return false;
 }
 
-/* Contract documented in loader_flash.h. */
+/**
+ * @brief   Put B0h back as found, if a raw read changed it (loader_flash.h).
+ * @return  false if the restore did not read back.
+ */
 bool loaderFlashRestore(void)
 {
   uint8_t back = 0U;
@@ -360,8 +383,7 @@ bool loaderFlashRead(uint32_t offset, uint8_t *buf, uint32_t n)
  * @param[out] buf  At least 8 bytes in SRAM.
  * @return  1 when every read succeeded and the ID matched, 0 otherwise.
  */
-__attribute__((used, noinline, section(".loader_entry")))
-int NandInfo(uint8_t *buf)
+GD5F_LOADER_ENTRY int NandInfo(uint8_t *buf)
 {
   bool ok;
 

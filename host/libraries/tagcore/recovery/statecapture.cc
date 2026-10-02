@@ -12,6 +12,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 
 extern "C" {
@@ -173,6 +174,77 @@ std::string DecodeResetFlags(const McuMap *m, uint32_t csr) {
   return j.str();
 }
 
+std::string IdentityJson(const IdentityRecord &id) {
+  std::ostringstream j;
+  if (!id.found)
+    return "{\"found\": false, \"error\": " + JsonString(id.error) + "}";
+  j << "{\"found\": true, \"format_version\": " << id.format_version;
+  for (const char *k : {"target", "family", "board", "loader", "decoder", "git_sha",
+                        "flash_part"})
+    j << ", " << JsonString(k) << ": " << JsonString(id.String(k));
+  if (id.has_external_flash)
+    j << ", \"external_jedec\": " << JsonString(Hex32(id.jedec_id))
+      << ", \"external_size\": " << id.flash_size
+      << ", \"external_page\": " << id.program_page
+      << ", \"external_spare\": " << id.spare;
+  j << "}";
+  return j.str();
+}
+
+std::string ExternalJson(const CaptureResult &r) {
+  if (!r.external_attempted)
+    return "{\"captured\": false, \"note\": " + JsonString(r.external_note) + "}";
+  const ExternalCaptureResult &x = r.external;
+  std::ostringstream j;
+  char secs[32];
+  std::snprintf(secs, sizeof(secs), "%.1f", x.seconds);
+  j << "{\"captured\": " << (x.ok ? "true" : "false")
+    << ", \"error\": " << JsonString(x.error)
+    << ", \"note\": " << JsonString(r.external_note)
+    << ", \"loader\": " << JsonString(x.loader_path)
+    << ", \"loader_sha256\": " << JsonString(x.loader_sha256)
+    << ", \"serve_version\": " << x.version
+    << ", \"jedec\": " << JsonString(Hex32(x.jedec))
+    << ", \"status_as_found\": " << JsonString(Hex32(x.sr1))
+    << ", \"size\": " << x.size << ", \"seconds\": " << secs;
+  if (x.paged)
+    j << ", \"paged\": true, \"found\": {\"A0\": " << (x.found & 0xFF)
+      << ", \"B0\": " << ((x.found >> 8) & 0xFF)
+      << ", \"C0\": " << ((x.found >> 16) & 0xFF)
+      << ", \"F0\": " << (x.found >> 24) << "}"
+      << ", \"page_bytes\": " << x.page_bytes
+      << ", \"pages_per_block\": " << x.pages_per_block
+      << ", \"blocks_scanned\": " << x.blocks_scanned
+      << ", \"blocks_read\": " << x.blocks_read
+      << ", \"blocks_blank\": " << x.blocks_blank
+      << ", \"blocks_factory_marked\": " << x.blocks_marked
+      << ", \"pages_uncorrectable\": " << x.pages_uncorrectable
+      << ", \"selection\": " << JsonString("page 0 of each block read raw; "
+                                            "blank blocks skipped");
+  j << ", \"files\": [";
+  for (size_t i = 0; i < x.files.size(); i++)
+    j << (i ? ", " : "") << "{\"name\": " << JsonString(x.files[i].name)
+      << ", \"file\": " << JsonString(x.files[i].file)
+      << ", \"size\": " << x.files[i].size
+      << ", \"sha256\": " << JsonString(x.files[i].sha256) << "}";
+  j << "]}";
+  return j.str();
+}
+
+/** @brief Find NAME.stldr under @p dirs (recursively); "" when absent. */
+std::string FindLoader(const std::string &name, const std::vector<std::string> &dirs) {
+  for (const std::string &d : dirs) {
+    std::error_code ec;
+    if (!fs::is_directory(d, ec))
+      continue;
+    for (auto it = fs::recursive_directory_iterator(d, ec);
+         !ec && it != fs::recursive_directory_iterator(); it.increment(ec))
+      if (it->path().filename() == name + ".stldr")
+        return it->path().string();
+  }
+  return std::string();
+}
+
 std::string BuildManifest(const CaptureOptions &o, const CaptureResult &r,
                           const McuMap *m, uint32_t flash_kb,
                           const std::vector<std::string> &clock_notes) {
@@ -183,8 +255,9 @@ std::string BuildManifest(const CaptureOptions &o, const CaptureResult &r,
   j << "  \"captured_at\": " << JsonString(UtcStamp("%Y-%m-%dT%H:%M:%SZ")) << ",\n";
   j << "  \"reason\": " << JsonString(o.reason) << ",\n";
   j << "  \"capture_order\": [\"registers\", \"info_regions\", "
-       "\"internal_flash\", \"ecc_after\", \"sram\"],\n";
-  j << "  \"external_flash\": \"not captured (needs the loader)\",\n";
+       "\"internal_flash\", \"ecc_after\", \"sram\", \"external_flash\"],\n";
+  j << "  \"identity\": " << IdentityJson(r.identity) << ",\n";
+  j << "  \"external_flash\": " << ExternalJson(r) << ",\n";
   j << "  \"target\": {\"mcu\": " << JsonString(r.mcu)
     << ", \"idcode\": " << JsonString(Hex32(a.idcode))
     << ", \"uid\": " << JsonString(r.uid) << ", \"flash_kb\": " << flash_kb;
@@ -344,7 +417,54 @@ bool CaptureState(SwdSession &s, const CaptureOptions &o, CaptureResult &r) {
     for (const McuRegion &sram : m->sram)
       r.regions.push_back(CaptureRegion(s, dir, o, sram.name, sram.addr, sram.size, 4096));
 
+  // 4. External flash, last: the loader overwrites the start of SRAM1.
+  if (flash_kb != 0) {
+    std::ifstream in(dir / "internal_flash.bin", std::ios::binary);
+    const std::vector<uint8_t> image((std::istreambuf_iterator<char>(in)),
+                                     std::istreambuf_iterator<char>());
+    r.identity = ParseIdentityRecord(image, m->identity_offset);
+  }
+  if (!o.include_external) {
+    r.external_note = "not requested";
+  } else {
+    std::string loader = o.loader_path;
+    const std::string name = r.identity.String("loader");
+    if (loader.empty()) {
+      if (!r.identity.found)
+        r.external_note = "no identity record, so no loader named; pass --loader";
+      else if (name.empty())
+        r.external_note = "the identity record names no loader";
+      else if ((loader = FindLoader(name, o.loader_dirs)).empty())
+        r.external_note = "loader " + name + ".stldr not found in the loader directories";
+    }
+    TargetImage image;
+    std::string err;
+    if (!loader.empty() && !image.Load(loader, &err)) {
+      r.external_note = err;
+      loader.clear();
+    }
+    if (!loader.empty()) {
+      Progress(o, "reading external flash through " + loader);
+      ExternalCaptureOptions xo;
+      xo.prefix = "external_";
+      xo.full = o.external_full;
+      xo.progress = [&o](const std::string &line) { Progress(o, line); };
+      r.external_attempted = true;
+      CaptureExternalFlash(s, image, dir.string(), xo, r.external);
+      // The firmware knows the manufacturer and first device byte.
+      if (r.external.ok && r.identity.has_external_flash) {
+        const uint32_t want = r.identity.jedec_id;
+        const uint32_t got = r.external.jedec;
+        if ((want >> 16) != (got >> 16) || (want & 0xFF) != ((got >> 8) & 0xFF))
+          r.external_note = "JEDEC " + Hex32(got) + " does not match the record's " +
+                            Hex32(want);
+      }
+    }
+  }
+
   r.complete = flash_kb != 0;
+  if (o.include_external)
+    r.complete = r.complete && r.external_attempted && r.external.ok;
   for (const NamedRegister &reg : r.registers)
     r.complete = r.complete && reg.ok;
   for (const CapturedRegion &g : r.regions)

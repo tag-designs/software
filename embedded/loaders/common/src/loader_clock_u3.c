@@ -31,6 +31,10 @@
 /** @brief Upper bound on register polls while the clock settles. */
 #define LOADER_CLOCK_POLL_LIMIT 200000U
 
+/**
+ * @brief   Poll @p reg until (*reg & mask) == value, within a bound.
+ * @return  false when LOADER_CLOCK_POLL_LIMIT polls were not enough.
+ */
 static bool loaderClockWait(volatile uint32_t *reg, uint32_t mask,
                             uint32_t value)
 {

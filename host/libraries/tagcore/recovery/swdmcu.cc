@@ -52,9 +52,12 @@ const McuMap kStm32L432 = {
         {"sram1", 0x20000000, 48 * 1024},
         {"sram2", 0x10000000, 16 * 1024},
     },
+
+    0x1A0, // identity record: after 104 vectors
 };
 
-// STM32U375 (RM0487 Rev 3, stm32u375xx.h). Not yet run against a tag.
+// STM32U375 (RM0487 Rev 3, stm32u375xx.h). Checked against an
+// IMUTagNandBmp581 on 2026-10-02.
 // Nonsecure aliases; tags run with TrustZone off.
 const McuMap kStm32U375 = {
     "STM32U375",
@@ -98,6 +101,8 @@ const McuMap kStm32U375 = {
         {"sram1", 0x20000000, 192 * 1024},
         {"sram2", 0x20030000, 64 * 1024},
     },
+
+    0x240, // identity record: after 144 vectors
 };
 
 } // namespace
