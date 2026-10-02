@@ -558,6 +558,19 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
       {
         log_error("monitor caught target reset but failed to resume target");
       }
+      // A reset into system memory is the ROM bootloader, not the firmware.
+      // On the STM32L4 that happens with BOOT0 low when FLASH_SR.PEMPTY is
+      // set: it is latched at power-on (or option-byte load) when the first
+      // flash word was erased, so it survives reflashing and system resets.
+      if (target_family == TargetFamily::STM32L4 && (r15_pc & 0xFFFF0000U) == 0x1FFF0000U)
+      {
+        uint32_t flash_sr = 0;
+        const bool sr_ok = ReadDebug32(0x40022010U, &flash_sr);
+        log_error("target is running the ROM bootloader (pc=0x%x), not the firmware; "
+                  "FLASH_SR=%s0x%x%s. If PEMPTY (bit 17) is set, power-cycle the tag",
+                  r15_pc, sr_ok ? "" : "unreadable ", flash_sr,
+                  (sr_ok && (flash_sr & (1U << 17))) ? " (PEMPTY set)" : "");
+      }
       maxpacket = 0;
       call_buf = 0;
       memset(sha_str, 0, sizeof(sha_str));
@@ -616,6 +629,28 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
   return true;
 }
 
+/**
+ * @brief   Clear DHCSR.C_MASKINTS on a core halted at its reset vector.
+ *
+ * @details C_MASKINTS survives a system reset and can change only while the
+ *          core is halted, in a write that keeps C_HALT set; the write that
+ *          releases the halt cannot clear it. An SWD tool that ran code with
+ *          interrupts masked and did not clear it on exit leaves it set, and
+ *          once an attach sets C_DEBUGEN the firmware stalls in its idle
+ *          thread with every interrupt masked. Does nothing unless the bit is
+ *          set and the core is halted, so an ordinary attach is unchanged.
+ */
+void TagMonitor::ClearStaleMaskInts()
+{
+  uint32_t dhcsr = 0;
+  if (ReadDebug32(DHCSR, &dhcsr) && (dhcsr & C_MASKINTS) && (dhcsr & S_HALT))
+  {
+    log_error("Monitor attach: DHCSR.C_MASKINTS was left set (dhcsr=0x%x); clearing it",
+             dhcsr);
+    WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN | C_HALT);
+  }
+}
+
 bool TagMonitor::AttachL4()
 {
   do
@@ -651,6 +686,7 @@ bool TagMonitor::AttachL4()
 
       std::this_thread::sleep_for(MS(50));
 
+      ClearStaleMaskInts();
       if (!WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN))
         log_warn("Monitor attach warning: %s halt release failed", phase);
 
@@ -814,6 +850,7 @@ bool TagMonitor::AttachU3()
       log_error("U3 monitor attach warning: reset-vector shared readback failed");
     }
 
+    ClearStaleMaskInts();
     if (!WriteDebug32(DHCSR, DBGKEY | C_DEBUGEN))
     {
       log_error("U3 monitor attach failed: resume failed");

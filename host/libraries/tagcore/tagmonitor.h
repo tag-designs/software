@@ -55,6 +55,8 @@ private:
   bool ReadTargetRccCsr(uint32_t *addr, uint32_t *value);
   bool AttachL4();
   bool AttachU3();
+  // Clear a DHCSR.C_MASKINTS another SWD tool left set; see tagmonitor.cc.
+  void ClearStaleMaskInts();
   bool CallU3(uint8_t operation, int32_t operand, uint32_t *result);
   bool WriteMemWord(uint32_t addr, uint32_t value);
   bool ReadMonitorShared(monitor_shared_t &shared);

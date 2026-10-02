@@ -201,6 +201,21 @@ void SwdSession::Close(SwdExit exit) {
   if (mcu_)
     WriteDebug32(mcu_->dbgmcu_apb1fzr1, info_.fz_before);
 
+  // Run() and Halt() set C_MASKINTS. It survives a system reset (only a
+  // power-on reset clears DHCSR) and can change only while halted, in a write
+  // that keeps C_HALT set. Left set, it is inert while C_DEBUGEN is clear but
+  // masks every interrupt as soon as a debugger -- the monitor -- sets
+  // C_DEBUGEN again, and the firmware stalls in its idle thread.
+  uint32_t dhcsr = 0;
+  if (ReadDebug32(kDhcsr, &dhcsr) && (dhcsr & kCMaskInts)) {
+    if (!(dhcsr & kSHalt))
+      Halt();
+    WriteDebug32(kDhcsr, kDbgKey | kCDebugEn | kCHalt);
+    if (ReadDebug32(kDhcsr, &dhcsr) && (dhcsr & kCMaskInts))
+      log_error("could not clear DHCSR.C_MASKINTS (dhcsr=0x%08x): a later "
+                "debugger connection will find interrupts masked", dhcsr);
+  }
+
   if (exit == SwdExit::HardwareReset) {
     // Hold the core in reset while debug is disabled, so it comes out of
     // reset with no vector catch and no halt request, as after a plain

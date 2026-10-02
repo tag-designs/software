@@ -118,6 +118,37 @@ in one of two declared ways:
 - `hardware_reset`: pulse NRST with `DHCSR.C_DEBUGEN` clear, so the tag boots
   exactly as it would after a plain connection.
 
+**`DHCSR.C_MASKINTS` must be cleared too, while halted.** `Run()` and `Halt()`
+set it so that loader code never takes the tag's interrupts. A system reset
+does not clear it; only a power-on, or a Standby or Shutdown that powers down
+the core's debug logic, does. It can change only while the core is halted,
+and only in a write that keeps `C_HALT` set: the architecture makes a write
+that changes it and releases the halt UNPREDICTABLE, and the Cortex-M4 here
+ignores it. With `C_DEBUGEN` clear the bit is inert, and the firmware runs and
+samples normally. But the next debugger to set `C_DEBUGEN`, the monitor
+included, masks every interrupt, and the firmware sits in its idle thread
+without answering. `Close()` therefore clears it first: it halts if needed,
+writes `DBGKEY | C_DEBUGEN | C_HALT`, and checks the bit.
+
+Found on 2026-10-02 on the bench PresTag (`20333050364150040063005F`). After
+a `tag-capture` during a 1 s run, each `tag-info` timed out with
+`dhcsr=0x3010009`, the tag in `__idle_thread` and the monitor request pending.
+The A/B used the RV3028 register probe through `tag-sramcall`, with the tag
+RUNNING at 1 s:
+- the old `Close()` left the bit set in 2 of 2 trials;
+- the fixed one left it clear in 3 of 3, counting a full capture.
+
+In FINISHED the old `Close()` was harmless, because the tag drops to Standby
+or Shutdown and its debug registers reset. That is why every check before the
+first mid-run capture passed. The run itself survived: its only gaps were the
+capture's 57 s halt and about 8 s per failed attach.
+
+The monitor attach (`TagMonitor::ClearStaleMaskInts()`) now also clears a
+stale bit while it holds the core at the reset vector, and logs that it did.
+That recovers a tag left this way by an older build or by another tool. It
+may also be part of A6's 1 s monitor-attach stall
+(`embedded/tags/design/next-release-todo.md`); that is not established.
+
 The default is `hardware_reset`. This is also the experiment for the open
 `resetCause` issue: CubeProgrammer loader sessions leave `resetCause` =
 `resetStandby` where a plain connection leaves `resetShutdown`, and a session

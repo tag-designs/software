@@ -11,7 +11,9 @@
  *          left, not as a fresh boot would rewrite it. Close() clears the
  *          debug state the session set -- in particular DEMCR.VC_CORERESET,
  *          which the STM32L4 monitor uses as its "attached" flag and which
- *          would otherwise keep the tag awake -- and ends in a declared way.
+ *          would otherwise keep the tag awake, and DHCSR.C_MASKINTS, which
+ *          Run() sets and which would mask every interrupt the next time a
+ *          debugger sets C_DEBUGEN -- and ends in a declared way.
  *
  * @see     host/libraries/tagcore/design/swd-recovery.md
  */
