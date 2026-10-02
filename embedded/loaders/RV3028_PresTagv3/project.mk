@@ -3,7 +3,7 @@
 # keeps the loader framework's clock and delay code and nothing else.
 #
 # PresTagv3 and CompassTagv1 both wire the RV3028 to PB6 (SDA) and PB7 (SCL),
-# so the image works on either.
+# so the image works on either. The source is ../common/src/rv3028_probe.c.
 
 LOADER_BOARD_INC = ../../boards/PresTagv3/generated
 

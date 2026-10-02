@@ -41,8 +41,14 @@ loaders/
     src/board_loader.c      pins and board bring-up
     src/dev_inf.c           StorageInfo: name, size, sector map
   AT25XE_CompassTagv1/      the same part on the CompassTagv1 board
+  AT25XE_UIUCTag/           the same part on the UIUCTag board
   RV3028_PresTagv3/         not a flash loader: a read-only RTC register probe
+  RV3028_UIUCTag/           the same probe, RTC lines swapped (SWAP_I2C)
 ```
+
+The probes share `common/src/rv3028_probe.c`; a probe target is only a
+`project.mk` naming its board and, where the lines are swapped,
+`-DPROBE_SWAP_I2C=1`.
 
 The `Serve()` command block is defined in `include/loader_service.h` at the
 top of the repository, because the host library uses the same definition.
@@ -62,6 +68,7 @@ serves both. Names follow ST's `<MEMORY>_<BOARD>` convention:
 | `AT25XE_PresTagv3.stldr` | Read-only. Forensic use; the only image the recovery procedure uses. |
 | `AT25XE_PresTagv3-RW.stldr` | Erase and program, each verified by read-back. Rescue and bench testing. |
 | `AT25XE_CompassTagv1.stldr`, `-RW` | The same pair for CompassTagAT25 and CompassTagAT25Breakout. |
+| `AT25XE_UIUCTag.stldr`, `-RW` | The same pair for UIUCTag. |
 
 The two are one source directory built twice. The read-only image is built with
 `LOADER_ALLOW_WRITE=0` and does not contain the erase or program code at all; it

@@ -1,7 +1,8 @@
 /**
  * @file    rv3028_probe.c
  * @brief   SRAM-resident probe that reads RV3028 registers without the tag's
- *          firmware.
+ *          firmware. Shared by the RV3028_<Board> probe targets, which differ
+ *          only in board.h and PROBE_SWAP_I2C.
  *
  * @details Downloaded and called by the host through SramCall
  *          (tagcore/recovery), with the same convention as an external-flash
@@ -24,6 +25,23 @@
  */
 
 #include "loader.h"
+
+/**
+ * @def     PROBE_SWAP_I2C
+ * @brief   1 when the board's RTC_SDA and RTC_SCL labels are the wrong way
+ *          round, as on UIUCTag (whose firmware defines SWAP_I2C).
+ */
+#ifndef PROBE_SWAP_I2C
+#define PROBE_SWAP_I2C 0
+#endif
+
+#if PROBE_SWAP_I2C
+#define PROBE_SDA LINE_RTC_SCL
+#define PROBE_SCL LINE_RTC_SDA
+#else
+#define PROBE_SDA LINE_RTC_SDA
+#define PROBE_SCL LINE_RTC_SCL
+#endif
 
 /** @brief RV3028 7-bit I2C address. */
 #define RV3028_I2C_ADDR 0x52U
@@ -67,16 +85,16 @@ static bool sendByte(uint8_t b)
 
   for (int i = 7; i >= 0; i--) {
     if (b & (1U << i))
-      release(LINE_RTC_SDA);
+      release(PROBE_SDA);
     else
-      pull(LINE_RTC_SDA);
-    release(LINE_RTC_SCL);
-    pull(LINE_RTC_SCL);
+      pull(PROBE_SDA);
+    release(PROBE_SCL);
+    pull(PROBE_SCL);
   }
-  release(LINE_RTC_SDA);
-  release(LINE_RTC_SCL);
-  ack = palReadLine(LINE_RTC_SDA) == PAL_LOW;
-  pull(LINE_RTC_SCL);
+  release(PROBE_SDA);
+  release(PROBE_SCL);
+  ack = palReadLine(PROBE_SDA) == PAL_LOW;
+  pull(PROBE_SCL);
   return ack;
 }
 
@@ -85,38 +103,38 @@ static uint8_t readByte(bool last)
 {
   uint8_t b = 0;
 
-  release(LINE_RTC_SDA);
+  release(PROBE_SDA);
   for (int i = 7; i >= 0; i--) {
-    release(LINE_RTC_SCL);
-    if (palReadLine(LINE_RTC_SDA) == PAL_HIGH)
+    release(PROBE_SCL);
+    if (palReadLine(PROBE_SDA) == PAL_HIGH)
       b |= (uint8_t)(1U << i);
-    pull(LINE_RTC_SCL);
+    pull(PROBE_SCL);
   }
   if (last)
-    release(LINE_RTC_SDA);
+    release(PROBE_SDA);
   else
-    pull(LINE_RTC_SDA);
-  release(LINE_RTC_SCL);
-  pull(LINE_RTC_SCL);
-  release(LINE_RTC_SDA);
+    pull(PROBE_SDA);
+  release(PROBE_SCL);
+  pull(PROBE_SCL);
+  release(PROBE_SDA);
   return b;
 }
 
 /** @brief START (or repeated START) with SCL ending low. */
 static void start(void)
 {
-  release(LINE_RTC_SDA);
-  release(LINE_RTC_SCL);
-  pull(LINE_RTC_SDA);
-  pull(LINE_RTC_SCL);
+  release(PROBE_SDA);
+  release(PROBE_SCL);
+  pull(PROBE_SDA);
+  pull(PROBE_SCL);
 }
 
 /** @brief STOP, leaving both lines released. */
 static void stop(void)
 {
-  pull(LINE_RTC_SDA);
-  release(LINE_RTC_SCL);
-  release(LINE_RTC_SDA);
+  pull(PROBE_SDA);
+  release(PROBE_SCL);
+  release(PROBE_SDA);
 }
 
 /**
@@ -147,19 +165,19 @@ int Rv3028ReadRegs(uint8_t *buf, uint32_t first, uint32_t count)
   loaderDelayInit();
 
   rccEnableAHB2(RCC_AHB2ENR_GPIOBEN, false);
-  palSetLine(LINE_RTC_SDA);
-  palSetLine(LINE_RTC_SCL);
-  palSetLineMode(LINE_RTC_SDA, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
-  palSetLineMode(LINE_RTC_SCL, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+  palSetLine(PROBE_SDA);
+  palSetLine(PROBE_SCL);
+  palSetLineMode(PROBE_SDA, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
+  palSetLineMode(PROBE_SCL, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_PUPDR_PULLUP);
   loaderDelayUs(100U);
 
   /* A slave left mid-byte holds SDA low; clocking frees it. */
   for (uint32_t i = 0; i < PROBE_I2C_RECOVERY_CLOCKS &&
-                       palReadLine(LINE_RTC_SDA) == PAL_LOW; i++) {
-    pull(LINE_RTC_SCL);
-    release(LINE_RTC_SCL);
+                       palReadLine(PROBE_SDA) == PAL_LOW; i++) {
+    pull(PROBE_SCL);
+    release(PROBE_SCL);
   }
-  if (palReadLine(LINE_RTC_SDA) == PAL_LOW)
+  if (palReadLine(PROBE_SDA) == PAL_LOW)
     return PROBE_ERR_BUS;
   stop();
 

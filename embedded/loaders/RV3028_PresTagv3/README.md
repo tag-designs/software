@@ -16,7 +16,9 @@ configuration EEPROM, copied about 66 ms after power-up. Probing boards before
 they are first programmed therefore records each tag's factory offset.
 
 PresTagv3 and CompassTagv1 both wire the RV3028 to PB6 (SDA) and PB7 (SCL), so
-the image works on either. It is built with the loader framework (no crt0,
+the image works on either. UIUCTag swaps the two lines, so it uses
+`RV3028_UIUCTag`, built from the same source (`../common/src/rv3028_probe.c`)
+with `-DPROBE_SWAP_I2C=1`. It is built with the loader framework (no crt0,
 HSI16 by hand, bounded waits), keeps only the clock and delay code, and touches
 RCC, the flash latency, and GPIOB pins 6 and 7.
 
@@ -32,4 +34,4 @@ build-host/bin/tag-sramcall \
 
 Decode EEOffset as `(reg36 << 1) | (reg37 >> 7)`, a signed 9-bit value in
 steps of 0.9537 ppm. A blank PresTag on 2026-10-01 read `FF`/`10`, which is
-−2 steps or −1.907 ppm.
+−2 steps or −1.907 ppm. A UIUCTag read `00`/`90`, +1 step or +0.954 ppm.
