@@ -178,9 +178,18 @@ Optional for this release.
   session was classified `EVENT_POWERFAIL`, and the run went to ABORTED;
 - at 10 s, which uses Standby between samples, both left the run intact.
 
-Low priority. Periods under 10 s exist only to gather data quickly on the
-bench, and deployed configurations use longer ones, so the shipping 90 s
-configuration is not affected. It matters on the bench: a short-period test
+For PresTag this is low priority: periods under 10 s exist only to gather
+data quickly on the bench, and the shipping 90 s configuration is not
+affected.
+
+**IMUTag is affected in every configuration** (observed 2026-10-02 on
+IMUTagNandBmp581, firmware `bce3fe38`). Its run-mode sleep is always Stop 2
+(`IMUTAG_RUN_SLEEP_MODE`). The reset ending a `tag-capture` session 8 s into a
+run was logged `EVENT_POWERFAIL`, and the run went to ABORTED. In the field
+nothing pulses NRST, and a genuine power loss is meant to abort, so the
+practical cost falls on the recovery tools: capturing a RUNNING IMUTag ends
+its run. Its data up to that point remains downloadable. A monitor attach is
+recognised as a monitor reset and does not abort. It matters on the bench: a short-period test
 run must not be attached to or captured mid-run, or its data stops there.
 Details and the likely mechanism are in `restart-recovery.md`, "Still open".
 
@@ -412,7 +421,16 @@ This is **not yet a release qualification**:
     `rtc_offset_steps = 1`, `rtc_offset_ppm = 0.953674`, valid. That is the
     path the B2 fix addresses, now shown with a nonzero offset.
 
-  IMUTag and BitTag are not yet checked on hardware.
+  They were then checked on an IMUTagNandBmp581 (STM32U375, UID
+  `00303143433650090059002E`, firmware `bce3fe38`):
+  - the record at `0x08000240` decoded with its NAND map, calibration
+    region, and the U375 backup-state map (magic `TAGB`);
+  - the session facts stored a valid offset of 0 steps after a start in a
+    later session than the clock set, agreeing with `tag-info`.
+
+  BitTag is not yet checked on hardware. Images flashed on the IMUTag are
+  logged in `captures/2026-10-02-imutag-nand-bmp581/flash-log.md` for power
+  root-causing.
 - On UIUCTag, `tag-start` used to report failure for a start that succeeds.
   After the start request the tag goes to sleep, and must give up its debug
   interface to do so, so the follow-up status read fails. That is the nature

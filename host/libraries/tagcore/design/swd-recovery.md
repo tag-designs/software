@@ -419,7 +419,17 @@ through a base on 2026-09-30.
 **2. Registers, internal flash and SRAM.** *Built and checked on STM32L432.*
 Internal flash, OTP and option bytes were byte-identical across two captures
 and a CubeProgrammer read. SRAM could not be cross-checked, because
-CubeProgrammer lets the firmware run first. The U375 table is untested.
+CubeProgrammer lets the firmware run first. The U375 table was checked on
+2026-10-02 on an IMUTagNandBmp581:
+- the core halted at its reset vector;
+- every region read;
+- 1 MiB of internal flash, at about 218 KB/s, was byte-identical to a
+  CubeProgrammer read;
+- the backup registers read correctly, with `RTCAPBEN` set by the capture.
+
+A first failure there was a tag with no power (configured to take it from an
+absent Joulescope). Every tool, CubeProgrammer included, then reports
+`enter swd mode` / `Unable to get core ID`, with the base sensing 1.80 V.
 Original plan: `SwdSession` region reads and the MCU
 tables of [MCU reference](#mcu-reference), with the capture directory and
 manifest for steps 1-3 of a capture.
@@ -464,9 +474,13 @@ Checked on a bench PresTag on 2026-10-01 (UID `20333050364150040063005F`):
   10 s (run-mode Stop 2), the reset that ends any SWD session is classified
   `EVENT_POWERFAIL` and the run goes to ABORTED. At 10 s and above (Standby
   between samples) the run carries on through the same reset. See
-  `embedded/tags/design/restart-recovery.md`. Periods under 10 s are a bench
-  convenience, not deployed, so this matters on the bench: capture a
-  short-period test run only after stopping it.
+  `embedded/tags/design/restart-recovery.md`. For PresTag, periods under
+  10 s are a bench convenience, not deployed. **IMUTag always runs in Stop 2**,
+  and a capture of a RUNNING IMUTagNandBmp581 ended its run as ABORTED/
+  POWERFAIL (2026-10-02). Its data up to that point remained downloadable.
+  A capture tool that must not end a run needs a different exit. Options are
+  to leave the core halted for a power cycle, or to make the firmware
+  recognise a debugger reset as it does a monitor reset.
 Original plan: `TargetImage` and `SramCall`, then
 call the existing `AT25XE_PresTagv3.stldr` `Init` and `Read` from the host.
 *Check:*
