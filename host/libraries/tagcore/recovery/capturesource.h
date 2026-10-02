@@ -81,7 +81,8 @@ public:
 
   /**
    * @brief   The number of data-log indices the download loop walks: the
-   *          Status count the firmware reports (for IMUTag, external_blocks).
+   *          Status count the firmware reports (external_blocks, or the internal
+   *          page count when that is zero, as tag-dwnld chooses).
    */
   uint32_t DataLogCount() const;
 
@@ -114,6 +115,18 @@ public:
    */
   bool EccPage(uint32_t page, std::vector<uint8_t> &data, std::string &verdict) const;
 
+  /**
+   * @brief   Bytes of a linear external flash (NOR) at @p offset, as captured.
+   *
+   * @details Bytes past the end of the captured image read as FFh, the erased
+   *          value, which is what the part returns past its end too.
+   * @return  false when the capture has no linear external flash.
+   */
+  bool External(uint64_t offset, void *out, uint32_t len) const;
+
+  /** @brief Bytes in the captured linear external flash; 0 when none. */
+  uint64_t ExternalSize() const { return external_.size(); }
+
   /** @brief A string from manifest.json at top level, e.g. "captured_at". */
   std::string ManifestString(const std::string &key) const;
 
@@ -126,6 +139,7 @@ private:
   std::string uid_;
   uint32_t flash_kb_ = 0;
   std::map<std::string, std::string> manifest_strings_;
+  std::vector<uint8_t> external_; ///< Linear external flash (external_flash.bin).
   std::vector<uint8_t> ecc_;
   std::map<uint32_t, std::pair<size_t, std::string>> ecc_index_; ///< page -> (row, verdict)
   uint32_t page_bytes_ = 0;
@@ -142,7 +156,9 @@ private:
  *          its capture time.
  *
  * @param[in]  capture_dir  A tag-capture directory.
- * @param[in]  db_path      SQLite file to create (replaced if it exists).
+ * @param[in]  db_path      SQLite file to create (replaced if it exists). An
+ *                          existing file is untouched when the capture is
+ *                          refused; a rebuild that fails part way removes it.
  * @param[out] records      Data-log records written; may be nullptr.
  * @param[out] error        Why it failed; may be nullptr.
  * @return  true when the file was written.
