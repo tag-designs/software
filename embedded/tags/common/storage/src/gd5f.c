@@ -12,37 +12,10 @@
 #include "rtc_api.h"
 #include "storage_device.h"
 #include "storage_gd5f.h"
+#include "gd5f_commands.h"
 #include "storage_spi.h"
 
 #include <string.h>
-
-#define GD5F_CMD_WRITE_ENABLE        0x06U
-#define GD5F_CMD_GET_FEATURE         0x0FU
-#define GD5F_CMD_SET_FEATURE         0x1FU
-#define GD5F_CMD_PAGE_READ           0x13U
-#define GD5F_CMD_READ_CACHE          0x03U
-#define GD5F_CMD_PROGRAM_LOAD        0x02U
-#define GD5F_CMD_PROGRAM_LOAD_RANDOM 0x84U
-#define GD5F_CMD_PROGRAM_EXECUTE     0x10U
-#define GD5F_CMD_BLOCK_ERASE         0xD8U
-#define GD5F_CMD_READ_ID             0x9FU
-#define GD5F_CMD_DEEP_POWER_DOWN     0xB9U
-#define GD5F_CMD_RELEASE_DPD         0xABU
-#define GD5F_CMD_RESET               0xFFU
-
-#define GD5F_FEATURE_BLOCK_LOCK      0xA0U
-#define GD5F_FEATURE_CONFIG          0xB0U
-#define GD5F_FEATURE_STATUS          0xC0U
-
-#define GD5F_CONFIG_ECC_EN           0x10U
-
-#define GD5F_STATUS_OIP              0x01U
-#define GD5F_STATUS_WEL              0x02U
-#define GD5F_STATUS_E_FAIL           0x04U
-#define GD5F_STATUS_P_FAIL           0x08U
-#define GD5F_STATUS_ECC_MASK         0x30U
-#define GD5F_STATUS_ECC_CORRECTED    0x10U
-#define GD5F_STATUS_ECC_UNCORRECTABLE 0x20U
 
 #ifndef GD5F_ID_MANUFACTURER
 #define GD5F_ID_MANUFACTURER         0xC8U
@@ -60,8 +33,6 @@
 #define GD5F_READ_POLL_LIMIT         4U
 #define GD5F_PROGRAM_POLL_LIMIT      8U
 #define GD5F_ERASE_POLL_LIMIT        12U
-#define GD5F_DPD_ENTRY_DELAY_US      3U
-#define GD5F_DPD_RELEASE_DELAY_US    30U
 
 #ifndef TAG_GD5F_DEEP_POWER_DOWN
 #define TAG_GD5F_DEEP_POWER_DOWN     0
