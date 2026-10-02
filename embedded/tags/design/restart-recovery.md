@@ -285,6 +285,12 @@ successful runs — which had not happened once in the preceding runs.
     branch, which does not touch the boot or run paths.
   - Low priority: periods under 10 s are a bench convenience for gathering
     data quickly, not a deployed configuration.
+  - **Fixed 2026-10-02** (next-release-todo A6). `getResetCause()` records
+    `externalResetAtBoot` for an NRST with valid retained state and no
+    failure flag, and recovery treats it like a monitor reattach. PresTag's
+    `Running(T_CONT, POWERFAIL)` re-arms the sample ticker, which removed the
+    1 s monitor-attach stall. Verified on PresTag and IMUTagNandBmp581; only
+    true failures abort now.
 
 - The monitor-attach recovery branch adopts retained state without
   cross-checking the marker log. Nothing depends on that now, but a future wipe

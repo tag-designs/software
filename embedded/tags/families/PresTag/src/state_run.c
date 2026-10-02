@@ -82,6 +82,19 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    /*
+     * A reattach -- a monitor attach, or an external reset such as the one
+     * ending a tag-capture session -- resumes here with POWERFAIL rather than
+     * through T_INIT, so nothing re-armed the sample ticker: the run stayed
+     * RUNNING but took no further samples. Re-arm it, as T_INIT does, keeping
+     * the recovered log cursor.
+     */
+    if (reason == State_EVENT_POWERFAIL)
+    {
+      disableTicker();
+      enableTicker(sconfig.lps_period > 0 ? sconfig.lps_period : 1);
+      tagStopRtcTickerInit();
+    }
 
     // check for completion
 

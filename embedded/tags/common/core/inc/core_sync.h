@@ -37,6 +37,22 @@ extern bool rtcInitializedAtBoot;
  */
 extern bool backupStateValidAtBoot;
 /**
+ * @brief Whether this boot followed an external reset with retained state
+ *        intact.
+ *
+ * @details Set by getResetCause() when the backup state was valid, the NRST
+ *          pin reset flag is set, and no flag of a genuine failure is: no
+ *          brownout, watchdog, software, low-power or option-byte reset. That
+ *          is a debugger, programmer or reset-button reset, such as the plain
+ *          reset that ends a tag-capture or tag-xflash session, as distinct
+ *          from a field failure. A power-on also sets BORRSTF, so it is
+ *          excluded, and a lost backup domain fails the validity test.
+ *
+ *          Recovery treats such a reset like a monitor reattach: an active
+ *          run resumes instead of aborting. Only true failures abort.
+ */
+extern bool externalResetAtBoot;
+/**
  * @brief Whether boot established a wall clock worth scheduling against.
  *
  * @details False when the backup domain was lost and the external RTC could not

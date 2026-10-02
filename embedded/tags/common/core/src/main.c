@@ -73,6 +73,7 @@ int32_t timestamp;
 uint32_t timestamp_millis;
 bool rtcInitializedAtBoot;
 bool backupStateValidAtBoot;
+bool externalResetAtBoot;
 
 #if defined(TAMP_BKP0R) && !defined(RTC_BKP0R)
 #define TAG_BACKUP_STATE_REG0 (&TAMP->BKP0R)
@@ -570,9 +571,11 @@ void deviceInit(int force)
   // Monitor attach resets can arrive through the power-init path while backup
   // state is still valid; preserve persistent fields such as test_result then.
   bool retained_state_valid = pState->valid == BACKUP_STATE_VALID_MAGIC;
+  // An external reset (a debugger's plain NRST) is treated the same way: the
+  // retained state is live, so it is a reattach, not a power loss.
   bool monitor_reset_recovery =
       retained_state_valid &&
-      (MONCONNECTED ||
+      (MONCONNECTED || externalResetAtBoot ||
        ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U));
 
   if ((power_init && !monitor_reset_recovery) || force)
@@ -659,6 +662,22 @@ void deviceInit(int force)
  * @param[in] rstFlags STM32 RCC reset flags captured before they are cleared.
  * @return Persistent reset cause used by the state machine.
  */
+/**
+ * @brief RCC_CSR flags that mark a reset as a genuine failure.
+ *
+ * @details Any of these alongside PINRSTF means the pin reset was the
+ *          chip's own (a brownout or watchdog drives NRST internally), not an
+ *          external one. Built from whichever flags the part defines.
+ */
+#define TAG_RESET_FAILURE_FLAGS                                               \
+  (RCC_CSR_BORRSTF | RCC_CSR_SFTRSTF | RCC_CSR_IWDGRSTF | RCC_CSR_WWDGRSTF |  \
+   RCC_CSR_LPWRRSTF | RCC_CSR_OBLRSTF | TAG_RESET_FIREWALL_FLAG)
+#if defined(RCC_CSR_FWRSTF)
+#define TAG_RESET_FIREWALL_FLAG RCC_CSR_FWRSTF
+#else
+#define TAG_RESET_FIREWALL_FLAG 0U
+#endif
+
 t_resetCause getResetCause(uint32_t rstFlags)
 {
   t_resetCause resetCause = resetException; // default case
@@ -666,6 +685,14 @@ t_resetCause getResetCause(uint32_t rstFlags)
   // Captured before anything below (deviceInit(), in particular) can
   // re-stamp pState->valid. See backupStateValidAtBoot in core_sync.h.
   backupStateValidAtBoot = (pState->valid == BACKUP_STATE_VALID_MAGIC);
+
+  // An NRST reset with nothing else flagged -- a debugger, programmer or
+  // reset button -- is not a failure. Recorded here, before the flags are
+  // cleared, for the recovery decision; the classification below is
+  // unchanged. See externalResetAtBoot in core_sync.h.
+  externalResetAtBoot = backupStateValidAtBoot &&
+                        ((rstFlags & RCC_CSR_PINRSTF) != 0U) &&
+                        ((rstFlags & TAG_RESET_FAILURE_FLAGS) == 0U);
 
   const uint32_t shutdown_wake_marker =
       tagPowerGetAndClearShutdownWakeMarker();

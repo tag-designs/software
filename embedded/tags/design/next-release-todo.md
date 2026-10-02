@@ -169,7 +169,49 @@ Optional for this release.
   storms do not burn the log. Weigh the flash write against endurance on a
   12 mAh cell first; this is an open question in Field Data Extraction.
 
-### A6. PresTag at sample periods under 10 s: a reset during RUNNING loses the run
+### A6. A non-failure reset during RUNNING aborts the run (PresTag under 10 s, IMUTag always)
+
+**Status, 2026-10-02: fixed in the firmware, and verified on IMUTag and
+PresTag.**
+
+The rule is that only true failures abort.
+- `getResetCause()` now records `externalResetAtBoot`: an NRST with the
+  retained state valid and no brownout, watchdog, software, low-power or
+  option-byte flag. A power-on also sets BORRSTF, so it is excluded.
+- Recovery treats such a reset exactly like a monitor reattach
+  (`monitorResetRecoveryActive()` on U3, `reattachReset()` elsewhere), so an
+  active run resumes with `T_CONT, POWERFAIL`.
+- On U3, `deviceInit()` keeps runtime state for it.
+- PresTag's `Running(T_CONT, POWERFAIL)` now re-arms the sample ticker. Its
+  absence is the likely cause of the 1 s monitor-attach stall below.
+
+On the bench IMUTagNandBmp581, at 100 Hz, a `tag-capture` 33 s into a run was
+followed by:
+- `RESTART_RECOVERY` segment 1 from 43.8 s, with 2250 samples to 66.3 s,
+  after segment 0's 3600 samples;
+- a normal FINISHED on the stop command;
+- no ABORTED.
+
+The image is entry 2 of that tag's flash log; its currents are to be measured.
+
+On the bench PresTag (`20333050364150040063005F`), at the 1 s period that
+used to fail both ways:
+- **monitor attach:** page 0 got 38 samples up to the attach; sampling
+  continued on page 1 (29 samples);
+- **external reset**, from a `tag-xflash` session: sampling continued on
+  page 2 (40 samples);
+- the marker log holds only CONFIGURED and RUNNING; there is no ABORTED.
+
+On this L4 path a reattach rebuilds the cursor from the page headers, so new
+samples start on the next page. That is existing behaviour, a part-used page
+per reattach, not data loss.
+
+Other families resume through the same common dispatch. CompassTag and
+UIUCTag were not re-tested; their `Running(T_CONT, POWERFAIL)` paths may
+need the same re-arm as PresTag.
+
+The original observations follow.
+
 
 **Observed 2026-10-01, not scheduled.** On the bench PresTag:
 - at a 1 s period, a monitor attach left the tag RUNNING but no longer

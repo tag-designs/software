@@ -176,7 +176,30 @@ static bool monitorResetRecoveryActive(bool retained_state_valid)
   if (MONCONNECTED)
     return true;
 
+  /*
+   * A plain external reset -- the one that ends a tag-capture or tag-xflash
+   * session, which deliberately leaves debug disabled -- is a reattach too:
+   * the retained state is live and nothing failed.
+   */
+  if (externalResetAtBoot)
+    return true;
+
   return (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0U;
+}
+#else
+/**
+ * @brief Whether this boot is a reattach rather than a failure, on targets
+ *        without TAG_MONITOR_RESET_RECOVERY.
+ *
+ * @details A monitor connection, or an external reset with retained state
+ *          intact (externalResetAtBoot). Recovery resumes an active run for
+ *          either; only true failures abort.
+ *
+ * @return true for a reattach.
+ */
+static bool reattachReset(void)
+{
+  return MONCONNECTED || externalResetAtBoot;
 }
 #endif
 
@@ -196,9 +219,9 @@ static bool shouldRecoverRtcFromExternal(t_resetCause reset_cause)
   if (reset_cause == resetPower)
     return true;
 #else
-  if (MONCONNECTED && (pState->valid == BACKUP_STATE_VALID_MAGIC))
+  if (reattachReset() && (pState->valid == BACKUP_STATE_VALID_MAGIC))
     return false;
-  if ((reset_cause == resetPower) && !MONCONNECTED)
+  if ((reset_cause == resetPower) && !reattachReset())
     return true;
 #endif
   if (!rtcInitializedAtBoot)
@@ -688,7 +711,7 @@ enum Sleep StateMachine(eventmask_t input_events)
         return Configured(T_CONT, State_EVENT_POWERFAIL);
       }
 #else
-      if (MONCONNECTED)
+      if (reattachReset())
       {
         return Configured(T_CONT, State_EVENT_POWERFAIL);
       }
@@ -712,6 +735,10 @@ enum Sleep StateMachine(eventmask_t input_events)
      * running tag can arrive here with a resetPower-style cause even though the
      * monitor is now attached and the sensors should keep running. MONCONNECTED
      * is therefore used as the filter for "debug reset, not field power loss".
+     * So is externalResetAtBoot: a plain NRST with retained state intact and no
+     * failure flag, such as the reset ending a tag-capture session, which
+     * leaves debug disabled and so is invisible to MONCONNECTED. Only true
+     * failures abort.
      *
      * We pass T_CONT plus State_EVENT_POWERFAIL to RUNNING/HIBERNATING in that
      * case. T_CONT preserves recovered log cursors; the POWERFAIL reason tells
@@ -739,7 +766,7 @@ enum Sleep StateMachine(eventmask_t input_events)
 #if TAG_MONITOR_RESET_RECOVERY
             if (monitor_reset_recovery)
 #else
-            if (MONCONNECTED)
+            if (reattachReset())
 #endif
               return Hibernating(T_CONT, State_EVENT_POWERFAIL);
             return Aborted(T_INIT, State_EVENT_POWERFAIL);
@@ -769,7 +796,7 @@ enum Sleep StateMachine(eventmask_t input_events)
 #if TAG_MONITOR_RESET_RECOVERY
       const bool monitor_present = monitor_reset_recovery;
 #else
-      const bool monitor_present = MONCONNECTED;
+      const bool monitor_present = reattachReset();
 #endif
 
       // goto error
