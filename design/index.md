@@ -23,6 +23,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 
 *   [**Embedded Build Orientation**](../embedded/design/build-orientation.md): Layout overview of boards, proto-c, base firmwares, tag targets, and external flash loaders.
 *   [**External Flash Loaders**](../embedded/loaders/README.md): SRAM-resident images that read, and in an RW build erase and program, a tag's external flash over SWD without touching internal flash: layout, naming, building, use with STM32CubeProgrammer, and the checklist for adding a loader.
+*   [**U375 SPI-NAND Loader Plan**](../embedded/loaders/design/u375-nand-loader-plan.md): Plan accepted, not built. Reading an IMUTagNandBmp581's GD5F2GM7RE NAND over SWD: raw and ECC page reads, no reset or lock writes, the reset clock, the shared SPI bus, and the order of work.
 *   [**Loader Runtime Design**](../embedded/loaders/design/loader-runtime.md): The loader contract as traced on hardware (descriptor at address 0, BKPT return, per-call Init), why there is no startup code, no interrupts, no OSAL sleeps and no ChibiOS clock init, read-back as the only proof of erase and program, rescue-erase ordering, and open issues.
 *   [**Custom Compiler Definitions**](../embedded/tags/design/custom-defines.md): Complete list of customizable flags, timer settings, and MCU preprocessor defines.
 *   [**Tag Monitor Interface**](../embedded/tags/design/monitor_interface.md): Reference for the STM32L4 DebugMonitor path and STM32U3 shared-memory monitor path.
@@ -71,4 +72,4 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 ## 5. Host Libraries
 
 *   [**TagCore Python Interface Design**](../host/libraries/tagcore/design/python-interface.md): Proposed Python API, protobuf/native boundary, shared download workflow, packaging, and test strategy.
-*   [**SWD Capture and Recovery Library**](../host/libraries/tagcore/design/swd-recovery.md): Proposed. Capturing a returned tag's registers, internal flash, SRAM and external flash over SWD without booting its firmware; one exclusive session per connection; identifying the tag from its own image; a service wrapper around the loaders; the layered, Python-usable API; and the implementation sequence.
+*   [**SWD Capture and Recovery Library**](../host/libraries/tagcore/design/swd-recovery.md): Partly implemented: capture (STM32L432 and STM32U375), loader calls and `Serve()` reads (`tag-xflash`); see its Status. Capturing a returned tag's registers, internal flash, SRAM and external flash over SWD without booting its firmware; one exclusive session per connection; identifying the tag from its own image; a service wrapper around the loaders; the layered, Python-usable API; and the implementation sequence.

@@ -22,6 +22,7 @@ directory that owns the code; the developer portal stages those files under
 - [Base Notes](reference/embedded/bases/notes.md)
 - [External Flash Loaders](reference/embedded/loaders/README.md)
 - [Loader Runtime Design](reference/embedded/loaders/design/loader-runtime.md)
+- [U375 SPI-NAND Loader Plan](reference/embedded/loaders/design/u375-nand-loader-plan.md)
 
 ## Embedded Tags
 

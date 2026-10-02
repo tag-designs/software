@@ -16,7 +16,8 @@ and `tag-xflash dump` reads a whole part with it. See
 
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
-anything in `common/`.
+anything in `common/`. The first STM32U375 and SPI-NAND loader is planned, not
+built, in [U375 SPI-NAND Loader Plan](design/u375-nand-loader-plan.md).
 
 ## Layout
 
