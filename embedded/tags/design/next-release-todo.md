@@ -300,7 +300,8 @@ started without `--set-rtc` stored `rtc_offset_valid = true` at 0 steps
 live read. A CompassTagAT25 (`203633324B4250060022005E`) also stored a valid
 offset of 0 steps.
 
-A third unit, a never-programmed PresTag, read −2 steps (−1.907 ppm). It was
+A third unit, a never-programmed PresTag, read −2 steps (−1.907 ppm), and a
+UIUCTag read +1 step (+0.954 ppm) through `RV3028_UIUCTag`. It was
 read before any firmware ran, by the read-only SRAM probe
 `embedded/loaders/RV3028_PresTagv3` through `tag-sramcall`. Offsets of a step
 or two are evidently typical for these oscillators, so zero on two of three
@@ -404,7 +405,21 @@ This is **not yet a release qualification**:
 - B1 and B2 were checked on a bench PresTag on 2026-10-01 (see B2), and B2
   needed a fix. Both were then checked on a CompassTagAT25: the record decoded
   with its calibration region and 380-byte pages, and the session facts were
-  valid. Other families are not yet checked on hardware.
+  valid. They were then checked on a UIUCTag (`2036354B3032500800520028`,
+  firmware `b9f37a45`), whose RV3028 holds +1 step:
+  - the record decoded with its block-field mapping and 288-byte blocks;
+  - after `tag-reset`, a later `tag-start` without `--set-rtc` stored
+    `rtc_offset_steps = 1`, `rtc_offset_ppm = 0.953674`, valid. That is the
+    path the B2 fix addresses, now shown with a nonzero offset.
+
+  IMUTag and BitTag are not yet checked on hardware.
+- On UIUCTag, `tag-start` used to report failure for a start that succeeds.
+  After the start request the tag goes to sleep, and must give up its debug
+  interface to do so, so the follow-up status read fails. That is the nature
+  of the debug link, not a firmware fault, and it predates the branch.
+  `tag-start` now treats a lost link after an accepted start as expected: it
+  prints `State: not confirmed` and exits 0. Checked on the UIUCTag; a
+  following `tag-stop` found the tag RUNNING.
 - A1 was checked on a CompassTagAT25 (see A1). A3 has been checked by
   simulation only.
 
