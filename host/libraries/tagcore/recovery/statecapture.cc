@@ -432,6 +432,8 @@ bool CaptureState(SwdSession &s, const CaptureOptions &o, CaptureResult &r) {
     if (loader.empty()) {
       if (!r.identity.found)
         r.external_note = "no identity record, so no loader named; pass --loader";
+      else if (name.empty() && (!r.identity.has_external_flash || r.identity.flash_size == 0))
+        r.external_note = "the tag has no external flash";
       else if (name.empty())
         r.external_note = "the identity record names no loader";
       else if ((loader = FindLoader(name, o.loader_dirs)).empty())
@@ -463,7 +465,12 @@ bool CaptureState(SwdSession &s, const CaptureOptions &o, CaptureResult &r) {
   }
 
   r.complete = flash_kb != 0;
-  if (o.include_external)
+  // A tag whose identity record declares no external flash (BitTag) has
+  // nothing to read there, so the stage cannot make the capture incomplete.
+  const bool no_external_flash =
+      r.identity.found && (!r.identity.has_external_flash || r.identity.flash_size == 0) &&
+      r.identity.String("loader").empty() && o.loader_path.empty();
+  if (o.include_external && !no_external_flash)
     r.complete = r.complete && r.external_attempted && r.external.ok;
   for (const NamedRegister &reg : r.registers)
     r.complete = r.complete && reg.ok;

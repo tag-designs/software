@@ -67,6 +67,12 @@ def run(argv: list[str], log_path: str, timeout: float = 600) -> tuple[int, str]
     return rc, text
 
 
+#: TagInfo fields a capture cannot always know. Live, infoAck() reads the
+#: RV3028 offset over I2C when the stored session facts carry none; the
+#: rebuild then leaves ppm_clock_error unset, and only that is tolerated.
+CAPTURE_UNKNOWABLE = ("ppm_clock_error",)
+
+
 def rows(db: str, table: str) -> list[tuple]:
     """All rows of @p table in rowid order; info without provenance rows."""
     con = sqlite3.connect(db)
@@ -77,6 +83,29 @@ def rows(db: str, table: str) -> list[tuple]:
     if table == "info":
         r = [x for x in r if x[0] not in PROVENANCE]
     return r
+
+
+def reconcile_info(reference: list[tuple], rebuilt: list[tuple],
+                   notes: list[str]) -> list[tuple]:
+    """The reference info rows, less any CAPTURE_UNKNOWABLE field the rebuild
+    left out of the TagInfo JSON; each one dropped is reported in @p notes."""
+    new_info = dict(rebuilt)
+    out = []
+    for name, value in reference:
+        if name == "info" and "info" in new_info:
+            try:
+                ref, reb = json.loads(value), json.loads(new_info["info"])
+            except ValueError:
+                out.append((name, value))
+                continue
+            for key in CAPTURE_UNKNOWABLE:
+                if key in ref and key not in reb:
+                    notes.append(f"info.{key}: live {ref[key]}, unknown to the capture")
+                    del ref[key]
+            if ref == reb:
+                value = new_info["info"]
+        out.append((name, value))
+    return out
 
 
 def tables(db: str) -> list[str]:
@@ -96,6 +125,7 @@ def compare(reference: str, rebuilt: str, prefix: bool = False) -> list[str]:
     states and info tables are not compared, since the run had not ended.
     """
     problems = []
+    notes: list[str] = []
     ref_t, new_t = set(tables(reference)), set(tables(rebuilt))
     if not prefix and new_t - ref_t:
         problems.append(f"tables only in the rebuild: {sorted(new_t - ref_t)}")
@@ -107,6 +137,8 @@ def compare(reference: str, rebuilt: str, prefix: bool = False) -> list[str]:
         if prefix and t in ("states", "info"):
             continue
         a, b = rows(reference, t), rows(rebuilt, t)
+        if t == "info":
+            a = reconcile_info(a, b, notes)
         if prefix:
             a = a[:len(b)]
         if a != b:
@@ -114,6 +146,8 @@ def compare(reference: str, rebuilt: str, prefix: bool = False) -> list[str]:
                          min(len(a), len(b)))
             problems.append(f"{t}: {len(a)} reference rows, {len(b)} rebuilt; "
                             f"first difference at row {first}")
+    for n in notes:
+        print(f"  note: {n}")
     return problems
 
 

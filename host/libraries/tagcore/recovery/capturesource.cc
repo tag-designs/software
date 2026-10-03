@@ -1076,11 +1076,14 @@ bool WriteRebuild(const CaptureSource &src, const TagLogHeader &header,
       !writer.writeInfo("capture_dir", capture_dir) ||
       !writer.writeInfo("captured_at", src.ManifestString("captured_at")))
     return Fail(error, writer.lastError());
+  // The download loop of host/commandline/dwnld.cc, which writes the header
+  // and stops when the Status count is zero ("No log records to download").
+  const uint32_t max_count = src.DataLogCount();
+  if (max_count == 0)
+    return true;
   if (!writer.beginLog())
     return Fail(error, writer.lastError());
 
-  // The download loop of host/commandline/dwnld.cc.
-  const uint32_t max_count = src.DataLogCount();
   uint32_t total = 0;
   int len = 0;
   Ack ack;
