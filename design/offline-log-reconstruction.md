@@ -2,7 +2,7 @@
 
 Status: analysis, with decisions agreed on 2026-10-01 (see
 [Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
-IMUTagNandBmp581, PresTag, CompassTag and UIUCTag, validated on hardware, and for BitTag from source (`tag-rebuild`, 2026-10-02/03; see
+all five distributed targets, each validated on hardware (`tag-rebuild`, 2026-10-02/03; see
 [Implementation status](#implementation-status)); the other families are not
 yet. It answers one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
@@ -341,8 +341,7 @@ an interface the writer pulls from:
 
   BitTag's `readConfig()` reports the image's built-in default Config in IDLE
   or TEST. The decoder does the same, through the identity record's
-  `default_config` entry. The BitTag decoder has not yet been run against a
-  tag. Other families, and images without an identity
+  `default_config` entry. Other families, and images without an identity
   record (fw-v0.0.3), are refused.
 - A capture is checked before anything is written. Each file must match the
   SHA-256 its manifest records and must not be marked failed, and a NOR image
@@ -372,6 +371,20 @@ PresTag, on the bench unit `20333050364150040063005F`
 
 CompassTagAT25 (`captures/2026-10-02-compasstag-d1`) gave the same result
 for 400 s runs, before and after its A7 fix.
+
+BitTag V6 (`captures/2026-10-03-bittag-d1`) passed as well:
+- a 600 s run at one bit per second (10 records), table for table;
+- the log found on it (ABORTED, no records), header only, matching
+  `tag-dwnld`, which writes the header and stops when the count is zero;
+- in IDLE, the rebuilt Config equal to what `tag-info` reads live: the
+  image's default, not the stored configuration. `tag-dwnld` refuses to
+  download in IDLE, so `tag-info` is the reference there.
+
+Its image (`8eceeb5`) predates the B2 fix, so its session facts hold no RTC
+offset. Live, `infoAck()` then reads the RV3028; a capture cannot, so the
+rebuild leaves `ppm_clock_error` unset. `tag_rebuild_check.py compare`
+reports that field as a note rather than a failure. Recording the EEOffset
+in the capture (D3) would close it.
 
 UIUCTag (`captures/2026-10-03-uiuctag-d1`), a 20 min run, gave the same
 result. Its slots are indexed by time: the slot that fell inside the
