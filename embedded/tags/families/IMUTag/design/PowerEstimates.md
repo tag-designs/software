@@ -1,9 +1,237 @@
 # Power Estimation for the IMUTagNand
 
+Measured power and storage limits for the IMUTagNand, and the runtime each
+implies.
+
+**The current numbers are the SMPS board at 3.7 V**, immediately below: that is
+the shipping regulator at the deployed cell voltage, measured across every
+sample rate with a verified download at each point. Storage limits follow, then
+bench method and what is still open.
+
+Everything from *Design History* onward is superseded. It is kept because the
+reasoning is worth preserving -- the LDO-versus-SMPS comparison, the
+layout-dependent Stop 1 current that made three sweeps disagree, and the
+2.5 V/3.3 V measurements the 3.7 V projection was built from -- but no figure
+there should be quoted as current. In particular the LDO columns describe a
+board that was left behind by the SMPS version, and an LDO's input current does
+not scale with supply voltage the way the shipping board's does.
+
+## Measured SMPS Board, Full Rate Sweep at 3.7 V (2026-10-03), Shipping Configuration
+
+Every earlier sweep, now under *Design History*, carries a projected 3.7 V
+column, and every one of them says the tag cannot be measured at 3.7 V on this
+bench. It can now: a 3.7 V supply
+was added to the Joulescope. This is the first **measured** 3.7 V sweep, on the
+same daughter card `00303143433650090059002E` and the same TPS62840 breakout as
+the 3.3 V sweeps, so the projection is checked rather than trusted.
+
+Taken with `power_sweep_imutag.sh`, 120 s per point, at a supply measured at
+**3.6931-3.6932 V**. Firmware `b025e7ba`, target `IMUTagNandBmp581`, shipping
+configuration (terminal sleep Stop 3, run sleep Stop 2). **Every rate point
+carries a verified download**, 1.01-1.03x the expected sample count, and idle
+was re-measured after every rate. 6/6 points passed.
+
+Projected figures are the 2026-09-07 measurements scaled to the supply actually
+used, `x (3.2937/3.6930) = 0.8919`, so they differ by ~0.2% from that section's
+`@3.7 V` column, which scales to 3.7 V exactly.
+
+| Mode | Measured (uA) | Projected (uA) | Delta | Download | 12 mAh battery | 2 Gbit storage | Usable | Binds on |
+| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |
+| Idle | 5.5193 | 7.08 | -22.1% | -- | 90.6 d | -- | 90.6 d | battery |
+| 100 Hz | 538.6038 | 539.5 | -0.17% | 12150 rows, 1.01x | 22.28 h | 54.6 h | **22.28 h** | battery |
+| 200 Hz | 579.5728 | 581.0 | -0.25% | 24600 rows, 1.02x | 20.70 h | 27.3 h | **20.70 h** | battery |
+| 400 Hz | 662.4015 | 665.3 | -0.43% | 49200 rows, 1.02x | 18.12 h | 13.7 h | **13.70 h** | storage |
+| 800 Hz | 826.5109 | 831.5 | -0.60% | 98550 rows, 1.03x | 14.52 h | 6.83 h | **6.83 h** | storage |
+| 1600 Hz | 1003.3790 | 1010.8 | -0.74% | 197100 rows, 1.03x | 11.96 h | 3.41 h | **3.41 h** | storage |
+
+Idle is the mean of the six readings taken through the sweep (5.4992-5.5419 uA,
+a 0.77% spread). Raw per-point data: [`sweep-3v7-20261003.csv`](sweep-3v7-20261003.csv).
+
+Unlike the 2026-09-03 sweep, the 1600 Hz readback succeeded here, so no point
+rests on magnitude alone.
+
+### The buck projection holds at every rate, and errs the wrong way
+
+Every rate lands **below** its projection, by 0.17% at 100 Hz rising
+monotonically to 0.74% at 1600 Hz. The implied input-voltage ratio falls the
+same way -- 0.8903, 0.8896, 0.8880, 0.8865, 0.8853 against the nominal 0.8919.
+
+The direction matters more than the size. The projection was published as a
+*lower bound*, reasoning that TPS62840 efficiency falls as Vin rises at fixed
+Vout, so reality should sit "a little above" it. **It sits below at all five
+rates, and increasingly so with load.** Whatever the converter does between
+3.3 V and 3.7 V, it is not paying the assumed penalty; it is doing slightly
+better at 3.7 V than constant-power scaling predicts, and the advantage grows
+with load. The `x 0.890` scaling is therefore a mildly conservative estimate,
+not a floor.
+
+This is a systematic trend across five points, not scatter: the deltas are
+monotonic in rate and each point is a verified 120 s measurement. It is not
+explained here, and the mechanism is worth knowing before the figure is leaned
+on at a rate that was not measured.
+
+At 400 Hz the point was also measured three times by a different harness
+(`tag_lifecycle_check.py`, 60 s windows): 664.98, 665.47 and 661.35 uA against
+the sweep's 662.40. Four measurements across two harnesses span 4.12 uA, 0.62%.
+
+### Idle does not agree with itself across days
+
+The sweep's six idle readings are tight and sit well below the 7.08 uA
+projection:
+
+| When | Readings (uA) | n | Mean (uA) | Spread | 12 mAh shelf life |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 2026-10-02, release checks | 6.7758, 6.7596, 6.7605, 6.7996, 6.5963, 6.6708, 6.6560, 6.6786 | 8 | 6.7122 | 203 nA | 74.5 d |
+| 2026-10-03, life-cycle | 5.45, 5.43, 5.44 | 3 | 5.4400 | 20 nA | 91.9 d |
+| 2026-10-03, sweep | 5.5277, 5.5419, 5.5045, 5.4992, 5.5130, 5.5294 | 6 | 5.5193 | 43 nA | 90.6 d |
+
+Seventeen readings, two populations, and the split falls on the **day**
+boundary rather than on the procedure: both of today's sets agree to 0.08 uA
+across two different harnesses, and yesterday's eight agree to 203 nA across
+two reboots of the host. Nothing here fails -- every reading is soundly asleep
+-- but 1.2 uA is 22% of the figure that sets shelf life, and it separates 74
+days from 91 on a 12 mAh cell.
+
+The two populations sit near two values this document already distinguishes:
+the *Regulator and Flash-Power Comparison* table lists SMPS idle at 5.5 uA and
+LDO-with-flash-powered-in-standby at 6.6 uA, and today's mean is 5.52. That
+points at `FLASH_PWR` standby state -- which that section flags as inferred
+from a numeric match and never confirmed against the schematic. But the
+day-boundary pattern fits a bench variable just as well (ambient temperature is
+the obvious candidate, and was not recorded), and nothing here distinguishes
+the two. One coincidence and one correlation, not a finding.
+
+This is a third entry in the unresolved idle column, alongside the 21% idle
+difference between the 2026-09-02 and 2026-09-03 sweeps and the +82.9% idle
+cost of Stop 3 over Standby. **Quote shelf life from the pessimistic
+population** (74 d) until it is understood, and record bench temperature on the
+next idle measurement.
+
+### What binds at 3.7 V
+
+On measured figures rather than projected ones, the picture is unchanged from
+the 2026-09-07 sweep: the crossover sits between 200 and 400 Hz. At and above
+400 Hz the 2 Gbit device fills first -- 13.70 h against 18.12 h of battery at
+400 Hz -- so the power saving becomes margin for cold, cell derating and idle
+either side of the run, not more samples. Below 400 Hz the mission is
+battery-limited and the saving is runtime directly.
+
+At 1600 Hz the gap is now 3.5x: 11.96 h of battery against 3.41 h of storage.
+The lever at high rates remains bytes per sample, not microamps.
+
+### Consequence for the release gate
+
+`tag_release_check.py --run-max-ua` was rebased from 850 uA to **760 uA** on
+these measurements, preserving the proportional margin the 3.3 V pair had
+(850/750). Against the measured 400 Hz figure of 662.40 uA that leaves 98 uA of
+headroom, and a layout regression of the size this bound exists to catch
+(~200 uA at 3.3 V, ~178 uA here) still fails it. The bound is supply-voltage
+dependent for exactly the reason this section exists, so moving the bench
+supply without rebasing it makes it either toothless or a false-failure
+generator. See `AGENTS.md`, *Bound run current, not just idle*.
+
+
+## Storage-Limited Runtime
+
+Each flash page contains 150 IMU samples. These estimates assume the external
+memory is filled with contiguous 2048-byte log pages and use raw memory
+capacity: 1 Gbit is 65,536 pages and 2 Gbit is 131,072 pages. Actual runtimes
+will be slightly lower after bad blocks and metadata/checkpoint overhead.
+
+| Sample Rate | Page Rate | 1 Gbit Runtime | 2 Gbit Runtime |
+| ---: | ---: | ---: | ---: |
+| 100 Hz | 0.667 pages/s | 27.3 h (1.14 d) | 54.6 h (2.28 d) |
+| 200 Hz | 1.333 pages/s | 13.7 h (0.57 d) | 27.3 h (1.14 d) |
+| 400 Hz | 2.667 pages/s | 6.83 h (0.28 d) | 13.7 h (0.57 d) |
+| 800 Hz | 5.333 pages/s | 3.41 h (0.14 d) | 6.83 h (0.28 d) |
+| 1600 Hz | 10.667 pages/s | 1.71 h (0.07 d) | 3.41 h (0.14 d) |
+
+
+## Measurement Method: A Joulescope Hazard Worth Knowing
+
+The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
+test**, and on an IMUTag that corrupts `pState` in the RTC backup registers. Both
+`measure` and `statistics` call `Driver.open(device)` with no `mode`, which the
+driver documents as equivalent to `'defaults'`: it pushes the metadata default
+for every writable topic. On a JS320:
+
+- `s/i/range/mode` defaults to `0` (`off`), which opens the current-sense path
+  and cuts DUT power at every open;
+- `s/i/range/select`, the manual shunt selection, also defaults to `0` (`off`).
+  `statistics` then sets mode `5` (`manual`), so the current path stays open for
+  the entire run and every sample reads approximately zero.
+
+Observed symptoms: `statistics` returned one plausible window followed by exact
+zeros (the board dying, then unpowered), while repeated `measure` calls left the
+tag drawing 1.71 mA with a disrupted clock until qtmonitor resynchronised it.
+
+Use `embedded/tools/joulescope_measure.py`,
+which opens with `mode='restore'`, never writes range `0`, holds one session
+across windows, restores the range configuration it found, and computes average
+current from accumulated charge rather than a mean of window means.
+
+
+## Open Questions
+
+- **What cell voltage and chemistry does the deployed tag use?** Still not
+  recorded in this tree, and still the input that decides the regulator, though
+  the answer is now less finely balanced: measured at 3.3 V the buck wins 38-39%
+  everywhere, so anything at or above 3.3 V favours it decisively and only a
+  cell sitting near 2.5 V favours the LDO.
+- Does the BMM350 or LSM6DSV16X noise floor show structure at or near the sample
+  rate on the SMPS board? **This is now the only thing gating adoption**, the
+  efficiency question having been settled at 3.3 V.
+- Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
+  it can be compared against the correct LDO column? Sharpened by the 3.7 V
+  measurement: idle there fell into two tight clusters, 6.7122 and 5.4400 uA on
+  the same image and board, which sit near the 6.6 uA flash-on and 5.5 uA SMPS
+  columns. If that is `FLASH_PWR` standby state varying with what the tag did
+  beforehand, it is worth 17 days of shelf life on a 12 mAh cell and should be
+  settled against the schematic rather than by numeric coincidence.
+- Does `tag-start --set-rtc` fail intermittently because of the external RTC on
+  this breakout? Two of four verification cycles aborted at
+  "RTC sync failed while writing tag clock", and boots frequently report
+  `rtcInitializedAtBoot` and `clockTrusted` false.
+
+
+### Outstanding: Sample-Synchronous Supply Noise
+
+Independent of any power result, a switching converter on a board carrying a
+BMM350 and an LSM6DSV16X needs a noise check before the SMPS is adopted, and the
+concern is sharper than generic switching ripple.
+
+The load is **modulated at the sample rate**: every sample event is a current
+burst. In Power-Save Mode the PFM pulse rate varies with load current, so the
+converter's pulse timing becomes correlated with the sampling itself, and rail
+ripple then appears synchronously with each sample. Synchronous artifacts do not
+average out and land squarely in the band of interest — for songbird flight
+dynamics, wingbeat fundamentals and their low harmonics. An LDO contributes no
+switching component at all, only a PSRR rolloff.
+
+A DC field from the inductor calibrates out as a hard-iron offset and is not the
+worry. The worry is a supply artifact locked to the sample clock, which would
+degrade the measurement rather than the mission duration. That is the wrong trade
+for an instrument, and it is why the LDO carries the benefit of the doubt until
+this is tested.
+
+Testable with existing tooling: log on both boards under matched conditions and
+compare noise floors and spectra in sensorViz, looking specifically for structure
+at and around the sample rate and its subharmonics.
+
+
+
+## Design History
+
+Superseded measurements and the reasoning behind them, oldest first: datasheet
+estimates, the Stop 1 era, the regulator comparison at 2.5 V and 3.3 V, and the
+sweeps that established the 3.7 V projection the current results check. Kept for
+provenance; see the note in the introduction before quoting anything here.
+
+
 The following are datasheet estimates of power consumption. Core voltage is
 1.8 V, CPU clock 12.5 MHz, peripheral clock 25 MHz.
 
-## Idle Power (Processor in Standby)
+### Idle Power (Processor in Standby)
 
 | Component | Current (uA) | Notes |
 | --- | ---: | --- |
@@ -16,7 +244,7 @@ The following are datasheet estimates of power consumption. Core voltage is
 | GD5F1GQ5REYFGR | 50.0 | |
 | **Total** | **55.8** | |
 
-## Run Power in Stop1 (100 Hz Sample Rate)
+### Run Power in Stop1 (100 Hz Sample Rate)
 
 This estimate is for the periods when there is no activity. BMM350 low-noise -
 12.5 Hz ODR, LPS22HH - 10 Hz ODR.
@@ -32,7 +260,7 @@ This estimate is for the periods when there is no activity. BMM350 low-noise -
 | GD5F1GQ5REYFGR | 50.000 | |
 | **Total** | **1014** | |
 
-## Run Power in Stop1 (200 Hz Sample Rate)
+### Run Power in Stop1 (200 Hz Sample Rate)
 
 This estimate is for the periods when there is no activity. BMM350 low-noise -
 25 Hz ODR, LPS22HH - 25 Hz ODR.
@@ -48,7 +276,7 @@ This estimate is for the periods when there is no activity. BMM350 low-noise -
 | GD5F1GQ5REYFGR | 50.000 | |
 | **Total** | **1211** | |
 
-## Run Power in Stop1 (400 Hz Sample Rate)
+### Run Power in Stop1 (400 Hz Sample Rate)
 
 This estimate is for the periods when there is no activity. BMM350 low-noise -
 50 Hz ODR, LPS22HH - 50 Hz ODR.
@@ -64,7 +292,7 @@ This estimate is for the periods when there is no activity. BMM350 low-noise -
 | GD5F1GQ5REYFGR | 50.000 | |
 | **Total** | **1555** | |
 
-## Run Power in Stop1 (800 Hz Sample Rate)
+### Run Power in Stop1 (800 Hz Sample Rate)
 
 This estimate is for the periods when there is no activity. BMM350 low-noise -
 100 Hz ODR, LPS22HH - 100 Hz ODR.
@@ -80,7 +308,7 @@ This estimate is for the periods when there is no activity. BMM350 low-noise -
 | GD5F1GQ5REYFGR | 50.000 | |
 | **Total** | **1523** | |
 
-## Run Power in Stop1 (1600 Hz Sample Rate)
+### Run Power in Stop1 (1600 Hz Sample Rate)
 
 This estimate is for the periods when there is no activity. BMM350 regular -
 200 Hz ODR, LPS22HH - 200 Hz ODR.
@@ -99,7 +327,7 @@ This estimate is for the periods when there is no activity. BMM350 regular -
 This does not include the cost of reading data or writing flash. This is just
 the idle periods.
 
-## Actual Measurements
+### Actual Measurements
 
 Note: these measurements used software I2C, which averages 2.4 mA for 1.9 ms.
 Battery runtime is computed directly from the measured average current and does
@@ -119,22 +347,7 @@ Updated to use hardware I2C.
 
 Page write is 11 uJ. So memory write is 1.4 J for 128k pages.
 
-## Storage-Limited Runtime
-
-Each flash page contains 150 IMU samples. These estimates assume the external
-memory is filled with contiguous 2048-byte log pages and use raw memory
-capacity: 1 Gbit is 65,536 pages and 2 Gbit is 131,072 pages. Actual runtimes
-will be slightly lower after bad blocks and metadata/checkpoint overhead.
-
-| Sample Rate | Page Rate | 1 Gbit Runtime | 2 Gbit Runtime |
-| ---: | ---: | ---: | ---: |
-| 100 Hz | 0.667 pages/s | 27.3 h (1.14 d) | 54.6 h (2.28 d) |
-| 200 Hz | 1.333 pages/s | 13.7 h (0.57 d) | 27.3 h (1.14 d) |
-| 400 Hz | 2.667 pages/s | 6.83 h (0.28 d) | 13.7 h (0.57 d) |
-| 800 Hz | 5.333 pages/s | 3.41 h (0.14 d) | 6.83 h (0.28 d) |
-| 1600 Hz | 10.667 pages/s | 1.71 h (0.07 d) | 3.41 h (0.14 d) |
-
-## After Fixing Stop1 Code
+### After Fixing Stop1 Code
 
 | Mode | Estimate (uA) | Measured (uA) | 12 mAh Runtime | 20 mAh Runtime | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -145,7 +358,7 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 | 800 Hz | 1523 | 1700 | 7.06 h | 11.8 h | BMM350 switched to low current |
 | 1600 Hz | 1702 | 2300 | 5.22 h | 8.70 h | |
 
-## switch to 2gbit flash and bmp581
+### switch to 2gbit flash and bmp581
 
 | Mode | Estimate (uA) | Measured (uA) | 12 mAh Runtime | 20 mAh Runtime | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -156,7 +369,7 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 | 800 Hz | 1523 | 1630 | 7.36 h | 12.3 h | BMM350 switched to low current |
 | 1600 Hz | 1702 | 1930 | 6.22 h | 10.4 h | |
 
-## Regulator and Flash-Power Comparison (2 Gbit GD5F, BMP581)
+### Regulator and Flash-Power Comparison (2 Gbit GD5F, BMP581)
 
 Two regulator builds of the u375 breakout base were compared, both carrying the
 IMUTagNandBmp581 daughter card:
@@ -210,7 +423,7 @@ Note that 6.71 uA sits on the **flash-on-in-standby** column (6.6 uA) rather tha
 flash-off (5.9 uA), which suggests this LDO build has `FLASH_PWR` pulled up.
 Inferred from the match, not confirmed against the schematic.
 
-### Measured LDO Board, Full Rate Sweep
+#### Measured LDO Board, Full Rate Sweep
 
 Taken with `embedded/tools/power_experiment.py`
 on the LDO breakout carrying the IMUTagNandBmp581 daughter card, at a **3.2935 V**
@@ -245,7 +458,7 @@ voltage; that comparison needs its own run at the deployed cell voltage.
 Storage becomes the binding constraint at 800 Hz and above on a 12 mAh cell.
 Below that the mission is battery-limited and regulator efficiency is spendable.
 
-#### Confidence and Caveats
+##### Confidence and Caveats
 
 Only the 100 Hz point carries a verified download: `ImuAccel: 6000 rows, ran at
 100 Hz, 1.00x expected`, with the rate read from the configuration recorded in
@@ -272,7 +485,7 @@ leaves pages the next reset must erase, while a failed run leaves nothing. The
 failed runs end ABORTED having drawn more than any legitimate rate, so the tag is
 bringing sensors up and then never sleeping. Unresolved; see *Open Questions*.
 
-### Measured SMPS Board, Full Rate Sweep (3.3 V)
+#### Measured SMPS Board, Full Rate Sweep (3.3 V)
 
 Taken 2026-09-02 with the same firmware (`b1657d7`) and the same procedure as
 the LDO sweep above, on the TPS62840 breakout at a **3.2935 V** bench supply.
@@ -313,7 +526,7 @@ from 4 uA to 1.9 mA.** A constant ratio over that span is the signature of a
 genuine efficiency difference rather than anything load-dependent, and it is
 what the earlier 2.5 V measurements could not show.
 
-#### This reverses the earlier verdict, on supply voltage alone
+##### This reverses the earlier verdict, on supply voltage alone
 
 The "no significant advantage" conclusion below was drawn from data taken at
 2.5 V, and it was right for 2.5 V. An LDO's input current equals its load
@@ -322,7 +535,7 @@ current whatever the input voltage, so the LDO columns are the same at 2.5 V and
 supply from 2.5 V to 3.3 V therefore costs the LDO nothing in current and pays
 the buck almost 40%.
 
-#### Consequence at the design point
+##### Consequence at the design point
 
 | 400 Hz, 12 mAh cell | Current | Battery | Storage | Usable | Limited by |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -342,7 +555,7 @@ going from 10.19 h to 16.49 h. Idle rises from 75.2 to 122.4 days, which matters
 for how long a tag can wait between programming and deployment rather than for
 mission length.
 
-#### What this does not settle
+##### What this does not settle
 
 - The **switching-noise question is untouched** and remains the real gate on
   adoption; see *Outstanding: Sample-Synchronous Supply Noise* below. A 38%
@@ -360,7 +573,7 @@ mission length.
   with itself to within 0.4% across two runs, so the precision is not in doubt,
   but no claim is made here about board-to-board variation.
 
-### Measured SMPS Board, Full Rate Sweep (2026-09-03), with 3.7 V Projection
+#### Measured SMPS Board, Full Rate Sweep (2026-09-03), with 3.7 V Projection
 
 Taken on the TPS62840 breakout carrying daughter card
 `00303143433650090059002E` -- the same card as the 3.3 V sweep above -- at a
@@ -388,7 +601,7 @@ the sweep its current measured cleanly but the readback timed out, because
 (1269.19 uA in the sweep, 1271.57 uA on the verified re-run); the verified
 figure is the one tabulated.
 
-#### How the 3.7 V column is derived, and what it assumes
+##### How the 3.7 V column is derived, and what it assumes
 
 The tag cannot be measured at 3.7 V on this bench, so the column is a
 projection, not a measurement, and it is only valid for the SMPS.
@@ -412,7 +625,7 @@ derating at temperature and end-of-life voltage. Storage limits are unchanged
 by supply voltage, so at 800 Hz and above the device still fills long before
 the battery empties, and at 400 Hz the two now land within 0.1 h of each other.
 
-#### This sweep disagrees with the 2026-09-02 SMPS sweep above
+##### This sweep disagrees with the 2026-09-02 SMPS sweep above
 
 Same board, same regulator, same procedure, roughly 20% apart:
 
@@ -455,7 +668,7 @@ The 2026-09-03 numbers are the ones with per-point download verification and
 per-point idle checks, so they are the better-evidenced set; that is a reason to
 prefer them, not a reason to consider the discrepancy explained.
 
-### Measured SMPS Board, Full Rate Sweep (2026-09-04), after the I2C Idle Fix
+#### Measured SMPS Board, Full Rate Sweep (2026-09-04), after the I2C Idle Fix
 
 First sweep taken after `24c1f86` removed the I2C bus clear from
 `tagI2cBusEnd()`. Same TPS62840 breakout, measured at **3.2936-3.2937 V**.
@@ -475,7 +688,7 @@ sleeping.
 | 800 Hz | 992.8078 | 4.3603 |
 | 1600 Hz | 1175.3383 | 4.3760 |
 
-#### Compared with the 2026-09-03 sweep: an A/B test, not an inference
+##### Compared with the 2026-09-03 sweep: an A/B test, not an inference
 
 The first version of this section said the drop was plausible but unproven,
 because this tree already carried an unexplained ~20% sweep-to-sweep
@@ -540,7 +753,7 @@ the effect are established; its mechanism is not.
 > 1600 Hz, holding to 0.2 uA across three layouts that swing Stop 1 by 195.
 > See `embedded/tags/design/open-issues.md`.
 
-### Measured SMPS Board, Full Rate Sweep (2026-09-07), Shipping Configuration
+#### Measured SMPS Board, Full Rate Sweep (2026-09-07), Shipping Configuration
 
 The first sweep of the configuration that is actually shipped: terminal sleep
 through Stop 3 (`0638a76`) and the run sleep in Stop 2 (`e08e3fa`). Same
@@ -572,7 +785,7 @@ saving becomes margin -- for cold, for cell derating, and for idle time either
 side of the run -- rather than more samples. Below 400 Hz the battery still
 binds and the saving is runtime directly.
 
-#### Against the 2026-09-04 sweep
+##### Against the 2026-09-04 sweep
 
 That sweep is the best of the earlier ones, and is a good Stop 1 roll rather
 than a bad one, so this is the honest comparison rather than a flattering one:
@@ -599,30 +812,7 @@ way to tell which build you had short of measuring it. For a tag that sits idle
 for months before deployment this is the one figure that got worse, and it is
 worth knowing before quoting shelf life.
 
-### Measurement Method: A Joulescope Hazard Worth Knowing
-
-The stock `pyjoulescope_driver` CLI entry points **power-cycle the device under
-test**, and on an IMUTag that corrupts `pState` in the RTC backup registers. Both
-`measure` and `statistics` call `Driver.open(device)` with no `mode`, which the
-driver documents as equivalent to `'defaults'`: it pushes the metadata default
-for every writable topic. On a JS320:
-
-- `s/i/range/mode` defaults to `0` (`off`), which opens the current-sense path
-  and cuts DUT power at every open;
-- `s/i/range/select`, the manual shunt selection, also defaults to `0` (`off`).
-  `statistics` then sets mode `5` (`manual`), so the current path stays open for
-  the entire run and every sample reads approximately zero.
-
-Observed symptoms: `statistics` returned one plausible window followed by exact
-zeros (the board dying, then unpowered), while repeated `measure` calls left the
-tag drawing 1.71 mA with a disrupted clock until qtmonitor resynchronised it.
-
-Use `embedded/tools/joulescope_measure.py`,
-which opens with `mode='restore'`, never writes range `0`, holds one session
-across windows, restores the range configuration it found, and computes average
-current from accumulated charge rather than a mean of window means.
-
-### Load Switch Verdict: Not Worth It
+#### Load Switch Verdict: Not Worth It
 
 The load switch buys 0.7 uA out of a 6.6 uA idle budget, and nothing at any
 logging rate. In energy terms a full day of idling saves 0.017 mAh, about
@@ -643,7 +833,7 @@ the switch footprint as a recovery aid, but do not cycle the rail between
 collection bursts. This resolves the open question in
 `imutag-nand-bmp581-development-plan.md`.
 
-### Regulator Comparison: Ordinary Behaviour, Not a Fault
+#### Regulator Comparison: Ordinary Behaviour, Not a Fault
 
 Because the components and firmware match and the TPS7A0218 passes load current
 straight through, the LDO column **is** the 1.8 V rail load. That makes the SMPS
@@ -669,7 +859,7 @@ decades lower — so there is probably some headroom. And 2.5 V is an unusually
 favourable input for the LDO, so this table is the buck's *worst* case, not a
 general verdict.
 
-### Sensitivity to Cell Voltage
+#### Sensitivity to Cell Voltage
 
 This is now the question that decides the regulator, and it is unresolved.
 
@@ -701,7 +891,7 @@ decision from a 2% curiosity to a 52% design win.
 It is also worth establishing whether the 2.5 V bench setting is representative
 of the intended supply or was incidental to these measurements.
 
-### Design Point: 400 Hz, 12 mAh
+#### Design Point: 400 Hz, 12 mAh
 
 400 Hz is the intended operating point — the rate that gives meaningful flight
 dynamics for songbirds — and 12 mAh is the reference cell.
@@ -733,7 +923,7 @@ above roughly 3.5 V, closes the gap.
 Duty cycling does not change this. Idle is 6.6 uA against 1330 uA logging, a
 200:1 ratio, so the logging term dominates above about 0.5% duty.
 
-#### Verdict: LDO Until the Cell Voltage Is Settled (superseded 2026-09-02)
+##### Verdict: LDO Until the Cell Voltage Is Settled (superseded 2026-09-02)
 
 > **Superseded.** This was written from 2.5 V measurements and is correct for
 > 2.5 V. The board has since been measured at 3.3 V, where the buck wins 38-39%
@@ -759,7 +949,7 @@ measurement, and the next breakout should be built to support it:
 - Ideally **both regulators on one board, jumper-selectable**, which removes
   every confounder in a single stroke.
 
-### Storage-Limited vs Battery-Limited Runtime
+#### Storage-Limited vs Battery-Limited Runtime
 
 Usable mission time is `min(battery, storage)`. Using the 2 Gbit column from
 *Storage-Limited Runtime* above, the boards **as built at 2.5 V**, on a 12 mAh
@@ -785,48 +975,7 @@ The lever at high rates is bytes per sample, not microamps. At 13.6 bytes per
 sample (150 samples per 2048-byte page), any packing or compression win converts
 one-for-one into mission time at 800 and 1600 Hz.
 
-### Outstanding: Sample-Synchronous Supply Noise
-
-Independent of any power result, a switching converter on a board carrying a
-BMM350 and an LSM6DSV16X needs a noise check before the SMPS is adopted, and the
-concern is sharper than generic switching ripple.
-
-The load is **modulated at the sample rate**: every sample event is a current
-burst. In Power-Save Mode the PFM pulse rate varies with load current, so the
-converter's pulse timing becomes correlated with the sampling itself, and rail
-ripple then appears synchronously with each sample. Synchronous artifacts do not
-average out and land squarely in the band of interest — for songbird flight
-dynamics, wingbeat fundamentals and their low harmonics. An LDO contributes no
-switching component at all, only a PSRR rolloff.
-
-A DC field from the inductor calibrates out as a hard-iron offset and is not the
-worry. The worry is a supply artifact locked to the sample clock, which would
-degrade the measurement rather than the mission duration. That is the wrong trade
-for an instrument, and it is why the LDO carries the benefit of the doubt until
-this is tested.
-
-Testable with existing tooling: log on both boards under matched conditions and
-compare noise floors and spectra in sensorViz, looking specifically for structure
-at and around the sample rate and its subharmonics.
-
-## Open Questions
-
-- **What cell voltage and chemistry does the deployed tag use?** Still not
-  recorded in this tree, and still the input that decides the regulator, though
-  the answer is now less finely balanced: measured at 3.3 V the buck wins 38-39%
-  everywhere, so anything at or above 3.3 V favours it decisively and only a
-  cell sitting near 2.5 V favours the LDO.
-- Does the BMM350 or LSM6DSV16X noise floor show structure at or near the sample
-  rate on the SMPS board? **This is now the only thing gating adoption**, the
-  efficiency question having been settled at 3.3 V.
-- Which `FLASH_PWR` standby polarity was used for the SMPS idle measurement, so
-  it can be compared against the correct LDO column?
-- Does `tag-start --set-rtc` fail intermittently because of the external RTC on
-  this breakout? Two of four verification cycles aborted at
-  "RTC sync failed while writing tag clock", and boots frequently report
-  `rtcInitializedAtBoot` and `clockTrusted` false.
-
-## Resolved: Every Second Collection Attempt (2026-09-02)
+### Resolved: Every Second Collection Attempt (2026-09-02)
 
 Boot cleanup was claiming IDLE over a marker log that still ended in FINISHED,
 and zeroing the external page cursor with it. Because the host erase path only
@@ -841,7 +990,7 @@ After the fix, four consecutive reset/start/detach/stop/download cycles at
 samples. The download refusals disappeared with it: they were the tag correctly
 declining to dump from IDLE.
 
-## Idle Current at 3.3 V
+### Idle Current at 3.3 V
 
 Repeat idle readings on the LDO board at 3.2935 V, the same supply as the
 measured rate sweep above. The 2.5 V figures elsewhere on this page belong to
@@ -872,7 +1021,7 @@ which was then the live terminal path. It no longer is: the tag enters standby
 via `tagPowerEnterStandby()`, and Stop3 is `__attribute__((unused))`. The
 pre-sleep clear therefore runs on no path the tag takes today, and attempts to
 put it on the live paths have measured 1036 uA at idle against 4.94 uA without
-it. See [`../../design/open-issues.md`](../../design/open-issues.md).
+it. See [`../../../design/open-issues.md`](../../../design/open-issues.md).
 
 The `debug_log` row is a different fault and is still open. It was retested
 after the flash-flag fix and stayed at 1.71 mA, which confirms the module's own

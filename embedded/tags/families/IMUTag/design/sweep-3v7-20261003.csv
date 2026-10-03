@@ -1,0 +1,12 @@
+label,config,duration_s,current_ua,voltage_v,recorded_odr,sanity,notes
+idle,,120.0,5.5277,3.6932,,n/a (idle),
+100Hz,/home/geobrown/Research/tag-designs/software/embedded/tools/power-configs/imutag-100.json,120.0,538.6038,3.6932,100,pass,
+idle-after-100Hz,,20.0,5.5419,3.6932,,n/a (idle),
+200Hz,/home/geobrown/Research/tag-designs/software/embedded/tools/power-configs/imutag-200.json,120.0,579.5728,3.6932,200,pass,
+idle-after-200Hz,,20.0,5.5045,3.6932,,n/a (idle),
+400Hz,/home/geobrown/Research/tag-designs/software/embedded/tools/power-configs/imutag-400.json,120.0,662.4015,3.6931,400,pass,
+idle-after-400Hz,,20.0,5.4992,3.6932,,n/a (idle),
+800Hz,/home/geobrown/Research/tag-designs/software/embedded/tools/power-configs/imutag-800.json,120.0,826.5109,3.6931,800,pass,
+idle-after-800Hz,,20.0,5.513,3.6932,,n/a (idle),
+1600Hz,/home/geobrown/Research/tag-designs/software/embedded/tools/power-configs/imutag-1600.json,120.0,1003.379,3.6931,1600,pass,
+idle-after-1600Hz,,20.0,5.5294,3.6932,,n/a (idle),

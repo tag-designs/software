@@ -62,3 +62,7 @@ __pycache__/
 
 # tag-capture output (host/commandline/tag-capture.cc); captures are evidence, not source
 /captures/
+
+# Bench measurement artifacts: ELFs, downloaded databases and logs from
+# tag_release_check.py and the power sweeps. Large and machine-specific.
+release-checks/
