@@ -235,7 +235,7 @@ recognised as a monitor reset and does not abort. It matters on the bench: a sho
 run must not be attached to or captured mid-run, or its data stops there.
 Details and the likely mechanism are in `restart-recovery.md`, "Still open".
 
-### A7. PresTag: samples after a halt mid-page are timestamped early
+### A7. PresTag and CompassTag: samples after a halt mid-page are timestamped early
 
 **Status, 2026-10-02: fixed in the working tree, uncommitted. The host
 simulation and the bench PresTag pass; current is not yet measured** (flash
@@ -285,10 +285,36 @@ gap case fails with "wrong sample count". The simulation's stub `tag.pb.h`
 also lacked `State_EVENT_POWERFAIL`, used since `a406eda`, so the simulation
 had not built since then; the stub is fixed.
 
+**CompassTag had the same fault.** On the bench CompassTagAT25
+(`captures/2026-10-02-compasstag-d1`), a 400 s run captured mid-run held 12
+samples evenly spaced from its header, with every sample after the capture
+about 60 s early. The same check in `families/CompassTag/src/state_run.c`
+fixes it, adapted to its layout:
+- samples come in blocks of three closed by an activity word, and the host
+  puts sample *n* at the header epoch plus (*n* + 1) × 30 s;
+- on a gap the new page's header is therefore the current time minus 30 s,
+  with the current sample first;
+- an unfinished block on the old page has no activity word, so the download
+  skips it, losing at most two samples per interruption.
+
+The CompassTag simulation gained the gap case, which fails on the previous
+`state_run.c`. On hardware, after the fix (flash log entry 2 there):
+- the first page ends at 20:58:29;
+- the second page's header is 20:59:14, so its first sample is 20:59:44,
+  when the capture ended;
+- the samples then follow real time to 21:02:14, against a stop at 21:03:05.
+
+The rebuild and prefix checks passed throughout.
+
+Flash entry 1 there was the wrong target. `CompassTag` is built for the
+MX25R part, and an AT25XE board takes `CompassTagAT25`. The identity record's
+loader name showed it, when `tag-capture` could not find
+`MX25R_CompassTagv1`.
+
 **Still to do:**
-- run and idle current against flash log entry 0;
-- check whether CompassTag and UIUCTag, whose pages are also timestamped by
-  position, have the same gap.
+- PresTag run and idle current against its flash log entry 0;
+- CompassTag run and idle current against its entry 0;
+- UIUCTag, also timestamped by position, is unchecked.
 
 ## Part B: layout changes for offline log reconstruction
 

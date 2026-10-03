@@ -2,7 +2,7 @@
 
 Status: analysis, with decisions agreed on 2026-10-01 (see
 [Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
-IMUTagNandBmp581 and PresTag (`tag-rebuild`, 2026-10-02; see
+IMUTagNandBmp581, PresTag and CompassTag (`tag-rebuild`, 2026-10-02; see
 [Implementation status](#implementation-status)); the other families are not
 yet. It answers one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
@@ -331,8 +331,9 @@ an interface the writer pulls from:
   code, laid out by the identity record of item 4. A per-family
   `CaptureDecoder`, chosen by the record's `decoder` string, supplies
   `readConfig()`, `externalFlashSize()`, the data-log count and
-  `data_logAck()`. `imutag` (NAND checkpoints) and `prestag` (converted
-  samples, NOR) exist so far. Other families, and images without an identity
+  `data_logAck()`. `imutag` (NAND checkpoints), `prestag` (converted
+  samples, NOR) and `compasstag` (blocks with activity words, NOR) exist so
+  far. Other families, and images without an identity
   record (fw-v0.0.3), are refused.
 - A capture is checked before anything is written. Each file must match the
   SHA-256 its manifest records and must not be marked failed, and a NOR image
@@ -359,6 +360,9 @@ PresTag, on the bench unit `20333050364150040063005F`
 - a 1 s run of 12 pages, several of them partial, because each attach starts
   a new page;
 - `regression-1`, a 1 s run captured mid-run and again after the stop.
+
+CompassTagAT25 (`captures/2026-10-02-compasstag-d1`) gave the same result
+for 400 s runs, before and after its A7 fix.
 
 A mid-run capture rebuilds to an exact prefix of the final download: 100 and
 75 samples in two runs, ending at the capture instant. The partial page is in
