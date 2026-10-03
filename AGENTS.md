@@ -223,12 +223,24 @@ Use the target that matches the files changed. For documentation-only changes,
   FINISHED; only the life-cycle walk saw it.
 
   **Bound run current, not just idle.** `tag_release_check.py` now fails if the
-  life-cycle run exceeds `--run-max-ua` (850 uA, sized for the default 400 Hz
-  config where a healthy run is about 750 uA). This is not belt-and-braces
-  either: run current is what sets battery life during a deployment, and it has
-  now twice moved by about 200 uA between builds differing only in code layout.
-  Four consecutive release checks reported such a regression and passed,
-  because only the resting states were bounded.
+  life-cycle run exceeds `--run-max-ua` (760 uA, sized for the default 400 Hz
+  config at a 3.7 V supply, where a healthy run is about 665 uA). This is not
+  belt-and-braces either: run current is what sets battery life during a
+  deployment, and it has now twice moved by about 200 uA between builds
+  differing only in code layout. Four consecutive release checks reported such
+  a regression and passed, because only the resting states were bounded.
+
+  **That limit is supply-voltage dependent; say what you measured at.** The
+  shipping board regulates with an SMPS, whose input current scales with supply
+  voltage. Only the LDO build is voltage-independent, and it was left behind by
+  the SMPS version, so the LDO figures in
+  `embedded/tags/families/IMUTag/design/PowerEstimates.md` do not bound this
+  board. The limit was 850 uA against a healthy 750 uA at the ~3.29 V bench
+  supply those came from, and was rebased by the voltage ratio for a 3.7 V
+  cell: 664.98 and 665.47 uA measured across two independent runs at 3.6930 V,
+  the same power as 750 uA at 3.3 V to within 0.6%. Move the bench supply
+  without rebasing and the bound is either toothless or a false-failure
+  generator.
 
   **The run-mode sleep is Stop 2, and the terminal sleep is Stop 3 -- neither
   is the mode the code originally asked for.** On this part the deeper the

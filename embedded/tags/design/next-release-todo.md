@@ -572,7 +572,8 @@ AGENTS.md is explicit that this needs measurement, not argument.
   any `--target`, but its defaults were written for that tag:
   - the config is `power-configs/imutag-400.json`, and only IMUTag configs
     exist there;
-  - `--run-max-ua 850` is sized for IMUTag at 400 Hz;
+  - `--run-max-ua 760` is sized for IMUTag at 400 Hz from a 3.7 V supply,
+    and scales with supply voltage on the SMPS board;
   - the sample-count check reads only IMUTag's `lsm6.odr`;
   - the life-cycle run is a fixed 60 s.
 

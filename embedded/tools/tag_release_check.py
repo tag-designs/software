@@ -92,13 +92,16 @@ def main() -> int:
     p.add_argument("--idle-trials", type=int, default=4,
                    help="idle measurements; the fault is layout-driven, so "
                         "repeat rather than trusting one reading")
-    p.add_argument("--run-max-ua", type=float, default=850.0,
+    p.add_argument("--run-max-ua", type=float, default=760.0,
                    help="fail if the life-cycle run draws more than this, in "
-                        "uA. Sized for the default 400 Hz config, where a "
-                        "healthy run is about 750 uA; run current has twice "
-                        "moved ~200 uA between builds differing only in code "
-                        "layout, and four release checks reported such a "
-                        "regression and passed because only idle was bounded")
+                        "uA. Sized for the default 400 Hz config at a 3.7 V "
+                        "supply, where a healthy run is about 665 uA; run "
+                        "current has twice moved ~200 uA between builds "
+                        "differing only in code layout, and four release "
+                        "checks reported such a regression and passed because "
+                        "only idle was bounded. The shipping board regulates "
+                        "with an SMPS, so this scales with supply voltage: "
+                        "at 3.3 V the equivalent limit is 850 uA")
     p.add_argument("--storm-sets", type=int, default=3,
                    help="attach-storm sets to run")
     p.add_argument("--measure-python",

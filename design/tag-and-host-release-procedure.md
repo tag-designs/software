@@ -83,7 +83,7 @@ flashed removes the need to rely on that.
 | --- | --- |
 | build and flash | skipped under `--skip-build`, which is the release case. Otherwise: that the image builds and downloads, with the `.elf` copied into the output directory |
 | idle, 4 trials | the Standby stall. A sleeping tag reads about 5 uA and a stalled one about 1035 uA, so the limit is 100 uA and anything between is a failure, not a margin. Repeated because the fault is layout-driven and one reading is not a verdict |
-| life-cycle | every resting state, not just idle: idle, running, stopped, idle again. Fails above `--run-max-ua`, default 850 uA against a healthy 750 uA at 400 Hz -- run current has twice moved ~200 uA between builds differing only in code layout |
+| life-cycle | every resting state, not just idle: idle, running, stopped, idle again. Fails above `--run-max-ua`, default 760 uA against a healthy 665 uA at 400 Hz from a 3.7 V supply -- run current has twice moved ~200 uA between builds differing only in code layout. The shipping board regulates with an SMPS, so both figures scale with supply voltage; the equivalent pair at 3.3 V is 850 and 750 uA |
 | attach storms, 3 sets | host/firmware races around attach, which is where they surface |
 
 ### Reading and keeping the result
