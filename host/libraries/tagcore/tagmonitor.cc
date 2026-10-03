@@ -567,7 +567,8 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
         uint32_t flash_sr = 0;
         const bool sr_ok = ReadDebug32(0x40022010U, &flash_sr);
         log_error("target is running the ROM bootloader (pc=0x%x), not the firmware; "
-                  "FLASH_SR=%s0x%x%s. If PEMPTY (bit 17) is set, power-cycle the tag",
+                  "FLASH_SR=%s0x%x%s. If PEMPTY (bit 17) is set, power-cycle the tag "
+                  "or reload its option bytes",
                   r15_pc, sr_ok ? "" : "unreadable ", flash_sr,
                   (sr_ok && (flash_sr & (1U << 17))) ? " (PEMPTY set)" : "");
       }
@@ -697,6 +698,20 @@ bool TagMonitor::AttachL4()
     {
       LinkAdapt::Detach();
       break;
+    }
+
+    // With nSWBOOT0 = 1 and BOOT0 low, a set FLASH_SR.PEMPTY sends every
+    // reset to the ROM bootloader, so no monitor will answer. Hardware
+    // evaluates it only at power-on or an option-byte load (OBL_LAUNCH);
+    // writing 1 toggles it, so a tool that "clears" it on a part where it was
+    // already clear sets it. A power cycle or an option-byte load fixes it;
+    // nSWBOOT0 = 0, nBOOT0 = 1 disables the empty check (RM0394 2.6).
+    {
+      uint32_t flash_sr = 0;
+      if (ReadDebug32(0x40022010U, &flash_sr) && (flash_sr & (1U << 17)))
+        log_error("FLASH_SR.PEMPTY is set (FLASH_SR=0x%x): the tag boots the ROM "
+                  "bootloader, not the firmware. Power-cycle the tag, or reload its "
+                  "option bytes", flash_sr);
     }
 
     // Call monitor to get pointer to information block
