@@ -42,6 +42,47 @@ foreach(doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
   # so without this a staged page renders in the portal with broken images --
   # the document is present and reachable, which makes the omission easy to miss
   # until someone opens the page.
+  # Figures the document references by path, wherever they live in the tree.
+  # The globs above only find assets sitting beside the markdown, so a document
+  # pointing at an image in another directory -- the user-guide screenshots, for
+  # one -- published as a page with a broken figure and nothing said so.
+  file(READ "${source_file}" _doc_text)
+  set(_scan "${_doc_text}")
+  # A sentinel rather than while(TRUE): this file runs as a cmake -P script,
+  # where CMP0012 is unset and the constant is not recognised as a boolean, so
+  # the loop body never ran at all.
+  set(_scanning YES)
+  while(_scanning)
+    # One match at a time: REGEX MATCHALL returns the hits as a single list
+    # element when the document text carries semicolons, which silently
+    # produced one nonsense path instead of each figure.
+    string(REGEX MATCH "\\]\\(([^)]+\\.(png|jpg|jpeg|gif|svg))\\)"
+           _hit "${_scan}")
+    if(NOT _hit)
+      set(_scanning NO)
+      continue()
+    endif()
+    set(_rel "${CMAKE_MATCH_1}")
+    string(FIND "${_scan}" "${_hit}" _pos)
+    string(LENGTH "${_hit}" _len)
+    math(EXPR _advance "${_pos} + ${_len}")
+    string(SUBSTRING "${_scan}" ${_advance} -1 _scan)
+
+    if(_rel MATCHES "^(https?:|file:|/|#)")
+      continue()
+    endif()
+    get_filename_component(_figure "${source_dir}/${_rel}" ABSOLUTE)
+    file(RELATIVE_PATH _figure_rel "${PROJECT_SOURCE_DIR}" "${_figure}")
+    # Outside the repository (a sibling hardware checkout, say): nothing to copy.
+    if(_figure_rel MATCHES "^\\.\\." OR NOT EXISTS "${_figure}")
+      continue()
+    endif()
+    set(_figure_out "${DEVELOPER_DOCS_STAGING_DIR}/src/reference/${_figure_rel}")
+    get_filename_component(_figure_out_dir "${_figure_out}" DIRECTORY)
+    file(MAKE_DIRECTORY "${_figure_out_dir}")
+    file(COPY_FILE "${_figure}" "${_figure_out}")
+  endwhile()
+
   if(IS_DIRECTORY "${source_dir}/images")
     file(
       COPY "${source_dir}/images"
