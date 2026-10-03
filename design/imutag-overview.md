@@ -34,7 +34,7 @@ the majority of the top-side components.
 | Channels | 3-axis acceleration, 3-axis rotation, 3-axis magnetic field, pressure, temperature |
 | Storage | 2 Gbit (256 MiB) flash on the tag -- no radio, no live link |
 | Typical deployment | 13.7 hours of continuous recording at 400 Hz on a 12 mAh cell |
-| Waiting, armed | 4.1 uA -- the tag can sit for months before a recording window opens |
+| Waiting, armed | 5.5-6.7 uA -- 74 to 91 days on a 12 mAh cell, so the tag can sit for months before a recording window opens |
 | Clock | +/-1 ppm, about 4 ms of drift per hour |
 | Getting data out | A SQLite file, over a wired probe, after recovery |
 
@@ -90,12 +90,12 @@ graph LR
     MAG["<b>BMM350</b><br/>Magnetometer<br/><i>Heading reference, +/-2000 uT</i>"]
     RTC["<b>RV-3028-C8</b><br/>Real-time clock, +/-1 ppm<br/><i>Sets the sampling timebase</i>"]
 
-    MCU["<b>STM32U375</b><br/>Reads the sensors,<br/>timestamps samples,<br/>packs them into flash<br/><i>4.1 uA while waiting</i>"]
+    MCU["<b>STM32U375</b><br/>Reads the sensors,<br/>timestamps samples,<br/>packs them into flash<br/><i>5.5-6.7 uA while waiting</i>"]
 
     SWD["<b>Wired probe connector</b><br/><i>Arm the tag, download data</i>"]
     NAND["<b>GD5F2GM7RE</b><br/>2 Gbit flash, 256 MiB<br/>About 13.7 h at 400 Hz<br/><i>10-year data retention</i>"]
 
-    PWR["<b>Power</b><br/>12 mAh cell through a 1.8 V regulator<br/><i>4.1 uA waiting, 0.82 mA recording at 400 Hz</i>"]
+    PWR["<b>Power</b><br/>12 mAh cell through a 1.8 V regulator<br/><i>5.5-6.7 uA waiting, 0.66 mA recording at 400 Hz</i>"]
 
     IMU --- MCU
     PRS --- MCU
@@ -169,11 +169,11 @@ shorten the deployment.
 
 | Sample rate | Magnetic, pressure, temperature | Data produced | Flash full after | Battery, 12 mAh | Runs out first |
 | ---: | ---: | ---: | ---: | ---: | --- |
-| 100 Hz | 10 Hz | 1.37 kB/s | 54.6 h | not measured | -- |
-| 200 Hz | 20 Hz | 2.73 kB/s | 27.3 h | 16.5 h | battery |
-| 400 Hz | 40 Hz | 5.46 kB/s | 13.7 h | 14.7 h | flash |
-| 800 Hz | 80 Hz | 10.9 kB/s | 6.83 h | 12.0 h | flash |
-| 1600 Hz | 160 Hz | 21.8 kB/s | 3.41 h | 10.2 h | flash |
+| 100 Hz | 10 Hz | 1.37 kB/s | 54.6 h | 22.3 h | battery |
+| 200 Hz | 20 Hz | 2.73 kB/s | 27.3 h | 20.7 h | battery |
+| 400 Hz | 40 Hz | 5.46 kB/s | 13.7 h | 18.1 h | flash |
+| 800 Hz | 80 Hz | 10.9 kB/s | 6.83 h | 14.5 h | flash |
+| 1600 Hz | 160 Hz | 21.8 kB/s | 3.41 h | 12.0 h | flash |
 
 Acceleration and rotation are always recorded at the rate you select.
 Whichever of the last two columns is smaller is what you actually get. Battery
@@ -248,24 +248,30 @@ filter across one.
 
 Two things end a recording: the battery runs down, or the flash fills. Which
 one bites first depends on the rate you chose. Measured on the SMPS breakout
-carrying the IMUTagNandBmp581 daughter card, at a 3.2935 V supply
+carrying the IMUTagNandBmp581 daughter card at **3.6931 V**, the deployed cell
+voltage, 120 s per point with a verified download at every rate
 ([PowerEstimates.md](../embedded/tags/families/IMUTag/design/PowerEstimates.md)):
 
-| Mode | Measured current |
-| --- | ---: |
-| Idle, armed | 4.1 uA (about 122 days on a 12 mAh cell) |
-| 100 Hz | not measured -- this point did not start during the sweep |
-| 200 Hz | 728 uA |
-| 400 Hz | 818 uA |
-| 800 Hz | 996 uA |
-| 1600 Hz | 1175 uA |
+| Mode | Measured current | 12 mAh cell |
+| --- | ---: | ---: |
+| Idle, armed | 5.5-6.7 uA | 74-91 days |
+| 100 Hz | 539 uA | 22.3 h |
+| 200 Hz | 580 uA | 20.7 h |
+| 400 Hz | 662 uA | 18.1 h |
+| 800 Hz | 827 uA | 14.5 h |
+| 1600 Hz | 1003 uA | 12.0 h |
+
+Idle has measured as two distinct populations on the same board and image,
+5.52 uA and 6.71 uA, and which one you get is not yet understood. **Plan on
+74 days**, the pessimistic figure. The recording currents are reproducible to
+better than 1%.
 
 Below 400 Hz the battery gives out while there is still flash to spare, so a
 larger cell buys recording time. At 400 Hz and above the flash fills first, and
 a larger cell buys nothing -- only a lower rate would help. Waiting costs
-almost nothing either way: at 4.1 uA a tag can sit armed for months before a
-recording window opens, so it is the recording itself that is bounded, not the
-deployment.
+almost nothing either way: at a few microamps a tag can sit armed for months
+before a recording window opens, so it is the recording itself that is bounded,
+not the deployment.
 
 ---
 
@@ -505,5 +511,8 @@ this sensor set.
 1. **Is the recording schedule intentionally limited to a start delay?**
    The stored configuration carries absolute start and stop times, but only the
    start delay is offered in `qtmonitor` for this tag type.
-2. **The 100 Hz point did not start during the SMPS sweep**, so there is no
-   measured current for the lowest rate on the current build.
+2. **Why does idle measure as two populations?** 5.52 uA and 6.71 uA on the
+   same board and image, splitting on the day rather than the procedure. It is
+   worth 16 days of shelf life on a 12 mAh cell. See *Idle does not agree with
+   itself across days* in
+   [PowerEstimates.md](../embedded/tags/families/IMUTag/design/PowerEstimates.md).
