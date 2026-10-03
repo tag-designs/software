@@ -136,6 +136,7 @@ set(
   "embedded/tags/IMUTagNand/todo.md"
   "embedded/tags/IMUTagNandBmp581/README.md"
   "embedded/tags/IMUTagNandBmp581/todo.md"
+  "embedded/tags/BitTag/design/power-test-plan.md"
   "embedded/tags/CompassTagAT25Breakout/design/notes.md"
   "embedded/tags/UIUCTag/test/README.md"
   "embedded/tags/families/BitPresTag/README.md"

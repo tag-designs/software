@@ -161,7 +161,10 @@ runtime, monitor, persistence, ADXL362, RV3028, and test implementations. The
 active `BitTag` target now follows the common-module pattern: its `bt_*.c`
 files keep BitTag-specific activity logging behavior, while `tag_core`,
 `rtc_rv3028`, and `sensor_accel_adxl362` provide shared runtime and driver
-code.
+code. Its power qualification procedure -- the idle, running and finished
+currents, and why a once-a-minute tag cannot be measured with IMUTag's
+windows -- is
+[`BitTag/design/power-test-plan.md`](BitTag/design/power-test-plan.md).
 
 Tag-specific build constants live in each target's `inc/custom.h`; module-owned
 feature switches come from `TAG_MODULES`. See

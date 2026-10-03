@@ -1,0 +1,12 @@
+{
+    "tag_type": "BITTAG",
+    "bittag_log": "BITTAG_BITPERSEC",
+    "adxl362": {
+        "range": "R4G",
+        "freq": "S50",
+        "filter": "AAquarter",
+        "act_thresh_g": 0.35,
+        "inact_thresh_g": 0.35,
+        "inactive_sec": 0.24
+    }
+}
