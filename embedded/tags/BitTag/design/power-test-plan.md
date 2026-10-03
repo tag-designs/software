@@ -106,9 +106,15 @@ returns; `Running(T_INIT)` is not reached until the next minute alarm. The
 comment on that branch in `common/core/src/state_machine.c` says so directly:
 gating it "delayed every start to the next minute alarm".
 
-So after `tag-start` the tag sits in `CONFIGURED`, not `RUNNING`, for **up to
-60 seconds**. Two consequences, both of which bias a measurement without
-failing it:
+> **Measured 2026-10-03: the transition was immediate.** The marker log shows
+> `CONFIGURED` and `RUNNING` in the same second in all three starts observed
+> (18:55:23, 18:57:58, 19:26:00). The define really is absent, so the
+> inference above does not describe what this tag does; the mechanism is not
+> understood. `--settle 75` is kept as cheap insurance against a start that
+> *does* wait, not because a wait has been seen.
+
+So a 60 s wait in `CONFIGURED` is possible in principle. Two consequences,
+both of which would bias a measurement without failing it:
 
 - `power_experiment.py --settle` defaults to **5 s**, sized for a tag that
   begins collecting at once. On BitTag a window opened 5 s after start spends
@@ -160,6 +166,33 @@ The firmware's own floor is **2.00 V**: `datalog.c` flags `LOGWRITE_BAT` when
 for that case is commented out in `bt_state_run.c`, so the tag records the
 condition but does not stop on it — worth knowing before reading a run that
 ended near the floor.
+
+### The first attach to a sleeping BitTag fails
+
+Observed throughout the first execution, 2026-10-03, and entirely repeatable:
+
+- With the tag asleep in Standby (~0.12 uA), the first monitor attach fails
+  with `Monitor attach failed: initial DEMCR read failed`.
+- **That failed attach wakes the part**, which then sits at ~376 uA.
+- The next attach, to the now-awake tag, succeeds.
+
+So every host command must be issued **twice** against a sleeping BitTag: the
+first is a wake-up that reports failure, the second does the work. A sequence
+that resets, measures, and then attaches again will hit this at every attach,
+because each measurement leaves the tag asleep.
+
+Two consequences:
+
+- **`tag_lifecycle_check.py` cannot currently drive a BitTag.** It has no
+  attach retry, so it fails at `[1/5] reset to idle` every time, reports
+  `FAILED`, and leaves the tag awake. Phase A below is therefore run by hand
+  until the tool retries. This is the same class of gap as the `--use-server`
+  bug that had to be fixed (`ef6033d`) before CompassTag's plan could run.
+- **A tag found at ~376 uA has probably just had a failed attach**, not a
+  sleep fault. Distinguish them: reset it, let it settle, and measure again.
+  A genuine failure to reach Standby survives that; this does not. Both
+  readings taken after a clean detach on 2026-10-03 were 0.1224 and 0.1227 uA,
+  against 376 uA immediately after a failed attach.
 
 Shared L432 traps, all of which have cost time on this bench before:
 
@@ -230,6 +263,23 @@ Two configs, in `embedded/tools/power-configs/`:
 - `bittag-default.json` — `BITTAG_BITSPERFIVEMIN`, the firmware default. One
   record per 35 minutes; used only in Phase B2 to confirm the format does not
   change the current.
+
+**`active_interval` is required, and its absence is silent.** A config that
+omits it programs `end_epoch = 0`, which is already in the past, so the run
+ends one second after it starts: the marker log reads `CONFIGURED`, `RUNNING`,
+`FINISHED reason=EVENT_ENDTIM` with the same timestamp, and no data is
+recorded. The firmware's `defaultConfig` sets `end_epoch = INT32_MAX`, but a
+config supplied to `tag-start` replaces the stored one rather than merging
+unless `--merge` is passed. Both templates set
+`active_interval.end_epoch = 2147483647`. This cost a run on the first
+execution and is invisible to JSON validation, which is why it is written down
+here.
+
+**The tag type is `BITTAG_LE`, not `BITTAG`.** `inc/config.h` defines
+`TAG_TYPE BITTAG_LE` for this target, and `tag-info` reports it. `BITTAG` is a
+different enumerator that a config will still parse as, so the mistake is not
+caught by validating the JSON -- only by comparing against what the tag
+reports. Check `tag_type` in `tag-info` against the config before programming.
 
 Both carry the firmware's default ADXL362 settings (R4G, S50, AAquarter,
 0.35 g activity and inactivity, 0.24 s inactivity). The accelerometer config is
@@ -307,9 +357,15 @@ record is actually wanted.
 
 Power says nothing about whether the tag works.
 
+**Reset to `IDLE` first.** From `FINISHED` the test fails with `SetRtc failed:
+Monitor request not permitted in current tag state`; it sets the clock, which
+that state does not permit. The download must therefore come first, since the
+reset erases.
+
 ```sh
-build-host/bin/tag-test          # expect RUN_ALL -> ALL_PASSED
-build-host/bin/tag-info          # record UUID, git hash, state
+build-host/bin/tag-reset --set-rtc   # FINISHED -> IDLE; erases, so download first
+build-host/bin/tag-test              # expect RUN_ALL -> ALL_PASSED
+build-host/bin/tag-info              # record UUID, git hash, state
 ```
 
 For the B1 database, confirm the activity table exists, its timestamps advance
@@ -327,8 +383,15 @@ agitated, because the measurement is not otherwise reproducible.
 
 ## 9. Pass/fail
 
-**No BitTag baseline exists**, so the first session establishes one. Until then
-the gates are sanity bounds, not regression bounds:
+**A baseline now exists**, from the first qualification on 2026-10-03 against
+`fw-v0.5` at 2.4960 V: resting **0.1220 uA** (four states, 1.1% spread),
+running **0.5082 uA** (two runs, 0.04% apart). See
+[`power-test-results.md`](power-test-results.md).
+
+The gates below remain sanity bounds rather than regression bounds, because
+one board on one day is not a spread. A run bound of about **0.584 uA**
+(1.15x measured, the margin IMUTag uses) becomes appropriate once a second
+board or a second session agrees:
 
 | Point | Gate | Rationale |
 | --- | --- | --- |

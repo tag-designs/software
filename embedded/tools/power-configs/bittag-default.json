@@ -1,5 +1,9 @@
 {
-    "tag_type": "BITTAG",
+    "tag_type": "BITTAG_LE",
+    "active_interval": {
+        "start_epoch": 0,
+        "end_epoch": 2147483647
+    },
     "bittag_log": "BITTAG_BITSPERFIVEMIN",
     "adxl362": {
         "range": "R4G",

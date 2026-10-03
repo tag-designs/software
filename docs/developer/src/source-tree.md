@@ -75,6 +75,8 @@ directory that owns the code; the developer portal stages those files under
 - [UIUCTag Test Strategy](reference/embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md)
 - [UIUCTag Bring-Up Report](reference/embedded/tags/families/BitPresTag/design/uiuctag-bringup-report.md)
 - [BitTag Power Test Plan](reference/embedded/tags/BitTag/design/power-test-plan.md)
+- [BitTag Power Test Report](reference/embedded/tags/BitTag/design/power-test-report.md)
+- [BitTag Power Measurement Log](reference/embedded/tags/BitTag/design/power-test-results.md)
 - [BitTagNG](reference/embedded/tags/families/BitTagNG/README.md)
 - [BitTagNG Wakeup Note](reference/embedded/tags/families/BitTagNG/wakeup_note.md)
 - [CompassTag](reference/embedded/tags/families/CompassTag/README.md)
