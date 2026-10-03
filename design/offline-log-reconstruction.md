@@ -2,7 +2,7 @@
 
 Status: analysis, with decisions agreed on 2026-10-01 (see
 [Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
-IMUTagNandBmp581, PresTag and CompassTag (`tag-rebuild`, 2026-10-02; see
+IMUTagNandBmp581, PresTag, CompassTag and UIUCTag, validated on hardware, and for BitTag from source (`tag-rebuild`, 2026-10-02/03; see
 [Implementation status](#implementation-status)); the other families are not
 yet. It answers one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
@@ -331,9 +331,18 @@ an interface the writer pulls from:
   code, laid out by the identity record of item 4. A per-family
   `CaptureDecoder`, chosen by the record's `decoder` string, supplies
   `readConfig()`, `externalFlashSize()`, the data-log count and
-  `data_logAck()`. `imutag` (NAND checkpoints), `prestag` (converted
-  samples, NOR) and `compasstag` (blocks with activity words, NOR) exist so
-  far. Other families, and images without an identity
+  `data_logAck()`. There are five, one for each distributed target:
+  - `imutag`: NAND checkpoints;
+  - `prestag`: converted samples, NOR;
+  - `compasstag`: blocks with activity words, NOR;
+  - `uiuctag`: time-indexed slots, NOR, served raw, with the erased-slot rule
+    taken from the shared `uiuctag_log_format.h`;
+  - `bittag`: internal records only, 30 per Ack.
+
+  BitTag's `readConfig()` reports the image's built-in default Config in IDLE
+  or TEST. The decoder does the same, through the identity record's
+  `default_config` entry. The BitTag decoder has not yet been run against a
+  tag. Other families, and images without an identity
   record (fw-v0.0.3), are refused.
 - A capture is checked before anything is written. Each file must match the
   SHA-256 its manifest records and must not be marked failed, and a NOR image
@@ -363,6 +372,11 @@ PresTag, on the bench unit `20333050364150040063005F`
 
 CompassTagAT25 (`captures/2026-10-02-compasstag-d1`) gave the same result
 for 400 s runs, before and after its A7 fix.
+
+UIUCTag (`captures/2026-10-03-uiuctag-d1`), a 20 min run, gave the same
+result. Its slots are indexed by time: the slot that fell inside the
+capture's halt is missing, and the later samples keep their own times. So
+A7 cannot occur on UIUCTag.
 
 A mid-run capture rebuilds to an exact prefix of the final download: 100 and
 75 samples in two runs, ending at the capture instant. The partial page is in

@@ -314,7 +314,8 @@ loader name showed it, when `tag-capture` could not find
 **Still to do:**
 - PresTag run and idle current against its flash log entry 0;
 - CompassTag run and idle current against its entry 0;
-- UIUCTag, also timestamped by position, is unchecked.
+- UIUCTag needs no fix: its samples go in time-indexed slots, and a 20 min
+  bench run captured mid-run lost only the slot inside the halt.
 
 ## Part B: layout changes for offline log reconstruction
 
@@ -646,7 +647,10 @@ useful once they exist. They are listed so neither half ships alone.
   writer, rebuilding info, Config, Calibration, State and the data rows. It
   decodes fw-v0.0.3 layouts from the release source and later layouts from B1
   and B3.
-  *Status 2026-10-02:* done for IMUTagNandBmp581 and PresTag with
+  *Status 2026-10-03:* all five distributed targets have decoders. Four are
+  validated on hardware (IMUTagNandBmp581, PresTag, CompassTagAT25, UIUCTag);
+  BitTag is written from source and awaits a tag. Earlier status: done for
+  IMUTagNandBmp581 and PresTag with
   identity-record images (`tag-rebuild`, `recovery/capturesource`). Rebuilt
   against live downloads, every table is identical apart from three provenance
   rows in `info`, and a mid-run capture rebuilds to an exact prefix. Firmware
