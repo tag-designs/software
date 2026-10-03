@@ -22,6 +22,9 @@ slow to reproduce on a tag:
   completed: 18 samples on 4 MiB (AT25XE321D) and 6 on 8 MiB (MX25R6435F). The
   fake NOR also asserts on any read past the end of the part.
 
+It also checks A7. A 60 s halt mid-block must start a new page whose header
+places the next sample at its own time, dropping only the unfinished block.
+
 Every sample carries its sequence number in `ax`/`ay`, so the download is
 checked sample by sample against what was written.
 

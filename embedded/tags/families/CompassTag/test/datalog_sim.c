@@ -321,9 +321,38 @@ static void test_full(uint32_t bytes, const char *part)
            part, (unsigned)whole_pages, last, (unsigned)seq, (unsigned)sample_seq);
 }
 
+/**
+ * Gap: a 60 s halt mid-block -- what a tag-capture does to a running tag.
+ * Samples carry no timestamps, so the samples after the halt must start a
+ * new page whose header puts them at their own time; continuing the old page
+ * would place them 60 s too early. The unfinished block before the halt has
+ * no activity word and is skipped.
+ */
+static void test_gap(void)
+{
+    reset_world(4u * 1024u * 1024u);
+    Running(T_INIT, 0);
+    for (int i = 0; i < 7; i++)        /* two whole blocks and one sample */
+        assert(tick());
+    timestamp += 60;                   /* core halted: no wakeups */
+    const int32_t resumed_at = timestamp + COMPASS_SAMPLE_PERIOD_S;
+    for (int i = 0; i < 6; i++)
+        assert(tick());
+
+    assert(pState->pages == 2 && "halt did not start a new page");
+    assert(download(0, 0) == 6);
+    assert(download(1, 7) == 6);
+    assert(vddHeader[1].epoch == resumed_at - COMPASS_SAMPLE_PERIOD_S &&
+           "new page header does not place its first sample at the resumed time");
+    assert(download(2, 0) == -1);
+    printf("gap: 60 s halt starts page 2 at the resumed time; 1 sample of the "
+           "unfinished block dropped\n");
+}
+
 int main(void)
 {
     test_resume();
+    test_gap();
     test_full(4u * 1024u * 1024u, "4 MiB (AT25XE321D)");
     test_full(8u * 1024u * 1024u, "8 MiB (MX25R6435F)");
     printf("COMPASSTAG DATALOG SIM: all assertions passed\n");

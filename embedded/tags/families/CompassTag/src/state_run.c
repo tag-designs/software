@@ -17,6 +17,7 @@
 #include "lis2du12.h"
 #include "ak09940a.h"
 #include "sensors.h"
+#include "flash_internal.h"
 
 
 // activity data: ACTIVITY_BITS_PER_SAMPLE bits/sample, SAMPLES_PER_BLOCK
@@ -138,7 +139,49 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       //enum LOGERR err = LOGWRITE_OK;
 
 
-      //  update temperature/voltage estimates 
+      /*
+       * Samples carry no timestamps: the host places sample n of a page at
+       * the header epoch plus (n + 1) * sample_period. That holds only if no
+       * sample was missed. When this one is not where that rule puts it --
+       * the core was halted by a capture, a wakeup was lost, the clock was
+       * set -- start a new page with this sample first, as T_INIT does. An
+       * unfinished block on the old page has no activity word, so the
+       * download skips it: at most SAMPLES_PER_BLOCK - 1 samples, instead of
+       * every later sample on the page placed at the wrong time.
+       */
+      if (pState->pages > 0U)
+      {
+        t_DataHeader page_head;
+        if (FLASH_Read_Checked(&vddHeader[pState->pages - 1U], &page_head,
+                               sizeof(page_head)) == 0U)
+        {
+          const int32_t period = (int32_t)sample_period;
+          const int32_t drift = timestamp -
+              (page_head.epoch + (int32_t)(cycle_count + 1U) * period);
+          if ((drift > period / 2) || (drift < -(period / 2)))
+          {
+            const uint32_t slot = cycle_count % SAMPLES_PER_BLOCK;
+            const uint64_t mask = (((uint64_t)1) << ACTIVITY_BITS_PER_SAMPLE) - 1U;
+
+            pState->external_blocks = pState->pages * DATALOG_PAGE_WORDS;
+            t_DataHeader dataheader;
+            dataheader.epoch = timestamp - period;
+            dataheader.vdd100 = pState->vdd100;
+            dataheader.temp10 = pState->temp10;
+            switch (writeDataHeader(&dataheader)) {
+              case LOGWRITE_FULL:
+                return Finished(T_INIT, State_EVENT_INTERNALFULL);
+              default:
+                break;
+            }
+            /* This sample's activity moves to slot 0 of the new block. */
+            activity = (activity >> (ACTIVITY_BITS_PER_SAMPLE * slot)) & mask;
+            cycle_count = 0;
+          }
+        }
+      }
+
+      //  update temperature/voltage estimates
 
       adcVDD(&vdd100, &temp10);
       pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
