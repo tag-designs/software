@@ -206,18 +206,62 @@ hash is recorded regardless.
    flash it from the release with `flash_release.py`, then
    `tag_release_check.py --skip-build`. Keep the output directory and write the
    release tag and image SHA-256 into it.
-5. **Program the field tags** from the same release with `flash_release.py`,
+5. **Write the result into the release.** The release page is where someone
+   decides whether an image may fly, so the answer belongs there and not only
+   in a local directory. See *Publishing the qualification* below.
+6. **Program the field tags** from the same release with `flash_release.py`,
    with `--label` and `--json`.
-6. **Run `tag-test`** on each to confirm the hardware works, then `tag-info
+7. **Run `tag-test`** on each to confirm the hardware works, then `tag-info
    --json`, and enter the board database row.
 
-Steps 4 and 5 are separate because they answer different questions.
+Steps 4 and 6 are separate because they answer different questions.
 Qualification is per image: one measurement clears the image every tag of that
 type will receive. Programming is per tag, and each one needs its own row.
 
 A target that is not flying this round does not need qualifying. A target that
 is needs it again after any change to its image -- which, the build being
 reproducible, means after any change to the commit it is built from.
+
+### Publishing the qualification
+
+A qualification that lives only on the bench cannot be acted on by anyone
+deciding what to flash. CI publishes each image already stating that it has
+**not** been bench-tested, so every release starts out honest and is corrected
+as targets are cleared. Update the release as each one is qualified rather than
+waiting for the set: a partially qualified release is the normal state, and
+saying which targets are cleared is the whole point.
+
+Two places, for two readers:
+
+- **The release body** carries the verdict -- one row per distributed target,
+  so the question "can I fly this image?" is answered without downloading
+  anything. Targets that have not been qualified say so explicitly. `gh release
+  edit` replaces the body rather than appending, so build the new text from the
+  current body.
+- **A release asset** carries the evidence: the session directory for each
+  target, with the board label and UUID, the supply voltage, the image
+  SHA-256 read back from the manifest that was flashed, and the logs.
+
+```sh
+gh release view  fw-vX.Y --json body --jq .body > notes.md
+# edit notes.md: update the qualification table
+gh release edit   fw-vX.Y --notes-file notes.md
+gh release upload fw-vX.Y qualification-<target>-<date>.tar.gz
+```
+
+The table states the supply voltage with every current, because it is not the
+same for every tag -- an unregulated target such as BitTag is measured at its
+cell voltage, and a figure carries no meaning without it:
+
+| Target | Qualified | Supply | Idle | Running | Finished |
+| --- | --- | ---: | ---: | ---: | ---: |
+| IMUTagNandBmp581 | 2026-10-03 | 3.693 V | 5.52 uA | 662 uA @ 400 Hz | 5.52 uA |
+| BitTag | not qualified | | | | |
+
+**Qualify the released image, not a local build at the same commit.** The two
+are expected to be identical and usually are, but "expected to be" is what
+qualification exists to replace; a row whose numbers came from a local build
+must say so.
 
 ## 3. Releasing the host tools
 

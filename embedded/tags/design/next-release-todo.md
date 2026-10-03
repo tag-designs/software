@@ -591,6 +591,18 @@ AGENTS.md is explicit that this needs measurement, not argument.
   - IMUTagNandBmp581 is still a prototype, with boards out for fab, so it is not
     gated on `tag_release_check.py` for this release. Run the release check
     when it ships.
+- **Qualify the never-qualified targets first, then redo IMUTagNandBmp581.**
+  Agreed 2026-10-03. BitTag, PresTag, CompassTagAT25 and UIUCTag have no power
+  qualification at all, so they carry the most risk per hour spent.
+  IMUTagNandBmp581 has a full `fw-v0.5`-era measurement, but of a *locally
+  built* image rather than the released one, so it needs redoing against the
+  release -- a correction to a known number, which is worth less than a first
+  number for a target that has none. BitTag has a plan:
+  [`BitTag/design/power-test-plan.md`](../BitTag/design/power-test-plan.md).
+- **Each qualification updates the release notes**, per *Publishing the
+  qualification* in `design/tag-and-host-release-procedure.md`. CI publishes
+  every release stating the images are not bench-tested; that sentence is
+  corrected per target as each is cleared, rather than once at the end.
 - **Later:** make the release check cover every tag. This needs:
   - a config per tag in `power-configs/`;
   - per-target defaults selected by `--target`: a run-current bound taken
