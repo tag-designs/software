@@ -12,6 +12,7 @@
 #include "recovery/capturesource.h"
 
 #include "recovery/sha256.h"
+#include "uiuctag_log_format.h"
 #include "sqlitelog.h"
 
 #include <cmath>
@@ -499,6 +500,221 @@ public:
   }
 };
 
+/**
+ * @brief   UIUCTag (decoder "uiuctag").
+ *
+ * @details Follows embedded/tags/UIUCTag/src/datalog.c and config.c, with the
+ *          layout in include/uiuctag_log_format.h. Checkpoint i (vddHeader[i]:
+ *          int32 epoch of slot 0, uint16 vdd100, uint16 extern_log_block)
+ *          names a 288-byte external block of 24 time-indexed 12-byte slots
+ *          {float pressure, float temperature, uint32 activity}. Slots are
+ *          placed by time, so a missed sample leaves an erased slot rather
+ *          than moving later ones. The block goes out raw: trailing erased
+ *          slots trimmed, interior gaps kept. Indices at or above the
+ *          checkpoint count, or with an erased checkpoint, answer NODATA.
+ */
+class UiucTagDecoder : public CaptureDecoder {
+public:
+  static constexpr uint32_t kSlots = 24;          ///< UIUCTAG_LOG_SAMPLES
+  static constexpr uint32_t kSlotBytes = 12;      ///< UIUCTAG_SAMPLE_SIZE
+  static constexpr uint32_t kBlockBytes = kSlots * kSlotBytes; ///< DATALOG_BLOCK_BYTES
+  static constexpr uint32_t kHeaderBytes = 8;     ///< UIUCTAG_INTERNAL_LOG_SIZE
+  /** UIUCTAG_ADXL_INACT_THRESH_MG: what readConfig() reports, hardcoded. */
+  static constexpr uint32_t kInactThreshMg = 1100;
+
+  std::vector<KnownLayout> Layouts() const override {
+    return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
+            {"data_headers", 1, kHeaderBytes}};
+  }
+
+  bool ReadConfig(const CaptureSource &src, Config &config,
+                  std::string *error) const override {
+    // t_storedconfig (families/BitPresTag/inc/config.h): u16
+    // adxl_act_thresh_cnt @0, u16 adxl_inact_thresh_cnt @2, u16
+    // adxl_inactive_samples @4, u8 filter @6, int32 start @8, int32 stop @12,
+    // hibernate_t hibernate[2] @16. UIUCTag/src/config.c readConfig().
+    const auto it = src.Identity().regions.find("stored_config");
+    if (it == src.Identity().regions.end())
+      return Fail(error, "identity record has no stored_config region");
+    uint8_t c[32];
+    if (!src.Flash(it->second.start, c, sizeof c))
+      return Fail(error, "stored configuration outside the captured image");
+    config.Clear();
+    config.set_tag_type(UIUCTAG);
+    Adxl362 *adxl = config.mutable_adxl362();
+    adxl->set_act_thresh_g(Le16(c) / 1000.0f);
+    adxl->set_inact_thresh_g(kInactThreshMg / 1000.0f);
+    adxl->set_inactive_sec(static_cast<float>(Le16(c + 4)));
+    adxl->set_accel_type(Adxl362_AdxlType_AdxlType_367);
+    Config_Interval *active = config.mutable_active_interval();
+    active->set_start_epoch(static_cast<int32_t>(Le32(c + 8)));
+    active->set_end_epoch(static_cast<int32_t>(Le32(c + 12)));
+    for (int i = 0; i < 2; i++) {
+      Config_Interval *h = config.add_hibernate();
+      h->set_start_epoch(static_cast<int32_t>(Le32(c + 16 + 8 * i)));
+      h->set_end_epoch(static_cast<int32_t>(Le32(c + 20 + 8 * i)));
+    }
+    return true;
+  }
+
+  uint64_t ExternalFlashSize(const CaptureSource &src) const override {
+    return src.Identity().flash_size;
+  }
+
+  uint32_t DataLogCount(const CaptureSource &src) const override {
+    return StatusCount(src);
+  }
+
+  void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+    ack.Clear();
+    ack.set_err(Ack_Err_NODATA);
+    const IdentityRecord &id = src.Identity();
+    if (index >= src.BackupWord(id.backup_state.word_pages))
+      return;
+    const auto dh = id.regions.find("data_headers");
+    const auto ps = id.regions.find("persistent");
+    if (dh == id.regions.end() || ps == id.regions.end())
+      return;
+    const uint32_t end = dh->second.end ? dh->second.end : ps->second.end;
+    const uint64_t address = uint64_t(dh->second.start) + uint64_t(index) * kHeaderBytes;
+    uint8_t h[kHeaderBytes];
+    if (address + kHeaderBytes > end ||
+        !src.Flash(static_cast<uint32_t>(address), h, sizeof h) || Le32(h) == kErased32)
+      return;
+    const uint64_t byte_offset = uint64_t(Le16(h + 6)) * kBlockBytes;
+    const uint64_t flash_size = ExternalFlashSize(src);
+    if (byte_offset >= flash_size)
+      return;
+    uint8_t block[kBlockBytes];
+    std::memset(block, 0xFF, sizeof block);
+    uint32_t count = kBlockBytes;
+    if (byte_offset + count > flash_size)
+      count = static_cast<uint32_t>(flash_size - byte_offset);
+    if (!src.External(byte_offset, block, count))
+      return;
+    // Trim trailing never-written slots, by the firmware's own rule.
+    size_t used = kBlockBytes;
+    while (used >= kSlotBytes) {
+      t_UIUCTagSample slot;
+      std::memcpy(&slot, block + used - kSlotBytes, sizeof slot);
+      if (!uiuctagSampleErased(&slot))
+        break;
+      used -= kSlotBytes;
+    }
+    UIUCTagLog *log = ack.mutable_uiuctag_data_log();
+    log->set_epoch(static_cast<int32_t>(Le32(h)));
+    log->set_voltage(Le16(h + 4) * 0.01f);
+    log->set_samples(block, used);
+    ack.set_err(Ack_Err_OK);
+  }
+};
+
+/**
+ * @brief   BitTag (decoder "bittag").
+ *
+ * @details Follows embedded/tags/BitTag/src/datalog.c and bt_config.c. There
+ *          is no external flash: the log is the internal records
+ *          vddHeader[] {int32 epoch, int16 temp10, uint16 vdd100, uint64
+ *          activity}, served up to BitTagLog.data max_count (30) per Ack from
+ *          the requested index until the first unwritten record. An empty Ack
+ *          ends the download.
+ *
+ *          readConfig() depends on the tag's state: in IDLE or TEST it
+ *          reports the nanopb default Config built into the image, which the
+ *          identity record locates; otherwise the stored configuration.
+ */
+class BitTagDecoder : public CaptureDecoder {
+public:
+  static constexpr uint32_t kRecordBytes = 16;   ///< sizeof(t_DataHeader)
+  static constexpr uint32_t kPerAck = 30;        ///< BitTagLog.data max_count
+
+  std::vector<KnownLayout> Layouts() const override {
+    return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
+            {"data_headers", 1, kRecordBytes}};
+  }
+
+  bool ReadConfig(const CaptureSource &src, Config &config,
+                  std::string *error) const override {
+    const IdentityRecord &id = src.Identity();
+    config.Clear();
+    const uint32_t state = src.BackupWord(id.backup_state.word_state);
+    if (state == IDLE || state == TEST) {
+      // readDefaultConfig(): the image's nanopb default, decoded as is.
+      uint32_t len = 0;
+      if (!id.has_default_config ||
+          !src.Flash(id.default_config_len_addr, &len, sizeof len) || len > 4096)
+        return Fail(error, "BitTag in IDLE or TEST reports its default config, "
+                           "which the identity record does not locate");
+      std::vector<uint8_t> blob(len);
+      if (!src.Flash(id.default_config_addr, blob.data(), len) ||
+          !config.ParseFromArray(blob.data(), static_cast<int>(len)))
+        return Fail(error, "BitTag default config unreadable");
+      return true;
+    }
+    // t_storedconfig (BitTag/inc/config.h): u16 adxl_act_thresh_cnt @0, u16
+    // adxl_inact_thresh_cnt @2, u16 adxl_inactive_samples @4, u8
+    // adxl_filter_range_rate @6, u8 internal_format @7, int32 start @12,
+    // int32 stop @16, hibernate_t hibernate[2] @20.
+    const auto it = id.regions.find("stored_config");
+    if (it == id.regions.end())
+      return Fail(error, "identity record has no stored_config region");
+    uint8_t c[36];
+    if (!src.Flash(it->second.start, c, sizeof c))
+      return Fail(error, "stored configuration outside the captured image");
+    // ADXL362 sensitivity per range, g per count (Sens[] in bt_config.c);
+    // a range above 8 g reads as BITTAG_LE_RANGE (4 g).
+    static const float kSens[] = {0.001f, 0.002f, 0.004f};
+    int range = (c[6] >> 6) & 3;
+    if (range > 2)
+      range = 1;
+    config.set_tag_type(BITTAG_LE);
+    Adxl362 *adxl = config.mutable_adxl362();
+    adxl->set_act_thresh_g(static_cast<int>(Le16(c)) * kSens[range]);
+    adxl->set_inact_thresh_g(static_cast<int>(Le16(c + 2)) * kSens[range]);
+    adxl->set_inactive_sec(static_cast<float>(static_cast<int>(Le16(c + 4))));
+    Config_Interval *active = config.mutable_active_interval();
+    active->set_start_epoch(static_cast<int32_t>(Le32(c + 12)));
+    active->set_end_epoch(static_cast<int32_t>(Le32(c + 16)));
+    config.set_bittag_log(static_cast<BitTagLogFmt>(c[7]));
+    for (int i = 0; i < 2; i++) {
+      Config_Interval *h = config.add_hibernate();
+      h->set_start_epoch(static_cast<int32_t>(Le32(c + 20 + 8 * i)));
+      h->set_end_epoch(static_cast<int32_t>(Le32(c + 24 + 8 * i)));
+    }
+    return true;
+  }
+
+  uint64_t ExternalFlashSize(const CaptureSource &) const override { return 0; }
+
+  uint32_t DataLogCount(const CaptureSource &src) const override {
+    return StatusCount(src);
+  }
+
+  void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+    ack.Clear();
+    ack.set_err(Ack_Err_OK);
+    BitTagLog *log = ack.mutable_bittag_data_log();
+    const IdentityRecord &id = src.Identity();
+    const auto dh = id.regions.find("data_headers");
+    const auto ps = id.regions.find("persistent");
+    if (dh == id.regions.end() || ps == id.regions.end())
+      return;
+    const uint32_t end = dh->second.end ? dh->second.end : ps->second.end;
+    for (uint32_t n = 0; n < kPerAck; n++, index++) {
+      const uint64_t address = uint64_t(dh->second.start) + uint64_t(index) * kRecordBytes;
+      uint8_t r[kRecordBytes];
+      if (address + kRecordBytes > end ||
+          !src.Flash(static_cast<uint32_t>(address), r, sizeof r) || Le32(r) == kErased32)
+        break;
+      BitTagData *d = log->add_data();
+      d->set_epoch(static_cast<int32_t>(Le32(r)));
+      d->set_temperature(static_cast<int16_t>(Le16(r + 4)) * 0.1f);
+      d->set_voltage(Le16(r + 6) * 0.01f);
+      d->set_rawdata(uint64_t(Le32(r + 8)) | (uint64_t(Le32(r + 12)) << 32));
+    }
+  }
+};
+
 } // namespace
 
 CaptureSource::CaptureSource() = default;
@@ -719,6 +935,10 @@ bool CaptureSource::Open(const std::string &dir, std::string *error) {
     decoder_ = std::make_unique<PresTagDecoder>();
   else if (decoder == "compasstag" && !external_.empty())
     decoder_ = std::make_unique<CompassTagDecoder>();
+  else if (decoder == "uiuctag" && !external_.empty())
+    decoder_ = std::make_unique<UiucTagDecoder>();
+  else if (decoder == "bittag")
+    decoder_ = std::make_unique<BitTagDecoder>();
   else
     return Fail(error, "capture rebuild not implemented for decoder \"" + decoder +
                            "\", or its external flash was not captured");

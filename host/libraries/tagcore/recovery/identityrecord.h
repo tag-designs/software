@@ -76,6 +76,9 @@ struct IdentityRecord {
   float mag_constant = 0;          ///< As tag-info reports it.
   uint32_t tag_state_max = 0;      ///< Largest TagState value the firmware accepts.
   uint32_t state_event_max = 0;    ///< Largest State_Event value.
+  bool has_default_config = false; ///< default_config was present.
+  uint32_t default_config_addr = 0;     ///< Address of the nanopb default Config.
+  uint32_t default_config_len_addr = 0; ///< Address of its uint32 byte length.
   bool has_session_facts = false;  ///< session_facts was present.
   uint32_t session_facts_offset = 0; ///< Offset of t_sessionFacts in the stored config.
 

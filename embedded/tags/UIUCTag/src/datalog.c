@@ -35,6 +35,20 @@
 #include "persistent.h"
 #include "custom.h"
 
+/*
+ * Checkpoints (region data_headers) and external blocks, as data_logAck() reads them.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_DataHeader, epoch) == 0, "UIUCTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, vdd100) == 4, "UIUCTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, extern_log_block) == 6, "UIUCTag data_headers layout: see capturesource.cc");
+_Static_assert(DATALOG_BLOCK_BYTES == 288U, "UIUCTag block layout: see capturesource.cc");
+
+
 /** Exported for shared monitor code that reports download block size. */
 const int databuf_size = DATALOG_BLOCK_BYTES;
 /*

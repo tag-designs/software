@@ -14,6 +14,21 @@
 #include "strings.h"
 
 /*
+ * Stored configuration (region stored_config), as readConfig() reads it.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_storedconfig, adxl_act_thresh_cnt) == 0, "UIUCTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, adxl_inactive_samples) == 4, "UIUCTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, start) == 8, "UIUCTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, stop) == 12, "UIUCTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, hibernate) == 16, "UIUCTag stored_config layout: see capturesource.cc");
+
+
+/*
  * UIUCTag has no local config.h -- it shares the t_storedconfig layout and
  * Config/adxl362 protobuf shape with the rest of the BitPresTag family (see
  * ../families/BitPresTag/inc/config.h). Only the accelerometer field
@@ -51,6 +66,8 @@
  * value nothing enforces.
  */
 #define UIUCTAG_ADXL_INACT_THRESH_MG 1100U
+/* The host capture decoder reports this value too (capturesource.cc). */
+_Static_assert(UIUCTAG_ADXL_INACT_THRESH_MG == 1100U, "UIUCTag reported inactivity threshold: see capturesource.cc");
 
 // ram based config (used by monitor to communicate to tag)
 

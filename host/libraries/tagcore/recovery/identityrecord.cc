@@ -17,6 +17,7 @@ constexpr uint16_t kExternalFlash = 0x0402U;
 constexpr uint16_t kNumbers = 0x0201U;
 constexpr uint16_t kBackupState = 0x0401U;
 constexpr uint16_t kSessionFacts = 0x0601U;
+constexpr uint16_t kDefaultConfig = 0x0309U;
 
 /// Region entries: id -> name, as in decode_tag_identity.py.
 const std::map<uint16_t, const char *> &RegionIds() {
@@ -130,6 +131,10 @@ IdentityRecord ParseIdentityRecord(const std::vector<uint8_t> &flash,
       b.word_pages = U32(flash, v + 20);
       b.word_external_blocks = U32(flash, v + 24);
       b.word_reset_cause = U32(flash, v + 28);
+    } else if (id == kDefaultConfig && len >= 8) {
+      r.has_default_config = true;
+      r.default_config_addr = U32(flash, v);
+      r.default_config_len_addr = U32(flash, v + 4);
     } else if (id == kSessionFacts && len >= 12) {
       r.has_session_facts = true;
       r.session_facts_offset = U32(flash, v);

@@ -9,6 +9,26 @@
 #include <pb_decode.h>
 #include <string.h>
 
+/*
+ * Stored configuration (region stored_config), as readConfig() reads it.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_storedconfig, adxl_act_thresh_cnt) == 0, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, adxl_inact_thresh_cnt) == 2, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, adxl_inactive_samples) == 4, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, adxl_filter_range_rate) == 6, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, internal_format) == 7, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, start) == 12, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, stop) == 16, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, hibernate) == 20, "BitTag stored_config layout: see capturesource.cc");
+_Static_assert(ADXL362_RANGE_2G == 0 && ADXL362_RANGE_4G == 1 && ADXL362_RANGE_8G == 2,
+               "BitTag Sens[] indexing: see capturesource.cc");
+
+
 #define ADXL_RANGE(r) (((r) >> 6) & 3)
 
 #define BITTAG_LE_RANGE ADXL362_RANGE_4G

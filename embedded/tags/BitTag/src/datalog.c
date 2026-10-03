@@ -10,6 +10,22 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/*
+ * Log records (region data_headers), as data_logAck() reads them.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(sizeof(t_DataHeader) == 16, "BitTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, temp10) == 4, "BitTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, vdd100) == 6, "BitTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, activity) == 8, "BitTag data_headers layout: see capturesource.cc");
+_Static_assert(sizeof(((BitTagLog *)0)->data) / sizeof(BitTagData) == 30,
+               "BitTagLog.data max_count: see capturesource.cc");
+
+
 extern int encode_ack(void);
 
 static bool readDataHeader(int index, t_DataHeader *header)
