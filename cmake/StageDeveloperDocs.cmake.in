@@ -29,8 +29,28 @@ foreach(doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
     "${source_dir}/*.jpg"
     "${source_dir}/*.jpeg"
     "${source_dir}/*.png"
-    "${source_dir}/*.svg")
+    "${source_dir}/*.svg"
+    # Measurement data cited by a document. A results page whose raw data is
+    # not downloadable alongside it is a claim without its evidence.
+    "${source_dir}/*.csv")
   if(local_assets)
     file(COPY ${local_assets} DESTINATION "${output_dir}")
+  endif()
+
+  # Figures kept in an images/ subdirectory beside the markdown, rather than
+  # alongside it. The glob above matches only "${source_dir}/*.png" and friends,
+  # so without this a staged page renders in the portal with broken images --
+  # the document is present and reachable, which makes the omission easy to miss
+  # until someone opens the page.
+  if(IS_DIRECTORY "${source_dir}/images")
+    file(
+      COPY "${source_dir}/images"
+      DESTINATION "${output_dir}"
+      FILES_MATCHING
+        PATTERN "*.gif"
+        PATTERN "*.jpg"
+        PATTERN "*.jpeg"
+        PATTERN "*.png"
+        PATTERN "*.svg")
   endif()
 endforeach()

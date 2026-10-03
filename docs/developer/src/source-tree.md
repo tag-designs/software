@@ -7,6 +7,7 @@ directory that owns the code; the developer portal stages those files under
 ## Top-Level Design
 
 - [Design Index](reference/design/index.md)
+- [The IMUTag: An Overview](reference/design/imutag-overview.md)
 - [Binary Datalogs](reference/design/binary-datalogs.md)
 - [Offline Log Reconstruction](reference/design/offline-log-reconstruction.md)
 - [DataProcessing Post-Processing Application](reference/design/dataprocessing.md)

@@ -49,6 +49,7 @@ nav:
       - Overview: source-tree.md
       - Top-Level Design:
           - Design Index: reference/design/index.md
+          - "The IMUTag: An Overview": reference/design/imutag-overview.md
           - Binary Datalogs: reference/design/binary-datalogs.md
           - Windows Build Notes: reference/design/windows-build-notes.md
       - Embedded:

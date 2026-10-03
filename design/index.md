@@ -3,7 +3,7 @@
 Welcome to the Developer Design Index. This directory contains technical specifications, design decisions, and system notes for the tag-designs codebase. 
 
 > [!NOTE]
-> For user-facing application manuals and deployment workflows, please refer to the [User Guide](file:///host/docs/README.md) (built via MkDocs).
+> For user-facing application manuals and deployment workflows, please refer to the [User Guide](../host/docs/README.md) (built via MkDocs).
 
 ---
 
@@ -33,7 +33,7 @@ Welcome to the Developer Design Index. This directory contains technical specifi
 *   [**Tag Firmware Open Issues**](../embedded/tags/design/open-issues.md): Known unfixed defects, separating reproduced faults from ones found by reading code.
 *   [**STM32U375 Standby Entry: Forum Post**](../embedded/tags/design/stm32u375-standby-forum-post.md): The layout-dependent Standby fault as measured -- register state at the WFI, what the stall is, and every mechanism excluded.
 *   [**Restart Recovery Design**](../embedded/tags/design/restart-recovery.md): Specification for state machine preservation, register resets, and low-power recovery cycles.
-*   [**IMUTag Power Estimates and Measurements**](../embedded/tags/families/IMUTag/design/PowerEstimates.md): Measured idle and per-rate current for the LDO and TPS62840 SMPS breakouts, storage-versus-battery limits on a 12 mAh cell, and the regulator decision at the 400 Hz design point.
+*   [**IMUTag Power Estimates and Measurements**](../embedded/tags/families/IMUTag/design/PowerEstimates.md): Measured idle and per-rate current for the LDO and TPS62840 SMPS breakouts, storage-versus-battery limits on a 12 mAh cell, the regulator decision at the 400 Hz design point, and the first measured 3.7 V point, which confirms the buck projection to 0.2%.
 *   [**PresTag Power and Schedule Test Plan**](../embedded/tags/families/PresTag/design/power-test-plan.md): Hardware-in-the-loop plan for sample period, start, stop and hibernation on an STM32L432 PresTag -- the 10 s Stop 2 / Shutdown boundary, why an unbiased window is 60 sample periods rather than one, and the linear average-current law used to estimate lifetime on 5.5 mAh and 11 mAh cells.
 *   [**PresTag Power and Schedule Test Report**](../embedded/tags/families/PresTag/design/power-test-report.md): Results form and baseline table for the PresTag test plan.
 *   [**PresTag Power Measurement Log**](../embedded/tags/families/PresTag/design/power-test-results.md): Append-only record of every completed PresTag power measurement, with the build and conditions each was taken under. The source for any figure quoted elsewhere.
