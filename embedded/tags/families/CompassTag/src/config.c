@@ -14,6 +14,20 @@
 #include "sensors.h"
 #include "strings.h"
 
+/*
+ * Stored configuration (region stored_config), as readConfig() reads it.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(offsetof(t_storedconfig, start) == 0, "CompassTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, stop) == 4, "CompassTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, hibernate) == 8, "CompassTag stored_config layout: see capturesource.cc");
+_Static_assert(sizeof(hibernate_t) == 8, "CompassTag stored_config layout: see capturesource.cc");
+
+
 
 // ram based config (used by monitor to communicate to tag)
 

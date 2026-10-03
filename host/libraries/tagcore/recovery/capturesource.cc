@@ -389,6 +389,116 @@ public:
   }
 };
 
+/**
+ * @brief   CompassTag (decoder "compasstag").
+ *
+ * @details Follows embedded/tags/families/CompassTag/src/datalog.c and
+ *          config.c. Header i (vddHeader[i]: int32 epoch, uint16 vdd100,
+ *          int16 temp10) owns the 380 external bytes at i * 380: ten blocks,
+ *          each three RawSensorData samples (six int16: ax ay az mx my mz)
+ *          and a uint16 activity word packing a 5-bit field per sample,
+ *          LSB first. A block whose activity word is FFFFh is unfinished and
+ *          skipped, not an end. The tag converts on the way out: acceleration
+ *          * 0.976 mg, field * 0.04 uT, activity * 100 / 30 percent.
+ */
+class CompassTagDecoder : public CaptureDecoder {
+public:
+  static constexpr uint32_t kBlocks = 10;          ///< DATALOG_SAMPLES
+  static constexpr uint32_t kSamplesPerBlock = 3;  ///< SAMPLES_PER_BLOCK
+  static constexpr uint32_t kActivityBits = 5;     ///< ACTIVITY_BITS_PER_SAMPLE
+  static constexpr int32_t kPeriodS = 30;          ///< COMPASS_SAMPLE_PERIOD_S
+  static constexpr uint32_t kBlockBytes = kSamplesPerBlock * 12 + 2;
+  static constexpr uint32_t kPageBytes = kBlocks * kBlockBytes; ///< sizeof(t_DataLog)
+  static constexpr uint32_t kHeaderBytes = 8;      ///< sizeof(t_DataHeader)
+
+  std::vector<KnownLayout> Layouts() const override {
+    return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
+            {"data_headers", 1, kHeaderBytes}};
+  }
+
+  bool ReadConfig(const CaptureSource &src, Config &config,
+                  std::string *error) const override {
+    // t_storedconfig (families/CompassTag/inc/config.h): int32 start @0,
+    // int32 stop @4, hibernate_t hibernate[2] @8.
+    const auto it = src.Identity().regions.find("stored_config");
+    if (it == src.Identity().regions.end())
+      return Fail(error, "identity record has no stored_config region");
+    uint8_t c[24];
+    if (!src.Flash(it->second.start, c, sizeof c))
+      return Fail(error, "stored configuration outside the captured image");
+    config.Clear();
+    config.set_tag_type(COMPASSTAG);
+    Config_Interval *active = config.mutable_active_interval();
+    active->set_start_epoch(static_cast<int32_t>(Le32(c)));
+    active->set_end_epoch(static_cast<int32_t>(Le32(c + 4)));
+    for (int i = 0; i < 2; i++) {
+      Config_Interval *h = config.add_hibernate();
+      h->set_start_epoch(static_cast<int32_t>(Le32(c + 8 + 8 * i)));
+      h->set_end_epoch(static_cast<int32_t>(Le32(c + 12 + 8 * i)));
+    }
+    return true;
+  }
+
+  uint64_t ExternalFlashSize(const CaptureSource &src) const override {
+    return src.Identity().flash_size;
+  }
+
+  uint32_t DataLogCount(const CaptureSource &src) const override {
+    return StatusCount(src);
+  }
+
+  void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+    // Invalid indices answer err OK with no payload, which ends the download.
+    ack.Clear();
+    ack.set_err(Ack_Err_OK);
+    const IdentityRecord &id = src.Identity();
+    const auto dh = id.regions.find("data_headers");
+    const auto ps = id.regions.find("persistent");
+    if (dh == id.regions.end() || ps == id.regions.end())
+      return;
+    const uint32_t end = dh->second.end ? dh->second.end : ps->second.end;
+    const uint64_t address = uint64_t(dh->second.start) + uint64_t(index) * kHeaderBytes;
+    const uint64_t byte_offset = uint64_t(kPageBytes) * index;
+    uint8_t h[kHeaderBytes];
+    if (address + kHeaderBytes > end ||
+        !src.Flash(static_cast<uint32_t>(address), h, sizeof h) ||
+        Le32(h) == kErased32 || byte_offset >= ExternalFlashSize(src))
+      return;
+    // readExternalPage(): a page cut short by the end of the part reads FFh.
+    uint8_t page[kPageBytes];
+    std::memset(page, 0xFF, sizeof page);
+    uint32_t count = kPageBytes;
+    if (byte_offset + count > ExternalFlashSize(src))
+      count = static_cast<uint32_t>(ExternalFlashSize(src) - byte_offset);
+    if (!src.External(byte_offset, page, count))
+      return;
+    CompassTagLog *log = ack.mutable_compasstag_data_log();
+    log->set_epoch(static_cast<int32_t>(Le32(h)));
+    log->set_voltage(Le16(h + 4) * 0.01f);
+    log->set_temperature(static_cast<int16_t>(Le16(h + 6)) * 0.1f);
+    log->set_sample_period_s(kPeriodS);
+    for (uint32_t b = 0; b < kBlocks; b++) {
+      const uint8_t *block = page + b * kBlockBytes;
+      const uint16_t activity = Le16(block + kSamplesPerBlock * 12);
+      if (activity == 0xFFFFU)
+        continue;
+      for (uint32_t j = 0; j < kSamplesPerBlock; j++) {
+        const uint8_t *r = block + j * 12;
+        auto raw = [r](int k) { return static_cast<int16_t>(Le16(r + 2 * k)); };
+        CompassTagLog_Compass *d = log->add_data();
+        const int field = (activity >> (j * kActivityBits)) & ((1 << kActivityBits) - 1);
+        d->set_activity(field * 100.0f / kPeriodS);
+        d->set_ax(raw(0) * 0.976f);
+        d->set_ay(raw(1) * 0.976f);
+        d->set_az(raw(2) * 0.976f);
+        d->set_mx(raw(3) * 0.04f);
+        d->set_my(raw(4) * 0.04f);
+        d->set_mz(raw(5) * 0.04f);
+      }
+    }
+  }
+};
+
 } // namespace
 
 CaptureSource::CaptureSource() = default;
@@ -607,6 +717,8 @@ bool CaptureSource::Open(const std::string &dir, std::string *error) {
     decoder_ = std::make_unique<ImuTagNandDecoder>();
   else if (decoder == "prestag" && !external_.empty())
     decoder_ = std::make_unique<PresTagDecoder>();
+  else if (decoder == "compasstag" && !external_.empty())
+    decoder_ = std::make_unique<CompassTagDecoder>();
   else
     return Fail(error, "capture rebuild not implemented for decoder \"" + decoder +
                            "\", or its external flash was not captured");

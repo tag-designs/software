@@ -15,6 +15,24 @@
 #include "persistent.h"
 #include "storage_flash.h"
 
+/*
+ * Data headers (region data_headers) and external pages, as data_logAck() reads them.
+ * The host rebuilds a download from an SWD capture by reading these at
+ * these offsets (host/libraries/tagcore/recovery/capturesource.cc). Moving a
+ * member is a layout change: bump the region's layout_version in the tag
+ * identity record and teach that decoder the new layout. The host refuses a
+ * layout version it does not know, but cannot see a change made without one.
+ */
+_Static_assert(sizeof(t_DataHeader) == 8, "CompassTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, vdd100) == 4, "CompassTag data_headers layout: see capturesource.cc");
+_Static_assert(offsetof(t_DataHeader, temp10) == 6, "CompassTag data_headers layout: see capturesource.cc");
+_Static_assert(sizeof(RawSensorData) == 12, "CompassTag page layout: see capturesource.cc");
+_Static_assert(DATALOG_SAMPLES == 10 && SAMPLES_PER_BLOCK == 3 && ACTIVITY_BITS_PER_SAMPLE == 5,
+               "CompassTag page layout: see capturesource.cc");
+_Static_assert(sizeof(t_DataLog) == 380, "CompassTag page layout: see capturesource.cc");
+_Static_assert(COMPASS_SAMPLE_PERIOD_S == 30, "CompassTag sample period: see capturesource.cc");
+
+
 const int databuf_size = sizeof(t_DataLog);
 static t_DataLog databuf NOINIT;
 /*
