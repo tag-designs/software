@@ -263,6 +263,8 @@ every rate. Recording draws 539 uA at 100 Hz, 662 uA at 400 Hz and 1003 uA at
 The per-rate measurements are in
 [IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html).
 
+![Recording time against sample rate for a 12 mAh cell and 2 Gbit flash: the battery limit falls gently from 22.3 h at 100 Hz to 12.0 h at 1600 Hz, the flash limit halves with every doubling of rate from 54.6 h to 3.4 h, and the two cross near 300 Hz; at the 400 Hz design point the flash fills at 13.7 h, before the battery runs out at 18.1 h](images/imutag-recording-limits.svg)
+
 Idle has measured as two distinct populations on the same board and image,
 5.52 uA and 6.71 uA, and which one you get is not yet understood. **Plan on
 74 days**, the pessimistic figure. The recording currents are reproducible to

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 424" width="680" height="424" role="img" aria-labelledby="t d">
+<title id="t">IMUTag recording time vs sample rate: battery limit and flash limit</title>
+<desc id="d">At 400 Hz the 2 Gbit flash fills after 13.7 h, before a 12 mAh cell runs out at 18.1 h. Below about 300 Hz the battery runs out first.</desc>
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7;
+        --s1:#2a78d6; --s2:#eb6834; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+          --s1:#3987e5; --s2:#d95926; }
+  }
+  .bg { fill:var(--surface); }
+  .title { fill:var(--ink); font-size:15px; font-weight:600; }
+  .sub { fill:var(--ink2); font-size:12px; }
+  .tick { fill:var(--muted); font-size:11.5px; }
+  .lab { fill:var(--ink); font-size:12.5px; font-weight:600; }
+  .val { fill:var(--ink2); font-size:12px; }
+  .grid { stroke:var(--grid); stroke-width:1; }
+  .axis { stroke:var(--axis); stroke-width:1; }
+  .s1 { stroke:var(--s1); fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .s2 { stroke:var(--s2); fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .m1 { fill:var(--s1); stroke:var(--surface); stroke-width:2; }
+  .m2 { fill:var(--s2); stroke:var(--surface); stroke-width:2; }
+  .design { stroke:var(--ink2); stroke-width:1.25; stroke-dasharray:4 4; }
+</style>
+<rect class="bg" width="680" height="424"/>
+<text class="title" x="24" y="26">At 400 Hz the flash fills before the battery runs out</text>
+<text class="sub" x="24" y="46">Recording time, IMUTagNandBmp581, 12 mAh cell, 2 Gbit flash; currents measured at 3.69 V on 2026-10-03</text>
+<line class="axis" x1="64" y1="336.0" x2="530" y2="336.0"/>
+<text class="tick" x="56" y="340.0" text-anchor="end">0</text>
+<line class="grid" x1="64" y1="291.7" x2="530" y2="291.7"/>
+<text class="tick" x="56" y="295.7" text-anchor="end">10</text>
+<line class="grid" x1="64" y1="247.3" x2="530" y2="247.3"/>
+<text class="tick" x="56" y="251.3" text-anchor="end">20</text>
+<line class="grid" x1="64" y1="203.0" x2="530" y2="203.0"/>
+<text class="tick" x="56" y="207.0" text-anchor="end">30</text>
+<line class="grid" x1="64" y1="158.7" x2="530" y2="158.7"/>
+<text class="tick" x="56" y="162.7" text-anchor="end">40</text>
+<line class="grid" x1="64" y1="114.3" x2="530" y2="114.3"/>
+<text class="tick" x="56" y="118.3" text-anchor="end">50</text>
+<line class="grid" x1="64" y1="70.0" x2="530" y2="70.0"/>
+<text class="tick" x="56" y="74.0" text-anchor="end">60</text>
+<text class="tick" x="24" y="203.0" transform="rotate(-90 24 203.0)" text-anchor="middle">hours of recording</text>
+<text class="tick" x="64.0" y="354" text-anchor="middle">100</text>
+<text class="tick" x="180.5" y="354" text-anchor="middle">200</text>
+<text class="tick" x="297.0" y="354" text-anchor="middle">400</text>
+<text class="tick" x="413.5" y="354" text-anchor="middle">800</text>
+<text class="tick" x="530.0" y="354" text-anchor="middle">1600</text>
+<text class="tick" x="297.0" y="374" text-anchor="middle">sample rate (Hz)</text>
+<line class="design" x1="297.0" y1="64" x2="297.0" y2="336"/>
+<text class="val" x="303.0" y="74">400 Hz design point</text>
+<path class="s1" d="M64.0 237.2 L180.5 244.2 L297.0 255.7 L413.5 271.6 L530.0 283.0"/>
+<path class="s2" d="M64.0 93.9 L180.5 214.9 L297.0 275.5 L413.5 305.7 L530.0 320.9"/>
+<circle class="m1" cx="64.0" cy="237.2" r="4.5"/>
+<circle class="m1" cx="180.5" cy="244.2" r="4.5"/>
+<circle class="m1" cx="297.0" cy="255.7" r="4.5"/>
+<circle class="m1" cx="413.5" cy="271.6" r="4.5"/>
+<circle class="m1" cx="530.0" cy="283.0" r="4.5"/>
+<circle class="m2" cx="64.0" cy="93.9" r="4.5"/>
+<circle class="m2" cx="180.5" cy="214.9" r="4.5"/>
+<circle class="m2" cx="297.0" cy="275.5" r="4.5"/>
+<circle class="m2" cx="413.5" cy="305.7" r="4.5"/>
+<circle class="m2" cx="530.0" cy="320.9" r="4.5"/>
+<text class="val" x="305.0" y="246.7">18.1 h</text>
+<text class="val" x="305.0" y="292.5">13.7 h</text>
+<text class="lab" x="542" y="287.0">Battery</text>
+<text class="lab" x="542" y="324.9">Flash</text>
+<text class="val" x="250.0" y="211.1" text-anchor="middle">limits cross</text>
+<text class="val" x="250.0" y="226.1" text-anchor="middle">near 300 Hz</text>
+<line class="axis" x1="250.0" y1="231.1" x2="250.0" y2="243.1"/>
+<line class="s1" x1="64" y1="406" x2="86" y2="406"/><circle class="m1" cx="75" cy="406" r="4"/><text class="val" x="94" y="410">Battery limit: 12 mAh / measured current</text>
+<line class="s2" x1="364" y1="406" x2="386" y2="406"/><circle class="m2" cx="375" cy="406" r="4"/><text class="val" x="394" y="410">Flash limit: 131,072 pages x 150 samples</text>
+</svg>

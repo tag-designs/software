@@ -165,6 +165,15 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 | 800 Hz | 5.333 pages/s | 3.41 h (0.14 d) | 6.83 h (0.28 d) |
 | 1600 Hz | 10.667 pages/s | 1.71 h (0.07 d) | 3.41 h (0.14 d) |
 
+Against the battery, on the 2 Gbit part IMUTagNandBmp581 carries, the two
+limits cross near 300 Hz; at the 400 Hz design point the flash fills first.
+
+![Recording time against sample rate: battery limit (12 mAh over the measured current) and 2 Gbit flash limit, crossing near 300 Hz; at 400 Hz the flash fills at 13.7 h, the battery would last 18.1 h](../../../../../host/docs/src/images/imutag-recording-limits.svg)
+
+The chart is drawn from `sweep-3v7-20261003.csv` by
+[`plot_recording_limits.py`](plot_recording_limits.py); rerun it after a new
+sweep.
+
 
 ## Measurement Method: A Joulescope Hazard Worth Knowing
 
