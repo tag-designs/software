@@ -46,8 +46,20 @@ summary: Open BitTag power-qualification work -- tool support, unmeasured phases
   default format and changes nothing at `BITPERSEC`, which is what the
   2026-10-03 qualification used.
 
-  Keep the exponential average and feed it at write time rather than deleting
-  it: the smoothing then runs over records instead of minutes, which is still
-  smoothed and is the cadence the value is actually stored at. Note this does
-  change what gets logged, so it wants a before-and-after comparison on the
-  same board rather than being slipped in.
+  **The exponential average can probably go with it.** `git log -S` puts the
+  average, the `(channel - 9)` SMPR2 off-by-one and the commented-out ADC
+  settling delay all in the initial commit, so the filter has always sat on
+  top of a measurement that was never read correctly. No commit records why it
+  was added, but smoothing a reading that would not sit still is the obvious
+  reason.
+
+  It is testable rather than a judgement call, because `recordState()` bypasses
+  the filter -- its markers are raw single samples. Post-fix on the UIUCTag
+  breakout, two consecutive raw reads gave 2.49 V / 23.9 C and 2.48 V /
+  25.3 C: 10 mV and 1.4 C apart, which is around the MCU temperature sensor's
+  own tolerance. Collect a few more raw markers on a BitTag and compare the
+  spread against the filter's time constant; if the raw reads are that tight,
+  the filter is removable and a single sample at write time is enough.
+
+  Either way this changes what gets logged, so it wants a before-and-after
+  comparison on the same board rather than being slipped in.
