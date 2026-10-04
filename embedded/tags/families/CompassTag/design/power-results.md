@@ -213,3 +213,55 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   IDLE windows agreed closely (0.2346 vs 0.2317 µA), and calibration was
   confirmed byte-identical before and after flashing, so none of this
   required re-running `tag-cal`/`qtcalibrate`.
+
+### 2026-10-04  `CompassTagAT25` release qualification, fw-v0.5 — first from a release image
+
+- **build**: `fw-v0.5` (`fdcec161`), tree clean, toolchain 14.2.1.
+  `CompassTagAT25.bin` sha256
+  `87ec266e9f0cc1fd676132de936e1d9714bee5f13f99148c8844660cae125d19`,
+  flashed with `flash_release.py` and verified against its manifest.
+  **The first CompassTag figures taken from a release image rather than a
+  local build.**
+- **board**: `CompassTagAT25` on CompassTagv1 hardware, UUID
+  `203633324B4250060022005E` — **a different unit** from the
+  `...004A005D` of 2026-09-24. Mass-erased at the operator's instruction and
+  recalibrated by hand before the run, so the usual "calibration byte-identical"
+  gate does not apply to this session.
+- **conditions**: supply 2.4960 V throughout, unregulated 2.5 V cell. Shipped
+  default config, 30 s compass period. `joulescope_server.py --use-server`,
+  qtmonitor and the desktop app detached. Resting windows 120 s, running
+  windows 900 s (thirty ticks, so 3.3% alignment error).
+- **result**:
+
+  | State | Current (uA) | How |
+  | --- | ---: | --- |
+  | `IDLE`, clock set | 0.23 | life-cycle, both runs |
+  | `RUNNING` | **1.96 / 1.95 / 1.9482** | three 900 s windows, two harnesses, 0.60% spread |
+  | `FINISHED` | 0.22 | life-cycle |
+  | `IDLE` after a full cycle | 0.22 | life-cycle |
+  | resting after a `tag-test` attach | 0.2201 | Phase D, a second attach pattern |
+
+  Resting mean **0.2225 uA** over four states, 10 nA spread. Running mean
+  **1.9527 uA**, 8.8x resting. Per mAh of cell: 187 days resting, 21.3 days
+  recording.
+
+  `tag-test`: `ALL_PASSED`. Downloads: 30 `Activity` rows per run, every
+  delta **exactly 30 s**.
+- **verdict**: **PASS**, every gate in
+  [`power-test-plan.md`](power-test-plan.md) met. **`FINISHED` had never been
+  measured on a CompassTag before this session**; it matches `IDLE` to 0.01 uA,
+  which is what sharing `tagPowerEnterTerminalSleep()` requires.
+- **notes**: agrees with the 2026-09-24 production unit (idle 0.2346/0.2317,
+  running 1.9538) on a different board — the first board-to-board agreement
+  CompassTag has had, which the plan warned not to assume. Read the older
+  1.9538 figure as carrying 17% of its own alignment error: it came from a
+  180 s window, six ticks.
+
+  Two tooling facts established. CompassTag does **not** hit the
+  attach-from-sleep failure that stops `tag_lifecycle_check.py` driving a
+  BitTag; it drove this tag cleanly. And the first run of this session
+  **failed spuriously**: `--idle-max-ua` is both the resting bound and the
+  bound the run must exceed, and at 5 uA it declared a 1.96 uA run asleep in
+  the same pass whose download check found 30 rows. The plan now specifies
+  `--idle-max-ua 1`. That log is kept as `lifecycle-idlemax5.log`.
+- **artifacts**: `release-checks/compasstagat25-20261004-143226/`
