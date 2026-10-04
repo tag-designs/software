@@ -51,7 +51,7 @@ That is roughly **1000×**. Every terminal state (`IDLE`, `FINISHED`,
 field-deployed tag; it is very visible on any bench unit that has ever seen a
 debugger, which is every unit under active development or bring-up — which is
 why it looked, at first, like a hardware Standby-decline erratum (the same
-class of fault documented for STM32U375 in `embedded/tags/design/open-issues.md`
+class of fault documented for STM32U375 in `embedded/tags/TODO.md`
 and `AGENTS.md`) rather than a one-line regression in disconnect handling.
 
 **The fix** (commit `3ca3f99`): restore `tagPowerDebuggerAttached()` and the

@@ -9,7 +9,7 @@ summary: Why STM32U375 Standby entry depended on image layout -- every perturbat
 September 2026, closed 2026-09-07 at commit 0638a76, when the terminal sleep
 moved to Stop 3; see [the decision record](../../../../../../docs/decisions/0008-u375-terminal-sleep-is-stop-3.md). *Why* the
 Standby request is declined was never established. These entries were cut
-verbatim from [Open Issues](../../../../design/open-issues.md); references in them to "AGENTS.md",
+verbatim from [Open Issues](../../../../TODO.md); references in them to "AGENTS.md",
 "below" and "above" are to that tracker as it then stood. The draft forum post
 that summarises the fault for ST is
 [2026-09-u375-standby-forum-post.md](2026-09-u375-standby-forum-post.md); the related run-mode

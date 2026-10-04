@@ -8,7 +8,7 @@ summary: A non-failure reset during RUNNING aborted PresTag runs under 10 s and 
 
 Observed 2026-10-01 and 2026-10-02, fixed 2026-10-02 (commit a406eda7, "tags:
 an external reset is a reattach, not a failure"). Cut verbatim from two
-places: the work-list entry A6 in [Next Release TODO](../next-release-todo.md), and the
+places: the work-list entry A6 in [Next Release TODO](../../TODO.md), and the
 "Still open" entry in [Restart Recovery](../../common/core/design/restart-recovery.md) that A6 points to.
 
 ## From Next Release TODO, A6

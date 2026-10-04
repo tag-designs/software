@@ -8,7 +8,7 @@ summary: IMUTagNand keeps Sleep, not STOP0 or STOP1, as its returned-idle defaul
 
 Date: 2026-08-16 (commit c068ed9d)
 
-Cut verbatim from [STM32U375 Stop-Mode Support](../../embedded/tags/common/core/design/u375-stop-support.md). The
+Cut verbatim from [STM32U375 Stop-Mode Support](../../embedded/tags/common/core/design/u375-low-power.md). The
 measurements behind it were not recorded.
 
 ## Decision
@@ -21,5 +21,5 @@ raised reliability concerns, so the target keeps Sleep as its default idle mode.
 
 Deeper modes are used only where a scope sets them: the RUNNING event wait
 and the SPI transfer brackets described in
-[STM32U375 Stop-Mode Support](../../embedded/tags/common/core/design/u375-stop-support.md), and the run sleep in
+[STM32U375 Stop-Mode Support](../../embedded/tags/common/core/design/u375-low-power.md), and the run sleep in
 [the Stop 2 decision record](0007-u375-run-sleep-is-stop-2.md).

@@ -9,7 +9,7 @@ summary: Four attach-storm failures chased in September 2026 -- non-monotonic ti
 Closed 2026-09-07. Three of the four were host-tool faults (the timestamp
 check, fixed in 9754dc74 on 2026-09-06; `tag-stop`, `tag-reset` and `tag-dwnld`
 settling, the last in a71752f); one was firmware, fixed in 928093d. Cut
-verbatim from [Open Issues](../open-issues.md); "AGENTS.md" in the text is the root
+verbatim from [Open Issues](../../TODO.md); "AGENTS.md" in the text is the root
 agent guide as it then stood.
 
 ### RESOLVED: the non-monotonic timestamps were a bug in the check

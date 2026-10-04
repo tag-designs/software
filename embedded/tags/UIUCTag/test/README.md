@@ -52,7 +52,7 @@ until the flash is full. Then it downloads every block through the real
 `data_logAck()`.
 
 Its subject is fix A3 from the `firmware-fix` branch
-(see [next-release-todo.md](../../design/next-release-todo.md)). Flash size is
+(see [firmware TODO](../../TODO.md)). Flash size is
 not a multiple of the 288-byte block, so the end of the part cuts the final
 block short. That block must still be served, with every slot that was
 completed plus the fields of the slot cut short that fit:

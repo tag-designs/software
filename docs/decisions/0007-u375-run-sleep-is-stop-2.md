@@ -8,7 +8,7 @@ summary: IMUTagNandBmp581 sleeps between IMU wakes in Stop 2 rather than Stop 1,
 
 Date: 2026-09-07 (commit e08e3fab)
 
-The text below is cut verbatim from [Open Issues](../../embedded/tags/design/open-issues.md); "the Standby
+The text below is cut verbatim from [Open Issues](../../embedded/tags/TODO.md); "the Standby
 entry below" refers to [the Standby layout investigation](../../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md).
 
 ## Context

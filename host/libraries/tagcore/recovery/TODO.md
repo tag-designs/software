@@ -11,7 +11,7 @@ The unbuilt pieces (Python binding, identification without an identity record,
 rescue) are in
 [their proposal](../design/proposals/recovery-identification-rescue-python.md).
 The capture additions still to build are D3 in
-[Tag Firmware: Next Release TODO](../../../../embedded/tags/design/next-release-todo.md):
+[Tag Firmware: Next Release TODO](../../../../embedded/tags/TODO.md):
 - the RV3028 EEOffset for tags already deployed;
 - internal-flash ECC faults.
 

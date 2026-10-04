@@ -7,7 +7,7 @@ summary: The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout
 # SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)
 
 Closed: the optimization shipped, and the `-O3` experiment was rejected.
-Extracted verbatim from [base design notes](../notes.md); ideas for a future
+Extracted verbatim from [base design notes](../../README.md); ideas for a future
 base remain there.
 
 The `tag-breakout-base-l432-v1` base uses an STM32F042 as the SWD bridge MCU

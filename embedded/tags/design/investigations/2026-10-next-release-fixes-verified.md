@@ -9,7 +9,7 @@ summary: How the post-fw-v0.0.3 defect fixes (A1-A3, A7) and the identity record
 2026-10-01 to 2026-10-03. Items A1, A2, A3, B1 and B2 were merged to `main`
 from the `firmware-fix` branch; A7 landed as f3b2cf75 (PresTag) and fcc57d73
 (CompassTag). Cut verbatim from
-[Next Release TODO](../next-release-todo.md), which keeps the items still open.
+[Next Release TODO](../../TODO.md), which keeps the items still open.
 
 ### A1. CompassTag family: resumed logging overwrites earlier pages
 

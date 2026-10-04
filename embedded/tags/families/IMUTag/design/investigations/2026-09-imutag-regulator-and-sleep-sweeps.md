@@ -440,7 +440,7 @@ Same board, same regulator, same procedure, roughly 20% apart:
 > +164.7 at 400 Hz, falling to +96.2 at 1600 Hz) are the same fixed
 > sleeping-floor offset amortised over a shrinking idle fraction. The 21% idle
 > difference is *not* covered by this and remains open, though it is only
-> 0.86 uA in absolute terms. See `embedded/tags/design/open-issues.md`.
+> 0.86 uA in absolute terms. See `embedded/tags/TODO.md`.
 
 This is not resolved, and neither sweep should be quoted as authoritative until
 it is. A 21% difference in *idle* is the most troubling part, because idle is
@@ -545,7 +545,7 @@ the effect are established; its mechanism is not.
 > Selecting Stop 2 for the run sleep removes the variation and is lower than
 > either arm at every rate: 605 / 746 / 959 / 1133 uA at 100 / 400 / 800 /
 > 1600 Hz, holding to 0.2 uA across three layouts that swing Stop 1 by 195.
-> See `embedded/tags/design/open-issues.md`.
+> See `embedded/tags/TODO.md`.
 
 #### Measured SMPS Board, Full Rate Sweep (2026-09-07), Shipping Configuration
 
@@ -815,7 +815,7 @@ which was then the live terminal path. It no longer is: the tag enters standby
 via `tagPowerEnterStandby()`, and Stop3 is `__attribute__((unused))`. The
 pre-sleep clear therefore runs on no path the tag takes today, and attempts to
 put it on the live paths have measured 1036 uA at idle against 4.94 uA without
-it. See [`../../../design/open-issues.md`](../../../../design/open-issues.md).
+it. See [firmware TODO](../../../../TODO.md).
 
 The `debug_log` row is a different fault and is still open. It was retested
 after the flash-flag fix and stayed at 1.71 mA, which confirms the module's own

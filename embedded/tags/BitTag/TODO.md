@@ -16,7 +16,7 @@ summary: Open BitTag power-qualification work -- tool support, unmeasured phases
   second board or session agrees with the first. About 0.584 uA (1.15x the
   measured 0.5082 uA) would match IMUTag's margin. Release-check coverage for
   every tag is tracked in
-  [next-release-todo.md](../design/next-release-todo.md).
+  [firmware TODO](../TODO.md).
 - **Sweep current against cell voltage**, from a fresh cell down to the 2.00 V
   firmware floor. BitTag has no regulator, so nothing measured at 2.5 V
   transfers to another voltage.

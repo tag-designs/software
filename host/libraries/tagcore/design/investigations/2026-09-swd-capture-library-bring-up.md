@@ -198,7 +198,7 @@ around `tag-capture`.
 downloaded normally, with its data intact.
 
 **9. Identity record (firmware).** *Done in the firmware, ahead of steps 4-8*
-(`embedded/tags/design/next-release-todo.md` B1). It is in every family.
+(`embedded/tags/TODO.md` B1). It is in every family.
 It was checked on hardware on a PresTag. What remains here is the host side:
 identification (step 7) should read the record first.
 Original plan: specify it with the session superblock, add

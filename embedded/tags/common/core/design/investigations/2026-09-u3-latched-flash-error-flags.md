@@ -37,7 +37,7 @@ step before arming sleep, immediately ahead of `DBGMCU->CR = 0` and the
 > clear runs on no path the tag takes today. Two attempts to add it to the live
 > idle and standby paths both measured about 1036 uA at idle against 4.94 uA
 > without it, which is not yet explained -- see
-> [`open-issues.md`](../../../../design/open-issues.md). Flags are cleared by writing 1, so no flash
+> [firmware TODO](../../../../TODO.md). Flags are cleared by writing 1, so no flash
 unlock is needed and the call is safe with the flash locked.
 
 ### How the flag gets latched in the first place

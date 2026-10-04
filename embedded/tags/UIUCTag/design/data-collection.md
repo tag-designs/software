@@ -725,5 +725,5 @@ What the firmware guarantees to the `sqlitelog` decoder:
 
 ## Related Notes
 
-- [UIUCTag board integration plan](board-integration.md)
+- [UIUCTag board integration plan](overview.md)
 - [BMP581/BMP585 forced-mode pressure plan](../../families/BitPresTag/design/bmp581-forced-mode.md)

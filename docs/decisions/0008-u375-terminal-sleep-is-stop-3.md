@@ -8,7 +8,7 @@ summary: The STM32U375 terminal sleep is Stop 3 with an RTC wake through WKUP7 a
 
 Date: 2026-09-07 (commit 0638a76)
 
-The text below is cut verbatim from [Open Issues](../../embedded/tags/design/open-issues.md). The full
+The text below is cut verbatim from [Open Issues](../../embedded/tags/TODO.md). The full
 search that preceded the decision is in
 [the Standby layout investigation](../../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md).
 

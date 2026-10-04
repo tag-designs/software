@@ -10,7 +10,7 @@ An SRAM-resident image that reads the RV3028 RTC's registers over I2C, on a tag
 with no firmware or firmware that cannot run. Its main use is reading the
 part's **factory EEOffset** (registers 0x36 and 0x37), the clock calibration
 that the firmware stores with each session (B2 in
-[next-release-todo.md](../../tags/design/next-release-todo.md)).
+[firmware TODO](../../tags/TODO.md)).
 
 It is read-only by construction. It performs one register-read transaction: a
 write of the register pointer, a repeated start, then a read. It never writes a

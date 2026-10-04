@@ -7,8 +7,7 @@ summary: The LSM6DSV16X driver contract: descriptor model, modes, trigger owners
 # LSM6DSV16X Driver Design Assumptions
 
 This file captures the implemented design assumptions for the LSM6DSV16X IMU
-driver. The longer conversation transcript in `investigations/imu-design-chat-notes.md` remains useful
-as design history; this file describes the current driver contract.
+driver; it describes the current driver contract.
 
 ## Ownership Boundary
 

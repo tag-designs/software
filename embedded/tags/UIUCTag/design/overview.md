@@ -177,8 +177,6 @@ measurements are in the [bring-up report](investigations/bringup-report.md).
 
 ## History
 
-- [board-integration.md](board-integration.md): the original board-integration
-  plan.
 - [data-collection.md](data-collection.md): the data-collection plan (stages
   S1-S4, work items W1-W10), now built.
 - Pressure-sampling options for BMP58x parts:
