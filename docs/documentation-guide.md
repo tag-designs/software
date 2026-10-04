@@ -100,6 +100,12 @@ docs/tools/docs.py index    # regenerate docs/index.md after adding or retitling
 cmake --build <build-dir> --target developer_docs   # build the portal
 ```
 
+Link to source files, scripts and other documents with ordinary relative
+links; `check` verifies they resolve in the repository. When the portal is
+built, a Markdown page a developer document links to (a user-manual page, say)
+is published with it, and links to files the portal does not publish (sources,
+scripts, JSON) are pointed at the file on GitHub's `main` branch.
+
 Run `check` before committing a documentation change. Adding a document needs
 nothing more than its front matter and `docs.py index`: the portal stages every
 document `docs.py list` reports and builds its sidebar from the same data.

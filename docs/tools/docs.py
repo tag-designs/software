@@ -21,6 +21,8 @@ Subcommands:
            current; exit 1 on any problem
   index    regenerate docs/index.md
   nav      write the generated nav into a staged mkdocs.yml (used by CMake)
+  links    in the staged copy, point links to unpublished repository files
+           (sources, scripts, JSON) at GitHub (used by CMake)
 
 Standard library only: it runs from CMake before MkDocs, and on a bare checkout.
 """
@@ -351,8 +353,40 @@ def cmd_index(_args) -> int:
 # ---------------------------------------------------------------- list / nav
 
 
+def linked_markdown(paths: list[str]) -> list[str]:
+    """Markdown files outside the catalogue that a listed document links to.
+
+    A developer document may link to a user-manual page or to AGENTS.md. Those
+    are staged too, so the link works in the portal, but they stay out of the
+    index and the sidebar. Followed transitively; archives are never staged.
+    """
+    staged = set(paths)
+    extra: list[str] = []
+    queue = list(paths)
+    while queue:
+        src = queue.pop()
+        for target in iter_links((ROOT / src).read_text(encoding="utf-8")):
+            if re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I) or target.startswith("#"):
+                continue
+            rel = target.split("#", 1)[0]
+            if not rel.endswith(".md"):
+                continue
+            resolved = ((ROOT / src).parent / rel).resolve()
+            try:
+                path = resolved.relative_to(ROOT).as_posix()
+            except ValueError:
+                continue
+            if path in staged or is_archived(path) or not resolved.is_file():
+                continue
+            staged.add(path)
+            extra.append(path)
+            queue.append(path)
+    return sorted(extra)
+
+
 def cmd_list(args) -> int:
     paths = [d.path for d in documents()]
+    paths += linked_markdown(paths)
     text = "\n".join(paths) + "\n"
     if args.output:
         Path(args.output).write_text(text, encoding="utf-8")
@@ -404,6 +438,53 @@ def cmd_nav(args) -> int:
     return 1
 
 
+GITHUB_BLOB = "https://github.com/tag-designs/software/blob/main/"
+GITHUB_TREE = "https://github.com/tag-designs/software/tree/main/"
+STAGED_ASSETS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".csv")
+
+
+def cmd_links(args) -> int:
+    """Point staged links at files the portal does not publish to GitHub.
+
+    The portal stages Markdown (and images) only, so a link from a design
+    document to a source file, script or JSON config resolves in the
+    repository but not in the browser. In the staged copy only, such links
+    are rewritten to the file on the main branch; line anchors (#L59) carry
+    over. The source documents are not changed.
+    """
+    staged_root = Path(args.staged)  # <staging>/src/reference
+    staged = set(Path(args.list).read_text(encoding="utf-8").split())
+    changed = 0
+    for rel in staged:
+        out = staged_root / rel
+        if not out.is_file():
+            continue
+        text = out.read_text(encoding="utf-8")
+        src_dir = (ROOT / rel).parent
+
+        def fix(m):
+            prefix, target = m.group(1), m.group(2)
+            if re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I) or target.startswith("#"):
+                return m.group(0)
+            path, sep, frag = target.partition("#")
+            resolved = (src_dir / path).resolve()
+            try:
+                repo_path = resolved.relative_to(ROOT).as_posix()
+            except ValueError:
+                return m.group(0)
+            if not resolved.exists() or repo_path in staged or repo_path.lower().endswith(STAGED_ASSETS):
+                return m.group(0)
+            base = GITHUB_TREE if resolved.is_dir() else GITHUB_BLOB
+            return prefix + base + repo_path + (sep + frag if sep else "")
+
+        new = re.sub(r"(\]\()([^)\s]+)", fix, text)
+        if new != text:
+            out.write_text(new, encoding="utf-8")
+            changed += 1
+    print(f"rewrote source links in {changed} staged documents")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -412,6 +493,10 @@ def main() -> int:
     p.set_defaults(fn=cmd_list)
     sub.add_parser("check").set_defaults(fn=cmd_check)
     sub.add_parser("index").set_defaults(fn=cmd_index)
+    p = sub.add_parser("links")
+    p.add_argument("staged", help="<staging>/src/reference directory")
+    p.add_argument("--list", required=True, help="output of `docs.py list`")
+    p.set_defaults(fn=cmd_links)
     p = sub.add_parser("nav")
     p.add_argument("mkdocs", help="staged mkdocs.yml to rewrite in place")
     p.set_defaults(fn=cmd_nav)

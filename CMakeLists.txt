@@ -172,7 +172,10 @@ if(Python3_Interpreter_FOUND)
               --output "${DEVELOPER_DOCS_LIST}")
   set(developer_docs_nav_command
       COMMAND "${Python3_EXECUTABLE}" "${DEVELOPER_DOCS_TOOL}" nav
-              "${DEVELOPER_DOCS_CONFIG}")
+              "${DEVELOPER_DOCS_CONFIG}"
+      COMMAND "${Python3_EXECUTABLE}" "${DEVELOPER_DOCS_TOOL}" links
+              "${DEVELOPER_DOCS_STAGING_DIR}/src/reference"
+              --list "${DEVELOPER_DOCS_LIST}")
 else()
   set(developer_docs_list_command
       COMMAND ${CMAKE_COMMAND} -E echo "Python 3 is required to stage developer docs"
