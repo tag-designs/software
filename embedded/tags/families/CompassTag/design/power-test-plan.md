@@ -105,20 +105,46 @@ not be compared to a new measurement more tightly than that.
   it does not need the magnetometer pull-down fix the production board does,
   and its idle figures are not comparable.
 
-### Calibration must survive — this is blocking
+### Calibration — never mass erase, and check where the region actually is
 
-Production CompassTag boards carry user calibration in the `.calibration`
-section; on the measured unit it was at `0x0800a800`, 2016 bytes. A mass erase
-destroys it, and recovering it means re-running `tag-cal`/`qtcalibrate` on a
-unit that may be calibrated against a real deployment.
+Production CompassTag boards carry user calibration in `.calibration`, 2016
+bytes. Recovering it means re-running `tag-cal`/`qtcalibrate` on a unit that
+may be calibrated against a real deployment.
 
-**Back it up before flashing and verify it byte-identical afterwards.** The
-2026-09-24 session did exactly this and needed no recalibration.
+**Never mass erase.** `flash_release.py` does a normal download —
+`STM32_Programmer_CLI ... -d <image> -g 0x08000000`, with no `-e all` — and the
+`.calibration` section is `NOBITS` with a zero file size, so the image contains
+no bytes for it and programming does not write that region. Verified against
+the released ELF, not assumed.
+
+> **The region is not at a fixed address on this part, and that is the real
+> hazard.** The L432 linker places it as `.calibration (NOLOAD): ALIGN(2048)`
+> immediately after the code, so **it moves when the image grows**. The
+> STM32U375 script pins both bounds with eleven `ASSERT`s precisely "so that
+> provisioned configuration and calibration survive a firmware update"; the
+> L432 script has one `ASSERT`, and it is about `.tag_identity`.
+>
+> It has already moved. At `4160d1e` the calibration sat at `0x0800a800`; in
+> `fw-v0.5` the ELF puts `__calibration_start__` at **`0x0800b000`**, one page
+> higher, with the loaded image ending at `0x0800aebc` — **324 bytes of
+> headroom**. A board calibrated under the older image therefore has its
+> calibration bytes at an address the new firmware does not read. Nothing
+> erased them; the firmware is simply looking somewhere else.
+>
+> **Resolve this before flashing a calibrated production unit.** Read the
+> address out of the ELF being flashed and compare it against the one the
+> board was calibrated under; if they differ, the calibration must be
+> relocated or re-taken, and neither is part of a power measurement.
+
+Read the address from the image rather than hardcoding it:
 
 ```sh
-STM32_Programmer_CLI -c port=SWD mode=UR -u 0x0800a800 2016 "$OUT/calibration-before.bin"
+ELF="$RELEASE/CompassTagAT25/CompassTagAT25.elf"
+CAL=$(arm-none-eabi-nm "$ELF" | awk '$3=="__calibration_start__"{print "0x"$1}')
+echo "calibration at $CAL"
+STM32_Programmer_CLI -c port=SWD mode=UR -u "$CAL" 2016 "$OUT/calibration-before.bin"
 # ... flash ...
-STM32_Programmer_CLI -c port=SWD mode=UR -u 0x0800a800 2016 "$OUT/calibration-after.bin"
+STM32_Programmer_CLI -c port=SWD mode=UR -u "$CAL" 2016 "$OUT/calibration-after.bin"
 cmp "$OUT/calibration-before.bin" "$OUT/calibration-after.bin" && echo "calibration intact"
 ```
 
@@ -140,15 +166,15 @@ A manifest reporting `dirty` is not a release and must not be qualified.
 
 ### Supply
 
-Past CompassTag sessions were taken at **~2.485 V** and this plan assumes the
-same. Confirm it on the Joulescope and record it.
+**There is no regulator.** Like BitTag and PresTag, the parts run straight off
+a nominal **2.5 V** cell, so no voltage scaling applies and a figure holds only
+at the voltage it was taken at — see shared procedure §5. Past sessions were
+taken at ~2.485 V.
 
-> **The board's regulator arrangement is not recorded anywhere in this tree.**
-> Shared procedure §5 turns on that distinction: with no regulator a figure
-> holds only at the voltage it was taken at, with a buck it scales by the
-> voltage ratio. Until someone settles it from the schematic, **do not compare
-> a CompassTag current across supply voltages at all**, and keep every session
-> at the same voltage so the log stays internally comparable.
+Set the supply to 2.5 V and confirm it on the Joulescope **before the tag is
+connected**, then require 2.45-2.55 V on every measurement and record it. The
+bench is shared with IMUTag work at 3.7 V, which is above the absolute maximum
+for parts fed directly from the rail.
 
 ## 3. Phases
 
@@ -235,7 +261,8 @@ adds it.
 
 | Point | Gate | Rationale |
 | --- | --- | --- |
-| supply, every measurement | the session's stated voltage, recorded | the regulator arrangement is unknown, so comparisons across voltages are not yet valid |
+| supply, every measurement | 2.45-2.55 V | no regulator, so a figure means nothing at another voltage |
+| calibration address | the ELF's `__calibration_start__` matches the one the board was calibrated under | it is not pinned on L432 and has already moved once |
 | calibration | byte-identical before and after flashing | hard; a lost calibration costs a recalibration against a real deployment |
 | `IDLE` | ≤ 5 µA | a "did it sleep" bound, deliberately loose against a ~0.23 µA floor |
 | `FINISHED` | ≤ 5 µA, and within 20% of `IDLE` | same code path; a difference is a finding |
@@ -272,6 +299,10 @@ artefacts GPIO markers have produced on this bench.
   2026-09 but not part of this gate; see [`../TODO.md`](../TODO.md).
 - **Board-to-board spread.** CompassTag boards have needed per-board attention.
   Record the UUID and do not generalise from one unit.
+- **Relocating calibration across a firmware update.** This plan refuses to
+  flash a calibrated unit whose calibration address has moved; making that
+  survivable — pinning the region as the U375 script does, or migrating the
+  bytes — is firmware work, not a power measurement.
 - **Whether `debug_log` belongs in a shipped image.** `CompassTagAT25`'s
   `project.mk` lists it in `TAG_MODULES`, while the debug module is kept out of
   shipped IMUTag images because instrumentation in the idle path has changed
