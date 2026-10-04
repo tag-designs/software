@@ -6,6 +6,20 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
 
 # CompassTag TODO
 
+- **Move the calibration region to the end of flash, as IMUTag does — next
+  firmware release.** On the L432 the linker places it as
+  `.calibration (NOLOAD): ALIGN(2048)` straight after the code, so it moves
+  whenever the image grows, and a firmware update leaves a calibrated board's
+  bytes at an address the new image does not read. It has already moved: at
+  `4160d1e` it was at `0x0800a800`; in `fw-v0.5` `__calibration_start__` is
+  `0x0800b000`, with the loaded image ending at `0x0800aebc` — 324 bytes of
+  headroom. The STM32U375 script pins both bounds with eleven `ASSERT`s,
+  with a comment saying it is done so provisioned configuration and
+  calibration survive a firmware update; `STM32L432xC.ld` has one `ASSERT`,
+  about `.tag_identity`. Copy the U375 arrangement: pin the region against the
+  top of flash and assert that code cannot reach it. Until then, a calibrated
+  unit must not be reflashed without comparing the two addresses — see
+  [the power test plan](design/power-test-plan.md).
 - **Measure plain `CompassTag` (MX25R) after an attach.** It reproduced the
   Standby-after-attach fault on its own board, and it has not been measured
   since the fix. `CompassTagAT25` has been, on production hardware
