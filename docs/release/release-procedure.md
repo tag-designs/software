@@ -234,12 +234,21 @@ format it no longer understands. Neither is reported. **For a major upgrade on
 such a target, mass erase and reprovision**, rather than trusting the old
 contents.
 
-**The cost is that a mass erase requires physical access afterwards.** Erasing
-sets `FLASH_SR.PEMPTY`, and with `nSWBOOT0 = 1` and BOOT0 low that sends every
-reset to the ROM bootloader: the firmware does not run, no monitor answers, and
-`tag-info` reports the condition rather than the tag. Hardware re-evaluates the
-flag only at power-on or an option-byte load, so **the tag must be
-power-cycled** before it will run the image just written.
+**Erase and program in one invocation.** `flash_release.py --erase` passes
+`-e all` and `-d <image>` to the same programmer call, which is what avoids the
+bootloader problem rather than recovering from it: two separate invocations
+leave a reset between them with the flash empty, and that is what latches
+`FLASH_SR.PEMPTY`. With `nSWBOOT0 = 1` and BOOT0 low a set PEMPTY sends every
+reset to the ROM bootloader -- the firmware does not run, no monitor answers,
+and `tag-info` reports the condition rather than the tag. Hardware re-evaluates
+the flag only at power-on or an option-byte load, so a tag in that state must
+be power-cycled before it will run the image just written.
+
+**Reprovisioning is the price, and it is a small one.** A mass erase destroys
+the NOLOAD regions along with the image, so a calibrated tag needs
+recalibrating. For the handful of boards in this project that is cheaper than
+carrying a migration path, and it is the agreed approach for the release that
+relocates CompassTag's calibration.
 
 Two traps around it:
 

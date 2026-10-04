@@ -41,11 +41,12 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
   not read. Two units are known to be affected — the production
   `203633324B425006004A005D`, and `203633324B4250060022005E`, recalibrated by
   hand on 2026-10-04 with its constants at `0x0800b000`. The change therefore
-  needs one of:
-  - recalibrate the affected units after the release, which is cheap for two
-    boards and needs no code; or
-  - a one-time migration that reads the old address and rewrites the new one,
-    which is more code and has to know where the old one was.
+  **Decided 2026-10-04: erase and recalibrate, no migration.** Existing units
+  get `flash_release.py --erase`, which erases and programs in one invocation
+  and so never leaves the reset-with-empty-flash window that latches
+  `FLASH_SR.PEMPTY`, followed by a recalibration. For two boards that is
+  cheaper than a migration path that has to know where the old region was, and
+  it leaves no code behind to maintain.
 
   Whichever is chosen, the release notes must say that the image relocates
   calibration, because a tag that silently reads an unwritten page looks like

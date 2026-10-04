@@ -359,6 +359,16 @@ def main(argv: list[str]) -> int:
         help="ST-LINK selector passed through: pid:0483:3748, serial:<sn>, index:<n>, prompt, auto.",
     )
     parser.add_argument(
+        "--erase",
+        action="store_true",
+        help="Mass erase before programming, in the same programmer "
+        "invocation. Use for a major upgrade that moves or reformats the "
+        "NOLOAD regions -- calibration, stored configuration, the NAND map -- "
+        "which a normal program leaves in place and the new image may then "
+        "read at the wrong address or in the wrong format. Destroys those "
+        "regions: the tag must be reprovisioned afterwards.",
+    )
+    parser.add_argument(
         "--no-pempty-fix",
         action="store_true",
         help="Do not clear FLASH_SR.PEMPTY after programming. The check reads "
@@ -412,6 +422,11 @@ def main(argv: list[str]) -> int:
         return 0
 
     programmer = find_programmer(args.programmer)
+    # Erase and program in one invocation when asked. Two invocations leave a
+    # reset between them with the flash empty, which is what latches
+    # FLASH_SR.PEMPTY and sends the part to the ROM bootloader; one invocation
+    # never exposes that window. The PEMPTY check below stays as a net.
+    erase = ["-e", "all"] if args.erase else []
     command = [
         sys.executable,
         str(SELECT_SCRIPT),
@@ -420,11 +435,16 @@ def main(argv: list[str]) -> int:
         "--selector",
         args.selector,
         "--",
+        *erase,
         "-d",
         str(image),
         "-g",
         LOAD_ADDRESS,
     ]
+    if args.erase:
+        print("\nMass erase requested: NOLOAD regions are destroyed with the\n"
+              "image, so a provisioned tag needs reprovisioning afterwards --\n"
+              "calibration, and anything else held outside the loaded image.")
     print(f"\nProgramming with {programmer}")
     status = subprocess.call(command)
 
