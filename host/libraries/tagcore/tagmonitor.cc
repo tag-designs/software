@@ -33,6 +33,17 @@ extern "C"
 #define DCRDR 0xE000EDF8U
 #define DEMCR 0xE000EDFCU
 
+// STM32L4-specific, used only after the device has been identified as one.
+// The flash empty check is an L4 feature: the STM32U3 reference headers define
+// no EMPTY or PEMPTY bit, and on that part FLASH_SR sits at offset 0x20, so
+// 0x40022010 there is FLASH_OPTKEYR -- a key register, not a status one.
+
+#define L4_DBGMCU_IDCODE 0xE0042000U
+#define L4_DBGMCU_DEV_ID_MASK 0x00000FFFU
+#define L4_DEV_ID_L43X 0x435U
+#define L4_FLASH_SR 0x40022010U
+#define L4_FLASH_SR_PEMPTY (1U << 17)
+
 #define SCB_ICSR 0xE000ED04U
 #define SCB_VTOR 0xE000ED08U
 #define SCB_AIRCR 0xE000ED0CU
@@ -706,12 +717,24 @@ bool TagMonitor::AttachL4()
     // writing 1 toggles it, so a tool that "clears" it on a part where it was
     // already clear sets it. A power cycle or an option-byte load fixes it;
     // nSWBOOT0 = 0, nBOOT0 = 1 disables the empty check (RM0394 2.6).
+    // `flash_release.py` clears it after programming, so this reports a tag
+    // that was erased by some other route.
+    //
+    // Gated on the device ID, because the address is only FLASH_SR on an L4.
+    // Reading it unconditionally meant that on an STM32U375 this looked at
+    // FLASH_OPTKEYR and called bit 17 PEMPTY; it reads as zero there so it
+    // never fired, but the diagnosis it would have printed was nonsense.
     {
-      uint32_t flash_sr = 0;
-      if (ReadDebug32(0x40022010U, &flash_sr) && (flash_sr & (1U << 17)))
-        log_error("FLASH_SR.PEMPTY is set (FLASH_SR=0x%x): the tag boots the ROM "
-                  "bootloader, not the firmware. Power-cycle the tag, or reload its "
-                  "option bytes", flash_sr);
+      uint32_t idcode = 0;
+      if (ReadDebug32(L4_DBGMCU_IDCODE, &idcode) &&
+          (idcode & L4_DBGMCU_DEV_ID_MASK) == L4_DEV_ID_L43X)
+      {
+        uint32_t flash_sr = 0;
+        if (ReadDebug32(L4_FLASH_SR, &flash_sr) && (flash_sr & L4_FLASH_SR_PEMPTY))
+          log_error("FLASH_SR.PEMPTY is set (FLASH_SR=0x%x): the tag boots the ROM "
+                    "bootloader, not the firmware. Power-cycle the tag, or reload its "
+                    "option bytes", flash_sr);
+      }
     }
 
     // Call monitor to get pointer to information block
