@@ -16,7 +16,7 @@
  *          TAG_BOARD_ID, TAG_BUILD_OPTIONS_DIGEST. Family facts come from
  *          tag_identity_family.h; this file supplies a default for each.
  *
- * @see     tag_identity.h, design/offline-log-reconstruction.md
+ * @see     tag_identity.h, docs/investigations/2026-10-offline-log-reconstruction.md
  */
 
 #include "hal.h"

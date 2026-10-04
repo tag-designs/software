@@ -19,7 +19,7 @@
  *          record in RAM and a reset mid-block cannot re-program a written
  *          field.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     ../design/data-collection.md
  */
 
 #include "app.h"

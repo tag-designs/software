@@ -17,7 +17,7 @@ firmware runs.
 Steps 3 and 4 are built (2026-10-01). On 2026-10-02 they were extended to the
 STM32U375 and SPI NAND, through `GD5F2GM7RE_IMUTagNandv2`, `Serve()`
 version 2 (`READ_PAGE`) and `tag-xflash nand`; see
-`embedded/loaders/design/u375-nand-loader-plan.md`. `TargetImage`, `SramCall` and `tag-xflash dump`
+`embedded/loaders/design/proposals/u375-nand-loader-plan.md`. `TargetImage`, `SramCall` and `tag-xflash dump`
 call a loader's `Init` and `Read` from the host and stream the external flash
 to a file; see step 3 for what has been checked. Step 9, the identity record,
 shipped in the firmware ahead of steps 4-8 (`next-release-todo.md` B1). It was
@@ -42,14 +42,14 @@ STM32CubeProgrammer as the driver of the loaders in `embedded/loaders`, and
 
 Background:
 
-- [Field Data Extraction](../../../../design/field-data-extraction.md): why
+- [Field Data Extraction](../../../../embedded/tags/design/proposals/field-data-extraction.md): why
   extraction must not overwrite internal flash, and the session superblock
   proposal that the identity record below should be designed with.
 - [External Flash Loaders](../../../../embedded/loaders/README.md) and
   [Loader Runtime Design](../../../../embedded/loaders/design/loader-runtime.md):
   the loader images, their contract as traced on hardware, and the open issues
   this library is expected to settle.
-- [Python Interface Design](python-interface.md): the binding conventions this
+- [Python Interface Design](proposals/python-interface.md): the binding conventions this
   library follows.
 
 ## Goals
@@ -318,7 +318,7 @@ scan. It carries:
 
 The downloader chooses its loader and decoder from it, so no board argument is
 needed. The specification is item 4 of
-[Offline Log Reconstruction](../../../../design/offline-log-reconstruction.md#4-a-tag-identity-record-immediately-after-the-interrupt-vectors).
+[Offline Log Reconstruction](../../../../docs/investigations/2026-10-offline-log-reconstruction.md#4-a-tag-identity-record-immediately-after-the-interrupt-vectors).
 
 This record should be designed together with the session facts, which go with
 the stored configuration (item 5 there). Adding it changes every image's
@@ -382,7 +382,7 @@ ST's own, then still works, and it was the first thing to build (step 3 below).
 ## Library architecture
 
 Everything is C++ in `tagcore`, Qt-free, with the pybind11 binding described in
-[Python Interface Design](python-interface.md). The layers, lowest first:
+[Python Interface Design](proposals/python-interface.md). The layers, lowest first:
 
 | Layer | Responsibility | New or existing |
 | --- | --- | --- |
@@ -514,7 +514,7 @@ Checked on a bench PresTag on 2026-10-01 (UID `20333050364150040063005F`):
   10 s (run-mode Stop 2), the reset that ends any SWD session is classified
   `EVENT_POWERFAIL` and the run goes to ABORTED. At 10 s and above (Standby
   between samples) the run carries on through the same reset. See
-  `embedded/tags/design/restart-recovery.md`. For PresTag, periods under
+  `embedded/tags/common/core/design/restart-recovery.md`. For PresTag, periods under
   10 s are a bench convenience, not deployed. **IMUTag always runs in Stop 2**,
   and a capture of a RUNNING IMUTagNandBmp581 ended its run as ABORTED/
   POWERFAIL (2026-10-02). Its data up to that point remained downloadable.
@@ -572,7 +572,7 @@ Original plan: add `Serve()` and the service block to
 external flash last, through the loader the identity record names; `--loader`
 overrides it. The shared code is `recovery/externalcapture.*`, and the record
 parser is `recovery/identityrecord.*`. Checked with SPI NAND on an
-IMUTagNandBmp581; see `embedded/loaders/design/u375-nand-loader-plan.md`,
+IMUTagNandBmp581; see `embedded/loaders/design/proposals/u375-nand-loader-plan.md`,
 step 5. The AT25 (linear) path is still to be run on a PresTag.
 Original plan: add external flash to the capture, with the loader
 named by argument. Retire `tag_capture_state.py`, or leave it as a thin wrapper

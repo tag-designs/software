@@ -10,7 +10,7 @@ This document details the recommended design and naming conventions for sharing 
 
 ## Background & Problem Statement
 
-Historically, host applications (`host/applications/` and `host/commandline/`) and embedded tags (`embedded/tags/`) communicated through protocol buffer messages defined in [**`proto/`**](../proto/README.md). However, for high-bandwidth telemetry tags (such as `IMUTag`), serialization overhead and protocol buffer sizing make raw binary log formats necessary. 
+Historically, host applications (`host/applications/` and `host/commandline/`) and embedded tags (`embedded/tags/`) communicated through protocol buffer messages defined in [**`proto/`**](../../proto/README.md). However, for high-bandwidth telemetry tags (such as `IMUTag`), serialization overhead and protocol buffer sizing make raw binary log formats necessary. 
 
 Without a shared definition, an "air gap" is created between the host decoding code and the tag firmware:
 * The tag firmware structures memory based on a private C `struct`.
@@ -22,7 +22,7 @@ To prevent this air gap, binary formats should be defined by a single, shared C/
 
 ## 1. Storage Location for Shared C Types
 
-All shared binary log formats must be stored in the top-level [**`include/`**](../include) directory at the repository root.
+All shared binary log formats must be stored in the top-level [**`include/`**](../../include) directory at the repository root.
 
 ```text
 repository-root/

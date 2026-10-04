@@ -14,7 +14,7 @@
  *          and the BMP585 to SPI1; both bindings live in the tag-local
  *          devices.c descriptors, so this file is transport-agnostic.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     ../design/data-collection.md
  */
 
 #include "hal.h"

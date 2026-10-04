@@ -77,5 +77,5 @@ trimmed, and whether a value the firmware calls absent is one the host omits.
 Neither side's own tests can see those.
 
 See the
-[UIUCTag test strategy](../../../../embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md)
+[UIUCTag test strategy](../../../../embedded/tags/UIUCTag/design/test-strategy.md)
 for how these fit together and what remains for a hardware run.

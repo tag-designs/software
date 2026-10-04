@@ -21,8 +21,8 @@
  *          An erased record reads as all 0xFF, so `version` is
  *          0xFFFFFFFF until a start writes it.
  *
- * @see     design/offline-log-reconstruction.md, item 5 of "Decisions and plan"
- * @see     families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md
+ * @see     docs/investigations/2026-10-offline-log-reconstruction.md, item 5 of "Decisions and plan"
+ * @see     families/IMUTag/design/sample-timing.md
  */
 
 #ifndef SESSION_FACTS_H

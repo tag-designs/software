@@ -449,6 +449,6 @@ Every item here was learned by doing it.
 ## See also
 
 - `embedded/tags/design/open-issues.md` -- known unfixed defects
-- `embedded/tags/design/restart-recovery.md` -- boot and recovery paths
-- `embedded/tags/design/i2c-bus-recovery.md` -- why attach resets matter
+- `embedded/tags/common/core/design/restart-recovery.md` -- boot and recovery paths
+- `embedded/tags/common/core/design/i2c-bus-recovery.md` -- why attach resets matter
 - `AGENTS.md` -- measurement procedure and verification rules

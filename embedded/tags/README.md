@@ -417,10 +417,10 @@ frozen legacy target.
   release. It covers the defect fixes, the layout changes for offline log
   reconstruction, release qualification, and the matching host work.
   `design/open-issues.md` is the standing defect tracker.
-- `design/u375-stop-support.md` documents the current STM32U375 returned-idle
+- `common/core/design/u375-stop-support.md` documents the current STM32U375 returned-idle
   STOP policy, monitor attach guard, and scoped flash/SPI low-power behavior
   for U375 tag targets.
-- `design/u375-stop3-terminal-sleep-plan.md` records the plan to use Stop3 as
+- `common/core/design/proposals/u375-stop3-terminal-sleep-plan.md` records the plan to use Stop3 as
   the STM32U375 terminal sleep backend for IMUTagNand while preserving the
   STM32L432 Standby path.
 

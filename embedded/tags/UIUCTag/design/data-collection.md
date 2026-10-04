@@ -127,7 +127,7 @@ conversions, the hibernation gap, and activity percentages arrive in SQLite wher
 the sequencer put them.
 
 Rationale, per-layer coverage, and how to run them: [UIUCTag test
-strategy](uiuctag-test-strategy.md).
+strategy](test-strategy.md).
 
 What still needs the tag: real BMP585 and ADXL367 behavior, minute-alarm wake
 timing and its energy cost, the capacitor-recharge rest between program cycles,
@@ -339,7 +339,7 @@ firmware:
 | External block stride | 288 B | `UIUCTAG_SAMPLE_BYTES_MAX` |
 | Internal checkpoint | 8 B | `t_UIUCTagInternalLog` |
 
-**Note on the existing board-integration note:** `uiuctag-board-integration.md`
+**Note on the existing board-integration note:** `board-integration.md`
 says "one data-log block covers six five-minute samples, or 30 minutes" and
 "30-minute internal checkpoints", which contradicts `samples[24]` in the same
 document, `UIUCTAG_LOG_SAMPLES 24`, and `UIUCTagLog.samples max_size:288`. This
@@ -656,7 +656,7 @@ is firmware-fixed, and `default-config.json` needs no edit.
 ### W9 — Documentation
 
 - Rewrite the "Firmware Integration State" and "Log Schema" sections of
-  `uiuctag-board-integration.md`: fix the 30-minute/6-sample wording, and point
+  `board-integration.md`: fix the 30-minute/6-sample wording, and point
   the remaining-work list at this note.
 - Note in `families/BitPresTag/README.md` that UIUCTag owns its own
   `datalog.[ch]`/`state_run.c` and why (different record format), so the next
@@ -747,5 +747,5 @@ What the firmware guarantees to the `sqlitelog` decoder:
 
 ## Related Notes
 
-- [UIUCTag board integration plan](uiuctag-board-integration.md)
-- [BMP581/BMP585 forced-mode pressure plan](bmp581-forced-mode.md)
+- [UIUCTag board integration plan](board-integration.md)
+- [BMP581/BMP585 forced-mode pressure plan](../../families/BitPresTag/design/bmp581-forced-mode.md)

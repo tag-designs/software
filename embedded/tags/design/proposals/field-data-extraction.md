@@ -8,8 +8,8 @@ summary: Why raw field dumps are not self-describing, proposed session superbloc
 
 Status: partly implemented. The external-flash loader is built and validated on
 hardware for one board, PresTagv3 with an AT25XE321D; see
-[External Flash Loaders](../embedded/loaders/README.md) and
-[Loader Runtime Design](../embedded/loaders/design/loader-runtime.md). The
+[External Flash Loaders](../../../loaders/README.md) and
+[Loader Runtime Design](../../../loaders/design/loader-runtime.md). The
 session superblock (Gap 1) and the field failure record (Gap 2) remain
 proposals. [What the first loader settled](#what-the-first-loader-settled)
 records which of this document's expectations held and which did not.
@@ -28,7 +28,7 @@ firmware wrote them or how they are laid out.
 
 Establishing which firmware an image is, and being able to rebuild it, is
 covered separately in
-[Tag Firmware Build Reproducibility](tag-build-reproducibility.md). The two
+[Tag Firmware Build Reproducibility](../../../../docs/build/firmware-reproducibility.md). The two
 documents meet at the image hash: a capture that includes internal flash
 contains the bytes of the image, so hashing them identifies the build without
 trusting any embedded metadata.
@@ -36,7 +36,7 @@ trusting any embedded metadata.
 ## What exists today
 
 **The internal-flash marker log is the field mechanism.** `recordState()` in
-[`embedded/tags/common/core/src/persistent.c`](../embedded/tags/common/core/src/persistent.c)
+[`embedded/tags/common/core/src/persistent.c`](../../common/core/src/persistent.c)
 writes a `t_StateMarker` into the `.persistent` section on every state
 transition: epoch, state, internal and external page counts, supply voltage,
 temperature, and the reason. It survives power loss and works on every tag
@@ -50,12 +50,12 @@ load-bearing for anything a returned tag has to tell us. Any diagnostic that
 matters in the field belongs in internal flash.
 
 **Capture already works on STM32U375 tags.**
-[`embedded/tools/tag_capture_state.py`](../embedded/tools/tag_capture_state.py)
+[`embedded/tools/tag_capture_state.py`](../../../tools/tag_capture_state.py)
 connects under reset and stores SRAM, the writable part of internal flash, and
 the RTC backup registers, reading region bounds from the ELF it is given. On
 STM32L432 tags only the internal-flash regions capture today: the SRAM and
 backup-register steps fail
-([open issue](../embedded/loaders/design/loader-runtime.md#open-issues)).
+([open issue](../../../loaders/design/loader-runtime.md#open-issues)).
 
 ## Gap 1: the recorded data is not self-describing
 
@@ -75,7 +75,7 @@ Eight bytes. No magic, no format version, no tag-family identifier. Everything
 needed to interpret the page body -- `IMUTAG_IMU_SAMPLES_PER_SUPERFRAME`,
 `IMUTAG_SUPERFRAMES_PER_PAGE`, the layout of `t_ImuTagImuSample` and
 `t_ImuTagAuxSample` -- is a compile-time constant in
-[`include/imutag_log_format.h`](../include/imutag_log_format.h), present nowhere
+[`include/imutag_log_format.h`](../../../../include/imutag_log_format.h), present nowhere
 in the data.
 
 Three consequences:
@@ -158,7 +158,7 @@ and is built without the erase and program code at all, and
 `<PART>_<Board>-RW.stldr` erases and programs, each verified by read-back, for
 rescue and bench testing. External erase is a rescue operation, always paired
 with an internal erase, and the order matters; see
-[Rescue erase](../embedded/loaders/design/loader-runtime.md#rescue-erase).
+[Rescue erase](../../../loaders/design/loader-runtime.md#rescue-erase).
 
 ### Raw reads for NAND
 
@@ -168,7 +168,7 @@ loader that corrects and skips internally can discard information irrecoverably
 -- and when the failure under investigation is itself in the bad-block map or
 the ECC path, the loader would be hiding exactly the evidence that matters.
 
-Revised by [Offline Log Reconstruction](offline-log-reconstruction.md): the
+Revised by [Offline Log Reconstruction](../../../../docs/investigations/2026-10-offline-log-reconstruction.md): the
 GD5F's on-die ECC algorithm is not in the source, so the host cannot correct a
 raw page itself. A capture should read each used page raw **and** through
 on-die ECC, recording the ECC status. The firmware drops a page whose ECC
@@ -199,7 +199,7 @@ bring-up, part selection, descriptor.
 
 Building `AT25XE_PresTagv3` answered the questions this section used to leave
 open, and overturned three of its expectations. The detail is in
-[Loader Runtime Design](../embedded/loaders/design/loader-runtime.md).
+[Loader Runtime Design](../../../loaders/design/loader-runtime.md).
 
 **The HAL route works, without interrupts.** The loader uses ChibiOS's register
 headers, the committed `board.h` and PAL, with the os-less OSAL and
@@ -252,7 +252,7 @@ ST's External Memory Manager was considered and does not fit. Its custom-driver
 configuration is XSPI vocabulary -- dummy cycles, single/dual/quad modes, DQS,
 instruction and address widths -- while every external flash in this tree hangs
 off SPI1 (`TAG_SPI1_DEVICE_DEFAULTS` in
-[`spi_bus.h`](../embedded/tags/common/core/inc/spi_bus.h)). Its parameter list
+[`spi_bus.h`](../../common/core/inc/spi_bus.h)). Its parameter list
 is still a useful checklist of what a loader's `Init` must establish -- JEDEC
 ID, capacity, reset method, read opcode, dummy cycles, chip-select timing --
 and if a future board puts flash on OCTOSPI it becomes worth revisiting, since
@@ -296,7 +296,7 @@ truncated image hash serves the same purpose.
 The first loader exists. What remains is independent work.
 
 **A host tool to drive the loaders**, designed in
-[SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../../../../host/libraries/tagcore/design/swd-recovery.md).
 The base firmware already implements the
 ST-LINK core-register, run and debug-register commands that the calling
 convention needs, and `tagcore`'s `LinkAdapt` already provides attach under
@@ -304,10 +304,10 @@ reset and memory access. A host tool can enforce the capture-first and
 external-before-internal ordering, feed dumps straight to the decoders, and
 control how the core is left afterwards, which CubeProgrammer does not (see the
 `resetCause` item under
-[Open issues](../embedded/loaders/design/loader-runtime.md#open-issues)).
+[Open issues](../../../loaders/design/loader-runtime.md#open-issues)).
 
 **More loaders.** The per-board work is a short configuration; the
-[add-a-loader checklist](../embedded/loaders/README.md#adding-a-loader) covers a
+[add-a-loader checklist](../../../loaders/README.md#adding-a-loader) covers a
 new board, a new part and a new MCU.
 
 **Moving the storage drivers off the kernel API** is still defensible on its

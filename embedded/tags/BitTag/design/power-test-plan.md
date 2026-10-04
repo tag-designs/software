@@ -160,7 +160,7 @@ comparable and does not belong in the results log.
 Two consequences of there being no regulator:
 
 - **No supply-voltage scaling applies.** The `x (V1/V2)` reasoning used for
-  IMUTag in `families/IMUTag/design/PowerEstimates.md` describes a buck
+  IMUTag in `families/IMUTag/design/power.md` describes a buck
   converter drawing constant *power*. There is no converter here, so that
   arithmetic is simply wrong for BitTag. A BitTag current means nothing except
   at the voltage it was taken at.
@@ -226,7 +226,7 @@ embedded/tools/joulescope_server.py --status  # device held, range mode != 0
 
 ## 3. Qualify the released image, not a rebuild
 
-Per [the release procedure](../../../../design/tag-and-host-release-procedure.md),
+Per [the release procedure](../../../../docs/release/release-procedure.md),
 the image measured must be the image that ships.
 
 ```sh
@@ -443,7 +443,7 @@ it; it is not a substitute for it.
 
 **The result also goes onto the release page**, per *Publishing the
 qualification* in
-[the release procedure](../../../../design/tag-and-host-release-procedure.md):
+[the release procedure](../../../../docs/release/release-procedure.md):
 the BitTag row of the release body's qualification table, with the supply
 voltage stated, and `$OUT` attached as the evidence asset. A qualification that
 stays on the bench cannot be acted on by whoever decides what to flash.

@@ -121,13 +121,13 @@ connector and it does everything: arming, self-test and download.
 
 | Part | Role | Size and capacity | Datasheet |
 | --- | --- | --- | --- |
-| LSM6DSV | Accelerometer and gyroscope | LGA-14L 2.5x3.0 mm; 16-bit output; ranges selected per deployment | [lsm6dsv.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/lsm6dsv.pdf) |
-| BMM350 | Magnetometer, heading reference | WLCSP 1.28x1.28 mm; +/-2000 uT on all three axes | [bst-bmm350-ds001.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmm350-ds001.pdf) |
-| BMP581 | Pressure and temperature, altitude | LGA 2.0x2.0 mm; 300-1250 hPa | [bst-bmp581-ds004.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmp581-ds004.pdf) |
-| GD5F2GM7RE | Stores the recording | WSON-8 8x6 mm; 2 Gbit (256 MiB); 10-year data retention | [datasheet](../../hardware/BoardDesigns/imutag-smps/datasheets/DS_00819_GD5F2GM7RE_Rev1_3-3435814.pdf) |
-| RV-3028-C8 | Keeps time and paces the sampling | SON-8 2.0x1.2 mm; +/-1 ppm factory-trimmed; 70 nA | [RV-3028-C8.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/RV-3028-C8.pdf) |
-| STM32U375 | Reads the sensors and writes the flash | UFQFPN32 5x5 mm; 1 MB program memory, 256 KB RAM | [stm32u375ce.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/stm32u375ce.pdf) |
-| TPS62840 | Makes the 1.8 V rail everything runs from | WCSP-6 0.97x1.47 mm; 60 nA quiescent | [tps62840.pdf](../../hardware/BoardDesigns/imutag-smps/datasheets/tps62840.pdf) |
+| LSM6DSV | Accelerometer and gyroscope | LGA-14L 2.5x3.0 mm; 16-bit output; ranges selected per deployment | [lsm6dsv.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/lsm6dsv.pdf) |
+| BMM350 | Magnetometer, heading reference | WLCSP 1.28x1.28 mm; +/-2000 uT on all three axes | [bst-bmm350-ds001.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmm350-ds001.pdf) |
+| BMP581 | Pressure and temperature, altitude | LGA 2.0x2.0 mm; 300-1250 hPa | [bst-bmp581-ds004.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmp581-ds004.pdf) |
+| GD5F2GM7RE | Stores the recording | WSON-8 8x6 mm; 2 Gbit (256 MiB); 10-year data retention | [datasheet](../../../../hardware/BoardDesigns/imutag-smps/datasheets/DS_00819_GD5F2GM7RE_Rev1_3-3435814.pdf) |
+| RV-3028-C8 | Keeps time and paces the sampling | SON-8 2.0x1.2 mm; +/-1 ppm factory-trimmed; 70 nA | [RV-3028-C8.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/RV-3028-C8.pdf) |
+| STM32U375 | Reads the sensors and writes the flash | UFQFPN32 5x5 mm; 1 MB program memory, 256 KB RAM | [stm32u375ce.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/stm32u375ce.pdf) |
+| TPS62840 | Makes the 1.8 V rail everything runs from | WCSP-6 0.97x1.47 mm; 60 nA quiescent | [tps62840.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/tps62840.pdf) |
 
 What each sensor resolves, and how noisy it is, is in section 3 rather than
 here.
@@ -256,7 +256,7 @@ Two things end a recording: the battery runs down, or the flash fills. Which
 one bites first depends on the rate you chose. Measured on the SMPS breakout
 carrying the IMUTagNandBmp581 daughter card at **3.6931 V**, the deployed cell
 voltage, 120 s per point with a verified download at every rate
-([PowerEstimates.md](../embedded/tags/families/IMUTag/design/PowerEstimates.md)):
+([IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html)):
 
 | Mode | Measured current | 12 mAh cell |
 | --- | ---: | ---: |
@@ -321,7 +321,7 @@ you can manage while samples accumulate. The plot shows where those samples
 fall on a sphere; what you are aiming for is even coverage, because the fit is
 only as good as the directions you actually visited.
 
-![qtcalibrate at the end of a collection: the sample cloud covers the sphere, with the fitted constants and quality metrics on the right](../host/docs/src/images/qtcalibrate-collection-100.png)
+![qtcalibrate at the end of a collection: the sample cloud covers the sphere, with the fitted constants and quality metrics on the right](images/qtcalibrate-collection-100.png)
 
 Four numbers under the plot tell you whether you turned the tag enough.
 **Gaps** is how much of the sphere you missed, **Variance** and **Wobble**
@@ -444,7 +444,7 @@ typically halves the error compared with a filter that only ever looks
 backwards, and it removes the settling transient at the start of every segment.
 
 The design for where this belongs already exists --
-[dataprocessing.md](dataprocessing.md) specifies a tool that copies a log, adds
+[dataprocessing](cli/dataprocessing.md) is a tool that copies a log, adds
 derived channels and records which algorithm version produced them -- but it
 has not been built.
 
@@ -521,4 +521,4 @@ this sensor set.
    same board and image, splitting on the day rather than the procedure. It is
    worth 16 days of shelf life on a 12 mAh cell. See *Idle does not agree with
    itself across days* in
-   [PowerEstimates.md](../embedded/tags/families/IMUTag/design/PowerEstimates.md).
+   [IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html).

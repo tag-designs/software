@@ -100,7 +100,7 @@ typedef enum
  *       saving it; see embedded/tags/design/open-issues.md.
  *
  * @see tagPowerClearFlashErrorFlags() in core/src/pwr-u375.c,
- *      embedded/tags/design/restart-recovery.md
+ *      embedded/tags/common/core/design/restart-recovery.md
  */
 #define TAG_RECOVERY_TRACE 0
 #endif

@@ -28,6 +28,12 @@ design document.
 ### Bench and Hardware Verification
 
 - [Bench Procedures](bench/README.md) — Hardware procedures for verifying firmware changes, measuring power, debugging, and capturing a tag's state.
+- [Debugging a Tag](bench/debugging-a-tag.md) *(procedure)* — Ways to see inside a running tag (SRAM2 scratchpad, GDB over SWD, Joulescope, GPIO markers, monitor) and what each costs or disturbs.
+
+### Build
+
+- [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, maintenance and known gaps.
+- [windows-build-notes](build/windows-build-notes.md) *(procedure, historical)* — Unedited personal notes on Windows toolchain setup, environment variables, vcpkg triplets and static Qt builds.
 
 ### Decision Records
 
@@ -36,10 +42,18 @@ design document.
 ### Investigations
 
 - [Investigations](investigations/README.md) — Where dated fault investigations and measurement campaigns are kept, and how they are closed.
+- [Offline Log Reconstruction](investigations/2026-10-offline-log-reconstruction.md) *(decision)* — Analysis of whether fw-v0.0.3 downloads can be rebuilt from an SWD capture, the gaps and defects found, and the agreed plan with implementation status.
 
 ### Release
 
 - [Release](release/README.md) — Qualifying, programming and publishing firmware and host tool releases.
+- [Releasing Tag Firmware and Host Tools](release/release-procedure.md) *(procedure)* — How to qualify a firmware image on the bench, program and record a field tag from a release, and cut a signed host tools release.
+
+### Shared Contracts
+
+- [Shared Contracts](shared/README.md) — The contracts host tools and tag firmware both compile against, and where each is documented.
+- [Shared Binary Log Formats Design](shared/binary-datalogs.md) *(decision)* — Convention for shared packed C log structs in include/: file and struct naming, packing, size and endianness asserts, nanopb coherence, and host decoding.
+- [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
 
 ## Shared Contracts
 
@@ -47,17 +61,17 @@ design document.
 
 ## Embedded
 
-- [Embedded Source Layout](../embedded/design/build-orientation.md) — Orientation to the embedded tree: boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
+- [Embedded Source Layout](../embedded/design/source-layout.md) — Orientation to the embedded tree: boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
 
 ### Bases
 
 - [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
-- [notes](../embedded/bases/notes.md) — Brief base-board history plus SWD bitbang optimization results on the F042 breakout base and ideas for a hybrid SPI backend.
+- [notes](../embedded/bases/design/notes.md) — Brief base-board history plus SWD bitbang optimization results on the F042 breakout base and ideas for a hybrid SPI backend.
 
 ### Bases / tag-breakout-base-l432-v1
 
-- [Note](../embedded/bases/tag-breakout-base-l432-v1/Note.md) *(investigation, historical)* — One-line note that ll_swd_spi.c did not work on macOS with ChibiOS 21.11.
+- [note](../embedded/bases/tag-breakout-base-l432-v1/note.md) *(investigation, historical)* — One-line note that ll_swd_spi.c did not work on macOS with ChibiOS 21.11.
 
 ### Boards
 
@@ -83,7 +97,10 @@ design document.
 
 - [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes: no startup code, interrupts or OSAL sleeps, rescue erase, Serve().
-- [Plan: an STM32U375 SPI-NAND Loader (GD5F2GM7RE_IMUTagNandv2)](../embedded/loaders/design/u375-nand-loader-plan.md) *(proposal, historical)* — Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375: raw and ECC page reads, NAND power, shared SPI bus and work order.
+
+### Loaders / Proposals
+
+- [Plan: an STM32U375 SPI-NAND Loader (GD5F2GM7RE_IMUTagNandv2)](../embedded/loaders/design/proposals/u375-nand-loader-plan.md) *(proposal, historical)* — Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375: raw and ECC page reads, NAND power, shared SPI bus and work order.
 
 ### Loaders / RV3028_PresTagv3
 
@@ -92,17 +109,10 @@ design document.
 ### Tags
 
 - [Embedded Tag Firmware](../embedded/tags/README.md) — How tag targets are assembled from modules, families and local sources, diagnostics, the template tag directory and local override rules.
-- [Debugging a Tag](../embedded/tags/design/debugging.md) *(procedure)* — Ways to see inside a running tag (SRAM2 scratchpad, GDB over SWD, Joulescope, GPIO markers, monitor) and what each costs or disturbs.
 - [Embedded Tag Build Sources](../embedded/tags/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each tag firmware target, extracted from dependency files.
-- [I2C Bus Recovery](../embedded/tags/design/i2c-bus-recovery.md) — Why a monitor attach can wedge the shared I2C bus, the evidence, and the bus-clear recovery and its call sites on STM32U3 IMUTag targets.
 - [Open Issues — Tag Firmware](../embedded/tags/design/open-issues.md) *(worklist, open)* — Tracker of known tag firmware defects, separating reproduced faults from ones found by reading code, with resolved entries kept.
-- [Restart Recovery Notes](../embedded/tags/design/restart-recovery.md) — Notes on recovering acquisition after a reset: wake classification, header and page recovery, storage bounds, IMUTag timing, and two fixed boot faults.
-- [STM32U375 Stop-Mode Support](../embedded/tags/design/u375-stop-support.md) — Implemented STM32U375 low-power design: terminal sleep with monitor guard, runtime idle Stop mode selection, and flash and SPI low-power waits.
-- [STM32U375 Stop3 Terminal Sleep Plan](../embedded/tags/design/u375-stop3-terminal-sleep-plan.md) *(proposal, historical)* — Plan, now implemented, to replace STM32U375 terminal Standby with Stop 3 while keeping the STM32L432 Standby path.
-- [stm32u375-standby-forum-post](../embedded/tags/design/stm32u375-standby-forum-post.md) *(investigation, closed)* — Forum post draft describing the layout-dependent STM32U375 Standby entry fault, register state at the WFI, and every mechanism excluded.
 - [Tag `custom.h` Build Defines](../embedded/tags/design/custom-defines.md) — Reference of custom.h defines per active tag target, module-generated TAG_ feature switches, and retired defines.
 - [Tag Firmware: Next Release TODO](../embedded/tags/design/next-release-todo.md) *(worklist, open)* — Work list for the release after fw-v0.0.3: defect fixes, offline-reconstruction layout changes, release qualification and host counterparts, with per-item status.
-- [Tag Monitor Interface](../embedded/tags/design/monitor_interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
 
 ### Tags / BitTag
 
@@ -118,8 +128,19 @@ design document.
 
 - [Core Runtime](../embedded/tags/common/core/README.md) — Contents of the core runtime: state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
 - [`stopMilliseconds()` LPTIM ARR-Match Delay Design](../embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md) — STM32L432 stopMilliseconds() using LPTIM1 autoreload match at 1024 Hz with spurious-wake filtering, now implemented.
-- [I2C Backend Model](../embedded/tags/common/core/i2c-backend-model.md) — How tag I2C controllers select hardware or software backends through descriptors, pin policy, RTC migration, and remaining work.
+- [I2C Backend Model](../embedded/tags/common/core/design/i2c-backend-model.md) — How tag I2C controllers select hardware or software backends through descriptors, pin policy, RTC migration, and remaining work.
+- [I2C Bus Recovery](../embedded/tags/common/core/design/i2c-bus-recovery.md) — Why a monitor attach can wedge the shared I2C bus, the evidence, and the bus-clear recovery and its call sites on STM32U3 IMUTag targets.
 - [LPTIM System Timer Design](../embedded/tags/common/core/design/lptim-system-timer.md) *(proposal, proposed)* — Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes, with a Sleep-mode fallback; not implemented.
+- [Restart Recovery Notes](../embedded/tags/common/core/design/restart-recovery.md) — Notes on recovering acquisition after a reset: wake classification, header and page recovery, storage bounds, IMUTag timing, and two fixed boot faults.
+- [STM32U375 Stop-Mode Support](../embedded/tags/common/core/design/u375-stop-support.md) — Implemented STM32U375 low-power design: terminal sleep with monitor guard, runtime idle Stop mode selection, and flash and SPI low-power waits.
+
+### Tags / Common Firmware / core / Investigations
+
+- [u375-standby-forum-post](../embedded/tags/common/core/design/investigations/u375-standby-forum-post.md) *(investigation, closed)* — Forum post draft describing the layout-dependent STM32U375 Standby entry fault, register state at the WFI, and every mechanism excluded.
+
+### Tags / Common Firmware / core / Proposals
+
+- [STM32U375 Stop3 Terminal Sleep Plan](../embedded/tags/common/core/design/proposals/u375-stop3-terminal-sleep-plan.md) *(proposal, historical)* — Plan, now implemented, to replace STM32U375 terminal Standby with Stop 3 while keeping the STM32L432 Standby path.
 
 ### Tags / Common Firmware / modules
 
@@ -135,8 +156,11 @@ design document.
 
 ### Tags / Common Firmware / sensors / imu
 
-- [design_notes](../embedded/tags/common/sensors/imu/design_notes.md) *(historical)* — Pasted chat transcript of the original LSM6DSV16X driver request and generated driver design.
 - [LSM6DSV16X Driver Design Assumptions](../embedded/tags/common/sensors/imu/design/assumptions.md) — The LSM6DSV16X driver contract: descriptor model, modes, trigger ownership, ODR-triggered FIFO policy, environmental samples and self-test.
+
+### Tags / Common Firmware / sensors / imu / Investigations
+
+- [imu-design-chat-notes](../embedded/tags/common/sensors/imu/design/investigations/imu-design-chat-notes.md) *(historical)* — Pasted chat transcript of the original LSM6DSV16X driver request and generated driver design.
 
 ### Tags / Common Firmware / sensors / mag
 
@@ -162,15 +186,11 @@ design document.
 
 - [BitPresTag Family](../embedded/tags/families/BitPresTag/README.md) — BitPresTag family variants, what UIUCTag overrides locally, and ADXL362 configuration semantics.
 - [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](../embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md) *(proposal, proposed)* — Plan for interrupt-paced BMP58x forced-mode pressure sampling on a BitPresTag variant; only blocking forced sampling exists so far.
-- [UIUCTag Board Integration Plan](../embedded/tags/families/BitPresTag/design/uiuctag-board-integration.md) *(proposal, historical)* — Plan, now built, for integrating the UIUCTag board (ADXL367 on USART2, BMP585 on SPI1) into the BitPresTag family.
-- [UIUCTag Bring-Up Report](../embedded/tags/families/BitPresTag/design/uiuctag-bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
-- [UIUCTag Data Collection Integration Plan](../embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md) *(proposal, historical)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
-- [UIUCTag Test Strategy](../embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
 
 ### Tags / Families / BitTagNG
 
 - [BitTagNG Family](../embedded/tags/families/BitTagNG/README.md) — What the BitTagNG family shares and what its variants keep local.
-- [wakeup_note](../embedded/tags/families/BitTagNG/wakeup_note.md) *(historical)* — Pasted example code for ADXL367 low-power activity and inactivity wakeup setup and interrupt handling.
+- [adxl367-wakeup-example](../embedded/tags/families/BitTagNG/design/adxl367-wakeup-example.md) *(historical)* — Pasted example code for ADXL367 low-power activity and inactivity wakeup setup and interrupt handling.
 
 ### Tags / Families / CompassTag
 
@@ -188,10 +208,16 @@ design document.
 
 - [IMUTag Family](../embedded/tags/families/IMUTag/README.md) — What the IMUTag family shares between IMUTagNand and IMUTagNandBmp581, with an annotated list of family design notes.
 - [IMUTag Internal Header Checkpoints](../embedded/tags/families/IMUTag/design/internal-header-checkpoints.md) — Sparse internal-flash checkpoint headers that let NAND-backed IMUTag tags find their external log cursor after a reset.
-- [IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail](../embedded/tags/families/IMUTag/design/start-abort-diagnostics.md) *(investigation, open)* — Evidence for the intermittent IMUTag abort at start, the now-implemented marker detail word, and an unconfirmed flash-flag explanation.
-- [IMUTagNandBmp581 Development Plan](../embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md) *(proposal, historical)* — Plan, now built, for the IMUTagNandBmp581 firmware variant with BMP581 pressure and GD5F2GM7RE NAND under the IMUTAG protocol identity.
-- [Power Estimation for the IMUTagNand](../embedded/tags/families/IMUTag/design/PowerEstimates.md) *(results)* — Measured IMUTagNand current at 3.7 V on the SMPS board per sample rate, storage and battery runtime limits, and superseded LDO-era history.
-- [Strategy for Jitter-Free Sampling with Smooth Real-Time Correction](../embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md) *(proposal, proposed)* — Staged plan for jitter-free IMU sampling from raw RV-3028 clock with RTC smooth correction and timing metadata; reconstruction is partly built.
+- [Power Estimation for the IMUTagNand](../embedded/tags/families/IMUTag/design/power.md) *(results)* — Measured IMUTagNand current at 3.7 V on the SMPS board per sample rate, storage and battery runtime limits, and superseded LDO-era history.
+- [Strategy for Jitter-Free Sampling with Smooth Real-Time Correction](../embedded/tags/families/IMUTag/design/sample-timing.md) *(proposal, proposed)* — Staged plan for jitter-free IMU sampling from raw RV-3028 clock with RTC smooth correction and timing metadata; reconstruction is partly built.
+
+### Tags / Families / IMUTag / Investigations
+
+- [IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail](../embedded/tags/families/IMUTag/design/investigations/start-abort-diagnostics.md) *(investigation, open)* — Evidence for the intermittent IMUTag abort at start, the now-implemented marker detail word, and an unconfirmed flash-flag explanation.
+
+### Tags / Families / IMUTag / Proposals
+
+- [IMUTagNandBmp581 Development Plan](../embedded/tags/families/IMUTag/design/proposals/imutag-nand-bmp581-development-plan.md) *(proposal, historical)* — Plan, now built, for the IMUTagNandBmp581 firmware variant with BMP581 pressure and GD5F2GM7RE NAND under the IMUTAG protocol identity.
 
 ### Tags / Families / PresTag
 
@@ -214,6 +240,20 @@ design document.
 
 - [IMUTagNandBmp581 Maintainer Notes](../embedded/tags/IMUTagNandBmp581/README.md) — Hardware shape, module selection and bring-up status of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
 - [IMUTagNandBmp581 Bring-Up TODO](../embedded/tags/IMUTagNandBmp581/todo.md) *(worklist, open)* — Bring-up todo list for IMUTagNandBmp581 NAND low-power mode, validation, ECC and bad-page handling, and host diagnostics.
+
+### Tags / Proposals
+
+- [Field Data Extraction](../embedded/tags/design/proposals/field-data-extraction.md) *(proposal, proposed)* — Why raw field dumps are not self-describing, proposed session superblock and failure record, and the SRAM loader approach to external flash that is now built.
+
+### Tags / UIUCTag
+
+- [UIUCTag Board Integration Plan](../embedded/tags/UIUCTag/design/board-integration.md) *(proposal, historical)* — Plan, now built, for integrating the UIUCTag board (ADXL367 on USART2, BMP585 on SPI1) into the BitPresTag family.
+- [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, historical)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+- [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
+
+### Tags / UIUCTag / Investigations
+
+- [UIUCTag Bring-Up Report](../embedded/tags/UIUCTag/design/investigations/bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
 
 ### Tags / UIUCTag / test
 
@@ -247,11 +287,15 @@ design document.
 
 - [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, data model, plotting rules, preferences, transforms, documentation capture hooks and build check.
 - [sensorViz Development Notes](../host/applications/sensorviz/design/roadmap.md) — Current sensorviz design state, design rules, UI decisions, known limitations and future work.
-- [SensorViz Documentation Screenshot Capture Plan](../host/applications/sensorviz/design/screenshot-capture-plan.md) *(proposal, historical)* — Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
+
+### Applications / sensorviz / Proposals
+
+- [SensorViz Documentation Screenshot Capture Plan](../host/applications/sensorviz/design/proposals/screenshot-capture-plan.md) *(proposal, historical)* — Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
 
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
+- [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — Design of the dataprocessing CLI that copies a SQLite log and adds calibrated CompassTag streams with provenance; SensorViz support for augmented files is still future.
 
 ### Common
 
@@ -273,7 +317,10 @@ design document.
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities: USB and monitor communication, log writers, SWD recovery code, and links to its design documents.
 - [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — SWD capture and recovery library, partly built: capture without booting, loader Serve() reads, tag identification, layered API and implementation sequence.
-- [TagCore Python Interface Design](../host/libraries/tagcore/design/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
+
+### Libraries / tagcore / Proposals
+
+- [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
 ### Libraries / tagcore / sqlitelog
 
@@ -286,8 +333,6 @@ design document.
 ### User Guide Tooling
 
 - [Documentation Template](../host/docs/README.md) — How to preview, build and package the MkDocs user guide and how its sources are laid out.
-- [Host User Guide Screenshot Automation](../host/docs/design/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; screenshot hooks were built, annotation status unclear.
-- [QtMonitor Documentation Screenshot Automation Design](../host/docs/design/qtmonitor-screenshot-automation.md) *(proposal, historical)* — Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.
 
 ### User Guide Tooling / fixtures / qtcalibrate
 
@@ -301,15 +346,7 @@ design document.
 
 - [SensorViz Sample Logs](../host/docs/fixtures/sensorviz/README.md) — Inventory and metadata of the sensorviz fixture logs and the screenshot capture commands.
 
-## Other
+### User Guide Tooling / Proposals
 
-### design
-
-- [DataProcessing Post-Processing Application Design](../design/dataprocessing.md) — Design of the dataprocessing CLI that copies a SQLite log and adds calibrated CompassTag streams with provenance; SensorViz support for augmented files is still future.
-- [Shared Binary Log Formats Design](../design/binary-datalogs.md) *(decision)* — Convention for shared packed C log structs in include/: file and struct naming, packing, size and endianness asserts, nanopb coherence, and host decoding.
-- [Offline Log Reconstruction](../design/offline-log-reconstruction.md) *(decision)* — Analysis of whether fw-v0.0.3 downloads can be rebuilt from an SWD capture, the gaps and defects found, and the agreed plan with implementation status.
-- [Field Data Extraction](../design/field-data-extraction.md) *(proposal, proposed)* — Why raw field dumps are not self-describing, proposed session superblock and failure record, and the SRAM loader approach to external flash that is now built.
-- [Releasing Tag Firmware and Host Tools](../design/tag-and-host-release-procedure.md) *(procedure)* — How to qualify a firmware image on the bench, program and record a field tag from a release, and cut a signed host tools release.
-- [Tag Firmware Build Reproducibility](../design/tag-build-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, maintenance and known gaps.
-- [The IMUTag: An Overview](../design/imutag-overview.md) — Introduction for people deploying IMUTags: what it records, sample rates and accuracy, deployment length, the configure/download/view tools, and what is missing.
-- [windows-build-notes](../design/windows-build-notes.md) *(procedure, historical)* — Unedited personal notes on Windows toolchain setup, environment variables, vcpkg triplets and static Qt builds.
+- [Host User Guide Screenshot Automation](../host/docs/design/proposals/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; screenshot hooks were built, annotation status unclear.
+- [QtMonitor Documentation Screenshot Automation Design](../host/docs/design/proposals/qtmonitor-screenshot-automation.md) *(proposal, historical)* — Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.

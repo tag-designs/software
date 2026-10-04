@@ -7,7 +7,7 @@ history alone, without depending on an upstream archive still being available.
 
 Only the runtime is here. The **generator** is a build-time tool and is not
 vendored; it is pinned by version and checked at configure time. See
-[Tag Firmware Build Reproducibility](../../../design/tag-build-reproducibility.md).
+[Tag Firmware Build Reproducibility](../../../docs/build/firmware-reproducibility.md).
 
 ## Provenance
 

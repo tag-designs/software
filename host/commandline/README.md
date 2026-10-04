@@ -183,7 +183,7 @@ The file is "as captured": the tag as it was found, before the reset recovery
 a live attach would run. Its `info` table records `source` = `capture`, the
 capture directory and the capture time. Only families with a capture decoder
 are accepted, so far IMUTag with NAND checkpoints; others are refused. See
-[Offline Log Reconstruction](../../design/offline-log-reconstruction.md).
+[Offline Log Reconstruction](../../docs/investigations/2026-10-offline-log-reconstruction.md).
 
 ## tag-cal-write
 

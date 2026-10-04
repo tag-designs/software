@@ -212,7 +212,7 @@ step.
 To cut a release rather than just build one, use `host/tools/release-macos.sh
 vX.Y`, which creates and pushes the tag first for that reason, then runs the
 two commands above and verifies the signatures inside the resulting DMG. See
-[Releasing the host tools](design/tag-and-host-release-procedure.md#3-releasing-the-host-tools).
+[Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools).
 
 This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
 of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
@@ -352,7 +352,7 @@ recoverable by anyone who can run a workflow, so it is deliberately not done.
 runtime (`--options runtime`) and a secure timestamp for a real identity and
 omits them for `-`, so the local build needs no special handling.
 
-See [Releasing the host tools](design/tag-and-host-release-procedure.md#3-releasing-the-host-tools)
+See [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools)
 for the procedure, and [Installing a macOS Release](#installing-a-macos-release)
 for what a user does with the result.
 
@@ -545,7 +545,7 @@ boards.
 
 For an overview of the embedded source tree and how `bases`, `boards`,
 `proto-c`, and `tags` relate to each other, see
-[embedded/design/build-orientation.md](embedded/design/build-orientation.md).
+[embedded/design/source-layout.md](embedded/design/source-layout.md).
 
 ## Embedded Prerequisites
 

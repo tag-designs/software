@@ -45,7 +45,7 @@ active tags unless a tag provides a same-named local override.
   suspend/resume mechanics. I2C owns controller setup and device power/session
   pin policy; register-level I2C transactions live with the shared register
   adapters in `sensor_io.c`.
-- `i2c-backend-model.md`: design note for the common I2C backend model.
+- `design/i2c-backend-model.md`: design note for the common I2C backend model.
   The model allows ChibiOS hardware I2C and a copied, project-namespaced
   software I2C fallback to coexist on different board-level buses while keeping
   sensor and RTC chip drivers backend-neutral.
@@ -212,7 +212,7 @@ are separate board-level bus definitions; the common model does not support
 hardware and software I2C on the same physical pins. Register-oriented I2C
 reads and writes live in `sensor_io.c` beside the SPI/USART register adapters,
 so sensor drivers see one `TagRegisterDevice` shape across all transports. See
-`i2c-backend-model.md` for details.
+`design/i2c-backend-model.md` for details.
 
 Targets that use `TAG_I2C_BACKEND_HARDWARE` should leave
 `USE_HAL_I2C_FALLBACK` unset so ChibiOS compiles the STM32 hardware I2C LLD.

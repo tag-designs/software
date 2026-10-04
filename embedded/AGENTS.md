@@ -108,7 +108,11 @@ CMake build tree, not in source directories.
 
 ## Documentation
 
-- Keep `embedded/design/build-orientation.md` aligned with major layout or ownership
+- Keep `embedded/design/source-layout.md` aligned with major layout or ownership
   changes.
-- Keep target-specific design notes near the target under a `design/` subfolder, for example
-  `tags/<target>/design/notes.md`.
+- Put design notes at the lowest level that owns the behaviour: MCU-wide
+  behaviour in `tags/common/core/design/`, family behaviour in
+  `tags/families/<Family>/design/`, and a target's own `design/` only when it
+  has forked from its family. Plans go in `design/proposals/`, dated fault
+  records in `design/investigations/`. Follow `docs/documentation-guide.md`
+  for the front matter every document needs.

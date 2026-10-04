@@ -47,6 +47,7 @@ extra_css:
 nav:
   - Home: index.md
   - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
+  - IMUTag Overview: imutag-overview.md
   - Applications:
       - Tag Monitor: apps/qtmonitor.md
       - SensorViz: apps/sensorviz.md

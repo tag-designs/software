@@ -25,7 +25,7 @@
  *          same care: erase the log rather than assuming stale headers will be
  *          recognised as stale.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     ../design/data-collection.md
  */
 
 #ifndef DATALOG_H

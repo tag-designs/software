@@ -22,7 +22,7 @@
  * @note    Sensor access lives in the tag-local sensors.c behind sensors.h;
  *          this file owns time, state, and log sequencing only.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     ../design/data-collection.md
  */
 
 #include "hal.h"

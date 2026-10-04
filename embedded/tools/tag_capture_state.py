@@ -5,7 +5,7 @@
          that a download cannot reach: SRAM, the writable part of internal
          flash, and the RTC backup registers. Nothing runs on the tag to
          produce the output, so the capture does not disturb what it is
-         recording -- see embedded/tags/design/debugging.md for why that
+         recording -- see docs/bench/debugging-a-tag.md for why that
          matters on this target.
 
          Intended to run immediately after a test fails, before anything

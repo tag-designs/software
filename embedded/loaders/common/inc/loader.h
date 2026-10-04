@@ -12,7 +12,7 @@
  *          flash (::loaderFlashBus and loaderBoardInit()), and one part
  *          driver implementing loader_flash.h.
  *
- * @see     embedded/loaders/README.md, design/field-data-extraction.md
+ * @see     embedded/loaders/README.md, embedded/tags/design/proposals/field-data-extraction.md
  */
 
 #ifndef LOADER_H

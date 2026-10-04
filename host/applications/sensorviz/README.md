@@ -12,7 +12,7 @@ sensor-oriented tag logs.
 
 For the longer design/history note, see [roadmap.md](design/roadmap.md). For
 the user-guide screenshot fixture and capture strategy, see
-[screenshot-capture-plan.md](design/screenshot-capture-plan.md).
+[screenshot-capture-plan.md](design/proposals/screenshot-capture-plan.md).
 
 ## What It Does
 

@@ -35,7 +35,7 @@ that save the most time.
 | Task | Read first |
 | --- | --- |
 | Adding or changing a tag target | `embedded/tags/README.md`, especially **Local Overrides** and **Template Tag Directory** |
-| Understanding the firmware build, boards, or nanopb targets | `embedded/design/build-orientation.md` |
+| Understanding the firmware build, boards, or nanopb targets | `embedded/design/source-layout.md` |
 | Adding a tag to the SQLite download path | the recipe comment at the top of `host/libraries/tagcore/sqlitelog.cc`, then `host/libraries/tagcore/sqlitelog/README.md` |
 | Per-tag SQLite schema and row semantics | `host/libraries/tagcore/sqlitelog/README.md` |
 | Board pin and signal generation | `embedded/boards/README.md` |
@@ -238,7 +238,7 @@ Use the target that matches the files changed. For documentation-only changes,
   shipping board regulates with an SMPS, whose input current scales with supply
   voltage. Only the LDO build is voltage-independent, and it was left behind by
   the SMPS version, so the LDO figures in
-  `embedded/tags/families/IMUTag/design/PowerEstimates.md` do not bound this
+  `embedded/tags/families/IMUTag/design/power.md` do not bound this
   board. The limit was 850 uA against a healthy 750 uA at the ~3.29 V bench
   supply those came from, and was rebased by the voltage ratio for a 3.7 V
   cell: 664.98 and 665.47 uA measured across two independent runs at 3.6930 V,
@@ -348,7 +348,7 @@ Use the target that matches the files changed. For documentation-only changes,
   The mid-run capture is also the check on the capture path itself:
   `tag_rebuild_check.py` attaches straight afterwards, which is how a
   capture that left `DHCSR.C_MASKINTS` set -- stalling the next monitor
-  attach -- was found. See `design/offline-log-reconstruction.md`, "Keeping
+  attach -- was found. See `docs/investigations/2026-10-offline-log-reconstruction.md`, "Keeping
   the rebuild in sync with the firmware".
 
 ### Capturing a tag's state after a failure
@@ -466,7 +466,7 @@ Use the target that matches the files changed. For documentation-only changes,
   captured clean in a failing build. Clear them where the failure occurs, in
   the datalog code, not in the power path. See
   `embedded/tags/design/open-issues.md` and
-  `embedded/tags/design/restart-recovery.md`.
+  `embedded/tags/common/core/design/restart-recovery.md`.
 
 ### Checking documentation coverage
 

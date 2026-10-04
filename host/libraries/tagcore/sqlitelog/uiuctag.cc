@@ -24,7 +24,7 @@
  * @note    Absent values produce no row at all. See dumpUIUCTagLog() for why.
  *
  * @see     sqlitelog/README.md, section "UIUCTag Downloader Fields"
- * @see     embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     embedded/tags/UIUCTag/design/data-collection.md
  */
 
 #include "sqlitelog/internal.h"

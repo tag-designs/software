@@ -255,7 +255,7 @@ against three failures in nine attempts before it.
 > is no longer live -- the tag enters standby through `tagPowerEnterStandby()`
 > and Stop3 is `__attribute__((unused))`. The clear does not run today, so if
 > this abort returns, the flash-flag explanation is no longer in force.
-> See [`../../../design/open-issues.md`](../../../design/open-issues.md). The five failures in that
+> See [`../../../design/open-issues.md`](../../../../design/open-issues.md). The five failures in that
 run were all the unrelated `SetRtc` bug, where the start command never reaches
 the tag.
 
@@ -263,7 +263,7 @@ A latched flash ECC flag is a credible cause of the abort, and it reconciles
 the one puzzling piece of evidence. `get_lsm_config()` reads the stored
 configuration out of internal flash. With `ECCD` latched -- which the marker-log
 scan can do simply by reading an erased slot, see
-[`restart-recovery.md`](../../../design/restart-recovery.md) -- that read fails
+[`restart-recovery.md`](../../../../common/core/design/restart-recovery.md) -- that read fails
 while the stored configuration itself is perfectly intact. That is exactly what
 the captured failure showed: an abort whose stored ODR read back correctly as
 `S800` when the host asked a moment later.

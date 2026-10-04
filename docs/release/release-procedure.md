@@ -23,7 +23,7 @@ by CI: the macOS package has to be signed on a machine that holds the Developer
 ID key, and that machine is not a GitHub runner.
 
 For how the images are made reproducible in the first place, see
-[Tag Firmware Build Reproducibility](tag-build-reproducibility.md). This
+[Tag Firmware Build Reproducibility](../build/firmware-reproducibility.md). This
 document assumes that and concerns itself with what a person does.
 
 ## 1. Qualifying a release
@@ -295,7 +295,7 @@ The packages are not notarized. macOS blocks an unnotarized Developer ID app on
 first launch, and the user clears it once per app through System Settings ->
 Privacy & Security -> Open Anyway, or clears quarantine on the whole folder in
 one command. Notarization would remove that and nothing else. See
-[Installing a macOS Release](../README.md#installing-a-macos-release).
+[Installing a macOS Release](../../README.md#installing-a-macos-release).
 
 ### Steps
 
@@ -367,7 +367,7 @@ gh release upload v3.1 ~/Build/tag-designs/software-vcpkg-release/Ultralight-tag
 
 **5. Install it from the release page on a Mac that has never seen the build,**
 and follow
-[Installing a macOS Release](../README.md#installing-a-macos-release) as
+[Installing a macOS Release](../../README.md#installing-a-macos-release) as
 written. This is the only step that tests what a user experiences, because it
 is the only copy that is quarantined. Everything before it tests the build.
 

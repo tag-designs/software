@@ -174,7 +174,7 @@ uint32_t StatusCount(const CaptureSource &src);
  *
  * @details Follows embedded/tags/families/IMUTag/src/datalog.c and config.c,
  *          identical at fw-v0.0.3 and HEAD. See
- *          design/offline-log-reconstruction.md, "IMUTagNandBmp581".
+ *          docs/investigations/2026-10-offline-log-reconstruction.md, "IMUTagNandBmp581".
  */
 class ImuTagNandDecoder : public CaptureDecoder {
 public:

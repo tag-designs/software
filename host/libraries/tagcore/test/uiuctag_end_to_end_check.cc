@@ -16,7 +16,7 @@
  * @note    Built only when BUILD_TAGCORE_CHECKS is enabled. Requires the block
  *          file produced by embedded/tags/UIUCTag/test/sequencer_sim.c.
  *
- * @see     embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md
+ * @see     embedded/tags/UIUCTag/design/test-strategy.md
  */
 
 #include <cstdio>

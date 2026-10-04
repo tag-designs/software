@@ -17,7 +17,7 @@
  *
  * @note    Built only when BUILD_TAGCORE_CHECKS is enabled. See README.md.
  *
- * @see     embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md
+ * @see     embedded/tags/UIUCTag/design/test-strategy.md
  */
 
 #include "uiuctag_log_format.h"

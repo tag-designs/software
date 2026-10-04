@@ -13,7 +13,7 @@
  * @note    UIUCTag-local. The other BitPresTag family variants keep their
  *          sensor calls inside the shared family state_run.c.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-data-collection.md
+ * @see     ../design/data-collection.md
  */
 
 #ifndef UIUCTAG_SENSORS_H

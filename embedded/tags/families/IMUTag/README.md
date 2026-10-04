@@ -24,23 +24,23 @@ preserving the IMUTag protocol family.
 
 Design notes:
 
-- [`design/jitter-free-sampling-timing-reconstruction.md`](design/jitter-free-sampling-timing-reconstruction.md)
+- [`design/sample-timing.md`](design/sample-timing.md)
   plans jitter-free IMU sampling from a smooth RV-3028 reference, STM32 RTC
   smooth calibration for real-time events, and downloadable timing metadata for
   corrected reconstruction.
 - [`design/internal-header-checkpoints.md`](design/internal-header-checkpoints.md)
   describes the sparse STM32U3 internal-header checkpoint scheme used to
   recover NAND-backed IMUTag external log cursors.
-- [`design/start-abort-diagnostics.md`](design/start-abort-diagnostics.md)
+- [`design/investigations/start-abort-diagnostics.md`](design/investigations/start-abort-diagnostics.md)
   records the intermittent abort at start, localises it to auxiliary-sensor
   init in `initDataCollection()`, and proposes a persistent per-marker detail
   word so the reason survives to the next download. The detail word uses
   STM32U3 flash-row padding, which STM32L4 markers do not have. Open.
-- [`design/imutag-nand-bmp581-development-plan.md`](design/imutag-nand-bmp581-development-plan.md)
+- [`design/proposals/imutag-nand-bmp581-development-plan.md`](design/proposals/imutag-nand-bmp581-development-plan.md)
   plans the IMUTagNand replacement firmware variant that keeps the `IMUTAG`
   protocol identity while adding BMP581 pressure sensing and GD5F2GM7RE
   SPI-NAND storage.
-- [`design/PowerEstimates.md`](design/PowerEstimates.md)
+- [`design/power.md`](design/power.md)
   records datasheet power estimates against bench measurements per sample rate,
   and compares the LDO and TPS62840 SMPS breakout builds and the NAND load
   switch against the storage-limited runtime bound.

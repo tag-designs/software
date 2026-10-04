@@ -12,7 +12,7 @@ into the tag's SRAM and calls its entry points over SWD. The tag's firmware, its
 persistent configuration and its marker log stay exactly as they were, which is
 the point: a returned tag's internal flash is evidence, and a recovery firmware
 would overwrite it. The case for this approach is in
-[Field Data Extraction](../../design/field-data-extraction.md).
+[Field Data Extraction](../tags/design/proposals/field-data-extraction.md).
 
 The images follow STM32CubeProgrammer's external-loader (`.stldr`) contract, so
 `STM32_Programmer_CLI -el` can drive them. The host library in `tagcore` drives
@@ -23,7 +23,7 @@ and `tag-xflash dump` reads a whole part with it. See
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
 anything in `common/`. The first STM32U375 and SPI-NAND loader is planned, not
-built, in [U375 SPI-NAND Loader Plan](design/u375-nand-loader-plan.md).
+built, in [U375 SPI-NAND Loader Plan](design/proposals/u375-nand-loader-plan.md).
 
 ## Layout
 

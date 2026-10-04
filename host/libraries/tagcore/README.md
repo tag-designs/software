@@ -31,7 +31,7 @@ tables, and `statecapture` is the capture procedure behind `tag-capture`.
 
 Design documents:
 
-- [`design/python-interface.md`](design/python-interface.md): Proposed Python
+- [`design/proposals/python-interface.md`](design/proposals/python-interface.md): Proposed Python
   binding API, native/protobuf boundary, shared download service, packaging,
   and testing plan.
 - [`design/swd-recovery.md`](design/swd-recovery.md): Proposed SWD capture and

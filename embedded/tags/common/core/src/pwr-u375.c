@@ -149,7 +149,7 @@ static inline enum Sleep tagPowerReturnedIdleMode(enum Sleep mode)
  *
  * @warning TAG_DEBUG_LOW_POWER must never be set in a shipped image, and any
  *          power measurement taken with it set measures the debug unit rather
- *          than the tag. See embedded/tags/design/debugging.md.
+ *          than the tag. See docs/bench/debugging-a-tag.md.
  */
 #include "scratchpad.h"
 

@@ -18,7 +18,7 @@ do not compile tag nanopb protocol sources.
 embedded/bases/
   CMakeLists.txt              Active base target list
   BUILD_SOURCES.md            Source inventory from successful builds
-  notes.md                    Older base-board notes
+  design/notes.md             Older base-board notes
   common/
     inc/                      Shared USB, SWD, ST-Link, and app headers
     src/                      Shared USB, SWD, ST-Link, and ADC sources
@@ -202,7 +202,7 @@ Local files:
 - `src/main.c`
 - `src/ll_swd.c`
 - `src/ll_swd_spi.c`
-- `Note.md`
+- `note.md`
 - `cfg/chconf.h`
 - `cfg/halconf.h`
 - `cfg/mcuconf.h`

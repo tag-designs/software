@@ -294,7 +294,7 @@ one second the host was attached, followed by the silent stall. And the
 `WFI` returning after ~1 s under the debugger, on both images, was a hardware
 breakpoint on the following instruction -- a debug event -- not the fault.
 
-A forum post with these numbers is `stm32u375-standby-forum-post.md` in this directory; the practical answer
+A forum post with these numbers is `common/core/design/investigations/u375-standby-forum-post.md`; the practical answer
 remains the release gate above.
 
 #### Stop 3 as the terminal sleep: measured, not yet adopted (2026-09-07)

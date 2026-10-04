@@ -989,7 +989,7 @@ runs from FINISHED or ABORTED, `tag-reset` skipped the erase, the next run
 started on a dirty NAND and collected nothing, and only the resulting ABORTED
 was erasable — hence the exact alternation. Cause, fix, and hardware
 verification are in
-[`embedded/tags/design/restart-recovery.md`](../../../design/restart-recovery.md).
+[`embedded/tags/common/core/design/restart-recovery.md`](../../../common/core/design/restart-recovery.md).
 
 After the fix, four consecutive reset/start/detach/stop/download cycles at
 400 Hz all succeeded, each returning 47 external pages and 7050 accelerometer
@@ -1020,7 +1020,7 @@ low-power transition or wakes straight back out of `__WFI()`, so any change
 that happened to touch internal flash could move the tag from 6.6 uA to run
 current. `tagPowerClearFlashErrorFlags()` fixed it, and the same build then
 measured 6.705 uA. See
-[`embedded/tags/design/restart-recovery.md`](../../../design/restart-recovery.md).
+[`embedded/tags/common/core/design/restart-recovery.md`](../../../common/core/design/restart-recovery.md).
 
 **Stale as of 2026-09-04.** That fix was applied to `tagPowerEnterStop3()`,
 which was then the live terminal path. It no longer is: the tag enters standby

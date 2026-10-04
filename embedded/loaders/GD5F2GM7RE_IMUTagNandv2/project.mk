@@ -2,7 +2,7 @@
 #
 # Reads the GD5F2GM7RE SPI NAND on the IMUTagNandv2 board, which
 # IMUTagNandBmp581 runs on. Read-only: no erase or program code, and no
-# NAND reset or block-lock write (see ../design/u375-nand-loader-plan.md).
+# NAND reset or block-lock write (see ../design/proposals/u375-nand-loader-plan.md).
 
 LOADER_BOARD_INC = ../../boards/IMUTagNandv2/generated
 

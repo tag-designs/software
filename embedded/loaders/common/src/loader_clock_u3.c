@@ -19,7 +19,7 @@
  *          domain. ChibiOS's stm32_clock_init() is never called: on the U3 it
  *          resets every peripheral, sets DBP and calls bd_reset().
  *
- * @see     embedded/loaders/design/u375-nand-loader-plan.md, decision 3
+ * @see     embedded/loaders/design/proposals/u375-nand-loader-plan.md, decision 3
  */
 
 #include "loader.h"

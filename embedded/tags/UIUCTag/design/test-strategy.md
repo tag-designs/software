@@ -172,12 +172,12 @@ cmake --build <build-dir> --target uiuctag_end_to_end_check
 ```
 
 Per-check detail, including the SQL that states the row-level expectations, is in
-[`host/libraries/tagcore/test/README.md`](../../../../../host/libraries/tagcore/test/README.md)
-and [`embedded/tags/UIUCTag/test/README.md`](../../../UIUCTag/test/README.md).
+[`host/libraries/tagcore/test/README.md`](../../../../host/libraries/tagcore/test/README.md)
+and [`embedded/tags/UIUCTag/test/README.md`](../test/README.md).
 
 ## Related notes
 
-- [UIUCTag data collection integration plan](uiuctag-data-collection.md): the
+- [UIUCTag data collection integration plan](data-collection.md): the
   record format, write sequencing, and staged migration these checks cover.
-- [UIUCTag board integration plan](uiuctag-board-integration.md): the hardware
+- [UIUCTag board integration plan](board-integration.md): the hardware
   bring-up sequence and device tests.

@@ -23,7 +23,7 @@
  * @note    Not part of any build. Build and run instructions are in
  *          test/README.md.
  *
- * @see     ../../families/BitPresTag/design/uiuctag-test-strategy.md
+ * @see     ../design/test-strategy.md
  */
 #include <stdio.h>
 #include <stdlib.h>

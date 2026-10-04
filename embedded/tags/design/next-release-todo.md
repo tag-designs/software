@@ -16,7 +16,7 @@ All the defects below were **found by reading code, not reproduced on a tag**.
 Two were checked line by line against the source; their entries say which.
 
 Background:
-- [Offline Log Reconstruction](../../../design/offline-log-reconstruction.md),
+- [Offline Log Reconstruction](../../../docs/investigations/2026-10-offline-log-reconstruction.md),
   where these were found and where the layout changes are specified.
 - [Open Issues](open-issues.md), the standing defect tracker. It carries a
   one-line entry for each defect here.
@@ -326,7 +326,7 @@ loader name showed it, when `tag-capture` could not find
 ## Part B: layout changes for offline log reconstruction
 
 Specified in
-[Offline Log Reconstruction, Decisions and plan](../../../design/offline-log-reconstruction.md#decisions-and-plan).
+[Offline Log Reconstruction, Decisions and plan](../../../docs/investigations/2026-10-offline-log-reconstruction.md#decisions-and-plan).
 B1 and B2 change every image's layout, and B3 changes the package, so bundle
 them into one release and qualify it once (Part C). Each needs a matching host-side change (Part D) and
 a layout version, so the host keeps decoding fw-v0.0.3 images too.
@@ -606,7 +606,7 @@ AGENTS.md is explicit that this needs measurement, not argument.
   number for a target that has none. BitTag has a plan:
   [`BitTag/design/power-test-plan.md`](../BitTag/design/power-test-plan.md).
 - **Each qualification updates the release notes**, per *Publishing the
-  qualification* in `design/tag-and-host-release-procedure.md`. CI publishes
+  qualification* in `docs/release/release-procedure.md`. CI publishes
   every release stating the images are not bench-tested; that sentence is
   corrected per target as each is cleared, rather than once at the end.
 - **Later:** make the release check cover every tag. This needs:
@@ -677,7 +677,7 @@ useful once they exist. They are listed so neither half ships alone.
   `embedded/tools/tag_rebuild_check.py` checks the rest on hardware. Still to
   do: decoders for CompassTag, UIUCTag and BitTag, the fw-v0.0.3 layouts, and
   the GD5F logical block count in the identity record. See
-  `design/offline-log-reconstruction.md`, "Implementation status" and
+  `docs/investigations/2026-10-offline-log-reconstruction.md`, "Implementation status" and
   "Keeping the rebuild in sync with the firmware".
 - **D2.** `tagcore/recovery`: read the identity record at the per-MCU address
   (add it to `swdmcu`), check its magic, size and end entry (the record has no

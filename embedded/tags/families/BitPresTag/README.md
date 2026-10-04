@@ -55,17 +55,17 @@ the USART-style LPS pressure sensor bus.
 
 ## Design Notes
 
-- [UIUCTag board integration plan](design/uiuctag-board-integration.md):
+- [UIUCTag board integration plan](../../UIUCTag/design/board-integration.md):
   ADXL367 on USART2 + BMP585 on SPI1 with LPS_RDY interrupt.
-- [UIUCTag data collection integration plan](design/uiuctag-data-collection.md):
+- [UIUCTag data collection integration plan](../../UIUCTag/design/data-collection.md):
   firmware plan for the UIUCTag record format, staged external writes, and the
   `Ack.uiuctag_data_log` download path.
-- [UIUCTag test strategy](design/uiuctag-test-strategy.md): how the log path is
+- [UIUCTag test strategy](../../UIUCTag/design/test-strategy.md): how the log path is
   verified without hardware, and what is deliberately left to a tag run.
 - [BMP581/BMP585 forced-mode pressure plan](design/bmp581-forced-mode.md):
   driver and BitPresTag-family integration plan for interrupt-driven forced
   pressure sampling on a BMP581-compatible BMP585 board.
-- [UIUCTag bring-up report](design/uiuctag-bringup-report.md): six bugs found
+- [UIUCTag bring-up report](../../UIUCTag/design/investigations/bringup-report.md): six bugs found
   and fixed getting a fresh UIUCTag to real logged data — LPS self-test,
   ADXL367 wake configuration, an AT25XE write-cycle timing race, a same-thread
   SPI1 bus deadlock, external sample-count tracking, and an ADXL367 loop-state

@@ -87,7 +87,7 @@ Implemented skeleton:
   `UIUCTAG` configuration.
 
 Data collection and the download path are implemented; see the
-[UIUCTag data collection integration plan](uiuctag-data-collection.md) for the
+[UIUCTag data collection integration plan](data-collection.md) for the
 record format, the write sequencing, the host decoder, and what still needs a
 hardware run.
 
@@ -183,10 +183,10 @@ period between chunks so the storage capacitor can recharge.
 
 ## Related Design Notes
 
-- [BMP581/BMP585 forced-mode pressure plan](bmp581-forced-mode.md): Driver and
+- [BMP581/BMP585 forced-mode pressure plan](../../families/BitPresTag/design/bmp581-forced-mode.md): Driver and
   BitPresTag-family integration plan for interrupt-driven forced pressure
   sampling.
-- [ADXL367 driver](../../../common/sensors/accel/inc/ADXL367.h):
+- [ADXL367 driver](../../common/sensors/accel/inc/ADXL367.h):
   Descriptor-backed accelerometer driver using shared sensor bus transports.
-- [BMP581 driver](../../../common/sensors/pressure/inc/bmp581.h):
+- [BMP581 driver](../../common/sensors/pressure/inc/bmp581.h):
   Descriptor-backed pressure driver supporting BMP581/BMP585 chip IDs.

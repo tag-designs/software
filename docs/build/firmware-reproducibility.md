@@ -37,7 +37,7 @@ the same claim as "same image", and this document is about closing the distance
 between them.
 
 Data recovery from a returned tag is covered separately in
-[Field Data Extraction](field-data-extraction.md); the two meet at the image
+[Field Data Extraction](../../embedded/tags/design/proposals/field-data-extraction.md); the two meet at the image
 hash.
 
 ### Which tags are in scope

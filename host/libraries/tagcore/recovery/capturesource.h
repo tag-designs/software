@@ -25,7 +25,7 @@
  *          download can legitimately differ: tag-dwnld --stop adds a stop
  *          marker, and the attach lets reset recovery run first.
  *
- * @see     design/offline-log-reconstruction.md, "Decisions and plan" item 1
+ * @see     docs/investigations/2026-10-offline-log-reconstruction.md, "Decisions and plan" item 1
  */
 
 #ifndef TAGCORE_RECOVERY_CAPTURESOURCE_H

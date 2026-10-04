@@ -18,11 +18,11 @@ loader for a new MCU (STM32U375) and the first for a new memory type (SPI
 NAND), so it is planned before it is built.
 
 Background:
-- [Loader Runtime Design](loader-runtime.md): the contract and the runtime
+- [Loader Runtime Design](../loader-runtime.md): the contract and the runtime
   rules, all of which still apply.
-- [Field Data Extraction](../../../design/field-data-extraction.md): why NAND is
+- [Field Data Extraction](../../../tags/design/proposals/field-data-extraction.md): why NAND is
   read raw and through ECC.
-- [Offline Log Reconstruction](../../../design/offline-log-reconstruction.md):
+- [Offline Log Reconstruction](../../../../docs/investigations/2026-10-offline-log-reconstruction.md):
   how IMUTag pages map to physical blocks.
 
 Facts are cited from the source. The datasheet used is

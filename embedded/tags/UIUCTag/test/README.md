@@ -87,7 +87,7 @@ relies on are unchanged.
 
 Sensors, buses, power, and real timing are all stubbed. The simulation is only
 meaningful because the sequencer's decisions are separable from those; see the
-[test strategy](../../families/BitPresTag/design/uiuctag-test-strategy.md) for
+[test strategy](../design/test-strategy.md) for
 what is deliberately left to a hardware run.
 
 ## Stubs

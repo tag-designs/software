@@ -48,7 +48,7 @@
  *   embedded/tools/decode_scratchpad.py scratch.bin
  * @endcode
  *
- * @see embedded/tools/decode_scratchpad.py, embedded/tags/design/debugging.md
+ * @see embedded/tools/decode_scratchpad.py, docs/bench/debugging-a-tag.md
  */
 #ifndef TAG_SCRATCHPAD_H
 #define TAG_SCRATCHPAD_H

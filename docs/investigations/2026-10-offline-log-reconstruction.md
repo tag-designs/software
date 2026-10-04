@@ -24,9 +24,9 @@ from internal and external flash) to the host decoder in
 `nm`/`readelf`. No reconstruction has yet been carried out, so treat
 "bit-identical" below as a property of the code paths, not a test result.
 
-Related: [Field Data Extraction](field-data-extraction.md) (why raw dumps are
+Related: [Field Data Extraction](../../embedded/tags/design/proposals/field-data-extraction.md) (why raw dumps are
 not self-describing; the session superblock proposal) and
-[SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md)
+[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md)
 (the capture tool these inputs come from).
 
 ## The inputs
@@ -112,7 +112,7 @@ The common thread:
   RV3028's correction-pulse jitter. The host places samples on that raw grid
   and ties it to the corrected RTC at segment anchors, scaling elapsed time by
   `1 + ppm/1e6` in between (`sqlitelog.cc:570-590`). See
-  `families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md`.
+  `families/IMUTag/design/sample-timing.md`.
 
 So `ppm_clock_error` affects `ElapsedUs`, `StartElapsedUs` and
 `ImuSegment.CorrectionPpm`, but not epochs, `RawElapsedUs` or sample values.
@@ -259,7 +259,7 @@ these.
 These came out of the reading. They are not fixed here; each is a separate
 firmware change, with the qualification that implies. They are scheduled, with
 fixes and verification, in
-[Tag Firmware: Next Release TODO](../embedded/tags/design/next-release-todo.md). An offline rebuild
+[Tag Firmware: Next Release TODO](../../embedded/tags/design/next-release-todo.md). An offline rebuild
 reproduces each of them faithfully.
 
 - **CompassTag page stride (data corruption).** `external_blocks` counts

@@ -11,7 +11,7 @@ Status: implemented for `AT25XE_PresTagv3` and validated on hardware
 that follow from it, and the reasons for each, so that the next loader starts
 from what is known rather than rediscovering it. The orientation and the
 add-a-loader checklist are in the [loaders README](../README.md); the case for
-loaders at all is in [Field Data Extraction](../../../design/field-data-extraction.md).
+loaders at all is in [Field Data Extraction](../../tags/design/proposals/field-data-extraction.md).
 
 ## The contract
 
