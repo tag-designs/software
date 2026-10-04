@@ -6,8 +6,8 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
 
 # CompassTag TODO
 
-- **Move the calibration region to the end of flash, as IMUTag does — next
-  firmware release.** On the L432 the linker places it as
+- **Move the calibration region to the end of flash, as IMUTag does.
+  Scheduled for the next firmware release (agreed 2026-10-04).** On the L432 the linker places it as
   `.calibration (NOLOAD): ALIGN(2048)` straight after the code, so it moves
   whenever the image grows, and a firmware update leaves a calibrated board's
   bytes at an address the new image does not read. It has already moved: at
@@ -34,6 +34,22 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
     the region removes the reason to mass erase in the first place, which is
     the stronger argument for doing it. See
     [the release procedure](../../../../docs/release/release-procedure.md).
+
+  **Doing it orphans every board already calibrated**, which is the same
+  hazard stated from the other side: pinning the region moves it, so the
+  constants an existing unit holds end up at an address the new firmware does
+  not read. Two units are known to be affected — the production
+  `203633324B425006004A005D`, and `203633324B4250060022005E`, recalibrated by
+  hand on 2026-10-04 with its constants at `0x0800b000`. The change therefore
+  needs one of:
+  - recalibrate the affected units after the release, which is cheap for two
+    boards and needs no code; or
+  - a one-time migration that reads the old address and rewrites the new one,
+    which is more code and has to know where the old one was.
+
+  Whichever is chosen, the release notes must say that the image relocates
+  calibration, because a tag that silently reads an unwritten page looks like
+  a calibration fault rather than an upgrade step.
 - **Measure plain `CompassTag` (MX25R) after an attach.** It reproduced the
   Standby-after-attach fault on its own board, and it has not been measured
   since the fix. `CompassTagAT25` has been, on production hardware
