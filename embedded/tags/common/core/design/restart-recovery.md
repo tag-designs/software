@@ -220,83 +220,13 @@ SQLite logs retain the decoded header flags in `ImuHeader.Flags` and write a
 elapsed microsecond time. SensorViz can draw those event rows as vertical
 discontinuity markers without turning them into y-axis streams.
 
-## Boot Cleanup Must Not Claim IDLE (fixed 2026-09-02)
+## Boot Cleanup Must Not Claim IDLE
 
-`IDLE => empty state log` is an invariant of this firmware. `Idle()` records no
-marker precisely so that an empty log is what makes an idle tag resolve to idle,
-and reset recovery relies on it: it seeds `TagState_IDLE` before walking
-`sEpoch`, so a tag with no markers needs no marker to be found.
-
-`tagResetRuntimeStateForPowerInit()` in `core/src/main.c` broke that invariant.
-It set `pState->state = TagState_IDLE` directly, bypassing `Idle()`, and also
-zeroed `pages` and `external_blocks`. Reached with markers still in the log, it
-produced a tag whose live state read IDLE while internal flash still ended in
-`FINISHED` with a nonzero external page count.
-
-That is unrecoverable from the host, because the erase path only runs from
-FINISHED or ABORTED. `tag-reset` saw IDLE, skipped the erase, and the next run
-started on a dirty NAND, collected nothing, and aborted. The abort *was*
-erasable, so the run after it succeeded — the observed symptom was every second
-collection failing, with downloads refused whenever data was present.
-
-Two defects combined:
-
-- `deviceInit()` cleared `pState->valid` even when called with `force`, which
-  the terminal transitions all do (`Finished()`, `Aborted()`, `Reset()`,
-  `SelfTest()`). That opened a window spanning all of the device power
-  sequencing in which any reset — a host tool detaching and the next one
-  attaching is enough — was classified by `getResetCause()` as `resetPower` with
-  no valid retained state, which is the condition that runs the cleanup. The
-  clear bought nothing: the same block restores the magic unconditionally at the
-  end. It is now done only for a genuine power init.
-- The cleanup asserted IDLE regardless of the log. It now claims IDLE only when
-  `stateLogEmpty()`, and otherwise leaves `STATE_UNSPECIFIED` so recovery must
-  resolve the state from the marker log. Leaving the state unspecified also
-  keeps the monitor-attach branch from adopting it — `validTagState()` rejects
-  UNSPECIFIED — which is what forces the scan. The log cursors are left
-  untouched in that case, because recovery owns them: `restoreLog()` when
-  detached, the retained values under a monitor.
-
-The marker scan itself was never at fault. Instrumentation caught it repairing
-the damage on a detached boot: entry state IDLE, resolved FINISHED from three
-markers ending in `EVENT_STOPCMD`. The failure only persisted when a monitor was
-attached, because that branch trusts retained state and never reads the log.
-
-Verified on hardware: a counter in `tagResetRuntimeStateForPowerInit()`
-incremented exactly once per failing cycle before the fix and never after it,
-across four reset/start/detach/stop/download cycles, with two consecutive
-successful runs — which had not happened once in the preceding runs.
+History: see [2026-09-boot-cleanup-claimed-idle](investigations/2026-09-boot-cleanup-claimed-idle.md).
 
 ### Still open
 
-- **PresTag at sample periods under 10 s does not survive a reset during
-  RUNNING** (observed 2026-10-01, bench PresTag `20333050364150040063005F`,
-  firmware `663780af`). Below 10 s the run sleeps in Stop 2 between samples
-  (`state_run.c`, `sconfig.lps_period < 10`); from 10 s up it uses Standby.
-  - A monitor attach (connect under reset), at 1 s: the tag kept reporting
-    RUNNING and wrote no further sample or header. External flash held 27
-    samples from the 27 s before the attach and nothing in the five minutes
-    after. The FINISHED marker then recorded 60 samples, the cursor rounded
-    up to a page by the restart path, not samples written.
-  - A plain NRST reset (the end of a `tag-capture` or `tag-xflash` session),
-    at 1 s: the boot classified it `EVENT_POWERFAIL` and the run went to
-    ABORTED.
-  - At 10 s, the same monitor attach and two SWD-session resets left the run
-    RUNNING and sampling (11 samples in 110 s, 12 after).
-  - Likely mechanism, not yet confirmed: a reset taken in Stop 2 leaves no
-    standby flag, so reset classification treats it as a power-on, while the
-    Standby case carries `SBF`. The monitor-attach stall is a separate path:
-    the run is adopted, but the next wakeup never comes.
-  - Not bisected; this is probably not a regression from the `firmware-fix`
-    branch, which does not touch the boot or run paths.
-  - Low priority: periods under 10 s are a bench convenience for gathering
-    data quickly, not a deployed configuration.
-  - **Fixed 2026-10-02** (next-release-todo A6). `getResetCause()` records
-    `externalResetAtBoot` for an NRST with valid retained state and no
-    failure flag, and recovery treats it like a monitor reattach. PresTag's
-    `Running(T_CONT, POWERFAIL)` re-arms the sample ticker, which removed the
-    1 s monitor-attach stall. Verified on PresTag and IMUTagNandBmp581; only
-    true failures abort now.
+- History (PresTag under 10 s, and IMUTag, aborting on a non-failure reset during RUNNING; fixed 2026-10-02): see [2026-10-reset-during-running-aborts](../../../design/investigations/2026-10-reset-during-running-aborts.md).
 
 - The monitor-attach recovery branch adopts retained state without
   cross-checking the marker log. Nothing depends on that now, but a future wipe
@@ -306,79 +236,6 @@ successful runs — which had not happened once in the preceding runs.
   `rtcInitializedAtBoot` false and `clockTrusted` false. Independent of the
   above; it prevented two of four verification cycles from starting at all.
 
-## Latched Flash Error Flags Block STM32U3 Low-Power Entry (fixed 2026-09-02)
+## Latched Flash Error Flags Block STM32U3 Low-Power Entry
 
-On STM32U3 an uncleared flag in `FLASH_SR` — `OPERR`, `WRPERR`, `PGAERR`,
-`PGSERR` and the rest — makes the power controller either abort the low-power
-transition or wake immediately out of `__WFI()`. The ECC flags in `FLASH_ECCR`
-behave the same way and are far easier to latch: any read of internal flash can
-set `ECCC`, and the flag outlives the read. `FLASH_Read_Checked()` clears what
-it detects, but nothing clears a flag raised by an ordinary load through a
-pointer into flash.
-
-The U3 terminal sleep path cleared neither. It cleared `FLASH_SR` only
-*after* waking, in `tagPowerRestoreFlashAfterStop3()`, which is too late to
-help entry. `tagPowerClearFlashErrorFlags()` clears both registers as the last
-step before arming sleep, immediately ahead of `DBGMCU->CR = 0` and the
-`LPMS`/`SLEEPDEEP`/`WFI` sequence.
-
-> **Stale as of 2026-09-04.** It does so inside `tagPowerEnterStop3()`, which
-> is no longer the live terminal path: `tagPowerEnterTerminalSleep()` calls
-> `tagPowerEnterStandby()`, and Stop3 carries `__attribute__((unused))`. The
-> clear runs on no path the tag takes today. Two attempts to add it to the live
-> idle and standby paths both measured about 1036 uA at idle against 4.94 uA
-> without it, which is not yet explained -- see
-> [`open-issues.md`](../../../design/open-issues.md). Flags are cleared by writing 1, so no flash
-unlock is needed and the call is safe with the flash locked.
-
-### How the flag gets latched in the first place
-
-Reading erased flash is enough. On modern STM32 parts an uninitialized or
-never-written region does not necessarily read as all ones; reading one can
-trick the ECC logic into flagging a double-bit error, `ECCD`.
-
-The marker log is scanned that way by design. `recordState()` walks `sEpoch`
-looking for the first slot whose `epoch` reads `-1`, which means it reads an
-erased record on every single call. Reset recovery does the same, terminating
-its scan on the first erased entry, and so do `stateLogAck()` and
-`stateLogEmpty()`. Every one of those paths reads uninitialized flash as its
-normal, non-error case.
-
-`FLASH_Read_Checked()` clears what it detects, which is why this stayed hidden
-for so long -- most reads self-clean. What it cannot cover is a flag raised by
-a read it did not perform, or one raised and left behind between the last
-checked read and the `WFI`. Clearing unconditionally at the point of sleep does
-not depend on knowing which read was responsible.
-
-### Why this was mistaken for something else
-
-The symptom is that a tag reports IDLE, sits in `__WFI()`, and draws run
-current — 995 uA against 6.6 uA on an IMUTagNandBmp581 at 3.29 V — instead of
-entering Stop3. Crucially it is triggered by *whatever last touched internal
-flash*, not by the code that appears to be at fault, so it presents as
-"adding this unrelated change broke standby".
-
-It was blamed on retained boot-recovery instrumentation, which was defaulted
-off because enabling it reproduced the 995 uA exactly. That was wrong: with the
-flag clear in place the same instrumentation measures 6.705 uA against 6.716 uA
-with it disabled. What the instrumentation actually did was add a field read of
-a flash-resident record, which latched a flag that nothing then cleared.
-
-Bisecting found it only because the failing difference narrowed to a single
-line — one added read of a marker field in `stateLogAck()` — which is far too
-small to explain a 150x current change by any mechanism other than a state flag.
-
-### What it does not explain
-
-The `debug_log` module still prevents standby, retested after this fix and
-unchanged at 1.71 mA. That is a separate fault in the module itself and remains
-open; see the warning in `embedded/tags/IMUTagNandBmp581/project.mk`. Note the
-two have different signatures — 1.71 mA against 995 uA — which is now a useful
-way to tell them apart.
-
-### Consequence for diagnostics
-
-Retained diagnostics are not inherently expensive on this part, which was the
-conclusion drawn from the earlier measurement and is now known to be false.
-Instrumentation that reads internal flash still needs an idle measurement
-afterwards, but it no longer needs to be presumed unaffordable.
+History: see [2026-09-u3-latched-flash-error-flags](investigations/2026-09-u3-latched-flash-error-flags.md).

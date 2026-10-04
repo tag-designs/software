@@ -10,13 +10,7 @@ This document details the recommended design and naming conventions for sharing 
 
 ## Background & Problem Statement
 
-Historically, host applications (`host/applications/` and `host/commandline/`) and embedded tags (`embedded/tags/`) communicated through protocol buffer messages defined in [**`proto/`**](../../proto/README.md). However, for high-bandwidth telemetry tags (such as `IMUTag`), serialization overhead and protocol buffer sizing make raw binary log formats necessary. 
-
-Without a shared definition, an "air gap" is created between the host decoding code and the tag firmware:
-* The tag firmware structures memory based on a private C `struct`.
-* The host tool manually decodes the binary block using magic offsets and manual byte parsing (e.g. `readLeI16(block + offset)`).
-
-To prevent this air gap, binary formats should be defined by a single, shared C/C++ data structure.
+History: see the [decision record](../decisions/0001-shared-binary-log-structs-in-include.md).
 
 ---
 
@@ -39,9 +33,7 @@ repository-root/
         └── tagcore/             <-- Host-side log decoding
 ```
 
-### Why this location?
-* **Decoupled Dependencies:** It prevents the host code from depending on paths inside `embedded/`, and the firmware code from depending on paths inside `host/`.
-* **Universal Compiler Access:** The top-level `include/` path is already configured in the compiler search paths for both the ARM GCC embedded toolchain and the host application compilers.
+History: why `include/` was chosen is in the [decision record](../decisions/0001-shared-binary-log-structs-in-include.md).
 
 ---
 

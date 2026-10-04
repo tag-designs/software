@@ -243,23 +243,7 @@ is unnecessary would be self-defeating. ChibiOS is checked out because the board
 templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
 failure, since in CI a skipped check looks exactly like a passing one.
 
-`release-firmware.yml` has been run to completion on a runner via
-`workflow_dispatch`. It produced all five distributed tags, seven files each,
-with `reproducible_mode: true`, `regenerate_sources: OFF`, a clean tree, the
-pinned toolchain at 14.2.1 and the expected ChibiOS commit. Every SHA-256 and
-size a manifest records was re-checked against the bytes actually shipped: 15 of
-15 matched. That is the backward question working -- bytes recovered from a tag
-can be matched to an archived build with nothing to trust but the bytes.
-
-Getting there took one real failure, worth recording because it is the failure
-mode the pin exists for. The first run rejected the toolchain: the pinned hash
-belonged to a different file in the same release, because Arm ships `x86_64`,
-`aarch64` and `darwin-arm64` builds of 14.2.rel1 under near-identical names and
-the checksum taken was the one a Mac is offered. The download was fine and the
-pin was wrong. The workflow now prints the downloaded file's size, type and
-computed hash alongside the pinned one, and the checksum Arm publishes beside
-the file -- printed for comparison and never acted on, since a checksum served
-by the same host as the file proves nothing about the file.
+History: the first end-to-end run and its toolchain-checksum failure are in the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).
 
 Firmware and host tools use separate tag namespaces because they are validated
 differently. A host tool release is exercised by running it; a firmware release
@@ -417,109 +401,11 @@ and its own bench measurement -- not a side effect of recording provenance.
 
 ### Determinism, verified within and across machines
 
-`monitor.c` used to embed `__DATE__ " : " __TIME__`, which made byte-identical
-rebuilds impossible by construction: the same commit produced different bytes
-every time, however carefully the inputs were pinned.
-
-It now carries `GIT_DATE` instead -- the commit's author date, from
-`version.cmake`, in `iso-strict` form so that it does not vary with the
-builder's timezone. The field still reports a date, which the tags rely on; it
-reports when the source was committed rather than when someone happened to
-compile it, which is the more useful answer from a tag in hand anyway. It is
-always exactly 25 characters against a 30-byte field.
-
-**The measurement has been taken, and it passes.** A distributed tag built twice
-from a clean tree, into two different build directories, produced a
-byte-identical `.bin`. The differing build paths make that stronger than it
-sounds: anything leaking a build location into the image -- `__FILE__`, a debug
-path, a temporary name -- would have shown as a difference, and none did.
-`__DATE__`/`__TIME__` now appear nowhere that compiles into a distributed tag,
-not in ChibiOS' HAL, RT or common code, and only in `BitTag-legacy`, a prototype
-that does not build.
-
-This closes the loop the document opened with. A commit determines its image, so
-the SHA-256 recorded in a board database can be re-derived from the commit alone
-by anyone with the repository -- the forward question answering the backward
-one, and no longer dependent on the archive surviving.
-
-### Across machines: verified, after three clone properties were removed
-
-That comparison has now been made, between a CI image from `fw-v0.0.1` and a
-local rebuild of the same commit -- Linux against macOS, Arm's tarball against
-Homebrew's build of the same 14.2.1. The images are the same size and **63 of
-33416 bytes differ**, which is the useful part of the result: had the toolchains
-disagreed, the sizes would have moved and the differences would be everywhere.
-They are not. The compiled code is identical. Every differing byte is a string
-git supplied, or a pointer displaced by one:
-
-| | CI | local | cause |
-| --- | --- | --- | --- |
-| `GIT_REPO` | `https://github.com/...` | `git@github.com:...` | how the clone was made |
-| `VERSION_HASH` | `a3f596d0` | `a3f596d` | `--short` picks the shortest unambiguous abbreviation, which depends on the object count |
-| `GIT_DATE` | `...:30Z` | `...:30+00:00` | git renders UTC differently between versions, even under `iso-strict` |
-
-All three are now pinned in `version.cmake`: `--short=8`, an explicit strftime
-format under `TZ=UTC` rather than a format git chooses, and the remote reduced
-to `host/owner/repo` so that SSH and HTTPS clones agree.
-
-**That closed it.** At `fw-v0.0.2`, a CI image and a local rebuild of the same
-commit are byte-identical: `24d009da...` on a Linux runner using Arm's tarball
-and on macOS using Homebrew's build of 14.2.1, twenty-four seconds apart. The
-two build manifests still record different remotes -- `https://github.com/...`
-against `git@github.com:...` -- which is what proves they are genuinely
-different clones on different machines rather than the same artifact compared
-with itself.
-
-That difference belonging in the manifest and not in the image is the whole
-distinction: the manifest describes a build, the image describes a commit.
-
-The lesson generalizes past these three. Anything derived from the *clone*
-rather than the *commit* is a reproducibility hazard, and git's conveniences --
-abbreviation, date rendering, remote URLs -- are all clone properties wearing
-commit clothing.
-
-That result has since been widened. All five distributed tags were rebuilt at
-`fw-v0.0.3` and compared against the images that release published: every
-`.bin` and `.hex` is byte-identical, and each matches the SHA-256 its own
-manifest records. The two builds differ in almost every way a build can -- a
-Linux CI runner against macOS, Arm's tarball against Homebrew's build of
-14.2.1, and `REGENERATE_SOURCES=OFF` against `AUTO` -- so the comparison also
-establishes something neither build alone could: **regenerating the committed
-sources is a no-op.** One build consumed them untouched, the other rebuilt them
-from their inputs, and the images agree.
-
-The `.elf` files differ by 32 bytes, which is the DWARF path of a different
-build directory and is not in the flashed bytes. The distinction is the same
-one this document draws throughout: the manifest describes a build, the image
-describes a commit.
+History: see [image determined by commit](../decisions/0010-build-image-is-determined-by-the-commit.md).
 
 ### The freshness check cannot detect a divergent generator -- a second job does
 
-`CheckGeneratedSourcesFresh.cmake` compares the recorded input hashes against
-the tree. It does not re-render the output and diff it. The difference matters
-for any generator whose own version is not recorded -- `fmpp` above all.
-
-If a different `fmpp` rendered `board.c` differently, the developer would
-commit that output alongside a perfectly correct `inputs.sha256` -- the inputs
-really did not change, only the renderer did -- and every check thereafter
-would pass. `AUTO` then seals it: no other machine regenerates, because the
-recorded inputs still match, so the competing output that would expose the
-disagreement is never produced. The failure is self-certifying and stable.
-
-Pinning the renderer prevents this; it does not detect it. Detection is what
-`generated-sources-reproduce.yml` adds: it installs the pinned generators,
-regenerates every committed source, and fails if the generated code differs
-from what is in the tree. `inputs.sha256` is excluded from that comparison,
-since it records the tool versions the runner had and those may legitimately
-differ; the generated code may not.
-
-It is a separate workflow rather than an extension of
-`embedded-reproducibility.yml`, and deliberately so. That check was built to
-need nothing but CMake and a checkout, on the reasoning that a check proving
-the generators unnecessary must not itself require them. Detection needs the
-opposite -- every generator installed -- so the two cannot be the same job
-without destroying the property the first one demonstrates. It runs weekly and
-on demand rather than per pull request, for the same reason.
+History: see [platform decision](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md).
 
 ### The old board generation path is untouched
 
@@ -540,46 +426,7 @@ to port the board to `generate_configured_board_files` first.
 
 ### `fmpp` is pinned, in two parts
 
-The board manifests hash the ChibiOS templates but not the renderer, so a
-different `fmpp` could in principle render them differently and the manifests
-would not notice. Two changes closed that without touching the manifests.
-
-**`FMPP_VERSION` pins 0.9.16** and configure compares what `fmpp` reports
-against it, routing a disagreement through `reproducibility_problem` like the
-ARM toolchain check. fmpp's last release was September 2018, so there is
-effectively one renderer in circulation and this is an assertion rather than a
-constraint. It is a check and not a manifest entry, which is what avoids the
-problem described next.
-
-**`board.fmpp.in` pins the rendering environment** -- locale, number format and
-both encodings -- which FreeMarker was otherwise taking from the machine. That
-mattered more than the version: the templates interpolate numbers in 54 places
-via `?number` and 156 more via `?index`, `?size` and `?counter`, none guarded
-with `?c`, and `board.c` is C source, so a locale that groups digits
-differently produces a file that does not compile. `board.fmpp.in` is itself a
-hashed input of every board manifest, so this pin is covered by the existing
-freshness check with nothing added to it.
-
-The original reasoning for leaving the version out of the manifests still
-stands and is why it stayed out: Pinning it was rejected because a version string reported on
-one machine and not another would cause false staleness across the group, which
-would be worse than the risk. The per-image build manifest does not record it
-either -- that would be a small, easy addition.
-
-That reasoning was sound while the renderer was an uncontrolled desktop
-install, and `config-gen` has since shown what removes it. Its protobuf is
-pinned in a `requirements.txt` and installed into a virtualenv the build makes
-itself, so every machine reports the same version because every machine runs
-the same bytes, and the version becomes recordable rather than a source of
-false staleness. The same pattern would work for `fmpp` and the JRE under it,
-with one difference worth weighing: a Java runtime is not a pip install, so it
-would mean either a documented download or a container.
-
-Whichever way that goes, **the pin and the manifest entry have to land
-together.** Recording `fmpp` in `inputs.sha256` while desktop regeneration is
-still permitted reintroduces exactly the false staleness that was avoided, and
-the commit that adds it invalidates every board manifest and requires a
-regeneration alongside.
+History: see [fmpp pin decision](../decisions/0015-build-pin-fmpp-and-its-rendering-environment.md).
 
 ### Programming a field tag
 
@@ -670,120 +517,11 @@ exists to prevent.
 Argued above and unchanged, but the `dataprocessing` path also produces records
 that outlive their build, and nothing here applies to them.
 
-## Settled: pinning does not shift the generated output
+## Settled questions
 
-The worry was that fixing on 0.4.9.1 would shift the `.pb.*` files away from what
-built the firmware now in the field, making the first commit of generated sources
-a silent behavioural change.
-
-It does not. Both generators were run over six proto variants (the five
-distributed ones and `bittag-legacy`, distributed at the time of the test) from
-the repository's own `.proto` files and `CombineFiles.cmake`-combined options,
-and all 24 outputs compared:
-
-- **0.4.8 vs 0.4.9.1** -- identical but for the `/* Generated by nanopb-... */`
-  comment and some trailing blank lines. No declaration, field descriptor, size
-  macro or `PB_BIND` entry differs in any of the 24 files compared.
-- **0.4.8 vs the tree's actual old generator** (`1f0c2e1`, the
-  `0.4.8-11-g1f0c2e1` snapshot) -- the only code change to `nanopb_generator.py`
-  across those eleven commits is inside `fields_declaration_cpp_lookup`, emitted
-  solely under `--cpp-descriptors`, which this project does not pass.
-
-Moving to 0.4.9.1 from that snapshot also changes no runtime behaviour:
-`pb_common.o` and `pb_encode.o` are byte-identical when cross-compiled for
-`cortex-m4` and `cortex-m33`, and the sole semantic difference -- a leak fix in
-`pb_decode_ex` under `PB_ENABLE_MALLOC` -- is in a function garbage-collected out
-of the linked images, which call plain `pb_decode`.
-
-## Settled: `config-gen` is Python, and its protobuf is pinned
-
-`default_config.c` was produced by `config-gen.cc`, a C++ tool linked against
-whichever libprotobuf a developer's vcpkg baseline supplied. The manifest
-hashed `config-gen.cc` and recorded nothing about that library, so a committed,
-shipped file was governed by a per-machine dependency no check could see --
-the same shape of hole as `fmpp`, with a much larger library behind it.
-
-It is now `config-gen.py`, depending on `protobuf` alone, pinned in
-`embedded/proto-c/requirements.txt` to **5.28.1**. That version is not a
-preference: it is the protobuf the pinned nanopb 0.4.9.1 distribution itself
-runs on, whose `generator-bin` ships `protoc 28.1`. One protobuf now governs
-both generated outputs in those directories instead of two free to drift.
-
-Two decisions make the pin cheap to hold:
-
-- **The schema comes from a descriptor set, not generated modules.** Generated
-  Python carries a gencode version the runtime checks and can refuse, which
-  makes an old `protoc` against a newer runtime a standing hazard. A descriptor
-  set is wire-format data with no such gate.
-- **`protoc` comes from the nanopb distribution**, beside `nanopb_generator`,
-  so one is present exactly when regeneration is possible and nothing is
-  installed for it.
-
-The build creates its own virtualenv from `requirements.txt` rather than using
-whichever interpreter is on `PATH`. That is not fastidiousness: on the machine
-this was developed on, `python3`, `pip` and CMake's `find_package(Python3)`
-resolved to three different installations, and nanopb's binary distribution
-bundles a fourth interpreter of its own. An uncontrolled interpreter choosing
-the version that renders a committed file is precisely the defect being
-removed, so it is not an acceptable way to remove it.
-
-The switch was measured, not assumed. Output is byte-identical to
-`config-gen.cc`'s for all five distributed variants -- verified against a
-rebuild of the C++ tool, and under protobuf 4.25.3, 5.28.1, 5.29.5 and 7.36.2.
-The pin is therefore conservative rather than load-bearing: if it has to move,
-it can.
-
-## Settled: two config files parsed only by accident
-
-Switching parsers found a defect that had been in the tree invisibly.
-`prestag-proto-c/default-config.json` and `prestagraw-proto-c/default-config.json`
-both ended with a trailing comma before the closing brace, which RFC 8259
-disallows. The C++ JSON parser accepted it; a strict parser does not.
-
-Those files parsed only because of a leniency nobody chose, nothing recorded,
-and no check could observe. A developer on a stricter libprotobuf would have
-hit a hard failure on one distributed variant out of five with nothing in the
-tree to explain why. Both are corrected, and neither correction moves an
-emitted byte -- the comma changed what the file hashed to and nothing about
-what it meant.
-
-Worth recording as the concrete form of a general risk: **an unpinned
-generator can make a malformed input look valid**, and the freshness check
-cannot see it, because that check compares recorded input hashes rather than
-re-rendering output. See [What was not done](#what-was-not-done).
-
-## Settled: generator output does not depend on the platform
-
-For nanopb 0.4.9.1, the macOS x86 release binary and the Linux PyPI wheel produce
-**byte-identical** output: all 24 files across the six variants tested compared
-equal, `.pb.c` and `.pb.h` alike, line endings included. The two runs also used
-different include-path spellings, so the output is not sensitive to that either.
-
-A regeneration on a Mac can therefore be committed directly; there is no need to
-make Linux authoritative or to route protocol changes through a particular
-machine. This is what makes the CI freshness check meaningful -- had it not held,
-the check would have failed for everyone not building on the blessed platform.
-
-## Settled: the board files do not depend on the machine that rendered them
-
-This was the last open question about `fmpp`, and it now has a standing answer
-rather than a one-off measurement.
-
-`generated-sources-reproduce.yml` installs the pinned generators on a Linux
-runner, regenerates every committed source, and compares. It passes: all five
-proto variants and all five boards come back byte-identical to files rendered
-on macOS, with a different JVM underneath fmpp and a different platform under
-everything.
-
-nanopb's output had already been shown platform-independent -- the macOS
-release binary and the Linux wheel producing identical output across 24 files.
-fmpp's never had been, and it was the weaker case of the two, since a template
-renderer on a JVM has more ways to inherit machine state than a Python code
-generator does. It reproduces.
-
-The result is worth more as a job than as a measurement. A measurement says the
-files matched on the day someone checked; the job says they still match every
-week, and says so loudly on the day they stop.
+- Pinning does not shift the generated output: see [nanopb pin](../decisions/0011-build-pin-nanopb-0-4-9-1.md).
+- `config-gen` is Python, its protobuf is pinned, and two config files parsed only by accident: see [config-gen decision](../decisions/0013-build-config-gen-in-python-with-pinned-protobuf.md).
+- Generator output and board files do not depend on the platform: see [platform decision](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md).
 
 ## Open questions
 
@@ -809,20 +547,4 @@ week, and says so loudly on the day they stop.
   in `generate_configured_board_files` and in the check, and will break the same
   way on the next change to a board input.
 
-## Appendix: how nanopb was found disagreeing with itself
-
-Worth keeping, because it is the concrete failure this document was written
-against.
-
-`NANOPB_SRC_ROOT_FOLDER` originally supplied both the include path for the
-*runtime* -- `pb_encode.c`, `pb_decode.c`, `pb_common.c`, `pb.h`, compiled into
-every shipped image -- and the `generator-bin` hint for the *generator* that
-produces the `.pb.*` sources. The tree was listed in `.gitignore` and supplied
-per developer, so neither role had a recorded version.
-
-The tree actually in use was a git clone at `nanopb-0.4.8-11-g1f0c2e1`, an
-untagged master snapshot whose `pb.h` self-reports `0.4.9-dev`, while the
-generator beside it reported `0.4.9.1`. Runtime and generated code disagreed in
-every image built on that machine. `PB_PROTO_HEADER_VERSION` is 40 for both, so
-the one safety net nanopb provides could not see it: it catches 0.3 against 0.4,
-not 0.4.7 against 0.4.9.1.
+History: how nanopb was found disagreeing with itself is in the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).

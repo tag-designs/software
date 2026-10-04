@@ -57,16 +57,4 @@ idle-hook implementation for this target.
 
 ## Bring-Up Status
 
-Bench validation on the first BMP581 breakout confirmed:
-
-- `RUN_EXT_FLASH` passes against the GD5F2GM7RE SPI-NAND after using the
-  shared GD5F self-test path for both 1 Gbit and 2 Gbit variants.
-- `RUN_LPS` passes against BMP581 after correcting the PA9/PA10
-  data-ready/chip-select assignment.
-- A short 400 Hz IMU collection produced SQLite `ImuAccel`, `ImuGyro`,
-  `ImuMag`, `ImuPressure`, `ImuTemperature`, and `Calibration` tables with
-  plausible pressure and pressure-temperature values.
-
-The `debug_log` module remains enabled while this target is under bring-up so
-BMP581 and NAND diagnostics can be captured by `tag-test --debug` and
-qtmonitor.
+History: see [2026-08-imutagnandbmp581-first-breakout-bringup.md](../families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md).

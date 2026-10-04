@@ -71,89 +71,11 @@ behaviour.
 
 ### 1.2a Measured: the Stop 2 path does not sleep at all
 
-The sleep-mode switch above is not a choice between two working modes. Measured
-on a PresTagv3 at `411b046`:
-
-| Period | Mode requested | Measured `I_avg` |
-| --- | --- | --- |
-| 9 s | `STOP2` | **530.7 µA** |
-| 10 s | `SHUTDOWN` | **3.695 µA** |
-
-A 144x step for a one-second change in period. A 0.5 s-resolution trace at 9 s is
-**flat at 530.7 µA** — minimum 530.62, with the sampling events visible only as
-536 µA bumps every 9 s. There is no low-current interval between samples at all,
-which is the signature of a part that never entered a low-power mode rather than
-one whose low-power mode is expensive.
-
-The cause is in `godown()`
-([pwr.c:234](../../../common/core/src/pwr.c#L234)):
-
-```c
-void godown(enum Sleep sleepmode)
-{
-  tagPowerEnterTerminalSleep(sleepmode);
-}
-```
-
-`tagPowerEnterTerminalSleep()` on this part selects `LPMS` only for Standby and
-Shutdown, and returns without touching anything for any other request
-([pwr-l432.c:33-45](../../../common/core/src/pwr-l432.c#L33-L45)). **A `STOP2`
-return from `Running()` is therefore a silent no-op**: the state handler asks to
-sleep, `godown()` declines without saying so, and the main loop goes round
-again.
-
-Consequences:
-
-- Sub-10 s periods are unusable, and not because Stop 2 is costly — it is never
-  entered. An L432 in Stop 2 should be nearer 1-2 µA.
-- **The 9 s / 10 s pair does not measure the cost of the per-sample reboot**,
-  which is what it was designed for. That comparison needs a working Stop 2
-  first.
-- Field periods are unaffected: they are at or above 10 s, take the Shutdown
-  path, and measure 3.695 µA at 10 s and 0.855 µA at 60 s.
-
-This is separate from `stopMilliseconds()`, which enters Stop through its own
-LPTIM1 path rather than through `godown()`.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 ### 1.2b Measured: `stopMilliseconds()` spins ~6.7 ms and never sleeps
 
-Every driver wait on this target goes through `stopMilliseconds()`, which arms
-LPTIM1 for the requested delay and enters Stop 2 with `WFE`. Instrumented with
-retained timestamps (see §11), the call behaves like this for requests of 2 ms
-and 5 ms alike:
-
-| Step | Measured |
-| --- | --- |
-| bus disable, LPTIM clock/enable | ~0.1 ms |
-| **`ARR` write → `ARROK` seen** (`while (!(ISR & ARROK)) {}`) | **6.3–7.1 ms, Run current** |
-| `WFE` loop until `ARRM` | **0.0–0.1 ms, exactly 1 iteration** |
-
-The cause is the clock. **LSE on this board is 1024 Hz**, and LPTIM1 runs from
-it (`RCC_CCIPR.LPTIM1SEL = 11`, read live), so `TAG_STOP_LPTIM_HZ = 1024` is
-right and a 5 ms request correctly programs 6 ticks. But LPTIM register writes
-— `ARR`, and every `ICR` flag clear — only take effect after kernel-clock edges,
-and at 1024 Hz each edge is ~1 ms. The `ARROK` wait therefore burns ~7 cycles of
-Run current, longer than the delay it is arming; and the `ARRM` clear written
-immediately before the `WFE` has not propagated when the loop reads `ISR`, so
-it sees the *previous* call's match still set and returns without sleeping.
-Net effect: **the Stop 2 sleep never happens, the wait lasts ~6.7 ms whatever
-was requested, and all of it is at Run current** — three per sample (two LPS27
-waits, one flash-wake wait), ~20 ms and roughly a third of `Q_cycle`, the flash
-one dearest because the AT25 is awake underneath it.
-
-The AT25 recharge metering is therefore over-satisfied in time (7 ms for a 2 ms
-request) but paid for at Run current instead of in Stop.
-
-Fix direction: the synchronisation cost has to become small relative to the
-delay, and the flag check must not race the clear. Options, in rough order of
-preference: (a) clock LPTIM1 from LSI (~32 kHz, available in Stop 2; `LPTIM1SEL`
-is independent of `RTCSEL`, so the RTC stays on the 1024 Hz LSE) with a
-prescaler to taste and `TAG_STOP_LPTIM_HZ` updated — sync drops to tens of µs;
-(b) keep 1024 Hz but never rewrite `ARR`: free-run, use `CMP = CNT + ticks` and
-wait for `CMPOK` *by sleeping*, accepting ~1–2 ms of granularity; (c) the RTC
-wakeup timer, which has the same LSE-domain sync cost. Whichever is chosen must
-then be shown to sleep — a dip to ~2 µA for the requested duration in a fine
-trace — rather than argued.
+History: see [the decision record](../../../../../docs/decisions/0009-prestag-stop-delay-rtc-alarm-a.md).
 
 ### 1.3 The repeating unit is 60 samples, not one sample
 
@@ -234,11 +156,7 @@ hibernation window shorter than `60 × period` still contains no entry
 opportunity and is skipped**, which is worth knowing when choosing windows at
 long periods.
 
-This gate read `sizeof(t_DataLog)/2` — 120, twice the page — until the fix that
-accompanies this plan. `external_blocks` counts 4-byte samples, so 120 was the
-page measured in 16-bit words, and entry was possible only every *other* block.
-The same constant appeared in the `T_INIT` cursor round-up, where it was not
-merely coarse; see §1.7.
+History: see [investigations/2026-09-prestag-log-cursor-round-up.md](investigations/2026-09-prestag-log-cursor-round-up.md).
 
 Exit, from `Hibernating(T_INIT)`
 ([state_machine.c:1189-1193](../../../common/core/src/state_machine.c#L1189-L1193)):
@@ -290,44 +208,7 @@ because the download pairs positionally: block `index` reads its header from
 exactly that, `external_blocks = pages × DATALOG_SAMPLES`
 ([datalog.c:235-239](../src/datalog.c#L235-L239)).
 
-**This read `sizeof(t_DataLog)/2` — 120, twice the page — until the fix that
-accompanies this plan.** `external_blocks` counts 4-byte samples (`writeDataLog`
-uses `external_blocks * 4`), so 120 was the page measured in 16-bit words. At
-every reachable `Running(T_INIT)` the cursor is already a multiple of 60, so the
-round-up could only ever break the invariant, never repair it:
-
-- from `Configured`, the cursor is 0 — no-op;
-- from a normal hibernation exit, the entry gate had left it 120-aligned — no-op;
-- from `restoreLog()` after a **brownout**, the cursor is `60 × pages`. With
-  `pages` **odd**, `60 × pages mod 120 == 60`, so it advanced a whole page while
-  `pages` stayed put.
-
-After that the next header was written at `vddHeader[pages]` but its samples
-landed in page `pages + 1`, and the pairing stayed off by one page **for the
-rest of the run**: one block downloaded with a header and zero samples (its page
-erased, the reader stopping at the first `pressure == -1`), and every later block
-was served samples taken `60 × period` seconds before its header claimed. At the
-shipped default of 90 s that is 90 minutes of skew on everything after the
-recovery.
-
-The two live routes were `Running(T_INIT, State_EVENT_BROWNOUT)`
-([state_machine.c:790](../../../common/core/src/state_machine.c#L790)) and a
-hibernation exit following a brownout, where `restoreLog()` had already replaced
-the 120-aligned cursor with `60 × pages`.
-
-Restart recovery is otherwise **benign on a PresTag**, and that is what made this
-the whole of the risk. Unlike IMUTag there is no sensor state to rebuild: the
-LPS27 is read one-shot per sample, with no FIFO phase, watermark, or streaming
-ownership to resynchronise, and the pressure sample taken after a reset is as
-good as the one before it. `State_EVENT_BROWNOUT` therefore has nothing to repair
-on this family except the log cursor — so the cursor arithmetic in
-`Running(T_INIT)` was not one hazard among several, it was the only thing restart
-recovery had to get right.
-
-**Both constants were changed together, and had to be.** They were consistent
-with each other, which is why normal hibernation exit was unaffected. Correcting
-the entry gate alone would have made every odd-page hibernation exit
-desynchronise the log — turning a granularity wart into the corruption above.
+History: see [investigations/2026-09-prestag-log-cursor-round-up.md](investigations/2026-09-prestag-log-cursor-round-up.md).
 
 **T4** below is the regression test.
 
@@ -394,27 +275,7 @@ above:
 
 ### 2.0a If the tag is found at 14 mA, it is in the system bootloader
 
-Observed twice during the first execution of this plan: the tag ended up running
-the **STM32 system-memory bootloader** — PC in `0x1FFF....`, `HSI16` as
-SYSCLK, ~14 mA, RTC registers reading zero — and from that state **no reset
-recovered it**: five system resets and two hardware reset pulses re-entered the
-ROM every time, while flash was intact, `PEMPTY` was clear and the option bytes
-were normal. Two things did recover it: a debugger jump,
-
-```sh
-STM32_Programmer_CLI -c port=SWD mode=UR reset=HWrst -g 0x08000000
-```
-
-and a power-on reset (an accidental DUT power loss booted flash cleanly).
-
-The first entry followed a self-reset during a run of an instrumented image; the
-second followed the download target's post-program `-rst`, which had been
-substituted for the original `-g 0x08000000` during this work. The original jump
-is restored: it starts the firmware without consulting boot selection at all.
-BOOT0 is tied on this board and hundreds of tags have deployed, so this is an
-unfortunate reachable state that a power cycle clears, not a board fault; the
-latch mechanism was not established here. The practical rule is the recovery
-above, and to keep `-g` in the download target.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 ### 2.1 Measuring a sub-µA average of a load that pulses to milliamps
 
@@ -1057,67 +918,13 @@ than omitting it.
 
 ## 10. Deviations
 
-### Fixed by the change that accompanies this plan
+History: see [investigations/2026-09-prestag-log-cursor-round-up.md](investigations/2026-09-prestag-log-cursor-round-up.md).
 
-Both were the same constant, and both had to move together (§1.7):
-
-- **Hibernation entry granularity** was 120 samples rather than 60 (§1.6), so a
-  window shorter than `120 × period` could be skipped entirely.
-- **The `T_INIT` round-up desynchronised the log** after a brownout recovery with
-  an odd page count (§1.7), displacing every later block's samples one page from
-  its header. A data-integrity defect, not a granularity wart.
-
-**C5** and **T4** are the regression tests. Neither has been run on hardware
-yet — the fix is verified only by construction and a clean build of `PresTag`
-and `PresTagRaw`.
-
-### Still open, to confirm not fix
-
-This plan changes no further firmware. Two places where code and comments
-disagree remain; each should be filed once observed:
-
-1. **`ALARM_HOUR` behaves as `ALARM_MINUTE`** (§1.6) — identical masks in
-   `enableAlarm()`. Hibernation wakes 60× more often than the comment claims.
-   Confirmed or refuted by **H3**.
-2. **`start_delay` is silently ignored by this family** (§1.4), so
-   `tag-start --start-now` has no effect on a PresTag. Confirmed by **C2**.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 ### 1.2c Resolved: a floating input, and the LPTIM arming cost
 
-Stop 2 works. Two independent faults made it look otherwise, and both are fixed.
-
-**A floating input.** PA2/INT1 is unused and was configured as a digital input
-with nothing driving it, so it sat near mid-rail and dissipated continuously.
-Configured as analog
-([board-customizations.json](../../../../boards/PresTagv3/cfg/board-customizations.json)),
-the stop-delay plateau fell from **143 µA to 8-16 µA** with the LPS27 off and
-the AT25 in deep power-down.
-
-It hid because it cost nothing anywhere convenient: negligible against Run
-current, and impossible in Shutdown, where VCORE is removed -- which is why
-idle always measured a clean 0.29 µA. It showed only in Stop 2, the mode used
-for every driver delay.
-
-**The LPTIM arming cost.** Re-arming LPTIM1 per delay costs an `ARROK`
-busy-wait of 6.3-7.1 ms at Run current on a 1024 Hz LSE, longer than the delay
-it arms. Replaced by a free-running RTC Alarm A tick (§1.2d).
-
-| build | `Q_cycle` | `I_avg` at 10 s |
-| --- | --- | --- |
-| LPTIM, floating pin | 34.06 µC | 3.6948 µA |
-| LPTIM + pin fix | 26.82 µC | 2.9742 µA |
-| **Alarm A + pin fix** | **14.49 µC** | **1.7376 µA** |
-
-**How not to look for this.** Every documented cause was excluded by capturing
-registers at the `WFI` -- `SLEEPDEEP`, `LPMS`, `PWREN`, voltage range, ADC and
-`VREFINT`, RCC clock requests, `C_DEBUGEN`, pending interrupts and wakeup flags
-were all correct or clear. They were excluded correctly and none was the cause.
-Meanwhile an early test *appeared* to exclude pins and did not: it called
-`tagDevicesApplyStandbyPins()`, which writes only `PWR->PUCRx`/`PDCRx` -- the
-Standby and Shutdown pull configuration, applied through `PWR_CR3_APC`, with no
-effect in Stop mode, where GPIOs keep their Run configuration. A null result
-from a test that cannot detect the fault is not an exclusion, and recording it
-as one cost hours.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md) and [the decision record](../../../../../docs/decisions/0009-prestag-stop-delay-rtc-alarm-a.md).
 
 ### 1.2d The stop-delay tick: RTC Alarm A
 
@@ -1149,17 +956,7 @@ Verified against the RTC calendar, which keeps running through Stop 2:
 
 ### 1.2e Defect found on the way: a stale stored configuration
 
-`tag-start` printed `period: 10`; the tag ran at 9 s (`RTC_WUTR = 8`, bursts
-8.97 s apart) with `sconfig.lps_period = 9` still in flash. `writeStoredConfig()`
-programs `sconfig` without checking `FLASH_Program_Array()`'s result, and
-`erasePersistent()` never checks that its erase happened; on an L4 a program
-into a non-erased double word is refused, so the previous configuration
-silently survives a reset-and-start. Every "10 s" run between the first POR and
-an explicit page erase was a 9 s run — including one bisect that seemed to show
-Shutdown broken and was in fact the Stop 2 path behaving as documented. Two
-lessons for the plan: **verify the period from the data** (burst spacing, or
-the download's epoch step), not from the host's echo; and treat `tag-start`'s
-configuration print as the request, not the result.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 ### 1.2e Rig caveat: the debug port and Stop modes
 
@@ -1173,125 +970,9 @@ why the resting-state numbers stand.
 
 ## 11. Findings from the first execution (2026-09-08, `411b046` + probes)
 
-Measured on a PresTagv3 at 2.485 V, Joulescope JS320, auto range, `charge/time`.
-
-| Measurement | Result |
-| --- | --- |
-| A1 IDLE, clock set (300 s ×3) | **0.2928 µA** (0.2921 / 0.2926 / 0.2937) — PASS |
-| A2 CONFIGURED (900 s ×2) | **0.5165 µA**; wakes every 60.0 s (trace), **13.4 µC per wake** |
-| B2 9 s (Stop 2 path) | **530.7 µA, flat** — never sleeps; `godown(STOP2)` is a no-op (§1.2a) |
-| B3 10 s | **3.6948 µA** |
-| B7 60 s | **0.8552 µA** (predicted 0.860 from B3 + A1) |
-| Fit, Shutdown regime | `I_rest` 0.287 µA, `Q_cycle` 34.1 µC, `T_knee` 119 s |
-| Predicted 90 s default | 0.666 µA → **11 mAh 688 d, 5.5 mAh 344 d** (nominal) |
-| Download check, 9 s run | PASS: 990.56–990.94 hPa, 25.8–26.1 °C, no sentinels |
-| One sample event (10 s trace) | 59 ms, 34.1 µC; 9 s event 52 ms — **boot ≈ 7 ms ≈ 4.5 µC** |
-| Sample path (probe) | 28.9 ms loop-top to loop-top; three `stopMilliseconds` ≈ 6.7 ms each |
-| 4-byte flash write | `WIP` clear on first poll: **0.5 ms** — cheap, as the datasheet says |
-
-Sub-1 µA at 60 s and one year on 11 mAh are confirmed; 5.5 mAh is 21 days short
-before derating, and a ~4.4 µC cut in `Q_cycle` would carry it over.
-
-### Where the 34 µC goes, and what it says about optimisation
-
-- **~20 ms of `stopMilliseconds()` at Run/Sleep current** (§1.2b, §1.2c) — the
-  largest controllable item. The waits do elapse, but shallow: 140 µA measured
-  with all devices off, against 1-2 µA for Stop 2. Making them sleep properly is
-  worth roughly 10 µC and is what takes 5.5 mAh across a year. An LSI kernel
-  clock was tried and recovered only 3.9 µC (§1.2c).
-- **Boot from Shutdown, ~7 ms, 4.5 µC** — inherent to Shutdown-per-sample.
-  Avoidable only by a working Stop 2 between samples, which `godown()` does not
-  implement on this part (§1.2a).
-- **Flash write is not the cost.** Byte programming is ~30 µs; batching samples
-  into pages would save little and, on a small cell, risk a brownout mid-page.
-- **SPI is polled peripheral SPI at 1 MHz**, ~8 µs per byte; DMA SPI would buy
-  back essentially nothing.
-- **LPS27 timing is already tuned** (5 / 5 / 1 versus driver defaults 10 / 15 /
-  6), though `PresTagRaw` never received it.
-- The `stopMilliseconds()` synchronisation cost means the AT25 recharge wait is
-  longer than requested but spent at Run current; on a cell the metering itself
-  is satisfied, the energy is what is lost.
-
-### Trace features that are not the firmware
-
-After the sample pass the trace shows a ~7 ms plateau at ~160 µA and a 2.5 mA,
-1.5 ms spike before the current settles. Forty consecutive loop passes after
-every sample measure 0.9–1.0 ms each with the ADC running (533 µA elsewhere),
-there are no threads besides main and idle, and no ISRs beyond the RTC. The
-supply current cannot fall below what the MCU is drawing, and the dip and spike
-carry nearly equal and opposite charge (−2.6 µC, +3.0 µC). The working
-conclusion is an **instrument auto-range transition** with charge conserved but
-the shape distorted — so `Q_cycle` from `charge/time` stands, but per-phase
-attribution of that tail does not. A fixed-range capture would settle it; the
-instrument wedged before one could be taken.
-
-### Not yet run, as of the first execution
-
-The LSI delay experiment (§1.2c) needs its all-devices-off wait to settle sleep depth.
-
-A3, A4, A5; B1, B4, B5, B6; all of Phase C (C1–C6, T4); H3 for hibernation. The
-CONFIGURED minute alarm was confirmed by trace; the HIBERNATING one was not
-measured.
-
-**All of these except B1, B4, B5 and T4 were run on 2026-09-09** — see §12.
-
-### Tooling found wanting, and fixed or reverted
-
-- `joulescope_measure.py` client timeout fixed at 300 s; scaled to the window.
-- `joulescope_server.py` died on `BrokenPipe` because `flush()` sat outside
-  the guard; moved inside.
-- Download target: `-rst` briefly replaced `-g 0x08000000`; the tag was found in
-  the ROM immediately afterwards (§2.0a). Reverted to the jump; `reset=HWrst`
-  and a 4-try connect retry kept.
-- The instrument wedges after repeated direct open/close cycles; use the server
-  for the whole session and do not run direct-driver captures alongside it.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 
 ## 12. Second execution (2026-09-09, `890a11b`)
 
-The first execution's numbers stand as a record of the *pre-fix* firmware. Two
-faults were found and fixed between the two, and every number below moved
-because of them:
-
-- **PA2/INT1 was a floating digital input** on the PresTagv3 board, dissipating
-  ~130 µA whenever the part was in Stop 2 — invisible in Run, and impossible in
-  Shutdown where VCORE is removed, which is why it hid for so long. Made analog
-  in `bf0c331`.
-- **`stopMilliseconds()` re-armed LPTIM per delay**, and the `ARROK` busy-wait
-  costs 6.3–7.1 ms of Run current each time at a 1024 Hz LSE. Replaced by a
-  free-running **RTC Alarm A** tick set up on RUNNING entry, in `0ac8bc6`.
-
-`Q_cycle` fell **34.06 → 26.82 → 15.26 µC** across the two fixes.
-
-| Measurement | First execution | Second execution |
-| --- | --- | --- |
-| IDLE | 0.2928 µA | 0.2810 µA (A1′) |
-| FINISHED | not run | **0.2790 µA** |
-| HIBERNATING | not run | **0.3769 µA**, 5.05 µC per wake |
-| 10 s | 3.6948 µA | **1.8099 µA** |
-| 60 s | 0.8552 µA | **0.5406 µA** |
-| **90 s (default)** | 0.666 µA *predicted* | **0.4517 µA measured** |
-| Fit | `I_rest` 0.287, `Q_cycle` 34.1, `T_knee` 119 s | `I_rest` **0.2842 µA**, `Q_cycle` **15.26 µC**, `T_knee` **53.7 s**, R² 0.999993 |
-| 5.5 mAh at 90 s | 344 d — **21 days short of a year** | **505 d — clears it** |
-| 11 mAh at 90 s | 688 d | **1010 d** |
-
-Both cells now clear a year at the shipped period, which was the object of the
-exercise. The model is measured at three periods, not extrapolated from one.
-
-Schedule behaviour was re-run in full against the Alarm A change and is
-unchanged: C1–C5 as before, **C6a** (scheduled stop at 90 s) FINISHED at the
-stop epoch +1 s, **C6b** (commanded stop at 90 s) confirmed in one poll with an
-immediate clean download. **H3** counted the hibernation wakes directly — five
-in 295 s at exactly 60.0 s, twice over — settling §1.6: the hour alarm does
-behave as a minute alarm. That same run was configured to open its hibernate
-window between samples 60 and 120, which is what C5 could not do, and so it is
-also the hardware confirmation of the §1.7 cursor fix.
-
-`PresTagRaw` was brought into line with PresTag (`4527184` — it had silently
-inherited `STANDBY` for every state and the LPS27 driver defaults) and then
-measured: IDLE 0.2792 µA, 10 s run 1.7746 µA, download PASS. Within 2% of
-PresTag on both, as it should be once the configurations match.
-
-**Still outstanding:** T4 (brownout recovery) needs a genuine brownout and has
-not been run, and F3 — `writeStoredConfig()` ignoring the flash programming
-status, so a stale configuration can survive a reset-and-start — is open.
+History: see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).

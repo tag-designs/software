@@ -13,15 +13,7 @@ summary: Brief base-board history plus SWD bitbang optimization results on the F
 
 ## SWD Bitbang Optimization Notes
 
-The `tag-breakout-base-l432-v1` base uses an STM32F042 as the SWD bridge MCU
-and is already running at the F042 maximum 48 MHz SYSCLK/HCLK. The 2026-06 SWD
-bitbang optimization pass replaced hot-path PAL line calls with lower-level
-GPIO helpers, cached direction changes, and added fixed-width unrolled shift
-helpers. Measured download speed improved by about 23%.
-
-An experiment to compile only `tag-breakout-base-l432-v1/src/ll_swd.c` at
-`-O3` was a net performance loss and increased flash size, so keep that file at
-the normal target optimization level.
+History: the 2026-06 optimization pass and the `-O3` experiment are in [the investigation](investigations/2026-06-swd-bitbang-optimization.md).
 
 For a future base, the likely next SWD transport experiment is a hybrid backend:
 use SPI only for byte-aligned shift-out phases, and keep GPIO bitbang for the

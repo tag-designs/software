@@ -10,55 +10,7 @@ summary: Live handoff for the completed PresTag power campaign: rig state, resul
 connect; do not accumulate history here — that belongs in
 [`power-test-results.md`](power-test-results.md).**
 
-Updated: **2026-09-09 ~22:00**  ·  Merged to `main` at `e0362fc`
-
-## Current objective
-
-**None in flight — the campaign is complete and the rig is idle.** The operator
-is away for 12 days from 2026-09-09. Pick up from "Outstanding" below.
-
-## State right now
-
-| | |
-| --- | --- |
-| worktree | clean, merged to `main` |
-| tag firmware | `890a11b` PresTag — PA2 analog, RTC Alarm A ticker |
-| tag state | **IDLE**, RTC set, no configuration programmed |
-| instrument | `joulescope_server.py` **stopped**, released cleanly, DUT left powered (2.47 V, `Device ID 0x435` answers under reset) |
-| in flight | nothing |
-
-## Done
-
-- **Stop 2 works.** Two independent faults, both fixed: PA2/INT1 was a floating
-  digital input (~130 µA, visible only in Stop 2), and the LPTIM re-arm cost
-  6.3–7.1 ms of Run current per delay. `Q_cycle` 34.06 → 26.82 → **15.26 µC**.
-- **Power model measured, not extrapolated**, at three periods on the shipping
-  build:
-
-  | state / period | current |
-  | --- | --- |
-  | IDLE | 0.2810 µA (A1′), 0.2928 (A1), 0.2860 (A5) |
-  | FINISHED | **0.2790 µA** |
-  | CONFIGURED | 0.5165 µA (13.4 µC per minute wake) |
-  | HIBERNATING | **0.3769 µA** (5.05 µC per minute wake) |
-  | 10 s | **1.8099 µA** |
-  | 60 s | **0.5406 µA** |
-  | **90 s (default)** | **0.4517 µA** |
-
-  Fit: `I_rest` **0.2842 µA**, `Q_cycle` **15.26 µC**, `T_knee` **53.7 s**,
-  R² 0.999993, worst residual 0.4%.
-- **Both cells clear a year at 90 s**: 5.5 mAh **505 d**, 11 mAh **1010 d**
-  (379 / 758 d at a 75% derating). 5.5 mAh was 21 days short before the fixes.
-- **Phases A, B, C, D all pass.** C6 (scheduled and commanded stop at the 90 s
-  default) added: FINISHED at the stop epoch **+1 s**, and `tag-stop` confirmed
-  in one poll with an immediate clean download.
-- **H3 settled §1.6**: five hibernation wakes in 295 s at exactly 60.0 s, twice
-  over. The hour alarm behaves as a minute alarm.
-- **§1.7 cursor fix confirmed on hardware.** H3's run opened its hibernate window
-  between samples 60 and 120 — the case C5 could not discriminate — and entry
-  was at sample 60, not 120.
-- **PresTagRaw** aligned with PresTag (`4527184`) and measured: IDLE 0.2792 µA,
-  10 s run 1.7746 µA, download PASS. Within 2% of PresTag on both.
+History (the campaign handoff and what was done): see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 
 ## Outstanding
 

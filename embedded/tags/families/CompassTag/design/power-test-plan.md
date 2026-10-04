@@ -16,38 +16,7 @@ scheduling, or hibernation, none of which changed here.
 
 ## 1. What was actually broken
 
-`tagPowerEnterTerminalSleep()` (`common/core/src/pwr-l432.c`) is the shared
-L432 terminal-sleep entry point. Commit `7ea0a86` ("Optimize L432 tag power
-states", 2026-08-18) replaced its debugger-aware `DBGMCU->CR` handling with an
-unconditional `DBGMCU->CR = 0`, dropping the `tagPowerDebuggerAttached()`
-check that used to gate it.
-
-`DHCSR.C_DEBUGEN` is set by the debug probe's own SWD protocol the moment it
-attaches — not something this firmware's monitor code sets, and not something
-`monitorStopI()`'s teardown clears (it only owns `DEMCR` bits). It can stay set
-long after a clean, successful monitor detach. Telling `DBGMCU` not to retain
-debug clocks through Standby while `C_DEBUGEN` is still set left the part
-unable to reach genuine Standby current afterward.
-
-**Measured effect, before the fix, on a CompassTagAT25Breakout board:**
-
-| Condition | Current |
-| --- | --- |
-| Power-up cold, monitor never attached | **376 nA** |
-| Any monitor attach + clean detach (even a single `tag-test`) | **~365 µA**, repeatable, does not self-clear |
-
-That is roughly **1000×**. Every terminal state (`IDLE`, `FINISHED`,
-`ABORTED`) is affected identically, since they all route through the same
-`tagPowerEnterTerminalSleep()`. It is not visible on a never-attached,
-field-deployed tag; it is very visible on any bench unit that has ever seen a
-debugger, which is every unit under active development or bring-up — which is
-why it looked, at first, like a hardware Standby-decline erratum (the same
-class of fault documented for STM32U375 in `embedded/tags/design/open-issues.md`
-and `AGENTS.md`) rather than a one-line regression in disconnect handling.
-
-**The fix** (commit `3ca3f99`): restore `tagPowerDebuggerAttached()` and the
-original two-way `DBGMCU->CR` handling — full clock gating when no debugger has
-ever attached, debug-clock retention when one has.
+History: see [investigations/2026-09-compasstag-standby-after-attach.md](investigations/2026-09-compasstag-standby-after-attach.md).
 
 ## 2. Rig
 
@@ -61,12 +30,7 @@ ever attached, debug-clock retention when one has.
   for either path to open the device). Kill any stray `joulescope-mcp` process
   first — it will hold the instrument exclusively and every open attempt will
   fail with `jsdrv_open timed out` without explaining why.
-- `tag_lifecycle_check.py --use-server` needed a one-line fix (commit
-  `ef6033d`) before this plan could be run at all: `--use-server` was silently
-  a no-op due to a Python late-binding default-argument bug, so every prior
-  attempt to use it fell through to opening the Joulescope directly and
-  collided with the server. Confirm the fix is present before relying on the
-  flag.
+- History of the `--use-server` fix (`ef6033d`): see [investigations/2026-09-compasstag-standby-after-attach.md](investigations/2026-09-compasstag-standby-after-attach.md).
 - Flashing needs `mode=UR` (connect under reset) on this rig; a plain
   `port=SWD` connect fails with `Unable to get core ID` even on a healthy,
   running target. See [[joulescope-rig-discipline]] and the L432 rig traps

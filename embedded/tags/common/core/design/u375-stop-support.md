@@ -124,9 +124,7 @@ RUNNING-state power policy therefore belongs in the relevant `Running()`
 procedure. `TAG_DEFAULT_IDLE_POWER_MODE=SLEEP` remains the default outside
 scoped runtime waits.
 
-STOP0 and STOP1 were both evaluated as default idle modes for `IMUTagNand`.
-The measured power difference was negligible, while the extra STOP transitions
-raised reliability concerns, so the target keeps Sleep as its default idle mode.
+History: the default idle mode is Sleep; see [0003-u375-returned-idle-default-is-sleep](../../../../../docs/decisions/0003-u375-returned-idle-default-is-sleep.md).
 
 Only targets with idle hooks act on this. On `IMUTagNand`, this means the idle
 thread can enter the selected returned STOP mode while the main thread is

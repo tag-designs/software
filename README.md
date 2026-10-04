@@ -319,38 +319,7 @@ manifest resolution is reproducible, and caches built ports keyed on
 `vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
 packages (`BUILD_HOST_DOCS=ON`), matching a local package build.
 
-macOS CI builds are signed ad-hoc (`-DMACOS_CODE_SIGN_IDENTITY=-`) rather than
-with the Developer ID identity, which is not available to the runner. Signing is
-not optional here. With `MACOS_SIGN_APPS=OFF` nothing runs `codesign` on the
-bundle, so the only signature present is the ad-hoc one the linker applies to
-arm64 Mach-O files:
-
-```
-CodeDirectory v=20400 flags=0x20002(adhoc,linker-signed)
-Sealed Resources=none
-qtmonitor.app: code has no resources but signature indicates they must be present
-```
-
-That signature seals the executable but writes no
-`Contents/_CodeSignature/CodeResources`, which an app bundle requires, so the
-bundle fails `codesign --verify` and arm64 macOS refuses to launch it. Users see
-"the application is damaged and can't be opened" rather than the usual
-unidentified-developer prompt.
-
-That is why the CI macOS package is **not attached to releases**. It is a build
-check and a workflow artifact, nothing more. `release.yml` opens the release as
-a *draft* with only the Windows ZIP attached; the shippable macOS DMG is built
-and signed on a machine holding the Developer ID certificate by
-`host/tools/release-macos.sh`, uploaded to that draft by hand, and the release
-is published once it is there.
-
-Signing in CI instead would mean storing the Developer ID certificate and its
-password as repository secrets and importing them into a temporary keychain
-before the package step. In a public repository that makes the private key
-recoverable by anyone who can run a workflow, so it is deliberately not done.
-`install_macos_codesign` in `cmake/DeployQt.cmake` already selects the hardened
-runtime (`--options runtime`) and a secure timestamp for a real identity and
-omits them for `-`, so the local build needs no special handling.
+History: why CI macOS packages are ad-hoc signed and never attached is in the [decision record](docs/decisions/0012-release-macos-package-signed-off-ci.md).
 
 See [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools)
 for the procedure, and [Installing a macOS Release](#installing-a-macos-release)
