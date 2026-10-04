@@ -157,7 +157,7 @@ def judge(point: Point, idle_max_ua: float,
     that differ only in code layout -- the STM32U375 reaches a requested Stop
     mode unreliably. Four release checks reported such a regression and passed,
     because only the resting states were bounded. See
-    embedded/tags/design/open-issues.md.
+    docs/decisions/0007-u375-run-sleep-is-stop-2.md.
 
     @param point       The point to judge, with current_ua already filled in.
     @param idle_max_ua Threshold separating asleep from awake, in uA.

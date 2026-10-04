@@ -92,12 +92,11 @@ typedef enum
  *       6.716 uA with it disabled, which is within run-to-run spread. Enable
  *       it when a boot-recovery question needs answering.
  *
- * @warning Those figures were taken when tagPowerEnterStop3() was the live
- *       terminal path. It no longer is -- tagPowerEnterTerminalSleep() calls
- *       tagPowerEnterStandby(), and Stop3 is __attribute__((unused)) -- so the
- *       flash error-flag clear does not run on any path the tag takes today.
- *       Adding it to the live paths has so far cost 1 mA at idle rather than
- *       saving it; see embedded/tags/design/open-issues.md.
+ * @note  Those figures were taken with tagPowerEnterStop3() as the terminal
+ *       path, which it is again since 0638a76a: tagPowerEnterTerminalSleep()
+ *       calls tagPowerEnterStop3(), which clears the flash error flags before
+ *       every terminal sleep. See
+ *       embedded/tags/common/core/design/investigations/2026-09-u3-latched-flash-error-flags.md.
  *
  * @see tagPowerClearFlashErrorFlags() in core/src/pwr-u375.c,
  *      embedded/tags/common/core/design/restart-recovery.md

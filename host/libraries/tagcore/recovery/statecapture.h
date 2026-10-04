@@ -18,8 +18,9 @@
  *             in the backup registers, which step 1 captures.
  *
  *          Nothing on the tag runs: the session holds the core at its reset
- *          vector throughout. External flash is not captured yet; that needs
- *          the loader (step 3 of the implementation sequence).
+ *          vector throughout. External flash is captured afterwards through
+ *          a loader; see recovery/externalcapture.h and
+ *          host/libraries/tagcore/design/swd-recovery.md.
  *
  *          The result is one timestamped directory holding one file per
  *          region and a manifest.json. A region that fails is recorded and the

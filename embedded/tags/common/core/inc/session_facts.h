@@ -21,7 +21,7 @@
  *          An erased record reads as all 0xFF, so `version` is
  *          0xFFFFFFFF until a start writes it.
  *
- * @see     docs/investigations/2026-10-offline-log-reconstruction.md, item 5 of "Decisions and plan"
+ * @see     docs/decisions/0020-offline-rebuild-session-facts-in-stored-config.md
  * @see     families/IMUTag/design/sample-timing.md
  */
 

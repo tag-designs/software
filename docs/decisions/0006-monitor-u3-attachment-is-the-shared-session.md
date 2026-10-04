@@ -12,7 +12,7 @@ Date: 2026-09-03
 `MONCONNECTED` (`DEMCR.VC_CORERESET`). A host timeout path could leave the flag
 set, latching "attached" for the rest of a boot and holding the tag at about
 1 mA. Extracted verbatim from
-[Tag Monitor Interface](../shared/monitor-interface.md#attachment-authority-on-u3-2026-09-03).
+[Tag Monitor Interface](../shared/monitor-interface.md#attachment-state).
 
 ## Context, decision and evidence
 

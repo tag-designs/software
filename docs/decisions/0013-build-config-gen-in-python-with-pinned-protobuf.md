@@ -68,4 +68,4 @@ what it meant.
 Worth recording as the concrete form of a general risk: **an unpinned
 generator can make a malformed input look valid**, and the freshness check
 cannot see it, because that check compares recorded input hashes rather than
-re-rendering output. See [What was not done](../build/firmware-reproducibility.md#what-was-not-done).
+re-rendering output. See the [build worklist](../build/TODO.md).

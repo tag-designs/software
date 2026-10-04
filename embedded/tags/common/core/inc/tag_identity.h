@@ -24,8 +24,8 @@
  *          from tag_identity_family.h, which a family or tag overrides by
  *          basename.
  *
- * @see     docs/investigations/2026-10-offline-log-reconstruction.md, item 4 of "Decisions and plan"
- * @see     embedded/tags/design/next-release-todo.md, B1
+ * @see     docs/decisions/0021-offline-rebuild-tag-identity-record.md
+ * @see     embedded/tags/design/investigations/2026-10-next-release-fixes-verified.md, B1
  */
 
 #ifndef TAG_IDENTITY_H

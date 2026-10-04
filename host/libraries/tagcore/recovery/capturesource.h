@@ -1,7 +1,7 @@
 /**
  * @file    capturesource.h
  * @brief   Rebuild a tag's download, as protobuf messages, from an SWD
- *          capture directory (next-release-todo D1).
+ *          capture directory (docs/decisions/0018-offline-rebuild-capture-backed-source.md).
  *
  * @details A capture (tag-capture) holds what the tag's firmware would have
  *          served over the monitor: the internal flash, the backup registers
@@ -25,7 +25,7 @@
  *          download can legitimately differ: tag-dwnld --stop adds a stop
  *          marker, and the attach lets reset recovery run first.
  *
- * @see     docs/investigations/2026-10-offline-log-reconstruction.md, "Decisions and plan" item 1
+ * @see     docs/decisions/0018-offline-rebuild-capture-backed-source.md
  */
 
 #ifndef TAGCORE_RECOVERY_CAPTURESOURCE_H

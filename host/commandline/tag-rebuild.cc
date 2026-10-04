@@ -1,7 +1,7 @@
 /**
  * @file    tag-rebuild.cc
  * @brief   Rebuild a SQLite download from a tag-capture directory, without
- *          the tag (next-release-todo D1).
+ *          the tag (docs/decisions/0018-offline-rebuild-capture-backed-source.md).
  *
  * @details The capture's internal flash, backup registers and external flash
  *          are turned back into the messages the firmware would have served,

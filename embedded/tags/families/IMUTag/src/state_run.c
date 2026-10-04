@@ -36,7 +36,7 @@
  *          reproducible: Stop 1 run current moved by up to 195 uA between
  *          builds differing only in code layout, while Stop 2 held to within
  *          0.2 uA across the same builds. See
- *          embedded/tags/design/open-issues.md.
+ *          docs/decisions/0007-u375-run-sleep-is-stop-2.md.
  *
  * @warning Stop 2 keeps LPTIM1 clocked but not LPTIM2, so a target may only
  *          set this when its IMU trigger is on LPTIM1. The family default in
@@ -196,7 +196,8 @@ static bool restartDataCollectionClock(bool mark_resync)
   current_frame_index = 0U;
   /*
    * Scratchpad trace for the backwards ElapsedUs step filed in
-   * embedded/tags/design/open-issues.md. Each recovery re-bases the segment
+   * embedded/tags/design/investigations/2026-09-attach-storm-failures.md (since traced to the check reading RawElapsedUs, not to
+   * the firmware). Each recovery re-bases the segment
    * from the wall clock here, so a stale or early RTC read lands the new
    * segment behind the end of the previous one, which a download sees as a
    * timestamp going backwards at the boundary. RSYN says whether this is a

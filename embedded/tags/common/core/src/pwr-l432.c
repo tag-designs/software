@@ -59,7 +59,7 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
    * still attached, which is what previously left the part unable to reach
    * genuine Standby current after any monitor detach in RUNNING. This is
    * not the same situation 7ea0a86/3ca3f99
-   * ([[compasstag-standby-decline-idle-current]]) fixed: that regression
+   * (families/CompassTag/design/investigations/2026-09-compasstag-standby-after-attach.md) fixed: that regression
    * was an unconditional clear reached while a session genuinely was still
    * active elsewhere in the boot path. Here, no active session can exist by
    * this line.

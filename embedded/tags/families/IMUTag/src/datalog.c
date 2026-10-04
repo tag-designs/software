@@ -626,7 +626,9 @@ int restoreLog(void)
 
     /*
      * Scratchpad trace of every recovery, for the intermittent backwards
-     * ElapsedUs step filed in embedded/tags/design/open-issues.md. The suspect
+     * ElapsedUs step filed in
+     * embedded/tags/design/investigations/2026-09-attach-storm-failures.md (since traced to the
+     * check reading RawElapsedUs, not to the firmware). The suspect
      * is this scan rewinding external_blocks behind pages that already hold
      * data, which a download would show as a timestamp going backwards at the
      * segment boundary. RSTP/RRES say where the scan stopped and why; a stop

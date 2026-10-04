@@ -13,7 +13,7 @@
 #
 # Usage: host/tools/release-macos.sh vX.Y[.Z] [options]
 #
-# See design/tag-release-procedure.md for where this fits in a release.
+# See docs/release/release-procedure.md for where this fits in a release.
 
 set -euo pipefail
 

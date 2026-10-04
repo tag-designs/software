@@ -10,7 +10,7 @@ Date: 2026-09-28
 
 The macOS package that ships is built and Developer ID signed on a developer's
 machine; the CI package is never attached to a release. Extracted verbatim from
-the "Tagged Releases" section of the root [README](../../README.md#tagged-releases); the procedure is in
+the "Tagged Releases" section of the root README, whose release material now lives in [Releasing Tag Firmware and Host Tools](../release/release-procedure.md#release-tags-and-what-ci-builds); the procedure is in
 [Releasing the host tools](../release/release-procedure.md#3-releasing-the-host-tools).
 
 ## Context, decision and alternatives

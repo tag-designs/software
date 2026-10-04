@@ -40,7 +40,7 @@
  *          fixed by the `noinline` on that function -- but because writing
  *          there changes the image, so whatever you measure is not the build
  *          you ship. Capture at boot instead. See
- *          embedded/tags/design/open-issues.md.
+ *          embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md.
  *
  * Read it back with:
  * @code

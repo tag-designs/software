@@ -238,17 +238,16 @@ void tagPowerEnterIdleMode(enum Sleep mode)
  * @note Flags are cleared by writing 1, so no flash unlock is required and the
  *       call is safe with the flash locked.
  *
- * @warning Called only from tagPowerEnterStop3(), which is
- *          __attribute__((unused)): this does not run on any path the tag
- *          takes today. The live terminal path is tagPowerEnterStandby().
- *          Two attempts to call it from the live idle and standby paths each
- *          measured about 1036 uA at idle against 4.94 uA without it. That was
- *          the layout sensitivity described at tagPowerEnterStandby(), not a
- *          cost of touching flash: a conditional version that only read the
- *          flags cost the same, and so did padding that did nothing at all.
- *          The flags belong where the failure occurs, in the datalog code, not
- *          in the power path.
- *          @see embedded/tags/design/open-issues.md
+ * @warning Called only from tagPowerEnterStop3(), which is the live terminal
+ *          path since 0638a76a (godown() -> tagPowerEnterTerminalSleep() ->
+ *          tagPowerEnterStop3()), so this runs before every terminal sleep.
+ *          While Standby was the terminal path, two attempts to call it from
+ *          the idle and standby paths each measured about 1036 uA at idle
+ *          against 4.94 uA without it. That was the Standby layout
+ *          sensitivity described at tagPowerEnterStandby(), not a cost of
+ *          touching flash: a conditional version that only read the flags cost
+ *          the same, and so did padding that did nothing at all.
+ *          @see embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md
  *
  * @see tagPowerRestoreFlashAfterStop3(), FLASH_ClearEccErrors()
  */
@@ -518,7 +517,7 @@ static void tagPowerResetSpi1BeforeStandby(void)
  * optimize("O0")), while alignment, clearing FLASH_ACR_PRFTEN, and relocating
  * the sequence into SRAM all fail to. Disabling ICACHE makes every image fail.
  * The micro-architectural reason is not established; see
- * embedded/tags/design/open-issues.md.
+ * embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md.
  *
  * Do not remove this attribute, and do not let this function grow enough to be
  * worth outlining differently, without re-running that padding sweep.
@@ -533,9 +532,9 @@ static void __attribute__((unused)) tagPowerEnterStandby(enum Sleep sleepmode)
   }
 
   /* One SET_BIT and nothing else -- this is the power path, so it does as
-     little as possible. Whether this actually retains the page across Standby
-     is unresolved: it worked once and not since, with the bit verified set and
-     PWR clocked at this point. */
+     little as possible. Retention of the page across a successful Standby was
+     verified by A/B; see
+     embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md. */
   tagScratchRetain();
 
   tagDevicesApplyPowerState(TAG_DEVICE_POWER_STANDBY_ENTRY, pState->state);
@@ -573,7 +572,8 @@ static void __attribute__((unused)) tagPowerEnterStandby(enum Sleep sleepmode)
    * its definition. Adding a probe in this window is still a poor way to
    * debug: it moves the layout, so a passing experiment proves nothing about
    * the build you actually ship. Instrument at boot via the scratchpad
-   * instead. See embedded/tags/design/open-issues.md.
+   * instead. See
+   * embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md.
    */
   SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
@@ -609,7 +609,8 @@ static void __attribute__((unused)) tagPowerEnterStandby(enum Sleep sleepmode)
  *          3.6 uA more than a Standby that works. The wake is turned into a
  *          synthetic standby reset by tagPowerResetAfterStop3Wake(), so the
  *          boot path sees no difference. tagPowerEnterStandby() is kept as
- *          the reference for the fault; see open-issues.md.
+ *          the reference for the fault; see
+ *          docs/decisions/0008-u375-terminal-sleep-is-stop-3.md.
  *
  * @param[in] sleepmode Requested sleep mode; only STANDBY enters.
  */
