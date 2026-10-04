@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
+---
+
 # Embedded Base Build Sources
 
 This file lists repo-local `.c` and `.h` files used by embedded base targets

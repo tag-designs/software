@@ -1,3 +1,9 @@
+---
+type: results
+status: current
+summary: Append-only log of every PresTag power measurement with build and conditions, the source for figures quoted elsewhere.
+---
+
 # PresTag Power Measurement Log
 
 **Append-only.** Each completed measurement gets one entry with a timestamp,

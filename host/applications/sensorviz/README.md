@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: What sensorviz does, its architecture, data model, plotting rules, preferences, transforms, documentation capture hooks and build check.
+---
+
 # sensorViz
 
 `sensorviz` is a Qt/QCustomPlot application for viewing SQLite sensor logs. It

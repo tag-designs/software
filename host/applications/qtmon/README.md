@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
+---
+
 # QtMonitor
 
 `qtmonitor` is the Qt host application for inspecting an attached tag, editing

@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, now built, for integrating the UIUCTag board (ADXL367 on USART2, BMP585 on SPI1) into the BitPresTag family.
+---
+
 # UIUCTag Board Integration Plan
 
 ## Scope

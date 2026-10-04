@@ -1,3 +1,9 @@
+---
+type: investigation
+status: closed
+summary: First BitTag power qualification at fw-v0.5: a pass at 0.12 uA resting and 0.51 uA running, and four config defects found.
+---
+
 # BitTag Power Test Report
 
 One block per session. Numbers live in

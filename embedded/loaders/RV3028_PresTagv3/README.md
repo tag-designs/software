@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Read-only SRAM probe that reads RV3028 registers over I2C, chiefly to recover the factory EEOffset clock calibration.
+---
+
 # RV3028_PresTagv3: RTC register probe
 
 An SRAM-resident image that reads the RV3028 RTC's registers over I2C, on a tag

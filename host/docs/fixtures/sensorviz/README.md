@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Inventory and metadata of the sensorviz fixture logs and the screenshot capture commands.
+---
+
 # SensorViz Sample Logs
 
 This directory stores curated SQLite logs used to generate SensorViz user-guide

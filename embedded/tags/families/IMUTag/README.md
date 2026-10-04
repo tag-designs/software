@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: What the IMUTag family shares between IMUTagNand and IMUTagNandBmp581, with an annotated list of family design notes.
+---
+
 # IMUTag Family
 
 Shared application code for the active `IMUTagNand` and `IMUTagNandBmp581`

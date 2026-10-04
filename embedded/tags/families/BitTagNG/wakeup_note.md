@@ -1,3 +1,9 @@
+---
+type: design
+status: historical
+summary: Pasted example code for ADXL367 low-power activity and inactivity wakeup setup and interrupt handling.
+---
+
 1. Initialization and Arming for ActivityThis handles your baseline settings, sets up referenced thresholds, activates Wake-up Mode (6 Hz), and arms the microcontroller to only wake up when motion starts.c
 
 ```c

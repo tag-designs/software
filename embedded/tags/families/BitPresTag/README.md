@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: BitPresTag family variants, what UIUCTag overrides locally, and ADXL362 configuration semantics.
+---
+
 # BitPresTag Family
 
 This family contains the shared application code for the BitPresTag pressure

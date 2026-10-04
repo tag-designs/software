@@ -1,3 +1,9 @@
+---
+type: procedure
+status: current
+summary: Joulescope procedure verifying the DBGMCU Standby-after-attach fix on CompassTag and serving as a regression check for that fault class.
+---
+
 # CompassTag Power Test Plan — Standby-After-Attach Regression
 
 Hardware-in-the-loop plan for the CompassTag family (`CompassTag`,

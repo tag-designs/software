@@ -1,3 +1,9 @@
+---
+type: worklist
+status: historical
+summary: Live handoff for the completed PresTag power campaign: rig state, results, outstanding items and rig traps as of 2026-09-09.
+---
+
 # PresTag Power Testing — Live Status
 
 **Overwritten by whichever session is driving the rig. Read this first on

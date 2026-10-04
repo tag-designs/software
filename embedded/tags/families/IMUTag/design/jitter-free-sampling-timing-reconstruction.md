@@ -1,3 +1,9 @@
+---
+type: proposal
+status: proposed
+summary: Staged plan for jitter-free IMU sampling from raw RV-3028 clock with RTC smooth correction and timing metadata; reconstruction is partly built.
+---
+
 # Strategy for Jitter-Free Sampling with Smooth Real-Time Correction
 
 ## Purpose

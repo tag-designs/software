@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to preview, build and package the MkDocs user guide and how its sources are laid out.
+---
+
 # Documentation Template
 
 This directory is a starter for writing package-distributed Qt application

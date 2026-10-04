@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: The external loader contract as traced on hardware and the runtime rules it imposes: no startup code, interrupts or OSAL sleeps, rescue erase, Serve().
+---
+
 # Loader Runtime Design
 
 Status: implemented for `AT25XE_PresTagv3` and validated on hardware

@@ -1,3 +1,9 @@
+---
+type: procedure
+status: current
+summary: Joulescope qualification procedure for BitTag IDLE, RUNNING and FINISHED currents on STM32L432, including rig setup, configs and pass/fail gates.
+---
+
 # BitTag Power Test Plan — Idle, Running and Finished Currents
 
 Hardware-in-the-loop plan for `BitTag` (board `BitTagv6`, STM32L432) wired to a

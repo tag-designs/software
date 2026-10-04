@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How the shared monitor self-test dispatcher maps test requests onto device hooks supplied by modules and families.
+---
+
 # Shared Self-Test Driver
 
 The monitor-facing self-test dispatcher lives in `core/src/test.c` and is

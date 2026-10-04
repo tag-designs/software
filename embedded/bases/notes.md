@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Brief base-board history plus SWD bitbang optimization results on the F042 breakout base and ideas for a hybrid SPI backend.
+---
+
 * bittag-base-jlcpcb-v3
   * tagbase v6,v7 (not yet fabbed)
   * 32 lqfp processor package

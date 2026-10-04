@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: How tag I2C controllers select hardware or software backends through descriptors, pin policy, RTC migration, and remaining work.
+---
+
 # I2C Backend Model
 
 This note describes the common I2C backend model for tag firmware. It is not

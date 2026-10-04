@@ -1,3 +1,10 @@
+---
+title: Repository README
+type: readme
+status: current
+summary: Top-level CMake options and prerequisites for building host tools and firmware on Windows, macOS and Linux, plus tagged releases and macOS installation.
+---
+
 See the [repository documentation](https://tag-designs.github.io/software/) for
 host/user guides, developer notes, and generated API references. The broader
 [external project page](https://geoffreymbrown.github.io/ultralight-tags/)

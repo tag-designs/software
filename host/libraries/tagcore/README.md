@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: tagcore responsibilities: USB and monitor communication, log writers, SWD recovery code, and links to its design documents.
+---
+
 # TagCore Library
 
 `tagcore` contains the low-level host interface. The CMake target is also named

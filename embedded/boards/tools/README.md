@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: The JSON-customized board generation tools: input format, LSE bypass, standby masks, standalone fmpp workflow and CMake integration.
+---
+
 # Board configuration tools
 
 These tools support a generated-board workflow for ChibiOS boards. Instead of

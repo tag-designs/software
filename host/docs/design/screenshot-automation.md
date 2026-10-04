@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Pilot plan for deterministic qtcalibrate screenshots and generated annotations; screenshot hooks were built, annotation status unclear.
+---
+
 # Host User Guide Screenshot Automation
 
 ## Purpose

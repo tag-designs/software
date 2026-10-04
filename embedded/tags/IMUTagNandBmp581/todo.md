@@ -1,3 +1,9 @@
+---
+type: worklist
+status: open
+summary: Bring-up todo list for IMUTagNandBmp581 NAND low-power mode, validation, ECC and bad-page handling, and host diagnostics.
+---
+
 # IMUTagNandBmp581 Bring-Up TODO
 
 ## Near-Term Validation

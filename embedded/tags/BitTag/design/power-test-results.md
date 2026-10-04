@@ -1,3 +1,9 @@
+---
+type: results
+status: current
+summary: Append-only log of BitTag power measurements with build, board, supply and config for each session.
+---
+
 # BitTag Power Measurement Log
 
 Append-only. One block per measurement session, newest last. The procedure is

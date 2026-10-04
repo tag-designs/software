@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to capture and maintain qtmonitor fake-tag fixtures, identity policy, fixture shape and screenshot replay.
+---
+
 # QtMonitor Fixture Captures
 
 This directory stores fake-tag fixture JSON used to generate `qtmonitor`

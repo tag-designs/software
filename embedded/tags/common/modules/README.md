@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How the makefile module system selects shared sources, include paths and TAG_ feature switches for each tag.
+---
+
 # Tag Common Build Modules
 
 The tag firmware build still uses ChibiOS makefiles, but shared sources are now

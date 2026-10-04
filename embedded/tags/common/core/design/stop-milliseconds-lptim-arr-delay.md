@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: STM32L432 stopMilliseconds() using LPTIM1 autoreload match at 1024 Hz with spurious-wake filtering, now implemented.
+---
+
 # `stopMilliseconds()` LPTIM ARR-Match Delay Design
 
 Status: implemented

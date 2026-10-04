@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
+---
+
 # Command-Line Tools
 
 Command-line host tools live here. Most hardware-facing tools link the Qt-free

@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to build and run the CompassTag datalog host simulation that checks the resume-cursor, partial-page and mid-block halt fixes.
+---
+
 # CompassTag Datalog Simulation
 
 `datalog_sim.c` compiles the real `../src/state_run.c` and `../src/datalog.c`

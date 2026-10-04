@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Hardware shape and module selection of the IMUTagNand STM32U375 target with LPS22HH pressure and 1 Gbit GD5F NAND.
+---
+
 # IMUTagNand Maintainer Notes
 
 `IMUTagNand` is the STM32U375/Cortex-M33 NAND build for the active IMUTag

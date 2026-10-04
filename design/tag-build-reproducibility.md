@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, maintenance and known gaps.
+---
+
 # Tag Firmware Build Reproducibility
 
 Status: implemented and verified. A firmware build of the distributed tags

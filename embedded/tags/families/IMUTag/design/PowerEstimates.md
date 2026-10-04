@@ -1,3 +1,9 @@
+---
+type: results
+status: current
+summary: Measured IMUTagNand current at 3.7 V on the SMPS board per sample rate, storage and battery runtime limits, and superseded LDO-era history.
+---
+
 # Power Estimation for the IMUTagNand
 
 Measured power and storage limits for the IMUTagNand, and the runtime each

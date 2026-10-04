@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to build the standalone STM32L432 board-generation example project.
+---
+
 # STM32L432 standalone board-generation example
 
 This directory is a small standalone CMake project that uses the board

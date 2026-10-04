@@ -83,114 +83,12 @@ set(DEVELOPER_DOXYGEN_OUTPUT_DIR "${DEVELOPER_DOCS_SITE_DIR}")
 set(DEVELOPER_DOXYGEN_CONFIG "${CMAKE_BINARY_DIR}/docs/Doxyfile.developer")
 set(DEVELOPER_DOXYGEN_WARN_LOG "${CMAKE_BINARY_DIR}/docs/developer-doxygen-warnings.log")
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
-set(
-  DEVELOPER_DOCS_MARKDOWN
-  "README.md"
-  "design/index.md"
-  "design/binary-datalogs.md"
-  "design/dataprocessing.md"
-  "design/field-data-extraction.md"
-  "design/imutag-overview.md"
-  "design/offline-log-reconstruction.md"
-  "design/tag-build-reproducibility.md"
-  "design/tag-and-host-release-procedure.md"
-  "design/windows-build-notes.md"
-  "embedded/bases/BUILD_SOURCES.md"
-  "embedded/bases/README.md"
-  "embedded/bases/notes.md"
-  "embedded/bases/tag-breakout-base-l432-v1/Note.md"
-  "embedded/boards/README.md"
-  "embedded/boards/tools/README.md"
-  "embedded/design/build-orientation.md"
-  "embedded/loaders/README.md"
-  "embedded/loaders/design/loader-runtime.md"
-  "embedded/loaders/design/u375-nand-loader-plan.md"
-  "embedded/loaders/RV3028_PresTagv3/README.md"
-  "embedded/tags/BUILD_SOURCES.md"
-  "embedded/tags/README.md"
-  "embedded/tags/common/README.md"
-  "embedded/tags/common/core/README.md"
-  "embedded/tags/common/core/i2c-backend-model.md"
-  "embedded/tags/common/core/design/lptim-system-timer.md"
-  "embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md"
-  "embedded/tags/common/modules/README.md"
-  "embedded/tags/common/rtc/README.md"
-  "embedded/tags/common/sensors/README.md"
-  "embedded/tags/common/sensors/imu/design_notes.md"
-  "embedded/tags/families/README.md"
-  "embedded/tags/design/monitor_interface.md"
-  "embedded/tags/design/i2c-bus-recovery.md"
-  "embedded/tags/design/debugging.md"
-  "embedded/tags/design/open-issues.md"
-  "embedded/tags/design/next-release-todo.md"
-  "embedded/tags/design/stm32u375-standby-forum-post.md"
-  "embedded/tags/design/restart-recovery.md"
-  "embedded/tags/design/custom-defines.md"
-  "embedded/tags/design/u375-stop-support.md"
-  "embedded/tags/design/u375-stop3-terminal-sleep-plan.md"
-  "embedded/tags/common/sensors/imu/design/assumptions.md"
-  "embedded/tags/common/sensors/mag/README.md"
-  "embedded/tags/common/storage/README.md"
-  "embedded/tags/common/test/README.md"
-  "embedded/tags/IMUTagNand/README.md"
-  "embedded/tags/IMUTagNand/todo.md"
-  "embedded/tags/IMUTagNandBmp581/README.md"
-  "embedded/tags/IMUTagNandBmp581/todo.md"
-  "embedded/tags/BitTag/design/power-test-plan.md"
-  "embedded/tags/BitTag/design/power-test-report.md"
-  "embedded/tags/BitTag/design/power-test-results.md"
-  "embedded/tags/CompassTagAT25Breakout/design/notes.md"
-  "embedded/tags/UIUCTag/test/README.md"
-  "embedded/tags/families/BitPresTag/README.md"
-  "embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md"
-  "embedded/tags/families/BitPresTag/design/uiuctag-board-integration.md"
-  "embedded/tags/families/BitPresTag/design/uiuctag-data-collection.md"
-  "embedded/tags/families/BitPresTag/design/uiuctag-test-strategy.md"
-  "embedded/tags/families/BitPresTag/design/uiuctag-bringup-report.md"
-  "embedded/tags/families/BitTagNG/README.md"
-  "embedded/tags/families/BitTagNG/wakeup_note.md"
-  "embedded/tags/families/CompassTag/README.md"
-  "embedded/tags/families/IMUTag/README.md"
-  "embedded/tags/families/IMUTag/design/jitter-free-sampling-timing-reconstruction.md"
-  "embedded/tags/families/IMUTag/design/internal-header-checkpoints.md"
-  "embedded/tags/families/IMUTag/design/imutag-nand-bmp581-development-plan.md"
-  "embedded/tags/families/IMUTag/design/start-abort-diagnostics.md"
-  "embedded/tags/families/IMUTag/design/PowerEstimates.md"
-  "embedded/tags/families/PresTag/README.md"
-  "embedded/tags/families/PresTag/design/power-test-plan.md"
-  "embedded/tags/families/PresTag/design/power-test-report.md"
-  "embedded/tags/families/PresTag/design/power-test-results.md"
-  "embedded/tags/families/PresTag/design/power-test-status.md"
-  "embedded/tags/families/PresTag/test/README.md"
-  "embedded/tags/families/CompassTag/design/power-test-plan.md"
-  "embedded/tags/families/CompassTag/design/power-test-report.md"
-  "embedded/tags/families/CompassTag/design/power-test-results.md"
-  "embedded/tags/families/CompassTag/design/power-test-status.md"
-  "embedded/tags/families/CompassTag/test/README.md"
-  "host/README.md"
-  "host/docs/design/screenshot-automation.md"
-  "host/docs/design/qtmonitor-screenshot-automation.md"
-  "host/docs/fixtures/qtmonitor/README.md"
-  "host/docs/fixtures/sensorviz/README.md"
-  "host/applications/README.md"
-  "host/applications/qtcalibrate/README.md"
-  "host/applications/qtmon/README.md"
-  "host/applications/qtmon/tagconfiguration/README.md"
-  "host/commandline/README.md"
-  "host/common/README.md"
-  "host/libraries/README.md"
-  "host/libraries/tagcore/README.md"
-  "host/libraries/tagcore/sqlitelog/README.md"
-  "host/libraries/tagcore/design/index.md"
-  "host/libraries/tagcore/design/python-interface.md"
-  "host/libraries/tagcore/design/swd-recovery.md"
-  "host/libraries/tagcore/test/README.md"
-  "host/libraries/sensoranalysis/README.md"
-  "host/libraries/sensorui/README.md"
-  "host/applications/sensorviz/README.md"
-  "host/applications/sensorviz/design/roadmap.md"
-  "host/applications/sensorviz/design/screenshot-capture-plan.md"
-  "proto/README.md")
+# The developer documents staged into the portal are not listed here.
+# docs/tools/docs.py finds every Markdown file carrying developer-doc front
+# matter, writes that list at build time, and generates the portal sidebar from
+# the same data; see docs/documentation-guide.md.
+set(DEVELOPER_DOCS_TOOL "${PROJECT_SOURCE_DIR}/docs/tools/docs.py")
+set(DEVELOPER_DOCS_LIST "${CMAKE_BINARY_DIR}/docs/developer-docs-list.txt")
 
 if(NOT HOST_MKDOCS_COMMAND)
   find_program(MKDOCS_EXECUTABLE NAMES mkdocs mkdocs.exe)
@@ -267,10 +165,20 @@ file(
   CONFIGURE_DEPENDS
   "${DEVELOPER_DOCS_SOURCE_DIR}/*")
 
-set(developer_docs_markdown_sources)
-foreach(developer_doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
-  list(APPEND developer_docs_markdown_sources "${PROJECT_SOURCE_DIR}/${developer_doc}")
-endforeach()
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  set(developer_docs_list_command
+      COMMAND "${Python3_EXECUTABLE}" "${DEVELOPER_DOCS_TOOL}" list
+              --output "${DEVELOPER_DOCS_LIST}")
+  set(developer_docs_nav_command
+      COMMAND "${Python3_EXECUTABLE}" "${DEVELOPER_DOCS_TOOL}" nav
+              "${DEVELOPER_DOCS_CONFIG}")
+else()
+  set(developer_docs_list_command
+      COMMAND ${CMAKE_COMMAND} -E echo "Python 3 is required to stage developer docs"
+      COMMAND ${CMAKE_COMMAND} -E false)
+  set(developer_docs_nav_command)
+endif()
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/cmake/StageDeveloperDocs.cmake.in"
@@ -291,8 +199,10 @@ endif()
 
 add_custom_target(
   developer_docs_stage
+  ${developer_docs_list_command}
   COMMAND ${CMAKE_COMMAND} -P "${DEVELOPER_DOCS_STAGE_SCRIPT}"
-  DEPENDS ${developer_docs_sources} ${developer_docs_markdown_sources}
+  ${developer_docs_nav_command}
+  DEPENDS ${developer_docs_sources}
   COMMENT "Staging developer documentation sources"
   VERBATIM)
 
@@ -327,14 +237,16 @@ if(HOST_MKDOCS_COMMAND)
 
   add_custom_target(
     developer_docs ${developer_docs_all}
+    ${developer_docs_list_command}
     COMMAND ${CMAKE_COMMAND} -P "${DEVELOPER_DOCS_STAGE_SCRIPT}"
+    ${developer_docs_nav_command}
     COMMAND
       ${HOST_MKDOCS_COMMAND} build
       --config-file "${DEVELOPER_DOCS_CONFIG}"
       --site-dir "${DEVELOPER_DOCS_SITE_DIR}"
       --clean
     ${developer_docs_doxygen_commands}
-    DEPENDS ${developer_docs_sources} ${developer_docs_markdown_sources}
+    DEPENDS ${developer_docs_sources}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building developer documentation portal"
     VERBATIM)

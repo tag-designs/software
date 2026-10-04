@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Contents of the sensorui library of reusable Qt and QML sensor widgets.
+---
+
 # SensorUI Library
 
 `sensorui` contains reusable Qt presentation pieces for sensor visualization

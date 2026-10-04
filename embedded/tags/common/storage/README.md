@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: The descriptor-based external flash API, per-part storage modules, the SPI transaction framing layer, and planned cleanup.
+---
+
 # External Storage
 
 `storage` owns the common external-flash API and chip-specific external-memory

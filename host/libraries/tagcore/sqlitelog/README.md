@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Per-tag SQLite schema and row semantics for UIUCTag and IMUTag downloads, plus a known BitPresTag activity inconsistency.
+---
+
 # SQLite Log Schemas
 
 This directory owns the project SQLite writer used by `tag-dwnld` and Qt

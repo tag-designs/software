@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
+---
+
 # Tag Monitor Interface
 
 This document describes the monitor interface implemented by the tag firmware

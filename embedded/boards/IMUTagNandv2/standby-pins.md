@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Standby pin bias for the IMUTagNandv2 board, and why the FLASH_PWR load-switch enable is lost across a reset.
+---
+
 # IMUTagNandv2 Standby Pin Bias
 
 IMUTagNandv2 uses an STM32U375. In Standby mode the normal GPIO mode,

@@ -1,3 +1,9 @@
+---
+type: proposal
+status: proposed
+summary: Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes, with a Sleep-mode fallback; not implemented.
+---
+
 # LPTIM System Timer Design
 
 ## Purpose

@@ -1,3 +1,9 @@
+---
+type: design
+status: historical
+summary: Pasted chat transcript of the original LSM6DSV16X driver request and generated driver design.
+---
+
 Write a C device driver for the  LSM6DSV16x supporting the following operational modes
 1. Shutdown  
 2. Accelerometer data only not using the fifo

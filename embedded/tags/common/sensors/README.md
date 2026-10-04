@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Layout of reusable sensor drivers and the descriptor, register-device and shim patterns they follow.
+---
+
 # Sensor Drivers
 
 `sensors` contains reusable sensor drivers and sensor-side bus adapters. A

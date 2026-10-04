@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: What the CompassTag family variants share, where family-specific drivers live, and links to design notes and the host simulation.
+---
+
 # CompassTag Family
 
 Shared application code for the `CompassTag`, `CompassTagAT25`, and

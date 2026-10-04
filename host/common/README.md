@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Small shared Qt helpers used by host applications through the host_common target.
+---
+
 # Host Common Qt Helpers
 
 This directory contains small headers/sources shared by Qt applications but not

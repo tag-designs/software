@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: qtcalibrate source layout, runtime flow, sample capture and replay, calibration constants and menus.
+---
+
 # qtcalibrate
 
 `qtcalibrate` is the host application for collecting live magnetometer samples,

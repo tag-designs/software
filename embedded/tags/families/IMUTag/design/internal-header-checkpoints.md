@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Sparse internal-flash checkpoint headers that let NAND-backed IMUTag tags find their external log cursor after a reset.
+---
+
 # IMUTag Internal Header Checkpoints
 
 ## Purpose

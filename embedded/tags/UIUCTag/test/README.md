@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to build and run the host simulation of the UIUCTag acquisition sequencer and datalog against stubs and a fake flash.
+---
+
 # UIUCTag Sequencer Simulation
 
 `sequencer_sim.c` compiles the real `../src/state_run.c` for the host, against

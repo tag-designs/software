@@ -1,3 +1,9 @@
+---
+type: proposal
+status: proposed
+summary: Plan for interrupt-paced BMP58x forced-mode pressure sampling on a BitPresTag variant; only blocking forced sampling exists so far.
+---
+
 # BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan
 
 ## Scope

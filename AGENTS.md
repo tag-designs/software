@@ -12,9 +12,13 @@ where-to-look guidance, then read the local README for details.
   and SRAM-resident external flash loaders (`embedded/loaders`).
 - `proto/`: shared protobuf definitions used by host tools and embedded nanopb
   generation.
-- `design/`: developer architecture specifications and design notes. The master index is located at [**`design/index.md`**](file:///design/index.md).
-- `docs/developer/`: developer documentation portal scaffold. CMake stages
-  curated source-adjacent design notes and Doxygen output into the build tree.
+- `docs/`: cross-cutting developer documentation (architecture, shared
+  contracts, build, release, bench procedure, decisions, investigations), the
+  generated index of every developer document at
+  [`docs/index.md`](docs/index.md), and the developer portal scaffold in
+  `docs/developer/`. Rules: [`docs/documentation-guide.md`](docs/documentation-guide.md).
+- `include/`: C headers shared by host and firmware (monitor ABI, loader
+  service block, packed log formats); see `docs/shared/`.
 - `cmake/`: shared CMake helpers, presets support, vcpkg triplets, and package
   helpers.
 - `ChibiOS/`: ChibiOS submodule. Do not edit it as project source.
@@ -37,7 +41,7 @@ that save the most time.
 | Board pin and signal generation | `embedded/boards/README.md` |
 | What a family shares and what a variant overrides | that family's `README.md` under `embedded/tags/families/` |
 | Reading or erasing a tag's external flash without its firmware, or adding a loader | `embedded/loaders/README.md`, then `embedded/loaders/design/loader-runtime.md` |
-| Design rationale for an existing subsystem | the nearest `design/` directory; the index is `design/index.md` |
+| Design rationale for an existing subsystem | the nearest `design/` directory; every document is listed in `docs/index.md` |
 
 Two conventions that are easy to miss and expensive to rediscover:
 
@@ -508,47 +512,26 @@ meeting end to end.
 
 ## Developer Documentation Maintenance
 
-This repository has two documentation products:
+There are two documentation products. `host/docs/` is the end-user manual,
+packaged with the host tools. Everything else is developer documentation,
+rendered by the portal in `docs/developer/`.
 
-- `host/docs/`: end-user application manuals and workflow guides. These are
-  built into host distribution packages.
-- `docs/developer/`: developer architecture, design, and API documentation.
-  This is a local/CI browser portal for understanding the codebase and is not
-  the packaged user manual.
+**Read [`docs/documentation-guide.md`](docs/documentation-guide.md) before
+adding or restructuring a developer document.** In short:
 
-Keep developer design documents close to the code they explain:
-
-- Cross-cutting architecture, repo-wide contracts, protocol policy, build
-  policy, and ADRs belong under top-level `design/`.
-- Firmware/platform design belongs near firmware code, for example
-  `embedded/design/`, `embedded/tags/design/`, or a target/module-local
-  `design/` directory.
-- Host-library and application design belongs near the owning host directory,
-  for example `host/libraries/tagcore/README.md` or
-  `host/applications/sensorviz/design/`.
-- Do not move local design docs to top-level `design/` merely to make them
-  discoverable. Add or update navigation stubs instead.
-
-Whenever you add, move, rename, or materially update a developer design
-document:
-
-- Update the nearest local `README.md` or `design/index.md` so the document is
-  discoverable from its owning subtree.
-- Update top-level `design/index.md` when the document is architecture-relevant,
-  cross-cutting, or useful to engineers outside the owning subtree.
-- Update `DEVELOPER_DOCS_MARKDOWN` in top-level `CMakeLists.txt` and
-  `docs/developer/src/source-tree.md` when the document should appear in the
-  browser portal.
-- Update `docs/developer/mkdocs.yml` only for curated navigation entries that
-  should be visible in the sidebar. The sidebar should first mirror repository
-  ownership (`design/`, `embedded/`, `host/`, `proto/`) and then provide
-  cross-cutting topic views.
-- Keep topic sections organized by scope: cross-cutting architecture,
-  build/tooling, embedded and firmware platform, host libraries/applications,
-  protocols/data formats, active decisions, and historical notes.
-- Prefer one-line index entries with a short "why this exists" description.
-- Mark stale or historical docs explicitly instead of silently leaving them in
-  active sections.
+- Every document has one type (readme, design, decision, proposal,
+  investigation, procedure, results, worklist) and YAML front matter giving its
+  `type`, `status` and a one-line `summary`.
+- A design document describes the shipped system only, answer first. History
+  goes to a decision record in `docs/decisions/` or an investigation; plans go
+  to `design/proposals/`.
+- Documents live next to the code they explain. `docs/` holds only what no
+  single directory owns: architecture, shared contracts, build, release, bench
+  procedure, decisions and cross-cutting investigations.
+- Never maintain a list of documents by hand. The index (`docs/index.md`), the
+  portal sidebar and the portal staging list are generated from front matter by
+  `docs/tools/docs.py`. After adding, moving or retitling a document, run
+  `docs/tools/docs.py index`, then `docs/tools/docs.py check`.
 
 Doxygen comments are the source of truth for API contracts. Markdown design
 docs are the source of truth for architecture, rationale, tradeoffs, and

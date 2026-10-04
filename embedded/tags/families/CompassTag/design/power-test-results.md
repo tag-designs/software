@@ -1,3 +1,9 @@
+---
+type: results
+status: current
+summary: Append-only log of CompassTag power measurements before and after the DBGMCU fix, including production hardware validation.
+---
+
 # CompassTag Power Measurement Log
 
 **Append-only.** Each completed measurement gets one entry with a timestamp,

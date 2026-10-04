@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Host tree layout by role, dependency direction, CMake entry points, packaging notes and maintenance guidelines.
+---
+
 # Host Software
 
 This directory contains the host-side libraries, command-line tools, Qt

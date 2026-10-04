@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Standby pull-up and pull-down bias for each signal on the STM32U375 IMUTagNandv1 board, with reasons.
+---
+
 # IMUTagNandv1 Standby Pin Bias
 
 IMUTagNandv1 uses an STM32U375. In Standby mode the normal GPIO mode,

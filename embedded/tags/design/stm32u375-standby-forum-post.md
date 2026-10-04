@@ -1,3 +1,9 @@
+---
+type: investigation
+status: closed
+summary: Forum post draft describing the layout-dependent STM32U375 Standby entry fault, register state at the WFI, and every mechanism excluded.
+---
+
 STM32U375: Standby entry silently degrades to Sleep depending on code placement — identical register state at the WFI
 
 Part: STM32U375CE (Cortex-M33 r0p4), ChibiOS, system clock MSIS 4 MHz, FLASH_ACR = 0x100 (0 WS, prefetch on), ICACHE enabled, LDO. Firmware enters Standby from a small function: PWR_CR1.LPMS = 100b, SCB_SCR.SLEEPDEEP = 1, DSB, ISB, WFI. Standby exit is by reset, as documented.

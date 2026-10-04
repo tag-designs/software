@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Layout of the protobuf directory, per-tag nanopb options and default configuration JSON.
+---
+
 # Proto Directory
 
 The this directory is organized as follows

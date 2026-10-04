@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Why a monitor attach can wedge the shared I2C bus, the evidence, and the bus-clear recovery and its call sites on STM32U3 IMUTag targets.
+---
+
 # I2C Bus Recovery
 
 Status: implemented for STM32U3 IMUTag targets, validated on hardware, not yet

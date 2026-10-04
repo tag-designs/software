@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to build and run the PresTag datalog host simulation for both download formats, checking the last partial page and mid-page resets.
+---
+
 # PresTag Datalog Simulation
 
 `datalog_sim.c` compiles the real `../src/state_run.c` and `../src/datalog.c`

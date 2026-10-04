@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Introduction for people deploying IMUTags: what it records, sample rates and accuracy, deployment length, the configure/download/view tools, and what is missing.
+---
+
 # The IMUTag: An Overview
 
 An introduction for people who will deploy IMUTags and analyze the data they

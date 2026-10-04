@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+---
+
 # UIUCTag Data Collection Integration Plan
 
 ## Scope

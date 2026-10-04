@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How to build and run the tagcore offline UIUCTag format, decoder and end-to-end assertion checks.
+---
+
 # tagcore Offline Decoder Checks
 
 Assertion programs that drive the tagcore log decoders with synthetic payloads,

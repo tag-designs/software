@@ -1,3 +1,9 @@
+---
+type: decision
+status: accepted
+summary: Convention for shared packed C log structs in include/: file and struct naming, packing, size and endianness asserts, nanopb coherence, and host decoding.
+---
+
 # Shared Binary Log Formats Design
 
 This document details the recommended design and naming conventions for sharing binary log formats between host applications and embedded tag firmware.

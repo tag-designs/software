@@ -1,3 +1,9 @@
+---
+type: design
+status: historical
+summary: Early CompassTag datalog notes: 256-byte page layout with dirty and valid words and the internal flash page header.
+---
+
 High Level
 ----------
 

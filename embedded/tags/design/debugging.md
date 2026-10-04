@@ -1,3 +1,9 @@
+---
+type: procedure
+status: current
+summary: Ways to see inside a running tag (SRAM2 scratchpad, GDB over SWD, Joulescope, GPIO markers, monitor) and what each costs or disturbs.
+---
+
 # Debugging a Tag
 
 A tag in the field has no console. The faults that cost the most time are the

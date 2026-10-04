@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Notes on recovering acquisition after a reset: wake classification, header and page recovery, storage bounds, IMUTag timing, and two fixed boot faults.
+---
+
 # Restart Recovery Notes
 
 These notes capture deferred design thinking for tag recovery after monitor

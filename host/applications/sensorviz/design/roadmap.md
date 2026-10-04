@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Current sensorviz design state, design rules, UI decisions, known limitations and future work.
+---
+
 # sensorViz Development Notes
 
 This note captures the current `sensorviz` design state and the work that still

@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Hardware shape, module selection and bring-up status of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
+---
+
 # IMUTagNandBmp581 Maintainer Notes
 
 `IMUTagNandBmp581` is the STM32U375/Cortex-M33 NAND build for the revised

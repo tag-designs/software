@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Orientation to the embedded tree: boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
+---
+
 # Embedded Source Layout
 
 The embedded tree is organized around five major sections:

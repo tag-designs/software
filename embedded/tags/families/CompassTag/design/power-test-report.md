@@ -1,3 +1,9 @@
+---
+type: investigation
+status: closed
+summary: Results of the CompassTag Standby-after-attach investigation: idle fell from about 362 uA to 0.38 uA after the DBGMCU fix.
+---
+
 # CompassTag Power Test Report — Standby-After-Attach Regression
 
 Results for the procedure in [`power-test-plan.md`](power-test-plan.md). One

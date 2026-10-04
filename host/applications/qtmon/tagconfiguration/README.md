@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How qtmonitor configuration modules edit Config, build-time field visibility from default configs, and adding tags, fields and modules.
+---
+
 # QtMonitor Configuration Modules
 
 QtMonitor uses the tag `Config` message for two related purposes:

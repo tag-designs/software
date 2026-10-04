@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How board directories generate ChibiOS board files, which firmware targets consume each board, and how to rename or check boards.
+---
+
 # Embedded Boards
 
 `embedded/boards` contains the ChibiOS board descriptions shared by tag and

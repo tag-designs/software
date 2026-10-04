@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: PresTag family members and their log formats, with links to the power test documents and host simulation.
+---
+
 # PresTag Family
 
 This family contains the shared application code for PresTag pressure-log

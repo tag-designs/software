@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: What the BitTagNG family shares and what its variants keep local.
+---
+
 # BitTagNG Family
 
 Shared application code for the `BitTagNG` and `BitTagNG-lis2du12` build

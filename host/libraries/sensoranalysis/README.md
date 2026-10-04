@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Contents of the UI-free sensoranalysis library for compass calibration and orientation.
+---
+
 # SensorAnalysis Library
 
 `sensoranalysis` contains UI-free sensor-domain processing shared by host

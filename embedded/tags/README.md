@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: How tag targets are assembled from modules, families and local sources, diagnostics, the template tag directory and local override rules.
+---
+
 # Embedded Tag Firmware
 
 Tag firmware targets share a ChibiOS makefile scaffold from `common/make.mk`.

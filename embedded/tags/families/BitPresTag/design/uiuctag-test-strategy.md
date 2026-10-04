@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
+---
+
 # UIUCTag Test Strategy
 
 ## Why this document exists

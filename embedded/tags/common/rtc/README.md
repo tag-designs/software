@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Common RTC API and RV3028 descriptor binding, older RTC drivers, and the remaining descriptor-ownership todo.
+---
+
 # RTC Support
 
 `rtc` contains the common real-time-clock interface and RTC chip drivers. The

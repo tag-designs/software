@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Design of the dataprocessing CLI that copies a SQLite log and adds calibrated CompassTag streams with provenance; SensorViz support for augmented files is still future.
+---
+
 # DataProcessing Post-Processing Application Design
 
 ## Purpose

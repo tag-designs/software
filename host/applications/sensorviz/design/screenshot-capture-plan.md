@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
+---
+
 # SensorViz Documentation Screenshot Capture Plan
 
 ## Purpose

@@ -1,3 +1,9 @@
+---
+type: decision
+status: accepted
+summary: Analysis of whether fw-v0.0.3 downloads can be rebuilt from an SWD capture, the gaps and defects found, and the agreed plan with implementation status.
+---
+
 # Offline Log Reconstruction
 
 Status: analysis, with decisions agreed on 2026-10-01 (see

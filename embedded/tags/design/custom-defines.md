@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: Reference of custom.h defines per active tag target, module-generated TAG_ feature switches, and retired defines.
+---
+
 # Tag `custom.h` Build Defines
 
 Each tag target has a local `inc/custom.h`. That file is included through

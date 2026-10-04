@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: AK09940A and BMM350 magnetometer driver files and BMM350 descriptor, session and compensation maintenance notes.
+---
+
 # Magnetometer Drivers
 
 This directory contains reusable magnetometer drivers and their monitor

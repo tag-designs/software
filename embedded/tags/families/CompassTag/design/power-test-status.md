@@ -1,3 +1,9 @@
+---
+type: worklist
+status: historical
+summary: Live handoff for the finished CompassTag power campaign: rig state, completed work and outstanding checks as of 2026-09-22.
+---
+
 # CompassTag Power Testing — Live Status
 
 **Overwritten by whichever session is driving the rig. Read this first on

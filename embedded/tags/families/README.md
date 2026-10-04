@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: What tag families are and the variant, family, module search order that lets variants override family files.
+---
+
 # Tag Families
 
 Some firmware targets are build variants of the same tag design.  A common

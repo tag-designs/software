@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Table of host libraries and their dependency direction.
+---
+
 # Host Libraries
 
 Reusable host code lives here. Libraries should have clear ownership boundaries

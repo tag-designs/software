@@ -1,3 +1,9 @@
+---
+type: procedure
+status: current
+summary: How to qualify a firmware image on the bench, program and record a field tag from a release, and cut a signed host tools release.
+---
+
 # Releasing Tag Firmware and Host Tools
 
 Three procedures, and what each one proves.

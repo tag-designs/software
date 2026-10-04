@@ -1,3 +1,9 @@
+---
+type: investigation
+status: open
+summary: Evidence for the intermittent IMUTag abort at start, the now-implemented marker detail word, and an unconfirmed flash-flag explanation.
+---
+
 # IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail
 
 Status: the detail word described below is implemented. The failure itself has

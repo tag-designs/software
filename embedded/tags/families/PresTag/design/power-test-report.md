@@ -1,3 +1,9 @@
+---
+type: investigation
+status: closed
+summary: Results of the 2026-09-08/09 PresTag power campaign: measured power model, battery lifetime, schedule tests and remaining T4 and F3 items.
+---
+
 # PresTag Power and Schedule Test Report
 
 Results for the procedure in [`power-test-plan.md`](power-test-plan.md). One

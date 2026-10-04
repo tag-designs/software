@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Inventory of repo-local C and header files compiled into each tag firmware target, extracted from dependency files.
+---
+
 # Embedded Tag Build Sources
 
 This file lists repo-local `.c` and `.h` files used by embedded tag targets

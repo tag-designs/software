@@ -1,3 +1,9 @@
+---
+type: readme
+status: historical
+summary: Architecture notes for the retired CompViz CompassTag viewer, superseded by sensorviz.
+---
+
 # CompViz Architecture Notes
 
 CompViz displays SQLite logs from CompassTags. It shows scalar streams in a

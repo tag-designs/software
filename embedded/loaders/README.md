@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: SRAM-resident external flash loaders: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+---
+
 # External Flash Loaders
 
 Small images that read, and optionally erase and program, a tag's external

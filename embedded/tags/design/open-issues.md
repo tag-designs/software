@@ -1,3 +1,9 @@
+---
+type: worklist
+status: open
+summary: Tracker of known tag firmware defects, separating reproduced faults from ones found by reading code, with resolved entries kept.
+---
+
 # Open Issues — Tag Firmware
 
 Known defects that are understood well enough to write down but are not fixed.

@@ -1,3 +1,9 @@
+---
+type: proposal
+status: proposed
+summary: Why raw field dumps are not self-describing, proposed session superblock and failure record, and the SRAM loader approach to external flash that is now built.
+---
+
 # Field Data Extraction
 
 Status: partly implemented. The external-flash loader is built and validated on

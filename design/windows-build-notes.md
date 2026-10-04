@@ -1,3 +1,9 @@
+---
+type: procedure
+status: historical
+summary: Unedited personal notes on Windows toolchain setup, environment variables, vcpkg triplets and static Qt builds.
+---
+
 cmake -B build -S  c:/users/geobrown/ultralight-tags --preset default
 cmake --build . --config Release
 

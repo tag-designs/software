@@ -1,3 +1,9 @@
+---
+type: worklist
+status: open
+summary: Work list for the release after fw-v0.0.3: defect fixes, offline-reconstruction layout changes, release qualification and host counterparts, with per-item status.
+---
+
 # Tag Firmware: Next Release TODO
 
 Status: open, written 2026-10-01 against `main` (89410ca). This is the work

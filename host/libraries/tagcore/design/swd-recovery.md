@@ -1,3 +1,9 @@
+---
+type: design
+status: current
+summary: SWD capture and recovery library, partly built: capture without booting, loader Serve() reads, tag identification, layered API and implementation sequence.
+---
+
 # SWD Capture and Recovery Library
 
 ## Status

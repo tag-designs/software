@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.
+---
+
 # QtMonitor Documentation Screenshot Automation Design
 
 ## Purpose

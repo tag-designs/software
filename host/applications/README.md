@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: Table of the Qt host applications and their targets, noting compviz is retired.
+---
+
 # Host Applications
 
 Qt applications live here. Each application owns its menus, workflows, and

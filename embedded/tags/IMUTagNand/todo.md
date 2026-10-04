@@ -1,3 +1,9 @@
+---
+type: worklist
+status: open
+summary: Bring-up todo list for IMUTagNand NAND validation, ECC and bad-page handling, block-map checks and host diagnostics.
+---
+
 # IMUTagNand Bring-Up TODO
 
 ## Near-Term Validation

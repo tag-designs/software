@@ -1,3 +1,9 @@
+---
+type: readme
+status: current
+summary: qtcalibrate replay fixture naming and the commands that generate its documentation screenshots.
+---
+
 # QtCalibrate Documentation Fixtures
 
 Store curated `qtcalibrate` sample captures here for documentation screenshot

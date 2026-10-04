@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, now implemented, to replace STM32U375 terminal Standby with Stop 3 while keeping the STM32L432 Standby path.
+---
+
 # STM32U375 Stop3 Terminal Sleep Plan
 
 This note records the STM32U375 terminal Stop3 replacement for Standby on

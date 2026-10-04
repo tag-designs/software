@@ -1,3 +1,9 @@
+---
+type: proposal
+status: historical
+summary: Plan, now built, for the IMUTagNandBmp581 firmware variant with BMP581 pressure and GD5F2GM7RE NAND under the IMUTAG protocol identity.
+---
+
 # IMUTagNandBmp581 Development Plan
 
 ## Purpose

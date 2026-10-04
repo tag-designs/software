@@ -1,3 +1,9 @@
+---
+type: procedure
+status: current
+summary: PresTag power and schedule test procedure: firmware behaviour, rig discipline, resting states, period sweep, power model, schedule and hibernation checks.
+---
+
 # PresTag Power and Schedule Test Plan
 
 Hardware-in-the-loop plan for a `PresTag` target on a PresTagv3 board, wired to
