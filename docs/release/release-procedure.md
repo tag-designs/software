@@ -217,6 +217,62 @@ rebuild of the same commit. The two are now byte-identical, which is what makes
 the substitution safe, but qualifying the artifact that will actually be flashed
 removes the need to rely on that.
 
+### When a mass erase is needed, and what it costs
+
+A normal program writes only the loaded image. The NOLOAD regions beside it --
+`.calibration`, the stored configuration, `.persistent`, the NAND map -- are
+not written, so **they survive a firmware update**. That is usually what you
+want: a provisioned tag keeps its calibration across an upgrade.
+
+It stops being what you want when an upgrade changes where those regions are or
+what is in them. The STM32L432 script places `.calibration` as
+`(NOLOAD): ALIGN(2048)` straight after the code, so it moves whenever the image
+grows; the STM32U375 script pins both bounds and asserts that code cannot reach
+them. On a part of the first kind, a major upgrade can leave a region's bytes
+at an address the new firmware does not read, or read a region written in a
+format it no longer understands. Neither is reported. **For a major upgrade on
+such a target, mass erase and reprovision**, rather than trusting the old
+contents.
+
+**The cost is that a mass erase requires physical access afterwards.** Erasing
+sets `FLASH_SR.PEMPTY`, and with `nSWBOOT0 = 1` and BOOT0 low that sends every
+reset to the ROM bootloader: the firmware does not run, no monitor answers, and
+`tag-info` reports the condition rather than the tag. Hardware re-evaluates the
+flag only at power-on or an option-byte load, so **the tag must be
+power-cycled** before it will run the image just written.
+
+Two traps around it:
+
+- **Do not "clear" the flag.** Writing 1 toggles it, so a tool that clears it on
+  a part where it was already clear will set it instead. Power-cycle, or issue
+  an option-byte load.
+- **A byte-level backup of a region is not a backup of its meaning.** Dumping
+  `.calibration` before a mass erase and writing the same bytes back afterwards
+  produced a byte-identical readback and calibration that did not work
+  (CompassTagAT25, 2026-10-04). Reprovision with the proper tool instead.
+
+#### Removing the power-cycle requirement — two candidates, neither yet tested
+
+Both routes exist because hardware re-evaluates `PEMPTY` at an option-byte
+load as well as at power-on.
+
+- **Per flash: trigger an option-byte load at the end of the programming
+  command.** `-ob obl` is not a flag in STM32CubeProgrammer v2.22.0 — `-ob`
+  takes `displ`, `unlockchip` or `OptByte=<value>`, and the help has no
+  `launch`, `obl` or `reload`. The tool performs the load as part of *writing*
+  an option byte, so the form to try is a write of an existing value, e.g.
+  `-c port=SWD mode=UR -e all -w <image>.hex -ob nSWBOOT0=1`, with the caveat
+  that a write of an unchanged value may be skipped and so launch nothing.
+- **Once per board: disable the empty check.** `nSWBOOT0 = 0` with
+  `nBOOT0 = 1` stops `PEMPTY` routing resets to the ROM bootloader at all
+  (RM0394 2.6). This removes the requirement permanently instead of adding a
+  step to every flash, which makes it the better fix if it holds — but it is
+  an option-byte change to make deliberately, with its own verification, not a
+  clause bolted onto a flashing command.
+
+Establish which works at the next flash that needs a mass erase, and record the
+result here. Until then, power-cycle.
+
 ### Steps
 
 **1. Unpack the release archive** (`tar -xzf tag-firmware-fw-vX.Y.tar.gz`) on

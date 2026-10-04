@@ -20,6 +20,20 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
   top of flash and assert that code cannot reach it. Until then, a calibrated
   unit must not be reflashed without comparing the two addresses — see
   [the power test plan](design/power-test-plan.md).
+
+  Two things learned doing this on 2026-10-04, on a unit whose calibration was
+  already at the address `fw-v0.5` uses:
+  - **A byte-level backup is not a backup of the calibration's meaning.**
+    Dumping the page before a mass erase and writing the same bytes back gave a
+    byte-identical readback and calibration that did not work. Reprovisioning
+    with `tag-cal`/`qtcalibrate` did.
+  - **Mass erase costs a power cycle**, because `FLASH_SR.PEMPTY` is sticky and
+    sends every reset to the ROM bootloader until power-on or an option-byte
+    load. That makes "mass erase and reprovision" — the safe answer for a major
+    upgrade that moves these regions — need physical access to the tag. Pinning
+    the region removes the reason to mass erase in the first place, which is
+    the stronger argument for doing it. See
+    [the release procedure](../../../../docs/release/release-procedure.md).
 - **Measure plain `CompassTag` (MX25R) after an attach.** It reproduced the
   Standby-after-attach fault on its own board, and it has not been measured
   since the fix. `CompassTagAT25` has been, on production hardware

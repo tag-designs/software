@@ -185,11 +185,22 @@ attaches before every resting measurement.
 
 ```sh
 embedded/tools/tag_lifecycle_check.py \
-    --config "$CFG" --run-duration 900 --rest-duration 120 \
-    --idle-max-ua 5 --use-server --verbose
+    --config "$CFG" --run-duration 900 --rest-duration 120 --settle 60 \
+    --idle-max-ua 1 --use-server --verbose
 ```
 
-Two departures from the invocation this plan used to carry:
+**`--idle-max-ua 1`, not 5.** The flag does two jobs: it is the bound a
+resting state must come under, *and* the bound the running state must come
+**over**, because a run drawing idle current collected nothing. On IMUTag those
+are three orders of magnitude apart and any value between them works. On
+CompassTag they are a factor of 8.5 apart and **both below 5 uA** — idle 0.23,
+running 1.96 — so a 5 uA threshold declares the run asleep and fails it. The
+2026-10-04 session did exactly that: the tool reported
+`running: 1.96 uA, at or below the 5 uA sleep threshold -- the tag was not
+collecting` in the same run whose download check passed with 30 rows, proving
+it had collected. 1 uA sits above the floor and below the run.
+
+Two further departures from the invocation this plan used to carry:
 
 - **`--run-duration 900`, not 20.** A 20 s run at a 30 s sample period
   produces no sample at all, so the download check has nothing to look at and
