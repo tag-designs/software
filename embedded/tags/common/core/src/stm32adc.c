@@ -16,6 +16,43 @@
 
 #define ADC_CCR_CKMODE_AHB_DIV1 (1 << 16)
 #define ADC_SMPR_SMP_47P5 4
+/**
+ * @def ADC_SMPR_SMP_247P5
+ * @brief Sampling time used for VREFINT and the temperature sensor.
+ *
+ * @details Sampling time is counted in ADC clock cycles and adc1Start()
+ *          selects CKMODE = AHB/1, so the absolute window shrinks as the core
+ *          clock rises and a cycle count adequate on one target is not
+ *          adequate on another. Measured on a UIUCTag breakout, 2026-10-04,
+ *          with no settling delay at all: 47.5 cycles reported 3.77-4.00 V
+ *          and 183-210 C against a true 2.4960 V and 25 C, while 92.5, 247.5
+ *          and 640.5 all read correctly. 247.5 is 2.7x above the lowest
+ *          passing value and 5x above the failing one, and costs 22-130 us
+ *          for the pair depending on clock.
+ */
+#define ADC_SMPR_SMP_247P5 6
+#define ADC_SMPR_SMP_640P5 7
+
+/**
+ * @def TAG_ADC_INTERNAL_START_US
+ * @brief Settling time allowed after enabling VREFINT and the temperature
+ *        sensor, in microseconds.
+ *
+ * @details Both have a startup time after their enable bit is set, and
+ *          adc1Stop() clears VREFEN and TSEN, so every call pays it again. A
+ *          conversion started before the reference has settled reads low,
+ *          which inflates the computed VDD, and the temperature is derived
+ *          from that VDD, so one unsettled sample corrupts both outputs.
+ *
+ *          Kept alongside the sampling time rather than instead of it,
+ *          because the two guard different things: this is an absolute time
+ *          and so is independent of the core clock, which the cycle count is
+ *          not. 200 us covers the temperature sensor's ~120 us startup with
+ *          margin. The tick is 10 kHz, so the sleep costs 200-300 us -- a
+ *          quarter of the 1 ms that was originally commented out here, which
+ *          matters on tags that sample once a minute.
+ */
+#define TAG_ADC_INTERNAL_START_US 200
 
 #if defined(ADC12_COMMON)
 #define TAG_ADC_COMMON ADC12_COMMON
@@ -146,10 +183,19 @@ int adc1StartConversion(uint16_t channel, uint16_t delay) {
   if ((channel > 18) || (delay > 7)) return -1;
 
   adc_lld_stop_adc();
+  /*
+   * SMPR1 holds SMP0..SMP9 and SMPR2 holds SMP10..SMP18, three bits each, the
+   * first channel of each register at bit 0 (ADC_SMPR2_SMP10_Pos == 0,
+   * SMP11_Pos == 3). The SMPR2 index was (channel - 9), one field too high, so
+   * every channel from 10 up had its sampling time written into its
+   * neighbour's field and kept the reset value of 0 -- 2.5 cycles, the
+   * shortest available. Channel 17 is the temperature sensor, which needs the
+   * longest.
+   */
   if (channel < 10)
     ADC1->SMPR1 = (delay << (channel * 3));
   else
-    ADC1->SMPR2 = (delay << ((channel - 9) * 3));
+    ADC1->SMPR2 = (delay << ((channel - 10) * 3));
   ADC1->SQR1 = (channel << 6);
   ADC1->CR |= ADC_CR_ADSTART;
   return 0;
@@ -234,12 +280,12 @@ void adcVDD(uint16_t *vdd100, int16_t *temp10)
   adc1Start();
   adc1EnableVREF();
   adc1EnableTS();
-  //chThdSleepMilliseconds(1);
-  adc1StartConversion(0, ADC_SMPR_SMP_47P5);
+  chThdSleepMicroseconds(TAG_ADC_INTERNAL_START_US);
+  adc1StartConversion(0, ADC_SMPR_SMP_247P5);
   while (adc1Eoc() == false)
     ;
   adc_samples[0] = adc1DR();
-  adc1StartConversion(17, ADC_SMPR_SMP_47P5);
+  adc1StartConversion(17, ADC_SMPR_SMP_247P5);
   while (adc1Eoc() == false)
     ;
   adc_samples[1] = adc1DR();
