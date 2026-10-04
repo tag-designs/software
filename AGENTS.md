@@ -37,11 +37,14 @@ that save the most time.
 | Adding or changing a tag target | `embedded/tags/README.md`, especially **Local Overrides** and **Template Tag Directory** |
 | Understanding the firmware build, boards, or nanopb targets | `embedded/design/source-layout.md` |
 | Adding a tag to the SQLite download path | the recipe comment at the top of `host/libraries/tagcore/sqlitelog.cc`, then `host/libraries/tagcore/sqlitelog/README.md` |
-| Per-tag SQLite schema and row semantics | `host/libraries/tagcore/sqlitelog/README.md` |
+| Per-tag SQLite schema and row semantics | `host/docs/src/reference/sqlite-logs.md` (schema); `host/libraries/tagcore/sqlitelog/README.md` (writer rules) |
 | Board pin and signal generation | `embedded/boards/README.md` |
 | What a family shares and what a variant overrides | that family's `README.md` under `embedded/tags/families/` |
 | Reading or erasing a tag's external flash without its firmware, or adding a loader | `embedded/loaders/README.md`, then `embedded/loaders/design/loader-runtime.md` |
 | Design rationale for an existing subsystem | the nearest `design/` directory; every document is listed in `docs/index.md` |
+| Measuring power, verifying a firmware change on hardware, debugging or capturing a tag | `docs/bench/README.md` |
+| Why something was built the way it was | `docs/decisions/` (numbered records), then the owner's `design/investigations/` |
+| Open work for a subsystem | the `TODO.md` in that subsystem's directory, e.g. `embedded/tags/TODO.md` |
 
 Two conventions that are easy to miss and expensive to rediscover:
 
@@ -95,378 +98,46 @@ cmake --build <build-dir> --target PresTag
 Use the target that matches the files changed. For documentation-only changes,
 `git diff --check` is often enough unless CMake/docs build files changed.
 
-### Verifying a firmware change
+### Firmware and bench work
 
-- **Confirm which source actually compiled.** With basename-based overrides, the
-  file you edited is not always the file that built. The dependency file names
-  it: `grep <name>.c <build-dir>/embedded/tags/<Tag>/dep/<name>.o.d` prints
-  `src/<name>.c` for a tag-local override, or the family/module path otherwise.
-- **Clean-rebuild a target after changing a shared type.** Objects compiled from
-  common sources cache the header they resolved. Changing a type that a tag
-  supplies to common code — `t_DataHeader`, which types the `vddHeader[]` array
-  declared in `common/core/src/persistent.c`, is the live example — can
-  otherwise leave a stale object linked against the old definition, with no
-  diagnostic. Remove the target's `build/` and `dep/` directories.
-- **Do not compare ELF checksums across commits.** Every image embeds the git
-  hash through the generated `version.h`, so all binaries change when HEAD
-  moves, including targets the commit did not touch. Compare the `.list`
-  disassembly instead. A checksum is meaningful only between two builds at the
-  same commit in the same tree.
-- **Measure idle current after any change to the boot or state-machine path.**
-  A clean build and passing functional tests prove nothing about sleep. The
-  live example: adding six retained backup-register words and a status line
-  left the tag awake in WFI instead of entering Stop3 — 995 uA against 6.56 uA,
-  a 150x idle penalty — through four flashes in which every functional test
-  passed. The debug module is excluded from shipped images for the same class
-  of failure. Anything that touches `main.c` boot cleanup, `state_machine.c`,
-  `pwr.c`, `godown()`, `pState`, or the device power sequencing needs a
-  measurement, not an argument.
+Hardware procedure lives in [`docs/bench/`](docs/bench/README.md). **Read the
+relevant document before changing the boot path, the state machine, power
+sequencing, or the download path**: each rule below cost real time to learn,
+and a clean build plus passing functional tests has repeatedly missed faults
+these procedures catch.
 
-  **Ask the user to detach the Joulescope desktop app and qtmonitor first**, and
-  wait for confirmation. Both invalidate the result, in different ways: the
-  Joulescope app holds the device so the script cannot open it, and qtmonitor
-  holds the monitor, which keeps `isMonitorEnabled()` true so the tag never
-  sleeps at all. Neither failure is obvious in the output — a held monitor just
-  reads as a high average.
-
-  Prefer the life-cycle check, which walks the tag through idle, running,
-  stopped and idle-again and measures every resting state:
-
-  ```sh
-  embedded/tools/tag_lifecycle_check.py \
-      --config embedded/tools/power-configs/imutag-400.json --run-duration 60
-  ```
-
-  Measure one state and you only learn about that state. A power sweep measures
-  the run, which is the state a fault is hardest to see in: an idle regression
-  that left the tag at 1036 uA hid inside a real 400 Hz run current of about
-  970 uA and survived a full sweep. It also reset the tag without setting the
-  clock, so it never entered the state that was broken. The life-cycle check
-  measures idle **with the clock set**, because that is how a prepared tag is
-  actually left, and compares idle before the run against idle after it — the
-  same state by two histories, which is where a state-dependent fault shows up
-  even when both numbers look plausible.
-
-  `tag_attach_storm.py` covers the other half: repeated reset-and-set-clock
-  cycles and attach/detach storms against a running tag, checking that the run
-  survives and recorded usable data. It measures no power; the two tools are
-  complementary. Pass `--keep-download <dir>` to keep each round's database;
-  without it they go to a temporary file that is deleted, so a failing round
-  cannot be examined afterwards.
-
-  **An acknowledgement is not a completion.** `Tag::Stop()` and `Tag::Erase()`
-  return true when the request is *accepted*; the monitor handler only sets a
-  work bit and the state machine acts later. A host tool that reads the status
-  straight afterwards sees the old state. That is what made `tag-stop` exit 0
-  while the tag was still RUNNING, and the download then refused with "Can't
-  dump logs from current state" -- which read as an intermittent download bug
-  for a long time. Poll for the state you asked for, a few seconds apart, and
-  fail with the last state seen.
-
-  **`Tag::Attach()` connects under reset**, so the tag is still booting and its
-  first status can legitimately report `STATE_UNSPECIFIED` -- `pState->state`
-  is zero until the state machine restores it. **Any tool that issues a request
-  straight after attaching must first wait for a definite state.** This has
-  bitten three separate tools: `tag-reset` skipped its erase and reported
-  success for a reset that never happened; the `SetRtc` issued next was
-  rejected; and `tag-stop` was refused with "Monitor request not permitted in
-  current tag state", which then surfaced as a download failing with "Can't
-  dump logs from current state". Each looked like a different intermittent
-  fault. `tag-reset`, `tag-start` and `tag-stop` now poll for a real state,
-  a second apart, with `--settle-timeout`.
-
-  **When a check fails, confirm what it actually measured before believing
-  it.** `check_download()` picks a timestamp column by name, and picking the
-  wrong one cost real time: `ImuAccel` declares `RawElapsedUs` before
-  `ElapsedUs`, and `RawElapsedUs` is documented as elapsed microseconds *from
-  the segment start*, so it restarts at zero in every segment. The tool
-  reported one "non-monotonic timestamp" per restart-recovery and it was filed
-  as an intermittent firmware fault for some time; the corrected column was
-  monotonic throughout. A failing check is a claim about the tag that deserves
-  the same scepticism as any other measurement -- and a wrong check hides real
-  faults behind it, which is how an intermittent download failure went unseen.
-
-  To measure a single state directly instead:
-
-  ```sh
-  build-host/bin/tag-reset                       # -> IDLE
-  <python-with-pyjoulescope> embedded/tools/joulescope_measure.py \
-      --duration 45 --repeat 2
-  ```
-
-  Use two or more windows and require them to agree; a single window hides both
-  a still-attached monitor and a tag that is waking periodically.
-  `joulescope_measure.py` needs an interpreter that can import
-  `pyjoulescope_driver`, which is usually a virtualenv rather than the system
-  python; `power_experiment.py` resolves one automatically and prints which it
-  chose.
-
-  When the number is wrong, bisect against the last known-good image rather
-  than reasoning about it: stash the firmware changes, rebuild, flash, measure,
-  then restore. That distinguishes "my change did this" from "this board is
-  different today" in one step, and it is how the 995 uA above was pinned to
-  the instrumentation rather than to the fix it was shipped with.
-
-### Terminal sleep is Stop 3; Standby entry is layout-sensitive
-
-  **Qualify a release on hardware before shipping it.**
-
-  ```sh
-  embedded/tools/tag_release_check.py --target IMUTagNandBmp581
-  ```
-
-  Builds, flashes, then measures idle four times, walks the full life cycle,
-  and runs three attach-storm sets, keeping every log, database and the ELF in
-  a timestamped directory with a single pass/fail. It records whether the tree
-  was dirty, because a release qualified from a dirty tree is not reproducible.
-
-  This is not belt-and-braces. A change to the state-machine path shipped a
-  240x idle regression to main that a clean build, a hardware feature test and
-  a full attach storm all passed; only an idle measurement caught it, and it
-  was caught days late. Later the same day's tree slept in IDLE and stalled in
-  FINISHED; only the life-cycle walk saw it.
-
-  **Bound run current, not just idle.** `tag_release_check.py` now fails if the
-  life-cycle run exceeds `--run-max-ua` (760 uA, sized for the default 400 Hz
-  config at a 3.7 V supply, where a healthy run is about 665 uA). This is not
-  belt-and-braces either: run current is what sets battery life during a
-  deployment, and it has now twice moved by about 200 uA between builds
-  differing only in code layout. Four consecutive release checks reported such
-  a regression and passed, because only the resting states were bounded.
-
-  **That limit is supply-voltage dependent; say what you measured at.** The
-  shipping board regulates with an SMPS, whose input current scales with supply
-  voltage. Only the LDO build is voltage-independent, and it was left behind by
-  the SMPS version, so the LDO figures in
-  `embedded/tags/families/IMUTag/design/power.md` do not bound this
-  board. The limit was 850 uA against a healthy 750 uA at the ~3.29 V bench
-  supply those came from, and was rebased by the voltage ratio for a 3.7 V
-  cell: 664.98 and 665.47 uA measured across two independent runs at 3.6930 V,
-  the same power as 750 uA at 3.3 V to within 0.6%. Move the bench supply
-  without rebasing and the bound is either toothless or a false-failure
-  generator.
-
-  **The run-mode sleep is Stop 2, and the terminal sleep is Stop 3 -- neither
-  is the mode the code originally asked for.** On this part the deeper the
-  requested low-power mode, the less reliably it is reached. Standby is a
-  lottery that Stop 3 fixes; Stop 1 is a lottery that Stop 2 fixes. Stop 1 run
-  current varied 671/866/866 uA at 100 Hz across three builds differing only in
-  layout, with the MCU verifiably in Stop 1 for 97% of the window in every one
-  of them; Stop 2 gave 605.0/604.8/604.9 across the same three, and is lower at
-  every sample rate. `IMUTAG_RUN_SLEEP_MODE` selects it per target.
-
-  **The shipping terminal sleep is Stop 3, not Standby.**
-  `tagPowerEnterTerminalSleep()` calls `tagPowerEnterStop3()`: same device
-  preparation, RTC wake through WKUP7, and a synthetic standby reset on wake,
-  so the boot path is unchanged. It costs about 3.6 uA more at rest than a
-  Standby that works, and it entered at every layout that stalls Standby.
-
-  Why Standby: on this part a Standby request (`LPMS = 1xx`) is declined in a
-  layout-dependent way. Inserting `nop` padding into an unrelated function --
-  a change that cannot alter behaviour -- flips idle current between 5 uA and
-  1040 uA. The firmware reaches the `WFI` with every documented precondition
-  met, sampled live without a debugger; ~380 peripheral and core-control
-  registers are bit-identical between a failing and a working image at that
-  instant; the stalled part sits in plain Sleep with its bus clocks running.
-  ES0626 has no matching item. `__attribute__((noinline))` on
-  `tagPowerEnterStandby()` narrowed the failure -- nine layouts -- and then a
-  tenth failed. The mechanisms tested and excluded are in
-  `embedded/tags/design/open-issues.md`; read it before proposing another.
-
-  **Anything that changes the image can expose this class of fault**, and
-  Stop 3 has been shown to survive the layouts tried, not proven immune.
-  Measure idle after firmware changes, and when a change that provably cannot
-  alter behaviour moves idle current, suspect layout before logic.
-
-### The retained scratchpad
-
-  `embedded/tags/common/core/inc/scratchpad.h` gives firmware somewhere to
-  write that a host can read back later. Enable per target with
-  `-DTAG_SCRATCHPAD=1`; with the macro undefined every entry point compiles to
-  nothing and the image is byte-identical, so it is safe to leave the calls in
-  place.
-
-  ```c
-  tagScratchResume();                     /* once, early in boot */
-  tagScratchPuts("configured");
-  tagScratchWord("STAT", pState->state);
-  ```
-
-  `tagScratchResume()` keeps whatever the last boot left and advances `seq`;
-  `tagScratchInit()` starts empty. Resume is what you want for a fault that
-  spans resets -- an attach storm boots the tag several hundred times, so a
-  buffer formatted on every boot preserves only the last one, which is rarely
-  the interesting one. Add `-DTAG_SCRATCHPAD_RING=1` for those runs too: the
-  8 KB fills long before the end and linear mode then discards everything
-  after, keeping the oldest records when the failure is at the newest end.
-
-  ```sh
-  STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin
-  embedded/tools/decode_scratchpad.py scratch.bin
-  ```
-
-  **Errors and state transitions are logged there already.** `recordState()`
-  writes a `STAT` record for every transition, packed as `state<<16 | reason`,
-  and an `ESLF` record when the flash marker log fills and it silently stops
-  recording. Storage failures add `ESKP`, `EGUP` and `EECC`. So a capture from
-  a tag that ended a run badly shows how it ended without decoding the flash
-  log. `decode_scratchpad.py` names the states and reasons.
-
-  Put new error paths here too. It is the one place that survives a tag which
-  cannot talk, and the calls cost nothing when the macro is off.
-
-  The contents are the program's business; messages are the general case. It
-  lives in the last 8 KB of SRAM2, held out of `ram0` by the linker script so
-  `crt0` never clears it, which is why it survives the reset that reading it
-  causes. It also survives a successful Standby, because `tagScratchRetain()`
-  sets `PWR_CR1_RRSB3`: verified by A/B, where the armed build came back with
-  `seq` counting every boot and the unarmed control came back as noise. So it
-  carries data across all three of reset, a failed sleep, and a real Standby.
-
-### The offline rebuild must follow the firmware
-
-  `tag-rebuild <capture-dir> -o out.db3` rebuilds a download from an SWD
-  capture, with no firmware running. It does this by re-implementing each
-  family's monitor handlers on the host
-  (`host/libraries/tagcore/recovery/capturesource.cc`), so a change to the
-  firmware's download path can silently break it. Two guards make the
-  common case loud:
-
-  - The firmware `_Static_assert`s every struct offset the decoders read,
-    next to the type, naming `capturesource.cc`. When one fires, update the
-    decoder, and bump the region's `layout_version` in the tag identity
-    record: the host refuses a version it does not know, rather than
-    misreading it.
-  - `embedded/tools/tag_rebuild_check.py run --config <json>` drives an
-    attached tag through a run with a mid-run and a final capture, and
-    requires the rebuild to equal a live `tag-dwnld -f sqlite` table by
-    table. Run it after any change to a family's `data_logAck()`,
-    `readConfig()` or `system_logAck()`; the asserts cannot see logic.
-    `tag_rebuild_check.py compare <capture> <download.db3>` re-checks a
-    stored pair offline after a host decoder change.
-
-  The mid-run capture is also the check on the capture path itself:
-  `tag_rebuild_check.py` attaches straight afterwards, which is how a
-  capture that left `DHCSR.C_MASKINTS` set -- stalling the next monitor
-  attach -- was found. See `docs/investigations/2026-10-offline-log-reconstruction.md`, "Keeping
-  the rebuild in sync with the firmware".
-
-### Capturing a tag's state after a failure
-
-  `embedded/tools/tag_capture_state.py` connects under reset and stores the
-  three places a tag keeps state a download cannot reach: SRAM, the writable
-  part of internal flash, and the RTC backup registers.
-
-  ```sh
-  embedded/tools/tag_capture_state.py --reason "storm round 2 aborted" \
-      --elf build-embedded/embedded/tags/<Tag>/build/<Tag>.elf \
-      --extra embedded/tags/<Tag>/project.mk
-  ```
-
-  Run it **before** anything resets or erases the tag;
-  `tag_attach_storm.py --stop-on-failure` exists to make that possible.
-
-  Always pass `--elf`. The region bounds are read from it -- flash size and the
-  persistent floor are per-target linker symbols, not constants -- and it is
-  the only reliable record of what was running: a test image differs from a
-  shipping one by a `-D` that leaves no trace in the git hash. Pass the
-  target's `project.mk` as `--extra` for the same reason. A capture with no
-  image stored says so in its manifest.
-
-  **SRAM1 is not retained through Standby, and cannot be.** This part offers
-  `PWR_CR1_RRSB1..RRSB3`, which are SRAM2 pages; the `SRAMxPDS` bits in
-  `PWR_CR2` are Stop-mode controls and do nothing for Standby. Ordinary `.data`
-  and `.bss` live in SRAM1 -- the tag uses 17.9 KB there, ending at
-  `0x200047A8` -- so anything you want to read back after the tag has slept
-  must be in the scratchpad, which is SRAM2 page 3 and is retained. Building
-  with `-DTAG_RETAINED_RUN_DIAGNOSTICS=1` copies the boot decision there.
-
-  Two things about the regions are worth knowing. The persistent flash sweep
-  stops at the first wholly erased page, which cut a real capture from 909312
-  bytes to 8192; the config and NAND-map pages sit above it and are captured by
-  address, or the sweep would never reach them. And the backup registers read
-  as **all zeros** unless `RCC_APB1ENR1_RTCAPBEN` is set first, because holding
-  the core in reset also resets RCC -- indistinguishable from a backup domain
-  that was genuinely lost, which is the distinction the capture exists to make.
-  The tool sets that bit before reading.
-
-### Measuring without wearing out the instrument
-
-  `joulescope_measure.py` opens and closes the Joulescope on every run. Across
-  a sweep that is dozens of USB open/close cycles, and it caused two failures:
-  the instrument wedging so its topic tree disappears and only a physical power
-  cycle recovers it, and the DUT supply being left switched off, which appears
-  downstream as `Unable to get core ID` from the debug probe because the target
-  is unpowered.
-
-  For any sweep, run the server instead. It holds the device open for its
-  lifetime and treats power as explicit state:
-
-  ```sh
-  <python-with-pyjoulescope> embedded/tools/joulescope_server.py --start &
-  embedded/tools/joulescope_measure.py --use-server --duration 10 --window 0.5
-  embedded/tools/joulescope_server.py --stop
-  ```
-
-  `--use-server` prints the same lines as the direct path, so existing scripts
-  that scrape `current  (charge/time)` keep working. Cross-checked against the
-  direct path: 5.3368 uA versus 5.3333 uA on the same build.
-
-  Do not use the `joulescope-js220` MCP server for this. It holds the device
-  for the life of the session, which blocks the harness (`jsdrv_open` times
-  out), and it cannot be stopped without killing the process.
-
-### Reading state out of a tag that cannot talk
-
-  Sleep faults are hard to instrument because the usual narration changes the
-  thing being measured: the monitor keeps `isMonitorEnabled()` true so the tag
-  never sleeps at all, and `debug_log_printf()` is compiled out of shipped
-  images. A probe that calls any timing function inside the idle or power path
-  changes the fault outright -- an instrumented build read 430 uA where the
-  pristine one read 1036 uA.
-
-  Reserve a block of RAM at a known address and log into it with plain stores,
-  then read it back over SWD:
-
-  ```sh
-  # must connect under reset; hotplug does not work on this rig
-  STM32_Programmer_CLI -c port=SWD mode=UR -u <address> <size> <file>
-  ```
-
-  Keep each probe to a single store, placed outside the idle and power paths,
-  and decode the file afterwards. Nothing runs on the tag to produce the
-  output, so the measurement is undisturbed.
-
-  Ordinary RAM is enough for **Run and Stop**, which retain SRAM. To carry data
-  **across standby**, put the block in SRAM2 and enable its standby retention;
-  standby otherwise loses SRAM, and a probe that vanishes is itself evidence --
-  survival of the block proves standby was not entered, destruction proves it
-  was.
-
-  A tag reporting IDLE while drawing run current is not necessarily stuck in
-  `__WFI()`. Rule out the cheap explanations before reaching for a mechanism:
-
-  - **Pin state.** A GPIO left driven against the board's 4.7k pull-ups sinks
-    about 700 uA per line, and the tag really is asleep underneath it. This is
-    what an I2C bus clear at the wrong call site cost, and it read as a failure
-    to sleep for two days. Ask what the last code to touch those pins left them
-    as.
-  - **Bisect against recent commits** before theorising. The same fault was
-    chased through the RTC alarm and wakeup teardown for most of a day; the
-    cause was a commit from the previous afternoon, found in one `git log`.
-  - **Trust only repeated measurements.** Single-point bisects on this fault
-    produced two confident and wrong conclusions. Use three or four trials per
-    point.
-
-  `tagPowerClearFlashErrorFlags()` exists to clear a latched flash/ECC flag,
-  but **it is not called on any live path** -- its only caller,
-  `tagPowerEnterStop3()`, is `__attribute__((unused))`. Adding it to the live
-  idle and standby paths once measured 1036 uA against 4.94 uA; that was the
-  layout sensitivity above, not a cost of touching flash, and the flags were
-  captured clean in a failing build. Clear them where the failure occurs, in
-  the datalog code, not in the power path. See
-  `embedded/tags/design/open-issues.md` and
-  `embedded/tags/common/core/design/restart-recovery.md`.
+- **Verify what you built.** With basename overrides the file you edited is not
+  always the one compiled; clean-rebuild a target after changing a shared type;
+  compare `.list` disassembly, never ELF checksums across commits.
+  [Verifying a firmware change](docs/bench/verifying-firmware.md).
+- **Measure after any change to `main.c` boot cleanup, `state_machine.c`,
+  `pwr*.c`, `godown()`, `pState` or device power sequencing**, with
+  `tag_lifecycle_check.py`, and qualify a release with `tag_release_check.py`.
+  An argument is not a measurement.
+  [Verifying a firmware change](docs/bench/verifying-firmware.md),
+  [Power testing](docs/bench/power-testing.md),
+  [Release procedure](docs/release/release-procedure.md).
+- **Ask the user to detach the Joulescope desktop app and qtmonitor first, and
+  wait for confirmation.** Never use the `joulescope-js220` MCP server; for any
+  sweep run `joulescope_server.py`. [Power testing](docs/bench/power-testing.md).
+- **An acknowledgement is not a completion, and an attach starts under reset.**
+  Poll for the state you asked for; wait for a definite state before the first
+  request. [Verifying a firmware change](docs/bench/verifying-firmware.md).
+- **STM32U375 low-power entry is layout-sensitive.** Terminal sleep is Stop 3,
+  run sleep is Stop 2 where `IMUTAG_RUN_SLEEP_STOP2` is set. When a change that
+  cannot alter behaviour moves idle current, suspect layout before logic.
+  [U375 low power](embedded/tags/common/core/design/u375-low-power.md).
+- **Capture before anything resets or erases a failed tag**, with
+  `tag-capture`, which halts the core before any firmware runs (the
+  CubeProgrammer-based `tag_capture_state.py` lets the tag start booting, and is
+  U375-only). Run `tag_rebuild_check.py` after any
+  change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
+  [Capturing a tag](docs/bench/capturing-a-tag.md).
+- **Instrument without disturbing.** Use the retained scratchpad
+  (`-DTAG_SCRATCHPAD=1`) or single-store RAM probes read over SWD; never narrate
+  from inside the idle or power path. [Debugging a tag](docs/bench/debugging-a-tag.md).
+- **A failing check is a claim that needs the same scepticism as any other
+  measurement.** Confirm what it measured before filing a firmware fault.
 
 ### Checking documentation coverage
 

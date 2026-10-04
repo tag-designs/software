@@ -820,3 +820,17 @@ it. See [`../../../design/open-issues.md`](../../../../design/open-issues.md).
 The `debug_log` row is a different fault and is still open. It was retested
 after the flash-flag fix and stayed at 1.71 mA, which confirms the module's own
 long-standing bug rather than this mechanism. It remains excluded.
+
+## Answered Since
+
+Moved here from the open questions of `power.md` when it was rewritten
+(2026-10-04), because the answer is now known:
+
+- Does `tag-start --set-rtc` fail intermittently because of the external RTC on
+  this breakout? Two of four verification cycles aborted at
+  "RTC sync failed while writing tag clock", and boots frequently report
+  `rtcInitializedAtBoot` and `clockTrusted` false.
+
+It was a wedged I2C bus shared by the RV-3028 and the BMM350, fixed by the bus
+clear; see
+[`i2c-bus-recovery.md`](../../../../common/core/design/i2c-bus-recovery.md).

@@ -12,8 +12,8 @@ and host tools. It covers both supported target paths:
 - STM32L4 / L432: legacy DebugMonitor and `DCRDR` transport.
 - STM32U3 / U375: shared-memory attach and shared-memory RPC transport.
 
-This is a reference document for the current implementation, not a design
-proposal.
+This is a reference for the current implementation. Open work on the transport
+is in the [shared contracts worklist](TODO.md).
 
 ## Common Model
 
@@ -89,11 +89,14 @@ does not enter standby while a host is still in the early attach/info phase.
 The L4 transport also treats recent `TAG_MONITORINFO` traffic as a short attach
 grace so metadata reads can bridge reliably into `MONITORSTART`.
 
-The U3 path must not consult `MONCONNECTED`, for the reason this document
-already gave under *Sleep And Reset Interaction*: it is an attach hint, not
-session truth. Until 2026-09-03 the shared implementation used it on both
-paths, and the consequence on U3 was severe rather than cosmetic --
-see *Attachment Authority On U3* below.
+The U3 path must not consult `MONCONNECTED`: it is an attach hint, not session
+truth, and the host does not always clear it. A host that resumes the core
+after a timed-out monitor call leaves `VC_CORERESET` set, so a U3 tag that
+trusted it would refuse every sleep for the rest of the boot. `MONCONNECTED` is
+still read by `monitorResetRecoveryActive()`, where the question really is
+whether a debugger connected under reset. See
+[decision 0006](../decisions/0006-monitor-u3-attachment-is-the-shared-session.md)
+for the fault this caused and its measurement.
 
 ## STM32L4 Path
 
@@ -130,7 +133,8 @@ drop the vector-catch hint between metadata reads and `MONITORSTART`.
 
 For a normal L4 monitor call, the host:
 
-1. Waits until `MON_REQ` and `MON_PEND` are clear.
+1. Checks that `MON_REQ` and `MON_PEND` are clear; if either is still set,
+   `Call()` logs an error and fails the call rather than waiting.
 2. Writes `(operand << 8) | operation` to `DCRDR`.
 3. Sets `MON_EN | MON_PEND | MON_REQ | VC_CORERESET` in `DEMCR`.
 4. Polls `MON_REQ` until firmware clears it.
@@ -150,8 +154,8 @@ commands as follows:
   the main thread, and returns later through `monitorServicePending()`.
 
 `monitorServicePending()` runs `proto_eval()` in thread context, writes the
-encoded response length to `DCRDR`, clears `MON_REQ`, and rearms the short L4
-watchdog while attached.
+encoded response length to `DCRDR`, clears `MON_REQ`, and rearms the 60-second L4
+watchdog (`L4_MONITOR_TIMEOUT_S`) while attached.
 
 ### L4 Detach And Timeout
 
@@ -241,7 +245,7 @@ For a normal U3 monitor call, the host:
 
 The U3 kick IRQ handler:
 
-- sets `host_activity` when the shared request word is still connected;
+- sets `host_activity` whenever the shared `request` word is non-zero;
 - treats `request == 0` as a stale kick/detach case;
 - handles `MONITORSTOP` by stopping the session and clearing the shared state;
 - handles an exact `get_status` protobuf request directly when `pState->safe`
@@ -266,8 +270,10 @@ and rearms the heartbeat watchdog.
 `MONITORSTOP` is explicit detach. The target stops the session and clears the
 shared request word to 0. The host treats `request == 0` as detach completion.
 
-U3 also has target-side disappearance detection. The host periodically writes
-`host_activity = 1`. The target watchdog:
+U3 also has target-side disappearance detection. The heartbeat is any monitor
+call: the kick IRQ sets `host_activity = 1` whenever `request` is non-zero. The
+host writes `host_activity = 1` directly only while polling for attach. The
+target watchdog:
 
 1. increments `watchdog_ticks`;
 2. disconnects immediately if `request` is no longer connected;
@@ -276,7 +282,8 @@ U3 also has target-side disappearance detection. The host periodically writes
 
 The heartbeat period is `MONITOR_HEARTBEAT_PERIOD_S`, currently 5 seconds. The
 effective disconnect latency is one to two heartbeat periods after the last
-host poll, depending on timer phase.
+host monitor call, depending on timer phase, so a host that makes no call for
+5 to 10 seconds is treated as gone.
 
 ## Main-Thread Service
 
@@ -285,10 +292,10 @@ Both target paths funnel protobuf evaluation into the same model:
 1. Interrupt context records a pending request and signals `tpMain`.
 2. The main loop calls `monitorServicePending()`.
 3. `monitorServicePending()` runs `proto_eval()`.
-4. Any returned monitor work bits are posted as normal ChibiOS events.
-5. The target-specific response mailbox is completed:
+4. The target-specific response mailbox is completed:
    - L4 writes response length to `DCRDR` and clears `MON_REQ`.
    - U3 writes response length/status into the shared block.
+5. Any returned monitor work bits are then posted as normal ChibiOS events.
 
 This keeps protobuf parsing, storage access, and tag command execution out of
 the interrupt handler.
@@ -297,10 +304,12 @@ the interrupt handler.
 
 Monitor attachment is part of the low-power contract:
 
-- Terminal standby uses `isMonitorEnabled()` and must not run during early L4
-  attach or during an active monitor session.
-- U3 reset recovery can use shared monitor request state and debug control
-  state to distinguish monitor attach resets from field power loss.
+- Terminal sleep uses `isMonitorEnabled()` and must not be entered during early
+  L4 attach or during an active monitor session.
+- On targets built with `TAG_MONITOR_RESET_RECOVERY` (IMUTagNand and
+  IMUTagNandBmp581), reset recovery distinguishes a monitor attach reset from
+  field power loss using `MONCONNECTED`, an external reset at boot, and
+  `DHCSR.C_DEBUGEN`; it does not read the shared request word.
 - Runtime code that only needs to know whether an RPC session is active should
   use `monitorIsAttached()`.
 - Runtime code that must avoid sleeping while a host is trying to attach should
@@ -308,16 +317,6 @@ Monitor attachment is part of the low-power contract:
 
 `MONCONNECTED` remains a narrow attach hint: it is `DEMCR.VC_CORERESET`. It is
 not the U3 session truth. U3 session truth is the shared request word.
-
-## Attachment Authority On U3 (2026-09-03)
-
-History: see [U3 attachment decision](../decisions/0006-monitor-u3-attachment-is-the-shared-session.md).
-
-Still open, and independent of the tag: the host's timeout-resume path should
-clear `VC_CORERESET` as its reset path does. A stale flag can no longer stop
-the tag sleeping, but it still misleads `monitorResetRecoveryActive()` into
-reading the next boot as a monitor attach. Needs testing across targets before
-changing, since both transports read that bit.
 
 ## Current Target Split
 
@@ -329,7 +328,7 @@ STM32L4 targets, including PresTag:
 - need `MONCONNECTED` and the L4 attach grace to suppress standby during early
   attach.
 
-STM32U3 targets, including U375/U3bmm350:
+STM32U3 targets, IMUTagNand and IMUTagNandBmp581:
 
 - use `handlersU3.c`;
 - use shared memory for attach metadata;
@@ -348,5 +347,7 @@ Useful regression checks:
 - U3 protobuf calls transition status idle -> pending -> done.
 - U3 `MONITORSTOP` clears `request` to 0.
 - U3 timeout clears the shared session after missing heartbeat activity.
-- Standby entry is suppressed while `MONCONNECTED`, `monitorIsAttached()`, or
-  the L4 attach grace is active.
+- On L4, standby entry is suppressed while `MONCONNECTED`,
+  `monitorIsAttached()`, or the L4 attach grace is active. On U3,
+  `isMonitorEnabled()` ignores `MONCONNECTED` and there is no attach grace, so
+  only `monitorIsAttached()` suppresses sleep.

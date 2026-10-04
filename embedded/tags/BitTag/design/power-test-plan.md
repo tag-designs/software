@@ -1,20 +1,23 @@
 ---
 type: procedure
 status: current
-summary: Joulescope qualification procedure for BitTag IDLE, RUNNING and FINISHED currents on STM32L432, including rig setup, configs and pass/fail gates.
+summary: BitTag power qualification -- what the firmware draws in each state, the configs, the phases and the pass/fail gates for IDLE, RUNNING and FINISHED at 2.5 V.
 ---
 
 # BitTag Power Test Plan — Idle, Running and Finished Currents
 
-Hardware-in-the-loop plan for `BitTag` (board `BitTagv6`, STM32L432) wired to a
-Joulescope. Scope is the three currents that set a deployment: the two resting
-states (`IDLE`, `FINISHED`) and the collecting state (`RUNNING`). It is
-deliberately narrower than [PresTag's
-campaign](../../families/PresTag/design/power-test-plan.md) and is shaped like
-[CompassTag's](../../families/CompassTag/design/power-test-plan.md), which
-shares this MCU and the same terminal-sleep code.
+BitTag (board `BitTagv6`, STM32L432) is qualified at **2.5 V** on three
+currents: the two resting states, `IDLE` and `FINISHED`, which should match
+each other, and `RUNNING`, measured over 1200 s windows because the tag wakes
+once a minute. The first qualification passed at 0.122 uA resting and
+0.508 uA running; the numbers are in [`power-results.md`](power-results.md),
+and what went wrong getting them is in
+[the investigation](investigations/2026-10-bittag-first-qualification.md).
 
-History: see [investigations/2026-10-bittag-first-qualification.md](investigations/2026-10-bittag-first-qualification.md).
+This plan covers only what is BitTag-specific. The rig, the Joulescope server,
+flashing, and what to record are in the shared
+[power testing procedure](../../../../docs/bench/power-testing.md). Open work
+is in [`../TODO.md`](../TODO.md).
 
 ## 0. Inputs
 
@@ -71,7 +74,8 @@ Three consequences for measurement, each of which invalidates an IMUTag default:
   alignment, so the alignment error alone is **1/N**. Five minutes is 20%;
   twenty minutes is 5%. Pick N before picking a pass band, not after.
 - **`--run-max-ua 760` is three orders of magnitude too loose.** That bound is
-  an IMUTag figure. BitTag's running current should be a few microamps.
+  an IMUTag figure. BitTag runs at about half a microamp
+  ([results](power-results.md)).
 - **The sample-count check switches itself off, correctly.** `config_odr_hz()`
   looks for `lsm6.odr`; BitTag has none, so `check_download()` skips the rate
   check and still applies its monotonic-timestamp check to the largest
@@ -85,9 +89,12 @@ standby entry **unless the state is RUNNING**:
 
 | State | ADXL362 | MCU | Expected shape |
 | --- | --- | --- | --- |
-| `IDLE` | shut down | L432 Standby | floor: Standby + RV3028 + leakage |
-| `FINISHED` | shut down | L432 Standby | identical to `IDLE` — same code path |
+| `IDLE` | shut down | L432 Shutdown | floor: Shutdown + RV3028 + leakage |
+| `FINISHED` | shut down | L432 Shutdown | identical to `IDLE` — same code path |
 | `RUNNING` | motion-detect, always on | Standby between minute wakes | floor + ADXL + one wake/min |
+
+`inc/custom.h` sets every non-running state to `SHUTDOWN`; `Running()` returns
+`STANDBY`.
 
 `IDLE` and `FINISHED` should therefore measure **the same**, because they run
 the same code. A difference between them is a finding, not noise.
@@ -100,19 +107,16 @@ being handled wakes more often than once a minute and draws more. **Every
 undisturbed**, and the result is the quiescent floor, not a field average.
 Phase D measures the other end deliberately.
 
-### Start is deferred to the next minute alarm
+### Settle 75 s after a start
 
-`TAG_CONFIGURED_IMMEDIATE_START` is defined by `IMUTagNand` and
-`IMUTagNandBmp581` and **by no other target**, BitTag included. Without it the
-accepted start writes the stored configuration, enables the wakeup timer and
-returns; `Running(T_INIT)` is not reached until the next minute alarm. The
-comment on that branch in `common/core/src/state_machine.c` says so directly:
-gating it "delayed every start to the next minute alarm".
-
-History: see [investigations/2026-10-bittag-first-qualification.md](investigations/2026-10-bittag-first-qualification.md).
-
-So a 60 s wait in `CONFIGURED` is possible in principle. Two consequences,
-both of which would bias a measurement without failing it:
+The start was measured as immediate: `CONFIGURED` and `RUNNING` fell in the
+same second in all three starts of the first qualification. The source says it
+could wait for the next minute alarm, because `TAG_CONFIGURED_IMMEDIATE_START`
+is defined only by `IMUTagNand` and `IMUTagNandBmp581`. Why the hardware does
+not wait is not understood
+([investigation](investigations/2026-10-bittag-first-qualification.md)). So
+allow for a 60 s wait in `CONFIGURED`. It would bias a measurement without
+failing it:
 
 - `power_experiment.py --settle` defaults to **5 s**, sized for a tag that
   begins collecting at once. On BitTag a window opened 5 s after start spends
@@ -167,31 +171,22 @@ ended near the floor.
 
 ### The first attach to a sleeping BitTag fails
 
-History: see [investigations/2026-10-bittag-first-qualification.md](investigations/2026-10-bittag-first-qualification.md).
+With the tag asleep (~0.12 uA), the first monitor attach fails with
+`Monitor attach failed: initial DEMCR read failed`. **That failed attach wakes
+the part**, which then sits at ~376 uA, and the next attach succeeds. So issue
+every host command **twice** against a sleeping BitTag. The first wakes it and
+reports failure; the second does the work.
 
-Shared L432 traps, all of which have cost time on this bench before:
+- **`tag_lifecycle_check.py` cannot drive a BitTag** until it retries the
+  attach ([TODO](../TODO.md)). It fails at `[1/5] reset to idle` and leaves the
+  tag awake, so run Phase A by hand.
+- **A tag found at ~376 uA has probably just had a failed attach**, not a sleep
+  fault. Reset it, let it settle, and measure again: a real failure to sleep
+  survives that, and this does not.
 
-- **Measure after an attach and detach, not from a cold boot.**
-  `tagPowerEnterTerminalSleep()` in `common/core/src/pwr-l432.c` is shared with
-  CompassTag, where an unconditional `DBGMCU->CR = 0` against a still-set
-  `DHCSR.C_DEBUGEN` left every terminal state ~1000x high *only after a
-  debugger had attached* (see CompassTag's plan, §1). A cold-boot number cannot
-  see that class of fault. Every tool here attaches, so every number below is
-  already a post-attach number — that is the point, not a defect.
-- **Joulescope**: `joulescope_server.py --start`, then `--use-server`. Not the
-  desktop app, and never the `joulescope-js220` MCP server, which holds the
-  instrument for the life of the session. Kill any stray `joulescope-mcp`
-  process first or every open fails with `jsdrv_open timed out`.
-- **qtmonitor must be closed.** It holds the monitor, `isMonitorEnabled()`
-  stays true, the tag never sleeps, and the only symptom is a plausible-looking
-  high average.
-- **Flashing needs `mode=UR`** (connect under reset) on this rig.
-
-```sh
-pgrep -af 'qtmonitor|joulescope-mcp'          # must be empty
-<python-with-pyjoulescope> embedded/tools/joulescope_server.py --start &
-embedded/tools/joulescope_server.py --status  # device held, range mode != 0
-```
+Everything else about the rig -- the Joulescope server, detaching qtmonitor,
+`mode=UR`, measuring after an attach -- is in the shared
+[procedure](../../../../docs/bench/power-testing.md). It applies unchanged.
 
 ## 3. Qualify the released image, not a rebuild
 
@@ -263,8 +258,11 @@ run**.
 
 ## 5. Phase A — resting states
 
-The question: do `IDLE` and `FINISHED` both reach the Standby floor, after an
-attach, repeatably?
+The question: do `IDLE` and `FINISHED` both reach the Shutdown floor, after an
+attach, repeatably? Until the life-cycle check retries its attach (§2), take
+these four points by hand with `tag-reset`, `tag-start`, `tag-stop` and
+`joulescope_measure.py`, retrying each attach. The command below is what the
+check will run once it can:
 
 ```sh
 embedded/tools/tag_lifecycle_check.py \
@@ -358,15 +356,11 @@ agitated, because the measurement is not otherwise reproducible.
 
 ## 9. Pass/fail
 
-**A baseline now exists**, from the first qualification on 2026-10-03 against
-`fw-v0.5` at 2.4960 V: resting **0.1220 uA** (four states, 1.1% spread),
-running **0.5082 uA** (two runs, 0.04% apart). See
-[`power-test-results.md`](power-test-results.md).
-
-The gates below remain sanity bounds rather than regression bounds, because
-one board on one day is not a spread. A run bound of about **0.584 uA**
-(1.15x measured, the margin IMUTag uses) becomes appropriate once a second
-board or a second session agrees:
+The baseline is the first qualification: resting **0.1220 uA**, running
+**0.5082 uA**, at 2.4960 V on `fw-v0.5`
+([results](power-results.md)). It is one board on one day, not a spread, so the
+gates below are sanity bounds rather than regression bounds. A run-current
+bound waits for a second session ([TODO](../TODO.md)).
 
 | Point | Gate | Rationale |
 | --- | --- | --- |
@@ -374,13 +368,10 @@ board or a second session agrees:
 | `IDLE` | ≤ 5 µA | "did it sleep" bound; CompassTag on the same `pwr-l432.c` reaches 0.38 µA |
 | `FINISHED` | ≤ 5 µA, and within 20% of `IDLE` | same code path; a difference is a finding |
 | `IDLE` repeatability | 4 of 4 trials below the bound | the fault class is layout-sensitive |
-| `RUNNING` | recorded, not gated; two runs within 5% | no baseline yet |
+| `RUNNING` | recorded, not gated; two runs within 5% | one session is not a spread |
 | state during the run | `RUNNING`, confirmed, not `CONFIGURED` | hard; see §1 |
 | `tag-test` | `ALL_PASSED` | hard |
 | download | table present, timestamps monotonic | hard, for B1 |
-
-Once a baseline exists, set `--run-max-ua` from it with the margin IMUTag uses
-(about 1.15x a healthy run) and add BitTag to `tag_release_check.py`.
 
 ## 10. What this plan does not cover
 
@@ -390,35 +381,28 @@ Once a baseline exists, set `--run-max-ua` from it with the margin IMUTag uses
   true cold number needs all power removed and no probe ever connected.
 - **Board-to-board spread.** One board, one UUID. Record the UUID; do not
   generalise.
-- **`tag_release_check.py` integration.** Its defaults are IMUTag's — config,
-  60 s run, and the sample-count check all assume it. Adding BitTag means
-  parameterising the run duration and the resting-window length, and is a
-  follow-up once this plan has produced a baseline.
+- **`tag_release_check.py` integration.** Its defaults are IMUTag's -- the
+  config, the 60 s run and the sample-count check all assume IMUTag. Adding
+  BitTag means parameterising the run duration and the resting-window length
+  ([TODO](../TODO.md)).
 - **Any supply but 2.5 V.** There is no regulator, so nothing here transfers to
-  another rail voltage and no scaling recovers it. A sweep of current against
-  cell voltage, from fresh (~2.5 V+) down to the 2.00 V floor, would be the
-  useful follow-up for deployment estimates and is not attempted here.
+  another rail voltage, and no scaling recovers it ([TODO](../TODO.md)).
 - **Low-battery behaviour.** The stop-on-low-battery branch is commented out,
   so what the tag does as a cell collapses is untested and out of scope.
 
 ## 11. Recording results
 
-Create `power-test-results.md` (append-only log) and `power-test-report.md`
-(one block per session) alongside this file, as PresTag and CompassTag do.
-
-`$OUT` holds the session's own evidence -- `flash.json`, the copied build
-manifest, `idle1..4.log`, `running.csv` and `download/`. The write-up points at
-it; it is not a substitute for it.
+Append each session to [`power-results.md`](power-results.md), recording what
+the shared
+[recording checklist](../../../../docs/bench/power-testing.md#7-recording-a-session)
+asks for. Read the release tag, commit and `BitTag.bin` SHA-256 from the
+manifest you copied in §3. `$OUT` holds the session's own evidence:
+`flash.json`, the copied build manifest, `idle1..4.log`, `running.csv` and
+`download/`.
 
 **The result also goes onto the release page**, per *Publishing the
 qualification* in
-[the release procedure](../../../../docs/release/release-procedure.md):
-the BitTag row of the release body's qualification table, with the supply
-voltage stated, and `$OUT` attached as the evidence asset. A qualification that
-stays on the bench cannot be acted on by whoever decides what to flash.
-
-Record for every session: the release tag, commit and `BitTag.bin` SHA-256
-**as read from the copied manifest**, not from notes; the board label and the
-UUID `tag-info` reports; the measured supply voltage; the interpreter used for
-the Joulescope and confirmation the **server** was used;
-and confirmation qtmonitor was detached.
+[the release procedure](../../../../docs/release/release-procedure.md). Fill in
+the BitTag row of the release body's qualification table, state the supply
+voltage, and attach `$OUT` as the evidence asset. A qualification that stays on
+the bench cannot be acted on by whoever decides what to flash.

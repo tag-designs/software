@@ -1,18 +1,24 @@
 ---
 type: proposal
 status: proposed
-summary: Why raw field dumps are not self-describing, proposed session superblock and failure record, and the SRAM loader approach to external flash that is now built.
+summary: Two unbuilt changes so a returned tag's data decodes and explains itself - a session superblock in the data region, and gaps closed in the flash marker log.
 ---
 
 # Field Data Extraction
 
-Status: partly implemented. The external-flash loader is built and validated on
-hardware for one board, PresTagv3 with an AT25XE321D; see
-[External Flash Loaders](../../../loaders/README.md) and
-[Loader Runtime Design](../../../loaders/design/loader-runtime.md). The
-session superblock (Gap 1) and the field failure record (Gap 2) remain
-proposals. [What the first loader settled](#what-the-first-loader-settled)
-records which of this document's expectations held and which did not.
+A returned tag's data can already be extracted. `tag-capture` reads its
+registers, internal flash and external flash over SWD without running the
+firmware ([Capturing a Tag](../../../../docs/bench/capturing-a-tag.md)), and
+`tag-rebuild` decodes the capture. Two things are still proposed:
+
+- **a session superblock** (Gap 1), so that the recorded data describes itself;
+- **fixes to the flash marker log** (Gap 2), so that it records how a tag
+  failed.
+
+Why external flash is read by an SRAM loader and not a recovery firmware is
+[a decision record](../../../../docs/decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md);
+what the first loader settled is [decision 0016](../../../../docs/decisions/0016-field-extraction-first-loader-settled.md).
+The loaders themselves are in [`embedded/loaders`](../../../loaders/README.md).
 
 ## Purpose and scope
 
@@ -43,19 +49,22 @@ temperature, and the reason. It survives power loss and works on every tag
 family. The `detail` word is STM32U3-only, taken from padding the 128-bit flash
 row requires; the STM32L4 record has no slack.
 
-**The retained scratchpad is not a field mechanism.** It is a bench debugging
-tool: SRAM2 page 3 on STM32U375 targets only, enabled with `-DTAG_SCRATCHPAD=1`.
-It is excellent for attach storms and reset loops on a desk, and it must not be
-load-bearing for anything a returned tag has to tell us. Any diagnostic that
-matters in the field belongs in internal flash.
+**The image now identifies itself, but the data does not.** Every image built
+since the tag identity record carries one directly after its interrupt vectors:
+`tag_type`, git hash, the loader and decoder names, and the layout of each
+stored region with a layout version
+([decision 0021](../../../../docs/decisions/0021-offline-rebuild-tag-identity-record.md)).
+Per-session facts are stored with the stored configuration
+([decision 0020](../../../../docs/decisions/0020-offline-rebuild-session-facts-in-stored-config.md)).
+A capture that includes internal flash can therefore be decoded. A dump of the
+external flash on its own still cannot, and neither can a tag built before the
+record.
 
-**Capture already works on STM32U375 tags.**
-[`embedded/tools/tag_capture_state.py`](../../../tools/tag_capture_state.py)
-connects under reset and stores SRAM, the writable part of internal flash, and
-the RTC backup registers, reading region bounds from the ELF it is given. On
-STM32L432 tags only the internal-flash regions capture today: the SRAM and
-backup-register steps fail
-([open issue](../../../loaders/design/loader-runtime.md#open-issues)).
+**The retained scratchpad is not a field mechanism.** It is a bench debugging
+tool: SRAM2 page 3 on STM32U375 targets only, enabled with `-DTAG_SCRATCHPAD=1`
+([Debugging a Tag](../../../../docs/bench/debugging-a-tag.md#1-retained-sram2-scratchpad)).
+It must not be load-bearing for anything a returned tag has to tell us. Any
+diagnostic that matters in the field belongs in internal flash.
 
 ## Gap 1: the recorded data is not self-describing
 
@@ -109,103 +118,23 @@ With this, a raw dump decodes standalone, indefinitely, with no reference to a
 build -- which is the whole point, and which removes the need to identify a
 build in order to read its data.
 
+The identity record and the session facts now carry part of this table -- the
+build identity and the layout of the internal regions -- but they live in
+internal flash, not with the data, and only in images built since they were
+added.
+
 Two riders. It cannot help tags already deployed, so for those the mapping from
 tag to image must be recorded externally before they fly. And while the format
 is being versioned: `int32_t epoch` overflows in January 2038. A
 `format_version` field is what makes widening it survivable later.
 
-## Extracting external flash: STM32CubeProgrammer external loaders
-
-Where the bulk of recorded data is on external flash, the extraction path can
-reuse STM32CubeProgrammer's external loader mechanism: a small binary (`.stldr`)
-that the programmer downloads into the tag's SRAM and calls, exporting a
-`StorageInfo` descriptor plus `Init`, `Read`, `Write`, `SectorErase` and
-`MassErase`. Reads are function calls, so the address space is fictional and the
-mechanism is not restricted to memory-mapped QSPI/OSPI -- it works for plain SPI
-NOR and NAND on an ordinary SPI peripheral, which is what the tags use.
-
-### Why this rather than a recovery firmware
-
-The obvious alternative is to flash a dedicated dumper image that reads external
-flash and sends it out over the monitor. **That overwrites internal flash**, and
-internal flash is where the `t_StateMarker` marker log, the persistent
-configuration and the NAND map live. It would destroy the evidence for goal 2 in
-the course of serving goal 1, and it would do so silently.
-
-An external loader runs entirely from SRAM and leaves internal flash untouched.
-For a tag returned from the field that is the deciding property.
-
-### Capture order is therefore fixed
-
-The loader occupies SRAM, destroying whatever the application left there. So:
-
-1. `tag_capture_state.py` first -- SRAM, writable internal flash, RTC backup
-   registers.
-2. The external loader second.
-
-Reversing these loses SRAM state and looks like it worked. This belongs in the
-recovery procedure as a rule, not as a note.
-
-### Read-only by default
-
-`STM32_Programmer_CLI` will happily erase external memory through a loader. A
-loader used for field recovery should implement `Read` and `StorageInfo` and
-stub `Write`, `SectorErase` and `MassErase` to fail, so the forensic tool is
-incapable of destroying the thing it was brought in to recover.
-
-Implemented as two images from one source: `<PART>_<Board>.stldr` is read-only
-and is built without the erase and program code at all, and
-`<PART>_<Board>-RW.stldr` erases and programs, each verified by read-back, for
-rescue and bench testing. External erase is a rescue operation, always paired
-with an internal erase, and the order matters; see
-[Rescue erase](../../../loaders/design/loader-runtime.md#rescue-erase).
-
-### Raw reads for NAND
-
-For the GD5F SPI-NAND parts, prefer reading raw pages *including the spare area
-and ECC bytes*, and do bad-block skipping and ECC correction on the host. A
-loader that corrects and skips internally can discard information irrecoverably
--- and when the failure under investigation is itself in the bad-block map or
-the ECC path, the loader would be hiding exactly the evidence that matters.
-
-Revised by [Offline Log Reconstruction](../../../../docs/investigations/2026-10-offline-log-reconstruction.md): the
-GD5F's on-die ECC algorithm is not in the source, so the host cannot correct a
-raw page itself. A capture should read each used page raw **and** through
-on-die ECC, recording the ECC status. The firmware drops a page whose ECC
-fails, and only the on-die read shows which pages those are.
-
-### One loader per board; sharing is at the source level
-
-There is no way to have fewer loaders than boards. A `.stldr` is fully linked
-to run from RAM -- the programmer downloads the image into SRAM and calls its
-entry points -- so the artifact is bound to one board's pin assignment, memory
-part, clock setup, power-enable GPIO, and to a link address and size that fit
-that target's SRAM map. Nothing about that is shareable between a STM32L432
-board and a U375 one.
-
-What is shared is source, though less of it than this document first expected.
-The loader runtime (clock, delay, SPI, entry points) is shared across loaders in
-`embedded/loaders/common/`. Between a loader and the firmware, the shared layer
-is the part's command set -- opcodes, register bits and measured timing budgets
--- in a dependency-free `<part>_commands.h` beside the firmware driver
-(`at25xe_commands.h` is the first). The drivers themselves are not shared; the
-next section says why.
-
-So the build is a matrix over boards, like the firmware itself, and the
-per-board work is a short configuration rather than a driver: pins, board
-bring-up, part selection, descriptor.
-
-### What the first loader settled
-
-History: see [the decision record for the first loader](../../../../docs/decisions/0016-field-extraction-first-loader-settled.md).
-
 ## Gap 2: the field failure record
 
-The marker log is the right place and mostly does the job. Three gaps.
+The marker log is the right place and mostly does the job. Two gaps remain.
 
 **The log stops silently when full.** `recordState()` returns without recording
 once `offset >= sEPOCH_SIZE`, and the only notice is `tagScratchWord("ESLF",
-...)` -- which reaches the scratchpad, which is not present in the field. A tag
+...)`, which reaches the scratchpad, and the scratchpad is not present in the field. A tag
 that filled its marker log and then had an interesting failure is
 indistinguishable from a tag that simply stopped transitioning. Reserving the
 final slot for an overflow marker, or carrying a dropped-transition count that a
@@ -219,38 +148,16 @@ cross-family and cheap, but it costs a flash write, so it is worth recording
 only when the cause is not an ordinary power-on -- an attach storm should not
 burn the log.
 
-**No build identity in the flash record.** Covered by the superblock when the
-data region carries one; otherwise one marker at session start carrying a
-truncated image hash serves the same purpose.
+**Build identity.** The identity record in the image, and the image hash a
+capture can compute, now identify the build; the marker log itself does not need
+to.
 
 ## Where to start
 
-The first loader exists. What remains is independent work.
-
-**A host tool to drive the loaders**, designed in
-[SWD Capture and Recovery Library](../../../../host/libraries/tagcore/design/swd-recovery.md).
-The base firmware already implements the
-ST-LINK core-register, run and debug-register commands that the calling
-convention needs, and `tagcore`'s `LinkAdapt` already provides attach under
-reset and memory access. A host tool can enforce the capture-first and
-external-before-internal ordering, feed dumps straight to the decoders, and
-control how the core is left afterwards, which CubeProgrammer does not (see the
-`resetCause` item under
-[Open issues](../../../loaders/design/loader-runtime.md#open-issues)).
-
-**More loaders.** The per-board work is a short configuration; the
-[add-a-loader checklist](../../../loaders/README.md#adding-a-loader) covers a
-new board, a new part and a new MCU.
-
-**Moving the storage drivers off the kernel API** is still defensible on its
-own terms -- a device timing delay is not a scheduling decision -- but it is no
-longer a prerequisite for anything here, and it is not sufficient to make a
-driver usable from a loader.
-
-The data-format work -- the session superblock of Gap 1 -- is independent of
-all of this and gated on a different question: where the bulk of recorded data
-lives. That is the first open question below, and it decides whether the
-superblock belongs on external flash or internal.
+The data-format work -- the session superblock of Gap 1 -- is gated on the
+first open question below: where the bulk of recorded data lives. That decides
+whether the superblock belongs on external flash or internal. The marker-log
+fixes of Gap 2 are independent of it, and cross-family.
 
 ## Open questions
 
@@ -258,9 +165,9 @@ superblock belongs on external flash or internal.
   flash, the superblock belongs there, written through the same path that writes
   pages, and the internal-flash capture path is serving goal 2 rather than goal
   1. This decides which piece of work is actually urgent.
-- **Which loaders are needed next?** The first, `AT25XE_PresTagv3`, is done.
-  The other AT25XE boards are a configuration each; MX25R, MX25L and the GD5F
-  NAND parts each need a part driver.
+- **Which loaders are needed next?** The built loaders are listed in
+  [`embedded/loaders`](../../../loaders/README.md). An MX25R or MX25L board would
+  need a part driver.
 - **Where is the per-deployment record** mapping a physical tag to the image hash
   it was flashed with, for tags deployed before a superblock exists?
 - **Is a reset-cause marker worth its flash write**, given endurance and energy

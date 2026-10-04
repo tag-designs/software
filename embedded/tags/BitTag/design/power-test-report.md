@@ -1,13 +1,14 @@
 ---
 type: investigation
-status: closed
+status: superseded
+superseded-by: embedded/tags/BitTag/design/power-results.md
 summary: First BitTag power qualification at fw-v0.5: a pass at 0.12 uA resting and 0.51 uA running, and four config defects found.
 ---
 
 # BitTag Power Test Report
 
 One block per session. Numbers live in
-[`power-test-results.md`](power-test-results.md); this is what they mean and
+[`power-results.md`](power-results.md); this is what they mean and
 what went wrong getting them. Procedure:
 [`power-test-plan.md`](power-test-plan.md).
 

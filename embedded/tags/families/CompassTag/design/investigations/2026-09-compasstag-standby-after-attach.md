@@ -8,12 +8,20 @@ summary: Why every L432 terminal state drew ~365 uA after a debugger attach (an 
 
 Cut verbatim from section 1 and section 2 of
 [`../power-test-plan.md`](../power-test-plan.md) and from the closing handoff
-in [`../power-test-status.md`](../power-test-status.md). The regression entered
+in the retired `power-test-status.md`. The regression entered
 on 2026-08-18 (`7ea0a86`) and was found and fixed on 2026-09-22 (`3ca3f99`),
-verified on `CompassTagAT25Breakout`; the measurements are in
-[`../power-test-results.md`](../power-test-results.md) and the session
-write-up in [`../power-test-report.md`](../power-test-report.md). Links of the
-form `[[name]]` refer to agent memory notes that are not in this repository.
+verified on `CompassTagAT25Breakout`; the measurements and the session
+summary are in [`../power-results.md`](../power-results.md).
+
+**Later change.** On 2026-09-24, `42a4a618` made the `DBGMCU->CR = 0` clear in
+`tagPowerEnterTerminalSleep()` unconditional again. Its commit message gives
+the reason: `DHCSR.C_DEBUGEN` is sticky, so branching on it kept debug clocks
+running for the rest of the boot after any attach during RUNNING, and the
+`isMonitorEnabled()` gate earlier in the same function already rules out a live
+session. The message says this was confirmed on CompassTagAT25Breakout and
+BitTag hardware. The production validation that followed is in the results,
+2026-09-24. The description of the fix below is therefore the 2026-09-22 state,
+not the current code.
 
 ## What was actually broken
 
@@ -61,7 +69,7 @@ ever attached, debug-clock retention when one has.
 
 ## Handoff at the close of the investigation
 
-From [`../power-test-status.md`](../power-test-status.md), as last written.
+From the retired `power-test-status.md`, as last written.
 
 Updated: **2026-09-22 ~19:30**
 
@@ -97,11 +105,11 @@ fault.** That's the next session's first item — see "Outstanding" below.
   ~365 µA (operator-measured, repeatable). Post-fix, both `tag-reset` and
   `tag-test` attach patterns land at ~0.378 µA — matching the cold baseline.
   Full life-cycle sweep (idle/running/FINISHED/idle-after-cycle) passes.
-  Numbers in [`power-test-results.md`](../power-test-results.md).
+  Numbers in [`power-results.md`](../power-results.md).
 - **Also fixed along the way**: `tag_lifecycle_check.py --use-server` was
   silently a no-op (Python late-binding default-argument bug) — `ef6033d`.
 - Two false leads chased and ruled out before the real cause (both documented
-  in [[compasstag-standby-decline-idle-current]] for anyone who reopens this):
+  in the operator's notes, not in this repository):
   a floating `WKUP1`/accelerometer-wake pin, and a genuine but unrelated
   `isMonitorEnabled()`/`MONCONNECTED` latch bug that a clean `MONITORSTOP`
   measurably does not fix (ruled out empirically, not just by reading code).

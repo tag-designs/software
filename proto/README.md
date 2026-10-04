@@ -1,36 +1,56 @@
 ---
 type: readme
 status: current
-summary: Layout of the protobuf directory, per-tag nanopb options and default configuration JSON.
+summary: The protobuf schema shared by host tools and tag firmware, how each side compiles it, and which tool turns a tag's default-config JSON into C.
 ---
 
 # Proto Directory
 
-The this directory is organized as follows
+`tag.proto` and `tagdata.proto` define the messages host tools and tag firmware
+exchange over the monitor: configuration, status, and downloaded data logs.
+They are one of the [shared contracts](../docs/shared/README.md); a change here
+changes host code, the firmware's nanopb bindings, the default-config JSON, and
+data already stored.
 
+```text
+proto/
+├── CMakeLists.txt         host C++ library (target `proto`), and the
+│                          `tag-proto-sources` INTERFACE target that hands
+│                          the .proto files to the firmware build
+├── tag.proto              configuration, status, monitor RPC messages
+├── tagdata.proto          data-log messages
+├── tagdata-archive.proto  retired log-format messages; built by nothing
+└── config-gen.cc          retired C++ config-gen; built by nothing
 ```
-.
-├── CMakeLists.txt
-├── config-gen.cc
-├── README.md
-├── tag.proto
-├── tagdata.proto
 
-```
-The files `tag.proto` and `tagdata.proto` contain the Protobuf message definitions
-for the host/tag communication.  The directory `proto-cpp` contains the directions (cmake file) for
-building the host libraries using the Protobuf c++ libraries.  The directory `proto-c` contains directions 
-for building nanopb libraries for specific tags.  
+## How each side compiles the schema
 
-Each tag is provided a separate subdirectory within the `proto-c` directory.  
-This subdirectory contains nanopb options for the protocol definitions 
-that define the maximum number of repeated messages and messages that should be elided from the library for that tag -- for
-example, datalog messages for other tag types.
+- **Host.** `proto/CMakeLists.txt` runs `protobuf_generate_cpp` over
+  `tag.proto` and `tagdata.proto` into the `proto` library, linked against
+  `protobuf::libprotobuf`. It is built only when `BUILD_HOST` is on; an
+  embedded-only build does not look for the C++ protobuf library. The
+  `tag-proto-sources` INTERFACE target is created either way.
+- **Firmware.** [`embedded/proto-c/`](../embedded/proto-c/) builds one nanopb
+  binding per protocol variant (`bittag_proto`, `bittag-ng_proto`,
+  `prestag_proto`, `prestagraw_proto`, ...). The shared defaults in
+  `embedded/proto-c/default-options/*.options` bound fields and elide
+  tag-specific messages; each `<variant>-proto-c/` directory holds override
+  options that re-enable the messages and fields that variant uses, and a
+  `default-config.json`. How the options are layered and how to add a family
+  are in [Embedded Source Layout](../embedded/design/source-layout.md#proto-c).
 
-Finally, the tag sub-directory includes a `json` file for that defines the default configuration 
-message for that tag.  
+## Default configuration
 
-This directory includes a program, `config-get` to translate the `json` file into a binary message definition.  When an unconfigured tag is asked for its configuration, this binary file is returned and decoded by the host libraries.  Host
-applications can use this message to determine the "capabilities" of a specific tag.
+Each family's `default-config.json` is the configuration message an
+unconfigured tag returns, which host applications read to learn what that tag
+can do. **The build converts it with
+[`embedded/proto-c/config-gen.py`](../embedded/proto-c/config-gen.py)** into
+`default_config.c`, compiled into the firmware. `proto/config-gen.cc` and
+`embedded/proto-c/config-gen.cc` are the C++ tool it replaced and are not built
+([decision 0013](../docs/decisions/0013-build-config-gen-in-python-with-pinned-protobuf.md)).
 
-
+For distributed tags the generated `.pb.c`, `.pb.h` and `default_config.c` are
+committed under `embedded/proto-c/<variant>-proto-c/generated/`. After changing
+a `.proto`, an options file or a `default-config.json`, build normally and
+commit what changed there; see
+[Tag Firmware Build Reproducibility](../docs/build/firmware-reproducibility.md#changing-a-proto-an-options-file-or-a-boards-customizations).

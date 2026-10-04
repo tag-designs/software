@@ -1,52 +1,65 @@
 ---
 type: procedure
 status: current
-summary: Joulescope procedure verifying the DBGMCU Standby-after-attach fix on CompassTag and serving as a regression check for that fault class.
+summary: CompassTag power check -- every terminal state must reach the Standby floor after a debugger attach and detach; phases, gates and the board to run it on.
 ---
 
-# CompassTag Power Test Plan — Standby-After-Attach Regression
+# CompassTag Power Test Plan — Standby After Attach
 
-Hardware-in-the-loop plan for the CompassTag family (`CompassTag`,
-`CompassTagAT25`, `CompassTagAT25Breakout`) on STM32L432, wired to a
-Joulescope. Scope is narrower than a full power/schedule campaign such as
-[PresTag's](../../PresTag/design/power-test-plan.md): this plan exists to
-verify one specific fix and to leave behind a repeatable regression check for
-the fault class it closes, not to characterize sample-period sweeps,
-scheduling, or hibernation, none of which changed here.
+This plan covers the CompassTag family (`CompassTag`, `CompassTagAT25`,
+`CompassTagAT25Breakout`) on the STM32L432. Its gate: **after a debugger has
+attached and cleanly detached, every terminal state must reach the
+never-attached Standby floor.** The floor is sub-microamp. On
+`CompassTagAT25Breakout` every resting state measured 0.38 uA after an attach;
+on a production `CompassTagAT25`, IDLE measured 0.23 uA and RUNNING 1.95 uA at
+the 30 s compass interval
+([results](power-results.md)). The plan is a regression check for the fault
+class
+[the Standby-after-attach investigation](investigations/2026-09-compasstag-standby-after-attach.md)
+closed. It does not characterise sample-period sweeps, scheduling or
+hibernation.
 
-## 1. What was actually broken
+The rig, the Joulescope server, flashing, and what to record are in the shared
+[power testing procedure](../../../../../docs/bench/power-testing.md). Open work
+is in [`../TODO.md`](../TODO.md).
 
-History: see [investigations/2026-09-compasstag-standby-after-attach.md](investigations/2026-09-compasstag-standby-after-attach.md).
+## 1. What the firmware does
+
+| State | Sleep | Path |
+| --- | --- | --- |
+| `IDLE`, `FINISHED`, `ABORTED` | Standby | `tagPowerEnterTerminalSleep()` in `common/core/src/pwr-l432.c` |
+| `RUNNING` | Standby between samples | `Running()` returns `STANDBY` |
+
+Every terminal state goes through the same `tagPowerEnterTerminalSleep()`, so a
+fault there shows in all of them at once. Since `42a4a618`, that function
+clears `DBGMCU->CR` unconditionally once `isMonitorEnabled()` reports no
+monitor session, so debug clocks are not kept running through Standby after a
+stale attach.
+
+The fault this plan guards against does not show on a never-attached tag. It
+shows on any bench unit that has seen a debugger: the debug-domain state
+outlives the software session, and the part never reaches genuine Standby
+current. That is why every measurement here is taken **after** an attach.
+Every tool used here attaches, so this needs no extra step. A cold-boot number
+cannot exercise the fault.
 
 ## 2. Rig
 
-- Board: CompassTagAT25Breakout, chosen because it has Joulescope current-sense
-  connected and (separately) PA10/PA11/PA12 broken out for future
-  logic-level diagnostics — unused by this plan's procedure, but see §6.
-- Probe: ST-Link, `tag-*` CLI tools in `build-host/bin`.
-- Joulescope: use `joulescope_server.py` + `--use-server`, not the
-  `joulescope-js220` MCP server (holds the device for the session's lifetime;
-  see [[joulescope-rig-discipline]]) and not the desktop app (must be detached
-  for either path to open the device). Kill any stray `joulescope-mcp` process
-  first — it will hold the instrument exclusively and every open attempt will
-  fail with `jsdrv_open timed out` without explaining why.
-- History of the `--use-server` fix (`ef6033d`): see [investigations/2026-09-compasstag-standby-after-attach.md](investigations/2026-09-compasstag-standby-after-attach.md).
-- Flashing needs `mode=UR` (connect under reset) on this rig; a plain
-  `port=SWD` connect fails with `Unable to get core ID` even on a healthy,
-  running target. See [[joulescope-rig-discipline]] and the L432 rig traps
-  noted in [[prestag-power-test-state]] — the same family of traps applies
-  here.
+- **Board: `CompassTagAT25Breakout`.** It has Joulescope current sensing wired
+  in, and PA10/PA11/PA12 broken out to Joulescope digital inputs (§5).
+- **Production boards** carry user calibration in the `.calibration` section.
+  On the measured unit it was at `0x0800a800`, 2016 bytes. Back it up before
+  flashing, and confirm afterwards that it is byte-identical; then no
+  recalibration is needed.
+- **Flash the right target for the board.** The three targets share
+  `pwr-l432.c` but are distinct images. `CompassTagAT25` firmware on Breakout
+  hardware runs, idles correctly, and fails its self-test with `RTC_FAILED`
+  because the I2C wiring differs ([results](power-results.md), 2026-09-22
+  ~19:55). Nothing in the tooling flags the mismatch.
 
-## 3. What to measure
+## 3. Phases
 
-Unlike PresTag's plan, there is no sample-period sweep or schedule phase here
-— CompassTag's `RUN_ALL`/config surface wasn't touched. The check is: does
-every terminal-sleep state reach the never-attached baseline, **specifically
-after the tag has been attached and cleanly detached**, since that is exactly
-the condition the bug needs to reproduce and a cold, never-touched boot cannot
-exercise it.
-
-### Phase A — full life-cycle sweep
+### Phase A — life cycle
 
 ```sh
 python3 embedded/tools/tag_lifecycle_check.py \
@@ -56,119 +69,72 @@ python3 embedded/tools/tag_lifecycle_check.py \
     --run-duration 20 --rest-duration 30 --verbose
 ```
 
-This alone reproduces the fault condition: it attaches (`tag-reset`) before
-every rest-state measurement, so every resting number it reports is a
-post-attach number, not a cold-boot number. Four points, one pass:
+It attaches (`tag-reset`) before every resting measurement, so each resting
+figure is a post-attach figure. It reports `idle_prepared`, `running`,
+`stopped` (`FINISHED`) and `idle_after_cycle`.
 
-| state | what | pre-fix (measured) | post-fix (measured) | gate |
-| --- | --- | --- | --- | --- |
-| `idle_prepared` | IDLE, clock set, right after `tag-reset` | ~362 µA | 0.38 µA | ≤ 5 µA |
-| `running` | RUNNING, collecting | 338 µA | 173 µA | not gated (active state; see §5) |
-| `stopped` | FINISHED, data not yet read | ~366 µA | 0.38 µA | ≤ 5 µA |
-| `idle_after_cycle` | IDLE, after a full reset→run→stop→download→reset cycle | ~367 µA | 0.38 µA | ≤ 5 µA |
+### Phase B — other attach patterns
 
-The 5 µA gate is deliberately loose relative to the measured 0.38 µA — it is
-a "did it actually sleep" sanity bound, not a tight regression bound. Tighten
-it once more sessions have established the board-to-board spread; see §5.
-
-### Phase B — repeated attach patterns
-
-Phase A's `tag-reset` is one specific attach pattern. Confirm the fix holds
-across others, since the bug's mechanism (a debug-domain register outliving
-the software session) does not obviously depend on which monitor request
-triggered the attach:
+Phase A's `tag-reset` is one attach pattern. The fault's mechanism does not
+obviously depend on which monitor request caused the attach, so check another:
 
 ```sh
 build-host/bin/tag-reset --set-rtc
-sleep 12   # let the tag settle and attempt sleep
-<measure 15-20s>
+sleep 12   # let the tag settle and sleep
+embedded/tools/joulescope_measure.py --use-server --duration 20 --repeat 2
 
-build-host/bin/tag-test        # different attach: RUN_ALL, GetTagInfo, SetRtc
+build-host/bin/tag-test        # a different attach: RUN_ALL, GetTagInfo, SetRtc
 sleep 12
-<measure 15-20s>
+embedded/tools/joulescope_measure.py --use-server --duration 20 --repeat 2
 ```
 
-Both must land at the Phase A baseline. If either does not, the fix is
-incomplete for that request path — do not assume Phase A's result generalizes
-without checking.
+Both must land at the Phase A floor. If one does not, the fix is incomplete
+for that request path.
 
-### Phase C — regression sanity
-
-The fix only touches `DBGMCU->CR` handling in the Standby-entry path; it does
-not touch sensor, storage, or state-machine code. Confirm nothing else moved:
+### Phase C — functional
 
 ```sh
 build-host/bin/tag-test        # expect RUN_ALL -> ALL_PASSED
 ```
 
-## 4. What this plan does not cover
+## 4. Gates
 
-- **The never-attached, cold-power baseline (376 nA) is asserted from the
-  operator's own bench measurement** (power-up with no debugger ever
-  connected), not reproduced by this plan's procedure — every tool this plan
-  uses attaches over SWD to drive the tag, which is exactly the condition
-  under test. If that baseline needs re-confirming, it requires physically
-  removing all power (including any coin-cell/battery path) and measuring
-  before ever touching the board with a probe.
-- Sample-period sweep, scheduled start/stop, hibernation: unchanged by this
-  fix, out of scope. See PresTag's plan for the pattern if CompassTag ever
-  needs the equivalent campaign.
-- The separate, pre-existing `isMonitorEnabled()`/`MONCONNECTED` latch bug
-  documented in `handlers.c` (STM32L4 has no `TAG_MONITOR_MAILBOX`) is real
-  but was ruled out as the cause of *this* fault during investigation — a
-  clean `MONITORSTOP` measurably does not fix the stuck-current symptom, only
-  the `DBGMCU->CR` fix does. Left as-is; not part of this fix's scope.
-- The host-side `TagMonitor::Call()` `MONITORSTOP` path reports success after
-  a blind 5 ms sleep rather than polling for completion like every other
-  operation, unlike here where the fix stayed tag-side by design (any change
-  to shared host software needs a validation cycle across every tag). Noted
-  as a candidate follow-up, not fixed here.
+| Point | Gate | Rationale |
+| --- | --- | --- |
+| `idle_prepared`, `stopped`, `idle_after_cycle` | ≤ 5 uA | A "did it sleep" bound, deliberately loose against a sub-microamp floor. Tighten it once more boards have set the spread |
+| Phase B, both patterns | at the Phase A floor | the fix must hold for every attach pattern |
+| post-attach vs. never-attached | same order of magnitude | they measured 376 nA cold and ~0.38 uA after an attach. Some residual is plausible if a debugger is *still* connected at sleep entry |
+| `running` | recorded, not gated | an active state |
+| `tag-test` | `ALL_PASSED` | hard |
 
-## 5. Pass/fail and baselining
+A resting state drifting back toward hundreds of microamps on a board that has
+been attached is the specific regression this plan catches. If it comes back,
+suspect a write to a debug-domain register that disagrees with the debug
+session's real state.
 
-First clean execution after the fix, on CompassTagAT25Breakout:
+## 5. Available but unused: PA10/PA11/PA12 on the breakout
 
-- **Every terminal state (`IDLE`, `FINISHED`, post-cycle `IDLE`) below 5 µA**,
-  immediately following an attach+detach. Hard gate.
-- **The never-attached baseline and the post-attach numbers agree within an
-  order of magnitude** (376 nA vs. 380 nA measured — effectively identical;
-  do not expect this exactly on every board, some debug-clock-retention
-  residual is plausible when a debugger is *still* connected at the moment of
-  sleep entry, as opposed to previously-but-not-currently attached).
-- `running` is recorded, not gated — it is an active state and this fix does
-  not target it.
-- `tag-test` reports `ALL_PASSED`.
+These pins are wired to Joulescope digital inputs on the breakout board. They
+are genuine GPIOs (`PAL_LINE(GPIOA, 10/11/12)`) that no CompassTag driver uses.
+That makes them useful for correlating firmware state with the current trace
+without an SWD read, which is itself intrusive here. Before reusing them,
+confirm against the board's pin table. The
+[debugging guide](../../../../../docs/bench/debugging-a-tag.md) lists the
+artefacts GPIO markers have produced on this bench.
 
-These numbers become the baseline for future CompassTag sessions. A resting
-state drifting back toward the hundreds-of-µA range on a board that has been
-attached is the specific regression this plan exists to catch — if it
-reappears, suspect another unconditional `DBGMCU->CR` write, or a similar
-debug-domain-register/software-session mismatch introduced elsewhere.
+## 6. Not covered
 
-## 6. Available but unused: PA10/PA11/PA12 on the breakout board
-
-These are wired to Joulescope digital inputs on this specific board, unused
-by this fix's final form but potentially useful for a future investigation
-that needs to correlate firmware state with the current trace without an SWD
-read (which the [[compasstag-standby-decline-idle-current]] investigation
-found unreliable for this purpose — a debugger connection is itself
-intrusive to what it's trying to observe here). They are genuine GPIO pins
-(`PAL_LINE(GPIOA, 10/11/12)`), not currently used by any CompassTag driver —
-confirm against the board's pin table before reusing them for something else.
+- **The never-attached cold baseline.** Every tool attaches. Measuring it
+  means removing all power, including any cell, and measuring before a probe
+  ever touches the board.
+- **Sample-period sweep, scheduled start and stop, hibernation.** See the
+  [PresTag plan](../../PresTag/design/power-test-plan.md) for that pattern.
+- **Board-to-board spread.** CompassTag boards have needed per-board attention.
+  Record the UUID, and do not generalise from one board.
 
 ## 7. Recording results
 
-Results go in [`power-test-results.md`](power-test-results.md) (append-only
-log) and [`power-test-report.md`](power-test-report.md) (one session block
-per run). Record for every session:
-
-- git hash, whether the tree was dirty, and the exact target built
-  (`CompassTag` / `CompassTagAT25` / `CompassTagAT25Breakout` — they share
-  `pwr-l432.c` but are otherwise distinct firmware images);
-- board UUID (`tag-test` reports it) — CompassTag boards in this project have
-  turned out to need per-board attention (see [[compasstag-flash-target-mismatch]]);
-  do not assume a result from one board generalizes without checking against
-  its own UUID;
-- the interpreter used for the Joulescope, and confirmation the server was
-  used, not the desktop app or the MCP server;
-- confirmation qtmonitor was detached.
+Append each session to [`power-results.md`](power-results.md), recording what
+the shared
+[recording checklist](../../../../../docs/bench/power-testing.md#7-recording-a-session)
+asks for. State the exact target built, and whether calibration was preserved.

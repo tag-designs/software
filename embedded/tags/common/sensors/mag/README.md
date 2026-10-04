@@ -57,5 +57,5 @@ uses a different active level or drive mode, change the tag's
 
 `IMUTagNand` binds BMM350 through the IMUTag family descriptor table using the
 U375 hardware-I2C bus and the board-provided `LINE_BMM_INT` data-ready input.
-The monitor test table still maps this to the legacy `RUN_MMC5633` request
-until the protobuf test enum grows a BMM350-specific request/result.
+The monitor test table maps this to the legacy `RUN_MMC5633` request; a
+BMM350-specific request is in [the tag TODO](../../../TODO.md#cleanup).

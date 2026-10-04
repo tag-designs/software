@@ -1,160 +1,174 @@
 ---
 type: design
 status: current
-summary: SWD capture and recovery library, partly built: capture without booting, loader Serve() reads, tag identification, layered API and implementation sequence.
+summary: How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 ---
 
 # SWD Capture and Recovery Library
 
-History: see [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md).
+`tagcore/recovery` captures a tag's whole state over SWD **without running its
+firmware**, and reads its external flash through an SRAM-resident loader. The
+session halts the core at its reset vector before the first instruction runs. It
+reads registers, internal flash, optionally SRAM, and then external flash
+through the loader that the image's identity record names. The library is C++,
+Qt-free, and drives the loaders in `embedded/loaders` through their `Serve()`
+entry point, with no dependency on STM32CubeProgrammer.
 
-It defines a Qt-free, Python-usable
-library in `tagcore` for capturing a tag's complete state over SWD and for
-reading, and in rescue erasing, its external flash through an SRAM-resident
-loader. It also sets out the order in which to build it. It replaces
-STM32CubeProgrammer as the driver of the loaders in `embedded/loaders`, and
-`embedded/tools/tag_capture_state.py` as the capture tool.
+These tools are built on it:
+- `tag-capture`;
+- `tag-xflash` (`dump`, `nand`);
+- `tag-sramcall`;
+- `tag-rebuild`, through `CaptureSource`.
+
+Their usage is in the
+[command-line tools README](../../../commandline/README.md#tag-capture), and the
+bench procedure is [Capturing a Tag](../../../../docs/bench/capturing-a-tag.md).
+Three pieces are not built: the Python binding, identification of images
+without an identity record, and rescue erase. They are proposed in
+[Identification, Rescue and Python](proposals/recovery-identification-rescue-python.md).
+Open work is in [recovery/TODO.md](../recovery/TODO.md).
 
 Background:
 
-- [Field Data Extraction](../../../../embedded/tags/design/proposals/field-data-extraction.md): why
-  extraction must not overwrite internal flash, and the session superblock
-  proposal that the identity record below should be designed with.
 - [External Flash Loaders](../../../../embedded/loaders/README.md) and
   [Loader Runtime Design](../../../../embedded/loaders/design/loader-runtime.md):
-  the loader images, their contract as traced on hardware, and the open issues
-  this library is expected to settle.
-- [Python Interface Design](proposals/python-interface.md): the binding conventions this
-  library follows.
+  the loader images, and their contract as traced on hardware.
+- [The SRAM-loader decision](../../../../docs/decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md):
+  why external flash is read by an SRAM loader and not by a recovery firmware.
+- [Decision 0018](../../../../docs/decisions/0018-offline-rebuild-capture-backed-source.md):
+  how a capture is turned back into a SQLite download.
+- [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md):
+  how each layer was checked on bench tags, with the measurements.
 
-## Goals
+## Scope
 
-- One operation that captures everything a returned tag holds -- registers,
-  internal flash, SRAM and external flash -- into one directory with a
-  manifest, without running the tag's firmware first.
-- Read external flash through the loaders, and erase it in rescue, with the
-  ordering rules enforced by the library rather than by documentation.
-- Identify which firmware a tag carries, and so which loader it needs, from the
-  capture itself when possible.
-- A layered C++ API whose lower layers are useful on their own, such as running
-  an arbitrary routine in SRAM, and a Python binding over all of it.
-- Work through the existing bases, which implement the ST-LINK protocol, with
-  no dependency on STM32CubeProgrammer.
+The library does three things:
+- captures everything a returned tag holds into one directory with a manifest;
+- reads external flash through the loaders;
+- runs an arbitrary routine in SRAM (`SramCall`), which is the layer the
+  loaders and the RV3028 probe share.
 
-## Non-goals
-
-- Programming internal flash. CubeProgrammer and the existing `-download`
-  targets do that, and the rescue procedure calls out to them.
-- A monitor-protocol client. `TagMonitor` stays as it is.
-- Decoding the captured data. The capture feeds the existing decoders; it does
-  not replace them.
-- Concurrent sessions. See below.
+It does not program internal flash: CubeProgrammer and the `-download` targets
+do that. It is not a monitor client (`TagMonitor`), and it does not decode
+captured data. `CaptureSource` feeds captures to the existing SQLite writer.
 
 ## Session model
 
 A tag has one SWD connection, and that connection is one claimed USB interface
-on one base. There is no sharing. A **recovery session** and a **monitor
-session** (`TagMonitor`) are alternatives: each claims the device for its
-lifetime, and opening one while the other holds the device fails. The library
-reports that failure plainly -- "the base is in use by another session or
-application" -- because the underlying libusb claim error does not say it.
+on one base. There is no sharing. A **recovery session** (`SwdSession`) and a
+**monitor session** (`TagMonitor`) are alternatives. Each claims the device for
+its lifetime, and opening one while the other holds the device fails. The
+library reports that failure plainly -- "the base is in use by another session
+or application" -- because the underlying libusb claim error does not say so.
 
 Procedures that need both run them **in sequence**: open one session, close it,
-open the next. The rescue procedure, for example, is a recovery session, then an
-internal-flash programming step, then a monitor session for `tag-reset`. No
-session knows about any other; the procedure layer owns the order.
+then open the next. No session knows about any other; the procedure owns the
+order.
 
 **Capture before anything runs the firmware.** A monitor attach resets the tag
-and lets its firmware boot. That boot clears the `RCC_CSR` reset flags,
-reclassifies the reset into `pState->resetCause`, may rewrite other `pState`
-words, and may append a marker to the flash log. So on a returned tag even
-`tag-info` destroys evidence. The capture is the first thing done to a returned
-tag, and the library and its tools present it that way.
+and lets its firmware boot. That boot:
+- clears the `RCC_CSR` reset flags;
+- reclassifies the reset into `pState->resetCause`;
+- may rewrite other `pState` words;
+- may append a marker to the flash log.
+
+So on a returned tag even `tag-info` destroys evidence. The capture is the
+first thing done to a returned tag.
 
 ## Attaching without booting the firmware
 
-A recovery session must stop the core **before the first instruction of the
-firmware runs**, and leave it in a defined state when it ends.
+**Attach.** With NRST asserted, `SwdSession`:
+1. enters SWD mode;
+2. identifies the MCU from `DBGMCU_IDCODE`, reads the target voltage, and
+   records `DHCSR`, `DEMCR` and `DBGMCU_APB1FZR1` as found;
+3. writes `DHCSR = DBGKEY | C_DEBUGEN | C_HALT`;
+4. writes `DEMCR = VC_CORERESET`;
+5. releases NRST.
 
-**Attach.** With NRST asserted (`STLINK_JTAG_DRIVE_NRST`, already used by
-`LinkAdapt::Attach`), enter SWD mode, set `DEMCR.VC_CORERESET` and write
-`DHCSR = DBGKEY | C_DEBUGEN | C_HALT`, then release NRST. The core takes the
-reset vector-catch and halts at the reset handler. The session confirms
-`DHCSR.S_HALT` and reads PC. PC must equal the reset vector read from address
-`0x08000004`; if it does not, the session refuses to go on, because the capture
-would not be of a tag that had not run. It then sets
-`DBGMCU_APB1FZR1.DBG_IWDG_STOP`, so a hardware watchdog cannot reset the tag
-while the core is halted (see [MCU reference](#mcu-reference)).
+The core takes the reset vector-catch and halts at the reset handler. The
+session confirms `DHCSR.S_HALT` and reads PC. PC must equal the reset vector
+read from the second word of flash; the only exception is blank flash. If PC is
+wrong, the session closes and refuses to go on, because the capture would not
+be of a tag that had not run. It then sets `DBGMCU_APB1FZR1.DBG_IWDG_STOP`, so a
+hardware watchdog cannot reset the tag while the core is halted. `Close()`
+restores the bit's earlier value.
 
-**The vector-catch bit is shared with the monitor.** On STM32L4 tags the monitor
-uses `DEMCR.VC_CORERESET` as its attachment flag to the firmware
-(`tagmonitor.cc`). A recovery session that leaves it set would make the next
-boot believe a monitor is attached, and the tag would then stay awake. That is
-exactly the "held monitor reads as a high average" failure in AGENTS.md. So:
+**The vector-catch bit is shared with the monitor.** On every tag the monitor
+uses `DEMCR.VC_CORERESET` as its attachment flag to the firmware: both the L4
+and the U3 attach in `tagmonitor.cc` set it, and the firmware reads it as
+`MONCONNECTED` (`core_types.h`). If a recovery session left it set, the next boot would
+believe a monitor was attached, and the tag would stay awake: a held monitor
+reads as a high average. So `Close()` clears `DEMCR` and then ends the session
+in one of two declared ways (`SwdExit`):
 
-**Detach.** Clear `DEMCR` (vector catch and monitor bits), then end the session
-in one of two declared ways:
+- `HardwareReset`, the default: pulse NRST with `DHCSR.C_DEBUGEN` clear, so
+  the tag boots exactly as it would after a plain connection.
+- `LeaveHalted`: the core stays halted, for a follow-on step that needs it.
 
-- `leave_halted`: the core stays halted, for a follow-on step that needs it.
-- `hardware_reset`: pulse NRST with `DHCSR.C_DEBUGEN` clear, so the tag boots
-  exactly as it would after a plain connection.
+**`DHCSR.C_MASKINTS` is cleared too, while halted.** `Run()` and `Halt()` set
+it so that loader code never takes the tag's interrupts.
+- A system reset does not clear it. Only a power-on clears it, or a Standby or
+  Shutdown that powers down the core's debug logic.
+- It can change only while the core is halted, and only in a write that keeps
+  `C_HALT` set. The architecture makes a write that changes it and releases the
+  halt UNPREDICTABLE. The L432's Cortex-M4 ignores such a write; the U375's
+  Cortex-M33 has not been checked.
+- With `C_DEBUGEN` clear the bit is inert. But the next debugger to set
+  `C_DEBUGEN`, the monitor included, masks every interrupt, and the firmware
+  sits in its idle thread without answering.
 
-**`DHCSR.C_MASKINTS` must be cleared too, while halted.** `Run()` and `Halt()`
-set it so that loader code never takes the tag's interrupts. A system reset
-does not clear it; only a power-on, or a Standby or Shutdown that powers down
-the core's debug logic, does. It can change only while the core is halted,
-and only in a write that keeps `C_HALT` set: the architecture makes a write
-that changes it and releases the halt UNPREDICTABLE, and the Cortex-M4 here
-ignores it. With `C_DEBUGEN` clear the bit is inert, and the firmware runs and
-samples normally. But the next debugger to set `C_DEBUGEN`, the monitor
-included, masks every interrupt, and the firmware sits in its idle thread
-without answering. `Close()` therefore clears it first: it halts if needed,
-writes `DBGKEY | C_DEBUGEN | C_HALT`, and checks the bit.
+`Close()` therefore clears it first: it halts if needed, writes
+`DBGKEY | C_DEBUGEN | C_HALT`, and checks the bit. As a second line of defence,
+the monitor attach (`TagMonitor::ClearStaleMaskInts()`) clears a stale bit
+while it holds the core at the reset vector, and logs that it did. That
+recovers a tag left this way by an older build or by another tool.
 
-History: see [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md).
-
-The monitor attach (`TagMonitor::ClearStaleMaskInts()`) now also clears a
-stale bit while it holds the core at the reset vector, and logs that it did.
-That recovers a tag left this way by an older build or by another tool. It
-may also be part of A6's 1 s monitor-attach stall
-(`embedded/tags/design/next-release-todo.md`); that is not established.
-
-The default is `hardware_reset`. History: see [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md).
+**The exit is a reset, and the firmware classifies it.** An NRST with valid
+retained state and no failure flag is recorded as an external reset. Recovery
+treats it as a reattach, so an active run resumes; see
+[restart recovery](../../../../embedded/tags/common/core/design/restart-recovery.md#reattach-versus-failure).
+Firmware older than `a406eda7` aborts a run that sleeps in Stop 2 instead.
+An SWD session ending in `HardwareReset` does not change the next boot's
+`resetCause`; a CubeProgrammer loader session does, because CubeProgrammer lets
+the firmware boot on exit. Both were measured on a bench PresTag on 2026-09-30
+and 2026-10-01; see
+[the reset-cause investigation](../../../../embedded/loaders/design/investigations/2026-10-loader-session-reset-cause.md).
 
 **CubeProgrammer's connect-under-reset does not stop the firmware first.** Two
 consecutive `STM32_Programmer_CLI -c port=SWD mode=UR` reads of SRAM1 on the
-same PresTag differed in about 14,900 of 49,152 bytes, so the firmware runs
+same bench PresTag differed in about 14,900 of 49,152 bytes (recorded
+2026-09-30, commit `dd9987de`). So the firmware runs
 between reset release and CubeProgrammer's halt. Anything captured through
-CubeProgrammer -- including by `tag_capture_state.py` -- describes a tag that
-has started to boot. The attach above is the first that does not.
+CubeProgrammer, including by `tag_capture_state.py`, describes a tag that has
+started to boot.
 
 ## What a capture contains
 
-In the order read, least disturbing first:
+The regions are read least disturbing first (`statecapture.*`,
+`externalcapture.*`):
 
 | # | Region | How | Notes |
 | --- | --- | --- | --- |
-| 1 | Core and system registers | memory reads | `FLASH_OPTR` (option bytes), the flash ECC registers (**before** step 2, which can overwrite them), `RCC_CSR` (reset flags, which accumulate until firmware clears them), `RCC_BDCR`, PWR status, RTC time/date/status, all backup registers after enabling `RTCAPBEN`, the unique ID, the flash-size register, OTP, and the core registers of the halted core. |
+| 1 | Core and system registers | memory reads | `FLASH_OPTR` (option bytes); the flash ECC registers, read **before** step 2 because step 2 can overwrite them; `RCC_CSR` (reset flags, which accumulate until firmware clears them); `RCC_BDCR`; RTC time and date; all backup registers, after enabling `RTCAPBEN`; the unique ID; the flash-size register; raw blocks of the RCC, FLASH, PWR/TAMP, RTC and DBGMCU registers; OTP and, on the L432, the memory-mapped option bytes. |
 | 2 | Internal flash | memory reads | The whole array, page by page: image, persistent region, configuration and NAND-map pages. No code runs. The ECC registers are read again afterwards. |
-| 3 | SRAM | memory reads | **Opt-in.** Tags spend their idle time in Shutdown or Standby, which do not keep SRAM, so a returned tag's SRAM rarely holds anything; the state that matters is in the backup registers of step 1. Useful mainly for a tag that stopped while running, and for the U375 scratchpad in the last 8 KB of SRAM2. Must precede step 4: the loader overwrites the start of SRAM1. Recorded as untrustworthy when the SRAM erase-on-reset option is set, because the attach itself erased it. |
-| 4 | External flash | loader | Raw, whole part. For NAND, raw pages including spare area. |
+| 3 | SRAM | memory reads | **Opt-in** (`--sram`). What SRAM can hold depends on the MCU. **STM32L432** tags idle in Shutdown or Standby; neither keeps SRAM here (the firmware clears `PWR_CR3.RRS`), so an idle L432 tag's SRAM rarely holds anything. **STM32U375** tags idle in Stop 3, and the firmware leaves `PWR_CR2`'s SRAM power-down bits at their reset value, so SRAM should be kept through the sleep; but every Stop 3 wake ends in `NVIC_SystemReset()` and a fresh boot, so ordinary `.data` and `.bss` describe the last boot, not the run. Retention of the scratchpad through Stop 3 and that reset is not yet verified on hardware. On either MCU the attach's NRST then erases SRAM if the option bytes say so (rule below). The state that matters is in the backup registers of step 1. SRAM is useful mainly for a tag that stopped while running, and for the U375 scratchpad in the last 8 KB of SRAM2. It must precede step 4, because the loader overwrites the start of SRAM1. When the SRAM erase-on-reset option is set, the manifest marks SRAM untrustworthy: the attach itself erased it. |
+| 4 | External flash | loader | NOR: the whole part, raw. SPI NAND: whole pages, data and spare, read both raw and through the part's on-die ECC, with each page's ECC verdict; blank blocks are skipped unless `--external-full` is given. The loader is the one the identity record names, and the part's JEDEC ID is checked against the record. |
 
-Steps 1-3 need nothing but SWD reads and work on any tag, including one whose
-external flash or loader is unknown. Step 4 needs the loader, chosen as below.
+Steps 1-3 need nothing but SWD reads, and they work on any tag, including one
+whose external flash or loader is unknown.
 
-**Output.** One timestamped directory, as `tag_capture_state.py` produces now:
-one file per region, and a `manifest.json` recording:
-
-- the tool and library versions;
-- the base's serial number;
+**Output.** One timestamped directory: one file per region, and a
+`manifest.json`. The manifest records:
+- the reason given;
+- the attach details: halted, PC, reset vector, `DHCSR` and `DEMCR` as found;
+- the decoded registers;
 - the target voltage;
-- for each region: its address range, SHA-256, and whether it succeeded;
-- the identification result and its basis;
-- the loader used, with its image SHA-256 and device name;
-- the loader's detail results (JEDEC ID, Status Register 1 as found);
+- each region's address, size, SHA-256 and outcome;
+- the identity record;
+- the loader used and its SHA-256, with the part's JEDEC ID and status as found;
 - how the session ended.
 
-A region that fails is recorded as failed and the capture continues. A partial
+A region that fails is recorded as failed, and the capture continues. A partial
 capture of a damaged tag is still the most valuable thing the tool produces.
 
 ## MCU reference
@@ -162,8 +176,8 @@ capture of a damaged tag is still the most valuable thing the tool produces.
 The addresses and rules below come from RM0394 Rev 5 (STM32L41x-L46x) and
 RM0487 Rev 3 (STM32U3). Peripheral bases are cross-checked against the CMSIS
 device headers in the ChibiOS submodule (`stm32l432xx.h`, `stm32u375xx.h`).
-U375 addresses are the nonsecure aliases. They belong in one table per MCU in
-`SwdSession`, not in the procedures.
+U375 addresses are the nonsecure aliases. They live in one table per MCU in
+`swdmcu.cc`, not in the procedures.
 
 **No protections are set on tags.** Tags ship at readout-protection level 0,
 with no write protection, no PCROP, and TrustZone off. This library assumes
@@ -171,8 +185,8 @@ that and does not handle the other levels. The capture still records
 `FLASH_OPTR`, so a tag that somehow differs is visible in its manifest. At any
 other level, debug reads of flash fail, and lowering the level mass-erases
 flash, SRAM and the backup registers. If protections are ever introduced, this
-design has to be revisited first. The bench PresTag read
-`FLASH_OPTR = 0xFFFFF8AA` on 2026-09-30: level 0.
+design has to be revisited first. A capture of the bench PresTag on 2026-09-30
+read `FLASH_OPTR = 0xFFFFF8AA`: level 0, `SRAM2_RST` = 1 and `IWDG_SW` = 1.
 
 | | STM32L432 | STM32U375 |
 | --- | --- | --- |
@@ -202,8 +216,12 @@ clears SRAM on reset, the SRAM capture is of erased memory. The capture reads
 `FLASH_OPTR`, records that the SRAM contents cannot be trusted, and still saves
 them. The fix is a provisioning policy -- set the "not erased" option on every
 tag -- not something the tool can do after the fact. The bench PresTag has
-`SRAM2_RST` = 1. Separately, SRAM1 is lost in Standby on both parts, and
-SRAM2 survives Standby only where the firmware enables retention.
+`SRAM2_RST` = 1 (2026-09-30 capture). The U375's Stop 3 wake is itself a system
+reset (`NVIC_SystemReset()`), so the same option decides whether SRAM survives
+the firmware's own wake as well as the attach. Separately, SRAM1 is lost in
+Standby on both parts, and SRAM2 survives Standby only where the firmware
+enables retention; this applies to the L432 tags, whose firmware clears
+`PWR_CR3.RRS`, and not to the U375 tags, which do not use Standby.
 
 **The ECC registers are evidence, and a capture can overwrite them.** They hold
 the address of the last double-word that failed ECC. That may be the tag's own
@@ -220,7 +238,8 @@ While the core is halted, `DBGMCU_APB1FZR1.DBG_IWDG_STOP` freezes it, so the
 session sets that bit on attach. That does not cover code running on the tag.
 A loader or `Serve()` session on such a tag must refresh the watchdog
 (`IWDG_KR = 0xAAAA`) inside its poll loops, or a long erase is cut off by a
-reset. The bench PresTag has `IWDG_SW` = 1 (software watchdog).
+reset. The bench PresTag has `IWDG_SW` = 1 (software watchdog; 2026-09-30
+capture).
 
 **Backup registers read as zeros until their bus clock is on.** Connecting under
 reset resets RCC. Set `RTCAPBEN` before reading them, as `tag_capture_state.py`
@@ -230,205 +249,99 @@ reason that script fails on the L432.
 ## Identifying the tag, and choosing a loader
 
 A tag that cannot talk cannot say what it is, so identification works from what
-the capture has already read. Firmware built since the identity record
-(`embedded/tags/design/next-release-todo.md` B1) carries it directly after the
-vectors, and it names the loader and decoder outright. Read it first. The
-three sources below remain for older images, such as the fw-v0.0.3 tags
-already deployed, in order of confidence:
+the capture has already read. Every image built since the identity record
+carries one directly after the interrupt vectors. The session already knows the
+MCU from `DBGMCU_IDCODE`, and the vector table has a fixed size per MCU, so the
+record sits at a known address: `0x080001A0` on the STM32L432 and `0x08000240`
+on the STM32U375. It is read in one step, with no scan (`identityrecord.*`). It
+names the loader and the decoder, and it carries the layout facts a decoder
+needs. The format and the reasons for it are in
+[decision 0021](../../../../docs/decisions/0021-offline-rebuild-tag-identity-record.md);
+`embedded/tools/decode_tag_identity.py` prints one.
 
-1. **Image hash.** Step 2 has the image. Each build manifest records the `.bin`
-   SHA-256 and length, so hashing that many bytes of internal flash and looking
-   the result up in a catalog of manifests identifies a released image exactly.
-   This needs no firmware change and covers every image built since build
-   manifests were introduced.
-2. **Static strings.** For images not in the catalog -- development builds,
-   dirty trees -- scan the image for the strings `monitor.c` carries in
-   `InfoStrings`: board name, source path (`/embedded/tags/PresTag`), git hash
-   and repository. Every image built with the common monitor has them, but they
-   sit at no fixed place, so this is a heuristic, and the manifest records it as
-   one.
-3. **An explicit argument.** `board=` or `loader=` from the caller. This is the
-   only method at first, and it always overrides the other two, with any
-   disagreement recorded.
-
-Whatever the source, the loader's `Init` confirms the JEDEC ID of the part it
-drives, and the loader refuses to proceed on a mismatch.
-
-**The catalog.** A JSON file generated at build time and installed beside the
-firmware and loaders. For each distributed tag target it records the target
-name, the image SHA-256 and length, the board, and the loader. The board comes
-from the tag's `project.mk`, which the build already reads to derive the
-distributed board set. For the mapping from board to loader, `add_embedded_loader`
-gains a `BOARD` argument; today the board is implicit in `LOADER_BOARD_INC`.
-
-**The tag identity record** (in firmware since B1; this was the proposal). A const, versioned record placed
-by the tag linker script directly after the interrupt vectors. Since the
-session already knows the MCU from `DBGMCU_IDCODE`, and the vector table has a
-fixed size per MCU, the record sits at a known address: `0x080001A0` on the
-STM32L432, `0x08000240` on the STM32U375. It is read in one step, with no
-scan. It carries:
-- everything the tag-info call reports;
-- the board and hardware revision;
-- the external flash part;
-- the loader and decoder names;
-- the layout facts a decoder needs.
-
-The downloader chooses its loader and decoder from it, so no board argument is
-needed. The specification is item 4 of
-[Offline Log Reconstruction](../../../../docs/decisions/0021-offline-rebuild-tag-identity-record.md).
-
-This record should be designed together with the session facts, which go with
-the stored configuration (item 5 there). Adding it changes every image's
-layout, and on STM32U375 layout alone has moved idle current. So it ships only
-as a qualified firmware release (`tag_release_check.py`), ideally bundled with
-other firmware work.
+`--loader` overrides the record, and it is the only way to capture external
+flash from an image without a record. `tag-xflash` always takes its loader by
+argument. Whatever the source, the part's JEDEC ID is checked. The record stores
+it as `manufacturer << 16 | device1` (for example `0x1F0047`), because the
+firmware knows only those two bytes, while the loader reports all three
+(`0x1F4708`). Compare those two bytes, not the whole word.
 
 ## Loader protocol: a service wrapper around the ST entry points
 
 The loaders keep the STM32CubeProgrammer entry points (`Init`, `Read`, `Write`,
-`SectorErase`, `MassErase`), so CubeProgrammer remains a working fallback, and
-gain one more: `Serve()`. The library uses `Serve()`.
+`SectorErase`, `MassErase`), so CubeProgrammer remains a working fallback. They
+also export `Serve(buffer, size)`, which the library uses.
 
 Calling each ST entry point separately costs a register setup and a run/halt
 round trip per call. Each call also re-initialises clock, SPI and flash wake,
-including a 2 ms wake delay, and can only return 0 or 1. `Serve()` initialises
-once and then loops on a command block in SRAM:
+including a 2 ms wake delay, and it can only return 0 or 1. `Serve()`
+initialises once. It then loops on the `LoaderServiceBlock` command block,
+declared in `include/loader_service.h` and shared by loader and host:
+- `magic`, `version`, then `seq` and `ack`;
+- `cmd`, which is one of `PROBE`, `READ`, `ERASE_SECTOR`, `PROGRAM`, `EXIT`
+  or `READ_PAGE` (version 2, for NAND: one page, raw or through on-die ECC);
+- `offset`, `length` and `status`;
+- `detail[]`;
+- `progress`.
 
-```c
-typedef struct {
-  uint32_t magic;         /* 'LSRV': written by the loader when it is ready */
-  uint32_t version;       /* protocol version; the host refuses a mismatch */
-  uint32_t seq;           /* host increments to submit a command */
-  uint32_t ack;           /* loader copies seq when the command completes */
-  uint32_t cmd;           /* PROBE, READ, ERASE_SECTOR, PROGRAM, EXIT */
-  uint32_t offset;        /* flash offset */
-  uint32_t length;        /* bytes */
-  int32_t  status;        /* 0 ok, negative error code */
-  uint32_t detail[8];     /* JEDEC ID, SR1 as found, failing offset, ... */
-  uint32_t progress;      /* bytes done in the current command */
-} LoaderServiceBlock;
-```
-
-- **Location by symbol, not by address.** The host reads the addresses of the
-  service block and the transfer buffer from the loader ELF's symbol table,
-  the same way it finds `Serve`.
-- **One buffer.** SWD reads run at about 101 KB/s through a base (step 0), a
-  tenth of what the flash's 8 MHz SPI delivers, so the loader fills a buffer
-  far faster than the host can fetch it. Double buffering would buy nothing.
+- **The host finds the block by symbol and chooses the buffer.** It looks up
+  `loaderService` in the loader ELF's symbol table, as it does `Serve`. It
+  passes the transfer buffer to `Serve()` as an argument, so the host decides
+  where the buffer goes.
+- **The host zeroes the block before starting `Serve()`.** The block is in
+  `.bss`, which is not downloaded, and SRAM survives a reset. Without the
+  zeroing, a magic left by an earlier session would read as ready.
+- **One buffer.** SWD reads through a base run at about 101 KB/s, a tenth of
+  what the flash's 8 MHz SPI delivers. The loader fills a buffer far faster
+  than the host can fetch it, so double buffering would buy nothing. A
+  `Serve()` read runs at about 78 KB/s, close to that bound. The measurements
+  are in the [bring-up investigation](investigations/2026-09-swd-capture-library-bring-up.md#implementation-sequence).
 - **Detailed results.** `detail[]` carries what the ST convention throws away:
-  the part's identity, the status register as found (the protect bits are
-  evidence), and which sector failed and why.
-- **Commands are bounded.** Every command still completes within the loader's
-  timing budgets. The host adds its own watchdog over `ack`, and halts the core
-  if `ack` never arrives.
+  - the part's identity;
+  - the status register as found (the protect bits are evidence);
+  - which offset failed;
+  - for NAND, each page's ECC status.
+- **Commands are bounded.** Every command completes within the loader's timing
+  budgets. The host also times out on `ack`, and halts the core if `ack` never
+  arrives.
 - **The loader refreshes the tag's watchdog.** When the hardware watchdog is
   selected (`FLASH_OPTR.IWDG_SW` = 0), it runs while the loader runs, and the
-  debug freeze only covers a halted core. `Serve()` therefore writes
-  `IWDG_KR = 0xAAAA` in its poll loops; the write has no effect when the
-  watchdog is not running. The ST entry points should do the same, since a
-  CubeProgrammer mass erase is also a long run.
+  debug freeze covers only a halted core. `Serve()` therefore writes
+  `IWDG_KR = 0xAAAA` in its poll loop. The write has no effect when the
+  watchdog is not running.
 - **Read-only images stay read-only.** In an image built without
-  `LOADER_ALLOW_WRITE`, `Serve()` answers `ERASE_SECTOR` and `PROGRAM` with an
-  error. The code is absent, as it is for the ST entry points.
+  `LOADER_ALLOW_WRITE`, `Serve()` answers `ERASE_SECTOR` and `PROGRAM` with
+  `LOADER_STATUS_READ_ONLY`. The code is absent, as it is for the ST entry
+  points.
 
-The library also keeps a generic path that calls a named ST-style entry point
-with the traced convention: `BKPT` return trap at the start of SRAM, MSP just
-past the image, arguments in R0-R3, result in R0. Any `.stldr`, including
-ST's own, then still works, and it was the first thing to build (step 3 below).
+The library also keeps a generic path, `SramCall`, that calls a named
+ST-style entry point with the traced convention:
+- a `BKPT` return trap at the start of SRAM1, with LR set to it;
+- MSP 1 KB past the image;
+- arguments in R0-R3, and the result in R0;
+- interrupts masked with `DHCSR.C_MASKINTS`.
+
+Any `.stldr` still works through it, ST's own included (`tag-xflash dump --st`),
+and so does an SRAM probe such as `RV3028_PresTagv3` (`tag-sramcall`).
 
 ## Library architecture
 
-Everything is C++ in `tagcore`, Qt-free, with the pybind11 binding described in
-[Python Interface Design](proposals/python-interface.md). The layers, lowest first:
+Everything is C++ in `tagcore`, and Qt-free. The layers, lowest first:
 
-| Layer | Responsibility | New or existing |
+| Layer | Files | Responsibility |
 | --- | --- | --- |
-| `LinkAdapt` | USB claim, ST-LINK protocol, memory and debug-register access, NRST | Existing; gains core control: halt, run, wait-for-halt, core-register read/write, vector catch |
-| `SwdSession` | Owns the connection for a recovery session. Attach-without-boot, declared detach, register and memory reads of named regions per MCU | New |
-| `TargetImage` | Minimal ELF32 reader: loadable segments and symbols. No external dependency | New |
-| `SramCall` | Download a `TargetImage` into SRAM and call a symbol, with the traced convention and a timeout | New |
-| `ExternalFlash` | A loader session through `Serve()`: probe, read, erase, program, with progress | New |
-| `Catalog`, `Identify` | Image-hash lookup, string scan, identity record | New |
-| `Capture`, `Rescue` | The procedures: ordering, output directory, manifest | New |
+| `LinkAdapt` | `linkadapt.*` | USB claim, ST-LINK protocol, memory and debug-register access, NRST |
+| `SwdSession` | `recovery/swdsession.*`, `recovery/swdmcu.*` | Owns the connection for a recovery session: attach-without-boot, declared exit, core control (halt, run, wait-for-halt, core registers through `DCRSR`/`DCRDR`), and register and memory reads of named regions per MCU |
+| `TargetImage` | `recovery/targetimage.*` | Minimal ELF32 reader: loadable segments and symbols, with no external dependency |
+| `SramCall` | `recovery/sramcall.*` | Download a `TargetImage` into SRAM and call a symbol, with the traced convention and a timeout |
+| `ExternalFlash` | `recovery/externalflash.*` | A loader session through `Serve()`: probe, read, read page, erase, program |
+| `IdentityRecord` | `recovery/identityrecord.*` | Parse the identity record from captured internal flash |
+| Capture | `recovery/statecapture.*`, `recovery/externalcapture.*` | The capture procedure: ordering, output directory, manifest |
+| `CaptureSource` | `recovery/capturesource.*` | Rebuild the monitor replies from a capture, through a per-family decoder chosen by the record's `decoder` name |
 
-MCU knowledge -- flash and SRAM ranges, register addresses, backup-register
-enable -- lives in one table per MCU (STM32L432, STM32U375) in `SwdSession`.
-It does not live in the procedures.
-
-**Python surface.** It follows the Python Interface conventions: values
-returned rather than output parameters, exceptions rather than Booleans,
-`bytes` for data, sessions as context managers, and long operations releasing
-the GIL with a progress callback.
-
-```python
-import tagcore
-
-# The whole thing, as the CLI does it:
-result = tagcore.recovery.capture("captures/", board=None, progress=print)
-print(result.identity, result.manifest_path)
-
-# Or the layers directly:
-with tagcore.swd.open() as s:                   # attaches halted, before boot
-    regs = s.read(0x40002850, 128)              # backup registers
-    image = s.read_region("internal_flash")
-    with s.external_flash(loader="AT25XE_PresTagv3") as xf:
-        print(xf.identity)                      # JEDEC ID, SR1 as found
-        data = xf.read(0, xf.size, progress=print)
-# leaving the block detaches with hardware_reset by default
-```
-
-**Command-line tools.** Built on the same procedures:
-
-- `tag-capture`: capture only, the first thing run on a returned tag.
-- `tag-xflash`: `dump`, `identify`, and `rescue-erase`. `rescue-erase` refuses
-  unless given a capture directory from the same tag (matched by chip UID), or
-  `--no-capture` explicitly.
-
-## Implementation sequence
-
-Each step ends with a check on a bench tag, and each builds only on steps
-already checked. Steps 1-3 need no loader changes.
-
-History: see [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md).
-
-**6. Python binding.** pybind11 over `SwdSession`, `ExternalFlash` and the
-procedures. Port the loaders README bench sequence to a script beside
-`tag_lifecycle_check.py`.
-*Check:* the script passes on a PresTag and restores the tag to blank.
-
-**7. Identification.** Generate and install the catalog, add `BOARD` to
-`add_embedded_loader`, and implement hash lookup and the string scan.
-*Check:*
-- a tag running a released image is identified by hash;
-- a development build by strings, marked heuristic;
-- a mismatched explicit argument is reported.
-
-**8. Rescue.** The `Rescue` procedure and `tag-xflash rescue-erase`. The order
-is external erase with blank-check, then internal erase and reflash, then
-`tag-reset` in a monitor session.
-*Check:* on a bench tag with data in both flashes, the tag ends consistent: its
-first new run downloads correctly. An interruption between the steps leaves the
-harmless state described in Loader Runtime Design.
-
-Steps 0-5 give a working replacement for CubeProgrammer and
-`tag_capture_state.py`. Steps 6-9 can then be ordered by need.
-
-## Risks and open questions
-
-- **Base halt reliability.** Covered in step 1. If `FORCEDEBUG` is unreliable,
-  halting falls back to writing `DHCSR` directly with `WriteDebug32`, which the
-  monitor already does.
-- **STM32U375.** The addresses are in [MCU reference](#mcu-reference). The
-  monitor path is shared memory rather than DebugMonitor, so the vector-catch
-  interaction may not apply. The loaders need a U3 variant before step 4
-  applies there.
-- **SRAM erased by the attach.** On a tag whose option bytes clear SRAM on
-  system reset, no capture can recover SRAM, because this rig must attach under
-  reset. Setting the "not erased" options on every tag at provisioning would
-  close this. That is a policy decision, recorded here rather than made.
-- **Long commands under USB timeouts.** A full rescue erase can run for over a
-  minute. The host polls `ack` and `progress` rather than blocking, and the
-  watchdog must allow for the loader's worst-case budgets.
-- **Chip UID as the tag's identity.** The capture records the MCU's 96-bit UID,
-  and `rescue-erase` matches it. Where a per-deployment record of UID to image
-  should live remains the open question of Field Data Extraction.
+Halting goes through `DHCSR` writes over `LinkAdapt`'s debug-register access,
+so the base's `FORCEDEBUG` handler is not used. MCU knowledge lives in one
+table per MCU in `swdmcu.cc`, not in the procedures: the flash base and page
+size, the SRAM ranges, register addresses (including the flash-size register,
+from which the capture sizes internal flash at run time), the backup-register enable, the IWDG freeze bit and the
+identity-record address.

@@ -1,13 +1,14 @@
 ---
 type: readme
 status: current
-summary: What the BitTagNG family shares and what its variants keep local.
+summary: What the BitTagNG family shares and what its variants keep local; the LIS2DU12 variant is archived.
 ---
 
 # BitTagNG Family
 
-Shared application code for the `BitTagNG` and `BitTagNG-lis2du12` build
-variants lives here.
+Shared application code for the `BitTagNG` build variant lives here. The second
+variant, `BitTagNG-lis2du12`, has been moved to
+`embedded/tags/archive/BitTagNG-lis2du12/` but still includes this family.
 
 The variants currently share ChibiOS configuration, application configuration,
 logging type declarations, and persistent-state declarations.  They

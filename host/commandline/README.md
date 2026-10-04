@@ -181,9 +181,12 @@ build-host/bin/tag-rebuild <capture-dir> -o tag.db3
 
 The file is "as captured": the tag as it was found, before the reset recovery
 a live attach would run. Its `info` table records `source` = `capture`, the
-capture directory and the capture time. Only families with a capture decoder
-are accepted, so far IMUTag with NAND checkpoints; others are refused. See
-[Offline Log Reconstruction](../../docs/investigations/2026-10-offline-log-reconstruction.md).
+capture directory and the capture time. Families with a capture decoder are
+accepted: IMUTag, PresTag, CompassTag, UIUCTag and BitTag. A capture whose
+layout version the decoder does not know is refused. How to capture, and how
+to keep the decoders in step with the firmware, is in
+[Capturing a tag](../../docs/bench/capturing-a-tag.md); the design choice is
+[decision 0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md).
 
 ## tag-cal-write
 
@@ -214,6 +217,9 @@ calibration before trusting compass output from a board this was used on.
 `dataprocessing` is a post-processing tool for SQLite logs. It keeps the input
 database untouched, copies it to a new output path, writes derived tables and
 stream metadata, and records processing provenance in a `ProcessingRun` table.
+The design, output tables and provenance format are in
+[design/dataprocessing.md](design/dataprocessing.md); open work is in
+[TODO.md](TODO.md).
 
 Current processors:
 

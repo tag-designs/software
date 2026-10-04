@@ -413,16 +413,19 @@ frozen legacy target.
 
 ## Design Notes
 
-- `design/next-release-todo.md` is the work list for the next firmware
-  release. It covers the defect fixes, the layout changes for offline log
-  reconstruction, release qualification, and the matching host work.
-  `design/open-issues.md` is the standing defect tracker.
-- `common/core/design/u375-stop-support.md` documents the current STM32U375 returned-idle
-  STOP policy, monitor attach guard, and scoped flash/SPI low-power behavior
-  for U375 tag targets.
-- `common/core/design/proposals/u375-stop3-terminal-sleep-plan.md` records the plan to use Stop3 as
-  the STM32U375 terminal sleep backend for IMUTagNand while preserving the
-  STM32L432 Standby path.
+- `TODO.md` is the open firmware work: defects, low-power and recovery
+  questions, NAND bring-up, and the remaining next-release items.
+- `common/core/design/u375-low-power.md` is how STM32U375 tags sleep: Stop 3
+  as the terminal sleep, Stop 2 or Stop 1 between IMU wakes, Sleep as the idle
+  default, scoped STOP around SPI transfers, the monitor guards, and the layout
+  sensitivity that makes every image change need a current measurement.
+- `common/core/design/restart-recovery.md` is the recovery contract after a
+  reset: reset classification, reattach versus failure, and the IDLE-means-
+  empty-log invariant.
+- `common/core/design/i2c-bus-recovery.md` covers clearing a stuck I2C bus on
+  the U375 IMUTag targets.
+- `design/investigations/` and `common/core/design/investigations/` hold the
+  dated fault investigations; decisions are in `docs/decisions/`.
 
 ## Adding Shared Code
 
@@ -432,18 +435,3 @@ frozen legacy target.
   targets truly share it.
 - Update `BUILD_SOURCES.md` after changing build membership and rebuilding the
   active targets.
-
-## Future Cleanup
-
-Some older tags still configure or coordinate sensors directly from
-`state_run.c`. That keeps the main acquisition state crowded with device setup
-details and makes it harder to compare related tags. The CompassTag family has
-started to separate that responsibility into a family-owned `sensors.c` file,
-although that name is historical and really means "how this tag family uses its
-sensors" rather than "a reusable sensor driver."
-
-When touching older `state_run.c` files, look for sensor configuration,
-orientation transforms, calibration handling, and sensor-specific wake/sleep
-flow that could move into an analogous tag- or family-owned orchestration file.
-Pick a clearer name if a new file is created, and leave reusable sensor
-drivers under `common/sensors`.

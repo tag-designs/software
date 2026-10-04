@@ -17,7 +17,7 @@ The layout is organized by role:
 | `applications/` | Qt applications such as `qtmonitor`, `qtprogram`, `qtcalibrate`, `btviz`, and `sensorviz`. |
 | `commandline/` | CLI tools built on the low-level tag library. |
 | `common/` | Small Qt helpers shared by applications, but not part of the low-level tag library. |
-| `docs/` | MkDocs user-guide sources. Build them with the CMake `docs` target; install them with packages when `BUILD_HOST_DOCS=ON`. |
+| `docs/` | MkDocs user-guide sources and the fixtures its screenshots are generated from; see [docs/README.md](docs/README.md). Build with the CMake `docs` target; installed with packages when `BUILD_HOST_DOCS=ON`. |
 
 ## Dependency Direction
 
@@ -25,7 +25,7 @@ Keep dependencies flowing from applications toward libraries:
 
 ```text
 applications/*       -> libraries/* and common/
-commandline          -> libraries/tagcore
+commandline          -> libraries/tagcore (dataprocessing: libraries/sensoranalysis)
 libraries/sensorui   -> libraries/sensoranalysis
 libraries/tagcore    -> proto and tag_monitor_interface
 ```
@@ -46,7 +46,7 @@ host code do not need Qt. Qt-only helpers belong in `common/` or
   `BUILD_HOST_DOCS` option adds that target to the default build and package
   install.
 
-The CMake target names are intentionally stable across the directory move:
+The CMake target names are intentionally stable:
 `tagcore`, `qcustomplot`, `sensoranalysis`, `sensorui`, `qtmonitor`,
 `qtprogram`, `qtcalibrate`, `btviz`, and `sensorviz`.
 

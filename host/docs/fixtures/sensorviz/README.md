@@ -77,5 +77,6 @@ sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
 ```
 
 The currently implemented suites cover full-window plot/File Info captures plus
-top-level and plot-context menus. Dialog screenshots are planned separately
-because the live dialogs still need to be factored into captureable builders.
+top-level and plot-context menus. There are no dialog screenshots, because the
+live dialogs still need to be factored into captureable builders; see the
+[sensorviz TODO](../../../applications/sensorviz/TODO.md).

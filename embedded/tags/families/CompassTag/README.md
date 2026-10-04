@@ -64,15 +64,15 @@ sensor orchestration, and storage/configuration bindings.
 
 ## Design Documents
 
-- [Power Test Plan](design/power-test-plan.md): hardware-in-the-loop
-  verification of the Standby-after-attach idle-current regression and its
-  fix in the shared L432 `DBGMCU->CR` handling.
-- [Power Test Report](design/power-test-report.md): results form and gate
-  table for the power test plan.
-- [Power Test Status](design/power-test-status.md): live handoff — what the
-  rig is doing right now, overwritten by the active session.
-- [Power Measurement Log](design/power-test-results.md): append-only record
-  of every completed CompassTag power measurement.
+- [Power Test Plan](design/power-test-plan.md): the power check every
+  CompassTag change should pass -- each terminal state must reach the Standby
+  floor after a debugger attach. The shared rig procedure is
+  [power testing](../../../../docs/bench/power-testing.md).
+- [Power Results](design/power-results.md): append-only record of every
+  CompassTag power measurement.
+- [Standby-after-attach investigation](design/investigations/2026-09-compasstag-standby-after-attach.md):
+  the 2026-09 fault that drew ~365 uA in every terminal state after an attach.
+- [TODO](TODO.md): open power and monitor items.
 
 ## Host simulation
 

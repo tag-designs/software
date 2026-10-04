@@ -1,56 +1,116 @@
 ---
 type: design
 status: current
-summary: Notes on recovering acquisition after a reset: wake classification, header and page recovery, storage bounds, IMUTag timing, and two fixed boot faults.
+summary: How a tag recovers after a reset -- reset classification, reattach versus failure, the IDLE-means-empty-log invariant, header and page recovery, ECC-checked reads, storage bounds and the external erase sweep.
+last-verified: a87fc84a
 ---
 
-# Restart Recovery Notes
+# Restart Recovery
 
-These notes capture deferred design thinking for tag recovery after monitor
-connect-under-reset or another reset during active acquisition. They are not an
-implemented behavior contract yet.
+A tag treats `pState` as its recovery journal. `pState` mirrors the RTC backup
+registers and survives an MCU reset. The internal-flash state-marker log is the
+durable evidence. Every boot classifies the reset. A **reattach** resumes an
+active run with `Running(T_CONT, POWERFAIL)`: a reattach is a monitor
+connecting under reset, or an external NRST with the retained state intact.
+A **brownout** restarts the interrupted state with `T_INIT` where it can.
+Any other reset with an active run is a **failure** and aborts it. Boot never
+claims IDLE over a non-empty
+marker log. If a reset lands mid-write, the partial block or page is abandoned
+rather than reconstructed.
 
-## Current Direction
+Code: `common/core/src/main.c` (`getResetCause()`, `deviceInit()`,
+`tagResetRuntimeStateForPowerInit()`), `common/core/src/state_machine.c`
+(recovery and `Reset()`), `common/core/src/persistent.c` (the marker log), and
+each family's `datalog.c` and `state_run.c`.
 
-- Treat `pState` as a retained recovery journal because it lives in RTC backup
-  registers and survives MCU reset.
-- Reinitialize software ownership on every boot: bus semaphores, GPIO muxes,
-  EXTI routing, trigger timers, and peripheral register drivers.
-- Add retained acquisition-phase sentinels around critical sections such as
-  sensor read, header write, external data write, and cursor commit.
-- If reset occurs during sensor read or data logging, prefer abandoning the
-  current block/page over trying to reconstruct partially read or partially
-  written data.
+## Reset classification
 
-## Low-Power Wake Classification
+Early boot in `main.c` decides `resetCause` before the reset flags are cleared:
 
-STM32L4 Standby wake can be distinguished from a cold reset by combining the
-retained `pState` validity marker with the platform standby flag. Hardware
-Shutdown is more ambiguous because the reset flags can look like a power or
-brownout reset while RTC backup registers are still retained.
+- **No valid retained state.** If `pState->valid` is not
+  `BACKUP_STATE_VALID_MAGIC`, the reset is `resetPower` whatever the flags say.
+- **STM32L4 Standby wake.** The retained `pState` validity marker combined with
+  the Standby flag.
+- **STM32L4 Shutdown wake.** The reset flags can look like a power or brownout
+  reset while the backup registers are retained, so the L4 terminal-sleep path
+  reserves `RTC->BKP31R` as a one-shot marker. Before hardware Shutdown it
+  writes `SHUT` (`0x53485554`). Early startup reads and clears it before
+  classification, and with `pState` valid and the marker present the reset is
+  `resetShutdown`.
+- **STM32U375 Stop 3 wake.** Stop 3 sets no Standby flag, so the terminal path
+  writes `pState->synthetic_standby_wake` and resets in software. A reset with
+  that marker and `RCC_CSR.SFTRSTF` is `resetStandby`. See
+  [STM32U375 Low Power](u375-low-power.md#terminal-sleep-stop-3).
+- **External reset.** `externalResetAtBoot` records an NRST
+  (`RCC_CSR.PINRSTF`) with the retained state valid and none of the failure
+  flags set (brownout, watchdog, software, low-power, option-byte). A power-on
+  also sets BORRSTF, so it is excluded. This is the plain reset that ends a
+  `tag-capture` or `tag-xflash` session. It is recorded for the recovery
+  decision and does not change `resetCause`.
 
-The common L4 terminal-sleep path reserves `RTC->BKP31R` as a one-shot
-Shutdown-entry marker. Before entering hardware Shutdown it writes `SHUT`
-(`0x53485554`) to that register; early startup reads and clears the marker
-before reset-cause classification. If `pState` is valid and the marker is
-present, the reset is classified as `resetShutdown` even if the ordinary standby
-flag is absent.
+## Reattach versus failure
 
-## Header/Page Recovery
+Recovery resumes an active run when the boot is a reattach:
 
-One simple recovery policy is to start a new `vddHeader` after reset and
-abandon unused external pages under the previous header. This avoids exposing a
-partially populated page, but log-download timing code must understand that
-state markers can indicate a restart and a discontinuity between headers.
+- U375 targets (`TAG_MONITOR_RESET_RECOVERY`): `monitorResetRecoveryActive()`
+  is true when the retained state is valid and any of these holds:
+  `MONCONNECTED`, `externalResetAtBoot`, or `DHCSR.C_DEBUGEN`. Here, and only
+  here, `C_DEBUGEN` counts as evidence of a monitor reset, because the host can
+  release `VC_CORERESET` before the state machine decides. `deviceInit()` keeps
+  the runtime state for such a reset.
+- Other targets: `reattachReset()` is `MONCONNECTED || externalResetAtBoot`.
 
-The download path should eventually combine:
+A run that resumes this way continues with `Running(T_CONT, POWERFAIL)`, and
+each family re-arms its own sampling there. On the L4 path a reattach rebuilds
+the cursor from the page headers, so new samples start on the next page. That
+costs a part-used page per reattach and loses no data.
 
-- `vddHeader` timestamps for ordinary page anchors;
-- state markers for restart/discontinuity events;
-- retained cursor/sentinel state to decide whether the final pre-reset page is
-  complete, abandoned, or should be hidden.
+A brownout that is not a reattach restarts the interrupted state from the
+beginning with `State_EVENT_BROWNOUT`: `Configured(T_INIT, ...)`,
+`Hibernating(T_INIT, ...)`, or, for RUNNING, `Running(T_INIT, ...)` provided
+`clockTrusted` -- with an untrusted clock a RUNNING tag aborts with
+`State_EVENT_POWERFAIL` (`state_machine.c`, recovery dispatch).
 
-## Header Validation and ECC
+Any other reset with an active run is a failure, and the run ends ABORTED.
+
+## IDLE means an empty marker log
+
+`Idle()` records no marker. An empty state log is what makes an idle tag
+resolve to IDLE, and recovery seeds `TagState_IDLE` before walking `sEpoch`.
+Two rules keep that invariant:
+
+- On `TAG_MONITOR_RESET_RECOVERY` targets, where it exists,
+  `tagResetRuntimeStateForPowerInit()` runs only for a power init without
+  valid retained state, and claims IDLE only when `stateLogEmpty()`. Otherwise it leaves `STATE_UNSPECIFIED`, so recovery must
+  resolve the state from the marker log, and leaves the log cursors to
+  recovery: `restoreLog()` when detached, the retained values under a monitor.
+  `validTagState()` rejects UNSPECIFIED, so the monitor-attach branch cannot
+  adopt it.
+- On `TAG_MONITOR_RESET_RECOVERY` targets, `deviceInit()` clears
+  `pState->valid` only for a genuine power init, not for the forced
+  re-initialisation that `Finished()`, `Aborted()`, `Reset()` and
+  `SelfTest()` perform. Clearing it there would open a window, spanning all
+  of the device power sequencing, in which any reset is classified as a power
+  loss.
+
+Breaking the invariant leaves a tag that reads IDLE while its flash ends in
+FINISHED. The host cannot erase it, because `tag-reset` erases only from
+FINISHED or ABORTED. See
+[the investigation](investigations/2026-09-boot-cleanup-claimed-idle.md).
+
+## Header and page recovery
+
+After a reset, a tag starts a new `vddHeader` and abandons the unused part of
+the page under the previous header, rather than exposing a partially populated
+page. Download timing must therefore expect discontinuities between headers,
+and state markers record a restart.
+
+PresTag and CompassTag also start a new page when a sample is more than a
+tolerance from where its slot puts it: max(1 s, period / 2) on PresTag, and
+period / 2 on CompassTag. This covers a capture halt,
+a lost wakeup or a clock set, independent of how the reset was classified.
+
+## Header validation and ECC
 
 Internal flash headers and state markers should be read through the checked
 helpers in `stm32flash.c`, not by direct struct access. Those helpers install a
@@ -64,14 +124,37 @@ possibly incomplete page. Download code can additionally defer exposing a page
 until either the following header exists or a terminal state marker proves that
 the final page was completed.
 
-A useful hardware test is to run a tag, interrupt/reset it repeatedly during
-internal header writes, then verify that recovery and monitor download stop at
-the last checked-readable header instead of entering the generic exception path.
-If deliberately producing an ECC-faulted double-word is practical on a bench
-unit, the expected result is that a guarded read returns an ECC error and an
-unguarded read still follows the ordinary exception path.
+## IMUTag timing
 
-## Storage Bounds
+IMUTag FIFO reads are especially sensitive. A reset can leave the hardware FIFO
+phase, the local partial block cache, and the saved block timestamp out of sync.
+Recovery therefore reinitializes the IMU FIFO stream, discards a warmup
+interval while the IMU clock and FIFO settle (`state_run.c`), and starts the
+next header from the first post-resync block timestamp.
+
+`t_DataHeader.millis` uses only ten bits for a 1/1024-second subsecond tick
+value. Host log writers convert that value to rounded integer milliseconds when
+writing SQLite logs. The IMUTag log format reserves bit `0x0400` as
+`IMUTAG_HEADER_RESYNC`, which marks the first header after the FIFO stream has
+been reinitialized or the log stream has otherwise lost continuity. Bit
+`0x0800` is
+`IMUTAG_HEADER_RESYNC_STORAGE_SKIP`, which refines `RESYNC` to say that the
+previous segment ended because an external flash block was skipped after a
+storage write failure. The host decoder should treat any `RESYNC` header as the
+start of a new smooth timing segment: anchor the segment to the header epoch and
+rounded millisecond, then place samples by IMU sample count until the next resync
+marker. Ordinary headers should not re-anchor the high-rate data because the
+rounded millisecond field can introduce page-to-page jitter. If the rounded
+resync anchor would place the new segment before samples already emitted for the
+previous segment, the decoder rounds the new segment start up to the next
+expected block boundary so elapsed microsecond timestamps remain monotonic.
+
+SQLite logs retain the decoded header flags in `ImuHeader.Flags` and write a
+`RESYNC` or `RESYNC_STORAGE_SKIP` row to `ImuEvent` at the corresponding
+elapsed microsecond time. SensorViz can draw those event rows as vertical
+discontinuity markers without turning them into y-axis streams.
+
+## Storage bounds
 
 The monitor download path should treat the internal flash space from
 `vddHeader` to flash end as the first practical limit. The persistent section
@@ -102,7 +185,8 @@ Approximate active-target external flash capacities:
 | `CompassTag` | MX25R | 4 MiB | 4096-byte sectors, 1024 sectors. |
 | `CompassTagAT25` | AT25XE | 4 MiB | 4096-byte sectors, 1024 sectors. |
 | `CompassTagAT25Breakout` | AT25XE | 4 MiB | 4096-byte sectors, 1024 sectors. |
-| `IMUTagNand` | GD5F SPI-NAND | 128 MiB raw | 1004 logical 128 KiB blocks after bad-block reserve. |
+| `IMUTagNand` | GD5F1GQ5RE SPI-NAND | 128 MiB raw | 1004 logical 128 KiB blocks after bad-block reserve. |
+| `IMUTagNandBmp581` | GD5F2GM7RE SPI-NAND | 256 MiB raw | 2008 logical 128 KiB blocks after bad-block reserve (`flash_gd5f2gm7re.mk`). |
 
 External-flash capacity is usually not the limiting factor for current log
 download. For example, 4 MiB flash can hold many thousands of current PresTag,
@@ -127,40 +211,38 @@ flash fills first for `PresTag` and the CompassTag variants. The internal
 use a different checkpoint and NAND/SPI-NOR accounting model and are documented
 with the IMUTag family.
 
-Current linked `vddHeader` limits from
-`/Users/geobrown/Build/tag-designs/software-embedded-clean`, with
-`TAG_FLASH_SIZE=256K`, are:
+Linked `vddHeader` limits for `TAG_FLASH_SIZE=256K` builds, read from each
+ELF with `arm-none-eabi-nm`, at the commit shown (the BitPresTag images are
+from an older build). They move whenever code
+size changes, so recompute rather than quote them. The 128 KiB column assumes
+the same code layout with `__persistent_end__ = 0x08020000`:
 
-| Target | `vddHeader` | Header size | `__persistent_end__` | Header limit |
-| --- | ---: | ---: | ---: | ---: |
-| `PresTag` | `0x08007a60` | 8 B | `0x08040000` | 28,852 |
-| `BitPresTag` | `0x08008a60` | 8 B | `0x08040000` | 28,340 |
-| `BitPresTagMX25R` | `0x08008a60` | 8 B | `0x08040000` | 28,340 |
-| `CompassTag` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
-| `CompassTagAT25Breakout` | `0x08009258` | 8 B | `0x08040000` | 28,085 |
-| `CompassTagAT25` | `0x08009a58` | 8 B | `0x08040000` | 27,829 |
-| `BitTag` | `0x08007268` | 16 B | `0x08040000` | 14,553 |
-
-For a 128 KiB build, assuming similar code layout and
-`__persistent_end__ = 0x08020000`, the approximate limits would be:
-
-| Target | Approximate 128 KiB header limit |
-| --- | ---: |
-| `PresTag` | 12,468 |
-| `BitPresTag` | 11,956 |
-| `BitPresTagMX25R` | 11,956 |
-| `CompassTag` | 11,701 |
-| `CompassTagAT25Breakout` | 11,701 |
-| `CompassTagAT25` | 11,445 |
-| `BitTag` | 6,361 |
+| Target | `vddHeader` | Header size | 256 KiB limit | Approximate 128 KiB limit | Built at |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `PresTag` | `0x08009a70` | 8 B | 27,826 | 11,442 | `a87fc84a` |
+| `BitPresTag` | `0x08009a60` | 8 B | 27,828 | 11,444 | `060a566` |
+| `BitPresTagMX25R` | `0x08009a60` | 8 B | 27,828 | 11,444 | `060a566` |
+| `CompassTag` | `0x0800b268` | 8 B | 27,059 | 10,675 | `a87fc84a` |
+| `CompassTagAT25Breakout` | `0x0800b268` | 8 B | 27,059 | 10,675 | `a87fc84a` |
+| `CompassTagAT25` | `0x0800ba68` | 8 B | 26,803 | 10,419 | `a87fc84a` |
+| `BitTag` | `0x08008a78` | 16 B | 14,168 | 5,976 | `a87fc84a` |
 
 `BitTag` uses a 16-byte internal data header; the other current active targets
 listed above use 8-byte `t_DataHeader` records.
 
-`eraseExternal()` depends on reset calling `restoreLog()` first. It erases
-`pState->pages * 2048`, rounded up to external flash sectors. It does not probe
-or erase sectors beyond the internal header count, because headers are the
-authoritative record of complete IMU log pages that may be downloaded.
+### The IMUTag external erase sweep
+
+On IMUTag, `Reset()` drives the incremental `eraseExternalStart()` /
+`eraseExternalNextSector()` / `eraseExternalFinish()` sequence. The blocking
+`eraseExternal()` exists only for the common declaration, and nothing on that
+target calls it. `eraseExternalStart()` wakes the NAND, then binary-searches
+the device for the last sector that still holds data, and sweeps from sector
+zero up to it. It reads the device rather than trusting the retained cursor,
+because the power loss that leaves data behind also destroys that cursor. It
+searches for the last dirty sector rather than the first blank one, because an
+interrupted erase leaves a blank region below sectors that still hold data.
+The sweep walks logical sectors only, so it never erases a factory bad block
+and destroys its marker.
 
 The sweep runs until something needs the main thread, then returns to the
 state machine. `Reset()` erases at least one sector per call and then keeps
@@ -181,61 +263,13 @@ other value `N + 1` means the actual total is `N`.
 
 Qt monitor/programmer progress should prefer
 `Status.erase_sectors_total_plus_one - 1`. They retain a temporary IMUTag
-fallback of `Status.internal_data_count * 2048`, rounded up to 4096-byte
+fallback of `Status.external_data_count * 2048` (`kImuDataLogPageBytes` in
+`qtmon` and `qtprogram`), rounded up to 4096-byte
 sectors, only for older firmware that does not report the new field.
 `TagInfo.extflashsz` remains the physical flash capacity and is not the right
 denominator for dirty-log erase progress.
 
-TODO: once deployed firmware reliably reports `erase_sectors_total_plus_one`,
-remove the host-side IMUTag page-size fallback so Qt monitor/programmer code no
-longer needs to know `DATALOG_SAMPLES * sizeof(t_DataLog)`.
+## Open items
 
-## IMUTag Timing Caveat
-
-IMUTag FIFO reads are especially sensitive. A reset can leave the hardware FIFO
-phase, the local partial block cache, and the saved block timestamp out of sync.
-The safest recovery is likely to reset/reinitialize the IMU FIFO stream, discard
-a fresh lock/warmup interval, and start the next header from the first
-post-resync block timestamp.
-
-`t_DataHeader.millis` uses only ten bits for a 1/1024-second subsecond tick
-value. Host log writers convert that value to rounded integer milliseconds when
-writing SQLite logs. The IMUTag log format now reserves bit `0x0400` as
-`IMUTAG_HEADER_RESYNC`, which marks the first header after the FIFO stream has
-been reinitialized or the log stream has otherwise lost continuity. Bit
-`0x0800` is
-`IMUTAG_HEADER_RESYNC_STORAGE_SKIP`, which refines `RESYNC` to say that the
-previous segment ended because an external flash block was skipped after a
-storage write failure. The host decoder should treat any `RESYNC` header as the
-start of a new smooth timing segment: anchor the segment to the header epoch and
-rounded millisecond, then place samples by IMU sample count until the next resync
-marker. Ordinary headers should not re-anchor the high-rate data because the
-rounded millisecond field can introduce page-to-page jitter. If the rounded
-resync anchor would place the new segment before samples already emitted for the
-previous segment, the decoder rounds the new segment start up to the next
-expected block boundary so elapsed microsecond timestamps remain monotonic.
-
-SQLite logs retain the decoded header flags in `ImuHeader.Flags` and write a
-`RESYNC` or `RESYNC_STORAGE_SKIP` row to `ImuEvent` at the corresponding
-elapsed microsecond time. SensorViz can draw those event rows as vertical
-discontinuity markers without turning them into y-axis streams.
-
-## Boot Cleanup Must Not Claim IDLE
-
-History: see [2026-09-boot-cleanup-claimed-idle](investigations/2026-09-boot-cleanup-claimed-idle.md).
-
-### Still open
-
-- History (PresTag under 10 s, and IMUTag, aborting on a non-failure reset during RUNNING; fixed 2026-10-02): see [2026-10-reset-during-running-aborts](../../../design/investigations/2026-10-reset-during-running-aborts.md).
-
-- The monitor-attach recovery branch adopts retained state without
-  cross-checking the marker log. Nothing depends on that now, but a future wipe
-  or corruption of `pState->state` would again outrank durable flash evidence.
-- `tag-start --set-rtc` intermittently fails with "RTC sync failed while writing
-  tag clock" on the IMUTagNandBmp581 breakout, and boots frequently report
-  `rtcInitializedAtBoot` false and `clockTrusted` false. Independent of the
-  above; it prevented two of four verification cycles from starting at all.
-
-## Latched Flash Error Flags Block STM32U3 Low-Power Entry
-
-History: see [2026-09-u3-latched-flash-error-flags](investigations/2026-09-u3-latched-flash-error-flags.md).
+Open recovery work, including the unimplemented acquisition-phase sentinels and
+the unchecked monitor-attach adoption, is in [the tag TODO](../../../TODO.md).

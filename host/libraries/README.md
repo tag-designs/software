@@ -21,7 +21,7 @@ Dependency direction:
 ```text
 sensorui -> sensoranalysis
 applications -> sensorui, sensoranalysis, qcustomplot, tagcore
-commandline -> tagcore
+commandline -> tagcore (dataprocessing -> sensoranalysis)
 ```
 
 Avoid adding Qt dependencies to `tagcore`. If code needs Qt widgets, QML, or

@@ -15,12 +15,10 @@ Generated build files, generated board files, ChibiOS files, toolchain
 headers, and other external files are omitted. Local source overrides under
 `embedded/bases` are included.
 
-The active embedded base targets in `embedded/bases/CMakeLists.txt` were built
-from `/Users/geobrown/Build/tag-designs/software-embedded-submodule`.
-The `tag-breakout-base-l432-u375-1v8` target was added and verified from
-`/Users/geobrown/Build/tag-designs/software-embedded-clean`.
-
-All active embedded base targets now build successfully in that configuration.
+There is no generator: the lists were extracted by hand from the
+`<build-dir>/embedded/bases/<base>/dep/*.o.d` files of a build in which every
+active base target built, and filtered to `embedded/bases`. Re-extract a target
+the same way when its sources change.
 
 ## bittag-base-jlcpcb-v3
 

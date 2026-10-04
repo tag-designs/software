@@ -1,10 +1,31 @@
 ---
 type: proposal
 status: proposed
-summary: Plan for interrupt-paced BMP58x forced-mode pressure sampling on a BitPresTag variant; only blocking forced sampling exists so far.
+summary: Unbuilt plan for interrupt-paced BMP58x forced-mode pressure sampling; the driver operations it needs exist, but every user still polls.
 ---
 
 # BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan
+
+**What exists (checked at a87fc84a).** The BMP58x board this plan was written
+for became `UIUCTag`. The shared driver
+(`embedded/tags/common/sensors/pressure/inc/bmp581.h`) provides every
+operation listed under *BMP58x Driver Support*: forced-mode configuration with
+an optional interrupt-pin configuration (`NULL` selects latched, active-low,
+open-drain), `bmp581_trigger_forced_device()`,
+`bmp581_clear_interrupt_status_device()`, `bmp581_data_ready_device()`,
+`bmp581_read_pressure_temp_powered_device()`, the blocking
+`bmp581_sample_forced_blocking_device()`, and a reduced-transaction
+`bmp581_config_forced_fast_device()` for a part fresh from power-on reset.
+`tag_test_bmp581` serves `RUN_LPS` on UIUCTag and IMUTag.
+
+**What does not.** The two-phase, interrupt-paced RUNNING sequence below and
+the `BITPRESTAG_PRESSURE_BMP581_FORCED` selector were not built. UIUCTag
+power-cycles the BMP585 for every sample and polls for data-ready with
+`stopMilliseconds()` sleeps; an interrupt-driven wait on `LPS_RDY` was tried
+and deferred because no proven hardware timeout bounds a WFI wait. See the
+[UIUCTag design](../../../UIUCTag/design/overview.md) and the
+[bring-up report](../../../UIUCTag/design/investigations/bringup-report.md)
+(2026-09-27). The rest of this document is the original plan.
 
 ## Scope
 

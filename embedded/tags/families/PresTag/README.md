@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: PresTag family members and their log formats, with links to the power test documents and host simulation.
+summary: PresTag family members and their log formats, with links to the power test plan, results, open items and host simulation.
 ---
 
 # PresTag Family
@@ -20,19 +20,18 @@ download log format.
 
 ## Design notes
 
-- [Power and Schedule Test Plan](design/power-test-plan.md): hardware-in-the-loop
-  procedure for sample period, start, stop and hibernation. Explains the 10 s
-  sleep-mode boundary in `Running()`, why an unbiased power window is 60 sample
-  periods rather than one, and the linear average-current law used to estimate
-  battery lifetime.
-- [Power and Schedule Test Report](design/power-test-report.md): results form and
-  baseline table for the above.
-- [Power Test Status](design/power-test-status.md): live handoff — what the rig
-  is doing right now, and the traps worth knowing before touching it. Overwritten
-  by whichever session is driving; read it first.
-- [Power Measurement Log](design/power-test-results.md): append-only record of
-  every completed measurement with its conditions. Cite entries from here rather
-  than restating figures.
+- [Power and Schedule Test Plan](design/power-test-plan.md): what the firmware
+  draws in each state, the 10 s sleep-mode boundary, why a power window is 60
+  sample periods, the linear average-current law behind the lifetime estimate,
+  and the schedule and data checks. The shared rig procedure is
+  [power testing](../../../../docs/bench/power-testing.md).
+- [Power Results](design/power-results.md): append-only record of every
+  measurement with its conditions, plus the campaign's fit, lifetime and gate
+  verdicts. Cite entries from here rather than restating figures.
+- [Power campaign investigation](design/investigations/2026-09-prestag-stop2-and-power-campaign.md)
+  and [log-cursor investigation](design/investigations/2026-09-prestag-log-cursor-round-up.md):
+  how the 2026-09 figures were reached, and the cursor fix.
+- [TODO](TODO.md): open items (F2, F3, T4, re-measuring hibernation).
 
 ## Host simulation
 

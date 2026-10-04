@@ -1,25 +1,28 @@
 ---
 type: readme
 status: current
-summary: What sensorviz does, its architecture, data model, plotting rules, preferences, transforms, documentation capture hooks and build check.
+summary: What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.
 ---
 
 # sensorViz
 
-`sensorviz` is a Qt/QCustomPlot application for viewing SQLite sensor logs. It
-is intended to grow into the general viewer for pressure, activity, and other
-sensor-oriented tag logs.
+`sensorviz` is the general Qt/QCustomPlot viewer for the SQLite sensor logs
+written by the host download tools: BitTag, BitPresTag, PresTag, UIUCTag,
+CompassTag and IMUTag. It replaces the retired `compviz`.
 
-For the longer design/history note, see [roadmap.md](design/roadmap.md). For
-the user-guide screenshot fixture and capture strategy, see
-[screenshot-capture-plan.md](design/proposals/screenshot-capture-plan.md).
+Open work is in [TODO.md](TODO.md). The original plan for the user-guide
+screenshot hooks is kept, as history, in
+[screenshot-capture-plan.md](design/proposals/screenshot-capture-plan.md); the
+hooks as built are described under
+[Documentation Capture Hooks](#documentation-capture-hooks).
 
 ## What It Does
 
 - Loads SQLite log files produced by host tag download tools.
 - Discovers available streams from the SQLite `streams` metadata table.
 - Plots scalar streams such as pressure, activity, voltage, and temperature
-  from BitTag, BitPresTag, PresTag, CompassTag, and IMUTag SQLite logs.
+  from BitTag, BitPresTag, PresTag, UIUCTag, CompassTag, and IMUTag SQLite
+  logs.
 - Supports both epoch-time logs and IMUTag elapsed-time logs.
 - Provides display transforms such as:
   - altitude from pressure
@@ -35,33 +38,73 @@ the user-guide screenshot fixture and capture strategy, see
 - Supports print preview, UTC offset display, draggable plot metadata, cursors,
   cursor hiding, and zoom-to-cursor.
 - Shows an editable graph title above the plot. The title defaults to the
-  loaded file name and can be hidden from the View menu or plot context menu.
+  loaded file name and can be hidden from the Configuration menu or the plot
+  context menu's Configuration submenu.
+- Applies stored magnetometer calibration to IMUTag magnetometer axes on load
+  (`applyCalibrationToImuMagnetometer()` in `sqlite_loader.cpp`), so the axis
+  streams and the derived magnitude use the same corrected data.
+- Stores per-tag display preferences as sparse, formatted JSON overrides.
 
 ## Current Architecture
 
 The code is split by responsibility:
 
 - `main.cpp`: application startup and Qt message logging.
-- `mainwindow.*`: static Qt UI construction and application state.
-- `dataloading.cpp`: file-open workflow, stream replacement, and metadata
-  display.
-- `sqlite_loader.*`: SQLite read-only adapter that consumes tagcore stream
-  metadata.
-- `sensor_preferences.*`: sensorViz display defaults, per-tag preference
-  overrides, and JSON load/store for those overrides.
-- `sensorstream.h`: normalized in-memory data model.
-- `stream_actions.cpp`: stream visibility, View actions, and per-stream range
-  actions.
-- `transforms.cpp`: scalar display transforms such as altitude and activity
-  low-pass.
-- `compass_transforms.cpp`: CompassTag record-set transforms, heading display
-  settings, and QML compass sample updates.
-- `plotting.cpp`: QCustomPlot graph and axis rebuilds.
-- `interaction.cpp`: cursors, draggable metadata box, print preview, UTC
-  offset, context menus, and mouse readout.
-- `controls.cpp`: small shared display helpers and general actions.
+- `mainwindow.*`: static Qt UI construction, persistent actions, and shared
+  application state.
+- `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
+  default graph title, stream-action creation, File Info updates, and initial
+  plot refresh.
+- `sqlite_loader.*`: read-only SQLite adapter. It consumes tagcore's mandatory
+  `streams` metadata table, loads scalar streams, groups multi-column
+  `record_column` rows into `SensorRecordSet`, loads CompassTag calibration
+  metadata, applies it to IMUTag magnetometer axes, and records
+  collection-start metadata for elapsed-time IMUTag logs.
+- `sensor_preferences.*`: sensorViz display defaults
+  (`defaultDisplayForStream()`), in-memory per-tag overrides, and JSON
+  load/store for those overrides.
+- `sensorstream.h`: normalized in-memory data model (see
+  [Data Model](#data-model)).
+- `stream_actions.cpp`: visible-stream, axis-side, color and range dialogs,
+  derived-stream ordering, and range coupling between related streams.
+- `transforms.cpp`: scalar display transforms such as altitude, activity
+  low-pass, and IMUTag vector magnitudes.
+- `compass_transforms.cpp`: CompassTag record-set transforms, heading
+  declination, battery-forward convention, and compass-panel sample updates.
+- `plotting.cpp`: QCustomPlot graph rebuild, dynamic axes, metadata box
+  contents, title placement, cursor placement, and range reset behavior.
+- `interaction.cpp`: context menu, print preview, cursor interaction, draggable
+  metadata box, UTC offset, and mouse readout.
+- `controls.cpp`: general actions and small shared helpers, including graph
+  title editing and calibration-constant display.
+- `documentation_capture.cpp`: maintainer-only screenshot automation (see
+  [Documentation Capture Hooks](#documentation-capture-hooks)).
 - `sensorui`: provides the shared CompassTag calibration dialog and QML
   orientation display used by `sensorviz` and `qtcalibrate`.
+
+## Design Rules
+
+- SQLite logs describe the data contract: stream ids, labels, units, table
+  names, time columns, value columns, and stream kind. Viewer policy (colors,
+  default visibility, axis side, fixed display ranges) belongs in `sensorviz`,
+  in `defaultDisplayForStream()`, never in the SQLite file.
+- Feature availability is driven by loaded stream ids, record sets, or
+  calibration metadata rather than hardcoded tag-type checks.
+- Time-domain behavior is part of the normalized stream model. Epoch logs use
+  date/time x-axis labels; IMUTag elapsed logs use elapsed seconds and show the
+  absolute collection start only as plot metadata.
+- The menu bar has `File`, `View`, `Configuration`, and `Help`, with
+  `File > Preferences` as a submenu. The plot context menu mirrors `File`,
+  `View` and `Configuration` but has no `Help`; its `File` submenu carries
+  `About` instead.
+  `View` groups the stream-display controls (Visible Streams, Axis Sides,
+  Colors, Ranges); `Configuration` owns current-view and session parameters
+  (graph title, UTC offset, sea-level pressure, activity filter, declination,
+  battery-forward).
+- Tag-specific controls stay hidden until the loaded log supports them:
+  Sea-level Pressure when pressure data exists, Activity Filter when activity
+  data exists, Declination and Battery Forward for CompassTag logs, and
+  Calibration Constants only when calibration metadata exists.
 
 ## Maintenance Map
 
@@ -114,11 +157,11 @@ SQLite log provides one. SensorViz uses that value only as plot metadata; it
 does not convert high-rate elapsed IMUTag samples back to wall-clock time.
 
 `SensorRecordSet` is a multi-column time-indexed table that is loaded but not
-plotted directly. It exists so future data such as compass accel/magnetometer
-samples can be loaded first, then converted into streams by transforms.
+plotted directly. CompassTag accelerometer/magnetometer samples are loaded this
+way and then converted into streams by transforms.
 
 Compass calibration constants are stored as typed metadata on `SensorLog`.
-Keeping calibration beside the raw compass record set lets future compass
+Keeping calibration beside the raw compass record set lets the compass
 transforms derive heading, pitch, roll, and related streams without reparsing
 the SQLite JSON.
 
@@ -183,7 +226,9 @@ analysis context rather than durable tag-type display preferences.
 
 At startup, `File > Load` and the `Help` menu are enabled. The rest of the menu
 structure remains visible but disabled so users can see what controls will be
-available after a log is loaded.
+available after a log is loaded. Tag-specific actions (calibration constants,
+sea-level pressure, activity filter, declination, battery forward) are hidden,
+not disabled, until a loaded log supports them.
 
 ## Stream Actions and Ranges
 
@@ -307,10 +352,10 @@ in `interaction.cpp`, which is shared by right-click interaction and capture
 automation. Keep that builder as the single source of truth when adding context
 menu entries.
 
-The dialog screenshot suite is intentionally not implemented yet. The blocking
-dialogs in `stream_actions.cpp`, `controls.cpp`, and `transforms.cpp` need a
-follow-on refactor into reusable dialog builders before they can be shown
-modelessly, captured, and closed without user input.
+There is no dialog screenshot suite. The dialogs in `stream_actions.cpp`,
+`controls.cpp`, and `transforms.cpp` are blocking, so they cannot be shown
+modelessly, captured, and closed without user input; the refactor that would
+allow it is in [TODO.md](TODO.md).
 
 Example local checks:
 
@@ -322,17 +367,25 @@ sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
   --capture-suite compasstag --screenshot-dir /tmp/sensorviz-shots --no-user-prompts
 ```
 
-## Future Direction
+Only `imutag.db3` and `compasstag.db3` are committed under
+`host/docs/fixtures/sensorviz/`; there is no BitPresTag fixture, so the
+`bitprestag` suite needs a BitPresTag log supplied with `--load-log`.
 
-CompassTag and IMUTag now have initial support, but there are still useful
-follow-on passes:
+## Known Limitations
 
-- Apply stored magnetometer calibration to IMUTag magnetometer streams when
-  appropriate.
-- Decide whether metadata-box position should remain session-only or become a
-  saved preference.
-- Add richer IMUTag display transforms once the desired analysis views are
-  clearer.
+- Transform definitions are hardcoded in `transforms.cpp` and
+  `compass_transforms.cpp`, and transform parameter dialogs are simple
+  action-specific dialogs, not a common transform configuration framework.
+- Display preferences are loaded and stored manually from JSON files; there is
+  no automatic recent or default preference file.
+- Current-view session parameters (graph title, ranges, sea-level pressure,
+  declination, UTC offset, battery-forward, metadata-box position) are
+  deliberately not persisted.
+- Multi-column record sets are used mainly for CompassTag data.
+- There are no automated GUI tests for menu organization, preference
+  load/store, metadata-box interaction, or plot-title behavior.
+
+Planned work on these is in [TODO.md](TODO.md).
 
 ## Build Check
 
@@ -342,3 +395,6 @@ Typical local check:
 cmake --build <build-dir> --target sensorviz
 git diff --check
 ```
+
+When changing SQLite loading or stream metadata, also test with representative
+BitTag, BitPresTag, PresTag, CompassTag, and IMUTag logs.

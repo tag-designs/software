@@ -25,11 +25,6 @@ register access and power/session callbacks.
 - `rv3032` and `rv8803` files: older RTC implementations retained for tags or
   boards that may be revived later.
 
-## Current TODO
-
-The default RV3028 binding still lives in common code as a weak board default.
-Tags with non-default RTC wiring should move the complete `TagRtcDevice`
-descriptor into tag or family board support so the descriptor owns both the
-register bus and the board-specific power callbacks in one place. That will
-make RTCs match the newer sensor-device model more closely and remove
-remaining global `rtcOn()`/`rtcOff()` glue.
+The IMUTag family overrides the weak binding with its own hardware-I2C
+`TagRtcDevice` in `families/IMUTag/src/devices.c`. Open descriptor work is in
+[the tag TODO](../../TODO.md#cleanup).

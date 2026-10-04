@@ -1,10 +1,13 @@
 ---
 type: worklist
-status: open
+status: superseded
+superseded-by: embedded/tags/TODO.md
 summary: Work list for the release after fw-v0.0.3: defect fixes, offline-reconstruction layout changes, release qualification and host counterparts, with per-item status.
 ---
 
 # Tag Firmware: Next Release TODO
+
+> **Superseded.** Remaining work is in [the tag TODO](../TODO.md#next-release); what landed and how it was verified is in [the next-release investigation](investigations/2026-10-next-release-fixes-verified.md). Do not add to this page.
 
 Status: open, written 2026-10-01 against `main` (89410ca). This is the work
 list for the next tag firmware release after `fw-v0.0.3`: the defect fixes,

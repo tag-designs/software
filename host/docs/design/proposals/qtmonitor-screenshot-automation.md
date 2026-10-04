@@ -6,6 +6,10 @@ summary: Plan, largely built, for qtmonitor fake-tag fixtures and per-tag config
 
 # QtMonitor Documentation Screenshot Automation Design
 
+> **Historical.** This plan was largely built; the screenshot capture as it
+> exists is described in [host/docs/README.md](../../README.md#screenshots) and the
+> application READMEs it links. Do not quote this plan as current.
+
 ## Purpose
 
 The current Tag Monitor documentation relies on hand-captured screenshots from

@@ -4,7 +4,7 @@ status: accepted
 summary: The GD5F2GM7RE SPI-NAND loader for STM32U375 never resets the NAND or writes its lock register, allows only a restored ECC_EN toggle, leaves the clock near reset, drives FLASH_PWR itself, and leaves blank-block skipping to the host.
 ---
 
-# NNNN. Loaders: the U375 SPI-NAND loader reads without reset or lasting writes
+# 0023. Loaders: the U375 SPI-NAND loader reads without reset or lasting writes
 
 Date: 2026-10-02
 

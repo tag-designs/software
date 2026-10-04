@@ -1,7 +1,8 @@
 ---
 type: design
-status: current
-summary: Brief base-board history plus SWD bitbang optimization results on the F042 breakout base and ideas for a hybrid SPI backend.
+status: superseded
+superseded-by: embedded/bases/README.md
+summary: Superseded base-board notes; the board facts are in the bases README, the optimization record in design/investigations, and the ideas in the bases TODO.
 ---
 
 * bittag-base-jlcpcb-v3

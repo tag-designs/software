@@ -10,8 +10,8 @@ An introduction for people who will deploy IMUTags and analyze the data they
 produce. Covers what the tag is, what it records and how well, how you use it,
 and what it cannot yet do.
 
-Status: 2026-09-29. Every figure here comes from breakout hardware; the
-`imutag-smps` board has not yet been fabricated.
+Status: 2026-10-04. Every figure here comes from breakout hardware; the
+integrated `imutag-smps` board has not yet been fabricated.
 
 ---
 
@@ -74,11 +74,13 @@ does.
 
 ### Current status
 
-The firmware is in bring-up on breakout hardware and is producing complete,
-plausible data: a short 400 Hz collection wrote populated acceleration,
-rotation, magnetic, pressure, temperature and calibration tables, and
-self-tests pass against the pressure sensor and the flash. The `imutag-smps`
-board has passed design checks but **has not yet been fabricated**.
+The firmware runs on breakout hardware: the tag's processor, sensors and flash
+on a daughter card, powered through a separate breakout carrying the same
+TPS62840 regulator the final board uses. On that hardware it has been through
+release checks and a full sweep of every sample rate, each with a verified
+download, and those measurements are the figures in this overview. The
+integrated `imutag-smps` board has passed design checks but **has not yet been
+fabricated**, so no figure here comes from it.
 
 ---
 
@@ -253,19 +255,13 @@ filter across one.
 ### 3.5 How long a deployment lasts
 
 Two things end a recording: the battery runs down, or the flash fills. Which
-one bites first depends on the rate you chose. Measured on the SMPS breakout
-carrying the IMUTagNandBmp581 daughter card at **3.6931 V**, the deployed cell
-voltage, 120 s per point with a verified download at every rate
-([IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html)):
-
-| Mode | Measured current | 12 mAh cell |
-| --- | ---: | ---: |
-| Idle, armed | 5.5-6.7 uA | 74-91 days |
-| 100 Hz | 539 uA | 22.3 h |
-| 200 Hz | 580 uA | 20.7 h |
-| 400 Hz | 662 uA | 18.1 h |
-| 800 Hz | 827 uA | 14.5 h |
-| 1600 Hz | 1003 uA | 12.0 h |
+one bites first depends on the rate you chose. The currents were measured on
+the SMPS breakout carrying the IMUTagNandBmp581 daughter card at **3.6931 V**,
+the voltage of a nominal 3.7 V cell, 120 s per point with a verified download at
+every rate. Recording draws 539 uA at 100 Hz, 662 uA at 400 Hz and 1003 uA at
+1600 Hz; those currents give the battery column of the table in section 3.1.
+The per-rate measurements are in
+[IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html).
 
 Idle has measured as two distinct populations on the same board and image,
 5.52 uA and 6.71 uA, and which one you get is not yet understood. **Plan on
@@ -443,10 +439,11 @@ filter can be run **forwards and then backwards** over the whole record. That
 typically halves the error compared with a filter that only ever looks
 backwards, and it removes the settling transient at the start of every segment.
 
-The design for where this belongs already exists --
-[dataprocessing](cli/dataprocessing.md) is a tool that copies a log, adds
-derived channels and records which algorithm version produced them -- but it
-has not been built.
+The tool this belongs in already exists:
+[dataprocessing](cli/dataprocessing.md) copies a log, adds derived channels to
+the copy and records which algorithm version produced them. So far it has
+processors for CompassTag logs only; there is no IMUTag orientation processor
+yet.
 
 ### 6.2 Position
 

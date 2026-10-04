@@ -1,12 +1,18 @@
 ---
 type: proposal
 status: proposed
-summary: Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes, with a Sleep-mode fallback; not implemented.
+summary: Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes; not built. Its Sleep-while-alarm fallback is what the U375 targets use.
 ---
 
 # LPTIM System Timer Design
 
 ## Purpose
+
+Not built: no `stv3` driver exists, and every target still uses the TIM2-backed
+`SYSTICKv1` driver. The Sleep fallback described under *Alternative* is what
+the U375 targets do today: their idle hooks enter `SLEEP` instead of a Stop
+mode while `stIsAlarmActive()` (see
+[STM32U375 Low Power](u375-low-power.md#returned-idle)).
 
 This document proposes a tag-core system timer option that uses STM32 LPTIM3 or
 LPTIM4 as the ChibiOS ST low-level driver. The goal is to let the ChibiOS

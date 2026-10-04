@@ -177,7 +177,7 @@ and [`embedded/tags/UIUCTag/test/README.md`](../test/README.md).
 
 ## Related notes
 
-- [UIUCTag data collection integration plan](data-collection.md): the
-  record format, write sequencing, and staged migration these checks cover.
-- [UIUCTag board integration plan](board-integration.md): the hardware
-  bring-up sequence and device tests.
+- [UIUCTag design](overview.md): the record format, time mapping, write
+  sequencing and firmware/host contract these checks cover.
+- [UIUCTag bring-up report](investigations/bringup-report.md): the hardware
+  runs and power measurements.

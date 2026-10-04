@@ -1,6 +1,7 @@
 ---
 type: worklist
-status: historical
+status: superseded
+superseded-by: embedded/tags/families/CompassTag/TODO.md
 summary: Live handoff for the finished CompassTag power campaign: rig state, completed work and outstanding checks as of 2026-09-22.
 ---
 
@@ -8,7 +9,7 @@ summary: Live handoff for the finished CompassTag power campaign: rig state, com
 
 **Overwritten by whichever session is driving the rig. Read this first on
 connect; do not accumulate history here — that belongs in
-[`power-test-results.md`](power-test-results.md).**
+[`power-results.md`](power-results.md).**
 
 History (the handoff and what was done): see [investigations/2026-09-compasstag-standby-after-attach.md](investigations/2026-09-compasstag-standby-after-attach.md).
 
@@ -27,7 +28,7 @@ History (the handoff and what was done): see [investigations/2026-09-compasstag-
 - Two other CompassTag findings from this same session remain open and
   unrelated to this fix:
   - The ABORTED-on-first-boot fix (`379e3f1`) is committed but was never
-    verified on real hardware (see [[compasstag-lse-bypass-fix]]).
+    verified on real hardware.
   - `isMonitorEnabled()`'s `MONCONNECTED` latch bug and the host's blind
     `MONITORSTOP` success path (plan §4) are both real, both unrelated to
     this fix, and both still open.

@@ -1,10 +1,13 @@
 ---
 type: design
-status: current
+status: superseded
+superseded-by: embedded/tags/common/core/design/u375-low-power.md
 summary: Implemented STM32U375 low-power design: terminal sleep with monitor guard, runtime idle Stop mode selection, and flash and SPI low-power waits.
 ---
 
 # STM32U375 Stop-Mode Support
+
+> **Superseded.** The current design is [STM32U375 Low Power](u375-low-power.md). This page predates Stop 3 as the terminal sleep and Stop 2 as the run sleep; do not quote it.
 
 This note describes the current U375 stop-mode design as implemented in the
 tag firmware. It is not a future work plan.

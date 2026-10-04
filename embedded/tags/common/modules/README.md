@@ -57,9 +57,9 @@ and current cleanup notes:
 
 - `../README.md` gives the high-level map.
 - `../core/README.md` covers runtime, monitor, power, and shared bus helpers.
-- `../rtc/README.md` covers the RTC API and descriptor TODO.
-- `../storage/README.md` covers external flash drivers and the planned storage
-  I/O cleanup.
+- `../rtc/README.md` covers the RTC API and descriptor binding.
+- `../storage/README.md` covers external flash drivers and the checks before
+  enabling storage on a new variant.
 - `../sensors/README.md` covers the sensor descriptor/shim pattern.
 - `../test/README.md` covers self-test hooks and the compatibility `tag_test`
   marker.

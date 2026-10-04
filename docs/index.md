@@ -18,21 +18,27 @@ design document.
 
 ## Project
 
-- [Repository README](../README.md) — Top-level CMake options and prerequisites for building host tools and firmware on Windows, macOS and Linux, plus tagged releases and macOS installation.
+- [Repository README](../README.md) — Top-level CMake options, prerequisites and build commands for host tools and firmware on Windows, macOS and Linux, and installing a macOS release.
 - [Developer Documentation Guide](documentation-guide.md) *(procedure)* — Where each kind of developer document lives, the front matter it carries, and how the index and portal are generated.
 
 ### Architecture
 
 - [Architecture](architecture/README.md) — How the tags, the host tools and the recorded data fit together.
+- [System Overview](architecture/overview.md) — One-page map of the system -- tag firmware, the SWD monitor through a base, the shared protobuf schema, flash logs, download to SQLite, and the host applications -- with links to where each part is documented.
 
 ### Bench and Hardware Verification
 
 - [Bench Procedures](bench/README.md) — Hardware procedures for verifying firmware changes, measuring power, debugging, and capturing a tag's state.
-- [Debugging a Tag](bench/debugging-a-tag.md) *(procedure)* — Ways to see inside a running tag (SRAM2 scratchpad, GDB over SWD, Joulescope, GPIO markers, monitor) and what each costs or disturbs.
+- [Capturing a Tag](bench/capturing-a-tag.md) *(procedure)* — Capturing a tag's state over SWD before anything resets it, rebuilding a download from the capture, and keeping that rebuild in step with the firmware.
+- [Debugging a Tag](bench/debugging-a-tag.md) *(procedure)* — Ways to see inside a tag (the retained SRAM2 scratchpad and single-store probes, GDB over SWD, current, GPIO markers, the monitor) and what each costs or disturbs.
+- [Power Testing](bench/power-testing.md) *(procedure)* — The shared procedure for measuring a tag's current with the Joulescope -- rig setup, the server, flashing and attaching, taking a trustworthy number, supply voltage, the qualification tools, and what to record.
+- [Verifying a Firmware Change](bench/verifying-firmware.md) *(procedure)* — How to verify a firmware change -- confirm what compiled, rebuild cleanly, compare disassembly rather than checksums, measure idle after power-path changes, and distrust host tools and checks until they are shown right.
 
 ### Build
 
-- [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, maintenance and known gaps.
+- [Build](build/README.md) — The firmware and host build model; setup steps per platform are in the root README.
+- [Build Worklist](build/TODO.md) *(worklist)* — Open gaps and questions in the reproducible firmware build: provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
+- [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
 - [windows-build-notes](build/windows-build-notes.md) *(procedure, historical)* — Unedited personal notes on Windows toolchain setup, environment variables, vcpkg triplets and static Qt builds.
 
 ### Decision Records
@@ -59,12 +65,14 @@ design document.
 - [0019. Captures close the offline-rebuild gaps: RTC offset, NAND ECC status, internal-flash ECC faults](decisions/0019-offline-rebuild-close-capture-gaps.md) *(decision)* — A capture also records the RV3028 EEOffset (read by an SRAM-resident routine), each used NAND page read through on-die ECC with its status, and internal-flash double-words that raise ECC faults.
 - [0020. Session facts are stored with the stored configuration](decisions/0020-offline-rebuild-session-facts-in-stored-config.md) *(decision)* — Per-session facts, starting with the RV3028 factory EEOffset, are stored with the stored configuration so they are rewritten for every session.
 - [0021. A tag identity record immediately after the interrupt vectors](decisions/0021-offline-rebuild-tag-identity-record.md) *(decision)* — Every image carries a const, versioned tag identity record directly after the interrupt vectors, read by the host at a fixed per-MCU address to choose its loader and decoder.
+- [0022. Field extraction: read external flash with an SRAM loader, not a recovery firmware](decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md) *(decision)* — A returned tag's external flash is read by a read-only loader running from SRAM, never by a recovery firmware, after the SRAM and internal-flash capture, with one loader image per board.
+- [0023. Loaders: the U375 SPI-NAND loader reads without reset or lasting writes](decisions/0023-loader-u375-nand-loader-reads-without-reset.md) *(decision)* — The GD5F2GM7RE SPI-NAND loader for STM32U375 never resets the NAND or writes its lock register, allows only a restored ECC_EN toggle, leaves the clock near reset, drives FLASH_PWR itself, and leaves blank-block skipping to the host.
 
 ### Investigations
 
 - [Investigations](investigations/README.md) — Where dated fault investigations and measurement campaigns are kept, and how they are closed.
-- [Offline Log Reconstruction](investigations/2026-10-offline-log-reconstruction.md) *(decision)* — Analysis of whether fw-v0.0.3 downloads can be rebuilt from an SWD capture, the gaps and defects found, and the agreed plan with implementation status.
 - [Firmware build reproducibility: findings (2026-09)](investigations/2026-09-firmware-build-reproducibility.md) *(investigation, closed)* — How the nanopb runtime and generator were found disagreeing, and the first end-to-end release-firmware CI run, its toolchain-checksum failure and its 15-of-15 hash verification.
+- [Offline Log Reconstruction](investigations/2026-10-offline-log-reconstruction.md) *(investigation, closed)* — Whether fw-v0.0.3 downloads can be rebuilt from an SWD capture plus the release package, tag by tag, with the gaps and firmware defects the reading found.
 
 ### Release
 
@@ -74,12 +82,13 @@ design document.
 ### Shared Contracts
 
 - [Shared Contracts](shared/README.md) — The contracts host tools and tag firmware both compile against, and where each is documented.
-- [Shared Binary Log Formats Design](shared/binary-datalogs.md) *(decision)* — Convention for shared packed C log structs in include/: file and struct naming, packing, size and endianness asserts, nanopb coherence, and host decoding.
+- [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile: naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
+- [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
 - [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
 
 ## Shared Contracts
 
-- [Proto Directory](../proto/README.md) — Layout of the protobuf directory, per-tag nanopb options and default configuration JSON.
+- [Proto Directory](../proto/README.md) — The protobuf schema shared by host tools and tag firmware, how each side compiles it, and which tool turns a tag's default-config JSON into C.
 
 ## Embedded
 
@@ -87,9 +96,10 @@ design document.
 
 ### Bases
 
-- [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets.
+- [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
+- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
-- [notes](../embedded/bases/design/notes.md) — Brief base-board history plus SWD bitbang optimization results on the F042 breakout base and ideas for a hybrid SPI backend.
+- [notes](../embedded/bases/design/notes.md) *(superseded)* — Superseded base-board notes; the board facts are in the bases README, the optimization record in design/investigations, and the ideas in the bases TODO.
 
 ### Bases / Investigations
 
@@ -121,8 +131,9 @@ design document.
 
 ### Loaders
 
-- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
-- [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes: no startup code, interrupts or OSAL sleeps, rescue erase, Serve().
+- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+- [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
+- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders: the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
 
 ### Loaders / Investigations
 
@@ -140,19 +151,21 @@ design document.
 
 - [Embedded Tag Firmware](../embedded/tags/README.md) — How tag targets are assembled from modules, families and local sources, diagnostics, the template tag directory and local override rules.
 - [Embedded Tag Build Sources](../embedded/tags/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each tag firmware target, extracted from dependency files.
-- [Open Issues — Tag Firmware](../embedded/tags/design/open-issues.md) *(worklist, open)* — Tracker of known tag firmware defects, separating reproduced faults from ones found by reading code, with resolved entries kept.
+- [Open Issues — Tag Firmware](../embedded/tags/design/open-issues.md) *(worklist, superseded)* — Tracker of known tag firmware defects, separating reproduced faults from ones found by reading code, with resolved entries kept.
 - [Tag `custom.h` Build Defines](../embedded/tags/design/custom-defines.md) — Reference of custom.h defines per active tag target, module-generated TAG_ feature switches, and retired defines.
-- [Tag Firmware: Next Release TODO](../embedded/tags/design/next-release-todo.md) *(worklist, open)* — Work list for the release after fw-v0.0.3: defect fixes, offline-reconstruction layout changes, release qualification and host counterparts, with per-item status.
+- [Tag Firmware TODO](../embedded/tags/TODO.md) *(worklist)* — Open tag firmware work -- defects found by reading code, low-power and recovery questions, NAND bring-up, the next release's remaining items and their host counterparts, and cleanup.
+- [Tag Firmware: Next Release TODO](../embedded/tags/design/next-release-todo.md) *(worklist, superseded)* — Work list for the release after fw-v0.0.3: defect fixes, offline-reconstruction layout changes, release qualification and host counterparts, with per-item status.
 
 ### Tags / BitTag
 
-- [BitTag Power Measurement Log](../embedded/tags/BitTag/design/power-test-results.md) *(results)* — Append-only log of BitTag power measurements with build, board, supply and config for each session.
-- [BitTag Power Test Plan — Idle, Running and Finished Currents](../embedded/tags/BitTag/design/power-test-plan.md) *(procedure)* — Joulescope qualification procedure for BitTag IDLE, RUNNING and FINISHED currents on STM32L432, including rig setup, configs and pass/fail gates.
-- [BitTag Power Test Report](../embedded/tags/BitTag/design/power-test-report.md) *(investigation, closed)* — First BitTag power qualification at fw-v0.5: a pass at 0.12 uA resting and 0.51 uA running, and four config defects found.
+- [BitTag Power Measurement Log](../embedded/tags/BitTag/design/power-results.md) *(results)* — Append-only log of BitTag power measurements -- build, board, supply, config, numbers and interpretation per session.
+- [BitTag Power Test Plan — Idle, Running and Finished Currents](../embedded/tags/BitTag/design/power-test-plan.md) *(procedure)* — BitTag power qualification -- what the firmware draws in each state, the configs, the phases and the pass/fail gates for IDLE, RUNNING and FINISHED at 2.5 V.
+- [BitTag Power Test Report](../embedded/tags/BitTag/design/power-test-report.md) *(investigation, superseded)* — First BitTag power qualification at fw-v0.5: a pass at 0.12 uA resting and 0.51 uA running, and four config defects found.
+- [BitTag TODO](../embedded/tags/BitTag/TODO.md) *(worklist)* — Open BitTag power-qualification work -- tool support, unmeasured phases, and a release-check bound.
 
 ### Tags / BitTag / Investigations
 
-- [BitTag First Power Qualification: Observations (2026-10)](../embedded/tags/BitTag/design/investigations/2026-10-bittag-first-qualification.md) *(investigation, closed)* — Observations from the first BitTag power qualification (2026-10-03) cut from the test plan -- the empty earlier attempt, the immediate start, and the failing first attach to a sleeping tag.
+- [BitTag First Power Qualification: Observations (2026-10)](../embedded/tags/BitTag/design/investigations/2026-10-bittag-first-qualification.md) *(investigation, closed)* — What went wrong during the first BitTag power qualification (2026-10-03) -- an empty earlier attempt, four config and procedure defects, the immediate start, and the failing first attach to a sleeping tag.
 
 ### Tags / Common Firmware
 
@@ -161,12 +174,13 @@ design document.
 ### Tags / Common Firmware / core
 
 - [Core Runtime](../embedded/tags/common/core/README.md) — Contents of the core runtime: state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
-- [`stopMilliseconds()` LPTIM ARR-Match Delay Design](../embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md) — STM32L432 stopMilliseconds() using LPTIM1 autoreload match at 1024 Hz with spurious-wake filtering, now implemented.
-- [I2C Backend Model](../embedded/tags/common/core/design/i2c-backend-model.md) — How tag I2C controllers select hardware or software backends through descriptors, pin policy, RTC migration, and remaining work.
-- [I2C Bus Recovery](../embedded/tags/common/core/design/i2c-bus-recovery.md) — Why a monitor attach can wedge the shared I2C bus, the evidence, and the bus-clear recovery and its call sites on STM32U3 IMUTag targets.
-- [LPTIM System Timer Design](../embedded/tags/common/core/design/lptim-system-timer.md) *(proposal, proposed)* — Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes, with a Sleep-mode fallback; not implemented.
-- [Restart Recovery Notes](../embedded/tags/common/core/design/restart-recovery.md) — Notes on recovering acquisition after a reset: wake classification, header and page recovery, storage bounds, IMUTag timing, and two fixed boot faults.
-- [STM32U375 Stop-Mode Support](../embedded/tags/common/core/design/u375-stop-support.md) — Implemented STM32U375 low-power design: terminal sleep with monitor guard, runtime idle Stop mode selection, and flash and SPI low-power waits.
+- [`stopMilliseconds()` LPTIM ARR-Match Delay Design](../embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md) — How STM32L432 stopMilliseconds() delays on a single LPTIM1 autoreload match at 1024 Hz, with spurious-wake filtering.
+- [I2C Backend Model](../embedded/tags/common/core/design/i2c-backend-model.md) — How tag I2C controllers select hardware or software backends through descriptors, the pin policy, and how the RTC binds to a bus.
+- [I2C Bus Recovery](../embedded/tags/common/core/design/i2c-bus-recovery.md) — Why a reset mid-transaction wedges the shared I2C bus, and the bus-clear recovery, its call sites and pin-mode rules on STM32U3 IMUTag targets.
+- [LPTIM System Timer Design](../embedded/tags/common/core/design/lptim-system-timer.md) *(proposal, proposed)* — Proposed LPTIM3/LPTIM4-backed ChibiOS system timer that keeps time through Stop modes; not built. Its Sleep-while-alarm fallback is what the U375 targets use.
+- [Restart Recovery](../embedded/tags/common/core/design/restart-recovery.md) — How a tag recovers after a reset -- reset classification, reattach versus failure, the IDLE-means-empty-log invariant, header and page recovery, ECC-checked reads, storage bounds and the external erase sweep.
+- [STM32U375 Low Power](../embedded/tags/common/core/design/u375-low-power.md) — How STM32U375 tags sleep -- Stop 3 as the terminal sleep, Stop 2 or Stop 1 between IMU wakes, Sleep as the idle default, scoped STOP around SPI transfers -- the monitor guards, the layout sensitivity, and what to measure after a change.
+- [STM32U375 Stop-Mode Support](../embedded/tags/common/core/design/u375-stop-support.md) *(superseded)* — Implemented STM32U375 low-power design: terminal sleep with monitor guard, runtime idle Stop mode selection, and flash and SPI low-power waits.
 
 ### Tags / Common Firmware / core / Investigations
 
@@ -177,7 +191,7 @@ design document.
 
 ### Tags / Common Firmware / core / Proposals
 
-- [STM32U375 Stop3 Terminal Sleep Plan](../embedded/tags/common/core/design/proposals/u375-stop3-terminal-sleep-plan.md) *(proposal, historical)* — Plan, now implemented, to replace STM32U375 terminal Standby with Stop 3 while keeping the STM32L432 Standby path.
+- [STM32U375 Stop3 Terminal Sleep Plan](../embedded/tags/common/core/design/proposals/u375-stop3-terminal-sleep-plan.md) *(proposal, superseded)* — The plan for Stop 3 as the STM32U375 terminal sleep; what shipped differs (a reset on wake, no clock restore).
 
 ### Tags / Common Firmware / modules
 
@@ -222,20 +236,21 @@ design document.
 ### Tags / Families / BitPresTag
 
 - [BitPresTag Family](../embedded/tags/families/BitPresTag/README.md) — BitPresTag family variants, what UIUCTag overrides locally, and ADXL362 configuration semantics.
-- [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](../embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md) *(proposal, proposed)* — Plan for interrupt-paced BMP58x forced-mode pressure sampling on a BitPresTag variant; only blocking forced sampling exists so far.
+- [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](../embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md) *(proposal, proposed)* — Unbuilt plan for interrupt-paced BMP58x forced-mode pressure sampling; the driver operations it needs exist, but every user still polls.
 
 ### Tags / Families / BitTagNG
 
-- [BitTagNG Family](../embedded/tags/families/BitTagNG/README.md) — What the BitTagNG family shares and what its variants keep local.
+- [BitTagNG Family](../embedded/tags/families/BitTagNG/README.md) — What the BitTagNG family shares and what its variants keep local; the LIS2DU12 variant is archived.
 - [adxl367-wakeup-example](../embedded/tags/families/BitTagNG/design/adxl367-wakeup-example.md) *(historical)* — Pasted example code for ADXL367 low-power activity and inactivity wakeup setup and interrupt handling.
 
 ### Tags / Families / CompassTag
 
 - [CompassTag Family](../embedded/tags/families/CompassTag/README.md) — What the CompassTag family variants share, where family-specific drivers live, and links to design notes and the host simulation.
-- [CompassTag Power Measurement Log](../embedded/tags/families/CompassTag/design/power-test-results.md) *(results)* — Append-only log of CompassTag power measurements before and after the DBGMCU fix, including production hardware validation.
-- [CompassTag Power Test Plan — Standby-After-Attach Regression](../embedded/tags/families/CompassTag/design/power-test-plan.md) *(procedure)* — Joulescope procedure verifying the DBGMCU Standby-after-attach fix on CompassTag and serving as a regression check for that fault class.
-- [CompassTag Power Test Report — Standby-After-Attach Regression](../embedded/tags/families/CompassTag/design/power-test-report.md) *(investigation, closed)* — Results of the CompassTag Standby-after-attach investigation: idle fell from about 362 uA to 0.38 uA after the DBGMCU fix.
-- [CompassTag Power Testing — Live Status](../embedded/tags/families/CompassTag/design/power-test-status.md) *(worklist, historical)* — Live handoff for the finished CompassTag power campaign: rig state, completed work and outstanding checks as of 2026-09-22.
+- [CompassTag Power Measurement Log](../embedded/tags/families/CompassTag/design/power-results.md) *(results)* — Append-only log of CompassTag power measurements -- the Standby-after-attach fault before and after its fix, and the production CompassTagAT25 validation.
+- [CompassTag Power Test Plan — Standby After Attach](../embedded/tags/families/CompassTag/design/power-test-plan.md) *(procedure)* — CompassTag power check -- every terminal state must reach the Standby floor after a debugger attach and detach; phases, gates and the board to run it on.
+- [CompassTag Power Test Report — Standby-After-Attach Regression](../embedded/tags/families/CompassTag/design/power-test-report.md) *(investigation, superseded)* — Results of the CompassTag Standby-after-attach investigation: idle fell from about 362 uA to 0.38 uA after the DBGMCU fix.
+- [CompassTag Power Testing — Live Status](../embedded/tags/families/CompassTag/design/power-test-status.md) *(worklist, superseded)* — Live handoff for the finished CompassTag power campaign: rig state, completed work and outstanding checks as of 2026-09-22.
+- [CompassTag TODO](../embedded/tags/families/CompassTag/TODO.md) *(worklist)* — Open CompassTag power and monitor items left by the 2026-09 Standby-after-attach work.
 
 ### Tags / Families / CompassTag / Investigations
 
@@ -248,28 +263,30 @@ design document.
 ### Tags / Families / IMUTag
 
 - [IMUTag Family](../embedded/tags/families/IMUTag/README.md) — What the IMUTag family shares between IMUTagNand and IMUTagNandBmp581, with an annotated list of family design notes.
+- [IMUTag Family: Open Items](../embedded/tags/families/IMUTag/TODO.md) *(worklist)* — Open questions for the IMUTag family -- cell voltage, supply noise on the SMPS board, the idle split, the 3.7 V projection trend, and timing-metadata gaps.
 - [IMUTag Internal Header Checkpoints](../embedded/tags/families/IMUTag/design/internal-header-checkpoints.md) — Sparse internal-flash checkpoint headers that let NAND-backed IMUTag tags find their external log cursor after a reset.
-- [Power Estimation for the IMUTagNand](../embedded/tags/families/IMUTag/design/power.md) *(results)* — Measured IMUTagNand current at 3.7 V on the SMPS board per sample rate, storage and battery runtime limits, and superseded LDO-era history.
-- [Strategy for Jitter-Free Sampling with Smooth Real-Time Correction](../embedded/tags/families/IMUTag/design/sample-timing.md) *(proposal, proposed)* — Staged plan for jitter-free IMU sampling from raw RV-3028 clock with RTC smooth correction and timing metadata; reconstruction is partly built.
+- [IMUTag Power and Runtime](../embedded/tags/families/IMUTag/design/power.md) *(results)* — Measured IMUTagNandBmp581 current at 3.7 V on the SMPS board per sample rate, and the battery and storage runtime each rate implies.
+- [IMUTag Sample Timing](../embedded/tags/families/IMUTag/design/sample-timing.md) — How IMUTag sample times are produced -- a jitter-free raw 32.768 kHz sampling clock, a smooth-calibrated STM32 RTC, 1024 Hz page anchors with resync flags, and host reconstruction from sample count.
 
 ### Tags / Families / IMUTag / Investigations
 
-- [IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail](../embedded/tags/families/IMUTag/design/investigations/start-abort-diagnostics.md) *(investigation, open)* — Evidence for the intermittent IMUTag abort at start, the now-implemented marker detail word, and an unconfirmed flash-flag explanation.
+- [IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail](../embedded/tags/families/IMUTag/design/investigations/start-abort-diagnostics.md) *(investigation, closed)* — The intermittent IMUTag abort at start -- evidence, the marker detail word added to diagnose it, and its two probable causes (a wedged I2C bus, a latched flash ECC flag), both now fixed.
 - [IMUTagNand Regulator and Sleep-Mode Sweeps (2026-09)](../embedded/tags/families/IMUTag/design/investigations/2026-09-imutag-regulator-and-sleep-sweeps.md) *(investigation, closed)* — Superseded IMUTagNand power history -- datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at 2.5 V and 3.3 V (2026-09) that produced the 3.7 V projection.
 - [IMUTagNandBmp581 First Breakout Bring-Up (2026-08)](../embedded/tags/families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md) *(investigation, closed)* — First bench validation of the IMUTagNandBmp581 target on the BMP581 breakout -- NAND and BMP581 self-tests and a short 400 Hz collection.
 
 ### Tags / Families / IMUTag / Proposals
 
-- [IMUTag Sample-Timing Implementation Plan (2026-08)](../embedded/tags/families/IMUTag/design/proposals/sample-timing-implementation-plan.md) *(proposal, historical)* — The spent 2026-08 file-by-file change list, four implementation phases and verification checklist for IMUTag jitter-free sample timing.
+- [IMUTag Sample-Timing Strategy and Implementation Plan (2026-08)](../embedded/tags/families/IMUTag/design/proposals/sample-timing-implementation-plan.md) *(proposal, historical)* — The 2026-08 plan for IMUTag jitter-free sample timing -- strategy, file-by-file change list, four phases and verification checklist -- now built and kept for the record.
 - [IMUTagNandBmp581 Development Plan](../embedded/tags/families/IMUTag/design/proposals/imutag-nand-bmp581-development-plan.md) *(proposal, historical)* — Plan, now built, for the IMUTagNandBmp581 firmware variant with BMP581 pressure and GD5F2GM7RE NAND under the IMUTAG protocol identity.
 
 ### Tags / Families / PresTag
 
-- [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, with links to the power test documents and host simulation.
-- [PresTag Power and Schedule Test Plan](../embedded/tags/families/PresTag/design/power-test-plan.md) *(procedure)* — PresTag power and schedule test procedure: firmware behaviour, rig discipline, resting states, period sweep, power model, schedule and hibernation checks.
-- [PresTag Power and Schedule Test Report](../embedded/tags/families/PresTag/design/power-test-report.md) *(investigation, closed)* — Results of the 2026-09-08/09 PresTag power campaign: measured power model, battery lifetime, schedule tests and remaining T4 and F3 items.
-- [PresTag Power Measurement Log](../embedded/tags/families/PresTag/design/power-test-results.md) *(results)* — Append-only log of every PresTag power measurement with build and conditions, the source for figures quoted elsewhere.
-- [PresTag Power Testing — Live Status](../embedded/tags/families/PresTag/design/power-test-status.md) *(worklist, historical)* — Live handoff for the completed PresTag power campaign: rig state, results, outstanding items and rig traps as of 2026-09-09.
+- [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, with links to the power test plan, results, open items and host simulation.
+- [PresTag Power and Schedule Test Plan](../embedded/tags/families/PresTag/design/power-test-plan.md) *(procedure)* — PresTag power and schedule test plan -- what the firmware does in each state, the configs, the resting-state, period-sweep, schedule and data phases, the power model and the gates.
+- [PresTag Power and Schedule Test Report](../embedded/tags/families/PresTag/design/power-test-report.md) *(investigation, superseded)* — Results of the 2026-09-08/09 PresTag power campaign: measured power model, battery lifetime, schedule tests and remaining T4 and F3 items.
+- [PresTag Power Measurement Log](../embedded/tags/families/PresTag/design/power-results.md) *(results)* — Append-only log of every PresTag power measurement with build and conditions, plus the campaign's fit, lifetime, schedule and data verdicts -- the source for figures quoted elsewhere.
+- [PresTag Power Testing — Live Status](../embedded/tags/families/PresTag/design/power-test-status.md) *(worklist, superseded)* — Live handoff for the completed PresTag power campaign: rig state, results, outstanding items and rig traps as of 2026-09-09.
+- [PresTag TODO](../embedded/tags/families/PresTag/TODO.md) *(worklist)* — Open PresTag items -- the unchecked config write (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
 
 ### Tags / Families / PresTag / Investigations
 
@@ -283,12 +300,12 @@ design document.
 ### Tags / IMUTagNand
 
 - [IMUTagNand Maintainer Notes](../embedded/tags/IMUTagNand/README.md) — Hardware shape and module selection of the IMUTagNand STM32U375 target with LPS22HH pressure and 1 Gbit GD5F NAND.
-- [IMUTagNand Bring-Up TODO](../embedded/tags/IMUTagNand/todo.md) *(worklist, open)* — Bring-up todo list for IMUTagNand NAND validation, ECC and bad-page handling, block-map checks and host diagnostics.
+- [IMUTagNand Bring-Up TODO](../embedded/tags/IMUTagNand/todo.md) *(worklist, superseded)* — Bring-up todo list for IMUTagNand NAND validation, ECC and bad-page handling, block-map checks and host diagnostics.
 
 ### Tags / IMUTagNandBmp581
 
-- [IMUTagNandBmp581 Maintainer Notes](../embedded/tags/IMUTagNandBmp581/README.md) — Hardware shape, module selection and bring-up status of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
-- [IMUTagNandBmp581 Bring-Up TODO](../embedded/tags/IMUTagNandBmp581/todo.md) *(worklist, open)* — Bring-up todo list for IMUTagNandBmp581 NAND low-power mode, validation, ECC and bad-page handling, and host diagnostics.
+- [IMUTagNandBmp581 Maintainer Notes](../embedded/tags/IMUTagNandBmp581/README.md) — Hardware shape and module selection of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
+- [IMUTagNandBmp581 Bring-Up TODO](../embedded/tags/IMUTagNandBmp581/todo.md) *(worklist, superseded)* — Bring-up todo list for IMUTagNandBmp581 NAND low-power mode, validation, ECC and bad-page handling, and host diagnostics.
 
 ### Tags / Investigations
 
@@ -298,12 +315,13 @@ design document.
 
 ### Tags / Proposals
 
-- [Field Data Extraction](../embedded/tags/design/proposals/field-data-extraction.md) *(proposal, proposed)* — Why raw field dumps are not self-describing, proposed session superblock and failure record, and the SRAM loader approach to external flash that is now built.
+- [Field Data Extraction](../embedded/tags/design/proposals/field-data-extraction.md) *(proposal, proposed)* — Two unbuilt changes so a returned tag's data decodes and explains itself - a session superblock in the data region, and gaps closed in the flash marker log.
 
 ### Tags / UIUCTag
 
-- [UIUCTag Board Integration Plan](../embedded/tags/UIUCTag/design/board-integration.md) *(proposal, historical)* — Plan, now built, for integrating the UIUCTag board (ADXL367 on USART2, BMP585 on SPI1) into the BitPresTag family.
-- [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, historical)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+- [UIUCTag Board Integration Plan](../embedded/tags/UIUCTag/design/board-integration.md) *(proposal, superseded)* — Plan, now built, for integrating the UIUCTag board (ADXL367 on USART2, BMP585 on SPI1) into the BitPresTag family.
+- [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+- [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the record layout, timing and firmware/host contract of its pressure and activity log.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
 
 ### Tags / UIUCTag / Investigations
@@ -340,8 +358,9 @@ design document.
 
 ### Applications / sensorviz
 
-- [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, data model, plotting rules, preferences, transforms, documentation capture hooks and build check.
-- [sensorViz Development Notes](../host/applications/sensorviz/design/roadmap.md) — Current sensorviz design state, design rules, UI decisions, known limitations and future work.
+- [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.
+- [sensorViz Development Notes](../host/applications/sensorviz/design/roadmap.md) *(superseded)* — Former sensorviz development notes; the design is now in the README and the open work in TODO.md.
+- [sensorViz TODO](../host/applications/sensorviz/TODO.md) *(worklist)* — Open sensorviz work - validation, load warnings, transform registry, session files and GUI tests.
 
 ### Applications / sensorviz / Proposals
 
@@ -350,7 +369,8 @@ design document.
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
-- [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — Design of the dataprocessing CLI that copies a SQLite log and adds calibrated CompassTag streams with provenance; SensorViz support for augmented files is still future.
+- [Command-Line Tools TODO](../host/commandline/TODO.md) *(worklist)* — Open command-line tool work - dataprocessing tests, further processors and SensorViz support for processed files.
+- [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 
 ### Command Line / Proposals
 
@@ -374,20 +394,25 @@ design document.
 
 ### Libraries / tagcore
 
-- [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities: USB and monitor communication, log writers, SWD recovery code, and links to its design documents.
-- [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — SWD capture and recovery library, partly built: capture without booting, loader Serve() reads, tag identification, layered API and implementation sequence.
+- [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, SWD capture and recovery code, offline decoder checks - and links to its design documents.
+- [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 
 ### Libraries / tagcore / Investigations
 
-- [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, open)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
+- [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 
 ### Libraries / tagcore / Proposals
 
+- [Recovery Library: Identification, Rescue and Python](../host/libraries/tagcore/design/proposals/recovery-identification-rescue-python.md) *(proposal, proposed)* — The unbuilt parts of the SWD recovery library - identifying older images by hash and strings, the rescue-erase procedure, and the Python binding - with the check that ends each.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
+
+### Libraries / tagcore / recovery
+
+- [tagcore/recovery TODO](../host/libraries/tagcore/recovery/TODO.md) *(worklist)* — Open work on the SWD capture, loader and offline-rebuild code in tagcore/recovery.
 
 ### Libraries / tagcore / sqlitelog
 
-- [SQLite Log Schemas](../host/libraries/tagcore/sqlitelog/README.md) — Per-tag SQLite schema and row semantics for UIUCTag and IMUTag downloads, plus a known BitPresTag activity inconsistency.
+- [SQLite Log Writer](../host/libraries/tagcore/sqlitelog/README.md) — How the SQLite log writer decodes UIUCTag and IMUTag downloads into rows, and a known BitPresTag activity-geometry inconsistency; the schema itself is in the user reference.
 
 ### Libraries / tagcore / test
 
@@ -395,7 +420,7 @@ design document.
 
 ### User Guide Tooling
 
-- [Documentation Template](../host/docs/README.md) — How to preview, build and package the MkDocs user guide and how its sources are laid out.
+- [Host User Guide](../host/docs/README.md) — The end-user host manual - how to preview, build and package it, how its sources are laid out, and how its screenshots are generated from fixtures.
 
 ### User Guide Tooling / fixtures / qtcalibrate
 

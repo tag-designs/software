@@ -15,6 +15,12 @@ standby pull-up and pull-down registers. The `Standby` entries in
 The BMP581 pressure header follows the breakout silkscreen: PA9 is
 `LPS_DRDY`, and PA10 is `LPS_CS`.
 
+The tag's terminal sleep on this part is Stop 3, not Standby (see
+[STM32U375 Low Power](../../tags/common/core/design/u375-low-power.md#terminal-sleep-stop-3)).
+These masks still apply there: the target's `mcuconf.h` sets
+`TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF` and loads them into `PWR_PUCRx` and
+`PWR_PDCRx` at HAL startup, and the Stop 3 entry path sets `PWR_APCR.APC`.
+
 These pulls are weak standby biases. They are not retained GPIO output drive.
 Any net that must be held strongly through Standby needs an external resistor
 or a lower-power mode that preserves GPIO output state.
@@ -42,8 +48,8 @@ tri-states while deselected. On this board the flash shares the
 | `LSM_TRG` | None | LSM6DSV external ODR trigger on PB4; left unbiased when the trigger is disabled for standby. |
 | `LPS_DRDY` | None | BMP581 data-ready output can be high-Z, but is left unbiased while checking for pull conflicts. |
 | `BMM_INT` | None | BMM350 interrupt is active-high in firmware; left unbiased while checking for pull conflicts. |
-| `SDA` | Pull up | Shared RTC/BMM350 software-I2C data line must idle high. |
-| `SCL` | Pull up | Shared RTC/BMM350 software-I2C clock line must idle high. |
+| `SDA` | Pull up | Shared RTC/BMM350 I2C data line must idle high. |
+| `SCL` | Pull up | Shared RTC/BMM350 I2C clock line must idle high. |
 | `LED1` | Pull down | Test output should not float or source current when GPIO output drive is released. |
 | `testpin` | Pull down | Test output should not float when GPIO output drive is released. |
 

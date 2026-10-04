@@ -1,10 +1,13 @@
 ---
 type: proposal
-status: historical
-summary: Plan, now implemented, to replace STM32U375 terminal Standby with Stop 3 while keeping the STM32L432 Standby path.
+status: superseded
+superseded-by: embedded/tags/common/core/design/u375-low-power.md
+summary: The plan for Stop 3 as the STM32U375 terminal sleep; what shipped differs (a reset on wake, no clock restore).
 ---
 
 # STM32U375 Stop3 Terminal Sleep Plan
+
+> **Superseded.** What shipped differs from this plan: Stop 3 wakes into a software reset with a synthetic standby-wake marker, with no clock restore, and the Standby pull masks are applied. See [STM32U375 Low Power](../u375-low-power.md#terminal-sleep-stop-3).
 
 This note records the STM32U375 terminal Stop3 replacement for Standby on
 IMUTagNand-class tags. The runtime idle Stop-mode implementation is documented

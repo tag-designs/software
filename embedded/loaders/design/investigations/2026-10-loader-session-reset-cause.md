@@ -16,7 +16,7 @@ which downloads and runs the same loader and ends in a plain reset, left every
 backup register unchanged. A CubeProgrammer read of the same tag changed
 `resetCause` from 2 to 1 and rounded `external_blocks` up to a page, because
 CubeProgrammer lets the firmware boot as it leaves. See
-`host/libraries/tagcore/design/swd-recovery.md`, step 3.
+[SWD Capture Library Bring-up](../../../../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md#implementation-sequence), step 3.
 The original note follows. After any
 CubeProgrammer session that uses a loader, read-only or read-write,
 `RTC_BKP2R` (`pState->resetCause`) reads 1 (`resetStandby`) where it

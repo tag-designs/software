@@ -1,6 +1,7 @@
 ---
 type: worklist
-status: historical
+status: superseded
+superseded-by: embedded/tags/families/PresTag/TODO.md
 summary: Live handoff for the completed PresTag power campaign: rig state, results, outstanding items and rig traps as of 2026-09-09.
 ---
 
@@ -8,7 +9,7 @@ summary: Live handoff for the completed PresTag power campaign: rig state, resul
 
 **Overwritten by whichever session is driving the rig. Read this first on
 connect; do not accumulate history here — that belongs in
-[`power-test-results.md`](power-test-results.md).**
+[`power-results.md`](power-results.md).**
 
 History (the campaign handoff and what was done): see [investigations/2026-09-prestag-stop2-and-power-campaign.md](investigations/2026-09-prestag-stop2-and-power-campaign.md).
 

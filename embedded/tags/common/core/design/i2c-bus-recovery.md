@@ -1,13 +1,18 @@
 ---
 type: design
 status: current
-summary: Why a monitor attach can wedge the shared I2C bus, the evidence, and the bus-clear recovery and its call sites on STM32U3 IMUTag targets.
+summary: Why a reset mid-transaction wedges the shared I2C bus, and the bus-clear recovery, its call sites and pin-mode rules on STM32U3 IMUTag targets.
+last-verified: a87fc84a
 ---
 
 # I2C Bus Recovery
 
-Status: implemented for STM32U3 IMUTag targets, validated on hardware, not yet
-committed. Off by default elsewhere.
+IMUTagNand and IMUTagNandBmp581 clear a stuck I2C bus at three points: at the start of
+every bus session, at boot before the first RTC read, and at standby entry.
+The clear acts only when SDA reads low. It is compiled in by
+`TAG_I2C_BUS_CLEAR=1` in those targets' `project.mk` and is off everywhere
+else. Why it exists, the evidence, and the hardware verification are in
+[0005](../../../../../docs/decisions/0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby.md).
 
 ## The failure
 
@@ -28,8 +33,7 @@ fault:
 - `tag-start --set-rtc` failing with "RTC sync failed", ~13% of attempts;
 - collection aborting at start or on reattach, ~1 in 3 attach events.
 
-History (the evidence that narrowed both faults to the bus, and the recovery that existed but was disabled): see [0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby](../../../../../docs/decisions/0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby.md).
-
+Both faults were the bus; see [0005](../../../../../docs/decisions/0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby.md) for the evidence.
 
 ## Design
 
@@ -78,49 +82,46 @@ not go** below.
 
 ### Where a clear must not go
 
-`tagI2cBusEnd()` looks like the natural partner to `tagI2cBusBegin()`, and a
-clear was placed there originally. It cost 1 mA at idle and was removed.
-
-The clear leaves the pins as open-drain GPIO outputs, and at bus end nothing
-restores them to alternate function. A transaction that ends with a slave
-holding SDA -- which is precisely when the clear fires -- therefore parked the
-pins as GPIO against the board's 4.7k pull-ups, and they stayed that way into
-standby. Setting the clock is normally the last preparation step, so a prepared
-tag sat at about 1 mA instead of 5 uA until its next reset while still
-reporting IDLE: roughly 11 hours of battery life rather than 100 days.
-
-It presented as an RTC fault rather than a pin-state fault. The clear only runs
-when SDA reads low, so writes tripped it and reads never did; the trigger
-isolated to `rv3028SetDateTime()`, and running to finished and back to idle was
-always clean because that path never sets the clock.
+**Not in `tagI2cBusEnd()`**, the natural-looking partner to
+`tagI2cBusBegin()`. The clear leaves the pins as open-drain GPIO outputs, and
+nothing at bus end restores them to alternate function. A transaction that
+ends with a slave holding SDA, which is exactly when the clear fires, therefore
+leaves the pins as GPIO against the board's 4.7k pull-ups into the terminal
+sleep. Setting the clock is normally the last preparation step, so a prepared
+tag would sit at about 1 mA instead of about 5 uA while reporting IDLE. That is
+roughly 11 hours of battery life rather than 100 days. The fault presents as an
+RTC fault rather than a pin-state fault: writes trip the clear and reads do
+not, so it isolates to `rv3028SetDateTime()`. A clear at bus end was tried and
+removed in commit 24c1f867.
 
 Nothing is lost by leaving bus end alone. `tagI2cBusBegin()` clears before
 enabling the controller, so the next user of the bus recovers it, and the
 startup hook clears at boot, so a slave left holding SDA across standby is
 recovered on the next startup.
 
-The standby hook must **not** go in `tagI2cDevicePrepareSleep()`, which is the
-obvious-looking home: this target sets
-`TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF`, so `tagDevicesApplyStandbyPins()` --
-its only caller -- never runs. `tagDevicesApplyPowerState()` is called
-unconditionally from both U3 terminal paths.
+**Not in `tagI2cDevicePrepareSleep()`**, the obvious-looking home for the
+standby clear. Both U375 targets set `TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF`,
+so `tagDevicesApplyStandbyPins()`, its only caller, never runs.
+`tagDevicesApplyPowerState()` is called unconditionally from the terminal
+sleep path (see [STM32U375 Low Power](u375-low-power.md#terminal-sleep-stop-3)).
 
 ## The pin-mode trap
 
 The clear must leave the pins as **released open-drain**, never in alternate
-function. Only `tagI2cBusBegin()` follows it with a controller start; at the
-other three sites the peripheral stays disabled, and an AF pin with no
-peripheral driving it is held low. The board pulls SCL and SDA up with 4.7k, so
-a line parked low sinks about 700 uA. An earlier version of this change ended
-with `tagI2cApplyActivePins()` and measured **1031 uA at idle against
-4.09 uA** for exactly that reason.
-
-## Verification
-
-History: see [0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby](../../../../../docs/decisions/0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby.md).
+function. Only `tagI2cBusBegin()` follows it with a controller start. At the
+other sites the peripheral stays disabled, and an AF pin with no peripheral
+driving it is held low. The board pulls SCL and SDA up with 4.7k, so a line
+parked low sinks about 700 uA. A version that ended with `tagI2cApplyActivePins()`
+measured 1031 uA at idle against 4.09 uA
+([0005](../../../../../docs/decisions/0005-i2c-clear-a-stuck-bus-at-session-start-boot-and-standby.md)).
 
 ## Scope
 
-Enabled by `TAG_I2C_BUS_CLEAR`, set through `UDEFS` in the target
+Enabled by `TAG_I2C_BUS_CLEAR=1`, set through `UDEFS` in the target
 `project.mk`, not in `custom.h` -- `i2c_bus.h` applies its own default and does
 not include `custom.h`, so a header define would depend on include order.
+
+With the macro off, the declaration, the definition, the call sites and the
+controller's `reset` member are all compiled out, so other targets' images are
+unchanged. A non-static function has external linkage and is emitted even when
+nothing calls it, which is why every one of them is guarded.

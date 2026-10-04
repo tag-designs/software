@@ -38,6 +38,9 @@ pages.
 `project.mk` selects:
 
 ```make
+protocol_nanopb
+tag_core
+tag_test
 rtc_rv3028
 flash_gd5f1gq5re
 sensor_pressure_lps22hh
@@ -47,5 +50,7 @@ sensor_imu_lsm6dsv16x
 
 The target includes `../families/IMUTag/family.mk`, so shared application
 sources come from `embedded/tags/families/IMUTag/src`. The local
-`src/hal_rtc_lld.c` and `src/power_modes.c` provide the U375 RTC shim and
-idle-hook implementation for this target.
+`src/hal_rtc_lld.c`, `src/hal_spi_v2_lld.c` and `src/power_modes.c` provide the
+U375 RTC shim, the SPI low-level driver override and the idle-hook
+implementation for this target. The RUNNING state sleeps in Stop 1: unlike
+`IMUTagNandBmp581`, this target does not set `IMUTAG_RUN_SLEEP_STOP2`.

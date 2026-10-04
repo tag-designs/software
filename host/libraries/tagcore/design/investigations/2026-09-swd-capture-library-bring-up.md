@@ -1,12 +1,24 @@
 ---
 type: investigation
-status: open
+status: closed
 summary: Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 ---
 
 # SWD Capture Library Bring-up
 
-The dated record of building `tagcore/recovery` and the `tag-capture` and `tag-xflash` tools on bench tags, from 2026-09-30 to 2026-10-02: the status as last recorded, each implementation step with its original plan and what its check found, and two findings made along the way. Steps 0-5 and 9 are built; some of their checks were still open when this was last updated. Cut verbatim from [SWD Capture and Recovery Library](../swd-recovery.md), which describes the design and keeps the steps not yet built.
+The dated record of building `tagcore/recovery` and the `tag-capture` and
+`tag-xflash` tools on bench tags, from 2026-09-30 to 2026-10-02. It holds the
+status as last recorded, each implementation step with its original plan and
+what its check found, and two findings made along the way. Closed:
+- the design as built is [SWD Capture and Recovery Library](../swd-recovery.md);
+- the checks still open are in [recovery/TODO.md](../../recovery/TODO.md);
+- the unbuilt steps 6-8 are in
+  [their proposal](../proposals/recovery-identification-rescue-python.md).
+
+One finding below is superseded. Step 3 found that a capture ends a run that
+sleeps in Stop 2. Commit `a406eda7` (2026-10-02) changed that: the firmware now
+treats the reset that ends a session as a reattach, and the run resumes. See
+[restart recovery](../../../../../embedded/tags/common/core/design/restart-recovery.md#reattach-versus-failure).
 
 ## Status as last recorded
 
@@ -220,3 +232,8 @@ a session ending in `hardware_reset`, the next capture read `resetCause` =
 `resetShutdown`, as after a plain connection. So an SWD session as such does not
 cause the change; what remains is something particular to CubeProgrammer's
 loader sessions.
+
+Later (2026-10-04): the open question above was settled by step 3's check on
+2026-10-01 (see [step 3](#implementation-sequence)): it is CubeProgrammer's
+exit, which lets the firmware boot and rewrite `pState`, not anything the
+loader does.

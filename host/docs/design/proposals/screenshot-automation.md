@@ -6,6 +6,11 @@ summary: Pilot plan for deterministic qtcalibrate screenshots and generated anno
 
 # Host User Guide Screenshot Automation
 
+> **Historical.** This plan was partly built: the qtcalibrate screenshot hooks
+> exist, the `qtcalibrate_docshots` target and the annotation renderer do not.
+> The screenshot capture as it exists is described in [host/docs/README.md](../../README.md#screenshots) and the
+> application READMEs it links. Do not quote this plan as current.
+
 ## Purpose
 
 This document describes a repeatable workflow for generating host application

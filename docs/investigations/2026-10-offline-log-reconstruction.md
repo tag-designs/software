@@ -1,16 +1,20 @@
 ---
-type: decision
-status: accepted
-summary: Analysis of whether fw-v0.0.3 downloads can be rebuilt from an SWD capture, the gaps and defects found, and the agreed plan with implementation status.
+type: investigation
+status: closed
+summary: Whether fw-v0.0.3 downloads can be rebuilt from an SWD capture plus the release package, tag by tag, with the gaps and firmware defects the reading found.
 ---
 
 # Offline Log Reconstruction
 
-Status: analysis, with decisions agreed on 2026-10-01 (see
-[Decisions and plan](#decisions-and-plan)). Item 1 is implemented for
-all five distributed targets, each validated on hardware (`tag-rebuild`, 2026-10-02/03; see
-[Implementation status](../decisions/0018-offline-rebuild-capture-backed-source.md#consequences)); the other families are not
-yet. It answers one
+Closed. This analysis led to the five decisions listed under
+[Decisions and plan](#decisions-and-plan), agreed on 2026-10-01. The rebuild
+was built as `tag-rebuild` and validated against live downloads on all five
+distributed targets on 2026-10-02/03
+([decision 0018](../decisions/0018-offline-rebuild-capture-backed-source.md#consequences)).
+How to capture a tag and rebuild its download now is in
+[Capturing a Tag](../bench/capturing-a-tag.md).
+
+The analysis answered one
 question for every tag in the `fw-v0.0.3` firmware package (`d16a930f`):
 **from a raw capture of a tag plus the released firmware package, can we build
 the same SQLite file that `tag-dwnld -f sqlite` would have produced -- and if
@@ -286,38 +290,5 @@ History: the plan agreed on 2026-10-01 is recorded as five decisions:
 [4. tag identity record](../decisions/0021-offline-rebuild-tag-identity-record.md) and
 [5. session facts in the stored configuration](../decisions/0020-offline-rebuild-session-facts-in-stored-config.md).
 
-### Keeping the rebuild in sync with the firmware
-
-The decoders are a second implementation of each family's monitor handlers.
-Nothing makes them follow the firmware automatically, so each kind of drift
-has its own guard.
-
-| What can change | Guard | Catches it |
-| --- | --- | --- |
-| A struct the decoder reads: stored config, state marker, data header or checkpoint, calibration slot, session facts | `_Static_assert` on every offset and size the decoder uses, next to the type, naming `capturesource.cc` | at firmware build time; the images are byte-identical with or without the asserts (`.list` compared, PresTag and IMUTagNandBmp581) |
-| The same change, made deliberately | bump the region's `layout_version` in the identity record; the host refuses a version or record size it does not know | at rebuild time, as a refusal instead of a misread |
-| The download logic in `data_logAck()`: checkpoint search, flag masking, conversions, page termination, holes | `embedded/tools/tag_rebuild_check.py run` on hardware: a mid-run and a final capture, rebuilt and compared table by table with a live download | at release qualification |
-| A host decoder change | `tag_rebuild_check.py compare` over the stored reference pairs | before committing the host change |
-| The SQLite writer | none needed: live downloads and rebuilds use the same writer and the same `TagLogHeader` | by construction |
-| A family with no decoder | `tag-rebuild` refuses it by name | always |
-
-What remains unguarded:
-
-- **Constants the record does not carry.** The GD5F logical block count
-  (2008) is the one so far. It should move into the record's numbers.
-- **Algorithm drift between hardware checks.** A change to `data_logAck()`
-  that keeps every struct is caught only when the hardware check runs. The
-  remedy without hardware is a differential test: compile the real
-  `data_logAck()` against stubs, as `families/PresTag/test/datalog_sim.c`
-  already does; dump the simulated flash as a capture directory with the
-  encoded Acks; and require `CaptureSource` to produce the same Acks byte for
-  byte. Not built yet.
-
-The rule for a firmware change:
-- **A struct listed above:** bump its layout version and update the decoder.
-- **`data_logAck()` or `readConfig()`:** update the decoder and run the
-  hardware check.
-- **A host decoder:** run `compare` on every reference pair.
-
-The reference pairs are kept outside the repository, in `captures/`, at 1 to
-5 MB each.
+How the rebuild is kept in step with the firmware is in
+[Capturing a Tag](../bench/capturing-a-tag.md#keeping-the-rebuild-in-step-with-the-firmware).

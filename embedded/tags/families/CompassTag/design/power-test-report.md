@@ -1,6 +1,7 @@
 ---
 type: investigation
-status: closed
+status: superseded
+superseded-by: embedded/tags/families/CompassTag/design/power-results.md
 summary: Results of the CompassTag Standby-after-attach investigation: idle fell from about 362 uA to 0.38 uA after the DBGMCU fix.
 ---
 
@@ -47,7 +48,7 @@ Gate: every terminal state below 5 µA, post-attach.
 | stopped (FINISHED) | 365.91 µA | 0.38 µA | ≤ 5 µA | **pass** |
 | idle_after_cycle | 366.88 µA | 0.38 µA | ≤ 5 µA | **pass** |
 
-Full log entries: [`power-test-results.md`](power-test-results.md).
+Full log entries: [`power-results.md`](power-results.md).
 
 ### Phase B — repeated attach patterns
 

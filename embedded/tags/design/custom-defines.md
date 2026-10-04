@@ -31,11 +31,16 @@ the next section, not in this table.
 | `PresTag` | `FIRMWARE_STRING`, `BOARD_NAME`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `TAG_IDLE_SLEEP_MODE`, `TAG_CONFIGURED_SLEEP_MODE`, `TAG_HIBERNATING_SLEEP_MODE`, `TAG_FINISHED_SLEEP_MODE`, `TAG_ABORTED_SLEEP_MODE` |
 | `BitPresTag` | `FIRMWARE_STRING`, `BOARD_NAME`, `SWAP_I2C`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `TAG_IDLE_SLEEP_MODE`, `TAG_CONFIGURED_SLEEP_MODE`, `TAG_HIBERNATING_SLEEP_MODE`, `TAG_FINISHED_SLEEP_MODE`, `TAG_ABORTED_SLEEP_MODE`, `STM32_MSIRANGE_FAST`, `RANGE_MULTIPLIER`, `FLASH_WS_SLOW`, `FLASH_WS_FAST` |
 | `BitPresTagMX25R` | Same BitPresTag set as `BitPresTag` |
+| `PresTagRaw` | Same PresTag set as `PresTag`, plus `LPS_LOW_POWER`, `LPS27_POWERUP_MS`, `LPS27_READY_POLL_MS`, `LPS27_READY_POLLS`, `PRESTAG_RUNNING_LONG_SLEEP_MODE`, `TAG_STOP_RTC_TICKER` |
+| `BitTagNG` | `FIRMWARE_STRING`, `PROTOBUFSIZE`, `RV3028_RTC`, `USE_ADXL367`, `EXTERNAL_FLASH`, `TAG_IDLE_SLEEP_MODE`, `TAG_CONFIGURED_SLEEP_MODE`, `TAG_HIBERNATING_SLEEP_MODE`, `TAG_FINISHED_SLEEP_MODE`, `TAG_ABORTED_SLEEP_MODE` |
+| `UIUCTag` | Same set as `BitPresTag`, plus `TAG_TYPE` |
 | `CompassTag` | `FIRMWARE_STRING`, `BOARD_NAME`, `QTMONITOR_VERSION`, `PROTOBUFSIZE`, `ACCEL_CONSTANT`, `MAG_CONSTANT` |
 | `CompassTagAT25` | Same compass set as `CompassTag`, plus `COMPASS_TAG`, `TAG_STORAGE_SPI_DMA_BLOCK_READ`, `TAG_STORAGE_SPI_DMA_BLOCK_WRITE` |
 | `CompassTagAT25Breakout` | Same compass set as `CompassTag`, plus `SWAP_I2C`, `TAG_STORAGE_SPI_DMA_BLOCK_READ`, `TAG_STORAGE_SPI_DMA_BLOCK_WRITE` |
 | `IMUTagNand` | Keeps the U375/BMM350 runtime-power model, uses the `IMUTagNandv1` board line names, selects the GD5F SPI-NAND storage module, overrides the shared RTC/BMM350 bus to hardware I2C1 through `TAG_IMUTAG_RTC_I2C_HARDWARE`, and sets the default returned idle mode to Sleep through `TAG_DEFAULT_IDLE_POWER_MODE` |
 | `IMUTagNandBmp581` | Keeps the IMUTag protocol family, uses the `IMUTagNandv2` board line names, selects the BMP581 pressure module and 2 Gbit GD5F2GM7RE SPI-NAND module, and otherwise mirrors the U375/BMM350 runtime-power model from `IMUTagNand` |
+
+`stop1test` has no `custom.h`.
 
 Other tag directories still have `custom.h` files, but those targets are not
 currently built by `embedded/tags/CMakeLists.txt`. Their defines are useful as

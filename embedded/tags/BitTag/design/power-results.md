@@ -1,14 +1,17 @@
 ---
 type: results
 status: current
-summary: Append-only log of BitTag power measurements with build, board, supply and config for each session.
+summary: Append-only log of BitTag power measurements -- build, board, supply, config, numbers and interpretation per session.
 ---
 
 # BitTag Power Measurement Log
 
-Append-only. One block per measurement session, newest last. The procedure is
-[`power-test-plan.md`](power-test-plan.md); the narrative write-up is
-[`power-test-report.md`](power-test-report.md).
+Append-only. One block per measurement session, newest last, each with its
+numbers and what they mean. The procedure is
+[`power-test-plan.md`](power-test-plan.md), and the shared rig procedure is
+[power testing](../../../../docs/bench/power-testing.md). What went wrong
+getting the first session's numbers is in
+[its investigation](investigations/2026-10-bittag-first-qualification.md).
 
 ## 2026-10-03 — first qualification, fw-v0.5
 
@@ -72,3 +75,27 @@ baseline for future sessions.
 
 Phase B2 (format independence, `bittag-default.json`) and Phase D (activity
 sensitivity) were not run.
+
+### Interpretation
+
+The resting states are the result worth keeping. `IDLE` (0.1224 uA),
+`FINISHED` (0.1214 uA), post-cycle `IDLE` (0.1213 uA) and the cold
+never-attached baseline (0.1227 uA) agree within 1.1%. That matters for two
+reasons: it is 40x below the 5 uA gate, and `IDLE` and `FINISHED` *should*
+match because `tagDevicesApplyPowerState()` routes both through the same
+shutdown, so agreement confirms the prediction rather than merely passing a
+threshold.
+
+The cold baseline is the unusual one. CompassTag's plan notes that a
+never-attached figure cannot normally be obtained, because every tool attaches.
+Here the tag was found already asleep at the start of the session, so a 120 s
+window was taken before anything touched it. It agrees with the post-attach
+number to 0.3 nA, which is the cleanest possible evidence that **BitTag does
+not suffer the CompassTag `DBGMCU`/`C_DEBUGEN` fault** — the risk this plan
+existed to check.
+
+Running is 4.17x resting and reproduced to 0.04% across two 1200 s windows.
+The 1200 s window was chosen because the alignment error for a once-a-minute
+wake is 1/N; at 20 minutes that is 5%, and the two runs came in far inside it.
+
+Per mAh of cell: 342 days resting, 82 days recording.

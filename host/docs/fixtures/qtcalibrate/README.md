@@ -9,16 +9,12 @@ summary: qtcalibrate replay fixture naming and the commands that generate its do
 Store curated `qtcalibrate` sample captures here for documentation screenshot
 generation and replay tooling.
 
-Recommended baseline fixture name:
-
-```text
-good-sphere-v1.json
-```
+The baseline fixture is `qtcalibrate-samples-20260826-174522.json`.
 
 Replay it with:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/good-sphere-v1.json
+qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json
 ```
 
 Use `--replay-percent 0`, `25`, `50`, or `100` to prepare milestone states for
@@ -30,11 +26,11 @@ Generate the baseline milestone screenshot set with:
 qtcalibrate --capture-startup-screenshot
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/good-sphere-v1.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
   --capture-replay-screenshots
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/good-sphere-v1.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
   --capture-orientation-screenshot
 ```
 

@@ -1,10 +1,13 @@
 ---
 type: worklist
-status: open
+status: superseded
+superseded-by: embedded/tags/TODO.md
 summary: Bring-up todo list for IMUTagNand NAND validation, ECC and bad-page handling, block-map checks and host diagnostics.
 ---
 
 # IMUTagNand Bring-Up TODO
+
+> **Superseded.** Merged into [the tag TODO](../TODO.md#imutagnand-and-imutagnandbmp581-nand-bring-up).
 
 ## Near-Term Validation
 

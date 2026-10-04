@@ -1,14 +1,18 @@
 ---
 type: readme
 status: current
-summary: How to preview, build and package the MkDocs user guide and how its sources are laid out.
+summary: The end-user host manual - how to preview, build and package it, how its sources are laid out, and how its screenshots are generated from fixtures.
 ---
 
-# Documentation Template
+# Host User Guide
 
-This directory is a starter for writing package-distributed Qt application
-guides with MkDocs Material. It lives under `host` because these docs
-ship with the host applications rather than the project-level documentation.
+This directory holds the **Ultralight Tags User Guide**, the end-user manual for
+the host applications and command-line tools. It is an MkDocs Material site
+(`mkdocs.yml`, sources in `src/`) that is built by the CMake `docs` target and
+installed with the host packages. It lives under `host/` because it ships with
+the host tools; developer documentation is separate (see
+[docs/documentation-guide.md](../../docs/documentation-guide.md)) and does not go
+here.
 
 ## Preview Locally
 
@@ -66,18 +70,43 @@ Generated package docs are installed alongside the host tools:
 
 ## Source Layout
 
-Markdown source files live in `host/docs/src/`. Writing, image placement, and
-screenshot naming conventions are collected in
-[`src/reference/documentation-guidelines.md`](src/reference/documentation-guidelines.md).
+| Path | Holds |
+| --- | --- |
+| `src/` | The manual: `apps/` (one page per Qt application), `cli/` (one page per distributed command-line tool), `workflows/`, `reference/`, plus `index.md` and `imutag-overview.md`. The sidebar is the `nav` list in `mkdocs.yml`. |
+| `src/images/` | Screenshots and figures, checked in. |
+| `src/reference/documentation-guidelines.md` | Writing, image placement and screenshot naming conventions. |
+| `fixtures/` | Maintainer data for regenerating screenshots; not rendered into the guide. |
+| `design/proposals/` | The original screenshot-automation plans, kept as history. |
 
-Developer design notes for the host documentation workflow live in
-`host/docs/design/`. Start with
-[`design/proposals/screenshot-automation.md`](design/proposals/screenshot-automation.md) for the
-planned Qt application screenshot and annotation pipeline. The follow-on
-[`design/proposals/qtmonitor-screenshot-automation.md`](design/proposals/qtmonitor-screenshot-automation.md)
-describes fake-tag fixtures for `qtmonitor` documentation screenshots.
-Captured qtmonitor fixture data lives under
-[`fixtures/qtmonitor/`](fixtures/qtmonitor/README.md); those fixtures support
-maintainer screenshot generation and are not rendered into the packaged user
-guide. SensorViz sample SQLite logs live under
-[`fixtures/sensorviz/`](fixtures/sensorviz/README.md) for the same purpose.
+## Screenshots
+
+Screenshots of `qtmonitor`, `sensorviz` and `qtcalibrate` are mostly generated
+rather than hand-captured: those three applications have maintainer-only
+command-line options that load fixture data, put the window into a known state,
+and write PNGs into `src/images/` (override with `--screenshot-dir`). These images
+in `src/images/` are hand-made, and are redone by hand:
+
+- every `btdataviz-*.png`, because `btdataviz` has no capture options;
+- the `sensorviz` dialog and interaction images no hook produces
+  (`sensorviz-cursors`, `-derived-views`, `-graph-title-dialog`,
+  `-print-preview`, `-range-dialog`, `-utc-offset-dialog`,
+  `-visible-streams-dialog`);
+- `imutag-render.png` and `TagMonitor1-3.png`.
+
+The guide references the images with ordinary Markdown paths; the `docs`
+build only consumes the checked-in images and never runs the capture. Regenerating screenshots is an explicit maintainer task, and the
+results are reviewed and committed like source.
+
+| Application | Fixture data | Capture options documented in |
+| --- | --- | --- |
+| `qtmonitor` | fake-tag JSON in [`fixtures/qtmonitor/`](fixtures/qtmonitor/README.md), captured from real tags with `qtmonitor-fixture-capture` | [qtmon README, "Screenshot Commands"](../applications/qtmon/README.md#screenshot-commands) |
+| `sensorviz` | SQLite logs in [`fixtures/sensorviz/`](fixtures/sensorviz/README.md) | [sensorviz README, "Documentation Capture Hooks"](../applications/sensorviz/README.md#documentation-capture-hooks) |
+| `qtcalibrate` | a saved calibration sample capture in [`fixtures/qtcalibrate/`](fixtures/qtcalibrate/README.md), replayed as a fake tag | [qtcalibrate README, "Sample Replay"](../applications/qtcalibrate/README.md#sample-replay) |
+
+There is no annotation renderer and no aggregate screenshot target; each
+application is captured by running it directly. The original plans
+([screenshot-automation.md](design/proposals/screenshot-automation.md),
+[qtmonitor-screenshot-automation.md](design/proposals/qtmonitor-screenshot-automation.md),
+and sensorviz's
+[screenshot-capture-plan.md](../applications/sensorviz/design/proposals/screenshot-capture-plan.md))
+are historical.

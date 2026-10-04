@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Hardware shape, module selection and bring-up status of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
+summary: Hardware shape and module selection of the IMUTagNandBmp581 target with BMP581 pressure and 2 Gbit GD5F NAND.
 ---
 
 # IMUTagNandBmp581 Maintainer Notes
@@ -42,7 +42,9 @@ pages.
 `project.mk` selects:
 
 ```make
-debug_log
+protocol_nanopb
+tag_core
+tag_test
 rtc_rv3028
 flash_gd5f2gm7re
 sensor_pressure_bmp581
@@ -50,11 +52,27 @@ sensor_mag_bmm350
 sensor_imu_lsm6dsv16x
 ```
 
+`debug_log` is **not** built. It is left commented out in `project.mk` with a
+warning: on the STM32U375 it stops the tag reaching its terminal sleep (about
+1.7 mA instead of 6.6 uA idle), and it does not belong in shipped code.
+
 The target includes `../families/IMUTag/family.mk`, so shared application
 sources come from `embedded/tags/families/IMUTag/src`. The local
-`src/hal_rtc_lld.c` and `src/power_modes.c` provide the U375 RTC shim and
-idle-hook implementation for this target.
+`src/hal_rtc_lld.c`, `src/hal_spi_v2_lld.c` and `src/power_modes.c` provide the
+U375 RTC shim, the SPI low-level driver override and the idle-hook
+implementation for this target.
 
-## Bring-Up Status
+Target settings in `inc/custom.h` and `project.mk` that matter for behaviour:
 
-History: see [2026-08-imutagnandbmp581-first-breakout-bringup.md](../families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md).
+- `IMUTAG_RUN_SLEEP_STOP2 1`: the RUNNING state sleeps in Stop 2.
+  `IMUTagNand` does not set it and sleeps in Stop 1.
+- `IMUTAG_USE_STM32_RTC_SMOOTH_CALIBRATION 1` and
+  `TAG_RTC_REQUIRE_DIRECT_RV3028_CLKOUT 1`: see
+  [sample timing](../families/IMUTag/design/sample-timing.md).
+- `-DTAG_I2C_BUS_CLEAR=1`: recovers the shared RTC/magnetometer I2C bus after
+  a monitor attach resets the core mid-transaction.
+
+Measured power is in
+[`families/IMUTag/design/power.md`](../families/IMUTag/design/power.md). The
+first bench bring-up is recorded in
+[2026-08-imutagnandbmp581-first-breakout-bringup.md](../families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md).

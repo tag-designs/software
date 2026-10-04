@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: SRAM-resident external flash loaders: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+summary: SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 ---
 
 # External Flash Loaders
@@ -11,8 +11,8 @@ flash **without touching internal flash**. The programmer downloads a loader
 into the tag's SRAM and calls its entry points over SWD. The tag's firmware, its
 persistent configuration and its marker log stay exactly as they were, which is
 the point: a returned tag's internal flash is evidence, and a recovery firmware
-would overwrite it. The case for this approach is in
-[Field Data Extraction](../tags/design/proposals/field-data-extraction.md).
+would overwrite it. The case for this approach is
+[decision 0022](../../docs/decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md).
 
 The images follow STM32CubeProgrammer's external-loader (`.stldr`) contract, so
 `STM32_Programmer_CLI -el` can drive them. The host library in `tagcore` drives
@@ -22,8 +22,8 @@ and `tag-xflash dump` reads a whole part with it. See
 
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
-anything in `common/`. The first STM32U375 and SPI-NAND loader is planned, not
-built, in [U375 SPI-NAND Loader Plan](design/proposals/u375-nand-loader-plan.md).
+anything in `common/`. It also covers the STM32U375 SPI-NAND loader,
+`GD5F2GM7RE_IMUTagNandv2`. Open work is in [TODO.md](TODO.md).
 
 ## Layout
 
@@ -32,16 +32,23 @@ loaders/
   CMakeLists.txt            add_subdirectory per loader
   common/
     make.mk                 build rules: ChibiOS headers + PAL, os-less OSAL, no crt0
+    make-u375.mk            the same rules for STM32U375 (Cortex-M33, U3 startup and platform)
     STM32L432-loader.ld     link map: StorageInfo at 0, image in SRAM1 from 0x20000004
+    STM32U375-loader.ld     the same map for STM32U375
     cfg/stm32l4/            halconf.h (PAL only), mcuconf.h (HSI16, STM32_NO_INIT), osalconf.h
+    cfg/stm32u3/            the same for STM32U375
     inc/loader.h            clock, delay, SPI, and the board hooks a target supplies
     inc/loader_flash.h      the part-driver interface
     inc/dev_inf.h           CubeProgrammer's StorageInfo layout
     src/loader_entry.c      Init / Read / Write / SectorErase / MassErase, and Serve()
     src/loader_clock.c      HSI16 by hand, never the backup domain
+    src/loader_clock_u3.c   STM32U375: MSIS pinned at 12 MHz, nothing else touched
     src/loader_delay.c      DWT busy-wait delays
     src/loader_spi.c        polled, bounded SPI master (STM32 SPIv2)
+    src/loader_spi_u3.c     polled, bounded SPI master (STM32U3 SPI)
     src/at25xe_loader.c     AT25XE part driver
+    src/gd5f_loader.c       GD5F SPI-NAND part driver, read-only, paged
+    src/rv3028_probe.c      RV3028 RTC register probe
   AT25XE_PresTagv3/         one loader: one board + one part
     CMakeLists.txt          two images, RO and RW
     Makefile, project.mk    like a tag target
@@ -49,19 +56,23 @@ loaders/
     src/dev_inf.c           StorageInfo: name, size, sector map
   AT25XE_CompassTagv1/      the same part on the CompassTagv1 board
   AT25XE_UIUCTag/           the same part on the UIUCTag board
+  GD5F2GM7RE_IMUTagNandv2/  GD5F2GM7RE SPI NAND on IMUTagNandv2 (STM32U375); read-only image only
   RV3028_PresTagv3/         not a flash loader: a read-only RTC register probe
-  RV3028_UIUCTag/           the same probe, RTC lines swapped (SWAP_I2C)
+  RV3028_UIUCTag/           the same probe, RTC lines swapped (PROBE_SWAP_I2C)
+  RV3028_IMUTagNandv2/      the same probe on IMUTagNandv2 (STM32U375)
 ```
 
-The probes share `common/src/rv3028_probe.c`; a probe target is only a
-`project.mk` naming its board and, where the lines are swapped,
-`-DPROBE_SWAP_I2C=1`.
+The probes share `common/src/rv3028_probe.c`; a probe target is a `Makefile`,
+a `CMakeLists.txt` and a `project.mk` naming its board and any line mapping:
+`-DPROBE_SWAP_I2C=1` for `RV3028_UIUCTag`, and
+`-DLINE_RTC_SDA=LINE_SDA -DLINE_RTC_SCL=LINE_SCL` for `RV3028_IMUTagNandv2`.
 
 The `Serve()` command block is defined in `include/loader_service.h` at the
 top of the repository, because the host library uses the same definition.
 
 A loader target is laid out like a tag target: `Makefile` includes
-`../common/make.mk`, `project.mk` names the board, MCU config and sources, and a
+`../common/make.mk` (`../common/make-u375.mk` for the STM32U375 targets),
+`project.mk` names the board, MCU config and sources, and a
 target's `./cfg`, `./inc` and `./src` override same-named files in `common/`.
 
 ## Naming: one loader per board and part
@@ -76,6 +87,7 @@ serves both. Names follow ST's `<MEMORY>_<BOARD>` convention:
 | `AT25XE_PresTagv3-RW.stldr` | Erase and program, each verified by read-back. Rescue and bench testing. |
 | `AT25XE_CompassTagv1.stldr`, `-RW` | The same pair for CompassTagAT25 and CompassTagAT25Breakout. |
 | `AT25XE_UIUCTag.stldr`, `-RW` | The same pair for UIUCTag. |
+| `GD5F2GM7RE_IMUTagNandv2.stldr` | Read-only, for IMUTagNandBmp581; not marked `DISTRIBUTE`, so it is not in the release (see [TODO.md](TODO.md)). Paged: the host reads it page by page through `Serve()`'s `READ_PAGE`, raw or through ECC (`tag-xflash nand`, `tag-capture`). |
 
 The two are one source directory built twice. The read-only image is built with
 `LOADER_ALLOW_WRITE=0` and does not contain the erase or program code at all; it
@@ -89,18 +101,20 @@ is loaded.
 cmake --build <build-dir> --target AT25XE_PresTagv3 AT25XE_PresTagv3-RW
 ```
 
-`add_embedded_loader()` in `embedded/CMakeLists.txt` runs make, writes a build
-manifest beside the image, and copies the ELF to `.stldr`. Outputs land in
+`add_embedded_loader()` in `embedded/CMakeLists.txt` runs make and writes a
+build manifest beside the image; the make scaffold (`common/make.mk` or
+`common/make-u375.mk`) copies the ELF to `.stldr`. Outputs land in
 `<build-dir>/embedded/loaders/<dir>/<image>/build/`. Loaders marked `DISTRIBUTE`
 are installed to `share/<package>/loaders/<image>/` and are built by
 `distributed_firmware`, so a tag's loader ships from the same archive as its
-firmware.
+firmware. Only the AT25XE loaders are marked; the NAND loader and the RV3028
+probes are not.
 
 ## Using a loader with STM32CubeProgrammer
 
 Capture the tag's state **first**. The loader overwrites the start of SRAM, and
 that SRAM is evidence. See `embedded/tools/tag_capture_state.py`, and note its
-limitation on STM32L432 under [Open issues](design/loader-runtime.md#open-issues).
+limitation on STM32L432 in [TODO.md](TODO.md).
 
 ```sh
 LDR=$PWD/<build-dir>/embedded/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3/build/AT25XE_PresTagv3.stldr
@@ -139,12 +153,11 @@ A full 4 MB read takes about 70 s.
    rail is off back-powers it.
 5. Update the name string in `src/dev_inf.c`.
 
-`AT25XE_CompassTagv1` was made this way on 2026-10-01. The steps above were
-the whole job: a new `board_loader.c` for PA15/PB3-PB5 with GPIOA and GPIOB
-enabled, a name change, and the CMake entry. It read the part correctly on its
-first run on a tag. The one judgement call was step 4. The magnetometer shares
-SPI1 in the firmware, but on other pins behind a switched rail, so the loader
-leaves those pins alone.
+`AT25XE_CompassTagv1` is an example: it differs from `AT25XE_PresTagv3` by its
+`LOADER_BOARD_INC`, a `board_loader.c` for PA15/PB3-PB5 with GPIOA and GPIOB
+enabled, its name, and its CMake entry. Step 4 is the judgement call: the magnetometer shares SPI1 in
+the firmware, but on other pins behind a switched rail, so the loader leaves
+those pins alone.
 
 **New part** (MX25R, MX25L, ...):
 
@@ -160,17 +173,18 @@ leaves those pins alone.
 3. Check each budget against the datasheet and note the datasheet's figures in
    the commands header.
 
-For **SPI NAND** (GD5F), read raw pages including the spare area, and leave
-bad-block handling and ECC to the host, for the reasons in Field Data
-Extraction. The page-read-to-cache sequence fits the same `loaderFlashRead`
-interface.
+For **SPI NAND**, follow `common/src/gd5f_loader.c`: build with
+`LOADER_FLASH_PAGED=1`, implement `loaderFlashReadPage()`, return each page raw
+or through ECC with its status, and leave bad-block handling, ECC decisions and
+the choice of pages to the host. Its constraints are in
+[Loader Runtime Design](design/loader-runtime.md#stm32u375-and-spi-nand).
 
-**New MCU** (STM32U375): needs its own `cfg/stm32u3/`, a
-`make-u375.mk`-style variant of `make.mk` (different startup and platform
-makefiles), a linker script for its SRAM map, and a second path in
-`loader_spi.c` for the U3's SPI peripheral, which is the `SPI_TXDR` design
-already handled by `tags/common/core/src/spi_bus_polled.inc`. Check the clock
-switch against that part's reference manual; `loader_clock.c` is L4-specific.
+**New MCU:** STM32U375 is the worked example: `cfg/stm32u3/`,
+`make-u375.mk` (its startup and platform makefiles), `STM32U375-loader.ld` for
+its SRAM map, `loader_clock_u3.c` and `loader_spi_u3.c`. Check the assumed reset
+clock against the registers captured after reset: for the U375, ChibiOS assumes
+MSIS = MSIRC1/4 (6 MHz) but the captured registers read MSIRC1/2 (12 MHz), so
+`loader_clock_u3.c` selects MSIRC1/2 explicitly.
 
 ## Testing a loader on the bench
 
@@ -196,4 +210,5 @@ the one before cannot.
    [Loader Runtime Design](design/loader-runtime.md#rescue-erase).
 7. **Compare the RTC backup registers before and after** (`RTC_BKP0R` at
    `0x40002850` on STM32L432, read under reset). The loader must not write the
-   backup domain; see the open issue on `resetCause`.
+   backup domain. A CubeProgrammer session itself changes `resetCause`; see
+[the investigation](design/investigations/2026-10-loader-session-reset-cause.md).

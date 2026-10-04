@@ -1,6 +1,7 @@
 ---
 type: investigation
-status: closed
+status: superseded
+superseded-by: embedded/tags/families/PresTag/design/power-results.md
 summary: Results of the 2026-09-08/09 PresTag power campaign: measured power model, battery lifetime, schedule tests and remaining T4 and F3 items.
 ---
 

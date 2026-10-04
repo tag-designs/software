@@ -6,6 +6,10 @@ summary: Plan, largely built, for fixture logs and capture hooks that generate s
 
 # SensorViz Documentation Screenshot Capture Plan
 
+> **Historical.** This plan was largely built; the screenshot capture as it
+> exists is described in [host/docs/README.md](../../../../docs/README.md#screenshots) and the
+> application READMEs it links. Do not quote this plan as current.
+
 ## Purpose
 
 SensorViz documentation needs real screenshots of data-dependent views,

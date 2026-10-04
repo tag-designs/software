@@ -8,7 +8,7 @@ summary: The 2026-09-08/09 PresTag power campaign -- why Stop 2 looked broken (a
 
 Cut verbatim from [`../power-test-plan.md`](../power-test-plan.md) (sections
 1.2a, 1.2c, 1.2e, 2.0a, 10, 11 and 12) and from the closing handoff in
-[`../power-test-status.md`](../power-test-status.md). Covers 2026-09-08
+the retired `power-test-status.md`. Covers 2026-09-08
 (first execution at `411b046`) through 2026-09-09 (second execution at
 `890a11b`, merged at `e0362fc`). Outcome: Stop 2 works once PA2/INT1 is analog
 (`bf0c331`) and stop delays come from a free-running RTC Alarm A
@@ -16,7 +16,12 @@ Cut verbatim from [`../power-test-plan.md`](../power-test-plan.md) (sections
 at the 90 s default. Section numbers (§) refer to the test plan; the log-cursor
 fix is in [`2026-09-prestag-log-cursor-round-up.md`](2026-09-prestag-log-cursor-round-up.md).
 The measurements themselves are in
-[`../power-test-results.md`](../power-test-results.md).
+[`../power-results.md`](../power-results.md).
+
+**Later change.** `060a566` (2026-09-24) made `ALARM_HOUR` mask only date and
+hours, so hibernation now wakes once an hour. The H3 finding below, that the
+hour alarm behaved as a minute alarm, describes the firmware before that
+commit.
 
 ## From the test plan, sections 1, 2 and 10
 
@@ -270,7 +275,7 @@ status, so a stale configuration can survive a reset-and-start — is open.
 
 ## Handoff at the close of the campaign
 
-From [`../power-test-status.md`](../power-test-status.md), as last written.
+From the retired `power-test-status.md`, as last written.
 
 Updated: **2026-09-09 ~22:00**  ·  Merged to `main` at `e0362fc`
 

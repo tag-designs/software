@@ -2,7 +2,7 @@
 title: Repository README
 type: readme
 status: current
-summary: Top-level CMake options and prerequisites for building host tools and firmware on Windows, macOS and Linux, plus tagged releases and macOS installation.
+summary: Top-level CMake options, prerequisites and build commands for host tools and firmware on Windows, macOS and Linux, and installing a macOS release.
 ---
 
 See the [repository documentation](https://tag-designs.github.io/software/) for
@@ -133,7 +133,9 @@ Windows install and packaging are Release-only. The ZIP contains one shared
 executables, the real applications and command-line tools, Qt DLLs, MSVC
 runtime DLLs, Qt plugins, and QML runtime files.
 Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies are linked
-statically and are not packaged as separate DLLs:
+statically and are not packaged as separate DLLs. The version in the ZIP name
+comes from the highest `vX.Y[.Z]` tag reachable from HEAD at configure time,
+falling back to 2.0.0 when there is none:
 
 ```
 UltralightTags-2.0.0-win64/
@@ -177,7 +179,7 @@ cmake -S . -B build ^
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
 | Qt 6 | Required for Qt host applications and `macdeployqt`. |
 | `pkg-config` | Used to locate `libusb-1.0` for non-vcpkg builds. |
-| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects `/Users/geobrown/Software/vcpkg`. |
+| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects vcpkg at `$HOME/Software/vcpkg` and Qt at `$HOME/qt/6.8.2/macos`. |
 | Homebrew autotools | Required by vcpkg's `libusb` port on macOS: `brew install autoconf autoconf-archive automake libtool`. These are build-only tools, not packaged runtime dependencies. |
 | `libusb-1.0` | Install with a package manager or provide a CMake/pkg-config discoverable installation. |
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
@@ -210,7 +212,8 @@ for example `Ultralight-tags-v3.0.dmg` -- and that name is resolved when CMake
 step.
 
 To cut a release rather than just build one, use `host/tools/release-macos.sh
-vX.Y`, which creates and pushes the tag first for that reason, then runs the
+vX.Y`, which creates the tag first for that reason (and pushes it unless given
+`--no-push`; the tag only has to exist locally for the name), then runs the
 two commands above and verifies the signatures inside the resulting DMG. See
 [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools).
 
@@ -274,135 +277,13 @@ cmake -S . -B build-package \
   -DMACOS_SIGN_APPS=OFF
 ```
 
-## Tagged Releases
+## Releases
 
-Host tools and tag firmware release on separate tag namespaces, because they are
-validated differently. A host tool release is exercised by running it; a firmware
-release has to be bench-tested on hardware for power behaviour before it can fly.
-Tying them together would either demand that validation every time a host tool
-ships, or invite it to be skipped.
-
-| Tag | Workflow | Produces |
-| --- | --- | --- |
-| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools; the signed macOS DMG is added locally |
-| `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
-
-The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
-affect host package naming.
-
-### Host tools
-
-`.github/workflows/release.yml` builds the Windows and macOS host packages on
-GitHub Actions. Pushing a tag matching `vX.Y` or `vX.Y.Z` builds both platforms
-and opens a **draft** GitHub release with the Windows ZIP attached; the packages
-take their version from the same `git tag --merged HEAD` lookup used by local
-builds, so the workflow checks out full history. A `workflow_dispatch` run
-performs the same builds and uploads the packages as workflow artifacts without
-publishing anything, which is the way to exercise the pipeline without cutting a
-tag.
-
-The release stays a draft because it is incomplete: the macOS DMG the runner
-builds is only ad-hoc signed and is never attached. Use
-`host/tools/release-macos.sh vX.Y` on a Mac with the Developer ID certificate to
-cut the tag and build the signed DMG, then upload it to the draft and publish.
-
-| | Windows | macOS |
-| --- | --- | --- |
-| Runner | `windows-2022` | `macos-15` (arm64) |
-| Generator | Visual Studio 17 2022 | Ninja |
-| vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` |
-| Qt | `QT_VERSION` in the workflow env, installed with aqt | same |
-
-The workflow checks out vcpkg at the baseline commit recorded in
-`vcpkg-configuration.json` rather than using the runner's preinstalled copy, so
-manifest resolution is reproducible, and caches built ports keyed on
-`vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
-packages (`BUILD_HOST_DOCS=ON`), matching a local package build.
-
-History: why CI macOS packages are ad-hoc signed and never attached is in the [decision record](docs/decisions/0012-release-macos-package-signed-off-ci.md).
-
-See [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools)
-for the procedure, and [Installing a macOS Release](#installing-a-macos-release)
-for what a user does with the result.
-
-### Tag firmware
-
-`.github/workflows/release-firmware.yml` builds firmware for the tags marked
-`DISTRIBUTE` and attaches each image to the release alongside its build
-manifest, which records the commit, whether the tree was dirty, the ChibiOS
-commit and the branch it tracks, the toolchain and nanopb versions, and the
-SHA-256 of the image itself. That hash, not the commit, is what identifies a
-build: a `-D` leaves no trace in the git hash, so two materially different
-images can report the same commit.
-
-The job never regenerates. It configures with `-DREGENERATE_SOURCES=OFF
--DREPRODUCIBLE_BUILD=ON`, so the committed generated sources are used as they
-are, and a stale one -- along with a dirty tree, a submodule off the branch
-`.gitmodules` tracks, or a toolchain other than the pinned 14.2.1 -- is a
-configure error rather than something quietly worked around. It installs that
-toolchain from Arm's own tarball, verified against the SHA-256 in the workflow,
-because Ubuntu's packaged `gcc-arm-none-eabi` is a different version and the pin
-would reject it.
-
-### Programming a tag from a release
-
-`<Tag>-download` programs whatever is in a build tree. That is right for
-development and wrong for the field, because the image that flies is then never
-the image that was archived. To program a released artifact instead:
-
-```
-python3 embedded/tools/flash_release.py <release>/BitTag
-```
-
-It checks the image against the SHA-256 its build manifest records and refuses
-to program on a mismatch, then invokes the same probe selection the CMake
-targets use. Add `--verify-only` to check without programming, and `--selector`
-to choose an ST-LINK as elsewhere.
-
-A release directory is self-describing -- `BitTag.elf` beside
-`BitTag-build-manifest.json` -- so this needs no build tree, no CMake configure
-and no toolchain. Unzip a release on the machine with the ST-LINK attached and
-run it there.
-
-A matching hash says the image is the one that was archived. It does not say the
-image was ever qualified.
-
-### Recording what went onto a tag
-
-`--label` and `--json` record the flash:
-
-```
-python3 embedded/tools/flash_release.py <release>/BitTag \
-    --label BitTag-017 --json ~/tags/programmed.jsonl
-```
-
-That appends one object per flash. Afterwards, `tag-info --json` reports what
-the tag says about itself. Between them they hold everything a board database
-row needs: the label and the image SHA-256 from the flash, the chip UUID and the
-build time from the tag.
-
-The image SHA-256 is the reason for the file. A tag reports which commit it was
-built from and can never report which *build* of that commit, because an image
-cannot contain its own hash. That number exists only at the moment of
-programming; if it is not written down then, it is gone.
-
-**The two files cannot be joined automatically.** Flash ten BitTags from one
-release and every flash record carries the same commit and the same SHA-256,
-distinguished only by `--label`; every `tag-info` record carries a distinct
-`uuid` and no label. There is no shared key that identifies a tag. Pairing them
-is something the operator does per tag -- flash one, read one, enter one row --
-which is why the label is recorded with the flash and not asked of the tag.
-
-The record is written whether or not programming succeeded, with `programmed`
-saying which. A failed flash that left no row would be indistinguishable from
-one that never happened, and the tag in hand would not be running what the
-record implies.
-
-**A green build does not qualify an image.** It says the sources compile and the
-provenance is recorded. It says nothing about power behaviour, and STM32U375
-Standby entry depends on where code lands in the image, so a change with no
-visible effect on the source can change whether a tag sleeps. Bench-test before
-flight.
+Host tools release on `vX.Y` tags and tag firmware on `fw-vX.Y` tags. What CI
+builds for each, how a firmware image is qualified, how a field tag is
+programmed from a release and recorded, and how the signed macOS package is
+cut are in [Releasing Tag Firmware and Host Tools](docs/release/release-procedure.md).
+Installing a macOS release is covered next.
 
 ## Installing a macOS Release
 
@@ -521,14 +402,14 @@ For an overview of the embedded source tree and how `bases`, `boards`,
 | Requirement | Notes |
 | --- | --- |
 | CMake 3.20 or newer | Required by the top-level build and embedded nanopb helper targets. |
-| Native C++20 compiler | Builds host-side generation helpers used by embedded protocol targets. |
-| Protobuf | Install `protoc` and development libraries; the embedded build still configures shared protocol targets. |
+| Native C and C++ compiler | CMake's top-level `project()` enables C and C++, so configure needs a native compiler even for an embedded-only build. |
+| Python 3 | Needed by the default configure, which builds the pinned `config-gen` virtual environment from `embedded/proto-c/requirements.txt` (with network access the first time) unless `-DREGENERATE_SOURCES=OFF`, and to regenerate a board. The C++ Protobuf library is needed only when `BUILD_HOST` is on. |
 | Git | Used by version-generation helpers. |
 | Arm GNU Toolchain | Provides `arm-none-eabi-gcc`; it must be on `PATH`. Version 14.2.1 is the expected one; a different version warns, and fails under `-DREPRODUCIBLE_BUILD=ON`. Configure with `-DARM_TOOLCHAIN_VERSION=` to record the version without checking it. |
 | ChibiOS | Tracked as the `ChibiOS` git submodule on branch `stable_21.11.x`. |
-| nanopb | Only needed to regenerate protocol sources. The generated `.pb.c`/`.pb.h` for the distributed tags are committed, so an ordinary firmware build needs no generator; set `NANOPB_ROOT` only when changing a `.proto` or an options file, or when configuring with `-DREGENERATE_SOURCES=ON`. The runtime is vendored in the repository. |
+| nanopb generator and `protoc` | Needed by the default configure: the prototype proto variants do not commit their generated sources, so configure fails without a generator (set `NANOPB_ROOT`), and it fails without a `protoc` (normally the one the nanopb distribution ships). Not needed with `-DREGENERATE_SOURCES=OFF`. The generated `.pb.c`/`.pb.h` for the distributed tags are committed, and the runtime is vendored in the repository. |
 | Java runtime | Required by `fmpp`. |
-| `fmpp` | Required for board file generation; it must be on `PATH`. |
+| `fmpp` | Needed by the default configure: the boards of prototype tags and bases do not commit their generated files, so configure fails without `fmpp`. Not needed with `-DREGENERATE_SOURCES=OFF`. |
 | `make` | Required for ChibiOS-based firmware builds. |
 | STM32CubeProgrammer | Optional for building, required for generated download/DFU targets. |
 
@@ -560,6 +441,25 @@ Configure embedded-only:
 ```
 cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF -DBUILD_EMBEDDED=ON
 ```
+
+This default configure (`REGENERATE_SOURCES=AUTO`) needs every generator in the
+table above: `fmpp` and Java, the nanopb generator, `protoc`, and Python 3 with
+network access for the first `config-gen` virtual environment. On a machine
+without them, build the distributed tags from their committed generated sources
+instead:
+
+```
+cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF -DBUILD_EMBEDDED=ON \
+  -DREGENERATE_SOURCES=OFF
+cmake --build build-embedded --target distributed_firmware
+```
+
+That needs only the Arm toolchain, `make`, CMake, a native compiler and the
+ChibiOS submodule. It configures the whole tree, but only targets whose board
+and proto variant both commit their generated files can be built; asking for
+any other (a prototype tag or a base) fails with a message saying to use
+`AUTO`. See
+[Tag Firmware Build Reproducibility](docs/build/firmware-reproducibility.md#what-a-build-actually-needs).
 
 Build tag firmware:
 
@@ -601,39 +501,19 @@ Install built firmware artifacts:
 cmake --install build-embedded
 ```
 
-The install step copies each built firmware target's `.elf`, `.hex`, `.bin`,
-`.dmp`, and `.list` files to `share/UltralightTags/firmware/<target>/`.
+The install step copies the `.elf`, `.hex`, `.bin`, `.dmp`, and `.list` files
+of the tags marked `DISTRIBUTE`, with each one's build manifest, to
+`share/UltralightTags/firmware/<target>/`; external loaders marked `DISTRIBUTE`
+go to `share/UltralightTags/loaders/<loader>/`. Prototype tags and bases are not
+installed. The rules are `OPTIONAL`, so an artifact that was not built is
+skipped silently; build `distributed_firmware` first.
 
 ## Embedded nanopb Options
 
-Embedded protocol C files are generated from the host `.proto` files using
-nanopb. Each embedded tag protocol target is created with `add_nanopb_target`
-under `embedded/proto-c`.
-
-Nanopb options are split into two layers:
-
-| File | Purpose |
-| --- | --- |
-| `embedded/proto-c/default-options/tag.options` | Shared defaults for `tag.proto`. |
-| `embedded/proto-c/default-options/tagdata.options` | Shared defaults for `tagdata.proto`. |
-| `embedded/proto-c/<tag>-proto-c/tag.override.options` | Tag-specific overrides for `tag.proto`. |
-| `embedded/proto-c/<tag>-proto-c/tagdata.override.options` | Tag-specific overrides for `tagdata.proto`. |
-
-At build time, CMake combines the default file and the tag override file into
-the conventional nanopb file names in the build tree:
-
-```
-<build>/embedded/proto-c/<tag>-proto-c/tag.options
-<build>/embedded/proto-c/<tag>-proto-c/tagdata.options
-```
-
-To add a new embedded tag protocol target:
-
-1. Create `embedded/proto-c/<tag>-proto-c/CMakeLists.txt`.
-2. Call `add_nanopb_target(<tag>)`.
-3. Add `tag.override.options`, `tagdata.override.options`, and `default-config.json`.
-4. Add the subdirectory from `embedded/proto-c/CMakeLists.txt`.
-5. Reference the generated interface target as `<tag>_proto` from the embedded firmware target.
+How nanopb options are layered and how to add a tag protocol target are in
+[embedded/design/source-layout.md](embedded/design/source-layout.md#proto-c).
+What is committed and when it is regenerated is in
+[Tag Firmware Build Reproducibility](docs/build/firmware-reproducibility.md).
 
 ## Programming Embedded Hardware
 

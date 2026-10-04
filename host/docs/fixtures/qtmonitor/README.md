@@ -11,6 +11,10 @@ documentation screenshots. Fixtures are maintainer data: they are kept in the
 repository so screenshots can be regenerated, but they are not part of the
 end-user host documentation site.
 
+`<build-dir>` is your host build directory. On macOS the executables are app
+bundles: use `<build-dir>/bin/<tool>.app/Contents/MacOS/<tool>` in place of
+`<build-dir>/bin/<tool>`.
+
 ## Documenting a New Tag Type
 
 Use this checklist when adding a tag type to the `qtmonitor` user guide:
@@ -24,9 +28,9 @@ Use this checklist when adding a tag type to the `qtmonitor` user guide:
 3. Capture a connected tag in the state you want to document, usually `idle`:
 
    ```sh
-   cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor-fixture-capture
+   cmake --build <build-dir> --target qtmonitor-fixture-capture
 
-   /Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor-fixture-capture.app/Contents/MacOS/qtmonitor-fixture-capture \
+   <build-dir>/bin/qtmonitor-fixture-capture \
      --id imutag \
      --label IMUTag \
      --state idle \
@@ -45,9 +49,9 @@ Use this checklist when adding a tag type to the `qtmonitor` user guide:
 6. Generate the tag-specific Configuration screenshots:
 
    ```sh
-   cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor
+   cmake --build <build-dir> --target qtmonitor
 
-   /Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+   <build-dir>/bin/qtmonitor \
      --fake-fixture host/docs/fixtures/qtmonitor/imutag.json \
      --capture-config-screenshots
    ```
@@ -63,7 +67,7 @@ Use this checklist when adding a tag type to the `qtmonitor` user guide:
 9. Validate the result:
 
    ```sh
-   cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target docs
+   cmake --build <build-dir> --target docs
    git diff --check
    ```
 
@@ -76,9 +80,9 @@ Use `qtmonitor-fixture-capture` from the build tree to capture a real connected
 tag:
 
 ```sh
-cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor-fixture-capture
+cmake --build <build-dir> --target qtmonitor-fixture-capture
 
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor-fixture-capture.app/Contents/MacOS/qtmonitor-fixture-capture \
+<build-dir>/bin/qtmonitor-fixture-capture \
   --id compasstag \
   --label CompassTag \
   --state idle \
@@ -86,9 +90,6 @@ cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtm
   --output host/docs/fixtures/qtmonitor/compasstag.json \
   --print-summary
 ```
-
-On non-macOS builds, use the executable path produced under the build tree's
-`bin/` directory.
 
 The tool captures:
 
@@ -162,13 +163,13 @@ show a different default tag type.
 `qtmonitor` can replay one fixture directly for documentation screenshots:
 
 ```sh
-cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor
+cmake --build <build-dir> --target qtmonitor
 
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
   --capture-main-screenshots
 
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
   --capture-config-screenshots
 ```
@@ -182,9 +183,9 @@ user-configurable sensor controls.
 The disconnected first screen does not need a fixture:
 
 ```sh
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --capture-startup-screenshot
 
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --capture-error-log-screenshot
 ```

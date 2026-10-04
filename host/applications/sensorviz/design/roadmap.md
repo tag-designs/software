@@ -1,10 +1,15 @@
 ---
 type: design
-status: current
-summary: Current sensorviz design state, design rules, UI decisions, known limitations and future work.
+status: superseded
+superseded-by: host/applications/sensorviz/README.md
+summary: Former sensorviz development notes; the design is now in the README and the open work in TODO.md.
 ---
 
 # sensorViz Development Notes
+
+> **Superseded.** The current design, rules and known limitations are in
+> [README.md](../README.md); open work is in [TODO.md](../TODO.md). Do not
+> quote this note as current.
 
 This note captures the current `sensorviz` design state and the work that still
 belongs in future passes. The shorter user/maintainer overview is in

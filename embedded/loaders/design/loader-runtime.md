@@ -1,17 +1,23 @@
 ---
 type: design
 status: current
-summary: The external loader contract as traced on hardware and the runtime rules it imposes: no startup code, interrupts or OSAL sleeps, rescue erase, Serve().
+summary: The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
 ---
 
 # Loader Runtime Design
 
-Status: implemented for `AT25XE_PresTagv3` and validated on hardware
-(2026-09-30). This document records the contract a loader runs under, the rules
-that follow from it, and the reasons for each, so that the next loader starts
-from what is known rather than rediscovering it. The orientation and the
+This document records the contract a loader runs under, the rules that follow
+from it, and the reasons for each, so that the next loader starts from what is
+known rather than rediscovering it. The contract and rules were established on
+`AT25XE_PresTagv3` (STM32L432, AT25XE SPI NOR) and validated on hardware; the
+STM32U375 SPI-NAND loader, `GD5F2GM7RE_IMUTagNandv2`, follows the same rules
+with the differences in
+[STM32U375 and SPI NAND](#stm32u375-and-spi-nand). The orientation and the
 add-a-loader checklist are in the [loaders README](../README.md); the case for
-loaders at all is in [Field Data Extraction](../../tags/design/proposals/field-data-extraction.md).
+loaders at all is
+[decision 0022](../../../docs/decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md).
+The design decisions behind the first loader are
+[decision 0016](../../../docs/decisions/0016-field-extraction-first-loader-settled.md).
 
 ## The contract
 
@@ -77,7 +83,7 @@ why.
 
 **The clock is set by hand, and ChibiOS's clock setup is never called.** The
 loader switches SYSCLK to HSI16 (16 MHz), which puts SCK at 8 MHz. That switch
-is about eight register writes (`loader_clock.c`), touching only `RCC_CR`,
+is at most four register writes (`loader_clock.c`), touching only `RCC_CR`,
 `RCC_CFGR` and `FLASH_ACR`. ChibiOS's `stm32_clock_init()` is ruled out
 because it:
 
@@ -184,12 +190,70 @@ the tag is left in the harmless state. A plain full-chip internal erase
 
 ## Performance
 
+These figures were recorded with the first loader, `AT25XE_PresTagv3`, when
+this document was written (commit `326afc32`); no results log holds them and
+they have not been re-measured since.
+
 At SCK = 8 MHz through an ST-LINK-protocol base: 64 KB reads in 0.68 s, and
 4 MB in about 70 s (roughly 60 KB/s). Writing 65 KB takes 2.1 s over blank
 sectors and 4.6 s when 17 sectors need a real erase first. The per-call
 re-initialisation, including the 2 ms wake, is a measurable share of read time
 at CubeProgrammer's chunk size. A driver that controls its own chunking could
 initialise once per session.
+
+## STM32U375 and SPI NAND
+
+`GD5F2GM7RE_IMUTagNandv2` reads the IMUTagNandBmp581's GigaDevice GD5F2GM7RE
+(256 MiB SPI NAND: 2048 data plus 128 spare bytes per page, 64 pages per block,
+2048 blocks). Everything in the runtime rules above applies; what differs is
+below. Why each choice was made is in the
+[decision record](../../../docs/decisions/0023-loader-u375-nand-loader-reads-without-reset.md).
+
+**Build.** `common/make-u375.mk` mirrors `make.mk` with the U3 startup and
+platform makefiles, `cfg/stm32u3/` (PAL-only `halconf.h`, `mcuconf.h` with
+`STM32_NO_INIT`), `STM32U375-loader.ld` (`StorageInfo` at 0, the image in SRAM1
+from `0x20000004`), `MCU = cortex-m33` and `USE_FPU = no`. The first 64 bytes of
+SRAM1 are the firmware's monitor mailbox, which the loader overwrites while the
+core is halted.
+
+**Clock.** `loader_clock_u3.c` pins MSIS at MSIRC1/2 = 12 MHz through
+`RCC_ICSCR1` (MSIRGSEL = 1): a value the part may already be running at, within
+voltage range 2 at the reset's 1 wait state. PWR, the booster, `FLASH_ACR` and
+the backup domain are not touched.
+
+**SPI.** `loader_spi_u3.c` is a bounded polled master for the U3's `SPI_TXDR`
+style peripheral, following `tags/common/core/src/spi_bus_polled.inc`.
+
+**Power and the shared bus.** The NAND is powered from `FLASH_PWR` (PA8), which
+the attach's reset leaves undriven. The loader drives it high, waits, and sends
+`ABh` (release from deep power-down) before anything else; without that the
+NAND runs briefly on residual charge and then drops off the bus mid-read. The
+LSM6DSV16X shares SCK, MISO and MOSI and is always powered, so its chip select
+(PB1) is driven high before any SPI traffic. No other sensor pin is touched.
+See `boards/IMUTagNandv2/standby-pins.md`.
+
+**The part is read, not changed.** `common/src/gd5f_loader.c` never sends
+Reset (`FFh`) and never writes the block-lock register `A0h`; it records `A0h`,
+`B0h`, `C0h` and `F0h` as found. Its one write is `B0h` ECC_EN, through `gd5fSetEcc()`,
+which changes that bit alone, holds the reserved bits low, and refuses if
+OTP_EN or OTP_PRT was found set (OTP_PRT is non-volatile). `Serve()` restores
+`B0h` as found before it returns. There is no program or erase code in the
+image, and it is built read-only only. Opcodes and timing are shared with the
+firmware driver through `tags/common/storage/inc/gd5f_commands.h`.
+
+**Page reads.** `loaderFlashReadPage()` returns 2176 bytes, raw or through ECC,
+with `C0h` and `F0h` read after the page. Every page read is followed by a
+status read; an all-ones reply means the part was not driving MISO, and the page
+is retried rather than returned.
+
+**Paged service.** `include/loader_service.h` version 2 adds
+`LOADER_CMD_READ_PAGE` and widens `detail[]` to carry the page status and the
+registers as found. All loaders are version 2, and the host accepts 1 or 2.
+Choosing which pages to read is the host's job: `tag-xflash nand` and
+`tag-capture` read page 0 of each block raw, skip the block if that page is
+blank, and otherwise read every page of the block raw and through ECC; see
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md).
+On the bench, a scan of the whole part with one used block took 74 s.
 
 ## The Serve() entry point
 
@@ -203,40 +267,19 @@ a non-empty `.bss`, so ld would warn about an RWX segment; `make.mk` passes
 `--no-warn-rwx-segments`. The protocol and the host side are in
 [SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md#loader-protocol-a-service-wrapper-around-the-st-entry-points).
 
+## Driving a loader: CubeProgrammer and the host library
+
+CubeProgrammer can drive a loader, but it is a poor driver for this work: its
+loader contract is undocumented, it rejects a malformed loader silently, its
+sector-number erase is ambiguous between internal and external memory, it knows
+nothing of the capture-first and external-before-internal ordering, and it lets
+the firmware boot as it leaves, which changes the next boot's recorded
+`resetCause` ([investigation](investigations/2026-10-loader-session-reset-cause.md)).
+The host library in `tagcore` (`host/libraries/tagcore/recovery/`, used by
+`tag-xflash` and `tag-capture`) drives the same images through `Serve()` and
+controls the exit; see
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md).
+
 ## Open issues
 
-**A loader session changes the next boot's recorded reset cause.** Settled 2026-10-01: CubeProgrammer's exit, not the loader. History: see [the investigation](investigations/2026-10-loader-session-reset-cause.md).
-
-**`tag_capture_state.py` does not work on STM32L432.** Its SRAM step requests
-256 KB (the U375's size) and fails, and its backup-register step also fails.
-Both come from U375 constants in the script. For the backup registers it
-writes the U375's `RCC_APB1ENR1` at `0x40030C9C` (`RTCAPBEN` is bit 30 there);
-on the L432 that address maps to nothing, and the register is at `0x40021058`
-with `RTCAPBEN` at bit 10.
-The internal-flash regions capture correctly. Until it is fixed, read the
-backup registers by hand: under reset, enable `RCC_APB1ENR1_RTCAPBEN`, then
-read `0x40002850`, 128 bytes.
-
-**The ST entry points do not refresh the watchdog.** `Serve()` does
-(2026-10-01): it writes `IWDG_KR = 0xAAAA` while it waits for commands. The
-ST entry points still do not. A tag whose option bytes select
-the hardware watchdog (`FLASH_OPTR.IWDG_SW` = 0) has it running from reset, and
-the debug freeze covers only a halted core. A long run of loader code -- a mass
-erase above all -- would then be cut off by a reset. The bench PresTag uses the
-software watchdog, so it is unaffected. The fix is a `IWDG_KR = 0xAAAA` write in
-the poll loops, which has no effect when the watchdog is not running; see
-[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md#mcu-reference).
-
-**`MassErase` is untested.** Whether `-e all` with a loader loaded also erases
-internal flash has not been established, and was not tried on a tag with
-firmware worth keeping. Sector erase is tested, through the programmer's
-erase-before-write.
-
-**CubeProgrammer is a poor driver for this.** Its loader contract is
-undocumented, it rejects a malformed loader silently, its sector-number erase is
-ambiguous between internal and external memory, and it knows nothing of the
-capture-first and external-before-internal ordering. A host library on
-`tagcore` is the planned replacement; see
-[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md). The base firmware already implements the ST-LINK
-core-register, run and debug-register commands the calling convention needs,
-and `LinkAdapt` already provides attach-under-reset and memory access.
+Open issues are in the [loaders worklist](../TODO.md).

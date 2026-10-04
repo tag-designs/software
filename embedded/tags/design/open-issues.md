@@ -1,10 +1,13 @@
 ---
 type: worklist
-status: open
+status: superseded
+superseded-by: embedded/tags/TODO.md
 summary: Tracker of known tag firmware defects, separating reproduced faults from ones found by reading code, with resolved entries kept.
 ---
 
 # Open Issues — Tag Firmware
+
+> **Superseded.** Open defects are in [the tag TODO](../TODO.md); resolved entries are in the linked investigations and decision records. Do not add to this page.
 
 Known defects that are understood well enough to write down but are not fixed.
 Each entry says what the evidence actually is, so the next person can tell a

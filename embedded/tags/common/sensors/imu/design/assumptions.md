@@ -85,6 +85,11 @@ required divisor, then calls:
 device->set_trigger(device->trigger_context, divider);
 ```
 
+The divisor is in a **logical 1024 Hz domain**, whatever clock physically
+drives the timer. IMUTag drives its LPTIM from the raw 32.768 kHz RV-3028
+output and sets only the LPTIM prescaler (/32) to present that 1024 Hz count;
+see [IMUTag sample timing](../../../../families/IMUTag/design/sample-timing.md).
+
 Passing divider `0` disables the trigger. Shutdown, accelerometer-only mode,
 wakeup mode, and self-test disable the trigger. Triggered FIFO mode configures
 the sensor first, then enables the MCU trigger at the derived divisor.

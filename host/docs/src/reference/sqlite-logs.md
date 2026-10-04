@@ -135,7 +135,7 @@ IMUTag high-rate tables use elapsed collection time instead:
 | Column | Meaning |
 | --- | --- |
 | `ElapsedUs` | Corrected elapsed microseconds from the start of the retained collection. This is the ordinary time column for IMUTag sensor streams. |
-| `RawElapsedUs` | Nominal elapsed microseconds before clock correction. |
+| `RawElapsedUs` | Nominal elapsed microseconds from the start of the segment, before clock correction. It restarts at zero in every segment, so it is not a timeline for the whole log. |
 | `SegmentId` | Timing segment containing the row. A new segment starts at collection start and after explicit resync events. |
 | `SampleIndex` | Sample index within the segment. |
 
@@ -245,6 +245,27 @@ join Temperature as t on t.Epoch = p.Epoch
 order by p.Epoch;
 ```
 
+## UIUCTag
+
+UIUCTag logs use the same tables and streams as BitPresTag, so the same
+queries work for both.
+
+| Table | Contents |
+| --- | --- |
+| `Voltage` | One row per two-hour block, at the block's start time. |
+| `Pressure` | One row per five-minute sample that has a pressure value, in mbar. |
+| `Temperature` | One row per five-minute sample that has a temperature value, in degrees C. |
+| `Activity` | Five rows per sample, one per one-minute bucket that follows it, as a percentage of the minute spent active. |
+
+A sample or activity word that was never written, or a conversion that failed,
+produces no row; missing measurements are omitted rather than stored as a
+placeholder, so gaps stay visible in plots and out of aggregates. The newest
+sample in a log normally has no activity rows yet, because its activity is
+recorded one sample period later.
+
+Block start times follow the run's first minute boundary, so they are generally
+not multiples of two hours.
+
 ## CompassTag
 
 CompassTag logs contain the BitTag-style summary streams plus a raw compass
@@ -300,8 +321,8 @@ The sample tables share timing columns:
 | Column | Meaning |
 | --- | --- |
 | `SegmentId` | Timing segment containing the sample. |
-| `SampleIndex` | Nominal sample index within the segment. |
-| `RawElapsedUs` | Uncorrected elapsed microseconds. |
+| `SampleIndex` | Nominal sample index within the segment. For `ImuMag`, `ImuPressure` and `ImuTemperature` rows this is the first IMU sample index of the superframe the value belongs to. |
+| `RawElapsedUs` | Uncorrected elapsed microseconds from the segment start: `SampleIndex` times the nominal sample period. |
 | `ElapsedUs` | Corrected elapsed microseconds used by SensorViz. |
 
 `ImuAccel`, `ImuGyro`, and `ImuMag` then add axis columns:
@@ -316,7 +337,38 @@ The sample tables share timing columns:
 
 For most analysis, use `ElapsedUs` as the sample time. Keep `ImuHeader`,
 `ImuSegment`, and `ImuEvent` when you need to inspect timing anchors, restarts,
-or storage skips.
+or storage skips, or when a filter or fusion tool should model clock state and
+timing uncertainty explicitly.
+
+`ImuHeader` has one row per downloaded page header:
+
+| Column | Meaning |
+| --- | --- |
+| `HeaderIndex` | Zero-based header counter in download order. |
+| `SegmentId` | Timing segment active at this header. |
+| `StartElapsedUs` | Corrected elapsed microseconds assigned to the page start. |
+| `Epoch` | RTC epoch seconds from the page header. |
+| `Millisecond` | Millisecond rounded from the 1/1024-second subsecond ticks. |
+| `SubsecondTicks` | Raw subsecond tick field. |
+| `SubsecondHz` | Tick frequency for `SubsecondTicks` (1024). |
+| `Flags` | Raw header flags: `0x0400` `RESYNC` starts a new timing segment; `0x0800` `RESYNC_STORAGE_SKIP` means the previous segment ended with a storage skip; `0x1000` `RESTART_RECOVERY` means the segment follows monitor reset recovery. |
+| `Temperature` | Pressure-sensor temperature in degrees C from the page header. |
+
+`ImuSegment` has one row for collection start and one for each resync. It
+repeats the anchoring header's `HeaderIndex`, `StartElapsedUs`, `Epoch`,
+`Millisecond`, `SubsecondTicks`, `SubsecondHz` and `Flags`, and adds:
+
+| Column | Meaning |
+| --- | --- |
+| `SegmentId` | Monotonically increasing segment id. |
+| `Event` | Why the segment began (see below). |
+| `FirstSampleIndex` | Sample index within the segment at the anchor. |
+| `ConfiguredOdrHz` | IMU output data rate used for nominal sample spacing. |
+| `CorrectionPpm` | Clock correction, in ppm, applied to the segment's samples. |
+
+`ImuEvent` has `StartElapsedUs` (corrected elapsed time of the event),
+`HeaderIndex` (the header that produced it) and `Event` (the decoded event
+name).
 
 ### IMUTag Timing Segments
 
@@ -336,7 +388,9 @@ resync when firmware had to skip external storage after a write failure.
 
 `ImuSegment.Event` records why the segment began, such as `COLLECTION_START`,
 `RESYNC`, `RESYNC_STORAGE_SKIP`, or `RESTART_RECOVERY`. `ImuEvent` stores the
-same discontinuities as viewer markers. When a resync anchor would place the
+same discontinuities as viewer markers: `RESTART_RECOVERY` is a resync caused by
+monitor reset recovery, while `RESYNC_STORAGE_SKIP` indicates a storage
+discontinuity. When a resync anchor would place the
 new segment before samples already written for the previous segment, the
 downloader keeps elapsed timestamps monotonic by starting the new segment no
 earlier than the next expected sample boundary.

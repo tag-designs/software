@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: How tag I2C controllers select hardware or software backends through descriptors, pin policy, RTC migration, and remaining work.
+summary: How tag I2C controllers select hardware or software backends through descriptors, the pin policy, and how the RTC binds to a bus.
 ---
 
 # I2C Backend Model
@@ -160,21 +160,11 @@ After this migration, RV3028/RV3032/RV8803 register code remains unchanged. The
 only code that should care about the backend is `i2c_bus.c` and the board-level
 descriptor setup.
 
-## Migration Steps
+## Current Bindings
 
-Implemented:
-
-1. Namespaced software I2C copy.
-2. Backend kind/config support in `TagI2cController` and `TagI2cDevice`.
-3. Hardware/software pin mode setup in `i2c_bus.c`.
-4. Backend-neutral transfer helper used by `sensor_io.c`.
-5. Default RV3028 RTC binding moved out of `pwr.c` and onto the descriptor
-   path.
-
-Remaining work:
-
-1. Add hardware-I2C descriptors in tags that need hardware I2C.
-2. Override the weak RTC binding for tags whose RTC should use hardware I2C or
-   a tag-local software-I2C fixture.
-3. Build one hardware-I2C target and one mixed development target once those
-   board descriptors exist.
+The IMUTag family overrides the weak RTC binding in
+`families/IMUTag/src/devices.c`: the RV3028 sits on `I2CD1` through the
+hardware backend, shared with the BMM350, with a board-supplied `reset` hook for
+[I2C bus recovery](i2c-bus-recovery.md). Other tags use the weak common
+RV3028 default in `rtc_device.c`. Remaining work on the descriptor model is in
+[the tag TODO](../../../TODO.md).

@@ -49,12 +49,17 @@ active tags unless a tag provides a same-named local override.
   The model allows ChibiOS hardware I2C and a copied, project-namespaced
   software I2C fallback to coexist on different board-level buses while keeping
   sensor and RTC chip drivers backend-neutral.
-- `design/lptim-system-timer.md`: design note for an opt-in ChibiOS ST
-  low-level driver backed by STM32 LPTIM3/LPTIM4, plus a lower-risk Sleep-mode
-  fallback when timer alarms are active.
-- `design/stop-milliseconds-lptim-arr-delay.md`: proposed cleanup for the
-  STM32L432 `stopMilliseconds()` LPTIM1 one-shot delay path, replacing compare
-  match with autoreload match and adding synchronization/wake robustness.
+- `design/lptim-system-timer.md`: proposal, not built, for an opt-in ChibiOS
+  ST driver backed by LPTIM3/LPTIM4. Its Sleep-while-alarm fallback is what the
+  U375 idle hooks do today.
+- `design/stop-milliseconds-lptim-arr-delay.md`: how the STM32L432
+  `stopMilliseconds()` delays on a single LPTIM1 autoreload match.
+- `design/u375-low-power.md`: how STM32U375 tags sleep (Stop 3 terminal, Stop 2
+  or Stop 1 run, Sleep idle) and what to measure after a change.
+- `design/restart-recovery.md`: the recovery contract after a reset.
+- `design/i2c-bus-recovery.md`: clearing a stuck I2C bus on U375 IMUTag targets.
+- `design/investigations/`: dated investigations, including the Standby
+  layout-dependence fault.
 - `debug_log.c`: optional monitor-readable debug-message buffer selected by
   the `debug_log` module.
 
@@ -104,7 +109,10 @@ The standby path has two layers:
 - Generated boards define MCU standby pull policy in `board-customizations.json`
   with each pin's optional `Standby` field. The board build emits
   `board_standby.h`, and `pwr.c` applies those compile-time masks directly to
-  the STM32 PWR pull registers. Static boards that do not generate
+  the STM32 PWR pull registers. Targets that set
+  `TAG_STANDBY_PULLS_CONFIGURED_BY_MCUCONF` (both U375 targets) load them from
+  `mcuconf.h` at HAL startup instead, and the terminal sleep only enables them;
+  see `design/u375-low-power.md`. Static boards that do not generate
   `board_standby.h` still use the legacy `tagDevicesApplyStandbyPins()` hook.
 - `tagDevicesDisableWakeupSources()` and
   `tagDevicesConfigureWakeupSources(state, is_active)`: non-universal wakeup

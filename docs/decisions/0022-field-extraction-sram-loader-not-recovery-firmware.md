@@ -4,7 +4,7 @@ status: accepted
 summary: A returned tag's external flash is read by a read-only loader running from SRAM, never by a recovery firmware, after the SRAM and internal-flash capture, with one loader image per board.
 ---
 
-# NNNN. Field extraction: read external flash with an SRAM loader, not a recovery firmware
+# 0022. Field extraction: read external flash with an SRAM loader, not a recovery firmware
 
 Date: 2026-09-27
 

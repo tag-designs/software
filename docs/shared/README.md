@@ -19,3 +19,9 @@ here or a single link from here. The code stays where it is: `proto/` and
 | External-flash loader service block | [`include/loader_service.h`](../../include/loader_service.h) | [loader runtime](../../embedded/loaders/design/loader-runtime.md), [SWD capture library](../../host/libraries/tagcore/design/swd-recovery.md) |
 | SQLite download schema | `host/libraries/tagcore/sqlitelog` | [user reference](../../host/docs/src/reference/sqlite-logs.md) (authoritative), [writer internals](../../host/libraries/tagcore/sqlitelog/README.md) |
 
+The offline rebuild (`tag-rebuild`) decodes captured tag memory on the host, so
+firmware structs are a contract too: the firmware `_Static_assert`s every struct
+offset the decoders in `host/libraries/tagcore/recovery/capturesource.cc` read.
+When one fires, see [Capturing a tag](../bench/capturing-a-tag.md).
+
+Open work on these contracts is in the [shared contracts worklist](TODO.md).

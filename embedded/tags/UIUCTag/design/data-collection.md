@@ -1,10 +1,15 @@
 ---
 type: proposal
-status: historical
+status: superseded
+superseded-by: embedded/tags/UIUCTag/design/overview.md
 summary: Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
 ---
 
 # UIUCTag Data Collection Integration Plan
+
+> Superseded: this plan has been built. The design as it stands is in
+> [overview.md](overview.md); this document is kept for the record and its
+> progress notes (for example "hardware run pending") are not current.
 
 ## Scope
 
@@ -142,7 +147,7 @@ in `sqlitelog/imutag.cc`:
 | `sqlitelog/uiuctag.cc` (new) | the decoder; add to `libraries/tagcore/CMakeLists.txt` |
 | `sqlitelog.cc` | `case UIUCTAG:` dispatch, and the supported-tag list in its class comment |
 | `txtlogs.cc` | minimal `dumpTagLog(std::ostream &, const UIUCTagLog &)` and case, so `--format text` does not hard-fail |
-| `sqlitelog/README.md` | a "UIUCTag Downloader Fields" section, matching the IMUTag one |
+| `sqlitelog/README.md` | a "UIUCTag Downloader Fields" section, matching the IMUTag one (now: the schema is in [`host/docs/src/reference/sqlite-logs.md`](../../../../host/docs/src/reference/sqlite-logs.md); the README keeps the decoder rules) |
 
 Decoder contract:
 
@@ -639,7 +644,10 @@ is firmware-fixed, and `default-config.json` needs no edit.
   predates the TagUIUC rename, so it is stale independently of this work.
 - `host/libraries/tagcore/sqlitelog/README.md`: a "UIUCTag Downloader Fields"
   section describing the tables, row timing, and the NaN-means-missing rule,
-  matching the existing IMUTag section.
+  matching the existing IMUTag section. (Now: the schema, including a UIUCTag
+  section, is in
+  [`host/docs/src/reference/sqlite-logs.md`](../../../../host/docs/src/reference/sqlite-logs.md);
+  the sqlitelog README keeps only the decoder rules.)
 - The supported-tag list in the `SqliteTagLogWriter` class comment in
   `sqlitelog.h`.
 

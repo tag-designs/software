@@ -10,8 +10,10 @@ Three procedures, and what each one proves.
 
 **Qualifying a release** takes a candidate image and decides whether it may fly.
 CI cannot do this: a build that compiles, links and passes every functional test
-can still draw 240x the idle current, because STM32U375 Standby entry depends on
-where code lands in the image. Only a bench measurement settles it.
+can still draw 240x the idle current, because on this hardware whether a tag
+reaches its sleep mode has depended on where code lands in the image (first
+seen with STM32U375 Standby, which is why the shipping U375 terminal sleep is
+Stop 3). Only a bench measurement settles it.
 
 **Programming a tag** takes a qualified image and puts it on hardware, so that
 what flies is the image that was archived and measured, and so the board
@@ -25,6 +27,67 @@ ID key, and that machine is not a GitHub runner.
 For how the images are made reproducible in the first place, see
 [Tag Firmware Build Reproducibility](../build/firmware-reproducibility.md). This
 document assumes that and concerns itself with what a person does.
+
+## Release tags and what CI builds
+
+Host tools and tag firmware release on separate tag namespaces, because they are
+validated differently. A host tool release is exercised by running it; a firmware
+release has to be bench-tested on hardware for power behaviour before it can fly.
+Tying them together would either demand that validation every time a host tool
+ships, or invite it to be skipped.
+
+| Tag | Workflow | Produces |
+| --- | --- | --- |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools; the signed macOS DMG is added locally |
+| `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
+
+The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
+affect host package naming.
+
+**Tag firmware.** `.github/workflows/release-firmware.yml` builds firmware for
+the tags marked `DISTRIBUTE` and attaches one archive,
+`tag-firmware-fw-vX.Y.tar.gz`, to the release. It holds `firmware/<Tag>/` for
+each tag: the `.elf`, `.map`, `.bin`, `.hex`, `.dmp` and `.list`, with the
+build manifest beside them. The distributed external loaders are built by the
+same target but are not collected into the archive. The manifest records the
+commit, whether the tree was dirty, the ChibiOS commit and the branch it tracks, the toolchain and nanopb versions, and
+the SHA-256 of the image itself. That hash, not the commit, is what identifies a
+build: a `-D` leaves no trace in the git hash, so two materially different
+images can report the same commit.
+
+The job never regenerates. It configures with `-DREGENERATE_SOURCES=OFF
+-DREPRODUCIBLE_BUILD=ON`, so the committed generated sources are used as they
+are, and a stale one -- along with a dirty tree, a submodule off the branch
+`.gitmodules` tracks, or a toolchain other than the pinned 14.2.1 -- is a
+configure error rather than something quietly worked around. It installs that
+toolchain from Arm's own tarball, verified against the SHA-256 in the workflow,
+because Ubuntu's packaged `gcc-arm-none-eabi` is a different version and the pin
+would reject it.
+
+**Host tools.** `.github/workflows/release.yml` builds the Windows and macOS host
+packages on GitHub Actions. Pushing a `vX.Y` or `vX.Y.Z` tag builds both
+platforms and opens a **draft** release with the Windows ZIP attached. The
+packages take their version from the same `git tag --merged HEAD` lookup used by
+local builds, so the workflow checks out full history. A `workflow_dispatch` run
+performs the same builds and uploads the packages as workflow artifacts without
+publishing anything, which is the way to exercise the pipeline without cutting a
+tag.
+
+| | Windows | macOS |
+| --- | --- | --- |
+| Runner | `windows-2022` | `macos-15` (arm64) |
+| Generator | Visual Studio 17 2022 | Ninja |
+| vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` |
+| Qt | `QT_VERSION` in the workflow env, installed with aqt | same |
+
+The workflow checks out vcpkg at the baseline commit recorded in
+`vcpkg-configuration.json` rather than using the runner's preinstalled copy, so
+manifest resolution is reproducible, and caches built ports keyed on
+`vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
+packages (`BUILD_HOST_DOCS=ON`), matching a local package build. The macOS
+package CI builds is ad-hoc signed and never attached
+([decision 0012](../decisions/0012-release-macos-package-signed-off-ci.md));
+section 3 covers the local half.
 
 ## 1. Qualifying a release
 
@@ -42,6 +105,12 @@ variation is not what this measures.
 
 Qualify **per target**, not per tag. Five distributed targets flying means at
 most five runs, on one board each -- not one run per physical tag.
+
+`tag_release_check.py` defaults to `IMUTagNandBmp581` and an IMUTag config, and
+its thresholds are sized for that board. It cannot drive a BitTag: the life-cycle
+walk it runs fails on the first attach to a sleeping BitTag, so BitTag is
+qualified by hand following its
+[power test plan](../../embedded/tags/BitTag/design/power-test-plan.md).
 
 ### Qualify the released image, not a rebuild
 
@@ -79,6 +148,11 @@ flashed removes the need to rely on that.
   A cross-family mismatch -- an STM32U3 image onto an STM32L4 board -- erases
   and writes before failing to start, so the wrong board loses its contents and
   needs reflashing. A same-family mismatch flashes and runs, silently.
+- **Have the host tools and the Joulescope interpreter in place.** The script
+  resets the tag with `<repo>/build-host/bin/tag-reset`, so build the host tools
+  into `build-host/` first, and it measures with `--measure-python`, which
+  defaults to `~/opt/joulescope-mcp/.venv/bin/python`; pass an interpreter that
+  can import `pyjoulescope_driver` if yours is elsewhere.
 - **Set `--config` for the target.** It defaults to
   `power-configs/imutag-400.json`, and `--target` to `IMUTagNandBmp581`. The
   thresholds below are sized for that configuration.
@@ -88,7 +162,7 @@ flashed removes the need to rely on that.
 | Step | What it catches |
 | --- | --- |
 | build and flash | skipped under `--skip-build`, which is the release case. Otherwise: that the image builds and downloads, with the `.elf` copied into the output directory |
-| idle, 4 trials | the Standby stall. A sleeping tag reads about 5 uA and a stalled one about 1035 uA, so the limit is 100 uA and anything between is a failure, not a margin. Repeated because the fault is layout-driven and one reading is not a verdict |
+| idle, 4 trials | a tag that fails to sleep, such as the layout-dependent stall first seen with U375 Standby. A sleeping tag reads about 5 uA and a stalled one about 1035 uA, so the limit is 100 uA and anything between is a failure, not a margin. Repeated because the fault is layout-driven and one reading is not a verdict |
 | life-cycle | every resting state, not just idle: idle, running, stopped, idle again. Fails above `--run-max-ua`, default 760 uA against a healthy 665 uA at 400 Hz from a 3.7 V supply -- run current has twice moved ~200 uA between builds differing only in code layout. The shipping board regulates with an SMPS, so both figures scale with supply voltage; the equivalent pair at 3.3 V is 850 and 750 uA |
 | attach storms, 3 sets | host/firmware races around attach, which is where they surface |
 
@@ -104,8 +178,9 @@ Keep the directory. It is the only record that an image was measured.
 > **`results.json` does not name the image.** It records the commit of the
 > working tree the script ran in, which under `--skip-build` is not necessarily
 > the commit of the image on the tag. Write the release tag and the image
-> SHA-256 into the directory yourself -- `flash_release.py --json` printed both
-> in step 1. A qualification that cannot be matched to the bytes it measured
+> SHA-256 into the directory yourself. `flash_release.py --json` prints nothing;
+> it appends a record to the named file, whose `sha256` field is the image hash
+> and whose `describe` field carries the release tag when the build was at one. A qualification that cannot be matched to the bytes it measured
 > proves nothing later.
 
 ### Qualifying during development
@@ -144,9 +219,11 @@ removes the need to rely on that.
 
 ### Steps
 
-**1. Unzip the release** on the machine with the ST-LINK attached. No build
-tree, CMake configure or toolchain is needed -- a release directory is
-self-describing, with `BitTag.elf` beside `BitTag-build-manifest.json`.
+**1. Unpack the release archive** (`tar -xzf tag-firmware-fw-vX.Y.tar.gz`) on
+the machine with the ST-LINK attached. No build tree, CMake configure or
+toolchain is needed -- each `firmware/<Tag>/` directory is self-describing, with
+`BitTag.elf` beside `BitTag-build-manifest.json`. `<release>` below is the
+unpacked `firmware/` directory.
 
 **2. Program, with the board's label:**
 
@@ -159,12 +236,21 @@ python3 <repo>/embedded/tools/flash_release.py <release>/BitTag \
 This checks the image against the SHA-256 its manifest records and refuses to
 program on a mismatch, prints the provenance it verified, then programs through
 the same probe selection the CMake targets use. `--verify-only` checks without
-programming. `--selector` picks an ST-LINK when several are attached.
+programming. `--selector` picks an ST-LINK when several are attached; a
+`STM32_PROGRAMMER_PROBE` set in the environment overrides it.
 
 It does **not** check that the image belongs on the attached board, and cannot:
 the programmer reports the MCU, not the board, and four of the five distributed
-tags are `stm32l4xx`. Boards are labelled by hand for this reason, and `--label`
+tags are `stm32l4xx`. A device-ID check would catch only a mix between
+`IMUTagNandBmp581` and the other four -- 8 of the 20 wrong pairings -- and would
+pass for `BitTag` onto a PresTag board while printing "verified", which is worse
+than checking nothing. Boards are labelled by hand for this reason, and `--label`
 records which one was claimed rather than verifying it.
+
+The `--json` record is written whether or not programming succeeded, with
+`programmed` saying which. A failed flash that left no row would be
+indistinguishable from one that never happened, and the tag in hand would not be
+running what the record implies.
 
 **3. Confirm the tag runs and read back what it says:**
 
@@ -173,7 +259,10 @@ tag-test                 # the usual check that the hardware works
 tag-info --json          # machine-readable, for the record
 ```
 
-**4. Record the row** in the board database. Between the two files:
+**4. Record the row** in the board database. The database is kept outside this
+repository: every board is labelled, and its git hash and MCU unique ID are
+recorded there before it goes to the field. That is the link from a physical
+tag to what runs on it. Between the two files:
 
 | From | Fields |
 | --- | --- |
@@ -189,9 +278,13 @@ one row.
 ### The field that only exists now
 
 **The image SHA-256 can only be captured at programming time.** A tag reports
-which commit it was built from, forever. It can never report which *build* of
-that commit, because an image cannot contain its own hash. `build_time` is the
-commit date, not a compile time, so it does not distinguish builds either.
+which commit it was built from, forever: `infoAck` returns `githash` because
+`VERSION_HASH` is baked in, and the UUID it returns is the factory `UID_BASE`
+register, read-only and untouched by flashing. It can never report which *build*
+of that commit, because an image cannot contain its own hash; embedding the hash
+changes the bytes being hashed. `build_time` is the commit date, not a compile
+time, so it does not distinguish builds either
+([decision 0010](../decisions/0010-build-image-is-determined-by-the-commit.md)).
 
 If the hash is not written into the row when the tag is programmed, it is gone,
 and the tag can afterwards be tied only to a commit. That is enough when the
@@ -210,7 +303,8 @@ hash is recorded regardless.
 3. **Download the release.**
 4. **Qualify, once per target that will fly.** Attach a board of that type,
    flash it from the release with `flash_release.py`, then
-   `tag_release_check.py --skip-build`. Keep the output directory and write the
+   `tag_release_check.py --skip-build --target <Tag> --config <config>` (BitTag
+   by hand, as above). Keep the output directory and write the
    release tag and image SHA-256 into it.
 5. **Write the result into the release.** The release page is where someone
    decides whether an image may fly, so the answer belongs there and not only
@@ -261,8 +355,13 @@ cell voltage, and a figure carries no meaning without it:
 
 | Target | Qualified | Supply | Idle | Running | Finished |
 | --- | --- | ---: | ---: | ---: | ---: |
-| IMUTagNandBmp581 | 2026-10-03 | 3.693 V | 5.52 uA | 662 uA @ 400 Hz | 5.52 uA |
-| BitTag | not qualified | | | | |
+| BitTag | `fw-v0.5`, 2026-10-03 | 2.496 V | 0.1224 uA | 0.508 uA @ 1 activity bit/s | 0.1214 uA |
+| IMUTagNandBmp581 | not qualified from a release; figures from a power sweep of local build `b025e7ba`, 2026-10-03 | 3.693 V | 5.52 uA | 662 uA @ 400 Hz | not measured |
+
+The BitTag row is from [its results log](../../embedded/tags/BitTag/design/power-results.md);
+the IMUTagNandBmp581 figures are from the
+[IMUTag power results](../../embedded/tags/families/IMUTag/design/power.md),
+where idle is the mean of six readings through the sweep.
 
 **Qualify the released image, not a local build at the same commit.** The two
 are expected to be identical and usually are, but "expected to be" is what
@@ -287,6 +386,10 @@ fork or land a change to one, so it stays on the developer's machine. CI builds
 the macOS package anyway -- ad-hoc signed, as a check that it still builds --
 and leaves it as a workflow artifact that nobody ships.
 
+The ad-hoc signature also fails `codesign --verify` on an app bundle, so that
+package would not launch anyway; the evidence and the rejected alternative are
+in [decision 0012](../decisions/0012-release-macos-package-signed-off-ci.md).
+
 So `release.yml` opens the release as a **draft** with only the Windows ZIP.
 The draft is the signal that the release is incomplete. It becomes publishable
 once the locally built, Developer ID signed DMG is attached.
@@ -304,7 +407,9 @@ checkout of the commit to be released.
 
 **1. Push the commits.** Not the tag -- the commits. CI builds whatever the tag
 points at, and a tag pointing at a commit nobody else has is a release nobody
-can reproduce. The script warns if HEAD is not on a remote branch.
+can reproduce. The script warns if HEAD is not on a remote branch, but only
+when it pushes the tag, so with the `--no-push` order below it says nothing:
+check `git branch -r --contains HEAD` yourself.
 
 **2. Build, sign and verify locally, without pushing the tag.**
 
@@ -339,7 +444,9 @@ in the DMG fails `codesign --verify --strict`. That last check is not
 theoretical: it is what caught `tag-attach-cycle.app` and, behind it, the fact
 that no command line bundle had ever been signed.
 
-The Gatekeeper assessment it prints reads `accepted / source=Developer ID`.
+The Gatekeeper assessment it prints reads `accepted / source=Developer ID`
+(the script's own comment still expects a rejection; acceptance is what the
+release run showed).
 That is worth understanding rather than trusting: the image was just built
 here, so it carries no quarantine attribute, and quarantine is what makes
 macOS demand notarization. The assessment confirms the signature is real and

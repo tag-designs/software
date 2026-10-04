@@ -109,7 +109,7 @@ flowchart TD
   Standby --> StorageDev
 ```
 
-## Planned Cleanup
+## Before Enabling Storage on a New Variant
 
 Before enabling storage on a new tag variant, check the following:
 

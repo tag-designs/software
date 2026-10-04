@@ -22,27 +22,38 @@ generate_configured_board_files(board-example
 
 Older board directories still use `generate_board_files()` with a source-tree
 `cfg/board.chcfg`, `cfg/board.fmpp`, and local FreeMarker templates. Both paths
-write generated board files into the CMake build tree.
+write generated board files into the CMake build tree. Boards used by a
+distributed tag also commit their generated files in `<board>/generated/` and
+regenerate them only when a recorded input changes (see
+[Tag Firmware Build Reproducibility](../../docs/build/firmware-reproducibility.md));
+otherwise the committed files are copied to
+`<build>/embedded/boards/<BOARD_TYPE>/`, so firmware always reads the board
+through `BOARDDIR` in the build tree.
 
 `generate_configured_board_files()` gets ChibiOS templates from the CMake
-`CHIBIOS_DIR` value. During embedded configuration, `embedded/CMakeLists.txt`
-prefers the repository `ChibiOS/` submodule, then `$CHIBIOS_DIR`, then an
-explicit `-DCHIBIOS_DIR=/path/to/ChibiOS`. See
+`CHIBIOS_DIR` value. An explicit `-DCHIBIOS_DIR=/path/to/ChibiOS` wins; when
+it is not set, `embedded/CMakeLists.txt` uses the repository `ChibiOS/`
+submodule, then `$CHIBIOS_DIR` from the environment. See
 [`tools/README.md`](tools/README.md) for the full lookup and generation flow.
 
 ## Active Board Consumers
 
 These are the board targets used by active tag and base firmware targets.
 
+"Committed" marks the boards behind a distributed tag, whose generated files are
+in `<board>/generated/`.
+
 | Board directory | Board target | Generated board include | Generator | Firmware consumers |
 | --- | --- | --- | --- | --- |
 | `BitPresTagv1` | `board-bitprestag` | `BitPresTagv1/board.mk` | `generate_configured_board_files()` | Tags: `BitPresTag`, `BitPresTagMX25R` |
-| `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_configured_board_files()` | Tags: `BitTag`, `BitTag-legacy` |
-| `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()` | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
+| `BitTagNG` | `board_bittagng` | `BitTagNG/board.mk` | `generate_configured_board_files()` | Tags: `BitTagNG` |
+| `BitTagv6` | `board-bittag-v6` | `BitTagv6/board.mk` | `generate_configured_board_files()`, committed | Tags: `BitTag`, `BitTag-legacy` |
+| `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()`, committed | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
 | `IMUTagNandv1` | `board-imutag-nand-v1` | `IMUTagNandv1/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagNand` |
-| `IMUTagNandv2` | `board-imutag-nand-v2` | `IMUTagNandv2/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagNandBmp581` |
-| `IMUTagv1` | `board-imutag-breakout` | `IMUTagv1/board.mk` | `generate_configured_board_files()` | Archived tag variants |
-| `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()` | Tags: `PresTag` |
+| `IMUTagNandv2` | `board-imutag-nand-v2` | `IMUTagNandv2/board.mk` | `generate_configured_board_files()`, committed | Tags: `IMUTagNandBmp581` |
+| `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()`, committed | Tags: `PresTag`, `PresTagRaw` |
+| `Stop1Test` | `board-stop1test` | none: `project.mk` adds `$(BOARDDIR)/Stop1Test` to `ALLINC` and compiles its `board.c` | `generate_configured_board_files()` | Tags: `stop1test` |
+| `UIUCTag` | `board-uiuctag` | `UIUCTag/board.mk` | `generate_configured_board_files()`, committed | Tags: `UIUCTag` |
 | `bittag-base-jlcpcb-v3` | `board-bittag-base-jlcpcb-v3` | `bittag-base-jlcpcb-v3/board.mk` | `generate_board_files()` | Bases: `bittag-base-jlcpcb-v3` |
 | `bittag-base-v7` | `board-bittag-base-v7` | `BITTAG_BASE_V7/board.mk` | `generate_configured_board_files()` | Bases: `bittag-base-v7` |
 | `tag-base-c071-v1` | `board-tag-base-c071v1` | `ST_NUCLEO64_C071RB/board.mk` | `generate_configured_board_files()` | Bases: `tag-base-c071` |
@@ -70,9 +81,10 @@ or `embedded/bases/CMakeLists.txt`.
 
 | Board directory | Board target | Generator | Notes |
 | --- | --- | --- | --- |
-| `BitTagNG` | `board_bittagng` | `generate_board_files()` | Historical/experimental BitTagNG board description. |
+| `IMUTagU375` | `board-imutag-u375` | `generate_configured_board_files()` | STM32U375 IMUTag board description; built, but no active tag includes it. |
+| `IMUTagv1` | `board-imutag-breakout` | `generate_configured_board_files()` | Used only by archived IMUTag variants. |
 | `TagSteval` | `board-steval` | `generate_board_files()` | Used by archived or prototype STEVAL-based tag firmware. |
-| `bittag-base-jlcpcb-v2` | `board-bittag-base-jlcpcb-v2` | `generate_board_files()` | Older BitTag base board generation path. |
+| `bittag-base-jlcpcb-v2` | `board-bittag-base-jlcpcb-v2` | `generate_board_files()` | Older BitTag base board (Tagbase v5c, 28-pin PLCC package); its `add_subdirectory` is commented out, so it is not configured. |
 
 `archive/` contains retired or reference board descriptions and is not part of
 the normal active firmware build.
@@ -93,8 +105,12 @@ When a tag or base needs a `LINE_xxx` name, prefer fixing the corresponding
 board customization or board template input instead of adding aliases in a
 tag-local `custom.h`.
 
-For generated-configured boards, update `cfg/board-customizations.json`. The
-next build of the board target regenerates:
+For generated-configured boards, update `cfg/board-customizations.json`. For a
+board that does not commit its files, the next build of the board target
+regenerates the files below. For a committed board, whether to regenerate is
+decided at configure time and editing the JSON does not trigger a reconfigure:
+reconfigure (or configure with `-DREGENERATE_SOURCES=ON`), and the build then
+regenerates and rewrites `<board>/generated/`, which you then commit:
 
 ```text
 <build>/embedded/boards/<BOARD_TYPE>/board.h

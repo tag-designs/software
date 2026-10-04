@@ -1,20 +1,21 @@
 ---
 type: design
 status: current
-summary: The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, maintenance and known gaps.
+summary: The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
 ---
 
 # Tag Firmware Build Reproducibility
 
-Status: implemented and verified. A firmware build of the distributed tags
-needs the ARM toolchain, `make`, `cmake` and `python3` -- no `fmpp`, no Java
-runtime, no nanopb generator, no protobuf. Every image carries a manifest keyed
+A firmware build of the distributed tags configured with
+`-DREGENERATE_SOURCES=OFF` needs only the ARM toolchain, `make`, `cmake`, a
+native compiler and the ChibiOS submodule -- no `fmpp`, no Java runtime, no
+nanopb generator, no `protoc`, no Python. The default configure (`AUTO`) still
+needs all of those, because prototype boards and proto variants generate their
+sources (see [What a build actually needs](#what-a-build-actually-needs)).
+Generated sources are committed for the distributed set, every image carries a manifest keyed
 on its own SHA-256, and the conditions that would quietly make a build
-unreproducible are detected at configure time. CI has built all five distributed
-tags on a runner and every hash its manifests record was verified against the
-bytes shipped. [What was not done](#what-was-not-done) lists the gaps, which are
-real and deliberate -- the largest being that nothing yet collects a manifest
-from a bench-built image, which is how most flown firmware is flashed.
+unreproducible are detected at configure time. A commit determines its image
+byte for byte. The gaps that remain are in the [build worklist](TODO.md).
 
 ## Purpose and scope
 
@@ -62,9 +63,9 @@ tiers:
 | distributed | `add_embedded_target(... DISTRIBUTE)` | reproducible: committed generated sources, pinned tool versions, version agreement enforced, firmware in the release |
 
 The distributed set is `BitTag`, `CompassTagAT25`, `IMUTagNandBmp581`, `PresTag`
-and `UIUCTag` -- five of the fourteen configured. `BitTag-legacy` was marked and
-then unmarked: it does not currently build, which is exactly the kind of thing
-the tier is meant to keep out of a release.
+and `UIUCTag` -- five of the fourteen configured. `BitTag-legacy` is not
+marked: it does not currently build, which is exactly the kind of thing the tier
+is meant to keep out of a release.
 
 **Nothing downstream is declared twice.** The proto-c variants and the boards
 that need the same treatment are *derived* from the tag markings:
@@ -91,7 +92,7 @@ build already acts on, rather than by editing a list in a document.
 `*.override.options`. Fully described by the commit.
 
 **2. Generated from files in the repository.** For the distributed set these are
-now committed, so they are also category 1 -- described by the commit, and not
+committed, so they are also category 1 -- described by the commit, and not
 rebuilt unless their recorded inputs change:
 
 | Output | From | Committed for the distributed set? |
@@ -105,7 +106,7 @@ rebuilt unless their recorded inputs change:
 **3. Shared external code.** ChibiOS and nanopb. Both are compiled into the
 image, and neither is described by the firmware sources.
 
-- **ChibiOS** is a submodule. The superproject records a SHA, and configure now
+- **ChibiOS** is a submodule. The superproject records a SHA, and configure
   checks that the submodule is at that SHA, is clean, and that the SHA is on the
   branch `.gitmodules` says it tracks (`stable_21.11.x`). The last of those
   catches something none of the others can: a pointer moved to `master` and
@@ -129,7 +130,7 @@ SHA-256 of every input the generators consume, plus the pinned tool version.
 | Inputs hashed | both `.proto` files, both halves of each options file, `default-config.json`, `config-gen.py`, `CombineFiles.cmake` | `board-customizations.json`, `generate_board_chcfg.py`, `board.fmpp.in`, the ChibiOS pin XML, `board.{c,h,mk}.ftl`, and every file in ChibiOS `tools/ftl/libs/` |
 | Tool line | `nanopb <version>` | `chibios-templates <processor>` |
 
-Two decisions in there are worth keeping in mind:
+Three choices in there are worth keeping in mind:
 
 - **Timestamps are not used.** Git does not preserve mtimes, so a fresh clone
   would look stale and a checkout could look fresh when it is not.
@@ -139,8 +140,10 @@ Two decisions in there are worth keeping in mind:
   contents are still hashed, so a submodule bump still shows up.
 - **`fmpp`'s own version is deliberately absent** from the board manifests. A
   manifest has to compare equal across machines, and a tool version reported on
-  one machine and not another would cause false staleness. What a given machine
-  had belongs in the per-image build manifest instead.
+  one machine and not another would cause false staleness. Instead configure
+  checks the `fmpp` it finds against the `FMPP_VERSION` pin (0.9.16) whenever
+  boards can regenerate. The per-image build manifest does not record `fmpp`
+  either; that gap is in the [build worklist](TODO.md).
 
 ### The two switches
 
@@ -153,9 +156,9 @@ Two decisions in there are worth keeping in mind:
 | `OFF` | never regenerate; a stale committed source is reported, not fixed |
 
 `REPRODUCIBLE_BUILD` decides how loudly anything unreproducible is reported.
-`OFF` (the default) warns, so day-to-day work is not obstructed. `ON` turns every
-such warning into a configure error, which is how CI and release qualification
-build.
+`OFF` (the default) warns, so day-to-day work is not obstructed. `ON` turns those
+warnings into configure errors (the two exceptions are marked in the table
+below), which is how CI and release qualification build.
 
 Under `OFF`, targets that commit nothing -- prototypes and bases -- are
 configurable but unbuildable: asking for one fails with a message saying to use
@@ -165,22 +168,25 @@ is actually requested says the same thing where it matters.
 
 ### What is checked at configure time
 
-Each of these goes through `reproducibility_problem()` in
-`cmake/ReproducibilityChecks.cmake`, so `REPRODUCIBLE_BUILD=ON` makes it an
-error:
+Most of these go through `reproducibility_problem()` in
+`cmake/ReproducibilityChecks.cmake`, so `REPRODUCIBLE_BUILD=ON` makes them
+errors. The two marked *warning only* stay warnings even in strict mode:
 
 | Condition | How it is detected |
 | --- | --- |
 | Working tree dirty | `git status --porcelain`, modified tracked files only |
-| Vendored nanopb runtime edited | the same, scoped to `embedded/thirdparty` |
+| Vendored nanopb runtime edited | `git status --porcelain --untracked-files=normal`, scoped to `embedded/thirdparty`, so an added file counts too |
 | Submodule uninitialized, off its recorded commit, or unmerged | `git submodule status` leading `-`, `+`, `U` |
 | Submodule clean but dirty inside | `git status --porcelain` within it |
 | Submodule not on the branch `.gitmodules` tracks | `git merge-base --is-ancestor HEAD origin/<branch>` |
 | Toolchain other than `ARM_TOOLCHAIN_VERSION` | `arm-none-eabi-gcc -dumpversion` |
+| `fmpp` other than `FMPP_VERSION` (0.9.16), when boards can regenerate | `fmpp --version`; skipped under `REGENERATE_SOURCES=OFF` |
 | Committed generated sources stale | manifest comparison, per variant and per board |
 | Generator version disagrees with the vendored runtime | `nanopb_generator --version` |
-| Distributed target that commits nothing, or committed files nothing distributes | the derived sets, compared |
-| HEAD not at a tag | `git describe --exact-match`, strict mode only |
+| `protoc` and the pinned Python protobuf (`embedded/proto-c/requirements.txt`) are different releases, when sources can regenerate | `protoc --version` against the installed package version |
+| Distributed target that commits nothing | the derived sets, compared |
+| Committed generated files that no distributed tag uses (*warning only*) | the derived sets, compared |
+| HEAD not at a tag (*warning only*) | `git describe --exact-match`, strict mode only |
 
 Untracked files are not treated as dirty: nothing compiles them, and warning
 about scratch files would make the warning routine and so ignorable.
@@ -198,17 +204,18 @@ that exists. A missing artifact is recorded as `null` rather than omitted, so a
 truncated build is visible rather than merely unremarkable.
 
 One field is emptier than it looks. `nanopb_generator` records the version the
-generator reported at configure time, and under `REGENERATE_SOURCES=OFF` no
-generator is looked for, so a CI manifest leaves it blank. That is correct --
-nothing generated anything, so there is no version to record -- but it means a
-CI manifest carries slightly less than a bench-built one, and the absence should
-not be read as a missing generator having been used.
+generator reported at configure time. Configure looks for a generator in every
+mode -- under `NANOPB_ROOT` first, then on `PATH` -- and records its version
+when it finds one, even under `REGENERATE_SOURCES=OFF`, where nothing runs it.
+CI installs no generator, so a CI manifest leaves the field blank. Neither a
+blank nor a filled field says that a generator produced the sources in that
+build.
 
 **In the image**, `version.h` defines `VERSION_HASH`, `GIT_SHA`, `GIT_DATE`,
-`GIT_COMMIT_SUBJECT`, `GIT_REPO`, and now also `GIT_DIRTY`, `GIT_DIRTY_STR`,
+`GIT_COMMIT_SUBJECT`, `GIT_REPO`, `GIT_DIRTY`, `GIT_DIRTY_STR`,
 `CHIBIOS_SHA` and `NANOPB_RUNTIME_VERSION`. The last four are macros that cost
-nothing unless referenced, and nothing references them yet -- see
-[What was not done](#what-was-not-done).
+nothing unless referenced, and nothing references them yet -- see the
+[build worklist](TODO.md).
 
 ### What a build actually needs
 
@@ -216,23 +223,39 @@ nothing unless referenced, and nothing references them yet -- see
 | --- | --- |
 | `arm-none-eabi-gcc` 14.2.1 and binutils | always; version is pinned and checked |
 | `make`, `cmake` | always |
-| `python3` | only to regenerate a board, or to build the `config-gen` virtualenv |
-| `fmpp` and a Java runtime | only to regenerate a board |
-| `nanopb_generator` | only to regenerate protocol sources |
-| `protobuf` 5.28.1 in a virtualenv, and a `protoc` | only to regenerate protocol sources; both come from pins, not from the machine |
+| `python3` | to regenerate a board, and to build the `config-gen` virtualenv |
+| `fmpp` and a Java runtime | to regenerate a board |
+| `nanopb_generator` | to regenerate protocol sources |
+| `protobuf` 5.28.1 in a virtualenv, and a `protoc` | to regenerate protocol sources; the protobuf version is pinned in `requirements.txt`, and `protoc` is checked against it |
 
-With `REGENERATE_SOURCES=OFF` none of the optional rows are looked for at all:
-no virtualenv is created, no interpreter or `protoc` is searched for, the C++
+"To regenerate" includes the default configure. Under `AUTO`, the ten boards
+configured from customizations without a `generated/` directory (four bases and
+six prototype boards) and the four proto variants without one (`bittag-legacy`,
+`bittag-ng`, `prestagraw`, `bitprestag`) always regenerate, so on a machine
+without `fmpp` or a nanopb generator `AUTO` stops at configure with an error. It
+also builds the `config-gen` virtualenv, which needs network access the first
+time, and stops if no `protoc` is found -- it looks beside the nanopb generator,
+then at `Protobuf_PROTOC_EXECUTABLE`, then on `PATH`.
+
+With `REGENERATE_SOURCES=OFF` none of the optional rows are needed: no
+virtualenv is created, no interpreter or `protoc` is searched for, the C++
 protobuf library is not looked for either, and `fmpp` and `python3` are looked
-up leniently and demanded only where a board actually regenerates.
+up leniently. Configure still covers the whole tree, but only a target whose
+board and proto variant both commit their generated files can be built without
+the generators; the distributed tags qualify. Asking for a target whose board or
+proto variant is generated fails with a message saying to use `AUTO`, except
+for the three boards still on the older `generate_board_files()` path
+(`bittag-base-jlcpcb-v3`, `tag-breakout-base-jlcpcb32-v1`, `TagSteval`), which
+run `fmpp` at build time in every mode.
 
 ### CI
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `embedded-reproducibility.yml` | every push and pull request | runs `cmake/CheckGeneratedSourcesFresh.cmake` over the committed proto variants and boards |
+| `embedded-reproducibility.yml` | push to `main`, pull requests, and `workflow_dispatch` | runs `cmake/CheckGeneratedSourcesFresh.cmake` over the committed proto variants and boards |
 | `release-firmware.yml` | `fw-vX.Y` tags, and `workflow_dispatch` | installs the pinned toolchain, configures with `-DREGENERATE_SOURCES=OFF -DREPRODUCIBLE_BUILD=ON`, builds `distributed_firmware`, publishes images with their manifests |
-| `release.yml` | `vX.Y` tags | host tools only, unchanged |
+| `generated-sources-reproduce.yml` | weekly, and `workflow_dispatch` | installs the pinned generators, regenerates every committed source, and fails if the generated code differs from the tree ([decision 0014](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md)) |
+| `release.yml` | `vX.Y` tags | host tools only |
 
 The freshness check reuses `InputManifest.cmake`, so it cannot disagree with what
 the build writes, and it reads the `.proto` list out of `proto/CMakeLists.txt`
@@ -243,12 +266,8 @@ is unnecessary would be self-defeating. ChibiOS is checked out because the board
 templates are inputs, and `REQUIRE_CHIBIOS=ON` makes a missing submodule a
 failure, since in CI a skipped check looks exactly like a passing one.
 
-History: the first end-to-end run and its toolchain-checksum failure are in the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).
-
-Firmware and host tools use separate tag namespaces because they are validated
-differently. A host tool release is exercised by running it; a firmware release
-has to be bench-tested for power before it can fly. Coupling them would either
-demand that validation every time a host tool ships, or invite it to be skipped.
+CI builds and publishes candidates; releasing them is in
+[Releasing Tag Firmware and Host Tools](../release/release-procedure.md).
 
 ## Maintenance
 
@@ -266,8 +285,8 @@ image.
 | Add a board | as for any board; only create `generated/` if a distributed tag uses it |
 | Change a `.proto` or an options file | build normally under `AUTO`, then commit what changed under `generated/` |
 | Bump ChibiOS | update the submodule, rebuild the boards under `AUTO`, commit the regenerated board files |
-| Bump nanopb | replace the vendored directory, point `NANOPB_ROOT` at the matching generator, regenerate, commit |
-| Change the ARM toolchain | update `ARM_TOOLCHAIN_VERSION` in `CMakeLists.txt` and the URL and SHA-256 in `release-firmware.yml` |
+| Bump nanopb | replace the vendored directory, point `NANOPB_ROOT` at the matching generator, update the protobuf pin in `embedded/proto-c/requirements.txt` and `NANOPB_URL`/`NANOPB_SHA256` in `generated-sources-reproduce.yml`, regenerate, commit |
+| Change the ARM toolchain | update `ARM_TOOLCHAIN_VERSION` in `CMakeLists.txt` and the URL and SHA-256 in `release-firmware.yml` and `generated-sources-reproduce.yml` |
 
 ### Promoting a tag to distributed
 
@@ -326,14 +345,20 @@ The runtime and the generator must move together, and configure enforces it.
    a half-finished upgrade is a configure error rather than a coin flip.
 2. Update `CHECKSUMS.txt` and the README recording the upstream tag and commit.
 3. Point `NANOPB_ROOT` at a matching generator distribution.
-4. Regenerate under `ON` and commit. The generated headers carry the generator
+4. Set `protobuf` in `embedded/proto-c/requirements.txt` to the release of the
+   `protoc` that distribution ships (protoc 28.1 is protobuf 5.28.1). Configure
+   compares the two and reports a mismatch, which strict mode makes an error.
+5. Update `NANOPB_URL` and `NANOPB_SHA256` in
+   `.github/workflows/generated-sources-reproduce.yml`.
+6. Regenerate under `ON` and commit. The generated headers carry the generator
    version in a comment, so the diff shows the bump.
 
 ### Changing the ARM toolchain
 
 `ARM_TOOLCHAIN_VERSION` in `CMakeLists.txt` is what every build checks against;
-`release-firmware.yml` pins the tarball URL and its SHA-256 for CI. Both must
-move together, or CI installs one version and the build rejects it.
+`release-firmware.yml` and `generated-sources-reproduce.yml` each pin the
+tarball URL and its SHA-256 for CI. All three must move together, or CI installs
+one version and the build rejects it.
 
 The version compared is what `arm-none-eabi-gcc -dumpversion` reports, which for
 Arm's `14.2.rel1` release is `14.2.1`. Setting `ARM_TOOLCHAIN_VERSION` to an
@@ -356,11 +381,10 @@ with no metadata to trust and no firmware change required. The embedded git
 identity stays useful as a human-readable label and for live readback over the
 monitor, but it is not the key.
 
-This is observable rather than theoretical: two builds of consecutive commits
-produced `.elf`, `.bin` and `.hex` of *identical size* and entirely different
-hashes, because `SHAStr` carries the commit into the image. The converse is the
-case that matters -- same commit, different bytes -- and the manifest's hash is
-what distinguishes it.
+Because `SHAStr` carries the commit into the image, builds of different
+commits always have different hashes, even when nothing else changed. The
+converse is the case that matters -- same commit, different bytes -- and the
+manifest's hash is what distinguishes it.
 
 ## The archive
 
@@ -384,167 +408,19 @@ toolchain will not install cleanly; the recorded versions make a rebuild
 *possible*, but nothing downstream should depend on it. Reproducibility is the
 cheaper of two insurance policies, not a substitute for the other.
 
-## What was not done
+## Decisions and open work
 
-### The dirty flag is not carried into the image
+The choices behind this model, with the evidence for each:
 
-`version.h` defines `GIT_DIRTY`, `GIT_DIRTY_STR`, `CHIBIOS_SHA` and
-`NANOPB_RUNTIME_VERSION`, but no firmware source references them, so none of it
-reaches the image. A tag returned from the field still cannot say "the tree I was
-built from had uncommitted changes" over the monitor; only the build manifest
-says that, and only if the manifest was kept.
+- [0010: an image is determined by its commit](../decisions/0010-build-image-is-determined-by-the-commit.md) --
+  no compile-time timestamps or clone-dependent strings in the image; verified
+  byte-identical across machines.
+- [0011: nanopb is pinned at 0.4.9.1](../decisions/0011-build-pin-nanopb-0-4-9-1.md).
+- [0013: `config-gen` is Python, with protobuf pinned](../decisions/0013-build-config-gen-in-python-with-pinned-protobuf.md).
+- [0014: generated sources reproduce on any platform](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md),
+  checked by `generated-sources-reproduce.yml`.
+- [0015: `fmpp` and its rendering environment are pinned](../decisions/0015-build-pin-fmpp-and-its-rendering-environment.md).
 
-This was left deliberately. Putting a new string into the image shifts its
-layout, and Standby entry on the STM32U375 depends on where code lands, so
-wiring these into the monitor is a firmware change that deserves its own commit
-and its own bench measurement -- not a side effect of recording provenance.
-
-### Determinism, verified within and across machines
-
-History: see [image determined by commit](../decisions/0010-build-image-is-determined-by-the-commit.md).
-
-### The freshness check cannot detect a divergent generator -- a second job does
-
-History: see [platform decision](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md).
-
-### The old board generation path is untouched
-
-`generate_board_files` -- the static flow that renders `cfg/*.ftl` from a
-checked-in `board.chcfg` -- has none of this: no manifest, no committed output,
-no staleness check. Four boards use it: `TagSteval`,
-`bittag-base-jlcpcb-v2`, `bittag-base-jlcpcb-v3` and
-`tag-breakout-base-jlcpcb32-v1`. None is behind a distributed tag, which is why
-it was left alone.
-
-If one ever is, the consistency check does notice: the board would appear in the
-derived distributed set but never in `ULTRALIGHT_BOARD_COMMITTED`, which only
-`generate_configured_board_files` appends to, so configure would report it as a
-distributed board that does not commit its generated files. The message would
-then be misleading, because the remedy it suggests -- create a `generated/`
-directory and regenerate -- does nothing on the old path. The right response is
-to port the board to `generate_configured_board_files` first.
-
-### `fmpp` is pinned, in two parts
-
-History: see [fmpp pin decision](../decisions/0015-build-pin-fmpp-and-its-rendering-environment.md).
-
-### Programming a field tag
-
-`embedded/tools/flash_release.py` programs a tag from a released artifact,
-verifying the image against the SHA-256 its manifest records and refusing on a
-mismatch. It needs no build tree: a release directory is self-describing, so it
-runs on whatever machine has the ST-LINK attached.
-
-That closes the gap where the image that flies was never the image that was
-archived -- `<Tag>-download` programs a build tree, which is right for
-development and wrong for the field.
-
-It does not verify that the image belongs on the board attached. It cannot: the
-programmer reports the MCU, not the board, and four of the five distributed tags
-are `stm32l4xx`. A device-ID check would catch only a mix between
-`IMUTagNandBmp581` and the other four -- 8 of the 20 wrong pairings -- and would
-pass for `BitTag` onto a PresTag board while printing "verified", which is worse
-than checking nothing. Choosing the right release directory is the operator's,
-and boards are labelled for that reason.
-
-**What links a physical tag to what is running on it is a database, kept
-outside this repository.** Every board is labelled, and its git hash and MCU
-unique ID are recorded there before it goes to the field. That is the backward
-link, and it predates all of this.
-
-**The image hash can only be captured at programming time.** A tag reports its
-commit forever -- `infoAck` returns `githash` because `VERSION_HASH` is baked
-in, and the UUID it returns is the factory `UID_BASE` register, read-only and
-untouched by flashing. But an image cannot contain its own SHA-256: embedding
-the hash changes the bytes being hashed. No better firmware fixes that; it is a
-property of hashing, not a gap in the protocol.
-
-`tag-info` returns `build_time`, but that is now the commit date rather than a
-compile time, so it says nothing about which build a tag is running -- by
-design. It used to distinguish builds to the second, which sounds useful and was
-not: `__TIME__` recorded when `monitor.c` was compiled rather than when the image
-was linked, so an incremental rebuild could change the image and leave the
-timestamp untouched. It was traded for the possibility of two builds of a commit
-being identical, after which there is nothing to distinguish.
-
-The refinement this work argues for is therefore one field, recorded at the one
-moment it is available: **the SHA-256 of the image, alongside the git hash.**
-Until the build is byte-reproducible, that hash is the only thing that
-distinguishes two builds of a commit with certainty. The whole premise here is that a git hash does
-not identify an image -- a `-D`, an uncommitted change or a different compiler
-leaves it untouched -- so a database keyed on it cannot distinguish two builds
-that differ in ways that matter. Every release artifact carries that SHA-256 in
-its manifest, and `flash_release.py` prints it before programming.
-
-### Nothing records whether an image was qualified
-
-This is the one that matters.
-
-The rule the rest of this depends on is that **a field tag is programmed from a
-release, never from a build tree.** A release is built by a machine nobody edits,
-from a commit, with a manifest recording the hash of every image; a build tree is
-whatever a developer had that afternoon. `flash_release.py` enforces the
-mechanics -- it will not program an image whose bytes do not match its manifest
--- but nothing enforces that the release was ever qualified.
-
-`tag_release_check.py` produces `results.json` with a verdict per check and the
-commit it was built from. It has no field for the SHA-256 of the image it
-measured, and no way to be pointed at a released artifact rather than a local
-build. So the chain has a gap in the middle: the release names its images by
-hash, the board database names what was programmed, and the qualification
-between them names only a commit.
-
-Reproducibility narrows that gap without closing it. A commit now determines its
-image, so a qualification of commit X does apply to the release built from X --
-but only because that identity was separately established, not because the
-record says so. A qualification that named the hash it measured would stand on
-its own.
-
-### Bench-built images have nowhere to put their manifests
-
-An image flashed from a developer's bench produces a manifest in the build tree
-and nothing collects it: no archive location, no naming convention.
-
-This matters less than it first appeared. Bench builds are for development, and
-the rule above says they do not fly -- so the provenance that goes uncollected
-is provenance for images that were never going to need it. It becomes pressing
-only if a bench-flashed tag ever reaches the field, which is the thing the rule
-exists to prevent.
-
-
-### Host tools are still out of scope
-
-Argued above and unchanged, but the `dataprocessing` path also produces records
-that outlive their build, and nothing here applies to them.
-
-## Settled questions
-
-- Pinning does not shift the generated output: see [nanopb pin](../decisions/0011-build-pin-nanopb-0-4-9-1.md).
-- `config-gen` is Python, its protobuf is pinned, and two config files parsed only by accident: see [config-gen decision](../decisions/0013-build-config-gen-in-python-with-pinned-protobuf.md).
-- Generator output and board files do not depend on the platform: see [platform decision](../decisions/0014-build-generated-sources-reproduce-on-any-platform.md).
-
-## Open questions
-
-- **Move to nanopb 0.4.9.2?** 0.4.9.1 is pinned because it is what already
-  generated the tree's output. The newer LTS bugfix release is a change worth
-  making deliberately and separately. Note that the pin now lives in three
-  places that must move together: the vendored runtime directory,
-  `requirements.txt`'s protobuf (which must match the protoc that distribution
-  ships), and `NANOPB_URL`/`NANOPB_SHA256` in
-  `generated-sources-reproduce.yml`.
-- **Where do bench-built manifests live**, and what links a qualification result
-  to an image hash? See [What was not done](#what-was-not-done).
-- **Do host tools need any of this?** Argued out of scope, but the
-  `dataprocessing` path also produces records that outlive their build.
-- **When does the `config-gen` protobuf version enter `tools_text`?** It is
-  pinned in `requirements.txt` and identical on every machine by construction,
-  so recording it is finally honest. It was left out so that the manifest churn
-  belonged to one commit rather than two.
-- **Does the same duplication remain for boards?** The proto-c manifest input
-  list now lives in `cmake/GeneratedSourceInputs.cmake` and is shared between
-  the build and the freshness check, after the two disagreed and would have
-  failed every pull request. The board input list is still written out twice,
-  in `generate_configured_board_files` and in the check, and will break the same
-  way on the next change to a board input.
-
-History: how nanopb was found disagreeing with itself is in the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).
+How the build was found to be unreproducible, and the first release run, are in
+the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).
+Known gaps and open questions are in the [build worklist](TODO.md).

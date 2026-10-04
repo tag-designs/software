@@ -92,13 +92,22 @@ The generated-board build has two steps:
    processor-specific `board.c.ftl`, `board.h.ftl`, and `board.mk.ftl`
    templates.
 
-The outputs are written under the build tree, not the source tree:
+The outputs are `board.h`, `board.c`, `board.mk` and `board_standby.h`. For a
+board used by a distributed tag they are committed in
+`embedded/boards/<board>/generated/` and regenerated only when their recorded
+inputs change. Either way, firmware reads them through `BOARDDIR` from the build
+tree: a board that does not commit its files generates them there, and a
+committed board's files are copied there:
 
 ```text
 <build>/embedded/boards/<BOARD_TYPE>/board.h
 <build>/embedded/boards/<BOARD_TYPE>/board.c
 <build>/embedded/boards/<BOARD_TYPE>/board.mk
+<build>/embedded/boards/<BOARD_TYPE>/board_standby.h
 ```
+
+See [Tag Firmware Build Reproducibility](../../docs/build/firmware-reproducibility.md)
+for which boards commit their files and how staleness is detected.
 
 `board.h` defines the board-level `LINE_xxx` names consumed by tag and base
 code. Keep physical signal names in the board customizations whenever possible;
@@ -146,8 +155,10 @@ board target it depends on.
 
 `proto-c` builds the nanopb C view of the shared protocol definitions. It uses
 the top-level `.proto` files from `proto`, combines shared nanopb options with
-tag-specific overrides, generates `.pb.c` and `.pb.h` files in the build tree,
-and converts tag-specific default configuration JSON into C data.
+tag-specific overrides, generates `.pb.c` and `.pb.h` files, and converts
+tag-specific default configuration JSON into C data. For the protocol variants
+of distributed tags the generated files are committed in
+`<variant>-proto-c/generated/`; the others are generated in the build tree.
 
 Each protocol subdirectory provides:
 
@@ -164,21 +175,42 @@ decode compact messages for host communication and stored tag configuration.
 `default-config.json` is intentionally tag-specific. The shared protobuf
 configuration message can describe features used by many tag families, but a
 particular firmware image should only initialize the portions that apply to that
-tag. The `config-gen` helper converts this JSON file into `default_config.c`,
-which is compiled into the firmware through the generated protocol target.
+tag. `embedded/proto-c/config-gen.py` converts this JSON file into
+`default_config.c`, which is compiled into the firmware through the generated
+protocol target. It runs in a virtual environment the build creates from
+`embedded/proto-c/requirements.txt`
+([decision 0013](../../docs/decisions/0013-build-config-gen-in-python-with-pinned-protobuf.md)).
 
 Nanopb options also have two layers:
 
-- `proto-c/default-options/*.options`: shared defaults for the whole embedded
-  C protocol layer.
-- `proto-c/<tag>-proto-c/*.override.options`: tag-specific overrides layered on
-  top of those defaults.
+| File | Purpose |
+| --- | --- |
+| `proto-c/default-options/tag.options` | Shared defaults for `tag.proto` |
+| `proto-c/default-options/tagdata.options` | Shared defaults for `tagdata.proto` |
+| `proto-c/<tag>-proto-c/tag.override.options` | Tag-specific overrides for `tag.proto` |
+| `proto-c/<tag>-proto-c/tagdata.override.options` | Tag-specific overrides for `tagdata.proto` |
 
-At build time, CMake combines the shared default options and the tag-specific
-override file into the final `.options` files used by `nanopb_generator`. This
-lets most protobuf fields share one memory/layout policy while still allowing a
-tag family to tighten array sizes, string sizes, field allocation, or other
-nanopb details where the default would be too broad.
+At build time, `CombineFiles.cmake` combines the shared default and the
+tag-specific override into the conventional nanopb file names in the build tree,
+`<build>/embedded/proto-c/<tag>-proto-c/tag.options` and `tagdata.options`,
+which `nanopb_generator` reads. This lets most protobuf fields share one
+memory/layout policy while still allowing a tag family to tighten array sizes,
+string sizes, field allocation, or other nanopb details where the default would
+be too broad.
+
+To add a protocol target:
+
+1. Create `embedded/proto-c/<tag>-proto-c/CMakeLists.txt` calling
+   `add_nanopb_target(<tag>)`.
+2. Add `tag.override.options`, `tagdata.override.options`, and
+   `default-config.json`.
+3. Add the subdirectory from `embedded/proto-c/CMakeLists.txt`.
+4. Reference the generated interface target as `<tag>_proto` from the firmware
+   target.
+
+If the tag will be distributed, create `generated/` in the new directory and
+regenerate; see
+[Promoting a tag to distributed](../../docs/build/firmware-reproducibility.md#promoting-a-tag-to-distributed).
 
 ## `tags`
 
@@ -195,9 +227,13 @@ The target's `CMakeLists.txt` declares both sides of that relationship. A
 typical tag uses:
 
 ```cmake
-add_embedded_target(PresTag prestag_proto)
+add_embedded_target(PresTag prestag_proto DISTRIBUTE)
 add_dependencies(PresTag board-prestag)
 ```
+
+`DISTRIBUTE` marks a tag that ships: it installs its firmware, is built by
+`distributed_firmware`, and is held to the reproducibility checks. Prototypes
+omit it.
 
 Generated build products are placed in the CMake build tree, not in the source
 tree. The important final artifacts are the `.elf`, `.hex`, `.bin`, `.dmp`, and
@@ -265,12 +301,16 @@ board USB/SWD/programmer behavior belongs in `bases`.
 ## `loaders`
 
 `loaders` contains STM32CubeProgrammer-compatible external loaders (`.stldr`),
-one per board and flash part. A loader is laid out like a tag target -- a
-`Makefile` including `../common/make.mk`, a `project.mk`, and local overrides of
+one per board and flash part, and RV3028 RTC register probes (`RV3028_*`), which
+use the same framework but are not flash loaders. A loader is laid out like a
+tag target -- a `Makefile` including `../common/make.mk` (`../common/make-u375.mk`
+for STM32U375 targets), a `project.mk`, and local overrides of
 `../common` -- but it has no startup code, no RTOS kernel and no protocol
 target: it uses the committed `board.h`, ChibiOS PAL and the os-less OSAL, and
 shares the flash part's command set with the firmware driver through a
-dependency-free `<part>_commands.h`. Each source directory builds two images:
+dependency-free `<part>_commands.h`. Each AT25XE source directory builds two
+images, read-only and read-write; `GD5F2GM7RE_IMUTagNandv2` and the probes
+build one:
 
 ```cmake
 add_embedded_loader(AT25XE_PresTagv3 DISTRIBUTE)

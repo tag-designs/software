@@ -1,168 +1,84 @@
 ---
 type: design
 status: current
-summary: Design of the dataprocessing CLI that copies a SQLite log and adds calibrated CompassTag streams with provenance; SensorViz support for augmented files is still future.
+summary: How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 ---
 
 # DataProcessing Post-Processing Application Design
 
-## Purpose
+`dataprocessing` (`host/commandline/dataprocessing.cc`) copies a SQLite log to
+a new file and adds durable derived tables, stream metadata, and a
+`ProcessingRun` provenance row to the copy. It has two processors, both for
+CompassTag: `compass-calibrated` and `compass-orientation`. The input file is
+never modified. Usage is in the [command-line README](../README.md#dataprocessing);
+open work is in [TODO.md](../TODO.md).
 
-SensorViz can derive calibrated compass streams and orientation values while a
-log is being viewed, but those results are session-local. Custom notebooks,
-batch analysis scripts, and downstream tools still see only the raw SQLite log.
+## Why It Exists
 
-`DataProcessing` is a proposed host command-line application that materializes
-selected derived data into a new SQLite log. The first processor should read
-CompassTag raw samples and calibration constants, then write calibrated compass
-data and compass orientation streams. Later processors can add altitude,
-filtered activity, corrected IMU timing products, Kalman-filtered IMU attitude,
-or other analysis outputs.
+SensorViz derives calibrated compass streams and orientation while a log is
+being viewed, but those results are session-local. Notebooks, batch scripts and
+downstream tools see only the raw SQLite log. `dataprocessing` materializes the
+derived data so it travels with the file.
 
 The application boundary is:
 
-- SensorViz visualizes raw and derived streams.
-- qtcalibrate collects calibration samples and produces calibration constants.
-- DataProcessing writes durable derived streams for analysis outside the GUI.
-
-## Goals
-
-- Keep the input SQLite log untouched.
-- Generate a new SQLite output file containing original data plus selected
-  derived tables and stream metadata.
-- Embed processing configuration, algorithm versions, and provenance in the
-  output database.
-- Reuse existing CompassTag math instead of duplicating it across SensorViz,
-  qtcalibrate, and DataProcessing.
-- Make generated data discoverable through the same stream metadata model used
-  by raw tag logs.
-- Support deterministic batch operation from scripts and CI fixtures.
-
-## Non-Goals
-
-- Do not change the raw log writer in the first implementation.
-- Do not make SensorViz depend on preprocessed files before the output format is
-  proven.
-- Do not overwrite the input file in place.
-- Do not turn viewer preferences such as plot colors, axis sides, or visibility
-  into processing configuration.
-- Do not make the first version a Qt GUI. A command-line tool is easier to test
-  and compose with external analysis workflows.
-
-## Existing Components
-
-### SensorViz
-
-SensorViz currently loads SQLite stream metadata, turns CompassTag raw record
-sets into display streams, and applies view-only choices such as declination
-and battery-forward direction when drawing heading. This gives an important
-prototype for stream names, units, and user expectations, but SensorViz should
-not remain the only place where derived data can exist.
-
-The CompassTag display path already uses `host/libraries/sensoranalysis` for
-the core eCompass solve. That is the right direction: UI code should assemble
-loaded rows and presentation choices, while `sensoranalysis` owns the
-UI-independent math.
-
-### qtcalibrate
-
-qtcalibrate owns the live magnetic calibration workflow. It collects calibration
-samples, runs the inherited C `magcal` solver, shows quality metrics, and writes
-calibration constants back to the tag. It also shows live orientation and now
-uses `sensoranalysis::CompassProcessor` for the orientation solve after
-qtcalibrate has applied calibration and low-pass filtering.
-
-This matters for refactoring: DataProcessing should not fork compass
-orientation math from SensorViz, and it should not fork calibration-constant
-conversion from qtcalibrate. The shared layer should cover:
-
-- conversion between `magcal` constants and `CompassCalibration`;
-- applying hard-iron and soft-iron calibration to raw magnetometer vectors;
-- deriving magnetic-frame orientation from accelerometer and magnetometer data.
-
-The live calibration solver can remain in qtcalibrate initially, but any
-non-UI adapter code needed by both qtcalibrate and DataProcessing should move
-toward `sensoranalysis`.
-
-### sensoranalysis
-
-`host/libraries/sensoranalysis` already contains:
-
-- `CompassCalibration`
-- `CompassRawSample`
-- `CompassDerivedSample`
-- `CompassProcessor`
-
-The library should remain independent of widgets, QML, plotting, and SQLite.
-DataProcessing can call this library directly, while SQLite input/output stays
-in the new application or in a small host data-processing support library.
-
-## Application Shape
-
-The executable should be named `dataprocessing`.
-
-Typical usage:
-
-```sh
-dataprocessing \
-  --input raw-compass.db3 \
-  --output processed-compass.db3 \
-  --processor compass-calibrated \
-  --processor compass-orientation
+```text
+sensoranalysis: math and calibration/orientation data types
+qtcalibrate: live sample collection and calibration solving UI
+DataProcessing: batch SQLite copy, processor configuration, durable outputs
+SensorViz: visualization and interactive display choices
 ```
 
-Useful inspection modes:
+`dataprocessing` links `sensoranalysis` and SQLite. It is built on Qt Core
+(`QCoreApplication`, `QCommandLineParser`, Qt JSON and file classes) and gets
+Qt Core and Qt Gui through `sensoranalysis`, so it installs as a Qt-runtime
+target, but it has no GUI: it is scriptable and deterministic. It uses
+`CompassCalibration::fromMagnetometerJson()` and `CompassProcessor` from
+`sensoranalysis`, the same math SensorViz and qtcalibrate use, so compass math
+is not forked between the three. SQLite read/write stays in the application,
+keeping `sensoranalysis` independent of the database format. The `magcal`
+calibration solver stays in qtcalibrate.
 
-```sh
-dataprocessing --input log.db3 --list-processors
-dataprocessing --input log.db3 --describe compass-orientation
-dataprocessing --input log.db3 --dry-run --processor compass-orientation
-```
+Viewer preferences (plot colors, axis sides, visibility) are never processing
+configuration.
 
-Output policy:
+## Command Line
 
-```sh
-dataprocessing --input raw.db3 --output processed.db3 --if-exists fail
-dataprocessing --input raw.db3 --output processed.db3 --if-exists replace
-dataprocessing --input raw.db3 --output processed.db3 --if-exists keep
-```
+| Option | Behavior |
+| --- | --- |
+| `-i`, `--input <path>` | Input SQLite log. Must differ from the output path. |
+| `-o`, `--output <path>` | Output SQLite log. |
+| `-p`, `--processor <id>` | Processor to run; repeat for several. |
+| `--if-exists fail\|replace\|keep` | Conflict policy, default `fail`. |
+| `--dry-run` | Validate inputs and print planned outputs without writing. |
+| `--list-processors` | List processors and whether the input log has what each needs. |
+| `--describe <id>` | Describe one processor. |
+| `--print-summary` | Print a processing summary. |
 
-Default `--if-exists` should be `fail` for early versions so reruns do not
-silently hide stale processing decisions.
+An unknown `--if-exists` value exits with status 2.
+
+`--if-exists` applies twice. For the output file: `fail` refuses an existing
+file, `replace` deletes and re-copies it, and `keep` reuses it. For each
+processor's output tables and stream ids inside the file: `fail` refuses when
+any already exist, `keep` skips that processor, and `replace` drops the tables
+and stream rows before rewriting them. The default is `fail` so a rerun cannot
+silently hide a stale processing decision.
 
 ## Processing Model
 
-Each processor should declare:
-
-- processor id and algorithm version;
-- required source tables, streams, metadata, and calibration records;
-- configuration schema and defaults;
-- output tables and output stream ids;
-- replacement policy support;
-- validation checks for row counts, column presence, units, and time domains.
-
-Initial processors:
+The input is copied byte for byte, the copy is opened read/write, and all
+processor writes happen inside one `BEGIN IMMEDIATE` transaction that is
+committed at the end.
 
 | Processor | Inputs | Outputs |
 | --- | --- | --- |
-| `compass-calibrated` | `Compass` table, latest `Calibration` row | calibrated magnetometer x/y/z record set, optional calibrated acceleration copy |
-| `compass-orientation` | `Compass` table, latest `Calibration` row | magnetic-frame yaw, pitch, roll, dip, field strength, acceleration magnitude, and quaternion |
+| `compass-calibrated` | `Compass` table, latest `Calibration` row | `CompassCalibrated` table and six `record_column` streams |
+| `compass-orientation` | `Compass` table, latest `Calibration` row | `CompassOrientation` table and six scalar streams |
 
-Future processors:
+The calibration used is the `Calibration` row with the greatest `Epoch`; its
+`Constants` JSON must contain a `magnetometer` object.
 
-| Processor | Inputs | Outputs |
-| --- | --- | --- |
-| `altitude` | pressure stream, optional sensor temperature | altitude stream |
-| `activity-filter` | activity stream | filtered activity stream |
-| `imu-magnitudes` | IMUTag accelerometer/gyroscope/magnetometer axes | magnitude streams |
-| `imu-kalman-attitude` | IMU accel/gyro/mag streams, timing metadata, filter config | attitude/orientation streams and filter diagnostics |
-
-## First CompassTag Output
-
-The first implementation should copy the input database to the output path,
-open the output read/write, then add derived tables.
-
-Recommended tables:
+### Output Tables
 
 ```text
 CompassCalibrated
@@ -188,18 +104,16 @@ CompassOrientation
   qz REAL
 ```
 
-`CompassCalibrated` should contain magnetometer values after hard-iron and
-soft-iron correction. Acceleration values may be copied from the raw table so
-the calibrated record set is self-contained, but the table description must
-make clear that acceleration was not magnetometer-calibrated.
+`CompassCalibrated` holds magnetometer values after hard-iron and soft-iron
+correction. Acceleration is copied from the raw table so the record set is
+self-contained; it is not magnetometer-calibrated.
 
-`CompassOrientation` should contain canonical magnetic-frame orientation, not a
-display heading. Declination and battery-forward/backward mounting conventions
-belong to downstream interpretation, SensorViz display state, or qtcalibrate
-display state. DataProcessing should document the conversion formula but should
-not materialize a heading column in the first implementation.
+`CompassOrientation` holds canonical magnetic-frame orientation, not a display
+heading. Declination and battery-forward/backward mounting belong to
+downstream interpretation or to SensorViz and qtcalibrate display state, so no
+heading column is written (see [Downstream Heading Conversion](#downstream-heading-conversion)).
 
-Recommended stream ids:
+### Stream Ids
 
 ```text
 compass_calibrated_ax
@@ -216,20 +130,15 @@ compass_orientation_field
 compass_orientation_acceleration
 ```
 
-The stream metadata should use the existing `streams` catalog style:
+They use the existing `streams` catalog style: `record_column` entries for the
+grouped calibrated vectors and scalar streams for orientation values. The ids
+do not collide with SensorViz's live-derived display stream ids. The quaternion
+columns have no stream entries. Raw streams are never mutated or removed.
 
-- scalar streams for orientation values;
-- `record_column` entries for grouped calibrated vectors;
-- stable ids that do not collide with SensorViz live-derived display stream ids
-  unless the project intentionally decides to treat the materialized streams as
-  replacements.
+## Provenance
 
-## Embedded Processing Metadata
-
-Every run should write provenance into the output database. A normalized table
-plus JSON configuration gives both queryable history and extensibility.
-
-Recommended table:
+Every successful processor run inserts one row into `ProcessingRun`, created if
+absent:
 
 ```text
 ProcessingRun
@@ -247,7 +156,10 @@ ProcessingRun
   Status TEXT
 ```
 
-Example configuration for compass orientation:
+`ConfigurationJson` records the processor, `algorithm_version` (currently 1)
+and the calibration source. For `compass-orientation` it also records the frame,
+quaternion order and heading policy. An illustrative example (the epoch is a
+placeholder):
 
 ```json
 {
@@ -258,18 +170,17 @@ Example configuration for compass orientation:
     "epoch": 1778983834
   },
   "orientation_frame": "magnetic-frame-nwu",
-  "quaternion_order": "wxyz"
+  "quaternion_order": "wxyz",
+  "heading_policy": "not_materialized; downstream tools apply declination and mounting convention to yaw"
 }
 ```
 
 Processing configuration is not a SensorViz preference. It describes how the
-data was computed and must travel with the output database.
+data was computed and travels with the output database.
 
 ## Downstream Heading Conversion
 
-DataProcessing should document, but not perform, the conversion from canonical
-magnetic yaw to a display heading. Downstream tools that need a user-facing
-heading can apply:
+Downstream tools that need a user-facing heading apply:
 
 ```text
 magnetic_heading = normalize_360(yaw + declination_degrees)
@@ -287,70 +198,21 @@ Where:
   convention;
 - `normalize_360(x)` maps any angle to `[0, 360)`.
 
-This keeps the processed SQLite output reusable. A downstream notebook can
-choose local declination or mounting assumptions without rerunning calibration
-and orientation processing.
+This keeps the processed output reusable: a notebook can choose local
+declination or mounting assumptions without rerunning calibration and
+orientation processing.
 
-## Refactoring Plan
+## SensorViz And Processed Files
 
-History: see [the original implementation plan](proposals/dataprocessing-implementation-plan.md).
+SensorViz has no support specific to processed files. It does not read
+`ProcessingRun` and does not distinguish materialized streams from raw or
+live-derived ones. The open questions for adding that support are in
+[TODO.md](../TODO.md).
 
-The important ownership rule is:
+## Verification
 
-```text
-sensoranalysis: math and calibration/orientation data types
-qtcalibrate: live sample collection and calibration solving UI
-DataProcessing: batch SQLite copy, processor configuration, durable outputs
-SensorViz: visualization and interactive display choices
-```
+There are no automated tests for `dataprocessing`. The checks to make by hand
+or in a future test are listed in [TODO.md](../TODO.md).
 
-## SensorViz Handling Of Augmented Files
-
-SensorViz does not need to change in the first DataProcessing pass. Later, it
-should load materialized processed streams through normal stream metadata.
-
-Open decisions for that later work:
-
-- Should SensorViz prefer materialized orientation streams over live-derived
-  `compass_heading` style streams?
-- Should it show both raw/live-derived and processed streams, with labels that
-  make provenance clear?
-- Should SensorViz expose processing configuration from `ProcessingRun` in the
-  File Info tab?
-- Should SensorViz continue applying display heading settings to its live
-  derived `compass_heading` stream while showing materialized yaw as ordinary
-  processed data?
-
-Until those questions are answered, DataProcessing should avoid mutating or
-removing raw streams and should use stable processed stream ids that SensorViz
-can display as ordinary data.
-
-## Validation Strategy
-
-Unit tests:
-
-- Compass calibration application matches existing SensorViz/qtcalibrate
-  expectations.
-- Compass orientation output is deterministic for a small fixture.
-- Downstream heading conversion examples match SensorViz and qtcalibrate
-  display conventions.
-- Missing calibration and malformed record sets fail with actionable errors.
-
-Fixture tests:
-
-- Use `host/docs/fixtures/sensorviz/compasstag.db3` as an initial CompassTag
-  input.
-- Confirm the input file hash does not change.
-- Confirm output SQLite integrity check passes.
-- Confirm output stream metadata references existing output tables and columns.
-- Confirm rerun behavior for `--if-exists fail`, `replace`, and `keep`.
-
-Manual review:
-
-- Load the processed output in SensorViz once augmented-file support is added.
-- Compare processed orientation streams against current SensorViz live-derived
-  streams for the same fixture.
-
-## Implementation Phases
-
-History: see [the original implementation plan](proposals/dataprocessing-implementation-plan.md).
+The original step-by-step implementation plan is kept, as history, in
+[proposals/dataprocessing-implementation-plan.md](proposals/dataprocessing-implementation-plan.md).

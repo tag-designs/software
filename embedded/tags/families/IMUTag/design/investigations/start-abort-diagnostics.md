@@ -1,7 +1,7 @@
 ---
 type: investigation
-status: open
-summary: Evidence for the intermittent IMUTag abort at start, the now-implemented marker detail word, and an unconfirmed flash-flag explanation.
+status: closed
+summary: The intermittent IMUTag abort at start -- evidence, the marker detail word added to diagnose it, and its two probable causes (a wedged I2C bus, a latched flash ECC flag), both now fixed.
 ---
 
 # IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail
@@ -275,3 +275,27 @@ the sensors and leave the original diagnosis standing. Until then the sensor
 explanation above remains on the record rather than being rewritten, because
 the evidence for it -- that those are the only two remaining false returns from
 `initDataCollection()` -- is unaffected by any of this.
+
+## Closed (2026-10-04)
+
+Closed as probably resolved, with the cause still not confirmed by the detail
+word. Two fixes that each explain the abort are now live:
+
+- **The I2C bus clear.** [`i2c-bus-recovery.md`](../../../../common/core/design/i2c-bus-recovery.md)
+  attributes collection aborting at start (about one attach in three) to a
+  monitor attach resetting the core mid-transaction and wedging the I2C bus
+  the RV-3028 and BMM350 share on IMUTagNandBmp581 -- which would surface here
+  as a magnetometer init failure. Both IMUTag targets build with
+  `-DTAG_I2C_BUS_CLEAR=1`.
+- **The flash-flag clear.** The stale note above says it no longer runs; it
+  runs again. Since 0638a76a the terminal path is `godown()` ->
+  `tagPowerEnterTerminalSleep()` -> `tagPowerEnterStop3()`, and
+  `tagPowerSelectStop3()` calls `tagPowerClearFlashErrorFlags()` before every
+  terminal sleep (`embedded/tags/common/core/src/pwr-u375.c`, checked at
+  a87fc84a).
+
+The detail word is implemented (`IMUTAG_INIT_FAIL_*` in
+`families/IMUTag/inc/sensors.h`, set in `sensors.c`). If the abort recurs,
+reopen this investigation and read the detail word before anything erases the
+tag: `IMUTAG_INIT_FAIL_MAG` points at the bus, `IMUTAG_INIT_FAIL_LSM_CONFIG` at
+the flash flags.

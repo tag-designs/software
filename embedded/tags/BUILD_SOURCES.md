@@ -15,11 +15,11 @@ Generated build files, generated nanopb files, generated board files, ChibiOS
 files, nanopb runtime files, toolchain headers, and other external files are
 omitted. Local source overrides under `embedded/tags` are included.
 
-Most active embedded tag target sections were rebuilt from
-`/private/tmp/tag-software-embedded-testrefactor` after regenerating that build
-tree. The BitTag and BitTag-legacy sections were refreshed from
-`/private/tmp/tag-software-bittag-common` after the BitTag common-module
-refactor.
+There is no generator: the lists were extracted by hand from the
+`<build-dir>/embedded/tags/<Tag>/dep/*.o.d` files of a full build, and filtered
+to `embedded/tags`. **The inventory is incomplete:** `UIUCTag` and
+`BitPresTagMX25R`, both active in `embedded/tags/CMakeLists.txt`, have no
+section yet. Extract a missing or changed target the same way.
 
 ## BitTag
 

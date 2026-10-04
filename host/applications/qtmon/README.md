@@ -45,23 +45,29 @@ Fake mode intentionally leaves buttons visually enabled or disabled according
 to the selected tag state, so screenshots match the real UI. The button slots
 guard against fake mode and return without issuing hardware commands.
 
-If a fixture has only an `idle` status, screenshot generation derives
-display-only `running` and `finished` states from it by changing state and log
-counts. Future fixtures may store real captured `running` or `finished`
-statuses and those will be used instead.
+Screenshot generation uses the fixture's status of the requested name
+(`idle`, `running` or `finished`) when it has one, and otherwise falls back to
+its `idle` status. The state field is always forced to the requested state, and
+zero log counts are replaced with placeholder counts for `running` and
+`finished`, so a fixture with only an `idle` status still yields all three
+screens.
 
 ## Screenshot Commands
 
 Build the app first:
 
 ```sh
-cmake --build /Users/geobrown/Build/tag-designs/software/build-host --target qtmonitor
+cmake --build <build-dir> --target qtmonitor
 ```
+
+`<build-dir>` is your host build directory. On macOS the executables are app
+bundles: use `<build-dir>/bin/<tool>.app/Contents/MacOS/<tool>` in place of
+`<build-dir>/bin/<tool>`.
 
 Capture the representative Tag State screens:
 
 ```sh
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
   --capture-main-screenshots
 ```
@@ -75,7 +81,7 @@ This writes:
 Capture the idle Configuration screens for the fixture tag:
 
 ```sh
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --fake-fixture host/docs/fixtures/qtmonitor/compasstag.json \
   --capture-config-screenshots
 ```
@@ -91,14 +97,14 @@ Sensors tab and skip that capture.
 Capture the disconnected startup screen:
 
 ```sh
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --capture-startup-screenshot
 ```
 
 Capture the disconnected Error Log screen:
 
 ```sh
-/Users/geobrown/Build/tag-designs/software/build-host/bin/qtmonitor.app/Contents/MacOS/qtmonitor \
+<build-dir>/bin/qtmonitor \
   --capture-error-log-screenshot
 ```
 

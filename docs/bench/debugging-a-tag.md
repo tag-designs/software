@@ -1,7 +1,7 @@
 ---
 type: procedure
 status: current
-summary: Ways to see inside a running tag (SRAM2 scratchpad, GDB over SWD, Joulescope, GPIO markers, monitor) and what each costs or disturbs.
+summary: Ways to see inside a tag (the retained SRAM2 scratchpad and single-store probes, GDB over SWD, current, GPIO markers, the monitor) and what each costs or disturbs.
 ---
 
 # Debugging a Tag
@@ -17,10 +17,10 @@ each one destroys by being used.
 
 ## Choosing an approach
 
-| Approach | Cost while enabled | Sees | Survives standby |
+| Approach | Cost while enabled | Sees | Survives terminal sleep |
 | --- | --- | --- | --- |
-| Retained SRAM2 scratchpad | ~500 nA | anything the firmware writes down | yes, with retention enabled |
-| GDB over SWD | hundreds of uA | full core and peripheral state, live | yes, with `DBG_STANDBY` |
+| Retained SRAM2 scratchpad | not measured on Stop 3, which sets no retention bit (below) | anything the firmware writes down | expected through Stop 3, not yet verified (below) |
+| GDB over SWD | hundreds of uA | full core and peripheral state, live | an established session, with `DBG_STOP`/`DBG_STANDBY` |
 | Joulescope | none (external) | current only, but truthfully | n/a |
 | GPIO markers | ~0, or 700 uA if left driven | coarse timing of a few events | no |
 | Monitor / qtmonitor | tag never sleeps | protocol-level state | no |
@@ -31,10 +31,66 @@ the monitor makes sleep measurement meaningless. Start at the top.
 
 ## 1. Retained SRAM2 scratchpad
 
-The idea: reserve a page of SRAM2, write diagnostics into it with plain stores,
-enable its standby retention before entering standby, then connect under reset
-and read the page out. Nothing runs on the tag to produce the output, so the
-measurement is undisturbed.
+`embedded/tags/common/core/inc/scratchpad.h` gives firmware somewhere to write
+that a host can read back later over SWD. Nothing runs on the tag to produce
+the output, so reading it does not disturb what it recorded. It is STM32U375
+only. Enable it per target in `project.mk`:
+
+```
+UDEFS += -DTAG_SCRATCHPAD=1
+```
+
+With the macro undefined, every entry point compiles to nothing and the image
+is byte-identical, so the calls can stay in shipped code.
+
+```c
+tagScratchResume();                     /* once, early in boot */
+tagScratchPuts("configured");
+tagScratchWord("STAT", pState->state);
+```
+
+- **`tagScratchResume()` versus `tagScratchInit()`.** `tagScratchResume()`
+  keeps whatever the last boot left and advances `seq`; `tagScratchInit()`
+  starts empty. Use Resume for a fault that spans resets. An attach storm boots
+  the tag several hundred times, so a buffer formatted on every boot keeps only
+  the last boot, which is rarely the interesting one. `main.c` calls
+  `tagScratchResume()` and writes a `BOOT` record carrying `seq`.
+- **`-DTAG_SCRATCHPAD_RING=1`** keeps the newest records instead of the oldest.
+  The 8 KB fills long before the end of a storm. Linear mode, the default, then
+  discards everything after that point, so it keeps the oldest records while
+  the failure is at the newest end. Use linear when the interesting event is
+  near the start, such as a boot that never completes.
+- **`-DTAG_RETAINED_RUN_DIAGNOSTICS=1`** copies the boot decision into the
+  scratchpad.
+
+The identity record notes whether an image was built with the scratchpad, ring
+mode or retained run diagnostics. A capture therefore shows which of these it
+should expect.
+
+### What the firmware already records
+
+Errors and state transitions are logged there already, so a capture from a tag
+that ended a run badly shows how it ended without decoding the flash log:
+
+| Record | Written by | Meaning |
+| --- | --- | --- |
+| `STAT` | `recordState()`, every transition | `state << 16 \| reason` |
+| `ESLF` | `recordState()` | The flash marker log is full and has silently stopped recording transitions |
+| `EECC` | IMUTag `datalog.c`, restart scan | Uncorrectable ECC on this NAND page |
+| `RSYN`, `RTSC`, `RTMS` | IMUTag `state_run.c`, `restartDataCollectionClock()` | Whether this start is a recovery, and the seconds and milliseconds the new segment was based on |
+| `RGST`, `RSTP`, `RRES`, `REXT`, `RSTA` | IMUTag `datalog.c`, `restoreLog()` (with `IMUTAG_NAND_CHECKPOINTS`) | Where the restart scan began and stopped, why it stopped, the resulting `external_blocks`, and the state |
+| `BOOT` | `main.c` | One per boot, carrying `seq` |
+| `DPHS`, `DVAL`, `DSTA`, `DRST`, `DRC ` | `main.c`, with `TAG_RETAINED_RUN_DIAGNOSTICS` | The backup-state boot decision |
+
+`decode_scratchpad.py` also names `ESKP` (an external page skipped after a
+write error) and `EGUP` (gave up after too many consecutive page write
+failures). Nothing in the current tree writes them: the page skip itself was
+re-landed in `5bb9aed9`, but without those records.
+
+Put new error paths here too. It is the one place that survives a tag which
+cannot talk, and the calls cost nothing when the macro is off. What goes in it
+is up to the program. Messages are the general case. `tagScratchWord()` suits
+a value you want to watch across a transition.
 
 ### The memory map
 
@@ -49,12 +105,28 @@ From RM0503 on `PWR_CR1` bit 6:
 | | |
 | --- | --- |
 | Scratchpad | `0x2003E000` - `0x2003FFFF`, 8 KB |
-| Retention bit | `PWR_CR1_RRSB3`, bit 6 |
-| Cost when retained | about 500 nA |
+| Standby retention bit | `PWR_CR1_RRSB3`, bit 6, set by `tagScratchRetain()` -- called only from the unused `tagPowerEnterStandby()` |
+| Cost of Standby retention | 5.37 uA armed against 5.15 uA unarmed, in the A/B below |
 
-Setting one bit retains exactly this page and nothing else, which is the whole
-point: the diagnostic survives standby for a cost far below the faults being
-chased.
+`embedded/tags/common/STM32U375xG.ld` ends `ram0` at `0x2003E000`
+(`len = 248k - 0x40`), so `crt0` never clears the page and the heap never
+reaches it. What is known about keeping it:
+- **A reset.** Reset does not clear SRAM, which is why the contents survive the
+  reset that reading them causes.
+- **A failed sleep.** A tag that stalls instead of sleeping keeps SRAM
+  powered.
+- **The shipped Stop 3 terminal sleep: expected, not verified.**
+  `tagPowerEnterStop3()` does not set `RRSB3` and does not need to for Stop:
+  neither the firmware nor the ChibiOS U3 HAL writes `PWR_CR2`, so every
+  `SRAMxPDSn` Stop-mode power-down bit stays at its reset value of 0 (page
+  powered), and the wake ends in a software reset, which does not clear SRAM.
+  No A/B has been run on this path; it is open in the
+  [TODO](../../embedded/tags/TODO.md).
+- **A real Standby, with `tagScratchRetain()` armed.** This was checked by A/B
+  on the retired Standby path: the armed build came back with `seq` counting
+  every boot, and the unarmed control came back as noise
+  ([investigation](../../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md)).
+  Shipped images do not take that path.
 
 > **Do not take the page geometry from the CMSIS header.** The `PWR_CR2`
 > `SRAM2PDSn` comments in `stm32u375xx.h` describe the *Stop-mode power-down*
@@ -64,73 +136,56 @@ chased.
 > reserve the wrong 8 KB and the scratchpad is powered down at exactly the
 > moment it is supposed to survive. RM0503 is the authority for `RRSBn`.
 
-### Reserving it is a linker change and a rebuild
-
-The linker currently hands the C runtime everything. `DATA_RAM`, `BSS_RAM` and
-`HEAP_RAM` all alias `ram0`, which spans SRAM1 **and** SRAM2, and the heap runs
-to the top of it:
-
-```
-ram0 (wx) : org = 0x20000040, len = 256k - 0x40   /* SRAM1+SRAM2 */
-```
-```
-__heap_base__ = 0x200047b8      __heap_end__ = 0x20040000
-```
-
-So `.ram2` being an empty section today means nothing -- the heap covers all of
-SRAM2 and will allocate into the page unless the region stops short of it.
-Because page 3 is the *top* 8 KB, that is a single length change in
-`embedded/tags/common/STM32U375xG.ld`:
-
-```
-ram0 (wx) : org = 0x20000040, len = 248k - 0x40   /* SRAM1+SRAM2 less page 3 */
-```
-
-`ram0` then ends at `0x2003E000` and the scratchpad sits immediately above it.
-Nothing else moves, and the heap loses 8 KB of the roughly 238 KB it currently
-has -- static use is `.bss` 0x15c4 plus `.ram0` 0x2168, about 18 KB in total.
-
-Declare the scratchpad at its fixed address rather than letting the linker place
-it, so the readback address is a constant that cannot drift between builds:
-
-```c
-/* SRAM2 page 3: retained across standby when PWR_CR1_RRSB3 is set. */
-#define TAG_SCRATCH_BASE 0x2003E000U
-#define TAG_SCRATCH_SIZE 0x2000U
-```
-
-After the change, confirm the runtime really stopped below it:
-
-```sh
-arm-none-eabi-nm build/<Tag>.elf | grep -iE '__heap_end__|__ram0_end__'
-# expect 0x2003e000, not 0x20040000
-```
-
-### Discipline
-
-- **Single stores only.** A probe in the idle or power path changes the fault
-  rather than observing it: an instrumented build read 430 uA where the
-  pristine one read 1036 uA. Part of that is timing, and part is that any added
-  code moves the image, which Standby entry is sensitive to -- see
-  `embedded/tags/design/open-issues.md`. Either way, what you measure with the
-  probe in is not the build you ship.
-- **Write a magic word** and check it on readback. A page that was powered down
-  returns whatever it returns; without a sentinel you cannot tell "nothing was
-  recorded" from "the page did not survive".
-- **A probe that vanishes is itself evidence.** Standby loses SRAM unless
-  retention is on. If the block survives without retention enabled, standby was
-  not entered -- which is exactly how the 1 mA idle fault was first bounded.
+SRAM1 is not retained through Standby, and cannot be. Ordinary `.data` and
+`.bss` live there, and after the Stop 3 wake the software reset runs `crt0`,
+which reinitialises them, so anything you want to read back after the tag has
+slept has to be in the scratchpad.
 
 ### Reading it back
 
 ```sh
 # Must connect under reset. Hotplug does not work on this rig.
 STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin
+embedded/tools/decode_scratchpad.py scratch.bin
 ```
 
-Decode the file afterwards with a small script rather than reading hex by eye;
-a struct laid out in the firmware and a matching `struct.unpack` in Python is
-enough, and it keeps the field names in one place.
+`decode_scratchpad.py` names the states and reasons in `STAT` records. A
+`tag-capture --sram` or `tag_capture_state.py` capture includes the page too;
+see [Capturing a Tag](capturing-a-tag.md).
+
+### Reading state out of a tag that cannot talk
+
+Sleep faults are hard to instrument, because the usual narration changes the
+thing being measured:
+- the monitor keeps `isMonitorEnabled()` true, so the tag never sleeps at all;
+- `debug_log_printf()` is compiled out of shipped images;
+- a probe that calls any timing function inside the idle or power path changes
+  the fault outright.
+
+The scratchpad is one instance of a general technique. Reserve a block of RAM
+at a known address, log into it with plain stores, and read it back over SWD
+with `mode=UR`. Ordinary RAM is enough for **Run and Stop**, which retain SRAM.
+To carry data **across Standby**, put the block in SRAM2 and enable its
+retention.
+
+- **Single stores only, placed outside the idle and power paths.** A probe
+  there changes the fault rather than observing it: an instrumented build read
+  430 uA where the pristine one read 1036 uA. Part of that is timing. Part is
+  that any added code moves the image, and the STM32U375's low-power entry is
+  sensitive to layout; see
+  [STM32U375 Low Power](../../embedded/tags/common/core/design/u375-low-power.md).
+  Either way, what you measure with the probe in is not the build you ship. Do
+  not log from inside the terminal-sleep entry, `tagPowerEnterStop3()`; capture
+  at boot instead.
+- **Write a magic word** and check it on readback. A page that was powered down
+  returns whatever it returns, and without a sentinel you cannot tell "nothing
+  was recorded" from "the page did not survive".
+- **A probe that vanishes is itself evidence -- when the sleep under test is
+  Standby.** Standby loses SRAM unless retention is on. If the block survives
+  without retention enabled, Standby was not entered, which is exactly how the
+  1 mA idle fault was first bounded. If it is destroyed, Standby was entered.
+  Stop 3, the shipped terminal sleep, retains SRAM, so this test says nothing
+  about it.
 
 ## 2. GDB over SWD
 
@@ -189,12 +244,13 @@ UDEFS += -DTAG_DEBUG_LOW_POWER=1
 
 ### Attach while the tag is awake, not while it sleeps
 
-This is the part that wastes an afternoon if you get it wrong. `DBG_STANDBY`
-keeps the debug power domain alive so an **already-established** session
-survives the transition. It does not let a debugger attach to a core that is
-already in Standby -- the core is unpowered and there is nothing to enumerate.
+This is the part that wastes an afternoon if you get it wrong. `DBG_STOP` and
+`DBG_STANDBY` keep the debug domain alive so an **already-established** session
+survives the transition. They do not let a debugger attach to a core that is
+already asleep with debug disabled.
 
-A tag reporting IDLE is in Standby. Every hot attach against it fails with
+A tag reporting IDLE is in its terminal sleep, Stop 3 on the U375. Every hot
+attach against a sleeping tag fails with
 `init mode failed (unable to connect to the target)` or `Examination failed`,
 and that failure looks exactly like a wiring problem. Two ways round it:
 
@@ -236,8 +292,10 @@ hardware breakpoint set on the instruction after the `wfi`, the `WFI` returns
 after about a second having consumed exactly 11 `DWT_CYCCNT` cycles, with
 `STOPF`/`SBF` clear and no handler run -- on every image. That is a debug
 event, not a power fault. Remove every breakpoint before the final `resume`:
-with the session attached and no breakpoints, a sleeping image enters Standby
-normally (4.4 uA, measured) and OpenOCD reports `communication failure` as it
+with the session attached and no breakpoints, an image on the retired Standby
+path entered Standby normally (4.4 uA, measured; see the
+[forum post draft](../../embedded/tags/common/core/design/investigations/2026-09-u375-standby-forum-post.md))
+and OpenOCD reports `communication failure` as it
 loses the target, which is what any deep-sleep entry looks like from the
 ST-Link and says nothing about which state the part is in.
 
@@ -245,7 +303,8 @@ Dump peripheral state at a breakpoint over telnet (`mdw <base> <words>` per
 block) rather than through the MCP one word at a time; a regmap generated from
 the CMSIS header's `Address offset:` comments names the words. Two dumps taken
 this way on a failing and a working image were bit-identical across ~380
-registers -- see `open-issues.md`.
+registers -- see
+[the Standby layout investigation](../../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md).
 
 ### The working configuration
 
@@ -333,8 +392,10 @@ on IMUTagNandBmp581: **1035 uA at idle with `TAG_DEBUG_LOW_POWER=1`, against
   module.
 - **Never during a power measurement.** A build with `DBG_STANDBY` set cannot
   be used to measure sleep; the measurement is of the debug unit. Note the
-  figure is close to the 1036 uA of the I2C pin-parking fault -- do not confuse
-  a debug build for that regression.
+  figure is close to the 1036 uA of the layout-dependent Standby stall and the
+  1031 uA of the I2C pin-parking fault
+  ([i2c-bus-recovery.md](../../embedded/tags/common/core/design/i2c-bus-recovery.md))
+  -- do not confuse a debug build for either regression.
 - Use it to answer a *state* question, then remove it and re-measure with a
   clean image to answer the *power* question.
 
@@ -345,19 +406,14 @@ that in mind when a fault appears only under the debugger.
 
 ## 3. Power measurement
 
-Covered in detail in `AGENTS.md`. Briefly:
+The procedure, the rig traps and the qualification tools are in
+[Power Testing](power-testing.md). Use the life-cycle check by default,
+because measuring one state tells you only about that state.
 
-- `embedded/tools/tag_lifecycle_check.py` walks idle -> running -> stopped ->
-  idle and measures every resting state, with the clock set. Use this by
-  default; measuring one state only tells you about that state.
-- `embedded/tools/tag_attach_storm.py` covers clock-cycle and attach/detach
-  reliability. It measures no power.
-- `embedded/tools/joulescope_measure.py` measures a single state directly.
-
-Two traps worth repeating here: classify sleep on **>=1 ms averages**, never
-per-sample, because PFM ripple spans -140 to +7700 uA; and `s/i/range/mode = 0`
-disconnects the sense path and cuts power to the tag, which presents as a tag
-that has stopped answering SWD.
+One trap belongs here, because it is a debugging error before it is a
+measurement error. **Classify sleep from averages of 1 ms or longer, never per
+sample.** PFM ripple spans -140 to +7700 uA, so a single sample says nothing
+about the mode the part is in.
 
 ## 4. GPIO markers
 
@@ -397,15 +453,18 @@ or stalled, measure its current before touching it.
 
 ## MCP servers
 
-Two MCP servers are registered for this repository and are the intended way to
-drive the first two approaches:
+Two MCP servers are registered for this repository. Use only the first:
 
 - **`embedded-debugger`** -- probe inspection, core control, memory reads,
   breakpoints, RTT, over either probe-rs or OpenOCD. Probe enumeration works
   out of the box; attaching to this part requires the OpenOCD backend, for the
   reason given above. The `embedded-debugger` skill describes the workflow and
   the CLI fallback.
-- **`joulescope-js220`** -- direct instrument access for current measurement.
+- **`joulescope-js220`** -- **do not use it.** It holds the instrument for the
+  life of the session, which blocks every measurement script, and it cannot be
+  released without killing the process; see
+  [Power Testing](power-testing.md#1-before-measuring). It also cannot drive
+  this rig's instrument, as below.
 
 They are registered at local scope. MCP tools bind when a session starts, so a
 session that was already running when they were added will not see them until
@@ -429,8 +488,8 @@ same `pyjoulescope_driver` topics without trouble. Widening that filter in a
 fork is the durable fix; patching the `uvx` cache is undone on the next
 resolve.
 
-Until then the Python tools are the way to measure, and nothing is lost by
-using them.
+Measure with the Python tools and `joulescope_server.py` in any case, as
+[Power Testing](power-testing.md) describes.
 
 ## What not to do
 
@@ -448,7 +507,8 @@ Every item here was learned by doing it.
 
 ## See also
 
-- `embedded/tags/design/open-issues.md` -- known unfixed defects
+- [`embedded/tags/TODO.md`](../../embedded/tags/TODO.md) -- known unfixed defects
 - `embedded/tags/common/core/design/restart-recovery.md` -- boot and recovery paths
 - `embedded/tags/common/core/design/i2c-bus-recovery.md` -- why attach resets matter
-- `AGENTS.md` -- measurement procedure and verification rules
+- [Power Testing](power-testing.md) -- measurement procedure
+- [Capturing a Tag](capturing-a-tag.md) -- saving a tag's state before anything resets it
