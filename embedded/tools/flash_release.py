@@ -27,6 +27,7 @@ import json
 import os
 import platform
 import shutil
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -38,6 +39,102 @@ SELECT_SCRIPT = TOOLS / "stm32_programmer_select.py"
 #: Where the image is loaded. Matches the `-g 0x08000000` the CMake download
 #: targets use; every tag in this tree boots from the start of internal flash.
 LOAD_ADDRESS = "0x08000000"
+
+
+#: STM32L4 FLASH_SR, holding PEMPTY in bit 17 (RM0394 2.6). The address is
+#: family-specific, which is why this is only used for the device IDs below.
+L4_FLASH_SR = 0x40022010
+L4_FLASH_SR_PEMPTY = 1 << 17
+
+#: Device IDs this tree's STM32L4 tags report. Every L4 tag here is an L432,
+#: and the PEMPTY handling below writes a hardware register, so the check is an
+#: allowlist rather than a family guess: on a part where 0x40022010 means
+#: something else, a write there would be its own bug. Extend deliberately.
+L4_DEVICE_IDS = {0x435}
+
+#: Escape sequences STM32_Programmer_CLI colours its output with, which would
+#: otherwise land in the middle of a value being parsed.
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _programmer_call(programmer: str, selector: str,
+                     args: list[str]) -> tuple[int, str]:
+    """Run STM32_Programmer_CLI through the probe selector and capture output.
+
+    @param programmer Path to STM32_Programmer_CLI.
+    @param selector   ST-LINK selector passed through to the wrapper.
+    @param args       Arguments following `--`, excluding the connection.
+    @return Exit status and the output with colour escapes removed.
+    """
+    command = [sys.executable, str(SELECT_SCRIPT), "--programmer", programmer,
+               "--selector", selector, "--", "-c", "port=SWD", "mode=UR"] + args
+    done = subprocess.run(command, capture_output=True, text=True)
+    return done.returncode, ANSI.sub("", done.stdout + done.stderr)
+
+
+def _read32(text: str, address: int) -> Optional[int]:
+    """Extract one 32-bit value from a `-r32` dump.
+
+    @param text    Programmer output, colour escapes already removed.
+    @param address Address whose value to return.
+    @return The value, or None when the dump does not contain it.
+    """
+    found = re.search(rf"0x0*{address:X}\s*:\s*([0-9A-Fa-f]{{1,8}})", text,
+                      re.IGNORECASE)
+    return int(found.group(1), 16) if found else None
+
+
+def clear_pempty(programmer: str, selector: str) -> str:
+    """Clear FLASH_SR.PEMPTY after programming, when the part has it set.
+
+    @details A mass erase sets PEMPTY, and with `nSWBOOT0 = 1` and BOOT0 low a
+             set PEMPTY sends every reset to the ROM bootloader: the firmware
+             just written does not run, and no monitor answers. Hardware
+             re-evaluates the flag only at power-on or an option-byte load, so
+             without this the tag needs a physical power cycle before it will
+             run -- which is the kind of step that gets forgotten, and whose
+             symptom (`tag-info` reporting the bootloader) looks like a failed
+             flash rather than a missing power cycle.
+
+             Writing 1 to the bit **toggles** it, so this reads first and
+             writes only when the bit is set. An unconditional write would set
+             PEMPTY on a healthy part and create the fault it exists to fix.
+
+    @param programmer Path to STM32_Programmer_CLI.
+    @param selector   ST-LINK selector.
+    @return One line describing what happened, for the operator and the record.
+    """
+    status, text = _programmer_call(programmer, selector,
+                                    ["-r32", hex(L4_FLASH_SR), "1"])
+    if status != 0:
+        return "not checked: could not read FLASH_SR"
+
+    device = re.search(r"Device ID\s*:\s*(0x[0-9A-Fa-f]+)", text)
+    if not device:
+        return "not checked: no device ID reported"
+    if int(device.group(1), 16) not in L4_DEVICE_IDS:
+        return f"skipped: {device.group(1)} is not an STM32L4 in the allowlist"
+
+    before = _read32(text, L4_FLASH_SR)
+    if before is None:
+        return "not checked: FLASH_SR not found in the read"
+    if not before & L4_FLASH_SR_PEMPTY:
+        return f"already clear (FLASH_SR=0x{before:x})"
+
+    status, _ = _programmer_call(
+        programmer, selector,
+        ["-w32", hex(L4_FLASH_SR), hex(L4_FLASH_SR_PEMPTY)])
+    if status != 0:
+        return f"FAILED to write FLASH_SR (was 0x{before:x})"
+
+    status, text = _programmer_call(programmer, selector,
+                                    ["-r32", hex(L4_FLASH_SR), "1"])
+    after = _read32(text, L4_FLASH_SR) if status == 0 else None
+    if after is None:
+        return f"written, but could not confirm (was 0x{before:x})"
+    if after & L4_FLASH_SR_PEMPTY:
+        return f"STILL SET after the write (0x{after:x}) -- power-cycle the tag"
+    return f"cleared (0x{before:x} -> 0x{after:x}); no power cycle needed"
 
 
 def find_programmer(explicit: Optional[str]) -> str:
@@ -198,6 +295,7 @@ def record(
     manifest_data: dict,
     programmed: bool,
     exit_code: Optional[int],
+    pempty: Optional[str] = None,
 ) -> None:
     """Append one JSON object describing what was programmed.
 
@@ -237,6 +335,8 @@ def record(
     }
     if exit_code is not None:
         entry["exit_code"] = exit_code
+    if pempty is not None:
+        entry["pempty"] = pempty
 
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry, separators=(",", ":")) + "\n")
@@ -257,6 +357,13 @@ def main(argv: list[str]) -> int:
         "--selector",
         default="pid:0483:3748",
         help="ST-LINK selector passed through: pid:0483:3748, serial:<sn>, index:<n>, prompt, auto.",
+    )
+    parser.add_argument(
+        "--no-pempty-fix",
+        action="store_true",
+        help="Do not clear FLASH_SR.PEMPTY after programming. The check reads "
+        "before it writes and is a no-op on a healthy part, so the only "
+        "reason to pass this is to reproduce the bootloader condition.",
     )
     parser.add_argument(
         "--verify-only",
@@ -321,11 +428,21 @@ def main(argv: list[str]) -> int:
     print(f"\nProgramming with {programmer}")
     status = subprocess.call(command)
 
+    # A mass erase leaves PEMPTY set, and the tag then boots the ROM bootloader
+    # instead of the image just written. Doing this here rather than leaving it
+    # to the operator is the point: it is conditional on a read, and a step that
+    # must be remembered is a step that will be missed.
+    pempty = None
+    if status == 0 and not args.no_pempty_fix:
+        pempty = clear_pempty(programmer, args.selector)
+        print(f"  FLASH_SR.PEMPTY  {pempty}")
+
     # Recorded either way, with `programmed` saying which. A failed flash that
     # left no row would be indistinguishable from one that never happened, and
     # the tag in hand is not running what the operator thinks it is.
     if args.json:
-        record(args.json, args.label, image, manifest_data, status == 0, status)
+        record(args.json, args.label, image, manifest_data, status == 0,
+               status, pempty)
     return status
 
 
