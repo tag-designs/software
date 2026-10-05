@@ -127,6 +127,35 @@ it rules out the sampling, the sensor and the write path, and points at
 something that drew constant current in sleep and no longer does. 45 s now
 costs what 90 s cost in September.
 
+### Board condition is a live competing explanation
+
+A second PresTag, UUID `203330503641500400490058`, measured **0.1341 µA** idle
+on the same firmware as the first board's **0.1261 µA** -- 6.3% apart. That
+was taken as evidence that board-to-board spread could not explain a figure
+123% higher.
+
+**That reasoning is weak, because it assumes spread is bounded by what two
+well-cleaned boards show.** The operator's observation is that the difference
+between these two could simply be cleaning: surface leakage from flux residue.
+The scale fits. 8 nA at 2.5 V is a path of about 300 GΩ, ordinary for ionic
+contamination; the 155 nA separating September from today is about 16 GΩ,
+which is not an extreme number for a poorly rinsed assembly. Leakage is also
+strongly humidity- and temperature-dependent, and the operator reports the
+2026-10-03 session was taken on a hot day in a warm room.
+
+So there are two candidate explanations and they call for opposite work:
+
+| Explanation | Discriminating test |
+| --- | --- |
+| Something in the firmware changed | bisect `890a11b..d41b5357` |
+| The September board was dirtier, or the conditions were | **measure that board on current firmware** |
+
+The second is minutes rather than an hour and should be done first: if that
+board still reads about 0.28 µA on today's firmware, the firmware is
+exonerated and the bisection is pointless. It is only possible if the board can
+be identified -- which is the field the September entry does not record, and
+the reason the recording checklist now demands a UUID.
+
 The cause is **not identified**. The leading theory was the LSE configuration
 -- PresTagv3 was switched to bypass in `d16a930f`, between the two campaigns,
 because crystal mode hung the boot. An A/B refuted it: rebuilt in crystal mode

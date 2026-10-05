@@ -16,6 +16,14 @@ Background:
   bypass, PresTag's default period moved to 60 s, and BitTag's sampling moved
   to the write site. The `fw-v0.5` qualification rows for BitTag and
   CompassTagAT25 do not carry forward.
+- **Measure the September PresTag board on current firmware, before
+  bisecting.** Two candidate explanations stand: a firmware change, or board
+  condition -- flux residue and the humidity it conducts in. Two boards
+  measured 6.3% apart on identical firmware, which is the scale of a surface
+  leakage path, and the September session was taken on a hot day. Measuring
+  that board today is minutes and would exonerate or implicate the firmware
+  outright; the bisection below is an hour and is pointless if the board is
+  the answer. The obstacle is that the September entry records no UUID.
 - **Find what lowered PresTag's resting floor.** 0.2842 to 0.1122 µA fitted,
   with `Q_cycle` unchanged to 0.2%, so it is a constant sleep current that went
   away rather than anything about sampling. The LSE theory was tested and
