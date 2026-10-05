@@ -11,7 +11,7 @@
       "HSEFrequency": "0",
       "HSEBypass": "false",
       "LSEFrequency": "32768",
-      "LSEBypass": "false",
+      "LSEBypass": "true",
       "LSEDrive": "0 Low Drive",
       "VDD": "300"
     }
