@@ -6,6 +6,38 @@ summary: Open tag firmware work -- defects found by reading code, low-power and 
 
 # Tag Firmware TODO
 
+## Before the next release (opened 2026-10-04/05)
+
+Background:
+[the ADC and power-floor investigation](design/investigations/2026-10-adc-and-the-power-floor.md).
+
+- **Requalify all five distributed targets.** Every image changed: the
+  `adcVDD()` fix (`54135465`) touches shared code, the board files gained LSE
+  bypass, PresTag's default period moved to 60 s, and BitTag's sampling moved
+  to the write site. The `fw-v0.5` qualification rows for BitTag and
+  CompassTagAT25 do not carry forward.
+- **Find what lowered PresTag's resting floor.** 0.2842 to 0.1122 µA fitted,
+  with `Q_cycle` unchanged to 0.2%, so it is a constant sleep current that went
+  away rather than anything about sampling. The LSE theory was tested and
+  refuted. `890a11b..d41b5357` is bounded and the board is on the bench; a
+  bisection would settle it. **A 2.2x improvement nobody can explain is as
+  likely to disappear as it was to arrive**, which is the reason to chase it
+  before shipping on the strength of it.
+- **Verify the stored-configuration write**, at least part 1 of
+  [the proposal](design/proposals/stored-config-write-is-unchecked.md) --
+  verify and report, which is safe on a shared page. A qualification taken
+  against an unverified config write can report a pass for a tag running a
+  configuration nobody chose, which is worse than a failure because it looks
+  fine.
+- **Move CompassTag's calibration to the end of flash**, with erase-and-
+  recalibrate for the two affected boards
+  ([worklist](families/CompassTag/TODO.md)).
+- **Explain the 11% gap** between PresTag's fitted `I_rest` (0.1122 µA) and its
+  measured `IDLE` (0.1261 µA). September had the two within 1.1%.
+- **Test `flash_release.py`'s PEMPTY clearing on hardware.** The conditional
+  clear has only ever reported "already clear"; the branch that writes the
+  register is unexercised.
+
 Open work only. Delete an item when it is done; put what was learned in an
 investigation or decision record. Items marked *found by reading code* have
 not been reproduced on a tag.
