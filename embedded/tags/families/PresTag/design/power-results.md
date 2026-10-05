@@ -716,3 +716,45 @@ more than 20% in any row is a finding to investigate before shipping.
 | `T_knee` | 53.7 s | `890a11b`, 2026-09-09 |
 | `I_avg` at 60 s | 0.5406 µA | `890a11b`, 2026-09-09 |
 | `I_avg` at 90 s (default) | 0.4517 µA | `890a11b`, 2026-09-09 |
+
+### 2026-10-05  ADC fix checked, and the resting floor has halved since 2026-09
+
+- **build**: `d41b5357` — `adcVDD()` settling delay at 200 us, SMPR2 index
+  corrected, internal channels at 247.5 cycles (`54135465`), plus everything
+  else between `ef20c5b8` and now. A development build, so this is a
+  comparison and not a qualification.
+- **board**: `PresTagv3`, UUID `20333050364150040063005F`.
+- **conditions**: supply 2.4961 V, stored config `period: 90`, nothing
+  attached during the window. Resting window 120 s, running window 1200 s —
+  about 13 samples, so roughly 7.5% alignment error.
+- **result**:
+
+  | | 2026-09-09 (`890a11b`) | 2026-10-05 (`d41b5357`) | Delta |
+  | --- | ---: | ---: | ---: |
+  | `IDLE` | 0.2810 µA | **0.1261 µA** | -0.1549 |
+  | `RUNNING`, 90 s | 0.4517 µA | **0.2843 µA** | -0.1674 |
+
+  State markers read 2.48-2.49 V and 24.5-25.2 C against a true 2.4961 V, so
+  the ADC fix behaves here as it did on UIUCTag and BitTag. The run recorded
+  correctly: 16 pressure and 16 temperature samples over 24 m 09 s, which is
+  16.1 at a 90 s period.
+- **verdict**: no regression. The two deltas agree to 0.012 µA, which is what
+  a change in the resting floor alone looks like. Against the 2026-09
+  campaign's own fitted model, `I(T) = I_rest + Q/T` with `Q = 15.26 µC`,
+  substituting today's floor gives `0.1261 + 15.26/90 = 0.2957 µA` against
+  **0.2843 µA measured, 3.8% apart** — inside the window's alignment error.
+  The model built in September still describes the tag; only the floor moved.
+- **notes**: **this is a cross-era comparison, not a one-variable A/B.**
+  `ef20c5b8` to `d41b5357` carries more than the ADC fix, and the 2026-09
+  figures came from a different build on a possibly different cell. "No
+  regression" is the claim that is supported; "the ADC fix changed nothing
+  here" is not, because no before-measurement was taken on this board today.
+
+  The floor improvement is unexplained and is worth more than the measurement
+  that found it: 0.2810 to 0.1261 µA is a factor of 2.2. For context, at the
+  same supply on the same day, BitTag measured 0.1169 µA and UIUCTag 0.1628 µA.
+  PresTag carries an RV-3028 and the L432 with external flash; BitTag has no
+  external flash and adds an ADXL362 in shutdown; UIUCTag adds a BMP581, an
+  ADXL367 and external flash. The ordering is consistent with the parts
+  fitted, which suggests today's PresTag figure is the realistic one and the
+  September figure carried something that has since been removed.
