@@ -102,6 +102,29 @@ def main() -> int:
                         "only idle was bounded. The shipping board regulates "
                         "with an SMPS, so this scales with supply voltage: "
                         "at 3.3 V the equivalent limit is 850 uA")
+    p.add_argument("--idle-max-ua", type=float, default=None,
+                   help="current at or below which a state counts as asleep, "
+                        "in uA. This bound does two jobs in the life-cycle "
+                        "check: a resting state must come UNDER it, and the "
+                        "running state must come OVER it, because a run "
+                        "drawing idle current collected nothing. The default "
+                        "(100 uA) suits IMUTag, whose run and rest are three "
+                        "orders of magnitude apart. It fails every sub-uA "
+                        "L432 tag: CompassTagAT25 rests at 0.23 uA and runs "
+                        "at 1.96 uA, so 100 uA declares the run asleep. Pass "
+                        "1 for CompassTag -- above the floor, below the run")
+    p.add_argument("--run-duration", type=float, default=60.0,
+                   help="life-cycle run window in seconds. Must span enough "
+                        "sample periods to integrate: 60 s at CompassTag's "
+                        "30 s period is two samples, which is alignment "
+                        "noise. Its plan specifies 900")
+    p.add_argument("--rest-duration", type=float, default=None,
+                   help="life-cycle resting window in seconds. The default "
+                        "(30 s) is not enough charge to integrate a sub-uA "
+                        "floor against; the sub-uA tags use 120")
+    p.add_argument("--settle", type=float, default=None,
+                   help="seconds to wait after a session closes before "
+                        "measuring, passed to the life-cycle check")
     p.add_argument("--storm-sets", type=int, default=3,
                    help="attach-storm sets to run")
     p.add_argument("--measure-python",
@@ -171,13 +194,27 @@ def main() -> int:
 
     # 3. Every resting state, not just idle.
     print("[life-cycle] idle, running, stopped, idle again")
-    rc, out_txt = run([os.path.join(TOOLS, "tag_lifecycle_check.py"),
-                       "--config", args.config, "--run-duration", "60",
-                       "--run-max-ua", str(args.run_max_ua),
-                       "--use-server"],
-                      os.path.join(out, "lifecycle.log"), 1800)
+    lifecycle_cmd = [os.path.join(TOOLS, "tag_lifecycle_check.py"),
+                     "--config", args.config,
+                     "--run-duration", str(args.run_duration),
+                     "--run-max-ua", str(args.run_max_ua),
+                     "--use-server"]
+    # Only forward the optional bounds that were given, so an unqualified run
+    # keeps the life-cycle check's own defaults rather than this tool's idea
+    # of them.
+    for flag, value in (("--idle-max-ua", args.idle_max_ua),
+                        ("--rest-duration", args.rest_duration),
+                        ("--settle", args.settle)):
+        if value is not None:
+            lifecycle_cmd += [flag, str(value)]
+    rc, out_txt = run(lifecycle_cmd, os.path.join(out, "lifecycle.log"), 1800)
     results["checks"]["lifecycle"] = "pass" if rc == 0 else "fail"
     results["checks"]["run_max_ua"] = args.run_max_ua
+    results["checks"]["run_duration_s"] = args.run_duration
+    if args.idle_max_ua is not None:
+        results["checks"]["idle_max_ua"] = args.idle_max_ua
+    if args.rest_duration is not None:
+        results["checks"]["rest_duration_s"] = args.rest_duration
     print(f"  {'passed' if rc == 0 else 'FAILED'}")
     ok &= rc == 0
 
