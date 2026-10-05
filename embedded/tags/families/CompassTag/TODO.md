@@ -6,51 +6,54 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
 
 # CompassTag TODO
 
-- **Move the calibration region to the end of flash, as IMUTag does.
-  Scheduled for the next firmware release (agreed 2026-10-04).** On the L432 the linker places it as
-  `.calibration (NOLOAD): ALIGN(2048)` straight after the code, so it moves
-  whenever the image grows, and a firmware update leaves a calibrated board's
-  bytes at an address the new image does not read. It has already moved: at
-  `4160d1e` it was at `0x0800a800`; in `fw-v0.5` `__calibration_start__` is
-  `0x0800b000`, with the loaded image ending at `0x0800aebc` — 324 bytes of
-  headroom. The STM32U375 script pins both bounds with eleven `ASSERT`s,
-  with a comment saying it is done so provisioned configuration and
-  calibration survive a firmware update; `STM32L432xC.ld` has one `ASSERT`,
-  about `.tag_identity`. Copy the U375 arrangement: pin the region against the
-  top of flash and assert that code cannot reach it. Until then, a calibrated
-  unit must not be reflashed without comparing the two addresses — see
-  [the power test plan](design/power-test-plan.md).
+- ~~**Move the calibration region to the end of flash, as IMUTag does.**~~
+  **Rejected 2026-10-05, after it was built and measured.** It was scheduled on
+  2026-10-04 and implemented the next day: `STM32L432xC.ld` was given the U375
+  arrangement -- `.calibration` and the NAND map pinned against the top of
+  flash, `.persistent` pinned from a 64 KB code ceiling, six `ASSERT`s -- and
+  all four L432 targets linked with identical regions (calibration
+  `0x0803f000`, persistent `0x08010000..0x0803f000`). It was then dropped
+  without being flashed, for two reasons that only appeared once the cost was
+  measured:
 
-  Two things learned doing this on 2026-10-04, on a unit whose calibration was
-  already at the address `fw-v0.5` uses:
+  - **The upgrade path is a full erase**, which is the hazard the pinning
+    defends against. Field tags are programmed once and are not upgraded in
+    place, so the benefit is close to theoretical.
+  - **The cost falls on all four L432 targets to protect one.** Today an empty
+    `.calibration` collapses -- on BitTag, PresTag and UIUCTag
+    `cal_start == cal_end == nand_map == persist_start`, so only CompassTag
+    reserves a page. Pinning charges the other three a page each for a region
+    they never use, and the fixed code ceiling costs internal log capacity
+    outright:
+
+    | target | floating | pinned | change |
+    | --- | ---: | ---: | ---: |
+    | BitTag | 222 KB | 188 KB | **-15.3%** |
+    | PresTag | 218 KB | 188 KB | -13.8% |
+    | CompassTagAT25 | 210 KB | 188 KB | -10.5% |
+    | UIUCTag | 210 KB | 188 KB | -10.5% |
+
+    BitTag has no external flash, so its 15.3% is the whole deployment budget.
+
+  **Standing policy instead: upgrade a provisioned board with
+  `flash_release.py --erase` and reprovision it.** That erases and programs in
+  one invocation, so it never leaves the reset-with-empty-flash window that
+  latches `FLASH_SR.PEMPTY`, and recalibration costs less than the flash. Two
+  findings from the 2026-10-04 attempt stand and are the reason the policy is
+  stated rather than assumed:
+
   - **A byte-level backup is not a backup of the calibration's meaning.**
-    Dumping the page before a mass erase and writing the same bytes back gave a
-    byte-identical readback and calibration that did not work. Reprovisioning
-    with `tag-cal`/`qtcalibrate` did.
-  - **Mass erase costs a power cycle**, because `FLASH_SR.PEMPTY` is sticky and
-    sends every reset to the ROM bootloader until power-on or an option-byte
-    load. That makes "mass erase and reprovision" — the safe answer for a major
-    upgrade that moves these regions — need physical access to the tag. Pinning
-    the region removes the reason to mass erase in the first place, which is
-    the stronger argument for doing it. See
-    [the release procedure](../../../../docs/release/release-procedure.md).
+    Dumping the page before a mass erase and writing the same bytes back gave
+    a byte-identical readback and calibration that did not work.
+    Reprovisioning with `tag-cal`/`qtcalibrate` did.
+  - **A calibrated unit must not be reflashed without comparing
+    `__calibration_start__` between the two images.** The region moves when the
+    image grows: at `4160d1e` it was `0x0800a800`, in `fw-v0.5` `0x0800b000`.
+    When it moves, erase and recalibrate.
 
-  **Doing it orphans every board already calibrated**, which is the same
-  hazard stated from the other side: pinning the region moves it, so the
-  constants an existing unit holds end up at an address the new firmware does
-  not read. Two units are known to be affected — the production
-  `203633324B425006004A005D`, and `203633324B4250060022005E`, recalibrated by
-  hand on 2026-10-04 with its constants at `0x0800b000`. The change therefore
-  **Decided 2026-10-04: erase and recalibrate, no migration.** Existing units
-  get `flash_release.py --erase`, which erases and programs in one invocation
-  and so never leaves the reset-with-empty-flash window that latches
-  `FLASH_SR.PEMPTY`, followed by a recalibration. For two boards that is
-  cheaper than a migration path that has to know where the old region was, and
-  it leaves no code behind to maintain.
-
-  Whichever is chosen, the release notes must say that the image relocates
-  calibration, because a tag that silently reads an unwritten page looks like
-  a calibration fault rather than an upgrade step.
+  Release notes for any image that moves the region must say so, because a tag
+  reading an unwritten page looks like a calibration fault rather than an
+  upgrade step.
 - **Measure plain `CompassTag` (MX25R) after an attach.** It reproduced the
   Standby-after-attach fault on its own board, and it has not been measured
   since the fix. `CompassTagAT25` has been, on production hardware

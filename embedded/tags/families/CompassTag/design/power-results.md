@@ -265,3 +265,40 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   the same pass whose download check found 30 rows. The plan now specifies
   `--idle-max-ua 1`. That log is kept as `lifecycle-idlemax5.log`.
 - **artifacts**: `release-checks/compasstagat25-20261004-143226/`
+
+### 2026-10-05  Spot check after the ADC fix and the LSE-bypass board change
+
+- **build**: `9a62336a`, local build, clean rebuild of `CompassTagAT25`
+  (`build/` and `dep/` removed first). Carries the `adcVDD()` fixes from
+  `54135465` — the SMPR2 channel index corrected and the 200 us settling delay
+  restored, internal channels at 247.5 cycles — and the `CompassTagv1` board
+  change to `STM32_LSE_BYPASS` from `bac55007`.
+- **board**: **not recorded.** Almost certainly `203633324B4250060022005E`,
+  carried over on the bench from the 2026-10-04 qualification, but the UUID
+  was not read back during the session, so **do not rely on it**. Logged as a
+  defect in this entry rather than inferred: an entry that cannot name its
+  board is the exact failure that made PresTag's 2026-09 resting figures
+  unattributable and ultimately withdrawn.
+- **conditions**: supply 2.4960 V, unregulated 2.5 V cell, shipped default
+  config (30 s compass period). `joulescope_server.py --use-server`, qtmonitor
+  and the desktop app detached. One 120 s resting window.
+- **result**:
+
+  | Check | Result | Against |
+  | --- | --- | --- |
+  | Boots with LSE bypass | **yes**, `tag-info` reads `githash 9a62336a`, state `IDLE` | first of the four re-configured boards verified |
+  | ADC markers | **vdd 2.48 V, temp 22.7–23.0 °C** | truth 2.4960 V, room ~23 °C |
+  | `IDLE`, clock set | **0.2372 µA** | 0.23 µA at the 2026-10-04 qualification |
+
+- **verdict**: no regression, and the two changes that carried the most risk
+  are clear. The LSE bypass mattered most: `bac55007` set it on every
+  distributed board, and a missing `STM32_LSE_BYPASS` hangs the first boot
+  forever in `__early_init`, with a monitor-attach timeout as the only
+  symptom. This is the first of those four boards shown to boot. The ADC
+  markers are 0.6% low on VDD and within a degree on temperature, consistent
+  with what the same fix gave on UIUCTag and BitTag.
+- **notes**: **this is a spot check, not a qualification.** One resting window,
+  no run current, no life cycle, no attach storm, no download check, and a
+  local build rather than a release image. `CompassTagAT25` still needs a full
+  `tag_release_check.py` pass against the next release image, along with the
+  other four targets — every distributed image changed.

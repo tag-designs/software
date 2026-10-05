@@ -224,7 +224,7 @@ design document.
 
 - [CompassTag Family](../embedded/tags/families/CompassTag/README.md) — What the CompassTag family variants share, where family-specific drivers live, and links to design notes and the host simulation.
 - [CompassTag Power Measurement Log](../embedded/tags/families/CompassTag/design/power-results.md) *(results)* — Append-only log of CompassTag power measurements -- the Standby-after-attach fault before and after its fix, and the production CompassTagAT25 validation.
-- [CompassTag Power Test Plan — Standby After Attach](../embedded/tags/families/CompassTag/design/power-test-plan.md) *(procedure)* — CompassTag power check -- every terminal state must reach the Standby floor after a debugger attach and detach; phases, gates and the board to run it on.
+- [CompassTag Power Test Plan](../embedded/tags/families/CompassTag/design/power-test-plan.md) *(procedure)* — CompassTag power test plan -- qualifying a CompassTagAT25 release image for idle, running and finished current, with the Standby-after-attach regression as a standing gate; calibration must survive the flash.
 - [CompassTag TODO](../embedded/tags/families/CompassTag/TODO.md) *(worklist)* — Open CompassTag power and monitor items left by the 2026-09 Standby-after-attach work.
 
 ### Tags / Families / CompassTag / Investigations
@@ -283,16 +283,21 @@ design document.
 - [A Non-Failure Reset During RUNNING Aborted the Run](../embedded/tags/design/investigations/2026-10-reset-during-running-aborts.md) *(investigation, closed)* — A non-failure reset during RUNNING aborted PresTag runs under 10 s and every IMUTag run; fixed 2026-10-02 by treating an external reset with valid retained state as a reattach.
 - [Attach-Storm Failures, September 2026](../embedded/tags/design/investigations/2026-09-attach-storm-failures.md) *(investigation, closed)* — Four attach-storm failures chased in September 2026 -- non-monotonic timestamps, refused downloads, STATE_UNSPECIFIED after reset, and an unserviced stop -- three host-tool faults and one firmware fix.
 - [Next-Release Fixes: Specification and Verification](../embedded/tags/design/investigations/2026-10-next-release-fixes-verified.md) *(investigation, closed)* — How the post-fw-v0.0.3 defect fixes (A1-A3, A7) and the identity record and session facts (B1, B2) were specified and verified, on hardware and in host simulation, October 2026.
+- [The internal ADC, and PresTag's resting floor](../embedded/tags/design/investigations/2026-10-adc-and-the-power-floor.md) *(investigation, closed)* — Two ADC defects dating to the initial commit, found because one breakout reported 3.9 V and 100 C; the sweep that sized the fix; its verification on three tags; and a 2.2x drop in PresTag's resting floor that is measured, bounded, and still unexplained.
 
 ### Tags / Proposals
 
 - [Field Data Extraction](../embedded/tags/design/proposals/field-data-extraction.md) *(proposal, proposed)* — Two unbuilt changes so a returned tag's data decodes and explains itself - a session superblock in the data region, and gaps closed in the flash marker log.
+- [The stored-configuration write is unchecked on every tag but IMUTag](../embedded/tags/design/proposals/stored-config-write-is-unchecked.md) *(proposal, proposed)* — writeStoredConfig() ignores whether the flash write succeeded on every tag but IMUTag, so a refused program leaves a stale configuration running while the host reports the new one. A cheap fix catches it; the full fix needs a page per target.
 
 ### Tags / UIUCTag
 
 - [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
 - [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the record layout, timing and firmware/host contract of its pressure and activity log.
+- [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements. No entries yet; the first qualification sets the baseline.
+- [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
+- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items from the 2026-10-04 bench session -- a run that stored nothing, a self-test that fails, and the internal-ADC fix that came out of it.
 
 ### Tags / UIUCTag / Investigations
 
