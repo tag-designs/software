@@ -758,3 +758,77 @@ more than 20% in any row is a finding to investigate before shipping.
   ADXL367 and external flash. The ordering is consistent with the parts
   fitted, which suggests today's PresTag figure is the realistic one and the
   September figure carried something that has since been removed.
+
+### 2026-10-05  Sample-period sweep, six points — and the per-sample energy is unchanged
+
+- **build**: `d41b5357`. **board**: `PresTagv3`, UUID `20333050364150040063005F`.
+- **conditions**: supply 2.4961 V, nothing attached during each window, 1200 s
+  per point. The stored period was read back from the tag before every
+  measurement, because `writeStoredConfig()` does not check that the write
+  succeeded ([F3](../../../design/proposals/stored-config-write-is-unchecked.md));
+  all six matched what was sent.
+- **result**:
+
+  | Period | Samples in window | Alignment error | `RUNNING` |
+  | ---: | ---: | ---: | ---: |
+  | 15 s | 80 | 1.3% | **1.1260 µA** |
+  | 20 s | 60 | 1.7% | **0.8760 µA** |
+  | 30 s | 40 | 2.5% | **0.6176 µA** |
+  | 45 s | 26 | 3.7% | **0.4541 µA** |
+  | 60 s | 20 | 5.0% | **0.3665 µA** |
+  | 90 s | 13 | 7.5% | **0.2788 µA** |
+
+- **fit**: `I(T) = I_rest + Q/T` gives **`I_rest` 0.1122 µA**, **`Q_cycle`
+  15.23 µC**, R² **0.99994**, max residual 0.0035 µA.
+
+- **what changed since September, and what did not**:
+
+  | | 2026-09-09 | 2026-10-05 |
+  | --- | ---: | ---: |
+  | `I_rest` (fitted) | 0.2842 µA | **0.1122 µA** |
+  | `Q_cycle` | 15.26 µC | **15.23 µC** |
+
+  **The per-sample energy is unchanged — 0.2% apart across two independent
+  campaigns — and the whole improvement is in the resting floor.** That is
+  worth more than the headline number: it rules out anything about sampling,
+  the sensor, or the write path, and points at something drawing constant
+  current in sleep that is no longer drawing it. The cause is still
+  unidentified; the LSE bypass theory was tested and refuted (see the
+  2026-10-05 entry above).
+
+  Stated usefully: 45 s now costs what 90 s cost in September (0.4541 against
+  0.4517 µA), so the achievable sample rate at equal current has roughly
+  doubled.
+
+  The fitted intercept and the directly measured idle agree less well than
+  they did in September — 0.1122 against 0.1261 µA, 11% apart, where that
+  campaign had them within 1.1%. The fit describes the resting state *between
+  samples in a run*; the measured figure is terminal sleep in `IDLE`. They are
+  not required to be identical and the gap is now large enough to be worth
+  explaining.
+
+- **deployment length**, 4 MB external flash holding 17476 pages x 60 samples
+  = 1,048,560 samples; days, and which limit binds:
+
+  | Period | 5.5 mAh | 11 mAh | Memory | Usable, 5.5 mAh | Usable, 11 mAh |
+  | ---: | ---: | ---: | ---: | ---: | ---: |
+  | 15 s | 204 | 407 | 182 | **182** *(memory)* | **182** *(memory)* |
+  | 20 s | 262 | 523 | 243 | **243** *(memory)* | **243** *(memory)* |
+  | 30 s | 371 | 742 | 364 | **364** *(memory)* | **364** *(memory)* |
+  | 45 s | 505 | 1009 | 546 | **505** *(battery)* | **546** *(memory)* |
+  | 60 s | 625 | 1251 | 728 | **625** *(battery)* | **728** *(memory)* |
+  | 90 s | 822 | 1644 | 1092 | **822** *(battery)* | **1092** *(memory)* |
+
+  Crossovers: on 5.5 mAh the binding constraint changes from memory to battery
+  at **32.6 s**; on 11 mAh, not until **201 s**. So on the larger cell every
+  period in this range is memory-limited, and spending current to sample
+  faster buys nothing the flash can hold.
+
+  At the new 60 s default: **625 days on 5.5 mAh**, **728 days on 11 mAh**,
+  the latter capped by flash rather than by the cell.
+
+![Usable deployment length against sample period](power-sample-period.svg)
+
+These figures ignore cell self-discharge and any derating for temperature or
+end-of-life voltage, so they are upper bounds on the battery side. The memory
+side is exact.
