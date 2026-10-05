@@ -11,11 +11,35 @@ summary: Open tag firmware work -- defects found by reading code, low-power and 
 Background:
 [the ADC and power-floor investigation](design/investigations/2026-10-adc-and-the-power-floor.md).
 
-- **Requalify all five distributed targets.** Every image changed: the
-  `adcVDD()` fix (`54135465`) touches shared code, the board files gained LSE
-  bypass, PresTag's default period moved to 60 s, and BitTag's sampling moved
-  to the write site. The `fw-v0.5` qualification rows for BitTag and
-  CompassTagAT25 do not carry forward.
+- **Requalify all five distributed targets. One of five done.** Every image
+  changed: the `adcVDD()` fix (`54135465`) touches shared code, the board files
+  gained LSE bypass, PresTag's default period moved to 60 s, and BitTag's
+  sampling moved to the write site. The `fw-v0.5` qualification rows do not
+  carry forward.
+
+  | Target | State |
+  | --- | --- |
+  | `CompassTagAT25` | **PASS at `630ce14e`, 2026-10-05**, clean tree ([results](families/CompassTag/design/power-results.md)) |
+  | `BitTag` | outstanding |
+  | `PresTag` | outstanding |
+  | `UIUCTag` | outstanding, and two failures are open against it |
+  | `IMUTagNandBmp581` | outstanding |
+
+  **Before qualifying any of the other three L432 targets, pass the bounds.**
+  `tag_release_check.py` defaults to a 100 uA sleep threshold, which is also
+  the floor the run must clear, so a sub-100 uA run is failed as "not
+  collecting". `630ce14e` lets the bounds be passed; it does not change the
+  defaults, because IMUTag needs them. CompassTagAT25 used
+  `--idle-max-ua 1 --run-max-ua 5 --run-duration 900 --rest-duration 120
+  --settle 60`; size the run window to span enough sample periods and the rest
+  window to integrate a sub-microamp floor.
+
+  **The harness does not check calibration or run `tag-test`.** On CompassTag
+  both were closed by hand: `__calibration_start__` compared against the
+  address the board was calibrated under *before* flashing, the page dumped
+  and decoded afterwards, and `tag-test` run separately. Only CompassTag
+  carries calibration, but no target's qualification includes a self-test
+  unless one is run.
 - ~~**Find what lowered PresTag's resting floor.**~~ **Closed 2026-10-05: the
   firmware did not lower it.** The September build `890a11b` was rebuilt and
   flashed to PresTag board B, which measured **0.1267 µA** idle against

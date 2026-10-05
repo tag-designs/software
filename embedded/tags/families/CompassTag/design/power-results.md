@@ -302,3 +302,81 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   local build rather than a release image. `CompassTagAT25` still needs a full
   `tag_release_check.py` pass against the next release image, along with the
   other four targets — every distributed image changed.
+
+### 2026-10-05  `CompassTagAT25` release qualification at `630ce14e` — PASS
+
+- **build**: `630ce14e`, **tree clean**, built and flashed by
+  `tag_release_check.py`. Carries the `adcVDD()` fixes (`54135465`), the
+  `CompassTagv1` LSE-bypass board change (`bac55007`) and the life-cycle bound
+  passthrough this session added. Artifacts, including the ELF and every log
+  and database, in `release-checks/release-CompassTagAT25-20261005-180824/`.
+- **board**: `203633324B4250060022005E` on CompassTagv1 hardware, read back from
+  the tag. Calibration dates from the 2026-10-04 recalibration.
+- **conditions**: supply **2.4960 V** throughout, unregulated 2.5 V cell.
+  Shipped default config, 30 s compass period. `joulescope_server.py
+  --use-server`, qtmonitor and the desktop app both verified absent by process
+  check rather than assumed.
+- **invocation** — the bounds matter more than usual here, see the note below:
+
+  ```sh
+  embedded/tools/tag_release_check.py --target CompassTagAT25 \
+      --config embedded/proto-c/compasstag-proto-c/default-config.json \
+      --idle-max-ua 1 --run-max-ua 5 \
+      --run-duration 900 --rest-duration 120 --settle 60 --storm-sets 3
+  ```
+
+- **result**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | supply, every window | 2.45–2.55 V | 2.4960 V | **pass** |
+  | `IDLE`, four trials | ≤ 5 µA | 0.2327 / 0.2316 / 0.2314 / 0.2306 µA | **pass**, 0.9% spread |
+  | `IDLE`, life cycle | ≤ 5 µA | 0.22 µA | **pass** |
+  | `RUNNING` | two windows within 5% | **1.94** and **1.9387 µA** | **pass**, 0.07% apart |
+  | `FINISHED` | ≤ 5 µA, within 20% of `IDLE` | 0.22 µA | **pass**, equal to idle |
+  | `idle_after_cycle` | ≤ 5 µA | 0.22 µA | **pass** |
+  | attach storms | every round survives | 3 sets, 6 rounds, 240 cycles, 0 aborted | **pass** |
+  | `tag-test` | `ALL_PASSED` | `ALL_PASSED` | **pass** |
+  | download interval | samples exactly 30 s apart | 30 s in all six stored rounds | **pass** |
+  | calibration | survives the flash | intact and meaningful, see below | **pass** |
+
+- **`FINISHED` has a number for the first time.** The plan added it because the
+  2026-09-24 session never measured it. At 0.22 µA it is indistinguishable
+  from `IDLE`, which is what the shared code path predicts.
+
+- **The run is the measurement the harness could not previously take.**
+  `tag_release_check.py` forwarded no `--idle-max-ua`, so the life-cycle step
+  ran at its 100 µA default. That threshold also sets the floor the *run* must
+  clear, so a 1.94 µA run was declared asleep and failed. Fixed in `630ce14e`;
+  this is the first CompassTag qualification the release path could produce at
+  all. The same defect excluded BitTag, PresTag and UIUCTag.
+
+- **Calibration was checked by hand, because the harness does not check it.**
+  `__calibration_start__` was confirmed still at `0x0800b000` — the address the
+  board was calibrated under, with the image ending at `0x0800ac58`, 936 bytes
+  of headroom — **before** the flash was allowed. Afterwards the page was
+  dumped and decoded rather than merely counted: 56 bytes of payload against an
+  otherwise erased page, carrying a signature word, four offset/scale terms and
+  a symmetric soft-iron matrix with a near-unity diagonal:
+
+  ```
+   0.994955  -0.009387   0.002204
+  -0.009387   0.956864  -0.031607
+   0.002204  -0.031607   1.051520
+  ```
+
+  "Not blank" would not have been enough: a byte-level restore on 2026-10-04
+  gave a byte-identical page and calibration that did not work.
+
+- **The 30 s interval was verified under storm, not just at rest.** All six
+  stored round databases give exactly 30 s between consecutive `Epoch` values
+  in both `Compass` and `Activity`, and each of those rounds absorbed 40
+  attach/detach cycles. The timestamp column is `Epoch`; check which column a
+  claim rests on before believing it.
+
+- **verdict**: **PASS.** `CompassTagAT25` is qualified at `630ce14e` from a
+  clean tree. Against the 2026-10-04 `fw-v0.5` qualification — idle 0.23,
+  running 1.96/1.95/1.9482, finished 0.22 — nothing moved: idle is within
+  0.5%, running within 1.1%, finished identical. Every distributed image
+  changed between the two, so this is a requalification rather than a
+  confirmation, and it is the first of the five targets to be redone.
