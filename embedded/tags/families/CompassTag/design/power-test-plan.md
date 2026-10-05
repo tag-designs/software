@@ -150,6 +150,10 @@ cmp "$OUT/calibration-before.bin" "$OUT/calibration-after.bin" && echo "calibrat
 
 ### Flash the right target for the board
 
+**The MX25R path is abandoned (2026-10-05); `CompassTagAT25` is the only
+CompassTag qualified or shipped.** The warning below still matters, because
+both targets still build and the Breakout hardware still exists.
+
 `CompassTag` is built for the MX25R part and `CompassTagAT25` for an AT25XE
 board. They share `pwr-l432.c` but are distinct images, and **nothing in the
 tooling flags the mismatch**. `CompassTagAT25` firmware on Breakout hardware

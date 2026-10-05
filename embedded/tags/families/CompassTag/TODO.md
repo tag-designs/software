@@ -54,12 +54,15 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
   Release notes for any image that moves the region must say so, because a tag
   reading an unwritten page looks like a calibration fault rather than an
   upgrade step.
-- **Measure plain `CompassTag` (MX25R) after an attach.** It reproduced the
-  Standby-after-attach fault on its own board, and it has not been measured
-  since the fix. `CompassTagAT25` has been, on production hardware
-  ([results](design/power-results.md), 2026-09-24). They share
-  `pwr-l432.c` with no override, so the fix applies by construction, but that
-  is not a hardware measurement.
+- ~~**Measure plain `CompassTag` (MX25R) after an attach.**~~ **Dropped
+  2026-10-05: the MX25R path is abandoned.** It reproduced the
+  Standby-after-attach fault on its own board and was never measured after the
+  fix; `CompassTagAT25` was, on production hardware
+  ([results](design/power-results.md), 2026-09-24). They share `pwr-l432.c`
+  with no override, so the fix applies to the MX25R image by construction --
+  which was never a substitute for a measurement, and now does not need to be.
+  **No MX25R measurement is owed.** The `CompassTag` target still builds; it
+  is simply not a qualification target, and nothing should block on it.
 - **Re-confirm the never-attached cold baseline after the fix.** Remove all
   power, including any cell, and measure before a probe ever touches the
   board. The 376 nA figure is the pre-fix cold measurement.
