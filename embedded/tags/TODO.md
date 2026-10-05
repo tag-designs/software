@@ -16,30 +16,56 @@ Background:
   bypass, PresTag's default period moved to 60 s, and BitTag's sampling moved
   to the write site. The `fw-v0.5` qualification rows for BitTag and
   CompassTagAT25 do not carry forward.
-- **Measure the September PresTag board on current firmware, before
-  bisecting.** Two candidate explanations stand: a firmware change, or board
-  condition -- flux residue and the humidity it conducts in. Two boards
-  measured 6.3% apart on identical firmware, which is the scale of a surface
-  leakage path, and the September session was taken on a hot day. Measuring
-  that board today is minutes and would exonerate or implicate the firmware
-  outright; the bisection below is an hour and is pointless if the board is
-  the answer. The obstacle is that the September entry records no UUID.
-- **Find what lowered PresTag's resting floor.** 0.2842 to 0.1122 µA fitted,
-  with `Q_cycle` unchanged to 0.2%, so it is a constant sleep current that went
-  away rather than anything about sampling. The LSE theory was tested and
-  refuted. `890a11b..d41b5357` is bounded and the board is on the bench; a
-  bisection would settle it. **A 2.2x improvement nobody can explain is as
-  likely to disappear as it was to arrive**, which is the reason to chase it
-  before shipping on the strength of it.
+- ~~**Find what lowered PresTag's resting floor.**~~ **Closed 2026-10-05: the
+  firmware did not lower it.** The September build `890a11b` was rebuilt and
+  flashed to PresTag board B, which measured **0.1267 µA** idle against
+  **0.1341 µA** for the same board on `d41b5357` -- a 5.8% spread, with the
+  dearer figure on the *current* firmware. One board, two builds, no
+  firmware effect. The bisection of `890a11b..d41b5357` is cancelled.
+
+  What remains is that September's **0.2810 µA** is unreproducible on either
+  board under any build tried. It was anomalous when it was taken: BitTag
+  carries strictly more parts in sleep -- an ADXL362 in shutdown on top of
+  PresTag's RV-3028 and L432 -- and reads **0.1169 µA**, so PresTag could not
+  legitimately rest at 2.4x BitTag. The remaining explanations are board
+  condition (surface leakage from flux residue, which is humidity- and
+  temperature-dependent; the session was taken on a hot day) and the session
+  itself. Neither is now worth chasing: **treat 0.2810 µA as suspect data, not
+  as a superseded result.** The lesson is the recording checklist, which now
+  demands a board UUID -- the September entry has none, so it cannot be
+  attributed to a board even in principle.
 - **Verify the stored-configuration write**, at least part 1 of
   [the proposal](design/proposals/stored-config-write-is-unchecked.md) --
   verify and report, which is safe on a shared page. A qualification taken
   against an unverified config write can report a pass for a tag running a
   configuration nobody chose, which is worse than a failure because it looks
   fine.
-- **Move CompassTag's calibration to the end of flash**, with erase-and-
-  recalibrate for the two affected boards
-  ([worklist](families/CompassTag/TODO.md)).
+- ~~**Move CompassTag's calibration to the end of flash**~~ -- **rejected
+  2026-10-05, after it was built and measured.** Pinning `.calibration` and
+  `.persistent` to fixed addresses in `STM32L432xC.ld` protects provisioned
+  data across a firmware update that does not erase. It was implemented and
+  all four L432 targets linked, and it costs internal log capacity:
+
+  | target | floating | pinned | change |
+  | --- | ---: | ---: | ---: |
+  | BitTag | 222 KB | 188 KB | **-15.3%** |
+  | PresTag | 218 KB | 188 KB | -13.8% |
+  | CompassTagAT25 | 210 KB | 188 KB | -10.5% |
+  | UIUCTag | 210 KB | 188 KB | -10.5% |
+
+  Two reasons not to pay it. **The upgrade path is a full erase**, which
+  removes the hazard the pinning defends against, so the benefit is close to
+  theoretical -- field tags are programmed once and are not upgraded in place.
+  And **the cost falls on all four targets to protect one**: today an empty
+  `.calibration` collapses, so `cal_start == cal_end == nand_map ==
+  persist_start` on BitTag, PresTag and UIUCTag and only CompassTag reserves a
+  page. Pinning charges the other three a page each for a region they never
+  use. BitTag has no external flash, so its 15.3% is the whole deployment
+  budget.
+
+  Standing policy instead: **upgrade a provisioned board with
+  `flash_release.py --erase` and reprovision it.** Recalibration is the price
+  and it is smaller than the capacity.
 - **Explain the 11% gap** between PresTag's fitted `I_rest` (0.1122 µA) and its
   measured `IDLE` (0.1261 µA). September had the two within 1.1%.
 - **Test `flash_release.py`'s PEMPTY clearing on hardware.** The conditional

@@ -34,7 +34,22 @@ Rig, unless an entry says otherwise: PresTagv3 + PresTag on a baseboard,
 Joulescope JS320 via `joulescope_server.py --use-server`, `charge/time` figure,
 supply 2.485 V, monitor and Joulescope UI detached.
 
+Record a **board UUID** with every entry. The 2026-09 entries do not carry one
+and that is the reason their resting figures could never be attributed to a
+board; see the withdrawal note below.
+
 ---
+
+> **The resting figures in the 2026-09 entries below are withdrawn
+> (2026-10-05).** They do not reproduce. The September build `890a11b` was
+> rebuilt and run on PresTag board B in 2026-10 and measured **0.1267 µA**
+> idle, against 0.1341 µA for the current build on that same board -- so the
+> ≈ 0.28 µA these entries record is not a property of that firmware. The
+> entries are kept verbatim as the record of what was measured; **do not use
+> their resting currents, `I_rest`, `T_knee` or `I_avg` figures as a
+> baseline.** Per-sample energy (`Q_cycle`) is unaffected and reproduced to
+> 0.2%. See
+> [the investigation](../../../design/investigations/2026-10-adc-and-the-power-floor.md).
 
 ### 2026-09-08  Baseline, before any fix
 - **build**: `411b046` PresTag, stock LPTIM stop-delay path, PA2/INT1 a floating input
@@ -702,22 +717,38 @@ here is a regression, not a discovery:
 
 #### Baseline
 
-Later sessions compare against these, taken from the entries above. A move of
-more than 20% in any row is a finding to investigate before shipping.
+Later sessions compare against these. A move of more than 20% in any row is a
+finding to investigate before shipping.
+
+**The 2026-09 resting rows are withdrawn.** They did not reproduce: the
+September build itself measured 0.1267 µA idle when it was rebuilt and run on
+board B in 2026-10, against 0.1341 µA for the current build on the same board.
+They are kept below, struck through, because a withdrawn number that is
+deleted gets re-derived; but **do not compare against them.** The rows that
+depend only on per-sample energy are unaffected and carry forward -- `Q_cycle`
+reproduced to 0.2% across the two campaigns, which is why the resting rows
+could be isolated at all.
 
 | Quantity | Baseline | Set by |
 | --- | --- | --- |
-| IDLE (clock set) | 0.2810 µA (A1′; A1 0.2928, A5 0.2860) | `890a11b`, 2026-09-09 |
+| IDLE (clock set) | **0.1261 µA** (board A; board B 0.1341) | `d41b5357`, 2026-10-05 |
+| `I_rest` (fitted, six points) | **0.1122 µA** | `d41b5357`, 2026-10-05 |
+| `Q_cycle` | **15.23 µC** (15.26 in 2026-09) | `d41b5357`, 2026-10-05 |
+| `I_avg` at 60 s (new default) | **0.3665 µA** (board B 0.4087) | `d41b5357`, 2026-10-05 |
+| `I_avg` at 90 s | **0.2788 µA** | `d41b5357`, 2026-10-05 |
 | CONFIGURED | 0.5165 µA | `411b046`, 2026-09-08 |
-| FINISHED | 0.2790 µA | `890a11b`, 2026-09-09 |
-| HIBERNATING | 0.3769 µA — minute-alarm firmware, before `060a566` | `890a11b`, 2026-09-09 |
-| `I_rest` (Shutdown fit) | 0.2842 µA | `890a11b`, 2026-09-09 |
-| `Q_cycle` | 15.26 µC | `890a11b`, 2026-09-09 |
-| `T_knee` | 53.7 s | `890a11b`, 2026-09-09 |
-| `I_avg` at 60 s | 0.5406 µA | `890a11b`, 2026-09-09 |
-| `I_avg` at 90 s (default) | 0.4517 µA | `890a11b`, 2026-09-09 |
+| ~~IDLE~~ | ~~0.2810 µA (A1′; A1 0.2928, A5 0.2860)~~ — **suspect, withdrawn** | `890a11b`, 2026-09-09 |
+| ~~FINISHED~~ | ~~0.2790 µA~~ — **suspect, same sessions** | `890a11b`, 2026-09-09 |
+| ~~HIBERNATING~~ | ~~0.3769 µA~~ — **suspect**; also minute-alarm firmware, before `060a566` | `890a11b`, 2026-09-09 |
+| ~~`I_rest` (Shutdown fit)~~ | ~~0.2842 µA~~ — **suspect, withdrawn** | `890a11b`, 2026-09-09 |
+| ~~`T_knee`~~ | ~~53.7 s~~ — derived from the withdrawn `I_rest` | `890a11b`, 2026-09-09 |
+| ~~`I_avg` at 60 s~~ | ~~0.5406 µA~~ — carries the withdrawn resting term | `890a11b`, 2026-09-09 |
+| ~~`I_avg` at 90 s~~ | ~~0.4517 µA~~ — carries the withdrawn resting term | `890a11b`, 2026-09-09 |
 
-### 2026-10-05  ADC fix checked, and the resting floor has halved since 2026-09
+The 2026-09 session recorded **no board UUID**, which is why its readings
+cannot be attributed to a board even now. Record one for every measurement.
+
+### 2026-10-05  ADC fix checked, and the 2026-09 resting floor does not reproduce
 
 - **build**: `d41b5357` — `adcVDD()` settling delay at 200 us, SMPR2 index
   corrected, internal channels at 247.5 cycles (`54135465`), plus everything
@@ -750,14 +781,27 @@ more than 20% in any row is a finding to investigate before shipping.
   regression" is the claim that is supported; "the ADC fix changed nothing
   here" is not, because no before-measurement was taken on this board today.
 
-  The floor improvement is unexplained and is worth more than the measurement
-  that found it: 0.2810 to 0.1261 µA is a factor of 2.2. For context, at the
-  same supply on the same day, BitTag measured 0.1169 µA and UIUCTag 0.1628 µA.
-  PresTag carries an RV-3028 and the L432 with external flash; BitTag has no
-  external flash and adds an ADXL362 in shutdown; UIUCTag adds a BMP581, an
-  ADXL367 and external flash. The ordering is consistent with the parts
-  fitted, which suggests today's PresTag figure is the realistic one and the
-  September figure carried something that has since been removed.
+  **The 2.2x gap against September is in the September figure, not in this
+  one.** It was first read as a floor improvement; a later A/B on PresTag
+  board B settled it the other way. The September build `890a11b` was rebuilt
+  and flashed to that board, which measured **0.1267 µA** idle against
+  **0.1341 µA** for the same board on `d41b5357` -- one board, two builds, one
+  session, 5.8% apart, with the dearer figure on the current firmware. There
+  is no firmware term to find.
+
+  The parts budget says the same thing. At the same supply on the same day
+  BitTag measured 0.1169 µA and UIUCTag 0.1628 µA. PresTag carries an RV-3028
+  and the L432 with external flash; BitTag has no external flash and adds an
+  ADXL362 in shutdown; UIUCTag adds an ADXL367. Each step matches the part
+  added to within about 11 nA, and BitTag -- which has strictly more silicon
+  resting than PresTag -- reads *lower* than September's PresTag. **Treat
+  0.2810 µA as suspect data rather than a superseded result**: it has not
+  reproduced on either board under either build, and board condition (surface
+  leakage from flux residue, humidity- and temperature-dependent, on a hot
+  day) accounts for it at an ordinary 16 GΩ. The September entry records no
+  board UUID, so it cannot be attributed even in principle -- which is why the
+  recording checklist now demands one. See
+  [the investigation](../../../design/investigations/2026-10-adc-and-the-power-floor.md).
 
 ### 2026-10-05  Sample-period sweep, six points — and the per-sample energy is unchanged
 
@@ -789,23 +833,28 @@ more than 20% in any row is a finding to investigate before shipping.
   | `Q_cycle` | 15.26 µC | **15.23 µC** |
 
   **The per-sample energy is unchanged — 0.2% apart across two independent
-  campaigns — and the whole improvement is in the resting floor.** That is
-  worth more than the headline number: it rules out anything about sampling,
-  the sensor, or the write path, and points at something drawing constant
-  current in sleep that is no longer drawing it. The cause is still
-  unidentified; the LSE bypass theory was tested and refuted (see the
-  2026-10-05 entry above).
+  campaigns — and the whole difference is in the resting term.** That rules
+  out anything about sampling, the sensor, or the write path. It does not mean
+  the firmware improved the resting term: the September build measured
+  0.1267 µA on board B against 0.1341 µA for the current build on the same
+  board, so the difference is not in the code. September's resting figure is
+  treated as suspect data (see the 2026-10-05 entry above); the LSE bypass
+  theory was tested and refuted separately.
 
-  Stated usefully: 45 s now costs what 90 s cost in September (0.4541 against
-  0.4517 µA), so the achievable sample rate at equal current has roughly
-  doubled.
+  ~~45 s now costs what 90 s cost in September, so the achievable sample rate
+  at equal current has roughly doubled.~~ **Withdrawn.** That claim divided
+  today's measurement by September's, and September's resting term is the
+  suspect quantity. Nothing about the achievable sample rate changed; the
+  September tag was resting dearer than the design does.
 
-  The fitted intercept and the directly measured idle agree less well than
-  they did in September — 0.1122 against 0.1261 µA, 11% apart, where that
-  campaign had them within 1.1%. The fit describes the resting state *between
+  The fitted intercept and the directly measured idle are 0.1122 against
+  0.1261 µA, **11% apart**. The fit describes the resting state *between
   samples in a run*; the measured figure is terminal sleep in `IDLE`. They are
-  not required to be identical and the gap is now large enough to be worth
-  explaining.
+  not required to be identical, but 11% is large enough to be worth
+  explaining, and this is the one gap the board-B A/B did not address. (The
+  September campaign had the two within 1.1%, but that agreement is between
+  two quantities from the withdrawn sessions and is not evidence of anything
+  today.)
 
 - **deployment length**, 4 MB external flash holding 17476 pages x 60 samples
   = 1,048,560 samples; days, and which limit binds:

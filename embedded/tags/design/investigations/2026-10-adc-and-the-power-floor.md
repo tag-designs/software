@@ -147,22 +147,59 @@ So there are two candidate explanations and they call for opposite work:
 
 | Explanation | Discriminating test |
 | --- | --- |
-| Something in the firmware changed | bisect `890a11b..d41b5357` |
-| The September board was dirtier, or the conditions were | **measure that board on current firmware** |
+| Something in the firmware changed | run the September build on a board measured today |
+| The September board was dirtier, or the conditions were | measure that board on current firmware |
 
-The second is minutes rather than an hour and should be done first: if that
-board still reads about 0.28 µA on today's firmware, the firmware is
-exonerated and the bisection is pointless. It is only possible if the board can
-be identified -- which is the field the September entry does not record, and
-the reason the recording checklist now demands a UUID.
+The September entry records no UUID, so the second test cannot be run -- the
+board cannot be identified. That is the reason the recording checklist now
+demands one. But the first test can be run on either board, and it is the
+same question asked from the other side.
 
-The cause is **not identified**. The leading theory was the LSE configuration
--- PresTagv3 was switched to bypass in `d16a930f`, between the two campaigns,
-because crystal mode hung the boot. An A/B refuted it: rebuilt in crystal mode
-the board measured 0.1199 µA against 0.1261 µA in bypass, so bypass is
-marginally the dearer and neither accounts for a 155 nA shift. The range
-`890a11b..d41b5357` is bounded and the board is on the bench, so a bisection
-would settle it.
+### The firmware is exonerated
+
+`890a11b` was checked out into a worktree, rebuilt, and flashed to PresTag
+board B, which had just been measured on `d41b5357`. The build identity was
+confirmed on the tag rather than assumed:
+
+```
+githash: "890a11b1"
+Current state: IDLE
+  current  (charge/time) :         0.1267 uA
+```
+
+| board B, same board, same session | `IDLE` |
+| --- | ---: |
+| September build `890a11b` | **0.1267 µA** |
+| current build `d41b5357` | **0.1341 µA** |
+
+**5.8% apart, and the dearer figure is on the current firmware.** One board,
+two builds, one session: there is no firmware effect to find, and the
+bisection of `890a11b..d41b5357` is cancelled. The earlier LSE A/B -- crystal
+0.1199 µA against bypass 0.1261 µA -- was a true negative rather than a near
+miss, because there was never a 155 nA firmware term for it to explain.
+
+So the quantity to explain is not a 2.2x improvement. It is a single
+unreproducible September reading. **0.2810 µA should be marked suspect, not
+superseded**: it has not been reproduced on either board under either build,
+and it was anomalous when it was taken. BitTag carries strictly more silicon
+in sleep -- an ADXL362 in shutdown on top of the RV-3028 and the L432 that
+PresTag also has -- and reads 0.1169 µA. PresTag cannot legitimately rest at
+2.4x BitTag. The parts budget closes on today's figures and not on
+September's:
+
+| | measured | difference | part added |
+| --- | ---: | ---: | --- |
+| BitTag | 0.1169 µA | | |
+| PresTag | 0.1261 µA | +9.2 nA | AT25XE external flash, 7 nA ultra-deep |
+| UIUCTag | 0.1628 µA | +36.7 nA | ADXL367, 40 nA |
+
+Both steps land within about 11 nA of the datasheet figure for the part that
+was added. There is no room in that budget for the 155 nA September carried,
+which is the arithmetic case that it was never a property of the design.
+What remains is board condition -- surface leakage from flux residue is
+humidity- and temperature-dependent, the session was taken on a hot day, and
+155 nA at 2.5 V is a 16 GΩ path, unremarkable for a poorly rinsed assembly --
+or something about that session. Neither is worth further bench time.
 
 One loose end: the fitted intercept, 0.1122 µA, and the directly measured idle,
 0.1261 µA, are 11% apart where September had them within 1.1%. The fit

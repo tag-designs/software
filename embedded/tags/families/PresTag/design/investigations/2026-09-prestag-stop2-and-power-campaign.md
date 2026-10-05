@@ -6,6 +6,16 @@ summary: The 2026-09-08/09 PresTag power campaign -- why Stop 2 looked broken (a
 
 # PresTag Power Campaign and Stop 2 Diagnosis (2026-09)
 
+> **The resting-current figures in this document are withdrawn (2026-10-05).**
+> The ≈ 0.28 µA idle and the 0.2842 µA fitted `I_rest` do not reproduce: this
+> campaign's own build, `890a11b`, was rebuilt and run on a PresTag in 2026-10
+> and measured **0.1267 µA** idle, within 6% of the current firmware on the
+> same board. The campaign recorded no board UUID, so its readings cannot be
+> attributed to a board. **The Stop 2 diagnosis, the PA2/INT1 finding, the
+> LPTIM arming cost and the per-sample energy are unaffected** -- `Q_cycle`
+> reproduced to 0.2% -- and remain the useful content here. See
+> [the 2026-10 investigation](../../../../design/investigations/2026-10-adc-and-the-power-floor.md).
+
 Cut verbatim from [`../power-test-plan.md`](../power-test-plan.md) (sections
 1.2a, 1.2c, 1.2e, 2.0a, 10, 11 and 12) and from the closing handoff in
 the retired `power-test-status.md`. Covers 2026-09-08
