@@ -99,3 +99,73 @@ The 1200 s window was chosen because the alignment error for a once-a-minute
 wake is 1/N; at 20 minutes that is 5%, and the two runs came in far inside it.
 
 Per mAh of cell: 342 days resting, 82 days recording.
+
+---
+
+### 2026-10-05  ADC fix verified on BitTag — no measurable power cost
+
+- **build**: `54135465` (`adcVDD()` settling delay restored at 200 us, SMPR2
+  index corrected, internal channels at 247.5 cycles), on top of `fw-v0.5`.
+  Development build, not a release image, so this is a comparison and not a
+  qualification.
+- **board**: BitTag V6, UUID `2035374D303150190059002F` — the same unit as the
+  2026-10-03 qualification, so the comparison varies one thing.
+- **conditions**: supply 2.4961 V, `bittag-bitpersec.json`, resting window
+  120 s, running window 1200 s, `joulescope_server.py --use-server`.
+- **result**:
+
+  | State | 2026-10-03, before | 2026-10-05, after | Delta |
+  | --- | ---: | ---: | ---: |
+  | `IDLE` | 0.1224 uA | **0.1169 uA** | -4.5% |
+  | `RUNNING` | 0.5082 uA (mean of two) | **0.5068 uA** | -0.3% |
+
+  State markers read 2.48-2.49 V and 22.3-23.0 C against a true 2.4961 V.
+- **verdict**: the fix costs nothing measurable. Both states came in slightly
+  *below* the earlier figures, and idle moved further than running, which is
+  the signature of measurement scatter rather than of the change.
+- **notes**: a cost of about +0.03 uA on the run had been predicted, on the
+  assumption that the 1 ms settling delay burned active current. That was
+  wrong twice over. The delay is now 200 us, and more importantly
+  `chThdSleepMicroseconds()` is a thread sleep, so the MCU idles through it;
+  only the two conversions are active, and those are tens of microseconds.
+  **Recorded because the prediction was published before the measurement** --
+  the earlier estimate in this tree should not be trusted.
+
+  Temperature read 22.3-23.0 C here against 28.1-28.3 C on 2026-10-03. The
+  SMPR2 fix changed the temperature channel's sampling time from the reset
+  2.5 cycles to 247.5, so a systematic shift was plausible; the operator
+  reports 10-03 was a hot day and the study was warm. Not resolved by
+  measurement, and no independent thermometer was used. Treat any logged
+  temperature from before `54135465` as suspect, but do not read this pair as
+  evidence of its size.
+
+### 2026-10-05  Sampling moved to the write site — control at BITPERSEC
+
+- **build**: the above plus the BitTag change that samples VDD and temperature
+  immediately before `writeDataLog()` instead of on every wake, and drops the
+  exponential average.
+- **board/conditions**: as above — same unit, 2.4961 V, `bittag-bitpersec.json`,
+  1200 s window.
+- **result**: `RUNNING` **0.5089 uA**. Download: `Voltage` 23 rows spanning
+  2.48-2.49 V, `CoreTemperature` 23 rows spanning 22.5-24.2 C, `Activity` 1380
+  rows all zero — 23 records x 60 one-second bits, correct for an undisturbed
+  tag.
+- **verdict**: the records still carry sensible values, now sampled at the
+  moment they are used. Three run figures on one board and one config:
+
+  | Build | `RUNNING` |
+  | --- | ---: |
+  | before any fix (10-03) | 0.5082 uA |
+  | ADC fix | 0.5068 uA |
+  | ADC fix + write-site sampling | 0.5089 uA |
+
+  A 0.4% spread with no ordering, which is scatter.
+- **notes**: **this format is a control, not a demonstration.** At
+  `BITPERSEC` a record is written every wake, so the change does not alter how
+  often `adcVDD()` runs and no saving is expected or seen. The redundancy it
+  removes is at `BITSPERMIN` and longer, where a record covers 10 to 35 wakes;
+  the firmware default is `BITSPERFIVEMIN`, which has never been power
+  measured. Phase B2 of the plan covers that format and remains unrun, so the
+  size of the saving is still unmeasured — and, given a conversion costs tens
+  of microseconds of active time, it is expected to sit below what a 1200 s
+  window can resolve.

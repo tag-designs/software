@@ -129,13 +129,22 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // timestamp may be beyond the current end of period.  Thus we
     // need to "catchup"
 
-    //  Check alarm flags  -- update temperature/voltage estimates
-
-    if (events & (EVT_RTC_ALRAF | EVT_RTC_ALRBF | EVT_RTC_WUTF )) {
-        adcVDD(&vdd100, &temp10);
-        pState->vdd100 = (pState->vdd100 * 3 + vdd100) / 4;
-        pState->temp10 = (pState->temp10 * 3 + temp10) /4;
-    }
+    /*
+     * Voltage and temperature are sampled where they are used, immediately
+     * before a record is written, rather than on every wake. The wake is
+     * always once a minute; the record period is not, so at the default
+     * BITSPERFIVEMIN this ran 35 times per stored value. State markers do not
+     * depend on it either -- recordState() takes its own reading.
+     *
+     * The running average that used to be applied here is gone with it. It
+     * dates to the initial commit, alongside two defects that made adcVDD()
+     * unreliable -- an SMPR2 index that left the temperature channel at 2.5
+     * cycles, and a settling delay that was commented out -- so it was most
+     * likely smoothing a reading that would not sit still. With those fixed,
+     * consecutive raw samples agree to about 10 mV and 1.4 C, which is the
+     * sensor's own tolerance, and one sample taken when the value is needed
+     * says more than an average of samples taken when it is not.
+     */
 
 
     // Now we should loop over seconds between lastwakeup and now 
@@ -181,6 +190,13 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     if (timestamp == lastwrite + sample_period)
     { // data log write returns an error if battery or space is exhausted
+
+      // Sampled here because writeDataLog() is the only consumer: it copies
+      // both into the record header, and tests vdd100 for a flat battery.
+      adcVDD(&vdd100, &temp10);
+      pState->vdd100 = vdd100;
+      pState->temp10 = temp10;
+
       enum LOGERR err = writeDataLog(activity);
 
       // Go to finish if battery is too low or log is full
