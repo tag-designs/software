@@ -11,6 +11,31 @@ board, UUID `2036354B3032500800520028` -- the same physical unit the CompassTag
 log calls `CompassTagAT25Breakout`. It is a development board, not production
 UIUCTag hardware, so none of this is a qualification result.
 
+> **WITHDRAWN 2026-10-06, same day: the measurement interfered with what it
+> measured.** Everything below that reports "the tag never wakes" was taken
+> with a harness that polled `tag-info` at intervals through the run. **A
+> monitor attach connects under reset**, so each poll reset a RUNNING tag.
+> `Running()` re-arms the sample alarm only in its `T_INIT` branch and on
+> `State_EVENT_EXCEPTION`; a reattach takes neither, so after the first poll
+> the alarm stays disarmed and the tag cannot wake again. The operator ran the
+> same firmware undisturbed and reports it waking on its own.
+>
+> That accounts for every observation reported below without a firmware
+> regression: `ALRAE = 0` and `ALRAF` never set, `external_pages` frozen at 0,
+> and `50a80a83` "failing" although its own bring-up report documents it
+> working on this same board. **The common cause is the harness, not the
+> commit range.**
+>
+> What may still be real, and is worth keeping: **a monitor attach during
+> RUNNING appears to leave the run unable to wake.** If that holds, any attach
+> mid-deployment silently ends data collection, which is a serious fault in its
+> own right -- but it is a different fault from the one described below, and it
+> has not yet been confirmed by a controlled test. The test is an undisturbed
+> run with a single status read at the end, compared against a run polled
+> part-way through.
+>
+> Nothing below should be used as evidence until that is done.
+
 - **A run stores nothing because the tag never wakes. Reproduced on
   `fw-v0.6`, 2026-10-06.** This supersedes the description below, which was
   wrong in its arithmetic and incomplete in its diagnosis.
