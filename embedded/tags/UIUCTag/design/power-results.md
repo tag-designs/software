@@ -33,7 +33,18 @@ qtmonitor and the Joulescope desktop app detached.
 
 _No measurements recorded yet._
 
-### 2026-10-06  `fw-v0.6` qualification attempt — **FAIL, the run collects nothing**
+### 2026-10-06  `fw-v0.6` qualification attempt — **RESULT UNDER RE-TEST, DO NOT RELY**
+
+> **The run in this entry was not undisturbed, despite what it says below.**
+> The script issued `tag-start` twice (the `twice` helper, so the second
+> attached to an already-RUNNING tag) and then ran `tag-info` to confirm
+> RUNNING. Both connect through reset, so the run was reset once or twice at
+> its start. That is the very mechanism under investigation, so this entry
+> cannot distinguish the fault from the measurement. The resting-state figures
+> are unaffected and stand; **the `RUNNING` row and the FAIL verdict do not.**
+> A genuinely undisturbed run -- single `tag-start`, its own reported status
+> used as confirmation, no attach until the run is ended -- is in progress.
+
 
 - **image**: `fw-v0.6` (`56e5e6a0`), downloaded from the GitHub release, not
   rebuilt. `UIUCTag.elf` sha256
