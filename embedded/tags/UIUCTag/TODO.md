@@ -34,6 +34,20 @@ UIUCTag hardware, so none of this is a qualification result.
 > run with a single status read at the end, compared against a run polled
 > part-way through.
 >
+> **The original 2026-10-04 observation is suspect for the same reason.** It
+> reported a 20-minute run ending with `external_pages=0` and a download
+> holding no data tables. Whether that run was polled while it ran is not
+> recorded. If it was, it has the same cause and there may be no UIUCTag data
+> fault at all. **Establish that before deciding whether UIUCTag still carries
+> a "do not fly" on the release page** -- it is currently marked so partly on
+> the strength of that observation.
+>
+> The rule is not new. `docs/bench/power-testing.md` section 3 already says
+> "Do not poll state during a run", and records a PresTag run polled eight
+> times that stored 3 samples instead of about 30. It names the two methods
+> that work: a current trace, which needs no attach, or reading the epochs back
+> from the download afterwards. Both were available and neither was used.
+>
 > Nothing below should be used as evidence until that is done.
 
 - **A run stores nothing because the tag never wakes. Reproduced on
