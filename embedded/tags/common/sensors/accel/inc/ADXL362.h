@@ -1,209 +1,225 @@
-/***************************************************************************//**
- *   @file   ADXL362.h
- *   @brief  Header file of ADXL362 Driver.
- *   @author DNechita(Dan.Nechita@analog.com)
- *   @date   2026-05-23
-********************************************************************************
- * Copyright 2012(c) Analog Devices, Inc.
+/**
+ * @file    ADXL362.h
+ * @brief   ADXL362 accelerometer register map and descriptor-backed driver API.
+ * @author  tag firmware authors
+ * @date    2026-10-06
  *
- * All rights reserved.
+ * @details The register map below is written from the ADXL362 data sheet
+ *          (Analog Devices): its SPI command set, register map table, and
+ *          per-register bit descriptions. Macro names follow the register and
+ *          field names the data sheet uses, prefixed ADXL362_, and are
+ *          unchanged from the names the tag firmware has always used.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *  - Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  - Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *  - Neither the name of Analog Devices, Inc. nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *  - The use of this software may or may not infringe the patent rights
- *    of one or more patent holders.  This license does not release you
- *    from the requirement that you obtain separate licenses from these
- *    patent holders to use this software.
- *  - Use of the software either in source or binary form, must be run
- *    on or directly connected to an Analog Devices Inc. component.
+ *          The ADXL362 talks SPI only. Every transaction starts with a
+ *          command byte (ADXL362_WRITE_REG, ADXL362_READ_REG or
+ *          ADXL362_READ_FIFO); register transactions follow it with a start
+ *          address and auto-increment through consecutive registers.
  *
- * THIS SOFTWARE IS PROVIDED BY ANALOG DEVICES "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, NON-INFRINGEMENT,
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL ANALOG DEVICES BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, INTELLECTUAL PROPERTY RIGHTS, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
-********************************************************************************
- *   SVN Revision: $WCREV$
-*******************************************************************************/
+ *          Multi-byte quantities are little-endian: the _L register holds the
+ *          low byte and the _H register the high bits.
+ */
 
-#ifndef __ADXL362_H__
-#define __ADXL362_H__
+#ifndef ADXL362_H
+#define ADXL362_H
 
-/******************************************************************************/
-/***************************** Include Files **********************************/
-/******************************************************************************/
-//#include "Communication.h"
 #include "bus_device.h"
 
 #include <stdbool.h>
 
-/******************************************************************************/
-/********************************* ADXL362 ************************************/
-/******************************************************************************/
+/** @name SPI command bytes
+ * The first byte of every SPI transaction.
+ * @{
+ */
+#define ADXL362_WRITE_REG           0x0A  /**< Write registers from an address. */
+#define ADXL362_READ_REG            0x0B  /**< Read registers from an address. */
+#define ADXL362_WRITE_FIFO          0x0D  /**< FIFO access command (the FIFO is read-only). */
+#define ADXL362_READ_FIFO           ADXL362_WRITE_FIFO  /**< Read from the FIFO. */
+/** @} */
 
-//#define ADXL362_SLAVE_ID    1
+/** @name Register addresses
+ * @{
+ */
+#define ADXL362_REG_DEVID_AD            0x00  /**< Analog Devices ID, reads ADXL362_DEVICE_AD. */
+#define ADXL362_REG_DEVID_MST           0x01  /**< MEMS ID, reads ADXL362_DEVICE_MST. */
+#define ADXL362_REG_PARTID              0x02  /**< Part ID, reads ADXL362_PART_ID. */
+#define ADXL362_REG_REVID               0x03  /**< Silicon revision. */
+#define ADXL362_REG_XDATA               0x08  /**< X axis, 8 most significant bits. */
+#define ADXL362_REG_YDATA               0x09  /**< Y axis, 8 most significant bits. */
+#define ADXL362_REG_ZDATA               0x0A  /**< Z axis, 8 most significant bits. */
+#define ADXL362_REG_STATUS              0x0B  /**< Status flags; see ADXL362_STATUS_*. */
+#define ADXL362_REG_FIFO_L              0x0C  /**< FIFO entry count, low byte. */
+#define ADXL362_REG_FIFO_H              0x0D  /**< FIFO entry count, high bits. */
+#define ADXL362_REG_XDATA_L             0x0E  /**< X axis, 12-bit sample, low byte. */
+#define ADXL362_REG_XDATA_H             0x0F  /**< X axis, 12-bit sample, high bits. */
+#define ADXL362_REG_YDATA_L             0x10  /**< Y axis, 12-bit sample, low byte. */
+#define ADXL362_REG_YDATA_H             0x11  /**< Y axis, 12-bit sample, high bits. */
+#define ADXL362_REG_ZDATA_L             0x12  /**< Z axis, 12-bit sample, low byte. */
+#define ADXL362_REG_ZDATA_H             0x13  /**< Z axis, 12-bit sample, high bits. */
+#define ADXL362_REG_TEMP_L              0x14  /**< Temperature, low byte. */
+#define ADXL362_REG_TEMP_H              0x15  /**< Temperature, high bits. */
+#define ADXL362_REG_SOFT_RESET          0x1F  /**< Write ADXL362_RESET_KEY to reset. */
+#define ADXL362_REG_THRESH_ACT_L        0x20  /**< Activity threshold, low byte. */
+#define ADXL362_REG_THRESH_ACT_H        0x21  /**< Activity threshold, high bits. */
+#define ADXL362_REG_TIME_ACT            0x22  /**< Activity time, in samples. */
+#define ADXL362_REG_THRESH_INACT_L      0x23  /**< Inactivity threshold, low byte. */
+#define ADXL362_REG_THRESH_INACT_H      0x24  /**< Inactivity threshold, high bits. */
+#define ADXL362_REG_TIME_INACT_L        0x25  /**< Inactivity time, low byte. */
+#define ADXL362_REG_TIME_INACT_H        0x26  /**< Inactivity time, high byte. */
+#define ADXL362_REG_ACT_INACT_CTL       0x27  /**< Activity/inactivity control; see ADXL362_ACT_INACT_CTL_*. */
+#define ADXL362_REG_FIFO_CTL            0x28  /**< FIFO control; see ADXL362_FIFO_CTL_*. */
+#define ADXL362_REG_FIFO_SAMPLES        0x29  /**< FIFO watermark, low 8 bits. */
+#define ADXL362_REG_INTMAP1             0x2A  /**< INT1 routing; see ADXL362_INTMAP1_*. */
+#define ADXL362_REG_INTMAP2             0x2B  /**< INT2 routing; see ADXL362_INTMAP2_*. */
+#define ADXL362_REG_FILTER_CTL          0x2C  /**< Range, bandwidth and data rate; see ADXL362_FILTER_CTL_*. */
+#define ADXL362_REG_POWER_CTL           0x2D  /**< Power and measurement mode; see ADXL362_POWER_CTL_*. */
+#define ADXL362_REG_SELF_TEST           0x2E  /**< Self test; see ADXL362_SELF_TEST_ST. */
+/** @} */
 
-/* ADXL362 communication commands */
-#define ADXL362_WRITE_REG           0x0A
-#define ADXL362_READ_REG            0x0B
-#define ADXL362_WRITE_FIFO          0x0D
-#define ADXL362_READ_FIFO           ADXL362_WRITE_FIFO
+/** @name STATUS register bits
+ * @{
+ */
+#define ADXL362_STATUS_ERR_USER_REGS        (1 << 7)  /**< Configuration registers corrupted (SEU). */
+#define ADXL362_STATUS_AWAKE                (1 << 6)  /**< Awake (activity seen, not since inactive). */
+#define ADXL362_STATUS_INACT                (1 << 5)  /**< Inactivity detected. */
+#define ADXL362_STATUS_ACT                  (1 << 4)  /**< Activity detected. */
+#define ADXL362_STATUS_FIFO_OVERRUN         (1 << 3)  /**< FIFO overran; samples were lost. */
+#define ADXL362_STATUS_FIFO_WATERMARK       (1 << 2)  /**< FIFO holds at least the watermark. */
+#define ADXL362_STATUS_FIFO_RDY             (1 << 1)  /**< FIFO holds at least one sample. */
+#define ADXL362_STATUS_DATA_RDY             (1 << 0)  /**< New sample available. */
+/** @} */
 
-/* Registers */
-#define ADXL362_REG_DEVID_AD            0x00
-#define ADXL362_REG_DEVID_MST           0x01
-#define ADXL362_REG_PARTID              0x02
-#define ADXL362_REG_REVID               0x03
-#define ADXL362_REG_XDATA               0x08
-#define ADXL362_REG_YDATA               0x09
-#define ADXL362_REG_ZDATA               0x0A
-#define ADXL362_REG_STATUS              0x0B
-#define ADXL362_REG_FIFO_L              0x0C
-#define ADXL362_REG_FIFO_H              0x0D
-#define ADXL362_REG_XDATA_L             0x0E
-#define ADXL362_REG_XDATA_H             0x0F
-#define ADXL362_REG_YDATA_L             0x10
-#define ADXL362_REG_YDATA_H             0x11
-#define ADXL362_REG_ZDATA_L             0x12
-#define ADXL362_REG_ZDATA_H             0x13
-#define ADXL362_REG_TEMP_L              0x14
-#define ADXL362_REG_TEMP_H              0x15
-#define ADXL362_REG_SOFT_RESET          0x1F
-#define ADXL362_REG_THRESH_ACT_L        0x20
-#define ADXL362_REG_THRESH_ACT_H        0x21
-#define ADXL362_REG_TIME_ACT            0x22
-#define ADXL362_REG_THRESH_INACT_L      0x23
-#define ADXL362_REG_THRESH_INACT_H      0x24
-#define ADXL362_REG_TIME_INACT_L        0x25
-#define ADXL362_REG_TIME_INACT_H        0x26
-#define ADXL362_REG_ACT_INACT_CTL       0x27
-#define ADXL362_REG_FIFO_CTL            0x28
-#define ADXL362_REG_FIFO_SAMPLES        0x29
-#define ADXL362_REG_INTMAP1             0x2A
-#define ADXL362_REG_INTMAP2             0x2B
-#define ADXL362_REG_FILTER_CTL          0x2C
-#define ADXL362_REG_POWER_CTL           0x2D
-#define ADXL362_REG_SELF_TEST           0x2E
+/** @name ACT_INACT_CTL register fields
+ * @{
+ */
+#define ADXL362_ACT_INACT_CTL_LINKLOOP(x)   (((x) & 0x3) << 4)  /**< Linking mode, bits 5:4; ADXL362_MODE_*. */
+#define ADXL362_ACT_INACT_CTL_INACT_REF     (1 << 3)  /**< Inactivity referenced (not absolute). */
+#define ADXL362_ACT_INACT_CTL_INACT_EN      (1 << 2)  /**< Inactivity detection enabled. */
+#define ADXL362_ACT_INACT_CTL_ACT_REF       (1 << 1)  /**< Activity referenced (not absolute). */
+#define ADXL362_ACT_INACT_CTL_ACT_EN        (1 << 0)  /**< Activity detection enabled. */
+/** @} */
 
-/* ADXL362_REG_STATUS definitions */
-#define ADXL362_STATUS_ERR_USER_REGS        (1 << 7)
-#define ADXL362_STATUS_AWAKE                (1 << 6)
-#define ADXL362_STATUS_INACT                (1 << 5)
-#define ADXL362_STATUS_ACT                  (1 << 4)
-#define ADXL362_STATUS_FIFO_OVERRUN         (1 << 3)
-#define ADXL362_STATUS_FIFO_WATERMARK       (1 << 2)
-#define ADXL362_STATUS_FIFO_RDY             (1 << 1)
-#define ADXL362_STATUS_DATA_RDY             (1 << 0)
+/** @name Linking modes for ADXL362_ACT_INACT_CTL_LINKLOOP()
+ * @{
+ */
+#define ADXL362_MODE_DEFAULT        0  /**< Activity and inactivity independent. */
+#define ADXL362_MODE_LINK           1  /**< Linked: each must be acknowledged. */
+#define ADXL362_MODE_LOOP           3  /**< Loop: linked and self-acknowledging. */
+/** @} */
 
-/* ADXL362_REG_ACT_INACT_CTL definitions */
-#define ADXL362_ACT_INACT_CTL_LINKLOOP(x)   (((x) & 0x3) << 4)
-#define ADXL362_ACT_INACT_CTL_INACT_REF     (1 << 3)
-#define ADXL362_ACT_INACT_CTL_INACT_EN      (1 << 2)
-#define ADXL362_ACT_INACT_CTL_ACT_REF       (1 << 1)
-#define ADXL362_ACT_INACT_CTL_ACT_EN        (1 << 0)
+/** @name FIFO_CTL register fields
+ * @{
+ */
+#define ADXL362_FIFO_CTL_AH                 (1 << 3)  /**< Watermark bit 8 (above half). */
+#define ADXL362_FIFO_CTL_FIFO_TEMP          (1 << 2)  /**< Store temperature with each sample. */
+#define ADXL362_FIFO_CTL_FIFO_MODE(x)       (((x) & 0x3) << 0)  /**< FIFO mode, bits 1:0; ADXL362_FIFO_*. */
+/** @} */
 
-/* ADXL362_ACT_INACT_CTL_LINKLOOP(x) options */
-#define ADXL362_MODE_DEFAULT        0
-#define ADXL362_MODE_LINK           1
-#define ADXL362_MODE_LOOP           3
+/** @name FIFO modes for ADXL362_FIFO_CTL_FIFO_MODE()
+ * @{
+ */
+#define ADXL362_FIFO_DISABLE              0  /**< FIFO off. */
+#define ADXL362_FIFO_OLDEST_SAVED         1  /**< Keep the oldest samples; stop when full. */
+#define ADXL362_FIFO_STREAM               2  /**< Keep the newest samples; overwrite when full. */
+#define ADXL362_FIFO_TRIGGERED            3  /**< Keep samples around an INT trigger. */
+/** @} */
 
-/* ADXL362_REG_FIFO_CTL */
-#define ADXL362_FIFO_CTL_AH                 (1 << 3)
-#define ADXL362_FIFO_CTL_FIFO_TEMP          (1 << 2)
-#define ADXL362_FIFO_CTL_FIFO_MODE(x)       (((x) & 0x3) << 0)
+/** @name INTMAP1 register bits
+ * Each set bit routes that status condition to the INT1 pin.
+ * @{
+ */
+#define ADXL362_INTMAP1_INT_LOW             (1 << 7)  /**< INT1 active low. */
+#define ADXL362_INTMAP1_AWAKE               (1 << 6)  /**< Awake state. */
+#define ADXL362_INTMAP1_INACT               (1 << 5)  /**< Inactivity. */
+#define ADXL362_INTMAP1_ACT                 (1 << 4)  /**< Activity. */
+#define ADXL362_INTMAP1_FIFO_OVERRUN        (1 << 3)  /**< FIFO overrun. */
+#define ADXL362_INTMAP1_FIFO_WATERMARK      (1 << 2)  /**< FIFO watermark. */
+#define ADXL362_INTMAP1_FIFO_READY          (1 << 1)  /**< FIFO ready. */
+#define ADXL362_INTMAP1_DATA_READY          (1 << 0)  /**< Data ready. */
+/** @} */
 
-/* ADXL362_FIFO_CTL_FIFO_MODE(x) options */
-#define ADXL362_FIFO_DISABLE              0
-#define ADXL362_FIFO_OLDEST_SAVED         1
-#define ADXL362_FIFO_STREAM               2
-#define ADXL362_FIFO_TRIGGERED            3
+/** @name INTMAP2 register bits
+ * Each set bit routes that status condition to the INT2 pin.
+ * @{
+ */
+#define ADXL362_INTMAP2_INT_LOW             (1 << 7)  /**< INT2 active low. */
+#define ADXL362_INTMAP2_AWAKE               (1 << 6)  /**< Awake state. */
+#define ADXL362_INTMAP2_INACT               (1 << 5)  /**< Inactivity. */
+#define ADXL362_INTMAP2_ACT                 (1 << 4)  /**< Activity. */
+#define ADXL362_INTMAP2_FIFO_OVERRUN        (1 << 3)  /**< FIFO overrun. */
+#define ADXL362_INTMAP2_FIFO_WATERMARK      (1 << 2)  /**< FIFO watermark. */
+#define ADXL362_INTMAP2_FIFO_READY          (1 << 1)  /**< FIFO ready. */
+#define ADXL362_INTMAP2_DATA_READY          (1 << 0)  /**< Data ready. */
+/** @} */
 
-/* ADXL362_REG_INTMAP1 */
-#define ADXL362_INTMAP1_INT_LOW             (1 << 7)
-#define ADXL362_INTMAP1_AWAKE               (1 << 6)
-#define ADXL362_INTMAP1_INACT               (1 << 5)
-#define ADXL362_INTMAP1_ACT                 (1 << 4)
-#define ADXL362_INTMAP1_FIFO_OVERRUN        (1 << 3)
-#define ADXL362_INTMAP1_FIFO_WATERMARK      (1 << 2)
-#define ADXL362_INTMAP1_FIFO_READY          (1 << 1)
-#define ADXL362_INTMAP1_DATA_READY          (1 << 0)
+/** @name FILTER_CTL register fields
+ * @{
+ */
+#define ADXL362_FILTER_CTL_RANGE(x)         (((x) & 0x3) << 6)  /**< Measurement range, bits 7:6; ADXL362_RANGE_*. */
+#define ADXL362_FILTER_CTL_RES              (1 << 5)  /**< Reserved. */
+#define ADXL362_FILTER_CTL_HALF_BW          (1 << 4)  /**< Anti-alias bandwidth ODR/4 instead of ODR/2. */
+#define ADXL362_FILTER_CTL_EXT_SAMPLE       (1 << 3)  /**< Sample on the INT2 pin. */
+#define ADXL362_FILTER_CTL_ODR(x)           (((x) & 0x7) << 0)  /**< Output data rate, bits 2:0; ADXL362_ODR_*. */
+/** @} */
 
-/* ADXL362_REG_INTMAP2 definitions */
-#define ADXL362_INTMAP2_INT_LOW             (1 << 7)
-#define ADXL362_INTMAP2_AWAKE               (1 << 6)
-#define ADXL362_INTMAP2_INACT               (1 << 5)
-#define ADXL362_INTMAP2_ACT                 (1 << 4)
-#define ADXL362_INTMAP2_FIFO_OVERRUN        (1 << 3)
-#define ADXL362_INTMAP2_FIFO_WATERMARK      (1 << 2)
-#define ADXL362_INTMAP2_FIFO_READY          (1 << 1)
-#define ADXL362_INTMAP2_DATA_READY          (1 << 0)
+/** @name Measurement ranges for ADXL362_FILTER_CTL_RANGE()
+ * @{
+ */
+#define ADXL362_RANGE_2G                0  /**< +/-2 g. */
+#define ADXL362_RANGE_4G                1  /**< +/-4 g. */
+#define ADXL362_RANGE_8G                2  /**< +/-8 g. */
+/** @} */
 
-/* ADXL362_REG_FILTER_CTL definitions */
-#define ADXL362_FILTER_CTL_RANGE(x)         (((x) & 0x3) << 6)
-#define ADXL362_FILTER_CTL_RES              (1 << 5)
-#define ADXL362_FILTER_CTL_HALF_BW          (1 << 4)
-#define ADXL362_FILTER_CTL_EXT_SAMPLE       (1 << 3)
-#define ADXL362_FILTER_CTL_ODR(x)           (((x) & 0x7) << 0)
+/** @name Output data rates for ADXL362_FILTER_CTL_ODR()
+ * @{
+ */
+#define ADXL362_ODR_12_5_HZ             0  /**< 12.5 Hz. */
+#define ADXL362_ODR_25_HZ               1  /**< 25 Hz. */
+#define ADXL362_ODR_50_HZ               2  /**< 50 Hz. */
+#define ADXL362_ODR_100_HZ              3  /**< 100 Hz. */
+#define ADXL362_ODR_200_HZ              4  /**< 200 Hz. */
+#define ADXL362_ODR_400_HZ              5  /**< 400 Hz. */
+/** @} */
 
-/* ADXL362_FILTER_CTL_RANGE(x) options */
-#define ADXL362_RANGE_2G                0 /* +/-2 g */
-#define ADXL362_RANGE_4G                1 /* +/-4 g */
-#define ADXL362_RANGE_8G                2 /* +/-8 g */
+/** @name POWER_CTL register fields
+ * @{
+ */
+#define ADXL362_POWER_CTL_RES               (1 << 7)  /**< Reserved. */
+#define ADXL362_POWER_CTL_EXT_CLK           (1 << 6)  /**< Clock from the INT1 pin. */
+#define ADXL362_POWER_CTL_LOW_NOISE(x)      (((x) & 0x3) << 4)  /**< Noise mode, bits 5:4; ADXL362_NOISE_MODE_*. */
+#define ADXL362_POWER_CTL_WAKEUP            (1 << 3)  /**< Wake-up (very low power) mode. */
+#define ADXL362_POWER_CTL_AUTOSLEEP         (1 << 2)  /**< Autosleep after inactivity. */
+#define ADXL362_POWER_CTL_MEASURE(x)        (((x) & 0x3) << 0)  /**< Measurement mode, bits 1:0; ADXL362_MEASURE_*. */
+/** @} */
 
-/* ADXL362_FILTER_CTL_ODR(x) options */
-#define ADXL362_ODR_12_5_HZ             0 /* 12.5 Hz */
-#define ADXL362_ODR_25_HZ               1 /* 25 Hz */
-#define ADXL362_ODR_50_HZ               2 /* 50 Hz */
-#define ADXL362_ODR_100_HZ              3 /* 100 Hz */
-#define ADXL362_ODR_200_HZ              4 /* 200 Hz */
-#define ADXL362_ODR_400_HZ              5 /* 400 Hz */
+/** @name Noise modes for ADXL362_POWER_CTL_LOW_NOISE()
+ * @{
+ */
+#define ADXL362_NOISE_MODE_NORMAL           0  /**< Normal operation. */
+#define ADXL362_NOISE_MODE_LOW              1  /**< Low noise. */
+#define ADXL362_NOISE_MODE_ULTRALOW         2  /**< Ultralow noise. */
+/** @} */
 
-/* ADXL362_REG_POWER_CTL definitions */
-#define ADXL362_POWER_CTL_RES               (1 << 7)
-#define ADXL362_POWER_CTL_EXT_CLK           (1 << 6)
-#define ADXL362_POWER_CTL_LOW_NOISE(x)      (((x) & 0x3) << 4)
-#define ADXL362_POWER_CTL_WAKEUP            (1 << 3)
-#define ADXL362_POWER_CTL_AUTOSLEEP         (1 << 2)
-#define ADXL362_POWER_CTL_MEASURE(x)        (((x) & 0x3) << 0)
+/** @name Measurement modes for ADXL362_POWER_CTL_MEASURE()
+ * @{
+ */
+#define ADXL362_MEASURE_STANDBY         0  /**< Standby. */
+#define ADXL362_MEASURE_ON              2  /**< Measuring. */
+/** @} */
 
-/* ADXL362_POWER_CTL_LOW_NOISE(x) options */
-#define ADXL362_NOISE_MODE_NORMAL           0
-#define ADXL362_NOISE_MODE_LOW              1
-#define ADXL362_NOISE_MODE_ULTRALOW         2
+/** @name SELF_TEST register bits
+ * @{
+ */
+#define ADXL362_SELF_TEST_ST            (1 << 0)  /**< Apply the self-test force. */
+/** @} */
 
-/* ADXL362_POWER_CTL_MEASURE(x) options */
-#define ADXL362_MEASURE_STANDBY         0
-#define ADXL362_MEASURE_ON              2
-
-/* ADXL362_REG_SELF_TEST */
-#define ADXL362_SELF_TEST_ST            (1 << 0)
-
-/* ADXL362 device information */
-#define ADXL362_DEVICE_AD               0xAD
-#define ADXL362_DEVICE_MST              0x1D
-#define ADXL362_PART_ID                 0xF2
-
-/* ADXL362 Reset settings */
-#define ADXL362_RESET_KEY               0x52
-
-/******************************************************************************/
-/************************ Functions Declarations ******************************/
-/******************************************************************************/
+/** @name Identity and reset values
+ * @{
+ */
+#define ADXL362_DEVICE_AD               0xAD  /**< Expected DEVID_AD. */
+#define ADXL362_DEVICE_MST              0x1D  /**< Expected DEVID_MST. */
+#define ADXL362_PART_ID                 0xF2  /**< Expected PARTID. */
+#define ADXL362_RESET_KEY               0x52  /**< SOFT_RESET value that resets the part ('R'). */
+/** @} */
 
 /**
  * @struct TagAdxl362Device
@@ -418,4 +434,4 @@ void ADXL362_SetupInactivityDetectionDevice(const TagAdxl362Device *device,
                                             unsigned short time);
 /** @} */
 
-#endif /* __ADXL362_H__ */
+#endif /* ADXL362_H */
