@@ -82,7 +82,17 @@ typedef enum _State_Event {
     /* External storage kept failing to accept writes. Distinct from
  EVENT_EXTERNALFULL, which means the medium is full rather than broken;
  reporting a write error as "full" sent diagnosis the wrong way. */
-    State_EVENT_STORAGEERROR = 19 /* external storage write failure */
+    State_EVENT_STORAGEERROR = 19, /* external storage write failure */
+    /* The stored configuration did not read back as written. Flash
+ programming only clears bits, so a program into a region that was not
+ erased yields the bitwise AND of old and new: the tag would otherwise
+ run a configuration nobody asked for while the host reports the one it
+ sent. Distinct from EVENT_STORAGEERROR, which is the external data
+ medium; this is internal flash and a different fault with a different
+ fix. On STM32U3 transition_detail carries the index of the first word
+ that differed; the STM32L4 marker has no detail field, so there the
+ scratchpad "ECFG" record carries it. */
+    State_EVENT_CONFIGERROR = 20 /* stored configuration failed verify */
 } State_Event;
 
 /* Struct definitions */
@@ -213,8 +223,8 @@ extern "C" {
 #define LogReq_LogDataType_EXTERNAL_DATA LogReq_EXTERNAL_DATA
 
 #define _State_Event_MIN State_EVENT_UNSPECIFIED
-#define _State_Event_MAX State_EVENT_STORAGEERROR
-#define _State_Event_ARRAYSIZE ((State_Event)(State_EVENT_STORAGEERROR+1))
+#define _State_Event_MAX State_EVENT_CONFIGERROR
+#define _State_Event_ARRAYSIZE ((State_Event)(State_EVENT_CONFIGERROR+1))
 #define State_Event_EVENT_UNSPECIFIED State_EVENT_UNSPECIFIED
 #define State_Event_EVENT_OK State_EVENT_OK
 #define State_Event_EVENT_STARTCMD State_EVENT_STARTCMD
@@ -235,6 +245,7 @@ extern "C" {
 #define State_Event_EVENT_SHUTDOWN State_EVENT_SHUTDOWN
 #define State_Event_EVENT_EXCEPTION State_EVENT_EXCEPTION
 #define State_Event_EVENT_STORAGEERROR State_EVENT_STORAGEERROR
+#define State_Event_EVENT_CONFIGERROR State_EVENT_CONFIGERROR
 
 #define Req_payload_test_ENUMTYPE TestReq
 

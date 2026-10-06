@@ -59,7 +59,7 @@ extern t_storedconfig sconfig;
 extern t_storedconfig config_tmp;
 
 /** @brief Persist a RAM configuration image into the flash configuration slot. */
-extern void writeStoredConfig(t_storedconfig *s);
+extern bool writeStoredConfig(t_storedconfig *s);
 /** @brief Translate a host protobuf configuration into the RAM staging image. */
 extern bool writeConfig(Config *config);
 /** @brief Translate the stored flash configuration into a host protobuf message. */

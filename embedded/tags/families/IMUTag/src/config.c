@@ -160,14 +160,14 @@ bool get_lsm_config(lsm6dsv16x_trig_odr_t *odr,lsm6dsv16x_xl_fs_t *xl_fs, lsm6ds
  *
  * @param[in] s Configuration image to persist.
  */
-void writeStoredConfig(t_storedconfig *s)
+bool writeStoredConfig(t_storedconfig *s)
 {
   uint32_t *src = (uint32_t *)s;
   uint32_t *dest = (uint32_t *)&sconfig;
   ssize_t size = sizeof(*s)/4;
 
   if (s == NULL)
-    return;
+    return false;
 
   /*
    * Erase before programming. STM32 flash programming can only clear bits, so
@@ -196,18 +196,14 @@ void writeStoredConfig(t_storedconfig *s)
    * flash fault or a power loss between erase and program. Report it: the
    * configuration governs every run, and get_lsm_config() would otherwise
    * surface the problem later as an unexplained collection abort.
+   *
+   * This check predates the shared one and was correct, but reported only
+   * through debug_log_printf(), which shipped images compile out -- so it
+   * could fire and leave nothing behind, and the start continued regardless.
+   * storedConfigVerify() adds the scratchpad record, and returning its result
+   * aborts the start.
    */
-  for (ssize_t i = 0; i < size; i++)
-  {
-    if (dest[i] != src[i])
-    {
-      debug_log_printf(
-          "IMUTag config: stored config verify failed at word %d, "
-          "wrote 0x%x read 0x%x\r\n",
-          (int)i, (unsigned)src[i], (unsigned)dest[i]);
-      return;
-    }
-  }
+  return storedConfigVerify(dest, src, (size_t)size);
 }
 
 

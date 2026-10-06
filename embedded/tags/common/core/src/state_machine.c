@@ -1173,7 +1173,21 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
          here, at start, and erased with the data. */
       tagSessionFactsCapture(&config_tmp.session);
 #endif
-      writeStoredConfig(&config_tmp);
+      /*
+       * Abort rather than run on a configuration that was not stored. The
+       * write can be refused silently: sconfig cannot be erased first on any
+       * target without TAG_STORED_CONFIG_OWN_PAGE, and flash programming only
+       * clears bits, so a program over a populated region yields the bitwise
+       * AND of old and new. PresTag ran at 9 s while tag-start printed 10 s;
+       * IMUTag turned S400 over S100 into an unspecified ODR that aborted
+       * collection later, with nothing to connect it to the start.
+       *
+       * Failing here is louder and earlier: the host sees ABORTED instead of
+       * a start that appeared to succeed, and the marker log carries
+       * CONFIGERROR rather than a puzzle.
+       */
+      if (!writeStoredConfig(&config_tmp))
+        return Aborted(T_INIT, State_EVENT_CONFIGERROR);
     }
 
 #if TAG_CONFIGURED_IMMEDIATE_START

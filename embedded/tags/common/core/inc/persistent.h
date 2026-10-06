@@ -264,9 +264,60 @@ int externalFlashSectorsToErasePlusOne(void);
 /**
  * @brief Persist a validated stored-configuration image.
  *
- * @param[in] s Stored configuration image to write.
+ * @details Programs @p s into the target's @c sconfig region in internal
+ *          flash and reads it back with storedConfigVerify(). Each target
+ *          supplies its own implementation, because @c sconfig is placed by
+ *          that target's linker script.
+ *
+ *          **The write can legitimately fail.** STM32 flash programming only
+ *          clears bits, so a program into a region that has not been erased
+ *          yields the bitwise AND of the old and new contents. Only targets
+ *          defining @c TAG_STORED_CONFIG_OWN_PAGE can erase first, because
+ *          elsewhere @c sconfig shares its page with @c sEpoch and the
+ *          checkpoint headers, which an erase would take with it.
+ *
+ * @param[in] s Stored configuration image to write. NULL is rejected.
+ *
+ * @return true when the region reads back identical to @p s; false when @p s
+ *         was NULL or any word differed, in which case the caller must not
+ *         start a run -- the tag would collect against a configuration that
+ *         was never stored while the host reports the one it sent.
+ *
+ * @post On failure a scratchpad @c "ECFG" record carries the index of the
+ *       first differing word, and the caller is expected to record a
+ *       State_EVENT_CONFIGERROR transition.
+ *
+ * @see storedConfigVerify(), Configured(), State_EVENT_CONFIGERROR
  */
-void writeStoredConfig(t_storedconfig *s);
+bool writeStoredConfig(t_storedconfig *s);
+
+/**
+ * @brief Compare a freshly programmed stored configuration against its source.
+ *
+ * @details Shared by every target's writeStoredConfig(). On the first
+ *          mismatch it writes a scratchpad @c "ECFG" record holding the word
+ *          index and returns immediately, because one differing word is
+ *          already proof the configuration in flash is not the one that was
+ *          sent.
+ *
+ *          The scratchpad is the reporting channel because it is the only one
+ *          that survives a tag which cannot talk, and it compiles to nothing
+ *          unless @c TAG_SCRATCHPAD is defined, so this costs a shipped image
+ *          nothing. @c debug_log_printf() is not sufficient on its own: it is
+ *          compiled out of shipped images, which is how this class of failure
+ *          stayed silent.
+ *
+ * @param[in] dest Flash region just programmed, word aligned.
+ * @param[in] src  Image that was programmed, word aligned.
+ * @param[in] words Number of 32-bit words to compare.
+ *
+ * @return true when all @p words match, false on the first difference.
+ *
+ * @note Reads flash directly, so the caller must have flushed the data cache
+ *       after programming or the comparison may read stale data and pass.
+ */
+bool storedConfigVerify(const uint32_t *dest, const uint32_t *src,
+                        size_t words);
 
 /**
  * @brief Append one activity entry to the data log.

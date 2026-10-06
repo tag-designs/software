@@ -39,7 +39,7 @@ STATE_EVENTS = {
     5: "STARTHIB", 6: "ENDHIB", 7: "STOPCMD", 8: "RESETCMD", 9: "LOWBATTERY",
     10: "INTERNALFULL", 11: "EXTERNALFULL", 12: "BROWNOUT", 13: "POWERFAIL",
     14: "UNKNOWN", 15: "SLEEP", 16: "STANDBY", 17: "SHUTDOWN",
-    18: "EXCEPTION", 19: "STORAGEERROR",
+    18: "EXCEPTION", 19: "STORAGEERROR", 20: "CONFIGERROR",
 }
 
 
@@ -68,6 +68,9 @@ def annotate(label: str, value: int) -> str:
         return "  <- gave up: too many consecutive page write failures"
     if tag == "EECC":
         return "  <- uncorrectable ECC on this NAND page"
+    if tag == "ECFG":
+        return (f"  <- stored config did not read back; first bad word {value}"
+                " -- the start was aborted")
     return ""
 
 

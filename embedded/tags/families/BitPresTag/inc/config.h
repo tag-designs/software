@@ -54,7 +54,7 @@ extern t_storedconfig config_tmp;
  *
  * @param[in] s Source configuration to write.
  */
-extern void writeStoredConfig(t_storedconfig *s);
+extern bool writeStoredConfig(t_storedconfig *s);
 /**
  * @brief Translate a host protobuf configuration into the RAM staging image.
  *

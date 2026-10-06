@@ -317,8 +317,15 @@ enum Sleep Configured(enum StateTrans t, State_Event reason)
     // write configuration to memory if this
     // is in response to a start command.
 
+    /*
+     * Abort rather than run on a configuration that was not stored; see the
+     * same call in common/core/src/state_machine.c. The write can be refused
+     * silently, because sconfig shares its page and so cannot be erased
+     * first, and flash programming only clears bits.
+     */
     if (reason == State_EVENT_STARTCMD)
-      writeStoredConfig(&config_tmp);
+      if (!writeStoredConfig(&config_tmp))
+        return Aborted(T_INIT, State_EVENT_CONFIGERROR);
 
     // enable wakeup timer
 

@@ -31,20 +31,31 @@ const char *writeConfigErrorMessage(void)
  * Write config in ram to flash
  */
 
-void writeStoredConfig(t_storedconfig *s)
+bool writeStoredConfig(t_storedconfig *s)
 {
   uint32_t *src = (uint32_t *)s;
   uint32_t *dest = (uint32_t *)&sconfig;
   ssize_t size = sizeof(*s)/4;
-  if (s)
-  {
-    chSysLock();
-    FLASH_Unlock();
-    FLASH_Program_Array(dest, src, size);
-    FLASH_Lock();
-    FLASH_Flush_Data_Cache();
-    chSysUnlock();
-  }
+
+  if (s == NULL)
+    return false;
+
+  chSysLock();
+  FLASH_Unlock();
+  FLASH_Program_Array(dest, src, size);
+  FLASH_Lock();
+  FLASH_Flush_Data_Cache();
+  chSysUnlock();
+
+  /*
+   * Verify, because the program can be refused and say nothing. sconfig
+   * shares its page with sEpoch and the checkpoint headers here, so it cannot
+   * be erased first, and flash programming only clears bits: a second write
+   * over a populated region yields the bitwise AND of old and new. Returning
+   * false aborts the start, which is the loud failure that replaces a tag
+   * silently running a configuration nobody sent.
+   */
+  return storedConfigVerify(dest, src, (size_t)size);
 }
 
 // Translation between BitTag constants and ProtoBuf constants

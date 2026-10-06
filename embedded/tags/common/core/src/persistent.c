@@ -19,6 +19,7 @@
 #include "flash_internal.h"
 #include "persistent.h"
 #include "scratchpad.h"
+#include "debug_log.h"
 #include "datalog.h"
 #include "strings.h"
 #include "assert.h"
@@ -315,6 +316,45 @@ uint32_t __attribute__((weak)) tagStateMarkerDetail(void)
   return 0U;
 }
 #endif
+
+/**
+ * @brief Compare a freshly programmed stored configuration against its source.
+ *
+ * @details See persistent.h for the contract. Kept here rather than in each
+ *          target's config.c because all eight writeStoredConfig()
+ *          implementations need the identical check, and the one that already
+ *          had it (IMUTag) reported only through debug_log_printf(), which
+ *          shipped images compile out -- so the check existed and could not be
+ *          seen.
+ *
+ * @param[in] dest  Flash region just programmed, word aligned.
+ * @param[in] src   Image that was programmed, word aligned.
+ * @param[in] words Number of 32-bit words to compare.
+ *
+ * @return true when every word matches, false on the first difference.
+ */
+bool storedConfigVerify(const uint32_t *dest, const uint32_t *src,
+                        size_t words)
+{
+  for (size_t i = 0; i < words; i++)
+  {
+    if (dest[i] != src[i])
+    {
+      /*
+       * Record before returning. This is the only narration that survives a
+       * tag which cannot talk, and it costs a shipped image nothing: the
+       * macro compiles to nothing unless TAG_SCRATCHPAD is defined.
+       */
+      tagScratchWord("ECFG", (uint32_t)i);
+      debug_log_printf(
+          "persistent: stored config verify failed at word %d, "
+          "wrote 0x%x read 0x%x\r\n",
+          (int)i, (unsigned)src[i], (unsigned)dest[i]);
+      return false;
+    }
+  }
+  return true;
+}
 
 void recordState(State_Event reason)
 {

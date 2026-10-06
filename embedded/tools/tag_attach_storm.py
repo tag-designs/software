@@ -61,7 +61,14 @@ from power_experiment import (  # noqa: E402
 #: ends FINISHED with EVENT_STOPCMD; anything that ends ABORTED, or reports a
 #: power failure, ended because something went wrong -- which is exactly what a
 #: wedged bus during an attach used to cause.
-ABORT_MARKERS = ("ABORTED", "EVENT_POWERFAIL", "EVENT_EXCEPTION")
+#:
+#: EVENT_CONFIGERROR is listed although "ABORTED" alone would already catch it,
+#: because a storm is where it is most likely to appear: the attach-from-sleep
+#: workaround issues every command twice, so a start programs the stored
+#: configuration and then programs it again into a region that is no longer
+#: erased. Naming it means the log says which failure happened.
+ABORT_MARKERS = ("ABORTED", "EVENT_POWERFAIL", "EVENT_EXCEPTION",
+                 "EVENT_CONFIGERROR")
 
 
 @dataclass

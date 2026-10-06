@@ -38,7 +38,7 @@ typedef struct
 extern t_storedconfig sconfig;
 extern t_storedconfig config_tmp;
 
-void writeStoredConfig(t_storedconfig *s);
+bool writeStoredConfig(t_storedconfig *s);
 bool writeConfig(Config *config);
 void readConfig(Config *config);
 
