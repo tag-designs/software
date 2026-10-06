@@ -295,11 +295,17 @@ int main(int argc, char **argv)
             for (int i = 0; i < tries; i++)
             {
                 read_ok = tag.GetStatus(status);
-                if (!read_ok)
-                {
-                    break;
-                }
-                if (!start_attempted || status.state() != IDLE)
+                /*
+                 * A failed read is not a reason to stop polling. The tag does
+                 * not drop the debug link -- only the host disconnects -- so a
+                 * read that fails here is a tag that did not answer in time,
+                 * which is exactly what the remaining tries are for. Breaking
+                 * out made --start-timeout inoperative in its own motivating
+                 * case: a tag that sleeps straight after a start failed the
+                 * first read, so a 90 s timeout waited about zero seconds and
+                 * the tool reported the state as not confirmed.
+                 */
+                if (read_ok && (!start_attempted || status.state() != IDLE))
                 {
                     break;
                 }
@@ -308,15 +314,19 @@ int main(int argc, char **argv)
             if (!read_ok && start_attempted)
             {
                 /*
-                 * The start was accepted, and then the tag left the debug
-                 * link. That is how a tag that sleeps straight after a start
-                 * behaves, not a failure: the tag must give up its debug
-                 * interface to sleep. Its new state cannot be read without
-                 * attaching again, which resets it, so it is reported as not
-                 * confirmed rather than guessed.
+                 * The start was accepted and no status read succeeded within
+                 * the whole timeout. Report it rather than guess a state.
+                 *
+                 * This used to claim the tag had "left the debug link" after a
+                 * single failed read, which is not what happens: the tag does
+                 * not drop the link, the host disconnects. A failed read means
+                 * the tag did not answer, and after a full timeout of them
+                 * something is wrong -- it is not the ordinary behaviour of a
+                 * tag going to sleep, which is what the old message said.
                  */
-                std::cout << "Start accepted; the tag then left the debug link "
-                             "(it went to sleep), so its new state was not read"
+                std::cout << "Start accepted, but no status read succeeded in "
+                          << start_timeout_s
+                          << " s, so the tag's new state was not confirmed"
                           << std::endl;
                 std::cout << "State: not confirmed (last read: "
                           << TagState_Name(status.state()) << ")" << std::endl;

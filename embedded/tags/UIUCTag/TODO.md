@@ -11,82 +11,50 @@ board, UUID `2036354B3032500800520028` -- the same physical unit the CompassTag
 log calls `CompassTagAT25Breakout`. It is a development board, not production
 UIUCTag hardware, so none of this is a qualification result.
 
-> **REINSTATED 2026-10-06, after a controlled run. Read this first.** The
-> withdrawal below was itself premature. A 1800 s run with **no monitor attach
-> anywhere inside the window** -- reset, start, measure, stop, download, each
-> command issued twice, nothing polled -- reproduces the fault:
+> **RESOLVED 2026-10-06. There is no UIUCTag wake fault. Everything in this
+> section was caused by the way it was measured.**
 >
-> | | measured | bring-up, undisturbed, same board |
-> | --- | ---: | ---: |
-> | `IDLE`, clock set | 0.1581 uA | -- |
-> | **`RUNNING`, 1800 s** | **0.2409 uA** | **0.76 uA** |
-> | `FINISHED` | 0.1572 uA | -- |
-> | `IDLE` after cycle | 0.1572 uA | -- |
-> | `external_pages` | **0** | -- |
-> | download | **"No log records to download"** | -- |
+> The operator ran `fw-v0.6` while watching a Joulescope current trace, with
+> nothing connected to the tag. It **woke on the minute mark and wrote on the
+> 300 s grid** -- which is the designed behaviour exactly: RUNNING wakes on the
+> RTC minute alarm to accumulate the 60 s activity buckets, and writes a sample
+> every fifth wake. The claim that the tag was "armed for activity and not for
+> time" required the minute alarm never to fire, and it fires.
 >
-> Six samples were due in that window and none was written. The current
-> corroborates it without reference to any register: the ~0.5 uA shortfall
-> against bring-up is the sample writes that did not happen (248 uJ each), and
-> the 0.083 uA that `RUNNING` sits above `IDLE` is the ADXL367 watching for
-> motion. **The tag is armed for activity and not for time.**
+> **Three of my runs reached the same wrong answer, each invalidated by my own
+> instrumentation in a different way**, which is why the agreement between them
+> looked like corroboration:
 >
-> **The operator's "it wakes and writes" is consistent with this, not against
-> it.** They reported it waking *when shaken* -- the ADXL367 activity line,
-> which works. The RTC minute alarm is what does not fire. So the original
-> diagnosis stands; what was wrong was only the method used to reach it.
+> | run | what was wrong with it |
+> | --- | --- |
+> | 27-minute polled run | `tag-info` at five points; every attach resets a RUNNING tag |
+> | by-hand life cycle | `twice tag-start` re-attached to an already-running tag, then `tag-info` again |
+> | "undisturbed" run | start never confirmed, so an empty download could not be told from a run that never began |
 >
-> **The polling lesson stands on its own and must not be unlearned.** Attaching
-> during a run resets the tag and is forbidden by
-> `docs/bench/power-testing.md`; the earlier runs here did it and their numbers
-> are worthless. Two separate things went wrong and only one has been fixed:
-> the method, not the firmware.
+> The register evidence (`ALRAE = 0`, `ALRAF` never set) was read from a tag
+> whose run had already been reset by the first of those, so it described the
+> damage rather than the design. **The only instrument that could answer this
+> needed no connection at all**, and it answered it in minutes.
 >
-> ~~**WITHDRAWN 2026-10-06, same day: the measurement interfered with what it
-> measured.**~~ Everything below that reports "the tag never wakes" was taken
-> with a harness that polled `tag-info` at intervals through the run. **A
-> monitor attach connects under reset**, so each poll reset a RUNNING tag.
-> `Running()` re-arms the sample alarm only in its `T_INIT` branch and on
-> `State_EVENT_EXCEPTION`; a reattach takes neither, so after the first poll
-> the alarm stays disarmed and the tag cannot wake again. The operator ran the
-> same firmware undisturbed and reports it waking on its own.
+> What survives from this work, and is real:
 >
-> That accounts for every observation reported below without a firmware
-> regression: `ALRAE = 0` and `ALRAF` never set, `external_pages` frozen at 0,
-> and `50a80a83` "failing" although its own bring-up report documents it
-> working on this same board. **The common cause is the harness, not the
-> commit range.**
+> - **`tag-start --start-timeout` is broken** -- it gave up on the first failed
+>   status read, so the timeout was inoperative in its motivating case, and its
+>   message blamed the tag for "leaving the debug link" when only the host
+>   disconnects. Fixed; see [the worklist](../TODO.md).
+> - **The arithmetic correction to the 2026-10-04 filing stands.** A block is 24
+>   samples at 300 s -- a 7200 s block period -- so a 20-minute run is four
+>   *samples* and no completed block. `UIUCTAG_EXTERNAL_BLOCK_SECONDS` is the
+>   sample period despite its name.
+> - **The 2026-10-04 observation is most likely the same self-inflicted error**
+>   and should not be treated as a known fault.
+> - **The measurement rules are now in `AGENTS.md`**: do not design a test where
+>   the reset changes what you want to see; you cannot observe a running tag on
+>   any target; the scratchpad preserves state for debugging and is U375-only.
 >
-> What may still be real, and is worth keeping: **a monitor attach during
-> RUNNING appears to leave the run unable to wake.** If that holds, any attach
-> mid-deployment silently ends data collection, which is a serious fault in its
-> own right -- but it is a different fault from the one described below, and it
-> has not yet been confirmed by a controlled test. The test is an undisturbed
-> run with a single status read at the end, compared against a run polled
-> part-way through.
->
-> **Confirmed by the operator, same day: an undisturbed run on `fw-v0.6` woke
-> on its own and wrote.** So UIUCTag collects normally and there is no data
-> fault. Both failures UIUCTag carried are accounted for -- this one by the
-> polling, and `tag-test` by an intermittent link (four of six attempts passed,
-> and the debug-register errors cited as its evidence occur just as often in
-> the passing runs).
->
-> **The original 2026-10-04 observation is suspect for the same reason.** It
-> reported a 20-minute run ending with `external_pages=0` and a download
-> holding no data tables. Whether that run was polled while it ran is not
-> recorded. If it was, it has the same cause and there may be no UIUCTag data
-> fault at all. **Establish that before deciding whether UIUCTag still carries
-> a "do not fly" on the release page** -- it is currently marked so partly on
-> the strength of that observation.
->
-> The rule is not new. `docs/bench/power-testing.md` section 3 already says
-> "Do not poll state during a run", and records a PresTag run polled eight
-> times that stored 3 samples instead of about 30. It names the two methods
-> that work: a current trace, which needs no attach, or reading the epochs back
-> from the download afterwards. Both were available and neither was used.
->
-> Nothing below should be used as evidence until that is done.
+> UIUCTag remains **not qualified** -- no clean qualification run has been
+> completed -- but that is missing evidence, not a known fault. The text below
+> is kept only as the record of how the wrong answer was reached.
 
 - **A run stores nothing because the tag never wakes. Reproduced on
   `fw-v0.6`, 2026-10-06.** This supersedes the description below, which was

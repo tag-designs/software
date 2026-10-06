@@ -1,7 +1,7 @@
 ---
 type: results
 status: current
-summary: Append-only log of UIUCTag power measurements -- the 2026-10-06 fw-v0.6 attempt, which failed because the run collects nothing while every resting state passes.
+summary: Append-only log of UIUCTag power measurements -- resting states measured and good; the 2026-10-06 run verdict was retracted after the apparent fault proved to be the measurement.
 ---
 
 # UIUCTag Power Measurement Log
@@ -33,18 +33,22 @@ qtmonitor and the Joulescope desktop app detached.
 
 _No measurements recorded yet._
 
-### 2026-10-06  `fw-v0.6` qualification attempt — **RESULT UNDER RE-TEST, DO NOT RELY**
+### 2026-10-06  `fw-v0.6` qualification attempt — **VERDICT RETRACTED**
 
-> **The run in this entry was not undisturbed, despite what it says below.**
-> The script issued `tag-start` twice (the `twice` helper, so the second
-> attached to an already-RUNNING tag) and then ran `tag-info` to confirm
-> RUNNING. Both connect through reset, so the run was reset once or twice at
-> its start. That is the very mechanism under investigation, so this entry
-> cannot distinguish the fault from the measurement. The resting-state figures
-> are unaffected and stand; **the `RUNNING` row and the FAIL verdict do not.**
-> A genuinely undisturbed run -- single `tag-start`, its own reported status
-> used as confirmation, no attach until the run is ended -- is in progress.
-
+> **The FAIL below is wrong. There is no wake fault; the measurement caused
+> it.** The operator afterwards ran this same image while watching a Joulescope
+> current trace, with nothing connected to the tag: it woke on the minute mark
+> and wrote on the 300 s grid, which is the designed behaviour. Every run of
+> mine that reported otherwise had attached to a RUNNING tag, and an attach
+> connects through reset.
+>
+> **The resting-state figures stand** — they were taken on an idle tag, which is
+> where attaching is safe, and they are the tightest readings of any tag this
+> week. **The `RUNNING` row, the download row and the verdict do not.**
+>
+> No qualification has been completed for UIUCTag: the harness cannot drive
+> this target (below) and the by-hand runs were invalid. That is missing
+> evidence, not a known fault.
 
 - **image**: `fw-v0.6` (`56e5e6a0`), downloaded from the GitHub release, not
   rebuilt. `UIUCTag.elf` sha256
