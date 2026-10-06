@@ -143,10 +143,16 @@ these procedures catch.
 - **You cannot observe a running tag, on any target.** Connecting is only
   possible through reset -- on the STM32U375 as well as the STM32L432 -- so
   every attach (`tag-info`, `tag-capture`, the debugger) ends the run it was
-  meant to observe. There is no live read anywhere in this tree. **Do not poll state
-  during a run**; a PresTag run polled eight times stored 3 samples instead of
-  ~30, and a UIUCTag run polled five times stored none and produced a day of
-  wrong conclusions. The only genuinely passive instrument is a **Joulescope
+  meant to observe. There is no live read anywhere in this tree.
+
+  **Never re-attach to a running tag.** There are exactly two reasons to do it:
+  you are specifically testing attach behaviour, or you want to stop the tag.
+  Wanting to know what it is doing is not one of them -- that is the case where
+  attaching destroys the answer. Anything a run needs to report, it reports
+  after it ends. The evidence: a PresTag run polled eight times stored 3
+  samples instead of ~30, and a UIUCTag run polled five times stored none,
+  which then cost a day of wrong conclusions -- the tag was healthy all along
+  and a current trace showed it waking and writing within minutes. The only genuinely passive instrument is a **Joulescope
   current trace**, which needs no connection and shows every wake. Everything
   else is post-mortem: let the run finish, then attach and read the epochs back
   from the download, or capture.
