@@ -34,6 +34,13 @@ UIUCTag hardware, so none of this is a qualification result.
 > run with a single status read at the end, compared against a run polled
 > part-way through.
 >
+> **Confirmed by the operator, same day: an undisturbed run on `fw-v0.6` woke
+> on its own and wrote.** So UIUCTag collects normally and there is no data
+> fault. Both failures UIUCTag carried are accounted for -- this one by the
+> polling, and `tag-test` by an intermittent link (four of six attempts passed,
+> and the debug-register errors cited as its evidence occur just as often in
+> the passing runs).
+>
 > **The original 2026-10-04 observation is suspect for the same reason.** It
 > reported a 20-minute run ending with `external_pages=0` and a download
 > holding no data tables. Whether that run was polled while it ran is not
