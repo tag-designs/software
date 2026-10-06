@@ -2,6 +2,34 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+#[[
+  @brief  Links <bin>/<name> to the executable inside a macOS tool bundle.
+
+  @details On macOS the command line tools are built as app bundles, which
+           buries the executable at <name>.app/Contents/MacOS/<name>. After
+           each build this places a relative symlink beside the bundle, so
+           the tool runs as <bin>/<name> the same as on Linux. The link lives
+           only in the build tree: install() copies the bundle, not the link,
+           so the shipped package is unchanged. Does nothing off macOS.
+
+  @param  name  An executable target built with MACOSX_BUNDLE.
+
+  Example:
+    host_cli_bundle_link(tag-info)
+#]]
+function(host_cli_bundle_link name)
+  if(APPLE)
+    add_custom_command(
+      TARGET ${name}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_BUNDLE_DIR:${name}>/../$<TARGET_FILE_NAME:${name}>"
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+              "$<TARGET_FILE_NAME:${name}>.app/Contents/MacOS/$<TARGET_FILE_NAME:${name}>"
+              "$<TARGET_BUNDLE_DIR:${name}>/../$<TARGET_FILE_NAME:${name}>"
+      VERBATIM)
+  endif()
+endfunction()
+
 function(host_cli_tool name)
 
   add_executable(${name} ${ARGN})
@@ -26,6 +54,7 @@ function(host_cli_tool name)
     #include(DeployQt)
     #macdeployqt(${name})
   endif()
+  host_cli_bundle_link(${name})
 endfunction()
 
 
@@ -69,4 +98,5 @@ if(TARGET sensoranalysis)
   if(WIN32)
     set_target_properties(dataprocessing PROPERTIES LINK_FLAGS /SUBSYSTEM:CONSOLE)
   endif()
+  host_cli_bundle_link(dataprocessing)
 endif()

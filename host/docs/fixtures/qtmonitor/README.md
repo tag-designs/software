@@ -12,8 +12,11 @@ repository so screenshots can be regenerated, but they are not part of the
 end-user host documentation site.
 
 `<build-dir>` is your host build directory. On macOS the executables are app
-bundles: use `<build-dir>/bin/<tool>.app/Contents/MacOS/<tool>` in place of
-`<build-dir>/bin/<tool>`.
+bundles. The command line tools, such as `qtmonitor-fixture-capture`, also get
+a `<build-dir>/bin/<tool>` symlink to the binary inside the bundle, so the
+commands below work as written. For `qtmonitor`, use
+`<build-dir>/bin/qtmonitor.app/Contents/MacOS/qtmonitor` in place of
+`<build-dir>/bin/qtmonitor`.
 
 ## Documenting a New Tag Type
 
