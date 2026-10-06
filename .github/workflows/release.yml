@@ -8,10 +8,12 @@ name: Release host tools
 # The macOS DMG is deliberately not attached. CI has no access to the Developer
 # ID key -- keeping it out of a public repository's secrets is the point -- so
 # the DMG it builds is only ad-hoc signed and macOS refuses to launch it. The
-# shippable macOS package is built and signed locally by
-# `host/tools/release-macos.sh`, and uploaded to this draft by hand. The macOS
-# job still runs, as a check that the package builds, and leaves its DMG as a
-# workflow artifact.
+# job leaves that DMG as a workflow artifact with a build provenance
+# attestation, and `cmake --build <build-dir> --target sign-latest`
+# (host/tools/sign-ci-macos.sh) on a Mac holding the key checks the
+# attestation, re-signs the DMG with the Developer ID identity and uploads it
+# to this draft. `host/tools/release-macos.sh`, which builds and signs entirely
+# locally, remains the fallback.
 #
 # The release is left as a draft for that reason: it is incomplete until the
 # macOS package is uploaded.
@@ -42,6 +44,11 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      # Build provenance attestation of the macOS DMG.
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -129,6 +136,13 @@ jobs:
           host: ${{ matrix.qt_host }}
           target: desktop
           arch: ${{ matrix.qt_arch }}
+          # Add-ons the apps' QML needs at run time: sensorui's orientation
+          # view imports QtQuick3D and QtQuick.Scene3D. aqt installs no
+          # add-on's dependencies, so Quick 3D's QtShaderTools and
+          # QtQuickTimeline are listed too. Nothing links these, so a missing
+          # one used to build and package cleanly and fail at launch; the
+          # qml_import_check_<app> build targets now fail the build instead.
+          modules: qt3d qtquick3d qtshadertools qtquicktimeline
           cache: true
 
       - name: Resolve CMake-friendly paths
@@ -173,6 +187,15 @@ jobs:
         shell: bash
         run: cmake --build build --config Release --target package
 
+      # Records that this workflow built the DMG from this commit. The local
+      # signing step (host/tools/sign-ci-macos.sh) refuses a DMG without it,
+      # so what gets the Developer ID signature is provably this build.
+      - name: Attest macOS package provenance
+        if: runner.os == 'macOS'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ matrix.package_glob }}
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
@@ -207,7 +230,8 @@ jobs:
         run: |
           set -euo pipefail
           # Only the Windows package. The macOS DMG built above is ad-hoc
-          # signed and is not shippable; the signed one is uploaded locally.
+          # signed and is not shippable; `sign-latest` re-signs it locally
+          # and uploads it.
           shopt -s nullglob
           windows=(artifacts/*.zip)
           if [ ${#windows[@]} -eq 0 ]; then
@@ -223,5 +247,5 @@ jobs:
               --generate-notes \
               "${windows[@]}"
           fi
-          echo "Draft release $TAG is ready. Build and upload the signed macOS"
-          echo "package with host/tools/release-macos.sh, then publish."
+          echo "Draft release $TAG is ready. Sign and upload the macOS package"
+          echo "with 'cmake --build <build-dir> --target sign-latest', then publish."

@@ -46,6 +46,9 @@ if(APPLE AND NOT CODESIGN_EXECUTABLE)
 find_program(CODESIGN_EXECUTABLE codesign)
 endif()
 
+# Captured here: inside a function, CMAKE_CURRENT_LIST_DIR is the caller's.
+set(_macos_codesign_bundle_module "${CMAKE_CURRENT_LIST_DIR}/MacosCodesignBundle.cmake")
+
 if(APPLE AND NOT INSTALL_NAME_TOOL_EXECUTABLE)
 find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool)
 endif()
@@ -429,119 +432,16 @@ function(install_macos_codesign target)
         set(HOST_BUNDLE_INSTALL_DIR ".")
     endif()
 
-    set(_entitlements_args "")
-    if(MACOS_CODE_SIGN_ENTITLEMENTS)
-        set(_entitlements_args "--entitlements" "${MACOS_CODE_SIGN_ENTITLEMENTS}")
-    endif()
-    set(_entitlements_lines "")
-    foreach(_entitlements_arg IN LISTS _entitlements_args)
-        string(APPEND _entitlements_lines "                    \"${_entitlements_arg}\"\n")
-    endforeach()
-
-    # An ad-hoc signature ("-") carries no team identifier, so it cannot take a
-    # secure timestamp (that needs a real identity and Apple's timestamp
-    # server), and the hardened runtime's library validation has no team to
-    # match the bundled dylibs against. Ad-hoc signing exists here to make the
-    # bundles launchable on Apple Silicon, which refuses any binary whose
-    # signature does not validate; notarization is what needs the hardened
-    # runtime, and an ad-hoc build is not notarizable anyway.
-    set(_codesign_item_hardened_line "                            --options runtime\n")
-    set(_codesign_bundle_hardened_line "                    --options runtime\n")
-    set(_codesign_bundle_timestamp_line "                    --timestamp\n")
-    if(MACOS_CODE_SIGN_IDENTITY STREQUAL "-")
-        set(_codesign_item_hardened_line "")
-        set(_codesign_bundle_hardened_line "")
-        set(_codesign_bundle_timestamp_line "                    --timestamp=none\n")
-    endif()
-
+    # The signing itself is in MacosCodesignBundle.cmake, which
+    # host/tools/sign-ci-macos.sh also runs on CI-built bundles, so a local
+    # package and a re-signed CI one are signed by the same code.
     install(CODE "
-        set(_bundle_path \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\")
-        if(NOT EXISTS \"\${_bundle_path}\")
-            message(FATAL_ERROR \"Cannot sign missing bundle: \${_bundle_path}\")
-        endif()
-
-        message(STATUS \"Signing ${_target_output_name}.app\")
-        if(POLICY CMP0009)
-            cmake_policy(PUSH)
-            cmake_policy(SET CMP0009 NEW)
-            set(_bundle_pushed_cmp0009_policy TRUE)
-        endif()
-        file(GLOB _bundle_frameworks
-            \"\${_bundle_path}/Contents/Frameworks/*.framework\")
-        file(GLOB_RECURSE _bundle_macho_files
-            \"\${_bundle_path}/Contents/Frameworks/*.dylib\"
-            \"\${_bundle_path}/Contents/PlugIns/*.dylib\"
-            \"\${_bundle_path}/Contents/PlugIns/*.so\"
-            \"\${_bundle_path}/Contents/Resources/qml/*.dylib\"
-            \"\${_bundle_path}/Contents/Resources/qml/*.so\")
-        file(GLOB _bundle_executables
-            \"\${_bundle_path}/Contents/MacOS/*\")
-        if(_bundle_pushed_cmp0009_policy)
-            cmake_policy(POP)
-        endif()
-
-        set(_bundle_signing_items
-            \${_bundle_macho_files}
-            \${_bundle_frameworks}
-            \${_bundle_executables})
-        if(_bundle_signing_items)
-            list(REMOVE_DUPLICATES _bundle_signing_items)
-        endif()
-
-        foreach(_bundle_signing_item IN LISTS _bundle_signing_items)
-            if(EXISTS \"\${_bundle_signing_item}\" AND NOT IS_SYMLINK \"\${_bundle_signing_item}\")
-                execute_process(
-                    COMMAND \"${CODESIGN_EXECUTABLE}\" --remove-signature \"\${_bundle_signing_item}\"
-                    ERROR_QUIET)
-            endif()
-        endforeach()
-        execute_process(
-            COMMAND \"${CODESIGN_EXECUTABLE}\" --remove-signature \"\${_bundle_path}\"
-            ERROR_QUIET)
-
-        foreach(_bundle_signing_item IN LISTS _bundle_signing_items)
-            if(EXISTS \"\${_bundle_signing_item}\" AND NOT IS_SYMLINK \"\${_bundle_signing_item}\")
-                execute_process(
-                    COMMAND \"${CODESIGN_EXECUTABLE}\"
-                            --force
-                            --timestamp=none
-${_codesign_item_hardened_line}                            --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
-                            \"\${_bundle_signing_item}\"
-                    RESULT_VARIABLE _codesign_result)
-                if(NOT _codesign_result EQUAL 0)
-                    message(FATAL_ERROR \"codesign failed for \${_bundle_signing_item}\")
-                endif()
-            endif()
-        endforeach()
-
-        execute_process(
-            COMMAND \"${CODESIGN_EXECUTABLE}\"
-                    --force
-${_codesign_bundle_timestamp_line}${_codesign_bundle_hardened_line}${_entitlements_lines}
-                    --sign \"${MACOS_CODE_SIGN_IDENTITY}\"
-                    \"\${_bundle_path}\"
-            RESULT_VARIABLE _codesign_result)
-        if(NOT _codesign_result EQUAL 0)
-            message(FATAL_ERROR \"codesign failed for ${_target_output_name}.app\")
-        endif()
-
-        execute_process(
-            COMMAND \"${CODESIGN_EXECUTABLE}\"
-                    --verify
-                    --deep
-                    --strict
-                    \"\${_bundle_path}\"
-            RESULT_VARIABLE _codesign_verify_result)
-        if(NOT _codesign_verify_result EQUAL 0)
-            execute_process(
-                COMMAND \"${CODESIGN_EXECUTABLE}\"
-                        --verify
-                        --deep
-                        --strict
-                        --verbose=4
-                        \"\${_bundle_path}\")
-            message(FATAL_ERROR \"codesign verification failed for ${_target_output_name}.app\")
-        endif()
+        include(\"${_macos_codesign_bundle_module}\")
+        macos_codesign_bundle(
+            BUNDLE \"\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\"
+            IDENTITY \"${MACOS_CODE_SIGN_IDENTITY}\"
+            ENTITLEMENTS \"${MACOS_CODE_SIGN_ENTITLEMENTS}\"
+            CODESIGN \"${CODESIGN_EXECUTABLE}\")
     ")
 endfunction()
 

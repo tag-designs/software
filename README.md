@@ -211,10 +211,12 @@ for example `Ultralight-tags-v3.0.dmg` -- and that name is resolved when CMake
 *configures*, not when it packages, so the tag has to exist before the configure
 step.
 
-To cut a release rather than just build one, use `host/tools/release-macos.sh
-vX.Y`, which creates the tag first for that reason (and pushes it unless given
-`--no-push`; the tag only has to exist locally for the name), then runs the
-two commands above and verifies the signatures inside the resulting DMG. See
+A release normally ships the DMG CI builds for the tag, re-signed on this Mac
+by `cmake --build <build-dir> --target sign-latest`. To build the release
+package here instead, use `host/tools/release-macos.sh vX.Y`, which creates the
+tag first for that reason (and pushes it unless given `--no-push`; the tag only
+has to exist locally for the name), then runs the two commands above and
+verifies the signatures inside the resulting DMG. See
 [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools).
 
 This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
