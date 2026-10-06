@@ -1,8 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Minimum macOS version for the host software. It must be set before
+# project(): project() creates this cache entry -- empty, unless the
+# MACOSX_DEPLOYMENT_TARGET environment variable is set -- and an empty entry
+# lets the compiler default to the building machine's SDK, so a package built
+# on a newer Mac silently refuses to run on older ones. An empty entry left in
+# an existing build tree by that default is replaced; an explicit
+# -DCMAKE_OSX_DEPLOYMENT_TARGET or the environment variable still wins. Keep
+# it equal to VCPKG_OSX_DEPLOYMENT_TARGET in cmake/vcpkg-triplets.
+if(NOT CMAKE_OSX_DEPLOYMENT_TARGET AND NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING
+      "Minimum macOS version for the host software" FORCE)
+endif()
+
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING "Minimum OS X deployment version")
 #set(CMAKE_OSX_SYSROOT "/Users/geobrown/Software/macos-sdk/MacOSX12.3.sdk")
 include(CMakePrintHelpers)
 
@@ -617,6 +629,25 @@ if(APPLE)
     set(CPACK_BUNDLE_APPLE_CERT_APP "${MACOS_CODE_SIGN_IDENTITY}")
     set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_CODE_SIGN_IDENTITY}")
   endif()
+
+  # Developer ID sign the DMG that CI built for the newest release tag and
+  # upload it to that tag's draft release. CI builds the package but never
+  # holds the signing key (docs/decisions/0024-release-macos-package-built-on-ci-signed-locally.md),
+  # so the CI build is brought to the key instead. Needs gh logged in and the
+  # identity in this Mac's keychain; builds nothing, so it works from any
+  # configured tree. To sign a particular tag, run the script directly:
+  # host/tools/sign-ci-macos.sh vX.Y[.Z].
+  add_custom_target(
+    sign-latest
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      "MACOS_CODE_SIGN_IDENTITY=${MACOS_CODE_SIGN_IDENTITY}"
+      "MACOS_CODE_SIGN_ENTITLEMENTS=${MACOS_CODE_SIGN_ENTITLEMENTS}"
+      "CMAKE=${CMAKE_COMMAND}"
+      "${PROJECT_SOURCE_DIR}/host/tools/sign-ci-macos.sh"
+      --out "${CMAKE_BINARY_DIR}/signed-release"
+    USES_TERMINAL
+    VERBATIM)
 endif()
 
 include(CPack)

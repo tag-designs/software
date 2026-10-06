@@ -55,7 +55,14 @@ The CMake target names are intentionally stable:
 Install/package target selection still lives in `host/CMakeLists.txt`.
 `host_qt_install_targets` controls which Qt apps are included in the package.
 Applications that use QML set `QT_DEPLOY_QML_DIRS` so deployment tooling can
-collect the required QML imports and resources.
+collect the required QML imports and resources. For each packaged app with
+QML directories, the default build also runs `qml_import_check_<app>`
+(`cmake/CheckQmlImports.cmake`). It fails when the Qt install lacks a module
+those directories import, or a Qt library that one of those modules' plugins
+links. Deployment would otherwise skip the missing module silently and ship an
+app that fails when it loads its QML. A new QML import of a Qt add-on
+therefore also needs that add-on under `modules:` in
+`.github/workflows/release.yml`.
 `compviz` source remains in the tree for reference, but it is retired from the
 normal build and packaging paths now that `sensorviz` handles CompassTag logs.
 

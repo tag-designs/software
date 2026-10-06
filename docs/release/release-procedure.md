@@ -38,7 +38,7 @@ ships, or invite it to be skipped.
 
 | Tag | Workflow | Produces |
 | --- | --- | --- |
-| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools; the signed macOS DMG is added locally |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
 | `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
 
 The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
@@ -85,8 +85,10 @@ The workflow checks out vcpkg at the baseline commit recorded in
 manifest resolution is reproducible, and caches built ports keyed on
 `vcpkg.json` and `cmake/vcpkg-triplets/`. Host user guides are built into the
 packages (`BUILD_HOST_DOCS=ON`), matching a local package build. The macOS
-package CI builds is ad-hoc signed and never attached
-([decision 0012](../decisions/0012-release-macos-package-signed-off-ci.md));
+package CI builds is ad-hoc signed, carries a build provenance attestation, and
+is not attached by CI. It is re-signed with the Developer ID identity on a Mac
+and uploaded from there
+([decision 0024](../decisions/0024-release-macos-package-built-on-ci-signed-locally.md));
 section 3 covers the local half.
 
 ## 1. Qualifying a release
@@ -441,23 +443,23 @@ by running it, and needs no bench.
 
 ### Why this one is half-manual
 
-The Windows package is built and attached by CI. The macOS package is not.
+CI builds both packages and attaches the Windows one. The macOS one it builds
+but cannot finish.
 
 macOS refuses to launch an app whose signature it does not accept, and the
 signature it accepts requires the Indiana University Developer ID certificate.
 Putting that certificate and its password into a public repository's secrets
-would make the private key recoverable by anyone who can run a workflow on a
-fork or land a change to one, so it stays on the developer's machine. CI builds
-the macOS package anyway -- ad-hoc signed, as a check that it still builds --
-and leaves it as a workflow artifact that nobody ships.
-
-The ad-hoc signature also fails `codesign --verify` on an app bundle, so that
-package would not launch anyway; the evidence and the rejected alternative are
-in [decision 0012](../decisions/0012-release-macos-package-signed-off-ci.md).
+would make the private key reachable by anyone who can land a change to a
+workflow, and by every third-party build step that runs beside it, so it stays
+on the developer's machine. CI therefore builds the DMG ad-hoc signed and
+attests where it came from, and the `sign-latest` target brings that build to
+the key: it checks the attestation, re-signs every bundle with the same code
+that signs a local build, and uploads the result to the draft. The reasoning is
+in [decision 0024](../decisions/0024-release-macos-package-built-on-ci-signed-locally.md).
 
 So `release.yml` opens the release as a **draft** with only the Windows ZIP.
 The draft is the signal that the release is incomplete. It becomes publishable
-once the locally built, Developer ID signed DMG is attached.
+once the Developer ID signed DMG is attached.
 
 The packages are not notarized. macOS blocks an unnotarized Developer ID app on
 first launch, and the user clears it once per app through System Settings ->
@@ -465,63 +467,26 @@ Privacy & Security -> Open Anyway, or clears quarantine on the whole folder in
 one command. Notarization would remove that and nothing else. See
 [Installing a macOS Release](../../README.md#installing-a-macos-release).
 
+**The first release signed this way** needs particular care in step 4. Before
+it, CI built `qtcalibrate` without Qt 3D and with the build machine's SDK as the
+minimum macOS version; both are fixed (decision 0024), but no CI-built package
+has yet been launched by a user.
+
 ### Steps
 
-Run these on the Mac holding the Developer ID certificate, from a clean
-checkout of the commit to be released.
+Run the signing step on the Mac holding the Developer ID certificate, with `gh`
+logged in.
 
 **1. Push the commits.** Not the tag -- the commits. CI builds whatever the tag
 points at, and a tag pointing at a commit nobody else has is a release nobody
-can reproduce. The script warns if HEAD is not on a remote branch, but only
-when it pushes the tag, so with the `--no-push` order below it says nothing:
-check `git branch -r --contains HEAD` yourself.
+can reproduce. Check with `git branch -r --contains HEAD`.
 
-**2. Build, sign and verify locally, without pushing the tag.**
-
-```
-host/tools/release-macos.sh v3.1 --no-push
-```
-
-`--no-push` is the recommended order. The tag is created locally, the image is
-built and checked, and nothing has been announced. If anything fails, `git tag
--d v3.1` and the attempt leaves no trace. Without it the script pushes first,
-which starts CI and opens a draft release before anything has been verified.
-
-That one command does the whole macOS side:
-
-| It does | Because |
-| --- | --- |
-| refuses a dirty tree | a release must be reproducible from its commit |
-| creates the annotated tag | the DMG is named from the tag, resolved at *configure* time, so the tag has to exist before CMake runs |
-| checks the identity is in the keychain | a missing identity otherwise fails deep inside the install step |
-| checks the tag CMake resolved | the lookup takes the **highest** reachable `vX.Y` tag, not the newest, so a higher version already merged here would silently name the DMG |
-| builds and packages | |
-| mounts the DMG and verifies each app | CPack's DragNDrop generator is also handed the signing identity and can re-sign the bundle inside the image; what matters is the signature a user receives, not the one in the build tree |
-| prints the DMG path and its SHA-256 | the hash identifies the image that was tested |
-
-Expect thirteen `ok` lines -- five Qt apps, `dataprocessing`, and seven command
-line tools. A count that is not thirteen means the install set changed; check
-that against `host_cli_install_targets` before shipping.
-
-It stops with an error rather than producing an unshippable image if the
-identity is missing, the resolved tag is not the one asked for, or any bundle
-in the DMG fails `codesign --verify --strict`. That last check is not
-theoretical: it is what caught `tag-attach-cycle.app` and, behind it, the fact
-that no command line bundle had ever been signed.
-
-The Gatekeeper assessment it prints reads `accepted / source=Developer ID`
-(the script's own comment still expects a rejection; acceptance is what the
-release run showed).
-That is worth understanding rather than trusting: the image was just built
-here, so it carries no quarantine attribute, and quarantine is what makes
-macOS demand notarization. The assessment confirms the signature is real and
-trusted. It says nothing about what a user who downloads the DMG will see --
-only the download test in step 5 does.
-
-**3. Push the tag.** CI builds the Windows package and opens a draft release
-with the ZIP attached.
+**2. Tag and push the tag.** The package is named from the highest `vX.Y` tag
+reachable from the commit, so release from a commit where the new tag is the
+highest.
 
 ```
+git tag -a v3.1 -m "Host tools v3.1"
 git push origin refs/tags/v3.1
 gh run watch
 gh release view v3.1
@@ -530,24 +495,88 @@ gh release view v3.1
 A draft, one asset, the Windows `.zip`, no `.dmg`. A DMG appearing there means
 the artifact filter in `release.yml` stopped working.
 
-**4. Attach the macOS package** built in step 2. It matches the tag: the script
-refuses a dirty tree, so the image and the commit agree.
+**3. Sign and upload the macOS package**, from any configured macOS build tree:
 
 ```
+cmake --build <build-dir> --target sign-latest
+```
+
+It builds nothing; it runs `host/tools/sign-ci-macos.sh` with the identity and
+entitlements that tree is configured with. To sign a tag other than the newest,
+run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
+
+| It does | Because |
+| --- | --- |
+| checks the identity is in the keychain, and is not ad-hoc | a missing identity otherwise fails partway through signing |
+| takes the newest successful tag-push run of `release.yml` | that is the release being cut |
+| checks the tag still points at the commit the run built | a moved tag would attach a package built from another commit |
+| verifies the DMG's provenance attestation against `release.yml`, that commit and that tag | what gets the Developer ID signature is provably this repository's build, not a swapped file |
+| copies the image out and re-signs every bundle with `cmake/MacosCodesignBundle.cmake` | the same code signs a local build, so the signatures match |
+| makes a new HFS+/UDZO image, mounts it and verifies each app | what matters is the signature a user receives |
+| prints the DMG path, its SHA-256 and the run it came from | the hash identifies the image that was tested |
+| uploads it to the draft release, replacing any earlier upload | it never changes a published release |
+
+The signed DMG is also kept in `<build-dir>/signed-release/`.
+
+Expect thirteen `ok` lines -- five Qt apps, `dataprocessing`, and seven command
+line tools. A count that is not thirteen means the install set changed; check
+that against `host_cli_install_targets` before shipping.
+
+The Gatekeeper assessment it prints reads `accepted / source=Developer ID`.
+That is worth understanding rather than trusting: the image was just made
+here, so it carries no quarantine attribute, and quarantine is what makes
+macOS demand notarization. The assessment confirms the signature is real and
+trusted. It says nothing about what a user who downloads the DMG will see --
+only the download test in step 4 does.
+
+**4. Install it from the release page on a Mac that has never seen the build,**
+and follow
+[Installing a macOS Release](../../README.md#installing-a-macos-release) as
+written. Launch every app, including `qtcalibrate`'s 3D view. This is the only
+step that tests what a user experiences, because it is the only copy that is
+quarantined. Everything before it tests the build.
+
+**5. Publish the draft.**
+
+### Building and signing entirely locally
+
+`host/tools/release-macos.sh` builds the macOS package on this Mac instead of
+taking CI's, and signs it with the same code. Use it when the CI build cannot
+ship, or when CI is unavailable.
+
+```
+host/tools/release-macos.sh v3.1 --no-push
+git push origin refs/tags/v3.1
 gh release upload v3.1 ~/Build/tag-designs/software-vcpkg-release/Ultralight-tags-v3.1.dmg
 ```
 
-**5. Install it from the release page on a Mac that has never seen the build,**
-and follow
-[Installing a macOS Release](../../README.md#installing-a-macos-release) as
-written. This is the only step that tests what a user experiences, because it
-is the only copy that is quarantined. Everything before it tests the build.
-
-**6. Publish the draft.**
+`--no-push` is the recommended order. The tag is created locally, the image is
+built and checked, and nothing has been announced. If anything fails, `git tag
+-d v3.1` and the attempt leaves no trace. Without it the script pushes first,
+which starts CI and opens a draft release before anything has been verified.
+The script refuses a dirty tree, creates the annotated tag before configuring
+(the DMG is named from the tag at configure time), checks that CMake resolved
+that tag and not a higher one, builds, packages, and verifies the mounted DMG
+with `host/tools/verify-macos-dmg.sh`, the same check `sign-latest` runs.
+Then continue from step 4 above.
 
 ### If something goes wrong
 
-With `--no-push`, almost nothing can: delete the local tag and start over.
+`sign-latest` stops before uploading anything if a check fails:
+
+- **No valid provenance attestation.** The run predates the attestation step,
+  or the file is not what `release.yml` built. For a pre-attestation run only,
+  `host/tools/sign-ci-macos.sh vX.Y --no-attestation` signs it without that
+  assurance.
+- **The artifact has expired.** Workflow artifacts are kept 14 days. Re-run the
+  tag's workflow (`gh run rerun <run-id>`) and sign the new run.
+- **There is no release yet.** The release job has not finished; wait for it
+  and run the target again.
+- **The release is already published.** It is left alone; the script prints the
+  `gh release upload --clobber` command for a deliberate replacement.
+
+With `release-macos.sh --no-push`, almost nothing can go wrong: delete the
+local tag and start over.
 
 Once the tag is pushed, a failure leaves a tag and a draft release behind. Both
 are cheap to keep -- fix the problem, commit, and release under the next

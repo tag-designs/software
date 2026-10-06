@@ -1,6 +1,7 @@
 ---
 type: decision
-status: accepted
+status: superseded
+superseded-by: docs/decisions/0024-release-macos-package-built-on-ci-signed-locally.md
 summary: CI builds the macOS host package ad-hoc signed as a build check only; the shipped DMG is Developer ID signed locally by release-macos.sh, because the signing key is not put in a public repository's secrets.
 ---
 

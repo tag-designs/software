@@ -184,55 +184,7 @@ cmake --build --preset "$PACKAGE_PRESET"
 # DragNDrop generator gets CPACK_BUNDLE_APPLE_CERT_APP as well and can re-sign
 # the bundle inside the image. What matters is the signature a user gets, so
 # verify inside the mounted DMG rather than in the build tree.
-
-MOUNT_POINT=$(mktemp -d -t ultralight-dmg)
-detach() {
-  hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
-  rmdir "$MOUNT_POINT" 2>/dev/null || true
-  cleanup_log
-}
-trap detach EXIT
-
-note "verifying signatures in the mounted image"
-hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$MOUNT_POINT" >/dev/null
-
-APPS=$(find "$MOUNT_POINT" -maxdepth 3 -name '*.app' -prune -print)
-[ -n "$APPS" ] || die "no .app bundles found in $DMG"
-
-FAILED=0
-while IFS= read -r app; do
-  name=${app##*/}
-  if ! codesign --verify --strict --verbose=1 "$app" >/dev/null 2>&1; then
-    printf '  %-24s FAILED codesign --verify\n' "$name"
-    codesign --verify --strict --verbose=2 "$app" 2>&1 | sed 's/^/      /'
-    FAILED=1
-    continue
-  fi
-  authority=$(codesign -dvv "$app" 2>&1 | sed -n 's/^Authority=//p' | head -1)
-  if [ "$authority" != "$IDENTITY" ]; then
-    printf '  %-24s signed by an unexpected authority: %s\n' "$name" "${authority:-<none>}"
-    FAILED=1
-    continue
-  fi
-  printf '  %-24s ok\n' "$name"
-done <<EOF
-$APPS
-EOF
-
-# Gatekeeper will reject an unnotarized Developer ID app. That is expected --
-# the release is deliberately not notarized -- but the assessment is worth
-# seeing, because it distinguishes "unnotarized" from "broken signature".
-FIRST_APP=$(printf '%s\n' "$APPS" | head -1)
-printf '\nGatekeeper assessment of %s:\n' "${FIRST_APP##*/}"
-spctl --assess --type exec -vv "$FIRST_APP" 2>&1 | sed 's/^/  /' || true
-
-# Detach before reporting, so a failure message is not competing with a
-# still-mounted image. `detach` tolerates a busy volume; a stuck mount must not
-# turn a signature failure into a confusing early exit under `set -e`.
-detach
-trap cleanup_log EXIT
-
-[ "$FAILED" -eq 0 ] || die "signature verification failed; do not ship this image"
+"$REPO_ROOT/host/tools/verify-macos-dmg.sh" "$DMG" "$IDENTITY" || exit 1
 
 # ---------------------------------------------------------------- report
 

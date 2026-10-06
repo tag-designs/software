@@ -124,6 +124,76 @@ function(get_target_deploy_qml_dirs out_var target_name)
   endif()
 endfunction()
 
+#[[
+  @brief  Fails a target's build if its QML needs a Qt module that is missing.
+
+  @details Adds a target, qml_import_check_<target>, that is part of the
+           default build, runs after the app is built, and runs
+           cmake/CheckQmlImports.cmake over the app's QT_DEPLOY_QML_DIRS. (A
+           POST_BUILD step on the app itself would need to be added in the
+           app's own directory.) QML imports are resolved only at
+           run time and deployment skips what it cannot find, so without this
+           a Qt install lacking an add-on (aqt's base install, for one) builds
+           and packages an app that fails when it loads its QML.
+
+           Locates Qt from Qt6_DIR, which in an installer or aqt layout is
+           <qt>/lib/cmake/Qt6. Where qmlimportscanner is not found there, as
+           with a vcpkg-built Qt, it warns and adds no check. A target with no
+           QML directories gets no check.
+
+  @param  target_name  An application target that may set QT_DEPLOY_QML_DIRS.
+#]]
+function(add_qml_import_check target_name)
+  get_target_deploy_qml_dirs(qml_dirs ${target_name})
+  if(NOT qml_dirs)
+    return()
+  endif()
+  get_filename_component(qt_root "${Qt6_DIR}/../../.." ABSOLUTE)
+  find_program(HOST_QMLIMPORTSCANNER_EXECUTABLE qmlimportscanner
+    HINTS "${qt_root}/libexec" "${qt_root}/bin"
+    NO_DEFAULT_PATH)
+  if(NOT HOST_QMLIMPORTSCANNER_EXECUTABLE)
+    message(WARNING "qmlimportscanner not found under ${qt_root}; "
+                    "the QML imports of ${target_name} are not checked")
+    return()
+  endif()
+  set(dependency_tool_args "")
+  if(WIN32)
+    set(qt_lib_dir "${qt_root}/bin")
+    # An install script gets the dependency tool from CMake; a -P script must
+    # be told. dumpbin sits beside cl.exe, which a build is not guaranteed to
+    # have on PATH.
+    get_filename_component(compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    find_program(HOST_DUMPBIN_EXECUTABLE dumpbin HINTS "${compiler_dir}")
+    if(HOST_DUMPBIN_EXECUTABLE)
+      set(dependency_tool_args
+          -DCMAKE_GET_RUNTIME_DEPENDENCIES_PLATFORM=windows+pe
+          -DCMAKE_GET_RUNTIME_DEPENDENCIES_TOOL=dumpbin
+          -DCMAKE_GET_RUNTIME_DEPENDENCIES_COMMAND=${HOST_DUMPBIN_EXECUTABLE})
+    else()
+      message(WARNING "dumpbin not found; the Qt libraries ${target_name}'s "
+                      "QML plugins link are not checked, only its imports")
+      set(dependency_tool_args -DSKIP_LIBRARY_CHECK=ON)
+    endif()
+  else()
+    set(qt_lib_dir "${qt_root}/lib")
+  endif()
+  list(JOIN qml_dirs "|" qml_dirs_arg)
+  add_custom_target(
+    qml_import_check_${target_name}
+    ALL
+    COMMAND ${CMAKE_COMMAND}
+            -DTARGET_NAME=${target_name}
+            -DSCANNER=${HOST_QMLIMPORTSCANNER_EXECUTABLE}
+            -DQT_QML_DIR=${qt_root}/qml
+            -DQT_LIB_DIR=${qt_lib_dir}
+            -DQML_DIRS=${qml_dirs_arg}
+            ${dependency_tool_args}
+            -P ${PROJECT_SOURCE_DIR}/cmake/CheckQmlImports.cmake
+    VERBATIM)
+  add_dependencies(qml_import_check_${target_name} ${target_name})
+endfunction()
+
 # What ships. The developer and bench programs -- tag-attach-cycle,
 # tag-test-example, tag-monitor-test, tag-cal-write, tag-peek and
 # qtmonitor-fixture-capture -- are built but deliberately not installed; see
@@ -150,6 +220,14 @@ set(host_candidate_install_targets ${host_qt_install_targets} ${host_cli_install
 foreach(target_name ${host_candidate_install_targets})
   if(TARGET ${target_name})
     list(APPEND host_install_targets ${target_name})
+  endif()
+endforeach()
+
+# Every shipped app whose QML the Qt install cannot fully satisfy fails to
+# build, rather than packaging and failing at launch.
+foreach(target_name ${host_qt_install_targets})
+  if(TARGET ${target_name})
+    add_qml_import_check(${target_name})
   endif()
 endforeach()
 
