@@ -63,6 +63,23 @@ summary: Open CompassTag power and monitor items left by the 2026-09 Standby-aft
   which was never a substitute for a measurement, and now does not need to be.
   **No MX25R measurement is owed.** The `CompassTag` target still builds; it
   is simply not a qualification target, and nothing should block on it.
+- **Guard the gap between the code and the calibration page.** The `fw-v0.6`
+  image ends at `0x0800af38`; `.calibration` begins at `0x0800b000`. **200
+  bytes.** It was 936 before F3 part 1 and 324 at `fw-v0.5`, so the trend is one
+  way. When the gap closes, `.calibration` moves to the next page and every
+  calibrated board silently reads an unwritten one -- which looks like a
+  calibration fault rather than an upgrade step, and nothing in the build or the
+  tooling says a word.
+
+  This is the cheap half of the pinning that was rejected on 2026-10-05, and it
+  does not carry that cost: an `ASSERT` in `STM32L432xC.ld` that fails the build
+  when the image reaches `__calibration_start__` costs no flash and no capacity
+  on any target, because it relocates nothing. The rejected change was about
+  surviving a non-erasing upgrade; this is about finding out at build time
+  rather than from a tag in the field. Until it exists, compare
+  `__calibration_start__` between the old and new images before flashing any
+  calibrated unit.
+
 - **Re-confirm the never-attached cold baseline after the fix.** Remove all
   power, including any cell, and measure before a probe ever touches the
   board. The 376 nA figure is the pre-fix cold measurement.

@@ -380,3 +380,68 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   0.5%, running within 1.1%, finished identical. Every distributed image
   changed between the two, so this is a requalification rather than a
   confirmation, and it is the first of the five targets to be redone.
+
+### 2026-10-06  `CompassTagAT25` release qualification, `fw-v0.6` — PASS
+
+- **image**: `fw-v0.6` (`56e5e6a0`), **downloaded from the GitHub release**, not
+  rebuilt. `CompassTagAT25.elf` sha256
+  `ba99e8534395963d635c0c7f8ab123d4f40cb39768b22336634c7fbbb012078f`, flashed
+  with `flash_release.py` which verified it against its in-archive manifest:
+  tree clean, toolchain 14.2.1, ChibiOS `ver21.11.1@15221-412-ge209b17cdf`.
+  Measured with `--skip-build`, so the harness could not substitute a
+  working-tree rebuild. Artifacts in
+  `release-checks/release-CompassTagAT25-20261006-104000/`.
+- **board**: `203633324B4250060022005E` on CompassTagv1, read back from the tag.
+- **conditions**: supply 2.4960 V (2.4961 V in the second running window),
+  unregulated 2.5 V cell, shipped default config at a 30 s compass period.
+  Room about 19.5 C -- cooler than the 2026-10-05 sessions, which matters
+  below. `joulescope_server.py --use-server`, qtmonitor and the desktop app
+  verified absent by process check.
+- **result**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | supply, every window | 2.45–2.55 V | 2.4960 / 2.4961 V | **pass** |
+  | `IDLE`, four trials | ≤ 5 µA | 0.2181 / 0.2144 / 0.2139 / 0.2137 µA | **pass**, 2.0% spread |
+  | `IDLE`, life cycle | ≤ 5 µA | 0.21 µA | **pass** |
+  | `RUNNING` | two windows within 5% | **1.95** and **1.9478 µA** | **pass**, 0.1% apart |
+  | `FINISHED` | ≤ 5 µA, within 20% of `IDLE` | 0.21 µA | **pass**, equal to idle |
+  | `idle_after_cycle` | ≤ 5 µA | 0.21 µA | **pass** |
+  | attach storms | every round survives | 3 sets, 6 rounds, 240 cycles, 0 aborted | **pass** |
+  | `tag-test` | `ALL_PASSED` | `ALL_PASSED` | **pass** |
+  | download interval | samples exactly 30 s apart | 30 s in all six stored rounds | **pass** |
+  | calibration | byte-identical across the flash | **byte-identical** | **pass** |
+
+- **verdict**: **PASS. `fw-v0.6` is qualified for CompassTagAT25.**
+
+- **The calibration gate was met literally.** `__calibration_start__` in the
+  release image was confirmed still at `0x0800b000` -- the address this board
+  was calibrated under -- *before* the flash was allowed, and the page dumped
+  afterwards is byte-for-byte equal to the dump taken before it. That is a
+  stronger claim than "the page is populated": a byte-level *restore* on
+  2026-10-04 produced a byte-identical page and calibration that did not work,
+  so identical bytes only mean something when nothing rewrote them.
+
+- **Headroom is now 200 bytes.** The release image ends at `0x0800af38` and the
+  calibration page begins at `0x0800b000`. Before F3 the gap was 936 bytes.
+  Nothing warns when it closes: the next change to this target can push
+  calibration to a new page and silently orphan every calibrated board. See
+  [the worklist](../TODO.md).
+
+- **Idle tracks room temperature, not the build.** Three sessions on this one
+  board at the same supply:
+
+  | Session | Room | `IDLE` (4 trials) | `RUNNING` |
+  | --- | ---: | ---: | ---: |
+  | 2026-10-05, `630ce14e` | 22.7–23 C | 0.2327–0.2306 µA | 1.94 / 1.9387 µA |
+  | 2026-10-06, `dee8654d` | 19.5 C | 0.2141–0.2106 µA | 1.93 µA |
+  | 2026-10-06, `fw-v0.6` | 19.5 C | 0.2181–0.2137 µA | 1.95 / 1.9478 µA |
+
+  Running current is flat to about 1% across all three, because it is dominated
+  by active work rather than leakage. Idle moved about 9% with a 3.5 C change
+  in room temperature and is reproducible within each session. This is a second
+  board and a third day agreeing with the temperature-dependent leakage
+  explanation reached for PresTag's resting floor, and it is further reason to
+  treat that campaign's 0.2810 µA as a property of its conditions rather than
+  of its firmware. See
+  [the investigation](../../../design/investigations/2026-10-adc-and-the-power-floor.md).

@@ -19,7 +19,7 @@ Background:
 
   | Target | State |
   | --- | --- |
-  | `CompassTagAT25` | **PASS at `630ce14e`, 2026-10-05**, clean tree ([results](families/CompassTag/design/power-results.md)) |
+  | `CompassTagAT25` | **PASS against the `fw-v0.6` release image, 2026-10-06** ([results](families/CompassTag/design/power-results.md)) |
   | `BitTag` | outstanding |
   | `PresTag` | outstanding |
   | `UIUCTag` | outstanding, and two failures are open against it |
