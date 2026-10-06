@@ -9,6 +9,8 @@
 #define PERSISTENT_H
 
 #include <stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
 
 /** Start of the internal flash region reserved for persistent state. */
 extern uint32_t __persistent_start__; // from linker script
@@ -140,4 +142,25 @@ uint32_t externalFlashSize(void);
  */
 int externalFlashSectorsErased(void);
 int externalFlashSectorsToErasePlusOne(void);
+/**
+ * @brief Compare a freshly programmed stored configuration against its source.
+ *
+ * @details Implemented once in common/core/src/persistent.c and shared by every
+ *          target's writeStoredConfig(). Declared here because this header
+ *          replaces common/core/inc/persistent.h for this family, by the
+ *          basename-override rule, so the common declaration is not visible.
+ *
+ * @param[in] dest  Flash region just programmed, word aligned.
+ * @param[in] src   Image that was programmed, word aligned.
+ * @param[in] words Number of 32-bit words to compare.
+ *
+ * @return true when every word matches, false on the first difference. On a
+ *         difference a scratchpad "ECFG" record carries the word index.
+ *
+ * @note Reads flash directly, so the caller must have flushed the data cache
+ *       after programming or the comparison may read stale data and pass.
+ */
+bool storedConfigVerify(const uint32_t *dest, const uint32_t *src,
+                        size_t words);
+
 #endif
