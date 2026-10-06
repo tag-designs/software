@@ -207,7 +207,19 @@ def main() -> int:
                         ("--settle", args.settle)):
         if value is not None:
             lifecycle_cmd += [flag, str(value)]
-    rc, out_txt = run(lifecycle_cmd, os.path.join(out, "lifecycle.log"), 1800)
+    # The life cycle walks five states: one run window, four resting windows,
+    # and a settle before each. A fixed 1800 s budget silently capped the run
+    # duration this tool is now allowed to pass -- --run-duration 1800 spent
+    # the entire budget on the run and the step was killed mid-walk, reported
+    # as a life-cycle failure with no measurement behind it. Size the timeout
+    # from what was actually asked for, with room for the resets, downloads
+    # and attach retries between windows.
+    rest_s = args.rest_duration if args.rest_duration is not None else 30.0
+    settle_s = args.settle if args.settle is not None else 12.0
+    lifecycle_timeout = int(args.run_duration + 4 * rest_s + 5 * settle_s + 900)
+    print(f"  (life-cycle budget {lifecycle_timeout} s)")
+    rc, out_txt = run(lifecycle_cmd, os.path.join(out, "lifecycle.log"),
+                      lifecycle_timeout)
     results["checks"]["lifecycle"] = "pass" if rc == 0 else "fail"
     results["checks"]["run_max_ua"] = args.run_max_ua
     results["checks"]["run_duration_s"] = args.run_duration

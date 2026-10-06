@@ -133,6 +133,13 @@ these procedures catch.
   U375-only). Run `tag_rebuild_check.py` after any
   change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
   [Capturing a tag](docs/bench/capturing-a-tag.md).
+- **Erase a tag's data before reflashing it, whenever it is in `FINISHED` or
+  `ABORTED`.** In that order. The erase should be done by the firmware that
+  wrote the log, which knows its own layout and cursors; a new image erasing
+  someone else's log is interpreting a format it may not share. `tag-reset`
+  erases, and only from `FINISHED` or `ABORTED`, so the sequence is: read the
+  state, `tag-reset` to erase, then `flash_release.py`.
+
 - **DO NOT DESIGN A TEST WHERE THE RESET CHANGES WHAT YOU WANT TO SEE.** This
   comes before any other bench rule. Connecting is only possible through reset,
   so before writing any experiment, ask what the reset destroys. If the answer
