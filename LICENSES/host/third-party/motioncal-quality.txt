@@ -1,0 +1,11 @@
+MotionCal quality.c and magcal.h
+================================
+
+License:    none found
+Copyright:  Paul Stoffregen (PJRC), presumed
+Used in:    qtcalibrate
+Source:     https://github.com/PaulStoffregen/MotionCal
+
+Note: the MotionCal repository carries no license file, so these two files
+are distributed without a written license grant from their author. They are
+compiled only into qtcalibrate; no other host program contains them.

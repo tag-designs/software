@@ -1,0 +1,10 @@
+wordcut
+=======
+
+License:    LGPL-3.0 (texts/LGPL-3.0-only.txt with texts/GPL-3.0-only.txt);
+:           bundled Node.js shims MIT
+Copyright:  the wordcut authors; (c) 2009 Thomas Robinson; Joyent, Inc.
+Used in:    user manual search (assets/javascripts/lunr/wordcut.js)
+Source:     https://github.com/veer66/wordcut
+
+Shipped as a separate, unminified file that can be replaced.

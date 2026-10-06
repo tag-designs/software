@@ -460,6 +460,13 @@ else()
   add_custom_target(distributed_firmware
                     DEPENDS ${_distributed_tags} ${_distributed_loaders})
 
+  # The installed firmware and loaders carry their licenses: the firmware
+  # images are conveyed under GPL-3.0 and every component's notice must travel
+  # with them (see LICENSES/README.md).
+  install(
+    DIRECTORY "${CMAKE_SOURCE_DIR}/LICENSES/embedded/"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}/licenses")
+
   # Regenerating the committed sources covers the same set.
 
   set(_distributed_proto_source_targets "")

@@ -1,0 +1,8 @@
+SQLite 3.53.1
+=============
+
+License:    blessing (public domain)
+Used in:    programs that read or write logs (statically linked)
+Source:     https://sqlite.org
+
+SQLite is in the public domain: https://sqlite.org/copyright.html

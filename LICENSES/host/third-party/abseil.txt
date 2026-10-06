@@ -1,0 +1,9 @@
+Abseil 20260107.1
+=================
+
+License:    Apache-2.0 (texts/Apache-2.0.txt)
+Copyright:  The Abseil Authors
+Used in:    every program (statically linked, required by protobuf)
+Source:     https://github.com/abseil/abseil-cpp
+
+Abseil distributes no NOTICE file.

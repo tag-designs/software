@@ -1,0 +1,7 @@
+lunr-languages
+==============
+
+License:    MPL-1.1 (texts/MPL-1.1.txt)
+Copyright:  2014 Mihai Valentin; stemmers 2010 Oleg Mazko
+Used in:    user manual search (assets/javascripts/lunr/min), unmodified
+Source:     https://github.com/MihaiValentin/lunr-languages

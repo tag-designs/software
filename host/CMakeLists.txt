@@ -380,6 +380,13 @@ if(host_install_targets)
       DESTINATION "${host_package_support_destination}/docs")
   endif()
 
+  # The license index, the MIT License, every third-party notice and the
+  # license texts they name (see LICENSES/README.md). The directory is
+  # self-contained, so it is installed as it stands.
+  install(
+    DIRECTORY "${CMAKE_SOURCE_DIR}/LICENSES/host/"
+    DESTINATION "${host_package_support_destination}/licenses")
+
   include(BuildReport)
   install_build_report(
     DESTINATION "${host_package_support_destination}"

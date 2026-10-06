@@ -1,0 +1,9 @@
+Font Awesome Free 7.1.0 icons
+=============================
+
+License:    CC-BY-4.0 (texts/CC-BY-4.0.txt)
+Copyright:  2025 Fonticons, Inc.
+Used in:    user manual (inline SVG icons)
+Source:     https://fontawesome.com/license/free
+
+Attribution is carried in each icon's SVG comment.
