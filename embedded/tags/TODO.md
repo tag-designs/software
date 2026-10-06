@@ -343,6 +343,33 @@ argument. The procedure is
 
 These ship separately but are needed for the firmware changes to be useful.
 
+- **`tag-start --start-timeout` does not wait.** Its help says "seconds to wait
+  for the tag to leave IDLE after the start is accepted", but the poll loop in
+  `host/commandline/tag-start.cc` breaks on the **first** failed status read:
+
+  ```c
+  read_ok = tag.GetStatus(status);
+  if (!read_ok) break;          /* gives up; the remaining tries are not used */
+  ```
+
+  A tag that sleeps straight after a start -- the normal case -- drops the
+  debug link, so the first read fails and `--start-timeout 90` waits about zero
+  seconds. The flag is inoperative in exactly the situation it was added for,
+  and the tool reports `State: not confirmed (last read: IDLE)`.
+
+  **At minimum the help text is wrong.** Whether the loop should instead keep
+  trying for the remaining timeout depends on something untested: whether the
+  monitor link recovers when the tag next wakes, without a re-attach. If it
+  does not -- hotplug does not work on this rig -- the current behaviour is
+  right and only the documentation needs fixing. Test that before changing the
+  loop. `tag-stop` has the same shape and exits 1 on a failed read.
+
+  This matters beyond tidiness: **there is currently no command-line way to
+  confirm a tag reached RUNNING.** Re-attaching to check resets the run, and
+  holding the link keeps `isMonitorEnabled()` true so the tag never sleeps.
+  That gap is what makes a UIUCTag run hard to qualify, because a download with
+  no samples cannot be distinguished from a run that never started.
+
 - **D1, offline rebuild:** decoders exist for all five distributed targets
   ([0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md)).
   Still to do: the fw-v0.0.3 layouts, and the GD5F logical block count in the
