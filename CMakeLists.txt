@@ -75,6 +75,11 @@ option(MACOS_USE_MACDEPLOYQT_DEPLOYMENT "Let macdeployqt handle macOS bundle dep
 option(MACOS_DEPLOY_APPSTORE_COMPLIANT "Ask macdeployqt to skip app-store-incompatible plugins" ON)
 option(MACOS_DEPLOY_QT_PLUGINS_MANUALLY "Deploy a curated macOS Qt plugin set instead of letting macdeployqt scan all plugins" ON)
 option(MACOS_FIXUP_BUNDLE_DEPENDENCIES "Copy and rewrite non-system dylib dependencies into macOS app bundles" ON)
+# macdeployqt copies every module installed under each QML directory an app
+# imports. With a full Qt that ships unused modules, several licensed only
+# under GPL-3.0 (Virtual Keyboard, Quick 3D Physics, Xr); pruning keeps only
+# what the app's QML needs. See cmake/PruneMacosQml.cmake.
+option(MACOS_PRUNE_UNUSED_QML "Remove QML modules and Qt frameworks a macOS app does not use" ON)
 
 set(
   HOST_MKDOCS_COMMAND

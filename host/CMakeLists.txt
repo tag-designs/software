@@ -337,6 +337,9 @@ if(host_install_targets)
           # Qt SQL drivers.
           install_macos_qt_plugins(${target_name})
         endif()
+        # macdeployqt copies whole QML directories; keep only what the app's
+        # QML needs, before anything is signed.
+        install_macos_prune_qml(${target_name} ${deploy_qml_dirs})
         install_macos_fixup_bundle(${target_name})
         if(NOT MACOS_USE_MACDEPLOYQT_DEPLOYMENT)
           install_macos_remove_bundle_signatures(${target_name})
