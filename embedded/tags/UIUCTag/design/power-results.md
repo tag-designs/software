@@ -99,3 +99,43 @@ _No measurements recorded yet._
 - **notes**: earlier runs on this board were polled with `tag-info` during
   collection, which resets the tag; those numbers are withdrawn and are not the
   basis of this entry. See [the worklist](../TODO.md).
+
+### 2026-10-06  `fw-v0.6` functional run — **collects correctly**
+
+- **image**: `fw-v0.6` (`56e5e6a0`), flashed from the GitHub release.
+- **board**: `2036354B3032500800520028`. **conditions**: 2.496 V, shipped
+  default config, started 21:06:51Z and stopped 21:28:40Z.
+- **method**: started once, then **nothing attached for the whole run**. The
+  operator watched a Joulescope current trace, which needs no connection, and
+  saw it wake on the minute mark and write on the 300 s grid. The tag was
+  attached only to stop it, which is one of the two reasons to attach a running
+  tag. The download below is a second, independent check on the same run.
+- **result**: every slot present, none missed.
+
+  | Stream | Records | Spacing | First → last |
+  | --- | ---: | ---: | --- |
+  | `Activity` | 20 | **exactly 60 s** | 21:07:00Z → 21:26:00Z |
+  | `Pressure` | 5 | **exactly 300 s** | 21:07:00Z → 21:27:00Z |
+  | `Temperature` | 5 | **exactly 300 s** | 21:07:00Z → 21:27:00Z |
+
+  The run began at 21:06:51 and the first sample is at 21:07:00 — the first
+  minute boundary, which is what the design specifies for the first wake of a
+  run. The 60 s activity buckets and the 300 s sample grid are both exact.
+
+- **verdict**: **UIUCTag collects correctly on `fw-v0.6`.** This settles the
+  question the three invalid runs above could not. It is not a qualification --
+  no current was measured during this run, because the Joulescope had been
+  released to observe it -- but it is unambiguous on function.
+
+- **`external_pages` is not evidence of what a run collected.** It read **0**
+  immediately after the stop, in the same session whose download returned five
+  samples and twenty activity buckets. It is the live counter during a run and
+  cannot be trusted once a run has ended. **Use the download.** Reading it as
+  "nothing was stored" is a large part of how this tag was wrongly written off,
+  and `tag_release_check.py`'s own download check already does the right thing.
+
+- **what a qualification still needs**: a clean `RUNNING` current over a window
+  of several sample periods, with nothing attached. The resting states are
+  already measured (previous entry) and are good. `tag_release_check.py` cannot
+  drive this target, so the run phase must be taken by hand: start once, leave
+  it alone, measure, then stop.

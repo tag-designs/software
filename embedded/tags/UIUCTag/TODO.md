@@ -172,6 +172,41 @@ UIUCTag hardware, so none of this is a qualification result.
   acknowledgement`. Not the transient link fault this rig shows from time to
   time. Whether this and the empty run share a cause is unknown; they were
   found together and should be investigated together.
+- **`external_pages` is wrong after any reset, and reports nothing collected.**
+  Confirmed on hardware 2026-10-06: a run that stored **5 pressure samples, 5
+  temperature samples and 20 activity buckets** reported `external_pages=0` in
+  the same session whose download returned all of them.
+
+  `restoreLog()` in `src/datalog.c` does, on every recovery:
+
+  ```c
+  pState->external_blocks = pState->pages;   /* "conservative lower bound" */
+  ```
+
+  `external_blocks` is the running **sample** count, set per sample write in
+  `Running()`. `pages` is the **checkpoint** count -- one per block, and a block
+  is 24 samples. So recovery replaces a correct value with one up to 24x
+  smaller, and with **zero** for any run that has not yet completed its first
+  block, which at a 300 s sample period is the first two hours of every run.
+
+  It is reached constantly, because **attaching is a reset**: stopping a tag to
+  read its status runs recovery first, so the counter is clobbered on the way to
+  every reading a human takes.
+
+  Two things to fix, and they are separable:
+  - The counter should survive, or be recomputed, rather than be replaced by a
+    quantity measured in different units. `pState` is backed by the RTC backup
+    registers and survives reset, so the real value is available.
+  - The comment claims the seeded value is "still a valid, if stale, download
+    bound for the host". **Check whether anything actually bounds a download by
+    it.** If so, a reset mid-run could truncate a download and silently lose
+    data -- far worse than a cosmetic counter. The 2026-10-06 download returned
+    everything, so nothing bounded it there, but that is one observation.
+
+  Until it is fixed, **never read `external_pages` as evidence of what a run
+  collected -- use the download.** Misreading it that way is a large part of how
+  this tag was wrongly written off for two days.
+
 - **Confirm the internal-ADC fix holds here.** This board is what exposed the
   `adcVDD()` defects: it reported `vdd=3.77-3.96` and `temp=92.5-111.4` while
   the rail was 2.4960 V and the room about 25 C. Both outputs come from one
