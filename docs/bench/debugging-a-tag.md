@@ -33,8 +33,25 @@ the monitor makes sleep measurement meaningless. Start at the top.
 
 `embedded/tags/common/core/inc/scratchpad.h` gives firmware somewhere to write
 that a host can read back later over SWD. Nothing runs on the tag to produce
-the output, so reading it does not disturb what it recorded. It is STM32U375
-only. Enable it per target in `project.mk`:
+the output, so reading it does not disturb what it recorded.
+
+**It preserves state for debugging and nothing else.** It is not an
+observation tool and it does not let you watch a tag: reading it still requires
+attaching, attaching still resets, and the run is still over. What it buys is
+that whatever the firmware wrote down *survives* that reset. Use it to answer
+"what happened before this tag stopped", never "what is this tag doing now".
+
+**It is STM32U375 only, and the restriction is physical.**
+`TAG_SCRATCH_BASE` is `0x2003E000`, the last 8 KB of U375 SRAM, held out of
+`ram0` by `STM32U375xG.ld` so `crt0` never clears it. On an STM32L432 that
+address is outside RAM altogether -- SRAM1 is 48 KB at `0x20000000`, SRAM2
+16 KB at `0x10000000` -- and `STM32L432xC.ld` reserves nothing, so every
+`tagScratch*()` call writes into the void. `-DTAG_SCRATCHPAD=1` on BitTag,
+PresTag, CompassTag or UIUCTag buys nothing at all. Use a plain RAM probe at a
+real L432 address instead; SRAM survives reset, so it is read the same way
+afterwards.
+
+Enable it per target in `project.mk`:
 
 ```
 UDEFS += -DTAG_SCRATCHPAD=1

@@ -133,9 +133,38 @@ these procedures catch.
   U375-only). Run `tag_rebuild_check.py` after any
   change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
   [Capturing a tag](docs/bench/capturing-a-tag.md).
-- **Instrument without disturbing.** Use the retained scratchpad
-  (`-DTAG_SCRATCHPAD=1`) or single-store RAM probes read over SWD; never narrate
-  from inside the idle or power path. [Debugging a tag](docs/bench/debugging-a-tag.md).
+- **DO NOT DESIGN A TEST WHERE THE RESET CHANGES WHAT YOU WANT TO SEE.** This
+  comes before any other bench rule. Connecting is only possible through reset,
+  so before writing any experiment, ask what the reset destroys. If the answer
+  you are after is altered by the act of reading it, the test is invalid by
+  construction and no amount of repetition will fix it -- repetition only makes
+  a wrong answer look reproducible. Redesign the test so the thing you want
+  survives, or measure it with something that needs no connection.
+- **You cannot observe a running tag, on any target.** Connecting is only
+  possible through reset -- on the STM32U375 as well as the STM32L432 -- so
+  every attach (`tag-info`, `tag-capture`, the debugger) ends the run it was
+  meant to observe. There is no live read anywhere in this tree. **Do not poll state
+  during a run**; a PresTag run polled eight times stored 3 samples instead of
+  ~30, and a UIUCTag run polled five times stored none and produced a day of
+  wrong conclusions. The only genuinely passive instrument is a **Joulescope
+  current trace**, which needs no connection and shows every wake. Everything
+  else is post-mortem: let the run finish, then attach and read the epochs back
+  from the download, or capture.
+- **The scratchpad preserves state for debugging and nothing else.** It does
+  not avoid the reset, it survives it: firmware writes into retained memory as
+  it runs, the reset that attaching causes leaves it intact, and it is read
+  afterwards. It answers "what happened before this tag stopped", never "what
+  is this tag doing now". The same is true of plain RAM probes, since SRAM survives
+  reset. **The retained scratchpad is STM32U375 only.** `TAG_SCRATCH_BASE` is
+  `0x2003E000`, the last 8 KB of the U375's SRAM, held out of `ram0` by
+  `STM32U375xG.ld`. On an STM32L432 that address is **outside RAM entirely** --
+  SRAM1 is 48 KB at `0x20000000`, SRAM2 16 KB at `0x10000000` -- and
+  `STM32L432xC.ld` reserves nothing, so every `tagScratch*()` call writes into
+  the void. `-DTAG_SCRATCHPAD=1` on BitTag, PresTag, CompassTag or UIUCTag buys
+  nothing. Plain RAM probes still work there, placed at a real L432 address and
+  read after the reset that connecting causes, because SRAM survives reset.
+  Never narrate from inside the idle or power path.
+  [Debugging a tag](docs/bench/debugging-a-tag.md).
 - **A failing check is a claim that needs the same scepticism as any other
   measurement.** Confirm what it measured before filing a firmware fault.
 
