@@ -39,6 +39,7 @@ design document.
 - [Build](build/README.md) — The firmware and host build model; setup steps per platform are in the root README.
 - [Build Worklist](build/TODO.md) *(worklist)* — Open gaps and questions in the reproducible firmware build: provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
 - [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
+- [Toolchain inventory](build/toolchain-inventory.md) *(procedure)* — Every tool the tag-designs work depends on across all five repositories, with version, install path and what it serves; written for rebuilding a macOS workstation.
 
 ### Decision Records
 
