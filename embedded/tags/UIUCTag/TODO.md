@@ -38,9 +38,45 @@ UIUCTag hardware, so none of this is a qualification result.
     minute alarm write sample 0, so the failure is before the first wake, not a
     stall part-way through.
 
-  What is **not** established, and should be settled first: whether
-  `ALRAE = 0` is the live value or an artifact of `tag-capture` connecting
-  under reset. The RTC sits in the backup domain and a system reset should not
+  **The `ALRAE = 0` reading is genuine, not a capture artifact.** This was
+  listed as the open question and the capture answers it by itself:
+  `RTC_ALRMAR` reads `0x80808000`, which is **not** a reset value -- after a
+  backup-domain reset it would be `0x00000000`. The RTC sits in the backup
+  domain and kept its firmware-written mask through the same capture that
+  shows `PWR` reading post-reset defaults, so `RTC_CR` is equally retained.
+  `ISR` bit 8 (`ALRAF`) is also clear, so **the alarm was armed, cleared, and
+  never fired.**
+
+  (A correction while reading: the L432 uses the **RTCv2** driver, not RTCv3 --
+  the capture has `ISR` at offset `0x0C`, where RTCv3 has `ICSR`. RTCv2's
+  `rtc_lld_set_alarm()` sets `ALRAE` and `ALRAIE` in the same way, so the
+  conclusion is unchanged.)
+
+  **Bisecting says the cause is probably not a firmware change since bring-up.**
+  `50a80a83` -- the bring-up commit, whose own report documents the first
+  sample write firing at minute 1 with qtmonitor detached, on **this same
+  board**, UUID `2036354B3032500800520028` -- was rebuilt in a worktree and
+  flashed, and it **fails identically**: `external_pages=0` after 150 s, tag
+  `RUNNING`. The ADC markers read `vdd=3.88 temp=103.2`, confirming the image
+  really is of that vintage.
+
+  **That bisect has a confound which must be removed before trusting it.** The
+  old firmware was driven by *today's* host tools, and `5060aa03` added the
+  RV3028 clock offset to `t_storedconfig`. A layout mismatch would hand the old
+  firmware a configuration it never saw at bring-up. The tag did accept the
+  start and reach RUNNING, so the config is not wholly garbage, but that is not
+  proof. Settle it by building `tag-start`/`tag-info` at `50a80a83` too and
+  retesting, or by reading back the stored configuration and comparing it
+  against what bring-up used.
+
+  If `50a80a83` still fails with matching host tools, the change is **not in
+  the firmware** and the search moves to the board files, the hardware, or the
+  bench conditions -- the worktree at `/tmp/claude-1000/bisect-wt` and the
+  harness at `/tmp/claude-1000/wake_test.sh` are set up to continue.
+
+  What is **not** established, and should be settled first: ~~whether `ALRAE = 0` is the live value or an artifact~~ -- **answered
+  above, it is live.** What remains open is the host-tool confound in the
+  bisect. The RTC sits in the backup domain and a system reset should not
   clear `RTC_CR`, which is why the reading is believed -- but it has not been
   controlled for. **The control is cheap: capture a tag that is demonstrably
   waking** (a CompassTagAT25 mid-run wakes every 30 s) and check whether its
