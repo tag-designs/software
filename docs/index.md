@@ -296,7 +296,7 @@ design document.
 
 - [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
 - [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the record layout, timing and firmware/host contract of its pressure and activity log.
-- [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements. No entries yet; the first qualification sets the baseline.
+- [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- the 2026-10-06 fw-v0.6 attempt, which failed because the run collects nothing while every resting state passes.
 - [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
 - [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items from the 2026-10-04 bench session -- a run that stored nothing, a self-test that fails, and the internal-ADC fix that came out of it.
