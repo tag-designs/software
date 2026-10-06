@@ -121,7 +121,7 @@ REPO=$(cd "$REPO_ROOT" && gh repo view --json nameWithOwner --jq .nameWithOwner)
 
 # ---------------------------------------------------------------- the run
 
-RUN_FIELDS="databaseId,event,headBranch,headSha,conclusion,createdAt"
+RUN_FIELDS="databaseId,event,headBranch,headSha,status,conclusion,createdAt"
 
 if [ -n "$RUN_ID" ]; then
   RUN_JSON=$(gh run view "$RUN_ID" -R "$REPO" --json "$RUN_FIELDS,workflowName") \
@@ -150,9 +150,13 @@ RUN_ID=$(field databaseId)
 RUN_EVENT=$(field event)
 RUN_REF=$(field headBranch)
 RUN_SHA=$(field headSha)
+RUN_STATUS=$(field status)
 RUN_CONCLUSION=$(field conclusion)
 
 note "run $RUN_ID: $RUN_EVENT of $RUN_REF at ${RUN_SHA:0:8}, $(field createdAt)"
+# A run that has not finished has no conclusion yet.
+[ "$RUN_STATUS" = "completed" ] \
+  || die "run $RUN_ID has not finished (status: $RUN_STATUS); wait for it with 'gh run watch $RUN_ID'"
 [ "$RUN_CONCLUSION" = "success" ] || die "run $RUN_ID concluded '$RUN_CONCLUSION', not success"
 
 IS_TAG_RUN=0
