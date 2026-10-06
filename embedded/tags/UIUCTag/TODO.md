@@ -11,8 +11,39 @@ board, UUID `2036354B3032500800520028` -- the same physical unit the CompassTag
 log calls `CompassTagAT25Breakout`. It is a development board, not production
 UIUCTag hardware, so none of this is a qualification result.
 
-> **WITHDRAWN 2026-10-06, same day: the measurement interfered with what it
-> measured.** Everything below that reports "the tag never wakes" was taken
+> **REINSTATED 2026-10-06, after a controlled run. Read this first.** The
+> withdrawal below was itself premature. A 1800 s run with **no monitor attach
+> anywhere inside the window** -- reset, start, measure, stop, download, each
+> command issued twice, nothing polled -- reproduces the fault:
+>
+> | | measured | bring-up, undisturbed, same board |
+> | --- | ---: | ---: |
+> | `IDLE`, clock set | 0.1581 uA | -- |
+> | **`RUNNING`, 1800 s** | **0.2409 uA** | **0.76 uA** |
+> | `FINISHED` | 0.1572 uA | -- |
+> | `IDLE` after cycle | 0.1572 uA | -- |
+> | `external_pages` | **0** | -- |
+> | download | **"No log records to download"** | -- |
+>
+> Six samples were due in that window and none was written. The current
+> corroborates it without reference to any register: the ~0.5 uA shortfall
+> against bring-up is the sample writes that did not happen (248 uJ each), and
+> the 0.083 uA that `RUNNING` sits above `IDLE` is the ADXL367 watching for
+> motion. **The tag is armed for activity and not for time.**
+>
+> **The operator's "it wakes and writes" is consistent with this, not against
+> it.** They reported it waking *when shaken* -- the ADXL367 activity line,
+> which works. The RTC minute alarm is what does not fire. So the original
+> diagnosis stands; what was wrong was only the method used to reach it.
+>
+> **The polling lesson stands on its own and must not be unlearned.** Attaching
+> during a run resets the tag and is forbidden by
+> `docs/bench/power-testing.md`; the earlier runs here did it and their numbers
+> are worthless. Two separate things went wrong and only one has been fixed:
+> the method, not the firmware.
+>
+> ~~**WITHDRAWN 2026-10-06, same day: the measurement interfered with what it
+> measured.**~~ Everything below that reports "the tag never wakes" was taken
 > with a harness that polled `tag-info` at intervals through the run. **A
 > monitor attach connects under reset**, so each poll reset a RUNNING tag.
 > `Running()` re-arms the sample alarm only in its `T_INIT` branch and on
