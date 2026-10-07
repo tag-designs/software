@@ -125,13 +125,34 @@ def main() -> int:
     p.add_argument("--settle", type=float, default=None,
                    help="seconds to wait after a session closes before "
                         "measuring, passed to the life-cycle check")
-    p.add_argument("--storm-sets", type=int, default=3,
-                   help="attach-storm sets to run")
+    p.add_argument("--storm-sets", type=int, default=None,
+                   help="attach-storm sets to run. Default: 3 on IMUTag "
+                        "targets, 0 on every other. The storm is an IMUTag "
+                        "test: IMUTag does not use standby or shutdown while "
+                        "running, so an attach interrupts a live collection "
+                        "and the firmware must restart it, and that recovery "
+                        "is what the storm exercises. The L432 targets collect "
+                        "on events and sit in standby or shutdown between "
+                        "them, so there is no live collection to interrupt; "
+                        "attaching mid-run just resets them. A storm that "
+                        "passes on one of those targets is not evidence of "
+                        "anything")
     p.add_argument("--measure-python",
                    default=os.path.expanduser("~/opt/joulescope-mcp/.venv/bin/python"))
     p.add_argument("--skip-build", action="store_true",
                    help="use the image already flashed on the tag")
     args = p.parse_args()
+
+    # Storms are an IMUTag test; see --storm-sets. Defaulting them on for every
+    # target ran 240 attach/detach cycles against tags where an attach only
+    # resets the run, and made a deeply sleeping tag look like a harness
+    # failure when the storm could not attach to it.
+    if args.storm_sets is None:
+        args.storm_sets = 3 if args.target.startswith("IMUTag") else 0
+        if args.storm_sets == 0:
+            print(f"  (no attach storms: {args.target} is not an IMUTag "
+                  "target, so a storm would test nothing -- pass "
+                  "--storm-sets N to override)")
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out = os.path.join(args.out_dir, f"release-{args.target}-{stamp}")

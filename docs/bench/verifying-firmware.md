@@ -90,9 +90,24 @@ state, you learn only about that state. The life-cycle check measures idle with
 the clock set, which is how a prepared tag is actually left. It also compares
 idle before the run with idle after it. Those are the same state reached by two
 histories, and that comparison is where a state-dependent fault shows up even
-when both numbers look plausible. Then run `tag_attach_storm.py` for attach and
+when both numbers look plausible. Then, **on IMUTag targets only**, run `tag_attach_storm.py` for attach and
 clock-cycle reliability. It measures no power; the two tools complement each
 other.
+
+**The attach storm is an IMUTag test. It is not meaningful on the L432
+targets.** IMUTag does not use standby or shutdown while running, so an attach
+interrupts a live collection and the firmware must restart it -- that recovery
+is what the storm exercises, and it is a real risk for that target. BitTag,
+PresTag, CompassTag and UIUCTag collect strictly on events and spend the time
+between events in standby or shutdown. There is no live collection for an
+attach to interrupt, and attaching to one of those tags mid-run resets it,
+which is the thing the rest of this document tells you never to do.
+
+So for an L432 target, pass `--storm-sets 0`. Running storms there tests
+nothing about the tag, and a storm that "passes" on such a target is not
+evidence of robustness. It also explains why the storm phase fails to attach on
+a deeply sleeping tag: there is nothing awake to attach to, which is correct
+behaviour rather than a fault.
 
 When a change might shift code layout (on the U375, any change might), also see
 [U375 low-power behaviour](../../embedded/tags/common/core/design/u375-low-power.md)
