@@ -224,3 +224,25 @@ Per mAh of cell: 342 days resting, 82 days recording.
   with its **end** time (`timestamp - bucket_period * (bucket_number - 1 - i)`),
   so the first bucket's own start — `15:15:00Z` here — never appears as a row.
   Consistent, and not worth changing without a reason.
+
+- **Pre-run buckets are correctly empty, and that is verified.** A stored
+  record carries one timestamp for all the buckets it covers (7 x 9 = 63 bits
+  in a 64-bit word), so a record written on the absolute grid legitimately
+  spans time before the run began — and the buckets covering that time read
+  **0.0**, which is what they must. Confirmed on the 2026-10-07 default run:
+  the five buckets ending 15:20:00Z to 15:40:00Z, all before the 15:41:44Z
+  start, are all zero.
+
+- **GAP: the activity path was never shown to respond.** Every activity value
+  in every BitTag run on 2026-10-07 is zero — 1860, 1860 and 7 records across
+  the three runs — because the tag sat undisturbed. **A dead activity path and
+  a stationary tag produce identical data**, so none of these runs distinguishes
+  them. What was verified is that records are written on schedule with correct
+  counts, spacing and coverage; what was *not* verified is that the recorded
+  values track reality.
+
+  The test is short and needs an operator: start a run, move the tag for a
+  known interval, stop, and confirm non-zero buckets at the times it was moved
+  and zeros either side. At `BITPERSEC` a minute of movement is enough to place
+  it to the second. Until then, read this qualification as covering power and
+  record-keeping, not activity sensing.
