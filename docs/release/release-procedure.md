@@ -21,8 +21,8 @@ database can say which bytes are on which tag.
 
 **Releasing the host tools** is a smaller thing and is described last, because
 it shares only the tag mechanics. It is here because half of it cannot be done
-by CI: the macOS package has to be signed on a machine that holds the Developer
-ID key, and that machine is not a GitHub runner.
+by CI: the macOS package has to be signed and notarized on a machine that holds
+the Developer ID key, and that machine is not a GitHub runner.
 
 For how the images are made reproducible in the first place, see
 [Tag Firmware Build Reproducibility](../build/firmware-reproducibility.md). This
@@ -461,11 +461,14 @@ So `release.yml` opens the release as a **draft** with only the Windows ZIP.
 The draft is the signal that the release is incomplete. It becomes publishable
 once the Developer ID signed DMG is attached.
 
-The packages are not notarized. macOS blocks an unnotarized Developer ID app on
-first launch, and the user clears it once per app through System Settings ->
-Privacy & Security -> Open Anyway, or clears quarantine on the whole folder in
-one command. Notarization would remove that and nothing else. See
-[Installing a macOS Release](../../README.md#installing-a-macos-release).
+The same step notarizes the DMG and staples the ticket to it, so a user who
+downloads it gets one "downloaded from the internet" confirmation per app and
+nothing else. The notary credentials stay on that Mac too
+([decision 0025](../decisions/0025-release-macos-package-notarized-locally.md)).
+Releases up to v3.0.1 were not notarized; their users still approve each app
+by hand, as
+[Installing a macOS Release](../../README.md#installing-a-macos-release)
+describes.
 
 **The first release signed this way** needs particular care in step 4. Before
 it, CI built `qtcalibrate` without Qt 3D and with the build machine's SDK as the
@@ -476,6 +479,20 @@ has yet been launched by a user.
 
 Run the signing step on the Mac holding the Developer ID certificate, with `gh`
 logged in.
+
+**Once per Mac: store the notary credentials.** Notarizing needs an Apple ID
+on the Indiana University developer team and an app-specific password for it,
+made at <https://account.apple.com> under Sign-In and Security ->
+App-Specific Passwords. Store them in the keychain under the profile name the
+script uses:
+
+```
+xcrun notarytool store-credentials tag-notary --apple-id <apple-id> --team-id 5J69S77A7G
+```
+
+It prompts for the password and checks it with Apple. `sign-latest` stops
+before downloading anything if the profile is missing; `MACOS_NOTARY_PROFILE`
+names a different one.
 
 **1. Push the commits.** Not the tag -- the commits. CI builds whatever the tag
 points at, and a tag pointing at a commit nobody else has is a release nobody
@@ -495,7 +512,8 @@ gh release view v3.1
 A draft, one asset, the Windows `.zip`, no `.dmg`. A DMG appearing there means
 the artifact filter in `release.yml` stopped working.
 
-**3. Sign and upload the macOS package**, from any configured macOS build tree:
+**3. Sign, notarize and upload the macOS package**, from any configured macOS
+build tree:
 
 ```
 cmake --build <build-dir> --target sign-latest
@@ -508,11 +526,15 @@ run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
 | It does | Because |
 | --- | --- |
 | checks the identity is in the keychain, and is not ad-hoc | a missing identity otherwise fails partway through signing |
+| checks the notary profile works | missing credentials otherwise fail after minutes of signing |
 | takes the newest successful tag-push run of `release.yml` | that is the release being cut |
 | checks the tag still points at the commit the run built | a moved tag would attach a package built from another commit |
 | verifies the DMG's provenance attestation against `release.yml`, that commit and that tag | what gets the Developer ID signature is provably this repository's build, not a swapped file |
 | copies the image out and re-signs every bundle with `cmake/MacosCodesignBundle.cmake` | the same code signs a local build, so the signatures match |
-| makes a new HFS+/UDZO image, mounts it and verifies each app | what matters is the signature a user receives |
+| makes a new HFS+/UDZO image and signs it | the image carries the identity the ticket is stapled under |
+| submits the image to Apple's notary service and waits; on anything but `Accepted` it prints the notary log and stops | the log names each rejected file and why |
+| staples the ticket to the image | Gatekeeper can then accept the image without asking Apple |
+| mounts the image and verifies each app, the stapled ticket and that Gatekeeper accepts all of it as notarized | what matters is the signature a user receives |
 | prints the DMG path, its SHA-256 and the run it came from | the hash identifies the image that was tested |
 | uploads it to the draft release, replacing any earlier upload | it never changes a published release |
 
@@ -522,12 +544,15 @@ Expect thirteen `ok` lines -- five Qt apps, `dataprocessing`, and seven command
 line tools. A count that is not thirteen means the install set changed; check
 that against `host_cli_install_targets` before shipping.
 
-The Gatekeeper assessment it prints reads `accepted / source=Developer ID`.
-That is worth understanding rather than trusting: the image was just made
-here, so it carries no quarantine attribute, and quarantine is what makes
-macOS demand notarization. The assessment confirms the signature is real and
-trusted. It says nothing about what a user who downloads the DMG will see --
-only the download test in step 4 does.
+Each app's `ok` also means Gatekeeper accepted it as `source=Notarized
+Developer ID`, and two more lines follow: `stapled ticket ok` and `image
+assessment ok`. Signing and timestamping several hundred items, then waiting
+for Apple, takes several minutes and needs the network. `--no-notarize` skips
+notarization, and the check then expects only `source=Developer ID`.
+
+That assessment is what Gatekeeper would decide. It does not show that the
+apps run when launched for the first time from a quarantined download; only
+the download test in step 4 does.
 
 **4. Install it from the release page on a Mac that has never seen the build,**
 and follow
@@ -542,7 +567,8 @@ quarantined. Everything before it tests the build.
 
 `host/tools/release-macos.sh` builds the macOS package on this Mac instead of
 taking CI's, and signs it with the same code. Use it when the CI build cannot
-ship, or when CI is unavailable.
+ship, or when CI is unavailable. It does not notarize, so a package from it
+ships with the per-app approval described for v3.0.1 and earlier.
 
 ```
 host/tools/release-macos.sh v3.1 --no-push

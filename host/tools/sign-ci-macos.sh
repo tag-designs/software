@@ -14,9 +14,10 @@
 #      is provably what this repository's workflow built from that commit;
 #   4. copies the image out, re-signs every bundle with
 #      cmake/MacosCodesignBundle.cmake -- the code that signs a local build --
-#      and makes a new image;
-#   5. verifies it with verify-macos-dmg.sh;
-#   6. uploads it to the tag's draft release.
+#      and makes a new image, which it also signs;
+#   5. notarizes the image with notarytool and staples the ticket to it;
+#   6. verifies it with verify-macos-dmg.sh;
+#   7. uploads it to the tag's draft release.
 #
 # The usual entry point is the CMake target, which passes the identity and
 # entitlements the build is configured with:
@@ -38,6 +39,8 @@ RUN_ID=""
 OUT_DIR=""
 UPLOAD=1
 ATTESTATION=1
+NOTARIZE=1
+NOTARY_PROFILE_DEFAULT="tag-notary"
 
 die() { printf '%s: error: %s\n' "$PROGRAM" "$*" >&2; exit 1; }
 note() { printf '==> %s\n' "$*"; }
@@ -48,8 +51,8 @@ usage() {
 Usage: $PROGRAM [vX.Y[.Z]] [options]
 
 Downloads the macOS DMG that $WORKFLOW built for a release tag, re-signs it
-with the Developer ID identity in this Mac's keychain, verifies it, and
-uploads it to the tag's draft release. With no tag, takes the newest
+with the Developer ID identity in this Mac's keychain, notarizes it, verifies
+it, and uploads it to the tag's draft release. With no tag, takes the newest
 successful tag-push run of $WORKFLOW.
 
 Options:
@@ -58,6 +61,8 @@ Options:
   --out DIR           Where to write the signed DMG (default: a new directory
                       under \$TMPDIR, printed at the end).
   --no-upload         Sign and verify, but do not upload.
+  --no-notarize       Sign but do not notarize. Users then have to approve
+                      each app by hand on first launch.
   --no-attestation    Skip the provenance check. Only for runs from before
                       $WORKFLOW attested its packages; such a DMG cannot be
                       shown to be what the workflow built.
@@ -67,6 +72,8 @@ Environment:
   MACOS_CODE_SIGN_IDENTITY      Signing identity. Defaults to the value in
                                 CMakeLists.txt.
   MACOS_CODE_SIGN_ENTITLEMENTS  Optional entitlements plist for the bundles.
+  MACOS_NOTARY_PROFILE          notarytool keychain profile holding the
+                                notary credentials (default: $NOTARY_PROFILE_DEFAULT).
   CMAKE                         cmake executable (default: cmake on PATH).
 EOF
 }
@@ -78,6 +85,7 @@ while [ $# -gt 0 ]; do
     --out) [ $# -ge 2 ] || die "--out needs a value"; OUT_DIR=$2; shift 2 ;;
     --no-upload) UPLOAD=0; shift ;;
     --no-attestation) ATTESTATION=0; shift ;;
+    --no-notarize) NOTARIZE=0; shift ;;
     -*) die "unknown option: $1" ;;
     *)
       [ -z "$TAG" ] || die "unexpected extra argument: $1"
@@ -115,6 +123,18 @@ if ! security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"
     'security find-identity -v -p codesigning' lists what is available."
 fi
 note "signing identity: $IDENTITY"
+
+NOTARY_PROFILE=${MACOS_NOTARY_PROFILE:-$NOTARY_PROFILE_DEFAULT}
+if [ "$NOTARIZE" -eq 1 ]; then
+  # Check the credentials now, not after minutes of downloading and signing.
+  xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 \
+    || die "notarytool cannot use the keychain profile '$NOTARY_PROFILE'.
+    Store the credentials once with an app-specific password from
+    https://account.apple.com (Sign-In and Security -> App-Specific Passwords):
+      xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id <id> --team-id <team>
+    or pass --no-notarize."
+  note "notary profile: $NOTARY_PROFILE"
+fi
 
 REPO=$(cd "$REPO_ROOT" && gh repo view --json nameWithOwner --jq .nameWithOwner) \
   || die "could not determine the GitHub repository for $REPO_ROOT"
@@ -258,16 +278,50 @@ hdiutil create -volname "$VOLUME_NAME" -srcfolder "$WORK/stage" \
   -fs HFS+ -format UDZO -ov "$DMG" >/dev/null 2>&1 \
   || die "hdiutil could not create $DMG"
 
+# The image is signed too, so that it carries the identity the ticket is
+# stapled under and Gatekeeper can assess the download as a whole.
+codesign --force --timestamp --sign "$IDENTITY" "$DMG" \
+  || die "could not sign $DMG"
+
+# ---------------------------------------------------------------- notarize
+
+if [ "$NOTARIZE" -eq 1 ]; then
+  # Submitting the image notarizes every bundle in it. --wait blocks until
+  # the service decides, usually a few minutes.
+  note "submitting $DMG_NAME for notarization"
+  SUBMIT_JSON=$(xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" \
+      --wait --output-format json) \
+    || true
+  SUBMISSION=$(printf '%s' "$SUBMIT_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))' 2>/dev/null || true)
+  STATUS=$(printf '%s' "$SUBMIT_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("status",""))' 2>/dev/null || true)
+  [ -n "$SUBMISSION" ] || die "notarytool did not accept the submission:
+$SUBMIT_JSON"
+  note "submission $SUBMISSION: ${STATUS:-<no status>}"
+  if [ "$STATUS" != "Accepted" ]; then
+    # The log names each file the service rejected and why.
+    xcrun notarytool log "$SUBMISSION" --keychain-profile "$NOTARY_PROFILE" >&2 || true
+    die "notarization of $DMG_NAME was not accepted (${STATUS:-unknown}); see the log above"
+  fi
+  # Stapling puts the ticket in the image, so Gatekeeper need not reach
+  # Apple to find it on first launch.
+  xcrun stapler staple "$DMG" >/dev/null || die "could not staple the ticket to $DMG"
+  xcrun stapler validate "$DMG" >/dev/null || die "the stapled ticket on $DMG does not validate"
+else
+  warn "--no-notarize: users must approve each app on first launch"
+fi
+
 # ---------------------------------------------------------------- verify
 
-"$VERIFY" "$DMG" "$IDENTITY" || exit 1
+VERIFY_ARGS=("$DMG" "$IDENTITY")
+[ "$NOTARIZE" -eq 0 ] || VERIFY_ARGS+=(--notarized)
+"$VERIFY" "${VERIFY_ARGS[@]}" || exit 1
 
 SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
 SIZE=$(( $(stat -f%z "$DMG") / 1048576 ))
 
 cat <<EOF
 
-Signed and verified:
+$( [ "$NOTARIZE" -eq 1 ] && echo "Signed, notarized and verified:" || echo "Signed and verified (not notarized):" )
   $DMG
   $SIZE MB, sha256 $SHA
   built by run $RUN_ID from ${RUN_SHA:0:8}${TAG:+ ($TAG)}

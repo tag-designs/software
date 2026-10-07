@@ -289,15 +289,22 @@ Installing a macOS release is covered next.
 
 ## Installing a macOS Release
 
-The apps are signed with the Indiana University Developer ID certificate but
-are not notarized, so macOS blocks them on first launch and has to be told
-once, per app, to allow them.
+Drag `tag_tools` out of the mounted DMG — to Applications, or anywhere else
+you like — and open the apps from there.
 
-First drag `tag_tools` out of the mounted DMG — to Applications, or anywhere
-else you like. The DMG is a read-only volume, so nothing below works while the
+Releases after v3.0.1 are signed with the Indiana University Developer ID
+certificate and notarized by Apple. The first time you open each app, macOS
+says it was downloaded from the internet and asks you to confirm. That is the
+only prompt.
+
+### Releases v3.0.1 and earlier
+
+These are signed but not notarized, so macOS blocks each app on first launch
+and has to be told once, per app, to allow them. Run them from the folder you
+dragged out: the DMG is a read-only volume, so nothing below works while the
 apps are still on it.
 
-### The quick way, if you are comfortable in a terminal
+#### The quick way, if you are comfortable in a terminal
 
 Clearing the quarantine attribute on the extracted folder covers every app at
 once, and they then open normally with no prompt at all:
@@ -310,7 +317,7 @@ Quarantine is what makes macOS demand notarization; without it the Developer ID
 signature is accepted on its own. This is one command instead of thirteen trips
 through System Settings.
 
-### The GUI way, per app
+#### The GUI way, per app
 
 1. Double-click the app. macOS refuses it — **this step is required**, because
    the override in step 3 does not appear until something has been blocked.
@@ -326,14 +333,10 @@ Control-click the app and choose **Open**. That route was removed in macOS 15;
 on current systems the menu has an Open item that behaves no differently from a
 double-click, so it looks like nothing happened. Use System Settings.
 
-Notarizing the release would remove this entirely, at the cost of putting the
-signing key where Apple's service can reach it from the build machine. It buys
-one prompt per app, once, and is not done.
-
 ### If an app reports that it "is damaged and can't be opened"
 
-That is a different problem and clearing quarantine will not fix it. It means
-the bundle has no valid signature — true of the DMG that CI builds, where the
+That is a different problem, and neither notarization nor clearing quarantine
+fixes it. It means the bundle has no valid signature — true of the DMG that CI builds, where the
 Developer ID certificate is not available. Those DMGs are workflow artifacts,
 never attached to a release. Check that you downloaded from the release page
 rather than from an Actions run.

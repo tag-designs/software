@@ -10,9 +10,13 @@
 # Shared by both release paths: release-macos.sh (built and signed locally)
 # and sign-ci-macos.sh (built by CI, re-signed locally).
 #
-# Usage: host/tools/verify-macos-dmg.sh DMG IDENTITY
+# With --notarized it also requires what notarization adds: a valid ticket
+# stapled to the image, and Gatekeeper accepting the image and every bundle as
+# notarized.
 #
-# Exits 0 when every bundle verifies, 1 when any does not, 2 on bad usage.
+# Usage: host/tools/verify-macos-dmg.sh DMG IDENTITY [--notarized]
+#
+# Exits 0 when every check passes, 1 when any does not, 2 on bad usage.
 
 set -euo pipefail
 
@@ -21,9 +25,15 @@ PROGRAM=${0##*/}
 die() { printf '%s: error: %s\n' "$PROGRAM" "$*" >&2; exit 1; }
 note() { printf '==> %s\n' "$*"; }
 
-[ $# -eq 2 ] || { printf 'Usage: %s DMG IDENTITY\n' "$PROGRAM" >&2; exit 2; }
+usage() { printf 'Usage: %s DMG IDENTITY [--notarized]\n' "$PROGRAM" >&2; exit 2; }
+[ $# -eq 2 ] || [ $# -eq 3 ] || usage
 DMG=$1
 IDENTITY=$2
+NOTARIZED=0
+if [ $# -eq 3 ]; then
+  [ "$3" = "--notarized" ] || usage
+  NOTARIZED=1
+fi
 [ -f "$DMG" ] || die "no such image: $DMG"
 
 MOUNT_POINT=$(mktemp -d -t ultralight-dmg)
@@ -55,15 +65,43 @@ while IFS= read -r app; do
     FAILED=1
     continue
   fi
+  if [ "$NOTARIZED" -eq 1 ]; then
+    # spctl reports the source it accepted the code under; only a ticket
+    # makes that "Notarized Developer ID".
+    source=$(spctl --assess --type exec -vv "$app" 2>&1 | sed -n 's/^source=//p' | head -1)
+    if [ "$source" != "Notarized Developer ID" ]; then
+      printf '  %-24s not accepted as notarized: %s\n' "$name" "${source:-rejected}"
+      FAILED=1
+      continue
+    fi
+  fi
   printf '  %-24s ok\n' "$name"
 done <<EOF
 $APPS
 EOF
 
+if [ "$NOTARIZED" -eq 1 ]; then
+  note "checking the notarization of the image"
+  if xcrun stapler validate "$DMG" >/dev/null 2>&1; then
+    printf '  %-24s ok\n' "stapled ticket"
+  else
+    printf '  %-24s missing or invalid\n' "stapled ticket"
+    FAILED=1
+  fi
+  source=$(spctl --assess --type open --context context:primary-signature -vv "$DMG" 2>&1 \
+           | sed -n 's/^source=//p' | head -1)
+  if [ "$source" = "Notarized Developer ID" ]; then
+    printf '  %-24s ok\n' "image assessment"
+  else
+    printf '  %-24s not accepted as notarized: %s\n' "image assessment" "${source:-rejected}"
+    FAILED=1
+  fi
+fi
+
 # Informational only. An image made on this Mac carries no quarantine
 # attribute, so Gatekeeper accepts a valid Developer ID signature here even
-# though the release is not notarized; a user who downloads it is asked to
-# approve each app once. What the assessment does show is whether the
+# though the release is not notarized; a user who downloads an unnotarized
+# image is asked to approve each app once. What the assessment does show is whether the
 # signature is trusted at all.
 FIRST_APP=$(printf '%s\n' "$APPS" | head -1)
 printf '\nGatekeeper assessment of %s:\n' "${FIRST_APP##*/}"

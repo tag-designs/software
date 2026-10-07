@@ -31,14 +31,16 @@
            and last the bundle itself, which seals the resources. Symlinks are
            skipped; their targets are signed.
 
-           A real identity gets the hardened runtime on every item and a
-           secure timestamp on the bundle; nested items are signed with
-           --timestamp=none. An ad-hoc identity ("-") carries no team
-           identifier, so it can take neither: it gets --timestamp=none and no
-           hardened runtime. Ad-hoc signing exists only to make a bundle
-           launchable on Apple Silicon, which refuses any binary whose
-           signature does not validate; notarization is what needs the
-           hardened runtime, and an ad-hoc build is not notarizable anyway.
+           A real identity gets the hardened runtime and a secure timestamp
+           on every item, nested ones included: the notary service rejects
+           any Mach-O that lacks either, so a bundle signed with less cannot
+           be notarized. Each timestamp is a request to Apple's timestamp
+           server, so signing needs the network and takes minutes for a full
+           package. An ad-hoc identity ("-") carries no team identifier, so it
+           can take neither: it gets --timestamp=none and no hardened runtime.
+           Ad-hoc signing exists only to make a bundle launchable on Apple
+           Silicon, which refuses any binary whose signature does not
+           validate; an ad-hoc build is not notarizable anyway.
 
            Finishes with codesign --verify --deep --strict.
 
@@ -69,13 +71,11 @@ function(macos_codesign_bundle)
         set(_codesign codesign)
     endif()
 
-    set(_item_hardened --options runtime)
-    set(_bundle_hardened --options runtime)
-    set(_bundle_timestamp --timestamp)
+    set(_hardened --options runtime)
+    set(_timestamp --timestamp)
     if(_mcs_IDENTITY STREQUAL "-")
-        set(_item_hardened "")
-        set(_bundle_hardened "")
-        set(_bundle_timestamp --timestamp=none)
+        set(_hardened "")
+        set(_timestamp --timestamp=none)
     endif()
     set(_entitlements "")
     if(_mcs_ENTITLEMENTS)
@@ -116,7 +116,7 @@ function(macos_codesign_bundle)
     foreach(_item IN LISTS _items)
         if(EXISTS "${_item}" AND NOT IS_SYMLINK "${_item}")
             execute_process(
-                COMMAND "${_codesign}" --force --timestamp=none ${_item_hardened}
+                COMMAND "${_codesign}" --force ${_timestamp} ${_hardened}
                         --sign "${_mcs_IDENTITY}" "${_item}"
                 RESULT_VARIABLE _result)
             if(NOT _result EQUAL 0)
@@ -126,7 +126,7 @@ function(macos_codesign_bundle)
     endforeach()
 
     execute_process(
-        COMMAND "${_codesign}" --force ${_bundle_timestamp} ${_bundle_hardened}
+        COMMAND "${_codesign}" --force ${_timestamp} ${_hardened}
                 ${_entitlements} --sign "${_mcs_IDENTITY}" "${_mcs_BUNDLE}"
         RESULT_VARIABLE _result)
     if(NOT _result EQUAL 0)

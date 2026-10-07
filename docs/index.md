@@ -68,6 +68,7 @@ design document.
 - [0022. Field extraction: read external flash with an SRAM loader, not a recovery firmware](decisions/0022-field-extraction-sram-loader-not-recovery-firmware.md) *(decision)* — A returned tag's external flash is read by a read-only loader running from SRAM, never by a recovery firmware, after the SRAM and internal-flash capture, with one loader image per board.
 - [0023. Loaders: the U375 SPI-NAND loader reads without reset or lasting writes](decisions/0023-loader-u375-nand-loader-reads-without-reset.md) *(decision)* — The GD5F2GM7RE SPI-NAND loader for STM32U375 never resets the NAND or writes its lock register, allows only a restored ECC_EN toggle, leaves the clock near reset, drives FLASH_PWR itself, and leaves blank-block skipping to the host.
 - [0024. Release: the macOS package is built on CI and signed locally](decisions/0024-release-macos-package-built-on-ci-signed-locally.md) *(decision)* — The shipped macOS DMG is the one CI builds, attested by the workflow and re-signed with the Developer ID identity on a developer's Mac by the sign-latest target; the signing key still never reaches CI.
+- [0025. Release: the macOS package is notarized locally](decisions/0025-release-macos-package-notarized-locally.md) *(decision)* — The released macOS DMG is notarized and stapled on the developer's Mac by sign-latest, after re-signing, with notarytool credentials held in that Mac's keychain; nothing new reaches CI.
 
 ### Investigations
 
