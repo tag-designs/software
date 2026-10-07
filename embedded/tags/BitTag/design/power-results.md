@@ -233,16 +233,19 @@ Per mAh of cell: 342 days resting, 82 days recording.
   the five buckets ending 15:20:00Z to 15:40:00Z, all before the 15:41:44Z
   start, are all zero.
 
-- **GAP: the activity path was never shown to respond.** Every activity value
-  in every BitTag run on 2026-10-07 is zero — 1860, 1860 and 7 records across
-  the three runs — because the tag sat undisturbed. **A dead activity path and
-  a stationary tag produce identical data**, so none of these runs distinguishes
-  them. What was verified is that records are written on schedule with correct
-  counts, spacing and coverage; what was *not* verified is that the recorded
-  values track reality.
+- **Phase B2 is now done; Phase D is still outstanding.** The `fw-v0.5`
+  qualification listed both as not measured. Measuring both logging formats
+  today closes **B2 (format independence)**.
 
-  The test is short and needs an operator: start a run, move the tag for a
-  known interval, stop, and confirm non-zero buckets at the times it was moved
-  and zeros either side. At `BITPERSEC` a minute of movement is enough to place
-  it to the second. Until then, read this qualification as covering power and
-  record-keeping, not activity sensing.
+  **Phase D (activity sensitivity) has never been run, in any qualification.**
+  Every activity value in every BitTag run on 2026-10-07 is zero — 1860, 1860
+  and 7 records — which is **correct for a tag that was not moving**, and the
+  2026-10-03 session recorded the same thing for the same reason. No fault is
+  implied or suspected: the point is only that a stationary tag and an
+  unresponsive one produce identical data, so none of these runs can tell them
+  apart. What is qualified here is power and record-keeping — counts, spacing
+  and coverage — not activity sensing.
+
+  Phase D needs an operator and takes minutes: start a run, move the tag for a
+  known interval, stop, and confirm non-zero buckets at those times with zeros
+  either side. At `BITPERSEC` a minute of movement places it to the second.
