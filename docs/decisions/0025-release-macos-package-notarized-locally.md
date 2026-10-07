@@ -69,16 +69,20 @@ Measured on 2026-10-07 with the attested `workflow_dispatch` artifact of run
   the quarantine) were each accepted as `Notarized Developer ID`.
 - Copied to a Mac mini running macOS 26 that had not seen the build,
   `btviz`, `sensorviz` and `qtcalibrate` each opened.
+- v3.1, the first notarized release (submission
+  `380639d7-7404-4e71-aff6-f0b723a96374`, run 37645681528), was downloaded from
+  its draft release page. The first app opened asked whether to open it and
+  offered to accept everything in the DMG. Every app opened, and they
+  connected to a CompassTag.
 
 ## Consequences
 
 - Signing now makes one timestamp request to Apple per Mach-O, several hundred
   for a full package, and submits about 200 MB to the notary service. A
   release needs the network and a few extra minutes.
-- Three of the thirteen apps have been launched from a notarized image. The
-  first notarized release still needs the full download-and-launch test in
-  [the release procedure](../release/release-procedure.md#3-releasing-the-host-tools),
-  every app, from the release page.
+- Each release still gets the download-and-launch test in
+  [the release procedure](../release/release-procedure.md#3-releasing-the-host-tools):
+  `spctl` reports what Gatekeeper would decide, not whether the apps run.
 - `host/tools/release-macos.sh`, the fully local fallback, signs but does not
   notarize. A package from it ships with the old per-app approval.
 - v3.0.1 and earlier stay unnotarized. The README keeps the approval

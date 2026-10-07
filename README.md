@@ -293,9 +293,10 @@ Drag `tag_tools` out of the mounted DMG — to Applications, or anywhere else
 you like — and open the apps from there.
 
 Releases after v3.0.1 are signed with the Indiana University Developer ID
-certificate and notarized by Apple. The first time you open each app, macOS
-says it was downloaded from the internet and asks you to confirm. That is the
-only prompt.
+certificate and notarized by Apple. The first time you open one, macOS says it
+was downloaded from the internet, asks whether to open it, and offers to
+accept everything that came in the same DMG. Accept that and the other apps
+open without asking.
 
 ### Releases v3.0.1 and earlier
 

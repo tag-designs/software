@@ -470,10 +470,9 @@ by hand, as
 [Installing a macOS Release](../../README.md#installing-a-macos-release)
 describes.
 
-**The first release signed this way** needs particular care in step 4. Before
-it, CI built `qtcalibrate` without Qt 3D and with the build machine's SDK as the
-minimum macOS version; both are fixed (decision 0024), but no CI-built package
-has yet been launched by a user.
+v3.1 was the first release built by CI, signed this way and notarized. Every
+app in it was downloaded from the draft, opened on macOS 26 and connected to a
+tag before it was published (decision 0025).
 
 ### Steps
 
