@@ -1,6 +1,10 @@
 site_name: "Ultralight Tags: User Guide"
 site_description: User guides for the Ultralight Tags host applications.
 site_author: Indiana University
+# The docs workflow assembles this site into public/user/ before publishing.
+# Without this, MkDocs writes a sitemap with no entries and no canonical
+# link tags, so search engines are handed nothing to crawl.
+site_url: https://tag-designs.github.io/software/user/
 
 docs_dir: src
 site_dir: site

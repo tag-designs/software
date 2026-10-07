@@ -1,6 +1,10 @@
 site_name: "Ultralight Tags: Developer Docs"
 site_description: Developer architecture, design, and API documentation for the tag-designs software tree.
 site_author: Indiana University
+# The docs workflow assembles this site into public/developer/ before
+# publishing. Without this, MkDocs writes a sitemap with no entries and no
+# canonical link tags, so search engines are handed nothing to crawl.
+site_url: https://tag-designs.github.io/software/developer/
 
 docs_dir: src
 site_dir: site
