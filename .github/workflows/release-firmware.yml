@@ -136,6 +136,9 @@ jobs:
             cp "$d/$tag".* "firmware/$tag/"
             cp "$d/$tag-build-manifest.json" "firmware/$tag/"
           done
+          # The images are conveyed under GPL-3.0 (they link ChibiOS/RT), so the
+          # licenses, every third-party notice and the source offer go with them.
+          cp -R LICENSES/embedded firmware/licenses
           ls -lR firmware
           tar -czf tag-firmware-${{ github.ref_name }}.tar.gz firmware
 

@@ -1,0 +1,13 @@
+libusb 1.0.29
+=============
+
+License:    LGPL-2.1-or-later (texts/LGPL-2.1-or-later.txt)
+Copyright:  (C) 2001 Johannes Erdfelt, (C) 2007-2008 Daniel Drake,
+:           (C) 2012 Pete Batard, (C) 2012-2023 Nathan Hjelm,
+:           (C) 2014-2020 Chris Dickens, and the other libusb contributors
+Used in:    every program that talks to a tag (statically linked)
+Source:     https://github.com/libusb/libusb/releases/tag/v1.0.29
+
+libusb is linked statically. As section 6 of the LGPL requires, the complete
+source of the programs that use it is available from the Tag Designs
+repository (see README.md), so you can modify libusb and relink them.

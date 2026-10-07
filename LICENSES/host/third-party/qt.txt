@@ -1,0 +1,16 @@
+Qt 6.8.2
+========
+
+License:    LGPL-3.0-only (texts/LGPL-3.0-only.txt with texts/GPL-3.0-only.txt);
+:           Qt Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard: GPL-3.0-only
+Copyright:  (C) The Qt Company Ltd. and other contributors
+Used in:    the Qt applications, as separate shared libraries
+Source:     https://download.qt.io/archive/qt/6.8/6.8.2/single/
+
+The Qt libraries are dynamically linked and unmodified. Under the LGPL you
+may replace them with your own build of Qt 6.8.2 or a compatible version: on
+macOS they are the frameworks in <app>.app/Contents/Frameworks, on Windows the
+DLLs in tag_tools/lib.
+
+Third-party code inside the Qt libraries is listed, with its licenses, in
+Qt-THIRD-PARTY-NOTICES.txt.

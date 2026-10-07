@@ -1,0 +1,15 @@
+ChibiOS/HAL 9.1.0 (HAL, OSAL, STM32 ports, startup, linker scripts, streams)
+============================================================================
+
+License:    Apache-2.0 (texts/Apache-2.0.txt)
+Copyright:  (C) 2006-2026 Giovanni Di Sirio
+Used in:    all firmware and loaders
+Source:     https://github.com/ChibiOS/ChibiOS, branch stable_21.11.x
+
+ChibiOS distributes no NOTICE file. These project files are modified copies
+of ChibiOS HAL files and keep their Apache-2.0 headers:
+tags/common/core/{src,inc}/tag_soft_i2c.*, tags/common/rtc/src/hal_rtc_lld.c,
+tags/IMUTagNand*/src/hal_rtc_lld.c, tags/IMUTagNand*/src/hal_spi_v2_lld.c,
+tags/common/inc/stm32_lse.inc, bases/common/src/usbcfg.c and the
+cfg/{chconf,halconf,mcuconf,osalconf}.h files. The generated board files
+(board.c, board.h) carry the ChibiOS Apache-2.0 header from the templates.

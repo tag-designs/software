@@ -337,6 +337,9 @@ if(host_install_targets)
           # Qt SQL drivers.
           install_macos_qt_plugins(${target_name})
         endif()
+        # macdeployqt copies whole QML directories; keep only what the app's
+        # QML needs, before anything is signed.
+        install_macos_prune_qml(${target_name} ${deploy_qml_dirs})
         install_macos_fixup_bundle(${target_name})
         if(NOT MACOS_USE_MACDEPLOYQT_DEPLOYMENT)
           install_macos_remove_bundle_signatures(${target_name})
@@ -376,6 +379,13 @@ if(host_install_targets)
       DIRECTORY "${HOST_DOCS_BUILD_DIR}/"
       DESTINATION "${host_package_support_destination}/docs")
   endif()
+
+  # The license index, the MIT License, every third-party notice and the
+  # license texts they name (see LICENSES/README.md). The directory is
+  # self-contained, so it is installed as it stands.
+  install(
+    DIRECTORY "${CMAKE_SOURCE_DIR}/LICENSES/host/"
+    DESTINATION "${host_package_support_destination}/licenses")
 
   include(BuildReport)
   install_build_report(

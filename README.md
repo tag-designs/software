@@ -549,3 +549,20 @@ DFU programming:
 ```
 ~/Software/STM32CubeProgrammer/bin/STM32_Programmer_CLI -c port=usb1 -d build/ch.elf
 ```
+
+## License
+
+The project's own code is licensed under the [MIT License](LICENSE), Copyright
+(c) 2018-2026 The Trustees of Indiana University. The following programs link
+GPL-licensed components and are therefore distributed under the GNU GPL,
+version 3:
+- **The tag and base-board firmware:** ChibiOS/RT.
+- **`sensorviz` and `btviz`:** QCustomPlot.
+- **`qtcalibrate`:** Qt Quick 3D.
+
+[LICENSES/](LICENSES/README.md) explains this, and lists every third-party
+component with links to its license:
+- **Host tools:** [LICENSES/host](LICENSES/host/README.md).
+- **Firmware and loaders:** [LICENSES/embedded](LICENSES/embedded/README.md).
+
+The packages and the firmware archive carry the same directories.

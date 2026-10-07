@@ -414,3 +414,10 @@ design document.
 
 - [Host User Guide Screenshot Automation](../host/docs/design/proposals/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; the screenshot hooks were built, the qtcalibrate_docshots target and annotation renderer were not.
 - [QtMonitor Documentation Screenshot Automation Design](../host/docs/design/proposals/qtmonitor-screenshot-automation.md) *(proposal, historical)* — Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.
+
+## Other
+
+### LICENSES
+
+- [Licenses](../LICENSES/README.md) — The project's MIT license, which shipped programs and firmware are distributed under GPL-3.0 and why, the third-party inventory behind the notice files, and how to keep them current.
+- [Licensing Worklist](../LICENSES/TODO.md) *(worklist)* — Remaining licensing follow-ups from the 2026-10-06 inventory.

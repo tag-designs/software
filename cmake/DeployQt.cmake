@@ -46,7 +46,13 @@ if(APPLE AND NOT CODESIGN_EXECUTABLE)
 find_program(CODESIGN_EXECUTABLE codesign)
 endif()
 
+if(APPLE AND NOT MACOS_QMLIMPORTSCANNER_EXECUTABLE)
+find_program(MACOS_QMLIMPORTSCANNER_EXECUTABLE qmlimportscanner
+    HINTS "${_qt_root_dir}/libexec" "${_qt_bin_dir}" NO_DEFAULT_PATH)
+endif()
+
 # Captured here: inside a function, CMAKE_CURRENT_LIST_DIR is the caller's.
+set(_macos_prune_qml_script "${CMAKE_CURRENT_LIST_DIR}/PruneMacosQml.cmake")
 set(_macos_codesign_bundle_module "${CMAKE_CURRENT_LIST_DIR}/MacosCodesignBundle.cmake")
 
 if(APPLE AND NOT INSTALL_NAME_TOOL_EXECUTABLE)
@@ -412,6 +418,53 @@ function(install_macos_fixup_bundle target)
             if(_unresolved_runtime_dependencies)
                 message(WARNING \"Unresolved runtime dependencies for ${_target_output_name}.app: \${_unresolved_runtime_dependencies}\")
             endif()
+        endif()
+    ")
+endfunction()
+
+#[[
+  @brief  Prunes the QML modules and Qt frameworks an installed app does not use.
+
+  @details Adds an install step, to run after macdeployqt and before signing,
+           that runs cmake/PruneMacosQml.cmake on the installed bundle: it keeps
+           the QML modules qmlimportscanner says the app's QML needs and the Qt
+           frameworks something left in the bundle links to, and removes the
+           rest. Does nothing when MACOS_PRUNE_UNUSED_QML is off or no QML
+           directories are given; fails configuration if qmlimportscanner is
+           not found beside the Qt installation.
+
+  @param  target  The application target, already deployed into the bundle.
+  @param  ARGN    The app's QML source directories (its QT_DEPLOY_QML_DIRS).
+#]]
+function(install_macos_prune_qml target)
+    if(NOT MACOS_PRUNE_UNUSED_QML OR NOT ARGN)
+        return()
+    endif()
+    if(NOT MACOS_QMLIMPORTSCANNER_EXECUTABLE)
+        message(FATAL_ERROR "qmlimportscanner not found under ${_qt_root_dir}; "
+                            "set MACOS_PRUNE_UNUSED_QML=OFF to deploy without pruning")
+    endif()
+
+    get_target_property(_target_output_name ${target} OUTPUT_NAME)
+    if(NOT _target_output_name)
+        set(_target_output_name ${target})
+    endif()
+    if(NOT HOST_BUNDLE_INSTALL_DIR)
+        set(HOST_BUNDLE_INSTALL_DIR ".")
+    endif()
+    list(JOIN ARGN "|" _qml_dirs_arg)
+
+    install(CODE "
+        execute_process(
+            COMMAND \"${CMAKE_COMMAND}\"
+                    \"-DBUNDLE=\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}/${_target_output_name}.app\"
+                    \"-DSCANNER=${MACOS_QMLIMPORTSCANNER_EXECUTABLE}\"
+                    \"-DQT_QML_DIR=${_qt_root_dir}/qml\"
+                    \"-DQML_DIRS=${_qml_dirs_arg}\"
+                    -P \"${_macos_prune_qml_script}\"
+            RESULT_VARIABLE _prune_result)
+        if(NOT _prune_result EQUAL 0)
+            message(FATAL_ERROR \"Pruning unused QML failed for ${_target_output_name}.app\")
         endif()
     ")
 endfunction()

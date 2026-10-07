@@ -1,0 +1,7 @@
+ChibiOS/RT 2021.11.5 (kernel, OS library, Cortex-M ports)
+=========================================================
+
+License:    GPL-3.0-only (texts/GPL-3.0-only.txt)
+Copyright:  (C) 2006-2026 Giovanni Di Sirio
+Used in:    all tag and base-board firmware (not the loaders)
+Source:     https://github.com/ChibiOS/ChibiOS, branch stable_21.11.x

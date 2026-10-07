@@ -71,6 +71,10 @@ EXCLUDE_PREFIXES = (
     "embedded/thirdparty/",
     "host/docs/src/",
     "docs/developer/",
+    # The per-side license indexes ship inside the packages; they are user
+    # material, not developer documentation (LICENSES/README.md is).
+    "LICENSES/host/",
+    "LICENSES/embedded/",
 )
 EXCLUDE_NAMES = {"AGENTS.md", "CLAUDE.md"}
 

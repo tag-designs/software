@@ -1,0 +1,7 @@
+Arm CMSIS Core(M) 5
+===================
+
+License:    Apache-2.0 (texts/Apache-2.0.txt)
+Copyright:  (c) 2009-2018 Arm Limited
+Used in:    all firmware and loaders
+Source:     https://github.com/ARM-software/CMSIS_5

@@ -1,0 +1,11 @@
+Microsoft Visual C++ and Universal C runtimes, D3Dcompiler
+==========================================================
+
+License:    Microsoft redistributable terms
+Used in:    Windows package (tag_tools/lib)
+
+vcruntime140*.dll, msvcp140*.dll, concrt140.dll, ucrtbase.dll,
+api-ms-win-*.dll and D3Dcompiler_47.dll are redistributed under the terms
+Microsoft grants for the redistributable files of Visual Studio and the
+Windows SDK. They are Microsoft's software and not covered by the MIT
+License.

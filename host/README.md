@@ -63,6 +63,12 @@ links. Deployment would otherwise skip the missing module silently and ship an
 app that fails when it loads its QML. A new QML import of a Qt add-on
 therefore also needs that add-on under `modules:` in
 `.github/workflows/release.yml`.
+On macOS, macdeployqt copies every module installed under each QML directory
+an app imports. The install then prunes the bundle back to the QML modules
+the app needs, and the Qt frameworks those modules link to
+(`cmake/PruneMacosQml.cmake`, option `MACOS_PRUNE_UNUSED_QML`), before
+signing. With a full Qt this keeps GPL-only modules the app does not use,
+such as Qt Virtual Keyboard, out of the package.
 `compviz` source remains in the tree for reference, but it is retired from the
 normal build and packaging paths now that `sensorviz` handles CompassTag logs.
 
