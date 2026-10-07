@@ -949,3 +949,50 @@ side is exact.
   **Power cycle before investigating an unexplained resting current.** It costs
   seconds and it would have saved this entire day: a toolchain investigation, a
   2x2 of specially built images, and a firmware regression that never existed.
+
+### 2026-10-07  `PresTag` release qualification, `fw-v0.6` — **PASS**
+
+**The first PresTag release qualification.** The 2026-09 campaign was
+explicitly not one, because F3 — the unchecked stored-configuration write —
+was open; `fw-v0.6` fixes it.
+
+- **image**: `fw-v0.6` (`56e5e6a0`), programmed from the published release by
+  the operator; identity read back from the tag before and after.
+- **board**: **B**, UUID `203330503641500400490058`, power cycled before the
+  session (see the entry above — it had latched a high resting current).
+- **conditions**: 2.4961 V, unregulated 2.5 V cell, shipped default config at
+  the new **60 s** sample period. Measured by hand: `tag_release_check.py`
+  cannot attach to this tag from sleep.
+- **result**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | supply, every window | 2.45–2.55 V | 2.4961 V | **pass** |
+  | `IDLE`, four trials | ≤ 0.22 µA | 0.1227 / 0.1142 / 0.1139 / 0.1137 µA | **pass** |
+  | `IDLE`, clock set | ≤ 0.22 µA | 0.1118 µA | **pass** |
+  | `RUNNING` | two windows within 5% | **0.3894** and **0.3908 µA** | **pass**, 0.36% apart |
+  | `FINISHED` | ≤ 0.22 µA, within 20% of `IDLE` | 0.1108 µA | **pass**, 0.9% from idle |
+  | `IDLE` after a full cycle | ≤ 0.22 µA | 0.1108 µA | **pass** |
+  | download, run 1 | samples 60 s apart | 31 samples, **exactly 60 s**, 13:07:11→13:37:11Z | **pass** |
+  | download, run 2 | samples 60 s apart | 31 samples, **exactly 60 s**, 13:45:03→14:15:03Z | **pass** |
+  | `tag-test` | `ALL_PASSED` | `ALL_PASSED` | **pass** |
+
+- **verdict**: **PASS. `fw-v0.6` is qualified for PresTag.** Two independent
+  30-minute runs agreed to 0.36% and each stored 31 consecutive samples with no
+  gap and no drift. Run current sits between board A's 0.3665 µA and board B's
+  own 0.4087 µA from the 2026-10-05 sweep at the same period.
+
+- **Attach storms were correctly not run.** The storm is an IMUTag test: IMUTag
+  stays awake through a run, so an attach interrupts a live collection and the
+  firmware must restart it. PresTag collects on events and sits in standby
+  between them, so there is nothing for an attach to interrupt and attaching
+  mid-run only resets the tag. Earlier storm "failures" on this target were
+  testing something inapplicable;
+  `tag_release_check.py` now defaults storms to 0 off IMUTag.
+
+- **`tag_release_check.py` cannot drive this target.** The life cycle and every
+  storm set aborted with `Monitor attach failed: initial DEMCR read failed` —
+  the attach-from-sleep problem that also stops it driving BitTag and UIUCTag.
+  No measurement failed; the harness simply could not attach. Note the irony:
+  the power cycle restored proper deep sleep, and a more deeply sleeping tag is
+  harder to attach to.

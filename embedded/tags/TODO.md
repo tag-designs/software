@@ -21,7 +21,7 @@ Background:
   | --- | --- |
   | `CompassTagAT25` | **PASS against the `fw-v0.6` release image, 2026-10-06** ([results](families/CompassTag/design/power-results.md)) |
   | `BitTag` | outstanding |
-  | `PresTag` | outstanding |
+  | `PresTag` | **PASS against the `fw-v0.6` release image, 2026-10-07** ([results](families/PresTag/design/power-results.md)) |
   | `UIUCTag` | outstanding, and two failures are open against it |
   | `IMUTagNandBmp581` | outstanding |
 
