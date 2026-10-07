@@ -169,3 +169,50 @@ Per mAh of cell: 342 days resting, 82 days recording.
   size of the saving is still unmeasured — and, given a conversion costs tens
   of microseconds of active time, it is expected to sit below what a 1200 s
   window can resolve.
+
+### 2026-10-07  `BitTag` release qualification, `fw-v0.6` — **PASS on power; one data-timestamp anomaly**
+
+- **image**: `fw-v0.6` (`56e5e6a0`), flashed from the release by the operator,
+  identity read back from the tag. `tag-test` run by the operator after
+  flashing.
+- **board**: `2035374D303150190059002F`, "BitTag V6, Firmware version 2".
+- **conditions**: 2.4961 V throughout, unregulated 2.5 V cell. Measured by
+  hand: `tag_release_check.py` cannot attach to this tag from sleep. No attach
+  storms — the storm is an IMUTag test.
+- **result**, both configurations:
+
+  | Point | `BITPERSEC` (1 bit/s) | `BITSPERFIVEMIN` (shipped default) |
+  | --- | ---: | ---: |
+  | `IDLE`, clock set | 0.1185 µA | 0.1174 µA |
+  | **`RUNNING`** | **0.5073 / 0.5068 µA** | **0.4941 µA** |
+  | `FINISHED` | 0.1178 µA | 0.1176 µA |
+  | `IDLE` after a full cycle | 0.1178 µA | — |
+  | activity records | 1860, **every delta exactly 1 s**, 31 min | 7, every delta exactly 300 s |
+
+- **verdict on power**: **PASS.** Two `BITPERSEC` windows agreed to **0.1%**
+  (0.5073, 0.5068) and both land within **0.25%** of the `fw-v0.5` published
+  figure of 0.508 µA — across a release that changed shared ADC code, added the
+  stored-configuration verify to BitTag's write path and altered its board's LSE
+  configuration. Resting states are unchanged within 3% of `fw-v0.5`'s
+  0.1224 µA.
+
+- **The logging rate is nearly free.** 300x less logging buys **2.6%**
+  (0.5073 → 0.4941 µA). BitTag's run current is set by the ADXL362 watching for
+  activity, not by how often a bit is written. **Do not estimate BitTag battery
+  life from the record rate** — the two are almost independent.
+
+- **OPEN: `BITSPERFIVEMIN` activity timestamps fall outside the run.** The
+  state log puts the run at 15:41:44Z → 16:12:44Z; the seven activity records
+  are stamped 15:20:00Z → 15:50:00Z, i.e. **1304 s before the run started** and
+  1364 s before it ended. The same download's `states`, `info` and `config`
+  rows are all correct, and the config is confirmed `BITTAG_BITSPERFIVEMIN`.
+
+  **`BITPERSEC` is not affected**: its 1860 records sit within 41 s of the run
+  window, so the one-second path anchors correctly and only the five-minute
+  path is adrift.
+
+  Not yet attributed. It could be the firmware's record epoch or the host
+  decoder; one observation, not reproduced. **Confirm before filing against
+  either**: run a second `BITSPERFIVEMIN` collection of a different length and
+  see whether the offset recurs and whether it is constant at ~1300 s or scales
+  with something. The power figures above do not depend on it.
