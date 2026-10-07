@@ -40,8 +40,25 @@ board; see the withdrawal note below.
 
 ---
 
-> **The resting figures in the 2026-09 entries below are withdrawn
-> (2026-10-05).** They do not reproduce. The September build `890a11b` was
+> **The 2026-10-05 withdrawal below is itself re-opened (2026-10-06).** It
+> rested on the September resting figures never reproducing. They have now
+> reproduced: PresTag board B measured **0.2763-0.2766 uA** across three
+> independently built images on 2026-10-06, squarely in the ~0.28 uA range the
+> September campaign recorded. A figure that reproduces on demand is not
+> suspect data.
+>
+> What is still true is that the September entries name no board, so they
+> cannot be attributed to one. **Treat them as unattributed rather than
+> withdrawn**, and do not rebase a baseline on their absence. Board A rests at
+> ~0.12 uA and board B at ~0.28 uA on the same image, so which board a figure
+> came from matters more than which firmware.
+>
+> Board B's own move from 0.1341 uA (2026-10-05) to 0.2766 uA (2026-10-06) on
+> an identical image is unexplained and is a board-B question, not a firmware
+> one. A power cycle is the untried discriminator.
+
+> ~~**The resting figures in the 2026-09 entries below are withdrawn
+> (2026-10-05).**~~ They do not reproduce. The September build `890a11b` was
 > rebuilt and run on PresTag board B in 2026-10 and measured **0.1267 µA**
 > idle, against 0.1341 µA for the current build on that same board -- so the
 > ≈ 0.28 µA these entries record is not a property of that firmware. The
@@ -881,3 +898,43 @@ cannot be attributed to a board even now. Record one for every measurement.
 These figures ignore cell self-discharge and any derating for temperature or
 end-of-life voltage, so they are upper bounds on the battery side. The memory
 side is exact.
+
+### 2026-10-06  Board A on `fw-v0.6`, and a board swap that looked like a regression
+
+- **image**: `fw-v0.6` (`56e5e6a0`), programmed by the operator from the
+  published release.
+- **board**: **A**, UUID `20333050364150040063005F` — the board of the 10-05
+  six-point sweep. **Not** board B, which everything else on 2026-10-06 used.
+- **result**:
+
+  | Condition | Measured |
+  | --- | ---: |
+  | `IDLE`, as programmed | **0.1236 µA** |
+  | `IDLE`, after `tag-reset --set-rtc` | **0.1206 µA** |
+  | `tag-test` `RUN_ALL` | **ALL_PASSED** |
+  | supply | 2.4961 V |
+
+  Consistent with board A's 0.1261 µA on 2026-10-05, and with the operator's
+  independent reading of 128 nA. Setting the clock changes nothing, so the
+  "idle with clock set" distinction is not a factor here.
+
+- **The board swap looked exactly like a firmware regression, and was chased as
+  one.** Board A reads ~0.12 µA and board B ~0.28 µA on the same image. Reading
+  one against the other produced an apparent 2.2x regression in `fw-v0.6`, and
+  three hypotheses were pursued and refuted before the UUID was re-read:
+
+  | hypothesis | refuted by |
+  | --- | --- |
+  | the gcc 13.2.1 → 14.2.1 toolchain change | a 2x2 of source-vs-compiler images: all three cells within 0.1% |
+  | a debug session leaving `DBGMCU` clocks on | wrong by three orders of magnitude — an attached debugger costs ~200 µA |
+  | idle measured with the clock set vs not | 0.1236 before and 0.1206 after setting it |
+
+  The UUID is printed by every `tag-info`. **Record it in every entry and
+  re-read it whenever the bench has changed hands**; "the same tag" is an
+  assumption that expires as soon as you stop watching.
+
+- **still open, and scoped to board B**: it measured 0.1341 µA on 2026-10-05
+  and 0.2763–0.2766 µA on 2026-10-06, across three independently built images
+  including the identical source. That is a board-B question. A full power
+  cycle is the untried discriminator, since it clears any peripheral left in a
+  wrong power state by the erase, the storms, or the 476 µA failed attach.
