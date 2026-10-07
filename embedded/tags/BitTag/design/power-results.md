@@ -201,18 +201,26 @@ Per mAh of cell: 342 days resting, 82 days recording.
   activity, not by how often a bit is written. **Do not estimate BitTag battery
   life from the record rate** — the two are almost independent.
 
-- **OPEN: `BITSPERFIVEMIN` activity timestamps fall outside the run.** The
-  state log puts the run at 15:41:44Z → 16:12:44Z; the seven activity records
-  are stamped 15:20:00Z → 15:50:00Z, i.e. **1304 s before the run started** and
-  1364 s before it ended. The same download's `states`, `info` and `config`
-  rows are all correct, and the config is confirmed `BITTAG_BITSPERFIVEMIN`.
+- ~~**OPEN: `BITSPERFIVEMIN` activity timestamps fall outside the run.**~~
+  **Retracted the same day: this is correct behaviour and I misread it.**
 
-  **`BITPERSEC` is not affected**: its 1860 records sit within 41 s of the run
-  window, so the one-second path anchors correctly and only the five-minute
-  path is adrift.
+  BitTag writes on an **absolute** grid, not a run-relative one:
+  `sample_period = chunk_period * chunk_number` (300 x 7 = **2100 s** for
+  `BITSPERFIVEMIN`), and `bt_state_run.c` aligns to it with
+  `lastwrite = (timestamp / sample_period) * sample_period`. The record's epoch
+  was `15:50:00Z`, which satisfies `epoch % 2100 == 0` exactly, so it covers
+  **15:15:00Z -> 15:50:00Z** — a window that legitimately began 27 minutes
+  before the run started at 15:41:44Z. The buckets preceding the run are simply
+  zero. Nothing is misdated, in the firmware or the downloader.
 
-  Not yet attributed. It could be the firmware's record epoch or the host
-  decoder; one observation, not reproduced. **Confirm before filing against
-  either**: run a second `BITSPERFIVEMIN` collection of a different length and
-  see whether the offset recurs and whether it is constant at ~1300 s or scales
-  with something. The power figures above do not depend on it.
+  **`BITPERSEC` only looked correct because its window is short.** Identical
+  mechanism, `sample_period` 60 s, so its overhang before the run start is at
+  most 60 s — measured at 38 s. **The overhang scales with `sample_period`**,
+  which is 35x larger in the default configuration.
+
+  So: expect a `BITSPERFIVEMIN` download to begin up to 2100 s before the run,
+  and a `BITSPERFOURMIN` one up to 1920 s. That is the design. The only
+  genuinely arguable point is cosmetic: `sqlitelog/bittag.cc` labels each bucket
+  with its **end** time (`timestamp - bucket_period * (bucket_number - 1 - i)`),
+  so the first bucket's own start — `15:15:00Z` here — never appears as a row.
+  Consistent, and not worth changing without a reason.
