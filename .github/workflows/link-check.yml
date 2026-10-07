@@ -1,0 +1,67 @@
+name: External link check
+
+# Nothing else validates the links that leave this repository's documentation,
+# including the URLs pointing up at the project umbrella site, which the
+# umbrella promises to keep.
+#
+# This runs weekly and never on a push or a pull request: an external link
+# breaks for reasons outside this repository, so a dead one is news rather
+# than a reason to block a merge or a release.
+#
+# The docs build proper needs CMake, Doxygen, protobuf and Qt, so this reads
+# the Markdown sources and the two MkDocs configs instead of a built site.
+# That is where the links are written, and it keeps a weekly job cheap.
+
+on:
+  schedule:
+    - cron: "34 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: link-check
+  cancel-in-progress: false
+
+jobs:
+  link-check:
+    name: Check external links
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # The published documentation, the licensing indexes that ship in
+          # the packages, and the top-level README. Design notes under
+          # embedded/ and host/ are internal and left out.
+          #
+          # 429 is accepted because a rate-limited host has told us nothing
+          # about the link.
+          args: >-
+            --no-progress
+            --scheme http
+            --scheme https
+            --accept 200..=204,206,429
+            --max-retries 2
+            --timeout 20
+            --exclude-mail
+            --exclude-all-private
+            README.md
+            docs/developer/mkdocs.yml
+            host/docs/mkdocs.yml
+            'docs/**/*.md'
+            'host/docs/**/*.md'
+            'LICENSES/**/*.md'
+          output: lychee-report.md
+          fail: true
+
+      - name: Publish the report in the run summary
+        if: always() && hashFiles('lychee-report.md') != ''
+        run: cat lychee-report.md >> "$GITHUB_STEP_SUMMARY"
