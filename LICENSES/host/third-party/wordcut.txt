@@ -1,5 +1,5 @@
-wordcut
-=======
+wordcut (Thai word segmentation)
+================================
 
 License:    LGPL-3.0 (texts/LGPL-3.0-only.txt with texts/GPL-3.0-only.txt);
 :           bundled Node.js shims MIT
