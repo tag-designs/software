@@ -123,13 +123,13 @@ connector and it does everything: arming, self-test and download.
 
 | Part | Role | Size and capacity | Datasheet |
 | --- | --- | --- | --- |
-| LSM6DSV | Accelerometer and gyroscope | LGA-14L 2.5x3.0 mm; 16-bit output; ranges selected per deployment | [lsm6dsv.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/lsm6dsv.pdf) |
-| BMM350 | Magnetometer, heading reference | WLCSP 1.28x1.28 mm; +/-2000 uT on all three axes | [bst-bmm350-ds001.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmm350-ds001.pdf) |
-| BMP581 | Pressure and temperature, altitude | LGA 2.0x2.0 mm; 300-1250 hPa | [bst-bmp581-ds004.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/bst-bmp581-ds004.pdf) |
-| GD5F2GM7RE | Stores the recording | WSON-8 8x6 mm; 2 Gbit (256 MiB); 10-year data retention | [datasheet](../../../../hardware/BoardDesigns/imutag-smps/datasheets/DS_00819_GD5F2GM7RE_Rev1_3-3435814.pdf) |
-| RV-3028-C8 | Keeps time and paces the sampling | SON-8 2.0x1.2 mm; +/-1 ppm factory-trimmed; 70 nA | [RV-3028-C8.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/RV-3028-C8.pdf) |
-| STM32U375 | Reads the sensors and writes the flash | UFQFPN32 5x5 mm; 1 MB program memory, 256 KB RAM | [stm32u375ce.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/stm32u375ce.pdf) |
-| TPS62840 | Makes the 1.8 V rail everything runs from | WCSP-6 0.97x1.47 mm; 60 nA quiescent | [tps62840.pdf](../../../../hardware/BoardDesigns/imutag-smps/datasheets/tps62840.pdf) |
+| LSM6DSV | Accelerometer and gyroscope | LGA-14L 2.5x3.0 mm; 16-bit output; ranges selected per deployment | [lsm6dsv.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/lsm6dsv.pdf) |
+| BMM350 | Magnetometer, heading reference | WLCSP 1.28x1.28 mm; +/-2000 uT on all three axes | [bst-bmm350-ds001.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/bst-bmm350-ds001.pdf) |
+| BMP581 | Pressure and temperature, altitude | LGA 2.0x2.0 mm; 300-1250 hPa | [bst-bmp581-ds004.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/bst-bmp581-ds004.pdf) |
+| GD5F2GM7RE | Stores the recording | WSON-8 8x6 mm; 2 Gbit (256 MiB); 10-year data retention | [datasheet](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/DS_00819_GD5F2GM7RE_Rev1_3-3435814.pdf) |
+| RV-3028-C8 | Keeps time and paces the sampling | SON-8 2.0x1.2 mm; +/-1 ppm factory-trimmed; 70 nA | [RV-3028-C8.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/RV-3028-C8.pdf) |
+| STM32U375 | Reads the sensors and writes the flash | UFQFPN32 5x5 mm; 1 MB program memory, 256 KB RAM | [stm32u375ce.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/stm32u375ce.pdf) |
+| TPS62840 | Makes the 1.8 V rail everything runs from | WCSP-6 0.97x1.47 mm; 60 nA quiescent | [tps62840.pdf](https://github.com/tag-designs/hardware/blob/main/BoardDesigns/libraries/datasheets/tps62840.pdf) |
 
 What each sensor resolves, and how noisy it is, is in section 3 rather than
 here.
@@ -261,7 +261,7 @@ the voltage of a nominal 3.7 V cell, 120 s per point with a verified download at
 every rate. Recording draws 539 uA at 100 Hz, 662 uA at 400 Hz and 1003 uA at
 1600 Hz; those currents give the battery column of the table in section 3.1.
 The per-rate measurements are in
-[IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html).
+[IMUTag power](https://tag-designs.github.io/software/developer/reference/embedded/tags/families/IMUTag/design/power.html).
 
 ![Recording time against sample rate for a 12 mAh cell and 2 Gbit flash: the battery limit falls gently from 22.3 h at 100 Hz to 12.0 h at 1600 Hz, the flash limit halves with every doubling of rate from 54.6 h to 3.4 h, and the two cross near 300 Hz; at the 400 Hz design point the flash fills at 13.7 h, before the battery runs out at 18.1 h](images/imutag-recording-limits.svg)
 
@@ -520,4 +520,4 @@ this sensor set.
    same board and image, splitting on the day rather than the procedure. It is
    worth 16 days of shelf life on a 12 mAh cell. See *Idle does not agree with
    itself across days* in
-   [IMUTag power](../developer/reference/embedded/tags/families/IMUTag/design/power.html).
+   [IMUTag power](https://tag-designs.github.io/software/developer/reference/embedded/tags/families/IMUTag/design/power.html).
