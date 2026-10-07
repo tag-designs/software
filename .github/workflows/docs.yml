@@ -64,7 +64,7 @@ jobs:
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>Ultralight Tags Documentation</title>
+            <title>Ultralight Tags: Software Documentation</title>
             <style>
               :root {
                 color-scheme: light dark;
@@ -120,8 +120,8 @@ jobs:
           </head>
           <body>
             <main>
-              <h1>Ultralight Tags Documentation</h1>
-              <p>Repo-built manuals and developer references, with the external project page kept in view.</p>
+              <h1>Ultralight Tags: Software Documentation</h1>
+              <p>Manuals and developer references for the software tree. The project overview, the tag families and the cross-cutting field guides live on the project home.</p>
               <nav aria-label="Documentation sections">
                 <a href="user/">
                   <strong>Host/User Guide</strong>
@@ -131,9 +131,9 @@ jobs:
                   <strong>Developer Documentation</strong>
                   <span>Architecture notes, source-tree references, and generated API docs.</span>
                 </a>
-                <a href="https://geoffreymbrown.github.io/ultralight-tags/">
-                  <strong>External Project Page</strong>
-                  <span>Public project documentation hosted outside this repository build.</span>
+                <a href="https://tag-designs.github.io/">
+                  <strong>Project Home</strong>
+                  <span>Project overview, tag families, cross-cutting user guides, and system architecture.</span>
                 </a>
               </nav>
             </main>

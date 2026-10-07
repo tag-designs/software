@@ -6,9 +6,9 @@ summary: Top-level CMake options, prerequisites and build commands for host tool
 ---
 
 See the [repository documentation](https://tag-designs.github.io/software/) for
-host/user guides, developer notes, and generated API references. The broader
-[external project page](https://geoffreymbrown.github.io/ultralight-tags/)
-remains available for project-level documentation.
+host/user guides, developer notes, and generated API references. The
+[project home](https://tag-designs.github.io/) carries the project overview,
+the tag families, the cross-cutting user guides and the system architecture.
 
 
 # Overview

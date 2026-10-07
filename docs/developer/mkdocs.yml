@@ -1,4 +1,4 @@
-site_name: Ultralight Tags Developer Docs
+site_name: "Ultralight Tags: Developer Docs"
 site_description: Developer architecture, design, and API documentation for the tag-designs software tree.
 site_author: Indiana University
 
@@ -53,7 +53,9 @@ extra_css:
 # copy. Do not list documents here. See docs/documentation-guide.md.
 nav:
   - Home: index.md
-  - Project Page: https://geoffreymbrown.github.io/ultralight-tags/
+  # The umbrella site at the organization root carries the project
+  # overview, the tag families and the high-level system architecture.
+  - Project Home: https://tag-designs.github.io/
   - Source Tree:
       # @GENERATED_NAV@
   - API Reference:
