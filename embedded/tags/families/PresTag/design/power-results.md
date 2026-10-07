@@ -933,8 +933,19 @@ side is exact.
   re-read it whenever the bench has changed hands**; "the same tag" is an
   assumption that expires as soon as you stop watching.
 
-- **still open, and scoped to board B**: it measured 0.1341 µA on 2026-10-05
-  and 0.2763–0.2766 µA on 2026-10-06, across three independently built images
-  including the identical source. That is a board-B question. A full power
-  cycle is the untried discriminator, since it clears any peripheral left in a
-  wrong power state by the erase, the storms, or the 476 µA failed attach.
+- ~~**still open, and scoped to board B**~~ — **closed the same day: a power
+  cycle fixed it.** Board B measured 0.2763–0.2766 µA across three
+  independently built images, then **0.1249 µA** after it was unplugged and
+  replugged and flashed with `fw-v0.6`, with `tag-test` `ALL_PASSED`. It had
+  read 0.1341 µA on 2026-10-05.
+
+  **So the tag had latched a high resting current that only a power cycle
+  cleared, and no image was ever at fault** — including the build of the exact
+  source that read 0.1341 µA the day before. The likely culprits are a
+  peripheral left awake by the erase, the three attach-storm sets, or the
+  476 µA failed attach seen in the same session, any of which can leave a
+  device out of its deepest sleep.
+
+  **Power cycle before investigating an unexplained resting current.** It costs
+  seconds and it would have saved this entire day: a toolchain investigation, a
+  2x2 of specially built images, and a firmware regression that never existed.

@@ -133,12 +133,27 @@ these procedures catch.
   U375-only). Run `tag_rebuild_check.py` after any
   change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
   [Capturing a tag](docs/bench/capturing-a-tag.md).
-- **Erase a tag's data before reflashing it, whenever it is in `FINISHED` or
-  `ABORTED`.** In that order. The erase should be done by the firmware that
-  wrote the log, which knows its own layout and cursors; a new image erasing
-  someone else's log is interpreting a format it may not share. `tag-reset`
-  erases, and only from `FINISHED` or `ABORTED`, so the sequence is: read the
-  state, `tag-reset` to erase, then `flash_release.py`.
+- **The flashing protocol, in order. Do not skip steps.**
+  1. **Read the board UUID** (`tag-info`) and record it. A board swap looks
+     exactly like a regression; "the same tag" is an assumption that expires
+     the moment you stop watching the bench.
+  2. **Erase the stored data before flashing**, whenever the tag is in
+     `FINISHED` or `ABORTED`. The erase must be done by the firmware that wrote
+     the log, which knows its own layout and cursors; a new image erasing
+     someone else's log is interpreting a format it may not share. `tag-reset`
+     erases, and only from those two states.
+  3. **Flash.**
+  4. **Run the self-tests** (`tag-test`) after flashing, before measuring or
+     qualifying anything. It is the cheapest statement that the hardware and
+     the image agree, and it costs under a minute.
+- **A tag can latch a high resting current that only a power cycle clears.**
+  On 2026-10-06 a PresTag sat at 0.2766 uA across three independently built
+  images -- including a build of the exact source that had measured 0.1341 uA
+  the day before -- and returned to 0.1249 uA after the board was unplugged and
+  replugged. Nothing in the firmware was involved. **Before investigating an
+  unexplained resting current, power cycle the board and measure again.** The
+  likely culprits are a peripheral left awake by an erase, an attach storm, or
+  a failed attach (which can leave a tag at hundreds of uA on its own).
 
 - **DO NOT DESIGN A TEST WHERE THE RESET CHANGES WHAT YOU WANT TO SEE.** This
   comes before any other bench rule. Connecting is only possible through reset,
