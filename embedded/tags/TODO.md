@@ -23,7 +23,7 @@ Background:
   | `BitTag` | **PASS against the `fw-v0.6` release image, 2026-10-07**, both logging configurations ([results](BitTag/design/power-results.md)) |
   | `PresTag` | **PASS against the `fw-v0.6` release image, 2026-10-07** ([results](families/PresTag/design/power-results.md)) |
   | `UIUCTag` | outstanding, and two failures are open against it |
-  | `IMUTagNandBmp581` | outstanding |
+  | `IMUTagNandBmp581` | **PASS against the `fw-v0.6` release image, 2026-10-07**, storms included ([results](families/IMUTag/design/power.md)) |
 
   **Before qualifying any of the other three L432 targets, pass the bounds.**
   `tag_release_check.py` defaults to a 100 uA sleep threshold, which is also

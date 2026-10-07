@@ -197,3 +197,55 @@ Use `embedded/tools/joulescope_measure.py`,
 which opens with `mode='restore'`, never writes range `0`, holds one session
 across windows, restores the range configuration it found, and computes average
 current from accumulated charge rather than a mean of window means.
+
+## 2026-10-07  `IMUTagNandBmp581` release qualification, `fw-v0.6` — **PASS**
+
+- **image**: `fw-v0.6`, `IMUTagNandBmp581.elf` sha256
+  `b41115e09c7205798f7b80896bb65fbd0628279711104e2d2fe40574c8cdcdc3`, flashed
+  from the published release with `flash_release.py` (tree clean, toolchain
+  14.2.1) and confirmed on the tag as `githash 56e5e6a0`. **The `git_hash` in
+  `results.json` says `1f0a9460`: with `--skip-build` the harness records the
+  working tree's HEAD, not the image it measured.** Take the image identity
+  from the flash provenance and `tag-info`.
+- **board**: `00303143433650090059002E`. **Supply 3.6932 V** — this board
+  regulates with an SMPS, so every figure scales with supply voltage and is
+  meaningless without it.
+- **result**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | idle, four trials | ≤ 100 µA | 6.4144 / 6.4382 / 6.428 / 6.4355 µA | **pass**, 0.4% spread |
+  | `IDLE`, clock set | ≤ 100 µA | 6.43 µA | **pass** |
+  | **`RUNNING` @ 400 Hz** | ≤ 760 µA | **665.41 µA** | **pass** |
+  | `FINISHED` | ≤ 100 µA | 6.43 µA | **pass**, equal to idle |
+  | `idle_after_cycle` | ≤ 100 µA | 6.45 µA | **pass** |
+  | attach storms | every round survives | 3 sets, 6 rounds, **0 aborted**, data intact | **pass** |
+  | download | sane | pass | **pass** |
+  | `tag-test` | `ALL_PASSED` | `ALL_PASSED` | **pass** |
+
+- **verdict**: **PASS. `fw-v0.6` is qualified for IMUTagNandBmp581.**
+
+- **The firmware delta is isolated, because a pre-flash reading was taken on
+  the same board in the same session.**
+
+  | | idle @ 3.6932 V |
+  | --- | ---: |
+  | `b025e7ba` (the previous, dirty-tree build) | 6.2881 µA |
+  | `fw-v0.6` | 6.4137 µA (**+2.3%**) |
+
+  Running moved **+0.5%**, 662 → 665.41 µA. The 2026-10-03 published idle of
+  5.52 µA is 14% below what this board reads *on its old firmware today*, so
+  that difference belongs to the board or the conditions rather than to this
+  release. **Measuring the outgoing image before flashing is what makes the two
+  separable**, and it costs one 120 s window.
+
+- **This is the target the power budget actually lives in**: at 665 µA it is
+  three orders of magnitude above the L432 tags, so it alone decides whether a
+  deployment makes its battery life. It is also the part where U375 layout
+  sensitivity applies, and `fw-v0.6` shifts the image by adding the
+  stored-configuration verify to the state machine. 665 against 662 is as clean
+  a null result as that part allows.
+
+- **Attach storms are meaningful here and only here.** IMUTag does not use
+  standby or shutdown while running, so an attach interrupts a live collection
+  and the firmware must restart it. Six rounds, none aborted, data intact.
