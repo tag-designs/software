@@ -179,6 +179,12 @@ Per mAh of cell: 342 days resting, 82 days recording.
 - **conditions**: 2.4961 V throughout, unregulated 2.5 V cell. Measured by
   hand: `tag_release_check.py` cannot attach to this tag from sleep. No attach
   storms — the storm is an IMUTag test.
+
+  **To be precise about "aborted": the harness aborts, the tag does not.**
+  `aborted: tag-reset failed` in a harness log means the harness gave up
+  because a *host* command failed, not that the tag entered `ABORTED`. No
+  BitTag run in this session ever aborted; every one ended `FINISHED` with the
+  data intact.
 - **result**, both configurations:
 
   | Point | `BITPERSEC` (1 bit/s) | `BITSPERFIVEMIN` (shipped default) |

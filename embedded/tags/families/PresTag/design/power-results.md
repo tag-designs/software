@@ -990,9 +990,16 @@ was open; `fw-v0.6` fixes it.
   testing something inapplicable;
   `tag_release_check.py` now defaults storms to 0 off IMUTag.
 
-- **`tag_release_check.py` cannot drive this target.** The life cycle and every
-  storm set aborted with `Monitor attach failed: initial DEMCR read failed` —
-  the attach-from-sleep problem that also stops it driving BitTag and UIUCTag.
-  No measurement failed; the harness simply could not attach. Note the irony:
-  the power cycle restored proper deep sleep, and a more deeply sleeping tag is
-  harder to attach to.
+- **`tag_release_check.py` cannot drive this target. The harness gave up; the
+  tag did not.** Read the harness's own wording carefully: lines like
+  `aborted: tag-reset failed` describe **the harness aborting its own run**
+  because a host command failed, not the tag entering `ABORTED`. In this
+  session the host reported `Monitor attach failed: initial DEMCR read failed`
+  41 times, while the tag's state log read `final state FINISHED, 3 log
+  entries, **0 abort markers**`. No tag in any PresTag session on 2026-10-06 or
+  2026-10-07 ever reached `ABORTED`.
+
+  So the failure is the attach-from-sleep problem, which also stops the harness
+  driving BitTag and UIUCTag. No measurement failed and no run failed. Note the
+  irony: the power cycle restored proper deep sleep, and a more deeply sleeping
+  tag is harder to attach to.
