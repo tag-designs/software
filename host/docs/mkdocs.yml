@@ -79,5 +79,6 @@ nav:
       - Data Download: workflows/data-download.md
   - Reference:
       - SQLite Log Format: reference/sqlite-logs.md
+      - Configuration Files: reference/config-files.md
       - Documentation Guidelines: reference/documentation-guidelines.md
       - Troubleshooting: reference/troubleshooting.md
