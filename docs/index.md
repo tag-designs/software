@@ -306,6 +306,10 @@ design document.
 
 - [UIUCTag Bring-Up Report](../embedded/tags/UIUCTag/design/investigations/bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
 
+### Tags / UIUCTag / Proposals
+
+- [UIUCTag Minute Sampling with 8-Byte Records](../embedded/tags/UIUCTag/design/proposals/minute-sampling.md) *(proposal, proposed)* — Proposal to change UIUCTag to a pressure/temperature reading every minute, stored as one 8-byte record (6 raw BMP585 bytes plus three 5-bit, 20-second activity counts), with an internal checkpoint every 32 minutes anchoring one 256-byte external page.
+
 ### Tags / UIUCTag / test
 
 - [UIUCTag Sequencer Simulation](../embedded/tags/UIUCTag/test/README.md) — How to build and run the host simulation of the UIUCTag acquisition sequencer and datalog against stubs and a fake flash.
