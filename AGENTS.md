@@ -134,6 +134,15 @@ these procedures catch.
   change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
   [Capturing a tag](docs/bench/capturing-a-tag.md).
 - **The flashing protocol, in order. Do not skip steps.**
+  0. **Check the supply voltage before powering a tag**, and record it with
+     every figure. The targets do not share one: the L432 tags run from an
+     unregulated **2.5 V** cell and the IMUTag boards from **3.7 V**, so a
+     supply left set from the previous target is both a meaningless measurement
+     and, going the wrong way, out of spec -- the STM32L432's absolute maximum
+     VDD is **3.6 V**. On 2026-10-08 a UIUCTag was attached to a rig still set
+     at 3.6932 V from an IMUTag session; it read 328 uA against its usual
+     0.16 uA and reported 3.30 V internally. No harm resulted, but the first
+     measurement is a late place to discover it.
   1. **Read the board UUID** (`tag-info`) and record it. A board swap looks
      exactly like a regression; "the same tag" is an assumption that expires
      the moment you stop watching the bench.
