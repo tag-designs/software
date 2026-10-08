@@ -15,7 +15,9 @@ theme:
   icon:
     logo: material/bird
   features:
-    - navigation.sections
+    # navigation.sections is deliberately absent: it renders each top-level
+    # group as a flat header, so sub-pages get no indentation and the side
+    # index reads as one long list. Without it, sections nest and indent.
     - navigation.top
     - search.highlight
     - search.suggest
@@ -55,7 +57,7 @@ extra_css:
   - stylesheets/extra.css
 
 nav:
-  - Home: index.md
+  - User Guide Home: index.md
   # The umbrella site at the organization root carries the project
   # overview, the tag families and the cross-cutting field guides.
   - Project Home: https://tag-designs.github.io/
