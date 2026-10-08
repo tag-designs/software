@@ -139,3 +139,48 @@ _No measurements recorded yet._
   already measured (previous entry) and are good. `tag_release_check.py` cannot
   drive this target, so the run phase must be taken by hand: start once, leave
   it alone, measure, then stop.
+
+### 2026-10-08  `UIUCTag` release qualification, `fw-v0.6` — **PASS**
+
+- **image**: `fw-v0.6` (`56e5e6a0`), flashed from the published release;
+  identity read back before and after.
+- **board**: `2036354B3032500800520028` — the board of the bring-up report.
+- **conditions**: **supply verified at 2.4960 V before powering the tag.** The
+  rig had been left at 3.6932 V from an IMUTag session; at that voltage this
+  tag read 328 µA and reported 3.30 V internally, and the STM32L432's absolute
+  maximum VDD is 3.6 V. Corrected first; no harm resulted. Shipped default
+  config, 300 s sample period. Measured by hand — the harness cannot attach to
+  this tag from sleep.
+- **result**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | supply | 2.45–2.55 V | 2.4960 V | **pass** |
+  | `IDLE`, clock set | ≤ 0.4 µA | 0.1572 µA | **pass** |
+  | **`RUNNING`, 1800 s** | above the floor, collecting | **0.5620 µA** | **pass** |
+  | `FINISHED` | ≤ 0.4 µA, within 20% of `IDLE` | 0.1598 µA | **pass**, 1.7% from idle |
+  | `IDLE` after a full cycle | ≤ 0.4 µA | 0.1598 µA | **pass** |
+  | download, pressure | 300 s apart | 7 records, **exactly 300 s**, 16:23:00→16:53:00Z | **pass** |
+  | download, temperature | 300 s apart | 7 records, **exactly 300 s** | **pass** |
+  | download, activity | 60 s buckets | 30 records, **exactly 60 s** | **pass** |
+  | `tag-test` | `ALL_PASSED` | `ALL_PASSED` | **pass** |
+
+- **verdict**: **PASS. `fw-v0.6` is qualified for UIUCTag.** The run began
+  16:22:35Z and the first sample landed 16:23:00Z — the first minute boundary,
+  as the design specifies — with no slot missed in 31 minutes. `tag-start`
+  confirmed `RUNNING` in-session, which the fixed `--start-timeout` now makes
+  possible.
+
+- **Running current is 26% below the bring-up figure**, 0.5620 µA against the
+  0.76 µA measured undisturbed on this same board on 2026-09-26. Lower is not a
+  budget concern and this is not treated as a finding, but the difference is
+  real and unexplained. The likeliest cause is accelerometer configuration
+  rather than the firmware: the bring-up session was still resolving an
+  activity-pegged ADXL367 and a threshold that was 2x off, and a pegged
+  activity line costs current continuously. Worth confirming the next time this
+  board runs, by comparing the activity data rather than the current.
+
+- **`tag-test` is intermittent on this target**, as recorded on 2026-10-06: it
+  returned no result on the first attempt here and `ALL_PASSED` on the second,
+  matching the 4-of-6 pass rate measured then. The failures are host-side link
+  timeouts at the first transaction, not device-test failures.

@@ -22,7 +22,7 @@ Background:
   | `CompassTagAT25` | **PASS against the `fw-v0.6` release image, 2026-10-06** ([results](families/CompassTag/design/power-results.md)) |
   | `BitTag` | **PASS against the `fw-v0.6` release image, 2026-10-07**, both logging configurations ([results](BitTag/design/power-results.md)) |
   | `PresTag` | **PASS against the `fw-v0.6` release image, 2026-10-07** ([results](families/PresTag/design/power-results.md)) |
-  | `UIUCTag` | outstanding, and two failures are open against it |
+  | `UIUCTag` | **PASS against the `fw-v0.6` release image, 2026-10-08** ([results](UIUCTag/design/power-results.md)) |
   | `IMUTagNandBmp581` | **PASS against the `fw-v0.6` release image, 2026-10-07**, storms included ([results](families/IMUTag/design/power.md)) |
 
   **Before qualifying any of the other three L432 targets, pass the bounds.**
