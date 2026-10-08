@@ -422,13 +422,28 @@ cell voltage, and a figure carries no meaning without it:
 
 | Target | Qualified | Supply | Idle | Running | Finished |
 | --- | --- | ---: | ---: | ---: | ---: |
-| BitTag | `fw-v0.5`, 2026-10-03 | 2.496 V | 0.1224 uA | 0.508 uA @ 1 activity bit/s | 0.1214 uA |
-| IMUTagNandBmp581 | not qualified from a release; figures from a power sweep of local build `b025e7ba`, 2026-10-03 | 3.693 V | 5.52 uA | 662 uA @ 400 Hz | not measured |
+| IMUTagNandBmp581 | `fw-v0.6`, 2026-10-07 | 3.693 V | 6.43 uA | 665.41 uA @ 400 Hz | 6.43 uA |
+| BitTag | `fw-v0.6`, 2026-10-07 | 2.496 V | 0.1185 uA | 0.4941 uA @ default (1 bit/5 min) | 0.1178 uA |
 
-The BitTag row is from [its results log](../../embedded/tags/BitTag/design/power-results.md);
-the IMUTagNandBmp581 figures are from the
-[IMUTag power results](../../embedded/tags/families/IMUTag/design/power.md),
-where idle is the mean of six readings through the sweep.
+Rows link to their results logs: [BitTag](../../embedded/tags/BitTag/design/power-results.md),
+[IMUTag](../../embedded/tags/families/IMUTag/design/power.md). `fw-v0.6` is the
+worked example: all five targets qualified, each from the published image.
+
+**Three things that table cannot show, and every qualification needs:**
+
+- **Measure the outgoing image before flashing.** One 120 s window on the same
+  board in the same session separates the firmware's contribution from the
+  board's. Without it, IMUTag's idle would have read as a 16% regression
+  against a figure taken on another day; with it, the firmware's own
+  contribution was +2.3%.
+- **State the supply, and check it before powering a tag.** The targets do not
+  share one -- 2.5 V for the L432 tags, 3.7 V for IMUTag -- and the L432's
+  absolute maximum is 3.6 V, so a rig left set from the previous target is both
+  a meaningless measurement and, one way round, out of spec.
+- **Attach storms belong to IMUTag.** It stays awake through a run and must
+  restart collection after an attach. The other targets collect on events and
+  sit in standby between them, so a storm tests nothing there and an attach
+  only resets the run.
 
 **Qualify the released image, not a local build at the same commit.** The two
 are expected to be identical and usually are, but "expected to be" is what

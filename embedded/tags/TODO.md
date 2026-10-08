@@ -11,35 +11,45 @@ summary: Open tag firmware work -- defects found by reading code, low-power and 
 Background:
 [the ADC and power-floor investigation](design/investigations/2026-10-adc-and-the-power-floor.md).
 
-- **Requalify all five distributed targets. One of five done.** Every image
-  changed: the `adcVDD()` fix (`54135465`) touches shared code, the board files
-  gained LSE bypass, PresTag's default period moved to 60 s, and BitTag's
-  sampling moved to the write site. The `fw-v0.5` qualification rows do not
-  carry forward.
+- ~~**Requalify all five distributed targets.**~~ **Done 2026-10-08: all five
+  PASS against the `fw-v0.6` release image**, each measured from the published
+  image rather than a local rebuild, each with its session logs attached to the
+  release.
 
-  | Target | State |
-  | --- | --- |
-  | `CompassTagAT25` | **PASS against the `fw-v0.6` release image, 2026-10-06** ([results](families/CompassTag/design/power-results.md)) |
-  | `BitTag` | **PASS against the `fw-v0.6` release image, 2026-10-07**, both logging configurations ([results](BitTag/design/power-results.md)) |
-  | `PresTag` | **PASS against the `fw-v0.6` release image, 2026-10-07** ([results](families/PresTag/design/power-results.md)) |
-  | `UIUCTag` | **PASS against the `fw-v0.6` release image, 2026-10-08** ([results](UIUCTag/design/power-results.md)) |
-  | `IMUTagNandBmp581` | **PASS against the `fw-v0.6` release image, 2026-10-07**, storms included ([results](families/IMUTag/design/power.md)) |
+  | Target | Result | Supply | Idle | Running |
+  | --- | --- | ---: | ---: | ---: |
+  | `IMUTagNandBmp581` | **PASS** 10-07, storms included ([results](families/IMUTag/design/power.md)) | 3.693 V | 6.43 µA | 665.41 µA @ 400 Hz |
+  | `CompassTagAT25` | **PASS** 10-06 ([results](families/CompassTag/design/power-results.md)) | 2.496 V | 0.21 µA | 1.95 / 1.9478 µA @ 30 s |
+  | `UIUCTag` | **PASS** 10-08 ([results](UIUCTag/design/power-results.md)) | 2.496 V | 0.1572 µA | 0.5620 µA @ 300 s |
+  | `BitTag` | **PASS** 10-07, both log formats ([results](BitTag/design/power-results.md)) | 2.496 V | 0.1185 µA | 0.4941 µA default |
+  | `PresTag` | **PASS** 10-07, first ever ([results](families/PresTag/design/power-results.md)) | 2.496 V | 0.1118 µA | 0.3894 / 0.3908 µA @ 60 s |
 
-  **Before qualifying any of the other three L432 targets, pass the bounds.**
-  `tag_release_check.py` defaults to a 100 uA sleep threshold, which is also
-  the floor the run must clear, so a sub-100 uA run is failed as "not
-  collecting". `630ce14e` lets the bounds be passed; it does not change the
-  defaults, because IMUTag needs them. CompassTagAT25 used
-  `--idle-max-ua 1 --run-max-ua 5 --run-duration 900 --rest-duration 120
-  --settle 60`; size the run window to span enough sample periods and the rest
-  window to integrate a sub-microamp floor.
+  **No power regression.** Running current moved +0.5% on IMUTagNandBmp581,
+  −0.5% on CompassTagAT25 and −0.14% on BitTag against their previous qualified
+  figures, on the same boards and supplies. IMUTag is the one that matters: it
+  draws three orders of magnitude more than the rest, so it alone sets whether
+  a deployment makes its battery life, and it is the part where image layout has
+  moved idle current by 150x before. Its firmware contribution is isolated
+  because the outgoing image was measured on the same board in the same session
+  before flashing.
 
-  **The harness does not check calibration or run `tag-test`.** On CompassTag
-  both were closed by hand: `__calibration_start__` compared against the
-  address the board was calibrated under *before* flashing, the page dumped
-  and decoded afterwards, and `tag-test` run separately. Only CompassTag
-  carries calibration, but no target's qualification includes a self-test
-  unless one is run.
+  **What the next requalification needs to know**, learned doing this one:
+
+  - **Pass the bounds for every target but IMUTag.** `tag_release_check.py`
+    defaults to a 100 µA sleep threshold, which is also the floor the run must
+    clear, so a sub-100 µA run is failed as "not collecting". `630ce14e` lets
+    the bounds through; the defaults stay because IMUTag needs them.
+  - **The harness cannot drive BitTag, PresTag or UIUCTag**, aborting on
+    `Monitor attach failed: initial DEMCR read failed`. Those were qualified by
+    running the phases by hand. **That is the harness aborting, not the tag**:
+    no run in any session reached `ABORTED`.
+  - **The harness checks neither calibration nor `tag-test`.** Close both by
+    hand. Only CompassTag carries calibration, but no target's qualification
+    includes a self-test unless one is run.
+  - **Measure the outgoing image before flashing.** One 120 s window separates
+    the firmware's contribution from the board's, and without it IMUTag would
+    have looked like a 16% idle regression that belonged to the board.
+
 - ~~**Find what lowered PresTag's resting floor.**~~ **Closed 2026-10-05: the
   firmware did not lower it.** The September build `890a11b` was rebuilt and
   flashed to PresTag board B, which measured **0.1267 µA** idle against
