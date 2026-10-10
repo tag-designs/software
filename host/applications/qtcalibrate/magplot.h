@@ -7,6 +7,7 @@
 #include <QList>
 #include <QQuaternion>
 #include <QString>
+#include <QVector>
 
 // magPlot draws one sensor's direction cloud during calibration. It is a
 // lightweight custom widget, separate from the QML compass/attitude displays,
@@ -24,8 +25,9 @@ class magPlot : public QWidget
 public:
     /// Which cloud is drawn. Both are collected either way.
     enum class Source {
-        MagneticField,   ///< Calibrated magnetometer vectors.
-        Gravity,         ///< Accelerometer vectors, offset removed.
+        MagneticField,   ///< Calibrated magnetometer cloud.
+        Gravity,         ///< Accelerometer cloud, offset removed.
+        Poses,           ///< The six orientations, as a cube of faces to fill.
     };
 
     explicit magPlot(QWidget *parent = nullptr);
@@ -36,6 +38,20 @@ public:
     /// than naming the cloud itself: what is worth saying -- which sensor,
     /// how far along it is -- is the calibration's business, not the plot's.
     void setCaption(const QString &text);
+
+    /**
+     * @brief Which of the six faces are filled, and which is being held.
+     *
+     * @param done     One flag per face, in PoseCheck's order.
+     * @param holding  The face being held now, or -1.
+     *
+     * @details Only drawn in Source::Poses. A cube says what a direction
+     *          cloud cannot: which orientations are left. Its faces are the
+     *          ones a board actually rests on, so a hollow face is an
+     *          instruction on its own -- turn the tag so that one points
+     *          down -- with no wording to get right for a given enclosure.
+     */
+    void setPoses(const QVector<bool> &done, int holding);
 
 
     void setField(float f);
@@ -85,6 +101,9 @@ private:
     const float axisPointFraction = 1.0f / kReferenceField;
     const float axisFontFraction  = 4.0f / kReferenceField;
     const float strokeFraction    = 0.1f / kReferenceField;
+    /// Half-edge of the pose cube, as a fraction of the sphere radius. Short
+    /// of the sphere so the cube sits inside the same frame the clouds use.
+    const float cubeFraction      = 0.62f;
 
     float field;          // magnetic field magnitude, the field cloud's radius
     float gravityRadius;  // one g in the caller's units, the gravity cloud's
@@ -93,6 +112,8 @@ private:
     Source source_ = Source::MagneticField;
 
     QString caption_;               // drawn over the cloud
+    QVector<bool> poseDone;         // one per cube face
+    int poseHolding = -1;           // face being held, or -1
     QList<QVector3D> points;        // magnetometer cloud
     QList<QVector3D> gravityPoints; // accelerometer cloud
     QQuaternion focusQ;      // rotation to focal point
@@ -113,6 +134,7 @@ private:
     float activeRadius() const;
 
     void drawAxis(QPainter *e, QVector3D pt, QColor color, QString& text);
+    void drawPoseCube(QPainter *p, float radius);
 
     // if resize is true, points with -z are resized
     void drawPoint(QPainter *p, QVector3D pt, QColor color, float size);

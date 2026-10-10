@@ -7,9 +7,12 @@
  */
 
 #include "magplot.h"
+#include <algorithm>
+
 #include <QFont>
 #include <QPainter>
 #include <QPen>
+#include <QPolygonF>
 #include <random>
 //#include <QtMinMax>
 
@@ -34,6 +37,8 @@ void magPlot::reset(){
     points.clear();
     gravityPoints.clear();
     caption_.clear();
+    poseDone.clear();
+    poseHolding = -1;
     source_ = Source::MagneticField;
     field = 60.0;          // default field
     gravityRadius = 1000.0;  // one g in calibration stream units
@@ -78,12 +83,89 @@ void magPlot::setSource(Source source)
 
 const QList<QVector3D> &magPlot::activePoints() const
 {
-    return (source_ == Source::Gravity) ? gravityPoints : points;
+    return (source_ == Source::MagneticField) ? points : gravityPoints;
 }
 
 float magPlot::activeRadius() const
 {
-    return (source_ == Source::Gravity) ? gravityRadius : field;
+    return (source_ == Source::MagneticField) ? field : gravityRadius;
+}
+
+void magPlot::setPoses(const QVector<bool> &done, int holding)
+{
+    if (poseDone != done || poseHolding != holding) {
+        poseDone = done;
+        poseHolding = holding;
+        update();
+    }
+}
+
+/**
+ * @brief Draw the six faces, filled where the pose is done.
+ *
+ * @details Faces are sorted by depth and painted back to front, so the near
+ *          ones cover the far ones and the solid shows as a solid. The view
+ *          rotation already follows the newest gravity reading, so the face
+ *          the tag is resting on is the one turned towards the operator, and
+ *          a hollow face they can see is one to turn towards.
+ *
+ *          Face order matches PoseCheck: x down, x up, y down, y up, z down,
+ *          z up. A face's outward normal is the direction the accelerometer
+ *          reads when that face is down, which is what makes the two agree
+ *          without either knowing about the other.
+ */
+void magPlot::drawPoseCube(QPainter *p, float radius)
+{
+    const float h = cubeFraction * radius;
+
+    // Outward normals, in PoseCheck's order, each with two in-plane edges.
+    struct Face { QVector3D normal, u, v; };
+    static const Face faces[6] = {
+        {{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+        {{ 1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+        {{ 0,-1, 0}, {1, 0, 0}, {0, 0, 1}},
+        {{ 0, 1, 0}, {1, 0, 0}, {0, 0, 1}},
+        {{ 0, 0,-1}, {1, 0, 0}, {0, 1, 0}},
+        {{ 0, 0, 1}, {1, 0, 0}, {0, 1, 0}},
+    };
+
+    struct Drawn { float depth; int index; QPolygonF shape; };
+    QVector<Drawn> drawn;
+    drawn.reserve(6);
+
+    for (int i = 0; i < 6; i++) {
+        const Face &f = faces[i];
+        QPolygonF shape;
+        float depth = 0.0f;
+        for (int corner = 0; corner < 4; corner++) {
+            const float su = (corner == 0 || corner == 3) ? -1.0f : 1.0f;
+            const float sv = (corner < 2) ? -1.0f : 1.0f;
+            QVector3D pt = focusQ.rotatedVector(
+                (f.normal + f.u * su + f.v * sv) * h);
+            pt.setY(-pt.y());
+            depth += pt.z();
+            shape << QPointF(pt.x(), -pt.y());
+        }
+        drawn.append({depth / 4.0f, i, shape});
+    }
+
+    // Painter's algorithm: z grows away from the viewer here, so the most
+    // positive depth is furthest and goes down first.
+    std::sort(drawn.begin(), drawn.end(),
+              [](const Drawn &a, const Drawn &b) { return a.depth > b.depth; });
+
+    for (const Drawn &face : drawn) {
+        const bool done = face.index < poseDone.size() && poseDone.at(face.index);
+        const bool holding = (face.index == poseHolding);
+        QColor fill = done ? QColor(70, 150, 90, 200) : QColor(235, 235, 235, 70);
+        if (holding && !done) {
+            fill = QColor(220, 150, 40, 170);
+        }
+        p->setBrush(QBrush(fill));
+        p->setPen(QPen(done ? QColor(40, 100, 60) : QColor(150, 150, 150),
+                       strokeFraction * radius * (holding ? 4.0f : 2.0f)));
+        p->drawPolygon(face.shape);
+    }
 }
 
 void magPlot::setCaption(const QString &text)
@@ -175,6 +257,22 @@ void magPlot::paintEvent(QPaintEvent *event)
     const float radius = activeRadius();
     float scale = zoom*height()/(radius*2.5);
     painter.scale(scale,scale);
+
+    if (source_ == Source::Poses) {
+        painter.save();
+        drawPoseCube(&painter, radius);
+        painter.restore();
+
+        painter.save();
+        painter.resetTransform();
+        painter.setPen(QPen(Qt::darkGray));
+        painter.drawText(rect().adjusted(8, 6, -8, 0),
+                         Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap,
+                         caption_);
+        painter.restore();
+        QWidget::paintEvent(event);
+        return;
+    }
 
     // Apply rotation to saved points
 
@@ -292,8 +390,8 @@ void magPlot::paintEvent(QPaintEvent *event)
     label.setPointSizeF(label.pointSizeF() * 1.1);
     painter.setFont(label);
     painter.setPen(QPen(Qt::darkGray));
-    painter.drawText(rect().adjusted(8, 6, -8, 0), Qt::AlignTop | Qt::AlignLeft,
-                     caption_);
+    painter.drawText(rect().adjusted(8, 6, -8, 0),
+                     Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap, caption_);
     painter.restore();
 
     QWidget::paintEvent(event);  // call parent

@@ -515,17 +515,15 @@ void MainWindow::updateCalibrationPhase()
   const AccelCalibration::Result &fit = magnetic.accelOffset();
 
   if (calibrationPhase != CalibrationPhase::Magnetometer) {
-    // Coverage is what decides the switch, so coverage is what the caption
-    // says. A count that climbs tells the operator the tumbling is working;
-    // one that stops tells them which way they have not turned it, and the
-    // cloud beside it shows where the hole is.
-    // patches is zero only between a clear and the first quality tick, when
-    // there is nothing to report yet.
+    // What decides the switch is what the operator is shown: six faces, and
+    // the instruction that fills them. The cube carries which ones are left,
+    // so the words do not have to name a face -- which is just as well,
+    // since what counts as "on its side" depends on the enclosure.
+    const PoseCheck::Result p = poses.result();
+    ui.graphWidget->setPoses(p.done, p.holding);
     ui.graphWidget->setCaption(
-        fit.patches > 0
-            ? tr("gravity   %1 of %2 directions").arg(fit.patchesSeen)
-                  .arg(fit.patches)
-            : tr("gravity"));
+        tr("accelerometer   %1 of %2 faces\nturn to another face and hold "
+           "for 2 seconds").arg(p.completed).arg(p.total));
   } else {
     const MagQuality::Result &m = magnetic.qualityMetrics();
     ui.graphWidget->setCaption(
@@ -537,36 +535,18 @@ void MainWindow::updateCalibrationPhase()
     return;
   }
 
-  if (!fit.valid) {
-    accelSettling.clear();
-    return;
-  }
-
-  accelSettling.append(fit.offset.length());
-  while (accelSettling.size() > kAccelSettleTicks) {
-    accelSettling.removeFirst();
-  }
-  if (fit.patchesSeen < fit.patches
-      || accelSettling.size() < kAccelSettleTicks) {
-    return;
-  }
-
-  float low = accelSettling.first();
-  float high = accelSettling.first();
-  for (float v : accelSettling) {
-    low = std::min(low, v);
-    high = std::max(high, v);
-  }
-  if (high - low > kAccelSettleMg) {
+  // Both: the six faces say the operator has covered the orientations, and
+  // validity says the fit over them is one the geometry supports.
+  if (!poses.result().finished || !fit.valid) {
     return;
   }
 
   calibrationPhase = CalibrationPhase::Magnetometer;
   ui.graphWidget->setGravityRadius(fit.radius);
   ui.graphWidget->setSource(magPlot::Source::MagneticField);
-  log_info("accelerometer calibrated: offset %.2f mg over %d/%d patches, "
-           "settled within %.2f mg; now collecting for the magnetometer",
-           fit.offset.length(), fit.patchesSeen, fit.patches, high - low);
+  log_info("accelerometer calibrated from six orientations: offset %.2f mg, "
+           "radius %.1f, residual %.2f; now collecting for the magnetometer",
+           fit.offset.length(), fit.radius, fit.residual);
 }
 
 void MainWindow::beginAutomatedReplay()
@@ -697,6 +677,14 @@ void MainWindow::processCalibrationSample(const QVector3D &mag, bool hasAccel,
       if (std::fabs(gravity.length() - CompassData::kOneG)
           <= kGravityPlotGate * CompassData::kOneG) {
         ui.graphWidget->addGravityPoint(gravity);
+      }
+      // Uncorrected: a pose is about how the tag is being held, and the
+      // offset is seven percent, far too small to move a reading out of a
+      // twenty degree cone.
+      if (poses.add(accel, CompassData::kOneG)
+          && calibrationPhase == CalibrationPhase::Accelerometer) {
+        const PoseCheck::Result p = poses.result();
+        log_info("orientation %d of %d captured", p.completed, p.total);
       }
     }
   }
@@ -852,7 +840,7 @@ void MainWindow::resetReplayCollection()
   ui.graphWidget->reset();
   magnetic.clear();
   calibrationPhase = CalibrationPhase::Accelerometer;
-  accelSettling.clear();
+  poses.reset();
   resetCalibrationDisplay();
   clearSampleCapture();
 }
@@ -1186,10 +1174,10 @@ void MainWindow::on_startButton_clicked(){
     // offset is what the inclination cross-check will be measured against
     // for the whole of the magnetometer phase.
     calibrationPhase = CalibrationPhase::Accelerometer;
-    accelSettling.clear();
-    ui.graphWidget->setSource(magPlot::Source::Gravity);
-    log_info("collecting for the accelerometer: turn the tag so gravity "
-             "points every way in its own frame");
+    poses.reset();
+    ui.graphWidget->setSource(magPlot::Source::Poses);
+    log_info("calibrating the accelerometer: turn the tag to each of its six "
+             "faces in turn and hold each for two seconds");
   //qInfo() << "connect clicked";
     ui.graphWidget->setFocusQuaternion(QQuaternion(1.0,0.0,0.0,0.0));
     //QScatterDataArray data;

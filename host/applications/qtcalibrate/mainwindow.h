@@ -12,6 +12,7 @@
 #include "ui_mainwindow.h"
 
 #include "attitude_display.h"
+#include "posecheck.h"
 #include "compass_display.h"
 #include "tag.pb.h"
 #include "compassdata.h"
@@ -374,16 +375,10 @@ private:
   };
   CalibrationPhase calibrationPhase = CalibrationPhase::Accelerometer;
 
-  /// Recent accelerometer offset magnitudes, one per quality tick, used to
-  /// decide that the fit has stopped moving. Not a member of
-  /// AccelCalibration because the tick is defined here.
-  QVector<float> accelSettling;
-
-  /// Ticks of history the settling test looks at, and the movement it will
-  /// accept across them. Two milli-g is about a tenth of a degree of tilt;
-  /// on the reference capture the fit holds inside 1.33 once it is covered.
-  static constexpr int kAccelSettleTicks = 25;
-  static constexpr float kAccelSettleMg = 2.0f;
+  /// The six orientations the accelerometer phase asks for. Guidance, not an
+  /// estimator: AccelCalibration still fits a sphere over everything the
+  /// operator did. What this decides is when to stop asking.
+  PoseCheck poses;
 
   void updateCalibrationPhase();
 
