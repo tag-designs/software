@@ -91,6 +91,20 @@ public:
 
     void qualityUpdate();
     void clear();
+
+    /**
+     * @brief Throw away the magnetometer collection, keeping the
+     *        accelerometer calibration.
+     *
+     * @details For the moment the accelerometer phase ends. That phase asks
+     *          the operator to hold the tag still in six orientations, which
+     *          is six dense clusters of magnetometer readings and nothing
+     *          like a sweep -- not a head start for the solver but a mess for
+     *          its retention policy to dig out of. The accelerometer offset
+     *          those readings produced is kept, since it is the whole point
+     *          of having collected them.
+     */
+    void restartMagnetometer();
  
     //void getRegionData(QScatterDataArray& data, float magnitude);
 
@@ -107,6 +121,7 @@ private:
     void apply_calibration(QVector3D &mag);
     //void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
     void raw_data_reset();
+    void magnetometer_reset();
     int choose_discard_magcal(void);
     void add_magcal_data(const QVector3D &mag, bool hasAccel,
                          const QVector3D &accel);

@@ -75,10 +75,10 @@ void needsTheTagHeldStill()
     check(poses.result().completed == 0, "nothing completes while it moves");
 
     for (int i = 0; i < 25; i++) {
-        poses.add(held(PoseCheck::ZDown, 5.0f, rng), kOneG);
+        poses.add(held(PoseCheck::MinusZ, 5.0f, rng), kOneG);
     }
     check(poses.result().completed == 1, "holding one of them completes it");
-    check(poses.result().done.at(PoseCheck::ZDown), "and it is the right one");
+    check(poses.result().done.at(PoseCheck::MinusZ), "and it is the right one");
 }
 
 void rejectsMotionAndSloppyPoses()
@@ -88,17 +88,17 @@ void rejectsMotionAndSloppyPoses()
     PoseCheck poses;
 
     for (int i = 0; i < 40; i++) {
-        poses.add(PoseCheck::direction(PoseCheck::ZDown) * (kOneG * 1.4f), kOneG);
+        poses.add(PoseCheck::direction(PoseCheck::MinusZ) * (kOneG * 1.4f), kOneG);
     }
     check(poses.result().completed == 0, "a reading at 1.4 g never counts");
 
     for (int i = 0; i < 40; i++) {
-        poses.add(held(PoseCheck::ZDown, 45.0f, rng), kOneG);
+        poses.add(held(PoseCheck::MinusZ, 45.0f, rng), kOneG);
     }
     check(poses.result().completed == 0, "nor one 45 degrees off the axis");
 
     for (int i = 0; i < 25; i++) {
-        poses.add(held(PoseCheck::ZDown, 18.0f, rng), kOneG);
+        poses.add(held(PoseCheck::MinusZ, 18.0f, rng), kOneG);
     }
     check(poses.result().completed == 1,
           "18 degrees off is inside the 20 degree tolerance and counts");
@@ -110,10 +110,10 @@ void reportsWhatIsBeingHeld()
     std::mt19937 rng(4);
     PoseCheck poses;
     for (int i = 0; i < 5; i++) {
-        poses.add(held(PoseCheck::YUp, 5.0f, rng), kOneG);
+        poses.add(held(PoseCheck::PlusY, 5.0f, rng), kOneG);
     }
     PoseCheck::Result r = poses.result();
-    check(r.holding == PoseCheck::YUp, "the pose being held is named");
+    check(r.holding == PoseCheck::PlusY, "the pose being held is named");
     check(r.heldSamples == 5, "with how long it has been held");
     check(!r.finished && r.completed == 0, "and it is not done yet");
 

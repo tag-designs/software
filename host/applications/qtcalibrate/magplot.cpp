@@ -91,6 +91,12 @@ float magPlot::activeRadius() const
     return (source_ == Source::MagneticField) ? field : gravityRadius;
 }
 
+void magPlot::clearFieldPoints()
+{
+    points.clear();
+    update();
+}
+
 void magPlot::setPoses(const QVector<bool> &done, int holding)
 {
     if (poseDone != done || poseHolding != holding) {
@@ -118,15 +124,20 @@ void magPlot::drawPoseCube(QPainter *p, float radius)
 {
     const float h = cubeFraction * radius;
 
-    // Outward normals, in PoseCheck's order, each with two in-plane edges.
+    // Outward normals in PoseCheck's order -- +x, -x, +y, -y, +z, -z -- each
+    // with two in-plane edges. The view turns the accelerometer reading
+    // towards the viewer, and that reading is the normal of the face pointing
+    // up, so the face filling is the one facing out. Had the poses been named
+    // for the face that is down, the face that filled would have been the one
+    // hidden at the back.
     struct Face { QVector3D normal, u, v; };
     static const Face faces[6] = {
-        {{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
         {{ 1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
-        {{ 0,-1, 0}, {1, 0, 0}, {0, 0, 1}},
+        {{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
         {{ 0, 1, 0}, {1, 0, 0}, {0, 0, 1}},
-        {{ 0, 0,-1}, {1, 0, 0}, {0, 1, 0}},
+        {{ 0,-1, 0}, {1, 0, 0}, {0, 0, 1}},
         {{ 0, 0, 1}, {1, 0, 0}, {0, 1, 0}},
+        {{ 0, 0,-1}, {1, 0, 0}, {0, 1, 0}},
     };
 
     struct Drawn { float depth; int index; QPolygonF shape; };

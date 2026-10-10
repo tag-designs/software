@@ -30,13 +30,19 @@ class PoseCheck
 public:
     /// Indices into the pose list. The order is the order faces are reported
     /// in, and a caller drawing a cube can rely on it.
+    ///
+    /// Named for the axis the accelerometer reads, which is the face pointing
+    /// **up**: an accelerometer at rest measures specific force, so a tag
+    /// lying with its +z face up reads +z. Naming them for the face that is
+    /// down instead is the obvious mistake and reads backwards on a cube,
+    /// because the face being rested on is the one you cannot see.
     enum Pose {
-        XDown = 0,
-        XUp,
-        YDown,
-        YUp,
-        ZDown,
-        ZUp,
+        PlusX = 0,   ///< +x face up; the accelerometer reads +x.
+        MinusX,      ///< -x face up.
+        PlusY,
+        MinusY,
+        PlusZ,
+        MinusZ,
         PoseCount,
     };
 

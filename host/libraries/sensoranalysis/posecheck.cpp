@@ -36,13 +36,13 @@ void PoseCheck::reset()
 QVector3D PoseCheck::direction(int pose)
 {
     switch (pose) {
-    case XDown: return QVector3D(-1.0f, 0.0f, 0.0f);
-    case XUp:   return QVector3D(1.0f, 0.0f, 0.0f);
-    case YDown: return QVector3D(0.0f, -1.0f, 0.0f);
-    case YUp:   return QVector3D(0.0f, 1.0f, 0.0f);
-    case ZDown: return QVector3D(0.0f, 0.0f, -1.0f);
-    case ZUp:   return QVector3D(0.0f, 0.0f, 1.0f);
-    default:    return QVector3D();
+    case PlusX:  return QVector3D(1.0f, 0.0f, 0.0f);
+    case MinusX: return QVector3D(-1.0f, 0.0f, 0.0f);
+    case PlusY:  return QVector3D(0.0f, 1.0f, 0.0f);
+    case MinusY: return QVector3D(0.0f, -1.0f, 0.0f);
+    case PlusZ:  return QVector3D(0.0f, 0.0f, 1.0f);
+    case MinusZ: return QVector3D(0.0f, 0.0f, -1.0f);
+    default:     return QVector3D();
     }
 }
 
@@ -61,10 +61,10 @@ bool PoseCheck::add(const QVector3D &accel, float oneG)
         return false;
     }
 
-    // An accelerometer at rest reads the specific force, which points
-    // opposite to gravity: lay the tag with its z face down and it reads +z.
-    // The pose is named for the face that is down, so the reading to match is
-    // the outward normal of that face.
+    // An accelerometer at rest reads specific force, which points opposite
+    // to gravity: lay the tag with its +z face up and it reads +z. So the
+    // reading is the outward normal of the face that is up, and matching it
+    // against the pose directions needs no sign flip.
     const QVector3D unit = accel / magnitude;
     const float limit = std::cos(config_.toleranceDegrees
                                  * 3.14159265358979323846f / 180.0f);

@@ -158,6 +158,16 @@ void CompassData::clear()
     quality_reset();
 }
 
+void CompassData::restartMagnetometer()
+{
+    magnetometer_reset();
+    quality_reset();
+    quality.reset();
+    // accelCal is untouched, so it keeps accumulating from here and the
+    // offset only improves as the magnetometer sweep turns the tag through
+    // more orientations than the six it was asked for.
+}
+
 void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror)
 { 
     gaps = quality_surface_gap_error();
@@ -212,6 +222,20 @@ void CompassData::qualityUpdate(){
 
 void CompassData::raw_data_reset(void)
 {
+	magnetometer_reset();
+	accelCal.reset();
+	gravity = AccelCalibration::Result();
+}
+
+/**
+ * @brief Empty the magnetometer buffer and the solver's state.
+ *
+ * @details Split out from raw_data_reset() because the two sensors can need
+ *          clearing separately now: the end of the accelerometer phase wants
+ *          this and not the accelerometer's own accumulators.
+ */
+void CompassData::magnetometer_reset(void)
+{
 	//rawcount = OVERSAMPLE_RATIO;
 	//fusion_init();
 	memset((void*) &magcal, 0, sizeof(magcal));
@@ -222,8 +246,6 @@ void CompassData::raw_data_reset(void)
 	}
 	addCounter = 0;
 	discardRng.seed(kDiscardSeed);
-	accelCal.reset();
-	gravity = AccelCalibration::Result();
 	evictions = 0;
 	leverageEvictions = 0;
 	outlierEvictions = 0;

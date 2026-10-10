@@ -65,6 +65,11 @@ public:
     void setPoints(QList<QVector3D>);
     void addPoint(QVector3D);
     void addGravityPoint(QVector3D);
+
+    /// Drop the magnetometer cloud, keeping everything else. The readings
+    /// taken while the operator held six static poses are not a sweep, and
+    /// showing them would claim coverage the solver no longer has.
+    void clearFieldPoints();
     void reset();
 
 signals:

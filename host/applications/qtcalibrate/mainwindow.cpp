@@ -543,9 +543,16 @@ void MainWindow::updateCalibrationPhase()
 
   calibrationPhase = CalibrationPhase::Magnetometer;
   ui.graphWidget->setGravityRadius(fit.radius);
+
+  // Start the magnetometer from nothing. Six orientations held still are six
+  // dense clusters and nothing like a sweep -- not a head start for the
+  // solver but a mess for its retention policy to dig out of. The
+  // accelerometer keeps what it learned and goes on accumulating.
+  magnetic.restartMagnetometer();
+  ui.graphWidget->clearFieldPoints();
   ui.graphWidget->setSource(magPlot::Source::MagneticField);
   log_info("accelerometer calibrated from six orientations: offset %.2f mg, "
-           "radius %.1f, residual %.2f; now collecting for the magnetometer",
+           "radius %.1f, residual %.2f; magnetometer collection restarted",
            fit.offset.length(), fit.radius, fit.residual);
 }
 
