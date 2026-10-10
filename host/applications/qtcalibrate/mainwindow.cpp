@@ -50,6 +50,12 @@ QTextEdit *s_textEdit = nullptr;
 /// A real tag measures about 77 mg; several times that is not a zero-g offset.
 static const float kImplausibleAccelOffsetMg = 250.0f;
 
+/// The residual row before there is anything to put in it. Column widths match
+/// updateMagQualityDisplay(), so the dashes sit where the numbers will.
+static const QString kResidualPlaceholder =
+    QStringLiteral("%1  %2  %3  %4")
+        .arg("--", 7).arg("--", 7).arg("--", 9).arg("--", 9);
+
 namespace
 {
 
@@ -762,9 +768,7 @@ void MainWindow::resetCalibrationDisplay()
   ui.v1Label->setText("--");
   ui.v2Label->setText("--");
   ui.accelOffsetLabel->setText("--");
-  ui.qualityLabel->setText(QString("%1  %2  %3  %4")
-                               .arg("--", 6).arg("--", 8)
-                               .arg("--", 6).arg("--", 9));
+  ui.qualityLabel->setText(kResidualPlaceholder);
   ui.magqualityLabel->setText(QString("%1  %2  %3  %4")
                                   .arg("--", 8).arg("--", 8)
                                   .arg("--", 8).arg("--", 12));
@@ -796,6 +800,24 @@ void MainWindow::updateMagQualityDisplay()
       .arg(m.isotropy, 8, 'f', 2)
       .arg(m.attitudeDiversity, 8, 'f', 2)
       .arg(dip, 12));
+
+  // The residual row. Three percentages of the field and one figure in field
+  // units: spread and p95 are the same residual read two ways, and they part
+  // company when a few samples are bad, which is the reason both are here.
+  // Hard iron is what the fit did not remove, and wants reading beside the
+  // coverage figure above it -- three occupied patches determine the three
+  // components and little else.
+  //
+  // Widths put each value under its own heading in qualityheaderLabel.
+  if (m.samples > 0) {
+    ui.qualityLabel->setText(QString("%1  %2  %3  %4")
+        .arg(m.residualSpread, 7, 'f', 2)
+        .arg(m.residualP95, 7, 'f', 2)
+        .arg(m.residualHardIron, 9, 'f', 2)
+        .arg(m.fitError, 9, 'f', 2));
+  } else {
+    ui.qualityLabel->setText(kResidualPlaceholder);
+  }
 }
 
 bool MainWindow::saveCurrentScreenshot(const QString &path)
@@ -990,9 +1012,10 @@ void MainWindow::TriggerQualityUpdate()
 {
   magnetic.qualityUpdate();
 
-  // The owned metrics are computed alongside the inherited four and logged
-  // rather than displayed, so the two can be compared over real collections
-  // before either replaces anything.
+  // Logged as well as displayed: the two label rows carry eight numbers, and
+  // this carries the rest -- the patch and cell counts behind the ratios, the
+  // p95 beside the dip spread, and how many samples passed the gate -- which
+  // is what a capture has to be read back with.
   //
   // DEBUG rather than TRACE: this line appears once per quality timer tick,
   // while TRACE carries a pitch/roll/yaw line for every streamed sample, which
@@ -1010,6 +1033,11 @@ void MainWindow::TriggerQualityUpdate()
     log_debug("magquality: coverage %d/%d isotropy %.3f (no accelerometer)",
               m.patchesSeen, m.magPatches, m.isotropy);
   }
+
+  log_debug("residual: field %.2f uT fit %.2f%% spread %.2f%% p95 %.2f%% "
+            "hard iron %.2f uT (%d samples)",
+            m.field, m.fitError, m.residualSpread, m.residualP95,
+            m.residualHardIron, m.samples);
 
   // The accelerometer now calibrates from its own population, so this line
   // reports that population as well as the fit: holdings, patch coverage and
