@@ -62,6 +62,20 @@ The CompassTag variants now use the common core state machine. Family-specific
 behavior stays in the tag hooks such as `Running()`, `tagDevicesDeinit()`,
 sensor orchestration, and storage/configuration bindings.
 
+## Calibration Storage
+
+Host-written calibration constants live in a flash log in `sensors.c`, in the
+top flash page (`0x0803f800`, page 127). `family.mk` reserves that page with
+`--defsym=TAG_CALIBRATION_PAGES=1`, and `STM32L432xC.ld` pins `.calibration`
+there, so the table no longer moves with code size
+([decision 0027](../../../../docs/decisions/0027-firmware-l432-calibration-pinned-to-top-page.md)).
+
+`.persistent` does still move with code size, so a plain program is not a safe
+upgrade. Upgrade a calibrated tag with `flash_release.py --keep-calibration`,
+which erases every page below the table and keeps calibration, then reconfigure
+it. An upgrade that changes the calibration record format needs `--erase` and a
+recalibration instead.
+
 ## Design Documents
 
 - [Power Test Plan](design/power-test-plan.md): the power check every

@@ -11,6 +11,14 @@ TAG_FAMILY_INC_DIRS += $(COMPASSTAG_FAMILY_DIR)/inc
 TAG_FAMILY_SRC_DIRS += $(COMPASSTAG_FAMILY_DIR)/src
 TAG_FAMILY_CFG_DIRS += $(COMPASSTAG_FAMILY_DIR)/cfg
 
+# Reserve the top flash page for calibration constants. STM32L432xC.ld pins the
+# table there so an upgrade that erases every other page keeps it.
+ifeq ($(USE_LDOPT),)
+  USE_LDOPT = --defsym=TAG_CALIBRATION_PAGES=1
+else
+  USE_LDOPT := $(USE_LDOPT),--defsym=TAG_CALIBRATION_PAGES=1
+endif
+
 UDEFS += \
        -DTAG_SENSOR_ACCEL_LIS2DU12=1 \
        -DSENSOR_CALIBRATION=1 \

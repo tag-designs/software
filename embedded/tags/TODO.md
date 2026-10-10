@@ -74,32 +74,6 @@ Background:
   against an unverified config write can report a pass for a tag running a
   configuration nobody chose, which is worse than a failure because it looks
   fine.
-- ~~**Move CompassTag's calibration to the end of flash**~~ -- **rejected
-  2026-10-05, after it was built and measured.** Pinning `.calibration` and
-  `.persistent` to fixed addresses in `STM32L432xC.ld` protects provisioned
-  data across a firmware update that does not erase. It was implemented and
-  all four L432 targets linked, and it costs internal log capacity:
-
-  | target | floating | pinned | change |
-  | --- | ---: | ---: | ---: |
-  | BitTag | 222 KB | 188 KB | **-15.3%** |
-  | PresTag | 218 KB | 188 KB | -13.8% |
-  | CompassTagAT25 | 210 KB | 188 KB | -10.5% |
-  | UIUCTag | 210 KB | 188 KB | -10.5% |
-
-  Two reasons not to pay it. **The upgrade path is a full erase**, which
-  removes the hazard the pinning defends against, so the benefit is close to
-  theoretical -- field tags are programmed once and are not upgraded in place.
-  And **the cost falls on all four targets to protect one**: today an empty
-  `.calibration` collapses, so `cal_start == cal_end == nand_map ==
-  persist_start` on BitTag, PresTag and UIUCTag and only CompassTag reserves a
-  page. Pinning charges the other three a page each for a region they never
-  use. BitTag has no external flash, so its 15.3% is the whole deployment
-  budget.
-
-  Standing policy instead: **upgrade a provisioned board with
-  `flash_release.py --erase` and reprovision it.** Recalibration is the price
-  and it is smaller than the capacity.
 - **Explain the 11% gap** between PresTag's fitted `I_rest` (0.1122 µA) and its
   measured `IDLE` (0.1261 µA). September had the two within 1.1%.
 - **Test `flash_release.py`'s PEMPTY clearing on hardware.** The conditional

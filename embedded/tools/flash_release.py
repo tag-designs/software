@@ -57,6 +57,76 @@ L4_DEVICE_IDS = {0x435}
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
+def elf_symbols(image: Path, wanted: tuple[str, ...]) -> dict[str, int]:
+    """Read linker-defined symbols from a 32-bit little-endian ELF image.
+
+    @details Parsed directly rather than through `arm-none-eabi-nm`, because
+             this tool runs on a bench machine with no toolchain.
+
+    @param image  Firmware ELF.
+    @param wanted Symbol names to return.
+    @return Name to value for each wanted symbol present; others are absent.
+    @throws SystemExit if the file is not a 32-bit little-endian ELF.
+    """
+    import struct
+
+    data = image.read_bytes()
+    if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 1:
+        raise SystemExit(f"error: {image} is not a 32-bit little-endian ELF")
+    shoff, = struct.unpack_from("<I", data, 0x20)
+    shentsize, shnum = struct.unpack_from("<HH", data, 0x2E)
+    sections = [struct.unpack_from("<IIIIIIIIII", data, shoff + i * shentsize)
+                for i in range(shnum)]
+    out: dict[str, int] = {}
+    for _, sh_type, _, _, offset, size, link, _, _, entsize in sections:
+        if sh_type != 2:  # SHT_SYMTAB
+            continue
+        strtab = sections[link][4]
+        for pos in range(offset, offset + size, entsize):
+            name_off, value = struct.unpack_from("<II", data, pos)
+            end = data.index(b"\0", strtab + name_off)
+            name = data[strtab + name_off:end].decode("ascii", "replace")
+            if name in wanted:
+                out[name] = value
+    return out
+
+
+def calibration_keep_erase(image: Path) -> list[str]:
+    """Build the erase arguments that clear every flash page below calibration.
+
+    @details STM32L432xC.ld pins a family's calibration table to the top flash
+             pages, while the persistent region below it still starts wherever
+             the code ends. An upgrade must therefore erase that region but can
+             keep calibration, and erasing pages 0 through the one below
+             `__calibration_start__` does exactly that.
+
+             Restricted to 2 KB-page (STM32L432) images. The U375 layout pins
+             the persistent region as well, so a plain program already keeps
+             calibration and stored configuration there and needs no erase.
+
+    @param image Firmware ELF being programmed; the page is read from it, so it
+                 must be the new image, whose layout governs from now on.
+    @return STM32_Programmer_CLI arguments, e.g. `["-e", "[0", "126]"]`.
+    @throws SystemExit if the image reserves no calibration pages or is not an
+            L432 image.
+    """
+    symbols = elf_symbols(image, ("__calibration_start__",
+                                  "__calibration_end__",
+                                  "__tag_flash_page_size__"))
+    start = symbols.get("__calibration_start__")
+    page_size = symbols.get("__tag_flash_page_size__")
+    if start is None or page_size is None:
+        raise SystemExit(f"error: {image.name} has no pinned calibration "
+                         "region; use --erase")
+    if page_size != 2048:
+        raise SystemExit(f"error: {image.name} is not an STM32L432 image; "
+                         "a plain program already keeps its calibration")
+    if symbols.get("__calibration_end__", start) == start:
+        raise SystemExit(f"error: {image.name} stores no calibration; use --erase")
+    first_kept = (start - int(LOAD_ADDRESS, 16)) // page_size
+    return ["-e", "[0", f"{first_kept - 1}]"]
+
+
 def _programmer_call(programmer: str, selector: str,
                      args: list[str]) -> tuple[int, str]:
     """Run STM32_Programmer_CLI through the probe selector and capture output.
@@ -369,6 +439,16 @@ def main(argv: list[str]) -> int:
         "regions: the tag must be reprovisioned afterwards.",
     )
     parser.add_argument(
+        "--keep-calibration",
+        action="store_true",
+        help="Erase every flash page below the calibration table, in the same "
+        "programmer invocation, and keep the table. The normal upgrade for a "
+        "calibrated STM32L432 tag (CompassTag): its persistent region moves "
+        "with code size and must be erased, while calibration is pinned to the "
+        "top page. Stored configuration and logs are destroyed; calibration "
+        "survives only if the new image uses the same calibration format.",
+    )
+    parser.add_argument(
         "--no-pempty-fix",
         action="store_true",
         help="Do not clear FLASH_SR.PEMPTY after programming. The check reads "
@@ -395,6 +475,8 @@ def main(argv: list[str]) -> int:
         "writes there too.",
     )
     args = parser.parse_args(argv)
+    if args.erase and args.keep_calibration:
+        parser.error("--erase and --keep-calibration are exclusive")
 
     image, manifest = resolve_release(args.release)
     try:
@@ -427,6 +509,8 @@ def main(argv: list[str]) -> int:
     # FLASH_SR.PEMPTY and sends the part to the ROM bootloader; one invocation
     # never exposes that window. The PEMPTY check below stays as a net.
     erase = ["-e", "all"] if args.erase else []
+    if args.keep_calibration:
+        erase = calibration_keep_erase(image)
     command = [
         sys.executable,
         str(SELECT_SCRIPT),
@@ -445,6 +529,10 @@ def main(argv: list[str]) -> int:
         print("\nMass erase requested: NOLOAD regions are destroyed with the\n"
               "image, so a provisioned tag needs reprovisioning afterwards --\n"
               "calibration, and anything else held outside the loaded image.")
+    if args.keep_calibration:
+        print(f"\nErasing flash pages {erase[1][1:]}-{erase[2][:-1]} and keeping "
+              "the calibration page:\nstored configuration and logs are "
+              "destroyed, so reconfigure the tag afterwards.")
     print(f"\nProgramming with {programmer}")
     status = subprocess.call(command)
 

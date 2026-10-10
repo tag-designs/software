@@ -227,14 +227,22 @@ not written, so **they survive a firmware update**. That is usually what you
 want: a provisioned tag keeps its calibration across an upgrade.
 
 It stops being what you want when an upgrade changes where those regions are or
-what is in them. The STM32L432 script places `.calibration` as
-`(NOLOAD): ALIGN(2048)` straight after the code, so it moves whenever the image
-grows; the STM32U375 script pins both bounds and asserts that code cannot reach
-them. On a part of the first kind, a major upgrade can leave a region's bytes
-at an address the new firmware does not read, or read a region written in a
-format it no longer understands. Neither is reported. **For a major upgrade on
-such a target, mass erase and reprovision**, rather than trusting the old
-contents.
+what is in them. The STM32U375 script pins every region and asserts that code
+cannot reach them. The STM32L432 script pins only `.calibration`, to the top
+flash page of a family that stores it (CompassTag; see
+[decision 0027](../decisions/0027-firmware-l432-calibration-pinned-to-top-page.md));
+`.persistent` and the stored configuration inside it still begin at the first
+page after the code, so they move whenever the image crosses a page boundary.
+A region left at an address the new firmware does not read, or read in a format
+it no longer understands, is not reported. So:
+
+- **STM32U375 tags:** a plain program keeps everything.
+- **Calibrated STM32L432 tags (CompassTag):** `flash_release.py
+  --keep-calibration` erases every page below the calibration table and
+  programs, in one invocation. Calibration survives; the stored configuration
+  and logs do not, so reconfigure the tag.
+- **Other STM32L432 tags, or any upgrade that changes the calibration
+  format:** mass erase and reprovision.
 
 **Erase and program in one invocation.** `flash_release.py --erase` passes
 `-e all` and `-d <image>` to the same programmer call, which is what avoids the
@@ -250,7 +258,9 @@ be power-cycled before it will run the image just written.
 the NOLOAD regions along with the image, so a calibrated tag needs
 recalibrating. For the handful of boards in this project that is cheaper than
 carrying a migration path, and it is the agreed approach for the release that
-relocates CompassTag's calibration.
+relocates CompassTag's calibration and adds the accelerometer constants to the
+calibration record. Later CompassTag upgrades that keep the format use
+`--keep-calibration` instead.
 
 Two traps around it:
 

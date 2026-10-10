@@ -70,6 +70,7 @@ design document.
 - [0024. Release: the macOS package is built on CI and signed locally](decisions/0024-release-macos-package-built-on-ci-signed-locally.md) *(decision)* — The shipped macOS DMG is the one CI builds, attested by the workflow and re-signed with the Developer ID identity on a developer's Mac by the sign-latest target; the signing key still never reaches CI.
 - [0025. Release: the macOS package is notarized locally](decisions/0025-release-macos-package-notarized-locally.md) *(decision)* — The released macOS DMG is notarized and stapled on the developer's Mac by sign-latest, after re-signing, with notarytool credentials held in that Mac's keychain; nothing new reaches CI.
 - [0026. Host: Qt 6.10.3 everywhere and a macOS 13 floor](decisions/0026-host-qt-6-10-3-and-macos-13-floor.md) *(decision)* — Host builds use Qt 6.10.3 on both platforms and the macOS deployment target rises to 13.0, because Qt 6.10's macOS frameworks are built for macOS 13; CI's Qt pin follows the presets rather than lagging them.
+- [0027. Firmware: L432 calibration pinned to the top flash page](decisions/0027-firmware-l432-calibration-pinned-to-top-page.md) *(decision)* — On STM32L432 tags that store calibration (CompassTag), the calibration table is pinned to the top flash page while .persistent keeps floating, so an upgrade that erases every other page keeps calibration at no log-capacity cost.
 
 ### Investigations
 

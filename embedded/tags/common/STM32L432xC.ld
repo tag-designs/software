@@ -90,16 +90,30 @@ INCLUDE ../common/tag_rules_code.ld
 INCLUDE rules_data.ld
 INCLUDE rules_memory.ld
 
-/* Storage for logging */
+/* Storage for logging and calibration.
+
+   Calibration constants occupy the top TAG_CALIBRATION_PAGES flash pages, at a
+   FIXED address, so that an upgrade which erases every page except those keeps
+   a tag's calibration. It previously followed the code at the next page
+   boundary, which moved it whenever the image crossed one: a calibrated board
+   then read an unwritten page, or leftover code bytes, as its constants.
+
+   Only a family that stores calibration reserves pages; it passes
+   --defsym=TAG_CALIBRATION_PAGES=<n> from its family.mk. Every other L432
+   target keeps the default of zero, so its layout is unchanged and its
+   persistent region still runs to the end of flash.
+
+   .persistent still begins at the first page after the code, so its start
+   moves with code size. An upgrade must therefore erase it; see
+   embedded/tags/families/CompassTag/README.md. */
+PROVIDE(TAG_CALIBRATION_PAGES = 0);
 
 SECTIONS
 {
-  .calibration (NOLOAD): ALIGN(2048)
-  {
-    __calibration_start__ = .;
-    *(.calibration)
-    __calibration_end__ = .;
-  } > flash0
+  __tag_flash_page_size__ = 2048;
+  __tag_calibration_base__ = ORIGIN(flash0) + LENGTH(flash0) -
+                             (TAG_CALIBRATION_PAGES * __tag_flash_page_size__);
+
   .nand_map (NOLOAD): ALIGN(2048)
   {
    __nand_map_start__ = .;
@@ -112,10 +126,30 @@ SECTIONS
    __persistent_start__	= .;
    *(.persistent)
    . = ALIGN(2048);
-   . = ORIGIN(flash0) + LENGTH(flash0);
-   __persistent_end__ = .;
   }  > flash0
+  /* Internal headers grow upward at runtime, bounded only by this address, so
+     the region extends to the calibration pages, not merely over the declared
+     objects. */
+  __persistent_end__ = __tag_calibration_base__;
+  .calibration __tag_calibration_base__ (NOLOAD):
+  {
+    __calibration_start__ = .;
+    KEEP(*(.calibration))
+    __calibration_end__ = .;
+  } > flash0
 }
+
+/* Calibration storage needs reserved pages: a family that places a
+   .calibration table must set TAG_CALIBRATION_PAGES, and the table must fit. */
+ASSERT(SIZEOF(.calibration) <= TAG_CALIBRATION_PAGES * __tag_flash_page_size__,
+       "STM32L432 .calibration does not fit its reserved pages: set --defsym=TAG_CALIBRATION_PAGES in the family.mk");
+
+/* The image, and the persistent objects placed after it, must stay below the
+   calibration pages. Without this the build would fail only once .persistent's
+   location counter had to move backwards, with a less helpful message. */
+ASSERT(LOADADDR(.data) + SIZEOF(.data) <= __persistent_start__ &&
+       ADDR(.persistent) + SIZEOF(.persistent) <= __tag_calibration_base__,
+       "STM32L432 code or persistent data reaches the calibration pages");
 
 /* End of the loaded image: the later of flash-resident sections and the .data
    initialisers stored after them. A host hashes up to here. */
