@@ -194,6 +194,61 @@ void checkOutlier()
     const MagRetention::Choice byLeverage = MagRetention(quiet).choose(samples);
     check(byLeverage.index != planted,
           "with the outlier rule off, leverage alone does not remove it");
+
+    // The point of using a studentized residual rather than Cook's distance.
+    // Cook's is residual times leverage, so a sample that is merely unusual
+    // in direction -- high leverage, honest magnitude -- scored as an outlier
+    // precisely because it was informative. Here it must survive: being the
+    // only reading in a direction is not evidence that it is wrong.
+    QVector<QVector3D> lonely = sphere(300, rng);
+    const QVector3D isolated(0.0f, 0.0f, -1.0f);
+    for (int i = 0; i < lonely.size(); i++) {
+        // Clear the neighbourhood so the added sample stands alone and its
+        // leverage is near one.
+        if (QVector3D::dotProduct(lonely.at(i).normalized(), isolated) > 0.5f) {
+            lonely.removeAt(i--);
+        }
+    }
+    lonely.append(isolated * kField);
+    const int lonelyIndex = lonely.size() - 1;
+    const QVector<float> h = MagRetention().leverages(lonely);
+    const MagRetention::Choice onLonely = MagRetention().choose(lonely);
+    std::printf("      isolated sample: leverage %.4f, evicted %d as %s\n",
+                h.isEmpty() ? -1.0f : h.at(lonelyIndex), onLonely.index,
+                onLonely.reason == MagRetention::Reason::Outlier ? "outlier"
+                                                                 : "leverage");
+    check(onLonely.index != lonelyIndex,
+          "a lone high-leverage sample at an honest radius is not an outlier");
+
+    // And the threshold means sigmas: a residual just under it survives, one
+    // just over it does not.
+    for (float sigmas : { 3.0f, 6.0f }) {
+        QVector<QVector3D> probe = sphere(300, rng);
+        QVector<float> radii;
+        for (const QVector3D &v : probe) {
+            radii.append(v.length());
+        }
+        float mean = 0.0f;
+        for (float r : radii) {
+            mean += r;
+        }
+        mean /= radii.size();
+        float sq = 0.0f;
+        for (float r : radii) {
+            sq += (r - mean) * (r - mean);
+        }
+        const float scale = std::sqrt(sq / radii.size());
+        const QVector3D where = probe.at(40).normalized();
+        probe.append(where * (mean + sigmas * scale));
+        const MagRetention::Choice c = MagRetention().choose(probe);
+        const bool flagged = (c.index == probe.size() - 1)
+                             && (c.reason == MagRetention::Reason::Outlier);
+        std::printf("      %.0f sigma residual: %s\n", sigmas,
+                    flagged ? "evicted as an outlier" : "kept");
+        check(flagged == (sigmas > 4.0f),
+              sigmas > 4.0f ? "a 6 sigma residual is evicted"
+                            : "a 3 sigma residual is not");
+    }
 }
 
 void checkGuards()

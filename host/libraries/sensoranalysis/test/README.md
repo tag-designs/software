@@ -112,5 +112,15 @@ gives offline.
 | acceleration gate | Samples outside the gate are excluded from the dip statistics and cannot drag the inclination, while still counting toward coverage. That split is the point of the gate. |
 | attitude diversity | Sweeping gravity within one magnetometer patch raises diversity above one; holding one attitude gives exactly one. Without an accelerometer, the accelerometer metrics report nothing rather than guessing. |
 
+## `magretention_check`
+
+| Group | What it pins down |
+| --- | --- |
+| leverage | The sample contributing least to the fit is the one chosen, and the hat-matrix trace identity holds: the leverages sum to the parameter count. |
+| outliers | A planted bad magnitude is evicted as an outlier rather than as uninformative, and with the rule off leverage alone never removes it -- it is a high-leverage sample, not a redundant one. |
+| not outliers | A lone sample in an otherwise empty direction, at an honest radius, survives. Being the only reading in a direction is not evidence that it is wrong, and under Cook's distance it was accused precisely because it was informative. |
+| threshold units | A 3 sigma residual is kept and a 6 sigma one is evicted, so the configured threshold means what it says. |
+| guards | Probation protects a newly added sample, and no eviction ever empties an occupied patch. |
+
 The dip and attitude cases are the ones worth keeping honest: they are the
 metrics the solver does not optimise, which is what makes them worth having.

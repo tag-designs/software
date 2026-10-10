@@ -144,8 +144,18 @@ Three things to note.
 **No sample was ever evicted as an outlier.** Both runs report 0 of several
 thousand evictions attributed to Cook's distance. At n = 650 with p = 10 the
 mean leverage is 0.015, so the textbook `D > 1` needs a residual of about 25
-sigma. The threshold is not wrong so much as inapplicable at this sample
-count; a 5 sigma rule is `D > 0.04`.
+sigma: unreachable rather than strict.
+
+Recalibrating that number would have left the real fault in place. Cook's
+distance measures influence, which is residual multiplied by leverage -- and
+leverage is already deciding what to evict as uninformative. Using it twice
+points it in opposite directions: high leverage means keep under the eviction
+rule and means suspicious under Cook's, so the samples the policy is trying
+hardest to preserve are the ones it accuses. The question worth asking is
+narrower, and says nothing about how useful a sample is: is this reading
+wrong? That is the studentized residual `t = r / (s sqrt(1 - h))`, thresholded
+from a false-positive budget -- at n = 650, `t > 4` is about 0.04 expected
+false rejections per run. Replaced in `6d0d0b31`.
 
 **The improvement continues long after the buffer fills.** Evenness is 0.68
 (inherited) and 0.67 (leverage) at sample 650, where the buffer fills, and
@@ -511,8 +521,11 @@ reference capture reports 30.7 mg, which is model error rather than noise.
    both of which `capture_replay` can ask about cheaply.
 2. Gate the inclination metric on rotation rate rather than on acceleration
    magnitude, which also tests the third candidate above.
-3. Recalibrate the Cook's distance threshold. `D > 0.04` is the 5 sigma rule
-   at n = 650, p = 10.
+3. Rebuild the attitude metric on the sample stream, normalised by the
+   ceiling the site geometry allows. Experiment 8 showed it falls for a real
+   reason, experiment 5 that the fall is not a fault, and the ratio's range is
+   1 to 3.5 rather than 1 to 16 -- so the number on screen misleads in three
+   separate ways while the calibration underneath is fine.
 4. The numbers in experiments 2, 4, 6 and 8 were measured on runs that ended
    wherever the operator clicked, so read them as indicative rather than
    settled. They are not being repeated: every effect large enough to matter

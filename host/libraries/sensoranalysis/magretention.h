@@ -25,10 +25,23 @@
  * another point" gropes at, since a sample with a near neighbour is redundant,
  * but computed exactly and in O(p^2) with p = 10 rather than O(N^2).
  *
- * The same quantity gives the outlier test. An influential outlier has both
- * high leverage and a large residual, which Cook's distance combines:
+ * The outlier test is a separate question, and deliberately not Cook's
+ * distance. Cook's measures influence -- how far the fit moves if the sample
+ * is dropped -- which is residual multiplied by leverage, and leverage is
+ * already doing a job here. Using it twice points it in opposite directions:
+ * high leverage means keep under the rule above, and means suspicious under
+ * Cook's, so the most informative samples are the ones it accuses.
  *
- *     D_i = (r_i^2 / (p s^2)) (h_i / (1 - h_i)^2)
+ * The question worth asking is narrower -- is this reading wrong? -- and that
+ * is the studentized residual,
+ *
+ *     t_i = r_i / (s sqrt(1 - h_i))
+ *
+ * which is in standard deviations and says nothing about how useful the
+ * sample is. Its threshold is also interpretable, where Cook's was not: the
+ * textbook D > 1 needs a 25-sigma residual at n = 650 and p = 10, because the
+ * mean leverage is p/n = 0.015, which is why that rule never once fired on
+ * real captures. It was unreachable rather than strict.
  *
  * One framework replaces both branches, works at every sample count instead of
  * only once coverage is good, and needs no coverage figure at all -- so it also
@@ -48,15 +61,21 @@ class MagRetention
 {
 public:
     struct Config {
-        /// Cook's distance above which a sample is treated as an influential
-        /// outlier and evicted ahead of any low-leverage sample. The
-        /// conventional rule of thumb is 1.0.
-        float outlierThreshold = 1.0f;
+        /// Studentized residual, in standard deviations, above which a sample
+        /// is treated as a bad reading and evicted ahead of any low-leverage
+        /// one.
+        ///
+        /// Set from a false-positive budget rather than convention. At n = 650
+        /// a threshold of 4 is about 0.04 expected false rejections per run
+        /// and 3.5 about 0.3, so 4 means the rule essentially never fires by
+        /// chance and fires on a reading that is genuinely inconsistent with
+        /// the sphere.
+        float outlierSigma = 4.0f;
 
         /// Patches used for the coverage floor. Zero disables the floor.
         int patchCount = 100;
 
-        /// Set false to evict purely on leverage, never on Cook's distance.
+        /// Set false to evict purely on leverage, never as an outlier.
         /// Useful for isolating the two behaviours in a comparison.
         bool rejectOutliers = true;
     };
@@ -64,13 +83,13 @@ public:
     enum class Reason {
         None,       ///< No choice could be made; the caller should fall back.
         Leverage,   ///< Evicted as the least informative sample.
-        Outlier,    ///< Evicted as an influential outlier.
+        Outlier,    ///< Evicted as a reading inconsistent with the fit.
     };
 
     struct Choice {
         int    index = -1;
         Reason reason = Reason::None;
-        float  score = 0.0f;   ///< Leverage, or Cook's distance for an outlier.
+        float  score = 0.0f;   ///< Leverage, or sigmas for an outlier.
     };
 
     MagRetention();

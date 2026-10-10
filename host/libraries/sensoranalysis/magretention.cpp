@@ -259,9 +259,9 @@ MagRetention::Choice MagRetention::choose(const QVector<QVector3D> &samples,
     // Scale from the median absolute deviation, not the mean square. A mean
     // square is set by the largest residual, so a single gross outlier inflates
     // the very quantity it is measured against and hides itself -- on a
-    // synthetic case here that masking dropped its Cook's distance below the
-    // threshold entirely. The MAD is set by the bulk and leaves the outlier
-    // standing out.
+    // synthetic case here that masking dropped its score below the threshold
+    // entirely. The MAD is set by the bulk and leaves the outlier standing
+    // out.
     QVector<float> deviations;
     deviations.reserve(n);
     for (int i = 0; i < n; i++) {
@@ -283,6 +283,7 @@ MagRetention::Choice MagRetention::choose(const QVector<QVector3D> &samples,
     }
 
     if (config_.rejectOutliers && variance > 0.0) {
+        const double scale = std::sqrt(variance);
         int worst = -1;
         double worstScore = 0.0;
         for (int i = 0; i < n; i++) {
@@ -290,21 +291,19 @@ MagRetention::Choice MagRetention::choose(const QVector<QVector3D> &samples,
                 continue;
             }
             // Leverage approaches one for a sample the fit passes exactly
-            // through, where Cook's distance diverges. Clamp rather than skip:
-            // such a sample is maximally influential, which is the opposite of
-            // a reason to exempt it. Skipping it is how a gross outlier --
-            // precisely the case that drives leverage to one -- escaped the
-            // test it exists for.
+            // through, where the studentized denominator vanishes. Clamp
+            // rather than skip: skipping is how a gross outlier -- precisely
+            // the case that drives leverage to one -- escaped the test it
+            // exists for.
             const double hi = std::min(static_cast<double>(h.at(i)), 0.9999);
             const double r = radii.at(i) - centre;
-            const double gap = 1.0 - hi;
-            const double d = (r * r / (kP * variance)) * (hi / (gap * gap));
-            if (d > worstScore) {
-                worstScore = d;
+            const double t = std::fabs(r) / (scale * std::sqrt(1.0 - hi));
+            if (t > worstScore) {
+                worstScore = t;
                 worst = i;
             }
         }
-        if (worst >= 0 && worstScore > config_.outlierThreshold) {
+        if (worst >= 0 && worstScore > config_.outlierSigma) {
             choice.index = worst;
             choice.reason = Reason::Outlier;
             choice.score = static_cast<float>(worstScore);
