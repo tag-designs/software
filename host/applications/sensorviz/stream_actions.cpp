@@ -8,10 +8,11 @@
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHBoxLayout>
-#include <QListWidget>
+#include <QCheckBox>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStringList>
 #include <QVBoxLayout>
@@ -287,13 +288,25 @@ void MainWindow::showVisibleStreamsDialog()
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Visible Streams"));
 
-    QListWidget *stream_list = new QListWidget(&dialog);
+    // Plain checkboxes rather than checkable QListWidget items: the Qt 6.10
+    // macOS style draws an item view's check indicator on the first row only,
+    // so every other stream looked unselectable.
+    QWidget *stream_list = new QWidget;
+    QVBoxLayout *stream_layout = new QVBoxLayout(stream_list);
+    QVector<QCheckBox *> stream_boxes;
+    stream_boxes.reserve(stream_actions_.size());
     for (QAction *action : stream_actions_) {
-        QListWidgetItem *item = new QListWidgetItem(action->text(), stream_list);
-        item->setData(Qt::UserRole, action->data());
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-        item->setCheckState(action->isChecked() ? Qt::Checked : Qt::Unchecked);
+        QCheckBox *box = new QCheckBox(action->text(), stream_list);
+        box->setProperty("streamId", action->data());
+        box->setChecked(action->isChecked());
+        stream_layout->addWidget(box);
+        stream_boxes.append(box);
     }
+    stream_layout->addStretch(1);
+
+    QScrollArea *scroll = new QScrollArea(&dialog);
+    scroll->setWidget(stream_list);
+    scroll->setWidgetResizable(true);
 
     QDialogButtonBox *buttons =
         new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -303,18 +316,18 @@ void MainWindow::showVisibleStreamsDialog()
         buttons->addButton(tr("Clear All"), QDialogButtonBox::ActionRole);
 
     QVBoxLayout *layout = new QVBoxLayout;
-    layout->addWidget(stream_list);
+    layout->addWidget(scroll);
     layout->addWidget(buttons);
     dialog.setLayout(layout);
 
-    connect(select_all_button, &QPushButton::clicked, stream_list, [stream_list]() {
-        for (int row = 0; row < stream_list->count(); row++) {
-            stream_list->item(row)->setCheckState(Qt::Checked);
+    connect(select_all_button, &QPushButton::clicked, &dialog, [stream_boxes]() {
+        for (QCheckBox *box : stream_boxes) {
+            box->setChecked(true);
         }
     });
-    connect(clear_all_button, &QPushButton::clicked, stream_list, [stream_list]() {
-        for (int row = 0; row < stream_list->count(); row++) {
-            stream_list->item(row)->setCheckState(Qt::Unchecked);
+    connect(clear_all_button, &QPushButton::clicked, &dialog, [stream_boxes]() {
+        for (QCheckBox *box : stream_boxes) {
+            box->setChecked(false);
         }
     });
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -325,10 +338,9 @@ void MainWindow::showVisibleStreamsDialog()
     }
 
     QSet<QString> visible_ids;
-    for (int row = 0; row < stream_list->count(); row++) {
-        QListWidgetItem *item = stream_list->item(row);
-        if (item->checkState() == Qt::Checked) {
-            visible_ids.insert(item->data(Qt::UserRole).toString());
+    for (const QCheckBox *box : stream_boxes) {
+        if (box->isChecked()) {
+            visible_ids.insert(box->property("streamId").toString());
         }
     }
     applyStreamVisibility(visible_ids);
