@@ -306,6 +306,24 @@ int main(int argc, char **argv)
     // here are as the tag sent them, so the processor applies the capture's
     // own constants. deriveCalibratedSample() wants them already corrected,
     // which is how qtcalibrate calls it -- it calibrates before plotting.
+    // The magnetometer's own fit metrics, over the capture's own constants.
+    // These are the owned replacements for the four quality.c reports, so the
+    // numbers a capture already stores under "quality" are the comparison.
+    {
+        MagQuality mag;
+        for (const Sample &sample : capture.samples) {
+            mag.add(capture.calibration.apply(sample.mag));
+        }
+        const MagQuality::Result q = mag.result();
+        std::printf("\nmagnetometer fit: field %.2f, fit error %.2f%%, "
+                    "robust spread %.2f%%, p95 %.2f%%\n",
+                    q.field, q.fitError, q.residualSpread, q.residualP95);
+        std::printf("                  residual hard iron %.2f, "
+                    "coverage %d/%d, evenness %.3f\n",
+                    q.residualHardIron, q.patchesSeen, q.magPatches,
+                    q.isotropy);
+    }
+
     // Gated exactly as MagQuality gates it. Inclination means nothing for a
     // reading taken mid-swing, where the accelerometer is measuring motion
     // and not gravity, and ungated the spread comes out more than twice as

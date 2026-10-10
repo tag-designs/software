@@ -165,11 +165,6 @@ int main(int argc, char *argv[])
       "replay-exit",
       "Quit once a replayed capture is exhausted. With --log-file this makes "
       "a replay one command that always covers the whole capture."));
-  parser.addOption(QCommandLineOption(
-      "leverage-retention",
-      "Discard buffered samples by leverage and Cook's distance instead of the "
-      "inherited nearest-pair scan. Off by default; replay one capture both "
-      "ways to compare."));
   parser.process(a);
 
   MainWindowOptions options;
@@ -181,7 +176,6 @@ int main(int argc, char *argv[])
       options.replayPercent = qBound(0, percent, 100);
     }
   }
-  options.leverageRetention = parser.isSet("leverage-retention");
   options.replayExit = parser.isSet("replay-exit");
   options.captureReplayScreenshots = parser.isSet("capture-replay-screenshots");
   options.captureOrientationScreenshot =

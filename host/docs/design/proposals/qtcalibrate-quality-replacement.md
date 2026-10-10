@@ -6,12 +6,22 @@ summary: Replace the inherited magcal/quality.c with owned code: a leverage-base
 
 # Replacing qtcalibrate's Calibration Quality Code
 
-`qtcalibrate` judges a magnetometer calibration with four numbers produced by
-[`host/applications/qtcalibrate/magcal/quality.c`](../../../applications/qtcalibrate/magcal/quality.c),
-and decides which samples to keep with `CompassData::choose_discard_magcal()` in
-[`compassdata.cpp`](../../../applications/qtcalibrate/compassdata.cpp). Both are
-inherited from PJRC's MotionCal. This proposal replaces them with code we own,
-keeping the equal-area coverage idea and discarding the rest.
+Done as of 2026-10-10, bar the heading-accuracy metric of phase 4.
+`magcal/quality.c` is deleted and `CompassData::choose_discard_magcal()` is one
+line calling the leverage rule; what the two did now lives in
+[`magquality.h`](../../../libraries/sensoranalysis/magquality.h) and
+[`magretention.h`](../../../libraries/sensoranalysis/magretention.h), with the
+accelerometer split off into
+[`accelcalibration.h`](../../../libraries/sensoranalysis/accelcalibration.h).
+The measurements behind it are in
+[the investigation](../investigations/2026-10-qtcalibrate-quality-experiments.md).
+
+What follows is the proposal as written. `qtcalibrate` judged a magnetometer
+calibration with four numbers produced by `magcal/quality.c`, and decided which
+samples to keep with `CompassData::choose_discard_magcal()` in
+[`compassdata.cpp`](../../../applications/qtcalibrate/compassdata.cpp). Both
+were inherited from PJRC's MotionCal. This proposal replaces them with code we
+own, keeping the equal-area coverage idea and discarding the rest.
 
 The Freescale solver in
 [`magcal.c`](../../../applications/qtcalibrate/magcal/magcal.c) is out of scope
@@ -304,6 +314,16 @@ centroid of unit-normalised calibrated samples — one vote per occupied patch,
 not per sample, so dense patches do not dominate — and report its norm in µT.
 For a correct calibration it is near zero, and unlike the present metric it
 does not cancel opposing errors.
+
+> **This does not work, and what was built instead uses the magnitude.**
+> Assigning samples to patches by direction pins each patch's mean direction
+> to that patch's centre, so the bias being looked for is averaged away: on a
+> planted 2 µT offset the construction above reads 0.05. An offset `d` puts a
+> sample in direction `u` at `|B + d.u|`, so the magnitude residual *is* `d.u`,
+> and regressing residual on direction across the occupied patches recovers
+> `d` itself — 1.97 on that offset, 0.00 with none, and unchanged by six
+> thousand readings dwelling in one direction, which is the robustness the
+> patch weighting was wanted for.
 
 ### Retention policy
 

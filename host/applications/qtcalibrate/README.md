@@ -121,38 +121,37 @@ heading or attitude is clearer.
 ## Sample Retention
 
 Once the calibration buffer is full every new sample displaces an old one, and
-which one is discarded decides what the solver ever sees. Two policies are
-available.
+which one is discarded decides what the solver ever sees.
 
-The default is the inherited nearest-pair scan in `choose_discard_magcal()`.
-`--leverage-retention` selects
-[`MagRetention`](../../libraries/sensoranalysis/magretention.h) instead, which
-discards the sample of lowest leverage -- the one contributing least to
-determining the fit -- or the worst influential outlier by Cook's distance,
-with a patch floor and a probation window as guards.
+[`MagRetention`](../../libraries/sensoranalysis/magretention.h) discards the
+sample of lowest leverage -- the one contributing least to determining the fit
+-- or, ahead of that, one whose studentized residual says the reading itself is
+wrong, with a patch floor and a probation window as guards. It declines when
+there are too few samples or the design is one the data cannot determine, and
+the caller then takes a slot at random: that is exactly when discarding on
+leverage would be guesswork.
 
-It is off by default because it is the only part of the quality work that
-changes what the solver is fitted to. Replaying one capture both ways is the
-intended comparison:
+This replaced an inherited nearest-pair scan, which was selected by a
+`--leverage-retention` flag while the two were compared and is gone along with
+`magcal/quality.c`, whose gap figure it branched on. The comparison is in
+[the investigation](../../docs/design/investigations/2026-10-qtcalibrate-quality-experiments.md).
+
+A replay is reproducible, which is what let that comparison mean anything:
 
 ```sh
-./qtcalibrate --replay-capture <capture.json> --replay-exit --log-file inherited.txt
-./qtcalibrate --replay-capture <capture.json> --replay-exit --log-file leverage.txt \
-  --leverage-retention
+./qtcalibrate --replay-capture <capture.json> --replay-exit --log-file run.txt
 ```
 
 `--replay-exit` starts the sweep, runs it to the end of the capture and quits,
-and `--log-file` writes the `DEBUG` lines the log window would show. The two
-together make a replay reproducible: the same capture gives the same log every
-time, which is what lets a small difference between the policies be told from
-run-to-run wobble. Without them the run ends wherever **Save Log** is clicked,
-and the comparison moves by more than the policies differ.
+and `--log-file` writes the `DEBUG` lines the log window would show. Without
+them a run ends wherever **Save Log** is clicked, and two runs of one capture
+differ by more than most of the things worth measuring.
 
 `log_set_quiet(true)` means the `DEBUG` lines never reach stdout or stderr, so
 `--log-file` is the only way to capture them without the window.
 
-Both runs log a `retention:` line with the eviction count and how many each
-rule decided, a `gravity:` line with the fitted accelerometer offset, and the
+A run logs a `retention:` line with the eviction count and how many each rule
+decided, a `gravity:` line with the fitted accelerometer offset, and the
 `magquality:` metrics.
 
 ## Calibration Constants

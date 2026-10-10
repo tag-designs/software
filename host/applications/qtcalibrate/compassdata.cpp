@@ -73,16 +73,6 @@ void CompassData::getData(QList<QVector3D> &data)
         }
     }       
 }
-/*
-void CompassData::getRegionData(QScatterDataArray& data, float magnitude){
-    for (int i=0; i < SPHERE_REGIONS; i++){
-        QScatterDataItem item(sphereideal[i].x*magnitude,
-                              sphereideal[i].y*magnitude,
-                              sphereideal[i].z*magnitude);
-        data << item;
-    }
-}
-*/
 
 bool CompassData::getCalibrationConstants(float *B, float *V, float (*A)[3])
 {
@@ -155,25 +145,15 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 	return true;
 }
 
-// The remaining methods manage the inherited magcal sample buffer and quality
-// metrics. The solver itself lives in magcal/.
+// The remaining methods manage the magcal sample buffer. The solver itself
+// lives in magcal/.
 
 void CompassData::clear()
 {
     raw_data_reset();
-    quality_reset();
-}
-
-void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror)
-{ 
-    gaps = quality_surface_gap_error();
-    variance = quality_magnitude_variance_error();
-    wobble = quality_wobble_error();
-    fiterror = quality_spherical_fit_error();
 }
 
 void CompassData::qualityUpdate(){
-    quality_reset();
     quality.reset();
 
     // The accelerometer fit comes from its own population, which has been
@@ -190,9 +170,6 @@ void CompassData::qualityUpdate(){
         if (magcal.valid[i]) {
 			QVector3D point = BpFast(i);
 			apply_calibration(point);
-			Point_t pt = {point.x(),point.y(),point.z()};
-            quality_update(&pt);
-
             if (accelBufferValid[i]) {
                 CompassRawSample raw;
                 // The zero-g offset tilts the apparent gravity by an amount
@@ -293,77 +270,26 @@ int CompassData::chooseDiscardByLeverage()
 	return slotOf.at(choice.index);
 }
 
+/**
+ * @brief Choose a sample to discard when the buffer is full.
+ *
+ * @return An index, or -1 when the policy declines.
+ *
+ * @details One rule now. What stood here was MotionCal's: a rate-limited scan
+ *          for the point furthest from the mean field strength, gated on
+ *          quality.c's gap figure, falling back to an O(N^2) search for the
+ *          two closest points with one of them dropped at random. It is gone
+ *          with the file it depended on.
+ *
+ *          A decline is not a failure to handle here. It means too few
+ *          samples or a design the data cannot determine, which is exactly
+ *          when discarding on leverage would be guesswork; the caller takes a
+ *          slot at random, as it did before when both branches declined.
+ */
 int CompassData::choose_discard_magcal(void)
 {
-	if (retentionPolicy == Retention::Leverage) {
-		const int index = chooseDiscardByLeverage();
-		if (index >= 0) {
-			return index;
-		}
-		// Declined: too few samples, or a design the data cannot determine.
-		// That is exactly when discarding on leverage would be guesswork, so
-		// fall through to the inherited scan rather than inventing an answer.
-	}
-
-	//int32_t rawx, rawy, rawz;
-	//int32_t dx, dy, dz;
-	//float x, y, z;
-	float dist, mindist=FLT_MAX;
-	//uint64_t distsq, minsum=0xFFFFFFFFFFFFFFFFull;
-	static int runcount=0;
-	int i, j, minindex=0;
-	Point_t point;
-	float gaps, field, error, errormax;
-
-	// When enough data is collected (gaps error is low), assume we
-	// have a pretty good coverage and the field stregth is knownn.
-	gaps = quality_surface_gap_error();
-	if (gaps < 25.0f) {
-		// occasionally look for points farthest from average field strength
-		// always rate limit assumption-based data purging, but allow the
-		// rate to increase as the angular coverage improves.
-		if (gaps < 1.0f) gaps = 1.0f;
-		if (++runcount > (int)(gaps * 10.0f)) {
-			j = MAGBUFFSIZE;
-			errormax = 0.0f;
-			for (i=0; i < MAGBUFFSIZE; i++) {
-				QVector3D point = BpFast(i);
-				apply_calibration(point);
-				field = point.length();
-				// if magcal.B is bad, things could go horribly wrong
-				error = fabsf(field - magcal.B);
-				if (error > errormax) {
-					errormax = error;
-					j = i;
-				}
-			}
-			runcount = 0;
-			if (j < MAGBUFFSIZE) {
-				//printf("worst error at %d\n", j);
-				return j;
-			}
-		}
-	} else {
-		runcount = 0;
-	}
-	// When solid info isn't available, find 2 points closest to each other,
-	// and randomly discard one.  When we don't have good coverage, this
-	// approach tends to add points into previously unmeasured areas while
-	// discarding info from areas with highly redundant info.
-	for (i=0; i < MAGBUFFSIZE; i++) {
-		for (j=i+1; j < MAGBUFFSIZE; j++) {
-			QVector3D pt1 = BpFast(i);
-			QVector3D pt2 = BpFast(j);
-			dist = pt1.distanceToPoint(pt2);
-			if (dist < mindist) {
-				mindist = dist;
-				minindex = (discardRng() & 1u) ? i : j;
-			}
-		}
-	}
-	return minindex;
+	return chooseDiscardByLeverage();
 }
-
 
 void CompassData::add_magcal_data(const QVector3D &data, bool hasAccel,
                                   const QVector3D &accel)

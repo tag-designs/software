@@ -26,7 +26,6 @@ set(qtcalibrate_SRCS
     # Inherited C magnetometer calibration solver and support routines.
     magcal/magcal.c
     magcal/matrix.c
-    magcal/quality.c
     magplot.cpp
     main.cpp
     mainwindow.cpp

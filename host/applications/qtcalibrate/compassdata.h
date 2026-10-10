@@ -42,14 +42,13 @@ public:
     void getData(QList<QVector3D> &data);
     bool getCalibrationConstants(float *B, float *V, float (*A)[3]);
     void setCalibrationConstants(float B, float *V, float(*A)[3]);
-    void calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror);
 
     /**
      * @brief Metrics from the owned quality module, as of the last
      *        qualityUpdate().
      *
-     * @details Computed alongside calibrationQuality()'s inherited numbers
-     *          while the two are compared; neither drives the other.
+     * @details The only quality numbers now: the inherited ones they were
+     *          compared against are gone with quality.c.
      */
     const MagQuality::Result &qualityMetrics() const { return metrics; }
 
@@ -62,16 +61,7 @@ public:
      */
     const AccelCalibration::Result &accelOffset() const { return gravity; }
 
-    /// Which policy decides what to discard when the buffer is full.
-    enum class Retention {
-        Inherited,  ///< choose_discard_magcal() as it came from MotionCal.
-        Leverage,   ///< MagRetention: lowest leverage, or worst Cook's distance.
-    };
-
-    void setRetention(Retention policy) { retentionPolicy = policy; }
-    Retention retention() const { return retentionPolicy; }
-
-    /// Evictions so far, and how many of them the leverage policy decided.
+    /// Evictions so far, and how many of them each rule decided.
     /// Both reset with the buffer.
     int evictionCount() const { return evictions; }
     int leverageEvictionCount() const { return leverageEvictions; }
@@ -80,7 +70,6 @@ public:
     void qualityUpdate();
     void clear();
  
-    //void getRegionData(QScatterDataArray& data, float magnitude);
 
     bool eCompass(QVector3D mag, QVector3D accel, QQuaternion &q, 
                   float& dip, float& field);
@@ -127,10 +116,9 @@ private:
     AccelCalibration accelCal;
     AccelCalibration::Result gravity;
 
-    /// Leverage-based discard. Off by default: this is the one change in the
-    /// quality work that alters what the solver sees, so it is opt-in until it
-    /// has been compared against the inherited policy on real collections.
-    Retention retentionPolicy = Retention::Inherited;
+    /// Leverage and the studentized residual decide what to drop. This was
+    /// opt-in while it was compared against the inherited nearest-pair scan;
+    /// that scan is gone, so there is nothing to opt into.
     MagRetention leverageRetention;
 
     /// A slot is on probation for a short while after being filled, so a

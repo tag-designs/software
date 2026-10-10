@@ -1,11 +1,17 @@
-MotionCal quality.c and magcal.h
-================================
+MotionCal magcal.h
+==================
 
 License:    none found
 Copyright:  Paul Stoffregen (PJRC), presumed
 Used in:    qtcalibrate
 Source:     https://github.com/PaulStoffregen/MotionCal
 
-Note: the MotionCal repository carries no license file, so these two files
-are distributed without a written license grant from their author. They are
-compiled only into qtcalibrate; no other host program contains them.
+Note: the MotionCal repository carries no license file, so this file is
+distributed without a written license grant from its author. It is compiled
+only into qtcalibrate; no other host program contains it.
+
+quality.c was removed on 2026-10-10. Its four metrics are replaced by owned
+arithmetic in host/libraries/sensoranalysis/magquality.h, and the sample
+discard rule that depended on them by magretention.h. What remains of the gap
+is this header, which declares the Freescale solver in magcal.c and matrix.c
+-- those two are BSD-3-Clause and carry their own notice.

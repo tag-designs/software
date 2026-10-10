@@ -99,7 +99,7 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string notr="true">  Gaps  Variance  Wobble  Fit Error</string>
+                          <string notr="true"> Spread      p95  Hard Iron  Fit Error</string>
                          </property>
                         </widget>
                        </item>

@@ -160,11 +160,6 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
                          : options.screenshotPrefix;
   orientationPose = options.orientationPose;
 
-  if (options.leverageRetention) {
-    magnetic.setRetention(CompassData::Retention::Leverage);
-    qInfo() << "Sample retention: leverage and Cook's distance";
-  }
-
   // initialize logging window
 
   logWindowInit();
@@ -979,22 +974,6 @@ void MainWindow::calibration_update(void)
     ui.accelOffsetLabel->setText("--");
   }
 
-  float gaps, variance, wobble, fiterror;
-  magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
-  // Right-aligned in the widths of the Courier header above. The previous
-  // fixed spacing held only while every value stayed under ten percent; a gap
-  // figure runs to 100 and pushed the row out of its own columns.
-  ui.qualityLabel->setText(
-      QString("%1  %2  %3  %4")
-          .arg(QString("%1%").arg(gaps, 0, 'f', 1), 6)
-          .arg(QString("%1%").arg(variance, 0, 'f', 1), 8)
-          .arg(QString("%1%").arg(wobble, 0, 'f', 1), 6)
-          .arg(QString("%1%").arg(fiterror, 0, 'f', 1), 9));
-
-  // The owned metrics sit beneath the inherited four rather than replacing
-  // them, because quality.c is not only feeding that row: choose_discard_magcal()
-  // branches on its gap figure, so it keeps running until the retention policy
-  // is replaced too. Showing both is how the two get compared in the meantime.
   updateMagQualityDisplay();
 
   //ui.graphWidget->setData(data);
@@ -1083,7 +1062,6 @@ void MainWindow::on_startButton_clicked(){
   //qInfo() << "connect clicked";
     ui.graphWidget->setFocusQuaternion(QQuaternion(1.0,0.0,0.0,0.0));
     //QScatterDataArray data;
-    //magnetic.getRegionData(data,50.0);
     //ui.graphWidget->setRegionData(data);
     ui.startButton->setEnabled(false);
     ui.stopButton->setEnabled(true);
@@ -1265,16 +1243,24 @@ bool MainWindow::saveSampleCapture(const QString &path)
       calibration["accelerometer"] = accelObject;
     }
 
-    float gaps;
-    float variance;
-    float wobble;
-    float fiterror;
-    magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
+    // The owned metrics, under their own names. The four
+    // *_error_percent keys the inherited code wrote are not kept: they were
+    // quality.c's definitions, and writing different arithmetic under the
+    // same names would make every stored capture mean two things.
+    const MagQuality::Result &q = magnetic.qualityMetrics();
     QJsonObject quality;
-    quality["surface_gap_error_percent"] = gaps;
-    quality["magnitude_variance_error_percent"] = variance;
-    quality["wobble_error_percent"] = wobble;
-    quality["spherical_fit_error_percent"] = fiterror;
+    quality["field"] = q.field;
+    quality["fit_error_percent"] = q.fitError;
+    quality["residual_spread_percent"] = q.residualSpread;
+    quality["residual_p95_percent"] = q.residualP95;
+    quality["residual_hard_iron"] = q.residualHardIron;
+    quality["patches_seen"] = q.patchesSeen;
+    quality["patches"] = q.magPatches;
+    quality["isotropy"] = q.isotropy;
+    if (q.haveAccelMetrics) {
+      quality["dip_degrees"] = q.dipMeanDeg;
+      quality["dip_spread_degrees"] = q.dipSpreadDeg;
+    }
     calibration["quality"] = quality;
   }
   root["calibration"] = calibration;

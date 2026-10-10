@@ -66,15 +66,7 @@ bool raw_data(const float *data);
 void apply_calibration(float rawx, float rawy, float rawz, Point_t *out);
 bool MagCal_Run(MagCalibration_t *magcal);
 
-void quality_reset(void);
-void quality_update(const Point_t *point);
-float quality_surface_gap_error(void);
-float quality_magnitude_variance_error(void);
-float quality_wobble_error(void);
-float quality_spherical_fit_error(void);
 
-#define SPHERE_REGIONS 100
-extern Point_t sphereideal[SPHERE_REGIONS];
 int sphere_region(float x, float y, float z);
 
 
