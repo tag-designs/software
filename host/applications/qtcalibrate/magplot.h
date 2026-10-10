@@ -43,7 +43,19 @@ private:
     const float axisPointSize = 1.0;
     const float axisFontPixelSize = 4.0;
 
-    float field; // magnetic field
+    /// Field, in uT, that the view is scaled to: the radius a sphere of this
+    /// strength is drawn at fills the frame the way the old fixed sphere did.
+    /// The drawn sphere is at the computed field, not at this, so the two
+    /// differ exactly as the site's field differs from a nominal 50 uT.
+    /// Earth's ranges over about 25 to 65, so the sphere varies by some 2.6x
+    /// across sites; the wheel zooms either way.
+    static constexpr float kViewField = 50.0f;
+
+    /// Shown until the solver returns a field of its own. The same nominal
+    /// value the solver starts its own arithmetic from.
+    static constexpr float kDefaultField = 50.0f;
+
+    float field; // computed magnetic field, uT -- the drawn sphere's radius
     float zoom ; // zoom factor set by wheel
 
 

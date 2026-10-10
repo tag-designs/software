@@ -29,7 +29,7 @@ void magPlot::reset(){
     // QList::empty() is a const query whose result was discarded, so the
     // sample points survived every reset. clear() is the one that empties it.
     points.clear();
-    field = 60.0;   // default field
+    field = kDefaultField;
     zoom = 0.8;
     focusQ = QQuaternion(1.0,0.0,0.0,0.0);
     savedQ = QQuaternion(1.0,0.0,0.0,0.0);
@@ -40,6 +40,11 @@ void magPlot::reset(){
 // change magnetic field
 void magPlot::setField(float f)
 {
+    // Only a fitted field is worth drawing. magcal.B is zero until the solver
+    // first succeeds, and a zero here would collapse the sphere and the axes
+    // onto the origin rather than leave the last good one showing.
+    if (!(f > 0.0f))
+        return;
     field = f;
     update();
 }
@@ -106,9 +111,18 @@ void magPlot::paintEvent(QPaintEvent *event)
 
     painter.translate(width()/2.0,height()/2.0);
 
-    // set initial scaling
+    // Set the scaling. This is fixed rather than derived from the field, so
+    // that the drawn sphere's size on screen is the computed field.
+    //
+    // It used to be zoom*height()/(field*2.5), which cancelled: the sphere is
+    // drawn at radius `field`, so scaling the view by 1/field held its
+    // apparent size constant and the picture came out identical whatever B
+    // was. A sphere the same size everywhere says nothing about which sphere
+    // the points were fitted to. One drawn at B is smaller at a 25 uT site
+    // than a 60 uT one, and a point that does not lie on it is visibly off
+    // it.
 
-    float scale = zoom*height()/(field*2.5);
+    float scale = zoom*height()/(kViewField*2.5);
     painter.scale(scale,scale);
 
     // Apply rotation to saved points
