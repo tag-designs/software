@@ -26,13 +26,16 @@ magPlot::magPlot(QWidget *parent) : QWidget{parent}
 }
 
 void magPlot::reset(){
-    points.empty();
+    // QList::empty() is a const query whose result was discarded, so the
+    // sample points survived every reset. clear() is the one that empties it.
+    points.clear();
     field = 60.0;   // default field
     zoom = 0.8;
     focusQ = QQuaternion(1.0,0.0,0.0,0.0);
     savedQ = QQuaternion(1.0,0.0,0.0,0.0);
     rotationQ = QQuaternion(1.0,0.0,0.0,0.0);
-};
+    update();
+}
 
 // change magnetic field
 void magPlot::setField(float f)
