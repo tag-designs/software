@@ -84,10 +84,11 @@ extern MagCalibration_t magcal;
 bool MagCal_Run(MagCalibration_t *magcal);
 
 /*
- * Matrix helpers from matrix.c. The solver calls all but two of these;
- * fmatrixAeqI and fmatrixAeqRenormRotA are defined there and called by
- * nothing, and are declared only so that matrix.c compiles without a missing
- * prototype.
+ * Matrix helpers from matrix.c. magcal.c calls all of these but fmatrixAeqI,
+ * which matrix.c calls itself -- fmatrixAeqInvA resets a singular matrix to
+ * the identity with it. Freescale's upstream matrix.c has two more,
+ * f3x3matrixAeqB and a 4x4 eigensolver, that this solver never calls and that
+ * are not in the copy here.
  */
 void  f3x3matrixAeqI(float A[][3]);
 void  f3x3matrixAeqScalar(float A[][3], float Scalar);
@@ -99,7 +100,6 @@ void  eigencompute(float A[][10], float eigval[], float eigvec[][10], int8_t n);
 void  fmatrixAeqInvA(float *A[], int8_t iColInd[], int8_t iRowInd[],
                      int8_t iPivot[], int8_t isize);
 void  fmatrixAeqI(float *A[], int16_t rc);
-void  fmatrixAeqRenormRotA(float A[][3]);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -4,6 +4,42 @@ Freescale magnetic calibration (magcal.c, matrix.c), via PJRC MotionCal
 License:    BSD-3-Clause
 Used in:    qtcalibrate
 Source:     https://github.com/PaulStoffregen/MotionCal
+Upstream:   Freescale Sensor Fusion Library, magnetic.c and matrix.c,
+            copyright 2014, 2015; succeeded by the NXP ISSDK sensor fusion
+            library, which carries the same BSD-3-Clause grant with an SPDX
+            tag and reworks the solvers into incremental slices.
+
+What PJRC changed, measured against the unmodified upstream on 2026-10-10:
+
+  matrix.c   Token for token the same, bar renames (eigencompute10 ->
+             eigencompute), fabsf -> fabs in the eigensolver and the pivot
+             search, dropped trailing `return;` statements, and a write-only
+             singular-matrix flag removed from fmatrixAeqInvA's signature --
+             upstream declares and passes it but never reads it. Two guards
+             against multiplying a zero element are gone from the Gauss-Jordan
+             inner loops; those are a speed shortcut upstream, not a result.
+             f3x3matrixAeqB and the 4x4 eigensolver are absent, and this
+             solver calls neither.
+
+  magcal.c   The arithmetic is upstream's, line for line. What differs is
+             where the samples come from: upstream's three solvers each walk a
+             14x28 direction-binned mesh held in a separate MagneticBuffer and
+             scale by a sensor struct's counts-per-uT, while these read a flat
+             650-sample array folded into the calibration struct itself, with
+             counts-per-uT fixed at 1. That is why upstream's magnetic.h does
+             not declare these functions and could not be adopted in place of
+             the header here: its buffer is also its sample retention policy,
+             and qtcalibrate has its own.
+
+  The coupling is shallow, though. Upstream's magnetic.c is these three
+  solvers plus four functions qtcalibrate implements elsewhere: an
+  initialiser, a scheduler deciding which solver runs and how often
+  (MagCal_Run here), an apply step that is invW * (B - V) and lives in
+  CompassCalibration, and the mesh buffer updater. The solvers take the buffer
+  as a parameter and touch it only to iterate, so the per-solver difference is
+  about twenty lines of sample walk each.
+
+This file's notice is the one both copies carry.
 
 Copyright (c) 2014, Freescale Semiconductor, Inc.
 All rights reserved.

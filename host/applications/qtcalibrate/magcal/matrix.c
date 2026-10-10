@@ -29,7 +29,6 @@
 #include "magcal.h"
 
 // compile time constants that are private to this file
-#define CORRUPTMATRIX 0.001F			// column vector modulus limit for rotation matrix
 
 // vector components
 #define X 0
@@ -398,49 +397,4 @@ void fmatrixAeqInvA(float *A[], int8_t iColInd[], int8_t iRowInd[], int8_t iPivo
 			}
 		}
 	}
-}
-
-// function re-orthonormalizes a 3x3 rotation matrix
-void fmatrixAeqRenormRotA(float A[][3])
-{
-	float ftmp;					// scratch variable
-
-	// normalize the X column of the low pass filtered orientation matrix
-	ftmp = sqrtf(A[X][X] * A[X][X] + A[Y][X] * A[Y][X] + A[Z][X] * A[Z][X]);
-	if (ftmp > CORRUPTMATRIX) {
-		// normalize the x column vector
-		ftmp = 1.0F / ftmp;
-		A[X][X] *= ftmp;
-		A[Y][X] *= ftmp;
-		A[Z][X] *= ftmp;
-	} else {
-		// set x column vector to {1, 0, 0}
-		A[X][X] = 1.0F;
-		A[Y][X] = A[Z][X] = 0.0F;
-	}
-
-	// force the y column vector to be orthogonal to x using y = y-(x.y)x
-	ftmp = A[X][X] * A[X][Y] + A[Y][X] * A[Y][Y] + A[Z][X] * A[Z][Y];
-	A[X][Y] -= ftmp * A[X][X];
-	A[Y][Y] -= ftmp * A[Y][X];
-	A[Z][Y] -= ftmp * A[Z][X];
-
-	// normalize the y column vector
-	ftmp = sqrtf(A[X][Y] * A[X][Y] + A[Y][Y] * A[Y][Y] + A[Z][Y] * A[Z][Y]);
-	if (ftmp > CORRUPTMATRIX) {
-		// normalize the y column vector
-		ftmp = 1.0F / ftmp;
-		A[X][Y] *= ftmp;
-		A[Y][Y] *= ftmp;
-		A[Z][Y] *= ftmp;
-	} else {
-		// set y column vector to {0, 1, 0}
-		A[Y][Y] = 1.0F;
-		A[X][Y] = A[Z][Y] = 0.0F;
-	}
-
-	// finally set the z column vector to x vector cross y vector (automatically normalized)
-	A[X][Z] = A[Y][X] * A[Z][Y] - A[Z][X] * A[Y][Y];
-	A[Y][Z] = A[Z][X] * A[X][Y] - A[X][X] * A[Z][Y];
-	A[Z][Z] = A[X][X] * A[Y][Y] - A[Y][X] * A[X][Y];
 }
