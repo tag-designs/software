@@ -348,6 +348,68 @@ differs only in its numerator: 252 cells against 213, a loss of 39. Against
 the 3.56 cells per patch the site geometry allows -- 356 over 100 patches --
 that is 71 percent against 60 percent of achievable.
 
+## Experiment 10: the split, measured
+
+**Result: the offset settles to 1.33 mg of movement where it used to wander
+13.35, and the retention policy can no longer reach it at all.**
+
+`capture_replay` on the 2425-sample fixture, with the accelerometer
+calibrating from its own population:
+
+| | Offset | Settling (second half) | Readings used |
+| --- | --- | --- | --- |
+| Coupled to the magnetometer buffer, inherited policy | 72.37 mg | not measured | 580 |
+| Coupled, leverage policy | 72.86 mg | not measured | 598 |
+| Own population, per-patch ring (first attempt) | 77.54 mg | 13.35 mg | 256 |
+| Own population, accumulated (`2a2ebc18`) | 74.55 mg | **1.33 mg** | 2224 |
+
+The two policies no longer need comparing on this. The accelerometer never
+sees the magnetometer buffer, so the retention policy cannot change its
+offset by construction, and the 3.05 mg the two policies used to disagree by
+is gone rather than reduced.
+
+Inclination on the same capture: 3.612 degrees uncorrected, 2.470 with the
+offset removed.
+
+The trajectory shows two things a final number does not. The fit goes valid
+before sample 200, at 19 of 32 patches, reading 93 mg against the 74.5 it
+settles at -- an error of 19 mg, which is still far better than the 74.5 mg of
+applying nothing, so the preconditions are doing their job rather than being
+too loose. And it is within 3 mg of final by sample 1000 and within 1 mg by
+1200, which is about half the sweep: useful for telling an operator when the
+accelerometer has had enough, separately from the magnetometer.
+
+## Experiment 11: an ellipsoid for the accelerometer
+
+**Result: the anisotropy is real and worth 0.04 degrees. Not worth having.**
+
+Open question 3 asked for this to be re-tested on an unbiased population,
+since the earlier rejection was measured on the magnetometer-pruned set.
+Judged on inclination spread rather than fit residual, because residual
+always improves with more parameters:
+
+| Accelerometer model | Inclination spread | p95 |
+| --- | --- | --- |
+| None | 3.587 deg | 6.81 |
+| 4-parameter sphere (offset) | 2.458 deg | 5.74 |
+| 7-parameter (offset and per-axis scales) | 2.419 deg | 5.70 |
+| 10-parameter full ellipsoid | 2.413 deg | 5.68 |
+
+The anisotropy is genuine: relative axis scales 1.00926, 1.00048, 0.99026, and
+the 7- and 10-parameter fits agree on them to five decimals, which says the
+cross terms carry nothing. But a scale error tilts the measured gravity only
+between the axes it differs across -- maximally at 45 degrees, not at all on
+axis -- so over a sweep most of it averages away and some is absorbed into the
+median. 0.04 degrees of a 2.4 degree spread does not pay for three to six more
+parameters, a matrix square root, and the tighter coverage a 7-parameter fit
+needs to stay conditioned.
+
+**What this rules out matters more than what it measured.** The 2.4 degrees
+that remain are not accelerometer offset and not accelerometer scale. That
+points at the magnetometer side, or at the two sensors not being read
+simultaneously while the tag turns -- which the rotation-rate gate below would
+test.
+
 ## Claims made and withdrawn
 
 Recorded because each cost time and each would otherwise look settled.
@@ -390,25 +452,20 @@ reference capture reports 30.7 mg, which is model error rather than noise.
 
 ## Open questions
 
-1. The numbers in experiments 2, 4, 6 and 8 were measured on runs that ended
+1. Find where the remaining 2.4 degrees of inclination spread lives.
+   Experiment 11 rules out the accelerometer; the candidates left are
+   magnetometer scatter, field gradients in the room, and the two sensors not
+   being sampled at the same instant while the tag turns. `capture_replay` is
+   the cheap way to ask.
+2. Gate the inclination metric on rotation rate rather than on acceleration
+   magnitude, which also tests the third candidate above.
+3. Recalibrate the Cook's distance threshold. `D > 0.04` is the 5 sigma rule
+   at n = 650, p = 10.
+4. The numbers in experiments 2, 4, 6 and 8 were measured on runs that ended
    wherever the operator clicked, so read them as indicative rather than
    settled. They are not being repeated: every effect large enough to matter
-   is far clear of the wobble -- the accelerometer correction at 1.1 degrees
+   is far clear of that wobble -- the accelerometer correction at 1.1 degrees
    against 0.13, direction evenness at 30 to 1, attitude diversity at 9 to 1
    -- and the one claim that was not survived only as experiment 7's
-   retraction. The next measurement that is worth making is the first one
-   after the accelerometer is split off, on the reproducible replay.
-2. Split the accelerometer into its own calibration task with its own buffer,
-   patches, intake gate and retention, rather than borrowing the
-   magnetometer's. The gates reject on different physics: the accelerometer
-   gate rejects motion, a magnetometer outlier rejects field distortion, and
-   each currently discards data the other needed.
-3. Re-test the seven-parameter accelerometer fit (offset plus per-axis
-   sensitivity) on an unbiased buffer. It was rejected at 30 versus 34 percent
-   improvement, but that was measured on the magnetometer-pruned sample set. A
-   1 percent per-axis scale error is up to 0.57 degrees of tilt, which is not
-   negligible against the 2.4 degrees still being carried.
-4. Recalibrate the Cook's distance threshold. `D > 0.04` is the 5 sigma rule at
-   n = 650, p = 10.
-5. Gate the dip metric on rotation rate rather than on acceleration magnitude.
+   retraction.
 
