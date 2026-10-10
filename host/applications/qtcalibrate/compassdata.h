@@ -8,6 +8,7 @@
 
 #include "magcal/magcal.h"
 #include "magquality.h"
+#include "magretention.h"
 
 // CompassData is the adapter between qtcalibrate and the inherited C magcal
 // solver. It owns the live calibration buffer and exposes a Qt-friendly API for
@@ -49,6 +50,21 @@ public:
      */
     const MagQuality::Result &qualityMetrics() const { return metrics; }
 
+    /// Which policy decides what to discard when the buffer is full.
+    enum class Retention {
+        Inherited,  ///< choose_discard_magcal() as it came from MotionCal.
+        Leverage,   ///< MagRetention: lowest leverage, or worst Cook's distance.
+    };
+
+    void setRetention(Retention policy) { retentionPolicy = policy; }
+    Retention retention() const { return retentionPolicy; }
+
+    /// Evictions so far, and how many of them the leverage policy decided.
+    /// Both reset with the buffer.
+    int evictionCount() const { return evictions; }
+    int leverageEvictionCount() const { return leverageEvictions; }
+    int outlierEvictionCount() const { return outlierEvictions; }
+
     void qualityUpdate();
     void clear();
  
@@ -82,6 +98,24 @@ private:
 
     MagQuality quality;
     MagQuality::Result metrics;
+
+    /// Leverage-based discard. Off by default: this is the one change in the
+    /// quality work that alters what the solver sees, so it is opt-in until it
+    /// has been compared against the inherited policy on real collections.
+    Retention retentionPolicy = Retention::Inherited;
+    MagRetention leverageRetention;
+
+    /// A slot is on probation for a short while after being filled, so a
+    /// transient bad calibration cannot immediately purge the evidence that
+    /// would correct it.
+    int addCounter = 0;
+    int slotFilledAt[MAGBUFFSIZE] = {0};
+
+    int evictions = 0;
+    int leverageEvictions = 0;
+    int outlierEvictions = 0;
+
+    int chooseDiscardByLeverage();
 };
 
 #endif

@@ -156,6 +156,11 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
                          : options.screenshotPrefix;
   orientationPose = options.orientationPose;
 
+  if (options.leverageRetention) {
+    magnetic.setRetention(CompassData::Retention::Leverage);
+    qInfo() << "Sample retention: leverage and Cook's distance";
+  }
+
   // initialize logging window
 
   logWindowInit();
@@ -972,6 +977,10 @@ void MainWindow::TriggerQualityUpdate()
     log_debug("magquality: coverage %d/%d isotropy %.3f (no accelerometer)",
               m.patchesSeen, m.magPatches, m.isotropy);
   }
+
+  log_debug("retention: %d evictions (%d by leverage, %d as outliers)",
+            magnetic.evictionCount(), magnetic.leverageEvictionCount(),
+            magnetic.outlierEvictionCount());
 
   // qualityUpdate() above is what refreshes the metrics, so the row is
   // repainted here as well as when a new calibration lands. Coverage climbs

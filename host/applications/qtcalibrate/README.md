@@ -111,6 +111,31 @@ Orientation screenshots use a fixed documentation pose by default. Override it
 with `--orientation-pose heading,pitch,roll,dip,field,gravity` when a different
 heading or attitude is clearer.
 
+## Sample Retention
+
+Once the calibration buffer is full every new sample displaces an old one, and
+which one is discarded decides what the solver ever sees. Two policies are
+available.
+
+The default is the inherited nearest-pair scan in `choose_discard_magcal()`.
+`--leverage-retention` selects
+[`MagRetention`](../../libraries/sensoranalysis/magretention.h) instead, which
+discards the sample of lowest leverage -- the one contributing least to
+determining the fit -- or the worst influential outlier by Cook's distance,
+with a patch floor and a probation window as guards.
+
+It is off by default because it is the only part of the quality work that
+changes what the solver is fitted to. Replaying one capture both ways is the
+intended comparison:
+
+```sh
+qtcalibrate --replay-capture <capture.json>
+qtcalibrate --replay-capture <capture.json> --leverage-retention
+```
+
+Both runs log a `retention:` line at `DEBUG` with the eviction count and how
+many each rule decided, beside the `magquality:` metrics.
+
 ## Calibration Constants
 
 Calibration constants move between three representations:

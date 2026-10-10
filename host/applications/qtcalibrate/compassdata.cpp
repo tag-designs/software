@@ -15,6 +15,12 @@ namespace
 /// invisible to anyone reading a fixture.
 const float kStreamOneG = 1000.0f;
 
+/// Additions for which a freshly stored sample is exempt from eviction. One
+/// solver cycle: MagCal_Run() refits every twentieth sample, so a sample
+/// survives long enough to have influenced a fit before it can be judged by
+/// one.
+const int kProbationAdds = 20;
+
 CompassCalibration calibrationFromMagcal()
 {
 	// Convert the inherited global magcal representation into the shared
@@ -207,7 +213,12 @@ void CompassData::raw_data_reset(void)
 	for (int i = 0; i < MAGBUFFSIZE; i++) {
 		accelBufferValid[i] = false;
 		accelBuffer[i] = QVector3D();
+		slotFilledAt[i] = 0;
 	}
+	addCounter = 0;
+	evictions = 0;
+	leverageEvictions = 0;
+	outlierEvictions = 0;
 	magcal.invW[0][0] = 1.0f;
 	magcal.invW[1][1] = 1.0f;
 	magcal.invW[2][2] = 1.0f;
@@ -216,8 +227,70 @@ void CompassData::raw_data_reset(void)
 	magcal.B = 50.0f;
 }
 
+/**
+ * @brief Choose a sample to discard using leverage and Cook's distance.
+ *
+ * @return An index, or -1 when the policy declines and the caller should fall
+ *         back to the inherited scan.
+ *
+ * @details Samples are handed over calibrated. Leverage is unchanged by that:
+ *          an affine change of coordinates maps the ten quadratic basis terms
+ *          onto linear combinations of themselves, so the design matrix is
+ *          reparametrised and leverage is invariant. The residual is not
+ *          invariant, and needs the calibrated magnitudes to mean anything,
+ *          which is why the outlier rule is only armed once a calibration
+ *          exists -- before that, "wrong magnitude" has no definition and the
+ *          hard iron offset alone would make honest samples look wild.
+ */
+int CompassData::chooseDiscardByLeverage()
+{
+	QVector<QVector3D> samples;
+	QVector<bool> probation;
+	QVector<int> slotOf;
+	samples.reserve(MAGBUFFSIZE);
+	probation.reserve(MAGBUFFSIZE);
+	slotOf.reserve(MAGBUFFSIZE);
+
+	for (int i = 0; i < MAGBUFFSIZE; i++) {
+		if (!magcal.valid[i]) {
+			continue;
+		}
+		QVector3D point = BpFast(i);
+		apply_calibration(point);
+		samples.append(point);
+		probation.append((addCounter - slotFilledAt[i]) < kProbationAdds);
+		slotOf.append(i);
+	}
+
+	MagRetention::Config cfg = leverageRetention.config();
+	cfg.rejectOutliers = (magcal.ValidMagCal != 0);
+	const MagRetention::Choice choice =
+		MagRetention(cfg).choose(samples, probation);
+
+	if (choice.reason == MagRetention::Reason::None
+	    || choice.index < 0 || choice.index >= slotOf.size()) {
+		return -1;
+	}
+	if (choice.reason == MagRetention::Reason::Outlier) {
+		outlierEvictions++;
+	} else {
+		leverageEvictions++;
+	}
+	return slotOf.at(choice.index);
+}
+
 int CompassData::choose_discard_magcal(void)
 {
+	if (retentionPolicy == Retention::Leverage) {
+		const int index = chooseDiscardByLeverage();
+		if (index >= 0) {
+			return index;
+		}
+		// Declined: too few samples, or a design the data cannot determine.
+		// That is exactly when discarding on leverage would be guesswork, so
+		// fall through to the inherited scan rather than inventing an answer.
+	}
+
 	//int32_t rawx, rawy, rawz;
 	//int32_t dx, dy, dz;
 	//float x, y, z;
@@ -302,7 +375,10 @@ void CompassData::add_magcal_data(const QVector3D &data, bool hasAccel,
 		if (i < 0 || i >= MAGBUFFSIZE) {
 			i = std::rand() % MAGBUFFSIZE;
 		}
+		evictions++;
 	}
+	addCounter++;
+	slotFilledAt[i] = addCounter;
 	// add it to the cal buffer
 	magcal.BpFast[0][i] = data[0];
 	magcal.BpFast[1][i] = data[1];

@@ -40,6 +40,17 @@ struct MainWindowOptions {
   QString replayCapturePath;
 
   /**
+   * @brief Use the leverage-based sample retention instead of the inherited
+   *        nearest-pair scan.
+   *
+   * @details Off by default. This is the only part of the quality work that
+   *          changes what the solver is fitted to, so it stays opt-in until
+   *          the two have been compared on real collections. Replaying one
+   *          fixture both ways is the intended comparison.
+   */
+  bool leverageRetention = false;
+
+  /**
    * @brief Optional replay collection milestone to preload before showing UI.
    *
    * @details Values are clamped by main.cpp to 0..100. The default -1 leaves

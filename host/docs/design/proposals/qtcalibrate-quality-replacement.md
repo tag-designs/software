@@ -375,6 +375,35 @@ than against itself.
 | 4 | Heading-accuracy propagation; relabel the UI with named, united, thresholded metrics | Captures at known headings |
 | 5 | Delete `quality.c` and `choose_discard_magcal()`; extend the capture `quality` block | `docs.py check`; replay fixtures regenerate |
 
+### Where phase 3 stands
+
+Built and flag-gated, off by default, as `--leverage-retention`. Replaying the
+reference fixture both ways, over the window in which the policy runs at all:
+
+| from the first eviction to the end | inherited | leverage |
+| --- | --- | --- |
+| isotropy | 0.556 → 0.676 | 0.560 → **0.751** |
+| coverage | 89/100 | 89/100 |
+| dip spread | 4.14 degrees | 4.08 degrees |
+| evictions | 109 | 112, all on leverage, none as outliers |
+
+Same starting point and the same coverage, with a better spread of directions:
+the patch floor means the improvement was not bought by abandoning any. Two
+runs of the inherited policy gave 0.671 and 0.676, so run-to-run variation is
+about 0.005 and the 0.075 gap is some fifteen times it.
+
+Two cautions. The fixture is barely longer than the buffer, so the policy made
+only about 110 decisions in the last 14 percent of the run; a collection long
+enough to hold the buffer full for most of its length would measure this
+properly. And the outlier rule never fired on a capture whose robust magnitude
+spread is 0.82 percent, so it rests on the synthetic checks alone.
+
+One observation worth recording because it is easy to misread: the isotropy
+sag partway through a collection, from about 0.72 down to 0.50 and back, is
+**not** the discard policy. The first eviction on this fixture happens 86
+percent of the way through, long after the sag, and both policies show it
+identically. It is the geometry of a partial sweep.
+
 Phases 1–3 each leave the tree working with the old behaviour intact, so the
 switchover is a single reviewable commit at phase 5.
 
@@ -396,7 +425,18 @@ for distribution it should be confirmed with counsel.
 ## Open questions
 
 1. What heading accuracy counts as good enough for a deployed songbird tag?
-   The thresholds, and any future stop-when-good, depend on that number.
+   Provisionally: **under 2 degrees is good enough, and under 1 degree is at
+   the limit of what most eCompasses achieve** -- so 1 degree is the floor
+   worth designing against rather than a target to chase. This is judgement,
+   not measurement; it needs experiment before it hardens into a pass/fail
+   threshold in the UI. Until then the metrics are reported without a verdict,
+   which is the honest presentation of a number whose acceptable range nobody
+   has established yet.
+
+   The dip spread gives a rough bound in the meantime. On the current fixture
+   it is 4.11 degrees, which is an upper bound on heading error rather than an
+   estimate of it, since dip carries calibration error, accelerometer error and
+   sample timing together.
 2. Is `MAGBUFFSIZE = 650` still the right buffer size once retention is
    principled? A smaller, better-chosen set may fit as well.
 3. How many patches? 100 is inherited. With a Fibonacci lattice, N becomes a

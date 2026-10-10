@@ -141,6 +141,11 @@ int main(int argc, char *argv[])
       "Filename prefix for replay milestone screenshots.",
       "prefix",
       "qtcalibrate-collection"));
+  parser.addOption(QCommandLineOption(
+      "leverage-retention",
+      "Discard buffered samples by leverage and Cook's distance instead of the "
+      "inherited nearest-pair scan. Off by default; replay one capture both "
+      "ways to compare."));
   parser.process(a);
 
   MainWindowOptions options;
@@ -152,6 +157,7 @@ int main(int argc, char *argv[])
       options.replayPercent = qBound(0, percent, 100);
     }
   }
+  options.leverageRetention = parser.isSet("leverage-retention");
   options.captureReplayScreenshots = parser.isSet("capture-replay-screenshots");
   options.captureOrientationScreenshot =
       parser.isSet("capture-orientation-screenshot");
