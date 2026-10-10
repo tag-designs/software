@@ -766,7 +766,7 @@ void MainWindow::resetCalibrationDisplay()
   ui.v0Label->setText("--");
   ui.v1Label->setText("--");
   ui.v2Label->setText("--");
-  ui.accelOffsetLabel->setText("accel --");
+  ui.accelOffsetLabel->setText("--");
   ui.qualityLabel->setText(QString("%1  %2  %3  %4")
                                .arg("--", 6).arg("--", 8)
                                .arg("--", 6).arg("--", 9));
@@ -969,14 +969,14 @@ void MainWindow::calibration_update(void)
   if (accelFit.valid) {
     const float magnitude = accelFit.offset.length();
     ui.accelOffsetLabel->setText(
-        QString("accel %1 %2 %3 = %4 mg%5")
+        QString("%1 %2 %3 = %4 mg%5")
             .arg(accelFit.offset.x(), 0, 'f', 1)
             .arg(accelFit.offset.y(), 0, 'f', 1)
             .arg(accelFit.offset.z(), 0, 'f', 1)
             .arg(magnitude, 0, 'f', 1)
             .arg(magnitude > kImplausibleAccelOffsetMg ? "  CHECK" : ""));
   } else {
-    ui.accelOffsetLabel->setText("accel --");
+    ui.accelOffsetLabel->setText("--");
   }
 
   float gaps, variance, wobble, fiterror;
