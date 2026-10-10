@@ -14,13 +14,30 @@ They are plain `main()` programs with `assert()` and a failure count, not a
 registered test framework, because this repository has no test harness to
 register with. Build them explicitly:
 
+They are off by default. Turn them on in the build tree you already have --
+this only sets a cache variable, so it does not reconfigure from scratch --
+and build the one you want:
+
 ```sh
-cmake -DBUILD_SENSORANALYSIS_CHECKS=ON <build-dir>
-cmake --build <build-dir> --target magquality_check
+BUILD=~/Build/tag-designs/software-vcpkg-release      # the macos-vcpkg preset
+cmake -B $BUILD -DBUILD_SENSORANALYSIS_CHECKS=ON
+cmake --build $BUILD --target magquality_check
 ```
 
-The binary lands in the build tree's `bin` and takes no arguments. It exits
-non-zero when a check fails.
+Every binary lands in `$BUILD/Release/bin` (`Debug` for the debug preset, and
+whatever configuration a multi-configuration generator built on Windows). A
+check takes no arguments and exits non-zero when it fails:
+
+```sh
+$BUILD/Release/bin/magquality_check
+```
+
+To build all of them at once, name each target, or build everything:
+
+```sh
+cmake --build $BUILD --target accelcalibration_check gravityfit_check \
+                              magquality_check magretention_check capture_replay
+```
 
 ## `capture_replay`
 
@@ -29,10 +46,18 @@ the library and prints what the calibration code makes of it, sample by
 sample.
 
 ```sh
-./capture_replay host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json
-./capture_replay CAPTURE.json --csv > trace.csv       # one row per tick
-./capture_replay CAPTURE.json --patches 64 --every 500
+REPLAY=$BUILD/Release/bin/capture_replay
+FIXTURE=host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json
+
+$REPLAY $FIXTURE
+$REPLAY $FIXTURE --csv > trace.csv          # one row per tick, for plotting
+$REPLAY $FIXTURE --patches 64 --every 500
 ```
+
+A fixture path relative to the repository root resolves wherever the tool is
+run from: the source root is compiled in at configure time, the same way
+`qtcalibrate` resolves `--replay-capture`. An absolute path works too. Output
+redirection is ordinary shell, so `trace.csv` lands in the current directory.
 
 It reports the accelerometer offset as it develops, how far it moves over the
 second half of the sweep, patch coverage and evenness, and the robust

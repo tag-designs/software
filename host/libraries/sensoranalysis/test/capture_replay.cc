@@ -28,7 +28,9 @@
 #include "magquality.h"
 
 #include <QByteArray>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -59,8 +61,28 @@ struct Capture {
     bool haveCalibration = false;
 };
 
-bool readCapture(const QString &path, Capture &out)
+/// A fixture path is usually written relative to the repository root while the
+/// binary runs from the build tree, so fall back to the source root compiled
+/// in at configure time. qtcalibrate resolves its --replay-capture the same
+/// way, for the same reason.
+QString resolveCapturePath(const QString &path)
 {
+    if (QFileInfo::exists(path)) {
+        return path;
+    }
+#ifdef TAG_DESIGNS_SOURCE_DIR
+    const QString fromSource =
+        QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path);
+    if (QFileInfo::exists(fromSource)) {
+        return fromSource;
+    }
+#endif
+    return path;
+}
+
+bool readCapture(const QString &requested, Capture &out)
+{
+    const QString path = resolveCapturePath(requested);
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         std::fprintf(stderr, "cannot open %s\n", qPrintable(path));

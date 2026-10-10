@@ -41,6 +41,11 @@ if(BUILD_SENSORANALYSIS_CHECKS)
   # behind the same option because it is developer-only.
   add_executable(capture_replay test/capture_replay.cc)
   target_link_libraries(capture_replay PRIVATE sensoranalysis)
+  # Fixtures live in the source tree and the binary runs from the build tree,
+  # so compile the source root in and let a repository-relative path resolve
+  # against it. Same treatment, and the same reason, as qtcalibrate.
+  target_compile_definitions(
+    capture_replay PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   set_target_properties(capture_replay PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 endif()
