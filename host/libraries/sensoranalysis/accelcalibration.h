@@ -4,7 +4,6 @@
 #include <QVector>
 #include <QVector3D>
 
-#include "gravityfit.h"
 
 /*
  * Accelerometer calibration as a task of its own.
@@ -35,14 +34,33 @@
  * pairing is the caller's to keep; it is not a calibration input and does not
  * belong in either task's buffer.
  *
- * The buffer here is small and needs no eviction policy. Four parameters
- * determine a sphere, there are no cross terms to resolve, and what the fit
- * wants is direction spread rather than density -- so each patch of the
- * direction sphere gets a fixed, equal number of slots and keeps its most
- * recent arrivals. Coverage is then uniform by construction, the cost is O(1)
- * per sample with no search, and a patch the operator lingers in cannot crowd
- * out one they passed through quickly. Keeping the newest also lets a long
- * sweep track thermal drift rather than averaging it in.
+ * There is no buffer and nothing is ever discarded. A sphere fit is linear
+ * least squares, so its normal equations are sums over the samples -- which
+ * is why GravityFit needs no buffer either. The only thing the direction
+ * patches were ever for is to stop a direction the operator dwelt on from
+ * outweighing one they passed through quickly, and that is a question of
+ * weight, not of which samples to keep.
+ *
+ * So each patch accumulates its own normal equations and its own count, and
+ * the fit divides each patch's contribution by its count before summing them.
+ * Every sample contributes, every occupied direction counts once however long
+ * the operator lingered there, the estimate converges as the counts grow
+ * instead of jittering as a window slides, and the whole state is a few
+ * hundred bytes a patch with no eviction rule to get wrong.
+ *
+ * The rule this replaced kept the most recent samples per patch. That made
+ * the fit a sliding window that never settled: on the reference capture the
+ * offset wandered 13 mg peak to peak over the second half of a sweep, which
+ * is 0.76 degrees of tilt. Keeping the oldest instead would have frozen it
+ * once the patches filled, which is no better -- it throws away everything
+ * the operator does after that, and sweeping longer should go on helping.
+ *
+ * Averaging each patch's samples into one point would not do either: a patch
+ * spans about twenty degrees, so the mean of readings across it falls inside
+ * the sphere rather than on it, which biases the radius by a percent or so.
+ * Accumulating the normal equations has no such bias, because it is still
+ * exact least squares over every individual sample -- only the weights
+ * change.
  */
 class AccelCalibration
 {
@@ -51,23 +69,29 @@ public:
         /// Patches of the gravity-direction sphere.
         int patches = 32;
 
-        /// Slots per patch. The buffer is patches * perPatch samples; at the
-        /// defaults, 256. The offset's standard error goes as sigma/sqrt(n),
-        /// and with the 31 mg residual measured on the reference captures
-        /// that is under 2 mg at this size -- about a tenth of a degree of
-        /// tilt, well inside what the sphere model itself costs. More samples
-        /// would not help: beyond the noise the residual is model error, and
-        /// that does not average down.
-        int perPatch = 8;
-
         /// Magnitude, as a fraction of one g, within which a reading is taken
         /// to be gravity rather than motion. Deliberately wide: the offset
         /// being estimated is itself several percent of one g, so a tight
         /// gate at intake would reject orientations rather than movement.
         float gate = 0.15f;
 
-        /// Gate for the solver's second pass, once an offset estimate exists
-        /// and the magnitude can be judged after correction.
+        /// Once a fit exists, readings are judged on the magnitude left after
+        /// correcting by it, and this tighter gate applies.
+        ///
+        /// The wide gate has to stay wide until then: the offset being
+        /// estimated is itself several percent of one g, so judging a raw
+        /// magnitude tightly would reject orientations rather than movement.
+        /// Once an offset is known that confound is gone, and on the
+        /// reference capture the difference is worth about 5 mg -- a third of
+        /// a degree of tilt -- because the wide gate admits readings taken
+        /// mid-swing.
+        ///
+        /// This is the streaming form of the second pass a buffered fit can
+        /// make retroactively. It cannot run away: the gate only ever
+        /// tightens once a fit has passed the coverage preconditions, by
+        /// which point the offset is good to a few milli-g, and a few milli-g
+        /// of error moves a corrected magnitude by far less than the margin
+        /// between the two gates.
         float refinedGate = 0.08f;
 
         /// Occupied patches needed before a fit is offered. A sphere fit from
@@ -90,7 +114,7 @@ public:
         float     radius = 0.0f;   ///< Fitted sphere radius; should be one g.
         float     residual = 0.0f; ///< RMS distance from the fitted sphere.
 
-        int   samples = 0;         ///< Readings held in the buffer.
+        int   samples = 0;         ///< Readings the fit was built from.
         int   patchesSeen = 0;     ///< Occupied patches.
         int   patches = 0;         ///< Patches in the lattice.
         float coverage = 0.0f;     ///< patchesSeen / patches.
@@ -112,38 +136,57 @@ public:
      * @param oneG   Magnitude corresponding to one g in those units.
      *
      * @return false when the reading was rejected as motion or was not
-     *         finite. A reading that is kept may still displace an older one
-     *         from its patch.
+     *         finite. Nothing is ever displaced: an accepted reading is folded
+     *         into its patch's normal equations and the vector itself is
+     *         discarded.
      */
     bool add(const QVector3D &accel, float oneG);
 
     /**
      * @brief Solve for the offset over the buffer.
      *
-     * @details Two passes, as GravityFit describes: a wide gate first, then a
-     *          re-gate on the corrected magnitude. Both passes run over the
-     *          same held samples, so unlike a streaming fit the second pass
-     *          costs nothing extra to arrange.
+     * @details Each occupied patch's accumulated normal equations are divided
+     *          by its count and summed, so every occupied direction carries
+     *          the same weight however long the operator spent there, and
+     *          then solved. Cheap enough to call on every tick.
      *
      *          Invalid until the coverage preconditions are met, so a caller
      *          can apply the offset whenever `valid` is set without testing
      *          anything else.
      */
-    Result result(float oneG) const;
+    Result result(float oneG);
 
     const Config &config() const { return config_; }
 
 private:
     Config config_;
 
-    /// patches * perPatch, patch-major. A slot is live when its index is less
-    /// than fill_ for that patch.
-    QVector<QVector3D> slots_;
-    QVector<int>       fill_;   ///< Live slots in each patch.
-    QVector<int>       next_;   ///< Ring cursor within each patch.
+    /// One patch's share of the fit. Normal equations for
+    /// |p|^2 = 2 c.p + (r^2 - |c|^2), accumulated over the samples that landed
+    /// in this patch, plus what the residual needs.
+    struct Patch {
+        double ata[4][4];
+        double atb[4];
+        double rhsSquares;   ///< Sum of (|p|^2)^2, for the residual.
+        /// Second moment of the unit directions in this patch, for evenness.
+        /// Kept per patch and weighted like the rest, so that a long dwell
+        /// cannot read as coverage -- and kept at full angular resolution
+        /// rather than collapsing each patch to its centre, because a sweep
+        /// confined to one plane has to read as flat however the lattice
+        /// happens to straddle it.
+        double moment[3][3];
+        int    count;
+    };
+
+    QVector<Patch> patches_;
 
     int offered_;
     int gated_;
+
+    /// Last good offset, used to tighten the intake gate. Not const-queried:
+    /// result() refreshes it, which is why result() is not const.
+    QVector3D gateOffset_;
+    bool      haveGateOffset_;
 };
 
 #endif // ACCELCALIBRATION_H

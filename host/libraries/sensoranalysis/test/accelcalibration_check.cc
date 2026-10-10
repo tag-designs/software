@@ -80,21 +80,16 @@ void recoversAPlantedOffset()
                 r.offset.x(), r.offset.y(), r.offset.z(), r.radius, r.residual);
 }
 
-void boundsTheBuffer()
+void keepsEveryReading()
 {
-    std::printf("bounds the buffer however long the sweep\n");
+    std::printf("keeps every reading, however long the sweep\n");
     std::mt19937 rng(2);
     AccelCalibration cal;
-    const AccelCalibration::Config &cfg = cal.config();
-
     for (int i = 0; i < 50000; i++) {
         cal.add(resting(direction(rng), QVector3D(), 8.0f, rng), kOneG);
     }
     const AccelCalibration::Result r = cal.result(kOneG);
-    check(r.samples <= cfg.patches * cfg.perPatch,
-          "held samples never exceed patches * perPatch");
-    check(r.samples == cfg.patches * cfg.perPatch,
-          "a long sweep fills every slot");
+    check(r.samples > 49000, "every accepted reading counts toward the fit");
     check(r.offered == 50000, "every reading was counted as offered");
 }
 
@@ -115,12 +110,17 @@ void keepsOccupancyEven()
         cal.add(resting(direction(rng), QVector3D(), 8.0f, rng), kOneG);
     }
     const AccelCalibration::Result r = cal.result(kOneG);
-    const int perPatch = cal.config().perPatch;
-    check(r.samples <= r.patches * perPatch, "the dwell did not inflate the buffer");
     check(r.patchesSeen > r.patches / 2,
           "the rest of the sphere still occupies most patches");
-    std::printf("    %d samples over %d of %d patches, isotropy %.3f\n",
-                r.samples, r.patchesSeen, r.patches, r.isotropy);
+    // The dwell is a third of the readings but one patch of the weighting,
+    // so it cannot pull the centre. Without per-patch weights those thousand
+    // readings would outvote every direction they are not in.
+    check(r.valid && r.offset.length() < 6.0f,
+          "a thousand readings in one direction do not invent an offset");
+    std::printf("    %d readings over %d of %d patches, isotropy %.3f, "
+                "offset %.2f mg\n",
+                r.samples, r.patchesSeen, r.patches, r.isotropy,
+                r.offset.length());
 }
 
 void rejectsMotion()
@@ -184,23 +184,12 @@ void doesNotDependOnArrivalOrder()
     std::printf("gives the same answer whatever order readings arrive in\n");
     const QVector3D planted(-31.8f, 5.0f, -68.7f);
 
-    // Exactly perPatch readings about each patch centre, so every slot is
-    // filled and nothing is displaced -- then the two orders must hold the
-    // same set. Random directions would not do: 256 of them over 32 patches
-    // overflow some and leave others short, and the two orders then keep
-    // different readings for good reason. The 8 mg jitter moves a reading by
-    // about half a degree, far inside a patch some twenty degrees across, so
-    // none of them crosses into a neighbour.
+    // Nothing is displaced now, so any order of any readings must agree:
+    // addition is commutative and the fit is a function of the sums.
     std::mt19937 rng(6);
-    AccelCalibration probe;
-    const int patches = probe.config().patches;
-    const int perPatch = probe.config().perPatch;
     std::vector<QVector3D> readings;
-    for (int p = 0; p < patches; p++) {
-        const QVector3D unit = Directions::patchCenter(p, patches);
-        for (int k = 0; k < perPatch; k++) {
-            readings.push_back(resting(unit, planted, 8.0f, rng));
-        }
+    for (int i = 0; i < 2000; i++) {
+        readings.push_back(resting(direction(rng), planted, 8.0f, rng));
     }
 
     AccelCalibration forward;
@@ -214,13 +203,43 @@ void doesNotDependOnArrivalOrder()
 
     const AccelCalibration::Result a = forward.result(kOneG);
     const AccelCalibration::Result b = backward.result(kOneG);
-    check(a.samples == patches * perPatch, "every reading was kept, none displaced");
     check(a.valid && b.valid, "both orders yield a fit");
-    check(a.samples == b.samples, "both hold the same number of readings");
-    // Every reading fits: no patch overflows at this count, so the two
-    // buffers hold the same set and the fit must agree to rounding.
+    check(a.samples == b.samples, "both used the same number of readings");
     check((a.offset - b.offset).length() < 0.01f,
-          "offsets agree when nothing was displaced");
+          "offsets agree to rounding");
+}
+
+void settlesRatherThanWandering()
+{
+    std::printf("settles as readings accumulate, rather than wandering\n");
+    std::mt19937 rng(7);
+    const QVector3D planted(-31.8f, 5.0f, -68.7f);
+    AccelCalibration cal;
+
+    std::vector<float> magnitudes;
+    for (int i = 0; i < 6000; i++) {
+        cal.add(resting(direction(rng), planted, 30.0f, rng), kOneG);
+        if (i % 10 == 0) {
+            const AccelCalibration::Result r = cal.result(kOneG);
+            if (r.valid) {
+                magnitudes.push_back(r.offset.length());
+            }
+        }
+    }
+    const size_t half = magnitudes.size() / 2;
+    float lo = magnitudes[half];
+    float hi = magnitudes[half];
+    for (size_t i = half; i < magnitudes.size(); i++) {
+        lo = std::min(lo, magnitudes[i]);
+        hi = std::max(hi, magnitudes[i]);
+    }
+    // The rule this replaced kept the newest readings per patch, which made
+    // the fit a sliding window: on the reference capture it moved 13 mg peak
+    // to peak over the second half of a sweep. Accumulating, the estimate
+    // only tightens.
+    check(hi - lo < 3.0f, "offset moves less than 3 mg over the second half");
+    std::printf("    second half: %.2f to %.2f mg, %.2f peak to peak\n",
+                lo, hi, hi - lo);
 }
 
 void refusesAnEmptyAndAHostileInput()
@@ -233,7 +252,7 @@ void refusesAnEmptyAndAHostileInput()
     check(!cal.add(QVector3D(nan, 0.0f, 0.0f), kOneG), "NaN is refused");
     check(!cal.add(QVector3D(0.0f, 0.0f, 0.0f), kOneG), "a zero vector is refused");
     check(!cal.add(QVector3D(0.0f, 0.0f, kOneG), 0.0f), "a zero one-g is refused");
-    check(cal.result(kOneG).samples == 0, "and none of them reached the buffer");
+    check(cal.result(kOneG).samples == 0, "and none of them reached the fit");
 }
 
 } // namespace
@@ -242,11 +261,12 @@ int main()
 {
     std::printf("AccelCalibration checks\n\n");
     recoversAPlantedOffset();
-    boundsTheBuffer();
+    keepsEveryReading();
     keepsOccupancyEven();
     rejectsMotion();
     refusesADegenerateSweep();
     doesNotDependOnArrivalOrder();
+    settlesRatherThanWandering();
     refusesAnEmptyAndAHostileInput();
     std::printf("\n%s (%d failures)\n", failures ? "FAILED" : "all ok", failures);
     return failures ? 1 : 0;
