@@ -9,16 +9,16 @@ summary: Measurements behind the qtcalibrate quality replacement, 2026-10-10: th
 The dated record of the experiments behind
 [Replacing qtcalibrate's Calibration Quality Code](../proposals/qtcalibrate-quality-replacement.md).
 Open. It holds the two captures everything was measured on, each experiment
-with the log it produced, and four claims made along the way that the data
+with the log it produced, and six claims made along the way that the data
 later contradicted.
 
-The state as last measured, on the 2425-sample capture, is that the leverage
-retention policy beats the inherited nearest-pair scan on direction evenness
-(0.935 against 0.903) and marginally on dip spread (2.36 against 2.52
-degrees), and that fitting and removing the accelerometer's zero-g offset is
-worth about **1.1 degrees of dip spread under either policy** -- four times
-the difference between the policies, and the largest single improvement
-measured so far.
+The state as last measured, on the 2425-sample capture: fitting and removing
+the accelerometer's zero-g offset is worth about **1.1 degrees of dip spread
+under either retention policy**, and is the largest improvement measured so
+far. The leverage policy beats the inherited nearest-pair scan on direction
+evenness, by 0.030 against a run-to-run spread of 0.001, and loses on attitude
+diversity. Its apparent dip-spread advantage did not survive a second replay
+and should not be quoted.
 
 ## The data streams
 
@@ -71,6 +71,8 @@ the originals are kept outside the repository in `~/Research/tag-designs/`:
 | `errorlog-long-leverage-retention.txt` | 2425 | leverage | `cdebc0c9` |
 | `errlog-acccalibrate-no-retention.txt` | 2425 | inherited | `bf15eef1` |
 | `errlog-acccalibrate-retention.txt` | 2425 | leverage | `bf15eef1` |
+| `errlog-acc2-no-retention.txt` | 2425 | inherited | `995ea02b` |
+| `errlog-acc2-retention.txt` | 2425 | leverage | `995ea02b` |
 
 Regenerate a pair with:
 
@@ -259,19 +261,79 @@ from the measured dip.
 `attitudeCells`, the unnormalised count, is already computed but not logged.
 `withGravity`, the denominator, is neither logged nor exposed.
 
-## Experiment 6: a coupling not yet measured
+## Experiment 6: the coupling, measured
 
-`CompassData::fitGravity()` iterates the magnetometer buffer gated on
-`magcal.valid[i]`, so the accelerometer calibration is fed whatever survived
+**Result: confirmed. The two policies converge on offsets 3.05 mg apart, and
+both sit about 4 mg from the unbiased answer -- 0.23 degrees of tilt, the same
+order as the dip-spread differences being argued about.**
+
+`CompassData::fitGravity()` iterated the magnetometer buffer gated on
+`magcal.valid[i]`, so the accelerometer calibration was fed whatever survived
 the **magnetometer's** retention policy. By the argument in experiment 5 the
-samples that policy evicts first are exactly the rotation-about-the-field ones,
-which are the most informative for a gravity sphere fit; a sphere fit's centre
+samples that policy evicts first are the rotation-about-the-field ones, which
+are the most informative for a gravity sphere fit, and a sphere fit's centre
 does move under uneven direction coverage.
 
-This predicts that the two policies produce **different accelerometer
-offsets**, which would be part of the 0.15 degree dip-spread gap that survived
-experiment 4. Not yet measured: `gravity.offset` and `gravity.residual` are not
-logged. That is the next measurement.
+Logs `errlog-acc2-*`, at `995ea02b`:
+
+| Policy | Offset (mg) | Magnitude | Radius | Readings used |
+| --- | --- | --- | --- | --- |
+| Inherited | (-28.99, +6.14, -66.03) | 72.37 mg | 990.8 | 580 |
+| Leverage | (-28.56, +3.26, -66.94) | 72.86 mg | 992.5 | 598 |
+| Offline, whole capture | (-31.79, +5.02, -68.74) | 75.90 mg | 993.7 | 2223 |
+
+The two policies differ from each other by 3.05 mg and from the whole-capture
+fit by 4.05 and 4.10 mg. `AccelCalibration` on the same capture, holding 256
+readings chosen by direction rather than by the magnetometer, lands within
+1.6 mg of the whole-capture fit -- so the error here is the coupling, not the
+sample count.
+
+`residual` reads 0.00 on every tick of both logs. `GravityFit` never assigned
+it; see the withdrawn claims below.
+
+## Experiment 7: how much of this is run-to-run noise
+
+**Result: enough to have invented the dip-spread result. Replaying one capture
+twice under one policy moves the dip spread by up to 0.13 degrees, which is
+larger than the policy gap that survived experiment 4.**
+
+The replay is not reproducible. The inherited policy breaks ties with
+`std::rand()`, and sample delivery runs on one timer while the quality tick
+runs on another, so two replays of the same file deliver slightly different
+sample counts -- 1758 against 1699 evictions under the inherited policy, 1764
+against 1761 under leverage.
+
+Tail means over the last quarter, same capture, same policy, two runs:
+
+| Policy | Metric | Run 1 | Run 2 | Spread |
+| --- | --- | --- | --- | --- |
+| Inherited | dip spread | 2.515 | 2.381 | 0.133 |
+| Inherited | evenness | 0.903 | 0.903 | 0.000 |
+| Inherited | attitude | 2.495 | 2.544 | 0.049 |
+| Leverage | dip spread | 2.363 | 2.389 | 0.026 |
+| Leverage | evenness | 0.935 | 0.934 | 0.001 |
+| Leverage | attitude | 2.061 | 2.107 | 0.046 |
+
+Against the policy gaps measured on the newer pair:
+
+| Metric | Inherited - leverage | Run-to-run spread | Verdict |
+| --- | --- | --- | --- |
+| Dip spread | -0.008 | up to 0.133 | **noise** |
+| Evenness | -0.030 | 0.001 | real, 30 to 1 |
+| Attitude | +0.437 | 0.049 | real, 9 to 1 |
+
+So the leverage policy's one measured advantage is direction evenness. Its
+dip-spread advantage does not survive a second replay, and the sign flips.
+
+## Experiment 8: the attitude denominator
+
+**Result: the denominator is identical between policies, so the attitude drop
+is a real loss of cells.**
+
+Both runs report **100 patches** carrying gravity, so `attitudeDiversity`
+differs only in its numerator: 252 cells against 213, a loss of 39. Against
+the 3.56 cells per patch the site geometry allows -- 356 over 100 patches --
+that is 71 percent against 60 percent of achievable.
 
 ## Claims made and withdrawn
 
@@ -294,14 +356,31 @@ The room is still responsible for the 12 percent field deficit and the shallow
 inclination.
 
 **Attitude diversity's fall blamed on the per-patch-mean denominator.**
-Partly withdrawn. Both runs reach 100 of 100 patches, so the denominator is
-near-identical and the fall is a real loss of cells. The denominator is still
-wrong -- it rewards concentration -- but it is not what is happening here.
+Withdrawn, and now measured: experiment 8 shows the denominator is exactly 100
+in both runs, so the fall is entirely in the numerator. The denominator is
+still a poor choice -- it rewards concentration -- but it is not what happened
+here.
+
+**The leverage policy called better on dip spread.** Withdrawn. Experiment 7
+shows a second replay of the same capture under the same policy moves the dip
+spread by more than the gap did, and on the newer pair the gap is 0.008
+degrees with the sign reversed. Direction evenness is the only advantage that
+survives a repeat. The larger gap measured before the accelerometer correction
+-- 0.31 degrees, against 0.13 of noise -- may still be real, but it was
+measured once and should not be quoted as settled either.
+
+**`GravityFit` reported a residual.** It never did: `Result::residual` was
+left at zero because the accumulator held the sum of `|p|^2` where the
+algebraic residual needs the sum of its square. Every fit since `f2923035`
+reported 0.00, including both `errlog-acc2-*` logs. Fixed in `dae352c7`; the
+reference capture reports 30.7 mg, which is model error rather than noise.
 
 ## Open questions
 
-1. Log `gravity.offset`, `gravity.residual`, `attitudeCells` and `withGravity`,
-   then re-run both policies. Settles experiments 5 and 6.
+1. Make the replay reproducible, so a 0.03 difference can be told from a 0.13
+   wobble. Two sources: the inherited policy's `std::rand()` tie-break, and
+   sample delivery and the quality tick running on separate timers. Until then
+   every comparison here needs repeating before it is believed.
 2. Split the accelerometer into its own calibration task with its own buffer,
    patches, intake gate and retention, rather than borrowing the
    magnetometer's. The gates reject on different physics: the accelerometer
