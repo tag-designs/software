@@ -421,6 +421,10 @@ design document.
 
 - [SensorViz Sample Logs](../host/docs/fixtures/sensorviz/README.md) — Inventory and metadata of the sensorviz fixture logs and the screenshot capture commands.
 
+### User Guide Tooling / Investigations
+
+- [QtCalibrate Quality Replacement: Measurements](../host/docs/design/investigations/2026-10-qtcalibrate-quality-experiments.md) *(investigation, open)* — Measurements behind the qtcalibrate quality replacement, 2026-10-10: the two reference captures, the leverage retention comparison, the 76 mg accelerometer zero-g offset and the 1.1 degree of dip spread removing it bought.
+
 ### User Guide Tooling / Proposals
 
 - [Host User Guide Screenshot Automation](../host/docs/design/proposals/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; the screenshot hooks were built, the qtcalibrate_docshots target and annotation renderer were not.

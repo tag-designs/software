@@ -58,6 +58,7 @@ def read_log(path):
                 "isotropy": float(pending.group(3)),
                 "attitude": float(pending.group(4)) if pending.group(4) else None,
                 "dip_spread": float(pending.group(6)) if pending.group(6) else None,
+                "held": int(pending.group(9)) if pending.group(9) else None,
                 "evictions": evictions,
             })
             pending = None
@@ -67,9 +68,45 @@ def read_log(path):
 
 
 def sample_axis(rows, buffer_size):
-    """Samples seen at each tick: the buffer fills, then every add evicts one."""
-    return [min(buffer_size, i + 1) + r["evictions"]
-            for i, r in enumerate(rows)]
+    """Samples seen at each tick.
+
+    The gate line reports how many samples the buffer holds. That rises to
+    MAGBUFFSIZE and then stops, and every later add evicts one, so holdings
+    plus evictions is the total seen -- exact at both ends and across the
+    join.
+
+    Counting ticks instead does not work: the quality tick is not fired once
+    per sample. On these captures it fires every second sample, which
+    compresses the pre-fill half of the axis by about two and puts the
+    buffer-full marker at roughly twice the sample number where the buffer
+    really filled. The tick count is kept only as a fallback for a log with
+    no accelerometer in it, which has no gate line to read.
+    """
+    axis = []
+    for i, row in enumerate(rows):
+        held = row["held"]
+        if held is None:
+            held = min(buffer_size, i + 1)
+        axis.append(held + row["evictions"])
+    return axis
+
+
+def settled_window(runs, key, start):
+    """Axis limits from the settled part of a metric, ignoring the transient.
+
+    Everything before the buffer fills is startup: the calibration is still
+    forming and the metric swings over a range that dwarfs the difference
+    being compared. Scaling to what comes after keeps the comparison legible
+    whatever the absolute level happens to be.
+    """
+    values = [r[key] for _, rows, _, _ in runs
+              for x, r in zip(sample_axis(rows, start), rows)
+              if r[key] is not None and x >= start]
+    if not values:
+        return None
+    lo, hi = min(values), max(values)
+    pad = max((hi - lo) * 0.12, 0.05)
+    return (lo - pad, hi + pad)
 
 
 def main():
@@ -90,10 +127,13 @@ def main():
     # Dip spread is clipped. Before a calibration exists the inclination is
     # meaningless and runs to thirty degrees and beyond; left unclipped that
     # transient occupies the whole axis and hides the steady state, which is
-    # the only part being compared.
+    # the only part being compared. The window is taken from the data rather
+    # than fixed, because correcting the accelerometer moved the steady state
+    # by more than a degree and a fixed window emptied the panel.
     panels = [
         ("isotropy", "Evenness of direction", None),
-        ("dip_spread", "Dip spread (degrees, clipped)", (2.5, 6.0)),
+        ("dip_spread", "Dip spread (degrees, settled range)",
+         settled_window(runs, "dip_spread", args.buffer)),
         ("coverage", "Patches occupied", (0, runs[0][1][0]["patches"] * 1.05)),
         ("attitude", "Attitude diversity", None),
     ]
