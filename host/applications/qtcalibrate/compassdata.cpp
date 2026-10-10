@@ -8,6 +8,13 @@
 namespace
 {
 
+/// Acceleration magnitude that corresponds to one g in calibration stream
+/// units. The stream is milli-g on every current tag. TagInfo carries an
+/// accelconstant that should eventually supply this instead of a constant
+/// here; the capture file now records it, so the value is at least no longer
+/// invisible to anyone reading a fixture.
+const float kStreamOneG = 1000.0f;
+
 CompassCalibration calibrationFromMagcal()
 {
 	// Convert the inherited global magcal representation into the shared
@@ -32,12 +39,13 @@ CompassData::CompassData(QObject *parent) : QObject{parent}
     clear();
 }
 
-bool CompassData::addData(QVector3D &mag) 
+bool CompassData::addData(QVector3D &mag, bool hasAccel,
+                          const QVector3D &accel)
 {
     // raw_data() updates the inherited solver. When it produces a usable
     // calibration, emit a UI update and return the calibrated sample for
     // plotting.
-    bool result = raw_data(mag);
+    bool result = raw_data(mag, hasAccel, accel);
     if (result) {
         emit calibration_update();
     }
@@ -157,14 +165,38 @@ void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble,
 
 void CompassData::qualityUpdate(){
     quality_reset();
+    quality.reset();
+
+    // The inclination of a sample is CompassProcessor's to compute: the
+    // magnetometer and the accelerometer do not share an axis convention, and
+    // that conversion lives in one place. See docs/shared/sensor-axes.md.
+    // MagQuality only aggregates what it is handed.
+    CompassProcessor processor{CompassCalibration()};
+
     for (int i=0; i < MAGBUFFSIZE; i++) {
         if (magcal.valid[i]) {
 			QVector3D point = BpFast(i);
 			apply_calibration(point);
 			Point_t pt = {point.x(),point.y(),point.z()};
             quality_update(&pt);
+
+            if (accelBufferValid[i]) {
+                CompassRawSample raw;
+                raw.accel = accelBuffer[i];
+                raw.mag = point;
+                CompassDerivedSample derived;
+                if (processor.deriveCalibratedSample(raw, derived)) {
+                    quality.add(point, &accelBuffer[i], derived.dip,
+                                kStreamOneG);
+                } else {
+                    quality.add(point);
+                }
+            } else {
+                quality.add(point);
+            }
         }
-    }       
+    }
+    metrics = quality.result();
 }
 
 void CompassData::raw_data_reset(void)
@@ -172,6 +204,10 @@ void CompassData::raw_data_reset(void)
 	//rawcount = OVERSAMPLE_RATIO;
 	//fusion_init();
 	memset((void*) &magcal, 0, sizeof(magcal));
+	for (int i = 0; i < MAGBUFFSIZE; i++) {
+		accelBufferValid[i] = false;
+		accelBuffer[i] = QVector3D();
+	}
 	magcal.invW[0][0] = 1.0f;
 	magcal.invW[1][1] = 1.0f;
 	magcal.invW[2][2] = 1.0f;
@@ -242,7 +278,8 @@ int CompassData::choose_discard_magcal(void)
 }
 
 
-void CompassData::add_magcal_data(QVector3D data)
+void CompassData::add_magcal_data(const QVector3D &data, bool hasAccel,
+                                  const QVector3D &accel)
 {
 	int i;
 
@@ -271,12 +308,18 @@ void CompassData::add_magcal_data(QVector3D data)
 	magcal.BpFast[1][i] = data[1];
 	magcal.BpFast[2][i] = data[2];
 	magcal.valid[i] = 1;
+
+	// Whichever slot the discard policy chose, its old accelerometer reading
+	// goes with its old magnetometer reading.
+	accelBuffer[i] = accel;
+	accelBufferValid[i] = hasAccel;
 }
 
 
-bool CompassData::raw_data(QVector3D data)
+bool CompassData::raw_data(const QVector3D &data, bool hasAccel,
+                           const QVector3D &accel)
 {
-	add_magcal_data(data);
+	add_magcal_data(data, hasAccel, accel);
 	return MagCal_Run(&magcal) != 0;
 }
 

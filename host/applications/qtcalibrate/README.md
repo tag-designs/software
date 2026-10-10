@@ -129,5 +129,16 @@ The orientation view has a top-level `Configuration` menu and matching context
 menu entries for declination and battery-forward display convention. Those are
 display settings only; they do not change stored calibration constants.
 
+The log level combo in the log pane selects what reaches the log window; it
+opens at `INFO`.
+
 Streaming pitch/roll/yaw samples are logged at `TRACE` through `log_trace()` so
-normal log levels do not flood the log window.
+normal log levels do not flood the log window: there is one such line per
+streamed sample.
+
+The calibration quality metrics from `sensoranalysis`'s `MagQuality` are logged
+at `DEBUG`, once per quality timer tick, as a line beginning `magquality:`.
+They are deliberately a level above the per-sample flood so they can be read
+without it. They are logged rather than displayed because they are computed
+alongside the inherited four metrics while the two are compared; see
+[the replacement proposal](../../docs/design/proposals/qtcalibrate-quality-replacement.md).

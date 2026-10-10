@@ -7,6 +7,7 @@
 #include <QObject>
 
 #include "magcal/magcal.h"
+#include "magquality.h"
 
 // CompassData is the adapter between qtcalibrate and the inherited C magcal
 // solver. It owns the live calibration buffer and exposes a Qt-friendly API for
@@ -19,11 +20,35 @@ class CompassData : public QObject
 public:
 
     explicit CompassData(QObject *parent = nullptr);
-    bool addData(QVector3D &mag);//float& x, float &y, float &z);
+
+    /**
+     * @brief Feed one calibration sample to the solver.
+     *
+     * @param mag       Raw magnetometer vector; replaced with the calibrated
+     *                  value when a calibration exists, for plotting.
+     * @param hasAccel  Whether this sample carried an accelerometer reading.
+     * @param accel     The accelerometer vector, in calibration stream units.
+     *
+     * @details The accelerometer takes no part in the fit. It is kept beside
+     *          each buffered sample so the quality metrics can use it; see
+     *          qualityMetrics().
+     */
+    bool addData(QVector3D &mag, bool hasAccel = false,
+                 const QVector3D &accel = QVector3D());
     void getData(QList<QVector3D> &data);
     bool getCalibrationConstants(float *B, float *V, float (*A)[3]);
     void setCalibrationConstants(float B, float *V, float(*A)[3]);
     void calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror);
+
+    /**
+     * @brief Metrics from the owned quality module, as of the last
+     *        qualityUpdate().
+     *
+     * @details Computed alongside calibrationQuality()'s inherited numbers
+     *          while the two are compared; neither drives the other.
+     */
+    const MagQuality::Result &qualityMetrics() const { return metrics; }
+
     void qualityUpdate();
     void clear();
  
@@ -43,10 +68,20 @@ private:
     //void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
     void raw_data_reset();
     int choose_discard_magcal(void);
-    void add_magcal_data(QVector3D);
-    bool raw_data(QVector3D);
+    void add_magcal_data(const QVector3D &mag, bool hasAccel,
+                         const QVector3D &accel);
+    bool raw_data(const QVector3D &mag, bool hasAccel, const QVector3D &accel);
     QVector3D BpFast(int i);
     QVector3D acc_filt, mag_filt;
+
+    /// Accelerometer reading paired with each solver buffer slot, indexed the
+    /// same way as magcal.BpFast. The inherited MagCalibration_t is left alone;
+    /// it is shared with the solver and knows nothing about accelerometers.
+    QVector3D accelBuffer[MAGBUFFSIZE];
+    bool accelBufferValid[MAGBUFFSIZE] = {false};
+
+    MagQuality quality;
+    MagQuality::Result metrics;
 };
 
 #endif

@@ -44,7 +44,7 @@ extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 extern int log_level;
 QTextEdit *s_textEdit = nullptr;
 
-#define title_string "Tag Calibrator v0.1"
+#define title_string "Tag Calibrator v0.5"
 
 namespace
 {
@@ -64,6 +64,30 @@ QJsonObject accelToJson(const QVector3D &value)
   object["ax"] = value.x();
   object["ay"] = value.y();
   object["az"] = value.z();
+  return object;
+}
+
+/**
+ * @brief Describe the attached tag for a capture file.
+ *
+ * @details Deliberately a subset of TagInfo. The uuid is the processor's
+ *          unique id and source_path is a path on the machine that built the
+ *          firmware; host/docs/fixtures/qtcalibrate/README.md forbids both in a
+ *          committed fixture, so neither is written here and any capture is
+ *          safe to commit without scrubbing. What remains is what a reader of a
+ *          fixture needs: which tag produced it, which firmware, and the
+ *          constants its sample units depend on.
+ */
+QJsonObject tagInfoToJson(const TagInfo &info)
+{
+  QJsonObject object;
+  object["tag_type"] = QString::fromStdString(TagType_Name(info.tag_type()));
+  object["board_desc"] = QString::fromStdString(info.board_desc());
+  object["firmware"] = QString::fromStdString(info.firmware());
+  object["githash"] = QString::fromStdString(info.githash());
+  object["build_time"] = QString::fromStdString(info.build_time());
+  object["mag_constant"] = info.magconstant();
+  object["accel_constant"] = info.accelconstant();
   return object;
 }
 
@@ -214,7 +238,8 @@ bool MainWindow::loadReplayCapture(const QString &path)
     return false;
   }
 
-  const QJsonArray samples = document.object().value("samples").toArray();
+  const QJsonObject root = document.object();
+  const QJsonArray samples = root.value("samples").toArray();
   QVector<ReplaySample> loaded;
   loaded.reserve(samples.size());
   // Replay only needs the raw sensor stream. Calibration constants stored in
@@ -249,6 +274,7 @@ bool MainWindow::loadReplayCapture(const QString &path)
   }
 
   replaySamples = loaded;
+  replayTagInfo = root.value("tag").toObject();
   replayCapturePath = resolvedPath;
   replayCursor = 0;
   replayEnabled = true;
@@ -536,7 +562,7 @@ void MainWindow::processCalibrationSample(const QVector3D &mag, bool hasAccel,
   if (isCalibrating) {
     QVector3D plottedMag = mag;
     recordCaptureSample(batchIndex, sampleIndex, plottedMag, hasAccel, accel);
-    magnetic.addData(plottedMag);
+    magnetic.addData(plottedMag, hasAccel, accel);
     ui.graphWidget->addPoint(plottedMag);
   }
 }
@@ -703,7 +729,40 @@ void MainWindow::resetCalibrationDisplay()
   ui.v0Label->setText("--");
   ui.v1Label->setText("--");
   ui.v2Label->setText("--");
-  ui.qualityLabel->setText("--      --       --       --");
+  ui.qualityLabel->setText(QString("%1  %2  %3  %4")
+                               .arg("--", 6).arg("--", 8)
+                               .arg("--", 6).arg("--", 9));
+  ui.magqualityLabel->setText(QString("%1  %2  %3  %4")
+                                  .arg("--", 8).arg("--", 8)
+                                  .arg("--", 8).arg("--", 12));
+}
+
+/**
+ * @brief Render the owned calibration quality metrics.
+ *
+ * @details Fields are right-aligned to the widths of the Courier header above
+ *          them. Each answers a different question an operator can act on:
+ *          coverage says keep turning, evenness says tip it rather than only
+ *          spinning it, attitude says roll it about the field as well, and the
+ *          dip spread is the one number here the solver is not optimising and
+ *          therefore cannot flatter.
+ */
+void MainWindow::updateMagQualityDisplay()
+{
+  const MagQuality::Result &m = magnetic.qualityMetrics();
+
+  const QString coverage =
+      QString("%1/%2").arg(m.patchesSeen).arg(m.magPatches);
+  const QString dip = m.haveAccelMetrics
+      ? QString("%1 +/- %2").arg(m.dipMeanDeg, 0, 'f', 1)
+                            .arg(m.dipSpreadDeg, 0, 'f', 1)
+      : QString("no accel");
+
+  ui.magqualityLabel->setText(QString("%1  %2  %3  %4")
+      .arg(coverage, 8)
+      .arg(m.isotropy, 8, 'f', 2)
+      .arg(m.attitudeDiversity, 8, 'f', 2)
+      .arg(dip, 12));
 }
 
 bool MainWindow::saveCurrentScreenshot(const QString &path)
@@ -865,7 +924,21 @@ void MainWindow::calibration_update(void)
   
   float gaps, variance, wobble, fiterror;
   magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
-  ui.qualityLabel->setText(QString::asprintf("%2.1f%%   %2.1f%%      %2.1f%%      %2.1f%%",gaps,variance,wobble,fiterror));
+  // Right-aligned in the widths of the Courier header above. The previous
+  // fixed spacing held only while every value stayed under ten percent; a gap
+  // figure runs to 100 and pushed the row out of its own columns.
+  ui.qualityLabel->setText(
+      QString("%1  %2  %3  %4")
+          .arg(QString("%1%").arg(gaps, 0, 'f', 1), 6)
+          .arg(QString("%1%").arg(variance, 0, 'f', 1), 8)
+          .arg(QString("%1%").arg(wobble, 0, 'f', 1), 6)
+          .arg(QString("%1%").arg(fiterror, 0, 'f', 1), 9));
+
+  // The owned metrics sit beneath the inherited four rather than replacing
+  // them, because quality.c is not only feeding that row: choose_discard_magcal()
+  // branches on its gap figure, so it keeps running until the retention policy
+  // is replaced too. Showing both is how the two get compared in the meantime.
+  updateMagQualityDisplay();
 
   //ui.graphWidget->setData(data);
   QList<QVector3D> points;
@@ -879,7 +952,32 @@ void MainWindow::calibration_update(void)
 
 void MainWindow::TriggerQualityUpdate()
 {
-  magnetic.qualityUpdate(); 
+  magnetic.qualityUpdate();
+
+  // The owned metrics are computed alongside the inherited four and logged
+  // rather than displayed, so the two can be compared over real collections
+  // before either replaces anything.
+  //
+  // DEBUG rather than TRACE: this line appears once per quality timer tick,
+  // while TRACE carries a pitch/roll/yaw line for every streamed sample, which
+  // would bury it. DEBUG is still below the INFO the log window opens at.
+  const MagQuality::Result &m = magnetic.qualityMetrics();
+  if (m.haveAccelMetrics) {
+    log_debug("magquality: coverage %d/%d isotropy %.3f attitude %.2f "
+              "dip %.2f +/- %.2f deg (p95 %.2f, %d of %d in gate)",
+              m.patchesSeen, m.magPatches, m.isotropy, m.attitudeDiversity,
+              m.dipMeanDeg, m.dipSpreadDeg, m.dipP95Deg, m.dipSamples,
+              m.accelSamples);
+  } else {
+    log_debug("magquality: coverage %d/%d isotropy %.3f (no accelerometer)",
+              m.patchesSeen, m.magPatches, m.isotropy);
+  }
+
+  // qualityUpdate() above is what refreshes the metrics, so the row is
+  // repainted here as well as when a new calibration lands. Coverage climbs
+  // while an operator turns the tag, which is exactly when it is worth
+  // watching; waiting for the solver to accept a fit would make it lag.
+  updateMagQualityDisplay();
 }
 
 
@@ -999,6 +1097,19 @@ bool MainWindow::saveSampleCapture(const QString &path)
   root["capture_started_utc"] = captureStartedUtc.toString(Qt::ISODateWithMs);
   root["capture_stopped_utc"] = captureStoppedUtc.toString(Qt::ISODateWithMs);
   root["sample_count"] = captureSamples.size();
+
+  // Which tag produced a capture is the first thing a reader of a fixture
+  // needs and the hardest to recover later: an axis convention or a unit scale
+  // belongs to a tag type, not to the file. A replayed capture re-emits the
+  // block it was loaded with, so a fixture keeps its provenance through the
+  // screenshot workflow.
+  if (replayEnabled) {
+    if (!replayTagInfo.isEmpty()) {
+      root["tag"] = replayTagInfo;
+    }
+  } else if (tag.IsAttached()) {
+    root["tag"] = tagInfoToJson(info);
+  }
 
   QJsonObject units;
   units["mag"] = "calibration stream magnetometer units";

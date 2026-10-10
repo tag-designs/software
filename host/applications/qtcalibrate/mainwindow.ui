@@ -99,11 +99,11 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string notr="true">Gaps  Variance   Wobble   Fit Error</string>
+                          <string notr="true">  Gaps  Variance  Wobble  Fit Error</string>
                          </property>
                         </widget>
                        </item>
-                       <item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="qualityLabel">
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -118,7 +118,39 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string>0.1%    3.5%     1.0%       1.3%</string>
+                          <string notr="true">    --        --      --         --</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="magqualityheaderLabel">
+                         <property name="font">
+                          <font>
+                           <family>Courier New</family>
+                           <pointsize>11</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string notr="true">Coverage  Evenness  Attitude           Dip</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="magqualityLabel">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                           <horstretch>0</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>Courier New</family>
+                           <pointsize>11</pointsize>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string notr="true">  --/--        --        --            --</string>
                          </property>
                         </widget>
                        </item>

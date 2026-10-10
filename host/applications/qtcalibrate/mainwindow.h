@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QDateTime>
 #include <QList>
+#include <QJsonObject>
 #include <QTimer>
 #include <QVector>
 #include <QVector3D>
@@ -192,6 +193,12 @@ private:
   void orientationControlsInit(void);
   void updateDeclinationActionText();
   void resetCalibrationDisplay();
+
+  /**
+   * @brief Render the owned calibration quality metrics beneath the
+   *        inherited ones.
+   */
+  void updateMagQualityDisplay();
   /**
    * @brief Load saved calibration samples for fake-tag replay.
    *
@@ -317,6 +324,9 @@ private:
 
   QVector<ReplaySample> replaySamples;
   QString replayCapturePath;
+  /// Tag block of a loaded replay capture, re-emitted when it is saved again
+  /// so that replaying a fixture does not strip its provenance.
+  QJsonObject replayTagInfo;
   QString screenshotDir;
   QString screenshotPrefix;
   bool replayEnabled = false;
