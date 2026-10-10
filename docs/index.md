@@ -371,6 +371,10 @@ design document.
 
 - [SensorAnalysis Library](../host/libraries/sensoranalysis/README.md) — Contents of the UI-free sensoranalysis library for compass calibration and orientation.
 
+### Libraries / sensoranalysis / test
+
+- [sensoranalysis Offline Checks](../host/libraries/sensoranalysis/test/README.md) — How to build and run the offline MagQuality assertion checks.
+
 ### Libraries / sensorui
 
 - [SensorUI Library](../host/libraries/sensorui/README.md) — Contents of the sensorui library of reusable Qt and QML sensor widgets.
