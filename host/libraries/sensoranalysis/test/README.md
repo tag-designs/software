@@ -65,6 +65,13 @@ inclination spread with and without the offset applied -- the last computed
 through `CompassProcessor`, the same routine `qtcalibrate` uses, and gated the
 same way `MagQuality` gates it.
 
+It also breaks the inclination down by how fast the tag was turning, estimated
+from the angle between consecutive magnetometer directions since no target has
+a gyroscope, and says what a gate at each speed would be worth. A band's own
+spread is not that number: the pooled statistic is set by the bulk, so
+discarding a small fast tail moves it much less than the tail's spread
+suggests. That distinction is what decided against a rotation-rate gate.
+
 The point is the questions a single end-of-run number cannot answer: does the
 estimate settle or wander, when does a metric stop improving, did a change
 move anything. Asking them through `qtcalibrate` needs the Qt build, a window

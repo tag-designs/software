@@ -28,6 +28,7 @@
 #include "magquality.h"
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -59,6 +60,7 @@ struct Capture {
     QVector<Sample> samples;
     CompassCalibration calibration;
     bool haveCalibration = false;
+    double seconds = 0.0;   ///< Wall-clock span of the capture, when recorded.
 };
 
 /// A fixture path is usually written relative to the repository root while the
@@ -125,6 +127,16 @@ bool readCapture(const QString &requested, Capture &out)
                 softIron);
             out.haveCalibration = true;
         }
+    }
+
+    // The sample interval is needed to turn an angle between consecutive
+    // readings into a rate, and the capture records only its start and stop.
+    const QDateTime started = QDateTime::fromString(
+        root.value("capture_started_utc").toString(), Qt::ISODateWithMs);
+    const QDateTime stopped = QDateTime::fromString(
+        root.value("capture_stopped_utc").toString(), Qt::ISODateWithMs);
+    if (started.isValid() && stopped.isValid()) {
+        out.seconds = started.msecsTo(stopped) / 1000.0;
     }
 
     const QJsonArray samples = root.value("samples").toArray();
@@ -330,5 +342,109 @@ int main(int argc, char **argv)
                 "%.3f deg with the offset removed  (%d in gate, %d out)\n",
                 robustSpread(raw), robustSpread(corrected),
                 corrected.size(), gatedOut);
+
+    // Inclination against how fast the tag was turning. There is no gyroscope
+    // on every target, so the rate is estimated from the angle between
+    // consecutive magnetometer directions: that rotation is what the tag did,
+    // and the magnetometer sees it without the linear-acceleration
+    // contamination the accelerometer picks up while moving.
+    //
+    // The question is whether what is left of the spread is the two sensors
+    // not being read at the same instant. If it is, the spread should climb
+    // with the rate and be flat below some speed; if the bands look alike,
+    // the remainder is somewhere else and a rotation-rate gate would only
+    // throw away samples.
+    const double interval = capture.samples.size() > 1 && capture.seconds > 0.0
+        ? capture.seconds / (capture.samples.size() - 1)
+        : 0.1;
+    struct Band {
+        const char *label;
+        float upper;              ///< Degrees per second, exclusive.
+        QVector<float> dips;
+    };
+    Band bands[] = {{"below 30", 30.0f, {}},
+                    {"30 to 60", 60.0f, {}},
+                    {"60 to 90", 90.0f, {}},
+                    {"90 to 120", 120.0f, {}},
+                    {"over 120", 1e9f, {}}};
+    const int bandCount = static_cast<int>(sizeof(bands) / sizeof(bands[0]));
+
+    QVector3D previous;
+    bool havePrevious = false;
+    for (const Sample &sample : capture.samples) {
+        const QVector3D direction = capture.calibration.apply(sample.mag);
+        if (direction.length() <= 0.0f) {
+            havePrevious = false;
+            continue;
+        }
+        const QVector3D unit = direction.normalized();
+        const QVector3D last = previous;
+        const bool had = havePrevious;
+        previous = unit;
+        havePrevious = true;
+        if (!had || !sample.hasAccel) {
+            continue;
+        }
+        const QVector3D settled = sample.accel - fitted.offset;
+        if (std::fabs(settled.length() - kStreamOneG)
+            > quality.accelGate * kStreamOneG) {
+            continue;
+        }
+        const float dot = std::max(-1.0f, std::min(1.0f,
+            QVector3D::dotProduct(unit, last)));
+        const double rate = std::acos(dot) * 180.0 / 3.14159265358979323846
+                            / interval;
+
+        CompassRawSample input;
+        input.mag = sample.mag;
+        input.accel = settled;
+        CompassDerivedSample derived;
+        if (!processor.deriveSample(input, derived)) {
+            continue;
+        }
+        for (int b = 0; b < bandCount; b++) {
+            if (rate < bands[b].upper) {
+                bands[b].dips.append(derived.dip);
+                break;
+            }
+        }
+    }
+
+    std::printf("\ninclination by rotation rate (%.1f ms between samples):\n",
+                interval * 1000.0);
+    for (int b = 0; b < bandCount; b++) {
+        if (bands[b].dips.size() < 20) {
+            std::printf("  %-10s deg/s  %5d samples (too few to judge)\n",
+                        bands[b].label, bands[b].dips.size());
+            continue;
+        }
+        std::printf("  %-10s deg/s  %5d samples  spread %.3f deg\n",
+                    bands[b].label, bands[b].dips.size(),
+                    robustSpread(bands[b].dips));
+    }
+
+    // What a gate at each speed would actually be worth. A band's spread is
+    // not the answer: the pooled statistic is set by the bulk, so discarding
+    // a small fast tail moves it far less than the tail's own spread
+    // suggests. This is the number that decides whether the gate is worth
+    // having, as against simply telling the operator to slow down.
+    std::printf("  gate at    kept   discarded   pooled spread\n");
+    QVector<float> keeping;
+    for (int b = 0; b < bandCount; b++) {
+        keeping += bands[b].dips;
+        int discarded = 0;
+        for (int rest = b + 1; rest < bandCount; rest++) {
+            discarded += bands[rest].dips.size();
+        }
+        if (discarded == 0) {
+            std::printf("  %-9s %6d %11d   %.3f deg  (no gate)\n",
+                        "none", keeping.size(), 0, robustSpread(keeping));
+            break;
+        }
+        char label[16];
+        std::snprintf(label, sizeof(label), "%.0f deg/s", bands[b].upper);
+        std::printf("  %-9s %6d %11d   %.3f deg\n", label, keeping.size(),
+                    discarded, robustSpread(keeping));
+    }
     return 0;
 }

@@ -469,6 +469,57 @@ points at the magnetometer side, or at the two sensors not being read
 simultaneously while the tag turns -- which the rotation-rate gate below would
 test.
 
+## Experiment 12: rotation rate
+
+**Result: turning faster does measurably widen the inclination spread, and
+gating on it is still not worth doing. The remaining 2.4 degrees is not
+rotation either.**
+
+No target has a gyroscope, so the rate is estimated from the angle between
+consecutive calibrated magnetometer directions over the 100 ms sample
+interval. On the 2425-sample fixture:
+
+| Rotation rate | Samples | Inclination spread |
+| --- | --- | --- |
+| below 30 deg/s | 568 | 2.415 deg |
+| 30 to 60 | 1058 | 2.250 deg |
+| 60 to 90 | 485 | 2.668 deg |
+| 90 to 120 | 148 | 3.053 deg |
+| over 120 | 54 | 3.658 deg |
+
+The rise above 60 deg/s is monotonic and large -- a factor of 1.6 from the
+30-60 band to the fastest one -- which is what two sensors read at slightly
+different instants should look like while the tag turns.
+
+But a band's spread is not what a gate is worth, because the pooled statistic
+is set by the bulk:
+
+| Gate | Kept | Discarded | Pooled spread |
+| --- | --- | --- | --- |
+| 30 deg/s | 568 | 1745 | 2.415 deg |
+| 60 deg/s | 1626 | 687 | **2.330 deg** |
+| 90 deg/s | 2111 | 202 | 2.390 deg |
+| 120 deg/s | 2259 | 54 | 2.437 deg |
+| none | 2313 | 0 | 2.469 deg |
+
+The best gate, at 60 deg/s, buys 0.139 degrees for 30 percent of the samples,
+and the run-to-run wobble measured in experiment 7 is 0.13. The gain sits at
+the floor of what can be distinguished. Gating at 30 is worse than not gating
+above 30 at all, which says the slowest band is limited by something else.
+
+**So the gate is declined and the guidance is kept.** The finding belongs in
+front of the operator, not in the metric: the data puts the knee at about
+60 deg/s rather than the 90 estimated earlier, so a rotation indicator should
+read green below 60, yellow to 120 and red above. That costs no samples and
+addresses the cause.
+
+**And it closes off the third candidate.** Even the 30-60 band sits at 2.25
+degrees, so the floor is about 2.25 whatever the tag is doing. Non-simultaneous
+sampling accounts for roughly 0.2 degrees across the bulk of a sweep, not for
+the 2.4 that remain. With the accelerometer ruled out by experiment 11 and the
+room not measurable without a clean site, what is left is the magnetometer
+itself -- its own noise, and distortion that moves as the tag moves.
+
 ## Claims made and withdrawn
 
 Recorded because each cost time and each would otherwise look settled.
@@ -512,15 +563,19 @@ reference capture reports 30.7 mg, which is model error rather than noise.
 ## Open questions
 
 1. Find where the remaining 2.4 degrees of inclination spread lives.
-   Experiment 11 rules out the accelerometer. Of what is left, the room is not
-   worth chasing -- it cannot be measured without a clean site, and the whole
-   point of
+   Experiment 11 rules out the accelerometer and experiment 12 rules out
+   rotation. The room is not worth chasing -- it cannot be measured without a
+   clean site, and the premise of
    [the environment section](../proposals/qtcalibrate-quality-replacement.md#the-calibration-environment-is-not-controllable)
-   is that field use will not have one. That leaves magnetometer scatter and
-   the two sensors not being sampled at the same instant while the tag turns,
-   both of which `capture_replay` can ask about cheaply.
-2. Gate the inclination metric on rotation rate rather than on acceleration
-   magnitude, which also tests the third candidate above.
+   is that field use will not have one. That leaves the magnetometer: its own
+   noise, and distortion that moves as the tag moves. The first is separable
+   -- a tag held still has a measurable sample-to-sample scatter, and a
+   capture with a still period in it would settle how much of the 2.25 degree
+   floor is simply noise.
+2. Show rotation rate to the operator -- green below 60 deg/s, yellow to 120,
+   red above -- which experiment 12 supports and which costs no samples. The
+   rate itself has to be accumulated from the sample stream, the same place
+   the attitude metric belongs.
 3. Rebuild the attitude metric on the sample stream, normalised by the
    ceiling the site geometry allows. Experiment 8 showed it falls for a real
    reason, experiment 5 that the fall is not a fault, and the ratio's range is
