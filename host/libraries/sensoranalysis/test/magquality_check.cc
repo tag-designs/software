@@ -233,6 +233,101 @@ void checkAttitudeDiversity()
 
 } // namespace
 
+void reportsFitResidual()
+{
+    std::printf("fit residual\n");
+    std::mt19937 rng(31);
+    const float B = 45.0f;
+
+    // A clean sphere: everything on it, nothing off it.
+    MagQuality clean;
+    for (int i = 0; i < 4000; i++) {
+        clean.add(randomDirection(rng) * B);
+    }
+    MagQuality::Result r = clean.result();
+    check(std::fabs(r.field - B) < 0.01f, "the field is the sphere's radius");
+    check(r.fitError < 0.01f, "a sphere has no fit error");
+    check(r.residualHardIron < 0.5f, "and no residual hard iron");
+    std::printf("    clean: field %.2f, fit error %.4f%%, hard iron %.3f\n",
+                r.field, r.fitError, r.residualHardIron);
+
+    // One percent of scatter in the radius comes back as one percent.
+    MagQuality noisy;
+    std::normal_distribution<float> gauss(0.0f, 0.01f * B);
+    for (int i = 0; i < 4000; i++) {
+        noisy.add(randomDirection(rng) * (B + gauss(rng)));
+    }
+    r = noisy.result();
+    check(r.fitError > 0.8f && r.fitError < 1.2f,
+          "one percent of radial scatter reads as about one percent");
+    check(r.residualSpread > 0.8f && r.residualSpread < 1.2f,
+          "and the robust spread agrees with it on clean noise");
+
+    // Where they part company: a few gross samples set the mean square and
+    // not the median, which is the whole reason both are reported.
+    MagQuality spoiled;
+    for (int i = 0; i < 4000; i++) {
+        spoiled.add(randomDirection(rng) * (B + gauss(rng)));
+    }
+    for (int i = 0; i < 40; i++) {
+        spoiled.add(randomDirection(rng) * (B * 1.5f));
+    }
+    r = spoiled.result();
+    check(r.fitError > 2.0f * r.residualSpread,
+          "one percent of gross samples inflate the RMS, not the MAD");
+    check(r.residualP95 > r.residualSpread,
+          "and the 95th percentile sees them too");
+    std::printf("    spoiled: fit error %.2f%%, robust spread %.2f%%, "
+                "p95 %.2f%%\n", r.fitError, r.residualSpread, r.residualP95);
+}
+
+void findsResidualHardIron()
+{
+    std::printf("residual hard iron\n");
+    std::mt19937 rng(32);
+    const float B = 45.0f;
+    const QVector3D leftover(0.0f, 0.0f, 2.0f);
+
+    MagQuality offset;
+    for (int i = 0; i < 6000; i++) {
+        offset.add(randomDirection(rng) * B + leftover);
+    }
+    const MagQuality::Result r = offset.result();
+    // Regressing the magnitude residual on direction recovers the offset
+    // itself, not a fraction of it.
+    check(r.residualHardIron > 1.8f && r.residualHardIron < 2.2f,
+          "a 2 unit leftover offset reads as about 2 units");
+    std::printf("    2.0 unit offset reads as %.2f\n", r.residualHardIron);
+
+    // Dwelling in one direction is not an offset, which is what the
+    // per-patch vote is for.
+    MagQuality dwell;
+    for (int i = 0; i < 6000; i++) {
+        dwell.add(randomDirection(rng) * B);
+    }
+    for (int i = 0; i < 6000; i++) {
+        dwell.add(QVector3D(0.0f, 0.0f, 1.0f) * B);
+    }
+    check(dwell.result().residualHardIron < 0.2f,
+          "six thousand readings in one direction do not invent one");
+    std::printf("    dwell of 6000 reads as %.2f\n",
+                dwell.result().residualHardIron);
+
+    // The harder case: a real offset, with a dwell on top of it. The offset
+    // must still come back, which per-sample averaging cannot manage.
+    MagQuality both;
+    for (int i = 0; i < 6000; i++) {
+        both.add(randomDirection(rng) * B + leftover);
+    }
+    for (int i = 0; i < 6000; i++) {
+        both.add(QVector3D(0.0f, 0.0f, 1.0f) * B + leftover);
+    }
+    const float withDwell = both.result().residualHardIron;
+    check(withDwell > 1.8f && withDwell < 2.2f,
+          "and a dwell on top of a real offset does not hide it");
+    std::printf("    2.0 offset plus a 6000 dwell reads as %.2f\n", withDwell);
+}
+
 int main()
 {
     std::printf("MagQuality offline checks\n\n");
@@ -245,6 +340,10 @@ int main()
     checkAccelerationGate();
     std::printf("\n");
     checkAttitudeDiversity();
+    std::printf("\n");
+    reportsFitResidual();
+    std::printf("\n");
+    findsResidualHardIron();
     std::printf("\n");
 
     if (failures == 0) {

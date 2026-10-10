@@ -118,6 +118,8 @@ gives offline.
 | dip consistency | A constant inclination comes back with no spread; a known 2 degree scatter comes back as about 2 degrees, since the MAD is scaled to agree with a standard deviation. |
 | acceleration gate | Samples outside the gate are excluded from the dip statistics and cannot drag the inclination, while still counting toward coverage. That split is the point of the gate. |
 | attitude diversity | Sweeping gravity within one magnetometer patch raises diversity above one; holding one attitude gives exactly one. Without an accelerometer, the accelerometer metrics report nothing rather than guessing. |
+| fit residual | A clean sphere has no fit error; one percent of radial scatter reads as one percent on both the RMS and the robust spread. They part company when a hundredth of the samples are gross, where the RMS reads 5.07 percent against the MAD's 0.99 -- which is why both are reported. |
+| residual hard iron | A planted 2 unit offset comes back as 1.97, a dwell of 6000 readings in one direction invents none, and a dwell laid on top of a real offset does not hide it. |
 
 ## `magretention_check`
 

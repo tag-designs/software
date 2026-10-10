@@ -97,6 +97,48 @@ public:
         /// that circle crosses 3.6 patches on average, not 16.
         int   attitudePatches = 0;
 
+        // --- fit residual, from the magnetometer alone ---
+        /// Median magnitude of the calibrated samples, which is the field
+        /// the fit settled on.
+        float field = 0.0f;
+
+        /// RMS distance of the samples from that sphere, as a percentage of
+        /// it. Unfloored: a small number means a tight fit, and nothing
+        /// clamps it away from zero.
+        float fitError = 0.0f;
+
+        /// Robust spread of the same residual, scaled to agree with a
+        /// standard deviation, as a percentage of the field. Reported beside
+        /// the RMS because they disagree exactly when it matters: a mean
+        /// square is set by its largest residual, so a handful of bad
+        /// samples inflate it while the MAD stays with the bulk.
+        float residualSpread = 0.0f;
+
+        /// 95th percentile of the absolute residual, as a percentage. What
+        /// the worst samples are doing, rather than what the typical one is.
+        float residualP95 = 0.0f;
+
+        /// Hard iron the fit did not remove, in field units.
+        ///
+        /// An uncorrected offset d leaves the samples on a sphere centred
+        /// off the origin, so a sample in direction u reads |B + d.u| rather
+        /// than B: the magnitude residual varies with direction, and
+        /// regressing one on the other recovers d. Taken one patch at a
+        /// time, a patch contributing its mean residual against its own
+        /// centre, so a direction the operator dwelt in weighs no more than
+        /// one they passed through.
+        ///
+        /// Deliberately not the centroid of the sample directions, which is
+        /// the obvious construction and does not work: binning by direction
+        /// pins each patch's mean direction to its centre, so the very bias
+        /// being looked for is averaged away. On a planted 2 unit offset
+        /// that reads 0.05 where this reads 1.98.
+        ///
+        /// Needs coverage to mean anything -- three patches determine the
+        /// three components and little more -- so read it with the coverage
+        /// figure beside it.
+        float residualHardIron = 0.0f;
+
         // --- dip consistency, needs the accelerometer ---
         /// The angle between the field and gravity belongs to the site, not to
         /// the sample, so its spread is a quality measure the solver does not
@@ -165,6 +207,12 @@ private:
     Config config_;
     QVector<int> patchCount_;       ///< Samples per magnetometer patch.
     QVector<quint32> gravityMask_;  ///< Bit k set: gravity patch k seen here.
+
+    /// Sum of sample magnitudes in each patch, for the hard-iron regression.
+    QVector<double> patchMagnitude_;
+
+    /// Calibrated sample magnitudes, for the residual statistics.
+    QVector<float> magnitudes_;
     double moment_[3][3];           ///< Sum of magHat * magHat^T.
     QVector<float> dip_;            ///< Per-sample inclination, degrees.
     int samples_ = 0;

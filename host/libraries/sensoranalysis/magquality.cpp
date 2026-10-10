@@ -50,6 +50,8 @@ void MagQuality::reset()
             moment_[i][j] = 0.0;
         }
     }
+    patchMagnitude_.fill(0.0, config_.magPatches);
+    magnitudes_.clear();
     dip_.clear();
     samples_ = 0;
     accelSamples_ = 0;
@@ -82,6 +84,9 @@ bool MagQuality::add(const QVector3D &mag, const QVector3D *accel,
     }
     patchCount_[index]++;
     samples_++;
+    magnitudes_.append(magLength);
+
+    patchMagnitude_[index] += magLength;
 
     const QVector3D unit = mag / magLength;
     const double u[3] = { unit.x(), unit.y(), unit.z() };
@@ -158,6 +163,87 @@ MagQuality::Result MagQuality::result() const
             }
         }
         r.isotropy = Directions::isotropy(normalised);
+    }
+
+    // Residual statistics. The field is the median magnitude rather than the
+    // mean, so that a few bad samples set neither it nor the spread measured
+    // against it.
+    if (!magnitudes_.isEmpty()) {
+        QVector<float> sorted = magnitudes_;
+        std::sort(sorted.begin(), sorted.end());
+        r.field = medianOfSorted(sorted);
+
+        if (r.field > 0.0f) {
+            const int n = static_cast<int>(sorted.size());
+            double square = 0.0;
+            QVector<float> deviations;
+            deviations.reserve(n);
+            for (int i = 0; i < n; i++) {
+                const double d = sorted.at(i) - r.field;
+                square += d * d;
+                deviations.append(std::fabs(static_cast<float>(d)));
+            }
+            r.fitError = static_cast<float>(
+                100.0 * std::sqrt(square / n) / r.field);
+
+            std::sort(deviations.begin(), deviations.end());
+            r.residualSpread = static_cast<float>(
+                100.0 * 1.4826 * medianOfSorted(deviations) / r.field);
+            const int p95 = std::min(n - 1,
+                                     static_cast<int>(0.95 * (n - 1) + 0.5));
+            r.residualP95 =
+                static_cast<float>(100.0 * deviations.at(p95) / r.field);
+        }
+    }
+
+    // Hard iron the fit did not remove. An offset d puts a sample in
+    // direction u at |B + d.u|, so the magnitude residual is d.u and
+    // regressing residual on direction recovers d. One equation per occupied
+    // patch, using its mean residual against its own centre, which is what
+    // keeps a long dwell from counting more than a glance.
+    if (occupied >= 4 && r.field > 0.0f) {
+        double a[3][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+        double rhs[3] = {0, 0, 0};
+        for (int i = 0; i < config_.magPatches; i++) {
+            const int count = patchCount_.at(i);
+            if (count <= 0) {
+                continue;
+            }
+            const double residual = patchMagnitude_.at(i) / count - r.field;
+            const QVector3D centre = Directions::patchCenter(i,
+                                                             config_.magPatches);
+            const double c[3] = { centre.x(), centre.y(), centre.z() };
+            for (int row = 0; row < 3; row++) {
+                for (int col = 0; col < 3; col++) {
+                    a[row][col] += c[row] * c[col];
+                }
+                rhs[row] += residual * c[row];
+            }
+        }
+
+        // Cramer's rule on a 3x3. Singular only when the occupied patches lie
+        // in a plane, which the isotropy figure reports separately.
+        const double det =
+            a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1])
+            - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
+            + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+        if (std::fabs(det) > 1e-9) {
+            double out[3];
+            for (int col = 0; col < 3; col++) {
+                double m[3][3];
+                for (int row = 0; row < 3; row++) {
+                    for (int k = 0; k < 3; k++) {
+                        m[row][k] = (k == col) ? rhs[row] : a[row][k];
+                    }
+                }
+                out[col] =
+                    (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+                     - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+                     + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])) / det;
+            }
+            r.residualHardIron = static_cast<float>(
+                std::sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]));
+        }
     }
 
     if (occupied > 0) {
