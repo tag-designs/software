@@ -353,6 +353,40 @@ private:
   QJsonObject replayTagInfo;
   QString screenshotDir;
   QString screenshotPrefix;
+  /*
+   * Calibration runs in two phases because the two sensors want different
+   * motions and each is blind to rotation about the direction it measures.
+   * Spinning the tag flat on a bench sweeps the field through a full circle
+   * in the tag frame -- excellent magnetometer data -- while gravity never
+   * moves at all, and nothing in a single combined display tells the operator
+   * that half the job is not happening.
+   *
+   * So the accelerometer is asked for first, because it is the quicker of the
+   * two and because its offset is what the inclination cross-check depends
+   * on: left to settle during the magnetometer phase, the one quality number
+   * the solver cannot game would spend that phase measuring the
+   * accelerometer. Collection never stops for either sensor; the phase
+   * governs only what is shown and what is asked for.
+   */
+  enum class CalibrationPhase {
+    Accelerometer,
+    Magnetometer,
+  };
+  CalibrationPhase calibrationPhase = CalibrationPhase::Accelerometer;
+
+  /// Recent accelerometer offset magnitudes, one per quality tick, used to
+  /// decide that the fit has stopped moving. Not a member of
+  /// AccelCalibration because the tick is defined here.
+  QVector<float> accelSettling;
+
+  /// Ticks of history the settling test looks at, and the movement it will
+  /// accept across them. Two milli-g is about a tenth of a degree of tilt;
+  /// on the reference capture the fit holds inside 1.33 once it is covered.
+  static constexpr int kAccelSettleTicks = 25;
+  static constexpr float kAccelSettleMg = 2.0f;
+
+  void updateCalibrationPhase();
+
   bool replayEnabled = false;
   /// Quit when the replayed capture runs out. See MainWindowOptions.
   bool replayExitWhenDone = false;

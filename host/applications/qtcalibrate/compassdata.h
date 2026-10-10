@@ -54,6 +54,18 @@ public:
     const MagQuality::Result &qualityMetrics() const { return metrics; }
 
     /**
+     * @brief Acceleration magnitude corresponding to one g in the units the
+     *        calibration stream uses.
+     *
+     * @details Milli-g on every current tag. Public because callers gate on
+     *          it too -- the plot shows the readings the fit accepted, and a
+     *          second copy of this number is a second chance for the two to
+     *          disagree. TagInfo carries an accelconstant that should
+     *          eventually supply it.
+     */
+    static constexpr float kOneG = 1000.0f;
+
+    /**
      * @brief Fitted accelerometer zero-g offset, as of the last sample added.
      *
      * @details Host-side only: it is applied when deriving dip and orientation

@@ -20,6 +20,9 @@
 
 #include <QVector3D>
 
+#include <algorithm>
+#include <cmath>
+
 #include "tagclass.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -49,6 +52,12 @@ QTextEdit *s_textEdit = nullptr;
 /// Accelerometer offset beyond which the fit is flagged rather than trusted.
 /// A real tag measures about 77 mg; several times that is not a zero-g offset.
 static const float kImplausibleAccelOffsetMg = 250.0f;
+
+/// Magnitude gate for a reading to join the gravity cloud. Wider than the
+/// fit's own refined gate on purpose: the plot is a coverage display, and a
+/// direction the operator reached is worth showing even if that particular
+/// reading was a little brisk.
+static const float kGravityPlotGate = 0.10f;
 
 namespace
 {
@@ -485,6 +494,61 @@ void MainWindow::on_detachButton_clicked(){
 // While tag is attached and streaming is enabled, this
 // method is called at regular intervals
 
+/**
+ * @brief Move from the accelerometer phase to the magnetometer one once the
+ *        accelerometer has what it needs.
+ *
+ * @details Three conditions, all from AccelCalibration::Result. The fit must
+ *          be valid, which already means its coverage preconditions passed;
+ *          every direction patch must be occupied, because a sphere fit is
+ *          only as good as the directions it saw; and the offset must have
+ *          stopped moving, which is the one a coverage count cannot tell you.
+ *          On the reference capture that lands a little past sample 1000,
+ *          about a hundred seconds.
+ *
+ *          One way only. Going back would mean the inclination figures either
+ *          side of the switch were computed against different offsets, and
+ *          the operator has already been asked to change what they are doing.
+ */
+void MainWindow::updateCalibrationPhase()
+{
+  if (calibrationPhase != CalibrationPhase::Accelerometer) {
+    return;
+  }
+
+  const AccelCalibration::Result &fit = magnetic.accelOffset();
+  if (!fit.valid) {
+    accelSettling.clear();
+    return;
+  }
+
+  accelSettling.append(fit.offset.length());
+  while (accelSettling.size() > kAccelSettleTicks) {
+    accelSettling.removeFirst();
+  }
+  if (fit.patchesSeen < fit.patches
+      || accelSettling.size() < kAccelSettleTicks) {
+    return;
+  }
+
+  float low = accelSettling.first();
+  float high = accelSettling.first();
+  for (float v : accelSettling) {
+    low = std::min(low, v);
+    high = std::max(high, v);
+  }
+  if (high - low > kAccelSettleMg) {
+    return;
+  }
+
+  calibrationPhase = CalibrationPhase::Magnetometer;
+  ui.graphWidget->setGravityRadius(fit.radius);
+  ui.graphWidget->setSource(magPlot::Source::MagneticField);
+  log_info("accelerometer calibrated: offset %.2f mg over %d/%d patches, "
+           "settled within %.2f mg; now collecting for the magnetometer",
+           fit.offset.length(), fit.patchesSeen, fit.patches, high - low);
+}
+
 void MainWindow::beginAutomatedReplay()
 {
   if (!replayEnabled) {
@@ -601,6 +665,20 @@ void MainWindow::processCalibrationSample(const QVector3D &mag, bool hasAccel,
     recordCaptureSample(batchIndex, sampleIndex, plottedMag, hasAccel, accel);
     magnetic.addData(plottedMag, hasAccel, accel);
     ui.graphWidget->addPoint(plottedMag);
+
+    // The gravity cloud, gated so it shows what the fit actually uses: a
+    // reading taken mid-swing is motion, not gravity, and would smear a shell
+    // the calibration never saw. Corrected by the offset once there is one,
+    // which only tightens the shell -- it is a 7 percent shift, far too small
+    // to move a point between directions.
+    if (hasAccel) {
+      const AccelCalibration::Result &fit = magnetic.accelOffset();
+      const QVector3D gravity = fit.valid ? accel - fit.offset : accel;
+      if (std::fabs(gravity.length() - CompassData::kOneG)
+          <= kGravityPlotGate * CompassData::kOneG) {
+        ui.graphWidget->addGravityPoint(gravity);
+      }
+    }
   }
 }
 
@@ -753,6 +831,8 @@ void MainWindow::resetReplayCollection()
 
   ui.graphWidget->reset();
   magnetic.clear();
+  calibrationPhase = CalibrationPhase::Accelerometer;
+  accelSettling.clear();
   resetCalibrationDisplay();
   clearSampleCapture();
 }
@@ -1055,6 +1135,8 @@ void MainWindow::TriggerQualityUpdate()
             magnetic.evictionCount(), magnetic.leverageEvictionCount(),
             magnetic.outlierEvictionCount());
 
+  updateCalibrationPhase();
+
   // qualityUpdate() above is what refreshes the metrics, so the row is
   // repainted here as well as when a new calibration lands. Coverage climbs
   // while an operator turns the tag, which is exactly when it is worth
@@ -1080,6 +1162,14 @@ void MainWindow::on_startButton_clicked(){
     // Stream, so the saved fixture matches the visible scatter plot sequence.
     beginSampleCapture();
     isCalibrating = true;
+    // Start on the accelerometer: it is the quicker of the two, and its
+    // offset is what the inclination cross-check will be measured against
+    // for the whole of the magnetometer phase.
+    calibrationPhase = CalibrationPhase::Accelerometer;
+    accelSettling.clear();
+    ui.graphWidget->setSource(magPlot::Source::Gravity);
+    log_info("collecting for the accelerometer: turn the tag so gravity "
+             "points every way in its own frame");
   //qInfo() << "connect clicked";
     ui.graphWidget->setFocusQuaternion(QQuaternion(1.0,0.0,0.0,0.0));
     //QScatterDataArray data;

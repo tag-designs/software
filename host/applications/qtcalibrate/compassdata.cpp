@@ -8,12 +8,6 @@
 namespace
 {
 
-/// Acceleration magnitude that corresponds to one g in calibration stream
-/// units. The stream is milli-g on every current tag. TagInfo carries an
-/// accelconstant that should eventually supply this instead of a constant
-/// here; the capture file now records it, so the value is at least no longer
-/// invisible to anyone reading a fixture.
-const float kStreamOneG = 1000.0f;
 
 /// Additions for which a freshly stored sample is exempt from eviction. One
 /// solver cycle: MagCal_Run() refits every twentieth sample, so a sample
@@ -178,7 +172,7 @@ void CompassData::qualityUpdate(){
 
     // The accelerometer fit comes from its own population, which has been
     // accumulating at intake rather than waiting for this tick.
-    gravity = accelCal.result(kStreamOneG);
+    gravity = accelCal.result(CompassData::kOneG);
 
     // The inclination of a sample is CompassProcessor's to compute: the
     // magnetometer and the accelerometer do not share an axis convention, and
@@ -204,7 +198,7 @@ void CompassData::qualityUpdate(){
                 CompassDerivedSample derived;
                 if (processor.deriveCalibratedSample(raw, derived)) {
                     quality.add(point, &accelBuffer[i], derived.dip,
-                                kStreamOneG);
+                                CompassData::kOneG);
                 } else {
                     quality.add(point);
                 }
@@ -413,7 +407,7 @@ bool CompassData::raw_data(const QVector3D &data, bool hasAccel,
 	// accelerometer takes the ones that are gravity rather than motion, and
 	// keeps them by direction. Neither decides anything for the other.
 	if (hasAccel) {
-		accelCal.add(accel, kStreamOneG);
+		accelCal.add(accel, CompassData::kOneG);
 	}
 	add_magcal_data(data, hasAccel, accel);
 	return MagCal_Run(&magcal) != 0;
