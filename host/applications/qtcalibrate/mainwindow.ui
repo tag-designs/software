@@ -99,7 +99,7 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string notr="true"> Spread      p95  Hard Iron  Fit Error</string>
+                          <string notr="true"> Spread  Worst 5%  Hard Iron  Fit Error</string>
                          </property>
                         </widget>
                        </item>
@@ -118,7 +118,7 @@
                           </font>
                          </property>
                          <property name="text">
-                          <string notr="true">    --        --      --         --</string>
+                          <string notr="true">     --        --         --         --</string>
                          </property>
                         </widget>
                        </item>

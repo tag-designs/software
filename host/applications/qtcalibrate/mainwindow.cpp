@@ -54,7 +54,7 @@ static const float kImplausibleAccelOffsetMg = 250.0f;
 /// updateMagQualityDisplay(), so the dashes sit where the numbers will.
 static const QString kResidualPlaceholder =
     QStringLiteral("%1  %2  %3  %4")
-        .arg("--", 7).arg("--", 7).arg("--", 9).arg("--", 9);
+        .arg("--", 7).arg("--", 8).arg("--", 9).arg("--", 9);
 
 namespace
 {
@@ -802,8 +802,10 @@ void MainWindow::updateMagQualityDisplay()
       .arg(dip, 12));
 
   // The residual row. Three percentages of the field and one figure in field
-  // units: spread and p95 are the same residual read two ways, and they part
-  // company when a few samples are bad, which is the reason both are here.
+  // units. Spread and Worst 5% are the same residual read two ways -- a
+  // robust width that describes the bulk, and the 95th percentile of the
+  // absolute residual -- and they part company when a few samples are bad,
+  // which is the reason both are here.
   // Hard iron is what the fit did not remove, and wants reading beside the
   // coverage figure above it -- three occupied patches determine the three
   // components and little else.
@@ -812,7 +814,7 @@ void MainWindow::updateMagQualityDisplay()
   if (m.samples > 0) {
     ui.qualityLabel->setText(QString("%1  %2  %3  %4")
         .arg(m.residualSpread, 7, 'f', 2)
-        .arg(m.residualP95, 7, 'f', 2)
+        .arg(m.residualP95, 8, 'f', 2)
         .arg(m.residualHardIron, 9, 'f', 2)
         .arg(m.fitError, 9, 'f', 2));
   } else {
