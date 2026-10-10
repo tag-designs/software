@@ -22,6 +22,14 @@ cmake --build <build-dir> --target magquality_check
 The binary lands in the build tree's `bin` and takes no arguments. It exits
 non-zero when a check fails.
 
+## `gravityfit_check`
+
+| Group | What it pins down |
+| --- | --- |
+| offset recovery | A planted 77 mg offset -- the one measured on a real tag -- comes back to within a milli-g, the fitted radius is one g, and an unbiased sensor yields no offset rather than a small invented one. |
+| motion rejection | A sweep with a quarter of its samples taken while the tag was thrown about still lands within five milli-g, and the second pass is never worse than the first. |
+| refusal | Too few samples, a tag held in one attitude throughout, and a sphere nowhere near one g are all refused. The middle case matters most: a single attitude determines no sphere, and inventing a centre there would write a fabricated offset from a sweep that never happened. |
+
 ## `magquality_check`
 
 | Group | What it pins down |

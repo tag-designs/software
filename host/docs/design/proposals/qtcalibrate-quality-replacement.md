@@ -372,6 +372,7 @@ than against itself.
 | 1 | New `magquality` module with the context struct, Fibonacci patches, robust residual statistics, isotropy; computed in parallel with the existing metrics and logged, with nothing switched over | Replay the fixture; both metric sets printed side by side |
 | 2 | Plumb accelerometer through `addData`; add the gated dip-consistency metric | Fixture replay shows a dip spread consistent with the site |
 | 3 | Add `(D^T D)^-1` maintenance and the leverage/Cook's-distance retention policy behind a flag, with the patch floor and probation guards | Replay with both policies; compare final calibration and wall-clock cost |
+| 3a | Fit the accelerometer zero-g offset from the same sweep; apply it when deriving dip and orientation; show it with the other constants. Host-side only | Replay the existing captures: offset near 77 mg, dip spread about 31 percent better |
 | 4 | Heading-accuracy propagation; relabel the UI with named, united, thresholded metrics | Captures at known headings |
 | 5 | Delete `quality.c` and `choose_discard_magcal()`; extend the capture `quality` block | `docs.py check`; replay fixtures regenerate |
 
@@ -442,6 +443,85 @@ untouched.
 
 This is an engineering judgement, not legal advice; if the ambiguity matters
 for distribution it should be confirmed with counsel.
+
+## Calibrating the accelerometer
+
+The dip spread has a floor of about 3.5 degrees that is flat across every
+rotation rate, so nothing about how the tag is turned explains it. The
+accelerometer does.
+
+At rest in any orientation an accelerometer reads gravity, so a calibration
+sweep traces a sphere of radius one g. Fitting that sphere on the reference
+captures puts its centre **77 mg from the origin**, dominated by **−71 mg on z**
+— the axis perpendicular to the board. The LIS2DU12 datasheet gives ±11 mg
+typical after factory trim, so this is seven times out of family, but that
+figure is measured on the bare part: soldering it to a board adds package
+stress, and z is the axis that stress acts on. Post-assembly offsets well beyond
+the trimmed figure are the expected outcome, not a defective part.
+
+A fixed offset in the tag frame produces a tilt error that varies with
+orientation — maximal when the offset is perpendicular to gravity, zero when
+parallel — so it appears as scatter rather than bias, and has no reason to care
+how fast the tag is turning. That is the observed signature exactly. The implied
+RMS tilt error is 3.1 degrees against an observed floor of 3.5.
+
+Running the fit over both captures, with the gating described below:
+
+| | 775-sample capture | 2,425-sample capture |
+| --- | --- | --- |
+| recovered offset | 78.2 mg | 75.9 mg |
+| fitted radius | 995.0 mg | 993.7 mg |
+| dip spread before | 4.18 deg | 3.67 deg |
+| dip spread after | 2.88 deg | 2.54 deg |
+| improvement | 31% | 31% |
+
+The two agree to 2.3 mg, which is what makes the offset worth storing: it is a
+stable property of the tag, not noise.
+
+### Why a sphere, and why no buffer
+
+**Four parameters, not nine.** Adding per-axis scale terms took the same
+captures from 30 to 34 percent, which does not pay for the machinery. The
+fitted radius lands within one percent of one g, so the sensitivity constant is
+already right and only the offset is worth removing.
+
+**No buffer and no retention policy.** A sphere fit is linear least squares, so
+the entire state is ten running sums; each sample is folded in and discarded in
+constant time. The magnetometer needs a buffer because it refits ten parameters
+repeatedly as the solution improves and must be able to remove a sample again.
+Gravity has constant magnitude by definition, and four parameters determine it.
+
+**Two passes.** The gate cannot be tight on the first pass, because the offset
+being estimated is itself several percent of one g and a tight gate would
+reject orientations rather than motion. So the first pass gates at 15 percent,
+and the second re-gates at 8 percent on the magnitude *after* correction, which
+removes the circularity of gating on the quantity being estimated. On the
+reference captures that moves the estimate from 71 mg to 78 mg.
+
+### What it does not fix
+
+Dip spread lands at 2.5 degrees, not the 1 degree a pure-offset model predicts,
+so roughly 2.5 degrees remains unexplained — and the per-axis scale result says
+it is not accelerometer linearity. The inclination also stays at 63.6 degrees
+against the World Magnetic Model's 66 to 67, unmoved by the correction, so that
+gap is a separate matter.
+
+### Scope
+
+Host-side for now. The constants are fitted during a sweep, applied when
+deriving dip and orientation, shown with the other calibration constants and
+recorded in the capture, but not written to the tag: storing them there is a
+firmware change and `CalibrationConstants` would need an `AccelConstants`
+field, which is additive but is a contract both sides compile against.
+
+One consequence worth stating. The dip metric is recomputed from the buffer on
+every quality tick, so it tracks both calibrations as they evolve and tightens
+visibly during a sweep. That does not cost its independence: the accelerometer
+fit minimises deviation of `|a|` from a sphere and the magnetometer fit
+minimises deviation of `|m|`, and neither optimises the angle between them. Dip
+spread remains a quantity no solver in the system is targeting. It does mean an
+early reading is not comparable with a late one, so the value recorded in a
+capture should be a final pass taken after collection stops.
 
 ## The calibration environment is not controllable
 
