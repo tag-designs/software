@@ -153,11 +153,16 @@ isotropy as a cheap guard, conditioning as the policy's objective.
 ### Residual
 
 The current magnitude-variance metric uses a plain standard deviation, which a
-handful of outliers dominate. On the checked-in fixture the ordinary standard
-deviation of `|m_cal|` over all 739 samples is **8.61%** while the MAD-based
-robust estimate is **1.78%** — a factor of five, entirely attributable to a few
-extreme points. Reporting the robust spread, plus a 95th-percentile residual,
-describes the sample set far better than a single moment does.
+handful of outliers can dominate. On the checked-in fixture the ordinary
+standard deviation of `|m_cal|` over all 775 samples is **0.90%** against a
+MAD-based robust estimate of **0.82%** — close, because that capture is clean.
+An earlier capture taken before the tag-side axis correction showed 8.61%
+against 1.78%, a factor of five driven entirely by a few extreme points.
+
+So the honest case for the robust statistic is not that it flatters a good
+capture; it is that it stays meaningful on a bad one, and the operator cannot
+tell which kind they have while collecting. Reporting the robust spread
+alongside a 95th-percentile residual says more than either moment alone.
 
 Residual *structure* matters as much as residual size. A fit whose residuals
 show a systematic pattern with direction has an unmodelled term — an
@@ -204,17 +209,18 @@ as a magnetometer-sample rejection criterion**:
 
 | Gate on `abs(\|a\| - 1 g)` | Samples kept | Regions covered | Robust residual spread |
 | --- | --- | --- | --- |
-| none | 739 (100%) | 97 / 100 | 1.78% |
-| < 100 mg | 664 (90%) | 95 / 100 | 1.67% |
-| < 50 mg | 494 (67%) | 94 / 100 | 1.63% |
-| < 30 mg | 332 (45%) | 93 / 100 | 1.41% |
+| none | 775 (100%) | 94 / 100 | 0.82% |
+| < 100 mg | 671 (87%) | 92 / 100 | 0.80% |
+| < 50 mg | 399 (51%) | 89 / 100 | 0.80% |
+| < 30 mg | 246 (32%) | 78 / 100 | 0.75% |
 
 The correlation between `abs(|a| - 1 g)` and `abs(|m_cal| - median)` across the
-capture is **0.036** — essentially none. Discarding 55% of the samples buys a
-0.37-point improvement in residual spread and costs four regions of coverage.
-On this evidence a motion gate on the magnetometer sample is not worth its
-cost. (One capture, n = 739, hand-waved on a bench; this is a reason to leave
-the gate out of the first implementation, not a settled result.)
+capture is **0.051** — essentially none. Discarding 68% of the samples buys a
+0.07-point improvement in residual spread and costs sixteen regions of
+coverage. On this evidence a motion gate on the magnetometer sample is clearly
+not worth its cost. (One capture, n = 775, from a CompassTagAT25 turned by hand
+on a bench; this is a reason to leave the gate out of the first implementation,
+not a settled result.)
 
 The accelerometer is still worth having, in three other places:
 
@@ -348,9 +354,13 @@ else needs it; the solver continues to see magnetometer vectors only.
 ## Evidence
 
 All figures above come from the checked-in replay fixture
-[`qtcalibrate-samples-20260826-174522.json`](../../fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json)
-(739 samples, accelerometer in milli-g, B = 46.49 µT), scored with the
-calibration stored in the same file. Before implementation the same analysis
+[`qtcalibrate-samples-20261010-145438.json`](../../fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json)
+(775 samples from a CompassTagAT25, accelerometer in milli-g, B = 45.66 µT),
+scored with the calibration stored in the same file. That capture agrees with
+the magnetometer axis contract in
+[docs/shared/sensor-axes.md](../../../../docs/shared/sensor-axes.md); the
+fixture it replaced did not, which is why the figures here differ from earlier
+drafts. Before implementation the same analysis
 should be repeated over several captures taken with a known reference heading,
 so that the heading-accuracy metric can be checked against ground truth rather
 than against itself.

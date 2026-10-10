@@ -75,7 +75,7 @@ Documentation maintainers can replay a saved capture without physical tag
 hardware:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json
+qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
 ```
 
 To prepare a stable screenshot milestone, add `--replay-percent` with a value
@@ -87,11 +87,11 @@ To regenerate the baseline screenshots in `host/docs/src/images/`, use:
 qtcalibrate --capture-startup-screenshot
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-replay-screenshots
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-orientation-screenshot
 ```
 

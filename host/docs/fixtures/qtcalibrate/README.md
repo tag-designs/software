@@ -9,12 +9,25 @@ summary: qtcalibrate replay fixture naming and the commands that generate its do
 Store curated `qtcalibrate` sample captures here for documentation screenshot
 generation and replay tooling.
 
-The baseline fixture is `qtcalibrate-samples-20260826-174522.json`.
+The baseline fixture is `qtcalibrate-samples-20261010-145438.json`, captured
+from a CompassTagAT25.
+
+A fixture must agree with the magnetometer axis contract in
+[docs/shared/sensor-axes.md](../../../../docs/shared/sensor-axes.md).
+Check a candidate before committing it:
+
+```sh
+host/libraries/sensoranalysis/tools/check_orientation_frames.py CAPTURE.json
+```
+
+The fixture this one replaced was captured before the tag-side axis correction
+existed and disagreed with that contract, so every orientation screenshot
+generated from it showed a heading the current firmware would not produce.
 
 Replay it with:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json
+qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
 ```
 
 Use `--replay-percent 0`, `25`, `50`, or `100` to prepare milestone states for
@@ -26,11 +39,11 @@ Generate the baseline milestone screenshot set with:
 qtcalibrate --capture-startup-screenshot
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-replay-screenshots
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-orientation-screenshot
 ```
 

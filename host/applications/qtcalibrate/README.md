@@ -68,7 +68,7 @@ For documentation and fixture review, `qtcalibrate` can load a saved sample
 capture instead of attaching to a USB tag:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json
+qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
 ```
 
 The replay path presents the window as a fake attached tag. Enabling
@@ -78,7 +78,7 @@ live samples, so **Start** and **Stop** also exercise sample capture.
 Use `--replay-percent` to prefill the Calibrate tab for static screenshots:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json --replay-percent 25
+qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json --replay-percent 25
 ```
 
 Supported milestone values are ordinary percentages from 0 to 100. A 0 percent
@@ -91,11 +91,11 @@ To generate the baseline Calibrate-tab documentation screenshots and exit:
 qtcalibrate --capture-startup-screenshot
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-replay-screenshots
 
 qtcalibrate \
-  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20260826-174522.json \
+  --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-orientation-screenshot
 ```
 
