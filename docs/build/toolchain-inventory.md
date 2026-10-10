@@ -50,7 +50,7 @@ The five repos are on GitHub and come back with a clone. These will not.
 | Uncommitted work | all five repos | Most firmware build manifests in `build-host` record a `-dirty` describe; the newest, UIUCTag at 3 Oct, reads `fw-v0.0.3-55-g8a055a8-dirty`. Check `git status` in each repo. |
 | `captures/`, `Claude outputs/` | `~/Research/tag-designs` | Not git repos. Nine capture sessions, 30 Sep – 3 Oct 2026. |
 | Joulescope venv | `~/opt/joulescope-mcp/.venv` or `~/.venvs/joulescope` | `pip freeze` it before it goes. |
-| Qt account credentials | Qt Maintenance Tool | Reinstalling Qt 6.8.2 needs the Qt account login. |
+| Qt account credentials | Qt Maintenance Tool | Reinstalling Qt 6.10.3 needs the Qt account login. |
 
 ## Homebrew
 
@@ -111,12 +111,20 @@ software repo's submodule — `nanopb-0.4.8-macosx-x86`, `protobuf`,
 
 ## Qt
 
-**Qt 6.8.2 for macOS** at `~/Qt/6.8.2/macos`, installed by the Qt Maintenance
+**Qt 6.10.3 for macOS** at `~/Qt/6.10.3/macos`, installed by the Qt Maintenance
 Tool. The `macos-vcpkg` preset hard-codes that path, and `macdeployqt` comes
-from its `bin`, which must be on `PATH` for packaging.
+from its `bin`, which must be on `PATH` for packaging. Qt sources are present
+at `~/Qt/6.10.3/Src`, which is what `LICENSES/tools/generate_qt_notices.py`
+needs if the shipped Qt version ever changes.
 
-Also installed: Qt 6.5.3, Qt Creator, Qt Design Studio, Maintenance Tool. Only
-6.8.2 is referenced. Windows presets name 6.10.2 for MSVC; not applicable here.
+The macOS preset moved up from 6.8.2 because the AGL framework Qt's
+`FindWrapOpenGL` looked for was removed in the macOS 15 SDK. macOS and Windows
+presets now name the same Qt version, 6.10.3.
+
+Also installed: Qt 6.8.2, Qt Creator, Qt Design Studio, Maintenance Tool. Only
+6.10.3 is referenced. CI pins its own Qt version in
+[`release.yml`](../../.github/workflows/release.yml) and is not driven by the
+presets.
 
 Modules required: Core, Gui, Widgets, Concurrent, PrintSupport, Svg,
 SvgWidgets, Qml, Quick, QuickWidgets. `-DBUILD_QT_APPS=OFF` avoids all of it.
@@ -245,7 +253,7 @@ hand-made shim. A full `nanopb-0.4.9.1-macosx-x86` distribution also sits in
 `NANOPB_ROOT` at the real 0.4.9.1 distribution rather than recreating the shim,
 and check that `protoc` sits beside the generator.
 
-**Path casing.** The presets reference `$HOME/qt/6.8.2/macos`; the directory is
+**Path casing.** The presets reference `$HOME/qt/6.10.3/macos`; the directory is
 `~/Qt`. This works only on a case-insensitive volume.
 
 **Absolute paths baked into the tree.**
@@ -268,3 +276,13 @@ configured the current build trees; the project's stated floor is 3.20.
 `software/build-host`, `build-docs` and `~/Build/tag-designs` embed absolute
 paths — delete and reconfigure, but read `build-host/CMakeCache.txt` once more
 first, since it is the best record of what was installed.
+
+**An Xcode SDK upgrade orphans every existing build tree.** `CMAKE_OSX_SYSROOT`
+is a cache variable, so a reconfigure keeps pointing at the SDK that was current
+when the tree was first configured. Once that SDK directory is gone, anything
+derived from it fails: `WrapOpenGL_AGL` leaves a literal `-framework AGL` on
+every Qt link line, and `Qt6::PrintSupport` carries a `<sysroot>/usr/include`
+CUPS path that fails at generate time. None of it is fixed by reconfiguring —
+the tree has to be deleted. Note that the preset build trees live under
+`~/Build/tag-designs`, *not* in the repository, so deleting `software/build-host`
+does not touch what `cmake --preset macos-vcpkg` actually writes to.

@@ -64,7 +64,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | CMake 3.20 or newer | Used for configure, build, install, and CPack ZIP packaging. |
 | Git | Used by CMake version-generation helpers. |
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
-| Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.2/msvc2022_64`. |
+| Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.3/msvc2022_64`. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
@@ -82,7 +82,7 @@ dependencies and the standard dynamic Qt distribution:
 | Generator | `Visual Studio 18 2026` |
 | Preset | `windows-vcpkg-static` |
 | vcpkg triplet | `x64-windows-static-md` from `cmake/vcpkg-triplets` |
-| Qt source | Installed Qt at `C:/Qt/6.10.2/msvc2022_64` |
+| Qt source | Installed Qt at `C:/Qt/6.10.3/msvc2022_64` |
 | MSVC runtime | Dynamic runtime, `/MD` and `/MDd` |
 | Embedded build | `OFF` |
 | Release install directory | `c:/software-build-static-vcpkg-qt/install/tag_tools` |
@@ -110,14 +110,14 @@ The vcpkg dependencies are linked statically by this preset.
 Release build tree:
 
 ```
-$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;$env:PATH"
+$env:PATH = "C:\Qt\6.10.3\msvc2022_64\bin;$env:PATH"
 c:\software-build-static-vcpkg-qt\Release\bin\qtmonitor.exe
 ```
 
 Debug build tree:
 
 ```
-$env:PATH = "C:\Qt\6.10.2\msvc2022_64\bin;$env:PATH"
+$env:PATH = "C:\Qt\6.10.3\msvc2022_64\bin;$env:PATH"
 c:\software-build-static-vcpkg-qt\Debug\bin\qtmonitor.exe
 ```
 
@@ -166,7 +166,7 @@ cmake -S . -B build ^
   -DVCPKG_TARGET_TRIPLET=x64-windows-static-md ^
   -DVCPKG_HOST_TRIPLET=x64-windows ^
   -DVCPKG_OVERLAY_TRIPLETS=c:/Users/geoff/software/cmake/vcpkg-triplets ^
-  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.2/msvc2022_64 ^
+  -DCMAKE_PREFIX_PATH=C:/Qt/6.10.3/msvc2022_64 ^
   -DCMAKE_INSTALL_PREFIX=c:/software-build-static-vcpkg-qt/install ^
   -DBUILD_EMBEDDED=OFF
 ```
@@ -179,7 +179,7 @@ cmake -S . -B build ^
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
 | Qt 6 | Required for Qt host applications and `macdeployqt`. |
 | `pkg-config` | Used to locate `libusb-1.0` for non-vcpkg builds. |
-| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects vcpkg at `$HOME/Software/vcpkg` and Qt at `$HOME/qt/6.8.2/macos`. |
+| vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects vcpkg at `$HOME/Software/vcpkg` and Qt at `$HOME/qt/6.10.3/macos`. |
 | Homebrew autotools | Required by vcpkg's `libusb` port on macOS: `brew install autoconf autoconf-archive automake libtool`. These are build-only tools, not packaged runtime dependencies. |
 | `libusb-1.0` | Install with a package manager or provide a CMake/pkg-config discoverable installation. |
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
@@ -385,7 +385,7 @@ installed in a standard location.
 | Variable | Default | Description |
 | --- | --- | --- |
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
-| `CMAKE_OSX_DEPLOYMENT_TARGET` | `12.3` | Minimum macOS version for host software. |
+| `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
 | `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |

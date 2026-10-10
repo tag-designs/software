@@ -13,7 +13,7 @@ The output is committed (``LICENSES/host/Qt-THIRD-PARTY-NOTICES.txt``) and
 installed into the packages. Regenerate it when the Qt version changes or a
 newly deployed Qt module is added to ``SHIPPED_MODULES``::
 
-    LICENSES/tools/generate_qt_notices.py ~/qt/6.8.2/Src \\
+    LICENSES/tools/generate_qt_notices.py ~/qt/6.10.3/Src \\
         > LICENSES/host/Qt-THIRD-PARTY-NOTICES.txt
 
 It deliberately errs towards listing too much: every attribution in a shipped

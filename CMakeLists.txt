@@ -9,13 +9,33 @@ cmake_minimum_required(VERSION 3.20)
 # -DCMAKE_OSX_DEPLOYMENT_TARGET or the environment variable still wins. Keep
 # it equal to VCPKG_OSX_DEPLOYMENT_TARGET in cmake/vcpkg-triplets.
 if(NOT CMAKE_OSX_DEPLOYMENT_TARGET AND NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "12.3" CACHE STRING
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
       "Minimum macOS version for the host software" FORCE)
 endif()
 
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
-#set(CMAKE_OSX_SYSROOT "/Users/geobrown/Software/macos-sdk/MacOSX12.3.sdk")
+
+# project() records the active SDK in the CMAKE_OSX_SYSROOT cache entry and
+# never revisits it. After an Xcode upgrade removes the versioned SDK that a
+# build tree was first configured against, every path derived from it dangles:
+# WrapOpenGL leaves a literal -framework AGL on each Qt link line, and
+# Qt6::PrintSupport carries a <sysroot>/usr/include CUPS path that fails at
+# generate time with no hint about the real cause. Reconfiguring does not help,
+# because the stale value is what is being reused. Fail here instead, where the
+# remedy can be stated. Note that the preset build trees live under
+# ~/Build/tag-designs, not in the repository.
+if(APPLE AND CMAKE_OSX_SYSROOT AND IS_ABSOLUTE "${CMAKE_OSX_SYSROOT}"
+   AND NOT EXISTS "${CMAKE_OSX_SYSROOT}")
+  message(FATAL_ERROR
+    "The macOS SDK this build tree was configured against is gone:\n"
+    "  ${CMAKE_OSX_SYSROOT}\n"
+    "This is a cached value, not a setting in this repository, so "
+    "reconfiguring will not clear it. Delete the build tree and configure "
+    "again:\n"
+    "  rm -rf \"${CMAKE_BINARY_DIR}\"")
+endif()
+
 include(CMakePrintHelpers)
 
 if(WIN32)

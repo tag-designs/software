@@ -69,6 +69,7 @@ design document.
 - [0023. Loaders: the U375 SPI-NAND loader reads without reset or lasting writes](decisions/0023-loader-u375-nand-loader-reads-without-reset.md) *(decision)* — The GD5F2GM7RE SPI-NAND loader for STM32U375 never resets the NAND or writes its lock register, allows only a restored ECC_EN toggle, leaves the clock near reset, drives FLASH_PWR itself, and leaves blank-block skipping to the host.
 - [0024. Release: the macOS package is built on CI and signed locally](decisions/0024-release-macos-package-built-on-ci-signed-locally.md) *(decision)* — The shipped macOS DMG is the one CI builds, attested by the workflow and re-signed with the Developer ID identity on a developer's Mac by the sign-latest target; the signing key still never reaches CI.
 - [0025. Release: the macOS package is notarized locally](decisions/0025-release-macos-package-notarized-locally.md) *(decision)* — The released macOS DMG is notarized and stapled on the developer's Mac by sign-latest, after re-signing, with notarytool credentials held in that Mac's keychain; nothing new reaches CI.
+- [0026. Host: Qt 6.10.3 everywhere and a macOS 13 floor](decisions/0026-host-qt-6-10-3-and-macos-13-floor.md) *(decision)* — Host builds use Qt 6.10.3 on both platforms and the macOS deployment target rises to 13.0, because Qt 6.10's macOS frameworks are built for macOS 13; CI's Qt pin follows the presets rather than lagging them.
 
 ### Investigations
 
@@ -419,6 +420,7 @@ design document.
 
 - [Host User Guide Screenshot Automation](../host/docs/design/proposals/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; the screenshot hooks were built, the qtcalibrate_docshots target and annotation renderer were not.
 - [QtMonitor Documentation Screenshot Automation Design](../host/docs/design/proposals/qtmonitor-screenshot-automation.md) *(proposal, historical)* — Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.
+- [Replacing qtcalibrate's Calibration Quality Code](../host/docs/design/proposals/qtcalibrate-quality-replacement.md) *(proposal, proposed)* — Replace the inherited magcal/quality.c with owned code: a leverage-based retention policy, robust residual statistics, an accelerometer dip-consistency check, and a heading-accuracy headline metric.
 
 ## Other
 

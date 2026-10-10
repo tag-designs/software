@@ -100,7 +100,8 @@ made a CI-built package unshippable. Both were fixed in the same change:
   build machine's SDK.
   - **Fix:** it is set before `project()`, and an empty entry left in an
     existing tree is replaced. A local rebuild then gave `minos 12.3` on every
-    shipped executable, with no availability warnings.
+    shipped executable, with no availability warnings. The floor later rose to
+    13.0; see [0026](0026-host-qt-6-10-3-and-macos-13-floor.md).
 
 ## Consequences
 

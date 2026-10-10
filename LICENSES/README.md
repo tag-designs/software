@@ -51,7 +51,7 @@ binaries. For GPL, LGPL, Apache, MPL and CC licenses it names the shared text
 in `texts/`.
 
 The texts in `texts/` are unmodified copies:
-- **GPL-3.0, LGPL-3.0 and Apache-2.0:** `qtbase/LICENSES` in the Qt 6.8.2
+- **GPL-3.0, LGPL-3.0 and Apache-2.0:** `qtbase/LICENSES` in the Qt 6.10.3
   source.
 - **LGPL-2.1:** libusb's vcpkg copyright file.
 - **MPL-1.1:** lunr-languages' `LICENSE`.

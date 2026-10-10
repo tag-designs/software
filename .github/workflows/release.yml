@@ -33,9 +33,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Qt provisioned by aqt for the CI builds. The local presets use 6.10.2
-  # (Windows) and 6.8.2 (macOS); CI pins a single version for both.
-  QT_VERSION: "6.8.2"
+  # Qt provisioned by aqt for the CI builds. Keep this equal to the Qt the
+  # local presets name in CMakePresets.json, so a released binary links the
+  # same Qt a developer builds against. Changing it means regenerating
+  # LICENSES/host/Qt-THIRD-PARTY-NOTICES.txt and updating the written source
+  # offer in LICENSES/host/README.md.
+  QT_VERSION: "6.10.3"
   # Must match the baseline in vcpkg-configuration.json so manifest-mode
   # version resolution finds the commit in this shallow clone.
   VCPKG_BASELINE: "99a97de2cb371449d4fb9dc970f2ac562d689ec2"

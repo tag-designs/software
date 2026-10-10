@@ -25,8 +25,8 @@ The project's own code in them remains available under the MIT License.
 Tag Designs software repository, https://github.com/tag-designs/software, at
 the release tag the package was built from (`vX.Y`). It includes the
 third-party sources it names: vcpkg ports at the baseline in
-`vcpkg-configuration.json`, and Qt 6.8.2 from
-https://download.qt.io/archive/qt/6.8/6.8.2/single/. This offer is valid for
+`vcpkg-configuration.json`, and Qt 6.10.3 from
+https://download.qt.io/archive/qt/6.10/6.10.3/single/. This offer is valid for
 at least three years from the release date, for anyone who receives the
 programs.
 
@@ -36,7 +36,7 @@ programs.
 
 | Component | Version | License | Used in |
 | --- | --- | --- | --- |
-| [Qt](third-party/qt.txt) | 6.8.2 | [LGPL-3.0-only](texts/LGPL-3.0-only.txt); Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard [GPL-3.0-only](texts/GPL-3.0-only.txt) | Qt applications (shared libraries) |
+| [Qt](third-party/qt.txt) | 6.10.3 | [LGPL-3.0-only](texts/LGPL-3.0-only.txt); Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard [GPL-3.0-only](texts/GPL-3.0-only.txt) | Qt applications (shared libraries) |
 | [Third-party code inside Qt](Qt-THIRD-PARTY-NOTICES.txt) | — | various, listed in the file | Qt applications |
 | [QCustomPlot](third-party/qcustomplot.txt) | 2.1.1 | [GPL-3.0-or-later](texts/GPL-3.0-only.txt) | sensorviz, btviz |
 | [libusb](third-party/libusb.txt) | 1.0.29 | [LGPL-2.1-or-later](texts/LGPL-2.1-or-later.txt) | programs that talk to a tag |
