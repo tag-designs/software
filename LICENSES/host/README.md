@@ -48,7 +48,6 @@ programs.
 | [log.c (rxi)](third-party/rxi-log.txt) | 0.1.0 | MIT | all programs |
 | [stlink commands.h](third-party/stlink-commands.txt) | — | BSD-3-Clause | programs that talk to a tag |
 | [Freescale magnetic calibration](third-party/freescale-magcal.txt) | — | BSD-3-Clause | qtcalibrate |
-| [MotionCal magcal.h](third-party/motioncal-quality.txt) | — | none found | qtcalibrate |
 | [Kiss FFT](third-party/kissfft.txt) | 1.3.0 | BSD-3-Clause | btviz |
 | [FastFIR](third-party/fastfir.txt) | — | MIT | btviz |
 | [SOLPOS (NLR, formerly NREL)](third-party/nrel-solpos.txt) | 2.0 | NLR data and software notice | btviz |

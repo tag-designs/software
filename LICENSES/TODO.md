@@ -7,17 +7,15 @@ summary: Remaining licensing follow-ups from the 2026-10-06 inventory.
 # Licensing Worklist
 
 Follow-ups from the third-party inventory of 2026-10-06; see
-[README.md](README.md). Two components ship with a known licensing gap, which
-their notice files state together with the one program each affects:
-MotionCal's `magcal.h` in qtcalibrate
-(`host/third-party/motioncal-quality.txt`), and SOLPOS in btviz
-(`host/third-party/nrel-solpos.txt`).
+[README.md](README.md). One component ships with a known licensing gap, which
+its notice file states together with the one program it affects: SOLPOS in
+btviz (`host/third-party/nrel-solpos.txt`).
 
-`quality.c` was the other half of the first of those and is gone as of
-2026-10-10, replaced by owned arithmetic. What is left is a header declaring
-the Freescale solver that `magcal.c` and `matrix.c` implement, both of them
-BSD-3-Clause; writing our own declarations from those two would close the gap
-entirely.
+The MotionCal gap in qtcalibrate closed on 2026-10-10. `quality.c` went first,
+replaced by owned arithmetic in `host/libraries/sensoranalysis`; then
+`magcal.h`, rewritten from the Freescale solver it declares. `magcal.c` and
+`matrix.c` stay, and those are BSD-3-Clause with a notice of their own
+(`host/third-party/freescale-magcal.txt`).
 
 ## Worth reducing
 
