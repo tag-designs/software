@@ -377,26 +377,47 @@ than against itself.
 
 ### Where phase 3 stands
 
-Built and flag-gated, off by default, as `--leverage-retention`. Replaying the
-reference fixture both ways, over the window in which the policy runs at all:
+Built and flag-gated, off by default, as `--leverage-retention`. Measured on a
+four-minute capture, about 2,400 samples and 1,760 evictions, replayed both
+ways. The curves coincide exactly until the buffer fills at 650, which is the
+control: the same code on the same data, so everything after it is real.
+Steady state, over the last quarter of each run:
 
-| from the first eviction to the end | inherited | leverage |
-| --- | --- | --- |
-| isotropy | 0.556 → 0.676 | 0.560 → **0.751** |
-| coverage | 89/100 | 89/100 |
-| dip spread | 4.14 degrees | 4.08 degrees |
-| evictions | 109 | 112, all on leverage, none as outliers |
+| | inherited | leverage | delta |
+| --- | --- | --- | --- |
+| direction spread | 0.906 ± 0.014 | 0.934 ± 0.021 | **+0.028** |
+| dip spread | 3.613 ± 0.101 deg | 3.307 ± 0.080 deg | **−0.307** |
+| attitude diversity | 2.440 ± 0.031 | 2.099 ± 0.024 | −0.342 |
+| coverage | 100/100 | 100/100 | — |
 
-Same starting point and the same coverage, with a better spread of directions:
-the patch floor means the improvement was not bought by abandoning any. Two
-runs of the inherited policy gave 0.671 and 0.676, so run-to-run variation is
-about 0.005 and the 0.075 gap is some fifteen times it.
+The dip spread result is the one that carries weight, because dip is not a
+quantity the solver optimises and nothing in the leverage computation knows
+about gravity. A better direction spread could be the policy flattering the
+measure it was designed around; a better dip spread cannot be.
 
-Two cautions. The fixture is barely longer than the buffer, so the policy made
-only about 110 decisions in the last 14 percent of the run; a collection long
-enough to hold the buffer full for most of its length would measure this
-properly. And the outlier rule never fired on a capture whose robust magnitude
-spread is 0.82 percent, so it rests on the synthetic checks alone.
+**The improvement arrives only after coverage saturates.** Split at the tick
+where coverage reaches 100/100, the dip spread delta is +0.021 while patches
+are still filling and −0.357 afterwards. While a new direction is still
+available, which sample is discarded hardly matters; once none is, the only
+lever left is which samples are kept. That is the opposite of what one might
+assume from the end numbers alone.
+
+Two findings against the policy, both honest:
+
+- **Attitude diversity fell, and the metric is at fault rather than the
+  policy.** It is a per-patch mean -- distinct gravity patches per occupied
+  magnetometer patch -- so it rewards uneven occupancy: a patch holding thirty
+  samples reaches more gravity bins than one holding six. Leverage spreads
+  samples more evenly, so each patch holds fewer. Direction spread rising and
+  attitude falling are one redistribution counted twice with opposite signs.
+  The sound measure is the total count of distinct (magnetometer, gravity)
+  cells, which `MagQuality` already computes and does not yet log.
+- **The outlier threshold is wrong for a buffer this size.** Cook's distance
+  scales with leverage, and with 650 samples the mean leverage is p/n = 0.015,
+  so the textbook `D > 1` needs a 25-sigma residual -- about 9 uT, a fifth of
+  the field. Nothing fired because nothing could. A five-sigma rule is
+  `D > 0.04`. The right value wants measuring on a capture with real
+  disturbances in it, not another guess.
 
 One observation worth recording because it is easy to misread: the isotropy
 sag partway through a collection, from about 0.72 down to 0.50 and back, is
@@ -422,6 +443,59 @@ untouched.
 This is an engineering judgement, not legal advice; if the ambiguity matters
 for distribution it should be confirmed with counsel.
 
+## The calibration environment is not controllable
+
+Calibration happens with the tag tethered to a computer over USB, because that
+is how samples reach the host. The computer, its supply and the cable sit
+within centimetres of the magnetometer, and the room is whatever room the user
+is in. Users are not ours to instruct. This is a constraint to design around,
+not a problem with a fix.
+
+It is measurable. On the reference captures the fitted field is **12.0 and 12.3
+percent below** the World Magnetic Model value for the site (45.66 and 45.53
+against 51.9 uT), and the inclination is about **3 degrees shallow** (63.6
+against 66 to 67). Both captures agree with each other to 0.3 percent in field
+and 0.16 degrees in dip, so the bench is repeatable even though it is wrong in
+absolute terms.
+
+What that does and does not cost:
+
+- **Heading is unaffected by a uniform error.** It depends on the direction of
+  the calibrated vector, not its length, so a field read 12 percent low gives
+  the same heading. `B` is the one constant that comes out as a measurement of
+  the room rather than of the Earth, and nothing downstream of heading uses it
+  beyond the solver's 22-67 uT sanity range, which 45.7 passes.
+- **Distortion fixed relative to the tag is calibrated out, correctly.** That
+  is what hard and soft iron terms are for, and a cable routed the same way
+  every time is indistinguishable from the tag's own iron. It transfers to the
+  field with the tag.
+- **Distortion that changes as the tag moves cannot be calibrated out.** A
+  laptop that stays put while the tag is rotated through the space beside it
+  presents a different field at each orientation. That smears the sphere, and
+  it is the irreducible part.
+
+The consequence for this proposal is that the metrics fall into two classes,
+and they cannot carry the same kind of threshold:
+
+| Class | Metrics | What a threshold means |
+| --- | --- | --- |
+| Portable | coverage, direction spread | Operator technique. A number means the same on any bench, because it describes how the tag was turned. |
+| Environment limited | dip spread, residual spread | The bench. Their floor is set by the room and the cable, not by the tag, so the same tag scores differently in two places. |
+
+So a fixed pass/fail on dip spread is not portable, however convenient it would
+be. What is defensible: flag the portable metrics against absolute thresholds,
+report the environment-limited ones as numbers to compare against that user's
+own previous captures, and reserve hard failures for the cases that are
+unambiguous anywhere -- no coverage, or a design the data cannot determine.
+
+Two cheap checks remain available to anyone who wants them, neither needing a
+field trip. Repeating a capture in a different spot in the same room separates
+a uniform local field, which is harmless, from one that varies across the
+sweep, which is not. And comparing fitted `B` against the World Magnetic Model
+for the site says how disturbed the bench is, as a one-off sanity check rather
+than something to wire into the app -- indoors it would report a large residual
+that is real and has nothing to do with the sensor.
+
 ## Open questions
 
 1. What heading accuracy counts as good enough for a deployed songbird tag?
@@ -433,10 +507,12 @@ for distribution it should be confirmed with counsel.
    which is the honest presentation of a number whose acceptable range nobody
    has established yet.
 
-   The dip spread gives a rough bound in the meantime. On the current fixture
-   it is 4.11 degrees, which is an upper bound on heading error rather than an
-   estimate of it, since dip carries calibration error, accelerometer error and
-   sample timing together.
+   The dip spread is a weaker guide than it first looks. It is an upper bound
+   on heading error rather than an estimate, since it carries calibration
+   error, accelerometer error and sample timing together -- and, as the section
+   above sets out, the bench as well. A spread of 3 to 4 degrees on a tethered
+   indoor capture is mostly a statement about the room. Answering this question
+   needs a measurement that does not inherit the calibration environment.
 2. Is `MAGBUFFSIZE = 650` still the right buffer size once retention is
    principled? A smaller, better-chosen set may fit as well.
 3. How many patches? 100 is inherited. With a Fibonacci lattice, N becomes a
