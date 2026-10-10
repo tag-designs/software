@@ -64,11 +64,18 @@ has produced a valid calibration.
 
 ## Sample Replay
 
+Every command below is run from the build output directory, where the binary
+lands -- `<build-dir>/<config>/bin` -- hence `./qtcalibrate`. A fixture path
+written relative to the repository root still resolves from there:
+`resolveReplayCapturePath()` tries the path as given, then the same path under
+the source tree, whose location is compiled in. Output paths such as
+`--log-file` are not resolved that way and land in the current directory.
+
 For documentation and fixture review, `qtcalibrate` can load a saved sample
 capture instead of attaching to a USB tag:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
+./qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
 ```
 
 The replay path presents the window as a fake attached tag. Enabling
@@ -78,7 +85,7 @@ live samples, so **Start** and **Stop** also exercise sample capture.
 Use `--replay-percent` to prefill the Calibrate tab for static screenshots:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json --replay-percent 25
+./qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json --replay-percent 25
 ```
 
 Supported milestone values are ordinary percentages from 0 to 100. A 0 percent
@@ -88,13 +95,13 @@ feeds the full fixture and finalizes the capture.
 To generate the baseline Calibrate-tab documentation screenshots and exit:
 
 ```sh
-qtcalibrate --capture-startup-screenshot
+./qtcalibrate --capture-startup-screenshot
 
-qtcalibrate \
+./qtcalibrate \
   --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-replay-screenshots
 
-qtcalibrate \
+./qtcalibrate \
   --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-orientation-screenshot
 ```
@@ -129,8 +136,8 @@ changes what the solver is fitted to. Replaying one capture both ways is the
 intended comparison:
 
 ```sh
-qtcalibrate --replay-capture <capture.json> --replay-exit --log-file inherited.txt
-qtcalibrate --replay-capture <capture.json> --replay-exit --log-file leverage.txt \
+./qtcalibrate --replay-capture <capture.json> --replay-exit --log-file inherited.txt
+./qtcalibrate --replay-capture <capture.json> --replay-exit --log-file leverage.txt \
   --leverage-retention
 ```
 

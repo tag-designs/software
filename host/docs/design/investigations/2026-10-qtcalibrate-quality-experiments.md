@@ -78,8 +78,8 @@ Regenerate a pair with:
 
 ```sh
 FIXTURE=host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json
-qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file inherited.txt
-qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file leverage.txt \
+./qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file inherited.txt
+./qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file leverage.txt \
   --leverage-retention
 ```
 

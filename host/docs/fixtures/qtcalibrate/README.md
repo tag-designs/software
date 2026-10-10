@@ -27,7 +27,7 @@ generated from it showed a heading the current firmware would not produce.
 Replay it with:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
+./qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json
 ```
 
 Use `--replay-percent 0`, `25`, `50`, or `100` to prepare milestone states for
@@ -36,13 +36,13 @@ documentation screenshots.
 Generate the baseline milestone screenshot set with:
 
 ```sh
-qtcalibrate --capture-startup-screenshot
+./qtcalibrate --capture-startup-screenshot
 
-qtcalibrate \
+./qtcalibrate \
   --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-replay-screenshots
 
-qtcalibrate \
+./qtcalibrate \
   --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
   --capture-orientation-screenshot
 ```
