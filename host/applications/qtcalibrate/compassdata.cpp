@@ -129,6 +129,9 @@ bool CompassData::eCompass(QVector3D magin, QVector3D accel, QQuaternion &q,
 
 	// qtcalibrate filters live vectors before solving orientation. Log viewers
 	// use unfiltered samples and call CompassProcessor directly.
+	if (gravity.valid) {
+		accel -= gravity.offset;
+	}
 	acc_filt = alpha * acc_filt + (1.0-alpha) * accel;
 	mag_filt = alpha * mag_filt + (1.0-alpha) * magin;
 
@@ -169,9 +172,43 @@ void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble,
     fiterror = quality_spherical_fit_error();
 }
 
+/**
+ * @brief Fit the accelerometer zero-g offset from the buffered samples.
+ *
+ * @details Two passes over the same samples: a wide gate first, because the
+ *          offset being estimated is itself several percent of one g, then a
+ *          tighter gate judged on the corrected magnitude. Refitting on every
+ *          quality tick rather than accumulating live costs nothing at this
+ *          size and keeps the offset tracking the sweep as it improves.
+ */
+void CompassData::fitGravity()
+{
+    GravityFit fit;
+    for (int i = 0; i < MAGBUFFSIZE; i++) {
+        if (magcal.valid[i] && accelBufferValid[i]) {
+            fit.add(accelBuffer[i], kStreamOneG);
+        }
+    }
+    GravityFit::Result first = fit.result(kStreamOneG);
+    if (!first.valid) {
+        gravity = first;
+        return;
+    }
+
+    fit.refit(first.offset);
+    for (int i = 0; i < MAGBUFFSIZE; i++) {
+        if (magcal.valid[i] && accelBufferValid[i]) {
+            fit.add(accelBuffer[i], kStreamOneG);
+        }
+    }
+    const GravityFit::Result second = fit.result(kStreamOneG);
+    gravity = second.valid ? second : first;
+}
+
 void CompassData::qualityUpdate(){
     quality_reset();
     quality.reset();
+    fitGravity();
 
     // The inclination of a sample is CompassProcessor's to compute: the
     // magnetometer and the accelerometer do not share an axis convention, and
@@ -188,7 +225,11 @@ void CompassData::qualityUpdate(){
 
             if (accelBufferValid[i]) {
                 CompassRawSample raw;
-                raw.accel = accelBuffer[i];
+                // The zero-g offset tilts the apparent gravity by an amount
+                // that varies with orientation, so it shows up as dip scatter.
+                // Removing it is worth about a third of that spread.
+                raw.accel = gravity.valid ? accelBuffer[i] - gravity.offset
+                                          : accelBuffer[i];
                 raw.mag = point;
                 CompassDerivedSample derived;
                 if (processor.deriveCalibratedSample(raw, derived)) {
@@ -216,6 +257,7 @@ void CompassData::raw_data_reset(void)
 		slotFilledAt[i] = 0;
 	}
 	addCounter = 0;
+	gravity = GravityFit::Result();
 	evictions = 0;
 	leverageEvictions = 0;
 	outlierEvictions = 0;

@@ -7,6 +7,7 @@
 #include <QObject>
 
 #include "magcal/magcal.h"
+#include "gravityfit.h"
 #include "magquality.h"
 #include "magretention.h"
 
@@ -49,6 +50,15 @@ public:
      *          while the two are compared; neither drives the other.
      */
     const MagQuality::Result &qualityMetrics() const { return metrics; }
+
+    /**
+     * @brief Fitted accelerometer zero-g offset, as of the last qualityUpdate().
+     *
+     * @details Host-side only: it is applied when deriving dip and orientation
+     *          and recorded in a capture, but is not written to the tag. See
+     *          host/docs/design/proposals/qtcalibrate-quality-replacement.md.
+     */
+    const GravityFit::Result &accelOffset() const { return gravity; }
 
     /// Which policy decides what to discard when the buffer is full.
     enum class Retention {
@@ -98,6 +108,9 @@ private:
 
     MagQuality quality;
     MagQuality::Result metrics;
+
+    GravityFit::Result gravity;
+    void fitGravity();
 
     /// Leverage-based discard. Off by default: this is the one change in the
     /// quality work that alters what the solver sees, so it is opt-in until it

@@ -233,6 +233,21 @@
                       </property>
                      </widget>
                     </item>
+                    <item>
+                     <widget class="QLabel" name="accelOffsetLabel">
+                      <property name="font">
+                       <font>
+                        <family>Courier New</family>
+                       </font>
+                      </property>
+                      <property name="toolTip">
+                       <string>Accelerometer zero-g offset, milli-g. Host-side only; not written to the tag.</string>
+                      </property>
+                      <property name="text">
+                       <string notr="true">accel --</string>
+                      </property>
+                     </widget>
+                    </item>
                    </layout>
                   </widget>
                  </item>

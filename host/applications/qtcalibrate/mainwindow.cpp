@@ -46,6 +46,10 @@ QTextEdit *s_textEdit = nullptr;
 
 #define title_string "Tag Calibrator v0.5"
 
+/// Accelerometer offset beyond which the fit is flagged rather than trusted.
+/// A real tag measures about 77 mg; several times that is not a zero-g offset.
+static const float kImplausibleAccelOffsetMg = 250.0f;
+
 namespace
 {
 
@@ -734,6 +738,7 @@ void MainWindow::resetCalibrationDisplay()
   ui.v0Label->setText("--");
   ui.v1Label->setText("--");
   ui.v2Label->setText("--");
+  ui.accelOffsetLabel->setText("accel --");
   ui.qualityLabel->setText(QString("%1  %2  %3  %4")
                                .arg("--", 6).arg("--", 8)
                                .arg("--", 6).arg("--", 9));
@@ -926,7 +931,26 @@ void MainWindow::calibration_update(void)
   ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
   ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
   ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
-  
+
+  // Host-side accelerometer zero-g offset. Flagged when implausibly large: the
+  // part is specified at +/-11 mg after factory trim, and board stress takes a
+  // real tag to about 77 mg, so several times that is a damaged part or a
+  // sweep that never covered enough orientations -- not something to apply
+  // silently to every orientation the app derives.
+  const GravityFit::Result &accelFit = magnetic.accelOffset();
+  if (accelFit.valid) {
+    const float magnitude = accelFit.offset.length();
+    ui.accelOffsetLabel->setText(
+        QString("accel %1 %2 %3 = %4 mg%5")
+            .arg(accelFit.offset.x(), 0, 'f', 1)
+            .arg(accelFit.offset.y(), 0, 'f', 1)
+            .arg(accelFit.offset.z(), 0, 'f', 1)
+            .arg(magnitude, 0, 'f', 1)
+            .arg(magnitude > kImplausibleAccelOffsetMg ? "  CHECK" : ""));
+  } else {
+    ui.accelOffsetLabel->setText("accel --");
+  }
+
   float gaps, variance, wobble, fiterror;
   magnetic.calibrationQuality(gaps, variance, wobble, fiterror);
   // Right-aligned in the widths of the Courier header above. The previous
@@ -1166,6 +1190,23 @@ bool MainWindow::saveSampleCapture(const QString &path)
     calibration["mapping"] = mapping;
 
     magnetic.qualityUpdate();
+
+    // Host-side only, so it is recorded here rather than written to the tag.
+    // After qualityUpdate(), which refits it, so this and the quality figures
+    // below describe the same buffer.
+    const GravityFit::Result &accelFit = magnetic.accelOffset();
+    if (accelFit.valid) {
+      QJsonArray accelOffset;
+      accelOffset.append(accelFit.offset.x());
+      accelOffset.append(accelFit.offset.y());
+      accelOffset.append(accelFit.offset.z());
+      QJsonObject accelObject;
+      accelObject["offset"] = accelOffset;
+      accelObject["radius"] = accelFit.radius;
+      accelObject["samples"] = accelFit.samples;
+      calibration["accelerometer"] = accelObject;
+    }
+
     float gaps;
     float variance;
     float wobble;
