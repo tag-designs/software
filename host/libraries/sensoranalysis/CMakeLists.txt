@@ -35,4 +35,12 @@ if(BUILD_SENSORANALYSIS_CHECKS)
     set_target_properties(${check} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
   endforeach()
+
+  # A tool rather than a check: it takes a capture and prints what the
+  # calibration code makes of it, and never decides anything is wrong. Built
+  # behind the same option because it is developer-only.
+  add_executable(capture_replay test/capture_replay.cc)
+  target_link_libraries(capture_replay PRIVATE sensoranalysis)
+  set_target_properties(capture_replay PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 endif()

@@ -22,6 +22,36 @@ cmake --build <build-dir> --target magquality_check
 The binary lands in the build tree's `bin` and takes no arguments. It exits
 non-zero when a check fails.
 
+## `capture_replay`
+
+Not a check: a tool. It replays a saved `qtcalibrate` capture straight through
+the library and prints what the calibration code makes of it, sample by
+sample.
+
+```sh
+./capture_replay host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json
+./capture_replay CAPTURE.json --csv > trace.csv       # one row per tick
+./capture_replay CAPTURE.json --patches 64 --every 500
+```
+
+It reports the accelerometer offset as it develops, how far it moves over the
+second half of the sweep, patch coverage and evenness, and the robust
+inclination spread with and without the offset applied -- the last computed
+through `CompassProcessor`, the same routine `qtcalibrate` uses, and gated the
+same way `MagQuality` gates it.
+
+The point is the questions a single end-of-run number cannot answer: does the
+estimate settle or wander, when does a metric stop improving, did a change
+move anything. Asking them through `qtcalibrate` needs the Qt build, a window
+and a run in real time; this needs a fixture and a second, which makes a
+design question cheap enough to actually test. The sliding-window fit that
+made the offset wander 13 mg was found this way.
+
+On the committed 2425-sample fixture it reports an inclination spread of
+3.61 degrees uncorrected and 2.47 with the offset removed, against the 2.58
+`qtcalibrate` logs for the same capture -- the small difference being that
+`qtcalibrate` measures over its retained 650 samples rather than all of them.
+
 ## `accelcalibration_check`
 
 | Group | What it pins down |
