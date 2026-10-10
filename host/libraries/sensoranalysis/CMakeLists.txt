@@ -9,7 +9,8 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui)
 add_library(sensoranalysis STATIC
   compass_processor.cpp
   compass_types.cpp
-  magquality.cpp)
+  magquality.cpp
+  magretention.cpp)
 
 target_include_directories(sensoranalysis PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(sensoranalysis PUBLIC Qt6::Core Qt6::Gui)
@@ -24,8 +25,10 @@ option(BUILD_SENSORANALYSIS_CHECKS
        OFF)
 
 if(BUILD_SENSORANALYSIS_CHECKS)
-  add_executable(magquality_check test/magquality_check.cc)
-  target_link_libraries(magquality_check PRIVATE sensoranalysis)
-  set_target_properties(magquality_check PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+  foreach(check magquality_check magretention_check)
+    add_executable(${check} test/${check}.cc)
+    target_link_libraries(${check} PRIVATE sensoranalysis)
+    set_target_properties(${check} PROPERTIES
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+  endforeach()
 endif()
