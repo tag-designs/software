@@ -155,7 +155,7 @@ hardest to preserve are the ones it accuses. The question worth asking is
 narrower, and says nothing about how useful a sample is: is this reading
 wrong? That is the studentized residual `t = r / (s sqrt(1 - h))`, thresholded
 from a false-positive budget -- at n = 650, `t > 4` is about 0.04 expected
-false rejections per run. Replaced in `6d0d0b31`.
+false rejections per run. Replaced in `cb669bf1`.
 
 **The improvement continues long after the buffer fills.** Evenness is 0.68
 (inherited) and 0.67 (leverage) at sample 650, where the buffer fills, and
