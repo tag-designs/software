@@ -348,6 +348,55 @@ differs only in its numerator: 252 cells against 213, a loss of 39. Against
 the 3.56 cells per patch the site geometry allows -- 356 over 100 patches --
 that is 71 percent against 60 percent of achievable.
 
+## The tool the later experiments were done with
+
+Experiments 10 and 11 were not run through `qtcalibrate` at all. They were run
+with `capture_replay`, which feeds a committed fixture straight into the
+library and prints what the calibration code makes of it, sample by sample.
+It is built with the offline checks
+(`host/libraries/sensoranalysis/test/README.md` has the commands) and lives
+beside them.
+
+Every question in this investigation turned out to be about a trajectory
+rather than an endpoint -- does the offset settle, when does a metric stop
+improving, did that change move anything -- and a replay through `qtcalibrate`
+answers those badly. It needs the Qt build, a window and a run in real time,
+and it reports through a log at one line per two samples. That is how the
+13 mg wander in experiment 10 was found: by watching a log scroll past.
+
+The tool answers the same questions in a second, which is what made
+experiment 11 worth doing at all. Four accelerometer models over 2425 samples,
+each scored on inclination spread, is one command; through `qtcalibrate` it
+would have been four builds and four sweeps, and the question would have
+stayed open.
+
+It is validated against `qtcalibrate` rather than trusted: on the 2425-sample
+fixture it reports an inclination spread of 2.470 degrees where `qtcalibrate`
+logs 2.58 for the same capture, the difference being that `qtcalibrate`
+measures over its retained 650 samples and this measures over all of them.
+
+Three traps found while building it, each of which produced a plausible wrong
+number rather than an error, and each of which applies to anything else
+reading a capture:
+
+- a capture stores its constants as `offset` and `mapping`, not under the
+  embedded `v0`/`a00` names `CompassCalibration::fromMagnetometerJson()`
+  reads, so reading it that way yields an identity calibration silently;
+- `deriveCalibratedSample()` wants magnetometer vectors that are **already**
+  corrected, which is how `qtcalibrate` calls it. Fed raw ones it reported an
+  inclination spread of 48 degrees. `deriveSample()` is the call that applies
+  the constants itself;
+- inclination has to be gated on acceleration magnitude exactly as
+  `MagQuality` gates it. A reading taken mid-swing has no meaningful
+  inclination, and ungated the spread describes the sweep rather than the
+  calibration.
+
+A fourth was in the throwaway harness that preceded it rather than in the
+tool: it paired each accelerometer reading with the **previous** sample's
+magnetometer, because `mag` follows `accel` in the file and the search ran
+backwards. That alone turned 2.47 degrees into 5.34, and it is the kind of
+discrepancy that sends you looking for a fault in the library.
+
 ## Experiment 10: the split, measured
 
 **Result: the offset settles to 1.33 mg of movement where it used to wander
@@ -453,10 +502,13 @@ reference capture reports 30.7 mg, which is model error rather than noise.
 ## Open questions
 
 1. Find where the remaining 2.4 degrees of inclination spread lives.
-   Experiment 11 rules out the accelerometer; the candidates left are
-   magnetometer scatter, field gradients in the room, and the two sensors not
-   being sampled at the same instant while the tag turns. `capture_replay` is
-   the cheap way to ask.
+   Experiment 11 rules out the accelerometer. Of what is left, the room is not
+   worth chasing -- it cannot be measured without a clean site, and the whole
+   point of
+   [the environment section](../proposals/qtcalibrate-quality-replacement.md#the-calibration-environment-is-not-controllable)
+   is that field use will not have one. That leaves magnetometer scatter and
+   the two sensors not being sampled at the same instant while the tag turns,
+   both of which `capture_replay` can ask about cheaply.
 2. Gate the inclination metric on rotation rate rather than on acceleration
    magnitude, which also tests the third candidate above.
 3. Recalibrate the Cook's distance threshold. `D > 0.04` is the 5 sigma rule
