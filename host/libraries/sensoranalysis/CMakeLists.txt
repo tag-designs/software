@@ -7,8 +7,10 @@ message("Configure sensoranalysis")
 find_package(Qt6 REQUIRED COMPONENTS Core Gui)
 
 add_library(sensoranalysis STATIC
+  accelcalibration.cpp
   compass_processor.cpp
   compass_types.cpp
+  directions.cpp
   gravityfit.cpp
   magquality.cpp
   magretention.cpp)
@@ -26,7 +28,8 @@ option(BUILD_SENSORANALYSIS_CHECKS
        OFF)
 
 if(BUILD_SENSORANALYSIS_CHECKS)
-  foreach(check gravityfit_check magquality_check magretention_check)
+  foreach(check accelcalibration_check gravityfit_check magquality_check
+                magretention_check)
     add_executable(${check} test/${check}.cc)
     target_link_libraries(${check} PRIVATE sensoranalysis)
     set_target_properties(${check} PROPERTIES

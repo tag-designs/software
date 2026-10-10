@@ -373,7 +373,7 @@ design document.
 
 ### Libraries / sensoranalysis / test
 
-- [sensoranalysis Offline Checks](../host/libraries/sensoranalysis/test/README.md) — How to build and run the offline MagQuality assertion checks.
+- [sensoranalysis Offline Checks](../host/libraries/sensoranalysis/test/README.md) — How to build and run the offline sensoranalysis assertion checks for the magnetometer and accelerometer calibration metrics.
 
 ### Libraries / sensorui
 

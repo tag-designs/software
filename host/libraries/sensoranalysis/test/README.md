@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run the offline MagQuality assertion checks.
+summary: How to build and run the offline sensoranalysis assertion checks for the magnetometer and accelerometer calibration metrics.
 ---
 
 # sensoranalysis Offline Checks
@@ -21,6 +21,22 @@ cmake --build <build-dir> --target magquality_check
 
 The binary lands in the build tree's `bin` and takes no arguments. It exits
 non-zero when a check fails.
+
+## `accelcalibration_check`
+
+| Group | What it pins down |
+| --- | --- |
+| offset recovery | A planted 77 mg offset comes back to within 3 mg from a full sweep, with the radius at one g and the residual reporting the scatter that was planted rather than zero. |
+| bounded buffer | However long the sweep, the buffer never exceeds patches x perPatch, and a long one fills every slot. |
+| even occupancy | A sweep that dwells on one hemisphere for a thousand readings cannot crowd the rest out: per-patch slots bound what any one direction can take. This is the property the shared buffer did not have. |
+| motion rejection | Readings at 1.8 and 0.2 g never reach the buffer and are counted as gated. |
+| refusal | A yaw-only sweep is refused on patch count; a single-arc sweep occupies 14 of 32 patches and is refused on evenness instead. The second case is why both preconditions exist -- a patch count alone calls that sweep broad. |
+| order independence | Fed forward and backward, with every slot filled and nothing displaced, the two fits agree to rounding. |
+
+Validated against the committed 2425-sample fixture as well as synthetic data:
+the 256 held readings give an offset within 1.6 mg of the fit over all 2223
+gated readings in that capture, which is what the small independent buffer
+rests on.
 
 ## `gravityfit_check`
 

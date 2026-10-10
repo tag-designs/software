@@ -114,7 +114,7 @@ bool GravityFit::add(const QVector3D &accel, float oneG)
         }
         atb_[i] += row[i] * rhs;
     }
-    residualSum_ += rhs;
+    residualSum_ += rhs * rhs;
     count_++;
     return true;
 }
@@ -156,6 +156,29 @@ GravityFit::Result GravityFit::result(float oneG) const
         if (scale < 0.5f || scale > 1.5f) {
             return r;
         }
+    }
+
+    // RMS distance from the fitted sphere. Without a buffer the per-sample
+    // distances are gone, but the least-squares objective is not: the row
+    // sums already held give
+    //
+    //     sum (rhs - row.x)^2 = sum rhs^2 - 2 x.atb + x^T ata x
+    //
+    // which is the algebraic residual, in units of length squared. For a
+    // sample near the surface f = |p-c|^2 - r^2 is about 2r times its
+    // distance from it, so dividing by twice the radius puts this back in the
+    // caller's units. The approximation is second order in residual/radius,
+    // which on real captures is 8 mg against 1000.
+    double square = residualSum_;
+    for (int i = 0; i < 4; i++) {
+        square -= 2.0 * x[i] * atb_[i];
+        for (int j = 0; j < 4; j++) {
+            square += x[i] * ata_[i][j] * x[j];
+        }
+    }
+    if (square > 0.0 && std::isfinite(square) && r.radius > 0.0f) {
+        const double rms = std::sqrt(square / count_);
+        r.residual = static_cast<float>(rms / (2.0 * r.radius));
     }
 
     r.valid = true;

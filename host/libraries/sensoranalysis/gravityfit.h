@@ -103,7 +103,7 @@ private:
     // Normal equations for |p|^2 = 2 c.p + (r^2 - |c|^2), accumulated.
     double ata_[4][4];
     double atb_[4];
-    double residualSum_;   ///< Sum of |p|^2, for the residual afterwards.
+    double residualSum_;   ///< Sum of (|p|^2)^2, for the residual afterwards.
     int    count_;
 
     QVector3D pass2Offset_;
