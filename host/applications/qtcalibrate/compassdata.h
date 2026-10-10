@@ -54,18 +54,6 @@ public:
     const MagQuality::Result &qualityMetrics() const { return metrics; }
 
     /**
-     * @brief Acceleration magnitude corresponding to one g in the units the
-     *        calibration stream uses.
-     *
-     * @details Milli-g on every current tag. Public because callers gate on
-     *          it too -- the plot shows the readings the fit accepted, and a
-     *          second copy of this number is a second chance for the two to
-     *          disagree. TagInfo carries an accelconstant that should
-     *          eventually supply it.
-     */
-    static constexpr float kOneG = 1000.0f;
-
-    /**
      * @brief Fitted accelerometer zero-g offset, as of the last sample added.
      *
      * @details Host-side only: it is applied when deriving dip and orientation
@@ -91,20 +79,6 @@ public:
 
     void qualityUpdate();
     void clear();
-
-    /**
-     * @brief Throw away the magnetometer collection, keeping the
-     *        accelerometer calibration.
-     *
-     * @details For the moment the accelerometer phase ends. That phase asks
-     *          the operator to hold the tag still in six orientations, which
-     *          is six dense clusters of magnetometer readings and nothing
-     *          like a sweep -- not a head start for the solver but a mess for
-     *          its retention policy to dig out of. The accelerometer offset
-     *          those readings produced is kept, since it is the whole point
-     *          of having collected them.
-     */
-    void restartMagnetometer();
  
     //void getRegionData(QScatterDataArray& data, float magnitude);
 
@@ -121,7 +95,6 @@ private:
     void apply_calibration(QVector3D &mag);
     //void apply_calibration(float rawx, float rawy, float rawz, Point_t *out); 
     void raw_data_reset();
-    void magnetometer_reset();
     int choose_discard_magcal(void);
     void add_magcal_data(const QVector3D &mag, bool hasAccel,
                          const QVector3D &accel);

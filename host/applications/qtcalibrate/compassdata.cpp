@@ -8,6 +8,12 @@
 namespace
 {
 
+/// Acceleration magnitude that corresponds to one g in calibration stream
+/// units. The stream is milli-g on every current tag. TagInfo carries an
+/// accelconstant that should eventually supply this instead of a constant
+/// here; the capture file now records it, so the value is at least no longer
+/// invisible to anyone reading a fixture.
+const float kStreamOneG = 1000.0f;
 
 /// Additions for which a freshly stored sample is exempt from eviction. One
 /// solver cycle: MagCal_Run() refits every twentieth sample, so a sample
@@ -158,16 +164,6 @@ void CompassData::clear()
     quality_reset();
 }
 
-void CompassData::restartMagnetometer()
-{
-    magnetometer_reset();
-    quality_reset();
-    quality.reset();
-    // accelCal is untouched, so it keeps accumulating from here and the
-    // offset only improves as the magnetometer sweep turns the tag through
-    // more orientations than the six it was asked for.
-}
-
 void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble, float& fiterror)
 { 
     gaps = quality_surface_gap_error();
@@ -182,7 +178,7 @@ void CompassData::qualityUpdate(){
 
     // The accelerometer fit comes from its own population, which has been
     // accumulating at intake rather than waiting for this tick.
-    gravity = accelCal.result(CompassData::kOneG);
+    gravity = accelCal.result(kStreamOneG);
 
     // The inclination of a sample is CompassProcessor's to compute: the
     // magnetometer and the accelerometer do not share an axis convention, and
@@ -208,7 +204,7 @@ void CompassData::qualityUpdate(){
                 CompassDerivedSample derived;
                 if (processor.deriveCalibratedSample(raw, derived)) {
                     quality.add(point, &accelBuffer[i], derived.dip,
-                                CompassData::kOneG);
+                                kStreamOneG);
                 } else {
                     quality.add(point);
                 }
@@ -222,20 +218,6 @@ void CompassData::qualityUpdate(){
 
 void CompassData::raw_data_reset(void)
 {
-	magnetometer_reset();
-	accelCal.reset();
-	gravity = AccelCalibration::Result();
-}
-
-/**
- * @brief Empty the magnetometer buffer and the solver's state.
- *
- * @details Split out from raw_data_reset() because the two sensors can need
- *          clearing separately now: the end of the accelerometer phase wants
- *          this and not the accelerometer's own accumulators.
- */
-void CompassData::magnetometer_reset(void)
-{
 	//rawcount = OVERSAMPLE_RATIO;
 	//fusion_init();
 	memset((void*) &magcal, 0, sizeof(magcal));
@@ -246,6 +228,8 @@ void CompassData::magnetometer_reset(void)
 	}
 	addCounter = 0;
 	discardRng.seed(kDiscardSeed);
+	accelCal.reset();
+	gravity = AccelCalibration::Result();
 	evictions = 0;
 	leverageEvictions = 0;
 	outlierEvictions = 0;
@@ -429,7 +413,7 @@ bool CompassData::raw_data(const QVector3D &data, bool hasAccel,
 	// accelerometer takes the ones that are gravity rather than motion, and
 	// keeps them by direction. Neither decides anything for the other.
 	if (hasAccel) {
-		accelCal.add(accel, CompassData::kOneG);
+		accelCal.add(accel, kStreamOneG);
 	}
 	add_magcal_data(data, hasAccel, accel);
 	return MagCal_Run(&magcal) != 0;

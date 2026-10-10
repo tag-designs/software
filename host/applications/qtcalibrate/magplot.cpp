@@ -7,12 +7,8 @@
  */
 
 #include "magplot.h"
-#include <algorithm>
-
-#include <QFont>
 #include <QPainter>
 #include <QPen>
-#include <QPolygonF>
 #include <random>
 //#include <QtMinMax>
 
@@ -32,16 +28,8 @@ magPlot::magPlot(QWidget *parent) : QWidget{parent}
 void magPlot::reset(){
     // QList::empty() is a const query whose result was discarded, so the
     // sample points survived every reset. clear() is the one that empties it.
-    // Both clouds, or the second one survives a clear exactly as the first
-    // used to.
     points.clear();
-    gravityPoints.clear();
-    caption_.clear();
-    poseDone.clear();
-    poseHolding = -1;
-    source_ = Source::MagneticField;
-    field = 60.0;          // default field
-    gravityRadius = 1000.0;  // one g in calibration stream units
+    field = 60.0;   // default field
     zoom = 0.8;
     focusQ = QQuaternion(1.0,0.0,0.0,0.0);
     savedQ = QQuaternion(1.0,0.0,0.0,0.0);
@@ -54,137 +42,6 @@ void magPlot::setField(float f)
 {
     field = f;
     update();
-}
-
-void magPlot::setGravityRadius(float r)
-{
-    if (r > 0.0f) {
-        gravityRadius = r;
-        update();
-    }
-}
-
-void magPlot::setSource(Source source)
-{
-    if (source_ == source) {
-        return;
-    }
-    source_ = source;
-    // The view follows the newest point of whichever cloud is shown, and the
-    // two were last added at different orientations, so re-aim at the one now
-    // on screen rather than leaving the camera pointed at the other's.
-    const QList<QVector3D> &shown = activePoints();
-    if (!shown.isEmpty()) {
-        savedQ = QQuaternion::rotationTo(shown.last(), QVector3D(0, 0, -1));
-        focusQ = rotationQ * savedQ;
-    }
-    update();
-}
-
-const QList<QVector3D> &magPlot::activePoints() const
-{
-    return (source_ == Source::MagneticField) ? points : gravityPoints;
-}
-
-float magPlot::activeRadius() const
-{
-    return (source_ == Source::MagneticField) ? field : gravityRadius;
-}
-
-void magPlot::clearFieldPoints()
-{
-    points.clear();
-    update();
-}
-
-void magPlot::setPoses(const QVector<bool> &done, int holding)
-{
-    if (poseDone != done || poseHolding != holding) {
-        poseDone = done;
-        poseHolding = holding;
-        update();
-    }
-}
-
-/**
- * @brief Draw the six faces, filled where the pose is done.
- *
- * @details Faces are sorted by depth and painted back to front, so the near
- *          ones cover the far ones and the solid shows as a solid. The view
- *          rotation already follows the newest gravity reading, so the face
- *          the tag is resting on is the one turned towards the operator, and
- *          a hollow face they can see is one to turn towards.
- *
- *          Face order matches PoseCheck: x down, x up, y down, y up, z down,
- *          z up. A face's outward normal is the direction the accelerometer
- *          reads when that face is down, which is what makes the two agree
- *          without either knowing about the other.
- */
-void magPlot::drawPoseCube(QPainter *p, float radius)
-{
-    const float h = cubeFraction * radius;
-
-    // Outward normals in PoseCheck's order -- +x, -x, +y, -y, +z, -z -- each
-    // with two in-plane edges. The view turns the accelerometer reading
-    // towards the viewer, and that reading is the normal of the face pointing
-    // up, so the face filling is the one facing out. Had the poses been named
-    // for the face that is down, the face that filled would have been the one
-    // hidden at the back.
-    struct Face { QVector3D normal, u, v; };
-    static const Face faces[6] = {
-        {{ 1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
-        {{-1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
-        {{ 0, 1, 0}, {1, 0, 0}, {0, 0, 1}},
-        {{ 0,-1, 0}, {1, 0, 0}, {0, 0, 1}},
-        {{ 0, 0, 1}, {1, 0, 0}, {0, 1, 0}},
-        {{ 0, 0,-1}, {1, 0, 0}, {0, 1, 0}},
-    };
-
-    struct Drawn { float depth; int index; QPolygonF shape; };
-    QVector<Drawn> drawn;
-    drawn.reserve(6);
-
-    for (int i = 0; i < 6; i++) {
-        const Face &f = faces[i];
-        QPolygonF shape;
-        float depth = 0.0f;
-        for (int corner = 0; corner < 4; corner++) {
-            const float su = (corner == 0 || corner == 3) ? -1.0f : 1.0f;
-            const float sv = (corner < 2) ? -1.0f : 1.0f;
-            QVector3D pt = focusQ.rotatedVector(
-                (f.normal + f.u * su + f.v * sv) * h);
-            pt.setY(-pt.y());
-            depth += pt.z();
-            shape << QPointF(pt.x(), -pt.y());
-        }
-        drawn.append({depth / 4.0f, i, shape});
-    }
-
-    // Painter's algorithm: z grows away from the viewer here, so the most
-    // positive depth is furthest and goes down first.
-    std::sort(drawn.begin(), drawn.end(),
-              [](const Drawn &a, const Drawn &b) { return a.depth > b.depth; });
-
-    for (const Drawn &face : drawn) {
-        const bool done = face.index < poseDone.size() && poseDone.at(face.index);
-        const bool holding = (face.index == poseHolding);
-        QColor fill = done ? QColor(70, 150, 90, 200) : QColor(235, 235, 235, 70);
-        if (holding && !done) {
-            fill = QColor(220, 150, 40, 170);
-        }
-        p->setBrush(QBrush(fill));
-        p->setPen(QPen(done ? QColor(40, 100, 60) : QColor(150, 150, 150),
-                       strokeFraction * radius * (holding ? 4.0f : 2.0f)));
-        p->drawPolygon(face.shape);
-    }
-}
-
-void magPlot::setCaption(const QString &text)
-{
-    if (caption_ != text) {
-        caption_ = text;
-        update();
-    }
 }
 
 // set rotation to focus
@@ -209,25 +66,9 @@ void magPlot::setPoints(QList<QVector3D> pts)
     update();
 }
 
-void magPlot::addGravityPoint(QVector3D p)
-{
-    gravityPoints.append(p);
-    // Every gravity-driven view, not just the cloud: the cube is turned by
-    // this too, and testing for one source meant it never moved.
-    if (source_ != Source::MagneticField) {
-        savedQ = QQuaternion::rotationTo(p, QVector3D(0, 0, -1));
-        focusQ = rotationQ * savedQ;
-        update();
-    }
-}
-
 void magPlot::addPoint(QVector3D p)
 {
     points.append(p);
-    if (source_ != Source::MagneticField) {
-        // Still collected, just not on screen.
-        return;
-    }
 
     // camera vector along z axis
 
@@ -267,30 +108,13 @@ void magPlot::paintEvent(QPaintEvent *event)
 
     // set initial scaling
 
-    const float radius = activeRadius();
-    float scale = zoom*height()/(radius*2.5);
+    float scale = zoom*height()/(field*2.5);
     painter.scale(scale,scale);
-
-    if (source_ == Source::Poses) {
-        painter.save();
-        drawPoseCube(&painter, radius);
-        painter.restore();
-
-        painter.save();
-        painter.resetTransform();
-        painter.setPen(QPen(Qt::darkGray));
-        painter.drawText(rect().adjusted(8, 6, -8, 0),
-                         Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap,
-                         caption_);
-        painter.restore();
-        QWidget::paintEvent(event);
-        return;
-    }
 
     // Apply rotation to saved points
 
     QList<QVector3D> rotated_points;
-    for (QVector3D point : activePoints()){
+    for (QVector3D point : points){
         QVector3D pt = focusQ.rotatedVector(point);
         pt.setY(-pt.y());
         rotated_points.append(pt);
@@ -303,13 +127,13 @@ void magPlot::paintEvent(QPaintEvent *event)
     // highlight last point in list
 
     if (!rotated_points.isEmpty() && rotated_points.last().z() >= 0) // display location of last point added
-        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightFraction*radius);
+        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightSize);
 
     // draw points
 
     for (QVector3D point : rotated_points){
         if (point.z() >= 0) {
-            drawPoint(&painter, point, Qt::darkMagenta, dataPointFraction*radius);
+            drawPoint(&painter, point, Qt::darkMagenta, dataPointSize);
         }
     }
     painter.restore();
@@ -347,24 +171,24 @@ void magPlot::paintEvent(QPaintEvent *event)
     radGrad.setColorAt(1.0,Qt::darkCyan);
     radGrad.setColorAt(0.0,Qt::cyan);
     painter.setBrush(QBrush(radGrad));
-    painter.drawEllipse(center,centerFraction*radius,centerFraction*radius);
+    painter.drawEllipse(center,centerRadius,centerRadius);
     painter.restore();
 
     // draw field circle -- Use gradient fill based on very light gray
 
     painter.save();
-    painter.setPen(QPen(Qt::gray, strokeFraction*radius));
+    painter.setPen(QPen(Qt::gray, 0.1));
 
     // gradient
 
-    radGrad.setCenterRadius(radius);
+    radGrad.setCenterRadius(field);
     radGrad.setColorAt(1.0,QColor(240,240,240,60));
     radGrad.setColorAt(0.0,QColor(240,240,240,180));
     painter.setBrush(QBrush(radGrad));
 
     // boundary ellipse
 
-    painter.drawEllipse(center,radius,radius);
+    painter.drawEllipse(center,field,field);
     painter.restore();
 
     // draw the axes in forground -- z axis points down!
@@ -384,29 +208,15 @@ void magPlot::paintEvent(QPaintEvent *event)
     // highlight last point
 
     if (!rotated_points.isEmpty() && rotated_points.last().z() < 0) // display location of last point added
-        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightFraction*radius);
+        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightSize);
 
     // draw points
     for (QVector3D point :  rotated_points){
         if (point.z() < 0) {
-            drawPoint(&painter,point, Qt::darkMagenta, dataPointFraction*radius);
+            drawPoint(&painter,point, Qt::darkMagenta, dataPointSize);
         }
     }
     painter.restore();
-
-    // Name the cloud. The two look alike -- a shell of points around a
-    // sphere -- and which one is on screen decides what the operator should
-    // do next, so it cannot be left to be inferred.
-    painter.save();
-    painter.resetTransform();
-    QFont label = painter.font();
-    label.setPointSizeF(label.pointSizeF() * 1.1);
-    painter.setFont(label);
-    painter.setPen(QPen(Qt::darkGray));
-    painter.drawText(rect().adjusted(8, 6, -8, 0),
-                     Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap, caption_);
-    painter.restore();
-
     QWidget::paintEvent(event);  // call parent
 }
 
@@ -429,24 +239,23 @@ void magPlot::drawPoint(QPainter *p, QVector3D pt, QColor color, float size)
   // draw a single axis with given color and end point (pt)
 
 void magPlot::drawAxis(QPainter *p, QVector3D pt, QColor color, QString &text){
-    const float radius = activeRadius();
     QPointF pt2 = pt.toPointF();//(pt.x(),pt.y());
     pt.setY(-pt.y());
     p->save();
 
     // draw axis
 
-    QLineF line = QLineF(pt2*radius, pt2*centerFraction*radius);
-    drawPoint(p,pt*radius,color,axisPointFraction*radius);
-    p->setPen(QPen(color, strokeFraction*radius));
+    QLineF line = QLineF(pt2*field, pt2*centerRadius);
+    drawPoint(p,pt*field,color,axisPointSize);
+    p->setPen(QPen(color, 0.1));
     p->drawLine(line);
 
     // label
     /*
     QFont font = p->font();
-    font.setPixelSize(axisFontFraction*radius);
+    font.setPixelSize(axisFontPixelSize);
     p->setFont(font);
-    p->translate(pt2*radius*1.05);
+    p->translate(pt2*field*1.05);
     QFontMetrics fm(p->font());
     QRect textRect = fm.boundingRect(text);
     p->translate(textRect.center());

@@ -119,16 +119,6 @@ gives offline.
 | acceleration gate | Samples outside the gate are excluded from the dip statistics and cannot drag the inclination, while still counting toward coverage. That split is the point of the gate. |
 | attitude diversity | Sweeping gravity within one magnetometer patch raises diversity above one; holding one attitude gives exactly one. Without an accelerometer, the accelerometer metrics report nothing rather than guessing. |
 
-## `posecheck_check`
-
-| Group | What it pins down |
-| --- | --- |
-| completion | Each of the six orientations completes when held, exactly once, and the count agrees. |
-| holding, not passing | Turning the tag round and round through all six without stopping completes none of them; holding one completes that one. This is what the two second hold is for. |
-| rejection | A reading at 1.4 g never counts, nor one 45 degrees off an axis; 18 degrees off is inside the 20 degree tolerance and does. |
-| progress | The pose being held and how long it has been held are reported, and a bad reading ends the hold. |
-| opposed pairs | The six directions are three opposed pairs, which is the property the choice of six rests on: for a pair, the midpoint of the two readings is the offset exactly, whatever the sensitivity. |
-
 ## `magretention_check`
 
 | Group | What it pins down |
