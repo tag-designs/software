@@ -282,6 +282,7 @@ MagQuality::Result MagQuality::result() const
             }
         }
         r.attitudeCells = cells;
+        r.attitudePatches = withGravity;
         r.attitudeDiversity = withGravity > 0
             ? static_cast<float>(cells) / static_cast<float>(withGravity)
             : 0.0f;

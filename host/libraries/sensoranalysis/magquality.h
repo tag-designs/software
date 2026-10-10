@@ -81,6 +81,22 @@ public:
         float attitudeDiversity = 0.0f;
         int   attitudeCells = 0;     ///< Distinct (magnetometer, gravity) cells.
 
+        /// Occupied magnetometer patches with at least one gravity
+        /// observation: the denominator attitudeDiversity divides by.
+        ///
+        /// Reported separately because the ratio alone cannot distinguish a
+        /// sweep that visited more attitudes from one that occupied fewer
+        /// patches -- the mean rises either way, so concentrating the samples
+        /// improves it. The cell count is the measure that does not reward
+        /// that.
+        ///
+        /// The ratio's ceiling is also well below the patch count. Field and
+        /// gravity are separated by a fixed angle at any site, so within one
+        /// magnetometer patch the gravity direction is confined to a small
+        /// circle: at gravityPatches = 16 and an inclination of 63.6 degrees
+        /// that circle crosses 3.6 patches on average, not 16.
+        int   attitudePatches = 0;
+
         // --- dip consistency, needs the accelerometer ---
         /// The angle between the field and gravity belongs to the site, not to
         /// the sample, so its spread is a quality measure the solver does not

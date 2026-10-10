@@ -993,13 +993,29 @@ void MainWindow::TriggerQualityUpdate()
   const MagQuality::Result &m = magnetic.qualityMetrics();
   if (m.haveAccelMetrics) {
     log_debug("magquality: coverage %d/%d isotropy %.3f attitude %.2f "
+              "(%d cells over %d patches) "
               "dip %.2f +/- %.2f deg (p95 %.2f, %d of %d in gate)",
               m.patchesSeen, m.magPatches, m.isotropy, m.attitudeDiversity,
+              m.attitudeCells, m.attitudePatches,
               m.dipMeanDeg, m.dipSpreadDeg, m.dipP95Deg, m.dipSamples,
               m.accelSamples);
   } else {
     log_debug("magquality: coverage %d/%d isotropy %.3f (no accelerometer)",
               m.patchesSeen, m.magPatches, m.isotropy);
+  }
+
+  // The accelerometer fit is currently fed whatever survived the
+  // magnetometer's retention policy, so log it per tick as well: if the two
+  // policies converge on different offsets, that coupling is costing
+  // something and the accelerometer needs its own sample population.
+  const GravityFit::Result &g = magnetic.accelOffset();
+  if (g.valid) {
+    log_debug("gravity: offset %+.2f %+.2f %+.2f = %.2f mg "
+              "radius %.1f residual %.2f (%d samples)",
+              g.offset.x(), g.offset.y(), g.offset.z(), g.offset.length(),
+              g.radius, g.residual, g.samples);
+  } else {
+    log_debug("gravity: no fit (%d samples)", g.samples);
   }
 
   log_debug("retention: %d evictions (%d by leverage, %d as outliers)",

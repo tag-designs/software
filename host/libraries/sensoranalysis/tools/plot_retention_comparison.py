@@ -32,10 +32,17 @@ MUTED = "#6b6a63"
 GRID = "#e4e3dd"
 SURFACE = "#fcfcfb"
 
+# The cells-and-patches clause is optional: logs taken before it was added
+# still parse, and the committed figures still regenerate from them.
 QUALITY = re.compile(
     r"magquality: coverage (\d+)/(\d+) isotropy ([\d.]+)"
-    r"(?: attitude ([\d.]+) dip ([-\d.]+) \+/- ([\d.]+) deg"
+    r"(?: attitude ([\d.]+)"
+    r"(?: \((\d+) cells over (\d+) patches\))?"
+    r" dip ([-\d.]+) \+/- ([\d.]+) deg"
     r" \(p95 ([\d.]+), (\d+) of (\d+) in gate\))?")
+GRAVITY = re.compile(
+    r"gravity: offset ([-+\d.]+) ([-+\d.]+) ([-+\d.]+) = ([\d.]+) mg"
+    r" radius ([\d.]+) residual ([\d.]+) \((\d+) samples\)")
 RETENTION = re.compile(r"retention: (\d+) evictions")
 
 
@@ -44,10 +51,16 @@ def read_log(path):
     rows = []
     evictions = 0
     pending = None
+    gravity = None
     for line in open(path, errors="replace"):
         q = QUALITY.search(line)
         if q:
             pending = q
+            gravity = None
+            continue
+        g = GRAVITY.search(line)
+        if g:
+            gravity = g
             continue
         r = RETENTION.search(line)
         if r and pending is not None:
@@ -57,11 +70,19 @@ def read_log(path):
                 "patches": int(pending.group(2)),
                 "isotropy": float(pending.group(3)),
                 "attitude": float(pending.group(4)) if pending.group(4) else None,
-                "dip_spread": float(pending.group(6)) if pending.group(6) else None,
-                "held": int(pending.group(9)) if pending.group(9) else None,
+                "cells": int(pending.group(5)) if pending.group(5) else None,
+                "cell_patches": int(pending.group(6)) if pending.group(6) else None,
+                "dip_spread": float(pending.group(8)) if pending.group(8) else None,
+                "held": int(pending.group(11)) if pending.group(11) else None,
                 "evictions": evictions,
+                "offset": ([float(gravity.group(i)) for i in (1, 2, 3)]
+                           if gravity else None),
+                "offset_mag": float(gravity.group(4)) if gravity else None,
+                "gravity_radius": float(gravity.group(5)) if gravity else None,
+                "gravity_residual": float(gravity.group(6)) if gravity else None,
             })
             pending = None
+            gravity = None
     if not rows:
         raise SystemExit("no magquality/retention pairs found in %s" % path)
     return rows
@@ -189,6 +210,20 @@ def main():
               % (name, last["coverage"], last["patches"], last["isotropy"],
                  last["dip_spread"] if last["dip_spread"] else float("nan"),
                  last["evictions"]))
+        # Only present in logs that carry the cell and gravity lines. The
+        # offset is the one to watch: the accelerometer fit is fed whatever
+        # the magnetometer policy left behind, so the two policies agreeing
+        # on an offset is evidence that coupling costs nothing, and the two
+        # disagreeing is evidence that it does.
+        if last["cells"] is not None:
+            print("  %-30s %d cells over %d patches"
+                  % ("", last["cells"], last["cell_patches"]))
+        if last["offset"] is not None:
+            print("  %-30s offset %+.2f %+.2f %+.2f = %.2f mg  "
+                  "radius %.1f  residual %.2f"
+                  % ("", last["offset"][0], last["offset"][1],
+                     last["offset"][2], last["offset_mag"],
+                     last["gravity_radius"], last["gravity_residual"]))
 
 
 if __name__ == "__main__":
