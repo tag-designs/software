@@ -33,6 +33,7 @@ void magPlot::reset(){
     // used to.
     points.clear();
     gravityPoints.clear();
+    caption_.clear();
     source_ = Source::MagneticField;
     field = 60.0;          // default field
     gravityRadius = 1000.0;  // one g in calibration stream units
@@ -85,10 +86,12 @@ float magPlot::activeRadius() const
     return (source_ == Source::Gravity) ? gravityRadius : field;
 }
 
-QString magPlot::caption() const
+void magPlot::setCaption(const QString &text)
 {
-    return (source_ == Source::Gravity) ? QStringLiteral("gravity")
-                                        : QStringLiteral("magnetic field");
+    if (caption_ != text) {
+        caption_ = text;
+        update();
+    }
 }
 
 // set rotation to focus
@@ -189,13 +192,13 @@ void magPlot::paintEvent(QPaintEvent *event)
     // highlight last point in list
 
     if (!rotated_points.isEmpty() && rotated_points.last().z() >= 0) // display location of last point added
-        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightSize);
+        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightFraction*radius);
 
     // draw points
 
     for (QVector3D point : rotated_points){
         if (point.z() >= 0) {
-            drawPoint(&painter, point, Qt::darkMagenta, dataPointSize);
+            drawPoint(&painter, point, Qt::darkMagenta, dataPointFraction*radius);
         }
     }
     painter.restore();
@@ -233,13 +236,13 @@ void magPlot::paintEvent(QPaintEvent *event)
     radGrad.setColorAt(1.0,Qt::darkCyan);
     radGrad.setColorAt(0.0,Qt::cyan);
     painter.setBrush(QBrush(radGrad));
-    painter.drawEllipse(center,centerRadius,centerRadius);
+    painter.drawEllipse(center,centerFraction*radius,centerFraction*radius);
     painter.restore();
 
     // draw field circle -- Use gradient fill based on very light gray
 
     painter.save();
-    painter.setPen(QPen(Qt::gray, 0.1));
+    painter.setPen(QPen(Qt::gray, strokeFraction*radius));
 
     // gradient
 
@@ -270,12 +273,12 @@ void magPlot::paintEvent(QPaintEvent *event)
     // highlight last point
 
     if (!rotated_points.isEmpty() && rotated_points.last().z() < 0) // display location of last point added
-        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightSize);
+        drawPoint(&painter,rotated_points.last(),Qt::yellow,highlightFraction*radius);
 
     // draw points
     for (QVector3D point :  rotated_points){
         if (point.z() < 0) {
-            drawPoint(&painter,point, Qt::darkMagenta, dataPointSize);
+            drawPoint(&painter,point, Qt::darkMagenta, dataPointFraction*radius);
         }
     }
     painter.restore();
@@ -290,7 +293,7 @@ void magPlot::paintEvent(QPaintEvent *event)
     painter.setFont(label);
     painter.setPen(QPen(Qt::darkGray));
     painter.drawText(rect().adjusted(8, 6, -8, 0), Qt::AlignTop | Qt::AlignLeft,
-                     caption());
+                     caption_);
     painter.restore();
 
     QWidget::paintEvent(event);  // call parent
@@ -322,15 +325,15 @@ void magPlot::drawAxis(QPainter *p, QVector3D pt, QColor color, QString &text){
 
     // draw axis
 
-    QLineF line = QLineF(pt2*radius, pt2*centerRadius);
-    drawPoint(p,pt*radius,color,axisPointSize);
-    p->setPen(QPen(color, 0.1));
+    QLineF line = QLineF(pt2*radius, pt2*centerFraction*radius);
+    drawPoint(p,pt*radius,color,axisPointFraction*radius);
+    p->setPen(QPen(color, strokeFraction*radius));
     p->drawLine(line);
 
     // label
     /*
     QFont font = p->font();
-    font.setPixelSize(axisFontPixelSize);
+    font.setPixelSize(axisFontFraction*radius);
     p->setFont(font);
     p->translate(pt2*radius*1.05);
     QFontMetrics fm(p->font());

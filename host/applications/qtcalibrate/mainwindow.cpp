@@ -512,11 +512,31 @@ void MainWindow::on_detachButton_clicked(){
  */
 void MainWindow::updateCalibrationPhase()
 {
+  const AccelCalibration::Result &fit = magnetic.accelOffset();
+
+  if (calibrationPhase != CalibrationPhase::Magnetometer) {
+    // Coverage is what decides the switch, so coverage is what the caption
+    // says. A count that climbs tells the operator the tumbling is working;
+    // one that stops tells them which way they have not turned it, and the
+    // cloud beside it shows where the hole is.
+    // patches is zero only between a clear and the first quality tick, when
+    // there is nothing to report yet.
+    ui.graphWidget->setCaption(
+        fit.patches > 0
+            ? tr("gravity   %1 of %2 directions").arg(fit.patchesSeen)
+                  .arg(fit.patches)
+            : tr("gravity"));
+  } else {
+    const MagQuality::Result &m = magnetic.qualityMetrics();
+    ui.graphWidget->setCaption(
+        tr("magnetic field   %1 of %2 patches").arg(m.patchesSeen)
+            .arg(m.magPatches));
+  }
+
   if (calibrationPhase != CalibrationPhase::Accelerometer) {
     return;
   }
 
-  const AccelCalibration::Result &fit = magnetic.accelOffset();
   if (!fit.valid) {
     accelSettling.clear();
     return;

@@ -156,6 +156,19 @@ public:
      */
     Result result(float oneG);
 
+    /**
+     * @brief Which direction patches have been visited.
+     *
+     * @return One entry per patch, in lattice order, so a caller can ask
+     *         Directions::patchCenter() where the gaps are.
+     *
+     * @details For guidance rather than for the fit. A coverage count tells
+     *          an operator how far along they are; it does not tell them
+     *          which way to turn the tag next, and that is the thing they
+     *          actually need.
+     */
+    QVector<bool> occupancy() const;
+
     const Config &config() const { return config_; }
 
 private:

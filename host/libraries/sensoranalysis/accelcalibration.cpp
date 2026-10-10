@@ -140,6 +140,16 @@ bool AccelCalibration::add(const QVector3D &accel, float oneG)
     return true;
 }
 
+QVector<bool> AccelCalibration::occupancy() const
+{
+    QVector<bool> out;
+    out.reserve(config_.patches);
+    for (int index = 0; index < config_.patches; index++) {
+        out.append(patches_.at(index).count > 0);
+    }
+    return out;
+}
+
 AccelCalibration::Result AccelCalibration::result(float oneG)
 {
     Result r;

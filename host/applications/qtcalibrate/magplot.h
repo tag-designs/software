@@ -6,6 +6,7 @@
 #include <QVector3D>
 #include <QList>
 #include <QQuaternion>
+#include <QString>
 
 // magPlot draws one sensor's direction cloud during calibration. It is a
 // lightweight custom widget, separate from the QML compass/attitude displays,
@@ -30,6 +31,12 @@ public:
     explicit magPlot(QWidget *parent = nullptr);
     void setSource(Source source);
     Source source() const { return source_; }
+
+    /// Text drawn over the cloud. The widget draws what it is told rather
+    /// than naming the cloud itself: what is worth saying -- which sensor,
+    /// how far along it is -- is the calibration's business, not the plot's.
+    void setCaption(const QString &text);
+
 
     void setField(float f);
 
@@ -59,11 +66,25 @@ protected:
 
 private:
 
-    const float centerRadius = 2.0;
-    const float dataPointSize = 0.5;
-    const float highlightSize = 2.0;
-    const float axisPointSize = 1.0;
-    const float axisFontPixelSize = 4.0;
+    /*
+     * Sizes as fractions of the sphere's own radius, not as absolute lengths.
+     *
+     * They used to be absolute, which worked only while there was one cloud:
+     * the field is tens of microtesla, so a 0.5 unit dot on a 45 unit sphere
+     * reads well. The gravity cloud has a radius of a thousand, and the same
+     * absolute dot comes out twenty times smaller than a pixel -- the sphere
+     * drew, with nothing on it.
+     *
+     * The divisor is the default field, so the magnetometer cloud keeps the
+     * proportions it has always had and the gravity cloud now matches it.
+     */
+    static constexpr float kReferenceField = 60.0f;
+    const float centerFraction    = 2.0f / kReferenceField;
+    const float dataPointFraction = 0.5f / kReferenceField;
+    const float highlightFraction = 2.0f / kReferenceField;
+    const float axisPointFraction = 1.0f / kReferenceField;
+    const float axisFontFraction  = 4.0f / kReferenceField;
+    const float strokeFraction    = 0.1f / kReferenceField;
 
     float field;          // magnetic field magnitude, the field cloud's radius
     float gravityRadius;  // one g in the caller's units, the gravity cloud's
@@ -71,6 +92,7 @@ private:
 
     Source source_ = Source::MagneticField;
 
+    QString caption_;               // drawn over the cloud
     QList<QVector3D> points;        // magnetometer cloud
     QList<QVector3D> gravityPoints; // accelerometer cloud
     QQuaternion focusQ;      // rotation to focal point
@@ -89,7 +111,6 @@ private:
     /// The cloud and radius currently selected.
     const QList<QVector3D> &activePoints() const;
     float activeRadius() const;
-    QString caption() const;
 
     void drawAxis(QPainter *e, QVector3D pt, QColor color, QString& text);
 
