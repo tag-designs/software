@@ -380,6 +380,14 @@ private:
   /// operator did. What this decides is when to stop asking.
   PoseCheck poses;
 
+  /// Recent accelerometer offset magnitudes, one per quality tick. The six
+  /// poses say the operator did what was asked; this says the fit they
+  /// produced has stopped moving, which is a different question and the one
+  /// the first two-phase capture failed.
+  QVector<float> accelSettling;
+  static constexpr int kAccelSettleTicks = 25;
+  static constexpr float kAccelSettleMg = 2.0f;
+
   void updateCalibrationPhase();
 
   bool replayEnabled = false;

@@ -522,8 +522,11 @@ void MainWindow::updateCalibrationPhase()
     const PoseCheck::Result p = poses.result();
     ui.graphWidget->setPoses(p.done, p.holding);
     ui.graphWidget->setCaption(
-        tr("accelerometer   %1 of %2 faces\nturn to another face and hold "
-           "for 2 seconds").arg(p.completed).arg(p.total));
+        p.finished
+            ? tr("accelerometer   %1 of %2 faces\nsettling -- keep turning "
+                 "the tag").arg(p.completed).arg(p.total)
+            : tr("accelerometer   %1 of %2 faces\nturn to another face and "
+                 "hold for 2 seconds").arg(p.completed).arg(p.total));
   } else {
     const MagQuality::Result &m = magnetic.qualityMetrics();
     ui.graphWidget->setCaption(
@@ -535,9 +538,32 @@ void MainWindow::updateCalibrationPhase()
     return;
   }
 
-  // Both: the six faces say the operator has covered the orientations, and
-  // validity says the fit over them is one the geometry supports.
   if (!poses.result().finished || !fit.valid) {
+    accelSettling.clear();
+    return;
+  }
+
+  // The six faces are the instruction, not the test. Held poses say the
+  // operator covered the orientations; they do not say the fit has stopped
+  // moving, and on the first two-phase capture it had not -- the offset was
+  // still climbing at the end of the run, 7.5 mg across the second half
+  // against 1.3 on a free sweep, and finished 6.6 mg short of what the same
+  // tag gave when tumbled. Six clusters are a thin population however well
+  // the poses were held, so wait for the estimate to settle as well.
+  accelSettling.append(fit.offset.length());
+  while (accelSettling.size() > kAccelSettleTicks) {
+    accelSettling.removeFirst();
+  }
+  if (accelSettling.size() < kAccelSettleTicks) {
+    return;
+  }
+  float low = accelSettling.first();
+  float high = accelSettling.first();
+  for (float v : accelSettling) {
+    low = std::min(low, v);
+    high = std::max(high, v);
+  }
+  if (high - low > kAccelSettleMg) {
     return;
   }
 
@@ -551,6 +577,14 @@ void MainWindow::updateCalibrationPhase()
   magnetic.restartMagnetometer();
   ui.graphWidget->clearFieldPoints();
   ui.graphWidget->setSource(magPlot::Source::MagneticField);
+
+  // And restart the recording with it. A capture stores one set of
+  // calibration constants, and after this moment they describe only what
+  // comes next -- so leaving the pose readings in the file makes it a fixture
+  // whose constants do not fit 15 percent of its own samples. Replaying one
+  // applies them anyway, and the inclination it computes from the rest is
+  // nonsense.
+  beginSampleCapture();
   log_info("accelerometer calibrated from six orientations: offset %.2f mg, "
            "radius %.1f, residual %.2f; magnetometer collection restarted",
            fit.offset.length(), fit.radius, fit.residual);
@@ -848,6 +882,7 @@ void MainWindow::resetReplayCollection()
   magnetic.clear();
   calibrationPhase = CalibrationPhase::Accelerometer;
   poses.reset();
+  accelSettling.clear();
   resetCalibrationDisplay();
   clearSampleCapture();
 }
@@ -1182,6 +1217,7 @@ void MainWindow::on_startButton_clicked(){
     // for the whole of the magnetometer phase.
     calibrationPhase = CalibrationPhase::Accelerometer;
     poses.reset();
+    accelSettling.clear();
     ui.graphWidget->setSource(magPlot::Source::Poses);
     log_info("calibrating the accelerometer: turn the tag to each of its six "
              "faces in turn and hold each for two seconds");
