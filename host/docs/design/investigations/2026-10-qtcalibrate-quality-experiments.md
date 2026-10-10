@@ -390,9 +390,14 @@ reference capture reports 30.7 mg, which is model error rather than noise.
 
 ## Open questions
 
-1. Repeat every comparison above on the now-reproducible replay. The numbers
-   in experiments 2, 4, 6 and 8 were all measured on runs that ended wherever
-   the operator clicked, so none of them is a clean function of the capture.
+1. The numbers in experiments 2, 4, 6 and 8 were measured on runs that ended
+   wherever the operator clicked, so read them as indicative rather than
+   settled. They are not being repeated: every effect large enough to matter
+   is far clear of the wobble -- the accelerometer correction at 1.1 degrees
+   against 0.13, direction evenness at 30 to 1, attitude diversity at 9 to 1
+   -- and the one claim that was not survived only as experiment 7's
+   retraction. The next measurement that is worth making is the first one
+   after the accelerometer is split off, on the reproducible replay.
 2. Split the accelerometer into its own calibration task with its own buffer,
    patches, intake gate and retention, rather than borrowing the
    magnetometer's. The gates reject on different physics: the accelerometer

@@ -172,43 +172,13 @@ void CompassData::calibrationQuality(float& gaps,float& variance, float& wobble,
     fiterror = quality_spherical_fit_error();
 }
 
-/**
- * @brief Fit the accelerometer zero-g offset from the buffered samples.
- *
- * @details Two passes over the same samples: a wide gate first, because the
- *          offset being estimated is itself several percent of one g, then a
- *          tighter gate judged on the corrected magnitude. Refitting on every
- *          quality tick rather than accumulating live costs nothing at this
- *          size and keeps the offset tracking the sweep as it improves.
- */
-void CompassData::fitGravity()
-{
-    GravityFit fit;
-    for (int i = 0; i < MAGBUFFSIZE; i++) {
-        if (magcal.valid[i] && accelBufferValid[i]) {
-            fit.add(accelBuffer[i], kStreamOneG);
-        }
-    }
-    GravityFit::Result first = fit.result(kStreamOneG);
-    if (!first.valid) {
-        gravity = first;
-        return;
-    }
-
-    fit.refit(first.offset);
-    for (int i = 0; i < MAGBUFFSIZE; i++) {
-        if (magcal.valid[i] && accelBufferValid[i]) {
-            fit.add(accelBuffer[i], kStreamOneG);
-        }
-    }
-    const GravityFit::Result second = fit.result(kStreamOneG);
-    gravity = second.valid ? second : first;
-}
-
 void CompassData::qualityUpdate(){
     quality_reset();
     quality.reset();
-    fitGravity();
+
+    // The accelerometer fit comes from its own population, which has been
+    // accumulating at intake rather than waiting for this tick.
+    gravity = accelCal.result(kStreamOneG);
 
     // The inclination of a sample is CompassProcessor's to compute: the
     // magnetometer and the accelerometer do not share an axis convention, and
@@ -258,7 +228,8 @@ void CompassData::raw_data_reset(void)
 	}
 	addCounter = 0;
 	discardRng.seed(kDiscardSeed);
-	gravity = GravityFit::Result();
+	accelCal.reset();
+	gravity = AccelCalibration::Result();
 	evictions = 0;
 	leverageEvictions = 0;
 	outlierEvictions = 0;
@@ -438,6 +409,12 @@ void CompassData::add_magcal_data(const QVector3D &data, bool hasAccel,
 bool CompassData::raw_data(const QVector3D &data, bool hasAccel,
                            const QVector3D &accel)
 {
+	// Two independent intakes. The magnetometer takes every sample; the
+	// accelerometer takes the ones that are gravity rather than motion, and
+	// keeps them by direction. Neither decides anything for the other.
+	if (hasAccel) {
+		accelCal.add(accel, kStreamOneG);
+	}
 	add_magcal_data(data, hasAccel, accel);
 	return MagCal_Run(&magcal) != 0;
 }

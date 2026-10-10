@@ -9,7 +9,7 @@
 #include <random>
 
 #include "magcal/magcal.h"
-#include "gravityfit.h"
+#include "accelcalibration.h"
 #include "magquality.h"
 #include "magretention.h"
 
@@ -54,13 +54,13 @@ public:
     const MagQuality::Result &qualityMetrics() const { return metrics; }
 
     /**
-     * @brief Fitted accelerometer zero-g offset, as of the last qualityUpdate().
+     * @brief Fitted accelerometer zero-g offset, as of the last sample added.
      *
      * @details Host-side only: it is applied when deriving dip and orientation
      *          and recorded in a capture, but is not written to the tag. See
      *          host/docs/design/proposals/qtcalibrate-quality-replacement.md.
      */
-    const GravityFit::Result &accelOffset() const { return gravity; }
+    const AccelCalibration::Result &accelOffset() const { return gravity; }
 
     /// Which policy decides what to discard when the buffer is full.
     enum class Retention {
@@ -111,8 +111,21 @@ private:
     MagQuality quality;
     MagQuality::Result metrics;
 
-    GravityFit::Result gravity;
-    void fitGravity();
+    /*
+     * The accelerometer calibrates itself from its own sample population,
+     * which AccelCalibration owns. It used to be fitted from this class's
+     * magnetometer buffer, which meant the magnetometer's retention policy
+     * chose its samples -- and the two policies then converged on offsets
+     * 3 mg apart, both about 4 mg from the fit over a whole capture.
+     *
+     * What is still paired here is accelBuffer: one accelerometer reading per
+     * retained magnetometer sample, kept so that each sample's inclination
+     * can be derived. That is a cross-check between the two sensors, not an
+     * input to either calibration, which is why it lives beside the
+     * magnetometer buffer rather than in either task.
+     */
+    AccelCalibration accelCal;
+    AccelCalibration::Result gravity;
 
     /// Leverage-based discard. Off by default: this is the one change in the
     /// quality work that alters what the solver sees, so it is opt-in until it

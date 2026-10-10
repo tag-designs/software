@@ -965,7 +965,7 @@ void MainWindow::calibration_update(void)
   // real tag to about 77 mg, so several times that is a damaged part or a
   // sweep that never covered enough orientations -- not something to apply
   // silently to every orientation the app derives.
-  const GravityFit::Result &accelFit = magnetic.accelOffset();
+  const AccelCalibration::Result &accelFit = magnetic.accelOffset();
   if (accelFit.valid) {
     const float magnitude = accelFit.offset.length();
     ui.accelOffsetLabel->setText(
@@ -1032,18 +1032,23 @@ void MainWindow::TriggerQualityUpdate()
               m.patchesSeen, m.magPatches, m.isotropy);
   }
 
-  // The accelerometer fit is currently fed whatever survived the
-  // magnetometer's retention policy, so log it per tick as well: if the two
-  // policies converge on different offsets, that coupling is costing
-  // something and the accelerometer needs its own sample population.
-  const GravityFit::Result &g = magnetic.accelOffset();
+  // The accelerometer now calibrates from its own population, so this line
+  // reports that population as well as the fit: holdings, patch coverage and
+  // evenness are what decide whether the offset is trustworthy, and they are
+  // no longer inferable from the magnetometer's numbers.
+  const AccelCalibration::Result &g = magnetic.accelOffset();
   if (g.valid) {
     log_debug("gravity: offset %+.2f %+.2f %+.2f = %.2f mg "
-              "radius %.1f residual %.2f (%d samples)",
+              "radius %.1f residual %.2f "
+              "(%d held over %d/%d patches, isotropy %.3f, %d offered %d gated)",
               g.offset.x(), g.offset.y(), g.offset.z(), g.offset.length(),
-              g.radius, g.residual, g.samples);
+              g.radius, g.residual, g.samples, g.patchesSeen, g.patches,
+              g.isotropy, g.offered, g.gated);
   } else {
-    log_debug("gravity: no fit (%d samples)", g.samples);
+    log_debug("gravity: no fit (%d held over %d/%d patches, isotropy %.3f, "
+              "%d offered %d gated)",
+              g.samples, g.patchesSeen, g.patches, g.isotropy,
+              g.offered, g.gated);
   }
 
   log_debug("retention: %d evictions (%d by leverage, %d as outliers)",
@@ -1244,7 +1249,7 @@ bool MainWindow::saveSampleCapture(const QString &path)
     // Host-side only, so it is recorded here rather than written to the tag.
     // After qualityUpdate(), which refits it, so this and the quality figures
     // below describe the same buffer.
-    const GravityFit::Result &accelFit = magnetic.accelOffset();
+    const AccelCalibration::Result &accelFit = magnetic.accelOffset();
     if (accelFit.valid) {
       QJsonArray accelOffset;
       accelOffset.append(accelFit.offset.x());
@@ -1253,7 +1258,10 @@ bool MainWindow::saveSampleCapture(const QString &path)
       QJsonObject accelObject;
       accelObject["offset"] = accelOffset;
       accelObject["radius"] = accelFit.radius;
+      accelObject["residual"] = accelFit.residual;
       accelObject["samples"] = accelFit.samples;
+      accelObject["patches_seen"] = accelFit.patchesSeen;
+      accelObject["patches"] = accelFit.patches;
       calibration["accelerometer"] = accelObject;
     }
 
