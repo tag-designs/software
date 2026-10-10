@@ -305,7 +305,7 @@ twice under one policy moves the dip spread by up to 0.13 degrees, which is
 larger than the policy gap that survived experiment 4.**
 
 The replay was not reproducible, for three reasons, all now fixed in
-`b7a1e1f0`.
+`382c879d`.
 
 The largest was not in the code at all. The log is saved by clicking **Save
 Log**, so a run ends wherever the operator happened to click: 1758 against
