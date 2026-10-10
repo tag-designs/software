@@ -76,8 +76,13 @@ Built from the same tree before and after the change:
   sit between it and the code now sits above it. Internal log capacity is
   unchanged.
 - `flash_release.py --keep-calibration` computes `-e [0 126]` for the
-  CompassTag images and refuses images that store no calibration. **It has not
-  yet been run on hardware.**
+  CompassTag images and refuses images that store no calibration.
+- On hardware (CompassTagAT25, UUID 203633324B4250060022005E, 3.3 V tagbase,
+  2026-10-10): a calibrated tag running `b7b06071`+dirty was upgraded to
+  `0c88e7bc` with `--keep-calibration`. Page 127 read back byte-identical to a
+  snapshot taken before the flash, page 126 was erased, `tag-test` passed, and
+  qtcalibrate's Load returned the saved magnetometer and accelerometer
+  constants from the new firmware.
 
 ## Consequences
 
