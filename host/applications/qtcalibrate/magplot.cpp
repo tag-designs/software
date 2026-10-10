@@ -201,7 +201,9 @@ void magPlot::setPoints(QList<QVector3D> pts)
 void magPlot::addGravityPoint(QVector3D p)
 {
     gravityPoints.append(p);
-    if (source_ == Source::Gravity) {
+    // Every gravity-driven view, not just the cloud: the cube is turned by
+    // this too, and testing for one source meant it never moved.
+    if (source_ != Source::MagneticField) {
         savedQ = QQuaternion::rotationTo(p, QVector3D(0, 0, -1));
         focusQ = rotationQ * savedQ;
         update();
