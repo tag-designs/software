@@ -14,8 +14,23 @@ CompassCalibration::CompassCalibration()
     : hardIron_(0.0f, 0.0f, 0.0f),
       softIron_{{{{1.0, 0.0, 0.0}},
                  {{0.0, 1.0, 0.0}},
-                 {{0.0, 0.0, 1.0}}}}
+                 {{0.0, 0.0, 1.0}}}},
+      accelOffset_(0.0f, 0.0f, 0.0f)
 {
+}
+
+CompassCalibration CompassCalibration::fromCalibrationJson(const QJsonObject &root)
+{
+    CompassCalibration calibration = fromMagnetometerJson(
+        root.value(QStringLiteral("magnetometer")).toObject());
+
+    // proto3 JSON omits zero-valued fields, so a missing key is a zero.
+    const QJsonObject accel = root.value(QStringLiteral("accelerometer")).toObject();
+    calibration.accelOffset_ = QVector3D(
+        jsonDouble(accel, "o0", 0.0),
+        jsonDouble(accel, "o1", 0.0),
+        jsonDouble(accel, "o2", 0.0));
+    return calibration;
 }
 
 CompassCalibration CompassCalibration::fromMagnetometerJson(const QJsonObject &constants)
@@ -64,6 +79,11 @@ QVector3D CompassCalibration::apply(const QVector3D &mag) const
         x * softIron_[2][0] + y * softIron_[2][1] + z * softIron_[2][2]);
 }
 
+QVector3D CompassCalibration::applyAccel(const QVector3D &accel) const
+{
+    return accel - accelOffset_;
+}
+
 QVector3D CompassCalibration::hardIron() const
 {
     return hardIron_;
@@ -72,4 +92,14 @@ QVector3D CompassCalibration::hardIron() const
 const CompassCalibration::Matrix &CompassCalibration::softIron() const
 {
     return softIron_;
+}
+
+QVector3D CompassCalibration::accelOffset() const
+{
+    return accelOffset_;
+}
+
+void CompassCalibration::setAccelOffset(const QVector3D &offset)
+{
+    accelOffset_ = offset;
 }

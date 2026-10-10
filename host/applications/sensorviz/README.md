@@ -43,6 +43,11 @@ hooks as built are described under
 - Applies stored magnetometer calibration to IMUTag magnetometer axes on load
   (`applyCalibrationToImuMagnetometer()` in `sqlite_loader.cpp`), so the axis
   streams and the derived magnitude use the same corrected data.
+- Subtracts the stored accelerometer zero-g offset (mg) from IMUTag
+  acceleration axes on load (`applyCalibrationToImuAccelerometer()`), and
+  from CompassTag acceleration inside `CompassProcessor`, so acceleration,
+  heading, pitch, roll and dip all use the corrected vector. Logs written
+  before the offset existed carry none and are shown uncorrected.
 - Stores per-tag display preferences as sparse, formatted JSON overrides.
 
 ## Current Architecture

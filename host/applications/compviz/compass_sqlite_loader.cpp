@@ -28,8 +28,7 @@ bool loadCalibration(SqliteDatabase &db, CompassCalibration &calibration, QStrin
 
     QJsonObject constants =
         QJsonDocument::fromJson(calibrationQuery.textColumn(1).toUtf8()).object();
-    constants = constants["magnetometer"].toObject();
-    calibration = CompassCalibration::fromMagnetometerJson(constants);
+    calibration = CompassCalibration::fromCalibrationJson(constants);
 
     qDebug() << "calibration timestamp:" << calibrationQuery.int64Column(0);
     return true;

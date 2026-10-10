@@ -528,6 +528,11 @@ gap is a separate matter.
 
 ### Scope
 
+*Superseded 2026-10-10: the offset is now written to the tag as
+`CalibrationConstants.accelerometer` and applied by SensorViz; see
+[decision 0027](../../../../docs/decisions/0027-firmware-l432-calibration-pinned-to-top-page.md)
+for the storage layout.*
+
 Host-side for now. The constants are fitted during a sweep, applied when
 deriving dip and orientation, shown with the other calibration constants and
 recorded in the capture, but not written to the tag: storing them there is a

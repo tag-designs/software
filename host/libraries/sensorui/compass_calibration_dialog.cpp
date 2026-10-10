@@ -25,4 +25,7 @@ void CompassCalibrationDialog::setConstants(const CompassCalibration &calibratio
     ui->v0Label->setText(QString::asprintf("%+.3f",H[0]));
     ui->v1Label->setText(QString::asprintf("%+.3f",H[1]));
     ui->v2Label->setText(QString::asprintf("%+.3f",H[2]));
+
+    const QVector3D O = calibration.accelOffset();
+    ui->accelOffsetLabel->setText(QString::asprintf("%+.1f %+.1f %+.1f", O[0], O[1], O[2]));
 }

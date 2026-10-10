@@ -86,7 +86,7 @@ bool CompassData::getCalibrationConstants(float *B, float *V, float (*A)[3])
     return (magcal.ValidMagCal);
 }
 
-void CompassData::setCalibrationConstants(float B, float *V, float (*A)[3])
+void CompassData::setCalibrationConstants(float *V, float (*A)[3])
 {
 	 for (int i = 0; i < 3; i++){
         magcal.V[i] = V[i];
@@ -95,8 +95,29 @@ void CompassData::setCalibrationConstants(float B, float *V, float (*A)[3])
         }
 		
     }
-	magcal.B = B;
 	magcal.ValidMagCal = 4;
+
+	// B is not stored on the tag; recover it from the buffer if there is one.
+	const CompassCalibration calibration = calibrationFromMagcal();
+	double sum = 0.0;
+	int count = 0;
+	for (int i = 0; i < MAGBUFFSIZE; i++) {
+		if (magcal.valid[i]) {
+			sum += calibration.apply(BpFast(i)).length();
+			count++;
+		}
+	}
+	if (count > 0) {
+		magcal.B = sum / count;
+	}
+}
+
+void CompassData::setAccelOffset(const QVector3D &offset)
+{
+	gravity = AccelCalibration::Result();
+	gravity.valid = true;
+	gravity.offset = offset;
+	gravityLoaded = true;
 }
 
 void CompassData::apply_calibration(QVector3D &mag){
@@ -158,7 +179,13 @@ void CompassData::qualityUpdate(){
 
     // The accelerometer fit comes from its own population, which has been
     // accumulating at intake rather than waiting for this tick.
-    gravity = accelCal.result(kStreamOneG);
+    // An offset loaded from the tag stands until the live population yields a
+    // valid fit of its own.
+    const AccelCalibration::Result fit = accelCal.result(kStreamOneG);
+    if (fit.valid || !gravityLoaded) {
+        gravity = fit;
+        gravityLoaded = false;
+    }
 
     // The inclination of a sample is CompassProcessor's to compute: the
     // magnetometer and the accelerometer do not share an axis convention, and
@@ -207,6 +234,7 @@ void CompassData::raw_data_reset(void)
 	discardRng.seed(kDiscardSeed);
 	accelCal.reset();
 	gravity = AccelCalibration::Result();
+	gravityLoaded = false;
 	evictions = 0;
 	leverageEvictions = 0;
 	outlierEvictions = 0;

@@ -327,7 +327,11 @@ message CalibrationLog {
 
 message CalibrationConstants {
   message MagConstants { // M' = A(M-V)
-    float b   = 1;  // field magnetude (at calibration)
+    // Field 1 was b, the field magnitude at calibration. Nothing applied it,
+    // and dropping it lets the tag's flash record keep 64 bytes once the
+    // accelerometer offset was added.
+    reserved 1;
+    reserved "b";
     float v0  = 2;  // offset vector
     float v1  = 3;
     float v2  = 4;
@@ -342,7 +346,13 @@ message CalibrationConstants {
     float a22 = 13;
   }
 
+  message AccelConstants { // A' = A - O
+    float o0 = 1;  // zero-g offset vector, mg
+    float o1 = 2;
+    float o2 = 3;
+  }
+
   sfixed32 timestamp = 1;
   MagConstants magnetometer = 2;
- 
+  AccelConstants accelerometer = 3;
 }

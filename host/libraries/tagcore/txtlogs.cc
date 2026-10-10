@@ -42,11 +42,14 @@ static bool dumpTagCalibration(std::ostream &fs, Tag &tag){
         && constants.has_magnetometer())
    {
       const CalibrationConstants_MagConstants mag = constants.magnetometer();
-      fs << "# Calibration B: " << mag.b() << std::endl;
       fs << "# Calibration V: " << mag.v0() << " " << mag.v1() << " " << mag.v2() << std::endl;
       fs << "# Calibration A[0]: " << mag.a00() << " " << mag.a01() << " " << mag.a02() << std::endl;
       fs << "# Calibration A[1]: " << mag.a10() << " " << mag.a11() << " " << mag.a12() << std::endl;
       fs << "# Calibration A[2]: " << mag.a20() << " " << mag.a21() << " " << mag.a22() << std::endl;
+      if (constants.has_accelerometer()) {
+        const CalibrationConstants_AccelConstants &acc = constants.accelerometer();
+        fs << "# Calibration accel offset (mg): " << acc.o0() << " " << acc.o1() << " " << acc.o2() << std::endl;
+      }
    }
    return true;
 

@@ -21,8 +21,8 @@
  * - Live calibration is a separate monitor-driven mode. It streams individual
  *   magnetometer and accelerometer samples for host-side fitting and does not
  *   use the collection FIFO superframe path.
- * - User magnetometer calibration constants are stored as append-only records
- *   in the linker-provided .calibration flash section. Sensor factory trim
+ * - User magnetometer and accelerometer calibration constants are stored as
+ *   append-only records in the linker-provided .calibration flash section. Sensor factory trim
  *   data, such as BMM350 OTP compensation, belongs in the sensor driver and
  *   must not be mixed into this flash record format.
  */
@@ -76,17 +76,19 @@
 #endif
 
 /**
- * @brief One flash record for host-provided magnetometer calibration.
+ * @brief One flash record for host-provided magnetometer and accelerometer
+ *        calibration.
  *
  * The first 32-bit word is the timestamp, which doubles as the erased-slot
- * sentinel because erased flash reads back as all ones. Alignment matches the
- * flash programming granularity of the active STM32 family.
+ * sentinel because erased flash reads back as all ones. The record is 64
+ * bytes, a whole number of flash programming units on both the STM32L4
+ * (8-byte) and STM32U3 (16-byte) families, so it needs no padding.
  */
 typedef struct {
     int32_t timestamp;
-    CalibrationConstants_MagConstants constants;
+    CalibrationConstants_MagConstants magnetometer;
+    CalibrationConstants_AccelConstants accelerometer;
 #if defined(IMUTAG_STM32U3_FLASH) && IMUTAG_STM32U3_FLASH
-    uint64_t flash_padding;
 } sensor_constants_t __attribute__((aligned(16)));
 #else
 } sensor_constants_t __attribute__((aligned(8)));
@@ -103,12 +105,17 @@ _Static_assert(sizeof(sensor_constants_t) == TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
                "tag_identity_family.h calibration slot size is wrong");
 _Static_assert(CONSTANT_CNT == TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
                "tag_identity_family.h calibration slot count is wrong");
-/* The host reads a slot as {int32 timestamp; 13 floats} when it rebuilds a
-   download from an SWD capture (host/libraries/tagcore/recovery/
-   capturesource.cc); a change here is a layout change for that decoder. */
-_Static_assert(offsetof(sensor_constants_t, constants) == 4,
+/* The host reads a slot as {int32 timestamp; 12 magnetometer floats; 3
+   accelerometer floats} when it rebuilds a download from an SWD capture
+   (host/libraries/tagcore/recovery/capturesource.cc); a change here is a
+   layout change for that decoder. */
+_Static_assert(offsetof(sensor_constants_t, magnetometer) == 4,
                "calibration slot layout: see capturesource.cc");
-_Static_assert(sizeof(CalibrationConstants_MagConstants) == 13 * sizeof(float),
+_Static_assert(sizeof(CalibrationConstants_MagConstants) == 12 * sizeof(float),
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(offsetof(sensor_constants_t, accelerometer) == 52,
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(sizeof(sensor_constants_t) == 64,
                "calibration slot layout: see capturesource.cc");
 
 /** Calibration records in the linker-reserved flash section. */
@@ -1176,13 +1183,16 @@ int write_calibration(CalibrationConstants *constants){
   }
 
   /*
-   * Stage through NOINIT RAM so the flash programmer sees one aligned record
-   * containing only the persisted timestamp and magnetometer constants.
+   * Stage through NOINIT RAM so the flash programmer sees one aligned record.
+   * Every field is assigned: a host that sends no accelerometer constants gets
+   * a zero offset, not whatever the NOINIT buffer held.
    */
-  memcpy(&constants_tmp.constants,
-         &(constants->magnetometer),
-        sizeof(constants->magnetometer));
   constants_tmp.timestamp = constants->timestamp;
+  constants_tmp.magnetometer = constants->magnetometer;
+  if (constants->has_accelerometer)
+    constants_tmp.accelerometer = constants->accelerometer;
+  else
+    memset(&constants_tmp.accelerometer, 0, sizeof(constants_tmp.accelerometer));
 
   chSysLock();
   FLASH_Unlock();
@@ -1219,8 +1229,9 @@ int read_calibration(int32_t index, Ack *ack){
   ack->err = Ack_OK;
   ack->which_payload = Ack_calibration_constants_tag;
   ack->payload.calibration_constants.has_magnetometer = true;
-  memcpy(&ack->payload.calibration_constants.magnetometer, &calConstants[index].constants,
-      sizeof(CalibrationConstants_MagConstants));
+  ack->payload.calibration_constants.magnetometer = calConstants[index].magnetometer;
+  ack->payload.calibration_constants.has_accelerometer = true;
+  ack->payload.calibration_constants.accelerometer = calConstants[index].accelerometer;
   ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
 }

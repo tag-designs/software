@@ -159,12 +159,18 @@ decided, a `gravity:` line with the fitted accelerometer offset, and the
 Calibration constants move between three representations:
 
 - inherited solver state in the global `magcal` struct,
-- protobuf `CalibrationConstants_MagConstants` on the tag,
+- protobuf `CalibrationConstants` on the tag: `MagConstants` (hard-iron V,
+  soft-iron A) and `AccelConstants` (zero-g offset, mg),
 - UI labels in the calibration tab.
 
 `CompassData::getCalibrationConstants()` and
 `CompassData::setCalibrationConstants()` are the boundary between `MainWindow`
-and inherited solver state.
+and inherited solver state. **Save** writes the magnetometer constants and the
+accelerometer offset together; without an accelerometer fit the offset is
+written as zero. The tag does not store the field magnitude B, so **Load**
+recomputes it from any buffered samples. A loaded accelerometer offset is
+installed with `CompassData::setAccelOffset()` and stands until a live fit
+replaces it.
 
 ## Menus And Logging
 

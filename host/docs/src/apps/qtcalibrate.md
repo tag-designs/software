@@ -62,7 +62,7 @@ on.
 | **Magnetic Field** | Field strength the fit settled on, in µT. The Earth's field runs from about 25 µT to 65 µT depending on where you are; a value well outside that means the fit has not converged. |
 | **Magnetic Offset** | Hard iron, in µT. The steady field the tag carries with it -- its own battery and components -- which is subtracted from every reading. |
 | **Magnetic Mapping** | Soft iron, a 3x3 matrix with no units. It corrects the way nearby metal stretches the field into an ellipsoid. Expect diagonal terms within a few percent of 1 and small off-diagonal terms. |
-| **Accelerometer Offset** | Zero-g offset in mg, with its magnitude last. A sound tag reads about 75 mg. The word `CHECK` appears past 250 mg, which means a damaged part or a sweep that never covered enough orientations. This offset is used on the host when deriving dip and orientation; it is not written to the tag. |
+| **Accelerometer Offset** | Zero-g offset in mg, with its magnitude last. A sound tag reads about 75 mg. The word `CHECK` appears past 250 mg, which means a damaged part or a sweep that never covered enough orientations. It is used when deriving dip and orientation, and **Save** writes it to the tag with the magnetometer constants, so SensorViz applies it to the downloaded log. |
 
 ### Magnetometer: coverage
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>240</width>
-    <height>305</height>
+    <height>365</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -113,6 +113,27 @@
            </property>
            <property name="text">
             <string>-0.002 +0.014 +1.014</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="accelGroupBox">
+        <property name="title">
+         <string>Accelerometer Offset (mg)</string>
+        </property>
+        <layout class="QVBoxLayout" name="accelLayout">
+         <item>
+          <widget class="QLabel" name="accelOffsetLabel">
+           <property name="font">
+            <font>
+             <family>Courier New</family>
+            </font>
+           </property>
+           <property name="text">
+            <string>+12.4 -3.1 +20.7</string>
            </property>
           </widget>
          </item>

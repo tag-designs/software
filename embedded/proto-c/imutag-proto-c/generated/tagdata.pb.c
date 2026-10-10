@@ -54,6 +54,9 @@ PB_BIND(CalibrationConstants, CalibrationConstants, AUTO)
 PB_BIND(CalibrationConstants_MagConstants, CalibrationConstants_MagConstants, AUTO)
 
 
+PB_BIND(CalibrationConstants_AccelConstants, CalibrationConstants_AccelConstants, AUTO)
+
+
 
 
 

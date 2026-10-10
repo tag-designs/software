@@ -45,8 +45,8 @@
 #define TAG_IDENTITY_SCALES                                                     \
   0.01f, 0.1f, 0.976f, 0.04f, (100.0f / (float)COMPASS_SAMPLE_PERIOD_S)
 /** @brief Bytes per calibration slot; sensors.c asserts it. */
-#define TAG_IDENTITY_CALIBRATION_SLOT_SIZE 56U
+#define TAG_IDENTITY_CALIBRATION_SLOT_SIZE 64U
 /** @brief Calibration slots in the table; sensors.c asserts it. */
-#define TAG_IDENTITY_CALIBRATION_SLOT_COUNT (2048U / 56U)
+#define TAG_IDENTITY_CALIBRATION_SLOT_COUNT (2048U / 64U)
 
 #endif /* TAG_IDENTITY_FAMILY_H */

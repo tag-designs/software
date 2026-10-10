@@ -34,7 +34,6 @@ int main(int argc, char **argv)
         CalibrationConstants constants;
         constants.set_timestamp(0);
         CalibrationConstants::MagConstants *m = constants.mutable_magnetometer();
-        m->set_b(1.0f);
         m->set_v0(0.0f);
         m->set_v1(0.0f);
         m->set_v2(0.0f);
@@ -47,6 +46,10 @@ int main(int argc, char **argv)
         m->set_a20(0.0f);
         m->set_a21(0.0f);
         m->set_a22(1.0f);
+        CalibrationConstants::AccelConstants *acc = constants.mutable_accelerometer();
+        acc->set_o0(0.0f);
+        acc->set_o1(0.0f);
+        acc->set_o2(0.0f);
 
         if (!tag.WriteCalibration(constants))
         {

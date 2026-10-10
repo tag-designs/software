@@ -244,7 +244,6 @@ typedef struct _SensorData_MagData {
 } SensorData_MagData;
 
 typedef struct _CalibrationConstants_MagConstants { /* M' = A(M-V) */
-    float b; /* field magnetude (at calibration) */
     float v0; /* offset vector */
     float v1;
     float v2;
@@ -258,6 +257,12 @@ typedef struct _CalibrationConstants_MagConstants { /* M' = A(M-V) */
     float a21;
     float a22;
 } CalibrationConstants_MagConstants;
+
+typedef struct _CalibrationConstants_AccelConstants { /* A' = A - O */
+    float o0; /* zero-g offset vector, mg */
+    float o1;
+    float o2;
+} CalibrationConstants_AccelConstants;
 
 
 #ifdef __cplusplus
@@ -426,6 +431,7 @@ extern "C" {
 
 
 
+
 /* Initializer values for message structs */
 #define TagInfo_init_default                     {_TagType_MIN, "", "", 0, 0, "", "", "", "", "", 0, 0, 0, 0, false, 0}
 #define Config_init_default                      {_TagType_MIN, false, Config_Interval_init_default, 0, {Config_Interval_init_default, Config_Interval_init_default}, _BitTagLogFmt_MIN, false, Adxl362_init_default, 0, false, Lsm6dsv_init_default, 0}
@@ -439,7 +445,8 @@ extern "C" {
 #define CompassTagLog_Compass_init_default       {0, 0, 0, 0, 0, 0, 0}
 #define SensorData_AccelData_init_default        {0, 0, 0}
 #define SensorData_MagData_init_default          {0, 0, 0}
-#define CalibrationConstants_MagConstants_init_default {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define CalibrationConstants_MagConstants_init_default {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define CalibrationConstants_AccelConstants_init_default {0, 0, 0}
 #define TagInfo_init_zero                        {_TagType_MIN, "", "", 0, 0, "", "", "", "", "", 0, 0, 0, 0, false, 0}
 #define Config_init_zero                         {_TagType_MIN, false, Config_Interval_init_zero, 0, {Config_Interval_init_zero, Config_Interval_init_zero}, _BitTagLogFmt_MIN, false, Adxl362_init_zero, 0, false, Lsm6dsv_init_zero, 0}
 #define Config_Interval_init_zero                {0, 0}
@@ -452,7 +459,8 @@ extern "C" {
 #define CompassTagLog_Compass_init_zero          {0, 0, 0, 0, 0, 0, 0}
 #define SensorData_AccelData_init_zero           {0, 0, 0}
 #define SensorData_MagData_init_zero             {0, 0, 0}
-#define CalibrationConstants_MagConstants_init_zero {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define CalibrationConstants_MagConstants_init_zero {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define CalibrationConstants_AccelConstants_init_zero {0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define TagInfo_tag_type_tag                     1
@@ -516,7 +524,6 @@ extern "C" {
 #define SensorData_MagData_mx_tag                1
 #define SensorData_MagData_my_tag                2
 #define SensorData_MagData_mz_tag                3
-#define CalibrationConstants_MagConstants_b_tag  1
 #define CalibrationConstants_MagConstants_v0_tag 2
 #define CalibrationConstants_MagConstants_v1_tag 3
 #define CalibrationConstants_MagConstants_v2_tag 4
@@ -529,6 +536,9 @@ extern "C" {
 #define CalibrationConstants_MagConstants_a20_tag 11
 #define CalibrationConstants_MagConstants_a21_tag 12
 #define CalibrationConstants_MagConstants_a22_tag 13
+#define CalibrationConstants_AccelConstants_o0_tag 1
+#define CalibrationConstants_AccelConstants_o1_tag 2
+#define CalibrationConstants_AccelConstants_o2_tag 3
 
 /* Struct field encoding specification for nanopb */
 #define TagInfo_FIELDLIST(X, a) \
@@ -646,7 +656,6 @@ X(a, STATIC,   SINGULAR, FLOAT,    mz,                3)
 #define SensorData_MagData_DEFAULT NULL
 
 #define CalibrationConstants_MagConstants_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FLOAT,    b,                 1) \
 X(a, STATIC,   SINGULAR, FLOAT,    v0,                2) \
 X(a, STATIC,   SINGULAR, FLOAT,    v1,                3) \
 X(a, STATIC,   SINGULAR, FLOAT,    v2,                4) \
@@ -662,6 +671,13 @@ X(a, STATIC,   SINGULAR, FLOAT,    a22,              13)
 #define CalibrationConstants_MagConstants_CALLBACK NULL
 #define CalibrationConstants_MagConstants_DEFAULT NULL
 
+#define CalibrationConstants_AccelConstants_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, FLOAT,    o0,                1) \
+X(a, STATIC,   SINGULAR, FLOAT,    o1,                2) \
+X(a, STATIC,   SINGULAR, FLOAT,    o2,                3)
+#define CalibrationConstants_AccelConstants_CALLBACK NULL
+#define CalibrationConstants_AccelConstants_DEFAULT NULL
+
 extern const pb_msgdesc_t TagInfo_msg;
 extern const pb_msgdesc_t Config_msg;
 extern const pb_msgdesc_t Config_Interval_msg;
@@ -675,6 +691,7 @@ extern const pb_msgdesc_t CompassTagLog_Compass_msg;
 extern const pb_msgdesc_t SensorData_AccelData_msg;
 extern const pb_msgdesc_t SensorData_MagData_msg;
 extern const pb_msgdesc_t CalibrationConstants_MagConstants_msg;
+extern const pb_msgdesc_t CalibrationConstants_AccelConstants_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define TagInfo_fields &TagInfo_msg
@@ -690,13 +707,15 @@ extern const pb_msgdesc_t CalibrationConstants_MagConstants_msg;
 #define SensorData_AccelData_fields &SensorData_AccelData_msg
 #define SensorData_MagData_fields &SensorData_MagData_msg
 #define CalibrationConstants_MagConstants_fields &CalibrationConstants_MagConstants_msg
+#define CalibrationConstants_AccelConstants_fields &CalibrationConstants_AccelConstants_msg
 
 /* Maximum encoded size of messages (where known) */
 #define Adxl362_size                             32
 #define BitPresTagLog_BPT_size                   15
 #define BitTagData_size                          30
 #define BitTagLog_size                           960
-#define CalibrationConstants_MagConstants_size   65
+#define CalibrationConstants_AccelConstants_size 15
+#define CalibrationConstants_MagConstants_size   60
 #define CompassTagLog_Compass_size               35
 #define Config_Interval_size                     22
 #define Config_size                              131

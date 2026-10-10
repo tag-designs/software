@@ -944,7 +944,8 @@ bool CaptureSource::Open(const std::string &dir, std::string *error) {
                            "\", or its external flash was not captured");
   // The layouts read in common code, then the family's own.
   const std::vector<KnownLayout> common = {
-      {"state_log", 1, 24}, {"state_log", 1, 32}, {"calibration", 1, 0}};
+      {"state_log", 1, 24}, {"state_log", 1, 32}, {"calibration", 1, 0},
+      {"calibration", 2, 64}};
   if (!CheckLayouts(identity_, common, error) ||
       !CheckLayouts(identity_, decoder_->Layouts(), error)) {
     decoder_.reset();
@@ -987,35 +988,46 @@ bool CaptureSource::Header(TagLogHeader &header, std::string *error) const {
       info.set_ppm_clock_error(LeF32(f + 8));
   }
 
-  // Calibration slots, as read_calibration(index) serves them.
+  // Calibration slots, as read_calibration(index) serves them. Layout v1 is
+  // {int32 timestamp; float b; 12 magnetometer floats}; v2 drops b and appends
+  // three accelerometer offset floats, {int32 timestamp; 12; 3}.
   const auto cal = id.regions.find("calibration");
-  if (cal != id.regions.end() && cal->second.record_size >= 56)
+  if (cal != id.regions.end() && cal->second.record_size >= 56) {
+    const bool v1 = cal->second.layout_version == 1;
     for (uint32_t i = 0; i < RegionRecords(id, cal->second); i++) {
-      uint8_t slot[56];
-      if (!Flash(cal->second.start + i * cal->second.record_size, slot, sizeof slot) ||
+      uint8_t slot[64];
+      const size_t slot_bytes = v1 ? 56 : 64;
+      if (!Flash(cal->second.start + i * cal->second.record_size, slot, slot_bytes) ||
           Le32(slot) == kErased32)
         break;
       CalibrationConstants c;
       c.set_timestamp(static_cast<int32_t>(Le32(slot)));
+      const uint8_t *mag = slot + (v1 ? 8 : 4);
+      float v[12];
+      for (int k = 0; k < 12; k++)
+        v[k] = LeF32(mag + 4 * k);
       CalibrationConstants_MagConstants *m = c.mutable_magnetometer();
-      float v[13];
-      for (int k = 0; k < 13; k++)
-        v[k] = LeF32(slot + 4 + 4 * k);
-      m->set_b(v[0]);
-      m->set_v0(v[1]);
-      m->set_v1(v[2]);
-      m->set_v2(v[3]);
-      m->set_a00(v[4]);
-      m->set_a01(v[5]);
-      m->set_a02(v[6]);
-      m->set_a10(v[7]);
-      m->set_a11(v[8]);
-      m->set_a12(v[9]);
-      m->set_a20(v[10]);
-      m->set_a21(v[11]);
-      m->set_a22(v[12]);
+      m->set_v0(v[0]);
+      m->set_v1(v[1]);
+      m->set_v2(v[2]);
+      m->set_a00(v[3]);
+      m->set_a01(v[4]);
+      m->set_a02(v[5]);
+      m->set_a10(v[6]);
+      m->set_a11(v[7]);
+      m->set_a12(v[8]);
+      m->set_a20(v[9]);
+      m->set_a21(v[10]);
+      m->set_a22(v[11]);
+      if (!v1) {
+        CalibrationConstants_AccelConstants *a = c.mutable_accelerometer();
+        a->set_o0(LeF32(slot + 52));
+        a->set_o1(LeF32(slot + 56));
+        a->set_o2(LeF32(slot + 60));
+      }
       header.calibration.push_back(c);
     }
+  }
 
   // State history, as system_logAck() serves it: t_StateMarker records.
   const auto sl = id.regions.find("state_log");

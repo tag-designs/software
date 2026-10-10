@@ -413,6 +413,13 @@ available.
 | `Epoch` | UTC Unix timestamp in seconds for the calibration entry. |
 | `Constants` | JSON calibration constants generated from the `CalibrationConstants` Protobuf message in `proto/tagdata.proto`. |
 
+The JSON has two objects. `magnetometer` holds the hard-iron offset `v0`-`v2`
+(uT) and the soft-iron matrix `a00`-`a22`; a calibrated reading is
+`A (M - V)`. `accelerometer` holds the zero-g offset `o0`-`o2` in mg; a
+corrected reading is `a - o`. Zero-valued fields are omitted, so treat a
+missing key as zero. Logs written before October 2026 have no
+`accelerometer` object and carry a `b` field magnitude that nothing applies.
+
 Use the newest calibration row when you need the same default behavior as
 SensorViz. Keep older rows if you need to audit how calibration changed over
 time.

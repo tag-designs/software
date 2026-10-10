@@ -41,7 +41,15 @@ public:
                  const QVector3D &accel = QVector3D());
     void getData(QList<QVector3D> &data);
     bool getCalibrationConstants(float *B, float *V, float (*A)[3]);
-    void setCalibrationConstants(float B, float *V, float(*A)[3]);
+
+    /**
+     * @brief Install magnetometer constants read back from a tag.
+     *
+     * @details The tag does not store the field magnitude B. It is recomputed
+     *          as the mean calibrated magnitude of the buffered samples, and
+     *          left as it was when the buffer is empty.
+     */
+    void setCalibrationConstants(float *V, float(*A)[3]);
 
     /**
      * @brief Metrics from the owned quality module, as of the last
@@ -55,11 +63,19 @@ public:
     /**
      * @brief Fitted accelerometer zero-g offset, as of the last sample added.
      *
-     * @details Host-side only: it is applied when deriving dip and orientation
-     *          and recorded in a capture, but is not written to the tag. See
-     *          host/docs/design/proposals/qtcalibrate-quality-replacement.md.
+     * @details Applied when deriving dip and orientation, recorded in a
+     *          capture, and written to the tag with the magnetometer constants.
      */
     const AccelCalibration::Result &accelOffset() const { return gravity; }
+
+    /**
+     * @brief Install an accelerometer offset read back from a tag, in mg.
+     *
+     * @details Marks the result valid with no fit statistics. It stands until
+     *          the live population yields a valid fit, or the buffer is
+     *          cleared.
+     */
+    void setAccelOffset(const QVector3D &offset);
 
     /// Evictions so far, and how many of them each rule decided.
     /// Both reset with the buffer.
@@ -115,6 +131,8 @@ private:
      */
     AccelCalibration accelCal;
     AccelCalibration::Result gravity;
+    /// gravity holds an offset loaded from the tag, not a live fit.
+    bool gravityLoaded = false;
 
     /// Leverage and the studentized residual decide what to drop. This was
     /// opt-in while it was compared against the inherited nearest-pair scan;

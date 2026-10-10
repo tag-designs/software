@@ -64,8 +64,9 @@ sensor orchestration, and storage/configuration bindings.
 
 ## Calibration Storage
 
-Host-written calibration constants live in a flash log in `sensors.c`, in the
-top flash page (`0x0803f800`, page 127). `family.mk` reserves that page with
+Host-written calibration constants -- the magnetometer hard and soft iron and
+the accelerometer zero-g offset, 64 bytes a record, 32 records -- live in a
+flash log in `sensors.c`, in the top flash page (`0x0803f800`, page 127). `family.mk` reserves that page with
 `--defsym=TAG_CALIBRATION_PAGES=1`, and `STM32L432xC.ld` pins `.calibration`
 there, so the table no longer moves with code size
 ([decision 0027](../../../../docs/decisions/0027-firmware-l432-calibration-pinned-to-top-page.md)).

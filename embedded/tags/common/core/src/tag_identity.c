@@ -398,6 +398,10 @@ typedef struct {
 /** @brief Address of a link-time object, as a 32-bit value. */
 #define TAG_ID_ADDR(x) ((uint32_t)(uintptr_t)(x))
 
+/** @brief Calibration slot layout version: 2 once the slot dropped the field
+ *         magnitude and carries the accelerometer offset (decision 0027). */
+#define TAG_ID_CALIBRATION_VERSION 2U
+
 /** @brief Stored-config layout version: 2 once it carries session facts. */
 #if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
 #define TAG_ID_STORED_CONFIG_VERSION 2U
@@ -501,7 +505,8 @@ const TagIdentityRecord tagIdentity = {
                     {TAG_ID_ADDR(tag_id_calibration_start),
                      TAG_ID_ADDR(tag_id_calibration_end),
                      (uint32_t)TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
-                     (uint32_t)TAG_IDENTITY_CALIBRATION_SLOT_COUNT, 1U}},
+                     (uint32_t)TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
+                     TAG_ID_CALIBRATION_VERSION}},
 #endif
 #if defined(TAG_IDENTITY_HAS_NAND_MAP) && TAG_IDENTITY_HAS_NAND_MAP
     .nand_map = {TAG_ID_REGION_NAND_MAP, TAG_ID_LEN(nand_map),

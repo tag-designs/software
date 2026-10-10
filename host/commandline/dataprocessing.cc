@@ -557,7 +557,7 @@ bool loadCompassInput(Database &db, CompassInput &input, QString &error)
         error = QStringLiteral("Latest calibration constants do not contain a magnetometer object");
         return false;
     }
-    input.calibration = CompassCalibration::fromMagnetometerJson(magnetometer.toObject());
+    input.calibration = CompassCalibration::fromCalibrationJson(root);
 
     Statement rows(db, "SELECT Epoch, ax, ay, az, mx, my, mz FROM Compass ORDER BY Epoch");
     if (!rows.valid()) {
@@ -883,13 +883,13 @@ QVector<StreamDefinition> calibratedStreamDefinitions()
     return {
         {"compass_calibrated_ax", "compass_calibrated", "Compass calibrated",
          "CompassCalibrated", "Epoch", "ax", "record_column", "Acceleration X",
-         "mg", "acceleration_x", "Raw accelerometer X copied beside calibrated magnetometer values."},
+         "mg", "acceleration_x", "Accelerometer X with the calibrated zero-g offset removed."},
         {"compass_calibrated_ay", "compass_calibrated", "Compass calibrated",
          "CompassCalibrated", "Epoch", "ay", "record_column", "Acceleration Y",
-         "mg", "acceleration_y", "Raw accelerometer Y copied beside calibrated magnetometer values."},
+         "mg", "acceleration_y", "Accelerometer Y with the calibrated zero-g offset removed."},
         {"compass_calibrated_az", "compass_calibrated", "Compass calibrated",
          "CompassCalibrated", "Epoch", "az", "record_column", "Acceleration Z",
-         "mg", "acceleration_z", "Raw accelerometer Z copied beside calibrated magnetometer values."},
+         "mg", "acceleration_z", "Accelerometer Z with the calibrated zero-g offset removed."},
         {"compass_calibrated_mx", "compass_calibrated", "Compass calibrated",
          "CompassCalibrated", "Epoch", "mx", "record_column", "Magnetic field X",
          "uT", "magnetic_field_x", "Calibrated magnetometer X sample."},
@@ -965,10 +965,11 @@ bool runCompassCalibrated(
     for (qsizetype i = 0; i < input.rawSamples.size(); i++) {
         const CompassSample &sample = input.rawSamples[i];
         const QVector3D mag = input.calibratedMag[i];
+        const QVector3D accel = input.calibration.applyAccel(sample.accel);
         if (!insert.bindInt64(1, sample.epoch)
-            || !insert.bindDouble(2, sample.accel.x())
-            || !insert.bindDouble(3, sample.accel.y())
-            || !insert.bindDouble(4, sample.accel.z())
+            || !insert.bindDouble(2, accel.x())
+            || !insert.bindDouble(3, accel.y())
+            || !insert.bindDouble(4, accel.z())
             || !insert.bindDouble(5, mag.x())
             || !insert.bindDouble(6, mag.y())
             || !insert.bindDouble(7, mag.z())

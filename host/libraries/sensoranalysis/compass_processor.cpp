@@ -42,7 +42,10 @@ bool CompassProcessor::deriveSample(
 {
     derived = CompassDerivedSample();
     derived.epoch = sample.epoch;
-    derived.accel = sample.accel;
+    // The accelerometer offset is applied here rather than in
+    // computeOrientation(), so the derived sample -- and the acceleration
+    // magnitude drawn from it -- carries the corrected vector too.
+    derived.accel = applyCalibration ? calibration_.applyAccel(sample.accel) : sample.accel;
     derived.mag = sample.mag;
 
     if (!computeOrientation(

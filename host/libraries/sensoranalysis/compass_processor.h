@@ -11,8 +11,8 @@ public:
     /**
      * @brief   Converts one raw sample into magnetic-frame orientation data.
      *
-     * @details Applies the processor calibration to the magnetometer vector,
-     *          solves orientation from magnetometer and accelerometer vectors,
+     * @details Applies the processor calibration to the magnetometer vector
+     *          and subtracts the accelerometer zero-g offset, solves orientation from magnetometer and accelerometer vectors,
      *          and leaves heading display choices out of the returned sample.
      *          Applications layer declination and mounting convention onto yaw
      *          when they need a displayed heading.
@@ -40,9 +40,11 @@ public:
      *
      * @details qtcalibrate applies live calibration and low-pass filtering
      *          before solving orientation. This path shares the same eCompass
-     *          solve without applying the processor calibration a second time.
+     *          solve without applying the processor calibration a second time:
+     *          neither the magnetometer calibration nor the accelerometer
+     *          offset is applied, so the caller corrects both.
      *
-     * @param[in] sample Accelerometer and already-calibrated magnetometer data.
+     * @param[in] sample Already-corrected accelerometer and magnetometer data.
      *
      * @return  Derived sample. If the input vectors are unusable, fields remain
      *          default-initialized.

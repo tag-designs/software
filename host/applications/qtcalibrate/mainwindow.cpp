@@ -1254,9 +1254,8 @@ bool MainWindow::saveSampleCapture(const QString &path)
 
     magnetic.qualityUpdate();
 
-    // Host-side only, so it is recorded here rather than written to the tag.
-    // After qualityUpdate(), which refits it, so this and the quality figures
-    // below describe the same buffer.
+    // Recorded after qualityUpdate(), which refits it, so this and the
+    // quality figures below describe the same buffer.
     const AccelCalibration::Result &accelFit = magnetic.accelOffset();
     if (accelFit.valid) {
       QJsonArray accelOffset;
@@ -1349,7 +1348,6 @@ void MainWindow::on_saveButton_clicked(){
   float V[3];
   float A[3][3];
   if (magnetic.getCalibrationConstants(&B, V, A)){
-    magconstants.set_b(B);
     magconstants.set_v0(V[0]);
     magconstants.set_v1(V[1]);
     magconstants.set_v2(V[2]);
@@ -1363,6 +1361,22 @@ void MainWindow::on_saveButton_clicked(){
     magconstants.set_a21(A[2][1]);
     magconstants.set_a22(A[2][2]);
     constants.set_allocated_magnetometer(new ::CalibrationConstants_MagConstants(magconstants));
+
+    // The accelerometer offset is written with the magnetometer constants.
+    // Without a fit it is written as zero -- no correction -- rather than
+    // blocking a save of a good magnetometer calibration.
+    CalibrationConstants_AccelConstants *accelconstants = constants.mutable_accelerometer();
+    const AccelCalibration::Result &accelFit = magnetic.accelOffset();
+    if (accelFit.valid) {
+      accelconstants->set_o0(accelFit.offset.x());
+      accelconstants->set_o1(accelFit.offset.y());
+      accelconstants->set_o2(accelFit.offset.z());
+    } else {
+      accelconstants->set_o0(0.0f);
+      accelconstants->set_o1(0.0f);
+      accelconstants->set_o2(0.0f);
+      qInfo() << "No accelerometer fit: saving a zero accelerometer offset";
+    }
     constants.set_timestamp(QDateTime::currentSecsSinceEpoch());
     if (!tag.WriteCalibration(constants))
     {
@@ -1378,7 +1392,6 @@ void MainWindow::on_saveButton_clicked(){
 
 void MainWindow::on_loadButton_clicked(){
    CalibrationConstants constants;
-   float B;
    float V[3];
    float A[3][3];
 
@@ -1387,7 +1400,6 @@ void MainWindow::on_loadButton_clicked(){
         && constants.has_magnetometer())
    {
       const CalibrationConstants_MagConstants mag = constants.magnetometer();
-      B = mag.b();
       V[0] = mag.v0();
       V[1] = mag.v1();
       V[2] = mag.v2();
@@ -1400,17 +1412,16 @@ void MainWindow::on_loadButton_clicked(){
       A[2][0] = mag.a20();
       A[2][1] = mag.a21();
       A[2][2] = mag.a22();
-      magnetic.setCalibrationConstants(B,V,A);
+      magnetic.setCalibrationConstants(V,A);
 
-      ui.bLabel->setText(QString::asprintf("%.2f",B));
+      if (constants.has_accelerometer()) {
+        const CalibrationConstants_AccelConstants &acc = constants.accelerometer();
+        magnetic.setAccelOffset(QVector3D(acc.o0(), acc.o1(), acc.o2()));
+      }
 
-      ui.a0Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[0][0],A[0][1],A[0][2]));
-      ui.a1Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[1][0],A[1][1],A[1][2]));
-      ui.a2Label->setText(QString::asprintf("%+.3f %+.3f %+.3f", A[2][0],A[2][1],A[2][2]));
-
-      ui.v0Label->setText(QString::asprintf("%+.3f",V[0]));
-      ui.v1Label->setText(QString::asprintf("%+.3f",V[1]));
-      ui.v2Label->setText(QString::asprintf("%+.3f",V[2]));
+      // Refreshes every constant label, the accelerometer offset and the
+      // sphere from the state just installed.
+      calibration_update();
 
       qInfo() << "Read timestamp " << constants.timestamp();
      

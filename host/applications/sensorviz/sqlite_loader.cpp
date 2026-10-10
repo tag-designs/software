@@ -514,7 +514,7 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
     }
 
     log.compassCalibrationEpoch = stmt.int64Column(0);
-    log.compassCalibration = CompassCalibration::fromMagnetometerJson(magnetometer);
+    log.compassCalibration = CompassCalibration::fromCalibrationJson(root);
     log.hasCompassCalibration = true;
     log.compassCalibrationWarning.clear();
     return true;
@@ -579,6 +579,37 @@ void applyCalibrationToImuMagnetometer(SensorLog &log)
         mx->value[i] = calibrated.x();
         my->value[i] = calibrated.y();
         mz->value[i] = calibrated.z();
+    }
+}
+
+// IMUTag acceleration axes are plotted as they are stored, so the zero-g
+// offset is subtracted here, once, the same way applyCalibrationToImuMagnetometer()
+// corrects the magnetometer. Both are in mg. CompassTag acceleration reaches
+// the plot only through CompassProcessor, which applies the offset itself.
+void applyCalibrationToImuAccelerometer(SensorLog &log)
+{
+    if (!log.hasCompassCalibration) {
+        return;
+    }
+
+    SensorStream *ax = streamById(log, QStringLiteral("imu_ax"));
+    SensorStream *ay = streamById(log, QStringLiteral("imu_ay"));
+    SensorStream *az = streamById(log, QStringLiteral("imu_az"));
+    if (!ax || !ay || !az) {
+        return;
+    }
+
+    // The offset is per axis, so unlike the magnetometer matrix the axes need
+    // not share sample times.
+    const QVector3D offset = log.compassCalibration.accelOffset();
+    for (double &value : ax->value) {
+        value -= offset.x();
+    }
+    for (double &value : ay->value) {
+        value -= offset.y();
+    }
+    for (double &value : az->value) {
+        value -= offset.z();
     }
 }
 
@@ -778,6 +809,7 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         return false;
     }
     applyCalibrationToImuMagnetometer(loaded);
+    applyCalibrationToImuAccelerometer(loaded);
 
     if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {
         error = "No supported sensor streams or record sets found in database";

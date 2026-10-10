@@ -7,6 +7,7 @@
  */
 
 #include <tag.pb.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -34,10 +35,19 @@
  * breakout variants leave it unset.
  */
 
+/**
+ * @brief One flash record for host-provided magnetometer and accelerometer
+ *        calibration.
+ *
+ * The first 32-bit word is the timestamp, which doubles as the erased-slot
+ * sentinel because erased flash reads back as all ones. The record is 64
+ * bytes, a whole number of the L432's 8-byte programming units.
+ */
 typedef struct {
     int32_t timestamp;
-    CalibrationConstants_MagConstants constants;
-} sensor_constants_t __attribute__((aligned(8))); 
+    CalibrationConstants_MagConstants magnetometer;
+    CalibrationConstants_AccelConstants accelerometer;
+} sensor_constants_t __attribute__((aligned(8)));
 
 sensor_constants_t constants_tmp NOINIT;
 
@@ -50,6 +60,18 @@ _Static_assert(sizeof(sensor_constants_t) == TAG_IDENTITY_CALIBRATION_SLOT_SIZE,
                "tag_identity_family.h calibration slot size is wrong");
 _Static_assert(CONSTANT_CNT == TAG_IDENTITY_CALIBRATION_SLOT_COUNT,
                "tag_identity_family.h calibration slot count is wrong");
+/* The host reads a slot as {int32 timestamp; 12 magnetometer floats; 3
+   accelerometer floats} when it rebuilds a download from an SWD capture
+   (host/libraries/tagcore/recovery/capturesource.cc); a change here is a
+   layout change for that decoder. */
+_Static_assert(offsetof(sensor_constants_t, magnetometer) == 4,
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(sizeof(CalibrationConstants_MagConstants) == 12 * sizeof(float),
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(offsetof(sensor_constants_t, accelerometer) == 52,
+               "calibration slot layout: see capturesource.cc");
+_Static_assert(sizeof(sensor_constants_t) == 64,
+               "calibration slot layout: see capturesource.cc");
 
 // calibration constants in reserved flash section
 
@@ -303,7 +325,8 @@ int calibration_logAck(Ack *ack){
 }
 
 /**
- * @brief Store magnetometer calibration constants in reserved flash.
+ * @brief Store magnetometer and accelerometer calibration constants in
+ *        reserved flash.
  *
  * @param[in] constants Host-provided calibration constants.
  * @return Encoded ACK length or error response length.
@@ -337,10 +360,14 @@ int write_calibration(CalibrationConstants *constants){
 
   // write constants
 
-  memcpy(&constants_tmp.constants, 
-         &(constants->magnetometer), 
-        sizeof(constants->magnetometer));
+  // Every field is assigned: a host that sends no accelerometer constants
+  // gets a zero offset, not whatever the NOINIT buffer held.
   constants_tmp.timestamp = constants->timestamp;
+  constants_tmp.magnetometer = constants->magnetometer;
+  if (constants->has_accelerometer)
+    constants_tmp.accelerometer = constants->accelerometer;
+  else
+    memset(&constants_tmp.accelerometer, 0, sizeof(constants_tmp.accelerometer));
 
   chSysLock();
   FLASH_Unlock();
@@ -354,7 +381,8 @@ int write_calibration(CalibrationConstants *constants){
 }
 
 /**
- * @brief Read magnetometer calibration constants from reserved flash.
+ * @brief Read magnetometer and accelerometer calibration constants from
+ *        reserved flash.
  *
  * @param[in] index Calibration slot to read, or negative for the latest slot.
  * @param[out] ack ACK message to populate.
@@ -373,8 +401,9 @@ int read_calibration(int32_t index, Ack *ack){
   ack->err = Ack_OK;
   ack->which_payload = Ack_calibration_constants_tag;
   ack->payload.calibration_constants.has_magnetometer = true;
-  memcpy(&ack->payload.calibration_constants.magnetometer, &calConstants[index].constants,  
-      sizeof(CalibrationConstants_MagConstants));
+  ack->payload.calibration_constants.magnetometer = calConstants[index].magnetometer;
+  ack->payload.calibration_constants.has_accelerometer = true;
+  ack->payload.calibration_constants.accelerometer = calConstants[index].accelerometer;
   ack->payload.calibration_constants.timestamp = calConstants[index].timestamp;
   return encode_ack();
 }

@@ -11,8 +11,8 @@
 /*
  * Compass data moves through three layers:
  *
- * - CompassCalibration stores the hard-iron vector and soft-iron matrix read
- *   from the Calibration table.
+ * - CompassCalibration stores the hard-iron vector and soft-iron matrix, and
+ *   the accelerometer zero-g offset, read from the Calibration table.
  * - CompassRawSample is the direct row-level accelerometer/magnetometer data
  *   read from the Compass table.
  * - CompassDerivedSample is the magnetic-frame orientation computed from one
@@ -27,6 +27,10 @@ public:
 
     CompassCalibration();
 
+    /// Reads a whole CalibrationConstants JSON object: "magnetometer" and,
+    /// when present, "accelerometer". A log written before the accelerometer
+    /// offset existed has none, and gets a zero offset.
+    static CompassCalibration fromCalibrationJson(const QJsonObject &root);
     static CompassCalibration fromMagnetometerJson(const QJsonObject &constants);
     static CompassCalibration fromMagnetometerConstants(
         const QVector3D &hardIron,
@@ -34,12 +38,20 @@ public:
 
     QVector3D apply(const QVector3D &mag) const;
 
+    /// Subtracts the accelerometer zero-g offset. Both are in mg.
+    QVector3D applyAccel(const QVector3D &accel) const;
+
     QVector3D hardIron() const;
     const Matrix &softIron() const;
+
+    /// Accelerometer zero-g offset, mg. Zero when none was recorded.
+    QVector3D accelOffset() const;
+    void setAccelOffset(const QVector3D &offset);
 
 private:
     QVector3D hardIron_;
     Matrix softIron_;
+    QVector3D accelOffset_;
 };
 
 struct CompassRawSample

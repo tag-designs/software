@@ -48,13 +48,8 @@
 /** @brief Scale factors, in the order this file documents. */
 #define TAG_IDENTITY_SCALES                                                     \
   0.01f, (float)IMUTAG_PRESSURE_HPA_PER_LSB, (float)IMUTAG_MAG_UT_PER_LSB
-#if defined(TAG_STM32U3_FLASH) && TAG_STM32U3_FLASH
 /** @brief Bytes per calibration slot; sensors.c asserts it. */
 #define TAG_IDENTITY_CALIBRATION_SLOT_SIZE 64U
-#else
-/** @brief Bytes per calibration slot; sensors.c asserts it. */
-#define TAG_IDENTITY_CALIBRATION_SLOT_SIZE 56U
-#endif
 /** @brief Calibration slots in the table; sensors.c asserts it. */
 #define TAG_IDENTITY_CALIBRATION_SLOT_COUNT                                     \
   (2048U / TAG_IDENTITY_CALIBRATION_SLOT_SIZE)
