@@ -85,6 +85,7 @@ design document.
 ### Shared Contracts
 
 - [Shared Contracts](shared/README.md) — The contracts host tools and tag firmware both compile against, and where each is documented.
+- [Magnetometer and Accelerometer Axes](shared/sensor-axes.md) — Tag firmware rotates each magnetometer and accelerometer part into a common tag frame, and the host orientation code assumes one fixed magnetometer-to-accelerometer alignment; what each family applies, and how to check a capture against it.
 - [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile: naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
 - [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
 - [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.

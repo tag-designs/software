@@ -104,6 +104,13 @@ bool CompassProcessor::computeOrientation(
     mag.normalize();
 
     // Switch to the NWU convention used by the orientation algorithm.
+    //
+    // These two flips and the q2/q1 ordering of qacc below are one unit, not
+    // three independent conventions: together they are exactly the +y,-x,-z
+    // relabelling of the magnetometer onto the accelerometer that every tag
+    // emits, and changing one alone breaks the other two. The tag frame that
+    // makes this hold, what each family's firmware does to produce it, and how
+    // to check a capture against it are in docs/shared/sensor-axes.md.
     accel = QVector3D(accel[0], -accel[1], accel[2]);
     mag = QVector3D(mag[0], mag[1], -mag[2]);
 
