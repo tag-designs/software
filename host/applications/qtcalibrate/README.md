@@ -129,12 +129,24 @@ changes what the solver is fitted to. Replaying one capture both ways is the
 intended comparison:
 
 ```sh
-qtcalibrate --replay-capture <capture.json>
-qtcalibrate --replay-capture <capture.json> --leverage-retention
+qtcalibrate --replay-capture <capture.json> --replay-exit --log-file inherited.txt
+qtcalibrate --replay-capture <capture.json> --replay-exit --log-file leverage.txt \
+  --leverage-retention
 ```
 
-Both runs log a `retention:` line at `DEBUG` with the eviction count and how
-many each rule decided, beside the `magquality:` metrics.
+`--replay-exit` starts the sweep, runs it to the end of the capture and quits,
+and `--log-file` writes the `DEBUG` lines the log window would show. The two
+together make a replay reproducible: the same capture gives the same log every
+time, which is what lets a small difference between the policies be told from
+run-to-run wobble. Without them the run ends wherever **Save Log** is clicked,
+and the comparison moves by more than the policies differ.
+
+`log_set_quiet(true)` means the `DEBUG` lines never reach stdout or stderr, so
+`--log-file` is the only way to capture them without the window.
+
+Both runs log a `retention:` line with the eviction count and how many each
+rule decided, a `gravity:` line with the fitted accelerometer offset, and the
+`magquality:` metrics.
 
 ## Calibration Constants
 

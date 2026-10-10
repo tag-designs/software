@@ -77,11 +77,18 @@ the originals are kept outside the repository in `~/Research/tag-designs/`:
 Regenerate a pair with:
 
 ```sh
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json \
-  2> errorlog-long-no-retention.txt
-qtcalibrate --replay-capture host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json \
-  --leverage-retention 2> errorlog-long-leverage-retention.txt
+FIXTURE=host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json
+qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file inherited.txt
+qtcalibrate --replay-capture $FIXTURE --replay-exit --log-file leverage.txt \
+  --leverage-retention
 ```
+
+`--replay-exit` starts the sweep, runs it to the end of the capture and quits;
+`--log-file` writes the same lines the log window shows. Before those existed
+the log was saved by hand from the window, which is why the runs below end at
+different sample counts -- see experiment 7. The DEBUG lines do not reach
+stdout or stderr: `main()` calls `log_set_quiet(true)`, so the only sinks are
+the window and this file.
 
 The last two runs were made from a working tree later committed as
 `bf15eef1`, with one change: the saved-capture accelerometer block was moved
@@ -297,11 +304,17 @@ it; see the withdrawn claims below.
 twice under one policy moves the dip spread by up to 0.13 degrees, which is
 larger than the policy gap that survived experiment 4.**
 
-The replay is not reproducible. The inherited policy breaks ties with
-`std::rand()`, and sample delivery runs on one timer while the quality tick
-runs on another, so two replays of the same file deliver slightly different
-sample counts -- 1758 against 1699 evictions under the inherited policy, 1764
-against 1761 under leverage.
+The replay was not reproducible, for three reasons, all now fixed in
+`b7a1e1f0`.
+
+The largest was not in the code at all. The log is saved by clicking **Save
+Log**, so a run ends wherever the operator happened to click: 1758 against
+1699 evictions under the inherited policy is 2408 samples against 2349, out of
+2425 in the capture. Neither run reached the end.
+
+The inherited policy also broke ties with `std::rand()`, and the quality tick
+ran on its own 200 ms timer against the 100 ms sample tick, so which sample a
+given line described drifted with scheduler jitter.
 
 Tail means over the last quarter, same capture, same policy, two runs:
 
@@ -377,10 +390,9 @@ reference capture reports 30.7 mg, which is model error rather than noise.
 
 ## Open questions
 
-1. Make the replay reproducible, so a 0.03 difference can be told from a 0.13
-   wobble. Two sources: the inherited policy's `std::rand()` tie-break, and
-   sample delivery and the quality tick running on separate timers. Until then
-   every comparison here needs repeating before it is believed.
+1. Repeat every comparison above on the now-reproducible replay. The numbers
+   in experiments 2, 4, 6 and 8 were all measured on runs that ended wherever
+   the operator clicked, so none of them is a clean function of the capture.
 2. Split the accelerometer into its own calibration task with its own buffer,
    patches, intake gate and retention, rather than borrowing the
    magnetometer's. The gates reject on different physics: the accelerometer

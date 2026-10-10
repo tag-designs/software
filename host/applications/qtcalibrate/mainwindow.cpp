@@ -183,9 +183,15 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
 
   //connect(ui.screenDirection,SIGNAL(valueChanged()),this, SLOT(on_screenDirection_valueChanged()));
 
+  replayExitWhenDone = options.replayExit;
   if (!options.replayCapturePath.isEmpty()) {
     if (loadReplayCapture(options.replayCapturePath)) {
       setupReplayTag();
+      if (replayExitWhenDone) {
+        // After the first event-loop turn, so the window and its QML views
+        // exist before samples start arriving.
+        QTimer::singleShot(300, this, &MainWindow::beginAutomatedReplay);
+      }
     }
   } else if (options.skipAutoAttach) {
     Detach();
@@ -479,6 +485,18 @@ void MainWindow::on_detachButton_clicked(){
 // While tag is attached and streaming is enabled, this
 // method is called at regular intervals
 
+void MainWindow::beginAutomatedReplay()
+{
+  if (!replayEnabled) {
+    return;
+  }
+  ui.tabWidget->setCurrentWidget(ui.calTab);
+  ui.streamCheckBox->setChecked(true);
+  if (!isCalibrating) {
+    on_startButton_clicked();
+  }
+}
+
 void MainWindow::TriggerUpdate(void)
 {
   Ack ack;
@@ -494,8 +512,18 @@ void MainWindow::TriggerUpdate(void)
       int sampleIndex = 0;
       if (nextReplaySample(mag, hasAccel, accel, batchIndex, sampleIndex)) {
         processCalibrationSample(mag, hasAccel, accel, batchIndex, sampleIndex);
+        if (replayCursor % kReplayQualityInterval == 0) {
+          TriggerQualityUpdate();
+        }
       } else {
+        // One last update so the final line of the log always describes the
+        // whole capture, whatever the sample count divides by.
+        TriggerQualityUpdate();
         ui.streamCheckBox->setChecked(false);
+        if (replayExitWhenDone) {
+          qInfo() << "replay complete:" << replaySamples.size() << "samples";
+          QTimer::singleShot(0, this, SLOT(close()));
+        }
       }
       return;
     }
@@ -1055,7 +1083,13 @@ void MainWindow::on_startButton_clicked(){
     ui.startButton->setEnabled(false);
     ui.stopButton->setEnabled(true);
     ui.clearButton->setEnabled(false);
-    qualitytimer.start(200);
+    // A replay drives the quality update from the sample counter instead, so
+    // that the log is a function of the capture and not of how the two timers
+    // happened to interleave. 200 ms against the 100 ms sample tick is one
+    // update every two samples, which kReplayQualityInterval matches.
+    if (!replayEnabled) {
+      qualitytimer.start(200);
+    }
   }
 }
 

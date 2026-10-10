@@ -5,6 +5,9 @@
 
 #include <QMainWindow>
 #include <QTextEdit>
+
+#include <cstdarg>
+#include <cstdio>
 #include <QTimer>
 #include <string>
 #include "tag.pb.h"
@@ -50,6 +53,19 @@ static void logOutput(int ll, const QMessageLogContext &context,
                            .arg(msg));
   else
     s_textEdit->append(QString("%1 %4").arg(tag).arg(msg));
+}
+
+/// Mirrors logOutput()'s format so that a log written by --log-file and one
+/// saved from the window are the same text, and two replays of one capture
+/// are byte-identical. log_add_fp() would do, but it stamps every line with
+/// the wall-clock time, which makes identical runs differ.
+static void logFileCallback(log_Event *ev)
+{
+  std::fprintf(static_cast<FILE *>(ev->udata), "%s  %d:",
+               log_level_string(ev->level), ev->line);
+  std::vfprintf(static_cast<FILE *>(ev->udata), ev->fmt, ev->ap);
+  std::fputc('\n', static_cast<FILE *>(ev->udata));
+  std::fflush(static_cast<FILE *>(ev->udata));
 }
 
 void log_log_callback(log_Event *ev)
@@ -142,6 +158,14 @@ int main(int argc, char *argv[])
       "prefix",
       "qtcalibrate-collection"));
   parser.addOption(QCommandLineOption(
+      "log-file",
+      "Write the DEBUG log to this file as well as the log window.",
+      "path"));
+  parser.addOption(QCommandLineOption(
+      "replay-exit",
+      "Quit once a replayed capture is exhausted. With --log-file this makes "
+      "a replay one command that always covers the whole capture."));
+  parser.addOption(QCommandLineOption(
       "leverage-retention",
       "Discard buffered samples by leverage and Cook's distance instead of the "
       "inherited nearest-pair scan. Off by default; replay one capture both "
@@ -158,6 +182,7 @@ int main(int argc, char *argv[])
     }
   }
   options.leverageRetention = parser.isSet("leverage-retention");
+  options.replayExit = parser.isSet("replay-exit");
   options.captureReplayScreenshots = parser.isSet("capture-replay-screenshots");
   options.captureOrientationScreenshot =
       parser.isSet("capture-orientation-screenshot");
@@ -192,6 +217,24 @@ int main(int argc, char *argv[])
   log_set_quiet(true);
   log_set_level(log_level);
   log_add_callback(log_log_callback, nullptr, LOG_TRACE);
+
+  // Deliberately left open for the life of the process: the callback holds
+  // the handle and there is nowhere to close it that is not also process
+  // exit, which flushes it. Every line is flushed as it is written, so a log
+  // is complete even if the run is interrupted.
+  const QString logFilePath = parser.value("log-file");
+  if (!logFilePath.isEmpty()) {
+    FILE *logFile = std::fopen(logFilePath.toLocal8Bit().constData(), "w");
+    if (logFile != nullptr) {
+      log_add_callback(logFileCallback, logFile, LOG_DEBUG);
+      log_set_level(LOG_DEBUG);
+      log_level = LOG_DEBUG;
+    } else {
+      std::fprintf(stderr, "cannot open log file %s\n",
+                   logFilePath.toLocal8Bit().constData());
+      return 1;
+    }
+  }
 
   MainWindow w(options);
   w.show();

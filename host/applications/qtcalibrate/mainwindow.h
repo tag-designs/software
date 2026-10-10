@@ -40,6 +40,16 @@ struct MainWindowOptions {
   QString replayCapturePath;
 
   /**
+   * @brief Quit once a replayed capture is exhausted.
+   *
+   * @details With --log-file, makes a replay a single command that always
+   *          covers the whole capture. Saving the log by hand instead ends it
+   *          wherever the operator happened to click, which is why nominally
+   *          identical runs reported different eviction counts.
+   */
+  bool replayExit = false;
+
+  /**
    * @brief Use the leverage-based sample retention instead of the inherited
    *        nearest-pair scan.
    *
@@ -158,6 +168,9 @@ signals:
 
 
 private slots:
+  /// Starts a --replay-exit run once the window exists, so that replaying
+  /// a capture is one command rather than a window to click in.
+  void beginAutomatedReplay();
 
   // attach/detach to tag
 
@@ -341,6 +354,11 @@ private:
   QString screenshotDir;
   QString screenshotPrefix;
   bool replayEnabled = false;
+  /// Quit when the replayed capture runs out. See MainWindowOptions.
+  bool replayExitWhenDone = false;
+  /// Samples per quality update while replaying, matching the 200 ms quality
+  /// timer against the 100 ms sample timer it stands in for.
+  static constexpr int kReplayQualityInterval = 2;
   bool captureReplayScreenshotsOnStartup = false;
   bool captureStartupScreenshotOnStartup = false;
   bool captureOrientationScreenshotOnStartup = false;

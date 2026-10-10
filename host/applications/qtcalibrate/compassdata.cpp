@@ -257,6 +257,7 @@ void CompassData::raw_data_reset(void)
 		slotFilledAt[i] = 0;
 	}
 	addCounter = 0;
+	discardRng.seed(kDiscardSeed);
 	gravity = GravityFit::Result();
 	evictions = 0;
 	leverageEvictions = 0;
@@ -385,7 +386,7 @@ int CompassData::choose_discard_magcal(void)
 			dist = pt1.distanceToPoint(pt2);
 			if (dist < mindist) {
 				mindist = dist;
-				minindex = (std::rand() & 1) ? i : j;
+				minindex = (discardRng() & 1u) ? i : j;
 			}
 		}
 	}
@@ -415,7 +416,7 @@ void CompassData::add_magcal_data(const QVector3D &data, bool hasAccel,
 	if (i >= MAGBUFFSIZE) {
 		i = choose_discard_magcal();
 		if (i < 0 || i >= MAGBUFFSIZE) {
-			i = std::rand() % MAGBUFFSIZE;
+			i = static_cast<int>(discardRng() % MAGBUFFSIZE);
 		}
 		evictions++;
 	}

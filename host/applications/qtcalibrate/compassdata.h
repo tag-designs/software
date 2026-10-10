@@ -6,6 +6,8 @@
 #include <QQuaternion>
 #include <QObject>
 
+#include <random>
+
 #include "magcal/magcal.h"
 #include "gravityfit.h"
 #include "magquality.h"
@@ -122,6 +124,20 @@ private:
     /// transient bad calibration cannot immediately purge the evidence that
     /// would correct it.
     int addCounter = 0;
+
+    /// Tie-breaking for the inherited discard policy, and the fallback when a
+    /// policy declines to choose.
+    ///
+    /// Seeded from a constant, and reseeded on every clear. The randomness is
+    /// there to avoid a systematic bias in which of two equally redundant
+    /// samples is dropped, and a fixed stream does that just as well as an
+    /// unpredictable one -- while making a replay of one capture reproduce
+    /// exactly, which is what lets a 0.03 difference between policies be told
+    /// from run-to-run wobble. std::mt19937 rather than std::rand() because
+    /// rand()'s sequence differs between platforms, and a replay should give
+    /// the same answer on macOS and Windows.
+    static constexpr unsigned int kDiscardSeed = 20261010u;
+    std::mt19937 discardRng{kDiscardSeed};
     int slotFilledAt[MAGBUFFSIZE] = {0};
 
     int evictions = 0;
