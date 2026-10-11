@@ -31,6 +31,14 @@
 //
 // Haha - This file has been edited!  Please do not blame or pester NXP (formerly
 //        Freescale) about the "almost inevitable" issues!
+//
+// The original solvers took BpFast as int16_t sensor counts and cast each
+// reading to int32_t.  qtcalibrate supplies BpFast as float uT at 0.01 uT
+// resolution, and those casts truncated every reading toward zero: a 2 uT dead
+// zone about zero on each axis.  An axis whose readings cross zero lost about
+// 1.4% of B; an axis whose readings do not had its hard iron offset pulled
+// 0.5 uT toward zero.  The offset subtraction is now done in float, so no
+// reading is rounded.
 
 #include "magcal.h"
 
@@ -137,7 +145,7 @@ static void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 	float fSumBp4;				// sum of fBp2
 	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
 	float fE;					// error function = r^T.r
-	int16_t iOffset[3];			// offset to remove large DC hard iron bias in matrix
+	float iOffset[3];			// offset to remove large DC hard iron bias (uT)
 	int16_t iCount;				// number of measurements counted
 	int i, j, k;				// loop counters
 
@@ -180,8 +188,8 @@ static void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 
 			// store scaled and offset fBp[XYZ] in vecA[0-2] and fBp[XYZ]^2 in vecA[3-5]
 			for (k = X; k <= Z; k++) {
-				MagCal->vecA[k] = (float)((int32_t)MagCal->BpFast[k][j]
-					- (int32_t)iOffset[k]) * fscaling;
+				MagCal->vecA[k] = (MagCal->BpFast[k][j]
+					- iOffset[k]) * fscaling;
 				MagCal->vecA[k + 3] = MagCal->vecA[k] * MagCal->vecA[k];
 			}
 
@@ -282,7 +290,7 @@ static void fUpdateCalibration4INV(MagCalibration_t *MagCal)
 	// correct the hard iron estimate for FMATRIXSCALING and the offsets applied (result in uT)
 	for (k = X; k <= Z; k++) {
 		MagCal->trV[k] = MagCal->trV[k] * DEFAULTB
-			+ (float)iOffset[k] * FXOS8700_UTPERCOUNT;
+			+ iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
 
 	// correct the geomagnetic field strength B to correct scaling (result in uT)
@@ -304,7 +312,7 @@ static void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 	float det;					// matrix determinant
 	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
 	float ftmp;					// scratch variable
-	int16_t iOffset[3];			// offset to remove large DC hard iron bias
+	float iOffset[3];			// offset to remove large DC hard iron bias (uT)
 	int16_t iCount;				// number of measurements counted
 	int i, j, k, m, n;			// loop counters
 
@@ -334,8 +342,8 @@ static void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 
 			// apply the offset and scaling and store in vecA
 			for (k = X; k <= Z; k++) {
-				MagCal->vecA[k + 3] = (float)((int32_t)MagCal->BpFast[k][j]
-					- (int32_t)iOffset[k]) * fscaling;
+				MagCal->vecA[k + 3] = (MagCal->BpFast[k][j]
+					- iOffset[k]) * fscaling;
 				MagCal->vecA[k] = MagCal->vecA[k + 3] * MagCal->vecA[k + 3];
 			}
 
@@ -423,7 +431,7 @@ static void fUpdateCalibration7EIG(MagCalibration_t *MagCal)
 	f3x3matrixAeqI(MagCal->trinvW);
 	for (k = X; k <= Z; k++) {
 		MagCal->trinvW[k][k] = sqrtf(fabs(MagCal->A[k][k]));
-		MagCal->trV[k] = MagCal->trV[k] * DEFAULTB + (float)iOffset[k] * FXOS8700_UTPERCOUNT;
+		MagCal->trV[k] = MagCal->trV[k] * DEFAULTB + iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
 }
 
@@ -437,7 +445,7 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 	float det;					// matrix determinant
 	float fscaling;				// set to FUTPERCOUNT * FMATRIXSCALING
 	float ftmp;					// scratch variable
-	int16_t iOffset[3];			// offset to remove large DC hard iron bias in matrix
+	float iOffset[3];			// offset to remove large DC hard iron bias (uT)
 	int16_t iCount;				// number of measurements counted
 	int i, j, k, m, n;			// loop counters
 
@@ -468,8 +476,8 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 
 			// apply the fixed offset and scaling and enter into vecA[6-8]
 			for (k = X; k <= Z; k++) {
-				MagCal->vecA[k + 6] = (float)((int32_t)MagCal->BpFast[k][j]
-					- (int32_t)iOffset[k]) * fscaling;
+				MagCal->vecA[k + 6] = (MagCal->BpFast[k][j]
+					- iOffset[k]) * fscaling;
 			}
 
 			// compute measurement vector elements vecA[0-5] from vecA[6-8]
@@ -569,7 +577,7 @@ static void fUpdateCalibration10EIG(MagCalibration_t *MagCal)
 	// correct for the measurement matrix offset and scaling and
 	// get the computed hard iron offset in uT
 	for (k = X; k <= Z; k++) {
-		MagCal->trV[k] = MagCal->trV[k] * DEFAULTB + (float)iOffset[k] * FXOS8700_UTPERCOUNT;
+		MagCal->trV[k] = MagCal->trV[k] * DEFAULTB + iOffset[k] * FXOS8700_UTPERCOUNT;
 	}
 
 	// convert the trial geomagnetic field strength B into uT for
