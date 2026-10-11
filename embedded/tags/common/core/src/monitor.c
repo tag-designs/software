@@ -755,6 +755,12 @@ static int infoAck(void)
 #else
   ack.payload.info.qtmonitor_min_version = 1.5;
 #endif
+  /*
+   * Reported for host tools to display and record; no host code converts data
+   * with them. Each target's custom.h says which stream a constant describes:
+   * on CompassTag MAG_CONSTANT is the 18-bit calibration-stream scale, four
+   * times finer than a logged count.
+   */
 #if defined(SENSOR_CONSTANTS) && SENSOR_CONSTANTS
   ack.payload.info.accelconstant = ACCEL_CONSTANT;
   ack.payload.info.magconstant = MAG_CONSTANT;

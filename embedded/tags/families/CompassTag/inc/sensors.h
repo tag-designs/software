@@ -14,7 +14,20 @@
 #include <tag.pb.h>
 #include "core_state.h"
 
-/** @brief Raw accelerometer and magnetometer sample stored in the data log. */
+/**
+ * @brief Raw accelerometer and magnetometer sample stored in the data log.
+ *
+ * @details Counts, not engineering units; datalog.c converts on download.
+ *          - ax, ay, az: 12-bit LIS2DU12 counts at +-2 g, 0.976 mg each
+ *            (ACCEL_CONSTANT). The sensor left-justifies 12 bits in a 16-bit
+ *            register pair whose low 4 bits always read zero, so the division
+ *            by 16 in sensors.c is exact and adds no rounding.
+ *          - mx, my, mz: the top 16 bits of the 18-bit AK09940A reading,
+ *            0.04 uT each. This is four times MAG_CONSTANT, which describes
+ *            the 18-bit calibration stream instead.
+ *
+ * @see sensorSample(), sensorCalibrationSample()
+ */
 typedef struct {
     int16_t ax, ay, az, mx, my, mz;
 } RawSensorData;

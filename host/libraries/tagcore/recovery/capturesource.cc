@@ -401,6 +401,12 @@ public:
  *          LSB first. A block whose activity word is FFFFh is unfinished and
  *          skipped, not an end. The tag converts on the way out: acceleration
  *          * 0.976 mg, field * 0.04 uT, activity * 100 / 30 percent.
+ *
+ *          The field scale is not the tag's reported magconstant (0.01 uT):
+ *          that describes the 18-bit calibration stream, while the log keeps
+ *          only the top 16 bits of each AK09940A reading, so one logged count
+ *          is four times as large. See RawSensorData in the CompassTag family
+ *          sensors.h.
  */
 class CompassTagDecoder : public CaptureDecoder {
 public:

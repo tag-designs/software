@@ -128,6 +128,14 @@ static void orient_accel_raw(int16_t *x, int16_t *y)
 /**
  * @brief Sample raw accelerometer and magnetometer data for the data log.
  *
+ * @details Stores counts; see RawSensorData for their scales. The AK09940A
+ *          reading is reduced from 18 to 16 bits by an arithmetic shift, which
+ *          rounds toward minus infinity: every axis reads on average 1.5
+ *          18-bit counts (0.015 uT) low, whatever its sign. That is a constant
+ *          offset with no dead zone about zero, so it does not change the
+ *          scale of the field. Range is unaffected (+-1311 uT against the
+ *          sensor's +-1200 uT).
+ *
  * @param[out] data Raw sensor destination.
  * @return true when all enabled sensors sampled successfully.
  */
@@ -192,6 +200,11 @@ bool sensorSample(RawSensorData *data){
 
 /**
  * @brief Sample sensors in engineering units for live calibration.
+ *
+ * @details This is the stream qtcalibrate fits. The magnetometer keeps all 18
+ *          bits at 0.01 uT per count (MAG_CONSTANT), four times finer than the
+ *          data log; the accelerometer uses the same 12-bit counts as the log
+ *          at 0.976 mg (ACCEL_CONSTANT). Both are sent as float uT and mg.
  *
  * @param[out] sensors Protobuf sensor-data payload to populate.
  * @return true after attempting the calibration sample.

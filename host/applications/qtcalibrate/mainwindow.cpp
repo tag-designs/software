@@ -96,6 +96,9 @@ QJsonObject tagInfoToJson(const TagInfo &info)
   object["firmware"] = QString::fromStdString(info.firmware());
   object["githash"] = QString::fromStdString(info.githash());
   object["build_time"] = QString::fromStdString(info.build_time());
+  // Recorded for reference only. On CompassTag, mag_constant is uT per count
+  // of the 18-bit calibration stream these samples come from; logged counts
+  // are four times as large (0.04 uT).
   object["mag_constant"] = info.magconstant();
   object["accel_constant"] = info.accelconstant();
   return object;
