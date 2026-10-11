@@ -159,7 +159,14 @@ bool sensorSample(RawSensorData *data){
   accel = TAG_ACCEL_DEVICE;
 
   ak09940aDeviceBegin(mag);
-  stopMilliseconds(1);
+  /*
+   * AK_PWR enables the AK09940A's 1.8 V regulator, so this wait covers the
+   * regulator's start-up and the sensor's power-on before reset is released
+   * and a measurement starts. On a battery the cell's internal resistance
+   * (about 80 ohm for an MS621FE) slows that start-up; 2 ms leaves margin that
+   * 1 ms did not. The cost is 1 ms more awake per sample.
+   */
+  stopMilliseconds(2);
   tagCompassMagResetRelease();
   if (ak09940aSample(mag, true, buf)) {
 
