@@ -202,6 +202,52 @@ static inline void orient_imu_xyz(int16_t *x, int16_t *y, int16_t *z)
   (void)z;
 }
 
+/*
+ * Magnetometer mounting is a board fact: boards place the magnetometer
+ * differently relative to the IMU. A tag defines IMUTAG_MAG_TAG_X/Y/Z(mx, my,
+ * mz) in its custom.h, each giving one output axis as an expression in the
+ * magnetometer's own axes. The output is not the accelerometer's frame: the
+ * host expects the magnetometer's +y, -x, -z along the accelerometer's x, y, z
+ * and finishes the conversion itself (docs/shared/sensor-axes.md). Undefined
+ * axes are taken as is.
+ */
+#ifndef IMUTAG_MAG_TAG_X
+/** @brief Tag-frame X from magnetometer axes; identity unless custom.h overrides. */
+#define IMUTAG_MAG_TAG_X(mx, my, mz) (mx)
+#endif
+#ifndef IMUTAG_MAG_TAG_Y
+/** @brief Tag-frame Y from magnetometer axes; identity unless custom.h overrides. */
+#define IMUTAG_MAG_TAG_Y(mx, my, mz) (my)
+#endif
+#ifndef IMUTAG_MAG_TAG_Z
+/** @brief Tag-frame Z from magnetometer axes; identity unless custom.h overrides. */
+#define IMUTAG_MAG_TAG_Z(mx, my, mz) (mz)
+#endif
+
+/**
+ * @brief Rotate a magnetometer sample into the frame the host expects.
+ *
+ * Applied to every field sample that reaches the data log or the calibration
+ * stream. Missing-sample markers are never passed through it.
+ *
+ * @param[in,out] x Field X in uT: sensor frame in, output frame out.
+ * @param[in,out] y Field Y in uT: sensor frame in, output frame out.
+ * @param[in,out] z Field Z in uT: sensor frame in, output frame out.
+ */
+static inline void orient_mag_xyz(float *x, float *y, float *z)
+{
+  const float mx = *x;
+  const float my = *y;
+  const float mz = *z;
+
+  (void)mx;
+  (void)my;
+  (void)mz;
+  *x = IMUTAG_MAG_TAG_X(mx, my, mz);
+  *y = IMUTAG_MAG_TAG_Y(mx, my, mz);
+  *z = IMUTAG_MAG_TAG_Z(mx, my, mz);
+}
+
 #if !defined(TAG_SENSOR_MAG_BMM350) || !TAG_SENSOR_MAG_BMM350
 /** Decode the AK09940A little-endian signed 18-bit magnetic sample format. */
 static inline int32_t decode_mag_18bit(uint8_t l, uint8_t m, uint8_t h)
@@ -563,6 +609,7 @@ static bool update_latest_mag(void)
   if (!ok)
     return false;
 
+  orient_mag_xyz(&latest_mx, &latest_my, &latest_mz);
   have_mag_sample = true;
   return true;
 #else
@@ -575,6 +622,7 @@ static bool update_latest_mag(void)
                         decode_mag_18bit(buf[3], buf[4], buf[5]),
                         decode_mag_18bit(buf[6], buf[7], buf[8]),
                         &latest_mx, &latest_my, &latest_mz);
+  orient_mag_xyz(&latest_mx, &latest_my, &latest_mz);
 
   have_mag_sample = true;
   return true;
@@ -971,6 +1019,7 @@ bool sensorCalibrationSample(SensorData *sensors)
                           &sensors->mag.my,
                           &sensors->mag.mz) == MSG_OK)
       {
+        orient_mag_xyz(&sensors->mag.mx, &sensors->mag.my, &sensors->mag.mz);
         sensors->has_mag = true;
       }
       bmm350DeviceEnd(TAG_MAG_DEVICE);
@@ -987,6 +1036,7 @@ bool sensorCalibrationSample(SensorData *sensors)
                             &sensors->mag.mx,
                             &sensors->mag.my,
                             &sensors->mag.mz);
+      orient_mag_xyz(&sensors->mag.mx, &sensors->mag.my, &sensors->mag.mz);
     }
 #endif
 

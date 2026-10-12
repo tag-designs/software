@@ -22,6 +22,18 @@ STM32U375 and selects the 1 Gbit GD5F SPI-NAND plus LPS22HH pressure modules.
 the BMP581 pressure module plus the 2 Gbit GD5F2GM7RE SPI-NAND module while
 preserving the IMUTag protocol family.
 
+Sensor axes are rotated before they are logged or streamed for calibration,
+into the alignment [`docs/shared/sensor-axes.md`](../../../../docs/shared/sensor-axes.md)
+defines: accelerometer in the tag frame, magnetometer such that its `+y, -x,
+-z` lie along the accelerometer's axes. The IMU rotation (`orient_imu_xyz()`
+in `src/sensors.c`) is shared by both boards. Magnetometer mounting differs by
+board, so each variant states it in `custom.h` as `IMUTAG_MAG_TAG_X/Y/Z(mx, my,
+mz)`; an undefined axis is taken as is. `IMUTagNandBmp581` swaps X and Y and
+negates Z, scored against two calibration captures with
+`check_orientation_frames.py`. `IMUTagNand` defines none, which has not been
+checked against a capture. Logs and calibrations made before a board's mapping
+was added are in the sensor frame.
+
 Design notes:
 
 - [`design/sample-timing.md`](design/sample-timing.md): how sample times are

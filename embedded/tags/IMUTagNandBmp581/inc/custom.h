@@ -149,6 +149,21 @@
 /** BMM350 interrupt/data-ready line. */
 #define IMUTAG_BMM_DRDY_LINE LINE_BMM_INT
 
+/*
+ * BMM350 mounting on IMUTagNandv2: X and Y swap and Z is negated, a 180 degree
+ * rotation about the X = Y diagonal. That is what brings the magnetometer into
+ * the alignment docs/shared/sensor-axes.md requires (+y, -x, -z onto the
+ * accelerometer). Scored with check_orientation_frames.py on qtcalibrate
+ * captures of 2026-10-11 13:11 and 13:23 UTC, remapped: inclination 63.8 and
+ * 63.5 deg, spread 3.5 and 3.1 deg, against 34 and 27 deg spread as captured.
+ */
+/** Tag-frame X from BMM350 axes on IMUTagNandv2. */
+#define IMUTAG_MAG_TAG_X(mx, my, mz) (my)
+/** Tag-frame Y from BMM350 axes on IMUTagNandv2. */
+#define IMUTAG_MAG_TAG_Y(mx, my, mz) (mx)
+/** Tag-frame Z from BMM350 axes on IMUTagNandv2. */
+#define IMUTAG_MAG_TAG_Z(mx, my, mz) (-(mz))
+
 /** Legacy accelerometer interrupt alias retained for shared monitor code. */
 #define LINE_ACCEL_INT LINE_WKUP1
 /** Accelerometer raw-to-mg scale reported to host tools. */

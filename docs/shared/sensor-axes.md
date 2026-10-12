@@ -79,21 +79,19 @@ isolation breaks the other two.
 | Target | Magnetometer | Accelerometer | Firmware correction |
 | --- | --- | --- | --- |
 | `CompassTagAT25` | AK09940A | LIS2DU12 | `orient_mag_values`: `x' = -y, y' = -x, z' = -z`; `orient_accel_raw`: `x' = -x, y' = -y` |
-| `IMUTagNandBmp581` | BMM350 | LSM6DSV16X | `orient_imu_xyz` on the accelerometer only: `x' = -y, y' = x`, z untouched. **None on the magnetometer.** |
+| `IMUTagNandBmp581` | BMM350 | LSM6DSV16X | `orient_imu_xyz` on the accelerometer: `x' = -y, y' = x`, z untouched; `orient_mag_xyz` with the board's `IMUTAG_MAG_TAG_*` macros on the magnetometer: `x' = y, y' = x, z' = -z` |
 
 Both are in each family's `sensors.c`. The corrections differ because the
 mountings differ; what they have in common is the frame they produce. Note that
 the two families do not even share a magnetometer part, so there is no reason to
 expect their corrections to look alike.
 
-The magnetometer gap on IMUTag is worth stating plainly. `sensors.c` guards the
-BMM350 read with `TAG_SENSOR_MAG_BMM350`, which `IMUTagNandBmp581` sets through
-the `sensor_mag_bmm350` module, and neither that branch nor the AK09940A branch
-beside it applies any axis correction. The tag therefore relies on the BMM350
-being mounted in the tag frame already. That may well be true, but nothing in
-the firmware says so, and a reader cannot tell a deliberate no-op from a missing
-call. Confirm it with a capture from the tag itself -- see below -- before
-trusting headings from a new IMUTag variant.
+IMUTag's magnetometer correction is per board, because the family's boards
+need not mount the magnetometer alike. `orient_mag_xyz()` applies the
+`IMUTAG_MAG_TAG_X/Y/Z(mx, my, mz)` macros a variant defines in its `custom.h`,
+on both the BMM350 and AK09940A paths, and a variant that defines none passes
+the part's axes through unchanged. `IMUTagNand` defines none and has not been
+scored; confirm it with a capture -- see below -- before trusting its headings.
 
 ## Checking a capture
 
@@ -114,22 +112,21 @@ Check each target separately. The two current targets share no sensor part and
 reach the tag frame by different routes, so a capture from one says nothing
 about the other.
 
-As of 2026-10-10:
+As of 2026-10-11:
 
 | Target | Checked | Result |
 | --- | --- | --- |
 | `CompassTagAT25` | scored, [the replay fixture](../../host/docs/fixtures/qtcalibrate/) | agrees: inclination 63.65 degrees, spread 4.11 degrees |
-| `IMUTagNandBmp581` | on the bench, through qtcalibrate's orientation view | heading and attitude behave correctly under rotation; no capture scored yet |
+| `IMUTagNandBmp581` | scored, two qtcalibrate captures of 2026-10-11 remapped through the board's `IMUTAG_MAG_TAG_*` macros | agrees: inclination 63.8 and 63.5 degrees, spread 3.5 and 3.1 degrees; a capture from firmware carrying the macros is still to be scored |
+| `IMUTagNand` | not scored | -- |
 
-Watching the orientation view is a real check and not a weak one: it displays
-dip, and dip holding steady while the tag is tumbled is this contract's
-invariance property observed directly. It is how the BMM350 path's lack of a
-magnetometer correction is known to be deliberate rather than an omission.
-
-Scoring a capture from an IMUTag would still be worth the minute it costs. It
-puts a number on what the eye judges, covers the tilted attitudes where a
-mismatch is largest, and would let an IMUTag fixture sit beside the CompassTag
-one as a regression check on the firmware helpers.
+Score a capture rather than judging by eye. qtcalibrate's orientation view
+shows dip, and dip holding steady while the tag is tumbled is the same
+invariance property, but a mismatch can pass unnoticed there:
+`IMUTagNandBmp581` was judged correct that way without a magnetometer
+correction, and its captures then scored 27 and 34 degrees of spread. A score
+covers the tilted attitudes where a mismatch is largest, and lets a fixture
+from each target serve as a regression check on the firmware helpers.
 
 Two cautions when reading the result. The discrimination lives in the tilted
 samples: as a tag approaches level, `q1` and `q2` fall to zero and every
