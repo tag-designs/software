@@ -223,11 +223,15 @@ The design, output tables and provenance format are in
 
 Current processors:
 
-- `compass-calibrated`: writes `CompassCalibrated` with raw acceleration copied
-  beside calibrated magnetometer x/y/z values.
+- `compass-calibrated`: writes `CompassCalibrated` with offset-corrected
+  acceleration beside calibrated magnetometer x/y/z values.
 - `compass-orientation`: writes `CompassOrientation` with canonical
   magnetic-frame yaw, pitch, roll, dip, field strength, acceleration magnitude,
   and quaternion columns.
+- `imu-compass-orientation`: the same orientation columns for an IMUTag log,
+  written to `ImuCompassOrientation` on `ElapsedUs`. Each magnetometer row is
+  paired with the mean of its superframe's accelerometer rows. SensorViz plots
+  the result when it opens the processed file.
 
 Example:
 
@@ -238,6 +242,12 @@ dataprocessing \
   --processor compass-calibrated \
   --processor compass-orientation \
   --if-exists replace \
+  --print-summary
+
+dataprocessing \
+  --input imutag.db3 \
+  --output imutag-processed.db3 \
+  --processor imu-compass-orientation \
   --print-summary
 ```
 

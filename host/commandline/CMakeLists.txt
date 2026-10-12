@@ -90,7 +90,10 @@ if(TARGET sensoranalysis)
   add_executable(dataprocessing MACOSX_BUNDLE WIN32 dataprocessing.cc)
   target_compile_features(dataprocessing PRIVATE cxx_std_20)
   target_include_directories(dataprocessing PRIVATE ${DATAPROCESSING_SQLITE_INCLUDE_DIRS})
-  target_link_libraries(dataprocessing PRIVATE sensoranalysis ${DATAPROCESSING_SQLITE_TARGET})
+  # tag_monitor_interface supplies include/imutag_log_format.h, the superframe
+  # size the IMUTag compass processor pairs samples by.
+  target_link_libraries(dataprocessing PRIVATE sensoranalysis tag_monitor_interface
+                                               ${DATAPROCESSING_SQLITE_TARGET})
   set_target_properties(
     dataprocessing
     PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/lib

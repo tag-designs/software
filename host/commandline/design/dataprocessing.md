@@ -1,16 +1,16 @@
 ---
 type: design
 status: current
-summary: How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
+summary: How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams and IMUTag orientation with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 ---
 
 # DataProcessing Post-Processing Application Design
 
 `dataprocessing` (`host/commandline/dataprocessing.cc`) copies a SQLite log to
 a new file and adds durable derived tables, stream metadata, and a
-`ProcessingRun` provenance row to the copy. It has two processors, both for
-CompassTag: `compass-calibrated` and `compass-orientation`. The input file is
-never modified. Usage is in the [command-line README](../README.md#dataprocessing);
+`ProcessingRun` provenance row to the copy. It has three processors: two for
+CompassTag, `compass-calibrated` and `compass-orientation`, and one for IMUTag,
+`imu-compass-orientation`. The input file is never modified. Usage is in the [command-line README](../README.md#dataprocessing);
 open work is in [TODO.md](../TODO.md).
 
 ## Why It Exists
@@ -74,9 +74,37 @@ committed at the end.
 | --- | --- | --- |
 | `compass-calibrated` | `Compass` table, latest `Calibration` row | `CompassCalibrated` table and six `record_column` streams |
 | `compass-orientation` | `Compass` table, latest `Calibration` row | `CompassOrientation` table and six scalar streams |
+| `imu-compass-orientation` | `ImuMag` and `ImuAccel` tables, latest `Calibration` row | `ImuCompassOrientation` table and six scalar streams |
 
 The calibration used is the `Calibration` row with the greatest `Epoch`; its
-`Constants` JSON must contain a `magnetometer` object.
+`Constants` JSON must contain a `magnetometer` object. Every processor applies
+it through `CompassProcessor`: the magnetometer constants, and the
+accelerometer zero-g offset when present.
+
+Inputs are loaded per tag family, and only for the processors requested, so an
+IMUTag log is not rejected for lacking a `Compass` table.
+
+### Pairing IMUTag samples
+
+IMUTag logs the magnetometer once per superframe of
+`IMUTAG_IMU_SAMPLES_PER_SUPERFRAME` (10) IMU samples, so there is no one-to-one
+accelerometer row to pair it with. An `ImuMag` row's `SampleIndex` is the first
+IMU sample index of its superframe, and `imu-compass-orientation` pairs it with
+the mean of the `ImuAccel` rows in the same segment whose `SampleIndex` lies in
+`[SampleIndex, SampleIndex + 10)`. The mean covers the span the magnetometer
+value stands for and suppresses motion in the gravity estimate. Its centre is
+about half a superframe after the row's `ElapsedUs`, which is the time the
+output is written at.
+
+A magnetometer row with no accelerometer rows in its superframe, or a pair the
+solver cannot use (a zero vector), is counted and skipped rather than failing
+the run; `--dry-run` and `--print-summary` report the counts. The output's
+`AccelSamples` column records how many rows each mean used.
+
+The result is only as good as the tag's axis alignment; see
+[Magnetometer and Accelerometer Axes](../../../docs/shared/sensor-axes.md).
+Logs from firmware without its board's magnetometer mapping give orientation
+with a dip that wanders with attitude.
 
 ### Output Tables
 
@@ -102,11 +130,32 @@ CompassOrientation
   qx REAL
   qy REAL
   qz REAL
+
+ImuCompassOrientation
+  SegmentId INTEGER
+  SampleIndex INTEGER
+  ElapsedUs INTEGER
+  yaw REAL
+  pitch REAL
+  roll REAL
+  dip REAL
+  field REAL
+  acceleration REAL
+  AccelSamples INTEGER
+  qw REAL
+  qx REAL
+  qy REAL
+  qz REAL
 ```
 
 `CompassCalibrated` holds magnetometer values after hard-iron and soft-iron
-correction. Acceleration is copied from the raw table so the record set is
-self-contained; it is not magnetometer-calibrated.
+correction, beside acceleration with the zero-g offset removed, so the record
+set is self-contained.
+
+`ImuCompassOrientation` carries the `ImuMag` row's `SegmentId`, `SampleIndex`
+and `ElapsedUs`, so it lines up with the raw IMUTag tables, and the same
+orientation columns as `CompassOrientation`. `acceleration` is the magnitude of
+the superframe mean.
 
 `CompassOrientation` holds canonical magnetic-frame orientation, not a display
 heading. Declination and battery-forward/backward mounting belong to
@@ -128,10 +177,17 @@ compass_orientation_roll
 compass_orientation_dip
 compass_orientation_field
 compass_orientation_acceleration
+imu_compass_orientation_yaw
+imu_compass_orientation_pitch
+imu_compass_orientation_roll
+imu_compass_orientation_dip
+imu_compass_orientation_field
+imu_compass_orientation_acceleration
 ```
 
 They use the existing `streams` catalog style: `record_column` entries for the
-grouped calibrated vectors and scalar streams for orientation values. The ids
+grouped calibrated vectors and scalar streams for orientation values. The IMUTag
+streams use `ElapsedUs` as their time column, like the raw IMUTag streams. The ids
 do not collide with SensorViz's live-derived display stream ids. The quaternion
 columns have no stream entries. Raw streams are never mutated or removed.
 
@@ -157,8 +213,10 @@ ProcessingRun
 ```
 
 `ConfigurationJson` records the processor, `algorithm_version` (currently 1)
-and the calibration source. For `compass-orientation` it also records the frame,
-quaternion order and heading policy. An illustrative example (the epoch is a
+and the calibration source. For both orientation processors it also records the
+frame, quaternion order and heading policy, and for `imu-compass-orientation`
+an `accel_pairing` object naming the method (`superframe_mean`) and the
+superframe size. An illustrative example (the epoch is a
 placeholder):
 
 ```json
@@ -206,7 +264,10 @@ orientation processing.
 
 SensorViz has no support specific to processed files. It does not read
 `ProcessingRun` and does not distinguish materialized streams from raw or
-live-derived ones. The open questions for adding that support are in
+live-derived ones. Because it loads every `scalar` row in `streams`, the
+orientation streams of a processed file plot beside the raw ones; for an IMUTag
+log that is the only place orientation appears, since SensorViz derives none
+for IMUTag itself. The open questions for adding that support are in
 [TODO.md](../TODO.md).
 
 ## Verification

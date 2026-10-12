@@ -354,7 +354,7 @@ design document.
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
 - [Command-Line Tools TODO](../host/commandline/TODO.md) *(worklist)* — Open command-line tool work - dataprocessing tests, further processors and SensorViz support for processed files.
-- [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
+- [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams and IMUTag orientation with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 
 ### Command Line / Proposals
 
