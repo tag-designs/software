@@ -151,43 +151,61 @@ def walk_system_profiler_items(items: Iterable[dict]) -> Iterable[dict]:
         yield from walk_system_profiler_items(children)
 
 
+#: system_profiler data types that list USB devices, newest first, with the
+#: keys each uses for (vendor id, product id, serial number, location).
+#: SPUSBHostDataType replaced SPUSBDataType in recent macOS releases, where
+#: SPUSBDataType still exists but returns an empty list.
+MACOS_USB_DATA_TYPES = (
+    (
+        "SPUSBHostDataType",
+        (
+            "USBDeviceKeyVendorID",
+            "USBDeviceKeyProductID",
+            "USBDeviceKeySerialNumber",
+            "USBKeyLocationID",
+        ),
+    ),
+    ("SPUSBDataType", ("vendor_id", "product_id", "serial_num", "location_id")),
+)
+
+
 def enumerate_macos_usb() -> List[Probe]:
-    try:
-        completed = subprocess.run(
-            ["system_profiler", "SPUSBDataType", "-json"],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return []
-
-    try:
-        payload = json.loads(completed.stdout)
-    except json.JSONDecodeError:
-        return []
-
-    probes: List[Probe] = []
-    for root in payload.get("SPUSBDataType", []):
-        for item in walk_system_profiler_items(root.get("_items", [])):
-            vid = item.get("vendor_id")
-            pid = item.get("product_id")
-            if not vid or not pid:
-                continue
-
-            probes.append(
-                Probe(
-                    vid=normalize_hex(str(vid)),
-                    pid=normalize_hex(str(pid)),
-                    serial=item.get("serial_num"),
-                    product=item.get("_name"),
-                    location=item.get("location_id"),
-                    source="system_profiler",
-                )
+    for data_type, (vid_key, pid_key, serial_key, location_key) in MACOS_USB_DATA_TYPES:
+        try:
+            completed = subprocess.run(
+                ["system_profiler", data_type, "-json"],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
             )
+            payload = json.loads(completed.stdout)
+        except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+            continue
 
-    return probes
+        probes: List[Probe] = []
+        for root in payload.get(data_type, []):
+            for item in walk_system_profiler_items(root.get("_items", [])):
+                vid = item.get(vid_key)
+                pid = item.get(pid_key)
+                if not vid or not pid:
+                    continue
+
+                probes.append(
+                    Probe(
+                        vid=normalize_hex(str(vid)),
+                        pid=normalize_hex(str(pid)),
+                        serial=item.get(serial_key),
+                        product=item.get("_name"),
+                        location=item.get(location_key),
+                        source="system_profiler",
+                    )
+                )
+
+        if probes:
+            return probes
+
+    return []
 
 
 def enumerate_windows_usb() -> List[Probe]:
