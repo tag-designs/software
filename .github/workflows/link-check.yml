@@ -44,6 +44,10 @@ jobs:
           #
           # 429 is accepted because a rate-limited host has told us nothing
           # about the link.
+          #
+          # st.com is excluded because its servers reset every request from a
+          # non-browser client (HTTP/2 INTERNAL_ERROR), so lychee can report
+          # nothing about a link there, live or dead.
           args: >-
             --no-progress
             --scheme http
@@ -52,6 +56,7 @@ jobs:
             --max-retries 2
             --timeout 20
             --exclude-all-private
+            --exclude '^https?://([a-z0-9-]+\.)*st\.com/'
             README.md
             docs/developer/mkdocs.yml
             host/docs/mkdocs.yml

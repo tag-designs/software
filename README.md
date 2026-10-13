@@ -523,7 +523,7 @@ What is committed and when it is regenerated is in
 
 ## Programming Embedded Hardware
 
-Install [STM32CubeProgrammer](https://wiki.st.com/stm32mpu/wiki/STM32CubeProgrammer)
+Install [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html)
 to use generated download and DFU targets.
 
 Example SWD command:
