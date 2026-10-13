@@ -554,22 +554,29 @@ run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
 | takes the newest successful tag-push run of `release.yml` | that is the release being cut |
 | checks the tag still points at the commit the run built | a moved tag would attach a package built from another commit |
 | verifies the DMG's provenance attestation against `release.yml`, that commit and that tag | what gets the Developer ID signature is provably this repository's build, not a swapped file |
-| copies the image out and re-signs every bundle with `cmake/MacosCodesignBundle.cmake` | the same code signs a local build, so the signatures match |
+| copies the image out and re-signs every bundle, and every command line tool in `tag_tools/bin`, with `cmake/MacosCodesignBundle.cmake` | the same code signs a local build, so the signatures match |
 | makes a new HFS+/UDZO image and signs it | the image carries the identity the ticket is stapled under |
 | submits the image to Apple's notary service and waits; on anything but `Accepted` it prints the notary log and stops | the log names each rejected file and why |
 | staples the ticket to the image | Gatekeeper can then accept the image without asking Apple |
-| mounts the image and verifies each app, the stapled ticket and that Gatekeeper accepts all of it as notarized | what matters is the signature a user receives |
+| mounts the image and verifies each app and tool, the stapled ticket and that Gatekeeper accepts all of it as notarized | what matters is the signature a user receives |
 | prints the DMG path, its SHA-256 and the run it came from | the hash identifies the image that was tested |
 | uploads it to the draft release, replacing any earlier upload | it never changes a published release |
 
 The signed DMG is also kept in `<build-dir>/signed-release/`.
 
-Expect thirteen `ok` lines -- five Qt apps, `dataprocessing`, and seven command
-line tools. A count that is not thirteen means the install set changed; check
-that against `host_cli_install_targets` before shipping.
+Expect six app lines -- five Qt apps and `dataprocessing` -- then eight tool
+lines: the seven command line tools in `tag_tools/bin`, and `dataprocessing`
+again as `ok (link)`, the link there into its bundle. Different counts mean
+the install set changed; check them against `host_cli_install_targets` before
+shipping. A tool also fails if it links anything outside `/usr/lib` and
+`/System`: it ships as a bare executable with nothing beside it, so such a
+library would be missing on a user's Mac
+([decision 0028](../decisions/0028-host-macos-command-line-tools-plain-executables.md)).
 
 Each app's `ok` also means Gatekeeper accepted it as `source=Notarized
-Developer ID`, and two more lines follow: `stapled ticket ok` and `image
+Developer ID`, and each tool's that Apple holds a ticket for it (`codesign
+--check-notarization`; Gatekeeper's own check rejects any bare executable as
+"not an app"). Two more lines follow: `stapled ticket ok` and `image
 assessment ok`. Signing and timestamping several hundred items, then waiting
 for Apple, takes several minutes and needs the network. `--no-notarize` skips
 notarization, and the check then expects only `source=Developer ID`.
@@ -581,7 +588,9 @@ the download test in step 4 does.
 **4. Install it from the release page on a Mac that has never seen the build,**
 and follow
 [Installing a macOS Release](../../README.md#installing-a-macos-release) as
-written. Launch every app, including `qtcalibrate`'s 3D view. This is the only
+written. Launch every app, including `qtcalibrate`'s 3D view, and run
+`tag_tools/bin/tag-info --help` and `tag_tools/bin/dataprocessing --help` from
+a terminal. This is the only
 step that tests what a user experiences, because it is the only copy that is
 quarantined. Everything before it tests the build.
 

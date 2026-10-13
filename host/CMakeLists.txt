@@ -291,10 +291,18 @@ if(host_install_targets)
       endif()
     endforeach()
   else()
+    # On macOS the plain command line tools go to tag_tools/bin, inside the
+    # folder the user drags out of the DMG, so the package keeps one
+    # top-level folder and the tools one directory to put on PATH.
+    if(APPLE)
+      set(host_cli_runtime_destination "${HOST_BUNDLE_INSTALL_DIR}/bin")
+    else()
+      set(host_cli_runtime_destination "${CMAKE_INSTALL_BINDIR}")
+    endif()
     install(
       TARGETS ${host_install_targets}
       BUNDLE DESTINATION ${HOST_BUNDLE_INSTALL_DIR}
-      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+      RUNTIME DESTINATION ${host_cli_runtime_destination})
   endif()
 
   if(WIN32 OR APPLE)
@@ -349,26 +357,28 @@ if(host_install_targets)
         endif()
       endforeach()
 
-      # The command line tools are MACOSX_BUNDLE targets as well, and until
-      # now nothing signed them: they shipped carrying only the ad-hoc
-      # signature the linker applies to the inner Mach-O. That is a valid
-      # signature for the executable, which is why running
-      # tag-info.app/Contents/MacOS/tag-info from a terminal has always
-      # worked, but a .app with no Contents/_CodeSignature/CodeResources
-      # fails `codesign --verify` as a bundle. It would be refused if ever
-      # double-clicked, and would fail notarization of the whole image.
-      #
-      # They need no deployment work -- no Qt, no bundled dylibs -- only the
-      # seal, so this loop calls the signing step alone. dataprocessing
-      # appears in both lists and is signed by the loop above.
+      # The command line tools are plain executables with their libraries
+      # linked statically, so they need no deployment, only a signature: the
+      # linker's ad-hoc one would fail notarization of the whole image.
+      # dataprocessing is the exception. It links Qt, so it stays a bundle,
+      # deployed and signed by the loop above, and gets a link in bin so
+      # that it runs from there like the others; dyld resolves the link, so
+      # the bundle still finds its frameworks.
       foreach(target_name ${host_cli_install_targets})
         if(NOT TARGET ${target_name})
           continue()
         endif()
         if(target_name IN_LIST host_qt_runtime_install_targets)
+          install(CODE "
+            file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/${host_cli_runtime_destination}\")
+            file(CREATE_LINK
+                 \"../${target_name}.app/Contents/MacOS/${target_name}\"
+                 \"\${CMAKE_INSTALL_PREFIX}/${host_cli_runtime_destination}/${target_name}\"
+                 SYMBOLIC)
+          ")
           continue()
         endif()
-        install_macos_codesign(${target_name})
+        install_macos_codesign_executable(${target_name} "${host_cli_runtime_destination}")
       endforeach()
     endif()
   endif()

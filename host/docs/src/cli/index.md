@@ -3,6 +3,10 @@
 The host command-line tools live in `host/commandline` and are built with the
 host tools. They are intended for direct USB tag operations and scripting.
 
+In the macOS release they are in `tag_tools/bin`; put that directory on your
+`PATH` to run them by name. In the Windows release they are in `tag_tools`
+beside the applications.
+
 Use these pages as working templates. Fill in the purpose, preconditions,
 examples, expected output, and troubleshooting details as each tool is reviewed
 against the current workflow.

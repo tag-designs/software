@@ -2,17 +2,18 @@
 #
 # Verify the signatures a user gets from a macOS host tools DMG.
 #
-# Mounts the image read-only and checks every .app bundle in it: the bundle
-# must pass `codesign --verify --strict` and its leaf authority must be the
-# expected identity. Verifying inside the mounted image, not a build tree, is
+# Mounts the image read-only and checks every .app bundle in it and every
+# command line tool in its bin directory: each must pass `codesign --verify
+# --strict` and its leaf authority must be the expected identity, and a tool
+# may link only system libraries. Verifying inside the mounted image, not a build tree, is
 # the point: it is what a user receives, whoever built and signed it.
 #
 # Shared by both release paths: release-macos.sh (built and signed locally)
 # and sign-ci-macos.sh (built by CI, re-signed locally).
 #
 # With --notarized it also requires what notarization adds: a valid ticket
-# stapled to the image, and Gatekeeper accepting the image and every bundle as
-# notarized.
+# stapled to the image, Gatekeeper accepting the image and every bundle as
+# notarized, and Apple holding a ticket for every tool.
 #
 # Usage: host/tools/verify-macos-dmg.sh DMG IDENTITY [--notarized]
 #
@@ -78,6 +79,56 @@ while IFS= read -r app; do
   printf '  %-24s ok\n' "$name"
 done <<EOF
 $APPS
+EOF
+
+# The command line tools are plain executables in tag_tools/bin. They carry no
+# libraries, so anything they link must already be on every Mac. spctl
+# rejects a bare executable as "not an app" however it is signed, so the
+# notarization check asks codesign instead, which looks the ticket up online.
+# A link (dataprocessing's) must resolve to an executable in the image; its
+# target is a bundle checked above.
+TOOLS=$(find "$MOUNT_POINT" -maxdepth 3 -path '*/bin/*' \( -type f -o -type l \) -print | sort)
+[ -n "$TOOLS" ] || die "no command line tools found in a bin directory of $DMG"
+
+while IFS= read -r tool; do
+  name=${tool##*/}
+  if [ -L "$tool" ]; then
+    if [ -x "$tool" ] && [ -f "$tool" ]; then
+      printf '  %-24s ok (link)\n' "$name"
+    else
+      printf '  %-24s link does not resolve to an executable: %s\n' "$name" "$(readlink "$tool")"
+      FAILED=1
+    fi
+    continue
+  fi
+  if ! codesign --verify --strict --verbose=1 "$tool" >/dev/null 2>&1; then
+    printf '  %-24s FAILED codesign --verify\n' "$name"
+    codesign --verify --strict --verbose=2 "$tool" 2>&1 | sed 's/^/      /'
+    FAILED=1
+    continue
+  fi
+  authority=$(codesign -dvv "$tool" 2>&1 | sed -n 's/^Authority=//p' | head -1)
+  if [ "$authority" != "$IDENTITY" ]; then
+    printf '  %-24s signed by an unexpected authority: %s\n' "$name" "${authority:-<none>}"
+    FAILED=1
+    continue
+  fi
+  foreign=$(otool -L "$tool" | tail -n +2 | awk '{print $1}' | grep -v -e '^/usr/lib/' -e '^/System/' || true)
+  if [ -n "$foreign" ]; then
+    printf '  %-24s links libraries the package does not carry:\n' "$name"
+    printf '%s\n' "$foreign" | sed 's/^/      /'
+    FAILED=1
+    continue
+  fi
+  if [ "$NOTARIZED" -eq 1 ] \
+     && ! codesign --verify --strict -R=notarized --check-notarization "$tool" >/dev/null 2>&1; then
+    printf '  %-24s not notarized\n' "$name"
+    FAILED=1
+    continue
+  fi
+  printf '  %-24s ok\n' "$name"
+done <<EOF
+$TOOLS
 EOF
 
 if [ "$NOTARIZED" -eq 1 ]; then

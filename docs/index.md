@@ -71,6 +71,7 @@ design document.
 - [0025. Release: the macOS package is notarized locally](decisions/0025-release-macos-package-notarized-locally.md) *(decision)* — The released macOS DMG is notarized and stapled on the developer's Mac by sign-latest, after re-signing, with notarytool credentials held in that Mac's keychain; nothing new reaches CI.
 - [0026. Host: Qt 6.10.3 everywhere and a macOS 13 floor](decisions/0026-host-qt-6-10-3-and-macos-13-floor.md) *(decision)* — Host builds use Qt 6.10.3 on both platforms and the macOS deployment target rises to 13.0, because Qt 6.10's macOS frameworks are built for macOS 13; CI's Qt pin follows the presets rather than lagging them.
 - [0027. Firmware: L432 calibration pinned to the top flash page](decisions/0027-firmware-l432-calibration-pinned-to-top-page.md) *(decision)* — On STM32L432 tags that store calibration (CompassTag), the calibration table is pinned to the top flash page while .persistent keeps floating, so an upgrade that erases every other page keeps calibration at no log-capacity cost.
+- [0028. Host: macOS command line tools ship as plain executables](decisions/0028-host-macos-command-line-tools-plain-executables.md) *(decision)* — In the macOS package the command line tools are plain executables in tag_tools/bin rather than app bundles; dataprocessing, which links Qt, stays a bundle with a link in bin, and the release checks fail any tool that links a library the package does not carry.
 
 ### Investigations
 

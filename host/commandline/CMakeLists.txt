@@ -5,17 +5,19 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #[[
   @brief  Links <bin>/<name> to the executable inside a macOS tool bundle.
 
-  @details On macOS the command line tools are built as app bundles, which
-           buries the executable at <name>.app/Contents/MacOS/<name>. After
-           each build this places a relative symlink beside the bundle, so
-           the tool runs as <bin>/<name> the same as on Linux. The link lives
-           only in the build tree: install() copies the bundle, not the link,
-           so the shipped package is unchanged. Does nothing off macOS.
+  @details Only dataprocessing needs this. It links Qt, and macdeployqt can
+           deploy Qt only into a bundle, so on macOS it is the one command
+           line tool still built as an app, with its executable at
+           <name>.app/Contents/MacOS/<name>. After each build this places a
+           relative symlink beside the bundle, so it runs as <bin>/<name> like
+           every other tool. The link lives only in the build tree; the
+           package gets its own, made by host/CMakeLists.txt. Does nothing off
+           macOS.
 
   @param  name  An executable target built with MACOSX_BUNDLE.
 
   Example:
-    host_cli_bundle_link(tag-info)
+    host_cli_bundle_link(dataprocessing)
 #]]
 function(host_cli_bundle_link name)
   if(APPLE)
@@ -30,6 +32,22 @@ function(host_cli_bundle_link name)
   endif()
 endfunction()
 
+#[[
+  @brief  Adds one tagcore command line tool.
+
+  @details Links the tool against tagcore and the monitor interface and puts
+           it in <bin>. On macOS it is a plain executable, not an app bundle:
+           its dependencies are linked statically, so there is nothing for a
+           bundle to carry, and a plain executable runs from a terminal by its
+           name. The package installs it to tag_tools/bin.
+
+  @param  name  Target and executable name.
+  @param  ARGN  Sources, optionally preceded by add_executable() keywords.
+                WIN32 is overridden: the tool is linked /SUBSYSTEM:CONSOLE.
+
+  Example:
+    host_cli_tool(tag-info WIN32 tag-info.cc options.cc)
+#]]
 function(host_cli_tool name)
 
   add_executable(${name} ${ARGN})
@@ -47,34 +65,26 @@ function(host_cli_tool name)
   if(WIN32)
     set_target_properties(${name} PROPERTIES LINK_FLAGS /SUBSYSTEM:CONSOLE)
   endif()
-
-  # bundle things up properly
-
-  if(APPLE)
-    #include(DeployQt)
-    #macdeployqt(${name})
-  endif()
-  host_cli_bundle_link(${name})
 endfunction()
 
 
-host_cli_tool(tag-dwnld MACOSX_BUNDLE WIN32 dwnld.cc options.cc)
-host_cli_tool(tag-test MACOSX_BUNDLE WIN32 test.cc options.cc)
-host_cli_tool(tag-test-example MACOSX_BUNDLE WIN32 test-example.cc options.cc)
-host_cli_tool(tag-info MACOSX_BUNDLE WIN32 tag-info.cc options.cc)
-host_cli_tool(tag-reset MACOSX_BUNDLE WIN32 tag-reset.cc options.cc)
-host_cli_tool(tag-cal-write MACOSX_BUNDLE WIN32 tag-cal-write.cc options.cc)
-host_cli_tool(tag-peek MACOSX_BUNDLE WIN32 tag-peek.cc options.cc)
-host_cli_tool(tag-start MACOSX_BUNDLE WIN32 tag-start.cc options.cc)
-host_cli_tool(tag-stop MACOSX_BUNDLE WIN32 tag-stop.cc options.cc)
-host_cli_tool(tag-cal MACOSX_BUNDLE WIN32 tag-calibrate.cc options.cc)
-host_cli_tool(tag-monitor-test MACOSX_BUNDLE WIN32 tag-monitor-test.cc options.cc)
-host_cli_tool(tag-attach-cycle MACOSX_BUNDLE WIN32 tag-attach-cycle.cc options.cc)
-host_cli_tool(tag-capture MACOSX_BUNDLE WIN32 tag-capture.cc)
-host_cli_tool(tag-xflash MACOSX_BUNDLE WIN32 tag-xflash.cc)
-host_cli_tool(tag-sramcall MACOSX_BUNDLE WIN32 tag-sramcall.cc)
-host_cli_tool(tag-rebuild MACOSX_BUNDLE WIN32 tag-rebuild.cc)
-host_cli_tool(qtmonitor-fixture-capture MACOSX_BUNDLE WIN32 qtmonitor-fixture-capture.cc)
+host_cli_tool(tag-dwnld WIN32 dwnld.cc options.cc)
+host_cli_tool(tag-test WIN32 test.cc options.cc)
+host_cli_tool(tag-test-example WIN32 test-example.cc options.cc)
+host_cli_tool(tag-info WIN32 tag-info.cc options.cc)
+host_cli_tool(tag-reset WIN32 tag-reset.cc options.cc)
+host_cli_tool(tag-cal-write WIN32 tag-cal-write.cc options.cc)
+host_cli_tool(tag-peek WIN32 tag-peek.cc options.cc)
+host_cli_tool(tag-start WIN32 tag-start.cc options.cc)
+host_cli_tool(tag-stop WIN32 tag-stop.cc options.cc)
+host_cli_tool(tag-cal WIN32 tag-calibrate.cc options.cc)
+host_cli_tool(tag-monitor-test WIN32 tag-monitor-test.cc options.cc)
+host_cli_tool(tag-attach-cycle WIN32 tag-attach-cycle.cc options.cc)
+host_cli_tool(tag-capture WIN32 tag-capture.cc)
+host_cli_tool(tag-xflash WIN32 tag-xflash.cc)
+host_cli_tool(tag-sramcall WIN32 tag-sramcall.cc)
+host_cli_tool(tag-rebuild WIN32 tag-rebuild.cc)
+host_cli_tool(qtmonitor-fixture-capture WIN32 qtmonitor-fixture-capture.cc)
 
 if(TARGET sensoranalysis)
   if(VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)

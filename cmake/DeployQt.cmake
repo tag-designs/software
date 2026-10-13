@@ -498,4 +498,46 @@ function(install_macos_codesign target)
     ")
 endfunction()
 
+#[[
+  @brief  Signs an installed plain macOS executable at install time.
+
+  @details The counterpart of install_macos_codesign() for a command line
+           tool installed as a bare executable rather than a bundle. Adds an
+           install(CODE) step calling macos_codesign_executable() from
+           MacosCodesignBundle.cmake, the code sign-ci-macos.sh also runs, on
+           <prefix>/<destination>/<output name>. Does nothing unless
+           MACOS_SIGN_APPS is ON and MACOS_CODE_SIGN_IDENTITY is set, as for
+           bundles. Must be called after the install(TARGETS) that installs
+           the executable, so that the step runs after the copy.
+
+  @param  target       Executable target, not a MACOSX_BUNDLE.
+  @param  destination  Install directory of the executable, relative to the
+                       prefix, e.g. tag_tools/bin.
+
+  Example:
+    install_macos_codesign_executable(tag-info tag_tools/bin)
+#]]
+function(install_macos_codesign_executable target destination)
+    if(NOT MACOS_SIGN_APPS OR NOT MACOS_CODE_SIGN_IDENTITY)
+        return()
+    endif()
+    if(NOT CODESIGN_EXECUTABLE)
+        message(FATAL_ERROR "codesign not found")
+    endif()
+
+    get_target_property(_target_output_name ${target} OUTPUT_NAME)
+    if(NOT _target_output_name)
+        set(_target_output_name ${target})
+    endif()
+
+    install(CODE "
+        include(\"${_macos_codesign_bundle_module}\")
+        macos_codesign_executable(
+            EXECUTABLE \"\${CMAKE_INSTALL_PREFIX}/${destination}/${_target_output_name}\"
+            IDENTITY \"${MACOS_CODE_SIGN_IDENTITY}\"
+            ENTITLEMENTS \"${MACOS_CODE_SIGN_ENTITLEMENTS}\"
+            CODESIGN \"${CODESIGN_EXECUTABLE}\")
+    ")
+endfunction()
+
 mark_as_advanced(WINDEPLOYQT_EXECUTABLE MACDEPLOYQT_EXECUTABLE CODESIGN_EXECUTABLE INSTALL_NAME_TOOL_EXECUTABLE)

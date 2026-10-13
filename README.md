@@ -298,6 +298,20 @@ was downloaded from the internet, asks whether to open it, and offers to
 accept everything that came in the same DMG. Accept that and the other apps
 open without asking.
 
+The command-line tools (`tag-info`, `tag-dwnld` and the rest, and
+`dataprocessing`) are in `tag_tools/bin`. Run them from a terminal, or put the
+directory on your `PATH`, for example in `~/.zshrc`:
+
+```
+export PATH="/Applications/tag_tools/bin:$PATH"
+```
+
+They are notarized too, but a bare executable cannot carry its ticket, so
+macOS looks it up with Apple the first time each tool runs; do that once with
+a network connection. Releases
+v3.2 and earlier shipped each tool as an app instead, run as
+`tag_tools/tag-info.app/Contents/MacOS/tag-info`.
+
 ### Releases v3.0.1 and earlier
 
 These are signed but not notarized, so macOS blocks each app on first launch

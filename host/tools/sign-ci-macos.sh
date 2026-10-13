@@ -12,7 +12,7 @@
 #   2. downloads the DMG artifact from that run;
 #   3. checks the artifact's build provenance attestation, so what gets signed
 #      is provably what this repository's workflow built from that commit;
-#   4. copies the image out, re-signs every bundle with
+#   4. copies the image out, re-signs every bundle and command line tool with
 #      cmake/MacosCodesignBundle.cmake -- the code that signs a local build --
 #      and makes a new image, which it also signs;
 #   5. notarizes the image with notarytool and staples the ticket to it;
@@ -266,6 +266,20 @@ done <<EOF
 $APPS
 EOF
 
+# The command line tools are plain executables in tag_tools/bin. Links there
+# (dataprocessing's) point into a bundle signed above, and are left alone.
+TOOLS=$(find "$WORK/stage" -maxdepth 3 -path '*/bin/*' -type f -print | sort)
+[ -n "$TOOLS" ] || die "no command line tools found in a bin directory of $DMG_NAME"
+
+while IFS= read -r tool; do
+  "$CMAKE" -DEXECUTABLE="$tool" -DIDENTITY="$IDENTITY" -DCODESIGN="$(command -v codesign)" \
+           -DENTITLEMENTS="${MACOS_CODE_SIGN_ENTITLEMENTS:-}" \
+           -P "$SIGN_MODULE" \
+    || die "signing ${tool##*/} failed"
+done <<EOF
+$TOOLS
+EOF
+
 if [ -z "$OUT_DIR" ]; then
   OUT_DIR=$(mktemp -d -t ultralight-signed)
 fi
@@ -286,7 +300,7 @@ codesign --force --timestamp --sign "$IDENTITY" "$DMG" \
 # ---------------------------------------------------------------- notarize
 
 if [ "$NOTARIZE" -eq 1 ]; then
-  # Submitting the image notarizes every bundle in it. --wait blocks until
+  # Submitting the image notarizes every bundle and tool in it. --wait blocks until
   # the service decides, usually a few minutes.
   note "submitting $DMG_NAME for notarization"
   SUBMIT_JSON=$(xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" \

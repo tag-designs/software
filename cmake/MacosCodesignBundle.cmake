@@ -1,6 +1,7 @@
 #[[
   @file   MacosCodesignBundle.cmake
-  @brief  Signs one deployed macOS app bundle, inside out.
+  @brief  Signs one deployed macOS app bundle, inside out, or one plain
+          executable.
 
   @details The single implementation of how this project signs a bundle. Two
            callers share it so that a locally built package and a CI-built one
@@ -17,6 +18,9 @@
              cmake -DBUNDLE=<path.app> -DIDENTITY=<identity>
                    [-DENTITLEMENTS=<plist>] [-DCODESIGN=<codesign>]
                    -P cmake/MacosCodesignBundle.cmake
+
+           or -DEXECUTABLE=<path> in place of -DBUNDLE for a plain command
+           line executable.
 
   @see    docs/decisions/0024-release-macos-package-built-on-ci-signed-locally.md
 #]]
@@ -143,13 +147,97 @@ function(macos_codesign_bundle)
     endif()
 endfunction()
 
-# Script mode: `cmake -DBUNDLE=... -DIDENTITY=... -P MacosCodesignBundle.cmake`.
-# When included from an install script, CMAKE_SCRIPT_MODE_FILE names that
-# script instead, and only the function is defined.
+#[[
+  @brief  Signs one plain (non-bundle) Mach-O executable.
+
+  @details For the command line tools, which ship as bare executables in
+           tag_tools/bin. Replaces any existing signature -- the linker's
+           ad-hoc one, or CI's -- with one made under the same rules as
+           macos_codesign_bundle(): a real identity gets the hardened runtime
+           and a secure timestamp, both required for notarization; an ad-hoc
+           identity gets neither. A bare executable has no Info.plist, so
+           codesign takes its identifier from the file name.
+
+           A bare executable cannot carry a stapled ticket. Notarizing the
+           image that contains it registers its code hash with Apple, and
+           Gatekeeper looks the ticket up online the first time a quarantined
+           copy runs.
+
+           Finishes with codesign --verify --strict.
+
+  @param  EXECUTABLE    Absolute path of the executable to sign.
+  @param  IDENTITY      codesign identity, or "-" for ad-hoc.
+  @param  ENTITLEMENTS  Optional entitlements plist.
+  @param  CODESIGN      Optional codesign executable; taken from PATH if empty.
+
+  Fails with FATAL_ERROR if the file is missing, cannot be signed, or the
+  result does not verify.
+
+  Example:
+    macos_codesign_executable(EXECUTABLE /tmp/x/bin/tag-info IDENTITY "-")
+#]]
+function(macos_codesign_executable)
+    cmake_parse_arguments(_mce "" "EXECUTABLE;IDENTITY;ENTITLEMENTS;CODESIGN" "" ${ARGN})
+
+    if(NOT _mce_EXECUTABLE OR NOT _mce_IDENTITY)
+        message(FATAL_ERROR "macos_codesign_executable: EXECUTABLE and IDENTITY are required")
+    endif()
+    if(NOT EXISTS "${_mce_EXECUTABLE}" OR IS_DIRECTORY "${_mce_EXECUTABLE}")
+        message(FATAL_ERROR "Cannot sign missing executable: ${_mce_EXECUTABLE}")
+    endif()
+    set(_codesign "${_mce_CODESIGN}")
+    if(NOT _codesign)
+        set(_codesign codesign)
+    endif()
+
+    set(_hardened --options runtime)
+    set(_timestamp --timestamp)
+    if(_mce_IDENTITY STREQUAL "-")
+        set(_hardened "")
+        set(_timestamp --timestamp=none)
+    endif()
+    set(_entitlements "")
+    if(_mce_ENTITLEMENTS)
+        set(_entitlements --entitlements "${_mce_ENTITLEMENTS}")
+    endif()
+
+    get_filename_component(_name "${_mce_EXECUTABLE}" NAME)
+    message(STATUS "Signing ${_name}")
+
+    execute_process(
+        COMMAND "${_codesign}" --force ${_timestamp} ${_hardened}
+                ${_entitlements} --sign "${_mce_IDENTITY}" "${_mce_EXECUTABLE}"
+        RESULT_VARIABLE _result)
+    if(NOT _result EQUAL 0)
+        message(FATAL_ERROR "codesign failed for ${_name}")
+    endif()
+
+    execute_process(
+        COMMAND "${_codesign}" --verify --strict "${_mce_EXECUTABLE}"
+        RESULT_VARIABLE _result)
+    if(NOT _result EQUAL 0)
+        execute_process(
+            COMMAND "${_codesign}" --verify --strict --verbose=4 "${_mce_EXECUTABLE}")
+        message(FATAL_ERROR "codesign verification failed for ${_name}")
+    endif()
+endfunction()
+
+# Script mode: `cmake -DBUNDLE=... -DIDENTITY=... -P MacosCodesignBundle.cmake`
+# signs a bundle; `-DEXECUTABLE=...` in place of BUNDLE signs a plain
+# executable. When included from an install script, CMAKE_SCRIPT_MODE_FILE
+# names that script instead, and only the functions are defined.
 if(CMAKE_SCRIPT_MODE_FILE STREQUAL CMAKE_CURRENT_LIST_FILE)
-    macos_codesign_bundle(
-        BUNDLE "${BUNDLE}"
-        IDENTITY "${IDENTITY}"
-        ENTITLEMENTS "${ENTITLEMENTS}"
-        CODESIGN "${CODESIGN}")
+    if(EXECUTABLE)
+        macos_codesign_executable(
+            EXECUTABLE "${EXECUTABLE}"
+            IDENTITY "${IDENTITY}"
+            ENTITLEMENTS "${ENTITLEMENTS}"
+            CODESIGN "${CODESIGN}")
+    else()
+        macos_codesign_bundle(
+            BUNDLE "${BUNDLE}"
+            IDENTITY "${IDENTITY}"
+            ENTITLEMENTS "${ENTITLEMENTS}"
+            CODESIGN "${CODESIGN}")
+    endif()
 endif()
