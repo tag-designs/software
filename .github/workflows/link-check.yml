@@ -51,7 +51,6 @@ jobs:
             --accept 200..=204,206,429
             --max-retries 2
             --timeout 20
-            --exclude-mail
             --exclude-all-private
             README.md
             docs/developer/mkdocs.yml
