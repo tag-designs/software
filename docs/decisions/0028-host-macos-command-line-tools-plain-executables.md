@@ -63,8 +63,10 @@ On 2026-10-13, from a local Developer ID build of `a66ec44e` plus this change:
 - Given an image with a tool linking Qt and a link into a missing bundle,
   `verify-macos-dmg.sh` failed both and exited 1.
 
-The CI path, `sign-ci-macos.sh` on a `release.yml` build, was not exercised
-by this test; the first release under this change exercises it.
+The CI path was then exercised on `release.yml` run 38489181249, a manual
+build of `667b8d8f`: `sign-ci-macos.sh --run 38489181249 --no-upload`
+re-signed it, Apple accepted it (submission `a046b27f`), and the same checks
+passed every bundle, tool and link.
 
 ## Consequences
 
