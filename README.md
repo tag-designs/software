@@ -370,47 +370,102 @@ Developer ID certificate is not available. Those DMGs are workflow artifacts,
 never attached to a release. Check that you downloaded from the release page
 rather than from an Actions run.
 
+## Installing a Linux Release
+
+Releases after v3.2 carry a Linux package for x86_64,
+`UltralightTags-X.Y-linux-x86_64.tar.gz`. It runs on Ubuntu 24.04, Debian 13
+and other distributions of the same age or newer (glibc 2.39), and needs no
+Qt or anything else installed beyond what a desktop already has. Unpack it
+anywhere:
+
+```
+tar -xzf UltralightTags-X.Y-linux-x86_64.tar.gz
+export PATH="$PWD/UltralightTags-X.Y-linux-x86_64/tag_tools/bin:$PATH"
+```
+
+The command line tools and the applications are all in `tag_tools/bin`.
+
+Linux lets an ordinary user open a USB device only when a udev rule allows
+it, so install the one in the package once, or every tool fails with
+`LIBUSB_ERROR_ACCESS`:
+
+```
+sudo cp tag_tools/udev/70-ultralight-tags.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+Unplug and replug the tag base afterwards. The same rule serves a build from
+source; it is `host/linux/70-ultralight-tags.rules` in this repository.
+
+The applications run natively on Wayland and on X11. On an X11 session, if
+one reports that the xcb platform plugin could not be loaded, install
+`libxcb-cursor0`. To run one through XWayland on a Wayland session instead,
+set `QT_QPA_PLATFORM=xcb`.
+
 ## Linux Prerequisites
+
+The preferred Linux build is the one releases are made with: Qt 6.10.3 from
+the Qt installer, and vcpkg for static non-Qt libraries, like the Windows and
+macOS presets. It runs on x86_64 Ubuntu 24.04, Debian 13 or newer.
 
 | Requirement | Notes |
 | --- | --- |
-| C++20 compiler | GCC or Clang. |
-| CMake 3.20 or newer | Used for configure and build. |
-| Qt 6 | Required when `BUILD_QT_APPS=ON`. |
-| `pkg-config` | Used to locate `libusb-1.0`. |
-| `libusb-1.0` | Install development headers and libraries. |
-| Protobuf | Install `protoc` and development libraries. |
-| SQLite 3 | Install development headers and libraries, for example `libsqlite3-dev`. |
-| Git | Used by version-generation helpers. |
+| C++20 compiler, `make`, CMake 3.20 or newer, Git | `build-essential cmake git` |
+| Qt 6.10.3 | From the Qt online installer, or `aqt install-qt linux desktop 6.10.3 linux_gcc_64 -m qtquick3d qtshadertools qtquicktimeline`. The `linux-vcpkg` preset expects it at `$HOME/Qt/6.10.3/gcc_64`. A different version builds with a warning; see `HOST_QT_VERSION` below. |
+| vcpkg | Clone and bootstrap it at `$HOME/Software/vcpkg`, as the preset expects. The repository manifest installs `libusb`, `protobuf`, `sqlite3` and host `pkgconf`. |
+| vcpkg's build needs | `curl zip unzip tar pkg-config`, and autotools and the libudev headers for its `libusb` port: `autoconf autoconf-archive automake libtool libudev-dev`. |
+| Qt's build headers and the libraries it links | `libgl1-mesa-dev libegl-dev libxkbcommon-dev`, and `libglib2.0-0t64 libdbus-1-3 libfontconfig1`, which a desktop already has |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 
-Example Debian/Ubuntu package set for host builds:
+On Debian or Ubuntu:
 
 ```
-sudo apt install build-essential cmake git pkg-config \
-  libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev
+sudo apt install build-essential cmake git pkg-config curl zip unzip tar \
+  autoconf autoconf-archive automake libtool libudev-dev \
+  libgl1-mesa-dev libegl-dev libxkbcommon-dev libglib2.0-0t64 libdbus-1-3 libfontconfig1
+git clone https://github.com/microsoft/vcpkg ~/Software/vcpkg
+~/Software/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 ```
-
-For Qt applications on Debian/Ubuntu, also install Qt 6 development packages
-that provide the modules listed above, commonly:
-
-```
-sudo apt install qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
-  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers
-```
-
-Package names vary between releases; what matters is that the Quick 3D QML
-modules are installed, since a missing one is reported only at run time.
 
 ## Linux Build
 
 ```
+cmake --preset linux-vcpkg
+cmake --build --preset linux-vcpkg-release
+```
+
+The build tree is `~/Build/tag-designs/software-vcpkg-release`. To make the
+release tarball and test it as CI does, in clean Ubuntu and Debian containers
+under Wayland and X11 (needs Docker):
+
+```
+cmake --build --preset linux-vcpkg-package
+host/tools/linux-build-check.sh --package \
+  ~/Build/tag-designs/software-vcpkg-release/UltralightTags-*-linux-x86_64.tar.gz
+```
+
+`cmake --install` writes the same relocatable `tag_tools` directory the
+package holds, carrying its own Qt.
+
+### With the distribution's packages instead
+
+The host tools also build against a distribution's own Qt and libraries. This
+is quicker to set up, but it is not how releases are built: the Qt is the
+distribution's (6.8 on Debian 13, 6.4 on Ubuntu 24.04, which is untested), so
+configure warns that it is not `HOST_QT_VERSION`, and an install uses that Qt
+in place rather than carrying its own.
+
+```
+sudo apt install build-essential cmake git pkg-config \
+  libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev \
+  qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
+  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers
 cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
 cmake --build build-host --parallel
 ```
 
-Set `CMAKE_PREFIX_PATH`, `Qt6_DIR`, or `PKG_CONFIG_PATH` if Qt or libusb is not
-installed in a standard location.
+Package names vary between releases. If one of the Quick 3D QML modules is
+missing, the build's `qml_import_check_qtcalibrate` step fails and names it.
 
 To check these instructions without a Linux machine, or against a distribution
 other than your own, `host/tools/linux-build-check.sh` runs them in a throwaway
@@ -427,6 +482,7 @@ distribution; `--help` lists the rest.
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
+| `HOST_QT_VERSION` | `6.10.3` | The Qt releases are built with. Configuring against another Qt warns, and fails under `-DREPRODUCIBLE_BUILD=ON`, which the release workflow sets. Empty skips the check. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |
 | `MACOS_MACDEPLOYQT_EXTRA_OPTIONS` | empty | Extra options passed to `macdeployqt`. |

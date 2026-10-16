@@ -72,6 +72,7 @@ design document.
 - [0026. Host: Qt 6.10.3 everywhere and a macOS 13 floor](decisions/0026-host-qt-6-10-3-and-macos-13-floor.md) *(decision)* — Host builds use Qt 6.10.3 on both platforms and the macOS deployment target rises to 13.0, because Qt 6.10's macOS frameworks are built for macOS 13; CI's Qt pin follows the presets rather than lagging them.
 - [0027. Firmware: L432 calibration pinned to the top flash page](decisions/0027-firmware-l432-calibration-pinned-to-top-page.md) *(decision)* — On STM32L432 tags that store calibration (CompassTag), the calibration table is pinned to the top flash page while .persistent keeps floating, so an upgrade that erases every other page keeps calibration at no log-capacity cost.
 - [0028. Host: macOS command line tools ship as plain executables](decisions/0028-host-macos-command-line-tools-plain-executables.md) *(decision)* — In the macOS package the command line tools are plain executables in tag_tools/bin rather than app bundles; dataprocessing, which links Qt, stays a bundle with a link in bin, and the release checks fail any tool that links a library the package does not carry.
+- [0029. Host: a Linux package, as a tarball carrying its own Qt](decisions/0029-host-linux-package-tarball-with-bundled-qt.md) *(decision)* — The host tools ship for Linux as an x86_64 tarball carrying its own Qt 6.10.3, built on Ubuntu 24.04 with Wayland and X11 support and tested in clean containers before release; the preferred Linux developer build is the same configuration, and a Qt other than HOST_QT_VERSION warns.
 
 ### Investigations
 
@@ -322,6 +323,7 @@ design document.
 ## Host
 
 - [Host Software](../host/README.md) — Host tree layout by role, dependency direction, CMake entry points, packaging notes and maintenance guidelines.
+- [Linux Packaging](../host/design/linux-package.md) — How the Linux x86_64 host tools package is laid out, built, deployed and tested -- a relocatable tag_tools tarball carrying Qt 6.10.3, made on CI from the linux-vcpkg configuration and tested in clean containers under Wayland and X11.
 
 ### Applications
 
@@ -411,7 +413,7 @@ design document.
 
 ### Proposals
 
-- [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, proposed)* — Add a Linux x86_64 host tools package to the release -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
+- [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, historical)* — The plan, now built, for a Linux x86_64 host tools package -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
 
 ### User Guide Tooling
 

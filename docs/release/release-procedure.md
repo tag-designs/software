@@ -38,7 +38,7 @@ ships, or invite it to be skipped.
 
 | Tag | Workflow | Produces |
 | --- | --- | --- |
-| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP and the Linux tarball of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
 | `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
 
 The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
@@ -64,21 +64,27 @@ toolchain from Arm's own tarball, verified against the SHA-256 in the workflow,
 because Ubuntu's packaged `gcc-arm-none-eabi` is a different version and the pin
 would reject it.
 
-**Host tools.** `.github/workflows/release.yml` builds the Windows and macOS host
-packages on GitHub Actions. Pushing a `vX.Y` or `vX.Y.Z` tag builds both
-platforms and opens a **draft** release with the Windows ZIP attached. The
+**Host tools.** `.github/workflows/release.yml` builds the Windows, macOS and
+Linux host packages on GitHub Actions. Pushing a `vX.Y` or `vX.Y.Z` tag builds
+all three and opens a **draft** release with the Windows ZIP and the Linux
+tarball attached. The
 packages take their version from the same `git tag --merged HEAD` lookup used by
 local builds, so the workflow checks out full history. A `workflow_dispatch` run
 performs the same builds and uploads the packages as workflow artifacts without
 publishing anything, which is the way to exercise the pipeline without cutting a
 tag.
 
-| | Windows | macOS |
-| --- | --- | --- |
-| Runner | `windows-2022` | `macos-15` (arm64) |
-| Generator | Visual Studio 17 2022 | Ninja |
-| vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` |
-| Qt | `QT_VERSION` in the workflow env, installed with aqt | same |
+| | Windows | macOS | Linux |
+| --- | --- | --- | --- |
+| Runner | `windows-2022` | `macos-15` (arm64) | `ubuntu-24.04` (x86_64) |
+| Generator | Visual Studio 17 2022 | Ninja | Ninja |
+| vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` | `x64-linux` |
+| Qt | `QT_VERSION` in the workflow env, installed with aqt | same | same |
+| Package | ZIP | DMG, re-signed locally | `UltralightTags-X.Y-linux-x86_64.tar.gz` |
+
+Every build configures with `-DREPRODUCIBLE_BUILD=ON`, which makes a Qt other
+than `HOST_QT_VERSION` a configure error; keep `QT_VERSION` and
+`HOST_QT_VERSION` equal.
 
 The workflow checks out vcpkg at the baseline commit recorded in
 `vcpkg-configuration.json` rather than using the runner's preinstalled copy, so
@@ -90,6 +96,16 @@ is not attached by CI. It is re-signed with the Developer ID identity on a Mac
 and uploaded from there
 ([decision 0024](../decisions/0024-release-macos-package-built-on-ci-signed-locally.md));
 section 3 covers the local half.
+
+The Linux tarball is tested before it is uploaded.
+`host/tools/linux-build-check.sh --package` runs `linux-package-test.sh` in
+clean `ubuntu:24.04` and `debian:13` containers: every library of every binary
+must resolve inside the package, the command line tools must run, and each Qt
+application runs its documentation capture against the repository's fixtures
+under Wayland and under X11. A failure fails the job, so the package is never
+uploaded; the screenshots and logs are kept as the `linux-package-test`
+workflow artifact either way. The same command tests a locally built tarball
+([Linux packaging](../../host/design/linux-package.md)).
 
 ## 1. Qualifying a release
 

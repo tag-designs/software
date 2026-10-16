@@ -1,10 +1,19 @@
 ---
 type: proposal
-status: proposed
-summary: Add a Linux x86_64 host tools package to the release -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
+status: historical
+summary: The plan, now built, for a Linux x86_64 host tools package -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
 ---
 
 # A Linux Release Package for the Host Tools
+
+> **Historical.** This plan was built on 2026-10-16. What shipped is described
+> in [Linux packaging](../linux-package.md) and the choices are recorded in
+> [decision 0029](../../../docs/decisions/0029-host-linux-package-tarball-with-bundled-qt.md).
+> Where they differ from this plan -- the udev rule is `70-`, not `99-`,
+> because `uaccess` is applied by systemd's `73-seat-late.rules`; the tarball
+> is named `UltralightTags-X.Y-linux-x86_64` like the Windows ZIP; the
+> developer build mirrors the release build -- they are right and this is
+> not. Do not quote this plan as current.
 
 A `vX.Y` release ships the host tools for Windows (a ZIP) and macOS (a DMG).
 This proposal adds a third package, for Linux on x86_64: a tarball, built by
