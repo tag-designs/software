@@ -27,6 +27,8 @@ The top-level CMake build is controlled with cache options:
 | `BUILD_HOST` | `ON` | Build host-side libraries, command-line tools, and support code. |
 | `BUILD_QT_APPS` | `ON` | Build Qt GUI applications under `host`. |
 | `BUILD_EMBEDDED` | `OFF` on Windows, `ON` elsewhere | Build embedded firmware targets. |
+| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
+| `BUILD_DEVELOPER_DOCS` | `OFF` | Build the developer documentation portal and API references by default. |
 
 Useful configure combinations:
 
@@ -51,7 +53,13 @@ Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
 required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
-PrintSupport, Svg, SvgWidgets, Qml, Quick, and QuickWidgets. A minimal CLI-only
+Concurrent, PrintSupport, Svg, SvgWidgets, Qml, Quick, QuickWidgets, and
+Quick 3D. Quick 3D is imported from QML rather than linked, so CMake does not
+ask for it at configure time. Instead each Qt application's build ends with a
+check, `qml_import_check_<app>`, that fails if the Qt install lacks a module the
+app's QML imports. Where that check cannot find `qmlimportscanner` it warns and
+is skipped, and a missing module then shows up only when the view loads.
+A minimal CLI-only
 host build can disable Qt applications with `-DBUILD_QT_APPS=OFF`.
 
 ## Windows Prerequisites
@@ -146,6 +154,7 @@ UltralightTags-2.0.0-win64/
       *.dll
       qt.conf
     docs/
+    licenses/
     plugins/
     qml/
 ```
@@ -258,7 +267,12 @@ MACOS_USE_MACDEPLOYQT_DEPLOYMENT
 MACOS_DEPLOY_APPSTORE_COMPLIANT
 MACOS_DEPLOY_QT_PLUGINS_MANUALLY
 MACOS_FIXUP_BUNDLE_DEPENDENCIES
+MACOS_PRUNE_UNUSED_QML
 ```
+
+`MACOS_PRUNE_UNUSED_QML` removes the QML modules and Qt frameworks an app does
+not import, which `macdeployqt` would otherwise copy wholesale -- including
+several modules licensed only under the GPL.
 
 To verify a packaged app:
 
@@ -381,8 +395,12 @@ For Qt applications on Debian/Ubuntu, also install Qt 6 development packages
 that provide the modules listed above, commonly:
 
 ```
-sudo apt install qt6-base-dev qt6-svg-dev qt6-declarative-dev
+sudo apt install qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
+  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers
 ```
+
+Package names vary between releases; what matters is that the Quick 3D QML
+modules are installed, since a missing one is reported only at run time.
 
 ## Linux Build
 
@@ -400,7 +418,6 @@ installed in a standard location.
 | --- | --- | --- |
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
-| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
