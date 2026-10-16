@@ -412,6 +412,13 @@ cmake --build build-host --parallel
 Set `CMAKE_PREFIX_PATH`, `Qt6_DIR`, or `PKG_CONFIG_PATH` if Qt or libusb is not
 installed in a standard location.
 
+To check these instructions without a Linux machine, or against a distribution
+other than your own, `host/tools/linux-build-check.sh` runs them in a throwaway
+Docker container (OrbStack or Docker Desktop): it installs the packages above
+into a stock Debian image, builds against the distribution's Qt, and leaves
+nothing behind but the base image. `--image ubuntu:24.04` picks another
+distribution; `--help` lists the rest.
+
 ## Host Cache Variables
 
 | Variable | Default | Description |
