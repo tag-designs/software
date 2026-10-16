@@ -188,16 +188,21 @@ void magPlot::paintEvent(QPaintEvent *event)
     painter.drawEllipse(center,centerRadius,centerRadius);
     painter.restore();
 
-    // draw field circle -- Use gradient fill based on very light gray
+    // draw field circle -- a semi-transparent grey sphere, shaded darker
+    // toward its rim. It must stay see-through: the points on its far side,
+    // drawn above, have to show through it, muted, which is what gives the
+    // plot its depth. On the white background the shading has to come from
+    // darker tints at low opacity -- the old 240 grey came out near 245 on
+    // 255, invisible on most displays -- not from raising the opacity.
 
     painter.save();
-    painter.setPen(QPen(Qt::gray, 0.1));
+    painter.setPen(QPen(QColor(140,140,140), 0.1));
 
     // gradient
 
     radGrad.setCenterRadius(field);
-    radGrad.setColorAt(1.0,QColor(240,240,240,60));
-    radGrad.setColorAt(0.0,QColor(240,240,240,180));
+    radGrad.setColorAt(0.0,QColor(175,183,196,30));
+    radGrad.setColorAt(1.0,QColor(120,130,150,70));
     painter.setBrush(QBrush(radGrad));
 
     // boundary ellipse
