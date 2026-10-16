@@ -1,9 +1,15 @@
 name: Release host tools
 
-# Builds the Windows and macOS host tool packages. Pushing a version tag
-# (for example `v3.1`) builds both platforms and opens a *draft* GitHub release
-# with the Windows .zip attached. `workflow_dispatch` runs the same builds
-# without publishing, so the pipeline can be exercised without cutting a tag.
+# Builds the Windows, macOS and Linux host tool packages. Pushing a version
+# tag (for example `v3.1`) builds all three and opens a *draft* GitHub release
+# with the Windows .zip and the Linux .tar.gz attached. `workflow_dispatch`
+# runs the same builds without publishing, so the pipeline can be exercised
+# without cutting a tag.
+#
+# The Linux tarball is tested before it is uploaded: host/tools/
+# linux-package-test.sh unpacks it into clean Ubuntu 24.04 and Debian 13
+# containers and runs every application against the repository's fixtures,
+# under Wayland and X11. A package that fails is never uploaded.
 #
 # The macOS DMG is deliberately not attached. CI has no access to the Developer
 # ID key -- keeping it out of a public repository's secrets is the point -- so
@@ -49,7 +55,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
-      # Build provenance attestation of the macOS DMG.
+      # Build provenance attestation of the macOS DMG and the Linux tarball.
       id-token: write
       attestations: write
     strategy:
@@ -78,6 +84,20 @@ jobs:
             generator_args: ""
             configure_extra: "-DCMAKE_BUILD_TYPE=Release -DMACOS_SIGN_APPS=ON -DMACOS_CODE_SIGN_IDENTITY=-"
             package_glob: build/*.dmg
+          # Built on the oldest distribution the package supports: the
+          # runner's glibc (2.39) is the floor for every binary in it. See
+          # host/design/proposals/linux-release-package.md.
+          - name: Linux x86_64
+            os: ubuntu-24.04
+            artifact: host-tools-linux-x64
+            triplet: x64-linux
+            host_triplet: x64-linux
+            qt_host: linux
+            qt_arch: linux_gcc_64
+            generator: Ninja
+            generator_args: ""
+            configure_extra: "-DCMAKE_BUILD_TYPE=Release"
+            package_glob: build/*.tar.gz
 
     steps:
       - name: Check out repository
@@ -107,6 +127,16 @@ jobs:
       - name: Install macOS build tools (autotools for vcpkg ports, ninja)
         if: runner.os == 'macOS'
         run: brew install autoconf autoconf-archive automake libtool ninja
+
+      # Autotools and libudev for vcpkg's libusb port; OpenGL, EGL and
+      # xkbcommon headers for Qt's GUI modules.
+      - name: Install Linux build tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build \
+            autoconf autoconf-archive automake libtool libudev-dev \
+            libgl1-mesa-dev libegl-dev libxkbcommon-dev
 
       - name: Cache vcpkg binary packages
         uses: actions/cache@v4
@@ -161,6 +191,8 @@ jobs:
           fi
           echo "QT_CMAKE_PREFIX=$(printf '%s' "$QT_ROOT_DIR" | tr '\\' '/')" >> "$GITHUB_ENV"
 
+      # REPRODUCIBLE_BUILD makes a Qt other than HOST_QT_VERSION (which must
+      # equal QT_VERSION above) a configure error rather than a warning.
       - name: Configure
         shell: bash
         run: |
@@ -180,6 +212,7 @@ jobs:
             -DBUILD_HOST_DOCS=ON \
             -DBUILD_DEVELOPER_DOCS=OFF \
             -DHOST_MKDOCS_COMMAND="python;-m;mkdocs" \
+            -DREPRODUCIBLE_BUILD=ON \
             ${{ matrix.configure_extra }}
 
       - name: Build
@@ -190,11 +223,33 @@ jobs:
         shell: bash
         run: cmake --build build --config Release --target package
 
-      # Records that this workflow built the DMG from this commit. The local
-      # signing step (host/tools/sign-ci-macos.sh) refuses a DMG without it,
-      # so what gets the Developer ID signature is provably this build.
-      - name: Attest macOS package provenance
-        if: runner.os == 'macOS'
+      - name: Test the Linux package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          package=$(ls build/*.tar.gz)
+          for image in ubuntu:24.04 debian:13; do
+            host/tools/linux-build-check.sh --package "$package" \
+              --image "$image" --out "package-test/${image/:/-}"
+          done
+
+      - name: Keep the Linux package test's screenshots and logs
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package-test
+          path: package-test
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Records that this workflow built the package from this commit. For the
+      # DMG, the local signing step (host/tools/sign-ci-macos.sh) refuses one
+      # without it, so what gets the Developer ID signature is provably this
+      # build. The Linux tarball is not signed; this is what ties it to the
+      # workflow run.
+      - name: Attest package provenance
+        if: runner.os != 'Windows'
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: ${{ matrix.package_glob }}
@@ -220,6 +275,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: host-tools-*
           merge-multiple: true
 
       - name: List packages
@@ -232,23 +288,29 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          # Only the Windows package. The macOS DMG built above is ad-hoc
-          # signed and is not shippable; `sign-latest` re-signs it locally
-          # and uploads it.
+          # The Windows and Linux packages. The macOS DMG built above is
+          # ad-hoc signed and is not shippable; `sign-latest` re-signs it
+          # locally and uploads it.
           shopt -s nullglob
           windows=(artifacts/*.zip)
+          linux=(artifacts/*.tar.gz)
           if [ ${#windows[@]} -eq 0 ]; then
             echo "no Windows package found in artifacts/" >&2
             exit 1
           fi
+          if [ ${#linux[@]} -eq 0 ]; then
+            echo "no Linux package found in artifacts/" >&2
+            exit 1
+          fi
+          packages=("${windows[@]}" "${linux[@]}")
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "${windows[@]}" --clobber
+            gh release upload "$TAG" "${packages[@]}" --clobber
           else
             gh release create "$TAG" \
               --title "$TAG" \
               --draft \
               --generate-notes \
-              "${windows[@]}"
+              "${packages[@]}"
           fi
           echo "Draft release $TAG is ready. Sign and upload the macOS package"
           echo "with 'cmake --build <build-dir> --target sign-latest', then publish."

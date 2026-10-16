@@ -19,6 +19,13 @@
 # Tests the working tree as it stands, committed or not. ChibiOS is not
 # needed: the build is host-only.
 #
+# With --package it builds nothing: it tests a Linux release tarball instead,
+# running linux-package-test.sh in a fresh container of --image (default
+# ubuntu:24.04 in this mode). That is the test CI runs on every package it
+# builds; here it runs on any machine with Docker, x86_64 containers included
+# on Apple silicon (OrbStack runs them under Rosetta). Screenshots and logs go
+# to --out.
+#
 # Usage: host/tools/linux-build-check.sh [options]
 #   --image IMAGE      Debian-family image to build in (default debian:13)
 #   --target TARGET    Target to build (default qml_import_check_qtcalibrate);
@@ -28,12 +35,15 @@
 #   --rmi              Remove the base image afterwards
 #   --shell            Open a shell in the container after the build, kept
 #                      even when the build fails
+#   --package TARBALL  Test this release tarball instead of building
+#   --out DIR          Where --package writes screenshots and logs (default
+#                      ./linux-package-test)
 #
 # Needs a running Docker (OrbStack or Docker Desktop). Host docs are not built
 # (-DBUILD_HOST_DOCS=OFF): MkDocs is a pip install, not an apt package, and
 # not what this checks.
 #
-# Exits with the build's status, 2 on bad usage.
+# Exits with the build's or the package test's status, 2 on bad usage.
 
 set -euo pipefail
 
@@ -42,8 +52,10 @@ PROGRAM=${0##*/}
 die() { printf '%s: error: %s\n' "$PROGRAM" "$*" >&2; exit 1; }
 usage() { sed -n 's/^# \{0,1\}//; /^Usage:/,/^$/p' "$0" >&2; exit 2; }
 
-image=debian:13
+image=
 target=qml_import_check_qtcalibrate
+package=
+out=linux-package-test
 quick3d=1
 rmi=0
 shell=0
@@ -54,6 +66,8 @@ while [ $# -gt 0 ]; do
         --without-quick3d) quick3d=0; shift ;;
         --rmi) rmi=1; shift ;;
         --shell) shell=1; shift ;;
+        --package) [ $# -ge 2 ] || usage; package=$2; shift 2 ;;
+        --out) [ $# -ge 2 ] || usage; out=$2; shift 2 ;;
         -h|--help) usage ;;
         *) usage ;;
     esac
@@ -67,6 +81,31 @@ docker=$(command -v docker || true)
 "$docker" info >/dev/null 2>&1 || die "docker is installed but not running"
 
 source_dir=$(cd "$(dirname "$0")/../.." && pwd)
+
+if [ -n "$package" ]; then
+    [ -f "$package" ] || die "no such package: $package"
+    image=${image:-ubuntu:24.04}
+    package_dir=$(cd "$(dirname "$package")" && pwd)
+    package_name=$(basename "$package")
+    mkdir -p "$out"
+    out=$(cd "$out" && pwd)
+    platform=()
+    case $package_name in
+        *x86_64*) platform=(--platform linux/amd64) ;;
+        *aarch64*) platform=(--platform linux/arm64) ;;
+    esac
+    printf '==> testing %s in %s\n' "$package_name" "$image"
+    status=0
+    "$docker" run --rm ${platform[@]+"${platform[@]}"} \
+        -v "$source_dir:/src:ro" -v "$package_dir:/package:ro" -v "$out:/out" \
+        "$image" bash /src/host/tools/linux-package-test.sh \
+        "/package/$package_name" /src /out || status=$?
+    if [ "$rmi" = 1 ]; then
+        "$docker" image rm "$image" >/dev/null || true
+    fi
+    exit $status
+fi
+image=${image:-debian:13}
 
 # The README's Linux package lists, verbatim. Keep these in step with the
 # "Linux Prerequisites" section of README.md: testing them is half the point.
