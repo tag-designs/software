@@ -11,10 +11,20 @@
 
 extern QTextEdit *s_textEdit;
 
+// The handler Qt had before sensorVizMessageOutput() was installed; it writes
+// to stderr.
+static QtMessageHandler s_previousMessageHandler = nullptr;
+
 // Qt messages are routed to the File Info tab so load/plot diagnostics can be
-// saved with the same workflow as compViz.
+// saved with the same workflow as compViz. Each is also passed to Qt's own
+// handler, so it reaches stderr too: a scripted documentation capture, or a Qt
+// plugin that fails to load, must be visible when nobody is looking at the
+// window.
 void sensorVizMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+    if (s_previousMessageHandler) {
+        s_previousMessageHandler(type, context, msg);
+    }
     if (!s_textEdit) {
         return;
     }
@@ -95,7 +105,7 @@ int main(int argc, char *argv[])
     parser.process(app);
 
     HostStyle::apply(app);
-    qInstallMessageHandler(sensorVizMessageOutput);
+    s_previousMessageHandler = qInstallMessageHandler(sensorVizMessageOutput);
 
     MainWindowOptions options;
     options.loadLogPath = parser.value(load_log_option);

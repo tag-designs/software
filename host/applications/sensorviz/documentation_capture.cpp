@@ -211,6 +211,12 @@ bool MainWindow::captureDocumentationScreenshot(const QString &name)
         if (screen && rect.isValid()) {
             pixmap = screen->grabWindow(0, rect.x(), rect.y(), rect.width(), rect.height());
         }
+        // Wayland lets no client read the screen, so the grab above comes back
+        // null there; render the menu itself instead, as the window capture
+        // falls back to grab().
+        if (pixmap.isNull()) {
+            pixmap = menu->grab();
+        }
         menu->hide();
         processGuiEventsFor(50);
 
