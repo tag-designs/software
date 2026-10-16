@@ -408,6 +408,10 @@ design document.
 
 - [tagcore Offline Decoder Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline UIUCTag format, decoder and end-to-end assertion checks.
 
+### Proposals
+
+- [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, proposed)* — Add a Linux x86_64 host tools package to the release -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
+
 ### User Guide Tooling
 
 - [Host User Guide](../host/docs/README.md) — The end-user host manual - how to preview, build and package it, how its sources are laid out, and how its screenshots are generated from fixtures.
