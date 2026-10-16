@@ -140,12 +140,12 @@ jobs:
           target: desktop
           arch: ${{ matrix.qt_arch }}
           # Add-ons the apps' QML needs at run time: sensorui's orientation
-          # view imports QtQuick3D and QtQuick.Scene3D. aqt installs no
+          # view imports QtQuick3D. aqt installs no
           # add-on's dependencies, so Quick 3D's QtShaderTools and
           # QtQuickTimeline are listed too. Nothing links these, so a missing
           # one used to build and package cleanly and fail at launch; the
           # qml_import_check_<app> build targets now fail the build instead.
-          modules: qt3d qtquick3d qtshadertools qtquicktimeline
+          modules: qtquick3d qtshadertools qtquicktimeline
           cache: true
 
       - name: Resolve CMake-friendly paths
