@@ -100,9 +100,11 @@ later, and other distributions of the same age. Ubuntu 22.04, the one older
 LTS release, reaches the end of its standard support in June 2027, and the
 package is not built for it. Debian 12 and RHEL 9 are below the floor too.
 
-Qt documents its own Linux binaries as built on Ubuntu 24.04, so the aqt Qt
-should need nothing newer than the runner; the package test below confirms it,
-since an unmet glibc version shows in `ldd` like a missing library.
+The aqt Qt does not raise it: across its libraries and the ICU it ships, the
+newest symbol version Qt 6.10.3 for `linux_gcc_64` requires is `GLIBC_2.34`
+(read with `objdump -T`, 2026-10-16). The package test below confirms the
+floor on every build, since an unmet glibc version shows in `ldd` like a
+missing library.
 
 The package is x86_64 only. Qt supports Linux arm64 desktops and an
 `ubuntu-24.04-arm` runner exists, but no one runs the tools on Arm Linux, and
@@ -123,9 +125,10 @@ plugins an application's windows have no title bar there; the 3D attitude view
 renders through EGL, which needs `wayland-graphics-integration-client`; and
 the shell protocols are plugins of their own. Those plugin types are named
 explicitly in the deployment (step 3 below) rather than left to the link
-graph, which never reaches them. Whether aqt's base Linux install carries the
-Qt Wayland module or it needs adding to `modules:` is to be checked when the
-matrix entry is written.
+graph, which never reaches them. aqt's base `linux_gcc_64` install carries
+all of them -- `libqwayland.so`, the `adwaita` and `bradient` decorations, the
+`wayland-egl` integration and the `xdg-shell` integration -- so `modules:`
+needs nothing added for Wayland.
 
 ## Changes to the install
 
@@ -199,26 +202,50 @@ README's Linux build section points to it too.
 
 ## Testing
 
-Before the first release that carries it:
+The package is tested by CI on every build, after it is made and before it is
+uploaded, so no release can carry a package that has not passed. A job
+following the build unpacks the tarball into clean `debian:13` and
+`ubuntu:24.04` containers on the x86_64 runner and, in each:
 
-- **On CI, every build.** The QML import check, as now.
-- **From the Mac, before tagging.** A mode of `linux-build-check.sh` that takes
-  the CI tarball instead of building, unpacks it into clean `debian:13` and
-  `ubuntu:24.04` containers (x86_64, which OrbStack runs under Rosetta), and
-  fails if `ldd` reports any library of any executable or plugin as not found,
-  or if any command line tool fails `--help`. This is the check that the
-  package is self-contained, and that no build-machine path leaked into it.
-  Each application is then started under a headless Wayland compositor in the
-  same container (`weston --backend=headless`, or `sway` with the headless
-  wlroots backend) with `QT_QPA_PLATFORM=wayland`, and under `Xvfb` with
-  `QT_QPA_PLATFORM=xcb`. It must stay up, with no plugin or QML errors, until
-  it is closed; a screenshot of each (`grim` under sway) records that windows
-  were mapped and drawn. This tests both display paths, the decoration and EGL
-  plugins included, without a display.
-- **On a Linux machine with a base attached, once.** Install the udev rule as
-  an ordinary user, then `tag-info` against a tag, and open each application
-  in a Wayland session and, from the login screen's session menu, an X11 one.
-  Neither the device nor a real compositor can be had in a container.
+- **Self-containment.** Fails if `ldd` reports any library of any executable
+  or plugin as not found, which also catches a glibc below what the binaries
+  need, and if any command line tool fails `--help`. This is the check that no
+  build-machine path leaked into the package.
+- **Wayland and X11.** Starts each application under a headless Wayland
+  compositor with `QT_QPA_PLATFORM=wayland`, and under `Xvfb` with
+  `QT_QPA_PLATFORM=xcb`. Each must stay up, with no Qt plugin or QML error on
+  stderr, until it is closed, and a screenshot of each is kept with the job's
+  artifacts. The compositor is GNOME's own, `mutter --headless`, because GNOME
+  is the one desktop that leaves window decorations to the client: a
+  compositor that draws them itself (sway does) never exercises the
+  decoration plugins.
+- **Past the first screen.** With no base attached the Qt applications stop
+  at a "No Tag Bases Found" dialog, which is not a test of much. They are run
+  against fake tags: the fixtures `qtmonitor`'s screenshot capture already
+  uses (`qtmonitor-fixture-capture`), extended to the other applications as
+  far as each needs a tag to get past its first screen. `qtcalibrate` is taken
+  to its Orientation tab so that the 3D view, the
+  one path through EGL and Quick 3D, is drawn.
+
+`linux-build-check.sh` gains a mode that runs the same test on a tarball from
+the Mac, for trying a change before pushing it; OrbStack runs the x86_64
+containers under Rosetta.
+
+A prototype of this test (2026-10-16: aqt Qt 6.10.3 in an x86_64
+`ubuntu:24.04` container on OrbStack, headless sway and Xvfb) built every
+host tool and ran all five Qt applications under both display paths, each
+staying up and drawing its windows. Its stderr carried only Mesa's warnings
+about the missing GPU before it fell back to software rendering, which the
+test filters out. It is what found the dialog and decoration gaps above.
+
+On a Linux machine with a base attached, once: install the udev rule as an
+ordinary user, then `tag-info` against a tag, and open each application in a
+Wayland session and, from the login screen's session menu, an X11 one.
+Neither udev nor a real compositor can be had in a container. (The tools
+themselves do reach a real base from a container: OrbStack passes USB
+devices through, and `tag-info` read a BitTag that way, as root. As an
+ordinary user it failed with `LIBUSB_ERROR_ACCESS`, which is what the udev
+rule is for.)
 
 ## Phases
 
@@ -227,5 +254,5 @@ Before the first release that carries it:
 2. The udev rule, tested on a Linux machine with a base.
 3. The CI matrix entry and the release job upload, run with
    `workflow_dispatch` before any tag.
-4. The package test in `linux-build-check.sh`, the README and release
-   procedure changes, and the decision record.
+4. The package test as a CI job and as a `linux-build-check.sh` mode, the
+   README and release procedure changes, and the decision record.
