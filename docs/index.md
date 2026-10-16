@@ -393,6 +393,7 @@ design document.
 
 ### Libraries / tagcore / Proposals
 
+- [A Fake Tag for Testing the Command Line Tools](../host/libraries/tagcore/design/proposals/fake-tag-for-command-line-tools.md) *(proposal, proposed)* — Test the command line tools without hardware by linking them against a fixture-driven fake of tagcore's Tag class in a check-only build; shipped binaries are unchanged, and the runtime fake backend the Python binding needs is left to that work.
 - [Recovery Library: Identification, Rescue and Python](../host/libraries/tagcore/design/proposals/recovery-identification-rescue-python.md) *(proposal, proposed)* — The unbuilt parts of the SWD recovery library - identifying older images by hash and strings, the rescue-erase procedure, and the Python binding - with the check that ends each.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
