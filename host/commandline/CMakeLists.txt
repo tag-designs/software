@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+# Not on Linux, whose installed tree is relocatable; see host/CMakeLists.txt.
+if(APPLE OR WIN32)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 
 #[[
   @brief  Links <bin>/<name> to the executable inside a macOS tool bundle.

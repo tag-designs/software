@@ -6,7 +6,12 @@ if (APPLE)
 #set(Qt6_DIR "$ENV{HOME}/Qt/6.8.2/macos/lib/cmake/Qt6")
 endif()
 
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+# On Linux the installed tree is relocatable -- executables find their
+# libraries through $ORIGIN/../lib, set below -- so an installed executable
+# must not also carry the build machine's library directories.
+if(APPLE OR WIN32)
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 set(HOST_BUNDLE_INSTALL_DIR tag_tools)
 
@@ -26,6 +31,20 @@ if(BUILD_QT_APPS)
   add_subdirectory(applications/qtcalibrate)
   add_subdirectory(applications/btdataviz)
   add_subdirectory(applications/sensorviz)
+endif()
+
+# The applications build against whatever Qt is found; HOST_QT_VERSION (see
+# the top-level CMakeLists.txt) says whether it is the one releases use.
+if(BUILD_QT_APPS AND HOST_QT_VERSION)
+  find_package(Qt6 QUIET COMPONENTS Core)
+  if(Qt6Core_VERSION AND NOT Qt6Core_VERSION VERSION_EQUAL HOST_QT_VERSION)
+    reproducibility_problem(
+      "The host applications are building against Qt ${Qt6Core_VERSION} "
+      "(${Qt6_DIR}), but releases are built with Qt ${HOST_QT_VERSION}. They "
+      "will build and run, but not as released. Install Qt ${HOST_QT_VERSION} "
+      "and point CMAKE_PREFIX_PATH at it, or configure with -DHOST_QT_VERSION= "
+      "to skip this check.")
+  endif()
 endif()
 
 if(WIN32)
@@ -125,6 +144,56 @@ function(get_target_deploy_qml_dirs out_var target_name)
 endfunction()
 
 #[[
+  @brief  Finds the Qt installation's directories and qmlimportscanner.
+
+  @details Takes them from the install layout Qt records for itself
+           (QT6_INSTALL_PREFIX and the QT6_INSTALL_* directories), not from
+           paths inferred from Qt6_DIR. An installer or aqt Qt keeps
+           everything under one root, but a distribution Qt splits it:
+           Debian, for one, puts qmlimportscanner in /usr/lib/qt6/libexec and
+           the QML in /usr/lib/<arch>/qt6/qml.
+
+           Sets, in the caller's scope, qt_qml_dir, qt_libexecs_dir,
+           qt_bins_dir, qt_libs_dir and qt_plugins_dir, and the cache entry
+           HOST_QMLIMPORTSCANNER_EXECUTABLE.
+
+  @param  out_var  Set to TRUE when the layout is known and qmlimportscanner
+                   was found in Qt's libexec or bin directory, FALSE (with the
+                   reason in ${out_var}_REASON) otherwise.
+#]]
+function(host_find_qt_layout out_var)
+  set(${out_var} FALSE PARENT_SCOPE)
+  # The apps find Qt in their own directories, so its variables are not set
+  # in this one; finding it again here defines QT6_INSTALL_*.
+  find_package(Qt6 QUIET COMPONENTS Core)
+  if(NOT QT6_INSTALL_PREFIX)
+    set(${out_var}_REASON "Qt's install layout is unknown" PARENT_SCOPE)
+    return()
+  endif()
+  # The QT6_INSTALL_* directories are relative to the prefix, but accept an
+  # absolute one rather than assume every packager follows that.
+  foreach(kind QML LIBEXECS BINS LIBS PLUGINS)
+    set(dir "${QT6_INSTALL_${kind}}")
+    if(NOT IS_ABSOLUTE "${dir}")
+      set(dir "${QT6_INSTALL_PREFIX}/${dir}")
+    endif()
+    string(TOLOWER "qt_${kind}_dir" dir_var)
+    set(${dir_var} "${dir}" PARENT_SCOPE)
+    set(${dir_var} "${dir}")
+  endforeach()
+  find_program(HOST_QMLIMPORTSCANNER_EXECUTABLE qmlimportscanner
+    HINTS "${qt_libexecs_dir}" "${qt_bins_dir}"
+    NO_DEFAULT_PATH)
+  if(NOT HOST_QMLIMPORTSCANNER_EXECUTABLE)
+    set(${out_var}_REASON
+        "qmlimportscanner not found in ${qt_libexecs_dir} or ${qt_bins_dir}"
+        PARENT_SCOPE)
+    return()
+  endif()
+  set(${out_var} TRUE PARENT_SCOPE)
+endfunction()
+
+#[[
   @brief  Fails a target's build if its QML needs a Qt module that is missing.
 
   @details Adds a target, qml_import_check_<target>, that is part of the
@@ -136,15 +205,8 @@ endfunction()
            a Qt install lacking an add-on (aqt's base install, for one) builds
            and packages an app that fails when it loads its QML.
 
-           Locates Qt's tools, QML and libraries from the install layout Qt
-           records for itself (QT6_INSTALL_PREFIX and the QT6_INSTALL_*
-           directories), not from paths inferred from Qt6_DIR. An installer
-           or aqt Qt keeps everything under one root, but a distribution Qt
-           splits it: Debian, for one, puts qmlimportscanner in
-           /usr/lib/qt6/libexec and the QML in /usr/lib/<arch>/qt6/qml.
-           Where qmlimportscanner is not found in Qt's libexec or bin
-           directory, it warns and adds no check. A target with no QML
-           directories gets no check.
+           Locates Qt with host_find_qt_layout(). Where that fails, it warns
+           and adds no check. A target with no QML directories gets no check.
 
   @param  target_name  An application target that may set QT_DEPLOY_QML_DIRS.
 #]]
@@ -153,31 +215,10 @@ function(add_qml_import_check target_name)
   if(NOT qml_dirs)
     return()
   endif()
-  # The apps find Qt in their own directories, so its variables are not set
-  # in this one; finding it again here defines QT6_INSTALL_*.
-  find_package(Qt6 QUIET COMPONENTS Core)
-  if(NOT QT6_INSTALL_PREFIX)
-    message(WARNING "Qt's install layout is unknown; "
+  host_find_qt_layout(qt_found)
+  if(NOT qt_found)
+    message(WARNING "${qt_found_REASON}; "
                     "the QML imports of ${target_name} are not checked")
-    return()
-  endif()
-  # The QT6_INSTALL_* directories are relative to the prefix, but accept an
-  # absolute one rather than assume every packager follows that.
-  foreach(kind QML LIBEXECS BINS LIBS)
-    set(dir "${QT6_INSTALL_${kind}}")
-    if(NOT IS_ABSOLUTE "${dir}")
-      set(dir "${QT6_INSTALL_PREFIX}/${dir}")
-    endif()
-    string(TOLOWER "qt_${kind}_dir" dir_var)
-    set(${dir_var} "${dir}")
-  endforeach()
-  find_program(HOST_QMLIMPORTSCANNER_EXECUTABLE qmlimportscanner
-    HINTS "${qt_libexecs_dir}" "${qt_bins_dir}"
-    NO_DEFAULT_PATH)
-  if(NOT HOST_QMLIMPORTSCANNER_EXECUTABLE)
-    message(WARNING "qmlimportscanner not found in ${qt_libexecs_dir} or "
-                    "${qt_bins_dir}; the QML imports of ${target_name} are "
-                    "not checked")
     return()
   endif()
   set(dependency_tool_args "")
@@ -254,12 +295,10 @@ foreach(target_name ${host_qt_install_targets})
   endif()
 endforeach()
 
-if(APPLE)
-  set(host_package_support_destination "${HOST_BUNDLE_INSTALL_DIR}")
-elseif(WIN32)
+if(WIN32)
   set(host_package_support_destination "${CMAKE_INSTALL_BINDIR}")
 else()
-  set(host_package_support_destination "${CMAKE_INSTALL_DATADIR}/${CPACK_PACKAGE_NAME}")
+  set(host_package_support_destination "${HOST_BUNDLE_INSTALL_DIR}")
 endif()
 
 set(install_host_docs OFF)
@@ -314,18 +353,73 @@ if(host_install_targets)
       endif()
     endforeach()
   else()
-    # On macOS the plain command line tools go to tag_tools/bin, inside the
-    # folder the user drags out of the DMG, so the package keeps one
-    # top-level folder and the tools one directory to put on PATH.
-    if(APPLE)
-      set(host_cli_runtime_destination "${HOST_BUNDLE_INSTALL_DIR}/bin")
-    else()
-      set(host_cli_runtime_destination "${CMAKE_INSTALL_BINDIR}")
+    # The plain executables go to tag_tools/bin, so the package keeps one
+    # top-level folder and the tools one directory to put on PATH: on macOS
+    # the command line tools, inside the folder the user drags out of the
+    # DMG; on Linux every executable, the Qt applications included.
+    set(host_cli_runtime_destination "${HOST_BUNDLE_INSTALL_DIR}/bin")
+    if(NOT APPLE)
+      foreach(target_name ${host_install_targets})
+        set_property(TARGET ${target_name} PROPERTY INSTALL_RPATH "$ORIGIN/../lib")
+      endforeach()
     endif()
     install(
       TARGETS ${host_install_targets}
       BUNDLE DESTINATION ${HOST_BUNDLE_INSTALL_DIR}
       RUNTIME DESTINATION ${host_cli_runtime_destination})
+  endif()
+
+  if(UNIX AND NOT APPLE)
+    # Qt's libraries, plugins and the QML the applications import, copied
+    # into tag_tools by cmake/DeployQtLinux.cmake; see that file.
+    set(linux_qml_dirs "")
+    set(linux_has_qt_targets OFF)
+    foreach(target_name ${host_qt_runtime_install_targets})
+      if(TARGET ${target_name})
+        set(linux_has_qt_targets ON)
+        get_target_deploy_qml_dirs(deploy_qml_dirs ${target_name})
+        list(APPEND linux_qml_dirs ${deploy_qml_dirs})
+      endif()
+    endforeach()
+    if(linux_has_qt_targets)
+      host_find_qt_layout(qt_found)
+    endif()
+    if(linux_has_qt_targets AND NOT qt_found)
+      # A developer install against a Qt without its tools still installs;
+      # it just runs only where that Qt is.
+      message(WARNING "${qt_found_REASON}; the Linux install will not carry Qt "
+                      "and runs only on a machine with this Qt installed")
+    elseif(linux_has_qt_targets AND qt_libs_dir MATCHES "^/usr/")
+      # A distribution's Qt is the system's: the install uses it in place.
+      # Copying its plugins and pointing a qt.conf at the copies would cut the
+      # applications off from the plugins the distribution adds (its platform
+      # theme, for one).
+      message(STATUS "Qt is the system's (${qt_libs_dir}); the Linux install "
+                     "uses it in place rather than carrying a copy")
+    elseif(linux_has_qt_targets)
+      list(REMOVE_DUPLICATES linux_qml_dirs)
+      list(JOIN linux_qml_dirs "|" linux_qml_dirs_arg)
+      install(CODE "
+        execute_process(
+          COMMAND \"${CMAKE_COMMAND}\"
+                  \"-DPREFIX=\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${HOST_BUNDLE_INSTALL_DIR}\"
+                  \"-DSCANNER=${HOST_QMLIMPORTSCANNER_EXECUTABLE}\"
+                  \"-DQT_LIB_DIR=${qt_libs_dir}\"
+                  \"-DQT_PLUGINS_DIR=${qt_plugins_dir}\"
+                  \"-DQT_QML_DIR=${qt_qml_dir}\"
+                  \"-DQML_DIRS=${linux_qml_dirs_arg}\"
+                  -P \"${PROJECT_SOURCE_DIR}/cmake/DeployQtLinux.cmake\"
+          RESULT_VARIABLE _deploy_result)
+        if(NOT _deploy_result EQUAL 0)
+          message(FATAL_ERROR \"Qt deployment into ${HOST_BUNDLE_INSTALL_DIR} failed\")
+        endif()
+      ")
+    endif()
+
+    # Lets an ordinary user open the tag base; see the file.
+    install(
+      FILES "${CMAKE_CURRENT_SOURCE_DIR}/linux/70-ultralight-tags.rules"
+      DESTINATION "${HOST_BUNDLE_INSTALL_DIR}/udev")
   endif()
 
   if(WIN32 OR APPLE)

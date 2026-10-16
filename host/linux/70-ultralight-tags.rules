@@ -1,0 +1,28 @@
+# Lets the user logged in at the seat open the tag base, and the other
+# ST-LINK probes the host tools accept, without root.
+#
+# Linux gives an ordinary user no access to a USB device unless a rule grants
+# it; without this file every host tool fails with LIBUSB_ERROR_ACCESS. The
+# uaccess tag hands the device to whoever is logged in at the seat and needs
+# no group membership. It is applied by systemd's 73-seat-late.rules, so this
+# file's name must sort before 73.
+#
+# The products are those host/libraries/tagcore/linkadapt.cc accepts
+# (isSTlink); keep the two lists in step.
+#
+# Install:
+#   sudo cp 70-ultralight-tags.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# Tag programmer base (ST-LINK/V2)
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3748", TAG+="uaccess"
+# ST-LINK/V2 audio variant
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374a", TAG+="uaccess"
+# ST-LINK/V2-1 (Nucleo)
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374b", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3752", TAG+="uaccess"
+# ST-LINK/V3E and V3SET
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374e", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374f", TAG+="uaccess"
+# STLINK-V3PWR
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3757", TAG+="uaccess"

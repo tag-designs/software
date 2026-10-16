@@ -70,6 +70,40 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg-debug/install"
       }
+    },
+    {
+      "name": "linux-vcpkg-base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{HOME}/Software/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "VCPKG_HOST_TRIPLET": "x64-linux",
+        "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.10.3/gcc_64",
+        "BUILD_HOST": "ON",
+        "BUILD_QT_APPS": "ON",
+        "BUILD_EMBEDDED": "OFF"
+      }
+    },
+    {
+      "name": "linux-vcpkg",
+      "displayName": "Linux x86_64 Release with static vcpkg libraries and installed Qt, as released",
+      "inherits": "linux-vcpkg-base",
+      "binaryDir": "$env{HOME}/Build/tag-designs/software-vcpkg-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg-release/install"
+      }
+    },
+    {
+      "name": "linux-vcpkg-debug",
+      "displayName": "Linux x86_64 Debug with static vcpkg libraries and installed Qt",
+      "inherits": "linux-vcpkg-base",
+      "binaryDir": "$env{HOME}/Build/tag-designs/software-vcpkg-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg-debug/install"
+      }
     }
   ],
   "buildPresets": [
@@ -127,6 +161,24 @@
     {
       "name": "macos-vcpkg-package",
       "configurePreset": "macos-vcpkg",
+      "configuration": "Release",
+      "targets": [
+        "package"
+      ]
+    },
+    {
+      "name": "linux-vcpkg-release",
+      "configurePreset": "linux-vcpkg",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-vcpkg-debug",
+      "configurePreset": "linux-vcpkg-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-vcpkg-package",
+      "configurePreset": "linux-vcpkg",
       "configuration": "Release",
       "targets": [
         "package"

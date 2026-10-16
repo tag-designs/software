@@ -77,6 +77,16 @@ endif()
 set(ARM_TOOLCHAIN_VERSION "14.2.1" CACHE STRING
     "Expected arm-none-eabi-gcc version; empty records the version without checking it")
 
+# The Qt the host packages are built against, on every platform
+# (docs/decisions/0026-host-qt-6-10-3-and-macos-13-floor.md). A host build
+# against another Qt still builds, but not as released, so the difference is
+# reported with reproducibility_problem(): a warning, or an error under
+# REPRODUCIBLE_BUILD, which the release workflow sets. Empty skips the check.
+# Keep in step with QT_VERSION in .github/workflows/release.yml and the Qt
+# paths in CMakePresets.json.
+set(HOST_QT_VERSION "6.10.3" CACHE STRING
+    "Expected Qt version for the host applications; empty skips the check")
+
 # The fmpp that renders the ChibiOS board templates. 0.9.16 is the last release
 # -- September 2018 -- so in practice there is one renderer in circulation and
 # this check will pass everywhere; it exists to make that an assertion rather
@@ -642,6 +652,15 @@ endif()
 
 if(WIN32)
   set(CPACK_GENERATOR ZIP)
+endif()
+
+# A tarball holding one relocatable tag_tools directory; see
+# host/design/proposals/linux-release-package.md. Named like the Windows ZIP,
+# with the architecture spelled the way Linux users read it.
+if(UNIX AND NOT APPLE)
+  set(CPACK_GENERATOR TGZ)
+  set(CPACK_PACKAGE_FILE_NAME
+      "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-linux-${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
 if(APPLE)

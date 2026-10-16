@@ -30,7 +30,10 @@ if(WIN32 AND VCPKG_INSTALLED_DIR AND VCPKG_TARGET_TRIPLET)
 else()
   find_package(PkgConfig REQUIRED)
   set(_pkg_config_argn_saved "${PKG_CONFIG_ARGN}")
-  if(APPLE AND VCPKG_TARGET_TRIPLET)
+  # vcpkg's libusb is a static library on macOS and Linux, so it needs the
+  # private dependencies its .pc lists: IOKit and CoreFoundation on macOS,
+  # libudev and pthread on Linux.
+  if(VCPKG_TARGET_TRIPLET)
     set(PKG_CONFIG_ARGN --static)
   endif()
   pkg_check_modules(LIBUSB_1_0 REQUIRED IMPORTED_TARGET libusb-1.0)

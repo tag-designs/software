@@ -239,6 +239,17 @@ LinkAdapt::~LinkAdapt()
     }
 }
 
+/**
+ * @brief   Reports whether a USB device is an ST-LINK probe the tools accept.
+ *
+ * @note    On Linux a user can open only the devices a udev rule grants, so
+ *          host/linux/70-ultralight-tags.rules lists these same products;
+ *          keep the two in step.
+ *
+ * @param[in] vid  USB vendor id.
+ * @param[in] pid  USB product id.
+ * @return  true for ST's vendor id and one of the accepted product ids.
+ */
 static bool isSTlink(uint16_t vid, uint16_t pid)
 {
     if (vid != STLINK_USB_VID_ST)
