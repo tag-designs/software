@@ -250,6 +250,75 @@ static int printJson(Tag &tag)
   return 0;
 }
 
+/**
+ * @brief   Formats one singular field of a message for the field listing.
+ *
+ * @details Covers every scalar type, enums by name and nested messages on one
+ *          line, so a field added to TagInfo prints without a change here.
+ *          A field with explicit presence (`optional` in proto3) that is unset
+ *          prints as "(not set)" rather than as its type's default, which
+ *          would be indistinguishable from a real zero.
+ *
+ * @param[in] msg         The message holding the field.
+ * @param[in] reflection  @p msg's reflection.
+ * @param[in] field       The field; must be singular.
+ *
+ * @return  The value as text; "(repeated)" for a repeated field, which the
+ *          listing does not expand.
+ */
+static std::string formatField(const Message &msg, const Reflection &reflection,
+                               const FieldDescriptor *field)
+{
+  if (field->is_repeated())
+    return "(repeated)";
+  if (field->has_presence() && !reflection.HasField(msg, field))
+    return "(not set)";
+
+  std::ostringstream out;
+  switch (field->cpp_type())
+  {
+  case FieldDescriptor::CPPTYPE_INT32:
+    out << reflection.GetInt32(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_INT64:
+    out << reflection.GetInt64(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_UINT32:
+    out << reflection.GetUInt32(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_UINT64:
+    out << reflection.GetUInt64(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_FLOAT:
+    out << reflection.GetFloat(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_DOUBLE:
+    out << reflection.GetDouble(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_BOOL:
+    out << (reflection.GetBool(msg, field) ? "true" : "false");
+    break;
+  case FieldDescriptor::CPPTYPE_ENUM:
+    out << reflection.GetEnum(msg, field)->name();
+    break;
+  case FieldDescriptor::CPPTYPE_STRING:
+    out << reflection.GetString(msg, field);
+    break;
+  case FieldDescriptor::CPPTYPE_MESSAGE:
+    out << reflection.GetMessage(msg, field).ShortDebugString();
+    break;
+  }
+  return out.str();
+}
+
+/**
+ * @brief   Prints a tag's information, configuration, status and state log.
+ *
+ * @return  0 when the tag attached and answered the info request; 1 when the
+ *          attach or the info request failed. A failed configuration or
+ *          status request is reported on stderr but does not change the exit
+ *          status, as in the --json output.
+ */
 int main(int argc, char **argv)
 {
   Tag tag;
@@ -317,24 +386,9 @@ int main(int argc, char **argv)
       for (int i = 0; i < fieldCount; i++)
       {
         const FieldDescriptor *field = desc->field(i);
-        std::string value;
+        std::string value = formatField(info, *reflection, field);
         std::string name(field->name());
         std::string type_name(field->type_name());
-
-        switch (field->type())
-        {
-        case FieldDescriptor::TYPE_INT64:
-          value = std::to_string(reflection->GetInt64(info, field));
-          break;
-        case FieldDescriptor::TYPE_STRING:
-          value = reflection->GetString(info, field);
-          break;
-        case FieldDescriptor::TYPE_ENUM:
-          value = reflection->GetEnum(info, field)->name();
-          break;
-        default:
-          value = "Unexpected Field Type";
-        }
 
         std::cout << type_name << ": ";
 
@@ -373,7 +427,9 @@ int main(int argc, char **argv)
                     << std::endl;
       }
       printStateLog(tag);
+      return 0;
     }
   }
-  return 0;
+  // The attach or the info request failed; both have already said why.
+  return 1;
 }
