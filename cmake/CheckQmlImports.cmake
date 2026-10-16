@@ -16,8 +16,9 @@
              installed. aqt installs add-ons without their dependencies, so
              QtQuick3D can be present while the QtShaderTools it links is not.
 
-           The platform styles of Qt Quick Controls (Windows, macOS, iOS) are
-           optional imports present only on their own platform, and are
+           The platform styles of Qt Quick Controls (Windows, FluentWinUI3,
+           macOS, iOS) are optional imports that a Qt install may leave out
+           -- Debian, for one, does not package FluentWinUI3 -- and are
            ignored.
 
            Run in script mode, normally from the POST_BUILD step that
@@ -50,6 +51,7 @@ endforeach()
 
 set(_ignored_modules
     QtQuick.Controls.Windows
+    QtQuick.Controls.FluentWinUI3
     QtQuick.Controls.macOS
     QtQuick.Controls.iOS)
 
