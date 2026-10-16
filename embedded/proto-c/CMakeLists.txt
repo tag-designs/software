@@ -77,10 +77,15 @@ if(NOT REGENERATE_SOURCES STREQUAL "OFF")
       set(CONFIG_GEN_PYTHON "${CONFIG_GEN_VENV}/bin/python")
     endif()
 
-    # The stamp carries the hash of requirements.txt, so an edit to it rebuilds
-    # the environment and nothing else does. Timestamps are not used, for the
-    # same reason the generated-source manifests do not use them.
+    # The stamp carries the hash of requirements.txt and the interpreter
+    # version, so an edit to requirements.txt or a system Python upgrade
+    # rebuilds the environment and nothing else does. The version matters
+    # because the venv's python is a symlink to the system one: after an
+    # upgrade it runs the new version, which cannot see packages installed
+    # under the old lib/pythonX.Y. Timestamps are not used, for the same
+    # reason the generated-source manifests do not use them.
     file(SHA256 "${CONFIG_GEN_REQUIREMENTS}" _config_gen_req_hash)
+    string(APPEND _config_gen_req_hash " python ${Python3_VERSION}")
     set(_config_gen_stamp "${CONFIG_GEN_VENV}/.requirements.sha256")
     set(_config_gen_stamped "")
     if(EXISTS "${_config_gen_stamp}")
