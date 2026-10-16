@@ -30,8 +30,8 @@
   @param  TARGET_NAME  The app being checked; used in messages only.
   @param  SCANNER      Path of qmlimportscanner.
   @param  QT_QML_DIR   The Qt installation's qml directory.
-  @param  QT_LIB_DIR   Where the Qt libraries are: lib on macOS (frameworks),
-                       bin on Windows (DLLs).
+  @param  QT_LIB_DIR   Where the Qt libraries are: lib on macOS (frameworks)
+                       and Linux (shared objects), bin on Windows (DLLs).
   @param  QML_DIRS     The app's QML source directories, separated by "|".
   @param  SKIP_LIBRARY_CHECK  Optional; ON checks the imports only, for a
                        platform where no dependency tool was found.
@@ -124,7 +124,8 @@ if(_plugin_libraries AND NOT SKIP_LIBRARY_CHECK)
     foreach(_dependency IN LISTS _unresolved)
         # Only Qt's own libraries: anything else is the platform's concern.
         if(_dependency MATCHES "(^|[/@])(Qt[A-Za-z0-9]+)\\.framework/"
-           OR _dependency MATCHES "^(Qt6[A-Za-z0-9]+)d?\\.dll$")
+           OR _dependency MATCHES "^(Qt6[A-Za-z0-9]+)d?\\.dll$"
+           OR _dependency MATCHES "^libQt6[A-Za-z0-9]+\\.so(\\.|$)")
             list(APPEND _missing_libraries "${_dependency}")
         endif()
     endforeach()

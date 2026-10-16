@@ -136,10 +136,15 @@ endfunction()
            a Qt install lacking an add-on (aqt's base install, for one) builds
            and packages an app that fails when it loads its QML.
 
-           Locates Qt from Qt6_DIR, which in an installer or aqt layout is
-           <qt>/lib/cmake/Qt6. Where qmlimportscanner is not found there, as
-           with a vcpkg-built Qt, it warns and adds no check. A target with no
-           QML directories gets no check.
+           Locates Qt's tools, QML and libraries from the install layout Qt
+           records for itself (QT6_INSTALL_PREFIX and the QT6_INSTALL_*
+           directories), not from paths inferred from Qt6_DIR. An installer
+           or aqt Qt keeps everything under one root, but a distribution Qt
+           splits it: Debian, for one, puts qmlimportscanner in
+           /usr/lib/qt6/libexec and the QML in /usr/lib/<arch>/qt6/qml.
+           Where qmlimportscanner is not found in Qt's libexec or bin
+           directory, it warns and adds no check. A target with no QML
+           directories gets no check.
 
   @param  target_name  An application target that may set QT_DEPLOY_QML_DIRS.
 #]]
@@ -148,18 +153,36 @@ function(add_qml_import_check target_name)
   if(NOT qml_dirs)
     return()
   endif()
-  get_filename_component(qt_root "${Qt6_DIR}/../../.." ABSOLUTE)
+  # The apps find Qt in their own directories, so its variables are not set
+  # in this one; finding it again here defines QT6_INSTALL_*.
+  find_package(Qt6 QUIET COMPONENTS Core)
+  if(NOT QT6_INSTALL_PREFIX)
+    message(WARNING "Qt's install layout is unknown; "
+                    "the QML imports of ${target_name} are not checked")
+    return()
+  endif()
+  # The QT6_INSTALL_* directories are relative to the prefix, but accept an
+  # absolute one rather than assume every packager follows that.
+  foreach(kind QML LIBEXECS BINS LIBS)
+    set(dir "${QT6_INSTALL_${kind}}")
+    if(NOT IS_ABSOLUTE "${dir}")
+      set(dir "${QT6_INSTALL_PREFIX}/${dir}")
+    endif()
+    string(TOLOWER "qt_${kind}_dir" dir_var)
+    set(${dir_var} "${dir}")
+  endforeach()
   find_program(HOST_QMLIMPORTSCANNER_EXECUTABLE qmlimportscanner
-    HINTS "${qt_root}/libexec" "${qt_root}/bin"
+    HINTS "${qt_libexecs_dir}" "${qt_bins_dir}"
     NO_DEFAULT_PATH)
   if(NOT HOST_QMLIMPORTSCANNER_EXECUTABLE)
-    message(WARNING "qmlimportscanner not found under ${qt_root}; "
-                    "the QML imports of ${target_name} are not checked")
+    message(WARNING "qmlimportscanner not found in ${qt_libexecs_dir} or "
+                    "${qt_bins_dir}; the QML imports of ${target_name} are "
+                    "not checked")
     return()
   endif()
   set(dependency_tool_args "")
   if(WIN32)
-    set(qt_lib_dir "${qt_root}/bin")
+    set(qt_lib_dir "${qt_bins_dir}")
     # An install script gets the dependency tool from CMake; a -P script must
     # be told. dumpbin sits beside cl.exe, which a build is not guaranteed to
     # have on PATH.
@@ -176,7 +199,7 @@ function(add_qml_import_check target_name)
       set(dependency_tool_args -DSKIP_LIBRARY_CHECK=ON)
     endif()
   else()
-    set(qt_lib_dir "${qt_root}/lib")
+    set(qt_lib_dir "${qt_libs_dir}")
   endif()
   list(JOIN qml_dirs "|" qml_dirs_arg)
   add_custom_target(
@@ -185,7 +208,7 @@ function(add_qml_import_check target_name)
     COMMAND ${CMAKE_COMMAND}
             -DTARGET_NAME=${target_name}
             -DSCANNER=${HOST_QMLIMPORTSCANNER_EXECUTABLE}
-            -DQT_QML_DIR=${qt_root}/qml
+            -DQT_QML_DIR=${qt_qml_dir}
             -DQT_LIB_DIR=${qt_lib_dir}
             -DQML_DIRS=${qml_dirs_arg}
             ${dependency_tool_args}
