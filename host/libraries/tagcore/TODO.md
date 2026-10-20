@@ -37,6 +37,20 @@ Passed on 2026-10-20 on a BitTag V6 (STM32L4, ID code `0x10016435`):
 - the L4 keepalive: 90 s idle with `KeepAlive` every 20 s kept the session,
   and the control run lost it.
 
+Passed on 2026-10-20 on a BitTag V6 (STM32L4, UUID `2035374D303150190059002F`,
+BitTag at `56e5e6a0`, through a TagBase v7):
+
+- a `WriteMemory` of two patterns to `0x20000814`, the padding between `.data`
+  and `.bss`, read back correctly, and the original was restored. The map came
+  from a rebuild of `56e5e6a0` whose image matched the tag's flash word for
+  word. The word's contents drift between sessions, since SRAM1 is not
+  retained in Standby;
+- `tag-start`, `Start` on the running tag refused with `err == PERM` and
+  `transport_failed == false`, `tag-stop`, `tag-dwnld` with a dump identical
+  to `main`'s, and `tag-reset`;
+- attaching after a timed-out session: 3 of 3 clean on the branch and 1 of 1
+  on `main`, so the noisy detection after a timeout did not reproduce.
+
 Passed on 2026-10-20 on an IMUTag breakout (STM32U3, ID code `0x10016454`,
 UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
 
@@ -64,22 +78,22 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
 
 Still to check, then delete each item:
 
-- **No regressions.** `tag-start`, `tag-stop`, `tag-reset` and `tag-dwnld`
-  behave as on `main` on L4. `qtmonitor` and `qtcalibrate` attach and poll
-  status, and `qtmonitor` starts and stops, on L4.
-- **Writes on L4.** `--write-test <addr>` on an unused SRAM word taken from the
-  map file of the exact build. On L4 the `monitor_shared` range is not
-  guarded, so write only to a word known to be unused.
-- **LastError on failures on L4.** `--start-running` on a running tag gives
-  `err == PERM` with `transport_failed == false`. `--unplug <s>`, unplugging
-  the base mid-call, gives `transport_failed == true`.
-- **Noisy attach after a timed-out L4 session.** Attaching after a session has
-  timed out logs `read debug register 0xe0042000/0xe0044000 failed
-  status=0x81` from target-family detection, because the debug domain is
-  down. The attach then succeeds through the L4 path. This branch does not
-  change the detection code, so `main` should behave the same, but that is not
-  yet confirmed. Quieten the detection, or retry it after the debug domain
-  wakes.
+- **No regressions on L4.** `qtmonitor` and `qtcalibrate` attach and poll
+  status, and `qtmonitor` starts and stops.
+- **LastError on unplug on L4.** `--unplug <s>`, unplugging the base mid-call,
+  gives `transport_failed == true`.
+- **Intermittent L4 attach failure through a TagBase v7.** 2 of about 32
+  attaches to an IDLE BitTag V6 failed outright: detection logged `read debug
+  register 0xe0042000/0xe0044000 failed status=0x81`, then the DEMCR read
+  failed and `AttachL4` gave up. Neither followed a timed-out session; both
+  followed a clean detach, and 20 back-to-back attaches and 8 after 20 s idle
+  were all clean, on `main` and on this branch alike. The code is unchanged by
+  this branch apart from the link lock. The leading suspect is that
+  `enter_debug_mode()` in `linkadapt.cc` treats a failed SWD enter (the base's
+  `SWD_Open`) as a warning and returns true, after which no read recovers;
+  the warning is below the default log level, so the failing runs could not
+  show it. Next: catch a failure with `--debug` to see that warning, then
+  decide between failing the attach and retrying the SWD enter.
 - **Noisy detach from a running U3 tag.** Detaching from a RUNNING tag logs a
   burst of `linkadapt.cc` `error return 81` read failures, 41 in one run. They
   come from the MONITORSTOP status poll in `CallU3`: once the firmware handles
