@@ -23,6 +23,12 @@ FetchContent_Declare(grpcxx
   URL_HASH SHA256=0bd8ab6e7a5df3206bc5c6fecd6c197014ffd08292ed9aa36fc252bf65db3db6
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(grpcxx)
+if(MSVC)
+  # nghttp2's API uses ssize_t, which MSVC lacks; NGHTTP2_NO_SSIZE_T selects
+  # its ptrdiff_t form. grpcxx's own Windows CI builds with this; not yet
+  # verified in this project's Windows build.
+  target_compile_definitions(grpcxx PRIVATE NGHTTP2_NO_SSIZE_T)
+endif()
 
 # Messages and the grpcxx service header for tag_service.proto. tag.proto and
 # tagdata.proto come from the `proto` library; google/rpc/status.proto is a

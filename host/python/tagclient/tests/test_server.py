@@ -6,6 +6,7 @@ does not disturb a connected base.
 
 from __future__ import annotations
 
+import os
 import subprocess
 
 import grpc
@@ -94,13 +95,16 @@ def test_tcp_listen(start_server):
         assert tag.is_attached() is False
 
 
-def test_shutdown_removes_socket(start_server):
+def test_clean_shutdown(start_server):
     _, server = start_server()
-    assert server.socket_path.exists()
+    if server.socket_path:            # Unix socket (not on Windows)
+        assert server.socket_path.exists()
     assert server.stop() == 0
-    assert not server.socket_path.exists()
+    if server.socket_path:
+        assert not server.socket_path.exists()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Unix sockets only")
 def test_second_server_on_same_socket_refused(start_server):
     _, first = start_server()
     result = subprocess.run(

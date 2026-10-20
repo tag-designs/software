@@ -5,7 +5,8 @@
  * @details Parses the options, optionally attaches at start-up, listens on a
  *          Unix domain socket (the default on Linux and macOS) or a TCP
  *          address, keeps the monitor session alive while attached, and on
- *          SIGINT or SIGTERM stops serving, detaches and removes its socket.
+ *          SIGINT, SIGTERM or (Windows) SIGBREAK stops serving, detaches and
+ *          removes its socket.
  *          See README.md.
  */
 #include <atomic>
@@ -199,6 +200,11 @@ int main(int argc, char **argv)
 
   std::signal(SIGINT, on_signal);
   std::signal(SIGTERM, on_signal);
+#ifdef SIGBREAK
+  // Windows has no SIGTERM from outside the process; Ctrl-Break (or
+  // GenerateConsoleCtrlEvent, which the Python tests use) stops it cleanly.
+  std::signal(SIGBREAK, on_signal);
+#endif
 
   // Turn the signal flag into a stop request for grpcxx, and keep the monitor
   // session alive while attached.

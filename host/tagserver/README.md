@@ -16,20 +16,96 @@ It is a development and test tool, not part of the host packages. The design
 and its rationale are in the
 [tag server proposal](../libraries/tagcore/design/proposals/tag-server.md).
 
-## Building
+## Building and testing
 
-```bash
-cmake -B <build-dir> -DBUILD_TAG_SERVER=ON <your usual options>
-cmake --build <build-dir> --target tag-server
-```
+Build `tag-server` in its own build tree, beside your usual one. Turning
+`BUILD_TAG_SERVER` on in a release tree would rebuild its protobuf and fetch
+grpcxx into it.
 
 `BUILD_TAG_SERVER` (default `OFF`) also enables the `tag-server` vcpkg feature,
 which adds protobuf's `libprotoc` for grpcxx's code generator. That rebuilds
 protobuf once, about five minutes. The server is built on
 [grpcxx](https://github.com/uatuko/grpcxx) v0.7.0, fetched at configure time and
 pinned by hash in [`CMakeLists.txt`](CMakeLists.txt). grpcxx fetches and builds
-its own libuv, nghttp2 and fmt, also pinned by hash, in about half a minute. The
-executable lands in `<build-dir>/<config>/bin`.
+its own libuv, nghttp2 and fmt, also pinned by hash, in about half a minute, so
+configuring needs network access to GitHub. It needs CMake 3.28 or newer.
+
+The tests are in [`host/python/tagclient`](../python/tagclient/README.md). Each
+starts its own server. With `TAG_SERVER_HARDWARE=1` and one base connected,
+they also read information, status, the state log and memory from the tag,
+and hold an idle session on the server's keepalive. They change no tag state.
+
+### Linux
+
+Prerequisites are those of the
+[Linux build](../../README.md#linux-prerequisites). To let an ordinary user open
+the tag base, install the udev rule, as for the other host tools:
+
+```bash
+sudo cp host/linux/70-ultralight-tags.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+Build, from the repository root:
+
+```bash
+cmake --preset linux-vcpkg -B ~/Build/tag-designs/tag-server-linux -DBUILD_TAG_SERVER=ON -DBUILD_QT_APPS=OFF
+cmake --build ~/Build/tag-designs/tag-server-linux --target tag-server -j
+```
+
+Test, with Python 3.10 or newer:
+
+```bash
+python3 -m venv ~/Build/tag-designs/tag-server-venv
+~/Build/tag-designs/tag-server-venv/bin/pip install -e "host/python/tagclient[test]"
+TAG_SERVER_BIN=~/Build/tag-designs/tag-server-linux/Release/bin/tag-server ~/Build/tag-designs/tag-server-venv/bin/pytest -v host/python/tagclient
+```
+
+Add `TAG_SERVER_HARDWARE=1` to the last command with a base connected.
+
+### Windows
+
+Prerequisites are those of the [Windows build](../../README.md#windows-build):
+Visual Studio 2026 with the C++ workload, `VCPKG_ROOT` set, and the ST-LINK
+driver the other host tools use. The server listens on loopback TCP
+(`127.0.0.1:50061`), because grpcxx cannot take a Unix socket there. In
+PowerShell, from the repository root:
+
+```powershell
+cmake --preset windows-vcpkg-static -B c:/software-build-tag-server -DBUILD_TAG_SERVER=ON -DBUILD_QT_APPS=OFF
+cmake --build c:/software-build-tag-server --config Release --target tag-server
+```
+
+Test, with Python 3.10 or newer from python.org:
+
+```powershell
+py -m venv c:\tag-server-venv
+c:\tag-server-venv\Scripts\pip install -e "host/python/tagclient[test]"
+$env:TAG_SERVER_BIN = "c:\software-build-tag-server\Release\bin\tag-server.exe"
+c:\tag-server-venv\Scripts\pytest -v host/python/tagclient
+```
+
+Then `$env:TAG_SERVER_HARDWARE = "1"` and run `pytest` again with a base
+connected. The tests stop each server with Ctrl-Break, which it handles like
+Ctrl-C: it detaches and exits 0. One test, a second server on a busy Unix
+socket, is skipped on Windows.
+
+Not yet verified on Windows:
+
+- the `NGHTTP2_NO_SSIZE_T` definition in [`CMakeLists.txt`](CMakeLists.txt),
+  taken from grpcxx's own Windows CI;
+- grpcxx with the static `x64-windows-static-md` triplet;
+- Ctrl-Break handling.
+
+A build error from nghttp2 or libuv is the place to look first.
+
+### Recording the results
+
+Record a platform that passes in
+[tagcore's TODO](../libraries/tagcore/TODO.md#verify-tag-server-on-hardware-and-other-platforms):
+the OS and compiler, the test counts, and the tag used for the hardware run.
+When both platforms pass, delete the item. For a failure, note the first
+error in the same place.
 
 ## Running
 
@@ -49,8 +125,8 @@ tag-server --listen 127.0.0.1:50061      # TCP instead of a Unix socket
 | `--threads <n>` | gRPC worker threads; default 2. Calls on the tag are serialised regardless. |
 | `-v`, `--verbose` | Log tagcore at DEBUG level. |
 
-It prints `tag-server listening on ...` once ready. On `SIGINT` or `SIGTERM` it
-stops serving, detaches, so the tag returns to low power, and removes its
+It prints `tag-server listening on ...` once ready. On `SIGINT` or `SIGTERM`
+(Ctrl-C or Ctrl-Break on Windows) it stops serving, detaches, so the tag returns to low power, and removes its
 socket. It refuses to start on a socket where another server is already
 listening. The socket is created readable and writable by its owner only.
 

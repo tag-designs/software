@@ -152,6 +152,9 @@ full cycle on the same tag, with the server holding it (`--attach`):
 
 Still to check, then delete each item:
 
-- **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`. On Windows the
-  server listens on loopback TCP, and grpcxx has not been built with the
-  static `x64-windows-static-md` triplet.
+- **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`, and the tests on
+  each, following the
+  [how-to](../../tagserver/README.md#building-and-testing). On Windows the
+  server listens on loopback TCP. grpcxx has not been built with the static
+  `x64-windows-static-md` triplet, and the MSVC `NGHTTP2_NO_SSIZE_T` definition
+  and Ctrl-Break handling are untested.
