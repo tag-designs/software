@@ -7,11 +7,18 @@
  *          Qt classes in sensoranalysis are thin adapters over these
  *          functions, so there is one implementation of the math.
  *
- *          Results are bit-identical to the Qt implementation this replaced:
- *          the code is a line-for-line port onto sensormath (vecmath.h),
- *          whose types reproduce QVector3D and QQuaternion exactly.
- *          compass_core_parity_check verifies that against a verbatim copy of
- *          the Qt code.
+ *          Results are bit-identical to the Qt implementation this replaced, as
+ *          macOS built it: the code is a line-for-line port onto sensormath
+ *          (vecmath.h), whose types reproduce QVector3D and QQuaternion
+ *          exactly. compass_core_parity_check verifies that against a
+ *          verbatim copy of the Qt code.
+ *
+ *          The Qt code was not consistent across platforms: it called sqrt()
+ *          and atan2() unqualified on floats, which GNU libstdc++ resolves to
+ *          the double C functions and Apple's libc++ to the float overloads.
+ *          The core calls std::sqrt and std::atan2, so it computes as macOS
+ *          always did, on every platform; against the Qt code as Linux built
+ *          it, it differs by a few float ulps.
  *
  * @see     vecmath.h, CompassProcessor, CompassCalibration
  */

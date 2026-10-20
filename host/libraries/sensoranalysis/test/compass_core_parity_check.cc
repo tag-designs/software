@@ -7,7 +7,8 @@
  *          of CompassProcessor::computeOrientation() and
  *          CompassCalibration::apply() from QVector3D/QQuaternion onto
  *          sensormath. This program keeps a verbatim copy of that Qt code as
- *          the reference and requires every output -- the quaternion's four
+ *          the reference, resolved as macOS's libc++ resolves it (see the
+ *          note above the reference), and requires every output -- the quaternion's four
  *          parts, dip, field and acceleration magnitude, and the success flag
  *          -- to be bit-identical across:
  *
@@ -29,8 +30,9 @@
  *
  *          When vecmath.h is moved onto glm or Eigen, this check is how the
  *          change is measured: run it with --report to print the largest
- *          difference per output instead of failing on the first. In that
- *          report, inf means one side produced NaN where the other did not.
+ *          difference per output instead of failing on the first: how many
+ *          comparisons differ, how many produced NaN on one side only, and the
+ *          largest difference between finite values.
  */
 
 #include "calibration_json.h"
@@ -61,7 +63,9 @@ namespace
 int failures = 0;
 long comparisons = 0;
 bool report = false;
-std::array<double, 7> worst{}; // qw, qx, qy, qz, dip, field, mg
+std::array<double, 7> worst{};      // qw, qx, qy, qz, dip, field, mg: largest finite |Qt - core|
+std::array<long, 7> differing{};    // comparisons whose bits differ
+std::array<long, 7> nanMismatch{};  // one side NaN, the other not
 
 const char *const kOutputNames[] = {"qw", "qx", "qy", "qz", "dip", "field", "mg"};
 
@@ -71,7 +75,18 @@ using Matrix = std::array<std::array<double, 3>, 3>;
 // Reference: the Qt implementation, copied verbatim from compass_types.cpp and
 // compass_processor.cpp as they stood before the core existed. Do not edit
 // these to match the core; they are what the core must match.
+//
+// The reference calls sqrt() and atan2() unqualified on floats. Apple's libc++
+// resolves those to the float overloads; GNU libstdc++ declares only the C
+// double functions globally, so on Linux the same source computed three
+// square roots and the dip in double and differed in the last bits. These two
+// declarations make the reference resolve as libc++ does on every platform:
+// the reference is the Qt code as macOS built it, which produced every output
+// before the core, and which the core reproduces everywhere.
 // ---------------------------------------------------------------------------
+
+using std::atan2;
+using std::sqrt;
 
 QVector3D qtApply(const QVector3D &hardIron_, const Matrix &softIron_, const QVector3D &mag)
 {
@@ -179,9 +194,16 @@ void fail(const char *what, int index, const char *output, float qt, float core)
 void compare(const char *what, int index, int output, float qt, float core)
 {
     if (report) {
+        if (!sameBits(qt, core)) {
+            differing[output]++;
+        }
+        if (std::isnan(qt) != std::isnan(core)) {
+            nanMismatch[output]++;
+            return;
+        }
         const double diff = std::fabs(double(qt) - double(core));
-        if (diff > worst[output] || (std::isnan(qt) != std::isnan(core))) {
-            worst[output] = std::isnan(diff) ? INFINITY : diff;
+        if (diff > worst[output]) {
+            worst[output] = diff;
         }
         return;
     }
@@ -564,7 +586,8 @@ int main(int argc, char **argv)
                 captured, comparisons, calibrationCases);
     if (report) {
         for (int i = 0; i < 7; i++) {
-            std::printf("max |Qt - core| %-5s %.9g\n", kOutputNames[i], worst[i]);
+            std::printf("%-5s differ in %8ld, NaN on one side in %6ld, max finite |Qt - core| %.9g\n",
+                        kOutputNames[i], differing[i], nanMismatch[i], worst[i]);
         }
         return 0;
     }

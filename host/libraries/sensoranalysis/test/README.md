@@ -63,10 +63,23 @@ calibration through float, as the typed protobuf message would, failed 17,451.
 The negative-zero edge case is why `calibrationFromJson()` folds `-0` to `+0`:
 Qt's reader does, protobuf's does not.
 
-`--report` prints the largest difference per output instead of failing. That is
-the measurement to make when `vecmath.h` moves onto glm or Eigen: the swap
-will not be bit-identical, and the report says by how much. `inf` means one
-side produced NaN where the other did not.
+The reference resolves its unqualified `sqrt` and `atan2` calls as macOS's
+libc++ does, through two `using` declarations above it. GNU libstdc++ would
+otherwise pick the double C functions there, and the old Qt code did exactly
+that on Linux: against the reference as Linux compiled it, the core differs by
+a few float ulps (at most 3.6e-7 in a quaternion part on Debian 13). With the
+declarations the check is bit-identical on Debian 13 x86_64 in any build and on
+arm64 in a Release build (checked 2026-10-20). One case still differs: an
+unoptimised build on arm64, where
+Qt's own library, compiled optimised, fuses multiply-adds that the
+unoptimised reference does not -- up to 1.2e-5 there, so run the check
+optimised on arm64.
+
+`--report` prints, per output, how many comparisons differ, how many produced
+NaN on one side only, and the largest difference between finite values,
+instead of failing. That is the measurement to make when `vecmath.h` moves
+onto glm or Eigen: the swap will not be bit-identical, and the report says by
+how much.
 
 ## `capture_replay`
 
