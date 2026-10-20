@@ -9,7 +9,22 @@ using namespace std;
 #include "linkadapt.h"
 #include "tagmonitor.h"
 
-class Tag 
+/**
+ * @struct  TagError
+ * @brief   Why the most recent monitor RPC made through a Tag failed.
+ *
+ * @details Separates a link or monitor failure, where the request may never
+ *          have reached the firmware, from a refusal by the firmware, which
+ *          arrives as an Ack error code with an optional message.
+ */
+struct TagError
+{
+  bool transport_failed = false;    ///< The RPC did not complete over the link.
+  Ack::Err err = Ack::UNSPECIFIED;  ///< The firmware's Ack code; UNSPECIFIED after a transport failure.
+  std::string message;              ///< Human-readable reason; empty when the call succeeded.
+};
+
+class Tag
 {
 public:
   // Constructor/Destructor
@@ -45,9 +60,48 @@ public:
   bool CountBitTagLogHeaders(int &count);
   bool GetBitTagLogFromFlash(Ack &data_log, int index);
 
-  // Temporary diagnostic: read one word of live tag memory/peripheral space
-  // without resetting the tag. See tag-peek.cc.
-  bool ReadMemWord(uint32_t addr, uint32_t *value);
+  /**
+   * @brief   Reads live tag memory or peripheral space between monitor RPCs.
+   * @details Thin wrapper over TagMonitor::ReadMem(); see it for alignment,
+   *          chunking and the attached-session requirement.
+   * @param[in]  addr    Tag address, a multiple of 4.
+   * @param[out] buf     Receives @p length bytes.
+   * @param[in]  length  Byte count, a multiple of 4.
+   * @return  MemAccess::Ok, or why the read was refused or failed.
+   */
+  MemAccess ReadMemory(uint32_t addr, uint8_t *buf, size_t length);
+
+  /**
+   * @brief   Writes live tag memory or peripheral space between monitor RPCs.
+   * @details Thin wrapper over TagMonitor::WriteMem(); on STM32U3 a write
+   *          overlapping the monitor_shared block needs @p force.
+   * @param[in] addr    Tag address, a multiple of 4.
+   * @param[in] data    @p length bytes to write.
+   * @param[in] length  Byte count, a multiple of 4.
+   * @param[in] force   Allow a write over the U3 monitor_shared block.
+   * @return  MemAccess::Ok, or why the write was refused or failed.
+   * @warning Unchecked beyond the monitor_shared guard; see TagMonitor::WriteMem().
+   */
+  MemAccess WriteMemory(uint32_t addr, const uint8_t *data, size_t length,
+                        bool force = false);
+
+  /**
+   * @brief   Keeps the monitor session alive while the caller is idle.
+   * @details See TagMonitor::KeepAlive(). Call at least every 2-3 s for an
+   *          STM32U3 tag when nothing else is talking to it.
+   * @return  true if the keepalive reached the tag.
+   */
+  bool KeepAlive();
+
+  /**
+   * @brief   Describes the outcome of the most recent monitor RPC.
+   * @details Covers the calls that send a request to the firmware (GetStatus,
+   *          Start, GetDataLog and so on). Memory access, KeepAlive() and the
+   *          field-rescue helpers do not change it.
+   * @return  The transport flag, the Ack code and a message; the message is
+   *          empty if the last RPC succeeded.
+   */
+  TagError LastError();
 
   // Tag control
 
@@ -76,9 +130,13 @@ public:
 
 
 private:
+  /// Sends @c req, fills @c ack and records whether the transport failed.
+  bool Rpc();
+
   mutex mtx;
   Ack ack;
   Req req;
+  bool rpc_failed = false;  ///< The last Rpc() did not complete over the link.
   TagMonitor monitor;
 };
 

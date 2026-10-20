@@ -386,6 +386,7 @@ design document.
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, SWD capture and recovery code, offline decoder checks - and links to its design documents.
 - [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
+- [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 
 ### Libraries / tagcore / Investigations
 

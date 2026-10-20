@@ -100,7 +100,7 @@ bool Tag::Start(Config &cfg)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_start(new Config(cfg));
-  if (!monitor.Rpc(req, ack))
+  if (!Rpc())
   {
     ack.Clear();
     ack.set_err(Ack::MONITOR);
@@ -115,7 +115,7 @@ bool Tag::Stop()
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_stop(new Empty);
-  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
+  return Rpc() && (ack.err() == Ack::OK);
 }
 
 bool Tag::Calibrate()
@@ -123,14 +123,14 @@ bool Tag::Calibrate()
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_calibrate(new Empty);
-  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
+  return Rpc() && (ack.err() == Ack::OK);
 }
 bool Tag::Erase()
 {
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_erase(new Empty);
-  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
+  return Rpc() && (ack.err() == Ack::OK);
 }
 
 bool Tag::Test(TestReq test)
@@ -138,7 +138,7 @@ bool Tag::Test(TestReq test)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_test(test);
-  return monitor.Rpc(req,ack) && (ack.err() == Ack::OK);
+  return Rpc() && (ack.err() == Ack::OK);
 }
 
 std::string Tag::DebugMessage()
@@ -158,7 +158,7 @@ bool Tag::GetStatus(Status &status)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_get_status(new Empty);
-  if (monitor.Rpc(req,ack) && (ack.payload_case() == Ack::kStatus))
+  if (Rpc() && (ack.payload_case() == Ack::kStatus))
   {
     status = ack.status();
     return true;
@@ -191,7 +191,7 @@ bool Tag::GetConfig(Config &cfg)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_get_config(new Empty);
-  if (monitor.Rpc(req,ack) && ack.has_config())
+  if (Rpc() && ack.has_config())
   {
     cfg = std::move(ack.config());
     return true;
@@ -214,7 +214,7 @@ bool Tag::SetRtc()
 
   req.Clear();
   req.set_set_rtc(ts.time_since_epoch().count());
-  if (!monitor.Rpc(req,ack))
+  if (!Rpc())
   {
     ack.Clear();
     ack.set_err(Ack::MONITOR);
@@ -236,7 +236,7 @@ bool Tag::GetTagInfo(TagInfo &info)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_get_info(new Empty);
-  if (monitor.Rpc(req,ack) && ack.has_info())
+  if (Rpc() && ack.has_info())
   {
     info = std::move(ack.info());
     //std::cerr << "info" << info.DebugString();
@@ -255,10 +255,47 @@ bool Tag::Voltage(float &voltage)
   return monitor.Voltage(voltage);
 }
 
-bool Tag::ReadMemWord(uint32_t addr, uint32_t *value)
+MemAccess Tag::ReadMemory(uint32_t addr, uint8_t *buf, size_t length)
 {
   std::lock_guard<std::mutex> lck(mtx);
-  return monitor.ReadMemWord(addr, value);
+  return monitor.ReadMem(addr, buf, length);
+}
+
+MemAccess Tag::WriteMemory(uint32_t addr, const uint8_t *data, size_t length,
+                           bool force)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.WriteMem(addr, data, length, force);
+}
+
+bool Tag::KeepAlive()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.KeepAlive();
+}
+
+// Caller holds mtx.
+bool Tag::Rpc()
+{
+  rpc_failed = !monitor.Rpc(req, ack);
+  return !rpc_failed;
+}
+
+TagError Tag::LastError()
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  TagError error;
+  error.transport_failed = rpc_failed;
+  error.err = ack.err();
+  error.message = ack.error_message();
+  if (error.message.empty())
+  {
+    if (rpc_failed)
+      error.message = "Monitor call failed";
+    else if (ack.err() != Ack::OK)
+      error.message = "Tag returned " + Ack_Err_Name(ack.err());
+  }
+  return error;
 }
 
 /*
@@ -275,7 +312,7 @@ int Tag::GetStateLog(StateLog &system_log, int index)
   req.Clear();
   req.set_allocated_log(logreq);
   //std::cerr << "asking for log data at index " << index << std::endl;
-  if (monitor.Rpc(req,ack) && ack.has_system_log())
+  if (Rpc() && ack.has_system_log())
   {
     system_log.CopyFrom(ack.system_log());// = std::move(ack.system_log());
     return system_log.states().size();
@@ -291,7 +328,7 @@ bool Tag::GetDataLog(Ack &data_log, int index)
   logreq->set_fmt(LogReq_LogDataType_INTERNAL_DATA);
   req.Clear();
   req.set_allocated_log(logreq);
-  if (monitor.Rpc(req,ack)) {
+  if (Rpc()) {
      data_log.CopyFrom(ack);
      return true;
   }
@@ -306,7 +343,7 @@ bool Tag::GetCalibrationLog(Ack &calibration_log)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_allocated_caldata(new Empty);
-  if (monitor.Rpc(req,ack)) {
+  if (Rpc()) {
      calibration_log.CopyFrom(ack);
      return true;
   }
@@ -321,7 +358,7 @@ bool Tag::ReadCalibration(CalibrationConstants &constants, uint32_t index)
   std::lock_guard<std::mutex> lck(mtx);
   req.Clear();
   req.set_read_calibration(index);
-  if (monitor.Rpc(req,ack) && ack.has_calibration_constants())
+  if (Rpc() && ack.has_calibration_constants())
   {
     constants = std::move(ack.calibration_constants());
     return true;
@@ -338,7 +375,7 @@ bool Tag::WriteCalibration(CalibrationConstants &constants)
   req.Clear();
   req.set_allocated_write_calibration(new CalibrationConstants(constants));
   //log_info("%s",req.DebugString().c_str());
-  return monitor.Rpc(req,ack);
+  return Rpc();
 }
 
 

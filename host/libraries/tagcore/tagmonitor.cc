@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <thread>
@@ -107,6 +108,7 @@ TagMonitor::~TagMonitor()
 }
 
 bool TagMonitor::Voltage(float &voltage){
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   return LinkAdapt::Voltage(voltage);
 }
 
@@ -196,6 +198,94 @@ bool TagMonitor::ReadMemWord(uint32_t addr, uint32_t *value)
 bool TagMonitor::WriteMemWord(uint32_t addr, uint32_t value)
 {
   return WriteMem32(addr, (uint8_t *)&value, sizeof(value));
+}
+
+const char *MemAccessName(MemAccess result)
+{
+  switch (result)
+  {
+  case MemAccess::Ok:           return "ok";
+  case MemAccess::NotAttached:  return "not attached";
+  case MemAccess::InvalidRange: return "invalid range";
+  case MemAccess::Protected:    return "protected";
+  case MemAccess::LinkError:    return "link error";
+  }
+  return "unknown";
+}
+
+// Address and length must be word multiples (ST-LINK 32-bit access), and the
+// range must not wrap past the top of the address space.
+static bool valid_mem_range(uint32_t addr, size_t length)
+{
+  return ((addr & 3U) == 0U) && ((length & 3U) == 0U) &&
+         (length <= (size_t)UINT32_MAX - addr + 1U);
+}
+
+MemAccess TagMonitor::ReadMem(uint32_t addr, uint8_t *buf, size_t length)
+{
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
+  if (!IsAttached())
+    return MemAccess::NotAttached;
+  if (!valid_mem_range(addr, length))
+    return MemAccess::InvalidRange;
+
+  for (size_t done = 0; done < length;)
+  {
+    const size_t n = std::min(length - done, kMemChunkBytes);
+    if (!ReadMem32(addr + (uint32_t)done, buf + done, (uint16_t)n))
+      return MemAccess::LinkError;
+    done += n;
+  }
+  return MemAccess::Ok;
+}
+
+MemAccess TagMonitor::WriteMem(uint32_t addr, const uint8_t *data,
+                               size_t length, bool force)
+{
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
+  if (!IsAttached())
+    return MemAccess::NotAttached;
+  if (!valid_mem_range(addr, length))
+    return MemAccess::InvalidRange;
+  if (length == 0)
+    return MemAccess::Ok;
+
+  // Only U3 has a shared block; on L4 the same addresses are ordinary SRAM.
+  const uint64_t first = addr;
+  const uint64_t end = first + length;
+  if (!force && target_family == TargetFamily::STM32U3 &&
+      first < (uint64_t)MONITOR_SHARED_ADDR + MONITOR_SHARED_SIZE &&
+      end > (uint64_t)MONITOR_SHARED_ADDR)
+    return MemAccess::Protected;
+
+  // WriteMem32 takes a mutable buffer, so stage each chunk.
+  uint8_t chunk[kMemChunkBytes];
+  for (size_t done = 0; done < length;)
+  {
+    const size_t n = std::min(length - done, kMemChunkBytes);
+    memcpy(chunk, data + done, n);
+    if (!WriteMem32(addr + (uint32_t)done, chunk, (uint16_t)n))
+      return MemAccess::LinkError;
+    done += n;
+  }
+  return MemAccess::Ok;
+}
+
+bool TagMonitor::KeepAlive()
+{
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
+  if (!IsAttached())
+    return false;
+
+  if (target_family == TargetFamily::STM32U3)
+    return WriteMonitorSharedWord(offsetof(monitor_shared_t, host_activity),
+                                  1U);
+
+  // L4 re-arms its session timer only on a monitor request.
+  Req req;
+  Ack ack;
+  req.mutable_get_status();
+  return Rpc(req, ack);
 }
 
 bool TagMonitor::ReadMonitorShared(monitor_shared_t &shared)
@@ -979,6 +1069,7 @@ bool TagMonitor::AttachU3()
 
 bool TagMonitor::Attach(UsbDev usbdev)
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   if (IsAttached()) {
     log_error("Already attached");
     return false;
@@ -1226,6 +1317,7 @@ bool TagMonitor::CallU3(uint8_t operation, int32_t operand, uint32_t *result)
 
 void TagMonitor::Detach()
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   uint32_t demcr;
 
   if (!IsAttached())
@@ -1315,6 +1407,7 @@ void TagMonitor::Detach()
 
 bool TagMonitor::Rpc(Req &req, Ack &ack)
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   uint32_t retval;
   int err = 0;
   uint16_t len;

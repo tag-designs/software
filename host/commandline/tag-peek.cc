@@ -1,8 +1,8 @@
 /*
- * Temporary diagnostic tool: read one word of live tag memory/peripheral
- * space without resetting the tag (unlike STM32_Programmer_CLI -r32, which
- * needs connect-under-reset and can't observe a running tag). Not for
- * shipping; remove after use.
+ * Diagnostic tool: read words of live tag memory/peripheral space without
+ * resetting the tag (unlike STM32_Programmer_CLI -r32, which needs
+ * connect-under-reset and can't observe a running tag). Uses
+ * Tag::ReadMemory(), so addresses must be word aligned. Not for shipping.
  */
 #include <cstdio>
 #include <iostream>
@@ -49,9 +49,11 @@ int main(int argc, char **argv)
     {
         uint32_t addr = (uint32_t)strtoul(addr_str.c_str(), nullptr, 0);
         uint32_t value = 0;
-        if (!tag.ReadMemWord(addr, &value))
+        const MemAccess result = tag.ReadMemory(addr, (uint8_t *)&value, sizeof(value));
+        if (result != MemAccess::Ok)
         {
-            std::cerr << "ReadMemWord failed for " << addr_str << std::endl;
+            std::cerr << "read failed for " << addr_str << ": "
+                      << MemAccessName(result) << std::endl;
             rc = 1;
             continue;
         }

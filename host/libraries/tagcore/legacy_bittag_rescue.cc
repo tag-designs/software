@@ -35,6 +35,7 @@ constexpr uint32_t kBitTagLogRecordsPerAck = 30U;
 
 bool TagMonitor::ForceBackupState(TagState state)
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   /*
    * Field-rescue helper for old firmware that cannot serve log RPCs while
    * pState->state is EXCEPTION. We enable backup-domain writes if needed,
@@ -98,6 +99,7 @@ bool TagMonitor::ForceBackupState(TagState state)
 
 bool TagMonitor::CountBitTagLogHeaders(int &count)
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   /*
    * Legacy BitTag stores one 16-byte t_DataHeader per sample in internal flash.
    * A blank record has epoch == 0xffffffff. Counting these records recovers the
@@ -131,6 +133,7 @@ bool TagMonitor::CountBitTagLogHeaders(int &count)
 
 bool TagMonitor::ReadBitTagLogFromFlash(Ack &ack, int index)
 {
+  std::lock_guard<std::recursive_mutex> lock(link_mtx);
   /*
    * Synthesize a normal BitTagLog Ack from legacy BitTag flash records. This
    * does not interpret the 64-bit activity field; text/SQLite writers decode it

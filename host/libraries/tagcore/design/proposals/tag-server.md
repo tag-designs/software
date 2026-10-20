@@ -59,12 +59,18 @@ generalise today's single-word `ReadMemWord`, used by `tag-peek`.
   during a monitor session (see the `DBGMCU->CR` note in
   [`pwr-l432.c`](../../../../../embedded/tags/common/core/src/pwr-l432.c)), so
   a call made while detached fails rather than reading garbage.
-- **Guarded writes.** A write that overlaps the `monitor_shared` block
-  ([`monitor.h`](../../../../../include/monitor.h)) is refused unless the
-  caller forces it, because such a write would end the session the caller
-  depends on.
-- **Chunking.** Long reads and writes are split to fit the link's transfer
-  limit.
+- **Guarded writes, U3 only.** On STM32U3 a write that overlaps the
+  `monitor_shared` block ([`monitor.h`](../../../../../include/monitor.h)) is
+  refused unless the caller forces it, because such a write would end the
+  session the caller depends on. STM32L4 has no shared block (its monitor uses
+  the debug registers), and the same addresses are ordinary SRAM there, so
+  nothing is guarded. No other range is guarded.
+- **Word access.** The address and length must be multiples of 4, matching
+  the ST-LINK's 32-bit memory access, and transfers are split into chunks of
+  at most 1 KB.
+- **Results.** Each call returns a `MemAccess`: `Ok`, `NotAttached`,
+  `InvalidRange`, `Protected` or `LinkError`, so a caller can report each case
+  differently.
 
 `Tag::ReadMemory` and `Tag::WriteMemory` expose these to C++, and `tag-peek`
 becomes a thin user of them. `ReadMemWord` is then retired.
@@ -82,10 +88,11 @@ script paused in a debugger would lose its session. `Tag::KeepAlive()` keeps
 the session alive:
 
 - **U3:** one SWD write of `host_activity`, which runs no code on the tag.
-- **L4:** a monitor request, `get_status` today.
+- **L4:** a `get_status` monitor request. A dedicated no-op request would
+  need a firmware change and is not planned.
 
-`tag-server` calls it from a timer while attached, skipping ticks when other
-traffic has already reached the tag.
+`tag-server` calls it from a timer every 2 s while attached. Both forms are
+cheap enough that the server does not track other traffic to skip ticks.
 
 ## Outcome 1: the simulated tag
 
@@ -263,8 +270,12 @@ turn holds a `TagError { Ack.Err err = 1; }` in its details. The codes:
 | `FAILED_PRECONDITION` | `Ack::PERM`, or not attached |
 | `INVALID_ARGUMENT` | `Ack::INVAL` |
 | `RESOURCE_EXHAUSTED` | `Ack::NODATA` |
-| `UNAVAILABLE` | USB or monitor failure |
+| `UNAVAILABLE` | USB or monitor failure; `MemAccess::LinkError` |
 | `NOT_FOUND` | no device |
+| `INVALID_ARGUMENT` | `MemAccess::InvalidRange` (unaligned or wrapping) |
+| `PERMISSION_DENIED` | `MemAccess::Protected` |
+
+`MemAccess::NotAttached` maps to `FAILED_PRECONDITION`, as for RPCs.
 
 This needs one small addition to `Tag`: `LastError()`, returning the last
 `Ack::Err`, its message, and whether the transport failed. Today that
@@ -507,9 +518,8 @@ applications reach a tag, through the backend extraction.
    Offer them upstream, or carry them as patches.
 4. **How to pin grpcxx:** FetchContent with a hash (simplest), or a vcpkg
    overlay port (binary caching, shared `libuv`/`nghttp2`/`fmt`).
-5. **L4 keepalive.** Is `get_status` every 20 s acceptable, or should the
-   firmware gain a no-op request? U3 needs no firmware change.
-6. **Write guard scope.** Is the `monitor_shared` block enough, or should flash
-   and the debug and system-control registers also need `force`?
-7. **Python package home.** `host/python/`, as in the Python proposal, or
+5. **Python package home.** `host/python/`, as in the Python proposal, or
    beside the server.
+
+Settled: the write guard covers only the U3 `monitor_shared` block, and the L4
+keepalive uses `get_status` rather than a new firmware request.
