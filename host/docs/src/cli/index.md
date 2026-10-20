@@ -7,6 +7,12 @@ In the macOS release they are in `tag_tools/bin`; put that directory on your
 `PATH` to run them by name. In the Windows release they are in `tag_tools`
 beside the applications.
 
+These are command-line programs: run them from a terminal, such as Terminal on
+macOS. Double-clicking one in the macOS Finder does not work, and Finder may
+report that the program cannot be opened or used. That message does not mean
+the release is damaged or blocked; the same program runs normally when you
+type its name in a terminal.
+
 Use these pages as working templates. Fill in the purpose, preconditions,
 examples, expected output, and troubleshooting details as each tool is reviewed
 against the current workflow.

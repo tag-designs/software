@@ -13,6 +13,9 @@ Use this page for problems shared across multiple applications.
 - Confirm the package was fully extracted or installed.
 - On Windows, launch the top-level executable from the package folder.
 - On macOS, check whether the app was blocked by system security settings.
+- On macOS, a command-line tool such as `tag-info` cannot be started by
+  double-clicking it in the Finder, which may report it as unusable. Run it
+  from Terminal instead; see [Command-Line Tools](../cli/index.md).
 
 ## Data Looks Wrong
 
