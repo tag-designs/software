@@ -36,8 +36,33 @@ To build all of them at once, name each target, or build everything:
 
 ```sh
 cmake --build $BUILD --target accelcalibration_check gravityfit_check \
-                              magquality_check magretention_check capture_replay
+                              magquality_check magretention_check \
+                              compass_core_parity_check capture_replay
 ```
+
+## `compass_core_parity_check`
+
+Requires the Qt-free compass core (`core/compass_core.*` on `core/vecmath.h`)
+to be bit-identical to the QVector3D/QQuaternion code it replaced. The program
+carries a verbatim copy of that Qt code as the reference -- do not edit it to
+match the core -- and compares the quaternion's four parts, dip, field,
+acceleration magnitude, the calibrated magnetometer vector and the success
+flag.
+
+| Group | What it pins down |
+| --- | --- |
+| captures | Every sample with an accelerometer in both qtcalibrate capture fixtures, with the capture's own calibration and with none. |
+| random | 200,000 seeded sensor pairs under random hard and soft iron, covering both accelerometer branches and both magnetometer branches. |
+| edges | Zero vectors (refused by both), vectors exactly at, within and just beyond 1e-5 of unit length -- Qt's vector `normalize()` leaves the first two alone -- and vectors small enough that normalization is skipped. |
+
+On 2026-10-20 it was shown to bite: making vector `normalize()` always divide,
+as glm and Eigen do, failed 12 comparisons, all in the edge group; writing the
+quaternion product the textbook way failed 1.4 million.
+
+`--report` prints the largest difference per output instead of failing. That is
+the measurement to make when `vecmath.h` moves onto glm or Eigen: the swap
+will not be bit-identical, and the report says by how much. `inf` means one
+side produced NaN where the other did not.
 
 ## `capture_replay`
 

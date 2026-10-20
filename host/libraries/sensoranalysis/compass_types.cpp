@@ -69,19 +69,21 @@ CompassCalibration CompassCalibration::fromMagnetometerConstants(
 
 QVector3D CompassCalibration::apply(const QVector3D &mag) const
 {
-    const double x = mag.x() - hardIron_.x();
-    const double y = mag.y() - hardIron_.y();
-    const double z = mag.z() - hardIron_.z();
-
-    return QVector3D(
-        x * softIron_[0][0] + y * softIron_[0][1] + z * softIron_[0][2],
-        x * softIron_[1][0] + y * softIron_[1][1] + z * softIron_[1][2],
-        x * softIron_[2][0] + y * softIron_[2][1] + z * softIron_[2][2]);
+    return toQVector3D(compasscore::applyMagnetometer(constants(), toVec3f(mag)));
 }
 
 QVector3D CompassCalibration::applyAccel(const QVector3D &accel) const
 {
-    return accel - accelOffset_;
+    return toQVector3D(compasscore::applyAccelerometer(constants(), toVec3f(accel)));
+}
+
+compasscore::CalibrationConstants CompassCalibration::constants() const
+{
+    compasscore::CalibrationConstants constants;
+    constants.hardIron = toVec3f(hardIron_);
+    constants.softIron = softIron_;
+    constants.accelOffset = toVec3f(accelOffset_);
+    return constants;
 }
 
 QVector3D CompassCalibration::hardIron() const

@@ -1,12 +1,32 @@
 #ifndef COMPASS_TYPES_H
 #define COMPASS_TYPES_H
 
+#include "compass_core.h"
+
 #include <QJsonObject>
 #include <QQuaternion>
 #include <QVector>
 #include <QVector3D>
 
 #include <array>
+
+// Exact conversions between the Qt types used by this library's interface and
+// the sensormath types of the Qt-free core. Both sides store floats, so these
+// copy bits and never round.
+inline sensormath::Vec3f toVec3f(const QVector3D &v)
+{
+    return sensormath::Vec3f{v.x(), v.y(), v.z()};
+}
+
+inline QVector3D toQVector3D(const sensormath::Vec3f &v)
+{
+    return QVector3D(v.x, v.y, v.z);
+}
+
+inline QQuaternion toQQuaternion(const sensormath::Quatf &q)
+{
+    return QQuaternion(q.w, q.x, q.y, q.z);
+}
 
 /*
  * Compass data moves through three layers:
@@ -37,6 +57,7 @@ public:
         const QVector3D &hardIron,
         const Matrix &softIron);
 
+    /// Hard- and soft-iron correction; compasscore::applyMagnetometer().
     QVector3D apply(const QVector3D &mag) const;
 
     /// Subtracts the accelerometer zero-g offset. Both are in mg.
@@ -48,6 +69,9 @@ public:
     /// Accelerometer zero-g offset, mg. Zero when none was recorded.
     QVector3D accelOffset() const;
     void setAccelOffset(const QVector3D &offset);
+
+    /// The same calibration as the Qt-free core's constants.
+    compasscore::CalibrationConstants constants() const;
 
 private:
     QVector3D hardIron_;

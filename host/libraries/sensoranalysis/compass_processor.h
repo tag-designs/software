@@ -66,15 +66,6 @@ public:
         CompassDerivedSample &derived) const;
 
 private:
-    bool computeOrientation(
-        QVector3D mag,
-        QVector3D accel,
-        QQuaternion &q,
-        float &dip,
-        float &field,
-        float &mg,
-        bool applyCalibration) const;
-
     bool deriveSample(
         const CompassRawSample &sample,
         bool applyCalibration,

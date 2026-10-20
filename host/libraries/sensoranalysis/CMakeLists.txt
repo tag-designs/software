@@ -6,6 +6,14 @@ message("Configure sensoranalysis")
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui)
 
+# The Qt-free core: compass calibration and the orientation solve on plain
+# float vector and quaternion types (core/vecmath.h) that reproduce Qt's
+# QVector3D and QQuaternion bit for bit. Command-line tools link this alone;
+# the Qt classes below are adapters over it, so there is one implementation.
+add_library(sensoranalysis_core STATIC core/compass_core.cpp)
+target_include_directories(sensoranalysis_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/core")
+target_compile_features(sensoranalysis_core PUBLIC cxx_std_17)
+
 add_library(sensoranalysis STATIC
   accelcalibration.cpp
   compass_processor.cpp
@@ -16,7 +24,7 @@ add_library(sensoranalysis STATIC
   magretention.cpp)
 
 target_include_directories(sensoranalysis PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(sensoranalysis PUBLIC Qt6::Core Qt6::Gui)
+target_link_libraries(sensoranalysis PUBLIC sensoranalysis_core Qt6::Core Qt6::Gui)
 
 # Offline assertion checks for the calibration quality metrics. Like the
 # tagcore checks these are plain main() programs with assert(), not a
@@ -35,6 +43,16 @@ if(BUILD_SENSORANALYSIS_CHECKS)
     set_target_properties(${check} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
   endforeach()
+
+  # Requires the Qt-free core to match a verbatim copy of the Qt code it
+  # replaced, bit for bit, on the capture fixtures and synthetic cases. Links
+  # Qt for the reference half only.
+  add_executable(compass_core_parity_check test/compass_core_parity_check.cc)
+  target_link_libraries(compass_core_parity_check PRIVATE sensoranalysis_core Qt6::Core Qt6::Gui)
+  target_compile_definitions(
+    compass_core_parity_check PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(compass_core_parity_check PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 
   # A tool rather than a check: it takes a capture and prints what the
   # calibration code makes of it, and never decides anything is wrong. Built
