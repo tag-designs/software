@@ -13,23 +13,17 @@ from google.protobuf import json_format
 
 from _common import TagState, fail, open_tag, parser, run, state_name, wait_for_state, wait_settled, pb
 
-# Ack payloads that carry log data; anything else ends the log.
-DATA_LOGS = {"bittag_data_log", "prestag_data_log", "prestag_raw_data_log",
-             "bitprestag_data_log", "compasstag_data_log", "bittag_ng_data_log",
-             "imu_data_log", "imu_raw_data_log", "uiuctag_data_log"}
-
 # sizeof(t_PresTagRawBlock) in include/prestag_log_format.h: epoch, voltage and
 # temperature (12 bytes) and 60 four-byte raw samples.
 PRESTAG_RAW_BLOCK_BYTES = 12 + 60 * 4
 
 
 def records_in(page) -> int:
-    """How far one page advances the log index.
+    """How many records a page holds, which is how far it advances the index.
 
-    This mirrors what tagcore's log writers return for each payload (see
-    host/libraries/tagcore/sqlitelog/): a BitTag page holds one record per data
-    entry, a PresTag raw page one per raw block, and every other log type one
-    per page.
+    In tag-dwnld and qtmonitor the log writer reports this as it decodes the
+    page (host/libraries/tagcore/sqlitelog/): one per BitTag data entry, one
+    per PresTag raw block, and one per page for every other log type.
     """
     kind = page.WhichOneof("payload")
     if kind == "bittag_data_log":
@@ -60,10 +54,9 @@ def main() -> int:
             fail(f"Can't download from {state_name(status.state) if status else 'unknown'}; "
                  "stop the tag first (--stop)")
 
-        total_count = status.external_data_count or status.internal_data_count
-        if total_count <= 0:
-            print("No log records to download")
-            return 0
+        # Only a hint, for progress and for skipping missing blocks: the log
+        # ends when a page comes back without log data.
+        expected = status.external_data_count or status.internal_data_count
 
         header = {"tag_sha": tag.git_sha(), "info": as_dict(tag.get_info()),
                   "config": as_dict(tag.get_config()), "status": as_dict(status),
@@ -76,15 +69,18 @@ def main() -> int:
                 requests += 1
                 if page.error_message:
                     fail(page.error_message)
-                if page.err == pb.tag.Ack.NODATA and index < total_count:
-                    index += 1          # an unreadable entry; skip it, as tag-dwnld does
+                if page.err == pb.tag.Ack.NODATA and index < expected:
+                    index += 1          # a missing block inside the log; skip it
                     continue
-                if page.WhichOneof("payload") not in DATA_LOGS:
-                    break               # end of log
+                # Nothing came back: no payload (most tags) or one with no
+                # records (BitTag returns an empty bittag_data_log).
+                records = records_in(page) if page.WhichOneof("payload") else 0
+                if records == 0:
+                    break
                 out.write(json.dumps(as_dict(page), separators=(",", ":")) + "\n")
                 pages += 1
-                index += records_in(page)
-                print(f"\r{index}/{total_count}", end="", flush=True)
+                index += records
+                print(f"\r{index}/{expected}", end="", flush=True)
         print(f"\nDownloaded {index} records ({pages} pages) in {requests} requests "
               f"to {args.output}")
     return 0

@@ -46,11 +46,15 @@ code, and exits 1.
 - **`tag_dwnld.py` writes raw pages, not SQLite.** The first line is a header
   with the tag's information, configuration, status and state log; each
   further line is one page, the tag's `Ack` in protobuf JSON. Decoding stays
-  in tagcore's writers. To page through the log, the example needs to know how
-  many records each page holds. It mirrors what those writers return: BitTag
-  counts its data entries, PresTag raw counts 252-byte blocks, and every other
-  type counts one per page. A new log format with a different rule needs a
-  matching change there.
+  in tagcore's writers.
+- **Downloading pulls pages until nothing comes back**, as `tag-dwnld` and
+  qtmonitor do. Most tags end the log with an `Ack` that has no payload;
+  BitTag ends it with an empty `bittag_data_log`. The status's data counts are
+  only a hint, used for progress and for skipping a missing block. The index
+  advances by the records in each page, which the C++ log writers report as
+  they decode: one per BitTag data entry, one per 252-byte PresTag raw block,
+  and one per page for every other type. A new log format with a different
+  rule needs a matching change in `records_in()`.
 - **State changes are posted, not performed.** Start, stop and erase return
   when the tag accepts the request; the examples poll for the new state as the
   C++ tools do.
