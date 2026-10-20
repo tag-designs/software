@@ -51,7 +51,9 @@ BitTag at `56e5e6a0`, through a TagBase v7):
 - attaching after a timed-out session: 3 of 3 clean on the branch and 1 of 1
   on `main`, so the noisy detection after a timeout did not reproduce;
 - unplugging the base during a `GetStatus` loop: after 14 good calls,
-  `transport_failed == true` and `err == UNSPECIFIED`.
+  `transport_failed == true` and `err == UNSPECIFIED`;
+- `qtmonitor`, checked by the operator. BitTag has no calibration, so
+  `qtcalibrate` does not apply.
 
 Passed on 2026-10-20 on an IMUTag breakout (STM32U3, ID code `0x10016454`,
 UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
@@ -80,8 +82,6 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
 
 Still to check, then delete each item:
 
-- **No regressions on L4.** `qtmonitor` and `qtcalibrate` attach and poll
-  status, and `qtmonitor` starts and stops.
 - **Intermittent L4 attach failure through a TagBase v7.** 2 of about 32
   attaches to an IDLE BitTag V6 failed outright: detection logged `read debug
   register 0xe0042000/0xe0044000 failed status=0x81`, then the DEMCR read
@@ -99,4 +99,6 @@ Still to check, then delete each item:
   come from the MONITORSTOP status poll in `CallU3`: once the firmware handles
   the stop it returns to low power, and each poll fails until the 100 ms
   timeout, which the code already treats as a successful detach. This is
-  unchanged from `main`. The same fix as the noisy attach applies.
+  unchanged from `main`. Quieten it by ending the poll at the first failed
+  read once the kick has been delivered, or by logging those reads at debug
+  level.
