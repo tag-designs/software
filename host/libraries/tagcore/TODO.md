@@ -56,18 +56,19 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
   and `tag-reset` again, each reaching the expected state;
 - `Start` on the RUNNING tag refused with `err == PERM`,
   `transport_failed == false` and "Monitor request not permitted in current
-  tag state".
+  tag state";
+- unplugging the base during a `GetStatus` loop: after 27 good calls,
+  `transport_failed == true` and `err == UNSPECIFIED`.
 
 Still to check, then delete each item:
 
 - **No regressions.** `tag-start`, `tag-stop`, `tag-reset` and `tag-dwnld`
-  behave as on `main` on L4. `qtmonitor` and
-  `qtcalibrate` build, attach and poll status; `qtmonitor` also starts and
-  stops.
+  behave as on `main` on L4. `qtmonitor` and `qtcalibrate` attach and poll
+  status, and `qtmonitor` starts and stops, on L4 and U3.
 - **Writes on L4.** `--write-test <addr>` on an unused SRAM word taken from the
   map file of the exact build. On L4 the `monitor_shared` range is not
   guarded, so write only to a word known to be unused.
-- **LastError on failures.** `--start-running` on a running L4 tag gives
+- **LastError on failures on L4.** `--start-running` on a running tag gives
   `err == PERM` with `transport_failed == false`. `--unplug <s>`, unplugging
   the base mid-call, gives `transport_failed == true`.
 - **Noisy attach after a timed-out L4 session.** Attaching after a session has
