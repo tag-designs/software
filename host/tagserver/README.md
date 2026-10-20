@@ -90,14 +90,16 @@ connected. The tests stop each server with Ctrl-Break, which it handles like
 Ctrl-C: it detaches and exits 0. One test, a second server on a busy Unix
 socket, is skipped on Windows.
 
-Not yet verified on Windows:
+grpcxx v0.7.0 does not build as fetched with MSVC.
+[`CMakeLists.txt`](CMakeLists.txt) defines `NGHTTP2_NO_SSIZE_T`,
+force-includes `<stdexcept>`, and removes grpcxx's `lib/grpcxx` from its
+include path, where its `rpc.h` would shadow the Windows SDK's; `main.cc`
+includes `<uv.h>` before grpcxx for the same reason. A C2894 error ("templates
+cannot be declared to have 'C' linkage") means a grpcxx header has again been
+reached in place of an SDK one.
 
-- the `NGHTTP2_NO_SSIZE_T` definition in [`CMakeLists.txt`](CMakeLists.txt),
-  taken from grpcxx's own Windows CI;
-- grpcxx with the static `x64-windows-static-md` triplet;
-- Ctrl-Break handling.
-
-A build error from nghttp2 or libuv is the place to look first.
+The first configure in a new tree builds the vcpkg dependencies from source;
+expect it to take the better part of an hour.
 
 ### Recording the results
 
@@ -172,8 +174,6 @@ the two messages to match.
   socket itself and hands it to grpcxx's `run(socket)`, which works with
   standard gRPC clients but is not a documented grpcxx feature. On Windows that
   path checks the address family, so the server uses loopback TCP there.
-- **Not yet built or tested on Windows**, only on macOS arm64 and Linux
-  x86_64.
 - **No TLS and no authentication.** On TCP, listen on loopback only.
 - **grpcxx** is pre-1.0 with one maintainer. Clients see standard gRPC, so the
   official gRPC C++ library could replace it without changing any client.

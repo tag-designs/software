@@ -26,6 +26,11 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
+#else
+// Before grpcxx: reached through <grpcxx/server.h>, the SDK's
+// #include "rpc.h" searches that header's directory first and finds grpcxx's
+// rpc.h, inside uv.h's extern "C". Included here, uv.h's guard skips it there.
+#include <uv.h>
 #endif
 
 #include <cxxopts.hpp>

@@ -163,10 +163,11 @@ samples at 30 s), and `tag_reset --set-rtc` to IDLE. `tag_dwnld`'s progress
 read `1/25`: CompassTag's `external_data_count` is its write cursor in 16-bit
 words, not pages, so it is no use as the hint for that family.
 
-Still to check, then delete each item:
-
-- **Windows build** with `BUILD_TAG_SERVER=ON`, and the tests, following the
-  [how-to](../../tagserver/README.md#building-and-testing). On Windows the
-  server listens on loopback TCP. grpcxx has not been built with the static
-  `x64-windows-static-md` triplet, and the MSVC `NGHTTP2_NO_SSIZE_T` definition
-  and Ctrl-Break handling are untested.
+Passed on 2026-10-20 on **Windows 11 x64** (Visual Studio 2026, MSVC 19.50,
+CMake 4.2.3, `windows-vcpkg-static` preset with `x64-windows-static-md`,
+Python 3.14.5 with grpcio 1.84.0 and protobuf 7.36.2), following the
+[how-to](../../tagserver/README.md#building-and-testing), after three MSVC
+workarounds for grpcxx v0.7.0 now in `tagserver/CMakeLists.txt` and `main.cc`:
+15 tests pass without a tag, and 21 with `TAG_SERVER_HARDWARE=1` on the L4
+BitTag V6 (UUID `2035374D303150190059002F`, BitTag at `56e5e6a0`), the busy
+Unix socket test being skipped. `test_clean_shutdown` covers Ctrl-Break.

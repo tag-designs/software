@@ -28,6 +28,22 @@ if(MSVC)
   # its ptrdiff_t form. grpcxx's own Windows CI builds with this; not yet
   # verified in this project's Windows build.
   target_compile_definitions(grpcxx PRIVATE NGHTTP2_NO_SSIZE_T)
+  # grpcxx's uv/*.cpp use std::runtime_error without including <stdexcept>,
+  # which MSVC's standard headers do not pull in transitively.
+  target_compile_options(grpcxx PRIVATE /FIstdexcept)
+endif()
+if(WIN32)
+  # grpcxx's private_headers file set has no BASE_DIRS, so it defaults to
+  # lib/grpcxx and puts that directory on grpcxx's include path. There
+  # <windows.h>'s #include <rpc.h> finds grpcxx's rpc.h instead of the SDK's,
+  # inside uv.h's extern "C" (C2894). Drop that directory; grpcxx reaches its
+  # private headers by relative quoted includes. CMake records a file set's
+  # base directory in INCLUDE_DIRECTORIES when the set is created, so this
+  # edits that property rather than the set.
+  get_target_property(_grpcxx_includes grpcxx INCLUDE_DIRECTORIES)
+  list(REMOVE_ITEM _grpcxx_includes
+    "$<BUILD_INTERFACE:${grpcxx_SOURCE_DIR}/lib/grpcxx>")
+  set_property(TARGET grpcxx PROPERTY INCLUDE_DIRECTORIES ${_grpcxx_includes})
 endif()
 
 # Messages and the grpcxx service header for tag_service.proto. tag.proto and
