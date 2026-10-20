@@ -122,12 +122,24 @@ memory and hold a 15 s idle session on the server's keepalive:
 
 On both, the server detached and removed its socket on `SIGTERM`.
 
+Also passed on 2026-10-20 on the same U3 IMUTag, through the server, with the
+operator's agreement:
+
+- `set_rtc` and `start` from IDLE to RUNNING;
+- a second `start` refused with `FAILED_PRECONDITION`, `ack_err_name ==
+  "PERM"`, `transport_failed == False` and "Monitor request not permitted in
+  current tag state";
+- `stop` after 30 s, reaching FINISHED;
+- a download of all 17 pages through `get_data_log`, advancing the index by
+  one per raw page as `tag-dwnld` does. `tag-dwnld` also found 17 records, and
+  each page's epoch, subsecond ticks and temperature matched its `ImuHeader`
+  rows;
+- `erase` back to IDLE;
+- `write_u32` of two patterns to `0x20001070` read back correctly, and the
+  original `0x90CC97D6` was restored.
+
 Still to check, then delete each item:
 
-- **A state-changing script through the server**, with the operator's
-  agreement: `start`, a `start` refused with `ack_err_name == "PERM"`, `stop`,
-  paging `get_data_log`, `erase`, and a `write_memory` to an unused word.
-  Compare the log pages with `tag-dwnld`'s.
 - **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`. On Windows the
   server listens on loopback TCP, and grpcxx has not been built with the
   static `x64-windows-static-md` triplet.
