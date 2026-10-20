@@ -111,11 +111,13 @@ on macOS arm64: errors, the debug switch, attaching to a missing base, TCP,
 shutdown, and a second server on a busy socket. Still to check, then delete
 each item:
 
-- **On an L4 tag and a U3 tag:** with one base connected, run
+- **On a U3 tag:** with one base connected, run
   `TAG_SERVER_HARDWARE=1 TAG_SERVER_BIN=<build>/Release/bin/tag-server pytest
   host/python/tagclient`. It reads information, status, the state log and
   memory, and holds a 15 s idle session on the server's keepalive. It changes
-  no tag state.
+  no tag state. All 22 tests passed on 2026-10-20 on the L4 BitTag V6 (UUID
+  `2035374D303150190059002F`, BitTag at `56e5e6a0`), and the server detached
+  and removed its socket on `SIGTERM`.
 - **A state-changing script through the server**, with the operator's
   agreement: `start`, a `start` refused with `ack_err_name == "PERM"`, `stop`,
   paging `get_data_log`, `erase`, and a `write_memory` to an unused word.
