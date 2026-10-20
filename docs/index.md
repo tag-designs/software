@@ -95,6 +95,10 @@ design document.
 - [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
 - [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
 
+### Shared Contracts / Proposals
+
+- [Skipped Pages in a Data-Log Download](shared/design/proposals/data-log-end-and-skip.md) *(proposal, proposed)* — The tag marks a hole in its data log with a new Ack.Err value, DATASKIPPED; every other reply without records ends the log, so host downloaders follow one rule and no longer read Status data counts, whose units differ by family.
+
 ## Shared Contracts
 
 - [Proto Directory](../proto/README.md) — The protobuf schema shared by host tools and tag firmware, how each side compiles it, and which tool turns a tag's default-config JSON into C.

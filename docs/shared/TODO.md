@@ -38,12 +38,7 @@ Delete an item when it is done.
     example IMUTag's `state_run.c` on a flash error). qtmonitor stops when the
     index reaches it, so a low count truncates the download silently.
 
-  To decide:
-  - how the firmware tells a missing or unreadable block apart from the end of
-    the log;
-  - the unit a skip moves: a record for BitTag, a block or page elsewhere;
-  - whether the count bounds the download or only reports progress;
-  - whether the host records a gap in the stored log.
-
-  Then make `tag-dwnld`, qtmonitor and the `tagclient` example
-  (`host/python/tagclient/examples/tag_dwnld.py`) follow the same rule.
+  Proposed: the tag marks a hole with a new `Ack.Err` value, `DATASKIPPED`;
+  any other reply without records ends the log, and every downloader follows
+  one tagcore rule that reads no count. See
+  [data-log end and skipped pages](design/proposals/data-log-end-and-skip.md).
