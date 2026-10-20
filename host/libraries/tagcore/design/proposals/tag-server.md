@@ -1,0 +1,436 @@
+---
+type: proposal
+status: proposed
+summary: Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
+---
+
+# Simulated Tags and a Tag Server for Testing
+
+This proposal delivers two outcomes:
+
+1. **Applications tested against a simulated tag.** A new tagcore backend,
+   `SimBackend`, stands in for the USB link inside the process. With
+   `--simulate scenario.json`, `qtmonitor`, `qtcalibrate` and the command line
+   tools run their real tag-handling code against a scripted tag. No server
+   and no new dependency are involved.
+2. **Python, or any other gRPC language, driving a real tag, with a memory
+   side channel.** A standalone program, `tag-server`, attaches to one tag base
+   and serves the whole `Tag` API over gRPC on a local socket. It adds
+   read/write access to tag memory, which `TagMonitor` provides and keeps
+   mutually exclusive with monitor RPCs. `tag-server --simulate` serves the
+   simulated tag the same way, so the Python tests also run without hardware.
+
+`tag-server` is the only program that links gRPC, because gRPC adds about
+12 MB to each statically linked executable
+([measurements](../investigations/2026-10-grpc-cost.md)). Shipped applications
+and tools keep talking to the tag directly over USB.
+
+## Structure
+
+```text
+tagcore
+  Tag                      public API, unchanged, plus ReadMemory / WriteMemory / KeepAlive
+   │
+  TagBackend               internal interface: Attach, Rpc, Voltage, GitSha, stats, memory, rescue helpers
+   ├─ UsbBackend           TagMonitor over the ST-LINK; one lock covers RPCs, memory access and keepalive
+   └─ SimBackend           simulated tag driven by a scenario file
+
+qtmonitor, qtcalibrate, tag-*      ── Tag(UsbBackend)                    real tag, as today
+          … --simulate scenario    ── Tag(SimBackend)                    outcome 1, in-process
+Python ──grpcio──► tag-server      ── Tag(UsbBackend | SimBackend)       outcome 2
+```
+
+## The memory side channel
+
+`TagMonitor` gains `ReadMem(addr, length, buffer)` and `WriteMem(addr, data)`,
+built on the `ReadMem32`/`WriteMem32` it inherits from `LinkAdapt`. They
+generalise today's single-word `ReadMemWord`, used by `tag-peek`.
+
+- **Mutual exclusion lives in `TagMonitor`.** One mutex inside `TagMonitor`
+  guards `Rpc`, `ReadMem`, `WriteMem`, the keepalive and the field-rescue
+  helpers. A memory access therefore runs between monitor RPCs, never inside
+  one, whoever calls it. `Tag`'s own mutex stays, to protect its reusable
+  `Req` and `Ack`.
+- **Access goes through the debug port while the core runs.** It never halts
+  the core, so the monitor keeps working.
+- **Only while attached.** The firmware keeps the debug clocks running only
+  during a monitor session (see the `DBGMCU->CR` note in
+  [`pwr-l432.c`](../../../../../embedded/tags/common/core/src/pwr-l432.c)), so
+  a call made while detached fails rather than reading garbage.
+- **Guarded writes.** A write that overlaps the `monitor_shared` block
+  ([`monitor.h`](../../../../../include/monitor.h)) is refused unless the
+  caller forces it, because such a write would end the session the caller
+  depends on.
+- **Chunking.** Long reads and writes are split to fit the link's transfer
+  limit.
+
+`Tag::ReadMemory` and `Tag::WriteMemory` expose these to C++, and `tag-peek`
+becomes a thin user of them. `ReadMemWord` is then retired.
+
+## Keepalive
+
+The monitor drops its session if the host goes quiet:
+
+- **U3:** within 5-10 s. The firmware checks `host_activity` every
+  `MONITOR_HEARTBEAT_PERIOD_S`.
+- **L4:** after 60 s without a request.
+
+The applications never notice, because they poll every 100-400 ms. A Python
+script paused in a debugger would lose its session. `Tag::KeepAlive()` keeps
+the session alive:
+
+- **U3:** one SWD write of `host_activity`, which runs no code on the tag.
+- **L4:** a monitor request, `get_status` today.
+
+`tag-server` calls it from a timer while attached, skipping ticks when other
+traffic has already reached the tag.
+
+## Outcome 1: the simulated tag
+
+### SimBackend
+
+`SimBackend` implements `TagBackend` in plain C++, with no new dependencies.
+Everything above it runs its real code: `Tag`'s request building and reply
+decoding, and the application or tool. It models the tag only as far as host
+programs depend on it; it tests the host, never the firmware.
+
+- **Answers** come from the existing qtmonitor fixtures in
+  [`host/docs/fixtures/qtmonitor/`](../../../../docs/fixtures/qtmonitor/README.md):
+  `info`, `config`, `voltage`, and a `Status` per state. They are extended with
+  the optional sections the
+  [fake tag proposal](fake-tag-for-command-line-tools.md) defines:
+  `state`, `state_log`, `data_log`, `git_sha`, `settle`, `erase_polls`. One
+  more section, `calibration_log`, holds the pages returned in the calibrate
+  state, for `qtcalibrate`.
+  Data-log fixtures are captured from real tags, so a simulated download writes
+  a real log.
+- **State** follows the firmware's per-request permission rules in
+  [`monitor.c`](../../../../../embedded/tags/common/core/src/monitor.c). `Start`
+  and `SetRtc` require idle, `Erase` requires finished or aborted, `Calibrate`
+  requires idle. Anything else is refused with `Ack::PERM`. A rule that drifts
+  from the firmware is a bug in the simulator.
+- **Memory** is a sparse map the scenario can seed, so `ReadMemory` and
+  `WriteMemory` work; unmapped addresses fail.
+- **Behaviour over time** comes from the scenario's event list:
+
+```json
+{
+  "fixture": "bittag.json",
+  "events": [
+    { "on": "Start", "fail": "PERM", "times": 1 },
+    { "after_ms": 5000, "link": "drop", "for_ms": 3000 },
+    { "after_ms": 9000, "state": "finished" },
+    { "on": "GetDataLog", "delay_ms": 200 }
+  ]
+}
+```
+
+Events either fire on a call (`on`) or at a time after attach (`after_ms`).
+They can make a call fail with a given `Ack::Err` or a transport failure,
+delay a reply, drop and restore the link, or change state. A plain fixture
+file, with no `events`, is also a valid scenario.
+
+### Selecting it
+
+`Tag::Simulate(path)` switches a `Tag` to `SimBackend` before attach.
+`Available()` then lists one simulated base, and `Attach()` attaches to it.
+The applications add `--simulate <scenario>`. The command line tools add it in
+`parse_options()` ([`options.cc`](../../../../commandline/options.cc)), next to
+`--base`, so every tool built on `Tag` gets it.
+
+## Outcome 2: tag-server
+
+`tag-server` is a small C++ program on tagcore and gRPC, with no Qt:
+
+```sh
+tag-server [--base bus:device | --simulate scenario.json]
+           [--listen unix:///tmp/tag-server.sock] [--enable-debug]
+```
+
+- **One tag per server.** The server owns the `Tag`. Clients may attach and
+  detach it, or the server attaches at start-up when `--base` is given.
+  Concurrent clients are serialised by the locks above; there are no sessions.
+  Run two servers for two bases.
+- **The keepalive** runs while attached.
+- **Detach on exit.** The server sends `MONITORSTOP` when it shuts down,
+  including on a signal, so the tag returns to low power.
+- **Local by default.** It listens on a Unix domain socket. TCP only when
+  `--listen` names a TCP address. No TLS.
+
+### Interface: the Tag API, one call per method
+
+`proto/tag_service.proto`, beside [`tag.proto`](../../../../../proto/tag.proto)
+and reusing its messages, mirrors [`tagclass.h`](../../tagclass.h) one to one.
+The server method for each call is a few lines around the `Tag` method, so the
+mirror stays mechanical. Python and other languages get typed calls without
+reimplementing `Tag`'s request building.
+
+The mirror is cheap to keep because the `Tag` API rarely changes. The core
+calls (attach, information, configuration, status, start, stop, erase, test,
+clock and logs) are unchanged since the first commit in 2022. Later changes
+were additions: calibration in 2025, then diagnostics in 2026 (the debug
+message, statistics, rescue helpers and `ReadMemWord`). The memory side
+channel and `--enable-debug` cover that kind of addition. The only
+incompatible changes were two to `ReadCalibration`'s signature. What changes
+is the protocol's messages, and the service carries those unchanged:
+
+- **A new log type** (a new `Ack` payload and its message in
+  [`tagdata.proto`](../../../../../proto/tagdata.proto)) needs no server
+  change. `GetDataLog` returns the whole `Ack`, and Python sees the new type
+  once its stubs are regenerated.
+- **New fields in `Config`, `Status` or `TagInfo`** pass through the same way.
+- **The simulator's fixtures** are protobuf JSON, so they can carry new fields
+  and log types without changes to the reader.
+- **Only a new `Tag` method** needs a new call in the service. A new `Req` is
+  usable through `Call` before then.
+
+| `Tag` method | gRPC call | Notes |
+| --- | --- | --- |
+| `Available` | `ListDevices` | |
+| `Attach` / `Detach` / `IsAttached` | `Attach` / `Detach` / `IsAttached` | `Attach` takes a device from `ListDevices`, or none for the only one |
+| `GetTagInfo` / `GetConfig` / `GetStatus` | `GetInfo` / `GetConfig` / `GetStatus` | |
+| `Start` / `Stop` / `Erase` / `Calibrate` / `Test` | same names | |
+| `SetRtc` | `SetRtc` | the server's clock, aligned to the next second |
+| `GetStateLog` / `GetDataLog` / `GetCalibrationLog` | same names | paged by index, as in C++ |
+| `ReadCalibration` / `WriteCalibration` | same names | |
+| `Voltage` / `GitSha` | same names | |
+| `GetLinkStats` / `GetMonitorStats` / `Reset…Stats` | same names | |
+| `ReadMemory` / `WriteMemory` | `ReadMemory` / `WriteMemory` | only with `--enable-debug` |
+| `ForceBackupState` / `CountBitTagLogHeaders` / `GetBitTagLogFromFlash` | same names | field rescue; only with `--enable-debug` |
+| `DebugMessage` | — | replaced by status details on each call |
+| — | `Call(Req) returns (Ack)` | raw pass-through, for requests that have no call yet |
+
+The memory messages:
+
+```proto
+message MemRead  { uint32 address = 1; uint32 length = 2; }
+message MemWrite { uint32 address = 1; bytes data = 2; bool force = 3; }
+message MemData  { bytes data = 1; }
+```
+
+**Errors.** A failed call returns a gRPC status code. The `Ack::Err` and the
+tag's error message go in the status details:
+
+| Status code | Cause |
+| --- | --- |
+| `FAILED_PRECONDITION` | `Ack::PERM`, or not attached |
+| `INVALID_ARGUMENT` | `Ack::INVAL` |
+| `RESOURCE_EXHAUSTED` | `Ack::NODATA` |
+| `UNAVAILABLE` | USB or monitor failure |
+| `NOT_FOUND` | no device |
+
+This needs one small addition to `Tag`: `LastError()`, returning the last
+`Ack::Err`, its message, and whether the transport failed. Today that
+information is folded into `bool` and `DebugMessage()`.
+
+### Python
+
+A small pure-Python package: stubs generated by `grpcio-tools` from `proto/`,
+plus a wrapper that turns status codes into exceptions and detaches in a
+`with` block. It depends only on `grpcio` and `protobuf`, so it installs with
+`pip` on any platform, with no native build. The script needs no USB access;
+the server does.
+
+## Scenarios
+
+### 1. Shipped applications and tools on a real tag
+
+Unchanged in behaviour: `Tag` over `UsbBackend`, the applications' own
+polling, no gRPC and no size change.
+
+*Cost:* the `TagBackend` extraction and the lock moving into `TagMonitor` are
+changes to the shipped code path, verified on L4 and U3 hardware before
+release.
+
+### 2. A Qt application against a simulated tag
+
+```sh
+qtmonitor --simulate host/docs/fixtures/qtmonitor/scenarios/start-refused.json
+```
+
+`qtmonitor` attaches to the simulated base and runs its real code against it:
+the status poll, the configuration tabs, start, stop, erase and download. The
+scenario supplies the tag's side: a refused `Start`, a link drop while
+running, a slow download.
+
+The test drives the window through Qt Test, or through the existing
+screenshot automation, and checks what the window shows. Nothing runs outside
+the application process, so it works offscreen in CI
+(`QT_QPA_PLATFORM=offscreen`). `qtcalibrate --simulate` works the same way,
+with calibration samples taken from the fixture's calibration log.
+
+Today's `--fake-fixture` and `--replay-capture` modes render fixture data
+without the live `Tag` path. They can be retired once the screenshot
+automation runs on `--simulate`.
+
+### 3. Command line tools
+
+Shipped tools still talk to USB directly. `--simulate` gives the
+hardware-free checks the fake tag proposal wants, for exit status, output,
+call order and error paths, with no separate fake build:
+
+```sh
+tag-info --simulate bittag.json --json        # the contract flash_release.py relies on
+tag-reset --simulate settle-timeout.json      # expect exit 1, naming STATE_UNSPECIFIED
+tag-dwnld --simulate bittag-with-log.json out.sqlite
+```
+
+A Python script runs these scenarios and checks the results, as that proposal
+describes. Tools that work below `Tag` (`tag-capture`, `tag-rebuild`,
+`tag-xflash`, `tag-sramcall`) drive SWD and the SRAM loaders directly and stay
+out of scope.
+
+### 4. A Python test program on a real tag
+
+```sh
+tag-server --base 1:4
+```
+
+```python
+from tagclient import TagClient            # wrapper over the generated stubs
+from tagclient.proto import tag_pb2
+
+with TagClient("unix:///tmp/tag-server.sock") as tag:
+    print(tag.get_info().uuid, tag.git_sha())
+    tag.start(make_config())
+    while tag.get_status().state != tag_pb2.RUNNING:
+        time.sleep(0.5)
+    ...
+    tag.stop()
+    for page in tag.data_log_pages():       # GetDataLog paging, as tag-dwnld does it
+        decode(page)
+```
+
+The server's keepalive holds the session while the script sleeps or sits at a
+breakpoint. Each call costs about 80 µs on top of the monitor RPC.
+
+### 5. Python with the memory side channel
+
+```sh
+tag-server --base 1:4 --enable-debug
+```
+
+```python
+fw = Firmware.for_sha(tag.git_sha())         # ELF from the matching build; pyelftools
+tag.start(cfg)
+fifo = tag.read_memory(fw.symbol("imu_fifo_cfg"), 4)
+tag.write_memory(fw.symbol("debug_trace_enable"), b"\x01\x00\x00\x00")
+```
+
+Reads and writes go between monitor RPCs, so the test can check firmware
+variables or peripheral registers while it drives the tag through the normal
+interface. Symbol lookup stays in Python; the server knows nothing about
+firmware layouts. Repeated `tag-peek` runs, each attaching and detaching, are
+no longer needed.
+
+### 6. Python against a simulated tag
+
+```sh
+tag-server --simulate scenarios/start-refused.json
+```
+
+The same scripts as scenarios 4 and 5, with no hardware. A pytest fixture
+starts a server per test on a temporary socket, with the scenario that test
+needs. The scenario also seeds the simulated memory, so side-channel tests can
+check their own logic, though not the firmware.
+
+### 7. C++ test programs
+
+Programs in the tree, such as `tag-test` or a future hardware check, call
+`Tag::ReadMemory`/`WriteMemory` directly, with no server. They can also use
+`Tag::Simulate` to run without hardware.
+
+### 8. Continuous integration
+
+A Linux runner with no hardware runs:
+
+- the applications against `--simulate` scenarios (offscreen);
+- the command line checks;
+- the Python tests against `tag-server --simulate`.
+
+Only the job that builds `tag-server` builds gRPC, once per gRPC version
+through the vcpkg binary cache.
+
+### Not supported
+
+- **An application and a script sharing one base.** A shipped application owns
+  the USB link, and the applications have no gRPC client. Run the script alone
+  through `tag-server`, or the application alone.
+- **Driving a running application's simulated tag from outside.** The
+  scenario file is fixed when the application starts. If a test ever needs to
+  steer the simulator interactively while an application runs, the remedy is a
+  gRPC client backend in development builds, rejected below for now.
+
+## Build
+
+| Item | Build option or setting |
+| --- | --- |
+| `SimBackend` | always built: no dependencies, small |
+| `tag-server` | `BUILD_TAG_SERVER`, default `OFF` |
+| gRPC | an optional vcpkg manifest feature, enabled through `VCPKG_MANIFEST_FEATURES` only when the server is built. Release packages neither build nor link it. |
+| Static triplets | need the c-ares `pipe2` workaround from the [measurements](../investigations/2026-10-grpc-cost.md) |
+| Python stubs | generated from `proto/`, which stays the only schema source |
+
+`tag-server` (13 MB) could later be packaged as an optional tool, for labs
+that want Python access without building from source.
+
+## Relationship to existing proposals
+
+- **[Python interface](python-interface.md).** For test and automation use,
+  this replaces its pybind11 extension and wheel packaging with a pure-Python
+  gRPC client. The Python proposal's API shape (context manager, exceptions,
+  protobuf messages as values) carries over to the wrapper. Its shared
+  download service is still worth doing, so that `tag-dwnld` and a Python
+  downloader share one loop. An in-process binding can be added later on the
+  same `TagBackend` seam if a program must own the USB link without a server.
+- **[Fake tag for the command line tools](fake-tag-for-command-line-tools.md).**
+  Its fixture extensions and check scenarios carry over. Its link-time
+  replacement of `Tag` is replaced by the runtime `SimBackend` that proposal
+  pointed to as the better seam.
+
+## Rejected alternatives
+
+- **The applications and tools as gRPC clients of the server**, for the
+  simulator or for sharing a base. The in-process `SimBackend` meets outcome 1
+  with no dependency. Putting gRPC in the applications costs 12 MB each, and
+  about 200 MB across the command line tools.
+- **A sparse server exposing only `Call(Req) → Ack` and memory access.** Every
+  client language would reimplement `Tag`'s request building and reply
+  decoding. The full mirror is mechanical and keeps that code in one place.
+- **Sessions, server-side status streaming and a streaming download.** Not
+  needed for either outcome. Each can be added later without changing the
+  calls above.
+- **grpcxx**: server only, no streaming, TCP only. **Qt GRPC**: client only,
+  GPLv3 or commercial. **Length-prefixed `Req`/`Ack` over a socket**: no
+  dependency, but no generated clients for other languages. Details in the
+  [measurements](../investigations/2026-10-grpc-cost.md).
+
+## Phases
+
+1. **Side channel.** The lock, `ReadMem`, `WriteMem` and `KeepAlive` in
+   `TagMonitor`; `Tag::ReadMemory`, `WriteMemory`, `KeepAlive` and
+   `LastError`; `tag-peek` moved onto them. Verify on L4 and U3.
+2. **Simulator.** Extract `TagBackend`; add `SimBackend` with the scenario
+   reader; `--simulate` in `qtmonitor`, `qtcalibrate` and the tools; the first
+   command line checks and scenarios. **Outcome 1 is complete.**
+3. **Server.** `tag-server` with the full `Tag` mirror, keepalive and
+   `--enable-debug`; the vcpkg feature and triplet workaround; the Python
+   package and its pytest fixtures. **Outcome 2 is complete.**
+
+Phases 1 and 2 add no dependencies, and phase 1 is useful on its own to C++
+tests and `tag-peek`.
+
+## Open questions
+
+1. **Whether shipped builds expose `--simulate`.** It costs nothing to keep,
+   and it is useful for demonstrations and training, but it is one more option
+   for users to meet.
+2. **Windows sockets.** gRPC supports Unix domain sockets on recent Windows 10
+   and 11. Confirm with the static Windows build, or default to a loopback TCP
+   port there.
+3. **L4 keepalive.** Is `get_status` every 20 s acceptable, or should the
+   firmware gain a no-op request? U3 needs no firmware change.
+4. **Write guard scope.** Is the `monitor_shared` block enough, or should flash
+   and the debug and system-control registers also need `force`?
+5. **Python package home.** `host/python/`, as in the Python proposal, or
+   beside the server.

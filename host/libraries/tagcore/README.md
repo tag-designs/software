@@ -58,6 +58,11 @@ Design documents:
 - [`design/proposals/python-interface.md`](design/proposals/python-interface.md):
   proposed Python binding API, native/protobuf boundary, shared download
   service, packaging, and testing plan. No binding exists yet.
+- [`design/proposals/tag-server.md`](design/proposals/tag-server.md):
+  proposed in-process simulated tag for testing the applications and tools,
+  and a standalone gRPC tag server, with a memory read/write side channel, for
+  Python tests. Its cost measurements are in
+  [`design/investigations/2026-10-grpc-cost.md`](design/investigations/2026-10-grpc-cost.md).
 
 This library should remain Qt-free. Qt applications can link it, but reusable
 Qt UI code belongs in `../sensorui` or `../../common`.
