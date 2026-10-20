@@ -69,8 +69,8 @@ the app needs, and the Qt frameworks those modules link to
 (`cmake/PruneMacosQml.cmake`, option `MACOS_PRUNE_UNUSED_QML`), before
 signing. With a full Qt this keeps GPL-only modules the app does not use,
 such as Qt Virtual Keyboard, out of the package.
-`compviz` source remains in the tree for reference, but it is retired from the
-normal build and packaging paths now that `sensorviz` handles CompassTag logs.
+The retired `compviz` CompassTag viewer was removed once `sensorviz` handled
+CompassTag logs; its source is in git history.
 
 ## Maintenance Guidelines
 

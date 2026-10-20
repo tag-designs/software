@@ -327,11 +327,7 @@ design document.
 
 ### Applications
 
-- [Host Applications](../host/applications/README.md) — Table of the Qt host applications and their targets, noting compviz is retired.
-
-### Applications / compviz
-
-- [CompViz Architecture Notes](../host/applications/compviz/README.md) *(historical)* — Architecture notes for the retired CompViz CompassTag viewer, superseded by sensorviz.
+- [Host Applications](../host/applications/README.md) — Table of the Qt host applications and their targets.
 
 ### Applications / qtcalibrate
 

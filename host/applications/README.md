@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Table of the Qt host applications and their targets, noting compviz is retired.
+summary: Table of the Qt host applications and their targets.
 ---
 
 # Host Applications
@@ -17,9 +17,8 @@ application-specific SQLite/UI glue.
 | `btdataviz/` | `btviz` | Legacy BitTag visualization. |
 | `sensorviz/` | `sensorviz` | General sensor SQLite log visualization, including CompassTag logs. |
 
-`compviz/` remains in the source tree as retired CompassTag viewer reference
-code. It is no longer part of the normal host build or package because
-`sensorviz` covers CompassTag SQLite logs.
+The retired `compviz` CompassTag viewer has been removed; `sensorviz` covers
+CompassTag SQLite logs, and the old source is in git history.
 
 Shared Qt helpers are exposed through the `host_common` CMake target from
 `../common`. Reusable plotting and sensor widgets should come from
