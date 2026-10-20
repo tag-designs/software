@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
+summary: Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
 ---
 
 # Simulated Tags and a Tag Server for Testing
@@ -20,10 +20,12 @@ This proposal delivers two outcomes:
    mutually exclusive with monitor RPCs. `tag-server --simulate` serves the
    simulated tag the same way, so the Python tests also run without hardware.
 
-`tag-server` is the only program that links gRPC, because gRPC adds about
-12 MB to each statically linked executable
-([measurements](../investigations/2026-10-grpc-cost.md)). Shipped applications
-and tools keep talking to the tag directly over USB.
+`tag-server` is built on [grpcxx](https://github.com/uatuko/grpcxx), a small
+gRPC server library. That adds about 0.25 MB and half a minute of build time,
+where the official gRPC C++ library adds 12 MB and over an hour of cold
+dependency build ([measurements](../investigations/2026-10-grpc-cost.md)).
+Clients see standard gRPC, so Python uses the ordinary `grpcio` package.
+Shipped applications and tools keep talking to the tag directly over USB.
 
 ## Structure
 
@@ -140,11 +142,12 @@ The applications add `--simulate <scenario>`. The command line tools add it in
 
 ## Outcome 2: tag-server
 
-`tag-server` is a small C++ program on tagcore and gRPC, with no Qt:
+`tag-server` is a small C++ program on tagcore and grpcxx, with no Qt:
 
 ```sh
 tag-server [--base bus:device | --simulate scenario.json]
-           [--listen unix:///tmp/tag-server.sock] [--enable-debug]
+           [--listen unix:/tmp/tag-server.sock | --listen 127.0.0.1:50061]
+           [--enable-debug]
 ```
 
 - **One tag per server.** The server owns the `Tag`. Clients may attach and
@@ -154,8 +157,51 @@ tag-server [--base bus:device | --simulate scenario.json]
 - **The keepalive** runs while attached.
 - **Detach on exit.** The server sends `MONITORSTOP` when it shuts down,
   including on a signal, so the tag returns to low power.
-- **Local by default.** It listens on a Unix domain socket. TCP only when
-  `--listen` names a TCP address. No TLS.
+- **Local by default.** On Linux and macOS it listens on a Unix domain socket,
+  and on Windows on loopback TCP (see below). It uses TCP on other addresses
+  only when `--listen` names one. No TLS.
+
+### Server library: grpcxx
+
+grpcxx is a C++20 gRPC server: HTTP/2 through nghttp2, I/O through libuv, and
+protobuf for messages. It has no client, no streaming and no TLS. The revised
+interface needs none of these, since every call is unary and clients come from
+the standard gRPC packages. Its code generator, `protoc-gen-grpcxx`, writes only
+the service header (`*.grpcxx.pb.h`). The messages come from the ordinary
+`protoc --cpp_out`, so they are the same `libprotobuf` classes `Tag` already
+uses. A handler is a template specialisation per call:
+
+```cpp
+template <>
+rpcGetStatus::result_type ServiceImpl::call<rpcGetStatus>(grpcxx::context &, const Empty &) {
+  Status status;
+  if (!tag.GetStatus(status)) return {to_grpc_status(tag.LastError()), std::nullopt};
+  return {grpcxx::status::code_t::ok, status};
+}
+```
+
+What the measurements found when integrating it
+([details](../investigations/2026-10-grpc-cost.md#grpcxx)):
+
+- **The protobuf version check.** grpcxx asks `find_package(Protobuf
+  3.15.0)`, but protobuf's CMake package accepts only requests with major
+  version 6 (its C++ library version), so the project sets
+  `PROTOBUF_MINVERSION=6.0`.
+- **Building the code generator** needs `libprotoc`, which vcpkg installs only
+  for the host triplet, so `protoc-gen-grpcxx` is built as a host tool.
+- **Static linking** needs `BUILD_SHARED_LIBS=OFF`, since grpcxx otherwise
+  builds a shared library.
+- **Unix sockets.** grpcxx's `run(socket)` accepts a socket the caller has
+  already bound. `tag-server` binds the Unix socket itself and passes it in;
+  this worked with `grpcio` clients. On Windows that path checks the address
+  family, so the server uses loopback TCP there.
+- **The error message header.** grpcxx sends the status code and
+  `grpc-status-details-bin`, but no `grpc-message`. See *Errors* below.
+
+grpcxx is pre-1.0 and has one maintainer, which is acceptable for an optional
+test tool. The server code it touches is small, and because clients see
+standard gRPC, the official gRPC C++ library could replace it later without
+changing any client.
 
 ### Interface: the Tag API, one call per method
 
@@ -208,8 +254,9 @@ message MemWrite { uint32 address = 1; bytes data = 2; bool force = 3; }
 message MemData  { bytes data = 1; }
 ```
 
-**Errors.** A failed call returns a gRPC status code. The `Ack::Err` and the
-tag's error message go in the status details:
+**Errors.** A failed call returns a gRPC status code. The details carry a
+`google.rpc.Status` whose message is the tag's error message. That status in
+turn holds a `TagError { Ack.Err err = 1; }` in its details. The codes:
 
 | Status code | Cause |
 | --- | --- |
@@ -223,11 +270,20 @@ This needs one small addition to `Tag`: `LastError()`, returning the last
 `Ack::Err`, its message, and whether the transport failed. Today that
 information is folded into `bool` and `DebugMessage()`.
 
+Because grpcxx sends no `grpc-message` header, the `grpcio-status` helper
+(`rpc_status.from_call`) rejects these errors: it requires the message inside
+the details to match the header. The Python wrapper instead reads
+`grpc-status-details-bin` from the call's trailing metadata and parses the
+`google.rpc.Status` itself, which takes three lines. A small grpcxx change to
+send the header would let clients use the standard helper; see the open
+questions. `google/rpc/status.proto` is vendored into `proto/`; it is
+Apache-2.0 licensed.
+
 ### Python
 
 A small pure-Python package: stubs generated by `grpcio-tools` from `proto/`,
-plus a wrapper that turns status codes into exceptions and detaches in a
-`with` block. It depends only on `grpcio` and `protobuf`, so it installs with
+plus a wrapper that turns status codes into exceptions (with the tag's message
+and `Ack::Err` from the details) and detaches in a `with` block. It depends only on `grpcio` and `protobuf`, so it installs with
 `pip` on any platform, with no native build. The script needs no USB access;
 the server does.
 
@@ -290,7 +346,7 @@ tag-server --base 1:4
 from tagclient import TagClient            # wrapper over the generated stubs
 from tagclient.proto import tag_pb2
 
-with TagClient("unix:///tmp/tag-server.sock") as tag:
+with TagClient("unix:///tmp/tag-server.sock") as tag:   # grpcio's form of unix:/tmp/tag-server.sock
     print(tag.get_info().uuid, tag.git_sha())
     tag.start(make_config())
     while tag.get_status().state != tag_pb2.RUNNING:
@@ -302,7 +358,8 @@ with TagClient("unix:///tmp/tag-server.sock") as tag:
 ```
 
 The server's keepalive holds the session while the script sleeps or sits at a
-breakpoint. Each call costs about 80 µs on top of the monitor RPC.
+breakpoint. A call from Python costs about 65 µs over the Unix socket (about
+100 µs over loopback TCP) on top of the monitor RPC, which takes milliseconds.
 
 ### 5. Python with the memory side channel
 
@@ -348,8 +405,8 @@ A Linux runner with no hardware runs:
 - the command line checks;
 - the Python tests against `tag-server --simulate`.
 
-Only the job that builds `tag-server` builds gRPC, once per gRPC version
-through the vcpkg binary cache.
+Only the job that builds `tag-server` builds grpcxx and its dependencies,
+which takes about half a minute.
 
 ### Not supported
 
@@ -367,12 +424,12 @@ through the vcpkg binary cache.
 | --- | --- |
 | `SimBackend` | always built: no dependencies, small |
 | `tag-server` | `BUILD_TAG_SERVER`, default `OFF` |
-| gRPC | an optional vcpkg manifest feature, enabled through `VCPKG_MANIFEST_FEATURES` only when the server is built. Release packages neither build nor link it. |
-| Static triplets | need the c-ares `pipe2` workaround from the [measurements](../investigations/2026-10-grpc-cost.md) |
+| grpcxx | pinned to a release, fetched only when `BUILD_TAG_SERVER` is on. It is built either by FetchContent with a URL hash, fetching its own libuv, nghttp2 and fmt, or by a vcpkg overlay port using vcpkg's `libuv`, `nghttp2` and `fmt` (`GRPCXX_HERMETIC_BUILD=OFF`). Release packages neither build nor link it. |
+| `protoc-gen-grpcxx` | built for the host, with the host triplet's `libprotoc` |
 | Python stubs | generated from `proto/`, which stays the only schema source |
 
-`tag-server` (13 MB) could later be packaged as an optional tool, for labs
-that want Python access without building from source.
+`tag-server` is about 2 MB stripped, so it could later be packaged as an
+optional tool, for labs that want Python access without building from source.
 
 ## Relationship to existing proposals
 
@@ -392,45 +449,67 @@ that want Python access without building from source.
 
 - **The applications and tools as gRPC clients of the server**, for the
   simulator or for sharing a base. The in-process `SimBackend` meets outcome 1
-  with no dependency. Putting gRPC in the applications costs 12 MB each, and
-  about 200 MB across the command line tools.
+  with no dependency. grpcxx has no client, so the applications would need the
+  official gRPC C++ client: 12 MB each, and about 200 MB across the command
+  line tools.
+- **The official gRPC C++ library for the server.** It works and is mature,
+  but adds 12 MB (a third of it OpenSSL, which cannot be left out), more than
+  an hour of cold dependency build, and a c-ares fix in the static triplets.
+  It remains a drop-in replacement if grpcxx stalls, since clients would not
+  change.
 - **A sparse server exposing only `Call(Req) → Ack` and memory access.** Every
   client language would reimplement `Tag`'s request building and reply
   decoding. The full mirror is mechanical and keeps that code in one place.
 - **Sessions, server-side status streaming and a streaming download.** Not
   needed for either outcome. Each can be added later without changing the
   calls above.
-- **grpcxx**: server only, no streaming, TCP only. **Qt GRPC**: client only,
-  GPLv3 or commercial. **Length-prefixed `Req`/`Ack` over a socket**: no
-  dependency, but no generated clients for other languages. Details in the
+- **Qt GRPC**: client only, GPLv3 or commercial. **Length-prefixed
+  `Req`/`Ack` over a socket**: no dependency, but no generated clients for
+  other languages. Details in the
   [measurements](../investigations/2026-10-grpc-cost.md).
 
 ## Phases
 
-1. **Side channel.** The lock, `ReadMem`, `WriteMem` and `KeepAlive` in
-   `TagMonitor`; `Tag::ReadMemory`, `WriteMemory`, `KeepAlive` and
-   `LastError`; `tag-peek` moved onto them. Verify on L4 and U3.
-2. **Simulator.** Extract `TagBackend`; add `SimBackend` with the scenario
-   reader; `--simulate` in `qtmonitor`, `qtcalibrate` and the tools; the first
-   command line checks and scenarios. **Outcome 1 is complete.**
-3. **Server.** `tag-server` with the full `Tag` mirror, keepalive and
-   `--enable-debug`; the vcpkg feature and triplet workaround; the Python
-   package and its pytest fixtures. **Outcome 2 is complete.**
+The server comes first, so Python test programs can be written against real
+tags before anything changes in how the applications reach a tag.
 
-Phases 1 and 2 add no dependencies, and phase 1 is useful on its own to C++
-tests and `tag-peek`.
+1. **Monitor additions.** The lock, `ReadMem`, `WriteMem` and `KeepAlive` in
+   `TagMonitor`; `Tag::ReadMemory`, `WriteMemory`, `KeepAlive` and
+   `LastError`; `tag-peek` moved onto them. These are additions; the existing
+   calls behave as before. Verify on L4 and U3.
+2. **Server.** `tag-server` on grpcxx, using `Tag` directly over USB: the full
+   `Tag` mirror, keepalive, detach on exit and `--enable-debug`; the Python
+   package. **Outcome 2 is complete on real tags.** No `TagBackend` is needed
+   yet, and the applications are untouched.
+3. **Simulator.** Extract `TagBackend`; add `SimBackend` with the scenario
+   reader; `--simulate` in `qtmonitor`, `qtcalibrate`, the tools and
+   `tag-server`; the first command line checks and scenarios; pytest fixtures
+   that start a simulated server per test. **Outcome 1 is complete, and the
+   Python tests also run without hardware.**
+
+Phases 1 and 3 add no dependencies. Phase 1 is useful on its own to C++ tests
+and `tag-peek`. Phase 3 is the only one that changes how the shipped
+applications reach a tag, through the backend extraction.
 
 ## Open questions
 
 1. **Whether shipped builds expose `--simulate`.** It costs nothing to keep,
    and it is useful for demonstrations and training, but it is one more option
    for users to meet.
-2. **Windows sockets.** gRPC supports Unix domain sockets on recent Windows 10
-   and 11. Confirm with the static Windows build, or default to a loopback TCP
-   port there.
-3. **L4 keepalive.** Is `get_status` every 20 s acceptable, or should the
+2. **Windows.** grpcxx's own CI builds on Windows, but not yet with the
+   project's static `x64-windows-static-md` configuration. Confirm that, and
+   confirm loopback TCP as the Windows default.
+3. **Upstream or carry.** Three small grpcxx changes would remove workarounds:
+   - a protobuf version check that accepts the 6.x package;
+   - sending `grpc-message`;
+   - a documented way to listen on a Unix socket.
+
+   Offer them upstream, or carry them as patches.
+4. **How to pin grpcxx:** FetchContent with a hash (simplest), or a vcpkg
+   overlay port (binary caching, shared `libuv`/`nghttp2`/`fmt`).
+5. **L4 keepalive.** Is `get_status` every 20 s acceptable, or should the
    firmware gain a no-op request? U3 needs no firmware change.
-4. **Write guard scope.** Is the `monitor_shared` block enough, or should flash
+6. **Write guard scope.** Is the `monitor_shared` block enough, or should flash
    and the debug and system-control registers also need `force`?
-5. **Python package home.** `host/python/`, as in the Python proposal, or
+7. **Python package home.** `host/python/`, as in the Python proposal, or
    beside the server.

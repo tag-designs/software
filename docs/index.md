@@ -389,14 +389,14 @@ design document.
 
 ### Libraries / tagcore / Investigations
 
-- [Cost of gRPC C++ in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of adding gRPC C++ to the host build on macOS arm64 - cold vcpkg build time, +12 MB per static executable (a third of it OpenSSL), call latency - and a c-ares build failure on the static triplet.
+- [Cost of a gRPC Server in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
 - [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 
 ### Libraries / tagcore / Proposals
 
 - [A Fake Tag for Testing the Command Line Tools](../host/libraries/tagcore/design/proposals/fake-tag-for-command-line-tools.md) *(proposal, proposed)* — Test the command line tools without hardware by linking them against a fixture-driven fake of tagcore's Tag class in a check-only build; shipped binaries are unchanged, and the runtime fake backend the Python binding needs is left to that work.
 - [Recovery Library: Identification, Rescue and Python](../host/libraries/tagcore/design/proposals/recovery-identification-rescue-python.md) *(proposal, proposed)* — The unbuilt parts of the SWD recovery library - identifying older images by hash and strings, the rescue-erase procedure, and the Python binding - with the check that ends each.
-- [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
+- [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
 ### Libraries / tagcore / recovery

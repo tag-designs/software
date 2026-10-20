@@ -1,10 +1,10 @@
 ---
 type: investigation
 status: closed
-summary: Measured cost of adding gRPC C++ to the host build on macOS arm64 - cold vcpkg build time, +12 MB per static executable (a third of it OpenSSL), call latency - and a c-ares build failure on the static triplet.
+summary: Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
 ---
 
-# Cost of gRPC C++ in the Host Build (2026-10)
+# Cost of a gRPC Server in the Host Build (2026-10)
 
 Adding the official gRPC C++ library adds about **12 MB to every statically
 linked executable**, about 4 MB of which is OpenSSL even when no channel uses
@@ -12,8 +12,13 @@ TLS. It costs about **70 minutes of cold vcpkg build time** on an M2 (the host
 code generator plus the static library), which vcpkg's binary cache reduces to
 once per gRPC version. Call latency is 20 µs in-process and 81 µs over a Unix
 socket, negligible next to an SWD monitor RPC. c-ares, a required gRPC
-dependency, does not currently build for `arm64-osx-static`. These numbers
-inform the [tag server proposal](../proposals/tag-server.md).
+dependency, does not currently build for `arm64-osx-static`.
+
+[grpcxx](#grpcxx), a server-only gRPC library, adds **0.24 MB** and builds,
+dependencies included, in **about half a minute**. The standard Python
+`grpcio` client works against it for typed calls, the raw `Call`, memory
+read/write and error codes, over TCP and over a Unix socket. These numbers
+led the [tag server proposal](../proposals/tag-server.md) to choose grpcxx.
 
 ## Setup
 
@@ -106,10 +111,63 @@ A unary `Call` returning an `Ack` with an empty `Status`:
 | In-process | 20 µs |
 | Unix domain socket | 81 µs |
 
-## Alternatives checked
+## grpcxx
 
-- **grpcxx** (v0.7.0): server only, unary only, TCP only, not in vcpkg. It
-  cannot provide the C++ client or the streaming calls the proposal needs.
+grpcxx v0.7.0 (HTTP/2 through nghttp2, I/O through libuv, C++20) has no
+client, no streaming and no TLS. It was measured once the proposal needed only
+a unary server, with Python clients.
+
+### Setup
+
+- The same machine, vcpkg protobuf and triplet as above, fetched with
+  FetchContent and `GRPCXX_HERMETIC_BUILD=ON`, which fetches and builds libuv,
+  nghttp2 and fmt.
+- A service with `GetStatus`, `Start`, `Stop`, `Voltage`, `Call(Req)
+  returns (Ack)`, `ReadMemory` and `WriteMemory`, backed by a fake tag with a
+  state machine, a sparse memory map and a refused write to the
+  `monitor_shared` range.
+- A Python client on `grpcio` 1.84.0 and `protobuf` 7.36.2, with stubs from
+  `grpcio-tools`.
+
+### Results
+
+| Measure | grpcxx | Official gRPC (above) |
+| --- | --- | --- |
+| Cold build of the library and its dependencies | 33 s (configure 21 s, build 12 s) | about 70 min |
+| Server, stripped, static | 1.63 MB | 13.34 MB |
+| Over protobuf alone (1.39 MB) | +0.24 MB | +12 MB |
+| Python `GetStatus` round trip, loopback TCP | 103 µs | — |
+| Python `GetStatus` round trip, Unix socket | 65 µs | — |
+
+Every call worked from Python. `FAILED_PRECONDITION` and
+`PERMISSION_DENIED` arrived with their `google.rpc.Status` details intact.
+
+### Integration findings
+
+- **Protobuf version check.** grpcxx calls `find_package(Protobuf 3.15.0)`.
+  Protobuf's `protobuf-config-version.cmake` (release 33.4, C++ library 6.33.4)
+  rejects any requested major version other than 6, so the request fails even
+  though the installed version is newer. `-DPROTOBUF_MINVERSION=6.0` passes.
+- **`libprotoc`** is installed by vcpkg only for the host triplet, and
+  `protoc-gen-grpcxx` links it. The experiment borrowed the host library,
+  which works only because host and target are the same architecture. An
+  integration builds the plugin as a host tool.
+- **Shared by default.** grpcxx built `libgrpcxx.dylib` until
+  `BUILD_SHARED_LIBS=OFF` was set. An earlier 1.45 MB reading left grpcxx out
+  of the binary for that reason.
+- **No `grpc-message` header.** grpcxx sends `grpc-status` and
+  `grpc-status-details-bin` only. `grpc_status.rpc_status.from_call` then
+  raises, because the message inside the details does not match the empty
+  header. Reading `grpc-status-details-bin` from the trailing metadata and
+  parsing `google.rpc.Status` directly works.
+- **Unix sockets.** grpcxx listens on TCP only, but `server::run(uv_os_sock_t&&)`
+  accepts a socket the caller has bound. A bound `AF_UNIX` socket passed in this
+  way served `grpcio` clients at `unix:///tmp/...`. On Windows, libuv checks
+  the address family in that path, so loopback TCP is the expectation there.
+- **Project maturity.** One maintainer, pre-1.0, not in vcpkg. Its CI builds
+  on Linux, macOS and Windows; the Windows job uses vcpkg's protobuf.
+
+## Alternatives checked
 - **Qt GRPC**: client only (Qt 6.12), and licensed GPLv3 or commercial, not
   LGPL, so it cannot go into distributed MIT-licensed applications built on
   LGPL Qt. It also generates QtProtobuf message classes, not the `libprotobuf`
