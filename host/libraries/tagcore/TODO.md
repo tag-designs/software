@@ -51,18 +51,23 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
   `.data` and `.bss` in that build, read back correctly, and the original
   `0x90CC87D6` was restored;
 - `tag-dwnld` of a FINISHED log to SQLite: 121 records, with a dump identical
-  to one made by `main`'s `tag-dwnld`.
+  to one made by `main`'s `tag-dwnld`;
+- `tag-reset` from FINISHED, `tag-start`, `tag-stop`, `tag-dwnld` (4 records)
+  and `tag-reset` again, each reaching the expected state;
+- `Start` on the RUNNING tag refused with `err == PERM`,
+  `transport_failed == false` and "Monitor request not permitted in current
+  tag state".
 
 Still to check, then delete each item:
 
-- **No regressions.** `tag-start`, `tag-stop` and `tag-reset` behave as on
-  `main` on L4 and U3, and `tag-dwnld` does on L4. `qtmonitor` and
+- **No regressions.** `tag-start`, `tag-stop`, `tag-reset` and `tag-dwnld`
+  behave as on `main` on L4. `qtmonitor` and
   `qtcalibrate` build, attach and poll status; `qtmonitor` also starts and
   stops.
 - **Writes on L4.** `--write-test <addr>` on an unused SRAM word taken from the
   map file of the exact build. On L4 the `monitor_shared` range is not
   guarded, so write only to a word known to be unused.
-- **LastError on failures.** `--start-running` on a running tag gives
+- **LastError on failures.** `--start-running` on a running L4 tag gives
   `err == PERM` with `transport_failed == false`. `--unplug <s>`, unplugging
   the base mid-call, gives `transport_failed == true`.
 - **Noisy attach after a timed-out L4 session.** Attaching after a session has
@@ -72,3 +77,9 @@ Still to check, then delete each item:
   change the detection code, so `main` should behave the same, but that is not
   yet confirmed. Quieten the detection, or retry it after the debug domain
   wakes.
+- **Noisy detach from a running U3 tag.** Detaching from a RUNNING tag logs a
+  burst of `linkadapt.cc` `error return 81` read failures, 41 in one run. They
+  come from the MONITORSTOP status poll in `CallU3`: once the firmware handles
+  the stop it returns to low power, and each poll fails until the 100 ms
+  timeout, which the code already treats as a successful detach. This is
+  unchanged from `main`. The same fix as the noisy attach applies.
