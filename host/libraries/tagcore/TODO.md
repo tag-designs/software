@@ -108,16 +108,22 @@ Still to check, then delete each item:
 [`tag-server`](../../tagserver/README.md) and
 [`tagclient`](../../python/tagclient/README.md) pass their hardware-free tests
 on macOS arm64: errors, the debug switch, attaching to a missing base, TCP,
-shutdown, and a second server on a busy socket. Still to check, then delete
-each item:
+shutdown, and a second server on a busy socket.
 
-- **On a U3 tag:** with one base connected, run
-  `TAG_SERVER_HARDWARE=1 TAG_SERVER_BIN=<build>/Release/bin/tag-server pytest
-  host/python/tagclient`. It reads information, status, the state log and
-  memory, and holds a 15 s idle session on the server's keepalive. It changes
-  no tag state. All 22 tests passed on 2026-10-20 on the L4 BitTag V6 (UUID
-  `2035374D303150190059002F`, BitTag at `56e5e6a0`), and the server detached
-  and removed its socket on `SIGTERM`.
+Passed on 2026-10-20, all 22 tests including the hardware ones
+(`TAG_SERVER_HARDWARE=1`), which read information, status, the state log and
+memory and hold a 15 s idle session on the server's keepalive:
+
+- on the L4 BitTag V6 (UUID `2035374D303150190059002F`, BitTag at `56e5e6a0`);
+- on the U3 IMUTag breakout (ID code `0x10016454`, UUID
+  `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`), where a
+  `write_u32` to `0x20000010` through the server was also refused with
+  `PERMISSION_DENIED` and the session survived.
+
+On both, the server detached and removed its socket on `SIGTERM`.
+
+Still to check, then delete each item:
+
 - **A state-changing script through the server**, with the operator's
   agreement: `start`, a `start` refused with `ack_err_name == "PERM"`, `stop`,
   paging `get_data_log`, `erase`, and a `write_memory` to an unused word.
