@@ -14,6 +14,15 @@ add_library(sensoranalysis_core STATIC core/compass_core.cpp)
 target_include_directories(sensoranalysis_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/core")
 target_compile_features(sensoranalysis_core PUBLIC cxx_std_17)
 
+# The Qt-free reader for stored CalibrationConstants JSON, kept out of
+# sensoranalysis_core so that the core needs no JSON library. It parses with
+# protobuf's generic Struct, which keeps every number as the double parsed from
+# the text, as Qt's reader does.
+if(TARGET protobuf::libprotobuf)
+  add_library(sensoranalysis_core_json STATIC core/calibration_json.cpp)
+  target_link_libraries(sensoranalysis_core_json PUBLIC sensoranalysis_core protobuf::libprotobuf)
+endif()
+
 add_library(sensoranalysis STATIC
   accelcalibration.cpp
   compass_processor.cpp
@@ -48,7 +57,8 @@ if(BUILD_SENSORANALYSIS_CHECKS)
   # replaced, bit for bit, on the capture fixtures and synthetic cases. Links
   # Qt for the reference half only.
   add_executable(compass_core_parity_check test/compass_core_parity_check.cc)
-  target_link_libraries(compass_core_parity_check PRIVATE sensoranalysis_core Qt6::Core Qt6::Gui)
+  target_link_libraries(compass_core_parity_check
+    PRIVATE sensoranalysis sensoranalysis_core_json proto Qt6::Core Qt6::Gui)
   target_compile_definitions(
     compass_core_parity_check PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   set_target_properties(compass_core_parity_check PROPERTIES

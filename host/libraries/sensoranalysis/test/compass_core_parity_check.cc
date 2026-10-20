@@ -18,13 +18,27 @@
  *          - edge cases: zero vectors, vectors within 1e-5 of unit length
  *            (which Qt's normalize() leaves alone), and tiny vectors.
  *
+ *          It also requires the calibration read from stored
+ *          CalibrationConstants JSON to be bit-identical three ways: the Qt
+ *          reader as it stood, the Qt reader now built on
+ *          calibrationFromLookup(), and the Qt-free protobuf Struct reader
+ *          (calibration_json.h). The documents are random calibrations written
+ *          by protobuf exactly as the download path writes them -- zeros
+ *          omitted, accelerometer sometimes absent -- plus the fixture's
+ *          stored row and hand-written oddities.
+ *
  *          When vecmath.h is moved onto glm or Eigen, this check is how the
  *          change is measured: run it with --report to print the largest
  *          difference per output instead of failing on the first. In that
  *          report, inf means one side produced NaN where the other did not.
  */
 
+#include "calibration_json.h"
 #include "compass_core.h"
+#include "compass_types.h"
+#include "tagdata.pb.h"
+
+#include <google/protobuf/util/json_util.h>
 
 #include <QFile>
 #include <QJsonArray>
@@ -354,6 +368,184 @@ void checkEdges()
     }
 }
 
+// ---------------------------------------------------------------------------
+// Calibration JSON: the Qt reader as it stood before the core existed, against
+// the Qt reader now built on calibrationFromLookup() and against the Qt-free
+// protobuf Struct reader.
+// ---------------------------------------------------------------------------
+
+double qtJsonDouble(const QJsonObject &object, const char *key, double fallback)
+{
+    return object.value(QString::fromLatin1(key)).toDouble(fallback);
+}
+
+struct QtCalibration
+{
+    QVector3D hardIron;
+    Matrix softIron;
+    QVector3D accelOffset;
+};
+
+QtCalibration qtFromCalibrationJson(const QJsonObject &root)
+{
+    const QJsonObject constants = root.value(QStringLiteral("magnetometer")).toObject();
+    QtCalibration calibration;
+    calibration.hardIron = QVector3D(
+        qtJsonDouble(constants, "v0", 0.0),
+        qtJsonDouble(constants, "v1", 0.0),
+        qtJsonDouble(constants, "v2", 0.0));
+    calibration.softIron = {{{{qtJsonDouble(constants, "a00", 1.0),
+                               qtJsonDouble(constants, "a01", 0.0),
+                               qtJsonDouble(constants, "a02", 0.0)}},
+                             {{qtJsonDouble(constants, "a10", 0.0),
+                               qtJsonDouble(constants, "a11", 1.0),
+                               qtJsonDouble(constants, "a12", 0.0)}},
+                             {{qtJsonDouble(constants, "a20", 0.0),
+                               qtJsonDouble(constants, "a21", 0.0),
+                               qtJsonDouble(constants, "a22", 1.0)}}}};
+    const QJsonObject accel = root.value(QStringLiteral("accelerometer")).toObject();
+    calibration.accelOffset = QVector3D(
+        qtJsonDouble(accel, "o0", 0.0),
+        qtJsonDouble(accel, "o1", 0.0),
+        qtJsonDouble(accel, "o2", 0.0));
+    return calibration;
+}
+
+int calibrationCases = 0;
+
+bool sameBits(double a, double b)
+{
+    return std::memcmp(&a, &b, sizeof(double)) == 0;
+}
+
+bool sameConstants(const QtCalibration &qt, const compasscore::CalibrationConstants &core)
+{
+    bool same = sameBits(qt.hardIron.x(), core.hardIron.x)
+        && sameBits(qt.hardIron.y(), core.hardIron.y)
+        && sameBits(qt.hardIron.z(), core.hardIron.z)
+        && sameBits(qt.accelOffset.x(), core.accelOffset.x)
+        && sameBits(qt.accelOffset.y(), core.accelOffset.y)
+        && sameBits(qt.accelOffset.z(), core.accelOffset.z);
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < 3; c++) {
+            same = same && sameBits(qt.softIron[r][c], core.softIron[r][c]);
+        }
+    }
+    return same;
+}
+
+/// Reads one JSON text with all three readers and requires identical constants.
+void checkCalibrationText(const char *what, int index, const std::string &json)
+{
+    calibrationCases++;
+    const QJsonObject root =
+        QJsonDocument::fromJson(QByteArray::fromStdString(json)).object();
+    const QtCalibration reference = qtFromCalibrationJson(root);
+
+    const compasscore::CalibrationConstants viaQt =
+        CompassCalibration::fromCalibrationJson(root).constants();
+    if (!sameConstants(reference, viaQt)) {
+        failures++;
+        std::printf("FAIL: %s case %d: Qt reader on the core differs\n", what, index);
+    }
+
+    compasscore::CalibrationConstants viaStruct;
+    std::string error;
+    const bool parsed = compasscore::calibrationFromJson(json, viaStruct, error);
+    const bool hasMagnetometer = root.value(QStringLiteral("magnetometer")).isObject();
+    if (parsed != hasMagnetometer) {
+        failures++;
+        std::printf("FAIL: %s case %d: Struct reader %s (%s)\n",
+                    what, index, parsed ? "accepted" : "refused", error.c_str());
+        return;
+    }
+    if (parsed && !sameConstants(reference, viaStruct)) {
+        failures++;
+        std::printf("FAIL: %s case %d: Struct reader differs\n", what, index);
+    }
+}
+
+/// Random calibrations written the way the download path writes them.
+void checkCalibrationRandom(int count)
+{
+    std::mt19937 rng(20261021);
+    std::uniform_real_distribution<float> offset(-300.0f, 300.0f);
+    std::uniform_real_distribution<float> diagonal(0.8f, 1.2f);
+    std::uniform_real_distribution<float> skew(-0.1f, 0.1f);
+    std::uniform_real_distribution<float> accel(-150.0f, 150.0f);
+    std::uniform_real_distribution<float> tiny(-1e-6f, 1e-6f);
+    std::uniform_int_distribution<int> coin(0, 7);
+
+    google::protobuf::util::JsonPrintOptions options;
+    options.add_whitespace = true;
+    options.preserve_proto_field_names = true;
+
+    for (int i = 0; i < count; i++) {
+        // A zero is omitted from proto3 JSON, so zeros exercise the defaults.
+        auto maybe = [&](float value) { return coin(rng) == 0 ? 0.0f : value; };
+
+        CalibrationConstants message;
+        message.set_timestamp(1779059103 + i);
+        if (coin(rng) != 0) {
+            auto *m = message.mutable_magnetometer();
+            m->set_v0(maybe(offset(rng)));
+            m->set_v1(maybe(offset(rng)));
+            m->set_v2(maybe(offset(rng)));
+            m->set_a00(maybe(diagonal(rng)));
+            m->set_a01(maybe(skew(rng)));
+            m->set_a02(maybe(coin(rng) == 1 ? tiny(rng) : skew(rng)));
+            m->set_a10(maybe(skew(rng)));
+            m->set_a11(maybe(diagonal(rng)));
+            m->set_a12(maybe(skew(rng)));
+            m->set_a20(maybe(skew(rng)));
+            m->set_a21(maybe(skew(rng)));
+            m->set_a22(maybe(diagonal(rng)));
+        }
+        if (coin(rng) < 6) {
+            auto *a = message.mutable_accelerometer();
+            a->set_o0(maybe(accel(rng)));
+            a->set_o1(maybe(accel(rng)));
+            a->set_o2(maybe(accel(rng)));
+        }
+        std::string json;
+        if (!google::protobuf::util::MessageToJsonString(message, &json, options).ok()) {
+            failures++;
+            std::printf("FAIL: could not write calibration case %d\n", i);
+            continue;
+        }
+        checkCalibrationText("calibration random", i, json);
+    }
+}
+
+/// Stored and hand-written documents, including ones no writer produces.
+void checkCalibrationEdges()
+{
+    const char *const texts[] = {
+        // The compasstag fixture's row, with the retired "b" field.
+        R"({"timestamp": 1779059103, "magnetometer": {"b": 47.7961159,
+            "v0": 8.11801243, "v1": -14.6444216, "v2": -104.582214,
+            "a00": 0.971651077, "a01": -0.0135984756, "a02": 0.00313054933,
+            "a10": -0.0135984756, "a11": 1.02536666, "a12": 0.0190316662,
+            "a20": 0.00313054933, "a21": 0.0190316662, "a22": 1.00426638}})",
+        R"({"magnetometer": {}})",
+        R"({"magnetometer": {"v0": 1, "a00": 2, "a11": 1e-05}})",
+        // Negative zero: Qt's reader returns +0 for both spellings, protobuf
+        // keeps the sign, and calibration_json.cpp folds it to match Qt.
+        R"({"magnetometer": {"a22": -0.0, "v1": -0}, "accelerometer": {"o1": -0.0}})",
+        R"({"magnetometer": {"v0": "12.5", "a00": null, "a01": true}})",
+        R"({"magnetometer": {"v0": 0.1}, "accelerometer": {"o0": 77.25, "o2": -3}})",
+        R"({"magnetometer": {"v1": 3.4028235e38, "a12": 1.17549435e-38}})",
+        R"({"magnetometer": {"a00": 0.1234567890123456789}, "accelerometer": 5})",
+        R"({"accelerometer": {"o0": 1}})",
+        R"({"magnetometer": 3})",
+        R"({})",
+    };
+    int index = 0;
+    for (const char *text : texts) {
+        checkCalibrationText("calibration edge", index++, text);
+    }
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -365,8 +557,11 @@ int main(int argc, char **argv)
         + checkCapture("host/docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-163303.json");
     checkRandom(200000);
     checkEdges();
+    checkCalibrationRandom(20000);
+    checkCalibrationEdges();
 
-    std::printf("%d capture samples, %ld comparisons\n", captured, comparisons);
+    std::printf("%d capture samples, %ld comparisons, %d calibration documents\n",
+                captured, comparisons, calibrationCases);
     if (report) {
         for (int i = 0; i < 7; i++) {
             std::printf("max |Qt - core| %-5s %.9g\n", kOutputNames[i], worst[i]);

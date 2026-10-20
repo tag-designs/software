@@ -20,6 +20,8 @@
 
 #include "vecmath.h"
 
+#include <functional>
+
 namespace compasscore
 {
 
@@ -38,6 +40,48 @@ struct CalibrationConstants
                                 {{0.0, 0.0, 1.0}}}}; ///< Soft-iron correction, row-major.
     sensormath::Vec3f accelOffset; ///< Accelerometer zero-g offset, mg.
 };
+
+/**
+ * @brief   Reads one number from a stored calibration document.
+ *
+ * @details Called with a section -- "magnetometer" or "accelerometer" -- and
+ *          a key within it. Returns the number stored there as a double, or
+ *          @p fallback when the section or the key is absent or is not a
+ *          number. Callers adapt their JSON library to this; the core needs
+ *          none.
+ */
+using CalibrationLookup =
+    std::function<double(const char *section, const char *key, double fallback)>;
+
+/**
+ * @brief   Builds calibration constants from a stored CalibrationConstants
+ *          document.
+ *
+ * @details The document is the proto3 JSON of tagdata.proto
+ *          CalibrationConstants, as the download path stores it in the
+ *          Calibration table: magnetometer v0..v2 (hard iron, uT) and
+ *          a00..a22 (soft iron), accelerometer o0..o2 (zero-g offset, mg).
+ *          proto3 JSON omits zero-valued fields, so a missing key reads as
+ *          zero -- except a00, a11 and a22, which default to one so that a
+ *          document with no magnetometer section is the identity. A log
+ *          written before the accelerometer offset existed has no
+ *          accelerometer section and gets a zero offset.
+ *
+ *          The numbers must reach this function as the doubles parsed from
+ *          the JSON text, not as the float protobuf fields: soft iron is used
+ *          in double, and a float widened to double is a different number
+ *          from the text's own double. Hard iron and the accelerometer offset
+ *          are rounded to float here.
+ *
+ * @param[in] lookup Reads one number; see CalibrationLookup.
+ *
+ * @return  The calibration the document describes.
+ *
+ * @see     calibrationFromJson() in calibration_json.h for the protobuf-based
+ *          reader used without Qt; CompassCalibration::fromCalibrationJson()
+ *          for the Qt one.
+ */
+CalibrationConstants calibrationFromLookup(const CalibrationLookup &lookup);
 
 /**
  * @struct  Orientation

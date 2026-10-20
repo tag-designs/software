@@ -56,6 +56,8 @@ public:
     static CompassCalibration fromMagnetometerConstants(
         const QVector3D &hardIron,
         const Matrix &softIron);
+    /// Wraps calibration constants from the Qt-free core; exact.
+    static CompassCalibration fromConstants(const compasscore::CalibrationConstants &constants);
 
     /// Hard- and soft-iron correction; compasscore::applyMagnetometer().
     QVector3D apply(const QVector3D &mag) const;

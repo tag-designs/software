@@ -26,6 +26,29 @@ constexpr double kPi = 3.14159265358979323846;
 
 } // namespace
 
+CalibrationConstants calibrationFromLookup(const CalibrationLookup &lookup)
+{
+    // The embedded calibration JSON uses historical names: v* is the hard-iron
+    // offset vector, and a** is the soft-iron correction matrix.
+    const auto mag = [&](const char *key, double fallback) {
+        return lookup("magnetometer", key, fallback);
+    };
+    const auto accel = [&](const char *key) {
+        return static_cast<float>(lookup("accelerometer", key, 0.0));
+    };
+
+    CalibrationConstants constants;
+    constants.hardIron = Vec3f{
+        static_cast<float>(mag("v0", 0.0)),
+        static_cast<float>(mag("v1", 0.0)),
+        static_cast<float>(mag("v2", 0.0))};
+    constants.softIron = {{{{mag("a00", 1.0), mag("a01", 0.0), mag("a02", 0.0)}},
+                           {{mag("a10", 0.0), mag("a11", 1.0), mag("a12", 0.0)}},
+                           {{mag("a20", 0.0), mag("a21", 0.0), mag("a22", 1.0)}}}};
+    constants.accelOffset = Vec3f{accel("o0"), accel("o1"), accel("o2")};
+    return constants;
+}
+
 Vec3f applyMagnetometer(const CalibrationConstants &constants, Vec3f mag)
 {
     // The difference is taken in float and widened, as QVector3D components

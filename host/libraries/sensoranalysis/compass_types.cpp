@@ -3,9 +3,15 @@
 namespace
 {
 
-double jsonDouble(const QJsonObject &object, const char *key, double fallback)
+/// QJsonObject adapter for compasscore::CalibrationLookup. @p sectionOf picks
+/// the object a section name refers to; a missing or non-object section reads
+/// as empty, so every key in it falls back.
+template <typename SectionOf>
+compasscore::CalibrationLookup jsonLookup(SectionOf sectionOf)
 {
-    return object.value(QString::fromLatin1(key)).toDouble(fallback);
+    return [sectionOf](const char *section, const char *key, double fallback) {
+        return sectionOf(section).value(QString::fromLatin1(key)).toDouble(fallback);
+    };
 }
 
 } // namespace
@@ -21,39 +27,32 @@ CompassCalibration::CompassCalibration()
 
 CompassCalibration CompassCalibration::fromCalibrationJson(const QJsonObject &root)
 {
-    CompassCalibration calibration = fromMagnetometerJson(
-        root.value(QStringLiteral("magnetometer")).toObject());
-
-    // proto3 JSON omits zero-valued fields, so a missing key is a zero.
-    const QJsonObject accel = root.value(QStringLiteral("accelerometer")).toObject();
-    calibration.accelOffset_ = QVector3D(
-        jsonDouble(accel, "o0", 0.0),
-        jsonDouble(accel, "o1", 0.0),
-        jsonDouble(accel, "o2", 0.0));
-    return calibration;
+    // The field mapping and defaults are the core's, shared with the Qt-free
+    // reader in core/calibration_json.h.
+    return fromConstants(compasscore::calibrationFromLookup(jsonLookup(
+        [&root](const char *section) {
+            return root.value(QString::fromLatin1(section)).toObject();
+        })));
 }
 
 CompassCalibration CompassCalibration::fromMagnetometerJson(const QJsonObject &constants)
 {
+    // A bare magnetometer object: its keys answer the "magnetometer" section,
+    // and the accelerometer section is absent, so the offset is zero.
+    return fromConstants(compasscore::calibrationFromLookup(jsonLookup(
+        [&constants](const char *section) {
+            return QString::fromLatin1(section) == QLatin1String("magnetometer")
+                ? constants
+                : QJsonObject();
+        })));
+}
+
+CompassCalibration CompassCalibration::fromConstants(const compasscore::CalibrationConstants &constants)
+{
     CompassCalibration calibration;
-
-    // The embedded calibration JSON uses historical names: v* is the hard-iron
-    // offset vector, and a** is the soft-iron correction matrix.
-    calibration.hardIron_ = QVector3D(
-        jsonDouble(constants, "v0", 0.0),
-        jsonDouble(constants, "v1", 0.0),
-        jsonDouble(constants, "v2", 0.0));
-
-    calibration.softIron_ = {{{{jsonDouble(constants, "a00", 1.0),
-                                jsonDouble(constants, "a01", 0.0),
-                                jsonDouble(constants, "a02", 0.0)}},
-                              {{jsonDouble(constants, "a10", 0.0),
-                                jsonDouble(constants, "a11", 1.0),
-                                jsonDouble(constants, "a12", 0.0)}},
-                              {{jsonDouble(constants, "a20", 0.0),
-                                jsonDouble(constants, "a21", 0.0),
-                                jsonDouble(constants, "a22", 1.0)}}}};
-
+    calibration.hardIron_ = toQVector3D(constants.hardIron);
+    calibration.softIron_ = constants.softIron;
+    calibration.accelOffset_ = toQVector3D(constants.accelOffset);
     return calibration;
 }
 

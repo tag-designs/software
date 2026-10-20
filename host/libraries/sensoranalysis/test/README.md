@@ -54,10 +54,14 @@ flag.
 | captures | Every sample with an accelerometer in both qtcalibrate capture fixtures, with the capture's own calibration and with none. |
 | random | 200,000 seeded sensor pairs under random hard and soft iron, covering both accelerometer branches and both magnetometer branches. |
 | edges | Zero vectors (refused by both), vectors exactly at, within and just beyond 1e-5 of unit length -- Qt's vector `normalize()` leaves the first two alone -- and vectors small enough that normalization is skipped. |
+| calibration JSON | 20,000 random calibrations written by protobuf as the download path writes them (zeros omitted, accelerometer sometimes absent), the fixture's stored row with its retired `b` field, and hand-written oddities, each read three ways: the Qt reader as it stood, the Qt reader on `calibrationFromLookup()`, and the Qt-free `calibrationFromJson()`. All three must agree to the bit. |
 
 On 2026-10-20 it was shown to bite: making vector `normalize()` always divide,
 as glm and Eigen do, failed 12 comparisons, all in the edge group; writing the
-quaternion product the textbook way failed 1.4 million.
+quaternion product the textbook way failed 1.4 million; reading the
+calibration through float, as the typed protobuf message would, failed 17,451.
+The negative-zero edge case is why `calibrationFromJson()` folds `-0` to `+0`:
+Qt's reader does, protobuf's does not.
 
 `--report` prints the largest difference per output instead of failing. That is
 the measurement to make when `vecmath.h` moves onto glm or Eigen: the swap

@@ -29,10 +29,19 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   changes results in the last bits and is measured with
   `compass_core_parity_check --report` ([test/README.md](test/README.md)).
 - `compass_core.h`: `compasscore::CalibrationConstants`, magnetometer and
-  accelerometer correction, and `solveOrientation()`.
+  accelerometer correction, `solveOrientation()`, and
+  `calibrationFromLookup()` -- the one mapping from the stored
+  CalibrationConstants JSON keys and their defaults to constants, given a
+  function that looks a number up.
+- `calibration_json.h` (the `sensoranalysis_core_json` target, which adds
+  protobuf): `calibrationFromJson()` reads that JSON without Qt, through
+  protobuf's generic `Struct`. It keeps every number as the double parsed from
+  the text, as Qt's reader does; parsing into the typed message would round
+  the soft-iron terms through float and change results.
 
-The Qt classes convert types and call the core, so there is one
-implementation. Command-line tools can link `sensoranalysis_core` without Qt.
+The Qt classes convert types and call the core -- including
+`CompassCalibration::fromCalibrationJson()`, which is a `QJsonObject` lookup
+over `calibrationFromLookup()` -- so there is one implementation. Command-line tools can link `sensoranalysis_core` without Qt.
 
 Keep this library independent of widgets, dialogs, QML, plotting, and SQLite.
 Those concerns belong in applications or `../sensorui`.
