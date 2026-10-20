@@ -6,6 +6,13 @@ summary: Two testing capabilities - Qt applications and command line tools runni
 
 # Simulated Tags and a Tag Server for Testing
 
+**Status:** phases 1 and 2 are built. The monitor side channel, keepalive and
+`LastError` are in tagcore, verified on L4 and U3 tags
+([TODO](../../TODO.md)). `tag-server` is in
+[`host/tagserver`](../../../../tagserver/README.md) and its Python client in
+[`host/python/tagclient`](../../../../python/tagclient/README.md). Phase 3, the
+simulator, is not built.
+
 This proposal delivers two outcomes:
 
 1. **Applications tested against a simulated tag.** A new tagcore backend,
@@ -152,13 +159,13 @@ The applications add `--simulate <scenario>`. The command line tools add it in
 `tag-server` is a small C++ program on tagcore and grpcxx, with no Qt:
 
 ```sh
-tag-server [--base bus:device | --simulate scenario.json]
-           [--listen unix:/tmp/tag-server.sock | --listen 127.0.0.1:50061]
+tag-server [--attach | --base bus:device | --simulate scenario.json]
+           [--listen unix:/tmp/tag-server-<uid>.sock | --listen 127.0.0.1:50061]
            [--enable-debug]
 ```
 
 - **One tag per server.** The server owns the `Tag`. Clients may attach and
-  detach it, or the server attaches at start-up when `--base` is given.
+  detach it, or the server attaches at start-up with `--attach` or `--base`.
   Concurrent clients are serialised by the locks above; there are no sessions.
   Run two servers for two bases.
 - **The keepalive** runs while attached.
@@ -354,18 +361,16 @@ tag-server --base 1:4
 ```
 
 ```python
-from tagclient import TagClient            # wrapper over the generated stubs
-from tagclient.proto import tag_pb2
+from tagclient import TagClient, pb       # client over runtime-compiled stubs
 
-with TagClient("unix:///tmp/tag-server.sock") as tag:   # grpcio's form of unix:/tmp/tag-server.sock
+with TagClient() as tag:                    # tag-server's default socket
     print(tag.get_info().uuid, tag.git_sha())
     tag.start(make_config())
-    while tag.get_status().state != tag_pb2.RUNNING:
+    while tag.get_status().state != pb.tag.RUNNING:
         time.sleep(0.5)
     ...
     tag.stop()
-    for page in tag.data_log_pages():       # GetDataLog paging, as tag-dwnld does it
-        decode(page)
+    page = tag.get_data_log(0)              # one raw page; index rules as tag-dwnld
 ```
 
 The server's keepalive holds the session while the script sleeps or sits at a
@@ -516,10 +521,12 @@ applications reach a tag, through the backend extraction.
    - a documented way to listen on a Unix socket.
 
    Offer them upstream, or carry them as patches.
-4. **How to pin grpcxx:** FetchContent with a hash (simplest), or a vcpkg
-   overlay port (binary caching, shared `libuv`/`nghttp2`/`fmt`).
-5. **Python package home.** `host/python/`, as in the Python proposal, or
-   beside the server.
+Settled:
 
-Settled: the write guard covers only the U3 `monitor_shared` block, and the L4
-keepalive uses `get_status` rather than a new firmware request.
+- the write guard covers only the U3 `monitor_shared` block;
+- the L4 keepalive uses `get_status` rather than a new firmware request;
+- grpcxx is pinned with FetchContent and a hash, with its own pinned libuv,
+  nghttp2 and fmt. A vcpkg overlay port remains an option if binary caching
+  matters;
+- the Python package is `host/python/tagclient`. It compiles the protos at
+  import time rather than committing generated stubs.

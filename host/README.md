@@ -16,6 +16,8 @@ The layout is organized by role:
 | `libraries/` | Reusable code: low-level tag access, plotting, sensor analysis, and shared sensor UI widgets. |
 | `applications/` | Qt applications such as `qtmonitor`, `qtprogram`, `qtcalibrate`, `btviz`, and `sensorviz`. |
 | `commandline/` | CLI tools built on the low-level tag library. |
+| `tagserver/` | `tag-server`, the tag library over gRPC for test programs; built only with `BUILD_TAG_SERVER=ON`. See [tagserver/README.md](tagserver/README.md). |
+| `python/` | Python packages; `tagclient` is the client for `tag-server`. |
 | `common/` | Small Qt helpers shared by applications, but not part of the low-level tag library. |
 | `docs/` | MkDocs user-guide sources and the fixtures its screenshots are generated from; see [docs/README.md](docs/README.md). Build with the CMake `docs` target; installed with packages when `BUILD_HOST_DOCS=ON`. |
 
@@ -26,6 +28,7 @@ Keep dependencies flowing from applications toward libraries:
 ```text
 applications/*       -> libraries/* and common/
 commandline          -> libraries/tagcore (dataprocessing: the Qt-free sensoranalysis core)
+tagserver            -> libraries/tagcore and grpcxx (fetched)
 libraries/sensorui   -> libraries/sensoranalysis
 libraries/tagcore    -> proto and tag_monitor_interface
 ```
@@ -41,6 +44,8 @@ host code do not need Qt. Qt-only helpers belong in `common/` or
 - `libraries/tagcore` and `commandline` are added whenever host tools are
   built.
 - Qt support libraries and applications are added when `BUILD_QT_APPS=ON`.
+- `tagserver` is added when `BUILD_TAG_SERVER=ON` (default `OFF`), which also
+  enables the `tag-server` vcpkg feature (protobuf's `libprotoc`).
 - A small `host_common` interface target exposes `common/` headers to Qt apps.
 - The `docs` target builds the MkDocs user guide for local preview. The
   `BUILD_HOST_DOCS` option adds that target to the default build and package

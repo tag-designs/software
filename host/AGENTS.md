@@ -14,6 +14,9 @@ ownership, dependency direction, and common checks.
 - `common/`: small Qt helper headers shared by applications.
 - `applications/`: Qt applications.
 - `commandline/`: CLI tools built mostly on `libraries/tagcore`.
+- `tagserver/`: `tag-server`, the gRPC test server over `libraries/tagcore`
+  (`BUILD_TAG_SERVER=ON` only).
+- `python/tagclient/`: the Python client for `tag-server`.
 - `docs/`: MkDocs user-guide sources and requirements.
 
 ## Dependency Direction
@@ -23,6 +26,7 @@ Keep dependencies flowing from applications toward libraries:
 ```text
 applications/*       -> libraries/* and common/
 commandline          -> libraries/tagcore
+tagserver            -> libraries/tagcore and grpcxx (fetched)
 libraries/sensorui   -> libraries/sensoranalysis
 libraries/tagcore    -> proto and tag_monitor_interface
 ```

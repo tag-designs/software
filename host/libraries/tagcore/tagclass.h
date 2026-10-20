@@ -94,6 +94,19 @@ public:
   bool KeepAlive();
 
   /**
+   * @brief   Sends an arbitrary monitor request and returns the reply as is.
+   * @details For callers that forward the monitor protocol, such as
+   *          tag-server's raw Call, so that a request without a dedicated
+   *          method is still usable. The reply's Ack code is not checked.
+   * @param[in]  request  The request to send.
+   * @param[out] reply    The firmware's Ack, whatever its code. Cleared on a
+   *                      transport failure.
+   * @return  true if the RPC completed over the link; check @p reply.err().
+   *          LastError() describes a failure.
+   */
+  bool Request(const Req &request, Ack &reply);
+
+  /**
    * @brief   Describes the outcome of the most recent monitor RPC.
    * @details Covers the calls that send a request to the firmware (GetStatus,
    *          Start, GetDataLog and so on). Memory access, KeepAlive() and the

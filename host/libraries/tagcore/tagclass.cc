@@ -281,6 +281,15 @@ bool Tag::Rpc()
   return !rpc_failed;
 }
 
+bool Tag::Request(const Req &request, Ack &reply)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  req.CopyFrom(request);
+  const bool ok = Rpc();
+  reply.CopyFrom(ack);
+  return ok;
+}
+
 TagError Tag::LastError()
 {
   std::lock_guard<std::mutex> lck(mtx);

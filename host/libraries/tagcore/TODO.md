@@ -102,3 +102,24 @@ Still to check, then delete each item:
   unchanged from `main`. Quieten it by ending the poll at the first failed
   read once the kick has been delivered, or by logging those reads at debug
   level.
+
+## Verify tag-server on hardware and other platforms
+
+[`tag-server`](../../tagserver/README.md) and
+[`tagclient`](../../python/tagclient/README.md) pass their hardware-free tests
+on macOS arm64: errors, the debug switch, attaching to a missing base, TCP,
+shutdown, and a second server on a busy socket. Still to check, then delete
+each item:
+
+- **On an L4 tag and a U3 tag:** with one base connected, run
+  `TAG_SERVER_HARDWARE=1 TAG_SERVER_BIN=<build>/Release/bin/tag-server pytest
+  host/python/tagclient`. It reads information, status, the state log and
+  memory, and holds a 15 s idle session on the server's keepalive. It changes
+  no tag state.
+- **A state-changing script through the server**, with the operator's
+  agreement: `start`, a `start` refused with `ack_err_name == "PERM"`, `stop`,
+  paging `get_data_log`, `erase`, and a `write_memory` to an unused word.
+  Compare the log pages with `tag-dwnld`'s.
+- **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`. On Windows the
+  server listens on loopback TCP, and grpcxx has not been built with the
+  static `x64-windows-static-md` triplet.

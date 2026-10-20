@@ -13,6 +13,15 @@ if(NOT CMAKE_OSX_DEPLOYMENT_TARGET AND NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET}
       "Minimum macOS version for the host software" FORCE)
 endif()
 
+# The tag server (host/tagserver) is optional and needs more from vcpkg than
+# the rest of the host build: protobuf's libprotoc, for grpcxx's code
+# generator. vcpkg reads VCPKG_MANIFEST_FEATURES when project() loads its
+# toolchain, so the option and the feature are set here.
+option(BUILD_TAG_SERVER "Build tag-server, the gRPC test server for tags" OFF)
+if(BUILD_TAG_SERVER)
+  list(APPEND VCPKG_MANIFEST_FEATURES "tag-server")
+endif()
+
 project(NanoTag VERSION 0.1.0)
 #set(VCPKG_VERBOSE true)
 

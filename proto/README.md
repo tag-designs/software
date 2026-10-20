@@ -19,6 +19,7 @@ proto/
 │                          the .proto files to the firmware build
 ├── tag.proto              configuration, status, monitor RPC messages
 ├── tagdata.proto          data-log messages
+├── tag_service.proto      gRPC service for tag-server (host/tagserver); host only
 ├── tagdata-archive.proto  retired log-format messages; built by nothing
 └── config-gen.cc          retired C++ config-gen; built by nothing
 ```

@@ -1,0 +1,169 @@
+// gRPC service for tag-server: the tagcore Tag API, one call per method.
+//
+// tag-server (host/tagserver) serves this over a local socket, so that test
+// programs in Python or any other gRPC language can drive a tag. It reuses
+// the protocol messages in tag.proto and tagdata.proto unchanged, so new log
+// types and fields pass through without changes here. Only a new Tag method
+// needs a new call. See
+// host/libraries/tagcore/design/proposals/tag-server.md.
+//
+// Errors. A failed call returns a gRPC status code, and its
+// grpc-status-details-bin trailer holds a google.rpc.Status whose message is
+// the reason and whose details hold one TagError:
+//
+//   FAILED_PRECONDITION  Ack PERM, or not attached
+//   INVALID_ARGUMENT     Ack INVAL; a misaligned or wrapping memory range
+//   RESOURCE_EXHAUSTED   Ack NODATA
+//   UNAVAILABLE          the link or monitor RPC failed
+//   NOT_FOUND            no matching base
+//   PERMISSION_DENIED    a guarded write; a debug call without --enable-debug
+//   INTERNAL             any other Ack error, or an unexpected reply
+//
+// tag-server sends no grpc-message header, so clients read the reason from
+// the details, not from the status message.
+
+syntax = "proto3";
+
+package tagrpc;
+
+import "tag.proto";
+import "tagdata.proto";
+
+// One tag base, as tagcore's UsbDev describes it. bus and address change when
+// the base is replugged, so rediscover rather than store them.
+message Device {
+  uint32 vid = 1;
+  uint32 pid = 2;
+  uint32 bus = 3;
+  uint32 address = 4;
+}
+
+message DeviceList { repeated Device devices = 1; }
+
+// bus and address both 0: the only base, an error if there are none or several.
+message AttachRequest {
+  uint32 bus = 1;
+  uint32 address = 2;
+}
+
+message BoolReply { bool value = 1; }
+message VoltageReply { float volts = 1; }
+message GitShaReply { string sha = 1; }
+message LogIndex { int32 index = 1; }
+message CalibrationIndex { uint32 index = 1; }
+message TestRequest { TestReq test = 1; }
+message BackupStateRequest { TagState state = 1; }
+message CountReply { int32 count = 1; }
+
+// tagcore's LinkAdaptStats; durations in nanoseconds. enabled is false when
+// tagcore was built without instrumentation, and the counters are then zero.
+message LinkStats {
+  bool enabled = 1;
+  uint64 usb_in_calls = 2;
+  uint64 usb_out_calls = 3;
+  uint64 usb_in_bytes = 4;
+  uint64 usb_out_bytes = 5;
+  uint64 usb_in_ns = 6;
+  uint64 usb_out_ns = 7;
+  uint64 cmd_calls = 8;
+  uint64 cmd_ns = 9;
+  uint64 read_mem_calls = 10;
+  uint64 read_mem_bytes = 11;
+  uint64 read_mem_ns = 12;
+  uint64 write_mem_calls = 13;
+  uint64 write_mem_bytes = 14;
+  uint64 write_mem_ns = 15;
+  uint64 read_debug_calls = 16;
+  uint64 read_debug_ns = 17;
+  uint64 write_debug_calls = 18;
+  uint64 write_debug_ns = 19;
+  uint64 rw_status_calls = 20;
+  uint64 rw_status_ns = 21;
+}
+
+// tagcore's TagMonitorStats; durations in nanoseconds.
+message MonitorStats {
+  bool enabled = 1;
+  uint64 rpc_calls = 2;
+  uint64 request_bytes = 3;
+  uint64 response_bytes = 4;
+  uint64 rpc_total_ns = 5;
+  uint64 serialize_ns = 6;
+  uint64 write_request_ns = 7;
+  uint64 monitor_call_ns = 8;
+  uint64 read_response_ns = 9;
+  uint64 parse_ns = 10;
+}
+
+// Memory side channel. address and length must be multiples of 4.
+message MemRead {
+  uint32 address = 1;
+  uint32 length = 2;
+}
+
+// force allows a write over the STM32U3 monitor_shared block, which can end
+// the monitor session.
+message MemWrite {
+  uint32 address = 1;
+  bytes data = 2;
+  bool force = 3;
+}
+
+message MemData { bytes data = 1; }
+
+// Carried in google.rpc.Status.details of a failed call.
+message TagError {
+  Ack.Err err = 1;            // the firmware's code; UNSPECIFIED if none
+  bool transport_failed = 2;  // the request may never have reached the tag
+}
+
+service TagService {
+  // Bases and attachment.
+  rpc ListDevices(Empty) returns (DeviceList);
+  rpc Attach(AttachRequest) returns (Empty);
+  rpc Detach(Empty) returns (Empty);
+  rpc IsAttached(Empty) returns (BoolReply);
+
+  // Information.
+  rpc GetInfo(Empty) returns (TagInfo);
+  rpc GetConfig(Empty) returns (Config);
+  rpc GetStatus(Empty) returns (Status);
+  rpc Voltage(Empty) returns (VoltageReply);
+  rpc GitSha(Empty) returns (GitShaReply);
+
+  // Control.
+  rpc Start(Config) returns (Empty);
+  rpc Stop(Empty) returns (Empty);
+  rpc Erase(Empty) returns (Empty);
+  rpc Calibrate(Empty) returns (Empty);
+  rpc SetRtc(Empty) returns (Empty);  // the server's clock, at the next whole second
+  rpc Test(TestRequest) returns (Empty);
+
+  // Logs, paged by index as in tagcore. GetDataLog and GetCalibrationLog
+  // return the whole Ack, whose err may be NODATA at the end of the log.
+  rpc GetStateLog(LogIndex) returns (StateLog);
+  rpc GetDataLog(LogIndex) returns (Ack);
+  rpc GetCalibrationLog(Empty) returns (Ack);
+
+  // Calibration constants.
+  rpc ReadCalibration(CalibrationIndex) returns (CalibrationConstants);
+  rpc WriteCalibration(CalibrationConstants) returns (Empty);
+
+  // Statistics.
+  rpc GetLinkStats(Empty) returns (LinkStats);
+  rpc ResetLinkStats(Empty) returns (Empty);
+  rpc GetMonitorStats(Empty) returns (MonitorStats);
+  rpc ResetMonitorStats(Empty) returns (Empty);
+
+  // Debug: refused with PERMISSION_DENIED unless the server runs with
+  // --enable-debug.
+  rpc ReadMemory(MemRead) returns (MemData);
+  rpc WriteMemory(MemWrite) returns (Empty);
+  rpc ForceBackupState(BackupStateRequest) returns (Empty);
+  rpc CountBitTagLogHeaders(Empty) returns (CountReply);
+  rpc GetBitTagLogFromFlash(LogIndex) returns (Ack);
+
+  // Raw monitor protocol: any Req, the Ack as is. Fails only when the RPC
+  // does not complete; check the Ack's err.
+  rpc Call(Req) returns (Ack);
+}

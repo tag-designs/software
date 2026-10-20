@@ -416,6 +416,14 @@ design document.
 
 - [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, historical)* — The plan, now built, for a Linux x86_64 host tools package -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
 
+### python / tagclient
+
+- [tagclient](../host/python/tagclient/README.md) — tagclient, the Python client for tag-server - installing it, using TagClient and TagServerError, and running its tests with and without a tag.
+
+### tagserver
+
+- [tag-server](../host/tagserver/README.md) — tag-server, the tagcore Tag API over gRPC on a local socket for test programs - building it, running it, its calls and error codes, and what it does not do.
+
 ### User Guide Tooling
 
 - [Host User Guide](../host/docs/README.md) — The end-user host manual - how to preview, build and package it, how its sources are laid out, and how its screenshots are generated from fixtures.

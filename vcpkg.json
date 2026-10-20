@@ -7,5 +7,18 @@
     "libusb",
     "protobuf",
     "sqlite3"
-  ]
+  ],
+  "features": {
+    "tag-server": {
+      "description": "Dependencies of tag-server (BUILD_TAG_SERVER): libprotoc for grpcxx's code generator",
+      "dependencies": [
+        {
+          "name": "protobuf",
+          "features": [
+            "libprotoc"
+          ]
+        }
+      ]
+    }
+  }
 }
