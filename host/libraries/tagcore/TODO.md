@@ -49,7 +49,9 @@ BitTag at `56e5e6a0`, through a TagBase v7):
   `transport_failed == false`, `tag-stop`, `tag-dwnld` with a dump identical
   to `main`'s, and `tag-reset`;
 - attaching after a timed-out session: 3 of 3 clean on the branch and 1 of 1
-  on `main`, so the noisy detection after a timeout did not reproduce.
+  on `main`, so the noisy detection after a timeout did not reproduce;
+- unplugging the base during a `GetStatus` loop: after 14 good calls,
+  `transport_failed == true` and `err == UNSPECIFIED`.
 
 Passed on 2026-10-20 on an IMUTag breakout (STM32U3, ID code `0x10016454`,
 UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
@@ -80,8 +82,6 @@ Still to check, then delete each item:
 
 - **No regressions on L4.** `qtmonitor` and `qtcalibrate` attach and poll
   status, and `qtmonitor` starts and stops.
-- **LastError on unplug on L4.** `--unplug <s>`, unplugging the base mid-call,
-  gives `transport_failed == true`.
 - **Intermittent L4 attach failure through a TagBase v7.** 2 of about 32
   attaches to an IDLE BitTag V6 failed outright: detection logged `read debug
   register 0xe0042000/0xe0044000 failed status=0x81`, then the DEMCR read
