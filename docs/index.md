@@ -420,6 +420,10 @@ design document.
 
 - [tagclient](../host/python/tagclient/README.md) — tagclient, the Python client for tag-server - installing it, using TagClient and TagServerError, and running its tests with and without a tag.
 
+### python / tagclient / examples
+
+- [tagclient Examples](../host/python/tagclient/examples/README.md) — Python counterparts of tag-info, tag-start, tag-stop, tag-reset, tag-dwnld and tag-peek, plus a live status monitor, written against tag-server with tagclient.
+
 ### tagserver
 
 - [tag-server](../host/tagserver/README.md) — tag-server, the tagcore Tag API over gRPC on a local socket for test programs - building it, running it, its calls and error codes, and what it does not do.

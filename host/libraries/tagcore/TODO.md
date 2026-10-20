@@ -138,6 +138,18 @@ operator's agreement:
 - `write_u32` of two patterns to `0x20001070` read back correctly, and the
   original `0x90CC97D6` was restored.
 
+The [Python examples](../../python/tagclient/examples/README.md) then ran a
+full cycle on the same tag, with the server holding it (`--attach`):
+
+- `tag_info` (text and `--json`), and `tag_peek` of the ID code and
+  `monitor_shared`;
+- `tag_start --set-rtc --start-now`, then a second `tag_start` that skipped;
+- `watch_status`;
+- `tag_stop`;
+- `tag_dwnld`: its 205 pages matched `tag-dwnld`'s 205 records header for
+  header;
+- `tag_reset`, back to IDLE.
+
 Still to check, then delete each item:
 
 - **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`. On Windows the

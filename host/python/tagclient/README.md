@@ -59,6 +59,12 @@ to a `proto/` directory.
   tag's log format (see `tag-dwnld`), so `get_data_log(index)` returns one raw
   page.
 
+## Examples
+
+[`examples/`](examples/README.md) has Python versions of `tag-info`,
+`tag-start`, `tag-stop`, `tag-reset`, `tag-dwnld` and `tag-peek`, and a live
+status monitor.
+
 ## Tests
 
 ```bash
