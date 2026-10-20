@@ -25,7 +25,7 @@ Keep dependencies flowing from applications toward libraries:
 
 ```text
 applications/*       -> libraries/* and common/
-commandline          -> libraries/tagcore (dataprocessing: libraries/sensoranalysis)
+commandline          -> libraries/tagcore (dataprocessing: the Qt-free sensoranalysis core)
 libraries/sensorui   -> libraries/sensoranalysis
 libraries/tagcore    -> proto and tag_monitor_interface
 ```

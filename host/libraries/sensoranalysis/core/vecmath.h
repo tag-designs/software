@@ -85,6 +85,21 @@ inline Vec3f operator-(Vec3f a, Vec3f b)
     return Vec3f{a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
+/// Component-wise accumulation, as QVector3D operator+=.
+inline Vec3f &operator+=(Vec3f &a, Vec3f b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    return a;
+}
+
+/// Component-wise division by a float, as QVector3D operator/(QVector3D, float).
+inline Vec3f operator/(Vec3f v, float divisor)
+{
+    return Vec3f{v.x / divisor, v.y / divisor, v.z / divisor};
+}
+
 /// Euclidean length, as QVector3D::length(): std::hypot of the three parts.
 inline float length(Vec3f v)
 {

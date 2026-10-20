@@ -33,8 +33,8 @@ layout, so the `RUNPATH`s Qt's libraries and plugins carry (`$ORIGIN`,
 `$ORIGIN/../../lib`) resolve inside it unchanged. Nothing in it names the
 build machine; the package test fails any `RUNPATH` that does.
 
-The command line tools link no Qt; vcpkg links libusb, protobuf, SQLite and
-Abseil into every executable. `dataprocessing` links QtCore and QtGui.
+The command line tools, `dataprocessing` included, link no Qt; vcpkg links
+libusb, protobuf, SQLite and Abseil into every executable.
 
 The package relies on the system for glibc 2.39 or newer (the build runner's;
 Qt's own libraries need 2.34), the C++ runtime, GLib, `libudev`, the display

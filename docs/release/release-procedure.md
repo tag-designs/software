@@ -580,9 +580,11 @@ run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
 
 The signed DMG is also kept in `<build-dir>/signed-release/`.
 
-Expect six app lines -- five Qt apps and `dataprocessing` -- then eight tool
-lines: the seven command line tools in `tag_tools/bin`, and `dataprocessing`
-again as `ok (link)`, the link there into its bundle. Different counts mean
+Expect five app lines, the Qt apps, then eight tool lines: the eight command
+line tools in `tag_tools/bin`, `dataprocessing` among them as a plain
+executable since it stopped linking Qt
+([decision 0031](../decisions/0031-host-dataprocessing-plain-executable-without-qt.md)).
+Different counts mean
 the install set changed; check them against `host_cli_install_targets` before
 shipping. A tool also fails if it links anything outside `/usr/lib` and
 `/System`: it ships as a bare executable with nothing beside it, so such a

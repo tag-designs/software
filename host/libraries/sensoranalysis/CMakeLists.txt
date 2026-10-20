@@ -4,8 +4,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 message("Configure sensoranalysis")
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui)
-
 # The Qt-free core: compass calibration and the orientation solve on plain
 # float vector and quaternion types (core/vecmath.h) that reproduce Qt's
 # QVector3D and QQuaternion bit for bit. Command-line tools link this alone;
@@ -22,6 +20,14 @@ if(TARGET protobuf::libprotobuf)
   add_library(sensoranalysis_core_json STATIC core/calibration_json.cpp)
   target_link_libraries(sensoranalysis_core_json PUBLIC sensoranalysis_core protobuf::libprotobuf)
 endif()
+
+# Everything below is the Qt library and its checks. A host build without the
+# Qt applications still gets the core above, which dataprocessing needs.
+if(NOT BUILD_QT_APPS)
+  return()
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui)
 
 add_library(sensoranalysis STATIC
   accelcalibration.cpp

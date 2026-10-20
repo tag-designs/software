@@ -19,9 +19,9 @@ add_library(host_common INTERFACE)
 target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
 
 add_subdirectory(libraries/tagcore)
-if(BUILD_QT_APPS)
-  add_subdirectory(libraries/sensoranalysis)
-endif()
+# Always added: its Qt-free core is what dataprocessing links. The Qt library
+# in it is built only with the Qt applications.
+add_subdirectory(libraries/sensoranalysis)
 add_subdirectory(commandline)
 if(BUILD_QT_APPS)
   add_subdirectory(libraries/qcustomplot)
@@ -275,10 +275,9 @@ if(TARGET dataprocessing)
   list(APPEND host_cli_install_targets dataprocessing)
 endif()
 set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)
+# The targets that need Qt deployed beside them. Every command line tool,
+# dataprocessing included, is a plain executable that links no Qt.
 set(host_qt_runtime_install_targets ${host_qt_install_targets})
-if(TARGET dataprocessing)
-  list(APPEND host_qt_runtime_install_targets dataprocessing)
-endif()
 set(host_install_targets)
 set(host_candidate_install_targets ${host_qt_install_targets} ${host_cli_install_targets})
 foreach(target_name ${host_candidate_install_targets})
@@ -477,22 +476,8 @@ if(host_install_targets)
       # The command line tools are plain executables with their libraries
       # linked statically, so they need no deployment, only a signature: the
       # linker's ad-hoc one would fail notarization of the whole image.
-      # dataprocessing is the exception. It links Qt, so it stays a bundle,
-      # deployed and signed by the loop above, and gets a link in bin so
-      # that it runs from there like the others; dyld resolves the link, so
-      # the bundle still finds its frameworks.
       foreach(target_name ${host_cli_install_targets})
         if(NOT TARGET ${target_name})
-          continue()
-        endif()
-        if(target_name IN_LIST host_qt_runtime_install_targets)
-          install(CODE "
-            file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/${host_cli_runtime_destination}\")
-            file(CREATE_LINK
-                 \"../${target_name}.app/Contents/MacOS/${target_name}\"
-                 \"\${CMAKE_INSTALL_PREFIX}/${host_cli_runtime_destination}/${target_name}\"
-                 SYMBOLIC)
-          ")
           continue()
         endif()
         install_macos_codesign_executable(${target_name} "${host_cli_runtime_destination}")

@@ -7,9 +7,9 @@ summary: Distributed and bench-only command-line tools, with usage notes for tag
 # Command-Line Tools
 
 Command-line host tools live here. Most hardware-facing tools link the Qt-free
-`tagcore` target from `../libraries/tagcore`. `dataprocessing` is the current
-exception: it reuses the existing `sensoranalysis` math library, so it is built
-when the Qt/sensor-analysis host stack is enabled.
+`tagcore` target from `../libraries/tagcore`. `dataprocessing` links the
+Qt-free `sensoranalysis_core` and SQLite instead, and is built in any host
+build; like every tool here it uses no Qt.
 
 Distributed tools -- these are the ones in `host_cli_install_targets` in
 `../CMakeLists.txt`, the ones documented in the user guide, and the ones that

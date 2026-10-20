@@ -29,15 +29,23 @@ DataProcessing: batch SQLite copy, processor configuration, durable outputs
 SensorViz: visualization and interactive display choices
 ```
 
-`dataprocessing` links `sensoranalysis` and SQLite. It is built on Qt Core
-(`QCoreApplication`, `QCommandLineParser`, Qt JSON and file classes) and gets
-Qt Core and Qt Gui through `sensoranalysis`, so it installs as a Qt-runtime
-target, but it has no GUI: it is scriptable and deterministic. It uses
-`CompassCalibration::fromMagnetometerJson()` and `CompassProcessor` from
-`sensoranalysis`, the same math SensorViz and qtcalibrate use, so compass math
-is not forked between the three. SQLite read/write stays in the application,
-keeping `sensoranalysis` independent of the database format. The `magcal`
-calibration solver stays in qtcalibrate.
+`dataprocessing` uses no Qt. It links `sensoranalysis_core` -- the Qt-free
+compass core -- through `sensoranalysis_core_json`, plus SQLite, and borrows
+two self-contained files from tagcore: the vendored cxxopts header for its
+command line and `Sha256` for the input hash. It is a plain executable,
+scriptable and deterministic, built in any host build whether or not the Qt
+applications are
+([decision 0031](../../../docs/decisions/0031-host-dataprocessing-plain-executable-without-qt.md)).
+
+The compass math is not forked. `compasscore::calibrationFromJson()` reads the
+newest Calibration row and `compasscore::solveOrientation()` solves each pair;
+SensorViz and qtcalibrate reach the same functions through
+`CompassCalibration` and `CompassProcessor`, which are adapters over the core.
+The core is bit-identical to the Qt code it replaced, which
+`compass_core_parity_check` verifies, so a log processed here holds exactly
+what SensorViz derives from the same rows. SQLite read/write stays in the
+application, keeping `sensoranalysis` independent of the database format. The
+`magcal` calibration solver stays in qtcalibrate.
 
 Viewer preferences (plot colors, axis sides, visibility) are never processing
 configuration.

@@ -10,32 +10,41 @@
  *          a rotation-order convention that belongs to the display. Heading,
  *          declination and battery-forward direction are derived downstream
  *          from the quaternion.
+ *
+ *          The tool does not use Qt. The compass math is the Qt-free
+ *          sensoranalysis core (compass_core.h, calibration_json.h), which is
+ *          bit-identical to the Qt classes the applications use, so a log
+ *          processed here matches what SensorViz derives from the same rows.
  */
 
-#include "compass_processor.h"
+#include "calibration_json.h"
+#include "compass_core.h"
+#include "cxxopts.hpp"
 #include "imutag_log_format.h"
-
-#include <QCommandLineOption>
-#include <QCommandLineParser>
-#include <QCoreApplication>
-#include <QCryptographicHash>
-#include <QDateTime>
-#include <QFile>
-#include <QFileInfo>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QString>
-#include <QStringList>
-#include <QVector>
-#include <QVector3D>
+#include "recovery/sha256.h"
 
 #include <sqlite3.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <map>
+#include <string>
+#include <system_error>
+#include <vector>
 
 namespace
 {
+
+using compasscore::CalibrationConstants;
+using compasscore::Orientation;
+using sensormath::Vec3f;
+
+/// Reported by --version and stored as ProcessingRun.ToolVersion.
+constexpr const char *kToolVersion = "0.1";
 
 // Version 2 dropped the yaw, pitch and roll columns from the orientation
 // tables; orientation is the quaternion alone.
@@ -54,13 +63,13 @@ enum class IfExists
  */
 struct ToolOptions
 {
-    QString inputPath;
-    QString outputPath;
-    QStringList processors;
+    std::string inputPath;
+    std::string outputPath;
+    std::vector<std::string> processors;
     IfExists ifExists = IfExists::Fail;
     bool dryRun = false;
     bool listProcessors = false;
-    QString describeProcessor;
+    std::string describeProcessor;
     bool printSummary = false;
 };
 
@@ -70,22 +79,25 @@ struct ToolOptions
  */
 struct CompassSample
 {
-    qint64 epoch = 0;
-    QVector3D accel;
-    QVector3D mag;
+    int64_t epoch = 0;
+    Vec3f accel;
+    Vec3f mag;
 };
 
 /**
  * @struct  CompassInput
  * @brief   Loaded CompassTag samples and derived values for processors.
+ *
+ * @details rawSamples, calibratedMag and derived are parallel: entry i of each
+ *          belongs to the same Compass row.
  */
 struct CompassInput
 {
-    qint64 calibrationEpoch = 0;
-    CompassCalibration calibration;
-    QVector<CompassSample> rawSamples;
-    QVector<QVector3D> calibratedMag;
-    QVector<CompassDerivedSample> derived;
+    int64_t calibrationEpoch = 0;
+    CalibrationConstants calibration;
+    std::vector<CompassSample> rawSamples;
+    std::vector<Vec3f> calibratedMag;
+    std::vector<Orientation> derived;
 };
 
 /**
@@ -94,11 +106,11 @@ struct CompassInput
  */
 struct ImuCompassSample
 {
-    qint64 segmentId = 0;       ///< ImuMag.SegmentId.
-    qint64 sampleIndex = 0;     ///< ImuMag.SampleIndex: first IMU sample of the superframe.
-    qint64 elapsedUs = 0;       ///< ImuMag.ElapsedUs, corrected elapsed microseconds.
+    int64_t segmentId = 0;      ///< ImuMag.SegmentId.
+    int64_t sampleIndex = 0;    ///< ImuMag.SampleIndex: first IMU sample of the superframe.
+    int64_t elapsedUs = 0;      ///< ImuMag.ElapsedUs, corrected elapsed microseconds.
     int accelSamples = 0;       ///< ImuAccel rows averaged into the acceleration.
-    CompassDerivedSample derived; ///< Orientation from the calibrated pair.
+    Orientation derived;        ///< Orientation from the calibrated pair.
 };
 
 /**
@@ -107,12 +119,12 @@ struct ImuCompassSample
  */
 struct ImuCompassInput
 {
-    qint64 calibrationEpoch = 0;
-    CompassCalibration calibration;
-    QVector<ImuCompassSample> samples;
-    qint64 magRows = 0;           ///< ImuMag rows read.
-    qint64 skippedNoAccel = 0;    ///< Magnetometer rows whose superframe had no ImuAccel rows.
-    qint64 skippedUnsolvable = 0; ///< Pairs CompassProcessor could not solve (a zero vector).
+    int64_t calibrationEpoch = 0;
+    CalibrationConstants calibration;
+    std::vector<ImuCompassSample> samples;
+    int64_t magRows = 0;           ///< ImuMag rows read.
+    int64_t skippedNoAccel = 0;    ///< Magnetometer rows whose superframe had no ImuAccel rows.
+    int64_t skippedUnsolvable = 0; ///< Pairs the solve refused (a zero vector).
 };
 
 /**
@@ -135,16 +147,39 @@ struct StreamDefinition
 };
 
 /**
+ * @brief   Derives one CompassTag-style sample: offset-corrected acceleration
+ *          and the magnetometer calibrated, then solved.
+ *
+ * @details The same steps, in the same order, as
+ *          CompassProcessor::deriveSample() with calibration applied.
+ *
+ * @param[in]  calibration Constants to apply.
+ * @param[in]  accel       Raw accelerometer vector, mg.
+ * @param[in]  mag         Raw magnetometer vector, uT.
+ * @param[out] derived     Orientation on success.
+ *
+ * @return  false when the pair cannot be solved (a zero vector).
+ */
+bool deriveOrientation(
+    const CalibrationConstants &calibration,
+    Vec3f accel,
+    Vec3f mag,
+    Orientation &derived)
+{
+    return compasscore::solveOrientation(
+        mag, compasscore::applyAccelerometer(calibration, accel), &calibration, derived);
+}
+
+/**
  * @class   Database
  * @brief   Small RAII wrapper around one sqlite3 handle.
  */
 class Database
 {
 public:
-    Database(const QString &path, int flags)
+    Database(const std::string &path, int flags)
     {
-        const QByteArray utf8Path = path.toUtf8();
-        if (sqlite3_open_v2(utf8Path.constData(), &db_, flags, nullptr) != SQLITE_OK) {
+        if (sqlite3_open_v2(path.c_str(), &db_, flags, nullptr) != SQLITE_OK) {
             lastError_ = errorString();
             close();
         }
@@ -168,16 +203,16 @@ public:
         return db_;
     }
 
-    QString lastError() const
+    std::string lastError() const
     {
-        return lastError_.isEmpty() ? errorString() : lastError_;
+        return lastError_.empty() ? errorString() : lastError_;
     }
 
-    bool exec(const char *sql, QString &error)
+    bool exec(const std::string &sql, std::string &error)
     {
         char *sqliteError = nullptr;
-        if (sqlite3_exec(db_, sql, nullptr, nullptr, &sqliteError) != SQLITE_OK) {
-            error = QString::fromUtf8(sqliteError ? sqliteError : sqlite3_errmsg(db_));
+        if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &sqliteError) != SQLITE_OK) {
+            error = sqliteError ? sqliteError : sqlite3_errmsg(db_);
             sqlite3_free(sqliteError);
             return false;
         }
@@ -185,9 +220,9 @@ public:
     }
 
 private:
-    QString errorString() const
+    std::string errorString() const
     {
-        return QString::fromUtf8(db_ ? sqlite3_errmsg(db_) : "database is not open");
+        return db_ ? sqlite3_errmsg(db_) : "database is not open";
     }
 
     void close()
@@ -199,7 +234,7 @@ private:
     }
 
     sqlite3 *db_ = nullptr;
-    QString lastError_;
+    std::string lastError_;
 };
 
 /**
@@ -209,9 +244,9 @@ private:
 class Statement
 {
 public:
-    Statement(Database &db, const char *sql) : db_(db.get())
+    Statement(Database &db, const std::string &sql) : db_(db.get())
     {
-        if (sqlite3_prepare_v2(db_, sql, -1, &stmt_, nullptr) != SQLITE_OK) {
+        if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt_, nullptr) != SQLITE_OK) {
             lastError_ = errorString();
             stmt_ = nullptr;
         }
@@ -232,12 +267,12 @@ public:
         return stmt_ != nullptr;
     }
 
-    QString lastError() const
+    std::string lastError() const
     {
         return lastError_;
     }
 
-    bool bindInt64(int index, qint64 value)
+    bool bindInt64(int index, int64_t value)
     {
         return check(sqlite3_bind_int64(stmt_, index, value));
     }
@@ -247,14 +282,13 @@ public:
         return check(sqlite3_bind_double(stmt_, index, value));
     }
 
-    bool bindText(int index, const QString &value)
+    bool bindText(int index, const std::string &value)
     {
-        const QByteArray utf8 = value.toUtf8();
         return check(sqlite3_bind_text(
             stmt_,
             index,
-            utf8.constData(),
-            utf8.size(),
+            value.data(),
+            static_cast<int>(value.size()),
             SQLITE_TRANSIENT));
     }
 
@@ -263,7 +297,7 @@ public:
         if (!value) {
             return check(sqlite3_bind_null(stmt_, index));
         }
-        return bindText(index, QString::fromUtf8(value));
+        return bindText(index, value);
     }
 
     int step()
@@ -279,8 +313,8 @@ public:
     {
         const int rc = step();
         if (rc != SQLITE_DONE) {
-            if (lastError_.isEmpty()) {
-                lastError_ = QStringLiteral("statement returned rows unexpectedly");
+            if (lastError_.empty()) {
+                lastError_ = "statement returned rows unexpectedly";
             }
             return false;
         }
@@ -289,7 +323,7 @@ public:
         return true;
     }
 
-    qint64 int64Column(int index) const
+    int64_t int64Column(int index) const
     {
         return sqlite3_column_int64(stmt_, index);
     }
@@ -299,10 +333,10 @@ public:
         return sqlite3_column_double(stmt_, index);
     }
 
-    QString textColumn(int index) const
+    std::string textColumn(int index) const
     {
         const unsigned char *text = sqlite3_column_text(stmt_, index);
-        return QString::fromUtf8(text ? reinterpret_cast<const char *>(text) : "");
+        return text ? reinterpret_cast<const char *>(text) : "";
     }
 
 private:
@@ -315,39 +349,109 @@ private:
         return true;
     }
 
-    QString errorString() const
+    std::string errorString() const
     {
-        return QString::fromUtf8(db_ ? sqlite3_errmsg(db_) : "database is not open");
+        return db_ ? sqlite3_errmsg(db_) : "database is not open";
     }
 
     sqlite3 *db_ = nullptr;
     sqlite3_stmt *stmt_ = nullptr;
-    QString lastError_;
+    std::string lastError_;
 };
 
-/**
- * @brief   Serializes a JSON object for storage in provenance metadata.
- *
- * @param[in] object   Object to encode without extra whitespace.
- *
- * @return  Compact UTF-8 JSON as a QString.
- */
-QString jsonCompact(const QJsonObject &object)
+// ---------------------------------------------------------------------------
+// Provenance JSON
+// ---------------------------------------------------------------------------
+//
+// ProcessingRun stores small fixed JSON documents. They are written by hand in
+// the form QJsonDocument::Compact produced before this tool left Qt -- keys in
+// sorted order, no whitespace -- so provenance from either build reads alike.
+
+/// Encodes @p text as a JSON string literal, escaping as QJsonDocument does.
+std::string jsonString(const std::string &text)
 {
-    return QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact));
+    static const char *const hex = "0123456789abcdef";
+    std::string out = "\"";
+    for (const char c : text) {
+        const auto u = static_cast<unsigned char>(c);
+        switch (c) {
+        case '"': out += "\\\""; break;
+        case '\\': out += "\\\\"; break;
+        case '\b': out += "\\b"; break;
+        case '\f': out += "\\f"; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default:
+            if (u < 0x20) {
+                out += "\\u00";
+                out += hex[u >> 4];
+                out += hex[u & 0xf];
+            } else {
+                out += c;
+            }
+        }
+    }
+    out += '"';
+    return out;
+}
+
+/// Encodes a list of strings as a compact JSON array.
+std::string jsonArray(const std::vector<std::string> &items)
+{
+    std::string out = "[";
+    for (size_t i = 0; i < items.size(); i++) {
+        out += (i ? "," : "") + jsonString(items[i]);
+    }
+    return out + "]";
 }
 
 /**
- * @brief   Serializes a JSON array for storage in provenance metadata.
- *
- * @param[in] array   Array to encode without extra whitespace.
- *
- * @return  Compact UTF-8 JSON as a QString.
+ * @class   JsonObject
+ * @brief   Compact JSON object writer with keys in sorted order.
  */
-QString jsonCompact(const QJsonArray &array)
+class JsonObject
 {
-    return QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact));
-}
+public:
+    void insert(const std::string &key, const std::string &text)
+    {
+        fields_[key] = jsonString(text);
+    }
+
+    void insert(const std::string &key, const char *text)
+    {
+        fields_[key] = jsonString(text);
+    }
+
+    void insert(const std::string &key, int64_t value)
+    {
+        fields_[key] = std::to_string(value);
+    }
+
+    void insert(const std::string &key, int value)
+    {
+        fields_[key] = std::to_string(value);
+    }
+
+    void insert(const std::string &key, const JsonObject &object)
+    {
+        fields_[key] = object.compact();
+    }
+
+    std::string compact() const
+    {
+        std::string out = "{";
+        bool first = true;
+        for (const auto &[key, value] : fields_) {
+            out += (first ? "" : ",") + jsonString(key) + ":" + value;
+            first = false;
+        }
+        return out + "}";
+    }
+
+private:
+    std::map<std::string, std::string> fields_; ///< Key to already-encoded value.
+};
 
 /**
  * @brief   Calculates a SHA-256 hash for the source SQLite file.
@@ -358,19 +462,43 @@ QString jsonCompact(const QJsonArray &array)
  * @return  Lowercase hexadecimal SHA-256 digest, or an empty string if the
  *          file could not be opened or read.
  */
-QString sha256File(const QString &path, QString &error)
+std::string sha256File(const std::string &path, std::string &error)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        error = QStringLiteral("Could not open %1: %2").arg(path, file.errorString());
+    std::ifstream file(std::filesystem::path(path), std::ios::binary);
+    if (!file) {
+        error = "Could not open " + path;
         return {};
     }
 
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    while (!file.atEnd()) {
-        hash.addData(file.read(1024 * 1024));
+    tagcore::recovery::Sha256 hash;
+    std::vector<char> buffer(1024 * 1024);
+    while (file) {
+        file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const std::streamsize got = file.gcount();
+        if (got > 0) {
+            hash.Update(reinterpret_cast<const uint8_t *>(buffer.data()), static_cast<size_t>(got));
+        }
     }
-    return QString::fromLatin1(hash.result().toHex());
+    if (file.bad()) {
+        error = "Could not read " + path;
+        return {};
+    }
+    return hash.HexDigest();
+}
+
+/// Current UTC time as ISO 8601 with a Z suffix, as Qt::ISODate wrote it.
+std::string currentUtcIso8601()
+{
+    const std::time_t now = std::time(nullptr);
+    std::tm utc{};
+#ifdef _WIN32
+    gmtime_s(&utc, &now);
+#else
+    gmtime_r(&now, &utc);
+#endif
+    char text[32];
+    std::strftime(text, sizeof text, "%Y-%m-%dT%H:%M:%SZ", &utc);
+    return text;
 }
 
 /**
@@ -383,7 +511,7 @@ QString sha256File(const QString &path, QString &error)
  *
  * @return  true when the catalog query completed, false on SQLite failure.
  */
-bool tableExists(Database &db, const QString &name, bool &exists, QString &error)
+bool tableExists(Database &db, const std::string &name, bool &exists, std::string &error)
 {
     Statement stmt(
         db,
@@ -415,7 +543,7 @@ bool tableExists(Database &db, const QString &name, bool &exists, QString &error
  *
  * @return  true when the query completed, false on SQLite failure.
  */
-bool streamExists(Database &db, const QString &id, bool &exists, QString &error)
+bool streamExists(Database &db, const std::string &id, bool &exists, std::string &error)
 {
     Statement stmt(db, "SELECT 1 FROM streams WHERE stream_id=? LIMIT 1");
     if (!stmt.valid() || !stmt.bindText(1, id)) {
@@ -448,11 +576,9 @@ bool streamExists(Database &db, const QString &id, bool &exists, QString &error)
  * @warning @p table is interpolated into SQL. Pass only fixed internal table
  *          names, not user-provided strings.
  */
-bool rowCount(Database &db, const char *table, qint64 &count, QString &error)
+bool rowCount(Database &db, const char *table, int64_t &count, std::string &error)
 {
-    const QString sql = QStringLiteral("SELECT COUNT(*) FROM %1").arg(table);
-    const QByteArray utf8 = sql.toUtf8();
-    Statement stmt(db, utf8.constData());
+    Statement stmt(db, std::string("SELECT COUNT(*) FROM ") + table);
     if (!stmt.valid()) {
         error = stmt.lastError();
         return false;
@@ -467,19 +593,19 @@ bool rowCount(Database &db, const char *table, qint64 &count, QString &error)
 }
 
 /// IMUTag processor id; the others read the CompassTag Compass table.
-const QString kImuCompassOrientation = QStringLiteral("imu-compass-orientation");
+const std::string kImuCompassOrientation = "imu-compass-orientation";
 
-QStringList processorIds()
+std::vector<std::string> processorIds()
 {
     return {
-        QStringLiteral("compass-calibrated"),
-        QStringLiteral("compass-orientation"),
+        "compass-calibrated",
+        "compass-orientation",
         kImuCompassOrientation,
     };
 }
 
 /// Whether a processor reads IMUTag tables rather than the Compass table.
-bool isImuProcessor(const QString &processor)
+bool isImuProcessor(const std::string &processor)
 {
     return processor == kImuCompassOrientation;
 }
@@ -491,24 +617,21 @@ bool isImuProcessor(const QString &processor)
  *
  * @return  Description text, or an empty string if the id is unknown.
  */
-QString processorDescription(const QString &processor)
+std::string processorDescription(const std::string &processor)
 {
-    if (processor == QStringLiteral("compass-calibrated")) {
-        return QStringLiteral(
-            "Writes CompassCalibrated with raw acceleration and calibrated "
-            "magnetometer x/y/z columns, plus record-column stream metadata.");
+    if (processor == "compass-calibrated") {
+        return "Writes CompassCalibrated with raw acceleration and calibrated "
+               "magnetometer x/y/z columns, plus record-column stream metadata.";
     }
-    if (processor == QStringLiteral("compass-orientation")) {
-        return QStringLiteral(
-            "Writes CompassOrientation with the magnetic-frame orientation "
-            "quaternion, dip, field, and acceleration magnitude columns.");
+    if (processor == "compass-orientation") {
+        return "Writes CompassOrientation with the magnetic-frame orientation "
+               "quaternion, dip, field, and acceleration magnitude columns.";
     }
     if (processor == kImuCompassOrientation) {
-        return QStringLiteral(
-            "Writes ImuCompassOrientation for IMUTag logs: each ImuMag row is "
-            "paired with the mean of its superframe's ImuAccel rows, calibrated, "
-            "and solved for the magnetic-frame orientation quaternion, dip, field, "
-            "and acceleration magnitude columns on ElapsedUs.");
+        return "Writes ImuCompassOrientation for IMUTag logs: each ImuMag row is "
+               "paired with the mean of its superframe's ImuAccel rows, calibrated, "
+               "and solved for the magnetic-frame orientation quaternion, dip, field, "
+               "and acceleration magnitude columns on ElapsedUs.";
     }
     return {};
 }
@@ -521,47 +644,46 @@ QString processorDescription(const QString &processor)
  *
  * @return  true when raw compass samples and calibration rows are available.
  */
-bool compassInputsAvailable(Database &db, QString &reason)
+bool compassInputsAvailable(Database &db, std::string &reason)
 {
-    QString error;
+    std::string error;
     bool hasCompass = false;
     bool hasCalibration = false;
-    if (!tableExists(db, QStringLiteral("Compass"), hasCompass, error)) {
+    if (!tableExists(db, "Compass", hasCompass, error)) {
         reason = error;
         return false;
     }
     if (!hasCompass) {
-        reason = QStringLiteral("missing Compass table");
+        reason = "missing Compass table";
         return false;
     }
-    if (!tableExists(db, QStringLiteral("Calibration"), hasCalibration, error)) {
+    if (!tableExists(db, "Calibration", hasCalibration, error)) {
         reason = error;
         return false;
     }
     if (!hasCalibration) {
-        reason = QStringLiteral("missing Calibration table");
+        reason = "missing Calibration table";
         return false;
     }
 
-    qint64 compassRows = 0;
-    qint64 calibrationRows = 0;
+    int64_t compassRows = 0;
+    int64_t calibrationRows = 0;
     if (!rowCount(db, "Compass", compassRows, error)
         || !rowCount(db, "Calibration", calibrationRows, error)) {
         reason = error;
         return false;
     }
     if (compassRows <= 0) {
-        reason = QStringLiteral("Compass table is empty");
+        reason = "Compass table is empty";
         return false;
     }
     if (calibrationRows <= 0) {
-        reason = QStringLiteral("Calibration table is empty");
+        reason = "Calibration table is empty";
         return false;
     }
 
-    reason = QStringLiteral("%1 Compass rows, %2 calibration rows")
-                 .arg(compassRows)
-                 .arg(calibrationRows);
+    reason = std::to_string(compassRows) + " Compass rows, "
+        + std::to_string(calibrationRows) + " calibration rows";
     return true;
 }
 
@@ -573,19 +695,19 @@ bool compassInputsAvailable(Database &db, QString &reason)
  *
  * @return  true when ImuMag, ImuAccel and Calibration all exist and have rows.
  */
-bool imuCompassInputsAvailable(Database &db, QString &reason)
+bool imuCompassInputsAvailable(Database &db, std::string &reason)
 {
-    QString error;
-    qint64 counts[3] = {0, 0, 0};
+    std::string error;
+    int64_t counts[3] = {0, 0, 0};
     const char *tables[3] = {"ImuMag", "ImuAccel", "Calibration"};
     for (int i = 0; i < 3; i++) {
         bool exists = false;
-        if (!tableExists(db, QString::fromUtf8(tables[i]), exists, error)) {
+        if (!tableExists(db, tables[i], exists, error)) {
             reason = error;
             return false;
         }
         if (!exists) {
-            reason = QStringLiteral("missing %1 table").arg(QString::fromUtf8(tables[i]));
+            reason = std::string("missing ") + tables[i] + " table";
             return false;
         }
         if (!rowCount(db, tables[i], counts[i], error)) {
@@ -593,15 +715,13 @@ bool imuCompassInputsAvailable(Database &db, QString &reason)
             return false;
         }
         if (counts[i] <= 0) {
-            reason = QStringLiteral("%1 table is empty").arg(QString::fromUtf8(tables[i]));
+            reason = std::string(tables[i]) + " table is empty";
             return false;
         }
     }
 
-    reason = QStringLiteral("%1 ImuMag rows, %2 ImuAccel rows, %3 calibration rows")
-                 .arg(counts[0])
-                 .arg(counts[1])
-                 .arg(counts[2]);
+    reason = std::to_string(counts[0]) + " ImuMag rows, " + std::to_string(counts[1])
+        + " ImuAccel rows, " + std::to_string(counts[2]) + " calibration rows";
     return true;
 }
 
@@ -614,7 +734,7 @@ bool imuCompassInputsAvailable(Database &db, QString &reason)
  *
  * @return  true when the processor can run on this database.
  */
-bool processorInputsAvailable(Database &db, const QString &processor, QString &reason)
+bool processorInputsAvailable(Database &db, const std::string &processor, std::string &reason)
 {
     return isImuProcessor(processor) ? imuCompassInputsAvailable(db, reason)
                                      : compassInputsAvailable(db, reason);
@@ -622,6 +742,9 @@ bool processorInputsAvailable(Database &db, const QString &processor, QString &r
 
 /**
  * @brief   Reads the newest Calibration row.
+ *
+ * @details Parsed by compasscore::calibrationFromJson(), which reads the
+ *          numbers exactly as the Qt applications do.
  *
  * @param[in,out] db          Open SQLite log database.
  * @param[out] epoch          The row's Epoch, in log units.
@@ -632,9 +755,9 @@ bool processorInputsAvailable(Database &db, const QString &processor, QString &r
  */
 bool loadLatestCalibration(
     Database &db,
-    qint64 &epoch,
-    CompassCalibration &calibration,
-    QString &error)
+    int64_t &epoch,
+    CalibrationConstants &calibration,
+    std::string &error)
 {
     Statement row(
         db,
@@ -644,25 +767,16 @@ bool loadLatestCalibration(
         return false;
     }
     if (row.step() != SQLITE_ROW) {
-        error = QStringLiteral("Calibration table is empty");
+        error = "Calibration table is empty";
         return false;
     }
 
     epoch = row.int64Column(0);
-    const QString constantsJson = row.textColumn(1);
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(constantsJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        error = QStringLiteral("Latest calibration constants are not valid JSON: %1")
-                    .arg(parseError.errorString());
+    std::string reason;
+    if (!compasscore::calibrationFromJson(row.textColumn(1), calibration, reason)) {
+        error = "Latest " + reason;
         return false;
     }
-    const QJsonObject root = document.object();
-    if (!root.value(QStringLiteral("magnetometer")).isObject()) {
-        error = QStringLiteral("Latest calibration constants do not contain a magnetometer object");
-        return false;
-    }
-    calibration = CompassCalibration::fromCalibrationJson(root);
     return true;
 }
 
@@ -675,9 +789,9 @@ bool loadLatestCalibration(
  *
  * @return  true when all CompassTag processor inputs were loaded.
  */
-bool loadCompassInput(Database &db, CompassInput &input, QString &error)
+bool loadCompassInput(Database &db, CompassInput &input, std::string &error)
 {
-    QString reason;
+    std::string reason;
     if (!compassInputsAvailable(db, reason)) {
         error = reason;
         return false;
@@ -693,7 +807,6 @@ bool loadCompassInput(Database &db, CompassInput &input, QString &error)
         return false;
     }
 
-    CompassProcessor processor(input.calibration);
     input.rawSamples.clear();
     input.calibratedMag.clear();
     input.derived.clear();
@@ -707,35 +820,31 @@ bool loadCompassInput(Database &db, CompassInput &input, QString &error)
             return false;
         }
 
+        // Columns are read as double and stored as float, as QVector3D did.
         CompassSample sample;
         sample.epoch = rows.int64Column(0);
-        sample.accel = QVector3D(
-            rows.doubleColumn(1),
-            rows.doubleColumn(2),
-            rows.doubleColumn(3));
-        sample.mag = QVector3D(
-            rows.doubleColumn(4),
-            rows.doubleColumn(5),
-            rows.doubleColumn(6));
+        sample.accel = Vec3f{
+            static_cast<float>(rows.doubleColumn(1)),
+            static_cast<float>(rows.doubleColumn(2)),
+            static_cast<float>(rows.doubleColumn(3))};
+        sample.mag = Vec3f{
+            static_cast<float>(rows.doubleColumn(4)),
+            static_cast<float>(rows.doubleColumn(5)),
+            static_cast<float>(rows.doubleColumn(6))};
 
-        CompassRawSample raw;
-        raw.epoch = sample.epoch;
-        raw.accel = sample.accel;
-        raw.mag = sample.mag;
-
-        CompassDerivedSample derived;
-        if (!processor.deriveSample(raw, derived)) {
-            error = QStringLiteral("Could not derive orientation at epoch %1").arg(sample.epoch);
+        Orientation derived;
+        if (!deriveOrientation(input.calibration, sample.accel, sample.mag, derived)) {
+            error = "Could not derive orientation at epoch " + std::to_string(sample.epoch);
             return false;
         }
 
-        input.rawSamples.append(sample);
-        input.calibratedMag.append(input.calibration.apply(sample.mag));
-        input.derived.append(derived);
+        input.rawSamples.push_back(sample);
+        input.calibratedMag.push_back(compasscore::applyMagnetometer(input.calibration, sample.mag));
+        input.derived.push_back(derived);
     }
 
-    if (input.rawSamples.isEmpty()) {
-        error = QStringLiteral("Compass table is empty");
+    if (input.rawSamples.empty()) {
+        error = "Compass table is empty";
         return false;
     }
     return true;
@@ -756,9 +865,9 @@ bool loadCompassInput(Database &db, CompassInput &input, QString &error)
  *          ElapsedUs. Both tables are read once, in (SegmentId, SampleIndex)
  *          order, and merged.
  *
- *          The pair then goes through CompassProcessor with the newest
- *          calibration, which applies the magnetometer constants and the
- *          accelerometer zero-g offset, exactly as for CompassTag.
+ *          The pair is then derived with the newest calibration, which applies
+ *          the magnetometer constants and the accelerometer zero-g offset,
+ *          exactly as for CompassTag.
  *
  * @param[in,out] db     Open SQLite log database.
  * @param[out] input     Paired samples and the counts of rows left out.
@@ -768,9 +877,9 @@ bool loadCompassInput(Database &db, CompassInput &input, QString &error)
  *          with no acceleration in their superframe, or that cannot be solved,
  *          are counted and skipped rather than failing the run.
  */
-bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
+bool loadImuCompassInput(Database &db, ImuCompassInput &input, std::string &error)
 {
-    QString reason;
+    std::string reason;
     if (!imuCompassInputsAvailable(db, reason)) {
         error = reason;
         return false;
@@ -799,9 +908,9 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
     // The accelerometer cursor only moves forward; superframes do not overlap.
     bool haveAccel = false;
     bool accelDone = false;
-    qint64 accelSegment = 0;
-    qint64 accelIndex = 0;
-    QVector3D accelValue;
+    int64_t accelSegment = 0;
+    int64_t accelIndex = 0;
+    Vec3f accelValue;
     auto nextAccel = [&]() -> bool {
         const int rc = accel.step();
         if (rc == SQLITE_DONE) {
@@ -816,14 +925,16 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
         haveAccel = true;
         accelSegment = accel.int64Column(0);
         accelIndex = accel.int64Column(1);
-        accelValue = QVector3D(accel.doubleColumn(2), accel.doubleColumn(3), accel.doubleColumn(4));
+        accelValue = Vec3f{
+            static_cast<float>(accel.doubleColumn(2)),
+            static_cast<float>(accel.doubleColumn(3)),
+            static_cast<float>(accel.doubleColumn(4))};
         return true;
     };
     if (!nextAccel()) {
         return false;
     }
 
-    CompassProcessor processor(input.calibration);
     input.samples.clear();
     input.magRows = 0;
     input.skippedNoAccel = 0;
@@ -843,8 +954,11 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
         sample.segmentId = mag.int64Column(0);
         sample.sampleIndex = mag.int64Column(1);
         sample.elapsedUs = mag.int64Column(2);
-        const QVector3D field(mag.doubleColumn(3), mag.doubleColumn(4), mag.doubleColumn(5));
-        const qint64 end = sample.sampleIndex + IMUTAG_IMU_SAMPLES_PER_SUPERFRAME;
+        const Vec3f field{
+            static_cast<float>(mag.doubleColumn(3)),
+            static_cast<float>(mag.doubleColumn(4)),
+            static_cast<float>(mag.doubleColumn(5))};
+        const int64_t end = sample.sampleIndex + IMUTAG_IMU_SAMPLES_PER_SUPERFRAME;
 
         // Skip acceleration before this superframe, then sum the rows inside it.
         while (!accelDone
@@ -854,7 +968,7 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
                 return false;
             }
         }
-        QVector3D sum;
+        Vec3f sum;
         while (haveAccel && accelSegment == sample.segmentId && accelIndex < end) {
             sum += accelValue;
             sample.accelSamples++;
@@ -867,20 +981,17 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
             continue;
         }
 
-        CompassRawSample raw;
-        raw.epoch = static_cast<double>(sample.elapsedUs) / 1.0e6;
-        raw.accel = sum / static_cast<float>(sample.accelSamples);
-        raw.mag = field;
-        if (!processor.deriveSample(raw, sample.derived)) {
+        const Vec3f meanAccel = sum / static_cast<float>(sample.accelSamples);
+        if (!deriveOrientation(input.calibration, meanAccel, field, sample.derived)) {
             input.skippedUnsolvable++;
             continue;
         }
-        input.samples.append(sample);
+        input.samples.push_back(sample);
     }
 
-    if (input.samples.isEmpty()) {
-        error = QStringLiteral("No ImuMag row could be paired with acceleration (%1 rows read)")
-                    .arg(input.magRows);
+    if (input.samples.empty()) {
+        error = "No ImuMag row could be paired with acceleration ("
+            + std::to_string(input.magRows) + " rows read)";
         return false;
     }
     return true;
@@ -895,14 +1006,14 @@ bool loadImuCompassInput(Database &db, ImuCompassInput &input, QString &error)
  *
  * @return  true when every requested row was deleted or did not exist.
  */
-bool deleteStreamIds(Database &db, const QStringList &streamIds, QString &error)
+bool deleteStreamIds(Database &db, const std::vector<std::string> &streamIds, std::string &error)
 {
     Statement stmt(db, "DELETE FROM streams WHERE stream_id=?");
     if (!stmt.valid()) {
         error = stmt.lastError();
         return false;
     }
-    for (const QString &id : streamIds) {
+    for (const std::string &id : streamIds) {
         if (!stmt.bindText(1, id) || !stmt.stepDone()) {
             error = stmt.lastError();
             return false;
@@ -922,8 +1033,8 @@ bool deleteStreamIds(Database &db, const QStringList &streamIds, QString &error)
  */
 bool insertStreamDefinitions(
     Database &db,
-    const QVector<StreamDefinition> &streams,
-    QString &error)
+    const std::vector<StreamDefinition> &streams,
+    std::string &error)
 {
     Statement stmt(
         db,
@@ -937,14 +1048,14 @@ bool insertStreamDefinitions(
     }
 
     for (const StreamDefinition &stream : streams) {
-        if (!stmt.bindText(1, QString::fromUtf8(stream.id))
+        if (!stmt.bindText(1, stream.id)
             || !stmt.bindNullableText(2, stream.groupId)
             || !stmt.bindNullableText(3, stream.groupName)
-            || !stmt.bindText(4, QString::fromUtf8(stream.table))
-            || !stmt.bindText(5, QString::fromUtf8(stream.timeColumn))
-            || !stmt.bindText(6, QString::fromUtf8(stream.valueColumn))
-            || !stmt.bindText(7, QString::fromUtf8(stream.kind))
-            || !stmt.bindText(8, QString::fromUtf8(stream.displayName))
+            || !stmt.bindText(4, stream.table)
+            || !stmt.bindText(5, stream.timeColumn)
+            || !stmt.bindText(6, stream.valueColumn)
+            || !stmt.bindText(7, stream.kind)
+            || !stmt.bindText(8, stream.displayName)
             || !stmt.bindNullableText(9, stream.units)
             || !stmt.bindNullableText(10, stream.quantity)
             || !stmt.bindNullableText(11, stream.comment)
@@ -964,7 +1075,7 @@ bool insertStreamDefinitions(
  *
  * @return  true when the table exists or was created.
  */
-bool createProcessingRunTable(Database &db, QString &error)
+bool createProcessingRunTable(Database &db, std::string &error)
 {
     return db.exec(
         "CREATE TABLE IF NOT EXISTS ProcessingRun ("
@@ -1001,38 +1112,38 @@ bool createProcessingRunTable(Database &db, QString &error)
 bool insertProcessingRun(
     Database &db,
     const ToolOptions &options,
-    const QString &inputHash,
-    const QString &processor,
-    qint64 calibrationEpoch,
-    const QJsonArray &sourceTables,
-    const QJsonArray &outputTables,
-    QString &error)
+    const std::string &inputHash,
+    const std::string &processor,
+    int64_t calibrationEpoch,
+    const std::vector<std::string> &sourceTables,
+    const std::vector<std::string> &outputTables,
+    std::string &error)
 {
-    QJsonObject calibrationSource;
-    calibrationSource.insert(QStringLiteral("table"), QStringLiteral("Calibration"));
-    calibrationSource.insert(QStringLiteral("epoch"), calibrationEpoch);
+    JsonObject calibrationSource;
+    calibrationSource.insert("table", "Calibration");
+    calibrationSource.insert("epoch", calibrationEpoch);
 
-    QJsonObject configuration;
-    configuration.insert(QStringLiteral("processor"), processor);
-    configuration.insert(QStringLiteral("algorithm_version"), kProcessorVersion);
-    configuration.insert(QStringLiteral("calibration_source"), calibrationSource);
-    if (processor == QStringLiteral("compass-orientation") || processor == kImuCompassOrientation) {
-        configuration.insert(QStringLiteral("orientation_frame"), QStringLiteral("magnetic-frame-nwu"));
-        configuration.insert(QStringLiteral("quaternion_order"), QStringLiteral("wxyz"));
+    JsonObject configuration;
+    configuration.insert("processor", processor);
+    configuration.insert("algorithm_version", kProcessorVersion);
+    configuration.insert("calibration_source", calibrationSource);
+    if (processor == "compass-orientation" || processor == kImuCompassOrientation) {
+        configuration.insert("orientation_frame", "magnetic-frame-nwu");
+        configuration.insert("quaternion_order", "wxyz");
         configuration.insert(
-            QStringLiteral("heading_policy"),
-            QStringLiteral("not_materialized; downstream tools derive heading from the quaternion, "
-                           "then apply declination and mounting convention"));
+            "heading_policy",
+            "not_materialized; downstream tools derive heading from the quaternion, "
+            "then apply declination and mounting convention");
     }
     if (processor == kImuCompassOrientation) {
-        QJsonObject pairing;
-        pairing.insert(QStringLiteral("method"), QStringLiteral("superframe_mean"));
-        pairing.insert(QStringLiteral("samples_per_superframe"), IMUTAG_IMU_SAMPLES_PER_SUPERFRAME);
+        JsonObject pairing;
+        pairing.insert("method", "superframe_mean");
+        pairing.insert("samples_per_superframe", IMUTAG_IMU_SAMPLES_PER_SUPERFRAME);
         pairing.insert(
-            QStringLiteral("description"),
-            QStringLiteral("each ImuMag row uses the mean of ImuAccel rows in its segment with "
-                           "SampleIndex in [SampleIndex, SampleIndex + samples_per_superframe)"));
-        configuration.insert(QStringLiteral("accel_pairing"), pairing);
+            "description",
+            "each ImuMag row uses the mean of ImuAccel rows in its segment with "
+            "SampleIndex in [SampleIndex, SampleIndex + samples_per_superframe)");
+        configuration.insert("accel_pairing", pairing);
     }
 
     Statement stmt(
@@ -1047,18 +1158,17 @@ bool insertProcessingRun(
         return false;
     }
 
-    const QString createdUtc = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
-    if (!stmt.bindText(1, QStringLiteral("dataprocessing"))
-        || !stmt.bindText(2, QCoreApplication::applicationVersion())
+    if (!stmt.bindText(1, "dataprocessing")
+        || !stmt.bindText(2, kToolVersion)
         || !stmt.bindText(3, processor)
         || !stmt.bindInt64(4, kProcessorVersion)
-        || !stmt.bindText(5, createdUtc)
-        || !stmt.bindText(6, QFileInfo(options.inputPath).fileName())
+        || !stmt.bindText(5, currentUtcIso8601())
+        || !stmt.bindText(6, std::filesystem::path(options.inputPath).filename().string())
         || !stmt.bindText(7, inputHash)
-        || !stmt.bindText(8, jsonCompact(configuration))
-        || !stmt.bindText(9, jsonCompact(sourceTables))
-        || !stmt.bindText(10, jsonCompact(outputTables))
-        || !stmt.bindText(11, QStringLiteral("success"))
+        || !stmt.bindText(8, configuration.compact())
+        || !stmt.bindText(9, jsonArray(sourceTables))
+        || !stmt.bindText(10, jsonArray(outputTables))
+        || !stmt.bindText(11, "success")
         || !stmt.stepDone()) {
         error = stmt.lastError();
         return false;
@@ -1066,61 +1176,61 @@ bool insertProcessingRun(
     return true;
 }
 
-QStringList streamIdsForProcessor(const QString &processor)
+std::vector<std::string> streamIdsForProcessor(const std::string &processor)
 {
-    if (processor == QStringLiteral("compass-calibrated")) {
+    if (processor == "compass-calibrated") {
         return {
-            QStringLiteral("compass_calibrated_ax"),
-            QStringLiteral("compass_calibrated_ay"),
-            QStringLiteral("compass_calibrated_az"),
-            QStringLiteral("compass_calibrated_mx"),
-            QStringLiteral("compass_calibrated_my"),
-            QStringLiteral("compass_calibrated_mz"),
+            "compass_calibrated_ax",
+            "compass_calibrated_ay",
+            "compass_calibrated_az",
+            "compass_calibrated_mx",
+            "compass_calibrated_my",
+            "compass_calibrated_mz",
         };
     }
     // The yaw, pitch and roll ids are no longer written (processor version 2)
     // but stay listed, so that replacing an older output removes their rows.
-    if (processor == QStringLiteral("compass-orientation")) {
+    if (processor == "compass-orientation") {
         return {
-            QStringLiteral("compass_orientation_yaw"),
-            QStringLiteral("compass_orientation_pitch"),
-            QStringLiteral("compass_orientation_roll"),
-            QStringLiteral("compass_orientation_qw"),
-            QStringLiteral("compass_orientation_qx"),
-            QStringLiteral("compass_orientation_qy"),
-            QStringLiteral("compass_orientation_qz"),
-            QStringLiteral("compass_orientation_dip"),
-            QStringLiteral("compass_orientation_field"),
-            QStringLiteral("compass_orientation_acceleration"),
+            "compass_orientation_yaw",
+            "compass_orientation_pitch",
+            "compass_orientation_roll",
+            "compass_orientation_qw",
+            "compass_orientation_qx",
+            "compass_orientation_qy",
+            "compass_orientation_qz",
+            "compass_orientation_dip",
+            "compass_orientation_field",
+            "compass_orientation_acceleration",
         };
     }
     if (processor == kImuCompassOrientation) {
         return {
-            QStringLiteral("imu_compass_orientation_yaw"),
-            QStringLiteral("imu_compass_orientation_pitch"),
-            QStringLiteral("imu_compass_orientation_roll"),
-            QStringLiteral("imu_compass_orientation_qw"),
-            QStringLiteral("imu_compass_orientation_qx"),
-            QStringLiteral("imu_compass_orientation_qy"),
-            QStringLiteral("imu_compass_orientation_qz"),
-            QStringLiteral("imu_compass_orientation_dip"),
-            QStringLiteral("imu_compass_orientation_field"),
-            QStringLiteral("imu_compass_orientation_acceleration"),
+            "imu_compass_orientation_yaw",
+            "imu_compass_orientation_pitch",
+            "imu_compass_orientation_roll",
+            "imu_compass_orientation_qw",
+            "imu_compass_orientation_qx",
+            "imu_compass_orientation_qy",
+            "imu_compass_orientation_qz",
+            "imu_compass_orientation_dip",
+            "imu_compass_orientation_field",
+            "imu_compass_orientation_acceleration",
         };
     }
     return {};
 }
 
-QStringList tableNamesForProcessor(const QString &processor)
+std::vector<std::string> tableNamesForProcessor(const std::string &processor)
 {
-    if (processor == QStringLiteral("compass-calibrated")) {
-        return {QStringLiteral("CompassCalibrated")};
+    if (processor == "compass-calibrated") {
+        return {"CompassCalibrated"};
     }
-    if (processor == QStringLiteral("compass-orientation")) {
-        return {QStringLiteral("CompassOrientation")};
+    if (processor == "compass-orientation") {
+        return {"CompassOrientation"};
     }
     if (processor == kImuCompassOrientation) {
-        return {QStringLiteral("ImuCompassOrientation")};
+        return {"ImuCompassOrientation"};
     }
     return {};
 }
@@ -1138,21 +1248,21 @@ QStringList tableNamesForProcessor(const QString &processor)
  */
 bool prepareProcessorOutputs(
     Database &db,
-    const QString &processor,
+    const std::string &processor,
     IfExists policy,
     bool &skip,
-    QString &error)
+    std::string &error)
 {
     skip = false;
     bool conflict = false;
-    for (const QString &table : tableNamesForProcessor(processor)) {
+    for (const std::string &table : tableNamesForProcessor(processor)) {
         bool exists = false;
         if (!tableExists(db, table, exists, error)) {
             return false;
         }
         conflict = conflict || exists;
     }
-    for (const QString &id : streamIdsForProcessor(processor)) {
+    for (const std::string &id : streamIdsForProcessor(processor)) {
         bool exists = false;
         if (!streamExists(db, id, exists, error)) {
             return false;
@@ -1161,8 +1271,7 @@ bool prepareProcessorOutputs(
     }
 
     if (conflict && policy == IfExists::Fail) {
-        error = QStringLiteral("Output for %1 already exists; use --if-exists replace or keep")
-                    .arg(processor);
+        error = "Output for " + processor + " already exists; use --if-exists replace or keep";
         return false;
     }
     if (conflict && policy == IfExists::Keep) {
@@ -1171,10 +1280,8 @@ bool prepareProcessorOutputs(
     }
 
     if (policy == IfExists::Replace || conflict) {
-        for (const QString &table : tableNamesForProcessor(processor)) {
-            const QString sql = QStringLiteral("DROP TABLE IF EXISTS %1").arg(table);
-            const QByteArray utf8 = sql.toUtf8();
-            if (!db.exec(utf8.constData(), error)) {
+        for (const std::string &table : tableNamesForProcessor(processor)) {
+            if (!db.exec("DROP TABLE IF EXISTS " + table, error)) {
                 return false;
             }
         }
@@ -1185,7 +1292,7 @@ bool prepareProcessorOutputs(
     return true;
 }
 
-QVector<StreamDefinition> calibratedStreamDefinitions()
+std::vector<StreamDefinition> calibratedStreamDefinitions()
 {
     return {
         {"compass_calibrated_ax", "compass_calibrated", "Compass calibrated",
@@ -1209,7 +1316,7 @@ QVector<StreamDefinition> calibratedStreamDefinitions()
     };
 }
 
-QVector<StreamDefinition> orientationStreamDefinitions()
+std::vector<StreamDefinition> orientationStreamDefinitions()
 {
     // One record set: SensorViz derives heading, pitch and roll from the
     // quaternion, and plots dip, field and acceleration beside them.
@@ -1231,7 +1338,7 @@ QVector<StreamDefinition> orientationStreamDefinitions()
     };
 }
 
-QVector<StreamDefinition> imuOrientationStreamDefinitions()
+std::vector<StreamDefinition> imuOrientationStreamDefinitions()
 {
     // One record set: SensorViz derives heading, pitch and roll from the
     // quaternion, and plots dip, field and acceleration beside them.
@@ -1267,9 +1374,9 @@ QVector<StreamDefinition> imuOrientationStreamDefinitions()
 bool runCompassCalibrated(
     Database &db,
     const ToolOptions &options,
-    const QString &inputHash,
+    const std::string &inputHash,
     const CompassInput &input,
-    QString &error)
+    std::string &error)
 {
     if (!db.exec(
             "CREATE TABLE CompassCalibrated ("
@@ -1294,17 +1401,17 @@ bool runCompassCalibrated(
         return false;
     }
 
-    for (qsizetype i = 0; i < input.rawSamples.size(); i++) {
+    for (size_t i = 0; i < input.rawSamples.size(); i++) {
         const CompassSample &sample = input.rawSamples[i];
-        const QVector3D mag = input.calibratedMag[i];
-        const QVector3D accel = input.calibration.applyAccel(sample.accel);
+        const Vec3f mag = input.calibratedMag[i];
+        const Vec3f accel = compasscore::applyAccelerometer(input.calibration, sample.accel);
         if (!insert.bindInt64(1, sample.epoch)
-            || !insert.bindDouble(2, accel.x())
-            || !insert.bindDouble(3, accel.y())
-            || !insert.bindDouble(4, accel.z())
-            || !insert.bindDouble(5, mag.x())
-            || !insert.bindDouble(6, mag.y())
-            || !insert.bindDouble(7, mag.z())
+            || !insert.bindDouble(2, accel.x)
+            || !insert.bindDouble(3, accel.y)
+            || !insert.bindDouble(4, accel.z)
+            || !insert.bindDouble(5, mag.x)
+            || !insert.bindDouble(6, mag.y)
+            || !insert.bindDouble(7, mag.z)
             || !insert.stepDone()) {
             error = insert.lastError();
             return false;
@@ -1318,10 +1425,10 @@ bool runCompassCalibrated(
         db,
         options,
         inputHash,
-        QStringLiteral("compass-calibrated"),
+        "compass-calibrated",
         input.calibrationEpoch,
-        QJsonArray{QStringLiteral("Compass"), QStringLiteral("Calibration")},
-        QJsonArray{QStringLiteral("CompassCalibrated")},
+        {"Compass", "Calibration"},
+        {"CompassCalibrated"},
         error);
 }
 
@@ -1339,9 +1446,9 @@ bool runCompassCalibrated(
 bool runCompassOrientation(
     Database &db,
     const ToolOptions &options,
-    const QString &inputHash,
+    const std::string &inputHash,
     const CompassInput &input,
-    QString &error)
+    std::string &error)
 {
     if (!db.exec(
             "CREATE TABLE CompassOrientation ("
@@ -1368,15 +1475,16 @@ bool runCompassOrientation(
         return false;
     }
 
-    for (const CompassDerivedSample &sample : input.derived) {
-        if (!insert.bindInt64(1, static_cast<qint64>(sample.epoch))
+    for (size_t i = 0; i < input.derived.size(); i++) {
+        const Orientation &sample = input.derived[i];
+        if (!insert.bindInt64(1, input.rawSamples[i].epoch)
             || !insert.bindDouble(2, sample.dip)
             || !insert.bindDouble(3, sample.field)
             || !insert.bindDouble(4, sample.mg)
-            || !insert.bindDouble(5, sample.q.scalar())
-            || !insert.bindDouble(6, sample.q.x())
-            || !insert.bindDouble(7, sample.q.y())
-            || !insert.bindDouble(8, sample.q.z())
+            || !insert.bindDouble(5, sample.q.w)
+            || !insert.bindDouble(6, sample.q.x)
+            || !insert.bindDouble(7, sample.q.y)
+            || !insert.bindDouble(8, sample.q.z)
             || !insert.stepDone()) {
             error = insert.lastError();
             return false;
@@ -1390,10 +1498,10 @@ bool runCompassOrientation(
         db,
         options,
         inputHash,
-        QStringLiteral("compass-orientation"),
+        "compass-orientation",
         input.calibrationEpoch,
-        QJsonArray{QStringLiteral("Compass"), QStringLiteral("Calibration")},
-        QJsonArray{QStringLiteral("CompassOrientation")},
+        {"Compass", "Calibration"},
+        {"CompassOrientation"},
         error);
 }
 
@@ -1411,9 +1519,9 @@ bool runCompassOrientation(
 bool runImuCompassOrientation(
     Database &db,
     const ToolOptions &options,
-    const QString &inputHash,
+    const std::string &inputHash,
     const ImuCompassInput &input,
-    QString &error)
+    std::string &error)
 {
     if (!db.exec(
             "CREATE TABLE ImuCompassOrientation ("
@@ -1445,7 +1553,7 @@ bool runImuCompassOrientation(
     }
 
     for (const ImuCompassSample &sample : input.samples) {
-        const CompassDerivedSample &d = sample.derived;
+        const Orientation &d = sample.derived;
         if (!insert.bindInt64(1, sample.segmentId)
             || !insert.bindInt64(2, sample.sampleIndex)
             || !insert.bindInt64(3, sample.elapsedUs)
@@ -1453,10 +1561,10 @@ bool runImuCompassOrientation(
             || !insert.bindDouble(5, d.field)
             || !insert.bindDouble(6, d.mg)
             || !insert.bindInt64(7, sample.accelSamples)
-            || !insert.bindDouble(8, d.q.scalar())
-            || !insert.bindDouble(9, d.q.x())
-            || !insert.bindDouble(10, d.q.y())
-            || !insert.bindDouble(11, d.q.z())
+            || !insert.bindDouble(8, d.q.w)
+            || !insert.bindDouble(9, d.q.x)
+            || !insert.bindDouble(10, d.q.y)
+            || !insert.bindDouble(11, d.q.z)
             || !insert.stepDone()) {
             error = insert.lastError();
             return false;
@@ -1472,8 +1580,8 @@ bool runImuCompassOrientation(
         inputHash,
         kImuCompassOrientation,
         input.calibrationEpoch,
-        QJsonArray{QStringLiteral("ImuMag"), QStringLiteral("ImuAccel"), QStringLiteral("Calibration")},
-        QJsonArray{QStringLiteral("ImuCompassOrientation")},
+        {"ImuMag", "ImuAccel", "Calibration"},
+        {"ImuCompassOrientation"},
         error);
 }
 
@@ -1502,36 +1610,39 @@ void printImuCompassCounts(const ImuCompassInput &input)
  * @post    For @c IfExists::Replace and missing outputs, the output path is a
  *          byte-for-byte copy of the input before processor writes begin.
  */
-bool copyInputToOutput(const ToolOptions &options, QString &error)
+bool copyInputToOutput(const ToolOptions &options, std::string &error)
 {
-    const QFileInfo input(options.inputPath);
-    const QFileInfo output(options.outputPath);
-    if (input.absoluteFilePath() == output.absoluteFilePath()) {
-        error = QStringLiteral("Output path must be different from input path.");
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    // Compared as absolute, lexically normal paths, as QFileInfo did: a
+    // different spelling of the same file is caught, a symlink is not.
+    const fs::path input = fs::absolute(options.inputPath, ec).lexically_normal();
+    const fs::path output = fs::absolute(options.outputPath, ec).lexically_normal();
+    if (input == output) {
+        error = "Output path must be different from input path.";
         return false;
     }
-    if (!input.exists()) {
-        error = QStringLiteral("Input file does not exist: %1").arg(options.inputPath);
+    if (!fs::exists(input, ec)) {
+        error = "Input file does not exist: " + options.inputPath;
         return false;
     }
 
-    if (output.exists()) {
+    if (fs::exists(output, ec)) {
         if (options.ifExists == IfExists::Fail) {
-            error = QStringLiteral("Output file already exists: %1").arg(options.outputPath);
+            error = "Output file already exists: " + options.outputPath;
             return false;
         }
         if (options.ifExists == IfExists::Keep) {
             return true;
         }
-        if (!QFile::remove(output.absoluteFilePath())) {
-            error = QStringLiteral("Could not remove existing output file: %1").arg(options.outputPath);
+        if (!fs::remove(output, ec)) {
+            error = "Could not remove existing output file: " + options.outputPath;
             return false;
         }
     }
 
-    if (!QFile::copy(input.absoluteFilePath(), output.absoluteFilePath())) {
-        error = QStringLiteral("Could not copy %1 to %2")
-                    .arg(input.absoluteFilePath(), output.absoluteFilePath());
+    if (!fs::copy_file(input, output, ec)) {
+        error = "Could not copy " + input.string() + " to " + output.string() + ": " + ec.message();
         return false;
     }
     return true;
@@ -1545,17 +1656,17 @@ bool copyInputToOutput(const ToolOptions &options, QString &error)
  *
  * @return  true for @c fail, @c replace, or @c keep.
  */
-bool parseIfExists(const QString &text, IfExists &policy)
+bool parseIfExists(const std::string &text, IfExists &policy)
 {
-    if (text == QStringLiteral("fail")) {
+    if (text == "fail") {
         policy = IfExists::Fail;
         return true;
     }
-    if (text == QStringLiteral("replace")) {
+    if (text == "replace") {
         policy = IfExists::Replace;
         return true;
     }
-    if (text == QStringLiteral("keep")) {
+    if (text == "keep") {
         policy = IfExists::Keep;
         return true;
     }
@@ -1565,70 +1676,64 @@ bool parseIfExists(const QString &text, IfExists &policy)
 /**
  * @brief   Parses DataProcessing command-line options.
  *
- * @param[in,out] app  Qt core application used by QCommandLineParser.
+ * @details Handles --help and --version itself and exits. A malformed
+ *          command line or an unknown --if-exists policy exits with code 2.
  *
- * @return  Parsed options. Invalid conflict policies terminate with exit code 2.
+ * @param[in] argc  Argument count from main().
+ * @param[in] argv  Argument vector from main().
+ *
+ * @return  Parsed options.
  */
-ToolOptions parseOptions(QCoreApplication &app)
+ToolOptions parseOptions(int argc, char **argv)
 {
-    QCommandLineParser parser;
-    parser.setApplicationDescription(
-        QStringLiteral("copy SQLite logs and materialize derived sensor streams"));
-    parser.addHelpOption();
-    parser.addVersionOption();
-
-    QCommandLineOption inputOption(
-        QStringList{QStringLiteral("i"), QStringLiteral("input")},
-        QStringLiteral("Input SQLite log path."),
-        QStringLiteral("path"));
-    QCommandLineOption outputOption(
-        QStringList{QStringLiteral("o"), QStringLiteral("output")},
-        QStringLiteral("Output SQLite log path."),
-        QStringLiteral("path"));
-    QCommandLineOption processorOption(
-        QStringList{QStringLiteral("p"), QStringLiteral("processor")},
-        QStringLiteral("Processor to run; repeat for multiple processors."),
-        QStringLiteral("id"));
-    QCommandLineOption ifExistsOption(
-        QStringLiteral("if-exists"),
-        QStringLiteral("Output conflict policy: fail, replace, or keep."),
-        QStringLiteral("policy"),
-        QStringLiteral("fail"));
-    QCommandLineOption dryRunOption(
-        QStringLiteral("dry-run"),
-        QStringLiteral("Validate inputs and print planned outputs without writing."));
-    QCommandLineOption listOption(
-        QStringLiteral("list-processors"),
-        QStringLiteral("List processors and whether they are available for the input log."));
-    QCommandLineOption describeOption(
-        QStringLiteral("describe"),
-        QStringLiteral("Describe one processor."),
-        QStringLiteral("id"));
-    QCommandLineOption summaryOption(
-        QStringLiteral("print-summary"),
-        QStringLiteral("Print processing summary to stdout."));
-
-    parser.addOption(inputOption);
-    parser.addOption(outputOption);
-    parser.addOption(processorOption);
-    parser.addOption(ifExistsOption);
-    parser.addOption(dryRunOption);
-    parser.addOption(listOption);
-    parser.addOption(describeOption);
-    parser.addOption(summaryOption);
-    parser.process(app);
+    cxxopts::Options parser("dataprocessing", "copy SQLite logs and materialize derived sensor streams");
+    parser.add_options()
+        ("i,input", "Input SQLite log path.", cxxopts::value<std::string>(), "path")
+        ("o,output", "Output SQLite log path.", cxxopts::value<std::string>(), "path")
+        ("p,processor", "Processor to run; repeat for multiple processors.",
+         cxxopts::value<std::vector<std::string>>(), "id")
+        ("if-exists", "Output conflict policy: fail, replace, or keep.",
+         cxxopts::value<std::string>()->default_value("fail"), "policy")
+        ("dry-run", "Validate inputs and print planned outputs without writing.")
+        ("list-processors", "List processors and whether they are available for the input log.")
+        ("describe", "Describe one processor.", cxxopts::value<std::string>(), "id")
+        ("print-summary", "Print processing summary to stdout.")
+        ("v,version", "Displays version information.")
+        ("h,help", "Displays help on commandline options.");
 
     ToolOptions options;
-    options.inputPath = parser.value(inputOption);
-    options.outputPath = parser.value(outputOption);
-    options.processors = parser.values(processorOption);
-    options.dryRun = parser.isSet(dryRunOption);
-    options.listProcessors = parser.isSet(listOption);
-    options.describeProcessor = parser.value(describeOption);
-    options.printSummary = parser.isSet(summaryOption);
-    if (!parseIfExists(parser.value(ifExistsOption), options.ifExists)) {
-        std::cerr << "Unknown --if-exists policy: "
-                  << parser.value(ifExistsOption).toStdString() << "\n";
+    try {
+        const cxxopts::ParseResult result = parser.parse(argc, argv);
+        if (result.count("help")) {
+            std::cout << parser.help() << "\n";
+            std::exit(0);
+        }
+        if (result.count("version")) {
+            std::cout << "dataprocessing " << kToolVersion << "\n";
+            std::exit(0);
+        }
+        if (result.count("input")) {
+            options.inputPath = result["input"].as<std::string>();
+        }
+        if (result.count("output")) {
+            options.outputPath = result["output"].as<std::string>();
+        }
+        if (result.count("processor")) {
+            options.processors = result["processor"].as<std::vector<std::string>>();
+        }
+        if (result.count("describe")) {
+            options.describeProcessor = result["describe"].as<std::string>();
+        }
+        options.dryRun = result.count("dry-run") > 0;
+        options.listProcessors = result.count("list-processors") > 0;
+        options.printSummary = result.count("print-summary") > 0;
+        const std::string policy = result["if-exists"].as<std::string>();
+        if (!parseIfExists(policy, options.ifExists)) {
+            std::cerr << "Unknown --if-exists policy: " << policy << "\n";
+            std::exit(2);
+        }
+    } catch (const cxxopts::OptionException &e) {
+        std::cerr << e.what() << "\n" << parser.help() << "\n";
         std::exit(2);
     }
     return options;
@@ -1642,11 +1747,12 @@ ToolOptions parseOptions(QCoreApplication &app)
  *
  * @return  true when every id is currently supported.
  */
-bool validateProcessorIds(const QStringList &processors, QString &error)
+bool validateProcessorIds(const std::vector<std::string> &processors, std::string &error)
 {
-    for (const QString &processor : processors) {
-        if (!processorIds().contains(processor)) {
-            error = QStringLiteral("Unknown processor %1").arg(processor);
+    const std::vector<std::string> known = processorIds();
+    for (const std::string &processor : processors) {
+        if (std::find(known.begin(), known.end(), processor) == known.end()) {
+            error = "Unknown processor " + processor;
             return false;
         }
     }
@@ -1660,12 +1766,12 @@ bool validateProcessorIds(const QStringList &processors, QString &error)
  */
 void listProcessors(Database &db)
 {
-    for (const QString &processor : processorIds()) {
-        QString reason;
+    for (const std::string &processor : processorIds()) {
+        std::string reason;
         const bool available = processorInputsAvailable(db, processor, reason);
-        std::cout << processor.toStdString() << ": "
+        std::cout << processor << ": "
                   << (available ? "available" : "unavailable")
-                  << " (" << reason.toStdString() << ")\n";
+                  << " (" << reason << ")\n";
     }
 }
 
@@ -1678,20 +1784,20 @@ void listProcessors(Database &db)
  *
  * @return  true when all requested processors can run on the input.
  */
-bool dryRunProcessors(Database &db, const ToolOptions &options, QString &error)
+bool dryRunProcessors(Database &db, const ToolOptions &options, std::string &error)
 {
     CompassInput input;
     ImuCompassInput imuInput;
     bool compassLoaded = false;
     bool imuLoaded = false;
 
-    for (const QString &processor : options.processors) {
+    for (const std::string &processor : options.processors) {
         if (isImuProcessor(processor)) {
             if (!imuLoaded && !loadImuCompassInput(db, imuInput, error)) {
                 return false;
             }
             imuLoaded = true;
-            std::cout << "Would run " << processor.toStdString() << " on "
+            std::cout << "Would run " << processor << " on "
                       << imuInput.magRows << " ImuMag rows -> ImuCompassOrientation\n";
             printImuCompassCounts(imuInput);
             continue;
@@ -1700,14 +1806,14 @@ bool dryRunProcessors(Database &db, const ToolOptions &options, QString &error)
             return false;
         }
         compassLoaded = true;
-        std::cout << "Would run " << processor.toStdString() << " on "
+        std::cout << "Would run " << processor << " on "
                   << input.rawSamples.size() << " Compass rows";
-        if (processor == QStringLiteral("compass-calibrated")) {
+        if (processor == "compass-calibrated") {
             std::cout << " -> CompassCalibrated\n";
-        } else if (processor == QStringLiteral("compass-orientation")) {
+        } else if (processor == "compass-orientation") {
             std::cout << " -> CompassOrientation\n";
         } else {
-            error = QStringLiteral("Unknown processor %1").arg(processor);
+            error = "Unknown processor " + processor;
             return false;
         }
     }
@@ -1723,10 +1829,10 @@ bool dryRunProcessors(Database &db, const ToolOptions &options, QString &error)
  *
  * @return  true when every requested processor was written and committed.
  */
-bool runProcessors(const ToolOptions &options, QString &error)
+bool runProcessors(const ToolOptions &options, std::string &error)
 {
-    QString inputHash = sha256File(options.inputPath, error);
-    if (inputHash.isEmpty()) {
+    const std::string inputHash = sha256File(options.inputPath, error);
+    if (inputHash.empty()) {
         return false;
     }
     if (!copyInputToOutput(options, error)) {
@@ -1745,7 +1851,7 @@ bool runProcessors(const ToolOptions &options, QString &error)
     ImuCompassInput imuInput;
     bool needCompass = false;
     bool needImu = false;
-    for (const QString &processor : options.processors) {
+    for (const std::string &processor : options.processors) {
         (isImuProcessor(processor) ? needImu : needCompass) = true;
     }
     if (needCompass && !loadCompassInput(db, input, error)) {
@@ -1763,7 +1869,7 @@ bool runProcessors(const ToolOptions &options, QString &error)
         return false;
     }
 
-    for (const QString &processor : options.processors) {
+    for (const std::string &processor : options.processors) {
         bool skip = false;
         if (!prepareProcessorOutputs(db, processor, options.ifExists, skip, error)) {
             db.exec("ROLLBACK", error);
@@ -1771,27 +1877,27 @@ bool runProcessors(const ToolOptions &options, QString &error)
         }
         if (skip) {
             if (options.printSummary) {
-                std::cout << "Kept existing outputs for " << processor.toStdString() << "\n";
+                std::cout << "Kept existing outputs for " << processor << "\n";
             }
             continue;
         }
 
         bool ok = false;
-        if (processor == QStringLiteral("compass-calibrated")) {
+        if (processor == "compass-calibrated") {
             ok = runCompassCalibrated(db, options, inputHash, input, error);
-        } else if (processor == QStringLiteral("compass-orientation")) {
+        } else if (processor == "compass-orientation") {
             ok = runCompassOrientation(db, options, inputHash, input, error);
         } else if (processor == kImuCompassOrientation) {
             ok = runImuCompassOrientation(db, options, inputHash, imuInput, error);
         } else {
-            error = QStringLiteral("Unknown processor %1").arg(processor);
+            error = "Unknown processor " + processor;
         }
         if (!ok) {
             db.exec("ROLLBACK", error);
             return false;
         }
         if (options.printSummary) {
-            std::cout << "Wrote " << processor.toStdString() << "\n";
+            std::cout << "Wrote " << processor << "\n";
             if (isImuProcessor(processor)) {
                 printImuCompassCounts(imuInput);
             }
@@ -1805,32 +1911,27 @@ bool runProcessors(const ToolOptions &options, QString &error)
 
 int main(int argc, char **argv)
 {
-    QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName(QStringLiteral("dataprocessing"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1"));
+    const ToolOptions options = parseOptions(argc, argv);
+    std::string error;
 
-    const ToolOptions options = parseOptions(app);
-    QString error;
-
-    if (!options.describeProcessor.isEmpty()) {
-        const QString description = processorDescription(options.describeProcessor);
-        if (description.isEmpty()) {
-            std::cerr << "Unknown processor " << options.describeProcessor.toStdString() << "\n";
+    if (!options.describeProcessor.empty()) {
+        const std::string description = processorDescription(options.describeProcessor);
+        if (description.empty()) {
+            std::cerr << "Unknown processor " << options.describeProcessor << "\n";
             return 2;
         }
-        std::cout << options.describeProcessor.toStdString() << "\n"
-                  << description.toStdString() << "\n";
+        std::cout << options.describeProcessor << "\n" << description << "\n";
         return 0;
     }
 
-    if (options.inputPath.isEmpty()) {
+    if (options.inputPath.empty()) {
         std::cerr << "--input is required\n";
         return 2;
     }
 
     Database inputDb(options.inputPath, SQLITE_OPEN_READONLY);
     if (!inputDb.isOpen()) {
-        std::cerr << "Could not open input: " << inputDb.lastError().toStdString() << "\n";
+        std::cerr << "Could not open input: " << inputDb.lastError() << "\n";
         return 1;
     }
 
@@ -1839,35 +1940,35 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (options.processors.isEmpty()) {
+    if (options.processors.empty()) {
         std::cerr << "At least one --processor is required unless using --list-processors or --describe\n";
         return 2;
     }
     if (!validateProcessorIds(options.processors, error)) {
-        std::cerr << error.toStdString() << "\n";
+        std::cerr << error << "\n";
         return 2;
     }
 
     if (options.dryRun) {
         if (!dryRunProcessors(inputDb, options, error)) {
-            std::cerr << error.toStdString() << "\n";
+            std::cerr << error << "\n";
             return 1;
         }
         return 0;
     }
 
-    if (options.outputPath.isEmpty()) {
+    if (options.outputPath.empty()) {
         std::cerr << "--output is required when writing processors\n";
         return 2;
     }
 
     if (!runProcessors(options, error)) {
-        std::cerr << error.toStdString() << "\n";
+        std::cerr << error << "\n";
         return 1;
     }
 
     if (options.printSummary) {
-        std::cout << "Wrote processed log " << options.outputPath.toStdString() << "\n";
+        std::cout << "Wrote processed log " << options.outputPath << "\n";
     }
     return 0;
 }

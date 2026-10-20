@@ -85,7 +85,7 @@ EOF
 # libraries, so anything they link must already be on every Mac. spctl
 # rejects a bare executable as "not an app" however it is signed, so the
 # notarization check asks codesign instead, which looks the ticket up online.
-# A link (dataprocessing's) must resolve to an executable in the image; its
+# A link, should one appear, must resolve to an executable in the image; its
 # target is a bundle checked above.
 TOOLS=$(find "$MOUNT_POINT" -maxdepth 3 -path '*/bin/*' \( -type f -o -type l \) -print | sort)
 [ -n "$TOOLS" ] || die "no command line tools found in a bin directory of $DMG"

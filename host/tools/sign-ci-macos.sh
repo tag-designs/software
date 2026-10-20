@@ -266,8 +266,8 @@ done <<EOF
 $APPS
 EOF
 
-# The command line tools are plain executables in tag_tools/bin. Links there
-# (dataprocessing's) point into a bundle signed above, and are left alone.
+# The command line tools are plain executables in tag_tools/bin. A link there,
+# should one appear, points into a bundle signed above, and is left alone.
 TOOLS=$(find "$WORK/stage" -maxdepth 3 -path '*/bin/*' -type f -print | sort)
 [ -n "$TOOLS" ] || die "no command line tools found in a bin directory of $DMG_NAME"
 
