@@ -14,14 +14,12 @@ void CompassDisplay::showSample(const CompassDerivedSample &sample)
         return;
     }
 
-    // MyCompass.qml expects Euler angles plus diagnostic field values, not the
-    // raw quaternion. Keep that presentation contract localized here.
+    // MyCompass.qml takes the orientation quaternion and computes its own
+    // display angles, plus the diagnostic field values.
     QMetaObject::invokeMethod(
         rootObject_,
         "setOrientation",
-        Q_ARG(QVariant, sample.yaw),
-        Q_ARG(QVariant, sample.pitch),
-        Q_ARG(QVariant, sample.roll),
+        Q_ARG(QVariant, QVariant::fromValue(sample.q)),
         Q_ARG(QVariant, sample.dip),
         Q_ARG(QVariant, sample.field),
         Q_ARG(QVariant, sample.mg));

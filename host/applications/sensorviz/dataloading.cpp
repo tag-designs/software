@@ -131,6 +131,7 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     updateLoadedStateActions();
     streams_ = log.streams;
     compass_samples_.clear();
+    compass_source_.clear();
     custom_axis_ranges_.clear();
     explicit_axis_ranges_.clear();
     custom_stream_colors_.clear();
@@ -156,10 +157,11 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
         createAltitudeStream();
     }
 
-    // CompassTag logs are mostly useful once raw compass rows are converted
-    // into scalar streams. Generate that family automatically; the resulting
-    // streams are ordinary entries in the Visible Streams dialog.
-    if (log_.hasCompassCalibration && recordSetById("compass_raw")) {
+    // Compass logs are mostly useful once orientation is converted into scalar
+    // streams. Generate that family automatically, from stored quaternions or
+    // from raw CompassTag rows; the resulting streams are ordinary entries in
+    // the Visible Streams dialog.
+    if (hasCompassOrientationSource()) {
         createCompassPlotStreams();
     }
     createImuMagnitudeStreams();
@@ -207,6 +209,9 @@ void MainWindow::updateMetadata()
         }
     } else if (!log_.compassCalibrationWarning.isEmpty()) {
         lines << "Compass calibration: " + log_.compassCalibrationWarning;
+    }
+    if (!compass_source_.isEmpty()) {
+        lines << "Compass orientation: " + compass_source_;
     }
     for (auto it = log_.info.cbegin(); it != log_.info.cend(); ++it) {
         // The raw protobuf/config blobs are too large for the summary pane.

@@ -12,7 +12,13 @@ depend on this library.
 
 Current contents:
 
-- `CompassDisplay`: adapter between C++ compass samples and the QML compass.
+- `compassAnglesFromQuaternion()` (`compass_angles.h`): heading, pitch and
+  roll for C++ displays such as plotted streams. Orientation is computed and
+  stored as a quaternion; Euler angles are a display convention, derived with
+  Qt's `toEulerAngles()` where they are shown.
+- `CompassDisplay`: adapter between C++ compass samples and the QML compass. It
+  passes the quaternion; `MyCompass.qml` converts it to angles itself, using
+  the same Qt conversion and the same relabelling.
 - `AttitudeDisplay`: adapter between C++ orientation quaternions and the QML
   3D tag attitude view.
 - `CompassCalibrationDialog`: read-only dialog for loaded calibration constants.

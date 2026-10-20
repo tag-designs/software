@@ -13,9 +13,10 @@ public:
      *
      * @details Applies the processor calibration to the magnetometer vector
      *          and subtracts the accelerometer zero-g offset, solves orientation from magnetometer and accelerometer vectors,
-     *          and leaves heading display choices out of the returned sample.
-     *          Applications layer declination and mounting convention onto yaw
-     *          when they need a displayed heading.
+     *          and returns orientation as a quaternion. Heading, pitch and
+     *          roll are left to the display, which derives them with
+     *          compassAnglesFromQuaternion() and then applies declination and
+     *          mounting convention.
      *
      * @param[in] sample Raw accelerometer and magnetometer sample.
      *

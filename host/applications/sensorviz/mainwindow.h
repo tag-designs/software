@@ -142,6 +142,12 @@ private:
     void applyLoadedLog(const QString &path, const SensorLog &log);
     void createAltitudeStream();
     void createImuMagnitudeStreams();
+    // Compass views are built from orientation quaternions: stored ones from a
+    // processed log's orientation record set when present, otherwise derived
+    // from compass_raw and the calibration constants.
+    const SensorRecordSet *storedOrientationRecordSet() const;
+    bool hasCompassOrientationSource() const;
+    bool loadCompassSamples(QString &error);
     void createCompassPlotStreams();
     QString preferenceKey() const;
     void rememberCurrentPreferences();
@@ -282,6 +288,8 @@ private:
     double declination_degrees_ = 0.0;
     bool battery_forward_ = true;
     QVector<CompassDerivedSample> compass_samples_;
+    // Where compass_samples_ came from, for the File Info pane.
+    QString compass_source_;
 
     // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
     // altitude range derived from pressure; explicit_axis_ranges_ records only

@@ -5,10 +5,11 @@
  * @details Copies an input SQLite log to a separate output database, adds
  *          processing provenance, and can materialize CompassTag calibrated
  *          vectors and canonical orientation streams, and IMUTag canonical
- *          orientation streams. Display-only heading conventions such as
- *          declination and battery-forward direction are deliberately not
- *          stored; downstream tools can derive those from the materialized yaw
- *          stream.
+ *          orientation streams. Orientation is stored as a quaternion; Euler
+ *          angles are deliberately not stored, because their values depend on
+ *          a rotation-order convention that belongs to the display. Heading,
+ *          declination and battery-forward direction are derived downstream
+ *          from the quaternion.
  */
 
 #include "compass_processor.h"
@@ -36,7 +37,9 @@
 namespace
 {
 
-constexpr int kProcessorVersion = 1;
+// Version 2 dropped the yaw, pitch and roll columns from the orientation
+// tables; orientation is the quaternion alone.
+constexpr int kProcessorVersion = 2;
 
 enum class IfExists
 {
@@ -497,15 +500,15 @@ QString processorDescription(const QString &processor)
     }
     if (processor == QStringLiteral("compass-orientation")) {
         return QStringLiteral(
-            "Writes CompassOrientation with canonical magnetic-frame yaw, pitch, "
-            "roll, dip, field, acceleration magnitude, and quaternion columns.");
+            "Writes CompassOrientation with the magnetic-frame orientation "
+            "quaternion, dip, field, and acceleration magnitude columns.");
     }
     if (processor == kImuCompassOrientation) {
         return QStringLiteral(
             "Writes ImuCompassOrientation for IMUTag logs: each ImuMag row is "
             "paired with the mean of its superframe's ImuAccel rows, calibrated, "
-            "and solved for canonical magnetic-frame yaw, pitch, roll, dip, field, "
-            "acceleration magnitude, and quaternion columns on ElapsedUs.");
+            "and solved for the magnetic-frame orientation quaternion, dip, field, "
+            "and acceleration magnitude columns on ElapsedUs.");
     }
     return {};
 }
@@ -1018,7 +1021,8 @@ bool insertProcessingRun(
         configuration.insert(QStringLiteral("quaternion_order"), QStringLiteral("wxyz"));
         configuration.insert(
             QStringLiteral("heading_policy"),
-            QStringLiteral("not_materialized; downstream tools apply declination and mounting convention to yaw"));
+            QStringLiteral("not_materialized; downstream tools derive heading from the quaternion, "
+                           "then apply declination and mounting convention"));
     }
     if (processor == kImuCompassOrientation) {
         QJsonObject pairing;
@@ -1074,11 +1078,17 @@ QStringList streamIdsForProcessor(const QString &processor)
             QStringLiteral("compass_calibrated_mz"),
         };
     }
+    // The yaw, pitch and roll ids are no longer written (processor version 2)
+    // but stay listed, so that replacing an older output removes their rows.
     if (processor == QStringLiteral("compass-orientation")) {
         return {
             QStringLiteral("compass_orientation_yaw"),
             QStringLiteral("compass_orientation_pitch"),
             QStringLiteral("compass_orientation_roll"),
+            QStringLiteral("compass_orientation_qw"),
+            QStringLiteral("compass_orientation_qx"),
+            QStringLiteral("compass_orientation_qy"),
+            QStringLiteral("compass_orientation_qz"),
             QStringLiteral("compass_orientation_dip"),
             QStringLiteral("compass_orientation_field"),
             QStringLiteral("compass_orientation_acceleration"),
@@ -1089,6 +1099,10 @@ QStringList streamIdsForProcessor(const QString &processor)
             QStringLiteral("imu_compass_orientation_yaw"),
             QStringLiteral("imu_compass_orientation_pitch"),
             QStringLiteral("imu_compass_orientation_roll"),
+            QStringLiteral("imu_compass_orientation_qw"),
+            QStringLiteral("imu_compass_orientation_qx"),
+            QStringLiteral("imu_compass_orientation_qy"),
+            QStringLiteral("imu_compass_orientation_qz"),
             QStringLiteral("imu_compass_orientation_dip"),
             QStringLiteral("imu_compass_orientation_field"),
             QStringLiteral("imu_compass_orientation_acceleration"),
@@ -1197,40 +1211,45 @@ QVector<StreamDefinition> calibratedStreamDefinitions()
 
 QVector<StreamDefinition> orientationStreamDefinitions()
 {
+    // One record set: SensorViz derives heading, pitch and roll from the
+    // quaternion, and plots dip, field and acceleration beside them.
     return {
-        {"compass_orientation_yaw", nullptr, nullptr, "CompassOrientation", "Epoch", "yaw",
-         "scalar", "Magnetic yaw", "deg", "angle",
-         "Canonical magnetic-frame yaw. Apply declination and mounting convention downstream for display heading."},
-        {"compass_orientation_pitch", nullptr, nullptr, "CompassOrientation", "Epoch", "pitch",
-         "scalar", "Pitch", "deg", "angle", "Compass-derived pitch."},
-        {"compass_orientation_roll", nullptr, nullptr, "CompassOrientation", "Epoch", "roll",
-         "scalar", "Roll", "deg", "angle", "Compass-derived roll."},
-        {"compass_orientation_dip", nullptr, nullptr, "CompassOrientation", "Epoch", "dip",
-         "scalar", "Dip", "deg", "angle", "Magnetic dip angle."},
-        {"compass_orientation_field", nullptr, nullptr, "CompassOrientation", "Epoch", "field",
-         "scalar", "Magnetic field", "uT", "magnetic_field", "Calibrated magnetic field magnitude."},
-        {"compass_orientation_acceleration", nullptr, nullptr, "CompassOrientation", "Epoch", "acceleration",
-         "scalar", "Acceleration", "mg", "acceleration", "Acceleration magnitude."},
+        {"compass_orientation_qw", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "qw",
+         "record_column", "Quaternion w", nullptr, "quaternion_w", "Orientation quaternion, scalar part."},
+        {"compass_orientation_qx", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "qx",
+         "record_column", "Quaternion x", nullptr, "quaternion_x", "Orientation quaternion, x part."},
+        {"compass_orientation_qy", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "qy",
+         "record_column", "Quaternion y", nullptr, "quaternion_y", "Orientation quaternion, y part."},
+        {"compass_orientation_qz", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "qz",
+         "record_column", "Quaternion z", nullptr, "quaternion_z", "Orientation quaternion, z part."},
+        {"compass_orientation_dip", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "dip",
+         "record_column", "Dip", "deg", "angle", "Magnetic dip angle."},
+        {"compass_orientation_field", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "field",
+         "record_column", "Magnetic field", "uT", "magnetic_field", "Calibrated magnetic field magnitude."},
+        {"compass_orientation_acceleration", "compass_orientation", "Compass orientation", "CompassOrientation", "Epoch", "acceleration",
+         "record_column", "Acceleration", "mg", "acceleration", "Acceleration magnitude."},
     };
 }
 
 QVector<StreamDefinition> imuOrientationStreamDefinitions()
 {
+    // One record set: SensorViz derives heading, pitch and roll from the
+    // quaternion, and plots dip, field and acceleration beside them.
     return {
-        {"imu_compass_orientation_yaw", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "yaw",
-         "scalar", "Magnetic yaw", "deg", "angle",
-         "Canonical magnetic-frame yaw. Apply declination and mounting convention downstream for display heading."},
-        {"imu_compass_orientation_pitch", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "pitch",
-         "scalar", "Pitch", "deg", "angle", "Compass-derived pitch."},
-        {"imu_compass_orientation_roll", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "roll",
-         "scalar", "Roll", "deg", "angle", "Compass-derived roll."},
-        {"imu_compass_orientation_dip", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "dip",
-         "scalar", "Dip", "deg", "angle", "Magnetic dip angle."},
-        {"imu_compass_orientation_field", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "field",
-         "scalar", "Magnetic field", "uT", "magnetic_field", "Calibrated magnetic field magnitude."},
-        {"imu_compass_orientation_acceleration", nullptr, nullptr, "ImuCompassOrientation", "ElapsedUs", "acceleration",
-         "scalar", "Acceleration", "mg", "acceleration",
-         "Magnitude of the superframe-mean acceleration, zero-g offset removed."},
+        {"imu_compass_orientation_qw", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "qw",
+         "record_column", "Quaternion w", nullptr, "quaternion_w", "Orientation quaternion, scalar part."},
+        {"imu_compass_orientation_qx", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "qx",
+         "record_column", "Quaternion x", nullptr, "quaternion_x", "Orientation quaternion, x part."},
+        {"imu_compass_orientation_qy", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "qy",
+         "record_column", "Quaternion y", nullptr, "quaternion_y", "Orientation quaternion, y part."},
+        {"imu_compass_orientation_qz", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "qz",
+         "record_column", "Quaternion z", nullptr, "quaternion_z", "Orientation quaternion, z part."},
+        {"imu_compass_orientation_dip", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "dip",
+         "record_column", "Dip", "deg", "angle", "Magnetic dip angle."},
+        {"imu_compass_orientation_field", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "field",
+         "record_column", "Magnetic field", "uT", "magnetic_field", "Calibrated magnetic field magnitude."},
+        {"imu_compass_orientation_acceleration", "imu_compass_orientation", "IMU compass orientation", "ImuCompassOrientation", "ElapsedUs", "acceleration",
+         "record_column", "Acceleration", "mg", "acceleration", "Magnitude of the superframe-mean acceleration, zero-g offset removed."},
     };
 }
 
@@ -1327,9 +1346,6 @@ bool runCompassOrientation(
     if (!db.exec(
             "CREATE TABLE CompassOrientation ("
             "Epoch INTEGER,"
-            "yaw REAL,"
-            "pitch REAL,"
-            "roll REAL,"
             "dip REAL,"
             "field REAL,"
             "acceleration REAL,"
@@ -1345,8 +1361,8 @@ bool runCompassOrientation(
     Statement insert(
         db,
         "INSERT INTO CompassOrientation ("
-        "Epoch, yaw, pitch, roll, dip, field, acceleration, qw, qx, qy, qz"
-        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        "Epoch, dip, field, acceleration, qw, qx, qy, qz"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     if (!insert.valid()) {
         error = insert.lastError();
         return false;
@@ -1354,16 +1370,13 @@ bool runCompassOrientation(
 
     for (const CompassDerivedSample &sample : input.derived) {
         if (!insert.bindInt64(1, static_cast<qint64>(sample.epoch))
-            || !insert.bindDouble(2, sample.yaw)
-            || !insert.bindDouble(3, sample.pitch)
-            || !insert.bindDouble(4, sample.roll)
-            || !insert.bindDouble(5, sample.dip)
-            || !insert.bindDouble(6, sample.field)
-            || !insert.bindDouble(7, sample.mg)
-            || !insert.bindDouble(8, sample.q.scalar())
-            || !insert.bindDouble(9, sample.q.x())
-            || !insert.bindDouble(10, sample.q.y())
-            || !insert.bindDouble(11, sample.q.z())
+            || !insert.bindDouble(2, sample.dip)
+            || !insert.bindDouble(3, sample.field)
+            || !insert.bindDouble(4, sample.mg)
+            || !insert.bindDouble(5, sample.q.scalar())
+            || !insert.bindDouble(6, sample.q.x())
+            || !insert.bindDouble(7, sample.q.y())
+            || !insert.bindDouble(8, sample.q.z())
             || !insert.stepDone()) {
             error = insert.lastError();
             return false;
@@ -1407,9 +1420,6 @@ bool runImuCompassOrientation(
             "SegmentId INTEGER,"
             "SampleIndex INTEGER,"
             "ElapsedUs INTEGER,"
-            "yaw REAL,"
-            "pitch REAL,"
-            "roll REAL,"
             "dip REAL,"
             "field REAL,"
             "acceleration REAL,"
@@ -1426,9 +1436,9 @@ bool runImuCompassOrientation(
     Statement insert(
         db,
         "INSERT INTO ImuCompassOrientation ("
-        "SegmentId, SampleIndex, ElapsedUs, yaw, pitch, roll, dip, field, "
+        "SegmentId, SampleIndex, ElapsedUs, dip, field, "
         "acceleration, AccelSamples, qw, qx, qy, qz"
-        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     if (!insert.valid()) {
         error = insert.lastError();
         return false;
@@ -1439,17 +1449,14 @@ bool runImuCompassOrientation(
         if (!insert.bindInt64(1, sample.segmentId)
             || !insert.bindInt64(2, sample.sampleIndex)
             || !insert.bindInt64(3, sample.elapsedUs)
-            || !insert.bindDouble(4, d.yaw)
-            || !insert.bindDouble(5, d.pitch)
-            || !insert.bindDouble(6, d.roll)
-            || !insert.bindDouble(7, d.dip)
-            || !insert.bindDouble(8, d.field)
-            || !insert.bindDouble(9, d.mg)
-            || !insert.bindInt64(10, sample.accelSamples)
-            || !insert.bindDouble(11, d.q.scalar())
-            || !insert.bindDouble(12, d.q.x())
-            || !insert.bindDouble(13, d.q.y())
-            || !insert.bindDouble(14, d.q.z())
+            || !insert.bindDouble(4, d.dip)
+            || !insert.bindDouble(5, d.field)
+            || !insert.bindDouble(6, d.mg)
+            || !insert.bindInt64(7, sample.accelSamples)
+            || !insert.bindDouble(8, d.q.scalar())
+            || !insert.bindDouble(9, d.q.x())
+            || !insert.bindDouble(10, d.q.y())
+            || !insert.bindDouble(11, d.q.z())
             || !insert.stepDone()) {
             error = insert.lastError();
             return false;

@@ -202,8 +202,7 @@ void MainWindow::updateTransformActions()
 
     const bool has_pressure = hasStream("pressure") || hasStream("imu_pressure");
     const bool has_activity = hasStream("activity");
-    const bool has_compass =
-        log_.hasCompassCalibration && recordSetById("compass_raw") != nullptr;
+    const bool has_compass = hasCompassOrientationSource();
 
     // Menus are driven by available streams instead of tag type names so logs
     // from future tags automatically expose only the relevant transforms.

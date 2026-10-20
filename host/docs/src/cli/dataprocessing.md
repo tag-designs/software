@@ -9,7 +9,7 @@ The first processors support CompassTag logs:
 | Processor | Added table | Function |
 | --- | --- | --- |
 | `compass-calibrated` | `CompassCalibrated` | Copies accelerometer samples and writes calibrated magnetometer x/y/z values. |
-| `compass-orientation` | `CompassOrientation` | Writes yaw, pitch, roll, dip, field strength, acceleration magnitude, and quaternion columns. |
+| `compass-orientation` | `CompassOrientation` | Writes the orientation quaternion (`qw`, `qx`, `qy`, `qz`), dip, field strength, and acceleration magnitude columns. |
 
 ## Usage
 
@@ -61,10 +61,12 @@ Each processor writes a new table, registers its columns in the stream metadata,
 and records a `ProcessingRun` row with the processor id, input hash, source
 tables, output tables, and configuration JSON.
 
-Compass orientation yaw is stored as a canonical magnetic-frame value. Display
-tools that need a user-facing heading should apply their own declination and
-battery-direction convention rather than expecting `dataprocessing` to store a
-single display heading.
+Compass orientation is stored as a magnetic-frame quaternion. Heading, pitch
+and roll are not stored: Euler angles depend on a rotation-order convention
+that differs between libraries, so a tool that needs them computes them from
+the quaternion, then applies its own declination and battery-direction
+convention. Files written before version 2 of the processors also have `yaw`,
+`pitch` and `roll` columns.
 
 ## Troubleshooting
 

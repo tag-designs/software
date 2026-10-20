@@ -16,8 +16,9 @@
  * - CompassRawSample is the direct row-level accelerometer/magnetometer data
  *   read from the Compass table.
  * - CompassDerivedSample is the magnetic-frame orientation computed from one
- *   raw row. User display choices such as declination and battery direction
- *   are applied later by the UI when drawing heading.
+ *   raw row, as a quaternion. It carries no Euler angles: heading, pitch and
+ *   roll, and display choices such as declination and battery direction, are
+ *   derived by the UI (sensorui compassAnglesFromQuaternion()).
  */
 
 class CompassCalibration
@@ -70,9 +71,6 @@ struct CompassDerivedSample
     float dip = 0.0f;
     float field = 0.0f;
     float mg = 0.0f;
-    float pitch = 0.0f;
-    float roll = 0.0f;
-    float yaw = 0.0f;
 };
 
 struct CompassLogData

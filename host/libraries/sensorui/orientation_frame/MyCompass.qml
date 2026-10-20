@@ -46,10 +46,17 @@ Rectangle {
         roll = Number(r).toLocaleString(Qt.locale(), 'f', 0)
     }
 
-    function setOrientation(h,p,r,d,f,g) {
-        pitch_value = p
-        roll_value = r
-        heading_value = h
+    // q is the CompassProcessor orientation quaternion. The display owns the
+    // Euler convention: Qt's toEulerAngles() gives the angles about x, y and z
+    // for q = Ry * Rx * Rz; x is shown as pitch, y as roll, and z, reversed to
+    // read clockwise, as magnetic heading. compassAnglesFromQuaternion() in
+    // C++ applies the same convention to the plotted streams.
+    function setOrientation(q,d,f,g) {
+        var a = q.toEulerAngles()
+        var z = a.z < 0 ? a.z + 360 : a.z
+        pitch_value = a.x
+        roll_value = a.y
+        heading_value = (360 - z) % 360
         setAttitude()
        
         dip = Number(d).toLocaleString(Qt.locale(), 'f', 0)

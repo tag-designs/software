@@ -73,8 +73,8 @@ committed at the end.
 | Processor | Inputs | Outputs |
 | --- | --- | --- |
 | `compass-calibrated` | `Compass` table, latest `Calibration` row | `CompassCalibrated` table and six `record_column` streams |
-| `compass-orientation` | `Compass` table, latest `Calibration` row | `CompassOrientation` table and six scalar streams |
-| `imu-compass-orientation` | `ImuMag` and `ImuAccel` tables, latest `Calibration` row | `ImuCompassOrientation` table and six scalar streams |
+| `compass-orientation` | `Compass` table, latest `Calibration` row | `CompassOrientation` table and its `compass_orientation` record set |
+| `imu-compass-orientation` | `ImuMag` and `ImuAccel` tables, latest `Calibration` row | `ImuCompassOrientation` table and its `imu_compass_orientation` record set |
 
 The calibration used is the `Calibration` row with the greatest `Epoch`; its
 `Constants` JSON must contain a `magnetometer` object. Every processor applies
@@ -120,9 +120,6 @@ CompassCalibrated
 
 CompassOrientation
   Epoch INTEGER
-  yaw REAL
-  pitch REAL
-  roll REAL
   dip REAL
   field REAL
   acceleration REAL
@@ -135,9 +132,6 @@ ImuCompassOrientation
   SegmentId INTEGER
   SampleIndex INTEGER
   ElapsedUs INTEGER
-  yaw REAL
-  pitch REAL
-  roll REAL
   dip REAL
   field REAL
   acceleration REAL
@@ -157,10 +151,14 @@ and `ElapsedUs`, so it lines up with the raw IMUTag tables, and the same
 orientation columns as `CompassOrientation`. `acceleration` is the magnitude of
 the superframe mean.
 
-`CompassOrientation` holds canonical magnetic-frame orientation, not a display
-heading. Declination and battery-forward/backward mounting belong to
-downstream interpretation or to SensorViz and qtcalibrate display state, so no
-heading column is written (see [Downstream Heading Conversion](#downstream-heading-conversion)).
+`CompassOrientation` holds magnetic-frame orientation as a quaternion
+(`qw, qx, qy, qz`), not Euler angles and not a display heading. Euler angles
+are a convention -- a rotation order and an axis labelling -- and libraries
+disagree on it, so stored angles would tie the data to whichever library
+computed them. Heading, pitch and roll, declination and battery-forward/backward
+mounting all belong to downstream interpretation or to SensorViz and qtcalibrate
+display state (see [Downstream Heading Conversion](#downstream-heading-conversion)
+and [decision 0030](../../../docs/decisions/0030-host-orientation-stored-as-quaternion-only.md)).
 
 ### Stream Ids
 
@@ -171,25 +169,36 @@ compass_calibrated_az
 compass_calibrated_mx
 compass_calibrated_my
 compass_calibrated_mz
-compass_orientation_yaw
-compass_orientation_pitch
-compass_orientation_roll
+compass_orientation_qw
+compass_orientation_qx
+compass_orientation_qy
+compass_orientation_qz
 compass_orientation_dip
 compass_orientation_field
 compass_orientation_acceleration
-imu_compass_orientation_yaw
-imu_compass_orientation_pitch
-imu_compass_orientation_roll
+imu_compass_orientation_qw
+imu_compass_orientation_qx
+imu_compass_orientation_qy
+imu_compass_orientation_qz
 imu_compass_orientation_dip
 imu_compass_orientation_field
 imu_compass_orientation_acceleration
 ```
 
-They use the existing `streams` catalog style: `record_column` entries for the
-grouped calibrated vectors and scalar streams for orientation values. The IMUTag
-streams use `ElapsedUs` as their time column, like the raw IMUTag streams. The ids
-do not collide with SensorViz's live-derived display stream ids. The quaternion
-columns have no stream entries. Raw streams are never mutated or removed.
+They use the existing `streams` catalog style, all as `record_column` entries:
+the calibrated vectors in the `compass_calibrated` group, and each orientation
+table's columns, quaternion included, in a group named after the table's
+processor (`compass_orientation`, `imu_compass_orientation`). Orientation is a
+record set rather than scalar streams because its quaternion is only meaningful
+as four columns together; the consumer turns it into the angles it displays.
+The IMUTag streams use `ElapsedUs` as their time column, like the raw IMUTag
+streams. The ids do not collide with SensorViz's display stream ids. Raw
+streams are never mutated or removed.
+
+Processor version 1 also wrote `yaw`, `pitch` and `roll` columns, and
+registered yaw, pitch, roll, dip, field and acceleration as `scalar` streams.
+Version 2 still removes the retired yaw, pitch and roll ids when it replaces an
+older output, so a reprocessed file never lists a stream whose column is gone.
 
 ## Provenance
 
@@ -212,7 +221,7 @@ ProcessingRun
   Status TEXT
 ```
 
-`ConfigurationJson` records the processor, `algorithm_version` (currently 1)
+`ConfigurationJson` records the processor, `algorithm_version` (currently 2)
 and the calibration source. For both orientation processors it also records the
 frame, quaternion order and heading policy, and for `imu-compass-orientation`
 an `accel_pairing` object naming the method (`superframe_mean`) and the
@@ -222,14 +231,14 @@ placeholder):
 ```json
 {
   "processor": "compass-orientation",
-  "algorithm_version": 1,
+  "algorithm_version": 2,
   "calibration_source": {
     "table": "Calibration",
     "epoch": 1778983834
   },
   "orientation_frame": "magnetic-frame-nwu",
   "quaternion_order": "wxyz",
-  "heading_policy": "not_materialized; downstream tools apply declination and mounting convention to yaw"
+  "heading_policy": "not_materialized; downstream tools derive heading from the quaternion, then apply declination and mounting convention"
 }
 ```
 
@@ -238,7 +247,27 @@ data was computed and travels with the output database.
 
 ## Downstream Heading Conversion
 
-Downstream tools that need a user-facing heading apply:
+The host displays use one Euler convention: Qt's `toEulerAngles()`, applied
+where the angles are shown -- by `compassAnglesFromQuaternion()` in
+`host/libraries/sensorui/compass_angles.h` for C++ displays, and by
+`MyCompass.qml` on the quaternion it is given. A tool without Qt reproduces it
+from the stored quaternion, normalized, as:
+
+```text
+pitch = asin(2 (qw qx - qy qz))
+roll  = atan2(2 (qx qz + qw qy), 1 - 2 (qx^2 + qy^2))
+z     = atan2(2 (qx qy + qw qz), 1 - 2 (qx^2 + qz^2))
+yaw   = normalize_360(360 - z)
+```
+
+That is Qt's decomposition `q = Ry * Rx * Rz`, with the x angle shown as pitch,
+the y angle as roll, and the z angle, reversed to read clockwise, as magnetic
+yaw. It is not the aerospace Z-Y-X order, and the two give different yaw when
+the tag is tilted about both horizontal axes. Near `|pitch| = 90` Qt switches
+to a gimbal-lock branch that these formulas do not reproduce. Checked against
+Qt on 1011 CompassTag and IMUTag rows, they agree to 3e-4 degrees.
+
+Tools that need a user-facing heading then apply:
 
 ```text
 magnetic_heading = normalize_360(yaw + declination_degrees)
@@ -249,7 +278,7 @@ display_heading = battery_forward
 
 Where:
 
-- `yaw` is the materialized magnetic-frame yaw in degrees;
+- `yaw` is the magnetic-frame yaw above, in degrees;
 - `declination_degrees` is the downstream tool's chosen east-positive
   declination correction;
 - `battery_forward` is the downstream tool's selected physical mounting
@@ -262,13 +291,15 @@ orientation processing.
 
 ## SensorViz And Processed Files
 
-SensorViz has no support specific to processed files. It does not read
-`ProcessingRun` and does not distinguish materialized streams from raw or
-live-derived ones. Because it loads every `scalar` row in `streams`, the
-orientation streams of a processed file plot beside the raw ones; for an IMUTag
-log that is the only place orientation appears, since SensorViz derives none
-for IMUTag itself. The open questions for adding that support are in
-[TODO.md](../TODO.md).
+SensorViz builds every compass view from quaternions. For a processed file it
+reads the `compass_orientation` or `imu_compass_orientation` record set and
+uses the stored quaternions, ahead of re-deriving orientation from a
+CompassTag's raw `Compass` table; for an unprocessed CompassTag log it derives
+the quaternions itself with `CompassProcessor`. Heading, pitch and roll are
+then computed from the quaternion in either case, so an IMUTag log -- for which
+SensorViz derives no orientation itself -- gets the same compass streams and
+panel once processed. File Info names the source. SensorViz does not read
+`ProcessingRun`. The remaining open questions are in [TODO.md](../TODO.md).
 
 ## Verification
 

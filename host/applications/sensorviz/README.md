@@ -28,13 +28,14 @@ hooks as built are described under
   - altitude from pressure
   - low-pass filtered activity
   - IMUTag acceleration, gyroscope, and magnetic field magnitudes
-  - CompassTag heading, acceleration magnitude, pitch, roll, dip, and magnetic
-    field strength
+  - compass heading, acceleration magnitude, pitch, roll, dip, and magnetic
+    field strength, for CompassTag logs and for IMUTag logs processed by
+    `dataprocessing`
 - Shows log metadata and Qt diagnostic messages in the File Info tab.
 - Shows CompassTag calibration constants from the View menu when a log contains
   calibration data.
-- Shows a narrow CompassTag orientation panel beside the plot when compass data
-  is loaded.
+- Shows a narrow compass orientation panel beside the plot when compass
+  orientation is available.
 - Supports print preview, UTC offset display, draggable plot metadata, cursors,
   cursor hiding, and zoom-to-cursor.
 - Shows an editable graph title above the plot. The title defaults to the
@@ -74,8 +75,10 @@ The code is split by responsibility:
   derived-stream ordering, and range coupling between related streams.
 - `transforms.cpp`: scalar display transforms such as altitude, activity
   low-pass, and IMUTag vector magnitudes.
-- `compass_transforms.cpp`: CompassTag record-set transforms, heading
-  declination, battery-forward convention, and compass-panel sample updates.
+- `compass_transforms.cpp`: compass orientation samples, built from a processed
+  log's stored quaternions or derived from the raw CompassTag record set; the
+  heading, pitch and roll streams computed from them; heading declination,
+  battery-forward convention, and compass-panel sample updates.
 - `plotting.cpp`: QCustomPlot graph rebuild, dynamic axes, metadata box
   contents, title placement, cursor placement, and range reset behavior.
 - `interaction.cpp`: context menu, print preview, cursor interaction, draggable
@@ -251,12 +254,20 @@ automatically from their corresponding `x/y/z` streams. They appear adjacent to
 their source axes in Visible Streams.
 
 Low-pass activity is controlled by Configuration instead of duplicated in the
-View menu. CompassTag plot streams are generated automatically from the raw
-compass record set on load, and then appear in Visible Streams so heading,
-acceleration, pitch, roll, dip, and field strength can be shown independently.
-For CompassTag logs, Configuration > Declination adjusts only the displayed
-heading stream; Configuration > Battery Forward applies the matching 180 degree
-display convention. Raw orientation-derived values remain magnetic-frame data.
+View menu. Compass plot streams are generated automatically on load and then
+appear in Visible Streams so heading, acceleration, pitch, roll, dip, and field
+strength can be shown independently.
+
+Every compass view works from orientation quaternions. When the log carries a
+`compass_orientation` or `imu_compass_orientation` record set, written by
+`dataprocessing`, its stored quaternions are used; otherwise a CompassTag's raw
+`compass_raw` record set and calibration constants go through
+`CompassProcessor`. Either way the result is one list of quaternion samples:
+the plotted heading, pitch and roll come from `compassAnglesFromQuaternion()`,
+and the QML compass panel is handed the quaternion and computes its own angles.
+File Info names the source. Configuration > Declination adjusts only the
+displayed heading; Configuration > Battery Forward applies the matching 180
+degree display convention. The samples themselves remain magnetic-frame data.
 
 The View > Ranges submenu and the plot context-menu Ranges submenu are rebuilt
 from the currently displayed streams. Each range action stores the stream id in

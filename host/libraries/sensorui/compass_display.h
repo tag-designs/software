@@ -11,6 +11,8 @@ class CompassDisplay
 {
 public:
     void setRootObject(QQuickItem *rootObject);
+    /// Shows one derived sample. The quaternion is passed to QML as is;
+    /// MyCompass.qml derives its own heading, pitch and roll from it.
     void showSample(const CompassDerivedSample &sample);
     void setDeclination(double declinationDegrees);
     void setBatteryForward(bool batteryForward);

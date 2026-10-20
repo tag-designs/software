@@ -59,14 +59,8 @@ bool CompassProcessor::deriveSample(
         return false;
     }
 
-    QVector3D angles = derived.q.toEulerAngles();
-    if (angles[2] < 0.0) {
-        angles[2] += 360.0;
-    }
-    derived.pitch = angles[0];
-    derived.roll = angles[1];
-    derived.yaw = std::fmod(360 - angles[2], 360.0);
-
+    // Orientation is the quaternion alone. Heading, pitch and roll are a
+    // display convention; see compassAnglesFromQuaternion() in sensorui.
     return true;
 }
 

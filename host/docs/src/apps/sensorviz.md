@@ -141,8 +141,8 @@ parameters.
 | **UTC Offset** | Sets the UTC offset used for time-axis labels. The stored sample times remain UTC epoch seconds. |
 | **Sea-level Pressure...** | Sets the mean sea-level pressure used to calculate altitude from pressure. This item appears when the loaded log has a pressure stream. |
 | **Activity Filter** | Shows or hides a low-pass filtered activity stream. When enabled, SensorViz asks for the filter time constant in seconds. This item appears when the loaded log has activity data. |
-| **Declination...** | Sets magnetic declination in degrees for true-heading display. This item appears when CompassTag raw samples and calibration constants are loaded. |
-| **Battery Forward** | Toggles the CompassTag heading convention. When unchecked, heading is rotated by 180 degrees to match the opposite physical orientation. This item appears for CompassTag logs with calibration data. |
+| **Declination...** | Sets magnetic declination in degrees for true-heading display. This item appears when the log has compass orientation: CompassTag raw samples with calibration constants, or orientation written by `dataprocessing`. |
+| **Battery Forward** | Toggles the CompassTag heading convention. When unchecked, heading is rotated by 180 degrees to match the opposite physical orientation. This item appears whenever **Declination...** does. |
 
 Sea-level pressure and declination values are shown in the menu text after they
 are available, so the active parameter is visible without reopening the dialog.
@@ -169,7 +169,7 @@ raw streams.
 | --- | --- |
 | **Altitude** | Generated automatically when pressure is present. Show or hide it from **View > Visible Streams...** and adjust its calculation with **Configuration > Sea-level Pressure...**. |
 | **Activity filter** | Enable or disable it with **Configuration > Activity Filter**. The filter is display-only and does not alter the raw activity stream. |
-| **CompassTag heading and orientation streams** | Generated automatically when the log contains raw compass samples and calibration constants. Show or hide individual compass streams from **View > Visible Streams...**. Adjust heading display with **Configuration > Declination...** and **Configuration > Battery Forward**. |
+| **Compass heading and orientation streams** | Generated automatically when the log contains raw compass samples and calibration constants, or orientation written by `dataprocessing`. Show or hide individual compass streams from **View > Visible Streams...**. Adjust heading display with **Configuration > Declination...** and **Configuration > Battery Forward**. |
 
 ## IMUTag Logs
 
@@ -185,6 +185,10 @@ elapsed time rather than UTC epoch.
 The IMUTag File Info example above shows the metadata check to make before you
 start changing display settings.
 
+An IMUTag log run through `dataprocessing` with the `imu-compass-orientation`
+processor also gets heading, pitch, roll, dip and field-strength streams and the
+compass panel, built from the orientation the processor stored.
+
 ## CompassTag Logs
 
 CompassTag logs add a raw compass record set and calibration metadata. When both
@@ -198,8 +202,9 @@ the mouse over the plot updates that panel to the nearest loaded compass sample.
 
 ![SensorViz CompassTag orientation panel](../images/sensorviz-compass-view.png)
 
-The CompassTag File Info tab reports the compass calibration status and the
-loaded record sets, which helps confirm that the orientation panel and
+The CompassTag File Info tab reports the compass calibration status, the
+loaded record sets and where compass orientation came from -- derived from the
+raw samples, or stored by `dataprocessing` -- which helps confirm that the orientation panel and
 CompassTag-specific configuration commands should be available.
 
 ![SensorViz CompassTag file information](../images/sensorviz-compasstag-file-info.png)

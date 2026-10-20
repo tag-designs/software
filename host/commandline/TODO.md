@@ -58,15 +58,13 @@ Manual review, once SensorViz support exists:
 Plan this once the output database contract is stable. SensorViz should load
 materialized processed streams through normal stream metadata. Open decisions:
 
-- Should SensorViz prefer materialized orientation streams over live-derived
-  `compass_heading` style streams?
+- SensorViz now prefers a processed file's stored orientation quaternions over
+  re-deriving them from raw CompassTag rows. Should it offer the live
+  derivation as well, for comparing a processed file against current code?
 - Should it show both raw/live-derived and processed streams, with labels that
   make provenance clear?
 - Should SensorViz expose processing configuration from `ProcessingRun` in the
   File Info tab?
-- Should SensorViz continue applying display heading settings to its live
-  derived `compass_heading` stream while showing materialized yaw as ordinary
-  processed data?
 
 Until these are answered, DataProcessing keeps raw streams untouched and uses
 stable processed stream ids that SensorViz can display as ordinary data.

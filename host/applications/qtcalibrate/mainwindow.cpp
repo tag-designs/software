@@ -25,6 +25,7 @@
 #include "ui_mainwindow.h"
 #include "qtfiledialog.h"
 
+#include "compass_angles.h"
 #include "sensorui_resources.h"
 #include "tag.pb.h"
 
@@ -571,19 +572,20 @@ void MainWindow::processCalibrationSample(const QVector3D &mag, bool hasAccel,
     float dip;
     float field;
     if (magnetic.eCompass(mag, accel, q, dip, field)) {
-      // display angles -- note that QT getEulerAngles uses a strange convention
-      // pitch around x axis, yaw around y axis, and roll around z axis.  Order is YXZ for Q->angles, ZXY for angles->Q
-      // we want x:pitch,y:roll,z:yaw
-      // note that pitch and roll both have signs reversed.
-
-      // Orientation is ENU
-      QVector3D angles = q.toEulerAngles();
-      if (angles[2] < 0.0) angles[2] += 360.0;
-      const float pitch = angles[0];
-      const float roll = angles[1];
-      const float yaw = angles[2];
+      // Display angles come from the shared sensorui conversion, which owns
+      // the Euler convention (compass_angles.h). Its yaw is clockwise; the
+      // tag model below is rotated by the counter-clockwise angle.
+      const CompassAngles angles = compassAnglesFromQuaternion(q);
+      const float pitch = angles.pitch;
+      const float roll = angles.roll;
+      const float yaw = 360.0 - angles.yaw;
       log_trace("Pitch: %.2f Roll %.2f Yaw %.2f", pitch, roll, yaw);
-      setOrientation(yaw,pitch,roll,dip,field,accel.length());
+      CompassDerivedSample sample;
+      sample.q = q;
+      sample.dip = dip;
+      sample.field = field;
+      sample.mg = accel.length();
+      compassDisplay.showSample(sample);
       // update rotated image of tag
       // qtquick -- roll around z, pitch around x, yaw around y
       //. this is really strange
@@ -1586,10 +1588,11 @@ void MainWindow::rotateImage(QQuaternion qt){
 }
 
 void MainWindow::setOrientation(float h, float p, float r, float d, float f, float g){
+  // The compass takes a quaternion. Build it with the inverse of the Qt
+  // conversion MyCompass.qml applies (compass_angles.h): x is pitch, y is
+  // roll, and z is h, which the compass shows as heading 360 - h.
   CompassDerivedSample sample;
-  sample.yaw = 360 - h;
-  sample.pitch = p;
-  sample.roll = r;
+  sample.q = QQuaternion::fromEulerAngles(p, r, h);
   sample.dip = d;
   sample.field = f;
   sample.mg = g;

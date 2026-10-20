@@ -225,9 +225,10 @@ Current processors:
 
 - `compass-calibrated`: writes `CompassCalibrated` with offset-corrected
   acceleration beside calibrated magnetometer x/y/z values.
-- `compass-orientation`: writes `CompassOrientation` with canonical
-  magnetic-frame yaw, pitch, roll, dip, field strength, acceleration magnitude,
-  and quaternion columns.
+- `compass-orientation`: writes `CompassOrientation` with the magnetic-frame
+  orientation quaternion, dip, field strength and acceleration magnitude.
+  Euler angles are not stored; see
+  [Downstream Heading Conversion](design/dataprocessing.md#downstream-heading-conversion).
 - `imu-compass-orientation`: the same orientation columns for an IMUTag log,
   written to `ImuCompassOrientation` on `ElapsedUs`. Each magnetometer row is
   paired with the mean of its superframe's accelerometer rows. SensorViz plots
