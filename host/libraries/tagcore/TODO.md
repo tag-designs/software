@@ -150,10 +150,22 @@ full cycle on the same tag, with the server holding it (`--attach`):
   header;
 - `tag_reset`, back to IDLE.
 
+Passed on 2026-10-20 on **Linux x86_64** (Ubuntu, GCC 15.2.0, CMake 4.2.3,
+`linux-vcpkg` preset, Python 3.14.4 with grpcio 1.84.0 and protobuf 7.36.2),
+following the [how-to](../../tagserver/README.md#building-and-testing): the
+build is clean apart from 29 warnings inside the fetched libuv; 16 tests pass
+without a tag, and all 22 with `TAG_SERVER_HARDWARE=1` on the L4 CompassTag
+(UUID `203633324B4250060022005E`, CompassTagAT25 at `169cda2c`). The Python
+examples then ran a full cycle on it, each attaching and detaching itself:
+`tag_peek` of the ID code (`0x10016435`), `tag_start --set-rtc --start-now`,
+120 s untouched, `tag_stop` to FINISHED, `tag_dwnld` of its one page (3
+samples at 30 s), and `tag_reset --set-rtc` to IDLE. `tag_dwnld`'s progress
+read `1/25`: CompassTag's `external_data_count` is its write cursor in 16-bit
+words, not pages, so it is no use as the hint for that family.
+
 Still to check, then delete each item:
 
-- **Linux and Windows builds** with `BUILD_TAG_SERVER=ON`, and the tests on
-  each, following the
+- **Windows build** with `BUILD_TAG_SERVER=ON`, and the tests, following the
   [how-to](../../tagserver/README.md#building-and-testing). On Windows the
   server listens on loopback TCP. grpcxx has not been built with the static
   `x64-windows-static-md` triplet, and the MSVC `NGHTTP2_NO_SSIZE_T` definition

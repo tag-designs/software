@@ -172,7 +172,8 @@ the two messages to match.
   socket itself and hands it to grpcxx's `run(socket)`, which works with
   standard gRPC clients but is not a documented grpcxx feature. On Windows that
   path checks the address family, so the server uses loopback TCP there.
-- **Not yet built or tested on Windows or Linux**, only on macOS arm64.
+- **Not yet built or tested on Windows**, only on macOS arm64 and Linux
+  x86_64.
 - **No TLS and no authentication.** On TCP, listen on loopback only.
 - **grpcxx** is pre-1.0 with one maintainer. Clients see standard gRPC, so the
   official gRPC C++ library could replace it without changing any client.
