@@ -58,13 +58,15 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
   `transport_failed == false` and "Monitor request not permitted in current
   tag state";
 - unplugging the base during a `GetStatus` loop: after 27 good calls,
-  `transport_failed == true` and `err == UNSPECIFIED`.
+  `transport_failed == true` and `err == UNSPECIFIED`;
+- `qtmonitor` attach, status updates, start and stop, and `qtcalibrate` attach
+  and status, checked by the operator.
 
 Still to check, then delete each item:
 
 - **No regressions.** `tag-start`, `tag-stop`, `tag-reset` and `tag-dwnld`
   behave as on `main` on L4. `qtmonitor` and `qtcalibrate` attach and poll
-  status, and `qtmonitor` starts and stops, on L4 and U3.
+  status, and `qtmonitor` starts and stops, on L4.
 - **Writes on L4.** `--write-test <addr>` on an unused SRAM word taken from the
   map file of the exact build. On L4 the `monitor_shared` range is not
   guarded, so write only to a word known to be unused.
