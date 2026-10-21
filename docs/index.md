@@ -443,6 +443,10 @@ design document.
 
 - [tagclient Examples](../host/python/tagclient/examples/README.md) — Python counterparts of tag-info, tag-start, tag-stop, tag-reset, tag-dwnld and tag-peek, plus a live status monitor, written against tag-server with tagclient.
 
+### python / tagsim / Proposals
+
+- [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a model of IMUTag's real acquisition and writes genuine IMUTag SQLite logs plus a ground-truth sidecar, for stress-testing the host tools and scoring post-processing filters.
+
 ### tagserver
 
 - [tag-server](../host/tagserver/README.md) — tag-server, the tagcore Tag API over gRPC on a local socket for test programs - building it, running it, its calls and error codes, and what it does not do.
