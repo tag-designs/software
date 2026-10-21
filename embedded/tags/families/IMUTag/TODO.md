@@ -8,31 +8,40 @@ summary: Open questions for the IMUTag family -- cell voltage, supply noise on t
 
 ## Power
 
-- **Find out whether the BMP581 runs far faster than intended.**
-  - *The code:* collection puts the BMP581 in `BMP5_POWERMODE_CONTINUOUS`
-    (`bmp581_config_continuous_device()`, called from `sensors.c`), with the
-    ODR that `select_pressure_rate()` picks (25 Hz at 100 Hz IMU ODR).
-  - *The datasheet* (BST-BMP581-DS004 §4.3.6) says CONTINUOUS mode ignores
-    the ODR setting and converts as fast as the oversampling allows. Its
-    Table 9 gives about 255 Hz at OSR_P ×4, OSR_T ×1. The firmware's OSR_T ×2
-    makes that somewhat lower.
-  - *Possible cost:* the sensor would be converting all the time, where NORMAL
-    mode at 25 Hz with the same oversampling converts about 4 ms in every
-    40 ms. The datasheet's 75 µA at "high resolution", 30 Hz, about a third
-    duty, implies an active current near 200 µA. So the difference could be
-    a large share of the 539 µA measured at 100 Hz ([power.md](design/power.md)).
-    That is an estimate, not a measurement.
-  - *Effect on data:* none on per-sample noise, which is set by the
-    oversampling. Only the age of the pressure value read once per
-    superframe changes: under 5 ms now, up to 40 ms at 25 Hz.
-  - *Test:*
-    1. Count DRDY pulses on `LPS_DRDY`, or compare current traces of the
-       current image against a build using `BMP5_POWERMODE_NORMAL` at the same
-       ODR. Either settles the rate without attaching.
-    2. If NORMAL is adopted, measure with `tag_lifecycle_check.py` and
-       qualify with `tag_release_check.py`, per
-       [Verifying a firmware change](../../../../docs/bench/verifying-firmware.md).
-
+- **Switch the BMP581 to NORMAL mode, pending a current measurement.** NORMAL
+  mode loses no pressure samples. On 2026-10-21 an A/B on the bench breakout
+  (UID `…0059002E`, 3.3 V supply) ran image `8f1350da` and the same image with
+  only the power mode changed to `BMP5_POWERMODE_NORMAL`. Each ran 180 s at
+  every rate from 100 Hz to 1600 Hz.
+  - *Result:* 0 pressure samples lost in every run for both modes.
+  - *Stale reads:* consecutive equal readings ran at 0.9–1.4 % in both modes,
+    as expected from the sensor's resolution, so NORMAL mode is not
+    re-reading stale results.
+  - *Records:* `captures/2026-10-21-bmp581-mode-ab/` and the tag's flash log.
+  - *Still to measure:* the current saving.
+  - *Background, from before the A/B:*
+    - *The code:* collection puts the BMP581 in `BMP5_POWERMODE_CONTINUOUS`
+      (`bmp581_config_continuous_device()`, called from `sensors.c`), with the
+      ODR that `select_pressure_rate()` picks (25 Hz at 100 Hz IMU ODR).
+    - *The datasheet* (BST-BMP581-DS004 §4.3.6) says CONTINUOUS mode ignores
+      the ODR setting and converts as fast as the oversampling allows. Its
+      Table 9 gives about 255 Hz at OSR_P ×4, OSR_T ×1. The firmware's OSR_T ×2
+      makes that somewhat lower.
+    - *Possible cost:* the sensor would be converting all the time, where NORMAL
+      mode at 25 Hz with the same oversampling converts about 4 ms in every
+      40 ms. The datasheet's 75 µA at "high resolution", 30 Hz, about a third
+      duty, implies an active current near 200 µA. So the difference could be
+      a large share of the 539 µA measured at 100 Hz ([power.md](design/power.md)).
+      That is an estimate, not a measurement.
+    - *Effect on data:* none on per-sample noise, which is set by the
+      oversampling. Only the age of the pressure value read once per
+      superframe changes: under 5 ms now, up to 40 ms at 25 Hz.
+    - *Test:*
+      1. Compare current traces of the current image against the NORMAL-mode
+         build (the patch is in the captures directory), at the same ODRs.
+      2. If NORMAL is adopted, measure with `tag_lifecycle_check.py` and
+         qualify with `tag_release_check.py`, per
+         [Verifying a firmware change](../../../../docs/bench/verifying-firmware.md).
 - **Record the deployed cell voltage and chemistry.** It is not recorded in
   this tree. The current figures in [power.md](design/power.md) and the
   release gate's `--run-max-ua` bound assume a 3.7 V cell; the SMPS board's
