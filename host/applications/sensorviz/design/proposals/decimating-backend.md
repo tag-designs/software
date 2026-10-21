@@ -618,6 +618,68 @@ interval from either side. Breaking is sensorviz display policy: the View
 menu's "Break Lines at Gaps", on by default, persisted per tag type only when
 turned off.
 
+5. **Possible optimization: memory mapping.** Not scheduled. Take it up only
+   if the current implementation proves a problem in practice: for example
+   slow reopening of large logs, memory pressure on 8 GB machines or with
+   several logs open, NANDs larger than 2 Gbit, or a webview front end. It
+   has two parts, both inside `sensordata` behind the existing `Log` API.
+
+   **a. SQLite's own mapping.** Set `PRAGMA mmap_size` on the read-only
+   connection. On the worst-case log, warm in the page cache, reading
+   `ImuAccel` (19.7M rows) took 1.38 s with `read()` and 1.23 s mapped, about
+   10 % off the load. Memory is unchanged, since rows are still decoded into
+   the backend's columns. It is one line.
+
+   **b. A mapped columnar cache.**
+
+   *How it works:*
+   - After a first load, write the backend's layout to a cache file: the
+     shared time axes, the `float32` columns and the pyramids, aligned and
+     little-endian, behind a versioned header.
+   - On reopen, validate the header and map the file instead of scanning
+     SQLite.
+   - Open time falls from seconds to milliseconds. The arrays become clean,
+     file-backed pages that load only when touched and that the OS can evict
+     without swapping. A full-log view reads only the pyramids, about 60 MB
+     on the worst-case log; raw columns load only for zoomed windows.
+   - Resident memory then stays well below today's 1.1 GB peak however large
+     the log, and macOS does not count clean file-backed pages in the
+     process's memory footprint.
+   - Parameter-free derived streams (the IMU magnitudes) can be cached the
+     same way. Transforms that read SQLite `double`s through `forEachRow()`
+     still do, and those inputs are small.
+
+   *Cost:* about 0.85 GB of disk per worst-case log, and an unchanged first
+   open.
+
+   *Requirements:*
+   - Caches go in the per-user cache directory (`~/Library/Caches`,
+     `%LOCALAPPDATA%`, `$XDG_CACHE_HOME`) under a total size cap with
+     least-recently-used eviction. They never go beside the log, which may be
+     read-only or shared.
+   - A cache is valid only for the same log size, modification time and
+     per-table row counts, and the same cache format version, pyramid bucket
+     size and gap threshold. Anything else is rebuilt, never trusted.
+   - A cache is written to a temporary name and renamed into place, never
+     rewritten in place.
+   - A small `MappedFile` class covers POSIX `mmap` and Windows
+     `CreateFileMapping`/`MapViewOfFile`, with no new dependency.
+   - Platform behaviour differs:
+     - *POSIX:* a mapped file truncated underneath raises SIGBUS. Hence local
+       disk only, and no in-place rewrite.
+     - *Windows:* a mapped file cannot be deleted or replaced while open.
+       Hence version-stamped file names, and eviction that skips caches in
+       use.
+
+   *Check:* views, hover values and gaps are identical when opened from the
+   cache and from SQLite; a stale or truncated cache is rejected; reopen
+   time and resident memory are recorded in the results log.
+
+   This differs from the out-of-core extension in [Alternatives
+   considered](#alternatives-considered). That stores pyramids in the log
+   itself, written by tagcore, so other tools can use them. A mapped cache
+   is private to the viewer and needs no schema change. The two can coexist.
+
 ## Open questions
 
 - **Is a reported 2 Gbit full log the real worst case?** The figure assumes
