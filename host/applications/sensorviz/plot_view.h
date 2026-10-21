@@ -3,7 +3,8 @@
  * @brief   The sensorViz plot widget: draws a PlotSpec with QCustomPlot.
  *
  * @details PlotView is the only sensorViz code that touches QCustomPlot. It
- *          draws whatever PlotSpec it is given and keeps only view state of
+ *          draws whatever PlotSpec (Qt-free, from sensorviz_core) it is given,
+ *          converting its strings and colors to Qt types, and keeps only view state of
  *          its own: the x range, the cursors and the metadata box position.
  *          Display policy lives in buildPlotSpec() (plot_spec.h), and menus,
  *          dialogs and readouts in MainWindow.
@@ -23,8 +24,15 @@
 #include <qcustomplot.h>
 
 #include "plot_spec.h"
+#include "sensorstream.h"
 
 class QPrinter;
+
+using sensorviz::PlotAxisRangeMode;
+using sensorviz::PlotAxisSpec;
+using sensorviz::PlotRange;
+using sensorviz::PlotSpec;
+using sensorviz::PlotTraceSpec;
 
 /**
  * @class   PlotView

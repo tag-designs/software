@@ -65,7 +65,7 @@ void MainWindow::setUtcOffset()
         this,
         tr("UTC Offset"),
         tr("Offset from UTC"),
-        utc_offset_,
+        view_.utcOffsetHours(),
         -12,
         12,
         1,
@@ -74,7 +74,7 @@ void MainWindow::setUtcOffset()
         return;
     }
 
-    utc_offset_ = hours;
+    view_.setUtcOffsetHours(hours);
     // Only the tick labels change; PlotView applies that without a rebuild.
     refreshPlot();
 }
@@ -105,7 +105,7 @@ QString MainWindow::formatPlotTime(double time_seconds) const
     }
 
     const QDateTime dt =
-        QDateTime::fromSecsSinceEpoch(qint64(time_seconds), QTimeZone(3600 * utc_offset_));
+        QDateTime::fromSecsSinceEpoch(qint64(time_seconds), QTimeZone(3600 * view_.utcOffsetHours()));
     return dt.toString("MM/dd hh:mm:ss");
 }
 
@@ -154,14 +154,14 @@ QMenu *MainWindow::createPlotContextMenu(QWidget *parent)
     if (!visible.isEmpty()) {
         QMenu *ranges = view->addMenu(tr("Ranges"));
         for (const SensorStream &stream : visible) {
-            QAction *range_action = ranges->addAction(tr("%1 Range...").arg(stream.label));
-            const QString help =
-                tr("Set the displayed y-axis range for %1.").arg(stream.label);
+            const QString label = toQString(stream.label);
+            QAction *range_action = ranges->addAction(tr("%1 Range...").arg(label));
+            const QString help = tr("Set the displayed y-axis range for %1.").arg(label);
             range_action->setToolTip(help);
             range_action->setStatusTip(help);
             range_action->setWhatsThis(help);
-            range_action->setData(stream.id);
-            connect(range_action, &QAction::triggered, this, [this, id = stream.id]() {
+            range_action->setData(toQString(stream.id));
+            connect(range_action, &QAction::triggered, this, [this, id = toQString(stream.id)]() {
                 setStreamRange(id);
             });
         }
@@ -229,7 +229,7 @@ QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) cons
     }
 
     return QString("%1: %2%3")
-        .arg(stream.label)
+        .arg(toQString(stream.label))
         .arg(sample->value, 0, 'f', 2)
         .arg(unitsSuffix(stream));
 }

@@ -17,9 +17,10 @@
 // log. The JSON file format mirrors that map and stores only overrides from
 // defaults, keeping preference files short enough to edit by hand.
 //
-// Stream display defaults, declared beside these preferences in
-// sensor_preferences.h, are defined in stream_display_defaults.cpp so the
-// loader and plot policy can be built without MainWindow.
+// The preferences themselves are the core's sensorviz::TagPreferences, applied
+// to and captured from the ViewModel; this file reads and writes them as JSON
+// and keeps one entry per tag type. Built-in stream display defaults are in
+// core/stream_meta.cpp.
 //
 // Persisted:
 // - stream visibility when it differs from SensorStream::defaultVisible
@@ -41,44 +42,6 @@ constexpr int kPreferencesVersion = 1;
 // ---------------------------------------------------------------------------
 // Preference Helpers
 // ---------------------------------------------------------------------------
-
-QSet<QString> currentStreamIds(const QVector<SensorStream> &streams)
-{
-    QSet<QString> ids;
-    for (const SensorStream &stream : streams) {
-        ids.insert(stream.id);
-    }
-    return ids;
-}
-
-QSet<QString> defaultVisibleStreamIds(const QVector<SensorStream> &streams)
-{
-    QSet<QString> ids;
-    for (const SensorStream &stream : streams) {
-        if (stream.defaultVisible) {
-            ids.insert(stream.id);
-        }
-    }
-    return ids;
-}
-
-bool hasPreferenceOverrides(const SensorVizPreferences &preferences)
-{
-    return preferences.hasVisibleStreamOverride
-        || !preferences.streamColors.isEmpty()
-        || !preferences.axisSides.isEmpty()
-        || preferences.hasBreakLinesAtGapsOverride;
-}
-
-QStringList sortedStrings(const QSet<QString> &values)
-{
-    QStringList sorted;
-    for (const QString &value : values) {
-        sorted.append(value);
-    }
-    sorted.sort();
-    return sorted;
-}
 
 QString axisSideToString(SensorAxisSide side)
 {
@@ -103,25 +66,26 @@ QJsonObject preferencesToJson(const SensorVizPreferences &preferences)
 {
     QJsonObject object;
     if (preferences.hasVisibleStreamOverride) {
+        // std::set keeps the ids sorted, as the file always has.
         QJsonArray visible;
-        for (const QString &id : sortedStrings(preferences.visibleStreamIds)) {
-            visible.append(id);
+        for (const std::string &id : preferences.visibleStreamIds) {
+            visible.append(toQString(id));
         }
         object.insert(QStringLiteral("visible_streams"), visible);
     }
 
-    if (!preferences.streamColors.isEmpty()) {
+    if (!preferences.streamColors.empty()) {
         QJsonObject colors;
-        for (auto it = preferences.streamColors.cbegin(); it != preferences.streamColors.cend(); ++it) {
-            colors.insert(it.key(), it.value().name(QColor::HexRgb));
+        for (const auto &entry : preferences.streamColors) {
+            colors.insert(toQString(entry.first), toQColor(entry.second).name(QColor::HexRgb));
         }
         object.insert(QStringLiteral("colors"), colors);
     }
 
-    if (!preferences.axisSides.isEmpty()) {
+    if (!preferences.axisSides.empty()) {
         QJsonObject axis_sides;
-        for (auto it = preferences.axisSides.cbegin(); it != preferences.axisSides.cend(); ++it) {
-            axis_sides.insert(it.key(), axisSideToString(it.value()));
+        for (const auto &entry : preferences.axisSides) {
+            axis_sides.insert(toQString(entry.first), axisSideToString(entry.second));
         }
         object.insert(QStringLiteral("axis_sides"), axis_sides);
     }
@@ -144,7 +108,7 @@ bool jsonToPreferences(
     // preference file may be loaded before its matching tag type is opened; ids
     // are filtered against actual loaded streams when preferences are applied.
     preferences = SensorVizPreferences();
-    preferences.tagType = tag_type;
+    preferences.tagType = tag_type.toStdString();
 
     if (object.contains(QStringLiteral("visible_streams"))) {
         const QJsonValue value = object.value(QStringLiteral("visible_streams"));
@@ -160,7 +124,7 @@ bool jsonToPreferences(
                             .arg(tag_type);
                 return false;
             }
-            preferences.visibleStreamIds.insert(entry.toString());
+            preferences.visibleStreamIds.insert(entry.toString().toStdString());
         }
     }
 
@@ -183,7 +147,7 @@ bool jsonToPreferences(
                             .arg(it.key(), tag_type);
                 return false;
             }
-            preferences.streamColors.insert(it.key(), color);
+            preferences.streamColors[it.key().toStdString()] = toRgb(color);
         }
     }
 
@@ -206,7 +170,7 @@ bool jsonToPreferences(
                             .arg(it.key(), tag_type);
                 return false;
             }
-            preferences.axisSides.insert(it.key(), side);
+            preferences.axisSides[it.key().toStdString()] = side;
         }
     }
 
@@ -243,56 +207,21 @@ QString MainWindow::preferenceKey() const
 
 void MainWindow::rememberCurrentPreferences()
 {
-    // Store only viewer choices that are meant to follow this tag type. Do not
-    // capture session parameters such as sea-level pressure, declination,
-    // battery-forward, or UTC offset.
+    // Store only viewer choices that are meant to follow this tag type. The
+    // ViewModel decides what differs from the defaults; session parameters
+    // such as sea-level pressure, declination, battery-forward, or UTC offset
+    // are never captured.
     if (suppress_preference_updates_) {
         return;
     }
 
     const QString key = preferenceKey();
-    if (key.isEmpty() || streams_.isEmpty()) {
+    if (key.isEmpty() || view_.streams().empty()) {
         return;
     }
 
-    SensorVizPreferences preferences;
-    preferences.tagType = key;
-
-    // Store visibility only when it differs from built-in stream defaults. The
-    // separate boolean is necessary because an empty set can be a real user
-    // choice: all streams hidden.
-    QSet<QString> visible_stream_ids;
-    for (QAction *action : stream_actions_) {
-        if (action->isChecked()) {
-            visible_stream_ids.insert(action->data().toString());
-        }
-    }
-    const QSet<QString> default_visible_ids = defaultVisibleStreamIds(streams_);
-    if (visible_stream_ids != default_visible_ids) {
-        preferences.hasVisibleStreamOverride = true;
-        preferences.visibleStreamIds = visible_stream_ids;
-    }
-
-    const QSet<QString> stream_ids = currentStreamIds(streams_);
-    for (auto it = custom_stream_colors_.cbegin(); it != custom_stream_colors_.cend(); ++it) {
-        const SensorStream *stream = streamById(it.key());
-        if (stream_ids.contains(it.key()) && stream && it.value() != stream->color) {
-            preferences.streamColors[it.key()] = it.value();
-        }
-    }
-    for (auto it = custom_axis_sides_.cbegin(); it != custom_axis_sides_.cend(); ++it) {
-        const SensorStream *stream = streamById(it.key());
-        if (stream && it.value() != stream->axisSide) {
-            preferences.axisSides[it.key()] = it.value();
-        }
-    }
-
-    if (!break_gaps_action_->isChecked()) {
-        preferences.hasBreakLinesAtGapsOverride = true;
-        preferences.breakLinesAtGaps = false;
-    }
-
-    if (hasPreferenceOverrides(preferences)) {
+    const SensorVizPreferences preferences = view_.capturePreferences(key.toStdString());
+    if (preferences.hasOverrides()) {
         preferences_by_tag_type_[key] = preferences;
     } else {
         preferences_by_tag_type_.remove(key);
@@ -305,38 +234,26 @@ void MainWindow::applyPreferencesForCurrentTag()
     // preferences are treated as "load defaults", which is what lets Load
     // Defaults remove one tag entry and then reuse this function.
     const QString key = preferenceKey();
-    if (key.isEmpty() || streams_.isEmpty()) {
+    if (key.isEmpty() || view_.streams().empty()) {
         return;
     }
 
+    // The gap mode is applied after the visibility redraw, as it always has
+    // been: y axes take their range partly from the previous drawing, so the
+    // order of redraws shows in the plot.
     const SensorVizPreferences preferences = preferences_by_tag_type_.value(key);
-    const QSet<QString> stream_ids = currentStreamIds(streams_);
+    SensorVizPreferences first_phase = preferences;
+    first_phase.hasBreakLinesAtGapsOverride = true;
+    first_phase.breakLinesAtGaps = view_.breakAtGaps();
 
     suppress_preference_updates_ = true;
-    custom_stream_colors_.clear();
-    for (auto it = preferences.streamColors.cbegin(); it != preferences.streamColors.cend(); ++it) {
-        if (stream_ids.contains(it.key())) {
-            custom_stream_colors_[it.key()] = it.value();
-        }
+    const sensorviz::ViewModel::Changes changes = view_.applyPreferences(first_phase);
+    if ((changes & sensorviz::ViewModel::Visibility) != 0) {
+        // A visibility change redraws on its own, as it always has.
+        streamVisibilityChanged();
     }
-
-    custom_axis_sides_.clear();
-    for (auto it = preferences.axisSides.cbegin(); it != preferences.axisSides.cend(); ++it) {
-        if (stream_ids.contains(it.key())) {
-            custom_axis_sides_[it.key()] = it.value();
-        }
-    }
-
-    if (preferences.hasVisibleStreamOverride) {
-        applyStreamVisibility(preferences.visibleStreamIds);
-    } else {
-        applyStreamVisibility(defaultVisibleStreamIds(streams_));
-    }
-    {
-        const QSignalBlocker blocker(break_gaps_action_);
-        break_gaps_action_->setChecked(
-            preferences.hasBreakLinesAtGapsOverride ? preferences.breakLinesAtGaps : true);
-    }
+    view_.setBreakAtGaps(
+        preferences.hasBreakLinesAtGapsOverride ? preferences.breakLinesAtGaps : true);
     suppress_preference_updates_ = false;
 
     rebuildRangeActions();
@@ -398,7 +315,7 @@ void MainWindow::savePreferences()
 void MainWindow::loadDefaultPreferences()
 {
     const QString key = preferenceKey();
-    if (key.isEmpty() || streams_.isEmpty()) {
+    if (key.isEmpty() || view_.streams().empty()) {
         return;
     }
 
@@ -456,7 +373,7 @@ bool MainWindow::loadPreferencesFromFile(const QString &path, QString &error)
         if (!jsonToPreferences(it.key(), it.value().toObject(), preferences, error)) {
             return false;
         }
-        if (hasPreferenceOverrides(preferences)) {
+        if (preferences.hasOverrides()) {
             loaded_preferences.insert(it.key(), preferences);
         }
     }
@@ -471,7 +388,7 @@ bool MainWindow::savePreferencesToFile(const QString &path, QString &error)
     // this function only emits entries that still contain at least one override.
     QJsonObject tags;
     for (auto it = preferences_by_tag_type_.cbegin(); it != preferences_by_tag_type_.cend(); ++it) {
-        if (hasPreferenceOverrides(it.value())) {
+        if (it.value().hasOverrides()) {
             tags.insert(it.key(), preferencesToJson(it.value()));
         }
     }

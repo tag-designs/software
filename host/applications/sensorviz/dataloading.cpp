@@ -124,28 +124,29 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     rememberCurrentPreferences();
 
     current_path_ = QFileInfo(path).absolutePath();
-    graph_title_ = QFileInfo(path).fileName();
-    graph_title_visible_ = true;
-    show_title_action_->setChecked(true);
+    const std::string title = QFileInfo(path).fileName().toStdString();
+    view_.setTitle(title);
+    if (!view_.titleVisible() && !log_.path.isEmpty()) {
+        // Re-showing a hidden title redraws, as toggling Show Graph Title
+        // always has; this is still the previous log's plot.
+        view_.setTitleVisible(true);
+        refreshPlot();
+    }
     // The plot's StreamIds name streams of the new log from here on.
     plot_view_->setLog(log.data.get());
     log_ = log;
     updateLoadedStateActions();
-    streams_ = log.streams;
     compass_samples_.clear();
     compass_source_.clear();
-    custom_axis_ranges_.clear();
-    explicit_axis_ranges_.clear();
-    custom_stream_colors_.clear();
-    custom_axis_sides_.clear();
 
-    // Default visibility comes from sensorViz display defaults applied by the
-    // SQLite loader. The QAction state is the runtime source of truth after
-    // this point.
-    clearStreamActions();
-    for (const SensorStream &stream : streams_) {
-        addStreamAction(stream, stream.defaultVisible);
-    }
+    // A new log starts from the display defaults: each stream's default
+    // visibility, no custom ranges, colors or sides. The ViewModel is the
+    // runtime source of truth from here on; the actions follow it.
+    view_.resetForLog(std::vector<SensorStream>(log.streams.cbegin(), log.streams.cend()), title);
+    clearRangeActions();
+    updateColorsAction();
+    updateAxisSidesAction();
+    updateTransformActions();
     updateColorsAction();
 
     calibration_constants_action_->setVisible(log_.hasCompassCalibration);
@@ -170,8 +171,8 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
 
     applyPreferencesForCurrentTag();
 
-    // Order matters here: menu visibility depends on streams_, and refreshPlot()
-    // depends on the stream actions that were just rebuilt.
+    // Order matters here: menu visibility depends on the streams, and
+    // refreshPlot() on the preferences just applied.
     updateTimeAxisForLog();
     updateMetadata();
     refreshPlotFullRange();
@@ -225,10 +226,10 @@ void MainWindow::updateMetadata()
     info_->setPlainText(lines.join("\n"));
 
     if (log_.recordSets.isEmpty()) {
-        status_->setText(tr("%1 streams loaded").arg(streams_.size()));
+        status_->setText(tr("%1 streams loaded").arg(view_.streams().size()));
     } else {
         status_->setText(tr("%1 streams, %2 record sets loaded")
-                             .arg(streams_.size())
+                             .arg(view_.streams().size())
                              .arg(log_.recordSets.size()));
     }
 }

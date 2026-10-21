@@ -18,77 +18,12 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <map>
+#include <set>
 #include <cmath>
 
 namespace
 {
-
-QStringList sourceOrderForStream(const QString &stream_id)
-{
-    // The Visible Streams dialog is easier to scan when derived streams appear
-    // next to their inputs instead of at the end of the log-defined stream
-    // list. This table declares only ordering relationships; transform
-    // creation still lives in transforms.cpp/compass_transforms.cpp.
-    if (stream_id == "altitude") {
-        return {QStringLiteral("pressure"), QStringLiteral("imu_pressure")};
-    }
-    if (stream_id == "imu_accel_magnitude") {
-        return {
-            QStringLiteral("imu_ax"),
-            QStringLiteral("imu_ay"),
-            QStringLiteral("imu_az"),
-        };
-    }
-    if (stream_id == "imu_gyro_magnitude") {
-        return {
-            QStringLiteral("imu_gx"),
-            QStringLiteral("imu_gy"),
-            QStringLiteral("imu_gz"),
-        };
-    }
-    if (stream_id == "imu_mag_magnitude") {
-        return {
-            QStringLiteral("imu_mx"),
-            QStringLiteral("imu_my"),
-            QStringLiteral("imu_mz"),
-        };
-    }
-    return {};
-}
-
-int streamInsertionIndex(const QVector<SensorStream> &streams, const QString &stream_id)
-{
-    const QStringList sources = sourceOrderForStream(stream_id);
-    if (sources.isEmpty()) {
-        return streams.size();
-    }
-
-    int last_source_index = -1;
-    for (qsizetype i = 0; i < streams.size(); i++) {
-        if (sources.contains(streams[i].id)) {
-            last_source_index = static_cast<int>(i);
-        }
-    }
-
-    return last_source_index >= 0 ? last_source_index + 1 : streams.size();
-}
-
-int actionInsertionIndex(const QVector<QAction *> &actions, const QString &stream_id)
-{
-    const QStringList sources = sourceOrderForStream(stream_id);
-    if (sources.isEmpty()) {
-        return actions.size();
-    }
-
-    int last_source_index = -1;
-    for (qsizetype i = 0; i < actions.size(); i++) {
-        if (sources.contains(actions[i]->data().toString())) {
-            last_source_index = static_cast<int>(i);
-        }
-    }
-
-    return last_source_index >= 0 ? last_source_index + 1 : actions.size();
-}
 
 void setColorSwatch(QLabel *swatch, const QColor &color)
 {
@@ -98,27 +33,23 @@ void setColorSwatch(QLabel *swatch, const QColor &color)
 
 } // namespace
 
-// Stream actions are the bridge between loaded data and the plot. Raw streams
-// get checkable View actions; derived streams are controlled by their transform
-// actions. Range, color, and axis-side controls are rebuilt from
-// visibleStreams(), keeping menus focused on what is currently on the plot.
+// Stream actions are views of the ViewModel: the stream list, its order (a
+// derived stream is listed after its inputs, a rule kept in the core) and
+// each non-derived stream's visibility live in view_. Range, color, and
+// axis-side controls are rebuilt from visibleStreams(), keeping menus focused
+// on what is currently on the plot.
 
 bool MainWindow::hasStream(const QString &id) const
 {
     // Convenience predicate used by transform availability checks.
-    return streamById(id) != nullptr;
+    return view_.hasStream(id.toStdString());
 }
 
 const SensorStream *MainWindow::streamById(const QString &id) const
 {
     // Look up the current stream by stable id. Returned pointers are valid only
-    // until streams_ is modified.
-    for (const SensorStream &stream : streams_) {
-        if (stream.id == id) {
-            return &stream;
-        }
-    }
-    return nullptr;
+    // until the stream list changes.
+    return view_.stream(id.toStdString());
 }
 
 const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
@@ -132,6 +63,14 @@ const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
     return nullptr;
 }
 
+bool MainWindow::isStreamVisible(const QString &id) const
+{
+    // A transform keeps its output's visibility when it remakes it. Streams
+    // without a visibility of their own (none yet, or derived) count as shown.
+    const SensorStream *stream = streamById(id);
+    return !stream || stream->derived || view_.isVisible(stream->id);
+}
+
 void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
 {
     // This path is used both for replacing a raw stream and for refreshing a
@@ -139,30 +78,15 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     // identity; labels and data can change without invalidating menu wiring.
     // The transform registered the stream's plot data before calling this;
     // a replaced stream's plot data is released once the new one is in place.
-    for (SensorStream &existing : streams_) {
-        if (existing.id == stream.id) {
-            if (existing.dataId != stream.dataId) {
-                releasePlotData(existing);
-            }
-            existing = stream;
-            QAction *action = streamActionById(stream.id);
-            if (action) {
-                action->setText(stream.label + unitsSuffix(stream));
-                action->setChecked(checked);
-            }
-            refreshPlot();
-            rebuildRangeActions();
-            updateColorsAction();
-            updateAxisSidesAction();
-            updateTransformActions();
-            return;
-        }
+    const sensorviz::ViewModel::StreamUpdate update = view_.addOrReplaceStream(stream, checked);
+    if (update.released != sensordata::kNoStream && log_.data) {
+        log_.data->remove(update.released);
     }
-
-    const int stream_index = streamInsertionIndex(streams_, stream.id);
-    streams_.insert(stream_index, stream);
-    if (!stream.derived) {
-        addStreamAction(stream, checked, actionInsertionIndex(stream_actions_, stream.id));
+    syncStreamActions();
+    if (update.replaced && (update.changes & sensorviz::ViewModel::Visibility) != 0) {
+        // Remaking a stream with a different visibility redraws first, as
+        // toggling its View action always has.
+        streamVisibilityChanged();
     }
     refreshPlot();
     rebuildRangeActions();
@@ -173,28 +97,14 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
 
 void MainWindow::removeStream(const QString &id)
 {
-    // Removing a stream must also remove any custom range. Otherwise a future
-    // stream with the same id, such as altitude re-enabled with new sea-level
-    // pressure, could inherit a stale axis range.
-    for (qsizetype i = 0; i < streams_.size(); i++) {
-        if (streams_[i].id == id) {
-            releasePlotData(streams_[i]);
-            streams_.removeAt(i);
-            break;
-        }
+    // The ViewModel also drops the stream's custom range, so a future stream
+    // with the same id, such as altitude re-enabled with new sea-level
+    // pressure, cannot inherit a stale axis range.
+    const sensordata::StreamId data = view_.removeStream(id.toStdString());
+    if (data != sensordata::kNoStream && log_.data) {
+        log_.data->remove(data);
     }
-
-    for (qsizetype i = 0; i < stream_actions_.size(); i++) {
-        QAction *action = stream_actions_[i];
-        if (action->data().toString() == id) {
-            stream_actions_.removeAt(i);
-            delete action;
-            break;
-        }
-    }
-
-    custom_axis_ranges_.remove(id);
-    explicit_axis_ranges_.remove(id);
+    syncStreamActions();
     refreshPlot();
     rebuildRangeActions();
     updateColorsAction();
@@ -202,85 +112,73 @@ void MainWindow::removeStream(const QString &id)
     updateTransformActions();
 }
 
-void MainWindow::clearStreamActions()
+void MainWindow::syncStreamActions()
 {
-    // Remove all raw-stream state actions before loading a new file.
-    for (QAction *action : stream_actions_) {
-        delete action;
+    // One checkable action per non-derived stream, in stream order, mirroring
+    // its visibility. They are not placed in menus; the Visible Streams dialog
+    // lists them. Toggling one sets the visibility in the ViewModel.
+    const std::vector<std::string> ids = view_.toggleableStreamIds();
+    bool same_list = static_cast<size_t>(stream_actions_.size()) == ids.size();
+    for (size_t i = 0; same_list && i < ids.size(); i++) {
+        same_list = stream_actions_[static_cast<qsizetype>(i)]->data().toString()
+            == toQString(ids[i]);
     }
-    stream_actions_.clear();
-    visible_streams_action_->setVisible(false);
-    visible_streams_action_->setEnabled(false);
-    clearRangeActions();
-    updateColorsAction();
-    updateAxisSidesAction();
-    updateTransformActions();
-}
-
-void MainWindow::addStreamAction(const SensorStream &stream, bool checked, int action_index)
-{
-    // Create a persistent checkable state action for one raw stream. These
-    // actions are not placed directly in menus; the Visible Streams dialog edits
-    // them and visibleStreams() reads them.
-    QAction *action = new QAction(stream.label + unitsSuffix(stream), this);
-    action->setCheckable(true);
-    action->setChecked(checked);
-    action->setData(stream.id);
-    connect(action, &QAction::toggled, this, [this]() {
-        refreshPlot();
-        rebuildRangeActions();
-        updateColorsAction();
-        updateAxisSidesAction();
-        rememberCurrentPreferences();
-    });
-    if (action_index >= 0 && action_index < stream_actions_.size()) {
-        stream_actions_.insert(action_index, action);
-    } else {
-        stream_actions_.append(action);
-    }
-    visible_streams_action_->setVisible(true);
-    visible_streams_action_->setEnabled(true);
-    updateAxisSidesAction();
-}
-
-QAction *MainWindow::streamActionById(const QString &id) const
-{
-    // Find the QAction that controls a stream's visibility. Used when transforms
-    // need to preserve checked state while replacing stream data.
-    for (QAction *action : stream_actions_) {
-        if (action->data().toString() == id) {
-            return action;
+    if (!same_list) {
+        for (QAction *action : stream_actions_) {
+            delete action;
+        }
+        stream_actions_.clear();
+        for (const std::string &id : ids) {
+            QAction *action = new QAction(this);
+            action->setCheckable(true);
+            action->setData(toQString(id));
+            connect(action, &QAction::toggled, this, [this, id](bool checked) {
+                if (view_.setStreamVisible(id, checked) != 0) {
+                    streamVisibilityChanged();
+                }
+            });
+            stream_actions_.append(action);
         }
     }
-    return nullptr;
-}
-
-void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
-{
-    // Apply a batch of visibility edits without letting each QAction emit its
-    // toggled signal. The plot and dependent menus are rebuilt once at the end,
-    // which keeps the multi-select dialog responsive for large stream lists.
-    bool changed = false;
     for (QAction *action : stream_actions_) {
-        const bool should_be_checked = visible_ids.contains(action->data().toString());
-        if (action->isChecked() == should_be_checked) {
-            continue;
-        }
-
-        changed = true;
+        const SensorStream *stream = streamById(action->data().toString());
         const QSignalBlocker blocker(action);
-        action->setChecked(should_be_checked);
+        action->setText(toQString(stream->label) + unitsSuffix(*stream));
+        action->setChecked(view_.isVisible(stream->id));
     }
-
-    if (!changed) {
-        return;
+    if (!log_.path.isEmpty()) {
+        // Before any log the command stays visible but disabled, like the
+        // rest of the startup menus.
+        const bool any = !stream_actions_.isEmpty();
+        visible_streams_action_->setVisible(any);
+        visible_streams_action_->setEnabled(any);
     }
+}
 
+void MainWindow::streamVisibilityChanged()
+{
+    // What changes when the set of shown streams does.
     refreshPlot();
     rebuildRangeActions();
     updateColorsAction();
     updateAxisSidesAction();
     rememberCurrentPreferences();
+}
+
+void MainWindow::applyStreamVisibility(const QSet<QString> &visible_ids)
+{
+    // Apply a batch of visibility edits. The plot and dependent menus are
+    // rebuilt once at the end, which keeps the multi-select dialog responsive
+    // for large stream lists.
+    std::set<std::string> ids;
+    for (const QString &id : visible_ids) {
+        ids.insert(id.toStdString());
+    }
+    if (view_.setVisibleStreams(ids) == 0) {
+        return;
+    }
+    syncStreamActions();
+    streamVisibilityChanged();
 }
 
 void MainWindow::showVisibleStreamsDialog()
@@ -354,24 +252,13 @@ void MainWindow::showVisibleStreamsDialog()
 
 QVector<SensorStream> MainWindow::visibleStreams() const
 {
-    // Convert QAction state back into the stream list consumed by plotting,
-    // range menus, tooltips, and printing.
+    // The shown streams, consumed by range menus, dialogs and tooltips.
+    // The ViewModel's drawing order: shown non-derived streams, then derived
+    // ones, which are visible while they exist.
     QVector<SensorStream> visible;
-    // Raw streams are visible only when their View action is checked.
-    for (QAction *action : stream_actions_) {
-        if (!action->isChecked()) {
-            continue;
-        }
-        const SensorStream *stream = streamById(action->data().toString());
-        if (stream) {
+    for (const std::string &id : view_.visibleStreamIds()) {
+        if (const SensorStream *stream = view_.stream(id)) {
             visible.append(*stream);
-        }
-    }
-    // Derived streams are visible while they exist; their existence is
-    // controlled by their transform action rather than a View action.
-    for (const SensorStream &stream : streams_) {
-        if (stream.derived) {
-            visible.append(stream);
         }
     }
     return visible;
@@ -382,8 +269,7 @@ SensorAxisSide MainWindow::effectiveAxisSide(const SensorStream &stream) const
     // Plotting asks this helper for axis placement. Keeping overrides outside
     // SensorStream preserves the loaded metadata default for reset/new-file
     // behavior.
-    const auto it = custom_axis_sides_.constFind(stream.id);
-    return it == custom_axis_sides_.cend() ? stream.axisSide : it.value();
+    return view_.effectiveAxisSide(stream.id);
 }
 
 void MainWindow::updateAxisSidesAction()
@@ -415,7 +301,7 @@ void MainWindow::showAxisSidesDialog()
     right_buttons.reserve(visible.size());
     for (qsizetype i = 0; i < visible.size(); i++) {
         const SensorStream &stream = visible[i];
-        QLabel *label = new QLabel(stream.label + unitsSuffix(stream), &dialog);
+        QLabel *label = new QLabel(toQString(stream.label) + unitsSuffix(stream), &dialog);
         QWidget *side_widget = new QWidget(&dialog);
         QHBoxLayout *side_layout = new QHBoxLayout;
         side_layout->setContentsMargins(0, 0, 0, 0);
@@ -432,7 +318,7 @@ void MainWindow::showAxisSidesDialog()
         }
         grid->addWidget(label, int(i) + 1, 0);
         grid->addWidget(side_widget, int(i) + 1, 1);
-        right_buttons.append(qMakePair(stream.id, right_button));
+        right_buttons.append(qMakePair(toQString(stream.id), right_button));
     }
 
     QDialogButtonBox *buttons =
@@ -457,20 +343,21 @@ void MainWindow::showAxisSidesDialog()
         return;
     }
 
+    std::map<std::string, SensorAxisSide> sides = view_.axisSideOverrides();
     for (const auto &entry : right_buttons) {
-        const QString &id = entry.first;
-        const SensorStream *stream = streamById(id);
+        const SensorStream *stream = streamById(entry.first);
         if (!stream) {
             continue;
         }
         const SensorAxisSide chosen_side =
             entry.second->isChecked() ? SensorAxisSide::Right : SensorAxisSide::Left;
         if (chosen_side == stream->axisSide) {
-            custom_axis_sides_.remove(id);
+            sides.erase(stream->id);
         } else {
-            custom_axis_sides_[id] = chosen_side;
+            sides[stream->id] = chosen_side;
         }
     }
+    view_.setAxisSideOverrides(sides);
 
     refreshPlot();
     rememberCurrentPreferences();
@@ -478,11 +365,8 @@ void MainWindow::showAxisSidesDialog()
 
 QColor MainWindow::effectiveStreamColor(const SensorStream &stream) const
 {
-    // Plotting asks this helper for every graph/axis color. Keeping the
-    // override lookup here avoids mutating SensorStream, which still represents
-    // the defaults loaded from SQLite metadata.
-    const auto it = custom_stream_colors_.constFind(stream.id);
-    return it == custom_stream_colors_.cend() ? stream.color : it.value();
+    // The user's override from the ViewModel, or the stream's default.
+    return toQColor(view_.effectiveColor(stream.id));
 }
 
 void MainWindow::clearRangeActions()
@@ -516,12 +400,13 @@ void MainWindow::rebuildRangeActions()
 void MainWindow::addRangeAction(const SensorStream &stream)
 {
     // Add one persistent range action for a currently displayed stream.
-    QAction *action = new QAction(tr("%1 Range...").arg(stream.label), this);
-    const QString help = tr("Set the displayed y-axis range for %1.").arg(stream.label);
+    QAction *action = new QAction(tr("%1 Range...").arg(toQString(stream.label)), this);
+    const QString help =
+        tr("Set the displayed y-axis range for %1.").arg(toQString(stream.label));
     action->setToolTip(help);
     action->setStatusTip(help);
     action->setWhatsThis(help);
-    action->setData(stream.id);
+    action->setData(toQString(stream.id));
     connect(action, &QAction::triggered, this, &MainWindow::setStreamRangeFromAction);
     range_actions_.append(action);
     range_menu_->addAction(action);
@@ -538,8 +423,8 @@ QCPRange MainWindow::defaultRangeForStream(const SensorStream &stream) const
         return QCPRange(stream.axisRange.lower, stream.axisRange.upper);
     }
 
-    PlotRange data_range;
-    if (!plotDataRange(log_.data.get(), stream.dataId, data_range)) {
+    sensorviz::PlotRange data_range;
+    if (!sensorviz::plotDataRange(log_.data.get(), stream.dataId, data_range)) {
         return QCPRange(0.0, 1.0);
     }
 
@@ -578,15 +463,16 @@ void MainWindow::setStreamRange(const QString &id)
         return;
     }
 
-    const QCPRange initial_range = custom_axis_ranges_.contains(id)
-        ? custom_axis_ranges_[id]
+    const std::string key = id.toStdString();
+    const QCPRange initial_range = view_.hasCustomRange(key)
+        ? QCPRange(view_.customRanges().at(key).lower, view_.customRanges().at(key).upper)
         : defaultRangeForStream(*stream);
     double lower = initial_range.lower;
     double upper = initial_range.upper;
     const double span = std::max(1.0, upper - lower);
 
     QDialog dialog(this);
-    dialog.setWindowTitle(tr("%1 Range").arg(stream->label));
+    dialog.setWindowTitle(tr("%1 Range").arg(toQString(stream->label)));
 
     QDoubleSpinBox *lower_box = new QDoubleSpinBox(&dialog);
     QDoubleSpinBox *upper_box = new QDoubleSpinBox(&dialog);
@@ -594,8 +480,8 @@ void MainWindow::setStreamRange(const QString &id)
         box->setRange(-1.0e9, 1.0e9);
         box->setDecimals(2);
         box->setSingleStep(span / 100.0);
-        if (!stream->units.isEmpty()) {
-            box->setSuffix(" " + stream->units);
+        if (!stream->units.empty()) {
+            box->setSuffix(" " + toQString(stream->units));
         }
     }
     lower_box->setValue(lower);
@@ -624,26 +510,27 @@ void MainWindow::setStreamRange(const QString &id)
         return;
     }
 
-    custom_axis_ranges_[id] = QCPRange(lower, upper);
-    explicit_axis_ranges_.insert(id);
+    view_.setCustomRange(key, sensorviz::PlotRange{lower, upper}, true);
 
     // Altitude is derived directly from pressure. When the user changes the
     // pressure range, keep altitude aligned unless they have explicitly set an
     // altitude range of its own.
     if ((id == "pressure" || id == "imu_pressure")
         && hasStream("altitude")
-        && !explicit_axis_ranges_.contains("altitude")) {
-        custom_axis_ranges_["altitude"] =
-            QCPRange(pressureToAltitude(upper), pressureToAltitude(lower));
+        && !view_.isExplicitRange("altitude")) {
+        view_.setCustomRange(
+            "altitude",
+            sensorviz::PlotRange{pressureToAltitude(upper), pressureToAltitude(lower)},
+            false);
     }
     if (id == "activity"
         && hasStream("activity_lowpass")
-        && !explicit_axis_ranges_.contains("activity_lowpass")) {
-        custom_axis_ranges_["activity_lowpass"] = QCPRange(lower, upper);
+        && !view_.isExplicitRange("activity_lowpass")) {
+        view_.setCustomRange("activity_lowpass", sensorviz::PlotRange{lower, upper}, false);
     } else if (id == "activity_lowpass"
                && hasStream("activity")
-               && !explicit_axis_ranges_.contains("activity")) {
-        custom_axis_ranges_["activity"] = QCPRange(lower, upper);
+               && !view_.isExplicitRange("activity")) {
+        view_.setCustomRange("activity", sensorviz::PlotRange{lower, upper}, false);
     }
     refreshPlot();
 }
@@ -669,7 +556,10 @@ void MainWindow::showStreamColorsDialog()
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Stream Colors"));
 
-    QMap<QString, QColor> staged_colors = custom_stream_colors_;
+    QMap<QString, QColor> staged_colors;
+    for (const auto &entry : view_.colorOverrides()) {
+        staged_colors.insert(toQString(entry.first), toQColor(entry.second));
+    }
     QGridLayout *grid = new QGridLayout;
     grid->addWidget(new QLabel(tr("Stream"), &dialog), 0, 0);
     grid->addWidget(new QLabel(tr("Color"), &dialog), 0, 1);
@@ -678,10 +568,10 @@ void MainWindow::showStreamColorsDialog()
     stream_default_buttons.reserve(visible.size());
     for (qsizetype i = 0; i < visible.size(); i++) {
         const SensorStream &stream = visible[i];
-        const QString id = stream.id;
-        const QString label_text = stream.label;
-        const QColor default_color = stream.color;
-        QLabel *label = new QLabel(stream.label + unitsSuffix(stream), &dialog);
+        const QString id = toQString(stream.id);
+        const QString label_text = toQString(stream.label);
+        const QColor default_color = toQColor(stream.color);
+        QLabel *label = new QLabel(label_text + unitsSuffix(stream), &dialog);
         QLabel *swatch = new QLabel(&dialog);
         swatch->setFixedSize(36, 18);
         setColorSwatch(swatch, effectiveStreamColor(stream));
@@ -742,13 +632,16 @@ void MainWindow::showStreamColorsDialog()
         return;
     }
 
+    std::map<std::string, sensorviz::Rgb> colors = view_.colorOverrides();
     for (const SensorStream &stream : visible) {
-        if (staged_colors.contains(stream.id)) {
-            custom_stream_colors_[stream.id] = staged_colors[stream.id];
+        const QString id = toQString(stream.id);
+        if (staged_colors.contains(id)) {
+            colors[stream.id] = toRgb(staged_colors[id]);
         } else {
-            custom_stream_colors_.remove(stream.id);
+            colors.erase(stream.id);
         }
     }
+    view_.setColorOverrides(colors);
 
     refreshPlot();
     rememberCurrentPreferences();

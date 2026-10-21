@@ -47,9 +47,10 @@ struct MainWindowOptions
     bool noUserPrompts = false;   ///< Report fixture/capture errors to stderr instead of dialogs.
 };
 
-// MainWindow is the coordination object for sensorViz. It owns the loaded
-// SensorLog, the stream list currently available to the user, the menu actions
-// that select those streams, and the QCustomPlot state used to draw them.
+// MainWindow is the Qt adapter over sensorViz's Qt-free core. It owns the
+// loaded SensorLog, the ViewModel holding the view state (streams, visibility,
+// ranges, colors, sides, title and settings), the menu actions that show and
+// change that state, and the PlotView that draws the PlotSpec built from it.
 //
 // The code is split across several .cpp files to keep bug hunting manageable:
 //
@@ -58,26 +59,27 @@ struct MainWindowOptions
 //   connected, or a menu action needs to exist at startup, start there.
 //
 // - dataloading.cpp handles the "File -> Load" workflow. It asks the SQLite
-//   loader for a SensorLog, replaces the current stream list, creates the View
-//   menu actions for each stream, updates the File Info tab, and refreshes the
-//   plot. If a file opens but the app state is wrong after loading, start there.
+//   loader for a SensorLog, resets the ViewModel for its streams, updates the
+//   File Info tab, and refreshes the plot. If a file opens but the app state is wrong after loading, start there.
 //
 // - sqlite_loader.cpp reads tagcore's streams metadata table from the on-disk
 //   SQLite schema. It maps scalar stream rows into SensorStream objects and
 //   grouped record-column rows into SensorRecordSet objects. If a table exists
 //   but does not load correctly, start there.
 //
-// - sensor_preferences.cpp owns viewer display policy: built-in stream
-//   defaults, per-tag user overrides, and JSON preference load/store.
+// - sensor_preferences.cpp owns the per-tag preference map and its JSON
+//   load/store; the ViewModel applies and captures them.
 //
-// - stream_actions.cpp owns stream visibility and range menu actions.
+// - stream_actions.cpp owns the stream and range actions (views of the
+//   ViewModel) and the visibility, side, color and range dialogs.
 //
 // - transforms.cpp owns display-only derived streams such as altitude and
 //   activity low-pass.
 //
-// - plotting.cpp collects PlotState and hands the PlotSpec built from it to
-//   PlotView (plot_view.*), which owns everything drawn with QCustomPlot.
-//   Display policy is buildPlotSpec() in plot_spec.*.
+// - plotting.cpp hands PlotView (plot_view.*), which owns everything drawn
+//   with QCustomPlot, the PlotSpec the ViewModel builds. View state and
+//   display policy are in the Qt-free core (core/view_model.*,
+//   core/plot_spec.*).
 //
 // - interaction.cpp owns cursor and print commands, UTC offset, context
 //   menus, and the mouse readout.
@@ -205,17 +207,20 @@ private:
      */
     void reportDocumentationError(const QString &message);
 
-    // Streams are the single source of truth for both raw and derived data.
-    // Raw and generated compass streams have checkable QAction objects in
-    // stream_actions_; the Visible Streams dialog edits those actions as a
-    // batch. Single-output transforms such as altitude and low-pass activity
-    // are enabled by transform actions. If a stream exists but is not visible,
-    // first check streams_, then the matching QAction or transform action.
+    // The view state lives in view_ (sensorviz::ViewModel, Qt-free): the
+    // streams and which are shown, custom ranges, colors and sides, title,
+    // UTC offset, cursors, gap mode and transform parameters. Menus and
+    // dialogs are views of it. syncActions() sets every QAction's checked
+    // state, text and visibility from it; toggles and dialogs call its
+    // setters. stream_actions_ mirror the non-derived streams' visibility for
+    // the Visible Streams dialog. Single-output transforms such as altitude
+    // and low-pass activity are enabled by transform actions.
     void addOrReplaceStream(const SensorStream &stream, bool checked);
     void removeStream(const QString &id);
-    void clearStreamActions();
-    void addStreamAction(const SensorStream &stream, bool checked, int action_index = -1);
-    QAction *streamActionById(const QString &id) const;
+    void syncActions();
+    void syncStreamActions();
+    void streamVisibilityChanged();
+    bool isStreamVisible(const QString &id) const;
     void applyStreamVisibility(const QSet<QString> &visible_ids);
     bool hasStream(const QString &id) const;
     const SensorStream *streamById(const QString &id) const;
@@ -249,16 +254,14 @@ private:
     QString formatPlotTime(double time_seconds) const;
     void updateTimeAxisForLog();
 
-    // The plot. MainWindow collects PlotState from its actions and session
-    // fields, buildPlotSpec() (plot_spec.h) turns it into a PlotSpec, and
-    // PlotView draws it. refreshPlot() keeps the visible time window;
-    // refreshPlotFullRange() is used after a new file is loaded or after
-    // Reset Zoom clears custom y-axis ranges.
+    // The plot. view_.plotSpec() builds the PlotSpec (core/plot_spec.h) from
+    // the view state and plotLogInfo(), and PlotView draws it. refreshPlot()
+    // keeps the visible time window; refreshPlotFullRange() is used after a
+    // new file is loaded or after Reset Zoom clears custom y-axis ranges.
     void refreshPlot();
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
-    PlotState plotState() const;
-    PlotDisplayPreferences plotDisplayPreferences() const;
+    sensorviz::PlotLogInfo plotLogInfo() const;
     QString streamValueAt(const SensorStream &stream, double epoch) const;
 
     // Plot data in log_.data: the hover readout and value ranges read it,
@@ -272,37 +275,20 @@ private:
     void releasePlotData(const SensorStream &stream);
 
     SensorLog log_;
-    QVector<SensorStream> streams_;
+    sensorviz::ViewModel view_;
     QString current_path_;
-    QString graph_title_;
-    bool graph_title_visible_ = true;
     bool log_load_in_progress_ = false;
     MainWindowOptions options_;
 
-    int utc_offset_ = 0;
-    double sea_level_pressure_ = 1013.25;
-    double activity_low_pass_seconds_ = 600.0;
-    double declination_degrees_ = 0.0;
-    bool battery_forward_ = true;
     QVector<CompassDerivedSample> compass_samples_;
     // Where compass_samples_ came from, for the File Info pane, and a stored
     // stream on that record set's time axis, which the compass streams share.
     QString compass_source_;
     sensordata::StreamId compass_time_source_ = sensordata::kNoStream;
 
-    // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
-    // altitude range derived from pressure; explicit_axis_ranges_ records only
-    // ranges the user set directly so pressure can stop driving altitude once
-    // altitude has its own manual range.
-    QMap<QString, QCPRange> custom_axis_ranges_;
-    QSet<QString> explicit_axis_ranges_;
-    QMap<QString, QColor> custom_stream_colors_;
-    QMap<QString, SensorAxisSide> custom_axis_sides_;
-
     // Preferences are keyed by tag type/profile and store only differences from
-    // sensorViz display defaults. The currently loaded tag's effective choices
-    // are reflected into stream QAction checked state, custom_stream_colors_,
-    // and custom_axis_sides_.
+    // sensorViz display defaults. The currently loaded tag's are applied to
+    // and captured from view_.
     QMap<QString, SensorVizPreferences> preferences_by_tag_type_;
     bool suppress_preference_updates_ = false;
 

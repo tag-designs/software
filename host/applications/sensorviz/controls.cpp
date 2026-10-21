@@ -76,14 +76,14 @@ QStringList sensorVizDocumentationRoots()
 QString MainWindow::unitsSuffix(const SensorStream &stream) const
 {
     // Shared label helper used by menus, axes, range dialogs, and tooltips.
-    return stream.units.isEmpty() ? QString() : " " + stream.units;
+    return stream.units.empty() ? QString() : " " + toQString(stream.units);
 }
 
 double MainWindow::pressureToAltitude(double pressure_mbar) const
 {
-    // Display transform for pressure-derived altitude. sea_level_pressure_ is
+    // Display transform for pressure-derived altitude. The sea-level pressure is
     // configured from the Altitude action in transforms.cpp.
-    return 44330.0 * (1.0 - std::pow(pressure_mbar / sea_level_pressure_, 1.0 / 5.257));
+    return 44330.0 * (1.0 - std::pow(pressure_mbar / view_.seaLevelPressure(), 1.0 / 5.257));
 }
 
 double MainWindow::pressureToAltitude(double pressure_mbar, double temperature_c) const
@@ -93,7 +93,7 @@ double MainWindow::pressureToAltitude(double pressure_mbar, double temperature_c
     // temperature is intentionally not used for altitude. The pressure-only
     // overload remains the fallback when no ambient temperature stream exists.
     const double temperature_k = temperature_c + 273.15;
-    return (std::pow(sea_level_pressure_ / pressure_mbar, 1.0 / 5.257) - 1.0)
+    return (std::pow(view_.seaLevelPressure() / pressure_mbar, 1.0 / 5.257) - 1.0)
         * temperature_k
         / 0.0065;
 }
@@ -143,9 +143,9 @@ void MainWindow::editGraphTitle()
     QDialog dialog(this);
     dialog.setWindowTitle(tr("Graph Title"));
 
-    QLineEdit *title_edit = new QLineEdit(graph_title_, &dialog);
+    QLineEdit *title_edit = new QLineEdit(toQString(view_.title()), &dialog);
     QCheckBox *show_title = new QCheckBox(tr("Show title"), &dialog);
-    show_title->setChecked(graph_title_visible_);
+    show_title->setChecked(view_.titleVisible());
     QDialogButtonBox *buttons =
         new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
 
@@ -162,12 +162,8 @@ void MainWindow::editGraphTitle()
         return;
     }
 
-    graph_title_ = title_edit->text();
-    graph_title_visible_ = show_title->isChecked();
-    {
-        const QSignalBlocker blocker(show_title_action_);
-        show_title_action_->setChecked(graph_title_visible_);
-    }
+    view_.setTitle(title_edit->text().toStdString());
+    view_.setTitleVisible(show_title->isChecked());
     // The title is part of the plot spec; a title-only change is applied
     // without rebuilding the graphs.
     refreshPlot();
@@ -179,7 +175,7 @@ void MainWindow::setGraphTitleVisible(bool visible)
         return;
     }
 
-    graph_title_visible_ = visible;
+    view_.setTitleVisible(visible);
     refreshPlot();
 }
 

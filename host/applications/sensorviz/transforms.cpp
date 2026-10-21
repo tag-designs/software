@@ -134,7 +134,7 @@ void MainWindow::updateTransformActions()
     if (log_.path.isEmpty()) {
         sea_level_pressure_action_->setVisible(false);
         sea_level_pressure_action_->setEnabled(false);
-        updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
+        updateSeaLevelPressureActionText(sea_level_pressure_action_, view_.seaLevelPressure());
 
         activity_filter_action_->setVisible(false);
         activity_filter_action_->setEnabled(false);
@@ -143,7 +143,7 @@ void MainWindow::updateTransformActions()
         declination_action_->setEnabled(false);
         battery_forward_action_->setVisible(false);
         battery_forward_action_->setEnabled(false);
-        updateDeclinationActionText(declination_action_, declination_degrees_);
+        updateDeclinationActionText(declination_action_, view_.declinationDegrees());
 
         configuration_transform_separator_->setVisible(false);
         setActionCheckedSilently(activity_filter_action_, false);
@@ -158,7 +158,7 @@ void MainWindow::updateTransformActions()
     // from future tags automatically expose only the relevant transforms.
     sea_level_pressure_action_->setVisible(has_pressure);
     sea_level_pressure_action_->setEnabled(has_pressure);
-    updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
+    updateSeaLevelPressureActionText(sea_level_pressure_action_, view_.seaLevelPressure());
 
     activity_filter_action_->setVisible(has_activity);
     activity_filter_action_->setEnabled(has_activity);
@@ -167,7 +167,7 @@ void MainWindow::updateTransformActions()
     declination_action_->setEnabled(has_compass);
     battery_forward_action_->setVisible(has_compass);
     battery_forward_action_->setEnabled(has_compass);
-    updateDeclinationActionText(declination_action_, declination_degrees_);
+    updateDeclinationActionText(declination_action_, view_.declinationDegrees());
     if (compass_widget_) {
         compass_widget_->setVisible(has_compass);
     }
@@ -190,15 +190,14 @@ void MainWindow::createAltitudeStream()
         return;
     }
 
-    const QAction *altitude_action = streamActionById("altitude");
-    const bool checked = altitude_action ? altitude_action->isChecked() : true;
+    const bool checked = isStreamVisible("altitude");
 
     SensorStream altitude;
     altitude.id = "altitude";
-    altitude.label = tr("Altitude");
+    altitude.label = tr("Altitude").toStdString();
     altitude.units = "m";
     altitude.timeDomain = pressure->timeDomain;
-    altitude.color = QColor(110, 70, 180);
+    altitude.color = sensorviz::Rgb{110, 70, 180};
     altitude.defaultVisible = true;
     altitude.axisSide = SensorAxisSide::Left;
 
@@ -235,13 +234,14 @@ void MainWindow::createAltitudeStream()
     }
     altitude.dataId = *id;
 
-    if (custom_axis_ranges_.contains(pressure->id)
-        && !explicit_axis_ranges_.contains("altitude")) {
-        const QCPRange pressure_range = custom_axis_ranges_[pressure->id];
-        custom_axis_ranges_["altitude"] =
-            QCPRange(
+    if (view_.hasCustomRange(pressure->id) && !view_.isExplicitRange("altitude")) {
+        const sensorviz::PlotRange pressure_range = view_.customRanges().at(pressure->id);
+        view_.setCustomRange(
+            "altitude",
+            sensorviz::PlotRange{
                 pressureToAltitude(pressure_range.upper),
-                pressureToAltitude(pressure_range.lower));
+                pressureToAltitude(pressure_range.lower)},
+            false);
     }
 
     addOrReplaceStream(altitude, checked);
@@ -258,17 +258,17 @@ void MainWindow::createImuMagnitudeStreams()
         const char *id;
         const char *label;
         const char *units;
-        QColor color;
+        sensorviz::Rgb color;
         SensorAxisRange range;
         const char *axes[3];
     };
     const Magnitude magnitudes[] = {
         {"imu_accel_magnitude", QT_TR_NOOP("Acceleration magnitude"), QT_TR_NOOP("mg"),
-         QColor(85, 110, 210), {true, 0.0, 2000.0}, {"imu_ax", "imu_ay", "imu_az"}},
+         sensorviz::Rgb{85, 110, 210}, {true, 0.0, 2000.0}, {"imu_ax", "imu_ay", "imu_az"}},
         {"imu_gyro_magnitude", QT_TR_NOOP("Gyro magnitude"), QT_TR_NOOP("dps"),
-         QColor(190, 80, 55), {}, {"imu_gx", "imu_gy", "imu_gz"}},
+         sensorviz::Rgb{190, 80, 55}, {}, {"imu_gx", "imu_gy", "imu_gz"}},
         {"imu_mag_magnitude", QT_TR_NOOP("Magnetic field magnitude"), QT_TR_NOOP("uT"),
-         QColor(105, 130, 40), {}, {"imu_mx", "imu_my", "imu_mz"}},
+         sensorviz::Rgb{105, 130, 40}, {}, {"imu_mx", "imu_my", "imu_mz"}},
     };
 
     for (const Magnitude &magnitude : magnitudes) {
@@ -281,8 +281,8 @@ void MainWindow::createImuMagnitudeStreams()
 
         SensorStream stream;
         stream.id = magnitude.id;
-        stream.label = tr(magnitude.label);
-        stream.units = tr(magnitude.units);
+        stream.label = tr(magnitude.label).toStdString();
+        stream.units = tr(magnitude.units).toStdString();
         stream.timeDomain = x->timeDomain;
         stream.color = magnitude.color;
         stream.defaultVisible = true;
@@ -303,9 +303,7 @@ void MainWindow::createImuMagnitudeStreams()
         }
         stream.dataId = *id;
 
-        const QAction *action = streamActionById(stream.id);
-        const bool checked = action ? action->isChecked() : true;
-        addOrReplaceStream(stream, checked);
+        addOrReplaceStream(stream, isStreamVisible(toQString(stream.id)));
     }
 }
 
@@ -318,7 +316,7 @@ void MainWindow::setSeaLevelPressure()
         this,
         tr("Sea-level Pressure"),
         tr("Mean sea-level pressure (mbar)"),
-        sea_level_pressure_,
+        view_.seaLevelPressure(),
         800.0,
         1200.0,
         2,
@@ -327,8 +325,7 @@ void MainWindow::setSeaLevelPressure()
         return;
     }
 
-    sea_level_pressure_ = sea_level;
-    updateSeaLevelPressureActionText(sea_level_pressure_action_, sea_level_pressure_);
+    view_.setSeaLevelPressure(sea_level);
     createAltitudeStream();
 }
 
@@ -352,7 +349,7 @@ void MainWindow::activityFilterToggled(bool checked)
         this,
         tr("Activity Filter"),
         tr("Time constant (seconds)"),
-        activity_low_pass_seconds_,
+        view_.activityTimeConstant(),
         1.0,
         86400.0,
         1,
@@ -361,17 +358,17 @@ void MainWindow::activityFilterToggled(bool checked)
         setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
         return;
     }
-    activity_low_pass_seconds_ = seconds;
+    view_.setActivityTimeConstant(seconds);
 
     // The filter is intentionally simple and display-only. Raw activity remains
     // available as its own stream so users can compare filtered/unfiltered data.
     // It runs on the SQLite doubles, as it always has; activity logs are small.
     SensorStream filtered;
     filtered.id = "activity_lowpass";
-    filtered.label = tr("Activity filter");
+    filtered.label = tr("Activity filter").toStdString();
     filtered.units = activity->units;
     filtered.timeDomain = activity->timeDomain;
-    filtered.color = QColor(20, 60, 120);
+    filtered.color = sensorviz::Rgb{20, 60, 120};
     filtered.derived = true;
     filtered.axisSide = activity->axisSide;
     filtered.axisRange = activity->axisRange;
@@ -383,7 +380,7 @@ void MainWindow::activityFilterToggled(bool checked)
         id = log_.data->addDerived(
             derivedPlotInfo(filtered),
             activity->dataId,
-            lowPass(activity_time, activity_value, activity_low_pass_seconds_));
+            lowPass(activity_time, activity_value, view_.activityTimeConstant()));
     }
     if (!id) {
         setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
@@ -391,9 +388,8 @@ void MainWindow::activityFilterToggled(bool checked)
     }
     filtered.dataId = *id;
 
-    if (custom_axis_ranges_.contains("activity")
-        && !explicit_axis_ranges_.contains("activity_lowpass")) {
-        custom_axis_ranges_["activity_lowpass"] = custom_axis_ranges_["activity"];
+    if (view_.hasCustomRange("activity") && !view_.isExplicitRange("activity_lowpass")) {
+        view_.setCustomRange("activity_lowpass", view_.customRanges().at("activity"), false);
     }
 
     addOrReplaceStream(filtered, true);

@@ -314,7 +314,7 @@ call concurrently, so a UI can compute views off its main thread.
 **As built (phase 2).** The plot was split while adopting the backend, so the
 integration differs from the list below in shape:
 
-- `buildPlotSpec()` ([`plot_spec.h`](../../plot_spec.h)) is a pure function
+- `buildPlotSpec()` ([`plot_spec.h`](../../core/plot_spec.h), in the Qt-free `sensorviz_core`) is a pure function
   from the streams, display preferences and a `PlotState` (visible streams,
   custom ranges, UTC offset, title) to a `PlotSpec` of plain data: traces
   naming `StreamId`s, one y axis each with an Auto, Linked or Fixed range,
@@ -327,9 +327,11 @@ integration differs from the list below in shape:
   as signals. A webview front end would replace `PlotView` and reuse the spec
   and the backend.
 - MainWindow keeps menus and dialogs, formats the hover readout from
-  `valueAt()`, and rebuilds the spec when its state changes. Stream
-  visibility still lives in the View menu's actions. Since phase 3,
-  `SensorStream` carries no samples.
+  `valueAt()`, and rebuilds the spec when its state changes. Since phase 3,
+  `SensorStream` carries no samples. Since then the view state (visibility,
+  ranges, colors, sides, settings) has also moved into the core, as
+  `sensorviz::ViewModel`, with the menus reduced to views of it; see the
+  [sensorviz README](../../README.md#current-architecture).
 
 The proposal as first written:
 

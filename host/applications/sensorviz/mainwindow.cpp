@@ -32,6 +32,10 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
     // loadLog() has real streams/record sets to advertise.
     createActions();
     createUi();
+    // Menus are views of the ViewModel: whenever it changes, every action's
+    // checked state is set from it.
+    view_.setListener([this](sensorviz::ViewModel::Changes) { syncActions(); });
+    syncActions();
     updateTransformActions();
 
     if (!options_.loadLogPath.isEmpty()
@@ -130,8 +134,9 @@ void MainWindow::createActions()
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
     connect(show_cursors_action_, &QAction::toggled, this, &MainWindow::setCursorsVisible);
-    connect(break_gaps_action_, &QAction::toggled, this, [this]() {
+    connect(break_gaps_action_, &QAction::toggled, this, [this](bool checked) {
         // A display choice that follows the tag type, like colors and sides.
+        view_.setBreakAtGaps(checked);
         refreshPlot();
         rememberCurrentPreferences();
     });
@@ -273,8 +278,8 @@ void MainWindow::createUi()
     compass_widget_->setContextMenuPolicy(Qt::CustomContextMenu);
     compass_widget_->setVisible(false);
     compass_display_.setRootObject(compass_widget_->rootObject());
-    compass_display_.setDeclination(declination_degrees_);
-    compass_display_.setBatteryForward(battery_forward_);
+    compass_display_.setDeclination(view_.declinationDegrees());
+    compass_display_.setBatteryForward(view_.batteryForward());
 
     QWidget *plot_tab = new QWidget;
     QVBoxLayout *plot_layout = new QVBoxLayout;
@@ -311,11 +316,31 @@ void MainWindow::createUi()
     connect(plot_view_, &PlotView::contextMenuRequested, this, &MainWindow::showPlotContextMenu);
     connect(plot_view_, &PlotView::hoverTime, this, &MainWindow::showMousePosition);
     connect(plot_view_, &PlotView::cursorsVisibleChanged, this, [this](bool visible) {
-        // Double-click shows hidden cursors; keep the View action in step.
-        const QSignalBlocker blocker(show_cursors_action_);
-        show_cursors_action_->setChecked(visible);
+        // Double-click shows hidden cursors; the View action follows the
+        // ViewModel through syncActions().
+        view_.setCursorsVisible(visible);
     });
 
     resize(1100, 700);
     setWindowTitle(tr("sensorViz"));
+}
+
+void MainWindow::syncActions()
+{
+    // The one place menus take their check states from: the ViewModel. Signals
+    // are blocked, so this never feeds back into the setters.
+    const auto set_checked = [](QAction *action, bool checked) {
+        const QSignalBlocker blocker(action);
+        action->setChecked(checked);
+    };
+    set_checked(show_title_action_, view_.titleVisible());
+    set_checked(show_cursors_action_, view_.cursorsVisible());
+    set_checked(break_gaps_action_, view_.breakAtGaps());
+    set_checked(battery_forward_action_, view_.batteryForward());
+    set_checked(activity_filter_action_, view_.hasStream("activity_lowpass"));
+    declination_action_->setText(
+        tr("&Declination... (%1 deg)").arg(view_.declinationDegrees(), 0, 'f', 2));
+    sea_level_pressure_action_->setText(
+        tr("Sea-level &Pressure... (%1 mbar)").arg(view_.seaLevelPressure(), 0, 'f', 2));
+    syncStreamActions();
 }

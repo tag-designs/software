@@ -53,11 +53,41 @@ hooks as built are described under
 
 ## Current Architecture
 
-The code is split by responsibility:
+sensorViz is two layers:
+
+- **`sensorviz_core`** (`core/`, a static library with no Qt): the view state
+  and plot policy, in standard C++ over
+  [`sensordata`](../../libraries/sensordata/README.md). CMake links no Qt to
+  it, so a Qt include there fails to build. A non-Qt front end, such as a
+  webview, could reuse it unchanged.
+  - `stream_meta.*`: `StreamMeta`, one plottable stream (metadata only; the
+    samples are its `dataId` in the backend), and the built-in per-stream
+    display defaults, `defaultDisplayForStream()`.
+  - `view_model.*`: `ViewModel`, which owns the view state: the streams and
+    their order, which are shown, custom and explicit y ranges, color and
+    axis-side overrides, the title, the UTC offset, the cursors, the gap mode
+    and the transform parameters (sea-level pressure, declination,
+    battery-forward, activity time constant). Setters return the changes they
+    made and report them to a listener. It also applies and captures the
+    per-tag preferences (`TagPreferences`) and builds the `PlotState` and
+    `PlotSpec`.
+  - `plot_spec.*`: the plot's display policy as a pure function.
+    `buildPlotSpec()` turns the streams, display preferences and a
+    `PlotState` into a `PlotSpec` of plain data: traces, one y axis each with
+    its range mode (auto, linked across an IMU x/y/z family, or fixed), the
+    time domain and extent, event markers, metadata-box rows and the title.
+    `plotspec_check` and `viewmodel_check` check the core against the fixtures
+    without Qt.
+- **The Qt front end** (everything else): an adapter over the core. Menus and
+  dialogs are views of the `ViewModel`: `MainWindow::syncActions()` sets every
+  action's checked state and text from it, toggles and dialogs call its
+  setters, and the plot is redrawn at the same points it always was.
+
+The Qt front end is split by responsibility:
 
 - `main.cpp`: application startup and Qt message logging.
-- `mainwindow.*`: static Qt UI construction, persistent actions, and shared
-  application state.
+- `mainwindow.*`: static Qt UI construction, persistent actions, the
+  `ViewModel` and `syncActions()`.
 - `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
   default graph title, stream-action creation, File Info updates, and initial
   plot refresh.
@@ -69,41 +99,33 @@ The code is split by responsibility:
   applies it to the IMUTag magnetometer and acceleration axes; and records
   collection-start metadata and events for elapsed-time IMUTag logs (see
   [Data Model](#data-model)).
-- `sensor_preferences.*`: sensorViz display defaults
-  (`defaultDisplayForStream()`), in-memory per-tag overrides, and JSON
-  load/store for those overrides.
-- `sensorstream.h`: normalized in-memory data model (see
+- `sensor_preferences.*`: the per-tag preference map and its JSON load/store,
+  converting to and from the core's `TagPreferences`; applying and capturing
+  them is the ViewModel's.
+- `sensorstream.h`: the loaded-log model (`SensorLog`, record sets, event
+  markers) and the Qt-side names for the core stream types, with
+  conversions between core and Qt strings and colors (see
   [Data Model](#data-model)).
-- `stream_actions.cpp`: visible-stream, axis-side, color and range dialogs,
-  derived-stream ordering, and range coupling between related streams.
+- `stream_actions.cpp`: the stream actions (views of the ViewModel's
+  visibility), visible-stream, axis-side, color and range dialogs, and range
+  coupling between related streams.
 - `transforms.cpp`: scalar display transforms such as altitude, activity
   low-pass, and IMUTag vector magnitudes.
 - `compass_transforms.cpp`: compass orientation samples, built from a processed
   log's stored quaternions or derived from the raw CompassTag record set; the
   heading, pitch and roll streams computed from them; heading declination,
   battery-forward convention, and compass-panel sample updates.
-- `plot_spec.*`: the plot's display policy as a pure function.
-  `buildPlotSpec()` turns the streams, display preferences and a `PlotState`
-  (visible streams, custom ranges, UTC offset, title, transform parameters)
-  into a `PlotSpec` of plain data: traces, one y axis each with its range mode
-  (auto, linked across an IMU x/y/z family, or fixed), the time domain and
-  extent, event markers, metadata-box rows and the title. No QCustomPlot types
-  and no window, so `plotspec_check` checks it against the fixtures.
 - `plot_view.*`: `PlotView`, the only code that touches QCustomPlot. It draws
-  a `PlotSpec`, owns the graphs, dynamic axes, elapsed/date time axis, cursors,
+  a `PlotSpec` (converting its strings and colors to Qt's), owns the graphs, dynamic axes, elapsed/date time axis, cursors,
   event markers, title and draggable metadata box, refills graphs from the
   plot backend, prints, and reports the mouse through signals (`hoverTime`,
   `cursorsChanged`, `xRangeChanged`, `contextMenuRequested`). A different
   renderer could draw the same spec.
-- `plotting.cpp`: MainWindow's side of the plot: collects `PlotState`, builds
-  the spec, hands it to `PlotView`, and registers transform outputs as plot
-  data.
+- `plotting.cpp`: MainWindow's side of the plot: hands `PlotView` the spec
+  the ViewModel builds, describes the log to the core (`plotLogInfo()`), and
+  reads transform inputs from and registers outputs in the plot backend.
 - `interaction.cpp`: context menu, print preview, cursor commands, UTC offset,
   and the hover readout built from `PlotView::hoverTime`.
-- `stream_display_defaults.cpp`: built-in per-stream colors, visibility, axis
-  sides and fixed ranges (`defaultDisplayForStream()`), kept apart from the
-  MainWindow preference code so the loader and plot policy build without a
-  window.
 - `controls.cpp`: general actions and small shared helpers, including graph
   title editing and calibration-constant display.
 - `documentation_capture.cpp`: maintainer-only screenshot automation (see
@@ -177,7 +199,10 @@ definitions, or transform definitions.
 ## Data Model
 
 `SensorStream` is a single plottable scalar time series. This is what the plot
-and View menu operate on.
+and View menu operate on. It is the core's Qt-free `sensorviz::StreamMeta`
+(`core/stream_meta.h`): standard strings, an `Rgb` color, and no samples. The
+list of streams, and every user choice about them, is held by the
+`ViewModel`, not by MainWindow or its actions.
 
 Streams carry a time domain. Most existing tags use Unix epoch seconds; IMUTag
 uses elapsed seconds converted from SQLite `ElapsedUs` columns. Plotting and
@@ -337,7 +362,7 @@ from the currently displayed streams. Each range action stores the stream id in
 
 Range precedence is:
 
-1. A user-set custom range in `custom_axis_ranges_`.
+1. A user-set custom range (the ViewModel's `customRanges()`).
 2. A fixed metadata range from `SensorStream::axisRange`.
 3. The data min/max padded by 5%.
 
@@ -484,4 +509,6 @@ git diff --check
 When changing SQLite loading or stream metadata, also test with representative
 BitTag, BitPresTag, PresTag, CompassTag, and IMUTag logs.
 
-When changing plot policy, run `plotspec_check` ([test/README.md](test/README.md)).
+When changing plot policy or view state, run `plotspec_check` and
+`viewmodel_check` ([test/README.md](test/README.md)). Both link only
+`sensorviz_core`.

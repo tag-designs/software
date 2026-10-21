@@ -360,7 +360,7 @@ design document.
 
 ### Applications / sensorviz / test
 
-- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check, the window-free check of sensorViz's plot policy (buildPlotSpec) against the committed fixtures.
+- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
 ### Command Line
 

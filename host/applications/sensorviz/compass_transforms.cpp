@@ -42,10 +42,10 @@ SensorStream makeCompassStream(
     // tooltips, and View > Visible Streams already understand. The caller
     // registers the values as plot data.
     SensorStream stream;
-    stream.id = id;
-    stream.label = label;
-    stream.units = units;
-    stream.color = color;
+    stream.id = id.toStdString();
+    stream.label = label.toStdString();
+    stream.units = units.toStdString();
+    stream.color = toRgb(color);
     stream.defaultVisible = default_visible;
     stream.axisRange = range;
     return stream;
@@ -222,7 +222,7 @@ void MainWindow::addCompassStream(SensorStream stream, const QVector<double> &va
         derivedPlotInfo(stream), compass_time_source_, values.constData(),
         static_cast<std::size_t>(values.size()));
     if (!id) {
-        qWarning().noquote() << "Could not register compass stream" << stream.id;
+        qWarning().noquote() << "Could not register compass stream" << toQString(stream.id);
         return;
     }
     stream.dataId = *id;
@@ -262,7 +262,7 @@ void MainWindow::createCompassPlotStreams()
         field.append(sample.field);
     }
     const QVector<double> heading =
-        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_);
+        compassHeadingValues(compass_samples_, view_.declinationDegrees(), view_.batteryForward());
     if (!compass_samples_.isEmpty()) {
         compass_display_.showSample(compass_samples_.first());
     }
@@ -302,7 +302,7 @@ void MainWindow::setDeclination()
         this,
         tr("Declination"),
         tr("Declination angle (degrees)"),
-        declination_degrees_,
+        view_.declinationDegrees(),
         -180.0,
         180.0,
         2,
@@ -311,20 +311,19 @@ void MainWindow::setDeclination()
         return;
     }
 
-    declination_degrees_ = declination;
-    updateDeclinationActionText(declination_action_, declination_degrees_);
-    compass_display_.setDeclination(declination_degrees_);
+    view_.setDeclinationDegrees(declination);
+    updateDeclinationActionText(declination_action_, view_.declinationDegrees());
+    compass_display_.setDeclination(view_.declinationDegrees());
 
     if (!hasStream("compass_heading") || compass_samples_.isEmpty()) {
         return;
     }
 
-    const QAction *heading_action = streamActionById("compass_heading");
-    const bool checked = heading_action ? heading_action->isChecked() : true;
+    const bool checked = isStreamVisible("compass_heading");
     addCompassStream(
         makeCompassStream("compass_heading", tr("Heading"), tr("deg"), QColor(195, 40, 175),
                           true, {true, 0.0, 360.0}),
-        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
+        compassHeadingValues(compass_samples_, view_.declinationDegrees(), view_.batteryForward()),
         checked);
 }
 
@@ -332,18 +331,17 @@ void MainWindow::batteryForwardToggled(bool checked)
 {
     // Battery direction is a display convention inherited from compviz. It
     // rotates heading by 180 degrees and tells QML how to orient the tag model.
-    battery_forward_ = checked;
-    compass_display_.setBatteryForward(battery_forward_);
+    view_.setBatteryForward(checked);
+    compass_display_.setBatteryForward(view_.batteryForward());
 
     if (!hasStream("compass_heading") || compass_samples_.isEmpty()) {
         return;
     }
 
-    const QAction *heading_action = streamActionById("compass_heading");
-    const bool heading_checked = heading_action ? heading_action->isChecked() : true;
+    const bool heading_checked = isStreamVisible("compass_heading");
     addCompassStream(
         makeCompassStream("compass_heading", tr("Heading"), tr("deg"), QColor(195, 40, 175),
                           true, {true, 0.0, 360.0}),
-        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
+        compassHeadingValues(compass_samples_, view_.declinationDegrees(), view_.batteryForward()),
         heading_checked);
 }

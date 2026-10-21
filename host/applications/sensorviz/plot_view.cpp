@@ -34,7 +34,7 @@ bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
         || a.traces.size() != b.traces.size() || a.axes.size() != b.axes.size()) {
         return false;
     }
-    for (qsizetype i = 0; i < a.traces.size(); i++) {
+    for (size_t i = 0; i < a.traces.size(); i++) {
         const PlotTraceSpec &x = a.traces[i];
         const PlotTraceSpec &y = b.traces[i];
         if (x.id != y.id || x.name != y.name || x.stream != y.stream || x.color != y.color
@@ -42,7 +42,7 @@ bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
             return false;
         }
     }
-    for (qsizetype i = 0; i < a.axes.size(); i++) {
+    for (size_t i = 0; i < a.axes.size(); i++) {
         const PlotAxisSpec &x = a.axes[i];
         const PlotAxisSpec &y = b.axes[i];
         if (x.side != y.side || x.label != y.label || x.color != y.color || x.mode != y.mode
@@ -57,7 +57,7 @@ bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
 /// Sets @p axis to @p range padded by 5%.
 void setPaddedAxisRange(QCPAxis *axis, const QCPRange &range)
 {
-    const PlotRange padded = paddedRange(PlotRange{range.lower, range.upper});
+    const PlotRange padded = sensorviz::paddedRange(PlotRange{range.lower, range.upper});
     axis->setRange(padded.lower, padded.upper);
 }
 
@@ -199,10 +199,14 @@ void PlotView::applyTimeAxis()
 
 void PlotView::applyTitleAndMetadata()
 {
-    title_->setText(spec_.title);
-    title_->setVisible(!spec_.title.isEmpty());
-    metadata_box_->setText(spec_.metadataRows.join('\n'));
-    metadata_box_->setVisible(!spec_.metadataRows.isEmpty());
+    title_->setText(QString::fromStdString(spec_.title));
+    title_->setVisible(!spec_.title.empty());
+    QStringList rows;
+    for (const std::string &row : spec_.metadataRows) {
+        rows.append(QString::fromStdString(row));
+    }
+    metadata_box_->setText(rows.join('\n'));
+    metadata_box_->setVisible(!rows.isEmpty());
 }
 
 void PlotView::rebuild()
@@ -222,14 +226,14 @@ void PlotView::rebuild()
     int left_axis_count = 0;
     int right_axis_count = 0;
     for (const PlotTraceSpec &trace : spec_.traces) {
-        const PlotAxisSpec &axis_spec = spec_.axes[trace.axis];
+        const PlotAxisSpec &axis_spec = spec_.axes[static_cast<size_t>(trace.axis)];
         const int side_index = axis_spec.side == SensorAxisSide::Right
             ? right_axis_count++
             : left_axis_count++;
         QCPAxis *axis = addValueAxis(axis_spec.side, side_index, axis_spec);
         QCPGraph *graph = plot_->addGraph(x_axis, axis);
-        graph->setName(trace.name);
-        graph->setPen(QPen(trace.color, trace.penWidth));
+        graph->setName(QString::fromStdString(trace.name));
+        graph->setPen(QPen(toQColor(trace.color), trace.penWidth));
         if (trace.stream != sensordata::kNoStream) {
             graphs_.append(qMakePair(graph, trace.stream));
         }
@@ -258,7 +262,7 @@ void PlotView::rebuild()
         }
     }
 
-    if (!spec_.traces.isEmpty()) {
+    if (!spec_.traces.empty()) {
         if (preserve_x_range) {
             x_axis->setRange(old_x_range);
         } else {
@@ -314,13 +318,14 @@ QCPAxis *PlotView::addValueAxis(SensorAxisSide side, int side_index, const PlotA
         dynamic_axes_.append(axis);
     }
 
+    const QColor color = toQColor(spec.color);
     axis->setVisible(true);
-    axis->setLabel(spec.label);
-    axis->setLabelColor(spec.color);
-    axis->setTickLabelColor(spec.color);
-    axis->setBasePen(QPen(spec.color));
-    axis->setTickPen(QPen(spec.color));
-    axis->setSubTickPen(QPen(spec.color));
+    axis->setLabel(QString::fromStdString(spec.label));
+    axis->setLabelColor(color);
+    axis->setTickLabelColor(color);
+    axis->setBasePen(QPen(color));
+    axis->setTickPen(QPen(color));
+    axis->setSubTickPen(QPen(color));
     return axis;
 }
 

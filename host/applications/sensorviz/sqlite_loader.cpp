@@ -298,7 +298,7 @@ bool loadCompassCalibration(Database &db, SensorLog &log, QString &error)
 SensorStream *streamById(SensorLog &log, const QString &id)
 {
     for (SensorStream &stream : log.streams) {
-        if (stream.id == id) {
+        if (stream.id == id.toStdString()) {
             return &stream;
         }
     }
@@ -555,20 +555,7 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
             record_sets[QString::fromStdString(info.group_id)].append(info);
             continue;
         }
-        SensorStream stream;
-        stream.id = QString::fromStdString(info.id);
-        stream.label = QString::fromStdString(info.label);
-        stream.units = QString::fromStdString(info.units);
-        stream.timeDomain = info.domain == sensordata::TimeDomain::ElapsedSeconds
-            ? SensorTimeDomain::ElapsedSeconds
-            : SensorTimeDomain::EpochSeconds;
-        const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(stream.id);
-        stream.color = defaults.color;
-        stream.defaultVisible = defaults.visible;
-        stream.axisSide = defaults.axisSide;
-        stream.axisRange = defaults.axisRange;
-        stream.dataId = info.handle;
-        loaded.streams.append(stream);
+        loaded.streams.append(sensorviz::storedStreamMeta(info));
     }
     for (auto it = record_sets.cbegin(); it != record_sets.cend(); ++it) {
         const sensordata::StreamInfo &first = it.value().first();
