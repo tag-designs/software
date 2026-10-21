@@ -223,3 +223,25 @@ one-hour window of the full log. Printing previously went through
 logical DPI so text keeps its size, with QCustomPlot's adaptive sampling off
 while it draws so the printer-resolution envelope is not thinned back to
 screen density.
+
+## 2026-10-21: phase 2 restructured into PlotSpec and PlotView
+
+**Conditions.** As above. The phase 2 plot code was split into
+`buildPlotSpec()` (pure plot policy) and `PlotView` (the only QCustomPlot
+code), with no intended change of behaviour.
+
+**Equivalence**, against the phase 2 build:
+
+- `imutag` and `compasstag` capture suites (offscreen): every plot and menu
+  capture is pixel-identical; the File Info pages differ only in the
+  screenshot directory they print.
+- Full log, default and all-streams captures: pixel-identical.
+- The five zoomed windows and hover times of the phase 2 comparison
+  (re-run with the same temporary hook, reaching the plot through
+  `PlotView`): renders pixel-identical, all 57 hover lines identical.
+- Printing the full log to PDF still refills at the printer's resolution:
+  both magnitude traces are about 37,000-point vector paths spanning the
+  plot's full width.
+
+`plotspec_check` (89 checks against the fixtures) covers the policy that
+moved into `buildPlotSpec()`.

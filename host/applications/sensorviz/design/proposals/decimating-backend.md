@@ -311,6 +311,28 @@ call concurrently, so a UI can compute views off its main thread.
 
 ### sensorviz integration
 
+**As built (phase 2).** The plot was split while adopting the backend, so the
+integration differs from the list below in shape:
+
+- `buildPlotSpec()` ([`plot_spec.h`](../../plot_spec.h)) is a pure function
+  from the streams, display preferences and a `PlotState` (visible streams,
+  custom ranges, UTC offset, title) to a `PlotSpec` of plain data: traces
+  naming `StreamId`s, one y axis each with an Auto, Linked or Fixed range,
+  the time domain and extent, event markers, metadata-box rows and the title.
+  The policy that used to sit inside `rebuildPlot()` lives there, and
+  `plotspec_check` checks it against the fixtures without a window.
+- `PlotView` ([`plot_view.h`](../../plot_view.h)) is the only code that
+  touches QCustomPlot. It draws a spec, refills graphs from `view()` after
+  each layout pass, and reports hover, cursor, range and context-menu events
+  as signals. A webview front end would replace `PlotView` and reuse the spec
+  and the backend.
+- MainWindow keeps menus and dialogs, formats the hover readout from
+  `valueAt()`, and rebuilds the spec when its state changes. The
+  `SensorStream` sample vectors stay until phase 3, and stream visibility
+  still lives in the View menu's actions.
+
+The proposal as first written:
+
 - **Load.** `loadSensorLog` becomes `sensordata::Log::open` on the existing
   `QtConcurrent` path. `SensorLog` keeps its metadata, but `SensorStream`
   loses its `time`/`value` vectors in favour of a `StreamId`.

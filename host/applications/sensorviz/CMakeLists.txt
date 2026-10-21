@@ -35,10 +35,13 @@ set(sensorviz_SRCS
   interaction.cpp
   main.cpp
   mainwindow.cpp
+  plot_spec.cpp
+  plot_view.cpp
   plotting.cpp
   sensor_preferences.cpp
   sqlite_loader.cpp
   stream_actions.cpp
+  stream_display_defaults.cpp
   transforms.cpp)
 
 qt_add_executable(sensorviz MACOSX_BUNDLE WIN32 ${sensorviz_SRCS})
@@ -57,3 +60,27 @@ if (APPLE)
 endif()
 
 target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot sensordata sensorui Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)
+
+# Offline check of the plot policy, buildPlotSpec(), against the committed
+# fixtures: no window, no QCustomPlot. A plain main() with its own CHECK()
+# macro, like the sensordata and tagcore checks, because this repository has
+# no test harness. See test/README.md.
+option(BUILD_SENSORVIZ_CHECKS
+       "Build the offline sensorviz plot-policy check (developer tool, run manually)"
+       OFF)
+
+if(BUILD_SENSORVIZ_CHECKS)
+  add_executable(plotspec_check
+    test/plotspec_check.cc
+    plot_spec.cpp
+    sqlite_loader.cpp
+    stream_display_defaults.cpp)
+  target_include_directories(plotspec_check PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}" ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
+  target_link_libraries(plotspec_check PRIVATE
+    ${SENSORVIZ_SQLITE_LINK_TARGET} sensordata sensoranalysis Qt6::Core Qt6::Gui)
+  target_compile_definitions(plotspec_check PRIVATE
+    TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(plotspec_check PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+endif()

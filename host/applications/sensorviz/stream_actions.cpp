@@ -546,8 +546,8 @@ QCPRange MainWindow::defaultRangeForStream(const SensorStream &stream) const
         return QCPRange(stream.axisRange.lower, stream.axisRange.upper);
     }
 
-    QCPRange data_range;
-    if (!plotDataRange(stream, data_range)) {
+    PlotRange data_range;
+    if (!plotDataRange(log_.data.get(), stream.dataId, data_range)) {
         return QCPRange(0.0, 1.0);
     }
 

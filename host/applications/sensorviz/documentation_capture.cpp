@@ -258,7 +258,7 @@ bool MainWindow::captureDocumentationScreenshot(const QString &name)
         || normalized == QStringLiteral("context-menu")
         || normalized == QStringLiteral("sensorviz-popup-menu")) {
         QMenu *menu = createPlotContextMenu(this);
-        const QPoint pos = plot_->mapToGlobal(plot_->rect().center());
+        const QPoint pos = plot_view_->mapToGlobal(plot_view_->rect().center());
         const bool ok = capture_menu(menu, pos);
         menu->deleteLater();
         return ok;

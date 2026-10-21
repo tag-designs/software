@@ -127,6 +127,8 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     graph_title_ = QFileInfo(path).fileName();
     graph_title_visible_ = true;
     show_title_action_->setChecked(true);
+    // The plot's StreamIds name streams of the new log from here on.
+    plot_view_->setLog(log.data.get());
     log_ = log;
     updateLoadedStateActions();
     streams_ = log.streams;

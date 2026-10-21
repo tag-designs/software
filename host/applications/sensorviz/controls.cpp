@@ -70,27 +70,13 @@ QStringList sensorVizDocumentationRoots()
 //
 // - stream_actions.cpp: stream visibility and y-axis range actions
 // - transforms.cpp: derived display streams such as altitude and activity filter
-// - plotting.cpp: QCustomPlot graph/axis rebuilds
-// - interaction.cpp: cursor, context-menu, print, UTC, and mouse readout logic
+// - plotting.cpp: plot state to PlotSpec to PlotView (plot_spec.*, plot_view.*)
+// - interaction.cpp: cursor, context-menu, print, UTC, and mouse readout commands
 
 QString MainWindow::unitsSuffix(const SensorStream &stream) const
 {
     // Shared label helper used by menus, axes, range dialogs, and tooltips.
     return stream.units.isEmpty() ? QString() : " " + stream.units;
-}
-
-void MainWindow::updateGraphTitle()
-{
-    // The graph title is view state for the currently loaded file. It is not a
-    // persisted preference because users often want different titles for
-    // different exports of the same tag type.
-    if (!plot_title_) {
-        return;
-    }
-
-    const bool show_title = graph_title_visible_ && !graph_title_.isEmpty();
-    plot_title_->setText(show_title ? graph_title_ : QString());
-    plot_title_->setVisible(show_title);
 }
 
 double MainWindow::pressureToAltitude(double pressure_mbar) const
@@ -182,8 +168,9 @@ void MainWindow::editGraphTitle()
         const QSignalBlocker blocker(show_title_action_);
         show_title_action_->setChecked(graph_title_visible_);
     }
-    updateGraphTitle();
-    plot_->replot();
+    // The title is part of the plot spec; a title-only change is applied
+    // without rebuilding the graphs.
+    refreshPlot();
 }
 
 void MainWindow::setGraphTitleVisible(bool visible)
@@ -193,8 +180,7 @@ void MainWindow::setGraphTitleVisible(bool visible)
     }
 
     graph_title_visible_ = visible;
-    updateGraphTitle();
-    plot_->replot();
+    refreshPlot();
 }
 
 void MainWindow::showCalibrationConstants()

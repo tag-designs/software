@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include <QSignalBlocker>
+
 #include <QAction>
 #include <QFrame>
 #include <QMenu>
@@ -236,38 +238,21 @@ void MainWindow::updateLoadedStateActions()
 
 void MainWindow::createUi()
 {
-    // Build the two-tab layout: Plot contains QCustomPlot plus the optional
+    // Build the two-tab layout: Plot contains the PlotView plus the optional
     // compass panel, File Info holds metadata and Qt log messages.
     central_ = new QWidget(this);
     setCentralWidget(central_);
 
     tabs_ = new QTabWidget;
     info_ = new QTextEdit;
-    plot_ = new QCustomPlot;
+    plot_view_ = new PlotView;
     plot_splitter_ = new QSplitter(Qt::Horizontal);
     compass_widget_ = new QQuickWidget;
     status_ = new QLabel(tr("No log loaded"));
 
-    // Plot tab: the frame matches the visual treatment in compViz. The plot
-    // itself is configured for horizontal pan/zoom because the x-axis is time.
+    // Plot tab: the frame matches the visual treatment in compViz.
     info_->setReadOnly(true);
     info_->setMinimumHeight(120);
-    plot_->setContextMenuPolicy(Qt::CustomContextMenu);
-    plot_->setBufferDevicePixelRatio(1.0);
-    plot_->setInteraction(QCP::iRangeDrag, true);
-    plot_->setInteraction(QCP::iRangeZoom, true);
-    plot_->axisRect()->setRangeDrag(Qt::Horizontal);
-    plot_->axisRect()->setRangeZoom(Qt::Horizontal);
-    plot_->xAxis->setLabel(tr("Hour:Minute (UTC)\nMonth/Day/Year"));
-    plot_->xAxis2->setVisible(false);
-    elapsed_x_axis_ = plot_->axisRect()->addAxis(QCPAxis::atBottom);
-    elapsed_x_axis_->setVisible(false);
-    elapsed_x_axis_->setLabel(tr("Elapsed Time (s)"));
-    plot_title_ = new QCPTextElement(plot_, QString(), QFont(font().family(), 12, QFont::Bold));
-    plot_title_->setVisible(false);
-    plot_->plotLayout()->insertRow(0);
-    plot_->plotLayout()->addElement(0, 0, plot_title_);
-
     initializeSensorUiResources();
     compass_widget_->setResizeMode(QQuickWidget::SizeRootObjectToView);
     compass_widget_->setSource(QUrl("qrc:/qfi/orientation_frame/MyCompass.qml"));
@@ -279,40 +264,13 @@ void MainWindow::createUi()
     compass_display_.setDeclination(declination_degrees_);
     compass_display_.setBatteryForward(battery_forward_);
 
-    date_ticker_.reset(new QCPAxisTickerDateTime);
-    date_ticker_->setDateTimeFormat("hh:mm\nMM/dd/yy");
-    date_ticker_->setTimeZone(QTimeZone::UTC);
-    plot_->xAxis->setTicker(date_ticker_);
-
-    // Cursor items exist from startup, but stay hidden until data has been
-    // loaded and refreshPlot() can place them on the time axis.
-    left_cursor_ = new QCPItemLine(plot_);
-    left_cursor_->setVisible(false);
-    left_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
-    right_cursor_ = new QCPItemLine(plot_);
-    right_cursor_->setVisible(false);
-    right_cursor_->setPen(QPen(Qt::black, 1, Qt::DashLine));
-    metadata_box_ = new QCPItemText(plot_);
-    metadata_box_->setVisible(false);
-    metadata_box_->position->setType(QCPItemPosition::ptAxisRectRatio);
-    metadata_box_->position->setAxisRect(plot_->axisRect());
-    metadata_box_->position->setCoords(0.02, 0.02);
-    metadata_box_->setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
-    metadata_box_->setTextAlignment(Qt::AlignLeft);
-    metadata_box_->setFont(QFont("Courier New", 10));
-    metadata_box_->setColor(Qt::black);
-    metadata_box_->setBrush(QBrush(Qt::white));
-    metadata_box_->setPen(QPen(QColor(120, 120, 120)));
-    metadata_box_->setPadding(QMargins(10, 8, 10, 8));
-    metadata_box_->setLayer("overlay");
-
     QWidget *plot_tab = new QWidget;
     QVBoxLayout *plot_layout = new QVBoxLayout;
     QFrame *plot_frame = new QFrame;
     plot_frame->setFrameShape(QFrame::StyledPanel);
     plot_frame->setFrameShadow(QFrame::Raised);
     QVBoxLayout *plot_frame_layout = new QVBoxLayout;
-    plot_splitter_->addWidget(plot_);
+    plot_splitter_->addWidget(plot_view_);
     plot_splitter_->addWidget(compass_widget_);
     plot_splitter_->setStretchFactor(0, 1);
     plot_splitter_->setStretchFactor(1, 0);
@@ -338,15 +296,13 @@ void MainWindow::createUi()
     statusBar()->addWidget(status_, 1);
     s_textEdit = info_;
 
-    connect(plot_, &QCustomPlot::customContextMenuRequested, this, &MainWindow::showPlotContextMenu);
-    connect(plot_, &QCustomPlot::mousePress, this, &MainWindow::beginMetadataBoxDrag);
-    connect(plot_, &QCustomPlot::mouseMove, this, &MainWindow::dragMetadataBox);
-    connect(plot_, &QCustomPlot::mouseMove, this, &MainWindow::showMousePosition);
-    connect(plot_, &QCustomPlot::mouseRelease, this, &MainWindow::endMetadataBoxDrag);
-    connect(plot_, &QCustomPlot::mouseDoubleClick, this, &MainWindow::plotDoubleClick);
-    // Graphs hold only the envelope of the visible window; refill it once
-    // per replot, after layout has fixed the plot's width.
-    connect(plot_, &QCustomPlot::afterLayout, this, [this]() { refillPlotGraphsAfterLayout(); });
+    connect(plot_view_, &PlotView::contextMenuRequested, this, &MainWindow::showPlotContextMenu);
+    connect(plot_view_, &PlotView::hoverTime, this, &MainWindow::showMousePosition);
+    connect(plot_view_, &PlotView::cursorsVisibleChanged, this, [this](bool visible) {
+        // Double-click shows hidden cursors; keep the View action in step.
+        const QSignalBlocker blocker(show_cursors_action_);
+        show_cursors_action_->setChecked(visible);
+    });
 
     resize(1100, 700);
     setWindowTitle(tr("sensorViz"));

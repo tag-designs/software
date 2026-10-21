@@ -82,11 +82,28 @@ The code is split by responsibility:
   log's stored quaternions or derived from the raw CompassTag record set; the
   heading, pitch and roll streams computed from them; heading declination,
   battery-forward convention, and compass-panel sample updates.
-- `plotting.cpp`: QCustomPlot graph rebuild, dynamic axes, metadata box
-  contents, title placement, cursor placement, range reset behavior, and
-  filling graphs from the plot backend's M4 envelopes.
-- `interaction.cpp`: context menu, print preview, cursor interaction, draggable
-  metadata box, UTC offset, and mouse readout.
+- `plot_spec.*`: the plot's display policy as a pure function.
+  `buildPlotSpec()` turns the streams, display preferences and a `PlotState`
+  (visible streams, custom ranges, UTC offset, title, transform parameters)
+  into a `PlotSpec` of plain data: traces, one y axis each with its range mode
+  (auto, linked across an IMU x/y/z family, or fixed), the time domain and
+  extent, event markers, metadata-box rows and the title. No QCustomPlot types
+  and no window, so `plotspec_check` checks it against the fixtures.
+- `plot_view.*`: `PlotView`, the only code that touches QCustomPlot. It draws
+  a `PlotSpec`, owns the graphs, dynamic axes, elapsed/date time axis, cursors,
+  event markers, title and draggable metadata box, refills graphs from the
+  plot backend, prints, and reports the mouse through signals (`hoverTime`,
+  `cursorsChanged`, `xRangeChanged`, `contextMenuRequested`). A different
+  renderer could draw the same spec.
+- `plotting.cpp`: MainWindow's side of the plot: collects `PlotState`, builds
+  the spec, hands it to `PlotView`, and registers transform outputs as plot
+  data.
+- `interaction.cpp`: context menu, print preview, cursor commands, UTC offset,
+  and the hover readout built from `PlotView::hoverTime`.
+- `stream_display_defaults.cpp`: built-in per-stream colors, visibility, axis
+  sides and fixed ranges (`defaultDisplayForStream()`), kept apart from the
+  MainWindow preference code so the loader and plot policy build without a
+  window.
 - `controls.cpp`: general actions and small shared helpers, including graph
   title editing and calibration-constant display.
 - `documentation_capture.cpp`: maintainer-only screenshot automation (see
@@ -143,13 +160,15 @@ Most SensorViz changes should start in one of four places:
   check `transforms.cpp`.
 - CompassTag derived streams, declination, or battery direction are wrong:
   check `compass_transforms.cpp`.
-- Plot axis layout or scaling is wrong:
-  check `plotting.cpp`.
-- Cursor, print, UTC, mouse readout, or context-menu behavior is wrong:
+- Plot axis layout, scaling, metadata rows or title are wrong:
+  check `buildPlotSpec()` in `plot_spec.cpp` (and `plotspec_check`); if the
+  spec is right but the drawing is not, check `plot_view.cpp`.
+- Cursor, pan/zoom, print, or metadata-box dragging is wrong:
+  check `plot_view.cpp`.
+- UTC, mouse readout, or context-menu behavior is wrong:
   check `interaction.cpp`.
 - Graph title editing or visibility is wrong:
-  check `controls.cpp` for the dialog/state update and `mainwindow.cpp` for the
-  title element created in the static plot layout.
+  check `controls.cpp` for the dialog/state update.
 
 `MainWindow` intentionally remains the coordination object. Avoid adding tag
 type checks there when the behavior can be driven from stream ids, table
@@ -171,8 +190,7 @@ does not convert high-rate elapsed IMUTag samples back to wall-clock time.
 Graphs never hold a stream's samples. `SensorLog::data` is a
 [`sensordata::Log`](../../libraries/sensordata/README.md) opened on the same
 file, and each `SensorStream::dataId` names that stream's plot data in it.
-After every QCustomPlot layout pass, `refillPlotGraphsAfterLayout()` asks it
-for the M4 envelope of the visible window, one column per device pixel: the
+After every QCustomPlot layout pass, `PlotView` asks it for the M4 envelope of the visible window, one column per device pixel: the
 first, last, minimum and maximum sample of each column, which draws the same
 line as every sample in at most four points per pixel. Value ranges come from
 its min/max pyramids, and the hover readout from `valueAt()`, which reads a
@@ -450,3 +468,5 @@ git diff --check
 
 When changing SQLite loading or stream metadata, also test with representative
 BitTag, BitPresTag, PresTag, CompassTag, and IMUTag logs.
+
+When changing plot policy, run `plotspec_check` ([test/README.md](test/README.md)).

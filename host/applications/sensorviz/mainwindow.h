@@ -20,6 +20,8 @@
 
 #include "compass_display.h"
 #include "compass_types.h"
+#include "plot_spec.h"
+#include "plot_view.h"
 #include "sensor_preferences.h"
 #include "sensorstream.h"
 
@@ -73,10 +75,12 @@ struct MainWindowOptions
 // - transforms.cpp owns display-only derived streams such as altitude and
 //   activity low-pass.
 //
-// - plotting.cpp rebuilds QCustomPlot graphs and dynamic axes.
+// - plotting.cpp collects PlotState and hands the PlotSpec built from it to
+//   PlotView (plot_view.*), which owns everything drawn with QCustomPlot.
+//   Display policy is buildPlotSpec() in plot_spec.*.
 //
-// - interaction.cpp owns cursors, print preview, UTC offset, context menus, and
-//   mouse readout.
+// - interaction.cpp owns cursor and print commands, UTC offset, context
+//   menus, and the mouse readout.
 //
 // - controls.cpp contains small shared display helpers and general actions.
 class MainWindow : public QMainWindow
@@ -112,12 +116,8 @@ private slots:
     void renderPlot(QPrinter *printer);
     void zoomToCursors();
     void setCursorsVisible(bool visible);
-    void beginMetadataBoxDrag(QMouseEvent *event);
-    void dragMetadataBox(QMouseEvent *event);
-    void endMetadataBoxDrag(QMouseEvent *event);
-    void plotDoubleClick(QMouseEvent *event);
-    void showPlotContextMenu(const QPoint &pos);
-    void showMousePosition(QMouseEvent *event);
+    void showPlotContextMenu(const QPoint &global_pos);
+    void showMousePosition(double time);
 
 private:
     // UI construction. These run once from the constructor before any log is
@@ -126,7 +126,6 @@ private:
     void createUi();
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
-    void updateGraphTitle();
     double pressureToAltitude(double pressure_mbar) const;
     double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
@@ -249,38 +248,23 @@ private:
     QString formatPlotTime(double time_seconds) const;
     void updateTimeAxisForLog();
 
-    // Plot layout and cursor helpers. refreshPlot() rebuilds graphs and axes
-    // from current actions while preserving the visible time window;
-    // refreshPlotFullRange() is used after a new file is loaded or after Reset
-    // Zoom clears custom y-axis ranges.
+    // The plot. MainWindow collects PlotState from its actions and session
+    // fields, buildPlotSpec() (plot_spec.h) turns it into a PlotSpec, and
+    // PlotView draws it. refreshPlot() keeps the visible time window;
+    // refreshPlotFullRange() is used after a new file is loaded or after
+    // Reset Zoom clears custom y-axis ranges.
     void refreshPlot();
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
-    void clearDynamicAxes();
-    void clearEventMarkers();
-    void addEventMarkers();
-    QCPAxis *timeAxis() const;
-    QCPAxis *axisForStream(
-        SensorAxisSide side,
-        int side_index,
-        const SensorStream &stream);
+    PlotState plotState() const;
+    PlotDisplayPreferences plotDisplayPreferences() const;
     QString streamValueAt(const SensorStream &stream, double epoch) const;
-    void resetCursorsToView();
 
-    // Plot data. Graphs never hold a stream's samples, only the M4 envelope
-    // of the visible window from log_.data, at most four points per pixel
-    // column. fillPlotGraphs() computes it; refillPlotGraphsAfterLayout()
-    // runs after every QCustomPlot layout pass and refills when the x range
-    // or the plot width has changed, so a drag or resize costs one refill per
-    // replot. Value ranges and hover readout also come from log_.data.
-    int plotColumns(double device_pixels_per_pixel) const;
-    void fillPlotGraphs(double lower, double upper, int columns);
-    void refillPlotGraphsAfterLayout();
+    // Plot data in log_.data: the hover readout and value ranges read it,
+    // and transform outputs are registered in it so PlotView can draw them.
     const sensordata::StreamInfo *plotDataInfo(const SensorStream &stream) const;
-    bool plotDataRange(const SensorStream &stream, QCPRange &range) const;
     void registerPlotData(SensorStream &stream);
     void releasePlotData(const SensorStream &stream);
-    void applyUtcAxisLabel();
 
     SensorLog log_;
     QVector<SensorStream> streams_;
@@ -290,12 +274,6 @@ private:
     bool log_load_in_progress_ = false;
     MainWindowOptions options_;
 
-    // Metadata box placement is intentionally session-only. The box is an
-    // overlay for contextual constants, so dragging it should not mutate log
-    // data or saved per-tag display preferences.
-    bool metadata_box_dragging_ = false;
-    QPoint metadata_box_drag_start_pixel_;
-    QPointF metadata_box_drag_start_coords_;
     int utc_offset_ = 0;
     double sea_level_pressure_ = 1013.25;
     double activity_low_pass_seconds_ = 600.0;
@@ -322,7 +300,7 @@ private:
     bool suppress_preference_updates_ = false;
 
     QWidget *central_ = nullptr;
-    QCustomPlot *plot_ = nullptr;
+    PlotView *plot_view_ = nullptr;
     QSplitter *plot_splitter_ = nullptr;
     QQuickWidget *compass_widget_ = nullptr;
     CompassDisplay compass_display_;
@@ -362,26 +340,6 @@ private:
     QVector<QAction *> stream_actions_;
     QVector<QAction *> range_actions_;
 
-    QSharedPointer<QCPAxisTickerDateTime> date_ticker_;
-    QCPAxis *elapsed_x_axis_ = nullptr;
-    QVector<QCPAxis *> dynamic_axes_;
-    QCPItemLine *left_cursor_ = nullptr;
-    QCPItemLine *right_cursor_ = nullptr;
-    QCPTextElement *plot_title_ = nullptr;
-    QCPItemText *metadata_box_ = nullptr;
-    QVector<QCPItemStraightLine *> event_marker_items_;
-
-    // Each graph and the log_.data stream it draws, and the window and width
-    // it was last filled for. plot_fill_valid_ is false when the next layout
-    // pass must refill regardless.
-    QVector<QPair<QCPGraph *, sensordata::StreamId>> plot_graph_data_;
-    double plot_fill_lower_ = 0.0;
-    double plot_fill_upper_ = 0.0;
-    int plot_fill_columns_ = 0;
-    bool plot_fill_valid_ = false;
-    // Printer device pixels per plot pixel while renderPlot() draws; 0 on
-    // screen, where the widget's device pixel ratio applies.
-    double print_pixel_scale_ = 0.0;
     // Resolution of the printer printPlot() set up, before renderPlot()
     // switches it to screen coordinates; 0 when unknown.
     int print_device_dpi_ = 0;

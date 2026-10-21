@@ -358,6 +358,10 @@ design document.
 - [Decimating Data Backend for sensorviz](../host/applications/sensorviz/design/proposals/decimating-backend.md) *(proposal, proposed)* — A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); phases 0-2 are built, 3-4 remain.
 - [SensorViz Documentation Screenshot Capture Plan](../host/applications/sensorviz/design/proposals/screenshot-capture-plan.md) *(proposal, historical)* — Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
 
+### Applications / sensorviz / test
+
+- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check, the window-free check of sensorViz's plot policy (buildPlotSpec) against the committed fixtures.
+
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
