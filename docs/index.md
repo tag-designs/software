@@ -354,6 +354,8 @@ design document.
 
 ### Applications / sensorviz / Proposals
 
+- [Decimating Backend Measurements](../host/applications/sensorviz/design/proposals/decimating-backend-results.md) *(results)* — Measured memory, load time and view-query cost of current sensorviz and of a decimating-backend prototype on a synthetic full-NAND IMUTag log (19.7M accel+gyro samples).
+- [Decimating Data Backend for sensorviz](../host/applications/sensorviz/design/proposals/decimating-backend.md) *(proposal, proposed)* — A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB today, about 1 GB proposed).
 - [SensorViz Documentation Screenshot Capture Plan](../host/applications/sensorviz/design/proposals/screenshot-capture-plan.md) *(proposal, historical)* — Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
 
 ### Command Line
