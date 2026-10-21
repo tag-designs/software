@@ -5,13 +5,11 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QMap>
-#include <QSet>
 #include <QVector3D>
 
 #include <sqlite3.h>
 
-#include <algorithm>
-#include <numeric>
+#include <functional>
 #include <vector>
 
 #include "sensor_preferences.h"
@@ -197,44 +195,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// Loader Metadata Types
-// ---------------------------------------------------------------------------
-//
-// StreamMetadata is the in-memory copy of one row from tagcore's streams table.
-// Rows with kind="scalar" become SensorStream objects. Rows with
-// kind="record_column" are grouped by groupId and become SensorRecordSet
-// objects for transform code such as CompassTag orientation derivation.
-
-struct StreamMetadata
-{
-    QString id;
-    QString groupId;
-    QString groupName;
-    QString table;
-    QString timeColumn;
-    QString valueColumn;
-    QString kind;
-    QString displayName;
-    QString units;
-};
-
-SensorTimeDomain timeDomainForColumn(const QString &time_column)
-{
-    // IMUTag data rows use ElapsedUs; older header-derived elapsed streams use
-    // StartElapsedUs. Both are microseconds from the collection start and must
-    // share the elapsed axis for transforms such as temperature-aware altitude.
-    return time_column.endsWith(QStringLiteral("ElapsedUs"), Qt::CaseInsensitive)
-        ? SensorTimeDomain::ElapsedSeconds
-        : SensorTimeDomain::EpochSeconds;
-}
-
-double normalizedTimeValue(const Statement &stmt, int column, SensorTimeDomain domain)
-{
-    const double value = static_cast<double>(stmt.int64Column(column));
-    return domain == SensorTimeDomain::ElapsedSeconds ? value / 1000000.0 : value;
-}
-
-// ---------------------------------------------------------------------------
 // Generic Helpers
 // ---------------------------------------------------------------------------
 //
@@ -267,13 +227,6 @@ QString displayNameForTag(const QString &tag_type)
     return "Sensor log";
 }
 
-QString quotedIdentifier(const QString &identifier)
-{
-    QString escaped = identifier;
-    escaped.replace("\"", "\"\"");
-    return "\"" + escaped + "\"";
-}
-
 bool tableExistsRaw(Database &db, const QString &table_name)
 {
     // Case-insensitive table test used before loading metadata-described data.
@@ -287,282 +240,6 @@ bool tableExistsRaw(Database &db, const QString &table_name)
     const bool exists = sqlite3_step(stmt) == SQLITE_ROW;
     sqlite3_finalize(stmt);
     return exists;
-}
-
-// ---------------------------------------------------------------------------
-// Metadata Loading
-// ---------------------------------------------------------------------------
-//
-// The streams table is mandatory for new SQLite logs. Loading it first gives
-// sensorViz the table names, column names, labels, and units needed to read the
-// actual sensor samples.
-
-bool loadStreamMetadata(Database &db, QVector<StreamMetadata> &metadata, QString &error)
-{
-    if (!tableExistsRaw(db, "streams")) {
-        error = "SQLite log does not contain required stream metadata";
-        return false;
-    }
-
-    Statement stmt(
-        db,
-        "SELECT stream_id, group_id, group_name, table_name, time_column, "
-        "value_column, stream_kind, display_name, units "
-        "FROM streams ORDER BY rowid");
-    if (!stmt.valid()) {
-        error = "Failed to load stream metadata: " + stmt.lastError();
-        return false;
-    }
-
-    while (stmt.next()) {
-        StreamMetadata stream;
-        stream.id = stmt.textColumn(0);
-        stream.groupId = stmt.textColumn(1);
-        stream.groupName = stmt.textColumn(2);
-        stream.table = stmt.textColumn(3);
-        stream.timeColumn = stmt.textColumn(4);
-        stream.valueColumn = stmt.textColumn(5);
-        stream.kind = stmt.textColumn(6);
-        stream.displayName = stmt.textColumn(7);
-        stream.units = stmt.textColumn(8);
-
-        if (stream.id.isEmpty()
-            || stream.table.isEmpty()
-            || stream.timeColumn.isEmpty()
-            || stream.valueColumn.isEmpty()
-            || stream.kind.isEmpty()
-            || stream.displayName.isEmpty()) {
-            error = "Stream metadata contains an incomplete row";
-            return false;
-        }
-
-        metadata.append(stream);
-    }
-
-    if (metadata.isEmpty()) {
-        error = "SQLite log contains no stream metadata rows";
-        return false;
-    }
-
-    return true;
-}
-
-// ---------------------------------------------------------------------------
-// Sensor Data Loading
-// ---------------------------------------------------------------------------
-//
-// These functions use StreamMetadata to query the referenced tables. Scalar
-// rows become plottable streams. Record-column rows are loaded together as one
-// multi-column record set for later transform code.
-
-// Columns of one table read in a single pass: one time axis and one value
-// vector per requested column, all the same length and sorted by time.
-struct TableColumns
-{
-    QVector<double> time;
-    QVector<QVector<double>> values;
-};
-
-// Restore time order after a table was read in rowid order but its time column
-// was found to decrease somewhere. The sort is stable, so rows with equal times
-// keep their rowid order, and every value column is permuted with the time.
-void sortColumnsByTime(TableColumns &columns)
-{
-    const qsizetype rows = columns.time.size();
-    std::vector<qsizetype> order(static_cast<size_t>(rows));
-    std::iota(order.begin(), order.end(), qsizetype(0));
-    const QVector<double> &time = columns.time;
-    std::stable_sort(order.begin(), order.end(), [&time](qsizetype a, qsizetype b) {
-        return time[a] < time[b];
-    });
-
-    auto permute = [&order, rows](QVector<double> &vector) {
-        QVector<double> sorted;
-        sorted.reserve(rows);
-        for (qsizetype index : order) {
-            sorted.append(vector[index]);
-        }
-        vector = sorted;
-    };
-    permute(columns.time);
-    for (QVector<double> &values : columns.values) {
-        permute(values);
-    }
-}
-
-// Read a table's time column and the given value columns with one query in
-// rowid order. The writer inserts rows in sample order, so this is normally
-// already time order and SQLite never sorts; `ElapsedUs` has no index, and an
-// ORDER BY on it sorts the whole table once per query. The time order is
-// checked as rows arrive, and a table that is ever out of order is sorted once
-// in memory instead. The row count is read first so every vector is allocated
-// once.
-bool loadTableColumns(
-    Database &db,
-    const QString &table,
-    const QString &time_column,
-    const QStringList &value_columns,
-    SensorTimeDomain domain,
-    TableColumns &columns,
-    QString &error)
-{
-    if (!tableExistsRaw(db, table)) {
-        error = QString("Stream metadata references missing table %1").arg(table);
-        return false;
-    }
-
-    qsizetype row_count = 0;
-    {
-        const QByteArray count_sql =
-            QString("SELECT count(*) FROM %1").arg(quotedIdentifier(table)).toUtf8();
-        Statement count(db, count_sql.constData());
-        if (count.valid() && count.next()) {
-            row_count = static_cast<qsizetype>(count.int64Column(0));
-        }
-    }
-
-    QStringList select_columns;
-    select_columns << quotedIdentifier(time_column);
-    for (const QString &column : value_columns) {
-        select_columns << quotedIdentifier(column);
-    }
-    const QByteArray sql = QString("SELECT %1 FROM %2 ORDER BY rowid")
-                               .arg(select_columns.join(", "), quotedIdentifier(table))
-                               .toUtf8();
-    Statement stmt(db, sql.constData());
-    if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2").arg(table, stmt.lastError());
-        return false;
-    }
-
-    columns.time.clear();
-    columns.time.reserve(row_count);
-    columns.values = QVector<QVector<double>>(value_columns.size());
-    for (QVector<double> &values : columns.values) {
-        values.reserve(row_count);
-    }
-
-    bool in_order = true;
-    while (stmt.next()) {
-        const double time = normalizedTimeValue(stmt, 0, domain);
-        if (!columns.time.isEmpty() && time < columns.time.constLast()) {
-            in_order = false;
-        }
-        columns.time.append(time);
-        for (qsizetype i = 0; i < columns.values.size(); i++) {
-            columns.values[i].append(stmt.doubleColumn(static_cast<int>(i + 1)));
-        }
-    }
-
-    if (!in_order) {
-        sortColumnsByTime(columns);
-    }
-    return true;
-}
-
-// Convert every scalar stream stored in one table into SensorStream objects.
-// The streams share one time column, which is read once and shared between
-// them through QVector's implicit sharing, so ax, ay and az hold one copy of
-// the time axis between them. Metadata is mandatory in the new schema, so a
-// missing referenced table/column is a schema error rather than a normal
-// optional-table condition. Streams are returned in the order of
-// `definitions`; an empty table contributes none.
-bool loadTableStreams(
-    Database &db,
-    const QVector<StreamMetadata> &definitions,
-    QMap<QString, SensorStream> &streams,
-    QString &error)
-{
-    const StreamMetadata &first = definitions.first();
-    const SensorTimeDomain domain = timeDomainForColumn(first.timeColumn);
-    QStringList value_columns;
-    for (const StreamMetadata &definition : definitions) {
-        value_columns << definition.valueColumn;
-    }
-
-    TableColumns columns;
-    if (!loadTableColumns(
-            db, first.table, first.timeColumn, value_columns, domain, columns, error)) {
-        return false;
-    }
-
-    // Empty tables do not contribute menu items or axes.
-    if (columns.time.isEmpty()) {
-        return true;
-    }
-
-    for (qsizetype i = 0; i < definitions.size(); i++) {
-        const StreamMetadata &definition = definitions[i];
-        SensorStream stream;
-        stream.id = definition.id;
-        stream.label = definition.displayName;
-        stream.units = definition.units;
-        stream.timeDomain = domain;
-        const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(definition.id);
-        stream.color = defaults.color;
-        stream.defaultVisible = defaults.visible;
-        stream.axisSide = defaults.axisSide;
-        stream.axisRange = defaults.axisRange;
-        stream.time = columns.time;
-        stream.value = columns.values[i];
-        streams.insert(definition.id, stream);
-    }
-    return true;
-}
-
-// Multi-column record sets are loaded but not plotted directly. They are the
-// extension point for compass-style data, where one table can later produce
-// several computed streams and/or a specialized visualization panel.
-bool loadRecordSet(
-    Database &db,
-    const QString &group_id,
-    const QVector<StreamMetadata> &columns,
-    SensorLog &log,
-    QString &error)
-{
-    if (columns.isEmpty()) {
-        return true;
-    }
-
-    const StreamMetadata first = columns.first();
-
-    QStringList value_columns;
-    for (const StreamMetadata &column : columns) {
-        if (column.table != first.table || column.timeColumn != first.timeColumn) {
-            error = QString("Record set %1 mixes tables or time columns").arg(group_id);
-            return false;
-        }
-        value_columns << column.valueColumn;
-    }
-
-    SensorRecordSet record_set;
-    record_set.id = group_id;
-    record_set.label = first.groupName.isEmpty() ? group_id : first.groupName;
-    record_set.timeDomain = timeDomainForColumn(first.timeColumn);
-
-    TableColumns loaded;
-    if (!loadTableColumns(
-            db,
-            first.table,
-            first.timeColumn,
-            value_columns,
-            record_set.timeDomain,
-            loaded,
-            error)) {
-        return false;
-    }
-
-    if (loaded.time.isEmpty()) {
-        return true;
-    }
-
-    record_set.time = loaded.time;
-    for (qsizetype i = 0; i < columns.size(); i++) {
-        record_set.columns.insert(columns[i].valueColumn, loaded.values[i]);
-    }
-
-    log.recordSets.append(record_set);
-    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -628,131 +305,99 @@ SensorStream *streamById(SensorLog &log, const QString &id)
     return nullptr;
 }
 
-bool streamsHaveSameSamples(
-    const SensorStream &x,
-    const SensorStream &y,
-    const SensorStream &z)
+// Replace the plot data of the streams `ids`, all on one time axis, with
+// streams computed from their stored floats by `component(values, axis)`,
+// and drop the uncorrected copies. Returns false, changing nothing, when a
+// stream is missing or the streams do not share a time axis.
+bool replaceWithCorrected(
+    SensorLog &log,
+    const QStringList &ids,
+    const std::function<double(const float *values, int axis)> &component)
 {
-    if (x.timeDomain != y.timeDomain || x.timeDomain != z.timeDomain) {
-        return false;
-    }
-    if (x.time.size() != y.time.size() || x.time.size() != z.time.size()) {
-        return false;
-    }
-    if (x.value.size() != y.value.size() || x.value.size() != z.value.size()) {
-        return false;
-    }
-    for (qsizetype i = 0; i < x.time.size(); i++) {
-        if (x.time[i] != y.time[i] || x.time[i] != z.time[i]) {
+    QVector<SensorStream *> streams;
+    std::vector<sensordata::StreamId> inputs;
+    for (const QString &id : ids) {
+        SensorStream *stream = streamById(log, id);
+        if (!stream || stream->dataId == sensordata::kNoStream) {
             return false;
         }
+        streams.append(stream);
+        inputs.push_back(stream->dataId);
+    }
+
+    std::vector<sensordata::StreamId> corrected;
+    for (int axis = 0; axis < streams.size(); axis++) {
+        const std::optional<sensordata::StreamId> id = log.data->addComputed(
+            *log.data->info(inputs[static_cast<size_t>(axis)]),
+            inputs,
+            [&component, axis](const float *values) { return component(values, axis); });
+        if (!id) {
+            for (sensordata::StreamId done : corrected) {
+                log.data->remove(done);
+            }
+            return false;
+        }
+        corrected.push_back(*id);
+    }
+    for (int axis = 0; axis < streams.size(); axis++) {
+        log.data->remove(inputs[static_cast<size_t>(axis)]);
+        streams[axis]->dataId = corrected[static_cast<size_t>(axis)];
     }
     return true;
 }
 
-// Returns true when the magnetometer axes were changed.
-bool applyCalibrationToImuMagnetometer(SensorLog &log)
+// The calibration matrix mixes the three magnetometer axes, so they must be
+// samples of one table. The axes are corrected from the stored floats: the
+// QVector3D the calibration takes is float, so this is exactly the result of
+// correcting the SQLite doubles.
+void applyCalibrationToImuMagnetometer(SensorLog &log)
 {
     if (!log.hasCompassCalibration) {
-        return false;
+        return;
+    }
+    if (!streamById(log, QStringLiteral("imu_mx")) || !streamById(log, QStringLiteral("imu_my"))
+        || !streamById(log, QStringLiteral("imu_mz"))) {
+        return;
     }
 
-    SensorStream *mx = streamById(log, QStringLiteral("imu_mx"));
-    SensorStream *my = streamById(log, QStringLiteral("imu_my"));
-    SensorStream *mz = streamById(log, QStringLiteral("imu_mz"));
-    if (!mx || !my || !mz) {
-        return false;
+    const CompassCalibration calibration = log.compassCalibration;
+    const bool applied = replaceWithCorrected(
+        log,
+        {QStringLiteral("imu_mx"), QStringLiteral("imu_my"), QStringLiteral("imu_mz")},
+        [calibration](const float *values, int axis) {
+            const QVector3D calibrated =
+                calibration.apply(QVector3D(values[0], values[1], values[2]));
+            return static_cast<double>(calibrated[axis]);
+        });
+    if (!applied && log.compassCalibrationWarning.isEmpty()) {
+        log.compassCalibrationWarning =
+            "IMUTag magnetometer calibration skipped because axis streams do not align";
     }
-
-    if (!streamsHaveSameSamples(*mx, *my, *mz)) {
-        if (log.compassCalibrationWarning.isEmpty()) {
-            log.compassCalibrationWarning =
-                "IMUTag magnetometer calibration skipped because axis streams do not align";
-        }
-        return false;
-    }
-
-    for (qsizetype i = 0; i < mx->value.size(); i++) {
-        const QVector3D calibrated = log.compassCalibration.apply(
-            QVector3D(mx->value[i], my->value[i], mz->value[i]));
-        mx->value[i] = calibrated.x();
-        my->value[i] = calibrated.y();
-        mz->value[i] = calibrated.z();
-    }
-    return true;
 }
 
 // IMUTag acceleration axes are plotted as they are stored, so the zero-g
 // offset is subtracted here, once, the same way applyCalibrationToImuMagnetometer()
 // corrects the magnetometer. Both are in mg. CompassTag acceleration reaches
 // the plot only through CompassProcessor, which applies the offset itself.
-// Returns true when the acceleration axes were changed.
-bool applyCalibrationToImuAccelerometer(SensorLog &log)
+// The offset is per axis, so each axis is corrected on its own; working from
+// the stored float differs from correcting the SQLite double by the float's
+// rounding, which a display transform accepts.
+void applyCalibrationToImuAccelerometer(SensorLog &log)
 {
     if (!log.hasCompassCalibration) {
-        return false;
+        return;
     }
-
-    SensorStream *ax = streamById(log, QStringLiteral("imu_ax"));
-    SensorStream *ay = streamById(log, QStringLiteral("imu_ay"));
-    SensorStream *az = streamById(log, QStringLiteral("imu_az"));
-    if (!ax || !ay || !az) {
-        return false;
-    }
-
-    // The offset is per axis, so unlike the magnetometer matrix the axes need
-    // not share sample times.
     const QVector3D offset = log.compassCalibration.accelOffset();
-    for (double &value : ax->value) {
-        value -= offset.x();
+    const QStringList ids = {
+        QStringLiteral("imu_ax"), QStringLiteral("imu_ay"), QStringLiteral("imu_az")};
+    if (!streamById(log, ids[0]) || !streamById(log, ids[1]) || !streamById(log, ids[2])) {
+        return;
     }
-    for (double &value : ay->value) {
-        value -= offset.y();
+    for (int axis = 0; axis < 3; axis++) {
+        replaceWithCorrected(log, {ids[axis]}, [offset, axis](const float *values, int) {
+            return static_cast<double>(values[0]) - offset[axis];
+        });
     }
-    for (double &value : az->value) {
-        value -= offset.z();
-    }
-    return true;
-}
-
-// Open the decimating plot backend on the same file and point every stream
-// at its data. Streams the loader changed after reading (the calibrated IMU
-// axes in `corrected`) are registered as derived streams on the stored
-// stream's time axis, from their corrected doubles, and the uncorrected
-// stored copies are dropped so the plot never shows them.
-bool attachPlotData(SensorLog &log, const QSet<QString> &corrected, QString &error)
-{
-    std::string data_error;
-    std::unique_ptr<sensordata::Log> data =
-        sensordata::Log::open(log.path.toStdString(), data_error);
-    if (!data) {
-        error = QString::fromStdString(data_error);
-        return false;
-    }
-
-    for (SensorStream &stream : log.streams) {
-        const std::optional<sensordata::StreamId> stored = data->find(stream.id.toStdString());
-        if (!stored) {
-            error = QString("Plot data for %1 did not load").arg(stream.id);
-            return false;
-        }
-        if (!corrected.contains(stream.id)) {
-            stream.dataId = *stored;
-            continue;
-        }
-        const std::optional<sensordata::StreamId> derived = data->addDerived(
-            *data->info(*stored), *stored, stream.value.constData(),
-            static_cast<std::size_t>(stream.value.size()));
-        if (!derived) {
-            error = QString("Plot data for %1 could not be corrected").arg(stream.id);
-            return false;
-        }
-        data->remove(*stored);
-        stream.dataId = *derived;
-    }
-
-    log.data = std::move(data);
-    return true;
 }
 
 bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
@@ -825,29 +470,21 @@ void inferEpochCollectionStart(SensorLog &log)
 {
     // Epoch-time logs already display date/time on the x-axis. Recording the
     // earliest epoch sample here keeps SensorLog complete for metadata panes,
-    // while plotting.cpp decides whether it is useful enough to show.
+    // while the plot spec decides whether it is useful enough to show.
     if (log.hasCollectionStart) {
         return;
     }
 
     bool have_start = false;
     double start_seconds = 0.0;
-    auto considerTimeVector = [&](const QVector<double> &time, SensorTimeDomain domain) {
-        if (domain != SensorTimeDomain::EpochSeconds || time.isEmpty()) {
-            return;
+    for (const sensordata::StreamInfo &info : log.data->streams()) {
+        if (info.domain != sensordata::TimeDomain::EpochSeconds) {
+            continue;
         }
-        const double candidate = time.first();
-        if (!have_start || candidate < start_seconds) {
+        if (!have_start || info.first_time < start_seconds) {
             have_start = true;
-            start_seconds = candidate;
+            start_seconds = info.first_time;
         }
-    };
-
-    for (const SensorStream &stream : log.streams) {
-        considerTimeVector(stream.time, stream.timeDomain);
-    }
-    for (const SensorRecordSet &record_set : log.recordSets) {
-        considerTimeVector(record_set.time, record_set.timeDomain);
     }
 
     if (have_start) {
@@ -897,62 +534,56 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
 
     loaded.profileName = displayNameForTag(loaded.tagType);
 
-    QVector<StreamMetadata> stream_metadata;
-    if (!loadStreamMetadata(db, stream_metadata, error)) {
+    // The samples themselves are read once, by the plot backend. It validates
+    // the streams metadata, reads each table in rowid order and keeps a float
+    // copy for drawing; transforms that need exact values read doubles back
+    // through it.
+    std::string data_error;
+    std::unique_ptr<sensordata::Log> data =
+        sensordata::Log::open(path.toStdString(), data_error);
+    if (!data) {
+        error = QString::fromStdString(data_error);
         return false;
     }
+    loaded.data = std::move(data);
 
-    // Scalar streams are grouped by table and time column so each table is
-    // read once, then published in metadata order.
-    QVector<QString> scalar_order;
-    QVector<QVector<StreamMetadata>> scalar_tables;
-    QMap<QString, QVector<StreamMetadata>> record_sets;
-    for (const StreamMetadata &definition : stream_metadata) {
-        if (definition.kind.compare("scalar", Qt::CaseInsensitive) == 0) {
-            scalar_order.append(definition.id);
-            auto table = std::find_if(
-                scalar_tables.begin(),
-                scalar_tables.end(),
-                [&definition](const QVector<StreamMetadata> &group) {
-                    return group.first().table == definition.table
-                        && group.first().timeColumn == definition.timeColumn;
-                });
-            if (table == scalar_tables.end()) {
-                scalar_tables.append(QVector<StreamMetadata>{definition});
-            } else {
-                table->append(definition);
-            }
-        } else if (definition.kind.compare("record_column", Qt::CaseInsensitive) == 0) {
-            if (definition.groupId.isEmpty()) {
-                error = QString("Record column %1 does not specify a group").arg(definition.id);
-                return false;
-            }
-            record_sets[definition.groupId].append(definition);
-        } else {
-            error = QString("Unsupported stream kind %1 for stream %2")
-                        .arg(definition.kind, definition.id);
-            return false;
+    // Scalar rows become SensorStreams in metadata order; record-column rows
+    // are grouped by group id into record sets. Empty tables load no streams.
+    QMap<QString, QVector<sensordata::StreamInfo>> record_sets;
+    for (const sensordata::StreamInfo &info : loaded.data->streams()) {
+        if (info.kind == "record_column") {
+            record_sets[QString::fromStdString(info.group_id)].append(info);
+            continue;
         }
+        SensorStream stream;
+        stream.id = QString::fromStdString(info.id);
+        stream.label = QString::fromStdString(info.label);
+        stream.units = QString::fromStdString(info.units);
+        stream.timeDomain = info.domain == sensordata::TimeDomain::ElapsedSeconds
+            ? SensorTimeDomain::ElapsedSeconds
+            : SensorTimeDomain::EpochSeconds;
+        const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(stream.id);
+        stream.color = defaults.color;
+        stream.defaultVisible = defaults.visible;
+        stream.axisSide = defaults.axisSide;
+        stream.axisRange = defaults.axisRange;
+        stream.dataId = info.handle;
+        loaded.streams.append(stream);
     }
-
-    QMap<QString, SensorStream> scalar_streams;
-    for (const QVector<StreamMetadata> &table : scalar_tables) {
-        if (!loadTableStreams(db, table, scalar_streams, error)) {
-            return false;
-        }
-    }
-    for (const QString &id : scalar_order) {
-        auto stream = scalar_streams.find(id);
-        if (stream != scalar_streams.end()) {
-            loaded.streams.append(stream.value());
-            scalar_streams.erase(stream);
-        }
-    }
-
     for (auto it = record_sets.cbegin(); it != record_sets.cend(); ++it) {
-        if (!loadRecordSet(db, it.key(), it.value(), loaded, error)) {
-            return false;
+        const sensordata::StreamInfo &first = it.value().first();
+        SensorRecordSet record_set;
+        record_set.id = it.key();
+        record_set.label = first.group_name.empty() ? it.key() : QString::fromStdString(first.group_name);
+        record_set.table = QString::fromStdString(first.table);
+        record_set.timeDomain = first.domain == sensordata::TimeDomain::ElapsedSeconds
+            ? SensorTimeDomain::ElapsedSeconds
+            : SensorTimeDomain::EpochSeconds;
+        for (const sensordata::StreamInfo &column : it.value()) {
+            record_set.columns.append(QString::fromStdString(column.value_column));
         }
+        record_set.timeSource = first.handle;
+        loaded.recordSets.append(record_set);
     }
 
     for (const SensorStream &stream : loaded.streams) {
@@ -978,20 +609,11 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         && !loadCompassCalibration(db, loaded, error)) {
         return false;
     }
-    QSet<QString> corrected;
-    if (applyCalibrationToImuMagnetometer(loaded)) {
-        corrected << QStringLiteral("imu_mx") << QStringLiteral("imu_my") << QStringLiteral("imu_mz");
-    }
-    if (applyCalibrationToImuAccelerometer(loaded)) {
-        corrected << QStringLiteral("imu_ax") << QStringLiteral("imu_ay") << QStringLiteral("imu_az");
-    }
+    applyCalibrationToImuMagnetometer(loaded);
+    applyCalibrationToImuAccelerometer(loaded);
 
     if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {
         error = "No supported sensor streams or record sets found in database";
-        return false;
-    }
-
-    if (!attachPlotData(loaded, corrected, error)) {
         return false;
     }
 

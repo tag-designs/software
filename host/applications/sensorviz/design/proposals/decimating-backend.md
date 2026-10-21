@@ -1,12 +1,12 @@
 ---
 type: proposal
 status: proposed
-summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); phases 0-2 are built, 3-4 remain.
+summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); phases 0-3 are built, phase 4 remains.
 ---
 
 # Decimating Data Backend for sensorviz
 
-**Status:** phases 0-2 are built; phases 3 and 4 are proposed. See
+**Status:** phases 0-3 are built; phase 4 is proposed. See
 [Phases](#phases). The library is
 [`host/libraries/sensordata`](../../../../libraries/sensordata/README.md),
 whose header is now the authority on the API; it differs from the
@@ -327,9 +327,9 @@ integration differs from the list below in shape:
   as signals. A webview front end would replace `PlotView` and reuse the spec
   and the backend.
 - MainWindow keeps menus and dialogs, formats the hover readout from
-  `valueAt()`, and rebuilds the spec when its state changes. The
-  `SensorStream` sample vectors stay until phase 3, and stream visibility
-  still lives in the View menu's actions.
+  `valueAt()`, and rebuilds the spec when its state changes. Stream
+  visibility still lives in the View menu's actions. Since phase 3,
+  `SensorStream` carries no samples.
 
 The proposal as first written:
 
@@ -576,10 +576,19 @@ For sensorviz itself:
 
 ## Phases
 
-Phases 0, 1 and 2 are built. With the transform inputs still loaded as
-`double`s alongside the backend, sensorviz peaks at about 2.5 GB on the
-worst-case log whatever is visible, against 4.8 GB with every stream shown
-before; phase 3 removes the `double` copies.
+Phases 0 to 3 are built. sensorviz peaks at about 1.1 GB on the worst-case
+log whatever is visible, against 4.8 GB with every stream shown before, and
+loads in about 6 s against 41 s
+([results](decimating-backend-results.md)). Phase 4 is open.
+
+As built, phase 3 splits the transforms by what their inputs must be. The
+IMUTag magnitudes and the acceleration calibration offset are computed from
+the backend's `float` columns with `addComputed()`, a display-only difference
+of one `float` step from the `double` arithmetic. The magnetometer
+calibration also works from the `float`s, which is exact because its
+`QVector3D` is float. Altitude, the activity filter and the CompassTag
+orientation read SQLite `double`s through `forEachRow()`, so they and every
+sensoranalysis input are unchanged.
 
 0. **Loader fix in place.** In `sqlite_loader.cpp`: one query per table,
    ordered by rowid, with the time vector shared by copy-on-write. This is

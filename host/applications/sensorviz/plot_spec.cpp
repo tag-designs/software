@@ -29,43 +29,20 @@ QString metadataRow(const QString &label, const QString &value)
     return QString("%1 %2").arg(label + ":", -8).arg(value);
 }
 
-/// The finite range of a stream's values: its plot data, or its own samples when it has none.
+/// The finite range of a stream's values, from its plot data.
 bool streamDataRange(const sensordata::Log *data, const SensorStream &stream, PlotRange &range)
 {
-    if (stream.dataId != sensordata::kNoStream) {
-        return plotDataRange(data, stream.dataId, range);
-    }
-    bool have = false;
-    for (double value : stream.value) {
-        if (!std::isfinite(value)) {
-            continue;
-        }
-        if (!have) {
-            range = PlotRange{value, value};
-            have = true;
-        } else {
-            range.lower = std::min(range.lower, value);
-            range.upper = std::max(range.upper, value);
-        }
-    }
-    return have;
+    return plotDataRange(data, stream.dataId, range);
 }
 
-/// Earliest and latest sample time of a stream.
+/// Earliest and latest sample time of a stream, from its plot data.
 bool streamTimeRange(const sensordata::Log *data, const SensorStream &stream, PlotRange &range)
 {
-    if (stream.dataId != sensordata::kNoStream) {
-        const sensordata::StreamInfo *info = data ? data->info(stream.dataId) : nullptr;
-        if (!info) {
-            return false;
-        }
-        range = PlotRange{info->first_time, info->last_time};
-        return true;
-    }
-    if (stream.time.isEmpty()) {
+    const sensordata::StreamInfo *info = data ? data->info(stream.dataId) : nullptr;
+    if (!info) {
         return false;
     }
-    range = PlotRange{stream.time.first(), stream.time.last()};
+    range = PlotRange{info->first_time, info->last_time};
     return true;
 }
 
@@ -209,10 +186,6 @@ PlotSpec buildPlotSpec(const SensorLog &log,
         trace.id = stream->id;
         trace.name = stream->label;
         trace.stream = stream->dataId;
-        if (stream->dataId == sensordata::kNoStream) {
-            trace.fallbackTime = stream->time;
-            trace.fallbackValue = stream->value;
-        }
         trace.color = color;
         trace.penWidth = stream->derived ? 2 : 1;
         trace.axis = static_cast<int>(spec.axes.size());

@@ -99,8 +99,8 @@ void addDerivedCopy(SensorLog &log, const QString &from, const QString &id)
     info.id = id.toStdString();
     stream.id = id;
     stream.derived = false;
-    stream.dataId = *log.data->addDerived(
-        info, stream.dataId, stream.value.constData(), static_cast<std::size_t>(stream.value.size()));
+    stream.dataId = *log.data->addComputed(
+        info, {stream.dataId}, [](const float *values) { return static_cast<double>(values[0]); });
     log.streams.append(stream);
 }
 
@@ -122,7 +122,6 @@ void checkImuTag()
         CHECK(spec.traces[i].axis == i);
         CHECK(spec.traces[i].stream == find(log, spec.traces[i].id)->dataId);
         CHECK(spec.traces[i].penWidth == 1);
-        CHECK(spec.traces[i].fallbackTime.isEmpty());
     }
 
     // The accel family is linked to the padded union of its data ranges.

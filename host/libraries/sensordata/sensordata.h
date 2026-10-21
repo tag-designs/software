@@ -369,6 +369,37 @@ public:
                                        std::size_t count);
 
     /**
+     * @brief   Registers a stream computed sample by sample from other streams' stored values.
+     *
+     * @details For display transforms that may work from the `float` copy,
+     *          such as a vector magnitude: no `double`s are read from SQLite
+     *          or held, so the only memory used is the result's. @p fn is called
+     *          once per sample, in sample order, with the inputs' stored
+     *          `float` values for that sample, in the order of @p inputs; its
+     *          result is narrowed to `float`. The new stream shares the
+     *          inputs' time axis.
+     *
+     *          Results differ from the same arithmetic on the SQLite `double`s
+     *          by the `float` rounding of the inputs, about one part in 10^7.
+     *          Computations that must match the database bit for bit use
+     *          forEachRow() and the other overloads instead.
+     *
+     * @param[in] info    Description, as for addDerived().
+     * @param[in] inputs  At least one stream, all on the same time axis (the
+     *                    columns of one table, or streams derived on it).
+     * @param[in] fn      Maps one sample's input values to the output value.
+     *
+     * @return  The new stream's handle, or nullopt when @p inputs is empty,
+     *          names a stream that does not exist, or mixes time axes, or
+     *          @p fn is empty.
+     *
+     * @warning Not thread-safe; see the class description. Blocking: one pass
+     *          over the inputs.
+     */
+    std::optional<StreamId> addComputed(StreamInfo info, const std::vector<StreamId> &inputs,
+                                        const std::function<double(const float *values)> &fn);
+
+    /**
      * @brief   Registers a computed stream with its own time axis.
      *
      * @param[in] info    Description; as for the other overload, except that

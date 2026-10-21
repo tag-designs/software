@@ -147,6 +147,7 @@ private:
     const SensorRecordSet *storedOrientationRecordSet() const;
     bool hasCompassOrientationSource() const;
     bool loadCompassSamples(QString &error);
+    void addCompassStream(SensorStream stream, const QVector<double> &values, bool checked);
     void createCompassPlotStreams();
     QString preferenceKey() const;
     void rememberCurrentPreferences();
@@ -261,9 +262,13 @@ private:
     QString streamValueAt(const SensorStream &stream, double epoch) const;
 
     // Plot data in log_.data: the hover readout and value ranges read it,
-    // and transform outputs are registered in it so PlotView can draw them.
+    // transforms read their inputs from it and register their outputs in it.
     const sensordata::StreamInfo *plotDataInfo(const SensorStream &stream) const;
-    void registerPlotData(SensorStream &stream);
+    sensordata::StreamInfo derivedPlotInfo(const SensorStream &stream) const;
+    bool readStreamDoubles(
+        const SensorStream &stream,
+        std::vector<double> &time,
+        std::vector<double> &value) const;
     void releasePlotData(const SensorStream &stream);
 
     SensorLog log_;
@@ -280,8 +285,10 @@ private:
     double declination_degrees_ = 0.0;
     bool battery_forward_ = true;
     QVector<CompassDerivedSample> compass_samples_;
-    // Where compass_samples_ came from, for the File Info pane.
+    // Where compass_samples_ came from, for the File Info pane, and a stored
+    // stream on that record set's time axis, which the compass streams share.
     QString compass_source_;
+    sensordata::StreamId compass_time_source_ = sensordata::kNoStream;
 
     // User-set y-axis ranges. custom_axis_ranges_ may also contain a linked
     // altitude range derived from pressure; explicit_axis_ranges_ records only

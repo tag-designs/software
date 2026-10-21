@@ -1005,6 +1005,43 @@ std::optional<StreamId> Log::addDerived(StreamInfo info, StreamId time_from, con
     return impl_->add(std::move(stream));
 }
 
+std::optional<StreamId> Log::addComputed(StreamInfo info, const std::vector<StreamId> &inputs,
+                                         const std::function<double(const float *values)> &fn)
+{
+    if (inputs.empty() || !fn) {
+        return std::nullopt;
+    }
+    std::vector<const StreamData *> sources;
+    for (StreamId id : inputs) {
+        const StreamData *source = impl_->stream(id);
+        if (!source || (!sources.empty() && source->axis != sources.front()->axis)) {
+            return std::nullopt;
+        }
+        sources.push_back(source);
+    }
+
+    auto stream = std::make_unique<StreamData>();
+    stream->axis = sources.front()->axis;
+    info.table = stream->axis->table;
+    info.time_column = stream->axis->time_column;
+    info.value_column.clear();
+    info.derived = true;
+    stream->info = std::move(info);
+
+    const std::size_t count = stream->axis->time.size();
+    const std::size_t width = sources.size();
+    stream->values.resize(count);
+    std::vector<float> row(width);
+    for (std::size_t i = 0; i < count; i++) {
+        for (std::size_t j = 0; j < width; j++) {
+            row[j] = sources[j]->values[i];
+        }
+        stream->values[i] = static_cast<float>(fn(row.data()));
+    }
+    finishStream(*stream);
+    return impl_->add(std::move(stream));
+}
+
 std::optional<StreamId> Log::addDerived(StreamInfo info, std::vector<double> time,
                                         const std::vector<double> &values)
 {

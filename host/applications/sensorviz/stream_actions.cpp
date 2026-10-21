@@ -137,22 +137,14 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     // This path is used both for replacing a raw stream and for refreshing a
     // derived stream after its parameters change. The stream id is the stable
     // identity; labels and data can change without invalidating menu wiring.
-    // Plot data is registered before the old stream's is released, so a
-    // replacement can still share the old stream's time axis. Once
-    // registered, a transform's output needs no samples of its own: plotting,
-    // ranges and hover read log_.data, and no transform takes another
-    // transform's output as input. Dropping them saves 157 MB per magnitude
-    // on a full IMUTag log.
-    SensorStream registered = stream;
-    registerPlotData(registered);
-    if (registered.dataId != sensordata::kNoStream) {
-        registered.time = QVector<double>();
-        registered.value = QVector<double>();
-    }
+    // The transform registered the stream's plot data before calling this;
+    // a replaced stream's plot data is released once the new one is in place.
     for (SensorStream &existing : streams_) {
         if (existing.id == stream.id) {
-            releasePlotData(existing);
-            existing = registered;
+            if (existing.dataId != stream.dataId) {
+                releasePlotData(existing);
+            }
+            existing = stream;
             QAction *action = streamActionById(stream.id);
             if (action) {
                 action->setText(stream.label + unitsSuffix(stream));
@@ -168,7 +160,7 @@ void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
     }
 
     const int stream_index = streamInsertionIndex(streams_, stream.id);
-    streams_.insert(stream_index, registered);
+    streams_.insert(stream_index, stream);
     if (!stream.derived) {
         addStreamAction(stream, checked, actionInsertionIndex(stream_actions_, stream.id));
     }

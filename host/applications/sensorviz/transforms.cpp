@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <vector>
 
 // transforms.cpp owns scalar display transforms that start from existing
 // SensorStream objects. CompassTag record-set transforms live in
@@ -51,114 +53,62 @@ void updateSeaLevelPressureActionText(QAction *action, double sea_level_pressure
 
 // First-order low-pass filter for activity display. The input time vector is in
 // epoch seconds, so the filter can handle uneven sample spacing.
-QVector<double> lowPass(
-    const QVector<double> &time,
-    const QVector<double> &value,
+std::vector<double> lowPass(
+    const std::vector<double> &time,
+    const std::vector<double> &value,
     double time_constant_seconds)
 {
-    QVector<double> filtered;
-    if (time.isEmpty() || value.isEmpty()) {
+    std::vector<double> filtered;
+    if (time.empty() || value.empty()) {
         return filtered;
     }
 
     filtered.reserve(value.size());
-    double previous = value.first();
-    filtered.append(previous);
+    double previous = value.front();
+    filtered.push_back(previous);
 
-    for (qsizetype i = 1; i < value.size(); i++) {
+    for (size_t i = 1; i < value.size(); i++) {
         const double dt = std::max(0.0, time[i] - time[i - 1]);
         const double alpha = time_constant_seconds > 0.0
             ? dt / (time_constant_seconds + dt)
             : 1.0;
         previous = previous + alpha * (value[i] - previous);
-        filtered.append(previous);
+        filtered.push_back(previous);
     }
 
     return filtered;
 }
 
-bool nearestStreamValue(const SensorStream &stream, double time_seconds, double *value)
+bool nearestValue(
+    const std::vector<double> &time,
+    const std::vector<double> &values,
+    double time_seconds,
+    double *value)
 {
-    // Return the nearest sample in a stream at the requested time. Pressure
-    // and pressure-sensor temperature are normally sampled together, but this
+    // Return the nearest sample at the requested time. Pressure and
+    // pressure-sensor temperature are normally sampled together, but this
     // keeps altitude robust if a future log stores them at slightly different
     // times. The caller is responsible for matching epoch/elapsed domains.
-    if (!value || stream.time.isEmpty() || stream.value.isEmpty()) {
+    if (!value || time.empty() || values.size() != time.size()) {
         return false;
     }
 
-    auto it = std::lower_bound(stream.time.cbegin(), stream.time.cend(), time_seconds);
-    qsizetype index = 0;
-    if (it == stream.time.cend()) {
-        index = stream.time.size() - 1;
-    } else if (it == stream.time.cbegin()) {
+    auto it = std::lower_bound(time.cbegin(), time.cend(), time_seconds);
+    size_t index = 0;
+    if (it == time.cend()) {
+        index = time.size() - 1;
+    } else if (it == time.cbegin()) {
         index = 0;
     } else {
-        const qsizetype after = std::distance(stream.time.cbegin(), it);
-        const qsizetype before = after - 1;
-        index = std::abs(stream.time[after] - time_seconds)
-                < std::abs(time_seconds - stream.time[before])
+        const size_t after = static_cast<size_t>(std::distance(time.cbegin(), it));
+        const size_t before = after - 1;
+        index = std::abs(time[after] - time_seconds) < std::abs(time_seconds - time[before])
             ? after
             : before;
     }
-    if (index < 0 || index >= stream.value.size()) {
-        return false;
-    }
 
-    *value = stream.value[index];
+    *value = values[index];
     return true;
-}
-
-bool streamsHaveSameTimebase(
-    const SensorStream &x,
-    const SensorStream &y,
-    const SensorStream &z)
-{
-    if (x.timeDomain != y.timeDomain || x.timeDomain != z.timeDomain) {
-        return false;
-    }
-    if (x.time.size() != y.time.size() || x.time.size() != z.time.size()) {
-        return false;
-    }
-    for (qsizetype i = 0; i < x.time.size(); i++) {
-        if (x.time[i] != y.time[i] || x.time[i] != z.time[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-SensorStream makeMagnitudeStream(
-    const QString &id,
-    const QString &label,
-    const QString &units,
-    const QColor &color,
-    const SensorStream &x,
-    const SensorStream &y,
-    const SensorStream &z,
-    bool default_visible,
-    const SensorAxisRange &range = {})
-{
-    SensorStream stream;
-    stream.id = id;
-    stream.label = label;
-    stream.units = units;
-    stream.time = x.time;
-    stream.timeDomain = x.timeDomain;
-    stream.color = color;
-    stream.defaultVisible = default_visible;
-    stream.axisSide = SensorAxisSide::Left;
-    stream.axisRange = range;
-    stream.value.reserve(x.value.size());
-
-    for (qsizetype i = 0; i < x.value.size(); i++) {
-        const double vx = x.value[i];
-        const double vy = y.value[i];
-        const double vz = z.value[i];
-        stream.value.append(std::sqrt(vx * vx + vy * vy + vz * vz));
-    }
-
-    return stream;
 }
 
 } // namespace
@@ -247,25 +197,43 @@ void MainWindow::createAltitudeStream()
     altitude.id = "altitude";
     altitude.label = tr("Altitude");
     altitude.units = "m";
-    altitude.time = pressure->time;
     altitude.timeDomain = pressure->timeDomain;
     altitude.color = QColor(110, 70, 180);
     altitude.defaultVisible = true;
     altitude.axisSide = SensorAxisSide::Left;
-    altitude.value.reserve(pressure->value.size());
+
+    // Altitude uses the SQLite doubles, read back through the plot backend,
+    // so it is exactly what it was computed from before. Pressure is logged
+    // at a low rate, so the extra pass costs little.
+    std::vector<double> pressure_time;
+    std::vector<double> pressure_mbar;
+    if (!readStreamDoubles(*pressure, pressure_time, pressure_mbar)) {
+        return;
+    }
+    std::vector<double> temperature_time;
+    std::vector<double> temperature_c;
     const SensorStream *sensor_temperature = streamById("sensor_temperature");
-    for (qsizetype i = 0; i < pressure->value.size(); i++) {
-        const double pressure_mbar = pressure->value[i];
-        double temperature_c = 0.0;
-        if (sensor_temperature
-            && sensor_temperature->timeDomain == pressure->timeDomain
-            && i < pressure->time.size()
-            && nearestStreamValue(*sensor_temperature, pressure->time[i], &temperature_c)) {
-            altitude.value.append(pressureToAltitude(pressure_mbar, temperature_c));
+    const bool have_temperature = sensor_temperature
+        && sensor_temperature->timeDomain == pressure->timeDomain
+        && readStreamDoubles(*sensor_temperature, temperature_time, temperature_c);
+
+    std::vector<double> values;
+    values.reserve(pressure_mbar.size());
+    for (size_t i = 0; i < pressure_mbar.size(); i++) {
+        double temperature = 0.0;
+        if (have_temperature
+            && nearestValue(temperature_time, temperature_c, pressure_time[i], &temperature)) {
+            values.push_back(pressureToAltitude(pressure_mbar[i], temperature));
         } else {
-            altitude.value.append(pressureToAltitude(pressure_mbar));
+            values.push_back(pressureToAltitude(pressure_mbar[i]));
         }
     }
+    const std::optional<sensordata::StreamId> id =
+        log_.data->addDerived(derivedPlotInfo(altitude), pressure->dataId, values);
+    if (!id) {
+        return;
+    }
+    altitude.dataId = *id;
 
     if (custom_axis_ranges_.contains(pressure->id)
         && !explicit_axis_ranges_.contains("altitude")) {
@@ -281,62 +249,63 @@ void MainWindow::createAltitudeStream()
 
 void MainWindow::createImuMagnitudeStreams()
 {
-    const SensorStream *ax = streamById("imu_ax");
-    const SensorStream *ay = streamById("imu_ay");
-    const SensorStream *az = streamById("imu_az");
-    if (ax && ay && az && streamsHaveSameTimebase(*ax, *ay, *az)) {
-        const QAction *action = streamActionById("imu_accel_magnitude");
-        const bool checked = action ? action->isChecked() : true;
-        addOrReplaceStream(
-            makeMagnitudeStream(
-                "imu_accel_magnitude",
-                tr("Acceleration magnitude"),
-                tr("mg"),
-                QColor(85, 110, 210),
-                *ax,
-                *ay,
-                *az,
-                true,
-                {true, 0.0, 2000.0}),
-            checked);
-    }
+    // Vector magnitudes are display transforms, so they are computed from the
+    // plot backend's float columns (the calibrated axes, where calibration
+    // applies) without reading the doubles back. The three axes must be
+    // samples of one table; otherwise no magnitude is made.
+    struct Magnitude
+    {
+        const char *id;
+        const char *label;
+        const char *units;
+        QColor color;
+        SensorAxisRange range;
+        const char *axes[3];
+    };
+    const Magnitude magnitudes[] = {
+        {"imu_accel_magnitude", QT_TR_NOOP("Acceleration magnitude"), QT_TR_NOOP("mg"),
+         QColor(85, 110, 210), {true, 0.0, 2000.0}, {"imu_ax", "imu_ay", "imu_az"}},
+        {"imu_gyro_magnitude", QT_TR_NOOP("Gyro magnitude"), QT_TR_NOOP("dps"),
+         QColor(190, 80, 55), {}, {"imu_gx", "imu_gy", "imu_gz"}},
+        {"imu_mag_magnitude", QT_TR_NOOP("Magnetic field magnitude"), QT_TR_NOOP("uT"),
+         QColor(105, 130, 40), {}, {"imu_mx", "imu_my", "imu_mz"}},
+    };
 
-    const SensorStream *gx = streamById("imu_gx");
-    const SensorStream *gy = streamById("imu_gy");
-    const SensorStream *gz = streamById("imu_gz");
-    if (gx && gy && gz && streamsHaveSameTimebase(*gx, *gy, *gz)) {
-        const QAction *action = streamActionById("imu_gyro_magnitude");
-        const bool checked = action ? action->isChecked() : true;
-        addOrReplaceStream(
-            makeMagnitudeStream(
-                "imu_gyro_magnitude",
-                tr("Gyro magnitude"),
-                tr("dps"),
-                QColor(190, 80, 55),
-                *gx,
-                *gy,
-                *gz,
-                true),
-            checked);
-    }
+    for (const Magnitude &magnitude : magnitudes) {
+        const SensorStream *x = streamById(magnitude.axes[0]);
+        const SensorStream *y = streamById(magnitude.axes[1]);
+        const SensorStream *z = streamById(magnitude.axes[2]);
+        if (!x || !y || !z || !log_.data) {
+            continue;
+        }
 
-    const SensorStream *mx = streamById("imu_mx");
-    const SensorStream *my = streamById("imu_my");
-    const SensorStream *mz = streamById("imu_mz");
-    if (mx && my && mz && streamsHaveSameTimebase(*mx, *my, *mz)) {
-        const QAction *action = streamActionById("imu_mag_magnitude");
+        SensorStream stream;
+        stream.id = magnitude.id;
+        stream.label = tr(magnitude.label);
+        stream.units = tr(magnitude.units);
+        stream.timeDomain = x->timeDomain;
+        stream.color = magnitude.color;
+        stream.defaultVisible = true;
+        stream.axisSide = SensorAxisSide::Left;
+        stream.axisRange = magnitude.range;
+
+        const std::optional<sensordata::StreamId> id = log_.data->addComputed(
+            derivedPlotInfo(stream),
+            {x->dataId, y->dataId, z->dataId},
+            [](const float *v) {
+                const double vx = v[0];
+                const double vy = v[1];
+                const double vz = v[2];
+                return std::sqrt(vx * vx + vy * vy + vz * vz);
+            });
+        if (!id) {
+            continue;
+        }
+        stream.dataId = *id;
+
+        const QAction *action = streamActionById(stream.id);
         const bool checked = action ? action->isChecked() : true;
-        addOrReplaceStream(
-            makeMagnitudeStream(
-                "imu_mag_magnitude",
-                tr("Magnetic field magnitude"),
-                tr("uT"),
-                QColor(105, 130, 40),
-                *mx,
-                *my,
-                *mz,
-                true),
-            checked);
+        addOrReplaceStream(stream, checked);
     }
 }
 
@@ -396,17 +365,31 @@ void MainWindow::activityFilterToggled(bool checked)
 
     // The filter is intentionally simple and display-only. Raw activity remains
     // available as its own stream so users can compare filtered/unfiltered data.
+    // It runs on the SQLite doubles, as it always has; activity logs are small.
     SensorStream filtered;
     filtered.id = "activity_lowpass";
     filtered.label = tr("Activity filter");
     filtered.units = activity->units;
-    filtered.time = activity->time;
     filtered.timeDomain = activity->timeDomain;
-    filtered.value = lowPass(activity->time, activity->value, activity_low_pass_seconds_);
     filtered.color = QColor(20, 60, 120);
     filtered.derived = true;
     filtered.axisSide = activity->axisSide;
     filtered.axisRange = activity->axisRange;
+
+    std::vector<double> activity_time;
+    std::vector<double> activity_value;
+    std::optional<sensordata::StreamId> id;
+    if (readStreamDoubles(*activity, activity_time, activity_value)) {
+        id = log_.data->addDerived(
+            derivedPlotInfo(filtered),
+            activity->dataId,
+            lowPass(activity_time, activity_value, activity_low_pass_seconds_));
+    }
+    if (!id) {
+        setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
+        return;
+    }
+    filtered.dataId = *id;
 
     if (custom_axis_ranges_.contains("activity")
         && !explicit_axis_ranges_.contains("activity_lowpass")) {

@@ -9,6 +9,8 @@
 #include <QMessageBox>
 
 #include <cmath>
+#include <initializer_list>
+#include <optional>
 
 // compass_transforms.cpp owns compass display derivation. It is the bridge
 // between the orientation sources -- a processed log's stored quaternions, or
@@ -33,37 +35,32 @@ SensorStream makeCompassStream(
     const QString &label,
     const QString &units,
     const QColor &color,
-    const QVector<double> &time,
-    const QVector<double> &value,
     bool default_visible,
     const SensorAxisRange &range = {})
 {
     // Construct the normal SensorStream objects that plotting, range controls,
-    // tooltips, and View > Visible Streams already understand.
+    // tooltips, and View > Visible Streams already understand. The caller
+    // registers the values as plot data.
     SensorStream stream;
     stream.id = id;
     stream.label = label;
     stream.units = units;
-    stream.time = time;
-    stream.value = value;
     stream.color = color;
     stream.defaultVisible = default_visible;
     stream.axisRange = range;
     return stream;
 }
 
-bool compassRecordHasExpectedColumns(const SensorRecordSet &compass)
+bool recordSetHasColumns(const SensorRecordSet &record_set, std::initializer_list<const char *> columns)
 {
-    // Validate the loaded record set before indexing parallel columns. Missing
-    // columns usually mean a schema drift in tagcore's streams metadata or the
-    // loader's record-set handling.
-    const qsizetype sample_count = compass.time.size();
-    return compass.columns.value("ax").size() == sample_count
-        && compass.columns.value("ay").size() == sample_count
-        && compass.columns.value("az").size() == sample_count
-        && compass.columns.value("mx").size() == sample_count
-        && compass.columns.value("my").size() == sample_count
-        && compass.columns.value("mz").size() == sample_count;
+    // Validate the record set before reading it. Missing columns usually mean
+    // a schema drift in tagcore's streams metadata.
+    for (const char *column : columns) {
+        if (!record_set.columns.contains(QString::fromLatin1(column))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // Processed logs (dataprocessing processor version 2) carry orientation as a
@@ -74,27 +71,6 @@ const char *const kStoredOrientationRecordSets[] = {
     "compass_orientation",
     "imu_compass_orientation",
 };
-
-bool orientationRecordHasExpectedColumns(const SensorRecordSet &orientation)
-{
-    const qsizetype sample_count = orientation.time.size();
-    for (const char *column : {"qw", "qx", "qy", "qz", "dip", "field", "acceleration"}) {
-        if (orientation.columns.value(column).size() != sample_count) {
-            return false;
-        }
-    }
-    return true;
-}
-
-QVector<double> compassSampleTimes(const QVector<CompassDerivedSample> &samples)
-{
-    QVector<double> time;
-    time.reserve(samples.size());
-    for (const CompassDerivedSample &sample : samples) {
-        time.append(sample.epoch);
-    }
-    return time;
-}
 
 double displayHeadingFromYaw(double yaw, double declination_degrees)
 {
@@ -156,64 +132,101 @@ bool MainWindow::loadCompassSamples(QString &error)
     // Fill compass_samples_ with one quaternion sample per row. Each sample's
     // epoch field holds the row time in the log's own domain (epoch seconds,
     // or elapsed seconds for IMUTag), the same coordinate as the plot x axis.
+    // Rows are read as the SQLite doubles, so CompassProcessor sees exactly
+    // the inputs it always has.
     compass_samples_.clear();
+    compass_time_source_ = sensordata::kNoStream;
+    if (!log_.data) {
+        error = tr("The log has no sample data.");
+        return false;
+    }
+    std::string read_error;
 
     if (const SensorRecordSet *stored = storedOrientationRecordSet()) {
-        if (!orientationRecordHasExpectedColumns(*stored)) {
+        if (!recordSetHasColumns(
+                *stored, {"qw", "qx", "qy", "qz", "dip", "field", "acceleration"})) {
             error = tr("The %1 record set is missing one or more expected columns.")
                         .arg(stored->label);
             return false;
         }
-        const QVector<double> qw = stored->columns.value("qw");
-        const QVector<double> qx = stored->columns.value("qx");
-        const QVector<double> qy = stored->columns.value("qy");
-        const QVector<double> qz = stored->columns.value("qz");
-        const QVector<double> dip = stored->columns.value("dip");
-        const QVector<double> field = stored->columns.value("field");
-        const QVector<double> acceleration = stored->columns.value("acceleration");
-        compass_samples_.reserve(stored->time.size());
-        for (qsizetype i = 0; i < stored->time.size(); i++) {
-            CompassDerivedSample sample;
-            sample.epoch = stored->time[i];
-            sample.q = QQuaternion(qw[i], qx[i], qy[i], qz[i]);
-            sample.dip = dip[i];
-            sample.field = field[i];
-            sample.mg = acceleration[i];
-            compass_samples_.append(sample);
+        const bool read = log_.data->forEachRow(
+            stored->table.toStdString(),
+            {"qw", "qx", "qy", "qz", "dip", "field", "acceleration"},
+            [this](double time, const double *v) {
+                CompassDerivedSample sample;
+                sample.epoch = time;
+                sample.q = QQuaternion(v[0], v[1], v[2], v[3]);
+                sample.dip = v[4];
+                sample.field = v[5];
+                sample.mg = v[6];
+                compass_samples_.append(sample);
+            },
+            read_error);
+        if (!read) {
+            compass_samples_.clear();
+            error = QString::fromStdString(read_error);
+            return false;
         }
+        compass_time_source_ = stored->timeSource;
         compass_source_ = tr("stored quaternions (%1)").arg(stored->label);
         return true;
     }
 
+    // Live orientation comes only from CompassTag's compass_raw, which holds
+    // accelerometer and magnetometer samples taken together. IMUTag's ImuAccel
+    // and ImuMag are never paired here; IMUTag orientation is read only from a
+    // processed log's stored quaternions.
     const SensorRecordSet *compass = recordSetById("compass_raw");
     if (!compass || !log_.hasCompassCalibration) {
         error = tr("Compass orientation, or compass raw samples and calibration "
                    "constants, are required.");
         return false;
     }
-    if (!compassRecordHasExpectedColumns(*compass)) {
+    if (!recordSetHasColumns(*compass, {"ax", "ay", "az", "mx", "my", "mz"})) {
         error = tr("The compass raw record set is missing one or more expected columns.");
         return false;
     }
 
-    const QVector<double> ax = compass->columns.value("ax");
-    const QVector<double> ay = compass->columns.value("ay");
-    const QVector<double> az = compass->columns.value("az");
-    const QVector<double> mx = compass->columns.value("mx");
-    const QVector<double> my = compass->columns.value("my");
-    const QVector<double> mz = compass->columns.value("mz");
-
     CompassProcessor processor(log_.compassCalibration);
-    compass_samples_.reserve(compass->time.size());
-    for (qsizetype i = 0; i < compass->time.size(); i++) {
-        CompassRawSample raw;
-        raw.epoch = compass->time[i];
-        raw.accel = QVector3D(ax[i], ay[i], az[i]);
-        raw.mag = QVector3D(mx[i], my[i], mz[i]);
-        compass_samples_.append(processor.deriveSample(raw));
+    const bool read = log_.data->forEachRow(
+        compass->table.toStdString(),
+        {"ax", "ay", "az", "mx", "my", "mz"},
+        [this, &processor](double time, const double *v) {
+            CompassRawSample raw;
+            raw.epoch = time;
+            raw.accel = QVector3D(v[0], v[1], v[2]);
+            raw.mag = QVector3D(v[3], v[4], v[5]);
+            compass_samples_.append(processor.deriveSample(raw));
+        },
+        read_error);
+    if (!read) {
+        compass_samples_.clear();
+        error = QString::fromStdString(read_error);
+        return false;
     }
+    compass_time_source_ = compass->timeSource;
     compass_source_ = tr("derived from raw compass samples");
     return true;
+}
+
+void MainWindow::addCompassStream(SensorStream stream, const QVector<double> &values, bool checked)
+{
+    // Register one compass view on the record set's time axis (one value per
+    // row) and publish it. The previous stream of the same id, if any, is
+    // released by addOrReplaceStream().
+    if (!log_.data) {
+        return;
+    }
+    stream.timeDomain = log_.timeDomain;
+    const std::optional<sensordata::StreamId> id = log_.data->addDerived(
+        derivedPlotInfo(stream), compass_time_source_, values.constData(),
+        static_cast<std::size_t>(values.size()));
+    if (!id) {
+        qWarning().noquote() << "Could not register compass stream" << stream.id;
+        return;
+    }
+    stream.dataId = *id;
+    addOrReplaceStream(stream, checked);
 }
 
 void MainWindow::createCompassPlotStreams()
@@ -229,8 +242,6 @@ void MainWindow::createCompassPlotStreams()
     }
 
     const qsizetype sample_count = compass_samples_.size();
-    const QVector<double> compass_time = compassSampleTimes(compass_samples_);
-    QVector<double> heading;
     QVector<double> acceleration;
     QVector<double> pitch;
     QVector<double> roll;
@@ -250,76 +261,36 @@ void MainWindow::createCompassPlotStreams()
         dip.append(sample.dip);
         field.append(sample.field);
     }
-    heading = compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_);
+    const QVector<double> heading =
+        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_);
     if (!compass_samples_.isEmpty()) {
         compass_display_.showSample(compass_samples_.first());
     }
 
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_heading",
-            tr("Heading"),
-            tr("deg"),
-            QColor(195, 40, 175),
-            compass_time,
-            heading,
-            true,
-            {true, 0.0, 360.0}),
-        true);
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_acceleration",
-            tr("Acceleration"),
-            tr("mg"),
-            QColor(85, 110, 210),
-            compass_time,
-            acceleration,
-            true,
-            {true, 800.0, 1200.0}),
-        true);
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_pitch",
-            tr("Pitch"),
-            tr("deg"),
-            QColor(215, 115, 40),
-            compass_time,
-            pitch,
-            false,
-            {true, -180.0, 180.0}),
-        false);
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_roll",
-            tr("Roll"),
-            tr("deg"),
-            QColor(115, 85, 180),
-            compass_time,
-            roll,
-            false,
-            {true, -180.0, 180.0}),
-        false);
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_dip",
-            tr("Dip"),
-            tr("deg"),
-            QColor(25, 150, 155),
-            compass_time,
-            dip,
-            false,
-            {true, -90.0, 90.0}),
-        false);
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_field",
-            tr("Magnetic field"),
-            tr("uT"),
-            QColor(105, 130, 40),
-            compass_time,
-            field,
-            false),
-        false);
+    addCompassStream(
+        makeCompassStream("compass_heading", tr("Heading"), tr("deg"), QColor(195, 40, 175),
+                          true, {true, 0.0, 360.0}),
+        heading, true);
+    addCompassStream(
+        makeCompassStream("compass_acceleration", tr("Acceleration"), tr("mg"),
+                          QColor(85, 110, 210), true, {true, 800.0, 1200.0}),
+        acceleration, true);
+    addCompassStream(
+        makeCompassStream("compass_pitch", tr("Pitch"), tr("deg"), QColor(215, 115, 40), false,
+                          {true, -180.0, 180.0}),
+        pitch, false);
+    addCompassStream(
+        makeCompassStream("compass_roll", tr("Roll"), tr("deg"), QColor(115, 85, 180), false,
+                          {true, -180.0, 180.0}),
+        roll, false);
+    addCompassStream(
+        makeCompassStream("compass_dip", tr("Dip"), tr("deg"), QColor(25, 150, 155), false,
+                          {true, -90.0, 90.0}),
+        dip, false);
+    addCompassStream(
+        makeCompassStream("compass_field", tr("Magnetic field"), tr("uT"), QColor(105, 130, 40),
+                          false),
+        field, false);
 }
 
 void MainWindow::setDeclination()
@@ -350,16 +321,10 @@ void MainWindow::setDeclination()
 
     const QAction *heading_action = streamActionById("compass_heading");
     const bool checked = heading_action ? heading_action->isChecked() : true;
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_heading",
-            tr("Heading"),
-            tr("deg"),
-            QColor(195, 40, 175),
-            compassSampleTimes(compass_samples_),
-            compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
-            true,
-            {true, 0.0, 360.0}),
+    addCompassStream(
+        makeCompassStream("compass_heading", tr("Heading"), tr("deg"), QColor(195, 40, 175),
+                          true, {true, 0.0, 360.0}),
+        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
         checked);
 }
 
@@ -376,15 +341,9 @@ void MainWindow::batteryForwardToggled(bool checked)
 
     const QAction *heading_action = streamActionById("compass_heading");
     const bool heading_checked = heading_action ? heading_action->isChecked() : true;
-    addOrReplaceStream(
-        makeCompassStream(
-            "compass_heading",
-            tr("Heading"),
-            tr("deg"),
-            QColor(195, 40, 175),
-            compassSampleTimes(compass_samples_),
-            compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
-            true,
-            {true, 0.0, 360.0}),
+    addCompassStream(
+        makeCompassStream("compass_heading", tr("Heading"), tr("deg"), QColor(195, 40, 175),
+                          true, {true, 0.0, 360.0}),
+        compassHeadingValues(compass_samples_, declination_degrees_, battery_forward_),
         heading_checked);
 }

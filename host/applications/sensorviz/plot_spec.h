@@ -107,9 +107,7 @@ struct PlotTraceSpec
 {
     QString id;                    ///< Stream id.
     QString name;                  ///< Stream label.
-    sensordata::StreamId stream = sensordata::kNoStream; ///< Plot data in the log's sensordata::Log; kNoStream when the stream has none.
-    QVector<double> fallbackTime;  ///< The stream's own samples, used only when #stream is kNoStream.
-    QVector<double> fallbackValue; ///< Values parallel to #fallbackTime.
+    sensordata::StreamId stream = sensordata::kNoStream; ///< Plot data in the log's sensordata::Log; a trace without any is drawn empty.
     QColor color;                  ///< Line color.
     int penWidth = 1;              ///< Line width in pixels; derived streams are drawn heavier.
     int axis = 0;                  ///< Index into PlotSpec::axes.

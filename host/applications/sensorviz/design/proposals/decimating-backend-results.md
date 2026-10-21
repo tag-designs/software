@@ -245,3 +245,49 @@ code), with no intended change of behaviour.
 
 `plotspec_check` (89 checks against the fixtures) covers the policy that
 moved into `buildPlotSpec()`.
+
+## 2026-10-21: phase 3, transforms read the backend
+
+**Conditions.** As above, with `main` at `bd5fd193` merged. `SensorStream`
+holds no samples, and the loader no longer makes its own pass over the log.
+The IMUTag magnitudes and the acceleration calibration offset are computed
+from the backend's `float` columns with `sensordata::Log::addComputed()`.
+The magnetometer calibration also works from the `float`s. Altitude, the
+activity filter and the CompassTag orientation read SQLite `double`s through
+`forEachRow()`; the pressure pass is cheap at the IMUTag pressure rate.
+
+```text
+/usr/bin/time -l sensorviz --load-log full.db3 --capture-screenshot imutag --no-user-prompts
+```
+
+| Visible streams | Before (`4395236e`) | Phase 2 | Phase 3 |
+| --- | --- | --- | --- |
+| Defaults | 43.7 s, 2,937,261,488 B | 11.4-13.0 s, 2,547,239,768 B | 5.7-8.2 s, 1,120,094,008-1,133,578,040 B |
+| All six components plus magnitudes | 41.5 s, 4,835,152,672 B | 11.1-11.5 s, 2,548,796,272 B | 5.9-6.1 s, 1,129,219,896-1,130,923,832 B |
+
+The peak is the backend's 0.85 GB for the eleven stored streams, the two
+IMU magnitudes (2 × 89 MB of `float`s and pyramids), and Qt. The calibrated
+accel and mag axes replace their stored copies, one axis at a time, so they
+add nothing to the steady state.
+
+**Magnitudes from `float`s.** On the IMUTag fixture's 35,550 gyro samples,
+6,792 magnitudes (19%) differ from the `double` computation, each by one
+`float` step, at most 1.19 × 10^-7 relative. The calibrated acceleration axes
+differ the same way. The magnetometer calibration is exact, because
+`CompassCalibration::apply()` takes a float `QVector3D`, which is what the
+stored `float` already is.
+
+**Equivalence**, against the PlotSpec/PlotView build (`234c8fbf`):
+
+| Capture | Differing pixels | Largest channel difference |
+| --- | --- | --- |
+| `imutag` suite, fixture plot | 4, in one pixel column | 1 |
+| `compasstag` suite | 0 | 0 |
+| Full log, defaults | 0 | 0 |
+| Full log, all streams | 0 | 0 |
+| Zoomed windows (five, as in phase 2) | 0, 9, 0, 1, 0 | 3 |
+
+The 57 hover lines over those windows are identical, the magnitudes included:
+at the two decimals the readout shows, the `float` step does not reach the
+last digit. The CompassTag heading, acceleration, pitch, roll, dip and field
+streams render identically, as their `double` inputs are unchanged.

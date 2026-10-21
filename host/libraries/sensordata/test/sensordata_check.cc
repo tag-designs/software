@@ -758,6 +758,46 @@ void checkDerived()
     const auto by_pointer = log->addDerived(info, sax, magnitude.data(), magnitude.size());
     CHECK(by_pointer.has_value() && log->remove(*by_pointer));
 
+    // addComputed() works on the stored floats, on the inputs' time axis.
+    sensordata::StreamInfo computed_info;
+    computed_info.id = "magnitude_from_floats";
+    const auto scomputed = log->addComputed(computed_info, {sax, say}, [](const float *v) {
+        return std::sqrt(double(v[0]) * v[0] + double(v[1]) * v[1]);
+    });
+    CHECK(scomputed.has_value());
+    if (scomputed) {
+        bool computed_ok = log->info(*scomputed)->derived && log->info(*scomputed)->table == "Data";
+        for (std::size_t i = 0; i < n; i += 7) {
+            const double fx = static_cast<float>(ax[i]);
+            const double fy = static_cast<float>(ay[i]);
+            const float want = static_cast<float>(std::sqrt(fx * fx + fy * fy));
+            const auto sample = log->valueAt(*scomputed, static_cast<double>(time_us[i]) / 1e6,
+                                             sensordata::Pick::AtOrAfter);
+            computed_ok = computed_ok && sample && sample->index == i
+                && sample->value == static_cast<double>(want);
+        }
+        CHECK(computed_ok);
+        CHECK(log->remove(*scomputed));
+    }
+    CHECK(!log->addComputed(computed_info, {}, [](const float *) { return 0.0; }).has_value());
+    CHECK(!log->addComputed(computed_info, {sax, sensordata::kNoStream},
+                            [](const float *) { return 0.0; })
+               .has_value());
+    CHECK(!log->addComputed(computed_info, {sax}, {}).has_value());
+    {
+        // Streams on different time axes cannot be combined.
+        sensordata::StreamInfo other;
+        other.id = "other_axis";
+        const auto sother = log->addDerived(other, {1.0, 2.0}, {3.0, 4.0});
+        CHECK(sother.has_value());
+        if (sother) {
+            CHECK(!log->addComputed(computed_info, {sax, *sother},
+                                    [](const float *) { return 0.0; })
+                       .has_value());
+            CHECK(log->remove(*sother));
+        }
+    }
+
     // A replacement registered under a stored id is what find() returns.
     sensordata::StreamInfo corrected;
     corrected.id = "ax";

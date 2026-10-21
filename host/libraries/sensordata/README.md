@@ -37,6 +37,12 @@ The `float` copy is for drawing only. Exact values come from SQLite:
   bit-identical to reading the database directly, such as the
   [sensoranalysis](../sensoranalysis/README.md) inputs.
 
+Display transforms that can work from the `float` copy, such as a vector
+magnitude, use `addComputed()` instead: it maps the stored values of streams
+on one time axis, sample by sample, into a new stream, reading nothing from
+SQLite and holding no `double`s. Its results differ from the same arithmetic on
+the `double`s by the `float` rounding of the inputs, about one part in 10^7.
+
 ## Using it
 
 ```cpp
@@ -49,6 +55,11 @@ const sensordata::Envelope points = log->view(ax, t0, t1, 2000);
 
 // The exact value under the mouse.
 const auto sample = log->valueAt(ax, mouse_time, sensordata::Pick::AtOrAfter);
+
+// A display-only magnitude straight from the stored floats.
+log->addComputed({/* id, label, units */}, {ax, ay, az}, [](const float *v) {
+    return std::sqrt(double(v[0]) * v[0] + double(v[1]) * v[1] + double(v[2]) * v[2]);
+});
 
 // A derived stream on the same time axis, computed from exact inputs.
 std::vector<double> magnitude;

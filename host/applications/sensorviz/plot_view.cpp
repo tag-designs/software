@@ -37,8 +37,7 @@ bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
         const PlotTraceSpec &x = a.traces[i];
         const PlotTraceSpec &y = b.traces[i];
         if (x.id != y.id || x.name != y.name || x.stream != y.stream || x.color != y.color
-            || x.penWidth != y.penWidth || x.axis != y.axis
-            || x.fallbackTime != y.fallbackTime || x.fallbackValue != y.fallbackValue) {
+            || x.penWidth != y.penWidth || x.axis != y.axis) {
             return false;
         }
     }
@@ -229,8 +228,6 @@ void PlotView::rebuild()
         graph->setPen(QPen(trace.color, trace.penWidth));
         if (trace.stream != sensordata::kNoStream) {
             graphs_.append(qMakePair(graph, trace.stream));
-        } else {
-            graph->setData(trace.fallbackTime, trace.fallbackValue, true);
         }
 
         switch (axis_spec.mode) {

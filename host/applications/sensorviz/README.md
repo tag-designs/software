@@ -61,13 +61,13 @@ The code is split by responsibility:
 - `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
   default graph title, stream-action creation, File Info updates, and initial
   plot refresh.
-- `sqlite_loader.*`: read-only SQLite adapter. It consumes tagcore's mandatory
-  `streams` metadata table, loads scalar streams, groups multi-column
-  `record_column` rows into `SensorRecordSet`, loads CompassTag calibration
-  metadata, applies it to IMUTag magnetometer axes, and records
-  collection-start metadata for elapsed-time IMUTag logs. It then opens the
-  [`sensordata`](../../libraries/sensordata/README.md) plot backend on the
-  same file and points every stream at its plot data (see
+- `sqlite_loader.*`: read-only SQLite adapter. It opens the
+  [`sensordata`](../../libraries/sensordata/README.md) plot backend, which
+  reads tagcore's mandatory `streams` metadata and every sample once; turns
+  its scalar streams into `SensorStream`s and groups its `record_column`
+  streams into `SensorRecordSet`s; loads CompassTag calibration metadata and
+  applies it to the IMUTag magnetometer and acceleration axes; and records
+  collection-start metadata and events for elapsed-time IMUTag logs (see
   [Data Model](#data-model)).
 - `sensor_preferences.*`: sensorViz display defaults
   (`defaultDisplayForStream()`), in-memory per-tag overrides, and JSON
@@ -190,28 +190,37 @@ does not convert high-rate elapsed IMUTag samples back to wall-clock time.
 Graphs never hold a stream's samples. `SensorLog::data` is a
 [`sensordata::Log`](../../libraries/sensordata/README.md) opened on the same
 file, and each `SensorStream::dataId` names that stream's plot data in it.
-After every QCustomPlot layout pass, `PlotView` asks it for the M4 envelope of the visible window, one column per device pixel: the
+After every QCustomPlot layout pass, `PlotView` asks it for the M4 envelope of
+the visible window, one column per device pixel: the
 first, last, minimum and maximum sample of each column, which draws the same
 line as every sample in at most four points per pixel. Value ranges come from
 its min/max pyramids, and the hover readout from `valueAt()`, which reads a
 stored stream's value back from SQLite exactly. Printing refills at the
 printer's resolution.
 
-Most `dataId`s name a stored stream. The calibrated IMUTag magnetometer and
-acceleration axes, and every transform output, are registered as derived
-streams instead; a derived stream whose time vector is an input's (the same
-shared `QVector`) shares that input's time axis.
+`SensorStream` holds no samples. Most `dataId`s name a stored stream. The
+calibrated IMUTag magnetometer and acceleration axes, and every transform
+output, are derived streams registered on an input's time axis.
 
-`SensorStream::time` and `value` are full-precision copies kept as transform
-inputs, so they stay filled for streams read from the log and are emptied for
-a transform's output once its plot data is registered. Moving the transform
-inputs onto `sensordata::Log::forEachRow()` and dropping these copies is the
-next step of the
-[decimating backend proposal](design/proposals/decimating-backend.md#phases).
+Transforms read their inputs from the backend in one of two ways:
 
-`SensorRecordSet` is a multi-column time-indexed table that is loaded but not
-plotted directly. CompassTag accelerometer/magnetometer samples are loaded this
-way and then converted into streams by transforms.
+- **Stored `float`s**, through `sensordata::Log::addComputed()`, for display
+  transforms where a rounding of about one part in 10^7 does not matter: the
+  IMUTag magnitudes and the acceleration calibration offset. Nothing is read
+  back from SQLite and no `double` copy is held. The magnetometer calibration
+  also works from the `float`s, which is exact, because the calibration takes
+  a float `QVector3D` anyway.
+- **SQLite `double`s**, through `sensordata::Log::forEachRow()`, where results
+  must match the database: altitude (pressure and the pressure-sensor
+  temperature), the activity filter, and the compass orientation, whose
+  inputs go to sensoranalysis's `CompassProcessor` bit for bit.
+
+`SensorRecordSet` is a multi-column table that is loaded but not plotted
+directly: its table, time domain, column names and a stream on its time axis.
+Compass transforms read its rows with `forEachRow()`. Live orientation comes
+only from CompassTag's `compass_raw` record set. IMUTag orientation comes only
+from a processed log's stored `imu_compass_orientation` quaternions; sensorViz
+never pairs IMUTag `ImuAccel` with `ImuMag` itself.
 
 Compass calibration constants are stored as typed metadata on `SensorLog`.
 Keeping calibration beside the raw compass record set lets the compass
@@ -343,13 +352,13 @@ Transforms are still hardcoded in `transforms.cpp` and
 
 1. Check that required input streams or record sets exist.
 2. Prompt for transform-specific parameters.
-3. Build a derived `SensorStream`. Reuse an input stream's `time` vector when
-   the output has the same sample times, so its plot data shares that time
-   axis.
-4. Call `addOrReplaceStream()` so plotting, ranges, and context menus update.
-   It registers the plot data and then empties the stream's `time` and
-   `value`, so a transform must take its inputs from streams read from the
-   log, not from another transform's output.
+3. Read the inputs from `log_.data`: `addComputed()` over the stored floats
+   for a display transform, or `readStreamDoubles()` / `forEachRow()` when the
+   result must match the database.
+4. Build a derived `SensorStream` (metadata only), register its values with
+   `addComputed()` or `addDerived()` on an input's time axis, set its
+   `dataId`, and call `addOrReplaceStream()` so plotting, ranges, and context
+   menus update. A replaced stream's plot data is released there.
 5. Remove the derived stream when the transform action is unchecked.
 
 Future transforms should keep computation separate from file loading. The
@@ -448,10 +457,11 @@ Only `imutag.db3` and `compasstag.db3` are committed under
   declination, UTC offset, battery-forward, metadata-box position) are
   deliberately not persisted.
 - Multi-column record sets are used mainly for CompassTag data.
-- A log is read twice on load, once into `SensorStream` doubles for the
-  transforms and once into the plot backend, and both stay in memory. A full
-  2 Gbit IMUTag log peaks at about 2.5 GB with any streams visible
+- Logs larger than memory are not supported: a full 2 Gbit IMUTag log peaks
+  at about 1.1 GB
   ([measurements](design/proposals/decimating-backend-results.md)).
+- Segment gaps are joined by lines, as before
+  ([phase 4](design/proposals/decimating-backend.md#phases)).
 - There are no automated GUI tests for menu organization, preference
   load/store, metadata-box interaction, or plot-title behavior.
 

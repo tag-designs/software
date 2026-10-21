@@ -73,17 +73,10 @@ const sensordata::StreamInfo *MainWindow::plotDataInfo(const SensorStream &strea
     return log_.data ? log_.data->info(stream.dataId) : nullptr;
 }
 
-void MainWindow::registerPlotData(SensorStream &stream)
+sensordata::StreamInfo MainWindow::derivedPlotInfo(const SensorStream &stream) const
 {
-    // Give a stream built by a transform its own plot data in log_.data.
-    // Transforms usually reuse an input stream's time vector (magnitudes,
-    // altitude, activity filter); when this stream's time is that same
-    // shared QVector, the plot data shares the input's time axis too.
-    stream.dataId = sensordata::kNoStream;
-    if (!log_.data || stream.time.isEmpty() || stream.time.size() != stream.value.size()) {
-        return;
-    }
-
+    // Description of a transform output for addDerived()/addComputed(); the
+    // backend fills in the time axis and summaries.
     sensordata::StreamInfo info;
     info.id = stream.id.toStdString();
     info.label = stream.label.toStdString();
@@ -92,27 +85,38 @@ void MainWindow::registerPlotData(SensorStream &stream)
     info.domain = stream.timeDomain == SensorTimeDomain::ElapsedSeconds
         ? sensordata::TimeDomain::ElapsedSeconds
         : sensordata::TimeDomain::EpochSeconds;
+    return info;
+}
 
-    for (const SensorStream &source : streams_) {
-        if (source.dataId != sensordata::kNoStream
-            && source.time.constData() == stream.time.constData()) {
-            const std::optional<sensordata::StreamId> id = log_.data->addDerived(
-                info, source.dataId, stream.value.constData(),
-                static_cast<std::size_t>(stream.value.size()));
-            if (id) {
-                stream.dataId = *id;
-                return;
-            }
-        }
+bool MainWindow::readStreamDoubles(
+    const SensorStream &stream,
+    std::vector<double> &time,
+    std::vector<double> &value) const
+{
+    // The exact SQLite doubles of a stream read from the log, in its time
+    // order, for transforms whose results must match the database. Fails for
+    // derived streams, which have no column to read.
+    const sensordata::StreamInfo *info = plotDataInfo(stream);
+    if (!info || info->derived || info->value_column.empty()) {
+        return false;
     }
-
-    const std::optional<sensordata::StreamId> id = log_.data->addDerived(
-        info,
-        std::vector<double>(stream.time.cbegin(), stream.time.cend()),
-        std::vector<double>(stream.value.cbegin(), stream.value.cend()));
-    if (id) {
-        stream.dataId = *id;
+    time.clear();
+    value.clear();
+    time.reserve(info->samples);
+    value.reserve(info->samples);
+    std::string error;
+    const bool ok = log_.data->forEachRow(
+        info->table,
+        {info->value_column},
+        [&time, &value](double t, const double *values) {
+            time.push_back(t);
+            value.push_back(values[0]);
+        },
+        error);
+    if (!ok) {
+        qWarning().noquote() << "Could not read" << stream.id << ":" << QString::fromStdString(error);
     }
+    return ok;
 }
 
 void MainWindow::releasePlotData(const SensorStream &stream)
