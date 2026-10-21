@@ -77,6 +77,19 @@ is the importer, and it is small.
 
 ### 1. Trajectory from a pattern flight
 
+**Sources.** Two kinds of ArduPilot `.bin` log drive the simulator, read the
+same way:
+
+| Source | Truth it carries | Use |
+| --- | --- | --- |
+| **Recorded pattern flights** (logs from a pattern pilot's own aircraft, the first set promised) | ArduPilot's fused estimate: position, velocity, attitude. tagsim treats the fitted trajectory as truth, so the simulation is exact even where the estimate differs from what the aircraft did | Real piloting and real aerodynamics; the primary source |
+| **ArduPlane SITL flying scripted aerobatics** (`plane_aerobatics.lua` under `NAV_SCRIPT_TIME` mission items) | The simulator's exact state, logged as `SIM` (roll, pitch, yaw, attitude quaternion, latitude, longitude, altitude) and `SIM2` (NED position and velocity from home), beside the EKF's own `XKQ` estimate | Unlimited, licence-free flights of any schedule; a way to check the trajectory fit against a known truth |
+
+**Keep the logs out of git.** Source logs are not committed: they belong to
+the pilot and carry flying-field GPS positions. A test that needs one finds
+it through an environment variable and skips without it. Small synthetic
+primitives and SITL-generated logs can be committed if they are small.
+
 **Source messages.** Read the log with pymavlink, or with PyFlightCoach's
 reader, which wraps it.
 
@@ -106,6 +119,17 @@ body rate from the spline and compare the result with the spline's own pose.
 Any drift measures the simulator's own inconsistency, which must be well
 below the filter errors being studied. The tool reports it with every
 generated log.
+
+**Comparison with the aircraft's own sensors.** A recorded flight also holds
+the autopilot's raw IMU, magnetometer and barometer data. Rotate tagsim's
+ideal specific force, body rate and field into the autopilot's body frame and
+compare them with those channels. Large differences show where the fit has
+smoothed away real motion, which is mostly vibration and fast transients, or
+where mounting is wrong.
+
+This compares two models of one flight; neither side is truth. For SITL logs
+the same comparison runs against `SIM`, which is truth, and tests the fit
+itself.
 
 **Vibration.** EKF tracks carry none. An optional band-limited vibration term
 can be added, off by default. Taking the log's raw `IMU` messages as a
@@ -345,7 +369,7 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 | --- | --- | --- |
 | 1 | `tag-log-import`; tagsim page and Ack writer; a stationary trajectory; no noise | The imported log decodes back to exactly the values the model wrote, including flags, segments, NaN slots and partial pages; `sensorviz` and `dataprocessing` open it |
 | 2 | Full sensor model (noise, quantization, saturation, clock, magnetometer timing, pressure drift, calibration distortion); truth sidecar and `SimRun` | Allan-variance and spectrum checks of a simulated static log against the configured noise; `check_orientation_frames.py` agrees; calibration recovers the true field |
-| 3 | Pattern-flight replay and synthetic primitives; consistency check; UAV Log Viewer export | Strapdown drift under a stated bound; the exported trajectory matches the source flight by eye in the viewer and numerically |
+| 3 | Pattern-flight replay (recorded logs and SITL) and synthetic primitives; consistency check; comparison with the log's own sensors; UAV Log Viewer export | Strapdown drift under a stated bound; on SITL, the fitted trajectory matches `SIM`; the exported trajectory matches the source flight by eye in the viewer and numerically |
 | 4 | pytest harness: small generated fixtures run through the importer, `dataprocessing` and, once it exists, sensorviz's `session_cli`; a saturation report across ODR and range settings | Runs without hardware; the range report informs default configuration |
 | Later | Refit noise and bias parameters from a static recording on a prototype; validate against a short real motion recording | Simulated and real noise statistics agree |
 
@@ -369,8 +393,9 @@ The package follows `tagclient`'s layout:
 
 ## Open questions
 
-- **Logs.** Which pattern-flight logs can be used? Their licensing and
-  provenance need settling before any are used in tests or examples.
+- **Using the logs.** The first recorded logs come from a pattern pilot. Agree
+  with him how they may be used (local testing only, or excerpts in
+  examples) before anything derived from them is shared.
 - **Which board to target first.** IMUTagNandBmp581 is assumed. Other boards
   differ in the magnetometer part and mapping.
 - **Default ranges.** These are left to the phase 4 saturation report, as

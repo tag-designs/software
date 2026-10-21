@@ -8,6 +8,31 @@ summary: Open questions for the IMUTag family -- cell voltage, supply noise on t
 
 ## Power
 
+- **Find out whether the BMP581 runs far faster than intended.**
+  - *The code:* collection puts the BMP581 in `BMP5_POWERMODE_CONTINUOUS`
+    (`bmp581_config_continuous_device()`, called from `sensors.c`), with the
+    ODR that `select_pressure_rate()` picks (25 Hz at 100 Hz IMU ODR).
+  - *The datasheet* (BST-BMP581-DS004 §4.3.6) says CONTINUOUS mode ignores
+    the ODR setting and converts as fast as the oversampling allows. Its
+    Table 9 gives about 255 Hz at OSR_P ×4, OSR_T ×1. The firmware's OSR_T ×2
+    makes that somewhat lower.
+  - *Possible cost:* the sensor would be converting all the time, where NORMAL
+    mode at 25 Hz with the same oversampling converts about 4 ms in every
+    40 ms. The datasheet's 75 µA at "high resolution", 30 Hz, about a third
+    duty, implies an active current near 200 µA. So the difference could be
+    a large share of the 539 µA measured at 100 Hz ([power.md](design/power.md)).
+    That is an estimate, not a measurement.
+  - *Effect on data:* none on per-sample noise, which is set by the
+    oversampling. Only the age of the pressure value read once per
+    superframe changes: under 5 ms now, up to 40 ms at 25 Hz.
+  - *Test:*
+    1. Count DRDY pulses on `LPS_DRDY`, or compare current traces of the
+       current image against a build using `BMP5_POWERMODE_NORMAL` at the same
+       ODR. Either settles the rate without attaching.
+    2. If NORMAL is adopted, measure with `tag_lifecycle_check.py` and
+       qualify with `tag_release_check.py`, per
+       [Verifying a firmware change](../../../../docs/bench/verifying-firmware.md).
+
 - **Record the deployed cell voltage and chemistry.** It is not recorded in
   this tree. The current figures in [power.md](design/power.md) and the
   release gate's `--run-max-ua` bound assume a 3.7 V cell; the SMPS board's
