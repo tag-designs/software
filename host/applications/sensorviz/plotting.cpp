@@ -20,6 +20,7 @@ PlotState MainWindow::plotState() const
     state.titleVisible = graph_title_visible_;
     state.declinationDegrees = declination_degrees_;
     state.seaLevelPressure = sea_level_pressure_;
+    state.breakAtGaps = break_gaps_action_->isChecked();
     return state;
 }
 

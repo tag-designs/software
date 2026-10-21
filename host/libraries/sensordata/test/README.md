@@ -33,7 +33,14 @@ with the library: linear scans for column edges, extremes and ranges.
 | Out-of-order tables | Shuffled times with many ties: stable sort, rowid of each sample, `forEachRow()` order |
 | Edge cases | A single row, an empty table, and metadata that must be refused: no `streams` table or rows, a missing table or column, an unknown kind, an incomplete row, an ungrouped or mixed record set |
 | Derived streams | `forEachRow()` inputs, `addDerived()` on a shared and on its own axis, rejected lengths and times, `find()` preferring the newest, `remove()`, and `forEachRow()` staying available while any stream uses the table |
+| Gaps | Irregular steps with injected gaps (at the start, before the last sample, long, clustered several to a column, random): the gap count and typical interval against an independent implementation of the rule; views in both gap modes over windows that start, end or lie inside a gap; gap markers; inheritance by computed streams; `valueAt()` inside and beside gaps; an irregular but continuous table with no gaps |
 | Fixtures | Every log in `host/docs/fixtures/sensorviz/`: the stream list equals the metadata rows with data, in order; times match `ORDER BY time`; views match brute force; `forEachRow()` returns the SQLite doubles |
+
+## `--gaps <path>...`
+
+Prints, for each log, every table's sample count, typical interval and gap
+count. The counts for the committed fixtures and other logs are in the
+[decimating backend results](../../../applications/sensorviz/design/proposals/decimating-backend-results.md).
 
 ## `--log <path>`
 

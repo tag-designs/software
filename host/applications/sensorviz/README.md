@@ -246,6 +246,11 @@ structures. Adding a simple one-column sensor table should usually start in
   component traces are comparable.
 - Displayed streams can have explicit y-axis ranges set from the View menu or
   plot context menu.
+- Lines break at gaps in the data (View > Break Lines at Gaps, on by
+  default): where a step between samples is more than four times the
+  stream's typical interval, the line stops and restarts, and the hover
+  readout shows nothing for that stream inside the gap. With the toggle off,
+  lines join across gaps as they used to.
 - Normal redraws preserve the current x-axis range.
 - Loading a new file and Reset Zoom expand to the full data range and restore
   default y-axis ranges.
@@ -281,6 +286,8 @@ Saved preference files may contain:
 - `visible_streams`: present only when visibility differs from defaults.
 - `colors`: stream id to color string for user-chosen colors.
 - `axis_sides`: stream id to `left` or `right` for user-chosen axis placement.
+- `break_lines_at_gaps`: `false` when the user turned off View > Break Lines
+  at Gaps; absent when it is on, the default.
 
 Saved preference files intentionally do not contain y-axis ranges, sea-level
 pressure, declination, UTC offset, or battery-forward. Those are session or
@@ -460,8 +467,6 @@ Only `imutag.db3` and `compasstag.db3` are committed under
 - Logs larger than memory are not supported: a full 2 Gbit IMUTag log peaks
   at about 1.1 GB
   ([measurements](design/proposals/decimating-backend-results.md)).
-- Segment gaps are joined by lines, as before
-  ([phase 4](design/proposals/decimating-backend.md#phases)).
 - There are no automated GUI tests for menu organization, preference
   load/store, metadata-box interaction, or plot-title behavior.
 

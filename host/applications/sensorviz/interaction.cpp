@@ -170,6 +170,7 @@ QMenu *MainWindow::createPlotContextMenu(QWidget *parent)
     view->addAction(reset_action_);
     view->addAction(zoom_to_cursors_action_);
     view->addAction(show_cursors_action_);
+    view->addAction(break_gaps_action_);
     if (calibration_constants_action_->isVisible()) {
         view->addSeparator();
         view->addAction(calibration_constants_action_);
@@ -218,8 +219,11 @@ QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) cons
     if (!log_.data) {
         return QString();
     }
-    const std::optional<sensordata::Sample> sample =
-        log_.data->valueAt(stream.dataId, epoch, sensordata::Pick::AtOrAfter);
+    // Inside a gap in the data there is no value to show, unless lines are
+    // being joined across gaps.
+    const std::optional<sensordata::Sample> sample = log_.data->valueAt(
+        stream.dataId, epoch, sensordata::Pick::AtOrAfter,
+        break_gaps_action_->isChecked() ? sensordata::GapMode::Break : sensordata::GapMode::Join);
     if (!sample) {
         return QString();
     }

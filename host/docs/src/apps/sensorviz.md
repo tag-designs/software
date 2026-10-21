@@ -92,6 +92,7 @@ may be short for simple tags and longer for IMUTag or CompassTag logs.
 | **Ranges** | Opens a submenu with one range command for each visible stream. |
 | **Reset Zoom** | Restores the full loaded time span and clears manual y-axis ranges. Fixed metadata ranges and data-derived default ranges are reapplied. |
 | **Zoom to Cursors** | Zooms the time axis to the interval between the two vertical cursors. |
+| **Break Lines at Gaps** | When checked (the default), a plotted line stops where the log has a gap in its data, such as missing pages, and the mouse readout shows no value inside the gap. Uncheck it to join the samples on either side, as older versions did. The choice is remembered with the other preferences for the tag type. |
 | **Calibration Constants** | Shows read-only CompassTag calibration constants when the loaded log includes compass calibration metadata. |
 
 Default stream visibility depends on the stream id. Activity, pressure, and

@@ -291,3 +291,56 @@ The 57 hover lines over those windows are identical, the magnitudes included:
 at the two decimals the readout shows, the `float` step does not reach the
 last digit. The CompassTag heading, acceleration, pitch, roll, dip and field
 streams render identically, as their `double` inputs are unchanged.
+
+## 2026-10-21: phase 4, lines break at gaps
+
+**Conditions.** As above. Gaps are found once per time axis at load: a step
+larger than 4 × the median step, estimated from at most 65,536 evenly spaced
+steps. `SegmentId` is not consulted (see the proposal's
+[Phases](decimating-backend.md#phases)). sensorviz breaks lines at gaps by
+default (View > Break Lines at Gaps).
+
+**Gaps found** (`sensordata_check --gaps`). The two committed fixtures and
+eight other logs on the development machine, read only:
+
+| Log | Tables and gaps |
+| --- | --- |
+| `fixtures/sensorviz/imutag.db3` | 5 tables (2.5 ms to 375 ms), 0 gaps |
+| `fixtures/sensorviz/compasstag.db3` | 4 tables (15 s to 615 s), 0 gaps |
+| Worst-case log (`make-full-log.sh`) | 5 tables, 0 gaps |
+| IMUTag field log and its processed copy (`imutag-10-11-26`) | 5 and 6 tables, 0 gaps |
+| IMUTag bench log at 100 Hz (`2026-10-02-imutag-nand-bmp581`) | 5 tables, 0 gaps |
+| CompassTag walk and battery-run logs | 4 tables each, 0 gaps |
+| BitTag download (`2026-10-03-bittag-d1`) | 3 tables, 0 gaps |
+| PresTag reference download (`2026-10-02-prestag-d1/d1-reference`) | 0 gaps |
+| PresTag rebuild-check download | Pressure and Temperature 1 gap each, a 56 s pause in 1 s data; Voltage 0 gaps, though irregular (1 s to 85 s steps around 60 s) |
+| UIUCTag rebuild-check download | Activity 1 gap, a 660 s step in 60 s data (ten missing slots); 0 elsewhere |
+
+Neither gap is spurious; both are holes in the samples. No IMUTag log on hand
+has more than one segment, so no resync was available to test.
+
+**Equivalence.** For logs without gaps, against `e8cf7836`: every plot and
+menu capture in the `imutag` and `compasstag` suites is pixel-identical,
+except the View menu, which has gained the new item. Both full-log captures,
+the five zoomed windows and their 57 hover lines are identical too.
+
+**A log with gaps.** The IMUTag fixture with every IMU table shifted by +5 s
+after t = 40 s, and accel rows from 65 s to 66 s deleted, has one gap per
+table and two in `ImuAccel`. With breaks on, every trace stops at 40 s and
+restarts at 45 s (447 pixels differ from `e8cf7836` with all accel streams
+shown). Hover readouts at 42.5 s and 44.999 s are empty for every stream. At
+65.5 s only the acceleration magnitude is empty, and at 40.001 s, within half
+an interval of the last sample, every stream reads. With breaks off (the
+preference `break_lines_at_gaps: false`), the render is pixel-identical to
+`e8cf7836` and the readout at 42.5 s reaches across the gap, as before.
+
+**Cost.** `sensorviz --load-log full.db3 --capture-screenshot imutag`, two
+runs each, interleaved:
+
+| Build | Defaults | All streams |
+| --- | --- | --- |
+| `e8cf7836` | 7.5 s, 5.7 s; 1,116,112,696 B, 1,126,631,224 B | 6.2 s, 5.8 s; 1,129,826,104 B, 1,123,632,952 B |
+| Phase 4 | 5.8 s, 5.6 s; 1,126,598,432 B, 1,127,040,824 B | 5.6 s, 5.6 s; 1,122,748,192 B, 1,123,600,184 B |
+
+The library alone (`sensordata_check --log`) still loads in 4.3 s at 851 MB
+and draws six full-log streams in 8.0 ms.

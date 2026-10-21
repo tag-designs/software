@@ -164,6 +164,10 @@ void checkImuTag()
     CHECK(spec.metadataRows.size() == 1 && spec.metadataRows[0].startsWith("Start:   "));
     CHECK(spec.metadataRows[0].endsWith(" UTC"));
     CHECK(spec.title == "imutag.db3");
+    CHECK(spec.breakAtGaps);
+    state.breakAtGaps = false;
+    CHECK(!buildPlotSpec(log, log.streams, {}, state).breakAtGaps);
+    state.breakAtGaps = true;
     CHECK(spec.timeDomain == SensorTimeDomain::ElapsedSeconds);
 
     // A custom range fixes one member; the other two stay linked to each other.

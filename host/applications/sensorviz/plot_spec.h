@@ -52,6 +52,7 @@ struct PlotState
     bool titleVisible = true;               ///< Whether the title is shown; an empty title is never shown.
     double declinationDegrees = 0.0;        ///< Shown in the metadata box while compass heading is visible.
     double seaLevelPressure = 1013.25;      ///< mbar; shown in the metadata box while altitude is visible.
+    bool breakAtGaps = true;                ///< Break plotted lines at gaps in the data (sensordata::GapMode::Break).
 };
 
 /**
@@ -128,6 +129,7 @@ struct PlotSpec
     QVector<double> eventMarkerTimes;  ///< Vertical marker lines, in the plot's time domain.
     QStringList metadataRows;          ///< Lines of the metadata box; empty hides it.
     QString title;                     ///< Title text; empty hides it.
+    bool breakAtGaps = true;           ///< Lines break at gaps in the data rather than joining across them.
 };
 
 /**

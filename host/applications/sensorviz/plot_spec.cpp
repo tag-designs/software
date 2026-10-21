@@ -109,6 +109,7 @@ PlotSpec buildPlotSpec(const SensorLog &log,
     spec.timeDomain = log.timeDomain;
     spec.utcOffsetHours = state.utcOffsetHours;
     spec.title = state.titleVisible ? state.title : QString();
+    spec.breakAtGaps = state.breakAtGaps;
     const sensordata::Log *data = log.data.get();
 
     QVector<const SensorStream *> visible;

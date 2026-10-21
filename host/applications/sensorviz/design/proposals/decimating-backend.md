@@ -1,12 +1,12 @@
 ---
 type: proposal
 status: proposed
-summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); phases 0-3 are built, phase 4 remains.
+summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); all phases are built.
 ---
 
 # Decimating Data Backend for sensorviz
 
-**Status:** phases 0-3 are built; phase 4 is proposed. See
+**Status:** all phases, 0 to 4, are built. See
 [Phases](#phases). The library is
 [`host/libraries/sensordata`](../../../../libraries/sensordata/README.md),
 whose header is now the authority on the API; it differs from the
@@ -579,7 +579,7 @@ For sensorviz itself:
 Phases 0 to 3 are built. sensorviz peaks at about 1.1 GB on the worst-case
 log whatever is visible, against 4.8 GB with every stream shown before, and
 loads in about 6 s against 41 s
-([results](decimating-backend-results.md)). Phase 4 is open.
+([results](decimating-backend-results.md)). Phase 4 is built too.
 
 As built, phase 3 splits the transforms by what their inputs must be. The
 IMUTag magnitudes and the acceleration calibration offset are computed from
@@ -604,14 +604,26 @@ sensoranalysis input are unchanged.
 4. **Optional:** break lines at segment gaps by emitting a gap marker (NaN
    for QCustomPlot, `null` for uPlot). Today's plot joins across gaps.
 
+As built, phase 4 finds gaps from time steps alone: once per time axis at
+load, a step larger than four times the axis's median interval is a gap.
+`SegmentId` boundaries are not gaps in themselves. On a resync tagcore starts
+the new segment at the later of the wall-clock elapsed time and the current
+end, so samples lost to a `RESYNC_STORAGE_SKIP` already appear as a forward
+jump in `ElapsedUs`, while a plain `RESYNC` is a timestamp correction with
+no data lost. `view()` splits columns at gaps and puts a NaN-valued marker
+between their sides; `valueAt()` returns nothing inside a gap beyond half an
+interval from either side. Breaking is sensorviz display policy: the View
+menu's "Break Lines at Gaps", on by default, persisted per tag type only when
+turned off.
+
 ## Open questions
 
 - **Is a reported 2 Gbit full log the real worst case?** The figure assumes
   every NAND page holds data. Bad-block reserve makes it slightly smaller,
   never larger. A larger NAND on a future board scales everything linearly:
   a 4 Gbit part would be about 2 GB proposed, against 9.7 GB today.
-- **Should segment gaps break lines (phase 4)?** This is a display-policy
-  choice for sensorviz, not the backend.
+- **Should segment gaps break lines (phase 4)?** Settled: by default yes,
+  with a View-menu toggle; see [Phases](#phases).
 - **Should the time axis be computed rather than stored?** For IMUTag it is a
   per-segment linear function of sample index, which would save 157 MB per
   table. Storing it keeps the backend tag-agnostic. Revisit only if memory

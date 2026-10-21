@@ -333,6 +333,7 @@ private:
     QAction *print_action_ = nullptr;
     QAction *zoom_to_cursors_action_ = nullptr;
     QAction *show_cursors_action_ = nullptr;
+    QAction *break_gaps_action_ = nullptr;
     QAction *visible_streams_action_ = nullptr;
     QAction *axis_sides_action_ = nullptr;
     QAction *colors_action_ = nullptr;

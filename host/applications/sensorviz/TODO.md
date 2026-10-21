@@ -34,9 +34,6 @@ Current behavior and its known limitations are in [README.md](README.md).
 
 ## Larger refactors
 
-- Decide whether segment gaps break plot lines, and if so emit gap markers
-  from the backend
-  ([decimating backend phase 4](design/proposals/decimating-backend.md#phases)).
 - Introduce a transform registry that declares:
   - required input stream ids or record-set ids;
   - generated stream ids;

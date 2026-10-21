@@ -54,6 +54,11 @@ struct SensorVizPreferences
     // non-default color or axis side.
     QMap<QString, QColor> streamColors;
     QMap<QString, SensorAxisSide> axisSides;
+
+    // Whether plotted lines break at gaps in the data. Stored only when the
+    // user turned it off, since on is the default.
+    bool hasBreakLinesAtGapsOverride = false;
+    bool breakLinesAtGaps = true;
 };
 
 #endif

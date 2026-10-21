@@ -242,6 +242,15 @@ struct Axis {
     sqlite3_int64 first_rowid = 0;        ///< Rowid of sample 0 when #rowids is empty.
     std::vector<sqlite3_int64> rowids;    ///< Rowid per sample; empty when rowids are #first_rowid + index.
     std::vector<std::size_t> load_position; ///< Position in rowid order per sample; empty when the table was already in time order.
+    double typical_interval = 0.0;          ///< See StreamInfo::typical_interval.
+    std::vector<std::size_t> gaps;          ///< Ascending; g means a gap between samples g - 1 and g.
+
+    /// True when a gap lies between samples @p before and @p after (`before < after`).
+    bool gapBetween(std::size_t before, std::size_t after) const
+    {
+        const auto it = std::upper_bound(gaps.begin(), gaps.end(), before);
+        return it != gaps.end() && *it <= after;
+    }
 
     /// Rowid of sample @p index.
     sqlite3_int64 rowid(std::size_t index) const
@@ -273,6 +282,47 @@ void finishStream(StreamData &stream)
     info.domain = stream.axis->domain;
     info.min = all.valid ? all.min : std::nanf("");
     info.max = all.valid ? all.max : std::nanf("");
+    info.typical_interval = stream.axis->typical_interval;
+    info.gaps = stream.axis->gaps.size();
+}
+
+/**
+ * @brief   Finds a time axis's typical interval and its gaps; see StreamInfo.
+ *
+ * @details The median is estimated from at most kGapSampleIntervals evenly
+ *          spaced intervals, so a full IMUTag table costs one pass over its
+ *          times and a 512 KB scratch buffer, not a copy of every interval.
+ *
+ * @param[in,out] axis  Axis whose #time is final; fills typical_interval and gaps.
+ */
+void detectGaps(Axis &axis)
+{
+    const std::vector<double> &time = axis.time;
+    axis.gaps.clear();
+    axis.typical_interval = 0.0;
+    if (time.size() < 2) {
+        return;
+    }
+    const std::size_t intervals = time.size() - 1;
+    const std::size_t step = (intervals + kGapSampleIntervals - 1) / kGapSampleIntervals;
+    std::vector<double> sample;
+    sample.reserve(std::min(intervals, kGapSampleIntervals));
+    for (std::size_t k = 1; k < time.size(); k += step) {
+        sample.push_back(time[k] - time[k - 1]);
+    }
+    const auto middle = sample.begin() + static_cast<std::ptrdiff_t>(sample.size() / 2);
+    std::nth_element(sample.begin(), middle, sample.end());
+    const double typical = *middle;
+    if (!(typical > 0.0)) {
+        return;
+    }
+    axis.typical_interval = typical;
+    const double threshold = kGapFactor * typical;
+    for (std::size_t k = 1; k < time.size(); k++) {
+        if (time[k] - time[k - 1] > threshold) {
+            axis.gaps.push_back(k);
+        }
+    }
 }
 
 /**
@@ -594,6 +644,7 @@ bool Log::Impl::loadGroup(const TableGroup &group, const std::vector<Metadata> &
         axis->rowids.swap(sorted_rowids);
         axis->load_position.swap(order);
     }
+    detectGaps(*axis);
     return true;
 }
 
@@ -721,7 +772,7 @@ std::optional<StreamId> Log::find(const std::string &id) const
     return std::nullopt;
 }
 
-Envelope Log::view(StreamId stream, double t0, double t1, int columns) const
+Envelope Log::view(StreamId stream, double t0, double t1, int columns, GapMode gaps) const
 {
     Envelope out;
     const StreamData *data = impl_->stream(stream);
@@ -769,28 +820,31 @@ Envelope Log::view(StreamId stream, double t0, double t1, int columns) const
         }
     }
 
+    const Axis &axis = *data->axis;
+    const bool break_at_gaps = gaps == GapMode::Break && !axis.gaps.empty();
     out.time.reserve(4 * column_count + 2);
     out.value.reserve(4 * column_count + 2);
     out.index.reserve(4 * column_count + 2);
+    std::size_t last = 0;
+    bool have_last = false;
     auto emit = [&](std::size_t index) {
-        if (!out.index.empty() && out.index.back() >= index) {
+        if (have_last && last >= index) {
             return;
+        }
+        if (break_at_gaps && have_last && axis.gapBetween(last, index)) {
+            out.index.push_back(kGapMarker);
+            out.time.push_back((time[last] + time[index]) * 0.5);
+            out.value.push_back(std::nanf(""));
         }
         out.index.push_back(index);
         out.time.push_back(time[index]);
         out.value.push_back(values[index]);
+        last = index;
+        have_last = true;
     };
 
-    if (edge[0] > 0) {
-        emit(edge[0] - 1);
-    }
-    for (std::size_t c = 0; c < column_count; c++) {
-        const std::size_t begin = edge[c];
-        const std::size_t end = edge[c + 1];
-        if (begin >= end) {
-            continue;
-        }
-
+    // First, minimum, maximum and last of samples [begin, end), in index order.
+    auto emitRun = [&](std::size_t begin, std::size_t end) {
         bool have = false;
         std::size_t min_index = begin;
         std::size_t max_index = begin;
@@ -828,6 +882,27 @@ Envelope Log::view(StreamId stream, double t0, double t1, int columns) const
         for (std::size_t index : points) {
             emit(index);
         }
+    };
+
+    if (edge[0] > 0) {
+        emit(edge[0] - 1);
+    }
+    for (std::size_t c = 0; c < column_count; c++) {
+        std::size_t begin = edge[c];
+        const std::size_t end = edge[c + 1];
+        if (begin >= end) {
+            continue;
+        }
+        if (break_at_gaps) {
+            // Split the column at every gap inside it, so no run joins
+            // samples on both sides of one.
+            auto gap = std::upper_bound(axis.gaps.begin(), axis.gaps.end(), begin);
+            for (; gap != axis.gaps.end() && *gap < end; ++gap) {
+                emitRun(begin, *gap);
+                begin = *gap;
+            }
+        }
+        emitRun(begin, end);
     }
     if (edge[column_count] < count) {
         emit(edge[column_count]);
@@ -835,16 +910,27 @@ Envelope Log::view(StreamId stream, double t0, double t1, int columns) const
     return out;
 }
 
-std::optional<Sample> Log::valueAt(StreamId stream, double t, Pick pick) const
+std::optional<Sample> Log::valueAt(StreamId stream, double t, Pick pick, GapMode gaps) const
 {
     const StreamData *data = impl_->stream(stream);
     if (!data || std::isnan(t)) {
         return std::nullopt;
     }
-    const std::vector<double> &time = data->axis->time;
+    const Axis &axis = *data->axis;
+    const std::vector<double> &time = axis.time;
     const auto it = std::lower_bound(time.begin(), time.end(), t);
     std::size_t index = static_cast<std::size_t>(it - time.begin());
-    if (index == time.size()) {
+    if (gaps == GapMode::Break && index > 0 && index < time.size() && t < time[index]
+        && axis.gapBetween(index - 1, index)) {
+        // Strictly inside a gap: only a sample within half a typical
+        // interval may answer, whichever pick was asked for.
+        const double reach = 0.5 * axis.typical_interval;
+        if (t - time[index - 1] <= reach) {
+            index = index - 1;
+        } else if (time[index] - t > reach) {
+            return std::nullopt;
+        }
+    } else if (index == time.size()) {
         index = time.size() - 1;
     } else if (pick == Pick::Nearest && index > 0) {
         const std::size_t before = index - 1;
@@ -1056,6 +1142,7 @@ std::optional<StreamId> Log::addDerived(StreamInfo info, std::vector<double> tim
     auto axis = std::make_shared<Axis>();
     axis->domain = info.domain;
     axis->time = std::move(time);
+    detectGaps(*axis);
     auto stream = std::make_unique<StreamData>();
     stream->axis = std::move(axis);
     info.table.clear();

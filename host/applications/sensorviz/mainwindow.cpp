@@ -82,6 +82,10 @@ void MainWindow::createActions()
     show_cursors_action_->setCheckable(true);
     show_cursors_action_->setChecked(true);
     show_cursors_action_->setEnabled(false);
+    break_gaps_action_ = new QAction(tr("&Break Lines at Gaps"), this);
+    break_gaps_action_->setCheckable(true);
+    break_gaps_action_->setChecked(true);
+    break_gaps_action_->setEnabled(false);
     utc_offset_action_ = new QAction(tr("&UTC Offset"), this);
     utc_offset_action_->setEnabled(false);
     calibration_constants_action_ = new QAction(tr("&Calibration Constants"), this);
@@ -126,6 +130,11 @@ void MainWindow::createActions()
     connect(reset_action_, &QAction::triggered, this, &MainWindow::resetZoom);
     connect(zoom_to_cursors_action_, &QAction::triggered, this, &MainWindow::zoomToCursors);
     connect(show_cursors_action_, &QAction::toggled, this, &MainWindow::setCursorsVisible);
+    connect(break_gaps_action_, &QAction::toggled, this, [this]() {
+        // A display choice that follows the tag type, like colors and sides.
+        refreshPlot();
+        rememberCurrentPreferences();
+    });
     connect(utc_offset_action_, &QAction::triggered, this, &MainWindow::setUtcOffset);
     connect(
         calibration_constants_action_,
@@ -160,6 +169,7 @@ void MainWindow::createActions()
     view_menu_->addAction(reset_action_);
     view_menu_->addAction(zoom_to_cursors_action_);
     view_menu_->addAction(show_cursors_action_);
+    view_menu_->addAction(break_gaps_action_);
     view_menu_->addSeparator();
     view_menu_->addAction(calibration_constants_action_);
 
@@ -202,6 +212,7 @@ void MainWindow::createActions()
         {reset_action_, QT_TR_NOOP("Restore the full time range and default y-axis ranges.")},
         {zoom_to_cursors_action_, QT_TR_NOOP("Zoom the time axis to the interval between the two cursors.")},
         {show_cursors_action_, QT_TR_NOOP("Show or hide the two time cursors; double-click the plot to show them again.")},
+        {break_gaps_action_, QT_TR_NOOP("Break plotted lines where the data has a gap, instead of joining the samples on either side.")},
         {calibration_constants_action_, QT_TR_NOOP("Show the compass calibration constants stored in the log.")},
         {utc_offset_action_, QT_TR_NOOP("Set the UTC offset used for time-axis labels.")},
         {sea_level_pressure_action_, QT_TR_NOOP("Set mean sea-level pressure used to derive altitude.")},
@@ -231,6 +242,7 @@ void MainWindow::updateLoadedStateActions()
     reset_action_->setEnabled(has_log);
     zoom_to_cursors_action_->setEnabled(has_log);
     show_cursors_action_->setEnabled(has_log);
+    break_gaps_action_->setEnabled(has_log);
     utc_offset_action_->setEnabled(has_log);
     edit_title_action_->setEnabled(has_log);
     show_title_action_->setEnabled(has_log);

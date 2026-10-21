@@ -179,9 +179,56 @@ StreamId handle(const Log &log, const std::string &id)
 // Brute-force reference
 // ---------------------------------------------------------------------------
 
-/// Indices a correct M4 view emits, computed with linear scans only.
+/**
+ * @brief   Gap flags for @p time by the documented rule, computed independently.
+ * @return  One flag per sample; flag k means a gap between samples k - 1 and k.
+ */
+std::vector<char> referenceGaps(const std::vector<double> &time, double *typical = nullptr)
+{
+    std::vector<char> gap(time.size(), 0);
+    if (typical) {
+        *typical = 0.0;
+    }
+    if (time.size() < 2) {
+        return gap;
+    }
+    const std::size_t intervals = time.size() - 1;
+    const std::size_t step =
+        (intervals + sensordata::kGapSampleIntervals - 1) / sensordata::kGapSampleIntervals;
+    std::vector<double> sample;
+    for (std::size_t k = 1; k < time.size(); k += step) {
+        sample.push_back(time[k] - time[k - 1]);
+    }
+    std::sort(sample.begin(), sample.end());
+    const double median = sample[sample.size() / 2];
+    if (!(median > 0.0)) {
+        return gap;
+    }
+    if (typical) {
+        *typical = median;
+    }
+    for (std::size_t k = 1; k < time.size(); k++) {
+        gap[k] = time[k] - time[k - 1] > sensordata::kGapFactor * median ? 1 : 0;
+    }
+    return gap;
+}
+
+/// Number of gaps in @p flags.
+std::size_t gapCount(const std::vector<char> &flags)
+{
+    return static_cast<std::size_t>(std::count(flags.begin(), flags.end(), 1));
+}
+
+/**
+ * @brief   Indices a correct M4 view emits, computed with linear scans only.
+ *
+ * @details With @p gaps non-empty (GapMode::Break), each column is split into
+ *          runs at the gaps inside it, and a kGapMarker entry is inserted
+ *          between consecutive samples with a gap between them.
+ */
 std::vector<std::size_t> bruteM4(const std::vector<double> &time, const std::vector<float> &value,
-                                 double t0, double t1, int columns)
+                                 double t0, double t1, int columns,
+                                 const std::vector<char> &gaps = {})
 {
     std::vector<std::size_t> out;
     const std::size_t n = time.size();
@@ -211,20 +258,27 @@ std::vector<std::size_t> bruteM4(const std::vector<double> &time, const std::vec
         i++;
     }
     edge[static_cast<std::size_t>(columns)] = i;
+
+    const bool breaks = !gaps.empty();
+    bool have_last = false;
+    std::size_t last = 0;
     auto emit = [&](std::size_t index) {
-        if (out.empty() || out.back() < index) {
-            out.push_back(index);
+        if (have_last && last >= index) {
+            return;
         }
+        if (breaks && have_last) {
+            for (std::size_t k = last + 1; k <= index; k++) {
+                if (gaps[k]) {
+                    out.push_back(sensordata::kGapMarker);
+                    break;
+                }
+            }
+        }
+        out.push_back(index);
+        last = index;
+        have_last = true;
     };
-    if (edge[0] > 0) {
-        emit(edge[0] - 1);
-    }
-    for (int c = 0; c < columns; c++) {
-        const std::size_t a = edge[static_cast<std::size_t>(c)];
-        const std::size_t b = edge[static_cast<std::size_t>(c) + 1];
-        if (a >= b) {
-            continue;
-        }
+    auto run = [&](std::size_t a, std::size_t b) {
         bool have = false;
         std::size_t lo = a;
         std::size_t hi = a;
@@ -249,6 +303,23 @@ std::vector<std::size_t> bruteM4(const std::vector<double> &time, const std::vec
             emit(std::max(lo, hi));
         }
         emit(b - 1);
+    };
+    if (edge[0] > 0) {
+        emit(edge[0] - 1);
+    }
+    for (int c = 0; c < columns; c++) {
+        std::size_t a = edge[static_cast<std::size_t>(c)];
+        const std::size_t b = edge[static_cast<std::size_t>(c) + 1];
+        if (a >= b) {
+            continue;
+        }
+        for (std::size_t k = a + 1; breaks && k < b; k++) {
+            if (gaps[k]) {
+                run(a, k);
+                a = k;
+            }
+        }
+        run(a, b);
     }
     if (edge[static_cast<std::size_t>(columns)] < n) {
         emit(edge[static_cast<std::size_t>(columns)]);
@@ -264,14 +335,24 @@ bool sameFloat(float a, float b)
 
 /// Checks one view of @p stream against brute force over @p time / @p value; returns true if exact.
 bool viewMatches(const Log &log, StreamId stream, const std::vector<double> &time,
-                 const std::vector<float> &value, double t0, double t1, int columns)
+                 const std::vector<float> &value, double t0, double t1, int columns,
+                 sensordata::GapMode mode = sensordata::GapMode::Break)
 {
-    const Envelope got = log.view(stream, t0, t1, columns);
-    const std::vector<std::size_t> want = bruteM4(time, value, t0, t1, columns);
+    const Envelope got = log.view(stream, t0, t1, columns, mode);
+    const std::vector<char> gaps =
+        mode == sensordata::GapMode::Break ? referenceGaps(time) : std::vector<char>{};
+    const std::vector<std::size_t> want =
+        bruteM4(time, value, t0, t1, columns, gapCount(gaps) > 0 ? gaps : std::vector<char>{});
     bool ok = got.index == want && got.time.size() == want.size()
         && got.value.size() == want.size();
     for (std::size_t k = 0; ok && k < want.size(); k++) {
-        ok = got.time[k] == time[want[k]] && sameFloat(got.value[k], value[want[k]]);
+        if (want[k] == sensordata::kGapMarker) {
+            // A marker sits between two samples, halfway in time.
+            ok = k > 0 && k + 1 < want.size() && std::isnan(got.value[k])
+                && got.time[k] == (time[want[k - 1]] + time[want[k + 1]]) * 0.5;
+        } else {
+            ok = got.time[k] == time[want[k]] && sameFloat(got.value[k], value[want[k]]);
+        }
     }
     if (!ok) {
         std::fprintf(stderr, "  view mismatch: t0=%.17g t1=%.17g columns=%d (got %zu points, want %zu)\n",
@@ -842,6 +923,161 @@ void checkDerived()
     CHECK(log->streams().size() == 1);
 }
 
+/// Gap detection, gap-aware views and readouts on irregular data with injected gaps.
+void checkGaps()
+{
+    const std::string path = scratchPath("gaps");
+    sqlite3 *db = createLog(path);
+    exec(db, "CREATE TABLE Gappy (ElapsedUs INTEGER, v REAL)");
+    exec(db, "CREATE TABLE Irregular (ElapsedUs INTEGER, v REAL)");
+    addMetadata(db, "v", "Gappy", "ElapsedUs", "v");
+    addMetadata(db, "w", "Irregular", "ElapsedUs", "v");
+
+    // 10 ms nominal steps with +/-20% jitter, steps of 3.5x that are not
+    // gaps, and gaps: one at the start, one before the last sample, a long
+    // one, a cluster of short ones, and random ones.
+    const std::size_t n = 50000;
+    std::mt19937 rng(99);
+    std::uniform_int_distribution<int> jitter(8000, 12000);
+    std::uniform_int_distribution<int> extra(50000, 2000000);
+    std::vector<long long> time_us(n);
+    std::vector<double> v(n);
+    std::vector<char> injected(n, 0);
+    injected[1] = 1;
+    injected[n - 1] = 1;
+    injected[5000] = 1;
+    for (std::size_t k = 20000; k < 20012; k += 2) {
+        injected[k] = 1;
+    }
+    for (int r = 0; r < 30; r++) {
+        injected[1000 + static_cast<std::size_t>(rng() % 47000)] = 1;
+    }
+    long long t = 0;
+    for (std::size_t k = 0; k < n; k++) {
+        if (k > 0) {
+            t += jitter(rng);
+            if (injected[k]) {
+                t += k == 5000 ? 5000000 : extra(rng);
+            } else if (k % 997 == 0) {
+                t += 25000; // a step of about 3.5 intervals: irregular, not a gap
+            }
+        }
+        time_us[k] = t;
+        v[k] = std::sin(static_cast<double>(k) / 300.0) * 100.0 + (rng() % 1000 == 0 ? 500.0 : 0.0);
+    }
+    insertRows(db, "Gappy", time_us, {v});
+
+    // Irregular but continuous: steps vary 2.5x and never jump.
+    std::uniform_int_distribution<int> wide(600000, 1500000);
+    std::vector<long long> irregular_us(5000);
+    std::vector<double> w(5000, 1.0);
+    for (std::size_t k = 1; k < irregular_us.size(); k++) {
+        irregular_us[k] = irregular_us[k - 1] + wide(rng);
+    }
+    insertRows(db, "Irregular", irregular_us, {w});
+    sqlite3_close(db);
+
+    std::vector<double> time(n);
+    std::vector<float> fv(n);
+    for (std::size_t k = 0; k < n; k++) {
+        time[k] = static_cast<double>(time_us[k]) / 1e6;
+        fv[k] = static_cast<float>(v[k]);
+    }
+
+    std::unique_ptr<Log> log = openOrFail(path);
+    if (!log) {
+        return;
+    }
+    const StreamId s = handle(*log, "v");
+    double typical = 0.0;
+    const std::vector<char> want_gaps = referenceGaps(time, &typical);
+    CHECK(gapCount(want_gaps) >= 36); // the injected gaps, some random ones coinciding
+    CHECK(log->info(s)->gaps == gapCount(want_gaps));
+    CHECK(log->info(s)->typical_interval == typical);
+    bool injected_found = true;
+    for (std::size_t k = 0; k < n; k++) {
+        injected_found = injected_found && (injected[k] != 0) == (want_gaps[k] != 0);
+    }
+    CHECK(injected_found);
+    CHECK(log->info(handle(*log, "w"))->gaps == 0);
+
+    // Windows: everything, starting, ending and lying inside a gap, around
+    // the cluster (several gaps in one column), and random ones.
+    struct Window {
+        double t0;
+        double t1;
+    };
+    const double gap_mid = (time[4999] + time[5000]) / 2.0;
+    const std::vector<Window> windows = {
+        {-kInf, kInf},
+        {gap_mid, time[6000]},
+        {time[4000], gap_mid},
+        {gap_mid - 0.5, gap_mid + 0.5},
+        {time[19990], time[20030]},
+        {time[19000], time[21000]},
+        {time[0], time[3]},
+        {time[n - 3], time[n - 1]},
+    };
+    const int column_counts[] = {1, 2, 5, 64, 1000, 100000};
+    bool ok = true;
+    for (const Window &window : windows) {
+        for (int columns : column_counts) {
+            ok = viewMatches(*log, s, time, fv, window.t0, window.t1, columns) && ok;
+            ok = viewMatches(*log, s, time, fv, window.t0, window.t1, columns,
+                             sensordata::GapMode::Join)
+                && ok;
+        }
+    }
+    std::uniform_real_distribution<double> where(time.front() - 1.0, time.back() + 1.0);
+    std::uniform_int_distribution<int> width(1, 4000);
+    for (int r = 0; r < 300; r++) {
+        double a = where(rng);
+        double b = where(rng);
+        if (b < a) {
+            std::swap(a, b);
+        }
+        ok = viewMatches(*log, s, time, fv, a, b, width(rng)) && ok;
+    }
+    CHECK(ok);
+
+    // A window wholly inside a gap still bridges it with a marker.
+    const Envelope inside = log->view(s, gap_mid - 0.5, gap_mid + 0.5, 10);
+    CHECK(inside.index.size() == 3 && inside.index[1] == sensordata::kGapMarker);
+    CHECK(log->view(s, gap_mid - 0.5, gap_mid + 0.5, 10, sensordata::GapMode::Join).index.size() == 2);
+
+    // Streams computed on the axis share its gaps.
+    sensordata::StreamInfo info;
+    info.id = "twice";
+    const auto twice = log->addComputed(info, {s}, [](const float *x) { return 2.0 * x[0]; });
+    CHECK(twice && log->info(*twice)->gaps == gapCount(want_gaps));
+
+    // valueAt(): nothing deep inside a gap; the near side within half an interval.
+    bool readout_ok = true;
+    const double reach = 0.5 * typical;
+    for (std::size_t k = 1; k < n; k++) {
+        if (!want_gaps[k]) {
+            continue;
+        }
+        for (sensordata::Pick pick : {sensordata::Pick::Nearest, sensordata::Pick::AtOrAfter}) {
+            const double middle = (time[k - 1] + time[k]) / 2.0;
+            readout_ok = readout_ok && !log->valueAt(s, middle, pick).has_value();
+            readout_ok = readout_ok
+                && log->valueAt(s, middle, pick, sensordata::GapMode::Join).has_value();
+            const auto left = log->valueAt(s, time[k - 1] + 0.9 * reach, pick);
+            readout_ok = readout_ok && left && left->index == k - 1 && left->exact;
+            const auto right = log->valueAt(s, time[k] - 0.9 * reach, pick);
+            readout_ok = readout_ok && right && right->index == k;
+            const auto on = log->valueAt(s, time[k], pick);
+            readout_ok = readout_ok && on && on->index == k;
+        }
+    }
+    CHECK(readout_ok);
+    // Ends are unchanged: before the first and after the last sample still answer.
+    CHECK(log->valueAt(s, time.front() - 100.0).has_value());
+    CHECK(log->valueAt(s, time.back() + 100.0).has_value());
+    std::printf("  gaps: %zu found, typical interval %.4f s\n", log->info(s)->gaps, typical);
+}
+
 /// Reads one column of @p table ordered by @p order as doubles.
 std::vector<double> sqlColumn(sqlite3 *db, const std::string &table, const std::string &column,
                               const std::string &order, bool as_int64)
@@ -1072,11 +1308,36 @@ int benchLog(const std::string &path)
     return exact ? 0 : 1;
 }
 
+/// Prints each table's sample count, typical interval and gap count for every log in @p paths.
+int reportGaps(int count, char **paths)
+{
+    for (int i = 0; i < count; i++) {
+        std::string error;
+        const std::unique_ptr<Log> log = Log::open(paths[i], error);
+        if (!log) {
+            std::printf("%s: %s\n", paths[i], error.c_str());
+            continue;
+        }
+        std::printf("%s\n", paths[i]);
+        std::string last_table;
+        for (const sensordata::StreamInfo &info : log->streams()) {
+            if (info.table == last_table) {
+                continue;
+            }
+            last_table = info.table;
+            std::printf("  %-22s %10zu samples, typical %.6g s, %zu gaps\n", info.table.c_str(),
+                        info.samples, info.typical_interval, info.gaps);
+        }
+    }
+    return 0;
+}
+
 } // namespace
 
 /**
- * @brief   Runs every check, or with `--log <path>` benchmarks that log.
- * @param[in] argc  Argument count: 1, or 3 for `--log <path>`.
+ * @brief   Runs every check, or with `--log <path>` benchmarks that log, or
+ *          with `--gaps <path>...` reports the gaps found in each log.
+ * @param[in] argc  Argument count: 1, 3 for `--log <path>`, or 3 or more for `--gaps`.
  * @param[in] argv  Arguments.
  * @return  0 when every check passes, 1 on a failed check, 2 on bad usage.
  */
@@ -1085,8 +1346,11 @@ int main(int argc, char **argv)
     if (argc == 3 && std::strcmp(argv[1], "--log") == 0) {
         return benchLog(argv[2]);
     }
+    if (argc >= 3 && std::strcmp(argv[1], "--gaps") == 0) {
+        return reportGaps(argc - 2, argv + 2);
+    }
     if (argc != 1) {
-        std::fprintf(stderr, "usage: sensordata_check [--log <path>]\n");
+        std::fprintf(stderr, "usage: sensordata_check [--log <path> | --gaps <path>...]\n");
         return 2;
     }
 
@@ -1095,6 +1359,7 @@ int main(int argc, char **argv)
     checkOutOfOrder();
     checkEdgeCases();
     checkDerived();
+    checkGaps();
     checkFixtures();
 
     std::printf("sensordata_check: %d checks, %d failed\n", g_checks, g_failures);

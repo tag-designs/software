@@ -39,9 +39,13 @@ class QPrinter;
  *
  *          **Spec changes.** setSpec() rebuilds graphs and axes, keeping the
  *          current x range, unless the new spec differs from the current one
- *          only in its title or UTC offset, which are applied in place. A
- *          rebuild resets the cursors to the edges of the view, as it always
- *          has.
+ *          only in its title, UTC offset or gap mode, which are applied in
+ *          place. A rebuild resets the cursors to the edges of the view, as it
+ *          always has.
+ *
+ *          **Gaps.** With PlotSpec::breakAtGaps, lines break at gaps in the
+ *          data: the envelope carries a NaN-valued gap marker between the two
+ *          sides of each gap, which QCustomPlot draws as a break.
  *
  *          **Mouse.** Dragging and the wheel pan and zoom time only.
  *          Double-click places the left cursor, shift-double-click the right

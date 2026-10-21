@@ -67,6 +67,37 @@ using StreamId = std::uint32_t;
 constexpr StreamId kNoStream = std::numeric_limits<StreamId>::max();
 
 /**
+ * @brief   Envelope::index of a gap marker.
+ *
+ * @details Marks a break between two runs of samples; see Envelope.
+ */
+constexpr std::size_t kGapMarker = std::numeric_limits<std::size_t>::max();
+
+/**
+ * @brief   A step between consecutive samples larger than this many typical
+ *          intervals is a gap.
+ *
+ * @details Conservative: regular logs step by one interval, and irregular but
+ *          continuous ones (event-driven voltage, say) stay within a few.
+ *          See StreamInfo::typical_interval for how the interval is found.
+ */
+constexpr double kGapFactor = 4.0;
+
+/**
+ * @brief   Most intervals examined to estimate a time axis's typical interval.
+ */
+constexpr std::size_t kGapSampleIntervals = 65536;
+
+/**
+ * @enum    GapMode
+ * @brief   Whether views and readouts respect gaps in the data.
+ */
+enum class GapMode {
+    Break, ///< Never join samples across a gap: envelopes carry gap markers, valueAt() returns nothing inside a gap.
+    Join,  ///< Ignore gaps, as if the data were continuous.
+};
+
+/**
  * @struct  StreamInfo
  * @brief   Description and summary of one stream.
  *
@@ -91,6 +122,16 @@ struct StreamInfo {
     double last_time = 0.0;   ///< Time of the last sample, seconds in #domain.
     float min = std::numeric_limits<float>::quiet_NaN(); ///< Smallest non-NaN value as stored (`float`); NaN if every sample is NaN.
     float max = std::numeric_limits<float>::quiet_NaN(); ///< Largest non-NaN value as stored (`float`); NaN if every sample is NaN.
+    /// Typical step between consecutive samples, seconds: the median of up to
+    /// kGapSampleIntervals intervals, `time[k] - time[k - 1]` for
+    /// `k = 1, 1 + s, 1 + 2s, ...` with `s = ceil((samples - 1) / kGapSampleIntervals)`
+    /// (the upper median when their count is even). 0 when there are fewer
+    /// than two samples or the median step is not positive; such a time axis
+    /// has no gaps.
+    double typical_interval = 0.0;
+    /// Number of gaps: steps larger than kGapFactor times #typical_interval.
+    /// Found once per time axis, so streams on one axis share them.
+    std::size_t gaps = 0;
     bool derived = false;     ///< True for a stream registered with addDerived().
 };
 
@@ -98,14 +139,20 @@ struct StreamInfo {
  * @struct  Envelope
  * @brief   The points to draw for one stream over one window, in time order.
  *
- * @details The three vectors are parallel. Indices are strictly increasing,
- *          so times are non-decreasing. Values are the stored `float`s; use
- *          valueAt() for an exact readout.
+ * @details The three vectors are parallel. Sample indices are strictly
+ *          increasing, so times are non-decreasing. Values are the stored
+ *          `float`s; use valueAt() for an exact readout.
+ *
+ *          With GapMode::Break, a **gap marker** sits between any two
+ *          consecutive points that lie on opposite sides of a gap: index
+ *          kGapMarker, value NaN, time halfway between its neighbours, so the
+ *          times stay ordered. A renderer draws it as a line break; QCustomPlot
+ *          does so for a NaN value, and a webview plot maps it to `null`.
  */
 struct Envelope {
     std::vector<double> time;        ///< Sample times, seconds in the stream's domain.
     std::vector<float> value;        ///< Sample values as stored.
-    std::vector<std::size_t> index;  ///< Sample index of each point within the stream.
+    std::vector<std::size_t> index;  ///< Sample index of each point within the stream, or kGapMarker.
 };
 
 /**
@@ -236,18 +283,28 @@ public:
      *          samples in the window. A column of 64 samples or fewer is
      *          scanned directly.
      *
+     *          With GapMode::Break, no column joins samples across a gap: a
+     *          column holding gaps is split at them and each run gets its own
+     *          first, last, minimum and maximum, and a gap marker (see
+     *          Envelope) separates points on either side of a gap, including
+     *          across empty columns and at the window's edges. GapMode::Join
+     *          ignores gaps.
+     *
      * @param[in] stream   Stream to draw.
      * @param[in] t0       Start of the window, seconds in the stream's domain.
      *                     -infinity means the first sample.
      * @param[in] t1       End of the window; +infinity means the last sample.
      * @param[in] columns  Number of columns, normally the plot's width in
      *                     device pixels.
+     * @param[in] gaps     Whether to break at gaps.
      *
-     * @return  At most `4 * columns + 2` points. Empty when @p stream names no
-     *          stream, @p columns is not positive, either bound is NaN, or
-     *          @p t1 is less than @p t0.
+     * @return  At most `4 * columns + 2` points when the window holds no gap,
+     *          and at most four more points and one marker per gap otherwise.
+     *          Empty when @p stream names no stream, @p columns is not
+     *          positive, either bound is NaN, or @p t1 is less than @p t0.
      */
-    Envelope view(StreamId stream, double t0, double t1, int columns) const;
+    Envelope view(StreamId stream, double t0, double t1, int columns,
+                  GapMode gaps = GapMode::Break) const;
 
     /**
      * @brief   Selects one sample by time and reads its exact value.
@@ -258,17 +315,26 @@ public:
      *          `sqlite3_column_double()` returns for that row. That costs one
      *          indexed lookup, a few microseconds.
      *
+     *          With GapMode::Break, a time strictly inside a gap selects
+     *          nothing unless it is within half a typical interval of the
+     *          sample on either side, which is then selected whatever
+     *          @p pick says, so a readout never reaches across a gap. Times
+     *          before the first or after the last sample still select it.
+     *
      * @param[in] stream  Stream to read.
      * @param[in] t       Time, seconds in the stream's domain. NaN selects
      *                    nothing.
      * @param[in] pick    Which sample to select.
+     * @param[in] gaps    Whether to respect gaps.
      *
-     * @return  The selected sample, or nullopt when @p stream names no stream
-     *          or @p t is NaN. For a derived stream, or if the read-back
-     *          fails (for example because the file was removed), the value is
-     *          the stored `float` and Sample::exact is false.
+     * @return  The selected sample, or nullopt when @p stream names no stream,
+     *          @p t is NaN, or @p t falls inside a gap as above. For a derived
+     *          stream, or if the read-back fails (for example because the file
+     *          was removed), the value is the stored `float` and
+     *          Sample::exact is false.
      */
-    std::optional<Sample> valueAt(StreamId stream, double t, Pick pick = Pick::Nearest) const;
+    std::optional<Sample> valueAt(StreamId stream, double t, Pick pick = Pick::Nearest,
+                                  GapMode gaps = GapMode::Break) const;
 
     /**
      * @brief   Smallest and largest value of a stream within a time window.
@@ -405,7 +471,8 @@ public:
      * @param[in] info    Description; as for the other overload, except that
      *                    `domain` is taken from @p info and table and
      *                    time_column are cleared.
-     * @param[in] time    Sample times, seconds, non-decreasing.
+     * @param[in] time    Sample times, seconds, non-decreasing. Gaps are
+     *                    found in them as for a loaded table.
      * @param[in] values  One value per time.
      *
      * @return  The new stream's handle, or nullopt when the vectors are empty,

@@ -75,6 +75,15 @@ Rules that are easy to miss:
   every log tagcore writes. A table that is not is sorted once in memory,
   stably; `forEachRow()` then delivers rows in that sorted order.
 - **Empty tables** contribute no streams.
+- **Gaps.** Each time axis is scanned once at load for gaps: steps larger
+  than `kGapFactor` (4) times its typical interval, the median step
+  (estimated from at most 65,536 evenly spaced steps). Streams on one axis,
+  derived ones included, share its gaps. With `GapMode::Break`, the default,
+  `view()` never joins samples across a gap and puts a gap marker (index
+  `kGapMarker`, value NaN) between its sides, and `valueAt()` returns nothing
+  inside a gap beyond half an interval from either side. `GapMode::Join`
+  ignores gaps. The rule is tag-agnostic: an IMUTag storage skip shows up as
+  a jump in `ElapsedUs`, so segment ids are not consulted.
 - **Column names are checked.** SQLite reads a quoted name that matches no
   column as a string literal, so the loader and `forEachRow()` check every
   column exists rather than silently reading zeros.
@@ -100,5 +109,7 @@ cmake --build <build-dir> --target sensordata_check
 It writes its scratch logs to `$TMPDIR` (or `/tmp`). With `--log <path>` it
 instead loads that log, reports load time and peak memory, times views of the
 longest streams over four window sizes, and checks each against brute force.
+With `--gaps <path>...` it prints each table's sample count, typical interval
+and number of gaps.
 That is how the results log's library rows are produced, on the log built by
 [`make-full-log.sh`](../../applications/sensorviz/design/proposals/decimation-bench/make-full-log.sh).

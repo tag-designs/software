@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMessageBox>
+#include <QSignalBlocker>
 
 #include "qtfiledialog.h"
 
@@ -24,6 +25,7 @@
 // - stream visibility when it differs from SensorStream::defaultVisible
 // - stream colors chosen by the user
 // - stream axis sides chosen by the user
+// - "Break Lines at Gaps" when turned off
 //
 // Not persisted:
 // - y-axis ranges, because those are analysis/session state
@@ -64,7 +66,8 @@ bool hasPreferenceOverrides(const SensorVizPreferences &preferences)
 {
     return preferences.hasVisibleStreamOverride
         || !preferences.streamColors.isEmpty()
-        || !preferences.axisSides.isEmpty();
+        || !preferences.axisSides.isEmpty()
+        || preferences.hasBreakLinesAtGapsOverride;
 }
 
 QStringList sortedStrings(const QSet<QString> &values)
@@ -121,6 +124,10 @@ QJsonObject preferencesToJson(const SensorVizPreferences &preferences)
             axis_sides.insert(it.key(), axisSideToString(it.value()));
         }
         object.insert(QStringLiteral("axis_sides"), axis_sides);
+    }
+
+    if (preferences.hasBreakLinesAtGapsOverride) {
+        object.insert(QStringLiteral("break_lines_at_gaps"), preferences.breakLinesAtGaps);
     }
 
     return object;
@@ -203,6 +210,17 @@ bool jsonToPreferences(
         }
     }
 
+    if (object.contains(QStringLiteral("break_lines_at_gaps"))) {
+        const QJsonValue value = object.value(QStringLiteral("break_lines_at_gaps"));
+        if (!value.isBool()) {
+            error = QStringLiteral("break_lines_at_gaps for %1 must be true or false")
+                        .arg(tag_type);
+            return false;
+        }
+        preferences.hasBreakLinesAtGapsOverride = true;
+        preferences.breakLinesAtGaps = value.toBool();
+    }
+
     return true;
 }
 
@@ -269,6 +287,11 @@ void MainWindow::rememberCurrentPreferences()
         }
     }
 
+    if (!break_gaps_action_->isChecked()) {
+        preferences.hasBreakLinesAtGapsOverride = true;
+        preferences.breakLinesAtGaps = false;
+    }
+
     if (hasPreferenceOverrides(preferences)) {
         preferences_by_tag_type_[key] = preferences;
     } else {
@@ -308,6 +331,11 @@ void MainWindow::applyPreferencesForCurrentTag()
         applyStreamVisibility(preferences.visibleStreamIds);
     } else {
         applyStreamVisibility(defaultVisibleStreamIds(streams_));
+    }
+    {
+        const QSignalBlocker blocker(break_gaps_action_);
+        break_gaps_action_->setChecked(
+            preferences.hasBreakLinesAtGapsOverride ? preferences.breakLinesAtGaps : true);
     }
     suppress_preference_updates_ = false;
 

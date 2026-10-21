@@ -21,10 +21,11 @@
 namespace
 {
 
-/// True when @p a and @p b differ at most in title and UTC offset, which can be applied without a rebuild.
+/// True when @p a and @p b differ at most in title, UTC offset and gap mode, which can be applied without a rebuild.
 bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
 {
-    if (a.title == b.title && a.utcOffsetHours == b.utcOffsetHours) {
+    if (a.title == b.title && a.utcOffsetHours == b.utcOffsetHours
+        && a.breakAtGaps == b.breakAtGaps) {
         return false; // Identical specs still rebuild, as every refresh always has.
     }
     if (a.timeDomain != b.timeDomain || a.hasXDataRange != b.hasXDataRange
@@ -146,6 +147,9 @@ void PlotView::setLog(const sensordata::Log *log)
 void PlotView::setSpec(const PlotSpec &spec)
 {
     const bool in_place = has_spec_ && onlyTitleOrUtcDiffer(spec_, spec);
+    if (in_place && spec.breakAtGaps != spec_.breakAtGaps) {
+        fill_valid_ = false; // Refill with the other gap mode on this replot.
+    }
     spec_ = spec;
     has_spec_ = true;
     applyTimeAxis();
@@ -505,7 +509,8 @@ void PlotView::fillGraphs(double lower, double upper, int columns)
     // Replace every graph's points with the M4 envelope of [lower, upper]:
     // first, last, minimum and maximum sample of each column, plus one sample
     // beyond each edge. Drawn as a line, that is the same picture as every
-    // sample, at a few thousand points per graph.
+    // sample, at a few thousand points per graph. Gap markers carry a NaN
+    // value, where QCustomPlot breaks the line.
     fill_lower_ = lower;
     fill_upper_ = upper;
     fill_columns_ = columns;
@@ -514,7 +519,9 @@ void PlotView::fillGraphs(double lower, double upper, int columns)
         return;
     }
     for (const auto &entry : graphs_) {
-        const sensordata::Envelope envelope = log_->view(entry.second, lower, upper, columns);
+        const sensordata::Envelope envelope = log_->view(
+            entry.second, lower, upper, columns,
+            spec_.breakAtGaps ? sensordata::GapMode::Break : sensordata::GapMode::Join);
         QVector<QCPGraphData> points(static_cast<qsizetype>(envelope.index.size()));
         for (qsizetype i = 0; i < points.size(); i++) {
             points[i] = QCPGraphData(envelope.time[static_cast<size_t>(i)],
