@@ -122,3 +122,45 @@ original, apart from the file name in the title.
 
 Screen-grab captures of the full log are unreliable for comparison: a
 40-second load lets other windows come to the front, and they are captured.
+
+## 2026-10-21: phase 1, the sensordata library
+
+**Conditions.** As above. `sensordata_check --log full.db3` from
+[`host/libraries/sensordata`](../../../../libraries/sensordata/README.md),
+Release, linked against the vcpkg SQLite. The log is the phase 0 one. The
+library loads all eleven metadata streams, not only accel and gyro: 117,979,257
+samples in all. Views are 2,000 columns wide over the six accel and gyro
+streams, centred on the log, averaged over 20 repetitions, and **include**
+locating the sample of each column's minimum and maximum, which the prototype
+left out.
+
+```text
+load 4.00 s, 11 streams, 117979257 samples, peak footprint 851 MB
+  view full log  : 6 streams, 8.59 ms, 47737 points out
+  view 1 hour    : 6 streams, 2.86 ms, 47671 points out
+  view 1 minute  : 6 streams, 0.59 ms, 43954 points out
+  view 10 seconds: 6 streams, 0.17 ms, 24012 points out
+  imu_ax: exact
+  ...
+  imu_gz: exact
+```
+
+Every view of every accel and gyro stream matched a brute-force M4 computed
+from `forEachRow()` doubles narrowed to `float`. Load time varied from 4.0 s
+to 6.2 s across four runs on a machine also in interactive use; memory and
+view times did not vary. `/usr/bin/time -l` reports a 1,087 MB peak for the
+whole program, which includes the brute-force reference copies made after the
+851 MB figure is taken.
+
+Two implementation findings, both now in the library:
+
+- **SQLite's serialized mode cost 1.6 times the load.** In
+  `SQLITE_OPEN_FULLMUTEX` mode every `sqlite3_column_*()` call takes the
+  connection mutex. The same build loaded in 6.3 s and 7.0 s with it and
+  4.0 s and 4.3 s with `SQLITE_OPEN_NOMUTEX`, so the library opens without it
+  and serialises `valueAt()` itself; `forEachRow()` opens its own connection.
+- **Column edges by plain binary search cost half the full-log view.**
+  2,001 binary searches per stream over a 157 MB time axis are mostly cache
+  misses. Searching from a guess that each column holds as many samples as
+  the previous one, galloping outward, brought the full-log view from 20 ms
+  to 8.6-10 ms.

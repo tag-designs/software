@@ -384,6 +384,14 @@ design document.
 
 - [sensoranalysis Offline Checks](../host/libraries/sensoranalysis/test/README.md) — How to build and run the offline sensoranalysis assertion checks for the magnetometer and accelerometer calibration metrics.
 
+### Libraries / sensordata
+
+- [sensordata Library](../host/libraries/sensordata/README.md) — The Qt-free sensordata library - columnar loading of tagcore SQLite logs, min/max pyramids, M4 view queries and exact read-back - and how to build and check it.
+
+### Libraries / sensordata / test
+
+- [sensordata Offline Checks](../host/libraries/sensordata/test/README.md) — How to build and run sensordata_check, the offline assertion program for the sensordata library, and what it covers.
+
 ### Libraries / sensorui
 
 - [SensorUI Library](../host/libraries/sensorui/README.md) — Contents of the sensorui library of reusable Qt and QML sensor widgets.

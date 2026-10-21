@@ -22,6 +22,8 @@ add_subdirectory(libraries/tagcore)
 # Always added: its Qt-free core is what dataprocessing links. The Qt library
 # in it is built only with the Qt applications.
 add_subdirectory(libraries/sensoranalysis)
+# Qt-free, needs only sqlite3; sensorviz plots through it.
+add_subdirectory(libraries/sensordata)
 add_subdirectory(commandline)
 if(BUILD_TAG_SERVER)
   add_subdirectory(tagserver)
