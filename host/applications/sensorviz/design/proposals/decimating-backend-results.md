@@ -88,3 +88,37 @@ proposed: load 3.6 s, pyramid build 0.10 s, pyramids 59 MB, data 786 MB, peak fo
 A first run used a different real IMUTag log as the template. It gave the
 same picture: proposed 849 MB and 5.0 s; current loader 2,440 MB and 29.3 s;
 sensorviz with defaults 2.94 GB, and with all streams 4.83 GB.
+
+## 2026-10-21: phase 0, one query per table
+
+**Conditions.** As above: Apple M2, 24 GB, macOS 27.0.1, Qt 6.10.3,
+`arm64-osx-static`, Release. Both binaries were built from the same
+configuration; "before" is `4395236e`, "after" is the phase 0 loader change
+(`sqlite_loader.cpp` reads each table once, `ORDER BY rowid`, and the streams
+of a table share one time `QVector` by implicit sharing). The log is a fresh
+[`make-full-log.sh`](decimation-bench/make-full-log.sh) output,
+2,158,653,440 bytes.
+
+```text
+/usr/bin/time -l sensorviz --load-log full.db3 --capture-screenshot imutag --no-user-prompts
+```
+
+| Visible streams | Before: wall | Before: peak footprint | After: wall | After: peak footprint |
+| --- | --- | --- | --- | --- |
+| Defaults | 43.7 s | 2,937,261,488 B | 10.7 s | 2,299,054,696 B |
+| All six components plus magnitudes | 41.5 s | 4,835,152,672 B | 10.3 s | 4,196,503,488 B |
+
+The saving is 0.64 GB in both cases: four of the six component time vectors
+(4 × 157 MB) no longer exist. The proposal predicted 0.6 GB and a load of
+about 4 s; the remaining wall time is the transforms and the screenshot.
+
+**Equivalence.** The `imutag` and `compasstag` capture suites, run on the
+committed fixtures with `-platform offscreen` so the capture is a widget
+grab rather than a screen grab, are pixel-identical before and after apart
+from the screenshot directory printed on the File Info page. A copy of the
+IMUTag fixture with `ImuAccel` reversed and `ImuMag` shuffled in rowid order
+(exercising the in-memory sort fallback) renders the same plot as the
+original, apart from the file name in the title.
+
+Screen-grab captures of the full log are unreliable for comparison: a
+40-second load lets other windows come to the front, and they are captured.

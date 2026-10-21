@@ -9,6 +9,10 @@
 
 #include <sqlite3.h>
 
+#include <algorithm>
+#include <numeric>
+#include <vector>
+
 #include "sensor_preferences.h"
 
 // SQLite logs are self-describing: tagcore writes a mandatory streams metadata
@@ -350,54 +354,158 @@ bool loadStreamMetadata(Database &db, QVector<StreamMetadata> &metadata, QString
 // rows become plottable streams. Record-column rows are loaded together as one
 // multi-column record set for later transform code.
 
-// Convert one metadata-described SQLite column into a SensorStream. Metadata is
-// mandatory in the new schema, so a missing referenced table/column is a schema
-// error rather than a normal optional-table condition.
-bool loadStream(
+// Columns of one table read in a single pass: one time axis and one value
+// vector per requested column, all the same length and sorted by time.
+struct TableColumns
+{
+    QVector<double> time;
+    QVector<QVector<double>> values;
+};
+
+// Restore time order after a table was read in rowid order but its time column
+// was found to decrease somewhere. The sort is stable, so rows with equal times
+// keep their rowid order, and every value column is permuted with the time.
+void sortColumnsByTime(TableColumns &columns)
+{
+    const qsizetype rows = columns.time.size();
+    std::vector<qsizetype> order(static_cast<size_t>(rows));
+    std::iota(order.begin(), order.end(), qsizetype(0));
+    const QVector<double> &time = columns.time;
+    std::stable_sort(order.begin(), order.end(), [&time](qsizetype a, qsizetype b) {
+        return time[a] < time[b];
+    });
+
+    auto permute = [&order, rows](QVector<double> &vector) {
+        QVector<double> sorted;
+        sorted.reserve(rows);
+        for (qsizetype index : order) {
+            sorted.append(vector[index]);
+        }
+        vector = sorted;
+    };
+    permute(columns.time);
+    for (QVector<double> &values : columns.values) {
+        permute(values);
+    }
+}
+
+// Read a table's time column and the given value columns with one query in
+// rowid order. The writer inserts rows in sample order, so this is normally
+// already time order and SQLite never sorts; `ElapsedUs` has no index, and an
+// ORDER BY on it sorts the whole table once per query. The time order is
+// checked as rows arrive, and a table that is ever out of order is sorted once
+// in memory instead. The row count is read first so every vector is allocated
+// once.
+bool loadTableColumns(
     Database &db,
-    const StreamMetadata &definition,
-    SensorLog &log,
+    const QString &table,
+    const QString &time_column,
+    const QStringList &value_columns,
+    SensorTimeDomain domain,
+    TableColumns &columns,
     QString &error)
 {
-    if (!tableExistsRaw(db, definition.table)) {
-        error = QString("Stream metadata references missing table %1").arg(definition.table);
+    if (!tableExistsRaw(db, table)) {
+        error = QString("Stream metadata references missing table %1").arg(table);
         return false;
     }
 
-    const QString sql = QString("SELECT %1, %2 FROM %3 ORDER BY %1")
-                            .arg(
-                                quotedIdentifier(definition.timeColumn),
-                                quotedIdentifier(definition.valueColumn),
-                                quotedIdentifier(definition.table));
-    const QByteArray utf8_sql = sql.toUtf8();
-    Statement stmt(db, utf8_sql.constData());
+    qsizetype row_count = 0;
+    {
+        const QByteArray count_sql =
+            QString("SELECT count(*) FROM %1").arg(quotedIdentifier(table)).toUtf8();
+        Statement count(db, count_sql.constData());
+        if (count.valid() && count.next()) {
+            row_count = static_cast<qsizetype>(count.int64Column(0));
+        }
+    }
+
+    QStringList select_columns;
+    select_columns << quotedIdentifier(time_column);
+    for (const QString &column : value_columns) {
+        select_columns << quotedIdentifier(column);
+    }
+    const QByteArray sql = QString("SELECT %1 FROM %2 ORDER BY rowid")
+                               .arg(select_columns.join(", "), quotedIdentifier(table))
+                               .toUtf8();
+    Statement stmt(db, sql.constData());
     if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2").arg(definition.displayName, stmt.lastError());
+        error = QString("Failed to load %1: %2").arg(table, stmt.lastError());
         return false;
     }
 
-    SensorStream stream;
-    stream.id = definition.id;
-    stream.label = definition.displayName;
-    stream.units = definition.units;
-    stream.timeDomain = timeDomainForColumn(definition.timeColumn);
-    const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(definition.id);
-    stream.color = defaults.color;
-    stream.defaultVisible = defaults.visible;
-    stream.axisSide = defaults.axisSide;
-    stream.axisRange = defaults.axisRange;
+    columns.time.clear();
+    columns.time.reserve(row_count);
+    columns.values = QVector<QVector<double>>(value_columns.size());
+    for (QVector<double> &values : columns.values) {
+        values.reserve(row_count);
+    }
 
+    bool in_order = true;
     while (stmt.next()) {
-        stream.time.append(normalizedTimeValue(stmt, 0, stream.timeDomain));
-        stream.value.append(stmt.doubleColumn(1));
+        const double time = normalizedTimeValue(stmt, 0, domain);
+        if (!columns.time.isEmpty() && time < columns.time.constLast()) {
+            in_order = false;
+        }
+        columns.time.append(time);
+        for (qsizetype i = 0; i < columns.values.size(); i++) {
+            columns.values[i].append(stmt.doubleColumn(static_cast<int>(i + 1)));
+        }
+    }
+
+    if (!in_order) {
+        sortColumnsByTime(columns);
+    }
+    return true;
+}
+
+// Convert every scalar stream stored in one table into SensorStream objects.
+// The streams share one time column, which is read once and shared between
+// them through QVector's implicit sharing, so ax, ay and az hold one copy of
+// the time axis between them. Metadata is mandatory in the new schema, so a
+// missing referenced table/column is a schema error rather than a normal
+// optional-table condition. Streams are returned in the order of
+// `definitions`; an empty table contributes none.
+bool loadTableStreams(
+    Database &db,
+    const QVector<StreamMetadata> &definitions,
+    QMap<QString, SensorStream> &streams,
+    QString &error)
+{
+    const StreamMetadata &first = definitions.first();
+    const SensorTimeDomain domain = timeDomainForColumn(first.timeColumn);
+    QStringList value_columns;
+    for (const StreamMetadata &definition : definitions) {
+        value_columns << definition.valueColumn;
+    }
+
+    TableColumns columns;
+    if (!loadTableColumns(
+            db, first.table, first.timeColumn, value_columns, domain, columns, error)) {
+        return false;
     }
 
     // Empty tables do not contribute menu items or axes.
-    if (stream.time.isEmpty()) {
+    if (columns.time.isEmpty()) {
         return true;
     }
 
-    log.streams.append(stream);
+    for (qsizetype i = 0; i < definitions.size(); i++) {
+        const StreamMetadata &definition = definitions[i];
+        SensorStream stream;
+        stream.id = definition.id;
+        stream.label = definition.displayName;
+        stream.units = definition.units;
+        stream.timeDomain = domain;
+        const SensorStreamDisplayDefaults defaults = defaultDisplayForStream(definition.id);
+        stream.color = defaults.color;
+        stream.defaultVisible = defaults.visible;
+        stream.axisSide = defaults.axisSide;
+        stream.axisRange = defaults.axisRange;
+        stream.time = columns.time;
+        stream.value = columns.values[i];
+        streams.insert(definition.id, stream);
+    }
     return true;
 }
 
@@ -416,51 +524,40 @@ bool loadRecordSet(
     }
 
     const StreamMetadata first = columns.first();
-    if (!tableExistsRaw(db, first.table)) {
-        error = QString("Stream metadata references missing table %1").arg(first.table);
-        return false;
-    }
 
-    QStringList select_columns;
-    select_columns << quotedIdentifier(first.timeColumn);
+    QStringList value_columns;
     for (const StreamMetadata &column : columns) {
         if (column.table != first.table || column.timeColumn != first.timeColumn) {
             error = QString("Record set %1 mixes tables or time columns").arg(group_id);
             return false;
         }
-        select_columns << quotedIdentifier(column.valueColumn);
-    }
-
-    const QString sql = QString("SELECT %1 FROM %2 ORDER BY %3")
-                            .arg(
-                                select_columns.join(", "),
-                                quotedIdentifier(first.table),
-                                quotedIdentifier(first.timeColumn));
-    const QByteArray utf8_sql = sql.toUtf8();
-    Statement stmt(db, utf8_sql.constData());
-    if (!stmt.valid()) {
-        error = QString("Failed to load %1: %2")
-                    .arg(first.groupName.isEmpty() ? group_id : first.groupName, stmt.lastError());
-        return false;
+        value_columns << column.valueColumn;
     }
 
     SensorRecordSet record_set;
     record_set.id = group_id;
     record_set.label = first.groupName.isEmpty() ? group_id : first.groupName;
     record_set.timeDomain = timeDomainForColumn(first.timeColumn);
-    for (const StreamMetadata &column : columns) {
-        record_set.columns.insert(column.valueColumn, QVector<double>());
+
+    TableColumns loaded;
+    if (!loadTableColumns(
+            db,
+            first.table,
+            first.timeColumn,
+            value_columns,
+            record_set.timeDomain,
+            loaded,
+            error)) {
+        return false;
     }
 
-    while (stmt.next()) {
-        record_set.time.append(normalizedTimeValue(stmt, 0, record_set.timeDomain));
-        for (int i = 0; i < columns.size(); i++) {
-            record_set.columns[columns[i].valueColumn].append(stmt.doubleColumn(i + 1));
-        }
-    }
-
-    if (record_set.time.isEmpty()) {
+    if (loaded.time.isEmpty()) {
         return true;
+    }
+
+    record_set.time = loaded.time;
+    for (qsizetype i = 0; i < columns.size(); i++) {
+        record_set.columns.insert(columns[i].valueColumn, loaded.values[i]);
     }
 
     log.recordSets.append(record_set);
@@ -760,11 +857,25 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         return false;
     }
 
+    // Scalar streams are grouped by table and time column so each table is
+    // read once, then published in metadata order.
+    QVector<QString> scalar_order;
+    QVector<QVector<StreamMetadata>> scalar_tables;
     QMap<QString, QVector<StreamMetadata>> record_sets;
     for (const StreamMetadata &definition : stream_metadata) {
         if (definition.kind.compare("scalar", Qt::CaseInsensitive) == 0) {
-            if (!loadStream(db, definition, loaded, error)) {
-                return false;
+            scalar_order.append(definition.id);
+            auto table = std::find_if(
+                scalar_tables.begin(),
+                scalar_tables.end(),
+                [&definition](const QVector<StreamMetadata> &group) {
+                    return group.first().table == definition.table
+                        && group.first().timeColumn == definition.timeColumn;
+                });
+            if (table == scalar_tables.end()) {
+                scalar_tables.append(QVector<StreamMetadata>{definition});
+            } else {
+                table->append(definition);
             }
         } else if (definition.kind.compare("record_column", Qt::CaseInsensitive) == 0) {
             if (definition.groupId.isEmpty()) {
@@ -776,6 +887,20 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
             error = QString("Unsupported stream kind %1 for stream %2")
                         .arg(definition.kind, definition.id);
             return false;
+        }
+    }
+
+    QMap<QString, SensorStream> scalar_streams;
+    for (const QVector<StreamMetadata> &table : scalar_tables) {
+        if (!loadTableStreams(db, table, scalar_streams, error)) {
+            return false;
+        }
+    }
+    for (const QString &id : scalar_order) {
+        auto stream = scalar_streams.find(id);
+        if (stream != scalar_streams.end()) {
+            loaded.streams.append(stream.value());
+            scalar_streams.erase(stream);
         }
     }
 
