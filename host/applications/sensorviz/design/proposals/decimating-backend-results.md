@@ -164,3 +164,62 @@ Two implementation findings, both now in the library:
   misses. Searching from a guess that each column holds as many samples as
   the previous one, galloping outward, brought the full-log view from 20 ms
   to 8.6-10 ms.
+
+## 2026-10-21: phase 2, sensorviz plots through sensordata
+
+**Conditions.** As above. sensorviz at the phase 2 change: graphs are filled
+from `view()` after every QCustomPlot layout pass, one column per device
+pixel; hover uses `valueAt()`; y ranges use the pyramids; printing refills at
+the printer's resolution. The `SensorStream` `double` copies remain as
+transform inputs (phase 3 removes them), so the log is read twice.
+
+```text
+/usr/bin/time -l sensorviz --load-log full.db3 --capture-screenshot imutag --no-user-prompts
+```
+
+| Visible streams | Before (`4395236e`) | Phase 0 | Phase 2 |
+| --- | --- | --- | --- |
+| Defaults | 43.7 s, 2,937,261,488 B | 10.7 s, 2,299,054,696 B | 11.4-13.0 s, 2,547,239,768 B |
+| All six components plus magnitudes | 41.5 s, 4,835,152,672 B | 10.3 s, 4,196,503,488 B | 11.1-11.5 s, 2,548,796,272 B |
+
+Peak memory no longer depends on what is visible. It is 0.25 GB above
+phase 0 for the default view: the backend's 0.85 GB and the magnitudes'
+`float` copies are added, while only the two visible magnitudes' QCustomPlot
+copies (0.63 GB) and their `double`s go. The peak is reached while the loader's
+`double`s and the backend coexist. A first cut that also kept each
+transform output's `double`s peaked at 2.71 GB in both views; those are now
+dropped once registered, since no transform reads another's output.
+
+**Equivalence.** Offscreen widget grabs (`-platform offscreen`), before
+against after:
+
+| Capture | Differing pixels | Largest channel difference |
+| --- | --- | --- |
+| `imutag` suite, fixture | 12 in the plot | 2 |
+| `compasstag` suite, fixture | 0 in the plot | 0 |
+| Full log, defaults | 0 | 0 |
+| Full log, all streams | 203, along the top edge of the dense accel traces | 5 |
+
+The File Info pages differ only in the screenshot directory they print.
+
+A temporary test hook, not committed, set the x range and printed the hover
+readout of every visible stream at chosen times, in the phase 0 build and the
+phase 2 build. Over two fixture windows, one CompassTag window and three
+full-log windows (one hour, ten seconds, and one running past the end of the
+data), the 69 hover lines were identical, including the derived magnitudes,
+which the backend holds as `float`. The renders were identical or within 3
+levels, except the ten-second window: 131 pixels differ, all but one in the
+last two pixel columns at the right edge of the plot, by up to 74 levels.
+QCustomPlot's adaptive sampling bins that final column differently from the
+M4 columns. Drawing every sample with adaptive sampling switched off is not a
+usable reference: anti-aliased segments pile up, and that render differs
+from both by over 100,000 pixels.
+
+**Print.** The same hook rendered to a `QPrinter::HighResolution` PDF. The
+envelope was refilled at 9,532 columns for the fixture and 9,731 for a
+one-hour window of the full log. Printing previously went through
+`QWidget::render()`, which copies the screen's raster buffers; it now uses
+`QCustomPlot::toPainter()` for vector output, painting in the screen's
+logical DPI so text keeps its size, with QCustomPlot's adaptive sampling off
+while it draws so the printer-resolution envelope is not thinned back to
+screen density.

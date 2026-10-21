@@ -166,6 +166,9 @@ void MainWindow::printPlot()
     printer.setOutputFormat(QPrinter::NativeFormat);
     printer.setPageOrientation(QPageLayout::Landscape);
     printer.setPageSize(QPageSize(QPageSize::Letter));
+    // renderPlot() repaints this printer in screen coordinates, so remember
+    // the device's real resolution for sizing the plot envelope.
+    print_device_dpi_ = printer.resolution();
 
     QPrintPreviewDialog preview(&printer, this);
     connect(&preview, &QPrintPreviewDialog::paintRequested, this, &MainWindow::renderPlot);
@@ -176,18 +179,47 @@ void MainWindow::renderPlot(QPrinter *printer)
 {
     // Render QCustomPlot into the print device using vector-friendly painter
     // settings. Page scaling preserves the on-screen aspect ratio.
+    //
+    // Paint in the screen's coordinate system. QPainter sizes text from the
+    // paint device's resolution, so at the printer's own (1200 dpi for a PDF)
+    // text would come out many times too large once the page scale below is
+    // applied. The output is still vector; the resolution only sets the
+    // coordinate system, and must be set before painting begins.
+    const int device_dpi = print_device_dpi_ > 0 ? print_device_dpi_ : printer->resolution();
+    printer->setResolution(plot_->logicalDpiX());
     QCPPainter painter(printer);
     const auto page_layout = printer->pageLayout();
     const auto page_rect = page_layout.paintRectPixels(printer->resolution());
     const double xscale = page_rect.width() / double(plot_->width());
     const double yscale = page_rect.height() / double(plot_->height());
+    const double scale = qMin(xscale, yscale);
+
     // Preserve the on-screen aspect ratio and let QCustomPlot render vector
-    // output where the platform print backend supports it.
-    painter.scale(qMin(xscale, yscale), qMin(xscale, yscale));
+    // output where the platform print backend supports it. toPainter() draws
+    // the plot itself; QWidget::render() would copy the screen's raster
+    // buffers.
+    painter.scale(scale, scale);
     painter.setMode(QCPPainter::pmVectorized);
     painter.setMode(QCPPainter::pmNoCaching);
     painter.setMode(QCPPainter::pmNonCosmetic);
-    plot_->render(&painter);
+
+    // The graphs hold an envelope sized for the screen. toPainter() runs a
+    // layout pass, whose refill sizes it for the printer's device resolution
+    // while print_pixel_scale_ is set, so the printed lines are as exact as
+    // the screen's. The queued replot then refills for the screen.
+    // QCustomPlot's adaptive sampling works in these screen-sized
+    // coordinates and would thin the printer-resolution envelope back down,
+    // so it is off while printing; the envelope is already bounded.
+    print_pixel_scale_ = scale * device_dpi / double(printer->resolution());
+    for (const auto &entry : plot_graph_data_) {
+        entry.first->setAdaptiveSampling(false);
+    }
+    plot_->toPainter(&painter, plot_->width(), plot_->height());
+    for (const auto &entry : plot_graph_data_) {
+        entry.first->setAdaptiveSampling(true);
+    }
+    print_pixel_scale_ = 0.0;
+    plot_->replot(QCustomPlot::rpQueuedReplot);
 }
 
 void MainWindow::setUtcOffset()
@@ -380,22 +412,21 @@ QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) cons
 {
     // Return a tooltip-ready value near the requested epoch. This is intentionally
     // nearest-at-or-after rather than interpolated, matching QCustomPlot's
-    // sample-oriented interaction style.
-    if (stream.time.isEmpty()) {
+    // sample-oriented interaction style. The graph holds only an envelope, so
+    // the sample comes from the plot backend, which reads a stored stream's
+    // value back from SQLite exactly.
+    if (!log_.data) {
         return QString();
     }
-
-    auto it = std::lower_bound(stream.time.cbegin(), stream.time.cend(), epoch);
-    qsizetype index = it == stream.time.cend()
-        ? stream.time.size() - 1
-        : std::distance(stream.time.cbegin(), it);
-    if (index < 0 || index >= stream.value.size()) {
+    const std::optional<sensordata::Sample> sample =
+        log_.data->valueAt(stream.dataId, epoch, sensordata::Pick::AtOrAfter);
+    if (!sample) {
         return QString();
     }
 
     return QString("%1: %2%3")
         .arg(stream.label)
-        .arg(stream.value[index], 0, 'f', 2)
+        .arg(sample->value, 0, 'f', 2)
         .arg(unitsSuffix(stream));
 }
 

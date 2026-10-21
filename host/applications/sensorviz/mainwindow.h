@@ -266,6 +266,20 @@ private:
         const SensorStream &stream);
     QString streamValueAt(const SensorStream &stream, double epoch) const;
     void resetCursorsToView();
+
+    // Plot data. Graphs never hold a stream's samples, only the M4 envelope
+    // of the visible window from log_.data, at most four points per pixel
+    // column. fillPlotGraphs() computes it; refillPlotGraphsAfterLayout()
+    // runs after every QCustomPlot layout pass and refills when the x range
+    // or the plot width has changed, so a drag or resize costs one refill per
+    // replot. Value ranges and hover readout also come from log_.data.
+    int plotColumns(double device_pixels_per_pixel) const;
+    void fillPlotGraphs(double lower, double upper, int columns);
+    void refillPlotGraphsAfterLayout();
+    const sensordata::StreamInfo *plotDataInfo(const SensorStream &stream) const;
+    bool plotDataRange(const SensorStream &stream, QCPRange &range) const;
+    void registerPlotData(SensorStream &stream);
+    void releasePlotData(const SensorStream &stream);
     void applyUtcAxisLabel();
 
     SensorLog log_;
@@ -356,6 +370,21 @@ private:
     QCPTextElement *plot_title_ = nullptr;
     QCPItemText *metadata_box_ = nullptr;
     QVector<QCPItemStraightLine *> event_marker_items_;
+
+    // Each graph and the log_.data stream it draws, and the window and width
+    // it was last filled for. plot_fill_valid_ is false when the next layout
+    // pass must refill regardless.
+    QVector<QPair<QCPGraph *, sensordata::StreamId>> plot_graph_data_;
+    double plot_fill_lower_ = 0.0;
+    double plot_fill_upper_ = 0.0;
+    int plot_fill_columns_ = 0;
+    bool plot_fill_valid_ = false;
+    // Printer device pixels per plot pixel while renderPlot() draws; 0 on
+    // screen, where the widget's device pixel ratio applies.
+    double print_pixel_scale_ = 0.0;
+    // Resolution of the printer printPlot() set up, before renderPlot()
+    // switches it to screen coordinates; 0 when unknown.
+    int print_device_dpi_ = 0;
 };
 
 #endif

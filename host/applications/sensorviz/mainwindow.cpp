@@ -344,6 +344,9 @@ void MainWindow::createUi()
     connect(plot_, &QCustomPlot::mouseMove, this, &MainWindow::showMousePosition);
     connect(plot_, &QCustomPlot::mouseRelease, this, &MainWindow::endMetadataBoxDrag);
     connect(plot_, &QCustomPlot::mouseDoubleClick, this, &MainWindow::plotDoubleClick);
+    // Graphs hold only the envelope of the visible window; refill it once
+    // per replot, after layout has fixed the plot's width.
+    connect(plot_, &QCustomPlot::afterLayout, this, [this]() { refillPlotGraphsAfterLayout(); });
 
     resize(1100, 700);
     setWindowTitle(tr("sensorViz"));

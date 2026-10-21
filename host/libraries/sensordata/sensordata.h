@@ -350,6 +350,25 @@ public:
                                        const std::vector<double> &values);
 
     /**
+     * @brief   As the overload above, reading @p count values from @p values.
+     *
+     * @details For callers whose values are not in a `std::vector`, such as a
+     *          Qt container, so they need not make a temporary copy.
+     *
+     * @param[in] info       Description, as above.
+     * @param[in] time_from  Stream whose time axis the values follow.
+     * @param[in] values     @p count values; may be null only when @p count is
+     *                       zero, which is then rejected.
+     * @param[in] count      Number of values; must equal @p time_from's sample
+     *                       count.
+     * @return  As above.
+     *
+     * @warning Not thread-safe; see the class description.
+     */
+    std::optional<StreamId> addDerived(StreamInfo info, StreamId time_from, const double *values,
+                                       std::size_t count);
+
+    /**
      * @brief   Registers a computed stream with its own time axis.
      *
      * @param[in] info    Description; as for the other overload, except that

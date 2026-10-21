@@ -754,6 +754,9 @@ void checkDerived()
     }
     CHECK(!log->addDerived(info, sax, std::vector<double>(n - 1)).has_value());
     CHECK(!log->addDerived(info, sensordata::kNoStream, magnitude).has_value());
+    CHECK(!log->addDerived(info, sax, nullptr, 0).has_value());
+    const auto by_pointer = log->addDerived(info, sax, magnitude.data(), magnitude.size());
+    CHECK(by_pointer.has_value() && log->remove(*by_pointer));
 
     // A replacement registered under a stored id is what find() returns.
     sensordata::StreamInfo corrected;

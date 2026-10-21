@@ -983,8 +983,14 @@ bool Log::forEachRow(const std::string &table, const std::vector<std::string> &c
 std::optional<StreamId> Log::addDerived(StreamInfo info, StreamId time_from,
                                         const std::vector<double> &values)
 {
+    return addDerived(std::move(info), time_from, values.data(), values.size());
+}
+
+std::optional<StreamId> Log::addDerived(StreamInfo info, StreamId time_from, const double *values,
+                                        std::size_t count)
+{
     const StreamData *source = impl_->stream(time_from);
-    if (!source || values.size() != source->values.size()) {
+    if (!source || !values || count != source->values.size()) {
         return std::nullopt;
     }
     auto stream = std::make_unique<StreamData>();
@@ -994,7 +1000,7 @@ std::optional<StreamId> Log::addDerived(StreamInfo info, StreamId time_from,
     info.value_column.clear();
     info.derived = true;
     stream->info = std::move(info);
-    stream->values.assign(values.begin(), values.end());
+    stream->values.assign(values, values + count);
     finishStream(*stream);
     return impl_->add(std::move(stream));
 }

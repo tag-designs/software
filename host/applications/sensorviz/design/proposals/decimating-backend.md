@@ -1,13 +1,18 @@
 ---
 type: proposal
 status: proposed
-summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB today, about 1 GB proposed).
+summary: A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); phases 0-2 are built, 3-4 remain.
 ---
 
 # Decimating Data Backend for sensorviz
 
-**Status:** proposed, not built. A benchmark prototype is in
-[`decimation-bench/`](decimation-bench/bench.cc). Its measurements are in
+**Status:** phases 0-2 are built; phases 3 and 4 are proposed. See
+[Phases](#phases). The library is
+[`host/libraries/sensordata`](../../../../libraries/sensordata/README.md),
+whose header is now the authority on the API; it differs from the
+[sketch](#api-sketch) below in detail. A benchmark prototype is in
+[`decimation-bench/`](decimation-bench/bench.cc). Measurements of the
+prototype and of each built phase are in
 [decimating-backend-results.md](decimating-backend-results.md).
 
 sensorviz should stop handing every sample to the plot. A new Qt-free library,
@@ -548,6 +553,11 @@ For sensorviz itself:
   log, including an end-to-end `/usr/bin/time -l` of sensorviz.
 
 ## Phases
+
+Phases 0, 1 and 2 are built. With the transform inputs still loaded as
+`double`s alongside the backend, sensorviz peaks at about 2.5 GB on the
+worst-case log whatever is visible, against 4.8 GB with every stream shown
+before; phase 3 removes the `double` copies.
 
 0. **Loader fix in place.** In `sqlite_loader.cpp`: one query per table,
    ordered by rowid, with the time vector shared by copy-on-write. This is

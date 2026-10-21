@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QMap>
+#include <QSet>
 #include <QVector3D>
 
 #include <sqlite3.h>
@@ -649,17 +650,18 @@ bool streamsHaveSameSamples(
     return true;
 }
 
-void applyCalibrationToImuMagnetometer(SensorLog &log)
+// Returns true when the magnetometer axes were changed.
+bool applyCalibrationToImuMagnetometer(SensorLog &log)
 {
     if (!log.hasCompassCalibration) {
-        return;
+        return false;
     }
 
     SensorStream *mx = streamById(log, QStringLiteral("imu_mx"));
     SensorStream *my = streamById(log, QStringLiteral("imu_my"));
     SensorStream *mz = streamById(log, QStringLiteral("imu_mz"));
     if (!mx || !my || !mz) {
-        return;
+        return false;
     }
 
     if (!streamsHaveSameSamples(*mx, *my, *mz)) {
@@ -667,7 +669,7 @@ void applyCalibrationToImuMagnetometer(SensorLog &log)
             log.compassCalibrationWarning =
                 "IMUTag magnetometer calibration skipped because axis streams do not align";
         }
-        return;
+        return false;
     }
 
     for (qsizetype i = 0; i < mx->value.size(); i++) {
@@ -677,23 +679,25 @@ void applyCalibrationToImuMagnetometer(SensorLog &log)
         my->value[i] = calibrated.y();
         mz->value[i] = calibrated.z();
     }
+    return true;
 }
 
 // IMUTag acceleration axes are plotted as they are stored, so the zero-g
 // offset is subtracted here, once, the same way applyCalibrationToImuMagnetometer()
 // corrects the magnetometer. Both are in mg. CompassTag acceleration reaches
 // the plot only through CompassProcessor, which applies the offset itself.
-void applyCalibrationToImuAccelerometer(SensorLog &log)
+// Returns true when the acceleration axes were changed.
+bool applyCalibrationToImuAccelerometer(SensorLog &log)
 {
     if (!log.hasCompassCalibration) {
-        return;
+        return false;
     }
 
     SensorStream *ax = streamById(log, QStringLiteral("imu_ax"));
     SensorStream *ay = streamById(log, QStringLiteral("imu_ay"));
     SensorStream *az = streamById(log, QStringLiteral("imu_az"));
     if (!ax || !ay || !az) {
-        return;
+        return false;
     }
 
     // The offset is per axis, so unlike the magnetometer matrix the axes need
@@ -708,6 +712,47 @@ void applyCalibrationToImuAccelerometer(SensorLog &log)
     for (double &value : az->value) {
         value -= offset.z();
     }
+    return true;
+}
+
+// Open the decimating plot backend on the same file and point every stream
+// at its data. Streams the loader changed after reading (the calibrated IMU
+// axes in `corrected`) are registered as derived streams on the stored
+// stream's time axis, from their corrected doubles, and the uncorrected
+// stored copies are dropped so the plot never shows them.
+bool attachPlotData(SensorLog &log, const QSet<QString> &corrected, QString &error)
+{
+    std::string data_error;
+    std::unique_ptr<sensordata::Log> data =
+        sensordata::Log::open(log.path.toStdString(), data_error);
+    if (!data) {
+        error = QString::fromStdString(data_error);
+        return false;
+    }
+
+    for (SensorStream &stream : log.streams) {
+        const std::optional<sensordata::StreamId> stored = data->find(stream.id.toStdString());
+        if (!stored) {
+            error = QString("Plot data for %1 did not load").arg(stream.id);
+            return false;
+        }
+        if (!corrected.contains(stream.id)) {
+            stream.dataId = *stored;
+            continue;
+        }
+        const std::optional<sensordata::StreamId> derived = data->addDerived(
+            *data->info(*stored), *stored, stream.value.constData(),
+            static_cast<std::size_t>(stream.value.size()));
+        if (!derived) {
+            error = QString("Plot data for %1 could not be corrected").arg(stream.id);
+            return false;
+        }
+        data->remove(*stored);
+        stream.dataId = *derived;
+    }
+
+    log.data = std::move(data);
+    return true;
 }
 
 bool loadImuCollectionStart(Database &db, SensorLog &log, QString &error)
@@ -933,11 +978,20 @@ bool SqliteLoader::load(const QString &path, SensorLog &log, QString &error)
         && !loadCompassCalibration(db, loaded, error)) {
         return false;
     }
-    applyCalibrationToImuMagnetometer(loaded);
-    applyCalibrationToImuAccelerometer(loaded);
+    QSet<QString> corrected;
+    if (applyCalibrationToImuMagnetometer(loaded)) {
+        corrected << QStringLiteral("imu_mx") << QStringLiteral("imu_my") << QStringLiteral("imu_mz");
+    }
+    if (applyCalibrationToImuAccelerometer(loaded)) {
+        corrected << QStringLiteral("imu_ax") << QStringLiteral("imu_ay") << QStringLiteral("imu_az");
+    }
 
     if (loaded.streams.isEmpty() && loaded.recordSets.isEmpty()) {
         error = "No supported sensor streams or record sets found in database";
+        return false;
+    }
+
+    if (!attachPlotData(loaded, corrected, error)) {
         return false;
     }
 
