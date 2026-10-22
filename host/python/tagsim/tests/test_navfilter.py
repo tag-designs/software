@@ -9,7 +9,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 
 from tagsim.errors import ErrorConfig
-from tagsim.navfilter import (MAG, PRESSURE, FilterConfig, build_events, field_enu_from_ned,
+from tagsim.navfilter import (MAG, NOMINAL, PRESSURE, FilterConfig, build_events, field_enu_from_ned,
                               poll_offset_s, run_filter, simulated_log)
 from tagsim.rotations import qexp, qmul
 from tagsim.score import Truth, altitude_error, attitude_errors
@@ -273,7 +273,7 @@ def test_file_backed_storage_bounds_memory(tmp_path):
                                str(tmp_path)], capture_output=True, text=True, check=True)
         runs[label] = json.loads(done.stdout)
     storage_mb = runs["file"]["storage"]["max_mb"]
-    outputs_mb = 2 * n * 12 * 8 / 2 ** 20  # forward and smoothed states per sample
+    outputs_mb = 2 * n * NOMINAL * 8 / 2 ** 20  # forward and smoothed states per sample
     print({k: round(v["growth_mb"], 1) for k, v in runs.items()},
           f"storage {storage_mb} MB, outputs {outputs_mb:.0f} MB")
     assert runs["file"]["storage"]["file_backed"] and not runs["memory"]["storage"]["file_backed"]
@@ -283,3 +283,43 @@ def test_file_backed_storage_bounds_memory(tmp_path):
     # two runs with each other: the file-backed one saves most of the storage.
     assert runs["memory"]["growth_mb"] - runs["file"]["growth_mb"] > 0.5 * storage_mb
     assert runs["file"]["growth_mb"] < outputs_mb + 0.25 * storage_mb
+
+
+def test_gyro_cal_states():
+    """The manoeuvre's rates make the gyro's scale and misalignment
+    observable: with the gyro calibration states the drawn ``T - I`` is
+    recovered to well under its own size, and the attitude is better than
+    without them."""
+    from tagsim.navfilter import gyro_sensitivity
+    sim, _, r = _run(_manoeuvre(), duration_s=40.0)
+    true = sim.draw.gyro_sensitivity - np.eye(3)
+    est = gyro_sensitivity(r.gyro_cal_smoothed[0]) - np.eye(3)
+    rms = np.sqrt(np.mean((est - true) ** 2))
+    print(f"T - I: true rms {np.sqrt(np.mean(true ** 2)):.2e}, error rms {rms:.2e}")
+    assert rms < 0.5 * np.sqrt(np.mean(true ** 2))
+    moving = sim.signals.t > 6.0
+    on = np.median(_errors(sim, r.q_smoothed)["total_deg"][moving])
+    _, _, off = _run(_manoeuvre(), duration_s=40.0, gyro_cal_states=False)
+    assert off.gyro_cal_smoothed is None
+    assert on < np.median(_errors(sim, off.q_smoothed)["total_deg"][moving])
+
+
+def test_mag_bias_states():
+    """With a perturbed calibration table, the magnetometer offset states
+    take up the residual hard iron: the attitude is better than without
+    them, and the gyro calibration is not pulled far away by it (40 s is a
+    short record for twelve calibration states)."""
+    from tagsim.navfilter import gyro_sensitivity
+    errors = ErrorConfig(calibration="perturbed")
+    sim, _, on = _run(_manoeuvre(), duration_s=40.0, errors=errors)
+    _, _, off = _run(_manoeuvre(), duration_s=40.0, errors=errors, mag_bias_states=False)
+    moving = sim.signals.t > 6.0
+    e_on = np.median(_errors(sim, on.q_smoothed)["total_deg"][moving])
+    e_off = np.median(_errors(sim, off.q_smoothed)["total_deg"][moving])
+    print(f"perturbed calibration: smoothed {e_off:.3f} without, {e_on:.3f} with; "
+          f"offset {np.round(on.stats['mag_bias_final_ut'], 2)} uT")
+    assert e_on < e_off
+    true = sim.draw.gyro_sensitivity - np.eye(3)
+    est = gyro_sensitivity(on.gyro_cal_smoothed[0]) - np.eye(3)
+    assert np.sqrt(np.mean((est - true) ** 2)) < 0.75 * np.sqrt(np.mean(true ** 2))
+

@@ -32,7 +32,11 @@ is the hook for a later per-sample age correction.
 
 - ``q``: attitude, tag frame to ENU (as tagsim's ``TruthPose``);
 - ``b``: gyro bias, rad/s, tag frame;
+- ``K``: the gyro's scale-factor and misalignment correction, the corrected
+  rate being ``(I + K)(w_m - b)`` (``gyro_cal_states``);
 - ``ba``: accelerometer bias, m/s^2, tag frame (``accel_bias_states``);
+- ``dm``: a magnetometer offset left by the log's calibration, uT, tag frame
+  (``mag_bias_states``);
 - ``h``, ``vz``: altitude relative to the first pressure sample, m, and
   vertical velocity, m/s (dropped when the pressure channel is off),
 
@@ -82,8 +86,11 @@ _ISA_LAPSE_K_PER_M = 0.0065
 _ISA_EXPONENT = G0 * 0.0289644 / (8.3144598 * _ISA_LAPSE_K_PER_M)
 
 #: Nominal-state columns stored per node: q (4), gyro bias (3), h, vz,
-#: accelerometer bias (3; zero when not estimated).
-NOMINAL = 12
+#: accelerometer bias (3; zero when not estimated), and the gyro correction
+#: matrix ``K`` (9, row-major; zero when not estimated): the corrected rate is
+#: ``(I + K)(w_m - b)``; then the magnetometer offset ``dm`` (3, uT, tag
+#: frame; zero when not estimated).
+NOMINAL = 24
 
 #: Event kinds in the stream.
 IMU, MAG, PRESSURE = 0, 1, 2
@@ -269,8 +276,20 @@ class FilterConfig:
     init_attitude_bootstrap_deg: float = 3.0
     init_vertical_fit_s: float = 0.5  #: pressure span fitted for a moving start's altitude and vz
     init_vz_moving_mps: float = 2.0  #: its vz sigma
+    #: Gyro scale-factor and misalignment states: the nine elements of ``K``
+    #: in the corrected rate ``(I + K)(w_m - b)``, so that ``(I + K)^-1`` is
+    #: the gyro's sensitivity and misalignment matrix ``T`` (measured =
+    #: ``T`` true + bias).
+    gyro_cal_states: bool = True
+    init_gyro_scale: float = 0.003  #: diagonal sigma (the LSM6DSV's G_So%, +/-0.3 %)
+    init_gyro_misalignment_deg: float = 0.5  #: off-diagonal sigma (the simulator's +/-0.5 deg)
+    gyro_cal_walk_rts: float = 0.0  #: random walk of each element, per sqrt(s)
     #: Accelerometer bias states (tag frame), estimated alongside the gyro bias.
     accel_bias_states: bool = True
+    #: Magnetometer offset states: a residual hard iron ``dm`` (uT, tag
+    #: frame) left by the log's calibration, the field read as ``m - dm``.
+    mag_bias_states: bool = True
+    init_mag_bias_ut: float = 2.0  #: their sigma
     init_accel_bias_mg: float = 10.0  #: their initial sigma (turn-on bias up to 12 mg)
     accel_bias_walk_mg_rts: float = 0.01  #: their random walk, mg per sqrt(s)
     smooth: bool = True
@@ -453,16 +472,31 @@ class FilterResult:
     #: m/s^2, tag frame; None without the accelerometer bias states
     accel_bias_forward: np.ndarray | None = None
     accel_bias_smoothed: np.ndarray | None = None
+    #: (n, 3, 3) gyro correction ``K`` (corrected rate ``(I + K)(w_m - b)``);
+    #: None without the gyro calibration states
+    gyro_cal_forward: np.ndarray | None = None
+    gyro_cal_smoothed: np.ndarray | None = None
+
+
+def gyro_sensitivity(k: np.ndarray) -> np.ndarray:
+    """The gyro sensitivity and misalignment matrix ``T = (I + K)^-1``
+    (measured = ``T`` true + bias) of correction matrices ``K``, ``(..., 3, 3)``."""
+    return np.linalg.inv(np.eye(3) + np.asarray(k, dtype=np.float64))
 
 
 def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     """Forward error-state EKF over the event stream, then RTS smoothing."""
     vert = cfg.use_pressure and len(log.t_pressure) > 0
     ab = cfg.accel_bias_states
-    # Error-state layout: dtheta 0:3, gyro bias 3:6, then the accelerometer
-    # bias ia:ia+3 if estimated, then h and vz at ih, ih+1 if vertical.
-    ia = 6
-    ih = 6 + 3 * ab
+    gc = cfg.gyro_cal_states
+    mb = cfg.mag_bias_states
+    # Error-state layout: dtheta 0:3, gyro bias 3:6, then the gyro correction
+    # K ik:ik+9 (row-major) if estimated, the accelerometer bias ia:ia+3 if
+    # estimated, then h and vz at ih, ih+1 if vertical.
+    ik = 6
+    ia = ik + 9 * gc
+    im = ia + 3 * ab
+    ih = im + 3 * mb
     n = ih + (2 if vert else 0)
     odr = log.odr_hz
     t_imu, f_all, w_all = log.t_imu, log.accel_mps2, log.gyro_rps
@@ -501,6 +535,8 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     q = tuple(float(x) for x in triad(f0, m0, field))
     b = b0.astype(np.float64).copy()
     ba = np.zeros(3)
+    K = np.zeros((3, 3))
+    dm = np.zeros(3)
     if boot is not None:
         q = tuple(float(x) for x in boot.q_smoothed[0])
         b = boot.bias_smoothed[0].copy()
@@ -529,8 +565,14 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     P = np.zeros((n, n))
     P[0:3, 0:3] = np.eye(3) * s_att ** 2
     P[3:6, 3:6] = np.eye(3) * sb ** 2
+    if gc:
+        diag = np.eye(3).reshape(9).astype(bool)
+        P[ik:ik + 9, ik:ik + 9] = np.diag(np.where(
+            diag, cfg.init_gyro_scale, math.radians(cfg.init_gyro_misalignment_deg)) ** 2)
     if ab:
         P[ia:ia + 3, ia:ia + 3] = np.eye(3) * (cfg.init_accel_bias_mg * G0 / 1000.0) ** 2
+    if mb:
+        P[im:im + 3, im:im + 3] = np.eye(3) * cfg.init_mag_bias_ut ** 2
     if vert:
         P[ih, ih] = s_h ** 2
         P[ih + 1, ih + 1] = s_vz ** 2 if (start_still or first.sum() >= 3) else 5.0 ** 2
@@ -541,6 +583,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     q_bias = math.radians(cfg.gyro_bias_walk_dps_rts) ** 2
     q_vz = cfg.accel_vertical_noise_mps2_rthz ** 2
     q_ba = (cfg.accel_bias_walk_mg_rts * G0 / 1000.0) ** 2
+    q_k = cfg.gyro_cal_walk_rts ** 2
     if cfg.mag_age_sigma_s is not None:
         age_s = cfg.mag_age_sigma_s
     else:
@@ -565,14 +608,19 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     I_n = np.eye(n)
 
     def pack(q, b, h, vz):
-        return (q[0], q[1], q[2], q[3], b[0], b[1], b[2], h, vz, ba[0], ba[1], ba[2])
+        return (q[0], q[1], q[2], q[3], b[0], b[1], b[2], h, vz, ba[0], ba[1], ba[2],
+                *K.reshape(9), dm[0], dm[1], dm[2])
 
     def inject(dx):
-        nonlocal q, b, h, vz, ba
+        nonlocal q, b, h, vz, ba, K, dm
         q = _qnorm(_qmul(_qexp(dx[0], dx[1], dx[2]), q))
         b = b + dx[3:6]
+        if gc:
+            K = K + dx[ik:ik + 9].reshape(3, 3)
         if ab:
             ba = ba + dx[ia:ia + 3]
+        if mb:
+            dm = dm + dx[im:im + 3]
         if vert:
             h += dx[ih]
             vz += dx[ih + 1]
@@ -581,10 +629,10 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         nonlocal P
         PHt = P @ H.T
         S = H @ PHt + R
-        K = np.linalg.solve(S, PHt.T).T
-        inject(K @ r)
-        A = I_n - K @ H
-        P = A @ P @ A.T + K @ R @ K.T
+        G = np.linalg.solve(S, PHt.T).T
+        inject(G @ r)
+        A = I_n - G @ H
+        P = A @ P @ A.T + G @ R @ G.T
 
     def predict(f0_, w0_, f1_, w1_, dt, saturated, node, t_node, i_node):
         """Propagate over dt with the IMU interpolated linearly from (f0, w0)
@@ -593,10 +641,17 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         nonlocal q, P, h, vz
         if store is not None:
             store.put_state(node - 1, pack(q, b, h, vz))
-        q, h, vz, R, fE = _propagate(q, b, h, vz, ba, f0_, w0_, f1_, w1_, dt, g, vert)
+        q, h, vz, R, fE, u = _propagate(q, b, h, vz, ba, K, f0_, w0_, f1_, w1_, dt, g, vert)
         F = np.eye(n)
-        F[0:3, 3:6] = -R * dt
         Qd = np.zeros((n, n))
+        if gc:
+            # w_true - w = dK u - (I + K) db, u the bias-corrected raw rate.
+            F[0:3, 3:6] = -(R @ (np.eye(3) + K)) * dt
+            F[0:3, ik:ik + 9] = (R[:, :, None] * u).reshape(3, 9) * dt
+            if q_k:
+                Qd[ik:ik + 9, ik:ik + 9] = np.eye(9) * (q_k * dt)
+        else:
+            F[0:3, 3:6] = -R * dt
         Qd[0:3, 0:3] = np.eye(3) * (q_theta * dt)
         Qd[3:6, 3:6] = np.eye(3) * (q_bias * dt)
         if ab:
@@ -621,6 +676,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         P = 0.5 * (Pp + Pp.T)
 
     up_skew = _skew(np.array([0.0, 0.0, g]))
+    IK = np.eye(3)
     field_skew = _skew(field)
     n_ev = len(ev.t)
     j = 0  # next auxiliary event
@@ -629,8 +685,27 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         store.put_node(0, t_imu[0], 0)
 
     def aux(j, w):
-        _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update,
-                    vert, h, alt_ref, r_p, stats, n, ih)
+        """One magnetometer or pressure update at the current state, with
+        ``w`` the corrected rate there."""
+        if ev.kind[j] == MAG:
+            m = log.mag_ut[ev.index[j]] - dm
+            if abs(float(np.linalg.norm(m)) - field_norm) > cfg.mag_gate_ut:
+                stats["mag_gated"] += 1
+                return
+            R = _dcm(q)
+            H = np.zeros((3, n))
+            H[:, 0:3] = R.T @ field_skew
+            if mb:
+                H[:, im:im + 3] = np.eye(3)
+            sigma = cfg.mag_sigma_ut + field_norm * float(np.linalg.norm(w)) * age_s
+            update(H, m - R.T @ field, np.eye(3) * sigma ** 2)
+            stats["mag_updates"] += 1
+        elif vert:
+            z = float(isa_altitude_m(log.pressure_hpa[ev.index[j]], cfg.sea_level_hpa)) - alt_ref
+            H = np.zeros((1, n))
+            H[0, ih] = 1.0
+            update(H, np.array([z - h]), np.array([[r_p]]))
+            stats["pressure_updates"] += 1
 
     try:
         for i in range(n_imu):
@@ -650,15 +725,16 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
                         node += 1
                         predict(fc, wc, fe, we, te - tc, sat, node, te, i)
                         tc, fc, wc = te, fe, we
-                    aux(j, 0.5 * (wc + w_b) - b)
+                    aux(j, (0.5 * (wc + w_b) - b) @ IK.T)
                     j += 1
                 node += 1
                 predict(fc, wc, f_b, w_b, tb - tc, sat, node, tb, i)
             # Accelerometer update at the IMU sample.
             f = f_all[i] - ba
             excess = abs(float(np.linalg.norm(f)) - g)
+            IK = np.eye(3) + K
             if excess < cfg.accel_gate_g * G0 and not log.accel_saturated[i]:
-                wn = float(np.linalg.norm(w_all[i] - b))
+                wn = float(np.linalg.norm(IK @ (w_all[i] - b)))
                 sigma = rate_scale * (cfg.accel_sigma_mps2 + cfg.accel_sigma_per_excess * excess
                                       + cfg.accel_speed_mps * wn)
                 R = _dcm(q)
@@ -672,14 +748,14 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
                 stats["accel_gated"] += 1
             # Auxiliary events at this sample (and, at the first, before it).
             while j < n_ev and ev.t[j] <= t_imu[i]:
-                aux(j, w_all[i] - b)
+                aux(j, IK @ (w_all[i] - b))
                 j += 1
             out_f[i] = pack(q, b, h, vz)
         out_s = None
         if store is not None:
             store.put_state(node, pack(q, b, h, vz))
             out_s = _smooth(store, node + 1, out_f[-1], t_imu, f_all, w_all, g, vert, ab, ia,
-                            ih, n)
+                            ih, n, gc, ik, mb, im)
     finally:
         if store is not None:
             store.close()
@@ -688,6 +764,11 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     stats["gyro_bias_final_dps"] = np.degrees(fwd[-1, 4:7]).tolist()
     if ab:
         stats["accel_bias_final_mg"] = (fwd[-1, 9:12] * 1000.0 / G0).tolist()
+    if gc:
+        last = (sm if sm is not None else fwd)[-1, 12:21].reshape(3, 3)
+        stats["gyro_sensitivity_final"] = (gyro_sensitivity(last) - np.eye(3)).tolist()
+    if mb:
+        stats["mag_bias_final_ut"] = (sm if sm is not None else fwd)[-1, 21:24].tolist()
     return FilterResult(
         segment_id=log.segment_id, sample_index=log.sample_index, t=t_imu,
         q_forward=fwd[:, 0:4], q_smoothed=None if sm is None else sm[:, 0:4],
@@ -698,27 +779,31 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         bias_forward=fwd[:, 4:7], bias_smoothed=None if sm is None else sm[:, 4:7],
         stats=stats,
         accel_bias_forward=fwd[:, 9:12] if ab else None,
-        accel_bias_smoothed=sm[:, 9:12] if (ab and sm is not None) else None)
+        accel_bias_smoothed=sm[:, 9:12] if (ab and sm is not None) else None,
+        gyro_cal_forward=fwd[:, 12:21].reshape(-1, 3, 3) if gc else None,
+        gyro_cal_smoothed=sm[:, 12:21].reshape(-1, 3, 3) if (gc and sm is not None) else None)
 
 
-def _propagate(q, b, h, vz, ba, f0, w0, f1, w1, dt, g, vert):
+def _propagate(q, b, h, vz, ba, K, f0, w0, f1, w1, dt, g, vert):
     """The nominal state propagated over ``dt``, with the IMU interpolated
-    linearly from (f0, w0) to (f1, w1): the new ``q``, ``h`` and ``vz`` (the
-    biases are constant), and the start attitude's DCM and ENU specific force
-    for the error-state Jacobian. The forward pass and the smoother's
+    linearly from (f0, w0) to (f1, w1) and the gyro corrected by ``K``: the
+    new ``q``, ``h`` and ``vz`` (the biases and ``K`` are constant), and the
+    start attitude's DCM, the ENU specific force and the bias-corrected raw
+    rate for the error-state Jacobian. The forward pass and the smoother's
     recomputed prediction both call this, so they agree exactly."""
     R = _dcm(q)
-    w = 0.5 * (w0 + w1) - b
+    u = 0.5 * (w0 + w1) - b
+    w = u + K @ u
     fE = R @ (0.5 * (f0 + f1) - ba)
     q = _qnorm(_qmul(q, _qexp(w[0] * dt, w[1] * dt, w[2] * dt)))
     if vert:
         a = fE[2] - g
         h += vz * dt + 0.5 * a * dt * dt
         vz += a * dt
-    return q, h, vz, R, fE
+    return q, h, vz, R, fE, u
 
 
-def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n):
+def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n, gc, ik, mb, im):
     """The backward Rauch-Tung-Striebel pass, reading the store in reverse.
 
     ``x_s,k = x_f,k (+) C_k (x_s,k+1 (-) x_{k+1|k})``, with the prediction
@@ -747,11 +832,15 @@ def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n):
         xf = store.state(k)
         f0, w0, i0 = imu_at(k)
         t0 = store.node(k)[0]
-        qf, bf, baf = tuple(xf[0:4]), xf[4:7], xf[9:12]
-        qp, hp, vzp, _, _ = _propagate(qf, bf, xf[7], xf[8], baf, f0, w0, f1, w1, t1 - t0, g,
-                                       vert)
+        qf, bf, baf, kf = tuple(xf[0:4]), xf[4:7], xf[9:12], xf[12:21]
+        qp, hp, vzp, _, _, _ = _propagate(qf, bf, xf[7], xf[8], baf, kf.reshape(3, 3), f0, w0,
+                                          f1, w1, t1 - t0, g, vert)
         d[0:3] = _qlog_global(xs[0:4], qp)
         d[3:6] = np.subtract(xs[4:7], bf)
+        if gc:
+            d[ik:ik + 9] = np.subtract(xs[12:21], kf)
+        if mb:
+            d[im:im + 3] = np.subtract(xs[21:24], xf[21:24])
         if ab:
             d[ia:ia + 3] = np.subtract(xs[9:12], baf)
         if vert:
@@ -762,7 +851,9 @@ def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n):
         bk = bf + dx[3:6]
         bak = baf + dx[ia:ia + 3] if ab else baf
         hk, vzk = (xf[7] + dx[ih], xf[8] + dx[ih + 1]) if vert else (xf[7], xf[8])
-        xs = (*qk, *bk, hk, vzk, *bak)
+        kk = kf + dx[ik:ik + 9] if gc else kf
+        mk = xf[21:24] + dx[im:im + 3] if mb else xf[21:24]
+        xs = (*qk, *bk, hk, vzk, *bak, *kk, *mk)
         if i0 >= 0:
             out[i0] = xs
         f1, w1, t1 = f0, w0, t0
@@ -871,29 +962,6 @@ class NodeStore:
             self._tmp = None
 
 
-def _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update, vert, h,
-                alt_ref, r_p, stats, n, ih):
-    """One magnetometer or pressure update at the current state."""
-    if ev.kind[j] == MAG:
-        m = log.mag_ut[ev.index[j]]
-        if abs(float(np.linalg.norm(m)) - field_norm) > cfg.mag_gate_ut:
-            stats["mag_gated"] += 1
-            return
-        R = _dcm(q)
-        pred = R.T @ field
-        H = np.zeros((3, n))
-        H[:, 0:3] = R.T @ field_skew
-        sigma = cfg.mag_sigma_ut + field_norm * float(np.linalg.norm(w)) * age_s
-        update(H, m - pred, np.eye(3) * sigma ** 2)
-        stats["mag_updates"] += 1
-    elif vert:
-        z = float(isa_altitude_m(log.pressure_hpa[ev.index[j]], cfg.sea_level_hpa)) - alt_ref
-        H = np.zeros((1, n))
-        H[0, ih] = 1.0
-        update(H, np.array([z - h]), np.array([[r_p]]))
-        stats["pressure_updates"] += 1
-
-
 def dataclass_replace(cfg: FilterConfig, **changes) -> FilterConfig:
     from dataclasses import replace
     return replace(cfg, **changes)
@@ -903,14 +971,21 @@ def dataclass_replace(cfg: FilterConfig, **changes) -> FilterConfig:
 # Output
 
 
+#: The gyro sensitivity columns of ``FilterForward`` and ``FilterSmoothed``:
+#: ``T - I``, row-major.
+GYRO_CAL_COLUMNS = tuple(f"gs{r}{c}" for r in "xyz" for c in "xyz")
+
+
 def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
                     source: Path | None = None) -> None:
     """``FilterForward`` and ``FilterSmoothed``: one row per IMU sample,
     ``SegmentId, SampleIndex, ElapsedUs, qw qx qy qz`` (tag frame to ENU),
     ``alt`` (m, relative to the first pressure sample) and ``vz`` (m/s, up),
     NULL without the pressure channel; ``bx by bz`` the gyro bias (dps);
-    ``abx aby abz`` the accelerometer bias (mg), NULL unless estimated; and
-    ``FilterRun`` with the configuration and counters."""
+    ``abx aby abz`` the accelerometer bias (mg), NULL unless estimated;
+    ``gsxx gsxy ... gszz`` the gyro's estimated sensitivity and misalignment
+    ``T - I`` (dimensionless, row-major; measured = ``T`` true + bias), NULL
+    unless estimated; and ``FilterRun`` with the configuration and counters."""
     if path.exists():
         path.unlink()
     con = sqlite3.connect(path)
@@ -918,15 +993,16 @@ def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
         for table in ("FilterForward", "FilterSmoothed"):
             con.execute(f"CREATE TABLE {table} (SegmentId INTEGER, SampleIndex INTEGER, "
                         "ElapsedUs INTEGER, qw REAL, qx REAL, qy REAL, qz REAL, alt REAL, "
-                        "vz REAL, bx REAL, by REAL, bz REAL, abx REAL, aby REAL, abz REAL)")
+                        "vz REAL, bx REAL, by REAL, bz REAL, abx REAL, aby REAL, abz REAL, "
+                        + ", ".join(f"{c} REAL" for c in GYRO_CAL_COLUMNS) + ")")
         con.execute("CREATE TABLE FilterRun (SegmentId INTEGER, Source TEXT, ConfigJson TEXT, "
                     "StatsJson TEXT)")
         for r in results:
-            for table, q, alt, vz, bias, abias in (
+            for table, q, alt, vz, bias, abias, gcal in (
                     ("FilterForward", r.q_forward, r.alt_forward, r.vz_forward, r.bias_forward,
-                     r.accel_bias_forward),
+                     r.accel_bias_forward, r.gyro_cal_forward),
                     ("FilterSmoothed", r.q_smoothed, r.alt_smoothed, r.vz_smoothed,
-                     r.bias_smoothed, r.accel_bias_smoothed)):
+                     r.bias_smoothed, r.accel_bias_smoothed, r.gyro_cal_smoothed)):
                 if q is None:
                     continue
                 nn = len(r.t)
@@ -934,12 +1010,16 @@ def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
                 v = vz if vz is not None else [None] * nn
                 bd = np.degrees(bias)
                 ad = abias * (1000.0 / G0) if abias is not None else [(None,) * 3] * nn
+                gd = ((gyro_sensitivity(gcal) - np.eye(3)).reshape(-1, 9) if gcal is not None
+                      else [(None,) * 9] * nn)
                 con.executemany(
-                    f"INSERT INTO {table} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    f"INSERT INTO {table} VALUES ({', '.join('?' * 24)})",
                     ((r.segment_id, int(si), int(round(t * 1e6)), *map(float, qq),
                       None if aa is None else float(aa), None if vv is None else float(vv),
-                      *map(float, bb), *(None if x is None else float(x) for x in abb))
-                     for si, t, qq, aa, vv, bb, abb in zip(r.sample_index, r.t, q, a, v, bd, ad)))
+                      *map(float, bb), *(None if x is None else float(x) for x in abb),
+                      *(None if x is None else float(x) for x in gg))
+                     for si, t, qq, aa, vv, bb, abb, gg in zip(r.sample_index, r.t, q, a, v, bd,
+                                                               ad, gd)))
             con.execute("INSERT INTO FilterRun VALUES (?,?,?,?)",
                         (r.segment_id, str(source.name) if source else None,
                          json.dumps(cfg.as_dict()), json.dumps(r.stats)))
@@ -953,7 +1033,7 @@ def field_enu_from_ned(ned_ut) -> tuple[float, float, float]:
 
 
 __all__ = ["FilterConfig", "FilterResult", "ImuTagLog", "Events", "read_log", "simulated_log",
-           "build_events",
+           "build_events", "gyro_sensitivity", "GYRO_CAL_COLUMNS",
            "run_filter", "write_estimates", "still_mask", "triad", "isa_altitude_m",
            "poll_offset_s", "field_enu_from_ned", "mag_stored_to_tag", "IMU", "MAG",
            "PRESSURE"]
