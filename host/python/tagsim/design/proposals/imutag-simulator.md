@@ -214,6 +214,9 @@ and an error dictionary:
 - `mag_gen`: soft iron, hard iron and noise;
 - `bias_drift`.
 
+It has no pressure model; tagsim's own `pressure_gen` (below) follows the
+same pattern.
+
 tagsim uses them as a library for the stochastic part, pinned to a commit and
 behind a thin interface so they can be replaced. Everything specific to
 IMUTag stays in tagsim:
@@ -281,18 +284,54 @@ in the provenance.
   IMUTagNandBmp581 that is x' = y, y' = x, z' = −z, under the contract in
   [docs/shared/sensor-axes.md](../../../../../docs/shared/sensor-axes.md).
 
-**Pressure and temperature (BMP581).**
+**Pressure and temperature (BMP581): `pressure_gen`.** gnss-ins-sim has no
+pressure model, so tagsim provides `pressure_gen` in the same style as its
+`acc_gen`: ideal inputs and an error dictionary in, measured samples out.
+Every term is a parameter, recorded in `SimRun`.
 
-- **Pressure:** the International Standard Atmosphere at the true altitude,
-  under a sea-level pressure that drifts as a random walk (about 1 hPa per
-  hour, configurable).
-- **Noise:** the datasheet noise for the firmware's oversampling (OSR_P 4×,
-  OSR_T 2×, IIR off), plus offset, temperature coefficient and short-term
-  drift, in [Datasheet noise and errors](#datasheet-noise-and-errors).
-- **Rate:** the firmware's rate (25 Hz at 100 Hz ODR), read once per
-  superframe like the magnetometer.
-- **Temperature:** a slow profile, stored as the page header's `rawtemp`
-  (0.01 °C per LSB).
+*Ideal static pressure:*
+
+- the International Standard Atmosphere (troposphere) at the true altitude;
+- a temperature lapse from a configurable ground temperature, so pressure
+  altitude and the logged temperature stay consistent;
+- a sea-level pressure that drifts with the weather, as a random walk of about
+  1 hPa per hour by default, or a supplied curve.
+
+The truth file keeps the true altitude, static pressure and sea-level
+pressure, so altitude estimation can be scored against each.
+
+*Airframe effects, optional and off for still segments:*
+
+- **Dynamic pressure.** Inside a moving airframe the sensor sees static
+  pressure plus `Cp · ½ρV²`, where `V` is airspeed. That is ground velocity
+  minus the EKF's own wind estimate (`XKF2` `VWN`, `VWE` in these logs). `Cp`
+  depends on where and how the tag is mounted, so it is a parameter that may
+  be negative. At 30 m/s, `½ρV²` is about 550 Pa, roughly 45 m of apparent
+  altitude, so even a small `Cp` dominates the sensor's noise.
+- Optionally, a pressure fluctuation band-limited to propwash, for
+  turbulence.
+
+*Sensor errors (datasheet defaults, from
+[Datasheet noise and errors](#datasheet-noise-and-errors)):*
+
+- white noise of 0.41 Pa RMS per conversion at OSR_P ×4;
+- an absolute offset (±30 Pa) drawn per run;
+- an offset temperature coefficient (±0.5 Pa/K) on the temperature profile;
+- short-term drift (±1.5 Pa per 24 h) as a slow Gauss-Markov term;
+- quantization to 1/64 Pa.
+
+*Sampling.* Conversions follow the sensor's power mode:
+
+- **CONTINUOUS**, as shipped, converts as fast as the oversampling allows,
+  about 250 Hz.
+- **NORMAL** converts at the configured ODR, 25 Hz at 100 Hz IMU ODR.
+- The firmware takes the newest completed conversion once per superframe,
+  and its true time goes to the truth file. A poll that finds no new
+  conversion writes the quiet NaN, which NORMAL mode can produce if poll
+  timing jitters.
+
+*Temperature.* The page header's `rawtemp` (0.01 °C per LSB) comes from the
+same temperature profile, with the datasheet's ±0.5 K accuracy as an offset.
 
 **Axes for accel and gyro.** The firmware's `orient_imu_xyz` (x' = −y,
 y' = x) is applied on the tag. The model writes what the page holds.
