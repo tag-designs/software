@@ -104,29 +104,3 @@ def test_viewer_log_round_trip(tmp_path):
     np.testing.assert_allclose(pos_msgs["Alt"][-1], 230.0, atol=1e-3)
     assert abs(pos_msgs["Lat"][0] - 40.0) < 1e-6
     assert log.has("GPS") and log.has("MSG")
-
-
-def test_viewer_log_second_estimate(tmp_path):
-    """A second estimate goes in as XKQ1 quaternions (FRD body to NED,
-    scalar first and non-negative) that give back the same Euler angles,
-    beside the AHR2 estimate."""
-    from scipy.spatial.transform import Rotation
-
-    from tagsim.viewer import body_quaternion
-    n = 1000
-    t_us = 1e6 + np.arange(n) * 10_000.0
-    q, q2 = _random_q(n, 3), _random_q(n, 4)
-    pos = np.zeros((n, 3))
-    path = tmp_path / "v2.bin"
-    write_viewer_log(path, t_us, q, pos, (40.0, -86.0, 200.0), 1.689e9, "RFU",
-                     t_us, q, pos, second_time_us=t_us[::5], q_second=q2[::5])
-    log = DataFlashLog(path)
-    xkq = log.messages("XKQ1")
-    assert len(xkq["TimeUS"]) == n // 5 and len(log.messages("AHR2")["TimeUS"]) == n
-    qb = np.column_stack([xkq[f"Q{i}"] for i in range(1, 5)])
-    assert np.all(qb[:, 0] >= 0)
-    np.testing.assert_allclose(qb, body_quaternion(q2[::5], "RFU"), atol=1e-6)
-    yaw, pitch, roll = Rotation.from_quat(np.roll(qb, -1, axis=1)).as_euler("ZYX", degrees=True).T
-    eul = body_euler_deg(q2[::5], "RFU")
-    np.testing.assert_allclose(roll, eul[:, 0], atol=1e-3)
-    np.testing.assert_allclose(pitch, eul[:, 1], atol=1e-3)

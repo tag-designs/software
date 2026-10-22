@@ -8,7 +8,7 @@ with its JsDataflashParser. Its ``dataflashDataExtractor.js`` takes:
   ``Lng`` as ``int32`` degrees x 1e7 (format ``L``), ``Alt`` in metres, one
   point per 200 ms;
 - the **attitude** from ``ATT`` or ``AHR2`` (``Roll``, ``Pitch``, ``Yaw``,
-  degrees), or from the ``XKQ1``/``NKQ1`` quaternions (``Q1``..``Q4``);
+  degrees), or from the ``XKQ1``/``NKQ1`` quaternions;
 - the start time from ``GPS`` (``Status``, ``GWk``, ``GMS``), and the vehicle
   model from a ``MSG`` containing "ArduPlane";
 - ``time_boot_ms`` from each message's ``TimeUS``.
@@ -17,15 +17,10 @@ The file written here therefore carries:
 
 - ``POS`` and ``ATT``: the truth position and attitude, the viewer's
   defaults;
-- ``AHR2``: an estimate's attitude, flown along the truth position, so
+- ``AHR2``: the estimate's attitude, flown along the truth position, so
   choosing ``AHR2`` as both trajectory and attitude source shows the estimate
   flying the same path (``AHR2`` is ArduPilot's own secondary estimate, which
   the viewer already offers beside ``ATT``);
-- ``XKQ1``: optionally a second estimate's attitude, as the airframe
-  quaternion (FRD to NED, ``Q1`` scalar first), which the viewer offers as
-  a quaternion attitude source; it has no position, so it is flown along
-  ``POS``. ``tagsim view --estimate both`` puts the filter in ``AHR2`` and
-  the compass here;
 - ``GPS``, ``MSG`` and ``FMTU``/``UNIT``/``MULT`` so the viewer labels time
   and units.
 
@@ -60,7 +55,6 @@ _MESSAGES = [
     (131, "POS", "QLLf", "TimeUS,Lat,Lng,Alt", "sDDm", "FGG0"),
     (132, "ATT", "Qfff", "TimeUS,Roll,Pitch,Yaw", "sddh", "F000"),
     (133, "AHR2", "QfffLLf", "TimeUS,Roll,Pitch,Yaw,Lat,Lng,Alt", "sddhDDm", "F000GG0"),
-    (137, "XKQ1", "Qffff", "TimeUS,Q1,Q2,Q3,Q4", "s----", "F0000"),
     (134, "UNIT", "QbZ", "TimeUS,Id,Label", "s--", "F--"),
     (135, "MULT", "Qbd", "TimeUS,Id,Mult", "s--", "F--"),
     (136, "FMTU", "QBNN", "TimeUS,FmtType,UnitIds,MultIds", "s---", "F---"),
@@ -109,17 +103,11 @@ class DataFlashWriter:
         Path(path).write_bytes(b"".join(self.chunks))
 
 
-def body_quaternion(q_enu_tag: np.ndarray, mounting: str) -> np.ndarray:
-    """The airframe's attitude quaternion, FRD body to NED, scalar first."""
+def body_euler_deg(q_enu_tag: np.ndarray, mounting: str) -> np.ndarray:
+    """ArduPilot roll, pitch, yaw (deg, yaw in [0, 360)) of the airframe."""
     q_ned_enu = dcmtoq(R_ENU_NED.T)
     q_tb = qconj(dcmtoq(mounting_matrix(mounting)))
     q_nb = qmul(qmul(q_ned_enu, q_enu_tag), q_tb)
-    return q_nb * np.where(q_nb[:, :1] < 0, -1.0, 1.0)
-
-
-def body_euler_deg(q_enu_tag: np.ndarray, mounting: str) -> np.ndarray:
-    """ArduPilot roll, pitch, yaw (deg, yaw in [0, 360)) of the airframe."""
-    q_nb = body_quaternion(q_enu_tag, mounting)
     xyzw = np.concatenate([q_nb[:, 1:], q_nb[:, :1]], axis=1)
     yaw, pitch, roll = Rotation.from_quat(xyzw).as_euler("ZYX", degrees=True).T
     return np.stack([roll, pitch, yaw % 360.0], -1)
@@ -137,15 +125,12 @@ def write_viewer_log(path: Path, time_us: np.ndarray, q_true: np.ndarray, pos_en
                      origin: tuple[float, float, float], start_unix: float, mounting: str,
                      est_time_us: np.ndarray | None = None, q_est: np.ndarray | None = None,
                      est_pos_enu: np.ndarray | None = None, label: str = "truth",
-                     rate_hz: float = 25.0, second_time_us: np.ndarray | None = None,
-                     q_second: np.ndarray | None = None) -> int:
+                     rate_hz: float = 25.0) -> int:
     """Write the viewer log; returns the number of attitude records.
 
     ``time_us`` is the source log's TimeUS of each truth row and
     ``start_unix`` the UTC time of the first row. Truth is decimated to
-    ``rate_hz``; the estimate, if given, is written as ``AHR2`` at its own
-    rows, and a second estimate (``q_second`` at ``second_time_us``) as
-    ``XKQ1``. Estimates are tag frame to ENU, like the truth.
+    ``rate_hz``; the estimate, if given, is written at its own rows.
     """
     t = np.asarray(time_us, dtype=np.float64)
     step = max(1, int(round(1e6 / rate_hz / np.median(np.diff(t)))))
@@ -175,14 +160,8 @@ def write_viewer_log(path: Path, time_us: np.ndarray, q_true: np.ndarray, pos_en
         w.write_many("AHR2", [te[ok].astype(np.uint64), ee[ok, 0], ee[ok, 1], ee[ok, 2],
                               np.rint(ge[ok, 0] * 1e7).astype(np.int64),
                               np.rint(ge[ok, 1] * 1e7).astype(np.int64), ge[ok, 2]])
-    if q_second is not None:
-        qb = body_quaternion(q_second, mounting)
-        ok = np.all(np.isfinite(qb), axis=1)
-        w.write_many("XKQ1", [np.asarray(second_time_us, dtype=np.float64)[ok].astype(np.uint64),
-                              *qb[ok].T])
     w.save(path)
     return len(k)
 
 
-__all__ = ["DataFlashWriter", "write_viewer_log", "body_euler_deg", "body_quaternion",
-           "enu_to_geodetic"]
+__all__ = ["DataFlashWriter", "write_viewer_log", "body_euler_deg", "enu_to_geodetic"]
