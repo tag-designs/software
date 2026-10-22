@@ -638,6 +638,14 @@ class FilterResult:
     #: None without the gyro calibration states
     gyro_cal_forward: np.ndarray | None = None
     gyro_cal_smoothed: np.ndarray | None = None
+    #: The files behind the arrays when the outputs are file-backed.
+    outputs: "OutputStore | None" = field(default=None, repr=False, compare=False)
+
+    def close(self) -> None:
+        """Delete the output files, if any. The arrays must not be used
+        afterwards (on POSIX the mapped pages stay readable until released)."""
+        if self.outputs is not None:
+            self.outputs.close()
 
 
 def gyro_sensitivity(k: np.ndarray) -> np.ndarray:
@@ -760,13 +768,14 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     q_k = cfg.gyro_cal_walk_rts ** 2
     r_p = cfg.pressure_sigma_m ** 2
 
-    # Storage. The outputs are kept per IMU sample; for the smoother, the
+    # Storage. The outputs are kept per IMU sample (OutputStore); for the smoother, the
     # forward pass also stores, per node (each IMU sample and each auxiliary
     # event between samples), the filtered nominal state, the RTS gain to the
     # next node, and where the node is (its time and IMU interval), from which
     # the backward pass recomputes the prediction into the next node.
     n_nodes = n_imu + len(ev.t)  # an upper bound
-    out_f = np.empty((n_imu, NOMINAL))
+    outputs = OutputStore(n_imu, cfg.smooth, cfg)
+    out_f = outputs.forward
     store = NodeStore(n_nodes, n, cfg) if cfg.smooth else None
     stats = {"accel_updates": 0, "accel_gated": 0, "mag_updates": 0, "mag_gated": 0,
              "pressure_updates": 0, "still_fraction": float(still.mean()),
@@ -776,6 +785,8 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
              "mag_clock_used": (cfg.mag_age_s is None and cfg.mag_clock_t0_s is not None)}
     if store is not None:
         stats["storage"] = store.describe()
+    stats["outputs"] = outputs.describe()
+    flush_every = cfg.memmap_window_nodes
     I_n = np.eye(n)
 
     def pack(q, b, h, vz):
@@ -922,11 +933,17 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
                 aux(j, IK @ (w_all[i] - b))
                 j += 1
             out_f[i] = pack(q, b, h, vz)
+            if outputs.file_backed and i % flush_every == flush_every - 1:
+                outputs.flush()
         out_s = None
         if store is not None:
             store.put_state(node, pack(q, b, h, vz))
             out_s = _smooth(store, node + 1, out_f[-1], t_imu, f_all, w_all, g, vert, ab, ia,
-                            ih, n, gc, ik, mb, im)
+                            ih, n, gc, ik, mb, im, outputs)
+        outputs.flush()
+    except BaseException:
+        outputs.close()
+        raise
     finally:
         if store is not None:
             store.close()
@@ -952,7 +969,8 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         accel_bias_forward=fwd[:, 9:12] if ab else None,
         accel_bias_smoothed=sm[:, 9:12] if (ab and sm is not None) else None,
         gyro_cal_forward=fwd[:, 12:21].reshape(-1, 3, 3) if gc else None,
-        gyro_cal_smoothed=sm[:, 12:21].reshape(-1, 3, 3) if (gc and sm is not None) else None)
+        gyro_cal_smoothed=sm[:, 12:21].reshape(-1, 3, 3) if (gc and sm is not None) else None,
+        outputs=outputs if outputs.file_backed else None)
 
 
 def _propagate(q, b, h, vz, ba, K, f0, w0, f1, w1, dt, g, vert):
@@ -974,14 +992,16 @@ def _propagate(q, b, h, vz, ba, K, f0, w0, f1, w1, dt, g, vert):
     return q, h, vz, R, fE, u
 
 
-def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n, gc, ik, mb, im):
+def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n, gc, ik, mb, im,
+            outputs):
     """The backward Rauch-Tung-Striebel pass, reading the store in reverse.
 
     ``x_s,k = x_f,k (+) C_k (x_s,k+1 (-) x_{k+1|k})``, with the prediction
     ``x_{k+1|k}`` recomputed from ``x_f,k`` and the IMU over the node's
-    interval rather than stored. Returns the smoothed nominal state at every
-    IMU sample."""
-    out = np.empty((len(t_imu), NOMINAL))
+    interval rather than stored. Writes and returns the smoothed nominal
+    state at every IMU sample, ``outputs.smoothed``."""
+    out = outputs.smoothed
+    flush_every = store.window
 
     def imu_at(k):
         """The IMU (f, w) at node k, and its IMU index if it is a sample."""
@@ -1027,6 +1047,8 @@ def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n, g
         xs = (*qk, *bk, hk, vzk, *bak, *kk, *mk)
         if i0 >= 0:
             out[i0] = xs
+            if outputs.file_backed and i0 % flush_every == 0:
+                outputs.flush()
         f1, w1, t1 = f0, w0, t0
     return out
 
@@ -1082,6 +1104,7 @@ class NodeStore:
     else the system's), deleted by :meth:`close`."""
 
     def __init__(self, n_nodes: int, n: int, cfg: FilterConfig):
+        self.window = cfg.memmap_window_nodes
         gain_dtype = np.float32 if cfg.gain_float32 else np.float64
         self.bytes_per_node = NOMINAL * 8 + n * n * np.dtype(gain_dtype).itemsize + 8 + 4
         self.nbytes = n_nodes * self.bytes_per_node
@@ -1133,6 +1156,53 @@ class NodeStore:
             self._tmp = None
 
 
+class OutputStore:
+    """The filter's per-sample outputs: the forward and (when smoothing) the
+    smoothed nominal state, :data:`NOMINAL` doubles per IMU sample each.
+
+    Plain arrays when they fit in :attr:`FilterConfig.memmap_threshold_mb`,
+    otherwise each is a ``numpy.memmap`` over a file in a temporary
+    directory (under :attr:`FilterConfig.memmap_dir`), flushed every
+    ``memmap_window_nodes`` rows as it is written so that written pages can
+    be dropped from memory. The files outlive :func:`run_filter`: they are
+    the result, and :class:`FilterResult` holds this store. :meth:`close`,
+    or garbage collection of the store, deletes them."""
+
+    def __init__(self, n: int, smoothed: bool, cfg: FilterConfig):
+        self.nbytes = (1 + smoothed) * n * NOMINAL * 8
+        self.file_backed = self.nbytes > cfg.memmap_threshold_mb * 2 ** 20
+        self._tmp = None
+        self.smoothed = None
+        if self.file_backed:
+            import tempfile
+            self._tmp = tempfile.TemporaryDirectory(prefix="tagsim-outputs-", dir=cfg.memmap_dir)
+            d = Path(self._tmp.name)
+            self.forward = np.memmap(d / "forward", dtype=np.float64, mode="w+",
+                                     shape=(n, NOMINAL))
+            if smoothed:
+                self.smoothed = np.memmap(d / "smoothed", dtype=np.float64, mode="w+",
+                                          shape=(n, NOMINAL))
+        else:
+            self.forward = np.empty((n, NOMINAL))
+            if smoothed:
+                self.smoothed = np.empty((n, NOMINAL))
+
+    def describe(self) -> dict:
+        return {"file_backed": self.file_backed, "mb": round(self.nbytes / 2 ** 20, 1)}
+
+    def flush(self) -> None:
+        if self.file_backed:
+            for a in (self.forward, self.smoothed):
+                if a is not None:
+                    a.flush()
+
+    def close(self) -> None:
+        """Delete the files, if any."""
+        if self._tmp is not None:
+            self._tmp.cleanup()
+            self._tmp = None
+
+
 def dataclass_replace(cfg: FilterConfig, **changes) -> FilterConfig:
     from dataclasses import replace
     return replace(cfg, **changes)
@@ -1148,7 +1218,7 @@ GYRO_CAL_COLUMNS = tuple(f"gs{r}{c}" for r in "xyz" for c in "xyz")
 
 
 def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
-                    source: Path | None = None) -> None:
+                    source: Path | None = None, chunk: int = 1 << 16) -> None:
     """``FilterForward`` and ``FilterSmoothed``: one row per IMU sample,
     ``SegmentId, SampleIndex, ElapsedUs, qw qx qy qz`` (tag frame to ENU),
     ``alt`` (m, relative to the first pressure sample) and ``vz`` (m/s, up),
@@ -1176,21 +1246,24 @@ def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
                      r.bias_smoothed, r.accel_bias_smoothed, r.gyro_cal_smoothed)):
                 if q is None:
                     continue
-                nn = len(r.t)
-                a = alt if alt is not None else [None] * nn
-                v = vz if vz is not None else [None] * nn
-                bd = np.degrees(bias)
-                ad = abias * (1000.0 / G0) if abias is not None else [(None,) * 3] * nn
-                gd = ((gyro_sensitivity(gcal) - np.eye(3)).reshape(-1, 9) if gcal is not None
-                      else [(None,) * 9] * nn)
-                con.executemany(
-                    f"INSERT INTO {table} VALUES ({', '.join('?' * 24)})",
-                    ((r.segment_id, int(si), int(round(t * 1e6)), *map(float, qq),
-                      None if aa is None else float(aa), None if vv is None else float(vv),
-                      *map(float, bb), *(None if x is None else float(x) for x in abb),
-                      *(None if x is None else float(x) for x in gg))
-                     for si, t, qq, aa, vv, bb, abb, gg in zip(r.sample_index, r.t, q, a, v, bd,
-                                                               ad, gd)))
+                # In chunks, so that file-backed outputs are never all in memory.
+                for lo in range(0, len(r.t), chunk):
+                    sl = slice(lo, lo + chunk)
+                    nn = len(r.t[sl])
+                    a = alt[sl] if alt is not None else [None] * nn
+                    v = vz[sl] if vz is not None else [None] * nn
+                    bd = np.degrees(bias[sl])
+                    ad = abias[sl] * (1000.0 / G0) if abias is not None else [(None,) * 3] * nn
+                    gd = ((gyro_sensitivity(gcal[sl]) - np.eye(3)).reshape(-1, 9)
+                          if gcal is not None else [(None,) * 9] * nn)
+                    con.executemany(
+                        f"INSERT INTO {table} VALUES ({', '.join('?' * 24)})",
+                        ((r.segment_id, int(si), int(round(t * 1e6)), *map(float, qq),
+                          None if aa is None else float(aa), None if vv is None else float(vv),
+                          *map(float, bb), *(None if x is None else float(x) for x in abb),
+                          *(None if x is None else float(x) for x in gg))
+                         for si, t, qq, aa, vv, bb, abb, gg in zip(
+                             r.sample_index[sl], r.t[sl], q[sl], a, v, bd, ad, gd)))
             con.execute("INSERT INTO FilterRun VALUES (?,?,?,?)",
                         (r.segment_id, str(source.name) if source else None,
                          json.dumps(cfg.as_dict()), json.dumps(r.stats)))

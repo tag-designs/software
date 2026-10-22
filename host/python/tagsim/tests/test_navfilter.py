@@ -253,15 +253,23 @@ before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * scale
 r = run_filter(log, FilterConfig(field_enu_ut=tuple(field), memmap_threshold_mb=threshold,
                                  memmap_dir=directory, memmap_window_nodes=4096))
 after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * scale
+import hashlib
+digest = hashlib.sha256()
+for a in (r.q_forward, r.q_smoothed, r.alt_smoothed, r.vz_forward, r.bias_smoothed,
+          r.accel_bias_forward, r.gyro_cal_smoothed):
+    digest.update(np.ascontiguousarray(a).tobytes())
+files = sorted(p.name for p in __import__("pathlib").Path(directory).rglob("*") if p.is_file())
+r.close()
 print(json.dumps({"growth_mb": (after - before) / 2 ** 20, "storage": r.stats["storage"],
-                  "q_end": r.q_smoothed[-1].tolist()}))
+                  "outputs": r.stats["outputs"], "digest": digest.hexdigest(), "files": files}))
 '''
 
 
 def test_file_backed_storage_bounds_memory(tmp_path):
-    """A synthetic run long enough that its smoother storage dominates: kept
-    in files, the peak resident memory grows by about the outputs alone, not
-    by the storage, and the result matches the in-memory run's."""
+    """A synthetic run long enough that its storage dominates: with the
+    smoother's per-node storage and the per-sample outputs kept in files,
+    the peak resident memory grows by a fraction of either, every output
+    matches the in-memory run's exactly, and the files are deleted."""
     import json
     import subprocess
     import sys
@@ -274,15 +282,20 @@ def test_file_backed_storage_bounds_memory(tmp_path):
         runs[label] = json.loads(done.stdout)
     storage_mb = runs["file"]["storage"]["max_mb"]
     outputs_mb = 2 * n * NOMINAL * 8 / 2 ** 20  # forward and smoothed states per sample
+    assert runs["file"]["outputs"]["mb"] == round(outputs_mb, 1)
     print({k: round(v["growth_mb"], 1) for k, v in runs.items()},
           f"storage {storage_mb} MB, outputs {outputs_mb:.0f} MB")
-    assert runs["file"]["storage"]["file_backed"] and not runs["memory"]["storage"]["file_backed"]
-    assert runs["file"]["q_end"] == runs["memory"]["q_end"]
+    for key in ("storage", "outputs"):
+        assert runs["file"][key]["file_backed"] and not runs["memory"][key]["file_backed"]
+    assert {"forward", "smoothed"} <= set(runs["file"]["files"])
+    assert runs["memory"]["files"] == []
+    assert runs["file"]["digest"] == runs["memory"]["digest"]
     assert list(tmp_path.iterdir()) == []
     # Peak RSS reuses memory freed while building the log, so compare the
-    # two runs with each other: the file-backed one saves most of the storage.
-    assert runs["memory"]["growth_mb"] - runs["file"]["growth_mb"] > 0.5 * storage_mb
-    assert runs["file"]["growth_mb"] < outputs_mb + 0.25 * storage_mb
+    # two runs with each other: the file-backed one saves most of both.
+    total = storage_mb + outputs_mb
+    assert runs["memory"]["growth_mb"] - runs["file"]["growth_mb"] > 0.5 * total
+    assert runs["file"]["growth_mb"] < 0.25 * total
 
 
 def test_gyro_cal_states():

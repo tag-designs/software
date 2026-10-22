@@ -125,8 +125,9 @@ def test_sensorviz_loads(flight_db, tmp_path):
 
 
 def test_filter_storage_modes(flight_db, tmp_path):
-    """The smoother's storage on a real flight: file-backed (memory-mapped)
-    and in-memory give identical results, the files are deleted afterwards,
+    """The smoother's storage and the outputs on a real flight: file-backed
+    (memory-mapped) and in-memory give identical results, the files are
+    deleted afterwards (the outputs' when the result is closed),
     and float32 gains (the default) change the smoothed estimate by less
     than 0.001 degree, 1 mm and 1 mm/s against float64 ones."""
     from tagsim.navfilter import FilterConfig, field_enu_from_ned, read_log, run_filter
@@ -138,11 +139,17 @@ def test_filter_storage_modes(flight_db, tmp_path):
     assert not mem.stats["storage"]["file_backed"]
     mapped = run_filter(log, FilterConfig(field_enu_ut=field, memmap_threshold_mb=0,
                                           memmap_dir=str(tmp_path), memmap_window_nodes=4096))
-    assert mapped.stats["storage"]["file_backed"]
-    assert list(tmp_path.iterdir()) == []
+    assert mapped.stats["storage"]["file_backed"] and mapped.stats["outputs"]["file_backed"]
+    # The smoother's storage is gone; the outputs' files stay with the result.
+    assert [p.name for p in tmp_path.iterdir()] == [mapped.outputs._tmp.name.split("/")[-1]]
     for a, b in ((mem.q_smoothed, mapped.q_smoothed), (mem.alt_smoothed, mapped.alt_smoothed),
-                 (mem.bias_smoothed, mapped.bias_smoothed), (mem.q_forward, mapped.q_forward)):
+                 (mem.bias_smoothed, mapped.bias_smoothed), (mem.q_forward, mapped.q_forward),
+                 (mem.accel_bias_smoothed, mapped.accel_bias_smoothed),
+                 (mem.gyro_cal_smoothed, mapped.gyro_cal_smoothed),
+                 (mem.vz_forward, mapped.vz_forward)):
         np.testing.assert_array_equal(a, b)
+    mapped.close()
+    assert list(tmp_path.iterdir()) == []
     f64 = run_filter(log, FilterConfig(field_enu_ut=field, gain_float32=False))
     angle = attitude_errors(mem.q_smoothed, f64.q_smoothed)["total_deg"]
     print(f"float32 gains: max {angle.max():.2e} deg, "
