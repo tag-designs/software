@@ -6,8 +6,8 @@ summary: Retire the legacy .txt sensor-log format and btviz - convert the existi
 
 # Retiring the Text Log Format and btviz
 
-**Status:** phases 0 and 1 built (2026-10-22), with most of phase 2's
-checking; the rest proposed.
+**Status:** phases 0 and 1 built (2026-10-22), with variant A and most of
+phase 2's checking; the rest proposed.
 
 - **Built:** the deprecation warnings (phase 0); `tag-txt-import` for
   variants B, C, D and E with the decoded-sample writer entry
@@ -19,18 +19,29 @@ checking; the rest proposed.
   `V:` and `TC:` as one `Voltage` and no `CoreTemperature`, and warns; a
   direct SQLite download keeps `V:` alone. Variant D's mapping above is
   superseded.
+- **Variant A is translated, not checked.** Its writer is `DumpPersistent.c`
+  in the old accel-tag repository; the firmware that packed its 5-minute
+  words is in no repository found. It is decoded as btviz decodes it (five
+  6-bit per-minute counts, newest minute in the low bits). The collection
+  bears that out: of 13.2 million counts only 10 exceed 60, and minutes
+  correlate across record boundaries (0.887) as they do within a word
+  (0.886) only in that order (0.787 reversed). Bit 30, set in 31 % of words,
+  is not activity and is dropped, as btviz drops it. Its read time is the
+  tag's own clock, which had reset in 27 files and disagrees with the state
+  log in others, so only the present bounds its record times. Variant A's
+  round-trip row in the table below is superseded.
 - **Exports run together** (a `V:` line with no activity before it, or
   activity no `V:` line closes) fail the conversion rather than being
   guessed at.
 - **On the whole collection:** 398 files of variants B–E convert and pass
   the round trip (232 byte for byte, the rest within the source's printed
   precision from older writers), including the 69 repaired FIVEMIN files
-  and all 285,821 packed words. 2 fail as exports run together.
-  195 variant A files and 24 non-logs
-  are refused. After the 9×7 repair, only 4 exact duplicate records remain
+  and all 285,821 packed words. All 195 variant A files translate
+  (2,641,031 words; 130 records dated in the 1970s dropped). 2 fail as
+  exports run together; 24 non-logs are refused. After the 9×7 repair, only 4 exact duplicate records remain
   and none conflict: most "duplicates" in the survey were that bug's
   overlapping bucket times.
-- **Not built yet:** variant A; `--batch` with the collection report and
+- **Not built yet:** `--batch` with the collection report and
   manifest; the pairing of repaired originals with their re-exports; the
   sensorviz fixtures; phases 3–5.
 

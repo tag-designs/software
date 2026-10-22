@@ -96,12 +96,43 @@ def check_failed(importer: str, out: Path) -> None:
     print(f"ok  {fixture.name}: fails, as it should")
 
 
+def check_variant_a(importer: str, out: Path) -> None:
+    """Variant A is translated with btviz's decode, checked here independently.
+
+    btviz (host/applications/btdataviz/mainwindow.cpp): for i = 5 .. 1, the
+    activity at epoch - i*60 is ((word >> (i-1)*6) & 63) / 0.6 percent. The
+    fixture's tag clock had reset when it was read (read time in 1979), which
+    must not make its 2019 records look implausible.
+    """
+    fixture = HERE / "a-rtcv4.txt"
+    db, report_path = out / "a.db3", out / "a.json"
+    done = subprocess.run([importer, str(fixture), "-o", str(db), "--report", str(report_path)],
+                          capture_output=True, text=True)
+    assert done.returncode == 0, f"{fixture.name}: exit {done.returncode}: {done.stderr[-400:]}"
+    report = json.loads(report_path.read_text())
+    assert report["variant"] == "A" and report["roundtrip"].startswith("translated"), report
+    assert report["records_written"] == 6 and report["implausible_times_dropped"] == 0, report
+    expected = []
+    for line in fixture.read_text().splitlines():
+        if line.startswith("\t") and "temperature" not in line:
+            _, epoch, word = line.strip().split(",")
+            w = int(word, 16)
+            expected += [(int(epoch) - i * 60, ((w >> (i - 1) * 6) & 63) / 0.6)
+                         for i in range(5, 0, -1)]
+    con = sqlite3.connect(db)
+    rows = con.execute("SELECT Epoch, Activity FROM Activity ORDER BY rowid").fetchall()
+    assert rows == expected, f"{fixture.name}: activity rows differ from btviz's decode"
+    assert con.execute("SELECT Epoch, Voltage FROM Voltage").fetchall() == [(1554924000, 2.67)]
+    assert con.execute("SELECT Temperature FROM CoreTemperature").fetchall() == [(36.9,)]
+    con.close()
+    print(f"ok  {fixture.name}: variant A, 6 words translated as btviz decodes them")
+
+
 def check_refused(importer: str, out: Path) -> None:
-    """Variant A and a non-log are refused with exit status 2."""
+    """A file that is not a log is refused with exit status 2."""
     cases = {
-        "variant-a.txt": "# Time Mon Mar 18 12:00:00 2019 epoch: 1552910400 error 0\n"
-                         "\ttime Mon Mar 18 12:00:00 2019,1552910400,00000000\n",
         "notes.txt": "Experiment notes, not a log\n",
+        "empty.txt": "",
     }
     for name, text in cases.items():
         path = out / name
@@ -118,13 +149,15 @@ def main() -> int:
         print(__doc__)
         return 2
     importer = sys.argv[1]
-    missing = sorted(set(EXPECT) - {p.name for p in HERE.glob("*.txt")})
+    missing = sorted((set(EXPECT) | {"a-rtcv4.txt", "e-concatenated.txt"})
+                     - {p.name for p in HERE.glob("*.txt")})
     assert not missing, f"fixtures missing: {missing}"
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp)
         for name in sorted(EXPECT):
             check(importer, HERE / name, out)
         check_failed(importer, out)
+        check_variant_a(importer, out)
         check_refused(importer, out)
     print("all checks passed")
     return 0

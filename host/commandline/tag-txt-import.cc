@@ -24,8 +24,21 @@
  *          **Variants** (host/libraries/tagcore/design/proposals/
  *          retire-text-logs.md): B, the BitTag V5 header; C, the current
  *          header, including C3/C4's fourth `V:` field; D, PresTag; E, no
- *          header. Variant A (RTCv4 firmware, tab-indented bitmaps) is not
- *          handled yet and is reported as unsupported.
+ *          header.
+ *
+ *          **Variant A** (BitTagRTCv4 firmware, 2019–2020, written by the
+ *          accel-tag repository's `monitor/Src/DumpPersistent.c`) is
+ *          translated, not checked: no writer here can render it back. Each
+ *          5-minute hex word holds five 6-bit counts of active seconds per
+ *          minute, decoded as btviz decodes them: for i = 5 … 1, the count
+ *          in bits (i−1)·6 is the activity at epoch − i·60, as count / 0.6
+ *          percent. (Checked on the collection: no count exceeds 60 but a
+ *          handful, and minutes correlate across record boundaries as they
+ *          do within a word only in this order.)
+ *          Bits 30–31 are not activity and are dropped, as btviz drops them;
+ *          the report counts words with bit 30 set. `temperature T vdd V`
+ *          lines become CoreTemperature and Voltage. The local-time text is
+ *          ignored; the epoch is authoritative.
  *
  *          **Repairs, never silent.** Exact duplicate records are removed;
  *          conflicting duplicates are kept and counted; records outside
@@ -53,8 +66,8 @@
  *          fields the tag info and config do not hold, the report, and the
  *          check's result.
  *
- *          Exit status: 0 converted and checked; 1 failed; 2 not convertible
- *          (variant A, or not a log).
+ *          Exit status: 0 converted and checked (variant A: translated); 1
+ *          failed; 2 not a log.
  *
  * @see     host/libraries/tagcore/design/proposals/retire-text-logs.md,
  *          host/libraries/tagcore/txtlogs.h, host/libraries/tagcore/sqlitelog.h
@@ -552,11 +565,14 @@ struct Report {
   size_t implausible_times = 0;     ///< Dropped.
   size_t backward_jumps = 0;        ///< Kept, file order.
   size_t voltage_pairs_averaged = 0; ///< PresTag: V: and TC: stored as their mean.
+  size_t bit30_words = 0;           ///< Variant A: words with bit 30 set (dropped).
+  size_t counts_over_60 = 0;        ///< Variant A: per-minute counts above 60 s (kept).
   std::vector<std::string> data_comments; ///< '#' lines after the data began.
   size_t crlf_lines = 0;
   bool missing_final_newline = false;
   bool header_only = false;
   bool fivemin_9x7 = false;         ///< Re-decoded from the buggy layout.
+  bool read_time_implausible = false; ///< The tag's clock was wrong when read.
   size_t words_checked = 0;         ///< C3/C4 fourth fields checked.
   std::vector<std::string> unparsed_header;
   std::vector<std::string> dropped_lines; ///< Verbatim, "line N: text".
@@ -629,10 +645,13 @@ std::string ReportJson(const Report &r) {
     << ",\n  \"implausible_times_dropped\": " << r.implausible_times
     << ",\n  \"backward_time_jumps\": " << r.backward_jumps
     << ",\n  \"prestag_voltage_pairs_averaged\": " << r.voltage_pairs_averaged
+    << ",\n  \"variant_a_bit30_words_dropped\": " << r.bit30_words
+    << ",\n  \"variant_a_counts_over_60\": " << r.counts_over_60
     << ",\n  \"crlf_lines\": " << r.crlf_lines
     << ",\n  \"missing_final_newline\": " << (r.missing_final_newline ? "true" : "false")
     << ",\n  \"header_only\": " << (r.header_only ? "true" : "false")
     << ",\n  \"repair_fivemin_9x7\": " << (r.fivemin_9x7 ? "true" : "false")
+    << ",\n  \"read_time_implausible\": " << (r.read_time_implausible ? "true" : "false")
     << ",\n  \"packed_words_checked\": " << r.words_checked << ",\n  \"unparsed_header\": ";
   list(r.unparsed_header);
   o << ",\n  \"dropped_lines\": ";
@@ -932,6 +951,9 @@ struct Conversion {
   bool has_words = false;         ///< BitTag: C3/C4 fourth fields.
   std::vector<BitTagRecord> bittag;
   std::vector<PresTagRecord> prestag;
+  bool variant_a = false;         ///< Translated with btviz's decode; no round trip.
+  std::vector<TagLogSample> a_activity, a_voltage, a_core; ///< Variant A rows.
+  std::string a_device;           ///< Variant A "# device:" string.
   std::set<size_t> dropped;       ///< Data-line indexes removed by repairs.
   Report report;
 };
@@ -1037,7 +1059,17 @@ bool WriteLog(const Conversion &c, const SourceFile &src, const std::string &rel
   }
 
   std::vector<TagLogSample> activity, voltage, core, pressure, temperature;
-  if (!c.bittag.empty() || h.config.tag_type() == BITTAG) {
+  if (c.variant_a) {
+    activity = c.a_activity;
+    voltage = c.a_voltage;
+    core = c.a_core;
+    if (!writer->writeInfo("txt_device", c.a_device) ||
+        !writer->writeInfo("txt_translation",
+                           "variant A, decoded as btviz decodes it; not round-trip checked")) {
+      error = writer->lastError();
+      return false;
+    }
+  } else if (!c.bittag.empty() || h.config.tag_type() == BITTAG) {
     for (const BitTagRecord &r : c.bittag) {
       const std::vector<uint64_t> counts = Unpack(r.raw, c.geometry);
       for (int i = 0; i < c.geometry.number; i++)
@@ -1407,13 +1439,250 @@ bool RoundTrip(const std::string &db_path, const Conversion &c, Report &report) 
 // ---------------------------------------------------------------------------
 
 /**
+ * @brief   The latest plausible record time: the read time plus a day.
+ *
+ * @details A tag whose clock had reset (a flat battery) reports a read time
+ *          years in the past, which would make every real record look late;
+ *          then the present is the bound instead, and the report says so.
+ *
+ * @param[in]     h       The parsed header.
+ * @param[in,out] report  Notes an implausible read time.
+ * @return  Unix seconds.
+ */
+int64_t LatestPlausible(const ParsedHeader &h, Report &report) {
+  const int64_t now = static_cast<int64_t>(std::time(nullptr));
+  int64_t bound = now;
+  if (h.has_read_time && h.content.read_time_s >= kEarliestEpoch)
+    bound = h.content.read_time_s;
+  else if (h.has_read_time)
+    report.read_time_implausible = true;
+  return bound + 86400;
+}
+
+/// Variant A state names, from DumpPersistent.c's statestring().
+bool VariantAState(const std::string &name, TagState &state) {
+  static const std::map<std::string, TagState> names = {
+      {"Reset", sRESET},    {"Idle", IDLE},         {"Triggered", CONFIGURED},
+      {"Running", RUNNING}, {"Aborted", ABORTED},   {"Finished", FINISHED}};
+  const auto it = names.find(name);
+  if (it == names.end())
+    return false;
+  state = it->second;
+  return true;
+}
+
+/// The last whitespace-separated word of a line, as an integer.
+bool LastInt(const std::string &line, int64_t &out) {
+  const std::vector<std::string> words = Split(Trim(line), ' ');
+  return ParseInt(words.back(), out);
+}
+
+/**
+ * @brief   Parse a variant A (BitTagRTCv4, DumpPersistent.c) log.
+ *
+ * @details Header lines may appear anywhere ("# Page N" separates pages).
+ *          Data lines are tab-indented `time <local>,<epoch>,<payload>`, the
+ *          payload a hex activity word or `temperature T vdd V`. Decoded as
+ *          btviz decodes them; see the file comment. Exact duplicate lines
+ *          are removed and records outside 2015 to the read time are dropped,
+ *          as for the other variants.
+ *
+ * @param[in]     src    The file.
+ * @param[in,out] c      The conversion: header, rows and report.
+ * @param[out]    error  Why it does not parse.
+ * @return  false on a malformed data line.
+ */
+bool PrepareVariantA(const SourceFile &src, Conversion &c, std::string &error) {
+  Report &report = c.report;
+  TextLogHeader &h = c.header.content;
+  report.variant = "A";
+  h.config.set_tag_type(BITTAG);
+  h.info.set_tag_type(BITTAG);
+  // Per-minute activity, as the MIN format stores it.
+  h.config.set_bittag_log(BITTAG_BITSPERMIN);
+
+  struct Line {
+    size_t index;
+    int64_t epoch;
+    std::string payload;
+  };
+  std::vector<Line> lines;
+  for (size_t i = 0; i < src.lines.size(); i++) {
+    const std::string &text = src.lines[i];
+    if (Trim(text).empty())
+      continue;
+    if (text[0] == '#') {
+      c.header_text += text + "\n";
+      const std::string line = Trim(text.substr(1));
+      int64_t n = 0;
+      if (line.rfind("Time ", 0) == 0 && line.find("epoch:") != std::string::npos) {
+        // "Time <local> epoch: N error E"
+        const size_t e = line.find("epoch:");
+        const std::vector<std::string> words = Split(Trim(line.substr(e + 6)), ' ');
+        double err = 0;
+        if (ParseInt(words[0], n)) {
+          h.read_time_s = n;
+          c.header.has_read_time = true;
+        }
+        if (words.size() >= 3 && (words[1] == "error" || words[1] == "error:") &&
+            ParseDouble(words[2], err))
+          h.error_s = err;
+      } else if (line.rfind("device:", 0) == 0) {
+        c.a_device = Trim(line.substr(7));
+      } else if (line.rfind("hash:", 0) == 0) {
+        h.info.set_githash(Trim(line.substr(5)));
+      } else if (line.rfind("info:", 0) == 0) {
+        h.info.set_firmware(Trim(line.substr(5)));
+      } else if (line.rfind("flash size =", 0) == 0) {
+        double kb = 0;
+        if (ParseWithSuffix(line.substr(12), "KB", kb))
+          h.info.set_intflashsz(static_cast<int64_t>(kb));
+      } else if (line.rfind("State =", 0) == 0) {
+        TagState state;
+        State entry;
+        if (VariantAState(Trim(line.substr(7)), state))
+          entry.mutable_status()->set_state(state);
+        h.states.push_back(entry);
+      } else if (line.rfind("Pages =", 0) == 0 && !h.states.empty()) {
+        if (ParseInt(line.substr(7), n))
+          h.states.back().mutable_status()->set_internal_data_count(static_cast<int32_t>(n));
+      } else if (line.rfind("Time =", 0) == 0 && !h.states.empty()) {
+        if (LastInt(line, n))
+          h.states.back().mutable_status()->set_millis(n * 1000);
+      } else if (line.rfind("start time", 0) == 0) {
+        if (LastInt(line, n))
+          h.config.mutable_active_interval()->set_start_epoch(static_cast<int32_t>(n));
+      } else if (line.rfind("stop time", 0) == 0) {
+        if (LastInt(line, n))
+          h.config.mutable_active_interval()->set_end_epoch(static_cast<int32_t>(n));
+      } else if (line.rfind("Page ", 0) != 0 && line.rfind("pages =", 0) != 0) {
+        c.header.unparsed.push_back(line);
+      }
+      continue;
+    }
+    if (text[0] != '\t') {
+      error = "line " + std::to_string(i + 1) + ": not a variant A data line: " + text;
+      return false;
+    }
+    const std::vector<std::string> parts = Split(Trim(text), ',');
+    int64_t epoch = 0;
+    if (parts.size() != 3 || parts[0].rfind("time ", 0) != 0 || !ParseInt(parts[1], epoch)) {
+      error = "line " + std::to_string(i + 1) + ": malformed: " + text;
+      return false;
+    }
+    lines.push_back({i, epoch, Trim(parts[2])});
+  }
+  report.unparsed_header = c.header.unparsed;
+  report.data_lines = lines.size();
+  report.header_only = lines.empty();
+
+  // Variant A's "read time" is the tag's own clock at the dump, which can
+  // disagree with its own state log by weeks; only the present bounds it.
+  const int64_t latest = static_cast<int64_t>(std::time(nullptr)) + 86400;
+  std::set<std::pair<int64_t, std::string>> seen;
+  std::map<int64_t, size_t> payloads_at; // epoch+kind -> count, for conflicts
+  int64_t last = INT64_MIN;
+  for (const Line &line : lines) {
+    const std::string &text = src.lines[line.index];
+    const bool is_temp = line.payload.rfind("temperature", 0) == 0;
+    if (line.epoch < kEarliestEpoch || line.epoch > latest) {
+      report.implausible_times++;
+      report.dropped_lines.push_back("line " + std::to_string(line.index + 1) + ": " + text);
+      continue;
+    }
+    if (!seen.insert({line.epoch, line.payload}).second) {
+      report.exact_duplicates++;
+      report.dropped_lines.push_back("line " + std::to_string(line.index + 1) + ": " + text);
+      continue;
+    }
+    if (payloads_at[line.epoch * 2 + (is_temp ? 1 : 0)]++)
+      report.conflicting_duplicates++;
+    if (!is_temp) {
+      if (line.epoch < last)
+        report.backward_jumps++;
+      last = line.epoch;
+    }
+    report.records_in++;
+    if (is_temp) {
+      // "temperature T vdd V"
+      const std::vector<std::string> words = Split(line.payload, ' ');
+      double t = 0;
+      double v = 0;
+      if (words.size() != 4 || words[2] != "vdd" || !ParseDouble(words[1], t) ||
+          !ParseDouble(words[3], v)) {
+        error = "line " + std::to_string(line.index + 1) + ": malformed: " + text;
+        return false;
+      }
+      c.a_core.push_back({line.epoch, t});
+      c.a_voltage.push_back({line.epoch, v});
+      continue;
+    }
+    char *end = nullptr;
+    const unsigned long word = std::strtoul(line.payload.c_str(), &end, 16);
+    if (line.payload.empty() || *end || line.payload.size() > 8) {
+      error = "line " + std::to_string(line.index + 1) + ": malformed activity word: " + text;
+      return false;
+    }
+    if (word & 0x40000000UL)
+      report.bit30_words++;
+    // btviz: for i = 5 .. 1, the minute at epoch - i*60 is bits (i-1)*6.
+    for (int i = 5; i >= 1; i--) {
+      const unsigned count = static_cast<unsigned>((word >> ((i - 1) * 6)) & 63U);
+      if (count > 60)
+        report.counts_over_60++;
+      c.a_activity.push_back({line.epoch - i * 60, count / 0.6});
+    }
+    report.records_written++;
+  }
+  return true;
+}
+
+/**
+ * @brief   Variant A's check: the written tables hold exactly the rows parsed.
+ *
+ * @details Variant A has no writer here to render it back with, so the
+ *          conversion is a translation; this confirms only that what was
+ *          decoded reached the log intact.
+ *
+ * @param[in]     db_path  The written log.
+ * @param[in]     c        The conversion.
+ * @param[in,out] report   The result.
+ * @return  true when every table's rows match the decoded rows.
+ */
+bool CheckVariantA(const std::string &db_path, const Conversion &c, Report &report) {
+  sqlite3 *db = nullptr;
+  std::vector<TagLogSample> act, volt, core;
+  const bool read =
+      sqlite3_open_v2(db_path.c_str(), &db, SQLITE_OPEN_READONLY, nullptr) == SQLITE_OK &&
+      ReadSeries(db, "SELECT Epoch, Activity FROM Activity ORDER BY rowid", act) &&
+      ReadSeries(db, "SELECT Epoch, Voltage FROM Voltage ORDER BY rowid", volt) &&
+      ReadSeries(db, "SELECT Epoch, Temperature FROM CoreTemperature ORDER BY rowid", core);
+  sqlite3_close(db);
+  auto same = [](const std::vector<TagLogSample> &a, const std::vector<TagLogSample> &b) {
+    if (a.size() != b.size())
+      return false;
+    for (size_t i = 0; i < a.size(); i++)
+      if (a[i].epoch != b[i].epoch || a[i].value != b[i].value)
+        return false;
+    return true;
+  };
+  if (!read || !same(act, c.a_activity) || !same(volt, c.a_voltage) || !same(core, c.a_core)) {
+    report.roundtrip = "variant A rows did not read back as written";
+    return false;
+  }
+  report.roundtrip = "translated: variant A, decoded as btviz decodes it; rows verified, "
+                     "no round trip";
+  return true;
+}
+
+/**
  * @brief   Parse, classify and repair a source file.
  *
  * @param[in]  src     The source.
  * @param[out] c       The conversion.
  * @param[out] error   Why it cannot be converted.
  * @return  0 when convertible, 1 on a malformed file, kExitUnsupported for
- *          variant A or a file that is not a log.
+ *          a file that is not a log.
  */
 int Prepare(const SourceFile &src, Conversion &c, std::string &error) {
   Report &report = c.report;
@@ -1438,8 +1707,14 @@ int Prepare(const SourceFile &src, Conversion &c, std::string &error) {
   const bool tabbed = first_data < src.lines.size() && !src.lines[first_data].empty() &&
                       src.lines[first_data][0] == '\t';
   if (c.header.variant_a_marker || tabbed) {
-    error = "variant A (RTCv4 bitmap log) is not supported yet";
-    return kExitUnsupported;
+    c = Conversion();
+    c.variant_a = true;
+    c.report.crlf_lines = src.crlf_lines;
+    c.report.missing_final_newline = src.missing_final_newline;
+    if (!PrepareVariantA(src, c, error))
+      return 1;
+    c.report.tag_type = TagType_Name(BITTAG);
+    return 0;
   }
   if (!SplitData(src, first_data, c.data, report.data_comments, error))
     return header_lines.empty() ? kExitUnsupported : 1;
@@ -1471,9 +1746,7 @@ int Prepare(const SourceFile &src, Conversion &c, std::string &error) {
   report.tag_type = TagType_Name(h.config.tag_type());
   report.header_only = c.data.empty();
 
-  // Latest plausible time: the read time, or now, plus a day.
-  const int64_t now = static_cast<int64_t>(std::time(nullptr));
-  const int64_t latest = (c.header.has_read_time ? h.read_time_s : now) + 86400;
+  const int64_t latest = LatestPlausible(c.header, report);
 
   if (h.config.tag_type() == PRESTAG) {
     uint32_t period = 0;
@@ -1590,7 +1863,8 @@ int Prepare(const SourceFile &src, Conversion &c, std::string &error) {
 
 /**
  * @brief   Parse options, convert one file, check it.
- * @return  0 converted and checked, 1 failed, 2 not convertible.
+ * @return  0 converted and checked (or translated, variant A), 1 failed,
+ *          2 not a log.
  */
 int main(int argc, char **argv) {
   cxxopts::Options options("tag-txt-import",
@@ -1661,7 +1935,8 @@ int main(int argc, char **argv) {
     std::cerr << "tag-txt-import: " << input << ": " << error << std::endl;
     return 1;
   }
-  const bool passed = RoundTrip(output, c, c.report);
+  const bool passed =
+      c.variant_a ? CheckVariantA(output, c, c.report) : RoundTrip(output, c, c.report);
   const bool recorded = writer->writeInfo("txt_roundtrip", c.report.roundtrip) &&
                         writer->writeInfo("txt_conversion_report", ReportJson(c.report));
   writer.reset();
@@ -1672,6 +1947,12 @@ int main(int argc, char **argv) {
     std::cerr << "tag-txt-import: " << input << ": round trip failed: " << c.report.roundtrip
               << std::endl;
     return 1;
+  }
+  if (c.variant_a) {
+    std::cout << input << ": variant A, " << c.report.records_written
+              << " activity words translated to " << output
+              << " (btviz decode; not round-trip checked)" << std::endl;
+    return 0;
   }
   std::cout << input << ": variant " << c.report.variant << ", " << c.report.records_written
             << " records written to " << output << "; round trip passed ("

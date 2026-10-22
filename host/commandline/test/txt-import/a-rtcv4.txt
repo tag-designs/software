@@ -1,0 +1,31 @@
+# pages = 0
+# device: 00-000- 000000-0
+# flash size = 256 KB
+# hash: 00ea341
+# info: BitTagRTCv4 (24hr delay)
+# Time 1979-12-31 19:02:40 epoch: 315532960 error -1245604016.18
+# Page 0
+# State = Triggered
+#   Pages = 0
+#   Time = 2019-04-09 15:11:14 1554837074
+# State = Running
+#   Pages = 0
+#   Time = 2019-04-10 15:11:14 1554923474
+# State = Aborted
+#   Pages = 0
+#   Time = 1979-12-31 19:00:00 315532800
+# adxl filter 0x53
+# adxl active thresh 250
+# adxl active time 1
+# adxl inactive thresh 250
+# adxl inactive time 20
+# start time 2019-04-10 15:11:14 1554923474
+# stop time  2038-01-18 22:14:07 2147483647
+# Page 1
+	time 2019-04-10 15:20:00,1554924000,temperature 36.9 vdd 2.67
+	time 2019-04-10 15:20:00,1554924000,000cc596
+	time 2019-04-10 15:25:00,1554924300,1459010d
+	time 2019-04-10 15:30:00,1554924600,0820c6d0
+	time 2019-04-10 15:35:00,1554924900,062c2081
+	time 2019-04-10 15:40:00,1554925200,0014f302
+	time 2019-04-10 15:45:00,1554925500,05040001

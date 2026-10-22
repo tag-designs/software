@@ -233,8 +233,17 @@ build-host/bin/tag-txt-import log.txt -o log.db3 --report log.json
 
 - **What it reads:** variants B (BitTag V5 header), C (the current header,
   including the C3/C4 packed word on `V:` lines), D (PresTag) and E (no
-  header). Variant A, the RTCv4 firmware's tab-indented bitmaps, and files
-  that are not logs are refused with exit status 2.
+  header), each checked as below; and variant A, translated only. Files that
+  are not logs are refused with exit status 2.
+- **Variant A** (BitTagRTCv4 firmware, 2019–2020; written by `DumpPersistent.c`
+  in the old accel-tag repository) has no writer here to render it back, so
+  it is decoded as btviz decodes it and not round-trip checked: each 5-minute
+  hex word is five 6-bit counts of active seconds per minute, the minute at
+  `epoch − i·60` (i = 5…1) in bits `(i−1)·6`, as `count / 0.6` percent;
+  `temperature T vdd V` lines become `CoreTemperature` and `Voltage`. Bits
+  30–31 are dropped as btviz drops them (the report counts words with bit 30
+  set). The log's `info` says `txt_translation`; the tool checks only that
+  the rows read back as decoded.
 - **How it writes:** with `SqliteTagLogWriter::writeSamples()`, into the same
   tables and streams a download writes.
 - **The check, on every conversion:** the written log is read back, rebuilt
@@ -260,9 +269,10 @@ build-host/bin/tag-txt-import log.txt -o log.db3 --report log.json
   version, the verbatim header, `txt_roundtrip` and
   `txt_conversion_report`; `--report FILE` writes the report as JSON too.
 
-On the legacy collection (2026-10-22), 398 files convert and pass the check;
-2 fail as exports run together; 195 variant A files and 24 non-logs (20 macOS
-AppleDouble files, 3 empty files, 1 page of notes) are refused. The check
+On the legacy collection (2026-10-22), 398 files of variants B–E convert and
+pass the check and all 195 variant A files translate; 2 fail as exports run
+together; 24 non-logs (20 macOS AppleDouble files, 3 empty files, 1 page of
+notes) are refused. The check
 itself is exercised on anonymised fixtures by
 [`test/txt_import_check.py`](test/txt_import_check.py).
 

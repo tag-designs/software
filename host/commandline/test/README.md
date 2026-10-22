@@ -10,8 +10,8 @@ summary: Offline check of tag-txt-import - anonymised fixtures of each legacy .t
 fixture in [`txt-import/`](txt-import/) and asserts what its conversion report
 must say: the variant, the records written, each repair, and that the round
 trip back to text passed. It also checks the written log's row counts and
-provenance; that exports run together fail; and that variant A and a non-log
-are refused. Run it by hand after
+provenance; that exports run together fail; that variant A matches an
+independent implementation of btviz's decode; and that non-logs are refused. Run it by hand after
 building the tool:
 
 ```sh
@@ -24,7 +24,8 @@ stops at the first failure.
 ## The fixtures
 
 Each is a few records trimmed from a file in the legacy collection, with the
-UUID replaced by zeros and the firmware repository URL by a placeholder:
+UUID (variant A: the device string) replaced by zeros and the firmware
+repository URL by a placeholder:
 
 | Fixture | Variant | What it exercises |
 | --- | --- | --- |
@@ -39,6 +40,7 @@ UUID replaced by zeros and the firmware repository URL by a placeholder:
 | `e-no-header.txt` | E | No header; format from the data |
 | `e-concatenated.txt` | E | Two exports run together, with orphan and unclosed records: must fail |
 | `header-only.txt` | C | A header with no data |
+| `a-rtcv4.txt` | A | BitTagRTCv4 dump, translated as btviz decodes it; the tag's clock had reset when read |
 
 When a fixture's expected counts change, update `EXPECT` in the script and say
 why in the commit.
