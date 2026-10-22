@@ -1,13 +1,43 @@
 #ifndef SQLITE_LOG_H
 #define SQLITE_LOG_H
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "taglogwriter.h"
 #include "tag.pb.h"
 
 class Tag;
+
+/**
+ * @enum    TagLogSeries
+ * @brief   The value tables a decoded-sample import can write.
+ *
+ * @details Each names one table of the tag's SQLite profile and its value
+ *          column: Activity (%), Voltage (V), CoreTemperature (°C, the
+ *          processor's), Pressure (mbar) and Temperature (°C, the pressure
+ *          sensor's). Units are the ones the Ack decoders write.
+ */
+enum class TagLogSeries
+{
+    Activity,        ///< Activity.Activity, percent of the bucket.
+    Voltage,         ///< Voltage.Voltage, volts.
+    CoreTemperature, ///< CoreTemperature.Temperature, °C.
+    Pressure,        ///< Pressure.Pressure, mbar (= hPa).
+    Temperature      ///< Temperature.Temperature, °C.
+};
+
+/**
+ * @struct  TagLogSample
+ * @brief   One already-decoded value at a Unix time.
+ */
+struct TagLogSample
+{
+    int64_t epoch; ///< Unix seconds.
+    double value;  ///< In the series' unit.
+};
 
 /**
  * Writes tag downloads to the project SQLite database format without using Qt.
@@ -96,6 +126,25 @@ public:
      * TagLogWriter convention.
      */
     int writeLog(const Ack &ack) override;
+
+    /**
+     * @brief   Append already-decoded samples to one value table.
+     *
+     * @details The entry point for logs that hold values rather than tag
+     *          records, such as a converted legacy .txt log
+     *          (host/commandline/tag-txt-import.cc): the rows go into the same
+     *          tables, with the same streams metadata, as writeLog() would
+     *          write, and the Ack path is not involved. Rows are inserted in
+     *          the order given, so a table's rowid order is the caller's
+     *          order. Call between beginLog() and endLog() for speed.
+     *
+     * @pre     writeHeader() succeeded.
+     * @param[in] series   The table to write.
+     * @param[in] samples  Values, in the order to store them.
+     * @return  false when the tag type's profile has no such table, or on a
+     *          database error; lastError() says which.
+     */
+    bool writeSamples(TagLogSeries series, const std::vector<TagLogSample> &samples);
 
 private:
     // Hide sqlite3.h and statement-management details from public consumers.

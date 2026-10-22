@@ -374,6 +374,13 @@ int main(int argc, char **argv)
     }
   }
 
+  // The .txt format is being retired
+  // (host/libraries/tagcore/design/proposals/retire-text-logs.md).
+  if (storage_format == TagLogStorageFormat::Text) {
+    std::cerr << "warning: the text log format is deprecated and will be removed; "
+                 "use -f sqlite (the default) for new downloads" << std::endl;
+  }
+
   if (output_path.empty()) {
     output_path = defaultOutputPath(storage_format);
   }

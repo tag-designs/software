@@ -355,6 +355,78 @@ public:
         return true;
     }
 
+    /**
+     * @brief   SqliteTagLogWriter::writeSamples(): insert decoded values into
+     *          one of the profile's value tables, in the order given.
+     * @param[in] series   The table.
+     * @param[in] samples  The rows.
+     * @return  false when the profile has no such table, or on a database
+     *          error, with lastError() set.
+     */
+    bool writeSamples(TagLogSeries series, const std::vector<TagLogSample> &samples)
+    {
+        if (!db_) {
+            setLastError("Database is not open");
+            return false;
+        }
+        const char *table = nullptr;
+        const char *column = nullptr;
+        switch (series) {
+        case TagLogSeries::Activity:
+            table = "Activity";
+            column = "Activity";
+            break;
+        case TagLogSeries::Voltage:
+            table = "Voltage";
+            column = "Voltage";
+            break;
+        case TagLogSeries::CoreTemperature:
+            table = "CoreTemperature";
+            column = "Temperature";
+            break;
+        case TagLogSeries::Pressure:
+            table = "Pressure";
+            column = "Pressure";
+            break;
+        case TagLogSeries::Temperature:
+            table = "Temperature";
+            column = "Temperature";
+            break;
+        }
+
+        // Only tables the tag type's profile defines, so an import cannot
+        // add a table a download of the same tag would not have.
+        bool known = false;
+        for (const SqlTableDefinition &definition : sqliteProfileForTag(config_.tag_type()).tables) {
+            known = known || std::string(definition.name) == table;
+        }
+        if (!known) {
+            setLastError(std::string("Tag type ") + TagType_Name(config_.tag_type())
+                         + " has no " + table + " table");
+            return false;
+        }
+        if (!createLogTables()) {
+            return false;
+        }
+
+        const std::string sql = std::string("INSERT INTO ") + table + " (Epoch, " + column
+                                + ") VALUES (?, ?)";
+        Statement insert(db_, sql.c_str());
+        if (!insert.valid()) {
+            setLastSqliteError(std::string("Could not prepare ") + table + " insert");
+            return false;
+        }
+        for (const TagLogSample &sample : samples) {
+            if (!insert.bindInt64(1, sample.epoch)
+                || !insert.bindDouble(2, sample.value)
+                || !insert.stepDone()) {
+                setLastSqliteError(std::string(table) + " insert failed");
+                return false;
+            }
+        }
+        return true;
+    }
+
 private:
     WriterContext writerContext()
     {
@@ -679,4 +751,9 @@ bool SqliteTagLogWriter::endLog()
 int SqliteTagLogWriter::writeLog(const Ack &ack)
 {
     return impl_->writeLog(ack);
+}
+
+bool SqliteTagLogWriter::writeSamples(TagLogSeries series, const std::vector<TagLogSample> &samples)
+{
+    return impl_->writeSamples(series, samples);
 }

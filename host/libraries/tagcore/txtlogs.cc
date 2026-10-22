@@ -36,51 +36,59 @@ static std::string fmthex(uint32_t num)
 
 
 
-static bool dumpTagCalibration(std::ostream &fs, Tag &tag){
-  CalibrationConstants constants;
-  if (tag.ReadCalibration(constants,-1)
-        && constants.has_magnetometer())
-   {
-      const CalibrationConstants_MagConstants mag = constants.magnetometer();
-      fs << "# Calibration V: " << mag.v0() << " " << mag.v1() << " " << mag.v2() << std::endl;
-      fs << "# Calibration A[0]: " << mag.a00() << " " << mag.a01() << " " << mag.a02() << std::endl;
-      fs << "# Calibration A[1]: " << mag.a10() << " " << mag.a11() << " " << mag.a12() << std::endl;
-      fs << "# Calibration A[2]: " << mag.a20() << " " << mag.a21() << " " << mag.a22() << std::endl;
-      if (constants.has_accelerometer()) {
-        const CalibrationConstants_AccelConstants &acc = constants.accelerometer();
-        fs << "# Calibration accel offset (mg): " << acc.o0() << " " << acc.o1() << " " << acc.o2() << std::endl;
-      }
-   }
-   return true;
-
-}
-
 bool TextTagLogWriter::writeTextHeader(Tag &tag)
 {
-  std::ostream &fs = *out_;
-  Config cfg;
+  TextLogHeader header;
   Status status;
   StateLog state_log;
-  std::string str;
-  TagInfo info;
   int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-  //QDateTime now = QDateTime::currentDateTime();
 
   if (!tag.GetStatus(status))
     return false;
-  if (!tag.GetConfig(cfg))
+  if (!tag.GetConfig(header.config))
     return false;
 
   /* The two reads above are checked; this one was not, and its fields are
      written straight into the log header. A failed read would record a log
      whose tag type, firmware, board and UUID are all empty or zero, with
      nothing to say the header is fabricated rather than describing the tag. */
-  if (!tag.GetTagInfo(info))
+  if (!tag.GetTagInfo(header.info))
     return false;
 
-  int64_t timeerr = status.millis() - now;
-  fs << "#\n# Tag Read time: " << now / 1000 << "\n";
-  fs << "#\n# Tag Error:     " << timeerr / 1000.0 << "\n";
+  header.read_time_s = now / 1000;
+  header.error_s = (status.millis() - now) / 1000.0;
+  header.test_status = status.test_status();
+  header.has_calibration = tag.ReadCalibration(header.calibration, -1)
+                           && header.calibration.has_magnetometer();
+
+  int next = 0;
+  while (tag.GetStateLog(state_log, next))
+  {
+    next += state_log.states().size();
+    for (auto const &state : state_log.states())
+      header.states.push_back(state);
+  }
+
+  writeTextHeader(header);
+  return true;
+}
+
+/**
+ * @brief   Print the text header.
+ *
+ * @details The one definition of the header layout, for a live tag
+ *          (writeTextHeader(Tag &)) and for stored fields alike.
+ *
+ * @param[in] header  The header's contents.
+ */
+void TextTagLogWriter::writeTextHeader(const TextLogHeader &header)
+{
+  std::ostream &fs = *out_;
+  const Config &cfg = header.config;
+  const TagInfo &info = header.info;
+
+  fs << "#\n# Tag Read time: " << header.read_time_s << "\n";
+  fs << "#\n# Tag Error:     " << header.error_s << "\n";
 
   // Dump tag info
 
@@ -100,11 +108,20 @@ bool TextTagLogWriter::writeTextHeader(Tag &tag)
 
   // Dump Calibration
 
-  dumpTagCalibration(fs, tag);
+  if (header.has_calibration && header.calibration.has_magnetometer())
+  {
+    const CalibrationConstants_MagConstants mag = header.calibration.magnetometer();
+    fs << "# Calibration V: " << mag.v0() << " " << mag.v1() << " " << mag.v2() << std::endl;
+    fs << "# Calibration A[0]: " << mag.a00() << " " << mag.a01() << " " << mag.a02() << std::endl;
+    fs << "# Calibration A[1]: " << mag.a10() << " " << mag.a11() << " " << mag.a12() << std::endl;
+    fs << "# Calibration A[2]: " << mag.a20() << " " << mag.a21() << " " << mag.a22() << std::endl;
+    if (header.calibration.has_accelerometer()) {
+      const CalibrationConstants_AccelConstants &acc = header.calibration.accelerometer();
+      fs << "# Calibration accel offset (mg): " << acc.o0() << " " << acc.o1() << " " << acc.o2() << std::endl;
+    }
+  }
 
-  TestResult result = status.test_status();
-
-  fs << "# Test Status: " << TestResult_Name(result) << "\n";
+  fs << "# Test Status: " << TestResult_Name(header.test_status) << "\n";
   fs << "#\n";
 
   // Dump Configuration -- need to handle
@@ -155,30 +172,20 @@ bool TextTagLogWriter::writeTextHeader(Tag &tag)
 
   fs << "#             State Log\n#\n";
 
-  // std::list<State>::const_iterator iterator;
-  // for (iterator = state_log.begin(); iterator != state_log.end(); ++iterator)
-  // {
-
-  int next = 0;
-  while (tag.GetStateLog(state_log, next))
+  for (auto const &state : header.states)
   {
-    next += state_log.states().size();
-    for (auto const &state : state_log.states())
-    {
-      fs << "# Epoch: " << state.status().millis() / 1000 << "\n";
-      fs << "# State: " << TagState_Name(state.status().state()) << "\n";
-      fs << "# Entry Code: " << State_Event_Name(state.transition_reason()) << "\n";
-      fs << "# Temperature: " << state.status().temperature() << "\n";
-      fs << "# Voltage:     " << state.status().voltage() << "\n";
-      fs << "# Internal Log Entries: " << state.status().internal_data_count() << "\n";
-      fs << "# External Log Entries: " << state.status().external_data_count() << "\n";
-      fs << "#\n";
-    }
+    fs << "# Epoch: " << state.status().millis() / 1000 << "\n";
+    fs << "# State: " << TagState_Name(state.status().state()) << "\n";
+    fs << "# Entry Code: " << State_Event_Name(state.transition_reason()) << "\n";
+    fs << "# Temperature: " << state.status().temperature() << "\n";
+    fs << "# Voltage:     " << state.status().voltage() << "\n";
+    fs << "# Internal Log Entries: " << state.status().internal_data_count() << "\n";
+    fs << "# External Log Entries: " << state.status().external_data_count() << "\n";
+    fs << "#\n";
   }
 
   fs << "#\n";
   fs << "#             Data Log\n#\n";
-  return true;
 }
 
 static int dumpTagLog(std::ostream &out, /*Tag &t,*/
@@ -598,6 +605,20 @@ bool TextTagLogWriter::isOpen() const
 const std::string &TextTagLogWriter::lastError() const
 {
   return last_error_;
+}
+
+bool TextTagLogWriter::writeHeader(const TextLogHeader &header)
+{
+  if (!isOpen())
+  {
+    if (last_error_.empty())
+    {
+      last_error_ = "Text log output is not open";
+    }
+    return false;
+  }
+  writeTextHeader(header);
+  return true;
 }
 
 bool TextTagLogWriter::writeHeader(Tag &tag)
