@@ -27,8 +27,9 @@ Where the build departed from this proposal:
   [design](../simulator.md#sensor-model).
 - **No gnss-ins-sim.** The accel and gyro errors are a small equivalent in
   `errors.py`, with the same parameter meanings, rather than gnss-ins-sim
-  pinned to a commit. Only white noise and a turn-on bias are in scope, and
-  the package is not on PyPI. See the
+  pinned to a commit: the package is not on PyPI, and the few terms in
+  scope (white noise, turn-on bias, scale and misalignment, Gauss-Markov
+  bias instability, band-limited vibration) are short to write. See the
   [design](../simulator.md#sensor-errors).
 - **WMM.** The field comes from `pygeomag`, once per log at the origin and
   date.
@@ -97,8 +98,10 @@ not built unless a filter result shows they matter.
 - **Trajectory:** pattern-flight replay from the ArduPilot logs, with glitch
   handling, quaternion and position splines, and ideal specific force, body
   rate, field and pressure.
-- **Accel and gyro:** datasheet white noise and a turn-on bias; `int16`
-  quantization and saturation at the configured ranges.
+- **Accel and gyro:** datasheet white noise and a turn-on bias; scale-factor
+  and misalignment errors; bias instability as a first-order Gauss-Markov
+  process; optional band-limited vibration; `int16` quantization and
+  saturation at the configured ranges.
 - **Magnetometer:**
   - Earth's field from the WMM, hard and soft iron, and noise;
   - read once per superframe from a free-running sensor, so sample age
@@ -114,9 +117,7 @@ not built unless a filter result shows they matter.
 
 **Deferred:**
 
-- temperature dependence, sensitivity and misalignment errors, bias
-  instability;
-- vibration;
+- temperature dependence;
 - clock error, and scripted resyncs and storage gaps;
 - BMP581 power-mode sampling detail;
 - SITL logs, synthetic manoeuvre primitives beyond a stationary test
@@ -439,9 +440,10 @@ columns are for the firmware defaults: 100 Hz output rate, ±4 g, ±1000 dps.
 | As random walk | 0.035 m/s/√h | 0.17 °/√h | Derived; for filter tuning |
 | Zero-g / zero-rate offset | ±12 mg | ±1 dps | Turn-on bias, drawn per run |
 | Offset vs temperature | ±0.07 mg/°C | ±0.006 dps/°C | Applied to the temperature profile |
-| Sensitivity tolerance | not given | ±0.3 % | Per-axis scale error |
+| Sensitivity tolerance | not given; ±1 % assumed | ±0.3 % | Per-axis scale error |
+| Cross-axis / misalignment | not given; ±0.5° assumed | not given; ±0.5° assumed | Off-diagonal of the sensitivity matrix |
 | Sensitivity vs temperature | ±0.01 %/°C | ±0.007 %/°C | Applied to the temperature profile |
-| Bias instability | not given | not given | Parameter, default 0 until fitted from a bench recording |
+| Bias instability | not given; 0.05 mg assumed | not given; 0.003 dps assumed | First-order Gauss-Markov, 100 s correlation time assumed, until fitted from a bench recording |
 
 **Gyro quantization is comparable to the noise.** At ±1000 dps one LSB is
 0.035 dps, so quantization alone contributes 0.010 dps RMS against 0.020 dps
@@ -569,6 +571,7 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 | 2 | The in-scope sensor errors: accel and gyro noise and bias; WMM field, hard and soft iron, noise and magnetometer sample age; pressure noise, offset and sea-level drift; saturation summary. **Built** (2026-10-21; see [../simulator.md](../simulator.md#sensor-errors)). | Noise statistics of a simulated still segment match the configured values; a correct calibration recovers the true field |
 | 3 | Scoring and viewing: a helper that compares an estimate with truth (attitude, heading and velocity error over time); UAV Log Viewer export. **Built** (2026-10-21; see [../simulator.md](../simulator.md#scoring) and [the baseline](../compass-baseline-results.md)). | `dataprocessing` orientation scored against truth on the first logs; the exported trajectory matches the source flight by eye |
 | 4 | A basic post-processing filter, in Python: multi-rate error-state EKF over attitude, gyro bias, relative altitude and vertical velocity, then an RTS smoother; `tagsim filter`, altitude and vertical-velocity scoring, `tagsim batch --filter`. **Built** (2026-10-21; see [../navigation-filter.md](../navigation-filter.md)). | Synthetic rest, rotation, climb and manoeuvre cases at two ODRs with dropped auxiliary samples; all usable flights scored against the compass baseline |
+| 5 | A harder simulation: gyro and accelerometer scale and misalignment errors, Gauss-Markov bias instability, optional vibration; accelerometer bias states in the filter. **Built** (2026-10-22; see [../simulator.md](../simulator.md#sensor-errors) and [the results](../compass-baseline-results.md)). | One-at-a-time ablation on four flights; all usable flights rescored with true and perturbed calibration |
 | Later | Deferred items from [Scope](#scope-keep-it-simple), only as filter results call for them; refitting noise from prototype bench data | As each is added |
 
 Phase 1 is useful on its own: it gives the download path a hardware-free

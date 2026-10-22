@@ -98,8 +98,12 @@ def test_stationary():
         assert np.median(_errors(sim, q)["total_deg"]) < 0.02
     sim, _, r = _run(stationary(31.0, q0), duration_s=30.0)
     d = sim.draw
-    bias_tilt = np.degrees(np.linalg.norm(np.cross(d.accel_bias_mg, sim.signals.accel_mg[0]))
-                           / 1000.0 ** 2)
+    # The accelerometer's error at rest: its bias plus its sensitivity and
+    # misalignment acting on gravity.
+    f_true = sim.signals.accel_mg[0]
+    f_meas = d.accel_sensitivity @ f_true + d.accel_bias_mg
+    bias_tilt = np.degrees(np.arctan2(np.linalg.norm(np.cross(f_meas, f_true)),
+                                      f_meas @ f_true))
     e = _errors(sim, r.q_smoothed)
     assert abs(np.median(e["tilt_deg"]) - bias_tilt) < 0.1
     assert np.median(e["total_deg"]) < 3.0
@@ -120,8 +124,12 @@ def test_constant_rate_rotation(axis):
         e = _errors(sim, q)
         assert np.median(e["total_deg"][moving]) < 1.5
         assert np.percentile(e["total_deg"][moving], 95) < 3.0
+    # The sensitivity and misalignment error, (T - I) w, about 0.4 dps here,
+    # is corrected as attitude by the magnetometer rather than absorbed into
+    # the slowly walking bias, which stays near the turn-on bias (the
+    # Gauss-Markov wander and the partial absorption are the margin).
     np.testing.assert_allclose(np.degrees(r.bias_smoothed[-1]), sim.draw.gyro_bias_dps,
-                               atol=0.05)
+                               atol=0.1)
 
 
 def test_constant_rate_climb():
@@ -208,3 +216,19 @@ def test_dropped_aux_samples():
     assert np.median(e["total_deg"][moving]) < 2.0
     truth = _truth(sim)
     assert np.median(np.abs(altitude_error(truth, truth.elapsed_us, r.alt_smoothed))) < 0.2
+
+
+def test_accel_bias_states():
+    """With the accelerometer bias states, the manoeuvre's many attitudes
+    make the bias observable: recovered to under 1 mg per axis (with the
+    accelerometer's sensitivity and misalignment off, which would otherwise
+    make the apparent bias attitude-dependent), with the attitude as good."""
+    from tagsim.sensors import G0
+    errors = ErrorConfig(accel_scale_error=0.0, accel_misalignment_deg=0.0, accel_bias_gm_mg=0.0)
+    sim, _, r = _run(_manoeuvre(), duration_s=40.0, errors=errors, accel_bias_states=True)
+    np.testing.assert_allclose(r.accel_bias_smoothed[0] * 1000.0 / G0, sim.draw.accel_bias_mg,
+                               atol=1.0)
+    moving = sim.signals.t > 6.0
+    assert np.median(_errors(sim, r.q_smoothed)["total_deg"][moving]) < 2.0
+    _, _, off = _run(_manoeuvre(), duration_s=40.0, errors=errors, accel_bias_states=False)
+    assert off.accel_bias_smoothed is None

@@ -22,7 +22,9 @@ Q = np.roll(Rotation.from_euler("xyz", [20, -35, 110], degrees=True).as_quat(), 
 def still(request):
     odr, ar, gr = request.param
     cfg = SensorConfig(odr_hz=odr, accel_range_g=ar, gyro_range_dps=gr)
-    errors = ErrorConfig()
+    # Bias instability off here: its slow wander would bias the white-noise
+    # statistics over 300 s (test_bias_instability checks it on its own).
+    errors = ErrorConfig(accel_bias_gm_mg=0.0, gyro_bias_gm_dps=0.0)
     sim = simulate(stationary(DURATION_S + 1, Q), cfg, start_unix=0.0,
                    duration_s=DURATION_S, errors=errors, seed=11)
     return sim
@@ -36,8 +38,9 @@ def test_imu_noise_and_bias(still):
     sim = still
     cfg, err, draw = sim.cfg, sim.errors, sim.draw
     accel, gyro = decode_imu(sim.imu, cfg)
-    da = accel - sim.signals.accel_mg
-    dg = gyro - sim.signals.gyro_dps
+    # The error left after the drawn sensitivity and misalignment, T true.
+    da = accel - sim.signals.accel_mg @ draw.accel_sensitivity.T
+    dg = gyro - sim.signals.gyro_dps @ draw.gyro_sensitivity.T
     sa = white_sigma(err.accel_noise_ug_rthz / 1000.0, cfg.odr_hz)
     sg = white_sigma(err.gyro_noise_mdps_rthz / 1000.0, cfg.odr_hz)
     print(f"accel sigma {da.std(axis=0)} vs {sa:.4f} mg; gyro {dg.std(axis=0)} vs {sg:.4f} dps")
@@ -150,3 +153,61 @@ def test_sea_level_walk():
     step = np.diff(walk)
     np.testing.assert_allclose(step.std(), np.sqrt(60 / 3600), rtol=0.05)
     assert np.all(sea_level_walk(t, 1000.0, ErrorConfig(), 3) == 1000.0)
+
+
+def test_sensitivity_and_misalignment():
+    """Without noise or bias, the measurement is T times the truth, with T's
+    scale and off-diagonal terms inside their configured ranges."""
+    from tagsim.errors import draw_errors, measure_imu
+    errors = ErrorConfig.ideal()
+    errors.accel_scale_error, errors.gyro_scale_error = 0.01, 0.003
+    errors.accel_misalignment_deg = errors.gyro_misalignment_deg = 0.5
+    d = draw_errors(errors, 100, seed=4)
+    for t, scale in ((d.accel_sensitivity, 0.01), (d.gyro_sensitivity, 0.003)):
+        diag = np.diag(t) - 1.0
+        off = t - np.diag(np.diag(t))
+        assert 0 < np.abs(diag).max() <= scale
+        assert 0 < np.abs(off).max() <= np.radians(0.5)
+    g = np.random.default_rng(0)
+    a_true, w_true = g.normal(0, 3000, (500, 3)), g.normal(0, 400, (500, 3))
+    a, w = measure_imu(a_true, w_true, 100, errors, d, seed=4)
+    np.testing.assert_allclose(a, a_true @ d.accel_sensitivity.T, atol=1e-9)
+    np.testing.assert_allclose(w, w_true @ d.gyro_sensitivity.T, atol=1e-9)
+    # A 400 dps rate about one axis leaks about 3.5 dps into the others.
+    assert np.abs(d.gyro_sensitivity[:, 0] * 400.0)[1:].max() > 0.5
+    # The ideal configuration has none.
+    np.testing.assert_array_equal(draw_errors(ErrorConfig.ideal(), 100, 4).gyro_sensitivity,
+                                  np.eye(3))
+
+
+def test_bias_instability():
+    """The Gauss-Markov wander has the configured RMS and correlation time."""
+    from tagsim.errors import gauss_markov
+    g = np.random.default_rng(1)
+    odr, tau, sigma = 10.0, 5.0, 0.003
+    x = gauss_markov(400_000, sigma, tau, odr, g)
+    np.testing.assert_allclose(x.std(axis=0), sigma, rtol=0.05)
+    lag = int(tau * odr)
+    r = np.mean(x[lag:] * x[:-lag], axis=0) / x.var(axis=0)
+    np.testing.assert_allclose(r, np.exp(-1.0), atol=0.05)
+    assert not gauss_markov(10, 0.0, tau, odr, g).any()
+
+
+def test_vibration_band():
+    """Band-limited vibration has the configured RMS and no power outside
+    its band; it is off by default."""
+    from tagsim.errors import band_noise
+    odr = 400.0
+    x = band_noise(40_000, 50.0, (60.0, 90.0), odr, np.random.default_rng(2))
+    np.testing.assert_allclose(x.std(axis=0), 50.0, rtol=1e-6)
+    p = np.abs(np.fft.rfft(x, axis=0)) ** 2
+    f = np.fft.rfftfreq(len(x), 1.0 / odr)
+    inside = (f >= 60.0) & (f <= 90.0)
+    assert p[~inside].sum() < 1e-9 * p[inside].sum()
+    assert ErrorConfig().vibration_accel_mg == ErrorConfig().vibration_gyro_dps == 0.0
+    cfg = SensorConfig()
+    errors = ErrorConfig.ideal()
+    errors.vibration_gyro_dps = 2.0
+    sim = simulate(stationary(20.0), cfg, 0.0, errors=errors, seed=3)
+    _, gyro = decode_imu(sim.imu, cfg)
+    np.testing.assert_allclose(gyro.std(axis=0), 2.0, rtol=0.05)

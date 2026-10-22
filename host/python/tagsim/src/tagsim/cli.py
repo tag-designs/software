@@ -266,6 +266,15 @@ def cmd_batch(args: argparse.Namespace) -> int:
     dp = dataprocessing_binary()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     logs = sorted(p for p in args.log_dir.iterdir() if p.suffix.lower() == ".bin")
+    if args.only:
+        logs = [p for p in logs if p.stem in args.only
+                or (p.stem.isdigit() and f"f{int(p.stem)}" in args.only)]
+    run_extra = ["--calibration", args.calibration]
+    for item in args.set_error or []:
+        run_extra += ["--set-error", item]
+    filter_extra = []
+    for item in args.filter_set or []:
+        filter_extra += ["--set", item]
     table = []
     for log in logs:
         name = "f" + (str(int(log.stem)) if log.stem.isdigit() else log.stem)
@@ -276,7 +285,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
             table.append({"flight": name, "source": log.name, "status": "not usable"})
             continue
         if not args.reuse:
-            if main(["run", "--log", str(log), "-o", str(db), "--seed", str(args.seed)]) != 0:
+            if main(["run", "--log", str(log), "-o", str(db), "--seed", str(args.seed)]
+                    + run_extra) != 0:
                 table.append({"flight": name, "source": log.name, "status": "not usable"})
                 continue
             done = subprocess.run([dp, "-i", str(db), "-o", str(proc), "--if-exists", "replace",
@@ -295,7 +305,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
         for suffix, extra in (("-filt", []), ("-filt-nop", ["--no-pressure"])):
             out = args.out_dir / f"{name}{suffix}.db3"
             if main(["filter", "--log", str(db), "-o", str(out), "--truth",
-                     str(truth_path(db))] + extra) != 0:
+                     str(truth_path(db))] + extra + filter_extra) != 0:
                 raise RuntimeError(f"filter failed on {db}")
         for label, suffix, tbl in FILTER_ESTIMATES:
             est_db = args.out_dir / f"{name}{suffix}.db3"
@@ -414,6 +424,14 @@ def parser() -> argparse.ArgumentParser:
                    help="also run and score the navigation filter, with and without pressure")
     b.add_argument("--reuse", action="store_true",
                    help="reuse NAME.db3, its truth and NAME-proc.db3 instead of regenerating")
+    b.add_argument("--only", nargs="+", metavar="NAME",
+                   help="only these logs, by stem or flight name (00000173 or f173)")
+    b.add_argument("--calibration", choices=("true", "perturbed"), default="true",
+                   help="passed to tagsim run")
+    b.add_argument("--set-error", action="append", metavar="NAME=VALUE",
+                   help="passed to tagsim run; repeatable")
+    b.add_argument("--filter-set", action="append", metavar="NAME=VALUE",
+                   help="passed to tagsim filter as --set; repeatable")
     b.set_defaults(func=cmd_batch)
     return p
 

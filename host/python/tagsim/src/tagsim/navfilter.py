@@ -78,6 +78,10 @@ _ISA_T0_K = 288.15
 _ISA_LAPSE_K_PER_M = 0.0065
 _ISA_EXPONENT = G0 * 0.0289644 / (8.3144598 * _ISA_LAPSE_K_PER_M)
 
+#: Nominal-state columns stored per node: q (4), gyro bias (3), h, vz,
+#: accelerometer bias (3; zero when not estimated).
+NOMINAL = 12
+
 #: Event kinds in the stream.
 IMU, MAG, PRESSURE = 0, 1, 2
 
@@ -262,6 +266,10 @@ class FilterConfig:
     init_attitude_bootstrap_deg: float = 3.0
     init_vertical_fit_s: float = 0.5  #: pressure span fitted for a moving start's altitude and vz
     init_vz_moving_mps: float = 2.0  #: its vz sigma
+    #: Accelerometer bias states (tag frame), estimated alongside the gyro bias.
+    accel_bias_states: bool = True
+    init_accel_bias_mg: float = 10.0  #: their initial sigma (turn-on bias up to 12 mg)
+    accel_bias_walk_mg_rts: float = 0.01  #: their random walk, mg per sqrt(s)
     smooth: bool = True
 
     def as_dict(self) -> dict:
@@ -433,12 +441,20 @@ class FilterResult:
     bias_forward: np.ndarray  #: rad/s
     bias_smoothed: np.ndarray | None
     stats: dict = field(default_factory=dict)
+    #: m/s^2, tag frame; None without the accelerometer bias states
+    accel_bias_forward: np.ndarray | None = None
+    accel_bias_smoothed: np.ndarray | None = None
 
 
 def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     """Forward error-state EKF over the event stream, then RTS smoothing."""
     vert = cfg.use_pressure and len(log.t_pressure) > 0
-    n = 8 if vert else 6
+    ab = cfg.accel_bias_states
+    # Error-state layout: dtheta 0:3, gyro bias 3:6, then the accelerometer
+    # bias ia:ia+3 if estimated, then h and vz at ih, ih+1 if vertical.
+    ia = 6
+    ih = 6 + 3 * ab
+    n = ih + (2 if vert else 0)
     odr = log.odr_hz
     t_imu, f_all, w_all = log.t_imu, log.accel_mps2, log.gyro_rps
     n_imu = len(t_imu)
@@ -475,9 +491,12 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         s_att = math.radians(cfg.init_attitude_moving_deg)
     q = tuple(float(x) for x in triad(f0, m0, field))
     b = b0.astype(np.float64).copy()
+    ba = np.zeros(3)
     if boot is not None:
         q = tuple(float(x) for x in boot.q_smoothed[0])
         b = boot.bias_smoothed[0].copy()
+        if boot.accel_bias_smoothed is not None:
+            ba = boot.accel_bias_smoothed[0].copy()
         s_att = math.radians(cfg.init_attitude_bootstrap_deg)
         sb = min(sb, math.radians(cfg.init_bias_dps))
     h, vz = 0.0, 0.0
@@ -501,15 +520,18 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     P = np.zeros((n, n))
     P[0:3, 0:3] = np.eye(3) * s_att ** 2
     P[3:6, 3:6] = np.eye(3) * sb ** 2
+    if ab:
+        P[ia:ia + 3, ia:ia + 3] = np.eye(3) * (cfg.init_accel_bias_mg * G0 / 1000.0) ** 2
     if vert:
-        P[6, 6] = s_h ** 2
-        P[7, 7] = s_vz ** 2 if (start_still or first.sum() >= 3) else 5.0 ** 2
+        P[ih, ih] = s_h ** 2
+        P[ih + 1, ih + 1] = s_vz ** 2 if (start_still or first.sum() >= 3) else 5.0 ** 2
 
     # Noise.
     rate_scale = math.sqrt(odr / 100.0)
     q_theta = math.radians(cfg.gyro_noise_dps_rthz) ** 2
     q_bias = math.radians(cfg.gyro_bias_walk_dps_rts) ** 2
     q_vz = cfg.accel_vertical_noise_mps2_rthz ** 2
+    q_ba = (cfg.accel_bias_walk_mg_rts * G0 / 1000.0) ** 2
     if cfg.mag_age_sigma_s is not None:
         age_s = cfg.mag_age_sigma_s
     else:
@@ -519,8 +541,8 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
 
     # Storage, one node per IMU sample and per auxiliary event.
     n_nodes = n_imu + len(ev.t)
-    xs_f = np.empty((n_nodes, 9))  # q(4), b(3), h, vz after the node's updates
-    xs_p = np.empty((n_nodes, 9))  # predicted into the node
+    xs_f = np.empty((n_nodes, NOMINAL))  # q(4), b(3), h, vz, ba(3) after the node's updates
+    xs_p = np.empty((n_nodes, NOMINAL))  # predicted into the node
     gains = np.empty((n_nodes, n, n)) if cfg.smooth else None  # C_k: node k -> k+1
     imu_node = np.empty(n_imu, dtype=np.int64)
     stats = {"accel_updates": 0, "accel_gated": 0, "mag_updates": 0, "mag_gated": 0,
@@ -530,15 +552,17 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     I_n = np.eye(n)
 
     def pack(q, b, h, vz):
-        return (q[0], q[1], q[2], q[3], b[0], b[1], b[2], h, vz)
+        return (q[0], q[1], q[2], q[3], b[0], b[1], b[2], h, vz, ba[0], ba[1], ba[2])
 
     def inject(dx):
-        nonlocal q, b, h, vz
+        nonlocal q, b, h, vz, ba
         q = _qnorm(_qmul(_qexp(dx[0], dx[1], dx[2]), q))
         b = b + dx[3:6]
+        if ab:
+            ba = ba + dx[ia:ia + 3]
         if vert:
-            h += dx[6]
-            vz += dx[7]
+            h += dx[ih]
+            vz += dx[ih + 1]
 
     def update(H, r, R):
         nonlocal P
@@ -555,7 +579,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         nonlocal q, P, h, vz
         R = _dcm(q)
         w = 0.5 * (w0_ + w1_) - b
-        fm = 0.5 * (f0_ + f1_)
+        fm = 0.5 * (f0_ + f1_) - ba
         fE = R @ fm
         q = _qnorm(_qmul(q, _qexp(w[0] * dt, w[1] * dt, w[2] * dt)))
         F = np.eye(n)
@@ -563,19 +587,24 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         Qd = np.zeros((n, n))
         Qd[0:3, 0:3] = np.eye(3) * (q_theta * dt)
         Qd[3:6, 3:6] = np.eye(3) * (q_bias * dt)
+        if ab:
+            Qd[ia:ia + 3, ia:ia + 3] = np.eye(3) * (q_ba * dt)
         if vert:
             a = fE[2] - g
             h += vz * dt + 0.5 * a * dt * dt
             vz += a * dt
-            F[6, 7] = dt
-            F[7, 0] = fE[1] * dt
-            F[7, 1] = -fE[0] * dt
-            F[6, 0] = 0.5 * fE[1] * dt * dt
-            F[6, 1] = -0.5 * fE[0] * dt * dt
+            F[ih, ih + 1] = dt
+            F[ih + 1, 0] = fE[1] * dt
+            F[ih + 1, 1] = -fE[0] * dt
+            F[ih, 0] = 0.5 * fE[1] * dt * dt
+            F[ih, 1] = -0.5 * fE[0] * dt * dt
+            if ab:
+                F[ih + 1, ia:ia + 3] = -R[2, :] * dt
+                F[ih, ia:ia + 3] = -0.5 * R[2, :] * dt * dt
             qv = q_vz * dt + (cfg.accel_saturated_mps2 * dt) ** 2 * saturated
-            Qd[7, 7] = qv
-            Qd[6, 6] = qv * dt * dt / 3.0
-            Qd[6, 7] = Qd[7, 6] = qv * dt / 2.0
+            Qd[ih + 1, ih + 1] = qv
+            Qd[ih, ih] = qv * dt * dt / 3.0
+            Qd[ih, ih + 1] = Qd[ih + 1, ih] = qv * dt / 2.0
         Pp = F @ P @ F.T + Qd
         if gains is not None:
             gains[node - 1] = np.linalg.solve(Pp, F @ P).T
@@ -591,7 +620,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
 
     def aux(j, w):
         _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update,
-                    vert, h, alt_ref, r_p, stats, n)
+                    vert, h, alt_ref, r_p, stats, n, ih)
 
     for i in range(n_imu):
         if i > 0:
@@ -617,7 +646,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
             node += 1
             predict(fc, wc, f_b, w_b, tb - tc, sat, node)
         # Accelerometer update at the IMU sample.
-        f = f_all[i]
+        f = f_all[i] - ba
         excess = abs(float(np.linalg.norm(f)) - g)
         if excess < cfg.accel_gate_g * G0 and not log.accel_saturated[i]:
             wn = float(np.linalg.norm(w_all[i] - b))
@@ -626,6 +655,8 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
             R = _dcm(q)
             H = np.zeros((3, n))
             H[:, 0:3] = R.T @ up_skew
+            if ab:
+                H[:, ia:ia + 3] = np.eye(3)
             update(H, f - R[2, :] * g, np.eye(3) * sigma ** 2)  # R^T (0, 0, g)
             stats["accel_updates"] += 1
         else:
@@ -645,18 +676,24 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
             d = np.empty(n)
             d[0:3] = _qlog_global(tuple(xs_s[k + 1, 0:4]), tuple(xs_p[k + 1, 0:4]))
             d[3:6] = xs_s[k + 1, 4:7] - xs_p[k + 1, 4:7]
+            if ab:
+                d[ia:ia + 3] = xs_s[k + 1, 9:12] - xs_p[k + 1, 9:12]
             if vert:
-                d[6:8] = xs_s[k + 1, 7:9] - xs_p[k + 1, 7:9]
+                d[ih:ih + 2] = xs_s[k + 1, 7:9] - xs_p[k + 1, 7:9]
             dx = gains[k] @ d
             qk = _qnorm(_qmul(_qexp(dx[0], dx[1], dx[2]), tuple(xs_f[k, 0:4])))
             xs_s[k, 0:4] = qk
             xs_s[k, 4:7] = xs_f[k, 4:7] + dx[3:6]
+            if ab:
+                xs_s[k, 9:12] = xs_f[k, 9:12] + dx[ia:ia + 3]
             if vert:
-                xs_s[k, 7:9] = xs_f[k, 7:9] + dx[6:8]
+                xs_s[k, 7:9] = xs_f[k, 7:9] + dx[ih:ih + 2]
 
     fwd = xs_f[imu_node]
     sm = xs_s[imu_node] if xs_s is not None else None
     stats["gyro_bias_final_dps"] = np.degrees(fwd[-1, 4:7]).tolist()
+    if ab:
+        stats["accel_bias_final_mg"] = (fwd[-1, 9:12] * 1000.0 / G0).tolist()
     return FilterResult(
         segment_id=log.segment_id, sample_index=log.sample_index, t=t_imu,
         q_forward=fwd[:, 0:4], q_smoothed=None if sm is None else sm[:, 0:4],
@@ -665,11 +702,13 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         vz_forward=fwd[:, 8] if vert else None,
         vz_smoothed=sm[:, 8] if (vert and sm is not None) else None,
         bias_forward=fwd[:, 4:7], bias_smoothed=None if sm is None else sm[:, 4:7],
-        stats=stats)
+        stats=stats,
+        accel_bias_forward=fwd[:, 9:12] if ab else None,
+        accel_bias_smoothed=sm[:, 9:12] if (ab and sm is not None) else None)
 
 
 def _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update, vert, h,
-                alt_ref, r_p, stats, n):
+                alt_ref, r_p, stats, n, ih):
     """One magnetometer or pressure update at the current state."""
     if ev.kind[j] == MAG:
         m = log.mag_ut[ev.index[j]]
@@ -686,7 +725,7 @@ def _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, upd
     elif vert:
         z = float(isa_altitude_m(log.pressure_hpa[ev.index[j]], cfg.sea_level_hpa)) - alt_ref
         H = np.zeros((1, n))
-        H[0, 6] = 1.0
+        H[0, ih] = 1.0
         update(H, np.array([z - h]), np.array([[r_p]]))
         stats["pressure_updates"] += 1
 
@@ -705,7 +744,8 @@ def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
     """``FilterForward`` and ``FilterSmoothed``: one row per IMU sample,
     ``SegmentId, SampleIndex, ElapsedUs, qw qx qy qz`` (tag frame to ENU),
     ``alt`` (m, relative to the first pressure sample) and ``vz`` (m/s, up),
-    NULL without the pressure channel; ``bx by bz`` the gyro bias (dps); and
+    NULL without the pressure channel; ``bx by bz`` the gyro bias (dps);
+    ``abx aby abz`` the accelerometer bias (mg), NULL unless estimated; and
     ``FilterRun`` with the configuration and counters."""
     if path.exists():
         path.unlink()
@@ -714,26 +754,28 @@ def write_estimates(path: Path, results: list[FilterResult], cfg: FilterConfig,
         for table in ("FilterForward", "FilterSmoothed"):
             con.execute(f"CREATE TABLE {table} (SegmentId INTEGER, SampleIndex INTEGER, "
                         "ElapsedUs INTEGER, qw REAL, qx REAL, qy REAL, qz REAL, alt REAL, "
-                        "vz REAL, bx REAL, by REAL, bz REAL)")
+                        "vz REAL, bx REAL, by REAL, bz REAL, abx REAL, aby REAL, abz REAL)")
         con.execute("CREATE TABLE FilterRun (SegmentId INTEGER, Source TEXT, ConfigJson TEXT, "
                     "StatsJson TEXT)")
         for r in results:
-            for table, q, alt, vz, bias in (
-                    ("FilterForward", r.q_forward, r.alt_forward, r.vz_forward, r.bias_forward),
+            for table, q, alt, vz, bias, abias in (
+                    ("FilterForward", r.q_forward, r.alt_forward, r.vz_forward, r.bias_forward,
+                     r.accel_bias_forward),
                     ("FilterSmoothed", r.q_smoothed, r.alt_smoothed, r.vz_smoothed,
-                     r.bias_smoothed)):
+                     r.bias_smoothed, r.accel_bias_smoothed)):
                 if q is None:
                     continue
                 nn = len(r.t)
                 a = alt if alt is not None else [None] * nn
                 v = vz if vz is not None else [None] * nn
                 bd = np.degrees(bias)
+                ad = abias * (1000.0 / G0) if abias is not None else [(None,) * 3] * nn
                 con.executemany(
-                    f"INSERT INTO {table} VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    f"INSERT INTO {table} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     ((r.segment_id, int(si), int(round(t * 1e6)), *map(float, qq),
                       None if aa is None else float(aa), None if vv is None else float(vv),
-                      *map(float, bb))
-                     for si, t, qq, aa, vv, bb in zip(r.sample_index, r.t, q, a, v, bd)))
+                      *map(float, bb), *(None if x is None else float(x) for x in abb))
+                     for si, t, qq, aa, vv, bb, abb in zip(r.sample_index, r.t, q, a, v, bd, ad)))
             con.execute("INSERT INTO FilterRun VALUES (?,?,?,?)",
                         (r.segment_id, str(source.name) if source else None,
                          json.dumps(cfg.as_dict()), json.dumps(r.stats)))

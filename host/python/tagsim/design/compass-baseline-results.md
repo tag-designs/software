@@ -187,3 +187,139 @@ heading 0.29°); smoothed 0.51° ground, 0.27° flight (tilt 0.14°, heading
   95th percentiles 0.40° to 0.32° forward.
 - **Records that start in the air** (`f167`, `f174`, `f175`, `f176`) are
   bootstrapped from an attitude-only smoothing pass and score like the rest.
+
+## 2026-10-22: a harder simulation, and accelerometer bias states
+
+**Conditions.**
+
+- The same 15 logs, **regenerated** with the harder sensor model (branch
+  `claude/dreamy-bardeen-82c025`, base `15b4f87f`): the phase-2 errors plus
+  gyro scale error ±0.3 % (the LSM6DSV's `G_So%`), accelerometer scale error
+  ±1 % (assumed), ±0.5° cross-axis misalignment on both (assumed), and
+  Gauss-Markov bias instability of 0.003 dps and 0.05 mg RMS with a 100 s
+  correlation time (assumed). No vibration, no temperature effects. Seed 0,
+  100 Hz, ±4 g, ±1000 dps, `RFU`, WMM2020 field, constant sea-level pressure.
+- Two conditions: the true calibration constants in the log
+  (`tagsim batch --filter`), and `--calibration perturbed` (hard iron off by
+  up to ±2 µT per axis, soft iron by up to ±1 % per element). The filter is
+  not told which.
+- Each condition scored twice: the filter as it was (no accelerometer bias
+  states, `--filter-set accel_bias_states=false`) and with the accelerometer
+  bias states added below, now the default.
+- Outputs in `~/Documents/tagsim-output/harder-{true,perturbed}{,-ab}/`
+  (outside the repository); the ablation in `.../ablation/`, the smoother
+  investigation in `.../smoother/`.
+
+Median of the per-flight medians / of the per-flight 95th percentiles
+(degrees, m, m/s):
+
+| Calibration | Filter | Estimate | Phase | Total | Tilt | Heading | Altitude (m) | Vz (m/s) |
+|---|---|---|---|---|---|---|---|---|
+| true | | compass | ground | 1.46 / 15.19 | 0.74 / 8.44 | 1.24 / 14.00 | – | – |
+| true | | compass | flight | 27.67 / 149.14 | 15.14 / 121.82 | 16.77 / 114.15 | – | – |
+| true | no accel bias | forward | ground | 1.00 / 1.43 | 0.41 / 0.68 | 0.46 / 1.32 | 0.03 / 0.07 | 0.03 / 0.10 |
+| true | no accel bias | forward | flight | 1.13 / 2.65 | 0.58 / 1.66 | 0.84 / 2.15 | 0.03 / 0.07 | 0.04 / 0.14 |
+| true | no accel bias | smoothed | ground | 0.69 / 1.21 | 0.46 / 0.60 | 0.45 / 1.12 | 0.02 / 0.04 | 0.01 / 0.05 |
+| true | no accel bias | smoothed | flight | 0.85 / 1.72 | 0.47 / 1.18 | 0.53 / 1.46 | 0.02 / 0.04 | 0.01 / 0.04 |
+| true | accel bias | forward | ground | 0.76 / 1.22 | 0.50 / 0.56 | 0.66 / 1.11 | 0.03 / 0.07 | 0.03 / 0.10 |
+| true | accel bias | forward | flight | 0.95 / 2.53 | 0.58 / 1.59 | 0.61 / 2.04 | 0.03 / 0.07 | 0.04 / 0.14 |
+| true | accel bias | smoothed | ground | 0.88 / 0.98 | 0.37 / 0.52 | 0.83 / 0.90 | 0.02 / 0.04 | 0.01 / 0.05 |
+| true | accel bias | smoothed | flight | 0.79 / 1.61 | 0.44 / 1.17 | 0.50 / 1.36 | 0.02 / 0.04 | 0.01 / 0.04 |
+| true | accel bias | smoothed, no pressure | flight | 0.95 / 2.06 | 0.54 / 1.33 | 0.75 / 1.93 | – | – |
+| perturbed | | compass | ground | 4.49 / 13.58 | 0.74 / 8.44 | 4.42 / 12.50 | – | – |
+| perturbed | | compass | flight | 27.19 / 149.95 | 15.14 / 121.82 | 17.22 / 114.18 | – | – |
+| perturbed | no accel bias | forward | flight | 2.85 / 4.37 | 0.83 / 2.10 | 2.51 / 4.14 | 0.03 / 0.07 | 0.04 / 0.16 |
+| perturbed | no accel bias | smoothed | ground | 2.37 / 2.88 | 0.62 / 0.99 | 2.25 / 2.81 | 0.02 / 0.04 | 0.01 / 0.05 |
+| perturbed | no accel bias | smoothed | flight | 2.06 / 3.19 | 0.58 / 1.44 | 1.96 / 3.04 | 0.02 / 0.04 | 0.01 / 0.05 |
+| perturbed | accel bias | forward | flight | 2.35 / 4.06 | 1.17 / 1.94 | 1.85 / 3.77 | 0.03 / 0.07 | 0.04 / 0.17 |
+| perturbed | accel bias | smoothed | ground | 1.79 / 2.17 | 0.82 / 1.23 | 1.35 / 1.76 | 0.02 / 0.04 | 0.01 / 0.05 |
+| perturbed | accel bias | smoothed | flight | 1.44 / 2.32 | 0.86 / 1.42 | 1.00 / 2.17 | 0.02 / 0.04 | 0.01 / 0.04 |
+| perturbed | accel bias | smoothed, no pressure | flight | 1.40 / 2.24 | 0.98 / 1.50 | 0.85 / 1.91 | – | – |
+
+**One error at a time** (4 flights: f166, f173, f177, f180; the earlier
+filter, without accelerometer bias states; each row is the phase-2 errors plus
+only the named term). Flight, median of medians / of 95th percentiles:
+
+| Added to phase 2 | Forward total | Smoothed total | Smoothed tilt | Smoothed heading |
+|---|---|---|---|---|
+| nothing | 0.23 / 0.49 | 0.23 / 0.51 | 0.11 / 0.30 | 0.20 / 0.44 |
+| gyro misalignment ±0.5° | 1.07 / 2.62 | 0.97 / 1.77 | 0.40 / 0.98 | 0.78 / 1.67 |
+| gyro scale ±0.3 % | 0.78 / 1.99 | 0.75 / 1.50 | 0.37 / 0.83 | 0.58 / 1.40 |
+| accel scale ±1 % | 0.21 / 0.41 | 0.19 / 0.38 | 0.10 / 0.28 | 0.16 / 0.30 |
+| accel misalignment ±0.5° | 0.24 / 0.45 | 0.20 / 0.31 | 0.13 / 0.30 | 0.07 / 0.18 |
+| bias instability (both) | 0.25 / 0.55 | 0.29 / 0.53 | 0.12 / 0.31 | 0.23 / 0.47 |
+| all of them | 1.16 / 2.60 | 0.82 / 1.67 | 0.45 / 1.27 | 0.53 / 1.34 |
+
+**The smoother-worse-than-forward anomaly** (5 flights where it was largest:
+f166, f173, f176, f180, f196; phase-2 errors only, the earlier model). Median
+of medians / of 95th percentiles:
+
+| Simulation | Filter | Forward flight | Smoothed flight | Forward ground | Smoothed ground |
+|---|---|---|---|---|---|
+| phase 2 | no accel bias | 0.17 / 0.49 | 0.34 / 0.59 | 0.68 / 1.13 | 0.65 / 0.66 |
+| phase 2, `accel_bias_mg=0` | no accel bias | 0.09 / 0.30 | 0.04 / 0.08 | 0.10 / 0.43 | 0.06 / 0.08 |
+| phase 2 | accel bias | 0.16 / 0.53 | 0.07 / 0.12 | 0.14 / 0.67 | 0.09 / 0.10 |
+
+Smoothed, accelerometer bias states, true calibration, per flight, median /
+95th percentile:
+
+| Flight | Ground total | Ground tilt | Ground heading | Flight total | Flight tilt | Flight heading | Flight altitude (m) | Flight vz (m/s) |
+|---|---|---|---|---|---|---|---|---|
+| f166 | 0.27 / 0.37 | 0.20 / 0.23 | 0.27 / 0.32 | 0.47 / 1.27 | 0.29 / 1.11 | 0.29 / 0.75 | 0.03 / 0.04 | 0.01 / 0.04 |
+| f167 | 1.12 / 1.19 | 0.37 / 0.38 | 1.06 / 1.13 | 0.71 / 1.61 | 0.41 / 1.16 | 0.43 / 1.36 | 0.02 / 0.04 | 0.01 / 0.04 |
+| f169 | 0.47 / 0.68 | 0.31 / 0.41 | 0.35 / 0.53 | 0.53 / 1.04 | 0.32 / 0.73 | 0.32 / 0.92 | 0.02 / 0.04 | 0.01 / 0.05 |
+| f170 | 1.15 / 1.82 | 0.38 / 0.73 | 0.98 / 1.78 | 0.79 / 1.88 | 0.42 / 1.07 | 0.66 / 1.80 | 0.02 / 0.04 | 0.01 / 0.04 |
+| f171 | 0.95 / 1.81 | 0.33 / 0.70 | 0.94 / 1.68 | 0.59 / 1.25 | 0.32 / 1.03 | 0.32 / 0.90 | 0.02 / 0.04 | 0.01 / 0.04 |
+| f172 | 0.65 / 0.98 | 0.52 / 0.88 | 0.51 / 0.61 | 0.56 / 1.37 | 0.41 / 1.32 | 0.21 / 0.81 | 0.03 / 0.04 | 0.01 / 0.04 |
+| f173 | 0.63 / 0.85 | 0.39 / 0.75 | 0.42 / 0.59 | 0.79 / 1.43 | 0.53 / 1.22 | 0.43 / 1.01 | 0.02 / 0.04 | 0.01 / 0.05 |
+| f174 | 0.34 / 0.38 | 0.25 / 0.29 | 0.23 / 0.24 | 0.66 / 1.58 | 0.45 / 1.33 | 0.32 / 1.11 | 0.02 / 0.04 | 0.01 / 0.05 |
+| f175 | 0.88 / 0.93 | 0.31 / 0.38 | 0.83 / 0.90 | 1.14 / 1.91 | 0.55 / 1.54 | 0.71 / 1.72 | 0.02 / 0.04 | 0.01 / 0.05 |
+| f176 | 1.91 / 2.13 | 0.84 / 1.05 | 1.72 / 1.85 | 0.92 / 1.67 | 0.53 / 0.97 | 0.61 / 1.54 | 0.04 / 0.06 | 0.01 / 0.04 |
+| f177 | 0.51 / 0.73 | 0.22 / 0.42 | 0.30 / 0.69 | 0.86 / 1.74 | 0.43 / 1.36 | 0.54 / 1.50 | 0.01 / 0.03 | 0.01 / 0.04 |
+| f178 | 1.52 / 1.72 | 0.52 / 0.59 | 1.42 / 1.62 | 1.05 / 1.99 | 0.64 / 1.22 | 0.71 / 1.76 | 0.02 / 0.04 | 0.01 / 0.04 |
+| f179 | 0.72 / 0.79 | 0.30 / 0.33 | 0.66 / 0.72 | 0.82 / 1.69 | 0.44 / 1.15 | 0.63 / 1.50 | 0.02 / 0.04 | 0.01 / 0.04 |
+| f180 | 1.56 / 1.65 | 0.63 / 0.91 | 1.38 / 1.42 | 0.89 / 1.48 | 0.59 / 1.17 | 0.50 / 1.32 | 0.02 / 0.04 | 0.01 / 0.05 |
+| f196 | 1.52 / 1.66 | 0.44 / 0.52 | 1.45 / 1.60 | 1.05 / 1.99 | 0.48 / 1.25 | 0.75 / 1.92 | 0.02 / 0.04 | 0.01 / 0.04 |
+
+**Interpretation.**
+
+- **The filter degrades by about a factor of four in flight**, from 0.23° to
+  0.85° smoothed (median of medians; 95th percentile 0.59° to 1.72°), and
+  0.79° with the accelerometer bias states. It is still some 35 times better
+  than the compass (27.7°), whose flight error is unchanged: it is dominated
+  by the aircraft's acceleration, not by sensor error.
+- **The gyro dominates, and its misalignment most**: ±0.5° of cross-axis
+  coupling alone takes the four-flight smoothed median from 0.23° to 0.97°,
+  gyro scale error alone to 0.75°. A misaligned or mis-scaled gyro is wrong
+  in proportion to the rate, so it bites in the rolls and loops, which reach
+  hundreds of dps; neither is a bias, so the bias states cannot absorb it,
+  and the magnetometer has to pull the attitude back after each manoeuvre.
+  The accelerometer's scale and misalignment errors and the assumed bias
+  instability change the scores by no more than the flight-to-flight
+  scatter. The gyro misalignment figure is an assumption (the LSM6DSV sheet
+  gives none), so it is the first thing a bench calibration should measure.
+  Estimating the gyro's scale and misalignment in the filter is the obvious
+  next step.
+- **A wrong magnetometer calibration costs more than all the inertial errors
+  together**: smoothed flight 1.44° (with the accelerometer bias states),
+  mostly in heading (1.00°), and 1.8° on the ground, where the compass's
+  heading error goes from 1.2° to 4.4°. A ±2 µT hard-iron error is 4 % of the
+  52 µT field, a couple of degrees of direction.
+- **The smoother anomaly was the accelerometer bias.** With the phase-2
+  model and no accelerometer bias (`accel_bias_mg=0`), the smoother beats
+  the forward pass in flight, 0.04° against 0.09°; with the bias it was worse,
+  0.34° against 0.17°. Not knowing the bias, the filter takes the tilt it
+  causes for attitude on the ground, where the accelerometer is trusted most;
+  the smoother carries that wrong tilt back from the landing into the
+  flight. **With accelerometer bias states** the phase-2 smoother is again
+  better than forward in flight, 0.07° against 0.16° (95th percentile 0.12°
+  against 0.53°), and on the ground, 0.09° against 0.14°.
+- **On the harder model the bias states help in flight but not everywhere.**
+  Smoothed flight 0.85° to 0.79° (true calibration) and 2.06° to 1.44°
+  (perturbed), forward flight 1.13° to 0.95°; but the true-calibration
+  ground median gets worse, 0.69° to 0.88°, all of it heading. With scale and
+  misalignment errors the accelerometer's apparent bias depends on attitude,
+  so the bias the states learn in flight is not the one at rest. Flight is
+  what the filter is for, so the states are on by default.
+- **Altitude and vertical velocity are unaffected**: 2 cm and 1 cm/s
+  smoothed medians in every condition.

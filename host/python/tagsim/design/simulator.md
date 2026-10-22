@@ -224,8 +224,15 @@ half-widths of uniform draws, made once per run.
 | --- | --- | --- | --- |
 | Accelerometer | White noise | 60 µg/√Hz over BW = ODR/2: 0.42 mg RMS at 100 Hz | Per sample, tag frame, before quantization and saturation |
 | | Turn-on bias | ±12 mg per axis | Constant |
+| | Scale error | ±1 % per axis (**assumed**: the LSM6DSV sheet gives none) | `T = I + diag(s) + M` times the true signal |
+| | Misalignment, cross-axis | ±0.5° per off-diagonal element of `M` (**assumed**) | As the scale error |
+| | Bias instability | 0.05 mg RMS, 100 s correlation time (**assumed**, to be fitted from bench data) | First-order Gauss-Markov, added to the bias |
 | Gyroscope | White noise | 2.8 mdps/√Hz over ODR/2: 0.020 dps RMS at 100 Hz | As the accelerometer |
 | | Turn-on bias | ±1 dps per axis | Constant |
+| | Scale error | ±0.3 % per axis (the sheet's `G_So%`) | As the accelerometer's |
+| | Misalignment, cross-axis | ±0.5° per off-diagonal element (**assumed**: no figure in the sheet) | As the accelerometer's |
+| | Bias instability | 0.003 dps RMS, 100 s (**assumed**) | As the accelerometer's |
+| Both | Vibration | off (0 RMS); band 20–45 Hz when on | Band-limited Gaussian, added to the true signal before `T` |
 | Magnetometer | Hard iron V | ±25 µT per axis | Stored axes |
 | | Soft iron A | diagonal ±1 % x, y, ±3 % z; symmetric off-diagonal ±0.5 % | Stored axes, as `A⁻¹` |
 | | Noise | 190 nT x, y; 450 nT z RMS | Per conversion, stored axes |
@@ -233,6 +240,22 @@ half-widths of uniform draws, made once per run.
 | Pressure | Noise | 0.41 Pa RMS | Per poll |
 | | Offset | ±30 Pa | Constant |
 | | Quantization | 1/64 Pa | After noise and offset |
+
+**Accelerometer and gyro: in what order.** The measurement is
+`T (true + vibration) + turn-on bias + Gauss-Markov + white noise`, then
+`int16` quantization and saturation. `T` is drawn once per run from its own
+random stream, so the earlier draws (biases, hard and soft iron, rates) are
+unchanged by it. It is applied in the tag frame; the part's axes differ from
+the tag's only by signs and a permutation, so a uniform draw means the same
+in either. A ±0.5° misalignment leaks up to 0.9 % of a rate into each other
+axis: up to 4 dps of cross-coupling in a 500 dps roll, more than the 0.3 % scale
+error, and the error that dominates the filter (see
+[compass-baseline-results.md](compass-baseline-results.md)). The
+Gauss-Markov term starts from its stationary distribution, so its RMS is the
+configured value from the first sample. Vibration is generated at the ODR,
+its band clipped below the Nyquist frequency; the sensor's own filtering and
+the aliasing of a faster vibration are not modelled. No term depends on
+temperature.
 
 **The magnetometer distortion is the inverse of the host's correction.**
 `sensoranalysis` corrects a stored sample as `M' = A(M − V)`. The model writes
@@ -252,7 +275,7 @@ at ±1000 dps never do.
 
 **Why not gnss-ins-sim.** Its `acc_gen` and `gyro_gen` would do this same
 arithmetic, but the package is not on PyPI, would be pinned to a git commit,
-and brings drift and vibration models the scope defers. `errors.py` is the
+and brings more than tagsim needs. `errors.py` is the
 small equivalent with the same meanings: its turn-on bias is gnss-ins-sim's
 `b`, and gnss-ins-sim's white-noise `vrw` and `arw`, whose per-sample sigma
 is `vrw·√fs`, are this module's datasheet density divided by √2.

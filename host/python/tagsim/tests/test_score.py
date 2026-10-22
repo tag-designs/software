@@ -57,7 +57,7 @@ def _still_truth(sim, flying_us):
 
 def test_compass_at_rest_scores_its_errors():
     """The compass on a tag at rest, decoded and scored: zero error without
-    sensor errors; with them, the tilt the accelerometer bias implies."""
+    sensor errors; with them, the tilt the accelerometer error implies."""
     q0 = _random_q(1, 7)[0]
     for errors, tilt_max in ((ErrorConfig.ideal(), 0.01), (ErrorConfig(), 1.5)):
         cfg = SensorConfig(mag_ned_ut=FIELD)
@@ -76,8 +76,12 @@ def test_compass_at_rest_scores_its_errors():
         assert result.flying.sum() == 101
         s = result.summary["all"]
         assert s["tilt_deg"]["max"] < tilt_max
-        bias_tilt = np.degrees(np.linalg.norm(np.cross(d.accel_bias_mg, sim.signals.accel_mg[0]))
-                               / 1000.0 ** 2)
+        # The accelerometer's error at rest: bias plus sensitivity and
+        # misalignment acting on gravity.
+        f_true = sim.signals.accel_mg[0]
+        f_meas = d.accel_sensitivity @ f_true + d.accel_bias_mg
+        bias_tilt = np.degrees(np.arctan2(np.linalg.norm(np.cross(f_meas, f_true)),
+                                          f_meas @ f_true))
         assert abs(s["tilt_deg"]["median"] - bias_tilt) < 0.05
 
 

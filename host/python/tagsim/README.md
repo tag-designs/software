@@ -25,7 +25,8 @@ own decoder via [`tag-log-import`](../../commandline/README.md#tag-log-import)),
 and `f173.truth.db3`. The samples carry the datasheet sensor errors an
 orientation filter has to cope with, drawn from `--seed`:
 
-- accel and gyro white noise and a turn-on bias;
+- accel and gyro white noise, a turn-on bias, scale and misalignment errors,
+  and bias instability (optionally vibration);
 - the World Magnetic Model field at the log's origin and date, with hard and
   soft iron, noise, and the sample age of a free-running magnetometer;
 - pressure noise and offset, under a constant or drifting sea-level pressure.
@@ -62,7 +63,7 @@ itself. It also needs `tag-log-import`, built with the host tools
 | `--seed` | 0 | Seeds every random term; a run is reproducible from its seed and options |
 | `--ideal` | off | No sensor errors: no noise, bias, hard or soft iron, offsets or magnetometer rate error |
 | `--calibration` | `true` | `Calibration` table: the true hard and soft iron, or `perturbed` ones |
-| `--set-error NAME=VALUE` | | Override one error parameter (see [errors.py](src/tagsim/errors.py)), e.g. `accel_bias_mg=0`; repeatable |
+| `--set-error NAME=VALUE` | | Override one error parameter (see [errors.py](src/tagsim/errors.py)), e.g. `accel_bias_mg=0` or `vibration_accel_mg=50`; repeatable |
 | `--mag-ned N E D` | WMM | Earth field, uT, in place of the World Magnetic Model value |
 | `--sea-level-hpa` | 1013.25 | ISA sea-level pressure |
 | `--sea-level-walk` | 0 | Sea-level pressure random walk, hPa per √h; 0 holds it constant |
@@ -93,8 +94,8 @@ tagsim score --truth f173.truth.db3 --estimate f173-filt.db3 --table FilterSmoot
 tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.bin
 ```
 
-- **`tagsim filter`** estimates attitude, gyro bias, altitude relative to the
-  start and vertical velocity from the log alone: a multi-rate error-state
+- **`tagsim filter`** estimates attitude, gyro and accelerometer bias,
+  altitude relative to the start and vertical velocity from the log alone: a multi-rate error-state
   EKF, then an RTS smoother ([design](design/navigation-filter.md)). It
   writes `FilterForward` and `FilterSmoothed` to `-o`. It needs the Earth
   field: `--site LAT LON ALT` (the WMM there on the log's date),
@@ -125,7 +126,10 @@ tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.
   estimate. `--filter` also runs the filter with and without pressure
   (`NAME-filt.db3`, `NAME-filt-nop.db3`) and scores its forward and smoothed
   tables (`NAME-forward.score.db3`, …, and `NAME-smoothed.view.bin`);
-  `--reuse` scores existing logs instead of regenerating them. It needs
+  `--reuse` scores existing logs instead of regenerating them;
+  `--only f166 f173` limits it to some logs; `--calibration` and
+  `--set-error` are passed to `tagsim run` and `--filter-set NAME=VALUE` to
+  `tagsim filter --set`, for ablations. It needs
   `dataprocessing`, found through `DATAPROCESSING_BIN` or on `PATH`.
 
 How the compass's quaternion is decoded, and why it has to be, is in
@@ -190,8 +194,9 @@ the skips and their reasons.
 
 ## Not modelled yet
 
-Temperature effects, sensitivity and misalignment errors, bias instability;
-clock error; dynamic pressure; BMP581 sampling detail; vibration; synthetic
-primitives. See the
+Temperature effects; clock error; dynamic pressure; BMP581 sampling detail;
+the sensor's own filtering and aliasing of vibration; synthetic primitives.
+The accelerometer scale and misalignment, gyro misalignment and both bias
+instabilities are assumed figures, not fitted to bench data. See the
 proposal's [scope](design/proposals/imutag-simulator.md#scope-keep-it-simple)
 and phases.

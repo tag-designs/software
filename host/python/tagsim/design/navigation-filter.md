@@ -1,19 +1,21 @@
 ---
 type: design
 status: current
-summary: tagsim's Python prototype of the IMUTag post-processing filter - a multi-rate error-state EKF over attitude, gyro bias, relative altitude and vertical velocity, with an RTS smoother - how it orders the sensors' events, its updates and initialisation, and what it does not model.
+summary: tagsim's Python prototype of the IMUTag post-processing filter - a multi-rate error-state EKF over attitude, gyro and accelerometer bias, relative altitude and vertical velocity, with an RTS smoother - how it orders the sensors' events, its updates and initialisation, and what it does not model.
 ---
 
 # IMUTag Navigation Filter (Prototype)
 
 `tagsim filter` estimates, from a decoded IMUTag log alone, the tag's
-attitude (tag frame to ENU), its gyro bias, and its altitude relative to the
-start with vertical velocity. It is a forward error-state EKF followed by a
+attitude (tag frame to ENU), its gyro and accelerometer biases, and its
+altitude relative to the start with vertical velocity. It is a forward error-state EKF followed by a
 Rauch-Tung-Striebel smoother over the whole record, written in Python
 (`src/tagsim/navfilter.py`) as the prototype for a later port into the Qt-free
-`sensoranalysis` core. Scored with tagsim on the recorded pattern flights, it
-is good to a few tenths of a degree in flight where the single-sample compass
-is wrong by about 28° (median); the figures and their caveats are in
+`sensoranalysis` core. Scored with tagsim on the recorded pattern flights,
+with the simulator's datasheet and assumed scale, misalignment and bias
+instability errors, it is good to about 0.8° in flight (median; 1.6° at the
+95th percentile) where the single-sample compass is wrong by about 28°; the
+figures and their caveats are in
 [compass-baseline-results.md](compass-baseline-results.md).
 
 ```sh
@@ -63,14 +65,28 @@ attitude error is 1.1–2.4° without it and 0.45° with it.
 ## State
 
 The nominal state is the attitude quaternion `q` (tag frame to ENU, as
-`TruthPose`), the gyro bias `b` (rad/s, tag frame), and, with the pressure
-channel on, the altitude `h` (m) and vertical velocity `vz` (m/s, up). The
-error state is `[dθ, db, dh, dvz]`, eight states, with the attitude error
-taken in ENU: `q_true = exp(dθ) ⊗ q`. Its first two components are tilt and
-the third heading, which keeps the update Jacobians simple.
+`TruthPose`), the gyro bias `b` (rad/s, tag frame), the accelerometer bias
+`ba` (m/s², tag frame), and, with the pressure channel on, the altitude `h`
+(m) and vertical velocity `vz` (m/s, up). The error state is
+`[dθ, db, dba, dh, dvz]`, eleven states, with the attitude error taken in
+ENU: `q_true = exp(dθ) ⊗ q`. Its first two components are tilt and the third
+heading, which keeps the update Jacobians simple.
 
-There is deliberately no accelerometer bias, magnetometer disturbance,
-pressure offset or sea-level drift state. Altitude is relative to the first
+**The accelerometer bias states** (`accel_bias_states`, on by default;
+initial sigma 10 mg, random walk 0.01 mg/√s) are there for the smoother. A
+bias the filter does not know tilts its attitude on the ground, where the
+accelerometer is trusted most, and the smoother then carries that wrong tilt
+from the ground segments into the flight: without them the smoothed
+in-flight error was worse than the forward pass's (0.34° against 0.17° on
+five flights), with them it is better (0.07° against 0.16°). The bias is
+observable because the aircraft visits many attitudes and the magnetometer
+holds tilt independently of the accelerometer. With accelerometer scale and
+misalignment errors the apparent bias depends on attitude, and the states
+then cost some heading on the ground while still helping in flight (see
+[compass-baseline-results.md](compass-baseline-results.md)).
+
+There is deliberately no gyro scale or misalignment, magnetometer
+disturbance, pressure offset or sea-level drift state. Altitude is relative to the first
 pressure sample under the ISA with a constant 1013.25 hPa reference, so a
 constant sensor offset cancels; sea-level pressure is assumed not to drift
 during an experiment.
@@ -82,14 +98,14 @@ Over each interval `dt`, with the interval's mean rate `w` and specific force
 
 ```
 q   <- q ⊗ exp((w - b) dt)
-a    = (R(q) f)_up - g
+a    = (R(q) (f - ba))_up - g
 h   <- h + vz dt + a dt²/2
 vz  <- vz + a dt
 ```
 
 `g` is the mean `|f|` over the still periods, so the vertical component of
 the accelerometer's bias at the start attitude cancels. The error dynamics
-are `dθ' = -R db` and `dvz' = (dθ × R f)_up`. That last term couples tilt to
+are `dθ' = -R db`, `dvz' = (dθ × R f)_up - (R dba)_up`. That last term couples tilt to
 the vertical channel: a tilt error rotates part of a large manoeuvring
 specific force into the vertical, which pressure then sees, so the pressure
 updates also correct tilt during manoeuvres.
@@ -97,14 +113,14 @@ updates also correct tilt during manoeuvres.
 Process noise: gyro angle random walk 0.01 dps/√Hz (the datasheet's 2.8
 mdps/√Hz with margin for interpolation), bias random walk 1e-4 dps/√s, and a
 vertical acceleration noise of 0.2 m/s²/√Hz, which also covers the
-unmodelled accelerometer bias. A sample with any accelerometer axis at full
+accelerometer's scale and misalignment errors. A sample with any accelerometer axis at full
 scale adds a large vertical noise (the ±4 g range clips about 2 % of samples
 in these flights), since its vertical acceleration is then wrong.
 
 ## Updates
 
-**Accelerometer, at every IMU sample.** The specific force is compared with
-gravity, `R(q)^T (0, 0, g)`. It is only gravity when the tag is not
+**Accelerometer, at every IMU sample.** The specific force less the bias
+estimate is compared with gravity, `R(q)^T (0, 0, g)`. It is only gravity when the tag is not
 accelerating, so the per-axis sigma grows with how far it is from that:
 
 ```
@@ -184,14 +200,14 @@ the start is bootstrapped.
 
 ## What it does not model
 
-- **The simulator's gyro is ideal apart from white noise and a constant
-  bias**: no scale-factor, misalignment, g-sensitivity or bias instability.
-  Integrated over a pattern, those are exactly what limits a real filter, so
-  the in-flight figures are a lower bound, not a prediction for a real tag.
-- The magnetometer is calibrated with the true constants and sees no
-  disturbance; `--calibration perturbed` logs are the next test.
-- No accelerometer bias state: at rest the tilt error is the accelerometer
-  bias (up to about 0.7°), as for the compass, and it leaks into heading at
-  this site's dip.
+- **Gyro scale and misalignment are not estimated**, and they are what limits
+  the filter on the simulated flights: ±0.5° of gyro misalignment alone takes
+  the in-flight error from 0.23° to about 1°. The misalignment figure is an
+  assumption, so a bench calibration, or states for it, come first.
+- No g-sensitivity, temperature dependence or vibration in the scored runs;
+  the bias instability figures are assumed.
+- **A wrong magnetometer calibration** is not detected or estimated: with
+  `--calibration perturbed` logs the error roughly doubles, mostly in
+  heading.
 - The per-sample magnetometer age is not estimated (see the hook above).
 - Tuning was set by hand on a few flights and synthetic cases, not fitted.
