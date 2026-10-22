@@ -41,9 +41,11 @@ phase 2's checking; the rest proposed.
   exports run together; 24 non-logs are refused. After the 9×7 repair, only 4 exact duplicate records remain
   and none conflict: most "duplicates" in the survey were that bug's
   overlapping bucket times.
-- **Not built yet:** `--batch` with the collection report and
-  manifest; the pairing of repaired originals with their re-exports; the
-  sensorviz fixtures; phases 3–5.
+- **Shipped:** `tag-txt-import` is in the release, with a user-manual page
+  (`host/docs/src/cli/tag-txt-import.md`). Batch mode is dropped: a shell
+  loop over the files does the same, and the manual shows one.
+- **Not built yet:** the pairing of repaired originals with their
+  re-exports; the sensorviz fixtures; phases 3–5.
 
 The `.txt` sensor-log format and btviz, the tool that reads it, are to be
 retired. SQLite (`.db3`) becomes the only log format and sensorviz the only

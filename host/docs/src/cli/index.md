@@ -38,6 +38,7 @@ Most tag-attached tools share these options:
 | `tag-stop` | [tag-stop](tag-stop.md) | Stop active logging states and print the resulting tag status. |
 | `tag-cal` | [tag-cal](tag-cal.md) | Start calibration mode and stream raw calibration samples. |
 | `dataprocessing` | [dataprocessing](dataprocessing.md) | Copy SQLite logs and add derived sensor streams for later analysis. |
+| `tag-txt-import` | [tag-txt-import](tag-txt-import.md) | Convert old BitTag and PresTag `.txt` logs to SQLite, checking each conversion. |
 | `tag-test` | [tag-test](tag-test.md) | Run RTC checks and tag self-tests. |
 
 Developer and bench programs -- `tag-test-example`, `tag-monitor-test`,

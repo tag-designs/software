@@ -78,6 +78,7 @@ nav:
       - tag-stop: cli/tag-stop.md
       - tag-cal: cli/tag-cal.md
       - dataprocessing: cli/dataprocessing.md
+      - tag-txt-import: cli/tag-txt-import.md
   - Workflows:
       - First Setup: workflows/first-setup.md
       - Firmware Programming: workflows/firmware-programming.md

@@ -95,6 +95,9 @@
 #include <cxxopts.hpp>
 #include <sqlite3.h>
 
+extern "C" {
+#include "log.h"
+}
 #include "recovery/sha256.h"
 #include "sqlitelog.h"
 #include "txtlogs.h"
@@ -1878,6 +1881,7 @@ int main(int argc, char **argv) {
       ("report", "also write the conversion report to this JSON file",
        cxxopts::value<std::string>())
       ("keep-failed", "keep the log, marked failed, when the check fails")
+      ("d,debug", "debug logging from the SQLite writer")
       ("h,help", "Print usage");
   options.parse_positional({"input"});
   options.positional_help("<log.txt>");
@@ -1894,6 +1898,8 @@ int main(int argc, char **argv) {
   }
   const std::string input = args["input"].as<std::string>();
   const std::string output = args["output"].as<std::string>();
+  // Error-level logging unless asked, as the other command-line tools do.
+  log_set_level(args.count("debug") ? LOG_DEBUG : LOG_ERROR);
 
   SourceFile src;
   std::string error;

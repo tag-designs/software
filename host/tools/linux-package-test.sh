@@ -13,7 +13,8 @@
 #      libraries (ldd), which also catches a glibc older than the binaries
 #      need, and carry no RUNPATH outside the package.
 #   2. Command line tools: each answers --help; tag-info without a base exits
-#      1; dataprocessing processes a fixture log.
+#      1; dataprocessing processes a fixture log; tag-txt-import converts a
+#      legacy .txt fixture.
 #   3. Qt applications, under Wayland (mutter, GNOME's compositor, headless)
 #      and under X11 (Xvfb): each runs its documentation capture against the
 #      repository's fixtures -- fake tags for qtmonitor, a recorded session
@@ -86,7 +87,7 @@ done
 # --- 2. Command line tools -------------------------------------------------------
 
 step "command line tools"
-for tool in tag-info tag-dwnld tag-test tag-reset tag-start tag-stop tag-cal dataprocessing; do
+for tool in tag-info tag-dwnld tag-test tag-reset tag-start tag-stop tag-cal tag-txt-import dataprocessing; do
     if [ ! -x "$tt/bin/$tool" ]; then
         fail "$tool is not in bin"
     elif "$tt/bin/$tool" --help >"$out/$tool-help.txt" 2>&1; then
@@ -105,6 +106,13 @@ if "$tt/bin/dataprocessing" -i "$fixtures/sensorviz/compasstag.db3" -o "$out/dat
     pass "dataprocessing derives streams from a CompassTag log"
 else
     fail "dataprocessing on a CompassTag log; see dataprocessing.txt"
+fi
+txt_fixture=$src/host/commandline/test/txt-import/c1-fivemin.txt
+if "$tt/bin/tag-txt-import" "$txt_fixture" -o "$out/txt-import.db3" >"$out/txt-import.txt" 2>&1 \
+   && [ "$(sqlite3 "$out/txt-import.db3" "SELECT value FROM info WHERE fieldname = 'txt_roundtrip'")" = passed ]; then
+    pass "tag-txt-import converts and round-trips a legacy BitTag .txt log"
+else
+    fail "tag-txt-import on a legacy .txt log; see txt-import.txt"
 fi
 
 # --- 3. Qt applications ----------------------------------------------------------

@@ -27,6 +27,9 @@ reach a release:
 - `tag-test`: run RTC checks and tag self-tests. Despite the name this is a
   field tool -- it is what confirms a freshly programmed board works -- so it
   ships.
+- `tag-txt-import`: convert a legacy BitTag or PresTag `.txt` log to SQLite,
+  verified by rendering it back to text. User page:
+  [`cli/tag-txt-import.md`](../docs/src/cli/tag-txt-import.md). See below.
 
 Developer and bench tools -- built from this directory, never installed. They
 exist to exercise hardware and firmware during development, they carry no user
@@ -45,9 +48,6 @@ caught by the signature check in `host/tools/release-macos.sh`:
   unblock a mass-erased CompassTag. See below.
 - `tag-log-import`: write a `tagclient` JSONL download as a SQLite log, with
   no tag. See below.
-- `tag-txt-import`: convert a legacy BitTag or PresTag `.txt` log to a SQLite
-  log, verified by rendering it back to text. Not installed until the
-  conversion is signed off. See below.
 - `qtmonitor-fixture-capture`: capture `TagInfo`, default `Config`, `Status`,
   and voltage from a real tag into the fixture JSON consumed by qtmonitor
   documentation screenshot automation.

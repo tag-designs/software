@@ -275,7 +275,8 @@ set(host_cli_install_targets
     tag-reset
     tag-start
     tag-stop
-    tag-cal)
+    tag-cal
+    tag-txt-import)
 if(TARGET dataprocessing)
   list(APPEND host_cli_install_targets dataprocessing)
 endif()
