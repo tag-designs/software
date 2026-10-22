@@ -323,3 +323,26 @@ def test_mag_bias_states():
     est = gyro_sensitivity(on.gyro_cal_smoothed[0]) - np.eye(3)
     assert np.sqrt(np.mean((est - true) ** 2)) < 0.75 * np.sqrt(np.mean(true ** 2))
 
+
+def test_mag_clock():
+    """The BMM350's clock (phase and a rate error of up to 2 %) is fitted
+    from the manoeuvre's turning readings: nearly every reading's conversion
+    time comes out within a millisecond of the truth, and the few a whole
+    period off sit on a conversion boundary and carry the wide age SD."""
+    from tagsim.navfilter import dataclass_replace, mag_conversion_times
+    sim, log, r = _run(_manoeuvre(), duration_s=40.0)
+    fit = r.stats["mag_clock"]
+    assert r.stats["mag_clock_used"]
+    assert abs(fit["period_s"] * sim.draw.mag_rate_hz - 1.0) < 1e-4
+    cfg = dataclass_replace(_filter_cfg(), mag_clock_t0_s=fit["t0_s"],
+                            mag_clock_period_s=fit["period_s"])
+    t_c, sd = mag_conversion_times(log, cfg)
+    sig = sim.signals
+    ok = ~np.isnan(sig.t_mag)
+    err = np.abs(t_c - (sig.t_mag[ok] - sig.t[0]))
+    print(f"clock {fit}; |error| p95 {np.percentile(err, 95) * 1e3:.3f} ms")
+    assert np.mean(err < 0.001) > 0.95
+    assert np.all(sd[err > 0.005] > 0.01)
+    off = build_events(log, _filter_cfg())  # without the clock: the mean age
+    np.testing.assert_allclose(off.t[off.kind == MAG] - off.t_log[off.kind == MAG],
+                               poll_offset_s(100) - 0.04, atol=1e-9)

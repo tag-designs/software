@@ -23,10 +23,14 @@ magnetometer and the pressure sensor after copying the superframe's last one
 periods later. A magnetometer reading is also older than its poll by an
 age the log does not record: anything from 0 to one conversion period of the
 BMM350's free-running clock (0.8 of a superframe at the rate the firmware
-selects). By default the filter subtracts the **mean** age, half a nominal
-conversion period, and treats the rest as noise that grows with the turn
-rate; :attr:`FilterConfig.mag_age_s` sets the subtracted age explicitly, and
-is the hook for a later per-sample age correction.
+selects). That clock has a fixed phase and a rate a little off nominal, so
+each reading is the newest conversion ``t0 + k T`` completed at its poll;
+:func:`estimate_mag_clock` fits ``t0`` and ``T`` from a first,
+attitude-only smoothing pass, and each magnetometer event is then applied
+at its own conversion time (:func:`mag_conversion_times`). Without a clock,
+the filter subtracts the **mean** age, half a nominal period, and treats the
+rest as noise that grows with the turn rate; :attr:`FilterConfig.mag_age_s`
+sets a constant age explicitly.
 
 **Filter.** An error-state EKF over the nominal state
 
@@ -251,13 +255,26 @@ class FilterConfig:
     # Magnetometer update.
     mag_sigma_ut: float = 1.0
     mag_gate_ut: float = 5.0  #: skip when ||m| - |B|| exceeds this
-    #: Age (s) subtracted from each magnetometer event's poll time; None:
-    #: the mean, half the nominal BMM350 period at the log's ODR.
+    #: Age (s) subtracted from each magnetometer event's poll time, for
+    #: every reading; None: from the magnetometer clock if it is known or
+    #: estimated, else the mean, half the nominal BMM350 period.
     mag_age_s: float | None = None
-    #: SD (s) of the age left after that; None: a uniform age's over one
-    #: nominal period. Multiplied by the turn rate and the field, it is the
-    #: magnetometer noise the unrecorded age adds.
+    #: SD (s) of the age left after a constant age; None: a uniform age's
+    #: over one nominal period. Multiplied by the turn rate and the field, it
+    #: is the magnetometer noise the unrecorded age adds.
     mag_age_sigma_s: float | None = None
+    #: The BMM350's conversion clock, in log time: conversion k completes at
+    #: ``mag_clock_t0_s + k * mag_clock_period_s``; each reading is the newest
+    #: conversion completed at its poll. None: estimated (below) or unknown.
+    mag_clock_t0_s: float | None = None
+    mag_clock_period_s: float | None = None
+    #: Estimate that clock (its phase and rate) from a first, attitude-only
+    #: smoothing pass when it is not given.
+    mag_clock_estimate: bool = True
+    mag_clock_sigma_s: float = 0.0005  #: age SD left once the clock is known
+    mag_clock_min_rate_dps: float = 30.0  #: readings used to fit it turn at least this fast
+    mag_clock_rate_range: float = 0.03  #: fractional rate error searched (the sheet's +/-2 %)
+    mag_clock_window_s: float = 900.0  #: span of the coarse periodogram search
     # Pressure update.
     pressure_sigma_m: float = 0.06
     sea_level_hpa: float = 1013.25  #: constant ISA reference
@@ -320,6 +337,8 @@ class Events:
     t: np.ndarray  #: s, the time the filter applies the event at
     t_log: np.ndarray  #: s, the row's own ElapsedUs
     index: np.ndarray  #: row in the log's mag or pressure arrays
+    #: s, SD of the magnetometer age left unknown (0 for pressure events)
+    age_sigma: np.ndarray | None = None
 
 
 def poll_offset_s(odr_hz: float) -> float:
@@ -329,33 +348,176 @@ def poll_offset_s(odr_hz: float) -> float:
 
 
 def mag_age_s(cfg: FilterConfig, odr_hz: float) -> float:
-    """The magnetometer age subtracted from its poll time."""
+    """The constant magnetometer age subtracted from its poll time when the
+    clock is not known: ``mag_age_s``, else half a nominal period."""
     from .errors import mag_rate_hz
 
     return cfg.mag_age_s if cfg.mag_age_s is not None else 0.5 / mag_rate_hz(odr_hz)
 
 
+def _us(t):
+    return np.rint(np.asarray(t, dtype=np.float64) * 1e6)
+
+
+def mag_conversion_times(log: ImuTagLog, cfg: FilterConfig) -> tuple[np.ndarray, np.ndarray]:
+    """Each magnetometer reading's conversion time (s, whole microseconds)
+    and the SD (s) of its error.
+
+    With the clock known (``mag_clock_t0_s``, ``mag_clock_period_s``, and no
+    ``mag_age_s``) a reading polled at ``t_p`` is conversion
+    ``floor((t_p - t0) / T)``, completed at ``t0 + k T``, with an SD of
+    ``mag_clock_sigma_s``; a reading within twice that of a conversion
+    boundary could be either conversion, so it gets the SD of an age
+    unknown over one period. Otherwise every reading is ``mag_age_s`` (or
+    half a nominal period) older than its poll, with that same SD unless
+    ``mag_age_sigma_s`` is given."""
+    from .errors import mag_rate_hz
+
+    t_p = _us(log.t_mag) + round(poll_offset_s(log.odr_hz) * 1e6)
+    period = 1.0 / mag_rate_hz(log.odr_hz)
+    uniform = period / math.sqrt(12.0)
+    clock = (cfg.mag_age_s is None and cfg.mag_clock_t0_s is not None
+             and cfg.mag_clock_period_s is not None)
+    if not clock:
+        t_c = (t_p - round(mag_age_s(cfg, log.odr_hz) * 1e6)) * 1e-6
+        sd = cfg.mag_age_sigma_s if cfg.mag_age_sigma_s is not None else uniform
+        return t_c, np.full(len(t_c), sd)
+    t0, T = cfg.mag_clock_t0_s, cfg.mag_clock_period_s
+    x = (t_p * 1e-6 - t0) / T
+    k = np.floor(x)
+    t_c = _us(t0 + k * T) * 1e-6
+    edge = np.minimum(x - k, k + 1 - x) * T < 2.0 * cfg.mag_clock_sigma_s
+    sd = np.where(edge, T / math.sqrt(12.0), cfg.mag_clock_sigma_s)
+    return t_c, sd
+
+
 def build_events(log: ImuTagLog, cfg: FilterConfig) -> Events:
-    """Magnetometer and pressure events, ordered by the time they apply at.
+    """Magnetometer and pressure events, ordered by the time they apply at:
+    the magnetometer at its conversion time (:func:`mag_conversion_times`),
+    pressure at its poll.
 
     Times are formed in whole microseconds, as ``ElapsedUs`` is, so an event
     that falls on an IMU sample has exactly that sample's time."""
     off_us = round(poll_offset_s(log.odr_hz) * 1e6)
-
-    def us(t):
-        return np.rint(np.asarray(t) * 1e6)
-
-    parts = [(np.full(len(log.t_mag), MAG),
-              (us(log.t_mag) + off_us - round(mag_age_s(cfg, log.odr_hz) * 1e6)) * 1e-6,
-              log.t_mag,
-              np.arange(len(log.t_mag)))]
+    t_c, sd = mag_conversion_times(log, cfg)
+    parts = [(np.full(len(log.t_mag), MAG), t_c, log.t_mag, np.arange(len(log.t_mag)), sd)]
     if cfg.use_pressure:
         parts.append((np.full(len(log.t_pressure), PRESSURE),
-                      (us(log.t_pressure) + off_us) * 1e-6, log.t_pressure,
-                      np.arange(len(log.t_pressure))))
-    kind, t, t_log, idx = (np.concatenate(x) for x in zip(*parts))
+                      (_us(log.t_pressure) + off_us) * 1e-6, log.t_pressure,
+                      np.arange(len(log.t_pressure)), np.zeros(len(log.t_pressure))))
+    kind, t, t_log, idx, sds = (np.concatenate(x) for x in zip(*parts))
     order = np.lexsort((kind, t))
-    return Events(kind[order].astype(np.int64), t[order], t_log[order], idx[order])
+    return Events(kind[order].astype(np.int64), t[order], t_log[order], idx[order], sds[order])
+
+
+def _qinterp(q: np.ndarray, t: np.ndarray, at: np.ndarray) -> np.ndarray:
+    """Quaternions ``q`` at times ``t`` interpolated (normalised linear, sign
+    aligned) to times ``at``, clamped to the ends."""
+    i = np.clip(np.searchsorted(t, at) - 1, 0, len(t) - 2)
+    u = np.clip((at - t[i]) / (t[i + 1] - t[i]), 0.0, 1.0)[..., None]
+    a, b = q[i], q[i + 1]
+    b = np.where((np.sum(a * b, axis=-1) < 0)[..., None], -b, b)
+    r = a + u * (b - a)
+    return r / np.linalg.norm(r, axis=-1, keepdims=True)
+
+
+def estimate_mag_clock(log: ImuTagLog, ref: "FilterResult", cfg: FilterConfig) -> dict:
+    """The BMM350 conversion clock (phase and period) fitted to the
+    magnetometer readings against a reference attitude.
+
+    For each reading taken while the tag turns faster than
+    ``mag_clock_min_rate_dps``, the age that best matches it with the
+    reference attitude is found by a search over one period (the field seen
+    in the tag frame moves at the turn rate, so a reading's age shows in
+    where it fits); its conversion time is its poll less that age. Those
+    times are then all ``t0 + k T`` for integers k: a weighted periodogram
+    over periods within ``mag_clock_rate_range`` of nominal finds ``T`` and
+    the phase on the first ``mag_clock_window_s``, and weighted least squares
+    on the residuals, wrapped to a period, refines both over the whole
+    record. Returns the fit's figures; ``t0_s`` and ``period_s`` are None
+    when there are too few turning readings or they do not agree on a
+    clock."""
+    from .errors import mag_rate_hz
+
+    out = {"t0_s": None, "period_s": None}
+    t_nom = 1.0 / mag_rate_hz(log.odr_hz)
+    q = ref.q_smoothed if ref.q_smoothed is not None else ref.q_forward
+    b = ref.bias_smoothed if ref.bias_smoothed is not None else ref.bias_forward
+    kc = ref.gyro_cal_smoothed if ref.gyro_cal_smoothed is not None else ref.gyro_cal_forward
+    u = log.gyro_rps - b
+    w = u + (np.einsum("nij,nj->ni", kc, u) if kc is not None else 0.0)
+    dm = ref.stats.get("mag_bias_final_ut", [0.0, 0.0, 0.0])
+    field = np.asarray(cfg.field_enu_ut, dtype=np.float64)
+    t_p = (_us(log.t_mag) + round(poll_offset_s(log.odr_hz) * 1e6)) * 1e-6
+    i_p = np.clip(np.searchsorted(log.t_imu, t_p - 1e-7), 0, len(log.t_imu) - 1)
+    rate = np.linalg.norm(w[i_p], axis=1)
+    use = (rate > math.radians(cfg.mag_clock_min_rate_dps)) & (t_p - t_nom * 1.1 > log.t_imu[0])
+    out["readings"] = int(use.sum())
+    if use.sum() < 50:
+        return out
+    m = log.mag_ut[use] - np.asarray(dm)
+    tp = t_p[use]
+    ages = np.linspace(0.0, 1.1 * t_nom, 89)
+    tt = tp[:, None] - ages[None, :]
+    qa = _qinterp(q, log.t_imu, tt.reshape(-1)).reshape(len(tp), len(ages), 4)
+    pred = qrotate(qconj(qa), np.broadcast_to(field, qa.shape[:-1] + (3,)))
+    cost = np.sum((pred - m[:, None, :]) ** 2, axis=-1)
+    k = np.argmin(cost, axis=1)
+    inner = (k > 0) & (k < len(ages) - 1)
+    kk = np.clip(k, 1, len(ages) - 2)
+    r = np.arange(len(tp))
+    c0, c1, c2 = cost[r, kk - 1], cost[r, kk], cost[r, kk + 1]
+    den = c0 - 2 * c1 + c2
+    shift = np.where(den > 0, 0.5 * (c0 - c2) / np.where(den > 0, den, 1.0), 0.0)
+    age = ages[kk] + np.clip(shift, -1, 1) * (ages[1] - ages[0])
+    # Weight: the cost curve's curvature, how sharply the reading fixes its age.
+    wt = np.where(inner & (den > 0), den, 0.0)
+    tc = tp - age
+    keep = wt > 0
+    tc, wt = tc[keep], wt[keep]
+    out["readings_fitted"] = int(keep.sum())
+    if len(tc) < 50:
+        return out
+    wt = wt / wt.sum()
+    t_ref = float(tc[0])
+    x = tc - t_ref
+    win = x <= cfg.mag_clock_window_s
+    span = max(float(x[win].max()), 10 * t_nom)
+    f_nom = 1.0 / t_nom
+    df = 0.05 / span
+    freqs = np.arange(f_nom * (1 - cfg.mag_clock_rate_range),
+                      f_nom * (1 + cfg.mag_clock_rate_range), df)
+    power = np.empty(len(freqs))
+    for s0 in range(0, len(freqs), 512):
+        z = np.exp(2j * np.pi * freqs[s0:s0 + 512, None] * x[win][None, :]) @ wt[win]
+        power[s0:s0 + 512] = np.abs(z)
+    f = float(freqs[int(np.argmax(power))])
+    T = 1.0 / f
+    phase = float(np.angle(np.exp(2j * np.pi * f * x[win]) @ wt[win]))
+    t0 = t_ref - phase / (2 * np.pi) * T  # conversions at t0 + k T
+    resid = None
+    for _ in range(4):
+        n_k = np.rint((tc - t0) / T)
+        resid = tc - (t0 + n_k * T)
+        inl = np.abs(resid) < 0.25 * T
+        a = np.column_stack([np.ones(inl.sum()), n_k[inl]])
+        sw = np.sqrt(wt[inl])
+        d0, dT = np.linalg.lstsq(a * sw[:, None], resid[inl] * sw, rcond=None)[0]
+        t0, T = t0 + d0, T + dT
+    n_k = np.rint((tc - t0) / T)
+    resid = tc - (t0 + n_k * T)
+    inl = np.abs(resid) < 0.25 * T
+    rayleigh = float(np.abs(np.exp(2j * np.pi * tc / T) @ wt))
+    out.update({"rayleigh": round(rayleigh, 4), "inlier_fraction": round(float(inl.mean()), 4),
+                "residual_rms_ms": round(float(np.sqrt(np.average(resid[inl] ** 2,
+                                                                  weights=wt[inl]))) * 1e3, 3),
+                "rate_error_ppm": round(float(t_nom / T - 1.0) * 1e6, 1)})
+    if rayleigh < 0.3:
+        return out
+    # Express t0 as the conversion just before the log's first sample.
+    t0 = t0 + math.floor((log.t_imu[0] - t0) / T) * T
+    out["t0_s"], out["period_s"] = float(t0), float(T)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -501,7 +663,6 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     odr = log.odr_hz
     t_imu, f_all, w_all = log.t_imu, log.accel_mps2, log.gyro_rps
     n_imu = len(t_imu)
-    ev = build_events(log, dataclass_replace(cfg, use_pressure=vert))
     field = np.asarray(cfg.field_enu_ut, dtype=np.float64)
     field_norm = float(np.linalg.norm(field))
 
@@ -517,10 +678,23 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         sb = math.radians(cfg.init_bias_unknown_dps)
     sf_len = SUPERFRAME
     start_still = bool(still[:sf_len].all())
-    boot = None
-    if not start_still and cfg.bootstrap:
-        boot = run_filter(log, dataclass_replace(cfg, use_pressure=False, bootstrap=False,
-                                                 smooth=True))
+    # A first, attitude-only smoothing pass, when the start must be
+    # bootstrapped or the magnetometer clock estimated.
+    boot = ref = None
+    want_clock = (cfg.mag_clock_estimate and cfg.mag_age_s is None
+                  and cfg.mag_clock_t0_s is None and len(log.t_mag) > 0)
+    if (not start_still and cfg.bootstrap) or want_clock:
+        ref = run_filter(log, dataclass_replace(cfg, use_pressure=False, bootstrap=False,
+                                                smooth=True, mag_clock_estimate=False))
+        if not start_still and cfg.bootstrap:
+            boot = ref
+    clock_fit = None
+    if want_clock:
+        clock_fit = estimate_mag_clock(log, ref, cfg)
+        if clock_fit["t0_s"] is not None:
+            cfg = dataclass_replace(cfg, mag_clock_t0_s=clock_fit["t0_s"],
+                                    mag_clock_period_s=clock_fit["period_s"])
+    ev = build_events(log, dataclass_replace(cfg, use_pressure=vert))
     if start_still:
         stop = int(np.argmin(still)) if not still.all() else n_imu
         f0 = f_all[:stop].mean(axis=0)
@@ -584,11 +758,6 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     q_vz = cfg.accel_vertical_noise_mps2_rthz ** 2
     q_ba = (cfg.accel_bias_walk_mg_rts * G0 / 1000.0) ** 2
     q_k = cfg.gyro_cal_walk_rts ** 2
-    if cfg.mag_age_sigma_s is not None:
-        age_s = cfg.mag_age_sigma_s
-    else:
-        from .errors import mag_rate_hz
-        age_s = 1.0 / (mag_rate_hz(odr) * math.sqrt(12.0))
     r_p = cfg.pressure_sigma_m ** 2
 
     # Storage. The outputs are kept per IMU sample; for the smoother, the
@@ -602,7 +771,9 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     stats = {"accel_updates": 0, "accel_gated": 0, "mag_updates": 0, "mag_gated": 0,
              "pressure_updates": 0, "still_fraction": float(still.mean()),
              "start_still": start_still, "g_mps2": g,
-             "gyro_bias_init_dps": np.degrees(b0).tolist()}
+             "gyro_bias_init_dps": np.degrees(b0).tolist(),
+             "mag_clock": clock_fit,
+             "mag_clock_used": (cfg.mag_age_s is None and cfg.mag_clock_t0_s is not None)}
     if store is not None:
         stats["storage"] = store.describe()
     I_n = np.eye(n)
@@ -697,7 +868,7 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
             H[:, 0:3] = R.T @ field_skew
             if mb:
                 H[:, im:im + 3] = np.eye(3)
-            sigma = cfg.mag_sigma_ut + field_norm * float(np.linalg.norm(w)) * age_s
+            sigma = cfg.mag_sigma_ut + field_norm * float(np.linalg.norm(w)) * ev.age_sigma[j]
             update(H, m - R.T @ field, np.eye(3) * sigma ** 2)
             stats["mag_updates"] += 1
         elif vert:
@@ -1033,7 +1204,8 @@ def field_enu_from_ned(ned_ut) -> tuple[float, float, float]:
 
 
 __all__ = ["FilterConfig", "FilterResult", "ImuTagLog", "Events", "read_log", "simulated_log",
-           "build_events", "gyro_sensitivity", "GYRO_CAL_COLUMNS",
+           "build_events", "gyro_sensitivity", "GYRO_CAL_COLUMNS", "mag_conversion_times",
+           "estimate_mag_clock",
            "run_filter", "write_estimates", "still_mask", "triad", "isa_altitude_m",
            "poll_offset_s", "field_enu_from_ned", "mag_stored_to_tag", "IMU", "MAG",
            "PRESSURE"]
