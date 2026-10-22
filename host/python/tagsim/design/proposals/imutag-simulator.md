@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a model of IMUTag's real acquisition and writes genuine IMUTag SQLite logs plus a ground-truth sidecar, for stress-testing the host tools and scoring post-processing filters.
+summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a simple IMUTag sensor model and writes genuine IMUTag SQLite logs plus ground truth, chiefly to test the future post-processing orientation filter.
 ---
 
 # tagsim: Synthetic IMUTag Logs from Pattern Flights
@@ -47,6 +47,45 @@ summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights
 - It does not model animal motion. No flapping or stride overlay is planned.
 - It does not replace bench recordings. Its noise parameters start from
   datasheets and are refitted from real prototype data when that exists.
+
+## Scope: keep it simple
+
+**The purpose** is to test the future post-processing orientation filter
+against known truth. The model needs to be realistic only where that
+filter's behaviour depends on it. Everything else is deferred. The design
+sections below still describe deferred items, for reference, but they are
+not built unless a filter result shows they matter.
+
+**In scope:**
+
+- **Trajectory:** pattern-flight replay from the ArduPilot logs, with glitch
+  handling, quaternion and position splines, and ideal specific force, body
+  rate, field and pressure.
+- **Accel and gyro:** datasheet white noise and a turn-on bias; `int16`
+  quantization and saturation at the configured ranges.
+- **Magnetometer:**
+  - Earth's field from the WMM, hard and soft iron, and noise;
+  - read once per superframe from a free-running sensor, so sample age
+    varies. A filter has to handle this.
+- **Pressure:** static pressure under a constant or slowly drifting sea-level
+  pressure, plus noise and offset. The sensor is shielded from the airflow.
+- **Output:** the IMUTag page format through `tag-log-import` to SQLite, and
+  a truth file (pose, velocity, ideal signals, field, seed and
+  configuration).
+- **Range check:** a saturation summary per range setting.
+- **Viewing:** an export of the truth trajectory, or a filter's estimate, for
+  UAV Log Viewer.
+
+**Deferred:**
+
+- temperature dependence, sensitivity and misalignment errors, bias
+  instability;
+- vibration;
+- clock error, and scripted resyncs and storage gaps;
+- BMP581 power-mode sampling detail;
+- SITL logs, synthetic manoeuvre primitives beyond a stationary test
+  fixture, and the raw-sensor comparisons;
+- refitting noise from bench data.
 
 ## What it is for
 
@@ -490,11 +529,10 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 
 | Phase | Work | Checked by |
 | --- | --- | --- |
-| 1 | `tag-log-import`; tagsim page and Ack writer; a stationary trajectory; no noise | The imported log decodes back to exactly the values the model wrote, including flags, segments, NaN slots and partial pages; `sensorviz` and `dataprocessing` open it |
-| 2 | Full sensor model (noise, quantization, saturation, clock, magnetometer timing, pressure drift, calibration distortion); truth sidecar and `SimRun` | Allan-variance and spectrum checks of a simulated static log against the configured noise; `check_orientation_frames.py` agrees; calibration recovers the true field |
-| 3 | Pattern-flight replay (recorded logs and SITL) and synthetic primitives; consistency check; comparison with the log's own sensors; UAV Log Viewer export | Strapdown drift under a stated bound; on SITL, the fitted trajectory matches `SIM`; the exported trajectory matches the source flight by eye in the viewer and numerically |
-| 4 | pytest harness: small generated fixtures run through the importer, `dataprocessing` and, once it exists, sensorviz's `session_cli`; a saturation report across ODR and range settings | Runs without hardware; the range report informs default configuration |
-| Later | Refit noise and bias parameters from a static recording on a prototype; validate against a short real motion recording | Simulated and real noise statistics agree |
+| 1 | End-to-end slice: one flight, no noise. `tag-log-import`; DataFlash reader; glitch handling; splines; ideal signals; quantization and saturation; pages; truth pose. *In progress.* | The imported log decodes back to exactly what was packed; a stationary fixture reads 1000 mg and zero rate; sensorviz opens a generated flight |
+| 2 | The in-scope sensor errors: accel and gyro noise and bias; WMM field, hard and soft iron, noise and magnetometer sample age; pressure noise, offset and sea-level drift; saturation summary | Noise statistics of a simulated still segment match the configured values; a correct calibration recovers the true field |
+| 3 | Scoring and viewing: a helper that compares an estimate with truth (attitude, heading and velocity error over time); UAV Log Viewer export | `dataprocessing` orientation scored against truth on the first logs; the exported trajectory matches the source flight by eye |
+| Later | Deferred items from [Scope](#scope-keep-it-simple), only as filter results call for them; refitting noise from prototype bench data | As each is added |
 
 Phase 1 is useful on its own: it gives the download path a hardware-free
 round-trip test, and it adds `tag-log-import` for `tagclient` downloads.
