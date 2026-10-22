@@ -2,7 +2,8 @@
 
 The importer comes from ``TAG_LOG_IMPORT_BIN`` (or ``tag-log-import`` on
 PATH), and ``dataprocessing`` from ``DATAPROCESSING_BIN`` (or PATH); recorded flights from ``TAGSIM_LOG_DIR`` (default
-``~/Documents/ardupilot_data``). Tests that need either skip without it.
+the sibling data checkout, ``<repo>/../data/ardupilot/pattern-2023``). Tests that need either
+skip without it.
 Recorded logs belong to a third party and carry GPS positions: they are
 never copied into the repository.
 """
@@ -28,7 +29,8 @@ def import_bin() -> str:
 
 @pytest.fixture(scope="session")
 def flight_log() -> Path:
-    log_dir = Path(os.environ.get("TAGSIM_LOG_DIR", "~/Documents/ardupilot_data")).expanduser()
+    default = Path(__file__).resolve().parents[4] / "../data/ardupilot/pattern-2023"
+    log_dir = Path(os.environ.get("TAGSIM_LOG_DIR", default)).expanduser()
     preferred = log_dir / PREFERRED_FLIGHT
     if preferred.exists():
         return preferred

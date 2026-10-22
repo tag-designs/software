@@ -129,7 +129,7 @@ cmake --build <build-dir> --target tag-log-import
 
 ```bash
 export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/tag-log-import
-export TAGSIM_LOG_DIR=~/Documents/ardupilot_data
+export TAGSIM_LOG_DIR=../data/ardupilot/pattern-2023   # the private data repository, checked out beside this one
 export SENSORVIZ_BIN=<build-dir>/Release/bin/sensorviz.app/Contents/MacOS/sensorviz
 export DATAPROCESSING_BIN=<build-dir>/Release/bin/dataprocessing
 ```
@@ -141,7 +141,7 @@ export DATAPROCESSING_BIN=<build-dir>/Release/bin/dataprocessing
 Each variable has a fallback:
 
 - `TAG_LOG_IMPORT_BIN` falls back to `tag-log-import` on `PATH`.
-- `TAGSIM_LOG_DIR` defaults to `~/Documents/ardupilot_data`.
+- `TAGSIM_LOG_DIR` defaults to `ardupilot/pattern-2023` in the private data repository, checked out beside this one (`<repo>/../data`). Ask for access; the data is not public.
 - `SENSORVIZ_BIN` is optional and falls back to `sensorviz` on `PATH`. On
   Linux and Windows it is `<build-dir>/Release/bin/sensorviz`.
 - `DATAPROCESSING_BIN` is optional and falls back to `dataprocessing` on
