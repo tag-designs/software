@@ -107,7 +107,10 @@ Beyond viewing, btviz offers:
 
 **None of these move into sensorviz.** sensorviz stays a viewer. Once the
 data is in SQLite, actograms, filtering and interval statistics are better
-served by general-purpose analysis tools that read the logs directly. The
+served by general-purpose analysis tools that read the logs directly. Which
+tools the researchers use is outside this project's scope. SQLite is what
+makes that choice free, since any language or analysis environment can read
+it. The
 schema is documented in the user manual's
 [SQLite logs reference](../../../../docs/src/reference/sqlite-logs.md), and
 any language with SQLite can read it.
@@ -201,8 +204,13 @@ The source tree is never modified.
 tag are both converted. The report pairs them by UUID, so a researcher can
 choose; the importer does not decide which is right.
 
-**Where the output lives** is an open question: in the collection's own
-repository, or in the private data repository under Git LFS.
+**Where the output lives is the researchers' choice.** The importer writes
+wherever it is pointed.
+
+- **For this project's testing,** converted logs are not kept. The batch run
+  is repeatable from the collection and an importer commit.
+- **What is kept:** the conversion report, as the evidence, and the trimmed,
+  anonymised fixtures added to the code repository.
 
 ### Proving the SQLite writer on real experiments
 
@@ -353,7 +361,7 @@ Once phases 1–4 hold:
 | 0 | Stop new `.txt` logs except the dual-format download in phase 4: deprecation warnings on `tag-dwnld -f text` and qtmonitor's text choice | Warnings shown; docs say SQLite is the format |
 | 1 | `tag-txt-import` for variants B, C, D, E, with the decoded-sample writer entry; provenance; unit tests on small anonymised fixtures of each variant | Fixtures convert; header-only, CRLF, duplicates and bad times are handled and reported |
 | 2 | Variant A; batch mode, conversion report and manifest; convert the whole collection; add one trimmed, anonymised BitTag and one PresTag `.db3` as sensorviz fixtures | Every log file converts or is reported with a reason; every converted file round-trips through `TextTagLogWriter` (or variant A's renderer) to match its original: byte for byte for current-writer files, within printed precision for older writers, metadata field by field; sensorviz opens the fixtures |
-| 3 | Researchers check converted logs against btviz on a sample of their own experiments, using whatever analysis tools they will use from now on | Sign-off, or issues fixed |
+| 3 | Researchers check converted logs against btviz on a sample of their own experiments, with whatever tools they choose | Sign-off, or issues fixed |
 | 4 | Dual-format download of the two field tags; raw Acks archived; the full triangle of checks | All three comparisons agree |
 | 5 | Removal; BitPresTag geometry settled from the firmware in the SQLite writer; decision record | Build and package without btviz, KissFFT, FastFIR or SOLPOS; docs check clean |
 
@@ -362,12 +370,6 @@ everything else.
 
 ## Open questions
 
-- **Where do converted logs live?** In the collection's repository, beside
-  the `.txt` files, or in the private data repository under LFS? Converted
-  `.db3` files are probably of similar total size to the 730 MB of text.
-- **Which analysis tools will the researchers use** for actograms and
-  filtering on SQLite logs? That doesn't block this plan, but phase 3's
-  check is easiest with the tools they will actually use.
 - **What is the C3/C4 fourth field?** Settle it from the writer's history.
 - **Should `.txt` remain readable after removal,** through the importer
   alone? This proposal says yes: the importer keeps its parsers indefinitely,
