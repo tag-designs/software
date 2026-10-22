@@ -106,7 +106,7 @@ tagsim view --truth f173.truth.db3 --estimate both -o f173-both.view.bin
   `--no-pressure` drops the altitude channel, `--no-smooth` the backward
   pass, and `--set NAME=VALUE` overrides any `FilterConfig` parameter in
   [navfilter.py](src/tagsim/navfilter.py). The smoother's per-node storage
-  (about 2.3 KB per sample with all states) and the per-sample outputs (336 bytes) go to
+  (about 2.3 KB per sample with all states) and the per-sample outputs (384 bytes) go to
   temporary memory-mapped files above 1 GiB each, so a full-flash log needs
   disk, not RAM ([design](design/navigation-filter.md#storage));
   `--set 'memmap_dir="DIR"'` chooses where.

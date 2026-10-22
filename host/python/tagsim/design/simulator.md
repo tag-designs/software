@@ -434,7 +434,8 @@ side, and tagsim already reads the format.
 | Message | Content | In the viewer |
 | --- | --- | --- |
 | `POS`, `ATT` | Truth position and airframe attitude, at 25 Hz | Default trajectory and attitude |
-| `AHR2` | The estimate's attitude, at the truth position, at the estimate's rows | Select `AHR2` as trajectory and attitude source |
+| `AHR2` | An estimate's attitude (`--estimate filter` or `compass`, or `--score`; the filter with `both`), at the truth position, at the estimate's rows | Select `AHR2` as trajectory and attitude source |
+| `XKQ1` | With `--estimate both`, the compass's attitude as the airframe quaternion `Q1`..`Q4` (FRD to NED, scalar first), at its rows; no position | Select `XKQ1` as attitude source, with `POS` as trajectory |
 | `GPS` | Truth at 5 Hz, with `GWk`/`GMS` | Start time and date |
 | `MSG` | "ArduPlane …" | Aeroplane model |
 | `UNIT`, `MULT`, `FMTU` | Units of the above | Plot labels |
@@ -453,3 +454,7 @@ Checks:
   (median) and roll and pitch to 0.4° and 0.8°, the autopilot trim between
   `ATT` and the EKF quaternion; position agrees within the 2–5 m position-fit
   offset.
+- `XKQ1` reads back through tagsim's DataFlash reader to the same attitude
+  as the Euler messages (`test_score.py`), and `XKQ1` is among the
+  extractor's quaternion attitude sources (`XKF1`, `XKQ1`, `NKQ1`, `XKQ`).
+  The viewer itself has not been run on a file with `XKQ1` yet.

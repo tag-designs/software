@@ -1,21 +1,23 @@
 ---
 type: design
 status: current
-summary: tagsim's Python prototype of the IMUTag post-processing filter - a multi-rate error-state EKF over attitude, gyro and accelerometer bias, relative altitude and vertical velocity, with an RTS smoother - how it orders the sensors' events, its updates and initialisation, and what it does not model.
+summary: tagsim's Python prototype of the IMUTag post-processing filter - a multi-rate error-state EKF over attitude, gyro bias, scale and misalignment, accelerometer bias, a magnetometer offset, relative altitude and vertical velocity, with an RTS smoother and a fitted magnetometer clock - how it orders the sensors' events, its updates and initialisation, its storage, and what it does not model.
 ---
 
 # IMUTag Navigation Filter (Prototype)
 
 `tagsim filter` estimates, from a decoded IMUTag log alone, the tag's
-attitude (tag frame to ENU), its gyro and accelerometer biases, and its
-altitude relative to the start with vertical velocity. It is a forward error-state EKF followed by a
-Rauch-Tung-Striebel smoother over the whole record, written in Python
-(`src/tagsim/navfilter.py`) as the prototype for a later port into the Qt-free
-`sensoranalysis` core. Scored with tagsim on the recorded pattern flights,
-with the simulator's datasheet and assumed scale, misalignment and bias
-instability errors, it is good to about 0.8° in flight (median; 1.6° at the
-95th percentile) where the single-sample compass is wrong by about 28°; the
-figures and their caveats are in
+attitude (tag frame to ENU), its gyro bias, scale and misalignment, its
+accelerometer bias, what the log's magnetometer calibration left of the hard
+iron, and its altitude relative to the start with vertical velocity. It is a
+forward error-state EKF followed by a Rauch-Tung-Striebel smoother over the
+whole record, written in Python (`src/tagsim/navfilter.py`) as the prototype
+for a later port into the Qt-free `sensoranalysis` core. Scored with tagsim
+on the recorded pattern flights, with the simulator's datasheet and assumed
+scale, misalignment and bias instability errors, it is good to about 0.12°
+in flight (median; 0.21° at the 95th percentile), and 0.27° with a wrong
+magnetometer calibration, where the single-sample compass is wrong by about
+28°; the figures and their caveats are in
 [compass-baseline-results.md](compass-baseline-results.md).
 
 ```sh
@@ -55,22 +57,87 @@ on a sample has exactly that sample's time and is applied there.
 - a magnetometer reading is also older than its poll by an age the log does
   not record: 0 to one conversion period of the free-running BMM350 (80 ms at
   100 Hz; the firmware scales the BMM350's rate with the ODR). The filter
-  subtracts the **mean** age, half a nominal period, from `t`, and treats the
-  rest as noise (below). `FilterConfig.mag_age_s` overrides the subtracted
-  age; it is the hook for a per-sample age correction, which is not built.
+  applies each reading at **its own conversion time**, from the BMM350's
+  clock fitted to the log ([below](#the-magnetometer-clock)). Without a fitted
+  clock it subtracts the **mean** age, half a nominal period, and treats the
+  rest as noise. `FilterConfig.mag_age_s` forces a constant age instead.
 
-Subtracting the mean age matters: on a tag turning steadily at 60 dps, the
-attitude error is 1.1–2.4° without it and 0.45° with it.
+Correcting the age matters: on a tag turning steadily at 60 dps, the
+attitude error is 1.1–2.4° with no correction and 0.45° with the mean age.
+
+### The magnetometer clock
+
+The BMM350 converts on its own clock: conversion `k` completes at
+`t0 + k T`, with a phase `t0` and a period `T` that is nominal to ±2 %
+(the sheet's output-rate tolerance). Once per superframe the firmware reads
+the newest completed conversion. So a reading polled at `t_p` was converted at
+
+```
+t_c = t0 + floor((t_p - t0) / T) T
+```
+
+and the two constants of the segment give every reading's age. They are
+fitted from the log, not carried as EKF states. The phase is unobservable at
+rest. Under the ±2 % rate prior it is lost within seconds, a whole period
+being 80 ms. An EKF linearised about one phase cannot recover from that
+ambiguity. The fit (`estimate_mag_clock`) is batch:
+
+1. A first, attitude-only smoothing pass with the mean-age correction gives
+   a reference attitude. It is the same pass that bootstraps a record
+   starting in the air.
+2. For each reading taken while the tag turns faster than 30 dps, the age
+   that best matches the reading with the reference is found by a search
+   over one period. The field in the tag frame moves at the turn rate, so
+   the age shows in where the reading fits. Its conversion time is the poll
+   less that age, weighted by how sharply the match fixes it.
+3. Those times all lie on `t0 + k T`. A weighted periodogram over periods
+   within ±3 % of nominal finds `T` and the phase on the first 900 s.
+   Weighted least squares on the residuals, wrapped to a period, refine both
+   over the whole record.
+
+The fit is used when the readings agree on a clock (resultant length above
+0.3; it is about 0.9 on the flights). Otherwise the filter falls back to the
+mean age. Each event is then applied at its `t_c`, with an age SD of
+`mag_clock_sigma_s` (0.5 ms). A reading within 1 ms of a conversion
+boundary could be either conversion, so it gets the SD of an age unknown
+over a whole period. On the pattern flights the fitted rate is within a few
+ppm of the simulated one. 99 % of ages are within 0.1–0.7 ms of the truth,
+against 23.5 ms RMS for the mean age. The 0.02–0.6 % of readings that land
+a period off are boundary readings.
 
 ## State
 
 The nominal state is the attitude quaternion `q` (tag frame to ENU, as
-`TruthPose`), the gyro bias `b` (rad/s, tag frame), the accelerometer bias
-`ba` (m/s², tag frame), and, with the pressure channel on, the altitude `h`
-(m) and vertical velocity `vz` (m/s, up). The error state is
-`[dθ, db, dba, dh, dvz]`, eleven states, with the attitude error taken in
-ENU: `q_true = exp(dθ) ⊗ q`. Its first two components are tilt and the third
-heading, which keeps the update Jacobians simple.
+`TruthPose`), the gyro bias `b` (rad/s, tag frame), the gyro correction
+matrix `K` (below), the accelerometer bias `ba` (m/s², tag frame), the
+magnetometer offset `dm` (µT, tag frame), and, with the pressure channel on,
+the altitude `h` (m) and vertical velocity `vz` (m/s, up). The error state
+is `[dθ, db, dK, dba, ddm, dh, dvz]`, twenty-three states, with the attitude
+error taken in ENU: `q_true = exp(dθ) ⊗ q`. Its first two components are
+tilt and the third heading, which keeps the update Jacobians simple.
+
+**The gyro calibration states** (`gyro_cal_states`, on by default) are the
+nine elements of `K` in the corrected rate `w = (I + K)(w_m - b)`. The
+gyro's sensitivity and misalignment matrix is then `T = (I + K)^-1`
+(measured = `T` true + bias, the simulator's convention). The outputs
+report `T - I`. The priors are 0.3 % on the diagonal (the LSM6DSV's
+`G_So%`) and 0.5° off it (the simulator's assumed misalignment), with no
+random walk. A wrong scale or misalignment makes an attitude error in
+proportion to the rotation, so the pattern's rolls and loops, which reach
+hundreds of dps about every axis, make all nine observable against the
+magnetometer and accelerometer. On the simulated flights `T - I` (4e-3 RMS)
+is recovered to about 0.2e-3, and the in-flight error falls from 0.73° to
+0.12°.
+
+**The magnetometer offset states** (`mag_bias_states`, on by default;
+prior 2 µT, no random walk) take up a residual hard iron left by the log's
+calibration: the field is read as `m - dm`. They are needed because of the
+gyro calibration states. A wrong hard iron gives an attitude error that
+depends on the attitude. Without the offset states, the gyro calibration
+states absorb that error as a scale and misalignment, which made a perturbed
+calibration worse than without them (1.37° to 1.67° on `f173`). With the
+offset states it is 0.27° in flight across the flights. They cannot take up
+a soft-iron error, which scales the field.
 
 **The accelerometer bias states** (`accel_bias_states`, on by default;
 initial sigma 10 mg, random walk 0.01 mg/√s) are there for the smoother. A
@@ -85,8 +152,8 @@ misalignment errors the apparent bias depends on attitude, and the states
 then cost some heading on the ground while still helping in flight (see
 [compass-baseline-results.md](compass-baseline-results.md)).
 
-There is deliberately no gyro scale or misalignment, magnetometer
-disturbance, pressure offset or sea-level drift state. Altitude is relative to the first
+There is deliberately no soft-iron, magnetometer disturbance, pressure
+offset or sea-level drift state. Altitude is relative to the first
 pressure sample under the ISA with a constant 1013.25 hPa reference, so a
 constant sensor offset cancels; sea-level pressure is assumed not to drift
 during an experiment.
@@ -97,7 +164,8 @@ Over each interval `dt`, with the interval's mean rate `w` and specific force
 `f` (both interpolated as above):
 
 ```
-q   <- q ⊗ exp((w - b) dt)
+u    = w_m - b
+q   <- q ⊗ exp((I + K) u dt)
 a    = (R(q) (f - ba))_up - g
 h   <- h + vz dt + a dt²/2
 vz  <- vz + a dt
@@ -105,7 +173,7 @@ vz  <- vz + a dt
 
 `g` is the mean `|f|` over the still periods, so the vertical component of
 the accelerometer's bias at the start attitude cancels. The error dynamics
-are `dθ' = -R db`, `dvz' = (dθ × R f)_up - (R dba)_up`. That last term couples tilt to
+are `dθ' = R (dK u - (I + K) db)`, `dvz' = (dθ × R f)_up - (R dba)_up`. That last term couples tilt to
 the vertical channel: a tilt error rotates part of a large manoeuvring
 specific force into the vertical, which pressure then sees, so the pressure
 updates also correct tilt during manoeuvres.
@@ -133,15 +201,18 @@ keep `|f|` near 1 g. The update is skipped when `||f| - g|` exceeds 1 g or an
 axis is saturated. The `sqrt(ODR/100)` factor keeps the information per second
 the same at every ODR.
 
-**Magnetometer, per event.** The log's newest `Calibration` row corrects the
-stored field, `A (M - V)`, which is mapped to the tag frame (stored
-`(B_y, -B_x, B_z)`, see [simulator.md](simulator.md#sensor-model)) and
+**Magnetometer, per event, at its conversion time.** The log's newest
+`Calibration` row corrects the stored field, `A (M - V)`, which is mapped to
+the tag frame (stored `(B_y, -B_x, B_z)`, see
+[simulator.md](simulator.md#sensor-model)); less the offset `dm`, it is
 compared with the Earth field, `R(q)^T B_ENU`. The full vector is used, so it
 constrains tilt as well as heading: two of the three rotation axes, and it is
 unaffected by acceleration. The update is skipped when `|m|` differs from
-`|B|` by more than 5 µT. Its sigma is 1 µT plus `|B| · |w| · σ_age`, the error
-the unrecorded part of the sample age causes at the current turn rate, with
-`σ_age` the SD of an age uniform over one conversion period.
+`|B|` by more than 5 µT. Its sigma is 1 µT plus `|B| · |w| · σ_age`, the
+error that the uncertain part of the sample age causes at the current turn
+rate. `σ_age` is the event's own: 0.5 ms with the fitted clock, or the SD of
+an age uniform over one conversion period near a conversion boundary and
+without the clock.
 
 `B_ENU` is the World Magnetic Model at the site and the log's date
 (`--site LAT LON ALT`), a given field (`--field-ned`), or the field a tagsim
@@ -162,8 +233,10 @@ sample's, against `h`, with a sigma of 6 cm (the BMP581's 0.41 Pa is about
   and magnetometer means over that first still run (TRIAD against `g` and
   `B_ENU`), with a 2° sigma.
 - **A record that starts moving** (the kept piece of some flights starts in
-  the air) is bootstrapped: a first, attitude-only pass is run and smoothed,
-  and its estimate at the first sample seeds the real pass with a 3° sigma.
+  the air) is bootstrapped. A first, attitude-only pass is run and smoothed,
+  the same pass that the magnetometer clock is fitted to. Its attitude and
+  gyro bias at the first sample seed the real pass with a 3° sigma. The gyro
+  calibration and magnetometer offset start again from their priors.
   The initial altitude and vertical velocity come from a line through the
   first 0.5 s of pressure altitude. Without this, the forward pass on
   `00000176` starts with a 30° attitude error and a 58 m/s vertical-velocity
@@ -199,11 +272,11 @@ whose bootstrapped start carries the difference into the forward pass too),
 altitude by under 1 µm and vertical velocity by under 5 µm/s, against a
 stated tolerance of 0.001°, 1 mm and 1 mm/s that `test_flight.py` checks.
 
-**Storage per node** is 12 doubles of state (q, gyro bias, `h`, `vz`,
-accelerometer bias), the `n x n` gain, a double and an int32: 592 bytes with
-all eleven states, 364 with eight (no accelerometer bias states). A
-full-flash log at 1600 Hz, about 21.5 million samples and 23.6 million nodes,
-needs about 14 GB.
+**Storage per node** is 24 doubles of state (q, gyro bias, `h`, `vz`,
+accelerometer bias, `K`, magnetometer offset), the `n x n` gain, a double
+and an int32: 2320 bytes with all twenty-three states. A full-flash log at
+1600 Hz, about 21.5 million samples and 23.6 million nodes, needs about
+55 GB.
 
 **Above `memmap_threshold_mb` (1024 MiB) it goes to files.** The four
 per-node arrays are then `numpy.memmap` files in a temporary directory
@@ -213,50 +286,69 @@ reads them in decreasing order; each file is mapped a window of
 `memmap_window_nodes` (65 536) rows at a time, flushed and unmapped when the
 access leaves it, so the process holds one window per file and the operating
 system's page cache does the rest. Below the threshold they are plain arrays,
-with identical results. The outputs, forward and smoothed states per IMU
-sample (192 bytes per sample), stay in memory: they are the result.
+with identical results.
 
-| Synthetic run at rest, 1600 Hz | Storage | Peak memory | Time |
-|---|---|---|---|
-| 200 000 samples (`test_navfilter.py`), in memory | 136 MB bound | +126 MB | 20 s |
-| the same, in files | | +22 MB | 20 s |
-| 2 000 000 samples (21 min), in memory | 1355 MB bound | 1854 MB | 224 s |
-| the same, in files (the default above 1 GiB) | | 590 MB | 226 s |
+## Storage
 
-The first two are growth in `ru_maxrss` during the run; the last two are
-macOS's peak memory footprint from `/usr/bin/time -l`, since `ru_maxrss` on
-macOS leaves out compressed pages and reported only 606 MB for the in-memory
-run. Of the file-backed 590 MB, 366 MB are the outputs and most of the rest
-the log's own arrays. The results were identical in both modes and the
-files were gone afterwards. Mapping the storage costs no measurable time.
+**The outputs are file-backed above the same threshold.** The forward and
+smoothed nominal states per IMU sample, 24 doubles each (384 bytes a sample,
+about 8 GB at full flash), are the result. Above `memmap_threshold_mb` they
+are `numpy.memmap` files in their own temporary directory (an
+`OutputStore`), written in order by the forward pass and in reverse by the
+smoother. Each is flushed every `memmap_window_nodes` rows, so written pages
+can leave memory. The files outlive `run_filter`: the `FilterResult` holds
+the store, and `FilterResult.close()`, or garbage collection, deletes them.
+The `FilterResult` arrays are views of the files.
+`write_estimates` writes in chunks of 65 536 rows, so a file-backed result
+is never all in memory. Results are identical in both modes:
+`test_flight.py` compares every output array on a flight.
+
+| Synthetic run at rest, 1600 Hz | Storage + outputs | Peak memory |
+|---|---|---|
+| 200 000 samples (`test_navfilter.py`), storage and outputs in memory | 531 + 73 MB | +553 MB |
+| the same, both in files | | +125 MB |
+| 2 000 000 samples (21 min), storage in files, outputs in memory (the default: 732 MB is under 1 GiB) | 5310 + 732 MB | 1436 MB |
+| the same, both in files (`memmap_threshold_mb=256`) | | 666 MB |
+
+These figures are for all twenty-three states. The first two rows are the
+growth in `ru_maxrss` during the run, with the test's 4096-row windows. The
+last two are macOS's peak memory footprint from `/usr/bin/time -l`, since
+`ru_maxrss` on macOS leaves out compressed pages; each took about 13
+minutes, run side by side. In every pair the outputs were byte-identical
+and the files were gone afterwards. The first, attitude-only pass's outputs
+are released before the main pass allocates its own, so the two passes never
+hold outputs at once.
 
 ## Output
 
 `tagsim filter -o NAME-filt.db3` writes `FilterForward` and `FilterSmoothed`,
 one row per IMU sample with `SegmentId`, `SampleIndex`, `ElapsedUs`,
 `qw qx qy qz` (tag frame to ENU), `alt` (m, relative to the first pressure
-sample), `vz` (m/s, up), the gyro bias `bx by bz` (dps) and the
-accelerometer bias `abx aby abz` (mg), plus `FilterRun`
-with the configuration and counters. `tagsim score --table FilterSmoothed`
+sample), `vz` (m/s, up), the gyro bias `bx by bz` (dps), the
+accelerometer bias `abx aby abz` (mg) and the gyro's `T - I`
+(`gsxx gsxy … gszz`, row-major), plus `FilterRun` with the configuration and
+counters. Its `StatsJson` holds the clock fit (`mag_clock`: `t0_s`,
+`period_s`, `rate_error_ppm`, the readings used and the fit's agreement) and
+the final gyro calibration and magnetometer offset. `tagsim score --table FilterSmoothed`
 scores either table directly; `tagsim batch --filter` runs and scores the
 filter with and without the pressure channel on every flight. Each segment of
 a multi-segment log is filtered on its own.
 
-Speed in Python: about 9 000 IMU samples a second with all eleven states,
-so 7–16 s for a ten-minute flight at 100 Hz (more when the start is
-bootstrapped, which runs a first pass) and some 40 minutes for a full-flash
-1600 Hz log.
+Speed in Python: about 9 000 IMU samples a second, so a ten-minute flight
+at 100 Hz takes 15–25 s including the first pass for the clock. A
+full-flash 1600 Hz log takes about 2.5 hours (2 000 000 samples took 13 minutes).
 
 ## What it does not model
 
-- **Gyro scale and misalignment are not estimated**, and they are what limits
-  the filter on the simulated flights: ±0.5° of gyro misalignment alone takes
-  the in-flight error from 0.23° to about 1°. The misalignment figure is an
-  assumption, so a bench calibration, or states for it, come first.
-- No g-sensitivity, temperature dependence or vibration in the scored runs;
-  the bias instability figures are assumed.
-- **A wrong magnetometer calibration** is not detected or estimated: with
-  `--calibration perturbed` logs the error roughly doubles, mostly in
-  heading.
-- The per-sample magnetometer age is not estimated (see the hook above).
+- **A wrong soft iron** is not estimated. The offset states take up the
+  hard iron, but a perturbed calibration still costs 0.27° against 0.12° in
+  flight, and pulls the gyro calibration about 1.4e-3 off.
+- The gyro calibration and the magnetometer clock are constant over a
+  segment: no temperature dependence of either, and no drift of the
+  BMM350's rate.
+- No g-sensitivity or vibration in the scored runs; the misalignment and
+  bias instability figures are assumed.
+- Records that start in the air are the weakest (0.33° and 0.75° on `f167`
+  and `f176`). The gyro calibration and magnetometer offset are not carried
+  over from the bootstrap pass.
 - Tuning was set by hand on a few flights and synthetic cases, not fitted.
