@@ -48,7 +48,7 @@ PresTag logs are present. The survey (2026-10-22) found five variants:
 | --- | --- | --- | --- |
 | **A**, early BitTag (RTCv4 firmware) | 192 | Free-form `#` lines (`pages`, `device`, `hash`, `info`, `# Time … epoch: N error E`); 55 files have only the time line | Tab-indented `time <local date>,<epoch>,<payload>`: a 32-bit hex activity bitmap every 5 min, or `temperature T vdd V` |
 | **B**, BitTag V5 header | 100 | `Tag Read time`, `Board: BitTag V5`, `Git Hash`, `UUID`, accelerometer settings, `Format: BITSPERFIVEMIN` or `BITSPERMIN` | `epoch,FIVEMIN:pct` or `MIN:pct`; `epoch,V:v,TC:t` |
-| **C**, current `writeTextHeader` | 285 | The current header (tag type, firmware, board, UUID, `BitTag Log Format`, hibernate windows, state log) | C1 `FIVEMIN` (197 files), C2 `MIN` (94); C3/C4 (32 and 19 files) add an unlabelled fourth field to the `V:` line |
+| **C**, current `writeTextHeader` | 285 | The current header (tag type, firmware, board, UUID, `BitTag Log Format`, hibernate windows, state log) | C1 `FIVEMIN` (197 files), C2 `MIN` (94); C3/C4 (32 and 19 files) add a fourth field to the `V:` line: the record's raw packed activity word (see below) |
 | **D**, PresTag | 12 | Variant C header with `Tag Type: PRESTAG`, `Sample Period` | `V:,TC:`, `P:` (hPa, unstated), `T:` (°C, unstated) |
 | **E**, no header | 3 | None | Variant C1 data lines |
 
@@ -152,9 +152,18 @@ schema stays defined in one place.
   into `Activity`, at the times the text writer used.
 - **Variant D:** `P:` becomes `Pressure` (hPa = mbar), `T:` becomes
   `Temperature`, and `V:,TC:` becomes `Voltage` and `CoreTemperature`.
-- **C3/C4's unlabelled fourth field** is kept as its own stream (`Unknown4`)
-  until git history of the writer at those dates identifies it; then it is
-  named or dropped.
+- **C3/C4's fourth field** is the record's raw packed activity word: the
+  64-bit value the tag stored, from which the writer unpacked the buckets.
+  - *Checked on the whole collection (2026-10-22):* in all 51 files, all
+    285,821 records' fields equal their own activity buckets re-packed
+    (`count_i << i·bits`, 9 bits for FIVEMIN, 6 for MIN), including all
+    232,480 that are nonzero.
+  - *So it carries no new data.* The importer re-packs each record and
+    requires equality, recording the result in the conversion report, and
+    stores no extra stream.
+  - *Its source:* it came from the older `NanoTag` repository's writer
+    (headers' git hashes `cab6fe3`, `d3d1030`, `d59ff85`), which printed it;
+    the writer in this tree never has.
 
 **Repairs, never silent.** Each run writes a conversion report and records
 the same facts in the log's `info`:
@@ -290,8 +299,8 @@ the importer as its private verification renderer rather than being deleted
 | Case | Files | Check |
 | --- | --- | --- |
 | Variant C1, C2, D, E | 306 | Data lines byte for byte. Header compared as a set of `key: value` fields plus the ordered state log, since header layout does not matter; for files from the current writer it should match exactly anyway |
-| Variant C3/C4: an unlabelled fourth field on `V:` lines, written by an older writer | 51 | Data lines byte for byte except that field; the field itself compared by value against the extra stream |
-| Variant B and the re-exports: older writers, different precision (`0.00`, `0.3333`) | 100 + re-exports | Line by line, epochs and keys exact, numbers within half the original's last printed digit. Optionally, check out the writer at the header's git hash for an exact match |
+| Variant C3/C4: the packed activity word as a fourth field on `V:` lines, written by an older writer | 51 | Data lines byte for byte, with the checker appending the re-packed word as that writer did |
+| Variant B and the re-exports: older writers, different precision (`0.00`, `0.3333`) | 100 + re-exports | Line by line, epochs and keys exact, numbers within half the original's last printed digit. With the `NanoTag` repository checked out, the writer at each file's header git hash makes these exact too |
 | Variant A: RTCv4 firmware's format, from no writer in this tree | 192 | A small test-only renderer for its tab-indented lines, re-packing per-minute counts into the 32-bit hex bitmap, compared exactly, including any bits outside the 30 used |
 
 **Allowed differences, in every case:** only the repairs listed in the
@@ -370,7 +379,6 @@ everything else.
 
 ## Open questions
 
-- **What is the C3/C4 fourth field?** Settle it from the writer's history.
 - **Should `.txt` remain readable after removal,** through the importer
   alone? This proposal says yes: the importer keeps its parsers indefinitely,
   so a `.txt` file found later can still be converted.
