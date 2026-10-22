@@ -52,7 +52,7 @@ also needs `tag-log-import`, built with the host tools
 | `--ppm` | 0 | `TagInfo.ppm_clock_error` to report; no clock error is simulated yet |
 | `--pad` | 10 | Seconds kept either side of the `STAT.isFlying` window |
 | `--duration` | whole flight | Stop after this many seconds |
-| `--max-accel-g`, `--max-rate-dps`, `--vel-tol`, `--att-tol`, `--bridge-s` | 15, 2000, 5, 10, 0.5 | Glitch thresholds |
+| `--max-accel-g`, `--max-rate-dps`, `--vel-tol`, `--att-tol`, `--bridge-s` | 15, 1000, 5, 10, 0.5 | Glitch thresholds |
 | `--pos-sigma`, `--vel-sigma`, `--jerk-sigma` | 5, 0.1, 100 | Position fit weights |
 | `--keep-jsonl` | off | Keep the intermediate download (`NAME.jsonl`, the `tag_dwnld.py` format) |
 

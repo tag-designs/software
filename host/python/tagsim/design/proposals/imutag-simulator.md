@@ -193,7 +193,7 @@ is real piloting.
 
 A spline fitted through these would turn them into enormous false specific
 force and rate. Before fitting, tagsim flags any sample implying more than a
-plausibility bound (default 15 g or 2,000 dps), or whose core-0 and core-1
+plausibility bound (default 15 g or 1,000 dps), or whose core-0 and core-1
 estimates disagree beyond a tolerance. For each flagged sample:
 
 - if the other core is clean there, use it;

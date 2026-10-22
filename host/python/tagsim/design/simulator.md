@@ -42,7 +42,7 @@ degree in the first logs.
 ## Glitch repair
 
 A forward pass over each core flags a sample as **implausible** when, against
-the last plausible sample, it implies more than 15 g or 2000 dps. A run that
+the last plausible sample, it implies more than 15 g or 1000 dps. A run that
 stays implausible for longer than 0.5 s takes its current sample as the new
 reference, so one persistent step flags one run, not the rest of the flight.
 
@@ -68,7 +68,7 @@ On the first logs:
 | --- | --- |
 | `00000167` | Its 26 g sample is bridged. Its neighbours still carry part of the step, so about 17 g survives there. |
 | `00000176` | Both cores glitch every 8–10 s and diverge by up to 200 m/s between 78 and 354 s. tagsim keeps the 184 s after that stretch. |
-| `00000174` | Its 1202 dps attitude step is under the 2000 dps default bound, so it is not flagged and comes through as a 664 dps peak. `--max-rate-dps 1000` catches it. |
+| `00000174` | A 48° attitude jump in one 40 ms interval (1202 dps), 1.3 s after `isFlying` starts. The 1000 dps default flags it and bridges it, but the jump lasts (the attitude stays jumped, like an EKF yaw reset), so bridging only spreads it. A 542 dps spike survives as the flight's peak. A lasting step needs a split, not a bridge; this is not handled yet. |
 
 ## Splines
 

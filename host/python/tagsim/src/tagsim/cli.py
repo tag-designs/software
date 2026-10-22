@@ -91,7 +91,7 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--seed", type=int, default=0)
     r.add_argument("--keep-jsonl", action="store_true", help="keep the intermediate download")
     r.add_argument("--max-accel-g", type=float, default=15.0)
-    r.add_argument("--max-rate-dps", type=float, default=2000.0)
+    r.add_argument("--max-rate-dps", type=float, default=1000.0)
     r.add_argument("--vel-tol", type=float, default=5.0, help="core disagreement, m/s")
     r.add_argument("--att-tol", type=float, default=10.0, help="core disagreement, degrees")
     r.add_argument("--bridge-s", type=float, default=0.5)

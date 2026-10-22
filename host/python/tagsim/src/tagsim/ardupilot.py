@@ -53,7 +53,7 @@ class GlitchConfig:
     """Thresholds for flagging EKF samples that are not motion."""
 
     max_accel_g: float = 15.0
-    max_rate_dps: float = 2000.0
+    max_rate_dps: float = 1000.0
     vel_tol_mps: float = 5.0
     att_tol_deg: float = 10.0
     bridge_s: float = 0.5
