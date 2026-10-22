@@ -450,7 +450,7 @@ design document.
 
 ### python / tagsim / Proposals
 
-- [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a model of IMUTag's real acquisition and writes genuine IMUTag SQLite logs plus a ground-truth sidecar, for stress-testing the host tools and scoring post-processing filters.
+- [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a simple IMUTag sensor model and writes genuine IMUTag SQLite logs plus ground truth, chiefly to test the future post-processing orientation filter.
 
 ### tagserver
 

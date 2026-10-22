@@ -7,7 +7,11 @@ once, then decodes the message types asked for into numpy structured arrays,
 so no pymavlink is needed.
 
 Scaled formats (``c``, ``C``, ``e``, ``E``, ``L``) are returned already
-scaled, as float64. Bytes that do not start a known message are skipped one at
+scaled, as float64. A log's own ``FMTU``, ``UNIT`` and ``MULT`` records give
+each field's unit and multiplier; :meth:`DataFlashLog.units` returns them, and
+the tests check that they agree with the format-character scaling (on the
+ArduPlane 4.0.9 logs, for example, ``ORGN.Alt`` is centimetres, ``e`` with
+multiplier 0.01, so it decodes to metres). Bytes that do not start a known message are skipped one at
 a time, which resynchronises after a corrupt record.
 """
 
@@ -127,3 +131,31 @@ class DataFlashLog:
             scale = _FORMATS[ch][1]
             out[col] = rows[col].astype(np.float64) * scale if scale else rows[col]
         return out
+
+    def units(self, name: str) -> dict[str, tuple[str, float | None]]:
+        """Column -> (unit, multiplier) from ``FMTU``/``UNIT``/``MULT``.
+
+        The multiplier is what the log says converts the *stored* integer to
+        the unit; ``None`` where the log gives none. Empty when the log has
+        no ``FMTU`` record for ``name``.
+        """
+        if not (self.has("FMTU") and self.has("UNIT") and self.has("MULT")):
+            return {}
+        unit = self.messages("UNIT")
+        labels = {int(i): s.rstrip(b"\0").decode("ascii", "replace")
+                  for i, s in zip(unit["Id"], unit["Label"])}
+        mult = self.messages("MULT")
+        mults = {int(i): float(v) for i, v in zip(mult["Id"], mult["Mult"])}
+        fmtu = self.messages("FMTU")
+        f = self.formats[name]
+        for t, uids, mids in zip(fmtu["FmtType"], fmtu["UnitIds"], fmtu["MultIds"]):
+            if int(t) != f.type:
+                continue
+            uids, mids = uids.rstrip(b"\0"), mids.rstrip(b"\0")
+            out = {}
+            for i, col in enumerate(f.columns):
+                u = labels.get(uids[i], "") if i < len(uids) else ""
+                m = mults.get(mids[i]) if i < len(mids) else None
+                out[col] = (u, m if m else None)
+            return out
+        return {}
