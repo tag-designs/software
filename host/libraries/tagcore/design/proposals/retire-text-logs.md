@@ -1,0 +1,374 @@
+---
+type: proposal
+status: proposed
+summary: Retire the legacy .txt sensor-log format and btviz - convert the existing BitTag and PresTag .txt collection to SQLite with a command-line importer that round-trip-verifies every conversion, use the conversion and a dual-format field download to prove the SQLite writer on real experiments, then delete the text writer, btviz and their docs; actograms and filtering move to general-purpose tools reading SQLite.
+---
+
+# Retiring the Text Log Format and btviz
+
+**Status:** proposed, nothing built.
+
+The `.txt` sensor-log format and btviz, the tool that reads it, are to be
+retired. SQLite (`.db3`) becomes the only log format and sensorviz the only
+viewer. The plan has three parts:
+
+1. **Migrate the data.** A command-line importer, `tag-txt-import`, converts
+   the existing BitTag and PresTag `.txt` logs to SQLite logs in tagcore's
+   own schema. It verifies every conversion by rendering the result back to
+   text with the original writer's code and comparing it with the source
+   file. Each converted log records where it came from and that it passed.
+2. **Prove the SQLite writer on real data.** The SQLite path has not yet been
+   used on a real experiment. The conversion exercises its schema at scale.
+   The two `.txt`-era tags now in the field are downloaded in both formats
+   (plus raw Acks) and cross-checked before anything is deleted.
+3. **Delete.** The text writer, btviz, their documentation, screenshots,
+   packaging and btviz-only third-party code are removed. sensorviz does not
+   take over btviz's analysis features. Actograms, filtering and interval
+   statistics belong to general-purpose analysis tools, which read the SQLite
+   logs directly.
+
+## What exists
+
+### The text writer and its formats
+
+`TextTagLogWriter` (`txtlogs.cc`) writes a `#`-commented header (tag info,
+calibration, configuration, state log), then data lines of the form
+`epoch,KEY:value`, with integer Unix seconds. It covers every tag type, but
+only BitTag and PresTag `.txt` logs exist in practice. Selected by
+`tag-dwnld -f text` and in qtmonitor's save dialog; the default is already
+SQLite for every type that supports it.
+
+### The collection
+
+A legacy collection, a private git repository of about 2.1 GB, holds 619
+`.txt` files (730 MB) from experiments between 2019 and 2023. Only BitTag and
+PresTag logs are present. The survey (2026-10-22) found five variants:
+
+| Variant | Files | Header | Data lines |
+| --- | --- | --- | --- |
+| **A**, early BitTag (RTCv4 firmware) | 192 | Free-form `#` lines (`pages`, `device`, `hash`, `info`, `# Time … epoch: N error E`); 55 files have only the time line | Tab-indented `time <local date>,<epoch>,<payload>`: a 32-bit hex activity bitmap every 5 min, or `temperature T vdd V` |
+| **B**, BitTag V5 header | 100 | `Tag Read time`, `Board: BitTag V5`, `Git Hash`, `UUID`, accelerometer settings, `Format: BITSPERFIVEMIN` or `BITSPERMIN` | `epoch,FIVEMIN:pct` or `MIN:pct`; `epoch,V:v,TC:t` |
+| **C**, current `writeTextHeader` | 285 | The current header (tag type, firmware, board, UUID, `BitTag Log Format`, hibernate windows, state log) | C1 `FIVEMIN` (197 files), C2 `MIN` (94); C3/C4 (32 and 19 files) add an unlabelled fourth field to the `V:` line |
+| **D**, PresTag | 12 | Variant C header with `Tag Type: PRESTAG`, `Sample Period` | `V:,TC:`, `P:` (hPa, unstated), `T:` (°C, unstated) |
+| **E**, no header | 3 | None | Variant C1 data lines |
+
+Problems a converter must handle, all found in the collection:
+
+- **Empty files:** 3 empty files, and 53 files with a header but no data.
+  Some of the latter have a data-bearing copy under another name.
+- **Duplicate files:** 50 groups of byte-identical files, 79 redundant copies
+  in all.
+- **Duplicate records:** BitTag V5/V6 exports contain repeated and
+  overlapping records (one file: 130,645 records, 101,610 distinct times).
+  Later re-exports (`*-reformat`, `*-repair`) of the same tags remove the
+  duplicates and print finer values. The collection therefore holds two
+  versions of those tags.
+- **Corrupt times and values:** epochs of 0, of 1979 and of 2004, a
+  temperature of 1839.6 and a voltage of 140.81, and time running backwards
+  in some files.
+- **Text encoding:** CRLF line endings (7 files) and missing final newlines
+  (2). There is no non-UTF-8 text in any real log.
+- **Not logs:** experiment notes and macOS AppleDouble files with a `.txt`
+  extension.
+
+**Metadata outside the logs.** No log has a sidecar file. Tag identity is in
+the header for variants B–D (UUID), and only a non-UUID device string for A.
+The collection's inventory (a SQLite database plus CSVs) maps tag labels to
+UUIDs, experiments, battery and weight. Bird and deployment identities appear
+only in file and directory names.
+
+### The SQLite side
+
+The SQLite writer for BitTag (MIN, FOURMIN, FIVEMIN, PERSEC) and PresTag
+writes `Activity` (%), `Voltage` (V), `CoreTemperature` (°C), `Pressure`
+(mbar) and `Temperature` (°C), with `streams` metadata, `info`, `states`,
+`Calibration` and `schema_info`. It is fed from raw `Ack` protobufs.
+
+**A `.txt` file holds decoded values, not Acks.** So no existing path, neither
+`tag-log-import` (Acks) nor `tag-rebuild` (captures), can take one. There is
+no converter.
+
+**BitPresTag inconsistency.** The text writer packs BitPresTag activity as
+5×6-bit 60 s buckets; the SQLite writer as 4×4-bit 15 s buckets
+(`sqlitelog/README.md`). No BitPresTag data exists in either format, so this
+is fixed in code (phase 5), not migrated.
+
+### btviz's features
+
+Beyond viewing, btviz offers:
+
+- an actogram (single or double plot) with sun-elevation (SOLPOS) and
+  lab-light overlays;
+- a 101-tap Hanning FIR low-pass filter;
+- CSV export of the visible range;
+- the mean activity over the visible range, and averages over intervals read
+  from a CSV;
+- PNG and PDF save.
+
+**None of these move into sensorviz.** sensorviz stays a viewer. Once the
+data is in SQLite, actograms, filtering and interval statistics are better
+served by general-purpose analysis tools that read the logs directly. The
+schema is documented in the user manual's
+[SQLite logs reference](../../../../docs/src/reference/sqlite-logs.md), and
+any language with SQLite can read it.
+
+## Design
+
+### The importer: `tag-txt-import`
+
+`tag-txt-import` is a C++ command-line tool in `host/commandline`, linking
+tagcore. It sits beside the SQLite writer that owns the schema, so the
+schema stays defined in one place.
+
+**A new writer entry point for decoded samples.**
+
+- `SqliteTagLogWriter` gains a path that writes already-decoded samples into
+  the same tables and `streams` metadata as the Ack path: activity, voltage,
+  core temperature, pressure and temperature.
+- The Ack path is unchanged.
+- Re-packing percentages into Ack bitfields was considered and rejected:
+  - variant A's bitmap geometry has no Ack equivalent;
+  - variant B values printed to two decimals only;
+  - it would make the importer depend on details it does not need.
+
+**Parsing.**
+
+- One parser per variant. A file is classified from its header, or from its
+  data lines for variant E.
+- Lines are accepted with explicit checks: btviz's parser indexes without
+  bounds checks and turns parse failures into 0.
+- CRLF and a missing final newline are handled.
+
+**Variant mappings:**
+
+- **Variant A:** unpacks the 32-bit bitmap as btviz does: five 6-bit minute
+  buckets per 5-minute record, as per-minute activity. `temperature/vdd`
+  becomes `CoreTemperature` and `Voltage`. The epoch is authoritative; the
+  local wall-clock text is ignored.
+- **Variants B, C, E:** `MIN`, `FOURMIN` and `FIVEMIN` percentages go straight
+  into `Activity`, at the times the text writer used.
+- **Variant D:** `P:` becomes `Pressure` (hPa = mbar), `T:` becomes
+  `Temperature`, and `V:,TC:` becomes `Voltage` and `CoreTemperature`.
+- **C3/C4's unlabelled fourth field** is kept as its own stream (`Unknown4`)
+  until git history of the writer at those dates identifies it; then it is
+  named or dropped.
+
+**Repairs, never silent.** Each run writes a conversion report and records
+the same facts in the log's `info`:
+
+- **Exact duplicate records:** removed.
+- **Conflicting duplicates** (same time, different value): kept, flagged and
+  counted.
+- **Times outside a plausibility window:** default 2015 to the read time.
+  Dropped and counted; the original lines are preserved in the provenance.
+- **Backward time jumps:** reported. Records keep file order; the
+  `ORDER BY time` read used by sensorviz sorts them.
+- **Header-only and empty files:** converted to a log with a header and no
+  data, flagged. A file with no header but data (variant E) is labelled
+  BitTag with its format inferred from the keys.
+
+**Provenance in every converted log.** Recorded in `info`:
+
+- `source`: the path relative to the collection root, the SHA-256, the size
+  and the variant;
+- the importer version, and the conversion report;
+- the original header text, verbatim;
+- the parsed header fields as JSON: tag type, firmware, board, git hash,
+  UUID, accelerometer configuration, start and end, hibernate windows;
+- the state log, written to `states`.
+
+**Inventory join (optional).** With `--inventory <db>`, the importer adds the
+inventory's label, experiment and tag description for the UUID (or the
+device string, for variant A). Nothing is inferred from file names: bird and
+deployment IDs there follow several conventions, and are left to the
+researchers.
+
+### Converting the collection
+
+**Output.** `tag-txt-import --batch` converts a tree into a parallel tree of
+`.db3` files with the same relative paths, so experiment layout is preserved.
+The source tree is never modified.
+
+**Collection-level outputs:**
+
+- a manifest of SHA-256 checksums;
+- `conversion-report.csv`, one row per file: variant, type, record counts,
+  every repair, and the file's group of byte-identical copies, converted
+  once and linked for the others;
+- a summary of totals per variant and per flag.
+
+**Versions.** Original and re-exported (`-reformat`, `-repair`) versions of a
+tag are both converted. The report pairs them by UUID, so a researcher can
+choose; the importer does not decide which is right.
+
+**Where the output lives** is an open question: in the collection's own
+repository, or in the private data repository under Git LFS.
+
+### Proving the SQLite writer on real experiments
+
+The SQLite writer has not been used on a real experiment. Two checks address
+that before anything is deleted.
+
+1. **Round trip on the whole collection**, `.txt` → SQLite → `.txt`,
+   described next. It runs on every converted file, all five variants.
+2. **Dual-format download of the two field tags.** When the BitTag and the
+   PresTag now in the field are retrieved, download each three ways:
+   - `.txt`, one last time;
+   - SQLite;
+   - the raw Ack stream (tagclient's JSONL), archived in the private data
+     repository.
+
+   Then convert the `.txt` with `tag-txt-import`, and compare the converted
+   log with the directly written `.db3`, series by series. They should agree
+   exactly. This is the first real-experiment check of the SQLite writer, and
+   the raw Acks keep the data reconvertible whatever is found.
+
+From then on, archive raw Acks for every field download. Any format can then
+be regenerated.
+
+### Test fixtures
+
+There is no BitTag or PresTag `.db3` fixture in the code repository today.
+The conversion supplies them: one trimmed, anonymised BitTag log and one
+PresTag log, added beside the existing fixtures so that sensorviz's loading
+of these tag types is covered by its screenshot suites.
+
+### Round-trip verification
+
+Every converted log is turned back into text and compared with the original
+`.txt` file. The original *is* the reference.
+
+**Built into the importer, run on every conversion.** `tag-txt-import`
+checks each file it converts as part of the conversion; this is not a
+separate test pass. A conversion that fails the check writes no `.db3` (or,
+with `--keep-failed`, writes one marked failed in `info`), and the tool exits
+non-zero. A `.txt` file found years from now gets the same guarantee as the
+collection does today.
+
+**The renderer is the original writer.** The check renders with
+`TextTagLogWriter`'s own formatting code, the code that wrote the
+current-format files. When the text format is retired, that code moves inside
+the importer as its private verification renderer rather than being deleted
+(see [Removal](#removal)). For each conversion:
+
+1. **Rebuild what the writer consumes from SQLite:**
+   - a `TagLogHeader` (`TagInfo`, `Config`, calibration and state log) from
+     the parsed-header JSON in `info` and the `states` table;
+   - `Ack` records from the streams.
+2. **Re-pack activity percentages into bucket counts.** That is exact at the
+   printed precision: a count is `round(pct × period / 100)`, and the
+   writer's own `count × 100 / period` reproduces the percentage.
+3. **Run `writeHeader`, then `writeLog` per `Ack`,** into a string.
+4. **Diff** that against the original file, after normalising line endings
+   and trailing space.
+
+**Why this beats a hand-written renderer:**
+
+- **The formatting is the writer's own.** Default stream formatting is six
+  significant digits, as with `%g`. Values that came out of this writer
+  print identically when they go back in, so files from the current writer
+  should match byte for byte, with no tolerance.
+- **Mapping mistakes cannot cancel out.** If the importer stored `TC` as
+  voltage, the writer prints it in the `V:` slot and the diff fails. Line
+  order, bucket times and interleaving are checked by the code that defines
+  them.
+- **Metadata goes through the writer too.** The header comes from the
+  structured fields only, not the verbatim header kept in the provenance, so
+  a field that did not make it into structured form shows up as a
+  difference.
+
+**What the current writer cannot reproduce, and how each is handled:**
+
+| Case | Files | Check |
+| --- | --- | --- |
+| Variant C1, C2, D, E | 306 | Data lines byte for byte. Header compared as a set of `key: value` fields plus the ordered state log, since header layout does not matter; for files from the current writer it should match exactly anyway |
+| Variant C3/C4: an unlabelled fourth field on `V:` lines, written by an older writer | 51 | Data lines byte for byte except that field; the field itself compared by value against the extra stream |
+| Variant B and the re-exports: older writers, different precision (`0.00`, `0.3333`) | 100 + re-exports | Line by line, epochs and keys exact, numbers within half the original's last printed digit. Optionally, check out the writer at the header's git hash for an exact match |
+| Variant A: RTCv4 firmware's format, from no writer in this tree | 192 | A small test-only renderer for its tab-indented lines, re-packing per-minute counts into the 32-bit hex bitmap, compared exactly, including any bits outside the 30 used |
+
+**Allowed differences, in every case:** only the repairs listed in the
+conversion report, which keeps each removed or merged line verbatim. An
+unexplained difference fails the check, and so does a listed repair with no
+matching difference.
+
+**Results.**
+
+- Each converted log records its check result in `info`: passed, or the
+  first differing lines.
+- `--batch` adds a per-file result column to the conversion report and exits
+  non-zero if any file failed.
+- Phase 2 is done only when every converted file passes, or fails with a
+  reason the report already explains. Header-only files pass with empty data.
+- A small check program in tagcore's option-gated `test/` directory, like
+  the UIUCTag checks, runs the importer on anonymised fixtures of each
+  variant, so the check itself is tested.
+
+**What it cannot catch.**
+
+- **For variants C, D and E:** a mistake in rebuilding `Ack`s from SQLite
+  that exactly undoes a mistake in the importer. The two are separate code
+  written from the schema, and the field-tag check compares the importer
+  with the SQLite writer directly.
+- **For variants A and B:** a shared misreading by the importer and the test
+  renderer, which were written from the same understanding of the old
+  format. The researchers' review in phase 3 is the independent evidence
+  there.
+
+**The field tags get the full triangle:**
+
+| Path | Checks |
+| --- | --- |
+| `.txt` → SQLite, compared with the direct SQLite log | The importer against the SQLite writer |
+| Direct SQLite log → `.txt`, compared with the downloaded `.txt` | The SQLite writer's data and metadata against the text writer's, on the same download |
+| Raw records (`tag-log-import`) → SQLite, compared with the direct SQLite log | The two SQLite paths |
+
+### Removal
+
+Once phases 1–4 hold:
+
+- **tagcore:** remove the `Text` storage format and `TextTagLogWriter` from
+  tagcore's public writer API (`createTagLogWriter`, `TagLogStorageFormat`),
+  so nothing can write `.txt` logs any more. The writer's formatting code
+  (`txtlogs.cc`) moves into `tag-txt-import` as its private verification
+  renderer, unchanged, beside the importer's parsers. Variant A's test
+  renderer moves with it.
+- **Tools:** drop `-f text` from `tag-dwnld`, and the `.txt` choice from
+  qtmonitor's save dialog. Also remove the `txtlogs.h` includes in qtmonitor
+  and qtprogram.
+- **btviz:** delete `host/applications/btdataviz`, its CMake, its install and
+  package entries, the Linux package test lines, and its user-manual page and
+  screenshots.
+- **Third-party code:** delete KissFFT, FastFIR and SOLPOS, which only btviz
+  uses. Update `LICENSES/`.
+- **Documentation:** update every page that mentions `.txt` logs (the
+  user-manual download workflow, `tag-dwnld`, the index; host and
+  architecture READMEs).
+- **Decision record:** "Retire the text log format and btviz", with the
+  verification evidence.
+
+## Phases
+
+| Phase | Work | Done when |
+| --- | --- | --- |
+| 0 | Stop new `.txt` logs except the dual-format download in phase 4: deprecation warnings on `tag-dwnld -f text` and qtmonitor's text choice | Warnings shown; docs say SQLite is the format |
+| 1 | `tag-txt-import` for variants B, C, D, E, with the decoded-sample writer entry; provenance; unit tests on small anonymised fixtures of each variant | Fixtures convert; header-only, CRLF, duplicates and bad times are handled and reported |
+| 2 | Variant A; batch mode, conversion report and manifest; convert the whole collection; add one trimmed, anonymised BitTag and one PresTag `.db3` as sensorviz fixtures | Every log file converts or is reported with a reason; every converted file round-trips through `TextTagLogWriter` (or variant A's renderer) to match its original: byte for byte for current-writer files, within printed precision for older writers, metadata field by field; sensorviz opens the fixtures |
+| 3 | Researchers check converted logs against btviz on a sample of their own experiments, using whatever analysis tools they will use from now on | Sign-off, or issues fixed |
+| 4 | Dual-format download of the two field tags; raw Acks archived; the full triangle of checks | All three comparisons agree |
+| 5 | Removal; BitPresTag geometry settled from the firmware in the SQLite writer; decision record | Build and package without btviz, KissFFT, FastFIR or SOLPOS; docs check clean |
+
+Phase 4 waits for the field tags' retrieval. Removal (phase 5) waits for
+everything else.
+
+## Open questions
+
+- **Where do converted logs live?** In the collection's repository, beside
+  the `.txt` files, or in the private data repository under LFS? Converted
+  `.db3` files are probably of similar total size to the 730 MB of text.
+- **Which analysis tools will the researchers use** for actograms and
+  filtering on SQLite logs? That doesn't block this plan, but phase 3's
+  check is easiest with the tools they will actually use.
+- **What is the C3/C4 fourth field?** Settle it from the writer's history.
+- **Should `.txt` remain readable after removal,** through the importer
+  alone? This proposal says yes: the importer keeps its parsers indefinitely,
+  so a `.txt` file found later can still be converted.
