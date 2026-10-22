@@ -56,9 +56,19 @@ Then, sample by sample:
 
 Untrusted runs are then repaired by length:
 
-- **Up to 0.5 s:** bridged. The samples are dropped and the fit spans them.
-- **Longer:** the flight is split, and the longest piece overlapping the
-  flight window is used.
+- **Up to 0.5 s, and the jump does not last:** bridged. The samples are
+  dropped and the fit spans them. This is a spike: the sample after the run
+  is back near the sample before it.
+- **Up to 0.5 s, but the jump lasts:** split, recorded as
+  `split: lasting step`. A step lasts when the change from the sample before
+  the run to the sample after it is at least half of the largest jump into
+  the run. The test uses attitude or velocity, whichever jumped more relative
+  to a clean track's sample-to-sample change (about 1 degree, 0.1 m/s). An
+  EKF reset is the usual cause, and bridging one would only spread the jump
+  over the gap.
+- **Longer:** split.
+
+After splitting, the longest piece overlapping the flight window is used.
 
 Every action is a `Repair` record in `SimRun.RepairsJson`.
 
@@ -66,9 +76,10 @@ On the first logs:
 
 | Log | What happens |
 | --- | --- |
-| `00000167` | Its 26 g sample is bridged. Its neighbours still carry part of the step, so about 17 g survives there. |
+| `00000167` | Its 26 g sample is a lasting velocity step: 10 m/s that stays. The flight is split there, and the kept piece starts at 49.1 s, 4.4 s after `isFlying`. A 17 g peak remains elsewhere, at 589 s. |
+| `00000174` | A 48° attitude jump in one 40 ms interval (1202 dps), 1.3 s after `isFlying` starts, that lasts like an EKF yaw reset. The flight is split there and the kept piece starts at 12.2 s. Peak rate falls from 542 to 277 dps, in normal flight. |
 | `00000176` | Both cores glitch every 8–10 s and diverge by up to 200 m/s between 78 and 354 s. tagsim keeps the 184 s after that stretch. |
-| `00000174` | A 48° attitude jump in one 40 ms interval (1202 dps), 1.3 s after `isFlying` starts. The 1000 dps default flags it and bridges it, but the jump lasts (the attitude stays jumped, like an EKF yaw reset), so bridging only spreads it. A 542 dps spike survives as the flight's peak. A lasting step needs a split, not a bridge; this is not handled yet. |
+| `00000169`, `00000178`, `00000180` | One lasting attitude step each on the ground, before the kept window. Their output does not change. |
 
 ## Splines
 

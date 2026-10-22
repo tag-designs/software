@@ -63,27 +63,52 @@ figures, which are also stored in the truth file's `SimRun` row.
 carry flying-field GPS positions. Keep them outside the repository; the tests
 find them through `TAGSIM_LOG_DIR`.
 
-## Tests
+## Running the tests
 
-```sh
-TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/tag-log-import \
-SENSORVIZ_BIN=<build-dir>/Release/bin/sensorviz.app/Contents/MacOS/sensorviz \
-TAGSIM_LOG_DIR=~/Documents/ardupilot_data \
-pytest host/python/tagsim
+From the repository root, with the virtual environment kept outside it:
+
+```bash
+python3 -m venv ~/.venvs/tagsim
 ```
 
-- `test_pages.py`: page layout, and a two-segment log with missing auxiliary
-  slots, a storage-skip resync, an index hole and partial pages decoded back
-  through `tag-log-import` to exactly the packed values.
-- `test_stationary.py`: a tag at rest reads 1000 mg and zero rate within
-  quantization at any attitude, and a constant positive dip under the host's
-  axis convention.
-- `test_consistency.py`: strapdown integration of a synthetic manoeuvre
-  agrees with its spline pose.
-- `test_flight.py`: `00000173.BIN` (or the first log found) end to end at
-  100 Hz, the truth file, and a sensorviz screenshot.
+```bash
+~/.venvs/tagsim/bin/pip install pytest -e host/python/tagclient -e "host/python/tagsim[test]"
+```
 
-Tests needing the importer, a log or sensorviz skip without them.
+```bash
+cmake --build <build-dir> --target tag-log-import
+```
+
+```bash
+export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/tag-log-import
+export TAGSIM_LOG_DIR=~/Documents/ardupilot_data
+export SENSORVIZ_BIN=<build-dir>/Release/bin/sensorviz.app/Contents/MacOS/sensorviz
+```
+
+```bash
+~/.venvs/tagsim/bin/pytest host/python/tagsim/tests
+```
+
+Each variable has a fallback:
+
+- `TAG_LOG_IMPORT_BIN` falls back to `tag-log-import` on `PATH`.
+- `TAGSIM_LOG_DIR` defaults to `~/Documents/ardupilot_data`.
+- `SENSORVIZ_BIN` is optional and falls back to `sensorviz` on `PATH`. On
+  Linux and Windows it is `<build-dir>/Release/bin/sensorviz`.
+
+| Test | Checks | Needs |
+| --- | --- | --- |
+| `test_pages.py::test_pack_layout` | Page layout, checkpoint flags, partial pages, the exact NaN pattern | nothing |
+| `test_pages.py::test_round_trip` | A two-segment log with missing auxiliary slots, a storage-skip resync, an index hole and partial pages decodes back to exactly the packed values | `tag-log-import` |
+| `test_stationary.py` | A tag at rest reads 1000 mg and zero rate within quantization at any attitude, and a constant positive dip under the host's axis convention | nothing |
+| `test_consistency.py` | Strapdown integration of a synthetic manoeuvre agrees with its spline pose | nothing |
+| `test_glitches.py` | On a synthetic DataFlash log, a one-sample spike is bridged and a lasting step is split at | nothing |
+| `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
+| `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
+| `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
+
+A test whose needs are missing is skipped, not failed. `pytest -rs` lists
+the skips and their reasons.
 
 ## Not modelled yet
 

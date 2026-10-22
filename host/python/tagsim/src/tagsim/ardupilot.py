@@ -23,8 +23,10 @@ Glitch handling, before fitting (design/proposals/imutag-simulator.md):
 3. Where both cores are plausible but disagree by more than ``vel_tol_mps``
    or ``att_tol_deg``, neither is trusted.
 4. Untrusted runs no longer than ``bridge_s`` are bridged: the samples are
-   dropped and the uniform resampling interpolates across them. Longer runs
-   split the flight; the longest piece inside the flight window is used.
+   dropped and the uniform resampling interpolates across them, unless the
+   jump persists after the run (a lasting step, such as an EKF reset), which
+   bridging would only spread out. Lasting steps and longer runs split the
+   flight; the longest piece inside the flight window is used.
 
 Every repair is returned as a record for the truth file's provenance.
 """
@@ -63,7 +65,7 @@ class GlitchConfig:
 class Repair:
     """One change made to the source track before fitting."""
 
-    kind: str  #: "substitute", "bridge", "split" or "drop"
+    kind: str  #: "substitute", "bridge", "split", "split: lasting step" or "drop"
     t_start: float  #: log time (s, TimeUS / 1e6) of the first affected sample
     t_end: float  #: log time of the last affected sample
     samples: int
@@ -144,6 +146,26 @@ def _implausible(t, q, v, cfg: GlitchConfig) -> np.ndarray:
     return bad
 
 
+def _lasting_step(q: np.ndarray, v: np.ndarray, a: int, b: int) -> bool:
+    """True when the untrusted run ``a..b`` is a step that persists, not a spike.
+
+    A spike returns: the sample after the run is near the sample before it.
+    A step stays: the change from before to after is at least half of the
+    largest jump into the run, in attitude or in velocity. Bridging a step
+    would only spread it over the gap, so the flight is split there instead.
+    """
+    before, after, run = a - 1, b + 1, slice(a, b + 1)
+    jump_q = angle_between(q[before], q[run]).max()
+    jump_v = np.linalg.norm(v[run] - v[before], axis=-1).max()
+    stays_q = angle_between(q[before], q[after]) >= 0.5 * jump_q
+    stays_v = np.linalg.norm(v[after] - v[before]) >= 0.5 * jump_v
+    # Judge by whichever quantity made the larger jump, relative to the
+    # sample-to-sample noise of a clean EKF track (about 1 degree, 0.1 m/s).
+    if np.degrees(jump_q) / 1.0 >= jump_v / 0.1:
+        return bool(stays_q)
+    return bool(stays_v)
+
+
 def _runs(mask: np.ndarray) -> list[tuple[int, int]]:
     """Inclusive (start, end) index pairs of the True runs in ``mask``."""
     edges = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
@@ -210,7 +232,12 @@ def load_flight(path: str | Path, cfg: GlitchConfig | None = None,
         before = t[a - 1] if a > 0 else t[a]
         after = t[b + 1] if b + 1 < len(t) else t[b]
         reason = "cores disagree" if disagree[a:b + 1].all() else "implausible in both cores"
-        if after - before <= cfg.bridge_s and a > 0 and b + 1 < len(t):
+        bridgeable = after - before <= cfg.bridge_s and a > 0 and b + 1 < len(t)
+        if bridgeable and _lasting_step(q, v, a, b):
+            repairs.append(Repair("split: lasting step", float(t[a]), float(t[b]),
+                                  int(b - a + 1), reason + "; the jump persists after the run"))
+            cuts.append((a, b))
+        elif bridgeable:
             repairs.append(Repair("bridge", float(t[a]), float(t[b]), int(b - a + 1), reason))
         else:
             repairs.append(Repair("split", float(t[a]), float(t[b]), int(b - a + 1), reason))
@@ -242,7 +269,7 @@ def load_flight(path: str | Path, cfg: GlitchConfig | None = None,
     lo_t, hi_t = t[a], t[b - 1]
     # Substitutions and bridges outside the piece used change nothing.
     repairs = [r for r in repairs
-               if r.kind == "split" or (r.t_end >= lo_t and r.t_start <= hi_t)]
+               if r.kind.startswith("split") or (r.t_end >= lo_t and r.t_start <= hi_t)]
     for piece in pieces:
         a, b = piece
         if piece != best and b > a:
