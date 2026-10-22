@@ -117,6 +117,45 @@ any language with SQLite can read it.
 
 ## Design
 
+### A decoding bug in older FIVEMIN exports
+
+**The bug.** Before `NanoTag` commit `4670705` ("fix fiveminute bug",
+2021-09-25), the host writer unpacked each FIVEMIN record as **nine 7-bit
+buckets** instead of seven 9-bit ones. So FIVEMIN `.txt` files written by an
+unfixed host hold wrongly decoded activity, with the wrong values at the
+wrong times.
+
+**Which files.** It is detectable from the file alone: such files have 9
+activity lines per record instead of 7.
+
+- 69 of the collection's 230 FIVEMIN files have that signature.
+- The `-reformat` and `-repair` re-exports, which explain why the collection
+  holds two versions of those tags, were made with the fixed writer.
+- Where the version is not clear: the header's `Git Hash` is the tag
+  *firmware's* commit, reported by the tag, not the host writer's. So the
+  file cannot say which writer made it, but the 9-per-record signature can.
+
+**It is exactly repairable.** Nine 7-bit buckets and seven 9-bit buckets
+cover the same 63 bits of the stored word. So the importer:
+
+1. rebuilds the word from the buggy percentages, `count = round(pct × 3)`;
+2. decodes it correctly;
+3. re-times the buckets at `t − 300 × (6 − i)`.
+
+**Validation (2026-10-22).** On 52 files from four experiments that have
+re-exports, all 2,461,788 buckets the repair produced at times shared with
+the re-export agree with it, to 0.0033 % at most. That residue is the
+re-exports' printed precision.
+
+**In the importer:**
+
+- Repair is automatic and recorded as a repair kind (`fivemin-9x7`) in the
+  conversion report and `info`.
+- The round trip renders the repaired log back through the *buggy* layout,
+  to compare with the original file exactly.
+- The batch report pairs each repaired original with its re-export where one
+  exists, and records whether they agree.
+
 ### The importer: `tag-txt-import`
 
 `tag-txt-import` is a C++ command-line tool in `host/commandline`, linking
@@ -161,9 +200,8 @@ schema stays defined in one place.
   - *So it carries no new data.* The importer re-packs each record and
     requires equality, recording the result in the conversion report, and
     stores no extra stream.
-  - *Its source:* it came from the older `NanoTag` repository's writer
-    (headers' git hashes `cab6fe3`, `d3d1030`, `d59ff85`), which printed it;
-    the writer in this tree never has.
+  - *Its source:* a host writer of the `NanoTag` era that is not in that
+    repository's history; no committed writer there or here prints it.
 
 **Repairs, never silent.** Each run writes a conversion report and records
 the same facts in the log's `info`:
@@ -300,7 +338,8 @@ the importer as its private verification renderer rather than being deleted
 | --- | --- | --- |
 | Variant C1, C2, D, E | 306 | Data lines byte for byte. Header compared as a set of `key: value` fields plus the ordered state log, since header layout does not matter; for files from the current writer it should match exactly anyway |
 | Variant C3/C4: the packed activity word as a fourth field on `V:` lines, written by an older writer | 51 | Data lines byte for byte, with the checker appending the re-packed word as that writer did |
-| Variant B and the re-exports: older writers, different precision (`0.00`, `0.3333`) | 100 + re-exports | Line by line, epochs and keys exact, numbers within half the original's last printed digit. With the `NanoTag` repository checked out, the writer at each file's header git hash makes these exact too |
+| Variant B and the re-exports: older writers, different precision (`0.00`, `0.3333`) | 100 + re-exports | Line by line, epochs and keys exact, numbers within half the original's last printed digit. The header's git hash is the firmware's, so it does not identify the writer; the `NanoTag` history explains the older writers' behaviour (as with the FIVEMIN bug) but cannot pick a version per file |
+| Buggy FIVEMIN (9 per record) | 69 | Rendered back through the buggy 9×7-bit layout and compared exactly; the repair is checked against the re-export where one exists |
 | Variant A: RTCv4 firmware's format, from no writer in this tree | 192 | A small test-only renderer for its tab-indented lines, re-packing per-minute counts into the 32-bit hex bitmap, compared exactly, including any bits outside the 30 used |
 
 **Allowed differences, in every case:** only the repairs listed in the
