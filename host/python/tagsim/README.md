@@ -91,22 +91,25 @@ dataprocessing -i f173.db3 -o f173-proc.db3 -p imu-compass-orientation
 tagsim score --truth f173.truth.db3 --estimate f173-proc.db3 -o f173.score.db3
 tagsim filter --log f173.db3 --truth f173.truth.db3 -o f173-filt.db3
 tagsim score --truth f173.truth.db3 --estimate f173-filt.db3 --table FilterSmoothed -o f173-smoothed.score.db3
-tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.bin
+tagsim view --truth f173.truth.db3 --estimate both -o f173-both.view.bin
 ```
 
-- **`tagsim filter`** estimates attitude, gyro and accelerometer bias,
-  altitude relative to the start and vertical velocity from the log alone: a multi-rate error-state
-  EKF, then an RTS smoother ([design](design/navigation-filter.md)). It
-  writes `FilterForward` and `FilterSmoothed` to `-o`. It needs the Earth
+- **`tagsim filter`** estimates attitude, gyro bias, gyro scale and
+  misalignment, accelerometer bias, a residual magnetometer offset, altitude
+  relative to the start and vertical velocity from the log alone: a
+  multi-rate error-state EKF, then an RTS smoother, with each magnetometer
+  reading applied at its own conversion time from a fitted BMM350 clock
+  ([design](design/navigation-filter.md)). It writes `FilterForward` and
+  `FilterSmoothed` to `-o`. It needs the Earth
   field: `--site LAT LON ALT` (the WMM there on the log's date),
   `--field-ned N E D`, or `--truth` (the field the truth file was made with).
   `--no-pressure` drops the altitude channel, `--no-smooth` the backward
   pass, and `--set NAME=VALUE` overrides any `FilterConfig` parameter in
   [navfilter.py](src/tagsim/navfilter.py). The smoother's per-node storage
-  (about 600 bytes per sample) goes to temporary memory-mapped files above
-  1 GiB, so a full-flash log needs disk, not RAM
-  ([design](design/navigation-filter.md#smoother)); `--set 'memmap_dir="DIR"'`
-  chooses where.
+  (about 2.3 KB per sample with all states) and the per-sample outputs (336 bytes) go to
+  temporary memory-mapped files above 1 GiB each, so a full-flash log needs
+  disk, not RAM ([design](design/navigation-filter.md#storage));
+  `--set 'memmap_dir="DIR"'` chooses where.
 
 - **`tagsim score`** reports attitude error (total, tilt and heading) and,
   where the estimate has them, velocity, altitude-change and
@@ -120,21 +123,54 @@ tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.
   such as the filter's.
 - **`tagsim view`** writes a DataFlash log that
   [UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens: the truth
-  as `POS` and `ATT` (the viewer's defaults) and, with `--score`, the estimate
-  as `AHR2` along the truth path. Choose `AHR2` as the trajectory and attitude
-  source to watch the estimate fly the same pattern.
+  as `POS` and `ATT` (the viewer's defaults) and an estimate as `AHR2` along
+  the truth path. `--estimate filter` takes the smoothed filter
+  (`NAME-smoothed.score.db3` beside the truth file), `--estimate compass` the
+  compass (`NAME.score.db3`), and `--estimate both` puts the filter in `AHR2`
+  and the compass in `XKQ1`, a quaternion attitude source the viewer also
+  offers. `--filter-score` and `--compass-score` give other score files;
+  `--score FILE` alone puts that file's estimate in `AHR2`. See
+  [Viewing in UAV Log Viewer](#viewing-in-uav-log-viewer).
 - **`tagsim batch --log-dir DIR --out-dir OUT`** does all of it for every log
   in a directory, at the defaults: `NAME.db3`, `NAME-proc.db3`,
   `NAME.truth.db3`, `NAME.score.db3` and `NAME.view.bin` per flight, and a
   table of every score in `OUT/scores.csv`, one row per flight and
   estimate. `--filter` also runs the filter with and without pressure
   (`NAME-filt.db3`, `NAME-filt-nop.db3`) and scores its forward and smoothed
-  tables (`NAME-forward.score.db3`, …, and `NAME-smoothed.view.bin`);
+  tables (`NAME-forward.score.db3`, …, `NAME-smoothed.view.bin` and
+  `NAME-both.view.bin`);
   `--reuse` scores existing logs instead of regenerating them;
   `--only f166 f173` limits it to some logs; `--calibration` and
   `--set-error` are passed to `tagsim run` and `--filter-set NAME=VALUE` to
   `tagsim filter --set`, for ablations. It needs
   `dataprocessing`, found through `DATAPROCESSING_BIN` or on `PATH`.
+
+### Viewing in UAV Log Viewer
+
+The source flight and a view file can be watched side by side: open each
+in its own browser window of UAV Log Viewer. The view file keeps the
+source log's `TimeUS`, so the two timelines line up.
+
+- **Run the viewer locally for these logs.** The pattern flights and every
+  file made from them carry the flying field's position. The public site
+  (plot.ardupilot.org) would load them into a page served from someone
+  else's machine. A local copy is built from
+  [the repository](https://github.com/ardupilot/uavlogviewer) with
+  `git submodule update --init --recursive`, `npm install` and `npm run dev`,
+  or run from its Docker image (`ghcr.io/ardupilot/uavlogviewer`). It needs a
+  free Cesium ion token in `VUE_APP_CESIUM_TOKEN` and serves on
+  `http://localhost:8080`. The log stays on your machine. The 3D view still
+  fetches map imagery and terrain for the area it shows from Cesium ion.
+- **Window 1:** open the source `.bin`, for example `00000173.BIN` from the
+  data repository. Its `ATT` and `AHR2` are ArduPilot's own estimates.
+- **Window 2:** open `f173-both.view.bin`. `POS` and `ATT`, the defaults,
+  are the simulated truth (the fitted trajectory tagsim flew). Choose `AHR2`
+  as the attitude source, and as the trajectory too, to watch the smoothed
+  filter. Choose `XKQ1` to watch the compass along `POS`.
+- `f173-filter.view.bin` (`--estimate filter`) holds only the filter. In
+  `~/Documents/tagsim-output/` there are such files for f173 in the
+  top-level directory (simple errors) and in `harder-true/` and
+  `harder-perturbed/`.
 
 How the compass's quaternion is decoded, and why it has to be, is in
 [design/simulator.md](design/simulator.md#scoring). The compass baseline and
@@ -188,10 +224,10 @@ Each variable has a fallback:
 | `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
 | `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
 | `test_flight.py::test_calibrated_field_is_wmm` | `dataprocessing imu-compass-orientation` on that log: the calibrated field's median is the WMM magnitude | a log, `tag-log-import` and `dataprocessing` |
-| `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples; the accelerometer bias recovered; a 200 000-sample run with file-backed smoother storage matches the in-memory one with much lower peak memory | nothing |
-| `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back | nothing |
+| `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples; the accelerometer bias recovered; the gyro's scale and misalignment recovered; the magnetometer offset states under a perturbed calibration; the fitted magnetometer clock against the simulated conversion times; a 200 000-sample run with file-backed storage and outputs matches the in-memory one exactly with much lower peak memory | nothing |
+| `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back, with a second estimate as `XKQ1` | nothing |
 | `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports | a log, `tag-log-import` and `dataprocessing` |
-| `test_flight.py::test_filter_storage_modes` | The filter on that log: in-memory and file-backed smoother storage give identical results and leave no files; float32 gains within 0.001°, 1 mm, 1 mm/s of float64 | a log and `tag-log-import` |
+| `test_flight.py::test_filter_storage_modes` | The filter on that log: in-memory and file-backed storage and outputs give identical results and leave no files once closed; float32 gains within 0.001°, 1 mm, 1 mm/s of float64 | a log and `tag-log-import` |
 | `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
 
 A test whose needs are missing is skipped, not failed. `pytest -rs` lists
@@ -202,6 +238,7 @@ the skips and their reasons.
 Temperature effects; clock error; dynamic pressure; BMP581 sampling detail;
 the sensor's own filtering and aliasing of vibration; synthetic primitives.
 The accelerometer scale and misalignment, gyro misalignment and both bias
-instabilities are assumed figures, not fitted to bench data. See the
+instabilities are assumed figures, not fitted to bench data. The
+magnetometer's clock runs at a constant rate (no temperature drift). See the
 proposal's [scope](design/proposals/imutag-simulator.md#scope-keep-it-simple)
 and phases.

@@ -145,6 +145,15 @@ def cmd_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def default_score_paths(truth: Path) -> dict[str, Path]:
+    """The score files ``tagsim batch`` writes beside ``NAME.truth.db3``:
+    the compass's ``NAME.score.db3`` and the smoothed filter's
+    ``NAME-smoothed.score.db3``."""
+    name = truth.name.removesuffix(".truth.db3")
+    return {"compass": truth.with_name(f"{name}.score.db3"),
+            "filter": truth.with_name(f"{name}-smoothed.score.db3")}
+
+
 def cmd_view(args: argparse.Namespace) -> int:
     import sqlite3
 
@@ -159,19 +168,44 @@ def cmd_view(args: argparse.Namespace) -> int:
     start_unix = con.execute("SELECT StartUnix FROM SimRun").fetchone()[0]
     con.close()
     t0_us = cfg["trajectory"]["t_first"] * 1e6
-    est_t = q_est = est_pos = None
-    if args.score:
-        rows = np.array(sqlite3.connect(args.score).execute(
+
+    def series(path: Path):
+        if not path.exists():
+            raise FileNotFoundError(f"{path}: no score file (run tagsim score, or give its path)")
+        rows = np.array(sqlite3.connect(path).execute(
             "SELECT ElapsedUs, qw, qx, qy, qz FROM ScoreSeries ORDER BY ElapsedUs").fetchall())
-        est_t = rows[:, 0] + t0_us
-        q_est = rows[:, 1:5]
-        est_pos = np.stack([np.interp(rows[:, 0], truth.elapsed_us, pos[:, k])
-                            for k in range(3)], -1)
+        return rows[:, 0], rows[:, 1:5]
+
+    # Which estimate goes where: --score alone is the old behaviour (that
+    # file as AHR2); --estimate picks the compass, the filter or both, the
+    # filter taking AHR2 and, with both, the compass XKQ1.
+    defaults = default_score_paths(args.truth)
+    paths = {"compass": args.compass_score or defaults["compass"],
+             "filter": args.filter_score or defaults["filter"]}
+    estimate = args.estimate or ("score" if args.score else None)
+    primary = second = None
+    if estimate == "score":
+        primary = ("AHR2", args.score)
+    elif estimate in ("compass", "filter"):
+        primary = ("AHR2", args.score or paths[estimate])
+    elif estimate == "both":
+        primary, second = ("AHR2", paths["filter"]), ("XKQ1", paths["compass"])
+    est_t = q_est = est_pos = sec_t = q_sec = None
+    if primary is not None:
+        e_us, q_est = series(primary[1])
+        est_t = e_us + t0_us
+        est_pos = np.stack([np.interp(e_us, truth.elapsed_us, pos[:, k]) for k in range(3)], -1)
+    if second is not None:
+        s_us, q_sec = series(second[1])
+        sec_t = s_us + t0_us
     n = write_viewer_log(args.output, truth.elapsed_us + t0_us, truth.q_enu_tag, pos,
                          tuple(cfg["origin"]), start_unix, cfg["sensor"]["mounting"],
-                         est_t, q_est, est_pos)
+                         est_t, q_est, est_pos, second_time_us=sec_t, q_second=q_sec)
     print(f"{args.output}: {n} truth records (POS, ATT)"
-          + (f", {len(q_est)} estimate records (AHR2)" if q_est is not None else ""))
+          + (f", {len(q_est)} estimate records (AHR2: {primary[1].name})"
+             if q_est is not None else "")
+          + (f", {len(q_sec)} estimate records (XKQ1: {second[1].name})"
+             if q_sec is not None else ""))
     return 0
 
 
@@ -315,6 +349,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
         main(["view", "--truth", str(truth_path(db)), "--score",
               str(args.out_dir / f"{name}-smoothed.score.db3"),
               "-o", str(args.out_dir / f"{name}-smoothed.view.bin")])
+        main(["view", "--truth", str(truth_path(db)), "--estimate", "both",
+              "-o", str(args.out_dir / f"{name}-both.view.bin")])
     keys = sorted({k for r in table for k in r},
                   key=lambda k: (k not in ("flight", "source", "estimate", "status"), k))
     summary = args.out_dir / "scores.csv"
@@ -412,7 +448,16 @@ def parser() -> argparse.ArgumentParser:
     v = sub.add_parser("view", help="write a DataFlash .bin of truth (and an estimate) "
                                     "for UAV Log Viewer")
     v.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
-    v.add_argument("--score", type=Path, help="score file whose estimate to add as AHR2")
+    v.add_argument("--score", type=Path,
+                   help="score file whose estimate to add as AHR2 (with --estimate compass or "
+                        "filter: that estimate's score file)")
+    v.add_argument("--estimate", choices=("compass", "filter", "both"),
+                   help="estimate(s) to add beside the truth: the compass or the smoothed filter "
+                        "as AHR2, or both (the filter as AHR2, the compass as XKQ1); their score "
+                        "files default to NAME.score.db3 and NAME-smoothed.score.db3 beside "
+                        "the truth file")
+    v.add_argument("--compass-score", type=Path, help="the compass's score file")
+    v.add_argument("--filter-score", type=Path, help="the filter's score file")
     v.add_argument("-o", "--output", type=Path, required=True, help=".bin to write")
     v.set_defaults(func=cmd_view)
 
