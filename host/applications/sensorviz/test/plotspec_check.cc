@@ -4,7 +4,7 @@
  *
  * @details Loads the committed sensorviz fixtures through sensordata, as the
  *          Qt-free core sees them, and checks the PlotSpec built for a range of plot states, with no
- *          window: linked IMU ranges and what breaks a link, fixed and custom
+ *          window: shared group axes and their linked, fixed and custom
  *          ranges, Auto data ranges, colour and side overrides, the time
  *          extent, event markers, metadata-box rows and the title. Expected
  *          ranges are recomputed here from the sensordata summaries rather
@@ -171,16 +171,21 @@ void checkImuTag()
     state.visibleStreamIds = {"imu_ax", "imu_ay", "imu_az", "imu_pressure", "no_such_stream"};
     PlotSpec spec = buildPlotSpec(log.info, log.streams, {}, state);
 
-    // Traces in state order, unknown ids ignored, one axis each.
-    CHECK(spec.traces.size() == 4 && spec.axes.size() == 4);
+    // Traces in state order, unknown ids ignored; the accel group shares one
+    // axis and pressure, ungrouped, has its own.
+    CHECK(find(log, "imu_ax")->group == "imu_accel" && find(log, "imu_pressure")->group.empty());
+    CHECK(spec.traces.size() == 4 && spec.axes.size() == 2);
     CHECK(traceIndex(spec, "imu_ax") == 0 && traceIndex(spec, "imu_pressure") == 3);
     for (size_t i = 0; i < spec.traces.size(); i++) {
-        CHECK(spec.traces[i].axis == static_cast<int>(i));
+        CHECK(spec.traces[i].axis == (i < 3 ? 0 : 1));
         CHECK(spec.traces[i].stream == find(log, spec.traces[i].id)->dataId);
         CHECK(spec.traces[i].penWidth == 1);
+        CHECK(spec.traces[i].color == find(log, spec.traces[i].id)->color);
     }
+    CHECK((spec.axes[0].traces == std::vector<int>{0, 1, 2}));
+    CHECK((spec.axes[1].traces == std::vector<int>{3}));
 
-    // The accel family is linked to the padded union of its data ranges.
+    // The shared accel axis is linked to the padded union of its data ranges.
     PlotRange accel = infoRange(log, "imu_ax");
     for (const char *id : {"imu_ay", "imu_az"}) {
         const PlotRange r = infoRange(log, id);
@@ -192,10 +197,11 @@ void checkImuTag()
         const PlotAxisSpec axis = axisOf(spec, id);
         CHECK(axis.mode == PlotAxisRangeMode::Linked && axis.linkedGroup == "imu_accel");
         CHECK(axis.lower == padded.lower && axis.upper == padded.upper);
-        CHECK(axis.side == AxisSide::Right);
-        CHECK(axis.color == find(log, id)->color);
+        CHECK(axis.side == AxisSide::Left);
+        CHECK(axis.color == find(log, "imu_ax")->color);
     }
-    CHECK(axisOf(spec, "imu_ax").label == "Acceleration X mg");
+    CHECK(axisOf(spec, "imu_ax").label == "IMU accelerometer mg");
+    CHECK(axisOf(spec, "imu_pressure").label == "Pressure mbar");
 
     // Pressure auto-scales on its own data range.
     const PlotAxisSpec pressure = axisOf(spec, "imu_pressure");
@@ -223,33 +229,62 @@ void checkImuTag()
     state.breakAtGaps = true;
     CHECK(spec.timeDomain == sensordata::TimeDomain::ElapsedSeconds);
 
-    // A custom range fixes one member; the other two stay linked to each other.
+    // A custom range on any member fixes the shared axis; the first member
+    // with one wins.
+    state.customRanges["imu_az"] = PlotRange{-7.0, 7.0};
     state.customRanges["imu_ay"] = PlotRange{-5.0, 5.0};
     spec = buildPlotSpec(log.info, log.streams, {}, state);
-    CHECK(axisOf(spec, "imu_ay").mode == PlotAxisRangeMode::Fixed);
-    CHECK(axisOf(spec, "imu_ay").lower == -5.0 && axisOf(spec, "imu_ay").upper == 5.0);
-    PlotRange xz = infoRange(log, "imu_ax");
-    xz.lower = std::min(xz.lower, infoRange(log, "imu_az").lower);
-    xz.upper = std::max(xz.upper, infoRange(log, "imu_az").upper);
-    CHECK(axisOf(spec, "imu_ax").mode == PlotAxisRangeMode::Linked);
-    CHECK(axisOf(spec, "imu_ax").upper == paddedRange(xz).upper);
+    CHECK(spec.axes.size() == 2);
+    CHECK(axisOf(spec, "imu_ax").mode == PlotAxisRangeMode::Fixed);
+    CHECK(axisOf(spec, "imu_ax").lower == -5.0 && axisOf(spec, "imu_ax").upper == 5.0);
 
-    // A family member alone auto-scales.
+    // A group member alone has its own label and auto-scales.
     state.customRanges.clear();
     state.visibleStreamIds = {"imu_gx", "imu_ax"};
     spec = buildPlotSpec(log.info, log.streams, {}, state);
     CHECK(axisOf(spec, "imu_gx").mode == PlotAxisRangeMode::Auto);
     CHECK(axisOf(spec, "imu_ax").mode == PlotAxisRangeMode::Auto);
+    CHECK(axisOf(spec, "imu_ax").label == "Acceleration X mg");
+    CHECK(spec.axes.size() == 2 && spec.axes[0].traces.size() == 1);
 
     // Preferences override colour and side.
     PlotDisplayPreferences preferences;
     preferences.colors["imu_ax"] = Rgb{1, 2, 3};
-    preferences.axisSides["imu_ax"] = AxisSide::Left;
+    preferences.axisSides["imu_ax"] = AxisSide::Right;
     spec = buildPlotSpec(log.info, log.streams, preferences, state);
     CHECK(axisOf(spec, "imu_ax").color == (Rgb{1, 2, 3}));
     CHECK(spec.traces[static_cast<size_t>(traceIndex(spec, "imu_ax"))].color == (Rgb{1, 2, 3}));
-    CHECK(axisOf(spec, "imu_ax").side == AxisSide::Left);
-    CHECK(axisOf(spec, "imu_gx").side == AxisSide::Right);
+    CHECK(axisOf(spec, "imu_ax").side == AxisSide::Right);
+    CHECK(axisOf(spec, "imu_gx").side == AxisSide::Left);
+
+    // On a shared axis the first member with a side override places it.
+    state.visibleStreamIds = {"imu_ay", "imu_ax"};
+    spec = buildPlotSpec(log.info, log.streams, preferences, state);
+    CHECK(spec.axes.size() == 1 && spec.axes[0].side == AxisSide::Right);
+    CHECK(spec.axes[0].color == find(log, "imu_ay")->color);
+
+    // A magnitude in the group shares its axis. Alone it keeps its default
+    // fixed range; shared, the range is the union of the members' data, since
+    // the fixed range would clip the signed components.
+    addDerivedCopy(log, "imu_ax", "imu_accel_magnitude");
+    log.streams.back().derived = true;
+    log.streams.back().axisRange = sensorviz::AxisRange{true, 0.0, 2000.0};
+    state.visibleStreamIds = {"imu_accel_magnitude"};
+    spec = buildPlotSpec(log.info, log.streams, {}, state);
+    CHECK(spec.axes.size() == 1 && spec.axes[0].mode == PlotAxisRangeMode::Fixed);
+    CHECK(spec.axes[0].upper == 2000.0);
+    state.visibleStreamIds = {"imu_ax", "imu_accel_magnitude"};
+    spec = buildPlotSpec(log.info, log.streams, {}, state);
+    CHECK(spec.axes.size() == 1 && spec.axes[0].mode == PlotAxisRangeMode::Linked);
+    CHECK(spec.axes[0].lower == paddedRange(infoRange(log, "imu_ax")).lower);
+    CHECK(spec.traces[1].penWidth == 2);
+
+    // Members with different units never share an axis.
+    StreamMeta other_units = *find(log, "imu_ay");
+    CHECK(sensorviz::axisGroupKey(other_units) == sensorviz::axisGroupKey(*find(log, "imu_ax")));
+    other_units.units = "uT";
+    CHECK(sensorviz::axisGroupKey(other_units) != sensorviz::axisGroupKey(*find(log, "imu_ax")));
+    CHECK(sensorviz::axisGroupKey(*find(log, "imu_pressure")).empty());
 
     // Altitude adds the sea-level row; derived streams draw heavier.
     addDerivedCopy(log, "imu_pressure", "altitude");

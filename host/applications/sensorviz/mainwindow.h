@@ -237,11 +237,9 @@ private:
     void setStreamRange(const QString &id);
     QCPRange defaultRangeForStream(const SensorStream &stream) const;
 
-    // Axis side choices are viewer preferences layered over stream defaults.
-    // The metadata/default remains in SensorStream::axisSide; this override is
-    // useful when a particular data combination reads better with a different
-    // left/right arrangement.
-    SensorAxisSide effectiveAxisSide(const SensorStream &stream) const;
+    // Axis side choices are viewer preferences layered over stream defaults,
+    // chosen per axis and stored per member stream. The default remains in
+    // SensorStream::axisSide.
     void updateAxisSidesAction();
 
     // Color actions are viewer preferences. sensor_preferences.cpp supplies

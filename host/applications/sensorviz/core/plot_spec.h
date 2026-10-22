@@ -94,7 +94,7 @@ enum class PlotAxisRangeMode
     /// semantics, which the renderer applies because they depend on the
     /// axis's history. PlotAxisSpec::lower and upper hold the data range.
     Auto,
-    /// Shared with the other visible streams of an x/y/z family; lower and
+    /// Shared by two or more visible streams of an axis group; lower and
     /// upper hold the padded union of their data ranges.
     Linked,
     /// Exactly lower..upper: a range the user set, or a stream's fixed
@@ -104,15 +104,21 @@ enum class PlotAxisRangeMode
 
 /**
  * @struct  PlotAxisSpec
- * @brief   One y axis. Every trace has its own.
+ * @brief   One y axis, shared by the visible traces of one axis group.
+ *
+ * @details A stream with no group (StreamMeta::group) has an axis of its own.
+ *          An axis with more than one trace is a shared axis: its members are
+ *          told apart by their line colors, so the renderer shows a legend
+ *          naming them.
  */
 struct PlotAxisSpec
 {
     AxisSide side = AxisSide::Left;  ///< Which side of the plot.
-    std::string label;               ///< Axis title: stream label and units, UTF-8.
-    Rgb color;                       ///< Axis, tick and label color.
+    std::string label;               ///< Axis title, UTF-8: stream label and units, or for a shared axis the group label and units.
+    Rgb color;                       ///< Axis, tick and label color: that of its first trace.
     PlotAxisRangeMode mode = PlotAxisRangeMode::Auto; ///< See PlotAxisRangeMode.
-    std::string linkedGroup;         ///< Family id when #mode is Linked, e.g. `imu_accel`.
+    std::string linkedGroup;         ///< Group id when #mode is Linked, e.g. `imu_accel`.
+    std::vector<int> traces;         ///< Indices into PlotSpec::traces drawn on this axis, in trace order; never empty.
     bool hasRange = false;           ///< False for an Auto axis whose stream has no finite data range; the renderer then pads the axis's current range.
     double lower = 0.0;              ///< See PlotAxisRangeMode.
     double upper = 0.0;              ///< See PlotAxisRangeMode.
@@ -143,7 +149,7 @@ struct PlotSpec
     bool hasXDataRange = false;             ///< False when no trace has samples.
     PlotRange xDataRange;                   ///< Earliest and latest sample time over all traces, unpadded; the full-range zoom.
     std::vector<PlotTraceSpec> traces;      ///< In drawing order.
-    std::vector<PlotAxisSpec> axes;         ///< One per trace, in trace order.
+    std::vector<PlotAxisSpec> axes;         ///< One per axis group with a visible trace, in order of each group's first trace.
     std::vector<double> eventMarkerTimes;   ///< Vertical marker lines, in the plot's time domain.
     std::vector<std::string> metadataRows;  ///< Lines of the metadata box; empty hides it.
     std::string title;                      ///< Title text, UTF-8; empty hides it.
@@ -154,18 +160,24 @@ struct PlotSpec
  * @brief   Decides what the plot shows.
  *
  * @details Pure: reads only its arguments, and the log's sensordata::Log for
- *          stream ranges and time extents. The rules, in order of
- *          precedence for each trace's y axis:
+ *          stream ranges and time extents.
  *
- *          1. a custom range from @p state is Fixed;
- *          2. a stream's default fixed range (StreamMeta::axisRange) is Fixed;
- *          3. an IMU x/y/z stream with at least one other visible member of its
- *             family that has neither of the above is Linked, to the padded
- *             union of the family's data ranges;
+ *          Visible streams with the same axisGroupKey() share one y axis; any
+ *          other stream has its own. The rules, in order of precedence, for
+ *          an axis's range:
+ *
+ *          1. the custom range from @p state of its first member that has
+ *             one is Fixed;
+ *          2. a lone member's default fixed range (StreamMeta::axisRange) is
+ *             Fixed;
+ *          3. two or more members are Linked, to the padded union of their
+ *             data ranges, ignoring their default fixed ranges;
  *          4. otherwise Auto.
  *
- *          Colors and axis sides are the stream defaults unless @p preferences
- *          override them. Derived streams are drawn two pixels wide.
+ *          Colors are the stream defaults unless @p preferences override
+ *          them. An axis's side is that of its first member with a side
+ *          override in @p preferences, or else its first member's default.
+ *          Derived streams are drawn two pixels wide.
  *
  *          The metadata box shows the collection start for elapsed-time logs
  *          that record one, the declination while `compass_heading` is
@@ -174,7 +186,7 @@ struct PlotSpec
  *
  * @param[in] log          The loaded log.
  * @param[in] streams      Every stream currently available, raw and derived.
- * @param[in] preferences  The user's color and axis-side overrides.
+ * @param[in] preferences  The user's per-stream color and axis-side overrides.
  * @param[in] state        Visible streams, custom ranges and view settings.
  *                         Ids that name no stream are ignored.
  *
@@ -199,11 +211,18 @@ PlotSpec buildPlotSpec(const PlotLogInfo &log,
 PlotRange paddedRange(const PlotRange &range);
 
 /**
- * @brief   The IMU x/y/z family a stream id belongs to, for linked y ranges.
- * @param[in] streamId  Stream id.
- * @return  `imu_accel`, `imu_gyro` or `imu_mag`, or an empty string.
+ * @brief   The key under which a stream shares a y axis with others.
+ *
+ * @details Streams share an axis when they are in the same group and have
+ *          the same units, so a record set whose columns mix units, such as
+ *          CompassTag's accelerometer and magnetometer, gets one axis per
+ *          unit.
+ *
+ * @param[in] stream  The stream.
+ * @return  Its group and units, or an empty string when it has no group and
+ *          so an axis of its own.
  */
-std::string linkedAxisGroupId(const std::string &streamId);
+std::string axisGroupKey(const StreamMeta &stream);
 
 /**
  * @brief   Whole-stream finite value range from a log's plot data.

@@ -14,6 +14,7 @@
 #include <QRadioButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QStringList>
 #include <QVBoxLayout>
 
@@ -195,16 +196,83 @@ void MainWindow::showVisibleStreamsDialog()
     // Plain checkboxes rather than checkable QListWidget items: the Qt 6.10
     // macOS style draws an item view's check indicator on the first row only,
     // so every other stream looked unselectable.
+    //
+    // Streams that share an axis are listed under a group checkbox, at the
+    // place of the group's first stream: checking it shows the whole group,
+    // unchecking it hides it, and it shows partly checked while only some
+    // members are shown. A stream alone in its group is listed on its own.
+    struct StreamGroup
+    {
+        std::string key;               ///< sensorviz::axisGroupKey(), or empty.
+        std::vector<QAction *> actions; ///< Members, in stream order.
+    };
+    std::vector<StreamGroup> groups;
+    for (QAction *action : stream_actions_) {
+        const SensorStream *stream = streamById(action->data().toString());
+        const std::string key = stream ? sensorviz::axisGroupKey(*stream) : std::string();
+        auto group = std::find_if(groups.begin(), groups.end(), [&key](const StreamGroup &g) {
+            return !key.empty() && g.key == key;
+        });
+        if (group == groups.end()) {
+            groups.push_back(StreamGroup{key, {action}});
+        } else {
+            group->actions.push_back(action);
+        }
+    }
+
     QWidget *stream_list = new QWidget;
     QVBoxLayout *stream_layout = new QVBoxLayout(stream_list);
     QVector<QCheckBox *> stream_boxes;
     stream_boxes.reserve(stream_actions_.size());
-    for (QAction *action : stream_actions_) {
-        QCheckBox *box = new QCheckBox(action->text(), stream_list);
-        box->setProperty("streamId", action->data());
-        box->setChecked(action->isChecked());
-        stream_layout->addWidget(box);
-        stream_boxes.append(box);
+    const int indent = style()->pixelMetric(QStyle::PM_IndicatorWidth) + 8;
+    for (const StreamGroup &group : groups) {
+        QCheckBox *group_box = nullptr;
+        QVBoxLayout *member_layout = stream_layout;
+        if (group.actions.size() > 1) {
+            const SensorStream *first = streamById(group.actions.front()->data().toString());
+            const QString name = first->groupLabel.empty() ? toQString(first->group)
+                                                           : toQString(first->groupLabel);
+            group_box = new QCheckBox(name + unitsSuffix(*first), stream_list);
+            group_box->setTristate(true);
+            stream_layout->addWidget(group_box);
+            member_layout = new QVBoxLayout;
+            member_layout->setContentsMargins(indent, 0, 0, 0);
+            stream_layout->addLayout(member_layout);
+        }
+        QVector<QCheckBox *> members;
+        for (QAction *action : group.actions) {
+            QCheckBox *box = new QCheckBox(action->text(), stream_list);
+            box->setProperty("streamId", action->data());
+            box->setChecked(action->isChecked());
+            member_layout->addWidget(box);
+            stream_boxes.append(box);
+            members.append(box);
+        }
+        if (!group_box) {
+            continue;
+        }
+        const auto sync_group = [group_box, members]() {
+            const qsizetype checked = std::count_if(members.begin(), members.end(),
+                                                    [](QCheckBox *box) { return box->isChecked(); });
+            const QSignalBlocker blocker(group_box);
+            group_box->setCheckState(checked == 0 ? Qt::Unchecked
+                                     : checked == members.size() ? Qt::Checked
+                                                                 : Qt::PartiallyChecked);
+        };
+        sync_group();
+        for (QCheckBox *box : members) {
+            connect(box, &QCheckBox::toggled, &dialog, sync_group);
+        }
+        // A click cycles a tristate box through partial; instead, a click
+        // shows every member unless all are already shown.
+        connect(group_box, &QCheckBox::clicked, &dialog, [members, sync_group]() {
+            const bool all = std::all_of(members.begin(), members.end(),
+                                         [](QCheckBox *box) { return box->isChecked(); });
+            for (QCheckBox *box : members) {
+                box->setChecked(!all);
+            }
+            sync_group();
+        });
     }
     stream_layout->addStretch(1);
 
@@ -264,14 +332,6 @@ QVector<SensorStream> MainWindow::visibleStreams() const
     return visible;
 }
 
-SensorAxisSide MainWindow::effectiveAxisSide(const SensorStream &stream) const
-{
-    // Plotting asks this helper for axis placement. Keeping overrides outside
-    // SensorStream preserves the loaded metadata default for reset/new-file
-    // behavior.
-    return view_.effectiveAxisSide(stream.id);
-}
-
 void MainWindow::updateAxisSidesAction()
 {
     // The side chooser edits only visible streams, so hide it until there is at
@@ -283,10 +343,18 @@ void MainWindow::updateAxisSidesAction()
 
 void MainWindow::showAxisSidesDialog()
 {
-    // Batch editor for value-axis placement. This is intentionally viewer-only:
-    // choosing left/right here does not mutate SensorStream metadata or the log.
-    const QVector<SensorStream> visible = visibleStreams();
-    if (visible.isEmpty()) {
+    // Batch editor for value-axis placement, one row per axis as drawn: a
+    // group of streams sharing an axis is one row, so its members cannot be
+    // given conflicting sides. This is intentionally viewer-only: choosing
+    // left/right here does not mutate SensorStream metadata or the log.
+    struct AxisRow
+    {
+        std::vector<std::string> members; ///< Stream ids drawn on the axis.
+        QRadioButton *left = nullptr;     ///< Checked for the left side.
+        QRadioButton *right = nullptr;    ///< Checked for the right side.
+    };
+    const sensorviz::PlotSpec &spec = plot_view_->spec();
+    if (spec.axes.empty()) {
         return;
     }
 
@@ -294,31 +362,35 @@ void MainWindow::showAxisSidesDialog()
     dialog.setWindowTitle(tr("Axis Sides"));
 
     QGridLayout *grid = new QGridLayout;
-    grid->addWidget(new QLabel(tr("Stream"), &dialog), 0, 0);
+    grid->addWidget(new QLabel(tr("Axis"), &dialog), 0, 0);
     grid->addWidget(new QLabel(tr("Axis Side"), &dialog), 0, 1);
 
-    QVector<QPair<QString, QRadioButton *>> right_buttons;
-    right_buttons.reserve(visible.size());
-    for (qsizetype i = 0; i < visible.size(); i++) {
-        const SensorStream &stream = visible[i];
-        QLabel *label = new QLabel(toQString(stream.label) + unitsSuffix(stream), &dialog);
+    std::vector<AxisRow> rows;
+    rows.reserve(spec.axes.size());
+    for (const sensorviz::PlotAxisSpec &axis : spec.axes) {
+        AxisRow row;
+        for (int trace : axis.traces) {
+            row.members.push_back(spec.traces[static_cast<size_t>(trace)].id);
+        }
+        QLabel *label = new QLabel(toQString(axis.label), &dialog);
         QWidget *side_widget = new QWidget(&dialog);
         QHBoxLayout *side_layout = new QHBoxLayout;
         side_layout->setContentsMargins(0, 0, 0, 0);
-        QRadioButton *left_button = new QRadioButton(tr("Left"), side_widget);
-        QRadioButton *right_button = new QRadioButton(tr("Right"), side_widget);
-        side_layout->addWidget(left_button);
-        side_layout->addWidget(right_button);
+        row.left = new QRadioButton(tr("Left"), side_widget);
+        row.right = new QRadioButton(tr("Right"), side_widget);
+        side_layout->addWidget(row.left);
+        side_layout->addWidget(row.right);
         side_layout->addStretch();
         side_widget->setLayout(side_layout);
-        if (effectiveAxisSide(stream) == SensorAxisSide::Right) {
-            right_button->setChecked(true);
+        if (axis.side == SensorAxisSide::Right) {
+            row.right->setChecked(true);
         } else {
-            left_button->setChecked(true);
+            row.left->setChecked(true);
         }
-        grid->addWidget(label, int(i) + 1, 0);
-        grid->addWidget(side_widget, int(i) + 1, 1);
-        right_buttons.append(qMakePair(toQString(stream.id), right_button));
+        const int grid_row = static_cast<int>(rows.size()) + 1;
+        grid->addWidget(label, grid_row, 0);
+        grid->addWidget(side_widget, grid_row, 1);
+        rows.push_back(row);
     }
 
     QDialogButtonBox *buttons =
@@ -331,9 +403,13 @@ void MainWindow::showAxisSidesDialog()
     layout->addWidget(buttons);
     dialog.setLayout(layout);
 
-    connect(defaults_button, &QPushButton::clicked, this, [&visible, &right_buttons]() {
-        for (qsizetype i = 0; i < visible.size() && i < right_buttons.size(); i++) {
-            right_buttons[i].second->setChecked(visible[i].axisSide == SensorAxisSide::Right);
+    // An axis's default side is its first member's, as buildPlotSpec() uses
+    // when no member has an override.
+    connect(defaults_button, &QPushButton::clicked, this, [this, &rows]() {
+        for (const AxisRow &row : rows) {
+            const SensorStream *first = view_.stream(row.members.front());
+            const bool right = first && first->axisSide == SensorAxisSide::Right;
+            (right ? row.right : row.left)->setChecked(true);
         }
     });
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -343,18 +419,22 @@ void MainWindow::showAxisSidesDialog()
         return;
     }
 
+    // Overrides stay per stream in preferences; every member of an axis gets
+    // the axis's side, stored only where it differs from that member's default.
     std::map<std::string, SensorAxisSide> sides = view_.axisSideOverrides();
-    for (const auto &entry : right_buttons) {
-        const SensorStream *stream = streamById(entry.first);
-        if (!stream) {
-            continue;
-        }
+    for (const AxisRow &row : rows) {
         const SensorAxisSide chosen_side =
-            entry.second->isChecked() ? SensorAxisSide::Right : SensorAxisSide::Left;
-        if (chosen_side == stream->axisSide) {
-            sides.erase(stream->id);
-        } else {
-            sides[stream->id] = chosen_side;
+            row.right->isChecked() ? SensorAxisSide::Right : SensorAxisSide::Left;
+        for (const std::string &id : row.members) {
+            const SensorStream *stream = view_.stream(id);
+            if (!stream) {
+                continue;
+            }
+            if (chosen_side == stream->axisSide) {
+                sides.erase(id);
+            } else {
+                sides[id] = chosen_side;
+            }
         }
     }
     view_.setAxisSideOverrides(sides);
@@ -511,6 +591,17 @@ void MainWindow::setStreamRange(const QString &id)
     }
 
     view_.setCustomRange(key, sensorviz::PlotRange{lower, upper}, true);
+
+    // Streams in one axis group share one axis, which takes the first
+    // member's custom range; give them all this one so the axis follows it.
+    const std::string group_key = sensorviz::axisGroupKey(*stream);
+    if (!group_key.empty()) {
+        for (const SensorStream &member : view_.streams()) {
+            if (member.id != key && sensorviz::axisGroupKey(member) == group_key) {
+                view_.setCustomRange(member.id, sensorviz::PlotRange{lower, upper}, true);
+            }
+        }
+    }
 
     // Altitude is derived directly from pressure. When the user changes the
     // pressure range, keep altitude aligned unless they have explicitly set an

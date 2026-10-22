@@ -34,8 +34,8 @@ not taken from the code under test.
 
 | Area | Cases |
 | --- | --- |
-| Traces and axes | State order, unknown ids ignored, one axis per trace, plot data handles, pen widths |
-| Linked ranges | The IMU accel family linked to the padded union of its ranges; a custom range on one member leaving the other two linked; a lone member auto-scaling; independence from listing order |
+| Traces and axes | State order, unknown ids ignored, one shared axis per group and one per ungrouped stream, each axis's member traces, plot data handles, pen widths |
+| Shared axes | The IMU accel group linked to the padded union of its ranges and labelled with the group name; the first member's custom range fixing the whole axis; a lone member with its own label, auto-scaling; a magnitude joining its group, its fixed default range kept alone and dropped when shared; the first side override placing the axis; different units never sharing; independence from listing order |
 | Fixed and auto ranges | Activity and voltage defaults, a custom range overriding a default, pressure auto-scaling on its data range |
 | Preferences | Colour and side overrides |
 | Time and markers | The time extent over all traces; event markers only with traces visible |

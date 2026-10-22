@@ -148,12 +148,12 @@ void checkRangesAndAppearance()
     CHECK(view.clearCustomRanges() == ViewModel::None);
 
     // Colors and sides fall back to the stream's defaults.
-    CHECK(view.effectiveColor("imu_ax") == (Rgb{0, 114, 178}));
-    CHECK(view.effectiveAxisSide("imu_ax") == AxisSide::Right);
-    CHECK(view.setColorOverrides({{"imu_ax", Rgb{1, 2, 3}}}) == ViewModel::Appearance);
-    CHECK(view.setAxisSideOverrides({{"imu_ax", AxisSide::Left}}) == ViewModel::Appearance);
-    CHECK(view.effectiveColor("imu_ax") == (Rgb{1, 2, 3}));
+    CHECK(view.effectiveColor("imu_ax") == (Rgb{20, 90, 190}));
     CHECK(view.effectiveAxisSide("imu_ax") == AxisSide::Left);
+    CHECK(view.setColorOverrides({{"imu_ax", Rgb{1, 2, 3}}}) == ViewModel::Appearance);
+    CHECK(view.setAxisSideOverrides({{"imu_ax", AxisSide::Right}}) == ViewModel::Appearance);
+    CHECK(view.effectiveColor("imu_ax") == (Rgb{1, 2, 3}));
+    CHECK(view.effectiveAxisSide("imu_ax") == AxisSide::Right);
     CHECK(view.setColorOverrides({{"imu_ax", Rgb{1, 2, 3}}}) == ViewModel::None);
 
     // View settings and transform parameters.
@@ -188,15 +188,15 @@ void checkPreferences()
     CHECK(none.tagType == "IMUTAG" && !none.hasOverrides());
 
     // A color equal to the default is not stored; a different one is.
-    view.setColorOverrides({{"imu_ax", Rgb{0, 114, 178}}, {"imu_ay", Rgb{9, 9, 9}}});
-    view.setAxisSideOverrides({{"imu_ax", AxisSide::Right}, {"imu_ay", AxisSide::Left}});
+    view.setColorOverrides({{"imu_ax", Rgb{20, 90, 190}}, {"imu_ay", Rgb{9, 9, 9}}});
+    view.setAxisSideOverrides({{"imu_ax", AxisSide::Left}, {"imu_ay", AxisSide::Right}});
     view.setStreamVisible("imu_ax", true);
     view.setBreakAtGaps(false);
     TagPreferences captured = view.capturePreferences("IMUTAG");
     CHECK(captured.hasVisibleStreamOverride);
     CHECK((captured.visibleStreamIds == std::set<std::string>{"activity", "imu_ax"}));
     CHECK(captured.streamColors.size() == 1 && captured.streamColors.count("imu_ay") == 1);
-    CHECK(captured.axisSides.size() == 1 && captured.axisSides.at("imu_ay") == AxisSide::Left);
+    CHECK(captured.axisSides.size() == 1 && captured.axisSides.at("imu_ay") == AxisSide::Right);
     CHECK(captured.hasBreakLinesAtGapsOverride && !captured.breakLinesAtGaps);
 
     // The visibility comparison counts derived streams' defaults too, as

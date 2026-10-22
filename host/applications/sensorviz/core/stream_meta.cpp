@@ -38,41 +38,47 @@ StreamDisplayDefaults defaultDisplayForStream(const std::string &stream_id)
     if (stream_id == "imu_pressure") {
         return {Rgb{25, 130, 105}, false, AxisSide::Right, {}};
     }
+    // The members of an IMU group share one y axis (buildPlotSpec()), so
+    // their colors come from one hue family per group -- accel blues, gyro
+    // warm, magnetometer greens -- in a fixed x, y, z order, and each group's
+    // magnitude is a muted shade of the family, drawn heavier as a derived
+    // stream. All members default to the same side, so the shared axis does
+    // not move when one of them is shown or hidden.
     if (stream_id == "imu_ax") {
-        return {Rgb{0, 114, 178}, false, AxisSide::Right, {}};
+        return {Rgb{20, 90, 190}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_ay") {
-        return {Rgb{230, 159, 0}, false, AxisSide::Right, {}};
+        return {Rgb{0, 160, 200}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_az") {
-        return {Rgb{0, 158, 115}, false, AxisSide::Right, {}};
+        return {Rgb{120, 80, 200}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_gx") {
-        return {Rgb{126, 87, 194}, false, AxisSide::Right, {}};
+        return {Rgb{205, 40, 40}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_gy") {
-        return {Rgb{213, 94, 0}, false, AxisSide::Right, {}};
+        return {Rgb{230, 135, 0}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_gz") {
-        return {Rgb{0, 150, 165}, false, AxisSide::Right, {}};
+        return {Rgb{195, 60, 150}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_mx") {
-        return {Rgb{86, 180, 233}, false, AxisSide::Right, {}};
+        return {Rgb{30, 140, 40}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_my") {
-        return {Rgb{204, 121, 167}, false, AxisSide::Right, {}};
+        return {Rgb{140, 160, 0}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_mz") {
-        return {Rgb{160, 130, 0}, false, AxisSide::Right, {}};
+        return {Rgb{0, 115, 95}, false, AxisSide::Left, {}};
     }
     if (stream_id == "imu_accel_magnitude") {
-        return {Rgb{85, 110, 210}, true, AxisSide::Left, {true, 0.0, 2000.0}};
+        return {Rgb{50, 60, 95}, true, AxisSide::Left, {true, 0.0, 2000.0}};
     }
     if (stream_id == "imu_gyro_magnitude") {
-        return {Rgb{190, 80, 55}, true, AxisSide::Left, {}};
+        return {Rgb{150, 85, 55}, true, AxisSide::Left, {}};
     }
     if (stream_id == "imu_mag_magnitude") {
-        return {Rgb{105, 130, 40}, true, AxisSide::Left, {}};
+        return {Rgb{85, 105, 45}, true, AxisSide::Left, {}};
     }
     return {};
 }
@@ -85,6 +91,8 @@ StreamMeta storedStreamMeta(const sensordata::StreamInfo &info)
     stream.units = info.units;
     stream.timeDomain = info.domain;
     stream.dataId = info.handle;
+    stream.group = info.group_id;
+    stream.groupLabel = info.group_name;
     const StreamDisplayDefaults defaults = defaultDisplayForStream(info.id);
     stream.color = defaults.color;
     stream.defaultVisible = defaults.visible;

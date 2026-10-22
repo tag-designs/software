@@ -63,21 +63,11 @@ void extend(PlotRange &range, const PlotRange &addition)
 
 } // namespace
 
-std::string linkedAxisGroupId(const std::string &streamId)
+std::string axisGroupKey(const StreamMeta &stream)
 {
-    // Related physical axes should be compared on the same value scale. Keep
-    // this narrowly scoped to true x/y/z families so unrelated streams with the
-    // same units can still auto-scale independently.
-    if (streamId == "imu_ax" || streamId == "imu_ay" || streamId == "imu_az") {
-        return "imu_accel";
-    }
-    if (streamId == "imu_gx" || streamId == "imu_gy" || streamId == "imu_gz") {
-        return "imu_gyro";
-    }
-    if (streamId == "imu_mx" || streamId == "imu_my" || streamId == "imu_mz") {
-        return "imu_mag";
-    }
-    return {};
+    // Units are part of the key so that a group never puts two scales on one
+    // axis. The separator cannot occur in a group id or units string.
+    return stream.group.empty() ? std::string() : stream.group + '\x1f' + stream.units;
 }
 
 PlotRange paddedRange(const PlotRange &range)
@@ -144,27 +134,100 @@ PlotSpec buildPlotSpec(const PlotLogInfo &log,
         }
     }
 
-    // Linked families: count the visible members that would otherwise
-    // auto-scale, and unite their data ranges.
-    std::map<std::string, int> group_counts;
-    std::map<std::string, PlotRange> group_ranges;
+    // One axis per group of visible streams, in order of each group's first
+    // member; a stream with no group gets an axis of its own.
+    std::vector<std::vector<const StreamMeta *>> axis_members;
+    std::map<std::string, size_t> axis_of_group;
     for (const StreamMeta *stream : visible) {
-        const std::string group = linkedAxisGroupId(stream->id);
-        if (group.empty() || state.customRanges.count(stream->id) != 0
-            || stream->axisRange.enabled) {
+        const std::string key = axisGroupKey(*stream);
+        const auto existing = key.empty() ? axis_of_group.end() : axis_of_group.find(key);
+        if (existing != axis_of_group.end()) {
+            axis_members[existing->second].push_back(stream);
             continue;
         }
-        PlotRange range;
-        if (!streamDataRange(data, *stream, range)) {
-            continue;
+        if (!key.empty()) {
+            axis_of_group[key] = axis_members.size();
         }
-        group_counts[group]++;
-        const auto existing = group_ranges.find(group);
-        if (existing != group_ranges.end()) {
-            extend(existing->second, range);
+        axis_members.push_back({stream});
+    }
+
+    std::map<const StreamMeta *, int> trace_axis;
+    for (const std::vector<const StreamMeta *> &members : axis_members) {
+        const StreamMeta *first = members.front();
+        PlotAxisSpec axis;
+
+        // The first member with a side override places the axis; otherwise
+        // the first member's default does.
+        axis.side = first->axisSide;
+        for (const StreamMeta *member : members) {
+            const auto side_override = preferences.axisSides.find(member->id);
+            if (side_override != preferences.axisSides.end()) {
+                axis.side = side_override->second;
+                break;
+            }
+        }
+        const auto color_override = preferences.colors.find(first->id);
+        axis.color =
+            color_override != preferences.colors.end() ? color_override->second : first->color;
+        const std::string units = first->units.empty() ? std::string() : " " + first->units;
+        axis.label = (members.size() > 1 && !first->groupLabel.empty() ? first->groupLabel
+                                                                      : first->label)
+            + units;
+
+        const PlotRange *custom = nullptr;
+        for (const StreamMeta *member : members) {
+            const auto found = state.customRanges.find(member->id);
+            if (found != state.customRanges.end()) {
+                custom = &found->second;
+                break;
+            }
+        }
+        if (custom) {
+            axis.mode = PlotAxisRangeMode::Fixed;
+            axis.hasRange = true;
+            axis.lower = custom->lower;
+            axis.upper = custom->upper;
+        } else if (members.size() == 1 && first->axisRange.enabled) {
+            axis.mode = PlotAxisRangeMode::Fixed;
+            axis.hasRange = true;
+            axis.lower = first->axisRange.lower;
+            axis.upper = first->axisRange.upper;
+        } else if (members.size() > 1) {
+            // Default fixed ranges describe one stream, such as |a| from 0;
+            // they would clip the signed x/y/z members sharing the axis.
+            PlotRange united;
+            bool any = false;
+            for (const StreamMeta *member : members) {
+                PlotRange range;
+                if (!streamDataRange(data, *member, range)) {
+                    continue;
+                }
+                if (any) {
+                    extend(united, range);
+                } else {
+                    united = range;
+                    any = true;
+                }
+            }
+            if (any) {
+                const PlotRange padded = paddedRange(united);
+                axis.mode = PlotAxisRangeMode::Linked;
+                axis.linkedGroup = first->group;
+                axis.hasRange = true;
+                axis.lower = padded.lower;
+                axis.upper = padded.upper;
+            }
         } else {
-            group_ranges[group] = range;
+            PlotRange range;
+            axis.hasRange = streamDataRange(data, *first, range);
+            axis.lower = range.lower;
+            axis.upper = range.upper;
         }
+
+        for (const StreamMeta *member : members) {
+            trace_axis[member] = static_cast<int>(spec.axes.size());
+        }
+        spec.axes.push_back(axis);
     }
 
     bool heading_visible = false;
@@ -174,51 +237,16 @@ PlotSpec buildPlotSpec(const PlotLogInfo &log,
         altitude_visible = altitude_visible || stream->id == "altitude";
 
         const auto color_override = preferences.colors.find(stream->id);
-        const Rgb color =
-            color_override != preferences.colors.end() ? color_override->second : stream->color;
-        const auto side_override = preferences.axisSides.find(stream->id);
-        PlotAxisSpec axis;
-        axis.side = side_override != preferences.axisSides.end() ? side_override->second
-                                                                 : stream->axisSide;
-        axis.label = stream->label + (stream->units.empty() ? std::string() : " " + stream->units);
-        axis.color = color;
-
-        const std::string group = linkedAxisGroupId(stream->id);
-        const auto custom = state.customRanges.find(stream->id);
-        const auto group_count = group_counts.find(group);
-        if (custom != state.customRanges.end()) {
-            axis.mode = PlotAxisRangeMode::Fixed;
-            axis.hasRange = true;
-            axis.lower = custom->second.lower;
-            axis.upper = custom->second.upper;
-        } else if (stream->axisRange.enabled) {
-            axis.mode = PlotAxisRangeMode::Fixed;
-            axis.hasRange = true;
-            axis.lower = stream->axisRange.lower;
-            axis.upper = stream->axisRange.upper;
-        } else if (!group.empty() && group_count != group_counts.end() && group_count->second > 1) {
-            const PlotRange padded = paddedRange(group_ranges[group]);
-            axis.mode = PlotAxisRangeMode::Linked;
-            axis.linkedGroup = group;
-            axis.hasRange = true;
-            axis.lower = padded.lower;
-            axis.upper = padded.upper;
-        } else {
-            PlotRange range;
-            axis.mode = PlotAxisRangeMode::Auto;
-            axis.hasRange = streamDataRange(data, *stream, range);
-            axis.lower = range.lower;
-            axis.upper = range.upper;
-        }
-
         PlotTraceSpec trace;
         trace.id = stream->id;
         trace.name = stream->label;
         trace.stream = stream->dataId;
-        trace.color = color;
+        trace.color =
+            color_override != preferences.colors.end() ? color_override->second : stream->color;
         trace.penWidth = stream->derived ? 2 : 1;
-        trace.axis = static_cast<int>(spec.axes.size());
-        spec.axes.push_back(axis);
+        trace.axis = trace_axis[stream];
+        spec.axes[static_cast<size_t>(trace.axis)].traces.push_back(
+            static_cast<int>(spec.traces.size()));
         spec.traces.push_back(trace);
 
         PlotRange time_range;

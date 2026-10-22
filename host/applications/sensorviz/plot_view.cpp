@@ -54,6 +54,50 @@ bool onlyTitleOrUtcDiffer(const PlotSpec &a, const PlotSpec &b)
     return true;
 }
 
+/**
+ * @brief   A legend entry whose line sample is drawn wider than its trace.
+ *
+ * @details Traces are one or two pixels wide, which reads well across a plot
+ *          but leaves a short legend sample's color hard to judge. The sample
+ *          is drawn two pixels wider than the trace's pen, with flat caps so
+ *          it keeps the icon's length; the text is drawn as
+ *          QCPPlottableLegendItem draws it.
+ */
+class WideLegendItem : public QCPPlottableLegendItem
+{
+public:
+    using QCPPlottableLegendItem::QCPPlottableLegendItem;
+
+protected:
+    /// Draws the name, then the widened line sample, in the item's rect.
+    void draw(QCPPainter *painter) override
+    {
+        if (!mPlottable) {
+            return;
+        }
+        painter->setFont(getFont());
+        painter->setPen(QPen(getTextColor()));
+        const QSize icon_size = mParentLegend->iconSize();
+        const QRect text_rect = painter->fontMetrics().boundingRect(
+            0, 0, 0, icon_size.height(), Qt::TextDontClip, mPlottable->name());
+        const int text_height = qMax(text_rect.height(), icon_size.height());
+        painter->drawText(mRect.x() + icon_size.width() + mParentLegend->iconTextPadding(),
+                          mRect.y(), text_rect.width(), text_height, Qt::TextDontClip,
+                          mPlottable->name());
+
+        const QRectF icon_rect(mRect.topLeft(), icon_size);
+        QPen pen = mPlottable->pen();
+        pen.setWidthF(pen.widthF() + 2.0);
+        pen.setCapStyle(Qt::FlatCap);
+        painter->save();
+        painter->setAntialiasing(true);
+        painter->setPen(pen);
+        const double y = icon_rect.center().y();
+        painter->drawLine(QLineF(icon_rect.left(), y, icon_rect.right(), y));
+        painter->restore();
+    }
+};
+
 /// Sets @p axis to @p range padded by 5%.
 void setPaddedAxisRange(QCPAxis *axis, const QCPRange &range)
 {
@@ -74,6 +118,8 @@ PlotView::PlotView(QWidget *parent) : QWidget(parent)
     // The plot is configured for horizontal pan/zoom because the x-axis is time.
     plot_->setContextMenuPolicy(Qt::CustomContextMenu);
     plot_->setBufferDevicePixelRatio(1.0);
+    // The legend lists only the traces of shared axes; rebuildLegend() adds them.
+    plot_->setAutoAddPlottableToLegend(false);
     plot_->setInteraction(QCP::iRangeDrag, true);
     plot_->setInteraction(QCP::iRangeZoom, true);
     plot_->axisRect()->setRangeDrag(Qt::Horizontal);
@@ -225,18 +271,13 @@ void PlotView::rebuild()
 
     int left_axis_count = 0;
     int right_axis_count = 0;
-    for (const PlotTraceSpec &trace : spec_.traces) {
-        const PlotAxisSpec &axis_spec = spec_.axes[static_cast<size_t>(trace.axis)];
+    QVector<QCPAxis *> axes;
+    for (const PlotAxisSpec &axis_spec : spec_.axes) {
         const int side_index = axis_spec.side == SensorAxisSide::Right
             ? right_axis_count++
             : left_axis_count++;
         QCPAxis *axis = addValueAxis(axis_spec.side, side_index, axis_spec);
-        QCPGraph *graph = plot_->addGraph(x_axis, axis);
-        graph->setName(QString::fromStdString(trace.name));
-        graph->setPen(QPen(toQColor(trace.color), trace.penWidth));
-        if (trace.stream != sensordata::kNoStream) {
-            graphs_.append(qMakePair(graph, trace.stream));
-        }
+        axes.append(axis);
 
         switch (axis_spec.mode) {
         case PlotAxisRangeMode::Fixed:
@@ -261,6 +302,18 @@ void PlotView::rebuild()
             break;
         }
     }
+
+    QVector<QCPGraph *> trace_graphs;
+    for (const PlotTraceSpec &trace : spec_.traces) {
+        QCPGraph *graph = plot_->addGraph(x_axis, axes[trace.axis]);
+        graph->setName(QString::fromStdString(trace.name));
+        graph->setPen(QPen(toQColor(trace.color), trace.penWidth));
+        trace_graphs.append(graph);
+        if (trace.stream != sensordata::kNoStream) {
+            graphs_.append(qMakePair(graph, trace.stream));
+        }
+    }
+    rebuildLegend(trace_graphs);
 
     if (!spec_.traces.empty()) {
         if (preserve_x_range) {
@@ -303,10 +356,32 @@ void PlotView::resetZoom()
     plot_->replot();
 }
 
+void PlotView::rebuildLegend(const QVector<QCPGraph *> &trace_graphs)
+{
+    // A shared axis carries one color for several traces, so the legend names
+    // them: one column per shared axis, its members in trace order. Traces on
+    // an axis of their own are already named by their axis label.
+    QCPLegend *legend = plot_->legend;
+    legend->clearItems();
+    int column = 0;
+    for (const PlotAxisSpec &axis_spec : spec_.axes) {
+        if (axis_spec.traces.size() < 2) {
+            continue;
+        }
+        int row = 0;
+        for (int trace : axis_spec.traces) {
+            legend->addElement(row++, column,
+                               new WideLegendItem(legend, trace_graphs[trace]));
+        }
+        column++;
+    }
+    legend->setVisible(column > 0);
+}
+
 QCPAxis *PlotView::addValueAxis(SensorAxisSide side, int side_index, const PlotAxisSpec &spec)
 {
-    // One value axis per visible stream so unrelated units do not compete for
-    // a single y scale. The first left/right axes reuse QCustomPlot's
+    // One value axis per axis group, or per ungrouped stream, so unrelated
+    // units do not compete for a single y scale. The first left/right axes reuse QCustomPlot's
     // built-in ones; additional axes are tracked in dynamic_axes_ for removal.
     QCPAxis *axis = nullptr;
     if (side == SensorAxisSide::Right) {
@@ -450,20 +525,52 @@ void PlotView::mouseDoubleClick(QMouseEvent *event)
     emit cursorsChanged(left_cursor_->start->coords().x(), right_cursor_->start->coords().x());
 }
 
+int PlotView::legendInsetIndex() const
+{
+    QCPLayoutInset *insets = plot_->axisRect()->insetLayout();
+    for (int i = 0; i < insets->elementCount(); i++) {
+        if (insets->elementAt(i) == plot_->legend) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void PlotView::mousePress(QMouseEvent *event)
 {
-    // The metadata box is a movable annotation, not part of the data. While it
-    // is being dragged, range dragging is off so the plot does not pan
-    // underneath the user's hand.
-    if (!metadata_box_->visible() || event->button() != Qt::LeftButton) {
+    // The metadata box and the legend are movable annotations, not part of
+    // the data. While one is being dragged, range dragging is off so the plot
+    // does not pan underneath the user's hand.
+    if (event->button() != Qt::LeftButton) {
         return;
     }
-    if (plot_->itemAt(event->pos()) != metadata_box_) {
+    if (metadata_box_->visible() && plot_->itemAt(event->pos()) == metadata_box_) {
+        metadata_box_dragging_ = true;
+        metadata_box_drag_start_pixel_ = event->pos();
+        metadata_box_drag_start_coords_ = metadata_box_->position->coords();
+        plot_->setInteraction(QCP::iRangeDrag, false);
         return;
     }
-    metadata_box_dragging_ = true;
-    metadata_box_drag_start_pixel_ = event->pos();
-    metadata_box_drag_start_coords_ = metadata_box_->position->coords();
+
+    QCPLegend *legend = plot_->legend;
+    const int index = legendInsetIndex();
+    const QRect rect = plot_->axisRect()->rect();
+    if (!legend->visible() || index < 0 || rect.width() <= 0 || rect.height() <= 0
+        || !legend->outerRect().contains(event->pos())) {
+        return;
+    }
+    // The legend starts aligned to the top-right corner. Dragging frees it,
+    // at its current place in axis-rect ratios; a zero size lets the inset
+    // layout give it exactly its minimum size.
+    QCPLayoutInset *insets = plot_->axisRect()->insetLayout();
+    const QRect outer = legend->outerRect();
+    legend_drag_start_coords_ =
+        QPointF(static_cast<double>(outer.left() - rect.left()) / rect.width(),
+                static_cast<double>(outer.top() - rect.top()) / rect.height());
+    insets->setInsetPlacement(index, QCPLayoutInset::ipFree);
+    insets->setInsetRect(index, QRectF(legend_drag_start_coords_, QSizeF(0.0, 0.0)));
+    legend_dragging_ = true;
+    legend_drag_start_pixel_ = event->pos();
     plot_->setInteraction(QCP::iRangeDrag, false);
 }
 
@@ -486,6 +593,27 @@ void PlotView::mouseMove(QMouseEvent *event)
         plot_->replot();
         return;
     }
+    if (legend_dragging_) {
+        // Like the metadata box, in axis-rect ratios, kept wholly inside.
+        const QRect rect = plot_->axisRect()->rect();
+        const int index = legendInsetIndex();
+        if (rect.width() <= 0 || rect.height() <= 0 || index < 0) {
+            return;
+        }
+        const QSize size = plot_->legend->outerRect().size();
+        const double max_x = std::max(0.0, 1.0 - static_cast<double>(size.width()) / rect.width());
+        const double max_y =
+            std::max(0.0, 1.0 - static_cast<double>(size.height()) / rect.height());
+        const QPoint delta = event->pos() - legend_drag_start_pixel_;
+        const double x =
+            legend_drag_start_coords_.x() + static_cast<double>(delta.x()) / rect.width();
+        const double y =
+            legend_drag_start_coords_.y() + static_cast<double>(delta.y()) / rect.height();
+        plot_->axisRect()->insetLayout()->setInsetRect(
+            index, QRectF(std::clamp(x, 0.0, max_x), std::clamp(y, 0.0, max_y), 0.0, 0.0));
+        plot_->replot();
+        return;
+    }
     if (!plot_->axisRect()->rect().contains(event->pos())) {
         return;
     }
@@ -495,10 +623,11 @@ void PlotView::mouseMove(QMouseEvent *event)
 void PlotView::mouseRelease(QMouseEvent *event)
 {
     Q_UNUSED(event);
-    if (!metadata_box_dragging_) {
+    if (!metadata_box_dragging_ && !legend_dragging_) {
         return;
     }
     metadata_box_dragging_ = false;
+    legend_dragging_ = false;
     plot_->setInteraction(QCP::iRangeDrag, true);
 }
 

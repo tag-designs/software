@@ -36,7 +36,7 @@ using sensorviz::PlotTraceSpec;
 
 /**
  * @class   PlotView
- * @brief   Draws a PlotSpec, with pan and zoom on time, cursors and a draggable metadata box.
+ * @brief   Draws a PlotSpec, with pan and zoom on time, cursors, and a draggable metadata box and legend.
  *
  * @details **Data.** Graphs never hold a stream's samples. After every
  *          QCustomPlot layout pass, and so on every pan, zoom and resize, the
@@ -57,8 +57,9 @@ using sensorviz::PlotTraceSpec;
  *
  *          **Mouse.** Dragging and the wheel pan and zoom time only.
  *          Double-click places the left cursor, shift-double-click the right
- *          one, showing the cursors if they were hidden. The metadata box can
- *          be dragged; its position is session state.
+ *          one, showing the cursors if they were hidden. The metadata box and
+ *          the legend can be dragged; their positions are session state,
+ *          kept in axis-rect ratios across rebuilds and resizes.
  *
  *          Must be used from the GUI thread.
  */
@@ -176,6 +177,13 @@ private:
     void applyTitleAndMetadata();
     void rebuild();
     void resetXRangeToData();
+    /**
+     * @brief   Shows a legend naming the traces of each shared axis, or hides it when there is none.
+     * @param[in] trace_graphs  The graph drawing each trace of the current spec, in trace order.
+     */
+    void rebuildLegend(const QVector<QCPGraph *> &trace_graphs);
+    /// The legend's index in the axis rect's inset layout, or -1.
+    int legendInsetIndex() const;
     QCPAxis *addValueAxis(SensorAxisSide side, int side_index, const PlotAxisSpec &spec);
     void clearDynamicAxes();
     void clearEventMarkers();
@@ -207,6 +215,9 @@ private:
     bool metadata_box_dragging_ = false;       ///< A metadata box drag is in progress.
     QPoint metadata_box_drag_start_pixel_;     ///< Mouse position where the drag began.
     QPointF metadata_box_drag_start_coords_;   ///< Box position, in axis-rect ratios, where the drag began.
+    bool legend_dragging_ = false;             ///< A legend drag is in progress.
+    QPoint legend_drag_start_pixel_;           ///< Mouse position where the legend drag began.
+    QPointF legend_drag_start_coords_;         ///< Legend top-left, in axis-rect ratios, where the drag began.
 
     QVector<QPair<QCPGraph *, sensordata::StreamId>> graphs_; ///< Graphs filled from the log, with their streams.
     double fill_lower_ = 0.0;                  ///< Window of the last fill.

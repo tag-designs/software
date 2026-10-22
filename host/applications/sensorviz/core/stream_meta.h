@@ -75,6 +75,8 @@ struct StreamMeta
     std::string units;  ///< Units; may be empty.
     sensordata::TimeDomain timeDomain = sensordata::TimeDomain::EpochSeconds; ///< Domain of the samples' times.
     sensordata::StreamId dataId = sensordata::kNoStream; ///< The samples in the log's sensordata::Log.
+    std::string group;             ///< Axis group: the log's `streams.group_id` (e.g. `imu_accel`), or for a derived stream the group of its inputs; empty for a stream with its own axis.
+    std::string groupLabel;        ///< User-facing group name (`streams.group_name`), used for a shared axis's label; may be empty.
     Rgb color{80, 100, 140};       ///< Default line and axis color.
     bool derived = false;          ///< Shown while it exists, without its own View entry, and drawn heavier (the activity filter).
     bool defaultVisible = true;    ///< Visibility before preferences are applied.

@@ -258,17 +258,16 @@ void MainWindow::createImuMagnitudeStreams()
         const char *id;
         const char *label;
         const char *units;
-        sensorviz::Rgb color;
         SensorAxisRange range;
         const char *axes[3];
     };
     const Magnitude magnitudes[] = {
         {"imu_accel_magnitude", QT_TR_NOOP("Acceleration magnitude"), QT_TR_NOOP("mg"),
-         sensorviz::Rgb{85, 110, 210}, {true, 0.0, 2000.0}, {"imu_ax", "imu_ay", "imu_az"}},
+         {true, 0.0, 2000.0}, {"imu_ax", "imu_ay", "imu_az"}},
         {"imu_gyro_magnitude", QT_TR_NOOP("Gyro magnitude"), QT_TR_NOOP("dps"),
-         sensorviz::Rgb{190, 80, 55}, {}, {"imu_gx", "imu_gy", "imu_gz"}},
+         {}, {"imu_gx", "imu_gy", "imu_gz"}},
         {"imu_mag_magnitude", QT_TR_NOOP("Magnetic field magnitude"), QT_TR_NOOP("uT"),
-         sensorviz::Rgb{105, 130, 40}, {}, {"imu_mx", "imu_my", "imu_mz"}},
+         {}, {"imu_mx", "imu_my", "imu_mz"}},
     };
 
     for (const Magnitude &magnitude : magnitudes) {
@@ -284,7 +283,10 @@ void MainWindow::createImuMagnitudeStreams()
         stream.label = tr(magnitude.label).toStdString();
         stream.units = tr(magnitude.units).toStdString();
         stream.timeDomain = x->timeDomain;
-        stream.color = magnitude.color;
+        // A magnitude shares its components' axis, so it joins their group.
+        stream.group = x->group;
+        stream.groupLabel = x->groupLabel;
+        stream.color = sensorviz::defaultDisplayForStream(magnitude.id).color;
         stream.defaultVisible = true;
         stream.axisSide = SensorAxisSide::Left;
         stream.axisRange = magnitude.range;
