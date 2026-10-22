@@ -702,6 +702,14 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         if clock_fit["t0_s"] is not None:
             cfg = dataclass_replace(cfg, mag_clock_t0_s=clock_fit["t0_s"],
                                     mag_clock_period_s=clock_fit["period_s"])
+    # Keep only the bootstrap's first sample, and release the first pass's
+    # outputs (as large as this pass's) before this pass allocates its own.
+    if boot is not None:
+        boot = (tuple(float(x) for x in boot.q_smoothed[0]), boot.bias_smoothed[0].copy(),
+                None if boot.accel_bias_smoothed is None else boot.accel_bias_smoothed[0].copy())
+    if ref is not None:
+        ref.close()
+        ref = None
     ev = build_events(log, dataclass_replace(cfg, use_pressure=vert))
     if start_still:
         stop = int(np.argmin(still)) if not still.all() else n_imu
@@ -720,10 +728,9 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
     K = np.zeros((3, 3))
     dm = np.zeros(3)
     if boot is not None:
-        q = tuple(float(x) for x in boot.q_smoothed[0])
-        b = boot.bias_smoothed[0].copy()
-        if boot.accel_bias_smoothed is not None:
-            ba = boot.accel_bias_smoothed[0].copy()
+        q, b = boot[0], boot[1]
+        if boot[2] is not None:
+            ba = boot[2]
         s_att = math.radians(cfg.init_attitude_bootstrap_deg)
         sb = min(sb, math.radians(cfg.init_bias_dps))
     h, vz = 0.0, 0.0
