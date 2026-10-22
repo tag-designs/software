@@ -45,10 +45,6 @@ std::string lowercase(std::string value)
 bool parseStorageFormat(const std::string &name, TagLogStorageFormat &format)
 {
   const std::string normalized = lowercase(name);
-  if (normalized == "txt" || normalized == "text") {
-    format = TagLogStorageFormat::Text;
-    return true;
-  }
   if (normalized == "sqlite" || normalized == "sql" || normalized == "db" || normalized == "db3") {
     format = TagLogStorageFormat::Sqlite;
     return true;
@@ -219,9 +215,9 @@ int main(int argc, char **argv)
 
   cxxopts::Options options("tag-dwnld", "Downloads data from a tag");
   options.add_options()
-      ("o,output", "Output file path. Defaults to tag-download.txt or tag-download.db3",
+      ("o,output", "Output file path. Defaults to tag-download.db3",
        cxxopts::value<std::string>(output_path))
-      ("f,format", "Output format: default, text, sqlite",
+      ("f,format", "Output format: default or sqlite (the text format is retired)",
        cxxopts::value<std::string>(format_name)->default_value("default"))
       ("s,stop", "Stop a running tag before downloading",
        cxxopts::value<bool>(stop_tag)->default_value("false"))
@@ -243,6 +239,23 @@ int main(int argc, char **argv)
 
   if (!parse_options(argc, argv, options, tag, dev)) {
     return 1;
+  }
+
+  // Check the requested format before attaching, which resets the tag: a
+  // mistyped option must not cost a running tag its run.
+  const bool format_given = lowercase(format_name) != "default";
+  TagLogStorageFormat requested_format = TagLogStorageFormat::Sqlite;
+  if (format_given) {
+    const std::string name = lowercase(format_name);
+    if (name == "text" || name == "txt") {
+      std::cerr << "The text log format is retired; downloads are written as "
+                   "SQLite. tag-txt-import converts existing .txt logs." << std::endl;
+      return 1;
+    }
+    if (!parseStorageFormat(format_name, requested_format)) {
+      std::cerr << "Unknown output format: " << format_name << std::endl;
+      return 1;
+    }
   }
 
   if (!tag.Attach(dev)) {
@@ -360,25 +373,13 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  TagLogStorageFormat storage_format = defaultTagLogStorageFormat(config.tag_type());
-  if (lowercase(format_name) != "default") {
-    if (!parseStorageFormat(format_name, storage_format)) {
-      std::cerr << "Unknown output format: " << format_name << std::endl;
-      return 1;
-    }
-    if (!isTagLogStorageFormatSupported(config.tag_type(), storage_format)) {
-      std::cerr << "Format " << storageFormatName(storage_format)
-                << " is not supported for tag type "
-                << TagType_Name(config.tag_type()) << std::endl;
-      return 1;
-    }
-  }
-
-  // The .txt format is being retired
-  // (host/libraries/tagcore/design/proposals/retire-text-logs.md).
-  if (storage_format == TagLogStorageFormat::Text) {
-    std::cerr << "warning: the text log format is deprecated and will be removed; "
-                 "use -f sqlite (the default) for new downloads" << std::endl;
+  const TagLogStorageFormat storage_format =
+      format_given ? requested_format : defaultTagLogStorageFormat(config.tag_type());
+  if (!isTagLogStorageFormatSupported(config.tag_type(), storage_format)) {
+    std::cerr << "Format " << storageFormatName(storage_format)
+              << " is not supported for tag type "
+              << TagType_Name(config.tag_type()) << std::endl;
+    return 1;
   }
 
   if (output_path.empty()) {

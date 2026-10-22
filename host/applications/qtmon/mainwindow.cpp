@@ -1181,6 +1181,14 @@ void MainWindow::on_tagLogSaveButton_clicked()
   }
   const TagLogStorageFormat storage_format = defaultTagLogStorageFormat(tag_type);
   const std::vector<TagLogStorageFormat> formats = supportedTagLogStorageFormats(tag_type);
+  // SQLite is the only download format, so a tag type without a SQLite schema
+  // cannot be saved.
+  if (formats.empty()) {
+    QMessageBox::warning(this, tr("Cannot save log"),
+                         tr("This tag type has no SQLite log format, so its data "
+                            "cannot be downloaded."));
+    return;
+  }
   QStringList filter_list;
   for (TagLogStorageFormat format : formats) {
     filter_list << QString::fromStdString(tagLogFileFilter(format));
@@ -1224,20 +1232,6 @@ void MainWindow::on_tagLogSaveButton_clicked()
   } else if (suffix_matches_supported_format
              && file_info.suffix().compare(selected_suffix, Qt::CaseInsensitive) != 0) {
     fileName = file_info.path() + "/" + file_info.completeBaseName() + selected_extension;
-  }
-
-  // The .txt format is being retired (host/libraries/tagcore/design/proposals/
-  // retire-text-logs.md): say so, and let the user go back to SQLite.
-  if (selected_storage_format == TagLogStorageFormat::Text) {
-    const auto choice = QMessageBox::warning(
-        this, tr("Text log format is deprecated"),
-        tr("The .txt log format is being retired. SQLite (.db3) is the supported "
-           "format and holds the same data with its metadata.\n\n"
-           "Save as .txt anyway?"),
-        QMessageBox::Save | QMessageBox::Cancel, QMessageBox::Cancel);
-    if (choice != QMessageBox::Save) {
-      return;
-    }
   }
 
   qDebug() <<  "connecting progess dialog";

@@ -14,8 +14,8 @@ tag-dwnld [options]
 
 | Option | Value | Function |
 | --- | --- | --- |
-| `-o`, `--output` | path | Output file path. If omitted, SensorTag tools write `tag-download.txt` or `tag-download.db3` depending on the selected/default format. |
-| `-f`, `--format` | `default`, `text`, `sqlite` | Selects the output storage format. `default` chooses the default format for the loaded tag type. Accepted SQLite aliases in the parser include `sqlite`, `sql`, `db`, and `db3`; accepted text aliases include `txt` and `text`. |
+| `-o`, `--output` | path | Output file path. If omitted, the log is written to `tag-download.db3`. |
+| `-f`, `--format` | `default`, `sqlite` | Selects the output storage format. SQLite is the only format; `sqlite`, `sql`, `db` and `db3` are accepted. The text format is retired: `text` and `txt` are refused before the tag is touched. Convert existing `.txt` logs with [tag-txt-import](tag-txt-import.md). |
 | `-s`, `--stop` | none | Stops a running tag before downloading. Without this option, download proceeds only when the tag is already finished, aborted, or in exception state. |
 | `--rescue-exception` | none | For old firmware that refuses downloads from `EXCEPTION`, changes the monitor-visible backup state to `ABORTED` before downloading. This does not erase log flash or reset log counters. |
 | `-d`, `--debug` | none | Enables debug logging. |
@@ -47,17 +47,12 @@ tag-dwnld --stop --format default
 tag-dwnld --rescue-exception --format sqlite --output field-rescue.db3
 ```
 
-```sh
-tag-dwnld --rescue-exception --format text --output field-rescue.txt
-```
-
 ## Output
 
 The command prints the selected output path, a progress bar, the final record
 count, and timing information. SQLite output stores metadata in `info`, state
 history in `states`, stream metadata in `streams`, and tag-specific data tables
-such as `Activity`, `Voltage`, and `CoreTemperature`. Text output writes a
-comment header followed by line-oriented log records. See the
+such as `Activity`, `Voltage`, and `CoreTemperature`. See the
 [SQLite Log Format](../reference/sqlite-logs.md) reference for the common
 metadata tables and tag-specific sensor tables.
 

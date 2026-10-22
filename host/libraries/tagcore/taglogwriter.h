@@ -47,7 +47,11 @@ bool readTagLogHeader(Tag &tag, TagLogHeader &header, std::string *error = nullp
 /**
  * Storage formats supported by the common tag-log download path.
  *
- * Text is the legacy line-oriented format implemented by TextTagLogWriter.
+ * Text is the legacy line-oriented format implemented by TextTagLogWriter. It
+ * is retired for downloads: no tag type supports it, so tools offer SQLite
+ * only. createTagLogWriter() still makes a text writer, which tag-txt-import's
+ * round-trip check renders through, until the format is removed
+ * (design/proposals/retire-text-logs.md).
  * Sqlite is the structured database format implemented by SqliteTagLogWriter.
  */
 enum class TagLogStorageFormat
@@ -93,8 +97,9 @@ public:
     virtual int writeLog(const Ack &ack) = 0;
 };
 
-// Preferred format for a tag type. This can be used as a UI default while
-// still allowing the user to choose any supported format.
+// Preferred format for a tag type: SQLite, the only download format. A tag
+// type without a SQLite schema has no supported format, and its default fails
+// isTagLogStorageFormatSupported().
 TagLogStorageFormat defaultTagLogStorageFormat(TagType tag_type);
 
 // Format capability checks. Tags may support more than one format, so callers

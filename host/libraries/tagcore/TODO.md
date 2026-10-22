@@ -1,10 +1,21 @@
 ---
 type: worklist
 status: current
-summary: Open work in tagcore - hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
+summary: Open work in tagcore - taking btviz out of the standard build, hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 ---
 
 # tagcore TODO
+
+## Take btviz out of the standard build
+
+An interim step of [retiring the text log format and btviz](design/proposals/retire-text-logs.md),
+before phase 5 deletes it. Text-log downloads are already off.
+
+- Put `applications/btdataviz` behind a CMake option that defaults off, and
+  drop it from `host_qt_install_targets`, packaging and the Linux package
+  test, so releases no longer ship it. Researchers comparing converted logs
+  against btviz (phase 3) build it with the option on.
+- Say so on the btviz user-manual page, and update the proposal's status.
 
 ## Verify the monitor side channel on hardware
 

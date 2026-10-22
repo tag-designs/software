@@ -10,12 +10,11 @@
 
 TagLogStorageFormat defaultTagLogStorageFormat(TagType tag_type)
 {
-    // Prefer structured output when a SQLite schema exists, but keep text as
-    // the universal fallback for older and simpler tag types.
-    if (isTagLogStorageFormatSupported(tag_type, TagLogStorageFormat::Sqlite)) {
-        return TagLogStorageFormat::Sqlite;
-    }
-    return TagLogStorageFormat::Text;
+    // SQLite is the only download format; the text format is retired
+    // (design/proposals/retire-text-logs.md). Every real tag type has a
+    // schema, so there is no fallback.
+    (void)tag_type;
+    return TagLogStorageFormat::Sqlite;
 }
 
 bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format)
@@ -23,7 +22,7 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
     switch (format) {
     case TagLogStorageFormat::Sqlite:
         // SQLite support is explicit because each tag type needs a schema and
-        // dump routine. Text remains the catch-all implementation below.
+        // dump routine.
         return tag_type == COMPASSTAG
             || tag_type == PRESTAG
             || tag_type == BITPRESTAG
@@ -33,7 +32,7 @@ bool isTagLogStorageFormatSupported(TagType tag_type, TagLogStorageFormat format
             || tag_type == IMUTAG
             || tag_type == UIUCTAG;
     case TagLogStorageFormat::Text:
-        return true;
+        // Retired for downloads: no tag type writes new text logs.
     default:
         return false;
     }

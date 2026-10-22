@@ -44,6 +44,13 @@ phase 2's checking; the rest proposed.
 - **Shipped:** `tag-txt-import` is in the release, with a user-manual page
   (`host/docs/src/cli/tag-txt-import.md`). Batch mode is dropped: a shell
   loop over the files does the same, and the manual shows one.
+- **Text downloads are off** (2026-10-22). No tag type supports the
+  `Text` storage format any more: `tag-dwnld` refuses `-f text` before
+  attaching, and qtmonitor offers only SQLite. The text writer itself stays
+  for `tag-txt-import`'s round trip until removal. Phase 4's last `.txt`
+  download of the field tags is dropped by decision: they are downloaded as
+  SQLite, with raw Acks archived, and the `.txt` legs of the triangle below
+  do not run.
 - **Not built yet:** the pairing of repaired originals with their
   re-exports; the sensorviz fixtures; phases 3–5.
 
@@ -453,7 +460,7 @@ Once phases 1–4 hold:
 | 1 | `tag-txt-import` for variants B, C, D, E, with the decoded-sample writer entry; provenance; unit tests on small anonymised fixtures of each variant | Fixtures convert; header-only, CRLF, duplicates and bad times are handled and reported |
 | 2 | Variant A; batch mode, conversion report and manifest; convert the whole collection; add one trimmed, anonymised BitTag and one PresTag `.db3` as sensorviz fixtures | Every log file converts or is reported with a reason; every converted file round-trips through `TextTagLogWriter` (or variant A's renderer) to match its original: byte for byte for current-writer files, within printed precision for older writers, metadata field by field; sensorviz opens the fixtures |
 | 3 | Researchers check converted logs against btviz on a sample of their own experiments, with whatever tools they choose | Sign-off, or issues fixed |
-| 4 | Dual-format download of the two field tags; raw Acks archived; the full triangle of checks | All three comparisons agree |
+| 4 | SQLite download of the two field tags; raw Acks archived; the raw-records check (`tag-log-import` against the direct SQLite log). The `.txt` download was dropped (2026-10-22) | The two SQLite paths agree |
 | 5 | Removal; BitPresTag geometry settled from the firmware in the SQLite writer; decision record | Build and package without btviz, KissFFT, FastFIR or SOLPOS; docs check clean |
 
 Phase 4 waits for the field tags' retrieval. Removal (phase 5) waits for
