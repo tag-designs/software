@@ -6,9 +6,12 @@ summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights
 
 # tagsim: Synthetic IMUTag Logs from Pattern Flights
 
-**Status:** phases 1 and 2 are built (2026-10-21): one recorded flight in,
+**Status:** phases 1 to 3 are built (2026-10-21): one recorded flight in,
 an IMUTag log carrying the in-scope datasheet sensor errors and a truth file
-out, through the new `tag-log-import`. How it works is in [../simulator.md](../simulator.md), and
+out, through the new `tag-log-import`; estimates scored against truth and
+exported for UAV Log Viewer. The baseline for `dataprocessing`'s compass on
+the first logs is in
+[../compass-baseline-results.md](../compass-baseline-results.md). How it works is in [../simulator.md](../simulator.md), and
 how to run it is in [the README](../../README.md). The phases table below
 says what is done.
 
@@ -29,6 +32,12 @@ Where the build departed from this proposal:
   date.
 - **Magnetometer conversions** are instantaneous: low-noise averaging over
   the conversion window is not modelled.
+- **Compass quaternion.** `dataprocessing`'s quaternion is not a fixed
+  change of frame from the tag's attitude, so scoring decodes the attitude it
+  implies by inverting the algorithm. See the
+  [design](../simulator.md#scoring).
+- **Viewer format.** The export is a DataFlash log (truth as `POS`/`ATT`,
+  the estimate as `AHR2`), not a tlog.
 - **Datasheet.** The accel and gyro figures are still the LSM6DSV sheet's,
   standing in for the LSM6DSV16X's (first caveat under
   [Datasheet noise and errors](#datasheet-noise-and-errors)).
@@ -556,7 +565,7 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 | --- | --- | --- |
 | 1 | End-to-end slice: one flight, no noise. `tag-log-import`; DataFlash reader; glitch handling; splines; ideal signals; quantization and saturation; pages; truth pose. **Built** (2026-10-21; see [../simulator.md](../simulator.md)). | The imported log decodes back to exactly what was packed; a stationary fixture reads 1000 mg and zero rate; sensorviz opens a generated flight |
 | 2 | The in-scope sensor errors: accel and gyro noise and bias; WMM field, hard and soft iron, noise and magnetometer sample age; pressure noise, offset and sea-level drift; saturation summary. **Built** (2026-10-21; see [../simulator.md](../simulator.md#sensor-errors)). | Noise statistics of a simulated still segment match the configured values; a correct calibration recovers the true field |
-| 3 | Scoring and viewing: a helper that compares an estimate with truth (attitude, heading and velocity error over time); UAV Log Viewer export | `dataprocessing` orientation scored against truth on the first logs; the exported trajectory matches the source flight by eye |
+| 3 | Scoring and viewing: a helper that compares an estimate with truth (attitude, heading and velocity error over time); UAV Log Viewer export. **Built** (2026-10-21; see [../simulator.md](../simulator.md#scoring) and [the baseline](../compass-baseline-results.md)). | `dataprocessing` orientation scored against truth on the first logs; the exported trajectory matches the source flight by eye |
 | Later | Deferred items from [Scope](#scope-keep-it-simple), only as filter results call for them; refitting noise from prototype bench data | As each is added |
 
 Phase 1 is useful on its own: it gives the download path a hardware-free

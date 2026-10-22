@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file - installing, running, testing, the datasheet sensor errors it adds, and what it does not model yet.
+summary: tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, scores orientation estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.
 ---
 
 # tagsim
@@ -78,7 +78,38 @@ from them are stored in the truth file's `SimRun` row.
 
 **Source logs stay out of git.** They belong to the pilot who flew them and
 carry flying-field GPS positions. Keep them outside the repository; the tests
-find them through `TAGSIM_LOG_DIR`.
+find them through `TAGSIM_LOG_DIR`. Generated logs, truth files and viewer
+files carry the same positions, so they stay out too.
+
+## Scoring and viewing
+
+```sh
+dataprocessing -i f173.db3 -o f173-proc.db3 -p imu-compass-orientation
+tagsim score --truth f173.truth.db3 --estimate f173-proc.db3 -o f173.score.db3
+tagsim view --truth f173.truth.db3 --score f173.score.db3 -o f173.view.bin
+```
+
+- **`tagsim score`** reports attitude error (total, tilt and heading) and,
+  where the estimate has it, velocity error: median, 95th percentile and
+  maximum, for flight and ground separately. It writes the error series and
+  summary to `NAME.score.db3` (`ScoreSeries`, `ScoreSummary`, `ScoreRun`) for
+  sensorviz or a notebook. By default it scores `dataprocessing`'s
+  `ImuCompassOrientation`; `--table T` scores any table with `ElapsedUs` and
+  `qw qx qy qz`, tag frame to ENU, plus optional `ve vn vu`.
+- **`tagsim view`** writes a DataFlash log that
+  [UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens: the truth
+  as `POS` and `ATT` (the viewer's defaults) and, with `--score`, the estimate
+  as `AHR2` along the truth path. Choose `AHR2` as the trajectory and attitude
+  source to watch the estimate fly the same pattern.
+- **`tagsim batch --log-dir DIR --out-dir OUT`** does all of it for every log
+  in a directory, at the defaults: `NAME.db3`, `NAME-proc.db3`,
+  `NAME.truth.db3`, `NAME.score.db3` and `NAME.view.bin` per flight, and a
+  table of every score in `OUT/scores.csv`. It needs `dataprocessing`, found
+  through `DATAPROCESSING_BIN` or on `PATH`.
+
+How the compass's quaternion is decoded, and why it has to be, is in
+[design/simulator.md](design/simulator.md#scoring). The baseline scores are in
+[design/compass-baseline-results.md](design/compass-baseline-results.md).
 
 ## Running the tests
 
@@ -127,6 +158,8 @@ Each variable has a fallback:
 | `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
 | `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
 | `test_flight.py::test_calibrated_field_is_wmm` | `dataprocessing imu-compass-orientation` on that log: the calibrated field's median is the WMM magnitude | a log, `tag-log-import` and `dataprocessing` |
+| `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back | nothing |
+| `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports | a log, `tag-log-import` and `dataprocessing` |
 | `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
 
 A test whose needs are missing is skipped, not failed. `pytest -rs` lists
@@ -136,6 +169,6 @@ the skips and their reasons.
 
 Temperature effects, sensitivity and misalignment errors, bias instability;
 clock error; dynamic pressure; BMP581 sampling detail; vibration; synthetic
-primitives; scoring against truth and UAV Log Viewer export. See the
+primitives. See the
 proposal's [scope](design/proposals/imutag-simulator.md#scope-keep-it-simple)
 and phases.

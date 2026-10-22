@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, and the truth file.
+summary: How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, the truth file - and how it scores an orientation estimate and exports truth and estimate for UAV Log Viewer.
 ---
 
 # tagsim: How It Works
@@ -21,6 +21,12 @@ The pipeline is:
 The sensor errors are only those the planned orientation filter's behaviour
 depends on (the proposal's
 [scope](proposals/imutag-simulator.md#scope-keep-it-simple)).
+
+Two tools then use the truth file: `tagsim score` compares an orientation
+estimate with it, and `tagsim view` writes truth and estimate as a DataFlash
+log for UAV Log Viewer. `tagsim batch` runs the whole chain over a directory
+of logs; the scores for `dataprocessing`'s compass on the first logs are in
+[compass-baseline-results.md](compass-baseline-results.md).
 
 What is still planned is in the
 [proposal](proposals/imutag-simulator.md); how to run it is in the
@@ -313,7 +319,7 @@ no clock error is simulated or reported.
 | `TruthKinematics` | Ideal specific force (mg) and body rate (dps), tag frame, before quantization |
 | `TruthAtmosphere` | Per superframe: true poll time, altitude AMSL, sea-level pressure, true pressure, temperature |
 | `TruthMagSamples` | Per superframe: true poll and conversion times, the sample's age, whether it was missed, and the true field in the tag frame and in the stored axes (what a correct calibration recovers) |
-| `SimRun` | Version, seed, full configuration JSON (sensor, errors, the values drawn, WMM field), source name and SHA-256, repairs, consistency figures, saturation, UTC of sample 0 |
+| `SimRun` | Version, seed, full configuration JSON (sensor, errors, the values drawn, WMM field, the `STAT.isFlying` window as `flying_elapsed_us`), source name and SHA-256, repairs, consistency figures, saturation, UTC of sample 0 |
 | `units` | Units and meaning of the columns above |
 
 ## Consistency check
@@ -329,3 +335,98 @@ On `00000173` at 100 Hz:
 - attitude agrees to 0.02 degrees over 627 s;
 - velocity drift has a median of 0.4 mm/s per 10 s;
 - position drift has a median of 3 mm per 10 s.
+
+## Scoring
+
+`score.py` compares an estimate, a series of attitudes on the log's
+`ElapsedUs`, with truth slerped to the same times. For each row the error
+rotation `E = q_est q_true⁻¹` (both tag frame to ENU) is split about the
+vertical:
+
+| Metric | Meaning |
+| --- | --- |
+| Total | The angle of E |
+| Tilt | The angle between the estimated and true vertical in the tag frame: the roll and pitch error |
+| Heading | E's twist about the vertical, signed clockwise as a compass heading error |
+| Velocity | `|v_est − v_true|`, when the estimate has velocity |
+
+The twist is defined for every attitude, so heading error stays meaningful on
+vertical lines, where Euler yaw is not.
+
+Rows inside the source's `STAT.isFlying` window are **flight**, the padding
+either side **ground**. Each metric is summarised per phase by median, 95th
+percentile and maximum of its absolute value. `tagsim score` writes
+`NAME.score.db3`:
+
+- `ScoreSeries`: one row per estimate row, with the errors, the phase, and
+  the estimate's attitude in tagsim's convention, for plotting;
+- `ScoreSummary`: the per-phase statistics;
+- `ScoreRun`: inputs and how many rows could not be decoded.
+
+**Estimates.** A future filter should write a table with `ElapsedUs`,
+`qw qx qy qz` (tag frame to ENU, as `TruthPose`) and optionally `ve vn vu`;
+`--table` scores it directly.
+
+**dataprocessing's compass.** `dataprocessing -p imu-compass-orientation`
+solves each magnetometer row with the superframe's mean accelerometer, through
+`compasscore::solveOrientation`. Its quaternion is in the algorithm's own
+convention, and that convention is **not a fixed change of frame**:
+
+- where the stored accelerometer z is negative, the quaternion is exactly
+  `A R_et^T B` for two constant rotations;
+- where it is positive, no constant A and B fit, because the algorithm's
+  swap of the tilt quaternion's x and y terms, together with its
+  magnetometer flips, relabels gravity and field differently in that branch.
+
+So the quaternion cannot be turned into an attitude by any constant
+rotation. `compass.py` instead finds the attitude it **implies**: the tag
+attitude for which the same algorithm, given ideal inputs (gravity only, the
+true field, a correct calibration), returns the stored quaternion. It is
+solved per row by Gauss-Newton from the true attitude, with random restarts
+up to 90° away for the few rows near the branch switch. On random attitudes
+it recovers every one to 1e-3°, and on the 15 recorded flights every row
+decodes. The errors are then physical attitude errors, and they include the
+algorithm's handling of declination, since the ideal inputs carry the full
+field.
+
+`compass.py`'s port of `solveOrientation` agrees with the `dataprocessing`
+binary to 1e-6 per quaternion component; `test_flight.py` checks it on a
+flight. With `--ideal` errors, a tag at rest after landing scores 0.03–0.5°.
+
+**Timing.** The compass row's `ElapsedUs` is its superframe's first sample,
+while the accelerometer it used is the mean over the superframe and the
+magnetometer conversion is up to 80 ms older than the poll. Truth is taken at
+`ElapsedUs`, the time the host gives the row, so that offset is part of the
+score.
+
+## UAV Log Viewer export
+
+`viewer.py` writes `NAME.view.bin`, a minimal DataFlash log that
+[UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens. A DataFlash
+file was chosen over a MAVLink tlog because the viewer's
+`dataflashDataExtractor.js` offers both trajectory sources and attitude
+sources by message name, so one file can carry truth and estimate side by
+side, and tagsim already reads the format.
+
+| Message | Content | In the viewer |
+| --- | --- | --- |
+| `POS`, `ATT` | Truth position and airframe attitude, at 25 Hz | Default trajectory and attitude |
+| `AHR2` | The estimate's attitude, at the truth position, at the estimate's rows | Select `AHR2` as trajectory and attitude source |
+| `GPS` | Truth at 5 Hz, with `GWk`/`GMS` | Start time and date |
+| `MSG` | "ArduPlane …" | Aeroplane model |
+| `UNIT`, `MULT`, `FMTU` | Units of the above | Plot labels |
+
+Attitude is the airframe's (FRD to NED, ArduPilot roll, pitch, yaw), back
+through the run's mounting. Positions go back to latitude and longitude about
+the EKF origin with the simulator's flat-earth approximation. `TimeUS` is the
+source log's, so the file lines up with the source flight.
+
+Checks:
+
+- the viewer's own parser (JsDataflashParser) and extractor, run under node
+  on `f173.view.bin`, find an aeroplane, the trajectory sources `POS`, `AHR2`
+  and `GPS`, the attitude sources `ATT` and `AHR2`, and the flight's date;
+- against the source log's own `ATT`, the exported yaw agrees to 0.01°
+  (median) and roll and pitch to 0.4° and 0.8°, the autopilot trim between
+  `ATT` and the EKF quaternion; position agrees within the 2–5 m position-fit
+  offset.

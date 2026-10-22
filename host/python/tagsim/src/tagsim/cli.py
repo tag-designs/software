@@ -1,11 +1,17 @@
-"""Command line: ``tagsim run --log X.BIN -o out.db3``."""
+"""Command line: ``tagsim run``, ``score``, ``view`` and ``batch``."""
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+
+import numpy as np
 
 from . import __version__
 from .ardupilot import GlitchConfig, load_flight
@@ -85,7 +91,8 @@ def cmd_run(args: argparse.Namespace) -> int:
               "fit": fit.as_dict(), "fit_residuals": residuals,
               "trajectory": {"t0": traj.t0, "dt": traj.dt, "t_first": float(sig.t[0])},
               "origin": flight.origin, "gps_offset_s": flight.gps_offset_s,
-              "wmm": field.as_dict(), "mag_ned_source": "argument" if args.mag_ned else "wmm"}
+              "wmm": field.as_dict(), "mag_ned_source": "argument" if args.mag_ned else "wmm",
+              "flying_elapsed_us": [(f - float(sig.t[0])) * 1e6 for f in flight.flying]}
     write_truth(truth_path(out), sim, args.seed, config,
                 {"name": flight.path.name, "sha256": flight.sha256},
                 flight.repairs_as_dicts(), consistency)
@@ -104,6 +111,129 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(line)
     print("fit: " + json.dumps(residuals))
     print("consistency: " + json.dumps(consistency))
+    return 0
+
+
+def score_path(db: Path) -> Path:
+    """``name.db3`` -> ``name.score.db3``."""
+    return db.with_name(db.stem + ".score" + db.suffix)
+
+
+def view_path(db: Path) -> Path:
+    """``name.db3`` -> ``name.view.bin``, the UAV Log Viewer file."""
+    return db.with_name(db.stem + ".view.bin")
+
+
+def cmd_score(args: argparse.Namespace) -> int:
+    from .score import enu_estimate, imu_compass_estimate, load_truth, score, summary_lines, \
+        write_score
+
+    truth = load_truth(args.truth)
+    if args.table:
+        est = enu_estimate(args.estimate, args.table)
+    else:
+        est = imu_compass_estimate(args.estimate, truth)
+    result = score(truth, est)
+    write_score(args.output, result, args.truth, args.estimate)
+    if est.decode_residual is not None:
+        bad = int((est.decode_residual > 1e-5).sum())
+        print(f"{est.name}: {len(est.elapsed_us)} rows; decoded the implied attitude of all but "
+              f"{bad}")
+    for line in summary_lines(result):
+        print(line)
+    print(f"series and summary in {args.output}")
+    return 0
+
+
+def cmd_view(args: argparse.Namespace) -> int:
+    import sqlite3
+
+    from .score import load_truth
+    from .viewer import write_viewer_log
+
+    truth = load_truth(args.truth)
+    cfg = truth.config
+    con = sqlite3.connect(args.truth)
+    pos = np.array(con.execute("SELECT e, n, u FROM TruthPose WHERE SegmentId = 0 "
+                               "ORDER BY SampleIndex").fetchall())
+    start_unix = con.execute("SELECT StartUnix FROM SimRun").fetchone()[0]
+    con.close()
+    t0_us = cfg["trajectory"]["t_first"] * 1e6
+    est_t = q_est = est_pos = None
+    if args.score:
+        rows = np.array(sqlite3.connect(args.score).execute(
+            "SELECT ElapsedUs, qw, qx, qy, qz FROM ScoreSeries ORDER BY ElapsedUs").fetchall())
+        est_t = rows[:, 0] + t0_us
+        q_est = rows[:, 1:5]
+        est_pos = np.stack([np.interp(rows[:, 0], truth.elapsed_us, pos[:, k])
+                            for k in range(3)], -1)
+    n = write_viewer_log(args.output, truth.elapsed_us + t0_us, truth.q_enu_tag, pos,
+                         tuple(cfg["origin"]), start_unix, cfg["sensor"]["mounting"],
+                         est_t, q_est, est_pos)
+    print(f"{args.output}: {n} truth records (POS, ATT)"
+          + (f", {len(q_est)} estimate records (AHR2)" if q_est is not None else ""))
+    return 0
+
+
+def dataprocessing_binary() -> str:
+    """``dataprocessing``: ``$DATAPROCESSING_BIN``, else the one on PATH."""
+    found = os.environ.get("DATAPROCESSING_BIN") or shutil.which("dataprocessing")
+    if not found:
+        raise FileNotFoundError("dataprocessing not found; set DATAPROCESSING_BIN")
+    return found
+
+
+def cmd_batch(args: argparse.Namespace) -> int:
+    """Every log in a directory: run, dataprocessing, score, view, and a table."""
+    from .score import imu_compass_estimate, load_truth, score, write_score
+
+    dp = dataprocessing_binary()
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    logs = sorted(p for p in args.log_dir.iterdir() if p.suffix.lower() == ".bin")
+    table = []
+    for log in logs:
+        name = "f" + (str(int(log.stem)) if log.stem.isdigit() else log.stem)
+        db = args.out_dir / f"{name}.db3"
+        print(f"== {log.name} -> {db.name}", flush=True)
+        if main(["run", "--log", str(log), "-o", str(db), "--seed", str(args.seed)]) != 0:
+            table.append({"flight": name, "source": log.name, "status": "not usable"})
+            continue
+        proc = args.out_dir / f"{name}-proc.db3"
+        done = subprocess.run([dp, "-i", str(db), "-o", str(proc), "--if-exists", "replace",
+                               "-p", "imu-compass-orientation"], capture_output=True, text=True)
+        if done.returncode != 0:
+            raise RuntimeError(f"dataprocessing failed on {db}: {done.stderr.strip()}")
+        truth = load_truth(truth_path(db))
+        result = score(truth, imu_compass_estimate(proc, truth))
+        write_score(score_path(db), result, truth_path(db), proc)
+        main(["view", "--truth", str(truth_path(db)), "--score", str(score_path(db)),
+              "-o", str(view_path(db))])
+        row = {"flight": name, "source": log.name, "status": "ok",
+               "duration_s": round(len(truth.elapsed_us) / truth.config["sensor"]["odr_hz"], 1)}
+        for phase in ("ground", "flight"):
+            for metric in ("total_deg", "tilt_deg", "heading_deg"):
+                s = result.summary[phase][metric]
+                for stat in ("median", "p95", "max"):
+                    row[f"{phase}_{metric}_{stat}"] = (None if s[stat] is None
+                                                       else round(s[stat], 2))
+        table.append(row)
+    keys = sorted({k for r in table for k in r}, key=lambda k: (k not in ("flight", "source",
+                                                                          "status"), k))
+    summary = args.out_dir / "scores.csv"
+    with open(summary, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        w.writeheader()
+        w.writerows(table)
+    print(f"summary in {summary}")
+    for r in table:
+        if r["status"] != "ok":
+            print(f"{r['flight']:6} {r['status']}")
+            continue
+        print(f"{r['flight']:6} ground tilt {r['ground_tilt_deg_median']} / "
+              f"{r['ground_tilt_deg_p95']}, heading {r['ground_heading_deg_median']} / "
+              f"{r['ground_heading_deg_p95']};  flight tilt {r['flight_tilt_deg_median']} / "
+              f"{r['flight_tilt_deg_p95']}, heading {r['flight_heading_deg_median']} / "
+              f"{r['flight_heading_deg_p95']}")
     return 0
 
 
@@ -149,6 +279,29 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--vel-sigma", type=float, default=0.1, help="velocity fit weight, m/s")
     r.add_argument("--jerk-sigma", type=float, default=100.0, help="jerk penalty, m/s^3")
     r.set_defaults(func=cmd_run)
+
+    sc = sub.add_parser("score", help="score an orientation estimate against a truth file")
+    sc.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
+    sc.add_argument("--estimate", type=Path, required=True,
+                    help="SQLite file holding the estimate (default: dataprocessing's "
+                         "ImuCompassOrientation)")
+    sc.add_argument("--table", help="score this table instead, in tagsim's convention: "
+                                    "ElapsedUs, qw qx qy qz (tag frame to ENU), optional ve vn vu")
+    sc.add_argument("-o", "--output", type=Path, required=True, help="score file to write")
+    sc.set_defaults(func=cmd_score)
+
+    v = sub.add_parser("view", help="write a DataFlash .bin of truth (and an estimate) "
+                                    "for UAV Log Viewer")
+    v.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
+    v.add_argument("--score", type=Path, help="score file whose estimate to add as AHR2")
+    v.add_argument("-o", "--output", type=Path, required=True, help=".bin to write")
+    v.set_defaults(func=cmd_view)
+
+    b = sub.add_parser("batch", help="run, process, score and export every log in a directory")
+    b.add_argument("--log-dir", type=Path, required=True)
+    b.add_argument("--out-dir", type=Path, required=True)
+    b.add_argument("--seed", type=int, default=0)
+    b.set_defaults(func=cmd_batch)
     return p
 
 

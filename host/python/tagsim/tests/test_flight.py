@@ -75,6 +75,43 @@ def test_calibrated_field_is_wmm(flight_db, dataprocessing_bin, tmp_path):
     assert raw_mag.max() - raw_mag.min() > 5.0
 
 
+def test_score_and_view(flight_db, dataprocessing_bin, tmp_path):
+    """The Python port of the compass matches dataprocessing's quaternions,
+    and the flight scores and exports."""
+    from tagsim.compass import solve_orientation
+    from tagsim.dataflash import DataFlashLog
+
+    proc = tmp_path / "proc.db3"
+    subprocess.run([dataprocessing_bin, "-i", str(flight_db), "-o", str(proc),
+                    "-p", "imu-compass-orientation"], check=True, capture_output=True)
+    con = sqlite3.connect(flight_db)
+    accel = np.array(con.execute("SELECT ax, ay, az FROM ImuAccel ORDER BY SampleIndex").fetchall())
+    mag = np.array(con.execute("SELECT SampleIndex, mx, my, mz FROM ImuMag ORDER BY SampleIndex")
+                   .fetchall())
+    cal = json.loads(con.execute("SELECT Constants FROM Calibration").fetchone()[0])["magnetometer"]
+    a = np.array([[cal.get(f"a{i}{j}", float(i == j)) for j in range(3)] for i in range(3)])
+    v = np.array([cal.get(f"v{i}", 0.0) for i in range(3)])
+    est = np.array(sqlite3.connect(proc).execute(
+        "SELECT qw, qx, qy, qz FROM ImuCompassOrientation ORDER BY SampleIndex").fetchall())
+    i = mag[:, 0].astype(int)
+    q = solve_orientation((mag[:, 1:] - v) @ a.T, accel[i[:, None] + np.arange(10)].mean(axis=1))
+    diff = np.minimum(np.abs(q - est).max(axis=1), np.abs(q + est).max(axis=1))
+    assert diff.max() < 1e-5
+
+    score_db, view = tmp_path / "s.db3", tmp_path / "v.bin"
+    assert main(["score", "--truth", str(truth_path(flight_db)), "--estimate", str(proc),
+                 "-o", str(score_db)]) == 0
+    s = sqlite3.connect(score_db)
+    assert s.execute("SELECT Undecoded FROM ScoreRun").fetchone()[0] == 0
+    n_flying = s.execute("SELECT SUM(Flying), COUNT(*) FROM ScoreSeries").fetchone()
+    assert 0 < n_flying[0] < n_flying[1]
+    assert main(["view", "--truth", str(truth_path(flight_db)), "--score", str(score_db),
+                 "-o", str(view)]) == 0
+    log = DataFlashLog(view)
+    assert len(log.messages("AHR2")["TimeUS"]) == n_flying[1]
+    assert len(log.messages("ATT")["TimeUS"]) > 1000
+
+
 def test_sensorviz_loads(flight_db, tmp_path):
     sv = sensorviz_bin()
     if sv is None:
