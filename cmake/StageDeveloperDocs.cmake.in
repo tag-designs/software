@@ -49,6 +49,9 @@ foreach(doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
   # The globs above only find assets sitting beside the markdown, so a document
   # pointing at an image in another directory -- the user-guide screenshots, for
   # one -- published as a page with a broken figure and nothing said so.
+  # Self-contained HTML pages a document links to (the tagsim comparison
+  # visualisations) are copied the same way, so they open in the portal rather
+  # than as source on GitHub; docs.py links leaves their links alone.
   file(READ "${source_file}" _doc_text)
   set(_scan "${_doc_text}")
   # A sentinel rather than while(TRUE): this file runs as a cmake -P script,
@@ -59,7 +62,7 @@ foreach(doc IN LISTS DEVELOPER_DOCS_MARKDOWN)
     # One match at a time: REGEX MATCHALL returns the hits as a single list
     # element when the document text carries semicolons, which silently
     # produced one nonsense path instead of each figure.
-    string(REGEX MATCH "\\]\\(([^)]+\\.(png|jpg|jpeg|gif|svg))\\)"
+    string(REGEX MATCH "\\]\\(([^)]+\\.(png|jpg|jpeg|gif|svg|html))\\)"
            _hit "${_scan}")
     if(NOT _hit)
       set(_scanning NO)

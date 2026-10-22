@@ -453,6 +453,11 @@ design document.
 - [tagsim User Guide](../host/python/tagsim/user-guide.md) *(procedure)* — A plain-language guide to tagsim for its users - how a recorded flight becomes a simulated IMUTag log with ground truth, how the post-processing filter estimates attitude and altitude from that log, how to run a simulation, filter and score it, and how to run the tests.
 - [tagsim: How It Works](../host/python/tagsim/design/simulator.md) — How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, the truth file - and how it scores an orientation estimate and exports truth and estimate for UAV Log Viewer.
 
+### python / tagsim / flight-comparison
+
+- [Pattern-Flight Comparison: Filter Against Truth](../host/python/tagsim/design/flight-comparison/pattern-flight-comparison.md) *(results)* — Testing the IMUTag post-processing filter on simulated IMUTag data from recorded aerobatic flights - the purpose and approach, per-flight results under three sensor-error levels with side-by-side attitude visualisations, how the 25 Hz ArduPilot Kalman-filter output becomes simulated sensor logs and the sensor error models, the filter and its handling of asynchronous sampling, and where this leads (2026-10-22).
+- [Rebuilding the Pattern-Flight Comparison](../host/python/tagsim/design/flight-comparison/reproducing.md) *(procedure)* — How to rebuild the pattern-flight comparison - the tools it uses (tagsim's run, filter, score, compare and batch commands, tag-log-import, dataprocessing, scripts/flight_comparison.py), their setup, and the exact commands that produce its simulated logs, filter runs, pages, tables and supporting figures.
+
 ### python / tagsim / Proposals
 
 - [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a simple IMUTag sensor model and writes genuine IMUTag SQLite logs plus ground truth, chiefly to test the future post-processing orientation filter.

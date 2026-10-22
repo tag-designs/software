@@ -444,13 +444,16 @@ def cmd_nav(args) -> int:
 
 GITHUB_BLOB = "https://github.com/tag-designs/software/blob/main/"
 GITHUB_TREE = "https://github.com/tag-designs/software/tree/main/"
-STAGED_ASSETS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".csv")
+#: Files the portal publishes beside the documents, so links to them stay
+#: relative. ``.html`` covers self-contained pages a document links to, which
+#: the staging script copies like figures.
+STAGED_ASSETS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".csv", ".html")
 
 
 def cmd_links(args) -> int:
     """Point staged links at files the portal does not publish to GitHub.
 
-    The portal stages Markdown (and images) only, so a link from a design
+    The portal stages Markdown, images and linked HTML pages only, so a link from a design
     document to a source file, script or JSON config resolves in the
     repository but not in the browser. In the staged copy only, such links
     are rewritten to the file on the main branch; line anchors (#L59) carry
