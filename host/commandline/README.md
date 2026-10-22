@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-cal-write and dataprocessing.
+summary: Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-txt-import, tag-cal-write and dataprocessing.
 ---
 
 # Command-Line Tools
@@ -45,6 +45,9 @@ caught by the signature check in `host/tools/release-macos.sh`:
   unblock a mass-erased CompassTag. See below.
 - `tag-log-import`: write a `tagclient` JSONL download as a SQLite log, with
   no tag. See below.
+- `tag-txt-import`: convert a legacy BitTag or PresTag `.txt` log to a SQLite
+  log, verified by rendering it back to text. Not installed until the
+  conversion is signed off. See below.
 - `qtmonitor-fixture-capture`: capture `TagInfo`, default `Config`, `Status`,
   and voltage from a real tag into the fixture JSON consumed by qtmonitor
   documentation screenshot automation.
@@ -217,6 +220,51 @@ The `info` table gains `source` = `import` and `import_file`, and
 
 [tagsim](../python/tagsim/README.md) uses it to turn simulated IMUTag pages
 into a genuine log.
+
+## tag-txt-import
+
+Converts a legacy BitTag or PresTag `.txt` log to a SQLite log, and proves
+the conversion before keeping it
+([proposal](../libraries/tagcore/design/proposals/retire-text-logs.md)):
+
+```sh
+build-host/bin/tag-txt-import log.txt -o log.db3 --report log.json
+```
+
+- **What it reads:** variants B (BitTag V5 header), C (the current header,
+  including the C3/C4 packed word on `V:` lines), D (PresTag) and E (no
+  header). Variant A, the RTCv4 firmware's tab-indented bitmaps, and files
+  that are not logs are refused with exit status 2.
+- **How it writes:** with `SqliteTagLogWriter::writeSamples()`, into the same
+  tables and streams a download writes.
+- **The check, on every conversion:** the written log is read back, rebuilt
+  into the records the text writer consumes, rendered with
+  `TextTagLogWriter`, and compared with the source: data lines byte for byte
+  or, for older writers, within the source's printed precision; header fields
+  one by one. A failure writes no log (`--keep-failed` keeps it, marked) and
+  exits 1.
+- **Repairs, all recorded:** exact duplicate records removed; conflicting
+  duplicates kept and counted; records before 2015 or after the read time
+  dropped; FIVEMIN files from the pre-2021 host (nine 7-bit buckets per
+  record) re-decoded as seven 9-bit ones and checked back through the buggy
+  layout; CRLF and comment lines handled. Removed lines are kept verbatim in
+  the report.
+- **Not guessed at:** a `V:` line with no activity before it, or activity no
+  `V:` line closes, marks exports run together; the conversion fails.
+- **PresTag voltages:** PresTag firmware put a second supply voltage in the
+  core-temperature slot, so `TC:` is a voltage. The tool warns, stores the
+  mean of `V:` and `TC:` as one `Voltage` row (no `CoreTemperature`), and the
+  round trip writes that mean back into both slots.
+- **Provenance in `info`:** `source` = `txt-import`, the source path
+  (relative to `--root`), SHA-256 and size, the variant, the importer
+  version, the verbatim header, `txt_roundtrip` and
+  `txt_conversion_report`; `--report FILE` writes the report as JSON too.
+
+On the legacy collection (2026-10-22), 398 files convert and pass the check;
+2 fail as exports run together; 195 variant A files and 24 non-logs (20 macOS
+AppleDouble files, 3 empty files, 1 page of notes) are refused. The check
+itself is exercised on anonymised fixtures by
+[`test/txt_import_check.py`](test/txt_import_check.py).
 
 ## tag-cal-write
 

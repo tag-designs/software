@@ -365,13 +365,17 @@ design document.
 
 ### Command Line
 
-- [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-cal-write and dataprocessing.
+- [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-txt-import, tag-cal-write and dataprocessing.
 - [Command-Line Tools TODO](../host/commandline/TODO.md) *(worklist)* — Open command-line tool work - dataprocessing tests, further processors and SensorViz support for processed files.
 - [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams and IMUTag orientation with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 
 ### Command Line / Proposals
 
 - [DataProcessing Implementation Plan](../host/commandline/design/proposals/dataprocessing-implementation-plan.md) *(proposal, historical)* — The original refactoring steps and implementation phases for the dataprocessing CLI, kept for the record now that the tool is built.
+
+### Command Line / test
+
+- [tag-txt-import Check](../host/commandline/test/README.md) — Offline check of tag-txt-import - anonymised fixtures of each legacy .txt variant and repair, and the script that converts them and asserts each conversion report.
 
 ### Common
 

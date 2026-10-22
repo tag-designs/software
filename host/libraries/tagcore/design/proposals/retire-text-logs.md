@@ -6,7 +6,33 @@ summary: Retire the legacy .txt sensor-log format and btviz - convert the existi
 
 # Retiring the Text Log Format and btviz
 
-**Status:** proposed, nothing built.
+**Status:** phases 0 and 1 built (2026-10-22), with most of phase 2's
+checking; the rest proposed.
+
+- **Built:** the deprecation warnings (phase 0); `tag-txt-import` for
+  variants B, C, D and E with the decoded-sample writer entry
+  (`SqliteTagLogWriter::writeSamples()`), provenance, the repairs and the
+  round-trip check on every conversion; anonymised fixtures with a check
+  script ([`host/commandline/test/`](../../../../commandline/test/README.md)).
+- **PresTag `TC:` is a voltage.** PresTag firmware put a second supply
+  voltage in the core-temperature slot. The importer stores the mean of
+  `V:` and `TC:` as one `Voltage` and no `CoreTemperature`, and warns; a
+  direct SQLite download keeps `V:` alone. Variant D's mapping above is
+  superseded.
+- **Exports run together** (a `V:` line with no activity before it, or
+  activity no `V:` line closes) fail the conversion rather than being
+  guessed at.
+- **On the whole collection:** 398 files of variants B–E convert and pass
+  the round trip (232 byte for byte, the rest within the source's printed
+  precision from older writers), including the 69 repaired FIVEMIN files
+  and all 285,821 packed words. 2 fail as exports run together.
+  195 variant A files and 24 non-logs
+  are refused. After the 9×7 repair, only 4 exact duplicate records remain
+  and none conflict: most "duplicates" in the survey were that bug's
+  overlapping bucket times.
+- **Not built yet:** variant A; `--batch` with the collection report and
+  manifest; the pairing of repaired originals with their re-exports; the
+  sensorviz fixtures; phases 3–5.
 
 The `.txt` sensor-log format and btviz, the tool that reads it, are to be
 retired. SQLite (`.db3`) becomes the only log format and sensorviz the only

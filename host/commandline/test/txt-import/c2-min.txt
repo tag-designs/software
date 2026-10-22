@@ -1,0 +1,73 @@
+#
+# Tag Read time: 1694805536
+#
+# Tag Error:     -2.15246e+07
+#
+#             Tag Info
+#
+# Tag Type:    BITTAG
+# Tag Firmware:BitTag V6, Firmware version 1
+# Board:       BitTag V6
+# Build Date:  Jun 25 2021 : 16:53:14
+# Git Repo:    git@example.org:tags/tag-firmware.git
+# Source Path: /software/embedded/tags/BitTag
+# Git Hash:    cab6fe3
+# UUID:        000000000000000000000000
+# Internal Flash Size:  256KB
+# External Flash Size:  0KB
+# Test Status: TEST_UNSPECIFIED
+#
+#             Configuration
+#
+# Range:       R4G
+# Frequency:   S50
+# Filter:      AAquarter
+# Active Thresh: 0.498g
+# Inactive Thresh: 0.498g
+# thresh Time: 0.5s
+# Start:       1673280000
+# End:         2147483647
+# BitTag Log Format:      2
+# Hibernate[0] = {1672675200, 1672675200}
+# Hibernate[1] = {1672675200, 1672675200}
+#
+#             State Log
+#
+# Epoch: 1672673302
+# State: CONFIGURED
+# Entry Code: EVENT_STARTCMD
+# Temperature: 17.9
+# Voltage:     3.33
+# Internal Log Entries: 0
+# External Log Entries: 0
+#
+# Epoch: 1673280000
+# State: RUNNING
+# Entry Code: EVENT_STARTTIM
+# Temperature: 10.7
+# Voltage:     1.89
+# Internal Log Entries: 0
+# External Log Entries: 0
+#
+# Epoch: 1673280600
+# State: FINISHED
+# Entry Code: EVENT_LOWBATTERY
+# Temperature: 10.4
+# Voltage:     1.82
+# Internal Log Entries: 1
+# External Log Entries: 0
+#
+#
+#             Data Log
+#
+1673280060,MIN:0
+1673280120,MIN:0
+1673280180,MIN:0
+1673280240,MIN:0
+1673280300,MIN:0
+1673280360,MIN:0
+1673280420,MIN:0
+1673280480,MIN:0
+1673280540,MIN:0
+1673280600,MIN:0
+1673280600,V:1.98,TC:10.8

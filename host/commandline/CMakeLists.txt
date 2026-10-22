@@ -59,6 +59,7 @@ host_cli_tool(tag-xflash WIN32 tag-xflash.cc)
 host_cli_tool(tag-sramcall WIN32 tag-sramcall.cc)
 host_cli_tool(tag-rebuild WIN32 tag-rebuild.cc)
 host_cli_tool(tag-log-import WIN32 tag-log-import.cc)
+host_cli_tool(tag-txt-import WIN32 tag-txt-import.cc)
 host_cli_tool(qtmonitor-fixture-capture WIN32 qtmonitor-fixture-capture.cc)
 
 # dataprocessing does not use Qt. Its compass math is the Qt-free sensoranalysis
