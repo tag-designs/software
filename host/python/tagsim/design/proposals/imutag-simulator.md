@@ -58,7 +58,21 @@ summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights
 | Calibration | Known hard-iron and soft-iron distortion and accelerometer offset, so calibrated field magnitude and dip can be checked against the model |
 | `dataprocessing` | `imu-compass-orientation` scored against true attitude |
 | Post-processing filters | Ground truth for the planned forward EKF and backward smoother ([open design](../../../../commandline/TODO.md#imutag-orientation-post-processing)), scored by attitude and heading error |
-| Choosing ranges | Per-axis saturation statistics for any ODR and full-scale setting. The defaults (±4 g, ±1000 dps) may be too narrow for aerobatics |
+| Choosing ranges | Per-axis saturation statistics for any ODR and full-scale setting. The first logs already suggest ±4 g is too narrow (next paragraph) |
+
+**A first estimate of ranges from the first logs.** These figures come from
+the 25 Hz EKF output, by differencing the quaternion and the NED velocity, so
+short peaks are underestimated.
+
+| | Per-flight 99th percentile | Per-flight peaks | Note |
+| --- | --- | --- | --- |
+| Rotation rate | 155–232 dps | typically 250–570 dps | Within ±1000 dps, except one suspect sample |
+| Specific force | 3.4–5.7 g | 4.2–6.6 g | 2.6 % of flying time above 4 g; none above 8 g |
+
+So the default ±4 g clips regularly on a pattern aircraft. ±8 g fits: its
+0.244 mg LSB is still below the 0.42 mg noise. ±1000 dps looks adequate. The
+saturation report on full-rate simulations, and the flight with a tag aboard,
+will settle both.
 
 ## Architecture
 
@@ -90,29 +104,70 @@ the pilot and carry flying-field GPS positions. A test that needs one finds
 it through an environment variable and skips without it. Small synthetic
 primitives and SITL-generated logs can be committed if they are small.
 
-**Source messages.** Read the log with pymavlink, or with PyFlightCoach's
-reader, which wraps it.
+**The first recorded logs (2026-10-21 inventory).**
 
-- **Position:** `POS`.
-- **Attitude:** the primary estimate, never `AHR2`, which is ArduPilot's
-  backup estimator. Use the EKF3 quaternion where the log has one; otherwise
-  convert `ATT` roll, pitch and yaw to quaternions *before* doing anything
-  else.
-- The fused track is smooth and slow, about 15–25 points per second.
+*What they are:* 16 DataFlash logs from June to August 2023, all ArduPlane
+4.0.9 on a mRo Pixracer Pro. Together they hold 15 flights and about
+95 minutes in the air (one log is ground-only). Every flight is in mode 0,
+MANUAL: the pilot flew by hand and the autopilot only logged, so the motion
+is real piloting.
+
+*What they contain:*
+
+| Content | Messages |
+| --- | --- |
+| Attitude | EKF3 quaternions for both cores (`XKQ1`, `XKQ2`) at 25 Hz; EKF2 (`NKQ1`/`NKQ2`); `ATT` at 25 Hz |
+| Position and velocity | EKF3 NED position and velocity (`XKF1`: `PN PE PD`, `VN VE VD`) at 25 Hz; `POS` at 25 Hz |
+| Other sensors | GPS at 5 Hz; three magnetometers (`MAG`, `MAG2`, `MAG3`) at 10 Hz |
+| Missing | Raw IMU (`IMU`), barometer (`BARO`), RC input and output, throttle |
+
+**Source messages for truth.**
+
+- **Attitude:** the EKF3 quaternion (`XKQ1`, core 0). Use `ATT` converted to
+  quaternions only where no EKF quaternion exists. Never use `AHR2`, which is
+  ArduPilot's backup estimator.
+- **Position and velocity:** EKF3 `XKF1`, in NED from the origin in `ORGN`.
+- **The second core** (`XKQ2`, `XKF6`) is an independent cross-check, used
+  for glitch handling below.
+- **Absolute time:** from `GPS` (`GWk`, `GMS`), which sets the tag's page
+  epochs.
+- The fused track is smooth and slow, 25 points per second here.
+
+**Glitch handling.** The EKF output contains steps that are not motion:
+
+- one-sample velocity changes implying 26 g (`00000167`), and five of 29–199 g
+  (`00000176`);
+- one 1,202 dps attitude step (`00000174`).
+
+A spline fitted through these would turn them into enormous false specific
+force and rate. Before fitting, tagsim flags any sample implying more than a
+plausibility bound (default 15 g or 2,000 dps), or whose core-0 and core-1
+estimates disagree beyond a tolerance. For each flagged sample:
+
+- if the other core is clean there, use it;
+- otherwise bridge a short glitch (up to 0.5 s) by fitting through the
+  neighbouring clean samples;
+- otherwise split the flight there into separate trajectories.
+
+Every repair is recorded in the truth file's provenance.
 
 **Fitting.** The track is converted into a trajectory the sensor model can
 sample at any rate:
 
 - **Local frame:** positions go to a local ENU frame about the flight's
   centre. A flat-earth approximation is exact enough over a pattern box.
-- **Position:** fit a smoothing quintic spline. Velocity, acceleration and
-  jerk then come analytically, with no numerical differencing.
+- **Position:** fit a quintic Hermite (or smoothing quintic) spline to the
+  EKF position *and* velocity samples, so the spline honours both. Velocity,
+  acceleration and jerk then come analytically, with no numerical
+  differencing.
 - **Attitude:** fit a cumulative quaternion B-spline, after making the
   quaternion signs continuous. The body rate comes analytically from it. This
   avoids the two failures of Euler angles in aerobatics: rates that are not
   body rates, and spikes at yaw wrap and at ±90 degrees of pitch.
-- **Mounting:** a fixed rotation from the airframe to the tag, so different
-  mountings can be tested.
+- **Mounting:** a fixed rotation from the airframe's body frame
+  (forward-right-down) to the tag frame (x right, y forward, z up when flat),
+  so different mountings can be tested. The default is the tag lying flat
+  with its battery end forward.
 
 **Consistency check.** Strapdown-integrate the *ideal* specific force and
 body rate from the spline and compare the result with the spline's own pose.
@@ -120,16 +175,20 @@ Any drift measures the simulator's own inconsistency, which must be well
 below the filter errors being studied. The tool reports it with every
 generated log.
 
-**Comparison with the aircraft's own sensors.** A recorded flight also holds
-the autopilot's raw IMU, magnetometer and barometer data. Rotate tagsim's
-ideal specific force, body rate and field into the autopilot's body frame and
+**Comparison with the aircraft's own sensors.** Where a log has raw sensor
+data, rotate tagsim's ideal signals into the autopilot's body frame and
 compare them with those channels. Large differences show where the fit has
-smoothed away real motion, which is mostly vibration and fast transients, or
-where mounting is wrong.
+smoothed away real motion (mostly vibration and fast transients) or where the
+mounting is wrong. This compares two models of one flight; neither side is
+truth.
 
-This compares two models of one flight; neither side is truth. For SITL logs
-the same comparison runs against `SIM`, which is truth, and tests the fit
-itself.
+- **The first logs have no raw IMU or barometer,** so only the magnetometer
+  comparison applies. Compare the WMM field rotated by the fitted attitude
+  with `MAG`, after the logged offsets (`OfsX` etc.).
+- **For SITL logs,** the comparison runs against `SIM`, which is truth, and
+  tests the fit itself.
+- **For the planned flight with an IMUTag aboard,** the logs should include
+  raw IMU and barometer data.
 
 **Vibration.** EKF tracks carry none. An optional band-limited vibration term
 can be added, off by default. Taking the log's raw `IMU` messages as a
@@ -140,6 +199,39 @@ flight, chained from the same splines. Tests then do not depend on having a
 particular log, and fixtures stay tiny.
 
 ### 2. IMUTag sensor model
+
+**Where gnss-ins-sim fits.**
+[gnss-ins-sim](https://github.com/Aceinna/gnss-ins-sim) cannot take a
+recorded trajectory as truth. Its trajectories come only from an initial
+state plus motion commands, and its "simulation from logged data" demo feeds
+previously generated sensor data to an algorithm.
+
+Its error models, though, are standalone functions that take ideal signals
+and an error dictionary:
+
+- `acc_gen` and `gyro_gen`: constant bias, Gauss-Markov bias drift, random
+  walk and optional vibration (random, sinusoidal or a PSD);
+- `mag_gen`: soft iron, hard iron and noise;
+- `bias_drift`.
+
+tagsim uses them as a library for the stochastic part, pinned to a commit and
+behind a thin interface so they can be replaced. Everything specific to
+IMUTag stays in tagsim:
+
+- ideal signals from the quaternion spline;
+- multi-rate timing and the magnetometer's sample age;
+- temperature dependence and sensitivity errors;
+- `int16` quantization and saturation;
+- pages and checkpoints.
+
+Two cautions:
+
+- *Euler angles.* gnss-ins-sim's own ideal-output function
+  (`calc_true_sensor_output`) works from Euler angles and their rates, which
+  break in aerobatics, so tagsim does not use it.
+- *Magnetometer model.* Its model is `si·(B + hi) + noise`, while the host's
+  correction is `M' = A(M − V)`. To make a correct calibration recover the
+  true field, tagsim passes `si = A⁻¹` and `hi = A·V`.
 
 The model reproduces what the firmware stores, in the stored axes and units,
 with the defaults it uses today. Every parameter is configurable and recorded
@@ -382,7 +474,12 @@ The package follows `tagclient`'s layout:
 
 - `host/python/tagsim/pyproject.toml`, with a `src/tagsim` package,
   `tests/`, Python 3.10 or later.
-- Dependencies: numpy, scipy, protobuf, pymavlink, and a WMM implementation.
+- Dependencies: numpy, scipy, protobuf, pymavlink (or the DataFlash reader
+  below), a WMM implementation, and gnss-ins-sim pinned to a commit for its
+  error-model functions.
+- A small DataFlash reader. The format describes itself through `FMT`
+  records, and the 2026-10-21 inventory used a 70-line one, so pymavlink is
+  optional.
 - Protobuf types come from `tagclient`'s runtime compilation of `proto/`, so
   no generated code is committed.
 - Command line: `tagsim run config.toml -o name.db3`, which writes the JSONL,
