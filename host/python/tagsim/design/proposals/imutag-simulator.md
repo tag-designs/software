@@ -300,16 +300,8 @@ Every term is a parameter, recorded in `SimRun`.
 The truth file keeps the true altitude, static pressure and sea-level
 pressure, so altitude estimation can be scored against each.
 
-*Airframe effects, optional and off for still segments:*
-
-- **Dynamic pressure.** Inside a moving airframe the sensor sees static
-  pressure plus `Cp · ½ρV²`, where `V` is airspeed. That is ground velocity
-  minus the EKF's own wind estimate (`XKF2` `VWN`, `VWE` in these logs). `Cp`
-  depends on where and how the tag is mounted, so it is a parameter that may
-  be negative. At 30 m/s, `½ρV²` is about 550 Pa, roughly 45 m of apparent
-  altitude, so even a small `Cp` dominates the sensor's noise.
-- Optionally, a pressure fluctuation band-limited to propwash, for
-  turbulence.
+*Airframe effects.* None. The sensor is assumed shielded from the airflow,
+so it sees only static pressure: no dynamic pressure and no propwash.
 
 *Sensor errors (datasheet defaults, from
 [Datasheet noise and errors](#datasheet-noise-and-errors)):*
