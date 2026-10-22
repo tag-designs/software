@@ -347,17 +347,24 @@ no clock error is simulated or reported.
 
 ## Consistency check
 
-`consistency.py` strapdown-integrates the ideal signals at the IMU rate:
+`consistency.py` strapdown-integrates the ideal signals at the IMU rate over
+the whole run, from the true initial state, with no restarts:
 
-- **Attitude** uses a rotation vector with the coning term, over the whole
-  run.
-- **Velocity and position** are restarted from truth every 10 s.
+- **Attitude** uses a rotation vector with the coning term.
+- **Velocity and position** rotate the specific force by the true attitude,
+  so they isolate the translational inconsistency.
 
-On `00000173` at 100 Hz:
+It checks the simulator's own arithmetic (the signals belong to the
+trajectory), not the sensor errors, which it never sees. On `00000173` at
+100 Hz, over 627 s:
 
-- attitude agrees to 0.02 degrees over 627 s;
-- velocity drift has a median of 0.4 mm/s per 10 s;
-- position drift has a median of 3 mm per 10 s.
+- attitude stays within 0.020 degrees (0.006 at the end);
+- velocity within 1.9 cm/s (0.08 mm/s at the end);
+- position within 5.2 cm.
+
+The largest and final figures go to `SimRun.ConsistencyJson`.
+`tagsim view --strapdown` writes the integrated path as a view file's main
+track, with the truth beside it.
 
 ## Scoring
 
@@ -422,20 +429,37 @@ magnetometer conversion is up to 80 ms older than the poll. Truth is taken at
 `ElapsedUs`, the time the host gives the row, so that offset is part of the
 score.
 
-## UAV Log Viewer export
+## Viewer export
 
-`viewer.py` writes `NAME.view.bin`, a minimal DataFlash log that
-[UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens. A DataFlash
-file was chosen over a MAVLink tlog because the viewer's
+`viewer.py` writes `NAME.view.bin`, a DataFlash log that both
+[UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) and FlightCoach
+open. A DataFlash file was chosen over a MAVLink tlog because UAV Log Viewer's
 `dataflashDataExtractor.js` offers both trajectory sources and attitude
 sources by message name, so one file can carry truth and estimate side by
 side, and tagsim already reads the format.
 
-| Message | Content | In the viewer |
+**It imitates the autopilot that flew the source flights.** Every message is
+written with ArduPlane 4.0.9's own type id, format, columns, units and
+multipliers, taken from the source logs: attitude in centidegrees, altitude
+in centimetres where ArduPilot uses them, and so on. A reader that opens
+those logs opens this one. Two readers set what it must carry:
+
+- **UAV Log Viewer** fails to display a log with no `MODE` message: it
+  colours the plot and the 3D track by flight mode, and indexes the mode list
+  without checking that it is empty.
+- **FlightCoach** (`flightdata.Flight.from_log`, through pymavlink) requires
+  `PARM` with `AHRS_EKF_TYPE`, `ATT` with its demanded-attitude columns, and
+  `ORGN`, and takes velocity from `XKF1`.
+
+| Message | Content | Used by |
 | --- | --- | --- |
-| `POS`, `ATT` | Truth position and airframe attitude, at 25 Hz | Default trajectory and attitude |
-| `AHR2` | The estimate's attitude, at the truth position, at the estimate's rows | Select `AHR2` as trajectory and attitude source |
-| `GPS` | Truth at 5 Hz, with `GWk`/`GMS` | Start time and date |
+| `POS`, `ATT` | Truth position and airframe attitude, at 25 Hz; `ATT`'s demanded attitude is the truth too, its errors zero | Default trajectory and attitude in both |
+| `XKF1` | Truth attitude, NED position and velocity about the EKF origin, at 25 Hz | FlightCoach's velocity |
+| `AHR2` | The estimate's attitude and quaternion, at the truth position, at the estimate's rows | UAV Log Viewer: select `AHR2` as trajectory and attitude source |
+| `GPS` | Truth at 5 Hz, with `GWk`/`GMS`, speed and course | Start time and date |
+| `ORGN` | The EKF origin | FlightCoach's origin |
+| `PARM` | `AHRS_EKF_TYPE` = 3 | FlightCoach (selects `XKF1`) |
+| `MODE` | One record, MANUAL, as the pattern flights were flown | Flight-mode colouring |
 | `MSG` | "ArduPlane …" | Aeroplane model |
 | `UNIT`, `MULT`, `FMTU` | Units of the above | Plot labels |
 
@@ -446,10 +470,13 @@ source log's, so the file lines up with the source flight.
 
 Checks:
 
-- the viewer's own parser (JsDataflashParser) and extractor, run under node
-  on `f173.view.bin`, find an aeroplane, the trajectory sources `POS`, `AHR2`
-  and `GPS`, the attitude sources `ATT` and `AHR2`, and the flight's date;
-- against the source log's own `ATT`, the exported yaw agrees to 0.01°
-  (median) and roll and pitch to 0.4° and 0.8°, the autopilot trim between
-  `ATT` and the EKF quaternion; position agrees within the 2–5 m position-fit
-  offset.
+- UAV Log Viewer's own parser (JsDataflashParser) and extractor, run under
+  node on `f173-smoothed.view.bin`, find an aeroplane, the flight mode, the
+  trajectory sources `POS`, `AHR2` and `GPS`, the attitude sources `ATT` and
+  `AHR2`, and the flight's date;
+- FlightCoach's `Flight.from_log` and `State.from_flight` load
+  `f173-smoothed.view.bin` and `f196-smoothed.view.bin`, with velocity.
+  Against the source log loaded the same way, attitude agrees to 0.4° roll,
+  0.8° pitch and 0.02° yaw (median): the autopilot trim between `ATT` and the
+  EKF quaternion. Position agrees within 3–7 m (median), the offset between
+  the autopilot's `POS` and its EKF position.

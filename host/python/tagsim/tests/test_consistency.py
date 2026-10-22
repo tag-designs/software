@@ -31,7 +31,7 @@ def test_manoeuvre_consistency():
     cfg = SensorConfig(odr_hz=400)
     sig = ideal_signals(traj, traj.t_start, int((traj.t_end - traj.t_start - 0.1) * 40), cfg)
     report = strapdown(sig.t, sig.q_enu_tag, sig.pos_enu, sig.vel_enu,
-                       sig.accel_mg, sig.gyro_dps, window_s=5.0)
+                       sig.accel_mg, sig.gyro_dps)
     print(report)
     assert report["attitude_deg_max"] < 0.01
     assert report["velocity_mps_max"] < 1e-3

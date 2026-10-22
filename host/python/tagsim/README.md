@@ -76,7 +76,9 @@ itself. It also needs `tag-log-import`, built with the host tools
 
 It prints the glitch repairs, the WMM field, the per-axis fraction of accel
 and gyro samples at full scale, the fit residuals and the strapdown
-consistency figures. All of them, the error parameters and the values drawn
+consistency figures (the ideal signals integrated over the whole run with
+no restarts; the largest and final attitude, velocity and position errors).
+All of them, the error parameters and the values drawn
 from them are stored in the truth file's `SimRun` row.
 
 **Source logs stay out of git.** They belong to the pilot who flew them and
@@ -91,6 +93,7 @@ dataprocessing -i f173.db3 -o f173-proc.db3 -p imu-compass-orientation
 tagsim score --truth f173.truth.db3 --estimate f173-proc.db3 -o f173.score.db3
 tagsim filter --log f173.db3 --truth f173.truth.db3 -o f173-filt.db3
 tagsim score --truth f173.truth.db3 --estimate f173-filt.db3 --table FilterSmoothed -o f173-smoothed.score.db3
+tagsim compare --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173-compare.html
 tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173-smoothed.view.bin
 ```
 
@@ -121,15 +124,31 @@ tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173-smoot
   `ImuCompassOrientation`; `--table T` scores any table with `ElapsedUs` and
   `qw qx qy qz`, tag frame to ENU, plus optional `ve vn vu`, `alt` and `vz`,
   such as the filter's.
+- **`tagsim compare`** writes an HTML page that shows only what the filter
+  estimates, truth beside estimate on one timeline: two 3D airframe models
+  seen from the same camera, a pair of altitude bars, and strips of the tilt,
+  heading and altitude error over the flight (click to jump; `#t=SECONDS` on
+  the URL opens at a time). It is the main way to see what the filter is
+  doing. By default it shows the source log's own attitude rate (about
+  25 Hz); `--rate` overrides it. The data is inline and three.js comes from
+  a CDN, so it opens from a local file in any browser with a connection.
 - **`tagsim view`** writes a DataFlash log that
-  [UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens: the truth
-  as `POS` and `ATT` (the viewer's defaults) and, with `--score`, the estimate
+  [UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) and FlightCoach
+  open, in ArduPlane 4.0.9's own message formats: the truth
+  as `POS`, `ATT` and `XKF1` (the viewers' defaults) and, with `--score`, the estimate
   as `AHR2` along the truth path. Choose `AHR2` as the trajectory and attitude
   source to watch the estimate fly the same pattern. To compare with the
   source flight, open the original `.bin` (for example `00000173.BIN`) and
   `NAME-smoothed.view.bin` in two tabs of the viewer at
   [plot.ardupilot.org](https://plot.ardupilot.org); the view file keeps the
-  source log's `TimeUS`, so the timelines line up.
+  source log's `TimeUS`, so the timelines line up. The filter has no
+  horizontal position, so the estimate is drawn along the *true* path: these
+  files show whether the attitude and the flight match the source, not how
+  good the estimate is (use `tagsim compare` for that).
+  `--estimate-main` makes the estimate the main track (attitude and
+  altitude over the true horizontal path) for viewers that show only that
+  track, such as FlightCoach. `--strapdown` makes the main track the
+  consistency check's path: the ideal signals integrated over the whole run.
 - **`tagsim batch --log-dir DIR --out-dir OUT`** does all of it for every log
   in a directory, at the defaults: `NAME.db3`, `NAME-proc.db3`,
   `NAME.truth.db3`, `NAME.score.db3` and `NAME.view.bin` per flight, and a
@@ -190,14 +209,14 @@ Each variable has a fallback:
 | `test_pages.py::test_round_trip` | A two-segment log with missing auxiliary slots, a storage-skip resync, an index hole and partial pages decodes back to exactly the packed values | `tag-log-import` |
 | `test_stationary.py` | A tag at rest reads 1000 mg and zero rate within quantization at any attitude, and a constant positive dip under the host's axis convention | nothing |
 | `test_errors.py` | On 300 s at rest, at 100 and 400 Hz: accel, gyro, magnetometer and pressure noise match the configured RMS, the means match the drawn biases and offset, the true calibration recovers the field, magnetometer age sweeps one conversion period; seeding, missed conversions, perturbed calibration, the sea-level walk; scale and misalignment within their ranges, the Gauss-Markov RMS and correlation time, vibration's RMS and band | nothing |
-| `test_consistency.py` | Strapdown integration of a synthetic manoeuvre agrees with its spline pose | nothing |
+| `test_consistency.py` | Strapdown integration of a synthetic manoeuvre over the whole run agrees with its spline pose | nothing |
 | `test_glitches.py` | On a synthetic DataFlash log, a one-sample spike is bridged and a lasting step is split at | nothing |
 | `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
 | `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
 | `test_flight.py::test_calibrated_field_is_wmm` | `dataprocessing imu-compass-orientation` on that log: the calibrated field's median is the WMM magnitude | a log, `tag-log-import` and `dataprocessing` |
 | `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples; the accelerometer bias recovered; the gyro's scale and misalignment recovered; the magnetometer offset states under a perturbed calibration; the fitted magnetometer clock against the simulated conversion times; a 200 000-sample run with file-backed storage and outputs matches the in-memory one exactly with much lower peak memory | nothing |
-| `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back | nothing |
-| `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports | a log, `tag-log-import` and `dataprocessing` |
+| `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back in ArduPilot's formats with the messages UAV Log Viewer and FlightCoach require; the compare page's model points along the airframe's heading and pitch and banks the right way | nothing |
+| `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports a view file and a compare page | a log, `tag-log-import` and `dataprocessing` |
 | `test_flight.py::test_filter_storage_modes` | The filter on that log: in-memory and file-backed storage and outputs give identical results and leave no files once closed; float32 gains within 0.001°, 1 mm, 1 mm/s of float64 | a log and `tag-log-import` |
 | `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
 

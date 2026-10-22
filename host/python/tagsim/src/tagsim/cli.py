@@ -154,24 +154,72 @@ def cmd_view(args: argparse.Namespace) -> int:
     truth = load_truth(args.truth)
     cfg = truth.config
     con = sqlite3.connect(args.truth)
-    pos = np.array(con.execute("SELECT e, n, u FROM TruthPose WHERE SegmentId = 0 "
-                               "ORDER BY SampleIndex").fetchall())
+    pv = np.array(con.execute("SELECT e, n, u, ve, vn, vu FROM TruthPose WHERE SegmentId = 0 "
+                              "ORDER BY SampleIndex").fetchall())
+    pos, vel = pv[:, :3], pv[:, 3:]
     start_unix = con.execute("SELECT StartUnix FROM SimRun").fetchone()[0]
     con.close()
     t0_us = cfg["trajectory"]["t_first"] * 1e6
     est_t = q_est = est_pos = None
     if args.score:
         rows = np.array(sqlite3.connect(args.score).execute(
-            "SELECT ElapsedUs, qw, qx, qy, qz FROM ScoreSeries ORDER BY ElapsedUs").fetchall())
+            "SELECT ElapsedUs, qw, qx, qy, qz, AltitudeErrM FROM ScoreSeries "
+            "ORDER BY ElapsedUs").fetchall(), dtype=np.float64)
         est_t = rows[:, 0] + t0_us
         q_est = rows[:, 1:5]
         est_pos = np.stack([np.interp(rows[:, 0], truth.elapsed_us, pos[:, k])
                             for k in range(3)], -1)
+        if args.estimate_main:
+            # The estimate as the main track (POS, ATT, XKF1), the one
+            # FlightCoach reads: its attitude, and its altitude (truth plus
+            # the scored error) over the true horizontal path, which the
+            # filter does not estimate. The truth goes to AHR2.
+            alt_err = rows[:, 5]
+            if np.isfinite(alt_err).any():
+                est_pos[:, 2] += np.nan_to_num(alt_err)
+            ok = np.all(np.isfinite(q_est), axis=1)
+            n = write_viewer_log(args.output, est_t[ok], q_est[ok], est_pos[ok],
+                                 tuple(cfg["origin"]), start_unix, cfg["sensor"]["mounting"],
+                                 truth.elapsed_us + t0_us, truth.q_enu_tag, pos,
+                                 label="estimate")
+            print(f"{args.output}: {n} estimate records (POS, ATT, XKF1), "
+                  f"{len(pos)} truth records (AHR2)")
+            return 0
+    if args.estimate_main and not args.score:
+        raise ValueError("--estimate-main needs --score")
+    if args.strapdown:
+        # The integrated path is the main track (POS, ATT, XKF1), the one
+        # FlightCoach reads; the truth goes to AHR2.
+        from .consistency import strapdown_path
+
+        kin = np.array(sqlite3.connect(args.truth).execute(
+            "SELECT ax, ay, az, gx, gy, gz FROM TruthKinematics WHERE SegmentId = 0 "
+            "ORDER BY SampleIndex").fetchall())
+        q_true = truth.q_enu_tag
+        q_sd, v_sd, p_sd = strapdown_path(truth.elapsed_us * 1e-6, q_true[0], pos[0], vel[0],
+                                          kin[:, :3], kin[:, 3:], q_true)
+        t_us = truth.elapsed_us + t0_us
+        n = write_viewer_log(args.output, t_us, q_sd, p_sd, tuple(cfg["origin"]), start_unix,
+                             cfg["sensor"]["mounting"], t_us, q_true, pos, label="strapdown",
+                             vel_enu=v_sd)
+        print(f"{args.output}: {n} strapdown records (POS, ATT, XKF1), "
+              f"{len(q_true)} truth records (AHR2)")
+        return 0
     n = write_viewer_log(args.output, truth.elapsed_us + t0_us, truth.q_enu_tag, pos,
                          tuple(cfg["origin"]), start_unix, cfg["sensor"]["mounting"],
-                         est_t, q_est, est_pos)
-    print(f"{args.output}: {n} truth records (POS, ATT)"
+                         est_t, q_est, est_pos, vel_enu=vel)
+    print(f"{args.output}: {n} truth records (POS, ATT, XKF1)"
           + (f", {len(q_est)} estimate records (AHR2)" if q_est is not None else ""))
+    return 0
+
+
+def cmd_compare(args: argparse.Namespace) -> int:
+    from .compare import compare_data, write_compare_page
+
+    data = compare_data(args.truth, args.score, args.rate)
+    write_compare_page(args.output, data)
+    print(f"{args.output}: {len(data['t'])} samples at {data['rateHz']:.1f} Hz, "
+          f"{data['t'][-1]:.1f} s ({data['estimate']})")
     return 0
 
 
@@ -412,9 +460,29 @@ def parser() -> argparse.ArgumentParser:
     v = sub.add_parser("view", help="write a DataFlash .bin of truth (and an estimate) "
                                     "for UAV Log Viewer")
     v.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
-    v.add_argument("--score", type=Path, help="score file whose estimate to add as AHR2")
+    est = v.add_mutually_exclusive_group()
+    est.add_argument("--score", type=Path, help="score file whose estimate to add as AHR2")
+    est.add_argument("--strapdown", action="store_true",
+                     help="write the consistency check's path as the main track (POS, ATT, "
+                          "XKF1) and the truth as AHR2: the ideal signals integrated over the "
+                          "whole run from the true start (attitude from the gyro, position "
+                          "with the true attitude)")
+    v.add_argument("--estimate-main", action="store_true",
+                   help="with --score: write the estimate as the main track (POS, ATT, XKF1; "
+                        "its attitude and altitude over the true horizontal path) and the "
+                        "truth as AHR2, for viewers that show only the main track")
     v.add_argument("-o", "--output", type=Path, required=True, help=".bin to write")
     v.set_defaults(func=cmd_view)
+
+    c = sub.add_parser("compare", help="write an HTML page of true and estimated attitude "
+                                       "and altitude side by side")
+    c.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
+    c.add_argument("--score", type=Path, required=True,
+                   help="score file whose estimate to show (e.g. NAME-smoothed.score.db3)")
+    c.add_argument("--rate", type=float,
+                   help="display rate, Hz (default: the source flight log's rate, ~25 Hz)")
+    c.add_argument("-o", "--output", type=Path, required=True, help=".html to write")
+    c.set_defaults(func=cmd_compare)
 
     b = sub.add_parser("batch", help="run, process, score and export every log in a directory")
     b.add_argument("--log-dir", type=Path, required=True)

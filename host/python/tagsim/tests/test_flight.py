@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import os
 import sqlite3
@@ -40,7 +42,8 @@ def test_log_and_truth(flight_db, flight_log):
     report = json.loads(cons)
     print("strapdown consistency:", report)
     assert report["attitude_deg_max"] < 0.1
-    assert report["velocity_mps_median"] < 0.01
+    assert report["velocity_mps_max"] < 0.05
+    assert report["position_m_max"] < 0.5
     # Truth joins the log on ElapsedUs (no clock error simulated), and the
     # stored value is truth plus the drawn bias, within the noise.
     bias = json.loads(config)["error_draw"]["accel_bias_mg"][0]
@@ -110,6 +113,13 @@ def test_score_and_view(flight_db, dataprocessing_bin, tmp_path):
     log = DataFlashLog(view)
     assert len(log.messages("AHR2")["TimeUS"]) == n_flying[1]
     assert len(log.messages("ATT")["TimeUS"]) > 1000
+    page = tmp_path / "c.html"
+    assert main(["compare", "--truth", str(truth_path(flight_db)), "--score", str(score_db),
+                 "-o", str(page)]) == 0
+    html = page.read_text()
+    payload = html.split('id="data">', 1)[1].split("</script>", 1)[0]
+    data = json.loads(gzip.decompress(base64.b64decode(payload)))
+    assert len(data["t"]) == len(data["qTrue"]) == len(data["qEst"]) > 1000
 
 
 def test_sensorviz_loads(flight_db, tmp_path):

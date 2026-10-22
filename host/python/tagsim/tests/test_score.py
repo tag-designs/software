@@ -13,6 +13,7 @@ from tagsim.score import Estimate, Truth, attitude_errors, score
 from tagsim.sensors import SensorConfig, decode_imu
 from tagsim.simulate import simulate
 from tagsim.trajectory import stationary
+from tagsim.compare import three_quaternions
 from tagsim.viewer import body_euler_deg, write_viewer_log
 
 FIELD = (20.5, -1.6, 47.4)
@@ -97,10 +98,34 @@ def test_viewer_log_round_trip(tmp_path):
     att, ahr = log.messages("ATT"), log.messages("AHR2")
     eul = body_euler_deg(q, "RFU")
     k = np.searchsorted(t_us, att["TimeUS"])
-    np.testing.assert_allclose(att["Roll"], eul[k, 0], atol=1e-3)
-    np.testing.assert_allclose(att["Yaw"], eul[k, 2], atol=1e-3)
+    # ArduPilot's own formats: attitude in centidegrees, yaw unsigned.
+    np.testing.assert_allclose(att["Roll"], eul[k, 0], atol=0.006)
+    yaw_err = (att["Yaw"] - eul[k, 2] + 180.0) % 360.0 - 180.0
+    assert np.abs(yaw_err).max() < 0.006
+    np.testing.assert_array_equal(att["DesRoll"], att["Roll"])
     assert len(ahr["TimeUS"]) == n // 10
     pos_msgs = log.messages("POS")
     np.testing.assert_allclose(pos_msgs["Alt"][-1], 230.0, atol=1e-3)
     assert abs(pos_msgs["Lat"][0] - 40.0) < 1e-6
-    assert log.has("GPS") and log.has("MSG")
+    # XKF1 carries the truth in NED; the velocity is differenced here.
+    xkf = log.messages("XKF1")
+    np.testing.assert_allclose(xkf["PN"], pos[k, 1], atol=1e-3)
+    np.testing.assert_allclose(xkf["PD"], -30.0, atol=1e-3)
+    np.testing.assert_allclose(xkf["VE"], 100.0 / ((n - 1) * 0.01), rtol=1e-3)
+    # What UAV Log Viewer and FlightCoach require besides.
+    for name in ("GPS", "MSG", "MODE", "PARM", "ORGN"):
+        assert log.has(name), name
+
+
+def test_compare_model_frames():
+    """The page's model points its nose along the airframe's heading and
+    pitch, and banks its right wing down for positive roll."""
+    from scipy.spatial.transform import Rotation
+
+    q = _random_q(200, 4)
+    r = Rotation.from_quat(three_quaternions(q, "RFU")).as_matrix()
+    roll, pitch, yaw = np.radians(body_euler_deg(q, "RFU")).T
+    fwd = np.stack([np.cos(pitch) * np.sin(yaw), np.sin(pitch),
+                    -np.cos(pitch) * np.cos(yaw)], -1)  # three.js: x east, y up, z south
+    np.testing.assert_allclose(r[:, :, 0], fwd, atol=1e-9)
+    np.testing.assert_allclose(r[:, 1, 2], -np.sin(roll) * np.cos(pitch), atol=1e-9)

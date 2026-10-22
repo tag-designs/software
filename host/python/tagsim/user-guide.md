@@ -257,17 +257,34 @@ instead with `--site LAT LON ALT`.
 
 ### Look at it
 
-As a sanity check, open these in [UAV Log Viewer](https://plot.ardupilot.org/)
-and compare the flight paths and attitudes by eye, in two browser tabs:
+To see what the filter is doing, write the comparison page and open it in a
+browser:
 
-- the original flight log, for example `00000173.BIN`;
-- the view file, for example `f173-smoothed.view.bin`, written by
-  `tagsim view --score`. It has the truth as the main track (`POS`, `ATT`)
-  and the filter's smoothed estimate as `AHR2`. Its timeline matches the
-  original's.
+```bash
+~/.venvs/tagsim/bin/tagsim compare --truth f173.truth.db3 --score f173.score.db3 -o f173-compare.html
+```
 
-The provider of the first logs has agreed to their being opened on that
-public site.
+It shows only what the filter estimates, truth beside estimate:
+
+- two 3D models of the aircraft, truth on the left and the filter's
+  estimate on the right, from the same camera (drag to turn both);
+- a pair of bars with the true and estimated altitude above the start;
+- strips of the tilt, heading and altitude error over the whole flight,
+  with flying time shaded. Click one to jump there.
+
+Play, pause (space bar), the speed and the scrubber move both together.
+
+There is no horizontal track: the filter doesn't estimate horizontal
+position. Integrating the accelerometer twice drifts by metres within ten
+seconds and kilometres within ten minutes, so it needs outside fixes, such as
+a known launch point.
+
+As a sanity check of the simulation itself, `tagsim view --score` writes a
+`.view.bin` that [UAV Log Viewer](https://plot.ardupilot.org/) and FlightCoach
+open beside the original flight log; its timeline matches the original's. It
+draws the estimate along the *true* path, so it shows that the simulated
+flight matches the real one, not how good the estimate is. The provider of
+the first logs has agreed to their being opened on that public site.
 
 ### Run everything
 
