@@ -131,6 +131,10 @@ activity lines per record instead of 7.
 - 69 of the collection's 230 FIVEMIN files have that signature.
 - The `-reformat` and `-repair` re-exports, which explain why the collection
   holds two versions of those tags, were made with the fixed writer.
+- **The re-exports are authoritative.** They are the corrected files already
+  given to the researchers when the bug was found. The importer's repair is
+  an independent check on them, and covers any buggy original that has no
+  re-export.
 - Where the version is not clear: the header's `Git Hash` is the tag
   *firmware's* commit, reported by the tag, not the host writer's. So the
   file cannot say which writer made it, but the 9-per-record signature can.
