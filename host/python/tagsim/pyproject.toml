@@ -4,13 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tagsim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Synthetic IMUTag logs from recorded flights, with ground truth (testing infrastructure)"
 requires-python = ">=3.10"
 license = "MIT"
 dependencies = [
   "numpy>=1.24",
   "scipy>=1.10",
+  # World Magnetic Model: pure Python, ships WMM2015-WMM2025 coefficients.
+  "pygeomag>=1.1",
   # Protocol messages, compiled from proto/ at import time.
   "tagclient",
 ]

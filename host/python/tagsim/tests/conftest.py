@@ -1,7 +1,7 @@
 """Shared fixtures.
 
 The importer comes from ``TAG_LOG_IMPORT_BIN`` (or ``tag-log-import`` on
-PATH); recorded flights from ``TAGSIM_LOG_DIR`` (default
+PATH), and ``dataprocessing`` from ``DATAPROCESSING_BIN`` (or PATH); recorded flights from ``TAGSIM_LOG_DIR`` (default
 ``~/Documents/ardupilot_data``). Tests that need either skip without it.
 Recorded logs belong to a third party and carry GPS positions: they are
 never copied into the repository.
@@ -36,6 +36,15 @@ def flight_log() -> Path:
     if not found:
         pytest.skip(f"no ArduPilot logs in {log_dir}; set TAGSIM_LOG_DIR")
     return found[0]
+
+
+@pytest.fixture(scope="session")
+def dataprocessing_bin() -> str:
+    """``DATAPROCESSING_BIN``, else dataprocessing on PATH."""
+    found = os.environ.get("DATAPROCESSING_BIN") or shutil.which("dataprocessing")
+    if not found or not Path(found).exists():
+        pytest.skip("dataprocessing not found; set DATAPROCESSING_BIN")
+    return found
 
 
 def sensorviz_bin() -> str | None:

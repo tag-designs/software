@@ -10,10 +10,39 @@ from pathlib import Path
 from . import __version__
 from .ardupilot import GlitchConfig, load_flight
 from .consistency import strapdown
+from .errors import ErrorConfig
 from .sensors import SensorConfig
 from .trajectory import FitConfig
 from .simulate import (download_header, run_import, simulate, synthetic_uuid, write_download,
                        write_truth)
+from .wmm import earth_field
+
+
+def error_config(args: argparse.Namespace) -> ErrorConfig:
+    """The sensor error parameters from ``--ideal``, ``--calibration``,
+    ``--sea-level-walk`` and any ``--set-error NAME=VALUE`` overrides."""
+    base = ErrorConfig.ideal() if args.ideal else ErrorConfig()
+    values = base.as_dict()
+    values["calibration"] = args.calibration
+    values["sea_level_walk_hpa_rth"] = args.sea_level_walk
+    for item in args.set_error or []:
+        name, _, text = item.partition("=")
+        if name not in values or not text:
+            raise ValueError(f"--set-error {item!r}: expected NAME=VALUE, NAME one of "
+                             f"{', '.join(sorted(values))}")
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError:
+            value = text
+        values[name] = tuple(value) if isinstance(value, list) else value
+    return ErrorConfig(**values)
+
+
+def saturation_lines(saturation: dict) -> list[str]:
+    """The per-axis saturation summary, one line per sensor."""
+    return [f"saturation {name}: " + "  ".join(f"{axis} {100 * f:.3f} %"
+                                                for axis, f in zip("xyz", fracs))
+            for name, fracs in saturation.items()]
 
 
 def truth_path(db: Path) -> Path:
@@ -25,15 +54,19 @@ def cmd_run(args: argparse.Namespace) -> int:
     glitch = GlitchConfig(max_accel_g=args.max_accel_g, max_rate_dps=args.max_rate_dps,
                           vel_tol_mps=args.vel_tol, att_tol_deg=args.att_tol,
                           bridge_s=args.bridge_s)
-    cfg = SensorConfig(odr_hz=args.odr, accel_range_g=args.accel_range,
-                       gyro_range_dps=args.gyro_range, mounting=args.mounting,
-                       mag_ned_ut=tuple(args.mag_ned), sea_level_hpa=args.sea_level_hpa)
+    errors = error_config(args)
     flight = load_flight(args.log, glitch, pad_s=args.pad)
     fit = FitConfig(pos_sigma_m=args.pos_sigma, vel_sigma_mps=args.vel_sigma,
                     jerk_sigma=args.jerk_sigma)
     traj, residuals = flight.trajectory(fit=fit)
-    sim = simulate(traj, cfg, start_unix=traj.t_start + flight.gps_offset_s,
-                   duration_s=args.duration, origin_alt_m=flight.origin[2])
+    start_unix = traj.t_start + flight.gps_offset_s
+    field = earth_field(*flight.origin, start_unix)
+    mag_ned = tuple(args.mag_ned) if args.mag_ned else field.ned_ut
+    cfg = SensorConfig(odr_hz=args.odr, accel_range_g=args.accel_range,
+                       gyro_range_dps=args.gyro_range, mounting=args.mounting,
+                       mag_ned_ut=mag_ned, sea_level_hpa=args.sea_level_hpa)
+    sim = simulate(traj, cfg, start_unix=start_unix, duration_s=args.duration,
+                   origin_alt_m=flight.origin[2], errors=errors, seed=args.seed)
 
     out: Path = args.output
     jsonl = out.with_suffix(".jsonl")
@@ -51,7 +84,8 @@ def cmd_run(args: argparse.Namespace) -> int:
               "duration_s": args.duration, "ppm_clock_error": args.ppm, "uuid": uuid,
               "fit": fit.as_dict(), "fit_residuals": residuals,
               "trajectory": {"t0": traj.t0, "dt": traj.dt, "t_first": float(sig.t[0])},
-              "origin": flight.origin, "gps_offset_s": flight.gps_offset_s}
+              "origin": flight.origin, "gps_offset_s": flight.gps_offset_s,
+              "wmm": field.as_dict(), "mag_ned_source": "argument" if args.mag_ned else "wmm"}
     write_truth(truth_path(out), sim, args.seed, config,
                 {"name": flight.path.name, "sha256": flight.sha256},
                 flight.repairs_as_dicts(), consistency)
@@ -61,6 +95,13 @@ def cmd_run(args: argparse.Namespace) -> int:
           f"{len(sim.pages)} pages; truth in {truth_path(out)}")
     for r in flight.repairs:
         print(f"  repair: {r.kind} {r.t_start:.3f}-{r.t_end:.3f} s ({r.samples} samples): {r.reason}")
+    print(f"field: {field.model} at {field.decimal_year:.3f}: {field.total_ut:.2f} uT, "
+          f"dip {field.inclination_deg:.2f} deg, declination {field.declination_deg:.2f} deg"
+          + (" (overridden by --mag-ned)" if args.mag_ned else ""))
+    print(f"errors: {'none (--ideal)' if args.ideal else 'datasheet'}, seed {args.seed}, "
+          f"calibration table {errors.calibration}")
+    for line in saturation_lines(sim.saturation):
+        print(line)
     print("fit: " + json.dumps(residuals))
     print("consistency: " + json.dumps(consistency))
     return 0
@@ -80,9 +121,18 @@ def parser() -> argparse.ArgumentParser:
                    help="gyro full scale, dps (default 1000)")
     r.add_argument("--mounting", default="RFU",
                    help="body direction of tag x, y, z (default RFU: flat, battery forward)")
-    r.add_argument("--mag-ned", type=float, nargs=3, default=(20.0, -1.5, 47.0),
-                   metavar=("N", "E", "D"), help="constant Earth field, uT (placeholder for WMM)")
+    r.add_argument("--mag-ned", type=float, nargs=3, metavar=("N", "E", "D"),
+                   help="Earth field, uT, in place of the WMM value at the log's origin and date")
     r.add_argument("--sea-level-hpa", type=float, default=1013.25)
+    r.add_argument("--sea-level-walk", type=float, default=0.0, metavar="HPA_PER_SQRT_H",
+                   help="sea-level pressure random walk (default 0: constant)")
+    r.add_argument("--ideal", action="store_true",
+                   help="no sensor errors: no noise, bias, hard or soft iron, offsets")
+    r.add_argument("--calibration", choices=("true", "perturbed"), default="true",
+                   help="Calibration table: the true hard and soft iron, or perturbed ones")
+    r.add_argument("--set-error", action="append", metavar="NAME=VALUE",
+                   help="override one ErrorConfig parameter (JSON value), e.g. "
+                        "accel_bias_mg=0 or mag_noise_ut=[0.1,0.1,0.2]; repeatable")
     r.add_argument("--ppm", type=float, default=0.0,
                    help="TagInfo.ppm_clock_error to report (no clock error is simulated)")
     r.add_argument("--pad", type=float, default=10.0,

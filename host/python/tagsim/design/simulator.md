@@ -1,20 +1,26 @@
 ---
 type: design
 status: current
-summary: How tagsim's first slice turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the noise-free sensor model and its axes, page packing, and the truth file.
+summary: How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, and the truth file.
 ---
 
-# tagsim: How the First Slice Works
+# tagsim: How It Works
 
-One recorded flight goes in; an IMUTag SQLite log and a truth file come out,
-with **no sensor noise**. The pipeline is:
+One recorded flight goes in; an IMUTag SQLite log and a truth file come out.
+The pipeline is:
 
 1. read the EKF track;
 2. repair its glitches;
 3. fit splines;
-4. sample ideal signals at the IMU rate;
-5. quantize them into pages;
-6. write a `tag_dwnld.py` download and import it with `tag-log-import`.
+4. sample ideal signals at the IMU rate, and the magnetometer at its own
+   conversion times;
+5. add the datasheet sensor errors;
+6. quantize them into pages;
+7. write a `tag_dwnld.py` download and import it with `tag-log-import`.
+
+The sensor errors are only those the planned orientation filter's behaviour
+depends on (the proposal's
+[scope](proposals/imutag-simulator.md#scope-keep-it-simple)).
 
 What is still planned is in the
 [proposal](proposals/imutag-simulator.md); how to run it is in the
@@ -127,14 +133,39 @@ GPS updates come through as brief specific-force spikes of up to about 0.5 g.
 
 - **Specific force:** `R_tn (a_n − g_n)`, in mg.
 - **Body rate:** in dps.
-- **Field:** a constant NED field. This is a placeholder for a World Magnetic
-  Model value, and it is exact for one site and date.
-- **Pressure:** the ISA troposphere at the true altitude, with a fixed
-  sea-level pressure.
+- **Field:** the World Magnetic Model field (`wmm.py`), in NED, evaluated
+  once at the log's `ORGN` and the UTC date of the first sample, rotated into
+  the tag frame at each magnetometer conversion's true time (below).
+  `--mag-ned` replaces it with a given field.
+- **Pressure:** the ISA troposphere at the true altitude, under a sea-level
+  pressure that is constant or a random walk (`--sea-level-walk`). The sensor
+  is assumed shielded from the airflow, so it sees static pressure only.
 - **Page temperature:** the ISA temperature at the true altitude.
 
-The magnetometer and pressure are taken at each superframe's first sample, in
-one auxiliary slot per ten IMU samples, and none is missing.
+**The World Magnetic Model** comes from
+[pygeomag](https://pypi.org/project/pygeomag/), a pure-Python port of NOAA's
+reference code. It was chosen because it ships the WMM2015, WMM2020 and
+WMM2025 coefficients, needs nothing compiled and is maintained. tagsim takes
+the model whose five-year epoch contains the flight date, so the 2023 logs use
+WMM2020. Over a pattern box the field changes by a few nanotesla, below the
+magnetometer noise, so one value per log is enough. `00000173` gets
+51.72 µT, dip 66.55°, declination −4.62°.
+
+**Auxiliary timing.** The firmware polls the magnetometer and the pressure
+sensor once per superframe, after copying the IMU block
+(`sampleDataCollection` in `families/IMUTag/src/sensors.c`). The model polls
+at the superframe's last IMU sample. The log puts the slot at the
+superframe's first sample, so the truth file keeps the true poll time.
+
+- **Magnetometer.** The BMM350 free-runs at the rate `select_mag_rate` picks:
+  12.5 Hz at 100 Hz ODR, scaling with the ODR, so 1.25 conversions per poll.
+  Its clock has a random phase and a rate error drawn per run. Each poll takes
+  the newest completed conversion; if none completed since the last poll, the
+  slot is the missing-value NaN, as on the tag. At the firmware's rates that
+  never happens, so the conversion's age sweeps 0–80 ms at 100 Hz as the two
+  clocks beat. The conversion is treated as instantaneous.
+- **Pressure** is taken at the poll time. The BMP581 converts at about 250 Hz,
+  so its age is negligible.
 
 The mounting is a rotation from body FRD to the tag frame (x right, y toward
 the battery, z up). The default `RFU` is the tag flat with its battery end
@@ -174,6 +205,67 @@ With the sign taken from that data, `dataprocessing imu-compass-orientation`
 reports the configured dip, +66.89 degrees, constant to 0.01 degrees over
 random static attitudes, as for a real tag.
 
+## Sensor errors
+
+`errors.py` turns the ideal signals into measurements. Each figure is a
+named parameter of `ErrorConfig`, defaulting to the datasheet typical value
+(the proposal's
+[Datasheet noise and errors](proposals/imutag-simulator.md#datasheet-noise-and-errors));
+`--set-error` overrides any of them and `--ideal` zeroes them all. Ranges are
+half-widths of uniform draws, made once per run.
+
+| Sensor | Error | Default | Applied |
+| --- | --- | --- | --- |
+| Accelerometer | White noise | 60 µg/√Hz over BW = ODR/2: 0.42 mg RMS at 100 Hz | Per sample, tag frame, before quantization and saturation |
+| | Turn-on bias | ±12 mg per axis | Constant |
+| Gyroscope | White noise | 2.8 mdps/√Hz over ODR/2: 0.020 dps RMS at 100 Hz | As the accelerometer |
+| | Turn-on bias | ±1 dps per axis | Constant |
+| Magnetometer | Hard iron V | ±25 µT per axis | Stored axes |
+| | Soft iron A | diagonal ±1 % x, y, ±3 % z; symmetric off-diagonal ±0.5 % | Stored axes, as `A⁻¹` |
+| | Noise | 190 nT x, y; 450 nT z RMS | Per conversion, stored axes |
+| | Rate error | ±2 % | The BMM350's clock |
+| Pressure | Noise | 0.41 Pa RMS | Per poll |
+| | Offset | ±30 Pa | Constant |
+| | Quantization | 1/64 Pa | After noise and offset |
+
+**The magnetometer distortion is the inverse of the host's correction.**
+`sensoranalysis` corrects a stored sample as `M' = A(M − V)`. The model writes
+`M = A⁻¹ M_true + V + noise`, with `M_true` the true field in the stored
+axes, so the correct constants recover the true field up to `A` times the
+noise. The stored z axis is the BMM350's −z, so the z figures go there.
+
+**The Calibration table** carries the drawn `V` and `A` by default. With
+`--calibration perturbed` it carries `V` plus up to ±2 µT per axis and `A`
+plus a symmetric perturbation of up to ±1 % per element, for testing a
+filter against a wrong calibration. Which one was written is in `SimRun`.
+
+**Saturation.** The run prints, and `SimRun.SaturationJson` keeps, the
+fraction of samples per tag axis that read full scale after noise. On
+`00000173` at ±4 g, 2.2 % of z samples clip, in the pulls; x, y and the gyro
+at ±1000 dps never do.
+
+**Why not gnss-ins-sim.** Its `acc_gen` and `gyro_gen` would do this same
+arithmetic, but the package is not on PyPI, would be pinned to a git commit,
+and brings drift and vibration models the scope defers. `errors.py` is the
+small equivalent with the same meanings: its turn-on bias is gnss-ins-sim's
+`b`, and gnss-ins-sim's white-noise `vrw` and `arw`, whose per-sample sigma
+is `vrw·√fs`, are this module's datasheet density divided by √2.
+
+**Determinism.** Every random term has its own generator, seeded from
+`(seed, stream)`, so a run is reproducible from `SimRun`'s seed and
+configuration, and changing one term's parameters leaves the others' draws
+alone.
+
+**What it gives on `00000173`** (seed 0, true calibration):
+
+| Field magnitude | 1 % | Median | 99 % | SD |
+| --- | --- | --- | --- | --- |
+| Stored, before calibration | 24.6 µT | 58.5 µT | 79.9 µT | 12.6 µT |
+| `dataprocessing` calibrated | 50.8 µT | 51.72 µT | 52.7 µT | 0.38 µT |
+
+The WMM magnitude is 51.72 µT. The calibrated spread is the magnetometer
+noise projected on the field.
+
 ## Pages and the download
 
 `pages.py` packs `t_ImuTagDataLog` byte for byte:
@@ -202,14 +294,16 @@ Multi-segment logs are supported for tests:
 - `FINISHED` status;
 - a state log: `CONFIGURED`, then `RUNNING` at the first sample, then
   `FINISHED`;
-- one identity calibration.
+- one calibration: the run's hard and soft iron, true or perturbed.
 
 `tag-log-import` writes the log, adding `source = import`, `simulator` and
 `tagsim_source` to its `info` table.
 
 ## Truth file
 
-`NAME.truth.db3` is keyed like the log by `SegmentId` and `SampleIndex`. Its
+`NAME.truth.db3` is keyed like the log by `SegmentId` and `SampleIndex`;
+per-superframe rows use the log's key for the auxiliary slot, the
+superframe's first sample. Its
 `ElapsedUs` is the true time since sample 0, which equals the log's own while
 no clock error is simulated or reported.
 
@@ -217,8 +311,9 @@ no clock error is simulated or reported.
 | --- | --- |
 | `TruthPose` | ENU position and velocity about the EKF origin; attitude quaternion, tag frame to ENU |
 | `TruthKinematics` | Ideal specific force (mg) and body rate (dps), tag frame, before quantization |
-| `TruthAtmosphere` | Per superframe: altitude AMSL, sea-level pressure, pressure, temperature |
-| `SimRun` | Version, seed, full configuration JSON, source name and SHA-256, repairs, consistency figures, UTC of sample 0 |
+| `TruthAtmosphere` | Per superframe: true poll time, altitude AMSL, sea-level pressure, true pressure, temperature |
+| `TruthMagSamples` | Per superframe: true poll and conversion times, the sample's age, whether it was missed, and the true field in the tag frame and in the stored axes (what a correct calibration recovers) |
+| `SimRun` | Version, seed, full configuration JSON (sensor, errors, the values drawn, WMM field), source name and SHA-256, repairs, consistency figures, saturation, UTC of sample 0 |
 | `units` | Units and meaning of the columns above |
 
 ## Consistency check

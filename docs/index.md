@@ -445,8 +445,8 @@ design document.
 
 ### python / tagsim
 
-- [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file - installing, running, testing, and what the first slice does not model yet.
-- [tagsim: How the First Slice Works](../host/python/tagsim/design/simulator.md) — How tagsim's first slice turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the noise-free sensor model and its axes, page packing, and the truth file.
+- [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file - installing, running, testing, the datasheet sensor errors it adds, and what it does not model yet.
+- [tagsim: How It Works](../host/python/tagsim/design/simulator.md) — How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, and the truth file.
 
 ### python / tagsim / Proposals
 

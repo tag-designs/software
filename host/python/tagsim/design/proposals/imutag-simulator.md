@@ -6,9 +6,9 @@ summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights
 
 # tagsim: Synthetic IMUTag Logs from Pattern Flights
 
-**Status:** the first end-to-end slice is built (2026-10-21): one recorded
-flight in, a noise-free IMUTag log and truth file out, through the new
-`tag-log-import`. How it works is in [../simulator.md](../simulator.md), and
+**Status:** phases 1 and 2 are built (2026-10-21): one recorded flight in,
+an IMUTag log carrying the in-scope datasheet sensor errors and a truth file
+out, through the new `tag-log-import`. How it works is in [../simulator.md](../simulator.md), and
 how to run it is in [the README](../../README.md). The phases table below
 says what is done.
 
@@ -20,6 +20,18 @@ Where the build departed from this proposal:
 - **Magnetometer sign.** The sign is taken from real IMUTagNandBmp581 data,
   not from a literal reading of the axis contract. See the
   [design](../simulator.md#sensor-model).
+- **No gnss-ins-sim.** The accel and gyro errors are a small equivalent in
+  `errors.py`, with the same parameter meanings, rather than gnss-ins-sim
+  pinned to a commit. Only white noise and a turn-on bias are in scope, and
+  the package is not on PyPI. See the
+  [design](../simulator.md#sensor-errors).
+- **WMM.** The field comes from `pygeomag`, once per log at the origin and
+  date.
+- **Magnetometer conversions** are instantaneous: low-noise averaging over
+  the conversion window is not modelled.
+- **Datasheet.** The accel and gyro figures are still the LSM6DSV sheet's,
+  standing in for the LSM6DSV16X's (first caveat under
+  [Datasheet noise and errors](#datasheet-noise-and-errors)).
 
 `tagsim` is a Python package of testing infrastructure, next to
 [`tagclient`](../../../tagclient/README.md). It is not a shipped tool.
@@ -543,7 +555,7 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 | Phase | Work | Checked by |
 | --- | --- | --- |
 | 1 | End-to-end slice: one flight, no noise. `tag-log-import`; DataFlash reader; glitch handling; splines; ideal signals; quantization and saturation; pages; truth pose. **Built** (2026-10-21; see [../simulator.md](../simulator.md)). | The imported log decodes back to exactly what was packed; a stationary fixture reads 1000 mg and zero rate; sensorviz opens a generated flight |
-| 2 | The in-scope sensor errors: accel and gyro noise and bias; WMM field, hard and soft iron, noise and magnetometer sample age; pressure noise, offset and sea-level drift; saturation summary | Noise statistics of a simulated still segment match the configured values; a correct calibration recovers the true field |
+| 2 | The in-scope sensor errors: accel and gyro noise and bias; WMM field, hard and soft iron, noise and magnetometer sample age; pressure noise, offset and sea-level drift; saturation summary. **Built** (2026-10-21; see [../simulator.md](../simulator.md#sensor-errors)). | Noise statistics of a simulated still segment match the configured values; a correct calibration recovers the true field |
 | 3 | Scoring and viewing: a helper that compares an estimate with truth (attitude, heading and velocity error over time); UAV Log Viewer export | `dataprocessing` orientation scored against truth on the first logs; the exported trajectory matches the source flight by eye |
 | Later | Deferred items from [Scope](#scope-keep-it-simple), only as filter results call for them; refitting noise from prototype bench data | As each is added |
 
