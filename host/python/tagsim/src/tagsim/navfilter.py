@@ -1,5 +1,5 @@
 """A basic multi-rate post-processing filter for IMUTag logs: attitude,
-gyro bias, and relative altitude with vertical velocity.
+gyro and accelerometer bias, and relative altitude with vertical velocity.
 
 It is a prototype for the later C++ port into the Qt-free ``sensoranalysis``
 core; the design and its results are in ``design/navigation-filter.md``.
@@ -32,6 +32,7 @@ is the hook for a later per-sample age correction.
 
 - ``q``: attitude, tag frame to ENU (as tagsim's ``TruthPose``);
 - ``b``: gyro bias, rad/s, tag frame;
+- ``ba``: accelerometer bias, m/s^2, tag frame (``accel_bias_states``);
 - ``h``, ``vz``: altitude relative to the first pressure sample, m, and
   vertical velocity, m/s (dropped when the pressure channel is off),
 
@@ -52,9 +53,11 @@ updates are:
   reference, relative to the first sample, against ``h``. No sea-level drift
   is assumed.
 
-A forward pass stores, at every event, the predicted and filtered nominal
-states and the RTS gain; a backward Rauch-Tung-Striebel pass then smooths
-the whole record.
+A forward pass stores, at every node, the filtered nominal state, the RTS
+gain and the node's time (:class:`NodeStore`: plain arrays, or windowed
+``numpy.memmap`` files above ``memmap_threshold_mb``); a backward
+Rauch-Tung-Striebel pass then smooths the whole record, recomputing each
+prediction from the stored state rather than storing it.
 """
 
 from __future__ import annotations
@@ -271,6 +274,12 @@ class FilterConfig:
     init_accel_bias_mg: float = 10.0  #: their initial sigma (turn-on bias up to 12 mg)
     accel_bias_walk_mg_rts: float = 0.01  #: their random walk, mg per sqrt(s)
     smooth: bool = True
+    # Smoother storage (see NodeStore).
+    #: Above this many MiB of per-node storage, keep it in memory-mapped files.
+    memmap_threshold_mb: float = 1024.0
+    memmap_dir: str | None = None  #: directory for those files; None: the system temp dir
+    memmap_window_nodes: int = 1 << 16  #: rows mapped at a time per file
+    gain_float32: bool = True  #: store the RTS gains as float32 (float64 if False)
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -539,16 +548,20 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         age_s = 1.0 / (mag_rate_hz(odr) * math.sqrt(12.0))
     r_p = cfg.pressure_sigma_m ** 2
 
-    # Storage, one node per IMU sample and per auxiliary event.
-    n_nodes = n_imu + len(ev.t)
-    xs_f = np.empty((n_nodes, NOMINAL))  # q(4), b(3), h, vz, ba(3) after the node's updates
-    xs_p = np.empty((n_nodes, NOMINAL))  # predicted into the node
-    gains = np.empty((n_nodes, n, n)) if cfg.smooth else None  # C_k: node k -> k+1
-    imu_node = np.empty(n_imu, dtype=np.int64)
+    # Storage. The outputs are kept per IMU sample; for the smoother, the
+    # forward pass also stores, per node (each IMU sample and each auxiliary
+    # event between samples), the filtered nominal state, the RTS gain to the
+    # next node, and where the node is (its time and IMU interval), from which
+    # the backward pass recomputes the prediction into the next node.
+    n_nodes = n_imu + len(ev.t)  # an upper bound
+    out_f = np.empty((n_imu, NOMINAL))
+    store = NodeStore(n_nodes, n, cfg) if cfg.smooth else None
     stats = {"accel_updates": 0, "accel_gated": 0, "mag_updates": 0, "mag_gated": 0,
              "pressure_updates": 0, "still_fraction": float(still.mean()),
              "start_still": start_still, "g_mps2": g,
              "gyro_bias_init_dps": np.degrees(b0).tolist()}
+    if store is not None:
+        stats["storage"] = store.describe()
     I_n = np.eye(n)
 
     def pack(q, b, h, vz):
@@ -573,15 +586,14 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         A = I_n - K @ H
         P = A @ P @ A.T + K @ R @ K.T
 
-    def predict(f0_, w0_, f1_, w1_, dt, saturated, node):
+    def predict(f0_, w0_, f1_, w1_, dt, saturated, node, t_node, i_node):
         """Propagate over dt with the IMU interpolated linearly from (f0, w0)
-        to (f1, w1), then store the prediction and the previous node's gain."""
+        to (f1, w1) into ``node``, at ``t_node`` in IMU interval ``i_node``,
+        and store the previous node's state and gain."""
         nonlocal q, P, h, vz
-        R = _dcm(q)
-        w = 0.5 * (w0_ + w1_) - b
-        fm = 0.5 * (f0_ + f1_) - ba
-        fE = R @ fm
-        q = _qnorm(_qmul(q, _qexp(w[0] * dt, w[1] * dt, w[2] * dt)))
+        if store is not None:
+            store.put_state(node - 1, pack(q, b, h, vz))
+        q, h, vz, R, fE = _propagate(q, b, h, vz, ba, f0_, w0_, f1_, w1_, dt, g, vert)
         F = np.eye(n)
         F[0:3, 3:6] = -R * dt
         Qd = np.zeros((n, n))
@@ -590,9 +602,6 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         if ab:
             Qd[ia:ia + 3, ia:ia + 3] = np.eye(3) * (q_ba * dt)
         if vert:
-            a = fE[2] - g
-            h += vz * dt + 0.5 * a * dt * dt
-            vz += a * dt
             F[ih, ih + 1] = dt
             F[ih + 1, 0] = fE[1] * dt
             F[ih + 1, 1] = -fE[0] * dt
@@ -606,91 +615,76 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
             Qd[ih, ih] = qv * dt * dt / 3.0
             Qd[ih, ih + 1] = Qd[ih + 1, ih] = qv * dt / 2.0
         Pp = F @ P @ F.T + Qd
-        if gains is not None:
-            gains[node - 1] = np.linalg.solve(Pp, F @ P).T
+        if store is not None:
+            store.put_gain(node - 1, np.linalg.solve(Pp, F @ P).T)
+            store.put_node(node, t_node, i_node)
         P = 0.5 * (Pp + Pp.T)
-        xs_p[node] = pack(q, b, h, vz)
 
     up_skew = _skew(np.array([0.0, 0.0, g]))
     field_skew = _skew(field)
     n_ev = len(ev.t)
     j = 0  # next auxiliary event
     node = 0  # the current node: an instant at which updates are applied
-    xs_p[0] = pack(q, b, h, vz)
+    if store is not None:
+        store.put_node(0, t_imu[0], 0)
 
     def aux(j, w):
         _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update,
                     vert, h, alt_ref, r_p, stats, n, ih)
 
-    for i in range(n_imu):
-        if i > 0:
-            # Propagate from t_{i-1} to t_i, stopping at each auxiliary event
-            # strictly between them, with the IMU interpolated linearly.
-            ta, tb = t_imu[i - 1], t_imu[i]
-            f_a, w_a, f_b, w_b = f_all[i - 1], w_all[i - 1], f_all[i], w_all[i]
-            span = tb - ta
-            sat = bool(log.accel_saturated[i - 1] or log.accel_saturated[i])
-            tc, fc, wc = ta, f_a, w_a
-            while j < n_ev and ev.t[j] < tb:
-                te = ev.t[j]
-                if te > tc:
-                    u = (te - ta) / span
-                    fe, we = f_a + u * (f_b - f_a), w_a + u * (w_b - w_a)
-                    xs_f[node] = pack(q, b, h, vz)
-                    node += 1
-                    predict(fc, wc, fe, we, te - tc, sat, node)
-                    tc, fc, wc = te, fe, we
-                aux(j, 0.5 * (wc + w_b) - b)
+    try:
+        for i in range(n_imu):
+            if i > 0:
+                # Propagate from t_{i-1} to t_i, stopping at each auxiliary event
+                # strictly between them, with the IMU interpolated linearly.
+                ta, tb = t_imu[i - 1], t_imu[i]
+                f_a, w_a, f_b, w_b = f_all[i - 1], w_all[i - 1], f_all[i], w_all[i]
+                span = tb - ta
+                sat = bool(log.accel_saturated[i - 1] or log.accel_saturated[i])
+                tc, fc, wc = ta, f_a, w_a
+                while j < n_ev and ev.t[j] < tb:
+                    te = ev.t[j]
+                    if te > tc:
+                        u = (te - ta) / span
+                        fe, we = f_a + u * (f_b - f_a), w_a + u * (w_b - w_a)
+                        node += 1
+                        predict(fc, wc, fe, we, te - tc, sat, node, te, i)
+                        tc, fc, wc = te, fe, we
+                    aux(j, 0.5 * (wc + w_b) - b)
+                    j += 1
+                node += 1
+                predict(fc, wc, f_b, w_b, tb - tc, sat, node, tb, i)
+            # Accelerometer update at the IMU sample.
+            f = f_all[i] - ba
+            excess = abs(float(np.linalg.norm(f)) - g)
+            if excess < cfg.accel_gate_g * G0 and not log.accel_saturated[i]:
+                wn = float(np.linalg.norm(w_all[i] - b))
+                sigma = rate_scale * (cfg.accel_sigma_mps2 + cfg.accel_sigma_per_excess * excess
+                                      + cfg.accel_speed_mps * wn)
+                R = _dcm(q)
+                H = np.zeros((3, n))
+                H[:, 0:3] = R.T @ up_skew
+                if ab:
+                    H[:, ia:ia + 3] = np.eye(3)
+                update(H, f - R[2, :] * g, np.eye(3) * sigma ** 2)  # R^T (0, 0, g)
+                stats["accel_updates"] += 1
+            else:
+                stats["accel_gated"] += 1
+            # Auxiliary events at this sample (and, at the first, before it).
+            while j < n_ev and ev.t[j] <= t_imu[i]:
+                aux(j, w_all[i] - b)
                 j += 1
-            xs_f[node] = pack(q, b, h, vz)
-            node += 1
-            predict(fc, wc, f_b, w_b, tb - tc, sat, node)
-        # Accelerometer update at the IMU sample.
-        f = f_all[i] - ba
-        excess = abs(float(np.linalg.norm(f)) - g)
-        if excess < cfg.accel_gate_g * G0 and not log.accel_saturated[i]:
-            wn = float(np.linalg.norm(w_all[i] - b))
-            sigma = rate_scale * (cfg.accel_sigma_mps2 + cfg.accel_sigma_per_excess * excess
-                                  + cfg.accel_speed_mps * wn)
-            R = _dcm(q)
-            H = np.zeros((3, n))
-            H[:, 0:3] = R.T @ up_skew
-            if ab:
-                H[:, ia:ia + 3] = np.eye(3)
-            update(H, f - R[2, :] * g, np.eye(3) * sigma ** 2)  # R^T (0, 0, g)
-            stats["accel_updates"] += 1
-        else:
-            stats["accel_gated"] += 1
-        # Auxiliary events at this sample (and, at the first, before it).
-        while j < n_ev and ev.t[j] <= t_imu[i]:
-            aux(j, w_all[i] - b)
-            j += 1
-        imu_node[i] = node
-    xs_f[node] = pack(q, b, h, vz)
-    n_nodes = node + 1
+            out_f[i] = pack(q, b, h, vz)
+        out_s = None
+        if store is not None:
+            store.put_state(node, pack(q, b, h, vz))
+            out_s = _smooth(store, node + 1, out_f[-1], t_imu, f_all, w_all, g, vert, ab, ia,
+                            ih, n)
+    finally:
+        if store is not None:
+            store.close()
 
-    xs_s = None
-    if gains is not None:
-        xs_s = xs_f[:n_nodes].copy()
-        for k in range(n_nodes - 2, -1, -1):
-            d = np.empty(n)
-            d[0:3] = _qlog_global(tuple(xs_s[k + 1, 0:4]), tuple(xs_p[k + 1, 0:4]))
-            d[3:6] = xs_s[k + 1, 4:7] - xs_p[k + 1, 4:7]
-            if ab:
-                d[ia:ia + 3] = xs_s[k + 1, 9:12] - xs_p[k + 1, 9:12]
-            if vert:
-                d[ih:ih + 2] = xs_s[k + 1, 7:9] - xs_p[k + 1, 7:9]
-            dx = gains[k] @ d
-            qk = _qnorm(_qmul(_qexp(dx[0], dx[1], dx[2]), tuple(xs_f[k, 0:4])))
-            xs_s[k, 0:4] = qk
-            xs_s[k, 4:7] = xs_f[k, 4:7] + dx[3:6]
-            if ab:
-                xs_s[k, 9:12] = xs_f[k, 9:12] + dx[ia:ia + 3]
-            if vert:
-                xs_s[k, 7:9] = xs_f[k, 7:9] + dx[ih:ih + 2]
-
-    fwd = xs_f[imu_node]
-    sm = xs_s[imu_node] if xs_s is not None else None
+    fwd, sm = out_f, out_s
     stats["gyro_bias_final_dps"] = np.degrees(fwd[-1, 4:7]).tolist()
     if ab:
         stats["accel_bias_final_mg"] = (fwd[-1, 9:12] * 1000.0 / G0).tolist()
@@ -705,6 +699,176 @@ def run_filter(log: ImuTagLog, cfg: FilterConfig) -> FilterResult:
         stats=stats,
         accel_bias_forward=fwd[:, 9:12] if ab else None,
         accel_bias_smoothed=sm[:, 9:12] if (ab and sm is not None) else None)
+
+
+def _propagate(q, b, h, vz, ba, f0, w0, f1, w1, dt, g, vert):
+    """The nominal state propagated over ``dt``, with the IMU interpolated
+    linearly from (f0, w0) to (f1, w1): the new ``q``, ``h`` and ``vz`` (the
+    biases are constant), and the start attitude's DCM and ENU specific force
+    for the error-state Jacobian. The forward pass and the smoother's
+    recomputed prediction both call this, so they agree exactly."""
+    R = _dcm(q)
+    w = 0.5 * (w0 + w1) - b
+    fE = R @ (0.5 * (f0 + f1) - ba)
+    q = _qnorm(_qmul(q, _qexp(w[0] * dt, w[1] * dt, w[2] * dt)))
+    if vert:
+        a = fE[2] - g
+        h += vz * dt + 0.5 * a * dt * dt
+        vz += a * dt
+    return q, h, vz, R, fE
+
+
+def _smooth(store, n_nodes, last, t_imu, f_all, w_all, g, vert, ab, ia, ih, n):
+    """The backward Rauch-Tung-Striebel pass, reading the store in reverse.
+
+    ``x_s,k = x_f,k (+) C_k (x_s,k+1 (-) x_{k+1|k})``, with the prediction
+    ``x_{k+1|k}`` recomputed from ``x_f,k`` and the IMU over the node's
+    interval rather than stored. Returns the smoothed nominal state at every
+    IMU sample."""
+    out = np.empty((len(t_imu), NOMINAL))
+
+    def imu_at(k):
+        """The IMU (f, w) at node k, and its IMU index if it is a sample."""
+        t, i = store.node(k)
+        if t == t_imu[i]:
+            return f_all[i], w_all[i], i
+        ta, tb = t_imu[i - 1], t_imu[i]
+        u = (t - ta) / (tb - ta)
+        return (f_all[i - 1] + u * (f_all[i] - f_all[i - 1]),
+                w_all[i - 1] + u * (w_all[i] - w_all[i - 1]), -1)
+
+    xs = tuple(float(x) for x in last)  # smoothed = filtered at the last node
+    f1, w1, i1 = imu_at(n_nodes - 1)
+    t1 = store.node(n_nodes - 1)[0]
+    if i1 >= 0:
+        out[i1] = xs
+    d = np.empty(n)
+    for k in range(n_nodes - 2, -1, -1):
+        xf = store.state(k)
+        f0, w0, i0 = imu_at(k)
+        t0 = store.node(k)[0]
+        qf, bf, baf = tuple(xf[0:4]), xf[4:7], xf[9:12]
+        qp, hp, vzp, _, _ = _propagate(qf, bf, xf[7], xf[8], baf, f0, w0, f1, w1, t1 - t0, g,
+                                       vert)
+        d[0:3] = _qlog_global(xs[0:4], qp)
+        d[3:6] = np.subtract(xs[4:7], bf)
+        if ab:
+            d[ia:ia + 3] = np.subtract(xs[9:12], baf)
+        if vert:
+            d[ih] = xs[7] - hp
+            d[ih + 1] = xs[8] - vzp
+        dx = store.gain(k) @ d
+        qk = _qnorm(_qmul(_qexp(dx[0], dx[1], dx[2]), qf))
+        bk = bf + dx[3:6]
+        bak = baf + dx[ia:ia + 3] if ab else baf
+        hk, vzk = (xf[7] + dx[ih], xf[8] + dx[ih + 1]) if vert else (xf[7], xf[8])
+        xs = (*qk, *bk, hk, vzk, *bak)
+        if i0 >= 0:
+            out[i0] = xs
+        f1, w1, t1 = f0, w0, t0
+    return out
+
+
+class _Column:
+    """One per-node array in a file, mapped a window of rows at a time.
+
+    Rows are written in increasing order by the forward pass and read in
+    decreasing order by the backward pass; each window is a ``numpy.memmap``
+    of ``window`` rows, flushed and unmapped when the access moves outside
+    it, so the process keeps at most one window of each column resident."""
+
+    def __init__(self, path: Path, n: int, row: tuple, dtype, window: int):
+        self.path, self.n, self.row, self.dtype = path, n, row, np.dtype(dtype)
+        self.window = window
+        self.row_bytes = self.dtype.itemsize * int(np.prod(row, dtype=np.int64))
+        with open(path, "wb") as f:
+            f.truncate(max(1, n * self.row_bytes))
+        self.map, self.lo, self.hi = None, 0, 0
+
+    def _remap(self, k: int) -> None:
+        self.close()
+        self.lo = (k // self.window) * self.window
+        self.hi = min(self.lo + self.window, self.n)
+        self.map = np.memmap(self.path, dtype=self.dtype, mode="r+",
+                             offset=self.lo * self.row_bytes, shape=(self.hi - self.lo, *self.row))
+
+    def __setitem__(self, k: int, value) -> None:
+        if not self.lo <= k < self.hi or self.map is None:
+            self._remap(k)
+        self.map[k - self.lo] = value
+
+    def __getitem__(self, k: int):
+        if not self.lo <= k < self.hi or self.map is None:
+            self._remap(k)
+        return np.array(self.map[k - self.lo])
+
+    def close(self) -> None:
+        if self.map is not None:
+            self.map.flush()
+            self.map = None
+
+
+class NodeStore:
+    """The forward pass's per-node record for the smoother.
+
+    Per node: the filtered nominal state (:data:`NOMINAL` doubles), the RTS
+    gain to the next node (``n x n``, float64, or float32 with
+    :attr:`FilterConfig.gain_float32`), and the node's time and IMU interval
+    (a double and an int32). Held in plain arrays when it fits in
+    :attr:`FilterConfig.memmap_threshold_mb`, otherwise in ``numpy.memmap``
+    files in a temporary directory (under :attr:`FilterConfig.memmap_dir`,
+    else the system's), deleted by :meth:`close`."""
+
+    def __init__(self, n_nodes: int, n: int, cfg: FilterConfig):
+        gain_dtype = np.float32 if cfg.gain_float32 else np.float64
+        self.bytes_per_node = NOMINAL * 8 + n * n * np.dtype(gain_dtype).itemsize + 8 + 4
+        self.nbytes = n_nodes * self.bytes_per_node
+        self.file_backed = self.nbytes > cfg.memmap_threshold_mb * 2 ** 20
+        self._tmp = None
+        if self.file_backed:
+            import tempfile
+            self._tmp = tempfile.TemporaryDirectory(prefix="tagsim-filter-", dir=cfg.memmap_dir)
+            d, w = Path(self._tmp.name), cfg.memmap_window_nodes
+            self.states = _Column(d / "states", n_nodes, (NOMINAL,), np.float64, w)
+            self.gains = _Column(d / "gains", n_nodes, (n, n), gain_dtype, w)
+            self.times = _Column(d / "times", n_nodes, (), np.float64, w)
+            self.intervals = _Column(d / "intervals", n_nodes, (), np.int32, w)
+        else:
+            self.states = np.empty((n_nodes, NOMINAL))
+            self.gains = np.empty((n_nodes, n, n), dtype=gain_dtype)
+            self.times = np.empty(n_nodes)
+            self.intervals = np.empty(n_nodes, dtype=np.int32)
+
+    def describe(self) -> dict:
+        return {"file_backed": self.file_backed, "bytes_per_node": self.bytes_per_node,
+                "max_mb": round(self.nbytes / 2 ** 20, 1)}
+
+    def put_state(self, k, x):
+        self.states[k] = x
+
+    def put_gain(self, k, c):
+        self.gains[k] = c
+
+    def put_node(self, k, t, i):
+        self.times[k] = t
+        self.intervals[k] = i
+
+    def state(self, k):
+        return self.states[k]
+
+    def gain(self, k):
+        return self.gains[k]
+
+    def node(self, k):
+        return float(self.times[k]), int(self.intervals[k])
+
+    def close(self) -> None:
+        """Unmap and delete the files, if any."""
+        if self._tmp is not None:
+            for c in (self.states, self.gains, self.times, self.intervals):
+                c.close()
+            self._tmp.cleanup()
+            self._tmp = None
 
 
 def _aux_update(ev, j, log, cfg, q, field, field_norm, field_skew, age_s, w, update, vert, h,

@@ -172,31 +172,80 @@ sample's, against `h`, with a sigma of 6 cm (the BMP581's 0.41 Pa is about
 ## Smoother
 
 The forward pass stores, at every node (each IMU sample and each auxiliary
-event between samples), the nominal state predicted into the node, the state
-after its updates, and the RTS gain `C_k = P_k F_k^T P_{k+1|k}^{-1}`. The
-backward pass then sets
+event between samples), the nominal state after the node's updates `x_f,k`,
+the RTS gain `C_k = P_k F_k^T P_{k+1|k}^{-1}` to the next node, and where the
+node is: its time and the IMU interval it falls in. The backward pass then
+sets
 
 ```
 x_s,k = x_f,k ⊞ C_k (x_s,k+1 ⊟ x_{k+1|k})
 ```
 
 with `⊟` and `⊞` the error-state difference and injection (`dθ` in ENU). Only
-the smoothed mean is computed, not its covariance, which halves the storage:
-an 8x8 gain per node, about 40 MB for a ten-minute flight at 100 Hz.
+the smoothed mean is computed, not its covariance.
+
+**The prediction `x_{k+1|k}` is recomputed, not stored.** It is `x_f,k`
+propagated over the node's interval with the IMU interpolated to the two node
+times, which the backward pass rebuilds from the stored time and interval and
+the log's samples. The forward pass and the backward pass call the same
+propagation function, so the recomputed prediction is bit-identical to the
+one the forward pass made, and the smoothed result is exactly what storing it
+gave.
+
+**The gains are stored as float32** (`gain_float32`, default on). Against
+float64 gains, the smoothed attitude moves by at most 2.7e-4° on five of the
+flights (most of them 1e-5° or less; the worst is `f176` without pressure,
+whose bootstrapped start carries the difference into the forward pass too),
+altitude by under 1 µm and vertical velocity by under 5 µm/s, against a
+stated tolerance of 0.001°, 1 mm and 1 mm/s that `test_flight.py` checks.
+
+**Storage per node** is 12 doubles of state (q, gyro bias, `h`, `vz`,
+accelerometer bias), the `n x n` gain, a double and an int32: 592 bytes with
+all eleven states, 364 with eight (no accelerometer bias states). A
+full-flash log at 1600 Hz, about 21.5 million samples and 23.6 million nodes,
+needs about 14 GB.
+
+**Above `memmap_threshold_mb` (1024 MiB) it goes to files.** The four
+per-node arrays are then `numpy.memmap` files in a temporary directory
+(`memmap_dir`, else the system's), deleted when the filter returns or fails.
+The forward pass writes them in increasing node order and the backward pass
+reads them in decreasing order; each file is mapped a window of
+`memmap_window_nodes` (65 536) rows at a time, flushed and unmapped when the
+access leaves it, so the process holds one window per file and the operating
+system's page cache does the rest. Below the threshold they are plain arrays,
+with identical results. The outputs, forward and smoothed states per IMU
+sample (192 bytes per sample), stay in memory: they are the result.
+
+| Synthetic run at rest, 1600 Hz | Storage | Peak memory | Time |
+|---|---|---|---|
+| 200 000 samples (`test_navfilter.py`), in memory | 136 MB bound | +126 MB | 20 s |
+| the same, in files | | +22 MB | 20 s |
+| 2 000 000 samples (21 min), in memory | 1355 MB bound | 1854 MB | 224 s |
+| the same, in files (the default above 1 GiB) | | 590 MB | 226 s |
+
+The first two are growth in `ru_maxrss` during the run; the last two are
+macOS's peak memory footprint from `/usr/bin/time -l`, since `ru_maxrss` on
+macOS leaves out compressed pages and reported only 606 MB for the in-memory
+run. Of the file-backed 590 MB, 366 MB are the outputs and most of the rest
+the log's own arrays. The results were identical in both modes and the
+files were gone afterwards. Mapping the storage costs no measurable time.
 
 ## Output
 
 `tagsim filter -o NAME-filt.db3` writes `FilterForward` and `FilterSmoothed`,
 one row per IMU sample with `SegmentId`, `SampleIndex`, `ElapsedUs`,
 `qw qx qy qz` (tag frame to ENU), `alt` (m, relative to the first pressure
-sample), `vz` (m/s, up) and the gyro bias `bx by bz` (dps), plus `FilterRun`
+sample), `vz` (m/s, up), the gyro bias `bx by bz` (dps) and the
+accelerometer bias `abx aby abz` (mg), plus `FilterRun`
 with the configuration and counters. `tagsim score --table FilterSmoothed`
 scores either table directly; `tagsim batch --filter` runs and scores the
 filter with and without the pressure channel on every flight. Each segment of
 a multi-segment log is filtered on its own.
 
-Speed in Python: about 5 s for a ten-minute flight at 100 Hz, twice that when
-the start is bootstrapped.
+Speed in Python: about 9 000 IMU samples a second with all eleven states,
+so 7–16 s for a ten-minute flight at 100 Hz (more when the start is
+bootstrapped, which runs a first pass) and some 40 minutes for a full-flash
+1600 Hz log.
 
 ## What it does not model
 

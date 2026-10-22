@@ -102,7 +102,11 @@ tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.
   `--field-ned N E D`, or `--truth` (the field the truth file was made with).
   `--no-pressure` drops the altitude channel, `--no-smooth` the backward
   pass, and `--set NAME=VALUE` overrides any `FilterConfig` parameter in
-  [navfilter.py](src/tagsim/navfilter.py).
+  [navfilter.py](src/tagsim/navfilter.py). The smoother's per-node storage
+  (about 600 bytes per sample) goes to temporary memory-mapped files above
+  1 GiB, so a full-flash log needs disk, not RAM
+  ([design](design/navigation-filter.md#smoother)); `--set 'memmap_dir="DIR"'`
+  chooses where.
 
 - **`tagsim score`** reports attitude error (total, tilt and heading) and,
   where the estimate has them, velocity, altitude-change and
@@ -178,15 +182,16 @@ Each variable has a fallback:
 | `test_pages.py::test_pack_layout` | Page layout, checkpoint flags, partial pages, the exact NaN pattern | nothing |
 | `test_pages.py::test_round_trip` | A two-segment log with missing auxiliary slots, a storage-skip resync, an index hole and partial pages decodes back to exactly the packed values | `tag-log-import` |
 | `test_stationary.py` | A tag at rest reads 1000 mg and zero rate within quantization at any attitude, and a constant positive dip under the host's axis convention | nothing |
-| `test_errors.py` | On 300 s at rest, at 100 and 400 Hz: accel, gyro, magnetometer and pressure noise match the configured RMS, the means match the drawn biases and offset, the true calibration recovers the field, magnetometer age sweeps one conversion period; seeding, missed conversions, perturbed calibration, the sea-level walk | nothing |
+| `test_errors.py` | On 300 s at rest, at 100 and 400 Hz: accel, gyro, magnetometer and pressure noise match the configured RMS, the means match the drawn biases and offset, the true calibration recovers the field, magnetometer age sweeps one conversion period; seeding, missed conversions, perturbed calibration, the sea-level walk; scale and misalignment within their ranges, the Gauss-Markov RMS and correlation time, vibration's RMS and band | nothing |
 | `test_consistency.py` | Strapdown integration of a synthetic manoeuvre agrees with its spline pose | nothing |
 | `test_glitches.py` | On a synthetic DataFlash log, a one-sample spike is bridged and a lasting step is split at | nothing |
 | `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
 | `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
 | `test_flight.py::test_calibrated_field_is_wmm` | `dataprocessing imu-compass-orientation` on that log: the calibrated field's median is the WMM magnitude | a log, `tag-log-import` and `dataprocessing` |
-| `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples | nothing |
+| `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples; the accelerometer bias recovered; a 200 000-sample run with file-backed smoother storage matches the in-memory one with much lower peak memory | nothing |
 | `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back | nothing |
 | `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports | a log, `tag-log-import` and `dataprocessing` |
+| `test_flight.py::test_filter_storage_modes` | The filter on that log: in-memory and file-backed smoother storage give identical results and leave no files; float32 gains within 0.001°, 1 mm, 1 mm/s of float64 | a log and `tag-log-import` |
 | `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
 
 A test whose needs are missing is skipped, not failed. `pytest -rs` lists

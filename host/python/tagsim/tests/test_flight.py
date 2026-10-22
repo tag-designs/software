@@ -122,3 +122,32 @@ def test_sensorviz_loads(flight_db, tmp_path):
     assert done.returncode == 0, done.stderr
     shots = list(tmp_path.glob("*.png"))
     assert shots and shots[0].stat().st_size > 10000
+
+
+def test_filter_storage_modes(flight_db, tmp_path):
+    """The smoother's storage on a real flight: file-backed (memory-mapped)
+    and in-memory give identical results, the files are deleted afterwards,
+    and float32 gains (the default) change the smoothed estimate by less
+    than 0.001 degree, 1 mm and 1 mm/s against float64 ones."""
+    from tagsim.navfilter import FilterConfig, field_enu_from_ned, read_log, run_filter
+    from tagsim.score import attitude_errors, load_truth
+
+    log = read_log(flight_db)[0]
+    field = field_enu_from_ned(load_truth(truth_path(flight_db)).field_ned_ut)
+    mem = run_filter(log, FilterConfig(field_enu_ut=field))
+    assert not mem.stats["storage"]["file_backed"]
+    mapped = run_filter(log, FilterConfig(field_enu_ut=field, memmap_threshold_mb=0,
+                                          memmap_dir=str(tmp_path), memmap_window_nodes=4096))
+    assert mapped.stats["storage"]["file_backed"]
+    assert list(tmp_path.iterdir()) == []
+    for a, b in ((mem.q_smoothed, mapped.q_smoothed), (mem.alt_smoothed, mapped.alt_smoothed),
+                 (mem.bias_smoothed, mapped.bias_smoothed), (mem.q_forward, mapped.q_forward)):
+        np.testing.assert_array_equal(a, b)
+    f64 = run_filter(log, FilterConfig(field_enu_ut=field, gain_float32=False))
+    angle = attitude_errors(mem.q_smoothed, f64.q_smoothed)["total_deg"]
+    print(f"float32 gains: max {angle.max():.2e} deg, "
+          f"{np.abs(mem.alt_smoothed - f64.alt_smoothed).max():.2e} m, "
+          f"{np.abs(mem.vz_smoothed - f64.vz_smoothed).max():.2e} m/s")
+    assert angle.max() < 1e-3
+    assert np.abs(mem.alt_smoothed - f64.alt_smoothed).max() < 1e-3
+    assert np.abs(mem.vz_smoothed - f64.vz_smoothed).max() < 1e-3

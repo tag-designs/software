@@ -232,3 +232,54 @@ def test_accel_bias_states():
     assert np.median(_errors(sim, r.q_smoothed)["total_deg"][moving]) < 2.0
     _, _, off = _run(_manoeuvre(), duration_s=40.0, errors=errors, accel_bias_states=False)
     assert off.accel_bias_smoothed is None
+
+
+_RSS_SCRIPT = r'''
+import json, resource, sys, numpy as np
+from tagsim.navfilter import FilterConfig, ImuTagLog, run_filter
+from tagsim.sensors import G0
+n, odr, threshold, directory = int(sys.argv[1]), 1600.0, float(sys.argv[2]), sys.argv[3]
+g = np.random.default_rng(0)
+t = np.arange(n) / odr
+field = np.array([-1.66, 20.52, -47.45])
+m = n // 10
+log = ImuTagLog(0, odr, 4.0, t, np.arange(n),
+                np.array([0.0, 0.0, G0]) + 0.004 * g.standard_normal((n, 3)),
+                np.radians(0.3) + np.radians(0.06) * g.standard_normal((n, 3)),
+                np.zeros(n, dtype=bool), t[::10][:m], field + 0.2 * g.standard_normal((m, 3)),
+                t[::10][:m], 1000.0 + 0.004 * g.standard_normal(m), 0.0)
+scale = 1024 if sys.platform.startswith("linux") else 1
+before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * scale
+r = run_filter(log, FilterConfig(field_enu_ut=tuple(field), memmap_threshold_mb=threshold,
+                                 memmap_dir=directory, memmap_window_nodes=4096))
+after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * scale
+print(json.dumps({"growth_mb": (after - before) / 2 ** 20, "storage": r.stats["storage"],
+                  "q_end": r.q_smoothed[-1].tolist()}))
+'''
+
+
+def test_file_backed_storage_bounds_memory(tmp_path):
+    """A synthetic run long enough that its smoother storage dominates: kept
+    in files, the peak resident memory grows by about the outputs alone, not
+    by the storage, and the result matches the in-memory run's."""
+    import json
+    import subprocess
+    import sys
+
+    n = 200_000  # 125 s at 1600 Hz, 220 000 nodes
+    runs = {}
+    for label, threshold in (("memory", 1e6), ("file", 0.0)):
+        done = subprocess.run([sys.executable, "-c", _RSS_SCRIPT, str(n), str(threshold),
+                               str(tmp_path)], capture_output=True, text=True, check=True)
+        runs[label] = json.loads(done.stdout)
+    storage_mb = runs["file"]["storage"]["max_mb"]
+    outputs_mb = 2 * n * 12 * 8 / 2 ** 20  # forward and smoothed states per sample
+    print({k: round(v["growth_mb"], 1) for k, v in runs.items()},
+          f"storage {storage_mb} MB, outputs {outputs_mb:.0f} MB")
+    assert runs["file"]["storage"]["file_backed"] and not runs["memory"]["storage"]["file_backed"]
+    assert runs["file"]["q_end"] == runs["memory"]["q_end"]
+    assert list(tmp_path.iterdir()) == []
+    # Peak RSS reuses memory freed while building the log, so compare the
+    # two runs with each other: the file-backed one saves most of the storage.
+    assert runs["memory"]["growth_mb"] - runs["file"]["growth_mb"] > 0.5 * storage_mb
+    assert runs["file"]["growth_mb"] < outputs_mb + 0.25 * storage_mb
